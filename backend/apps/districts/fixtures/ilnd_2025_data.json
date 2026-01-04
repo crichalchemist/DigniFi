@@ -1,0 +1,118 @@
+[
+  {
+    "model": "districts.district",
+    "pk": 1,
+    "fields": {
+      "code": "ilnd",
+      "name": "Northern District of Illinois",
+      "state": "IL",
+      "court_name": "U.S. Bankruptcy Court for the Northern District of Illinois",
+      "pro_se_efiling_allowed": true,
+      "filing_fee_chapter_7": "338.00",
+      "created_at": "2025-01-01T00:00:00Z",
+      "updated_at": "2025-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "districts.medianincome",
+    "pk": 1,
+    "fields": {
+      "district": 1,
+      "effective_date": "2025-11-01",
+      "family_size_1": "71304.00",
+      "family_size_2": "91526.00",
+      "family_size_3": "110712.00",
+      "family_size_4": "134366.00",
+      "family_size_5": "145466.00",
+      "family_size_6": "156566.00",
+      "family_size_7": "167666.00",
+      "family_size_8": "178766.00",
+      "family_size_additional": "11100.00",
+      "created_at": "2025-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "districts.exemptionschedule",
+    "pk": 1,
+    "fields": {
+      "district": 1,
+      "exemption_type": "homestead",
+      "amount": "15000.00",
+      "statute_citation": "735 ILCS 5/12-901",
+      "description": "Protects up to $15,000 in equity in your primary residence. Married couples filing jointly can double this to $30,000 if they jointly own the home.",
+      "created_at": "2025-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "districts.exemptionschedule",
+    "pk": 2,
+    "fields": {
+      "district": 1,
+      "exemption_type": "vehicle",
+      "amount": "2400.00",
+      "statute_citation": "735 ILCS 5/12-1001(c)",
+      "description": "Protects up to $2,400 in equity in one motor vehicle. Joint filers can double this amount if both names are on the title.",
+      "created_at": "2025-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "districts.exemptionschedule",
+    "pk": 3,
+    "fields": {
+      "district": 1,
+      "exemption_type": "wildcard",
+      "amount": "4000.00",
+      "statute_citation": "735 ILCS 5/12-1001(b)",
+      "description": "Protects up to $4,000 in value of any personal property other than real estate. Married couples filing jointly can protect up to $8,000 in additional assets.",
+      "created_at": "2025-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "districts.exemptionschedule",
+    "pk": 4,
+    "fields": {
+      "district": 1,
+      "exemption_type": "tools_of_trade",
+      "amount": "1500.00",
+      "statute_citation": "735 ILCS 5/12-1001",
+      "description": "Protects up to $1,500 in tools, equipment, or professional books you use to earn a living. This helps tradespeople, contractors, and professionals keep the items they need to work.",
+      "created_at": "2025-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "districts.localrule",
+    "pk": 1,
+    "fields": {
+      "district": 1,
+      "rule_number": "LBR-1007-1",
+      "title": "Mailing Matrix Requirements",
+      "description": "Debtors must file a mailing matrix (list of creditors) in addition to the creditor matrix included with schedules. The matrix must be uploaded separately in the prescribed format for the Northern District of Illinois.",
+      "effective_date": "2020-12-01",
+      "created_at": "2025-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "districts.localrule",
+    "pk": 2,
+    "fields": {
+      "district": 1,
+      "rule_number": "LBR-3015-1",
+      "title": "Chapter 13 Plan Requirements",
+      "description": "Chapter 13 plans in the Northern District must use the court-approved form plan. The plan must include specific language regarding treatment of secured claims and priority debts as outlined in the local rules.",
+      "effective_date": "2020-12-01",
+      "created_at": "2025-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "districts.localrule",
+    "pk": 3,
+    "fields": {
+      "district": 1,
+      "rule_number": "LBR-5005-4",
+      "title": "Pro Se E-Filing Procedures",
+      "description": "Pro se debtors (self-represented filers) are permitted to file electronically in the Northern District of Illinois. Pro se filers must register for CM/ECF access through the court's registration process and comply with all electronic filing requirements.",
+      "effective_date": "2021-01-01",
+      "created_at": "2025-01-01T00:00:00Z"
+    }
+  }
+]
