@@ -1,0 +1,36 @@
+{
+  "mcpServers": {
+    "opencode-copilot": {
+      "command": "opencode-acp",
+      "args": [],
+      "env": {
+        "OPENCODE_CONFIG_CONTENT": "{\"model\":\"github-copilot/gpt-4.1\"}",
+        "OPENCODE_BIN": "${OPENCODE_BIN}"
+      },
+      "disabled": false,
+      "alwaysAllow": [],
+      "metadata": {
+        "description": "GitHub Copilot via OpenCode for simple tasks (boilerplate, formatting, refactoring)",
+        "usage": "Offloads simple code generation to free GPT-4.1 to preserve Claude tokens for complex UPL logic and trauma-informed content",
+        "routing_rules": {
+          "delegate_to_copilot": [
+            "Form field auto-population",
+            "PDF field mapping boilerplate",
+            "Generic legal disclaimer text",
+            "Simple data validation logic",
+            "Standard CRUD operations",
+            "Formatting and code style"
+          ],
+          "preserve_claude_for": [
+            "UPL boundary decisions",
+            "Trauma-informed tone refinement",
+            "District-specific rule interpretation",
+            "Complex eligibility logic (means test)",
+            "Credit counseling integration logic",
+            "Deadline calculation and calendar rules"
+          ]
+        }
+      }
+    }
+  }
+}

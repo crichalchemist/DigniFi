@@ -1,0 +1,3 @@
+-r base.txt
+# Allow minor and major updates; ensure compatibility with Django 5.x
+gunicorn>=23.0.0
