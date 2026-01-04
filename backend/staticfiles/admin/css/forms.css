@@ -451,7 +451,6 @@ body.popup .submit-row {
 .inline-group .tabular tr td.original {
     padding: 2px 0 0 0;
     width: 0;
-    _position: relative;
 }
 
 .inline-group .tabular th.original {
@@ -468,7 +467,6 @@ body.popup .submit-row {
     font-size: 0.5625rem;
     font-weight: bold;
     color: var(--body-quiet-color);
-    _width: 700px;
 }
 
 .inline-group ul.tools {

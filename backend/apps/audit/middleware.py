@@ -5,9 +5,12 @@ This middleware logs all requests/responses for UPL compliance auditing.
 """
 
 import logging
+from collections.abc import Callable
+from typing import Optional
+from django.http import HttpRequest, HttpResponse
 from .models import AuditLog
 
-logger = logging.getLogger('dignifi.audit')
+logger = logging.getLogger("dignifi.audit")
 
 
 class AuditLoggingMiddleware:
@@ -21,29 +24,39 @@ class AuditLoggingMiddleware:
     - Response status codes
     """
 
-    def __init__(self, get_response):
+    def __init__(self, get_response: Callable[[HttpRequest], HttpResponse]) -> None:
         self.get_response = get_response
 
-    def __call__(self, request):
+    def __call__(self, request: HttpRequest) -> HttpResponse:
         # Process request
         response = self.get_response(request)
 
         # Log the request if user is authenticated
         if request.user.is_authenticated:
-            # Determine if this is a UPL-sensitive action
-            upl_sensitive = self._is_upl_sensitive(request.path)
+            try:
+                # Determine if this is a UPL-sensitive action
+                upl_sensitive = self._is_upl_sensitive(request.path)
 
-            # Log the action
-            AuditLog.log_action(
-                action=f"{request.method} {request.path}",
-                user=request.user,
-                resource_type="http_request",
-                upl_sensitive=upl_sensitive,
-                ip_address=self._get_client_ip(request),
-                method=request.method,
-                path=request.path,
-                status_code=response.status_code
-            )
+                # Log the action
+                AuditLog.log_action(
+                    action=f"{request.method} {request.path}",
+                    user=request.user,
+                    resource_type="http_request",
+                    upl_sensitive=upl_sensitive,
+                    ip_address=self._get_client_ip(request),
+                    method=request.method,
+                    path=request.path,
+                    status_code=response.status_code,
+                )
+            except Exception:
+                logger.exception(
+                    "Error logging audit action",
+                    extra={
+                        "path": request.path,
+                        "method": request.method,
+                        "user_id": getattr(request.user, "id", "anonymous"),
+                    },
+                )
 
         return response
 
@@ -52,10 +65,10 @@ class AuditLoggingMiddleware:
         Determine if a request path involves UPL-sensitive operations.
         """
         upl_paths = [
-            '/api/eligibility/',
-            '/api/forms/',
-            '/api/intake/',
-            '/api/means-test/',
+            "/api/eligibility/",
+            "/api/forms/",
+            "/api/intake/",
+            "/api/means-test/",
         ]
         return any(path.startswith(upl_path) for upl_path in upl_paths)
 
@@ -63,9 +76,9 @@ class AuditLoggingMiddleware:
         """
         Extract client IP address from request.
         """
-        x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+        x_forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR")
         if x_forwarded_for:
-            ip = x_forwarded_for.split(',')[0]
+            ip = x_forwarded_for.split(",")[0]
         else:
-            ip = request.META.get('REMOTE_ADDR')
+            ip = request.META.get("REMOTE_ADDR")
         return ip

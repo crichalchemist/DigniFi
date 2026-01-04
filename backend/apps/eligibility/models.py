@@ -1,6 +1,8 @@
 """Means test and eligibility models."""
 
+import json
 from django.db import models
+from encrypted_model_fields.fields import EncryptedTextField
 
 
 class MeansTest(models.Model):
@@ -20,10 +22,32 @@ class MeansTest(models.Model):
     )
 
     # Results
-    passes_means_test = models.BooleanField(help_text="True if CMI < median income")
-    calculation_details = models.JSONField(
-        default=dict, help_text="Full calculation breakdown"
+    passes_means_test = models.BooleanField(
+        help_text="True if CMI < median income", db_index=True
     )
+    # Encrypted calculation details to protect potential PII
+    # Using EncryptedTextField as JSON storage since EncryptedJSONField is not available
+    calculation_details = EncryptedTextField(
+        default="{}", help_text="Full calculation breakdown (JSON)"
+    )
+
+    def get_calculation_details(self) -> dict:
+        """
+        Deserialize calculation_details from JSON string to dict.
+        Returns empty dict if value is empty/blank.
+        """
+        if not self.calculation_details:
+            return {}
+        return json.loads(self.calculation_details)
+
+    def set_calculation_details(self, data: dict) -> None:
+        """
+        Serialize dict to JSON string for calculation_details.
+        Raises TypeError if data is not a dict.
+        """
+        if not isinstance(data, dict):
+            raise TypeError("calculation_details must be a dictionary")
+        self.calculation_details = json.dumps(data)
 
     # Fee waiver eligibility (28 U.S.C. § 1930(f))
     qualifies_for_fee_waiver = models.BooleanField(default=False)

@@ -120,4 +120,4 @@ See `.claude/COPILOT_INTEGRATION.md` for:
 
 ---
 
-**Ready to use!** Just start working on DigniFi features and Claude will optimize token usage automatically.
+**Ready to use.** Just start working on DigniFi features and Claude will optimize token usage automatically.

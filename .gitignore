@@ -62,7 +62,6 @@ yarn-error.log*
 Thumbs.db
 
 # Docker
-*.dockerignore
 
 # Testing
 .coverage

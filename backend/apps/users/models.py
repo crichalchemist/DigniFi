@@ -9,6 +9,7 @@ from phonenumber_field.modelfields import PhoneNumberField
 
 from django.contrib.auth.models import AbstractUser
 from django.db import models
+from django.db.models import CheckConstraint, Q
 from django.utils import timezone
 
 
@@ -25,7 +26,7 @@ class User(AbstractUser):
 
     # Contact information
     phone = PhoneNumberField(
-        blank=True, help_text="Optional phone number for case notifications"
+        blank=True, null=True, help_text="Optional phone number for case notifications"
     )
 
     # Legal agreements (CRITICAL for UPL compliance)
@@ -51,9 +52,26 @@ class User(AbstractUser):
         db_table = "users"
         verbose_name = "User"
         verbose_name_plural = "Users"
+        constraints = [
+            CheckConstraint(
+                check=(
+                    Q(
+                        agreed_to_upl_disclaimer=True,
+                        upl_disclaimer_agreed_at__isnull=False,
+                    )
+                    | Q(
+                        agreed_to_upl_disclaimer=False,
+                        upl_disclaimer_agreed_at__isnull=True,
+                    )
+                ),
+                name="upl_agreement_consistency",
+            )
+        ]
 
     def __str__(self) -> str:
-        return f"{self.username} ({self.email})"
+        if self.email and self.email.strip():
+            return f"{self.username} ({self.email})"
+        return self.username
 
     def agree_to_upl_disclaimer(self):
         """
@@ -61,10 +79,11 @@ class User(AbstractUser):
         CRITICAL: This must be called before allowing access to eligibility or forms.
         """
         self.agreed_to_upl_disclaimer = True
-        self.upl_disclaimer_agreed_at = timezone.now()
-        self.save(
-            update_fields=["agreed_to_upl_disclaimer", "upl_disclaimer_agreed_at"]
-        )
+        update_fields = ["agreed_to_upl_disclaimer"]
+        if not self.upl_disclaimer_agreed_at:
+            self.upl_disclaimer_agreed_at = timezone.now()
+            update_fields.append("upl_disclaimer_agreed_at")
+        self.save(update_fields=update_fields)
 
     @property
     def has_valid_upl_agreement(self):

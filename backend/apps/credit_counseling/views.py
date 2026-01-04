@@ -1,3 +1,3 @@
-from django.shortcuts import render
+# TODO: implement CreditCounselingProviderViewSet, CertificateViewSet
+# from django.shortcuts import render  # noqa
 
-# credit_counseling views

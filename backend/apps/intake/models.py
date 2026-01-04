@@ -1,4 +1,7 @@
 """Intake models for collecting bankruptcy petition data."""
+
+from typing import ClassVar, List
+
 from django.db import models
 from django.conf import settings
 from encrypted_model_fields.fields import EncryptedCharField
@@ -6,30 +9,38 @@ from encrypted_model_fields.fields import EncryptedCharField
 
 class IntakeSession(models.Model):
     """Multi-step intake session tracking."""
-    STATUS_CHOICES = [
-        ('started', 'Started'),
-        ('in_progress', 'In Progress'),
-        ('completed', 'Completed'),
-        ('abandoned', 'Abandoned'),
+
+    STATUS_CHOICES: ClassVar[List[tuple[str, str]]] = [
+        ("started", "Started"),
+        ("in_progress", "In Progress"),
+        ("completed", "Completed"),
+        ("abandoned", "Abandoned"),
     ]
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='intake_sessions')
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='started')
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="intake_sessions",
+    )
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="started")
     current_step = models.IntegerField(default=1)
     created_at = models.DateTimeField(auto_now_add=True)
     completed_at = models.DateTimeField(null=True, blank=True)
-    district = models.ForeignKey('districts.District', on_delete=models.PROTECT)
+    district = models.ForeignKey("districts.District", on_delete=models.PROTECT)
 
     class Meta:
-        db_table = 'intake_sessions'
-        ordering = ['-created_at']
+        db_table = "intake_sessions"
+        ordering: ClassVar[List[str]] = ["-created_at"]
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"Intake {self.id} - {self.user} ({self.status})"
 
 
 class DebtorInfo(models.Model):
     """Personal information for debtor (PII encrypted)."""
-    session = models.OneToOneField(IntakeSession, on_delete=models.CASCADE, related_name='debtor_info')
+
+    session = models.OneToOneField(
+        IntakeSession, on_delete=models.CASCADE, related_name="debtor_info"
+    )
     first_name = models.CharField(max_length=100)
     last_name = models.CharField(max_length=100)
     middle_name = models.CharField(max_length=100, blank=True)
@@ -44,16 +55,39 @@ class DebtorInfo(models.Model):
     zip_code = models.CharField(max_length=10)
 
     class Meta:
-        db_table = 'debtor_info'
+        db_table = "debtor_info"
+
+    def __str__(self):
+        return (
+            f"Debtor: {self.first_name} {self.last_name} (Session: {self.session_id})"
+        )
 
 
 class IncomeInfo(models.Model):
     """Income data for means test."""
-    session = models.OneToOneField(IntakeSession, on_delete=models.CASCADE, related_name='income_info')
-    marital_status = models.CharField(max_length=30, choices=[('single', 'Single'), ('married_joint', 'Married Filing Jointly'), ('married_separate', 'Married Filing Separately')])
+
+    session = models.OneToOneField(
+        IntakeSession, on_delete=models.CASCADE, related_name="income_info"
+    )
+    marital_status = models.CharField(
+        max_length=30,
+        choices=[
+            ("single", "Single"),
+            ("married_joint", "Married Filing Jointly"),
+            ("married_separate", "Married Filing Separately"),
+        ],
+    )
     number_of_dependents = models.IntegerField(default=0)
-    monthly_income = models.JSONField(help_text="6-month income array")  # [month1, month2, ...]
+    monthly_income = models.JSONField(
+        help_text="6-month income array"
+    )  # [month1, month2, ...]
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = 'income_info'
+        db_table = "income_info"
+
+    def __str__(self) -> str:
+        return (
+            f"IncomeInfo: {self.marital_status}, {self.number_of_dependents} dependents "
+            f"(Session: {self.session_id})"
+        )

@@ -19,7 +19,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 # Create logs directory
 LOGS_DIR = BASE_DIR / "logs"
-LOGS_DIR.mkdir(exist_ok=True, parents=True)
+# LOGS_DIR.mkdir(exist_ok=True, parents=True) # Side effect removed
 
 # Environment variables
 env = environ.Env(
@@ -183,10 +183,23 @@ CORS_ALLOW_CREDENTIALS = True
 # Field Encryption (for PII: SSN, income data, etc.)
 FIELD_ENCRYPTION_KEY = env("FIELD_ENCRYPTION_KEY", default="")
 
+
+class MissingEncryptionKeyError(ImproperlyConfigured):
+    pass
+
+
+FIELD_ENCRYPTION_KEY_MISSING = (
+    "The FIELD_ENCRYPTION_KEY environment variable is not set."
+)
+
 if not FIELD_ENCRYPTION_KEY:
-    raise ImproperlyConfigured(
-        "The FIELD_ENCRYPTION_KEY environment variable is not set."
-    )
+    if DEBUG:
+        FIELD_ENCRYPTION_KEY = (
+            "django-insecure-CHANGE-ME-IN-PRODUCTION-KEY-XXXXXXXXXXXXXXXX"
+        )
+        print("WARNING: Using insecure FIELD_ENCRYPTION_KEY for development.")
+    else:
+        raise MissingEncryptionKeyError(FIELD_ENCRYPTION_KEY_MISSING)
 
 # DigniFi-Specific Settings
 
@@ -247,9 +260,12 @@ LOGGING = {
             "formatter": "verbose",
         },
         "audit_file": {
-            "class": "logging.FileHandler",
+            "class": "logging.handlers.RotatingFileHandler"
+            if not DEBUG
+            else "logging.FileHandler",
             "filename": str(LOGS_DIR / "audit.log"),
             "formatter": "audit",
+            **({"maxBytes": 1024 * 1024 * 10, "backupCount": 10} if not DEBUG else {}),
         },
     },
     "loggers": {
@@ -271,10 +287,9 @@ LOGGING = {
 }
 
 # Security Settings (will be strengthened in production)
-SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = "DENY"
-CSRF_COOKIE_HTTPONLY = True
+CSRF_COOKIE_HTTPONLY = False
 SESSION_COOKIE_HTTPONLY = True
 
 # Data Retention Policy (for GDPR/privacy compliance)
