@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **DigniFi** is a trauma-informed digital platform that simplifies bankruptcy filing (Chapter 7 and Chapter 13) for low-income, pro se (self-represented) Americans. The platform aims to democratize access to bankruptcy relief by translating complex legal processes into plain-language guidance, auto-populated court forms, and dignified user experiences.
 
-**Current Stage:** Pre-development / PRD phase. Backend logic maps exist conceptually, but no codebase has been implemented yet.
+**Current Stage:** Backend MVP Complete (Jan 2026). Django REST API with complete intake flow, means test calculator, and Form 101 generator. Frontend (React) development next.
 
 **Mission-Critical Constraint:** All development must respect Unauthorized Practice of Law (UPL) boundaries. The platform provides legal *information*, never legal *advice*.
 
@@ -33,18 +33,25 @@ This comprehensive PRD includes:
 
 ### Technology Recommendations (from technical architecture analysis)
 
-**Initial Stack (Single-Server MVP):**
-- **Backend:** Python/Django or Node.js
-- **Frontend:** React or Vue SPA
-- **Database:** PostgreSQL (encrypted at rest)
-- **Document Storage:** S3-compatible object storage or local filesystem
-- **PDF Generation:** PyPDF2, pdfrw, or Adobe PDF Services API
+**Implemented Stack (MVP):**
+- **Backend:** Python 3.11 + Django 5.0 + Django REST Framework
+- **Frontend:** React 18 (in development)
+- **Database:** PostgreSQL 15 with encrypted-model-fields (Fernet encryption)
+- **Containerization:** Docker + Docker Compose (Colima on macOS)
+- **Document Storage:** Local filesystem (MVP), S3-compatible planned
+- **PDF Generation:** PyPDF2 (implemented in Form101Generator service)
+
+**Deployed Architecture:**
+- Docker Compose with 3 services: backend (Django), db (PostgreSQL), frontend (React dev server)
+- Field-level encryption for PII (SSN, income, account numbers, amounts owed)
+- Custom EncryptedDecimalField for financial data
+- Service layer pattern (MeansTestCalculator, Form101Generator)
 
 **Scaling Path:**
-- Docker containerization
 - Kubernetes or Docker Swarm orchestration
 - CDN for static assets
 - Load balancing for high availability
+- Redis for session management and caching
 
 ### Core System Components
 
@@ -129,6 +136,114 @@ This comprehensive PRD includes:
 3. **UPL Liability:** Crossing from information to advice creates legal risk
 4. **Pro Se E-Filing Constraints:** Many courts limit e-filing for pro se litigants
 5. **PDF Form Complexity:** Official forms may have non-standard field names/structure
+
+## Implementation Status (Jan 2026)
+
+### ✅ Completed: Backend MVP (Phase 1-3)
+
+**Phase 1: Data Models**
+- `IntakeSession` model with multi-step wizard support (current_step, status tracking)
+- `DebtorInfo` model with encrypted PII (SSN, date of birth)
+- `IncomeInfo` model for monthly/annual income tracking
+- `ExpenseInfo` model with 12 expense categories
+- `AssetInfo` model with equity calculation (value - amount owed)
+- `DebtInfo` model using trauma-informed language ("amounts owed" vs "debt")
+- `District`, `MedianIncome`, `Exemption` models with ILND 2025 data
+- `MeansTest` model with calculate() method (11 U.S.C. § 707(b) compliance)
+- `GeneratedForm` model with status tracking (generated, downloaded, filed)
+
+**Phase 2: Business Logic Services**
+- `MeansTestCalculator` service with UPL-compliant messaging
+  - Current Monthly Income (CMI) calculation
+  - Median income comparison by household size
+  - Fee waiver qualification (< 150% poverty line)
+  - Generates information-only messages (never advice)
+- `Form101Generator` service for Voluntary Petition
+  - preview() method for form data preview
+  - generate() method creates GeneratedForm record
+  - UPL-compliant validation and messaging
+
+**Phase 3: REST API Endpoints**
+- `IntakeSessionViewSet` with 7 custom actions:
+  - `POST /api/intake/sessions/` - Create session
+  - `POST /api/intake/sessions/{id}/update_step/` - Update wizard step
+  - `POST /api/intake/sessions/{id}/complete/` - Finalize intake
+  - `POST /api/intake/sessions/{id}/calculate_means_test/` - Run means test
+  - `GET /api/intake/sessions/{id}/preview_form_101/` - Preview form
+  - `GET /api/intake/sessions/{id}/summary/` - Comprehensive summary
+- `AssetViewSet` and `DebtViewSet` for CRUD operations
+- `GeneratedFormViewSet` with 5 custom actions:
+  - `POST /api/forms/generate_form_101/` - Generate form
+  - `POST /api/forms/{id}/regenerate/` - Regenerate with updated data
+  - `GET /api/forms/{id}/preview/` - Preview form data
+  - `POST /api/forms/{id}/mark_downloaded/` - Track download
+  - `POST /api/forms/{id}/mark_filed/` - Track court filing
+
+**Technical Highlights:**
+- Custom `EncryptedDecimalField` (django-encrypted-model-fields lacks this)
+- Real ILND 2025 data fixture: $71,304 median (1 person) → $178,766+ (8+ people)
+- Illinois exemptions: $15,000 homestead, $2,400 vehicle, $4,000 personal property
+- Complete serializers with nested relationships
+- Permission-based queryset filtering (users see only their sessions)
+
+### 🔧 In Development: Frontend (Phase 4)
+
+**Design Principles Established:**
+- **Desktop-First Design:** Primary platform for serious life administration tasks
+  - Adults use PCs for bankruptcy filing (multiple tabs, complex financial data)
+  - Desktop default (1024px+), tablet/mobile as progressive degradation
+  - NOT mobile-first (bankruptcy isn't done on smartphones)
+- **Trauma-Informed Language:**
+  - "Connection as opposed to concession"
+  - Dignity-preserving error messages
+  - "Amounts owed" vs "debt", "financial situation" vs "problem"
+  - Progress indicators emphasize accomplishment, not shame
+- **Accessibility First:**
+  - WCAG 2.1 AA compliance
+  - Screen reader optimized (ARIA labels, semantic HTML)
+  - Keyboard navigation for all interactions
+  - High contrast color palette (trauma-sensitive)
+- **Plain Language:**
+  - 6th-8th grade reading level (Flesch-Kincaid scoring)
+  - Legal jargon explained inline with tooltips
+  - No wall of text; progressive disclosure
+
+**Planned Components:**
+- Multi-step wizard with visual progress indicator
+- React Context API for state management (vs Redux overhead)
+- Form validation with dignity-preserving errors
+- Real-time means test preview
+- Form 101 preview before generation
+
+### 📋 Pending: Testing & Integration (Phase 5)
+
+- Health check endpoint
+- Integration tests for means test calculations
+- UPL compliance review of all messaging
+- Reading level validation
+- Accessibility audit
+
+### 🛠️ Development Tools & Workflow
+
+**Copilot-Delegate Skill:**
+- New skill at `~/.claude/skills/copilot-delegate.md`
+- Invokes GitHub Copilot models (including Claude Opus 4.5) via OpenCode
+- Saves 60-90% Claude Code tokens on:
+  - Boilerplate generation (TypeScript interfaces, validators)
+  - Form schema generation
+  - UI/UX research (when using Opus via Copilot)
+  - Code refactoring
+- Usage: `/copilot-delegate [model] [task description]`
+- Models: opus-4.5, sonnet-4.5, haiku, gpt-4.1 (free), gpt-5
+
+**Example Usage:**
+```bash
+# Generate TypeScript interfaces from Django serializers (90% token savings)
+/copilot-delegate Generate TypeScript interfaces for IntakeSessionSerializer
+
+# UI/UX research with Opus 4.5 (70% token savings)
+/copilot-delegate opus Research user personas for bankruptcy platform
+```
 
 ## Development Workflow
 
@@ -225,5 +340,30 @@ Each district implementation requires:
 
 **Founder:** Courtney Richardson, Northwestern University Communication Studies student
 **Organizational Model:** Social impact startup, prize-funding dependent
-**Development Status:** Pre-code; PRD and architecture analysis complete
-**Next Milestone:** Paper prototype for user testing
+**Development Status:** Backend MVP complete (Jan 2026); Frontend development in progress
+**Next Milestone:** Complete React frontend wizard, then paper prototype testing with target demographic
+
+## Implementation Files Reference
+
+**Backend Core:**
+- `backend/apps/intake/models.py` - IntakeSession, DebtorInfo, IncomeInfo, ExpenseInfo, AssetInfo, DebtInfo
+- `backend/apps/intake/fields.py` - Custom EncryptedDecimalField
+- `backend/apps/intake/serializers.py` - Complete serializers for all intake models
+- `backend/apps/intake/views.py` - IntakeSessionViewSet, AssetViewSet, DebtViewSet
+- `backend/apps/eligibility/models.py` - MeansTest with calculate() method
+- `backend/apps/eligibility/services/means_test_calculator.py` - 11 U.S.C. § 707(b) logic
+- `backend/apps/forms/models.py` - GeneratedForm with status tracking
+- `backend/apps/forms/services/form_101_generator.py` - Form 101 Voluntary Petition generator
+- `backend/apps/forms/views.py` - GeneratedFormViewSet
+- `backend/apps/forms/serializers.py` - GeneratedForm serializer
+
+**Data Fixtures:**
+- `backend/apps/districts/fixtures/ilnd_2025_data.json` - ILND median income & exemptions
+
+**Docker Infrastructure:**
+- `docker-compose.yml` - 3-service architecture (backend, db, frontend)
+- `backend/Dockerfile` - Django app container
+- `frontend/Dockerfile` - React app container (in development)
+
+**Development Tools:**
+- `~/.claude/skills/copilot-delegate.md` - Copilot integration skill for token optimization

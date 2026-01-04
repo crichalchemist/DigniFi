@@ -1,0 +1,10 @@
+  ☐ Phase 4.5a: Build ExpenseInfoStep component with monthly expenses
+  ☐ Phase 4.5b: Build AssetsStep component (property, accounts, vehicles)
+  ☐ Phase 4.5c: Build DebtsStep component (creditors, amounts owed)
+  ☐ Phase 4.6a: Build ReviewStep with means test calculation trigger
+  ☐ Phase 4.6b: Build MeansTestResult page with UPL-compliant messaging
+  ☐ Phase 4.6c: Build Form101Preview component for petition review
+  ☐ Phase 5.1: Add health check endpoint and test backend/frontend integration
+  ☐ Phase 5.2: Integration tests for means test calculations
+  ☐ Phase 5.3: UPL compliance review of all messaging
+  ☐ Phase 5.4: Accessibility audit (WCAG 2.1 AA compliance)
