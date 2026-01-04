@@ -11,10 +11,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Install Python dependencies
 COPY requirements/ /app/requirements/
-RUN pip install --no-cache-dir -r /app/requirements/development.txt
+ARG REQUIREMENTS_FILE=requirements/production.txt
+RUN pip install --no-cache-dir -r /app/${REQUIREMENTS_FILE}
 
 # Create non-root user
-RUN addgroup --system appgroup && adduser --system --group appuser
+RUN addgroup --system appgroup && adduser --system --ingroup appgroup appuser
 
 # Copy project
 COPY . /app/

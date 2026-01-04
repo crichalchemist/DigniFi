@@ -20,10 +20,29 @@ Decision: Simple or Complex?
 
 The following components are now configured:
 
-1. **✓ OpenCode CLI** - Installed at `/Users/controlroom/.opencode/bin/opencode`
-2. **✓ opencode-acp adapter** - Installed at `/opt/local/bin/opencode-acp`
-3. **✓ MCP Server Config** - `.claude/mcp.json` with opencode-copilot server
-4. **✓ Copilot Delegate Agent** - `~/.claude/agents/copilot-delegate.md`
+1. **✓ OpenCode CLI** - Verify installation location:
+
+   ```bash
+   which opencode
+   # Typical output: /usr/local/bin/opencode or /Users/username/.opencode/bin/opencode
+   ```
+
+2. **✓ opencode-acp adapter** - Verify adapter location:
+
+   ```bash
+   which opencode-acp
+   # Typical output: /opt/local/bin/opencode-acp or /Users/username/.local/bin/opencode-acp
+   ```
+
+3. **✓ MCP Server Config** - Update `.claude/mcp.json` with your specific paths:
+
+   ```json
+   "env": {
+     "OPENCODE_BIN": "/verified/path/to/opencode",
+     "ADAPTER_PATH": "/verified/path/to/opencode-acp"
+   }
+   ```
+4. **✓ Copilot Delegate Agent** - `{USER_HOME}/.claude/agents/copilot-delegate.md`
 
 ## GitHub Copilot Authentication
 
@@ -156,9 +175,9 @@ When you want to explicitly use Copilot for a simple task:
 You: @copilot-delegate Generate a Zod schema for validating bankruptcy means test income fields
 ```
 
-### Automatic Routing (Future Enhancement)
+### Automatic Routing
 
-In future versions, Claude Code could automatically detect simple tasks and route them to the copilot-delegate agent based on task complexity analysis.
+Claude Code should automatically consider task difficulty and route them to the copilot-delegate agent based on task complexity analysis.
 
 ## Token Usage Optimization
 
@@ -194,7 +213,7 @@ Configures the OpenCode-Copilot MCP server:
       "command": "opencode-acp",
       "env": {
         "OPENCODE_CONFIG_CONTENT": "{\"model\":\"github/copilot\"}",
-        "OPENCODE_BIN": "/Users/controlroom/.opencode/bin/opencode"
+        "OPENCODE_BIN": "$HOME/.opencode/bin/opencode"
       }
     }
   }
@@ -283,10 +302,10 @@ All delegated tasks should be logged for legal compliance review:
 
 The routing rules ensure UPL-sensitive tasks **never** go to Copilot:
 
-- Legal advice/information boundary decisions → Claude only
+- Legal advice/information interpretation as written, boundary decisions → Claude only
 - Eligibility recommendations → Claude only
 - District-specific legal interpretations → Claude only
-- User-facing guidance content → Claude only (with legal review)
+- User-facing guidance content → Claude only (with subsequent legal review)
 
 ## Future Enhancements
 
@@ -310,10 +329,10 @@ Beyond GitHub Copilot, consider integrating:
 
 ### Resources
 
-- **OpenCode Documentation:** https://opencode.ai/docs/
-- **opencode-acp GitHub:** https://github.com/josephschmitt/opencode-acp
-- **GitHub Copilot Models:** https://docs.github.com/en/copilot/reference/ai-models/supported-models
-- **Claude Code MCP Docs:** https://code.claude.com/docs/en/mcp.md
+- **OpenCode Documentation:** [OpenCode Documentation](https://opencode.ai/docs/)
+- **opencode-acp GitHub:** [opencode-acp GitHub](https://github.com/josephschmitt/opencode-acp)
+- **GitHub Copilot Models:** [GitHub Copilot Models](https://docs.github.com/en/copilot/reference/ai-models/supported-models)
+- **Claude Code MCP Docs:** [Claude Code MCP Docs](https://code.claude.com/docs/en/mcp.md)
 
 ### Getting Help
 

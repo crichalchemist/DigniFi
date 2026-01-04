@@ -11,4 +11,4 @@ SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
 
 # Database connection pooling
-DATABASES['default']['CONN_MAX_AGE'] = 600
+DATABASES["default"]["CONN_MAX_AGE"] = env.int("DATABASE_CONN_MAX_AGE", default=600)

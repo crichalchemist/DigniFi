@@ -47,6 +47,7 @@ docker-compose exec backend python manage.py createsuperuser
 ### Local Development (Without Docker)
 
 **Backend:**
+
 ```bash
 cd backend
 python3 -m venv venv
@@ -59,11 +60,13 @@ python manage.py runserver
 ```
 
 **Frontend:**
+
 ```bash
 cd frontend
 npm install
 npm start
 ```
+
 
 ## Project Structure
 
@@ -144,6 +147,7 @@ See `docs/UPL_COMPLIANCE.md` for complete guidelines.
 ## Testing
 
 **Backend:**
+
 ```bash
 docker-compose exec backend pytest
 # With coverage
@@ -151,10 +155,12 @@ docker-compose exec backend pytest --cov=apps
 ```
 
 **Frontend:**
+
 ```bash
 cd frontend
 npm test
 ```
+
 
 ## API Documentation
 
@@ -204,4 +210,4 @@ See `.claude/MULTI_TIER_STRATEGY.md` for details.
 
 ---
 
-**⚠️ Legal Disclaimer**: This software provides legal information only and does not constitute legal advice. Users should consult with a licensed attorney for legal advice specific to their situation.
+**⚠️ Legal Disclaimer**: This software provides legal information only and does not constitute legal advice. Users should consult a licensed attorney for legal advice specific to their situation.

@@ -4,18 +4,21 @@ from .models import User
 
 
 class UserAdmin(DjangoUserAdmin):
-    list_display = DjangoUserAdmin.list_display + (
+    list_display = (
+        *DjangoUserAdmin.list_display,
         "phone",
         "agreed_to_upl_disclaimer",
         "created_at",
     )
-    list_filter = DjangoUserAdmin.list_filter + (
+    list_filter = (
+        *DjangoUserAdmin.list_filter,
         "agreed_to_upl_disclaimer",
         "agreed_to_terms",
     )
-    search_fields = DjangoUserAdmin.search_fields + ("phone",)
+    search_fields = (*DjangoUserAdmin.search_fields, "phone")
 
-    fieldsets = DjangoUserAdmin.fieldsets + (
+    fieldsets = (
+        *DjangoUserAdmin.fieldsets,
         (
             "DigniFi Specifics",
             {

@@ -1,3 +1,4 @@
-from django.contrib import admin
+# TODO: enable admin when scaffolding is implemented
+# from django.contrib import admin
 
-# {app} admin
+# documents admin

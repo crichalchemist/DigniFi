@@ -94,7 +94,7 @@ class AuditLog(models.Model):
         *,
         user=None,
         resource_type: Optional[str] = None,
-        resource_id: Optional[Union[int, str]] = None,
+        resource_id: Optional[int] = None,
         upl_sensitive: bool = False,
         ip_address: Optional[str] = None,
         user_agent: Optional[str] = None,

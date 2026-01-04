@@ -5,8 +5,9 @@ djangorestframework-simplejwt==5.3.1
 django-cors-headers==4.3.1
 django-filter==24.1
 django-environ==0.11.2
-django-encrypted-model-fields==0.6.5
+# django-encrypted-model-fields==0.6.5  # Incompatible with Django 5.x
+django-fernet-fields==0.6
 django-phonenumber-field[phonenumbers]==7.2.0
-pypdf>=3.9.0
+pypdf==3.17.0
 pydantic==2.5.3
 cryptography==44.0.1
