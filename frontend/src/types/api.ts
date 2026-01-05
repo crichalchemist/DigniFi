@@ -76,19 +76,20 @@ export interface IncomeInfo {
   session: number;
   data_source: 'manual' | 'bank_import' | 'tax_return';
 
-  // Employment income
-  monthly_gross_wages: number;
-  monthly_overtime: number;
-  monthly_tips: number;
+  // Backend expects this
+  monthly_income?: number[];
 
-  // Other income
-  monthly_rental_income: number;
-  monthly_pension: number;
-  monthly_social_security: number;
-  monthly_unemployment: number;
-  monthly_child_support: number;
-  monthly_alimony: number;
-  monthly_other_income: number;
+  // Frontend form fields (not in backend model, but useful for state)
+  monthly_gross_wages?: number;
+  monthly_overtime?: number;
+  monthly_tips?: number;
+  monthly_rental_income?: number;
+  monthly_pension?: number;
+  monthly_social_security?: number;
+  monthly_unemployment?: number;
+  monthly_child_support?: number;
+  monthly_alimony?: number;
+  monthly_other_income?: number;
 
   // Calculated field
   total_monthly_income: number;

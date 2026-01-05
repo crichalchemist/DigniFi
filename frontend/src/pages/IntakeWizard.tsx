@@ -9,8 +9,10 @@ import { useState, useEffect } from 'react';
 import { useIntake } from '../context/IntakeContext';
 import { api } from '../api/client';
 import { WizardLayout } from '../components/wizard/WizardLayout';
-import { DebtorInfoStep, IncomeInfoStep } from '../components/wizard/steps';
-import type { DebtorInfo, IncomeInfo } from '../types/api';
+import { DebtorInfoStep, IncomeInfoStep, ExpenseInfoStep, AssetsStep, DebtsStep, ReviewStep } from '../components/wizard/steps';
+import { MeansTestResult } from './MeansTestResult';
+import { Form101Preview } from '../components/Form101Preview';
+import type { DebtorInfo, IncomeInfo, ExpenseInfo, AssetInfo, DebtInfo } from '../types/api';
 
 // ============================================================================
 // Wizard Configuration
@@ -29,10 +31,14 @@ export function IntakeWizard() {
   const { session, createSession, updateCurrentStep, completeSession } = useIntake();
   const [currentStepNumber, setCurrentStepNumber] = useState(1);
   const [canProceed, setCanProceed] = useState(false);
+  const [isCompleted, setIsCompleted] = useState(false);
 
   // Step-specific data
   const [debtorData, setDebtorData] = useState<Partial<DebtorInfo>>({});
   const [incomeData, setIncomeData] = useState<Partial<IncomeInfo>>({});
+  const [expenseData, setExpenseData] = useState<Partial<ExpenseInfo>>({});
+  const [assetsData, setAssetsData] = useState<Partial<AssetInfo>[]>([]);
+  const [debtsData, setDebtsData] = useState<Partial<DebtInfo>[]>([]);
 
   // =========================================================================
   // Initialize session on mount
@@ -52,6 +58,15 @@ export function IntakeWizard() {
       }
       if (session.income_info) {
         setIncomeData(session.income_info);
+      }
+      if (session.expense_info) {
+        setExpenseData(session.expense_info);
+      }
+      if (session.assets) {
+        setAssetsData(session.assets);
+      }
+      if (session.debts) {
+        setDebtsData(session.debts);
       }
     }
   }, []);
@@ -89,8 +104,7 @@ export function IntakeWizard() {
     try {
       await saveCurrentStepData();
       await completeSession();
-      // Navigate to results page (implement later)
-      console.log('Intake completed successfully!');
+      setIsCompleted(true);
     } catch (error) {
       console.error('Error completing intake:', error);
     }
@@ -111,10 +125,40 @@ export function IntakeWizard() {
         break;
 
       case 'income_info':
-        await api.income.createOrUpdate(session.id, incomeData);
+        // Transform detailed income data to backend format (6-month array)
+        // MVP Assumption: Current monthly income is consistent for last 6 months
+        const incomePayload = {
+          ...incomeData,
+          monthly_income: Array(6).fill(incomeData.total_monthly_income || 0),
+        };
+        await api.income.createOrUpdate(session.id, incomePayload);
         break;
 
-      // Add other steps as they're implemented
+      case 'expense_info':
+        await api.expense.createOrUpdate(session.id, expenseData);
+        break;
+
+      case 'assets':
+        // Save each asset
+        for (const asset of assetsData) {
+          if (asset.id) {
+            await api.assets.update(asset.id, asset);
+          } else {
+            await api.assets.create(session.id, asset);
+          }
+        }
+        break;
+
+      case 'debts':
+        // Save each debt
+        for (const debt of debtsData) {
+          if (debt.id) {
+            await api.debts.update(debt.id, debt);
+          } else {
+            await api.debts.create(session.id, debt);
+          }
+        }
+        break;
       default:
         console.log(`Saving data for ${currentStep.key} not yet implemented`);
     }
@@ -146,46 +190,41 @@ export function IntakeWizard() {
 
       case 3:
         return (
-          <div className="placeholder-step">
-            <h3>Expenses Step</h3>
-            <p>This step will collect your monthly expenses.</p>
-            <button type="button" onClick={() => setCanProceed(true)}>
-              Mark as complete (placeholder)
-            </button>
-          </div>
+          <ExpenseInfoStep
+            initialData={expenseData}
+            onDataChange={setExpenseData}
+            onValidationChange={setCanProceed}
+          />
         );
 
       case 4:
         return (
-          <div className="placeholder-step">
-            <h3>Assets Step</h3>
-            <p>This step will collect information about your assets.</p>
-            <button type="button" onClick={() => setCanProceed(true)}>
-              Mark as complete (placeholder)
-            </button>
-          </div>
+          <AssetsStep
+            initialData={assetsData}
+            onDataChange={setAssetsData}
+            onValidationChange={setCanProceed}
+          />
         );
 
       case 5:
         return (
-          <div className="placeholder-step">
-            <h3>Amounts Owed Step</h3>
-            <p>This step will collect information about amounts you owe.</p>
-            <button type="button" onClick={() => setCanProceed(true)}>
-              Mark as complete (placeholder)
-            </button>
-          </div>
+          <DebtsStep
+            initialData={debtsData}
+            onDataChange={setDebtsData}
+            onValidationChange={setCanProceed}
+          />
         );
 
       case 6:
         return (
-          <div className="placeholder-step">
-            <h3>Review & Results</h3>
-            <p>This will show your means test results and Form 101 preview.</p>
-            <button type="button" onClick={() => setCanProceed(true)}>
-              Mark as complete (placeholder)
-            </button>
-          </div>
+          <ReviewStep
+            debtorData={debtorData}
+            incomeData={incomeData}
+            expenseData={expenseData}
+            assetsData={assetsData}
+            debtsData={debtsData}
+            onValidationChange={setCanProceed}
+          />
         );
 
       default:
@@ -228,6 +267,15 @@ export function IntakeWizard() {
           </svg>
         </div>
         <p>Starting your intake session...</p>
+      </div>
+    );
+  }
+
+  if (isCompleted) {
+    return (
+      <div className="max-w-4xl mx-auto py-8 px-4 space-y-8">
+        <MeansTestResult sessionId={session.id} />
+        <Form101Preview sessionId={session.id} />
       </div>
     );
   }

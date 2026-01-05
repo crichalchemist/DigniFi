@@ -102,6 +102,7 @@ class Migration(migrations.Migration):
                     "phone",
                     phonenumber_field.modelfields.PhoneNumberField(
                         blank=True,
+                        null=True,
                         help_text="Optional phone number for case notifications",
                         max_length=128,
                         region=None,
