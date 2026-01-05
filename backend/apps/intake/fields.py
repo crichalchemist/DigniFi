@@ -21,7 +21,9 @@ class EncryptedDecimalField(EncryptedCharField):
         # Set max_length to accommodate largest possible decimal as string
         # e.g., 12 digits + 2 decimal places + decimal point + sign = 15 chars
         if max_digits:
-            kwargs['max_length'] = max_digits + 10  # Extra buffer for sign, decimal point
+            kwargs["max_length"] = (
+                max_digits + 10
+            )  # Extra buffer for sign, decimal point
         super().__init__(*args, **kwargs)
 
     def from_db_value(self, value, expression, connection):
@@ -30,7 +32,7 @@ class EncryptedDecimalField(EncryptedCharField):
             return value
         # Parent class handles decryption
         decrypted = super().from_db_value(value, expression, connection)
-        if decrypted == '' or decrypted is None:
+        if decrypted == "" or decrypted is None:
             return None
         try:
             return Decimal(decrypted)
@@ -39,7 +41,7 @@ class EncryptedDecimalField(EncryptedCharField):
 
     def to_python(self, value):
         """Convert value to Decimal for Python usage."""
-        if value is None or value == '':
+        if value is None or value == "":
             return None
         if isinstance(value, Decimal):
             return value
@@ -47,7 +49,7 @@ class EncryptedDecimalField(EncryptedCharField):
             return Decimal(str(value))
         # Decrypt if needed
         decrypted = super().to_python(value)
-        if decrypted == '' or decrypted is None:
+        if decrypted == "" or decrypted is None:
             return None
         try:
             return Decimal(decrypted)
@@ -67,7 +69,7 @@ class EncryptedDecimalField(EncryptedCharField):
         """For migrations."""
         name, path, args, kwargs = super().deconstruct()
         if self.max_digits is not None:
-            kwargs['max_digits'] = self.max_digits
+            kwargs["max_digits"] = self.max_digits
         if self.decimal_places is not None:
-            kwargs['decimal_places'] = self.decimal_places
+            kwargs["decimal_places"] = self.decimal_places
         return name, path, args, kwargs

@@ -34,7 +34,7 @@ class MeansTestCalculator:
         if not intake_session:
             raise ValueError("IntakeSession is required")
 
-        if not hasattr(intake_session, 'income_info'):
+        if not hasattr(intake_session, "income_info"):
             raise ValueError(
                 "IntakeSession must have income_info before calculating means test"
             )
@@ -72,7 +72,7 @@ class MeansTestCalculator:
                 "median_income_threshold": Decimal("0"),
                 "calculated_cmi": Decimal("0"),
                 "passes_means_test": False,
-            }
+            },
         )
 
         # If not newly created, ensure district is current

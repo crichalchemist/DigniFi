@@ -12,7 +12,11 @@ from rest_framework.permissions import IsAuthenticated
 from django.db import transaction
 
 from .models import IntakeSession, AssetInfo, DebtInfo
-from .serializers import IntakeSessionSerializer, AssetInfoSerializer, DebtInfoSerializer
+from .serializers import (
+    IntakeSessionSerializer,
+    AssetInfoSerializer,
+    DebtInfoSerializer,
+)
 from apps.eligibility.services import MeansTestCalculator
 from apps.forms.services import Form101Generator
 
@@ -34,9 +38,11 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         """Return only sessions for the authenticated user."""
-        return IntakeSession.objects.filter(user=self.request.user).select_related(
-            "district", "debtor_info", "income_info", "expense_info"
-        ).prefetch_related("assets", "debts")
+        return (
+            IntakeSession.objects.filter(user=self.request.user)
+            .select_related("district", "debtor_info", "income_info", "expense_info")
+            .prefetch_related("assets", "debts")
+        )
 
     @transaction.atomic
     def create(self, request, *args, **kwargs):
@@ -63,7 +69,7 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
                 "session": serializer.data,
                 "message": "Intake session started successfully",
             },
-            status=status.HTTP_201_CREATED
+            status=status.HTTP_201_CREATED,
         )
 
     @action(detail=True, methods=["post"])
@@ -93,10 +99,12 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
             serializer.is_valid(raise_exception=True)
             serializer.save()
 
-        return Response({
-            "session": IntakeSessionSerializer(session).data,
-            "message": f"Updated to step {current_step}",
-        })
+        return Response(
+            {
+                "session": IntakeSessionSerializer(session).data,
+                "message": f"Updated to step {current_step}",
+            }
+        )
 
     @action(detail=True, methods=["post"])
     def complete(self, request, pk=None):
@@ -127,19 +135,22 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
                     "errors": errors,
                     "message": "Please complete all required sections before finalizing",
                 },
-                status=status.HTTP_400_BAD_REQUEST
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
         # Mark as completed
         from django.utils import timezone
+
         session.status = "completed"
         session.completed_at = timezone.now()
         session.save()
 
-        return Response({
-            "session": IntakeSessionSerializer(session).data,
-            "message": "Intake session completed successfully",
-        })
+        return Response(
+            {
+                "session": IntakeSessionSerializer(session).data,
+                "message": "Intake session completed successfully",
+            }
+        )
 
     @action(detail=True, methods=["post"])
     def calculate_means_test(self, request, pk=None):
@@ -164,10 +175,12 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
             calculator = MeansTestCalculator(session)
             result = calculator.calculate()
 
-            return Response({
-                "means_test_result": result,
-                "session_id": session.id,
-            })
+            return Response(
+                {
+                    "means_test_result": result,
+                    "session_id": session.id,
+                }
+            )
 
         except ValueError as e:
             return Response(
@@ -175,7 +188,7 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
                     "error": str(e),
                     "message": "Unable to calculate means test. Please ensure all income information is provided.",
                 },
-                status=status.HTTP_400_BAD_REQUEST
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
     @action(detail=True, methods=["get"])
@@ -194,10 +207,12 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
             generator = Form101Generator(session)
             preview_data = generator.preview()
 
-            return Response({
-                "form_preview": preview_data,
-                "session_id": session.id,
-            })
+            return Response(
+                {
+                    "form_preview": preview_data,
+                    "session_id": session.id,
+                }
+            )
 
         except ValueError as e:
             return Response(
@@ -205,7 +220,7 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
                     "error": str(e),
                     "message": "Unable to generate form preview. Please ensure all required information is provided.",
                 },
-                status=status.HTTP_400_BAD_REQUEST
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
     @action(detail=True, methods=["get"])
@@ -280,9 +295,9 @@ class AssetViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         """Return only assets for user's intake sessions."""
-        return AssetInfo.objects.filter(
-            session__user=self.request.user
-        ).select_related("session")
+        return AssetInfo.objects.filter(session__user=self.request.user).select_related(
+            "session"
+        )
 
 
 class DebtViewSet(viewsets.ModelViewSet):
@@ -298,6 +313,6 @@ class DebtViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         """Return only debts for user's intake sessions."""
-        return DebtInfo.objects.filter(
-            session__user=self.request.user
-        ).select_related("session")
+        return DebtInfo.objects.filter(session__user=self.request.user).select_related(
+            "session"
+        )

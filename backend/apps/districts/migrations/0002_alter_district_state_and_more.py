@@ -7,18 +7,33 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('districts', '0001_initial'),
+        ("districts", "0001_initial"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='district',
-            name='state',
-            field=models.CharField(db_index=True, help_text='Two-letter state abbreviation.', max_length=2, validators=[django.core.validators.RegexValidator(message='State must be two uppercase letters.', regex='^[A-Z]{2}$')]),
+            model_name="district",
+            name="state",
+            field=models.CharField(
+                db_index=True,
+                help_text="Two-letter state abbreviation.",
+                max_length=2,
+                validators=[
+                    django.core.validators.RegexValidator(
+                        message="State must be two uppercase letters.",
+                        regex="^[A-Z]{2}$",
+                    )
+                ],
+            ),
         ),
         migrations.AlterField(
-            model_name='medianincome',
-            name='family_size_additional',
-            field=models.DecimalField(decimal_places=2, default=9900.0, help_text='Amount to add for each additional person above 8.', max_digits=12),
+            model_name="medianincome",
+            name="family_size_additional",
+            field=models.DecimalField(
+                decimal_places=2,
+                default=9900.0,
+                help_text="Amount to add for each additional person above 8.",
+                max_digits=12,
+            ),
         ),
     ]

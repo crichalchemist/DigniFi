@@ -171,8 +171,8 @@ class AssetInfoSerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "created_at", "updated_at", "equity"]
         extra_kwargs = {
             "account_number": {"write_only": True},  # Don't expose in responses
-            "current_value": {"write_only": True},   # Encrypted, use equity instead
-            "amount_owed": {"write_only": True},     # Encrypted
+            "current_value": {"write_only": True},  # Encrypted, use equity instead
+            "amount_owed": {"write_only": True},  # Encrypted
         }
 
     def get_equity(self, obj):
@@ -202,7 +202,7 @@ class DebtInfoSerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "created_at", "updated_at"]
         extra_kwargs = {
             "account_number": {"write_only": True},  # Don't expose account numbers
-            "amount_owed": {"write_only": True},     # Encrypted PII
+            "amount_owed": {"write_only": True},  # Encrypted PII
         }
 
 
@@ -219,9 +219,7 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
     assets = AssetInfoSerializer(many=True, required=False)
     debts = DebtInfoSerializer(many=True, required=False)
 
-    district_name = serializers.CharField(
-        source="district.name", read_only=True
-    )
+    district_name = serializers.CharField(source="district.name", read_only=True)
 
     class Meta:
         model = IntakeSession
@@ -298,14 +296,10 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
 
         # Update or create nested objects
         if debtor_data:
-            DebtorInfo.objects.update_or_create(
-                session=instance, defaults=debtor_data
-            )
+            DebtorInfo.objects.update_or_create(session=instance, defaults=debtor_data)
 
         if income_data:
-            IncomeInfo.objects.update_or_create(
-                session=instance, defaults=income_data
-            )
+            IncomeInfo.objects.update_or_create(session=instance, defaults=income_data)
 
         if expense_data:
             ExpenseInfo.objects.update_or_create(

@@ -78,14 +78,14 @@ class MeansTest(models.Model):
         try:
             income_info = self.session.income_info
         except AttributeError:
-            raise ValueError("IntakeSession must have income_info to calculate means test")
+            raise ValueError(
+                "IntakeSession must have income_info to calculate means test"
+            )
 
         # Calculate Current Monthly Income (CMI) - average of last 6 months
         monthly_income_data = income_info.monthly_income
         if not isinstance(monthly_income_data, list) or len(monthly_income_data) != 6:
-            raise ValueError(
-                "monthly_income must be a list of 6 monthly income values"
-            )
+            raise ValueError("monthly_income must be a list of 6 monthly income values")
 
         total_6_month_income = sum(Decimal(str(amt)) for amt in monthly_income_data)
         cmi = total_6_month_income / Decimal("6")

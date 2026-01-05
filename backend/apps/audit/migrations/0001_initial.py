@@ -7,28 +7,82 @@ class Migration(migrations.Migration):
 
     initial = True
 
-    dependencies = [
-    ]
+    dependencies = []
 
     operations = [
         migrations.CreateModel(
-            name='AuditLog',
+            name="AuditLog",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('action', models.CharField(db_index=True, help_text="Action performed (e.g., 'viewed_eligibility_result', 'generated_form_101')", max_length=255)),
-                ('resource_type', models.CharField(db_index=True, help_text="Type of resource (e.g., 'intake_session', 'means_test', 'form')", max_length=100)),
-                ('resource_id', models.IntegerField(blank=True, db_index=True, help_text='ID of the affected resource', null=True)),
-                ('upl_sensitive', models.BooleanField(db_index=True, default=False, help_text='True if this action involved legal information/guidance')),
-                ('timestamp', models.DateTimeField(auto_now_add=True, db_index=True)),
-                ('ip_address', models.GenericIPAddressField(blank=True, db_index=True, help_text='IP address of the request', null=True)),
-                ('user_agent', models.TextField(blank=True, help_text='User agent string from the request')),
-                ('details', models.JSONField(default=dict, help_text='Additional context about the action')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "action",
+                    models.CharField(
+                        db_index=True,
+                        help_text="Action performed (e.g., 'viewed_eligibility_result', 'generated_form_101')",
+                        max_length=255,
+                    ),
+                ),
+                (
+                    "resource_type",
+                    models.CharField(
+                        db_index=True,
+                        help_text="Type of resource (e.g., 'intake_session', 'means_test', 'form')",
+                        max_length=100,
+                    ),
+                ),
+                (
+                    "resource_id",
+                    models.IntegerField(
+                        blank=True,
+                        db_index=True,
+                        help_text="ID of the affected resource",
+                        null=True,
+                    ),
+                ),
+                (
+                    "upl_sensitive",
+                    models.BooleanField(
+                        db_index=True,
+                        default=False,
+                        help_text="True if this action involved legal information/guidance",
+                    ),
+                ),
+                ("timestamp", models.DateTimeField(auto_now_add=True, db_index=True)),
+                (
+                    "ip_address",
+                    models.GenericIPAddressField(
+                        blank=True,
+                        db_index=True,
+                        help_text="IP address of the request",
+                        null=True,
+                    ),
+                ),
+                (
+                    "user_agent",
+                    models.TextField(
+                        blank=True, help_text="User agent string from the request"
+                    ),
+                ),
+                (
+                    "details",
+                    models.JSONField(
+                        default=dict, help_text="Additional context about the action"
+                    ),
+                ),
             ],
             options={
-                'verbose_name': 'Audit Log',
-                'verbose_name_plural': 'Audit Logs',
-                'db_table': 'audit_logs',
-                'ordering': ['-timestamp'],
+                "verbose_name": "Audit Log",
+                "verbose_name_plural": "Audit Logs",
+                "db_table": "audit_logs",
+                "ordering": ["-timestamp"],
             },
         ),
     ]

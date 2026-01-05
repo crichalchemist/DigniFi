@@ -39,7 +39,7 @@ class Form101Generator:
             raise ValueError("IntakeSession is required")
 
         # Validate required data exists
-        if not hasattr(intake_session, 'debtor_info'):
+        if not hasattr(intake_session, "debtor_info"):
             raise ValueError("IntakeSession must have debtor_info")
 
         self.intake_session = intake_session
@@ -71,7 +71,7 @@ class Form101Generator:
                 "form_data": form_data,
                 "status": "generated",
                 "generated_by": user,
-            }
+            },
         )
 
         return {
@@ -97,7 +97,9 @@ class Form101Generator:
             "first_name": self.debtor_info.first_name,
             "middle_name": self.debtor_info.middle_name,
             "last_name": self.debtor_info.last_name,
-            "full_name": f"{self.debtor_info.first_name} {self.debtor_info.middle_name} {self.debtor_info.last_name}".replace("  ", " "),
+            "full_name": f"{self.debtor_info.first_name} {self.debtor_info.middle_name} {self.debtor_info.last_name}".replace(
+                "  ", " "
+            ),
         }
 
         debtor_address = {
@@ -214,7 +216,11 @@ class Form101Generator:
                 "passes_test": means_test.passes_means_test,
                 "cmi": str(means_test.calculated_cmi),
                 "median_threshold": str(means_test.median_income_threshold),
-                "declaration": "Debtor's income is below the median income for applicable family size" if means_test.passes_means_test else "Debtor's income is above the median income (additional means test calculations may be required)",
+                "declaration": (
+                    "Debtor's income is below the median income for applicable family size"
+                    if means_test.passes_means_test
+                    else "Debtor's income is above the median income (additional means test calculations may be required)"
+                ),
             }
         except Exception:
             return {

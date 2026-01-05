@@ -53,20 +53,16 @@ class GeneratedFormViewSet(viewsets.ReadOnlyModelViewSet):
 
         if not session_id:
             return Response(
-                {"error": "session_id is required"},
-                status=status.HTTP_400_BAD_REQUEST
+                {"error": "session_id is required"}, status=status.HTTP_400_BAD_REQUEST
             )
 
         # Verify user owns this session
         try:
-            session = IntakeSession.objects.get(
-                id=session_id,
-                user=request.user
-            )
+            session = IntakeSession.objects.get(id=session_id, user=request.user)
         except IntakeSession.DoesNotExist:
             return Response(
                 {"error": "Session not found or you don't have permission"},
-                status=status.HTTP_404_NOT_FOUND
+                status=status.HTTP_404_NOT_FOUND,
             )
 
         # Generate form
@@ -74,10 +70,12 @@ class GeneratedFormViewSet(viewsets.ReadOnlyModelViewSet):
             generator = Form101Generator(session)
             form_result = generator.generate(user=request.user)
 
-            return Response({
-                "form": form_result,
-                "message": "Form 101 generated successfully",
-            })
+            return Response(
+                {
+                    "form": form_result,
+                    "message": "Form 101 generated successfully",
+                }
+            )
 
         except ValueError as e:
             return Response(
@@ -85,7 +83,7 @@ class GeneratedFormViewSet(viewsets.ReadOnlyModelViewSet):
                     "error": str(e),
                     "message": "Unable to generate form. Please ensure all required information is provided.",
                 },
-                status=status.HTTP_400_BAD_REQUEST
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
     @action(detail=True, methods=["post"])
@@ -105,14 +103,18 @@ class GeneratedFormViewSet(viewsets.ReadOnlyModelViewSet):
                 generator = Form101Generator(generated_form.session)
                 form_result = generator.generate(user=request.user)
 
-                return Response({
-                    "form": form_result,
-                    "message": "Form regenerated successfully",
-                })
+                return Response(
+                    {
+                        "form": form_result,
+                        "message": "Form regenerated successfully",
+                    }
+                )
             else:
                 return Response(
-                    {"error": f"Form type {generated_form.form_type} not yet supported"},
-                    status=status.HTTP_400_BAD_REQUEST
+                    {
+                        "error": f"Form type {generated_form.form_type} not yet supported"
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
                 )
 
         except ValueError as e:
@@ -121,7 +123,7 @@ class GeneratedFormViewSet(viewsets.ReadOnlyModelViewSet):
                     "error": str(e),
                     "message": "Unable to regenerate form",
                 },
-                status=status.HTTP_400_BAD_REQUEST
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
     @action(detail=True, methods=["get"])
@@ -135,14 +137,16 @@ class GeneratedFormViewSet(viewsets.ReadOnlyModelViewSet):
         """
         generated_form = self.get_object()
 
-        return Response({
-            "form_id": generated_form.id,
-            "form_type": generated_form.form_type,
-            "form_name": generated_form.get_form_type_display(),
-            "status": generated_form.status,
-            "data": generated_form.form_data,
-            "generated_at": generated_form.generated_at.isoformat(),
-        })
+        return Response(
+            {
+                "form_id": generated_form.id,
+                "form_type": generated_form.form_type,
+                "form_name": generated_form.get_form_type_display(),
+                "status": generated_form.status,
+                "data": generated_form.form_data,
+                "generated_at": generated_form.generated_at.isoformat(),
+            }
+        )
 
     @action(detail=True, methods=["post"])
     def mark_downloaded(self, request, pk=None):
@@ -159,11 +163,13 @@ class GeneratedFormViewSet(viewsets.ReadOnlyModelViewSet):
             generated_form.status = "downloaded"
             generated_form.save()
 
-        return Response({
-            "form_id": generated_form.id,
-            "status": generated_form.status,
-            "message": "Form marked as downloaded",
-        })
+        return Response(
+            {
+                "form_id": generated_form.id,
+                "status": generated_form.status,
+                "message": "Form marked as downloaded",
+            }
+        )
 
     @action(detail=True, methods=["post"])
     def mark_filed(self, request, pk=None):
@@ -179,8 +185,10 @@ class GeneratedFormViewSet(viewsets.ReadOnlyModelViewSet):
         generated_form.status = "filed"
         generated_form.save()
 
-        return Response({
-            "form_id": generated_form.id,
-            "status": generated_form.status,
-            "message": "Form marked as filed with court",
-        })
+        return Response(
+            {
+                "form_id": generated_form.id,
+                "status": generated_form.status,
+                "message": "Form marked as filed with court",
+            }
+        )
