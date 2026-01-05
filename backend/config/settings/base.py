@@ -260,9 +260,11 @@ LOGGING = {
             "formatter": "verbose",
         },
         "audit_file": {
-            "class": "logging.handlers.RotatingFileHandler"
-            if not DEBUG
-            else "logging.FileHandler",
+            "class": (
+                "logging.handlers.RotatingFileHandler"
+                if not DEBUG
+                else "logging.FileHandler"
+            ),
             "filename": str(LOGS_DIR / "audit.log"),
             "formatter": "audit",
             **({"maxBytes": 1024 * 1024 * 10, "backupCount": 10} if not DEBUG else {}),

@@ -10,26 +10,40 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
-        ('audit', '0001_initial'),
+        ("audit", "0001_initial"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='auditlog',
-            name='user',
-            field=models.ForeignKey(blank=True, help_text='User who performed the action (null for anonymous)', null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='audit_logs', to=settings.AUTH_USER_MODEL),
+            model_name="auditlog",
+            name="user",
+            field=models.ForeignKey(
+                blank=True,
+                help_text="User who performed the action (null for anonymous)",
+                null=True,
+                on_delete=django.db.models.deletion.SET_NULL,
+                related_name="audit_logs",
+                to=settings.AUTH_USER_MODEL,
+            ),
         ),
         migrations.AddIndex(
-            model_name='auditlog',
-            index=models.Index(fields=['-timestamp'], name='audit_logs_timesta_e93820_idx'),
+            model_name="auditlog",
+            index=models.Index(
+                fields=["-timestamp"], name="audit_logs_timesta_e93820_idx"
+            ),
         ),
         migrations.AddIndex(
-            model_name='auditlog',
-            index=models.Index(fields=['user', '-timestamp'], name='audit_logs_user_id_e11c73_idx'),
+            model_name="auditlog",
+            index=models.Index(
+                fields=["user", "-timestamp"], name="audit_logs_user_id_e11c73_idx"
+            ),
         ),
         migrations.AddIndex(
-            model_name='auditlog',
-            index=models.Index(fields=['upl_sensitive', '-timestamp'], name='audit_logs_upl_sen_87cbcb_idx'),
+            model_name="auditlog",
+            index=models.Index(
+                fields=["upl_sensitive", "-timestamp"],
+                name="audit_logs_upl_sen_87cbcb_idx",
+            ),
         ),
     ]

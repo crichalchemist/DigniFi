@@ -122,7 +122,10 @@ class ExpenseInfo(models.Model):
         help_text="Monthly housing payment",
     )
     utilities = models.DecimalField(
-        max_digits=10, decimal_places=2, default=0, help_text="Gas, electric, water, etc."
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        help_text="Gas, electric, water, etc.",
     )
     home_maintenance = models.DecimalField(
         max_digits=10, decimal_places=2, default=0, help_text="Repairs and upkeep"
@@ -130,19 +133,21 @@ class ExpenseInfo(models.Model):
 
     # Transportation
     vehicle_payment = models.DecimalField(
-        max_digits=10, decimal_places=2, default=0, help_text="Car loan or lease payment"
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        help_text="Car loan or lease payment",
     )
-    vehicle_insurance = models.DecimalField(
-        max_digits=10, decimal_places=2, default=0
-    )
+    vehicle_insurance = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     vehicle_maintenance = models.DecimalField(
-        max_digits=10, decimal_places=2, default=0, help_text="Gas, repairs, registration"
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        help_text="Gas, repairs, registration",
     )
 
     # Living expenses
-    food_and_groceries = models.DecimalField(
-        max_digits=10, decimal_places=2, default=0
-    )
+    food_and_groceries = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     clothing = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     medical_expenses = models.DecimalField(
         max_digits=10,
@@ -154,7 +159,10 @@ class ExpenseInfo(models.Model):
     # Other recurring expenses
     childcare = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     child_support_paid = models.DecimalField(
-        max_digits=10, decimal_places=2, default=0, help_text="Court-ordered support payments"
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        help_text="Court-ordered support payments",
     )
     insurance_not_deducted = models.DecimalField(
         max_digits=10,
@@ -228,7 +236,8 @@ class AssetInfo(models.Model):
 
     # Asset description
     description = models.CharField(
-        max_length=255, help_text="Brief description (e.g., '2015 Honda Civic', '123 Main St')"
+        max_length=255,
+        help_text="Brief description (e.g., '2015 Honda Civic', '123 Main St')",
     )
     current_value = EncryptedDecimalField(
         max_digits=12,
@@ -244,7 +253,9 @@ class AssetInfo(models.Model):
 
     # For bank/financial accounts
     account_number = EncryptedCharField(
-        max_length=50, blank=True, help_text="Last 4 digits or full account number (encrypted)"
+        max_length=50,
+        blank=True,
+        help_text="Last 4 digits or full account number (encrypted)",
     )
     financial_institution = models.CharField(
         max_length=100, blank=True, help_text="Bank or institution name"
@@ -316,7 +327,9 @@ class DebtInfo(models.Model):
 
     # Amount information (encrypted)
     account_number = EncryptedCharField(
-        max_length=50, blank=True, help_text="Last 4 digits or full account number (encrypted)"
+        max_length=50,
+        blank=True,
+        help_text="Last 4 digits or full account number (encrypted)",
     )
     amount_owed = EncryptedDecimalField(
         max_digits=12,
@@ -335,7 +348,9 @@ class DebtInfo(models.Model):
     is_in_collections = models.BooleanField(
         default=False, help_text="Has this account been sent to collections?"
     )
-    notes = models.TextField(blank=True, help_text="Additional context about this amount owed")
+    notes = models.TextField(
+        blank=True, help_text="Additional context about this amount owed"
+    )
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
