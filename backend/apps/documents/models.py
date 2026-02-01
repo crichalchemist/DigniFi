@@ -2,6 +2,12 @@
 """Document intelligence models for OCR processing."""
 
 from django.db import models
+from django.contrib.auth import get_user_model
+from django_fernet_fields import EncryptedFileField
+from datetime import timedelta
+from django.utils import timezone
+
+User = get_user_model()
 
 
 class DocumentType(models.TextChoices):
@@ -39,3 +45,73 @@ class OCRStatus(models.TextChoices):
     COMPLETED = 'completed', 'Completed'
     FAILED = 'failed', 'Failed'
     VALIDATED = 'validated', 'Validated by User'
+
+
+class UploadedDocument(models.Model):
+    """
+    Encrypted storage for user-uploaded documents.
+
+    Documents are automatically deleted after 22 days or when
+    bankruptcy forms are filed, whichever comes first.
+    """
+
+    # Relations
+    session = models.ForeignKey(
+        'intake.IntakeSession',
+        on_delete=models.CASCADE,
+        related_name='uploaded_documents'
+    )
+    uploaded_by = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='uploaded_documents'
+    )
+
+    # Document metadata
+    document_type = models.CharField(
+        max_length=50,
+        choices=DocumentType.choices,
+        help_text="Final document type (after validation)"
+    )
+    user_declared_type = models.CharField(
+        max_length=50,
+        choices=DocumentType.choices,
+        help_text="Type user selected before upload"
+    )
+    detected_type = models.CharField(
+        max_length=50,
+        choices=DocumentType.choices,
+        blank=True,
+        null=True,
+        help_text="Type detected by OCR (for validation)"
+    )
+
+    # File storage (encrypted)
+    file = EncryptedFileField(upload_to='documents/%Y/%m/')
+    original_filename = models.CharField(max_length=255)
+    file_size = models.IntegerField(help_text="Size in bytes")
+    mime_type = models.CharField(max_length=100)
+
+    # Lifecycle management
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+    delete_after = models.DateTimeField(
+        help_text="Auto-delete after 22 days or form filing"
+    )
+    deleted_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = 'uploaded_documents'
+        ordering = ['-uploaded_at']
+        indexes = [
+            models.Index(fields=['session', 'document_type']),
+            models.Index(fields=['delete_after']),
+        ]
+
+    def __str__(self):
+        return f"{self.original_filename} ({self.get_document_type_display()})"
+
+    def save(self, *args, **kwargs):
+        """Set delete_after date on creation."""
+        if not self.delete_after:
+            self.delete_after = timezone.now() + timedelta(days=22)
+        super().save(*args, **kwargs)
