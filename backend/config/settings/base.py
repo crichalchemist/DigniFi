@@ -63,12 +63,12 @@ INSTALLED_APPS = [
     "apps.audit",
     "apps.districts",
     "apps.intake",
+    "apps.documents",
     "apps.eligibility",
     "apps.forms",
     "apps.content",
     "apps.case_management",
     "apps.credit_counseling",
-    "apps.documents",
 ]
 
 MIDDLEWARE = [
