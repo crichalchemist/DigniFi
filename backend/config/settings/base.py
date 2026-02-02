@@ -235,6 +235,50 @@ PDF_GENERATION_BACKEND = "PyPDF2"  # Alternative: 'pdfrw'
 PDF_FORMS_DIRECTORY = BASE_DIR.parent / "data" / "forms" / "pdfs"
 PDF_OUTPUT_DIRECTORY = MEDIA_ROOT / "generated_forms"
 
+# ============================================
+# OCR & Document Processing Settings
+# ============================================
+
+# OCR Provider Configuration
+OCR_PROVIDER = env('OCR_PROVIDER', default='clarifai')  # 'clarifai' or 'vllm'
+
+# Clarifai API Settings (MVP)
+CLARIFAI_PAT = env('CLARIFAI_PAT', default='')
+CLARIFAI_BASE_URL = env(
+    'CLARIFAI_BASE_URL',
+    default='https://api.clarifai.com/v2'
+)
+
+# vLLM Settings (Production - self-hosted)
+VLLM_BASE_URL = env('VLLM_BASE_URL', default='http://localhost:8000')
+VLLM_API_KEY = env('VLLM_API_KEY', default='')  # If auth enabled
+
+# Document Storage
+DOCUMENT_STORAGE_BACKEND = env('DOCUMENT_STORAGE_BACKEND', default='filesystem')
+DOCUMENT_UPLOAD_MAX_SIZE = 10 * 1024 * 1024  # 10MB
+DOCUMENT_ALLOWED_TYPES = [
+    'application/pdf',
+    'image/jpeg',
+    'image/png',
+]
+
+# Document Retention
+DOCUMENT_RETENTION_DAYS = 22
+DOCUMENT_DELETION_WARNING_DAYS = 7
+
+# OCR Processing
+OCR_TIMEOUT_SECONDS = 30  # Synchronous request timeout
+OCR_MAX_RETRIES = 3
+OCR_CONFIDENCE_THRESHOLD_HIGH = 90
+OCR_CONFIDENCE_THRESHOLD_MEDIUM = 70
+
+# Feature Flags
+ENABLED_CHAPTERS = {
+    'chapter_7': True,
+    'chapter_11': env.bool('ENABLE_CHAPTER_11', default=False),
+    'chapter_13': env.bool('ENABLE_CHAPTER_13', default=False),
+}
+
 # Logging Configuration
 LOGGING = {
     "version": 1,
