@@ -115,3 +115,66 @@ class UploadedDocument(models.Model):
         if not self.delete_after:
             self.delete_after = timezone.now() + timedelta(days=22)
         super().save(*args, **kwargs)
+
+
+class OCRResult(models.Model):
+    """
+    Extracted data from OCR processing.
+
+    Stores encrypted JSON of extracted fields with confidence scores.
+    """
+
+    # Relations
+    document = models.OneToOneField(
+        UploadedDocument,
+        on_delete=models.CASCADE,
+        related_name='ocr_result'
+    )
+
+    # Processing metadata
+    status = models.CharField(
+        max_length=20,
+        choices=OCRStatus.choices,
+        default=OCRStatus.PENDING
+    )
+    ocr_provider = models.CharField(
+        max_length=50,
+        default='clarifai',
+        help_text="OCR provider used (clarifai or vllm)"
+    )
+
+    # Extracted data (encrypted JSON)
+    extracted_data = models.TextField(
+        help_text="JSON structure of extracted fields"
+    )
+    confidence_scores = models.JSONField(
+        default=dict,
+        help_text="Per-field confidence scores (0-100)"
+    )
+    overall_confidence = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        help_text="Overall confidence score (0-100)"
+    )
+
+    # User validation
+    user_validated = models.BooleanField(default=False)
+    validation_changes = models.JSONField(
+        default=list,
+        help_text="List of fields user corrected after extraction"
+    )
+
+    # Timing & errors
+    processed_at = models.DateTimeField(auto_now_add=True)
+    processing_duration = models.FloatField(
+        null=True,
+        help_text="Seconds to process"
+    )
+    error_message = models.TextField(blank=True, null=True)
+
+    class Meta:
+        db_table = 'ocr_results'
+        ordering = ['-processed_at']
+
+    def __str__(self):
+        return f"OCR for {self.document.original_filename} ({self.status})"
