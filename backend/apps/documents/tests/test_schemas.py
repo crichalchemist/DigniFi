@@ -5,7 +5,11 @@ from datetime import date
 import pytest
 from pydantic import ValidationError
 
-from apps.documents.schemas import PayStubExtraction
+from apps.documents.schemas import (
+    PayStubExtraction,
+    BalanceSheetExtraction,
+    ProfitLossExtraction
+)
 
 
 class TestPayStubExtraction:
@@ -92,3 +96,73 @@ class TestPayStubExtraction:
             PayStubExtraction(**data)
 
         assert 'less than or equal to 100' in str(exc_info.value)
+
+
+class TestBalanceSheetExtraction:
+    """Tests for BalanceSheetExtraction schema."""
+
+    def test_valid_balance_sheet(self):
+        """Test schema accepts valid balance sheet data."""
+        data = {
+            'as_of_date': '2026-01-31',
+            'cash': '5000.00',
+            'total_assets': '50000.00',
+            'total_liabilities': '38000.00',
+            'owners_equity': '12000.00',
+            'confidence_score': 88
+        }
+
+        result = BalanceSheetExtraction(**data)
+
+        assert result.total_assets == Decimal('50000.00')
+        assert result.owners_equity == Decimal('12000.00')
+
+    def test_validates_accounting_equation(self):
+        """Test balance sheet equation validation."""
+        data = {
+            'as_of_date': '2026-01-31',
+            'total_assets': '50000.00',
+            'total_liabilities': '38000.00',
+            'owners_equity': '10000.00',  # Wrong! Should be 12000
+            'confidence_score': 88
+        }
+
+        with pytest.raises(ValidationError) as exc_info:
+            BalanceSheetExtraction(**data)
+
+        assert 'equation error' in str(exc_info.value)
+
+
+class TestProfitLossExtraction:
+    """Tests for ProfitLossExtraction schema."""
+
+    def test_valid_profit_loss(self):
+        """Test schema accepts valid P&L data."""
+        data = {
+            'period_start': '2025-01-01',
+            'period_end': '2025-12-31',
+            'total_revenue': '150000.00',
+            'total_expenses': '125000.00',
+            'net_income': '25000.00',
+            'confidence_score': 90
+        }
+
+        result = ProfitLossExtraction(**data)
+
+        assert result.net_income == Decimal('25000.00')
+
+    def test_validates_net_income_calculation(self):
+        """Test net income = revenue - expenses."""
+        data = {
+            'period_start': '2025-01-01',
+            'period_end': '2025-12-31',
+            'total_revenue': '150000.00',
+            'total_expenses': '125000.00',
+            'net_income': '30000.00',  # Wrong! Should be 25000
+            'confidence_score': 90
+        }
+
+        with pytest.raises(ValidationError) as exc_info:
+            ProfitLossExtraction(**data)
+
+        assert 'calculation error' in str(exc_info.value)
