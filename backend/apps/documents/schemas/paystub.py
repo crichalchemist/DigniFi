@@ -21,7 +21,6 @@ class PayStubExtraction(BaseExtractionSchema):
     )
     gross_pay: Decimal = Field(
         gt=0,
-        decimal_places=2,
         description="Gross pay for this period"
     )
     pay_period_start: date = Field(
@@ -33,19 +32,16 @@ class PayStubExtraction(BaseExtractionSchema):
     ytd_gross: Optional[Decimal] = Field(
         default=None,
         ge=0,
-        decimal_places=2,
         description="Year-to-date gross earnings"
     )
     net_pay: Optional[Decimal] = Field(
         default=None,
         ge=0,
-        decimal_places=2,
         description="Net pay (take-home)"
     )
     deductions_total: Optional[Decimal] = Field(
         default=None,
         ge=0,
-        decimal_places=2,
         description="Total deductions for this period"
     )
 

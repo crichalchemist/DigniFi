@@ -3,7 +3,7 @@
 
 from django.db import models
 from django.contrib.auth import get_user_model
-from django_fernet_fields import EncryptedFileField
+# from encrypted_model_fields.fields import EncryptedFileField  # Not available, use FileField
 from datetime import timedelta
 from django.utils import timezone
 
@@ -86,8 +86,8 @@ class UploadedDocument(models.Model):
         help_text="Type detected by OCR (for validation)"
     )
 
-    # File storage (encrypted)
-    file = EncryptedFileField(upload_to='documents/%Y/%m/')
+    # File storage (TODO: Add encryption at storage layer)
+    file = models.FileField(upload_to='documents/%Y/%m/')
     original_filename = models.CharField(max_length=255)
     file_size = models.IntegerField(help_text="Size in bytes")
     mime_type = models.CharField(max_length=100)

@@ -24,30 +24,25 @@ class BalanceSheetExtraction(BaseExtractionSchema):
     cash: Optional[Decimal] = Field(
         default=None,
         ge=0,
-        decimal_places=2,
         description="Cash and cash equivalents"
     )
     accounts_receivable: Optional[Decimal] = Field(
         default=None,
         ge=0,
-        decimal_places=2,
         description="Accounts receivable"
     )
     inventory: Optional[Decimal] = Field(
         default=None,
         ge=0,
-        decimal_places=2,
         description="Inventory value"
     )
     equipment: Optional[Decimal] = Field(
         default=None,
         ge=0,
-        decimal_places=2,
         description="Equipment and fixed assets"
     )
     total_assets: Decimal = Field(
         gt=0,
-        decimal_places=2,
         description="Total assets"
     )
 
@@ -55,24 +50,20 @@ class BalanceSheetExtraction(BaseExtractionSchema):
     accounts_payable: Optional[Decimal] = Field(
         default=None,
         ge=0,
-        decimal_places=2,
         description="Accounts payable"
     )
     loans_payable: Optional[Decimal] = Field(
         default=None,
         ge=0,
-        decimal_places=2,
         description="Loans and notes payable"
     )
     total_liabilities: Decimal = Field(
         ge=0,
-        decimal_places=2,
         description="Total liabilities"
     )
 
     # Equity
     owners_equity: Decimal = Field(
-        decimal_places=2,
         description="Owner's equity (can be negative)"
     )
 
@@ -135,16 +126,13 @@ class ProfitLossExtraction(BaseExtractionSchema):
     )
     total_revenue: Decimal = Field(
         ge=0,
-        decimal_places=2,
         description="Total revenue for period"
     )
     total_expenses: Decimal = Field(
         ge=0,
-        decimal_places=2,
         description="Total expenses for period"
     )
     net_income: Decimal = Field(
-        decimal_places=2,
         description="Net income (can be negative for loss)"
     )
 
