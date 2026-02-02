@@ -8,8 +8,11 @@ from pydantic import ValidationError
 from apps.documents.schemas import (
     PayStubExtraction,
     BalanceSheetExtraction,
-    ProfitLossExtraction
+    ProfitLossExtraction,
+    get_schema_for_type,
+    SCHEMA_MAP
 )
+from apps.documents.models import DocumentType
 
 
 class TestPayStubExtraction:
@@ -166,3 +169,30 @@ class TestProfitLossExtraction:
             ProfitLossExtraction(**data)
 
         assert 'calculation error' in str(exc_info.value)
+
+
+class TestSchemaRegistry:
+    """Tests for schema registry."""
+
+    def test_get_schema_for_paystub(self):
+        """Test retrieving pay stub schema."""
+        schema = get_schema_for_type(DocumentType.PAY_STUB)
+        assert schema == PayStubExtraction
+
+    def test_get_schema_for_balance_sheet(self):
+        """Test retrieving balance sheet schema."""
+        schema = get_schema_for_type(DocumentType.BALANCE_SHEET)
+        assert schema == BalanceSheetExtraction
+
+    def test_get_schema_raises_for_unsupported_type(self):
+        """Test error for unsupported document type."""
+        with pytest.raises(KeyError) as exc_info:
+            get_schema_for_type(DocumentType.BANK_STATEMENT)
+
+        assert 'No extraction schema defined' in str(exc_info.value)
+
+    def test_schema_map_contains_expected_types(self):
+        """Test schema map has expected document types."""
+        assert DocumentType.PAY_STUB in SCHEMA_MAP
+        assert DocumentType.BALANCE_SHEET in SCHEMA_MAP
+        assert DocumentType.PROFIT_LOSS in SCHEMA_MAP
