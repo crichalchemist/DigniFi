@@ -10,4 +10,5 @@ django-fernet-fields==0.6
 django-phonenumber-field[phonenumbers]==7.2.0
 pypdf==3.17.0
 pydantic==2.5.3
+openai==1.60.0  # For Clarifai OpenAI-compatible API
 cryptography==44.0.1
