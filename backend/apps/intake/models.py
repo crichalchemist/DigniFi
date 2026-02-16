@@ -408,3 +408,123 @@ class DebtInfo(models.Model):
 
     def __str__(self) -> str:
         return f"{self.creditor_name} - {self.get_debt_type_display()} ({self.get_consumer_business_classification_display()}) (Session: {self.session_id})"
+
+
+class FeeWaiverApplication(models.Model):
+    """
+    Chapter 7 fee waiver application (Form 103B).
+
+    Qualifies if:
+    1. Income < 150% federal poverty line ($1,882.50/month for 1 person as of 2024)
+    2. OR receives means-tested public benefits (SSI, SNAP, TANF, etc.)
+    3. AND cannot pay filing fee ($338) in full or installments
+
+    Per 28 U.S.C. § 1930(f)
+    """
+
+    from decimal import Decimal
+
+    # Relations
+    session = models.OneToOneField(
+        IntakeSession,
+        on_delete=models.CASCADE,
+        related_name='fee_waiver'
+    )
+
+    # Household information
+    household_size = models.IntegerField(
+        default=1,
+        help_text="Number of people in household"
+    )
+
+    # Financial information (encrypted)
+    monthly_income = EncryptedDecimalField(
+        max_digits=10,
+        decimal_places=2,
+        help_text="Total monthly income from all sources"
+    )
+
+    monthly_expenses = EncryptedDecimalField(
+        max_digits=10,
+        decimal_places=2,
+        help_text="Total monthly expenses"
+    )
+
+    # Public benefits
+    receives_public_benefits = models.BooleanField(
+        default=False,
+        help_text="Receives SSI, SNAP, TANF, or other means-tested benefits"
+    )
+
+    benefit_types = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="List of benefit programs (e.g., ['SNAP', 'Medicaid'])"
+    )
+
+    # Inability to pay
+    cannot_pay_full = models.BooleanField(
+        default=True,
+        help_text="Cannot pay $338 filing fee in full"
+    )
+
+    cannot_pay_installments = models.BooleanField(
+        default=True,
+        help_text="Cannot pay in 4 installments over 120 days"
+    )
+
+    # Status tracking
+    STATUS_CHOICES: ClassVar[List[tuple[str, str]]] = [
+        ('pending', 'Pending'),
+        ('approved', 'Approved'),
+        ('denied', 'Denied'),
+    ]
+
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default='pending'
+    )
+
+    filed_at = models.DateTimeField(null=True, blank=True)
+    decided_at = models.DateTimeField(null=True, blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'fee_waiver_applications'
+
+    def __str__(self):
+        return f"Fee Waiver for {self.session} ({self.status})"
+
+    def qualifies_for_waiver(self) -> bool:
+        """
+        Determine if applicant qualifies for fee waiver.
+
+        Returns:
+            bool: True if qualifies via income test OR public benefits
+        """
+        from decimal import Decimal
+
+        # Automatic qualification: Receives public benefits
+        if self.receives_public_benefits and self.benefit_types:
+            return True
+
+        # Income test: < 150% federal poverty line
+        # 2024 poverty guidelines (annual): $15,060 for 1 person
+        # 150% = $22,590 annual = $1,882.50 monthly
+        # Add $5,380 per additional person
+        poverty_threshold_monthly = self.get_poverty_threshold()
+
+        if self.monthly_income < poverty_threshold_monthly:
+            return True
+
+        return False
+
+    def get_poverty_threshold(self) -> 'Decimal':
+        """Calculate 150% poverty threshold for household size."""
+        from decimal import Decimal
+
+        poverty_threshold_annual = Decimal('15060') + (Decimal('5380') * (self.household_size - 1))
+        return (poverty_threshold_annual * Decimal('1.5')) / Decimal('12')
