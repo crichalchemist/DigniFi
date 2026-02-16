@@ -352,6 +352,53 @@ class DebtInfo(models.Model):
         blank=True, help_text="Additional context about this amount owed"
     )
 
+    # Chapter 7 classification fields
+    consumer_business_classification = models.CharField(
+        max_length=20,
+        choices=[
+            ("consumer", "Consumer Debt"),
+            ("business", "Business Debt"),
+        ],
+        default="consumer",
+        help_text="Consumer vs business classification for means test applicability (11 U.S.C. § 707(b))",
+    )
+
+    is_secured = models.BooleanField(
+        default=False,
+        help_text="Secured debts go on Schedule D; unsecured on Schedule E/F",
+    )
+
+    collateral_description = models.TextField(
+        blank=True,
+        help_text="Description of collateral if secured debt (e.g., '2020 Honda Civic VIN: 12345')",
+    )
+
+    is_priority = models.BooleanField(
+        default=False,
+        help_text="Priority unsecured debts (e.g., taxes, child support) on Schedule E/F Part 1",
+    )
+
+    is_contingent = models.BooleanField(
+        default=False,
+        help_text="Debt depends on future event",
+    )
+
+    is_unliquidated = models.BooleanField(
+        default=False,
+        help_text="Amount not yet determined",
+    )
+
+    is_disputed = models.BooleanField(
+        default=False,
+        help_text="Debtor disputes validity or amount",
+    )
+
+    date_incurred = models.DateField(
+        null=True,
+        blank=True,
+        help_text="When debt was incurred",
+    )
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -360,4 +407,4 @@ class DebtInfo(models.Model):
         ordering: ClassVar[List[str]] = ["priority_classification", "-amount_owed"]
 
     def __str__(self) -> str:
-        return f"{self.creditor_name} - {self.get_debt_type_display()} (Session: {self.session_id})"
+        return f"{self.creditor_name} - {self.get_debt_type_display()} ({self.get_consumer_business_classification_display()}) (Session: {self.session_id})"

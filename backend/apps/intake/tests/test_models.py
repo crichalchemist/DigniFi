@@ -1,0 +1,121 @@
+"""Tests for intake models."""
+
+import pytest
+from django.contrib.auth import get_user_model
+from apps.intake.models import DebtInfo, IntakeSession
+from apps.districts.models import District
+
+User = get_user_model()
+
+
+@pytest.mark.django_db
+class TestDebtInfoClassification:
+    """Tests for Chapter 7 debt classification fields."""
+
+    @pytest.fixture
+    def user(self):
+        """Create test user."""
+        return User.objects.create_user(username="testuser", password="testpass123")
+
+    @pytest.fixture
+    def district(self):
+        """Create test district."""
+        return District.objects.first()  # Use existing ILND fixture
+
+    @pytest.fixture
+    def session(self, user, district):
+        """Create test intake session."""
+        return IntakeSession.objects.create(user=user, district=district)
+
+    def test_consumer_business_classification_defaults_to_consumer(self, session):
+        """Test that consumer_business_classification defaults to consumer."""
+        debt = DebtInfo.objects.create(
+            session=session,
+            creditor_name="Test Creditor",
+            amount_owed=1000.00,
+            debt_type="credit_card",
+        )
+
+        assert debt.consumer_business_classification == "consumer"
+
+    def test_can_mark_debt_as_business(self, session):
+        """Test that debt can be marked as business type."""
+        debt = DebtInfo.objects.create(
+            session=session,
+            creditor_name="Business Vendor",
+            amount_owed=5000.00,
+            debt_type="other",
+            consumer_business_classification="business",
+        )
+
+        assert debt.consumer_business_classification == "business"
+
+    def test_can_mark_debt_as_secured(self, session):
+        """Test that debt can be marked as secured with collateral."""
+        debt = DebtInfo.objects.create(
+            session=session,
+            creditor_name="Auto Lender",
+            amount_owed=15000.00,
+            debt_type="auto_loan",
+            is_secured=True,
+            collateral_description="2020 Honda Civic VIN: 1HGBH41JXMN109186",
+        )
+
+        assert debt.is_secured is True
+        assert debt.collateral_description == "2020 Honda Civic VIN: 1HGBH41JXMN109186"
+
+    def test_can_mark_debt_as_priority(self, session):
+        """Test that debt can be marked as priority unsecured."""
+        debt = DebtInfo.objects.create(
+            session=session,
+            creditor_name="IRS",
+            amount_owed=8000.00,
+            debt_type="other",
+            is_priority=True,
+        )
+
+        assert debt.is_priority is True
+
+    def test_debt_status_flags(self, session):
+        """Test contingent, unliquidated, and disputed flags."""
+        debt = DebtInfo.objects.create(
+            session=session,
+            creditor_name="Lawsuit Plaintiff",
+            amount_owed=25000.00,
+            debt_type="other",
+            is_contingent=False,
+            is_unliquidated=True,
+            is_disputed=True,
+        )
+
+        assert debt.is_contingent is False
+        assert debt.is_unliquidated is True
+        assert debt.is_disputed is True
+
+    def test_date_incurred_tracking(self, session):
+        """Test that date_incurred can be set."""
+        from datetime import date
+
+        debt = DebtInfo.objects.create(
+            session=session,
+            creditor_name="Old Creditor",
+            amount_owed=3000.00,
+            debt_type="credit_card",
+            date_incurred=date(2023, 6, 15),
+        )
+
+        assert debt.date_incurred == date(2023, 6, 15)
+
+    def test_str_method_includes_classification(self, session):
+        """Test that __str__ method includes consumer/business classification."""
+        debt = DebtInfo.objects.create(
+            session=session,
+            creditor_name="Business Supplier",
+            amount_owed=10000.00,
+            debt_type="other",
+            consumer_business_classification="business",
+        )
+
+        str_repr = str(debt)
+        assert "Business Supplier" in str_repr
+        assert "Business" in str_repr  # Should show "Business Debt"
