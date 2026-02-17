@@ -6,5 +6,6 @@ including Form 101 (Voluntary Petition) and Schedules A-J.
 """
 
 from .form_101_generator import Form101Generator
+from .schedule_ab_generator import ScheduleABGenerator
 
-__all__ = ["Form101Generator"]
+__all__ = ["Form101Generator", "ScheduleABGenerator"]
