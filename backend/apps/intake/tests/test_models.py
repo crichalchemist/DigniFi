@@ -178,3 +178,33 @@ class TestFeeWaiverApplication:
         )
 
         assert waiver.qualifies_for_waiver() is True
+
+    def test_household_size_must_be_positive(self, session):
+        """Test that household_size must be >= 1."""
+        from django.core.exceptions import ValidationError
+        from apps.intake.models import FeeWaiverApplication
+
+        waiver = FeeWaiverApplication(
+            session=session,
+            monthly_income=0.00,
+            monthly_expenses=1200.00,
+            household_size=0  # Invalid!
+        )
+
+        with pytest.raises(ValidationError):
+            waiver.full_clean()  # Triggers validators
+
+    def test_public_benefits_qualification_simplified(self, session):
+        """Test that receives_public_benefits=True qualifies (no benefit_types required)."""
+        from apps.intake.models import FeeWaiverApplication
+
+        # User receives benefits but hasn't listed them yet
+        waiver = FeeWaiverApplication.objects.create(
+            session=session,
+            monthly_income=2500.00,  # Above threshold
+            monthly_expenses=1200.00,
+            receives_public_benefits=True,
+            benefit_types=[]  # Empty list - should still qualify
+        )
+
+        assert waiver.qualifies_for_waiver() is True

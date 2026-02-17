@@ -1,9 +1,11 @@
 """Intake models for collecting bankruptcy petition data."""
 
+from decimal import Decimal
 from typing import ClassVar, List
 
 from django.db import models
 from django.conf import settings
+from django.core.validators import MinValueValidator
 from encrypted_model_fields.fields import EncryptedCharField
 
 from .fields import EncryptedDecimalField
@@ -422,7 +424,11 @@ class FeeWaiverApplication(models.Model):
     Per 28 U.S.C. § 1930(f)
     """
 
-    from decimal import Decimal
+    # HHS poverty guidelines constants (2024)
+    POVERTY_BASE_2024: ClassVar[Decimal] = Decimal('15060')    # HHS poverty line base (2024)
+    POVERTY_INCREMENT: ClassVar[Decimal] = Decimal('5380')     # Per-person increment
+    POVERTY_MULTIPLIER: ClassVar[Decimal] = Decimal('1.5')     # 150% per 28 U.S.C. § 1930(f)
+    MONTHS_PER_YEAR: ClassVar[Decimal] = Decimal('12')
 
     # Relations
     session = models.OneToOneField(
@@ -434,7 +440,8 @@ class FeeWaiverApplication(models.Model):
     # Household information
     household_size = models.IntegerField(
         default=1,
-        help_text="Number of people in household"
+        validators=[MinValueValidator(1)],
+        help_text="Number of people in household (must be at least 1)"
     )
 
     # Financial information (encrypted)
@@ -483,7 +490,8 @@ class FeeWaiverApplication(models.Model):
     status = models.CharField(
         max_length=20,
         choices=STATUS_CHOICES,
-        default='pending'
+        default='pending',
+        db_index=True
     )
 
     filed_at = models.DateTimeField(null=True, blank=True)
@@ -505,26 +513,22 @@ class FeeWaiverApplication(models.Model):
         Returns:
             bool: True if qualifies via income test OR public benefits
         """
-        from decimal import Decimal
-
         # Automatic qualification: Receives public benefits
-        if self.receives_public_benefits and self.benefit_types:
+        # 28 U.S.C. § 1930(f) allows waiver for means-tested benefits
+        if self.receives_public_benefits:
             return True
 
         # Income test: < 150% federal poverty line
-        # 2024 poverty guidelines (annual): $15,060 for 1 person
-        # 150% = $22,590 annual = $1,882.50 monthly
-        # Add $5,380 per additional person
-        poverty_threshold_monthly = self.get_poverty_threshold()
-
-        if self.monthly_income < poverty_threshold_monthly:
+        poverty_threshold_150_monthly = self.get_poverty_threshold()
+        if self.monthly_income < poverty_threshold_150_monthly:
             return True
 
         return False
 
-    def get_poverty_threshold(self) -> 'Decimal':
+    def get_poverty_threshold(self) -> Decimal:
         """Calculate 150% poverty threshold for household size."""
-        from decimal import Decimal
-
-        poverty_threshold_annual = Decimal('15060') + (Decimal('5380') * (self.household_size - 1))
-        return (poverty_threshold_annual * Decimal('1.5')) / Decimal('12')
+        poverty_threshold_annual = (
+            self.POVERTY_BASE_2024 +
+            (self.POVERTY_INCREMENT * (self.household_size - 1))
+        )
+        return (poverty_threshold_annual * self.POVERTY_MULTIPLIER) / self.MONTHS_PER_YEAR
