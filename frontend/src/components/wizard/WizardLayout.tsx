@@ -5,7 +5,7 @@
  * Accessibility: Keyboard navigation, screen reader support, high contrast
  */
 
-import { ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { ProgressIndicator, Button } from '../common';
 import { useIntake } from '../../context/IntakeContext';
 

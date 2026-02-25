@@ -5,7 +5,7 @@
  * Uses React Context API (vs Redux) for simplicity and reduced overhead.
  */
 
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 import type { IntakeSession, MeansTestResult } from '../types/api';
 import { api, APIClientError } from '../api/client';
 

@@ -9,7 +9,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { FormField, FormSelect } from '../../common';
+import { FormField } from '../../common';
 import type { IncomeInfo } from '../../../types/api';
 
 interface IncomeInfoStepProps {

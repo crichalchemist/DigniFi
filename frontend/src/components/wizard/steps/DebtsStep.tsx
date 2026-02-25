@@ -10,7 +10,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { FormField, FormSelect, FormTextarea, Button } from '../../common';
+import { FormField, FormTextarea, Button } from '../../common';
 import type { DebtInfo } from '../../../types/api';
 
 interface DebtsStepProps {
@@ -57,7 +57,7 @@ export function DebtsStep({
 
   function createEmptyDebt(): Partial<DebtInfo> {
     return {
-      debt_type: '',
+      debt_type: undefined,
       creditor_name: '',
       account_number: '',
       amount_owed: 0,

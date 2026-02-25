@@ -47,7 +47,7 @@ export function AssetsStep({
 
   function createEmptyAsset(): Partial<AssetInfo> {
     return {
-      asset_type: '',
+      asset_type: undefined,
       description: '',
       current_value: 0,
       amount_owed: 0,
