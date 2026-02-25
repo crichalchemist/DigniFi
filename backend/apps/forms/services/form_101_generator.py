@@ -5,12 +5,10 @@ Generates Official Bankruptcy Form 101 (Voluntary Petition for Individuals
 Filing for Bankruptcy) from intake session data.
 """
 
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 from decimal import Decimal
-from django.db import transaction
 
 from apps.intake.models import IntakeSession
-from apps.forms.models import GeneratedForm
 
 
 class Form101Generator:
@@ -46,42 +44,13 @@ class Form101Generator:
         self.debtor_info = intake_session.debtor_info
         self.district = intake_session.district
 
-    @transaction.atomic
-    def generate(self, user=None) -> Dict[str, Any]:
+    def generate(self) -> Dict[str, Any]:
         """
         Generate Form 101 data structure ready for PDF population.
 
-        For MVP: Returns structured form data as JSON.
-        Future: Will populate actual PDF template and return file path.
-
-        Args:
-            user: User generating the form (for audit trail)
-
-        Returns:
-            dict: Form data structure with all populated fields
+        Returns pure data dict — DB persistence is handled by the view layer.
         """
-        # Build form data structure matching Official Form 101 fields
-        form_data = self._build_form_data()
-
-        # Create or update GeneratedForm record
-        generated_form, created = GeneratedForm.objects.update_or_create(
-            session=self.intake_session,
-            form_type=self.FORM_TYPE,
-            defaults={
-                "form_data": form_data,
-                "status": "generated",
-                "generated_by": user,
-            },
-        )
-
-        return {
-            "form_id": generated_form.id,
-            "form_type": "form_101",
-            "form_name": "Voluntary Petition for Individuals Filing for Bankruptcy",
-            "status": generated_form.status,
-            "data": form_data,
-            "generated_at": generated_form.generated_at.isoformat(),
-        }
+        return self._build_form_data()
 
     def _build_form_data(self) -> Dict[str, Any]:
         """
@@ -229,24 +198,5 @@ class Form101Generator:
             }
 
     def preview(self) -> Dict[str, Any]:
-        """
-        Generate preview of form data without creating GeneratedForm record.
-
-        Useful for showing user what will be filed before final generation.
-
-        Returns:
-            dict: Form data preview
-        """
-        form_data = self._build_form_data()
-
-        return {
-            "form_type": "form_101",
-            "form_name": "Voluntary Petition for Individuals Filing for Bankruptcy",
-            "preview": True,
-            "data": form_data,
-            "upl_disclaimer": (
-                "This is a preview of your petition based on the information provided. "
-                "This software provides legal information, not legal advice. "
-                "You are responsible for reviewing all information for accuracy before filing."
-            ),
-        }
+        """Generate preview data for user review before PDF creation."""
+        return self.generate()

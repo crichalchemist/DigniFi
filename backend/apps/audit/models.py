@@ -65,7 +65,7 @@ class AuditLog(models.Model):
     )
 
     user_agent = models.TextField(
-        blank=True, help_text="User agent string from the request"
+        blank=True, default="", help_text="User agent string from the request"
     )
 
     # Additional context
@@ -121,6 +121,6 @@ class AuditLog(models.Model):
             resource_id=resource_id,
             upl_sensitive=upl_sensitive,
             ip_address=ip_address,
-            user_agent=user_agent,
+            user_agent=user_agent or "",
             details=details,
         )

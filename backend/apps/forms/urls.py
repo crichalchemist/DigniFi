@@ -1,3 +1,8 @@
-from django.urls import path
+from rest_framework.routers import DefaultRouter
 
-urlpatterns = []
+from .views import GeneratedFormViewSet
+
+router = DefaultRouter()
+router.register("", GeneratedFormViewSet, basename="generated-forms")
+
+urlpatterns = router.urls

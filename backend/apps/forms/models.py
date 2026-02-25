@@ -14,13 +14,18 @@ class GeneratedForm(models.Model):
 
     FORM_TYPE_CHOICES = [
         ("form_101", "Form 101 - Voluntary Petition"),
+        ("form_103b", "Form 103B - Fee Waiver Application"),
+        ("form_106dec", "Form 106Dec - Declaration"),
+        ("form_106sum", "Form 106Sum - Summary of Assets/Liabilities"),
+        ("form_107", "Form 107 - Statement of Financial Affairs"),
+        ("form_121", "Form 121 - SSN Statement"),
+        ("form_122a1", "Form 122A-1 - Means Test"),
         ("schedule_a_b", "Schedule A/B - Property"),
         ("schedule_c", "Schedule C - Exemptions"),
         ("schedule_d", "Schedule D - Secured Creditors"),
         ("schedule_e_f", "Schedule E/F - Unsecured Creditors"),
         ("schedule_i", "Schedule I - Income"),
         ("schedule_j", "Schedule J - Expenses"),
-        ("means_test", "Statement of Current Monthly Income (Means Test)"),
     ]
 
     STATUS_CHOICES = [
