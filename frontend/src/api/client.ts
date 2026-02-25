@@ -3,6 +3,9 @@
  *
  * Provides type-safe methods for interacting with Django REST Framework API.
  * Handles authentication, error handling, and request/response transformation.
+ *
+ * Security: access token stored in memory (not localStorage) to prevent XSS
+ * exfiltration. Refresh token in localStorage for persistence across reloads.
  */
 
 import type {
@@ -21,6 +24,11 @@ import type {
   AssetInfo,
   DebtInfo,
   APIError,
+  LoginRequest,
+  LoginResponse,
+  RegisterRequest,
+  RegisterResponse,
+  UserProfile,
 } from '../types/api';
 
 // ============================================================================
@@ -30,17 +38,53 @@ import type {
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
 
 // ============================================================================
+// Token Management (memory-based for access, localStorage for refresh)
+// ============================================================================
+
+let accessToken: string | null = null;
+
+export function setAccessToken(token: string | null): void {
+  accessToken = token;
+}
+
+export function getAccessToken(): string | null {
+  return accessToken;
+}
+
+export function getRefreshToken(): string | null {
+  return localStorage.getItem('refresh_token');
+}
+
+export function setRefreshToken(token: string | null): void {
+  if (token) {
+    localStorage.setItem('refresh_token', token);
+  } else {
+    localStorage.removeItem('refresh_token');
+  }
+}
+
+export function clearTokens(): void {
+  accessToken = null;
+  localStorage.removeItem('refresh_token');
+}
+
+// ============================================================================
 // Error Handling
 // ============================================================================
 
 export class APIClientError extends Error {
+  statusCode: number;
+  details?: Record<string, any>;
+
   constructor(
     message: string,
-    public statusCode: number,
-    public details?: Record<string, any>
+    statusCode: number,
+    details?: Record<string, any>
   ) {
     super(message);
     this.name = 'APIClientError';
+    this.statusCode = statusCode;
+    this.details = details;
   }
 }
 
@@ -70,31 +114,93 @@ async function handleAPIError(response: Response): Promise<never> {
 // HTTP Client
 // ============================================================================
 
+/** Flag to prevent concurrent refresh attempts */
+let isRefreshing = false;
+let refreshPromise: Promise<boolean> | null = null;
+
 /**
- * Base fetch wrapper with authentication and error handling
+ * Attempt to refresh the access token using the stored refresh token.
+ * Returns true if refresh succeeded, false otherwise.
+ */
+async function attemptTokenRefresh(): Promise<boolean> {
+  const refresh = getRefreshToken();
+  if (!refresh) return false;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/token/refresh/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refresh }),
+    });
+
+    if (!response.ok) {
+      clearTokens();
+      return false;
+    }
+
+    const data = await response.json();
+    setAccessToken(data.access);
+    return true;
+  } catch {
+    clearTokens();
+    return false;
+  }
+}
+
+/**
+ * Base fetch wrapper with authentication and error handling.
+ * Includes 401 interceptor: on 401, tries token refresh and retries once.
  */
 async function apiFetch<T>(
   endpoint: string,
-  options: RequestInit = {}
+  options: RequestInit = {},
+  skipAuth = false
 ): Promise<T> {
   const url = `${API_BASE_URL}${endpoint}`;
-
-  // Get auth token from localStorage (set during login)
-  const token = localStorage.getItem('auth_token');
 
   const headers: HeadersInit = {
     'Content-Type': 'application/json',
     ...options.headers,
   };
 
-  if (token) {
-    headers['Authorization'] = `Token ${token}`;
+  if (!skipAuth && accessToken) {
+    (headers as Record<string, string>)['Authorization'] = `Bearer ${accessToken}`;
   }
 
   const response = await fetch(url, {
     ...options,
     headers,
   });
+
+  // 401 interceptor: try refresh, retry once
+  if (response.status === 401 && !skipAuth && getRefreshToken()) {
+    if (!isRefreshing) {
+      isRefreshing = true;
+      refreshPromise = attemptTokenRefresh().finally(() => {
+        isRefreshing = false;
+        refreshPromise = null;
+      });
+    }
+
+    const refreshed = await (refreshPromise ?? attemptTokenRefresh());
+    if (refreshed) {
+      // Retry with new token
+      const retryHeaders: HeadersInit = {
+        'Content-Type': 'application/json',
+        ...options.headers,
+      };
+      if (accessToken) {
+        (retryHeaders as Record<string, string>)['Authorization'] = `Bearer ${accessToken}`;
+      }
+
+      const retryResponse = await fetch(url, { ...options, headers: retryHeaders });
+      if (!retryResponse.ok) {
+        await handleAPIError(retryResponse);
+      }
+      if (retryResponse.status === 204) return {} as T;
+      return retryResponse.json();
+    }
+  }
 
   if (!response.ok) {
     await handleAPIError(response);
@@ -107,6 +213,62 @@ async function apiFetch<T>(
 
   return response.json();
 }
+
+// ============================================================================
+// Auth API
+// ============================================================================
+
+export const authAPI = {
+  /**
+   * Obtain JWT token pair
+   * POST /api/token/obtain/
+   */
+  login: async (data: LoginRequest): Promise<LoginResponse> => {
+    const response = await apiFetch<LoginResponse>(
+      '/token/obtain/',
+      { method: 'POST', body: JSON.stringify(data) },
+      true
+    );
+    setAccessToken(response.access);
+    setRefreshToken(response.refresh);
+    return response;
+  },
+
+  /**
+   * Refresh access token
+   * POST /api/token/refresh/
+   */
+  refresh: async (): Promise<boolean> => {
+    return attemptTokenRefresh();
+  },
+
+  /**
+   * Register a new user
+   * POST /api/users/register/
+   */
+  register: async (data: RegisterRequest): Promise<RegisterResponse> => {
+    return apiFetch<RegisterResponse>(
+      '/users/register/',
+      { method: 'POST', body: JSON.stringify(data) },
+      true
+    );
+  },
+
+  /**
+   * Get current user profile
+   * GET /api/users/me/
+   */
+  me: async (): Promise<UserProfile> => {
+    return apiFetch<UserProfile>('/users/me/');
+  },
+
+  /**
+   * Clear tokens and reset auth state
+   */
+  logout: (): void => {
+    clearTokens();
+  },
+};
 
 // ============================================================================
 // Intake Session API
@@ -219,18 +381,13 @@ export const intakeAPI = {
 // ============================================================================
 
 export const debtorAPI = {
-  /**
-   * Create or update debtor info for session
-   */
   createOrUpdate: async (
     sessionId: number,
     data: Partial<DebtorInfo>
   ): Promise<DebtorInfo> => {
-    // Check if debtor_info exists for this session
     try {
       const session = await intakeAPI.getSession(sessionId);
       if (session.debtor_info) {
-        // Update existing
         return apiFetch<DebtorInfo>(
           `/intake/debtor-info/${session.debtor_info.id}/`,
           {
@@ -243,7 +400,6 @@ export const debtorAPI = {
       // Fall through to create
     }
 
-    // Create new
     return apiFetch<DebtorInfo>('/intake/debtor-info/', {
       method: 'POST',
       body: JSON.stringify({ ...data, session: sessionId }),
@@ -256,9 +412,6 @@ export const debtorAPI = {
 // ============================================================================
 
 export const incomeAPI = {
-  /**
-   * Create or update income info for session
-   */
   createOrUpdate: async (
     sessionId: number,
     data: Partial<IncomeInfo>
@@ -290,9 +443,6 @@ export const incomeAPI = {
 // ============================================================================
 
 export const expenseAPI = {
-  /**
-   * Create or update expense info for session
-   */
   createOrUpdate: async (
     sessionId: number,
     data: Partial<ExpenseInfo>
@@ -324,9 +474,6 @@ export const expenseAPI = {
 // ============================================================================
 
 export const assetsAPI = {
-  /**
-   * Create asset
-   */
   create: async (
     sessionId: number,
     data: Partial<AssetInfo>
@@ -337,9 +484,6 @@ export const assetsAPI = {
     });
   },
 
-  /**
-   * Update asset
-   */
   update: async (
     assetId: number,
     data: Partial<AssetInfo>
@@ -350,9 +494,6 @@ export const assetsAPI = {
     });
   },
 
-  /**
-   * Delete asset
-   */
   delete: async (assetId: number): Promise<void> => {
     return apiFetch<void>(`/intake/assets/${assetId}/`, {
       method: 'DELETE',
@@ -365,9 +506,6 @@ export const assetsAPI = {
 // ============================================================================
 
 export const debtsAPI = {
-  /**
-   * Create debt
-   */
   create: async (
     sessionId: number,
     data: Partial<DebtInfo>
@@ -378,9 +516,6 @@ export const debtsAPI = {
     });
   },
 
-  /**
-   * Update debt
-   */
   update: async (
     debtId: number,
     data: Partial<DebtInfo>
@@ -391,9 +526,6 @@ export const debtsAPI = {
     });
   },
 
-  /**
-   * Delete debt
-   */
   delete: async (debtId: number): Promise<void> => {
     return apiFetch<void>(`/intake/debts/${debtId}/`, {
       method: 'DELETE',
@@ -406,10 +538,6 @@ export const debtsAPI = {
 // ============================================================================
 
 export const formsAPI = {
-  /**
-   * Generate Form 101 (Voluntary Petition)
-   * POST /api/forms/generate_form_101/
-   */
   generateForm101: async (
     data: GenerateForm101Request
   ): Promise<GenerateForm101Response> => {
@@ -419,10 +547,6 @@ export const formsAPI = {
     });
   },
 
-  /**
-   * Mark form as downloaded
-   * POST /api/forms/{id}/mark_downloaded/
-   */
   markDownloaded: async (formId: number): Promise<{ message: string }> => {
     return apiFetch<{ message: string }>(
       `/forms/${formId}/mark_downloaded/`,
@@ -432,10 +556,6 @@ export const formsAPI = {
     );
   },
 
-  /**
-   * Mark form as filed
-   * POST /api/forms/{id}/mark_filed/
-   */
   markFiled: async (formId: number): Promise<{ message: string }> => {
     return apiFetch<{ message: string }>(`/forms/${formId}/mark_filed/`, {
       method: 'POST',
@@ -448,6 +568,7 @@ export const formsAPI = {
 // ============================================================================
 
 export const api = {
+  auth: authAPI,
   intake: intakeAPI,
   debtor: debtorAPI,
   income: incomeAPI,

@@ -243,6 +243,43 @@ export interface SessionSummaryResponse {
 }
 
 // ============================================================================
+// Authentication
+// ============================================================================
+
+export interface LoginRequest {
+  username: string;
+  password: string;
+}
+
+export interface LoginResponse {
+  access: string;
+  refresh: string;
+}
+
+export interface RegisterRequest {
+  email: string;
+  username: string;
+  password: string;
+  agreed_to_upl_disclaimer: boolean;
+  agreed_to_terms: boolean;
+}
+
+export interface RegisterResponse {
+  id: number;
+  email: string;
+  username: string;
+}
+
+export interface UserProfile {
+  id: number;
+  email: string;
+  username: string;
+  agreed_to_upl_disclaimer: boolean;
+  upl_disclaimer_agreed_at: string | null;
+  created_at: string;
+}
+
+// ============================================================================
 // API Error Response
 // ============================================================================
 
