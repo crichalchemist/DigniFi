@@ -29,7 +29,7 @@ local_settings.py
 db.sqlite3
 db.sqlite3-journal
 /media
-/staticfiles
+staticfiles/
 /static
 
 # Environment variables
@@ -74,6 +74,8 @@ htmlcov/
 /data/forms/pdfs/*.pdf
 /backend/media/generated_forms/*
 /backend/logs/*.log
+Product Docs/*.pdf
+IMG_0487.jpg
 
 # Keep directory structure
 !.gitkeep
