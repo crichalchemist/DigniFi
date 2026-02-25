@@ -1,0 +1,37 @@
+[
+    {
+        "statute": "735 ILCS 5/12-901",
+        "property_type": "homestead",
+        "description": "Homestead (principal residence)",
+        "amount": "15000.00",
+        "is_unlimited": false
+    },
+    {
+        "statute": "735 ILCS 5/12-1001(b)",
+        "property_type": "wildcard",
+        "description": "Personal property wildcard",
+        "amount": "4000.00",
+        "is_unlimited": false
+    },
+    {
+        "statute": "735 ILCS 5/12-1001(c)",
+        "property_type": "vehicle",
+        "description": "Motor vehicle",
+        "amount": "2400.00",
+        "is_unlimited": false
+    },
+    {
+        "statute": "735 ILCS 5/12-1001(a)",
+        "property_type": "clothing",
+        "description": "Necessary clothing",
+        "amount": "0.00",
+        "is_unlimited": true
+    },
+    {
+        "statute": "735 ILCS 5/12-1006",
+        "property_type": "retirement",
+        "description": "Retirement benefits",
+        "amount": "0.00",
+        "is_unlimited": true
+    }
+]
