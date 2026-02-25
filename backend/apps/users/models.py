@@ -54,7 +54,7 @@ class User(AbstractUser):
         verbose_name_plural = "Users"
         constraints = [
             CheckConstraint(
-                condition=(
+                check=(
                     Q(
                         agreed_to_upl_disclaimer=True,
                         upl_disclaimer_agreed_at__isnull=False,
