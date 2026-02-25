@@ -11,6 +11,8 @@ from .schedule_ab_generator import ScheduleABGenerator
 from .schedule_c_generator import ScheduleCGenerator
 from .schedule_d_generator import ScheduleDGenerator
 from .schedule_ef_generator import ScheduleEFGenerator
+from .schedule_i_generator import ScheduleIGenerator
+from .schedule_j_generator import ScheduleJGenerator
 
 __all__ = [
     "Form101Generator",
@@ -19,4 +21,6 @@ __all__ = [
     "ScheduleCGenerator",
     "ScheduleDGenerator",
     "ScheduleEFGenerator",
+    "ScheduleIGenerator",
+    "ScheduleJGenerator",
 ]
