@@ -1,5 +1,6 @@
 import pytest
 from decimal import Decimal
+from apps.districts.models import District
 from apps.intake.models import IntakeSession, AssetInfo
 from apps.forms.services.schedule_ab_generator import ScheduleABGenerator
 from django.contrib.auth import get_user_model
@@ -7,12 +8,24 @@ from django.contrib.auth import get_user_model
 User = get_user_model()
 
 
+def _create_district() -> District:
+    return District.objects.create(
+        code='ilnd',
+        name='Northern District of Illinois',
+        state='IL',
+        court_name='U.S. Bankruptcy Court, Northern District of Illinois',
+        pro_se_efiling_allowed=False,
+        filing_fee_chapter_7=Decimal('338.00'),
+    )
+
+
 @pytest.mark.django_db
 class TestScheduleABGenerator:
     def test_generates_schedule_ab_with_real_property(self):
         """Test generating Schedule A/B with real property."""
         user = User.objects.create_user(username='test', password='test')
-        session = IntakeSession.objects.create(user=user)
+        district = _create_district()
+        session = IntakeSession.objects.create(user=user, district=district)
 
         # Add real property
         AssetInfo.objects.create(
@@ -32,8 +45,9 @@ class TestScheduleABGenerator:
 
     def test_generates_schedule_ab_with_vehicle(self):
         """Test generating Schedule A/B with vehicle."""
-        user = User.objects.create_user(username='test', password='test')
-        session = IntakeSession.objects.create(user=user)
+        user = User.objects.create_user(username='test_v', password='test')
+        district = _create_district()
+        session = IntakeSession.objects.create(user=user, district=district)
 
         # Add vehicle
         AssetInfo.objects.create(
