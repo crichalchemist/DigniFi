@@ -4,7 +4,7 @@ from django.conf import settings
 from django.db import migrations, models
 import django.db.models.deletion
 import django.utils.timezone
-import django_fernet_fields.fields
+# import fernet_fields.fields  # EncryptedFileField not available in fernet_fields v2
 
 
 class Migration(migrations.Migration):
@@ -24,7 +24,7 @@ class Migration(migrations.Migration):
                 ('document_type', models.CharField(choices=[('pay_stub', 'Pay Stub'), ('bank_statement', 'Bank Statement'), ('credit_cert', 'Credit Counseling Certificate'), ('credit_report', 'Credit Report'), ('tax_return_personal', 'Personal Tax Return (1040)'), ('special_circumstances', 'Supporting Document'), ('balance_sheet', 'Balance Sheet'), ('profit_loss', 'Profit & Loss Statement'), ('cash_flow', 'Cash Flow Statement'), ('tax_return_business', 'Business Tax Return'), ('accounts_receivable', 'Accounts Receivable Aging'), ('accounts_payable', 'Accounts Payable Aging'), ('operating_agreement', 'Operating Agreement'), ('corporate_resolution', 'Corporate Resolution'), ('lease_agreement', 'Lease Agreement'), ('loan_agreement', 'Loan Agreement'), ('judgment', 'Court Judgment'), ('lien_notice', 'Lien Notice')], help_text='Final document type (after validation)', max_length=50)),
                 ('user_declared_type', models.CharField(choices=[('pay_stub', 'Pay Stub'), ('bank_statement', 'Bank Statement'), ('credit_cert', 'Credit Counseling Certificate'), ('credit_report', 'Credit Report'), ('tax_return_personal', 'Personal Tax Return (1040)'), ('special_circumstances', 'Supporting Document'), ('balance_sheet', 'Balance Sheet'), ('profit_loss', 'Profit & Loss Statement'), ('cash_flow', 'Cash Flow Statement'), ('tax_return_business', 'Business Tax Return'), ('accounts_receivable', 'Accounts Receivable Aging'), ('accounts_payable', 'Accounts Payable Aging'), ('operating_agreement', 'Operating Agreement'), ('corporate_resolution', 'Corporate Resolution'), ('lease_agreement', 'Lease Agreement'), ('loan_agreement', 'Loan Agreement'), ('judgment', 'Court Judgment'), ('lien_notice', 'Lien Notice')], help_text='Type user selected before upload', max_length=50)),
                 ('detected_type', models.CharField(blank=True, choices=[('pay_stub', 'Pay Stub'), ('bank_statement', 'Bank Statement'), ('credit_cert', 'Credit Counseling Certificate'), ('credit_report', 'Credit Report'), ('tax_return_personal', 'Personal Tax Return (1040)'), ('special_circumstances', 'Supporting Document'), ('balance_sheet', 'Balance Sheet'), ('profit_loss', 'Profit & Loss Statement'), ('cash_flow', 'Cash Flow Statement'), ('tax_return_business', 'Business Tax Return'), ('accounts_receivable', 'Accounts Receivable Aging'), ('accounts_payable', 'Accounts Payable Aging'), ('operating_agreement', 'Operating Agreement'), ('corporate_resolution', 'Corporate Resolution'), ('lease_agreement', 'Lease Agreement'), ('loan_agreement', 'Loan Agreement'), ('judgment', 'Court Judgment'), ('lien_notice', 'Lien Notice')], help_text='Type detected by OCR (for validation)', max_length=50, null=True)),
-                ('file', django_fernet_fields.fields.EncryptedFileField(upload_to='documents/%Y/%m/')),
+                ('file', models.FileField(upload_to='documents/%Y/%m/')),  # TODO: Encrypt at storage layer
                 ('original_filename', models.CharField(max_length=255)),
                 ('file_size', models.IntegerField(help_text='Size in bytes')),
                 ('mime_type', models.CharField(max_length=100)),
