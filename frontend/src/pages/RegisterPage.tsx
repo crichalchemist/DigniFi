@@ -5,7 +5,7 @@
  * Auto-logs in after successful registration.
  */
 
-import { useState, type FormEvent } from 'react';
+import { useState, useEffect, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { FormField } from '../components/common/FormField';
@@ -28,10 +28,11 @@ export function RegisterPage() {
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
 
-  if (isAuthenticated) {
-    navigate('/intake', { replace: true });
-    return null;
-  }
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/intake', { replace: true });
+    }
+  }, [isAuthenticated, navigate]);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();

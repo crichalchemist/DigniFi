@@ -595,7 +595,11 @@ export const formsAPI = {
    * GET /api/forms/?session={sessionId}
    */
   listBySession: async (sessionId: number): Promise<GeneratedForm[]> => {
-    return apiFetch<GeneratedForm[]>(`/forms/?session=${sessionId}`);
+    const response = await apiFetch<GeneratedForm[] | { results: GeneratedForm[] }>(
+      `/forms/?session=${sessionId}`,
+    );
+    // Handle both paginated ({results: [...]}) and unpaginated ([...]) responses
+    return Array.isArray(response) ? response : response.results ?? [];
   },
 
   /** @deprecated Use generate() with form_type */

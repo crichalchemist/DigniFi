@@ -56,7 +56,10 @@ export function IntakeProvider({ children }: IntakeProviderProps) {
   useEffect(() => {
     const savedSessionId = localStorage.getItem('current_session_id');
     if (savedSessionId) {
-      loadSession(parseInt(savedSessionId, 10));
+      loadSession(parseInt(savedSessionId, 10)).catch(() => {
+        // Session may no longer exist or belong to this user — silently clear
+        localStorage.removeItem('current_session_id');
+      });
     }
   }, []);
 

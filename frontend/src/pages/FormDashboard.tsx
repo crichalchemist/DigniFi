@@ -81,6 +81,14 @@ export function FormDashboard() {
   };
 
   if (!session) {
+    // IntakeProvider is loading session from localStorage — show loading state
+    if (isLoading) {
+      return (
+        <div className="form-dashboard-loading" aria-live="polite">
+          <p>Loading your session...</p>
+        </div>
+      );
+    }
     return (
       <div className="form-dashboard-empty">
         <p>No active intake session found. Please complete the intake wizard first.</p>

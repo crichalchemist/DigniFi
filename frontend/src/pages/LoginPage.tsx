@@ -5,7 +5,7 @@
  * Error messages are dignity-preserving ("We couldn't find that account").
  */
 
-import { useState, type FormEvent } from 'react';
+import { useState, useEffect, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { FormField } from '../components/common/FormField';
@@ -18,11 +18,12 @@ export function LoginPage() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
 
-  // Redirect if already authenticated
-  if (isAuthenticated) {
-    navigate('/intake', { replace: true });
-    return null;
-  }
+  // Redirect if already authenticated (useEffect to avoid setState during render)
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/intake', { replace: true });
+    }
+  }, [isAuthenticated, navigate]);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
