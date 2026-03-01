@@ -125,46 +125,46 @@ export function IntakeWizard() {
 
     const currentStep = WIZARD_STEPS[currentStepNumber - 1];
 
+    // All step data is saved via PATCH /api/intake/sessions/{id}/
+    // The backend IntakeSessionSerializer handles nested create/update
     switch (currentStep.key) {
       case 'debtor_info':
-        await api.debtor.createOrUpdate(session.id, debtorData);
+        await api.intake.updateSession(session.id, {
+          debtor_info: debtorData,
+        } as Partial<IntakeSession>);
         break;
 
-      case 'income_info':
+      case 'income_info': {
         // Transform detailed income data to backend format (6-month array)
         // MVP Assumption: Current monthly income is consistent for last 6 months
         const incomePayload = {
           ...incomeData,
           monthly_income: Array(6).fill(incomeData.total_monthly_income || 0),
         };
-        await api.income.createOrUpdate(session.id, incomePayload);
+        await api.intake.updateSession(session.id, {
+          income_info: incomePayload,
+        } as Partial<IntakeSession>);
         break;
+      }
 
       case 'expense_info':
-        await api.expense.createOrUpdate(session.id, expenseData);
+        await api.intake.updateSession(session.id, {
+          expense_info: expenseData,
+        } as Partial<IntakeSession>);
         break;
 
       case 'assets':
-        // Save each asset
-        for (const asset of assetsData) {
-          if (asset.id) {
-            await api.assets.update(asset.id, asset);
-          } else {
-            await api.assets.create(session.id, asset);
-          }
-        }
+        await api.intake.updateSession(session.id, {
+          assets: assetsData,
+        } as Partial<IntakeSession>);
         break;
 
       case 'debts':
-        // Save each debt
-        for (const debt of debtsData) {
-          if (debt.id) {
-            await api.debts.update(debt.id, debt);
-          } else {
-            await api.debts.create(session.id, debt);
-          }
-        }
+        await api.intake.updateSession(session.id, {
+          debts: debtsData,
+        } as Partial<IntakeSession>);
         break;
+
       default:
         console.log(`Saving data for ${currentStep.key} not yet implemented`);
     }
