@@ -5,10 +5,11 @@
  * and handles data persistence to backend API.
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useIntake } from '../context/IntakeContext';
 import { api } from '../api/client';
+import { trackEvent } from '../utils/analytics';
 import { WizardLayout } from '../components/wizard/WizardLayout';
 import { MeansTestPreview } from '../components/wizard/MeansTestPreview';
 import { DebtorInfoStep, IncomeInfoStep, ExpenseInfoStep, AssetsStep, DebtsStep, ReviewStep } from '../components/wizard/steps';
@@ -32,6 +33,7 @@ export function IntakeWizard() {
   const { session, createSession, updateCurrentStep, completeSession } = useIntake();
   const [currentStepNumber, setCurrentStepNumber] = useState(1);
   const [canProceed, setCanProceed] = useState(false);
+  const sessionStartRef = useRef(Date.now());
 
   // Step-specific data
   const [debtorData, setDebtorData] = useState<Partial<DebtorInfo>>({});
@@ -104,6 +106,10 @@ export function IntakeWizard() {
     try {
       await saveCurrentStepData();
       await completeSession();
+      trackEvent('intake_completed', {
+        total_duration_ms: Date.now() - sessionStartRef.current,
+        session_id: session?.id,
+      });
       navigate('/forms');
     } catch (error) {
       console.error('Error completing intake:', error);

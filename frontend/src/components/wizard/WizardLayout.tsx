@@ -5,12 +5,13 @@
  * Accessibility: Keyboard navigation, screen reader support, high contrast
  */
 
-import type { ReactNode } from 'react';
+import { useRef, useEffect, type ReactNode } from 'react';
 import { ProgressIndicator, Button } from '../common';
 import { UPLDisclaimer } from '../compliance';
 import { UPL_WIZARD_DISCLAIMER } from '../../constants/upl';
 import { useIntake } from '../../context/IntakeContext';
 import { useFocusManagement } from '../../hooks/useFocusManagement';
+import { trackEvent } from '../../utils/analytics';
 
 interface WizardStep {
   number: number;
@@ -48,8 +49,23 @@ export function WizardLayout({
   isLastStep = false,
   sidebar,
 }: WizardLayoutProps) {
-  const { isLoading, error, clearError } = useIntake();
+  const { isLoading, error, clearError, session } = useIntake();
   const stepHeadingRef = useFocusManagement(currentStepNumber);
+  const stepStartRef = useRef(Date.now());
+  const prevStepRef = useRef(currentStepNumber);
+
+  // Track step duration when the step changes
+  useEffect(() => {
+    if (prevStepRef.current !== currentStepNumber) {
+      trackEvent('wizard_step_completed', {
+        step: prevStepRef.current,
+        duration_ms: Date.now() - stepStartRef.current,
+        session_id: session?.id,
+      });
+      stepStartRef.current = Date.now();
+      prevStepRef.current = currentStepNumber;
+    }
+  }, [currentStepNumber, session?.id]);
 
   const progressSteps = steps.map((step) => ({
     number: step.number,

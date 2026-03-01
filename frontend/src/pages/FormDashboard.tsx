@@ -13,8 +13,10 @@ import { FormCard, GenerateAllButton } from '../components/forms';
 import { UPLDisclaimer } from '../components/compliance';
 import { UPL_FORM_DISCLAIMER } from '../constants/upl';
 import { Button } from '../components/common';
+import { PostTaskSurvey } from '../components/survey/PostTaskSurvey';
 import type { GeneratedForm, FormType } from '../types/api';
 import { FORM_TYPE_METADATA } from '../types/api';
+import { trackEvent } from '../utils/analytics';
 
 /** All form types in filing order */
 const ALL_FORM_TYPES: FormType[] = (
@@ -28,6 +30,7 @@ export function FormDashboard() {
   const [forms, setForms] = useState<GeneratedForm[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showSurvey, setShowSurvey] = useState(false);
 
   // Load existing forms on mount
   const loadForms = useCallback(async () => {
@@ -56,12 +59,15 @@ export function FormDashboard() {
     if (!session) return;
     const response = await api.forms.generate(session.id, formType);
     setForms((prev) => [...prev.filter((f) => f.form_type !== formType), response.form]);
+    trackEvent('form_generated', { form_type: formType, session_id: session.id });
   };
 
   const handleGenerateAll = async () => {
     if (!session) return;
     const response = await api.forms.generateAll(session.id);
     setForms(response.forms);
+    trackEvent('form_generated', { form_type: 'all', session_id: session.id });
+    setShowSurvey(true);
   };
 
   const handleMarkDownloaded = async (formId: number) => {
@@ -153,6 +159,14 @@ export function FormDashboard() {
             />
           ))}
         </div>
+      )}
+
+      {/* Post-task survey — shown after generating all forms */}
+      {showSurvey && session && (
+        <PostTaskSurvey
+          sessionId={session.id}
+          onComplete={() => setShowSurvey(false)}
+        />
       )}
     </div>
   );
