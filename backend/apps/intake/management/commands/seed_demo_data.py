@@ -21,6 +21,7 @@ from apps.intake.models import (
     DebtInfo,
     DebtorInfo,
     ExpenseInfo,
+    FeeWaiverApplication,
     IncomeInfo,
     IntakeSession,
 )
@@ -530,13 +531,34 @@ class Command(BaseCommand):
         calculator = MeansTestCalculator(session)
         result = calculator.calculate()
 
+        # Create FeeWaiverApplication for fee-waiver-eligible personas
+        # (required by Form 103B generator)
+        if result["qualifies_for_fee_waiver"]:
+            income_data = data["income"]
+            household_size = income_data["number_of_dependents"] + 1
+            if income_data["marital_status"] in ("married_joint", "married_separate"):
+                household_size += 1
+            monthly_income = Decimal(str(income_data["monthly_income"][0]))
+            total_expenses = sum(data["expenses"].values())
+
+            FeeWaiverApplication.objects.create(
+                session=session,
+                household_size=household_size,
+                monthly_income=monthly_income,
+                monthly_expenses=total_expenses,
+                receives_public_benefits=False,
+                cannot_pay_full=True,
+                cannot_pay_installments=True,
+                status="pending",
+            )
+
         # Generate forms for eligible personas
         if result["passes_means_test"]:
             for form_type in get_all_form_types():
                 try:
                     generator = get_generator(form_type, session)
                     generator.generate()
-                except (KeyError, ValueError) as exc:
+                except Exception as exc:
                     self.stderr.write(
                         self.style.WARNING(
                             f"    Skipped {form_type}: {exc}"
