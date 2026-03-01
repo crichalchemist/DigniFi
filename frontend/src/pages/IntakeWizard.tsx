@@ -153,17 +153,27 @@ export function IntakeWizard() {
         } as Partial<IntakeSession>);
         break;
 
-      case 'assets':
+      case 'assets': {
+        // Filter out empty/blank asset forms before sending
+        const filledAssets = assetsData.filter(
+          (a) => a.asset_type && a.description?.trim(),
+        );
         await api.intake.updateSession(session.id, {
-          assets: assetsData,
+          assets: filledAssets,
         } as Partial<IntakeSession>);
         break;
+      }
 
-      case 'debts':
+      case 'debts': {
+        // Filter out empty/blank debt forms before sending
+        const filledDebts = debtsData.filter(
+          (d) => d.creditor_name?.trim() && d.debt_type,
+        );
         await api.intake.updateSession(session.id, {
-          debts: debtsData,
+          debts: filledDebts,
         } as Partial<IntakeSession>);
         break;
+      }
 
       default:
         console.log(`Saving data for ${currentStep.key} not yet implemented`);

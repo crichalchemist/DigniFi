@@ -21,7 +21,7 @@ interface AssetsStepProps {
 }
 
 const ASSET_TYPES = [
-  { value: 'real_estate', label: 'Real Estate (home, land, rental property)' },
+  { value: 'real_property', label: 'Real Estate (home, land, rental property)' },
   { value: 'vehicle', label: 'Vehicle (car, truck, motorcycle, RV)' },
   { value: 'bank_account', label: 'Bank Account (checking, savings)' },
   { value: 'retirement_account', label: 'Retirement Account (401k, IRA, pension)' },
@@ -144,7 +144,9 @@ export function AssetsStep({
     });
 
     setErrors(newErrors);
-    const isValid = Object.keys(newErrors).length === 0 && hasValidAsset;
+    // Valid if: no errors AND (has a complete asset OR everything is blank/empty)
+    const allBlank = !hasValidAsset;
+    const isValid = Object.keys(newErrors).length === 0 && (hasValidAsset || allBlank);
     onValidationChange(isValid);
 
     return isValid;
