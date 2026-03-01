@@ -112,7 +112,7 @@ describe('Reading Level Validation', () => {
     expect(scorableTexts.length).toBeGreaterThan(0);
   });
 
-  describe.each(scorableTexts)('$label', ({ label, text }) => {
+  describe.each(scorableTexts)('$label', ({ text }) => {
     it(`is at or below grade ${MAX_GRADE}`, () => {
       const grade = fleschKincaidGrade(text);
       expect(grade).toBeLessThanOrEqual(MAX_GRADE);

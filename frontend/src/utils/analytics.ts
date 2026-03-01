@@ -6,8 +6,6 @@
  * existing audit records for unified reporting.
  */
 
-import { api } from '../api/client';
-
 /**
  * Track a user event via the audit log API.
  * Silent on failure — analytics must never degrade the user experience.

@@ -8,7 +8,7 @@
  * - Privacy-conscious (account numbers encrypted)
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { FormField, FormSelect, Button } from '../../common';
 import { UPLDisclaimer } from '../../compliance';
 import { UPL_EXEMPTION_DISCLAIMER } from '../../../constants/upl';
@@ -39,71 +39,8 @@ export function AssetsStep({
       ? initialData
       : [createEmptyAsset()]
   );
-  const [errors, setErrors] = useState<Record<number, Record<string, string>>>({});
 
-  // Update parent when assets change
-  useEffect(() => {
-    onDataChange(assets);
-    validateForm();
-  }, [assets]);
-
-  function createEmptyAsset(): Partial<AssetInfo> {
-    return {
-      asset_type: undefined,
-      description: '',
-      current_value: 0,
-      amount_owed: 0,
-      account_number: '',
-    };
-  }
-
-  const handleAddAsset = () => {
-    setAssets([...assets, createEmptyAsset()]);
-  };
-
-  const handleRemoveAsset = (index: number) => {
-    if (assets.length === 1) {
-      // Keep at least one asset form
-      setAssets([createEmptyAsset()]);
-    } else {
-      setAssets(assets.filter((_, i) => i !== index));
-    }
-    // Clear errors for removed asset
-    const newErrors = { ...errors };
-    delete newErrors[index];
-    setErrors(newErrors);
-  };
-
-  const handleAssetChange = (
-    index: number,
-    field: keyof AssetInfo,
-    value: any
-  ) => {
-    const updatedAssets = [...assets];
-
-    if (field === 'current_value' || field === 'amount_owed') {
-      updatedAssets[index] = {
-        ...updatedAssets[index],
-        [field]: parseFloat(value) || 0,
-      };
-    } else {
-      updatedAssets[index] = {
-        ...updatedAssets[index],
-        [field]: value,
-      };
-    }
-
-    setAssets(updatedAssets);
-
-    // Clear error for this field
-    if (errors[index]?.[field]) {
-      const newErrors = { ...errors };
-      delete newErrors[index][field];
-      setErrors(newErrors);
-    }
-  };
-
-  const validateForm = () => {
+  const { errors, isValid } = useMemo(() => {
     const newErrors: Record<number, Record<string, string>> = {};
     let hasValidAsset = false;
 
@@ -143,13 +80,61 @@ export function AssetsStep({
       }
     });
 
-    setErrors(newErrors);
     // Valid if: no errors AND (has a complete asset OR everything is blank/empty)
     const allBlank = !hasValidAsset;
-    const isValid = Object.keys(newErrors).length === 0 && (hasValidAsset || allBlank);
-    onValidationChange(isValid);
+    const valid = Object.keys(newErrors).length === 0 && (hasValidAsset || allBlank);
+    return { errors: newErrors, isValid: valid };
+  }, [assets]);
 
-    return isValid;
+  // Update parent when assets change
+  useEffect(() => {
+    onDataChange(assets);
+    onValidationChange(isValid);
+  }, [assets, isValid]);
+
+  function createEmptyAsset(): Partial<AssetInfo> {
+    return {
+      asset_type: undefined,
+      description: '',
+      current_value: 0,
+      amount_owed: 0,
+      account_number: '',
+    };
+  }
+
+  const handleAddAsset = () => {
+    setAssets([...assets, createEmptyAsset()]);
+  };
+
+  const handleRemoveAsset = (index: number) => {
+    if (assets.length === 1) {
+      // Keep at least one asset form
+      setAssets([createEmptyAsset()]);
+    } else {
+      setAssets(assets.filter((_, i) => i !== index));
+    }
+  };
+
+  const handleAssetChange = (
+    index: number,
+    field: keyof AssetInfo,
+    value: string | number
+  ) => {
+    const updatedAssets = [...assets];
+
+    if (field === 'current_value' || field === 'amount_owed') {
+      updatedAssets[index] = {
+        ...updatedAssets[index],
+        [field]: Number(value) || 0,
+      };
+    } else {
+      updatedAssets[index] = {
+        ...updatedAssets[index],
+        [field]: value,
+      };
+    }
+
+    setAssets(updatedAssets);
   };
 
   const calculateEquity = (asset: Partial<AssetInfo>): number => {
