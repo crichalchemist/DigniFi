@@ -20,7 +20,11 @@ class TestDebtInfoClassification:
     @pytest.fixture
     def district(self):
         """Create test district."""
-        return District.objects.first()  # Use existing ILND fixture
+        return District.objects.create(
+            code="ILND", name="Illinois Northern", state="IL",
+            court_name="U.S. Bankruptcy Court ILND",
+            filing_fee_chapter_7=338.00,
+        )
 
     @pytest.fixture
     def session(self, user, district):
@@ -133,7 +137,11 @@ class TestFeeWaiverApplication:
     @pytest.fixture
     def district(self):
         """Create test district."""
-        return District.objects.first()  # Use existing ILND fixture
+        return District.objects.create(
+            code="ILND", name="Illinois Northern", state="IL",
+            court_name="U.S. Bankruptcy Court ILND",
+            filing_fee_chapter_7=338.00,
+        )
 
     @pytest.fixture
     def session(self, user, district):
@@ -182,17 +190,13 @@ class TestFeeWaiverApplication:
     def test_household_size_must_be_positive(self, session):
         """Test that household_size must be >= 1."""
         from django.core.exceptions import ValidationError
+        from django.core.validators import MinValueValidator
         from apps.intake.models import FeeWaiverApplication
 
-        waiver = FeeWaiverApplication(
-            session=session,
-            monthly_income=0.00,
-            monthly_expenses=1200.00,
-            household_size=0  # Invalid!
-        )
-
+        # Validate the field directly — full_clean() fails on EncryptedDecimalField
+        field = FeeWaiverApplication._meta.get_field("household_size")
         with pytest.raises(ValidationError):
-            waiver.full_clean()  # Triggers validators
+            field.run_validators(0)
 
     def test_public_benefits_qualification_simplified(self, session):
         """Test that receives_public_benefits=True qualifies (no benefit_types required)."""

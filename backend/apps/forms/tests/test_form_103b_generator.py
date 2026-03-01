@@ -479,7 +479,7 @@ class TestForm103BGeneratorIntegration:
         """Filing fee comes from the district model, not hardcoded."""
         user = User.objects.create_user(username='test_fee', password='test')
         district = District.objects.create(
-            code='test_dist',
+            code='TSTD',
             name='Test District',
             state='XX',
             court_name='Test Court',

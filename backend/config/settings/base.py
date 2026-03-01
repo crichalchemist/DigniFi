@@ -73,6 +73,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "config.logging.RequestIDMiddleware",  # Request-ID correlation (must be early)
     "corsheaders.middleware.CorsMiddleware",  # Must be before CommonMiddleware
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -288,20 +289,23 @@ LOGGING = {
             "format": "{levelname} {asctime} {module} {message}",
             "style": "{",
         },
-        "audit": {
-            "format": "[AUDIT] {asctime} {message}",
-            "style": "{",
+        "json": {
+            "()": "config.logging.JSONFormatter",
         },
     },
     "filters": {
         "require_debug_true": {
             "()": "django.utils.log.RequireDebugTrue",
         },
+        "request_id": {
+            "()": "config.logging.RequestIDFilter",
+        },
     },
     "handlers": {
         "console": {
             "class": "logging.StreamHandler",
-            "formatter": "verbose",
+            "formatter": "verbose" if DEBUG else "json",
+            "filters": ["request_id"],
         },
         "audit_file": {
             "class": (
@@ -310,7 +314,8 @@ LOGGING = {
                 else "logging.FileHandler"
             ),
             "filename": str(LOGS_DIR / "audit.log"),
-            "formatter": "audit",
+            "formatter": "json",
+            "filters": ["request_id"],
             **({"maxBytes": 1024 * 1024 * 10, "backupCount": 10} if not DEBUG else {}),
         },
     },

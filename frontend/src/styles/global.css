@@ -783,3 +783,39 @@ p {
 .button--full-width {
   width: 100%;
 }
+
+/* ============================================================================
+   Skip Navigation (WCAG 2.4.1 - Bypass Blocks)
+   ============================================================================ */
+
+.skip-navigation {
+  position: absolute;
+  left: -10000px;
+  top: auto;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  z-index: 9999;
+  background: #1a1a1a;
+  color: white;
+  padding: 1rem 1.5rem;
+  font-weight: 600;
+  font-size: 1rem;
+  text-decoration: none;
+  border-radius: 0 0 0.375rem 0;
+}
+
+.skip-navigation:focus {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: auto;
+  height: auto;
+  outline: 3px solid #2563eb;
+  outline-offset: 2px;
+}
+
+/* Focus ring suppression for non-keyboard focus on step headings */
+.step-title:focus {
+  outline: none;
+}

@@ -3,6 +3,7 @@ User views: registration (public) and current-user profile (authenticated).
 """
 
 from rest_framework import generics, permissions
+from rest_framework.throttling import ScopedRateThrottle
 
 from .serializers import RegisterSerializer, UserProfileSerializer
 
@@ -12,6 +13,8 @@ class RegisterView(generics.CreateAPIView):
 
     serializer_class = RegisterSerializer
     permission_classes = [permissions.AllowAny]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "auth"
 
 
 class CurrentUserView(generics.RetrieveAPIView):

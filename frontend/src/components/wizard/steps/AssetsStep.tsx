@@ -10,6 +10,8 @@
 
 import { useState, useEffect } from 'react';
 import { FormField, FormSelect, Button } from '../../common';
+import { UPLDisclaimer } from '../../compliance';
+import { UPL_EXEMPTION_DISCLAIMER } from '../../../constants/upl';
 import type { AssetInfo } from '../../../types/api';
 
 interface AssetsStepProps {
@@ -315,6 +317,8 @@ export function AssetsStep({
           Add Another Asset
         </Button>
       </div>
+
+      <UPLDisclaimer text={UPL_EXEMPTION_DISCLAIMER} variant="inline" />
 
       {/* No Assets Option */}
       <div className="info-box info-box--secondary">

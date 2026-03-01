@@ -152,11 +152,19 @@ class AssetInfoSerializer(serializers.ModelSerializer):
     """Serializer for asset information (encrypted values)."""
 
     equity = serializers.SerializerMethodField()
+    # Explicit field declarations — EncryptedDecimalField confuses DRF's auto-mapper
+    current_value = serializers.DecimalField(
+        max_digits=12, decimal_places=2, write_only=True
+    )
+    amount_owed = serializers.DecimalField(
+        max_digits=12, decimal_places=2, write_only=True, required=False, default=0
+    )
 
     class Meta:
         model = AssetInfo
         fields = [
             "id",
+            "session",
             "asset_type",
             "data_source",
             "description",
@@ -171,8 +179,6 @@ class AssetInfoSerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "created_at", "updated_at", "equity"]
         extra_kwargs = {
             "account_number": {"write_only": True},  # Don't expose in responses
-            "current_value": {"write_only": True},  # Encrypted, use equity instead
-            "amount_owed": {"write_only": True},  # Encrypted
         }
 
     def get_equity(self, obj):
@@ -183,10 +189,16 @@ class AssetInfoSerializer(serializers.ModelSerializer):
 class DebtInfoSerializer(serializers.ModelSerializer):
     """Serializer for debt/creditor information (trauma-informed language)."""
 
+    # Explicit field declaration — EncryptedDecimalField confuses DRF's auto-mapper
+    amount_owed = serializers.DecimalField(
+        max_digits=12, decimal_places=2, write_only=True
+    )
+
     class Meta:
         model = DebtInfo
         fields = [
             "id",
+            "session",
             "data_source",
             "creditor_name",
             "debt_type",
@@ -202,7 +214,6 @@ class DebtInfoSerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "created_at", "updated_at"]
         extra_kwargs = {
             "account_number": {"write_only": True},  # Don't expose account numbers
-            "amount_owed": {"write_only": True},  # Encrypted PII
         }
 
 

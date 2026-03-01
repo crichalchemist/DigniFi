@@ -173,19 +173,55 @@ export interface MeansTestResult {
 // Form Generation
 // ============================================================================
 
+/** All 13 form types registered in the backend form registry */
+export type FormType =
+  | 'form_101'      // Voluntary Petition
+  | 'form_103b'     // Fee Waiver Application
+  | 'form_106dec'   // Declaration
+  | 'form_106sum'   // Summary of Assets/Liabilities
+  | 'form_107'      // Statement of Financial Affairs
+  | 'form_121'      // SSN Statement
+  | 'form_122a1'    // Means Test
+  | 'schedule_a_b'  // Property
+  | 'schedule_c'    // Exemptions
+  | 'schedule_d'    // Secured Creditors
+  | 'schedule_e_f'  // Unsecured Creditors
+  | 'schedule_i'    // Income
+  | 'schedule_j';   // Expenses
+
+export type FormStatus = 'generated' | 'downloaded' | 'filed';
+
 export interface GeneratedForm {
   id: number;
   session: number;
-  form_type: 'form_101' | 'form_106' | 'form_107';
+  form_type: FormType;
   form_type_display: string;
-  status: 'generated' | 'downloaded' | 'filed';
+  status: FormStatus;
   status_display: string;
   form_data: Record<string, any>;
   pdf_file_path: string | null;
+  upl_disclaimer?: string;
   generated_by: number;
   generated_at: string;
   updated_at: string;
 }
+
+/** Display metadata for each form type (frontend-only, for the dashboard) */
+export const FORM_TYPE_METADATA: Record<FormType, { label: string; description: string; order: number }> = {
+  form_101:     { label: 'Form 101 - Voluntary Petition', description: 'Your official petition to file for bankruptcy', order: 1 },
+  form_103b:    { label: 'Form 103B - Fee Waiver Application', description: 'Request to waive the filing fee', order: 2 },
+  form_106dec:  { label: 'Form 106Dec - Declaration', description: 'Declaration about the accuracy of your forms', order: 3 },
+  form_106sum:  { label: 'Form 106Sum - Summary', description: 'Summary of your assets and liabilities', order: 4 },
+  form_107:     { label: 'Form 107 - Financial Affairs', description: 'Statement of your financial affairs', order: 5 },
+  form_121:     { label: 'Form 121 - SSN Statement', description: 'Social Security number verification', order: 6 },
+  form_122a1:   { label: 'Form 122A-1 - Means Test', description: 'Chapter 7 means test calculation', order: 7 },
+  schedule_a_b: { label: 'Schedule A/B - Property', description: 'List of all your property', order: 8 },
+  schedule_c:   { label: 'Schedule C - Exemptions', description: 'Property you claim as exempt', order: 9 },
+  schedule_d:   { label: 'Schedule D - Secured Creditors', description: 'Creditors with collateral claims', order: 10 },
+  schedule_e_f: { label: 'Schedule E/F - Unsecured Creditors', description: 'Creditors without collateral', order: 11 },
+  schedule_i:   { label: 'Schedule I - Income', description: 'Your current income', order: 12 },
+  schedule_j:   { label: 'Schedule J - Expenses', description: 'Your current expenses', order: 13 },
+};
 
 // ============================================================================
 // API Request/Response Types
@@ -216,12 +252,23 @@ export interface CalculateMeansTestResponse {
   session_id: number;
 }
 
-export interface GenerateForm101Request {
+export interface GenerateFormRequest {
   session_id: number;
+  form_type?: FormType;
 }
 
-export interface GenerateForm101Response {
+export interface GenerateFormResponse {
   form: GeneratedForm;
+  message: string;
+}
+
+/** @deprecated Use GenerateFormRequest */
+export type GenerateForm101Request = GenerateFormRequest;
+/** @deprecated Use GenerateFormResponse */
+export type GenerateForm101Response = GenerateFormResponse;
+
+export interface GenerateAllFormsResponse {
+  forms: GeneratedForm[];
   message: string;
 }
 

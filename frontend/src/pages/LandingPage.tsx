@@ -51,7 +51,7 @@ export function LandingPage() {
       </header>
 
       {/* Value Propositions */}
-      <section className="landing-values" aria-label="Why DigniFi">
+      <main className="landing-values" id="main-content" tabIndex={-1} aria-label="Why DigniFi">
         <div className="landing-container">
           <div className="landing-cards">
             <article className="landing-card">
@@ -98,7 +98,7 @@ export function LandingPage() {
             </article>
           </div>
         </div>
-      </section>
+      </main>
 
       {/* UPL Disclaimer Footer */}
       <footer className="landing-footer">

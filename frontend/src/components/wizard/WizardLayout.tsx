@@ -7,7 +7,10 @@
 
 import type { ReactNode } from 'react';
 import { ProgressIndicator, Button } from '../common';
+import { UPLDisclaimer } from '../compliance';
+import { UPL_WIZARD_DISCLAIMER } from '../../constants/upl';
 import { useIntake } from '../../context/IntakeContext';
+import { useFocusManagement } from '../../hooks/useFocusManagement';
 
 interface WizardStep {
   number: number;
@@ -27,6 +30,8 @@ interface WizardLayoutProps {
   canGoNext?: boolean;
   canGoPrevious?: boolean;
   isLastStep?: boolean;
+  /** Optional sidebar content (e.g., MeansTestPreview) */
+  sidebar?: ReactNode;
 }
 
 export function WizardLayout({
@@ -41,8 +46,10 @@ export function WizardLayout({
   canGoNext = true,
   canGoPrevious = true,
   isLastStep = false,
+  sidebar,
 }: WizardLayoutProps) {
   const { isLoading, error, clearError } = useIntake();
+  const stepHeadingRef = useFocusManagement(currentStepNumber);
 
   const progressSteps = steps.map((step) => ({
     number: step.number,
@@ -88,9 +95,12 @@ export function WizardLayout({
         </div>
       </header>
 
-      {/* Main content area */}
-      <main className="wizard-content">
-        <div className="wizard-container">
+      {/* Main content area with optional sidebar */}
+      <main className="wizard-content" id="main-content" tabIndex={-1}>
+        <div className={`wizard-container ${sidebar ? 'wizard-container--with-sidebar' : ''}`}>
+          {/* Sidebar (means test preview) */}
+          {sidebar && <div className="wizard-sidebar">{sidebar}</div>}
+
           {/* Error display (trauma-informed messaging) */}
           {error && (
             <div
@@ -128,8 +138,15 @@ export function WizardLayout({
 
           {/* Current step content */}
           <div className="wizard-step">
-            <h2 className="step-title">{currentStep?.label}</h2>
+            <h2
+              className="step-title"
+              ref={stepHeadingRef}
+              tabIndex={-1}
+            >
+              {currentStep?.label}
+            </h2>
             <div className="step-content">{currentStep?.component}</div>
+            <UPLDisclaimer text={UPL_WIZARD_DISCLAIMER} variant="inline" />
           </div>
         </div>
       </main>

@@ -11,6 +11,8 @@
 
 import { useState, useEffect } from 'react';
 import { FormField, FormTextarea, Button } from '../../common';
+import { UPLDisclaimer } from '../../compliance';
+import { UPL_EXEMPTION_DISCLAIMER } from '../../../constants/upl';
 import type { DebtInfo } from '../../../types/api';
 
 interface DebtsStepProps {
@@ -370,6 +372,8 @@ export function DebtsStep({
           Add Another Amount Owed
         </Button>
       </div>
+
+      <UPLDisclaimer text={UPL_EXEMPTION_DISCLAIMER} variant="inline" />
 
       {/* Total Summary */}
       <section className="form-section form-section--summary">

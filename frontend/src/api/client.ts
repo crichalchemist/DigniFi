@@ -15,20 +15,23 @@ import type {
   UpdateStepRequest,
   UpdateStepResponse,
   CalculateMeansTestResponse,
-  GenerateForm101Request,
-  GenerateForm101Response,
+  GenerateFormRequest,
+  GenerateFormResponse,
+  GenerateAllFormsResponse,
   SessionSummaryResponse,
   DebtorInfo,
   IncomeInfo,
   ExpenseInfo,
   AssetInfo,
   DebtInfo,
+  GeneratedForm,
   APIError,
   LoginRequest,
   LoginResponse,
   RegisterRequest,
   RegisterResponse,
   UserProfile,
+  FormType,
 } from '../types/api';
 
 // ============================================================================
@@ -147,11 +150,13 @@ async function attemptTokenRefresh(): Promise<boolean> {
   }
 }
 
+import { withRetry } from '../utils/retry';
+
 /**
- * Base fetch wrapper with authentication and error handling.
+ * Single-attempt fetch with authentication and error handling.
  * Includes 401 interceptor: on 401, tries token refresh and retries once.
  */
-async function apiFetch<T>(
+async function apiFetchOnce<T>(
   endpoint: string,
   options: RequestInit = {},
   skipAuth = false
@@ -212,6 +217,18 @@ async function apiFetch<T>(
   }
 
   return response.json();
+}
+
+/**
+ * Retry-wrapped fetch: retries up to 3 times on 5xx errors with exponential backoff.
+ * 4xx errors (client errors) are never retried.
+ */
+async function apiFetch<T>(
+  endpoint: string,
+  options: RequestInit = {},
+  skipAuth = false
+): Promise<T> {
+  return withRetry(() => apiFetchOnce<T>(endpoint, options, skipAuth));
 }
 
 // ============================================================================
@@ -538,10 +555,54 @@ export const debtsAPI = {
 // ============================================================================
 
 export const formsAPI = {
+  /**
+   * Generate a single form by type
+   * POST /api/forms/generate/
+   */
+  generate: async (
+    sessionId: number,
+    formType: FormType,
+  ): Promise<GenerateFormResponse> => {
+    return apiFetch<GenerateFormResponse>('/forms/generate/', {
+      method: 'POST',
+      body: JSON.stringify({ session_id: sessionId, form_type: formType }),
+    });
+  },
+
+  /**
+   * Generate all 13 forms atomically
+   * POST /api/forms/generate_all/
+   */
+  generateAll: async (
+    sessionId: number,
+  ): Promise<GenerateAllFormsResponse> => {
+    return apiFetch<GenerateAllFormsResponse>('/forms/generate_all/', {
+      method: 'POST',
+      body: JSON.stringify({ session_id: sessionId }),
+    });
+  },
+
+  /**
+   * Preview form data without generating
+   * GET /api/forms/{id}/preview/
+   */
+  preview: async (formId: number): Promise<GeneratedForm> => {
+    return apiFetch<GeneratedForm>(`/forms/${formId}/preview/`);
+  },
+
+  /**
+   * List all generated forms for a session
+   * GET /api/forms/?session={sessionId}
+   */
+  listBySession: async (sessionId: number): Promise<GeneratedForm[]> => {
+    return apiFetch<GeneratedForm[]>(`/forms/?session=${sessionId}`);
+  },
+
+  /** @deprecated Use generate() with form_type */
   generateForm101: async (
-    data: GenerateForm101Request
-  ): Promise<GenerateForm101Response> => {
-    return apiFetch<GenerateForm101Response>('/forms/generate_form_101/', {
+    data: GenerateFormRequest,
+  ): Promise<GenerateFormResponse> => {
+    return apiFetch<GenerateFormResponse>('/forms/generate_form_101/', {
       method: 'POST',
       body: JSON.stringify(data),
     });

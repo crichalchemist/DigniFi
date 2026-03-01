@@ -1,0 +1,26 @@
+# Multi-stage build: compile React → copy to shared volume
+#
+# The nginx container serves the built files via a shared Docker volume.
+
+FROM node:20-alpine AS build
+
+WORKDIR /app
+
+# Install dependencies first (layer caching)
+COPY package*.json ./
+RUN npm ci --ignore-scripts
+
+# Copy source and build
+COPY . .
+ARG VITE_API_URL=/api
+ENV VITE_API_URL=${VITE_API_URL}
+RUN npm run build
+
+# Final stage: just holds the built files in /app/dist
+# The docker-compose volume mount copies them to the nginx container.
+FROM alpine:3.20
+
+COPY --from=build /app/dist /app/dist
+
+# Container exits after copy; nginx serves the files via shared volume.
+CMD ["echo", "Frontend build complete"]

@@ -6,12 +6,12 @@
  */
 
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useIntake } from '../context/IntakeContext';
 import { api } from '../api/client';
 import { WizardLayout } from '../components/wizard/WizardLayout';
+import { MeansTestPreview } from '../components/wizard/MeansTestPreview';
 import { DebtorInfoStep, IncomeInfoStep, ExpenseInfoStep, AssetsStep, DebtsStep, ReviewStep } from '../components/wizard/steps';
-import { MeansTestResult } from './MeansTestResult';
-import { Form101Preview } from '../components/Form101Preview';
 import type { DebtorInfo, IncomeInfo, ExpenseInfo, AssetInfo, DebtInfo } from '../types/api';
 
 // ============================================================================
@@ -28,10 +28,10 @@ const WIZARD_STEPS = [
 ];
 
 export function IntakeWizard() {
+  const navigate = useNavigate();
   const { session, createSession, updateCurrentStep, completeSession } = useIntake();
   const [currentStepNumber, setCurrentStepNumber] = useState(1);
   const [canProceed, setCanProceed] = useState(false);
-  const [isCompleted, setIsCompleted] = useState(false);
 
   // Step-specific data
   const [debtorData, setDebtorData] = useState<Partial<DebtorInfo>>({});
@@ -104,7 +104,7 @@ export function IntakeWizard() {
     try {
       await saveCurrentStepData();
       await completeSession();
-      setIsCompleted(true);
+      navigate('/forms');
     } catch (error) {
       console.error('Error completing intake:', error);
     }
@@ -271,15 +271,6 @@ export function IntakeWizard() {
     );
   }
 
-  if (isCompleted) {
-    return (
-      <div className="max-w-4xl mx-auto py-8 px-4 space-y-8">
-        <MeansTestResult sessionId={session.id} />
-        <Form101Preview sessionId={session.id} />
-      </div>
-    );
-  }
-
   return (
     <WizardLayout
       steps={wizardSteps}
@@ -290,6 +281,12 @@ export function IntakeWizard() {
       canGoNext={canProceed}
       canGoPrevious={currentStepNumber > 1}
       isLastStep={currentStepNumber === WIZARD_STEPS.length}
+      sidebar={
+        <MeansTestPreview
+          sessionId={session.id}
+          currentStep={currentStepNumber}
+        />
+      }
     />
   );
 }

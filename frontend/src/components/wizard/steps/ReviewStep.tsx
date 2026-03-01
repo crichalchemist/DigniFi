@@ -6,6 +6,8 @@
  */
 
 import { useEffect } from 'react';
+import { UPLDisclaimer } from '../../compliance';
+import { UPL_REVIEW_DISCLAIMER } from '../../../constants/upl';
 import type { DebtorInfo, IncomeInfo, ExpenseInfo, AssetInfo, DebtInfo } from '../../../types/api';
 
 interface ReviewStepProps {
@@ -124,11 +126,7 @@ export function ReviewStep({
         )}
       </section>
 
-      <div className="bg-yellow-50 p-4 rounded-md border border-yellow-200">
-        <p className="text-sm text-yellow-800">
-          By clicking "Submit", you confirm that the information provided is true and correct to the best of your knowledge.
-        </p>
-      </div>
+      <UPLDisclaimer text={UPL_REVIEW_DISCLAIMER} variant="banner" />
     </div>
   );
 }
