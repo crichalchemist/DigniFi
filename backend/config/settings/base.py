@@ -161,6 +161,9 @@ REST_FRAMEWORK = {
     "PAGE_SIZE": 25,
     "DEFAULT_FILTER_BACKENDS": ("django_filters.rest_framework.DjangoFilterBackend",),
     "EXCEPTION_HANDLER": "apps.audit.exception_handler.upl_aware_exception_handler",
+    "DEFAULT_THROTTLE_RATES": {
+        "auth": "30/minute",  # Login/register — relaxed for dev, stricter in production
+    },
 }
 
 # JWT Settings
