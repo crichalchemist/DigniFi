@@ -268,8 +268,10 @@ export type GenerateForm101Request = GenerateFormRequest;
 export type GenerateForm101Response = GenerateFormResponse;
 
 export interface GenerateAllFormsResponse {
-  forms: GeneratedForm[];
-  message: string;
+  generated: GeneratedForm[];
+  errors: Array<{ form_type: string; error: string }>;
+  total_generated: number;
+  total_errors: number;
 }
 
 export interface SessionSummaryResponse {
