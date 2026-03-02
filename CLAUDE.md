@@ -6,14 +6,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **DigniFi** is a trauma-informed digital platform that simplifies bankruptcy filing (Chapter 7 and Chapter 13) for low-income, pro se (self-represented) Americans. The platform aims to democratize access to bankruptcy relief by translating complex legal processes into plain-language guidance, auto-populated court forms, and dignified user experiences.
 
-**Current Stage:** Backend MVP Complete (Jan 2026). Django REST API with complete intake flow, means test calculator, and Form 101 generator. Frontend (React) development next.
+**Current Stage:** MVP Complete + User Testing (Mar 2026). Full-stack application with Django REST API, React 19 frontend wizard, all 13 bankruptcy form generators, and AI persona-driven usability testing infrastructure. Next: paper prototype testing with target demographic.
 
 **Mission-Critical Constraint:** All development must respect Unauthorized Practice of Law (UPL) boundaries. The platform provides legal *information*, never legal *advice*.
 
 ## Key Documentation
 
 ### Product Requirements Document
-Primary specification: `/Product Docs/DigniFi_PRD_v0.1.md`
+Primary specification: `/Product Docs/DigniFi_PRD_v0_3.md` (latest; v0.1 and v0.2 are archival)
 
 This comprehensive PRD includes:
 - Research synopsis with competitive analysis (Upsolve as primary comparator)
@@ -33,13 +33,15 @@ This comprehensive PRD includes:
 
 ### Technology Recommendations (from technical architecture analysis)
 
-**Implemented Stack (MVP):**
+**Implemented Stack:**
 - **Backend:** Python 3.11 + Django 5.0 + Django REST Framework
-- **Frontend:** React 18 (in development)
+- **Frontend:** React 19 + Vite 7 + TypeScript (Context API for state management)
 - **Database:** PostgreSQL 15 with encrypted-model-fields (Fernet encryption)
+- **Testing:** pytest (413 tests) + vitest (165 tests) + Playwright (E2E persona tests)
+- **CI/CD:** GitHub Actions (lint, backend tests, frontend tests, E2E)
 - **Containerization:** Docker + Docker Compose (Colima on macOS)
 - **Document Storage:** Local filesystem (MVP), S3-compatible planned
-- **PDF Generation:** PyPDF2 (implemented in Form101Generator service)
+- **PDF Generation:** PyPDF2 (13 form generators covering all Chapter 7 forms)
 
 **Deployed Architecture:**
 - Docker Compose with 3 services: backend (Django), db (PostgreSQL), frontend (React dev server)
@@ -137,91 +139,79 @@ This comprehensive PRD includes:
 4. **Pro Se E-Filing Constraints:** Many courts limit e-filing for pro se litigants
 5. **PDF Form Complexity:** Official forms may have non-standard field names/structure
 
-## Implementation Status (Jan 2026)
+## Implementation Status (Mar 2026)
 
-### ✅ Completed: Backend MVP (Phase 1-3)
+### ✅ Completed: Backend MVP (Phases 1-3)
 
-**Phase 1: Data Models**
-- `IntakeSession` model with multi-step wizard support (current_step, status tracking)
-- `DebtorInfo` model with encrypted PII (SSN, date of birth)
-- `IncomeInfo` model for monthly/annual income tracking
-- `ExpenseInfo` model with 12 expense categories
-- `AssetInfo` model with equity calculation (value - amount owed)
-- `DebtInfo` model using trauma-informed language ("amounts owed" vs "debt")
-- `District`, `MedianIncome`, `Exemption` models with ILND 2025 data
-- `MeansTest` model with calculate() method (11 U.S.C. § 707(b) compliance)
-- `GeneratedForm` model with status tracking (generated, downloaded, filed)
+**Phase 1: Data Models** — IntakeSession, DebtorInfo, IncomeInfo, ExpenseInfo, AssetInfo, DebtInfo with encrypted PII. District/MedianIncome/Exemption models with ILND 2025 data. MeansTest with calculate() method. GeneratedForm with status tracking.
 
-**Phase 2: Business Logic Services**
-- `MeansTestCalculator` service with UPL-compliant messaging
-  - Current Monthly Income (CMI) calculation
-  - Median income comparison by household size
-  - Fee waiver qualification (< 150% poverty line)
-  - Generates information-only messages (never advice)
-- `Form101Generator` service for Voluntary Petition
-  - preview() method for form data preview
-  - generate() method creates GeneratedForm record
-  - UPL-compliant validation and messaging
+**Phase 2: Business Logic** — MeansTestCalculator (CMI, median income comparison, fee waiver qualification). 13 form generators covering all Chapter 7 forms (101-128 + Schedules A/B–J). UPL-compliant messaging throughout.
 
-**Phase 3: REST API Endpoints**
-- `IntakeSessionViewSet` with 7 custom actions:
-  - `POST /api/intake/sessions/` - Create session
-  - `POST /api/intake/sessions/{id}/update_step/` - Update wizard step
-  - `POST /api/intake/sessions/{id}/complete/` - Finalize intake
-  - `POST /api/intake/sessions/{id}/calculate_means_test/` - Run means test
-  - `GET /api/intake/sessions/{id}/preview_form_101/` - Preview form
-  - `GET /api/intake/sessions/{id}/summary/` - Comprehensive summary
-- `AssetViewSet` and `DebtViewSet` for CRUD operations
-- `GeneratedFormViewSet` with 5 custom actions:
-  - `POST /api/forms/generate_form_101/` - Generate form
-  - `POST /api/forms/{id}/regenerate/` - Regenerate with updated data
-  - `GET /api/forms/{id}/preview/` - Preview form data
-  - `POST /api/forms/{id}/mark_downloaded/` - Track download
-  - `POST /api/forms/{id}/mark_filed/` - Track court filing
+**Phase 3: REST API** — IntakeSessionViewSet (7 actions), AssetViewSet, DebtViewSet, GeneratedFormViewSet (5 actions + generate_all bulk endpoint). Custom EncryptedDecimalField. Real ILND 2025 data.
 
-**Technical Highlights:**
-- Custom `EncryptedDecimalField` (django-encrypted-model-fields lacks this)
-- Real ILND 2025 data fixture: $71,304 median (1 person) → $178,766+ (8+ people)
-- Illinois exemptions: $15,000 homestead, $2,400 vehicle, $4,000 personal property
-- Complete serializers with nested relationships
-- Permission-based queryset filtering (users see only their sessions)
+### ✅ Completed: Frontend (Phase 4)
 
-### 🔧 In Development: Frontend (Phase 4)
+- **React 19 + Vite 7 + TypeScript** (Context API, not Redux)
+- 6-step intake wizard: Debtor Info → Income → Expenses → Assets → Debts → Review & Results
+- Desktop-first design (1024px+) with trauma-informed language throughout
+- UPL confirmation modal gates all form generation
+- FormDashboard with Generate All, individual download, Mark as Filed
+- PostTaskSurvey component (3 Likert + 2 open text)
+- WCAG 2.1 AA: ARIA labels, keyboard nav, skip links, high-contrast palette
+- ErrorBoundary wrapper, IntakeLayout with shared IntakeProvider via Outlet
 
-**Design Principles Established:**
-- **Desktop-First Design:** Primary platform for serious life administration tasks
-  - Adults use PCs for bankruptcy filing (multiple tabs, complex financial data)
-  - Desktop default (1024px+), tablet/mobile as progressive degradation
-  - NOT mobile-first (bankruptcy isn't done on smartphones)
-- **Trauma-Informed Language:**
-  - "Connection as opposed to concession"
-  - Dignity-preserving error messages
-  - "Amounts owed" vs "debt", "financial situation" vs "problem"
-  - Progress indicators emphasize accomplishment, not shame
-- **Accessibility First:**
-  - WCAG 2.1 AA compliance
-  - Screen reader optimized (ARIA labels, semantic HTML)
-  - Keyboard navigation for all interactions
-  - High contrast color palette (trauma-sensitive)
-- **Plain Language:**
-  - 6th-8th grade reading level (Flesch-Kincaid scoring)
-  - Legal jargon explained inline with tooltips
-  - No wall of text; progressive disclosure
+### ✅ Completed: Testing & CI/CD (Phase 5)
 
-**Planned Components:**
-- Multi-step wizard with visual progress indicator
-- React Context API for state management (vs Redux overhead)
-- Form validation with dignity-preserving errors
-- Real-time means test preview
-- Form 101 preview before generation
+- **Backend:** 413 pytest tests (models, services, API endpoints, serializers)
+- **Frontend:** 165 vitest tests (components, pages, context, accessibility)
+- **E2E:** Playwright page objects + journey specs for 5 personas
+- **CI:** GitHub Actions pipeline — lint, backend tests, frontend tests, E2E
+- vitest-axe matchers via `expect.extend()` for accessibility assertions
 
-### 📋 Pending: Testing & Integration (Phase 5)
+### ✅ Completed: Accessibility & Production Hardening (Phase 6)
 
+- WCAG 2.1 AA compliance audit passed
+- ESLint strict mode (36 errors resolved)
+- DRF throttling for rate limiting (ScopedRateThrottle, auth: 30/min)
 - Health check endpoint
-- Integration tests for means test calculations
-- UPL compliance review of all messaging
-- Reading level validation
-- Accessibility audit
+- Error boundaries for graceful failure recovery
+
+### ✅ Completed: AI Persona Testing (Phase 7)
+
+**Infrastructure:**
+- 5 AI persona briefs (Maria, James, Priya, DeShawn, Sarah) with synthetic IRS 900-xx SSNs
+- `seed_demo_data` management command creates completed sessions with all intake data
+- Playwright-based test scripts: `test_persona_full_flow.py` (5 personas), `test_maria_quick.py` (smoke test)
+- Full flow coverage: auth → forms dashboard → Generate All → UPL modal → 13 forms → PostTaskSurvey
+- Fire-and-forget analytics via AuditLog API with JWT auth headers
+- Orchestration protocol at `docs/testing/run-persona-tests.md`
+
+**Results (Mar 2026):** 5/5 personas complete full flow. 65 forms generated. 5/5 surveys submitted. 0 console errors.
+
+**Bugs Found & Fixed via Persona Testing (13 total):**
+
+| # | Bug | Fix | Commit |
+|---|-----|-----|--------|
+| 1 | Auth throttle 500 — `ScopedRateThrottle` rate only in production.py | Added `auth: 30/minute` to base.py | `15c6f15` |
+| 2 | FeeWaiverApplication missing in seed command | Create for eligible personas | `eb0c402` |
+| 3 | Step data 404 — frontend called non-existent `/debtor-info/` endpoints | Route through `updateSession()` PATCH | `7bd0bf7` |
+| 4 | Empty assets/debts sent as null objects → 400 | Filter blank entries before PATCH | `c5c2f5b` |
+| 5 | Assets validation blocked empty skip | Allow `allBlank` as valid | `c5c2f5b` |
+| 6 | `real_estate` ≠ `real_property` enum mismatch | Fix frontend to `real_property` | `c5c2f5b` |
+| 7 | Debt type `secured/unsecured` ≠ backend `credit_card/medical/...` | Map to `other` + `is_secured` flag | `9ef43fb` |
+| 8 | `forms.map is not a function` — DRF pagination wraps in `{results}` | `Array.isArray` guard in `listBySession` | `874d601` |
+| 9 | `navigate()` during render — React 19 crashes reconciler | Move to `useEffect` in Login/Register | `874d601` |
+| 10 | Unhandled `loadSession` rejection in IntakeProvider | Add `.catch()` to mount `useEffect` | `874d601` |
+| 11 | `GenerateAllFormsResponse` type mismatch — API returns `generated` not `forms` | Update type + handler | `b0956bb` |
+| 12 | Analytics 401s — `trackEvent()` raw fetch without auth | Use `getAccessToken()` for Bearer header | `b0956bb` |
+| 13 | FormDashboard loading state stuck — local `isLoading` never reset when no session | Use IntakeProvider's `isLoading` | `b0956bb` |
+
+### Design Principles (Frontend)
+
+- **Desktop-First:** 1024px+ default, tablet/mobile as progressive degradation
+- **Trauma-Informed Language:** "Amounts owed" not "debt", dignity-preserving errors
+- **Accessibility First:** WCAG 2.1 AA, screen reader optimized, keyboard navigation
+- **Plain Language:** 6th-8th grade reading level, legal jargon explained inline
 
 ### 🛠️ Development Tools & Workflow
 
@@ -340,30 +330,54 @@ Each district implementation requires:
 
 **Founder:** Courtney Richardson, Northwestern University Communication Studies student
 **Organizational Model:** Social impact startup, prize-funding dependent
-**Development Status:** Backend MVP complete (Jan 2026); Frontend development in progress
-**Next Milestone:** Complete React frontend wizard, then paper prototype testing with target demographic
+**Development Status:** Full-stack MVP complete (Mar 2026); AI persona testing validated
+**Next Milestone:** Paper prototype testing with target demographic at legal clinic partner
 
 ## Implementation Files Reference
 
 **Backend Core:**
 - `backend/apps/intake/models.py` - IntakeSession, DebtorInfo, IncomeInfo, ExpenseInfo, AssetInfo, DebtInfo
 - `backend/apps/intake/fields.py` - Custom EncryptedDecimalField
-- `backend/apps/intake/serializers.py` - Complete serializers for all intake models
+- `backend/apps/intake/serializers.py` - Complete serializers with nested relationships
 - `backend/apps/intake/views.py` - IntakeSessionViewSet, AssetViewSet, DebtViewSet
+- `backend/apps/intake/management/commands/seed_demo_data.py` - 5-persona synthetic data seeder
 - `backend/apps/eligibility/models.py` - MeansTest with calculate() method
 - `backend/apps/eligibility/services/means_test_calculator.py` - 11 U.S.C. § 707(b) logic
 - `backend/apps/forms/models.py` - GeneratedForm with status tracking
-- `backend/apps/forms/services/form_101_generator.py` - Form 101 Voluntary Petition generator
-- `backend/apps/forms/views.py` - GeneratedFormViewSet
-- `backend/apps/forms/serializers.py` - GeneratedForm serializer
+- `backend/apps/forms/services/` - 13 form generators (form_101 through schedules)
+- `backend/apps/forms/views.py` - GeneratedFormViewSet (generate, generate_all, regenerate, etc.)
+- `backend/apps/audit/models.py` - AuditLog for analytics and compliance tracking
+
+**Frontend Core:**
+- `frontend/src/App.tsx` - Routes, ErrorBoundary, IntakeLayout (shared provider via Outlet)
+- `frontend/src/context/AuthContext.tsx` - JWT auth with silent refresh
+- `frontend/src/context/IntakeContext.tsx` - Session state management
+- `frontend/src/api/client.ts` - API client with typed endpoints
+- `frontend/src/pages/IntakeWizard.tsx` - 6-step wizard orchestrator
+- `frontend/src/pages/FormDashboard.tsx` - Form generation dashboard with Generate All
+- `frontend/src/components/wizard/steps/` - DebtorInfo, Income, Expense, Assets, Debts, Review steps
+- `frontend/src/components/forms/GenerateAllButton.tsx` - Bulk generation with UPL modal
+- `frontend/src/components/compliance/UPLConfirmationModal.tsx` - Acknowledgment gate
+- `frontend/src/components/survey/PostTaskSurvey.tsx` - Post-task usability survey
+- `frontend/src/utils/analytics.ts` - Fire-and-forget event tracking via AuditLog API
+- `frontend/src/types/api.ts` - TypeScript interfaces for all API types
+
+**Testing:**
+- `backend/apps/*/tests/` - 413 pytest tests
+- `frontend/src/**/__tests__/` - 165 vitest tests
+- `frontend/e2e/` - Playwright page objects and journey specs
+- `test_persona_full_flow.py` - Full 5-persona E2E test script
+- `test_maria_quick.py` - Quick single-persona smoke test
 
 **Data Fixtures:**
 - `backend/apps/districts/fixtures/ilnd_2025_data.json` - ILND median income & exemptions
 
-**Docker Infrastructure:**
+**Infrastructure:**
 - `docker-compose.yml` - 3-service architecture (backend, db, frontend)
-- `backend/Dockerfile` - Django app container
-- `frontend/Dockerfile` - React app container (in development)
+- `.github/workflows/ci.yml` - GitHub Actions CI pipeline
+- `backend/Dockerfile` / `frontend/Dockerfile` - Container definitions
 
-**Development Tools:**
-- `~/.claude/skills/copilot-delegate.md` - Copilot integration skill for token optimization
+**Documentation:**
+- `docs/testing/persona-briefs/` - 5 AI persona briefs for usability testing
+- `docs/testing/run-persona-tests.md` - Orchestration protocol
+- `docs/plans/` - Design documents for major features

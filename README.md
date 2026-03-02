@@ -2,20 +2,29 @@
 
 **Mission**: Democratize access to bankruptcy relief for low-income, pro se Americans by translating complex legal processes into plain-language guidance and auto-populated court forms.
 
-**⚠️ CRITICAL**: This platform provides legal **INFORMATION**, never legal **ADVICE**. All development must respect UPL (Unauthorized Practice of Law) boundaries.
+**CRITICAL**: This platform provides legal **INFORMATION**, never legal **ADVICE**. All development must respect UPL (Unauthorized Practice of Law) boundaries.
 
 ## Project Status
 
-🚧 **Pre-MVP Development** - Scaffolding complete, building core features
+**MVP Complete** — Full-stack application validated through AI persona testing (Mar 2026)
 
 **Pilot District**: Northern District of Illinois (ILND)
 **MVP Scope**: Chapter 7 bankruptcy filing assistance
+**Next Milestone**: Paper prototype testing with target demographic
+
+### Test Results (Mar 2026)
+
+| Suite | Count | Status |
+|-------|-------|--------|
+| Backend (pytest) | 413 | Passing |
+| Frontend (vitest) | 165 | Passing |
+| E2E persona tests | 5/5 personas | All steps green |
 
 ## Quick Start
 
 ### Prerequisites
 
-- Docker & Docker Compose
+- Docker & Docker Compose (or Colima on macOS)
 - Python 3.11+ (for local development without Docker)
 - Node.js 18+ (for local development without Docker)
 
@@ -30,18 +39,34 @@ python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().
 # Add the output to FIELD_ENCRYPTION_KEY in backend/.env
 
 # 3. Start services
-docker-compose up -d
+docker compose up -d
 
 # 4. Run migrations
-docker-compose exec backend python manage.py migrate
+docker compose exec backend python manage.py migrate
 
-# 5. Create superuser
-docker-compose exec backend python manage.py createsuperuser
+# 5. Load ILND district data
+docker compose exec backend python manage.py loaddata ilnd_2025_data
 
-# 6. Access the application
-# - Frontend: http://localhost:3000
+# 6. Seed demo personas (optional — for testing)
+docker compose exec backend python manage.py seed_demo_data
+
+# 7. Access the application
+# - Frontend: http://localhost:5173
 # - Backend API: http://localhost:8000/api
 # - Admin: http://localhost:8000/admin
+```
+
+### Verify Everything Works
+
+```bash
+# Backend tests
+docker compose exec backend pytest -q
+
+# Frontend tests
+cd frontend && npx vitest run
+
+# Quick persona smoke test (requires Playwright)
+python3 test_maria_quick.py
 ```
 
 ### Local Development (Without Docker)
@@ -51,7 +76,7 @@ docker-compose exec backend python manage.py createsuperuser
 ```bash
 cd backend
 python3 -m venv venv
-source venv/bin/activate  # On Windows: venv\\Scripts\\activate
+source venv/bin/activate
 pip install -r requirements/development.txt
 cp .env.example .env
 # Edit .env with your local database settings
@@ -64,70 +89,77 @@ python manage.py runserver
 ```bash
 cd frontend
 npm install
-npm start
+npm run dev
 ```
-
 
 ## Project Structure
 
 ```text
 dignifi/
 ├── backend/                 # Django REST API
-│   ├── apps/               # Django applications
+│   ├── apps/
 │   │   ├── users/          # Authentication & profiles
-│   │   ├── audit/          # UPL compliance logging
-│   │   ├── districts/      # District-specific rules
-│   │   ├── intake/         # Data collection
+│   │   ├── audit/          # UPL compliance + analytics logging
+│   │   ├── districts/      # District-specific rules & data
+│   │   ├── intake/         # Data collection (6-step wizard)
 │   │   ├── eligibility/    # Means test calculator
-│   │   ├── forms/          # Bankruptcy form generation
-│   │   └── ...
-│   ├── config/             # Django settings
+│   │   └── forms/          # 13 bankruptcy form generators
+│   ├── config/             # Django settings (base, dev, prod)
 │   └── requirements/       # Python dependencies
-├── frontend/               # React TypeScript SPA
-│   └── src/
-│       ├── components/     # React components
-│       ├── pages/          # Page components
-│       └── services/       # API client
-├── data/                   # District data & forms
-│   ├── districts/ilnd/     # Illinois Northern District
-│   ├── forms/pdfs/         # Official bankruptcy forms
-│   └── content/            # Plain-language explainers
-└── docs/                   # Documentation
+├── frontend/               # React 19 + TypeScript SPA
+│   ├── src/
+│   │   ├── components/     # UI components (wizard, forms, compliance, survey)
+│   │   ├── pages/          # IntakeWizard, FormDashboard, Login, Register
+│   │   ├── context/        # AuthContext, IntakeContext
+│   │   ├── api/            # Typed API client
+│   │   └── utils/          # Analytics, helpers
+│   └── e2e/                # Playwright page objects & journey specs
+├── docs/                   # Reference documentation
+│   ├── testing/            # Persona briefs & orchestration protocol
+│   ├── reports/            # Usability test reports
+│   └── plans/              # Design documents
+├── Product Docs/           # PRD, briefs, architecture analysis
+├── test_persona_full_flow.py  # 5-persona E2E test script
+└── test_maria_quick.py        # Quick smoke test
 ```
 
 ## Technology Stack
 
-- **Backend**: Django 5.0, Django REST Framework, PostgreSQL
-- **Frontend**: React 18, TypeScript, Redux Toolkit
-- **PDF Generation**: PyPDF2
-- **Authentication**: JWT (djangorestframework-simplejwt)
-- **Encryption**: django-encrypted-model-fields (for PII)
+- **Backend**: Python 3.11, Django 5.0, Django REST Framework, PostgreSQL 15
+- **Frontend**: React 19, Vite 7, TypeScript (Context API for state management)
+- **PDF Generation**: PyPDF2 (13 form generators)
+- **Authentication**: JWT (djangorestframework-simplejwt) with silent refresh
+- **Encryption**: django-encrypted-model-fields (Fernet) for PII
+- **Testing**: pytest, vitest, Playwright, vitest-axe (accessibility)
+- **CI/CD**: GitHub Actions (lint, backend tests, frontend tests, E2E)
 - **Infrastructure**: Docker, Docker Compose
 
-## Core Features (MVP)
+## Core Features
 
-- ✅ User authentication & profiles
-- ✅ Multi-step intake flow
-- ✅ Chapter 7 means test calculator (11 U.S.C. § 707(b))
-- ✅ Fee waiver eligibility (28 U.S.C. § 1930(f))
-- ✅ Form 101 PDF generation
-- ✅ Illinois ILND district configuration
-- ✅ UPL compliance audit logging
-- ✅ Plain-language content system
+- User authentication with JWT (access in memory, refresh in localStorage)
+- 6-step intake wizard: Debtor Info → Income → Expenses → Assets → Debts → Review
+- Chapter 7 means test calculator (11 U.S.C. § 707(b))
+- Fee waiver eligibility assessment (28 U.S.C. § 1930(f))
+- 13 bankruptcy form generators (Form 101 through Schedules A/B–J)
+- UPL confirmation modal gates all form generation
+- Post-task usability survey (3 Likert + 2 open text)
+- Fire-and-forget analytics via AuditLog API
+- WCAG 2.1 AA accessibility (ARIA labels, keyboard nav, skip links)
+- Trauma-informed language throughout ("amounts owed" not "debt")
 
 ## Development Guidelines
 
 ### UPL Compliance (CRITICAL)
 
 **Never use these phrases:**
-- ❌ "You should file Chapter 7"
-- ❌ "I recommend..."
-- ❌ "Based on your situation, file X"
+- "You should file Chapter 7"
+- "I recommend..."
+- "Based on your situation, file X"
 
 **Always use information-only language:**
-- ✅ "You may be eligible for Chapter 7 if..."
-- ✅ "Chapter 7 typically requires..."
-- ✅ "This information is not legal advice"
+- "You may be eligible for Chapter 7 if..."
+- "Chapter 7 typically requires..."
+- "This information is not legal advice"
 
 See `docs/UPL_COMPLIANCE.md` for complete guidelines.
 
@@ -142,51 +174,47 @@ See `docs/UPL_COMPLIANCE.md` for complete guidelines.
 - **Encrypt all PII** (SSN, income data, creditor information)
 - Never log PII in error messages
 - Use HTTPS in production
-- JWT tokens expire after 30 minutes
+- JWT access tokens expire after 30 minutes
+- Synthetic SSNs for testing use IRS-reserved 900-xx range
 
 ## Testing
 
-**Backend:**
-
 ```bash
-docker-compose exec backend pytest
-# With coverage
-docker-compose exec backend pytest --cov=apps
+# Backend (413 tests)
+docker compose exec backend pytest -q
+
+# Frontend (165 tests)
+cd frontend && npx vitest run
+
+# Full persona E2E (5 personas × full flow)
+python3 test_persona_full_flow.py
+
+# Quick smoke test (Maria only)
+python3 test_maria_quick.py
 ```
-
-**Frontend:**
-
-```bash
-cd frontend
-npm test
-```
-
 
 ## API Documentation
 
-API documentation is auto-generated and available at:
-- **Swagger UI**: [Swagger UI](http://localhost:8000/api/schema/swagger-ui/)
-- **ReDoc**: [ReDoc](http://localhost:8000/api/schema/redoc/)
+Key endpoints:
 
-See `docs/API.md` for detailed endpoint documentation.
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/token/obtain/` | JWT login |
+| POST | `/api/token/refresh/` | Refresh access token |
+| POST | `/api/intake/sessions/` | Create intake session |
+| PATCH | `/api/intake/sessions/{id}/` | Update session data (nested serializer) |
+| POST | `/api/intake/sessions/{id}/complete/` | Finalize intake |
+| POST | `/api/intake/sessions/{id}/calculate_means_test/` | Run means test |
+| POST | `/api/forms/generate_all/` | Generate all 13 forms |
+| GET | `/api/forms/?session={id}` | List generated forms |
 
 ## Contributing
 
-1. Review `docs/UPL_COMPLIANCE.md` - UPL boundaries are non-negotiable
+1. Review `docs/UPL_COMPLIANCE.md` — UPL boundaries are non-negotiable
 2. Follow plain-language guidelines (`docs/PLAIN_LANGUAGE_GUIDE.md`)
 3. Use trauma-informed design principles (`docs/TRAUMA_INFORMED_DESIGN.md`)
-4. All PRs must pass linting (black, ruff, ESLint, Prettier)
+4. All PRs must pass CI (lint, backend tests, frontend tests)
 5. Maintain 80%+ test coverage
-
-## Token Optimization Strategy
-
-This project uses a multi-tier AI model strategy to optimize development costs:
-
-- **Tier 1 (Free)**: GPT-4.1/Gemini for boilerplate code
-- **Tier 2 (Relaxed)**: Claude Sonnet for creative/complex tasks
-- **Tier 3 (Premium)**: Claude Code for UPL-critical decisions
-
-See `.claude/MULTI_TIER_STRATEGY.md` for details.
 
 ## Deployment
 
@@ -210,4 +238,4 @@ See `.claude/MULTI_TIER_STRATEGY.md` for details.
 
 ---
 
-**⚠️ Legal Disclaimer**: This software provides legal information only and does not constitute legal advice. Users should consult a licensed attorney for legal advice specific to their situation.
+**Legal Disclaimer**: This software provides legal information only and does not constitute legal advice. Users should consult a licensed attorney for legal advice specific to their situation.
