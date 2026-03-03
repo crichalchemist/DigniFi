@@ -6,6 +6,10 @@
  * existing audit records for unified reporting.
  */
 
+import { getAccessToken } from '../api/client';
+
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+
 /**
  * Track a user event via the audit log API.
  * Silent on failure — analytics must never degrade the user experience.
@@ -27,10 +31,16 @@ export function trackEvent(
     console.debug('[analytics]', action, details);
   }
 
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  const token = getAccessToken();
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
   // Fire and forget — POST to audit log, swallow errors
-  fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/audit/logs/`, {
+  fetch(`${API_BASE}/audit/logs/`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     body: JSON.stringify(payload),
   }).catch(() => {
     // Silent — analytics should never break the app

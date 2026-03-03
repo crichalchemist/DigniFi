@@ -26,7 +26,7 @@ const ALL_FORM_TYPES: FormType[] = (
   .map(([key]) => key);
 
 export function FormDashboard() {
-  const { session } = useIntake();
+  const { session, isLoading: sessionLoading } = useIntake();
   const [forms, setForms] = useState<GeneratedForm[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -65,7 +65,7 @@ export function FormDashboard() {
   const handleGenerateAll = async () => {
     if (!session) return;
     const response = await api.forms.generateAll(session.id);
-    setForms(response.forms);
+    setForms(response.generated);
     trackEvent('form_generated', { form_type: 'all', session_id: session.id });
     setShowSurvey(true);
   };
@@ -81,8 +81,8 @@ export function FormDashboard() {
   };
 
   if (!session) {
-    // IntakeProvider is loading session from localStorage — show loading state
-    if (isLoading) {
+    // IntakeProvider is still loading session from localStorage
+    if (sessionLoading) {
       return (
         <div className="form-dashboard-loading" aria-live="polite">
           <p>Loading your session...</p>
