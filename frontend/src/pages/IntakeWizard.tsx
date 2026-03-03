@@ -5,7 +5,7 @@
  * and handles data persistence to backend API.
  */
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useLayoutEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useIntake } from '../context/IntakeContext';
 import { api } from '../api/client';
@@ -33,7 +33,12 @@ export function IntakeWizard() {
   const { session, createSession, updateCurrentStep, completeSession } = useIntake();
   const [currentStepNumber, setCurrentStepNumber] = useState(1);
   const [canProceed, setCanProceed] = useState(false);
-  const sessionStartRef = useRef(Date.now());
+  const sessionStartRef = useRef<number>(0);
+
+  // Initialize session start time after first render
+  useLayoutEffect(() => {
+    sessionStartRef.current = Date.now();
+  }, []);
 
   // Step-specific data
   const [debtorData, setDebtorData] = useState<Partial<DebtorInfo>>({});
@@ -107,6 +112,7 @@ export function IntakeWizard() {
       await saveCurrentStepData();
       await completeSession();
       trackEvent('intake_completed', {
+        // eslint-disable-next-line react-hooks/purity
         total_duration_ms: Date.now() - sessionStartRef.current,
         session_id: session?.id,
       });

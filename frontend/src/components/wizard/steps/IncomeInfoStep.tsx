@@ -8,7 +8,7 @@
  * - Plain language help text
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { FormField } from '../../common';
 import type { IncomeInfo } from '../../../types/api';
 
@@ -37,7 +37,6 @@ export function IncomeInfoStep({
       monthly_other_income: 0,
     }
   );
-  const [errors, setErrors] = useState<Record<string, string>>({});
 
   // Calculate total monthly income
   const totalMonthlyIncome =
@@ -52,26 +51,7 @@ export function IncomeInfoStep({
     (formData.monthly_alimony || 0) +
     (formData.monthly_other_income || 0);
 
-  // Update parent when form data changes
-  useEffect(() => {
-    const dataWithTotal = {
-      ...formData,
-      total_monthly_income: totalMonthlyIncome,
-    };
-    onDataChange(dataWithTotal);
-    validateForm();
-  }, [formData, totalMonthlyIncome]);
-
-  const handleChange = (field: keyof IncomeInfo, value: any) => {
-    const numericValue = parseFloat(value) || 0;
-    setFormData((prev) => ({ ...prev, [field]: numericValue }));
-    // Clear error for this field
-    if (errors[field]) {
-      setErrors((prev) => ({ ...prev, [field]: '' }));
-    }
-  };
-
-  const validateForm = () => {
+  const errors = useMemo<Record<string, string>>(() => {
     const newErrors: Record<string, string> = {};
 
     // Validate that at least one income source is provided
@@ -88,11 +68,22 @@ export function IncomeInfoStep({
       }
     });
 
-    setErrors(newErrors);
-    const isValid = Object.keys(newErrors).length === 0;
-    onValidationChange(isValid);
+    return newErrors;
+  }, [formData, totalMonthlyIncome]);
 
-    return isValid;
+  // Update parent when form data changes
+  useEffect(() => {
+    const dataWithTotal = {
+      ...formData,
+      total_monthly_income: totalMonthlyIncome,
+    };
+    onDataChange(dataWithTotal);
+    onValidationChange(Object.keys(errors).length === 0);
+  }, [formData, totalMonthlyIncome, errors]);
+
+  const handleChange = (field: keyof IncomeInfo, value: string) => {
+    const numericValue = parseFloat(value) || 0;
+    setFormData((prev) => ({ ...prev, [field]: numericValue }));
   };
 
   return (

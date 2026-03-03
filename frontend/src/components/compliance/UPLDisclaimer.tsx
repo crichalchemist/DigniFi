@@ -8,7 +8,6 @@
  * - checkbox: inline with required checkbox (registration-style)
  */
 
-import { useState } from 'react';
 import { UPL_ARIA_LABELS, type UPLDisclaimerVariant } from '../../constants/upl';
 
 interface UPLDisclaimerProps {
