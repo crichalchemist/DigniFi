@@ -9,7 +9,7 @@
  * - Privacy-conscious (account numbers encrypted)
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { FormField, FormTextarea, Button } from '../../common';
 import { UPLDisclaimer } from '../../compliance';
 import { UPL_EXEMPTION_DISCLAIMER } from '../../../constants/upl';
@@ -49,80 +49,8 @@ export function DebtsStep({
       ? initialData
       : [createEmptyDebt()]
   );
-  const [errors, setErrors] = useState<Record<number, Record<string, string>>>({});
 
-  // Update parent when debts change
-  useEffect(() => {
-    onDataChange(debts);
-    validateForm();
-  }, [debts]);
-
-  function createEmptyDebt(): Partial<DebtInfo> {
-    return {
-      debt_type: undefined,
-      creditor_name: '',
-      account_number: '',
-      amount_owed: 0,
-      monthly_payment: 0,
-      is_secured: false,
-      collateral_description: '',
-    };
-  }
-
-  const handleAddDebt = () => {
-    setDebts([...debts, createEmptyDebt()]);
-  };
-
-  const handleRemoveDebt = (index: number) => {
-    if (debts.length === 1) {
-      // Keep at least one debt form
-      setDebts([createEmptyDebt()]);
-    } else {
-      setDebts(debts.filter((_, i) => i !== index));
-    }
-    // Clear errors for removed debt
-    const newErrors = { ...errors };
-    delete newErrors[index];
-    setErrors(newErrors);
-  };
-
-  const handleDebtChange = (
-    index: number,
-    field: keyof DebtInfo,
-    value: any
-  ) => {
-    const updatedDebts = [...debts];
-
-    if (field === 'amount_owed' || field === 'monthly_payment') {
-      updatedDebts[index] = {
-        ...updatedDebts[index],
-        [field]: parseFloat(value) || 0,
-      };
-    } else if (field === 'debt_type') {
-      // Auto-set is_secured based on debt type
-      updatedDebts[index] = {
-        ...updatedDebts[index],
-        [field]: value,
-        is_secured: value === 'secured',
-      };
-    } else {
-      updatedDebts[index] = {
-        ...updatedDebts[index],
-        [field]: value,
-      };
-    }
-
-    setDebts(updatedDebts);
-
-    // Clear error for this field
-    if (errors[index]?.[field]) {
-      const newErrors = { ...errors };
-      delete newErrors[index][field];
-      setErrors(newErrors);
-    }
-  };
-
-  const validateForm = () => {
+  const { errors, isValid } = useMemo(() => {
     const newErrors: Record<number, Record<string, string>> = {};
     let hasValidDebt = false;
 
@@ -168,11 +96,68 @@ export function DebtsStep({
       }
     });
 
-    setErrors(newErrors);
-    const isValid = Object.keys(newErrors).length === 0 && hasValidDebt;
-    onValidationChange(isValid);
+    const valid = Object.keys(newErrors).length === 0 && hasValidDebt;
+    return { errors: newErrors, isValid: valid };
+  }, [debts]);
 
-    return isValid;
+  // Update parent when debts change
+  useEffect(() => {
+    onDataChange(debts);
+    onValidationChange(isValid);
+  }, [debts, isValid]);
+
+  function createEmptyDebt(): Partial<DebtInfo> {
+    return {
+      debt_type: undefined,
+      creditor_name: '',
+      account_number: '',
+      amount_owed: 0,
+      monthly_payment: 0,
+      is_secured: false,
+      collateral_description: '',
+    };
+  }
+
+  const handleAddDebt = () => {
+    setDebts([...debts, createEmptyDebt()]);
+  };
+
+  const handleRemoveDebt = (index: number) => {
+    if (debts.length === 1) {
+      // Keep at least one debt form
+      setDebts([createEmptyDebt()]);
+    } else {
+      setDebts(debts.filter((_, i) => i !== index));
+    }
+  };
+
+  const handleDebtChange = (
+    index: number,
+    field: keyof DebtInfo,
+    value: string | number
+  ) => {
+    const updatedDebts = [...debts];
+
+    if (field === 'amount_owed' || field === 'monthly_payment') {
+      updatedDebts[index] = {
+        ...updatedDebts[index],
+        [field]: Number(value) || 0,
+      };
+    } else if (field === 'debt_type') {
+      // Auto-set is_secured based on debt type
+      updatedDebts[index] = {
+        ...updatedDebts[index],
+        [field]: value,
+        is_secured: value === 'secured',
+      };
+    } else {
+      updatedDebts[index] = {
+        ...updatedDebts[index],
+        [field]: value,
+      };
+    }
+
+    setDebts(updatedDebts);
   };
 
   return (
@@ -336,7 +321,7 @@ export function DebtsStep({
               label="What secures this amount owed?"
               name={`collateral_description_${index}`}
               value={debt.collateral_description || ''}
-              onChange={(e: any) =>
+              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
                 handleDebtChange(index, 'collateral_description', e.target.value)
               }
               error={errors[index]?.collateral_description}

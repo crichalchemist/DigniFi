@@ -33,17 +33,17 @@ export function UPLConfirmationModal({
   const modalRef = useRef<HTMLDivElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
 
-  // Focus management: trap focus inside modal
+  // Focus management: trap focus inside modal; reset acknowledged on close
   useEffect(() => {
-    if (isOpen) {
-      previousFocusRef.current = document.activeElement as HTMLElement;
-      // Small delay to ensure modal is rendered
-      const timer = setTimeout(() => modalRef.current?.focus(), 50);
-      return () => clearTimeout(timer);
-    } else {
+    if (!isOpen) return;
+    previousFocusRef.current = document.activeElement as HTMLElement;
+    // Small delay to ensure modal is rendered
+    const timer = setTimeout(() => modalRef.current?.focus(), 50);
+    return () => {
+      clearTimeout(timer);
       setAcknowledged(false);
       previousFocusRef.current?.focus();
-    }
+    };
   }, [isOpen]);
 
   // Close on Escape

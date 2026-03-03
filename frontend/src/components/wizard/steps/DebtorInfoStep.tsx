@@ -8,7 +8,7 @@
  * - Plain language help text
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { FormField, FormSelect } from '../../common';
 import type { DebtorInfo } from '../../../types/api';
 
@@ -39,23 +39,8 @@ export function DebtorInfoStep({
   const [formData, setFormData] = useState<Partial<DebtorInfo>>(
     initialData || {}
   );
-  const [errors, setErrors] = useState<Record<string, string>>({});
 
-  // Update parent when form data changes
-  useEffect(() => {
-    onDataChange(formData);
-    validateForm();
-  }, [formData]);
-
-  const handleChange = (field: keyof DebtorInfo, value: any) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
-    // Clear error for this field when user starts typing
-    if (errors[field]) {
-      setErrors((prev) => ({ ...prev, [field]: '' }));
-    }
-  };
-
-  const validateForm = () => {
+  const errors = useMemo<Record<string, string>>(() => {
     const newErrors: Record<string, string> = {};
 
     // Required fields validation
@@ -124,11 +109,17 @@ export function DebtorInfoStep({
       newErrors.filing_type = 'Please select your filing type';
     }
 
-    setErrors(newErrors);
-    const isValid = Object.keys(newErrors).length === 0;
-    onValidationChange(isValid);
+    return newErrors;
+  }, [formData]);
 
-    return isValid;
+  // Update parent when form data changes
+  useEffect(() => {
+    onDataChange(formData);
+    onValidationChange(Object.keys(errors).length === 0);
+  }, [formData, errors]);
+
+  const handleChange = (field: keyof DebtorInfo, value: string) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
   return (
