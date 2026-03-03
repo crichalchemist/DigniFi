@@ -93,7 +93,7 @@ export const createMockAsset = (overrides?: Partial<AssetInfo>): AssetInfo => ({
 export const createMockDebt = (overrides?: Partial<DebtInfo>): DebtInfo => ({
   id: 1,
   session: 1,
-  debt_type: 'unsecured',
+  debt_type: 'credit_card',
   creditor_name: 'Chase Bank',
   account_number: '****1234',
   amount_owed: 8500,

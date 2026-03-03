@@ -165,18 +165,9 @@ export function IntakeWizard() {
       }
 
       case 'debts': {
-        // Filter empty forms, then map frontend secured/unsecured radio
-        // to backend debt_type + is_secured (frontend simplifies classification)
-        const filledDebts = debtsData
-          .filter((d) => d.creditor_name?.trim())
-          .map((d) => ({
-            ...d,
-            // Frontend radio uses 'secured'/'unsecured' as debt_type —
-            // map to backend enum and boolean
-            debt_type: d.debt_type === 'secured' ? 'other' : 'other',
-            is_secured: d.debt_type === 'secured',
-            priority_classification: d.debt_type === 'secured' ? 'secured' : 'unsecured',
-          }));
+        // Filter empty forms — debt_type, is_secured, and priority_classification
+        // are already set by DebtsStep via DEBT_CATEGORY_META lookup
+        const filledDebts = debtsData.filter((d) => d.creditor_name?.trim());
         await api.intake.updateSession(session.id, {
           debts: filledDebts,
         } as Partial<IntakeSession>);

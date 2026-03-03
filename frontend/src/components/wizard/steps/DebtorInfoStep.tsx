@@ -217,7 +217,7 @@ export function DebtorInfoStep({
             required
             autoComplete="off"
             placeholder="XXX-XX-XXXX"
-            helpText="Required for bankruptcy filing. Your SSN is encrypted."
+            helpText="🔒 Required for bankruptcy filing. Your SSN is encrypted and never shared."
           />
         </div>
       </section>

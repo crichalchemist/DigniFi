@@ -128,7 +128,7 @@ class IntakeFlowIntegrationTest(APITestCase):
         # 6. Add Debts (Optional for Means Test but part of flow)
         debt_data = {
             "session": session_id,
-            "debt_type": "unsecured",
+            "debt_type": "credit_card",
             "creditor_name": "Credit Card Co",
             "account_number": "5678",
             "amount_owed": 5000,

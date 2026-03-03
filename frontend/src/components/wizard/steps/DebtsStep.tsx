@@ -10,7 +10,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { FormField, FormTextarea, Button } from '../../common';
+import { FormField, FormSelect, FormTextarea, Button } from '../../common';
 import { UPLDisclaimer } from '../../compliance';
 import { UPL_EXEMPTION_DISCLAIMER } from '../../../constants/upl';
 import type { DebtInfo } from '../../../types/api';
@@ -21,23 +21,24 @@ interface DebtsStepProps {
   onValidationChange: (isValid: boolean) => void;
 }
 
-const DEBT_TYPES = [
-  {
-    value: 'secured',
-    label: 'Secured (backed by collateral)',
-    description: 'Mortgage, car loan, or other debt backed by property',
-  },
-  {
-    value: 'unsecured',
-    label: 'Unsecured (no collateral)',
-    description: 'Credit cards, medical bills, personal loans',
-  },
-  {
-    value: 'priority',
-    label: 'Priority (legally prioritized)',
-    description: 'Taxes, child support, alimony, student loans',
-  },
-];
+// Debt categories matching backend DEBT_TYPE_CHOICES with derived classification
+export const DEBT_CATEGORY_META: Record<
+  DebtInfo['debt_type'],
+  { label: string; is_secured: boolean; priority_classification: string }
+> = {
+  credit_card:   { label: 'Credit card',           is_secured: false, priority_classification: 'unsecured' },
+  medical:       { label: 'Medical bill',           is_secured: false, priority_classification: 'unsecured' },
+  personal_loan: { label: 'Personal loan',          is_secured: false, priority_classification: 'unsecured' },
+  student_loan:  { label: 'Student loan',           is_secured: false, priority_classification: 'priority' },
+  auto_loan:     { label: 'Car or vehicle loan',    is_secured: true,  priority_classification: 'secured' },
+  mortgage:      { label: 'Mortgage or home loan',  is_secured: true,  priority_classification: 'secured' },
+  utility:       { label: 'Utility bill',           is_secured: false, priority_classification: 'unsecured' },
+  other:         { label: 'Other amount owed',      is_secured: false, priority_classification: 'unsecured' },
+};
+
+const DEBT_CATEGORY_OPTIONS = Object.entries(DEBT_CATEGORY_META).map(
+  ([value, { label }]) => ({ value, label }),
+);
 
 export function DebtsStep({
   initialData,
@@ -99,11 +100,13 @@ export function DebtsStep({
         [field]: parseFloat(value) || 0,
       };
     } else if (field === 'debt_type') {
-      // Auto-set is_secured based on debt type
+      // Auto-derive is_secured and priority from category metadata
+      const meta = DEBT_CATEGORY_META[value as DebtInfo['debt_type']];
       updatedDebts[index] = {
         ...updatedDebts[index],
-        [field]: value,
-        is_secured: value === 'secured',
+        debt_type: value,
+        is_secured: meta?.is_secured ?? false,
+        priority_classification: meta?.priority_classification,
       };
     } else {
       updatedDebts[index] = {
@@ -151,8 +154,8 @@ export function DebtsStep({
           debtErrors.amount_owed = 'Please enter the amount owed';
         }
 
-        // Validate collateral description for secured debts
-        if (debt.debt_type === 'secured' && !debt.collateral_description?.trim()) {
+        // Validate collateral description for secured debts (auto_loan, mortgage)
+        if (debt.is_secured && !debt.collateral_description?.trim()) {
           debtErrors.collateral_description =
             'Please describe what secures this amount owed';
         }
@@ -233,41 +236,17 @@ export function DebtsStep({
             )}
           </div>
 
-          {/* Debt Type with Helpful Descriptions */}
-          <div className="debt-type-selector">
-            <label className="form-label">
-              Type of Amount Owed <span className="required-indicator">*</span>
-            </label>
-            <div className="debt-type-options">
-              {DEBT_TYPES.map((type) => (
-                <label
-                  key={type.value}
-                  className={`debt-type-option ${
-                    debt.debt_type === type.value ? 'selected' : ''
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name={`debt_type_${index}`}
-                    value={type.value}
-                    checked={debt.debt_type === type.value}
-                    onChange={(e) =>
-                      handleDebtChange(index, 'debt_type', e.target.value)
-                    }
-                  />
-                  <div className="option-content">
-                    <div className="option-label">{type.label}</div>
-                    <div className="option-description">{type.description}</div>
-                  </div>
-                </label>
-              ))}
-            </div>
-            {errors[index]?.debt_type && (
-              <p className="form-error" role="alert">
-                {errors[index].debt_type}
-              </p>
-            )}
-          </div>
+          {/* Debt Type Dropdown — 8 categories matching backend enum */}
+          <FormSelect
+            label="What kind of amount owed is this?"
+            name={`debt_type_${index}`}
+            options={DEBT_CATEGORY_OPTIONS}
+            value={debt.debt_type || ''}
+            onChange={(value) => handleDebtChange(index, 'debt_type', value)}
+            error={errors[index]?.debt_type}
+            required
+            helpText="Choose the category that best describes this amount owed"
+          />
 
           <div className="form-row">
             <FormField
@@ -330,8 +309,8 @@ export function DebtsStep({
             />
           </div>
 
-          {/* Collateral description for secured debts */}
-          {debt.debt_type === 'secured' && (
+          {/* Collateral description for secured debts (auto_loan, mortgage) */}
+          {debt.is_secured && (
             <FormTextarea
               label="What secures this amount owed?"
               name={`collateral_description_${index}`}

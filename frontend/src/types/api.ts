@@ -138,7 +138,7 @@ export interface AssetInfo {
 export interface DebtInfo {
   id: number;
   session: number;
-  debt_type: 'secured' | 'unsecured' | 'priority';
+  debt_type: 'credit_card' | 'medical' | 'personal_loan' | 'student_loan' | 'auto_loan' | 'mortgage' | 'utility' | 'other';
 
   creditor_name: string;
   account_number: string; // Encrypted in backend
@@ -147,6 +147,7 @@ export interface DebtInfo {
 
   // Classification
   is_secured: boolean;
+  priority_classification?: 'unsecured' | 'secured' | 'priority';
   collateral_description: string;
 }
 
