@@ -8,7 +8,7 @@
  * - Plain language help text
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { FormField } from '../../common';
 import type { ExpenseInfo } from '../../../types/api';
 
@@ -38,7 +38,6 @@ export function ExpenseInfoStep({
       other_necessary_expenses: 0,
     }
   );
-  const [errors, setErrors] = useState<Record<string, string>>({});
 
   // Calculate total monthly expenses
   const totalMonthlyExpenses =
@@ -54,26 +53,7 @@ export function ExpenseInfoStep({
     (formData.insurance_not_deducted || 0) +
     (formData.other_necessary_expenses || 0);
 
-  // Update parent when form data changes
-  useEffect(() => {
-    const dataWithTotal = {
-      ...formData,
-      total_monthly_expenses: totalMonthlyExpenses,
-    };
-    onDataChange(dataWithTotal);
-    validateForm();
-  }, [formData, totalMonthlyExpenses]);
-
-  const handleChange = (field: keyof ExpenseInfo, value: any) => {
-    const numericValue = parseFloat(value) || 0;
-    setFormData((prev) => ({ ...prev, [field]: numericValue }));
-    // Clear error for this field
-    if (errors[field]) {
-      setErrors((prev) => ({ ...prev, [field]: '' }));
-    }
-  };
-
-  const validateForm = () => {
+  const errors = useMemo<Record<string, string>>(() => {
     const newErrors: Record<string, string> = {};
 
     // Validate that at least one expense is provided
@@ -90,11 +70,22 @@ export function ExpenseInfoStep({
       }
     });
 
-    setErrors(newErrors);
-    const isValid = Object.keys(newErrors).length === 0;
-    onValidationChange(isValid);
+    return newErrors;
+  }, [formData, totalMonthlyExpenses]);
 
-    return isValid;
+  // Update parent when form data changes
+  useEffect(() => {
+    const dataWithTotal = {
+      ...formData,
+      total_monthly_expenses: totalMonthlyExpenses,
+    };
+    onDataChange(dataWithTotal);
+    onValidationChange(Object.keys(errors).length === 0);
+  }, [formData, totalMonthlyExpenses, errors]);
+
+  const handleChange = (field: keyof ExpenseInfo, value: string) => {
+    const numericValue = parseFloat(value) || 0;
+    setFormData((prev) => ({ ...prev, [field]: numericValue }));
   };
 
   return (

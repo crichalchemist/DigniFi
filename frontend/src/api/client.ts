@@ -77,12 +77,12 @@ export function clearTokens(): void {
 
 export class APIClientError extends Error {
   statusCode: number;
-  details?: Record<string, any>;
+  details?: Record<string, unknown>;
 
   constructor(
     message: string,
     statusCode: number,
-    details?: Record<string, any>
+    details?: Record<string, unknown>
   ) {
     super(message);
     this.name = 'APIClientError';
@@ -362,8 +362,8 @@ export const intakeAPI = {
    * Preview Form 101
    * GET /api/intake/sessions/{id}/preview_form_101/
    */
-  previewForm101: async (sessionId: number): Promise<any> => {
-    return apiFetch<any>(`/intake/sessions/${sessionId}/preview_form_101/`);
+  previewForm101: async (sessionId: number): Promise<unknown> => {
+    return apiFetch<unknown>(`/intake/sessions/${sessionId}/preview_form_101/`);
   },
 
   /**
@@ -413,7 +413,7 @@ export const debtorAPI = {
           }
         );
       }
-    } catch (error) {
+    } catch {
       // Fall through to create
     }
 
@@ -444,7 +444,7 @@ export const incomeAPI = {
           }
         );
       }
-    } catch (error) {
+    } catch {
       // Fall through to create
     }
 
@@ -475,7 +475,7 @@ export const expenseAPI = {
           }
         );
       }
-    } catch (error) {
+    } catch {
       // Fall through to create
     }
 

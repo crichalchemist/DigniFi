@@ -28,10 +28,6 @@ import type { GeneratedForm } from '../types/api';
 // Helpers
 // ============================================================================
 
-function withRouter(ui: React.ReactElement) {
-  return render(<BrowserRouter>{ui}</BrowserRouter>);
-}
-
 function withProviders(ui: React.ReactElement) {
   return render(
     <BrowserRouter>

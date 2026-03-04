@@ -252,6 +252,7 @@ export function IntakeProvider({ children }: IntakeProviderProps) {
  * Use intake context hook
  * Provides access to intake session state and actions
  */
+// eslint-disable-next-line react-refresh/only-export-components
 export function useIntake(): IntakeContextValue {
   const context = useContext(IntakeContext);
 
