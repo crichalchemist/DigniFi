@@ -2,3 +2,8 @@
 -r test.txt
 django-extensions==3.2.3
 ipython==8.20.0
+
+# Code quality tools
+black==24.10.0
+ruff==0.8.5
+pre-commit==4.0.1
