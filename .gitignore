@@ -20,8 +20,10 @@ wheels/
 .installed.cfg
 *.egg
 venv/
+.venv/
 ENV/
 env/
+.ruff_cache/
 
 # Django
 *.log
@@ -79,6 +81,10 @@ IMG_0487.jpg
 
 # Keep directory structure
 !.gitkeep
+
+# Project-specific
+/test-results/
+/TODO.txt
 
 # Claude / AI tool files
 .claude/mcp.json
