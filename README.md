@@ -14,10 +14,10 @@
 
 ### Test Results (Mar 2026)
 
-| Suite | Count | Status |
-|-------|-------|--------|
-| Backend (pytest) | 413 | Passing |
-| Frontend (vitest) | 165 | Passing |
+| Suite             | Count        | Status          |
+| ----------------- | ------------ | --------------- |
+| Backend (pytest)  | 413          | Passing         |
+| Frontend (vitest) | 165          | Passing         |
 | E2E persona tests | 5/5 personas | All steps green |
 
 ## Quick Start
@@ -68,6 +68,27 @@ cd frontend && npx vitest run
 # Quick persona smoke test (requires Playwright)
 python3 test_maria_quick.py
 ```
+
+### Code Quality Setup (Recommended)
+
+Set up automatic linting and formatting before every commit:
+
+```bash
+# One-time setup
+./scripts/setup-linting.sh
+
+# Or manually:
+pip install pre-commit
+pre-commit install
+```
+
+This installs pre-commit hooks that automatically:
+
+- Format code with Prettier (frontend) and Black (backend)
+- Lint with ESLint (frontend) and Ruff (backend)
+- Fix trailing whitespace and other issues
+
+See [docs/LINTING_SETUP.md](docs/LINTING_SETUP.md) for details.
 
 ### Local Development (Without Docker)
 
@@ -152,11 +173,13 @@ dignifi/
 ### UPL Compliance (CRITICAL)
 
 **Never use these phrases:**
+
 - "You should file Chapter 7"
 - "I recommend..."
 - "Based on your situation, file X"
 
 **Always use information-only language:**
+
 - "You may be eligible for Chapter 7 if..."
 - "Chapter 7 typically requires..."
 - "This information is not legal advice"
@@ -197,16 +220,16 @@ python3 test_maria_quick.py
 
 Key endpoints:
 
-| Method | Path | Description |
-|--------|------|-------------|
-| POST | `/api/token/obtain/` | JWT login |
-| POST | `/api/token/refresh/` | Refresh access token |
-| POST | `/api/intake/sessions/` | Create intake session |
-| PATCH | `/api/intake/sessions/{id}/` | Update session data (nested serializer) |
-| POST | `/api/intake/sessions/{id}/complete/` | Finalize intake |
-| POST | `/api/intake/sessions/{id}/calculate_means_test/` | Run means test |
-| POST | `/api/forms/generate_all/` | Generate all 13 forms |
-| GET | `/api/forms/?session={id}` | List generated forms |
+| Method | Path                                              | Description                             |
+| ------ | ------------------------------------------------- | --------------------------------------- |
+| POST   | `/api/token/obtain/`                              | JWT login                               |
+| POST   | `/api/token/refresh/`                             | Refresh access token                    |
+| POST   | `/api/intake/sessions/`                           | Create intake session                   |
+| PATCH  | `/api/intake/sessions/{id}/`                      | Update session data (nested serializer) |
+| POST   | `/api/intake/sessions/{id}/complete/`             | Finalize intake                         |
+| POST   | `/api/intake/sessions/{id}/calculate_means_test/` | Run means test                          |
+| POST   | `/api/forms/generate_all/`                        | Generate all 13 forms                   |
+| GET    | `/api/forms/?session={id}`                        | List generated forms                    |
 
 ## Contributing
 
@@ -219,6 +242,7 @@ Key endpoints:
 ## Deployment
 
 **Production checklist:**
+
 - [ ] Generate new `DJANGO_SECRET_KEY`
 - [ ] Generate new `FIELD_ENCRYPTION_KEY`
 - [ ] Set `DEBUG=False`

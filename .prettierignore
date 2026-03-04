@@ -1,0 +1,25 @@
+# Dependencies
+node_modules/
+venv/
+env/
+
+# Build outputs
+dist/
+build/
+*.pyc
+__pycache__/
+
+# Generated files
+coverage/
+.pytest_cache/
+.vitest/
+
+# Backend
+backend/
+
+# Logs
+*.log
+
+# Environment
+.env
+.env.*
