@@ -199,7 +199,7 @@ export interface GeneratedForm {
   form_type_display: string;
   status: FormStatus;
   status_display: string;
-  form_data: Record<string, any>;
+  form_data: Record<string, unknown>;
   pdf_file_path: string | null;
   upl_disclaimer?: string;
   generated_by: number;
@@ -336,5 +336,5 @@ export interface UserProfile {
 export interface APIError {
   error: string;
   message: string;
-  details?: Record<string, any>;
+  details?: Record<string, unknown>;
 }

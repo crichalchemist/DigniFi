@@ -5,7 +5,7 @@
  * Accessibility: Keyboard navigation, screen reader support, high contrast
  */
 
-import { useRef, useEffect, type ReactNode } from 'react';
+import { useRef, useEffect, useLayoutEffect, type ReactNode } from 'react';
 import { ProgressIndicator, Button } from '../common';
 import { UPLDisclaimer } from '../compliance';
 import { UPL_WIZARD_DISCLAIMER } from '../../constants/upl';
@@ -51,8 +51,15 @@ export function WizardLayout({
 }: WizardLayoutProps) {
   const { isLoading, error, clearError, session } = useIntake();
   const stepHeadingRef = useFocusManagement(currentStepNumber);
-  const stepStartRef = useRef(Date.now());
+  const stepStartRef = useRef<number>(0);
   const prevStepRef = useRef(currentStepNumber);
+
+  // Initialize step start time after first render
+  useLayoutEffect(() => {
+    if (stepStartRef.current === 0) {
+      stepStartRef.current = Date.now();
+    }
+  }, []);
 
   // Track step duration when the step changes
   useEffect(() => {

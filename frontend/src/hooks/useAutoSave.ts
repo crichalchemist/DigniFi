@@ -42,8 +42,10 @@ export function useAutoSave<T>({
   const isFirstRender = useRef(true);
 
   // Keep refs current to avoid stale closures
-  dataRef.current = data;
-  onSaveRef.current = onSave;
+  useEffect(() => {
+    dataRef.current = data;
+    onSaveRef.current = onSave;
+  });
 
   const executeSave = useCallback(async () => {
     setSaveStatus('saving');

@@ -8,7 +8,7 @@
  * - Plain language (6th-8th grade reading level)
  */
 
-import type { InputHTMLAttributes, ReactNode } from 'react';
+import type { InputHTMLAttributes, ReactNode, TextareaHTMLAttributes } from 'react';
 
 interface FormFieldProps extends InputHTMLAttributes<HTMLInputElement> {
   label: string;
@@ -87,7 +87,7 @@ export function FormField({
 // ============================================================================
 
 interface FormTextareaProps
-  extends InputHTMLAttributes<HTMLTextAreaElement> {
+  extends TextareaHTMLAttributes<HTMLTextAreaElement> {
   label: string;
   name: string;
   error?: string;
@@ -140,7 +140,7 @@ export function FormTextarea({
         }
         aria-invalid={error ? 'true' : 'false'}
         aria-required={required}
-        {...(textareaProps as any)}
+        {...textareaProps}
       />
 
       {error && (
