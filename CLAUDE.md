@@ -8,14 +8,55 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Current Stage:** MVP Complete + User Testing (Mar 2026). Full-stack application with Django REST API, React 19 frontend wizard, all 13 bankruptcy form generators, and AI persona-driven usability testing infrastructure. Next: paper prototype testing with target demographic.
 
-**Mission-Critical Constraint:** All development must respect Unauthorized Practice of Law (UPL) boundaries. The platform provides legal *information*, never legal *advice*.
+**Mission-Critical Constraint:** All development must respect Unauthorized Practice of Law (UPL) boundaries. The platform provides legal _information_, never legal _advice_.
+
+## Commands
+
+```bash
+# Start all services
+docker compose up
+
+# Backend tests
+docker compose exec backend python -m pytest
+
+# Frontend tests (from frontend/)
+npm test            # run once
+npm run test:watch
+
+# E2E persona tests (from frontend/)
+npm run e2e         # headless
+npm run e2e:headed
+
+# Database
+docker compose exec backend python manage.py migrate
+docker compose exec backend python manage.py seed_demo_data  # loads 5 AI personas
+
+# Lint/format
+cd frontend && npm run lint:fix && npm run format
+cd backend && ruff check . --fix
+```
+
+## Environment Setup
+
+Copy `.env.example` to `.env`. Required vars: `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `SECRET_KEY` (Django), `VITE_API_URL` (defaults to `http://localhost:8000/api`).
+
+## Gotchas
+
+- **DRF pagination** — list endpoints return `{count, results}`, not bare arrays. Always guard with `Array.isArray`
+- **React 19 + navigate()** — calling `navigate()` in render body crashes the reconciler. Use `useEffect`
+- **Vite HMR in Docker** — type/structure changes don't hot-reload; restart the frontend container
+- **GenerateAll vs single generate** — `/generate_all` returns `{generated, errors}`, single returns `{form, message}`
+- **Enum mismatches are silent** — frontend/backend enum drift only surfaces at runtime; check both when adding fields
+- **Analytics auth** — `trackEvent()` must use `getAccessToken()` for Bearer header, not raw fetch
 
 ## Key Documentation
 
 ### Product Requirements Document
+
 Primary specification: `/Product Docs/DigniFi_PRD_v0_3.md` (latest; v0.1 and v0.2 are archival)
 
 This comprehensive PRD includes:
+
 - Research synopsis with competitive analysis (Upsolve as primary comparator)
 - Problem framing using MITRE canvas methodology
 - Opportunity solution tree with prioritized features
@@ -25,6 +66,7 @@ This comprehensive PRD includes:
 - Decisions log and assumptions requiring validation
 
 ### Supporting Documentation
+
 - `/Product Docs/Dignifi Brief.pdf` - Executive summary and founder vision
 - `/Product Docs/dignifi_technical_architecture.md` - Technical analysis and architecture recommendations
 - `/Product Docs/Strategic Communication Plan.pdf` - Go-to-market and stakeholder communication strategy
@@ -34,6 +76,7 @@ This comprehensive PRD includes:
 ### Technology Recommendations (from technical architecture analysis)
 
 **Implemented Stack:**
+
 - **Backend:** Python 3.11 + Django 5.0 + Django REST Framework
 - **Frontend:** React 19 + Vite 7 + TypeScript (Context API for state management)
 - **Database:** PostgreSQL 15 with encrypted-model-fields (Fernet encryption)
@@ -44,12 +87,14 @@ This comprehensive PRD includes:
 - **PDF Generation:** PyPDF2 (13 form generators covering all Chapter 7 forms)
 
 **Deployed Architecture:**
+
 - Docker Compose with 3 services: backend (Django), db (PostgreSQL), frontend (React dev server)
 - Field-level encryption for PII (SSN, income, account numbers, amounts owed)
 - Custom EncryptedDecimalField for financial data
 - Service layer pattern (MeansTestCalculator, Form101Generator)
 
 **Scaling Path:**
+
 - Kubernetes or Docker Swarm orchestration
 - CDN for static assets
 - Load balancing for high availability
@@ -58,24 +103,28 @@ This comprehensive PRD includes:
 ### Core System Components
 
 1. **Intake & Decision Engine**
+
    - Rules-based logic encoding bankruptcy eligibility criteria (11 U.S.C. § 707(b) means test)
    - District-specific rule modules (94 federal districts have varying local rules)
    - Fee waiver qualification logic (28 U.S.C. § 1930(f))
    - Consider: Graph database, Drools, OpenL Tablets, or custom Python/Node logic
 
 2. **Form Generation Pipeline**
+
    - Structured data model for Official Bankruptcy Forms 101-128 and Schedules A/B through J
    - PDF manipulation layer for fillable field population
    - Schema validation ensuring required fields are complete
    - Version control system for form updates (Administrative Office updates forms periodically)
 
 3. **AI/NLP Components** (MVP: Pre-written content; Future: RAG)
+
    - **MVP Approach:** Pre-written explainer content keyed to form fields (avoids UPL risk)
    - **Future Approach:** RAG system with embedding model over bankruptcy code sections
    - Vector database options: Pinecone, Weaviate, pgvector
    - **Critical:** All outputs must be labeled as legal information, not advice
 
 4. **Case Management & Calendar**
+
    - Event-driven architecture for deadline tracking (341 meeting, plan confirmation, discharge)
    - Notification service (email, SMS, push)
    - CM/ECF integration for court calendar updates (RSS feeds)
@@ -89,6 +138,7 @@ This comprehensive PRD includes:
 ### UPL (Unauthorized Practice of Law) Rules
 
 **ALWAYS PERMITTED:**
+
 - Explaining what the law says (general information)
 - Providing process information
 - Auto-populating forms with user-provided data
@@ -96,6 +146,7 @@ This comprehensive PRD includes:
 - Linking to official court resources
 
 **NEVER PERMITTED:**
+
 - Recommending specific legal actions ("you should file Chapter 7")
 - Interpreting law for user's specific situation
 - Advising whether to file
@@ -103,12 +154,14 @@ This comprehensive PRD includes:
 - Representing users in court proceedings
 
 **Language Patterns:**
+
 - ✅ "You may be eligible for Chapter 7 if..."
 - ✅ "Chapter 7 typically requires..."
 - ❌ "You should file Chapter 7"
 - ❌ "Based on your situation, I recommend..."
 
 **Required Safeguards:**
+
 - Disclaimers at every decision point
 - Audit logging of all guidance provided to users
 - Regular legal audits by UPL experts
@@ -126,6 +179,7 @@ This comprehensive PRD includes:
 ### MVP Scope (Single-District First)
 
 **PRD Priority Classification:**
+
 - **P0 (Must-Have for MVP):** Intake flow, Chapter 7 basic eligibility, Form 101 generation, fee waiver logic, UPL compliance framework
 - **P1 (Should-Have for Pilot):** Calendar/reminders, credit counseling integration, pilot district rules
 - **P2 (Nice-to-Have):** Multi-language support, mobile app, document upload
@@ -179,6 +233,7 @@ This comprehensive PRD includes:
 ### ✅ Completed: AI Persona Testing (Phase 7)
 
 **Infrastructure:**
+
 - 5 AI persona briefs (Maria, James, Priya, DeShawn, Sarah) with synthetic IRS 900-xx SSNs
 - `seed_demo_data` management command creates completed sessions with all intake data
 - Playwright-based test scripts: `test_persona_full_flow.py` (5 personas), `test_maria_quick.py` (smoke test)
@@ -190,21 +245,21 @@ This comprehensive PRD includes:
 
 **Bugs Found & Fixed via Persona Testing (13 total):**
 
-| # | Bug | Fix | Commit |
-|---|-----|-----|--------|
-| 1 | Auth throttle 500 — `ScopedRateThrottle` rate only in production.py | Added `auth: 30/minute` to base.py | `15c6f15` |
-| 2 | FeeWaiverApplication missing in seed command | Create for eligible personas | `eb0c402` |
-| 3 | Step data 404 — frontend called non-existent `/debtor-info/` endpoints | Route through `updateSession()` PATCH | `7bd0bf7` |
-| 4 | Empty assets/debts sent as null objects → 400 | Filter blank entries before PATCH | `c5c2f5b` |
-| 5 | Assets validation blocked empty skip | Allow `allBlank` as valid | `c5c2f5b` |
-| 6 | `real_estate` ≠ `real_property` enum mismatch | Fix frontend to `real_property` | `c5c2f5b` |
-| 7 | Debt type `secured/unsecured` ≠ backend `credit_card/medical/...` | Map to `other` + `is_secured` flag | `9ef43fb` |
-| 8 | `forms.map is not a function` — DRF pagination wraps in `{results}` | `Array.isArray` guard in `listBySession` | `874d601` |
-| 9 | `navigate()` during render — React 19 crashes reconciler | Move to `useEffect` in Login/Register | `874d601` |
-| 10 | Unhandled `loadSession` rejection in IntakeProvider | Add `.catch()` to mount `useEffect` | `874d601` |
-| 11 | `GenerateAllFormsResponse` type mismatch — API returns `generated` not `forms` | Update type + handler | `b0956bb` |
-| 12 | Analytics 401s — `trackEvent()` raw fetch without auth | Use `getAccessToken()` for Bearer header | `b0956bb` |
-| 13 | FormDashboard loading state stuck — local `isLoading` never reset when no session | Use IntakeProvider's `isLoading` | `b0956bb` |
+| #   | Bug                                                                               | Fix                                      | Commit    |
+| --- | --------------------------------------------------------------------------------- | ---------------------------------------- | --------- |
+| 1   | Auth throttle 500 — `ScopedRateThrottle` rate only in production.py               | Added `auth: 30/minute` to base.py       | `15c6f15` |
+| 2   | FeeWaiverApplication missing in seed command                                      | Create for eligible personas             | `eb0c402` |
+| 3   | Step data 404 — frontend called non-existent `/debtor-info/` endpoints            | Route through `updateSession()` PATCH    | `7bd0bf7` |
+| 4   | Empty assets/debts sent as null objects → 400                                     | Filter blank entries before PATCH        | `c5c2f5b` |
+| 5   | Assets validation blocked empty skip                                              | Allow `allBlank` as valid                | `c5c2f5b` |
+| 6   | `real_estate` ≠ `real_property` enum mismatch                                     | Fix frontend to `real_property`          | `c5c2f5b` |
+| 7   | Debt type `secured/unsecured` ≠ backend `credit_card/medical/...`                 | Map to `other` + `is_secured` flag       | `9ef43fb` |
+| 8   | `forms.map is not a function` — DRF pagination wraps in `{results}`               | `Array.isArray` guard in `listBySession` | `874d601` |
+| 9   | `navigate()` during render — React 19 crashes reconciler                          | Move to `useEffect` in Login/Register    | `874d601` |
+| 10  | Unhandled `loadSession` rejection in IntakeProvider                               | Add `.catch()` to mount `useEffect`      | `874d601` |
+| 11  | `GenerateAllFormsResponse` type mismatch — API returns `generated` not `forms`    | Update type + handler                    | `b0956bb` |
+| 12  | Analytics 401s — `trackEvent()` raw fetch without auth                            | Use `getAccessToken()` for Bearer header | `b0956bb` |
+| 13  | FormDashboard loading state stuck — local `isLoading` never reset when no session | Use IntakeProvider's `isLoading`         | `b0956bb` |
 
 ### Design Principles (Frontend)
 
@@ -212,28 +267,6 @@ This comprehensive PRD includes:
 - **Trauma-Informed Language:** "Amounts owed" not "debt", dignity-preserving errors
 - **Accessibility First:** WCAG 2.1 AA, screen reader optimized, keyboard navigation
 - **Plain Language:** 6th-8th grade reading level, legal jargon explained inline
-
-### 🛠️ Development Tools & Workflow
-
-**Copilot-Delegate Skill:**
-- New skill at `~/.claude/skills/copilot-delegate.md`
-- Invokes GitHub Copilot models (including Claude Opus 4.5) via OpenCode
-- Saves 60-90% Claude Code tokens on:
-  - Boilerplate generation (TypeScript interfaces, validators)
-  - Form schema generation
-  - UI/UX research (when using Opus via Copilot)
-  - Code refactoring
-- Usage: `/copilot-delegate [model] [task description]`
-- Models: opus-4.5, sonnet-4.5, haiku, gpt-4.1 (free), gpt-5
-
-**Example Usage:**
-```bash
-# Generate TypeScript interfaces from Django serializers (90% token savings)
-/copilot-delegate Generate TypeScript interfaces for IntakeSessionSerializer
-
-# UI/UX research with Opus 4.5 (70% token savings)
-/copilot-delegate opus Research user personas for bankruptcy platform
-```
 
 ## Development Workflow
 
@@ -273,6 +306,7 @@ This comprehensive PRD includes:
 ### Pilot District Selection Criteria
 
 When choosing initial district for MVP:
+
 1. **UPL-Friendly:** State bar has clear legal tech guidance or regulatory sandbox
 2. **Pro Se E-Filing:** Court allows electronic filing for pro se litigants
 3. **Geographic Access:** Proximity to legal clinic partner for pilot
@@ -281,6 +315,7 @@ When choosing initial district for MVP:
 ### District Rule Modules
 
 Each district implementation requires:
+
 - Median income thresholds (updated annually by Census Bureau)
 - State-specific exemption schedules (homestead, vehicle, tools of trade)
 - Local court rules and procedures
@@ -308,20 +343,24 @@ Each district implementation requires:
 ## References & Resources
 
 ### Bankruptcy Law
+
 - 11 U.S.C. § 707(b) - Means Test for Chapter 7 Eligibility
 - 28 U.S.C. § 1930(f) - Fee Waiver Provisions
 - Official Bankruptcy Forms 101-128: https://www.uscourts.gov/forms/bankruptcy-forms
 
 ### Competitive Intelligence
+
 - **Upsolve:** Nonprofit, Chapter 7 only, 17,000+ users, LSC-funded
 - Study Upsolve's UX patterns, intake flow, and UPL compliance disclaimers
 
 ### Technical Resources
+
 - PACER (Public Access to Court Electronic Records): https://pacer.uscourts.gov/
 - CM/ECF (Case Management/Electronic Case Filing) standards
 - DOJ-Approved Credit Counseling Agencies: https://www.justice.gov/ust/list-credit-counseling-agencies-approved-pursuant-11-usc-111
 
 ### Inspirational Frameworks
+
 - "Dignity Not Debt" - Corporate legal systems prioritize profit over people
 - "It's Not You, It's Capitalism" - System gaslights individuals for structural failures
 - Trauma-informed design principles for vulnerable populations
@@ -336,6 +375,7 @@ Each district implementation requires:
 ## Implementation Files Reference
 
 **Backend Core:**
+
 - `backend/apps/intake/models.py` - IntakeSession, DebtorInfo, IncomeInfo, ExpenseInfo, AssetInfo, DebtInfo
 - `backend/apps/intake/fields.py` - Custom EncryptedDecimalField
 - `backend/apps/intake/serializers.py` - Complete serializers with nested relationships
@@ -349,6 +389,7 @@ Each district implementation requires:
 - `backend/apps/audit/models.py` - AuditLog for analytics and compliance tracking
 
 **Frontend Core:**
+
 - `frontend/src/App.tsx` - Routes, ErrorBoundary, IntakeLayout (shared provider via Outlet)
 - `frontend/src/context/AuthContext.tsx` - JWT auth with silent refresh
 - `frontend/src/context/IntakeContext.tsx` - Session state management
@@ -363,6 +404,7 @@ Each district implementation requires:
 - `frontend/src/types/api.ts` - TypeScript interfaces for all API types
 
 **Testing:**
+
 - `backend/apps/*/tests/` - 413 pytest tests
 - `frontend/src/**/__tests__/` - 165 vitest tests
 - `frontend/e2e/` - Playwright page objects and journey specs
@@ -370,14 +412,17 @@ Each district implementation requires:
 - `test_maria_quick.py` - Quick single-persona smoke test
 
 **Data Fixtures:**
+
 - `backend/apps/districts/fixtures/ilnd_2025_data.json` - ILND median income & exemptions
 
 **Infrastructure:**
+
 - `docker-compose.yml` - 3-service architecture (backend, db, frontend)
 - `.github/workflows/ci.yml` - GitHub Actions CI pipeline
 - `backend/Dockerfile` / `frontend/Dockerfile` - Container definitions
 
 **Documentation:**
+
 - `docs/testing/persona-briefs/` - 5 AI persona briefs for usability testing
 - `docs/testing/run-persona-tests.md` - Orchestration protocol
 - `docs/plans/` - Design documents for major features
