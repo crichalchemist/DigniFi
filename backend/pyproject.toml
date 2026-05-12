@@ -1,3 +1,7 @@
+[project]
+name = "dignifi"
+license = {text = "Elastic-2.0"}
+
 [tool.black]
 line-length = 100
 target-version = ['py311']
