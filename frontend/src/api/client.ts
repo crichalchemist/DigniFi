@@ -19,9 +19,6 @@ import type {
   GenerateFormResponse,
   GenerateAllFormsResponse,
   SessionSummaryResponse,
-  DebtorInfo,
-  IncomeInfo,
-  ExpenseInfo,
   AssetInfo,
   DebtInfo,
   GeneratedForm,
@@ -373,81 +370,6 @@ export const intakeAPI = {
 };
 
 // ============================================================================
-// Debtor Info API
-// ============================================================================
-
-export const debtorAPI = {
-  createOrUpdate: async (sessionId: number, data: Partial<DebtorInfo>): Promise<DebtorInfo> => {
-    try {
-      const session = await intakeAPI.getSession(sessionId);
-      if (session.debtor_info) {
-        return apiFetch<DebtorInfo>(`/intake/debtor-info/${session.debtor_info.id}/`, {
-          method: 'PATCH',
-          body: JSON.stringify(data),
-        });
-      }
-    } catch {
-      // Fall through to create
-    }
-
-    return apiFetch<DebtorInfo>('/intake/debtor-info/', {
-      method: 'POST',
-      body: JSON.stringify({ ...data, session: sessionId }),
-    });
-  },
-};
-
-// ============================================================================
-// Income Info API
-// ============================================================================
-
-export const incomeAPI = {
-  createOrUpdate: async (sessionId: number, data: Partial<IncomeInfo>): Promise<IncomeInfo> => {
-    try {
-      const session = await intakeAPI.getSession(sessionId);
-      if (session.income_info) {
-        return apiFetch<IncomeInfo>(`/intake/income-info/${session.income_info.id}/`, {
-          method: 'PATCH',
-          body: JSON.stringify(data),
-        });
-      }
-    } catch {
-      // Fall through to create
-    }
-
-    return apiFetch<IncomeInfo>('/intake/income-info/', {
-      method: 'POST',
-      body: JSON.stringify({ ...data, session: sessionId }),
-    });
-  },
-};
-
-// ============================================================================
-// Expense Info API
-// ============================================================================
-
-export const expenseAPI = {
-  createOrUpdate: async (sessionId: number, data: Partial<ExpenseInfo>): Promise<ExpenseInfo> => {
-    try {
-      const session = await intakeAPI.getSession(sessionId);
-      if (session.expense_info) {
-        return apiFetch<ExpenseInfo>(`/intake/expense-info/${session.expense_info.id}/`, {
-          method: 'PATCH',
-          body: JSON.stringify(data),
-        });
-      }
-    } catch {
-      // Fall through to create
-    }
-
-    return apiFetch<ExpenseInfo>('/intake/expense-info/', {
-      method: 'POST',
-      body: JSON.stringify({ ...data, session: sessionId }),
-    });
-  },
-};
-
-// ============================================================================
 // Assets API
 // ============================================================================
 
@@ -616,9 +538,6 @@ export async function validateDocument(
 export const api = {
   auth: authAPI,
   intake: intakeAPI,
-  debtor: debtorAPI,
-  income: incomeAPI,
-  expense: expenseAPI,
   assets: assetsAPI,
   debts: debtsAPI,
   forms: formsAPI,

@@ -79,15 +79,13 @@ export const handlers = [
     HttpResponse.json({
       access: 'mock-access-token',
       refresh: 'mock-refresh-token',
-    }),
+    })
   ),
 
-  http.post(`${API}/token/refresh/`, () =>
-    HttpResponse.json({ access: 'refreshed-access-token' }),
-  ),
+  http.post(`${API}/token/refresh/`, () => HttpResponse.json({ access: 'refreshed-access-token' })),
 
   http.post(`${API}/users/register/`, () =>
-    HttpResponse.json({ id: 1, email: 'jane@example.com', username: 'janedoe' }),
+    HttpResponse.json({ id: 1, email: 'jane@example.com', username: 'janedoe' })
   ),
 
   http.get(`${API}/users/me/`, () => HttpResponse.json(mockUser)),
@@ -95,7 +93,7 @@ export const handlers = [
   // -- Intake Sessions ------------------------------------------------------
 
   http.post(`${API}/intake/sessions/`, () =>
-    HttpResponse.json({ session: mockSession, message: 'Session created.' }),
+    HttpResponse.json({ session: mockSession, message: 'Session created.' })
   ),
 
   http.get(`${API}/intake/sessions/:id/`, () => HttpResponse.json(mockSession)),
@@ -104,18 +102,18 @@ export const handlers = [
     HttpResponse.json({
       session: { ...mockSession, current_step: 2, status: 'in_progress' },
       message: 'Step updated.',
-    }),
+    })
   ),
 
   http.post(`${API}/intake/sessions/:id/complete/`, () =>
-    HttpResponse.json({ message: 'Session completed.' }),
+    HttpResponse.json({ message: 'Session completed.' })
   ),
 
   http.post(`${API}/intake/sessions/:id/calculate_means_test/`, () =>
     HttpResponse.json({
       means_test_result: mockMeansTestResult,
       session_id: 1,
-    }),
+    })
   ),
 
   http.get(`${API}/intake/sessions/:id/summary/`, () =>
@@ -123,31 +121,17 @@ export const handlers = [
       session: mockSession,
       progress: { current_step: 1, status: 'started', completion_percentage: 16 },
       forms: { generated_count: 0, forms: [] },
-    }),
-  ),
-
-  // -- Debtor / Income / Expense -------------------------------------------
-
-  http.post(`${API}/intake/debtor-info/`, () =>
-    HttpResponse.json({ id: 1, session: 1, first_name: 'Jane' }),
-  ),
-
-  http.post(`${API}/intake/income-info/`, () =>
-    HttpResponse.json({ id: 1, session: 1, monthly_income: [3500, 3500, 3500, 3500, 3500, 3500] }),
-  ),
-
-  http.post(`${API}/intake/expense-info/`, () =>
-    HttpResponse.json({ id: 1, session: 1, rent_or_mortgage: 1200 }),
+    })
   ),
 
   // -- Assets / Debts ------------------------------------------------------
 
   http.post(`${API}/intake/assets/`, () =>
-    HttpResponse.json({ id: 1, session: 1, asset_type: 'vehicle', description: 'Car' }),
+    HttpResponse.json({ id: 1, session: 1, asset_type: 'vehicle', description: 'Car' })
   ),
 
   http.post(`${API}/intake/debts/`, () =>
-    HttpResponse.json({ id: 1, session: 1, debt_type: 'credit_card', creditor_name: 'Visa' }),
+    HttpResponse.json({ id: 1, session: 1, debt_type: 'credit_card', creditor_name: 'Visa' })
   ),
 
   // -- Forms ---------------------------------------------------------------
@@ -156,7 +140,7 @@ export const handlers = [
     HttpResponse.json({
       form: mockGeneratedForm,
       message: 'Form generated.',
-    }),
+    })
   ),
 
   http.post(`${API}/forms/generate/`, async ({ request }) => {
@@ -175,7 +159,7 @@ export const handlers = [
     HttpResponse.json({
       forms: [mockGeneratedForm],
       message: 'All forms generated.',
-    }),
+    })
   ),
 
   http.get(`${API}/forms/`, () => HttpResponse.json([mockGeneratedForm])),
@@ -183,10 +167,10 @@ export const handlers = [
   http.get(`${API}/forms/:id/preview/`, () => HttpResponse.json(mockGeneratedForm)),
 
   http.post(`${API}/forms/:id/mark_downloaded/`, () =>
-    HttpResponse.json({ message: 'Marked as downloaded.' }),
+    HttpResponse.json({ message: 'Marked as downloaded.' })
   ),
 
   http.post(`${API}/forms/:id/mark_filed/`, () =>
-    HttpResponse.json({ message: 'Marked as filed.' }),
+    HttpResponse.json({ message: 'Marked as filed.' })
   ),
 ];
