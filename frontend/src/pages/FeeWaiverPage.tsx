@@ -1,0 +1,114 @@
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useIntake } from '../context/IntakeContext';
+import { api } from '../api/client';
+import { Button } from '../components/common';
+
+export function FeeWaiverPage() {
+  const navigate = useNavigate();
+  const { session } = useIntake();
+
+  const [householdSize, setHouseholdSize] = useState('');
+  const [monthlyIncome, setMonthlyIncome] = useState('');
+  const [monthlyExpenses, setMonthlyExpenses] = useState('');
+  const [receivesPublicBenefits, setReceivesPublicBenefits] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!session) return;
+
+    setIsSubmitting(true);
+    setError(null);
+
+    try {
+      await api.feeWaiver.create({
+        session: session.id,
+        household_size: parseInt(householdSize, 10),
+        monthly_income: monthlyIncome,
+        monthly_expenses: monthlyExpenses,
+        receives_public_benefits: receivesPublicBenefits,
+        benefit_types: [],
+        cannot_pay_full: true,
+        cannot_pay_installments: true,
+      });
+      navigate('/forms');
+    } catch {
+      setError('Unable to submit your fee waiver application. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <main className="fee-waiver-page">
+      <h1>Filing Fee Waiver Application</h1>
+      <p>
+        Based on your intake information, you may qualify to have the $338 filing fee waived. Please
+        confirm the details below.
+      </p>
+
+      {error && (
+        <div className="fee-waiver-error" role="alert">
+          <p>{error}</p>
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit} noValidate>
+        <div className="form-field">
+          <label htmlFor="household-size">Household Size</label>
+          <input
+            id="household-size"
+            type="number"
+            min={1}
+            value={householdSize}
+            onChange={(e) => setHouseholdSize(e.target.value)}
+            required
+          />
+        </div>
+
+        <div className="form-field">
+          <label htmlFor="monthly-income">Total Monthly Income</label>
+          <input
+            id="monthly-income"
+            type="number"
+            min={0}
+            step="0.01"
+            value={monthlyIncome}
+            onChange={(e) => setMonthlyIncome(e.target.value)}
+            required
+          />
+        </div>
+
+        <div className="form-field">
+          <label htmlFor="monthly-expenses">Total Monthly Expenses</label>
+          <input
+            id="monthly-expenses"
+            type="number"
+            min={0}
+            step="0.01"
+            value={monthlyExpenses}
+            onChange={(e) => setMonthlyExpenses(e.target.value)}
+            required
+          />
+        </div>
+
+        <div className="form-field">
+          <label>
+            <input
+              type="checkbox"
+              checked={receivesPublicBenefits}
+              onChange={(e) => setReceivesPublicBenefits(e.target.checked)}
+            />{' '}
+            I receive SSI, SNAP, TANF, or other means-tested public benefits
+          </label>
+        </div>
+
+        <Button type="submit" disabled={isSubmitting}>
+          {isSubmitting ? 'Submitting...' : 'Submit Waiver Application'}
+        </Button>
+      </form>
+    </main>
+  );
+}

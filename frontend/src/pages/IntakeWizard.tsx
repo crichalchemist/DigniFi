@@ -12,7 +12,14 @@ import { api } from '../api/client';
 import { trackEvent } from '../utils/analytics';
 import { WizardLayout } from '../components/wizard/WizardLayout';
 import { MeansTestPreview } from '../components/wizard/MeansTestPreview';
-import { DebtorInfoStep, IncomeInfoStep, ExpenseInfoStep, AssetsStep, DebtsStep, ReviewStep } from '../components/wizard/steps';
+import {
+  DebtorInfoStep,
+  IncomeInfoStep,
+  ExpenseInfoStep,
+  AssetsStep,
+  DebtsStep,
+  ReviewStep,
+} from '../components/wizard/steps';
 import type { DebtorInfo, IncomeInfo, ExpenseInfo, AssetInfo, DebtInfo } from '../types/api';
 
 // ============================================================================
@@ -30,10 +37,12 @@ const WIZARD_STEPS = [
 
 export function IntakeWizard() {
   const navigate = useNavigate();
-  const { session, createSession, updateCurrentStep, completeSession } = useIntake();
+  const { session, createSession, updateCurrentStep, completeSession, calculateMeansTest } =
+    useIntake();
   const [currentStepNumber, setCurrentStepNumber] = useState(1);
   const [canProceed, setCanProceed] = useState(false);
   const sessionStartRef = useRef<number>(0);
+  const syncedSessionIdRef = useRef<number | null>(null);
 
   // Initialize session start time after first render
   useLayoutEffect(() => {
@@ -53,30 +62,20 @@ export function IntakeWizard() {
 
   useEffect(() => {
     if (!session) {
-      // Create new session (default to Illinois Northern District for MVP)
-      createSession(1); // District ID 1 = ILND
-    } else {
-      // Resume from saved step
+      // No session in context yet — create a new one (District ID 1 = ILND)
+      createSession(1);
+    } else if (syncedSessionIdRef.current !== session.id) {
+      // Session became available (loaded from localStorage or just created).
+      // Sync wizard state once per session id to avoid overwriting in-flight steps.
+      syncedSessionIdRef.current = session.id;
       setCurrentStepNumber(session.current_step);
-
-      // Load existing data
-      if (session.debtor_info) {
-        setDebtorData(session.debtor_info);
-      }
-      if (session.income_info) {
-        setIncomeData(session.income_info);
-      }
-      if (session.expense_info) {
-        setExpenseData(session.expense_info);
-      }
-      if (session.assets) {
-        setAssetsData(session.assets);
-      }
-      if (session.debts) {
-        setDebtsData(session.debts);
-      }
+      if (session.debtor_info) setDebtorData(session.debtor_info);
+      if (session.income_info) setIncomeData(session.income_info);
+      if (session.expense_info) setExpenseData(session.expense_info);
+      if (session.assets) setAssetsData(session.assets);
+      if (session.debts) setDebtsData(session.debts);
     }
-  }, []);
+  }, [session, createSession]);
 
   // =========================================================================
   // Navigation Handlers
@@ -116,7 +115,12 @@ export function IntakeWizard() {
         total_duration_ms: Date.now() - sessionStartRef.current,
         session_id: session?.id,
       });
-      navigate('/forms');
+      const result = await calculateMeansTest();
+      if (result.qualifies_for_fee_waiver) {
+        navigate('/fee-waiver');
+      } else {
+        navigate('/forms');
+      }
     } catch (error) {
       console.error('Error completing intake:', error);
     }
@@ -161,9 +165,7 @@ export function IntakeWizard() {
 
       case 'assets': {
         // Filter out empty/blank asset forms before sending
-        const filledAssets = assetsData.filter(
-          (a) => a.asset_type && a.description?.trim(),
-        );
+        const filledAssets = assetsData.filter((a) => a.asset_type && a.description?.trim());
         await api.intake.updateSession(session.id, {
           assets: filledAssets,
         } as Partial<IntakeSession>);
@@ -302,12 +304,7 @@ export function IntakeWizard() {
       canGoNext={canProceed}
       canGoPrevious={currentStepNumber > 1}
       isLastStep={currentStepNumber === WIZARD_STEPS.length}
-      sidebar={
-        <MeansTestPreview
-          sessionId={session.id}
-          currentStep={currentStepNumber}
-        />
-      }
+      sidebar={<MeansTestPreview sessionId={session.id} currentStep={currentStepNumber} />}
     />
   );
 }
