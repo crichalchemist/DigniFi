@@ -1,18 +1,21 @@
 from django.contrib import admin
-from django.urls import path, include
+from django.urls import include, path
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
+
 from .views import health_check, health_check_detailed, metrics
 
 
 class ThrottledTokenObtainView(TokenObtainPairView):
     """Login with scoped rate limiting (production: 5/minute per IP)."""
+
     throttle_classes = [ScopedRateThrottle]
     throttle_scope = "auth"
 
 
 class ThrottledTokenRefreshView(TokenRefreshView):
     """Token refresh with scoped rate limiting."""
+
     throttle_classes = [ScopedRateThrottle]
     throttle_scope = "auth"
 
@@ -30,4 +33,5 @@ urlpatterns = [
     path("api/forms/", include("apps.forms.urls")),
     path("api/districts/", include("apps.districts.urls")),
     path("api/audit/", include("apps.audit.urls")),
+    path("api/documents/", include("apps.documents.urls", namespace="documents")),
 ]
