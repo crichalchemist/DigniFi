@@ -78,6 +78,7 @@ htmlcov/
 /backend/media/generated_forms/*
 /backend/logs/*.log
 Product Docs/*.pdf
+docs/internal/*.pdf
 Official Bankruptcy Rules+Forms/
 IMG_0487.jpg
 
@@ -92,8 +93,7 @@ IMG_0487.jpg
 
 # claude-mem auto-generated activity stubs (root CLAUDE.md is tracked separately)
 backend/**/CLAUDE.md
-docs/CLAUDE.md
-docs/security/CLAUDE.md
+docs/**/CLAUDE.md
 frontend/**/CLAUDE.md
 scripts/CLAUDE.md
 test-results/CLAUDE.md

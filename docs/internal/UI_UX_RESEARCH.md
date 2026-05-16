@@ -29,14 +29,14 @@ This document presents comprehensive UX/UI research for DigniFi, a trauma-inform
 
 ### 1.1 Data Sources Analyzed
 
-| Source Type | Description | Confidence Level |
-|-------------|-------------|------------------|
-| **Product Documentation** | PRD v0.2, Technical Architecture, README | High |
-| **Industry Research** | Bankruptcy outcome disparities, pro se success rates | High |
-| **Demographic Data** | Census data, legal aid statistics, disability prevalence | High |
-| **Comparable Product Analysis** | Upsolve, legal aid clinics, court self-help portals | Medium |
-| **Existing Implementation** | Current React components, design system | High |
-| **Inferred User Patterns** | Based on similar crisis-service applications | Medium-Low (requires validation) |
+| Source Type                     | Description                                              | Confidence Level                 |
+| ------------------------------- | -------------------------------------------------------- | -------------------------------- |
+| **Product Documentation**       | PRD v0.2, Technical Architecture, README                 | High                             |
+| **Industry Research**           | Bankruptcy outcome disparities, pro se success rates     | High                             |
+| **Demographic Data**            | Census data, legal aid statistics, disability prevalence | High                             |
+| **Comparable Product Analysis** | Upsolve, legal aid clinics, court self-help portals      | Medium                           |
+| **Existing Implementation**     | Current React components, design system                  | High                             |
+| **Inferred User Patterns**      | Based on similar crisis-service applications             | Medium-Low (requires validation) |
 
 ### 1.2 Research Limitations
 
@@ -51,13 +51,13 @@ This document presents comprehensive UX/UI research for DigniFi, a trauma-inform
 
 ### 2.1 Persona Summary Cards
 
-| Persona | Age | Income | Key Goal | Primary Device | Tech Comfort |
-|---------|-----|--------|----------|----------------|--------------|
-| **Maria Santos** | 42 | $28,000/year | Discharge medical debt | Smartphone | ⭐⭐☆☆☆ (2/5) |
-| **Darnell Washington** | 35 | $34,000/year | Fresh start after job loss | Desktop (library) | ⭐⭐⭐☆☆ (3/5) |
-| **Linda Kowalski** | 58 | $22,000/year | Protect disability benefits | Tablet | ⭐⭐☆☆☆ (2/5) |
-| **Carlos Mendoza** | 29 | $31,000/year | End creditor harassment | Smartphone | ⭐⭐⭐⭐☆ (4/5) |
-| **Sarah Mitchell** | 47 | $41,000/year | File after divorce | Laptop | ⭐⭐⭐☆☆ (3/5) |
+| Persona                | Age | Income       | Key Goal                    | Primary Device    | Tech Comfort    |
+| ---------------------- | --- | ------------ | --------------------------- | ----------------- | --------------- |
+| **Maria Santos**       | 42  | $28,000/year | Discharge medical debt      | Smartphone        | ⭐⭐☆☆☆ (2/5)   |
+| **Darnell Washington** | 35  | $34,000/year | Fresh start after job loss  | Desktop (library) | ⭐⭐⭐☆☆ (3/5)  |
+| **Linda Kowalski**     | 58  | $22,000/year | Protect disability benefits | Tablet            | ⭐⭐☆☆☆ (2/5)   |
+| **Carlos Mendoza**     | 29  | $31,000/year | End creditor harassment     | Smartphone        | ⭐⭐⭐⭐☆ (4/5) |
+| **Sarah Mitchell**     | 47  | $41,000/year | File after divorce          | Laptop            | ⭐⭐⭐☆☆ (3/5)  |
 
 ---
 
@@ -75,7 +75,7 @@ This document presents comprehensive UX/UI research for DigniFi, a trauma-inform
 **Occupation:** Home healthcare aide  
 **Household:** Single mother, two children (ages 12 and 17)  
 **Income:** $28,000/year (below 150% federal poverty level)  
-**Education:** High school diploma, some community college  
+**Education:** High school diploma, some community college
 
 **Background Narrative:**  
 Maria immigrated to the U.S. at age 8 and has worked continuously since age 16. She was managing financially until her gallbladder surgery two years ago. Despite having insurance through her employer, the $18,000 in out-of-pocket costs—combined with lost wages during recovery—created a debt spiral she cannot escape. She's been avoiding phone calls from collectors, and the stress is affecting her sleep and her relationship with her teenagers. Her pastor mentioned that filing bankruptcy might help, but she's afraid of "failing" and worries about what it means for her kids' futures.
@@ -92,46 +92,49 @@ Maria receives her discharge letter, collectors stop contacting her, and she can
 
 ### Pain Points & Frustrations
 
-| Pain Point | Emotional Response | Current Workaround |
-|------------|-------------------|-------------------|
-| **Collector calls** | Anxiety, shame, avoidance | Doesn't answer unknown numbers; affecting work |
-| **Confusion about bankruptcy** | Fear of "ruining" her life | Paralysis; delayed action for 18 months |
-| **Attorney costs** | Hopelessness | Consulted one attorney, couldn't afford $1,500 fee |
-| **Complex legal language** | Overwhelm, inadequacy | Stopped reading court documents she found online |
-| **Technology barriers** | Frustration | Relies on daughter for help with forms |
+| Pain Point                     | Emotional Response         | Current Workaround                                 |
+| ------------------------------ | -------------------------- | -------------------------------------------------- |
+| **Collector calls**            | Anxiety, shame, avoidance  | Doesn't answer unknown numbers; affecting work     |
+| **Confusion about bankruptcy** | Fear of "ruining" her life | Paralysis; delayed action for 18 months            |
+| **Attorney costs**             | Hopelessness               | Consulted one attorney, couldn't afford $1,500 fee |
+| **Complex legal language**     | Overwhelm, inadequacy      | Stopped reading court documents she found online   |
+| **Technology barriers**        | Frustration                | Relies on daughter for help with forms             |
 
 > **Signature Quote:**  
-> *"I've worked my whole life. I'm not lazy. I just got sick at the wrong time, and now I can't see a way out. I don't want my kids to think their mom is a failure."*
+> _"I've worked my whole life. I'm not lazy. I just got sick at the wrong time, and now I can't see a way out. I don't want my kids to think their mom is a failure."_
 
 ### Behaviors & Patterns
 
 **How She Currently Solves Problems:**
+
 - Asks family and church community for advice
 - Uses Google Translate for English legal terms
 - Prefers phone calls over email for important matters
 - Pays bills in person or through her banking app
 
 **Decision-Making Process:**
+
 - Seeks social proof (who else has done this?)
 - Needs reassurance that decisions are reversible or safe
 - Values personal connection and empathy over efficiency
 - Distrusts institutions that have failed her before
 
 **Information Consumption:**
+
 - Reads content in small chunks; long documents overwhelm her
 - Prefers video explanations to text
 - Often returns to the same content multiple times before acting
 
 ### Technology & Communication
 
-| Dimension | Detail |
-|-----------|--------|
-| **Primary Device** | Samsung Galaxy A32 (3-year-old model, small screen) |
-| **Secondary Device** | Rarely uses desktop; borrows daughter's laptop for forms |
-| **Internet Access** | Mobile data (5GB/month); WiFi at work and church |
-| **Digital Literacy** | Comfortable with WhatsApp, Facebook, banking app |
-| **Challenges** | PDF forms don't work well on phone; small text hard to read |
-| **Preferred Communication** | Text message reminders, phone calls for complex issues |
+| Dimension                   | Detail                                                      |
+| --------------------------- | ----------------------------------------------------------- |
+| **Primary Device**          | Samsung Galaxy A32 (3-year-old model, small screen)         |
+| **Secondary Device**        | Rarely uses desktop; borrows daughter's laptop for forms    |
+| **Internet Access**         | Mobile data (5GB/month); WiFi at work and church            |
+| **Digital Literacy**        | Comfortable with WhatsApp, Facebook, banking app            |
+| **Challenges**              | PDF forms don't work well on phone; small text hard to read |
+| **Preferred Communication** | Text message reminders, phone calls for complex issues      |
 
 ### Usage Scenarios
 
@@ -146,16 +149,16 @@ Maria needs to upload pay stubs but doesn't know how to download PDFs from her e
 
 ### Design Implications
 
-| Category | Recommendation |
-|----------|----------------|
-| **Reading Level** | All content at 6th-grade reading level or below |
-| **Mobile Experience** | Mobile-first design is critical; responsive isn't enough |
-| **Save/Resume** | Prominent save functionality with SMS confirmation |
-| **Special Circumstances** | Emphasize this section; it's her path to relief |
-| **Photo Upload** | Accept camera photos; provide cropping/enhancement tools |
-| **Progress Visibility** | Clear indication of time remaining and completion status |
-| **Error Messages** | Never shame; always offer clear next steps |
-| **Language Support** | Spanish translation is priority for MVP+1 |
+| Category                  | Recommendation                                           |
+| ------------------------- | -------------------------------------------------------- |
+| **Reading Level**         | All content at 6th-grade reading level or below          |
+| **Mobile Experience**     | Mobile-first design is critical; responsive isn't enough |
+| **Save/Resume**           | Prominent save functionality with SMS confirmation       |
+| **Special Circumstances** | Emphasize this section; it's her path to relief          |
+| **Photo Upload**          | Accept camera photos; provide cropping/enhancement tools |
+| **Progress Visibility**   | Clear indication of time remaining and completion status |
+| **Error Messages**        | Never shame; always offer clear next steps               |
+| **Language Support**      | Spanish translation is priority for MVP+1                |
 
 ---
 
@@ -169,7 +172,7 @@ Maria needs to upload pay stubs but doesn't know how to download PDFs from her e
 **Occupation:** Unemployed (formerly warehouse supervisor)  
 **Household:** Single, lives with elderly mother (caregiver)  
 **Income:** $34,000/year (unemployment + gig work)  
-**Education:** Associate degree in logistics  
+**Education:** Associate degree in logistics
 
 **Background Narrative:**  
 Darnell was laid off from his warehouse supervisor position eight months ago when his company automated operations. He's been piecing together income through DoorDash and helping at his cousin's moving company, but it's not enough. His credit card debt ($23,000) and car loan (now underwater) are crushing him. He tried working with a debt consolidation company that turned out to be predatory, taking $800 before he realized they weren't helping. He's skeptical of "free" services after that experience but knows he needs a real solution. He uses the public library's computers for most online tasks.
@@ -186,32 +189,35 @@ Darnell completes his bankruptcy filing, gets his discharge, and can list his fr
 
 ### Pain Points & Frustrations
 
-| Pain Point | Emotional Response | Current Workaround |
-|------------|-------------------|-------------------|
-| **Previous scam experience** | Deep distrust of "help" services | Verifies everything; slows decision-making |
-| **Gig income variability** | Uncertainty, frustration | Tracks everything meticulously in spreadsheet |
-| **Library computer limitations** | Embarrassment, inconvenience | Rushes through tasks; can't save locally |
-| **Being steered to Chapter 13** | Skepticism (knows this is worse for him) | Researched online; wants to avoid |
-| **Racial bias concerns** | Vigilance, exhaustion | Documents everything; assumes worst-case |
+| Pain Point                       | Emotional Response                       | Current Workaround                            |
+| -------------------------------- | ---------------------------------------- | --------------------------------------------- |
+| **Previous scam experience**     | Deep distrust of "help" services         | Verifies everything; slows decision-making    |
+| **Gig income variability**       | Uncertainty, frustration                 | Tracks everything meticulously in spreadsheet |
+| **Library computer limitations** | Embarrassment, inconvenience             | Rushes through tasks; can't save locally      |
+| **Being steered to Chapter 13**  | Skepticism (knows this is worse for him) | Researched online; wants to avoid             |
+| **Racial bias concerns**         | Vigilance, exhaustion                    | Documents everything; assumes worst-case      |
 
 > **Signature Quote:**  
-> *"I did everything right—went to school, worked hard, took care of my mama—and I'm still here. I'm not trusting anybody who says they're 'here to help' unless I can verify it myself."*
+> _"I did everything right—went to school, worked hard, took care of my mama—and I'm still here. I'm not trusting anybody who says they're 'here to help' unless I can verify it myself."_
 
 ### Behaviors & Patterns
 
 **How He Currently Solves Problems:**
+
 - Extensive research before making decisions
 - Tracks finances obsessively in Google Sheets
 - Asks specific, detailed questions when seeking help
 - Prefers written documentation to verbal promises
 
 **Decision-Making Process:**
+
 - Analytical and methodical
 - Needs to understand the "why" behind each step
 - Values transparency about risks and limitations
 - Will walk away at the first sign of manipulation
 
 **Information Consumption:**
+
 - Reads legal documents carefully
 - Cross-references information across multiple sources
 - Prefers text to video (faster to skim)
@@ -219,14 +225,14 @@ Darnell completes his bankruptcy filing, gets his discharge, and can list his fr
 
 ### Technology & Communication
 
-| Dimension | Detail |
-|-----------|--------|
-| **Primary Device** | Library desktop computers |
-| **Secondary Device** | Older iPhone (8 Plus) with limited storage |
-| **Internet Access** | Library WiFi; mobile data is limited |
-| **Digital Literacy** | Comfortable with spreadsheets, PDF forms, basic research |
-| **Challenges** | Can't save files locally at library; 30-minute session limits |
-| **Preferred Communication** | Email (checks daily at library) |
+| Dimension                   | Detail                                                        |
+| --------------------------- | ------------------------------------------------------------- |
+| **Primary Device**          | Library desktop computers                                     |
+| **Secondary Device**        | Older iPhone (8 Plus) with limited storage                    |
+| **Internet Access**         | Library WiFi; mobile data is limited                          |
+| **Digital Literacy**        | Comfortable with spreadsheets, PDF forms, basic research      |
+| **Challenges**              | Can't save files locally at library; 30-minute session limits |
+| **Preferred Communication** | Email (checks daily at library)                               |
 
 ### Usage Scenarios
 
@@ -241,16 +247,16 @@ Darnell's income is above median due to last year's employment (even though he's
 
 ### Design Implications
 
-| Category | Recommendation |
-|----------|----------------|
-| **Transparency** | Prominent "Why is this free?" section; visible founder story |
-| **UPL Clarity** | Explain the legal information vs. advice distinction clearly |
-| **Session Management** | Auto-save every field; clear session timeout warnings |
-| **Means Test Explanation** | Show calculation breakdown; explain special circumstances |
-| **Time Estimates** | Accurate per-section time estimates for library users |
-| **PDF Downloads** | Allow form preview/download at any stage for offline review |
-| **Data Export** | Provide downloadable summary of all entered information |
-| **Email Reminders** | Robust email-based resume links (his primary touchpoint) |
+| Category                   | Recommendation                                               |
+| -------------------------- | ------------------------------------------------------------ |
+| **Transparency**           | Prominent "Why is this free?" section; visible founder story |
+| **UPL Clarity**            | Explain the legal information vs. advice distinction clearly |
+| **Session Management**     | Auto-save every field; clear session timeout warnings        |
+| **Means Test Explanation** | Show calculation breakdown; explain special circumstances    |
+| **Time Estimates**         | Accurate per-section time estimates for library users        |
+| **PDF Downloads**          | Allow form preview/download at any stage for offline review  |
+| **Data Export**            | Provide downloadable summary of all entered information      |
+| **Email Reminders**        | Robust email-based resume links (his primary touchpoint)     |
 
 ---
 
@@ -264,7 +270,7 @@ Darnell's income is above median due to last year's employment (even though he's
 **Occupation:** Disabled (formerly factory worker, now on SSDI)  
 **Household:** Widowed, lives alone with cat  
 **Income:** $22,000/year (SSDI + small survivor's pension)  
-**Education:** GED  
+**Education:** GED
 
 **Background Narrative:**  
 Linda worked in manufacturing for 28 years before a repetitive strain injury made work impossible. She's been on SSDI for six years. Her husband passed away three years ago, leaving her with his medical debts (she didn't realize she was a co-signer). The debt collectors are aggressive, even though most of her income is protected from garnishment. She doesn't fully understand her rights and fears that filing bankruptcy might affect her SSDI. She has arthritis in her hands and moderate vision impairment, making standard web forms challenging.
@@ -281,32 +287,35 @@ Linda receives confirmation that her SSDI is protected, files her bankruptcy wit
 
 ### Pain Points & Frustrations
 
-| Pain Point | Emotional Response | Current Workaround |
-|------------|-------------------|-------------------|
-| **Vision impairment** | Frustration, fatigue | Uses tablet's accessibility features; magnification |
-| **Hand arthritis** | Physical pain during long forms | Takes frequent breaks; avoids typing when possible |
-| **Fear about SSDI** | Anxiety, protectiveness | Called Social Security (no clear answer); still worried |
-| **Aggressive collectors** | Fear, grief | Keeps phone unplugged some days |
-| **Technology overwhelm** | Shame about needing help | Asks neighbor's teenager for help |
+| Pain Point                | Emotional Response              | Current Workaround                                      |
+| ------------------------- | ------------------------------- | ------------------------------------------------------- |
+| **Vision impairment**     | Frustration, fatigue            | Uses tablet's accessibility features; magnification     |
+| **Hand arthritis**        | Physical pain during long forms | Takes frequent breaks; avoids typing when possible      |
+| **Fear about SSDI**       | Anxiety, protectiveness         | Called Social Security (no clear answer); still worried |
+| **Aggressive collectors** | Fear, grief                     | Keeps phone unplugged some days                         |
+| **Technology overwhelm**  | Shame about needing help        | Asks neighbor's teenager for help                       |
 
 > **Signature Quote:**  
-> *"My husband was sick for two years before he passed. We did everything we could. I shouldn't have to spend the rest of my life paying for the privilege of watching him die."*
+> _"My husband was sick for two years before he passed. We did everything we could. I shouldn't have to spend the rest of my life paying for the privilege of watching him die."_
 
 ### Behaviors & Patterns
 
 **How She Currently Solves Problems:**
+
 - Calls helplines rather than using websites
 - Asks community members (church, neighbors) for referrals
 - Takes physical notes in a notebook
 - Needs to re-read instructions multiple times
 
 **Decision-Making Process:**
+
 - Cautious and slow-moving
 - Needs explicit reassurance about safety
 - Values personal connection over efficiency
 - Will abandon process if it feels risky to her benefits
 
 **Information Consumption:**
+
 - Prefers large text and high contrast
 - Can't read PDFs without zooming significantly
 - Watches videos only if they have captions
@@ -314,14 +323,14 @@ Linda receives confirmation that her SSDI is protected, files her bankruptcy wit
 
 ### Technology & Communication
 
-| Dimension | Detail |
-|-----------|--------|
-| **Primary Device** | iPad (used with accessibility features) |
-| **Secondary Device** | Landline phone |
-| **Internet Access** | Home WiFi (basic plan, reliable) |
-| **Digital Literacy** | Limited; uses email and Facebook with difficulty |
-| **Challenges** | Small touch targets; vision impairment; hand pain |
-| **Preferred Communication** | Phone call (prefers human voice); voicemail okay |
+| Dimension                   | Detail                                            |
+| --------------------------- | ------------------------------------------------- |
+| **Primary Device**          | iPad (used with accessibility features)           |
+| **Secondary Device**        | Landline phone                                    |
+| **Internet Access**         | Home WiFi (basic plan, reliable)                  |
+| **Digital Literacy**        | Limited; uses email and Facebook with difficulty  |
+| **Challenges**              | Small touch targets; vision impairment; hand pain |
+| **Preferred Communication** | Phone call (prefers human voice); voicemail okay  |
 
 ### Usage Scenarios
 
@@ -336,16 +345,16 @@ Linda has her Social Security statements as PDFs in her email. She doesn't know 
 
 ### Design Implications
 
-| Category | Recommendation |
-|----------|----------------|
-| **Accessibility** | WCAG 2.1 AAA for contrast; 200% zoom support; large touch targets (44x44px minimum) |
-| **Text Size** | Base font 18px minimum; user-adjustable |
-| **Form Design** | Voice input option; larger fields; autocomplete where possible |
-| **SSDI Reassurance** | Dedicated explainer: "Your disability benefits are protected" |
-| **Progress Saving** | Automatic; never lose data due to timeout or navigation |
-| **Document Alternatives** | Email-to-upload option; phone-based document submission pathway |
-| **Phone Support** | Clearly visible phone number for questions (even if voicemail) |
-| **Session Duration** | No time limits; accommodate slow, careful completion |
+| Category                  | Recommendation                                                                      |
+| ------------------------- | ----------------------------------------------------------------------------------- |
+| **Accessibility**         | WCAG 2.1 AAA for contrast; 200% zoom support; large touch targets (44x44px minimum) |
+| **Text Size**             | Base font 18px minimum; user-adjustable                                             |
+| **Form Design**           | Voice input option; larger fields; autocomplete where possible                      |
+| **SSDI Reassurance**      | Dedicated explainer: "Your disability benefits are protected"                       |
+| **Progress Saving**       | Automatic; never lose data due to timeout or navigation                             |
+| **Document Alternatives** | Email-to-upload option; phone-based document submission pathway                     |
+| **Phone Support**         | Clearly visible phone number for questions (even if voicemail)                      |
+| **Session Duration**      | No time limits; accommodate slow, careful completion                                |
 
 ---
 
@@ -359,7 +368,7 @@ Linda has her Social Security statements as PDFs in her email. She doesn't know 
 **Occupation:** Restaurant line cook  
 **Household:** Lives with roommate  
 **Income:** $31,000/year (hourly wages, variable hours)  
-**Education:** Some college (dropped out sophomore year)  
+**Education:** Some college (dropped out sophomore year)
 
 **Background Narrative:**  
 Carlos dropped out of college after his father was deported. He's been working in restaurants ever since, cobbling together hours at two different establishments. His credit card debt ($15,000) accumulated during his attempts to help with immigration lawyer fees and family expenses in Mexico. He's now being sued by a creditor, and he received a wage garnishment notice. He's angry at a system that made his family's situation impossible and is motivated to fight back. He's technologically savvy but deeply skeptical of institutions.
@@ -376,32 +385,35 @@ Carlos files quickly, stops the garnishment, gets his discharge, and can start s
 
 ### Pain Points & Frustrations
 
-| Pain Point | Emotional Response | Current Workaround |
-|------------|-------------------|-------------------|
-| **Wage garnishment threat** | Urgency, anger | Researching options frantically |
-| **Variable income** | Difficulty documenting | Keeps all pay stubs; calculates averages |
-| **Two-job schedule** | Time scarcity | Does everything on phone during breaks/commute |
-| **Immigration-related trauma** | Distrust of government systems | Hesitant to enter personal information |
-| **Lawsuit stress** | Overwhelm | Ignored it initially; now scrambling |
+| Pain Point                     | Emotional Response             | Current Workaround                             |
+| ------------------------------ | ------------------------------ | ---------------------------------------------- |
+| **Wage garnishment threat**    | Urgency, anger                 | Researching options frantically                |
+| **Variable income**            | Difficulty documenting         | Keeps all pay stubs; calculates averages       |
+| **Two-job schedule**           | Time scarcity                  | Does everything on phone during breaks/commute |
+| **Immigration-related trauma** | Distrust of government systems | Hesitant to enter personal information         |
+| **Lawsuit stress**             | Overwhelm                      | Ignored it initially; now scrambling           |
 
 > **Signature Quote:**  
-> *"They want to take 25% of my paycheck? For debt I got into trying to keep my family together? This system is broken, and I'm not just going to accept it."*
+> _"They want to take 25% of my paycheck? For debt I got into trying to keep my family together? This system is broken, and I'm not just going to accept it."_
 
 ### Behaviors & Patterns
 
 **How He Currently Solves Problems:**
+
 - Researches online extensively
 - Asks friends in similar situations for advice
 - Uses apps for most tasks (banking, communication, scheduling)
 - Prefers self-service over phone calls
 
 **Decision-Making Process:**
+
 - Quick once convinced; research precedes action
 - Values efficiency and clarity
 - Distrusts institutions but will engage if treated fairly
 - Responds to urgency (deadline-driven)
 
 **Information Consumption:**
+
 - Skims content for key points
 - Prefers bullet points over paragraphs
 - Uses search functions to find specific answers
@@ -409,14 +421,14 @@ Carlos files quickly, stops the garnishment, gets his discharge, and can start s
 
 ### Technology & Communication
 
-| Dimension | Detail |
-|-----------|--------|
-| **Primary Device** | iPhone 13 (employer-discounted) |
-| **Secondary Device** | Rarely uses desktop |
-| **Internet Access** | Unlimited mobile data; WiFi at apartments |
-| **Digital Literacy** | High; uses multiple productivity apps |
-| **Challenges** | Completing long forms on phone during short breaks |
-| **Preferred Communication** | Text/push notifications; checks email rarely |
+| Dimension                   | Detail                                             |
+| --------------------------- | -------------------------------------------------- |
+| **Primary Device**          | iPhone 13 (employer-discounted)                    |
+| **Secondary Device**        | Rarely uses desktop                                |
+| **Internet Access**         | Unlimited mobile data; WiFi at apartments          |
+| **Digital Literacy**        | High; uses multiple productivity apps              |
+| **Challenges**              | Completing long forms on phone during short breaks |
+| **Preferred Communication** | Text/push notifications; checks email rarely       |
 
 ### Usage Scenarios
 
@@ -431,16 +443,16 @@ With inconsistent hours, Carlos's income varies from $400-$700 per week. He need
 
 ### Design Implications
 
-| Category | Recommendation |
-|----------|----------------|
-| **Urgency Addressing** | Clear timeline explanation: "Bankruptcy stops garnishment immediately through automatic stay" |
-| **Mobile Optimization** | Every form must be completable on iPhone; no desktop-required features |
-| **Session Chunking** | Design for 10-15 minute completion bursts; clear stopping points |
-| **Variable Income Support** | Calculator for averaging; explanation of which months count |
-| **Progress Indicators** | Real-time: "5 more questions in this section" |
-| **Push Notifications** | Deadline reminders; session resume prompts |
-| **Fast Path Options** | If straightforward, surface time-to-completion estimates prominently |
-| **Political Framing** | He resonates with DigniFi's political mission; visible but not required |
+| Category                    | Recommendation                                                                                |
+| --------------------------- | --------------------------------------------------------------------------------------------- |
+| **Urgency Addressing**      | Clear timeline explanation: "Bankruptcy stops garnishment immediately through automatic stay" |
+| **Mobile Optimization**     | Every form must be completable on iPhone; no desktop-required features                        |
+| **Session Chunking**        | Design for 10-15 minute completion bursts; clear stopping points                              |
+| **Variable Income Support** | Calculator for averaging; explanation of which months count                                   |
+| **Progress Indicators**     | Real-time: "5 more questions in this section"                                                 |
+| **Push Notifications**      | Deadline reminders; session resume prompts                                                    |
+| **Fast Path Options**       | If straightforward, surface time-to-completion estimates prominently                          |
+| **Political Framing**       | He resonates with DigniFi's political mission; visible but not required                       |
 
 ---
 
@@ -454,7 +466,7 @@ With inconsistent hours, Carlos's income varies from $400-$700 per week. He need
 **Occupation:** Part-time administrative assistant  
 **Household:** Recently divorced, two teenagers (shared custody)  
 **Income:** $41,000/year (salary + child support)  
-**Education:** Bachelor's degree in communications  
+**Education:** Bachelor's degree in communications
 
 **Background Narrative:**  
 Sarah's 20-year marriage ended in a contentious divorce. She discovered that her ex-husband had accumulated $45,000 in credit card debt in her name (she was an authorized user) and that the IRS was owed $12,000 from a side business she didn't know existed. Her divorce attorney failed to properly address these debts in the settlement, and now she's responsible for them. She's humiliated—she was a stay-at-home mom for 15 years and is now navigating financial systems she never had to understand. She has decent computer skills from her administrative work but is new to legal and financial complexity.
@@ -471,32 +483,35 @@ Sarah receives her discharge, can focus on her career growth, and demonstrates t
 
 ### Pain Points & Frustrations
 
-| Pain Point | Emotional Response | Current Workaround |
-|------------|-------------------|-------------------|
-| **Unfair debt burden** | Anger, betrayal | Researching whether she can contest assignment |
-| **Prior attorney failure** | Deep distrust of legal professionals | Doing everything herself if possible |
-| **Shame about situation** | Embarrassment | Hasn't told friends or family |
-| **Tax complexity** | Confusion | Doesn't know if IRS debt is dischargeable |
-| **Income classification** | Uncertainty | Child support affects means test? |
+| Pain Point                 | Emotional Response                   | Current Workaround                             |
+| -------------------------- | ------------------------------------ | ---------------------------------------------- |
+| **Unfair debt burden**     | Anger, betrayal                      | Researching whether she can contest assignment |
+| **Prior attorney failure** | Deep distrust of legal professionals | Doing everything herself if possible           |
+| **Shame about situation**  | Embarrassment                        | Hasn't told friends or family                  |
+| **Tax complexity**         | Confusion                            | Doesn't know if IRS debt is dischargeable      |
+| **Income classification**  | Uncertainty                          | Child support affects means test?              |
 
 > **Signature Quote:**  
-> *"I trusted everyone—my husband, my lawyer—and I ended up with nothing but debt that isn't even mine. I'm done trusting. I'm going to figure this out myself."*
+> _"I trusted everyone—my husband, my lawyer—and I ended up with nothing but debt that isn't even mine. I'm done trusting. I'm going to figure this out myself."_
 
 ### Behaviors & Patterns
 
 **How She Currently Solves Problems:**
+
 - Methodical research; creates spreadsheets
 - Joins online forums and Facebook groups for divorced parents
 - Takes notes extensively; prints documents
 - Prefers to understand everything before taking action
 
 **Decision-Making Process:**
+
 - Careful and deliberate
 - Seeks control over situations (reaction to past loss of control)
 - Values competence and clarity
 - Will ask detailed questions when uncertain
 
 **Information Consumption:**
+
 - Reads thoroughly when stakes are high
 - Prefers organized, scannable content
 - Uses bookmarks and note-taking
@@ -504,14 +519,14 @@ Sarah receives her discharge, can focus on her career growth, and demonstrates t
 
 ### Technology & Communication
 
-| Dimension | Detail |
-|-----------|--------|
-| **Primary Device** | MacBook Air (work laptop, personal use allowed) |
-| **Secondary Device** | iPhone 14 |
-| **Internet Access** | Home WiFi (stable); work WiFi |
-| **Digital Literacy** | Moderate-high; comfortable with standard office applications |
-| **Challenges** | Not familiar with legal terminology; financial forms |
-| **Preferred Communication** | Email for records; text for reminders |
+| Dimension                   | Detail                                                       |
+| --------------------------- | ------------------------------------------------------------ |
+| **Primary Device**          | MacBook Air (work laptop, personal use allowed)              |
+| **Secondary Device**        | iPhone 14                                                    |
+| **Internet Access**         | Home WiFi (stable); work WiFi                                |
+| **Digital Literacy**        | Moderate-high; comfortable with standard office applications |
+| **Challenges**              | Not familiar with legal terminology; financial forms         |
+| **Preferred Communication** | Email for records; text for reminders                        |
 
 ### Usage Scenarios
 
@@ -526,16 +541,16 @@ Her current financial situation exists partly because her divorce attorney faile
 
 ### Design Implications
 
-| Category | Recommendation |
-|----------|----------------|
-| **Tax Debt Explainer** | Dedicated section on IRS debt dischargeability criteria |
-| **Child Support Clarity** | Explicit means test treatment of child support/alimony |
-| **Documentation Emphasis** | Help her build evidence for any contested claims |
-| **Special Circumstances** | Include divorce-related expenses in prompted categories |
-| **Control Features** | Print/export at every stage; full visibility into all data |
-| **Attorney Reference** | Explain where professional help might still be needed |
-| **Verification Links** | Link to official sources (IRS, USCIS) for verification |
-| **Desktop-First** | Optimize for laptop experience (her primary device) |
+| Category                   | Recommendation                                             |
+| -------------------------- | ---------------------------------------------------------- |
+| **Tax Debt Explainer**     | Dedicated section on IRS debt dischargeability criteria    |
+| **Child Support Clarity**  | Explicit means test treatment of child support/alimony     |
+| **Documentation Emphasis** | Help her build evidence for any contested claims           |
+| **Special Circumstances**  | Include divorce-related expenses in prompted categories    |
+| **Control Features**       | Print/export at every stage; full visibility into all data |
+| **Attorney Reference**     | Explain where professional help might still be needed      |
+| **Verification Links**     | Link to official sources (IRS, USCIS) for verification     |
+| **Desktop-First**          | Optimize for laptop experience (her primary device)        |
 
 ---
 
@@ -543,37 +558,37 @@ Her current financial situation exists partly because her divorce attorney faile
 
 ### 3.1 Universal Needs
 
-| Need | Frequency | Design Response |
-|------|-----------|-----------------|
-| **Trust & Transparency** | All personas | Visible mission, founder story, clear UPL disclaimer |
-| **Dignity Preservation** | All personas | Trauma-informed language throughout |
+| Need                       | Frequency    | Design Response                                          |
+| -------------------------- | ------------ | -------------------------------------------------------- |
+| **Trust & Transparency**   | All personas | Visible mission, founder story, clear UPL disclaimer     |
+| **Dignity Preservation**   | All personas | Trauma-informed language throughout                      |
 | **Save/Resume Capability** | All personas | Auto-save; multiple resume pathways (email, login, code) |
-| **Progress Visibility** | All personas | Clear step indicators; time estimates |
-| **Plain Language** | All personas | 6th-8th grade reading level; glossary on hover |
-| **Error Recovery** | All personas | Non-judgmental errors; clear correction paths |
+| **Progress Visibility**    | All personas | Clear step indicators; time estimates                    |
+| **Plain Language**         | All personas | 6th-8th grade reading level; glossary on hover           |
+| **Error Recovery**         | All personas | Non-judgmental errors; clear correction paths            |
 
 ### 3.2 Segmented Needs
 
-| Need | Personas | Design Response |
-|------|----------|-----------------|
-| **Mobile-First** | Maria, Carlos | All forms functional on 320px screens |
-| **Desktop/Library Optimization** | Darnell, Sarah | Session timeout warnings; offline export |
-| **Accessibility Features** | Linda | AAA contrast; zoom support; voice input |
-| **Speed/Urgency** | Carlos, Darnell | Fast-track options; timeline clarity |
-| **Special Circumstances Emphasis** | Maria, Sarah | Prominent, supportive presentation |
-| **Spanish Language** | Maria | MVP+1 priority |
+| Need                               | Personas        | Design Response                          |
+| ---------------------------------- | --------------- | ---------------------------------------- |
+| **Mobile-First**                   | Maria, Carlos   | All forms functional on 320px screens    |
+| **Desktop/Library Optimization**   | Darnell, Sarah  | Session timeout warnings; offline export |
+| **Accessibility Features**         | Linda           | AAA contrast; zoom support; voice input  |
+| **Speed/Urgency**                  | Carlos, Darnell | Fast-track options; timeline clarity     |
+| **Special Circumstances Emphasis** | Maria, Sarah    | Prominent, supportive presentation       |
+| **Spanish Language**               | Maria           | MVP+1 priority                           |
 
 ### 3.3 Trust-Building Requirements
 
 Users arrive with varying trust deficits:
 
-| Persona | Trust Barrier | Trust Signal Needed |
-|---------|---------------|---------------------|
-| **Maria** | Fear of institutional shame | Warmth; personal story; community proof |
-| **Darnell** | Prior scam experience | Transparency; verifiable credentials; no tricks |
-| **Linda** | Confusion, dependency fear | Explicit benefit protection; phone access option |
-| **Carlos** | Institutional distrust | Political alignment; efficiency; respect |
-| **Sarah** | Attorney failure | Self-service control; verifiable information |
+| Persona     | Trust Barrier               | Trust Signal Needed                              |
+| ----------- | --------------------------- | ------------------------------------------------ |
+| **Maria**   | Fear of institutional shame | Warmth; personal story; community proof          |
+| **Darnell** | Prior scam experience       | Transparency; verifiable credentials; no tricks  |
+| **Linda**   | Confusion, dependency fear  | Explicit benefit protection; phone access option |
+| **Carlos**  | Institutional distrust      | Political alignment; efficiency; respect         |
+| **Sarah**   | Attorney failure            | Self-service control; verifiable information     |
 
 ---
 
@@ -603,16 +618,16 @@ Based on persona research, DigniFi's UX must embody these principles:
 
 ### 4.2 Language Guidelines
 
-| Instead of... | Use... |
-|---------------|--------|
-| Your debts | Amounts you owe |
-| Failed to | Not yet completed |
-| You must | You'll need to |
-| Error | Let's fix this |
-| Invalid | Needs attention |
-| Submit | Continue |
-| Bankruptcy | Fresh start / bankruptcy relief |
-| Discharged | Cleared / forgiven |
+| Instead of... | Use...                          |
+| ------------- | ------------------------------- |
+| Your debts    | Amounts you owe                 |
+| Failed to     | Not yet completed               |
+| You must      | You'll need to                  |
+| Error         | Let's fix this                  |
+| Invalid       | Needs attention                 |
+| Submit        | Continue                        |
+| Bankruptcy    | Fresh start / bankruptcy relief |
+| Discharged    | Cleared / forgiven              |
 
 ### 4.3 Error Message Framework
 
@@ -624,9 +639,11 @@ All error messages should follow this pattern:
 4. **Reassurance** (if appropriate)
 
 **Example:**
+
 > "This date doesn't look right. The format should be MM/DD/YYYY. You can type it again or use the calendar."
 
 **Not:**
+
 > "Error: Invalid date format"
 
 ---
@@ -638,19 +655,23 @@ All error messages should follow this pattern:
 The forced review of BAPCPA special circumstances is DigniFi's differentiating feature. It must be implemented as:
 
 **✓ Supportive, Not Punitive**
+
 - Frame as "finding all the relief you're entitled to"
 - Not as "additional requirements to complete"
 
 **✓ Guided, Not Demanding**
+
 - Use checkboxes with examples
 - Provide templates for written explanations
 - Offer sentence starters: "My income decreased because..."
 
 **✓ Validating**
+
 - "Many people qualify for these—let's make sure you get the benefit"
 - Highlight that attorneys often miss this step
 
 **Recommended Implementation:**
+
 ```
 ┌──────────────────────────────────────────────────────────────────┐
 │ ★ Special Circumstances Review                                   │
@@ -677,12 +698,14 @@ The forced review of BAPCPA special circumstances is DigniFi's differentiating f
 ### 5.2 Onboarding Experience
 
 **First 30 Seconds: Trust Establishment**
+
 1. Clear statement: "This is a free tool. Here's why." (Link to founder story)
 2. Visual: Human face/name of founder (builds connection)
 3. Promise: "We provide legal information—you make the decisions"
 4. Time estimate: "Most people complete this in 45-60 minutes, saved as you go"
 
 **First 2 Minutes: Safety Confirmation**
+
 1. Explain data privacy (where it's stored, who sees it)
 2. Confirm: "Your disability benefits / wages / [relevant asset] are protected"
 3. Acknowledge: "This is hard. We'll guide you through it."
@@ -692,17 +715,20 @@ The forced review of BAPCPA special circumstances is DigniFi's differentiating f
 Given user constraints (library computers, short sessions, technology limitations), the save/resume system must be robust:
 
 **Save Triggers:**
+
 - Every field change (autosave with visual confirmation)
 - Every page navigation
 - On window blur/close (with warning)
 
 **Resume Pathways:**
+
 - Email link (primary for Darnell, Linda)
 - SMS link (primary for Maria, Carlos)
 - Login (for users who create accounts)
 - Resume code (8-character, case-insensitive, works from any device)
 
 **Visual Confirmation:**
+
 - Constant "Saved ✓" indicator
 - Timestamp of last save
 - On resume: "Welcome back! You were on [step name]"
@@ -711,28 +737,28 @@ Given user constraints (library computers, short sessions, technology limitation
 
 For Maria and Carlos (smartphone-primary users):
 
-| Pattern | Implementation |
-|---------|----------------|
-| **Single-column layouts** | No side-by-side fields on mobile |
-| **Large touch targets** | Minimum 48x48px (exceeds WCAG's 44px) |
-| **Sticky navigation** | Progress and action buttons always visible |
+| Pattern                    | Implementation                                                                  |
+| -------------------------- | ------------------------------------------------------------------------------- |
+| **Single-column layouts**  | No side-by-side fields on mobile                                                |
+| **Large touch targets**    | Minimum 48x48px (exceeds WCAG's 44px)                                           |
+| **Sticky navigation**      | Progress and action buttons always visible                                      |
 | **Input type specificity** | `type="tel"` for phone; `type="email"` for email; `inputmode="numeric"` for SSN |
-| **Camera integration** | Document upload via camera with auto-enhancement |
-| **Keyboard avoidance** | Forms scroll so active field is always visible |
+| **Camera integration**     | Document upload via camera with auto-enhancement                                |
+| **Keyboard avoidance**     | Forms scroll so active field is always visible                                  |
 
 ### 5.5 Accessibility Requirements
 
 Beyond WCAG 2.1 AA compliance (already in existing CSS):
 
-| Requirement | Implementation Status | Recommendation |
-|-------------|----------------------|----------------|
-| **Color contrast** | 4.5:1 for body text ✓ | Increase to 7:1 for critical content |
-| **Text scaling** | 200% zoom supported | Test at 400% for low-vision users |
-| **Screen reader** | ARIA labels present ✓ | Add live regions for dynamic updates |
-| **Keyboard navigation** | Focus indicators ✓ | Add skip links; logical tab order |
-| **Motion** | No auto-animations | Add `prefers-reduced-motion` support |
-| **Voice input** | Not implemented | Add speech-to-text for long text fields |
-| **Touch targets** | 44px minimum | Increase to 48px for form fields |
+| Requirement             | Implementation Status | Recommendation                          |
+| ----------------------- | --------------------- | --------------------------------------- |
+| **Color contrast**      | 4.5:1 for body text ✓ | Increase to 7:1 for critical content    |
+| **Text scaling**        | 200% zoom supported   | Test at 400% for low-vision users       |
+| **Screen reader**       | ARIA labels present ✓ | Add live regions for dynamic updates    |
+| **Keyboard navigation** | Focus indicators ✓    | Add skip links; logical tab order       |
+| **Motion**              | No auto-animations    | Add `prefers-reduced-motion` support    |
+| **Voice input**         | Not implemented       | Add speech-to-text for long text fields |
+| **Touch targets**       | 44px minimum          | Increase to 48px for form fields        |
 
 ---
 
@@ -811,6 +837,7 @@ Based on user needs and cognitive load research:
 **Tertiary:** Legal details (expandable)
 
 **Example:**
+
 ```
 PRIMARY: "Enter your monthly income from all jobs"
 SECONDARY: "We use this to calculate whether you qualify for Chapter 7"
@@ -823,14 +850,14 @@ TERTIARY: [Expand] "The law looks at your average income over the past 6 months.
 
 ### 7.1 Key Emotional Moments
 
-| Moment | User Feeling | Design Response |
-|--------|--------------|-----------------|
-| **First landing** | Skeptical, hopeful, scared | Warmth, clarity, safety signals |
-| **Entering SSN** | Vulnerable, distrustful | Privacy reassurance, encryption note |
-| **Failing means test** | Panic, discouragement | Immediate pivot to special circumstances |
-| **Completing special circumstances** | Seen, validated | Celebration, affirmation |
-| **Final review** | Anxiety, accomplishment | Clear summary, confidence building |
-| **Form download** | Relief, uncertainty | Next steps clarity, ongoing support |
+| Moment                               | User Feeling               | Design Response                          |
+| ------------------------------------ | -------------------------- | ---------------------------------------- |
+| **First landing**                    | Skeptical, hopeful, scared | Warmth, clarity, safety signals          |
+| **Entering SSN**                     | Vulnerable, distrustful    | Privacy reassurance, encryption note     |
+| **Failing means test**               | Panic, discouragement      | Immediate pivot to special circumstances |
+| **Completing special circumstances** | Seen, validated            | Celebration, affirmation                 |
+| **Final review**                     | Anxiety, accomplishment    | Clear summary, confidence building       |
+| **Form download**                    | Relief, uncertainty        | Next steps clarity, ongoing support      |
 
 ### 7.2 Celebration Points
 
@@ -856,41 +883,44 @@ Build in moments of positive reinforcement:
 
 To validate and refine these personas, conduct:
 
-| Research Method | Sample Size | Timing | Focus |
-|-----------------|-------------|--------|-------|
-| **User Interviews** | 8-12 participants | Before MVP launch | Validate persona assumptions; discover missing needs |
-| **Usability Testing** | 5-8 participants | Prototype stage | Test special circumstances flow; mobile experience |
-| **Accessibility Testing** | 3-5 with disabilities | Before launch | Screen reader; zoom; keyboard-only navigation |
-| **A/B Testing** | 100+ users | Post-launch | Optimize trust-building; conversion points |
-| **Diary Studies** | 5-8 participants | During pilot | Real-world usage patterns; barriers encountered |
+| Research Method           | Sample Size           | Timing            | Focus                                                |
+| ------------------------- | --------------------- | ----------------- | ---------------------------------------------------- |
+| **User Interviews**       | 8-12 participants     | Before MVP launch | Validate persona assumptions; discover missing needs |
+| **Usability Testing**     | 5-8 participants      | Prototype stage   | Test special circumstances flow; mobile experience   |
+| **Accessibility Testing** | 3-5 with disabilities | Before launch     | Screen reader; zoom; keyboard-only navigation        |
+| **A/B Testing**           | 100+ users            | Post-launch       | Optimize trust-building; conversion points           |
+| **Diary Studies**         | 5-8 participants      | During pilot      | Real-world usage patterns; barriers encountered      |
 
 ### 8.2 Metrics to Track
 
 **Engagement Metrics:**
+
 - Session completion rate by step
 - Save/resume rate
 - Drop-off points
 - Time per section
 
 **Outcome Metrics:**
+
 - Special circumstances documentation rate
 - Form generation completion rate
 - Filing confirmation rate (self-reported)
 
 **Experience Metrics:**
+
 - CSAT/NPS after form generation
 - Accessibility issue reports
 - Mobile vs. desktop completion rates
 
 ### 8.3 Assumption Risk Log
 
-| Assumption | Confidence | Validation Method |
-|------------|------------|-------------------|
-| Users will trust platform with SSN | Medium | A/B test privacy messaging |
-| Mobile completion is viable | Medium-High | Usability testing on smartphones |
-| Special circumstances prompts don't overwhelm | Medium | User interviews; A/B test |
-| 45-60 minute completion time is acceptable | Medium | Session time tracking |
-| Spanish translation is highest-priority language | Low | User demographic survey |
+| Assumption                                       | Confidence  | Validation Method                |
+| ------------------------------------------------ | ----------- | -------------------------------- |
+| Users will trust platform with SSN               | Medium      | A/B test privacy messaging       |
+| Mobile completion is viable                      | Medium-High | Usability testing on smartphones |
+| Special circumstances prompts don't overwhelm    | Medium      | User interviews; A/B test        |
+| 45-60 minute completion time is acceptable       | Medium      | Session time tracking            |
+| Spanish translation is highest-priority language | Low         | User demographic survey          |
 
 ---
 
@@ -898,12 +928,12 @@ To validate and refine these personas, conduct:
 
 ### 9.1 Competitive UX Analysis
 
-| Platform | Strength | Weakness | DigniFi Opportunity |
-|----------|----------|----------|---------------------|
-| **Upsolve** | Clean, simple; strong mobile | Chapter 7 only; screens out complexity | Handle harder cases with special circumstances |
-| **LegalZoom** | Professional trust signals | Expensive; not specialized | Free alternative with better guidance |
-| **Court Self-Help** | Official; authoritative | Confusing; no guidance | Plain-language translation of official forms |
-| **NerdWallet Guides** | Good explanatory content | No action capability | Integrated guidance + form generation |
+| Platform              | Strength                     | Weakness                               | DigniFi Opportunity                            |
+| --------------------- | ---------------------------- | -------------------------------------- | ---------------------------------------------- |
+| **Upsolve**           | Clean, simple; strong mobile | Chapter 7 only; screens out complexity | Handle harder cases with special circumstances |
+| **LegalZoom**         | Professional trust signals   | Expensive; not specialized             | Free alternative with better guidance          |
+| **Court Self-Help**   | Official; authoritative      | Confusing; no guidance                 | Plain-language translation of official forms   |
+| **NerdWallet Guides** | Good explanatory content     | No action capability                   | Integrated guidance + form generation          |
 
 ### 9.2 Accessibility Testing Checklist
 
@@ -927,10 +957,10 @@ To validate and refine these personas, conduct:
 
 ## Document Changelog
 
-| Version | Date | Author | Changes |
-|---------|------|--------|---------|
-| 1.0 | January 4, 2026 | UX Research Team | Initial comprehensive research document |
+| Version | Date            | Author           | Changes                                 |
+| ------- | --------------- | ---------------- | --------------------------------------- |
+| 1.0     | January 4, 2026 | UX Research Team | Initial comprehensive research document |
 
 ---
 
-*DigniFi: Relief Without Shame. Dignity by Design.*
+_DigniFi: Relief Without Shame. Dignity by Design._
