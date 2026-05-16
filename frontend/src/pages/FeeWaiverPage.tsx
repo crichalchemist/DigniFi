@@ -12,6 +12,8 @@ export function FeeWaiverPage() {
   const [monthlyIncome, setMonthlyIncome] = useState('');
   const [monthlyExpenses, setMonthlyExpenses] = useState('');
   const [receivesPublicBenefits, setReceivesPublicBenefits] = useState(false);
+  const [cannotPayFull, setCannotPayFull] = useState(false);
+  const [cannotPayInstallments, setCannotPayInstallments] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -34,8 +36,8 @@ export function FeeWaiverPage() {
         monthly_expenses: monthlyExpenses,
         receives_public_benefits: receivesPublicBenefits,
         benefit_types: [],
-        cannot_pay_full: true,
-        cannot_pay_installments: true,
+        cannot_pay_full: cannotPayFull,
+        cannot_pay_installments: cannotPayInstallments,
       });
       navigate('/forms');
     } catch {
@@ -106,6 +108,28 @@ export function FeeWaiverPage() {
               onChange={(e) => setReceivesPublicBenefits(e.target.checked)}
             />{' '}
             I receive SSI, SNAP, TANF, or other means-tested public benefits
+          </label>
+        </div>
+
+        <div className="form-field">
+          <label>
+            <input
+              type="checkbox"
+              checked={cannotPayFull}
+              onChange={(e) => setCannotPayFull(e.target.checked)}
+            />{' '}
+            I cannot pay the full filing fee ($338) today
+          </label>
+        </div>
+
+        <div className="form-field">
+          <label>
+            <input
+              type="checkbox"
+              checked={cannotPayInstallments}
+              onChange={(e) => setCannotPayInstallments(e.target.checked)}
+            />{' '}
+            I cannot pay the filing fee in installments
           </label>
         </div>
 
