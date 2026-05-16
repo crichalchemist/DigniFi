@@ -319,6 +319,12 @@ class FeeWaiverApplicationSerializer(serializers.ModelSerializer):
     # Explicit field declarations — EncryptedDecimalField confuses DRF's auto-mapper
     monthly_income = serializers.DecimalField(max_digits=10, decimal_places=2)
     monthly_expenses = serializers.DecimalField(max_digits=10, decimal_places=2)
+    # Remove the auto-generated UniqueValidator on session so that a second POST
+    # from the same session passes validation — perform_create uses update_or_create
+    # to handle the upsert safely.
+    session = serializers.PrimaryKeyRelatedField(
+        queryset=IntakeSession.objects.all(), validators=[]
+    )
 
     class Meta:
         model = FeeWaiverApplication

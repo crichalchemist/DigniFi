@@ -345,7 +345,8 @@ class FeeWaiverViewSet(viewsets.ModelViewSet):
         # the same session would raise IntegrityError. Use update_or_create so
         # reloading the FeeWaiverPage is safe.
         session = serializer.validated_data["session"]
-        FeeWaiverApplication.objects.update_or_create(
+        instance, _ = FeeWaiverApplication.objects.update_or_create(
             session=session,
             defaults={k: v for k, v in serializer.validated_data.items() if k != "session"},
         )
+        serializer.instance = instance
