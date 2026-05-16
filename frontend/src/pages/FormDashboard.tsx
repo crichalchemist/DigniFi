@@ -31,6 +31,9 @@ export function FormDashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showSurvey, setShowSurvey] = useState(false);
+  const [generationErrors, setGenerationErrors] = useState<
+    Array<{ form_type: string; error: string }>
+  >([]);
 
   // Load existing forms on mount
   const loadForms = useCallback(async () => {
@@ -66,6 +69,7 @@ export function FormDashboard() {
     if (!session) return;
     const response = await api.forms.generateAll(session.id);
     setForms(response.generated);
+    setGenerationErrors(response.errors);
     trackEvent('form_generated', { form_type: 'all', session_id: session.id });
     setShowSurvey(true);
   };
@@ -104,8 +108,8 @@ export function FormDashboard() {
       <header className="form-dashboard-header" id="main-content" tabIndex={-1}>
         <h1 className="form-dashboard-title">Your Court Forms</h1>
         <p className="form-dashboard-subtitle">
-          These are the official bankruptcy forms prepared from your intake information.
-          Review each form carefully before filing with the court.
+          These are the official bankruptcy forms prepared from your intake information. Review each
+          form carefully before filing with the court.
         </p>
       </header>
 
@@ -117,6 +121,22 @@ export function FormDashboard() {
           <Button variant="outline" size="sm" onClick={loadForms}>
             Try Again
           </Button>
+        </div>
+      )}
+
+      {generationErrors.length > 0 && (
+        <div className="form-dashboard-error" role="alert">
+          <p>
+            {generationErrors.length} form{generationErrors.length > 1 ? 's' : ''} could not be
+            generated. You can try generating them individually below.
+          </p>
+          <ul>
+            {generationErrors.map((e) => (
+              <li key={e.form_type}>
+                {e.form_type}: {e.error}
+              </li>
+            ))}
+          </ul>
         </div>
       )}
 
@@ -171,10 +191,7 @@ export function FormDashboard() {
 
       {/* Post-task survey — shown after generating all forms */}
       {showSurvey && session && (
-        <PostTaskSurvey
-          sessionId={session.id}
-          onComplete={() => setShowSurvey(false)}
-        />
+        <PostTaskSurvey sessionId={session.id} onComplete={() => setShowSurvey(false)} />
       )}
     </div>
   );

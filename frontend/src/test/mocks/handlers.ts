@@ -157,8 +157,10 @@ export const handlers = [
 
   http.post(`${API}/forms/generate_all/`, () =>
     HttpResponse.json({
-      forms: [mockGeneratedForm],
-      message: 'All forms generated.',
+      generated: [mockGeneratedForm],
+      errors: [],
+      total_generated: 1,
+      total_errors: 0,
     })
   ),
 
