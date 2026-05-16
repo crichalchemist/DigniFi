@@ -14,7 +14,7 @@ import { UPLDisclaimer } from '../components/compliance';
 import { UPL_FORM_DISCLAIMER } from '../constants/upl';
 import { Button } from '../components/common';
 import { PostTaskSurvey } from '../components/survey/PostTaskSurvey';
-import type { GeneratedForm, FormType } from '../types/api';
+import type { GeneratedForm, FormType, GenerateAllFormsResponse } from '../types/api';
 import { FORM_TYPE_METADATA } from '../types/api';
 import { trackEvent } from '../utils/analytics';
 
@@ -25,15 +25,15 @@ const ALL_FORM_TYPES: FormType[] = (
   .sort(([, a], [, b]) => a.order - b.order)
   .map(([key]) => key);
 
+type GenerateAllError = GenerateAllFormsResponse['errors'][number];
+
 export function FormDashboard() {
   const { session, isLoading: sessionLoading } = useIntake();
   const [forms, setForms] = useState<GeneratedForm[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showSurvey, setShowSurvey] = useState(false);
-  const [generationErrors, setGenerationErrors] = useState<
-    Array<{ form_type: string; error: string }>
-  >([]);
+  const [generationErrors, setGenerationErrors] = useState<GenerateAllError[]>([]);
 
   // Load existing forms on mount
   const loadForms = useCallback(async () => {
@@ -67,6 +67,7 @@ export function FormDashboard() {
 
   const handleGenerateAll = async () => {
     if (!session) return;
+    setGenerationErrors([]);
     const response = await api.forms.generateAll(session.id);
     setForms(response.generated);
     setGenerationErrors(response.errors);
