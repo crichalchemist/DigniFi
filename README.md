@@ -66,7 +66,7 @@ docker compose exec backend pytest -q
 cd frontend && npx vitest run
 
 # Quick persona smoke test (requires Playwright)
-python3 test_maria_quick.py
+python3 docs/testing/test_maria_quick.py
 ```
 
 ### Code Quality Setup (Recommended)
@@ -137,8 +137,7 @@ dignifi/
 │   ├── reports/            # Usability test reports
 │   └── superpowers/        # Implementation plans and specs
 ├── docs/internal/          # PRD, briefs, architecture analysis
-├── test_persona_full_flow.py  # 5-persona E2E test script
-└── test_maria_quick.py        # Quick smoke test
+└── docs/testing/              # Persona test scripts, briefs, run protocol
 ```
 
 ## Technology Stack
@@ -209,10 +208,10 @@ docker compose exec backend pytest -q
 cd frontend && npx vitest run
 
 # Full persona E2E (5 personas × full flow)
-python3 test_persona_full_flow.py
+python3 docs/testing/test_persona_full_flow.py
 
 # Quick smoke test (Maria only)
-python3 test_maria_quick.py
+python3 docs/testing/test_maria_quick.py
 ```
 
 ## API Documentation

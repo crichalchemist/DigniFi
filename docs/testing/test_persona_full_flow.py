@@ -337,8 +337,9 @@ def test_persona(persona: dict) -> dict:
         # Screenshot
         try:
             import os
-            os.makedirs("/Volumes/Containers/DigniFi/test-results", exist_ok=True)
-            page.screenshot(path=f"/Volumes/Containers/DigniFi/test-results/{persona['username']}_final.png")
+            result_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "result-images")
+            os.makedirs(result_dir, exist_ok=True)
+            page.screenshot(path=os.path.join(result_dir, f"{persona['username']}_final.png"))
         except Exception:
             pass
 

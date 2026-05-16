@@ -170,8 +170,8 @@ Co-Authored-By: Jane Doe <jane@example.com>
 
 4. **E2E Tests** (Playwright)
    - Full user journeys, persona-based scenarios
-   - `python3 test_maria_quick.py` (quick smoke test)
-   - `python3 test_persona_full_flow.py` (full 5-persona suite)
+   - `python3 docs/testing/test_maria_quick.py` (quick smoke test)
+   - `python3 docs/testing/test_persona_full_flow.py` (full 5-persona suite)
 
 ### Running Tests Locally
 
@@ -183,10 +183,10 @@ docker compose exec backend python -m pytest
 npm test
 
 # E2E smoke test
-python3 test_maria_quick.py
+python3 docs/testing/test_maria_quick.py
 
 # Full persona suite
-python3 test_persona_full_flow.py
+python3 docs/testing/test_persona_full_flow.py
 ```
 
 ### Test Coverage

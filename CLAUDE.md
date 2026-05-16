@@ -239,7 +239,7 @@ This comprehensive PRD includes:
 
 - 5 AI persona briefs (Maria, James, Priya, DeShawn, Sarah) with synthetic IRS 900-xx SSNs
 - `seed_demo_data` management command creates completed sessions with all intake data
-- Playwright-based test scripts: `test_persona_full_flow.py` (5 personas), `test_maria_quick.py` (smoke test)
+- Playwright-based test scripts: `docs/testing/test_persona_full_flow.py` (5 personas), `docs/testing/test_maria_quick.py` (smoke test)
 - Full flow coverage: auth → forms dashboard → Generate All → UPL modal → 13 forms → PostTaskSurvey
 - Fire-and-forget analytics via AuditLog API with JWT auth headers
 - Orchestration protocol at `docs/testing/run-persona-tests.md`
@@ -434,8 +434,8 @@ Each district implementation requires:
 - `backend/apps/*/tests/` - 413 pytest tests
 - `frontend/src/**/__tests__/` - 165 vitest tests
 - `frontend/e2e/` - Playwright page objects and journey specs
-- `test_persona_full_flow.py` - Full 5-persona E2E test script
-- `test_maria_quick.py` - Quick single-persona smoke test
+- `docs/testing/test_persona_full_flow.py` - Full 5-persona E2E test script
+- `docs/testing/test_maria_quick.py` - Quick single-persona smoke test
 
 **Data Fixtures:**
 

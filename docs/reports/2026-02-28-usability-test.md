@@ -6,53 +6,53 @@
 
 ## Summary Metrics
 
-| Metric | Target | Actual | Status |
-|--------|--------|--------|--------|
-| Completion rate | 5/5 | 5/5 | PASS |
-| Form generation | 13/13 per persona | 13/13 | PASS |
-| Survey submission | 5/5 | 5/5 | PASS |
-| Console errors | 0 | 0 | PASS |
-| Total forms generated | 65 | 65 | PASS |
+| Metric                | Target            | Actual | Status |
+| --------------------- | ----------------- | ------ | ------ |
+| Completion rate       | 5/5               | 5/5    | PASS   |
+| Form generation       | 13/13 per persona | 13/13  | PASS   |
+| Survey submission     | 5/5               | 5/5    | PASS   |
+| Console errors        | 0                 | 0      | PASS   |
+| Total forms generated | 65                | 65     | PASS   |
 
 ## Bugs Found & Fixed (13 Total)
 
 ### Critical (Blocked full flow)
 
-| # | Bug | Root Cause | Fix | Commit |
-|---|-----|-----------|-----|--------|
-| 1 | Auth throttle 500 on registration | `ScopedRateThrottle` rate only in `production.py` | Added `auth: 30/minute` to `base.py` | `15c6f15` |
-| 2 | FeeWaiverApplication missing in seed | Seed command didn't create fee waiver records | Create for eligible personas | `eb0c402` |
-| 3 | Step data 404 — non-existent endpoints | Frontend called `/debtor-info/`, `/income-info/` (don't exist) | Route through `updateSession()` PATCH | `7bd0bf7` |
-| 8 | `forms.map is not a function` | DRF pagination wraps results in `{count, results}` | `Array.isArray` guard in `listBySession` | `874d601` |
-| 9 | `navigate()` during render crashes React 19 | Login/Register called `navigate()` in render body | Move to `useEffect` | `874d601` |
-| 11 | `GenerateAllFormsResponse` type mismatch | API returns `{generated}` but type expected `{forms}` | Update type + handler | `b0956bb` |
+| #   | Bug                                         | Root Cause                                                     | Fix                                      | Commit    |
+| --- | ------------------------------------------- | -------------------------------------------------------------- | ---------------------------------------- | --------- |
+| 1   | Auth throttle 500 on registration           | `ScopedRateThrottle` rate only in `production.py`              | Added `auth: 30/minute` to `base.py`     | `15c6f15` |
+| 2   | FeeWaiverApplication missing in seed        | Seed command didn't create fee waiver records                  | Create for eligible personas             | `eb0c402` |
+| 3   | Step data 404 — non-existent endpoints      | Frontend called `/debtor-info/`, `/income-info/` (don't exist) | Route through `updateSession()` PATCH    | `7bd0bf7` |
+| 8   | `forms.map is not a function`               | DRF pagination wraps results in `{count, results}`             | `Array.isArray` guard in `listBySession` | `874d601` |
+| 9   | `navigate()` during render crashes React 19 | Login/Register called `navigate()` in render body              | Move to `useEffect`                      | `874d601` |
+| 11  | `GenerateAllFormsResponse` type mismatch    | API returns `{generated}` but type expected `{forms}`          | Update type + handler                    | `b0956bb` |
 
 ### High (Broke specific persona flows)
 
-| # | Bug | Root Cause | Fix | Commit |
-|---|-----|-----------|-----|--------|
-| 4 | Empty assets/debts sent as null → 400 | Default empty form objects failed backend validation | Filter blank entries before PATCH | `c5c2f5b` |
-| 5 | Assets validation blocked empty skip | `hasValidAsset` required but UI said "leave blank" | Allow `allBlank` as valid | `c5c2f5b` |
-| 6 | `real_estate` ≠ `real_property` | Frontend/backend asset type enum mismatch | Fix frontend to `real_property` | `c5c2f5b` |
-| 7 | Debt type `secured/unsecured` ≠ backend | Frontend radio uses generic; backend expects specific types | Map to `other` + `is_secured` flag | `9ef43fb` |
+| #   | Bug                                     | Root Cause                                                  | Fix                                | Commit    |
+| --- | --------------------------------------- | ----------------------------------------------------------- | ---------------------------------- | --------- |
+| 4   | Empty assets/debts sent as null → 400   | Default empty form objects failed backend validation        | Filter blank entries before PATCH  | `c5c2f5b` |
+| 5   | Assets validation blocked empty skip    | `hasValidAsset` required but UI said "leave blank"          | Allow `allBlank` as valid          | `c5c2f5b` |
+| 6   | `real_estate` ≠ `real_property`         | Frontend/backend asset type enum mismatch                   | Fix frontend to `real_property`    | `c5c2f5b` |
+| 7   | Debt type `secured/unsecured` ≠ backend | Frontend radio uses generic; backend expects specific types | Map to `other` + `is_secured` flag | `9ef43fb` |
 
 ### Low (Cosmetic / non-blocking)
 
-| # | Bug | Root Cause | Fix | Commit |
-|---|-----|-----------|-----|--------|
-| 10 | Unhandled `loadSession` rejection | IntakeProvider mount `useEffect` lacked `.catch()` | Add `.catch()` | `874d601` |
-| 12 | Analytics 401s in console | `trackEvent()` used raw `fetch()` without JWT | Use `getAccessToken()` for Bearer header | `b0956bb` |
-| 13 | FormDashboard loading state stuck | Local `isLoading` never reset when session was null | Use IntakeProvider's `isLoading` | `b0956bb` |
+| #   | Bug                               | Root Cause                                          | Fix                                      | Commit    |
+| --- | --------------------------------- | --------------------------------------------------- | ---------------------------------------- | --------- |
+| 10  | Unhandled `loadSession` rejection | IntakeProvider mount `useEffect` lacked `.catch()`  | Add `.catch()`                           | `874d601` |
+| 12  | Analytics 401s in console         | `trackEvent()` used raw `fetch()` without JWT       | Use `getAccessToken()` for Bearer header | `b0956bb` |
+| 13  | FormDashboard loading state stuck | Local `isLoading` never reset when session was null | Use IntakeProvider's `isLoading`         | `b0956bb` |
 
 ## Per-Persona Final Results
 
-| Persona | Auth | Wizard (6 steps) | Forms Dashboard | Generate All (13) | UPL Modal | Survey |
-|---------|------|-------------------|-----------------|--------------------|-----------|---------|
-| Maria Torres | PASS | PASS | PASS | PASS | PASS | PASS |
-| James Washington | PASS | PASS | PASS | PASS | PASS | PASS |
-| Priya Sharma | PASS | PASS | PASS | PASS | PASS | PASS |
-| DeShawn Mitchell | PASS | PASS | PASS | PASS | PASS | PASS |
-| Sarah Chen | PASS | PASS | PASS | PASS | PASS | PASS |
+| Persona          | Auth | Wizard (6 steps) | Forms Dashboard | Generate All (13) | UPL Modal | Survey |
+| ---------------- | ---- | ---------------- | --------------- | ----------------- | --------- | ------ |
+| Maria Torres     | PASS | PASS             | PASS            | PASS              | PASS      | PASS   |
+| James Washington | PASS | PASS             | PASS            | PASS              | PASS      | PASS   |
+| Priya Sharma     | PASS | PASS             | PASS            | PASS              | PASS      | PASS   |
+| DeShawn Mitchell | PASS | PASS             | PASS            | PASS              | PASS      | PASS   |
+| Sarah Chen       | PASS | PASS             | PASS            | PASS              | PASS      | PASS   |
 
 ## UX Friction Points Observed
 
@@ -66,6 +66,7 @@
 ### Medium Severity
 
 2. **"Means test" jargon in sidebar**
+
    - `MeansTestPreview` component uses "means test" terminology
    - Recommendation: Use "income check" or add inline plain-language definition
 
@@ -77,6 +78,7 @@
 ### Observations (Positive)
 
 4. **Trauma-informed language confirmed:**
+
    - Step 5 title uses "Amounts Owed" (not "Debts")
    - Error messages use "We encountered an issue" (not blame language)
    - Progress indicators emphasize accomplishment
@@ -104,8 +106,8 @@
 
 ## Test Scripts
 
-- `test_persona_full_flow.py` — Runs all 5 personas through auth → forms → generate → survey
-- `test_maria_quick.py` — Quick smoke test with Maria only
+- `docs/testing/test_persona_full_flow.py` — Runs all 5 personas through auth → forms → generate → survey
+- `docs/testing/test_maria_quick.py` — Quick smoke test with Maria only
 - Both use API-based auth setup (bypasses UI login race condition)
 
 ## Recommendations (Priority Order)
