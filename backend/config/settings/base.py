@@ -9,8 +9,9 @@ https://docs.djangoproject.com/en/5.0/topics/settings/
 """
 
 import os
-from pathlib import Path
 from datetime import timedelta
+from pathlib import Path
+
 import environ
 from django.core.exceptions import ImproperlyConfigured
 
@@ -179,9 +180,7 @@ SIMPLE_JWT = {
 }
 
 # CORS Settings
-CORS_ALLOWED_ORIGINS = env.list(
-    "CORS_ALLOWED_ORIGINS", default=["http://localhost:3000"]
-)
+CORS_ALLOWED_ORIGINS = env.list("CORS_ALLOWED_ORIGINS", default=["http://localhost:3000"])
 CORS_ALLOW_CREDENTIALS = True
 
 # Field Encryption (for PII: SSN, income data, etc.)
@@ -192,15 +191,11 @@ class MissingEncryptionKeyError(ImproperlyConfigured):
     pass
 
 
-FIELD_ENCRYPTION_KEY_MISSING = (
-    "The FIELD_ENCRYPTION_KEY environment variable is not set."
-)
+FIELD_ENCRYPTION_KEY_MISSING = "The FIELD_ENCRYPTION_KEY environment variable is not set."
 
 if not FIELD_ENCRYPTION_KEY:
     if DEBUG:
-        FIELD_ENCRYPTION_KEY = (
-            "django-insecure-CHANGE-ME-IN-PRODUCTION-KEY-XXXXXXXXXXXXXXXX"
-        )
+        FIELD_ENCRYPTION_KEY = "django-insecure-CHANGE-ME-IN-PRODUCTION-KEY-XXXXXXXXXXXXXXXX"
         print("WARNING: Using insecure FIELD_ENCRYPTION_KEY for development.")
     else:
         raise MissingEncryptionKeyError(FIELD_ENCRYPTION_KEY_MISSING)
@@ -243,27 +238,16 @@ PDF_OUTPUT_DIRECTORY = MEDIA_ROOT / "generated_forms"
 # OCR & Document Processing Settings
 # ============================================
 
-# OCR Provider Configuration
-OCR_PROVIDER = env('OCR_PROVIDER', default='clarifai')  # 'clarifai' or 'vllm'
-
-# Clarifai API Settings (MVP)
-CLARIFAI_PAT = env('CLARIFAI_PAT', default='')
-CLARIFAI_BASE_URL = env(
-    'CLARIFAI_BASE_URL',
-    default='https://api.clarifai.com/v2'
-)
-
-# vLLM Settings (Production - self-hosted)
-VLLM_BASE_URL = env('VLLM_BASE_URL', default='http://localhost:8000')
-VLLM_API_KEY = env('VLLM_API_KEY', default='')  # If auth enabled
+# LLM Configuration for local llama.cpp
+LLM_BASE_URL = env("LLM_BASE_URL", default="http://llm:8080/v1")
 
 # Document Storage
-DOCUMENT_STORAGE_BACKEND = env('DOCUMENT_STORAGE_BACKEND', default='filesystem')
+DOCUMENT_STORAGE_BACKEND = env("DOCUMENT_STORAGE_BACKEND", default="filesystem")
 DOCUMENT_UPLOAD_MAX_SIZE = 10 * 1024 * 1024  # 10MB
 DOCUMENT_ALLOWED_TYPES = [
-    'application/pdf',
-    'image/jpeg',
-    'image/png',
+    "application/pdf",
+    "image/jpeg",
+    "image/png",
 ]
 
 # Document Retention
@@ -278,9 +262,9 @@ OCR_CONFIDENCE_THRESHOLD_MEDIUM = 70
 
 # Feature Flags
 ENABLED_CHAPTERS = {
-    'chapter_7': True,
-    'chapter_11': env.bool('ENABLE_CHAPTER_11', default=False),
-    'chapter_13': env.bool('ENABLE_CHAPTER_13', default=False),
+    "chapter_7": True,
+    "chapter_11": env.bool("ENABLE_CHAPTER_11", default=False),
+    "chapter_13": env.bool("ENABLE_CHAPTER_13", default=False),
 }
 
 # Logging Configuration
@@ -312,9 +296,7 @@ LOGGING = {
         },
         "audit_file": {
             "class": (
-                "logging.handlers.RotatingFileHandler"
-                if not DEBUG
-                else "logging.FileHandler"
+                "logging.handlers.RotatingFileHandler" if not DEBUG else "logging.FileHandler"
             ),
             "filename": str(LOGS_DIR / "audit.log"),
             "formatter": "json",
