@@ -9,5 +9,7 @@ django-encrypted-model-fields==0.6.5
 django-phonenumber-field[phonenumbers]==7.2.0
 pypdf==3.17.0
 pydantic==2.5.3
-openai==1.60.0  # For Clarifai OpenAI-compatible API
+openai
+opendataloader-pdf
+pymupdf
 cryptography==44.0.1
