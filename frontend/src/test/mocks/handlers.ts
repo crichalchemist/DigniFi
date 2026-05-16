@@ -124,6 +124,25 @@ export const handlers = [
     })
   ),
 
+  // -- Fee Waiver -----------------------------------------------------------
+  http.post(`${API}/intake/fee-waiver/`, async ({ request }) => {
+    const body = (await request.json()) as { session: number };
+    return HttpResponse.json({
+      id: 1,
+      session: body.session,
+      household_size: 1,
+      monthly_income: '1200.00',
+      monthly_expenses: '1000.00',
+      receives_public_benefits: false,
+      benefit_types: [],
+      cannot_pay_full: true,
+      cannot_pay_installments: true,
+      status: 'pending',
+      created_at: '2026-01-20T10:00:00Z',
+      updated_at: '2026-01-20T10:00:00Z',
+    });
+  }),
+
   // -- Assets / Debts ------------------------------------------------------
 
   http.post(`${API}/intake/assets/`, () =>

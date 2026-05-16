@@ -17,6 +17,7 @@ import { RegisterPage } from './pages/RegisterPage';
 import { IntakeWizard } from './pages/IntakeWizard';
 import { FormDashboard } from './pages/FormDashboard';
 import { DocumentUploadPage } from './pages/DocumentUploadPage';
+import { FeeWaiverPage } from './pages/FeeWaiverPage';
 import { Component, type ReactNode, type ErrorInfo } from 'react';
 import './App.css';
 
@@ -73,6 +74,7 @@ function App() {
                   <Route path="/intake" element={<IntakeWizard />} />
                   <Route path="/forms" element={<FormDashboard />} />
                   <Route path="/documents" element={<DocumentUploadPage />} />
+                  <Route path="/fee-waiver" element={<FeeWaiverPage />} />
                 </Route>
               </Route>
             </Routes>

@@ -422,6 +422,45 @@ export const debtsAPI = {
 };
 
 // ============================================================================
+// Fee Waiver API
+// ============================================================================
+
+export interface FeeWaiverPayload {
+  session: number;
+  household_size: number;
+  monthly_income: string;
+  monthly_expenses: string;
+  receives_public_benefits: boolean;
+  benefit_types: string[];
+  cannot_pay_full: boolean;
+  cannot_pay_installments: boolean;
+}
+
+export interface FeeWaiverApplication {
+  id: number;
+  session: number;
+  household_size: number;
+  monthly_income: string;
+  monthly_expenses: string;
+  receives_public_benefits: boolean;
+  benefit_types: string[];
+  cannot_pay_full: boolean;
+  cannot_pay_installments: boolean;
+  status: 'pending' | 'approved' | 'denied';
+  created_at: string;
+  updated_at: string;
+}
+
+export const feeWaiverAPI = {
+  create: async (data: FeeWaiverPayload): Promise<FeeWaiverApplication> => {
+    return apiFetch<FeeWaiverApplication>('/intake/fee-waiver/', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+};
+
+// ============================================================================
 // Forms API
 // ============================================================================
 
@@ -541,6 +580,7 @@ export const api = {
   assets: assetsAPI,
   debts: debtsAPI,
   forms: formsAPI,
+  feeWaiver: feeWaiverAPI,
 };
 
 export default api;
