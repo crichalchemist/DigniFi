@@ -5,18 +5,18 @@ Provides Django REST Framework serializers for API endpoints, including
 validation, nested relationships, and trauma-informed error messages.
 """
 
-from rest_framework import serializers
 from django.contrib.auth import get_user_model
+from rest_framework import serializers
 
 from .models import (
-    IntakeSession,
-    DebtorInfo,
-    IncomeInfo,
-    ExpenseInfo,
     AssetInfo,
     DebtInfo,
+    DebtorInfo,
+    ExpenseInfo,
+    FeeWaiverApplication,
+    IncomeInfo,
+    IntakeSession,
 )
-from apps.districts.models import District
 
 User = get_user_model()
 
@@ -49,18 +49,14 @@ class DebtorInfoSerializer(serializers.ModelSerializer):
         ssn_clean = value.replace("-", "").replace(" ", "")
 
         if not ssn_clean.isdigit() or len(ssn_clean) != 9:
-            raise serializers.ValidationError(
-                "Please enter a valid 9-digit Social Security Number"
-            )
+            raise serializers.ValidationError("Please enter a valid 9-digit Social Security Number")
 
         return ssn_clean
 
     def validate_state(self, value):
         """Validate state is 2-letter uppercase code."""
         if len(value) != 2 or not value.isalpha():
-            raise serializers.ValidationError(
-                "Please enter a valid 2-letter state code"
-            )
+            raise serializers.ValidationError("Please enter a valid 2-letter state code")
         return value.upper()
 
 
@@ -91,26 +87,20 @@ class IncomeInfoSerializer(serializers.ModelSerializer):
             ValidationError: If format is invalid
         """
         if not isinstance(value, list):
-            raise serializers.ValidationError(
-                "Please provide income as a list of monthly amounts"
-            )
+            raise serializers.ValidationError("Please provide income as a list of monthly amounts")
 
         if len(value) != 6:
-            raise serializers.ValidationError(
-                "Please provide income for the last 6 months"
-            )
+            raise serializers.ValidationError("Please provide income for the last 6 months")
 
         for i, amount in enumerate(value):
             try:
                 float_amount = float(amount)
                 if float_amount < 0:
-                    raise serializers.ValidationError(
-                        f"Income for month {i+1} cannot be negative"
-                    )
-            except (TypeError, ValueError):
+                    raise serializers.ValidationError(f"Income for month {i+1} cannot be negative")
+            except (TypeError, ValueError) as err:
                 raise serializers.ValidationError(
                     f"Income for month {i+1} must be a valid number"
-                )
+                ) from err
 
         return value
 
@@ -153,9 +143,7 @@ class AssetInfoSerializer(serializers.ModelSerializer):
 
     equity = serializers.SerializerMethodField()
     # Explicit field declarations — EncryptedDecimalField confuses DRF's auto-mapper
-    current_value = serializers.DecimalField(
-        max_digits=12, decimal_places=2, write_only=True
-    )
+    current_value = serializers.DecimalField(max_digits=12, decimal_places=2, write_only=True)
     amount_owed = serializers.DecimalField(
         max_digits=12, decimal_places=2, write_only=True, required=False, default=0
     )
@@ -190,9 +178,7 @@ class DebtInfoSerializer(serializers.ModelSerializer):
     """Serializer for debt/creditor information (trauma-informed language)."""
 
     # Explicit field declaration — EncryptedDecimalField confuses DRF's auto-mapper
-    amount_owed = serializers.DecimalField(
-        max_digits=12, decimal_places=2, write_only=True
-    )
+    amount_owed = serializers.DecimalField(max_digits=12, decimal_places=2, write_only=True)
 
     class Meta:
         model = DebtInfo
@@ -313,9 +299,7 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
             IncomeInfo.objects.update_or_create(session=instance, defaults=income_data)
 
         if expense_data:
-            ExpenseInfo.objects.update_or_create(
-                session=instance, defaults=expense_data
-            )
+            ExpenseInfo.objects.update_or_create(session=instance, defaults=expense_data)
 
         # For MVP: Replace assets/debts entirely (future: partial updates)
         if assets_data is not None:
@@ -329,3 +313,27 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
                 DebtInfo.objects.create(session=instance, **debt_data)
 
         return instance
+
+
+class FeeWaiverApplicationSerializer(serializers.ModelSerializer):
+    # Explicit field declarations — EncryptedDecimalField confuses DRF's auto-mapper
+    monthly_income = serializers.DecimalField(max_digits=10, decimal_places=2)
+    monthly_expenses = serializers.DecimalField(max_digits=10, decimal_places=2)
+
+    class Meta:
+        model = FeeWaiverApplication
+        fields = [
+            "id",
+            "session",
+            "household_size",
+            "monthly_income",
+            "monthly_expenses",
+            "receives_public_benefits",
+            "benefit_types",
+            "cannot_pay_full",
+            "cannot_pay_installments",
+            "status",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["id", "status", "created_at", "updated_at"]
