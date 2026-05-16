@@ -18,6 +18,10 @@ export function FeeWaiverPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!session) return;
+    if (!householdSize || !monthlyIncome || !monthlyExpenses) {
+      setError('Please fill in all required fields.');
+      return;
+    }
 
     setIsSubmitting(true);
     setError(null);
