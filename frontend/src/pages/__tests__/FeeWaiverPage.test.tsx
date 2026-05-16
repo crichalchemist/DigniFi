@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { http, HttpResponse } from 'msw';
 import { server } from '../../test/mocks/server';
 import { IntakeProvider } from '../../context/IntakeContext';
@@ -9,9 +9,12 @@ import { FeeWaiverPage } from '../FeeWaiverPage';
 function renderFeeWaiver() {
   localStorage.setItem('current_session_id', '1');
   return render(
-    <MemoryRouter>
+    <MemoryRouter initialEntries={['/fee-waiver']}>
       <IntakeProvider>
-        <FeeWaiverPage />
+        <Routes>
+          <Route path="/fee-waiver" element={<FeeWaiverPage />} />
+          <Route path="/forms" element={<div>FormDashboard</div>} />
+        </Routes>
       </IntakeProvider>
     </MemoryRouter>
   );
@@ -25,7 +28,7 @@ describe('FeeWaiverPage', () => {
     });
   });
 
-  it('submits and navigates on success', async () => {
+  it('navigates to /forms on successful submission', async () => {
     renderFeeWaiver();
     await waitFor(() => screen.getByRole('heading', { name: /filing fee waiver/i }));
 
@@ -36,14 +39,14 @@ describe('FeeWaiverPage', () => {
     await userEvent.click(screen.getByRole('button', { name: /submit/i }));
 
     await waitFor(() => {
-      expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+      expect(screen.getByText('FormDashboard')).toBeInTheDocument();
     });
   });
 
   it('shows error when submission fails', async () => {
     server.use(
       http.post('http://localhost:8000/api/intake/fee-waiver/', () =>
-        HttpResponse.json({ detail: 'Bad request' }, { status: 400 })
+        HttpResponse.json({ detail: 'Server error' }, { status: 400 })
       )
     );
 
