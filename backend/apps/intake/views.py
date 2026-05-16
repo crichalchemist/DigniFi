@@ -344,7 +344,11 @@ class FeeWaiverViewSet(viewsets.ModelViewSet):
         # FeeWaiverApplication is OneToOne with IntakeSession — second POST from
         # the same session would raise IntegrityError. Use update_or_create so
         # reloading the FeeWaiverPage is safe.
+        from rest_framework.exceptions import PermissionDenied
+
         session = serializer.validated_data["session"]
+        if session.user != self.request.user:
+            raise PermissionDenied()
         instance, _ = FeeWaiverApplication.objects.update_or_create(
             session=session,
             defaults={k: v for k, v in serializer.validated_data.items() if k != "session"},

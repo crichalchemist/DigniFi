@@ -93,6 +93,35 @@ def test_other_user_cannot_access_fee_waiver(db):
     assert resp.status_code == 404
 
 
+def test_cross_user_post_is_forbidden(db):
+    """POST /intake/fee-waiver/ with another user's session returns 403."""
+    owner = User.objects.create_user(username="fw_owner2", password="pass")
+    attacker = User.objects.create_user(username="fw_attacker", password="pass")
+    district = District.objects.create(
+        code="ILND3",
+        name="Illinois Northern 3",
+        state="IL",
+        court_name="U.S. Bankruptcy Court ILND",
+        filing_fee_chapter_7=Decimal("338.00"),
+    )
+    session = IntakeSession.objects.create(user=owner, district=district)
+    client = APIClient()
+    client.force_authenticate(user=attacker)
+    payload = {
+        "session": session.id,
+        "household_size": 99,
+        "monthly_income": "100.00",
+        "monthly_expenses": "100.00",
+        "receives_public_benefits": False,
+        "benefit_types": [],
+        "cannot_pay_full": True,
+        "cannot_pay_installments": True,
+    }
+    resp = client.post("/api/intake/fee-waiver/", payload, format="json")
+    assert resp.status_code == 403
+    assert not FeeWaiverApplication.objects.filter(session=session).exists()
+
+
 def test_create_fee_waiver_is_idempotent(setup):
     """Second POST to /intake/fee-waiver/ for same session updates, not duplicates."""
     client, session, _ = setup

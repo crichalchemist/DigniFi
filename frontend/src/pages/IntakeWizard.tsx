@@ -123,6 +123,7 @@ export function IntakeWizard() {
       }
     } catch (error) {
       console.error('Error completing intake:', error);
+      navigate('/forms');
     }
   };
 
