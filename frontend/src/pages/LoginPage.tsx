@@ -21,7 +21,7 @@ export function LoginPage() {
   // Redirect if already authenticated (useEffect to avoid setState during render)
   useEffect(() => {
     if (isAuthenticated) {
-      navigate('/intake', { replace: true });
+      navigate('/documents', { replace: true });
     }
   }, [isAuthenticated, navigate]);
 
@@ -31,7 +31,7 @@ export function LoginPage() {
 
     try {
       await login(username, password);
-      navigate('/intake', { replace: true });
+      navigate('/documents', { replace: true });
     } catch {
       // Error is handled by AuthContext
     }
@@ -42,9 +42,7 @@ export function LoginPage() {
       <div className="auth-card">
         <div className="auth-header">
           <h1 className="auth-title">Welcome back</h1>
-          <p className="auth-subtitle">
-            Sign in to continue your filing process
-          </p>
+          <p className="auth-subtitle">Sign in to continue your filing process</p>
         </div>
 
         {error && (
