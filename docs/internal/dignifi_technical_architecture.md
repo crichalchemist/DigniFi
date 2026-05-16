@@ -38,17 +38,20 @@ Minimum viable persistence:
 DigniFi's generative AI is **not** used for legal advice or decision-making, but for **trauma-informed, court-appropriate language generation** to support user dignity and self-advocacy:
 
 **Primary Use Case:**
+
 - Generate calming, supportive language for filers, especially if required to appear in court (e.g., 341 meeting of creditors)
 - Provide plain-language explanations of bankruptcy processes, deadlines, and next steps
 - Offer empowerment scripts and responses to reduce anxiety and support dignity during high-stress interactions
 
 **Technical Approach:**
+
 - Generative AI (RAG or fine-tuned LLM) trained on bankruptcy law, court procedures, local rules, and trauma-informed language principles
 - Vector database (pgvector, Pinecone, or Weaviate) for semantic search over bankruptcy code sections, procedures, and local rules
 - Strict UPL guardrails: all outputs labeled as informational support, never personalized legal advice
 - Content controls ensuring responses are empowering, non-judgmental, and trauma-sensitive
 
 **Alternative (MVP):**
+
 - Pre-written explainer content keyed to specific form fields or process stages
 - Conditional display logic with customizable message templates
 - No generative component; managed by content team
@@ -70,6 +73,7 @@ The "Integrated Credit Certification Modules" must interface with DOJ-approved c
 ### 7. Financial Data Import (Plaid & Credit Karma)
 
 **Plaid Integration:**
+
 - Securely connect user bank accounts via Plaid Link (OAuth)
 - Retrieve account balances, transaction history, and liabilities (credit cards, loans, debts)
 - Map creditor data to bankruptcy form fields (name, type, balance, account #)
@@ -78,6 +82,7 @@ The "Integrated Credit Certification Modules" must interface with DOJ-approved c
 - Risk: Privacy concerns; must provide clear consent messaging and data usage explanation
 
 **Credit Karma Integration:**
+
 - No public API (as of 2026); support user-uploaded credit reports (PDF/CSV)
 - Implement document parsing (OCR or PDF text extraction) to extract creditor information
 - Alternative for users unwilling/unable to connect Plaid
@@ -88,18 +93,21 @@ The "Integrated Credit Certification Modules" must interface with DOJ-approved c
 ### 8. PACER/CM-ECF Integration: Current State & Systemic Advocacy
 
 **Current Technical Constraints:**
+
 - No official public API for e-filing or automated case status retrieval
 - PACER (pacer.uscourts.gov) offers web portal access; some courts offer RSS feeds for case updates
 - CM/ECF (Case Management/Electronic Case Files) is the e-filing system, requires separate credentials per court
 - E-filing for pro se filers is limited: most districts require in-person or mail filing; some pilot e-filing portals exist
 
 **DigniFi Approach:**
+
 - Generate court-ready PDFs for user download and manual filing
 - Provide step-by-step instructions for e-filing (where available) or in-person/mail filing
 - Never store PACER or CM/ECF credentials; always inform users of manual steps required
 - (Aspirational) If/when official APIs become available, implement case status tracking and e-filing submission
 
 **Systemic Change Goal:**
+
 - Partner with legal aid organizations and court systems to advocate for expanded e-filing, standardized forms, and digital-first access for pro se filers
 - Track and report user pain points to inform advocacy and court outreach
 - Support broader adoption of technology-enabled pro se support
@@ -107,17 +115,20 @@ The "Integrated Credit Certification Modules" must interface with DOJ-approved c
 ### 9. Illinois/Chicago Local Rules & District-Specific Requirements
 
 **Northern District of Illinois (ILND) Specifics:**
+
 - Maintains district-specific local rules, exemption schedules, median income thresholds
 - E-filing for pro se filers: Limited; registration required, but not all documents eligible for electronic submission
 - Chicago-specific exemptions and procedural rules apply
 
 **DigniFi Implementation:**
+
 - Modular support for district-specific rules, forms, and exemptions with rapid update capability
 - Maintains accurate, current data for ILND and all 93 other federal districts
 - Plain-language guidance on local requirements and filing procedures
 - Integration with systemic change advocacy to push for simplified, standardized local rules
 
 **Systemic Change Focus:**
+
 - Support efforts to standardize local rules across districts, reducing procedural barriers for pro se filers
 - Advocate for digital-first court processes and expanded e-filing access
 
@@ -200,6 +211,7 @@ This is where the architecture becomes non-trivial.
 ## Implementation Status & Technology Stack
 
 **Current Implementation (Validated via comprehensive system design analysis):**
+
 - Backend: Django 5.0 + Django REST Framework with modular app architecture
 - Frontend: React 19 + TypeScript + Vite
 - Database: PostgreSQL 15 with Fernet field-level encryption for PII
@@ -208,6 +220,7 @@ This is where the architecture becomes non-trivial.
 - Forms: pypdf integration for PDF generation and form population
 
 **Key Architectural Decisions:**
+
 - Domain-driven design with service layer (MeansTestCalculator, Form101Generator)
 - Encrypted model fields for SSN, account numbers, and sensitive financial data
 - Audit logging for all authenticated requests with UPL-sensitive action flagging
@@ -219,26 +232,32 @@ This is where the architecture becomes non-trivial.
 ## Critical Technical Risks & Mitigation
 
 ### 1. District Variability
+
 **Risk:** 94 federal districts with differing local rules, exemption schedules, and procedural requirements. Maintaining accurate, current logic for each is a substantial ongoing burden.
 **Mitigation:** Modular district-specific data models (MedianIncome, ExemptionSchedule, LocalRule). Automated monitoring and rapid update capability. Systemic advocacy to standardize rules across districts.
 
 ### 2. Form Version Drift
+
 **Risk:** Official forms change. Without automated monitoring of Administrative Office updates, the platform could generate outdated or invalid filings.
 **Mitigation:** Version control for form updates. Monitoring system for Administrative Office releases. Field mapping documentation. Regular testing against official forms.
 
 ### 3. UPL Liability
+
 **Risk:** If the AI guidance crosses from information to advice, or if users rely on the platform and experience dismissals or adverse outcomes, the platform may face regulatory scrutiny or civil liability.
 **Mitigation:** Strict UPL guardrails. All outputs labeled as informational support, not legal advice. Audit logging of all UPL-sensitive actions. Clear disclaimers at decision points. AI used only for trauma-informed language support, not legal decision-making.
 
 ### 4. Pro Se Filing Constraints
+
 **Risk:** Many courts limit e-filing for pro se litigants. DigniFi may prepare documents but cannot guarantee users can file them electronically, creating a last-mile problem.
 **Mitigation:** Comprehensive e-filing/in-person filing instructions. Aspirational PACER/CM-ECF integration when APIs become available. Systemic advocacy for expanded e-filing access. Transparent communication of filing limitations by district.
 
 ### 5. Scalability vs. Accuracy Tradeoff
+
 **Risk:** A local-server MVP is fine for testing, but scaling requires robust infrastructure without sacrificing the compliance review process described in the communications plan.
 **Mitigation:** Containerized architecture (Docker) supports scaling to Kubernetes. Read replicas for PostgreSQL. S3/object storage for generated forms and documents. API versioning for backwards compatibility.
 
 ### 6. Third-Party Integration Risks (Plaid, Credit Karma, PACER)
+
 **Risk:** Dependency on third-party APIs with uncertain availability, pricing, and support.
 **Mitigation:** Graceful degradation if APIs unavailable. Fallback to manual data entry or user-uploaded documents. No hard dependency on any single integration. Monitor API changes and court system updates.
 
@@ -261,6 +280,7 @@ DigniFi's architecture is designed not only to serve individual users but to cat
 The architecture is achievable with a small team, but the complexity lies less in the technology than in maintaining legal accuracy across jurisdictions, navigating the regulatory boundary between legal information and legal advice, and coordinating systemic advocacy efforts.
 
 Key success factors:
+
 - **Technical:** Modular design, robust encryption, compliance logging, and clear separation of concerns
 - **Legal:** Strict UPL guardrails, AI used only for trauma-informed language (not advice), audit trails, and transparent disclaimers
 - **Social:** Systemic advocacy for expanded e-filing, standardized rules, and pro se support infrastructure

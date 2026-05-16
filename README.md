@@ -136,7 +136,7 @@ dignifi/
 │   ├── testing/            # Persona briefs & orchestration protocol
 │   ├── reports/            # Usability test reports
 │   └── superpowers/        # Implementation plans and specs
-├── Product Docs/           # PRD, briefs, architecture analysis
+├── docs/internal/          # PRD, briefs, architecture analysis
 ├── test_persona_full_flow.py  # 5-persona E2E test script
 └── test_maria_quick.py        # Quick smoke test
 ```

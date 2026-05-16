@@ -56,7 +56,7 @@ Copy `.env.example` to `.env`. Required vars: `POSTGRES_DB`, `POSTGRES_USER`, `P
 
 ### Product Requirements Document
 
-Primary specification: `/Product Docs/DigniFi_PRD_v0_3.md` (latest; v0.1 and v0.2 are archival)
+Primary specification: `/docs/internal/DigniFi_PRD_v0_3.md` (latest; v0.1 and v0.2 are archival)
 
 This comprehensive PRD includes:
 
@@ -70,9 +70,9 @@ This comprehensive PRD includes:
 
 ### Supporting Documentation
 
-- `/Product Docs/Dignifi Brief.pdf` - Executive summary and founder vision
-- `/Product Docs/dignifi_technical_architecture.md` - Technical analysis and architecture recommendations
-- `/Product Docs/Strategic Communication Plan.pdf` - Go-to-market and stakeholder communication strategy
+- `/docs/internal/Dignifi Brief.pdf` - Executive summary and founder vision
+- `/docs/internal/dignifi_technical_architecture.md` - Technical analysis and architecture recommendations
+- `/docs/internal/Strategic Communication Plan.pdf` - Go-to-market and stakeholder communication strategy
 
 ## Architectural Principles
 
