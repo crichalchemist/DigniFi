@@ -124,7 +124,13 @@ export interface ExpenseInfo {
 export interface AssetInfo {
   id: number;
   session: number;
-  asset_type: 'real_estate' | 'vehicle' | 'bank_account' | 'retirement_account' | 'personal_property' | 'other';
+  asset_type:
+    | 'real_estate'
+    | 'vehicle'
+    | 'bank_account'
+    | 'retirement_account'
+    | 'personal_property'
+    | 'other';
 
   description: string;
   current_value: number; // Encrypted in backend
@@ -138,7 +144,15 @@ export interface AssetInfo {
 export interface DebtInfo {
   id: number;
   session: number;
-  debt_type: 'credit_card' | 'medical' | 'personal_loan' | 'student_loan' | 'auto_loan' | 'mortgage' | 'utility' | 'other';
+  debt_type:
+    | 'credit_card'
+    | 'medical'
+    | 'personal_loan'
+    | 'student_loan'
+    | 'auto_loan'
+    | 'mortgage'
+    | 'utility'
+    | 'other';
 
   creditor_name: string;
   account_number: string; // Encrypted in backend
@@ -149,6 +163,10 @@ export interface DebtInfo {
   is_secured: boolean;
   priority_classification?: 'unsecured' | 'secured' | 'priority';
   collateral_description: string;
+
+  // Document scanning
+  is_draft?: boolean;
+  source_document?: number | null;
 }
 
 // ============================================================================
@@ -176,19 +194,19 @@ export interface MeansTestResult {
 
 /** All 13 form types registered in the backend form registry */
 export type FormType =
-  | 'form_101'      // Voluntary Petition
-  | 'form_103b'     // Fee Waiver Application
-  | 'form_106dec'   // Declaration
-  | 'form_106sum'   // Summary of Assets/Liabilities
-  | 'form_107'      // Statement of Financial Affairs
-  | 'form_121'      // SSN Statement
-  | 'form_122a1'    // Means Test
-  | 'schedule_a_b'  // Property
-  | 'schedule_c'    // Exemptions
-  | 'schedule_d'    // Secured Creditors
-  | 'schedule_e_f'  // Unsecured Creditors
-  | 'schedule_i'    // Income
-  | 'schedule_j';   // Expenses
+  | 'form_101' // Voluntary Petition
+  | 'form_103b' // Fee Waiver Application
+  | 'form_106dec' // Declaration
+  | 'form_106sum' // Summary of Assets/Liabilities
+  | 'form_107' // Statement of Financial Affairs
+  | 'form_121' // SSN Statement
+  | 'form_122a1' // Means Test
+  | 'schedule_a_b' // Property
+  | 'schedule_c' // Exemptions
+  | 'schedule_d' // Secured Creditors
+  | 'schedule_e_f' // Unsecured Creditors
+  | 'schedule_i' // Income
+  | 'schedule_j'; // Expenses
 
 export type FormStatus = 'generated' | 'downloaded' | 'filed';
 
@@ -208,21 +226,96 @@ export interface GeneratedForm {
 }
 
 /** Display metadata for each form type (frontend-only, for the dashboard) */
-export const FORM_TYPE_METADATA: Record<FormType, { label: string; description: string; order: number }> = {
-  form_101:     { label: 'Form 101 - Voluntary Petition', description: 'Your official petition to file for bankruptcy', order: 1 },
-  form_103b:    { label: 'Form 103B - Fee Waiver Application', description: 'Request to waive the filing fee', order: 2 },
-  form_106dec:  { label: 'Form 106Dec - Declaration', description: 'Declaration about the accuracy of your forms', order: 3 },
-  form_106sum:  { label: 'Form 106Sum - Summary', description: 'Summary of your assets and liabilities', order: 4 },
-  form_107:     { label: 'Form 107 - Financial Affairs', description: 'Statement of your financial affairs', order: 5 },
-  form_121:     { label: 'Form 121 - SSN Statement', description: 'Social Security number verification', order: 6 },
-  form_122a1:   { label: 'Form 122A-1 - Means Test', description: 'Chapter 7 means test calculation', order: 7 },
-  schedule_a_b: { label: 'Schedule A/B - Property', description: 'List of all your property', order: 8 },
-  schedule_c:   { label: 'Schedule C - Exemptions', description: 'Property you claim as exempt', order: 9 },
-  schedule_d:   { label: 'Schedule D - Secured Creditors', description: 'Creditors with collateral claims', order: 10 },
-  schedule_e_f: { label: 'Schedule E/F - Unsecured Creditors', description: 'Creditors without collateral', order: 11 },
-  schedule_i:   { label: 'Schedule I - Income', description: 'Your current income', order: 12 },
-  schedule_j:   { label: 'Schedule J - Expenses', description: 'Your current expenses', order: 13 },
+export const FORM_TYPE_METADATA: Record<
+  FormType,
+  { label: string; description: string; order: number }
+> = {
+  form_101: {
+    label: 'Form 101 - Voluntary Petition',
+    description: 'Your official petition to file for bankruptcy',
+    order: 1,
+  },
+  form_103b: {
+    label: 'Form 103B - Fee Waiver Application',
+    description: 'Request to waive the filing fee',
+    order: 2,
+  },
+  form_106dec: {
+    label: 'Form 106Dec - Declaration',
+    description: 'Declaration about the accuracy of your forms',
+    order: 3,
+  },
+  form_106sum: {
+    label: 'Form 106Sum - Summary',
+    description: 'Summary of your assets and liabilities',
+    order: 4,
+  },
+  form_107: {
+    label: 'Form 107 - Financial Affairs',
+    description: 'Statement of your financial affairs',
+    order: 5,
+  },
+  form_121: {
+    label: 'Form 121 - SSN Statement',
+    description: 'Social Security number verification',
+    order: 6,
+  },
+  form_122a1: {
+    label: 'Form 122A-1 - Means Test',
+    description: 'Chapter 7 means test calculation',
+    order: 7,
+  },
+  schedule_a_b: {
+    label: 'Schedule A/B - Property',
+    description: 'List of all your property',
+    order: 8,
+  },
+  schedule_c: {
+    label: 'Schedule C - Exemptions',
+    description: 'Property you claim as exempt',
+    order: 9,
+  },
+  schedule_d: {
+    label: 'Schedule D - Secured Creditors',
+    description: 'Creditors with collateral claims',
+    order: 10,
+  },
+  schedule_e_f: {
+    label: 'Schedule E/F - Unsecured Creditors',
+    description: 'Creditors without collateral',
+    order: 11,
+  },
+  schedule_i: { label: 'Schedule I - Income', description: 'Your current income', order: 12 },
+  schedule_j: { label: 'Schedule J - Expenses', description: 'Your current expenses', order: 13 },
 };
+
+// ============================================================================
+// Document scanning
+// ============================================================================
+
+export type OCRStatus = 'pending' | 'processing' | 'completed' | 'failed' | 'validated';
+
+export interface OCRResult {
+  status: OCRStatus;
+  extracted_data: Record<string, unknown>;
+  confidence_scores: Record<string, number>;
+  overall_confidence: number;
+  user_validated: boolean;
+  error_message: string | null;
+}
+
+export interface UploadedDocument {
+  id: number;
+  document_type: string;
+  original_filename: string;
+  uploaded_at: string;
+  ocr_result: OCRResult | null;
+}
+
+export interface DocumentUploadResponse {
+  id: number;
+  status: 'processing';
+}
 
 // ============================================================================
 // API Request/Response Types

@@ -46,18 +46,13 @@ repos:
           - prettier@3.4.2
 
   # JavaScript/TypeScript: ESLint (linting)
-  - repo: https://github.com/pre-commit/mirrors-eslint
-    rev: v9.18.0
+  # Uses local node_modules (symlinked from main repo) so eslint.config.js resolves.
+  # pass_filenames: true so only staged files are linted, not the entire src/ tree.
+  - repo: local
     hooks:
       - id: eslint
-        files: ^frontend/.*\.[jt]sx?$
-        types: [file]
-        args: [--fix, --max-warnings=0]
-        additional_dependencies:
-          - eslint@9.39.1
-          - typescript@5.9.3
-          - typescript-eslint@8.46.4
-          - eslint-plugin-react-hooks@7.0.1
-          - eslint-plugin-react-refresh@0.4.24
-          - "@eslint/js@9.39.1"
-          - globals@16.5.0
+        name: eslint
+        language: system
+        entry: bash -c 'cd frontend && node_modules/.bin/eslint --fix --max-warnings=0 "${@#frontend/}" --' --
+        files: ^frontend/src/.*\.[jt]sx?$
+        pass_filenames: true

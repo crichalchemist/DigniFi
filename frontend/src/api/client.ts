@@ -32,6 +32,9 @@ import type {
   RegisterResponse,
   UserProfile,
   FormType,
+  UploadedDocument,
+  DocumentUploadResponse,
+  OCRResult,
 } from '../types/api';
 
 // ============================================================================
@@ -79,11 +82,7 @@ export class APIClientError extends Error {
   statusCode: number;
   details?: Record<string, unknown>;
 
-  constructor(
-    message: string,
-    statusCode: number,
-    details?: Record<string, unknown>
-  ) {
+  constructor(message: string, statusCode: number, details?: Record<string, unknown>) {
     super(message);
     this.name = 'APIClientError';
     this.statusCode = statusCode;
@@ -100,10 +99,7 @@ async function handleAPIError(response: Response): Promise<never> {
   try {
     errorData = await response.json();
   } catch {
-    throw new APIClientError(
-      'An unexpected error occurred. Please try again.',
-      response.status
-    );
+    throw new APIClientError('An unexpected error occurred. Please try again.', response.status);
   }
 
   throw new APIClientError(
@@ -296,9 +292,7 @@ export const intakeAPI = {
    * Create a new intake session
    * POST /api/intake/sessions/
    */
-  createSession: async (
-    data: CreateSessionRequest
-  ): Promise<CreateSessionResponse> => {
+  createSession: async (data: CreateSessionRequest): Promise<CreateSessionResponse> => {
     return apiFetch<CreateSessionResponse>('/intake/sessions/', {
       method: 'POST',
       body: JSON.stringify(data),
@@ -317,17 +311,11 @@ export const intakeAPI = {
    * Update wizard step
    * POST /api/intake/sessions/{id}/update_step/
    */
-  updateStep: async (
-    sessionId: number,
-    data: UpdateStepRequest
-  ): Promise<UpdateStepResponse> => {
-    return apiFetch<UpdateStepResponse>(
-      `/intake/sessions/${sessionId}/update_step/`,
-      {
-        method: 'POST',
-        body: JSON.stringify(data),
-      }
-    );
+  updateStep: async (sessionId: number, data: UpdateStepRequest): Promise<UpdateStepResponse> => {
+    return apiFetch<UpdateStepResponse>(`/intake/sessions/${sessionId}/update_step/`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
   },
 
   /**
@@ -335,21 +323,16 @@ export const intakeAPI = {
    * POST /api/intake/sessions/{id}/complete/
    */
   completeSession: async (sessionId: number): Promise<{ message: string }> => {
-    return apiFetch<{ message: string }>(
-      `/intake/sessions/${sessionId}/complete/`,
-      {
-        method: 'POST',
-      }
-    );
+    return apiFetch<{ message: string }>(`/intake/sessions/${sessionId}/complete/`, {
+      method: 'POST',
+    });
   },
 
   /**
    * Calculate means test
    * POST /api/intake/sessions/{id}/calculate_means_test/
    */
-  calculateMeansTest: async (
-    sessionId: number
-  ): Promise<CalculateMeansTestResponse> => {
+  calculateMeansTest: async (sessionId: number): Promise<CalculateMeansTestResponse> => {
     return apiFetch<CalculateMeansTestResponse>(
       `/intake/sessions/${sessionId}/calculate_means_test/`,
       {
@@ -370,12 +353,8 @@ export const intakeAPI = {
    * Get session summary
    * GET /api/intake/sessions/{id}/summary/
    */
-  getSessionSummary: async (
-    sessionId: number
-  ): Promise<SessionSummaryResponse> => {
-    return apiFetch<SessionSummaryResponse>(
-      `/intake/sessions/${sessionId}/summary/`
-    );
+  getSessionSummary: async (sessionId: number): Promise<SessionSummaryResponse> => {
+    return apiFetch<SessionSummaryResponse>(`/intake/sessions/${sessionId}/summary/`);
   },
 
   /**
@@ -398,20 +377,14 @@ export const intakeAPI = {
 // ============================================================================
 
 export const debtorAPI = {
-  createOrUpdate: async (
-    sessionId: number,
-    data: Partial<DebtorInfo>
-  ): Promise<DebtorInfo> => {
+  createOrUpdate: async (sessionId: number, data: Partial<DebtorInfo>): Promise<DebtorInfo> => {
     try {
       const session = await intakeAPI.getSession(sessionId);
       if (session.debtor_info) {
-        return apiFetch<DebtorInfo>(
-          `/intake/debtor-info/${session.debtor_info.id}/`,
-          {
-            method: 'PATCH',
-            body: JSON.stringify(data),
-          }
-        );
+        return apiFetch<DebtorInfo>(`/intake/debtor-info/${session.debtor_info.id}/`, {
+          method: 'PATCH',
+          body: JSON.stringify(data),
+        });
       }
     } catch {
       // Fall through to create
@@ -429,20 +402,14 @@ export const debtorAPI = {
 // ============================================================================
 
 export const incomeAPI = {
-  createOrUpdate: async (
-    sessionId: number,
-    data: Partial<IncomeInfo>
-  ): Promise<IncomeInfo> => {
+  createOrUpdate: async (sessionId: number, data: Partial<IncomeInfo>): Promise<IncomeInfo> => {
     try {
       const session = await intakeAPI.getSession(sessionId);
       if (session.income_info) {
-        return apiFetch<IncomeInfo>(
-          `/intake/income-info/${session.income_info.id}/`,
-          {
-            method: 'PATCH',
-            body: JSON.stringify(data),
-          }
-        );
+        return apiFetch<IncomeInfo>(`/intake/income-info/${session.income_info.id}/`, {
+          method: 'PATCH',
+          body: JSON.stringify(data),
+        });
       }
     } catch {
       // Fall through to create
@@ -460,20 +427,14 @@ export const incomeAPI = {
 // ============================================================================
 
 export const expenseAPI = {
-  createOrUpdate: async (
-    sessionId: number,
-    data: Partial<ExpenseInfo>
-  ): Promise<ExpenseInfo> => {
+  createOrUpdate: async (sessionId: number, data: Partial<ExpenseInfo>): Promise<ExpenseInfo> => {
     try {
       const session = await intakeAPI.getSession(sessionId);
       if (session.expense_info) {
-        return apiFetch<ExpenseInfo>(
-          `/intake/expense-info/${session.expense_info.id}/`,
-          {
-            method: 'PATCH',
-            body: JSON.stringify(data),
-          }
-        );
+        return apiFetch<ExpenseInfo>(`/intake/expense-info/${session.expense_info.id}/`, {
+          method: 'PATCH',
+          body: JSON.stringify(data),
+        });
       }
     } catch {
       // Fall through to create
@@ -491,20 +452,14 @@ export const expenseAPI = {
 // ============================================================================
 
 export const assetsAPI = {
-  create: async (
-    sessionId: number,
-    data: Partial<AssetInfo>
-  ): Promise<AssetInfo> => {
+  create: async (sessionId: number, data: Partial<AssetInfo>): Promise<AssetInfo> => {
     return apiFetch<AssetInfo>('/intake/assets/', {
       method: 'POST',
       body: JSON.stringify({ ...data, session: sessionId }),
     });
   },
 
-  update: async (
-    assetId: number,
-    data: Partial<AssetInfo>
-  ): Promise<AssetInfo> => {
+  update: async (assetId: number, data: Partial<AssetInfo>): Promise<AssetInfo> => {
     return apiFetch<AssetInfo>(`/intake/assets/${assetId}/`, {
       method: 'PATCH',
       body: JSON.stringify(data),
@@ -523,20 +478,14 @@ export const assetsAPI = {
 // ============================================================================
 
 export const debtsAPI = {
-  create: async (
-    sessionId: number,
-    data: Partial<DebtInfo>
-  ): Promise<DebtInfo> => {
+  create: async (sessionId: number, data: Partial<DebtInfo>): Promise<DebtInfo> => {
     return apiFetch<DebtInfo>('/intake/debts/', {
       method: 'POST',
       body: JSON.stringify({ ...data, session: sessionId }),
     });
   },
 
-  update: async (
-    debtId: number,
-    data: Partial<DebtInfo>
-  ): Promise<DebtInfo> => {
+  update: async (debtId: number, data: Partial<DebtInfo>): Promise<DebtInfo> => {
     return apiFetch<DebtInfo>(`/intake/debts/${debtId}/`, {
       method: 'PATCH',
       body: JSON.stringify(data),
@@ -559,10 +508,7 @@ export const formsAPI = {
    * Generate a single form by type
    * POST /api/forms/generate/
    */
-  generate: async (
-    sessionId: number,
-    formType: FormType,
-  ): Promise<GenerateFormResponse> => {
+  generate: async (sessionId: number, formType: FormType): Promise<GenerateFormResponse> => {
     return apiFetch<GenerateFormResponse>('/forms/generate/', {
       method: 'POST',
       body: JSON.stringify({ session_id: sessionId, form_type: formType }),
@@ -573,9 +519,7 @@ export const formsAPI = {
    * Generate all 13 forms atomically
    * POST /api/forms/generate_all/
    */
-  generateAll: async (
-    sessionId: number,
-  ): Promise<GenerateAllFormsResponse> => {
+  generateAll: async (sessionId: number): Promise<GenerateAllFormsResponse> => {
     return apiFetch<GenerateAllFormsResponse>('/forms/generate_all/', {
       method: 'POST',
       body: JSON.stringify({ session_id: sessionId }),
@@ -596,16 +540,14 @@ export const formsAPI = {
    */
   listBySession: async (sessionId: number): Promise<GeneratedForm[]> => {
     const response = await apiFetch<GeneratedForm[] | { results: GeneratedForm[] }>(
-      `/forms/?session=${sessionId}`,
+      `/forms/?session=${sessionId}`
     );
     // Handle both paginated ({results: [...]}) and unpaginated ([...]) responses
-    return Array.isArray(response) ? response : response.results ?? [];
+    return Array.isArray(response) ? response : (response.results ?? []);
   },
 
   /** @deprecated Use generate() with form_type */
-  generateForm101: async (
-    data: GenerateFormRequest,
-  ): Promise<GenerateFormResponse> => {
+  generateForm101: async (data: GenerateFormRequest): Promise<GenerateFormResponse> => {
     return apiFetch<GenerateFormResponse>('/forms/generate_form_101/', {
       method: 'POST',
       body: JSON.stringify(data),
@@ -613,12 +555,9 @@ export const formsAPI = {
   },
 
   markDownloaded: async (formId: number): Promise<{ message: string }> => {
-    return apiFetch<{ message: string }>(
-      `/forms/${formId}/mark_downloaded/`,
-      {
-        method: 'POST',
-      }
-    );
+    return apiFetch<{ message: string }>(`/forms/${formId}/mark_downloaded/`, {
+      method: 'POST',
+    });
   },
 
   markFiled: async (formId: number): Promise<{ message: string }> => {
@@ -627,6 +566,48 @@ export const formsAPI = {
     });
   },
 };
+
+// ============================================================================
+// Document Scanning API
+// ============================================================================
+
+export async function uploadDocument(
+  sessionId: number,
+  file: File,
+  documentType: string
+): Promise<DocumentUploadResponse> {
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('document_type', documentType);
+  formData.append('session_id', String(sessionId));
+
+  const token = getAccessToken();
+  const res = await fetch(`${API_BASE_URL}/documents/upload/`, {
+    method: 'POST',
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body: formData,
+  });
+  if (!res.ok) throw new Error(`Upload failed: ${res.status}`);
+  return res.json();
+}
+
+export async function pollDocument(id: number): Promise<UploadedDocument> {
+  return apiFetch<UploadedDocument>(`/documents/${id}/`);
+}
+
+export async function listDocuments(sessionId: number): Promise<UploadedDocument[]> {
+  return apiFetch<UploadedDocument[]>(`/documents/?session_id=${sessionId}`);
+}
+
+export async function validateDocument(
+  id: number,
+  fields: Record<string, unknown>
+): Promise<OCRResult> {
+  return apiFetch<OCRResult>(`/documents/${id}/validate/`, {
+    method: 'POST',
+    body: JSON.stringify({ fields }),
+  });
+}
 
 // ============================================================================
 // Export unified API client

@@ -1,9 +1,16 @@
-from django.urls import path, include
-from rest_framework.routers import DefaultRouter
+from django.urls import path
 
-router = DefaultRouter()
+from .views import DocumentViewSet
 
-app_name = 'documents'
+doc_list = DocumentViewSet.as_view({"get": "list"})
+doc_detail = DocumentViewSet.as_view({"get": "retrieve"})
+doc_upload = DocumentViewSet.as_view({"post": "upload"})
+doc_validate = DocumentViewSet.as_view({"post": "validate"})
+
+app_name = "documents"
 urlpatterns = [
-    path('', include(router.urls)),
+    path("", doc_list, name="list"),
+    path("upload/", doc_upload, name="upload"),
+    path("<int:pk>/", doc_detail, name="detail"),
+    path("<int:pk>/validate/", doc_validate, name="validate"),
 ]

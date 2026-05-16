@@ -5,20 +5,21 @@ Provides REST API endpoints for multi-step bankruptcy intake process,
 including session management, means test calculation, and form preview.
 """
 
-from rest_framework import viewsets, status
-from rest_framework.decorators import action
-from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
 from django.db import transaction
+from rest_framework import status, viewsets
+from rest_framework.decorators import action
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
 
-from .models import IntakeSession, AssetInfo, DebtInfo
-from .serializers import (
-    IntakeSessionSerializer,
-    AssetInfoSerializer,
-    DebtInfoSerializer,
-)
 from apps.eligibility.services import MeansTestCalculator
 from apps.forms.services import Form101Generator
+
+from .models import AssetInfo, DebtInfo, IntakeSession
+from .serializers import (
+    AssetInfoSerializer,
+    DebtInfoSerializer,
+    IntakeSessionSerializer,
+)
 
 
 class IntakeSessionViewSet(viewsets.ModelViewSet):
@@ -72,6 +73,20 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
             status=status.HTTP_201_CREATED,
         )
 
+    @transaction.atomic
+    def partial_update(self, request, *args, **kwargs):
+        """
+        PATCH /api/intake/sessions/{id}/
+
+        After saving, bulk-clear is_draft on all DebtInfo rows for this session
+        when the 'debts' key is present in the request payload.
+        """
+        instance = self.get_object()
+        response = super().partial_update(request, *args, **kwargs)
+        if "debts" in request.data:
+            DebtInfo.objects.filter(session=instance, is_draft=True).update(is_draft=False)
+        return response
+
     @action(detail=True, methods=["post"])
     def update_step(self, request, pk=None):
         """
@@ -93,9 +108,7 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
 
         # Update with any provided data
         if "data" in request.data:
-            serializer = self.get_serializer(
-                session, data=request.data["data"], partial=True
-            )
+            serializer = self.get_serializer(session, data=request.data["data"], partial=True)
             serializer.is_valid(raise_exception=True)
             serializer.save()
 
@@ -295,9 +308,7 @@ class AssetViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         """Return only assets for user's intake sessions."""
-        return AssetInfo.objects.filter(session__user=self.request.user).select_related(
-            "session"
-        )
+        return AssetInfo.objects.filter(session__user=self.request.user).select_related("session")
 
 
 class DebtViewSet(viewsets.ModelViewSet):
@@ -313,6 +324,4 @@ class DebtViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         """Return only debts for user's intake sessions."""
-        return DebtInfo.objects.filter(session__user=self.request.user).select_related(
-            "session"
-        )
+        return DebtInfo.objects.filter(session__user=self.request.user).select_related("session")

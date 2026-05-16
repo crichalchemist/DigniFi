@@ -30,7 +30,7 @@ export function RegisterPage() {
 
   useEffect(() => {
     if (isAuthenticated) {
-      navigate('/intake', { replace: true });
+      navigate('/documents', { replace: true });
     }
   }, [isAuthenticated, navigate]);
 
@@ -52,7 +52,7 @@ export function RegisterPage() {
         agreed_to_upl_disclaimer: agreedToUpl,
         agreed_to_terms: agreedToTerms,
       });
-      navigate('/intake', { replace: true });
+      navigate('/documents', { replace: true });
     } catch {
       // Error handled by AuthContext
     }
@@ -67,9 +67,7 @@ export function RegisterPage() {
       <div className="auth-card auth-card--wide">
         <div className="auth-header">
           <h1 className="auth-title">Create your account</h1>
-          <p className="auth-subtitle">
-            Get started on your path to financial relief
-          </p>
+          <p className="auth-subtitle">Get started on your path to financial relief</p>
         </div>
 
         {displayError && (
@@ -147,7 +145,10 @@ export function RegisterPage() {
               />
               <span>
                 <strong>Legal Information Acknowledgment</strong>
-                <span className="required-indicator" aria-label="required"> *</span>
+                <span className="required-indicator" aria-label="required">
+                  {' '}
+                  *
+                </span>
                 <br />
                 <span className="auth-checkbox-text">{UPL_DISCLAIMER_TEXT}</span>
               </span>
@@ -168,7 +169,10 @@ export function RegisterPage() {
                 <a href="/terms" className="auth-link" target="_blank" rel="noopener">
                   Terms of Service
                 </a>
-                <span className="required-indicator" aria-label="required"> *</span>
+                <span className="required-indicator" aria-label="required">
+                  {' '}
+                  *
+                </span>
               </span>
             </label>
           </div>
