@@ -6,17 +6,19 @@ for each document type.
 """
 
 from apps.documents.models import DocumentType
-from .paystub import PayStubExtraction
+
 from .business import BalanceSheetExtraction, ProfitLossExtraction
+from .creditor_bill import CreditorBillExtraction
+from .paystub import PayStubExtraction
 
 # Map document types to their extraction schemas
 SCHEMA_MAP = {
     # Chapter 7 (Individual)
     DocumentType.PAY_STUB: PayStubExtraction,
+    DocumentType.CREDITOR_BILL: CreditorBillExtraction,
     # Chapter 11 (Business)
     DocumentType.BALANCE_SHEET: BalanceSheetExtraction,
     DocumentType.PROFIT_LOSS: ProfitLossExtraction,
-
     # TODO: Add remaining schemas as they're created:
     # DocumentType.BANK_STATEMENT: BankStatementExtraction,
     # DocumentType.CREDIT_COUNSELING_CERT: CreditCertExtraction,
