@@ -1,11 +1,11 @@
 """Intake models for collecting bankruptcy petition data."""
 
 from decimal import Decimal
-from typing import ClassVar, List
+from typing import ClassVar
 
-from django.db import models
 from django.conf import settings
 from django.core.validators import MinValueValidator
+from django.db import models
 from encrypted_model_fields.fields import EncryptedCharField
 
 from .fields import EncryptedDecimalField
@@ -14,7 +14,7 @@ from .fields import EncryptedDecimalField
 class IntakeSession(models.Model):
     """Multi-step intake session tracking."""
 
-    STATUS_CHOICES: ClassVar[List[tuple[str, str]]] = [
+    STATUS_CHOICES: ClassVar[list[tuple[str, str]]] = [
         ("started", "Started"),
         ("in_progress", "In Progress"),
         ("completed", "Completed"),
@@ -33,7 +33,7 @@ class IntakeSession(models.Model):
 
     class Meta:
         db_table = "intake_sessions"
-        ordering: ClassVar[List[str]] = ["-created_at"]
+        ordering: ClassVar[list[str]] = ["-created_at"]
 
     def __str__(self) -> str:
         return f"Intake {self.id} - {self.user} ({self.status})"
@@ -62,9 +62,7 @@ class DebtorInfo(models.Model):
         db_table = "debtor_info"
 
     def __str__(self):
-        return (
-            f"Debtor: {self.first_name} {self.last_name} (Session: {self.session_id})"
-        )
+        return f"Debtor: {self.first_name} {self.last_name} (Session: {self.session_id})"
 
 
 class IncomeInfo(models.Model):
@@ -82,9 +80,7 @@ class IncomeInfo(models.Model):
         ],
     )
     number_of_dependents = models.IntegerField(default=0)
-    monthly_income = models.JSONField(
-        help_text="6-month income array"
-    )  # [month1, month2, ...]
+    monthly_income = models.JSONField(help_text="6-month income array")  # [month1, month2, ...]
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -100,7 +96,7 @@ class IncomeInfo(models.Model):
 class ExpenseInfo(models.Model):
     """Monthly expense data for means test calculation."""
 
-    DATA_SOURCE_CHOICES: ClassVar[List[tuple[str, str]]] = [
+    DATA_SOURCE_CHOICES: ClassVar[list[tuple[str, str]]] = [
         ("manual", "Manually Entered"),
         ("plaid", "Plaid API"),
         ("uploaded_document", "Uploaded Document"),
@@ -211,7 +207,7 @@ class ExpenseInfo(models.Model):
 class AssetInfo(models.Model):
     """Asset and property information (encrypted PII for account numbers)."""
 
-    ASSET_TYPE_CHOICES: ClassVar[List[tuple[str, str]]] = [
+    ASSET_TYPE_CHOICES: ClassVar[list[tuple[str, str]]] = [
         ("real_property", "Real Estate/Home"),
         ("vehicle", "Vehicle"),
         ("bank_account", "Bank Account"),
@@ -219,15 +215,13 @@ class AssetInfo(models.Model):
         ("other", "Other Asset"),
     ]
 
-    DATA_SOURCE_CHOICES: ClassVar[List[tuple[str, str]]] = [
+    DATA_SOURCE_CHOICES: ClassVar[list[tuple[str, str]]] = [
         ("manual", "Manually Entered"),
         ("plaid", "Plaid API"),
         ("uploaded_document", "Uploaded Document"),
     ]
 
-    session = models.ForeignKey(
-        IntakeSession, on_delete=models.CASCADE, related_name="assets"
-    )
+    session = models.ForeignKey(IntakeSession, on_delete=models.CASCADE, related_name="assets")
     asset_type = models.CharField(max_length=30, choices=ASSET_TYPE_CHOICES)
     data_source = models.CharField(
         max_length=30,
@@ -268,7 +262,7 @@ class AssetInfo(models.Model):
 
     class Meta:
         db_table = "asset_info"
-        ordering: ClassVar[List[str]] = ["asset_type", "-current_value"]
+        ordering: ClassVar[list[str]] = ["asset_type", "-current_value"]
 
     def __str__(self) -> str:
         return f"{self.get_asset_type_display()}: {self.description} (Session: {self.session_id})"
@@ -282,7 +276,7 @@ class AssetInfo(models.Model):
 class DebtInfo(models.Model):
     """Creditor and amounts owed information (trauma-informed language)."""
 
-    DEBT_TYPE_CHOICES: ClassVar[List[tuple[str, str]]] = [
+    DEBT_TYPE_CHOICES: ClassVar[list[tuple[str, str]]] = [
         ("credit_card", "Credit Card"),
         ("medical", "Medical Bill"),
         ("personal_loan", "Personal Loan"),
@@ -293,21 +287,19 @@ class DebtInfo(models.Model):
         ("other", "Other Amount Owed"),
     ]
 
-    PRIORITY_CHOICES: ClassVar[List[tuple[str, str]]] = [
+    PRIORITY_CHOICES: ClassVar[list[tuple[str, str]]] = [
         ("unsecured", "Unsecured (Credit Card, Medical)"),
         ("secured", "Secured (Car Loan, Mortgage)"),
         ("priority", "Priority (Taxes, Child Support)"),
     ]
 
-    DATA_SOURCE_CHOICES: ClassVar[List[tuple[str, str]]] = [
+    DATA_SOURCE_CHOICES: ClassVar[list[tuple[str, str]]] = [
         ("manual", "Manually Entered"),
         ("credit_report", "Credit Report"),
         ("uploaded_document", "Uploaded Document"),
     ]
 
-    session = models.ForeignKey(
-        IntakeSession, on_delete=models.CASCADE, related_name="debts"
-    )
+    session = models.ForeignKey(IntakeSession, on_delete=models.CASCADE, related_name="debts")
     data_source = models.CharField(
         max_length=30,
         choices=DATA_SOURCE_CHOICES,
@@ -350,9 +342,7 @@ class DebtInfo(models.Model):
     is_in_collections = models.BooleanField(
         default=False, help_text="Has this account been sent to collections?"
     )
-    notes = models.TextField(
-        blank=True, help_text="Additional context about this amount owed"
-    )
+    notes = models.TextField(blank=True, help_text="Additional context about this amount owed")
 
     # Chapter 7 classification fields
     consumer_business_classification = models.CharField(
@@ -401,12 +391,25 @@ class DebtInfo(models.Model):
         help_text="When debt was incurred",
     )
 
+    is_draft = models.BooleanField(
+        default=False,
+        help_text="True for entries auto-created from scanned documents, pending user confirmation",
+    )
+    source_document = models.ForeignKey(
+        "documents.UploadedDocument",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="draft_debts",
+        help_text="Document scan that generated this entry",
+    )
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         db_table = "debt_info"
-        ordering: ClassVar[List[str]] = ["priority_classification", "-amount_owed"]
+        ordering: ClassVar[list[str]] = ["priority_classification", "-amount_owed"]
 
     def __str__(self) -> str:
         return f"{self.creditor_name} - {self.get_debt_type_display()} ({self.get_consumer_business_classification_display()}) (Session: {self.session_id})"
@@ -425,73 +428,59 @@ class FeeWaiverApplication(models.Model):
     """
 
     # HHS poverty guidelines constants (2024)
-    POVERTY_BASE_2024: ClassVar[Decimal] = Decimal('15060')    # HHS poverty line base (2024)
-    POVERTY_INCREMENT: ClassVar[Decimal] = Decimal('5380')     # Per-person increment
-    POVERTY_MULTIPLIER: ClassVar[Decimal] = Decimal('1.5')     # 150% per 28 U.S.C. § 1930(f)
-    MONTHS_PER_YEAR: ClassVar[Decimal] = Decimal('12')
+    POVERTY_BASE_2024: ClassVar[Decimal] = Decimal("15060")  # HHS poverty line base (2024)
+    POVERTY_INCREMENT: ClassVar[Decimal] = Decimal("5380")  # Per-person increment
+    POVERTY_MULTIPLIER: ClassVar[Decimal] = Decimal("1.5")  # 150% per 28 U.S.C. § 1930(f)
+    MONTHS_PER_YEAR: ClassVar[Decimal] = Decimal("12")
 
     # Relations
     session = models.OneToOneField(
-        IntakeSession,
-        on_delete=models.CASCADE,
-        related_name='fee_waiver'
+        IntakeSession, on_delete=models.CASCADE, related_name="fee_waiver"
     )
 
     # Household information
     household_size = models.IntegerField(
         default=1,
         validators=[MinValueValidator(1)],
-        help_text="Number of people in household (must be at least 1)"
+        help_text="Number of people in household (must be at least 1)",
     )
 
     # Financial information (encrypted)
     monthly_income = EncryptedDecimalField(
-        max_digits=10,
-        decimal_places=2,
-        help_text="Total monthly income from all sources"
+        max_digits=10, decimal_places=2, help_text="Total monthly income from all sources"
     )
 
     monthly_expenses = EncryptedDecimalField(
-        max_digits=10,
-        decimal_places=2,
-        help_text="Total monthly expenses"
+        max_digits=10, decimal_places=2, help_text="Total monthly expenses"
     )
 
     # Public benefits
     receives_public_benefits = models.BooleanField(
-        default=False,
-        help_text="Receives SSI, SNAP, TANF, or other means-tested benefits"
+        default=False, help_text="Receives SSI, SNAP, TANF, or other means-tested benefits"
     )
 
     benefit_types = models.JSONField(
-        default=list,
-        blank=True,
-        help_text="List of benefit programs (e.g., ['SNAP', 'Medicaid'])"
+        default=list, blank=True, help_text="List of benefit programs (e.g., ['SNAP', 'Medicaid'])"
     )
 
     # Inability to pay
     cannot_pay_full = models.BooleanField(
-        default=True,
-        help_text="Cannot pay $338 filing fee in full"
+        default=True, help_text="Cannot pay $338 filing fee in full"
     )
 
     cannot_pay_installments = models.BooleanField(
-        default=True,
-        help_text="Cannot pay in 4 installments over 120 days"
+        default=True, help_text="Cannot pay in 4 installments over 120 days"
     )
 
     # Status tracking
-    STATUS_CHOICES: ClassVar[List[tuple[str, str]]] = [
-        ('pending', 'Pending'),
-        ('approved', 'Approved'),
-        ('denied', 'Denied'),
+    STATUS_CHOICES: ClassVar[list[tuple[str, str]]] = [
+        ("pending", "Pending"),
+        ("approved", "Approved"),
+        ("denied", "Denied"),
     ]
 
     status = models.CharField(
-        max_length=20,
-        choices=STATUS_CHOICES,
-        default='pending',
-        db_index=True
+        max_length=20, choices=STATUS_CHOICES, default="pending", db_index=True
     )
 
     filed_at = models.DateTimeField(null=True, blank=True)
@@ -501,7 +490,7 @@ class FeeWaiverApplication(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        db_table = 'fee_waiver_applications'
+        db_table = "fee_waiver_applications"
 
     def __str__(self):
         return f"Fee Waiver for {self.session} ({self.status})"
@@ -527,8 +516,7 @@ class FeeWaiverApplication(models.Model):
 
     def get_poverty_threshold(self) -> Decimal:
         """Calculate 150% poverty threshold for household size."""
-        poverty_threshold_annual = (
-            self.POVERTY_BASE_2024 +
-            (self.POVERTY_INCREMENT * (self.household_size - 1))
+        poverty_threshold_annual = self.POVERTY_BASE_2024 + (
+            self.POVERTY_INCREMENT * (self.household_size - 1)
         )
         return (poverty_threshold_annual * self.POVERTY_MULTIPLIER) / self.MONTHS_PER_YEAR
