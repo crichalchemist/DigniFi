@@ -22,33 +22,37 @@ interface DebtsStepProps {
 }
 
 // Debt categories matching backend DEBT_TYPE_CHOICES with derived classification
+// eslint-disable-next-line react-refresh/only-export-components
 export const DEBT_CATEGORY_META: Record<
   DebtInfo['debt_type'],
   { label: string; is_secured: boolean; priority_classification: string }
 > = {
-  credit_card:   { label: 'Credit card',           is_secured: false, priority_classification: 'unsecured' },
-  medical:       { label: 'Medical bill',           is_secured: false, priority_classification: 'unsecured' },
-  personal_loan: { label: 'Personal loan',          is_secured: false, priority_classification: 'unsecured' },
-  student_loan:  { label: 'Student loan',           is_secured: false, priority_classification: 'priority' },
-  auto_loan:     { label: 'Car or vehicle loan',    is_secured: true,  priority_classification: 'secured' },
-  mortgage:      { label: 'Mortgage or home loan',  is_secured: true,  priority_classification: 'secured' },
-  utility:       { label: 'Utility bill',           is_secured: false, priority_classification: 'unsecured' },
-  other:         { label: 'Other amount owed',      is_secured: false, priority_classification: 'unsecured' },
+  credit_card: { label: 'Credit card', is_secured: false, priority_classification: 'unsecured' },
+  medical: { label: 'Medical bill', is_secured: false, priority_classification: 'unsecured' },
+  personal_loan: {
+    label: 'Personal loan',
+    is_secured: false,
+    priority_classification: 'unsecured',
+  },
+  student_loan: { label: 'Student loan', is_secured: false, priority_classification: 'priority' },
+  auto_loan: { label: 'Car or vehicle loan', is_secured: true, priority_classification: 'secured' },
+  mortgage: {
+    label: 'Mortgage or home loan',
+    is_secured: true,
+    priority_classification: 'secured',
+  },
+  utility: { label: 'Utility bill', is_secured: false, priority_classification: 'unsecured' },
+  other: { label: 'Other amount owed', is_secured: false, priority_classification: 'unsecured' },
 };
 
-const DEBT_CATEGORY_OPTIONS = Object.entries(DEBT_CATEGORY_META).map(
-  ([value, { label }]) => ({ value, label }),
-);
+const DEBT_CATEGORY_OPTIONS = Object.entries(DEBT_CATEGORY_META).map(([value, { label }]) => ({
+  value,
+  label,
+}));
 
-export function DebtsStep({
-  initialData,
-  onDataChange,
-  onValidationChange,
-}: DebtsStepProps) {
+export function DebtsStep({ initialData, onDataChange, onValidationChange }: DebtsStepProps) {
   const [debts, setDebts] = useState<Partial<DebtInfo>[]>(
-    initialData && initialData.length > 0
-      ? initialData
-      : [createEmptyDebt()]
+    initialData && initialData.length > 0 ? initialData : [createEmptyDebt()]
   );
 
   const { errors, isValid } = useMemo(() => {
@@ -60,9 +64,7 @@ export function DebtsStep({
 
       // Check if this debt has any data filled in
       const hasData =
-        debt.debt_type ||
-        debt.creditor_name ||
-        (debt.amount_owed && debt.amount_owed > 0);
+        debt.debt_type || debt.creditor_name || (debt.amount_owed && debt.amount_owed > 0);
 
       if (hasData) {
         hasValidDebt = true;
@@ -82,8 +84,7 @@ export function DebtsStep({
 
         // Validate collateral description for secured debts (auto_loan, mortgage)
         if (debt.is_secured && !debt.collateral_description?.trim()) {
-          debtErrors.collateral_description =
-            'Please describe what secures this amount owed';
+          debtErrors.collateral_description = 'Please describe what secures this amount owed';
         }
 
         // Validate non-negative values
@@ -102,10 +103,12 @@ export function DebtsStep({
   }, [debts]);
 
   // Update parent when debts change
+  /* eslint-disable react-hooks/exhaustive-deps */
   useEffect(() => {
     onDataChange(debts);
     onValidationChange(isValid);
   }, [debts, isValid]);
+  /* eslint-enable react-hooks/exhaustive-deps */
 
   function createEmptyDebt(): Partial<DebtInfo> {
     return {
@@ -132,11 +135,7 @@ export function DebtsStep({
     }
   };
 
-  const handleDebtChange = (
-    index: number,
-    field: keyof DebtInfo,
-    value: string | number
-  ) => {
+  const handleDebtChange = (index: number, field: keyof DebtInfo, value: string | number) => {
     const updatedDebts = [...debts];
 
     if (field === 'amount_owed' || field === 'monthly_payment') {
@@ -167,12 +166,7 @@ export function DebtsStep({
     <div className="debts-step">
       {/* Explainer */}
       <div className="info-box">
-        <svg
-          className="info-icon"
-          viewBox="0 0 20 20"
-          fill="currentColor"
-          aria-hidden="true"
-        >
+        <svg className="info-icon" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
           <path
             fillRule="evenodd"
             d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
@@ -182,9 +176,9 @@ export function DebtsStep({
         <div>
           <h3 className="info-title">About amounts you owe</h3>
           <p className="info-message">
-            List all creditors (companies or people you owe money to). Include credit
-            cards, medical bills, loans, and any other amounts owed. This helps determine
-            which type of bankruptcy may work for your situation.
+            List all creditors (companies or people you owe money to). Include credit cards, medical
+            bills, loans, and any other amounts owed. This helps determine which type of bankruptcy
+            may work for your situation.
           </p>
         </div>
       </div>
@@ -196,6 +190,22 @@ export function DebtsStep({
             <h3 className="section-title">
               Amount Owed {index + 1}
               {debt.creditor_name && ` - ${debt.creditor_name}`}
+              {debt.is_draft && (
+                <span
+                  aria-label="Pre-filled from document scan"
+                  style={{
+                    fontSize: '0.75rem',
+                    background: '#dbeafe',
+                    color: '#1d4ed8',
+                    borderRadius: 4,
+                    padding: '0 6px',
+                    marginLeft: 8,
+                    verticalAlign: 'middle',
+                  }}
+                >
+                  From scan
+                </span>
+              )}
             </h3>
             {debts.length > 1 && (
               <button
@@ -239,9 +249,7 @@ export function DebtsStep({
               name={`creditor_name_${index}`}
               type="text"
               value={debt.creditor_name || ''}
-              onChange={(e) =>
-                handleDebtChange(index, 'creditor_name', e.target.value)
-              }
+              onChange={(e) => handleDebtChange(index, 'creditor_name', e.target.value)}
               error={errors[index]?.creditor_name}
               required
               helpText="Company or person you owe money to"
@@ -253,9 +261,7 @@ export function DebtsStep({
               name={`account_number_${index}`}
               type="text"
               value={debt.account_number || ''}
-              onChange={(e) =>
-                handleDebtChange(index, 'account_number', e.target.value)
-              }
+              onChange={(e) => handleDebtChange(index, 'account_number', e.target.value)}
               helpText="Optional - helps identify the account. Your account number is encrypted."
               placeholder="XXXX-1234"
             />
@@ -269,9 +275,7 @@ export function DebtsStep({
               min="0"
               step="0.01"
               value={debt.amount_owed || ''}
-              onChange={(e) =>
-                handleDebtChange(index, 'amount_owed', e.target.value)
-              }
+              onChange={(e) => handleDebtChange(index, 'amount_owed', e.target.value)}
               error={errors[index]?.amount_owed}
               required
               helpText="Total amount you currently owe"
@@ -285,9 +289,7 @@ export function DebtsStep({
               min="0"
               step="0.01"
               value={debt.monthly_payment || ''}
-              onChange={(e) =>
-                handleDebtChange(index, 'monthly_payment', e.target.value)
-              }
+              onChange={(e) => handleDebtChange(index, 'monthly_payment', e.target.value)}
               error={errors[index]?.monthly_payment}
               helpText="Your regular monthly payment (if any)"
               placeholder="0.00"
@@ -319,12 +321,7 @@ export function DebtsStep({
           variant="outline"
           onClick={handleAddDebt}
           icon={
-            <svg
-              viewBox="0 0 20 20"
-              fill="currentColor"
-              className="icon"
-              aria-hidden="true"
-            >
+            <svg viewBox="0 0 20 20" fill="currentColor" className="icon" aria-hidden="true">
               <path
                 fillRule="evenodd"
                 d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"
@@ -344,7 +341,8 @@ export function DebtsStep({
         <div className="debts-total">
           <h3 className="total-label">Total Amounts Owed</h3>
           <p className="total-amount">
-            ${debts
+            $
+            {debts
               .reduce((sum, debt) => sum + (debt.amount_owed || 0), 0)
               .toLocaleString('en-US', {
                 minimumFractionDigits: 2,
