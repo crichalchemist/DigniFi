@@ -14,10 +14,11 @@ from rest_framework.response import Response
 from apps.eligibility.services import MeansTestCalculator
 from apps.forms.services import Form101Generator
 
-from .models import AssetInfo, DebtInfo, IntakeSession
+from .models import AssetInfo, DebtInfo, FeeWaiverApplication, IntakeSession
 from .serializers import (
     AssetInfoSerializer,
     DebtInfoSerializer,
+    FeeWaiverApplicationSerializer,
     IntakeSessionSerializer,
 )
 
@@ -325,3 +326,26 @@ class DebtViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         """Return only debts for user's intake sessions."""
         return DebtInfo.objects.filter(session__user=self.request.user).select_related("session")
+
+
+class FeeWaiverViewSet(viewsets.ModelViewSet):
+    """CRUD for fee waiver applications, scoped to authenticated user's sessions."""
+
+    serializer_class = FeeWaiverApplicationSerializer
+    permission_classes = [IsAuthenticated]
+    http_method_names = ["get", "post", "patch", "head", "options"]
+
+    def get_queryset(self):
+        return FeeWaiverApplication.objects.filter(session__user=self.request.user).select_related(
+            "session"
+        )
+
+    def perform_create(self, serializer):
+        # FeeWaiverApplication is OneToOne with IntakeSession — second POST from
+        # the same session would raise IntegrityError. Use update_or_create so
+        # reloading the FeeWaiverPage is safe.
+        session = serializer.validated_data["session"]
+        FeeWaiverApplication.objects.update_or_create(
+            session=session,
+            defaults={k: v for k, v in serializer.validated_data.items() if k != "session"},
+        )
