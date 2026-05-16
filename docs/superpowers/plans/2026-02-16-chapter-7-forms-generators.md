@@ -17,6 +17,7 @@
 ### Task 1: Extend DebtInfo Model for Consumer vs Business Classification
 
 **Files:**
+
 - Modify: `backend/apps/intake/models.py` (DebtInfo class)
 - Create: `backend/apps/intake/migrations/0002_add_debt_classification.py`
 - Test: `backend/apps/intake/tests/test_models.py`
@@ -215,6 +216,7 @@ Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>"
 ### Task 2: Create FeeWaiverApplication Model
 
 **Files:**
+
 - Modify: `backend/apps/intake/models.py`
 - Create: `backend/apps/intake/migrations/0003_add_fee_waiver.py`
 - Test: `backend/apps/intake/tests/test_models.py`
@@ -447,6 +449,7 @@ Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>"
 ### Task 3: Schedule A/B Generator (Property)
 
 **Files:**
+
 - Create: `backend/apps/forms/services/schedule_ab_generator.py`
 - Test: `backend/apps/forms/tests/test_schedule_ab_generator.py`
 - Reference: `Official Bankruptcy Rules+Forms/Forms/form_b106ab.pdf`
@@ -648,6 +651,7 @@ Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>"
 ### Task 4: Schedule C Generator (Exemptions)
 
 **Files:**
+
 - Create: `backend/apps/forms/services/schedule_c_generator.py`
 - Test: `backend/apps/forms/tests/test_schedule_c_generator.py`
 - Create: `backend/apps/forms/fixtures/illinois_exemptions_2024.json`
@@ -896,6 +900,7 @@ Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>"
 ### Task 5: Form 106Sum Generator (Summary)
 
 **Files:**
+
 - Create: `backend/apps/forms/services/form_106sum_generator.py`
 - Test: `backend/apps/forms/tests/test_form_106sum_generator.py`
 
@@ -1077,6 +1082,7 @@ Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>"
 ### Task 6: Schedule D Generator (Secured Debts)
 
 **Files:**
+
 - Create: `backend/apps/forms/services/schedule_d_generator.py`
 - Test: `backend/apps/forms/tests/test_schedule_d_generator.py`
 
@@ -1242,6 +1248,7 @@ Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>"
 ### Task 7: Schedule E/F Generator (Unsecured Debts)
 
 **Files:**
+
 - Create: `backend/apps/forms/services/schedule_ef_generator.py`
 - Test: `backend/apps/forms/tests/test_schedule_ef_generator.py`
 
@@ -1464,6 +1471,7 @@ Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>"
 ### Task 8: Schedule I Generator (Income - $0 Logic)
 
 **Files:**
+
 - Create: `backend/apps/forms/services/schedule_i_generator.py`
 - Test: `backend/apps/forms/tests/test_schedule_i_generator.py`
 
@@ -1634,6 +1642,7 @@ Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>"
 ### Task 9: Schedule J Generator (Expenses)
 
 **Files:**
+
 - Create: `backend/apps/forms/services/schedule_j_generator.py`
 - Test: `backend/apps/forms/tests/test_schedule_j_generator.py`
 
@@ -1846,6 +1855,7 @@ Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>"
 - **Task 14:** Form 103B Generator (Fee Waiver - CRITICAL)
 
 **Each task follows TDD cycle:**
+
 1. Write failing test
 2. Run test to verify failure
 3. Implement minimal code

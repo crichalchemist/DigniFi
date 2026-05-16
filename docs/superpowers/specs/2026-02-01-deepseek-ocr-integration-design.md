@@ -1,4 +1,5 @@
 # DeepSeek-OCR Integration Design
+
 **Date:** 2026-02-01
 **Author:** Claude Code
 **Status:** Approved for Implementation
@@ -8,6 +9,7 @@
 This document outlines the complete architecture for integrating DeepSeek-OCR 2 into the DigniFi bankruptcy platform. The integration enables automated extraction of structured data from user-uploaded documents (pay stubs, bank statements, tax returns, business financial statements, etc.) to streamline the intake process while maintaining strict privacy controls and UPL compliance.
 
 **Key Features:**
+
 - Support for 6 document types (Chapter 7) + 8 document types (Chapter 11 Subchapter V)
 - Hybrid deployment: Clarifai API (MVP) → self-hosted vLLM (production)
 - Confidence-based auto-population with user validation
@@ -76,12 +78,14 @@ This document outlines the complete architecture for integrating DeepSeek-OCR 2 
 ### 1.2 Core Components
 
 **Django App: `documents`** (backend/apps/documents/)
+
 - **Models:** `UploadedDocument`, `OCRResult`, `ExtractionField`
 - **Views:** `DocumentUploadViewSet`, `OCRJobViewSet`
 - **Services:** `DocumentOCRService`, `DocumentValidationService`, `FieldMapperService`
 - **Providers:** `ClarifaiOCRProvider`, `VLLMOCRProvider`
 
 **Storage Layer:**
+
 - Encrypted document storage (Fernet encryption, matching existing PII strategy)
 - Auto-deletion jobs (Celery periodic tasks for production, cron for MVP)
 - Audit logging (who uploaded, when extracted, field changes)
@@ -89,6 +93,7 @@ This document outlines the complete architecture for integrating DeepSeek-OCR 2 
 ### 1.3 Document Type Taxonomy
 
 **Chapter 7 (Individual) Documents:**
+
 - Pay Stub
 - Bank Statement
 - Credit Counseling Certificate
@@ -97,6 +102,7 @@ This document outlines the complete architecture for integrating DeepSeek-OCR 2 
 - Special Circumstances Supporting Documents
 
 **Chapter 11 Subchapter V (Business) Documents:**
+
 - Balance Sheet
 - Profit & Loss Statement (P&L)
 - Cash Flow Statement
@@ -107,6 +113,7 @@ This document outlines the complete architecture for integrating DeepSeek-OCR 2 
 - Corporate Resolution
 
 **Dual-Use Documents (Both Chapters):**
+
 - Lease Agreement
 - Loan Agreement
 - Court Judgment
@@ -196,6 +203,7 @@ class OCRResult(models.Model):
 ### 2.2 Pydantic Extraction Schemas
 
 **Priority 1: Pay Stub Extraction**
+
 ```python
 class PayStubExtraction(BaseModel):
     employer_name: str = Field(min_length=1)
@@ -209,6 +217,7 @@ class PayStubExtraction(BaseModel):
 ```
 
 **Priority 2: Balance Sheet Extraction (Chapter 11)**
+
 ```python
 class BalanceSheetExtraction(BaseModel):
     as_of_date: date
@@ -233,7 +242,7 @@ class BalanceSheetExtraction(BaseModel):
         return v
 ```
 
-*Additional schemas defined for: Bank Statements, Credit Counseling Certificates, Credit Reports, P&L Statements, Cash Flow Statements, Tax Returns*
+_Additional schemas defined for: Bank Statements, Credit Counseling Certificates, Credit Reports, P&L Statements, Cash Flow Statements, Tax Returns_
 
 ---
 
@@ -242,6 +251,7 @@ class BalanceSheetExtraction(BaseModel):
 ### 3.1 DocumentOCRService
 
 **Responsibilities:**
+
 - Coordinate OCR processing workflow
 - Manage provider abstraction (Clarifai vs vLLM)
 - Type validation and mismatch detection
@@ -249,6 +259,7 @@ class BalanceSheetExtraction(BaseModel):
 - Error handling and retries
 
 **Key Methods:**
+
 ```python
 class DocumentOCRService:
     def __init__(self):
@@ -274,6 +285,7 @@ class DocumentOCRService:
 ### 3.2 OCR Provider Abstraction
 
 **Base Interface:**
+
 ```python
 class BaseOCRProvider(ABC):
     @abstractmethod
@@ -286,12 +298,14 @@ class BaseOCRProvider(ABC):
 ```
 
 **Clarifai Provider (MVP):**
+
 - OpenAI-compatible endpoint
 - Uses Personal Access Token (PAT)
 - Base64 image encoding
 - Temperature=0.0 for deterministic extraction
 
 **vLLM Provider (Production):**
+
 - Self-hosted DeepSeek-OCR 2 model
 - HTTP requests to local GPU server
 - Batched processing support
@@ -317,6 +331,7 @@ PATCH  /api/documents/{id}/apply-to-intake/ # Apply to intake session
 ### 4.2 Upload Workflow
 
 **Request (POST /api/documents/upload/):**
+
 ```json
 {
   "session_id": "uuid",
@@ -326,6 +341,7 @@ PATCH  /api/documents/{id}/apply-to-intake/ # Apply to intake session
 ```
 
 **Response (Success):**
+
 ```json
 {
   "id": "uuid",
@@ -357,6 +373,7 @@ PATCH  /api/documents/{id}/apply-to-intake/ # Apply to intake session
 ```
 
 **Response (Type Mismatch):**
+
 ```json
 {
   "id": "uuid",
@@ -375,6 +392,7 @@ PATCH  /api/documents/{id}/apply-to-intake/ # Apply to intake session
 ### 4.3 Validation Workflow
 
 **Request (POST /api/documents/{id}/validate/):**
+
 ```json
 {
   "validated": true,
@@ -386,6 +404,7 @@ PATCH  /api/documents/{id}/apply-to-intake/ # Apply to intake session
 ```
 
 **Response:**
+
 ```json
 {
   "status": "validated",
@@ -410,15 +429,18 @@ Maps OCR extracted data to existing intake models (`IncomeInfo`, `DebtInfo`, `As
 **Key Mappings:**
 
 **Pay Stub → IncomeInfo:**
+
 - `employer_name` → `IncomeInfo.employer_name`
 - `gross_pay` → `IncomeInfo.monthly_gross_income` (converted based on pay frequency)
 - `ytd_gross` → (validation/verification)
 
 **Bank Statement → AssetInfo:**
+
 - `ending_balance` → `AssetInfo.current_value` (type: bank_account)
 - `bank_name` + `account_number_last4` → `AssetInfo.description`
 
 **Balance Sheet → AssetInfo + DebtInfo (Chapter 11):**
+
 - `cash` → `AssetInfo` (type: cash)
 - `accounts_receivable` → `AssetInfo` (type: accounts_receivable)
 - `equipment` → `AssetInfo` (type: business_equipment)
@@ -426,6 +448,7 @@ Maps OCR extracted data to existing intake models (`IncomeInfo`, `DebtInfo`, `As
 - `loans_payable` → `DebtInfo` (creditor: "Business loans (aggregate)")
 
 **Profit & Loss → IncomeInfo + ExpenseInfo (Chapter 11):**
+
 - `total_revenue` → `IncomeInfo.business_gross_revenue`
 - `net_income` → `IncomeInfo.business_net_income`
 - `expense_breakdown` → Multiple `ExpenseInfo` records
@@ -447,6 +470,7 @@ def _convert_to_monthly(amount: Decimal, pay_period_days: int) -> Decimal:
 ### 5.3 Audit Logging
 
 All field mapping operations create audit log entries:
+
 ```python
 AuditLog.objects.create(
     user=self.session.user,
@@ -468,10 +492,12 @@ AuditLog.objects.create(
 ### 6.1 Retention Policy
 
 **Documents are automatically deleted after:**
+
 - 22 days from upload date, OR
 - When bankruptcy form is filed (whichever comes first)
 
 **User notifications:**
+
 - 7 days before deletion: Email reminder to download documents
 - Deletion notice in user dashboard
 
@@ -491,6 +517,7 @@ python manage.py notify_pending_deletion
 ```
 
 **Celery Periodic Tasks (Production):**
+
 ```python
 app.conf.beat_schedule = {
     'delete-expired-documents-daily': {
@@ -505,6 +532,7 @@ app.conf.beat_schedule = {
 ```
 
 **Cron Setup (MVP):**
+
 ```cron
 0 2 * * * cd /path/to/dignifi && python manage.py delete_expired_documents
 0 * * * * cd /path/to/dignifi && python manage.py delete_on_form_filed
@@ -514,12 +542,14 @@ app.conf.beat_schedule = {
 ### 6.3 Soft Delete Strategy
 
 Documents are **soft deleted** (not hard deleted):
+
 - `UploadedDocument.deleted_at` timestamp set
 - Encrypted file removed from storage
 - OCR results retained (encrypted JSON)
 - Audit log entry created
 
 This allows:
+
 - Retention of extracted data for form generation
 - Audit trail of what was deleted and when
 - Compliance with data minimization principles
@@ -531,6 +561,7 @@ This allows:
 ### 7.1 Document Upload Component
 
 **Features:**
+
 - Document type selector (filtered by chapter)
 - Drag-and-drop file upload
 - Document-specific tips ("Upload your most recent pay stub...")
@@ -538,6 +569,7 @@ This allows:
 - Type mismatch modal
 
 **User Flow:**
+
 1. User selects document type from dropdown
 2. Uploads file (PDF, JPG, PNG)
 3. Progress bar shows: "Uploading... → Processing with OCR..."
@@ -555,11 +587,13 @@ This allows:
 ```
 
 **Confidence Thresholds:**
+
 - **High (≥90%):** Green checkmark, auto-filled
 - **Medium (70-90%):** Yellow warning, "Please verify carefully"
 - **Low (<70%):** Red X, leave empty with message "We couldn't read this clearly"
 
 **User Actions:**
+
 - Edit any field (click "Edit" button)
 - Corrections tracked in `validation_changes` array
 - "Confirm All Fields" button marks as validated
@@ -612,16 +646,18 @@ CELERY_RESULT_BACKEND=redis://localhost:6379/0
 ### 8.2 Docker Compose Updates
 
 **Add Redis for Celery:**
+
 ```yaml
 redis:
   image: redis:7-alpine
   ports:
-    - "6379:6379"
+    - '6379:6379'
   volumes:
     - redis_data:/data
 ```
 
 **Add Celery Worker (production profile):**
+
 ```yaml
 celery_worker:
   build: ./backend
@@ -640,7 +676,7 @@ vllm_server:
   image: vllm/vllm-openai:latest
   runtime: nvidia
   ports:
-    - "8000:8000"
+    - '8000:8000'
   command: >
     --model deepseek-ai/DeepSeek-OCR-2
     --served-model-name deepseek-ocr
@@ -660,11 +696,13 @@ vllm_server:
 ### 8.4 Migration Path: Clarifai → vLLM
 
 **Testing Provider:**
+
 ```bash
 python manage.py switch_ocr_provider --test vllm
 ```
 
 **Switching Provider:**
+
 ```bash
 python manage.py switch_ocr_provider --switch vllm
 # Restart Django to apply changes
@@ -677,6 +715,7 @@ python manage.py switch_ocr_provider --switch vllm
 ### Phase 1: Core Infrastructure (Week 1-2)
 
 **Backend:**
+
 - [ ] Create `documents` Django app
 - [ ] Implement data models (UploadedDocument, OCRResult)
 - [ ] Create database migrations
@@ -684,6 +723,7 @@ python manage.py switch_ocr_provider --switch vllm
 - [ ] Set up document retention (delete_after calculation)
 
 **Testing:**
+
 - [ ] Model creation tests
 - [ ] Encryption/decryption tests
 - [ ] Soft delete tests
@@ -691,6 +731,7 @@ python manage.py switch_ocr_provider --switch vllm
 ### Phase 2: OCR Service Layer (Week 2-3)
 
 **Backend:**
+
 - [ ] Implement Pydantic schemas (PayStub, BankStatement, BalanceSheet, P&L)
 - [ ] Create BaseOCRProvider abstract class
 - [ ] Implement ClarifaiOCRProvider
@@ -699,11 +740,13 @@ python manage.py switch_ocr_provider --switch vllm
 - [ ] Add confidence scoring logic
 
 **Configuration:**
+
 - [ ] Add OCR settings to base.py
 - [ ] Create .env.example with CLARIFAI_PAT
 - [ ] Update docker-compose.yml with environment variables
 
 **Testing:**
+
 - [ ] Provider connectivity tests
 - [ ] Schema validation tests
 - [ ] Prompt generation tests
@@ -712,6 +755,7 @@ python manage.py switch_ocr_provider --switch vllm
 ### Phase 3: API Endpoints (Week 3-4)
 
 **Backend:**
+
 - [ ] Implement DocumentUploadViewSet
 - [ ] Create upload endpoint with multipart parsing
 - [ ] Implement type validation and mismatch detection
@@ -720,6 +764,7 @@ python manage.py switch_ocr_provider --switch vllm
 - [ ] Implement serializers (UploadedDocument, OCRResult)
 
 **Testing:**
+
 - [ ] Upload workflow tests
 - [ ] Type mismatch tests
 - [ ] Validation workflow tests
@@ -728,6 +773,7 @@ python manage.py switch_ocr_provider --switch vllm
 ### Phase 4: Field Mapping (Week 4)
 
 **Backend:**
+
 - [ ] Implement FieldMapperService
 - [ ] Create mappers for all document types:
   - [ ] Pay stub → IncomeInfo
@@ -741,6 +787,7 @@ python manage.py switch_ocr_provider --switch vllm
 - [ ] Add audit logging for field mapping
 
 **Testing:**
+
 - [ ] Field mapping tests for each document type
 - [ ] Pay period conversion tests
 - [ ] Audit log verification tests
@@ -748,6 +795,7 @@ python manage.py switch_ocr_provider --switch vllm
 ### Phase 5: Document Lifecycle (Week 5)
 
 **Backend:**
+
 - [ ] Implement delete_expired_documents management command
 - [ ] Implement delete_on_form_filed management command
 - [ ] Implement notify_pending_deletion management command
@@ -755,11 +803,13 @@ python manage.py switch_ocr_provider --switch vllm
 - [ ] Create audit logs for deletions
 
 **Infrastructure:**
+
 - [ ] Set up cron jobs for MVP
 - [ ] Create Celery tasks for production
 - [ ] Add Celery beat schedule
 
 **Testing:**
+
 - [ ] Deletion logic tests
 - [ ] Notification tests
 - [ ] Audit trail verification
@@ -767,6 +817,7 @@ python manage.py switch_ocr_provider --switch vllm
 ### Phase 6: Frontend Integration (Week 5-6)
 
 **Frontend:**
+
 - [ ] Create TypeScript types (DocumentType, OCRResult, etc.)
 - [ ] Implement DocumentUpload component
 - [ ] Create file upload with progress indicator
@@ -777,11 +828,13 @@ python manage.py switch_ocr_provider --switch vllm
 - [ ] Add "Apply to Intake Form" button
 
 **API Integration:**
+
 - [ ] Create API client functions (uploadDocument, validateOCR, applyToIntake)
 - [ ] Add error handling and retry logic
 - [ ] Implement loading states
 
 **Testing:**
+
 - [ ] Component unit tests
 - [ ] Integration tests with mock API
 - [ ] E2E tests with real document uploads
@@ -789,23 +842,27 @@ python manage.py switch_ocr_provider --switch vllm
 ### Phase 7: Chapter 11 Support (Week 6)
 
 **Backend:**
+
 - [ ] Add Chapter 11 document types to models
 - [ ] Create business-specific Pydantic schemas
 - [ ] Implement business document field mappings
 - [ ] Add chapter-based document type filtering
 
 **Frontend:**
+
 - [ ] Filter document types by chapter
 - [ ] Add business document upload UI
 - [ ] Create business-specific field display
 
 **Configuration:**
+
 - [ ] Add ENABLE_CHAPTER_11 feature flag
 - [ ] Document Chapter 11 activation process
 
 ### Phase 8: Production Readiness (Week 7-8)
 
 **Backend:**
+
 - [ ] Implement VLLMOCRProvider (stub for future)
 - [ ] Add provider switching management command
 - [ ] Performance optimization (async processing path)
@@ -813,17 +870,20 @@ python manage.py switch_ocr_provider --switch vllm
 - [ ] Implement rate limiting
 
 **Infrastructure:**
+
 - [ ] Redis setup for Celery
 - [ ] Celery worker configuration
 - [ ] S3-compatible storage integration (optional)
 - [ ] Monitoring and alerting setup
 
 **Documentation:**
+
 - [ ] API documentation (OpenAPI/Swagger)
 - [ ] Deployment guide
 - [ ] User documentation for document upload
 
 **Testing:**
+
 - [ ] Load testing (concurrent uploads)
 - [ ] Security testing (file upload vulnerabilities)
 - [ ] Privacy compliance review
@@ -834,31 +894,37 @@ python manage.py switch_ocr_provider --switch vllm
 ## Appendix A: Decision Log
 
 **1. Hybrid Deployment Strategy**
+
 - **Decision:** Start with Clarifai API, migrate to self-hosted vLLM
 - **Rationale:** Fast development with managed API, privacy with self-hosting when GPU available
 - **Trade-offs:** Initial per-request costs vs. long-term infrastructure investment
 
 **2. Auto-Populate with User Review**
+
 - **Decision:** Auto-fill form fields with confidence highlighting
 - **Rationale:** Trauma-informed UX (reduce cognitive load), UPL-safe (user confirms all data)
 - **Trade-offs:** Risk of users not reviewing vs. slower manual entry alternative
 
 **3. Confidence-Based Fallback**
+
 - **Decision:** Three-tier confidence (High/Medium/Low) with different UI treatment
 - **Rationale:** Transparent about reliability, prevents errors from low-confidence extractions
 - **Trade-offs:** More complex UI vs. simpler all-or-nothing approach
 
 **4. 22-Day Retention with Auto-Delete**
+
 - **Decision:** Documents deleted after 22 days or form filing
 - **Rationale:** Privacy by design, data minimization, GDPR/state law compliance
 - **Trade-offs:** User convenience (can't review originals later) vs. privacy protection
 
 **5. User Declares Type Upfront + Smart Validation**
+
 - **Decision:** User selects type, system validates and prompts if mismatch
 - **Rationale:** Clarity (user knows what we expect), safety net (catch mistakes), educational
 - **Trade-offs:** Extra click for user vs. silent auto-detection errors
 
 **6. Chapter 11 Feature Flag**
+
 - **Decision:** Build Chapter 11 support with feature flag (disabled by default)
 - **Rationale:** Enables founder's personal filing, validates business support, keeps MVP focused
 - **Trade-offs:** Additional complexity vs. limiting to Chapter 7 only
@@ -868,23 +934,27 @@ python manage.py switch_ocr_provider --switch vllm
 ## Appendix B: Success Metrics
 
 **Technical Metrics:**
+
 - OCR success rate: >90%
 - Average processing time: <10 seconds per document
 - Field mapping accuracy: >95% (validated data matches manual entry)
 - System uptime: 99.5%
 
 **User Experience Metrics:**
+
 - Document upload completion rate: >85%
 - User correction rate per document: <20% of fields
 - Time saved vs. manual entry: >60%
 - User satisfaction with auto-population: >4/5 rating
 
 **Privacy Metrics:**
+
 - Document deletion compliance: 100% (all documents deleted on schedule)
 - Encryption verification: 100% (all PII encrypted at rest)
 - Audit log completeness: 100% (all uploads/extractions/deletions logged)
 
 **Business Metrics:**
+
 - Reduction in intake abandonment: >30%
 - Increase in form completion speed: >40%
 - Support ticket reduction for data entry errors: >50%
@@ -894,22 +964,27 @@ python manage.py switch_ocr_provider --switch vllm
 ## Appendix C: Risk Mitigation
 
 **Risk 1: OCR Extraction Errors**
+
 - **Mitigation:** Confidence scoring, user validation required, audit trails
 - **Fallback:** Manual entry always available, reprocess option if OCR fails
 
 **Risk 2: Privacy Breach (Document Exposure)**
+
 - **Mitigation:** Fernet encryption, soft delete, audit logs, 22-day auto-deletion
 - **Fallback:** Immediate deletion on breach detection, user notification protocol
 
 **Risk 3: Third-Party API Dependency (Clarifai)**
+
 - **Mitigation:** Provider abstraction, vLLM migration path, graceful degradation
 - **Fallback:** Disable OCR feature, allow manual entry only
 
 **Risk 4: UPL Violation (OCR data interpreted as advice)**
+
 - **Mitigation:** All extracted data labeled "please verify", user confirms all fields, audit logs
 - **Fallback:** Disable auto-population, show as suggestions only
 
 **Risk 5: Type Misclassification**
+
 - **Mitigation:** User declares type upfront, validation prompts for mismatches, edit option
 - **Fallback:** User can reprocess with correct type, manual override always available
 

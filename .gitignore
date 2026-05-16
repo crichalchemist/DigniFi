@@ -87,4 +87,12 @@ IMG_0487.jpg
 /TODO.txt
 
 # Claude / AI tool files
-.claude/mcp.json
+.claude/
+
+# claude-mem auto-generated activity stubs (root CLAUDE.md is tracked separately)
+backend/**/CLAUDE.md
+docs/CLAUDE.md
+docs/security/CLAUDE.md
+frontend/**/CLAUDE.md
+scripts/CLAUDE.md
+test-results/CLAUDE.md

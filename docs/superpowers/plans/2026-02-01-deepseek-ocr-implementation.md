@@ -15,12 +15,13 @@
 ### Task 1: Create Documents App Structure
 
 **Files:**
+
 - Create: `backend/apps/documents/__init__.py`
 - Create: `backend/apps/documents/apps.py`
 - Create: `backend/apps/documents/admin.py`
 - Create: `backend/apps/documents/urls.py`
 
-**Step 1: Create __init__.py**
+**Step 1: Create **init**.py**
 
 ```bash
 touch backend/apps/documents/__init__.py
@@ -69,6 +70,7 @@ urlpatterns = [
 Modify: `backend/config/settings/base.py`
 
 Add to INSTALLED_APPS (after 'apps.intake'):
+
 ```python
     'apps.documents',
 ```
@@ -92,6 +94,7 @@ Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>"
 ### Task 2: Define Document Type Choices & OCR Status
 
 **Files:**
+
 - Create: `backend/apps/documents/models.py`
 
 **Step 1: Write DocumentType and OCRStatus enums**
@@ -158,6 +161,7 @@ Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>"
 ### Task 3: Create UploadedDocument Model
 
 **Files:**
+
 - Modify: `backend/apps/documents/models.py`
 
 **Step 1: Write UploadedDocument model**
@@ -263,6 +267,7 @@ Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>"
 ### Task 4: Create OCRResult Model
 
 **Files:**
+
 - Modify: `backend/apps/documents/models.py`
 
 **Step 1: Write OCRResult model**
@@ -356,6 +361,7 @@ Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>"
 ### Task 5: Create Database Migration
 
 **Files:**
+
 - Create: `backend/apps/documents/migrations/0001_initial.py`
 
 **Step 1: Generate migration**
@@ -366,6 +372,7 @@ python manage.py makemigrations documents
 ```
 
 Expected output:
+
 ```
 Migrations for 'documents':
   apps/documents/migrations/0001_initial.py
@@ -388,6 +395,7 @@ python manage.py migrate documents
 ```
 
 Expected output:
+
 ```
 Running migrations:
   Applying documents.0001_initial... OK
@@ -411,6 +419,7 @@ Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>"
 ### Task 6: Add Configuration Settings
 
 **Files:**
+
 - Modify: `backend/config/settings/base.py`
 
 **Step 1: Add OCR settings block**
@@ -514,6 +523,7 @@ Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>"
 ### Task 7: Create Schemas Module Structure
 
 **Files:**
+
 - Create: `backend/apps/documents/schemas/__init__.py`
 - Create: `backend/apps/documents/schemas/base.py`
 
@@ -567,6 +577,7 @@ Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>"
 ### Task 8: Create Pay Stub Schema (Priority 1)
 
 **Files:**
+
 - Create: `backend/apps/documents/schemas/paystub.py`
 
 **Step 1: Write PayStubExtraction schema**
@@ -648,7 +659,7 @@ class PayStubExtraction(BaseExtractionSchema):
         }
 ```
 
-**Step 2: Export from __init__.py**
+**Step 2: Export from **init**.py**
 
 Modify: `backend/apps/documents/schemas/__init__.py`
 
@@ -795,6 +806,7 @@ Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>"
 ### Task 9: Create Balance Sheet Schema (Priority 2 - Chapter 11)
 
 **Files:**
+
 - Create: `backend/apps/documents/schemas/business.py`
 
 **Step 1: Write BalanceSheetExtraction schema**
@@ -981,7 +993,7 @@ class ProfitLossExtraction(BaseExtractionSchema):
         }
 ```
 
-**Step 2: Export from __init__.py**
+**Step 2: Export from **init**.py**
 
 Modify: `backend/apps/documents/schemas/__init__.py`
 
@@ -1107,6 +1119,7 @@ Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>"
 ### Task 10: Create Base OCR Provider
 
 **Files:**
+
 - Create: `backend/apps/documents/services/__init__.py`
 - Create: `backend/apps/documents/services/providers/__init__.py`
 - Create: `backend/apps/documents/services/providers/base.py`
@@ -1183,6 +1196,7 @@ Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>"
 ### Task 11: Implement Clarifai OCR Provider
 
 **Files:**
+
 - Create: `backend/apps/documents/services/providers/clarifai.py`
 - Modify: `backend/requirements/base.txt`
 
@@ -1191,6 +1205,7 @@ Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>"
 Modify: `backend/requirements/base.txt`
 
 Add after pydantic:
+
 ```
 openai==1.60.0  # For Clarifai OpenAI-compatible API
 ```
@@ -1304,7 +1319,7 @@ class ClarifaiOCRProvider(BaseOCRProvider):
         return response.choices[0].message.content
 ```
 
-**Step 4: Export from __init__.py**
+**Step 4: Export from **init**.py**
 
 Modify: `backend/apps/documents/services/providers/__init__.py`
 
@@ -1343,6 +1358,7 @@ Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>"
 ### Task 12: Create Schema Registry
 
 **Files:**
+
 - Create: `backend/apps/documents/schemas/registry.py`
 
 **Step 1: Write SCHEMA_MAP registry**
@@ -1400,7 +1416,7 @@ def get_schema_for_type(document_type: str):
     return SCHEMA_MAP[document_type]
 ```
 
-**Step 2: Export from __init__.py**
+**Step 2: Export from **init**.py**
 
 Modify: `backend/apps/documents/schemas/__init__.py`
 
@@ -1486,6 +1502,7 @@ Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>"
 ### Task 13: Create DocumentOCRService Core
 
 **Files:**
+
 - Create: `backend/apps/documents/services/ocr_service.py`
 
 **Step 1: Write DocumentOCRService class structure**
@@ -1754,6 +1771,7 @@ Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>"
 ### Task 14: Write OCR Service Tests
 
 **Files:**
+
 - Create: `backend/apps/documents/tests/test_ocr_service.py`
 - Create: `backend/apps/documents/tests/fixtures.py`
 
@@ -2014,6 +2032,7 @@ Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>"
 ### Task 15: Create Serializers
 
 **Files:**
+
 - Create: `backend/apps/documents/serializers.py`
 
 **Step 1: Write UploadedDocumentSerializer**
@@ -2267,6 +2286,7 @@ Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>"
 ### Task 16: Create DocumentViewSet with Upload Endpoint
 
 **Files:**
+
 - Create: `backend/apps/documents/views.py`
 
 **Step 1: Write DocumentViewSet with upload action**
@@ -2513,6 +2533,7 @@ urlpatterns = [
 Modify: `backend/config/urls.py`
 
 Add to urlpatterns:
+
 ```python
     path('api/documents/', include('apps.documents.urls')),
 ```
@@ -2536,7 +2557,7 @@ Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>"
 
 ---
 
-*The implementation plan continues with remaining tasks. Would you like me to continue with:*
+_The implementation plan continues with remaining tasks. Would you like me to continue with:_
 
 - **Task 17-20:** Field Mapping Service
 - **Task 21-25:** Document Lifecycle Management
@@ -2551,6 +2572,7 @@ Or should we proceed to implementation based on what we have so far?
 ### Task 17: Create FieldMapperService Foundation
 
 **Files:**
+
 - Create: `backend/apps/documents/services/field_mapper.py`
 
 **Step 1: Write FieldMapperService class**
@@ -2816,6 +2838,7 @@ Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>"
 ### Task 18: Add Apply-to-Intake API Endpoint
 
 **Files:**
+
 - Modify: `backend/apps/documents/views.py`
 
 **Step 1: Add apply_to_intake action to DocumentViewSet**
@@ -2896,6 +2919,7 @@ Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>"
 ### Task 19: Create Auto-Deletion Management Command
 
 **Files:**
+
 - Create: `backend/apps/documents/management/__init__.py`
 - Create: `backend/apps/documents/management/commands/__init__.py`
 - Create: `backend/apps/documents/management/commands/delete_expired_documents.py`
@@ -3028,6 +3052,7 @@ Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>"
 ### Task 20: Add Admin Interface
 
 **Files:**
+
 - Modify: `backend/apps/documents/admin.py`
 
 **Step 1: Register models in admin**
@@ -3150,6 +3175,7 @@ Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>"
 ### Task 21: Update Requirements and Dependencies
 
 **Files:**
+
 - Verify: `backend/requirements/base.txt`
 
 **Step 1: Verify all dependencies are listed**
@@ -3160,6 +3186,7 @@ cat requirements/base.txt | grep -E "(pydantic|openai|django-fernet)"
 ```
 
 Expected to see:
+
 ```
 pydantic==2.5.3
 openai==1.60.0
@@ -3197,6 +3224,7 @@ Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>"
 ### Task 22: Create Integration Test
 
 **Files:**
+
 - Create: `backend/apps/documents/tests/test_integration.py`
 
 **Step 1: Write end-to-end integration test**
@@ -3319,33 +3347,39 @@ Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>"
 ## Implementation Summary
 
 **Phase 1-2 Complete:** Core infrastructure, models, schemas (Tasks 1-11)
+
 - ✅ Documents app structure
 - ✅ Django models (UploadedDocument, OCRResult)
 - ✅ Pydantic schemas (PayStub, BalanceSheet, P&L)
 - ✅ Schema registry
 
 **Phase 3-4 Complete:** OCR service layer (Tasks 12-14)
+
 - ✅ Base OCR provider abstraction
 - ✅ Clarifai provider implementation
 - ✅ DocumentOCRService with prompt generation
 - ✅ Confidence scoring
 
 **Phase 5 Complete:** REST API (Tasks 15-16)
+
 - ✅ Serializers (upload, OCR result, validation)
 - ✅ DocumentViewSet with upload/reprocess/validate actions
 - ✅ API endpoints registered
 
 **Phase 6 Complete:** Field mapping (Tasks 17-18)
+
 - ✅ FieldMapperService
 - ✅ Pay stub → IncomeInfo mapping
 - ✅ Balance sheet → AssetInfo/DebtInfo mapping
 - ✅ Apply-to-intake API endpoint
 
 **Phase 7 Complete:** Lifecycle management (Tasks 19-20)
+
 - ✅ Auto-deletion management command
 - ✅ Django admin interface
 
 **Phase 8 Complete:** Testing & validation (Tasks 21-22)
+
 - ✅ Dependencies verified
 - ✅ Integration test coverage
 
@@ -3356,6 +3390,7 @@ Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>"
 ### Option 1: Subagent-Driven Development (Recommended)
 
 **Use this session:**
+
 - I dispatch fresh subagent per task
 - Review between tasks
 - Fast iteration with immediate feedback
@@ -3365,6 +3400,7 @@ Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>"
 ### Option 2: Parallel Session Execution
 
 **Open new session in worktree:**
+
 1. Create worktree: `git worktree add .worktrees/ocr-integration`
 2. Open new Claude Code session in worktree
 3. Use `superpowers:executing-plans` skill with this plan

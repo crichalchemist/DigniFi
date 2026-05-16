@@ -48,6 +48,9 @@ Copy `.env.example` to `.env`. Required vars: `POSTGRES_DB`, `POSTGRES_USER`, `P
 - **GenerateAll vs single generate** — `/generate_all` returns `{generated, errors}`, single returns `{form, message}`
 - **Enum mismatches are silent** — frontend/backend enum drift only surfaces at runtime; check both when adding fields
 - **Analytics auth** — `trackEvent()` must use `getAccessToken()` for Bearer header, not raw fetch
+- **Colima volume mounts** — Colima only mounts `$HOME` by default; `/Volumes/Containers` must be added explicitly in `~/.colima/default/colima.yaml` under `mounts` or bind-mounts in compose will silently fail with exit code 2
+- **Compose needs migrate** — backend command must run `python manage.py migrate` before `runserver`; added `sh -c "python manage.py migrate && ..."` to docker-compose.yml
+- **District fixture required** — `seed_demo_data` requires ILND data first: `python manage.py loaddata ilnd_2025_data`
 
 ## Key Documentation
 

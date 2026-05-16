@@ -19,6 +19,7 @@ The infrastructure also serves as a polished partner demo (login as any persona
 to walk through completed flows) and automated E2E regression coverage.
 
 **Two-stage approach:**
+
 1. **Now:** Build test infrastructure, run AI-simulated testing, fix issues found
 2. **Later (post-partnership):** Run real user testing sessions with recruited participants
 
@@ -29,17 +30,18 @@ to walk through completed flows) and automated E2E regression coverage.
 Five personas exercising distinct eligibility paths through the ILND means test
 calculator and form generation pipeline.
 
-| # | Name | Archetype | HH Size | Annual Income | Key Trait |
-|---|------|-----------|---------|---------------|-----------|
-| 1 | Maria Torres | PRD primary persona | 3 | $38,400 | Below median, fee waiver eligible (<150% poverty). Single parent, 2 kids. Modest assets. |
-| 2 | James Washington | Borderline case | 1 | $70,000 | Just below single-filer median ($71,304). No dependents. Vehicle + small savings. |
-| 3 | Priya Sharma | Above median | 4 | $120,000 | Fails means test. Demonstrates the "not eligible" path gracefully. |
-| 4 | DeShawn Mitchell | Asset-heavy | 2 | $42,000 | Below median but owns home ($180k, $160k mortgage). Tests exemption calculations (IL $15k homestead). |
-| 5 | Sarah Chen | Simplest case | 1 | $24,000 | Single, no assets, no dependents, fee waiver eligible. Fastest path through the wizard. |
+| #   | Name             | Archetype           | HH Size | Annual Income | Key Trait                                                                                             |
+| --- | ---------------- | ------------------- | ------- | ------------- | ----------------------------------------------------------------------------------------------------- |
+| 1   | Maria Torres     | PRD primary persona | 3       | $38,400       | Below median, fee waiver eligible (<150% poverty). Single parent, 2 kids. Modest assets.              |
+| 2   | James Washington | Borderline case     | 1       | $70,000       | Just below single-filer median ($71,304). No dependents. Vehicle + small savings.                     |
+| 3   | Priya Sharma     | Above median        | 4       | $120,000      | Fails means test. Demonstrates the "not eligible" path gracefully.                                    |
+| 4   | DeShawn Mitchell | Asset-heavy         | 2       | $42,000       | Below median but owns home ($180k, $160k mortgage). Tests exemption calculations (IL $15k homestead). |
+| 5   | Sarah Chen       | Simplest case       | 1       | $24,000       | Single, no assets, no dependents, fee waiver eligible. Fastest path through the wizard.               |
 
 ### Persona Briefs (Subagent Input)
 
 Each subagent receives a ~300-word brief covering:
+
 - **Identity:** Name, age, household, income, occupation
 - **Tech literacy:** Device usage patterns, comfort with online forms, trust level
 - **Emotional state:** Stress level, shame/anxiety, prior experience with legal system
@@ -54,6 +56,7 @@ Each subagent receives a ~300-word brief covering:
 A Django management command creates all 5 personas atomically for partner demos.
 
 **Command:**
+
 ```bash
 python manage.py seed_demo_data          # Create all 5 personas
 python manage.py seed_demo_data --reset  # Wipe and recreate
@@ -63,6 +66,7 @@ python manage.py seed_demo_data --persona maria  # Single persona only
 **Location:** `backend/apps/intake/management/commands/seed_demo_data.py`
 
 **Per persona, creates:**
+
 1. `User` (username: `demo_maria`, etc.; `is_staff=False`)
 2. `IntakeSession` (status: `completed`, all 6 steps)
 3. `DebtorInfo` (synthetic SSNs in 900-xx range — IRS-reserved test numbers)
@@ -74,6 +78,7 @@ python manage.py seed_demo_data --persona maria  # Single persona only
 9. `GeneratedForm` records (all 13 types for eligible personas)
 
 **Design principles:**
+
 - Each persona is a pure function returning model data dicts
 - `transaction.atomic()` for all-or-nothing seeding
 - Idempotent (skips existing accounts without `--reset`)
@@ -105,11 +110,13 @@ frontend/e2e/
 ```
 
 ### Configuration
+
 - **Browser:** Chromium only (cross-browser deferred to public beta)
 - **Base URL:** `http://localhost:5173` (Vite dev server)
 - **Timeouts:** 30s navigation, 10s action
 
 ### Per-Journey Assertions
+
 1. Registration + login (fresh account each run)
 2. Wizard steps 1-6 with persona-specific data entry
 3. Real-time means test preview appears at step 2+
@@ -122,11 +129,13 @@ frontend/e2e/
 10. Skip navigation works (keyboard Tab + Enter)
 
 ### Special Journey Behaviors
+
 - `priya-ineligible.spec.ts`: Verifies rejection uses dignity-preserving language
 - `deshawn-assets.spec.ts`: Validates exemption calculations in form previews
 - All journeys assert zero console errors and zero uncaught exceptions
 
 ### CI Integration
+
 New job in `.github/workflows/ci.yml`: starts Docker dev environment, runs
 `npx playwright test`.
 
@@ -139,18 +148,19 @@ third-party analytics — keeps PII in-house for this sensitive population.
 
 ### Event Schema
 
-| PRD Metric | Event Name | Payload | Trigger |
-|---|---|---|---|
-| Task completion | `wizard_step_completed` | `{step, duration_ms, session_id}` | Step "Next" click |
-| Abandonment | `wizard_abandoned` | `{last_step, total_time_ms, session_id}` | Inactivity >30 min |
-| Error rate | `form_validation_error` | `{step, field, error_type}` | Client validation failure |
-| Time to complete | `intake_completed` | `{total_duration_ms, steps_revisited}` | Wizard completion |
-| Comprehension | `survey_response` | `{question_id, score, session_id}` | Survey submission |
-| Dignity score | `survey_response` | `{question_id, score, session_id}` | Survey submission |
-| Means test viewed | `means_test_previewed` | `{step, eligible, session_id}` | Preview renders result |
-| Form generated | `form_generated` | `{form_type, session_id}` | Generation triggered |
+| PRD Metric        | Event Name              | Payload                                  | Trigger                   |
+| ----------------- | ----------------------- | ---------------------------------------- | ------------------------- |
+| Task completion   | `wizard_step_completed` | `{step, duration_ms, session_id}`        | Step "Next" click         |
+| Abandonment       | `wizard_abandoned`      | `{last_step, total_time_ms, session_id}` | Inactivity >30 min        |
+| Error rate        | `form_validation_error` | `{step, field, error_type}`              | Client validation failure |
+| Time to complete  | `intake_completed`      | `{total_duration_ms, steps_revisited}`   | Wizard completion         |
+| Comprehension     | `survey_response`       | `{question_id, score, session_id}`       | Survey submission         |
+| Dignity score     | `survey_response`       | `{question_id, score, session_id}`       | Survey submission         |
+| Means test viewed | `means_test_previewed`  | `{step, eligible, session_id}`           | Preview renders result    |
+| Form generated    | `form_generated`        | `{form_type, session_id}`                | Generation triggered      |
 
 ### Implementation
+
 - `frontend/src/utils/analytics.ts` — thin `trackEvent(name, payload)` function
 - `POST /api/audit/events/` — new endpoint using existing `AuditLog` model
 - Dev/demo mode: also logs to `console.debug` for Playwright assertion capture
@@ -200,6 +210,7 @@ All 5 run in parallel. Each subagent:
 9. Returns a structured report
 
 ### Key Constraint
+
 Subagents interact with the app ONLY through the browser. They see what's
 rendered, not source code. This prevents "cheating" past UX problems.
 
@@ -210,11 +221,9 @@ rendered, not source code. This prevents "cheating" past UX problems.
   "persona": "Maria Torres",
   "completed": true,
   "estimated_time_minutes": 35,
-  "friction_points": [
-    {"step": 2, "description": "...", "severity": "high|medium|low"},
-  ],
+  "friction_points": [{ "step": 2, "description": "...", "severity": "high|medium|low" }],
   "mistakes_made": [
-    {"step": 3, "description": "Entered annual as monthly income", "recovered": true},
+    { "step": 3, "description": "Entered annual as monthly income", "recovered": true }
   ],
   "survey": {
     "comprehension": 4,
@@ -232,31 +241,37 @@ rendered, not source code. This prevents "cheating" past UX problems.
 ## 7. Aggregated Reporting
 
 ### Report Location
+
 `docs/reports/YYYY-MM-DD-usability-test.md`
 
 ### Report Structure
 
 ```markdown
 # Usability Test Report — AI-Simulated Personas
+
 Date: YYYY-MM-DD
 Method: Subagent-driven Playwright testing (5 personas)
 
 ## PRD Stop Rule Check
-| Metric              | Threshold | Result | Status |
-|---------------------|-----------|--------|--------|
+
+| Metric              | Threshold | Result | Status    |
+| ------------------- | --------- | ------ | --------- |
 | Completion rate     | >85%      | X/5    | PASS/FAIL |
 | Critical error rate | <10%      | X%     | PASS/FAIL |
 | Mean comprehension  | >3.5      | X.X    | PASS/FAIL |
 | Mean dignity score  | >3.5      | X.X    | PASS/FAIL |
 
 ## Per-Persona Results
+
 [Detailed per-persona sections with friction, survey, narrative]
 
 ## Aggregated Friction Points (ranked by frequency)
+
 1. [Issue seen by N/5 personas]
 2. ...
 
 ## Recommendations
+
 - P0 fixes (blocking issues found)
 - P1 improvements (before real user testing)
 ```
