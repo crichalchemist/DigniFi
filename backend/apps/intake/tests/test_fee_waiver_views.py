@@ -42,6 +42,9 @@ def test_create_fee_waiver(setup):
     data = resp.json()
     assert data["session"] == session.id
     assert data["household_size"] == 2
+    assert data["id"] is not None
+    fw = FeeWaiverApplication.objects.get(session=session)
+    assert data["id"] == fw.id
     assert FeeWaiverApplication.objects.filter(session=session).exists()
 
 
@@ -88,3 +91,24 @@ def test_other_user_cannot_access_fee_waiver(db):
     client.force_authenticate(user=other)
     resp = client.get(f"/api/intake/fee-waiver/{fw.id}/")
     assert resp.status_code == 404
+
+
+def test_create_fee_waiver_is_idempotent(setup):
+    """Second POST to /intake/fee-waiver/ for same session updates, not duplicates."""
+    client, session, _ = setup
+    payload = {
+        "session": session.id,
+        "household_size": 1,
+        "monthly_income": "1000.00",
+        "monthly_expenses": "800.00",
+        "receives_public_benefits": False,
+        "benefit_types": [],
+        "cannot_pay_full": True,
+        "cannot_pay_installments": True,
+    }
+    client.post("/api/intake/fee-waiver/", payload, format="json")
+    updated_payload = {**payload, "household_size": 3}
+    resp = client.post("/api/intake/fee-waiver/", updated_payload, format="json")
+    assert resp.status_code == 201
+    assert FeeWaiverApplication.objects.filter(session=session).count() == 1
+    assert FeeWaiverApplication.objects.get(session=session).household_size == 3
