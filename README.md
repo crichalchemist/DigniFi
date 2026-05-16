@@ -32,7 +32,7 @@
 
 ```bash
 # 1. Copy environment file
-cp backend/.env.example backend/.env
+cp .env.example .env
 
 # 2. Generate encryption key
 python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
@@ -75,9 +75,6 @@ Set up automatic linting and formatting before every commit:
 
 ```bash
 # One-time setup
-./scripts/setup-linting.sh
-
-# Or manually:
 pip install pre-commit
 pre-commit install
 ```
@@ -88,7 +85,7 @@ This installs pre-commit hooks that automatically:
 - Lint with ESLint (frontend) and Ruff (backend)
 - Fix trailing whitespace and other issues
 
-See [docs/LINTING_SETUP.md](docs/LINTING_SETUP.md) for details.
+See [CONTRIBUTING.md](CONTRIBUTING.md#code-quality--formatting) for details.
 
 ### Local Development (Without Docker)
 
@@ -138,7 +135,7 @@ dignifi/
 ├── docs/                   # Reference documentation
 │   ├── testing/            # Persona briefs & orchestration protocol
 │   ├── reports/            # Usability test reports
-│   └── plans/              # Design documents
+│   └── superpowers/        # Implementation plans and specs
 ├── Product Docs/           # PRD, briefs, architecture analysis
 ├── test_persona_full_flow.py  # 5-persona E2E test script
 └── test_maria_quick.py        # Quick smoke test
@@ -153,10 +150,12 @@ dignifi/
 - **Encryption**: django-encrypted-model-fields (Fernet) for PII
 - **Testing**: pytest, vitest, Playwright, vitest-axe (accessibility)
 - **CI/CD**: GitHub Actions (lint, backend tests, frontend tests, E2E)
+- **Document Scanning**: Gemma 3 4B via llama.cpp (local LLM), opendataloader-pdf, pymupdf
 - **Infrastructure**: Docker, Docker Compose
 
 ## Core Features
 
+- Document scanning pipeline: drag-and-drop upload → OCR (local Gemma 3 4B) → draft debt entries
 - User authentication with JWT (access in memory, refresh in localStorage)
 - 6-step intake wizard: Debtor Info → Income → Expenses → Assets → Debts → Review
 - Chapter 7 means test calculator (11 U.S.C. § 707(b))
@@ -253,7 +252,9 @@ Key endpoints:
 
 ## License
 
-[To be determined - likely AGPL-3.0 or similar copyleft license]
+This project is licensed under the [Elastic License 2.0 (ELv2)](LICENSE).
+
+You may use, modify, and distribute it freely for non-commercial and internal purposes. You may not offer it as a managed service to third parties. See `LICENSE` for full terms.
 
 ## Contact
 

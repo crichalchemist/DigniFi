@@ -11,15 +11,16 @@ Thank you for your interest in contributing to DigniFi! This project aims to dem
 - [Testing Requirements](#testing-requirements)
 - [Code Review Criteria](#code-review-criteria)
 - [Environment Setup](#environment-setup)
+- [Code Quality & Formatting](#code-quality--formatting)
 - [Getting Help](#getting-help)
 
 ## Code of Conduct
 
-This project adheres to a Code of Conduct that all contributors are expected to follow. Please read [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) before contributing.
+We are committed to a welcoming, respectful environment. Treat all contributors with dignity — consistent with the trauma-informed values that define the product itself.
 
 ## Critical: UPL Compliance
 
-**Unauthorized Practice of Law (UPL)** is our most important constraint. Crossing from legal *information* to legal *advice* creates legal liability and could shut down the project.
+**Unauthorized Practice of Law (UPL)** is our most important constraint. Crossing from legal _information_ to legal _advice_ creates legal liability and could shut down the project.
 
 ### What's Permitted ✅
 
@@ -42,12 +43,14 @@ This project adheres to a Code of Conduct that all contributors are expected to 
 ### Language Patterns
 
 **Safe:**
+
 - "You may be eligible for Chapter 7 if..."
 - "Chapter 7 typically requires..."
 - "The means test compares your income to..."
 - "Bankruptcy law defines dischargeable debt as..."
 
 **Unsafe:**
+
 - "You should file Chapter 7" → Advice
 - "Based on your income, I recommend..." → Advice
 - "You need to file immediately" → Advice
@@ -132,6 +135,7 @@ Co-Authored-By: Your Name <your.email@example.com>
 **Types:** `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`
 
 **Example:**
+
 ```
 feat(forms): add Schedule I form generator
 
@@ -150,14 +154,17 @@ Co-Authored-By: Jane Doe <jane@example.com>
 ### Test Types
 
 1. **Backend Unit Tests** (pytest)
+
    - Models, serializers, services, utilities
-   - `just test-backend` or `docker compose exec backend pytest`
+   - `docker compose exec backend python -m pytest`
 
 2. **Frontend Unit Tests** (vitest)
+
    - Components, hooks, utilities, context
-   - `just test-frontend` or `cd frontend && npm run test`
+   - `cd frontend && npm test`
 
 3. **Integration Tests**
+
    - API endpoints, form generation, means test calculator
    - Included in pytest suite
 
@@ -169,25 +176,23 @@ Co-Authored-By: Jane Doe <jane@example.com>
 ### Running Tests Locally
 
 ```bash
-# All tests
-just test
+# Backend tests
+docker compose exec backend python -m pytest
 
-# Just backend
-just test-backend
-
-# Just frontend
-just test-frontend
+# Frontend tests (from frontend/)
+npm test
 
 # E2E smoke test
-just test-e2e
+python3 test_maria_quick.py
 
 # Full persona suite
-just test-personas
+python3 test_persona_full_flow.py
 ```
 
 ### Test Coverage
 
 While we don't enforce coverage metrics, aim for:
+
 - **Critical paths:** 100% (means test, form generation, UPL boundaries)
 - **Business logic:** 90%+
 - **UI components:** 80%+
@@ -206,18 +211,21 @@ While we don't enforce coverage metrics, aim for:
 Reviewers will check:
 
 ### 1. UPL Compliance
+
 - [ ] No legal advice in user-facing text
 - [ ] Appropriate disclaimers on decision points
 - [ ] Audit logging for guidance features
 - [ ] Statutory citations where appropriate
 
 ### 2. Trauma-Informed Language
+
 - [ ] Dignity-preserving terminology
 - [ ] No blame/shame language
 - [ ] Plain language (6th-8th grade level)
 - [ ] Acknowledges user difficulty
 
 ### 3. Technical Quality
+
 - [ ] Tests pass (backend + frontend + E2E)
 - [ ] Code follows project style (see CLAUDE.md)
 - [ ] No security vulnerabilities (PII handling, injection, XSS)
@@ -225,6 +233,7 @@ Reviewers will check:
 - [ ] Performance considerations
 
 ### 4. Accessibility
+
 - [ ] WCAG 2.1 AA compliance (if UI changes)
 - [ ] Screen reader tested
 - [ ] Keyboard navigation works
@@ -232,6 +241,7 @@ Reviewers will check:
 - [ ] ARIA labels on form fields
 
 ### 5. Documentation
+
 - [ ] README updated if needed
 - [ ] Inline comments for complex logic
 - [ ] API changes documented
@@ -245,18 +255,25 @@ Reviewers will check:
 # Clone and setup
 git clone https://github.com/yourusername/dignifi.git
 cd dignifi
-just setup
+cp .env.example .env   # then fill in required vars
 
-# Start development
-just dev
+# Start all services
+docker compose up
 
-# In another terminal, verify tests pass
-just test
+# In another terminal, run migrations and seed data
+docker compose exec backend python manage.py migrate
+docker compose exec backend python manage.py loaddata ilnd_2025_data
+docker compose exec backend python manage.py seed_demo_data
+
+# Verify tests pass
+docker compose exec backend python -m pytest
+cd frontend && npm test
 ```
 
 ### Local Development (Without Docker)
 
 **Backend:**
+
 ```bash
 cd backend
 python3 -m venv venv
@@ -277,6 +294,7 @@ python manage.py runserver
 ```
 
 **Frontend:**
+
 ```bash
 cd frontend
 npm install
@@ -284,6 +302,7 @@ npm run dev
 ```
 
 **Database:**
+
 ```bash
 # Install PostgreSQL 15+
 # macOS: brew install postgresql@15
@@ -295,6 +314,54 @@ createdb dignifi_db
 ```
 
 See [README.md](README.md) for complete setup instructions.
+
+## Code Quality & Formatting
+
+Pre-commit hooks run automatically on every `git commit` — no manual formatting needed.
+
+### One-Time Setup
+
+```bash
+pip install pre-commit
+pre-commit install
+```
+
+### Tools
+
+| Layer            | Linting                                                 | Formatting |
+| ---------------- | ------------------------------------------------------- | ---------- |
+| Frontend (JS/TS) | ESLint                                                  | Prettier   |
+| Backend (Python) | Ruff                                                    | Black      |
+| Both             | trailing whitespace, end-of-file, merge conflict checks | —          |
+
+### What Happens on Commit
+
+Hooks run automatically. If a hook fails, files are auto-fixed — re-stage and commit again:
+
+```bash
+git add -p      # review auto-fixes
+git commit      # re-run hooks; should pass now
+```
+
+### Manual Commands
+
+```bash
+# Frontend
+cd frontend && npm run lint:fix && npm run format
+
+# Backend
+cd backend && ruff check . --fix && black .
+
+# All files at once
+pre-commit run --all-files
+```
+
+### Configuration Files
+
+- `.pre-commit-config.yaml` — hook definitions
+- `.prettierrc.json` — Prettier rules
+- `backend/pyproject.toml` — Black and Ruff rules
+- `frontend/eslint.config.js` — ESLint rules
 
 ## Getting Help
 
@@ -317,6 +384,7 @@ See [README.md](README.md) for complete setup instructions.
 ### Recognition
 
 Contributors will be acknowledged in:
+
 - Repository README
 - Release notes
 - Annual project reports (if applicable)
