@@ -1,6 +1,6 @@
-# CLAUDE.md
+# AI Assistant Context
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to AI coding assistants (Claude Code, Gemini CLI, Codex, etc.) when working with code in this repository.
 
 ## Project Overview
 
@@ -264,6 +264,28 @@ This comprehensive PRD includes:
 | 12  | Analytics 401s — `trackEvent()` raw fetch without auth                            | Use `getAccessToken()` for Bearer header | `b0956bb` |
 | 13  | FormDashboard loading state stuck — local `isLoading` never reset when no session | Use IntakeProvider's `isLoading`         | `b0956bb` |
 
+### ✅ Completed: Document Scanning Pipeline (Phase 8)
+
+**Infrastructure:**
+
+- Local LLM service: Gemma 3 4B via llama.cpp (`ghcr.io/ggml-org/llama.cpp:server`)
+- `scripts/pull_model.sh` downloads GGUF model on first start (~2.8GB total)
+- Docker `llm` service with 300s `start_period` health check; backend `depends_on: llm`
+
+**Backend:**
+
+- `backend/apps/documents/` — full OCR pipeline: `LlamaCppProvider`, `DocumentProcessor`, `DraftDebtCreator`
+- `DocumentProcessor` routes by MIME type: image → vision, PDF → text extraction (opendataloader-pdf) with vision fallback (pymupdf)
+- `CreditorBillExtraction` Pydantic schema; schema registry pattern for document types
+- `DocumentViewSet` — upload (202 async), list, retrieve, validate endpoints
+- `DebtInfo.is_draft` + `source_document` FK — draft rows created from scanned creditor bills
+
+**Frontend:**
+
+- `frontend/src/pages/DocumentUploadPage.tsx` — drag-and-drop upload with polling
+- Post-auth redirect goes to `/documents` before intake wizard
+- Draft debt entries show "From scan" badge in Debts step; cleared on save
+
 ### Design Principles (Frontend)
 
 - **Desktop-First:** 1024px+ default, tablet/mobile as progressive degradation
@@ -390,6 +412,7 @@ Each district implementation requires:
 - `backend/apps/forms/services/` - 13 form generators (form_101 through schedules)
 - `backend/apps/forms/views.py` - GeneratedFormViewSet (generate, generate_all, regenerate, etc.)
 - `backend/apps/audit/models.py` - AuditLog for analytics and compliance tracking
+- `backend/apps/documents/` - Document scanning pipeline (OCR provider, processor, draft debt creator, API)
 
 **Frontend Core:**
 
@@ -428,4 +451,5 @@ Each district implementation requires:
 
 - `docs/testing/persona-briefs/` - 5 AI persona briefs for usability testing
 - `docs/testing/run-persona-tests.md` - Orchestration protocol
-- `docs/plans/` - Design documents for major features
+- `docs/superpowers/plans/` - Implementation plans
+- `docs/superpowers/specs/` - Design specs and architecture documents
