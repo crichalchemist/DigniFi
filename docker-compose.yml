@@ -23,7 +23,7 @@ services:
       dockerfile: Dockerfile
       args:
         REQUIREMENTS_FILE: requirements/development.txt
-    command: python manage.py runserver 0.0.0.0:8000
+    command: sh -c "python manage.py migrate && python manage.py runserver 0.0.0.0:8000"
     volumes:
       - ./backend:/app
       - ./data:/data
@@ -33,6 +33,8 @@ services:
       - .env
     depends_on:
       db:
+        condition: service_healthy
+      llm:
         condition: service_healthy
 
   frontend:
@@ -50,5 +52,21 @@ services:
     stdin_open: true
     tty: true
 
+  llm:
+    image: ghcr.io/ggml-org/llama.cpp:server
+    entrypoint: ["/bin/sh", "/scripts/pull_model.sh"]
+    volumes:
+      - ./scripts:/scripts:ro
+      - models:/models
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8080/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      start_period: 300s
+      retries: 10
+
 volumes:
   postgres_data:
+  models:
