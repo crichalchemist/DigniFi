@@ -49,6 +49,7 @@ React Router v7 with `<BrowserRouter>`. `ProtectedRoute` wrapper redirects unaut
 ### POST /api/users/register/
 
 **Request:**
+
 ```json
 {
   "email": "jane@example.com",
@@ -60,6 +61,7 @@ React Router v7 with `<BrowserRouter>`. `ProtectedRoute` wrapper redirects unaut
 ```
 
 **Response (201):**
+
 ```json
 {
   "id": 1,
@@ -70,6 +72,7 @@ React Router v7 with `<BrowserRouter>`. `ProtectedRoute` wrapper redirects unaut
 ```
 
 **Validation:**
+
 - Email uniqueness
 - Username uniqueness
 - Password strength (Django's built-in validators)
@@ -86,7 +89,7 @@ React Router v7 with `<BrowserRouter>`. `ProtectedRoute` wrapper redirects unaut
 interface AuthState {
   user: { id: number; email: string; username: string } | null;
   isAuthenticated: boolean;
-  isLoading: boolean;  // true during silent token refresh on mount
+  isLoading: boolean; // true during silent token refresh on mount
 }
 
 interface AuthActions {
@@ -139,6 +142,7 @@ interface AuthActions {
 ## Styling
 
 Desktop-first, consistent with existing wizard aesthetic:
+
 - Same gradient header color scheme (#667eea → #764ba2)
 - Centered card layout for login/register forms
 - High contrast, WCAG 2.1 AA compliant

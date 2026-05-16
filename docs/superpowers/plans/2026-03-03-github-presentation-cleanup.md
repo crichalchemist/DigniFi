@@ -7,6 +7,7 @@
 ## Context
 
 DigniFi MVP is complete with 413 backend tests, 165 frontend tests, and validated AI persona testing. The repository needs comprehensive cleanup and documentation enhancement for public GitHub presentation targeting:
+
 - Open source contributors
 - Portfolio/resume showcase
 - Legal clinic partnership discussions
@@ -14,6 +15,7 @@ DigniFi MVP is complete with 413 backend tests, 165 frontend tests, and validate
 ## Current State Assessment
 
 ### Build Artifacts (476MB to clean)
+
 - Duplicate virtual environments: `.venv` (293MB) + `venv` (183MB)
 - Cache directories: `.pytest_cache` (20K), `.ruff_cache` (56K)
 - Empty root `node_modules/` (4K symlink)
@@ -21,12 +23,14 @@ DigniFi MVP is complete with 413 backend tests, 165 frontend tests, and validate
 - `test-results/` with persona screenshots (340K) - **KEEP for portfolio evidence**
 
 ### Git Status
+
 - 4 deleted `.claude/` files pending commit
 - `test-results/` not in `.gitignore`
 - No LICENSE file
 - Missing community health files
 
 ### Documentation Gaps
+
 - No CONTRIBUTING.md, SECURITY.md, CODE_OF_CONDUCT.md
 - README lacks badges, screenshots, architecture overview
 - No developer tooling (Makefile/justfile)
@@ -36,6 +40,7 @@ DigniFi MVP is complete with 413 backend tests, 165 frontend tests, and validate
 ### Phase 1: Immediate Cleanup (Files & Git)
 
 **Remove Build Artifacts:**
+
 ```bash
 rm -rf venv .venv .pytest_cache .ruff_cache
 rm -rf node_modules  # Empty symlink at root
@@ -43,6 +48,7 @@ rm TODO.txt
 ```
 
 **Update .gitignore:**
+
 ```gitignore
 # Add to existing .gitignore
 /test-results/
@@ -52,6 +58,7 @@ venv/
 ```
 
 **Git Housekeeping:**
+
 ```bash
 git add .claude/COPILOT_INTEGRATION.md .claude/COPILOT_QUICKSTART.md .claude/MULTI_TIER_STRATEGY.md .claude/mcp.json.example
 git commit -m "docs: remove obsolete Claude configuration files"
@@ -64,6 +71,7 @@ git commit -m "docs: remove obsolete Claude configuration files"
 **2.1 Add LICENSE**
 
 Choose license based on mission philosophy:
+
 - **MIT** - Permissive, allows commercial legal clinic forks
 - **AGPL-3.0** - Copyleft, ensures derivatives remain open (mission protection)
 - **Apache 2.0** - Permissive + patent grant (contributor protection)
@@ -73,6 +81,7 @@ Choose license based on mission philosophy:
 **2.2 Create CONTRIBUTING.md**
 
 Required sections:
+
 - **UPL Compliance Requirements** - All contributions must respect legal information vs. advice boundary
 - **Trauma-Informed Language Standards** - Dignity-preserving terminology
 - **Development Workflow** - Fork, branch, PR process
@@ -84,6 +93,7 @@ Required sections:
 **2.3 Create SECURITY.md**
 
 Critical for bankruptcy platform handling PII:
+
 - **Responsible Disclosure Policy** - Private reporting channel before public disclosure
 - **PII Handling Guidelines** - Field-level encryption requirements, SSN protection
 - **Security Contact** - Email or secure form
@@ -93,6 +103,7 @@ Critical for bankruptcy platform handling PII:
 **2.4 Create CODE_OF_CONDUCT.md**
 
 Use **Contributor Covenant 2.1** as base, customize for:
+
 - Trauma-informed communication standards
 - Zero tolerance for victim-blaming language
 - Respectful discussion of vulnerable populations
@@ -100,6 +111,7 @@ Use **Contributor Covenant 2.1** as base, customize for:
 **2.5 Product Docs Strategy**
 
 Keep committed:
+
 - `Dignifi Brief.pdf` (95KB) - Executive summary
 - `Strategic Communication Plan.pdf` (134KB) - Go-to-market strategy
 - `UI_UX_RESEARCH.md` - Design rationale
@@ -122,7 +134,7 @@ Reference in README: "See Product Docs/ for comprehensive requirements and resea
 **Making bankruptcy accessible to all Americans through plain-language guidance and auto-generated court forms.**
 
 ![DigniFi Demo](test-results/demo_maria_final.png)
-*AI persona testing validates full Chapter 7 filing workflow*
+_AI persona testing validates full Chapter 7 filing workflow_
 ```
 
 **3.2 New Sections**
@@ -130,6 +142,7 @@ Reference in README: "See Product Docs/ for comprehensive requirements and resea
 Add between Mission and Quick Start:
 
 **Features:**
+
 ```markdown
 ## ✨ Features
 
@@ -144,16 +157,18 @@ Add between Mission and Quick Start:
 ```
 
 **Architecture Overview:**
+
 ```markdown
 ## 🏗️ Architecture
-
 ```
-┌─────────────┐      ┌──────────────┐      ┌────────────┐
-│   React 19  │ ───► │  Django 5.0  │ ───► │ PostgreSQL │
-│   + Vite 7  │      │     + DRF    │      │     15     │
-└─────────────┘      └──────────────┘      └────────────┘
-   TypeScript           Python 3.11         Encrypted PII
-   Context API          Service Layer       Field-Level
+
+┌─────────────┐ ┌──────────────┐ ┌────────────┐
+│ React 19 │ ───► │ Django 5.0 │ ───► │ PostgreSQL │
+│ + Vite 7 │ │ + DRF │ │ 15 │
+└─────────────┘ └──────────────┘ └────────────┘
+TypeScript Python 3.11 Encrypted PII
+Context API Service Layer Field-Level
+
 ```
 
 **Stack:**
@@ -166,29 +181,35 @@ Add between Mission and Quick Start:
 ```
 
 **Screenshots Section:**
+
 ```markdown
 ## 📸 Screenshots
 
 ### Intake Wizard
+
 ![Debtor Info Step](docs/screenshots/wizard-debtor-info.png)
-*Plain-language guidance at every step*
+_Plain-language guidance at every step_
 
 ### Form Dashboard
+
 ![Generated Forms](docs/screenshots/form-dashboard.png)
-*All 13 forms generated with single click after UPL confirmation*
+_All 13 forms generated with single click after UPL confirmation_
 
 ### AI Persona Testing
+
 ![Persona Results](test-results/demo_james_final.png)
-*5 AI personas validate complete filing workflow*
+_5 AI personas validate complete filing workflow_
 ```
 
 **Roadmap:**
+
 ```markdown
 ## 🛣️ Roadmap
 
 **Current (Mar 2026):** MVP Complete - ILND pilot district ready
 
 **Next Up:**
+
 - [ ] Paper prototype testing with target demographic at legal clinic
 - [ ] Legal clinic pilot partnership (6-month supervised filing program)
 - [ ] Chapter 13 form generators
@@ -200,6 +221,7 @@ See [Product Docs/DigniFi_PRD_v0_3.md](Product%20Docs/DigniFi_PRD_v0_3.md) for f
 ```
 
 **Legal Disclaimer (Prominent):**
+
 ```markdown
 ## ⚖️ Legal Disclaimer
 
@@ -219,15 +241,18 @@ See [Product Docs/DigniFi_PRD_v0_3.md](Product%20Docs/DigniFi_PRD_v0_3.md) for f
 ```
 
 **Contributing & Acknowledgments:**
+
 ```markdown
 ## 🤝 Contributing
 
 We welcome contributions that expand access to justice! Please read [CONTRIBUTING.md](CONTRIBUTING.md) for:
+
 - UPL compliance requirements
 - Trauma-informed language standards
 - Development workflow and testing requirements
 
 **Special focus areas:**
+
 - Additional district support (93 districts to go!)
 - Accessibility improvements
 - Plain-language content refinement
@@ -238,11 +263,13 @@ We welcome contributions that expand access to justice! Please read [CONTRIBUTIN
 **Creator:** Courtney Richardson, Northwestern University Communication Studies
 
 **Inspiration:**
+
 - [Upsolve](https://upsolve.org) - Nonprofit bankruptcy filing platform serving 17,000+ users
 - "Dignity Not Debt" movement
 - Legal Services Corporation (LSC) technology innovation initiatives
 
 **Research Foundation:**
+
 - MITRE Opportunity Canvas methodology
 - Trauma-informed design principles for vulnerable populations
 - Plain Language Action and Information Network (PLAIN) guidelines
@@ -251,6 +278,7 @@ We welcome contributions that expand access to justice! Please read [CONTRIBUTIN
 **3.3 Restructure for Navigation**
 
 Add table of contents after badges:
+
 ```markdown
 ## 📋 Table of Contents
 
@@ -421,6 +449,7 @@ info:
 **4.2 Verify .editorconfig**
 
 Check existing `.editorconfig` covers:
+
 - Python (4 spaces, LF, UTF-8)
 - JavaScript/TypeScript (2 spaces, LF, UTF-8)
 - Markdown, YAML, JSON
@@ -435,23 +464,23 @@ Add to `docker-compose.yml`:
 services:
   backend:
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health/"]
+      test: ['CMD', 'curl', '-f', 'http://localhost:8000/api/health/']
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
     volumes:
-      - backend_media:/app/media  # Named volume instead of anonymous
-    profiles: ["dev", "prod"]
+      - backend_media:/app/media # Named volume instead of anonymous
+    profiles: ['dev', 'prod']
 
   db:
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U dignifi"]
+      test: ['CMD-SHELL', 'pg_isready -U dignifi']
       interval: 10s
       timeout: 5s
       retries: 5
     volumes:
-      - postgres_data:/var/lib/postgresql/data  # Named volume
+      - postgres_data:/var/lib/postgresql/data # Named volume
 
 volumes:
   backend_media:
@@ -587,6 +616,7 @@ done
 **5.4 GitHub Repository Configuration**
 
 **Repository Settings:**
+
 - **Description:** "Trauma-informed bankruptcy filing platform making Chapter 7 accessible through plain-language guidance and auto-generated court forms"
 - **Website:** https://dignifi.app (if domain exists) or link to Product Docs
 - **Topics:** `bankruptcy`, `legal-tech`, `django`, `react`, `social-impact`, `access-to-justice`, `trauma-informed-design`, `pro-se`, `chapter-7`
@@ -603,32 +633,40 @@ Create `.github/ISSUE_TEMPLATE/`:
 **Pull Request Template:**
 
 Create `.github/pull_request_template.md`:
+
 ```markdown
 ## Description
+
 <!-- What does this PR do? -->
 
 ## UPL Compliance Check
+
 <!-- Does this change any user-facing guidance or recommendations? -->
+
 - [ ] This PR does not provide legal advice
 - [ ] All guidance stays within "legal information" boundaries
 - [ ] User-facing text reviewed for UPL compliance
 
 ## Testing
+
 - [ ] Backend tests pass (`just test-backend`)
 - [ ] Frontend tests pass (`just test-frontend`)
 - [ ] Manual testing completed
 
 ## Accessibility
+
 - [ ] WCAG 2.1 AA compliant (if UI changes)
 - [ ] Screen reader tested (if UI changes)
 - [ ] Keyboard navigation works (if UI changes)
 
 ## Plain Language
+
 - [ ] User-facing text is 6th-8th grade reading level
 - [ ] Trauma-informed language standards followed
 ```
 
 **Pin Important Discussions:**
+
 - Pin issue: "📋 Roadmap: Chapter 13 Support" (when created)
 - Pin issue: "🤝 Seeking Legal Clinic Partnership for Pilot" (when created)
 
