@@ -1,0 +1,20 @@
+.git
+.env
+*.log
+
+# Python
+**/__pycache__
+**/*.pyc
+**/*.pyo
+backend/staticfiles/
+backend/media/
+backend/logs/
+
+# Node
+frontend/node_modules/
+frontend/dist/
+
+# Dev tooling
+.github/
+docs/
+scripts/
