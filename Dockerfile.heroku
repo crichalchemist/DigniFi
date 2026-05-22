@@ -43,7 +43,7 @@ RUN mkdir -p /data/forms/pdfs
 #   index.html → templates/frontend/index.html  (served by TemplateView catch-all)
 #   assets/    → static/frontend/               (picked up by collectstatic)
 # The Vite base '/static/frontend/' makes these paths line up with whitenoise.
-RUN mkdir -p templates/frontend static/frontend
+RUN mkdir -p templates/frontend static/frontend logs
 COPY --from=frontend-build /app/frontend/dist/index.html ./templates/frontend/index.html
 COPY --from=frontend-build /app/frontend/dist/assets/ ./static/frontend/assets/
 
