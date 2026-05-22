@@ -35,9 +35,9 @@ RUN pip install --no-cache-dir -r requirements/production.txt
 
 COPY backend/ .
 
-# PDF form templates — BASE_DIR.parent resolves to / in the container (WORKDIR=/app),
-# so PDF_FORMS_DIRECTORY setting maps to /data/forms/pdfs/
-COPY data/ /data/
+# PDF_FORMS_DIRECTORY in settings points here; generators currently produce PDFs
+# from scratch so no templates are needed, but the path must exist.
+RUN mkdir -p /data/forms/pdfs
 
 # Wire up the frontend build artefacts:
 #   index.html → templates/frontend/index.html  (served by TemplateView catch-all)
