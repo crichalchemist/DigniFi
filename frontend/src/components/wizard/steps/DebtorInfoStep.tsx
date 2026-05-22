@@ -36,9 +36,7 @@ export function DebtorInfoStep({
   onDataChange,
   onValidationChange,
 }: DebtorInfoStepProps) {
-  const [formData, setFormData] = useState<Partial<DebtorInfo>>(
-    initialData || {}
-  );
+  const [formData, setFormData] = useState<Partial<DebtorInfo>>(initialData || {});
 
   const errors = useMemo<Record<string, string>>(() => {
     const newErrors: Record<string, string> = {};
@@ -60,8 +58,7 @@ export function DebtorInfoStep({
       const today = new Date();
       const age = today.getFullYear() - dob.getFullYear();
       if (age < 18) {
-        newErrors.date_of_birth =
-          'You must be 18 or older to file for bankruptcy';
+        newErrors.date_of_birth = 'You must be 18 or older to file for bankruptcy';
       }
     }
 
@@ -116,9 +113,10 @@ export function DebtorInfoStep({
   useEffect(() => {
     onDataChange(formData);
     onValidationChange(Object.keys(errors).length === 0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [formData, errors]);
 
-  const handleChange = (field: keyof DebtorInfo, value: string) => {
+  const handleChange = (field: keyof DebtorInfo, value: string | number) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
@@ -126,12 +124,7 @@ export function DebtorInfoStep({
     <div className="debtor-info-step">
       {/* Privacy assurance */}
       <div className="info-box">
-        <svg
-          className="info-icon"
-          viewBox="0 0 20 20"
-          fill="currentColor"
-          aria-hidden="true"
-        >
+        <svg className="info-icon" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
           <path
             fillRule="evenodd"
             d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z"
@@ -141,8 +134,8 @@ export function DebtorInfoStep({
         <div>
           <h3 className="info-title">Your information is secure</h3>
           <p className="info-message">
-            All personal information is encrypted and stored securely. We only collect
-            what's required for bankruptcy forms.
+            All personal information is encrypted and stored securely. We only collect what's
+            required for bankruptcy forms.
           </p>
         </div>
       </div>
@@ -301,9 +294,7 @@ export function DebtorInfoStep({
             type="number"
             min="1"
             value={formData.household_size || ''}
-            onChange={(e) =>
-              handleChange('household_size', parseInt(e.target.value, 10))
-            }
+            onChange={(e) => handleChange('household_size', parseInt(e.target.value, 10))}
             error={errors.household_size}
             required
             helpText="Number of people living in your household (including yourself)"
@@ -325,9 +316,7 @@ export function DebtorInfoStep({
         {formData.filing_type === 'joint' && (
           <>
             <div className="info-box info-box--secondary">
-              <p>
-                For joint filings, please provide your spouse's information below.
-              </p>
+              <p>For joint filings, please provide your spouse's information below.</p>
             </div>
 
             <h4 className="subsection-title">Spouse Information</h4>
@@ -347,9 +336,7 @@ export function DebtorInfoStep({
                 name="co_debtor_middle_name"
                 type="text"
                 value={formData.co_debtor_middle_name || ''}
-                onChange={(e) =>
-                  handleChange('co_debtor_middle_name', e.target.value)
-                }
+                onChange={(e) => handleChange('co_debtor_middle_name', e.target.value)}
                 helpText="Optional"
               />
 
@@ -369,9 +356,7 @@ export function DebtorInfoStep({
                 name="co_debtor_date_of_birth"
                 type="date"
                 value={formData.co_debtor_date_of_birth || ''}
-                onChange={(e) =>
-                  handleChange('co_debtor_date_of_birth', e.target.value)
-                }
+                onChange={(e) => handleChange('co_debtor_date_of_birth', e.target.value)}
                 required
               />
 

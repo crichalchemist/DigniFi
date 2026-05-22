@@ -20,7 +20,14 @@ import {
   DebtsStep,
   ReviewStep,
 } from '../components/wizard/steps';
-import type { DebtorInfo, IncomeInfo, ExpenseInfo, AssetInfo, DebtInfo } from '../types/api';
+import type {
+  IntakeSession,
+  DebtorInfo,
+  IncomeInfo,
+  ExpenseInfo,
+  AssetInfo,
+  DebtInfo,
+} from '../types/api';
 
 // ============================================================================
 // Wizard Configuration
