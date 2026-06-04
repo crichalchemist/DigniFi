@@ -538,6 +538,30 @@ export const formsAPI = {
       method: 'POST',
     });
   },
+
+  /**
+   * Download a generated form as a filled PDF.
+   * GET /api/forms/{id}/download/
+   * Triggers a browser file save dialog.
+   */
+  downloadForm: async (formId: number, filename: string): Promise<void> => {
+    const token = getAccessToken();
+    const response = await fetch(`${API_BASE_URL}/forms/${formId}/download/`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    if (!response.ok) {
+      throw new APIClientError(`Download failed (${response.status})`, response.status);
+    }
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  },
 };
 
 // ============================================================================
