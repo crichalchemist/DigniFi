@@ -48,9 +48,11 @@ COPY --from=frontend-build /app/frontend/dist/index.html ./templates/frontend/in
 COPY --from=frontend-build /app/frontend/dist/assets/ ./static/frontend/assets/
 
 # collectstatic runs at build time so static files are baked into the image.
-# Uses base settings with DEBUG=True to avoid needing a real encryption key or DB.
-# The real SECRET_KEY / FIELD_ENCRYPTION_KEY are config vars set on the Heroku app.
-RUN SECRET_KEY=build-placeholder \
+# Uses base settings with DEBUG=True to avoid needing a real DB connection.
+# FIELD_ENCRYPTION_KEY must be a valid Fernet key even during collectstatic;
+# an ephemeral key is generated here — the real key is a Heroku config var.
+RUN export FIELD_ENCRYPTION_KEY=$(python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())") && \
+    SECRET_KEY=build-placeholder \
     DATABASE_URL=sqlite:////tmp/build.db \
     DEBUG=True \
     DJANGO_SETTINGS_MODULE=config.settings.base \
