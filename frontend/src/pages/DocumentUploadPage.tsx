@@ -1,10 +1,12 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FileDropZone } from '../components/documents/FileDropZone';
 import { UploadQueue } from '../components/documents/UploadQueue';
 import { uploadDocument } from '../api/client';
 import { useIntake } from '../context/IntakeContext';
 import type { UploadedDocument } from '../types/api';
+
+const ILND_DISTRICT_ID = 1;
 
 interface QueuedUpload {
   docId: number;
@@ -14,7 +16,15 @@ interface QueuedUpload {
 
 export function DocumentUploadPage() {
   const navigate = useNavigate();
-  const { session } = useIntake();
+  const { session, isLoading, createSession } = useIntake();
+
+  // Auto-create a session for new users who arrive here before the intake wizard.
+  useEffect(() => {
+    if (!isLoading && !session) {
+      createSession(ILND_DISTRICT_ID).catch(() => {});
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoading]);
   const [queue, setQueue] = useState<QueuedUpload[]>([]);
   const [uploading, setUploading] = useState(false);
   const [allComplete, setAllComplete] = useState(false);
