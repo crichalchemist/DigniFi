@@ -245,6 +245,17 @@ export const authAPI = {
   },
 
   /**
+   * Issue JWT tokens for the pre-seeded demo account (no credentials needed).
+   * POST /api/users/demo/
+   */
+  demoLogin: async (): Promise<LoginResponse> => {
+    const response = await apiFetch<LoginResponse>('/users/demo/', { method: 'POST' }, true);
+    setAccessToken(response.access);
+    setRefreshToken(response.refresh);
+    return response;
+  },
+
+  /**
    * Refresh access token
    * POST /api/token/refresh/
    */

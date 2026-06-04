@@ -5,20 +5,35 @@
  * Redirects authenticated users straight to intake.
  */
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Button } from '../components/common/Button';
 
 export function LandingPage() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, demoLogin } = useAuth();
   const navigate = useNavigate();
+  const [demoLoading, setDemoLoading] = useState(false);
+  const [demoError, setDemoError] = useState('');
 
   useEffect(() => {
     if (!isLoading && isAuthenticated) {
       navigate('/intake', { replace: true });
     }
   }, [isAuthenticated, isLoading, navigate]);
+
+  const handleDemoLogin = async () => {
+    setDemoLoading(true);
+    setDemoError('');
+    try {
+      await demoLogin();
+      navigate('/forms', { replace: true });
+    } catch {
+      setDemoError('Demo unavailable right now. Please try again.');
+    } finally {
+      setDemoLoading(false);
+    }
+  };
 
   if (isLoading) return null;
 
@@ -27,13 +42,10 @@ export function LandingPage() {
       {/* Hero Section */}
       <header className="landing-hero">
         <div className="landing-container">
-          <h1 className="landing-title">
-            Take the first step toward financial relief
-          </h1>
+          <h1 className="landing-title">Take the first step toward financial relief</h1>
           <p className="landing-subtitle">
-            DigniFi guides you through the bankruptcy filing process with
-            clear, plain-language explanations — at no cost. You deserve a
-            fresh start.
+            DigniFi guides you through the bankruptcy filing process with clear, plain-language
+            explanations — at no cost. You deserve a fresh start.
           </p>
           <div className="landing-cta-group">
             <Link to="/register">
@@ -46,7 +58,18 @@ export function LandingPage() {
                 Sign In
               </Button>
             </Link>
+            <Button variant="outline" size="lg" onClick={handleDemoLogin} disabled={demoLoading}>
+              {demoLoading ? 'Loading demo…' : 'Try Demo'}
+            </Button>
           </div>
+          {demoError && (
+            <p
+              role="alert"
+              style={{ color: '#dc2626', marginTop: '0.75rem', fontSize: '0.875rem' }}
+            >
+              {demoError}
+            </p>
+          )}
         </div>
       </header>
 
@@ -62,9 +85,8 @@ export function LandingPage() {
               </div>
               <h2 className="landing-card-title">Free to Use</h2>
               <p className="landing-card-text">
-                Filing for bankruptcy shouldn't cost money you don't have.
-                DigniFi is completely free — no hidden fees, no premium
-                tiers.
+                Filing for bankruptcy shouldn't cost money you don't have. DigniFi is completely
+                free — no hidden fees, no premium tiers.
               </p>
             </article>
 
@@ -77,8 +99,8 @@ export function LandingPage() {
               </div>
               <h2 className="landing-card-title">Private &amp; Secure</h2>
               <p className="landing-card-text">
-                Your financial information is encrypted and never shared.
-                We believe your story is yours to tell, on your terms.
+                Your financial information is encrypted and never shared. We believe your story is
+                yours to tell, on your terms.
               </p>
             </article>
 
@@ -91,9 +113,8 @@ export function LandingPage() {
               </div>
               <h2 className="landing-card-title">Legal Information</h2>
               <p className="landing-card-text">
-                We explain what the law says in plain language so you can
-                make informed decisions. This is information, not legal
-                advice.
+                We explain what the law says in plain language so you can make informed decisions.
+                This is information, not legal advice.
               </p>
             </article>
           </div>
@@ -104,10 +125,9 @@ export function LandingPage() {
       <footer className="landing-footer">
         <div className="landing-container">
           <p className="landing-disclaimer">
-            DigniFi provides legal <strong>information</strong>, not legal
-            advice. This platform does not create an attorney-client
-            relationship. If you need legal advice, please consult a
-            licensed attorney in your jurisdiction.
+            DigniFi provides legal <strong>information</strong>, not legal advice. This platform
+            does not create an attorney-client relationship. If you need legal advice, please
+            consult a licensed attorney in your jurisdiction.
           </p>
         </div>
       </footer>
