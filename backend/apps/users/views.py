@@ -9,6 +9,8 @@ from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
+from apps.intake.models import IntakeSession
+
 from .serializers import RegisterSerializer, UserProfileSerializer
 
 User = get_user_model()
@@ -54,4 +56,15 @@ class DemoLoginView(APIView):
             )
 
         refresh = RefreshToken.for_user(user)
-        return Response({"access": str(refresh.access_token), "refresh": str(refresh)})
+        data = {"access": str(refresh.access_token), "refresh": str(refresh)}
+
+        session_id = (
+            IntakeSession.objects.filter(user=user)
+            .order_by("-created_at")
+            .values_list("id", flat=True)
+            .first()
+        )
+        if session_id:
+            data["session_id"] = session_id
+
+        return Response(data)

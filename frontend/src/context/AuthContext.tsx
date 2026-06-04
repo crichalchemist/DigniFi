@@ -22,7 +22,7 @@ interface AuthContextValue {
 
   login: (username: string, password: string) => Promise<void>;
   register: (data: RegisterRequest) => Promise<void>;
-  demoLogin: () => Promise<void>;
+  demoLogin: () => Promise<{ session_id?: number }>;
   logout: () => void;
   clearError: () => void;
 }
@@ -123,14 +123,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   }, []);
 
-  const demoLogin = useCallback(async () => {
+  const demoLogin = useCallback(async (): Promise<{ session_id?: number }> => {
     setIsLoading(true);
     setError(null);
 
     try {
-      await authAPI.demoLogin();
+      const response = await authAPI.demoLogin();
       const profile = await authAPI.me();
       setUser(profile);
+      return { session_id: response.session_id };
     } catch (err) {
       const message =
         err instanceof APIClientError ? err.message : 'Demo login unavailable. Please try again.';

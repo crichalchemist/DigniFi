@@ -25,6 +25,7 @@ import type {
   APIError,
   LoginRequest,
   LoginResponse,
+  DemoLoginResponse,
   RegisterRequest,
   RegisterResponse,
   UserProfile,
@@ -248,8 +249,8 @@ export const authAPI = {
    * Issue JWT tokens for the pre-seeded demo account (no credentials needed).
    * POST /api/users/demo/
    */
-  demoLogin: async (): Promise<LoginResponse> => {
-    const response = await apiFetch<LoginResponse>('/users/demo/', { method: 'POST' }, true);
+  demoLogin: async (): Promise<DemoLoginResponse> => {
+    const response = await apiFetch<DemoLoginResponse>('/users/demo/', { method: 'POST' }, true);
     setAccessToken(response.access);
     setRefreshToken(response.refresh);
     return response;

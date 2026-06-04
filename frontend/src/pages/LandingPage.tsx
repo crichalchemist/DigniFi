@@ -5,7 +5,7 @@
  * Redirects authenticated users straight to intake.
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Button } from '../components/common/Button';
@@ -15,20 +15,26 @@ export function LandingPage() {
   const navigate = useNavigate();
   const [demoLoading, setDemoLoading] = useState(false);
   const [demoError, setDemoError] = useState('');
+  const demoNavigating = useRef(false);
 
   useEffect(() => {
-    if (!isLoading && isAuthenticated) {
+    if (!isLoading && isAuthenticated && !demoNavigating.current) {
       navigate('/intake', { replace: true });
     }
   }, [isAuthenticated, isLoading, navigate]);
 
   const handleDemoLogin = async () => {
+    demoNavigating.current = true;
     setDemoLoading(true);
     setDemoError('');
     try {
-      await demoLogin();
+      const { session_id } = await demoLogin();
+      if (session_id) {
+        localStorage.setItem('current_session_id', session_id.toString());
+      }
       navigate('/forms', { replace: true });
     } catch {
+      demoNavigating.current = false;
       setDemoError('Demo unavailable right now. Please try again.');
     } finally {
       setDemoLoading(false);

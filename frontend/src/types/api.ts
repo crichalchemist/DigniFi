@@ -399,6 +399,10 @@ export interface LoginResponse {
   refresh: string;
 }
 
+export interface DemoLoginResponse extends LoginResponse {
+  session_id?: number;
+}
+
 export interface RegisterRequest {
   email: string;
   username: string;
