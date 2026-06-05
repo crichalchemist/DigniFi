@@ -545,10 +545,17 @@ export const formsAPI = {
    * Triggers a browser file save dialog.
    */
   downloadForm: async (formId: number, filename: string): Promise<void> => {
-    const token = getAccessToken();
-    const response = await fetch(`${API_BASE_URL}/forms/${formId}/download/`, {
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-    });
+    const doFetch = () => {
+      const token = getAccessToken();
+      return fetch(`${API_BASE_URL}/forms/${formId}/download/`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+    };
+    let response = await doFetch();
+    if (response.status === 401 && getRefreshToken()) {
+      const refreshed = await attemptTokenRefresh();
+      if (refreshed) response = await doFetch();
+    }
     if (!response.ok) {
       throw new APIClientError(`Download failed (${response.status})`, response.status);
     }
