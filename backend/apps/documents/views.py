@@ -21,7 +21,11 @@ ALLOWED_MIME_TYPES = {"application/pdf", "image/jpeg", "image/png", "image/webp"
 
 
 def _get_processor() -> DocumentProcessor:
-    provider = LlamaCppProvider(base_url=getattr(settings, "LLM_BASE_URL", "http://llm:8080/v1"))
+    provider = LlamaCppProvider(
+        base_url=getattr(settings, "LLM_BASE_URL", "http://llm:8080/v1"),
+        api_key=getattr(settings, "LLM_API_KEY", "not-required"),
+        model=getattr(settings, "LLM_MODEL", "gemma-3-4b-it"),
+    )
     return DocumentProcessor(provider=provider)
 
 

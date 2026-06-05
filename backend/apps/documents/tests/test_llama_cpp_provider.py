@@ -137,3 +137,31 @@ def test_client_no_api_key_required():
         call_kwargs = mock_openai.call_args.kwargs
         assert call_kwargs["api_key"] == "not-required"
         assert call_kwargs["base_url"] == "http://localhost:8080/v1"
+
+
+def test_client_accepts_custom_api_key():
+    """Custom api_key should be forwarded to OpenAI client (Heroku Managed Inference path)."""
+    with patch("apps.documents.services.providers.llama_cpp.OpenAI") as mock_openai:
+        LlamaCppProvider(
+            base_url="https://inference.heroku.com/v1",
+            api_key="sk-heroku-test-key",
+        )
+
+        call_kwargs = mock_openai.call_args.kwargs
+        assert call_kwargs["api_key"] == "sk-heroku-test-key"
+        assert call_kwargs["base_url"] == "https://inference.heroku.com/v1"
+
+
+def test_api_calls_use_configured_model():
+    """Model name passed to constructor should be used in every API call."""
+    with patch("apps.documents.services.providers.llama_cpp.OpenAI"):
+        provider = LlamaCppProvider(model="claude-sonnet-4-5")
+
+    mock_response = MagicMock()
+    mock_response.choices[0].message.content = "result"
+    provider.client.chat.completions.create.return_value = mock_response
+
+    provider.classify(b"image_data", "Classify")
+
+    call_args = provider.client.chat.completions.create.call_args
+    assert call_args.kwargs["model"] == "claude-sonnet-4-5"
