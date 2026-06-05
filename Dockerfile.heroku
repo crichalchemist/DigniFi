@@ -36,8 +36,7 @@ RUN pip install --no-cache-dir -r requirements/production.txt
 COPY backend/ .
 
 # Bake official AO court PDF templates into the image for PDF filling at runtime.
-# Symlink created at repo root for Docker COPY with spaces-free path.
-COPY official-forms-pdfs/ /data/forms/pdfs/
+COPY data/forms/pdfs/ /data/forms/pdfs/
 
 # Wire up the frontend build artefacts:
 #   index.html → templates/frontend/index.html  (served by TemplateView catch-all)
