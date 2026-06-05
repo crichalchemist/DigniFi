@@ -74,7 +74,7 @@ htmlcov/
 .hypothesis/
 
 # Sensitive data
-/data/forms/pdfs/*.pdf
+# Official AO court PDF templates are public documents committed intentionally
 /backend/media/
 /backend/logs/*.log
 Product Docs/*.pdf
