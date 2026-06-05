@@ -75,7 +75,7 @@ htmlcov/
 
 # Sensitive data
 /data/forms/pdfs/*.pdf
-/backend/media/generated_forms/*
+/backend/media/
 /backend/logs/*.log
 Product Docs/*.pdf
 docs/internal/*.pdf
