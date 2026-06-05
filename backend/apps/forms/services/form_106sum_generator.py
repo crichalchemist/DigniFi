@@ -14,17 +14,16 @@ Data sources:
 Official form: form_b106sum.pdf
 """
 
-from decimal import Decimal, ROUND_HALF_UP
-from typing import Any
+from decimal import ROUND_HALF_UP, Decimal
 from functools import reduce
+from typing import Any
 
-from apps.intake.models import IntakeSession, IncomeInfo, ExpenseInfo
-
+from apps.intake.models import ExpenseInfo, IncomeInfo, IntakeSession
 
 # Precision for financial calculations per court requirements
-_TWO_PLACES = Decimal('0.01')
-_ZERO = Decimal('0.00')
-_SIX_MONTHS = Decimal('6')
+_TWO_PLACES = Decimal("0.01")
+_ZERO = Decimal("0.00")
+_SIX_MONTHS = Decimal("6")
 
 
 def _sum_field(queryset, field_name: str) -> Decimal:
@@ -79,15 +78,15 @@ class Form106SumGenerator:
         """
         # Schedule A/B: Assets
         assets = self.session.assets.all()
-        total_assets = _sum_field(assets, 'current_value')
+        total_assets = _sum_field(assets, "current_value")
 
         # Schedule D: Secured debts
         secured_debts = self.session.debts.filter(is_secured=True)
-        total_secured = _sum_field(secured_debts, 'amount_owed')
+        total_secured = _sum_field(secured_debts, "amount_owed")
 
         # Schedule E/F: Unsecured debts (priority + nonpriority)
         unsecured_debts = self.session.debts.filter(is_secured=False)
-        total_unsecured = _sum_field(unsecured_debts, 'amount_owed')
+        total_unsecured = _sum_field(unsecured_debts, "amount_owed")
 
         # Schedule I: Income (CMI from 6-month array)
         monthly_income = self._compute_monthly_income()
@@ -96,20 +95,80 @@ class Form106SumGenerator:
         monthly_expenses = self._compute_monthly_expenses()
 
         return {
-            'total_assets': total_assets,
-            'total_secured_debts': total_secured,
-            'total_unsecured_debts': total_unsecured,
-            'total_debts': total_secured + total_unsecured,
-            'current_monthly_income': monthly_income,
-            'current_monthly_expenses': monthly_expenses,
-            'monthly_net_income': monthly_income - monthly_expenses,
-            'number_of_creditors': secured_debts.count() + unsecured_debts.count(),
-            'number_of_assets': assets.count(),
+            "total_assets": total_assets,
+            "total_secured_debts": total_secured,
+            "total_unsecured_debts": total_unsecured,
+            "total_debts": total_secured + total_unsecured,
+            "current_monthly_income": monthly_income,
+            "current_monthly_expenses": monthly_expenses,
+            "monthly_net_income": monthly_income - monthly_expenses,
+            "number_of_creditors": secured_debts.count() + unsecured_debts.count(),
+            "number_of_assets": assets.count(),
         }
 
     def preview(self) -> dict[str, Any]:
         """Generate preview data for user review before PDF creation."""
         return self.generate()
+
+    def pdf_field_map(self) -> dict:
+        """Map session data to Official Form 106Sum (form_b106sum.pdf)."""
+        from apps.intake.models import AssetInfo, DebtInfo
+
+        session = self.session
+        di = session.debtor_info
+        full_name = f"{di.first_name} {di.middle_name} {di.last_name}".replace("  ", " ").strip()
+
+        assets = list(AssetInfo.objects.filter(session=session))
+        debts = list(DebtInfo.objects.filter(session=session))
+
+        real_property = sum(
+            ((a.current_value or _ZERO) for a in assets if a.asset_type == "real_property"),
+            _ZERO,
+        ).quantize(_TWO_PLACES, rounding=ROUND_HALF_UP)
+        personal_property = sum(
+            ((a.current_value or _ZERO) for a in assets if a.asset_type != "real_property"),
+            _ZERO,
+        ).quantize(_TWO_PLACES, rounding=ROUND_HALF_UP)
+        total_assets = (real_property + personal_property).quantize(
+            _TWO_PLACES, rounding=ROUND_HALF_UP
+        )
+
+        secured = sum(
+            ((d.amount_owed or _ZERO) for d in debts if d.is_secured),
+            _ZERO,
+        ).quantize(_TWO_PLACES, rounding=ROUND_HALF_UP)
+        priority_unsecured = sum(
+            ((d.amount_owed or _ZERO) for d in debts if not d.is_secured and d.is_priority),
+            _ZERO,
+        ).quantize(_TWO_PLACES, rounding=ROUND_HALF_UP)
+        nonpriority_unsecured = sum(
+            ((d.amount_owed or _ZERO) for d in debts if not d.is_secured and not d.is_priority),
+            _ZERO,
+        ).quantize(_TWO_PLACES, rounding=ROUND_HALF_UP)
+        total_unsecured = (priority_unsecured + nonpriority_unsecured).quantize(
+            _TWO_PLACES, rounding=ROUND_HALF_UP
+        )
+
+        cmi = self._compute_monthly_income()
+        total_expenses = self._compute_monthly_expenses()
+
+        def fmt(d):
+            return str(d.quantize(_TWO_PLACES, rounding=ROUND_HALF_UP))
+
+        return {
+            "Bankruptcy District Information": session.district.name,
+            "Debtor 1": full_name,
+            "1a": fmt(real_property),
+            "1b": fmt(personal_property),
+            "1c": fmt(total_assets),
+            "2": fmt(secured),
+            "3a": fmt(priority_unsecured),
+            "3b": fmt(nonpriority_unsecured),
+            "3c": fmt(total_unsecured),
+            "4": fmt(secured + total_unsecured),
+            "8": fmt(cmi),
+            "9a": fmt(total_expenses),
+        }
 
     def _compute_monthly_income(self) -> Decimal:
         """Extract monthly income from IncomeInfo's 6-month array as CMI."""
@@ -118,7 +177,7 @@ class Form106SumGenerator:
         except IncomeInfo.DoesNotExist:
             return _ZERO
 
-        monthly_income_array = getattr(income_info, 'monthly_income', None)
+        monthly_income_array = getattr(income_info, "monthly_income", None)
         if monthly_income_array is None:
             return _ZERO
 

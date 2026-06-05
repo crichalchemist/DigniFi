@@ -14,21 +14,20 @@ Logic:
 Official form: b_122a-1.pdf
 """
 
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import ROUND_HALF_UP, Decimal
 from functools import reduce
-from typing import Any, Dict, List
+from typing import Any
 
 from apps.districts.models import MedianIncome
 from apps.intake.models import DebtInfo, IncomeInfo, IntakeSession
 
-
 # -- Constants --
 
-ZERO = Decimal('0.00')
-HUNDRED = Decimal('100')
-TWELVE = Decimal('12')
-SIX_MONTH_ZEROS: List[int] = [0, 0, 0, 0, 0, 0]
-FIFTY_PERCENT = Decimal('50.00')
+ZERO = Decimal("0.00")
+HUNDRED = Decimal("100")
+TWELVE = Decimal("12")
+SIX_MONTH_ZEROS: list[int] = [0, 0, 0, 0, 0, 0]
+FIFTY_PERCENT = Decimal("50.00")
 
 # UPL-compliant result messages (information only, never advice)
 MSG_PASS_BELOW_MEDIAN = (
@@ -49,7 +48,8 @@ MSG_FAIL_ABOVE_MEDIAN = (
 
 # -- Pure helper functions (no side effects) --
 
-def _compute_cmi(monthly_income: List) -> Decimal:
+
+def _compute_cmi(monthly_income: list) -> Decimal:
     """
     Compute Current Monthly Income per 11 U.S.C. section 101(10A).
 
@@ -65,17 +65,17 @@ def _compute_cmi(monthly_income: List) -> Decimal:
         ZERO,
     )
     month_count = Decimal(str(len(monthly_income)))
-    return (total / month_count).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+    return (total / month_count).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
 
 def _calculate_percentage(part: Decimal, whole: Decimal) -> Decimal:
     """Calculate percentage with zero-division guard, rounded to 2 places."""
     if whole == ZERO:
         return ZERO
-    return ((part / whole) * HUNDRED).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+    return ((part / whole) * HUNDRED).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
 
-def _compute_debt_classification(debts: List[DebtInfo]) -> Dict[str, Decimal]:
+def _compute_debt_classification(debts: list[DebtInfo]) -> dict[str, Decimal]:
     """
     Compute consumer vs business debt totals and percentages.
 
@@ -84,22 +84,22 @@ def _compute_debt_classification(debts: List[DebtInfo]) -> Dict[str, Decimal]:
     """
     consumer_total = reduce(
         lambda acc, d: acc + d.amount_owed,
-        [d for d in debts if d.consumer_business_classification == 'consumer'],
+        [d for d in debts if d.consumer_business_classification == "consumer"],
         ZERO,
     )
     business_total = reduce(
         lambda acc, d: acc + d.amount_owed,
-        [d for d in debts if d.consumer_business_classification == 'business'],
+        [d for d in debts if d.consumer_business_classification == "business"],
         ZERO,
     )
     grand_total = consumer_total + business_total
 
     return {
-        'consumer_total': consumer_total,
-        'business_total': business_total,
-        'grand_total': grand_total,
-        'consumer_percentage': _calculate_percentage(consumer_total, grand_total),
-        'business_percentage': _calculate_percentage(business_total, grand_total),
+        "consumer_total": consumer_total,
+        "business_total": business_total,
+        "grand_total": grand_total,
+        "consumer_percentage": _calculate_percentage(consumer_total, grand_total),
+        "business_percentage": _calculate_percentage(business_total, grand_total),
     }
 
 
@@ -112,7 +112,7 @@ def _determine_household_size(session: IntakeSession) -> int:
     try:
         income_info: IncomeInfo = session.income_info
         size = 1 + income_info.number_of_dependents
-        if income_info.marital_status in ('married_joint', 'married_separate'):
+        if income_info.marital_status in ("married_joint", "married_separate"):
             size += 1
         return size
     except IncomeInfo.DoesNotExist:
@@ -126,10 +126,7 @@ def _get_median_income(session: IntakeSession, household_size: int) -> Decimal:
     Returns ZERO if no MedianIncome record exists (graceful degradation).
     """
     median = (
-        MedianIncome.objects
-        .filter(district=session.district)
-        .order_by('-effective_date')
-        .first()
+        MedianIncome.objects.filter(district=session.district).order_by("-effective_date").first()
     )
     if median is None:
         return ZERO
@@ -137,24 +134,24 @@ def _get_median_income(session: IntakeSession, household_size: int) -> Decimal:
 
 
 def _build_form_122a1_data(
-    debt_classification: Dict[str, Decimal],
-    monthly_income: List,
+    debt_classification: dict[str, Decimal],
+    monthly_income: list,
     household_size: int,
     median_income_annual: Decimal,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Build the complete Form 122A-1 output from pre-computed components.
 
     Pure function: deterministic output from given inputs.
     """
-    consumer_pct = debt_classification['consumer_percentage']
-    business_pct = debt_classification['business_percentage']
+    consumer_pct = debt_classification["consumer_percentage"]
+    business_pct = debt_classification["business_percentage"]
     is_applicable = consumer_pct > FIFTY_PERCENT
 
     cmi = _compute_cmi(monthly_income)
-    annualized = (cmi * TWELVE).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+    annualized = (cmi * TWELVE).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
     median_monthly = (
-        (median_income_annual / TWELVE).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+        (median_income_annual / TWELVE).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
         if median_income_annual > ZERO
         else ZERO
     )
@@ -173,24 +170,21 @@ def _build_form_122a1_data(
 
     return {
         # Part 1: Means test applicability
-        'is_applicable': is_applicable,
-        'consumer_debt_percentage': consumer_pct,
-        'business_debt_percentage': business_pct,
-
+        "is_applicable": is_applicable,
+        "consumer_debt_percentage": consumer_pct,
+        "business_debt_percentage": business_pct,
         # Part 2: Current Monthly Income
-        'monthly_income_history': monthly_income,
-        'current_monthly_income': cmi,
-        'annualized_income': annualized,
-
+        "monthly_income_history": monthly_income,
+        "current_monthly_income": cmi,
+        "annualized_income": annualized,
         # Part 3: Median income comparison
-        'household_size': household_size,
-        'median_income_annual': median_income_annual,
-        'median_income_monthly': median_monthly,
-        'below_median': below_median,
-
+        "household_size": household_size,
+        "median_income_annual": median_income_annual,
+        "median_income_monthly": median_monthly,
+        "below_median": below_median,
         # Part 4: Result
-        'passes_means_test': passes,
-        'result_message': result_message,
+        "passes_means_test": passes,
+        "result_message": result_message,
     }
 
 
@@ -209,7 +203,7 @@ class Form122A1Generator:
     def __init__(self, intake_session: IntakeSession) -> None:
         self.session = intake_session
 
-    def generate(self) -> Dict[str, Any]:
+    def generate(self) -> dict[str, Any]:
         """
         Generate Form 122A-1 data structure.
 
@@ -235,6 +229,34 @@ class Form122A1Generator:
             median_income_annual=median_income_annual,
         )
 
-    def preview(self) -> Dict[str, Any]:
+    def preview(self) -> dict[str, Any]:
         """Generate preview data for user review before PDF creation."""
         return self.generate()
+
+    def pdf_field_map(self) -> dict:
+        """Map session data to Official Form 122A-1 (b_122a-1.pdf)."""
+        data = self.generate()
+        di = self.session.debtor_info
+
+        TWO = Decimal("0.01")
+        cmi = Decimal(str(data.get("current_monthly_income", ZERO)))
+        annualized = (cmi * 12).quantize(TWO, rounding=ROUND_HALF_UP)
+        median = Decimal(str(data.get("median_income_annual", ZERO)))
+        diff = (annualized - median).quantize(TWO, rounding=ROUND_HALF_UP)
+        below_median = diff <= ZERO
+
+        def fmt(d):
+            return str(Decimal(str(d)).quantize(TWO, rounding=ROUND_HALF_UP))
+
+        return {
+            "Bankruptcy District Information": self.session.district.name,
+            "Case number1": "",
+            "Debtor1.First name": di.first_name,
+            "Debtor1.Middle name": di.middle_name or "",
+            "Debtor1.Last name": di.last_name,
+            "12B": fmt(annualized),
+            "13A": fmt(median),
+            "13B": fmt(annualized),
+            "13C": fmt(diff),
+            "14a": "/Yes" if below_median else "/Off",
+        }
