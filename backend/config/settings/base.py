@@ -74,6 +74,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",  # Static files (must follow SecurityMiddleware)
     "config.logging.RequestIDMiddleware",  # Request-ID correlation (must be early)
     "corsheaders.middleware.CorsMiddleware",  # Must be before CommonMiddleware
     "django.contrib.sessions.middleware.SessionMiddleware",
@@ -238,8 +239,11 @@ PDF_OUTPUT_DIRECTORY = MEDIA_ROOT / "generated_forms"
 # OCR & Document Processing Settings
 # ============================================
 
-# LLM Configuration for local llama.cpp
+# LLM Configuration — works with local llama.cpp and Heroku Managed Inference.
+# Heroku sets INFERENCE_URL (maps to LLM_BASE_URL) and INFERENCE_KEY (maps to LLM_API_KEY).
 LLM_BASE_URL = env("LLM_BASE_URL", default="http://llm:8080/v1")
+LLM_API_KEY = env("LLM_API_KEY", default="not-required")
+LLM_MODEL = env("LLM_MODEL", default="gemma-3-4b-it")
 
 # Document Storage
 DOCUMENT_STORAGE_BACKEND = env("DOCUMENT_STORAGE_BACKEND", default="filesystem")

@@ -15,7 +15,7 @@ interface FormCardProps {
   formType: FormType;
   generatedForm?: GeneratedForm;
   onGenerate: (formType: FormType) => Promise<void>;
-  onMarkDownloaded: (formId: number) => Promise<void>;
+  onDownload: (formId: number) => Promise<void>;
   onMarkFiled: (formId: number) => Promise<void>;
 }
 
@@ -23,7 +23,7 @@ export function FormCard({
   formType,
   generatedForm,
   onGenerate,
-  onMarkDownloaded,
+  onDownload,
   onMarkFiled,
 }: FormCardProps) {
   const [isLoading, setIsLoading] = useState(false);
@@ -75,7 +75,7 @@ export function FormCard({
             <Button
               size="sm"
               variant="primary"
-              onClick={() => handleAction(() => onMarkDownloaded(generatedForm.id))}
+              onClick={() => handleAction(() => onDownload(generatedForm.id))}
               isLoading={isLoading}
               loadingText="Preparing..."
             >

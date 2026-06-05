@@ -148,9 +148,10 @@ export function DebtsStep({ initialData, onDataChange, onValidationChange }: Deb
       const meta = DEBT_CATEGORY_META[value as DebtInfo['debt_type']];
       updatedDebts[index] = {
         ...updatedDebts[index],
-        debt_type: value,
+        debt_type: value as DebtInfo['debt_type'],
         is_secured: meta?.is_secured ?? false,
-        priority_classification: meta?.priority_classification,
+        priority_classification:
+          meta?.priority_classification as DebtInfo['priority_classification'],
       };
     } else {
       updatedDebts[index] = {

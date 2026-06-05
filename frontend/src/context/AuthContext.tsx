@@ -6,14 +6,7 @@
  * On mount, attempts silent refresh to restore the session across page reloads.
  */
 
-import {
-  createContext,
-  useContext,
-  useState,
-  useEffect,
-  useCallback,
-  type ReactNode,
-} from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
 import type { UserProfile, RegisterRequest } from '../types/api';
 import { authAPI, APIClientError, getRefreshToken } from '../api/client';
 
@@ -29,6 +22,7 @@ interface AuthContextValue {
 
   login: (username: string, password: string) => Promise<void>;
   register: (data: RegisterRequest) => Promise<void>;
+  demoLogin: () => Promise<{ session_id?: number }>;
   logout: () => void;
   clearError: () => void;
 }
@@ -129,6 +123,25 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   }, []);
 
+  const demoLogin = useCallback(async (): Promise<{ session_id?: number }> => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const response = await authAPI.demoLogin();
+      const profile = await authAPI.me();
+      setUser(profile);
+      return { session_id: response.session_id };
+    } catch (err) {
+      const message =
+        err instanceof APIClientError ? err.message : 'Demo login unavailable. Please try again.';
+      setError(message);
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
   const logout = useCallback(() => {
     authAPI.logout();
     setUser(null);
@@ -150,6 +163,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     error,
     login,
     register,
+    demoLogin,
     logout,
     clearError,
   };

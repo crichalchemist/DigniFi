@@ -75,8 +75,10 @@ export function FormDashboard() {
     setShowSurvey(true);
   };
 
-  const handleMarkDownloaded = async (formId: number) => {
-    await api.forms.markDownloaded(formId);
+  const handleDownload = async (formId: number) => {
+    const form = forms.find((f) => f.id === formId);
+    const filename = form ? `${form.form_type}.pdf` : `form_${formId}.pdf`;
+    await api.forms.downloadForm(formId, filename);
     await loadForms();
   };
 
@@ -183,7 +185,7 @@ export function FormDashboard() {
               formType={formType}
               generatedForm={formsByType.get(formType)}
               onGenerate={handleGenerate}
-              onMarkDownloaded={handleMarkDownloaded}
+              onDownload={handleDownload}
               onMarkFiled={handleMarkFiled}
             />
           ))}

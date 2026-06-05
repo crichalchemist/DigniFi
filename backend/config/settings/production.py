@@ -3,7 +3,7 @@ from .base import *  # noqa: F403, F401
 DEBUG = False
 
 # ── Allowed hosts ──────────────────────────────────────────────────────
-ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=["localhost"])
+ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=["localhost"])  # noqa: F405
 
 # ── SSL & transport security ──────────────────────────────────────────
 SECURE_SSL_REDIRECT = True
@@ -28,8 +28,17 @@ X_FRAME_OPTIONS = "DENY"
 # ── Database connection pooling ───────────────────────────────────────
 DATABASES["default"]["CONN_MAX_AGE"] = env.int("DATABASE_CONN_MAX_AGE", default=600)  # noqa: F405
 
-# ── Static files (served by nginx in production) ─────────────────────
+# ── Static files (served by whitenoise) ──────────────────────────────
 STATIC_URL = "/static/"
+
+STORAGES = {
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedStaticFilesStorage",
+    },
+}
 
 # ── Rate limiting (DRF throttling) ───────────────────────────────────
 # Applies to all DRF views; auth endpoints get stricter limits via

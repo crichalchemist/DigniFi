@@ -9,23 +9,25 @@ from .base import BaseOCRProvider
 
 class LlamaCppProvider(BaseOCRProvider):
     """
-    llama.cpp server provider (Gemma 3 4B multimodal).
+    OpenAI-compatible vision provider.
 
-    Uses the OpenAI-compatible API exposed by the llama.cpp server.
-    No API key required for local deployment.
+    Works with llama.cpp (local) and Heroku Managed Inference (cloud).
+    Heroku sets INFERENCE_URL → LLM_BASE_URL and INFERENCE_KEY → LLM_API_KEY.
 
     Args:
-        base_url: Base URL of the llama.cpp server (default: http://llm:8080/v1)
+        base_url: Base URL of the OpenAI-compatible server
+        api_key: Bearer token (unused for local llama.cpp; required for Heroku Inference)
+        model: Model name to pass in each request
     """
 
-    def __init__(self, base_url: str = "http://llm:8080/v1"):
-        """
-        Initialize llama.cpp provider.
-
-        Args:
-            base_url: llama.cpp server base URL
-        """
-        self.client = OpenAI(api_key="not-required", base_url=base_url)
+    def __init__(
+        self,
+        base_url: str = "http://llm:8080/v1",
+        api_key: str = "not-required",
+        model: str = "gemma-3-4b-it",
+    ):
+        self.model = model
+        self.client = OpenAI(api_key=api_key, base_url=base_url)
 
     def classify(self, image_data: bytes, prompt: str) -> str:
         """
@@ -68,7 +70,7 @@ class LlamaCppProvider(BaseOCRProvider):
         """
         b64 = base64.b64encode(image_data).decode("utf-8")
         response = self.client.chat.completions.create(
-            model="gemma-3-4b-it",
+            model=self.model,
             messages=[
                 {
                     "role": "user",
@@ -97,7 +99,7 @@ class LlamaCppProvider(BaseOCRProvider):
             API response content as string
         """
         response = self.client.chat.completions.create(
-            model="gemma-3-4b-it",
+            model=self.model,
             messages=[{"role": "user", "content": prompt}],
             temperature=0.1,
             max_tokens=1024,

@@ -1,5 +1,6 @@
 from django.contrib import admin
-from django.urls import include, path
+from django.urls import include, path, re_path
+from django.views.generic import TemplateView
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
@@ -34,4 +35,8 @@ urlpatterns = [
     path("api/districts/", include("apps.districts.urls")),
     path("api/audit/", include("apps.audit.urls")),
     path("api/documents/", include("apps.documents.urls", namespace="documents")),
+    # SPA catch-all — must be last; serves React index.html for all non-API routes
+    re_path(
+        r".*", TemplateView.as_view(template_name="frontend/index.html", content_type="text/html")
+    ),
 ]
