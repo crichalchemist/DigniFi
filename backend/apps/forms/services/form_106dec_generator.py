@@ -11,8 +11,7 @@ Official form: form_b106dec.pdf
 from datetime import date
 from typing import Any
 
-from apps.intake.models import IntakeSession, DebtorInfo
-
+from apps.intake.models import DebtorInfo, IntakeSession
 
 # Standard declaration text per Official Form 106Dec
 _DECLARATION_TEXT = (
@@ -22,20 +21,20 @@ _DECLARATION_TEXT = (
 
 # Schedules that 106Dec covers for a standard Chapter 7 individual filing
 _STANDARD_SCHEDULES: tuple[str, ...] = (
-    'A/B',
-    'C',
-    'D',
-    'E/F',
-    'I',
-    'J',
-    '106Sum',
+    "A/B",
+    "C",
+    "D",
+    "E/F",
+    "I",
+    "J",
+    "106Sum",
 )
 
 
 def _build_debtor_full_name(debtor: DebtorInfo) -> str:
     """Compose full name from debtor info, including middle name when present."""
     parts = (debtor.first_name, debtor.middle_name, debtor.last_name)
-    return ' '.join(part for part in parts if part)
+    return " ".join(part for part in parts if part)
 
 
 def _build_declaration_data(
@@ -44,12 +43,12 @@ def _build_declaration_data(
 ) -> dict[str, Any]:
     """Construct the declaration data dict from pure values."""
     return {
-        'debtor_name': debtor_name,
-        'case_number': '',  # Empty until assigned by court
-        'declaration_text': _DECLARATION_TEXT,
-        'penalty_of_perjury': True,
-        'signature_date': signature_date,
-        'schedules_declared': list(_STANDARD_SCHEDULES),
+        "debtor_name": debtor_name,
+        "case_number": "",  # Empty until assigned by court
+        "declaration_text": _DECLARATION_TEXT,
+        "penalty_of_perjury": True,
+        "signature_date": signature_date,
+        "schedules_declared": list(_STANDARD_SCHEDULES),
     }
 
 
@@ -84,11 +83,20 @@ class Form106DecGenerator:
         """Generate preview data for user review before PDF creation."""
         return self.generate()
 
+    def pdf_field_map(self) -> dict:
+        """Map session data to Official Form 106Dec (form_b106dec.pdf) field names."""
+        di = self.session.debtor_info
+        full_name = _build_debtor_full_name(di)
+        return {
+            "Bankruptcy District Information": self.session.district.name,
+            "Debtor 1": full_name,
+        }
+
     def _resolve_debtor_name(self) -> str:
         """Extract full name from session's DebtorInfo, defaulting to empty string."""
         try:
             debtor = self.session.debtor_info
         except DebtorInfo.DoesNotExist:
-            return ''
+            return ""
 
         return _build_debtor_full_name(debtor)

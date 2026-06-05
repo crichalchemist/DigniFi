@@ -5,8 +5,7 @@ Generates Official Bankruptcy Form 101 (Voluntary Petition for Individuals
 Filing for Bankruptcy) from intake session data.
 """
 
-from typing import Dict, Any
-from decimal import Decimal
+from typing import Any
 
 from apps.intake.models import IntakeSession
 
@@ -44,7 +43,7 @@ class Form101Generator:
         self.debtor_info = intake_session.debtor_info
         self.district = intake_session.district
 
-    def generate(self) -> Dict[str, Any]:
+    def generate(self) -> dict[str, Any]:
         """
         Generate Form 101 data structure ready for PDF population.
 
@@ -52,7 +51,38 @@ class Form101Generator:
         """
         return self._build_form_data()
 
-    def _build_form_data(self) -> Dict[str, Any]:
+    def pdf_field_map(self) -> dict:
+        """Map session data to Official Form 101 (form_b_101_0624_fillable_clean.pdf)."""
+        di = self.debtor_info
+        full_name = f"{di.first_name} {di.middle_name} {di.last_name}".replace("  ", " ").strip()
+        return {
+            "Debtor1.First name": di.first_name,
+            "Debtor1.Middle name": di.middle_name or "",
+            "Debtor1.Last name": di.last_name,
+            "Debtor1.Name": full_name,
+            "Debtor1.First name_3": di.first_name,
+            "Debtor1.Middle name_3": di.middle_name or "",
+            "Debtor1.Last name_3": di.last_name,
+            "Debtor1.First name_5": di.first_name,
+            "Debtor1.Middle name_5": di.middle_name or "",
+            "Debtor1.Last name_5": di.last_name,
+            "Debtor1.SSNum": di.ssn,
+            "Debtor1.Street address": di.street_address,
+            "Debtor1.City": di.city,
+            "Debtor1.State": di.state,
+            "Debtor1.Zip": di.zip_code,
+            "Debtor1.County": "",
+            "Debtor1.Cell phone": di.phone or "",
+            "Debtor1.Email address_2": di.email or "",
+            "Bankruptcy District Information": self.district.name,
+            "Case number": "",
+            "Case number1": "",
+            "Check Box1": "/Yes",  # Individual debtor
+            "Check Box5": "/Yes",  # Chapter 7
+            "Check Box16": "/Yes",  # Consumer debts
+        }
+
+    def _build_form_data(self) -> dict[str, Any]:
         """
         Build complete Form 101 data structure.
 
@@ -171,7 +201,7 @@ class Form101Generator:
         except Exception:
             return "$0-$50,000"
 
-    def _get_means_test_declaration(self) -> Dict[str, Any]:
+    def _get_means_test_declaration(self) -> dict[str, Any]:
         """
         Get means test result for Form 101 declaration.
 
@@ -197,6 +227,6 @@ class Form101Generator:
                 "declaration": "Means test calculation pending",
             }
 
-    def preview(self) -> Dict[str, Any]:
+    def preview(self) -> dict[str, Any]:
         """Generate preview data for user review before PDF creation."""
         return self.generate()

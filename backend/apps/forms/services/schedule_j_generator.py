@@ -10,50 +10,48 @@ a monthly deficit -- common for filers with $0 income.
 Official form: form_b106j.pdf
 """
 
-from decimal import Decimal, ROUND_HALF_UP
+from collections.abc import Sequence
+from decimal import ROUND_HALF_UP, Decimal
 from functools import reduce
-from typing import Any, Dict, Sequence
+from typing import Any
 
 from apps.intake.models import ExpenseInfo, IntakeSession
 
-
 # -- Named constants --
 
-ZERO = Decimal('0.00')
+ZERO = Decimal("0.00")
 
 EXPENSE_FIELDS: tuple[str, ...] = (
-    'rent_or_mortgage',
-    'utilities',
-    'home_maintenance',
-    'vehicle_payment',
-    'vehicle_insurance',
-    'vehicle_maintenance',
-    'food_and_groceries',
-    'clothing',
-    'medical_expenses',
-    'childcare',
-    'child_support_paid',
-    'insurance_not_deducted',
-    'other_expenses',
+    "rent_or_mortgage",
+    "utilities",
+    "home_maintenance",
+    "vehicle_payment",
+    "vehicle_insurance",
+    "vehicle_maintenance",
+    "food_and_groceries",
+    "clothing",
+    "medical_expenses",
+    "childcare",
+    "child_support_paid",
+    "insurance_not_deducted",
+    "other_expenses",
 )
 
-HOUSING_FIELDS = ('rent_or_mortgage', 'utilities', 'home_maintenance')
-TRANSPORTATION_FIELDS = ('vehicle_payment', 'vehicle_insurance', 'vehicle_maintenance')
-LIVING_FIELDS = ('food_and_groceries', 'clothing', 'medical_expenses')
-OTHER_FIELDS = ('childcare', 'child_support_paid', 'insurance_not_deducted', 'other_expenses')
+HOUSING_FIELDS = ("rent_or_mortgage", "utilities", "home_maintenance")
+TRANSPORTATION_FIELDS = ("vehicle_payment", "vehicle_insurance", "vehicle_maintenance")
+LIVING_FIELDS = ("food_and_groceries", "clothing", "medical_expenses")
+OTHER_FIELDS = ("childcare", "child_support_paid", "insurance_not_deducted", "other_expenses")
 
 
 # -- Pure helper functions (no side effects) --
 
-def _extract_expense_values(expense_info: ExpenseInfo) -> Dict[str, Decimal]:
+
+def _extract_expense_values(expense_info: ExpenseInfo) -> dict[str, Decimal]:
     """Extract all expense field values as a field_name -> Decimal mapping."""
-    return {
-        field: Decimal(str(getattr(expense_info, field)))
-        for field in EXPENSE_FIELDS
-    }
+    return {field: Decimal(str(getattr(expense_info, field))) for field in EXPENSE_FIELDS}
 
 
-def _sum_fields(values: Dict[str, Decimal], fields: Sequence[str]) -> Decimal:
+def _sum_fields(values: dict[str, Decimal], fields: Sequence[str]) -> Decimal:
     """Sum specific fields from the values dict."""
     return reduce(
         lambda acc, field: acc + values.get(field, ZERO),
@@ -77,19 +75,20 @@ def _calculate_cmi(monthly_income_array: list) -> Decimal:
         ZERO,
     )
     return (total / len(monthly_income_array)).quantize(
-        Decimal('0.01'), rounding=ROUND_HALF_UP,
+        Decimal("0.01"),
+        rounding=ROUND_HALF_UP,
     )
 
 
-def _build_empty_expenses() -> Dict[str, Decimal]:
+def _build_empty_expenses() -> dict[str, Decimal]:
     """Return zeroed-out expense dict for sessions without ExpenseInfo."""
     return {field: ZERO for field in EXPENSE_FIELDS}
 
 
 def _build_schedule_j_data(
-    expense_values: Dict[str, Decimal],
+    expense_values: dict[str, Decimal],
     total_income: Decimal,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Assemble the complete Schedule J output from expense values and income.
 
@@ -102,11 +101,10 @@ def _build_schedule_j_data(
     return {
         # Individual expense lines
         **expense_values,
-
         # Totals
-        'total_expenses': total_expenses,
-        'total_income': total_income,
-        'net_monthly_income': net_monthly_income,
+        "total_expenses": total_expenses,
+        "total_income": total_income,
+        "net_monthly_income": net_monthly_income,
     }
 
 
@@ -123,7 +121,7 @@ class ScheduleJGenerator:
     def __init__(self, intake_session: IntakeSession) -> None:
         self.session = intake_session
 
-    def _get_expense_values(self) -> Dict[str, Decimal]:
+    def _get_expense_values(self) -> dict[str, Decimal]:
         """Safely extract expense values, defaulting to zeros if missing."""
         try:
             expense_info = self.session.expense_info
@@ -143,7 +141,7 @@ class ScheduleJGenerator:
         except Exception:
             return ZERO
 
-    def generate(self) -> Dict[str, Any]:
+    def generate(self) -> dict[str, Any]:
         """
         Generate Schedule J data structure.
 
@@ -154,6 +152,42 @@ class ScheduleJGenerator:
         total_income = self._get_total_income()
         return _build_schedule_j_data(expense_values, total_income)
 
-    def preview(self) -> Dict[str, Any]:
+    def preview(self) -> dict[str, Any]:
         """Generate preview data for user review before PDF creation."""
         return self.generate()
+
+    def pdf_field_map(self) -> dict:
+        """Map session data to Official Form 106J (form_b106j.pdf)."""
+        expense_values = self._get_expense_values()
+        total_income = self._get_total_income()
+        total_expenses = sum(expense_values.values(), ZERO).quantize(
+            Decimal("0.01"), rounding=ROUND_HALF_UP
+        )
+
+        def fmt(d):
+            return str(d.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP))
+
+        di = self.session.debtor_info
+        full_name = f"{di.first_name} {di.middle_name} {di.last_name}".replace("  ", " ").strip()
+
+        return {
+            "Bankruptcy District Information": self.session.district.name,
+            "Debtor 1": full_name,
+            "10": fmt(expense_values.get("rent_or_mortgage", ZERO)),
+            "12": fmt(expense_values.get("utilities", ZERO)),
+            "14": fmt(expense_values.get("home_maintenance", ZERO)),
+            "15a": fmt(expense_values.get("food_and_groceries", ZERO)),
+            "15b": fmt(expense_values.get("childcare", ZERO)),
+            "15c": fmt(expense_values.get("clothing", ZERO)),
+            "16": fmt(expense_values.get("medical_expenses", ZERO)),
+            "17a": fmt(expense_values.get("vehicle_maintenance", ZERO)),
+            "17b": fmt(expense_values.get("vehicle_payment", ZERO)),
+            "17c": fmt(expense_values.get("vehicle_insurance", ZERO)),
+            "20a": fmt(expense_values.get("insurance_not_deducted", ZERO)),
+            "21": fmt(
+                expense_values.get("other_expenses", ZERO)
+                + expense_values.get("child_support_paid", ZERO)
+            ),
+            "22a": fmt(total_expenses),
+            "23a": fmt(total_income),
+        }

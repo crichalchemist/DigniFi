@@ -13,25 +13,24 @@ Applies Illinois state exemptions per 735 ILCS 5/12-901 et seq:
 Official form: form_b106c_0425-form.pdf
 """
 
-from decimal import Decimal
-from typing import Any
 import json
-from pathlib import Path
+from decimal import Decimal
 from functools import reduce
+from pathlib import Path
+from typing import Any
 
-from apps.intake.models import IntakeSession, AssetInfo
-
+from apps.intake.models import AssetInfo, IntakeSession
 
 # Sentinel for unlimited exemption display value
-_UNLIMITED_DISPLAY = Decimal('999999.99')
+_UNLIMITED_DISPLAY = Decimal("999999.99")
 
 # Maps AssetInfo.asset_type to exemption fixture property_type
 _ASSET_TO_EXEMPTION: dict[str, str] = {
-    'real_property': 'homestead',
-    'vehicle': 'vehicle',
-    'retirement_account': 'retirement',
-    'bank_account': 'wildcard',
-    'other': 'wildcard',
+    "real_property": "homestead",
+    "vehicle": "vehicle",
+    "retirement_account": "retirement",
+    "bank_account": "wildcard",
+    "other": "wildcard",
 }
 
 
@@ -39,12 +38,12 @@ def _load_exemptions_from_fixture(fixture_path: Path) -> dict[str, dict[str, Any
     """Parse exemption fixture JSON into a lookup keyed by property_type."""
     with open(fixture_path) as f:
         raw = json.load(f)
-    return {entry['property_type']: entry for entry in raw}
+    return {entry["property_type"]: entry for entry in raw}
 
 
 def _compute_equity(asset: AssetInfo) -> Decimal:
     """Calculate equity as current value minus amount owed."""
-    return asset.current_value - (asset.amount_owed or Decimal('0.00'))
+    return asset.current_value - (asset.amount_owed or Decimal("0.00"))
 
 
 def _apply_exemption(
@@ -57,34 +56,33 @@ def _apply_exemption(
     Returns None when equity is non-positive or no matching exemption exists.
     """
     equity = _compute_equity(asset)
-    if equity <= Decimal('0.00'):
+    if equity <= Decimal("0.00"):
         return None
 
-    exemption_type = _ASSET_TO_EXEMPTION.get(asset.asset_type, 'wildcard')
+    exemption_type = _ASSET_TO_EXEMPTION.get(asset.asset_type, "wildcard")
     exemption_data = exemptions.get(exemption_type)
     if exemption_data is None:
         return None
 
-    is_unlimited = exemption_data['is_unlimited']
+    is_unlimited = exemption_data["is_unlimited"]
 
     if is_unlimited:
         amount_claimed = equity
     else:
-        exemption_limit = Decimal(exemption_data['amount'])
+        exemption_limit = Decimal(exemption_data["amount"])
         amount_claimed = min(equity, exemption_limit)
 
     return {
-        'property_description': asset.description,
-        'statute': exemption_data['statute'],
-        'statute_description': exemption_data['description'],
-        'amount_claimed': amount_claimed,
-        'amount_available': (
-            _UNLIMITED_DISPLAY if is_unlimited
-            else Decimal(exemption_data['amount'])
+        "property_description": asset.description,
+        "statute": exemption_data["statute"],
+        "statute_description": exemption_data["description"],
+        "amount_claimed": amount_claimed,
+        "amount_available": (
+            _UNLIMITED_DISPLAY if is_unlimited else Decimal(exemption_data["amount"])
         ),
-        'current_value': asset.current_value,
-        'equity': equity,
-        'is_fully_exempt': is_unlimited or equity <= Decimal(exemption_data['amount']),
+        "current_value": asset.current_value,
+        "equity": equity,
+        "is_fully_exempt": is_unlimited or equity <= Decimal(exemption_data["amount"]),
     }
 
 
@@ -100,7 +98,7 @@ class ScheduleCGenerator:
     """
 
     EXEMPTIONS_FILE: Path = (
-        Path(__file__).parent.parent / 'fixtures' / 'illinois_exemptions_2024.json'
+        Path(__file__).parent.parent / "fixtures" / "illinois_exemptions_2024.json"
     )
 
     def __init__(self, intake_session: IntakeSession) -> None:
@@ -124,16 +122,51 @@ class ScheduleCGenerator:
         ]
 
         total_claimed = reduce(
-            lambda acc, e: acc + e['amount_claimed'],
+            lambda acc, e: acc + e["amount_claimed"],
             exemptions,
-            Decimal('0.00'),
+            Decimal("0.00"),
         )
 
         return {
-            'exemptions': exemptions,
-            'total_claimed': total_claimed,
+            "exemptions": exemptions,
+            "total_claimed": total_claimed,
         }
 
     def preview(self) -> dict[str, Any]:
         """Generate preview data for user review before PDF creation."""
         return self.generate()
+
+    def pdf_field_map(self) -> dict:
+        """Map session data to Official Form 106C (b_106c_0425-form.pdf)."""
+        from decimal import ROUND_HALF_UP, Decimal
+
+        TWO = Decimal("0.01")
+
+        def fmt(d):
+            return str(Decimal(str(d)).quantize(TWO, rounding=ROUND_HALF_UP))
+
+        session = self.session
+        di = session.debtor_info
+        full_name = f"{di.first_name} {di.middle_name} {di.last_name}".replace("  ", " ").strip()
+        exemptions = self.generate().get("exemptions", [])
+
+        result: dict = {
+            "Bankruptcy District Information": session.district.name,
+            "Debtor 1": full_name,
+        }
+
+        # Rows map to PDF fields: first row = (2.1, 2.2, 2.3), then (3, 3.2, 3.3), etc.
+        row_fields = [
+            ("2.1", "2.2", "2.3"),
+            ("3", "3.2", "3.3"),
+            ("4", "4.2", "4.3"),
+            ("5", "5.2", "5.3"),
+            ("6", "6.2", "6.3"),
+        ]
+        for i, exemption in enumerate(exemptions[:5]):
+            desc_f, statute_f, amount_f = row_fields[i]
+            result[desc_f] = exemption.get("property_description", "")
+            result[statute_f] = exemption.get("statute", "")
+            result[amount_f] = fmt(exemption.get("amount_claimed", Decimal("0.00")))
+
+        return result

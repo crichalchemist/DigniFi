@@ -14,7 +14,7 @@ Official form: form_b103b.pdf
 """
 
 from datetime import date
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import ROUND_HALF_UP, Decimal
 from functools import reduce
 from typing import Any
 
@@ -26,17 +26,16 @@ from apps.intake.models import (
     IntakeSession,
 )
 
-
 # -- Constants --
 
-_ZERO = Decimal('0.00')
-_TWO_PLACES = Decimal('0.01')
-BANK_ACCOUNT_TYPE = 'bank_account'
+_ZERO = Decimal("0.00")
+_TWO_PLACES = Decimal("0.01")
+BANK_ACCOUNT_TYPE = "bank_account"
 
 # Qualification basis identifiers
-BASIS_INCOME = 'income'
-BASIS_BENEFITS = 'benefits'
-BASIS_NONE = 'none'
+BASIS_INCOME = "income"
+BASIS_BENEFITS = "benefits"
+BASIS_NONE = "none"
 
 # UPL-compliant result messages (information, never advice)
 MSG_QUALIFIES_INCOME = (
@@ -62,7 +61,7 @@ MSG_DOES_NOT_QUALIFY = (
 def _build_debtor_name(debtor_info: DebtorInfo) -> str:
     """Assemble a legal full name, collapsing empty middle names."""
     parts = (debtor_info.first_name, debtor_info.middle_name, debtor_info.last_name)
-    return ' '.join(p for p in parts if p)
+    return " ".join(p for p in parts if p)
 
 
 def _compute_cash_and_bank_balances(assets: list[AssetInfo]) -> Decimal:
@@ -110,14 +109,12 @@ def _determine_qualification_basis(fee_waiver: FeeWaiverApplication) -> str:
 def _get_result_message(basis: str, filing_fee: Decimal) -> str:
     """Return UPL-compliant result message based on qualification basis."""
     match basis:
-        case 'income':
+        case "income":
             return MSG_QUALIFIES_INCOME
-        case 'benefits':
+        case "benefits":
             return MSG_QUALIFIES_BENEFITS
         case _:
-            return MSG_DOES_NOT_QUALIFY.replace(
-                '${fee}', str(filing_fee.quantize(_TWO_PLACES))
-            )
+            return MSG_DOES_NOT_QUALIFY.replace("${fee}", str(filing_fee.quantize(_TWO_PLACES)))
 
 
 def _build_form_103b_data(
@@ -151,44 +148,37 @@ def _build_form_103b_data(
     )
 
     return {
-        'form_type': 'form_103b',
-        'debtor_name': debtor_name,
-        'case_number': '',  # Assigned by the court after filing
-
+        "form_type": "form_103b",
+        "debtor_name": debtor_name,
+        "case_number": "",  # Assigned by the court after filing
         # Part A: Family and income
-        'household_size': household_size,
-        'monthly_income': monthly_income.quantize(_TWO_PLACES, rounding=ROUND_HALF_UP),
-        'monthly_expenses': monthly_expenses.quantize(_TWO_PLACES, rounding=ROUND_HALF_UP),
-        'net_monthly_income': net_monthly_income,
-
+        "household_size": household_size,
+        "monthly_income": monthly_income.quantize(_TWO_PLACES, rounding=ROUND_HALF_UP),
+        "monthly_expenses": monthly_expenses.quantize(_TWO_PLACES, rounding=ROUND_HALF_UP),
+        "net_monthly_income": net_monthly_income,
         # Part C: Property and debts
-        'cash_and_bank_balances': cash_and_bank_balances,
-        'total_property_value': total_property_value,
-        'total_debt': total_debt,
-
+        "cash_and_bank_balances": cash_and_bank_balances,
+        "total_property_value": total_property_value,
+        "total_debt": total_debt,
         # Part D: Additional questions
-        'received_money_6_months': False,  # Placeholder for future intake step
-        'owns_property': owns_property,
-        'receives_benefits_or_disability': receives_benefits_or_disability,
-
+        "received_money_6_months": False,  # Placeholder for future intake step
+        "owns_property": owns_property,
+        "receives_benefits_or_disability": receives_benefits_or_disability,
         # Part E: Public benefits
-        'receives_public_benefits': receives_public_benefits,
-        'benefit_types': list(benefit_types),
-
+        "receives_public_benefits": receives_public_benefits,
+        "benefit_types": list(benefit_types),
         # Part F: Certification
-        'penalty_of_perjury': True,
-        'signature_date': signature_date,
-
+        "penalty_of_perjury": True,
+        "signature_date": signature_date,
         # Qualification result
-        'qualifies_for_waiver': qualifies_for_waiver,
-        'qualification_basis': qualification_basis,
-        'poverty_threshold_monthly': poverty_threshold_monthly.quantize(
+        "qualifies_for_waiver": qualifies_for_waiver,
+        "qualification_basis": qualification_basis,
+        "poverty_threshold_monthly": poverty_threshold_monthly.quantize(
             _TWO_PLACES, rounding=ROUND_HALF_UP
         ),
-        'filing_fee': filing_fee.quantize(_TWO_PLACES, rounding=ROUND_HALF_UP),
-
+        "filing_fee": filing_fee.quantize(_TWO_PLACES, rounding=ROUND_HALF_UP),
         # UPL-compliant result message
-        'result_message': result_message,
+        "result_message": result_message,
     }
 
 
@@ -221,18 +211,18 @@ class Form103BGenerator:
         """Retrieve the FeeWaiverApplication or raise."""
         try:
             return self.session.fee_waiver
-        except FeeWaiverApplication.DoesNotExist:
+        except FeeWaiverApplication.DoesNotExist as err:
             raise Form103BGenerationError(
-                'FeeWaiverApplication is required to generate Form 103B. '
-                'Please complete the fee waiver information step first.'
-            )
+                "FeeWaiverApplication is required to generate Form 103B. "
+                "Please complete the fee waiver information step first."
+            ) from err
 
     def _get_debtor_name(self) -> str:
         """Extract debtor name, returning empty string if absent."""
         try:
             return _build_debtor_name(self.session.debtor_info)
         except DebtorInfo.DoesNotExist:
-            return ''
+            return ""
 
     def _get_filing_fee(self) -> Decimal:
         """Retrieve Chapter 7 filing fee from the district model."""
@@ -288,15 +278,36 @@ class Form103BGenerator:
         data = self.generate()
 
         return {
-            'form_type': 'form_103b',
-            'form_name': 'Application to Have the Chapter 7 Filing Fee Waived',
-            'preview': True,
-            'data': data,
-            'upl_disclaimer': (
-                'This is a preview of your fee waiver application. '
-                'This information is provided to help you understand '
-                'the filing fee waiver process. It is not legal advice. '
-                'The court will make the final determination on your '
-                'fee waiver application.'
+            "form_type": "form_103b",
+            "form_name": "Application to Have the Chapter 7 Filing Fee Waived",
+            "preview": True,
+            "data": data,
+            "upl_disclaimer": (
+                "This is a preview of your fee waiver application. "
+                "This information is provided to help you understand "
+                "the filing fee waiver process. It is not legal advice. "
+                "The court will make the final determination on your "
+                "fee waiver application."
             ),
+        }
+
+    def pdf_field_map(self) -> dict:
+        """Map session data to Official Form 103B (form_b103b.pdf)."""
+        data = self.generate()
+        di = self.session.debtor_info
+        full_name = f"{di.first_name} {di.middle_name} {di.last_name}".replace("  ", " ").strip()
+
+        basis = data.get("qualification_basis", "none")
+
+        def fmt(d):
+            return str(Decimal(str(d)).quantize(_TWO_PLACES, rounding=ROUND_HALF_UP))
+
+        return {
+            "Bankruptcy District Information": self.session.district.name,
+            "Debtor": full_name,
+            "Amount you owe": fmt(data.get("total_debt", _ZERO)),
+            "Total number of people": str(data.get("household_size", 1)),
+            "4 type": fmt(data.get("monthly_income", _ZERO)),
+            "5 Type": fmt(data.get("monthly_expenses", _ZERO)),
+            "check 3": "/Yes" if basis == "income" else "/Off",
         }

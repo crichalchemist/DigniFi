@@ -9,9 +9,9 @@ placeholders for historical data not yet tracked in the system.
 Official form: b_107_0425-form.pdf
 """
 
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import ROUND_HALF_UP, Decimal
 from functools import reduce
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 from apps.intake.models import (
     DebtInfo,
@@ -20,11 +20,10 @@ from apps.intake.models import (
     IntakeSession,
 )
 
-
 # -- Constants --
 
-ZERO = Decimal('0.00')
-TWELVE = Decimal('12')
+ZERO = Decimal("0.00")
+TWELVE = Decimal("12")
 TOTAL_QUESTIONS = 25
 
 # Lookback periods (in years) per official form instructions
@@ -39,7 +38,7 @@ LOOKBACK_SAFE_DEPOSIT = 1
 LOOKBACK_PREVIOUS_ADDRESS = 3
 
 # Question text from official Form 107 (informational, verbatim from form)
-QUESTION_TEXTS: Dict[int, str] = {
+QUESTION_TEXTS: dict[int, str] = {
     1: (
         "Within 2 years before you filed for bankruptcy, did you have any income "
         "from employment or from operating a business?"
@@ -99,9 +98,7 @@ QUESTION_TEXTS: Dict[int, str] = {
         "Within 1 year before you filed for bankruptcy, did you have a safe "
         "deposit box or did you use a storage unit?"
     ),
-    14: (
-        "Are you holding or controlling any property that belongs to someone else?"
-    ),
+    14: ("Are you holding or controlling any property that belongs to someone else?"),
     15: (
         "Within 3 years before you filed for bankruptcy, did you live anywhere "
         "other than where you live now?"
@@ -125,10 +122,7 @@ QUESTION_TEXTS: Dict[int, str] = {
         "income, assets, and financial affairs been prepared for you or for any "
         "business you owned?"
     ),
-    20: (
-        "Have you filed any tax returns within 2 years before you filed for "
-        "bankruptcy?"
-    ),
+    20: ("Have you filed any tax returns within 2 years before you filed for " "bankruptcy?"),
     21: (
         "Within 2 years before you filed for bankruptcy, were you a party to "
         "any lawsuit, court action, or administrative proceeding?"
@@ -160,23 +154,23 @@ def _build_question(
     question_number: int,
     has_data: bool,
     response: str,
-    details: Optional[List[Dict[str, Any]]] = None,
-) -> Dict[str, Any]:
+    details: list[dict[str, Any]] | None = None,
+) -> dict[str, Any]:
     """
     Build a single question dict for the Form 107 output.
 
     Pure function: deterministic output from given inputs.
     """
     return {
-        'question_number': question_number,
-        'question_text': QUESTION_TEXTS.get(question_number, ''),
-        'has_data': has_data,
-        'response': response,
-        'details': details if details is not None else [],
+        "question_number": question_number,
+        "question_text": QUESTION_TEXTS.get(question_number, ""),
+        "has_data": has_data,
+        "response": response,
+        "details": details if details is not None else [],
     }
 
 
-def _compute_annual_income_from_monthly(monthly_income: List) -> Decimal:
+def _compute_annual_income_from_monthly(monthly_income: list) -> Decimal:
     """
     Compute annualized income from 6-month income array.
 
@@ -191,11 +185,11 @@ def _compute_annual_income_from_monthly(monthly_income: List) -> Decimal:
         ZERO,
     )
     month_count = Decimal(str(len(monthly_income)))
-    cmi = (total / month_count).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
-    return (cmi * TWELVE).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+    cmi = (total / month_count).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    return (cmi * TWELVE).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
 
-def _compute_total_monthly_income(monthly_income: List) -> Decimal:
+def _compute_total_monthly_income(monthly_income: list) -> Decimal:
     """Compute average monthly income from the 6-month array."""
     if not monthly_income:
         return ZERO
@@ -206,10 +200,10 @@ def _compute_total_monthly_income(monthly_income: List) -> Decimal:
         ZERO,
     )
     month_count = Decimal(str(len(monthly_income)))
-    return (total / month_count).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+    return (total / month_count).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
 
-def _extract_creditor_payments(debts: List[DebtInfo]) -> List[Dict[str, Any]]:
+def _extract_creditor_payments(debts: list[DebtInfo]) -> list[dict[str, Any]]:
     """
     Extract creditor payment details for Q3 (payments in last 90 days).
 
@@ -219,13 +213,13 @@ def _extract_creditor_payments(debts: List[DebtInfo]) -> List[Dict[str, Any]]:
     """
     return [
         {
-            'creditor_name': debt.creditor_name,
-            'amount': debt.monthly_payment,
-            'debt_type': debt.debt_type,
-            'account_number_last4': (
+            "creditor_name": debt.creditor_name,
+            "amount": debt.monthly_payment,
+            "debt_type": debt.debt_type,
+            "account_number_last4": (
                 debt.account_number[-4:]
                 if debt.account_number and len(debt.account_number) >= 4
-                else debt.account_number or ''
+                else debt.account_number or ""
             ),
         }
         for debt in debts
@@ -233,19 +227,21 @@ def _extract_creditor_payments(debts: List[DebtInfo]) -> List[Dict[str, Any]]:
     ]
 
 
-def _build_income_question(monthly_income: List) -> Dict[str, Any]:
+def _build_income_question(monthly_income: list) -> dict[str, Any]:
     """Build Q1: Employment/business income from IncomeInfo."""
     annual = _compute_annual_income_from_monthly(monthly_income)
     monthly_avg = _compute_total_monthly_income(monthly_income)
     has_income = annual > ZERO
 
     details = (
-        [{
-            'source': 'Employment/self-employment',
-            'monthly_average': str(monthly_avg),
-            'annualized': str(annual),
-            'months_reported': len(monthly_income),
-        }]
+        [
+            {
+                "source": "Employment/self-employment",
+                "monthly_average": str(monthly_avg),
+                "annualized": str(annual),
+                "months_reported": len(monthly_income),
+            }
+        ]
         if has_income
         else []
     )
@@ -253,24 +249,24 @@ def _build_income_question(monthly_income: List) -> Dict[str, Any]:
     return _build_question(
         question_number=1,
         has_data=True,
-        response='Yes' if has_income else 'No',
+        response="Yes" if has_income else "No",
         details=details,
     )
 
 
 def _build_creditor_payments_question(
-    debts: List[DebtInfo],
-) -> Dict[str, Any]:
+    debts: list[DebtInfo],
+) -> dict[str, Any]:
     """Build Q3: Payments to creditors in last 90 days."""
     payments = _extract_creditor_payments(debts)
     has_payments = len(payments) > 0
 
     serialized = [
         {
-            'creditor_name': p['creditor_name'],
-            'amount': str(p['amount']),
-            'debt_type': p['debt_type'],
-            'account_number_last4': p['account_number_last4'],
+            "creditor_name": p["creditor_name"],
+            "amount": str(p["amount"]),
+            "debt_type": p["debt_type"],
+            "account_number_last4": p["account_number_last4"],
         }
         for p in payments
     ]
@@ -278,37 +274,37 @@ def _build_creditor_payments_question(
     return _build_question(
         question_number=3,
         has_data=True,
-        response='Yes' if has_payments else 'No',
+        response="Yes" if has_payments else "No",
         details=serialized,
     )
 
 
-def _build_placeholder_question(question_number: int) -> Dict[str, Any]:
+def _build_placeholder_question(question_number: int) -> dict[str, Any]:
     """Build a placeholder question where data is not yet tracked."""
     return _build_question(
         question_number=question_number,
         has_data=False,
-        response='N/A',
+        response="N/A",
         details=[],
     )
 
 
-def _build_debtor_name(debtor_info: Optional[DebtorInfo]) -> str:
+def _build_debtor_name(debtor_info: DebtorInfo | None) -> str:
     """Build full debtor name from DebtorInfo, or empty string if missing."""
     if debtor_info is None:
-        return ''
+        return ""
 
     parts = [debtor_info.first_name]
     if debtor_info.middle_name:
         parts.append(debtor_info.middle_name)
     parts.append(debtor_info.last_name)
-    return ' '.join(parts)
+    return " ".join(parts)
 
 
 def _build_all_questions(
-    monthly_income: List,
-    debts: List[DebtInfo],
-) -> Tuple[List[Dict[str, Any]], int, int]:
+    monthly_income: list,
+    debts: list[DebtInfo],
+) -> tuple[list[dict[str, Any]], int, int]:
     """
     Build all 25 questions for Form 107.
 
@@ -322,14 +318,14 @@ def _build_all_questions(
     }
 
     # Build all 25 questions in order
-    questions: List[Dict[str, Any]] = []
+    questions: list[dict[str, Any]] = []
     for q_num in range(1, TOTAL_QUESTIONS + 1):
         if q_num in populated_questions:
             questions.append(populated_questions[q_num])
         else:
             questions.append(_build_placeholder_question(q_num))
 
-    questions_with_data = sum(1 for q in questions if q['has_data'])
+    questions_with_data = sum(1 for q in questions if q["has_data"])
     questions_needing_input = TOTAL_QUESTIONS - questions_with_data
 
     return questions, questions_with_data, questions_needing_input
@@ -337,9 +333,9 @@ def _build_all_questions(
 
 def _build_form_107_data(
     debtor_name: str,
-    monthly_income: List,
-    debts: List[DebtInfo],
-) -> Dict[str, Any]:
+    monthly_income: list,
+    debts: list[DebtInfo],
+) -> dict[str, Any]:
     """
     Build the complete Form 107 output from pre-computed components.
 
@@ -351,13 +347,13 @@ def _build_form_107_data(
     )
 
     return {
-        'form_type': 'form_107',
-        'debtor_name': debtor_name,
-        'case_number': '',  # Assigned by court at filing
-        'questions': questions,
-        'total_questions': TOTAL_QUESTIONS,
-        'questions_with_data': with_data,
-        'questions_needing_input': needing_input,
+        "form_type": "form_107",
+        "debtor_name": debtor_name,
+        "case_number": "",  # Assigned by court at filing
+        "questions": questions,
+        "total_questions": TOTAL_QUESTIONS,
+        "questions_with_data": with_data,
+        "questions_needing_input": needing_input,
     }
 
 
@@ -375,7 +371,7 @@ class Form107Generator:
     def __init__(self, intake_session: IntakeSession) -> None:
         self.session = intake_session
 
-    def generate(self) -> Dict[str, Any]:
+    def generate(self) -> dict[str, Any]:
         """
         Generate Form 107 data structure.
 
@@ -406,6 +402,55 @@ class Form107Generator:
             debts=debts,
         )
 
-    def preview(self) -> Dict[str, Any]:
+    def preview(self) -> dict[str, Any]:
         """Generate preview data for user review before PDF creation."""
         return self.generate()
+
+    def pdf_field_map(self) -> dict:
+        """Map session data to Official Form 107 (b_107_0425-form.pdf).
+
+        Only questions 1 (income) and 3 (creditor payments) have data
+        from current intake models. All other questions left blank.
+        """
+        TWO = Decimal("0.01")
+        ZERO = Decimal("0.00")
+
+        def fmt(d):
+            return str(Decimal(str(d)).quantize(TWO, rounding=ROUND_HALF_UP))
+
+        session = self.session
+        di = session.debtor_info
+        full_name = f"{di.first_name} {di.middle_name} {di.last_name}".replace("  ", " ").strip()
+
+        try:
+            ml = list(session.income_info.monthly_income)
+            cmi = (
+                (sum(Decimal(str(m)) for m in ml) / Decimal(str(len(ml)))).quantize(
+                    TWO, rounding=ROUND_HALF_UP
+                )
+                if ml
+                else ZERO
+            )
+        except Exception:
+            cmi = ZERO
+
+        debts = list(DebtInfo.objects.filter(session=session)[:3])
+
+        result: dict = {
+            "Bankruptcy District Information": session.district.name,
+            "Debtor 1": full_name,
+            "Amount 2 Debtor 1": fmt(cmi),
+        }
+
+        amount_fields = ["Amount1 13a", "Amount1 13b", "Amount1 14"]
+        creditor_fields = [
+            "Street address 1b Debtor 1",
+            "Street address 1c Debtor 1",
+            "Street address 2b Debtor 1",
+        ]
+        for i, debt in enumerate(debts):
+            if i < len(amount_fields):
+                result[amount_fields[i]] = fmt(debt.amount_owed or ZERO)
+                result[creditor_fields[i]] = debt.creditor_name or ""
+
+        return result

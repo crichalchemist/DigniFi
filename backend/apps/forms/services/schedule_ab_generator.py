@@ -12,8 +12,9 @@ Official form: form_b106ab.pdf
 """
 
 from decimal import Decimal
-from typing import Dict, List, Any
-from apps.intake.models import IntakeSession, AssetInfo
+from typing import Any
+
+from apps.intake.models import AssetInfo, IntakeSession
 
 
 class ScheduleABGenerator:
@@ -30,7 +31,7 @@ class ScheduleABGenerator:
     def __init__(self, intake_session: IntakeSession):
         self.session = intake_session
 
-    def generate(self) -> Dict[str, Any]:
+    def generate(self) -> dict[str, Any]:
         """
         Generate Schedule A/B data structure.
 
@@ -41,76 +42,116 @@ class ScheduleABGenerator:
         assets = list(self.session.assets.all())
 
         # Separate by type
-        real_property = [a for a in assets if a.asset_type == 'real_property']
-        personal_property = [a for a in assets if a.asset_type != 'real_property']
+        real_property = [a for a in assets if a.asset_type == "real_property"]
+        personal_property = [a for a in assets if a.asset_type != "real_property"]
 
         # Calculate totals (using Decimal for precision)
-        total_real = sum((a.current_value for a in real_property), Decimal('0.00'))
-        total_personal = sum((a.current_value for a in personal_property), Decimal('0.00'))
+        total_real = sum((a.current_value for a in real_property), Decimal("0.00"))
+        total_personal = sum((a.current_value for a in personal_property), Decimal("0.00"))
 
         # Map personal property to Schedule A/B categories
-        vehicles = [a for a in personal_property if a.asset_type == 'vehicle']
-        bank_accounts = [a for a in personal_property if a.asset_type == 'bank_account']
-        retirement_accounts = [a for a in personal_property if a.asset_type == 'retirement_account']
+        vehicles = [a for a in personal_property if a.asset_type == "vehicle"]
+        bank_accounts = [a for a in personal_property if a.asset_type == "bank_account"]
+        retirement_accounts = [a for a in personal_property if a.asset_type == "retirement_account"]
         # Map "other" asset type to household goods for Schedule A/B categorization
-        household_goods = [a for a in personal_property if a.asset_type == 'other']
+        household_goods = [a for a in personal_property if a.asset_type == "other"]
 
         return {
             # Part 1: Real Property
-            'real_property': [
+            "real_property": [
                 {
-                    'description': asset.description,
-                    'address': getattr(asset, 'address', ''),
-                    'current_value': asset.current_value,
-                    'amount_owed': asset.amount_owed or Decimal('0.00'),
-                    'equity': asset.current_value - (asset.amount_owed or Decimal('0.00'))
+                    "description": asset.description,
+                    "address": getattr(asset, "address", ""),
+                    "current_value": asset.current_value,
+                    "amount_owed": asset.amount_owed or Decimal("0.00"),
+                    "equity": asset.current_value - (asset.amount_owed or Decimal("0.00")),
                 }
                 for asset in real_property
             ],
-            'total_real_property_value': total_real,
-
+            "total_real_property_value": total_real,
             # Part 2: Personal Property
-            'vehicles': [
+            "vehicles": [
                 {
-                    'description': asset.description,
-                    'year': getattr(asset, 'year', ''),
-                    'make': getattr(asset, 'make', ''),
-                    'model': getattr(asset, 'model', ''),
-                    'current_value': asset.current_value,
-                    'amount_owed': asset.amount_owed or Decimal('0.00'),
-                    'equity': asset.current_value - (asset.amount_owed or Decimal('0.00'))
+                    "description": asset.description,
+                    "year": getattr(asset, "year", ""),
+                    "make": getattr(asset, "make", ""),
+                    "model": getattr(asset, "model", ""),
+                    "current_value": asset.current_value,
+                    "amount_owed": asset.amount_owed or Decimal("0.00"),
+                    "equity": asset.current_value - (asset.amount_owed or Decimal("0.00")),
                 }
                 for asset in vehicles
             ],
-            'bank_accounts': [
+            "bank_accounts": [
                 {
-                    'institution': asset.description,
-                    'account_type': getattr(asset, 'account_type', 'checking'),
-                    'balance': asset.current_value
+                    "institution": asset.description,
+                    "account_type": getattr(asset, "account_type", "checking"),
+                    "balance": asset.current_value,
                 }
                 for asset in bank_accounts
             ],
-            'retirement_accounts': [
+            "retirement_accounts": [
                 {
-                    'institution': asset.description,
-                    'account_type': getattr(asset, 'account_type', '401k/IRA'),
-                    'balance': asset.current_value
+                    "institution": asset.description,
+                    "account_type": getattr(asset, "account_type", "401k/IRA"),
+                    "balance": asset.current_value,
                 }
                 for asset in retirement_accounts
             ],
-            'household_goods': [
-                {
-                    'description': asset.description,
-                    'current_value': asset.current_value
-                }
+            "household_goods": [
+                {"description": asset.description, "current_value": asset.current_value}
                 for asset in household_goods
             ],
-            'total_personal_property_value': total_personal,
-
+            "total_personal_property_value": total_personal,
             # Part 3: Summary
-            'total_value': total_real + total_personal
+            "total_value": total_real + total_personal,
         }
 
-    def preview(self) -> Dict[str, Any]:
+    def preview(self) -> dict[str, Any]:
         """Generate preview data for user review before PDF creation."""
         return self.generate()
+
+    def pdf_field_map(self) -> dict:
+        """Map session data to Official Form 106A/B (form_b106ab.pdf)."""
+        from decimal import ROUND_HALF_UP, Decimal
+
+        TWO = Decimal("0.01")
+        ZERO = Decimal("0.00")
+
+        def fmt(d):
+            return str((d or ZERO).quantize(TWO, rounding=ROUND_HALF_UP))
+
+        session = self.session
+        di = session.debtor_info
+        full_name = f"{di.first_name} {di.middle_name} {di.last_name}".replace("  ", " ").strip()
+        assets = list(AssetInfo.objects.filter(session=session))
+
+        result: dict = {
+            "Bankruptcy District Information": session.district.name,
+            "Debtor 1": full_name,
+        }
+
+        real_props = [a for a in assets if a.asset_type == "real_property"]
+        if real_props:
+            result["1 1"] = real_props[0].description or ""
+            result["1 1a"] = fmt(real_props[0].current_value)
+
+        vehicles = [a for a in assets if a.asset_type == "vehicle"]
+        if vehicles:
+            result["3 description"] = vehicles[0].description or ""
+            result["3 description amount"] = fmt(vehicles[0].current_value)
+
+        bank_total = sum(
+            (a.current_value or ZERO) for a in assets if a.asset_type == "bank_account"
+        )
+        result["16 Cash amount"] = fmt(bank_total)
+
+        retirement = [a for a in assets if a.asset_type == "retirement_account"]
+        if retirement:
+            result["12"] = fmt(retirement[0].current_value)
+
+        others = [a for a in assets if a.asset_type == "other"]
+        if others:
+            result["17"] = fmt(others[0].current_value)
+
+        return result
