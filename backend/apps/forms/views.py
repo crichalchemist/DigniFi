@@ -6,20 +6,21 @@ types. DB persistence lives here; generators stay pure (data in → data out).
 """
 
 import json
-from decimal import Decimal
 
 from django.core.serializers.json import DjangoJSONEncoder
 from django.db import transaction
-from rest_framework import viewsets, status
+from django.http import HttpResponse
+from rest_framework import status, viewsets
 from rest_framework.decorators import action
-from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
 
-from .models import GeneratedForm
-from .serializers import GeneratedFormSerializer
-from .registry import FORM_REGISTRY, get_generator, get_all_form_types
 from apps.intake.models import IntakeSession
 
+from .models import GeneratedForm
+from .registry import FORM_REGISTRY, get_all_form_types, get_generator
+from .serializers import GeneratedFormSerializer
+from .services.pdf_filler import PDFFormFiller
 
 # UPL-compliant disclaimer appended to every preview response
 _UPL_DISCLAIMER = (
@@ -119,9 +120,9 @@ class GeneratedFormViewSet(viewsets.ReadOnlyModelViewSet):
 
     def get_queryset(self):
         """Return only forms for the authenticated user's sessions."""
-        return GeneratedForm.objects.filter(
-            session__user=self.request.user
-        ).select_related("session", "generated_by")
+        return GeneratedForm.objects.filter(session__user=self.request.user).select_related(
+            "session", "generated_by"
+        )
 
     # ------------------------------------------------------------------
     # Generate single form
@@ -147,10 +148,12 @@ class GeneratedFormViewSet(viewsets.ReadOnlyModelViewSet):
         try:
             generated_form = _generate_and_persist(session, form_type, request.user)
             serializer = self.get_serializer(generated_form)
-            return Response({
-                "form": serializer.data,
-                "message": f"{generated_form.get_form_type_display()} generated successfully",
-            })
+            return Response(
+                {
+                    "form": serializer.data,
+                    "message": f"{generated_form.get_form_type_display()} generated successfully",
+                }
+            )
         except (ValueError, KeyError) as e:
             return Response(
                 {
@@ -185,19 +188,19 @@ class GeneratedFormViewSet(viewsets.ReadOnlyModelViewSet):
         with transaction.atomic():
             for form_type in get_all_form_types():
                 try:
-                    generated_form = _generate_and_persist(
-                        session, form_type, request.user
-                    )
+                    generated_form = _generate_and_persist(session, form_type, request.user)
                     results.append(self.get_serializer(generated_form).data)
                 except Exception as e:
                     errors.append({"form_type": form_type, "error": str(e)})
 
-        return Response({
-            "generated": results,
-            "errors": errors,
-            "total_generated": len(results),
-            "total_errors": len(errors),
-        })
+        return Response(
+            {
+                "generated": results,
+                "errors": errors,
+                "total_generated": len(results),
+                "total_errors": len(errors),
+            }
+        )
 
     # ------------------------------------------------------------------
     # Preview (no DB write)
@@ -223,12 +226,14 @@ class GeneratedFormViewSet(viewsets.ReadOnlyModelViewSet):
         try:
             generator = get_generator(form_type, session)
             preview_data = _json_safe(generator.preview())
-            return Response({
-                "form_type": form_type,
-                "preview": True,
-                "data": preview_data,
-                "upl_disclaimer": _UPL_DISCLAIMER,
-            })
+            return Response(
+                {
+                    "form_type": form_type,
+                    "preview": True,
+                    "data": preview_data,
+                    "upl_disclaimer": _UPL_DISCLAIMER,
+                }
+            )
         except (ValueError, KeyError) as e:
             return Response(
                 {"error": str(e)},
@@ -249,9 +254,7 @@ class GeneratedFormViewSet(viewsets.ReadOnlyModelViewSet):
         generated_form = self.get_object()
 
         try:
-            generator = get_generator(
-                generated_form.form_type, generated_form.session
-            )
+            generator = get_generator(generated_form.form_type, generated_form.session)
             form_data = _json_safe(generator.generate())
 
             generated_form.form_data = form_data
@@ -260,10 +263,12 @@ class GeneratedFormViewSet(viewsets.ReadOnlyModelViewSet):
             generated_form.save()
 
             serializer = self.get_serializer(generated_form)
-            return Response({
-                "form": serializer.data,
-                "message": "Form regenerated successfully",
-            })
+            return Response(
+                {
+                    "form": serializer.data,
+                    "message": "Form regenerated successfully",
+                }
+            )
         except (ValueError, KeyError) as e:
             return Response(
                 {"error": str(e), "message": "Unable to regenerate form"},
@@ -283,11 +288,13 @@ class GeneratedFormViewSet(viewsets.ReadOnlyModelViewSet):
             generated_form.status = "downloaded"
             generated_form.save()
 
-        return Response({
-            "form_id": generated_form.id,
-            "status": generated_form.status,
-            "message": "Form marked as downloaded",
-        })
+        return Response(
+            {
+                "form_id": generated_form.id,
+                "status": generated_form.status,
+                "message": "Form marked as downloaded",
+            }
+        )
 
     @action(detail=True, methods=["post"])
     def mark_filed(self, request, pk=None):
@@ -297,8 +304,34 @@ class GeneratedFormViewSet(viewsets.ReadOnlyModelViewSet):
         generated_form.status = "filed"
         generated_form.save()
 
-        return Response({
-            "form_id": generated_form.id,
-            "status": generated_form.status,
-            "message": "Form marked as filed with court",
-        })
+        return Response(
+            {
+                "form_id": generated_form.id,
+                "status": generated_form.status,
+                "message": "Form marked as filed with court",
+            }
+        )
+
+    @action(detail=True, methods=["get"])
+    def download(self, request, pk=None):
+        """Fill the official AO PDF template with session data and stream it."""
+        generated_form = self.get_object()
+
+        generator = get_generator(generated_form.form_type, generated_form.session)
+        try:
+            field_map = generator.pdf_field_map()
+        except NotImplementedError:
+            return Response(
+                {"error": "PDF download is not yet available for this form."},
+                status=status.HTTP_501_NOT_IMPLEMENTED,
+            )
+
+        pdf_bytes = PDFFormFiller().fill(generated_form.form_type, field_map)
+
+        if generated_form.status == "generated":
+            generated_form.status = "downloaded"
+            generated_form.save()
+
+        response = HttpResponse(pdf_bytes, content_type="application/pdf")
+        response["Content-Disposition"] = f'attachment; filename="{generated_form.form_type}.pdf"'
+        return response
