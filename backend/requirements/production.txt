@@ -1,4 +1,3 @@
 -r base.txt
 # Allow patch and minor updates; exclude major version bumps (e.g., permits 23.0.1 and 23.1.0 but not 24.0.0)
 gunicorn~=23.0.0
-whitenoise[brotli]~=6.9.0
