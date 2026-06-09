@@ -19,7 +19,10 @@ if [ ! -f "$MMPROJ_FILE" ]; then
 fi
 
 echo "[pull_model] Models ready. Starting llama.cpp server..."
-exec /llama-server \
+# Binary moved from /llama-server to /app/llama-server in newer ghcr.io/ggml-org/llama.cpp:server images
+SERVER_BIN="/app/llama-server"
+[ -x "$SERVER_BIN" ] || SERVER_BIN="/llama-server"
+exec "$SERVER_BIN" \
   -m "$MODEL_FILE" \
   --mmproj "$MMPROJ_FILE" \
   --host 0.0.0.0 \
