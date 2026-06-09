@@ -137,7 +137,9 @@ jobs:
 
     env:
       DATABASE_URL: postgres://dignifi:dignifi@localhost:5432/dignifi_test
-      DJANGO_SETTINGS_MODULE: config.settings.test
+      # settings.test forces sqlite :memory:, which evaporates between manage.py
+      # invocations — migrate/loaddata/runserver must share the postgres service.
+      DJANGO_SETTINGS_MODULE: config.settings.development
       DJANGO_SECRET_KEY: ci-test-secret-key-not-for-production
       # Must be a real Fernet key (32 url-safe base64 bytes) — encrypted_model_fields
       # validates it at import. CI-only; encrypts nothing but synthetic test data.
@@ -151,10 +153,11 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
-          cache-dependency-path: backend/requirements/test.txt
+          cache-dependency-path: backend/requirements/development.txt
 
       - name: Install backend dependencies
-        run: pip install -r backend/requirements/test.txt
+        # development.txt: settings.development needs django_extensions
+        run: pip install -r backend/requirements/development.txt
 
       - name: Create logs directory
         run: mkdir -p backend/logs
