@@ -51,7 +51,9 @@ jobs:
       DATABASE_URL: postgres://dignifi:dignifi@localhost:5432/dignifi_test
       DJANGO_SETTINGS_MODULE: config.settings.test
       DJANGO_SECRET_KEY: ci-test-secret-key-not-for-production
-      FIELD_ENCRYPTION_KEY: ci-test-encryption-key-not-for-production-XXXX
+      # Must be a real Fernet key (32 url-safe base64 bytes) — encrypted_model_fields
+      # validates it at import. CI-only; encrypts nothing but synthetic test data.
+      FIELD_ENCRYPTION_KEY: U9HKckkKBeT8wag2jMcOx2Cez2M2jtvNG4qxSHuYcAo=
       DEBUG: "True"
 
     steps:
@@ -137,7 +139,9 @@ jobs:
       DATABASE_URL: postgres://dignifi:dignifi@localhost:5432/dignifi_test
       DJANGO_SETTINGS_MODULE: config.settings.test
       DJANGO_SECRET_KEY: ci-test-secret-key-not-for-production
-      FIELD_ENCRYPTION_KEY: ci-test-encryption-key-not-for-production-XXXX
+      # Must be a real Fernet key (32 url-safe base64 bytes) — encrypted_model_fields
+      # validates it at import. CI-only; encrypts nothing but synthetic test data.
+      FIELD_ENCRYPTION_KEY: U9HKckkKBeT8wag2jMcOx2Cez2M2jtvNG4qxSHuYcAo=
       DEBUG: "True"
 
     steps:
