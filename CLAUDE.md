@@ -51,6 +51,9 @@ Copy `.env.example` to `.env`. Required vars: `POSTGRES_DB`, `POSTGRES_USER`, `P
 - **Colima volume mounts** — Colima only mounts `$HOME` by default; `/Volumes/Containers` must be added explicitly in `~/.colima/default/colima.yaml` under `mounts` or bind-mounts in compose will silently fail with exit code 2
 - **Compose needs migrate** — backend command must run `python manage.py migrate` before `runserver`; added `sh -c "python manage.py migrate && ..."` to docker-compose.yml
 - **District fixture required** — `seed_demo_data` requires ILND data first: `python manage.py loaddata ilnd_2025_data`
+- **llama.cpp image is a mutable tag** — `ghcr.io/ggml-org/llama.cpp:server` moved the binary to `/app/llama-server`; `scripts/pull_model.sh` tries both paths. If the llm service exits 127, the path moved again
+- **CI ruff is pinned** — `ci.yml` installs `ruff==0.8.5` to match the backend container; unpinned ruff broke CI when new rules shipped
+- **SSN on forms** — Form 101's `Debtor1.SSNum` PDF field is 4 chars (last-4 only); the full SSN appears exclusively on Form 121. pypdf truncates from the front, so writing a full SSN there shows the wrong digits
 
 ## Key Documentation
 
@@ -87,14 +90,15 @@ This comprehensive PRD includes:
 - **CI/CD:** GitHub Actions (lint, backend tests, frontend tests, E2E)
 - **Containerization:** Docker + Docker Compose (Colima on macOS)
 - **Document Storage:** Local filesystem (MVP), S3-compatible planned
-- **PDF Generation:** PyPDF2 (13 form generators covering all Chapter 7 forms)
+- **PDF Generation:** pypdf 6.13 (13 form generators; each implements `pdf_field_map()` → `PDFFormFiller` fills official AO templates)
 
 **Deployed Architecture:**
 
 - Docker Compose with 3 services: backend (Django), db (PostgreSQL), frontend (React dev server)
+- **Production:** Heroku Container Stack — `heroku.yml` drives `Dockerfile.heroku` multi-stage build (Node → Python); `release` phase runs migrations automatically
 - Field-level encryption for PII (SSN, income, account numbers, amounts owed)
 - Custom EncryptedDecimalField for financial data
-- Service layer pattern (MeansTestCalculator, Form101Generator)
+- Service layer pattern (MeansTestCalculator, Form101Generator, PDFFormFiller)
 
 **Scaling Path:**
 
@@ -219,8 +223,8 @@ This comprehensive PRD includes:
 
 ### ✅ Completed: Testing & CI/CD (Phase 5)
 
-- **Backend:** 413 pytest tests (models, services, API endpoints, serializers)
-- **Frontend:** 165 vitest tests (components, pages, context, accessibility)
+- **Backend:** 492 pytest tests (models, services, API endpoints, serializers)
+- **Frontend:** 171 vitest tests (components, pages, context, accessibility)
 - **E2E:** Playwright page objects + journey specs for 5 personas
 - **CI:** GitHub Actions pipeline — lint, backend tests, frontend tests, E2E
 - vitest-axe matchers via `expect.extend()` for accessibility assertions
@@ -263,6 +267,28 @@ This comprehensive PRD includes:
 | 11  | `GenerateAllFormsResponse` type mismatch — API returns `generated` not `forms`    | Update type + handler                    | `b0956bb` |
 | 12  | Analytics 401s — `trackEvent()` raw fetch without auth                            | Use `getAccessToken()` for Bearer header | `b0956bb` |
 | 13  | FormDashboard loading state stuck — local `isLoading` never reset when no session | Use IntakeProvider's `isLoading`         | `b0956bb` |
+
+### ✅ Completed: PDF Download Infrastructure (Phase 9)
+
+**Backend:**
+
+- `PDFFormFiller` service — loads official AO court PDF templates via `pypdf`, writes field values across all pages, returns bytes
+- `pdf_field_map() -> dict[str, str]` interface added to all 13 generators — maps session data to exact PDF field names (8 field-name mismatches corrected against live templates)
+- `GET /api/forms/{id}/download/` action — fills template, marks form downloaded, streams `application/pdf`; returns 501 if generator lacks `pdf_field_map()`
+
+**Frontend:**
+
+- `downloadForm(formId, filename)` in `api/client.ts` — raw fetch with JWT header, 401/token-refresh retry, blob → programmatic `<a download>` click
+- Download button wired in `FormCard` via renamed `onDownload` prop
+
+**Templates:**
+
+- 64 official AO court PDF templates committed to `data/forms/pdfs/` (public documents, 10MB)
+- `Dockerfile.heroku` COPY step bakes them into the production image at `/data/forms/pdfs/`
+
+**Tests:** 13 field-map tests + 7 filler unit tests + 3 download endpoint tests
+
+---
 
 ### ✅ Completed: Document Scanning Pipeline (Phase 8)
 
@@ -409,7 +435,8 @@ Each district implementation requires:
 - `backend/apps/eligibility/models.py` - MeansTest with calculate() method
 - `backend/apps/eligibility/services/means_test_calculator.py` - 11 U.S.C. § 707(b) logic
 - `backend/apps/forms/models.py` - GeneratedForm with status tracking
-- `backend/apps/forms/services/` - 13 form generators (form_101 through schedules)
+- `backend/apps/forms/services/` - 13 form generators (form_101 through schedules); each implements `pdf_field_map()`
+- `backend/apps/forms/services/pdf_filler.py` - PDFFormFiller; FORM_TEMPLATES dict maps form_type → AO PDF filename
 - `backend/apps/forms/views.py` - GeneratedFormViewSet (generate, generate_all, regenerate, etc.)
 - `backend/apps/audit/models.py` - AuditLog for analytics and compliance tracking
 - `backend/apps/documents/` - Document scanning pipeline (OCR provider, processor, draft debt creator, API)
@@ -431,7 +458,7 @@ Each district implementation requires:
 
 **Testing:**
 
-- `backend/apps/*/tests/` - 413 pytest tests
+- `backend/apps/*/tests/` - 492 pytest tests
 - `frontend/src/**/__tests__/` - 165 vitest tests
 - `frontend/e2e/` - Playwright page objects and journey specs
 - `docs/testing/test_persona_full_flow.py` - Full 5-persona E2E test script
@@ -443,9 +470,12 @@ Each district implementation requires:
 
 **Infrastructure:**
 
-- `docker-compose.yml` - 3-service architecture (backend, db, frontend)
+- `docker-compose.yml` - 4-service architecture (backend, db, frontend, llm)
+- `Dockerfile.heroku` - Multi-stage production build (Node → Python); bakes static assets + PDF templates
+- `heroku.yml` - Heroku Container Stack config; release phase auto-runs migrations
 - `.github/workflows/ci.yml` - GitHub Actions CI pipeline
-- `backend/Dockerfile` / `frontend/Dockerfile` - Container definitions
+- `backend/Dockerfile` / `frontend/Dockerfile` - Local development container definitions
+- `data/forms/pdfs/` - 64 official AO court PDF templates (committed; mounted at `/data` in dev, baked into Heroku image)
 
 **Documentation:**
 

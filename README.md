@@ -16,8 +16,8 @@
 
 | Suite             | Count        | Status          |
 | ----------------- | ------------ | --------------- |
-| Backend (pytest)  | 413          | Passing         |
-| Frontend (vitest) | 165          | Passing         |
+| Backend (pytest)  | 488          | Passing         |
+| Frontend (vitest) | 171          | Passing         |
 | E2E persona tests | 5/5 personas | All steps green |
 
 ## Quick Start
