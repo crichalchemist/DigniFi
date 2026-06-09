@@ -66,7 +66,9 @@ class Form101Generator:
             "Debtor1.First name_5": di.first_name,
             "Debtor1.Middle name_5": di.middle_name or "",
             "Debtor1.Last name_5": di.last_name,
-            "Debtor1.SSNum": di.ssn,
+            # Form 101 shows only the last 4 SSN digits (4-char field);
+            # the full SSN appears only on Form 121.
+            "Debtor1.SSNum": (di.ssn or "")[-4:],
             "Debtor1.Street address": di.street_address,
             "Debtor1.City": di.city,
             "Debtor1.State": di.state,

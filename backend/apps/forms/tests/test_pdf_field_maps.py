@@ -158,7 +158,9 @@ def test_form_101_pdf_field_map(full_session):
     _assert_map_shape(field_map)
     assert field_map["Debtor1.First name"] == "Maria"
     assert field_map["Debtor1.Last name"] == "Torres"
-    assert field_map["Debtor1.SSNum"] == "900-55-0001"
+    # Form 101's SSN field is 4 chars: only the last 4 digits appear there.
+    # The full SSN belongs exclusively on Form 121 (filed under seal).
+    assert field_map["Debtor1.SSNum"] == "0001"
     assert field_map["Debtor1.City"] == "Chicago"
     assert field_map["Check Box5"] == "/Yes"  # Chapter 7
     assert field_map["Check Box1"] == "/Yes"  # Individual
