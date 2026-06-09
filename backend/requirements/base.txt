@@ -7,9 +7,11 @@ django-filter==24.1
 django-environ==0.11.2
 django-encrypted-model-fields==0.6.5
 django-phonenumber-field[phonenumbers]==7.2.0
-pypdf==3.17.0
+pypdf==6.13.1
 pydantic==2.5.3
 openai
 opendataloader-pdf
 pymupdf
 cryptography==44.0.1
+# WhiteNoiseMiddleware is wired in settings/base.py, so every environment needs it
+whitenoise[brotli]~=6.9.0
