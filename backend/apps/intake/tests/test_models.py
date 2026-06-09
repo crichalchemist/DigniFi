@@ -2,8 +2,9 @@
 
 import pytest
 from django.contrib.auth import get_user_model
-from apps.intake.models import DebtInfo, IntakeSession
+
 from apps.districts.models import District
+from apps.intake.models import DebtInfo, IntakeSession
 
 User = get_user_model()
 
@@ -21,7 +22,9 @@ class TestDebtInfoClassification:
     def district(self):
         """Create test district."""
         return District.objects.create(
-            code="ILND", name="Illinois Northern", state="IL",
+            code="ILND",
+            name="Illinois Northern",
+            state="IL",
             court_name="U.S. Bankruptcy Court ILND",
             filing_fee_chapter_7=338.00,
         )
@@ -138,7 +141,9 @@ class TestFeeWaiverApplication:
     def district(self):
         """Create test district."""
         return District.objects.create(
-            code="ILND", name="Illinois Northern", state="IL",
+            code="ILND",
+            name="Illinois Northern",
+            state="IL",
             court_name="U.S. Bankruptcy Court ILND",
             filing_fee_chapter_7=338.00,
         )
@@ -153,21 +158,17 @@ class TestFeeWaiverApplication:
         from apps.intake.models import FeeWaiverApplication
 
         waiver = FeeWaiverApplication.objects.create(
-            session=session,
-            monthly_income=0.00,
-            monthly_expenses=1200.00
+            session=session, monthly_income=0.00, monthly_expenses=1200.00
         )
 
-        assert waiver.status == 'pending'
+        assert waiver.status == "pending"
 
     def test_qualifies_for_waiver_with_zero_income(self, session):
         """Test that $0 income automatically qualifies for fee waiver."""
         from apps.intake.models import FeeWaiverApplication
 
         waiver = FeeWaiverApplication.objects.create(
-            session=session,
-            monthly_income=0.00,
-            monthly_expenses=1200.00
+            session=session, monthly_income=0.00, monthly_expenses=1200.00
         )
 
         # Poverty threshold for 1 person: $1,882.50/month
@@ -182,7 +183,7 @@ class TestFeeWaiverApplication:
             monthly_income=800.00,
             monthly_expenses=1200.00,
             receives_public_benefits=True,
-            benefit_types=['SNAP', 'Medicaid']
+            benefit_types=["SNAP", "Medicaid"],
         )
 
         assert waiver.qualifies_for_waiver() is True
@@ -190,7 +191,7 @@ class TestFeeWaiverApplication:
     def test_household_size_must_be_positive(self, session):
         """Test that household_size must be >= 1."""
         from django.core.exceptions import ValidationError
-        from django.core.validators import MinValueValidator
+
         from apps.intake.models import FeeWaiverApplication
 
         # Validate the field directly — full_clean() fails on EncryptedDecimalField
@@ -208,7 +209,7 @@ class TestFeeWaiverApplication:
             monthly_income=2500.00,  # Above threshold
             monthly_expenses=1200.00,
             receives_public_benefits=True,
-            benefit_types=[]  # Empty list - should still qualify
+            benefit_types=[],  # Empty list - should still qualify
         )
 
         assert waiver.qualifies_for_waiver() is True

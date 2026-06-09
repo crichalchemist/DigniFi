@@ -1,7 +1,7 @@
 """Models for bankruptcy form generation and storage."""
 
-from django.db import models
 from django.conf import settings
+from django.db import models
 
 
 class GeneratedForm(models.Model):
@@ -54,9 +54,7 @@ class GeneratedForm(models.Model):
     )
 
     # Form data (JSON storage for form field values)
-    form_data = models.JSONField(
-        help_text="Populated form field data ready for PDF generation"
-    )
+    form_data = models.JSONField(help_text="Populated form field data ready for PDF generation")
 
     # PDF storage (for MVP, store path; later could use S3)
     pdf_file_path = models.CharField(

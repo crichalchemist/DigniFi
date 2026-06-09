@@ -5,9 +5,9 @@ means test calculator and form generation pipeline.  SSNs use the
 IRS-reserved 900-xx range so they can never collide with real data.
 """
 
-from decimal import Decimal
+from collections.abc import Callable
 from datetime import date
-from typing import Callable
+from decimal import Decimal
 
 from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand
@@ -461,42 +461,33 @@ class Command(BaseCommand):
         if not district:
             self.stderr.write(
                 self.style.ERROR(
-                    "ILND district not found. "
-                    "Run: python manage.py loaddata ilnd_2025_data"
+                    "ILND district not found. " "Run: python manage.py loaddata ilnd_2025_data"
                 )
             )
             return
 
         targets = (
-            {options["persona"]: PERSONAS[options["persona"]]}
-            if options["persona"]
-            else PERSONAS
+            {options["persona"]: PERSONAS[options["persona"]]} if options["persona"] else PERSONAS
         )
 
         if options["reset"]:
             usernames = [fn()["username"] for fn in targets.values()]
             deleted, _ = User.objects.filter(username__in=usernames).delete()
-            self.stdout.write(
-                self.style.WARNING(f"Deleted {deleted} objects (cascade)")
-            )
+            self.stdout.write(self.style.WARNING(f"Deleted {deleted} objects (cascade)"))
 
-        for name, persona_fn in targets.items():
+        for persona_fn in targets.values():
             data = persona_fn()
             if User.objects.filter(username=data["username"]).exists():
                 self.stdout.write(
                     self.style.NOTICE(
-                        f"  {data['username']} already exists "
-                        f"(use --reset to recreate)"
+                        f"  {data['username']} already exists " f"(use --reset to recreate)"
                     )
                 )
                 continue
 
             self._create_persona(data, district)
             self.stdout.write(
-                self.style.SUCCESS(
-                    f"  Created {data['username']} "
-                    f"(password: {DEMO_PASSWORD})"
-                )
+                self.style.SUCCESS(f"  Created {data['username']} " f"(password: {DEMO_PASSWORD})")
             )
 
     @transaction.atomic
@@ -559,8 +550,4 @@ class Command(BaseCommand):
                     generator = get_generator(form_type, session)
                     generator.generate()
                 except Exception as exc:
-                    self.stderr.write(
-                        self.style.WARNING(
-                            f"    Skipped {form_type}: {exc}"
-                        )
-                    )
+                    self.stderr.write(self.style.WARNING(f"    Skipped {form_type}: {exc}"))

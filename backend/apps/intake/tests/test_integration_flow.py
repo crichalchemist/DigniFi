@@ -1,12 +1,10 @@
 from decimal import Decimal
 
 import pytest
-from django.urls import reverse
-from rest_framework.test import APITestCase
-from rest_framework import status
 from django.contrib.auth import get_user_model
-from apps.intake.models import IntakeSession, DebtorInfo, IncomeInfo, ExpenseInfo
-from apps.eligibility.models import MeansTest
+from django.urls import reverse
+from rest_framework import status
+from rest_framework.test import APITestCase
 
 User = get_user_model()
 
@@ -21,9 +19,10 @@ class IntakeFlowIntegrationTest(APITestCase):
             username="testuser", email="test@example.com", password="password123"
         )
         self.client.force_authenticate(user=self.user)
-        
+
         # Create a district (assuming fixtures or manual creation needed)
         from apps.districts.models import District, MedianIncome
+
         self.district = District.objects.create(
             name="Illinois Northern",
             code="ILND",
@@ -50,10 +49,9 @@ class IntakeFlowIntegrationTest(APITestCase):
         Test the complete intake flow from session creation to means test calculation.
         """
         # 1. Create Session
-        response = self.client.post(reverse("intake-session-list"), {
-            "district": self.district.id,
-            "current_step": 1
-        })
+        response = self.client.post(
+            reverse("intake-session-list"), {"district": self.district.id, "current_step": 1}
+        )
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         session_id = response.data["id"]
 
@@ -69,7 +67,7 @@ class IntakeFlowIntegrationTest(APITestCase):
             "street_address": "123 Main St",
             "city": "Chicago",
             "state": "IL",
-            "zip_code": "60601"
+            "zip_code": "60601",
         }
         response = self.client.post(reverse("debtor-info-list"), debtor_data)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
@@ -80,7 +78,7 @@ class IntakeFlowIntegrationTest(APITestCase):
             "session": session_id,
             "marital_status": "single",
             "number_of_dependents": 0,
-            "monthly_income": [5000, 5000, 5000, 5000, 5000, 5000] # $5000/month * 12 = $60k/year
+            "monthly_income": [5000, 5000, 5000, 5000, 5000, 5000],  # $5000/month * 12 = $60k/year
         }
         response = self.client.post(reverse("income-info-list"), income_data)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
@@ -91,10 +89,10 @@ class IntakeFlowIntegrationTest(APITestCase):
             "rent_or_mortgage": 1500,
             "utilities": 200,
             "food_groceries": 400,
-            "transportation": 300, # Note: Model might have specific fields, checking serializer
-            "other_necessary_expenses": 100
+            "transportation": 300,  # Note: Model might have specific fields, checking serializer
+            "other_necessary_expenses": 100,
         }
-        # We need to check ExpenseInfoSerializer fields. 
+        # We need to check ExpenseInfoSerializer fields.
         # Assuming generic fields for now, but let's be safe and use what we saw in frontend
         expense_data = {
             "session": session_id,
@@ -108,7 +106,7 @@ class IntakeFlowIntegrationTest(APITestCase):
             "childcare": 0,
             "medical_expenses": 50,
             "insurance_not_deducted": 0,
-            "other_necessary_expenses": 100
+            "other_necessary_expenses": 100,
         }
         response = self.client.post(reverse("expense-info-list"), expense_data)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
@@ -120,7 +118,7 @@ class IntakeFlowIntegrationTest(APITestCase):
             "description": "Checking Account",
             "current_value": 1000,
             "amount_owed": 0,
-            "account_number": "1234"
+            "account_number": "1234",
         }
         response = self.client.post(reverse("asset-info-list"), asset_data)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
@@ -134,7 +132,7 @@ class IntakeFlowIntegrationTest(APITestCase):
             "amount_owed": 5000,
             "monthly_payment": 150,
             "is_secured": False,
-            "collateral_description": ""
+            "collateral_description": "",
         }
         response = self.client.post(reverse("debt-info-list"), debt_data)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
@@ -144,11 +142,11 @@ class IntakeFlowIntegrationTest(APITestCase):
         url = reverse("intake-session-calculate-means-test", args=[session_id])
         response = self.client.post(url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        
+
         result = response.data["means_test_result"]
         self.assertIn("passes_means_test", result)
         self.assertIn("cmi", result)
-        
+
         # Verify calculation
         # CMI = 5000. Median = 60000/12 = 5000.
         # If CMI <= Median, it passes. 5000 <= 5000.
@@ -160,9 +158,7 @@ class IntakeFlowIntegrationTest(APITestCase):
 
         # 8. Generate Form 101
         # Endpoint: /api/forms/generate_form_101/
-        response = self.client.post(reverse("generate-form-101"), {
-            "session_id": session_id
-        })
+        response = self.client.post(reverse("generate-form-101"), {"session_id": session_id})
         # Note: This might fail if PDF generation library is not installed or configured
         # But we expect at least a 200 or a specific error handled by the view.
         if response.status_code == status.HTTP_200_OK:

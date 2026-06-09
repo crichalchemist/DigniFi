@@ -15,16 +15,17 @@ Tests cover:
 - Recalculation idempotency (calculate twice, only 1 MeansTest record)
 """
 
-import pytest
-from decimal import Decimal
 from datetime import date
-from django.contrib.auth import get_user_model
-from django.conf import settings
+from decimal import Decimal
 
-from apps.intake.models import IntakeSession, IncomeInfo
+import pytest
+from django.conf import settings
+from django.contrib.auth import get_user_model
+
 from apps.districts.models import District, MedianIncome
 from apps.eligibility.models import MeansTest
 from apps.eligibility.services.means_test_calculator import MeansTestCalculator
+from apps.intake.models import IncomeInfo, IntakeSession
 
 User = get_user_model()
 
@@ -545,9 +546,9 @@ class TestUPLProhibitedPhrases:
 
         # Check all prohibited phrases from settings
         for phrase in settings.UPL_PROHIBITED_PHRASES:
-            assert phrase.lower() not in message, (
-                f"UPL prohibited phrase '{phrase}' found in message: {message}"
-            )
+            assert (
+                phrase.lower() not in message
+            ), f"UPL prohibited phrase '{phrase}' found in message: {message}"
 
     def test_failing_message_contains_no_upl_violations(self, session, median_income):
         """Test that failing means test message contains no UPL prohibited phrases."""
@@ -565,9 +566,9 @@ class TestUPLProhibitedPhrases:
 
         # Check all prohibited phrases from settings
         for phrase in settings.UPL_PROHIBITED_PHRASES:
-            assert phrase.lower() not in message, (
-                f"UPL prohibited phrase '{phrase}' found in message: {message}"
-            )
+            assert (
+                phrase.lower() not in message
+            ), f"UPL prohibited phrase '{phrase}' found in message: {message}"
 
     def test_fee_waiver_message_contains_no_upl_violations(self, session, median_income):
         """Test that fee waiver message contains no UPL prohibited phrases."""
@@ -585,9 +586,9 @@ class TestUPLProhibitedPhrases:
 
         # Check all prohibited phrases from settings
         for phrase in settings.UPL_PROHIBITED_PHRASES:
-            assert phrase.lower() not in message, (
-                f"UPL prohibited phrase '{phrase}' found in fee waiver message: {message}"
-            )
+            assert (
+                phrase.lower() not in message
+            ), f"UPL prohibited phrase '{phrase}' found in fee waiver message: {message}"
 
     def test_message_contains_permitted_informational_language(self, session, median_income):
         """Test that messages use permitted informational language."""
@@ -604,9 +605,9 @@ class TestUPLProhibitedPhrases:
         message = result["message"].lower()
 
         # Check for permitted informational phrases
-        assert "may be eligible" in message or "typically" in message, (
-            "Message should use informational language like 'may be eligible' or 'typically'"
-        )
+        assert (
+            "may be eligible" in message or "typically" in message
+        ), "Message should use informational language like 'may be eligible' or 'typically'"
 
 
 @pytest.mark.django_db
@@ -679,8 +680,7 @@ class TestRecalculationIdempotency:
         calculator = MeansTestCalculator(session)
 
         # First calculation
-        result1 = calculator.calculate()
-        original_district = session.district
+        calculator.calculate()
 
         # Create new district and update session
         new_district = District.objects.create(
@@ -804,7 +804,14 @@ class TestDetailedBreakdown:
 
         # Verify income history
         assert breakdown["income_history"]["average_cmi"] == 50000.00
-        assert breakdown["income_history"]["monthly_values"] == [50000, 50000, 50000, 50000, 50000, 50000]
+        assert breakdown["income_history"]["monthly_values"] == [
+            50000,
+            50000,
+            50000,
+            50000,
+            50000,
+            50000,
+        ]
 
         # Verify family composition
         assert breakdown["family_composition"]["marital_status"] == "single"

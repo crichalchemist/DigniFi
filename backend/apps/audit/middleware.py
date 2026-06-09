@@ -6,8 +6,9 @@ This middleware logs all requests/responses for UPL compliance auditing.
 
 import logging
 from collections.abc import Callable
-from typing import Optional
+
 from django.http import HttpRequest, HttpResponse
+
 from .models import AuditLog
 
 logger = logging.getLogger("dignifi.audit")

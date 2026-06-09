@@ -1,7 +1,8 @@
 """Clarifai OCR provider using OpenAI-compatible API."""
 
-import os
 import base64
+import os
+
 from openai import OpenAI
 
 from .base import BaseOCRProvider
@@ -17,17 +18,12 @@ class ClarifaiOCRProvider(BaseOCRProvider):
 
     def __init__(self):
         """Initialize Clarifai client."""
-        api_key = os.environ.get('CLARIFAI_PAT')
+        api_key = os.environ.get("CLARIFAI_PAT")
         if not api_key:
-            raise ValueError(
-                'CLARIFAI_PAT environment variable required for Clarifai provider'
-            )
+            raise ValueError("CLARIFAI_PAT environment variable required for Clarifai provider")
 
         # Clarifai uses OpenAI-compatible API format
-        self.client = OpenAI(
-            api_key=api_key,
-            base_url="https://api.clarifai.com/v2"
-        )
+        self.client = OpenAI(api_key=api_key, base_url="https://api.clarifai.com/v2")
 
     def classify(self, image_data: bytes, prompt: str) -> str:
         """
@@ -67,7 +63,7 @@ class ClarifaiOCRProvider(BaseOCRProvider):
             API response content as string
         """
         # Encode image as base64
-        image_b64 = base64.b64encode(image_data).decode('utf-8')
+        image_b64 = base64.b64encode(image_data).decode("utf-8")
 
         # Call Clarifai API (OpenAI-compatible format)
         response = self.client.chat.completions.create(
@@ -78,19 +74,14 @@ class ClarifaiOCRProvider(BaseOCRProvider):
                     "content": [
                         {
                             "type": "image_url",
-                            "image_url": {
-                                "url": f"data:image/jpeg;base64,{image_b64}"
-                            }
+                            "image_url": {"url": f"data:image/jpeg;base64,{image_b64}"},
                         },
-                        {
-                            "type": "text",
-                            "text": prompt
-                        }
-                    ]
+                        {"type": "text", "text": prompt},
+                    ],
                 }
             ],
             max_tokens=2000,
-            temperature=0.0  # Deterministic for data extraction
+            temperature=0.0,  # Deterministic for data extraction
         )
 
         return response.choices[0].message.content

@@ -6,11 +6,12 @@ following service layer pattern for separation of business logic.
 """
 
 from decimal import Decimal
-from typing import Dict, Any
+from typing import Any
+
 from django.db import transaction
 
-from apps.intake.models import IntakeSession
 from apps.eligibility.models import MeansTest
+from apps.intake.models import IntakeSession
 
 
 class MeansTestCalculator:
@@ -35,15 +36,13 @@ class MeansTestCalculator:
             raise ValueError("IntakeSession is required")
 
         if not hasattr(intake_session, "income_info"):
-            raise ValueError(
-                "IntakeSession must have income_info before calculating means test"
-            )
+            raise ValueError("IntakeSession must have income_info before calculating means test")
 
         self.intake_session = intake_session
         self.district = intake_session.district
 
     @transaction.atomic
-    def calculate(self) -> Dict[str, Any]:
+    def calculate(self) -> dict[str, Any]:
         """
         Calculate or recalculate means test for the intake session.
 
@@ -81,9 +80,9 @@ class MeansTestCalculator:
 
         # Perform calculation
         try:
-            passes_test = means_test.calculate()
+            means_test.calculate()
         except ValueError as e:
-            raise ValueError(f"Means test calculation failed: {str(e)}")
+            raise ValueError(f"Means test calculation failed: {str(e)}") from e
 
         # Save updated means test
         means_test.save()
@@ -152,7 +151,7 @@ class MeansTestCalculator:
 
         return message
 
-    def get_detailed_breakdown(self) -> Dict[str, Any]:
+    def get_detailed_breakdown(self) -> dict[str, Any]:
         """
         Get detailed calculation breakdown for transparency.
 
@@ -166,10 +165,10 @@ class MeansTestCalculator:
         """
         try:
             means_test = self.intake_session.means_test
-        except MeansTest.DoesNotExist:
+        except MeansTest.DoesNotExist as err:
             raise ValueError(
                 "Means test has not been calculated yet. Call calculate() first."
-            )
+            ) from err
 
         income_info = self.intake_session.income_info
         details = means_test.get_calculation_details()

@@ -3,9 +3,10 @@ Models for the Bankruptcy Districts app.
 Defines District, MedianIncome, ExemptionSchedule, and LocalRule.
 """
 
-from django.db import models
-from django.core.validators import RegexValidator
 from decimal import Decimal
+
+from django.core.validators import RegexValidator
+from django.db import models
 
 
 class District(models.Model):
@@ -23,18 +24,14 @@ class District(models.Model):
         updated_at (datetime): Timestamp of district record last update.
     """
 
-    code = models.CharField(
-        max_length=8, unique=True, help_text="District code, e.g., 'ilnd'."
-    )
+    code = models.CharField(max_length=8, unique=True, help_text="District code, e.g., 'ilnd'.")
     name = models.CharField(max_length=128, help_text="Full name of the district.")
     state = models.CharField(
         max_length=2,
         help_text="Two-letter state abbreviation.",
         db_index=True,
         validators=[
-            RegexValidator(
-                regex=r"^[A-Z]{2}$", message="State must be two uppercase letters."
-            )
+            RegexValidator(regex=r"^[A-Z]{2}$", message="State must be two uppercase letters.")
         ],
     )
     court_name = models.CharField(
@@ -46,9 +43,7 @@ class District(models.Model):
     filing_fee_chapter_7 = models.DecimalField(
         max_digits=10, decimal_places=2, help_text="Chapter 7 filing fee (USD)."
     )
-    created_at = models.DateTimeField(
-        auto_now_add=True, help_text="Record creation time."
-    )
+    created_at = models.DateTimeField(auto_now_add=True, help_text="Record creation time.")
     updated_at = models.DateTimeField(auto_now=True, help_text="Record update time.")
 
     class Meta:
@@ -71,9 +66,7 @@ class MedianIncome(models.Model):
         created_at (datetime): Timestamp of record creation.
     """
 
-    district = models.ForeignKey(
-        District, on_delete=models.CASCADE, related_name="median_incomes"
-    )
+    district = models.ForeignKey(District, on_delete=models.CASCADE, related_name="median_incomes")
     effective_date = models.DateField(
         help_text="Date when this median income threshold became effective."
     )
@@ -107,9 +100,7 @@ class MedianIncome(models.Model):
         help_text="Amount to add for each additional person above 8.",
         default=9900.00,
     )
-    created_at = models.DateTimeField(
-        auto_now_add=True, help_text="Record creation time."
-    )
+    created_at = models.DateTimeField(auto_now_add=True, help_text="Record creation time.")
 
     class Meta:
         verbose_name = "Median Income"
@@ -186,12 +177,8 @@ class ExemptionSchedule(models.Model):
     statute_citation = models.CharField(
         max_length=64, help_text="Legal citation for this exemption."
     )
-    description = models.TextField(
-        help_text="Plain language description of the exemption."
-    )
-    created_at = models.DateTimeField(
-        auto_now_add=True, help_text="Record creation time."
-    )
+    description = models.TextField(help_text="Plain language description of the exemption.")
+    created_at = models.DateTimeField(auto_now_add=True, help_text="Record creation time.")
 
     class Meta:
         verbose_name = "Exemption Schedule"
@@ -219,20 +206,12 @@ class LocalRule(models.Model):
         created_at (datetime): Timestamp of record creation.
     """
 
-    district = models.ForeignKey(
-        District, on_delete=models.CASCADE, related_name="local_rules"
-    )
-    rule_number = models.CharField(
-        max_length=16, help_text="Local rule number or identifier."
-    )
+    district = models.ForeignKey(District, on_delete=models.CASCADE, related_name="local_rules")
+    rule_number = models.CharField(max_length=16, help_text="Local rule number or identifier.")
     title = models.CharField(max_length=128, help_text="Short title of the rule.")
-    description = models.TextField(
-        help_text="Full description or requirements under the rule."
-    )
+    description = models.TextField(help_text="Full description or requirements under the rule.")
     effective_date = models.DateField(help_text="Date when this rule became effective.")
-    created_at = models.DateTimeField(
-        auto_now_add=True, help_text="Record creation time."
-    )
+    created_at = models.DateTimeField(auto_now_add=True, help_text="Record creation time.")
 
     class Meta:
         verbose_name = "Local Rule"
