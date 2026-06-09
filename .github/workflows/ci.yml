@@ -22,7 +22,8 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install ruff
-        run: pip install ruff
+        # Pinned to match backend container; unpinned ruff broke CI when new rules shipped
+        run: pip install ruff==0.8.5
 
       - name: Run ruff check
         run: ruff check backend/

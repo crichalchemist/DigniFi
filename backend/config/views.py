@@ -7,7 +7,6 @@ and admin-only metrics (/metrics/) endpoints.
 
 import shutil
 import time
-from collections import Counter
 from functools import reduce
 from pathlib import Path
 
@@ -16,7 +15,6 @@ from django.contrib.admin.views.decorators import staff_member_required
 from django.db import connection
 from django.db.models import Count
 from django.http import JsonResponse
-
 
 # Module-level start time — captured once when the process loads.
 _START_TIME = time.monotonic()
@@ -62,10 +60,12 @@ def health_check(request):
     db = _check_database()
     overall = "ok" if db["status"] == "ok" else "error"
 
-    return JsonResponse({
-        "status": overall,
-        "database": db["status"],
-    })
+    return JsonResponse(
+        {
+            "status": overall,
+            "database": db["status"],
+        }
+    )
 
 
 def health_check_detailed(request):
@@ -75,9 +75,7 @@ def health_check_detailed(request):
         "disk_generated_forms": _check_disk_space(
             getattr(settings, "PDF_OUTPUT_DIRECTORY", Path("/tmp"))
         ),
-        "disk_media": _check_disk_space(
-            getattr(settings, "MEDIA_ROOT", Path("/tmp"))
-        ),
+        "disk_media": _check_disk_space(getattr(settings, "MEDIA_ROOT", Path("/tmp"))),
         "uptime": _check_uptime(),
     }
 
@@ -88,11 +86,13 @@ def health_check_detailed(request):
         "ok",
     )
 
-    return JsonResponse({
-        "status": overall,
-        "version": VERSION,
-        "checks": checks,
-    })
+    return JsonResponse(
+        {
+            "status": overall,
+            "version": VERSION,
+            "checks": checks,
+        }
+    )
 
 
 def _collect_session_metrics() -> dict:
@@ -136,9 +136,11 @@ def _collect_form_metrics() -> dict:
 @staff_member_required
 def metrics(request):
     """Admin-only metrics: sessions, forms, uptime."""
-    return JsonResponse({
-        "version": VERSION,
-        "uptime": _check_uptime(),
-        "sessions": _collect_session_metrics(),
-        "forms": _collect_form_metrics(),
-    })
+    return JsonResponse(
+        {
+            "version": VERSION,
+            "uptime": _check_uptime(),
+            "sessions": _collect_session_metrics(),
+            "forms": _collect_form_metrics(),
+        }
+    )

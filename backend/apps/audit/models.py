@@ -5,9 +5,10 @@ CRITICAL: All user actions that involve legal information must be logged
 for compliance review and potential legal audit.
 """
 
-from typing import Any, Optional, Union
-from django.db import models
+from typing import Any
+
 from django.conf import settings
+from django.db import models
 
 
 class AuditLog(models.Model):
@@ -69,9 +70,7 @@ class AuditLog(models.Model):
     )
 
     # Additional context
-    details = models.JSONField(
-        default=dict, help_text="Additional context about the action"
-    )
+    details = models.JSONField(default=dict, help_text="Additional context about the action")
 
     class Meta:
         db_table = "audit_logs"
@@ -93,11 +92,11 @@ class AuditLog(models.Model):
         action,
         *,
         user=None,
-        resource_type: Optional[str] = None,
-        resource_id: Optional[int] = None,
+        resource_type: str | None = None,
+        resource_id: int | None = None,
         upl_sensitive: bool = False,
-        ip_address: Optional[str] = None,
-        user_agent: Optional[str] = None,
+        ip_address: str | None = None,
+        user_agent: str | None = None,
         **details: Any,
     ) -> "AuditLog":
         """

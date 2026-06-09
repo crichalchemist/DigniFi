@@ -5,12 +5,11 @@ CRITICAL: Users must explicitly agree to UPL disclaimer before using the platfor
 This is not legal advice, only legal information.
 """
 
-from phonenumber_field.modelfields import PhoneNumberField
-
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.db.models import CheckConstraint, Q
 from django.utils import timezone
+from phonenumber_field.modelfields import PhoneNumberField
 
 
 class User(AbstractUser):
@@ -88,6 +87,4 @@ class User(AbstractUser):
     @property
     def has_valid_upl_agreement(self):
         """Check if user has agreed to UPL disclaimer."""
-        return (
-            self.agreed_to_upl_disclaimer and self.upl_disclaimer_agreed_at is not None
-        )
+        return self.agreed_to_upl_disclaimer and self.upl_disclaimer_agreed_at is not None

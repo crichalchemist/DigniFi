@@ -45,6 +45,7 @@ ignore = [
 "__init__.py" = ["F401"]  # unused imports in __init__.py
 "*/migrations/*.py" = ["E501"]  # long lines in migrations
 "*/tests/*.py" = ["B018"]  # useless expressions in tests
+"config/settings/*.py" = ["F403", "F405"]  # Django settings use star imports by design
 
 [tool.ruff.lint.isort]
 known-first-party = ["config", "apps"]

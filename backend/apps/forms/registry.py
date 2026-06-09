@@ -25,7 +25,6 @@ from .services import (
     ScheduleJGenerator,
 )
 
-
 # form_type string → generator class
 # Every key must match a GeneratedForm.FORM_TYPE_CHOICES value.
 FORM_REGISTRY: dict[str, type] = {

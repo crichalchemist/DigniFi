@@ -16,7 +16,6 @@ from typing import NamedTuple
 from django.conf import settings
 from django.core.management.base import BaseCommand
 
-
 # ============================================================================
 # Legal terms that inflate reading level but cannot be simplified
 # ============================================================================
@@ -100,11 +99,7 @@ def flesch_kincaid_grade(text: str) -> tuple[float, int, int, int]:
     total_words = len(words)
     total_sentences = len(sentences)
 
-    grade = (
-        0.39 * (total_words / total_sentences)
-        + 11.8 * (total_syllables / total_words)
-        - 15.59
-    )
+    grade = 0.39 * (total_words / total_sentences) + 11.8 * (total_syllables / total_words) - 15.59
 
     return (round(grade, 1), total_words, total_sentences, total_syllables)
 
@@ -142,16 +137,14 @@ def _collect_backend_texts() -> dict[str, str]:
 
     # Means test calculator messages
     try:
+        # Check the message generation method source for hardcoded strings
+        import inspect
+
         from apps.eligibility.services.means_test_calculator import (
             MeansTestCalculator,
         )
 
-        # Check the message generation method source for hardcoded strings
-        import inspect
-
-        source = inspect.getsource(
-            MeansTestCalculator._generate_upl_compliant_message
-        )
+        source = inspect.getsource(MeansTestCalculator._generate_upl_compliant_message)
 
         # Extract string literals from the source
         string_literals = re.findall(r'"([^"]{20,})"', source)
@@ -254,8 +247,7 @@ class Command(BaseCommand):
 
         self.stdout.write("")
         self.stdout.write(
-            f"Results: {len(passes)} passed, {len(failures)} failed "
-            f"out of {len(results)} texts"
+            f"Results: {len(passes)} passed, {len(failures)} failed " f"out of {len(results)} texts"
         )
 
         if failures:

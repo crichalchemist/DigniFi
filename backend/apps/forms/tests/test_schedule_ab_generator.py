@@ -1,21 +1,23 @@
-import pytest
 from decimal import Decimal
-from apps.districts.models import District
-from apps.intake.models import IntakeSession, AssetInfo
-from apps.forms.services.schedule_ab_generator import ScheduleABGenerator
+
+import pytest
 from django.contrib.auth import get_user_model
+
+from apps.districts.models import District
+from apps.forms.services.schedule_ab_generator import ScheduleABGenerator
+from apps.intake.models import AssetInfo, IntakeSession
 
 User = get_user_model()
 
 
 def _create_district() -> District:
     return District.objects.create(
-        code='ilnd',
-        name='Northern District of Illinois',
-        state='IL',
-        court_name='U.S. Bankruptcy Court, Northern District of Illinois',
+        code="ilnd",
+        name="Northern District of Illinois",
+        state="IL",
+        court_name="U.S. Bankruptcy Court, Northern District of Illinois",
         pro_se_efiling_allowed=False,
-        filing_fee_chapter_7=Decimal('338.00'),
+        filing_fee_chapter_7=Decimal("338.00"),
     )
 
 
@@ -23,45 +25,45 @@ def _create_district() -> District:
 class TestScheduleABGenerator:
     def test_generates_schedule_ab_with_real_property(self):
         """Test generating Schedule A/B with real property."""
-        user = User.objects.create_user(username='test', password='test')
+        user = User.objects.create_user(username="test", password="test")
         district = _create_district()
         session = IntakeSession.objects.create(user=user, district=district)
 
         # Add real property
         AssetInfo.objects.create(
             session=session,
-            asset_type='real_property',
-            description='123 Main St, Chicago, IL 60601',
-            current_value=Decimal('200000.00'),
-            amount_owed=Decimal('150000.00')
+            asset_type="real_property",
+            description="123 Main St, Chicago, IL 60601",
+            current_value=Decimal("200000.00"),
+            amount_owed=Decimal("150000.00"),
         )
 
         generator = ScheduleABGenerator(session)
         result = generator.generate()
 
-        assert result['total_real_property_value'] == Decimal('200000.00')
-        assert result['total_personal_property_value'] == Decimal('0.00')
-        assert result['total_value'] == Decimal('200000.00')
+        assert result["total_real_property_value"] == Decimal("200000.00")
+        assert result["total_personal_property_value"] == Decimal("0.00")
+        assert result["total_value"] == Decimal("200000.00")
 
     def test_generates_schedule_ab_with_vehicle(self):
         """Test generating Schedule A/B with vehicle."""
-        user = User.objects.create_user(username='test_v', password='test')
+        user = User.objects.create_user(username="test_v", password="test")
         district = _create_district()
         session = IntakeSession.objects.create(user=user, district=district)
 
         # Add vehicle
         AssetInfo.objects.create(
             session=session,
-            asset_type='vehicle',
-            description='2020 Honda Civic',
-            current_value=Decimal('15000.00'),
-            amount_owed=Decimal('10000.00')
+            asset_type="vehicle",
+            description="2020 Honda Civic",
+            current_value=Decimal("15000.00"),
+            amount_owed=Decimal("10000.00"),
         )
 
         generator = ScheduleABGenerator(session)
         result = generator.generate()
 
-        assert result['total_personal_property_value'] == Decimal('15000.00')
-        assert len(result['vehicles']) == 1
-        assert result['vehicles'][0]['description'] == '2020 Honda Civic'
-        assert result['vehicles'][0]['equity'] == Decimal('5000.00')
+        assert result["total_personal_property_value"] == Decimal("15000.00")
+        assert len(result["vehicles"]) == 1
+        assert result["vehicles"][0]["description"] == "2020 Honda Civic"
+        assert result["vehicles"][0]["equity"] == Decimal("5000.00")

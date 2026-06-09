@@ -10,18 +10,18 @@ from decimal import Decimal
 import pytest
 from django.contrib.auth import get_user_model
 from django.urls import reverse
-from rest_framework.test import APIClient
 from rest_framework import status
+from rest_framework.test import APIClient
 
+from apps.districts.models import District, MedianIncome
 from apps.intake.models import (
-    IntakeSession,
-    DebtorInfo,
-    IncomeInfo,
-    ExpenseInfo,
     AssetInfo,
     DebtInfo,
+    DebtorInfo,
+    ExpenseInfo,
+    IncomeInfo,
+    IntakeSession,
 )
-from apps.districts.models import District, MedianIncome
 
 User = get_user_model()
 
@@ -30,9 +30,7 @@ User = get_user_model()
 def user():
     """Create test user."""
     return User.objects.create_user(
-        username="testuser",
-        email="test@example.com",
-        password="testpassword123"
+        username="testuser", email="test@example.com", password="testpassword123"
     )
 
 
@@ -40,9 +38,7 @@ def user():
 def other_user():
     """Create another test user for permission isolation tests."""
     return User.objects.create_user(
-        username="otheruser",
-        email="other@example.com",
-        password="testpassword123"
+        username="otheruser", email="other@example.com", password="testpassword123"
     )
 
 
@@ -139,9 +135,7 @@ class TestIntakeSessionSteps:
         # Create session
         create_url = reverse("intake-session-list")
         create_response = api_client.post(
-            create_url,
-            {"district": district.id, "current_step": 1},
-            format="json"
+            create_url, {"district": district.id, "current_step": 1}, format="json"
         )
         session_id = create_response.data["session"]["id"]
 
@@ -159,9 +153,7 @@ class TestIntakeSessionSteps:
         # Create session
         create_url = reverse("intake-session-list")
         create_response = api_client.post(
-            create_url,
-            {"district": district.id, "current_step": 1},
-            format="json"
+            create_url, {"district": district.id, "current_step": 1}, format="json"
         )
         session_id = create_response.data["session"]["id"]
 
@@ -182,7 +174,7 @@ class TestIntakeSessionSteps:
                     "state": "IL",
                     "zip_code": "60601",
                 }
-            }
+            },
         }
         response = api_client.post(update_url, update_data, format="json")
 
@@ -199,11 +191,7 @@ class TestAssetCRUD:
     def session(self, api_client, district):
         """Create a test intake session."""
         url = reverse("intake-session-list")
-        response = api_client.post(
-            url,
-            {"district": district.id, "current_step": 1},
-            format="json"
-        )
+        response = api_client.post(url, {"district": district.id, "current_step": 1}, format="json")
         return IntakeSession.objects.get(id=response.data["session"]["id"])
 
     def test_create_asset(self, api_client, session):
@@ -294,11 +282,7 @@ class TestDebtCRUD:
     def session(self, api_client, district):
         """Create a test intake session."""
         url = reverse("intake-session-list")
-        response = api_client.post(
-            url,
-            {"district": district.id, "current_step": 1},
-            format="json"
-        )
+        response = api_client.post(url, {"district": district.id, "current_step": 1}, format="json")
         return IntakeSession.objects.get(id=response.data["session"]["id"])
 
     def test_create_debt(self, api_client, session):
@@ -389,11 +373,7 @@ class TestIntakeSessionCompletion:
     def session(self, api_client, district):
         """Create a test intake session."""
         url = reverse("intake-session-list")
-        response = api_client.post(
-            url,
-            {"district": district.id, "current_step": 1},
-            format="json"
-        )
+        response = api_client.post(url, {"district": district.id, "current_step": 1}, format="json")
         return IntakeSession.objects.get(id=response.data["session"]["id"])
 
     def test_complete_session_success(self, api_client, session):
@@ -550,11 +530,7 @@ class TestPermissionIsolation:
     def user_session(self, api_client, district):
         """Create session for primary user."""
         url = reverse("intake-session-list")
-        response = api_client.post(
-            url,
-            {"district": district.id, "current_step": 1},
-            format="json"
-        )
+        response = api_client.post(url, {"district": district.id, "current_step": 1}, format="json")
         return IntakeSession.objects.get(id=response.data["session"]["id"])
 
     @pytest.fixture
@@ -616,7 +592,11 @@ class TestPermissionIsolation:
 
         assert response.status_code == status.HTTP_200_OK
         # Response may be paginated (results key) or flat list
-        results = response.data.get("results", response.data) if isinstance(response.data, dict) else response.data
+        results = (
+            response.data.get("results", response.data)
+            if isinstance(response.data, dict)
+            else response.data
+        )
         session_ids = [session["id"] for session in results]
         assert user_session.id in session_ids
         assert other_user_session.id not in session_ids
@@ -630,11 +610,7 @@ class TestMeansTestCalculation:
     def complete_session(self, api_client, district, median_income):
         """Create session with all required data for means test."""
         url = reverse("intake-session-list")
-        response = api_client.post(
-            url,
-            {"district": district.id, "current_step": 1},
-            format="json"
-        )
+        response = api_client.post(url, {"district": district.id, "current_step": 1}, format="json")
         session = IntakeSession.objects.get(id=response.data["session"]["id"])
 
         # Add required data
@@ -723,11 +699,7 @@ class TestMeansTestCalculation:
         """Test means test calculation without income info returns 400."""
         # Create session without income info
         url = reverse("intake-session-list")
-        response = api_client.post(
-            url,
-            {"district": district.id, "current_step": 1},
-            format="json"
-        )
+        response = api_client.post(url, {"district": district.id, "current_step": 1}, format="json")
         session_id = response.data["session"]["id"]
 
         # Try to calculate means test
@@ -759,11 +731,7 @@ class TestForm101Preview:
     def complete_session(self, api_client, district, median_income):
         """Create session with all required data."""
         url = reverse("intake-session-list")
-        response = api_client.post(
-            url,
-            {"district": district.id, "current_step": 1},
-            format="json"
-        )
+        response = api_client.post(url, {"district": district.id, "current_step": 1}, format="json")
         session = IntakeSession.objects.get(id=response.data["session"]["id"])
 
         DebtorInfo.objects.create(
@@ -823,11 +791,7 @@ class TestForm101Preview:
         """Test Form 101 preview without debtor info returns 400."""
         # Create session without debtor info
         url = reverse("intake-session-list")
-        response = api_client.post(
-            url,
-            {"district": district.id, "current_step": 1},
-            format="json"
-        )
+        response = api_client.post(url, {"district": district.id, "current_step": 1}, format="json")
         session_id = response.data["session"]["id"]
 
         # Try to preview form
@@ -846,11 +810,7 @@ class TestSessionSummary:
     def session_with_data(self, api_client, district, median_income):
         """Create session with partial data."""
         url = reverse("intake-session-list")
-        response = api_client.post(
-            url,
-            {"district": district.id, "current_step": 1},
-            format="json"
-        )
+        response = api_client.post(url, {"district": district.id, "current_step": 1}, format="json")
         session = IntakeSession.objects.get(id=response.data["session"]["id"])
 
         # Add debtor info

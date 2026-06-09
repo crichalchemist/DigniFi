@@ -2,6 +2,7 @@
 
 import json
 from decimal import Decimal
+
 from django.db import models
 from django.utils import timezone
 from encrypted_model_fields.fields import EncryptedTextField
@@ -24,9 +25,7 @@ class MeansTest(models.Model):
     )
 
     # Results
-    passes_means_test = models.BooleanField(
-        help_text="True if CMI < median income", db_index=True
-    )
+    passes_means_test = models.BooleanField(help_text="True if CMI < median income", db_index=True)
     # Encrypted calculation details to protect potential PII
     # Using EncryptedTextField as JSON storage since EncryptedJSONField is not available
     calculation_details = EncryptedTextField(
@@ -60,9 +59,7 @@ class MeansTest(models.Model):
         db_table = "means_tests"
 
     def __str__(self) -> str:
-        return (
-            f"Means Test {self.id} - {'Passes' if self.passes_means_test else 'Fails'}"
-        )
+        return f"Means Test {self.id} - {'Passes' if self.passes_means_test else 'Fails'}"
 
     def calculate(self) -> bool:
         """
@@ -77,10 +74,8 @@ class MeansTest(models.Model):
         # Get income info from session
         try:
             income_info = self.session.income_info
-        except AttributeError:
-            raise ValueError(
-                "IntakeSession must have income_info to calculate means test"
-            )
+        except AttributeError as err:
+            raise ValueError("IntakeSession must have income_info to calculate means test") from err
 
         # Calculate Current Monthly Income (CMI) - average of last 6 months
         monthly_income_data = income_info.monthly_income
@@ -98,10 +93,10 @@ class MeansTest(models.Model):
         # Get median income threshold from district
         try:
             median_income_record = self.district.median_incomes.latest("effective_date")
-        except Exception:
+        except Exception as err:
             raise ValueError(
                 f"No median income data found for district {self.district.code}"
-            )
+            ) from err
 
         median_income_threshold = median_income_record.get_median_income(family_size)
 
