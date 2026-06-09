@@ -1,9 +1,10 @@
-from django.test import TestCase
 from django.contrib.auth import get_user_model
+from django.test import TestCase
 from django.urls import reverse
-from rest_framework.test import APIClient
 from rest_framework import status
-from .models import AuditLog
+from rest_framework.test import APIClient
+
+from apps.audit.models import AuditLog
 
 User = get_user_model()
 
