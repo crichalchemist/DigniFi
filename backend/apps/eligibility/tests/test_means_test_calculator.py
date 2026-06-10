@@ -25,7 +25,7 @@ from django.contrib.auth import get_user_model
 from apps.districts.models import District, MedianIncome
 from apps.eligibility.models import MeansTest
 from apps.eligibility.services.means_test_calculator import MeansTestCalculator
-from apps.intake.models import IncomeInfo, IntakeSession
+from apps.intake.models import DebtorInfo, IncomeInfo, IntakeSession
 
 User = get_user_model()
 
@@ -232,12 +232,12 @@ class TestAtMedianIncomeEdgeCase:
     def test_at_median_income_fails(self, session, median_income):
         """Test that income exactly equal to median FAILS (< not <=)."""
         # Median for family size 1: $71,304/year
-        # At median: $71,304/year average = $5,942/month
+        # At median: $5,942/month annualizes to exactly $71,304/year
         IncomeInfo.objects.create(
             session=session,
             marital_status="single",
             number_of_dependents=0,
-            monthly_income=[71304, 71304, 71304, 71304, 71304, 71304],
+            monthly_income=[5942, 5942, 5942, 5942, 5942, 5942],
         )
 
         calculator = MeansTestCalculator(session)
@@ -245,7 +245,7 @@ class TestAtMedianIncomeEdgeCase:
 
         # CRITICAL: At-median fails because code uses < (not <=)
         assert result["passes_means_test"] is False
-        assert result["cmi"] == Decimal("71304.00")
+        assert result["cmi"] == Decimal("5942.00")
         assert result["median_income_threshold"] == Decimal("71304.00")
 
 
@@ -420,12 +420,12 @@ class TestFeeWaiverNonQualification:
         """Test that income at 60% of median does NOT qualify for fee waiver."""
         # Median for family size 1: $71,304/year
         # 60% threshold: $42,782.40/year = $3,565.20/month
-        # Income: $42,782.40/year average (exactly at 60%)
+        # Income: $3,565.20/month → annualized exactly at the 60% threshold
         IncomeInfo.objects.create(
             session=session,
             marital_status="single",
             number_of_dependents=0,
-            monthly_income=[42782.40, 42782.40, 42782.40, 42782.40, 42782.40, 42782.40],
+            monthly_income=[3565.20, 3565.20, 3565.20, 3565.20, 3565.20, 3565.20],
         )
 
         calculator = MeansTestCalculator(session)
@@ -439,12 +439,12 @@ class TestFeeWaiverNonQualification:
         """Test that income above 60% but below 100% median does not qualify for fee waiver."""
         # Median for family size 1: $71,304/year
         # 60% threshold: $42,782.40/year
-        # Income: $50,000/year average (above 60%, below 100%)
+        # Income: $50,000/year = $4,166.67/month (above 60%, below 100%)
         IncomeInfo.objects.create(
             session=session,
             marital_status="single",
             number_of_dependents=0,
-            monthly_income=[50000, 50000, 50000, 50000, 50000, 50000],
+            monthly_income=[4166.67, 4166.67, 4166.67, 4166.67, 4166.67, 4166.67],
         )
 
         calculator = MeansTestCalculator(session)
@@ -784,11 +784,13 @@ class TestDetailedBreakdown:
 
     def test_detailed_breakdown_after_calculation(self, session, median_income):
         """Test that get_detailed_breakdown() returns complete data after calculation."""
+        # $5,000/month = $60,000/year: below the $71,304 median (passes) but
+        # above the 60% fee waiver threshold ($42,782.40)
         IncomeInfo.objects.create(
             session=session,
             marital_status="single",
             number_of_dependents=0,
-            monthly_income=[50000, 50000, 50000, 50000, 50000, 50000],
+            monthly_income=[5000, 5000, 5000, 5000, 5000, 5000],
         )
 
         calculator = MeansTestCalculator(session)
@@ -803,14 +805,14 @@ class TestDetailedBreakdown:
         assert "results" in breakdown
 
         # Verify income history
-        assert breakdown["income_history"]["average_cmi"] == 50000.00
+        assert breakdown["income_history"]["average_cmi"] == 5000.00
         assert breakdown["income_history"]["monthly_values"] == [
-            50000,
-            50000,
-            50000,
-            50000,
-            50000,
-            50000,
+            5000,
+            5000,
+            5000,
+            5000,
+            5000,
+            5000,
         ]
 
         # Verify family composition
@@ -826,3 +828,65 @@ class TestDetailedBreakdown:
         assert breakdown["results"]["passes_means_test"] is True
         assert breakdown["results"]["qualifies_for_fee_waiver"] is False
         assert breakdown["results"]["statute_citation"] == "11 U.S.C. § 707(b)"
+
+
+@pytest.mark.django_db
+class TestAnnualizedComparison:
+    """CMI is monthly; the Census median is annual (11 U.S.C. § 707(b)(7)).
+
+    Regression: the comparison must annualize CMI. Under the old monthly-vs-
+    annual comparison, a $10,000/month filer "passed" against a $71,304/year
+    median.
+    """
+
+    def test_high_monthly_income_fails_after_annualization(self, session, median_income):
+        # $10,000/month = $120,000/year > $71,304 median for family of 1
+        IncomeInfo.objects.create(
+            session=session,
+            marital_status="single",
+            number_of_dependents=0,
+            monthly_income=[10000, 10000, 10000, 10000, 10000, 10000],
+        )
+
+        result = MeansTestCalculator(session).calculate()
+
+        assert result["passes_means_test"] is False
+        assert result["qualifies_for_fee_waiver"] is False
+        assert result["details"]["annualized_cmi"] == 120000.00
+
+
+@pytest.mark.django_db
+class TestHouseholdSizeFromDebtorInfo:
+    """The wizard collects household_size on the debtor step; the means test
+    must prefer it over the income-derived family size."""
+
+    def test_debtor_household_size_overrides_income_derivation(self, session, median_income):
+        DebtorInfo.objects.create(
+            session=session,
+            first_name="Test",
+            last_name="User",
+            ssn="900112222",
+            date_of_birth=date(1990, 1, 1),
+            phone="3125550000",
+            email="test@example.com",
+            street_address="1 Main St",
+            city="Chicago",
+            state="IL",
+            zip_code="60601",
+            household_size=4,
+        )
+        # Income-derived family size would be 1 (single, no dependents)
+        IncomeInfo.objects.create(
+            session=session,
+            marital_status="single",
+            number_of_dependents=0,
+            monthly_income=[9000, 9000, 9000, 9000, 9000, 9000],
+        )
+
+        result = MeansTestCalculator(session).calculate()
+
+        # $108,000/year: above the family-of-1 median ($71,304) but below the
+        # family-of-4 median ($134,366) — passes only because the debtor-step
+        # household size drives the lookup
+        assert result["family_size"] == 4
+        assert result["passes_means_test"] is True
