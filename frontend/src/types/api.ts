@@ -173,19 +173,23 @@ export interface DebtInfo {
 // Means Test
 // ============================================================================
 
+// Mirrors MeansTestCalculator.calculate() — cmi is monthly, the median is
+// annual, annualized_cmi (details) is what the § 707(b) comparison uses
 export interface MeansTestResult {
   passes_means_test: boolean;
   qualifies_for_fee_waiver: boolean;
-  current_monthly_income: number;
+  cmi: number;
   median_income_threshold: number;
-  disposable_monthly_income: number;
+  family_size: number;
   message: string; // UPL-compliant message
   details: {
-    household_size: number;
-    total_income: number;
-    total_expenses: number;
-    district_name: string;
+    cmi: number;
+    annualized_cmi: number;
+    median_income_threshold: number;
+    family_size: number;
+    [key: string]: unknown;
   };
+  means_test_id: number;
 }
 
 // ============================================================================

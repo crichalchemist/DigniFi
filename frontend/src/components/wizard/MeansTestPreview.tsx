@@ -30,10 +30,7 @@ export function MeansTestPreview({ sessionId, currentStep }: MeansTestPreviewPro
     new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
 
   return (
-    <aside
-      className="means-test-preview"
-      aria-label="Eligibility estimate"
-    >
+    <aside className="means-test-preview" aria-label="Eligibility estimate">
       <button
         type="button"
         className="means-test-preview-toggle"
@@ -41,9 +38,7 @@ export function MeansTestPreview({ sessionId, currentStep }: MeansTestPreviewPro
         aria-expanded={isExpanded}
         aria-controls="means-test-preview-content"
       >
-        <span className="means-test-preview-toggle-text">
-          Eligibility Estimate
-        </span>
+        <span className="means-test-preview-toggle-text">Eligibility Estimate</span>
         <svg
           className={`means-test-preview-chevron ${isExpanded ? 'expanded' : ''}`}
           viewBox="0 0 20 20"
@@ -111,10 +106,10 @@ export function MeansTestPreview({ sessionId, currentStep }: MeansTestPreviewPro
               <dl className="means-test-preview-details">
                 <div className="means-test-preview-detail">
                   <dt>Your Monthly Income</dt>
-                  <dd>{formatCurrency(result.current_monthly_income)}</dd>
+                  <dd>{formatCurrency(result.cmi)}</dd>
                 </div>
                 <div className="means-test-preview-detail">
-                  <dt>Median for Household of {result.details.household_size}</dt>
+                  <dt>Median for Household of {result.family_size}</dt>
                   <dd>{formatCurrency(result.median_income_threshold / 12)}</dd>
                 </div>
                 {result.qualifies_for_fee_waiver && (
