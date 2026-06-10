@@ -6,19 +6,19 @@
 
 ## Project Status
 
-**MVP Complete** — Full-stack application validated through AI persona testing (Mar 2026)
+**MVP Complete & Deployed** — Full-stack application validated through AI persona testing and live on Heroku (Jun 2026)
 
 **Pilot District**: Northern District of Illinois (ILND)
 **MVP Scope**: Chapter 7 bankruptcy filing assistance
 **Next Milestone**: Paper prototype testing with target demographic
 
-### Test Results (Mar 2026)
+### Test Results (Jun 2026)
 
-| Suite             | Count        | Status          |
-| ----------------- | ------------ | --------------- |
-| Backend (pytest)  | 488          | Passing         |
-| Frontend (vitest) | 171          | Passing         |
-| E2E persona tests | 5/5 personas | All steps green |
+| Suite             | Count          | Status          |
+| ----------------- | -------------- | --------------- |
+| Backend (pytest)  | 494 (+1 xfail) | Passing         |
+| Frontend (vitest) | 171            | Passing         |
+| E2E persona tests | 5/5 personas   | All steps green |
 
 ## Quick Start
 
@@ -121,7 +121,8 @@ dignifi/
 │   │   ├── districts/      # District-specific rules & data
 │   │   ├── intake/         # Data collection (6-step wizard)
 │   │   ├── eligibility/    # Means test calculator
-│   │   └── forms/          # 13 bankruptcy form generators
+│   │   ├── documents/      # Document scanning pipeline (OCR → draft debts)
+│   │   └── forms/          # 13 bankruptcy form generators + PDF filler
 │   ├── config/             # Django settings (base, dev, prod)
 │   └── requirements/       # Python dependencies
 ├── frontend/               # React 19 + TypeScript SPA
@@ -132,34 +133,35 @@ dignifi/
 │   │   ├── api/            # Typed API client
 │   │   └── utils/          # Analytics, helpers
 │   └── e2e/                # Playwright page objects & journey specs
-├── docs/                   # Reference documentation
-│   ├── testing/            # Persona briefs & orchestration protocol
-│   ├── reports/            # Usability test reports
-│   └── superpowers/        # Implementation plans and specs
-├── docs/internal/          # PRD, briefs, architecture analysis
-└── docs/testing/              # Persona test scripts, briefs, run protocol
+├── data/forms/pdfs/        # 64 official AO court PDF templates
+└── docs/                   # Reference documentation
+    ├── internal/           # PRD, briefs, architecture analysis
+    ├── testing/            # Persona briefs, test scripts, run protocol
+    ├── reports/            # Usability test reports
+    └── superpowers/        # Implementation plans and specs
 ```
 
 ## Technology Stack
 
 - **Backend**: Python 3.11, Django 5.0, Django REST Framework, PostgreSQL 15
 - **Frontend**: React 19, Vite 7, TypeScript (Context API for state management)
-- **PDF Generation**: PyPDF2 (13 form generators)
+- **PDF Generation**: pypdf 6.x — 13 generators fill official AO court templates
 - **Authentication**: JWT (djangorestframework-simplejwt) with silent refresh
 - **Encryption**: django-encrypted-model-fields (Fernet) for PII
 - **Testing**: pytest, vitest, Playwright, vitest-axe (accessibility)
 - **CI/CD**: GitHub Actions (lint, backend tests, frontend tests, E2E)
 - **Document Scanning**: Gemma 3 4B via llama.cpp (local LLM), opendataloader-pdf, pymupdf
-- **Infrastructure**: Docker, Docker Compose
+- **Infrastructure**: Docker, Docker Compose (dev); Heroku Container Stack (production)
 
 ## Core Features
 
 - Document scanning pipeline: drag-and-drop upload → OCR (local Gemma 3 4B) → draft debt entries
 - User authentication with JWT (access in memory, refresh in localStorage)
 - 6-step intake wizard: Debtor Info → Income → Expenses → Assets → Debts → Review
-- Chapter 7 means test calculator (11 U.S.C. § 707(b))
+- Chapter 7 means test calculator (11 U.S.C. § 707(b) — annualized CMI vs. Census median by household size)
 - Fee waiver eligibility assessment (28 U.S.C. § 1930(f))
 - 13 bankruptcy form generators (Form 101 through Schedules A/B–J)
+- PDF download — generators fill the official AO court templates via pypdf
 - UPL confirmation modal gates all form generation
 - Post-task usability survey (3 Likert + 2 open text)
 - Fire-and-forget analytics via AuditLog API
@@ -201,10 +203,10 @@ See `docs/UPL_COMPLIANCE.md` for complete guidelines.
 ## Testing
 
 ```bash
-# Backend (413 tests)
+# Backend (494 tests + 1 xfail)
 docker compose exec backend pytest -q
 
-# Frontend (165 tests)
+# Frontend (171 tests)
 cd frontend && npx vitest run
 
 # Full persona E2E (5 personas × full flow)

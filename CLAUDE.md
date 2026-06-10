@@ -6,7 +6,7 @@ This file provides guidance to AI coding assistants (Claude Code, Gemini CLI, Co
 
 **DigniFi** is a trauma-informed digital platform that simplifies bankruptcy filing (Chapter 7 and Chapter 13) for low-income, pro se (self-represented) Americans. The platform aims to democratize access to bankruptcy relief by translating complex legal processes into plain-language guidance, auto-populated court forms, and dignified user experiences.
 
-**Current Stage:** MVP Complete + User Testing (Mar 2026). Full-stack application with Django REST API, React 19 frontend wizard, all 13 bankruptcy form generators, and AI persona-driven usability testing infrastructure. Next: paper prototype testing with target demographic.
+**Current Stage:** MVP Deployed (Jun 2026). Full-stack application with Django REST API, React 19 frontend wizard, all 13 bankruptcy form generators, and AI persona-driven usability testing infrastructure. Live on Heroku; full 5-persona E2E suite green in CI. Next: paper prototype testing with target demographic.
 
 **Mission-Critical Constraint:** All development must respect Unauthorized Practice of Law (UPL) boundaries. The platform provides legal _information_, never legal _advice_.
 
@@ -54,6 +54,11 @@ Copy `.env.example` to `.env`. Required vars: `POSTGRES_DB`, `POSTGRES_USER`, `P
 - **llama.cpp image is a mutable tag** — `ghcr.io/ggml-org/llama.cpp:server` moved the binary to `/app/llama-server`; `scripts/pull_model.sh` tries both paths. If the llm service exits 127, the path moved again
 - **CI ruff is pinned** — `ci.yml` installs `ruff==0.8.5` to match the backend container; unpinned ruff broke CI when new rules shipped
 - **SSN on forms** — Form 101's `Debtor1.SSNum` PDF field is 4 chars (last-4 only); the full SSN appears exclusively on Form 121. pypdf truncates from the front, so writing a full SSN there shows the wrong digits
+- **Means test units** — CMI is monthly, the Census median is annual; `MeansTest.calculate()` annualizes CMI ×12 per § 707(b)(7) before comparing (and for the 60% fee-waiver heuristic). The original bug passed everyone; calculator tests masked it with annual-scale values in monthly slots
+- **household_size defaults to 1** — `DebtorInfo.household_size` has `default=1` and the means test prefers it over deriving from marital status + dependents, so rows created without it (seeds, scripts) are silently evaluated as households of one. Always set it explicitly
+- **Form 103B needs a FeeWaiverApplication** — its generator raises without one, so `generate_all` correctly yields 12/13 forms for filers who pass the means test but don't qualify for the waiver (E2E: James)
+- **heroku.yml release command must be one string** — argv-style list items (`- python` / `- manage.py` / `- migrate`) make Heroku run bare `python`, which exits 0 silently and skips migrations. Also `heroku releases:output` is always empty (the output streamer needs `curl`, absent from the slim image); use `heroku logs --dyno release` instead
+- **Pre-commit prettier aborts the first commit** — if prettier reformats staged files the commit fails and changes are restored; re-`git add` and commit again
 
 ## Key Documentation
 
@@ -86,7 +91,7 @@ This comprehensive PRD includes:
 - **Backend:** Python 3.11 + Django 5.0 + Django REST Framework
 - **Frontend:** React 19 + Vite 7 + TypeScript (Context API for state management)
 - **Database:** PostgreSQL 15 with encrypted-model-fields (Fernet encryption)
-- **Testing:** pytest (413 tests) + vitest (165 tests) + Playwright (E2E persona tests)
+- **Testing:** pytest (494 tests + 1 xfail) + vitest (171 tests) + Playwright (5-persona E2E journeys)
 - **CI/CD:** GitHub Actions (lint, backend tests, frontend tests, E2E)
 - **Containerization:** Docker + Docker Compose (Colima on macOS)
 - **Document Storage:** Local filesystem (MVP), S3-compatible planned
@@ -200,7 +205,7 @@ This comprehensive PRD includes:
 4. **Pro Se E-Filing Constraints:** Many courts limit e-filing for pro se litigants
 5. **PDF Form Complexity:** Official forms may have non-standard field names/structure
 
-## Implementation Status (Mar 2026)
+## Implementation Status (Jun 2026)
 
 ### ✅ Completed: Backend MVP (Phases 1-3)
 
@@ -223,9 +228,9 @@ This comprehensive PRD includes:
 
 ### ✅ Completed: Testing & CI/CD (Phase 5)
 
-- **Backend:** 492 pytest tests (models, services, API endpoints, serializers)
+- **Backend:** 494 pytest tests + 1 xfail (models, services, API endpoints, serializers)
 - **Frontend:** 171 vitest tests (components, pages, context, accessibility)
-- **E2E:** Playwright page objects + journey specs for 5 personas
+- **E2E:** Playwright page objects + journey specs for 5 personas (all green in CI)
 - **CI:** GitHub Actions pipeline — lint, backend tests, frontend tests, E2E
 - vitest-axe matchers via `expect.extend()` for accessibility assertions
 
@@ -311,6 +316,15 @@ This comprehensive PRD includes:
 - `frontend/src/pages/DocumentUploadPage.tsx` — drag-and-drop upload with polling
 - Post-auth redirect goes to `/documents` before intake wizard
 - Draft debt entries show "From scan" badge in Debts step; cleared on save
+
+### ✅ Completed: Means Test Correction & Production Deploy (Phase 10, Jun 2026)
+
+- **§ 707(b) units bug fixed** — monthly CMI had been compared against the annual Census median, so virtually every filer "passed" and qualified for the fee waiver. CMI is now annualized ×12 for both comparisons; `details.annualized_cmi` exposed in the API
+- `DebtorInfo` gained `household_size`/`filing_type` (migration 0006) — the wizard sent them but DRF nested serializers silently dropped unknown fields; the means test now prefers `household_size` for the median lookup
+- Frontend `MeansTestResult` type aligned to the real response shape (sidebar had rendered $NaN)
+- Persona outcomes under correct math: DeShawn is fee-waiver eligible (routes to `/fee-waiver`); Priya's income raised to $12k/mo to stay above the HH4 median; James (no waiver) generates 12/13 forms — Form 103B requires a FeeWaiverApplication
+- `seed_demo_data` sets per-persona `household_size`; re-run with `--reset` on any database seeded before this fix (verdicts were wrong)
+- Heroku release phase fixed (single command string) — migrations now actually run on deploy; live at releases v18–v20
 
 ### Design Principles (Frontend)
 
@@ -420,7 +434,7 @@ Each district implementation requires:
 
 **Founder:** Courtney Richardson, Northwestern University Communication Studies student
 **Organizational Model:** Social impact startup, prize-funding dependent
-**Development Status:** Full-stack MVP complete (Mar 2026); AI persona testing validated
+**Development Status:** Full-stack MVP deployed to Heroku (Jun 2026); AI persona testing validated; means test legally corrected
 **Next Milestone:** Paper prototype testing with target demographic at legal clinic partner
 
 ## Implementation Files Reference
