@@ -53,6 +53,8 @@ def _maria_torres() -> dict:
             "city": "Chicago",
             "state": "IL",
             "zip_code": "60622",
+            "household_size": 3,
+            "filing_type": "individual",
         },
         "income": {
             "marital_status": "single",
@@ -137,6 +139,8 @@ def _james_washington() -> dict:
             "city": "Chicago",
             "state": "IL",
             "zip_code": "60610",
+            "household_size": 1,
+            "filing_type": "individual",
         },
         "income": {
             "marital_status": "single",
@@ -215,11 +219,15 @@ def _priya_sharma() -> dict:
             "city": "Chicago",
             "state": "IL",
             "zip_code": "60614",
+            "household_size": 4,
+            "filing_type": "individual",
         },
         "income": {
             "marital_status": "married_joint",
             "number_of_dependents": 2,
-            "monthly_income": [10000, 10000, 10000, 10000, 10000, 10000],
+            # $12,000/month = $144,000/year — above the $134,366 HH4 median,
+            # so the annualized § 707(b) comparison fails as intended.
+            "monthly_income": [12000, 12000, 12000, 12000, 12000, 12000],
         },
         "expenses": {
             "rent_or_mortgage": Decimal("2800.00"),
@@ -285,6 +293,8 @@ def _deshawn_mitchell() -> dict:
             "city": "Chicago",
             "state": "IL",
             "zip_code": "60620",
+            "household_size": 2,
+            "filing_type": "individual",
         },
         "income": {
             "marital_status": "married_joint",
@@ -385,6 +395,8 @@ def _sarah_chen() -> dict:
             "city": "Chicago",
             "state": "IL",
             "zip_code": "60622",
+            "household_size": 1,
+            "filing_type": "individual",
         },
         "income": {
             "marital_status": "single",
@@ -526,9 +538,7 @@ class Command(BaseCommand):
         # (required by Form 103B generator)
         if result["qualifies_for_fee_waiver"]:
             income_data = data["income"]
-            household_size = income_data["number_of_dependents"] + 1
-            if income_data["marital_status"] in ("married_joint", "married_separate"):
-                household_size += 1
+            household_size = data["debtor"]["household_size"]
             monthly_income = Decimal(str(income_data["monthly_income"][0]))
             total_expenses = sum(data["expenses"].values())
 
