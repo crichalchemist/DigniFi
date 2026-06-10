@@ -116,20 +116,21 @@ export const createMockSession = (overrides?: Partial<IntakeSession>): IntakeSes
 });
 
 export const createMockMeansTestResult = (
-  overrides?: Partial<MeansTestResult>,
+  overrides?: Partial<MeansTestResult>
 ): MeansTestResult => ({
   passes_means_test: true,
   qualifies_for_fee_waiver: false,
-  current_monthly_income: 3500,
+  cmi: 3500,
   median_income_threshold: 71304,
-  disposable_monthly_income: 500,
+  family_size: 1,
   message:
     'Based on the information you provided, your income is below the median income threshold for your household size in your district.',
   details: {
-    household_size: 1,
-    total_income: 3500,
-    total_expenses: 3000,
-    district_name: 'Northern District of Illinois',
+    cmi: 3500,
+    annualized_cmi: 42000,
+    median_income_threshold: 71304,
+    family_size: 1,
   },
+  means_test_id: 1,
   ...overrides,
 });

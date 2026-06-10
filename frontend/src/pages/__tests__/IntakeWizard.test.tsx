@@ -61,16 +61,17 @@ describe('IntakeWizard handleComplete routing', () => {
           means_test_result: {
             passes_means_test: true,
             qualifies_for_fee_waiver: true,
-            current_monthly_income: 1200,
+            cmi: 1200,
             median_income_threshold: 71304,
-            disposable_monthly_income: 200,
+            family_size: 1,
             message: 'You qualify.',
             details: {
-              household_size: 1,
-              total_income: 1200,
-              total_expenses: 1000,
-              district_name: 'ILND',
+              cmi: 1200,
+              annualized_cmi: 14400,
+              median_income_threshold: 71304,
+              family_size: 1,
             },
+            means_test_id: 1,
           },
           session_id: 1,
         })
