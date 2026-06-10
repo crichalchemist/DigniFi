@@ -5,6 +5,10 @@
  * Each persona exercises a distinct eligibility path through ILND.
  */
 
+// Unique per test run so registration never collides with a previous run's
+// users when the database persists (local dev). CI databases are fresh.
+const RUN_ID = Date.now().toString(36);
+
 export interface PersonaDebtor {
   first_name: string;
   last_name: string;
@@ -17,6 +21,10 @@ export interface PersonaDebtor {
   city: string;
   state: string;
   zip_code: string;
+  // Household & filing info (required on the DebtorInfo step).
+  // household_size mirrors seed_demo_data: dependents + 1 (+1 if married).
+  household_size: number;
+  filing_type: 'individual' | 'joint';
 }
 
 export interface PersonaIncome {
@@ -39,6 +47,8 @@ export interface PersonaDebt {
   amount_owed: number;
   monthly_payment: number;
   is_in_collections: boolean;
+  // Required by the Debts step when debt_type is secured (auto_loan, mortgage)
+  collateral_description?: string;
 }
 
 export interface PersonaData {
@@ -56,7 +66,7 @@ export interface PersonaData {
 }
 
 export const MARIA: PersonaData = {
-  username: 'e2e_maria',
+  username: `e2e_maria_${RUN_ID}`,
   password: 'TestPass-2026!',
   debtor: {
     first_name: 'Maria',
@@ -65,7 +75,9 @@ export const MARIA: PersonaData = {
     ssn: '900-11-1001',
     date_of_birth: '1988-06-15',
     phone: '312-555-0101',
-    email: 'maria.e2e@test.dignifi.org',
+    email: `maria.e2e+${RUN_ID}@test.dignifi.org`,
+    household_size: 3,
+    filing_type: 'individual',
     street_address: '2145 W Division St Apt 3',
     city: 'Chicago',
     state: 'IL',
@@ -93,18 +105,42 @@ export const MARIA: PersonaData = {
   },
   assets: [
     { asset_type: 'vehicle', description: '2015 Honda Civic', current_value: 6500, amount_owed: 0 },
-    { asset_type: 'bank_account', description: 'Chase checking', current_value: 340, amount_owed: 0, financial_institution: 'JPMorgan Chase' },
+    {
+      asset_type: 'bank_account',
+      description: 'Chase checking',
+      current_value: 340,
+      amount_owed: 0,
+      financial_institution: 'JPMorgan Chase',
+    },
   ],
   debts: [
-    { creditor_name: 'Capital One', debt_type: 'credit_card', amount_owed: 4200, monthly_payment: 85, is_in_collections: true },
-    { creditor_name: 'Northwestern Memorial Hospital', debt_type: 'medical', amount_owed: 12800, monthly_payment: 0, is_in_collections: true },
-    { creditor_name: 'Discover Financial', debt_type: 'personal_loan', amount_owed: 3500, monthly_payment: 120, is_in_collections: false },
+    {
+      creditor_name: 'Capital One',
+      debt_type: 'credit_card',
+      amount_owed: 4200,
+      monthly_payment: 85,
+      is_in_collections: true,
+    },
+    {
+      creditor_name: 'Northwestern Memorial Hospital',
+      debt_type: 'medical',
+      amount_owed: 12800,
+      monthly_payment: 0,
+      is_in_collections: true,
+    },
+    {
+      creditor_name: 'Discover Financial',
+      debt_type: 'personal_loan',
+      amount_owed: 3500,
+      monthly_payment: 120,
+      is_in_collections: false,
+    },
   ],
   expected: { passes_means_test: true, fee_waiver_eligible: true },
 };
 
 export const JAMES: PersonaData = {
-  username: 'e2e_james',
+  username: `e2e_james_${RUN_ID}`,
   password: 'TestPass-2026!',
   debtor: {
     first_name: 'James',
@@ -113,7 +149,9 @@ export const JAMES: PersonaData = {
     ssn: '900-22-2002',
     date_of_birth: '1975-03-22',
     phone: '312-555-0202',
-    email: 'james.e2e@test.dignifi.org',
+    email: `james.e2e+${RUN_ID}@test.dignifi.org`,
+    household_size: 1,
+    filing_type: 'individual',
     street_address: '850 N State St Apt 1204',
     city: 'Chicago',
     state: 'IL',
@@ -140,18 +178,42 @@ export const JAMES: PersonaData = {
     other_expenses: 100,
   },
   assets: [
-    { asset_type: 'vehicle', description: '2019 Toyota Camry', current_value: 14000, amount_owed: 8500 },
-    { asset_type: 'bank_account', description: 'Bank of America checking', current_value: 1200, amount_owed: 0, financial_institution: 'Bank of America' },
+    {
+      asset_type: 'vehicle',
+      description: '2019 Toyota Camry',
+      current_value: 14000,
+      amount_owed: 8500,
+    },
+    {
+      asset_type: 'bank_account',
+      description: 'Bank of America checking',
+      current_value: 1200,
+      amount_owed: 0,
+      financial_institution: 'Bank of America',
+    },
   ],
   debts: [
-    { creditor_name: 'Citibank', debt_type: 'credit_card', amount_owed: 9800, monthly_payment: 200, is_in_collections: false },
-    { creditor_name: 'Toyota Financial Services', debt_type: 'auto_loan', amount_owed: 8500, monthly_payment: 350, is_in_collections: false },
+    {
+      creditor_name: 'Citibank',
+      debt_type: 'credit_card',
+      amount_owed: 9800,
+      monthly_payment: 200,
+      is_in_collections: false,
+    },
+    {
+      creditor_name: 'Toyota Financial Services',
+      debt_type: 'auto_loan',
+      amount_owed: 8500,
+      monthly_payment: 350,
+      is_in_collections: false,
+      collateral_description: '2019 Toyota Camry',
+    },
   ],
   expected: { passes_means_test: true, fee_waiver_eligible: false },
 };
 
 export const PRIYA: PersonaData = {
-  username: 'e2e_priya',
+  username: `e2e_priya_${RUN_ID}`,
   password: 'TestPass-2026!',
   debtor: {
     first_name: 'Priya',
@@ -160,7 +222,9 @@ export const PRIYA: PersonaData = {
     ssn: '900-33-3003',
     date_of_birth: '1982-11-08',
     phone: '312-555-0303',
-    email: 'priya.e2e@test.dignifi.org',
+    email: `priya.e2e+${RUN_ID}@test.dignifi.org`,
+    household_size: 4,
+    filing_type: 'individual',
     street_address: '456 W Fullerton Pkwy',
     city: 'Chicago',
     state: 'IL',
@@ -169,7 +233,9 @@ export const PRIYA: PersonaData = {
   income: {
     marital_status: 'married_joint',
     number_of_dependents: 2,
-    total_monthly_income: 10000,
+    // $12,000/month = $144,000/year — above the $134,366 HH4 median, so the
+    // annualized § 707(b) comparison fails as the persona intends.
+    total_monthly_income: 12000,
   },
   expenses: {
     rent_or_mortgage: 2800,
@@ -187,17 +253,35 @@ export const PRIYA: PersonaData = {
     other_expenses: 200,
   },
   assets: [
-    { asset_type: 'bank_account', description: 'Joint savings', current_value: 8500, amount_owed: 0, financial_institution: 'Chase' },
+    {
+      asset_type: 'bank_account',
+      description: 'Joint savings',
+      current_value: 8500,
+      amount_owed: 0,
+      financial_institution: 'Chase',
+    },
   ],
   debts: [
-    { creditor_name: 'American Express', debt_type: 'credit_card', amount_owed: 22000, monthly_payment: 500, is_in_collections: false },
-    { creditor_name: 'Rush University Medical Center', debt_type: 'medical', amount_owed: 35000, monthly_payment: 0, is_in_collections: true },
+    {
+      creditor_name: 'American Express',
+      debt_type: 'credit_card',
+      amount_owed: 22000,
+      monthly_payment: 500,
+      is_in_collections: false,
+    },
+    {
+      creditor_name: 'Rush University Medical Center',
+      debt_type: 'medical',
+      amount_owed: 35000,
+      monthly_payment: 0,
+      is_in_collections: true,
+    },
   ],
   expected: { passes_means_test: false, fee_waiver_eligible: false },
 };
 
 export const DESHAWN: PersonaData = {
-  username: 'e2e_deshawn',
+  username: `e2e_deshawn_${RUN_ID}`,
   password: 'TestPass-2026!',
   debtor: {
     first_name: 'DeShawn',
@@ -206,7 +290,9 @@ export const DESHAWN: PersonaData = {
     ssn: '900-44-4004',
     date_of_birth: '1980-09-03',
     phone: '312-555-0404',
-    email: 'deshawn.e2e@test.dignifi.org',
+    email: `deshawn.e2e+${RUN_ID}@test.dignifi.org`,
+    household_size: 2,
+    filing_type: 'individual',
     street_address: '7823 S Sangamon St',
     city: 'Chicago',
     state: 'IL',
@@ -233,21 +319,59 @@ export const DESHAWN: PersonaData = {
     other_expenses: 40,
   },
   assets: [
-    { asset_type: 'real_property', description: 'Single-family home, 7823 S Sangamon', current_value: 180000, amount_owed: 160000 },
+    {
+      asset_type: 'real_property',
+      description: 'Single-family home, 7823 S Sangamon',
+      current_value: 180000,
+      amount_owed: 160000,
+    },
     { asset_type: 'vehicle', description: '2012 Ford F-150', current_value: 8000, amount_owed: 0 },
-    { asset_type: 'retirement_account', description: '401(k) through employer', current_value: 12000, amount_owed: 0, financial_institution: 'Fidelity' },
+    {
+      asset_type: 'retirement_account',
+      description: '401(k) through employer',
+      current_value: 12000,
+      amount_owed: 0,
+      financial_institution: 'Fidelity',
+    },
   ],
   debts: [
-    { creditor_name: 'Wells Fargo Home Mortgage', debt_type: 'mortgage', amount_owed: 160000, monthly_payment: 1200, is_in_collections: false },
-    { creditor_name: 'Midland Credit Management', debt_type: 'credit_card', amount_owed: 6700, monthly_payment: 0, is_in_collections: true },
-    { creditor_name: 'ComEd', debt_type: 'utility', amount_owed: 800, monthly_payment: 0, is_in_collections: true },
-    { creditor_name: 'Advocate Health', debt_type: 'medical', amount_owed: 4200, monthly_payment: 0, is_in_collections: true },
+    {
+      creditor_name: 'Wells Fargo Home Mortgage',
+      debt_type: 'mortgage',
+      amount_owed: 160000,
+      monthly_payment: 1200,
+      is_in_collections: false,
+      collateral_description: 'Single-family home, 7823 S Sangamon St',
+    },
+    {
+      creditor_name: 'Midland Credit Management',
+      debt_type: 'credit_card',
+      amount_owed: 6700,
+      monthly_payment: 0,
+      is_in_collections: true,
+    },
+    {
+      creditor_name: 'ComEd',
+      debt_type: 'utility',
+      amount_owed: 800,
+      monthly_payment: 0,
+      is_in_collections: true,
+    },
+    {
+      creditor_name: 'Advocate Health',
+      debt_type: 'medical',
+      amount_owed: 4200,
+      monthly_payment: 0,
+      is_in_collections: true,
+    },
   ],
-  expected: { passes_means_test: true, fee_waiver_eligible: false },
+  // $3,500/month = $42,000/year — below 60% of the HH2 median ($54,915.60),
+  // so DeShawn qualifies for the fee waiver as well as Chapter 7.
+  expected: { passes_means_test: true, fee_waiver_eligible: true },
 };
 
 export const SARAH: PersonaData = {
-  username: 'e2e_sarah',
+  username: `e2e_sarah_${RUN_ID}`,
   password: 'TestPass-2026!',
   debtor: {
     first_name: 'Sarah',
@@ -256,7 +380,9 @@ export const SARAH: PersonaData = {
     ssn: '900-55-5005',
     date_of_birth: '1995-01-20',
     phone: '312-555-0505',
-    email: 'sarah.e2e@test.dignifi.org',
+    email: `sarah.e2e+${RUN_ID}@test.dignifi.org`,
+    household_size: 1,
+    filing_type: 'individual',
     street_address: '1520 N Damen Ave Apt 2F',
     city: 'Chicago',
     state: 'IL',
@@ -284,8 +410,20 @@ export const SARAH: PersonaData = {
   },
   assets: [],
   debts: [
-    { creditor_name: 'Navient', debt_type: 'student_loan', amount_owed: 28000, monthly_payment: 0, is_in_collections: false },
-    { creditor_name: 'University of Illinois Hospital', debt_type: 'medical', amount_owed: 3400, monthly_payment: 0, is_in_collections: true },
+    {
+      creditor_name: 'Navient',
+      debt_type: 'student_loan',
+      amount_owed: 28000,
+      monthly_payment: 0,
+      is_in_collections: false,
+    },
+    {
+      creditor_name: 'University of Illinois Hospital',
+      debt_type: 'medical',
+      amount_owed: 3400,
+      monthly_payment: 0,
+      is_in_collections: true,
+    },
   ],
   expected: { passes_means_test: true, fee_waiver_eligible: true },
 };

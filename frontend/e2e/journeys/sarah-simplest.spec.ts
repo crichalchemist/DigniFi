@@ -10,6 +10,7 @@ import { SARAH } from '../fixtures/personas';
 import { LandingPage } from '../pages/landing.page';
 import { RegisterPage } from '../pages/register.page';
 import { WizardPage } from '../pages/wizard.page';
+import { FeeWaiverPage } from '../pages/fee-waiver.page';
 import { DashboardPage } from '../pages/dashboard.page';
 
 test.describe('Sarah Chen — Simplest Case', () => {
@@ -17,6 +18,7 @@ test.describe('Sarah Chen — Simplest Case', () => {
     const landing = new LandingPage(page);
     const register = new RegisterPage(page);
     const wizard = new WizardPage(page);
+    const feeWaiver = new FeeWaiverPage(page);
     const dashboard = new DashboardPage(page);
 
     await landing.goto();
@@ -31,19 +33,20 @@ test.describe('Sarah Chen — Simplest Case', () => {
     await wizard.fillIncomeInfo(SARAH.income);
     await wizard.nextStep();
 
+    // Step 3: Expenses (minimal)
+    await wizard.fillExpenses(SARAH.expenses);
+    await wizard.nextStep();
+
     // Means test preview — should indicate eligibility + fee waiver
+    // (the estimate needs both income and expense data)
+    await wizard.waitForMeansTestEstimate();
     const preview = await wizard.getMeansTestPreview();
     const previewLower = preview.toLowerCase();
     expect(previewLower).toContain('eligible');
 
     // Fee waiver indication
-    const hasFeeWaiver =
-      previewLower.includes('fee waiver') || previewLower.includes('filing fee');
+    const hasFeeWaiver = previewLower.includes('fee waiver') || previewLower.includes('filing fee');
     expect(hasFeeWaiver).toBe(true);
-
-    // Step 3: Expenses (minimal)
-    await wizard.fillExpenses(SARAH.expenses);
-    await wizard.nextStep();
 
     // Step 4: Assets — none to add, just proceed
     // The step should allow proceeding with zero assets
@@ -58,6 +61,14 @@ test.describe('Sarah Chen — Simplest Case', () => {
     // Step 6: Review & Complete
     await wizard.fillReview();
     await wizard.completeIntake();
+
+    // Sarah is fee-waiver eligible → routed to the waiver application first
+    const totalExpenses = Object.values(SARAH.expenses).reduce((a, b) => a + b, 0);
+    await feeWaiver.submit(
+      SARAH.debtor.household_size,
+      SARAH.income.total_monthly_income,
+      totalExpenses
+    );
 
     // Generate all forms
     await dashboard.generateAllForms();

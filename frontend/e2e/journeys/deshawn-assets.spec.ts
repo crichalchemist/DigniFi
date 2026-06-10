@@ -10,6 +10,7 @@ import { DESHAWN } from '../fixtures/personas';
 import { LandingPage } from '../pages/landing.page';
 import { RegisterPage } from '../pages/register.page';
 import { WizardPage } from '../pages/wizard.page';
+import { FeeWaiverPage } from '../pages/fee-waiver.page';
 import { DashboardPage } from '../pages/dashboard.page';
 
 test.describe('DeShawn Mitchell — Assets', () => {
@@ -17,6 +18,7 @@ test.describe('DeShawn Mitchell — Assets', () => {
     const landing = new LandingPage(page);
     const register = new RegisterPage(page);
     const wizard = new WizardPage(page);
+    const feeWaiver = new FeeWaiverPage(page);
     const dashboard = new DashboardPage(page);
 
     await landing.goto();
@@ -31,20 +33,22 @@ test.describe('DeShawn Mitchell — Assets', () => {
     await wizard.fillIncomeInfo(DESHAWN.income);
     await wizard.nextStep();
 
-    // Should pass means test (below median for HH of 2)
-    const preview = await wizard.getMeansTestPreview();
-    expect(preview.toLowerCase()).toContain('eligible');
-
     // Step 3: Expenses
     await wizard.fillExpenses(DESHAWN.expenses);
     await wizard.nextStep();
+
+    // Should pass means test (below median for HH of 2)
+    // (the estimate needs both income and expense data)
+    await wizard.waitForMeansTestEstimate();
+    const preview = await wizard.getMeansTestPreview();
+    expect(preview.toLowerCase()).toContain('eligible');
 
     // Step 4: Assets — 3 assets (real property, vehicle, retirement)
     for (const asset of DESHAWN.assets) {
       await wizard.addAsset(asset);
     }
     // Verify all 3 assets were entered
-    const assetForms = page.locator('input[name="description"]');
+    const assetForms = page.locator('input[name^="description_"]');
     expect(await assetForms.count()).toBeGreaterThanOrEqual(3);
     await wizard.nextStep();
 
@@ -57,6 +61,15 @@ test.describe('DeShawn Mitchell — Assets', () => {
     // Step 6: Review & Complete
     await wizard.fillReview();
     await wizard.completeIntake();
+
+    // $42,000/year is below 60% of the HH2 median ($54,915.60), so DeShawn
+    // is fee-waiver eligible and gets routed to the waiver application first.
+    const totalExpenses = Object.values(DESHAWN.expenses).reduce((a, b) => a + b, 0);
+    await feeWaiver.submit(
+      DESHAWN.debtor.household_size,
+      DESHAWN.income.total_monthly_income,
+      totalExpenses
+    );
 
     // Generate forms (passes means test)
     await dashboard.generateAllForms();
