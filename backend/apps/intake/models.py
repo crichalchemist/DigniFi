@@ -57,6 +57,14 @@ class DebtorInfo(models.Model):
     city = models.CharField(max_length=100)
     state = models.CharField(max_length=2)
     zip_code = models.CharField(max_length=10)
+    # Household & filing info (collected on the debtor step; the means test
+    # uses household_size for the median income lookup)
+    household_size = models.PositiveIntegerField(default=1)
+    filing_type = models.CharField(
+        max_length=20,
+        choices=[("individual", "Individual"), ("joint", "Joint")],
+        default="individual",
+    )
 
     class Meta:
         db_table = "debtor_info"

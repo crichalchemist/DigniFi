@@ -38,6 +38,8 @@ class DebtorInfoSerializer(serializers.ModelSerializer):
             "city",
             "state",
             "zip_code",
+            "household_size",
+            "filing_type",
         ]
         extra_kwargs = {
             "ssn": {"write_only": True},  # Never return SSN in API responses

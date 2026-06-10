@@ -85,10 +85,16 @@ class MeansTest(models.Model):
         total_6_month_income = sum(Decimal(str(amt)) for amt in monthly_income_data)
         cmi = total_6_month_income / Decimal("6")
 
-        # Get family size for median income lookup
-        family_size = income_info.number_of_dependents + 1  # Filer + dependents
-        if income_info.marital_status in ["married_joint", "married_separate"]:
-            family_size += 1  # Add spouse
+        # Get family size for median income lookup. The wizard collects
+        # household_size on the debtor step; sessions without it fall back
+        # to deriving family size from marital status + dependents.
+        debtor_info = getattr(self.session, "debtor_info", None)
+        if debtor_info is not None and (debtor_info.household_size or 0) >= 1:
+            family_size = debtor_info.household_size
+        else:
+            family_size = income_info.number_of_dependents + 1  # Filer + dependents
+            if income_info.marital_status in ["married_joint", "married_separate"]:
+                family_size += 1  # Add spouse
 
         # Get median income threshold from district
         try:
@@ -100,16 +106,19 @@ class MeansTest(models.Model):
 
         median_income_threshold = median_income_record.get_median_income(family_size)
 
-        # Determine if passes means test
-        passes_test = cmi < median_income_threshold
+        # Determine if passes means test. CMI is monthly; the Census median
+        # is annual, so annualize per 11 U.S.C. § 707(b)(7).
+        annualized_cmi = cmi * Decimal("12")
+        passes_test = annualized_cmi < median_income_threshold
 
         # Calculate fee waiver eligibility (CMI < 150% of poverty line)
         # For MVP, simplified: qualifies if income is very low (< 60% of median)
-        qualifies_fee_waiver = cmi < (median_income_threshold * Decimal("0.60"))
+        qualifies_fee_waiver = annualized_cmi < (median_income_threshold * Decimal("0.60"))
 
         # Store calculation details (encrypted)
         details = {
             "cmi": float(cmi),
+            "annualized_cmi": float(annualized_cmi),
             "median_income_threshold": float(median_income_threshold),
             "family_size": family_size,
             "monthly_income_breakdown": monthly_income_data,
