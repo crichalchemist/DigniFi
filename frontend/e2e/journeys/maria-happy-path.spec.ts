@@ -10,6 +10,7 @@ import { MARIA } from '../fixtures/personas';
 import { LandingPage } from '../pages/landing.page';
 import { RegisterPage } from '../pages/register.page';
 import { WizardPage } from '../pages/wizard.page';
+import { FeeWaiverPage } from '../pages/fee-waiver.page';
 import { DashboardPage } from '../pages/dashboard.page';
 
 test.describe('Maria Torres — Happy Path', () => {
@@ -17,6 +18,7 @@ test.describe('Maria Torres — Happy Path', () => {
     const landing = new LandingPage(page);
     const register = new RegisterPage(page);
     const wizard = new WizardPage(page);
+    const feeWaiver = new FeeWaiverPage(page);
     const dashboard = new DashboardPage(page);
 
     // Landing → Register
@@ -25,11 +27,7 @@ test.describe('Maria Torres — Happy Path', () => {
     await landing.clickGetStarted();
 
     // Register a new account
-    await register.register(
-      MARIA.username,
-      MARIA.debtor.email,
-      MARIA.password,
-    );
+    await register.register(MARIA.username, MARIA.debtor.email, MARIA.password);
 
     // Step 1: Debtor Info
     await wizard.fillDebtorInfo(MARIA.debtor);
@@ -39,13 +37,15 @@ test.describe('Maria Torres — Happy Path', () => {
     await wizard.fillIncomeInfo(MARIA.income);
     await wizard.nextStep();
 
-    // Means test sidebar should indicate eligibility
-    const preview = await wizard.getMeansTestPreview();
-    expect(preview.toLowerCase()).toContain('may be eligible');
-
     // Step 3: Expenses
     await wizard.fillExpenses(MARIA.expenses);
     await wizard.nextStep();
+
+    // Means test sidebar should indicate eligibility
+    // (the estimate needs both income and expense data)
+    await wizard.waitForMeansTestEstimate();
+    const preview = await wizard.getMeansTestPreview();
+    expect(preview.toLowerCase()).toContain('may be eligible');
 
     // Step 4: Assets
     for (const asset of MARIA.assets) {
@@ -62,6 +62,14 @@ test.describe('Maria Torres — Happy Path', () => {
     // Step 6: Review & Complete
     await wizard.fillReview();
     await wizard.completeIntake();
+
+    // Maria is fee-waiver eligible → routed to the waiver application first
+    const totalExpenses = Object.values(MARIA.expenses).reduce((a, b) => a + b, 0);
+    await feeWaiver.submit(
+      MARIA.debtor.household_size,
+      MARIA.income.total_monthly_income,
+      totalExpenses
+    );
 
     // Dashboard — generate all forms
     await dashboard.generateAllForms();

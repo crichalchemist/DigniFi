@@ -2,16 +2,32 @@
  * FormDashboard Page Object — form generation and survey interaction.
  */
 
-import type { Page } from '@playwright/test';
+import { expect, type Page } from '@playwright/test';
 
 export class DashboardPage {
   constructor(private page: Page) {}
 
-  async generateAllForms() {
+  /**
+   * @param expectedCount Forms that should generate. Sessions without a
+   * FeeWaiverApplication can't generate Form 103B (the waiver application
+   * itself), so non-waiver personas expect 12.
+   */
+  async generateAllForms(expectedCount = 13) {
     const btn = this.page.getByRole('button', { name: /generate all/i });
     await btn.click();
-    // Wait for all forms to generate (network-intensive)
-    await this.page.waitForTimeout(3000);
+
+    // Acknowledge the UPL confirmation modal that gates generation
+    await this.page.locator('.upl-modal-checkbox').check();
+    await this.page
+      .locator('.upl-modal-footer')
+      .getByRole('button', { name: /continue/i })
+      .click();
+
+    // Bulk generation hits 13 endpoints; wait for the progress text to settle
+    await expect(this.page.locator('.form-dashboard-progress-text')).toContainText(
+      `${expectedCount} of 13`,
+      { timeout: 60000 }
+    );
   }
 
   async getFormStatuses(): Promise<string[]> {
@@ -40,9 +56,7 @@ export class DashboardPage {
     for (const [questionId, value] of Object.entries(responses)) {
       if (typeof value === 'number') {
         // Likert scale — click the nth radio
-        await this.page
-          .locator(`input[name="${questionId}"][value="${value}"]`)
-          .check();
+        await this.page.locator(`input[name="${questionId}"][value="${value}"]`).check();
       } else {
         // Text area
         await this.page.locator(`#survey-${questionId}`).fill(value);

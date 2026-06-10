@@ -30,13 +30,15 @@ test.describe('James Washington — Borderline', () => {
     await wizard.fillIncomeInfo(JAMES.income);
     await wizard.nextStep();
 
-    // Means test should still pass (just under)
-    const preview = await wizard.getMeansTestPreview();
-    expect(preview.toLowerCase()).toContain('eligible');
-
     // Step 3: Expenses
     await wizard.fillExpenses(JAMES.expenses);
     await wizard.nextStep();
+
+    // Means test should still pass (just under)
+    // (the estimate needs both income and expense data)
+    await wizard.waitForMeansTestEstimate();
+    const preview = await wizard.getMeansTestPreview();
+    expect(preview.toLowerCase()).toContain('eligible');
 
     // Step 4: Assets (vehicle + bank account)
     for (const asset of JAMES.assets) {
@@ -54,9 +56,10 @@ test.describe('James Washington — Borderline', () => {
     await wizard.fillReview();
     await wizard.completeIntake();
 
-    // Forms generated (passes means test)
-    await dashboard.generateAllForms();
+    // Forms generated (passes means test). James doesn't qualify for the
+    // fee waiver, so Form 103B (the waiver application) is not generated.
+    await dashboard.generateAllForms(12);
     const count = await dashboard.getGeneratedCount();
-    expect(count).toBe(13);
+    expect(count).toBe(12);
   });
 });

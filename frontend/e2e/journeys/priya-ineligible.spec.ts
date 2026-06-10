@@ -1,7 +1,8 @@
 /**
  * Priya Sharma — Ineligible (Above Median)
  *
- * $120k annual income with 4-person household. Fails means test.
+ * $144k annual income with 4-person household — above the $134,366
+ * HH4 median, so the means test fails.
  * Tests the dignity-preserving ineligibility path.
  */
 
@@ -25,11 +26,17 @@ test.describe('Priya Sharma — Ineligible', () => {
     await wizard.fillDebtorInfo(PRIYA.debtor);
     await wizard.nextStep();
 
-    // Step 2: Income ($10,000/mo — well above median for HH of 4)
+    // Step 2: Income ($12,000/mo — above median for HH of 4)
     await wizard.fillIncomeInfo(PRIYA.income);
     await wizard.nextStep();
 
+    // Step 3: Expenses
+    await wizard.fillExpenses(PRIYA.expenses);
+    await wizard.nextStep();
+
     // Means test preview should show above-median messaging
+    // (the estimate needs both income and expense data)
+    await wizard.waitForMeansTestEstimate();
     const preview = await wizard.getMeansTestPreview();
     const previewLower = preview.toLowerCase();
 
@@ -38,17 +45,9 @@ test.describe('Priya Sharma — Ineligible', () => {
     expect(previewLower).not.toContain('denied');
     expect(previewLower).not.toContain('rejected');
 
-    // Should contain dignity-preserving alternative language
-    // "above the median" or "additional calculations" or "Chapter 13"
-    const hasGracefulMessage =
-      previewLower.includes('above') ||
-      previewLower.includes('additional calculations') ||
-      previewLower.includes('chapter 13');
-    expect(hasGracefulMessage).toBe(true);
-
-    // Complete remaining steps
-    await wizard.fillExpenses(PRIYA.expenses);
-    await wizard.nextStep();
+    // Should contain dignity-preserving alternative language —
+    // MeansTestPreview's fail verdict is "eligibility may need further review"
+    expect(previewLower).toContain('further review');
 
     for (const asset of PRIYA.assets) {
       await wizard.addAsset(asset);

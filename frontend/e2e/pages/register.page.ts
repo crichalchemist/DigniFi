@@ -19,6 +19,10 @@ export class RegisterPage {
     await checkboxes.nth(1).check();
 
     await this.page.getByRole('button', { name: /create account/i }).click();
+
+    // Post-auth lands on the document upload page (Phase 8); skip to the wizard
+    await this.page.waitForURL('**/documents');
+    await this.page.getByRole('button', { name: /skip for now/i }).click();
     await this.page.waitForURL('**/intake');
   }
 }

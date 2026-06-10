@@ -11,6 +11,10 @@ export class LoginPage {
     await this.page.locator('input[name="username"]').fill(username);
     await this.page.locator('input[name="password"]').fill(password);
     await this.page.getByRole('button', { name: /sign in/i }).click();
+
+    // Post-auth lands on the document upload page (Phase 8); skip to the wizard
+    await this.page.waitForURL('**/documents');
+    await this.page.getByRole('button', { name: /skip for now/i }).click();
     await this.page.waitForURL('**/intake');
   }
 }
