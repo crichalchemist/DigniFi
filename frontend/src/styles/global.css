@@ -830,6 +830,9 @@ a {
   padding: var(--space-6) var(--space-4);
 }
 
+/* Gold top accent is 2.25:1 on white — decorative brand stripe on a
+   non-interactive container, exempt from WCAG 1.4.11 (which covers UI
+   component boundaries; the inputs/buttons inside carry their own). */
 .auth-card {
   width: 100%;
   max-width: 420px;
