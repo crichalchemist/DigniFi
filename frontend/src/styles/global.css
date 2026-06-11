@@ -1290,6 +1290,7 @@ a {
   color: var(--color-rust);
 }
 
+/* sage/paper 4.60:1 — passes AA by 0.10; do not lighten either value */
 .text-success {
   color: var(--color-sage);
   font-weight: 600;
@@ -1301,8 +1302,11 @@ a {
   gap: var(--space-4);
 }
 
+/* The zone is the control (role="button") and this dashed border is its
+   only boundary — white on paper is 1.03:1. Gold here is 2.25:1 and fails
+   WCAG 1.4.11 for an interactive boundary; pine is ~10:1. */
 .file-drop-zone {
-  border: 2px dashed var(--color-gold);
+  border: 2px dashed var(--color-pine);
   border-radius: var(--radius);
   background-color: var(--color-white);
   padding: var(--space-6);
