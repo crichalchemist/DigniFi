@@ -68,11 +68,16 @@ export function LandingPage() {
               {demoLoading ? 'Loading demo…' : 'Try Demo'}
             </Button>
           </div>
+          <div className="landing-stripe" aria-hidden="true">
+            <span />
+            <span />
+            <span />
+            <span />
+            <span />
+            <span />
+          </div>
           {demoError && (
-            <p
-              role="alert"
-              style={{ color: '#dc2626', marginTop: '0.75rem', fontSize: '0.875rem' }}
-            >
+            <p role="alert" className="landing-error">
               {demoError}
             </p>
           )}
