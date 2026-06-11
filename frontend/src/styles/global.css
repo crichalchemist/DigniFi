@@ -687,6 +687,12 @@ a {
   flex-wrap: wrap;
 }
 
+/* CTAs are <Link>-wrapped <Button>s — suppress the global anchor underline
+   that would otherwise render under the button face */
+.landing-cta-group a {
+  text-decoration: none;
+}
+
 /* six-segment poster stripe — one per wizard step, decorative */
 .landing-stripe {
   display: flex;
