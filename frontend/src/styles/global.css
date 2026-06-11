@@ -248,7 +248,10 @@ a {
   align-items: center;
   justify-content: center;
   margin-bottom: 0.5rem;
-  transition: all 0.2s;
+  transition:
+    background-color var(--transition-fast),
+    border-color var(--transition-fast),
+    color var(--transition-fast);
   color: var(--color-muted);
   font-family: var(--font-display);
   font-weight: 600;
@@ -269,10 +272,6 @@ a {
 .step-number {
   font-weight: 600;
   font-size: 1.125rem;
-}
-
-.progress-step.current .step-number {
-  color: var(--color-pine);
 }
 
 .step-checkmark {
