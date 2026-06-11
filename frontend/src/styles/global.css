@@ -532,6 +532,8 @@ a {
 }
 
 .info-icon {
+  width: 1.5rem;
+  height: 1.5rem;
   color: var(--color-pine);
   flex-shrink: 0;
 }
@@ -566,6 +568,8 @@ a {
 }
 
 .error-icon {
+  width: 1.5rem;
+  height: 1.5rem;
   color: var(--color-rust);
   flex-shrink: 0;
 }
@@ -628,6 +632,12 @@ a {
   align-items: center;
   justify-content: center;
   z-index: 1000;
+}
+
+/* Over the pine scrim, muted (#5d6356) blends to ~2:1 — use cream (~4:1).
+   The spinner head is fill="currentColor", so color drives its paint. */
+.wizard-loading-overlay .loading-spinner {
+  color: var(--color-cream);
 }
 
 /* ============================================================================
