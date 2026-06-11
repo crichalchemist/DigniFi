@@ -32,15 +32,16 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | 
   render() {
     if (this.state.error) {
       return (
-        <div style={{ padding: '2rem', maxWidth: '600px', margin: '0 auto' }}>
+        <div className="error-boundary">
           <h1>Something went wrong</h1>
           <p>We encountered an unexpected error. Please try refreshing the page.</p>
-          <pre
-            style={{ fontSize: '0.8rem', overflow: 'auto', background: '#f5f5f5', padding: '1rem' }}
+          <pre className="error-boundary-detail">{this.state.error.message}</pre>
+          <button
+            onClick={() => (window.location.href = '/')}
+            className="button button--outline button--md"
           >
-            {this.state.error.message}
-          </pre>
-          <button onClick={() => (window.location.href = '/')}>Return Home</button>
+            Return Home
+          </button>
         </div>
       );
     }

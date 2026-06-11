@@ -68,19 +68,19 @@ export function DocumentUploadPage() {
   const isEmpty = queue.length === 0 && !uploading;
 
   return (
-    <main style={{ maxWidth: 640, margin: '0 auto', padding: '2rem' }}>
+    <main className="document-page">
       <h1>Upload your documents</h1>
       <p>
         Upload paystubs, creditor bills, and other supporting documents. We&apos;ll extract the
         information and pre-fill your intake forms &mdash; you can review and correct anything
         before submitting.
       </p>
-      <p style={{ fontSize: '0.875rem', color: '#6b7280' }}>
+      <p className="text-muted">
         Your documents are processed locally and never sent to any external service.
       </p>
 
       {error && (
-        <p role="alert" style={{ color: '#dc2626' }}>
+        <p role="alert" className="text-error">
           {error}
         </p>
       )}
@@ -95,16 +95,16 @@ export function DocumentUploadPage() {
       )}
 
       {allComplete && summary && (
-        <p role="status" style={{ color: '#16a34a', fontWeight: 600 }}>
+        <p role="status" className="text-success">
           {summary}
         </p>
       )}
 
-      <div style={{ marginTop: '2rem', display: 'flex', gap: '1rem' }}>
+      <div className="page-actions">
         <button
           onClick={() => navigate('/intake')}
           disabled={uploading}
-          style={{ padding: '0.75rem 1.5rem', cursor: 'pointer' }}
+          className="button button--primary button--md"
         >
           {allComplete ? 'Continue to intake' : 'Skip for now'}
         </button>

@@ -32,17 +32,10 @@ export function FileDropZone({ onFiles, disabled }: FileDropZoneProps) {
       onDragOver={(e) => e.preventDefault()}
       onClick={() => !disabled && inputRef.current?.click()}
       onKeyDown={(e) => e.key === 'Enter' && !disabled && inputRef.current?.click()}
-      style={{
-        border: '2px dashed #6b7280',
-        borderRadius: 8,
-        padding: '2rem',
-        textAlign: 'center',
-        cursor: disabled ? 'not-allowed' : 'pointer',
-        opacity: disabled ? 0.5 : 1,
-      }}
+      className="file-drop-zone"
     >
       <p>Drop PDF, JPEG, or PNG files here</p>
-      <p style={{ fontSize: '0.875rem', color: '#6b7280' }}>or click to browse</p>
+      <p className="text-muted">or click to browse</p>
       <input
         ref={inputRef}
         type="file"
