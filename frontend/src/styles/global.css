@@ -133,9 +133,10 @@ a {
    ============================================================================ */
 
 .wizard-container {
-  max-width: 1200px;
+  max-width: 720px;
   margin: 0 auto;
-  padding: 0 2rem;
+  padding: var(--space-6) var(--space-4);
+  background: transparent;
 }
 
 /* Desktop-first: Default styles for 1024px+ */
@@ -160,37 +161,40 @@ a {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  background-color: var(--color-paper);
 }
 
 .wizard-header {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  padding: 3rem 0 2rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  background-color: var(--color-pine);
+  padding: var(--space-4) var(--space-5);
+  border-radius: var(--radius);
 }
 
 .wizard-title {
-  color: white;
+  font-family: var(--font-display);
+  color: var(--color-cream);
+  font-weight: 600;
   margin-bottom: 0.5rem;
 }
 
 .wizard-subtitle {
-  color: rgba(255, 255, 255, 0.9);
-  font-size: 1.125rem;
+  color: var(--color-gold);
+  font-family: var(--font-body);
+  font-size: var(--text-caption);
   margin-bottom: 2rem;
 }
 
 .wizard-content {
   flex: 1;
-  padding: 3rem 0;
-  background-color: #f9fafb;
+  background-color: var(--color-white);
+  border: 1px solid var(--color-sand);
+  padding: var(--space-6);
+  border-radius: var(--radius);
 }
 
 .wizard-footer {
-  background: white;
-  border-top: 1px solid #e5e7eb;
+  border-top: 1px solid var(--color-sand);
   padding: 1.5rem 0;
-  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.05);
 }
 
 .wizard-navigation {
@@ -205,8 +209,8 @@ a {
 
 .wizard-help-text {
   text-align: center;
-  font-size: 0.875rem;
-  color: #6b7280;
+  font-size: var(--text-caption);
+  color: var(--color-muted);
   margin: 0;
 }
 
@@ -237,51 +241,55 @@ a {
 .step-marker {
   width: 3rem;
   height: 3rem;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.3);
-  border: 2px solid rgba(255, 255, 255, 0.5);
+  border-radius: var(--radius);
+  background: var(--color-white);
+  border: 2px solid var(--color-sand);
   display: flex;
   align-items: center;
   justify-content: center;
   margin-bottom: 0.5rem;
   transition: all 0.2s;
+  color: var(--color-muted);
+  font-family: var(--font-display);
+  font-weight: 600;
 }
 
 .progress-step.completed .step-marker {
-  background: #10b981;
-  border-color: #10b981;
+  background: var(--color-pine);
+  border-color: var(--color-pine);
+  color: var(--color-cream);
 }
 
 .progress-step.current .step-marker {
-  background: white;
-  border-color: white;
-  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.3);
+  background: var(--color-gold);
+  border-color: var(--color-pine);
+  color: var(--color-pine);
 }
 
 .step-number {
-  color: white;
   font-weight: 600;
   font-size: 1.125rem;
 }
 
 .progress-step.current .step-number {
-  color: #667eea;
+  color: var(--color-pine);
 }
 
 .step-checkmark {
   width: 1.5rem;
   height: 1.5rem;
-  color: white;
+  color: var(--color-cream);
 }
 
-.step-label {
-  color: rgba(255, 255, 255, 0.9);
-  font-size: 0.875rem;
-  font-weight: 500;
+.step-label,
+.step-name {
+  color: var(--color-muted);
+  font-size: var(--text-caption);
 }
 
-.progress-step.current .step-label {
-  color: white;
+.progress-step.current .step-label,
+.progress-step.current .step-name {
+  color: var(--color-pine);
   font-weight: 600;
 }
 
@@ -290,13 +298,13 @@ a {
   top: 1.5rem;
   left: 50%;
   right: -50%;
-  height: 2px;
-  background: rgba(255, 255, 255, 0.3);
+  height: 4px;
+  background: var(--color-sand);
   z-index: -1;
 }
 
 .step-connector.completed {
-  background: #10b981;
+  background: var(--color-gold);
 }
 
 /* ============================================================================
