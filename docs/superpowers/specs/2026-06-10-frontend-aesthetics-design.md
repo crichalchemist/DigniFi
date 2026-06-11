@@ -31,7 +31,7 @@ All values become CSS custom properties on `:root`. Components consume tokens on
 | Token           | Hex       | Role                                                                    |
 | --------------- | --------- | ----------------------------------------------------------------------- |
 | `--color-pine`  | `#2e4034` | Header band, headings, primary text, borders, links on light            |
-| `--color-gold`  | `#d9a441` | Primary buttons, progress fill, focus rings, accents                    |
+| `--color-gold`  | `#d9a441` | Primary buttons, progress fill, accents, focus rings on dark surfaces   |
 | `--color-cream` | `#f2ecd9` | Landing/marketing canvas; text on pine                                  |
 | `--color-paper` | `#fdfcf8` | Work-surface background (wizard, dashboard, documents)                  |
 | `--color-body`  | `#4d5345` | Secondary body text                                                     |
@@ -45,6 +45,7 @@ All values become CSS custom properties on `:root`. Components consume tokens on
 - pine on paper 10.77:1 · pine on cream 9.36:1 · body on paper 7.75:1 · muted on paper 6.04:1 — AA normal ✓
 - cream on pine 9.36:1 · gold on pine 4.92:1 · pine on gold 4.92:1 · rust on paper 5.96:1 — AA normal ✓
 - **Gold never carries normal-size text on light surfaces** (darkened gold tops out ~3.95:1 — large text/UI only). Links on light use pine.
+- **Focus rings: pine on light surfaces, gold on pine surfaces.** Gold on paper is only 2.19:1 — below the 3:1 non-text contrast of WCAG 2.2 SC 2.4.11. Pine on paper is 10.77:1; gold on pine 4.92:1.
 
 ### Typography
 
@@ -68,10 +69,10 @@ All values become CSS custom properties on `:root`. Components consume tokens on
 ## 3 · Core components
 
 - **Buttons (Jost 500–600, square):**
-  - Primary: gold bg, pine text · hover deepens gold · focus 2px gold ring offset 2px
+  - Primary: gold bg, pine text · hover adds pine border · focus 2px pine ring offset 2px
   - Secondary: transparent, 1.5px pine border, pine text
   - Tertiary ("Back"): pine text with 1.5px pine underline
-- **Inputs:** white bg, 1px `#b8b2a0` frame, **2px solid pine bottom border** (the "fill in this line" nod — the only Paper Trail survivor). Focus: 2px gold outer ring. Error: bottom border goes rust + rust message below; never red fills.
+- **Inputs:** white bg, 1px `#b8b2a0` frame, **2px solid pine bottom border** (the "fill in this line" nod — the only Paper Trail survivor). Focus: 2px pine outer ring. Error: bottom border goes rust + rust message below; never red fills.
 - **Form cards (dashboard):** white, 1px sand border, **4px left spine encodes status** — gold = generated, sage = filed, sand = pending. Title Jost, meta Public Sans muted.
 - **UPL modal:** paper surface, 2px pine border, pine Jost heading, disclaimer band inside, primary gold confirm.
 - **Status/feedback:** success sage, error rust, info pine. No toasts that auto-dismiss critical info.

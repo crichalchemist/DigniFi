@@ -11,9 +11,12 @@
        pine on gold 4.92:1 · rust on paper 5.96:1
      RULE: gold NEVER carries normal-size text on light surfaces (≤3.95:1).
            Links on light backgrounds use pine.
+     RULE: focus rings are pine on light surfaces (gold on paper is only
+           2.19:1 — fails 3:1 non-text contrast). Gold rings only on pine
+           surfaces (4.92:1).
      -------------------------------------------------------------------------- */
   --color-pine: #2e4034; /* header band, headings, primary text, borders */
-  --color-gold: #d9a441; /* primary buttons, progress fill, focus rings */
+  --color-gold: #d9a441; /* primary buttons, progress fill, focus rings on dark */
   --color-cream: #f2ecd9; /* landing canvas; text on pine */
   --color-paper: #fdfcf8; /* work-surface background */
   --color-body: #4d5345; /* secondary body text */

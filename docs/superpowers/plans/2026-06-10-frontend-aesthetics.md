@@ -272,10 +272,13 @@ a {
 
 /* ============================================================================
    Focus Indicators (Accessibility)
+   Pine ring on light surfaces (10.77:1 on paper); gold rings are only 2.19:1
+   on paper — gold is reserved for dark (pine) surfaces where it hits 4.92:1.
+   Meets WCAG 2.2 SC 2.4.11 non-text contrast (3:1), not just 2.1 visibility.
    ============================================================================ */
 
 *:focus {
-  outline: 2px solid var(--color-gold);
+  outline: 2px solid var(--color-pine);
   outline-offset: 2px;
 }
 
@@ -284,8 +287,15 @@ a {
 }
 
 *:focus-visible {
-  outline: 2px solid var(--color-gold);
+  outline: 2px solid var(--color-pine);
   outline-offset: 2px;
+}
+
+/* On dark (pine) surfaces a pine ring vanishes — use gold (4.92:1 on pine) */
+.wizard-header :focus-visible,
+.auth-aside :focus-visible,
+.landing-footer :focus-visible {
+  outline-color: var(--color-gold);
 }
 ```
 
@@ -462,7 +472,7 @@ Spinner recolor table (keep layout declarations):
 }
 
 .form-input:focus {
-  outline: 2px solid var(--color-gold);
+  outline: 2px solid var(--color-pine);
   outline-offset: 2px;
 }
 
@@ -1651,7 +1661,7 @@ Expected: 5/5 persona journeys green. (Remember: Vite HMR in Docker is stale aft
 - [ ] UPL modal: pine border, sand acknowledgment band, gold confirm
 - [ ] Documents: gold dashed drop-zone; "From scan" badge in Debts step
 - [ ] Fee waiver page + survey: calm core, no unstyled regressions
-- [ ] Keyboard pass: gold focus ring visible on every interactive element
+- [ ] Keyboard pass: focus ring visible on every interactive element (pine on light surfaces, gold on pine surfaces)
 
 - [ ] **Step 5: Fix anything found, then final commit**
 
