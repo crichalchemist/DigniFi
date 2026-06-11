@@ -1054,6 +1054,10 @@ a {
   overflow: hidden;
 }
 
+/* Gold on sand is 1.74:1 — decorative only. The always-rendered
+   .form-dashboard-progress-text (muted, 6.04:1) carries the same info;
+   if that text is ever removed or made conditional, this bar becomes
+   the sole indicator and fails WCAG 1.4.11. */
 .form-dashboard-progress-fill {
   height: 100%;
   background-color: var(--color-gold);
