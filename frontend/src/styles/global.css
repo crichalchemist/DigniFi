@@ -634,8 +634,9 @@ a {
   z-index: 1000;
 }
 
-/* Over the pine scrim, muted (#5d6356) blends to ~2:1 — use cream (~4:1).
-   The spinner head is fill="currentColor", so color drives its paint. */
+/* Over the pine scrim, muted (#5d6356) blends to ~2:1 — cream reaches 2.59:1.
+   Acceptable: the overlay is aria-hidden, so the spinner is decorative and
+   exempt from the 3:1 non-text minimum. fill="currentColor" drives its paint. */
 .wizard-loading-overlay .loading-spinner {
   color: var(--color-cream);
 }
