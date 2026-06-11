@@ -370,6 +370,25 @@ a {
   outline-offset: 2px;
 }
 
+.form-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.form-input-icon {
+  position: absolute;
+  left: var(--space-3);
+  display: flex;
+  align-items: center;
+  color: var(--color-muted);
+  pointer-events: none;
+}
+
+.form-input.with-icon {
+  padding-left: 2.5rem;
+}
+
 .form-field.has-error .form-input {
   border-color: var(--color-rust);
   border-bottom-color: var(--color-rust);
