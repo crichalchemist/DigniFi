@@ -64,137 +64,146 @@ export function RegisterPage() {
 
   return (
     <div className="auth-page">
-      <div className="auth-card auth-card--wide">
-        <div className="auth-header">
-          <h1 className="auth-title">Create your account</h1>
-          <p className="auth-subtitle">Get started on your path to financial relief</p>
-        </div>
-
-        {displayError && (
-          <div className="wizard-error" role="alert">
-            <div>
-              <p className="error-title">Unable to create account</p>
-              <p className="error-message">{displayError}</p>
-              <button
-                className="error-dismiss"
-                onClick={() => {
-                  clearError();
-                  setLocalError(null);
-                }}
-              >
-                Dismiss
-              </button>
-            </div>
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} noValidate>
-          <FormField
-            label="Email address"
-            name="email"
-            type="email"
-            required
-            autoComplete="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
-
-          <FormField
-            label="Username"
-            name="username"
-            type="text"
-            required
-            autoComplete="username"
-            helpText="This will be used to sign in"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-          />
-
-          <div className="form-row">
-            <FormField
-              label="Password"
-              name="password"
-              type="password"
-              required
-              autoComplete="new-password"
-              helpText="At least 8 characters"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-
-            <FormField
-              label="Confirm password"
-              name="confirmPassword"
-              type="password"
-              required
-              autoComplete="new-password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-            />
-          </div>
-
-          {/* UPL Disclaimer — required by DB constraint */}
-          <div className="auth-checkbox-group">
-            <label className="auth-checkbox-label">
-              <input
-                type="checkbox"
-                checked={agreedToUpl}
-                onChange={(e) => setAgreedToUpl(e.target.checked)}
-                aria-required="true"
-                className="auth-checkbox"
-              />
-              <span>
-                <strong>Legal Information Acknowledgment</strong>
-                <span className="required-indicator" aria-label="required">
-                  {' '}
-                  *
-                </span>
-                <br />
-                <span className="auth-checkbox-text">{UPL_DISCLAIMER_TEXT}</span>
-              </span>
-            </label>
-          </div>
-
-          <div className="auth-checkbox-group">
-            <label className="auth-checkbox-label">
-              <input
-                type="checkbox"
-                checked={agreedToTerms}
-                onChange={(e) => setAgreedToTerms(e.target.checked)}
-                aria-required="true"
-                className="auth-checkbox"
-              />
-              <span>
-                I agree to the{' '}
-                <a href="/terms" className="auth-link" target="_blank" rel="noopener">
-                  Terms of Service
-                </a>
-                <span className="required-indicator" aria-label="required">
-                  {' '}
-                  *
-                </span>
-              </span>
-            </label>
-          </div>
-
-          <Button
-            type="submit"
-            variant="primary"
-            fullWidth
-            isLoading={isLoading}
-            loadingText="Creating your account..."
-            disabled={!formValid}
-          >
-            Create Account
-          </Button>
-        </form>
-
-        <p className="auth-footer-text">
-          Already have an account?{' '}
-          <Link to="/login" className="auth-link">
-            Sign in
-          </Link>
+      <div className="auth-aside">
+        <p className="auth-aside-brand">DigniFi</p>
+        <p className="auth-aside-statement">
+          Bankruptcy protection exists so people can start again. We help you understand and
+          complete the official forms — with dignity.
         </p>
+      </div>
+      <div className="auth-main">
+        <div className="auth-card auth-card--wide">
+          <div className="auth-header">
+            <h1 className="auth-title">Create your account</h1>
+            <p className="auth-subtitle">Get started on your path to financial relief</p>
+          </div>
+
+          {displayError && (
+            <div className="wizard-error" role="alert">
+              <div>
+                <p className="error-title">Unable to create account</p>
+                <p className="error-message">{displayError}</p>
+                <button
+                  className="error-dismiss"
+                  onClick={() => {
+                    clearError();
+                    setLocalError(null);
+                  }}
+                >
+                  Dismiss
+                </button>
+              </div>
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} noValidate>
+            <FormField
+              label="Email address"
+              name="email"
+              type="email"
+              required
+              autoComplete="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+
+            <FormField
+              label="Username"
+              name="username"
+              type="text"
+              required
+              autoComplete="username"
+              helpText="This will be used to sign in"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+            />
+
+            <div className="form-row">
+              <FormField
+                label="Password"
+                name="password"
+                type="password"
+                required
+                autoComplete="new-password"
+                helpText="At least 8 characters"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+
+              <FormField
+                label="Confirm password"
+                name="confirmPassword"
+                type="password"
+                required
+                autoComplete="new-password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+              />
+            </div>
+
+            {/* UPL Disclaimer — required by DB constraint */}
+            <div className="auth-checkbox-group">
+              <label className="auth-checkbox-label">
+                <input
+                  type="checkbox"
+                  checked={agreedToUpl}
+                  onChange={(e) => setAgreedToUpl(e.target.checked)}
+                  aria-required="true"
+                  className="auth-checkbox"
+                />
+                <span>
+                  <strong>Legal Information Acknowledgment</strong>
+                  <span className="required-indicator" aria-label="required">
+                    {' '}
+                    *
+                  </span>
+                  <br />
+                  <span className="auth-checkbox-text">{UPL_DISCLAIMER_TEXT}</span>
+                </span>
+              </label>
+            </div>
+
+            <div className="auth-checkbox-group">
+              <label className="auth-checkbox-label">
+                <input
+                  type="checkbox"
+                  checked={agreedToTerms}
+                  onChange={(e) => setAgreedToTerms(e.target.checked)}
+                  aria-required="true"
+                  className="auth-checkbox"
+                />
+                <span>
+                  I agree to the{' '}
+                  <a href="/terms" className="auth-link" target="_blank" rel="noopener">
+                    Terms of Service
+                  </a>
+                  <span className="required-indicator" aria-label="required">
+                    {' '}
+                    *
+                  </span>
+                </span>
+              </label>
+            </div>
+
+            <Button
+              type="submit"
+              variant="primary"
+              fullWidth
+              isLoading={isLoading}
+              loadingText="Creating your account..."
+              disabled={!formValid}
+            >
+              Create Account
+            </Button>
+          </form>
+
+          <p className="auth-footer-text">
+            Already have an account?{' '}
+            <Link to="/login" className="auth-link">
+              Sign in
+            </Link>
+          </p>
+        </div>
       </div>
     </div>
   );
