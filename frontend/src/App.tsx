@@ -19,7 +19,6 @@ import { FormDashboard } from './pages/FormDashboard';
 import { DocumentUploadPage } from './pages/DocumentUploadPage';
 import { FeeWaiverPage } from './pages/FeeWaiverPage';
 import { Component, type ReactNode, type ErrorInfo } from 'react';
-import './App.css';
 
 /** Catch render errors so the whole app doesn't go blank. */
 class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
