@@ -118,7 +118,10 @@ a {
   outline-offset: 2px;
 }
 
-/* On dark (pine) surfaces a pine ring vanishes — use gold (4.92:1 on pine) */
+/* On dark (pine) surfaces a pine ring vanishes — use gold (4.92:1 on pine).
+   wizard-header/landing-footer become pine surfaces in later plan tasks
+   (5/9); auth-aside is introduced in task 10. None contains focusable
+   elements before its surface turns pine. */
 .wizard-header :focus-visible,
 .auth-aside :focus-visible,
 .landing-footer :focus-visible {
@@ -825,22 +828,23 @@ a {
   height: 1px;
   overflow: hidden;
   z-index: 9999;
-  background: #1a1a1a;
-  color: white;
+  background: var(--color-pine);
+  color: var(--color-cream);
   padding: 1rem 1.5rem;
   font-weight: 600;
   font-size: 1rem;
   text-decoration: none;
-  border-radius: 0 0 0.375rem 0;
 }
 
+/* The pine box appearing at top-left is itself the focus indicator on light
+   pages; the gold ring keeps it distinct over the pine header band (4.92:1) */
 .skip-navigation:focus {
   position: fixed;
   left: 0;
   top: 0;
   width: auto;
   height: auto;
-  outline: 3px solid #2563eb;
+  outline: 2px solid var(--color-gold);
   outline-offset: 2px;
 }
 
