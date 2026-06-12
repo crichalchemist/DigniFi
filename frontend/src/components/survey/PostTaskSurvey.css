@@ -35,7 +35,6 @@
   color: var(--color-pine);
   margin-bottom: 0.5rem;
   font-size: 1rem;
-  font-family: var(--font-display);
 }
 
 .survey-scale {
@@ -75,7 +74,10 @@
 .survey-question textarea {
   width: 100%;
   padding: 0.75rem;
-  border: 1px solid var(--color-sand);
+  /* Match .form-input: the 2px pine base line is the input's visible
+     boundary (sand alone is 1.30:1 on white) */
+  border: 1px solid var(--color-line);
+  border-bottom: 2px solid var(--color-pine);
   border-radius: var(--radius);
   font-family: inherit;
   font-size: 0.95rem;
@@ -118,5 +120,8 @@
   background: var(--color-sand-tint);
   border-radius: var(--radius);
   color: var(--color-sage);
-  font-size: 1.1rem;
+  /* sage on sand-tint is 4.25:1 — below 4.5:1 for normal text. At 20px
+     bold this qualifies as WCAG large text (3:1 threshold) and passes. */
+  font-size: 1.25rem;
+  font-weight: 600;
 }
