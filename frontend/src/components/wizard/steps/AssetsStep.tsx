@@ -29,15 +29,9 @@ const ASSET_TYPES = [
   { value: 'other', label: 'Other Asset' },
 ];
 
-export function AssetsStep({
-  initialData,
-  onDataChange,
-  onValidationChange,
-}: AssetsStepProps) {
+export function AssetsStep({ initialData, onDataChange, onValidationChange }: AssetsStepProps) {
   const [assets, setAssets] = useState<Partial<AssetInfo>[]>(
-    initialData && initialData.length > 0
-      ? initialData
-      : [createEmptyAsset()]
+    initialData && initialData.length > 0 ? initialData : [createEmptyAsset()]
   );
 
   const { errors, isValid } = useMemo(() => {
@@ -49,9 +43,7 @@ export function AssetsStep({
 
       // Check if this asset has any data filled in
       const hasData =
-        asset.asset_type ||
-        asset.description ||
-        (asset.current_value && asset.current_value > 0);
+        asset.asset_type || asset.description || (asset.current_value && asset.current_value > 0);
 
       if (hasData) {
         hasValidAsset = true;
@@ -90,7 +82,8 @@ export function AssetsStep({
   useEffect(() => {
     onDataChange(assets);
     onValidationChange(isValid);
-  }, [assets, isValid]);
+    // both callbacks are useState setters in IntakeWizard — stable identities
+  }, [assets, isValid, onDataChange, onValidationChange]);
 
   function createEmptyAsset(): Partial<AssetInfo> {
     return {
@@ -115,11 +108,7 @@ export function AssetsStep({
     }
   };
 
-  const handleAssetChange = (
-    index: number,
-    field: keyof AssetInfo,
-    value: string | number
-  ) => {
+  const handleAssetChange = (index: number, field: keyof AssetInfo, value: string | number) => {
     const updatedAssets = [...assets];
 
     if (field === 'current_value' || field === 'amount_owed') {
@@ -147,12 +136,7 @@ export function AssetsStep({
     <div className="assets-step">
       {/* Explainer */}
       <div className="info-box">
-        <svg
-          className="info-icon"
-          viewBox="0 0 20 20"
-          fill="currentColor"
-          aria-hidden="true"
-        >
+        <svg className="info-icon" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
           <path
             fillRule="evenodd"
             d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
@@ -162,9 +146,9 @@ export function AssetsStep({
         <div>
           <h3 className="info-title">What are assets?</h3>
           <p className="info-message">
-            Assets are things you own that have value: your home, car, bank accounts,
-            retirement savings, and personal property. List all assets, even if you owe
-            money on them. If you don't have any assets, you can skip to the next step.
+            Assets are things you own that have value: your home, car, bank accounts, retirement
+            savings, and personal property. List all assets, even if you owe money on them. If you
+            don't have any assets, you can skip to the next step.
           </p>
         </div>
       </div>
@@ -175,7 +159,8 @@ export function AssetsStep({
           <div className="asset-card-header">
             <h3 className="section-title">
               Asset {index + 1}
-              {asset.asset_type && ` - ${ASSET_TYPES.find(t => t.value === asset.asset_type)?.label}`}
+              {asset.asset_type &&
+                ` - ${ASSET_TYPES.find((t) => t.value === asset.asset_type)?.label}`}
             </h3>
             {assets.length > 1 && (
               <button
@@ -253,8 +238,7 @@ export function AssetsStep({
           </div>
 
           {/* Account number for bank/retirement accounts */}
-          {(asset.asset_type === 'bank_account' ||
-            asset.asset_type === 'retirement_account') && (
+          {(asset.asset_type === 'bank_account' || asset.asset_type === 'retirement_account') && (
             <FormField
               label="Account Number (Last 4 Digits)"
               name={`account_number_${index}`}
@@ -271,7 +255,8 @@ export function AssetsStep({
             <div className="equity-display">
               <span className="equity-label">Equity (Value - Amount Owed):</span>
               <span className="equity-value">
-                ${calculateEquity(asset).toLocaleString('en-US', {
+                $
+                {calculateEquity(asset).toLocaleString('en-US', {
                   minimumFractionDigits: 2,
                   maximumFractionDigits: 2,
                 })}
@@ -287,12 +272,7 @@ export function AssetsStep({
           variant="outline"
           onClick={handleAddAsset}
           icon={
-            <svg
-              viewBox="0 0 20 20"
-              fill="currentColor"
-              className="icon"
-              aria-hidden="true"
-            >
+            <svg viewBox="0 0 20 20" fill="currentColor" className="icon" aria-hidden="true">
               <path
                 fillRule="evenodd"
                 d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"
@@ -308,11 +288,11 @@ export function AssetsStep({
       <UPLDisclaimer text={UPL_EXEMPTION_DISCLAIMER} variant="inline" />
 
       {/* No Assets Option */}
-      <div className="info-box info-box--secondary">
+      <div className="info-box">
         <p>
-          <strong>Don't have any assets?</strong> That's okay. You can leave this section
-          blank and continue to the next step. Many people filing for bankruptcy don't
-          have significant assets.
+          <strong>Don't have any assets?</strong> That's okay. You can leave this section blank and
+          continue to the next step. Many people filing for bankruptcy don't have significant
+          assets.
         </p>
       </div>
     </div>

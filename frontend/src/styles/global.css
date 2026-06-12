@@ -801,6 +801,8 @@ a {
   flex-direction: column;
   justify-content: center;
   padding: var(--space-8);
+  /* Gold panel separator — decorative structural border, same WCAG 1.4.11
+     exemption as .auth-card border-top (non-interactive container, 2.25:1) */
   border-right: 6px solid var(--color-gold);
 }
 
@@ -1116,6 +1118,9 @@ a {
   gap: var(--space-3);
 }
 
+/* Gold left stripe — decorative status accent on a non-interactive card
+   container (WCAG 1.4.11 exemption, same rationale as .auth-card border-top);
+   status is also conveyed by the always-rendered card status text */
 .form-card--generated,
 .form-card--downloaded {
   border-left-color: var(--color-gold);
@@ -1333,7 +1338,7 @@ a {
 .draft-badge {
   font-family: var(--font-body);
   font-weight: 500;
-  font-size: 0.75rem;
+  font-size: var(--text-caption);
   background-color: var(--color-sand-tint);
   color: var(--color-pine);
   border: 1px solid var(--color-gold);
