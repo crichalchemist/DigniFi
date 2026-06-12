@@ -192,18 +192,7 @@ export function DebtsStep({ initialData, onDataChange, onValidationChange }: Deb
               Amount Owed {index + 1}
               {debt.creditor_name && ` - ${debt.creditor_name}`}
               {debt.is_draft && (
-                <span
-                  aria-label="Pre-filled from document scan"
-                  style={{
-                    fontSize: '0.75rem',
-                    background: '#dbeafe',
-                    color: '#1d4ed8',
-                    borderRadius: 4,
-                    padding: '0 6px',
-                    marginLeft: 8,
-                    verticalAlign: 'middle',
-                  }}
-                >
+                <span aria-label="Pre-filled from document scan" className="draft-badge">
                   From scan
                 </span>
               )}

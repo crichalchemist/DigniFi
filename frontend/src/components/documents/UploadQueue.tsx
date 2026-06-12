@@ -57,9 +57,9 @@ export function UploadQueue({ items, onAllComplete }: UploadQueueProps) {
   };
 
   return (
-    <ul aria-label="Upload queue" style={{ listStyle: 'none', padding: 0 }}>
+    <ul aria-label="Upload queue" className="upload-queue">
       {items.map((item) => (
-        <li key={item.docId} style={{ padding: '0.5rem 0', display: 'flex', gap: '1rem' }}>
+        <li key={item.docId} className="upload-queue-item">
           <span>{item.filename}</span>
           <span aria-live="polite">{statusLabel(item.docId)}</span>
         </li>

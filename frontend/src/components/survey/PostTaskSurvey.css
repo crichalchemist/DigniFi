@@ -4,20 +4,20 @@
   max-width: 640px;
   margin: 2rem auto;
   padding: 2rem;
-  background: #fff;
-  border-radius: 8px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  background: var(--color-white);
+  border-radius: var(--radius);
 }
 
 .survey-title {
   font-size: 1.5rem;
   font-weight: 600;
-  color: #1a1a1a;
+  color: var(--color-pine);
   margin-bottom: 0.5rem;
+  font-family: var(--font-display);
 }
 
 .survey-intro {
-  color: #555;
+  color: var(--color-muted);
   margin-bottom: 1.5rem;
   font-size: 0.95rem;
 }
@@ -32,7 +32,7 @@
 .survey-question label {
   display: block;
   font-weight: 500;
-  color: #1a1a1a;
+  color: var(--color-pine);
   margin-bottom: 0.5rem;
   font-size: 1rem;
 }
@@ -53,40 +53,42 @@
 .survey-scale-option input[type='radio'] {
   width: 1.25rem;
   height: 1.25rem;
-  accent-color: #2563eb;
+  accent-color: var(--color-pine);
   cursor: pointer;
 }
 
 .survey-scale-label {
   font-size: 0.875rem;
-  color: #555;
+  color: var(--color-muted);
   margin-top: 0.25rem;
 }
 
 .survey-scale-anchors {
   display: flex;
   justify-content: space-between;
-  font-size: 0.8rem;
-  color: #888;
+  font-size: var(--text-caption);
+  color: var(--color-muted);
   max-width: 200px;
 }
 
 .survey-question textarea {
   width: 100%;
   padding: 0.75rem;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
+  /* Match .form-input: the 2px pine base line is the input's visible
+     boundary (sand alone is 1.30:1 on white) */
+  border: 1px solid var(--color-line);
+  border-bottom: 2px solid var(--color-pine);
+  border-radius: var(--radius);
   font-family: inherit;
   font-size: 0.95rem;
   line-height: 1.5;
   resize: vertical;
-  transition: border-color 0.15s;
+  transition: border-color var(--transition-fast);
 }
 
 .survey-question textarea:focus {
   outline: none;
-  border-color: #2563eb;
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+  border-color: var(--color-pine);
 }
 
 .survey-actions {
@@ -99,7 +101,7 @@
 .survey-skip {
   background: none;
   border: none;
-  color: #888;
+  color: var(--color-muted);
   font-size: 0.9rem;
   cursor: pointer;
   text-decoration: underline;
@@ -107,7 +109,7 @@
 }
 
 .survey-skip:hover {
-  color: #555;
+  color: var(--color-body);
 }
 
 .survey-thanks {
@@ -115,8 +117,11 @@
   margin: 2rem auto;
   padding: 2rem;
   text-align: center;
-  background: #f0fdf4;
-  border-radius: 8px;
-  color: #166534;
-  font-size: 1.1rem;
+  background: var(--color-sand-tint);
+  border-radius: var(--radius);
+  color: var(--color-sage);
+  /* sage on sand-tint is 4.25:1 — below 4.5:1 for normal text. At 20px
+     bold this qualifies as WCAG large text (3:1 threshold) and passes. */
+  font-size: 1.25rem;
+  font-weight: 600;
 }

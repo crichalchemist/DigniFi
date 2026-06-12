@@ -315,7 +315,7 @@ export function DebtorInfoStep({
         {/* Joint filing co-debtor fields (conditional) */}
         {formData.filing_type === 'joint' && (
           <>
-            <div className="info-box info-box--secondary">
+            <div className="info-box">
               <p>For joint filings, please provide your spouse's information below.</p>
             </div>
 

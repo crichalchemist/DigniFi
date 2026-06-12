@@ -39,63 +39,72 @@ export function LoginPage() {
 
   return (
     <div className="auth-page">
-      <div className="auth-card">
-        <div className="auth-header">
-          <h1 className="auth-title">Welcome back</h1>
-          <p className="auth-subtitle">Sign in to continue your filing process</p>
-        </div>
-
-        {error && (
-          <div className="wizard-error" role="alert">
-            <div>
-              <p className="error-title">Unable to sign in</p>
-              <p className="error-message">{error}</p>
-              <button className="error-dismiss" onClick={clearError}>
-                Dismiss
-              </button>
-            </div>
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} noValidate>
-          <FormField
-            label="Username or email"
-            name="username"
-            type="text"
-            required
-            autoComplete="username"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-          />
-
-          <FormField
-            label="Password"
-            name="password"
-            type="password"
-            required
-            autoComplete="current-password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
-
-          <Button
-            type="submit"
-            variant="primary"
-            fullWidth
-            isLoading={isLoading}
-            loadingText="Signing in..."
-            disabled={!username || !password}
-          >
-            Sign In
-          </Button>
-        </form>
-
-        <p className="auth-footer-text">
-          Don't have an account?{' '}
-          <Link to="/register" className="auth-link">
-            Create one here
-          </Link>
+      <div className="auth-aside">
+        <p className="auth-aside-brand">DigniFi</p>
+        <p className="auth-aside-statement">
+          Bankruptcy protection exists so people can start again. We help you understand and
+          complete the official forms — with dignity.
         </p>
+      </div>
+      <div className="auth-main">
+        <div className="auth-card">
+          <div className="auth-header">
+            <h1 className="auth-title">Welcome back</h1>
+            <p className="auth-subtitle">Sign in to continue your filing process</p>
+          </div>
+
+          {error && (
+            <div className="wizard-error" role="alert">
+              <div>
+                <p className="error-title">Unable to sign in</p>
+                <p className="error-message">{error}</p>
+                <button className="error-dismiss" onClick={clearError}>
+                  Dismiss
+                </button>
+              </div>
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} noValidate>
+            <FormField
+              label="Username or email"
+              name="username"
+              type="text"
+              required
+              autoComplete="username"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+            />
+
+            <FormField
+              label="Password"
+              name="password"
+              type="password"
+              required
+              autoComplete="current-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+
+            <Button
+              type="submit"
+              variant="primary"
+              fullWidth
+              isLoading={isLoading}
+              loadingText="Signing in..."
+              disabled={!username || !password}
+            >
+              Sign In
+            </Button>
+          </form>
+
+          <p className="auth-footer-text">
+            Don't have an account?{' '}
+            <Link to="/register" className="auth-link">
+              Create one here
+            </Link>
+          </p>
+        </div>
       </div>
     </div>
   );

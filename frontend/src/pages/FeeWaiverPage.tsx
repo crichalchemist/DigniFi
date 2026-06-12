@@ -63,8 +63,11 @@ export function FeeWaiverPage() {
 
       <form onSubmit={handleSubmit} noValidate>
         <div className="form-field">
-          <label htmlFor="household-size">Household Size</label>
+          <label className="form-label" htmlFor="household-size">
+            Household Size
+          </label>
           <input
+            className="form-input"
             id="household-size"
             type="number"
             min={1}
@@ -75,8 +78,11 @@ export function FeeWaiverPage() {
         </div>
 
         <div className="form-field">
-          <label htmlFor="monthly-income">Total Monthly Income</label>
+          <label className="form-label" htmlFor="monthly-income">
+            Total Monthly Income
+          </label>
           <input
+            className="form-input"
             id="monthly-income"
             type="number"
             min={0}
@@ -88,8 +94,11 @@ export function FeeWaiverPage() {
         </div>
 
         <div className="form-field">
-          <label htmlFor="monthly-expenses">Total Monthly Expenses</label>
+          <label className="form-label" htmlFor="monthly-expenses">
+            Total Monthly Expenses
+          </label>
           <input
+            className="form-input"
             id="monthly-expenses"
             type="number"
             min={0}
@@ -101,7 +110,7 @@ export function FeeWaiverPage() {
         </div>
 
         <div className="form-field">
-          <label>
+          <label className="fee-waiver-checkbox">
             <input
               type="checkbox"
               checked={receivesPublicBenefits}
@@ -112,7 +121,7 @@ export function FeeWaiverPage() {
         </div>
 
         <div className="form-field">
-          <label>
+          <label className="fee-waiver-checkbox">
             <input
               type="checkbox"
               checked={cannotPayFull}
@@ -123,7 +132,7 @@ export function FeeWaiverPage() {
         </div>
 
         <div className="form-field">
-          <label>
+          <label className="fee-waiver-checkbox">
             <input
               type="checkbox"
               checked={cannotPayInstallments}
