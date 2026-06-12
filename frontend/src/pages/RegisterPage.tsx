@@ -67,8 +67,8 @@ export function RegisterPage() {
       <div className="auth-aside">
         <p className="auth-aside-brand">DigniFi</p>
         <p className="auth-aside-statement">
-          Bankruptcy protection exists so people can start again. We help you understand and
-          complete the official forms — with dignity.
+          Bankruptcy protection exists so people can start again. We help you complete the official
+          forms — with dignity.
         </p>
       </div>
       <div className="auth-main">
