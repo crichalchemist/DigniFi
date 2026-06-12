@@ -24,10 +24,11 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-# pymupdf (PDF text extraction) needs these shared libs
+# pymupdf needs the shared libs; opendataloader-pdf shells out to `java`
 RUN apt-get update && apt-get install -y --no-install-recommends \
         libglib2.0-0 \
         libgl1 \
+        default-jre-headless \
     && rm -rf /var/lib/apt/lists/*
 
 COPY backend/requirements/ ./requirements/

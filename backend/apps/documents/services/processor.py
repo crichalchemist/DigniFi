@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 import tempfile
 from dataclasses import dataclass, field
@@ -12,6 +13,8 @@ except ImportError:
 from apps.documents.services.providers.base import BaseOCRProvider
 from apps.documents.services.providers.prompts.image_extraction import build_image_extraction_prompt
 from apps.documents.services.providers.prompts.text_extraction import build_text_extraction_prompt
+
+logger = logging.getLogger(__name__)
 
 _MIN_TEXT_LENGTH = 30
 _MAX_SCANNED_PAGES = 3
@@ -65,17 +68,31 @@ class DocumentProcessor:
         return self._parse_result(raw, doc_type)
 
     def _process_pdf(self, pdf_bytes: bytes, doc_type: str) -> ExtractionResult:
+        text = ""
         with tempfile.TemporaryDirectory() as tmp_in, tempfile.TemporaryDirectory() as tmp_out:
             pdf_path = os.path.join(tmp_in, "document.pdf")
             with open(pdf_path, "wb") as f:
                 f.write(pdf_bytes)
 
-            opendataloader_pdf.convert(
-                input_path=[pdf_path],
-                output_dir=tmp_out,
-                format="markdown",
-            )
-            text = _read_odl_output(tmp_out)
+            # opendataloader-pdf shells out to `java`; if the JRE (or the
+            # package itself) is missing, degrade to the vision path rather
+            # than failing the whole upload.
+            if opendataloader_pdf is not None:
+                try:
+                    opendataloader_pdf.convert(
+                        input_path=[pdf_path],
+                        output_dir=tmp_out,
+                        format="markdown",
+                    )
+                    text = _read_odl_output(tmp_out)
+                except Exception as exc:
+                    logger.warning(
+                        "opendataloader-pdf text extraction failed (%s); "
+                        "falling back to vision OCR",
+                        exc,
+                    )
+            else:
+                logger.warning("opendataloader-pdf not installed; using vision OCR for PDF")
 
         if len(text.strip()) >= _MIN_TEXT_LENGTH:
             prompt = build_text_extraction_prompt(doc_type, text)
