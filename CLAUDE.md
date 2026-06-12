@@ -52,6 +52,7 @@ Copy `.env.example` to `.env`. Required vars: `POSTGRES_DB`, `POSTGRES_USER`, `P
 - **Compose needs migrate** — backend command must run `python manage.py migrate` before `runserver`; added `sh -c "python manage.py migrate && ..."` to docker-compose.yml
 - **District fixture required** — `seed_demo_data` requires ILND data first: `python manage.py loaddata ilnd_2025_data`
 - **llama.cpp image is a mutable tag** — `ghcr.io/ggml-org/llama.cpp:server` moved the binary to `/app/llama-server`; `scripts/pull_model.sh` tries both paths. If the llm service exits 127, the path moved again
+- **opendataloader-pdf needs a JRE** — it shells out to `java`; both Dockerfiles install `default-jre-headless`. Without it every PDF upload errored (tests mock the module, so CI can't catch it). `DocumentProcessor` now degrades to the pymupdf→vision path if Java/the package is missing
 - **CI ruff is pinned** — `ci.yml` installs `ruff==0.8.5` to match the backend container; unpinned ruff broke CI when new rules shipped
 - **SSN on forms** — Form 101's `Debtor1.SSNum` PDF field is 4 chars (last-4 only); the full SSN appears exclusively on Form 121. pypdf truncates from the front, so writing a full SSN there shows the wrong digits
 - **Means test units** — CMI is monthly, the Census median is annual; `MeansTest.calculate()` annualizes CMI ×12 per § 707(b)(7) before comparing (and for the 60% fee-waiver heuristic). The original bug passed everyone; calculator tests masked it with annual-scale values in monthly slots
