@@ -65,3 +65,35 @@ def test_pdf_with_text_routes_to_text_path(processor, mock_provider):
 
     call_args = mock_provider.extract.call_args
     assert call_args[0][0] == b""
+
+
+def test_pdf_falls_back_to_vision_when_java_missing(processor, mock_provider):
+    """A missing JRE (opendataloader-pdf shells out to `java`) must degrade to
+    the vision path, not fail the upload — prod images without Java would
+    otherwise reject every PDF."""
+    fake_page_image = b"\xff\xd8fake-jpeg"
+    with patch("apps.documents.services.processor.opendataloader_pdf") as mock_odl:
+        mock_odl.convert.side_effect = FileNotFoundError("java not found")
+        with patch(
+            "apps.documents.services.processor._pdf_to_image_bytes",
+            return_value=fake_page_image,
+        ):
+            result = processor.process(b"%PDF-1.4", "application/pdf", DocumentType.CREDITOR_BILL)
+
+    assert result.error == ""
+    call_args = mock_provider.extract.call_args
+    assert call_args[0][0] == fake_page_image
+
+
+def test_pdf_falls_back_to_vision_when_opendataloader_not_installed(processor, mock_provider):
+    fake_page_image = b"\xff\xd8fake-jpeg"
+    with patch("apps.documents.services.processor.opendataloader_pdf", None):
+        with patch(
+            "apps.documents.services.processor._pdf_to_image_bytes",
+            return_value=fake_page_image,
+        ):
+            result = processor.process(b"%PDF-1.4", "application/pdf", DocumentType.CREDITOR_BILL)
+
+    assert result.error == ""
+    call_args = mock_provider.extract.call_args
+    assert call_args[0][0] == fake_page_image

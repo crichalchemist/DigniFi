@@ -2,11 +2,12 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Install system dependencies
+# Install system dependencies (default-jre-headless: opendataloader-pdf shells out to `java`)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     postgresql-client \
     curl \
     ca-certificates \
+    default-jre-headless \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies
