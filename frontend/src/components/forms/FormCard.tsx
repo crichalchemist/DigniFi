@@ -42,7 +42,7 @@ export function FormCard({
   };
 
   return (
-    <article className="form-card" aria-label={metadata.label}>
+    <article className={`form-card form-card--${status}`} aria-label={metadata.label}>
       <div className="form-card-header">
         <div className="form-card-info">
           <h3 className="form-card-title">{metadata.label}</h3>
