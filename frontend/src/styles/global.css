@@ -1355,3 +1355,32 @@ a {
   background-color: var(--color-sand-tint);
   padding: var(--space-4);
 }
+
+/* ============================================================================
+   Fee Waiver
+   ============================================================================ */
+
+.fee-waiver-page {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: var(--space-6) var(--space-4);
+}
+
+.fee-waiver-error {
+  color: var(--color-rust);
+  margin-bottom: var(--space-4);
+  font-size: var(--text-caption);
+}
+
+.fee-waiver-checkbox {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  color: var(--color-body);
+  cursor: pointer;
+}
+
+.fee-waiver-checkbox input {
+  accent-color: var(--color-pine);
+  margin-top: 0.2em;
+}
