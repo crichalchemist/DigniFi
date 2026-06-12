@@ -85,7 +85,7 @@ All values become CSS custom properties on `:root`. Components consume tokens on
 | **Auth (login/register)**      | Split: pine panel with mission statement in cream; paper panel with the quiet form.                                                                                                         |
 | **Wizard (6 steps)**           | Calm core: pine header + gold progress stripe, paper surface, single centered column (~640px), generous spacing, one h1 per step phrased as plain language.                                 |
 | **Form dashboard**             | Calm core: spine-status cards in a grid, gold primary "Generate All".                                                                                                                       |
-| **Documents/upload**           | Calm core; drop-zone gets a 2px dashed gold border — the one accent moment.                                                                                                                 |
+| **Documents/upload**           | Calm core; drop-zone gets a 2px dashed pine border (gold fails WCAG 1.4.11 non-text contrast on light surfaces).                                                                            |
 | **Fee waiver / survey / misc** | Calm core defaults.                                                                                                                                                                         |
 
 ## 5 · Implementation approach & cleanup

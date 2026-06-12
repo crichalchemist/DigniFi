@@ -31,7 +31,13 @@ export function FileDropZone({ onFiles, disabled }: FileDropZoneProps) {
       onDrop={handleDrop}
       onDragOver={(e) => e.preventDefault()}
       onClick={() => !disabled && inputRef.current?.click()}
-      onKeyDown={(e) => e.key === 'Enter' && !disabled && inputRef.current?.click()}
+      onKeyDown={(e) => {
+        if (disabled) return;
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          inputRef.current?.click();
+        }
+      }}
       className="file-drop-zone"
     >
       <p>Drop PDF, JPEG, or PNG files here</p>

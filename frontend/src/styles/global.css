@@ -1355,7 +1355,7 @@ a {
 }
 
 .error-boundary-detail {
-  font-size: 0.8rem;
+  font-size: var(--text-caption);
   overflow: auto;
   background-color: var(--color-sand-tint);
   padding: var(--space-4);

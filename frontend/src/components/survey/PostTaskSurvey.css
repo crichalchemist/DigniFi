@@ -86,8 +86,9 @@
   transition: border-color var(--transition-fast);
 }
 
+/* No `outline: none` here — the global *:focus-visible rules supply the
+   keyboard focus ring (WCAG 2.4.7); the border change alone is not enough. */
 .survey-question textarea:focus {
-  outline: none;
   border-color: var(--color-pine);
 }
 

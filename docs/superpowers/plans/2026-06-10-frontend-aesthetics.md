@@ -1440,7 +1440,7 @@ git commit -m "feat(frontend): split auth layout — pine mission panel, paper f
 }
 
 .file-drop-zone {
-  border: 2px dashed var(--color-gold);
+  border: 2px dashed var(--color-pine);
   border-radius: var(--radius);
   background-color: var(--color-white);
   padding: var(--space-6);
