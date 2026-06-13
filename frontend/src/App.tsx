@@ -14,6 +14,7 @@ import { SkipNavigation } from './components/common';
 import { LandingPage } from './pages/LandingPage';
 import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
+import { TermsPage } from './pages/TermsPage';
 import { IntakeWizard } from './pages/IntakeWizard';
 import { FormDashboard } from './pages/FormDashboard';
 import { DocumentUploadPage } from './pages/DocumentUploadPage';
@@ -69,6 +70,7 @@ function App() {
               <Route path="/" element={<LandingPage />} />
               <Route path="/login" element={<LoginPage />} />
               <Route path="/register" element={<RegisterPage />} />
+              <Route path="/terms" element={<TermsPage />} />
               <Route element={<ProtectedRoute />}>
                 <Route element={<IntakeLayout />}>
                   <Route path="/intake" element={<IntakeWizard />} />
