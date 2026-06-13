@@ -214,6 +214,29 @@ a {
   margin: 0;
 }
 
+.wizard-save-status {
+  font-size: var(--text-caption);
+  color: var(--color-muted);
+  margin: var(--space-2) 0 0;
+  min-height: 1.25rem; /* reserve space so the footer doesn't jump between states */
+}
+
+.wizard-save-status--saving {
+  color: var(--color-muted);
+}
+
+.wizard-save-status--saved {
+  color: var(--color-pine);
+}
+
+.wizard-save-status--error {
+  color: var(--color-rust);
+}
+
+.wizard-save-status--idle {
+  color: var(--color-muted);
+}
+
 /* ============================================================================
    Progress Indicator
    ============================================================================ */
