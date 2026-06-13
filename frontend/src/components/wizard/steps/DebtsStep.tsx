@@ -13,6 +13,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { FormField, FormSelect, FormTextarea, Button } from '../../common';
 import { UPLDisclaimer } from '../../compliance';
 import { UPL_EXEMPTION_DISCLAIMER } from '../../../constants/upl';
+import { parseAmount } from '../../../utils/parseAmount';
 import type { DebtInfo } from '../../../types/api';
 
 interface DebtsStepProps {
@@ -115,8 +116,8 @@ export function DebtsStep({ initialData, onDataChange, onValidationChange }: Deb
       debt_type: undefined,
       creditor_name: '',
       account_number: '',
-      amount_owed: 0,
-      monthly_payment: 0,
+      amount_owed: undefined,
+      monthly_payment: undefined,
       is_secured: false,
       collateral_description: '',
     };
@@ -141,7 +142,7 @@ export function DebtsStep({ initialData, onDataChange, onValidationChange }: Deb
     if (field === 'amount_owed' || field === 'monthly_payment') {
       updatedDebts[index] = {
         ...updatedDebts[index],
-        [field]: Number(value) || 0,
+        [field]: parseAmount(String(value)),
       };
     } else if (field === 'debt_type') {
       // Auto-derive is_secured and priority from category metadata
@@ -226,7 +227,7 @@ export function DebtsStep({ initialData, onDataChange, onValidationChange }: Deb
             label="What kind of amount owed is this?"
             name={`debt_type_${index}`}
             options={DEBT_CATEGORY_OPTIONS}
-            value={debt.debt_type || ''}
+            value={debt.debt_type ?? ''}
             onChange={(value) => handleDebtChange(index, 'debt_type', value)}
             error={errors[index]?.debt_type}
             required
@@ -238,7 +239,7 @@ export function DebtsStep({ initialData, onDataChange, onValidationChange }: Deb
               label="Creditor Name"
               name={`creditor_name_${index}`}
               type="text"
-              value={debt.creditor_name || ''}
+              value={debt.creditor_name ?? ''}
               onChange={(e) => handleDebtChange(index, 'creditor_name', e.target.value)}
               error={errors[index]?.creditor_name}
               required
@@ -250,7 +251,7 @@ export function DebtsStep({ initialData, onDataChange, onValidationChange }: Deb
               label="Account Number (Last 4 Digits)"
               name={`account_number_${index}`}
               type="text"
-              value={debt.account_number || ''}
+              value={debt.account_number ?? ''}
               onChange={(e) => handleDebtChange(index, 'account_number', e.target.value)}
               helpText="Optional - helps identify the account. Your account number is encrypted."
               placeholder="XXXX-1234"
@@ -264,7 +265,7 @@ export function DebtsStep({ initialData, onDataChange, onValidationChange }: Deb
               type="number"
               min="0"
               step="0.01"
-              value={debt.amount_owed || ''}
+              value={debt.amount_owed ?? ''}
               onChange={(e) => handleDebtChange(index, 'amount_owed', e.target.value)}
               error={errors[index]?.amount_owed}
               required
@@ -278,7 +279,7 @@ export function DebtsStep({ initialData, onDataChange, onValidationChange }: Deb
               type="number"
               min="0"
               step="0.01"
-              value={debt.monthly_payment || ''}
+              value={debt.monthly_payment ?? ''}
               onChange={(e) => handleDebtChange(index, 'monthly_payment', e.target.value)}
               error={errors[index]?.monthly_payment}
               helpText="Your regular monthly payment (if any)"
@@ -291,7 +292,7 @@ export function DebtsStep({ initialData, onDataChange, onValidationChange }: Deb
             <FormTextarea
               label="What secures this amount owed?"
               name={`collateral_description_${index}`}
-              value={debt.collateral_description || ''}
+              value={debt.collateral_description ?? ''}
               onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
                 handleDebtChange(index, 'collateral_description', e.target.value)
               }

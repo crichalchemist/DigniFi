@@ -12,6 +12,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { FormField, FormSelect, Button } from '../../common';
 import { UPLDisclaimer } from '../../compliance';
 import { UPL_EXEMPTION_DISCLAIMER } from '../../../constants/upl';
+import { parseAmount } from '../../../utils/parseAmount';
 import type { AssetInfo } from '../../../types/api';
 
 interface AssetsStepProps {
@@ -89,8 +90,8 @@ export function AssetsStep({ initialData, onDataChange, onValidationChange }: As
     return {
       asset_type: undefined,
       description: '',
-      current_value: 0,
-      amount_owed: 0,
+      current_value: undefined,
+      amount_owed: undefined,
       account_number: '',
     };
   }
@@ -114,7 +115,7 @@ export function AssetsStep({ initialData, onDataChange, onValidationChange }: As
     if (field === 'current_value' || field === 'amount_owed') {
       updatedAssets[index] = {
         ...updatedAssets[index],
-        [field]: Number(value) || 0,
+        [field]: parseAmount(String(value)),
       };
     } else {
       updatedAssets[index] = {
@@ -190,7 +191,7 @@ export function AssetsStep({ initialData, onDataChange, onValidationChange }: As
             label="Asset Type"
             name={`asset_type_${index}`}
             options={ASSET_TYPES}
-            value={asset.asset_type || ''}
+            value={asset.asset_type ?? ''}
             onChange={(value) => handleAssetChange(index, 'asset_type', value)}
             error={errors[index]?.asset_type}
             required
@@ -200,7 +201,7 @@ export function AssetsStep({ initialData, onDataChange, onValidationChange }: As
             label="Description"
             name={`description_${index}`}
             type="text"
-            value={asset.description || ''}
+            value={asset.description ?? ''}
             onChange={(e) => handleAssetChange(index, 'description', e.target.value)}
             error={errors[index]?.description}
             required
@@ -215,7 +216,7 @@ export function AssetsStep({ initialData, onDataChange, onValidationChange }: As
               type="number"
               min="0"
               step="0.01"
-              value={asset.current_value || ''}
+              value={asset.current_value ?? ''}
               onChange={(e) => handleAssetChange(index, 'current_value', e.target.value)}
               error={errors[index]?.current_value}
               required
@@ -229,7 +230,7 @@ export function AssetsStep({ initialData, onDataChange, onValidationChange }: As
               type="number"
               min="0"
               step="0.01"
-              value={asset.amount_owed || ''}
+              value={asset.amount_owed ?? ''}
               onChange={(e) => handleAssetChange(index, 'amount_owed', e.target.value)}
               error={errors[index]?.amount_owed}
               helpText="Loan balance or lien amount (if any)"
@@ -243,7 +244,7 @@ export function AssetsStep({ initialData, onDataChange, onValidationChange }: As
               label="Account Number (Last 4 Digits)"
               name={`account_number_${index}`}
               type="text"
-              value={asset.account_number || ''}
+              value={asset.account_number ?? ''}
               onChange={(e) => handleAssetChange(index, 'account_number', e.target.value)}
               helpText="Optional - helps identify the account. Your account number is encrypted."
               placeholder="XXXX-1234"
@@ -290,9 +291,9 @@ export function AssetsStep({ initialData, onDataChange, onValidationChange }: As
       {/* No Assets Option */}
       <div className="info-box">
         <p>
-          <strong>Don't have any assets?</strong> That's okay. You can leave this section blank and
-          continue to the next step. Many people filing for bankruptcy don't have significant
-          assets.
+          <strong>Don't have any assets?</strong> That's okay. Many Americans filing for bankruptcy
+          don't have significant assets — it is not a failure. You can leave this section blank and
+          continue to the next step.
         </p>
       </div>
     </div>

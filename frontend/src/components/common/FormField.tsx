@@ -43,12 +43,6 @@ export function FormField({
         )}
       </label>
 
-      {helpText && (
-        <p id={helpTextId} className="form-help-text">
-          {helpText}
-        </p>
-      )}
-
       <div className="form-input-wrapper">
         {icon && <div className="form-input-icon">{icon}</div>}
         <input
@@ -56,11 +50,7 @@ export function FormField({
           name={name}
           className={`form-input ${icon ? 'with-icon' : ''}`}
           aria-describedby={
-            error
-              ? `${errorId} ${helpText ? helpTextId : ''}`
-              : helpText
-              ? helpTextId
-              : undefined
+            error ? `${errorId} ${helpText ? helpTextId : ''}` : helpText ? helpTextId : undefined
           }
           aria-invalid={error ? 'true' : 'false'}
           aria-required={required}
@@ -68,13 +58,16 @@ export function FormField({
         />
       </div>
 
+      {/* helpText renders below the control so a missing/multi-line hint
+          never shifts the input off the row's shared baseline */}
+      {helpText && (
+        <p id={helpTextId} className="form-help-text">
+          {helpText}
+        </p>
+      )}
+
       {error && (
-        <p
-          id={errorId}
-          className="form-error"
-          role="alert"
-          aria-live="assertive"
-        >
+        <p id={errorId} className="form-error" role="alert" aria-live="assertive">
           {error}
         </p>
       )}
@@ -86,8 +79,7 @@ export function FormField({
 // Textarea variant
 // ============================================================================
 
-interface FormTextareaProps
-  extends TextareaHTMLAttributes<HTMLTextAreaElement> {
+interface FormTextareaProps extends TextareaHTMLAttributes<HTMLTextAreaElement> {
   label: string;
   name: string;
   error?: string;
@@ -120,36 +112,27 @@ export function FormTextarea({
         )}
       </label>
 
-      {helpText && (
-        <p id={helpTextId} className="form-help-text">
-          {helpText}
-        </p>
-      )}
-
       <textarea
         id={inputId}
         name={name}
         rows={rows}
         className="form-input"
         aria-describedby={
-          error
-            ? `${errorId} ${helpText ? helpTextId : ''}`
-            : helpText
-            ? helpTextId
-            : undefined
+          error ? `${errorId} ${helpText ? helpTextId : ''}` : helpText ? helpTextId : undefined
         }
         aria-invalid={error ? 'true' : 'false'}
         aria-required={required}
         {...textareaProps}
       />
 
+      {helpText && (
+        <p id={helpTextId} className="form-help-text">
+          {helpText}
+        </p>
+      )}
+
       {error && (
-        <p
-          id={errorId}
-          className="form-error"
-          role="alert"
-          aria-live="assertive"
-        >
+        <p id={errorId} className="form-error" role="alert" aria-live="assertive">
           {error}
         </p>
       )}
@@ -204,12 +187,6 @@ export function FormSelect({
         )}
       </label>
 
-      {helpText && (
-        <p id={helpTextId} className="form-help-text">
-          {helpText}
-        </p>
-      )}
-
       <select
         id={inputId}
         name={name}
@@ -217,11 +194,7 @@ export function FormSelect({
         onChange={(e) => onChange?.(e.target.value)}
         className="form-input"
         aria-describedby={
-          error
-            ? `${errorId} ${helpText ? helpTextId : ''}`
-            : helpText
-            ? helpTextId
-            : undefined
+          error ? `${errorId} ${helpText ? helpTextId : ''}` : helpText ? helpTextId : undefined
         }
         aria-invalid={error ? 'true' : 'false'}
         aria-required={required}
@@ -234,13 +207,14 @@ export function FormSelect({
         ))}
       </select>
 
+      {helpText && (
+        <p id={helpTextId} className="form-help-text">
+          {helpText}
+        </p>
+      )}
+
       {error && (
-        <p
-          id={errorId}
-          className="form-error"
-          role="alert"
-          aria-live="assertive"
-        >
+        <p id={errorId} className="form-error" role="alert" aria-live="assertive">
           {error}
         </p>
       )}
