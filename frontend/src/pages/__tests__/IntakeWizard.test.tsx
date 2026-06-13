@@ -1,10 +1,17 @@
 import { render, screen, waitFor } from '@testing-library/react';
+import { vi } from 'vitest';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { http, HttpResponse } from 'msw';
 import { server } from '../../test/mocks/server';
 import { IntakeProvider } from '../../context/IntakeContext';
 import { IntakeWizard } from '../IntakeWizard';
+
+// DebtorInfoStep reads the account email via useAuth; this wizard test renders
+// outside an AuthProvider, so stub the hook with a logged-in user.
+vi.mock('../../context/AuthContext', () => ({
+  useAuth: () => ({ user: { email: 'jane@example.com' } }),
+}));
 
 const sessionAtStep6 = {
   id: 1,
