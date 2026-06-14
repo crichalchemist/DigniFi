@@ -75,7 +75,10 @@ export class WizardPage {
     }
 
     await fill('zip_code', data.zip_code);
-    await fill('email', data.email);
+    // Email is locked (readOnly) to the account address and auto-filled from the
+    // authenticated user. The persona registered with data.email, so the field
+    // already holds it — assert instead of fill (fill() times out on readOnly).
+    await expect(this.page.locator('input[name="email"]')).toHaveValue(data.email);
     await fill('phone_number', data.phone);
 
     // Household & filing info (required since the joint-filing feature)
