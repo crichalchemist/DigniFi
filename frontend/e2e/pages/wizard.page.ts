@@ -31,19 +31,33 @@ export class WizardPage {
     return heading.textContent() as Promise<string>;
   }
 
+  /**
+   * The eligibility widget is collapsed by default (note 12/15 redesign), so its
+   * verdict text isn't in the DOM until opened. Expand it before reading or
+   * asserting. Idempotent: only clicks when currently collapsed.
+   */
+  async expandMeansTestPreview() {
+    const toggle = this.page.locator('.means-test-preview-toggle');
+    if ((await toggle.getAttribute('aria-expanded')) === 'false') {
+      await toggle.click();
+    }
+  }
+
   async getMeansTestPreview(): Promise<string> {
+    await this.expandMeansTestPreview();
     const sidebar = this.page.locator('.wizard-sidebar');
     return sidebar.textContent() as Promise<string>;
   }
 
   /**
-   * Wait for the debounced means-test estimate to resolve. The sidebar shows
-   * a placeholder until income AND expense data have been saved, so call
-   * this only after completing the expenses step.
+   * Wait for the debounced means-test estimate to resolve. The widget is
+   * collapsed by default, so expand it and wait for the verdict indicator to
+   * render — it replaces the loading/placeholder state once income AND expense
+   * data have been saved. Call only after completing the expenses step.
    */
   async waitForMeansTestEstimate() {
-    const sidebar = this.page.locator('.wizard-sidebar');
-    await expect(sidebar).not.toContainText('once you provide income and expense', {
+    await this.expandMeansTestPreview();
+    await expect(this.page.locator('.means-test-preview-indicator-text')).toBeVisible({
       timeout: 15000,
     });
   }
