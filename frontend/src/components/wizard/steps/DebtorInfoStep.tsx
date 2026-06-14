@@ -52,12 +52,15 @@ export function DebtorInfoStep({
   }, []);
 
   // Lock the contact email to the address chosen at registration — the user
-  // can't change their sign-in identity mid-intake.
+  // can't change their sign-in identity mid-intake. Depend only on the auth
+  // email; the functional updater no-ops when it already matches, so we don't
+  // need formData.email in the dependency array (which would re-fire on its own
+  // write). Keeping the effect (vs. seeding state) backfills if the user object
+  // resolves after this step mounts.
   useEffect(() => {
-    if (user?.email && formData.email !== user.email) {
-      setFormData((prev) => ({ ...prev, email: user.email }));
-    }
-  }, [user?.email, formData.email]);
+    if (!user?.email) return;
+    setFormData((prev) => (prev.email === user.email ? prev : { ...prev, email: user.email }));
+  }, [user?.email]);
 
   const errors = useMemo<Record<string, string>>(() => {
     const newErrors: Record<string, string> = {};
