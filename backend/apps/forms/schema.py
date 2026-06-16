@@ -5,6 +5,8 @@ Provides FieldSpec (individual field definition) and FormSchema (complete form s
 plus load_schema() function to load form schemas from JSON files.
 """
 
+from __future__ import annotations
+
 import json
 from dataclasses import dataclass
 from pathlib import Path
@@ -30,7 +32,7 @@ class FieldSpec:
     binding: str | None
     repeat: str | None
     repeat_capacity: int | None
-    row: str | None
+    row: int | None
     legal_review: bool
 
 
