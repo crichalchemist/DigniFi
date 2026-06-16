@@ -4,7 +4,7 @@ import json
 
 import pytest
 
-from apps.forms.schema import FieldSpec, FormSchema, load_schema
+from apps.forms.schema import FieldSpec, FormSchema, load_schema, validate_schema
 
 SAMPLE = {
     "form_type": "form_test",
@@ -50,3 +50,33 @@ def test_load_schema_missing_file_raises(tmp_path, settings):
     settings.FORM_SCHEMAS_DIRECTORY = tmp_path
     with pytest.raises(FileNotFoundError):
         load_schema("does_not_exist")
+
+
+def _schema(**field_overrides):
+    base = dict(SAMPLE["fields"][0])
+    base.update(field_overrides)
+    return FormSchema("form_test", "b_107_0425-form.pdf", "v1", [FieldSpec(**base)])
+
+
+def test_validate_flags_unknown_pdf_field():
+    schema = _schema(pdf_field="NOT_A_REAL_FIELD_xyz", source="constant", value="x", rule=None)
+    errors = validate_schema(schema, derivations={"full_name"}, predicates=set())
+    assert any("NOT_A_REAL_FIELD_xyz" in e for e in errors)
+
+
+def test_validate_flags_tbd_source():
+    schema = _schema(pdf_field="Debtor 1", source="TBD", rule=None)
+    errors = validate_schema(schema, derivations={"full_name"}, predicates=set())
+    assert any("TBD" in e for e in errors)
+
+
+def test_validate_flags_unknown_rule():
+    schema = _schema(pdf_field="Debtor 1", source="derived", rule="no_such_rule")
+    errors = validate_schema(schema, derivations={"full_name"}, predicates=set())
+    assert any("no_such_rule" in e for e in errors)
+
+
+def test_validate_clean_schema_returns_empty():
+    schema = _schema(pdf_field="Debtor 1", source="derived", rule="full_name")
+    errors = validate_schema(schema, derivations={"full_name"}, predicates=set())
+    assert errors == []
