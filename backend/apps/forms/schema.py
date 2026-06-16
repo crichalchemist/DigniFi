@@ -11,6 +11,7 @@ import json
 from dataclasses import dataclass
 from pathlib import Path
 
+import pypdf
 from django.conf import settings
 
 
@@ -77,3 +78,35 @@ def load_schema(form_type: str) -> FormSchema:
         template_version=raw["template_version"],
         fields=fields,
     )
+
+
+def template_field_names(template_path: Path) -> set[str]:
+    """Return the set of AcroForm field names in a PDF template."""
+    reader = pypdf.PdfReader(str(template_path))
+    return set((reader.get_fields() or {}).keys())
+
+
+def validate_schema(schema: FormSchema, derivations: set[str], predicates: set[str]) -> list[str]:
+    """
+    Return a list of error strings. Empty list = schema is valid.
+
+    Checks: every pdf_field exists in the live template; no source left "TBD";
+    derived rules and conditional_on predicates resolve; repeat groups carry a
+    capacity. Run as a test so drift/typos fail CI, not a court filing.
+    """
+    errors: list[str] = []
+    template_path = Path(settings.PDF_FORMS_DIRECTORY) / schema.template_filename
+    real_fields = template_field_names(template_path)
+
+    for f in schema.fields:
+        if f.pdf_field not in real_fields:
+            errors.append(f"pdf_field not in template: {f.pdf_field!r}")
+        if f.source == "TBD":
+            errors.append(f"source still TBD: {f.pdf_field!r}")
+        if f.source == "derived" and f.rule not in derivations:
+            errors.append(f"unknown derivation rule {f.rule!r} on {f.pdf_field!r}")
+        if f.conditional_on is not None and f.conditional_on not in predicates:
+            errors.append(f"unknown predicate {f.conditional_on!r} on {f.pdf_field!r}")
+        if f.repeat is not None and not f.repeat_capacity:
+            errors.append(f"repeat group {f.repeat!r} missing repeat_capacity")
+    return errors
