@@ -10,6 +10,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { FormField } from '../../common';
+import { parseAmount } from '../../../utils/parseAmount';
 import type { IncomeInfo } from '../../../types/api';
 
 interface IncomeInfoStepProps {
@@ -23,20 +24,9 @@ export function IncomeInfoStep({
   onDataChange,
   onValidationChange,
 }: IncomeInfoStepProps) {
-  const [formData, setFormData] = useState<Partial<IncomeInfo>>(
-    initialData || {
-      monthly_gross_wages: 0,
-      monthly_overtime: 0,
-      monthly_tips: 0,
-      monthly_rental_income: 0,
-      monthly_pension: 0,
-      monthly_social_security: 0,
-      monthly_unemployment: 0,
-      monthly_child_support: 0,
-      monthly_alimony: 0,
-      monthly_other_income: 0,
-    }
-  );
+  // Fields start undefined (empty) rather than 0 so an untouched field reads
+  // blank, while a deliberately entered 0 is preserved by parseAmount + `?? ''`.
+  const [formData, setFormData] = useState<Partial<IncomeInfo>>(initialData || {});
 
   // Calculate total monthly income
   const totalMonthlyIncome =
@@ -54,11 +44,8 @@ export function IncomeInfoStep({
   const errors = useMemo<Record<string, string>>(() => {
     const newErrors: Record<string, string> = {};
 
-    // Validate that at least one income source is provided
-    if (totalMonthlyIncome === 0) {
-      newErrors.general =
-        'Please enter at least one source of income. If you have no income, enter 0 for all fields.';
-    }
+    // No "at least one source" gate: $0 total income is a valid answer for a
+    // bankruptcy filer (and the help text invites leaving fields blank or 0).
 
     // Validate non-negative values
     Object.keys(formData).forEach((key) => {
@@ -69,7 +56,7 @@ export function IncomeInfoStep({
     });
 
     return newErrors;
-  }, [formData, totalMonthlyIncome]);
+  }, [formData]);
 
   // Update parent when form data changes
   useEffect(() => {
@@ -79,23 +66,20 @@ export function IncomeInfoStep({
     };
     onDataChange(dataWithTotal);
     onValidationChange(Object.keys(errors).length === 0);
+    // onDataChange/onValidationChange are fresh closures each render; including
+    // them would loop. Matches the suppression on the sibling step effects.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [formData, totalMonthlyIncome, errors]);
 
   const handleChange = (field: keyof IncomeInfo, value: string) => {
-    const numericValue = parseFloat(value) || 0;
-    setFormData((prev) => ({ ...prev, [field]: numericValue }));
+    setFormData((prev) => ({ ...prev, [field]: parseAmount(value) }));
   };
 
   return (
     <div className="income-info-step">
       {/* Explainer */}
       <div className="info-box">
-        <svg
-          className="info-icon"
-          viewBox="0 0 20 20"
-          fill="currentColor"
-          aria-hidden="true"
-        >
+        <svg className="info-icon" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
           <path
             fillRule="evenodd"
             d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
@@ -105,9 +89,9 @@ export function IncomeInfoStep({
         <div>
           <h3 className="info-title">Why we ask about income</h3>
           <p className="info-message">
-            Income information helps determine which bankruptcy chapter you may qualify
-            for. Enter your average monthly income before taxes. If you don't have income
-            from a source, enter $0.
+            Income information helps determine which bankruptcy chapter you may qualify for. Enter
+            your average monthly income before taxes. If you don't have income from a source, you
+            can leave it blank or enter $0.
           </p>
         </div>
       </div>
@@ -132,7 +116,7 @@ export function IncomeInfoStep({
           type="number"
           min="0"
           step="0.01"
-          value={formData.monthly_gross_wages || ''}
+          value={formData.monthly_gross_wages ?? ''}
           onChange={(e) => handleChange('monthly_gross_wages', e.target.value)}
           error={errors.monthly_gross_wages}
           helpText="Regular wages before taxes"
@@ -146,7 +130,7 @@ export function IncomeInfoStep({
             type="number"
             min="0"
             step="0.01"
-            value={formData.monthly_overtime || ''}
+            value={formData.monthly_overtime ?? ''}
             onChange={(e) => handleChange('monthly_overtime', e.target.value)}
             error={errors.monthly_overtime}
             helpText="Average monthly overtime pay"
@@ -159,7 +143,7 @@ export function IncomeInfoStep({
             type="number"
             min="0"
             step="0.01"
-            value={formData.monthly_tips || ''}
+            value={formData.monthly_tips ?? ''}
             onChange={(e) => handleChange('monthly_tips', e.target.value)}
             error={errors.monthly_tips}
             helpText="Average monthly tips and bonuses"
@@ -182,7 +166,7 @@ export function IncomeInfoStep({
             type="number"
             min="0"
             step="0.01"
-            value={formData.monthly_social_security || ''}
+            value={formData.monthly_social_security ?? ''}
             onChange={(e) => handleChange('monthly_social_security', e.target.value)}
             error={errors.monthly_social_security}
             helpText="SSI, SSDI, or retirement benefits"
@@ -195,7 +179,7 @@ export function IncomeInfoStep({
             type="number"
             min="0"
             step="0.01"
-            value={formData.monthly_unemployment || ''}
+            value={formData.monthly_unemployment ?? ''}
             onChange={(e) => handleChange('monthly_unemployment', e.target.value)}
             error={errors.monthly_unemployment}
             placeholder="0.00"
@@ -217,7 +201,7 @@ export function IncomeInfoStep({
             type="number"
             min="0"
             step="0.01"
-            value={formData.monthly_pension || ''}
+            value={formData.monthly_pension ?? ''}
             onChange={(e) => handleChange('monthly_pension', e.target.value)}
             error={errors.monthly_pension}
             placeholder="0.00"
@@ -229,7 +213,7 @@ export function IncomeInfoStep({
             type="number"
             min="0"
             step="0.01"
-            value={formData.monthly_rental_income || ''}
+            value={formData.monthly_rental_income ?? ''}
             onChange={(e) => handleChange('monthly_rental_income', e.target.value)}
             error={errors.monthly_rental_income}
             placeholder="0.00"
@@ -243,7 +227,7 @@ export function IncomeInfoStep({
             type="number"
             min="0"
             step="0.01"
-            value={formData.monthly_child_support || ''}
+            value={formData.monthly_child_support ?? ''}
             onChange={(e) => handleChange('monthly_child_support', e.target.value)}
             error={errors.monthly_child_support}
             helpText="Child support you receive"
@@ -256,7 +240,7 @@ export function IncomeInfoStep({
             type="number"
             min="0"
             step="0.01"
-            value={formData.monthly_alimony || ''}
+            value={formData.monthly_alimony ?? ''}
             onChange={(e) => handleChange('monthly_alimony', e.target.value)}
             error={errors.monthly_alimony}
             helpText="Alimony/spousal support you receive"
@@ -270,7 +254,7 @@ export function IncomeInfoStep({
           type="number"
           min="0"
           step="0.01"
-          value={formData.monthly_other_income || ''}
+          value={formData.monthly_other_income ?? ''}
           onChange={(e) => handleChange('monthly_other_income', e.target.value)}
           error={errors.monthly_other_income}
           helpText="Any other regular monthly income"
@@ -283,7 +267,8 @@ export function IncomeInfoStep({
         <div className="income-total">
           <h3 className="total-label">Total Monthly Income</h3>
           <p className="total-amount">
-            ${totalMonthlyIncome.toLocaleString('en-US', {
+            $
+            {totalMonthlyIncome.toLocaleString('en-US', {
               minimumFractionDigits: 2,
               maximumFractionDigits: 2,
             })}

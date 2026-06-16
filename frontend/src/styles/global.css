@@ -259,7 +259,7 @@ a {
 
 .progress-step.completed .step-marker {
   background: var(--color-pine);
-  border-color: var(--color-pine);
+  border-color: var(--color-cream);
   color: var(--color-cream);
 }
 
@@ -280,16 +280,31 @@ a {
   color: var(--color-cream);
 }
 
-.step-label,
+.step-label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+/* Labels sit on the pine header band, so they must be light to stay legible
+   (muted failed contrast and the current step was pine-on-pine). */
 .step-name {
-  color: var(--color-muted);
+  color: var(--color-cream);
   font-size: var(--text-caption);
 }
 
-.progress-step.current .step-label,
 .progress-step.current .step-name {
-  color: var(--color-pine);
+  color: var(--color-gold);
   font-weight: 600;
+}
+
+.step-status {
+  font-size: var(--text-caption);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-gold);
 }
 
 .step-connector {
@@ -314,12 +329,139 @@ a {
   margin-bottom: var(--space-6);
 }
 
+/* Give the "Add another…" action room so it doesn't crowd the disclaimer
+   and reassurance note that follow it (e.g. on the assets step). */
+.add-asset-section,
+.add-debt-section {
+  margin: var(--space-5) 0;
+}
+
+/* ============================================================================
+   Review & Results summary (re-skinned off dead Tailwind utility classes)
+   ============================================================================ */
+.review-step {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.review-section {
+  border: 1px solid var(--color-sand);
+  border-left: 4px solid var(--color-gold);
+  background-color: var(--color-paper);
+  padding: var(--space-4) var(--space-5);
+}
+
+.review-section-title {
+  font-family: var(--font-display);
+  font-size: var(--text-h3, 1.25rem);
+  font-weight: 600;
+  color: var(--color-pine);
+  margin: 0 0 var(--space-3);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--color-sand);
+}
+
+.review-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--space-4);
+}
+
+.review-field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.review-field-label {
+  font-size: var(--text-caption);
+  color: var(--color-muted);
+}
+
+.review-field-value {
+  font-weight: 600;
+  color: var(--color-pine);
+}
+
+.review-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.review-list-item {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--color-sand);
+}
+
+.review-list-item:last-child {
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+.review-empty {
+  margin: 0;
+  color: var(--color-muted);
+  font-style: italic;
+}
+
+/* ============================================================================
+   Legal pages (Terms of Service)
+   ============================================================================ */
+.legal-page {
+  padding: var(--space-6) var(--space-5);
+}
+
+.legal-page-content {
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.legal-page-content section {
+  margin-top: var(--space-5);
+}
+
+.legal-page-content h2 {
+  margin-bottom: var(--space-2);
+}
+
+.legal-page-content p {
+  margin-bottom: var(--space-3);
+}
+
+.legal-eyebrow {
+  margin-bottom: var(--space-4);
+}
+
+.legal-updated {
+  margin-top: calc(-1 * var(--space-2));
+  color: var(--color-muted);
+  font-size: var(--text-caption);
+}
+
+.legal-footer-note {
+  margin-top: var(--space-6);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-sand);
+  color: var(--color-muted);
+  font-size: var(--text-caption);
+}
+
 .section-title {
   font-family: var(--font-display);
   font-size: var(--text-h2);
-  font-weight: 500;
+  font-weight: 600;
   color: var(--color-pine);
-  margin-bottom: var(--space-2);
+  margin-bottom: var(--space-3);
+  padding-bottom: var(--space-2);
+  border-bottom: 2px solid var(--color-sand);
 }
 
 .section-description {
@@ -375,6 +517,13 @@ a {
 .form-input:focus {
   outline: 2px solid var(--color-pine);
   outline-offset: 2px;
+}
+
+/* Locked fields (e.g. the account email, prefilled and not editable here) */
+.form-input[readonly] {
+  background-color: var(--color-sand);
+  cursor: not-allowed;
+  border-bottom-color: var(--color-line);
 }
 
 .form-input-wrapper {
@@ -514,6 +663,151 @@ a {
   to {
     transform: rotate(360deg);
   }
+}
+
+/* ============================================================================
+   Means Test Preview (live eligibility estimate — compact, collapsible)
+   ============================================================================ */
+
+.wizard-sidebar {
+  margin-bottom: var(--space-5);
+}
+
+.means-test-preview {
+  border: 1px solid var(--color-sand);
+  border-left: 4px solid var(--color-gold);
+  background-color: var(--color-paper);
+}
+
+.means-test-preview-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: var(--text-caption);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-pine);
+}
+
+.means-test-preview-toggle:hover {
+  background-color: var(--color-cream);
+}
+
+.means-test-preview-chevron {
+  width: 1.1rem;
+  height: 1.1rem;
+  flex-shrink: 0;
+  transition: transform var(--transition-fast);
+}
+
+.means-test-preview-chevron.expanded {
+  transform: rotate(180deg);
+}
+
+.means-test-preview-body {
+  padding: 0 var(--space-4) var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.means-test-preview-result {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.means-test-preview-indicator {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  background-color: var(--color-cream);
+}
+
+/* The fix for the "huge checkmark": the status SVG had no box, so it rendered
+   at its intrinsic size and filled the column. Constrain it to an inline icon. */
+.means-test-preview-indicator-icon {
+  flex-shrink: 0;
+  width: 1.25rem;
+  height: 1.25rem;
+  color: var(--color-pine);
+}
+
+.means-test-preview-indicator.review-needed .means-test-preview-indicator-icon {
+  color: var(--color-rust);
+}
+
+.means-test-preview-indicator-icon svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.means-test-preview-indicator-text {
+  margin: 0;
+  font-size: var(--text-caption);
+  color: var(--color-pine);
+}
+
+.means-test-preview-details {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.means-test-preview-detail {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-2);
+  font-size: var(--text-caption);
+}
+
+.means-test-preview-detail dt {
+  color: var(--color-muted);
+}
+
+.means-test-preview-detail dd {
+  margin: 0;
+  font-weight: 600;
+  color: var(--color-pine);
+  text-align: right;
+}
+
+.means-test-preview-detail--highlight {
+  padding: var(--space-2);
+  border-left: 3px solid var(--color-gold);
+  background-color: var(--color-cream);
+}
+
+.means-test-preview-loading,
+.means-test-preview-status {
+  font-size: var(--text-caption);
+  color: var(--color-muted);
+}
+
+.means-test-preview-loading {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.means-test-preview-spinner {
+  width: 1rem;
+  height: 1rem;
+  border: 2px solid var(--color-sand);
+  border-top-color: var(--color-pine);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
 }
 
 /* ============================================================================

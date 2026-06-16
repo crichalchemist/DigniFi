@@ -17,7 +17,9 @@ interface MeansTestPreviewProps {
 }
 
 export function MeansTestPreview({ sessionId, currentStep }: MeansTestPreviewProps) {
-  const [isExpanded, setIsExpanded] = useState(true);
+  // Collapsed by default so the estimate stays unobtrusive; the styled header
+  // invites the filer to open it when they want reassurance.
+  const [isExpanded, setIsExpanded] = useState(false);
   const { result, isCalculating, statusMessage } = useDebouncedMeansTest({
     sessionId,
     currentStep,

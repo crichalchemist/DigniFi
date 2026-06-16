@@ -10,6 +10,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { FormField } from '../../common';
+import { parseAmount } from '../../../utils/parseAmount';
 import type { ExpenseInfo } from '../../../types/api';
 
 interface ExpenseInfoStepProps {
@@ -23,21 +24,9 @@ export function ExpenseInfoStep({
   onDataChange,
   onValidationChange,
 }: ExpenseInfoStepProps) {
-  const [formData, setFormData] = useState<Partial<ExpenseInfo>>(
-    initialData || {
-      rent_or_mortgage: 0,
-      utilities: 0,
-      home_maintenance: 0,
-      car_payment: 0,
-      car_insurance: 0,
-      gas_transportation: 0,
-      food_groceries: 0,
-      childcare: 0,
-      medical_expenses: 0,
-      insurance_not_deducted: 0,
-      other_necessary_expenses: 0,
-    }
-  );
+  // Fields start undefined (empty) rather than 0 so an untouched field reads
+  // blank, while a deliberately entered 0 is preserved by parseAmount + `?? ''`.
+  const [formData, setFormData] = useState<Partial<ExpenseInfo>>(initialData || {});
 
   // Calculate total monthly expenses
   const totalMonthlyExpenses =
@@ -56,11 +45,8 @@ export function ExpenseInfoStep({
   const errors = useMemo<Record<string, string>>(() => {
     const newErrors: Record<string, string> = {};
 
-    // Validate that at least one expense is provided
-    if (totalMonthlyExpenses === 0) {
-      newErrors.general =
-        'Please enter at least one expense. If you have no expenses, enter 0 for all fields.';
-    }
+    // No "at least one expense" gate: a blank or $0 expense is a valid answer
+    // (the help text invites leaving categories blank or 0).
 
     // Validate non-negative values
     Object.keys(formData).forEach((key) => {
@@ -71,7 +57,7 @@ export function ExpenseInfoStep({
     });
 
     return newErrors;
-  }, [formData, totalMonthlyExpenses]);
+  }, [formData]);
 
   // Update parent when form data changes
   useEffect(() => {
@@ -81,23 +67,20 @@ export function ExpenseInfoStep({
     };
     onDataChange(dataWithTotal);
     onValidationChange(Object.keys(errors).length === 0);
+    // onDataChange/onValidationChange are fresh closures each render; including
+    // them would loop. Matches the suppression on the sibling step effects.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [formData, totalMonthlyExpenses, errors]);
 
   const handleChange = (field: keyof ExpenseInfo, value: string) => {
-    const numericValue = parseFloat(value) || 0;
-    setFormData((prev) => ({ ...prev, [field]: numericValue }));
+    setFormData((prev) => ({ ...prev, [field]: parseAmount(value) }));
   };
 
   return (
     <div className="expense-info-step">
       {/* Explainer */}
       <div className="info-box">
-        <svg
-          className="info-icon"
-          viewBox="0 0 20 20"
-          fill="currentColor"
-          aria-hidden="true"
-        >
+        <svg className="info-icon" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
           <path
             fillRule="evenodd"
             d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
@@ -107,8 +90,8 @@ export function ExpenseInfoStep({
         <div>
           <h3 className="info-title">Why we ask about expenses</h3>
           <p className="info-message">
-            Monthly expenses help determine your financial situation. Enter your average
-            monthly costs. If a category doesn't apply to you, enter $0.
+            Monthly expenses help determine your financial situation. Enter your average monthly
+            costs. If a category doesn't apply to you, you can leave it blank or enter $0.
           </p>
         </div>
       </div>
@@ -133,7 +116,7 @@ export function ExpenseInfoStep({
           type="number"
           min="0"
           step="0.01"
-          value={formData.rent_or_mortgage || ''}
+          value={formData.rent_or_mortgage ?? ''}
           onChange={(e) => handleChange('rent_or_mortgage', e.target.value)}
           error={errors.rent_or_mortgage}
           helpText="Monthly rent or mortgage payment"
@@ -147,7 +130,7 @@ export function ExpenseInfoStep({
             type="number"
             min="0"
             step="0.01"
-            value={formData.utilities || ''}
+            value={formData.utilities ?? ''}
             onChange={(e) => handleChange('utilities', e.target.value)}
             error={errors.utilities}
             helpText="Electric, gas, water, trash, internet, phone"
@@ -160,7 +143,7 @@ export function ExpenseInfoStep({
             type="number"
             min="0"
             step="0.01"
-            value={formData.home_maintenance || ''}
+            value={formData.home_maintenance ?? ''}
             onChange={(e) => handleChange('home_maintenance', e.target.value)}
             error={errors.home_maintenance}
             helpText="Repairs, yard work, HOA fees"
@@ -183,7 +166,7 @@ export function ExpenseInfoStep({
             type="number"
             min="0"
             step="0.01"
-            value={formData.car_payment || ''}
+            value={formData.car_payment ?? ''}
             onChange={(e) => handleChange('car_payment', e.target.value)}
             error={errors.car_payment}
             helpText="Monthly auto loan or lease payment"
@@ -196,7 +179,7 @@ export function ExpenseInfoStep({
             type="number"
             min="0"
             step="0.01"
-            value={formData.car_insurance || ''}
+            value={formData.car_insurance ?? ''}
             onChange={(e) => handleChange('car_insurance', e.target.value)}
             error={errors.car_insurance}
             helpText="Monthly auto insurance premium"
@@ -210,7 +193,7 @@ export function ExpenseInfoStep({
           type="number"
           min="0"
           step="0.01"
-          value={formData.gas_transportation || ''}
+          value={formData.gas_transportation ?? ''}
           onChange={(e) => handleChange('gas_transportation', e.target.value)}
           error={errors.gas_transportation}
           helpText="Gas, public transit, parking, tolls"
@@ -232,7 +215,7 @@ export function ExpenseInfoStep({
             type="number"
             min="0"
             step="0.01"
-            value={formData.food_groceries || ''}
+            value={formData.food_groceries ?? ''}
             onChange={(e) => handleChange('food_groceries', e.target.value)}
             error={errors.food_groceries}
             helpText="Groceries, dining out, household supplies"
@@ -245,7 +228,7 @@ export function ExpenseInfoStep({
             type="number"
             min="0"
             step="0.01"
-            value={formData.childcare || ''}
+            value={formData.childcare ?? ''}
             onChange={(e) => handleChange('childcare', e.target.value)}
             error={errors.childcare}
             helpText="Daycare, after-school care, babysitting"
@@ -260,7 +243,7 @@ export function ExpenseInfoStep({
             type="number"
             min="0"
             step="0.01"
-            value={formData.medical_expenses || ''}
+            value={formData.medical_expenses ?? ''}
             onChange={(e) => handleChange('medical_expenses', e.target.value)}
             error={errors.medical_expenses}
             helpText="Doctor visits, prescriptions, co-pays not covered by insurance"
@@ -273,7 +256,7 @@ export function ExpenseInfoStep({
             type="number"
             min="0"
             step="0.01"
-            value={formData.insurance_not_deducted || ''}
+            value={formData.insurance_not_deducted ?? ''}
             onChange={(e) => handleChange('insurance_not_deducted', e.target.value)}
             error={errors.insurance_not_deducted}
             helpText="Health, life, or disability insurance you pay directly"
@@ -287,7 +270,7 @@ export function ExpenseInfoStep({
           type="number"
           min="0"
           step="0.01"
-          value={formData.other_necessary_expenses || ''}
+          value={formData.other_necessary_expenses ?? ''}
           onChange={(e) => handleChange('other_necessary_expenses', e.target.value)}
           error={errors.other_necessary_expenses}
           helpText="Clothing, laundry, personal care, pet care, other essentials"
@@ -300,7 +283,8 @@ export function ExpenseInfoStep({
         <div className="expense-total">
           <h3 className="total-label">Total Monthly Expenses</h3>
           <p className="total-amount">
-            ${totalMonthlyExpenses.toLocaleString('en-US', {
+            $
+            {totalMonthlyExpenses.toLocaleString('en-US', {
               minimumFractionDigits: 2,
               maximumFractionDigits: 2,
             })}

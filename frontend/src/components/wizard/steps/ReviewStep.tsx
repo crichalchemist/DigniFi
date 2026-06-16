@@ -27,7 +27,6 @@ export function ReviewStep({
   debtsData,
   onValidationChange,
 }: ReviewStepProps) {
-  
   // Always valid to proceed from review (unless we add specific checks)
   useEffect(() => {
     onValidationChange(true);
@@ -40,69 +39,82 @@ export function ReviewStep({
     }).format(amount || 0);
   };
 
+  const fullName =
+    [debtorData.first_name, debtorData.middle_name, debtorData.last_name]
+      .filter(Boolean)
+      .join(' ') || '—';
+
   return (
-    <div className="space-y-8">
-      <div className="bg-blue-50 p-4 rounded-md border border-blue-200">
-        <h3 className="text-lg font-medium text-blue-900">Review Your Information</h3>
-        <p className="text-blue-700 mt-1">
-          Please review the information below carefully. This information will be used to calculate your eligibility.
+    <div className="review-step">
+      <div className="info-box">
+        <h3 className="info-title">Review Your Information</h3>
+        <p className="info-message">
+          Please review the information below carefully. This information will be used to calculate
+          your eligibility.
         </p>
       </div>
 
       {/* Debtor Info Summary */}
-      <section className="border rounded-md p-4">
-        <h4 className="text-lg font-medium mb-4 border-b pb-2">Personal Information</h4>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <span className="text-gray-600 block">Name:</span>
-            <span className="font-medium">
-              {debtorData.first_name} {debtorData.middle_name} {debtorData.last_name}
-            </span>
+      <section className="review-section">
+        <h4 className="review-section-title">Personal Information</h4>
+        <div className="review-grid">
+          <div className="review-field">
+            <span className="review-field-label">Name</span>
+            <span className="review-field-value">{fullName}</span>
           </div>
-          <div>
-            <span className="text-gray-600 block">SSN:</span>
-            <span className="font-medium">***-**-{debtorData.ssn?.slice(-4) || '****'}</span>
+          <div className="review-field">
+            <span className="review-field-label">SSN</span>
+            <span className="review-field-value">***-**-{debtorData.ssn?.slice(-4) || '****'}</span>
           </div>
         </div>
       </section>
 
       {/* Income Summary */}
-      <section className="border rounded-md p-4">
-        <h4 className="text-lg font-medium mb-4 border-b pb-2">Income</h4>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <span className="text-gray-600 block">Total Monthly Income:</span>
-            <span className="font-medium">{formatCurrency(incomeData.total_monthly_income)}</span>
+      <section className="review-section">
+        <h4 className="review-section-title">Income</h4>
+        <div className="review-grid">
+          <div className="review-field">
+            <span className="review-field-label">Total Monthly Income</span>
+            <span className="review-field-value">
+              {formatCurrency(incomeData.total_monthly_income)}
+            </span>
           </div>
         </div>
       </section>
 
       {/* Expenses Summary */}
-      <section className="border rounded-md p-4">
-        <h4 className="text-lg font-medium mb-4 border-b pb-2">Monthly Expenses</h4>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <span className="text-gray-600 block">Rent/Mortgage:</span>
-            <span className="font-medium">{formatCurrency(expenseData.rent_or_mortgage)}</span>
+      <section className="review-section">
+        <h4 className="review-section-title">Monthly Expenses</h4>
+        <div className="review-grid">
+          <div className="review-field">
+            <span className="review-field-label">Rent / Mortgage</span>
+            <span className="review-field-value">
+              {formatCurrency(expenseData.rent_or_mortgage)}
+            </span>
           </div>
-          <div>
-            <span className="text-gray-600 block">Total Expenses:</span>
-            <span className="font-medium">{formatCurrency(expenseData.total_monthly_expenses)}</span>
+          <div className="review-field">
+            <span className="review-field-label">Total Expenses</span>
+            <span className="review-field-value">
+              {formatCurrency(expenseData.total_monthly_expenses)}
+            </span>
           </div>
         </div>
       </section>
 
       {/* Assets Summary */}
-      <section className="border rounded-md p-4">
-        <h4 className="text-lg font-medium mb-4 border-b pb-2">Assets ({assetsData.length})</h4>
+      <section className="review-section">
+        <h4 className="review-section-title">Assets ({assetsData.length})</h4>
         {assetsData.length === 0 ? (
-          <p className="text-gray-500 italic">No assets listed.</p>
+          <p className="review-empty">No assets listed.</p>
         ) : (
-          <ul className="space-y-2">
+          <ul className="review-list">
             {assetsData.map((asset, index) => (
-              <li key={asset.id || index} className="flex justify-between">
-                <span>{asset.description || 'Unnamed Asset'} ({asset.asset_type?.replace('_', ' ')})</span>
-                <span className="font-medium">{formatCurrency(asset.current_value)}</span>
+              <li key={asset.id || index} className="review-list-item">
+                <span>
+                  {asset.description || 'Unnamed Asset'}
+                  {asset.asset_type ? ` (${asset.asset_type.replace('_', ' ')})` : ''}
+                </span>
+                <span className="review-field-value">{formatCurrency(asset.current_value)}</span>
               </li>
             ))}
           </ul>
@@ -110,16 +122,19 @@ export function ReviewStep({
       </section>
 
       {/* Debts Summary */}
-      <section className="border rounded-md p-4">
-        <h4 className="text-lg font-medium mb-4 border-b pb-2">Amounts Owed ({debtsData.length})</h4>
+      <section className="review-section">
+        <h4 className="review-section-title">Amounts Owed ({debtsData.length})</h4>
         {debtsData.length === 0 ? (
-          <p className="text-gray-500 italic">No debts listed.</p>
+          <p className="review-empty">No amounts owed listed.</p>
         ) : (
-          <ul className="space-y-2">
+          <ul className="review-list">
             {debtsData.map((debt, index) => (
-              <li key={debt.id || index} className="flex justify-between">
-                <span>{debt.creditor_name || 'Unnamed Creditor'} ({debt.debt_type})</span>
-                <span className="font-medium">{formatCurrency(debt.amount_owed)}</span>
+              <li key={debt.id || index} className="review-list-item">
+                <span>
+                  {debt.creditor_name || 'Unnamed Creditor'}
+                  {debt.debt_type ? ` (${debt.debt_type})` : ''}
+                </span>
+                <span className="review-field-value">{formatCurrency(debt.amount_owed)}</span>
               </li>
             ))}
           </ul>
