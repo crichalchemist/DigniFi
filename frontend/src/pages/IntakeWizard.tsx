@@ -6,6 +6,7 @@
  */
 
 import { useState, useEffect, useRef, useLayoutEffect } from 'react';
+import { useAutoSave } from '../hooks/useAutoSave';
 import { useNavigate } from 'react-router-dom';
 import { useIntake } from '../context/IntakeContext';
 import { api } from '../api/client';
@@ -75,6 +76,7 @@ export function IntakeWizard() {
       // Session became available (loaded from localStorage or just created).
       // Sync wizard state once per session id to avoid overwriting in-flight steps.
       syncedSessionIdRef.current = session.id;
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- initializer: syncing external session state into local wizard state on session arrival
       setCurrentStepNumber(session.current_step);
       if (session.debtor_info) setDebtorData(session.debtor_info);
       if (session.income_info) setIncomeData(session.income_info);
@@ -85,17 +87,49 @@ export function IntakeWizard() {
   }, [session, createSession]);
 
   // =========================================================================
+  // Autosave
+  // =========================================================================
+
+  // The data object for the step currently on screen. useAutoSave watches this;
+  // when it changes (the user typing), it debounces a call to saveCurrentStepData.
+  const currentStepKey = WIZARD_STEPS[currentStepNumber - 1]?.key;
+  const currentStepData =
+    currentStepKey === 'debtor_info'
+      ? debtorData
+      : currentStepKey === 'income_info'
+        ? incomeData
+        : currentStepKey === 'expense_info'
+          ? expenseData
+          : currentStepKey === 'assets'
+            ? assetsData
+            : currentStepKey === 'debts'
+              ? debtsData
+              : null;
+
+  const { saveStatus, saveNow, lastSavedAt } = useAutoSave({
+    data: currentStepData,
+    // saveCurrentStepData reads the latest step state from its closure, so the
+    // `data` snapshot useAutoSave passes to onSave is intentionally unused here.
+    onSave: () => saveCurrentStepData(),
+    // Only autosave a complete, valid step (see architecture rationale). 'review' has nothing
+    // to save; disabled until a session exists.
+    enabled: !!session && canProceed && currentStepKey !== 'review',
+  });
+
+  // =========================================================================
   // Navigation Handlers
   // =========================================================================
 
   const handleNext = async () => {
     if (!session) return;
 
-    // Save current step data before advancing
-    try {
-      await saveCurrentStepData();
+    // Save the current step immediately (flushes any pending debounce). If it
+    // fails, do NOT advance — the WizardLayout indicator shows the error.
+    const saved = await saveNow();
+    if (!saved) return;
 
-      // Advance to next step
+    // Advance to next step (updateCurrentStep can rethrow, so keep in try/catch)
+    try {
       const nextStep = currentStepNumber + 1;
       await updateCurrentStep(nextStep);
       setCurrentStepNumber(nextStep);
@@ -114,11 +148,13 @@ export function IntakeWizard() {
   };
 
   const handleComplete = async () => {
+    // Save the current step immediately. If it fails, do NOT complete.
+    const saved = await saveNow();
+    if (!saved) return;
+
     try {
-      await saveCurrentStepData();
       await completeSession();
       trackEvent('intake_completed', {
-        // eslint-disable-next-line react-hooks/purity
         total_duration_ms: Date.now() - sessionStartRef.current,
         session_id: session?.id,
       });
@@ -313,6 +349,8 @@ export function IntakeWizard() {
       canGoPrevious={currentStepNumber > 1}
       isLastStep={currentStepNumber === WIZARD_STEPS.length}
       sidebar={<MeansTestPreview sessionId={session.id} currentStep={currentStepNumber} />}
+      saveStatus={saveStatus}
+      lastSavedAt={lastSavedAt}
     />
   );
 }

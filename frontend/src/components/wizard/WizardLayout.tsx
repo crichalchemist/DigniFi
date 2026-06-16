@@ -12,6 +12,7 @@ import { UPL_WIZARD_DISCLAIMER } from '../../constants/upl';
 import { useIntake } from '../../context/IntakeContext';
 import { useFocusManagement } from '../../hooks/useFocusManagement';
 import { trackEvent } from '../../utils/analytics';
+import type { SaveStatus } from '../../hooks/useAutoSave';
 
 interface WizardStep {
   number: number;
@@ -33,6 +34,10 @@ interface WizardLayoutProps {
   isLastStep?: boolean;
   /** Optional sidebar content (e.g., MeansTestPreview) */
   sidebar?: ReactNode;
+  /** Live autosave status from useAutoSave (optional; falls back to static copy) */
+  saveStatus?: SaveStatus;
+  /** Timestamp of the last successful autosave */
+  lastSavedAt?: Date | null;
 }
 
 export function WizardLayout({
@@ -48,6 +53,8 @@ export function WizardLayout({
   canGoPrevious = true,
   isLastStep = false,
   sidebar,
+  saveStatus,
+  lastSavedAt = null,
 }: WizardLayoutProps) {
   const { isLoading, error, clearError, session } = useIntake();
   const stepHeadingRef = useFocusManagement(currentStepNumber);
@@ -126,17 +133,9 @@ export function WizardLayout({
 
           {/* Error display (trauma-informed messaging) */}
           {error && (
-            <div
-              className="wizard-error"
-              role="alert"
-              aria-live="assertive"
-            >
+            <div className="wizard-error" role="alert" aria-live="assertive">
               <div className="error-icon" aria-hidden="true">
-                <svg
-                  viewBox="0 0 20 20"
-                  fill="currentColor"
-                  className="error-icon-svg"
-                >
+                <svg viewBox="0 0 20 20" fill="currentColor" className="error-icon-svg">
                   <path
                     fillRule="evenodd"
                     d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
@@ -161,11 +160,7 @@ export function WizardLayout({
 
           {/* Current step content */}
           <div className="wizard-step">
-            <h2
-              className="step-title"
-              ref={stepHeadingRef}
-              tabIndex={-1}
-            >
+            <h2 className="step-title" ref={stepHeadingRef} tabIndex={-1}>
               {currentStep?.label}
             </h2>
             <div className="step-content">{currentStep?.component}</div>
@@ -185,12 +180,7 @@ export function WizardLayout({
                 onClick={onPrevious}
                 disabled={!canGoPrevious || isLoading}
                 icon={
-                  <svg
-                    viewBox="0 0 20 20"
-                    fill="currentColor"
-                    className="icon"
-                    aria-hidden="true"
-                  >
+                  <svg viewBox="0 0 20 20" fill="currentColor" className="icon" aria-hidden="true">
                     <path
                       fillRule="evenodd"
                       d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z"
@@ -216,12 +206,7 @@ export function WizardLayout({
                 isLoading={isLoading}
                 loadingText="Finalizing..."
                 icon={
-                  <svg
-                    viewBox="0 0 20 20"
-                    fill="currentColor"
-                    className="icon"
-                    aria-hidden="true"
-                  >
+                  <svg viewBox="0 0 20 20" fill="currentColor" className="icon" aria-hidden="true">
                     <path
                       fillRule="evenodd"
                       d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
@@ -241,12 +226,7 @@ export function WizardLayout({
                 isLoading={isLoading}
                 loadingText="Saving..."
                 icon={
-                  <svg
-                    viewBox="0 0 20 20"
-                    fill="currentColor"
-                    className="icon"
-                    aria-hidden="true"
-                  >
+                  <svg viewBox="0 0 20 20" fill="currentColor" className="icon" aria-hidden="true">
                     <path
                       fillRule="evenodd"
                       d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
@@ -261,9 +241,29 @@ export function WizardLayout({
             )}
           </div>
 
-          {/* Help text */}
-          <p className="wizard-help-text">
-            Your progress is automatically saved. You can return anytime to continue.
+          {/* Save status — honest, live autosave feedback (replaces the prior
+              "automatically saved" claim, which was never wired to a real save). */}
+          <p className="wizard-save-status" role="status" aria-live="polite">
+            {saveStatus === 'saving' && (
+              <span className="wizard-save-status--saving">Saving your progress…</span>
+            )}
+            {saveStatus === 'saved' && (
+              <span className="wizard-save-status--saved">
+                Saved. You can return anytime to continue.
+              </span>
+            )}
+            {saveStatus === 'error' && (
+              <span className="wizard-save-status--error">
+                We couldn't save just now — we'll try again when you continue.
+              </span>
+            )}
+            {(saveStatus === undefined || saveStatus === 'idle') && (
+              <span className="wizard-save-status--idle">
+                {lastSavedAt
+                  ? 'Progress saved.'
+                  : 'Your progress saves automatically as you complete each step.'}
+              </span>
+            )}
           </p>
         </div>
       </footer>

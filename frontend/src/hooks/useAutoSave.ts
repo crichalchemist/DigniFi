@@ -7,7 +7,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 
-type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
+export type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
 
 interface UseAutoSaveOptions<T> {
   /** The data to auto-save */
@@ -22,8 +22,8 @@ interface UseAutoSaveOptions<T> {
 
 interface UseAutoSaveReturn {
   saveStatus: SaveStatus;
-  /** Manually trigger an immediate save */
-  saveNow: () => Promise<void>;
+  /** Manually trigger an immediate save. Resolves true on success, false on failure. */
+  saveNow: () => Promise<boolean>;
   /** Last successful save timestamp */
   lastSavedAt: Date | null;
 }
@@ -47,7 +47,7 @@ export function useAutoSave<T>({
     onSaveRef.current = onSave;
   });
 
-  const executeSave = useCallback(async () => {
+  const executeSave = useCallback(async (): Promise<boolean> => {
     setSaveStatus('saving');
     try {
       await onSaveRef.current(dataRef.current);
@@ -56,8 +56,10 @@ export function useAutoSave<T>({
 
       // Reset to idle after 3 seconds
       setTimeout(() => setSaveStatus((s) => (s === 'saved' ? 'idle' : s)), 3000);
+      return true;
     } catch {
       setSaveStatus('error');
+      return false;
     }
   }, []);
 
@@ -86,9 +88,9 @@ export function useAutoSave<T>({
     };
   }, []);
 
-  const saveNow = useCallback(async () => {
+  const saveNow = useCallback(async (): Promise<boolean> => {
     if (timerRef.current) clearTimeout(timerRef.current);
-    await executeSave();
+    return executeSave();
   }, [executeSave]);
 
   return { saveStatus, saveNow, lastSavedAt };
