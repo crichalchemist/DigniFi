@@ -10,6 +10,8 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { FormField, FormSelect } from '../../common';
+import { useAuth } from '../../../context/AuthContext';
+import { formatPhone } from '../../../utils/formatPhone';
 import type { DebtorInfo } from '../../../types/api';
 
 interface DebtorInfoStepProps {
@@ -37,6 +39,28 @@ export function DebtorInfoStep({
   onValidationChange,
 }: DebtorInfoStepProps) {
   const [formData, setFormData] = useState<Partial<DebtorInfo>>(initialData || {});
+  const { user } = useAuth();
+
+  // Date-of-birth bounds for the native picker: at least 18, at most 110.
+  const { minDob, maxDob } = useMemo(() => {
+    const now = new Date();
+    const iso = (yearsAgo: number) =>
+      new Date(now.getFullYear() - yearsAgo, now.getMonth(), now.getDate())
+        .toISOString()
+        .split('T')[0];
+    return { maxDob: iso(18), minDob: iso(110) };
+  }, []);
+
+  // Lock the contact email to the address chosen at registration — the user
+  // can't change their sign-in identity mid-intake. Depend only on the auth
+  // email; the functional updater no-ops when it already matches, so we don't
+  // need formData.email in the dependency array (which would re-fire on its own
+  // write). Keeping the effect (vs. seeding state) backfills if the user object
+  // resolves after this step mounts.
+  useEffect(() => {
+    if (!user?.email) return;
+    setFormData((prev) => (prev.email === user.email ? prev : { ...prev, email: user.email }));
+  }, [user?.email]);
 
   const errors = useMemo<Record<string, string>>(() => {
     const newErrors: Record<string, string> = {};
@@ -53,12 +77,14 @@ export function DebtorInfoStep({
     if (!formData.date_of_birth) {
       newErrors.date_of_birth = 'Please enter your date of birth';
     } else {
-      // Validate age (must be 18+)
+      // Validate age: at least 18, and no older than 110 (likely a typo).
       const dob = new Date(formData.date_of_birth);
       const today = new Date();
       const age = today.getFullYear() - dob.getFullYear();
       if (age < 18) {
         newErrors.date_of_birth = 'You must be 18 or older to file for bankruptcy';
+      } else if (age > 110) {
+        newErrors.date_of_birth = 'Please check this date — it would make you over 110';
       }
     }
 
@@ -188,6 +214,8 @@ export function DebtorInfoStep({
             error={errors.date_of_birth}
             required
             autoComplete="bday"
+            min={minDob}
+            max={maxDob}
             helpText="Must be 18 or older"
           />
 
@@ -264,17 +292,20 @@ export function DebtorInfoStep({
             value={formData.email || ''}
             onChange={(e) => handleChange('email', e.target.value)}
             error={errors.email}
+            readOnly
             required
             autoComplete="email"
-            helpText="We'll send important updates here"
+            helpText="From your account — this is where we'll send important updates"
           />
 
           <FormField
             label="Phone Number"
             name="phone_number"
             type="tel"
+            inputMode="numeric"
+            maxLength={12}
             value={formData.phone_number || ''}
-            onChange={(e) => handleChange('phone_number', e.target.value)}
+            onChange={(e) => handleChange('phone_number', formatPhone(e.target.value))}
             error={errors.phone_number}
             required
             autoComplete="tel"
