@@ -1,0 +1,43 @@
+{
+  "form_type": "form_test",
+  "template_filename": "b_107_0425-form.pdf",
+  "template_version": "abc123",
+  "fields": [
+    {
+      "pdf_field": "Debtor 1",
+      "type": "text",
+      "source": "asked",
+      "on_states": ["intake"],
+      "page": 1,
+      "label": "Debtor 1 name",
+      "required": true,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": null,
+      "repeat": null,
+      "repeat_capacity": null,
+      "row": null,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "Debtor 2",
+      "type": "text",
+      "source": "asked",
+      "on_states": ["intake"],
+      "page": 1,
+      "label": "Debtor 2 name",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": null,
+      "repeat": null,
+      "repeat_capacity": null,
+      "row": null,
+      "legal_review": false
+    }
+  ]
+}
