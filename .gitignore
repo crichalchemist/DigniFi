@@ -39,6 +39,7 @@ staticfiles/
 .env
 .env.local
 .env.*.local
+.improvements
 
 # Node
 node_modules/
@@ -56,6 +57,7 @@ yarn-error.log*
 # IDE
 .vscode/
 .idea/
+.improvement_screens/
 *.swp
 *.swo
 *~
