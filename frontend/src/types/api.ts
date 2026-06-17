@@ -434,6 +434,34 @@ export interface UserProfile {
 // API Error Response
 // ============================================================================
 
+// ============================================================================
+// SOFA Report (Form 107 Financial Affairs) API
+// ============================================================================
+
+export interface SOFAPriorIncome {
+  id: number;
+  year: number;
+  source: string;
+  gross_amount: string;
+}
+
+export interface SOFACreditorPayment {
+  id: number;
+  creditor_name: string;
+  total_paid: string;
+  dates_of_payments: string;
+}
+
+export interface SOFAReport {
+  id: number;
+  session: number;
+  has_prior_income: boolean;
+  has_creditor_payments: boolean;
+  has_business: boolean;
+  prior_income: SOFAPriorIncome[];
+  creditor_payments: SOFACreditorPayment[];
+}
+
 export interface APIError {
   error: string;
   message: string;
