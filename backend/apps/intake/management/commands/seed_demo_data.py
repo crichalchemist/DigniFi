@@ -24,6 +24,9 @@ from apps.intake.models import (
     FeeWaiverApplication,
     IncomeInfo,
     IntakeSession,
+    SOFACreditorPayment,
+    SOFAPriorIncome,
+    SOFAReport,
 )
 
 User = get_user_model()
@@ -117,6 +120,35 @@ def _maria_torres() -> dict:
                 "consumer_business_classification": "consumer",
             },
         ],
+        "sofa": {
+            "has_prior_income": True,
+            "has_creditor_payments": True,
+            "has_business": False,
+            "prior_income": [
+                {
+                    "year": 2025,
+                    "source": "Wages - CNA at Northwestern Hospital",
+                    "gross_amount": Decimal("38400.00"),
+                },
+                {
+                    "year": 2024,
+                    "source": "Wages - CNA at Northwestern Hospital",
+                    "gross_amount": Decimal("37000.00"),
+                },
+            ],
+            "creditor_payments": [
+                {
+                    "creditor_name": "Capital One",
+                    "total_paid": Decimal("1020.00"),
+                    "dates_of_payments": "Monthly Jan-Mar 2026",
+                },
+                {
+                    "creditor_name": "Discover Financial",
+                    "total_paid": Decimal("720.00"),
+                    "dates_of_payments": "Monthly Jan-Mar 2026",
+                },
+            ],
+        },
     }
 
 
@@ -529,6 +561,17 @@ class Command(BaseCommand):
 
         for debt in data["debts"]:
             DebtInfo.objects.create(session=session, **debt)
+
+        # Create SOFA report and related data (Form 107)
+        sofa_data = data.get("sofa", {})
+        if sofa_data:
+            prior_income_rows = sofa_data.pop("prior_income", [])
+            creditor_payment_rows = sofa_data.pop("creditor_payments", [])
+            report = SOFAReport.objects.create(session=session, **sofa_data)
+            for row in prior_income_rows:
+                SOFAPriorIncome.objects.create(report=report, **row)
+            for row in creditor_payment_rows:
+                SOFACreditorPayment.objects.create(report=report, **row)
 
         # Run means test calculation
         calculator = MeansTestCalculator(session)
