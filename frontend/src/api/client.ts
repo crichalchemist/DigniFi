@@ -33,6 +33,7 @@ import type {
   UploadedDocument,
   DocumentUploadResponse,
   OCRResult,
+  SOFAReport,
 } from '../types/api';
 
 // ============================================================================
@@ -617,6 +618,30 @@ export async function validateDocument(
 // Export unified API client
 // ============================================================================
 
+// ============================================================================
+// SOFA Report API
+// ============================================================================
+
+export const sofaReportAPI = {
+  /**
+   * Get SOFA report for a session (GET /api/intake/sofa-report/{sessionId}/)
+   * Creates an empty report if none exists.
+   */
+  get: async (sessionId: number): Promise<SOFAReport> => {
+    return apiFetch<SOFAReport>(`/intake/sofa-report/${sessionId}/`);
+  },
+
+  /**
+   * Update SOFA report booleans and/or nested rows (PATCH /api/intake/sofa-report/{sessionId}/)
+   */
+  patch: async (sessionId: number, data: Partial<SOFAReport>): Promise<SOFAReport> => {
+    return apiFetch<SOFAReport>(`/intake/sofa-report/${sessionId}/`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  },
+};
+
 export const api = {
   auth: authAPI,
   intake: intakeAPI,
@@ -624,6 +649,7 @@ export const api = {
   debts: debtsAPI,
   forms: formsAPI,
   feeWaiver: feeWaiverAPI,
+  sofaReport: sofaReportAPI,
 };
 
 export default api;
