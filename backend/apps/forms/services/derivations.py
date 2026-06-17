@@ -28,7 +28,7 @@ def _first_name(session: IntakeSession) -> str:
 
 
 def _middle_name(session: IntakeSession) -> str:
-    return session.debtor_info.middle_name
+    return session.debtor_info.middle_name or ""
 
 
 def _last_name(session: IntakeSession) -> str:
@@ -55,6 +55,14 @@ def _zip_code(session: IntakeSession) -> str:
     return session.debtor_info.zip_code
 
 
+def _phone(session: IntakeSession) -> str:
+    return session.debtor_info.phone or ""
+
+
+def _email(session: IntakeSession) -> str:
+    return session.debtor_info.email or ""
+
+
 DERIVATIONS: dict[str, Callable[[IntakeSession], str]] = {
     "full_name": _full_name,
     "family_size": _family_size,
@@ -66,6 +74,8 @@ DERIVATIONS: dict[str, Callable[[IntakeSession], str]] = {
     "city": _city,
     "state": _state,
     "zip_code": _zip_code,
+    "phone": _phone,
+    "email": _email,
     "chapter": lambda s: "7",
     "debtor_type": lambda s: "Individual",
     "district_name": lambda s: s.district.name,
