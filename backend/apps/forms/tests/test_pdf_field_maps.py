@@ -299,4 +299,4 @@ def test_form_107_pdf_field_map(full_session):
     assert isinstance(field_map, dict)
     assert all(isinstance(k, str) and isinstance(v, str) for k, v in field_map.items())
     assert field_map.get("Bankruptcy District Information") == "Northern District of Illinois"
-    assert "Torres" in field_map.get("Debtor 1", "")
+    assert "Torres" in field_map.get("Debtor 2", "")
