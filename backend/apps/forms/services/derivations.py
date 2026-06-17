@@ -23,59 +23,19 @@ def _family_size(session: IntakeSession) -> str:
     return str(session.debtor_info.household_size)
 
 
-def _first_name(session: IntakeSession) -> str:
-    return session.debtor_info.first_name
-
-
-def _middle_name(session: IntakeSession) -> str:
-    return session.debtor_info.middle_name or ""
-
-
-def _last_name(session: IntakeSession) -> str:
-    return session.debtor_info.last_name
-
-
-def _ssn_last_4(session: IntakeSession) -> str:
-    return (session.debtor_info.ssn or "")[-4:]
-
-
-def _street_address(session: IntakeSession) -> str:
-    return session.debtor_info.street_address
-
-
-def _city(session: IntakeSession) -> str:
-    return session.debtor_info.city
-
-
-def _state(session: IntakeSession) -> str:
-    return session.debtor_info.state
-
-
-def _zip_code(session: IntakeSession) -> str:
-    return session.debtor_info.zip_code
-
-
-def _phone(session: IntakeSession) -> str:
-    return session.debtor_info.phone or ""
-
-
-def _email(session: IntakeSession) -> str:
-    return session.debtor_info.email or ""
-
-
 DERIVATIONS: dict[str, Callable[[IntakeSession], str]] = {
     "full_name": _full_name,
     "family_size": _family_size,
-    "first_name": _first_name,
-    "middle_name": _middle_name,
-    "last_name": _last_name,
-    "ssn_last_4": _ssn_last_4,
-    "street_address": _street_address,
-    "city": _city,
-    "state": _state,
-    "zip_code": _zip_code,
-    "phone": _phone,
-    "email": _email,
+    "first_name": lambda s: s.debtor_info.first_name,
+    "middle_name": lambda s: s.debtor_info.middle_name or "",
+    "last_name": lambda s: s.debtor_info.last_name,
+    "ssn_last_4": lambda s: (s.debtor_info.ssn or "")[-4:],
+    "street_address": lambda s: s.debtor_info.street_address,
+    "city": lambda s: s.debtor_info.city,
+    "state": lambda s: s.debtor_info.state,
+    "zip_code": lambda s: s.debtor_info.zip_code,
+    "phone": lambda s: s.debtor_info.phone or "",
+    "email": lambda s: s.debtor_info.email or "",
     "chapter": lambda s: "7",
     "debtor_type": lambda s: "Individual",
     "district_name": lambda s: s.district.name,
