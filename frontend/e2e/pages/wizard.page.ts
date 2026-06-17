@@ -22,8 +22,9 @@ export class WizardPage {
   async completeIntake() {
     await this.page.getByRole('button', { name: /complete intake/i }).click();
     // Fee-waiver-eligible sessions are routed to the waiver application
-    // first (see IntakeWizard → /fee-waiver); everyone else goes to /forms.
-    await this.page.waitForURL(/\/(forms|fee-waiver)/);
+    // first (see IntakeWizard → /fee-waiver); non-waiver goes to /sofa
+    // (the SOFA/Form 107 step), then /forms after saving.
+    await this.page.waitForURL(/\/(forms|fee-waiver|sofa)/);
   }
 
   async getCurrentStep(): Promise<string> {
