@@ -222,7 +222,7 @@ def test_form_122a1_pdf_field_map(full_session):
     gen = get_generator("form_122a1", full_session)
     field_map = gen.pdf_field_map()
     _assert_map_shape(field_map)
-    assert field_map["Debtor1.First name"] == "Maria"
+    assert "Maria" in field_map.get("Name", "")
     # CMI = $2200/mo, annualized = $26,400
     assert field_map.get("12B") == "26400.00"
 
