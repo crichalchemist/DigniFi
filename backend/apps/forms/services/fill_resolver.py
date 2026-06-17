@@ -8,7 +8,23 @@ ingested/signature). This module resolves ``binding`` references; resolve()
 
 from __future__ import annotations
 
+from apps.forms.schema import FieldSpec, FormSchema
+from apps.forms.services.derivations import DERIVATIONS, PREDICATES
 from apps.intake.models import FormAnswer, IntakeSession
+
+
+class RepeatOverflow(Exception):
+    """A bound collection exceeded its template's pre-printed row capacity."""
+
+    def __init__(self, form_type: str, group: str, capacity: int, actual: int):
+        self.form_type = form_type
+        self.group = group
+        self.capacity = capacity
+        self.actual = actual
+        super().__init__(
+            f"{form_type}: repeat group {group!r} has {actual} rows but template "
+            f"holds {capacity}. A continuation attachment is required."
+        )
 
 
 def resolve_binding(binding: str, session: IntakeSession) -> str | list[str]:
@@ -39,3 +55,74 @@ def resolve_binding(binding: str, session: IntakeSession) -> str | list[str]:
         return str(getattr(report, path))
 
     raise ValueError(f"unrecognized binding: {binding!r}")
+
+
+def _section_applies(field: FieldSpec, session: IntakeSession) -> bool:
+    if field.conditional_on is None:
+        return True
+    pred = PREDICATES.get(field.conditional_on)
+    return bool(pred and pred(session))
+
+
+def _scalar_value(field: FieldSpec, session: IntakeSession) -> str | None:
+    if field.source == "constant":
+        return field.value
+    if field.source == "derived":
+        return DERIVATIONS[field.rule](session)
+    if field.source == "asked":
+        val = resolve_binding(field.binding, session)
+        return val if isinstance(val, str) else None
+    # ingested (inert in SP1) / signature → nothing
+    return None
+
+
+def _emit(field: FieldSpec, value: str | None) -> str | None:
+    """Apply checkbox on-state semantics and string coercion. None = skip."""
+    if value is None or value == "":
+        return None
+    if field.type in ("checkbox", "radio"):
+        return field.on_states[0] if field.on_states else "/Yes"
+    return str(value)
+
+
+def resolve(schema: FormSchema, session: IntakeSession) -> dict[str, str]:
+    out: dict[str, str] = {}
+
+    # Non-repeat fields
+    for f in schema.fields:
+        if f.repeat is not None:
+            continue
+        if not _section_applies(f, session):
+            continue
+        # UPL guard: legal_review fields fill only from an explicit asked answer
+        if f.legal_review and f.source != "asked":
+            continue
+        emitted = _emit(f, _scalar_value(f, session))
+        if emitted is not None:
+            out[f.pdf_field] = emitted
+
+    # Repeat groups
+    groups: dict[str, list[FieldSpec]] = {}
+    for f in schema.fields:
+        if f.repeat is not None and _section_applies(f, session):
+            groups.setdefault(f.repeat, []).append(f)
+
+    for group_name, fields in groups.items():
+        capacity = fields[0].repeat_capacity or 0
+        resolved_cols = {
+            f.pdf_field: resolve_binding(f.binding, session) for f in fields if f.binding
+        }
+        actual = max(
+            (len(v) for v in resolved_cols.values() if isinstance(v, list)),
+            default=0,
+        )
+        if actual > capacity:
+            raise RepeatOverflow(schema.form_type, group_name, capacity, actual)
+        for f in fields:
+            vals = resolved_cols.get(f.pdf_field)
+            if isinstance(vals, list) and f.row and f.row <= len(vals):
+                emitted = _emit(f, str(vals[f.row - 1]))
+                if emitted is not None:
+                    out[f.pdf_field] = emitted
+
+    return out
