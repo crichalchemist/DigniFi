@@ -12,8 +12,10 @@ from django.db import transaction
 from django.http import HttpResponse
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
+from rest_framework.exceptions import NotFound
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from apps.intake.models import IntakeSession
 
@@ -353,3 +355,35 @@ class GeneratedFormViewSet(viewsets.ReadOnlyModelViewSet):
         response = HttpResponse(pdf_bytes, content_type="application/pdf")
         response["Content-Disposition"] = f'attachment; filename="{generated_form.form_type}.pdf"'
         return response
+
+
+class FormSchemaUIView(APIView):
+    permission_classes = []
+
+    def get(self, request, form_type):
+        try:
+            schema = load_schema(form_type)
+        except FileNotFoundError as exc:
+            raise NotFound(f"Schema for form {form_type} not found") from exc
+
+        steps_dict = {}
+        for field in schema.fields:
+            if field.source == "asked" and field.ui:
+                step_title = field.ui.step
+                if step_title not in steps_dict:
+                    steps_dict[step_title] = {"title": step_title, "fields": []}
+
+                steps_dict[step_title]["fields"].append(
+                    {
+                        "binding": field.binding,
+                        "prompt": field.ui.prompt,
+                        "widget": field.ui.widget,
+                        "help_text": field.ui.help_text,
+                        "conditional_on": field.conditional_on,
+                        "repeat": field.repeat,
+                        "repeat_capacity": field.repeat_capacity,
+                    }
+                )
+
+        steps_list = list(steps_dict.values())
+        return Response({"form_type": form_type, "steps": steps_list})

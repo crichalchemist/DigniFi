@@ -18,11 +18,13 @@ from .models import (
     AssetInfo,
     DebtInfo,
     FeeWaiverApplication,
+    FormAnswer,
     IntakeSession,
     SOFAReport,
 )
 from .serializers import (
     AssetInfoSerializer,
+    BulkAnswerPayloadSerializer,
     DebtInfoSerializer,
     FeeWaiverApplicationSerializer,
     IntakeSessionSerializer,
@@ -284,6 +286,30 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
         }
 
         return Response(summary_data)
+
+    @action(detail=True, methods=["post"], url_path="answers/bulk", url_name="bulk-answers")
+    def bulk_answers(self, request, pk=None):
+        session = self.get_object()
+        serializer = BulkAnswerPayloadSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        answers_data = serializer.validated_data["answers"]
+        created_count = 0
+        updated_count = 0
+
+        for ans in answers_data:
+            obj, created = FormAnswer.objects.update_or_create(
+                session=session,
+                form_type=ans["form_type"],
+                field_key=ans["field_key"],
+                defaults={"value": ans["value"]},
+            )
+            if created:
+                created_count += 1
+            else:
+                updated_count += 1
+
+        return Response({"status": "success", "created": created_count, "updated": updated_count})
 
     def _calculate_completion_percentage(self, session):
         """Calculate how complete the intake session is."""
