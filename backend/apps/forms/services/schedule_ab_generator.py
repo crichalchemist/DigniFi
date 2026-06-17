@@ -14,7 +14,7 @@ Official form: form_b106ab.pdf
 from decimal import Decimal
 from typing import Any
 
-from apps.intake.models import AssetInfo, IntakeSession
+from apps.intake.models import IntakeSession
 
 
 class ScheduleABGenerator:
@@ -112,46 +112,9 @@ class ScheduleABGenerator:
         return self.generate()
 
     def pdf_field_map(self) -> dict:
-        """Map session data to Official Form 106A/B (form_b106ab.pdf)."""
-        from decimal import ROUND_HALF_UP, Decimal
+        """Map session data to Official Form 106A/B via schema-driven resolver."""
+        from apps.forms.schema import load_schema
+        from apps.forms.services.fill_resolver import resolve
 
-        TWO = Decimal("0.01")
-        ZERO = Decimal("0.00")
-
-        def fmt(d):
-            return str((d or ZERO).quantize(TWO, rounding=ROUND_HALF_UP))
-
-        session = self.session
-        di = session.debtor_info
-        full_name = f"{di.first_name} {di.middle_name} {di.last_name}".replace("  ", " ").strip()
-        assets = list(AssetInfo.objects.filter(session=session))
-
-        result: dict = {
-            "Bankruptcy District Information": session.district.name,
-            "Debtor 1": full_name,
-        }
-
-        real_props = [a for a in assets if a.asset_type == "real_property"]
-        if real_props:
-            result["1 1"] = real_props[0].description or ""
-            result["1 1a"] = fmt(real_props[0].current_value)
-
-        vehicles = [a for a in assets if a.asset_type == "vehicle"]
-        if vehicles:
-            result["3 description"] = vehicles[0].description or ""
-            result["3 description amount"] = fmt(vehicles[0].current_value)
-
-        bank_total = sum(
-            (a.current_value or ZERO) for a in assets if a.asset_type == "bank_account"
-        )
-        result["16 Cash amount"] = fmt(bank_total)
-
-        retirement = [a for a in assets if a.asset_type == "retirement_account"]
-        if retirement:
-            result["12"] = fmt(retirement[0].current_value)
-
-        others = [a for a in assets if a.asset_type == "other"]
-        if others:
-            result["17"] = fmt(others[0].current_value)
-
-        return result
+        schema = load_schema("schedule_a_b")
+        return resolve(schema, self.session)
