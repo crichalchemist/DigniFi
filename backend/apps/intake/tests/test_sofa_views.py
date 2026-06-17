@@ -128,3 +128,45 @@ class TestSOFAUpdate:
         assert data["has_creditor_payments"] is True
         assert len(data["creditor_payments"]) == 1
         assert data["creditor_payments"][0]["creditor_name"] == "NewCred"
+
+    def test_patch_accepts_own_get_body_round_trip(self, auth_client_session):
+        """The serializer must accept its own GET output PATCHed back.
+
+        This is exactly what the frontend SOFAStep does: it GETs the report,
+        spreads the whole object (`{...report}` — including read-only `id`,
+        `session`, timestamps, and each row's own `id`), adds rows, and PATCHes
+        the full body. The minimal-payload tests above never exercise this, so a
+        serializer that chokes on its own echoed output ships a bug every SOFA
+        user hits (Save & Continue silently fails — the catch in SOFAStep
+        swallows it and navigation never fires).
+        """
+        client, session = auth_client_session
+        url = f"/api/intake/sofa-report/{session.pk}/"
+
+        # GET (get_or_create) — capture the serializer's own output verbatim.
+        body = client.get(url).json()
+
+        # Mutate the way the UI does: toggle gates on and append rows.
+        body["has_prior_income"] = True
+        body["prior_income"] = [
+            {"year": 2025, "source": "Temp Agency", "gross_amount": "24000.00"},
+        ]
+        body["has_creditor_payments"] = True
+        body["creditor_payments"] = [
+            {
+                "creditor_name": "Capital One",
+                "total_paid": "1500.00",
+                "dates_of_payments": "Monthly Jan-Mar 2026",
+            },
+        ]
+
+        # PATCH the whole body back, exactly as the frontend does.
+        response = client.patch(url, body, format="json")
+
+        assert response.status_code == 200, response.content
+        data = response.json()
+        assert data["has_prior_income"] is True
+        assert len(data["prior_income"]) == 1
+        assert data["prior_income"][0]["source"] == "Temp Agency"
+        assert len(data["creditor_payments"]) == 1
+        assert data["creditor_payments"][0]["creditor_name"] == "Capital One"
