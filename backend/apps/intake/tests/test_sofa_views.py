@@ -60,6 +60,9 @@ class TestSOFARetrieve:
         response = client.get(url)
         assert response.status_code == 404
 
+        response = client.patch(url, {"has_prior_income": True})
+        assert response.status_code == 404
+
     def test_get_or_creates_report(self, auth_client_session):
         client, session = auth_client_session
         url = f"/api/intake/sofa-report/{session.pk}/"

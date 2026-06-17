@@ -563,7 +563,7 @@ class Command(BaseCommand):
             DebtInfo.objects.create(session=session, **debt)
 
         # Create SOFA report and related data (Form 107)
-        sofa_data = data.get("sofa", {})
+        sofa_data = dict(data.get("sofa", {}))
         if sofa_data:
             prior_income_rows = sofa_data.pop("prior_income", [])
             creditor_payment_rows = sofa_data.pop("creditor_payments", [])

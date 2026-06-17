@@ -94,3 +94,18 @@ def test_form_107_schema_is_valid(db):
 def test_form_107_schema_has_no_tbd(db):
     schema = load_schema("form_107")
     assert all(f.source != "TBD" for f in schema.fields), "form_107 has fields with source=TBD"
+
+
+def test_form_101_schema_is_valid(db):
+    schema = load_schema("form_101")
+    errors = validate_schema(schema, derivations=set(DERIVATIONS), predicates=set(PREDICATES))
+    assert not errors
+
+
+def test_form_101_schema_has_no_tbd(db):
+    schema = load_schema("form_101")
+    for f in schema.fields:
+        if f.source != "skip":
+            assert "TBD" not in f.pdf_field
+            assert "TBD" not in str(f.rule)
+            assert "TBD" not in str(f.binding)

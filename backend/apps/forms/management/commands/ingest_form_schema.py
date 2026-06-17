@@ -155,6 +155,27 @@ class Command(BaseCommand):
                         f"({existing_version[:8]}… → {draft['template_version'][:8]}…); updated schema."
                     )
                 )
+                # Preserve metadata from existing schema
+                existing_fields = {f["pdf_field"]: f for f in existing.get("fields", [])}
+                for draft_field in draft["fields"]:
+                    pdf_field = draft_field["pdf_field"]
+                    if pdf_field in existing_fields:
+                        old = existing_fields[pdf_field]
+                        for key in [
+                            "source",
+                            "binding",
+                            "rule",
+                            "conditional_on",
+                            "repeat",
+                            "legal_review",
+                            "repeat_capacity",
+                            "row",
+                            "value",
+                            "ingest_key",
+                            "required",
+                        ]:
+                            if key in old:
+                                draft_field[key] = old[key]
         else:
             self.stdout.write(
                 self.style.SUCCESS(
