@@ -77,3 +77,25 @@ def test_has_creditor_payments_predicate_false_without_report(session):
 
 def test_has_prior_income_predicate_false_without_report(session):
     assert PREDICATES["has_prior_income"](session) is False
+
+
+@pytest.mark.django_db
+def test_has_attorney_predicate():
+    from apps.intake.models import FormAnswer
+
+    d = District.objects.create(
+        code="ilnd", name="Test", court_name="x", state="IL", filing_fee_chapter_7="1.00"
+    )
+    user = User.objects.create_user(username="pred_attorney", password="x")
+    session = IntakeSession.objects.create(
+        district=d, user=user, status="in_progress", current_step=1
+    )
+
+    # No FormAnswer yet → defaults to False
+    assert PREDICATES["has_attorney"](session) is False
+
+    # With a "yes" answer → True
+    FormAnswer.objects.create(
+        session=session, form_type="form_107", field_key="attorney_gate", value="yes"
+    )
+    assert PREDICATES["has_attorney"](session) is True

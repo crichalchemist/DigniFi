@@ -73,4 +73,5 @@ PREDICATES: dict[str, Callable[[IntakeSession], bool]] = {
     "has_accountant": lambda s: _form_answer_predicate(s, "accountant_gate"),
     "has_joint_filer": lambda s: _form_answer_predicate(s, "joint_filer_gate"),
     "has_address_history": lambda s: _form_answer_predicate(s, "address_history_gate"),
+    "has_attorney": lambda s: _form_answer_predicate(s, "attorney_gate"),
 }
