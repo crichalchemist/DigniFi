@@ -528,3 +528,64 @@ class FeeWaiverApplication(models.Model):
             self.POVERTY_INCREMENT * (self.household_size - 1)
         )
         return (poverty_threshold_annual * self.POVERTY_MULTIPLIER) / self.MONTHS_PER_YEAR
+
+
+class SOFAReport(models.Model):
+    """Statement of Financial Affairs (Form 107) structured data, per session.
+
+    Boolean flags gate conditional sections (drive PREDICATES in the fill engine).
+    """
+
+    session = models.OneToOneField(
+        IntakeSession, on_delete=models.CASCADE, related_name="sofa_report"
+    )
+    has_prior_income = models.BooleanField(default=True)
+    has_creditor_payments = models.BooleanField(default=False)
+    has_business = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "sofa_reports"
+
+
+class SOFAPriorIncome(models.Model):
+    """A prior-year income row (Form 107 Q1/Q2)."""
+
+    report = models.ForeignKey(SOFAReport, on_delete=models.CASCADE, related_name="prior_income")
+    year = models.PositiveIntegerField()
+    source = models.CharField(max_length=255, help_text="e.g. Wages, Operating a business")
+    gross_amount = EncryptedDecimalField(max_digits=12, decimal_places=2)
+
+    class Meta:
+        db_table = "sofa_prior_income"
+        ordering = ["-year"]
+
+
+class SOFACreditorPayment(models.Model):
+    """A payment-to-creditor row (Form 107 Q6/Q7)."""
+
+    report = models.ForeignKey(
+        SOFAReport, on_delete=models.CASCADE, related_name="creditor_payments"
+    )
+    creditor_name = models.CharField(max_length=255)
+    total_paid = EncryptedDecimalField(max_digits=12, decimal_places=2)
+    dates_of_payments = models.CharField(max_length=255, blank=True)
+
+    class Meta:
+        db_table = "sofa_creditor_payments"
+
+
+class FormAnswer(models.Model):
+    """Generic key/value answer store for the sparse long tail of form fields."""
+
+    session = models.ForeignKey(
+        IntakeSession, on_delete=models.CASCADE, related_name="form_answers"
+    )
+    form_type = models.CharField(max_length=20)
+    field_key = models.CharField(max_length=100)
+    value = models.TextField(blank=True)
+
+    class Meta:
+        db_table = "form_answers"
+        unique_together = [["session", "form_type", "field_key"]]
