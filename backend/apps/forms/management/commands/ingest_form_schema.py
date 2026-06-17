@@ -63,6 +63,8 @@ def build_draft_schema(form_type: str) -> dict:
         annots = page.get("/Annots")
         if not annots:
             continue
+        if hasattr(annots, "get_object"):
+            annots = annots.get_object()
         for annot_ref in annots:
             annot = annot_ref.get_object() if hasattr(annot_ref, "get_object") else annot_ref
             name = annot.get("/T")
@@ -76,6 +78,8 @@ def build_draft_schema(form_type: str) -> dict:
         annots = page.get("/Annots")
         if not annots:
             continue
+        if hasattr(annots, "get_object"):
+            annots = annots.get_object()
         for annot_ref in annots:
             annot = annot_ref.get_object() if hasattr(annot_ref, "get_object") else annot_ref
             name = annot.get("/T")

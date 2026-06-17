@@ -34,6 +34,8 @@ import type {
   DocumentUploadResponse,
   OCRResult,
   SOFAReport,
+  FormUISpec,
+  AnswerPayload,
 } from '../types/api';
 
 // ============================================================================
@@ -642,6 +644,26 @@ export const sofaReportAPI = {
   },
 };
 
+// ============================================================================
+// SP4: Ask-Modules API
+// ============================================================================
+
+export const askModulesAPI = {
+  getUISpec: async (formType: string): Promise<FormUISpec> => {
+    return apiFetch<FormUISpec>(`/forms/schema/${formType}/ui-spec/`);
+  },
+
+  bulkUpsertAnswers: async (
+    sessionId: number,
+    answers: AnswerPayload[]
+  ): Promise<{ status: string; created: number; updated: number }> => {
+    return apiFetch(`/intake/sessions/${sessionId}/answers/bulk/`, {
+      method: 'POST',
+      body: JSON.stringify({ answers }),
+    });
+  },
+};
+
 export const api = {
   auth: authAPI,
   intake: intakeAPI,
@@ -650,6 +672,7 @@ export const api = {
   forms: formsAPI,
   feeWaiver: feeWaiverAPI,
   sofaReport: sofaReportAPI,
+  askModules: askModulesAPI,
 };
 
 export default api;

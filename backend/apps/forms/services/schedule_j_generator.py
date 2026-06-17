@@ -82,7 +82,7 @@ def _calculate_cmi(monthly_income_array: list) -> Decimal:
 
 def _build_empty_expenses() -> dict[str, Decimal]:
     """Return zeroed-out expense dict for sessions without ExpenseInfo."""
-    return {field: ZERO for field in EXPENSE_FIELDS}
+    return dict.fromkeys(EXPENSE_FIELDS, ZERO)
 
 
 def _build_schedule_j_data(

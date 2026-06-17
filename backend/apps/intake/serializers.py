@@ -417,3 +417,13 @@ class SOFAReportSerializer(serializers.ModelSerializer):
                 SOFACreditorPayment.objects.create(report=instance, **item)
 
         return instance
+
+
+class BulkAnswerItemSerializer(serializers.Serializer):
+    form_type = serializers.CharField(max_length=20)
+    field_key = serializers.CharField(max_length=100)
+    value = serializers.CharField(allow_blank=True)
+
+
+class BulkAnswerPayloadSerializer(serializers.Serializer):
+    answers = BulkAnswerItemSerializer(many=True)

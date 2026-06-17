@@ -467,3 +467,33 @@ export interface APIError {
   message: string;
   details?: Record<string, unknown>;
 }
+
+// ============================================================================
+// SP4: Ask-Modules UI Spec
+// ============================================================================
+
+export interface UIFieldSpec {
+  binding: string;
+  prompt: string;
+  widget: string;
+  help_text?: string | null;
+  conditional_on?: string | null;
+  repeat?: string | null;
+  repeat_capacity?: number | null;
+}
+
+export interface UIStep {
+  title: string;
+  fields: UIFieldSpec[];
+}
+
+export interface FormUISpec {
+  form_type: string;
+  steps: UIStep[];
+}
+
+export interface AnswerPayload {
+  form_type: string;
+  field_key: string;
+  value: string;
+}
