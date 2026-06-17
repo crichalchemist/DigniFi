@@ -16,6 +16,11 @@ import { WizardPage } from '../pages/wizard.page';
 import { DashboardPage } from '../pages/dashboard.page';
 import { SOFAPage } from '../pages/sofa.page';
 
+// Spec-local ID so this registration never collides with james-borderline when
+// both specs run in the same Playwright worker process (single-worker CI default
+// means they share module evaluation and would produce identical JAMES.username).
+const SOFA_RUN_ID = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+
 test.describe('SOFA — Form 107 Financial History', () => {
   test('fills SOFA data, generates forms, and downloads Form 107', async ({ page }) => {
     const landing = new LandingPage(page);
@@ -26,7 +31,11 @@ test.describe('SOFA — Form 107 Financial History', () => {
 
     await landing.goto();
     await landing.clickGetStarted();
-    await register.register(JAMES.username, JAMES.debtor.email, JAMES.password);
+    await register.register(
+      `e2e_sofa_${SOFA_RUN_ID}`,
+      `sofa.e2e+${SOFA_RUN_ID}@test.dignifi.org`,
+      JAMES.password
+    );
 
     // ── Complete Wizard ─────────────────────────────────────
 

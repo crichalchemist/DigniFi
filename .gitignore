@@ -100,3 +100,6 @@ frontend/**/CLAUDE.md
 scripts/CLAUDE.md
 test-results/CLAUDE.md
 .superpowers/
+.agents/
+.pi/
+.gemini/
