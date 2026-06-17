@@ -20,16 +20,45 @@ _ZERO = Decimal("0.00")
 _TWO_PLACES = Decimal("0.01")
 
 
+# ---------------------------------------------------------------------------
+# Safe accessor helpers
+# ---------------------------------------------------------------------------
+
+
+def _safe_debtor_attr(session: IntakeSession, attr: str, default: str = "") -> str:
+    try:
+        val = getattr(session.debtor_info, attr)
+        return str(val) if val is not None else default
+    except Exception:
+        return default
+
+
 def _full_name(session: IntakeSession) -> str:
     try:
         di = session.debtor_info
-    except IntakeSession.debtor_info.RelatedObjectDoesNotExist:
+    except Exception:
         return ""
     return f"{di.first_name} {di.middle_name} {di.last_name}".replace("  ", " ").strip()
 
 
-def _family_size(session: IntakeSession) -> str:
-    return str(session.debtor_info.household_size)
+def _has_ssn(session: IntakeSession) -> bool:
+    try:
+        return bool(session.debtor_info.ssn)
+    except Exception:
+        return False
+
+
+def _ssn_formatted(session: IntakeSession) -> str:
+    try:
+        raw = session.debtor_info.ssn or ""
+    except Exception:
+        return ""
+    cleaned = raw.strip().replace("-", "")
+    if len(cleaned) == 9 and cleaned.isdigit():
+        return f"{cleaned[:3]}-{cleaned[3:5]}-{cleaned[5:]}"
+    if "-" in raw and len(raw) == 11:
+        return raw
+    return ""
 
 
 def _fmt(d: Decimal) -> str:
@@ -38,6 +67,11 @@ def _fmt(d: Decimal) -> str:
 
 def _sum_encrypted(queryset, field_name: str) -> Decimal:
     return reduce(lambda acc, obj: acc + (getattr(obj, field_name) or _ZERO), queryset, _ZERO)
+
+
+# ---------------------------------------------------------------------------
+# Form 106Sum aggregation derivations
+# ---------------------------------------------------------------------------
 
 
 def _total_real_property(session: IntakeSession) -> str:
@@ -120,27 +154,33 @@ def _total_monthly_expenses(session: IntakeSession) -> str:
     return _fmt(Decimal(str(expense_info.calculate_total_monthly_expenses())))
 
 
+# ---------------------------------------------------------------------------
+# DERIVATIONS dict (all referenced functions must be defined above)
+# ---------------------------------------------------------------------------
+
 DERIVATIONS: dict[str, Callable[[IntakeSession], str]] = {
     "full_name": _full_name,
-    "family_size": _family_size,
-    "first_name": lambda s: s.debtor_info.first_name,
-    "middle_name": lambda s: s.debtor_info.middle_name or "",
-    "last_name": lambda s: s.debtor_info.last_name,
-    "ssn_last_4": lambda s: (s.debtor_info.ssn or "")[-4:],
-    "street_address": lambda s: s.debtor_info.street_address,
-    "city": lambda s: s.debtor_info.city,
-    "state": lambda s: s.debtor_info.state,
-    "zip_code": lambda s: s.debtor_info.zip_code,
-    "phone": lambda s: s.debtor_info.phone or "",
-    "email": lambda s: s.debtor_info.email or "",
+    "family_size": lambda s: _safe_debtor_attr(s, "household_size", "1"),
+    "first_name": lambda s: _safe_debtor_attr(s, "first_name"),
+    "middle_name": lambda s: _safe_debtor_attr(s, "middle_name"),
+    "last_name": lambda s: _safe_debtor_attr(s, "last_name"),
+    "ssn_last_4": lambda s: (_safe_debtor_attr(s, "ssn"))[-4:],
+    "street_address": lambda s: _safe_debtor_attr(s, "street_address"),
+    "city": lambda s: _safe_debtor_attr(s, "city"),
+    "state": lambda s: _safe_debtor_attr(s, "state"),
+    "zip_code": lambda s: _safe_debtor_attr(s, "zip_code"),
+    "phone": lambda s: _safe_debtor_attr(s, "phone"),
+    "email": lambda s: _safe_debtor_attr(s, "email"),
     "chapter": lambda s: "7",
     "debtor_type": lambda s: "Individual",
     "district_name": lambda s: s.district.name,
     "today_iso": lambda s: date.today().isoformat(),
+    "ssn_formatted": _ssn_formatted,
+    "has_ssn_check": lambda s: "true" if _has_ssn(s) else "",
+    "no_ssn_check": lambda s: "" if _has_ssn(s) else "true",
     "joint_filer_check": lambda s: (
         "true" if _form_answer_predicate(s, "joint_filer_gate") else ""
     ),
-    # Form 106Sum aggregations
     "total_real_property": _total_real_property,
     "total_personal_property": _total_personal_property,
     "total_assets": _total_assets,
@@ -152,6 +192,11 @@ DERIVATIONS: dict[str, Callable[[IntakeSession], str]] = {
     "cmi": _cmi,
     "total_monthly_expenses": _total_monthly_expenses,
 }
+
+
+# ---------------------------------------------------------------------------
+# PREDICATES — section-applicability checks
+# ---------------------------------------------------------------------------
 
 
 def _has_business(session: IntakeSession, answer_cache: dict | None = None) -> bool:
@@ -172,12 +217,6 @@ def _has_prior_income(session: IntakeSession, answer_cache: dict | None = None) 
 def _form_answer_predicate(
     session: IntakeSession, key: str, answer_cache: dict | None = None
 ) -> bool:
-    """Check if a FormAnswer entry has a truthy value.
-
-    Form-type agnostic: looks up by session + field_key across all form types,
-    so the same predicate works for both Form 107 and Form 101 schemas.
-    If answer_cache is provided (from resolve()), uses it to avoid DB hits.
-    """
     if answer_cache is not None:
         ans = answer_cache.get(key)
         return bool(ans and ans.value and ans.value.lower() in ("yes", "y", "true", "1"))
@@ -189,11 +228,9 @@ def _form_answer_predicate(
 
 
 PREDICATES: dict[str, Callable[[IntakeSession], bool]] = {
-    # SOFAReport-backed predicates
     "has_business": _has_business,
     "has_creditor_payments": _has_creditor_payments,
     "has_prior_income": _has_prior_income,
-    # FormAnswer-backed section gates (user answered "Yes" to gate question)
     "has_insider_payments": lambda s, answer_cache=None: _form_answer_predicate(
         s, "insider_payments_gate", answer_cache
     ),
