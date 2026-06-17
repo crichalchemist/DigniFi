@@ -18,6 +18,7 @@ import { useIntake } from '../context/IntakeContext';
 import { sofaReportAPI } from '../api/client';
 import { Button, FormField } from '../components/common';
 import { UPLDisclaimer } from '../components/compliance';
+import { UPL_WIZARD_DISCLAIMER } from '../constants/upl';
 import type { SOFAReport, SOFAPriorIncome, SOFACreditorPayment } from '../types/api';
 
 function emptyPriorIncome(): SOFAPriorIncome {
@@ -201,7 +202,7 @@ export function SOFAStep() {
           This information goes into <strong>Form 107: Statement of Financial Affairs</strong> — a
           required court form that asks about your financial history over the past few years.
         </p>
-        <UPLDisclaimer />
+        <UPLDisclaimer text={UPL_WIZARD_DISCLAIMER} variant="inline" />
       </div>
 
       {error && (
