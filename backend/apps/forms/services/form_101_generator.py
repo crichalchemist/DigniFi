@@ -52,37 +52,12 @@ class Form101Generator:
         return self._build_form_data()
 
     def pdf_field_map(self) -> dict:
-        """Map session data to Official Form 101 (form_b_101_0624_fillable_clean.pdf)."""
-        di = self.debtor_info
-        full_name = f"{di.first_name} {di.middle_name} {di.last_name}".replace("  ", " ").strip()
-        return {
-            "Debtor1.First name": di.first_name,
-            "Debtor1.Middle name": di.middle_name or "",
-            "Debtor1.Last name": di.last_name,
-            "Debtor1.Name": full_name,
-            "Debtor1.First name_3": di.first_name,
-            "Debtor1.Middle name_3": di.middle_name or "",
-            "Debtor1.Last name_3": di.last_name,
-            "Debtor1.First name_5": di.first_name,
-            "Debtor1.Middle name_5": di.middle_name or "",
-            "Debtor1.Last name_5": di.last_name,
-            # Form 101 shows only the last 4 SSN digits (4-char field);
-            # the full SSN appears only on Form 121.
-            "Debtor1.SSNum": (di.ssn or "")[-4:],
-            "Debtor1.Street address": di.street_address,
-            "Debtor1.City": di.city,
-            "Debtor1.State": di.state,
-            "Debtor1.Zip": di.zip_code,
-            "Debtor1.County": "",
-            "Debtor1.Cell phone": di.phone or "",
-            "Debtor1.Email address_2": di.email or "",
-            "Bankruptcy District Information": self.district.name,
-            "Case number": "",
-            "Case number1": "",
-            "Check Box1": "/Yes",  # Individual debtor
-            "Check Box5": "/Yes",  # Chapter 7
-            "Check Box16": "/Yes",  # Consumer debts
-        }
+        """Delegate to the schema-driven resolver."""
+        from apps.forms.schema import load_schema
+        from apps.forms.services.fill_resolver import resolve
+
+        schema = load_schema("form_101")
+        return resolve(schema, self.intake_session)
 
     def _build_form_data(self) -> dict[str, Any]:
         """
