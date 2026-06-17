@@ -72,10 +72,7 @@ export class SOFAPage {
    * @param on true to check (show section), false to uncheck
    */
   async toggleCreditorPayments(on: boolean) {
-    const checkbox = this.page
-      .locator('.sofa-section')
-      .nth(1)
-      .locator('input[type="checkbox"]');
+    const checkbox = this.page.locator('.sofa-section').nth(1).locator('input[type="checkbox"]');
     const isChecked = await checkbox.isChecked();
     if (isChecked !== on) {
       await checkbox.check({ force: true });
@@ -114,9 +111,10 @@ export class SOFAPage {
   }
 
   /**
-   * Click "Skip for now" button.
+   * Click "Skip for now" button. Navigates straight to /forms (no save).
    */
   async skipForNow() {
     await this.page.getByRole('button', { name: /skip for now/i }).click();
+    await this.page.waitForURL(/\/forms/);
   }
 }

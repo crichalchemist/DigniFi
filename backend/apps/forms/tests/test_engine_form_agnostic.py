@@ -10,7 +10,7 @@ import pytest
 
 from apps.districts.models import District
 from apps.forms.management.commands.ingest_form_schema import build_draft_schema
-from apps.forms.schema import FormSchema, FieldSpec, validate_schema
+from apps.forms.schema import FieldSpec, FormSchema, validate_schema
 from apps.forms.services.derivations import DERIVATIONS, PREDICATES
 from apps.forms.services.fill_resolver import resolve
 from apps.intake.models import IntakeSession
@@ -26,9 +26,7 @@ def test_ingest_runs_on_a_second_form():
 def test_validate_flags_uncurated_draft():
     """An uncurated draft has TBD sources, which validate_schema flags."""
     draft = build_draft_schema("schedule_j")
-    schema = FormSchema(
-        **{**draft, "fields": [FieldSpec(**f) for f in draft["fields"]]}
-    )
+    schema = FormSchema(**{**draft, "fields": [FieldSpec(**f) for f in draft["fields"]]})
     errors = validate_schema(schema, set(DERIVATIONS), set(PREDICATES))
     assert any("TBD" in e for e in errors), "uncurated draft should be flagged"
 
@@ -47,8 +45,6 @@ def test_resolver_noops_on_empty_schema():
         state="IL",
         filing_fee_chapter_7="338.00",
     )
-    s = IntakeSession.objects.create(
-        district=d, user=user, status="in_progress", current_step=1
-    )
+    s = IntakeSession.objects.create(district=d, user=user, status="in_progress", current_step=1)
     empty = FormSchema("form_x", "b_107_0425-form.pdf", "v1", [])
     assert resolve(empty, s) == {}

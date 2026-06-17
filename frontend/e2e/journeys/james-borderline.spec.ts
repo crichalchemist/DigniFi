@@ -10,12 +10,14 @@ import { LandingPage } from '../pages/landing.page';
 import { RegisterPage } from '../pages/register.page';
 import { WizardPage } from '../pages/wizard.page';
 import { DashboardPage } from '../pages/dashboard.page';
+import { SOFAPage } from '../pages/sofa.page';
 
 test.describe('James Washington — Borderline', () => {
   test('completes intake near median threshold', async ({ page }) => {
     const landing = new LandingPage(page);
     const register = new RegisterPage(page);
     const wizard = new WizardPage(page);
+    const sofa = new SOFAPage(page);
     const dashboard = new DashboardPage(page);
 
     await landing.goto();
@@ -55,6 +57,13 @@ test.describe('James Washington — Borderline', () => {
     // Step 6: Review & Complete
     await wizard.fillReview();
     await wizard.completeIntake();
+
+    // James is not fee-waiver eligible, so handleComplete routes to the SOFA
+    // step (not /fee-waiver). This journey isn't about financial history, so
+    // skip SOFA to reach the forms dashboard. (The SOFA save path itself is
+    // covered by sofa-journey.spec.ts.)
+    await sofa.waitForLoad();
+    await sofa.skipForNow();
 
     // Forms generated (passes means test). James doesn't qualify for the
     // fee waiver, so Form 103B (the waiver application) is not generated.
