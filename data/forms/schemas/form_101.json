@@ -22,7 +22,7 @@
       "legal_review": false
     },
     {
-      "pdf_field": "Check Box5",
+      "pdf_field": "Check Box2",
       "type": "checkbox",
       "source": "constant",
       "on_states": ["/Yes"],
@@ -40,7 +40,7 @@
       "legal_review": false
     },
     {
-      "pdf_field": "Debtor1.SSNum",
+      "pdf_field": "SSNum",
       "type": "text",
       "source": "derived",
       "on_states": [],
@@ -112,7 +112,7 @@
       "legal_review": false
     },
     {
-      "pdf_field": "Debtor1.First name",
+      "pdf_field": "First name",
       "type": "text",
       "source": "derived",
       "on_states": [],
@@ -130,7 +130,7 @@
       "legal_review": false
     },
     {
-      "pdf_field": "Debtor1.Middle name",
+      "pdf_field": "Middle name",
       "type": "text",
       "source": "derived",
       "on_states": [],
@@ -148,7 +148,7 @@
       "legal_review": false
     },
     {
-      "pdf_field": "Debtor1.Last name",
+      "pdf_field": "Last name",
       "type": "text",
       "source": "derived",
       "on_states": [],
@@ -166,7 +166,7 @@
       "legal_review": false
     },
     {
-      "pdf_field": "Debtor1.Suffix Sr Jr II III",
+      "pdf_field": "Suffix Sr Jr II III",
       "type": "text",
       "source": "asked",
       "on_states": [],
@@ -220,7 +220,7 @@
       "legal_review": false
     },
     {
-      "pdf_field": "Debtor1.First name_3",
+      "pdf_field": "First name_3",
       "type": "text",
       "source": "derived",
       "on_states": [],
@@ -238,7 +238,7 @@
       "legal_review": false
     },
     {
-      "pdf_field": "Debtor1.Middle name_3",
+      "pdf_field": "Middle name_3",
       "type": "text",
       "source": "derived",
       "on_states": [],
@@ -256,7 +256,7 @@
       "legal_review": false
     },
     {
-      "pdf_field": "Debtor1.Last name_3",
+      "pdf_field": "Last name_3",
       "type": "text",
       "source": "derived",
       "on_states": [],
@@ -274,7 +274,7 @@
       "legal_review": false
     },
     {
-      "pdf_field": "Debtor1.First name_5",
+      "pdf_field": "First name_5",
       "type": "text",
       "source": "derived",
       "on_states": [],
@@ -292,7 +292,7 @@
       "legal_review": false
     },
     {
-      "pdf_field": "Debtor1.Middle name_5",
+      "pdf_field": "Middle name_5",
       "type": "text",
       "source": "derived",
       "on_states": [],
@@ -310,7 +310,7 @@
       "legal_review": false
     },
     {
-      "pdf_field": "Debtor1.Last name_5",
+      "pdf_field": "Last name_5",
       "type": "text",
       "source": "derived",
       "on_states": [],
@@ -436,7 +436,7 @@
       "legal_review": false
     },
     {
-      "pdf_field": "Debtor1.Business name",
+      "pdf_field": "Business name",
       "type": "text",
       "source": "asked",
       "on_states": [],
@@ -454,7 +454,7 @@
       "legal_review": false
     },
     {
-      "pdf_field": "Debtor1.Business name_3",
+      "pdf_field": "Business name_3",
       "type": "text",
       "source": "asked",
       "on_states": [],
@@ -490,7 +490,7 @@
       "legal_review": false
     },
     {
-      "pdf_field": "Debtor1.Employer Identification Number1",
+      "pdf_field": "Employer Identification Number1",
       "type": "text",
       "source": "asked",
       "on_states": [],
@@ -508,7 +508,7 @@
       "legal_review": false
     },
     {
-      "pdf_field": "Debtor1.Employer Identification Number2",
+      "pdf_field": "Employer Identification Number2",
       "type": "text",
       "source": "asked",
       "on_states": [],
@@ -544,7 +544,7 @@
       "legal_review": false
     },
     {
-      "pdf_field": "Debtor1.Street",
+      "pdf_field": "Street",
       "type": "text",
       "source": "derived",
       "on_states": [],
@@ -562,7 +562,7 @@
       "legal_review": false
     },
     {
-      "pdf_field": "Debtor1.Street1",
+      "pdf_field": "Street1",
       "type": "text",
       "source": "derived",
       "on_states": [],
@@ -580,7 +580,7 @@
       "legal_review": false
     },
     {
-      "pdf_field": "Debtor1.City",
+      "pdf_field": "City",
       "type": "text",
       "source": "derived",
       "on_states": [],
@@ -598,7 +598,7 @@
       "legal_review": false
     },
     {
-      "pdf_field": "Debtor1.State",
+      "pdf_field": "State",
       "type": "text",
       "source": "derived",
       "on_states": [],
@@ -616,7 +616,7 @@
       "legal_review": false
     },
     {
-      "pdf_field": "Debtor1.ZIP Code",
+      "pdf_field": "ZIP Code",
       "type": "text",
       "source": "derived",
       "on_states": [],
@@ -670,7 +670,7 @@
       "legal_review": false
     },
     {
-      "pdf_field": "Debtor1.County",
+      "pdf_field": "County",
       "type": "text",
       "source": "asked",
       "on_states": [],
@@ -706,7 +706,7 @@
       "legal_review": false
     },
     {
-      "pdf_field": "Debtor1.Street_2",
+      "pdf_field": "Street_2",
       "type": "text",
       "source": "asked",
       "on_states": [],
@@ -724,7 +724,7 @@
       "legal_review": false
     },
     {
-      "pdf_field": "Debtor1.PO Box",
+      "pdf_field": "PO Box",
       "type": "text",
       "source": "asked",
       "on_states": [],
@@ -760,7 +760,7 @@
       "legal_review": false
     },
     {
-      "pdf_field": "Debtor1.State_2",
+      "pdf_field": "State_2",
       "type": "text",
       "source": "asked",
       "on_states": [],
@@ -796,12 +796,12 @@
       "legal_review": false
     },
     {
-      "pdf_field": "Debtor1.See 28 USC  1408 1",
+      "pdf_field": "See 28 USC  1408 1",
       "type": "text",
       "source": "asked",
       "on_states": [],
       "page": 2,
-      "label": "See 28 U.S.C. § 1408 [1]",
+      "label": "See 28 U.S.C. \u00a7 1408 [1]",
       "required": false,
       "conditional_on": null,
       "value": null,
@@ -814,12 +814,12 @@
       "legal_review": false
     },
     {
-      "pdf_field": "Debtor1.See 28 USC  1408 2",
+      "pdf_field": "See 28 USC  1408 2",
       "type": "text",
       "source": "asked",
       "on_states": [],
       "page": 2,
-      "label": "See 28 U.S.C. § 1408 [2]",
+      "label": "See 28 U.S.C. \u00a7 1408 [2]",
       "required": false,
       "conditional_on": null,
       "value": null,
@@ -832,12 +832,12 @@
       "legal_review": false
     },
     {
-      "pdf_field": "Debtor1.See 28 USC  1408 3",
+      "pdf_field": "See 28 USC  1408 3",
       "type": "text",
       "source": "asked",
       "on_states": [],
       "page": 2,
-      "label": "See 28 U.S.C. § 1408 [3]",
+      "label": "See 28 U.S.C. \u00a7 1408 [3]",
       "required": false,
       "conditional_on": null,
       "value": null,
@@ -850,12 +850,12 @@
       "legal_review": false
     },
     {
-      "pdf_field": "Debtor1.See 28 USC  1408 4",
+      "pdf_field": "See 28 USC  1408 4",
       "type": "text",
       "source": "asked",
       "on_states": [],
       "page": 2,
-      "label": "See 28 U.S.C. § 1408 [4]",
+      "label": "See 28 U.S.C. \u00a7 1408 [4]",
       "required": false,
       "conditional_on": null,
       "value": null,
@@ -873,7 +873,7 @@
       "source": "asked",
       "on_states": [],
       "page": 2,
-      "label": "See 28 U.S.C. § 1408 [1]",
+      "label": "See 28 U.S.C. \u00a7 1408 [1]",
       "required": false,
       "conditional_on": null,
       "value": null,
@@ -891,7 +891,7 @@
       "source": "asked",
       "on_states": [],
       "page": 2,
-      "label": "See 28 U.S.C. § 1408 [2]",
+      "label": "See 28 U.S.C. \u00a7 1408 [2]",
       "required": false,
       "conditional_on": null,
       "value": null,
@@ -909,7 +909,7 @@
       "source": "asked",
       "on_states": [],
       "page": 2,
-      "label": "See 28 U.S.C. § 1408 [3]",
+      "label": "See 28 U.S.C. \u00a7 1408 [3]",
       "required": false,
       "conditional_on": null,
       "value": null,
@@ -927,7 +927,7 @@
       "source": "asked",
       "on_states": [],
       "page": 2,
-      "label": "See 28 U.S.C. § 1408 [4]",
+      "label": "See 28 U.S.C. \u00a7 1408 [4]",
       "required": false,
       "conditional_on": null,
       "value": null,
@@ -940,7 +940,7 @@
       "legal_review": false
     },
     {
-      "pdf_field": "Debtor1.ZIP Code_2",
+      "pdf_field": "ZIP Code_2",
       "type": "text",
       "source": "derived",
       "on_states": [],
@@ -1570,7 +1570,7 @@
       "legal_review": false
     },
     {
-      "pdf_field": "Debtor1.signature",
+      "pdf_field": "signature",
       "type": "text",
       "source": "signature",
       "on_states": [],
@@ -1606,7 +1606,7 @@
       "legal_review": false
     },
     {
-      "pdf_field": "Attorney.Sig",
+      "pdf_field": "Sig",
       "type": "text",
       "source": "signature",
       "on_states": [],
@@ -1624,7 +1624,7 @@
       "legal_review": false
     },
     {
-      "pdf_field": "Attorney.Date signed",
+      "pdf_field": "Date signed",
       "type": "text",
       "source": "asked",
       "on_states": [],
@@ -1642,7 +1642,7 @@
       "legal_review": false
     },
     {
-      "pdf_field": "Attorney.Printed name",
+      "pdf_field": "Printed name",
       "type": "text",
       "source": "asked",
       "on_states": [],
@@ -1660,7 +1660,7 @@
       "legal_review": false
     },
     {
-      "pdf_field": "Attorney.Firm name",
+      "pdf_field": "Firm name",
       "type": "text",
       "source": "asked",
       "on_states": [],
@@ -1678,7 +1678,7 @@
       "legal_review": false
     },
     {
-      "pdf_field": "Attorney.Street address_2",
+      "pdf_field": "Street address_2",
       "type": "text",
       "source": "asked",
       "on_states": [],
@@ -1696,7 +1696,7 @@
       "legal_review": false
     },
     {
-      "pdf_field": "Attorney.Street address_3",
+      "pdf_field": "Street address_3",
       "type": "text",
       "source": "asked",
       "on_states": [],
@@ -1714,7 +1714,7 @@
       "legal_review": false
     },
     {
-      "pdf_field": "Attorney.Zip",
+      "pdf_field": "Zip",
       "type": "text",
       "source": "asked",
       "on_states": [],
@@ -1732,7 +1732,7 @@
       "legal_review": false
     },
     {
-      "pdf_field": "Attorney.phone",
+      "pdf_field": "phone",
       "type": "text",
       "source": "asked",
       "on_states": [],
@@ -1750,7 +1750,7 @@
       "legal_review": false
     },
     {
-      "pdf_field": "Attorney.Email address",
+      "pdf_field": "Email address",
       "type": "text",
       "source": "asked",
       "on_states": [],
@@ -1768,7 +1768,7 @@
       "legal_review": false
     },
     {
-      "pdf_field": "Attorney.Bar number",
+      "pdf_field": "Bar number",
       "type": "text",
       "source": "asked",
       "on_states": [],
@@ -1786,7 +1786,7 @@
       "legal_review": false
     },
     {
-      "pdf_field": "Attorney.Bar State",
+      "pdf_field": "Bar State",
       "type": "text",
       "source": "asked",
       "on_states": [],
@@ -1822,7 +1822,7 @@
       "legal_review": false
     },
     {
-      "pdf_field": "Debtor1.Signature",
+      "pdf_field": "Signature",
       "type": "text",
       "source": "signature",
       "on_states": [],
@@ -1840,7 +1840,7 @@
       "legal_review": false
     },
     {
-      "pdf_field": "Debtor1.Contact phone_2",
+      "pdf_field": "Contact phone_2",
       "type": "text",
       "source": "asked",
       "on_states": [],
@@ -1876,7 +1876,7 @@
       "legal_review": false
     },
     {
-      "pdf_field": "Debtor1.Cell phone",
+      "pdf_field": "Cell phone",
       "type": "text",
       "source": "derived",
       "on_states": [],
@@ -1894,7 +1894,7 @@
       "legal_review": false
     },
     {
-      "pdf_field": "Debtor1.Email address_2",
+      "pdf_field": "Email address_2",
       "type": "text",
       "source": "derived",
       "on_states": [],
