@@ -208,14 +208,9 @@ class Form121Generator:
         }
 
     def pdf_field_map(self) -> dict:
-        """Map session data to Official Form 121 (form_b121.pdf) field names."""
-        raw = _extract_debtor_data(self.session)
-        di = self.session.debtor_info
-        return {
-            "Bankruptcy District Information": self.session.district.name,
-            "Debtor1.First name": di.first_name,
-            "Debtor1.Middle name": di.middle_name or "",
-            "Debtor1.Last name": di.last_name,
-            "Debtor1a.SSNum": raw["ssn_formatted"],
-            "Check Box1": "/Yes",  # Has SSN (not ITIN)
-        }
+        """Map session data to Official Form 121 via schema-driven resolver."""
+        from apps.forms.schema import load_schema
+        from apps.forms.services.fill_resolver import resolve
+
+        schema = load_schema("form_121")
+        return resolve(schema, self.session)
