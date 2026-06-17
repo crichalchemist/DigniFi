@@ -10,6 +10,7 @@ from rest_framework.response import Response
 from rest_framework.viewsets import ViewSet
 
 from apps.documents.models import DocumentType, OCRResult, OCRStatus, UploadedDocument
+from apps.documents.services.aggregator import AggregateIngestionService
 from apps.documents.services.draft_debt import DraftDebtCreator
 from apps.documents.services.processor import DocumentProcessor
 from apps.documents.services.providers.llama_cpp import LlamaCppProvider
@@ -58,6 +59,13 @@ def _run_processing(doc_id: int) -> None:
                     logger.warning("DraftDebtCreator failed for doc %s: %s", doc_id, exc)
 
         ocr.save()
+
+        if ocr.status == OCRStatus.COMPLETED:
+            try:
+                AggregateIngestionService.recalculate(doc.session_id)
+            except Exception as exc:
+                logger.warning("Recalculate failed for doc %s: %s", doc_id, exc)
+
     except Exception as exc:
         logger.exception("Processing failed for document %s: %s", doc_id, exc)
         try:
@@ -159,6 +167,11 @@ class DocumentViewSet(ViewSet):
             doc.draft_debts.filter(is_draft=True).update(
                 **{k: v for k, v in fields.items() if k in ("creditor_name", "amount_owed")}
             )
+
+        try:
+            AggregateIngestionService.recalculate(doc.session_id)
+        except Exception as exc:
+            logger.warning("Recalculate failed on validate for doc %s: %s", pk, exc)
 
         return Response(_serialize_ocr(ocr))
 
