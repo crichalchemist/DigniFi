@@ -1,500 +1,104 @@
 # AI Assistant Context
 
-This file provides guidance to AI coding assistants (Claude Code, Gemini CLI, Codex, etc.) when working with code in this repository.
+**DigniFi** — trauma-informed bankruptcy filing platform (Chapter 7, ILND pilot district). Django REST API + React 19 frontend. Deployed on Heroku. Provides legal _information_, never _advice_ (UPL boundaries are non-negotiable).
 
-## Project Overview
-
-**DigniFi** is a trauma-informed digital platform that simplifies bankruptcy filing (Chapter 7 and Chapter 13) for low-income, pro se (self-represented) Americans. The platform aims to democratize access to bankruptcy relief by translating complex legal processes into plain-language guidance, auto-populated court forms, and dignified user experiences.
-
-**Current Stage:** MVP Deployed (Jun 2026). Full-stack application with Django REST API, React 19 frontend wizard, all 13 bankruptcy form generators, and AI persona-driven usability testing infrastructure. Live on Heroku; full 5-persona E2E suite green in CI. Next: paper prototype testing with target demographic.
-
-**Mission-Critical Constraint:** All development must respect Unauthorized Practice of Law (UPL) boundaries. The platform provides legal _information_, never legal _advice_.
-
-## Commands
+## Quick Commands
 
 ```bash
-# Start all services
-docker compose up
-
-# Backend tests
-docker compose exec backend python -m pytest
-
-# Frontend tests (from frontend/)
-npm test            # run once
-npm run test:watch
-
-# E2E persona tests (from frontend/)
-npm run e2e         # headless
-npm run e2e:headed
-
-# Database
+docker compose up                              # Start all 4 services (db, backend, frontend, llm)
+docker compose exec backend python -m pytest    # Backend tests (uses sqlite :memory:, no postgres needed)
 docker compose exec backend python manage.py migrate
-docker compose exec backend python manage.py seed_demo_data  # loads 5 AI personas
+docker compose exec backend python manage.py loaddata ilnd_2025_data   # Required before seed
+docker compose exec backend python manage.py seed_demo_data            # Loads 5 AI personas
 
-# Lint/format
+cd frontend && npm test                        # Frontend tests (vitest)
+cd frontend && npm run e2e                     # E2E (requires backend running + seeded)
 cd frontend && npm run lint:fix && npm run format
-cd backend && ruff check . --fix
+cd backend && ruff check . --fix               # Backend lint (pinned ruff==0.8.5)
 ```
 
-## Environment Setup
-
-Copy `.env.example` to `.env`. Required vars: `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `SECRET_KEY` (Django), `VITE_API_URL` (defaults to `http://localhost:8000/api`).
-
-## Gotchas
-
-- **DRF pagination** — list endpoints return `{count, results}`, not bare arrays. Always guard with `Array.isArray`
-- **React 19 + navigate()** — calling `navigate()` in render body crashes the reconciler. Use `useEffect`
-- **Vite HMR in Docker** — type/structure changes don't hot-reload; restart the frontend container
-- **GenerateAll vs single generate** — `/generate_all` returns `{generated, errors}`, single returns `{form, message}`
-- **Enum mismatches are silent** — frontend/backend enum drift only surfaces at runtime; check both when adding fields
-- **Analytics auth** — `trackEvent()` must use `getAccessToken()` for Bearer header, not raw fetch
-- **Colima volume mounts** — Colima only mounts `$HOME` by default; `/Volumes/Containers` must be added explicitly in `~/.colima/default/colima.yaml` under `mounts` or bind-mounts in compose will silently fail with exit code 2
-- **Compose needs migrate** — backend command must run `python manage.py migrate` before `runserver`; added `sh -c "python manage.py migrate && ..."` to docker-compose.yml
-- **District fixture required** — `seed_demo_data` requires ILND data first: `python manage.py loaddata ilnd_2025_data`
-- **llama.cpp image is a mutable tag** — `ghcr.io/ggml-org/llama.cpp:server` moved the binary to `/app/llama-server`; `scripts/pull_model.sh` tries both paths. If the llm service exits 127, the path moved again
-- **opendataloader-pdf needs a JRE** — it shells out to `java`; both Dockerfiles install `default-jre-headless`. Without it every PDF upload errored (tests mock the module, so CI can't catch it). `DocumentProcessor` now degrades to the pymupdf→vision path if Java/the package is missing
-- **CI ruff is pinned** — `ci.yml` installs `ruff==0.8.5` to match the backend container; unpinned ruff broke CI when new rules shipped
-- **SSN on forms** — Form 101's `Debtor1.SSNum` PDF field is 4 chars (last-4 only); the full SSN appears exclusively on Form 121. pypdf truncates from the front, so writing a full SSN there shows the wrong digits
-- **Means test units** — CMI is monthly, the Census median is annual; `MeansTest.calculate()` annualizes CMI ×12 per § 707(b)(7) before comparing (and for the 60% fee-waiver heuristic). The original bug passed everyone; calculator tests masked it with annual-scale values in monthly slots
-- **household_size defaults to 1** — `DebtorInfo.household_size` has `default=1` and the means test prefers it over deriving from marital status + dependents, so rows created without it (seeds, scripts) are silently evaluated as households of one. Always set it explicitly
-- **Form 103B needs a FeeWaiverApplication** — its generator raises without one, so `generate_all` correctly yields 12/13 forms for filers who pass the means test but don't qualify for the waiver (E2E: James)
-- **heroku.yml release command must be one string** — argv-style list items (`- python` / `- manage.py` / `- migrate`) make Heroku run bare `python`, which exits 0 silently and skips migrations. Also `heroku releases:output` is always empty (the output streamer needs `curl`, absent from the slim image); use `heroku logs --dyno release` instead
-- **Pre-commit prettier aborts the first commit** — if prettier reformats staged files the commit fails and changes are restored; re-`git add` and commit again
-
-## Key Documentation
-
-### Product Requirements Document
-
-Primary specification: `/docs/internal/DigniFi_PRD_v0_3.md` (latest; v0.1 and v0.2 are archival)
-
-This comprehensive PRD includes:
-
-- Research synopsis with competitive analysis (Upsolve as primary comparator)
-- Problem framing using MITRE canvas methodology
-- Opportunity solution tree with prioritized features
-- Experiment plan (paper prototype → legal clinic pilot → public beta)
-- Full product specification with user flows and acceptance criteria
-- Simulated stakeholder gate reviews
-- Decisions log and assumptions requiring validation
-
-### Supporting Documentation
-
-- `/docs/internal/Dignifi Brief.pdf` - Executive summary and founder vision
-- `/docs/internal/dignifi_technical_architecture.md` - Technical analysis and architecture recommendations
-- `/docs/internal/Strategic Communication Plan.pdf` - Go-to-market and stakeholder communication strategy
-
-## Architectural Principles
-
-### Technology Recommendations (from technical architecture analysis)
-
-**Implemented Stack:**
-
-- **Backend:** Python 3.11 + Django 5.0 + Django REST Framework
-- **Frontend:** React 19 + Vite 7 + TypeScript (Context API for state management)
-- **Database:** PostgreSQL 15 with encrypted-model-fields (Fernet encryption)
-- **Testing:** pytest (494 tests + 1 xfail) + vitest (171 tests) + Playwright (5-persona E2E journeys)
-- **CI/CD:** GitHub Actions (lint, backend tests, frontend tests, E2E)
-- **Containerization:** Docker + Docker Compose (Colima on macOS)
-- **Document Storage:** Local filesystem (MVP), S3-compatible planned
-- **PDF Generation:** pypdf 6.13 (13 form generators; each implements `pdf_field_map()` → `PDFFormFiller` fills official AO templates)
-
-**Deployed Architecture:**
-
-- Docker Compose with 3 services: backend (Django), db (PostgreSQL), frontend (React dev server)
-- **Production:** Heroku Container Stack — `heroku.yml` drives `Dockerfile.heroku` multi-stage build (Node → Python); `release` phase runs migrations automatically
-- Field-level encryption for PII (SSN, income, account numbers, amounts owed)
-- Custom EncryptedDecimalField for financial data
-- Service layer pattern (MeansTestCalculator, Form101Generator, PDFFormFiller)
-
-**Scaling Path:**
-
-- Kubernetes or Docker Swarm orchestration
-- CDN for static assets
-- Load balancing for high availability
-- Redis for session management and caching
-
-### Core System Components
-
-1. **Intake & Decision Engine**
-
-   - Rules-based logic encoding bankruptcy eligibility criteria (11 U.S.C. § 707(b) means test)
-   - District-specific rule modules (94 federal districts have varying local rules)
-   - Fee waiver qualification logic (28 U.S.C. § 1930(f))
-   - Consider: Graph database, Drools, OpenL Tablets, or custom Python/Node logic
-
-2. **Form Generation Pipeline**
-
-   - Structured data model for Official Bankruptcy Forms 101-128 and Schedules A/B through J
-   - PDF manipulation layer for fillable field population
-   - Schema validation ensuring required fields are complete
-   - Version control system for form updates (Administrative Office updates forms periodically)
-
-3. **AI/NLP Components** (MVP: Pre-written content; Future: RAG)
-
-   - **MVP Approach:** Pre-written explainer content keyed to form fields (avoids UPL risk)
-   - **Future Approach:** RAG system with embedding model over bankruptcy code sections
-   - Vector database options: Pinecone, Weaviate, pgvector
-   - **Critical:** All outputs must be labeled as legal information, not advice
-
-4. **Case Management & Calendar**
-
-   - Event-driven architecture for deadline tracking (341 meeting, plan confirmation, discharge)
-   - Notification service (email, SMS, push)
-   - CM/ECF integration for court calendar updates (RSS feeds)
-
-5. **Credit Counseling Integration**
-   - Interface with DOJ-approved credit counseling providers
-   - OAuth-based certificate verification or PDF upload/parsing
-
-## Compliance & Legal Boundaries
-
-### UPL (Unauthorized Practice of Law) Rules
-
-**ALWAYS PERMITTED:**
-
-- Explaining what the law says (general information)
-- Providing process information
-- Auto-populating forms with user-provided data
-- Showing eligibility criteria
-- Linking to official court resources
-
-**NEVER PERMITTED:**
-
-- Recommending specific legal actions ("you should file Chapter 7")
-- Interpreting law for user's specific situation
-- Advising whether to file
-- Predicting case outcomes
-- Representing users in court proceedings
-
-**Language Patterns:**
-
-- ✅ "You may be eligible for Chapter 7 if..."
-- ✅ "Chapter 7 typically requires..."
-- ❌ "You should file Chapter 7"
-- ❌ "Based on your situation, I recommend..."
-
-**Required Safeguards:**
-
-- Disclaimers at every decision point
-- Audit logging of all guidance provided to users
-- Regular legal audits by UPL experts
-- User agreement acknowledging software does not provide legal advice
-
-### Data Security Requirements
-
-- Encryption at rest and in transit (PII: SSN, income data, creditor information)
-- SOC 2 Type II controls if handling financial data at scale
-- State data protection law compliance (California, Illinois BIPA)
-- Breach notification infrastructure
-
-## Development Priorities
-
-### MVP Scope (Single-District First)
-
-**PRD Priority Classification:**
-
-- **P0 (Must-Have for MVP):** Intake flow, Chapter 7 basic eligibility, Form 101 generation, fee waiver logic, UPL compliance framework
-- **P1 (Should-Have for Pilot):** Calendar/reminders, credit counseling integration, pilot district rules
-- **P2 (Nice-to-Have):** Multi-language support, mobile app, document upload
-- **P3 (Future):** Chapter 13 support, all 94 districts, eviction defense expansion
-
-### Critical Technical Risks to Validate
-
-1. **District Variability:** 94 federal districts with differing rules—start with ONE district
-2. **Form Version Drift:** Forms change; need automated monitoring of updates
-3. **UPL Liability:** Crossing from information to advice creates legal risk
-4. **Pro Se E-Filing Constraints:** Many courts limit e-filing for pro se litigants
-5. **PDF Form Complexity:** Official forms may have non-standard field names/structure
-
-## Implementation Status (Jun 2026)
-
-### ✅ Completed: Backend MVP (Phases 1-3)
-
-**Phase 1: Data Models** — IntakeSession, DebtorInfo, IncomeInfo, ExpenseInfo, AssetInfo, DebtInfo with encrypted PII. District/MedianIncome/Exemption models with ILND 2025 data. MeansTest with calculate() method. GeneratedForm with status tracking.
-
-**Phase 2: Business Logic** — MeansTestCalculator (CMI, median income comparison, fee waiver qualification). 13 form generators covering all Chapter 7 forms (101-128 + Schedules A/B–J). UPL-compliant messaging throughout.
-
-**Phase 3: REST API** — IntakeSessionViewSet (7 actions), AssetViewSet, DebtViewSet, GeneratedFormViewSet (5 actions + generate_all bulk endpoint). Custom EncryptedDecimalField. Real ILND 2025 data.
-
-### ✅ Completed: Frontend (Phase 4)
-
-- **React 19 + Vite 7 + TypeScript** (Context API, not Redux)
-- 6-step intake wizard: Debtor Info → Income → Expenses → Assets → Debts → Review & Results
-- Desktop-first design (1024px+) with trauma-informed language throughout
-- UPL confirmation modal gates all form generation
-- FormDashboard with Generate All, individual download, Mark as Filed
-- PostTaskSurvey component (3 Likert + 2 open text)
-- WCAG 2.1 AA: ARIA labels, keyboard nav, skip links, high-contrast palette
-- ErrorBoundary wrapper, IntakeLayout with shared IntakeProvider via Outlet
-
-### ✅ Completed: Testing & CI/CD (Phase 5)
-
-- **Backend:** 494 pytest tests + 1 xfail (models, services, API endpoints, serializers)
-- **Frontend:** 171 vitest tests (components, pages, context, accessibility)
-- **E2E:** Playwright page objects + journey specs for 5 personas (all green in CI)
-- **CI:** GitHub Actions pipeline — lint, backend tests, frontend tests, E2E
-- vitest-axe matchers via `expect.extend()` for accessibility assertions
-
-### ✅ Completed: Accessibility & Production Hardening (Phase 6)
-
-- WCAG 2.1 AA compliance audit passed
-- ESLint strict mode (36 errors resolved)
-- DRF throttling for rate limiting (ScopedRateThrottle, auth: 30/min)
-- Health check endpoint
-- Error boundaries for graceful failure recovery
-
-### ✅ Completed: AI Persona Testing (Phase 7)
-
-**Infrastructure:**
-
-- 5 AI persona briefs (Maria, James, Priya, DeShawn, Sarah) with synthetic IRS 900-xx SSNs
-- `seed_demo_data` management command creates completed sessions with all intake data
-- Playwright-based test scripts: `docs/testing/test_persona_full_flow.py` (5 personas), `docs/testing/test_maria_quick.py` (smoke test)
-- Full flow coverage: auth → forms dashboard → Generate All → UPL modal → 13 forms → PostTaskSurvey
-- Fire-and-forget analytics via AuditLog API with JWT auth headers
-- Orchestration protocol at `docs/testing/run-persona-tests.md`
-
-**Results (Mar 2026):** 5/5 personas complete full flow. 65 forms generated. 5/5 surveys submitted. 0 console errors.
-
-**Bugs Found & Fixed via Persona Testing (13 total):**
-
-| #   | Bug                                                                               | Fix                                      | Commit    |
-| --- | --------------------------------------------------------------------------------- | ---------------------------------------- | --------- |
-| 1   | Auth throttle 500 — `ScopedRateThrottle` rate only in production.py               | Added `auth: 30/minute` to base.py       | `15c6f15` |
-| 2   | FeeWaiverApplication missing in seed command                                      | Create for eligible personas             | `eb0c402` |
-| 3   | Step data 404 — frontend called non-existent `/debtor-info/` endpoints            | Route through `updateSession()` PATCH    | `7bd0bf7` |
-| 4   | Empty assets/debts sent as null objects → 400                                     | Filter blank entries before PATCH        | `c5c2f5b` |
-| 5   | Assets validation blocked empty skip                                              | Allow `allBlank` as valid                | `c5c2f5b` |
-| 6   | `real_estate` ≠ `real_property` enum mismatch                                     | Fix frontend to `real_property`          | `c5c2f5b` |
-| 7   | Debt type `secured/unsecured` ≠ backend `credit_card/medical/...`                 | Map to `other` + `is_secured` flag       | `9ef43fb` |
-| 8   | `forms.map is not a function` — DRF pagination wraps in `{results}`               | `Array.isArray` guard in `listBySession` | `874d601` |
-| 9   | `navigate()` during render — React 19 crashes reconciler                          | Move to `useEffect` in Login/Register    | `874d601` |
-| 10  | Unhandled `loadSession` rejection in IntakeProvider                               | Add `.catch()` to mount `useEffect`      | `874d601` |
-| 11  | `GenerateAllFormsResponse` type mismatch — API returns `generated` not `forms`    | Update type + handler                    | `b0956bb` |
-| 12  | Analytics 401s — `trackEvent()` raw fetch without auth                            | Use `getAccessToken()` for Bearer header | `b0956bb` |
-| 13  | FormDashboard loading state stuck — local `isLoading` never reset when no session | Use IntakeProvider's `isLoading`         | `b0956bb` |
-
-### ✅ Completed: PDF Download Infrastructure (Phase 9)
-
-**Backend:**
-
-- `PDFFormFiller` service — loads official AO court PDF templates via `pypdf`, writes field values across all pages, returns bytes
-- `pdf_field_map() -> dict[str, str]` interface added to all 13 generators — maps session data to exact PDF field names (8 field-name mismatches corrected against live templates)
-- `GET /api/forms/{id}/download/` action — fills template, marks form downloaded, streams `application/pdf`; returns 501 if generator lacks `pdf_field_map()`
+## Gotchas (things agents get wrong)
+
+- **DRF pagination** — list endpoints return `{count, results}`, not bare arrays. Always `Array.isArray` guard.
+- **React 19 + navigate()** — calling `navigate()` in render body crashes the reconciler. Use `useEffect`.
+- **Vite HMR in Docker** — type/structure changes don't hot-reload; restart the frontend container.
+- **Enum mismatches are silent** — frontend/backend enum drift only surfaces at runtime; check both when adding fields.
+- **Seed order** — `seed_demo_data` requires `loaddata ilnd_2025_data` first, or means test has no median income data.
+- **household_size defaults to 1** — `DebtorInfo.household_size` has `default=1`; the means test prefers it over deriving from marital status + dependents. Always set it explicitly.
+- **Form 103B needs a FeeWaiverApplication** — its generator raises without one. `generate_all` yields 12/13 forms for filers who don't qualify for the waiver.
+- **SSN on forms** — Form 101's `Debtor1.SSNum` PDF field is 4 chars (last-4 only); full SSN appears on Form 121. pypdf truncates from the front.
+- **Means test units** — CMI is monthly, Census median is annual. `MeansTest.calculate()` annualizes CMI ×12 per § 707(b)(7). The original bug passed everyone.
+- **GenerateAll vs single** — `/generate_all` returns `{generated, errors}`; single returns `{form, message}`.
+- **Analytics auth** — `trackEvent()` must use `getAccessToken()` for Bearer header, not raw fetch.
+- **heroku.yml release** — must be one command string (not argv list). `heroku releases:output` is empty; use `heroku logs --dyno release`.
+- **CI ruff is pinned** — `ci.yml` installs `ruff==0.8.5`. Unpinned ruff broke CI when new rules shipped.
+- **opendataloader-pdf needs a JRE** — both Dockerfiles install `default-jre-headless`. Without it, PDF upload errored (tests mock the module so CI can't catch it).
+- **llama.cpp binary path** — `ghcr.io/ggml-org/llama.cpp:server` moved binary to `/app/llama-server`; `scripts/pull_model.sh` tries both paths.
+- **Pre-commit prettier** — reformats staged files on first commit; re-`git add` and commit again.
+- **Colima volume mounts** — Colima only mounts `$HOME` by default; `/Volumes/Containers` must be added in `~/.colima/default/colima.yaml`.
+- **Compose backend** — command must chain `python manage.py migrate && ...` before `runserver`.
+- **Frontend tests use MSW** — network requests are intercepted in `src/test/setup.ts`. Write MSW handlers for new API calls.
+- **E2E needs full stack** — Playwright tests (`frontend/e2e/journeys/`) require backend running, migrations applied, and `seed_demo_data` loaded.
+- **Backend test settings** — `DJANGO_SETTINGS_MODULE=config.settings.test` uses sqlite `:memory:`, no postgres. E2E tests use `config.settings.development` (needs postgres).
+- **FIELD_ENCRYPTION_KEY** — must be a real Fernet key (32 url-safe base64 bytes). CI uses `U9HKckkKBeT8wag2jMcOx2Cez2M2jtvNG4qxSHuYcAo=` (synthetic, encrypts nothing).
+- **UPL compliance** — all user-facing text must be information, never advice. See `docs/UPL_COMPLIANCE.md`.
+
+## Architecture (quick)
+
+- **Backend:** Django 5.0 + DRF, Python 3.11, PostgreSQL 15, `encrypted-model-fields` (Fernet PII encryption)
+- **Frontend:** React 19 + Vite 7 + TypeScript, Context API (not Redux), react-router-dom v7
+- **PDF:** pypdf fills official AO court templates. Each generator in `backend/apps/forms/services/` implements `pdf_field_map() -> dict[str, str]` mapping session data to PDF field names. `PDFFormFiller.fill(form_type, field_map)` loads from `data/forms/pdfs/`.
+- **PDF templates:** 64 official AO court PDFs in `data/forms/pdfs/` (committed). Baked into Heroku image.
+- **LLM service:** Gemma 3 4B via llama.cpp (`ghcr.io/ggml-org/llama.cpp:server`), 300s start_period health check, backend `depends_on: llm`.
+- **Auth:** JWT (simplejwt). Access in memory, refresh in localStorage. `GET /api/token/obtain/` + `/api/token/refresh/`.
+- **E2E:** 5 AI persona briefs in `docs/testing/persona-briefs/`. `seed_demo_data` creates synthetic sessions with all intake data.
+
+## File Map (what lives where)
+
+**Backend apps:**
+
+- `apps/intake/models.py` — IntakeSession, DebtorInfo, IncomeInfo, ExpenseInfo, AssetInfo, DebtInfo, FeeWaiverApplication
+- `apps/intake/fields.py` — Custom `EncryptedDecimalField`
+- `apps/intake/views.py` — IntakeSessionViewSet, AssetViewSet, DebtViewSet
+- `apps/intake/serializers.py` — nested serializers; DRF silently drops unknown fields (mismatch with frontend)
+- `apps/intake/management/commands/seed_demo_data.py` — 5 AI personas
+- `apps/eligibility/services/means_test_calculator.py` — § 707(b) logic, annualizes CMI
+- `apps/forms/services/` — 13 generators + `pdf_filler.py` (`FORM_TEMPLATES` dict + `PDFFormFiller`)
+- `apps/forms/views.py` — GeneratedFormViewSet (generate, generate_all, download, mark_filed)
+- `apps/documents/` — OCR pipeline: LlamaCppProvider, DocumentProcessor, DraftDebtCreator
+- `apps/audit/models.py` — AuditLog
+- `config/settings/test.py` — sqlite `:memory:`, fast hashers
+- `config/settings/base.py` — DRF config, throttle rates (`auth: 30/minute`)
 
 **Frontend:**
 
-- `downloadForm(formId, filename)` in `api/client.ts` — raw fetch with JWT header, 401/token-refresh retry, blob → programmatic `<a download>` click
-- Download button wired in `FormCard` via renamed `onDownload` prop
+- `src/App.tsx` — Routes, ErrorBoundary, IntakeLayout (shared provider via Outlet)
+- `src/context/AuthContext.tsx` — JWT auth, silent refresh
+- `src/context/IntakeContext.tsx` — Session state
+- `src/api/client.ts` — typed API client, `getAccessToken()`, `downloadForm()`
+- `src/pages/IntakeWizard.tsx` — 6-step wizard orchestrator
+- `src/pages/FormDashboard.tsx` — Generate All, download, mark filed
+- `src/components/compliance/UPLConfirmationModal.tsx` — gates form generation
+- `src/types/api.ts` — TypeScript interfaces matching DRF serializers
+- `src/test/setup.ts` — vitest globals, MSW, vitest-axe matchers
+- `e2e/journeys/` — Playwright journey specs
+- `e2e/playwright.config.ts` — Chromium only, 60s timeout, `reuseExistingServer`
 
-**Templates:**
+**Data:**
 
-- 64 official AO court PDF templates committed to `data/forms/pdfs/` (public documents, 10MB)
-- `Dockerfile.heroku` COPY step bakes them into the production image at `/data/forms/pdfs/`
+- `data/forms/pdfs/` — 64 official AO court PDF templates (committed)
+- `backend/apps/districts/fixtures/ilnd_2025_data.json` — ILND median income & exemptions
 
-**Tests:** 13 field-map tests + 7 filler unit tests + 3 download endpoint tests
+**Infra:**
 
----
+- `docker-compose.yml` — 4 services: db (postgres:15), backend, frontend, llm
+- `Dockerfile.heroku` — multi-stage (Node → Python), bakes PDF templates + static assets
+- `heroku.yml` — release phase runs migrations (single command string)
+- `.github/workflows/ci.yml` — lint → backend tests → frontend tests → E2E (sequential gates)
 
-### ✅ Completed: Document Scanning Pipeline (Phase 8)
+## Key Docs
 
-**Infrastructure:**
-
-- Local LLM service: Gemma 3 4B via llama.cpp (`ghcr.io/ggml-org/llama.cpp:server`)
-- `scripts/pull_model.sh` downloads GGUF model on first start (~2.8GB total)
-- Docker `llm` service with 300s `start_period` health check; backend `depends_on: llm`
-
-**Backend:**
-
-- `backend/apps/documents/` — full OCR pipeline: `LlamaCppProvider`, `DocumentProcessor`, `DraftDebtCreator`
-- `DocumentProcessor` routes by MIME type: image → vision, PDF → text extraction (opendataloader-pdf) with vision fallback (pymupdf)
-- `CreditorBillExtraction` Pydantic schema; schema registry pattern for document types
-- `DocumentViewSet` — upload (202 async), list, retrieve, validate endpoints
-- `DebtInfo.is_draft` + `source_document` FK — draft rows created from scanned creditor bills
-
-**Frontend:**
-
-- `frontend/src/pages/DocumentUploadPage.tsx` — drag-and-drop upload with polling
-- Post-auth redirect goes to `/documents` before intake wizard
-- Draft debt entries show "From scan" badge in Debts step; cleared on save
-
-### ✅ Completed: Means Test Correction & Production Deploy (Phase 10, Jun 2026)
-
-- **§ 707(b) units bug fixed** — monthly CMI had been compared against the annual Census median, so virtually every filer "passed" and qualified for the fee waiver. CMI is now annualized ×12 for both comparisons; `details.annualized_cmi` exposed in the API
-- `DebtorInfo` gained `household_size`/`filing_type` (migration 0006) — the wizard sent them but DRF nested serializers silently dropped unknown fields; the means test now prefers `household_size` for the median lookup
-- Frontend `MeansTestResult` type aligned to the real response shape (sidebar had rendered $NaN)
-- Persona outcomes under correct math: DeShawn is fee-waiver eligible (routes to `/fee-waiver`); Priya's income raised to $12k/mo to stay above the HH4 median; James (no waiver) generates 12/13 forms — Form 103B requires a FeeWaiverApplication
-- `seed_demo_data` sets per-persona `household_size`; re-run with `--reset` on any database seeded before this fix (verdicts were wrong)
-- Heroku release phase fixed (single command string) — migrations now actually run on deploy; live at releases v18–v20
-
-### Design Principles (Frontend)
-
-- **Desktop-First:** 1024px+ default, tablet/mobile as progressive degradation
-- **Trauma-Informed Language:** "Amounts owed" not "debt", dignity-preserving errors
-- **Accessibility First:** WCAG 2.1 AA, screen reader optimized, keyboard navigation
-- **Plain Language:** 6th-8th grade reading level, legal jargon explained inline
-
-## Development Workflow
-
-### When Building Features
-
-1. **UPL Check First:** Before implementing any guidance/recommendation feature, verify it provides information (not advice)
-2. **Plain Language:** Target 6th-8th grade reading level for all user-facing text
-3. **Trauma-Informed Design:** Avoid shame/blame language; preserve user dignity
-4. **Error Prevention Over Correction:** Guide users to correct inputs rather than fixing after submission
-5. **Audit Everything:** Log all user interactions with decision engines and guidance systems
-
-### Testing Requirements
-
-1. **Legal Compliance Testing:** Every guidance string reviewed for UPL violations
-2. **Form Accuracy Testing:** Generated PDFs must match official court forms exactly
-3. **Accessibility Testing:** WCAG 2.1 AA compliance (many users face disabilities)
-4. **Reading Level Testing:** Automated readability scoring (Flesch-Kincaid)
-
-## Validation Strategy
-
-### Experiment Sequence (from PRD)
-
-1. **Paper Prototype (2-3 weeks):** 10-15 user tests with target demographic
-2. **Legal Clinic Pilot (6 months):** Partnership with community legal clinic, supervised filings
-3. **Public Beta:** Measured success criteria (discharge rates, fee waiver approvals, completion rates)
-
-### Success Metrics
-
-- Pro se discharge rate improvement (baseline: 30% → target: 60%+)
-- Fee waiver approval rate
-- Form completion without errors
-- Time to complete intake (target: <45 minutes)
-- User dignity/respect perception (qualitative)
-
-## District-Specific Implementation
-
-### Pilot District Selection Criteria
-
-When choosing initial district for MVP:
-
-1. **UPL-Friendly:** State bar has clear legal tech guidance or regulatory sandbox
-2. **Pro Se E-Filing:** Court allows electronic filing for pro se litigants
-3. **Geographic Access:** Proximity to legal clinic partner for pilot
-4. **Form Standardization:** District uses standard federal forms without excessive local modifications
-
-### District Rule Modules
-
-Each district implementation requires:
-
-- Median income thresholds (updated annually by Census Bureau)
-- State-specific exemption schedules (homestead, vehicle, tools of trade)
-- Local court rules and procedures
-- E-filing requirements and limitations
-- Trustee assignment patterns
-
-## Key Decisions & Assumptions
-
-### Documented Decisions (see PRD Section 7)
-
-1. Single-district MVP before scaling to 94 districts (budget/complexity trade-off)
-2. Chapter 7 only for MVP; Chapter 13 deferred (complexity/risk)
-3. Pre-written guidance over AI/LLM generation (UPL risk mitigation)
-4. Legal clinic pilot pathway vs. direct-to-consumer (supervised validation)
-5. Local server deployment initially (cost control, data sovereignty)
-
-### Assumptions Requiring Validation
-
-1. Pro se filers can successfully complete guided intake in <60 minutes
-2. Legal clinics will partner for supervised pilot (unconfirmed)
-3. PDF form manipulation is technically feasible across form versions
-4. Pre-written content can achieve trauma-informed tone at scale
-5. Single-district success will de-risk multi-district expansion
-
-## References & Resources
-
-### Bankruptcy Law
-
-- 11 U.S.C. § 707(b) - Means Test for Chapter 7 Eligibility
-- 28 U.S.C. § 1930(f) - Fee Waiver Provisions
-- Official Bankruptcy Forms 101-128: https://www.uscourts.gov/forms/bankruptcy-forms
-
-### Competitive Intelligence
-
-- **Upsolve:** Nonprofit, Chapter 7 only, 17,000+ users, LSC-funded
-- Study Upsolve's UX patterns, intake flow, and UPL compliance disclaimers
-
-### Technical Resources
-
-- PACER (Public Access to Court Electronic Records): https://pacer.uscourts.gov/
-- CM/ECF (Case Management/Electronic Case Filing) standards
-- DOJ-Approved Credit Counseling Agencies: https://www.justice.gov/ust/list-credit-counseling-agencies-approved-pursuant-11-usc-111
-
-### Inspirational Frameworks
-
-- "Dignity Not Debt" - Corporate legal systems prioritize profit over people
-- "It's Not You, It's Capitalism" - System gaslights individuals for structural failures
-- Trauma-informed design principles for vulnerable populations
-
-## Contact & Context
-
-**Founder:** Courtney Richardson, Northwestern University Communication Studies student
-**Organizational Model:** Social impact startup, prize-funding dependent
-**Development Status:** Full-stack MVP deployed to Heroku (Jun 2026); AI persona testing validated; means test legally corrected
-**Next Milestone:** Paper prototype testing with target demographic at legal clinic partner
-
-## Implementation Files Reference
-
-**Backend Core:**
-
-- `backend/apps/intake/models.py` - IntakeSession, DebtorInfo, IncomeInfo, ExpenseInfo, AssetInfo, DebtInfo
-- `backend/apps/intake/fields.py` - Custom EncryptedDecimalField
-- `backend/apps/intake/serializers.py` - Complete serializers with nested relationships
-- `backend/apps/intake/views.py` - IntakeSessionViewSet, AssetViewSet, DebtViewSet
-- `backend/apps/intake/management/commands/seed_demo_data.py` - 5-persona synthetic data seeder
-- `backend/apps/eligibility/models.py` - MeansTest with calculate() method
-- `backend/apps/eligibility/services/means_test_calculator.py` - 11 U.S.C. § 707(b) logic
-- `backend/apps/forms/models.py` - GeneratedForm with status tracking
-- `backend/apps/forms/services/` - 13 form generators (form_101 through schedules); each implements `pdf_field_map()`
-- `backend/apps/forms/services/pdf_filler.py` - PDFFormFiller; FORM_TEMPLATES dict maps form_type → AO PDF filename
-- `backend/apps/forms/views.py` - GeneratedFormViewSet (generate, generate_all, regenerate, etc.)
-- `backend/apps/audit/models.py` - AuditLog for analytics and compliance tracking
-- `backend/apps/documents/` - Document scanning pipeline (OCR provider, processor, draft debt creator, API)
-
-**Frontend Core:**
-
-- `frontend/src/App.tsx` - Routes, ErrorBoundary, IntakeLayout (shared provider via Outlet)
-- `frontend/src/context/AuthContext.tsx` - JWT auth with silent refresh
-- `frontend/src/context/IntakeContext.tsx` - Session state management
-- `frontend/src/api/client.ts` - API client with typed endpoints
-- `frontend/src/pages/IntakeWizard.tsx` - 6-step wizard orchestrator
-- `frontend/src/pages/FormDashboard.tsx` - Form generation dashboard with Generate All
-- `frontend/src/components/wizard/steps/` - DebtorInfo, Income, Expense, Assets, Debts, Review steps
-- `frontend/src/components/forms/GenerateAllButton.tsx` - Bulk generation with UPL modal
-- `frontend/src/components/compliance/UPLConfirmationModal.tsx` - Acknowledgment gate
-- `frontend/src/components/survey/PostTaskSurvey.tsx` - Post-task usability survey
-- `frontend/src/utils/analytics.ts` - Fire-and-forget event tracking via AuditLog API
-- `frontend/src/types/api.ts` - TypeScript interfaces for all API types
-
-**Testing:**
-
-- `backend/apps/*/tests/` - 492 pytest tests
-- `frontend/src/**/__tests__/` - 165 vitest tests
-- `frontend/e2e/` - Playwright page objects and journey specs
-- `docs/testing/test_persona_full_flow.py` - Full 5-persona E2E test script
-- `docs/testing/test_maria_quick.py` - Quick single-persona smoke test
-
-**Data Fixtures:**
-
-- `backend/apps/districts/fixtures/ilnd_2025_data.json` - ILND median income & exemptions
-
-**Infrastructure:**
-
-- `docker-compose.yml` - 4-service architecture (backend, db, frontend, llm)
-- `Dockerfile.heroku` - Multi-stage production build (Node → Python); bakes static assets + PDF templates
-- `heroku.yml` - Heroku Container Stack config; release phase auto-runs migrations
-- `.github/workflows/ci.yml` - GitHub Actions CI pipeline
-- `backend/Dockerfile` / `frontend/Dockerfile` - Local development container definitions
-- `data/forms/pdfs/` - 64 official AO court PDF templates (committed; mounted at `/data` in dev, baked into Heroku image)
-
-**Documentation:**
-
-- `docs/testing/persona-briefs/` - 5 AI persona briefs for usability testing
-- `docs/testing/run-persona-tests.md` - Orchestration protocol
-- `docs/superpowers/plans/` - Implementation plans
-- `docs/superpowers/specs/` - Design specs and architecture documents
+- PRD: `/docs/internal/DigniFi_PRD_v0_3.md`
+- UPL compliance: `docs/UPL_COMPLIANCE.md`
+- Trauma-informed design: `docs/TRAUMA_INFORMED_DESIGN.md`
+- Plain language guide: `docs/PLAIN_LANGUAGE_GUIDE.md`
