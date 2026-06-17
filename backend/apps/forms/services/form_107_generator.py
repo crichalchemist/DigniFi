@@ -407,50 +407,8 @@ class Form107Generator:
         return self.generate()
 
     def pdf_field_map(self) -> dict:
-        """Map session data to Official Form 107 (b_107_0425-form.pdf).
+        """Map session data to Official Form 107 via the schema-driven resolver."""
+        from apps.forms.schema import load_schema
+        from apps.forms.services.fill_resolver import resolve
 
-        Only questions 1 (income) and 3 (creditor payments) have data
-        from current intake models. All other questions left blank.
-        """
-        TWO = Decimal("0.01")
-        ZERO = Decimal("0.00")
-
-        def fmt(d):
-            return str(Decimal(str(d)).quantize(TWO, rounding=ROUND_HALF_UP))
-
-        session = self.session
-        di = session.debtor_info
-        full_name = f"{di.first_name} {di.middle_name} {di.last_name}".replace("  ", " ").strip()
-
-        try:
-            ml = list(session.income_info.monthly_income)
-            cmi = (
-                (sum(Decimal(str(m)) for m in ml) / Decimal(str(len(ml)))).quantize(
-                    TWO, rounding=ROUND_HALF_UP
-                )
-                if ml
-                else ZERO
-            )
-        except Exception:
-            cmi = ZERO
-
-        debts = list(DebtInfo.objects.filter(session=session)[:3])
-
-        result: dict = {
-            "Bankruptcy District Information": session.district.name,
-            "Debtor 1": full_name,
-            "Amount 2 Debtor 1": fmt(cmi),
-        }
-
-        amount_fields = ["Amount1 13a", "Amount1 13b", "Amount1 14"]
-        creditor_fields = [
-            "Street address 1b Debtor 1",
-            "Street address 1c Debtor 1",
-            "Street address 2b Debtor 1",
-        ]
-        for i, debt in enumerate(debts):
-            if i < len(amount_fields):
-                result[amount_fields[i]] = fmt(debt.amount_owed or ZERO)
-                result[creditor_fields[i]] = debt.creditor_name or ""
-
-        return result
+        return resolve(load_schema("form_107"), self.session)
