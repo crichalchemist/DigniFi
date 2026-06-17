@@ -122,21 +122,9 @@ class ScheduleIGenerator:
         return self.generate()
 
     def pdf_field_map(self) -> dict:
-        """Map session data to Official Form 106I (form_b106i.pdf)."""
-        session = self.session
-        di = session.debtor_info
-        full_name = f"{di.first_name} {di.middle_name} {di.last_name}".replace("  ", " ").strip()
-        cmi = _compute_cmi(
-            list(session.income_info.monthly_income) if hasattr(session, "income_info") else []
-        )
+        """Map session data to Official Form 106I via schema-driven resolver."""
+        from apps.forms.schema import load_schema
+        from apps.forms.services.fill_resolver import resolve
 
-        def fmt(d):
-            return str(d.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP))
-
-        return {
-            "Bankruptcy District Information": session.district.name,
-            "Debtor 1": full_name,
-            "Amount 2 Debtor 1": fmt(cmi),
-            "Amount 10 Debtor 1": fmt(cmi),
-            "Amount 12": fmt(cmi),
-        }
+        schema = load_schema("schedule_i")
+        return resolve(schema, self.session)
