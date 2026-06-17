@@ -292,22 +292,9 @@ class Form103BGenerator:
         }
 
     def pdf_field_map(self) -> dict:
-        """Map session data to Official Form 103B (form_b103b.pdf)."""
-        data = self.generate()
-        di = self.session.debtor_info
-        full_name = f"{di.first_name} {di.middle_name} {di.last_name}".replace("  ", " ").strip()
+        """Map session data to Official Form 103B via schema-driven resolver."""
+        from apps.forms.schema import load_schema
+        from apps.forms.services.fill_resolver import resolve
 
-        basis = data.get("qualification_basis", "none")
-
-        def fmt(d):
-            return str(Decimal(str(d)).quantize(_TWO_PLACES, rounding=ROUND_HALF_UP))
-
-        return {
-            "Bankruptcy District Information": self.session.district.name,
-            "Debtor": full_name,
-            "Amount you owe": fmt(data.get("total_debt", _ZERO)),
-            "Total number of people": str(data.get("household_size", 1)),
-            "4 type": fmt(data.get("monthly_income", _ZERO)),
-            "5 Type": fmt(data.get("monthly_expenses", _ZERO)),
-            "check 3": "/Yes" if basis == "income" else "/Off",
-        }
+        schema = load_schema("form_103b")
+        return resolve(schema, self.session)

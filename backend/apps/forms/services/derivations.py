@@ -278,6 +278,38 @@ def _line13c_difference(session: IntakeSession) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Form 103B fee waiver derivations
+# ---------------------------------------------------------------------------
+
+
+def _fee_waiver_household_size(session: IntakeSession) -> str:
+
+    try:
+        fw = session.fee_waiver
+        return str(fw.household_size)
+    except Exception:
+        return "1"
+
+
+def _fee_waiver_monthly_income(session: IntakeSession) -> str:
+
+    try:
+        fw = session.fee_waiver
+        return _fmt(Decimal(str(fw.monthly_income)))
+    except Exception:
+        return "0.00"
+
+
+def _fee_waiver_monthly_expenses(session: IntakeSession) -> str:
+
+    try:
+        fw = session.fee_waiver
+        return _fmt(Decimal(str(fw.monthly_expenses)))
+    except Exception:
+        return "0.00"
+
+
+# ---------------------------------------------------------------------------
 # DERIVATIONS dict (all referenced functions must be defined above)
 # ---------------------------------------------------------------------------
 
@@ -333,6 +365,10 @@ DERIVATIONS: dict[str, Callable[[IntakeSession], str]] = {
     "line13a_median_income": _line13a_median_income,
     "line13b_annualized_income": _line13b_annualized_income,
     "line13c_difference": _line13c_difference,
+    # Form 103B fee waiver derivations
+    "fee_waiver_household_size": _fee_waiver_household_size,
+    "fee_waiver_monthly_income": _fee_waiver_monthly_income,
+    "fee_waiver_monthly_expenses": _fee_waiver_monthly_expenses,
 }
 
 
