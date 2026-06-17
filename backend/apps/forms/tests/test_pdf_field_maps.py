@@ -156,19 +156,19 @@ def test_form_101_pdf_field_map(full_session):
     gen = get_generator("form_101", full_session)
     field_map = gen.pdf_field_map()
     _assert_map_shape(field_map)
-    assert field_map.get("First name") == "Maria"
-    assert field_map.get("Last name") == "Torres"
+    assert field_map.get("Debtor1.First name") == "Maria"
+    assert field_map.get("Debtor1.Last name") == "Torres"
     # SSN last-4
-    assert field_map.get("SSNum") == "0001"
-    assert field_map.get("City") == "Chicago"
+    assert field_map.get("Debtor1.SSNum") == "0001"
+    assert field_map.get("Debtor1.City") == "Chicago"
     # Checkboxes
     assert field_map.get("Check Box1") == "/Yes"  # Individual
     assert field_map.get("Check Box5") == "/Yes"  # Chapter 7
     assert field_map.get("Check Box16") == "/Yes"  # Consumer debts
     # Attorney-gated fields are absent (pro se = no attorney)
-    assert field_map.get("Firm name") is None  # gated behind has_attorney
+    assert field_map.get("Attorney.Firm name") is None  # gated behind has_attorney
     # Business-gated fields absent if no business
-    assert field_map.get("Business name") is None
+    assert field_map.get("Debtor1.Business name") is None
 
 
 # ---------------------------------------------------------------------------
