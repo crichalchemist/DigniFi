@@ -111,64 +111,12 @@ class Form106SumGenerator:
         return self.generate()
 
     def pdf_field_map(self) -> dict:
-        """Map session data to Official Form 106Sum (form_b106sum.pdf)."""
-        from apps.intake.models import AssetInfo, DebtInfo
+        """Map session data to Official Form 106Sum via schema-driven resolver."""
+        from apps.forms.schema import load_schema
+        from apps.forms.services.fill_resolver import resolve
 
-        session = self.session
-        di = session.debtor_info
-        full_name = f"{di.first_name} {di.middle_name} {di.last_name}".replace("  ", " ").strip()
-
-        assets = list(AssetInfo.objects.filter(session=session))
-        debts = list(DebtInfo.objects.filter(session=session))
-
-        real_property = sum(
-            ((a.current_value or _ZERO) for a in assets if a.asset_type == "real_property"),
-            _ZERO,
-        ).quantize(_TWO_PLACES, rounding=ROUND_HALF_UP)
-        personal_property = sum(
-            ((a.current_value or _ZERO) for a in assets if a.asset_type != "real_property"),
-            _ZERO,
-        ).quantize(_TWO_PLACES, rounding=ROUND_HALF_UP)
-        total_assets = (real_property + personal_property).quantize(
-            _TWO_PLACES, rounding=ROUND_HALF_UP
-        )
-
-        secured = sum(
-            ((d.amount_owed or _ZERO) for d in debts if d.is_secured),
-            _ZERO,
-        ).quantize(_TWO_PLACES, rounding=ROUND_HALF_UP)
-        priority_unsecured = sum(
-            ((d.amount_owed or _ZERO) for d in debts if not d.is_secured and d.is_priority),
-            _ZERO,
-        ).quantize(_TWO_PLACES, rounding=ROUND_HALF_UP)
-        nonpriority_unsecured = sum(
-            ((d.amount_owed or _ZERO) for d in debts if not d.is_secured and not d.is_priority),
-            _ZERO,
-        ).quantize(_TWO_PLACES, rounding=ROUND_HALF_UP)
-        total_unsecured = (priority_unsecured + nonpriority_unsecured).quantize(
-            _TWO_PLACES, rounding=ROUND_HALF_UP
-        )
-
-        cmi = self._compute_monthly_income()
-        total_expenses = self._compute_monthly_expenses()
-
-        def fmt(d):
-            return str(d.quantize(_TWO_PLACES, rounding=ROUND_HALF_UP))
-
-        return {
-            "Bankruptcy District Information": session.district.name,
-            "Debtor 1": full_name,
-            "1a": fmt(real_property),
-            "1b": fmt(personal_property),
-            "1c": fmt(total_assets),
-            "2": fmt(secured),
-            "3a": fmt(priority_unsecured),
-            "3b": fmt(nonpriority_unsecured),
-            "3c": fmt(total_unsecured),
-            "4": fmt(secured + total_unsecured),
-            "8": fmt(cmi),
-            "9a": fmt(total_expenses),
-        }
+        schema = load_schema("form_106sum")
+        return resolve(schema, self.session)
 
     def _compute_monthly_income(self) -> Decimal:
         """Extract monthly income from IncomeInfo's 6-month array as CMI."""

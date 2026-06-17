@@ -11,8 +11,13 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from datetime import date
+from decimal import Decimal
+from functools import reduce
 
 from apps.intake.models import IntakeSession
+
+_ZERO = Decimal("0.00")
+_TWO_PLACES = Decimal("0.01")
 
 
 def _full_name(session: IntakeSession) -> str:
@@ -25,6 +30,94 @@ def _full_name(session: IntakeSession) -> str:
 
 def _family_size(session: IntakeSession) -> str:
     return str(session.debtor_info.household_size)
+
+
+def _fmt(d: Decimal) -> str:
+    return str(d.quantize(_TWO_PLACES))
+
+
+def _sum_encrypted(queryset, field_name: str) -> Decimal:
+    return reduce(lambda acc, obj: acc + (getattr(obj, field_name) or _ZERO), queryset, _ZERO)
+
+
+def _total_real_property(session: IntakeSession) -> str:
+    from apps.intake.models import AssetInfo
+
+    qs = AssetInfo.objects.filter(session=session, asset_type="real_property")
+    return _fmt(_sum_encrypted(qs, "current_value"))
+
+
+def _total_personal_property(session: IntakeSession) -> str:
+    from apps.intake.models import AssetInfo
+
+    qs = AssetInfo.objects.filter(session=session).exclude(asset_type="real_property")
+    return _fmt(_sum_encrypted(qs, "current_value"))
+
+
+def _total_assets(session: IntakeSession) -> str:
+    from apps.intake.models import AssetInfo
+
+    qs = AssetInfo.objects.filter(session=session)
+    return _fmt(_sum_encrypted(qs, "current_value"))
+
+
+def _total_secured_debts(session: IntakeSession) -> str:
+    from apps.intake.models import DebtInfo
+
+    qs = DebtInfo.objects.filter(session=session, is_secured=True)
+    return _fmt(_sum_encrypted(qs, "amount_owed"))
+
+
+def _total_priority_unsecured(session: IntakeSession) -> str:
+    from apps.intake.models import DebtInfo
+
+    qs = DebtInfo.objects.filter(session=session, is_secured=False, is_priority=True)
+    return _fmt(_sum_encrypted(qs, "amount_owed"))
+
+
+def _total_nonpriority_unsecured(session: IntakeSession) -> str:
+    from apps.intake.models import DebtInfo
+
+    qs = DebtInfo.objects.filter(session=session, is_secured=False, is_priority=False)
+    return _fmt(_sum_encrypted(qs, "amount_owed"))
+
+
+def _total_unsecured_debts(session: IntakeSession) -> str:
+    from apps.intake.models import DebtInfo
+
+    qs = DebtInfo.objects.filter(session=session, is_secured=False)
+    return _fmt(_sum_encrypted(qs, "amount_owed"))
+
+
+def _total_debts(session: IntakeSession) -> str:
+    from apps.intake.models import DebtInfo
+
+    qs = DebtInfo.objects.filter(session=session)
+    return _fmt(_sum_encrypted(qs, "amount_owed"))
+
+
+def _cmi(session: IntakeSession) -> str:
+    from apps.intake.models import IncomeInfo
+
+    try:
+        income_info = session.income_info
+    except IncomeInfo.DoesNotExist:
+        return "0.00"
+    monthly = getattr(income_info, "monthly_income", None) or []
+    if not monthly:
+        return "0.00"
+    total = reduce(lambda acc, v: acc + Decimal(str(v)), monthly, _ZERO)
+    return _fmt(total / Decimal("6"))
+
+
+def _total_monthly_expenses(session: IntakeSession) -> str:
+    from apps.intake.models import ExpenseInfo
+
+    try:
+        expense_info = session.expense_info
+    except ExpenseInfo.DoesNotExist:
+        return "0.00"
+    return _fmt(Decimal(str(expense_info.calculate_total_monthly_expenses())))
 
 
 DERIVATIONS: dict[str, Callable[[IntakeSession], str]] = {
@@ -47,6 +140,17 @@ DERIVATIONS: dict[str, Callable[[IntakeSession], str]] = {
     "joint_filer_check": lambda s: (
         "true" if _form_answer_predicate(s, "joint_filer_gate") else ""
     ),
+    # Form 106Sum aggregations
+    "total_real_property": _total_real_property,
+    "total_personal_property": _total_personal_property,
+    "total_assets": _total_assets,
+    "total_secured_debts": _total_secured_debts,
+    "total_priority_unsecured": _total_priority_unsecured,
+    "total_nonpriority_unsecured": _total_nonpriority_unsecured,
+    "total_unsecured_debts": _total_unsecured_debts,
+    "total_debts": _total_debts,
+    "cmi": _cmi,
+    "total_monthly_expenses": _total_monthly_expenses,
 }
 
 
