@@ -195,4 +195,30 @@ export const handlers = [
   http.post(`${API}/forms/:id/mark_filed/`, () =>
     HttpResponse.json({ message: 'Marked as filed.' })
   ),
+
+  // -- SOFA Report ---------------------------------------------------------
+
+  http.get(`${API}/intake/sofa-report/:sessionId/`, () =>
+    HttpResponse.json({
+      id: 1,
+      session: 1,
+      has_prior_income: false,
+      has_creditor_payments: false,
+      has_business: false,
+      prior_income: [],
+      creditor_payments: [],
+    })
+  ),
+
+  http.patch(`${API}/intake/sofa-report/:sessionId/`, () =>
+    HttpResponse.json({
+      id: 1,
+      session: 1,
+      has_prior_income: false,
+      has_creditor_payments: false,
+      has_business: false,
+      prior_income: [],
+      creditor_payments: [],
+    })
+  ),
 ];

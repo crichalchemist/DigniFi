@@ -59,6 +59,7 @@ function renderWizard() {
           <Route path="/intake" element={<IntakeWizard />} />
           <Route path="/fee-waiver" element={<div>FeeWaiverPage</div>} />
           <Route path="/forms" element={<div>FormDashboard</div>} />
+          <Route path="/sofa" element={<div>Statement of Financial Affairs</div>} />
         </Routes>
       </IntakeProvider>
     </MemoryRouter>
@@ -157,13 +158,13 @@ describe('IntakeWizard handleComplete routing', () => {
     });
   });
 
-  it('navigates to /forms when qualifies_for_fee_waiver is false', async () => {
+  it('navigates to /sofa when qualifies_for_fee_waiver is false', async () => {
     renderWizard();
     const completeBtn = await screen.findByRole('button', { name: /complete intake/i });
     await userEvent.click(completeBtn);
 
     await waitFor(() => {
-      expect(screen.getByText('FormDashboard')).toBeInTheDocument();
+      expect(screen.getByText('Statement of Financial Affairs')).toBeInTheDocument();
     });
   });
 });
