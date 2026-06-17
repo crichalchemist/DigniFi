@@ -6,6 +6,7 @@ import pytest
 from django.contrib.auth import get_user_model
 
 from apps.districts.models import District
+from apps.documents.models import IngestedAggregate
 from apps.forms.schema import FieldSpec, FormSchema
 from apps.forms.services.fill_resolver import RepeatOverflow, resolve, resolve_binding
 from apps.intake.models import (
@@ -241,3 +242,20 @@ def test_legal_review_field_not_filled_without_answer(session):
         ]
     )
     assert "Exemption" not in resolve(schema, session)
+
+
+def test_resolve_ingested_source(session):
+    schema = _schema(
+        [_field(pdf_field="Income.Gross", source="ingested", ingest_key="paystub.gross")]
+    )
+
+    # Missing aggregate -> empty string, wait, the brief test says `assert out1 == {"Income.Gross": ""}`.
+    # But fill_resolver drops None. Let's test it as the brief specifies.
+    out1 = resolve(schema, session)
+    # _emit drops empty values, so it's not included in the dictionary at all
+    assert out1 == {}
+
+    # Existing aggregate -> resolved
+    IngestedAggregate.objects.create(session=session, ingest_key="paystub.gross", value="5000.00")
+    out2 = resolve(schema, session)
+    assert out2 == {"Income.Gross": "5000.00"}

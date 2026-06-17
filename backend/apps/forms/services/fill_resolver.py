@@ -54,6 +54,35 @@ def resolve_binding(binding: str, session: IntakeSession) -> str | list[str]:
             return ""
         return str(getattr(report, path))
 
+    if binding.startswith("assets["):
+        import re
+
+        # Format: assets[asset_type=real_property][].description
+        match = re.match(r"^assets\[asset_type=([^\]]+)\]\[\]\.(.+)$", binding)
+        if match:
+            asset_type = match.group(1)
+            attr = match.group(2)
+            assets = [a for a in session.assets.all() if a.asset_type == asset_type]
+            return [str(getattr(a, attr)) for a in assets]
+
+    if binding.startswith("debts["):
+        import re
+
+        match = re.match(r"^debts\[([^\]]+)\]\[\]\.(.+)$", binding)
+        if match:
+            filters_raw = match.group(1).split(",")
+            attr = match.group(2)
+            filters = {}
+            for f in filters_raw:
+                k, v = f.split("=")
+                filters[k] = v.lower() == "true"
+            debts = [
+                d
+                for d in session.debts.all()
+                if all(getattr(d, k) == v for k, v in filters.items())
+            ]
+            return [str(getattr(d, attr)) for d in debts]
+
     raise ValueError(f"unrecognized binding: {binding!r}")
 
 
@@ -79,7 +108,14 @@ def _scalar_value(field: FieldSpec, session: IntakeSession) -> str | None:
             raise RuntimeError(f"Field {field.pdf_field} has source='asked' but no binding")
         val = resolve_binding(field.binding, session)
         return val if isinstance(val, str) else None
-    # ingested (inert in SP1) / signature → nothing
+    if field.source in ("ingested", "db_aggregate"):
+        if not field.ingest_key:
+            return None
+        from apps.documents.models import IngestedAggregate
+
+        agg = IngestedAggregate.objects.filter(session=session, ingest_key=field.ingest_key).first()
+        return agg.value if agg else ""
+    # signature → nothing
     return None
 
 
