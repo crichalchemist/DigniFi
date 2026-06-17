@@ -17,6 +17,23 @@ from django.conf import settings
 
 
 @dataclass(frozen=True)
+class UIFieldSpec:
+    step: str
+    prompt: str
+    widget: str
+    help_text: str | None = None
+
+    @classmethod
+    def from_dict(cls, data: dict) -> UIFieldSpec:
+        return cls(
+            step=data.get("step", "Unknown Step"),
+            prompt=data.get("prompt", ""),
+            widget=data.get("widget", "text"),
+            help_text=data.get("help_text"),
+        )
+
+
+@dataclass(frozen=True)
 class FieldSpec:
     """Specification for a single form field."""
 
@@ -36,6 +53,7 @@ class FieldSpec:
     repeat_capacity: int | None
     row: int | None
     legal_review: bool
+    ui: UIFieldSpec | None = None
 
 
 @dataclass(frozen=True)
@@ -72,7 +90,11 @@ def load_schema(form_type: str) -> FormSchema:
         raw = json.load(f)
 
     # Convert field dicts to FieldSpec dataclass instances
-    fields = [FieldSpec(**field_data) for field_data in raw["fields"]]
+    fields = []
+    for field_data in raw["fields"]:
+        ui_data = field_data.pop("ui", None)
+        ui_spec = UIFieldSpec.from_dict(ui_data) if ui_data else None
+        fields.append(FieldSpec(**field_data, ui=ui_spec))
 
     return FormSchema(
         form_type=raw["form_type"],

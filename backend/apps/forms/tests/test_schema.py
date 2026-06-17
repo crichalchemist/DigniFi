@@ -109,3 +109,49 @@ def test_form_101_schema_has_no_tbd(db):
             assert "TBD" not in f.pdf_field
             assert "TBD" not in str(f.rule)
             assert "TBD" not in str(f.binding)
+
+
+def test_load_schema_with_ui_metadata(tmp_path, settings):
+    settings.FORM_SCHEMAS_DIRECTORY = tmp_path
+    schema_data = {
+        "form_type": "test_form",
+        "template_filename": "test.pdf",
+        "template_version": "v1",
+        "fields": [
+            {
+                "pdf_field": "street",
+                "type": "text",
+                "source": "asked",
+                "on_states": [],
+                "page": 1,
+                "label": "Street",
+                "required": True,
+                "conditional_on": None,
+                "value": None,
+                "rule": None,
+                "ingest_key": None,
+                "binding": "answer:form.street",
+                "repeat": None,
+                "repeat_capacity": None,
+                "row": None,
+                "legal_review": False,
+                "ui": {
+                    "step": "Address",
+                    "prompt": "What is your street address?",
+                    "widget": "text",
+                    "help_text": "No PO Boxes",
+                },
+            }
+        ],
+    }
+    schema_file = tmp_path / "test_form.json"
+    schema_file.write_text(json.dumps(schema_data))
+
+    schema = load_schema("test_form")
+    field = schema.fields[0]
+
+    assert field.ui is not None
+    assert field.ui.step == "Address"
+    assert field.ui.prompt == "What is your street address?"
+    assert field.ui.widget == "text"
+    assert field.ui.help_text == "No PO Boxes"
