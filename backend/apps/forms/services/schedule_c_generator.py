@@ -137,36 +137,9 @@ class ScheduleCGenerator:
         return self.generate()
 
     def pdf_field_map(self) -> dict:
-        """Map session data to Official Form 106C (b_106c_0425-form.pdf)."""
-        from decimal import ROUND_HALF_UP, Decimal
+        """Map session data to Official Form 106C via schema-driven resolver."""
+        from apps.forms.schema import load_schema
+        from apps.forms.services.fill_resolver import resolve
 
-        TWO = Decimal("0.01")
-
-        def fmt(d):
-            return str(Decimal(str(d)).quantize(TWO, rounding=ROUND_HALF_UP))
-
-        session = self.session
-        di = session.debtor_info
-        full_name = f"{di.first_name} {di.middle_name} {di.last_name}".replace("  ", " ").strip()
-        exemptions = self.generate().get("exemptions", [])
-
-        result: dict = {
-            "Bankruptcy District Information": session.district.name,
-            "Debtor 1": full_name,
-        }
-
-        # Rows map to PDF fields: first row = (2.1, 2.2, 2.3), then (3, 3.2, 3.3), etc.
-        row_fields = [
-            ("2.1", "2.2", "2.3"),
-            ("3", "3.2", "3.3"),
-            ("4", "4.2", "4.3"),
-            ("5", "5.2", "5.3"),
-            ("6", "6.2", "6.3"),
-        ]
-        for i, exemption in enumerate(exemptions[:5]):
-            desc_f, statute_f, amount_f = row_fields[i]
-            result[desc_f] = exemption.get("property_description", "")
-            result[statute_f] = exemption.get("statute", "")
-            result[amount_f] = fmt(exemption.get("amount_claimed", Decimal("0.00")))
-
-        return result
+        schema = load_schema("schedule_c")
+        return resolve(schema, self.session)
