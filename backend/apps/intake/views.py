@@ -375,11 +375,6 @@ class SOFAReportViewSet(viewsets.GenericViewSet):
     permission_classes = [IsAuthenticated]
     http_method_names = ["get", "patch", "head", "options"]
 
-    def get_object(self):
-        session = IntakeSession.objects.get(pk=self.kwargs["pk"])
-        report, _ = SOFAReport.objects.get_or_create(session=session)
-        return report
-
     def retrieve(self, request, pk=None):
         session = IntakeSession.objects.filter(pk=pk, user=request.user).first()
         if not session:

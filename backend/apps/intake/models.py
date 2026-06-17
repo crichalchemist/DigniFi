@@ -539,7 +539,7 @@ class SOFAReport(models.Model):
     session = models.OneToOneField(
         IntakeSession, on_delete=models.CASCADE, related_name="sofa_report"
     )
-    has_prior_income = models.BooleanField(default=True)
+    has_prior_income = models.BooleanField(default=False)
     has_creditor_payments = models.BooleanField(default=False)
     has_business = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
