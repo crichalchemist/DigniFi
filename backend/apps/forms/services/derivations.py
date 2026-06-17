@@ -310,6 +310,69 @@ def _fee_waiver_monthly_expenses(session: IntakeSession) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Schedule I income line item derivations
+# ---------------------------------------------------------------------------
+
+
+def _schedule_i_occupation_debtor1(session: IntakeSession) -> str:
+    return _safe_debtor_attr(session, "occupation", "")
+
+
+def _schedule_i_employer_debtor1(session: IntakeSession) -> str:
+    return _safe_debtor_attr(session, "employer_name", "")
+
+
+def _schedule_i_gross_wages_debtor1(session: IntakeSession) -> str:
+    return _fmt(_get_income_field(session, "wages_salaries_tips"))
+
+
+def _schedule_i_net_wages_debtor1(session: IntakeSession) -> str:
+    return _fmt(_get_income_field(session, "wages_salaries_tips"))
+
+
+def _schedule_i_self_employment_debtor1(session: IntakeSession) -> str:
+    return _fmt(_get_income_field(session, "business_income"))
+
+
+def _schedule_i_unemployment_debtor1(session: IntakeSession) -> str:
+    return _fmt(_get_income_field(session, "unemployment_compensation"))
+
+
+def _schedule_i_social_security_debtor1(session: IntakeSession) -> str:
+    return _fmt(_get_income_field(session, "social_security"))
+
+
+def _schedule_i_pension_debtor1(session: IntakeSession) -> str:
+    return _fmt(_get_income_field(session, "pension_retirement"))
+
+
+def _schedule_i_child_support_debtor1(session: IntakeSession) -> str:
+    return _fmt(_get_income_field(session, "child_support_alimony"))
+
+
+def _schedule_i_interest_debtor1(session: IntakeSession) -> str:
+    return _fmt(_get_income_field(session, "interest_dividends"))
+
+
+def _schedule_i_rental_debtor1(session: IntakeSession) -> str:
+    return _fmt(_get_income_field(session, "real_property_income"))
+
+
+def _schedule_i_other_income_debtor1(session: IntakeSession) -> str:
+    return _fmt(_get_income_field(session, "other_income"))
+
+
+def _schedule_i_total_deductions_debtor1(session: IntakeSession) -> str:
+    return _fmt(_get_income_field(session, "deductions"))
+
+
+def _schedule_i_net_income_debtor1(session: IntakeSession) -> str:
+    gross = Decimal(_line8a_total_gross_income(session))
+    deductions = Decimal(_schedule_i_total_deductions_debtor1(session))
+    return _fmt(gross - deductions)
+
+
+# ---------------------------------------------------------------------------
 # DERIVATIONS dict (all referenced functions must be defined above)
 # ---------------------------------------------------------------------------
 
@@ -369,6 +432,25 @@ DERIVATIONS: dict[str, Callable[[IntakeSession], str]] = {
     "fee_waiver_household_size": _fee_waiver_household_size,
     "fee_waiver_monthly_income": _fee_waiver_monthly_income,
     "fee_waiver_monthly_expenses": _fee_waiver_monthly_expenses,
+    # Schedule I income line item derivations
+    "schedule_i_occupation_debtor1": _schedule_i_occupation_debtor1,
+    "schedule_i_employer_debtor1": _schedule_i_employer_debtor1,
+    "schedule_i_employer_street_debtor1": lambda s: _safe_debtor_attr(s, "employer_street", ""),
+    "schedule_i_employer_city_debtor1": lambda s: _safe_debtor_attr(s, "employer_city", ""),
+    "schedule_i_employer_state_debtor1": lambda s: _safe_debtor_attr(s, "employer_state", ""),
+    "schedule_i_employer_zip_debtor1": lambda s: _safe_debtor_attr(s, "employer_zip", ""),
+    "schedule_i_gross_wages_debtor1": _schedule_i_gross_wages_debtor1,
+    "schedule_i_net_wages_debtor1": _schedule_i_net_wages_debtor1,
+    "schedule_i_self_employment_debtor1": _schedule_i_self_employment_debtor1,
+    "schedule_i_unemployment_debtor1": _schedule_i_unemployment_debtor1,
+    "schedule_i_social_security_debtor1": _schedule_i_social_security_debtor1,
+    "schedule_i_pension_debtor1": _schedule_i_pension_debtor1,
+    "schedule_i_child_support_debtor1": _schedule_i_child_support_debtor1,
+    "schedule_i_interest_debtor1": _schedule_i_interest_debtor1,
+    "schedule_i_rental_debtor1": _schedule_i_rental_debtor1,
+    "schedule_i_other_income_debtor1": _schedule_i_other_income_debtor1,
+    "schedule_i_total_deductions_debtor1": _schedule_i_total_deductions_debtor1,
+    "schedule_i_net_income_debtor1": _schedule_i_net_income_debtor1,
 }
 
 
