@@ -162,7 +162,7 @@ export function IntakeWizard() {
       if (result.qualifies_for_fee_waiver) {
         navigate('/fee-waiver');
       } else {
-        navigate('/forms');
+        navigate('/sofa');
       }
     } catch (error) {
       console.error('Error completing intake:', error);
