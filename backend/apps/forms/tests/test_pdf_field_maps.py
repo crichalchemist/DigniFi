@@ -162,8 +162,8 @@ def test_form_101_pdf_field_map(full_session):
     # SSN last-4
     assert field_map.get("Debtor1.SSNum") == "0001"
     assert field_map.get("Debtor1.City") == "Chicago"
-    # Chapter 7 checkbox constant (Check Box2 in schema)
-    assert field_map.get("Check Box2") == "/Yes"
+    # Chapter 7 checkbox constant (Check Box5 in schema)
+    assert field_map.get("Check Box5") == "/Yes"
     # Attorney-gated fields are absent (pro se = no attorney)
     assert field_map.get("Attorney.Firm name") is None  # gated behind has_attorney
     # Business-gated fields absent if no business
