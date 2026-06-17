@@ -23,7 +23,7 @@ class FieldSpec:
     pdf_field: str
     type: str  # text | checkbox | radio | choice
     source: str  # constant | derived | asked | ingested | signature | TBD
-    on_states: list[str]
+    on_states: tuple[str, ...]
     page: int
     label: str
     required: bool

@@ -22,11 +22,11 @@ import { UPL_WIZARD_DISCLAIMER } from '../constants/upl';
 import type { SOFAReport, SOFAPriorIncome, SOFACreditorPayment } from '../types/api';
 
 function emptyPriorIncome(): SOFAPriorIncome {
-  return { id: 0, year: new Date().getFullYear() - 1, source: '', gross_amount: '' };
+  return { id: Math.random(), year: new Date().getFullYear() - 1, source: '', gross_amount: '' };
 }
 
 function emptyCreditorPayment(): SOFACreditorPayment {
-  return { id: 0, creditor_name: '', total_paid: '', dates_of_payments: '' };
+  return { id: Math.random(), creditor_name: '', total_paid: '', dates_of_payments: '' };
 }
 
 export function SOFAStep() {
@@ -46,14 +46,15 @@ export function SOFAStep() {
     sofaReportAPI
       .get(session.id)
       .then((data) => {
-        setReport(data);
         // Ensure at least one empty row in each section when gated on
-        if (data.has_prior_income && data.prior_income.length === 0) {
-          data.prior_income.push(emptyPriorIncome());
+        const newReport = { ...data };
+        if (newReport.has_prior_income && newReport.prior_income.length === 0) {
+          newReport.prior_income = [emptyPriorIncome()];
         }
-        if (data.has_creditor_payments && data.creditor_payments.length === 0) {
-          data.creditor_payments.push(emptyCreditorPayment());
+        if (newReport.has_creditor_payments && newReport.creditor_payments.length === 0) {
+          newReport.creditor_payments = [emptyCreditorPayment()];
         }
+        setReport(newReport);
       })
       .catch(() => setError('Could not load your financial history data.'))
       .finally(() => setLoading(false));
@@ -240,7 +241,7 @@ export function SOFAStep() {
         {report.has_prior_income && (
           <div className="sofa-rows">
             {report.prior_income.map((row, idx) => (
-              <div key={idx} className="sofa-row">
+              <div key={row.id} className="sofa-row">
                 <div className="sofa-row-header">
                   <span className="sofa-row-number">Income source {idx + 1}</span>
                   {report.prior_income.length > 1 && (
@@ -260,7 +261,7 @@ export function SOFAStep() {
                     name={`prior-income-year-${idx}`}
                     type="number"
                     min="2018"
-                    max="2026"
+                    max={String(new Date().getFullYear())}
                     value={row.year || ''}
                     onChange={(e) =>
                       updatePriorIncomeRow(idx, 'year', parseInt(e.target.value, 10) || 0)
@@ -319,7 +320,7 @@ export function SOFAStep() {
         {report.has_creditor_payments && (
           <div className="sofa-rows">
             {report.creditor_payments.map((row, idx) => (
-              <div key={idx} className="sofa-row">
+              <div key={row.id} className="sofa-row">
                 <div className="sofa-row-header">
                   <span className="sofa-row-number">Creditor {idx + 1}</span>
                   {report.creditor_payments.length > 1 && (

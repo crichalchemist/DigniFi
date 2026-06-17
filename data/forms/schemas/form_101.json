@@ -168,7 +168,7 @@
     {
       "pdf_field": "Debtor2.Middle name_2",
       "type": "text",
-      "source": "constant",
+      "source": "skip",
       "on_states": [],
       "page": 1,
       "label": "Middle name",

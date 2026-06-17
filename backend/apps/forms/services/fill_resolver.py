@@ -75,6 +75,8 @@ def _scalar_value(field: FieldSpec, session: IntakeSession) -> str | None:
             raise ValueError(f"Unknown derivation rule {field.rule!r} on field {field.pdf_field!r}")
         return fn(session)
     if field.source == "asked":
+        if not field.binding:
+            raise RuntimeError(f"Field {field.pdf_field} has source='asked' but no binding")
         val = resolve_binding(field.binding, session)
         return val if isinstance(val, str) else None
     # ingested (inert in SP1) / signature → nothing

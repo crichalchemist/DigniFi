@@ -48,3 +48,29 @@ def test_resolver_noops_on_empty_schema():
     s = IntakeSession.objects.create(district=d, user=user, status="in_progress", current_step=1)
     empty = FormSchema("form_x", "b_107_0425-form.pdf", "v1", [])
     assert resolve(empty, s) == {}
+
+
+def test_scalar_value_raises_on_asked_without_binding():
+    from apps.forms.schema import FieldSpec
+    from apps.forms.services.fill_resolver import _scalar_value
+
+    f = FieldSpec(
+        pdf_field="A",
+        type="text",
+        source="asked",
+        binding=None,
+        on_states=[],
+        page=1,
+        label="Test",
+        required=False,
+        conditional_on=None,
+        value=None,
+        rule=None,
+        ingest_key=None,
+        repeat=None,
+        repeat_capacity=None,
+        row=None,
+        legal_review=False,
+    )
+    with pytest.raises(RuntimeError, match="but no binding"):
+        _scalar_value(f, {})

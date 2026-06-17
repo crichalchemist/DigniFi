@@ -39,8 +39,14 @@ test.describe('SOFA — Form 107 Financial History', () => {
 
     // ── Complete Wizard ─────────────────────────────────────
 
+    // Clone the persona so we can override the email to match our local registration
+    const debtorData = {
+      ...JAMES.debtor,
+      email: `sofa.e2e+${SOFA_RUN_ID}@test.dignifi.org`,
+    };
+
     // Step 1: Debtor Info
-    await wizard.fillDebtorInfo(JAMES.debtor);
+    await wizard.fillDebtorInfo(debtorData);
     await wizard.nextStep();
 
     // Step 2: Income
