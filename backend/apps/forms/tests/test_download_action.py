@@ -59,6 +59,38 @@ def test_download_marks_form_downloaded(api_client_authed, generated_form_factor
 
 
 @pytest.mark.django_db
+def test_download_returns_422_on_repeat_overflow(api_client_authed, generated_form_factory):
+    """download returns 422 when resolver hits RepeatOverflow."""
+    from apps.forms.services.fill_resolver import RepeatOverflow
+
+    form = generated_form_factory(status="generated")
+    with patch("apps.forms.views.get_generator") as mock_gen_cls:
+        mock_gen_cls.return_value.pdf_field_map.side_effect = RepeatOverflow("form_107", "cp", 3, 5)
+        url = reverse("generated-forms-download", kwargs={"pk": form.pk})
+        response = api_client_authed.get(url)
+
+    assert response.status_code == 422
+    assert "continuation" in response.json()["detail"].lower()
+
+
+@pytest.mark.django_db
+def test_download_returns_500_on_missing_template(api_client_authed, generated_form_factory):
+    """download returns 500 when PDF template file is missing."""
+    form = generated_form_factory(status="generated")
+    with (
+        patch("apps.forms.views.get_generator") as mock_gen_cls,
+        patch("apps.forms.views.PDFFormFiller") as mock_filler_cls,
+    ):
+        mock_gen_cls.return_value.pdf_field_map.return_value = {"F": "v"}
+        mock_filler_cls.return_value.fill.side_effect = FileNotFoundError("b_107_0425-form.pdf")
+        url = reverse("generated-forms-download", kwargs={"pk": form.pk})
+        response = api_client_authed.get(url)
+
+    assert response.status_code == 500
+    assert "detail" in response.json()
+
+
+@pytest.mark.django_db
 def test_download_returns_501_when_mapping_not_implemented(
     api_client_authed, generated_form_factory
 ):

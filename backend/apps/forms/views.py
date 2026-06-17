@@ -19,7 +19,9 @@ from apps.intake.models import IntakeSession
 
 from .models import GeneratedForm
 from .registry import FORM_REGISTRY, get_all_form_types, get_generator
+from .schema import load_schema
 from .serializers import GeneratedFormSerializer
+from .services.fill_resolver import RepeatOverflow
 from .services.pdf_filler import PDFFormFiller
 
 # UPL-compliant disclaimer appended to every preview response
@@ -325,12 +327,28 @@ class GeneratedFormViewSet(viewsets.ReadOnlyModelViewSet):
                 {"error": "PDF download is not yet available for this form."},
                 status=status.HTTP_501_NOT_IMPLEMENTED,
             )
+        except RepeatOverflow as exc:
+            return Response(
+                {"detail": str(exc)},
+                status=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            )
 
-        pdf_bytes = PDFFormFiller().fill(generated_form.form_type, field_map)
+        try:
+            pdf_bytes = PDFFormFiller().fill(generated_form.form_type, field_map)
+        except (KeyError, FileNotFoundError):
+            return Response(
+                {"detail": "Form template is unavailable. Please contact support."},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+        try:
+            generated_form.template_version = load_schema(generated_form.form_type).template_version
+        except FileNotFoundError:
+            pass  # form not yet schema-migrated
 
         if generated_form.status == "generated":
             generated_form.status = "downloaded"
-            generated_form.save()
+        generated_form.save()
 
         response = HttpResponse(pdf_bytes, content_type="application/pdf")
         response["Content-Disposition"] = f'attachment; filename="{generated_form.form_type}.pdf"'
