@@ -31,12 +31,6 @@ _STANDARD_SCHEDULES: tuple[str, ...] = (
 )
 
 
-def _build_debtor_full_name(debtor: DebtorInfo) -> str:
-    """Compose full name from debtor info, including middle name when present."""
-    parts = (debtor.first_name, debtor.middle_name, debtor.last_name)
-    return " ".join(part for part in parts if part)
-
-
 def _build_declaration_data(
     debtor_name: str,
     signature_date: str,
@@ -74,7 +68,13 @@ class Form106DecGenerator:
         penalty_of_perjury, signature_date, and schedules_declared.
         Handles missing DebtorInfo gracefully with empty debtor name.
         """
-        debtor_name = self._resolve_debtor_name()
+        try:
+            di = self.session.debtor_info
+            debtor_name = f"{di.first_name} {di.middle_name} {di.last_name}".replace(
+                "  ", " "
+            ).strip()
+        except DebtorInfo.DoesNotExist:
+            debtor_name = ""
         signature_date = date.today().isoformat()
 
         return _build_declaration_data(debtor_name, signature_date)
@@ -84,19 +84,9 @@ class Form106DecGenerator:
         return self.generate()
 
     def pdf_field_map(self) -> dict:
-        """Map session data to Official Form 106Dec (form_b106dec.pdf) field names."""
-        di = self.session.debtor_info
-        full_name = _build_debtor_full_name(di)
-        return {
-            "Bankruptcy District Information": self.session.district.name,
-            "Debtor 1": full_name,
-        }
+        """Map session data to Official Form 106Dec via schema-driven resolver."""
+        from apps.forms.schema import load_schema
+        from apps.forms.services.fill_resolver import resolve
 
-    def _resolve_debtor_name(self) -> str:
-        """Extract full name from session's DebtorInfo, defaulting to empty string."""
-        try:
-            debtor = self.session.debtor_info
-        except DebtorInfo.DoesNotExist:
-            return ""
-
-        return _build_debtor_full_name(debtor)
+        schema = load_schema("form_106dec")
+        return resolve(schema, self.session)

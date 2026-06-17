@@ -10,12 +10,16 @@ live here — those are ``asked`` + ``legal_review`` in the schema.
 from __future__ import annotations
 
 from collections.abc import Callable
+from datetime import date
 
 from apps.intake.models import IntakeSession
 
 
 def _full_name(session: IntakeSession) -> str:
-    di = session.debtor_info
+    try:
+        di = session.debtor_info
+    except IntakeSession.debtor_info.RelatedObjectDoesNotExist:
+        return ""
     return f"{di.first_name} {di.middle_name} {di.last_name}".replace("  ", " ").strip()
 
 
@@ -39,6 +43,10 @@ DERIVATIONS: dict[str, Callable[[IntakeSession], str]] = {
     "chapter": lambda s: "7",
     "debtor_type": lambda s: "Individual",
     "district_name": lambda s: s.district.name,
+    "today_iso": lambda s: date.today().isoformat(),
+    "joint_filer_check": lambda s: (
+        "true" if _form_answer_predicate(s, "joint_filer_gate") else ""
+    ),
 }
 
 

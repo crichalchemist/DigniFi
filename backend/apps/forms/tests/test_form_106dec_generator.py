@@ -10,7 +10,6 @@ from apps.districts.models import District
 from apps.forms.services.form_106dec_generator import (
     _DECLARATION_TEXT,
     Form106DecGenerator,
-    _build_debtor_full_name,
     _build_declaration_data,
 )
 from apps.intake.models import DebtorInfo, IntakeSession
@@ -57,38 +56,6 @@ def _create_debtor_info(
 
 
 # --- Pure function tests (no DB) ---
-
-
-class TestBuildDebtorFullName:
-    """Unit tests for _build_debtor_full_name helper."""
-
-    def test_first_and_last_only(self):
-        """Full name omits middle when blank."""
-        debtor = type(
-            "FakeDebtor",
-            (),
-            {
-                "first_name": "Jane",
-                "middle_name": "",
-                "last_name": "Doe",
-            },
-        )()
-
-        assert _build_debtor_full_name(debtor) == "Jane Doe"
-
-    def test_includes_middle_name(self):
-        """Full name includes middle name when present."""
-        debtor = type(
-            "FakeDebtor",
-            (),
-            {
-                "first_name": "Jane",
-                "middle_name": "Marie",
-                "last_name": "Doe",
-            },
-        )()
-
-        assert _build_debtor_full_name(debtor) == "Jane Marie Doe"
 
 
 class TestBuildDeclarationData:
