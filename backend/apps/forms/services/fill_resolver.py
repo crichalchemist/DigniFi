@@ -54,35 +54,6 @@ def resolve_binding(binding: str, session: IntakeSession) -> str | list[str]:
             return ""
         return str(getattr(report, path))
 
-    if binding.startswith("assets["):
-        import re
-
-        # Format: assets[asset_type=real_property][].description
-        match = re.match(r"^assets\[asset_type=([^\]]+)\]\[\]\.(.+)$", binding)
-        if match:
-            asset_type = match.group(1)
-            attr = match.group(2)
-            assets = [a for a in session.assets.all() if a.asset_type == asset_type]
-            return [str(getattr(a, attr)) for a in assets]
-
-    if binding.startswith("debts["):
-        import re
-
-        match = re.match(r"^debts\[([^\]]+)\]\[\]\.(.+)$", binding)
-        if match:
-            filters_raw = match.group(1).split(",")
-            attr = match.group(2)
-            filters = {}
-            for f in filters_raw:
-                k, v = f.split("=")
-                filters[k] = v.lower() == "true"
-            debts = [
-                d
-                for d in session.debts.all()
-                if all(getattr(d, k) == v for k, v in filters.items())
-            ]
-            return [str(getattr(d, attr)) for d in debts]
-
     raise ValueError(f"unrecognized binding: {binding!r}")
 
 
@@ -95,7 +66,9 @@ def _section_applies(
     return bool(pred and pred(session, answer_cache=answer_cache))
 
 
-def _scalar_value(field: FieldSpec, session: IntakeSession) -> str | None:
+def _scalar_value(
+    field: FieldSpec, session: IntakeSession, ingested_cache: dict | None = None
+) -> str | None:
     if field.source == "constant":
         return field.value
     if field.source == "derived":
@@ -110,7 +83,13 @@ def _scalar_value(field: FieldSpec, session: IntakeSession) -> str | None:
         return val if isinstance(val, str) else None
     if field.source in ("ingested", "db_aggregate"):
         if not field.ingest_key:
-            return None
+            raise RuntimeError(
+                f"Field {field.pdf_field} has source='{field.source}' but no ingest_key"
+            )
+
+        if ingested_cache is not None:
+            return ingested_cache.get(field.ingest_key, "")
+
         from apps.documents.models import IngestedAggregate
 
         agg = IngestedAggregate.objects.filter(session=session, ingest_key=field.ingest_key).first()
@@ -131,6 +110,13 @@ def _emit(field: FieldSpec, value: str | None) -> str | None:
 def resolve(schema: FormSchema, session: IntakeSession) -> dict[str, str]:
     out: dict[str, str] = {}
 
+    from apps.documents.models import IngestedAggregate
+
+    # Fetch ingested aggregates once to avoid N+1 queries in _scalar_value
+    _ingested_cache = {
+        agg.ingest_key: agg.value for agg in IngestedAggregate.objects.filter(session=session)
+    }
+
     # Prefetch SOFAReport collections to avoid N+1 in repeat group resolution
     report = getattr(session, "sofa_report", None)
     if report is not None:
@@ -149,7 +135,7 @@ def resolve(schema: FormSchema, session: IntakeSession) -> dict[str, str]:
         # UPL guard: legal_review fields fill only from an explicit asked answer
         if f.legal_review and f.source != "asked":
             continue
-        emitted = _emit(f, _scalar_value(f, session))
+        emitted = _emit(f, _scalar_value(f, session, ingested_cache=_ingested_cache))
         if emitted is not None:
             out[f.pdf_field] = emitted
 
@@ -173,9 +159,14 @@ def resolve(schema: FormSchema, session: IntakeSession) -> dict[str, str]:
         for f in fields:
             if f.legal_review and f.source != "asked":
                 continue
-            vals = resolved_cols.get(f.pdf_field)
-            if isinstance(vals, list) and f.row and f.row <= len(vals):
-                emitted = _emit(f, str(vals[f.row - 1]))
+            if f.binding:
+                vals = resolved_cols.get(f.pdf_field)
+                if isinstance(vals, list) and f.row and f.row <= len(vals):
+                    emitted = _emit(f, str(vals[f.row - 1]))
+                    if emitted is not None:
+                        out[f.pdf_field] = emitted
+            else:
+                emitted = _emit(f, _scalar_value(f, session, ingested_cache=_ingested_cache))
                 if emitted is not None:
                     out[f.pdf_field] = emitted
 

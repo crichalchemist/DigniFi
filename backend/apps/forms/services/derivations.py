@@ -39,22 +39,6 @@ DERIVATIONS: dict[str, Callable[[IntakeSession], str]] = {
     "chapter": lambda s: "7",
     "debtor_type": lambda s: "Individual",
     "district_name": lambda s: s.district.name,
-    "total_real_property": lambda s: str(
-        sum((a.current_value for a in s.assets.all() if a.asset_type == "real_property"), 0)
-    ),
-    "total_personal_property": lambda s: str(
-        sum((a.current_value for a in s.assets.all() if a.asset_type != "real_property"), 0)
-    ),
-    "total_assets": lambda s: str(sum((a.current_value for a in s.assets.all()), 0)),
-    "total_bank_accounts": lambda s: str(
-        sum((a.current_value for a in s.assets.all() if a.asset_type == "bank_account"), 0)
-    ),
-    "total_retirement_accounts": lambda s: str(
-        sum((a.current_value for a in s.assets.all() if a.asset_type == "retirement_account"), 0)
-    ),
-    "total_other_assets": lambda s: str(
-        sum((a.current_value for a in s.assets.all() if a.asset_type == "other"), 0)
-    ),
 }
 
 
@@ -138,25 +122,3 @@ PREDICATES: dict[str, Callable[[IntakeSession], bool]] = {
         s, "attorney_gate", answer_cache
     ),
 }
-
-
-def _total_secured_claims(session: IntakeSession) -> str:
-    from decimal import ROUND_HALF_UP, Decimal
-
-    TWO = Decimal("0.01")
-    ZERO = Decimal("0.00")
-    debts = session.debts.filter(is_secured=True)
-    total = sum((d.amount_owed or ZERO for d in debts), start=ZERO)
-    return str(total.quantize(TWO, rounding=ROUND_HALF_UP))
-
-
-DERIVATIONS["total_secured_claims"] = _total_secured_claims
-
-
-def _joint_filer_name(session: IntakeSession) -> str:
-    # the intake session doesn't currently model a joint filer explicitly,
-    # but we can return empty string for now to pass validation and fulfill the rule.
-    return ""
-
-
-DERIVATIONS["joint_filer_name"] = _joint_filer_name
