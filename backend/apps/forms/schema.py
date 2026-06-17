@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
+from functools import lru_cache
 from pathlib import Path
 
 import pypdf
@@ -47,6 +48,7 @@ class FormSchema:
     fields: list[FieldSpec]
 
 
+@lru_cache(maxsize=32)
 def load_schema(form_type: str) -> FormSchema:
     """
     Load and parse form schema from JSON.

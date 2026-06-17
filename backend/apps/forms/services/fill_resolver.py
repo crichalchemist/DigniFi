@@ -57,18 +57,23 @@ def resolve_binding(binding: str, session: IntakeSession) -> str | list[str]:
     raise ValueError(f"unrecognized binding: {binding!r}")
 
 
-def _section_applies(field: FieldSpec, session: IntakeSession) -> bool:
+def _section_applies(
+    field: FieldSpec, session: IntakeSession, answer_cache: dict | None = None
+) -> bool:
     if field.conditional_on is None:
         return True
     pred = PREDICATES.get(field.conditional_on)
-    return bool(pred and pred(session))
+    return bool(pred and pred(session, answer_cache=answer_cache))
 
 
 def _scalar_value(field: FieldSpec, session: IntakeSession) -> str | None:
     if field.source == "constant":
         return field.value
     if field.source == "derived":
-        return DERIVATIONS[field.rule](session)
+        fn = DERIVATIONS.get(field.rule)
+        if fn is None:
+            raise ValueError(f"Unknown derivation rule {field.rule!r} on field {field.pdf_field!r}")
+        return fn(session)
     if field.source == "asked":
         val = resolve_binding(field.binding, session)
         return val if isinstance(val, str) else None
@@ -88,11 +93,20 @@ def _emit(field: FieldSpec, value: str | None) -> str | None:
 def resolve(schema: FormSchema, session: IntakeSession) -> dict[str, str]:
     out: dict[str, str] = {}
 
+    # Prefetch SOFAReport collections to avoid N+1 in repeat group resolution
+    report = getattr(session, "sofa_report", None)
+    if report is not None:
+        _ = list(report.prior_income.all())
+        _ = list(report.creditor_payments.all())
+
+    # Batch-fetch all FormAnswer rows for this session once (avoids per-predicate DB hits)
+    _form_answers = {(fa.field_key): fa for fa in FormAnswer.objects.filter(session=session)}
+
     # Non-repeat fields
     for f in schema.fields:
         if f.repeat is not None:
             continue
-        if not _section_applies(f, session):
+        if not _section_applies(f, session, answer_cache=_form_answers):
             continue
         # UPL guard: legal_review fields fill only from an explicit asked answer
         if f.legal_review and f.source != "asked":
@@ -104,7 +118,7 @@ def resolve(schema: FormSchema, session: IntakeSession) -> dict[str, str]:
     # Repeat groups
     groups: dict[str, list[FieldSpec]] = {}
     for f in schema.fields:
-        if f.repeat is not None and _section_applies(f, session):
+        if f.repeat is not None and _section_applies(f, session, answer_cache=_form_answers):
             groups.setdefault(f.repeat, []).append(f)
 
     for group_name, fields in groups.items():
@@ -119,6 +133,8 @@ def resolve(schema: FormSchema, session: IntakeSession) -> dict[str, str]:
         if actual > capacity:
             raise RepeatOverflow(schema.form_type, group_name, capacity, actual)
         for f in fields:
+            if f.legal_review and f.source != "asked":
+                continue
             vals = resolved_cols.get(f.pdf_field)
             if isinstance(vals, list) and f.row and f.row <= len(vals):
                 emitted = _emit(f, str(vals[f.row - 1]))

@@ -42,26 +42,37 @@ DERIVATIONS: dict[str, Callable[[IntakeSession], str]] = {
 }
 
 
-def _has_business(session: IntakeSession) -> bool:
+def _has_business(session: IntakeSession, answer_cache: dict | None = None) -> bool:
     report = getattr(session, "sofa_report", None)
     return bool(report and report.has_business)
 
 
-def _has_creditor_payments(session: IntakeSession) -> bool:
+def _has_creditor_payments(session: IntakeSession, answer_cache: dict | None = None) -> bool:
     report = getattr(session, "sofa_report", None)
     return bool(report and report.has_creditor_payments)
 
 
-def _has_prior_income(session: IntakeSession) -> bool:
+def _has_prior_income(session: IntakeSession, answer_cache: dict | None = None) -> bool:
     report = getattr(session, "sofa_report", None)
     return bool(report and report.has_prior_income)
 
 
-def _form_answer_predicate(session: IntakeSession, key: str) -> bool:
-    """Check if a FormAnswer entry has a truthy value."""
+def _form_answer_predicate(
+    session: IntakeSession, key: str, answer_cache: dict | None = None
+) -> bool:
+    """Check if a FormAnswer entry has a truthy value.
+
+    Form-type agnostic: looks up by session + field_key across all form types,
+    so the same predicate works for both Form 107 and Form 101 schemas.
+    If answer_cache is provided (from resolve()), uses it to avoid DB hits.
+    """
+    if answer_cache is not None:
+        ans = answer_cache.get(key)
+        return bool(ans and ans.value and ans.value.lower() in ("yes", "y", "true", "1"))
+
     from apps.intake.models import FormAnswer
 
-    ans = FormAnswer.objects.filter(session=session, form_type="form_107", field_key=key).first()
+    ans = FormAnswer.objects.filter(session=session, field_key=key).first()
     return bool(ans and ans.value and ans.value.lower() in ("yes", "y", "true", "1"))
 
 
@@ -71,17 +82,43 @@ PREDICATES: dict[str, Callable[[IntakeSession], bool]] = {
     "has_creditor_payments": _has_creditor_payments,
     "has_prior_income": _has_prior_income,
     # FormAnswer-backed section gates (user answered "Yes" to gate question)
-    "has_insider_payments": lambda s: _form_answer_predicate(s, "insider_payments_gate"),
-    "has_legal_actions": lambda s: _form_answer_predicate(s, "legal_actions_gate"),
-    "has_financial_accounts": lambda s: _form_answer_predicate(s, "financial_accounts_gate"),
-    "has_property_loss": lambda s: _form_answer_predicate(s, "property_loss_gate"),
-    "has_property_transfers": lambda s: _form_answer_predicate(s, "property_transfers_gate"),
-    "has_closed_accounts": lambda s: _form_answer_predicate(s, "closed_accounts_gate"),
-    "has_safe_deposit": lambda s: _form_answer_predicate(s, "safe_deposit_gate"),
-    "has_environmental": lambda s: _form_answer_predicate(s, "environmental_gate"),
-    "has_prior_bankruptcy": lambda s: _form_answer_predicate(s, "prior_bankruptcy_gate"),
-    "has_accountant": lambda s: _form_answer_predicate(s, "accountant_gate"),
-    "has_joint_filer": lambda s: _form_answer_predicate(s, "joint_filer_gate"),
-    "has_address_history": lambda s: _form_answer_predicate(s, "address_history_gate"),
-    "has_attorney": lambda s: _form_answer_predicate(s, "attorney_gate"),
+    "has_insider_payments": lambda s, answer_cache=None: _form_answer_predicate(
+        s, "insider_payments_gate", answer_cache
+    ),
+    "has_legal_actions": lambda s, answer_cache=None: _form_answer_predicate(
+        s, "legal_actions_gate", answer_cache
+    ),
+    "has_financial_accounts": lambda s, answer_cache=None: _form_answer_predicate(
+        s, "financial_accounts_gate", answer_cache
+    ),
+    "has_property_loss": lambda s, answer_cache=None: _form_answer_predicate(
+        s, "property_loss_gate", answer_cache
+    ),
+    "has_property_transfers": lambda s, answer_cache=None: _form_answer_predicate(
+        s, "property_transfers_gate", answer_cache
+    ),
+    "has_closed_accounts": lambda s, answer_cache=None: _form_answer_predicate(
+        s, "closed_accounts_gate", answer_cache
+    ),
+    "has_safe_deposit": lambda s, answer_cache=None: _form_answer_predicate(
+        s, "safe_deposit_gate", answer_cache
+    ),
+    "has_environmental": lambda s, answer_cache=None: _form_answer_predicate(
+        s, "environmental_gate", answer_cache
+    ),
+    "has_prior_bankruptcy": lambda s, answer_cache=None: _form_answer_predicate(
+        s, "prior_bankruptcy_gate", answer_cache
+    ),
+    "has_accountant": lambda s, answer_cache=None: _form_answer_predicate(
+        s, "accountant_gate", answer_cache
+    ),
+    "has_joint_filer": lambda s, answer_cache=None: _form_answer_predicate(
+        s, "joint_filer_gate", answer_cache
+    ),
+    "has_address_history": lambda s, answer_cache=None: _form_answer_predicate(
+        s, "address_history_gate", answer_cache
+    ),
+    "has_attorney": lambda s, answer_cache=None: _form_answer_predicate(
+        s, "attorney_gate", answer_cache
+    ),
 }
