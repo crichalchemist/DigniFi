@@ -35,6 +35,11 @@ User = get_user_model()
 
 
 @pytest.fixture
+def template_version_form(generated_form_factory):
+    return generated_form_factory(status="generated")
+
+
+@pytest.fixture
 def user(db):
     return User.objects.create_user(
         username="testfiler",
@@ -188,9 +193,7 @@ class TestGenerateEndpoint:
         )
 
     def test_missing_session_id(self, api_client):
-        resp = api_client.post(
-            self.URL, {"form_type": "form_101"}, format="json"
-        )
+        resp = api_client.post(self.URL, {"form_type": "form_101"}, format="json")
         assert resp.status_code == status.HTTP_400_BAD_REQUEST
         assert "session_id" in resp.data["error"]
 
@@ -256,9 +259,7 @@ class TestGenerateAllEndpoint:
         assert resp.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_other_users_session(self, api_client, other_session):
-        resp = api_client.post(
-            self.URL, {"session_id": other_session.id}, format="json"
-        )
+        resp = api_client.post(self.URL, {"session_id": other_session.id}, format="json")
         assert resp.status_code == status.HTTP_404_NOT_FOUND
 
 
@@ -271,9 +272,7 @@ class TestPreviewEndpoint:
 
     URL = "/api/forms/preview/"
 
-    def test_preview_returns_data_without_db_write(
-        self, api_client, session_with_debtor
-    ):
+    def test_preview_returns_data_without_db_write(self, api_client, session_with_debtor):
         resp = api_client.post(
             self.URL,
             {"session_id": session_with_debtor.id, "form_type": "form_106dec"},
@@ -298,9 +297,7 @@ class TestPreviewEndpoint:
         assert resp.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_preview_missing_session(self, api_client):
-        resp = api_client.post(
-            self.URL, {"form_type": "form_101"}, format="json"
-        )
+        resp = api_client.post(self.URL, {"form_type": "form_101"}, format="json")
         assert resp.status_code == status.HTTP_400_BAD_REQUEST
 
 
@@ -327,9 +324,7 @@ class TestRegenerateEndpoint:
         form.refresh_from_db()
         assert form.form_data != {"old": "data"}
 
-    def test_regenerate_other_users_form(
-        self, api_client, other_session, other_user
-    ):
+    def test_regenerate_other_users_form(self, api_client, other_session, other_user):
         form = GeneratedForm.objects.create(
             session=other_session,
             form_type="form_101",
@@ -393,14 +388,20 @@ class TestStatusTransitions:
 @pytest.mark.django_db
 class TestListRetrieve:
 
-    def test_list_only_own_forms(self, api_client, session_with_debtor, user, other_session, other_user):
+    def test_list_only_own_forms(
+        self, api_client, session_with_debtor, user, other_session, other_user
+    ):
         GeneratedForm.objects.create(
-            session=session_with_debtor, form_type="form_101",
-            form_data={}, generated_by=user,
+            session=session_with_debtor,
+            form_type="form_101",
+            form_data={},
+            generated_by=user,
         )
         GeneratedForm.objects.create(
-            session=other_session, form_type="form_101",
-            form_data={}, generated_by=other_user,
+            session=other_session,
+            form_type="form_101",
+            form_data={},
+            generated_by=other_user,
         )
 
         resp = api_client.get("/api/forms/")
@@ -415,8 +416,10 @@ class TestListRetrieve:
 
     def test_retrieve_own_form(self, api_client, session_with_debtor, user):
         form = GeneratedForm.objects.create(
-            session=session_with_debtor, form_type="form_101",
-            form_data={"test": True}, generated_by=user,
+            session=session_with_debtor,
+            form_type="form_101",
+            form_data={"test": True},
+            generated_by=user,
         )
         resp = api_client.get(f"/api/forms/{form.id}/")
         assert resp.status_code == status.HTTP_200_OK
@@ -424,8 +427,17 @@ class TestListRetrieve:
 
     def test_retrieve_other_users_form_404(self, api_client, other_session, other_user):
         form = GeneratedForm.objects.create(
-            session=other_session, form_type="form_101",
-            form_data={}, generated_by=other_user,
+            session=other_session,
+            form_type="form_101",
+            form_data={},
+            generated_by=other_user,
         )
         resp = api_client.get(f"/api/forms/{form.id}/")
         assert resp.status_code == status.HTTP_404_NOT_FOUND
+
+
+def test_generated_form_template_version_round_trip(db, template_version_form):
+    template_version_form.template_version = "abc123"
+    template_version_form.save()
+    template_version_form.refresh_from_db()
+    assert template_version_form.template_version == "abc123"
