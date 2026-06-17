@@ -86,34 +86,9 @@ class ScheduleDGenerator:
         return self.generate()
 
     def pdf_field_map(self) -> dict:
-        """Map session data to Official Form 106D (form_b106d.pdf)."""
-        from decimal import ROUND_HALF_UP, Decimal
+        """Map session data to Official Form 106D via schema-driven resolver."""
+        from apps.forms.schema import load_schema
+        from apps.forms.services.fill_resolver import resolve
 
-        TWO = Decimal("0.01")
-        ZERO = Decimal("0.00")
-
-        def fmt(d):
-            return str((d or ZERO).quantize(TWO, rounding=ROUND_HALF_UP))
-
-        session = self.session
-        di = session.debtor_info
-        full_name = f"{di.first_name} {di.middle_name} {di.last_name}".replace("  ", " ").strip()
-        secured_debts = list(DebtInfo.objects.filter(session=session, is_secured=True))
-
-        result: dict = {
-            "Bankruptcy District Information": session.district.name,
-            "Debtor 1": full_name,
-        }
-
-        for i, debt in enumerate(secured_debts[:6], start=1):
-            base = str(i)
-            result[base] = debt.creditor_name or ""
-            result[f"{base}_2"] = ""
-            result[f"{base}_3"] = debt.collateral_description or ""
-            result[f"{base}_4"] = ""
-            result[f"{base}_5"] = fmt(debt.amount_owed)
-
-        total = sum((d.amount_owed or ZERO) for d in secured_debts)
-        result["undefined_44"] = fmt(total)
-
-        return result
+        schema = load_schema("schedule_d")
+        return resolve(schema, self.session)

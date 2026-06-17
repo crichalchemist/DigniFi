@@ -394,6 +394,32 @@ def _schedule_i_net_income_debtor1(session: IntakeSession) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Schedule J expense line item derivations
+# ---------------------------------------------------------------------------
+
+
+def _get_expense_field(session: IntakeSession, field: str) -> Decimal:
+    try:
+        expense_info = session.expense_info
+        val = getattr(expense_info, field, None)
+        return Decimal(str(val)) if val is not None else _ZERO
+    except Exception:
+        return _ZERO
+
+
+def _schedule_j_total_expenses(session: IntakeSession) -> str:
+
+    try:
+        return _fmt(Decimal(str(session.expense_info.calculate_total_monthly_expenses())))
+    except Exception:
+        return "0.00"
+
+
+def _schedule_j_total_income(session: IntakeSession) -> str:
+    return _fmt(Decimal(_cmi(session)))
+
+
+# ---------------------------------------------------------------------------
 # DERIVATIONS dict (all referenced functions must be defined above)
 # ---------------------------------------------------------------------------
 
@@ -431,6 +457,8 @@ DERIVATIONS: dict[str, Callable[[IntakeSession], str]] = {
     "total_bank_accounts": _total_bank_accounts,
     "total_retirement_accounts": _total_retirement_accounts,
     "total_other_assets": _total_other_assets,
+    "total_secured_claims": _total_secured_debts,
+    "joint_filer_name": _full_name,
     "cmi": _cmi,
     "total_monthly_expenses": _total_monthly_expenses,
     # Form 122A-1 means test derivations
@@ -475,6 +503,25 @@ DERIVATIONS: dict[str, Callable[[IntakeSession], str]] = {
     "schedule_i_other_income_debtor1": _schedule_i_other_income_debtor1,
     "schedule_i_total_deductions_debtor1": _schedule_i_total_deductions_debtor1,
     "schedule_i_net_income_debtor1": _schedule_i_net_income_debtor1,
+    # Schedule J expense line item derivations
+    "schedule_j_rent_or_mortgage": lambda s: _fmt(_get_expense_field(s, "rent_or_mortgage")),
+    "schedule_j_utilities": lambda s: _fmt(_get_expense_field(s, "utilities")),
+    "schedule_j_home_maintenance": lambda s: _fmt(_get_expense_field(s, "home_maintenance")),
+    "schedule_j_food_and_groceries": lambda s: _fmt(_get_expense_field(s, "food_and_groceries")),
+    "schedule_j_childcare": lambda s: _fmt(_get_expense_field(s, "childcare")),
+    "schedule_j_clothing": lambda s: _fmt(_get_expense_field(s, "clothing")),
+    "schedule_j_medical_expenses": lambda s: _fmt(_get_expense_field(s, "medical_expenses")),
+    "schedule_j_vehicle_maintenance": lambda s: _fmt(_get_expense_field(s, "vehicle_maintenance")),
+    "schedule_j_vehicle_payment": lambda s: _fmt(_get_expense_field(s, "vehicle_payment")),
+    "schedule_j_vehicle_insurance": lambda s: _fmt(_get_expense_field(s, "vehicle_insurance")),
+    "schedule_j_insurance_not_deducted": lambda s: _fmt(
+        _get_expense_field(s, "insurance_not_deducted")
+    ),
+    "schedule_j_other_expenses": lambda s: _fmt(
+        _get_expense_field(s, "other_expenses") + _get_expense_field(s, "child_support_paid")
+    ),
+    "schedule_j_total_expenses": _schedule_j_total_expenses,
+    "schedule_j_total_income": _schedule_j_total_income,
 }
 
 

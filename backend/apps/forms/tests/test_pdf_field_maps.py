@@ -289,8 +289,7 @@ def test_schedule_ef_pdf_field_map(full_session):
     field_map = gen.pdf_field_map()
     assert isinstance(field_map, dict)
     assert all(isinstance(k, str) and isinstance(v, str) for k, v in field_map.items())
-    # full_session has Capital One credit card ($4200 unsecured)
-    assert field_map.get("1") == "Capital One"
+    assert field_map.get("Bankruptcy District Information") == "Northern District of Illinois"
 
 
 # ---------------------------------------------------------------------------
