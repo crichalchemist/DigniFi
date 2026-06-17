@@ -156,3 +156,20 @@ class OCRResult(models.Model):
 
     def __str__(self):
         return f"OCR for {self.document.original_filename} ({self.status})"
+
+
+class IngestedAggregate(models.Model):
+    """Stores aggregated values from OCR documents for FillResolver."""
+
+    session = models.ForeignKey(
+        "intake.IntakeSession", on_delete=models.CASCADE, related_name="ingested_aggregates"
+    )
+    ingest_key = models.CharField(max_length=100)
+    value = models.CharField(max_length=255)
+
+    class Meta:
+        db_table = "ingested_aggregates"
+        unique_together = [["session", "ingest_key"]]
+
+    def __str__(self):
+        return f"{self.ingest_key}: {self.value}"
