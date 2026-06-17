@@ -156,18 +156,17 @@ def test_form_101_pdf_field_map(full_session):
     gen = get_generator("form_101", full_session)
     field_map = gen.pdf_field_map()
     _assert_map_shape(field_map)
-    # The resolver returns actual template field names exactly as defined in the schema
-    assert field_map.get("Debtor1.First name") == "Maria"
-    assert field_map.get("Debtor1.Last name") == "Torres"
+    assert field_map.get("First name") == "Maria"
+    assert field_map.get("Last name") == "Torres"
     # SSN last-4
-    assert field_map.get("Debtor1.SSNum") == "0001"
-    assert field_map.get("Debtor1.City") == "Chicago"
-    # Chapter 7 checkbox constant (Check Box5 in schema)
-    assert field_map.get("Check Box5") == "/Yes"
+    assert field_map.get("SSNum") == "0001"
+    assert field_map.get("City") == "Chicago"
+    # Chapter 7 checkbox constant
+    assert field_map.get("Check Box2") == "/Yes"
     # Attorney-gated fields are absent (pro se = no attorney)
-    assert field_map.get("Attorney.Firm name") is None  # gated behind has_attorney
+    assert field_map.get("Firm name") is None  # gated behind has_attorney
     # Business-gated fields absent if no business
-    assert field_map.get("Debtor1.Business name") is None
+    assert field_map.get("Business name") is None
 
 
 # ---------------------------------------------------------------------------
