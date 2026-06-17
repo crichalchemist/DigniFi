@@ -16,6 +16,9 @@ from .models import (
     FeeWaiverApplication,
     IncomeInfo,
     IntakeSession,
+    SOFACreditorPayment,
+    SOFAPriorIncome,
+    SOFAReport,
 )
 
 User = get_user_model()
@@ -345,3 +348,72 @@ class FeeWaiverApplicationSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
         read_only_fields = ["id", "status", "created_at", "updated_at"]
+
+
+class SOFAPriorIncomeSerializer(serializers.ModelSerializer):
+    """Prior income row for SOFA Form 107 Part 1."""
+
+    gross_amount = serializers.DecimalField(max_digits=12, decimal_places=2)
+
+    class Meta:
+        model = SOFAPriorIncome
+        fields = ["id", "year", "source", "gross_amount"]
+
+
+class SOFACreditorPaymentSerializer(serializers.ModelSerializer):
+    """Creditor payment row for SOFA Form 107 Part 2."""
+
+    total_paid = serializers.DecimalField(max_digits=12, decimal_places=2)
+
+    class Meta:
+        model = SOFACreditorPayment
+        fields = ["id", "creditor_name", "total_paid", "dates_of_payments"]
+
+
+class SOFAReportSerializer(serializers.ModelSerializer):
+    """SOFA report with nested prior income and creditor payment rows."""
+
+    prior_income = SOFAPriorIncomeSerializer(many=True, required=False)
+    creditor_payments = SOFACreditorPaymentSerializer(many=True, required=False)
+
+    class Meta:
+        model = SOFAReport
+        fields = [
+            "id",
+            "session",
+            "has_prior_income",
+            "has_creditor_payments",
+            "has_business",
+            "prior_income",
+            "creditor_payments",
+        ]
+        read_only_fields = ["id", "session"]
+
+    def create(self, validated_data):
+        prior_income_data = validated_data.pop("prior_income", [])
+        creditor_payment_data = validated_data.pop("creditor_payments", [])
+        report = SOFAReport.objects.create(**validated_data)
+        for item in prior_income_data:
+            SOFAPriorIncome.objects.create(report=report, **item)
+        for item in creditor_payment_data:
+            SOFACreditorPayment.objects.create(report=report, **item)
+        return report
+
+    def update(self, instance, validated_data):
+        prior_income_data = validated_data.pop("prior_income", None)
+        creditor_payment_data = validated_data.pop("creditor_payments", None)
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+
+        if prior_income_data is not None:
+            instance.prior_income.all().delete()
+            for item in prior_income_data:
+                SOFAPriorIncome.objects.create(report=instance, **item)
+
+        if creditor_payment_data is not None:
+            instance.creditor_payments.all().delete()
+            for item in creditor_payment_data:
+                SOFACreditorPayment.objects.create(report=instance, **item)
+
+        return instance

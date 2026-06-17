@@ -14,12 +14,19 @@ from rest_framework.response import Response
 from apps.eligibility.services import MeansTestCalculator
 from apps.forms.services import Form101Generator
 
-from .models import AssetInfo, DebtInfo, FeeWaiverApplication, IntakeSession
+from .models import (
+    AssetInfo,
+    DebtInfo,
+    FeeWaiverApplication,
+    IntakeSession,
+    SOFAReport,
+)
 from .serializers import (
     AssetInfoSerializer,
     DebtInfoSerializer,
     FeeWaiverApplicationSerializer,
     IntakeSessionSerializer,
+    SOFAReportSerializer,
 )
 
 
@@ -354,3 +361,45 @@ class FeeWaiverViewSet(viewsets.ModelViewSet):
             defaults={k: v for k, v in serializer.validated_data.items() if k != "session"},
         )
         serializer.instance = instance
+
+
+class SOFAReportViewSet(viewsets.GenericViewSet):
+    """
+    Retrieve and update SOFA Report (Form 107 data) for a session.
+
+    GET  /api/sofa-report/{session_pk}/        → report or 404
+    PATCH /api/sofa-report/{session_pk}/        → create/update report + nested rows
+    """
+
+    serializer_class = SOFAReportSerializer
+    permission_classes = [IsAuthenticated]
+    http_method_names = ["get", "patch", "head", "options"]
+
+    def get_object(self):
+        session = IntakeSession.objects.get(pk=self.kwargs["pk"])
+        report, _ = SOFAReport.objects.get_or_create(session=session)
+        return report
+
+    def retrieve(self, request, pk=None):
+        session = IntakeSession.objects.filter(pk=pk, user=request.user).first()
+        if not session:
+            return Response(
+                {"detail": "Session not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        report, _ = SOFAReport.objects.get_or_create(session=session)
+        serializer = self.get_serializer(report)
+        return Response(serializer.data)
+
+    def partial_update(self, request, pk=None):
+        session = IntakeSession.objects.filter(pk=pk, user=request.user).first()
+        if not session:
+            return Response(
+                {"detail": "Session not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        report, _ = SOFAReport.objects.get_or_create(session=session)
+        serializer = self.get_serializer(report, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)
