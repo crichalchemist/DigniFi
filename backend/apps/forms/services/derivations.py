@@ -155,6 +155,129 @@ def _total_monthly_expenses(session: IntakeSession) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Form 122A-1 means test derivations
+# ---------------------------------------------------------------------------
+
+
+def _get_income_field(session: IntakeSession, field: str) -> Decimal:
+    try:
+        income_info = session.income_info
+        val = getattr(income_info, field, None)
+        if val is None:
+            return _ZERO
+        if isinstance(val, list):
+            return sum((Decimal(str(v)) for v in val), _ZERO) / Decimal(str(len(val)))
+        return Decimal(str(val))
+    except Exception:
+        return _ZERO
+
+
+def _line1_wages(session: IntakeSession) -> str:
+    return _fmt(_get_income_field(session, "wages_salaries_tips"))
+
+
+def _line2_business_income(session: IntakeSession) -> str:
+    return _fmt(_get_income_field(session, "business_income"))
+
+
+def _line3_real_property_income(session: IntakeSession) -> str:
+    return _fmt(_get_income_field(session, "real_property_income"))
+
+
+def _line4_interest_dividends(session: IntakeSession) -> str:
+    return _fmt(_get_income_field(session, "interest_dividends"))
+
+
+def _line5a_pension_retirement(session: IntakeSession) -> str:
+    return _fmt(_get_income_field(session, "pension_retirement"))
+
+
+def _line5b_social_security(session: IntakeSession) -> str:
+    return _fmt(_get_income_field(session, "social_security"))
+
+
+def _line6a_unemployment(session: IntakeSession) -> str:
+    return _fmt(_get_income_field(session, "unemployment_compensation"))
+
+
+def _line6b_child_support_alimony(session: IntakeSession) -> str:
+    return _fmt(_get_income_field(session, "child_support_alimony"))
+
+
+def _line7_other_income(session: IntakeSession) -> str:
+    return _fmt(_get_income_field(session, "other_income"))
+
+
+def _line8a_total_gross_income(session: IntakeSession) -> str:
+    total = sum(
+        (
+            _get_income_field(session, "wages_salaries_tips"),
+            _get_income_field(session, "business_income"),
+            _get_income_field(session, "real_property_income"),
+            _get_income_field(session, "interest_dividends"),
+            _get_income_field(session, "pension_retirement"),
+            _get_income_field(session, "social_security"),
+            _get_income_field(session, "unemployment_compensation"),
+            _get_income_field(session, "child_support_alimony"),
+            _get_income_field(session, "other_income"),
+        ),
+        _ZERO,
+    )
+    return _fmt(total)
+
+
+def _line10a_deductions(session: IntakeSession) -> str:
+    return _fmt(_get_income_field(session, "deductions"))
+
+
+def _line10b_total_deductions(session: IntakeSession) -> str:
+    return _fmt(_get_income_field(session, "total_deductions"))
+
+
+def _line10c_net_income(session: IntakeSession) -> str:
+    gross = Decimal(_line8a_total_gross_income(session))
+    deductions = Decimal(_line10b_total_deductions(session))
+    return _fmt(gross - deductions)
+
+
+def _line11_annualized_income(session: IntakeSession) -> str:
+    cmi = Decimal(_cmi(session))
+    return _fmt(cmi * Decimal("12"))
+
+
+def _line12b_annualized_cmi(session: IntakeSession) -> str:
+    return _line11_annualized_income(session)
+
+
+def _line13a_median_income(session: IntakeSession) -> str:
+    from apps.districts.models import MedianIncome
+
+    try:
+        income_info = session.income_info
+        size = 1 + income_info.number_of_dependents
+        if income_info.marital_status in ("married_joint", "married_separate"):
+            size += 1
+    except Exception:
+        size = 1
+    median = (
+        MedianIncome.objects.filter(district=session.district).order_by("-effective_date").first()
+    )
+    if median is None:
+        return "0.00"
+    return _fmt(median.get_median_income(size))
+
+
+def _line13b_annualized_income(session: IntakeSession) -> str:
+    return _line11_annualized_income(session)
+
+
+def _line13c_difference(session: IntakeSession) -> str:
+    annualized = Decimal(_line11_annualized_income(session))
+    median = Decimal(_line13a_median_income(session))
+    return _fmt(annualized - median)
+
+
+# ---------------------------------------------------------------------------
 # DERIVATIONS dict (all referenced functions must be defined above)
 # ---------------------------------------------------------------------------
 
@@ -191,6 +314,25 @@ DERIVATIONS: dict[str, Callable[[IntakeSession], str]] = {
     "total_debts": _total_debts,
     "cmi": _cmi,
     "total_monthly_expenses": _total_monthly_expenses,
+    # Form 122A-1 means test derivations
+    "line1_wages": _line1_wages,
+    "line2_business_income": _line2_business_income,
+    "line3_real_property_income": _line3_real_property_income,
+    "line4_interest_dividends": _line4_interest_dividends,
+    "line5a_pension_retirement": _line5a_pension_retirement,
+    "line5b_social_security": _line5b_social_security,
+    "line6a_unemployment": _line6a_unemployment,
+    "line6b_child_support_alimony": _line6b_child_support_alimony,
+    "line7_other_income": _line7_other_income,
+    "line8a_total_gross_income": _line8a_total_gross_income,
+    "line10a_deductions": _line10a_deductions,
+    "line10b_total_deductions": _line10b_total_deductions,
+    "line10c_net_income": _line10c_net_income,
+    "line11_annualized_income": _line11_annualized_income,
+    "line12b_annualized_cmi": _line12b_annualized_cmi,
+    "line13a_median_income": _line13a_median_income,
+    "line13b_annualized_income": _line13b_annualized_income,
+    "line13c_difference": _line13c_difference,
 }
 
 

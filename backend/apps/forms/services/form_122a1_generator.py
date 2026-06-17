@@ -234,29 +234,9 @@ class Form122A1Generator:
         return self.generate()
 
     def pdf_field_map(self) -> dict:
-        """Map session data to Official Form 122A-1 (b_122a-1.pdf)."""
-        data = self.generate()
-        di = self.session.debtor_info
+        """Map session data to Official Form 122A-1 via schema-driven resolver."""
+        from apps.forms.schema import load_schema
+        from apps.forms.services.fill_resolver import resolve
 
-        TWO = Decimal("0.01")
-        cmi = Decimal(str(data.get("current_monthly_income", ZERO)))
-        annualized = (cmi * 12).quantize(TWO, rounding=ROUND_HALF_UP)
-        median = Decimal(str(data.get("median_income_annual", ZERO)))
-        diff = (annualized - median).quantize(TWO, rounding=ROUND_HALF_UP)
-        below_median = diff <= ZERO
-
-        def fmt(d):
-            return str(Decimal(str(d)).quantize(TWO, rounding=ROUND_HALF_UP))
-
-        return {
-            "Bankruptcy District Information": self.session.district.name,
-            "Case number1": "",
-            "Debtor1.First name": di.first_name,
-            "Debtor1.Middle name": di.middle_name or "",
-            "Debtor1.Last name": di.last_name,
-            "12B": fmt(annualized),
-            "13A": fmt(median),
-            "13B": fmt(annualized),
-            "13C": fmt(diff),
-            "14a": "/Yes" if below_median else "/Off",
-        }
+        schema = load_schema("form_122a1")
+        return resolve(schema, self.session)
