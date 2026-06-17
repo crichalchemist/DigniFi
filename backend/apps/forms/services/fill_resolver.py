@@ -70,8 +70,6 @@ def _scalar_value(field: FieldSpec, session: IntakeSession) -> str | None:
     if field.source == "derived":
         return DERIVATIONS[field.rule](session)
     if field.source == "asked":
-        if not field.binding:
-            return None
         val = resolve_binding(field.binding, session)
         return val if isinstance(val, str) else None
     # ingested (inert in SP1) / signature → nothing
