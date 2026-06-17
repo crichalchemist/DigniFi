@@ -130,6 +130,27 @@ def _total_debts(session: IntakeSession) -> str:
     return _fmt(_sum_encrypted(qs, "amount_owed"))
 
 
+def _total_bank_accounts(session: IntakeSession) -> str:
+    from apps.intake.models import AssetInfo
+
+    qs = AssetInfo.objects.filter(session=session, asset_type="bank_account")
+    return _fmt(_sum_encrypted(qs, "current_value"))
+
+
+def _total_retirement_accounts(session: IntakeSession) -> str:
+    from apps.intake.models import AssetInfo
+
+    qs = AssetInfo.objects.filter(session=session, asset_type="retirement_account")
+    return _fmt(_sum_encrypted(qs, "current_value"))
+
+
+def _total_other_assets(session: IntakeSession) -> str:
+    from apps.intake.models import AssetInfo
+
+    qs = AssetInfo.objects.filter(session=session, asset_type="other")
+    return _fmt(_sum_encrypted(qs, "current_value"))
+
+
 def _cmi(session: IntakeSession) -> str:
     from apps.intake.models import IncomeInfo
 
@@ -407,6 +428,9 @@ DERIVATIONS: dict[str, Callable[[IntakeSession], str]] = {
     "total_nonpriority_unsecured": _total_nonpriority_unsecured,
     "total_unsecured_debts": _total_unsecured_debts,
     "total_debts": _total_debts,
+    "total_bank_accounts": _total_bank_accounts,
+    "total_retirement_accounts": _total_retirement_accounts,
+    "total_other_assets": _total_other_assets,
     "cmi": _cmi,
     "total_monthly_expenses": _total_monthly_expenses,
     # Form 122A-1 means test derivations
