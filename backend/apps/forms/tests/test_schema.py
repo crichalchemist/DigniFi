@@ -5,6 +5,7 @@ import json
 import pytest
 
 from apps.forms.schema import FieldSpec, FormSchema, load_schema, validate_schema
+from apps.forms.services.derivations import DERIVATIONS, PREDICATES
 
 SAMPLE = {
     "form_type": "form_test",
@@ -80,3 +81,16 @@ def test_validate_clean_schema_returns_empty():
     schema = _schema(pdf_field="Debtor 1", source="derived", rule="full_name")
     errors = validate_schema(schema, derivations={"full_name"}, predicates=set())
     assert errors == []
+
+
+@pytest.mark.django_db
+def test_form_107_schema_is_valid(db):
+    schema = load_schema("form_107")
+    errors = validate_schema(schema, derivations=set(DERIVATIONS), predicates=set(PREDICATES))
+    assert errors == [], "form_107 schema invalid:\n" + "\n".join(errors)
+
+
+@pytest.mark.django_db
+def test_form_107_schema_has_no_tbd(db):
+    schema = load_schema("form_107")
+    assert all(f.source != "TBD" for f in schema.fields), "form_107 has fields with source=TBD"
