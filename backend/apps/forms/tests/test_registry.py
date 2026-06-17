@@ -278,6 +278,8 @@ class TestGeneratorInterface:
         # Test generate() returns dict
         form_data = generator.generate()
         assert isinstance(form_data, dict), "generate() should return dict structure"
+        assert "debtor_name" in form_data
+        assert "case_type" in form_data
 
         # Test preview() returns dict
         preview_data = generator.preview()
