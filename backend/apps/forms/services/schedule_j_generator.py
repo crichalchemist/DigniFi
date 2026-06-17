@@ -157,37 +157,9 @@ class ScheduleJGenerator:
         return self.generate()
 
     def pdf_field_map(self) -> dict:
-        """Map session data to Official Form 106J (form_b106j.pdf)."""
-        expense_values = self._get_expense_values()
-        total_income = self._get_total_income()
-        total_expenses = sum(expense_values.values(), ZERO).quantize(
-            Decimal("0.01"), rounding=ROUND_HALF_UP
-        )
+        """Map session data to Official Form 106J via schema-driven resolver."""
+        from apps.forms.schema import load_schema
+        from apps.forms.services.fill_resolver import resolve
 
-        def fmt(d):
-            return str(d.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP))
-
-        di = self.session.debtor_info
-        full_name = f"{di.first_name} {di.middle_name} {di.last_name}".replace("  ", " ").strip()
-
-        return {
-            "Bankruptcy District Information": self.session.district.name,
-            "Debtor 1": full_name,
-            "10": fmt(expense_values.get("rent_or_mortgage", ZERO)),
-            "12": fmt(expense_values.get("utilities", ZERO)),
-            "14": fmt(expense_values.get("home_maintenance", ZERO)),
-            "15a": fmt(expense_values.get("food_and_groceries", ZERO)),
-            "15b": fmt(expense_values.get("childcare", ZERO)),
-            "15c": fmt(expense_values.get("clothing", ZERO)),
-            "16": fmt(expense_values.get("medical_expenses", ZERO)),
-            "17a": fmt(expense_values.get("vehicle_maintenance", ZERO)),
-            "17b": fmt(expense_values.get("vehicle_payment", ZERO)),
-            "17c": fmt(expense_values.get("vehicle_insurance", ZERO)),
-            "20a": fmt(expense_values.get("insurance_not_deducted", ZERO)),
-            "21": fmt(
-                expense_values.get("other_expenses", ZERO)
-                + expense_values.get("child_support_paid", ZERO)
-            ),
-            "22a": fmt(total_expenses),
-            "23a": fmt(total_income),
-        }
+        schema = load_schema("schedule_j")
+        return resolve(schema, self.session)

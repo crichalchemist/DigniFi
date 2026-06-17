@@ -138,29 +138,9 @@ class ScheduleEFGenerator:
         return self.generate()
 
     def pdf_field_map(self) -> dict:
-        """Map session data to Official Form 106E/F (form_b106ef.pdf)."""
-        TWO = Decimal("0.01")
-        ZERO = Decimal("0.00")
+        """Map session data to Official Form 106E/F via schema-driven resolver."""
+        from apps.forms.schema import load_schema
+        from apps.forms.services.fill_resolver import resolve
 
-        def fmt(d):
-            return str((d or ZERO).quantize(TWO, rounding=ROUND_HALF_UP))
-
-        session = self.session
-        di = session.debtor_info
-        full_name = f"{di.first_name} {di.middle_name} {di.last_name}".replace("  ", " ").strip()
-        unsecured = list(DebtInfo.objects.filter(session=session, is_secured=False))
-
-        result: dict = {
-            "Bankruptcy District Information": session.district.name,
-            "Debtor 1": full_name,
-        }
-
-        for i, debt in enumerate(unsecured[:10], start=1):
-            base = str(i)
-            result[base] = debt.creditor_name or ""
-            result[f"{base}_2"] = ""
-            result[f"{base}_3"] = ""
-            result[f"{base}_4"] = fmt(debt.amount_owed)
-            result[f"{base}_5"] = (debt.debt_type or "").replace("_", " ")
-
-        return result
+        schema = load_schema("schedule_e_f")
+        return resolve(schema, self.session)
