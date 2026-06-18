@@ -423,7 +423,7 @@ class SOFAReportSerializer(serializers.ModelSerializer):
 
 class BulkAnswerItemSerializer(serializers.Serializer):
     form_type = serializers.CharField(max_length=20)
-    field_key = serializers.CharField(max_length=100)
+    binding = serializers.CharField(max_length=100)
     value = serializers.CharField(allow_blank=True)
 
 

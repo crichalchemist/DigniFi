@@ -33,8 +33,9 @@ class TestBulkAnswerView:
         )
         payload = {
             "answers": [
-                {"form_type": "form_test", "field_key": "q1", "value": "new"},
-                {"form_type": "form_test", "field_key": "q2", "value": "brand new"},
+                {"form_type": "form_test", "binding": "answer:q1", "value": "new"},
+                {"form_type": "form_test", "binding": "answer:q2", "value": "brand new"},
+                {"form_type": "form_test", "binding": "sofa.has_prior_income", "value": "true"},
             ]
         }
         response = client.post(
@@ -44,13 +45,20 @@ class TestBulkAnswerView:
         )
         assert response.status_code == 200
         data = response.json()
-        assert data["created"] == 1
+        assert data["created"] == 2
         assert data["updated"] == 1
 
         answers = FormAnswer.objects.filter(session=session).order_by("field_key")
         assert answers.count() == 2
         assert answers[0].value == "new"
+        assert answers[0].field_key == "q1"
         assert answers[1].value == "brand new"
+        assert answers[1].field_key == "q2"
+
+        from apps.intake.models import SOFAReport
+
+        sofa = SOFAReport.objects.get(session=session)
+        assert sofa.has_prior_income is True
 
     def test_bulk_upsert_empty_list(self, auth_client_with_session):
         client, session = auth_client_with_session

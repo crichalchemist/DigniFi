@@ -301,13 +301,40 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
         created_count = 0
         updated_count = 0
 
+        sofa_updates = {}
+
         for ans in answers_data:
-            obj, created = FormAnswer.objects.update_or_create(
-                session=session,
-                form_type=ans["form_type"],
-                field_key=ans["field_key"],
-                defaults={"value": ans["value"]},
-            )
+            form_type = ans["form_type"]
+            binding = ans["binding"]
+            value = ans["value"]
+
+            if binding.startswith("answer:"):
+                field_key = binding[7:]
+                obj, created = FormAnswer.objects.update_or_create(
+                    session=session,
+                    form_type=form_type,
+                    field_key=field_key,
+                    defaults={"value": value},
+                )
+                if created:
+                    created_count += 1
+                else:
+                    updated_count += 1
+            elif binding.startswith("sofa."):
+                field_key = binding[5:]
+                if value.lower() == "true":
+                    parsed_value = True
+                elif value.lower() == "false":
+                    parsed_value = False
+                else:
+                    parsed_value = value
+                sofa_updates[field_key] = parsed_value
+
+        if sofa_updates:
+            report, created = SOFAReport.objects.get_or_create(session=session)
+            for key, val in sofa_updates.items():
+                setattr(report, key, val)
+            report.save()
             if created:
                 created_count += 1
             else:
