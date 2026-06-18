@@ -63,3 +63,40 @@ class TestDischargeabilityService:
         svc.evaluate()
         svc.evaluate()
         assert AdversaryProceeding.objects.filter(session=session_with_student_loan).count() == 1
+
+
+@pytest.mark.django_db
+class TestDischargeabilityEndToEnd:
+    def test_student_loan_full_flow(self):
+        """Student loan -> classify -> flag -> adversary proceeding -> API."""
+        session = IntakeSession.objects.create(
+            user=User.objects.create_user(username="e2e_disc", password="pass"),
+            district=District.objects.create(
+                code="ILND",
+                name="Northern District of Illinois",
+                state="IL",
+                court_name="U.S. Bankruptcy Court",
+                filing_fee_chapter_7=Decimal("338"),
+            ),
+        )
+        DebtInfo.objects.create(
+            session=session,
+            creditor_name="Sallie Mae",
+            amount_owed=Decimal("35000"),
+            is_secured=False,
+            is_priority=False,
+            debt_type="student_loan",
+        )
+
+        svc = DischargeabilityService(session)
+        results = svc.evaluate()
+        assert len(results) == 1
+        assert results[0]["dischargeable"] is False
+
+        debt = DebtInfo.objects.get(creditor_name="Sallie Mae")
+        assert debt.is_dischargeable is False
+        assert debt.adversary_proceeding_needed is True
+
+        ap = AdversaryProceeding.objects.get(session=session)
+        assert ap.proceeding_type == "student_loan"
+        assert ap.status == "identified"
