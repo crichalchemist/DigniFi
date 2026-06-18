@@ -33,19 +33,39 @@ export function DynamicFormWizard({
 
   if (loading || !uiSpec) return <div>Loading wizard...</div>;
 
-  const isConditionMet = (condition?: string | null) => {
+  const getFieldValue = (binding: string): unknown => {
+    if (formData[binding] !== undefined) return formData[binding];
+    if (session?.form_answers && binding in session.form_answers)
+      return session.form_answers[binding];
+    if (session?.sofa_report && binding in session.sofa_report) return session.sofa_report[binding];
+    return undefined;
+  };
+
+  const isConditionMet = (condition?: string | null, rowIndex?: number) => {
     if (!condition) return true;
 
-    // Check against session context first for known booleans
-    if (session?.sofa_report && condition in session.sofa_report) {
-      return (session.sofa_report as Record<string, unknown>)[condition] === true;
-    }
+    const conditionSuffix = rowIndex !== undefined ? `[${rowIndex}].${condition}` : `.${condition}`;
 
     // Check local formData buffer
-    const conditionKey = Object.keys(formData).find((k) => k.endsWith(`.${condition}`));
-    if (conditionKey) {
-      const localVal = formData[conditionKey];
+    let foundKey = Object.keys(formData).find((k) => k.endsWith(conditionSuffix));
+    if (foundKey && formData[foundKey] !== undefined) {
+      const localVal = formData[foundKey];
       return localVal === 'true' || localVal === 'Yes';
+    }
+
+    // Check session.form_answers
+    if (session?.form_answers) {
+      foundKey = Object.keys(session.form_answers).find((k) => k.endsWith(conditionSuffix));
+      if (foundKey && session.form_answers[foundKey] !== undefined) {
+        const answerVal = session.form_answers[foundKey];
+        return answerVal === 'true' || answerVal === 'Yes' || answerVal === true;
+      }
+    }
+
+    // Check against session context for known booleans
+    if (session?.sofa_report && condition in session.sofa_report) {
+      const sofaVal = session.sofa_report[condition];
+      return sofaVal === true || sofaVal === 'true' || sofaVal === 'Yes';
     }
 
     return false; // Default fail if condition not found
@@ -102,24 +122,26 @@ export function DynamicFormWizard({
                     key={rowIndex}
                     className="mb-4 p-4 border rounded bg-gray-50 flex flex-wrap gap-4"
                   >
-                    {subfields.map((subfield) => {
-                      const bindingKey = subfield.binding.replace('[]', `[${rowIndex}]`);
-                      return (
-                        <div key={subfield.binding} className="flex-1 min-w-[200px]">
-                          <label className="block mb-1 text-sm font-medium">
-                            {subfield.prompt}
-                          </label>
-                          <input
-                            type="text"
-                            className="w-full border p-2 rounded text-sm"
-                            value={formData[bindingKey] || ''}
-                            onChange={(e) =>
-                              setFormData({ ...formData, [bindingKey]: e.target.value })
-                            }
-                          />
-                        </div>
-                      );
-                    })}
+                    {subfields
+                      .filter((f) => isConditionMet(f.conditional_on, rowIndex))
+                      .map((subfield) => {
+                        const bindingKey = subfield.binding.replace('[]', `[${rowIndex}]`);
+                        return (
+                          <div key={subfield.binding} className="flex-1 min-w-[200px]">
+                            <label className="block mb-1 text-sm font-medium">
+                              {subfield.prompt}
+                            </label>
+                            <input
+                              type="text"
+                              className="w-full border p-2 rounded text-sm"
+                              value={(getFieldValue(bindingKey) as string) || ''}
+                              onChange={(e) =>
+                                setFormData({ ...formData, [bindingKey]: e.target.value })
+                              }
+                            />
+                          </div>
+                        );
+                      })}
                   </div>
                 ))}
                 <button
@@ -142,7 +164,10 @@ export function DynamicFormWizard({
                   <input
                     type="checkbox"
                     className="form-checkbox"
-                    checked={formData[field.binding] === 'true'}
+                    checked={
+                      getFieldValue(field.binding) === 'true' ||
+                      getFieldValue(field.binding) === true
+                    }
                     onChange={(e) =>
                       setFormData({
                         ...formData,
@@ -173,7 +198,7 @@ export function DynamicFormWizard({
                         name={field.binding}
                         className="form-radio"
                         value={opt.value}
-                        checked={formData[field.binding] === opt.value}
+                        checked={getFieldValue(field.binding) === opt.value}
                         onChange={(e) =>
                           setFormData({
                             ...formData,
@@ -196,7 +221,7 @@ export function DynamicFormWizard({
               <input
                 type="text"
                 className="w-full border p-2 rounded"
-                value={formData[field.binding] || ''}
+                value={(getFieldValue(field.binding) as string) || ''}
                 onChange={(e) => setFormData({ ...formData, [field.binding]: e.target.value })}
               />
             </div>

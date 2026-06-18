@@ -38,6 +38,8 @@ export interface IntakeSession {
   expense_info?: ExpenseInfo;
   assets?: AssetInfo[];
   debts?: DebtInfo[];
+  form_answers?: Record<string, unknown>;
+  sofa_report?: Record<string, unknown>;
 }
 
 export interface DebtorInfo {
