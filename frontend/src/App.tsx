@@ -20,6 +20,7 @@ import { FormDashboard } from './pages/FormDashboard';
 import { DocumentUploadPage } from './pages/DocumentUploadPage';
 import { FeeWaiverPage } from './pages/FeeWaiverPage';
 import { SOFAStep } from './pages/SOFAStep';
+import { AskModulePage } from './pages/AskModulePage';
 import { Component, type ReactNode, type ErrorInfo } from 'react';
 
 /** Catch render errors so the whole app doesn't go blank. */
@@ -79,6 +80,7 @@ function App() {
                   <Route path="/documents" element={<DocumentUploadPage />} />
                   <Route path="/fee-waiver" element={<FeeWaiverPage />} />
                   <Route path="/sofa" element={<SOFAStep />} />
+                  <Route path="/ask/:formType" element={<AskModulePage />} />
                 </Route>
               </Route>
             </Routes>
