@@ -45,8 +45,8 @@ class TestBulkAnswerView:
         )
         assert response.status_code == 200
         data = response.json()
-        assert data["created"] == 2
-        assert data["updated"] == 1
+        assert data["created"] == 1
+        assert data["updated"] == 2
 
         answers = FormAnswer.objects.filter(session=session).order_by("field_key")
         assert answers.count() == 2
@@ -71,3 +71,53 @@ class TestBulkAnswerView:
         data = response.json()
         assert data["created"] == 0
         assert data["updated"] == 0
+
+    def test_bulk_upsert_invalid_prefix(self, auth_client_with_session):
+        client, session = auth_client_with_session
+        payload = {
+            "answers": [
+                {"form_type": "form_test", "binding": "invalid:q1", "value": "new"},
+            ]
+        }
+        response = client.post(
+            f"/api/intake/sessions/{session.pk}/answers/bulk/",
+            payload,
+            format="json",
+        )
+        assert response.status_code == 400
+        data = response.json()
+        assert "answers" in data
+
+    def test_bulk_upsert_unknown_sofa_field(self, auth_client_with_session):
+        client, session = auth_client_with_session
+        payload = {
+            "answers": [
+                {"form_type": "form_test", "binding": "sofa.invalid_field", "value": "true"},
+            ]
+        }
+        response = client.post(
+            f"/api/intake/sessions/{session.pk}/answers/bulk/",
+            payload,
+            format="json",
+        )
+        assert response.status_code == 400
+        data = response.json()
+        assert "answers" in data
+
+    def test_bulk_upsert_sofa_coercion_invalid(self, auth_client_with_session):
+        client, session = auth_client_with_session
+        payload = {
+            "answers": [
+                {
+                    "form_type": "form_test",
+                    "binding": "sofa.has_prior_income",
+                    "value": "not a boolean",
+                },
+            ]
+        }
+        response = client.post(
+            f"/api/intake/sessions/{session.pk}/answers/bulk/",
+            payload,
+            format="json",
+        )
+        assert response.status_code == 400

@@ -6,6 +6,7 @@ validation, nested relationships, and trauma-informed error messages.
 """
 
 from django.contrib.auth import get_user_model
+from django.core.exceptions import FieldDoesNotExist
 from rest_framework import serializers
 
 from .models import (
@@ -425,6 +426,39 @@ class BulkAnswerItemSerializer(serializers.Serializer):
     form_type = serializers.CharField(max_length=20)
     binding = serializers.CharField(max_length=100)
     value = serializers.CharField(allow_blank=True)
+
+    def validate(self, data):
+        binding = data.get("binding", "")
+        value = data.get("value", "")
+
+        if not (binding.startswith("answer:") or binding.startswith("sofa.")):
+            raise serializers.ValidationError(
+                {"binding": "Invalid binding prefix. Must start with 'answer:' or 'sofa.'"}
+            )
+
+        if binding.startswith("sofa."):
+            field_key = binding[5:]
+            try:
+                field = SOFAReport._meta.get_field(field_key)
+                if value == "" and field.null:
+                    data["value"] = None
+                else:
+                    if value.lower() == "true":
+                        data["value"] = True
+                    elif value.lower() == "false":
+                        data["value"] = False
+                    else:
+                        data["value"] = field.to_python(value)
+            except FieldDoesNotExist:
+                raise serializers.ValidationError(
+                    {"binding": f"Unknown SOFAReport field: {field_key}"}
+                ) from None
+            except Exception as e:
+                raise serializers.ValidationError(
+                    {"value": f"Invalid value for {field_key}: {str(e)}"}
+                ) from e
+
+        return data
 
 
 class BulkAnswerPayloadSerializer(serializers.Serializer):

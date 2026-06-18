@@ -302,43 +302,40 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
         updated_count = 0
 
         sofa_updates = {}
+        sofa_processed_count = 0
 
-        for ans in answers_data:
-            form_type = ans["form_type"]
-            binding = ans["binding"]
-            value = ans["value"]
+        with transaction.atomic():
+            for ans in answers_data:
+                form_type = ans["form_type"]
+                binding = ans["binding"]
+                value = ans["value"]
 
-            if binding.startswith("answer:"):
-                field_key = binding[7:]
-                obj, created = FormAnswer.objects.update_or_create(
-                    session=session,
-                    form_type=form_type,
-                    field_key=field_key,
-                    defaults={"value": value},
-                )
-                if created:
-                    created_count += 1
-                else:
-                    updated_count += 1
-            elif binding.startswith("sofa."):
-                field_key = binding[5:]
-                if value.lower() == "true":
-                    parsed_value = True
-                elif value.lower() == "false":
-                    parsed_value = False
-                else:
-                    parsed_value = value
-                sofa_updates[field_key] = parsed_value
+                if binding.startswith("answer:"):
+                    field_key = binding[7:]
+                    obj, created = FormAnswer.objects.update_or_create(
+                        session=session,
+                        form_type=form_type,
+                        field_key=field_key,
+                        defaults={"value": value},
+                    )
+                    if created:
+                        created_count += 1
+                    else:
+                        updated_count += 1
+                elif binding.startswith("sofa."):
+                    field_key = binding[5:]
+                    sofa_updates[field_key] = value
+                    sofa_processed_count += 1
 
-        if sofa_updates:
-            report, created = SOFAReport.objects.get_or_create(session=session)
-            for key, val in sofa_updates.items():
-                setattr(report, key, val)
-            report.save()
-            if created:
-                created_count += 1
-            else:
-                updated_count += 1
+            if sofa_updates:
+                report, created = SOFAReport.objects.get_or_create(session=session)
+                for key, val in sofa_updates.items():
+                    setattr(report, key, val)
+                report.save()
+
+                # Count the number of sofa. items processed correctly
+                # and add it to updated_count
+                updated_count += sofa_processed_count
 
         return Response({"status": "success", "created": created_count, "updated": updated_count})
 
