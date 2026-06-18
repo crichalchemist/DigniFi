@@ -6,6 +6,7 @@
  */
 
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '../common';
 import { FormStatusBadge } from './FormStatusBadge';
 import type { GeneratedForm, FormType } from '../../types/api';
@@ -27,6 +28,7 @@ export function FormCard({
   onMarkFiled,
 }: FormCardProps) {
   const [isLoading, setIsLoading] = useState(false);
+  const navigate = useNavigate();
   const metadata = FORM_TYPE_METADATA[formType];
   const status = generatedForm?.status ?? 'pending';
 
@@ -59,15 +61,20 @@ export function FormCard({
 
       <div className="form-card-actions">
         {status === 'pending' && (
-          <Button
-            size="sm"
-            variant="primary"
-            onClick={() => handleAction(() => onGenerate(formType))}
-            isLoading={isLoading}
-            loadingText="Generating..."
-          >
-            Generate
-          </Button>
+          <>
+            <Button
+              size="sm"
+              variant="primary"
+              onClick={() => handleAction(() => onGenerate(formType))}
+              isLoading={isLoading}
+              loadingText="Generating..."
+            >
+              Generate
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => navigate(`/ask/${formType}`)}>
+              Answer Questions
+            </Button>
+          </>
         )}
 
         {status === 'generated' && generatedForm && (
