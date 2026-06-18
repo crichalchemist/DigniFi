@@ -419,6 +419,30 @@ def _schedule_j_total_income(session: IntakeSession) -> str:
     return _fmt(Decimal(_cmi(session)))
 
 
+def _means_test_disposable_income(session: IntakeSession) -> str:
+    try:
+        mt = session.means_test
+        return _fmt(mt.disposable_income)
+    except Exception:
+        return "0.00"
+
+
+def _means_test_total_deductions(session: IntakeSession) -> str:
+    try:
+        mt = session.means_test
+        return _fmt(mt.total_allowable_expenses)
+    except Exception:
+        return "0.00"
+
+
+def _means_test_priority_debts(session: IntakeSession) -> str:
+    try:
+        mt = session.means_test
+        return _fmt(mt.priority_debts_monthly)
+    except Exception:
+        return "0.00"
+
+
 # ---------------------------------------------------------------------------
 # DERIVATIONS dict (all referenced functions must be defined above)
 # ---------------------------------------------------------------------------
@@ -522,6 +546,10 @@ DERIVATIONS: dict[str, Callable[[IntakeSession], str]] = {
     ),
     "schedule_j_total_expenses": _schedule_j_total_expenses,
     "schedule_j_total_income": _schedule_j_total_income,
+    # Form 122A-2 means test expense deduction derivations
+    "means_test_disposable_income": _means_test_disposable_income,
+    "means_test_total_deductions": _means_test_total_deductions,
+    "means_test_priority_debts": _means_test_priority_debts,
 }
 
 
