@@ -9,7 +9,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useIntake } from '../context/IntakeContext';
 import { api } from '../api/client';
-import { FormCard, GenerateAllButton } from '../components/forms';
+import { FormCard, GenerateAllButton, DebtExplanationsPanel } from '../components/forms';
 import { UPLDisclaimer } from '../components/compliance';
 import { UPL_FORM_DISCLAIMER } from '../constants/upl';
 import { Button } from '../components/common';
@@ -34,6 +34,7 @@ export function FormDashboard() {
   const [error, setError] = useState<string | null>(null);
   const [showSurvey, setShowSurvey] = useState(false);
   const [generationErrors, setGenerationErrors] = useState<GenerateAllError[]>([]);
+  const [dischargeData, setDischargeData] = useState<unknown[]>([]);
 
   // Load existing forms on mount
   const loadForms = useCallback(async () => {
@@ -54,6 +55,14 @@ export function FormDashboard() {
   useEffect(() => {
     loadForms();
   }, [loadForms]);
+
+  useEffect(() => {
+    if (!session) return;
+    api.intake
+      .getDischargeability(session.id)
+      .then(setDischargeData)
+      .catch(() => {});
+  }, [session]);
 
   // Map form_type → GeneratedForm for quick lookup
   const formsByType = new Map(forms.map((f) => [f.form_type, f]));
@@ -191,6 +200,9 @@ export function FormDashboard() {
           ))}
         </div>
       )}
+
+      {/* Dischargeability summary */}
+      <DebtExplanationsPanel debts={dischargeData} />
 
       {/* Post-task survey — shown after generating all forms */}
       {showSurvey && session && (

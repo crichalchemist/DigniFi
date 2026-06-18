@@ -414,6 +414,9 @@ export const intakeAPI = {
       method: 'DELETE',
     });
   },
+  getDischargeability: async (sessionId: number): Promise<unknown[]> => {
+    return apiFetch<unknown[]>(`/intake/sessions/${sessionId}/dischargeability/`);
+  },
 };
 
 // ============================================================================
