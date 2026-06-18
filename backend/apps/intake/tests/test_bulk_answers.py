@@ -26,6 +26,40 @@ def auth_client_with_session(db):
 
 @pytest.mark.django_db
 class TestBulkAnswerView:
+    def test_bulk_upsert_creates_and_updates(self, auth_client_with_session):
+        client, session = auth_client_with_session
+        FormAnswer.objects.create(
+            session=session, form_type="form_test", field_key="q1", value="old"
+        )
+        payload = {
+            "answers": [
+                {"form_type": "form_test", "binding": "answer:form_test.q1", "value": "new"},
+                {"form_type": "form_test", "binding": "answer:form_test.q2", "value": "brand new"},
+                {"form_type": "form_test", "binding": "sofa.has_prior_income", "value": "true"},
+            ]
+        }
+        response = client.post(
+            f"/api/intake/sessions/{session.pk}/answers/bulk/",
+            payload,
+            format="json",
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["created"] == 1
+        assert data["updated"] == 2
+
+        answers = FormAnswer.objects.filter(session=session).order_by("field_key")
+        assert answers.count() == 2
+        assert answers[0].value == "new"
+        assert answers[0].field_key == "q1"
+        assert answers[1].value == "brand new"
+        assert answers[1].field_key == "q2"
+
+        from apps.intake.models import SOFAReport
+
+        sofa = SOFAReport.objects.get(session=session)
+        assert sofa.has_prior_income is True
+
     def test_bulk_upsert_handles_sofa_bindings(self, auth_client_with_session):
         client, session = auth_client_with_session
         from apps.intake.models import SOFAReport

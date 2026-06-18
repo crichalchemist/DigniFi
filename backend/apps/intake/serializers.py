@@ -427,6 +427,16 @@ class BulkAnswerItemSerializer(serializers.Serializer):
     binding = serializers.CharField(max_length=100)
     value = serializers.CharField(allow_blank=True)
 
+    def _coerce_field_value(self, field, value):
+        if value == "" and field.null:
+            return None
+        if isinstance(value, str):
+            if value.lower() == "true":
+                return True
+            elif value.lower() == "false":
+                return False
+        return field.to_python(value)
+
     def validate(self, data):
         binding = data.get("binding", "")
         value = data.get("value", "")
@@ -448,15 +458,7 @@ class BulkAnswerItemSerializer(serializers.Serializer):
                         related_field = SOFAReport._meta.get_field(coll_name)
                         related_model = related_field.related_model
                         field = related_model._meta.get_field(attr)
-                        if value == "" and field.null:
-                            data["value"] = None
-                        else:
-                            if value.lower() == "true":
-                                data["value"] = True
-                            elif value.lower() == "false":
-                                data["value"] = False
-                            else:
-                                data["value"] = field.to_python(value)
+                        data["value"] = self._coerce_field_value(field, value)
                     except FieldDoesNotExist:
                         raise serializers.ValidationError(
                             {"binding": f"Unknown related field: {coll_name} or {attr}"}
@@ -470,15 +472,7 @@ class BulkAnswerItemSerializer(serializers.Serializer):
             else:
                 try:
                     field = SOFAReport._meta.get_field(field_key)
-                    if value == "" and field.null:
-                        data["value"] = None
-                    else:
-                        if value.lower() == "true":
-                            data["value"] = True
-                        elif value.lower() == "false":
-                            data["value"] = False
-                        else:
-                            data["value"] = field.to_python(value)
+                    data["value"] = self._coerce_field_value(field, value)
                 except FieldDoesNotExist:
                     raise serializers.ValidationError(
                         {"binding": f"Unknown SOFAReport field: {field_key}"}

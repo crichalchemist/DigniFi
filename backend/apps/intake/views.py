@@ -345,18 +345,19 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
                                     )
                                 items = cached_collections[coll_name]
 
-                                if idx > len(items):
+                                if idx >= 50:
                                     raise ValidationError(
-                                        f"Index {idx} out of bounds for collection {coll_name}"
+                                        f"Index {idx} exceeds maximum allowed bound of 50 for collection {coll_name}"
                                     )
 
-                                if idx == len(items):
-                                    model_class = manager.model
-                                    new_item = model_class(report=sofa_report)
-                                    items.append(new_item)
-                                    created_count += 1
-                                else:
+                                if idx < len(items):
                                     updated_count += 1
+                                else:
+                                    model_class = manager.model
+                                    while len(items) <= idx:
+                                        new_item = model_class(report=sofa_report)
+                                        items.append(new_item)
+                                        created_count += 1
 
                                 setattr(items[idx], attr, val)
                                 models_to_save[id(items[idx])] = items[idx]
