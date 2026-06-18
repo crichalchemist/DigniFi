@@ -16,6 +16,7 @@ export function DynamicFormWizard({
   const [formData, setFormData] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [repeatCounts, setRepeatCounts] = useState<Record<string, number>>({});
 
   useEffect(() => {
     askModulesAPI
@@ -41,8 +42,9 @@ export function DynamicFormWizard({
     }
 
     // Check local formData buffer
-    const localVal = formData[`sofa.${condition}`] || formData[`answer:${formType}.${condition}`];
-    if (localVal !== undefined) {
+    const conditionKey = Object.keys(formData).find((k) => k.endsWith(`.${condition}`));
+    if (conditionKey) {
+      const localVal = formData[conditionKey];
       return localVal === 'true' || localVal === 'Yes';
     }
 
@@ -87,28 +89,55 @@ export function DynamicFormWizard({
       <h2 className="text-xl font-bold mb-4">{currentStep.title}</h2>
       {currentStep.fields
         .filter((f) => isConditionMet(f.conditional_on))
-        .map((field, i) => {
+        .map((field) => {
           if (field.widget === 'repeat_group') {
-            // Simplified Repeat Group rendering
-            // Note: Uses 1 row for now, requires state tracking for multiple rows
-            const bindingKey = field.binding.replace('[]', '[0]');
+            const count = repeatCounts[field.binding] || 1;
+            const subfields = field.fields || [];
             return (
-              <div key={i} className="mb-4 border-l-4 border-blue-500 pl-4 py-2">
+              <div key={field.binding} className="mb-4 border-l-4 border-blue-500 pl-4 py-2">
                 <label className="block mb-2 font-medium">{field.prompt}</label>
                 {field.help_text && <p className="text-sm text-gray-500 mb-2">{field.help_text}</p>}
-                <input
-                  type="text"
-                  className="w-full border p-2 rounded"
-                  value={formData[bindingKey] || ''}
-                  onChange={(e) => setFormData({ ...formData, [bindingKey]: e.target.value })}
-                />
+                {Array.from({ length: count }).map((_, rowIndex) => (
+                  <div
+                    key={rowIndex}
+                    className="mb-4 p-4 border rounded bg-gray-50 flex flex-wrap gap-4"
+                  >
+                    {subfields.map((subfield) => {
+                      const bindingKey = subfield.binding.replace('[]', `[${rowIndex}]`);
+                      return (
+                        <div key={subfield.binding} className="flex-1 min-w-[200px]">
+                          <label className="block mb-1 text-sm font-medium">
+                            {subfield.prompt}
+                          </label>
+                          <input
+                            type="text"
+                            className="w-full border p-2 rounded text-sm"
+                            value={formData[bindingKey] || ''}
+                            onChange={(e) =>
+                              setFormData({ ...formData, [bindingKey]: e.target.value })
+                            }
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={() =>
+                    setRepeatCounts((prev) => ({ ...prev, [field.binding]: count + 1 }))
+                  }
+                  className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+                >
+                  + Add another
+                </button>
               </div>
             );
           }
 
-          if (field.widget === 'checkbox' || field.widget === 'radio') {
+          if (field.widget === 'checkbox') {
             return (
-              <div key={i} className="mb-4">
+              <div key={field.binding} className="mb-4">
                 <label className="flex items-center space-x-2">
                   <input
                     type="checkbox"
@@ -127,8 +156,41 @@ export function DynamicFormWizard({
             );
           }
 
+          if (field.widget === 'radio') {
+            const options = field.options || [
+              { label: 'Yes', value: 'Yes' },
+              { label: 'No', value: 'No' },
+            ];
+            return (
+              <div key={field.binding} className="mb-4">
+                <label className="block mb-2 font-medium">{field.prompt}</label>
+                {field.help_text && <p className="text-sm text-gray-500 mb-2">{field.help_text}</p>}
+                <div className="space-y-2">
+                  {options.map((opt) => (
+                    <label key={opt.value} className="flex items-center space-x-2">
+                      <input
+                        type="radio"
+                        name={field.binding}
+                        className="form-radio"
+                        value={opt.value}
+                        checked={formData[field.binding] === opt.value}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            [field.binding]: e.target.value,
+                          })
+                        }
+                      />
+                      <span>{opt.label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            );
+          }
+
           return (
-            <div key={i} className="mb-4">
+            <div key={field.binding} className="mb-4">
               <label className="block mb-2 font-medium">{field.prompt}</label>
               {field.help_text && <p className="text-sm text-gray-500 mb-2">{field.help_text}</p>}
               <input

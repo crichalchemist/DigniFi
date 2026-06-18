@@ -480,6 +480,8 @@ export interface UIFieldSpec {
   conditional_on?: string | null;
   repeat?: string | null;
   repeat_capacity?: number | null;
+  fields?: UIFieldSpec[];
+  options?: Array<{ label: string; value: string }> | null;
 }
 
 export interface UIStep {

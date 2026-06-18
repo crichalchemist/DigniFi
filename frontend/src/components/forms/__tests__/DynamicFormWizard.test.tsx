@@ -51,10 +51,17 @@ describe('DynamicFormWizard', () => {
               widget: 'radio',
             },
             {
-              binding: 'sofa.prior_income[].source',
-              prompt: 'Source of income',
+              binding: 'sofa.prior_income_group',
+              prompt: 'Sources of income',
               widget: 'repeat_group',
               conditional_on: 'has_prior_income',
+              fields: [
+                {
+                  binding: 'sofa.prior_income[].source',
+                  prompt: 'Source of income',
+                  widget: 'text',
+                },
+              ],
             },
           ],
         },
@@ -70,12 +77,11 @@ describe('DynamicFormWizard', () => {
     expect(screen.queryByText('Source of income')).not.toBeInTheDocument();
 
     // Answer the radio button
-    // It says "true" internally, so we just set it as a checkbox for now since widget=radio is implemented as checkbox in step 2 of plan
-    const radio = screen.getByLabelText('Do you have prior income?');
-    await user.click(radio);
+    const radioYes = screen.getByLabelText('Yes');
+    await user.click(radioYes);
 
     // Now the conditional field should appear
-    expect(await screen.findByText('Source of income')).toBeInTheDocument();
+    expect(await screen.findByText('Sources of income')).toBeInTheDocument();
 
     // Fill the repeat group input
     // The current implementation changes `[]` to `[0]`
@@ -88,7 +94,7 @@ describe('DynamicFormWizard', () => {
 
     // Verify bulkUpsertAnswers is called with full bindings
     expect(askModulesAPI.bulkUpsertAnswers).toHaveBeenCalledWith(1, [
-      { form_type: 'form_107', binding: 'sofa.has_prior_income', value: 'true' },
+      { form_type: 'form_107', binding: 'sofa.has_prior_income', value: 'Yes' },
       { form_type: 'form_107', binding: 'sofa.prior_income[0].source', value: 'Acme Corp' },
     ]);
   });
