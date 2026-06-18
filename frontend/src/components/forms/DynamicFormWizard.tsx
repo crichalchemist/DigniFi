@@ -22,16 +22,31 @@ export function DynamicFormWizard({
       .getUISpec(formType)
       .then((spec) => {
         setUiSpec(spec);
+        // Hydrate initial formData from session
+        // (A fully robust hydration would extract from session object based on bindings,
+        // for now we initialize empty and rely on contextual form progression)
         setLoading(false);
       })
       .catch(console.error);
-  }, [formType]);
+  }, [formType, session]);
 
   if (loading || !uiSpec) return <div>Loading wizard...</div>;
 
   const isConditionMet = (condition?: string | null) => {
     if (!condition) return true;
-    return true;
+
+    // Check against session context first for known booleans
+    if (session?.sofa_report && condition in session.sofa_report) {
+      return (session.sofa_report as Record<string, unknown>)[condition] === true;
+    }
+
+    // Check local formData buffer
+    const localVal = formData[`sofa.${condition}`] || formData[`answer:${formType}.${condition}`];
+    if (localVal !== undefined) {
+      return localVal === 'true' || localVal === 'Yes';
+    }
+
+    return false; // Default fail if condition not found
   };
 
   const steps = uiSpec.steps.filter((step) =>
@@ -45,11 +60,9 @@ export function DynamicFormWizard({
   const handleNext = async () => {
     if (!session) return;
 
+    // Convert local formData dict to array of payloads
     const payloads: AnswerPayload[] = Object.entries(formData).map(([binding, value]) => {
-      const parts = binding.split(':');
-      const fType = parts[1].split('.')[0];
-      const fKey = parts[1].split('.')[1];
-      return { form_type: fType, field_key: fKey, value };
+      return { form_type: formType, binding, value };
     });
 
     setSaving(true);
@@ -74,18 +87,59 @@ export function DynamicFormWizard({
       <h2 className="text-xl font-bold mb-4">{currentStep.title}</h2>
       {currentStep.fields
         .filter((f) => isConditionMet(f.conditional_on))
-        .map((field, i) => (
-          <div key={i} className="mb-4">
-            <label className="block mb-2 font-medium">{field.prompt}</label>
-            {field.help_text && <p className="text-sm text-gray-500 mb-2">{field.help_text}</p>}
-            <input
-              type="text"
-              className="w-full border p-2 rounded"
-              value={formData[field.binding] || ''}
-              onChange={(e) => setFormData({ ...formData, [field.binding]: e.target.value })}
-            />
-          </div>
-        ))}
+        .map((field, i) => {
+          if (field.widget === 'repeat_group') {
+            // Simplified Repeat Group rendering
+            // Note: Uses 1 row for now, requires state tracking for multiple rows
+            const bindingKey = field.binding.replace('[]', '[0]');
+            return (
+              <div key={i} className="mb-4 border-l-4 border-blue-500 pl-4 py-2">
+                <label className="block mb-2 font-medium">{field.prompt}</label>
+                {field.help_text && <p className="text-sm text-gray-500 mb-2">{field.help_text}</p>}
+                <input
+                  type="text"
+                  className="w-full border p-2 rounded"
+                  value={formData[bindingKey] || ''}
+                  onChange={(e) => setFormData({ ...formData, [bindingKey]: e.target.value })}
+                />
+              </div>
+            );
+          }
+
+          if (field.widget === 'checkbox' || field.widget === 'radio') {
+            return (
+              <div key={i} className="mb-4">
+                <label className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    className="form-checkbox"
+                    checked={formData[field.binding] === 'true'}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        [field.binding]: e.target.checked ? 'true' : 'false',
+                      })
+                    }
+                  />
+                  <span className="font-medium">{field.prompt}</span>
+                </label>
+              </div>
+            );
+          }
+
+          return (
+            <div key={i} className="mb-4">
+              <label className="block mb-2 font-medium">{field.prompt}</label>
+              {field.help_text && <p className="text-sm text-gray-500 mb-2">{field.help_text}</p>}
+              <input
+                type="text"
+                className="w-full border p-2 rounded"
+                value={formData[field.binding] || ''}
+                onChange={(e) => setFormData({ ...formData, [field.binding]: e.target.value })}
+              />
+            </div>
+          );
+        })}
       <div className="mt-6 flex justify-end">
         <button
           className="bg-blue-600 text-white px-4 py-2 rounded disabled:opacity-50"
