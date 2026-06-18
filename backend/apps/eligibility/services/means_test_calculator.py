@@ -143,6 +143,22 @@ class MeansTestCalculator:
                     "28 U.S.C. § 1930(f), which waives the standard filing fee for "
                     "filers with very low income."
                 )
+        elif means_test.above_median_calculated and means_test.passes_above_median:
+            message = (
+                f"Based on the information provided, your income is above the median "
+                f"income for a household of this size in {self.district.state}. "
+                f"After accounting for allowable expenses and priority debts, your "
+                f"disposable income is below the statutory threshold. This means you "
+                f"may still be eligible for Chapter 7 bankruptcy."
+            )
+        elif means_test.above_median_calculated and not means_test.passes_above_median:
+            message = (
+                f"Based on the information provided, your income is above the median "
+                f"income for a household of this size in {self.district.state}. "
+                f"After accounting for allowable expenses and priority debts, your "
+                f"disposable income exceeds the statutory threshold. You may want to "
+                f"consult with a legal aid organization about Chapter 13 options."
+            )
         else:
             message = (
                 "Based on the information provided, your income is above the median "
