@@ -403,6 +403,7 @@ class FormSchemaUIView(APIView):
                                 "widget": "repeat_group",
                                 "repeat": field.repeat,
                                 "repeat_capacity": field.repeat_capacity,
+                                "conditional_on": field.conditional_on,
                                 "fields": [field_dict],
                             }
                         )

@@ -72,7 +72,7 @@ class TestUISpecView(APITestCase):
                     page=1,
                     label="l",
                     required=False,
-                    conditional_on=None,
+                    conditional_on={"field": "has_expenses", "value": True},
                     value=None,
                     rule=None,
                     ingest_key=None,
@@ -91,7 +91,7 @@ class TestUISpecView(APITestCase):
                     page=1,
                     label="l",
                     required=False,
-                    conditional_on=None,
+                    conditional_on={"field": "has_expenses", "value": True},
                     value=None,
                     rule=None,
                     ingest_key=None,
@@ -110,7 +110,7 @@ class TestUISpecView(APITestCase):
                     page=1,
                     label="l",
                     required=False,
-                    conditional_on=None,
+                    conditional_on={"field": "has_expenses", "value": True},
                     value=None,
                     rule=None,
                     ingest_key=None,
@@ -129,7 +129,7 @@ class TestUISpecView(APITestCase):
                     page=1,
                     label="l",
                     required=False,
-                    conditional_on=None,
+                    conditional_on={"field": "has_expenses", "value": True},
                     value=None,
                     rule=None,
                     ingest_key=None,
@@ -174,6 +174,7 @@ class TestUISpecView(APITestCase):
         self.assertEqual(group["widget"], "repeat_group")
         self.assertEqual(group["repeat"], "expenses")
         self.assertEqual(group["repeat_capacity"], 3)
+        self.assertEqual(group["conditional_on"], {"field": "has_expenses", "value": True})
         self.assertEqual(len(group["fields"]), 2)
         self.assertEqual(group["fields"][0]["binding"], "expense.source")
         self.assertEqual(group["fields"][1]["binding"], "expense.amount")
