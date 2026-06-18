@@ -412,6 +412,9 @@ class DebtInfo(models.Model):
         help_text="Document scan that generated this entry",
     )
 
+    is_dischargeable = models.BooleanField(default=True)
+    adversary_proceeding_needed = models.BooleanField(default=False)
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -639,3 +642,33 @@ class Codebtor(models.Model):
 
     class Meta:
         db_table = "codebtors"
+
+
+class AdversaryProceeding(models.Model):
+    PROCEEDING_TYPES = [
+        ("student_loan", "Student Loan Discharge (§ 523(a)(8))"),
+        ("other", "Other Non-Dischargeable Debt"),
+    ]
+    STATUS_CHOICES = [
+        ("identified", "Identified"),
+        ("filed", "Filed"),
+        ("pending", "Pending"),
+        ("granted", "Granted"),
+        ("denied", "Denied"),
+        ("settled", "Settled"),
+    ]
+    session = models.ForeignKey(
+        "intake.IntakeSession", on_delete=models.CASCADE, related_name="adversary_proceedings"
+    )
+    debt = models.ForeignKey("intake.DebtInfo", on_delete=models.CASCADE, null=True, blank=True)
+    proceeding_type = models.CharField(max_length=20, choices=PROCEEDING_TYPES)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="identified")
+    lender_name = models.CharField(max_length=255, blank=True)
+    loan_amount = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    loan_type = models.CharField(max_length=50, blank=True)
+    hardship_narrative = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "adversary_proceedings"
