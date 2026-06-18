@@ -1,5 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { MemoryRouter } from 'react-router-dom';
 import { http, HttpResponse } from 'msw';
 import { server } from '../../test/mocks/server';
 import { IntakeProvider } from '../../context/IntakeContext';
@@ -12,9 +13,11 @@ import { FormDashboard } from '../FormDashboard';
 function renderFormDashboard() {
   localStorage.setItem('current_session_id', '1');
   return render(
-    <IntakeProvider>
-      <FormDashboard />
-    </IntakeProvider>
+    <MemoryRouter>
+      <IntakeProvider>
+        <FormDashboard />
+      </IntakeProvider>
+    </MemoryRouter>
   );
 }
 

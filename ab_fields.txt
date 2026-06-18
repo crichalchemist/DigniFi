@@ -1,0 +1,379 @@
+Debtor 2
+Singlefamily home
+Duplex or multiunit building
+Condominium or cooperative
+Manufactured or mobile home
+Land
+Investment property
+Timeshare
+Other
+undefined_2
+undefined_3
+City
+State
+ZIP Code
+undefined_4
+County
+the entireties or a life estate if known
+Check if this is community property
+property identification number
+12
+Singlefamily home_2
+Duplex or multiunit building_2
+Condominium or cooperative_2
+Manufactured or mobile home_2
+Land_2
+Investment property_2
+Timeshare_2
+Other_2
+undefined_5
+undefined_6
+undefined_7
+City_2
+State_2
+ZIP Code_2
+undefined_8
+County_2
+Who has an interest in the property Check one
+Check if this is community property_2
+property identification number_2
+13
+Singlefamily home_3
+Duplex or multiunit building_3
+Condominium or cooperative_3
+Manufactured or mobile home_3
+Land_3
+Investment property_3
+Timeshare_3
+Other_3
+undefined_9
+undefined_10
+undefined_11
+City_3
+State_3
+ZIP Code_3
+undefined_12
+County_3
+Who has an interest in the property Check one_2
+Check if this is community property_3
+property identification number_3
+undefined_13
+Other information
+If you own or have more than one describe here
+1_2
+2_2
+Approximate mileage_2
+Other information_2
+Check if this is community property see
+undefined_14
+undefined_15
+Check if this is community property see_2
+undefined_16
+undefined_17
+1_3
+2_3
+3_2
+Approximate mileage_3
+Other information_3
+1_4
+2_4
+3_3
+Approximate mileage_4
+Other information_4
+Check if this is community property see_3
+undefined_18
+undefined_19
+Check if this is community property see_4
+undefined_20
+undefined_21
+Examples Boats trailers motors personal watercraft fishing vessels snowmobiles motorcycle accessories
+Make
+Model
+Year
+Other information_5
+Make_2
+Model_2
+Year_2
+Other information_6
+Check if this is community property see_5
+undefined_22
+undefined_23
+Check if this is community property see_6
+undefined_24
+undefined_25
+undefined_26
+undefined_107
+undefined_108
+Company name 1
+Company name 2
+Company name 3
+Beneficiary 1
+Beneficiary 2
+Beneficiary 3
+undefined_109
+undefined_110
+undefined_111
+undefined_114
+undefined_117
+undefined_120
+undefined_123
+undefined_124
+undefined_125
+undefined_126
+undefined_127
+undefined_128
+undefined_129
+undefined_130
+undefined_131
+undefined_132
+undefined_133
+undefined_134
+undefined_135
+undefined_137
+undefined_138
+undefined_139
+undefined_140
+undefined_141
+undefined_142
+undefined_143
+undefined_144
+48 Cropseither growing or harvested
+undefined_145
+undefined_148
+undefined_151
+undefined_153
+undefined_154
+undefined_155
+undefined_156
+undefined_157
+undefined_158
+undefined_159
+undefined_160
+undefined_161
+undefined_162
+undefined_163
+undefined_164
+undefined_165
+undefined_167
+Debtor 1
+Case number
+undefined_166
+Button
+Button.Print1
+Button.Reset
+Button.SaveAs
+attach
+9 description
+10 description
+11 description
+14 description
+12 description
+13 description
+17
+17.1 Checking account
+17.6 Other financial account
+17.7 Other financial account
+17.8 Other financial account
+17.2 Checking account
+17.3 Checking account
+17.4 Checking account
+17.1 Checking amount
+17.2 Checking amount
+17.3 Checking amount
+17.4 Checking amount
+17.5 Certificates of deposit account
+17.5 Certificates of deposit amount
+17.6 Other financial amount
+17.7 Other financial amount
+17.8 Other financial amount
+17.9 Other financial account
+17.9 Other financial amount
+16 Cash amount
+8 description
+7 description
+6 description
+6 description amount
+7 description amount
+8 description amount
+9 description amount
+10 description amount
+11 description amount
+12 description amount
+13 description amount
+14 description amount
+15 amount
+19
+19.1 Name of entity
+19.2 Name of entity
+19.3 Name of entity
+19.1 % of ownership
+19.2 % of ownership
+19.3 % of ownership
+19.2 amount
+19.1 amount
+19.3 amount
+20
+20.1 Issuer name
+20.2 Issuer name
+20.3 Issuer name
+20.1 Issuer name amount
+20.2 Issuer name amount
+20.3 Issuer name amount
+21
+21.2 Pension plan
+21.3 IRA
+21.4 Retirement account
+21.5 Keogh
+21.6 Additional account
+21.7 Additional account
+21.1 401k or similar plan
+21.1 401k or similar plan amount
+21.2 Pension plan amount
+21.3 IRA amount
+21.4 Retirement account amount
+21.5 Keogh amount
+21.6 Additional account amount
+21.7 Additional account amount
+18
+18.1 Institution or issuer name
+18.3 Institution or issuer name
+18.2 Institution or issuer name
+18.1 Institution or issuer name 1 amount
+18.3 Institution or issuer name amount
+18.2 Institution or issuer name amount
+22
+22.1 Electric
+22.2 Gas
+22.5 Prepaid rent
+22.7 Water
+22.8 Rented furniture
+22.9 Other
+22.6 Telephone
+22.1 Electric amount
+22.2 Gas amount
+22.3 Heating oil
+22.3 Heating oil amount
+22.4 Security deposit on rental unit
+22.4 Security deposit on rental unit amount
+22.5 Prepaid rent amount
+22.6 Telephone amount
+22.7 Water amount
+22.8 Rented furniture amount
+22.9 Other amount
+23
+23.2 Annuities
+23.1 Annuities
+23.3 Annuities
+23.1 Annuities amount
+23.2 Annuities amount
+23.3 Annuities amount
+24
+24.1 Interest in an education IRA
+24.1 Interest in an education IRA amount
+24.2 Interest in an education IRA
+24.3 Interest in an education IRA
+25 Trusts, equitable or future interests in property
+25 Trusts, equitable or future interests in property amount
+26 Patents, copyrights, trademarks, trade secrets
+26 Patents, copyrights, trademarks, trade secrets amount
+27 Liscenses, Franchises
+27 Liscenses, Franchises amount
+28 Tax refunds owed
+28 Tax refunds owed amout2
+28 Tax refunds owed amout1
+28 Tax refunds owed amout3
+29 Family support
+29 Family support amount2
+29 Family support amount3
+29 Family support amount1
+29 Family support amount4
+29 Family support amount5
+32 Interest in property due you from someone who died
+33
+34
+35
+39 Office equipment furnishings and supplies
+40 Machinery fixtures equipment and tools of your trade
+38 Accounts receivable or commissions already earned
+43 Identifiable information
+44
+44.1
+44.2
+44.3
+44.4
+44.5
+44.6
+41 Inventory
+42
+42.2 Name of entity
+42.1 Name of entity
+42.3 Name of entity
+47 Farm Animals
+49
+50
+51
+53 Examples Season tickets country club membership
+Check 1
+Check 2
+Who has interest in property
+Who has interest in property 2
+Who has interest in property 3
+Check 3
+Who has interest in property 4
+Who has interest in property 5
+Who has interest in property 6
+Who has interest in property 7
+Who has interest in property 8
+Who has interest in property 9
+6 check
+7 check
+8 check
+9 check
+10 check
+11 check
+12 check
+Check 16
+Check 17
+Check 18
+check 19
+check 20
+check 21
+check 22
+check 23
+check 24
+check 26
+check 27
+check 28
+check 29
+check 31
+check 32
+check 33
+check 34
+check 35
+check 37
+check 38
+check 39
+check 40
+check 41
+check 42
+check 43
+check 43_1
+check 44
+check 46
+check 47
+check 48
+check 49
+check 50
+check 51
+check 53
+check 13
+check 14
+check 25
+check 30
+3 1
+3 2
+3 3
+3 4
+1 1
+1 1a
+Bankruptcy District Information

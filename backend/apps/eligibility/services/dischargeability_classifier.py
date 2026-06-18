@@ -13,10 +13,11 @@ NON_DISCHARGEABLE_TYPES = {
 
 def classify_debt(debt) -> dict:
     reason = NON_DISCHARGEABLE_TYPES.get(debt.debt_type)
+    proceeding_needed = debt.debt_type == "student_loan"
     return {
         "dischargeable": reason is None,
         "reason": reason or "",
-        "proceeding_needed": reason is not None,
+        "proceeding_needed": proceeding_needed,
     }
 
 

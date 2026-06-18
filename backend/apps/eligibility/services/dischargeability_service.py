@@ -10,11 +10,18 @@ class DischargeabilityService:
 
     def evaluate(self) -> list[dict]:
         results = []
+        debts_to_update = []
         for debt in self.session.debts.all():
             classification = classify_debt(debt)
-            debt.is_dischargeable = classification["dischargeable"]
-            debt.adversary_proceeding_needed = classification["proceeding_needed"]
-            debt.save(update_fields=["is_dischargeable", "adversary_proceeding_needed"])
+
+            # Update fields but don't save immediately
+            if (
+                debt.is_dischargeable != classification["dischargeable"]
+                or debt.adversary_proceeding_needed != classification["proceeding_needed"]
+            ):
+                debt.is_dischargeable = classification["dischargeable"]
+                debt.adversary_proceeding_needed = classification["proceeding_needed"]
+                debts_to_update.append(debt)
 
             if classification["proceeding_needed"]:
                 self._ensure_proceeding(debt, classification)
@@ -27,15 +34,23 @@ class DischargeabilityService:
                     **classification,
                 }
             )
+
+        if debts_to_update:
+            from apps.intake.models import DebtInfo
+
+            DebtInfo.objects.bulk_update(
+                debts_to_update, ["is_dischargeable", "adversary_proceeding_needed"]
+            )
+
         return results
 
     def _ensure_proceeding(self, debt, classification):
-        proceeding_type = "student_loan" if debt.debt_type == "student_loan" else "other"
+        # Only creates for student loans as per classification
         AdversaryProceeding.objects.get_or_create(
             session=self.session,
             debt=debt,
             defaults={
-                "proceeding_type": proceeding_type,
+                "proceeding_type": "student_loan",
                 "lender_name": debt.creditor_name,
                 "loan_amount": debt.amount_owed,
             },

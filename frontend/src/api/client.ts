@@ -415,7 +415,9 @@ export const intakeAPI = {
     });
   },
   getDischargeability: async (sessionId: number): Promise<unknown[]> => {
-    return apiFetch<unknown[]>(`/intake/sessions/${sessionId}/dischargeability/`);
+    return apiFetch<unknown[]>(`/intake/sessions/${sessionId}/dischargeability/`, {
+      method: 'POST',
+    });
   },
 };
 

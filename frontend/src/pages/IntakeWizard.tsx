@@ -73,10 +73,10 @@ export function IntakeWizard() {
   // =========================================================================
 
   useEffect(() => {
-    if (!session) {
-      // No session in context yet — create a new one (District ID 1 = ILND)
+    if (!session && !localStorage.getItem('current_session_id')) {
+      // No session in context AND no saved session — create a new one (District ID 1 = ILND)
       createSession(1);
-    } else if (syncedSessionIdRef.current !== session.id) {
+    } else if (session && syncedSessionIdRef.current !== session.id) {
       // Session became available (loaded from localStorage or just created).
       // Sync wizard state once per session id to avoid overwriting in-flight steps.
       syncedSessionIdRef.current = session.id;
