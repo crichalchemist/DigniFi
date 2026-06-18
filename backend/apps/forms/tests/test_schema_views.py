@@ -64,10 +64,10 @@ class TestUISpecView(APITestCase):
         self.test_schema.fields.extend(
             [
                 FieldSpec(
-                    pdf_field="R1",
+                    pdf_field="R1_Source",
                     type="text",
                     source="asked",
-                    binding="expense.rent.amount",
+                    binding="expense.source",
                     on_states=(),
                     page=1,
                     label="l",
@@ -78,15 +78,15 @@ class TestUISpecView(APITestCase):
                     ingest_key=None,
                     repeat="expenses",
                     repeat_capacity=3,
-                    row=None,
+                    row=1,
                     legal_review=False,
-                    ui=UIFieldSpec(step="Expenses", prompt="Rent", widget="currency"),
+                    ui=UIFieldSpec(step="Expenses", prompt="Source", widget="text"),
                 ),
                 FieldSpec(
-                    pdf_field="R2",
+                    pdf_field="R1_Amount",
                     type="text",
                     source="asked",
-                    binding="expense.utilities.amount",
+                    binding="expense.amount",
                     on_states=(),
                     page=1,
                     label="l",
@@ -97,9 +97,47 @@ class TestUISpecView(APITestCase):
                     ingest_key=None,
                     repeat="expenses",
                     repeat_capacity=3,
-                    row=None,
+                    row=1,
                     legal_review=False,
-                    ui=UIFieldSpec(step="Expenses", prompt="Utilities", widget="currency"),
+                    ui=UIFieldSpec(step="Expenses", prompt="Amount", widget="currency"),
+                ),
+                FieldSpec(
+                    pdf_field="R2_Source",
+                    type="text",
+                    source="asked",
+                    binding="expense.source",
+                    on_states=(),
+                    page=1,
+                    label="l",
+                    required=False,
+                    conditional_on=None,
+                    value=None,
+                    rule=None,
+                    ingest_key=None,
+                    repeat="expenses",
+                    repeat_capacity=3,
+                    row=2,
+                    legal_review=False,
+                    ui=UIFieldSpec(step="Expenses", prompt="Source", widget="text"),
+                ),
+                FieldSpec(
+                    pdf_field="R2_Amount",
+                    type="text",
+                    source="asked",
+                    binding="expense.amount",
+                    on_states=(),
+                    page=1,
+                    label="l",
+                    required=False,
+                    conditional_on=None,
+                    value=None,
+                    rule=None,
+                    ingest_key=None,
+                    repeat="expenses",
+                    repeat_capacity=3,
+                    row=2,
+                    legal_review=False,
+                    ui=UIFieldSpec(step="Expenses", prompt="Amount", widget="currency"),
                 ),
                 FieldSpec(
                     pdf_field="R3",
@@ -137,8 +175,8 @@ class TestUISpecView(APITestCase):
         self.assertEqual(group["repeat"], "expenses")
         self.assertEqual(group["repeat_capacity"], 3)
         self.assertEqual(len(group["fields"]), 2)
-        self.assertEqual(group["fields"][0]["binding"], "expense.rent.amount")
-        self.assertEqual(group["fields"][1]["binding"], "expense.utilities.amount")
+        self.assertEqual(group["fields"][0]["binding"], "expense.source")
+        self.assertEqual(group["fields"][1]["binding"], "expense.amount")
 
         non_repeat = expenses_step["fields"][1]
         self.assertEqual(non_repeat["binding"], "expense.other.amount")

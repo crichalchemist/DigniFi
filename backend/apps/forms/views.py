@@ -384,12 +384,19 @@ class FormSchemaUIView(APIView):
                 }
 
                 if field.repeat:
-                    if (
-                        fields_list
-                        and fields_list[-1].get("widget") == "repeat_group"
-                        and fields_list[-1].get("repeat") == field.repeat
-                    ):
-                        fields_list[-1]["fields"].append(field_dict)
+                    repeat_group = next(
+                        (
+                            f
+                            for f in fields_list
+                            if f.get("widget") == "repeat_group" and f.get("repeat") == field.repeat
+                        ),
+                        None,
+                    )
+                    if repeat_group:
+                        if not any(
+                            f.get("binding") == field.binding for f in repeat_group["fields"]
+                        ):
+                            repeat_group["fields"].append(field_dict)
                     else:
                         fields_list.append(
                             {
