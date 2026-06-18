@@ -26,6 +26,33 @@ class MeansTest(models.Model):
 
     # Results
     passes_means_test = models.BooleanField(help_text="True if CMI < median income", db_index=True)
+
+    # Above-median calculation fields
+    total_allowable_expenses = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=Decimal("0"),
+        help_text="Monthly allowable expenses (IRS standards + actual)",
+    )
+    disposable_income = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=Decimal("0"),
+        help_text="Monthly disposable income after deductions",
+    )
+    priority_debts_monthly = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=Decimal("0"),
+        help_text="Monthly priority debt payments",
+    )
+    passes_above_median = models.BooleanField(
+        default=False, help_text="True if disposable income < $756.25/mo"
+    )
+    above_median_calculated = models.BooleanField(
+        default=False, help_text="Whether above-median calculation was performed"
+    )
+
     # Encrypted calculation details to protect potential PII
     # Using EncryptedTextField as JSON storage since EncryptedJSONField is not available
     calculation_details = EncryptedTextField(
@@ -111,24 +138,55 @@ class MeansTest(models.Model):
         annualized_cmi = cmi * Decimal("12")
         passes_test = annualized_cmi < median_income_threshold
 
+        # Initialize calculation details (used by above-median pathway below)
+        details: dict = {}
+
+        # Above-median pathway: calculate allowable expenses
+        if not passes_test:
+            from apps.eligibility.services.expense_deduction_calculator import (
+                ExpenseDeductionCalculator,
+            )
+
+            ded_calc = ExpenseDeductionCalculator(self.session)
+            ded_result = ded_calc.calculate()
+
+            self.total_allowable_expenses = ded_result.allowable_expenses
+            self.disposable_income = ded_result.disposable_income
+            self.priority_debts_monthly = ded_result.priority_debts_monthly
+            self.above_median_calculated = True
+
+            # $756.25/mo = $9,075 over 60 months (2024 threshold)
+            threshold = Decimal("756.25")
+            self.passes_above_median = ded_result.disposable_income < threshold
+            passes_test = self.passes_above_median
+
+            details["above_median"] = {
+                "allowable_expenses": float(ded_result.allowable_expenses),
+                "disposable_income": float(ded_result.disposable_income),
+                "priority_debts": float(ded_result.priority_debts_monthly),
+                "passes_above_median": self.passes_above_median,
+            }
+
         # Calculate fee waiver eligibility (CMI < 150% of poverty line)
         # For MVP, simplified: qualifies if income is very low (< 60% of median)
         qualifies_fee_waiver = annualized_cmi < (median_income_threshold * Decimal("0.60"))
 
         # Store calculation details (encrypted)
-        details = {
-            "cmi": float(cmi),
-            "annualized_cmi": float(annualized_cmi),
-            "median_income_threshold": float(median_income_threshold),
-            "family_size": family_size,
-            "monthly_income_breakdown": monthly_income_data,
-            "marital_status": income_info.marital_status,
-            "number_of_dependents": income_info.number_of_dependents,
-            "passes_test": passes_test,
-            "qualifies_fee_waiver": qualifies_fee_waiver,
-            "calculated_at": timezone.now().isoformat(),
-            "statute_citation": "11 U.S.C. § 707(b)",
-        }
+        details.update(
+            {
+                "cmi": float(cmi),
+                "annualized_cmi": float(annualized_cmi),
+                "median_income_threshold": float(median_income_threshold),
+                "family_size": family_size,
+                "monthly_income_breakdown": monthly_income_data,
+                "marital_status": income_info.marital_status,
+                "number_of_dependents": income_info.number_of_dependents,
+                "passes_test": passes_test,
+                "qualifies_fee_waiver": qualifies_fee_waiver,
+                "calculated_at": timezone.now().isoformat(),
+                "statute_citation": "11 U.S.C. § 707(b)",
+            }
+        )
 
         # Update model fields
         self.calculated_cmi = cmi

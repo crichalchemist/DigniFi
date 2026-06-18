@@ -890,3 +890,96 @@ class TestHouseholdSizeFromDebtorInfo:
         # household size drives the lookup
         assert result["family_size"] == 4
         assert result["passes_means_test"] is True
+
+
+@pytest.fixture
+def session_with_above_median_income(user, district, median_income):
+    """Create session with above-median income that triggers expense deduction."""
+    s = IntakeSession.objects.create(
+        user=user,
+        district=district,
+        status="in_progress",
+        current_step=2,
+    )
+    DebtorInfo.objects.create(
+        session=s,
+        first_name="Above",
+        last_name="Median",
+        ssn="123456789",
+        date_of_birth=date(1990, 1, 1),
+        phone="3125550001",
+        email="above@example.com",
+        street_address="1 Main St",
+        city="Chicago",
+        state="IL",
+        zip_code="60601",
+        household_size=1,
+    )
+    IncomeInfo.objects.create(
+        session=s,
+        marital_status="single",
+        number_of_dependents=0,
+        monthly_income=[7000, 7000, 7000, 7000, 7000, 7000],
+    )
+    return s
+
+
+@pytest.fixture
+def session_with_below_median_income(user, district, median_income):
+    """Create session with below-median income."""
+    s = IntakeSession.objects.create(
+        user=user,
+        district=district,
+        status="in_progress",
+        current_step=2,
+    )
+    DebtorInfo.objects.create(
+        session=s,
+        first_name="Below",
+        last_name="Median",
+        ssn="987654321",
+        date_of_birth=date(1990, 1, 1),
+        phone="3125550002",
+        email="below@example.com",
+        street_address="2 Main St",
+        city="Chicago",
+        state="IL",
+        zip_code="60601",
+        household_size=1,
+    )
+    IncomeInfo.objects.create(
+        session=s,
+        marital_status="single",
+        number_of_dependents=0,
+        monthly_income=[5000, 5000, 5000, 5000, 5000, 5000],
+    )
+    return s
+
+
+@pytest.mark.django_db
+class TestAboveMedianCalculation:
+    """Tests for above-median means test pathway."""
+
+    def test_above_median_sets_calculated_flag(self, session_with_above_median_income):
+        """Above-median filer should have above_median_calculated=True."""
+        calculator = MeansTestCalculator(session_with_above_median_income)
+        result = calculator.calculate()
+        assert result["above_median_calculated"] is True
+
+    def test_above_median_calculates_disposable_income(self, session_with_above_median_income):
+        """Above-median filer should have disposable_income populated."""
+        calculator = MeansTestCalculator(session_with_above_median_income)
+        result = calculator.calculate()
+        assert result["disposable_income"] is not None
+
+    def test_above_median_result_has_allowable_expenses(self, session_with_above_median_income):
+        """Result should include total_allowable_expenses."""
+        calculator = MeansTestCalculator(session_with_above_median_income)
+        result = calculator.calculate()
+        assert result["total_allowable_expenses"] >= Decimal("0")
+
+    def test_below_median_does_not_calculate_above_median(self, session_with_below_median_income):
+        """Below-median filer should NOT have above_median_calculated=True."""
+        calculator = MeansTestCalculator(session_with_below_median_income)
+        result = calculator.calculate()
+        assert result["above_median_calculated"] is False
