@@ -25,7 +25,8 @@ from django.contrib.auth import get_user_model
 from apps.districts.models import District, MedianIncome
 from apps.eligibility.models import MeansTest
 from apps.eligibility.services.means_test_calculator import MeansTestCalculator
-from apps.intake.models import DebtorInfo, IncomeInfo, IntakeSession
+from apps.forms.registry import get_generator
+from apps.intake.models import DebtorInfo, ExpenseInfo, IncomeInfo, IntakeSession
 
 User = get_user_model()
 
@@ -983,3 +984,67 @@ class TestAboveMedianCalculation:
         calculator = MeansTestCalculator(session_with_below_median_income)
         result = calculator.calculate()
         assert result["above_median_calculated"] is False
+
+
+@pytest.mark.django_db
+class TestAboveMedianEndToEnd:
+    def test_above_median_full_flow(self):
+        """Above-median filer: CMI → deductions → disposable → 122A-2 generates."""
+        user = User.objects.create_user(username="e2e_above", password="pass")
+        district = District.objects.create(
+            code="ILND",
+            name="Northern District of Illinois",
+            state="IL",
+            court_name="U.S. Bankruptcy Court",
+            filing_fee_chapter_7=Decimal("338"),
+        )
+        MedianIncome.objects.create(
+            district=district,
+            effective_date=date(2025, 1, 1),
+            family_size_1=Decimal("55000"),
+            family_size_2=Decimal("65000"),
+            family_size_3=Decimal("75000"),
+            family_size_4=Decimal("85000"),
+            family_size_5=Decimal("95000"),
+            family_size_6=Decimal("105000"),
+            family_size_7=Decimal("115000"),
+            family_size_8=Decimal("125000"),
+        )
+        session = IntakeSession.objects.create(user=user, district=district)
+        DebtorInfo.objects.create(
+            session=session,
+            first_name="Above",
+            middle_name="",
+            last_name="Median",
+            ssn="987-65-4321",
+            date_of_birth=date(1985, 1, 1),
+            phone="312-555-0100",
+            email="above@test.com",
+            street_address="456 Oak Ave",
+            city="Chicago",
+            state="IL",
+            zip_code="60601",
+            household_size=1,
+        )
+        IncomeInfo.objects.create(
+            session=session,
+            monthly_income=[6000] * 6,
+            marital_status="single",
+            number_of_dependents=0,
+        )
+        ExpenseInfo.objects.create(
+            session=session,
+            rent_or_mortgage=Decimal("1500"),
+            utilities=Decimal("200"),
+            food_and_groceries=Decimal("400"),
+            vehicle_payment=Decimal("500"),
+        )
+
+        result = MeansTestCalculator(session).calculate()
+        assert result["passes_means_test"] is False  # Above median
+        assert session.means_test.above_median_calculated is True
+        assert session.means_test.disposable_income is not None
+
+        gen = get_generator("form_122a2", session)
+        field_map = gen.pdf_field_map()
+        assert "Bankruptcy District Information" in field_map
