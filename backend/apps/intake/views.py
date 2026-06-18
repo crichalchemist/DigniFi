@@ -16,7 +16,9 @@ from apps.forms.services import Form101Generator
 
 from .models import (
     AssetInfo,
+    Codebtor,
     DebtInfo,
+    ExecutoryContract,
     FeeWaiverApplication,
     FormAnswer,
     IntakeSession,
@@ -25,7 +27,9 @@ from .models import (
 from .serializers import (
     AssetInfoSerializer,
     BulkAnswerPayloadSerializer,
+    CodebtorSerializer,
     DebtInfoSerializer,
+    ExecutoryContractSerializer,
     FeeWaiverApplicationSerializer,
     IntakeSessionSerializer,
     SOFAReportSerializer,
@@ -310,6 +314,60 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
                 updated_count += 1
 
         return Response({"status": "success", "created": created_count, "updated": updated_count})
+
+    @action(detail=True, methods=["get", "post"], url_path="contracts", url_name="contracts")
+    def contracts(self, request, pk=None):
+        session = self.get_object()
+        if request.method == "GET":
+            contracts = ExecutoryContract.objects.filter(session=session)
+            serializer = ExecutoryContractSerializer(contracts, many=True)
+            return Response(serializer.data)
+        serializer = ExecutoryContractSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save(session=session)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    @action(
+        detail=True,
+        methods=["delete"],
+        url_path="contracts/(?P<contract_id>[0-9]+)",
+        url_name="contract-detail",
+    )
+    def delete_contract(self, request, pk=None, contract_id=None):
+        session = self.get_object()
+        try:
+            contract = ExecutoryContract.objects.get(pk=contract_id, session=session)
+            contract.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        except ExecutoryContract.DoesNotExist:
+            return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
+
+    @action(detail=True, methods=["get", "post"], url_path="codebtors", url_name="codebtors")
+    def codebtors(self, request, pk=None):
+        session = self.get_object()
+        if request.method == "GET":
+            codebtors = Codebtor.objects.filter(session=session)
+            serializer = CodebtorSerializer(codebtors, many=True)
+            return Response(serializer.data)
+        serializer = CodebtorSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save(session=session)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    @action(
+        detail=True,
+        methods=["delete"],
+        url_path="codebtors/(?P<codebtor_id>[0-9]+)",
+        url_name="codebtor-detail",
+    )
+    def delete_codebtor(self, request, pk=None, codebtor_id=None):
+        session = self.get_object()
+        try:
+            codebtor = Codebtor.objects.get(pk=codebtor_id, session=session)
+            codebtor.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        except Codebtor.DoesNotExist:
+            return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
 
     def _calculate_completion_percentage(self, session):
         """Calculate how complete the intake session is."""
