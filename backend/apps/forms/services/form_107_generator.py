@@ -26,17 +26,6 @@ ZERO = Decimal("0.00")
 TWELVE = Decimal("12")
 TOTAL_QUESTIONS = 25
 
-# Lookback periods (in years) per official form instructions
-LOOKBACK_INCOME = 2
-LOOKBACK_CREDITOR_PAYMENTS = 90  # days, not years
-LOOKBACK_GIFTS = 2
-LOOKBACK_LOSSES = 1
-LOOKBACK_INSIDER_TRANSFERS = 2
-LOOKBACK_OTHER_TRANSFERS = 2
-LOOKBACK_CLOSED_ACCOUNTS = 1
-LOOKBACK_SAFE_DEPOSIT = 1
-LOOKBACK_PREVIOUS_ADDRESS = 3
-
 # Question text from official Form 107 (informational, verbatim from form)
 QUESTION_TEXTS: dict[int, str] = {
     1: (
