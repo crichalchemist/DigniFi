@@ -106,18 +106,17 @@ def session_with_debtor(session):
 class TestRegistryStructure:
     """Test the registry data structure and basic operations."""
 
-    def test_get_all_form_types_returns_13_entries(self):
+    def test_get_all_form_types_returns_18_entries(self):
         """
-        Verify get_all_form_types() returns exactly 13 entries.
+        Verify get_all_form_types() returns exactly 18 entries.
 
-        DigniFi MVP supports 14 forms total (7 Official Forms + 7 Schedules),
-        but 13 are in the registry (Schedule G/H combined as schedule_e_f).
+        DigniFi supports 18 forms for Chapter 7 filing.
         """
         form_types = get_all_form_types()
-        assert len(form_types) == 13
+        assert len(form_types) == 18
 
     def test_all_expected_form_types_present(self):
-        """Verify all 13 expected form type keys exist in registry."""
+        """Verify all 18 expected form type keys exist in registry."""
         expected_form_types = [
             "form_101",
             "form_103b",
@@ -126,10 +125,15 @@ class TestRegistryStructure:
             "form_107",
             "form_121",
             "form_122a1",
+            "form_122a1_supp",
+            "form_122a2",
+            "form_122b",
             "schedule_a_b",
             "schedule_c",
             "schedule_d",
             "schedule_e_f",
+            "schedule_g",
+            "schedule_h",
             "schedule_i",
             "schedule_j",
         ]
