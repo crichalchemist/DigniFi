@@ -10,8 +10,10 @@ from rest_framework import serializers
 
 from .models import (
     AssetInfo,
+    Codebtor,
     DebtInfo,
     DebtorInfo,
+    ExecutoryContract,
     ExpenseInfo,
     FeeWaiverApplication,
     IncomeInfo,
@@ -427,3 +429,23 @@ class BulkAnswerItemSerializer(serializers.Serializer):
 
 class BulkAnswerPayloadSerializer(serializers.Serializer):
     answers = BulkAnswerItemSerializer(many=True)
+
+
+class ExecutoryContractSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ExecutoryContract
+        fields = ["id", "counterparty_name", "contract_type", "description"]
+
+
+class CodebtorSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Codebtor
+        fields = [
+            "id",
+            "name",
+            "street_address",
+            "city",
+            "state",
+            "zip_code",
+            "relationship",
+        ]

@@ -382,6 +382,38 @@ export const intakeAPI = {
       body: JSON.stringify(data),
     });
   },
+
+  // Contracts (Schedule G)
+  contracts: async (sessionId: number): Promise<unknown[]> => {
+    return apiFetch<unknown[]>(`/intake/sessions/${sessionId}/contracts/`);
+  },
+  createContract: async (sessionId: number, data: unknown): Promise<unknown> => {
+    return apiFetch<unknown>(`/intake/sessions/${sessionId}/contracts/`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+  deleteContract: async (sessionId: number, contractId: number): Promise<void> => {
+    await apiFetch<void>(`/intake/sessions/${sessionId}/contracts/${contractId}/`, {
+      method: 'DELETE',
+    });
+  },
+
+  // Codebtors (Schedule H)
+  codebtors: async (sessionId: number): Promise<unknown[]> => {
+    return apiFetch<unknown[]>(`/intake/sessions/${sessionId}/codebtors/`);
+  },
+  createCodebtor: async (sessionId: number, data: unknown): Promise<unknown> => {
+    return apiFetch<unknown>(`/intake/sessions/${sessionId}/codebtors/`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+  deleteCodebtor: async (sessionId: number, codebtorId: number): Promise<void> => {
+    await apiFetch<void>(`/intake/sessions/${sessionId}/codebtors/${codebtorId}/`, {
+      method: 'DELETE',
+    });
+  },
 };
 
 // ============================================================================

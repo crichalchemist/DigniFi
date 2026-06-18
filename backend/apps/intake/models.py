@@ -589,3 +589,53 @@ class FormAnswer(models.Model):
     class Meta:
         db_table = "form_answers"
         unique_together = [["session", "form_type", "field_key"]]
+
+
+class ExecutoryContract(models.Model):
+    """Executory contract or unexpired lease (Schedule G)."""
+
+    CONTRACT_TYPE_CHOICES = [
+        ("lease", "Lease"),
+        ("contract", "Executory Contract"),
+        ("other", "Other"),
+    ]
+
+    session = models.ForeignKey(
+        IntakeSession, on_delete=models.CASCADE, related_name="executory_contracts"
+    )
+    counterparty_name = models.CharField(
+        max_length=255, help_text="Name of other party to the contract or lease"
+    )
+    contract_type = models.CharField(
+        max_length=20, choices=CONTRACT_TYPE_CHOICES, default="contract"
+    )
+    description = models.TextField(
+        blank=True, help_text="Brief description of the contract or lease"
+    )
+
+    class Meta:
+        db_table = "executory_contracts"
+
+
+class Codebtor(models.Model):
+    """Codebtor information (Schedule H)."""
+
+    RELATIONSHIP_CHOICES = [
+        ("spouse", "Spouse"),
+        ("former_spouse", "Former Spouse"),
+        ("relative", "Relative"),
+        ("friend", "Friend"),
+        ("business_partner", "Business Partner"),
+        ("other", "Other"),
+    ]
+
+    session = models.ForeignKey(IntakeSession, on_delete=models.CASCADE, related_name="codebtors")
+    name = models.CharField(max_length=255, help_text="Full name of codebtor")
+    street_address = models.CharField(max_length=255, blank=True)
+    city = models.CharField(max_length=100, blank=True)
+    state = models.CharField(max_length=2, blank=True)
+    zip_code = models.CharField(max_length=10, blank=True)
+    relationship = models.CharField(max_length=20, choices=RELATIONSHIP_CHOICES, default="other")
+
+    class Meta:
+        db_table = "codebtors"

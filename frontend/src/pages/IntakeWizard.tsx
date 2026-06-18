@@ -19,6 +19,8 @@ import {
   ExpenseInfoStep,
   AssetsStep,
   DebtsStep,
+  ContractsStep,
+  CodebtorsStep,
   ReviewStep,
 } from '../components/wizard/steps';
 import type {
@@ -39,8 +41,10 @@ const WIZARD_STEPS = [
   { number: 2, label: 'Income', key: 'income_info' },
   { number: 3, label: 'Expenses', key: 'expense_info' },
   { number: 4, label: 'Assets', key: 'assets' },
-  { number: 5, label: 'Amounts Owed', key: 'debts' }, // Trauma-informed: "amounts owed" vs "debts"
-  { number: 6, label: 'Review & Results', key: 'review' },
+  { number: 5, label: 'Amounts Owed', key: 'debts' },
+  { number: 6, label: 'Contracts & Leases', key: 'contracts' },
+  { number: 7, label: 'Codebtors', key: 'codebtors' },
+  { number: 8, label: 'Review & Results', key: 'review' },
 ];
 
 export function IntakeWizard() {
@@ -283,6 +287,12 @@ export function IntakeWizard() {
         );
 
       case 6:
+        return <ContractsStep />;
+
+      case 7:
+        return <CodebtorsStep />;
+
+      case 8:
         return (
           <ReviewStep
             debtorData={debtorData}
