@@ -5,12 +5,9 @@ Provides REST API endpoints for multi-step bankruptcy intake process,
 including session management, means test calculation, and form preview.
 """
 
-import re
-
 from django.db import transaction
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
-from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
@@ -330,49 +327,32 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
 
                 elif binding.startswith("sofa."):
                     path = binding[len("sofa.") :]
-                    if "[" in path and "]." in path:
+                    if "parsed_array_binding" in ans:
                         # Array binding: sofa.prior_income[0].source
-                        match = re.match(r"([a-z_]+)\[(\d+)\]\.(.*)", path)
-                        if match:
-                            coll_name, idx_str, attr = match.groups()
-                            idx = int(idx_str)
+                        coll_name, idx, attr = ans["parsed_array_binding"]
 
-                            manager = getattr(sofa_report, coll_name, None)
-                            if manager is not None:
-                                if coll_name not in cached_collections:
-                                    cached_collections[coll_name] = list(
-                                        manager.all().order_by("id")
-                                    )
-                                items = cached_collections[coll_name]
+                        manager = getattr(sofa_report, coll_name, None)
+                        if manager is not None:
+                            if coll_name not in cached_collections:
+                                cached_collections[coll_name] = list(manager.all().order_by("id"))
+                            items = cached_collections[coll_name]
 
-                                if idx >= 50:
-                                    raise ValidationError(
-                                        f"Index {idx} exceeds maximum allowed bound of 50 for collection {coll_name}"
-                                    )
+                            if idx > len(items):
+                                from rest_framework.exceptions import ValidationError
 
-                                if idx < len(items):
-                                    updated_count += 1
-                                else:
-                                    model_class = manager.model
-                                    while len(items) <= idx:
-                                        new_item = model_class(report=sofa_report)
-                                        if model_class.__name__ == "SOFAPriorIncome":
-                                            from decimal import Decimal
+                                raise ValidationError(
+                                    f"Cannot skip index in collection {coll_name}. Expected index {len(items)} but got {idx}"
+                                )
+                            if idx == len(items):
+                                new_item = manager.model(report=sofa_report)
+                                items.append(new_item)
+                                models_to_save[id(new_item)] = new_item
+                                created_count += 1
+                            else:
+                                updated_count += 1
 
-                                            new_item.year = 0
-                                            new_item.source = ""
-                                            new_item.gross_amount = Decimal("0.00")
-                                        elif model_class.__name__ == "SOFACreditorPayment":
-                                            from decimal import Decimal
-
-                                            new_item.creditor_name = ""
-                                            new_item.total_paid = Decimal("0.00")
-                                        items.append(new_item)
-                                        models_to_save[id(new_item)] = new_item
-                                        created_count += 1
-
-                                setattr(items[idx], attr, val)
-                                models_to_save[id(items[idx])] = items[idx]
+                            setattr(items[idx], attr, val)
+                            models_to_save[id(items[idx])] = items[idx]
                     else:
                         # Scalar binding: sofa.has_prior_income
                         if hasattr(sofa_report, path):

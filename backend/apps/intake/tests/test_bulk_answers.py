@@ -97,7 +97,10 @@ class TestBulkAnswerView:
 
         # Verify SOFA saved
         assert report.prior_income.count() == 1
-        assert report.prior_income.first().source == "Acme Corp"
+        first_item = report.prior_income.first()
+        assert first_item.source == "Acme Corp"
+        assert first_item.year == 2023
+        assert first_item.gross_amount == Decimal("50000.00")
         report.refresh_from_db()
         assert report.has_prior_income is True
 
