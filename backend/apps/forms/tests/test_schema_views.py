@@ -59,3 +59,87 @@ class TestUISpecView(APITestCase):
         self.assertEqual(data["steps"][0]["title"], "Step 1")
         self.assertEqual(data["steps"][0]["fields"][0]["binding"], "answer:test.q1")
         self.assertEqual(data["steps"][0]["fields"][0]["prompt"], "Prompt 1")
+
+    def test_get_ui_spec_groups_repeat_fields(self):
+        self.test_schema.fields.extend(
+            [
+                FieldSpec(
+                    pdf_field="R1",
+                    type="text",
+                    source="asked",
+                    binding="expense.rent.amount",
+                    on_states=(),
+                    page=1,
+                    label="l",
+                    required=False,
+                    conditional_on=None,
+                    value=None,
+                    rule=None,
+                    ingest_key=None,
+                    repeat="expenses",
+                    repeat_capacity=3,
+                    row=None,
+                    legal_review=False,
+                    ui=UIFieldSpec(step="Expenses", prompt="Rent", widget="currency"),
+                ),
+                FieldSpec(
+                    pdf_field="R2",
+                    type="text",
+                    source="asked",
+                    binding="expense.utilities.amount",
+                    on_states=(),
+                    page=1,
+                    label="l",
+                    required=False,
+                    conditional_on=None,
+                    value=None,
+                    rule=None,
+                    ingest_key=None,
+                    repeat="expenses",
+                    repeat_capacity=3,
+                    row=None,
+                    legal_review=False,
+                    ui=UIFieldSpec(step="Expenses", prompt="Utilities", widget="currency"),
+                ),
+                FieldSpec(
+                    pdf_field="R3",
+                    type="text",
+                    source="asked",
+                    binding="expense.other.amount",
+                    on_states=(),
+                    page=1,
+                    label="l",
+                    required=False,
+                    conditional_on=None,
+                    value=None,
+                    rule=None,
+                    ingest_key=None,
+                    repeat=None,
+                    repeat_capacity=None,
+                    row=None,
+                    legal_review=False,
+                    ui=UIFieldSpec(step="Expenses", prompt="Other", widget="currency"),
+                ),
+            ]
+        )
+
+        url = reverse("form-schema-ui-spec", kwargs={"form_type": "form_test"})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+
+        expenses_step = next(s for s in data["steps"] if s["title"] == "Expenses")
+        # Should have 2 fields at the top level: the repeat_group, and the non-repeated field
+        self.assertEqual(len(expenses_step["fields"]), 2)
+
+        group = expenses_step["fields"][0]
+        self.assertEqual(group["widget"], "repeat_group")
+        self.assertEqual(group["repeat"], "expenses")
+        self.assertEqual(group["repeat_capacity"], 3)
+        self.assertEqual(len(group["fields"]), 2)
+        self.assertEqual(group["fields"][0]["binding"], "expense.rent.amount")
+        self.assertEqual(group["fields"][1]["binding"], "expense.utilities.amount")
+
+        non_repeat = expenses_step["fields"][1]
+        self.assertEqual(non_repeat["binding"], "expense.other.amount")
+        self.assertEqual(non_repeat["widget"], "currency")
