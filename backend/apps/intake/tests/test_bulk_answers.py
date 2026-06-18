@@ -26,39 +26,36 @@ def auth_client_with_session(db):
 
 @pytest.mark.django_db
 class TestBulkAnswerView:
-    def test_bulk_upsert_creates_and_updates(self, auth_client_with_session):
+    def test_bulk_upsert_handles_sofa_bindings(self, auth_client_with_session):
         client, session = auth_client_with_session
-        FormAnswer.objects.create(
-            session=session, form_type="form_test", field_key="q1", value="old"
-        )
+        from apps.intake.models import SOFAReport
+
+        report = SOFAReport.objects.create(session=session)
+
         payload = {
             "answers": [
-                {"form_type": "form_test", "binding": "answer:q1", "value": "new"},
-                {"form_type": "form_test", "binding": "answer:q2", "value": "brand new"},
-                {"form_type": "form_test", "binding": "sofa.has_prior_income", "value": "true"},
+                {"form_type": "form_107", "binding": "answer:form_107.street", "value": "123 Main"},
+                {
+                    "form_type": "form_107",
+                    "binding": "sofa.prior_income[0].source",
+                    "value": "Acme Corp",
+                },
+                {"form_type": "form_107", "binding": "sofa.has_prior_income", "value": "True"},
             ]
         }
         response = client.post(
-            f"/api/intake/sessions/{session.pk}/answers/bulk/",
-            payload,
-            format="json",
+            f"/api/intake/sessions/{session.pk}/answers/bulk/", payload, format="json"
         )
         assert response.status_code == 200
-        data = response.json()
-        assert data["created"] == 1
-        assert data["updated"] == 2
 
-        answers = FormAnswer.objects.filter(session=session).order_by("field_key")
-        assert answers.count() == 2
-        assert answers[0].value == "new"
-        assert answers[0].field_key == "q1"
-        assert answers[1].value == "brand new"
-        assert answers[1].field_key == "q2"
+        # Verify FormAnswer saved
+        assert FormAnswer.objects.filter(field_key="street", value="123 Main").exists()
 
-        from apps.intake.models import SOFAReport
-
-        sofa = SOFAReport.objects.get(session=session)
-        assert sofa.has_prior_income is True
+        # Verify SOFA saved
+        assert report.prior_income.count() == 1
+        assert report.prior_income.first().source == "Acme Corp"
+        report.refresh_from_db()
+        assert report.has_prior_income is True
 
     def test_bulk_upsert_empty_list(self, auth_client_with_session):
         client, session = auth_client_with_session

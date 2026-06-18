@@ -494,6 +494,6 @@ export interface FormUISpec {
 
 export interface AnswerPayload {
   form_type: string;
-  field_key: string;
+  binding: string;
   value: string;
 }

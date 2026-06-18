@@ -293,6 +293,8 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=["post"], url_path="answers/bulk", url_name="bulk-answers")
     def bulk_answers(self, request, pk=None):
+        import re
+
         session = self.get_object()
         serializer = BulkAnswerPayloadSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -301,41 +303,71 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
         created_count = 0
         updated_count = 0
 
-        sofa_updates = {}
-        sofa_processed_count = 0
+        # Ensure SOFAReport exists
+        sofa_report, _ = SOFAReport.objects.get_or_create(session=session)
 
         with transaction.atomic():
             for ans in answers_data:
-                form_type = ans["form_type"]
                 binding = ans["binding"]
-                value = ans["value"]
+                val = ans["value"]
 
                 if binding.startswith("answer:"):
-                    field_key = binding[7:]
+                    form_type, _, key = binding[len("answer:") :].partition(".")
                     obj, created = FormAnswer.objects.update_or_create(
                         session=session,
                         form_type=form_type,
-                        field_key=field_key,
-                        defaults={"value": value},
+                        field_key=key,
+                        defaults={"value": val},
                     )
                     if created:
                         created_count += 1
                     else:
                         updated_count += 1
+
                 elif binding.startswith("sofa."):
-                    field_key = binding[5:]
-                    sofa_updates[field_key] = value
-                    sofa_processed_count += 1
+                    path = binding[len("sofa.") :]
+                    if "[" in path and "]." in path:
+                        # Array binding: sofa.prior_income[0].source
+                        match = re.match(r"([a-z_]+)\[(\d+)\]\.(.*)", path)
+                        if match:
+                            coll_name, idx_str, attr = match.groups()
+                            idx = int(idx_str)
 
-            if sofa_updates:
-                report, created = SOFAReport.objects.get_or_create(session=session)
-                for key, val in sofa_updates.items():
-                    setattr(report, key, val)
-                report.save()
+                            manager = getattr(sofa_report, coll_name, None)
+                            if manager is not None:
+                                items = list(manager.all().order_by("id"))
+                                while len(items) <= idx:
+                                    # Determine correct model class
+                                    model_class = manager.model
+                                    new_item = model_class(report=sofa_report)
+                                    from decimal import Decimal
 
-                # Count the number of sofa. items processed correctly
-                # and add it to updated_count
-                updated_count += sofa_processed_count
+                                    if model_class.__name__ == "SOFAPriorIncome":
+                                        new_item.year = 0
+                                        new_item.source = ""
+                                        new_item.gross_amount = Decimal("0.00")
+                                    elif model_class.__name__ == "SOFACreditorPayment":
+                                        new_item.creditor_name = ""
+                                        new_item.total_paid = Decimal("0.00")
+                                    new_item.save()
+                                    items.append(new_item)
+
+                                setattr(items[idx], attr, val)
+                                items[idx].save()
+                                updated_count += 1
+                    else:
+                        # Scalar binding: sofa.has_prior_income
+                        if hasattr(sofa_report, path):
+                            # Simple string-to-bool coercion if needed
+                            if isinstance(val, str):
+                                if val.lower() == "true":
+                                    val = True
+                                elif val.lower() == "false":
+                                    val = False
+
+                            setattr(sofa_report, path, val)
+                            sofa_report.save()
+                            updated_count += 1
 
         return Response({"status": "success", "created": created_count, "updated": updated_count})
 

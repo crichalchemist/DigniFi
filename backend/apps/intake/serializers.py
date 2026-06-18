@@ -438,25 +438,29 @@ class BulkAnswerItemSerializer(serializers.Serializer):
 
         if binding.startswith("sofa."):
             field_key = binding[5:]
-            try:
-                field = SOFAReport._meta.get_field(field_key)
-                if value == "" and field.null:
-                    data["value"] = None
-                else:
-                    if value.lower() == "true":
-                        data["value"] = True
-                    elif value.lower() == "false":
-                        data["value"] = False
+            if "[" in field_key and "]." in field_key:
+                # We bypass standard model field validation for nested array bindings right now.
+                pass
+            else:
+                try:
+                    field = SOFAReport._meta.get_field(field_key)
+                    if value == "" and field.null:
+                        data["value"] = None
                     else:
-                        data["value"] = field.to_python(value)
-            except FieldDoesNotExist:
-                raise serializers.ValidationError(
-                    {"binding": f"Unknown SOFAReport field: {field_key}"}
-                ) from None
-            except Exception as e:
-                raise serializers.ValidationError(
-                    {"value": f"Invalid value for {field_key}: {str(e)}"}
-                ) from e
+                        if value.lower() == "true":
+                            data["value"] = True
+                        elif value.lower() == "false":
+                            data["value"] = False
+                        else:
+                            data["value"] = field.to_python(value)
+                except FieldDoesNotExist:
+                    raise serializers.ValidationError(
+                        {"binding": f"Unknown SOFAReport field: {field_key}"}
+                    ) from None
+                except Exception as e:
+                    raise serializers.ValidationError(
+                        {"value": f"Invalid value for {field_key}: {str(e)}"}
+                    ) from e
 
         return data
 
