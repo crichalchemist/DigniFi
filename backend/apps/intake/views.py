@@ -369,6 +369,15 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
         except Codebtor.DoesNotExist:
             return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
 
+    @action(detail=True, methods=["get"], url_path="dischargeability", url_name="dischargeability")
+    def dischargeability(self, request, pk=None):
+        session = self.get_object()
+        from apps.eligibility.services.dischargeability_service import DischargeabilityService
+
+        svc = DischargeabilityService(session)
+        results = svc.evaluate()
+        return Response(results)
+
     def _calculate_completion_percentage(self, session):
         """Calculate how complete the intake session is."""
         completed_sections = 0
