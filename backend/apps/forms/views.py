@@ -375,46 +375,34 @@ class FormSchemaUIView(APIView):
 
                 fields_list = steps_dict[step_title]["fields"]
 
+                field_dict = {
+                    "binding": field.binding,
+                    "prompt": field.ui.prompt,
+                    "widget": field.ui.widget,
+                    "help_text": field.ui.help_text,
+                    "conditional_on": field.conditional_on,
+                }
+
                 if field.repeat:
                     if (
                         fields_list
                         and fields_list[-1].get("widget") == "repeat_group"
                         and fields_list[-1].get("repeat") == field.repeat
                     ):
-                        fields_list[-1]["fields"].append(
-                            {
-                                "binding": field.binding,
-                                "prompt": field.ui.prompt,
-                                "widget": field.ui.widget,
-                                "help_text": field.ui.help_text,
-                                "conditional_on": field.conditional_on,
-                            }
-                        )
+                        fields_list[-1]["fields"].append(field_dict)
                     else:
                         fields_list.append(
                             {
                                 "widget": "repeat_group",
                                 "repeat": field.repeat,
                                 "repeat_capacity": field.repeat_capacity,
-                                "fields": [
-                                    {
-                                        "binding": field.binding,
-                                        "prompt": field.ui.prompt,
-                                        "widget": field.ui.widget,
-                                        "help_text": field.ui.help_text,
-                                        "conditional_on": field.conditional_on,
-                                    }
-                                ],
+                                "fields": [field_dict],
                             }
                         )
                 else:
                     fields_list.append(
                         {
-                            "binding": field.binding,
-                            "prompt": field.ui.prompt,
-                            "widget": field.ui.widget,
-                            "help_text": field.ui.help_text,
-                            "conditional_on": field.conditional_on,
+                            **field_dict,
                             "repeat": field.repeat,
                             "repeat_capacity": field.repeat_capacity,
                         }
