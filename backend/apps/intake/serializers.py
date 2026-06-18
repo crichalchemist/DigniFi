@@ -5,6 +5,8 @@ Provides Django REST Framework serializers for API endpoints, including
 validation, nested relationships, and trauma-informed error messages.
 """
 
+import re
+
 from django.contrib.auth import get_user_model
 from django.core.exceptions import FieldDoesNotExist
 from rest_framework import serializers
@@ -430,11 +432,6 @@ class BulkAnswerItemSerializer(serializers.Serializer):
     def _coerce_field_value(self, field, value):
         if value == "" and field.null:
             return None
-        if isinstance(value, str):
-            if value.lower() == "true":
-                return True
-            elif value.lower() == "false":
-                return False
         return field.to_python(value)
 
     def validate(self, data):
@@ -449,8 +446,6 @@ class BulkAnswerItemSerializer(serializers.Serializer):
         if binding.startswith("sofa."):
             field_key = binding[5:]
             if "[" in field_key and "]." in field_key:
-                import re
-
                 match = re.match(r"([a-z_]+)\[(\d+)\]\.(.*)", field_key)
                 if match:
                     coll_name, idx_str, attr = match.groups()

@@ -35,7 +35,7 @@ class TestBulkAnswerView:
             "answers": [
                 {"form_type": "form_test", "binding": "answer:form_test.q1", "value": "new"},
                 {"form_type": "form_test", "binding": "answer:form_test.q2", "value": "brand new"},
-                {"form_type": "form_test", "binding": "sofa.has_prior_income", "value": "true"},
+                {"form_type": "form_test", "binding": "sofa.has_prior_income", "value": "True"},
             ]
         }
         response = client.post(

@@ -5,9 +5,12 @@ Provides REST API endpoints for multi-step bankruptcy intake process,
 including session management, means test calculation, and form preview.
 """
 
+import re
+
 from django.db import transaction
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
+from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
@@ -293,8 +296,6 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=["post"], url_path="answers/bulk", url_name="bulk-answers")
     def bulk_answers(self, request, pk=None):
-        import re
-
         session = self.get_object()
         serializer = BulkAnswerPayloadSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -308,7 +309,6 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
 
         models_to_save = {}
         cached_collections = {}
-        from rest_framework.exceptions import ValidationError
 
         with transaction.atomic():
             for ans in answers_data:
@@ -356,7 +356,19 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
                                     model_class = manager.model
                                     while len(items) <= idx:
                                         new_item = model_class(report=sofa_report)
+                                        if model_class.__name__ == "SOFAPriorIncome":
+                                            from decimal import Decimal
+
+                                            new_item.year = 0
+                                            new_item.source = ""
+                                            new_item.gross_amount = Decimal("0.00")
+                                        elif model_class.__name__ == "SOFACreditorPayment":
+                                            from decimal import Decimal
+
+                                            new_item.creditor_name = ""
+                                            new_item.total_paid = Decimal("0.00")
                                         items.append(new_item)
+                                        models_to_save[id(new_item)] = new_item
                                         created_count += 1
 
                                 setattr(items[idx], attr, val)
@@ -364,13 +376,6 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
                     else:
                         # Scalar binding: sofa.has_prior_income
                         if hasattr(sofa_report, path):
-                            # Simple string-to-bool coercion if needed
-                            if isinstance(val, str):
-                                if val.lower() == "true":
-                                    val = True
-                                elif val.lower() == "false":
-                                    val = False
-
                             setattr(sofa_report, path, val)
                             models_to_save[id(sofa_report)] = sofa_report
                             updated_count += 1
