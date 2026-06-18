@@ -306,6 +306,10 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
         # Ensure SOFAReport exists
         sofa_report, _ = SOFAReport.objects.get_or_create(session=session)
 
+        models_to_save = {}
+        cached_collections = {}
+        from rest_framework.exceptions import ValidationError
+
         with transaction.atomic():
             for ans in answers_data:
                 binding = ans["binding"]
@@ -335,26 +339,27 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
 
                             manager = getattr(sofa_report, coll_name, None)
                             if manager is not None:
-                                items = list(manager.all().order_by("id"))
-                                while len(items) <= idx:
-                                    # Determine correct model class
+                                if coll_name not in cached_collections:
+                                    cached_collections[coll_name] = list(
+                                        manager.all().order_by("id")
+                                    )
+                                items = cached_collections[coll_name]
+
+                                if idx > len(items):
+                                    raise ValidationError(
+                                        f"Index {idx} out of bounds for collection {coll_name}"
+                                    )
+
+                                if idx == len(items):
                                     model_class = manager.model
                                     new_item = model_class(report=sofa_report)
-                                    from decimal import Decimal
-
-                                    if model_class.__name__ == "SOFAPriorIncome":
-                                        new_item.year = 0
-                                        new_item.source = ""
-                                        new_item.gross_amount = Decimal("0.00")
-                                    elif model_class.__name__ == "SOFACreditorPayment":
-                                        new_item.creditor_name = ""
-                                        new_item.total_paid = Decimal("0.00")
-                                    new_item.save()
                                     items.append(new_item)
+                                    created_count += 1
+                                else:
+                                    updated_count += 1
 
                                 setattr(items[idx], attr, val)
-                                items[idx].save()
-                                updated_count += 1
+                                models_to_save[id(items[idx])] = items[idx]
                     else:
                         # Scalar binding: sofa.has_prior_income
                         if hasattr(sofa_report, path):
@@ -366,8 +371,11 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
                                     val = False
 
                             setattr(sofa_report, path, val)
-                            sofa_report.save()
+                            models_to_save[id(sofa_report)] = sofa_report
                             updated_count += 1
+
+            for model_obj in models_to_save.values():
+                model_obj.save()
 
         return Response({"status": "success", "created": created_count, "updated": updated_count})
 

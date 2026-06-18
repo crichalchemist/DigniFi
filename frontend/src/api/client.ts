@@ -694,10 +694,13 @@ export const askModulesAPI = {
     sessionId: number,
     answers: AnswerPayload[]
   ): Promise<{ status: string; created: number; updated: number }> => {
-    return apiFetch(`/intake/sessions/${sessionId}/answers/bulk/`, {
-      method: 'POST',
-      body: JSON.stringify({ answers }),
-    });
+    return apiFetch<{ status: string; created: number; updated: number }>(
+      `/intake/sessions/${sessionId}/answers/bulk/`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ answers }),
+      }
+    );
   },
 };
 

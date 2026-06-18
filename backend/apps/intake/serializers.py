@@ -439,8 +439,34 @@ class BulkAnswerItemSerializer(serializers.Serializer):
         if binding.startswith("sofa."):
             field_key = binding[5:]
             if "[" in field_key and "]." in field_key:
-                # We bypass standard model field validation for nested array bindings right now.
-                pass
+                import re
+
+                match = re.match(r"([a-z_]+)\[(\d+)\]\.(.*)", field_key)
+                if match:
+                    coll_name, idx_str, attr = match.groups()
+                    try:
+                        related_field = SOFAReport._meta.get_field(coll_name)
+                        related_model = related_field.related_model
+                        field = related_model._meta.get_field(attr)
+                        if value == "" and field.null:
+                            data["value"] = None
+                        else:
+                            if value.lower() == "true":
+                                data["value"] = True
+                            elif value.lower() == "false":
+                                data["value"] = False
+                            else:
+                                data["value"] = field.to_python(value)
+                    except FieldDoesNotExist:
+                        raise serializers.ValidationError(
+                            {"binding": f"Unknown related field: {coll_name} or {attr}"}
+                        ) from None
+                    except Exception as e:
+                        raise serializers.ValidationError(
+                            {"value": f"Invalid value for {coll_name}[].{attr}: {str(e)}"}
+                        ) from e
+                else:
+                    raise serializers.ValidationError({"binding": "Invalid array binding format"})
             else:
                 try:
                     field = SOFAReport._meta.get_field(field_key)

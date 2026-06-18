@@ -40,6 +40,16 @@ class TestBulkAnswerView:
                     "binding": "sofa.prior_income[0].source",
                     "value": "Acme Corp",
                 },
+                {
+                    "form_type": "form_107",
+                    "binding": "sofa.prior_income[0].year",
+                    "value": "2023",
+                },
+                {
+                    "form_type": "form_107",
+                    "binding": "sofa.prior_income[0].gross_amount",
+                    "value": "50000.00",
+                },
                 {"form_type": "form_107", "binding": "sofa.has_prior_income", "value": "True"},
             ]
         }
