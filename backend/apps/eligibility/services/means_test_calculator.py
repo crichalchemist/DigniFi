@@ -97,6 +97,11 @@ class MeansTestCalculator:
             "message": self._generate_upl_compliant_message(means_test),
             "details": means_test.get_calculation_details(),
             "means_test_id": means_test.id,
+            "above_median_calculated": means_test.above_median_calculated,
+            "disposable_income": means_test.disposable_income,
+            "total_allowable_expenses": means_test.total_allowable_expenses,
+            "priority_debts_monthly": means_test.priority_debts_monthly,
+            "passes_above_median": means_test.passes_above_median,
         }
 
         return result
