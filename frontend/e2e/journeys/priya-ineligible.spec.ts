@@ -59,6 +59,12 @@ test.describe('Priya Sharma — Ineligible', () => {
     }
     await wizard.nextStep();
 
+    // Step 6: Contracts & Leases (optional — no entries needed)
+    await wizard.nextStep();
+
+    // Step 7: Codebtors (optional — no entries needed)
+    await wizard.nextStep();
+
     await wizard.fillReview();
     await wizard.completeIntake();
 

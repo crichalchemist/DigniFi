@@ -5,7 +5,10 @@ Provides Django REST Framework serializers for API endpoints, including
 validation, nested relationships, and trauma-informed error messages.
 """
 
+import re
+
 from django.contrib.auth import get_user_model
+from django.core.exceptions import FieldDoesNotExist
 from rest_framework import serializers
 
 from .models import (
@@ -242,7 +245,7 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
             "created_at",
             "completed_at",
         ]
-        read_only_fields = ["id", "created_at", "completed_at", "district_name"]
+        read_only_fields = ["id", "user", "created_at", "completed_at", "district_name"]
 
     def create(self, validated_data):
         """
@@ -422,9 +425,71 @@ class SOFAReportSerializer(serializers.ModelSerializer):
 
 
 class BulkAnswerItemSerializer(serializers.Serializer):
-    form_type = serializers.CharField(max_length=20)
-    field_key = serializers.CharField(max_length=100)
+    form_type = serializers.CharField(max_length=50)
+    binding = serializers.CharField(max_length=200)
     value = serializers.CharField(allow_blank=True)
+
+    def _coerce_field_value(self, field, value):
+        if value == "" and field.null:
+            return None
+        return field.to_python(value)
+
+    def validate(self, data):
+        binding = data.get("binding", "")
+        value = data.get("value", "")
+
+        if not (binding.startswith("answer:") or binding.startswith("sofa.")):
+            raise serializers.ValidationError(
+                {"binding": "Invalid binding prefix. Must start with 'answer:' or 'sofa.'"}
+            )
+
+        if binding.startswith("sofa."):
+            field_key = binding[5:]
+            if "[" in field_key and "]." in field_key:
+                match = re.match(r"([a-z_]+)\[(\d+)\]\.(.*)", field_key)
+                if match:
+                    coll_name, idx_str, attr = match.groups()
+                    idx = int(idx_str)
+                    if idx >= 50:
+                        raise serializers.ValidationError(
+                            {"binding": f"Index {idx} exceeds maximum allowed array size of 50."}
+                        )
+                    try:
+                        related_field = SOFAReport._meta.get_field(coll_name)
+                        related_model = related_field.related_model
+                        if related_model is None:
+                            raise serializers.ValidationError(
+                                {
+                                    "binding": f"Invalid array binding. Collection {coll_name} does not exist."
+                                }
+                            )
+                        field = related_model._meta.get_field(attr)
+                        data["value"] = self._coerce_field_value(field, value)
+                        data["parsed_array_binding"] = (coll_name, idx, attr)
+                    except FieldDoesNotExist:
+                        raise serializers.ValidationError(
+                            {"binding": f"Unknown related field: {coll_name} or {attr}"}
+                        ) from None
+                    except Exception as e:
+                        raise serializers.ValidationError(
+                            {"value": f"Invalid value for {coll_name}[].{attr}: {str(e)}"}
+                        ) from e
+                else:
+                    raise serializers.ValidationError({"binding": "Invalid array binding format"})
+            else:
+                try:
+                    field = SOFAReport._meta.get_field(field_key)
+                    data["value"] = self._coerce_field_value(field, value)
+                except FieldDoesNotExist:
+                    raise serializers.ValidationError(
+                        {"binding": f"Unknown SOFAReport field: {field_key}"}
+                    ) from None
+                except Exception as e:
+                    raise serializers.ValidationError(
+                        {"value": f"Invalid value for {field_key}: {str(e)}"}
+                    ) from e
+
+        return data
 
 
 class BulkAnswerPayloadSerializer(serializers.Serializer):

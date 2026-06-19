@@ -70,9 +70,7 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
             "current_step": 1
         }
         """
-        # Ensure user is set to authenticated user
         data = request.data.copy()
-        data["user"] = request.user.id
         data["status"] = "started"
 
         serializer = self.get_serializer(data=data)
@@ -100,6 +98,12 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
         if "debts" in request.data:
             DebtInfo.objects.filter(session=instance, is_draft=True).update(is_draft=False)
         return response
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+    def perform_update(self, serializer):
+        serializer.save(user=self.request.user)
 
     @action(detail=True, methods=["post"])
     def update_step(self, request, pk=None):
@@ -301,17 +305,67 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
         created_count = 0
         updated_count = 0
 
-        for ans in answers_data:
-            obj, created = FormAnswer.objects.update_or_create(
-                session=session,
-                form_type=ans["form_type"],
-                field_key=ans["field_key"],
-                defaults={"value": ans["value"]},
-            )
-            if created:
-                created_count += 1
-            else:
-                updated_count += 1
+        # Ensure SOFAReport exists
+        sofa_report, _ = SOFAReport.objects.get_or_create(session=session)
+
+        models_to_save = {}
+        cached_collections = {}
+
+        with transaction.atomic():
+            for ans in answers_data:
+                binding = ans["binding"]
+                val = ans["value"]
+
+                if binding.startswith("answer:"):
+                    form_type, _, key = binding[len("answer:") :].partition(".")
+                    obj, created = FormAnswer.objects.update_or_create(
+                        session=session,
+                        form_type=form_type,
+                        field_key=key,
+                        defaults={"value": val},
+                    )
+                    if created:
+                        created_count += 1
+                    else:
+                        updated_count += 1
+
+                elif binding.startswith("sofa."):
+                    path = binding[len("sofa.") :]
+                    if "parsed_array_binding" in ans:
+                        # Array binding: sofa.prior_income[0].source
+                        coll_name, idx, attr = ans["parsed_array_binding"]
+
+                        manager = getattr(sofa_report, coll_name, None)
+                        if manager is not None:
+                            if coll_name not in cached_collections:
+                                cached_collections[coll_name] = list(manager.all().order_by("id"))
+                            items = cached_collections[coll_name]
+
+                            if idx > len(items):
+                                from rest_framework.exceptions import ValidationError
+
+                                raise ValidationError(
+                                    f"Cannot skip index in collection {coll_name}. Expected index {len(items)} but got {idx}"
+                                )
+                            if idx == len(items):
+                                new_item = manager.model(report=sofa_report)
+                                items.append(new_item)
+                                models_to_save[id(new_item)] = new_item
+                                created_count += 1
+                            else:
+                                updated_count += 1
+
+                            setattr(items[idx], attr, val)
+                            models_to_save[id(items[idx])] = items[idx]
+                    else:
+                        # Scalar binding: sofa.has_prior_income
+                        if hasattr(sofa_report, path):
+                            setattr(sofa_report, path, val)
+                            models_to_save[id(sofa_report)] = sofa_report
+                            updated_count += 1
+
+            for model_obj in models_to_save.values():
+                model_obj.save()
 
         return Response({"status": "success", "created": created_count, "updated": updated_count})
 
@@ -369,7 +423,7 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
         except Codebtor.DoesNotExist:
             return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
 
-    @action(detail=True, methods=["get"], url_path="dischargeability", url_name="dischargeability")
+    @action(detail=True, methods=["post"], url_path="dischargeability", url_name="dischargeability")
     def dischargeability(self, request, pk=None):
         session = self.get_object()
         from apps.eligibility.services.dischargeability_service import DischargeabilityService

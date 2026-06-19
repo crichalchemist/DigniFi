@@ -24,12 +24,12 @@ describe('DebtExplanationsPanel', () => {
   it('renders dischargeable count', () => {
     render(<DebtExplanationsPanel debts={mockData} />);
     expect(screen.getAllByText('1')).toHaveLength(2);
-    expect(screen.getByText('Dischargeable debts')).toBeInTheDocument();
+    expect(screen.getByText('Dischargeable amounts')).toBeInTheDocument();
   });
   it('renders non-dischargeable count', () => {
     render(<DebtExplanationsPanel debts={mockData} />);
     expect(screen.getAllByText('1')).toHaveLength(2);
-    expect(screen.getByText('Non-dischargeable debts')).toBeInTheDocument();
+    expect(screen.getByText('Non-dischargeable amounts')).toBeInTheDocument();
   });
   it('shows student loan proceeding needed', () => {
     render(<DebtExplanationsPanel debts={mockData} />);
@@ -38,6 +38,6 @@ describe('DebtExplanationsPanel', () => {
   });
   it('shows empty state', () => {
     render(<DebtExplanationsPanel debts={[]} />);
-    expect(screen.getByText(/no debts/i)).toBeInTheDocument();
+    expect(screen.getByText(/no amounts/i)).toBeInTheDocument();
   });
 });

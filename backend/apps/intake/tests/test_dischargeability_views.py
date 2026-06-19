@@ -42,7 +42,7 @@ class TestDischargeabilityView:
     def test_returns_classification(self, auth_client_with_student_loan):
         client, session = auth_client_with_student_loan
         url = reverse("intake-session-dischargeability", kwargs={"pk": session.pk})
-        response = client.get(url)
+        response = client.post(url)
         assert response.status_code == 200
         data = response.json()
         assert len(data) == 1
