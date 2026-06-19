@@ -38,7 +38,7 @@ export function ContractsStep() {
     if (!session) return;
     try {
       const data = await api.intake.contracts(session.id);
-      setContracts(data);
+      setContracts(data as Contract[]);
     } catch {
       // ignore
     } finally {

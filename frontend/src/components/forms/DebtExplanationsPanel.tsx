@@ -1,4 +1,4 @@
-interface DebtClassification {
+export interface DebtClassification {
   debt_id: number;
   creditor: string;
   debt_type: string;
