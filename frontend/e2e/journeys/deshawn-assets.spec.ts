@@ -58,7 +58,13 @@ test.describe('DeShawn Mitchell — Assets', () => {
     }
     await wizard.nextStep();
 
-    // Step 6: Review & Complete
+    // Step 6: Contracts & Leases (optional — no entries needed)
+    await wizard.nextStep();
+
+    // Step 7: Codebtors (optional — no entries needed)
+    await wizard.nextStep();
+
+    // Step 8: Review & Complete
     await wizard.fillReview();
     await wizard.completeIntake();
 

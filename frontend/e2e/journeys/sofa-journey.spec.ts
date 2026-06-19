@@ -72,7 +72,13 @@ test.describe('SOFA — Form 107 Financial History', () => {
     }
     await wizard.nextStep();
 
-    // Step 6: Review & Complete
+    // Step 6: Contracts & Leases (optional — no entries needed)
+    await wizard.nextStep();
+
+    // Step 7: Codebtors (optional — no entries needed)
+    await wizard.nextStep();
+
+    // Step 8: Review & Complete
     await wizard.fillReview();
     await wizard.completeIntake();
     // James is NOT fee-waiver eligible → handleComplete redirects to /sofa

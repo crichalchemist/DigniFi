@@ -137,7 +137,8 @@ export function IntakeWizard() {
       const nextStep = currentStepNumber + 1;
       await updateCurrentStep(nextStep);
       setCurrentStepNumber(nextStep);
-      setCanProceed(false); // Reset validation for next step
+      // Contracts (6) and Codebtors (7) are optional — pre-approve so Continue stays enabled
+      setCanProceed(nextStep === 6 || nextStep === 7);
     } catch (error) {
       console.error('Error advancing to next step:', error);
     }
