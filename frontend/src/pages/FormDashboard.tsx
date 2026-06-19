@@ -10,6 +10,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useIntake } from '../context/IntakeContext';
 import { api } from '../api/client';
 import { FormCard, GenerateAllButton, DebtExplanationsPanel } from '../components/forms';
+import type { DebtClassification } from '../components/forms/DebtExplanationsPanel';
 import { UPLDisclaimer } from '../components/compliance';
 import { UPL_FORM_DISCLAIMER } from '../constants/upl';
 import { Button } from '../components/common';
@@ -34,7 +35,7 @@ export function FormDashboard() {
   const [error, setError] = useState<string | null>(null);
   const [showSurvey, setShowSurvey] = useState(false);
   const [generationErrors, setGenerationErrors] = useState<GenerateAllError[]>([]);
-  const [dischargeData, setDischargeData] = useState<unknown[]>([]);
+  const [dischargeData, setDischargeData] = useState<DebtClassification[]>([]);
 
   // Load existing forms on mount
   const loadForms = useCallback(async () => {
@@ -60,7 +61,7 @@ export function FormDashboard() {
     if (!session) return;
     api.intake
       .getDischargeability(session.id)
-      .then(setDischargeData)
+      .then((data) => setDischargeData(data as DebtClassification[]))
       .catch(() => {});
   }, [session]);
 

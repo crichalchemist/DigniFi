@@ -47,7 +47,7 @@ export function CodebtorsStep() {
     if (!session) return;
     try {
       const data = await api.intake.codebtors(session.id);
-      setCodebtors(data);
+      setCodebtors(data as Codebtor[]);
     } catch {
       // ignore
     } finally {
