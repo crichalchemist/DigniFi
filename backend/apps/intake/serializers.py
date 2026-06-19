@@ -245,7 +245,7 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
             "created_at",
             "completed_at",
         ]
-        read_only_fields = ["id", "created_at", "completed_at", "district_name"]
+        read_only_fields = ["id", "user", "created_at", "completed_at", "district_name"]
 
     def create(self, validated_data):
         """

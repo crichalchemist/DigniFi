@@ -101,6 +101,9 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
             DebtInfo.objects.filter(session=instance, is_draft=True).update(is_draft=False)
         return response
 
+    def perform_update(self, serializer):
+        serializer.save(user=self.request.user)
+
     @action(detail=True, methods=["post"])
     def update_step(self, request, pk=None):
         """
