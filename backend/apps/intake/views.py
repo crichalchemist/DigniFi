@@ -70,9 +70,7 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
             "current_step": 1
         }
         """
-        # Ensure user is set to authenticated user
         data = request.data.copy()
-        data["user"] = request.user.id
         data["status"] = "started"
 
         serializer = self.get_serializer(data=data)
@@ -100,6 +98,9 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
         if "debts" in request.data:
             DebtInfo.objects.filter(session=instance, is_draft=True).update(is_draft=False)
         return response
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
 
     def perform_update(self, serializer):
         serializer.save(user=self.request.user)
