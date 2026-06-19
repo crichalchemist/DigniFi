@@ -129,10 +129,11 @@ NON_DISCHARGEABLE_TYPES = {
 
 def classify_debt(debt) -> dict:
     reason = NON_DISCHARGEABLE_TYPES.get(debt.debt_type)
+    proceeding_needed = (debt.debt_type == "student_loan")
     return {
         "dischargeable": reason is None,
         "reason": reason or "",
-        "proceeding_needed": reason is not None,
+        "proceeding_needed": proceeding_needed,
     }
 
 
@@ -374,11 +375,14 @@ class DischargeabilityService:
 
     def evaluate(self) -> list[dict]:
         results = []
+        debts_to_update = []
         for debt in self.session.debts.all():
             classification = classify_debt(debt)
-            debt.is_dischargeable = classification["dischargeable"]
-            debt.adversary_proceeding_needed = classification["proceeding_needed"]
-            debt.save(update_fields=["is_dischargeable", "adversary_proceeding_needed"])
+
+            if debt.is_dischargeable != classification["dischargeable"] or debt.adversary_proceeding_needed != classification["proceeding_needed"]:
+                debt.is_dischargeable = classification["dischargeable"]
+                debt.adversary_proceeding_needed = classification["proceeding_needed"]
+                debts_to_update.append(debt)
 
             if classification["proceeding_needed"]:
                 self._ensure_proceeding(debt, classification)
@@ -389,15 +393,19 @@ class DischargeabilityService:
                 "debt_type": debt.debt_type,
                 **classification,
             })
+
+        if debts_to_update:
+            from apps.intake.models import DebtInfo
+            DebtInfo.objects.bulk_update(debts_to_update, ["is_dischargeable", "adversary_proceeding_needed"])
+
         return results
 
     def _ensure_proceeding(self, debt, classification):
-        proceeding_type = "student_loan" if debt.debt_type == "student_loan" else "other"
         AdversaryProceeding.objects.get_or_create(
             session=self.session,
             debt=debt,
             defaults={
-                "proceeding_type": proceeding_type,
+                "proceeding_type": "student_loan",
                 "lender_name": debt.creditor_name,
                 "loan_amount": debt.amount_owed,
             },
@@ -428,7 +436,7 @@ git commit -m "feat(eligibility): add dischargeability service with adversary pr
 
 **Interfaces:**
 
-- Produces: GET /api/intake/sessions/{id}/dischargeability/
+- Produces: POST /api/intake/sessions/{id}/dischargeability/
 
 - [ ] **Step 1: Write the failing test**
 
@@ -465,7 +473,7 @@ class TestDischargeabilityView:
     def test_returns_classification(self, auth_client_with_student_loan):
         client, session = auth_client_with_student_loan
         url = reverse("intakesession-dischargeability", kwargs={"pk": session.pk})
-        response = client.get(url)
+        response = client.post(url)
         assert response.status_code == 200
         data = response.json()
         assert len(data) == 1
@@ -483,7 +491,7 @@ Expected: FAIL (no URL or view)
 Add to IntakeSessionViewSet in `backend/apps/intake/views.py`:
 
 ```python
-    @action(detail=True, methods=["get"], url_path="dischargeability", url_name="dischargeability")
+    @action(detail=True, methods=["post"], url_path="dischargeability", url_name="dischargeability")
     def dischargeability(self, request, pk=None):
         session = self.get_object()
         from apps.eligibility.services.dischargeability_service import DischargeabilityService

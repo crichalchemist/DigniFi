@@ -73,10 +73,10 @@ export function IntakeWizard() {
   // =========================================================================
 
   useEffect(() => {
-    if (!session) {
-      // No session in context yet — create a new one (District ID 1 = ILND)
+    if (!session && !localStorage.getItem('current_session_id')) {
+      // No session in context AND no saved session — create a new one (District ID 1 = ILND)
       createSession(1);
-    } else if (syncedSessionIdRef.current !== session.id) {
+    } else if (session && syncedSessionIdRef.current !== session.id) {
       // Session became available (loaded from localStorage or just created).
       // Sync wizard state once per session id to avoid overwriting in-flight steps.
       syncedSessionIdRef.current = session.id;
@@ -137,7 +137,8 @@ export function IntakeWizard() {
       const nextStep = currentStepNumber + 1;
       await updateCurrentStep(nextStep);
       setCurrentStepNumber(nextStep);
-      setCanProceed(false); // Reset validation for next step
+      // Contracts (6) and Codebtors (7) are optional — pre-approve so Continue stays enabled
+      setCanProceed(nextStep === 6 || nextStep === 7);
     } catch (error) {
       console.error('Error advancing to next step:', error);
     }

@@ -72,7 +72,13 @@ test.describe('SOFA — Form 107 Financial History', () => {
     }
     await wizard.nextStep();
 
-    // Step 6: Review & Complete
+    // Step 6: Contracts & Leases (optional — no entries needed)
+    await wizard.nextStep();
+
+    // Step 7: Codebtors (optional — no entries needed)
+    await wizard.nextStep();
+
+    // Step 8: Review & Complete
     await wizard.fillReview();
     await wizard.completeIntake();
     // James is NOT fee-waiver eligible → handleComplete redirects to /sofa
@@ -102,9 +108,9 @@ test.describe('SOFA — Form 107 Financial History', () => {
 
     // ── Form Generation ─────────────────────────────────────
 
-    await dashboard.generateAllForms(12); // James is not fee-waiver eligible → 12 forms
+    await dashboard.generateAllForms(17); // James is not fee-waiver eligible → 17 forms (no 103B)
     const count = await dashboard.getGeneratedCount();
-    expect(count).toBe(12);
+    expect(count).toBe(17);
 
     // ── Download Form 107 ───────────────────────────────────
 

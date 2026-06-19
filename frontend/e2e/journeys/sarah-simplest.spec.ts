@@ -58,7 +58,13 @@ test.describe('Sarah Chen — Simplest Case', () => {
     }
     await wizard.nextStep();
 
-    // Step 6: Review & Complete
+    // Step 6: Contracts & Leases (optional — no entries needed)
+    await wizard.nextStep();
+
+    // Step 7: Codebtors (optional — no entries needed)
+    await wizard.nextStep();
+
+    // Step 8: Review & Complete
     await wizard.fillReview();
     await wizard.completeIntake();
 
@@ -73,7 +79,7 @@ test.describe('Sarah Chen — Simplest Case', () => {
     // Generate all forms
     await dashboard.generateAllForms();
     const count = await dashboard.getGeneratedCount();
-    expect(count).toBe(13);
+    expect(count).toBe(18);
 
     // Survey appears and can be completed
     expect(await dashboard.isSurveyVisible()).toBe(true);

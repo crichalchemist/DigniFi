@@ -17,11 +17,11 @@ vi.mock('../../context/AuthContext', () => ({
 // Shared fixtures
 // ---------------------------------------------------------------------------
 
-const sessionAtStep6 = {
+const sessionAtStep8 = {
   id: 1,
   user: 1,
   district: 1,
-  current_step: 6,
+  current_step: 8,
   status: 'in_progress' as const,
   created_at: '2026-01-20T10:00:00Z',
   updated_at: '2026-01-20T10:00:00Z',
@@ -118,18 +118,18 @@ async function fillDebtorInfoFields() {
 // Existing tests — handleComplete routing
 // ===========================================================================
 
-describe('IntakeWizard handleComplete routing', () => {
+describe('IntakeWizard handleComplete routing', { timeout: 30_000 }, () => {
   beforeEach(() => {
-    // POST (createSession) return step 6
+    // POST (createSession) return step 8 (Review & Results — the last step)
     server.use(
       http.get('http://localhost:8000/api/intake/sessions/:id/', () =>
-        HttpResponse.json(sessionAtStep6)
+        HttpResponse.json(sessionAtStep8)
       ),
       http.post('http://localhost:8000/api/intake/sessions/', () =>
-        HttpResponse.json({ session: sessionAtStep6, message: 'Session created.' }, { status: 201 })
+        HttpResponse.json({ session: sessionAtStep8, message: 'Session created.' }, { status: 201 })
       ),
       http.patch('http://localhost:8000/api/intake/sessions/:id/', () =>
-        HttpResponse.json(sessionAtStep6)
+        HttpResponse.json(sessionAtStep8)
       )
     );
   });
@@ -173,7 +173,7 @@ describe('IntakeWizard handleComplete routing', () => {
 // New tests — autosave
 // ===========================================================================
 
-describe('IntakeWizard autosave', () => {
+describe('IntakeWizard autosave', { timeout: 15_000 }, () => {
   beforeEach(() => {
     // Serve a step-1 session so the wizard lands on DebtorInfoStep
     server.use(

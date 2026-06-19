@@ -33,8 +33,9 @@ class TestBulkAnswerView:
         )
         payload = {
             "answers": [
-                {"form_type": "form_test", "field_key": "q1", "value": "new"},
-                {"form_type": "form_test", "field_key": "q2", "value": "brand new"},
+                {"form_type": "form_test", "binding": "answer:form_test.q1", "value": "new"},
+                {"form_type": "form_test", "binding": "answer:form_test.q2", "value": "brand new"},
+                {"form_type": "form_test", "binding": "sofa.has_prior_income", "value": "True"},
             ]
         }
         response = client.post(
@@ -45,12 +46,63 @@ class TestBulkAnswerView:
         assert response.status_code == 200
         data = response.json()
         assert data["created"] == 1
-        assert data["updated"] == 1
+        assert data["updated"] == 2
 
         answers = FormAnswer.objects.filter(session=session).order_by("field_key")
         assert answers.count() == 2
         assert answers[0].value == "new"
+        assert answers[0].field_key == "q1"
         assert answers[1].value == "brand new"
+        assert answers[1].field_key == "q2"
+
+        from apps.intake.models import SOFAReport
+
+        sofa = SOFAReport.objects.get(session=session)
+        assert sofa.has_prior_income is True
+
+    def test_bulk_upsert_handles_sofa_bindings(self, auth_client_with_session):
+        client, session = auth_client_with_session
+        from apps.intake.models import SOFAReport
+
+        report = SOFAReport.objects.create(session=session)
+
+        payload = {
+            "answers": [
+                {"form_type": "form_107", "binding": "answer:form_107.street", "value": "123 Main"},
+                {
+                    "form_type": "form_107",
+                    "binding": "sofa.prior_income[0].source",
+                    "value": "Acme Corp",
+                },
+                {
+                    "form_type": "form_107",
+                    "binding": "sofa.prior_income[0].year",
+                    "value": "2023",
+                },
+                {
+                    "form_type": "form_107",
+                    "binding": "sofa.prior_income[0].gross_amount",
+                    "value": "50000.00",
+                },
+                {"form_type": "form_107", "binding": "sofa.has_prior_income", "value": "True"},
+            ]
+        }
+        response = client.post(
+            f"/api/intake/sessions/{session.pk}/answers/bulk/", payload, format="json"
+        )
+        assert response.status_code == 200
+
+        # Verify FormAnswer saved
+        assert FormAnswer.objects.filter(field_key="street", value="123 Main").exists()
+
+        # Verify SOFA saved
+        assert report.prior_income.count() == 1
+        first_item = report.prior_income.first()
+        assert first_item.source == "Acme Corp"
+        assert first_item.year == 2023
+        assert first_item.gross_amount == Decimal("50000.00")
+        report.refresh_from_db()
+        assert report.has_prior_income is True
 
     def test_bulk_upsert_empty_list(self, auth_client_with_session):
         client, session = auth_client_with_session
@@ -63,3 +115,53 @@ class TestBulkAnswerView:
         data = response.json()
         assert data["created"] == 0
         assert data["updated"] == 0
+
+    def test_bulk_upsert_invalid_prefix(self, auth_client_with_session):
+        client, session = auth_client_with_session
+        payload = {
+            "answers": [
+                {"form_type": "form_test", "binding": "invalid:q1", "value": "new"},
+            ]
+        }
+        response = client.post(
+            f"/api/intake/sessions/{session.pk}/answers/bulk/",
+            payload,
+            format="json",
+        )
+        assert response.status_code == 400
+        data = response.json()
+        assert "answers" in data
+
+    def test_bulk_upsert_unknown_sofa_field(self, auth_client_with_session):
+        client, session = auth_client_with_session
+        payload = {
+            "answers": [
+                {"form_type": "form_test", "binding": "sofa.invalid_field", "value": "true"},
+            ]
+        }
+        response = client.post(
+            f"/api/intake/sessions/{session.pk}/answers/bulk/",
+            payload,
+            format="json",
+        )
+        assert response.status_code == 400
+        data = response.json()
+        assert "answers" in data
+
+    def test_bulk_upsert_sofa_coercion_invalid(self, auth_client_with_session):
+        client, session = auth_client_with_session
+        payload = {
+            "answers": [
+                {
+                    "form_type": "form_test",
+                    "binding": "sofa.has_prior_income",
+                    "value": "not a boolean",
+                },
+            ]
+        }
+        response = client.post(
+            f"/api/intake/sessions/{session.pk}/answers/bulk/",
+            payload,
+            format="json",
+        )
+        assert response.status_code == 400

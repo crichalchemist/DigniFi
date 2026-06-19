@@ -32,7 +32,7 @@ function withProviders(ui: React.ReactElement) {
   return render(
     <BrowserRouter>
       <AuthProvider>{ui}</AuthProvider>
-    </BrowserRouter>,
+    </BrowserRouter>
   );
 }
 
@@ -43,7 +43,7 @@ function withIntakeProvider(ui: React.ReactElement) {
       <AuthProvider>
         <IntakeProvider>{ui}</IntakeProvider>
       </AuthProvider>
-    </BrowserRouter>,
+    </BrowserRouter>
   );
 }
 
@@ -66,27 +66,24 @@ describe('Accessibility: Common Components', () => {
   });
 
   it('Button (loading) has no violations', async () => {
-    const { container } = render(<Button isLoading loadingText="Saving...">Save</Button>);
+    const { container } = render(
+      <Button isLoading loadingText="Saving...">
+        Save
+      </Button>
+    );
     const results = await axe(container, axeOptions);
     expect(results).toHaveNoViolations();
   });
 
   it('FormField has no violations', async () => {
-    const { container } = render(
-      <FormField label="Full Name" name="full_name" required />,
-    );
+    const { container } = render(<FormField label="Full Name" name="full_name" required />);
     const results = await axe(container, axeOptions);
     expect(results).toHaveNoViolations();
   });
 
   it('FormField with error has no violations', async () => {
     const { container } = render(
-      <FormField
-        label="Email"
-        name="email"
-        error="Please enter a valid email address"
-        required
-      />,
+      <FormField label="Email" name="email" error="Please enter a valid email address" required />
     );
     const results = await axe(container, axeOptions);
     expect(results).toHaveNoViolations();
@@ -101,7 +98,7 @@ describe('Accessibility: Common Components', () => {
           { value: 'IL', label: 'Illinois' },
           { value: 'CA', label: 'California' },
         ]}
-      />,
+      />
     );
     const results = await axe(container, axeOptions);
     expect(results).toHaveNoViolations();
@@ -113,9 +110,7 @@ describe('Accessibility: Common Components', () => {
       { number: 2, label: 'Income', isCompleted: false, isCurrent: true },
       { number: 3, label: 'Review', isCompleted: false, isCurrent: false },
     ];
-    const { container } = render(
-      <ProgressIndicator steps={steps} currentStep={2} />,
-    );
+    const { container } = render(<ProgressIndicator steps={steps} currentStep={2} />);
     const results = await axe(container, axeOptions);
     expect(results).toHaveNoViolations();
   });
@@ -127,28 +122,20 @@ describe('Accessibility: Common Components', () => {
 
 describe('Accessibility: Compliance Components', () => {
   it('UPLDisclaimer inline has no violations', async () => {
-    const { container } = render(
-      <UPLDisclaimer text={UPL_GENERAL_DISCLAIMER} variant="inline" />,
-    );
+    const { container } = render(<UPLDisclaimer text={UPL_GENERAL_DISCLAIMER} variant="inline" />);
     const results = await axe(container, axeOptions);
     expect(results).toHaveNoViolations();
   });
 
   it('UPLDisclaimer banner has no violations', async () => {
-    const { container } = render(
-      <UPLDisclaimer text={UPL_GENERAL_DISCLAIMER} variant="banner" />,
-    );
+    const { container } = render(<UPLDisclaimer text={UPL_GENERAL_DISCLAIMER} variant="banner" />);
     const results = await axe(container, axeOptions);
     expect(results).toHaveNoViolations();
   });
 
   it('UPLConfirmationModal has no violations', async () => {
     const { container } = render(
-      <UPLConfirmationModal
-        isOpen={true}
-        onConfirm={() => {}}
-        onCancel={() => {}}
-      />,
+      <UPLConfirmationModal isOpen={true} onConfirm={() => {}} onCancel={() => {}} />
     );
     const results = await axe(container, axeOptions);
     expect(results).toHaveNoViolations();
@@ -168,12 +155,14 @@ describe('Accessibility: Form Components', () => {
 
   it('FormCard (pending) has no violations', async () => {
     const { container } = render(
-      <FormCard
-        formType="form_101"
-        onGenerate={async () => {}}
-        onMarkDownloaded={async () => {}}
-        onMarkFiled={async () => {}}
-      />,
+      <BrowserRouter>
+        <FormCard
+          formType="form_101"
+          onGenerate={async () => {}}
+          onMarkDownloaded={async () => {}}
+          onMarkFiled={async () => {}}
+        />
+      </BrowserRouter>
     );
     const results = await axe(container, axeOptions);
     expect(results).toHaveNoViolations();
@@ -195,13 +184,15 @@ describe('Accessibility: Form Components', () => {
       updated_at: '2026-01-20T10:00:00Z',
     };
     const { container } = render(
-      <FormCard
-        formType="form_101"
-        generatedForm={mockForm}
-        onGenerate={async () => {}}
-        onMarkDownloaded={async () => {}}
-        onMarkFiled={async () => {}}
-      />,
+      <BrowserRouter>
+        <FormCard
+          formType="form_101"
+          generatedForm={mockForm}
+          onGenerate={async () => {}}
+          onMarkDownloaded={async () => {}}
+          onMarkFiled={async () => {}}
+        />
+      </BrowserRouter>
     );
     const results = await axe(container, axeOptions);
     expect(results).toHaveNoViolations();

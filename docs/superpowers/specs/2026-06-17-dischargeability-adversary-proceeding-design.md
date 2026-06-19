@@ -144,10 +144,16 @@ class DischargeabilityService:
     def evaluate(self, session: IntakeSession) -> list[dict]:
         """Evaluate all debts, flag non-dischargeable, return summary."""
         results = []
+        debts_to_update = []
         for debt in session.debts.all():
             classification = self._classify(debt)
-            if not classification["dischargeable"]:
-                self._flag_debt(debt, classification)
+
+            if debt.is_dischargeable != classification["dischargeable"] or debt.adversary_proceeding_needed != classification["proceeding_needed"]:
+                debt.is_dischargeable = classification["dischargeable"]
+                debt.adversary_proceeding_needed = classification["proceeding_needed"]
+                debts_to_update.append(debt)
+
+            if classification["proceeding_needed"]:
                 self._ensure_proceeding(session, debt, classification)
             results.append({
                 "debt_id": debt.id,
@@ -155,14 +161,19 @@ class DischargeabilityService:
                 "type": debt.debt_type,
                 **classification,
             })
+
+        if debts_to_update:
+            DebtInfo.objects.bulk_update(debts_to_update, ["is_dischargeable", "adversary_proceeding_needed"])
+
         return results
 
     def _classify(self, debt) -> dict:
         reason = NON_DISCHARGEABLE_TYPES.get(debt.debt_type)
+        proceeding_needed = (debt.debt_type == "student_loan")
         return {
             "dischargeable": reason is None,
             "reason": reason or "",
-            "proceeding_needed": reason is not None,
+            "proceeding_needed": proceeding_needed,
         }
 ```
 
@@ -170,7 +181,7 @@ class DischargeabilityService:
 
 | Endpoint                                                | Method | Purpose                            |
 | ------------------------------------------------------- | ------ | ---------------------------------- |
-| `/api/intake/sessions/{id}/dischargeability/`           | GET    | Evaluate all debts, return summary |
+| `/api/intake/sessions/{id}/dischargeability/`           | POST   | Evaluate all debts, return summary |
 | `/api/intake/sessions/{id}/adversary-proceedings/`      | GET    | List adversary proceedings         |
 | `/api/intake/sessions/{id}/adversary-proceedings/`      | POST   | Create/update proceeding           |
 | `/api/intake/sessions/{id}/adversary-proceedings/{id}/` | PATCH  | Update status/narrative            |
@@ -206,7 +217,7 @@ For each student_loan debt:
     2. Set debt.adversary_proceeding_needed = True
     3. Create AdversaryProceeding(status="identified")
     ↓
-GET /api/intake/sessions/{id}/dischargeability/
+POST /api/intake/sessions/{id}/dischargeability/
     ↓
 DebtExplanationsPanel shows:
     "2 of 5 debts are non-dischargeable:

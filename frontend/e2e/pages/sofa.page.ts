@@ -36,8 +36,8 @@ export class SOFAPage {
     const checkbox = this.page.locator('.sofa-section').first().locator('input[type="checkbox"]');
     const isChecked = await checkbox.isChecked();
     if (isChecked !== on) {
-      await checkbox.check({ force: true });
-      if (on) await this.page.waitForTimeout(200);
+      await checkbox.click();
+      if (on) await this.page.waitForTimeout(300);
     }
   }
 
@@ -75,8 +75,8 @@ export class SOFAPage {
     const checkbox = this.page.locator('.sofa-section').nth(1).locator('input[type="checkbox"]');
     const isChecked = await checkbox.isChecked();
     if (isChecked !== on) {
-      await checkbox.check({ force: true });
-      if (on) await this.page.waitForTimeout(200);
+      await checkbox.click();
+      if (on) await this.page.waitForTimeout(300);
     }
   }
 

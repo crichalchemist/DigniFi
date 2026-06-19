@@ -415,7 +415,9 @@ export const intakeAPI = {
     });
   },
   getDischargeability: async (sessionId: number): Promise<unknown[]> => {
-    return apiFetch<unknown[]>(`/intake/sessions/${sessionId}/dischargeability/`);
+    return apiFetch<unknown[]>(`/intake/sessions/${sessionId}/dischargeability/`, {
+      method: 'POST',
+    });
   },
 };
 
@@ -692,10 +694,13 @@ export const askModulesAPI = {
     sessionId: number,
     answers: AnswerPayload[]
   ): Promise<{ status: string; created: number; updated: number }> => {
-    return apiFetch(`/intake/sessions/${sessionId}/answers/bulk/`, {
-      method: 'POST',
-      body: JSON.stringify({ answers }),
-    });
+    return apiFetch<{ status: string; created: number; updated: number }>(
+      `/intake/sessions/${sessionId}/answers/bulk/`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ answers }),
+      }
+    );
   },
 };
 
