@@ -10,9 +10,9 @@ export class DashboardPage {
   /**
    * @param expectedCount Forms that should generate. Sessions without a
    * FeeWaiverApplication can't generate Form 103B (the waiver application
-   * itself), so non-waiver personas expect 12.
+   * itself), so non-waiver personas expect 17.
    */
-  async generateAllForms(expectedCount = 13) {
+  async generateAllForms(expectedCount = 18) {
     const btn = this.page.getByRole('button', { name: /generate all/i });
     await btn.click();
 
@@ -23,9 +23,9 @@ export class DashboardPage {
       .getByRole('button', { name: /continue/i })
       .click();
 
-    // Bulk generation hits 13 endpoints; wait for the progress text to settle
+    // Bulk generation hits 18 endpoints; wait for the progress text to settle
     await expect(this.page.locator('.form-dashboard-progress-text')).toContainText(
-      `${expectedCount} of 13`,
+      `${expectedCount} of 18`,
       { timeout: 60000 }
     );
   }

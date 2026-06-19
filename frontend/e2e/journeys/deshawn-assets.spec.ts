@@ -80,6 +80,6 @@ test.describe('DeShawn Mitchell — Assets', () => {
     // Generate forms (passes means test)
     await dashboard.generateAllForms();
     const count = await dashboard.getGeneratedCount();
-    expect(count).toBe(13);
+    expect(count).toBe(18);
   });
 });

@@ -108,9 +108,9 @@ test.describe('SOFA — Form 107 Financial History', () => {
 
     // ── Form Generation ─────────────────────────────────────
 
-    await dashboard.generateAllForms(12); // James is not fee-waiver eligible → 12 forms
+    await dashboard.generateAllForms(17); // James is not fee-waiver eligible → 17 forms (no 103B)
     const count = await dashboard.getGeneratedCount();
-    expect(count).toBe(12);
+    expect(count).toBe(17);
 
     // ── Download Form 107 ───────────────────────────────────
 
