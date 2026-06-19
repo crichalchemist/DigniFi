@@ -112,7 +112,7 @@ describe('FormDashboard', () => {
     renderFormDashboard();
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /generate all 13 forms/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /generate all 18 forms/i })).toBeInTheDocument();
     });
   });
 
