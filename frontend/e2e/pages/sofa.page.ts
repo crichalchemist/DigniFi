@@ -37,7 +37,14 @@ export class SOFAPage {
     const isChecked = await checkbox.isChecked();
     if (isChecked !== on) {
       await checkbox.check({ force: true });
-      if (on) await this.page.waitForTimeout(200);
+      if (on) {
+        await this.page
+          .locator('.sofa-section')
+          .first()
+          .locator('.sofa-row')
+          .first()
+          .waitFor({ state: 'visible' });
+      }
     }
   }
 
@@ -76,7 +83,14 @@ export class SOFAPage {
     const isChecked = await checkbox.isChecked();
     if (isChecked !== on) {
       await checkbox.check({ force: true });
-      if (on) await this.page.waitForTimeout(200);
+      if (on) {
+        await this.page
+          .locator('.sofa-section')
+          .nth(1)
+          .locator('.sofa-row')
+          .first()
+          .waitFor({ state: 'visible' });
+      }
     }
   }
 
