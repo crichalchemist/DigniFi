@@ -86,3 +86,103 @@ def test_non_creditor_bill_raises(db, session, uploaded_doc):
     creator = DraftDebtCreator()
     with pytest.raises(ValueError, match="CREDITOR_BILL"):
         creator.create_from_result(result, session, uploaded_doc)
+
+
+class TestDraftDebtCreatorCreditReport:
+    """Tests for multi-tradeline credit report extraction."""
+
+    def test_creates_one_debt_per_nonzero_tradeline(self, db, session, uploaded_doc):
+        from decimal import Decimal
+
+        from apps.documents.schemas.credit_report import CreditReportExtraction, TradelineItem
+
+        result = CreditReportExtraction(
+            tradelines=[
+                TradelineItem(
+                    creditor_name="Chase Bank",
+                    account_number="****1234",
+                    amount_owed=Decimal("5000.00"),
+                    account_type="credit_card",
+                    account_status="open",
+                ),
+                TradelineItem(
+                    creditor_name="Paid Off LLC",
+                    account_number=None,
+                    amount_owed=Decimal("0"),
+                    account_type="other",
+                    account_status="closed",
+                ),
+            ]
+        )
+        debts = DraftDebtCreator().create_from_credit_report(result, session, uploaded_doc)
+
+        assert len(debts) == 1
+        assert debts[0].creditor_name == "Chase Bank"
+        assert debts[0].is_draft is True
+        assert debts[0].source_document == uploaded_doc
+        assert debts[0].session == session
+
+    def test_skips_zero_balance_tradelines(self, db, session, uploaded_doc):
+        from decimal import Decimal
+
+        from apps.documents.schemas.credit_report import CreditReportExtraction, TradelineItem
+
+        result = CreditReportExtraction(
+            tradelines=[
+                TradelineItem(
+                    creditor_name="Zero Balance",
+                    account_number=None,
+                    amount_owed=Decimal("0"),
+                    account_type="credit_card",
+                    account_status="closed",
+                )
+            ]
+        )
+        debts = DraftDebtCreator().create_from_credit_report(result, session, uploaded_doc)
+        assert debts == []
+
+    def test_empty_tradelines_returns_empty_list(self, db, session, uploaded_doc):
+        from apps.documents.schemas.credit_report import CreditReportExtraction
+
+        result = CreditReportExtraction(tradelines=[])
+        debts = DraftDebtCreator().create_from_credit_report(result, session, uploaded_doc)
+        assert debts == []
+
+    def test_maps_account_type_to_debt_type(self, db, session, uploaded_doc):
+        from decimal import Decimal
+
+        from apps.documents.schemas.credit_report import CreditReportExtraction, TradelineItem
+
+        result = CreditReportExtraction(
+            tradelines=[
+                TradelineItem(
+                    creditor_name="Auto Dealer",
+                    account_number=None,
+                    amount_owed=Decimal("12000.00"),
+                    account_type="auto_loan",
+                    account_status="open",
+                )
+            ]
+        )
+        debts = DraftDebtCreator().create_from_credit_report(result, session, uploaded_doc)
+        assert debts[0].debt_type == "auto_loan"
+        assert debts[0].is_secured is True
+
+    def test_accepts_masked_account_numbers(self, db, session, uploaded_doc):
+        from decimal import Decimal
+
+        from apps.documents.schemas.credit_report import CreditReportExtraction, TradelineItem
+
+        result = CreditReportExtraction(
+            tradelines=[
+                TradelineItem(
+                    creditor_name="Citi",
+                    account_number="****9999",
+                    amount_owed=Decimal("3500.00"),
+                    account_type="credit_card",
+                    account_status="open",
+                )
+            ]
+        )
+        debts = DraftDebtCreator().create_from_credit_report(result, session, uploaded_doc)
+        assert debts[0].account_number == "****9999"
