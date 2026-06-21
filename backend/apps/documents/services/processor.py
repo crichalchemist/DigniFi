@@ -83,6 +83,7 @@ class DocumentProcessor:
                         input_path=[pdf_path],
                         output_dir=tmp_out,
                         format="markdown",
+                        hybrid="docling-fast",
                     )
                     text = _read_odl_output(tmp_out)
                 except Exception as exc:
