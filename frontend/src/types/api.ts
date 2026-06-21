@@ -169,6 +169,7 @@ export interface DebtInfo {
   // Document scanning
   is_draft?: boolean;
   source_document?: number | null;
+  source_document_name?: string | null;
 }
 
 // ============================================================================
