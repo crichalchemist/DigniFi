@@ -16,8 +16,8 @@
 
 | Suite             | Count          | Status          |
 | ----------------- | -------------- | --------------- |
-| Backend (pytest)  | 494 (+1 xfail) | Passing         |
-| Frontend (vitest) | 171            | Passing         |
+| Backend (pytest)  | 655 (+1 xfail) | Passing         |
+| Frontend (vitest) | 207            | Passing         |
 | E2E persona tests | 5/5 personas   | All steps green |
 
 ## Quick Start
@@ -122,7 +122,7 @@ dignifi/
 │   │   ├── intake/         # Data collection (6-step wizard)
 │   │   ├── eligibility/    # Means test calculator
 │   │   ├── documents/      # Document scanning pipeline (OCR → draft debts)
-│   │   └── forms/          # 13 bankruptcy form generators + PDF filler
+│   │   └── forms/          # 18 bankruptcy form generators + PDF filler
 │   ├── config/             # Django settings (base, dev, prod)
 │   └── requirements/       # Python dependencies
 ├── frontend/               # React 19 + TypeScript SPA
@@ -145,22 +145,22 @@ dignifi/
 
 - **Backend**: Python 3.11, Django 5.0, Django REST Framework, PostgreSQL 15
 - **Frontend**: React 19, Vite 7, TypeScript (Context API for state management)
-- **PDF Generation**: pypdf 6.x — 13 generators fill official AO court templates
+- **PDF Generation**: pypdf 6.x — 18 generators fill official AO court templates
 - **Authentication**: JWT (djangorestframework-simplejwt) with silent refresh
 - **Encryption**: django-encrypted-model-fields (Fernet) for PII
 - **Testing**: pytest, vitest, Playwright, vitest-axe (accessibility)
 - **CI/CD**: GitHub Actions (lint, backend tests, frontend tests, E2E)
-- **Document Scanning**: Gemma 3 4B via llama.cpp (local LLM), opendataloader-pdf, pymupdf
+- **Document Scanning**: Gemini 2.0 Flash (Google AI), opendataloader-pdf, pymupdf
 - **Infrastructure**: Docker, Docker Compose (dev); Heroku Container Stack (production)
 
 ## Core Features
 
-- Document scanning pipeline: drag-and-drop upload → OCR (local Gemma 3 4B) → draft debt entries
+- Document scanning (v2): drag-and-drop upload → Gemini 2.0 Flash OCR → credit reports extract tradelines into debt drafts (with "From scan" badge); paystubs aggregate income into Schedule I prefill
 - User authentication with JWT (access in memory, refresh in localStorage)
 - 6-step intake wizard: Debtor Info → Income → Expenses → Assets → Debts → Review
 - Chapter 7 means test calculator (11 U.S.C. § 707(b) — annualized CMI vs. Census median by household size)
 - Fee waiver eligibility assessment (28 U.S.C. § 1930(f))
-- 13 bankruptcy form generators (Form 101 through Schedules A/B–J)
+- 18 bankruptcy form generators (Form 101 through Schedules A/B–J + adversary proceeding forms)
 - PDF download — generators fill the official AO court templates via pypdf
 - UPL confirmation modal gates all form generation
 - Post-task usability survey (3 Likert + 2 open text)
@@ -203,10 +203,10 @@ See `docs/UPL_COMPLIANCE.md` for complete guidelines.
 ## Testing
 
 ```bash
-# Backend (494 tests + 1 xfail)
+# Backend (655 tests + 1 xfail)
 docker compose exec backend pytest -q
 
-# Frontend (171 tests)
+# Frontend (207 tests)
 cd frontend && npx vitest run
 
 # Full persona E2E (5 personas × full flow)
@@ -228,7 +228,7 @@ Key endpoints:
 | PATCH  | `/api/intake/sessions/{id}/`                      | Update session data (nested serializer) |
 | POST   | `/api/intake/sessions/{id}/complete/`             | Finalize intake                         |
 | POST   | `/api/intake/sessions/{id}/calculate_means_test/` | Run means test                          |
-| POST   | `/api/forms/generate_all/`                        | Generate all 13 forms                   |
+| POST   | `/api/forms/generate_all/`                        | Generate all 18 forms                   |
 | GET    | `/api/forms/?session={id}`                        | List generated forms                    |
 
 ## Contributing
