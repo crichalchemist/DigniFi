@@ -126,9 +126,7 @@ class OCRResult(models.Model):
 
     # Processing metadata
     status = models.CharField(max_length=20, choices=OCRStatus.choices, default=OCRStatus.PENDING)
-    ocr_provider = models.CharField(
-        max_length=50, default="clarifai", help_text="OCR provider used (clarifai or vllm)"
-    )
+    ocr_provider = models.CharField(max_length=50, default="gemini", help_text="OCR provider used")
 
     # Extracted data (encrypted JSON)
     extracted_data = models.TextField(help_text="JSON structure of extracted fields")
