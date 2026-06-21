@@ -34,7 +34,7 @@ services:
     depends_on:
       db:
         condition: service_healthy
-      llm:
+      odl-hybrid:
         condition: service_healthy
 
   frontend:
@@ -52,21 +52,17 @@ services:
     stdin_open: true
     tty: true
 
-  llm:
-    image: ghcr.io/ggml-org/llama.cpp:server
-    entrypoint: ["/bin/sh", "/scripts/pull_model.sh"]
-    volumes:
-      - ./scripts:/scripts:ro
-      - models:/models
+  odl-hybrid:
+    image: ghcr.io/opendataloader-project/opendataloader-pdf:latest
+    command: opendataloader-pdf-hybrid --port 5002 --force-ocr
     ports:
-      - "8080:8080"
+      - '5002:5002'
     healthcheck:
-      test: ["CMD-SHELL", "curl -sf http://localhost:8080/health || exit 1"]
+      test: ['CMD', 'curl', '-f', 'http://localhost:5002/health']
       interval: 30s
       timeout: 10s
-      start_period: 300s
-      retries: 10
+      retries: 5
+      start_period: 60s
 
 volumes:
   postgres_data:
-  models:
