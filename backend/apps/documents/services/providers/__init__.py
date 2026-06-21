@@ -1,9 +1,9 @@
 """OCR provider implementations."""
 
 from .base import BaseOCRProvider
-from .clarifai import ClarifaiOCRProvider
+from .gemini import GeminiProvider
 
 __all__ = [
-    'BaseOCRProvider',
-    'ClarifaiOCRProvider',
+    "BaseOCRProvider",
+    "GeminiProvider",
 ]
