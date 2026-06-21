@@ -41,6 +41,8 @@ class AggregateIngestionService:
 
         total_monthly_gross = Decimal("0")
         valid_stubs = 0
+        most_recent_end = None
+        most_recent_employer: str = ""
 
         for ocr in results:
             try:
@@ -56,6 +58,10 @@ class AggregateIngestionService:
 
                 total_monthly_gross += monthly_gross
                 valid_stubs += 1
+
+                if most_recent_end is None or parsed.pay_period_end > most_recent_end:
+                    most_recent_end = parsed.pay_period_end
+                    most_recent_employer = parsed.employer_name or ""
             except Exception as e:
                 logger.warning("Skipping invalid paystub OCRResult %s: %s", ocr.id, e)
 
@@ -67,6 +73,11 @@ class AggregateIngestionService:
                 session_id=session_id,
                 ingest_key="paystub.gross",
                 defaults={"value": str(avg_monthly_gross)},
+            )
+            IngestedAggregate.objects.update_or_create(
+                session_id=session_id,
+                ingest_key="paystub.employer_name",
+                defaults={"value": most_recent_employer},
             )
         else:
             IngestedAggregate.objects.filter(

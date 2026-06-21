@@ -189,6 +189,7 @@ class DebtInfoSerializer(serializers.ModelSerializer):
 
     # Explicit field declaration — EncryptedDecimalField confuses DRF's auto-mapper
     amount_owed = serializers.DecimalField(max_digits=12, decimal_places=2, write_only=True)
+    source_document_name = serializers.SerializerMethodField()
 
     class Meta:
         model = DebtInfo
@@ -206,11 +207,18 @@ class DebtInfoSerializer(serializers.ModelSerializer):
             "notes",
             "created_at",
             "updated_at",
+            "is_draft",
+            "source_document_name",
         ]
-        read_only_fields = ["id", "created_at", "updated_at"]
+        read_only_fields = ["id", "created_at", "updated_at", "is_draft", "source_document_name"]
         extra_kwargs = {
             "account_number": {"write_only": True},  # Don't expose account numbers
         }
+
+    def get_source_document_name(self, obj) -> str | None:
+        if obj.source_document:
+            return obj.source_document.original_filename
+        return None
 
 
 class IntakeSessionSerializer(serializers.ModelSerializer):
