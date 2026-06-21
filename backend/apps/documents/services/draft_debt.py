@@ -45,7 +45,7 @@ class DraftDebtCreator:
         result: "CreditReportExtraction",  # noqa: F821
         session: IntakeSession,
         source_document: UploadedDocument,
-    ) -> list:
+    ) -> list[DebtInfo]:
         """Create draft DebtInfo records from each non-zero tradeline."""
         created = []
         for tradeline in result.tradelines:
@@ -60,6 +60,7 @@ class DraftDebtCreator:
                 amount_owed=tradeline.amount_owed,
                 debt_type=self._map_account_type(tradeline.account_type),
                 is_secured=tradeline.account_type in ("auto_loan", "mortgage"),
+                is_in_collections=tradeline.account_status in ("in_collections", "charged_off"),
                 priority_classification=self._priority_for_type(tradeline.account_type),
                 data_source="credit_report",
             )
