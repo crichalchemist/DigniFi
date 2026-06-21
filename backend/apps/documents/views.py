@@ -55,6 +55,16 @@ def _run_processing(doc_id: int) -> None:
                     DraftDebtCreator().create_from_result(result, doc.session, doc)
                 except Exception as exc:
                     logger.warning("DraftDebtCreator failed for doc %s: %s", doc_id, exc)
+            elif doc.document_type == DocumentType.CREDIT_REPORT:
+                try:
+                    from apps.documents.schemas.credit_report import CreditReportExtraction
+
+                    schema_obj = CreditReportExtraction.model_validate(result.fields)
+                    DraftDebtCreator().create_from_credit_report(schema_obj, doc.session, doc)
+                except Exception as exc:
+                    logger.warning(
+                        "DraftDebtCreator (credit report) failed for doc %s: %s", doc_id, exc
+                    )
 
         ocr.save()
 
