@@ -135,6 +135,11 @@ describe('IntakeWizard handleComplete routing', { timeout: 30_000 }, () => {
   });
 
   it('navigates to /fee-waiver when qualifies_for_fee_waiver is true', async () => {
+    renderWizard();
+    const completeBtn = await screen.findByRole('button', { name: /complete intake/i });
+
+    // Register AFTER the session GET resolves (wizard is at step 8). Registering
+    // before renderWizard() races with the GET under system load in the full suite.
     server.use(
       http.post('http://localhost:8000/api/intake/sessions/:id/calculate_means_test/', () =>
         HttpResponse.json({
@@ -149,8 +154,6 @@ describe('IntakeWizard handleComplete routing', { timeout: 30_000 }, () => {
       )
     );
 
-    renderWizard();
-    const completeBtn = await screen.findByRole('button', { name: /complete intake/i });
     await userEvent.click(completeBtn);
 
     await waitFor(() => {
