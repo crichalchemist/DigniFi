@@ -245,6 +245,7 @@ PDF_OUTPUT_DIRECTORY = MEDIA_ROOT / "generated_forms"
 LLM_BASE_URL = env("LLM_BASE_URL", default="http://llm:8080/v1")
 LLM_API_KEY = env("LLM_API_KEY", default="not-required")
 LLM_MODEL = env("LLM_MODEL", default="gemma-3-4b-it")
+GEMINI_API_KEY = env("GEMINI_API_KEY", default="")
 
 # Document Storage
 DOCUMENT_STORAGE_BACKEND = env("DOCUMENT_STORAGE_BACKEND", default="filesystem")

@@ -15,7 +15,7 @@ class PayStubExtraction(BaseExtractionSchema):
     Used for Schedule I (Income) and means test calculations.
     """
 
-    employer_name: str = Field(min_length=1, description="Employer or company name")
+    employer_name: str | None = Field(default=None, description="Employer or company name")
     gross_pay: Decimal = Field(gt=0, description="Gross pay for this period")
     pay_period_start: date = Field(description="Pay period start date (YYYY-MM-DD)")
     pay_period_end: date = Field(description="Pay period end date (YYYY-MM-DD)")

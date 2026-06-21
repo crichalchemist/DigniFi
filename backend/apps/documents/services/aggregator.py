@@ -54,7 +54,7 @@ class AggregateIngestionService:
                     continue
 
                 daily_gross = parsed.gross_pay / Decimal(str(days))
-                monthly_gross = daily_gross * Decimal("30.416666")
+                monthly_gross = daily_gross * Decimal("30.41667")
 
                 total_monthly_gross += monthly_gross
                 valid_stubs += 1
