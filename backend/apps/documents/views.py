@@ -13,7 +13,7 @@ from apps.documents.models import DocumentType, OCRResult, OCRStatus, UploadedDo
 from apps.documents.services.aggregator import AggregateIngestionService
 from apps.documents.services.draft_debt import DraftDebtCreator
 from apps.documents.services.processor import DocumentProcessor
-from apps.documents.services.providers.llama_cpp import LlamaCppProvider
+from apps.documents.services.providers.gemini import GeminiProvider
 from apps.intake.models import IntakeSession
 
 logger = logging.getLogger(__name__)
@@ -22,10 +22,8 @@ ALLOWED_MIME_TYPES = {"application/pdf", "image/jpeg", "image/png", "image/webp"
 
 
 def _get_processor() -> DocumentProcessor:
-    provider = LlamaCppProvider(
-        base_url=getattr(settings, "LLM_BASE_URL", "http://llm:8080/v1"),
-        api_key=getattr(settings, "LLM_API_KEY", "not-required"),
-        model=getattr(settings, "LLM_MODEL", "gemma-3-4b-it"),
+    provider = GeminiProvider(
+        model=getattr(settings, "LLM_MODEL", "gemini-2.0-flash"),
     )
     return DocumentProcessor(provider=provider)
 
