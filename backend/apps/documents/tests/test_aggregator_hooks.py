@@ -42,12 +42,12 @@ class TestAggregatorHooks(TestCase):
             confidence_scores={},
         )
 
-    @patch("apps.documents.views.DocumentProcessor")
+    @patch("apps.documents.views._get_processor")
     @patch("apps.documents.views.AggregateIngestionService.recalculate")
-    def test_run_processing_hook(self, mock_recalc, mock_processor):
-        mock_processor.return_value.process.return_value.error = None
-        mock_processor.return_value.process.return_value.fields = {}
-        mock_processor.return_value.process.return_value.confidence = {}
+    def test_run_processing_hook(self, mock_recalc, mock_get_processor):
+        mock_get_processor.return_value.process.return_value.error = None
+        mock_get_processor.return_value.process.return_value.fields = {}
+        mock_get_processor.return_value.process.return_value.confidence = {}
 
         _run_processing(self.doc.id)
         mock_recalc.assert_called_once_with(self.session.id)
