@@ -2,7 +2,6 @@ import json
 import logging
 from concurrent.futures import ThreadPoolExecutor
 
-from django.conf import settings
 from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
@@ -23,7 +22,7 @@ ALLOWED_MIME_TYPES = {"application/pdf", "image/jpeg", "image/png", "image/webp"
 
 def _get_processor() -> DocumentProcessor:
     provider = GeminiProvider(
-        model=getattr(settings, "LLM_MODEL", "gemini-2.0-flash"),
+        model="gemini-2.0-flash",
     )
     return DocumentProcessor(provider=provider)
 
