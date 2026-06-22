@@ -51,11 +51,9 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | 
   }
 }
 
-/** Shared IntakeProvider for wizard + dashboard routes. */
 function IntakeLayout() {
   return (
     <IntakeProvider>
-      <AppHeader />
       <Outlet />
     </IntakeProvider>
   );
@@ -68,6 +66,7 @@ function App() {
         <SkipNavigation />
         <ErrorBoundary>
           <div className="app">
+            <AppHeader />
             <Routes>
               <Route path="/" element={<LandingPage />} />
               <Route path="/login" element={<LoginPage />} />
