@@ -53,7 +53,11 @@ services:
     tty: true
 
   odl-hybrid:
-    image: ghcr.io/opendataloader-project/opendataloader-pdf:latest
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      args:
+        REQUIREMENTS_FILE: requirements/development.txt
     command: opendataloader-pdf-hybrid --port 5002 --force-ocr
     ports:
       - '5002:5002'
