@@ -24,13 +24,7 @@ describe('FormField', () => {
   });
 
   it('displays help text and links it via aria-describedby', () => {
-    render(
-      <FormField
-        label="Phone"
-        name="phone"
-        helpText="Enter your 10-digit phone number"
-      />,
-    );
+    render(<FormField label="Phone" name="phone" helpText="Enter your 10-digit phone number" />);
     const input = screen.getByLabelText(/phone/i);
     const helpText = screen.getByText(/10-digit/i);
 
@@ -39,13 +33,7 @@ describe('FormField', () => {
   });
 
   it('displays error message with role=alert', () => {
-    render(
-      <FormField
-        label="Email"
-        name="email"
-        error="Please provide a valid email address"
-      />,
-    );
+    render(<FormField label="Email" name="email" error="Please provide a valid email address" />);
     const error = screen.getByRole('alert');
     expect(error).toHaveTextContent('Please provide a valid email address');
   });
@@ -67,17 +55,13 @@ describe('FormField', () => {
   });
 
   it('renders icon when provided', () => {
-    render(
-      <FormField label="Search" name="search" icon={<span data-testid="icon">🔍</span>} />,
-    );
+    render(<FormField label="Search" name="search" icon={<span data-testid="icon">🔍</span>} />);
     expect(screen.getByTestId('icon')).toBeInTheDocument();
     expect(screen.getByLabelText(/search/i)).toHaveClass('with-icon');
   });
 
   it('has-error class on wrapper when error present', () => {
-    const { container } = render(
-      <FormField label="Name" name="name" error="Required" />,
-    );
+    const { container } = render(<FormField label="Name" name="name" error="Required" />);
     expect(container.querySelector('.form-field')).toHaveClass('has-error');
   });
 
@@ -133,12 +117,7 @@ describe('FormSelect', () => {
 
   it('shows placeholder option', () => {
     render(
-      <FormSelect
-        label="State"
-        name="state"
-        options={options}
-        placeholder="Choose a state"
-      />,
+      <FormSelect label="State" name="state" options={options} placeholder="Choose a state" />
     );
     expect(screen.getByText('Choose a state')).toBeInTheDocument();
   });
@@ -146,9 +125,7 @@ describe('FormSelect', () => {
   it('calls onChange with selected value', async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();
-    render(
-      <FormSelect label="State" name="state" options={options} onChange={onChange} />,
-    );
+    render(<FormSelect label="State" name="state" options={options} onChange={onChange} />);
 
     await user.selectOptions(screen.getByLabelText(/state/i), 'IL');
     expect(onChange).toHaveBeenCalledWith('IL');
@@ -156,20 +133,13 @@ describe('FormSelect', () => {
 
   it('displays error with role=alert', () => {
     render(
-      <FormSelect
-        label="State"
-        name="state"
-        options={options}
-        error="Please select a state"
-      />,
+      <FormSelect label="State" name="state" options={options} error="Please select a state" />
     );
     expect(screen.getByRole('alert')).toHaveTextContent('Please select a state');
   });
 
   it('sets aria-invalid when error present', () => {
-    render(
-      <FormSelect label="State" name="state" options={options} error="Required" />,
-    );
+    render(<FormSelect label="State" name="state" options={options} error="Required" />);
     expect(screen.getByLabelText(/state/i)).toHaveAttribute('aria-invalid', 'true');
   });
 });

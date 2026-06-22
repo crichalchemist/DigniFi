@@ -18,8 +18,7 @@ export const WIZARD_TITLE = 'Bankruptcy Intake';
 export const WIZARD_SUBTITLE =
   "We'll guide you through the information needed to understand your options.";
 
-export const WIZARD_HELP_TEXT =
-  'Your progress is saved. You can come back anytime to finish.';
+export const WIZARD_HELP_TEXT = 'Your progress is saved. You can come back anytime to finish.';
 
 export const WIZARD_LOADING = 'Starting your intake session...';
 
@@ -84,7 +83,7 @@ export const DASHBOARD_EMPTY = 'No active intake session. Please complete the in
 export const MEANS_TEST_PREVIEW_TITLE = 'Eligibility Estimate';
 
 export const MEANS_TEST_INCOMPLETE =
-  "We need your income details first. Then we can show an estimate.";
+  'We need your income details first. Then we can show an estimate.';
 
 export const MEANS_TEST_CALCULATING = 'Calculating...';
 
@@ -98,8 +97,7 @@ export const AUTH_LOGIN_SUBTITLE = 'Sign in to continue your bankruptcy intake.'
 
 export const AUTH_REGISTER_TITLE = 'Create Your Account';
 
-export const AUTH_REGISTER_SUBTITLE =
-  'Get started with your free bankruptcy intake in minutes.';
+export const AUTH_REGISTER_SUBTITLE = 'Get started with your free bankruptcy intake in minutes.';
 
 // ============================================================================
 // Error Messages (Trauma-informed)

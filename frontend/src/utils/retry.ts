@@ -33,15 +33,8 @@ const isRetryableError = (error: unknown): boolean => {
  *
  * Delay formula: baseDelay * 2^attempt (500ms, 1s, 2s, ...)
  */
-export async function withRetry<T>(
-  fn: () => Promise<T>,
-  options: RetryOptions = {},
-): Promise<T> {
-  const {
-    maxRetries = 3,
-    baseDelay = 500,
-    shouldRetry = isRetryableError,
-  } = options;
+export async function withRetry<T>(fn: () => Promise<T>, options: RetryOptions = {}): Promise<T> {
+  const { maxRetries = 3, baseDelay = 500, shouldRetry = isRetryableError } = options;
 
   let lastError: unknown;
 

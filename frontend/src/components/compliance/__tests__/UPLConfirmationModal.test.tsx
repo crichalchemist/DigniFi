@@ -19,9 +19,7 @@ describe('UPLConfirmationModal', () => {
   // ---------------------------------------------------------------------------
 
   it('renders nothing when not open', () => {
-    const { container } = render(
-      <UPLConfirmationModal {...defaultProps} isOpen={false} />,
-    );
+    const { container } = render(<UPLConfirmationModal {...defaultProps} isOpen={false} />);
     expect(container.innerHTML).toBe('');
   });
 

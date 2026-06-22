@@ -19,21 +19,13 @@ interface ProgressIndicatorProps {
 
 export function ProgressIndicator({ steps, currentStep }: ProgressIndicatorProps) {
   return (
-    <nav
-      className="progress-indicator"
-      aria-label="Intake progress"
-      role="navigation"
-    >
+    <nav className="progress-indicator" aria-label="Intake progress" role="navigation">
       <ol className="progress-steps">
         {steps.map((step, index) => (
           <li
             key={step.number}
             className={`progress-step ${
-              step.isCompleted
-                ? 'completed'
-                : step.isCurrent
-                ? 'current'
-                : 'upcoming'
+              step.isCompleted ? 'completed' : step.isCurrent ? 'current' : 'upcoming'
             }`}
             aria-current={step.isCurrent ? 'step' : undefined}
           >
@@ -67,9 +59,7 @@ export function ProgressIndicator({ steps, currentStep }: ProgressIndicatorProps
             </div>
             {index < steps.length - 1 && (
               <div
-                className={`step-connector ${
-                  step.isCompleted ? 'completed' : ''
-                }`}
+                className={`step-connector ${step.isCompleted ? 'completed' : ''}`}
                 aria-hidden="true"
               />
             )}
@@ -79,8 +69,8 @@ export function ProgressIndicator({ steps, currentStep }: ProgressIndicatorProps
 
       {/* Progress percentage for screen readers */}
       <div className="sr-only" aria-live="polite" aria-atomic="true">
-        You have completed {steps.filter((s) => s.isCompleted).length} of{' '}
-        {steps.length} steps. You are on step {currentStep}: {steps[currentStep - 1]?.label}.
+        You have completed {steps.filter((s) => s.isCompleted).length} of {steps.length} steps. You
+        are on step {currentStep}: {steps[currentStep - 1]?.label}.
       </div>
     </nav>
   );

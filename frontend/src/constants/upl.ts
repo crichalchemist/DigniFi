@@ -19,13 +19,11 @@ export const UPL_GENERAL_DISCLAIMER =
 
 /** Inline disclaimer for wizard steps */
 export const UPL_WIZARD_DISCLAIMER =
-  'What you see here is general legal facts. ' +
-  'It is not legal advice about your case.';
+  'What you see here is general legal facts. ' + 'It is not legal advice about your case.';
 
 /** Shown alongside means test preview results */
 export const UPL_MEANS_TEST_DISCLAIMER =
-  'This is only an estimate based on what you entered. ' +
-  'A court makes the final decision.';
+  'This is only an estimate based on what you entered. ' + 'A court makes the final decision.';
 
 /** Shown on form generation/download pages */
 export const UPL_FORM_DISCLAIMER =

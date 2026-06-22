@@ -15,7 +15,10 @@ function AuthConsumer() {
 
   // Swallow re-thrown errors so they don't become unhandled rejections.
   // The context stores errors in state, which is what tests assert on.
-  const safe = <T,>(fn: () => Promise<T>) => () => fn().catch(() => {});
+  const safe =
+    <T,>(fn: () => Promise<T>) =>
+    () =>
+      fn().catch(() => {});
 
   return (
     <div>
@@ -33,7 +36,7 @@ function AuthConsumer() {
             password: 'pass123',
             agreed_to_upl_disclaimer: true,
             agreed_to_terms: true,
-          }),
+          })
         )}
       >
         Register
@@ -48,7 +51,7 @@ function renderWithAuth() {
   return render(
     <AuthProvider>
       <AuthConsumer />
-    </AuthProvider>,
+    </AuthProvider>
   );
 }
 
@@ -89,8 +92,8 @@ describe('AuthContext', () => {
     setRefreshToken('expired-token');
     server.use(
       http.post('http://localhost:8000/api/token/refresh/', () =>
-        HttpResponse.json({ detail: 'Token is invalid' }, { status: 401 }),
-      ),
+        HttpResponse.json({ detail: 'Token is invalid' }, { status: 401 })
+      )
     );
 
     renderWithAuth();
@@ -126,8 +129,8 @@ describe('AuthContext', () => {
   it('shows dignity-preserving error on 401 login', async () => {
     server.use(
       http.post('http://localhost:8000/api/token/obtain/', () =>
-        HttpResponse.json({ detail: 'No active account' }, { status: 401 }),
-      ),
+        HttpResponse.json({ detail: 'No active account' }, { status: 401 })
+      )
     );
 
     const user = userEvent.setup();
@@ -142,9 +145,7 @@ describe('AuthContext', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('error')).toHaveTextContent(
-        /couldn.*t find that account/i,
-      );
+      expect(screen.getByTestId('error')).toHaveTextContent(/couldn.*t find that account/i);
     });
   });
 
@@ -206,8 +207,8 @@ describe('AuthContext', () => {
   it('clears error on clearError', async () => {
     server.use(
       http.post('http://localhost:8000/api/token/obtain/', () =>
-        HttpResponse.json({ message: 'Validation error' }, { status: 422 }),
-      ),
+        HttpResponse.json({ message: 'Validation error' }, { status: 422 })
+      )
     );
 
     const user = userEvent.setup();
@@ -240,9 +241,7 @@ describe('AuthContext', () => {
     // Suppress React error boundary console output
     const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
-    expect(() => render(<AuthConsumer />)).toThrow(
-      /useAuth must be used within an AuthProvider/,
-    );
+    expect(() => render(<AuthConsumer />)).toThrow(/useAuth must be used within an AuthProvider/);
 
     spy.mockRestore();
   });

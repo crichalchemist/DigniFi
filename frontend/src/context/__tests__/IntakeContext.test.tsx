@@ -23,7 +23,10 @@ function IntakeConsumer() {
 
   // Swallow re-thrown errors so they don't become unhandled rejections.
   // The context stores the error in state, which is what tests assert on.
-  const safe = <T,>(fn: () => Promise<T>) => () => fn().catch(() => {});
+  const safe =
+    <T,>(fn: () => Promise<T>) =>
+    () =>
+      fn().catch(() => {});
 
   return (
     <div>
@@ -50,7 +53,7 @@ function renderWithIntake() {
   return render(
     <IntakeProvider>
       <IntakeConsumer />
-    </IntakeProvider>,
+    </IntakeProvider>
   );
 }
 
@@ -78,9 +81,9 @@ describe('IntakeContext', () => {
       http.post('http://localhost:8000/api/intake/sessions/', () =>
         HttpResponse.json(
           { error: 'Forbidden', message: 'Authentication required' },
-          { status: 403 },
-        ),
-      ),
+          { status: 403 }
+        )
+      )
     );
 
     const user = userEvent.setup();
@@ -118,11 +121,8 @@ describe('IntakeContext', () => {
     // is wrapped in the safe() handler.
     server.use(
       http.get('http://localhost:8000/api/intake/sessions/:id/', () =>
-        HttpResponse.json(
-          { error: 'Not found', message: 'Session not found' },
-          { status: 404 },
-        ),
-      ),
+        HttpResponse.json({ error: 'Not found', message: 'Session not found' }, { status: 404 })
+      )
     );
 
     const user = userEvent.setup();
@@ -197,8 +197,8 @@ describe('IntakeContext', () => {
             updated_at: '2026-01-20T12:00:00Z',
             completed_at: '2026-01-20T12:00:00Z',
           }),
-        { once: false },
-      ),
+        { once: false }
+      )
     );
 
     const user = userEvent.setup();
@@ -300,8 +300,8 @@ describe('IntakeContext', () => {
 
     server.use(
       http.post('http://localhost:8000/api/intake/sessions/', () =>
-        HttpResponse.json({ message: 'Validation error' }, { status: 422 }),
-      ),
+        HttpResponse.json({ message: 'Validation error' }, { status: 422 })
+      )
     );
 
     renderWithIntake();
@@ -329,7 +329,7 @@ describe('IntakeContext', () => {
     const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
     expect(() => render(<IntakeConsumer />)).toThrow(
-      /useIntake must be used within an IntakeProvider/,
+      /useIntake must be used within an IntakeProvider/
     );
 
     spy.mockRestore();

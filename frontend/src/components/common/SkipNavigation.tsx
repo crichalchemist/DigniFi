@@ -26,11 +26,7 @@ export function SkipNavigation({
   };
 
   return (
-    <a
-      href={`#${targetId}`}
-      className="skip-navigation"
-      onClick={handleClick}
-    >
+    <a href={`#${targetId}`} className="skip-navigation" onClick={handleClick}>
       {label}
     </a>
   );
