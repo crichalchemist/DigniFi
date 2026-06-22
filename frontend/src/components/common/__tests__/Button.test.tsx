@@ -20,7 +20,7 @@ describe('Button', () => {
     (variant) => {
       render(<Button variant={variant}>Click</Button>);
       expect(screen.getByRole('button')).toHaveClass(`button--${variant}`);
-    },
+    }
   );
 
   it.each(['sm', 'md', 'lg'] as const)('applies %s size class', (size) => {
@@ -50,7 +50,11 @@ describe('Button', () => {
   // ---------------------------------------------------------------------------
 
   it('shows loading spinner and text when isLoading', () => {
-    render(<Button isLoading loadingText="Saving...">Submit</Button>);
+    render(
+      <Button isLoading loadingText="Saving...">
+        Submit
+      </Button>
+    );
     const button = screen.getByRole('button');
 
     expect(button).toBeDisabled();
@@ -69,7 +73,11 @@ describe('Button', () => {
   });
 
   it('announces loading state to screen readers', () => {
-    render(<Button isLoading loadingText="Processing...">Submit</Button>);
+    render(
+      <Button isLoading loadingText="Processing...">
+        Submit
+      </Button>
+    );
     const liveRegion = screen.getByText('Processing...', { selector: '.sr-only' });
     expect(liveRegion).toHaveAttribute('aria-live', 'polite');
   });
@@ -88,14 +96,22 @@ describe('Button', () => {
 
   it('renders icon on the right', () => {
     const icon = <span data-testid="icon">→</span>;
-    render(<Button icon={icon} iconPosition="right">Next</Button>);
+    render(
+      <Button icon={icon} iconPosition="right">
+        Next
+      </Button>
+    );
     const iconWrapper = screen.getByTestId('icon').parentElement;
     expect(iconWrapper).toHaveClass('button-icon--right');
   });
 
   it('hides icon when loading', () => {
     const icon = <span data-testid="icon">★</span>;
-    render(<Button icon={icon} isLoading>Star</Button>);
+    render(
+      <Button icon={icon} isLoading>
+        Star
+      </Button>
+    );
     expect(screen.queryByTestId('icon')).not.toBeInTheDocument();
   });
 
@@ -115,7 +131,11 @@ describe('Button', () => {
   it('does not call onClick when disabled', async () => {
     const user = userEvent.setup();
     const onClick = vi.fn();
-    render(<Button onClick={onClick} disabled>Click me</Button>);
+    render(
+      <Button onClick={onClick} disabled>
+        Click me
+      </Button>
+    );
 
     await user.click(screen.getByRole('button'));
     expect(onClick).not.toHaveBeenCalled();
@@ -124,7 +144,11 @@ describe('Button', () => {
   it('does not call onClick when loading', async () => {
     const user = userEvent.setup();
     const onClick = vi.fn();
-    render(<Button onClick={onClick} isLoading>Click me</Button>);
+    render(
+      <Button onClick={onClick} isLoading>
+        Click me
+      </Button>
+    );
 
     await user.click(screen.getByRole('button'));
     expect(onClick).not.toHaveBeenCalled();

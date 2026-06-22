@@ -44,11 +44,7 @@ function fleschKincaidGrade(text: string): number {
 
   const totalSyllables = words.reduce((sum, w) => sum + countSyllables(w), 0);
 
-  return (
-    0.39 * (words.length / sentences.length) +
-    11.8 * (totalSyllables / words.length) -
-    15.59
-  );
+  return 0.39 * (words.length / sentences.length) + 11.8 * (totalSyllables / words.length) - 15.59;
 }
 
 // ============================================================================
@@ -104,9 +100,7 @@ describe('Reading Level Validation', () => {
   const allTexts = [...collectCopyStrings(), ...collectUPLStrings()];
 
   // Filter to only strings long enough to score meaningfully (>= 5 words)
-  const scorableTexts = allTexts.filter(
-    ({ text }) => extractWords(text).length >= 5,
-  );
+  const scorableTexts = allTexts.filter(({ text }) => extractWords(text).length >= 5);
 
   it('has strings to validate', () => {
     expect(scorableTexts.length).toBeGreaterThan(0);
@@ -132,7 +126,7 @@ describe('Reading Level Validation', () => {
     if (failures.length > 0) {
       throw new Error(
         `${failures.length} text(s) exceed grade ${MAX_GRADE}:\n` +
-          failures.map((f) => `  - ${f}`).join('\n'),
+          failures.map((f) => `  - ${f}`).join('\n')
       );
     }
   });

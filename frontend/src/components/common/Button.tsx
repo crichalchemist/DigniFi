@@ -93,9 +93,7 @@ export function Button({
         </span>
       )}
 
-      <span className="button-content">
-        {isLoading ? loadingText : children}
-      </span>
+      <span className="button-content">{isLoading ? loadingText : children}</span>
 
       {!isLoading && icon && iconPosition === 'right' && (
         <span className="button-icon button-icon--right" aria-hidden="true">
