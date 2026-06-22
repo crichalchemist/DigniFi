@@ -370,7 +370,6 @@ a {
 
 .review-section {
   border: 1px solid var(--color-sand);
-  border-left: 4px solid var(--color-gold);
   background-color: var(--color-paper);
   padding: var(--space-4) var(--space-5);
 }
@@ -586,6 +585,66 @@ a {
 }
 
 /* ============================================================================
+   App Header — persistent authenticated chrome
+   ============================================================================ */
+
+.app-header {
+  background-color: var(--color-pine);
+  border-bottom: 2px solid var(--color-gold);
+}
+
+.app-header-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  max-width: var(--max-width);
+  margin: 0 auto;
+  padding: 0 var(--space-5);
+  height: 44px;
+}
+
+.app-header-wordmark {
+  font-family: var(--font-display);
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--color-cream);
+  letter-spacing: 0.01em;
+  text-decoration: none;
+}
+
+.app-header-wordmark:hover {
+  color: var(--color-gold);
+}
+
+.app-header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.app-header-user {
+  font-family: var(--font-body);
+  font-size: var(--text-caption);
+  color: var(--color-cream);
+}
+
+.app-header-signout {
+  font-family: var(--font-body);
+  font-size: var(--text-caption);
+  font-weight: 500;
+  color: var(--color-cream);
+  background: none;
+  border: none;
+  padding: var(--space-1) 0;
+  cursor: pointer;
+  transition: color var(--transition-fast);
+}
+
+.app-header-signout:hover {
+  color: var(--color-gold);
+}
+
+/* ============================================================================
    Button Component
    ============================================================================ */
 
@@ -698,7 +757,6 @@ a {
 
 .means-test-preview {
   border: 1px solid var(--color-sand);
-  border-left: 4px solid var(--color-gold);
   background-color: var(--color-paper);
 }
 
@@ -808,8 +866,8 @@ a {
 
 .means-test-preview-detail--highlight {
   padding: var(--space-2);
-  border-left: 3px solid var(--color-gold);
   background-color: var(--color-cream);
+  border-radius: var(--radius);
 }
 
 .means-test-preview-loading,
@@ -842,7 +900,6 @@ a {
   gap: var(--space-3);
   background-color: var(--color-sand-tint);
   border: 1px solid var(--color-sand);
-  border-left: 4px solid var(--color-gold);
   border-radius: var(--radius);
   padding: var(--space-4);
   margin-bottom: var(--space-4);
@@ -878,7 +935,6 @@ a {
   align-items: flex-start;
   background-color: var(--color-white);
   border: 1px solid var(--color-rust);
-  border-left: 4px solid var(--color-rust);
   border-radius: var(--radius);
   padding: var(--space-4);
   margin-bottom: var(--space-4);
@@ -1118,9 +1174,7 @@ a {
   flex-direction: column;
   justify-content: center;
   padding: var(--space-8);
-  /* Gold panel separator — decorative structural border, same WCAG 1.4.11
-     exemption as .auth-card border-top (non-interactive container, 2.25:1) */
-  border-right: 6px solid var(--color-gold);
+  /* Gold panel separator removed for quieter design */
 }
 
 .auth-aside-brand {
@@ -1157,7 +1211,6 @@ a {
   max-width: 420px;
   background-color: var(--color-white);
   border: 1px solid var(--color-sand);
-  border-top: 4px solid var(--color-gold);
   border-radius: var(--radius);
   padding: var(--space-6);
 }
@@ -1301,7 +1354,6 @@ a {
   align-items: flex-start;
   background-color: var(--color-sand-tint);
   border: 1px solid var(--color-sand);
-  border-left: 4px solid var(--color-pine);
   border-radius: var(--radius);
   padding: var(--space-4);
   margin-bottom: var(--space-4);
@@ -1403,7 +1455,7 @@ a {
 .form-dashboard-progress-fill {
   height: 100%;
   background-color: var(--color-gold);
-  transition: width var(--transition-fast);
+  transition: opacity var(--transition-fast);
 }
 
 .form-dashboard-progress-text {
@@ -1427,7 +1479,6 @@ a {
 .form-card {
   background-color: var(--color-white);
   border: 1px solid var(--color-sand);
-  border-left: 4px solid var(--color-sand);
   border-radius: var(--radius);
   padding: var(--space-4);
   display: flex;

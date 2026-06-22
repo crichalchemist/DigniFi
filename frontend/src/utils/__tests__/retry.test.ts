@@ -65,9 +65,7 @@ describe('withRetry', () => {
     vi.useRealTimers(); // Real timers to avoid unhandled rejection with fake timer flush
     const fn = vi.fn().mockRejectedValue(new APIClientError('Down', 503));
 
-    await expect(
-      withRetry(fn, { maxRetries: 2, baseDelay: 10 }),
-    ).rejects.toThrow('Down');
+    await expect(withRetry(fn, { maxRetries: 2, baseDelay: 10 })).rejects.toThrow('Down');
     expect(fn).toHaveBeenCalledTimes(3); // 1 initial + 2 retries
   });
 
@@ -99,7 +97,7 @@ describe('withRetry', () => {
       withRetry(fn, {
         maxRetries: 1,
         shouldRetry: () => false,
-      }),
+      })
     ).rejects.toThrow('custom');
 
     expect(fn).toHaveBeenCalledOnce();

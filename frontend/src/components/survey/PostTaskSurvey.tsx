@@ -65,9 +65,7 @@ export function PostTaskSurvey({ sessionId, onComplete }: PostTaskSurveyProps) {
   return (
     <div className="post-task-survey" role="form" aria-label="Feedback survey">
       <h2 className="survey-title">Quick Feedback</h2>
-      <p className="survey-intro">
-        Your answers help us make DigniFi better. This is optional.
-      </p>
+      <p className="survey-intro">Your answers help us make DigniFi better. This is optional.</p>
 
       {SCALE_QUESTIONS.map((q) => (
         <fieldset key={q.id} className="survey-question">
@@ -107,11 +105,7 @@ export function PostTaskSurvey({ sessionId, onComplete }: PostTaskSurveyProps) {
 
       <div className="survey-actions">
         <Button onClick={handleSubmit}>Submit Feedback</Button>
-        <button
-          type="button"
-          className="survey-skip"
-          onClick={onComplete}
-        >
+        <button type="button" className="survey-skip" onClick={onComplete}>
           Skip
         </button>
       </div>

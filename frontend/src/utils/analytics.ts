@@ -18,7 +18,7 @@ export function trackEvent(
   action: string,
   details: Record<string, unknown> = {},
   resourceType = 'analytics',
-  resourceId?: number,
+  resourceId?: number
 ): void {
   const payload = {
     action,

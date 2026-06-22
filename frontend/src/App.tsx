@@ -10,7 +10,7 @@ import { BrowserRouter, Routes, Route, Outlet } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { IntakeProvider } from './context/IntakeContext';
 import { ProtectedRoute } from './components/auth/ProtectedRoute';
-import { SkipNavigation } from './components/common';
+import { SkipNavigation, AppHeader } from './components/common';
 import { LandingPage } from './pages/LandingPage';
 import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
@@ -38,7 +38,6 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | 
         <div className="error-boundary">
           <h1>Something went wrong</h1>
           <p>We encountered an unexpected error. Please try refreshing the page.</p>
-          <pre className="error-boundary-detail">{this.state.error.message}</pre>
           <button
             onClick={() => (window.location.href = '/')}
             className="button button--outline button--md"
@@ -52,7 +51,6 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | 
   }
 }
 
-/** Shared IntakeProvider for wizard + dashboard routes. */
 function IntakeLayout() {
   return (
     <IntakeProvider>
@@ -68,6 +66,7 @@ function App() {
         <SkipNavigation />
         <ErrorBoundary>
           <div className="app">
+            <AppHeader />
             <Routes>
               <Route path="/" element={<LandingPage />} />
               <Route path="/login" element={<LoginPage />} />
