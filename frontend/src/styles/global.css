@@ -370,7 +370,6 @@ a {
 
 .review-section {
   border: 1px solid var(--color-sand);
-  border-left: 4px solid var(--color-gold);
   background-color: var(--color-paper);
   padding: var(--space-4) var(--space-5);
 }
@@ -747,7 +746,6 @@ a {
 
 .means-test-preview {
   border: 1px solid var(--color-sand);
-  border-left: 4px solid var(--color-gold);
   background-color: var(--color-paper);
 }
 
@@ -857,8 +855,8 @@ a {
 
 .means-test-preview-detail--highlight {
   padding: var(--space-2);
-  border-left: 3px solid var(--color-gold);
   background-color: var(--color-cream);
+  border-radius: var(--radius);
 }
 
 .means-test-preview-loading,
@@ -891,7 +889,6 @@ a {
   gap: var(--space-3);
   background-color: var(--color-sand-tint);
   border: 1px solid var(--color-sand);
-  border-left: 4px solid var(--color-gold);
   border-radius: var(--radius);
   padding: var(--space-4);
   margin-bottom: var(--space-4);
@@ -927,7 +924,6 @@ a {
   align-items: flex-start;
   background-color: var(--color-white);
   border: 1px solid var(--color-rust);
-  border-left: 4px solid var(--color-rust);
   border-radius: var(--radius);
   padding: var(--space-4);
   margin-bottom: var(--space-4);
@@ -1167,9 +1163,7 @@ a {
   flex-direction: column;
   justify-content: center;
   padding: var(--space-8);
-  /* Gold panel separator — decorative structural border, same WCAG 1.4.11
-     exemption as .auth-card border-top (non-interactive container, 2.25:1) */
-  border-right: 6px solid var(--color-gold);
+  /* Gold panel separator removed for quieter design */
 }
 
 .auth-aside-brand {
@@ -1206,7 +1200,6 @@ a {
   max-width: 420px;
   background-color: var(--color-white);
   border: 1px solid var(--color-sand);
-  border-top: 4px solid var(--color-gold);
   border-radius: var(--radius);
   padding: var(--space-6);
 }
@@ -1350,7 +1343,6 @@ a {
   align-items: flex-start;
   background-color: var(--color-sand-tint);
   border: 1px solid var(--color-sand);
-  border-left: 4px solid var(--color-pine);
   border-radius: var(--radius);
   padding: var(--space-4);
   margin-bottom: var(--space-4);
@@ -1452,7 +1444,7 @@ a {
 .form-dashboard-progress-fill {
   height: 100%;
   background-color: var(--color-gold);
-  transition: width var(--transition-fast);
+  transition: opacity var(--transition-fast);
 }
 
 .form-dashboard-progress-text {
@@ -1476,7 +1468,6 @@ a {
 .form-card {
   background-color: var(--color-white);
   border: 1px solid var(--color-sand);
-  border-left: 4px solid var(--color-sand);
   border-radius: var(--radius);
   padding: var(--space-4);
   display: flex;
