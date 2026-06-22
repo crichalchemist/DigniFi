@@ -7,6 +7,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import { useIntake } from '../context/IntakeContext';
 import { api } from '../api/client';
 import { FormCard, GenerateAllButton, DebtExplanationsPanel } from '../components/forms';
@@ -108,7 +109,10 @@ export function FormDashboard() {
     }
     return (
       <div className="form-dashboard-empty">
-        <p>No active intake session found. Please complete the intake wizard first.</p>
+        <p>No active intake session found.</p>
+        <Link to="/intake" className="button button--primary">
+          Start your intake
+        </Link>
       </div>
     );
   }

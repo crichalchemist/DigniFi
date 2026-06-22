@@ -1,5 +1,3 @@
-.remember/
-.antigravity/
 # Python
 __pycache__/
 *.py[cod]
@@ -93,6 +91,14 @@ IMG_0487.jpg
 
 # Claude / AI tool files
 .claude/
+.impeccable/
+.superpowers/
+.agents/
+.pi/
+.gemini/
+.remember/
+.antigravity/
+.mimocode/
 
 # claude-mem auto-generated activity stubs (root CLAUDE.md is tracked separately)
 backend/**/CLAUDE.md
@@ -100,8 +106,4 @@ docs/**/CLAUDE.md
 frontend/**/CLAUDE.md
 scripts/CLAUDE.md
 test-results/CLAUDE.md
-.superpowers/
-.agents/
-.pi/
-.gemini/
 CLAUDE.local.md
