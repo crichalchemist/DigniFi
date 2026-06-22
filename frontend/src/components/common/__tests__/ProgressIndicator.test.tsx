@@ -67,9 +67,7 @@ describe('ProgressIndicator', () => {
 
   it('renders step connectors between steps', () => {
     const steps = makeSteps(2);
-    const { container } = render(
-      <ProgressIndicator steps={steps} currentStep={2} />,
-    );
+    const { container } = render(<ProgressIndicator steps={steps} currentStep={2} />);
 
     // 5 connectors between 6 steps
     const connectors = container.querySelectorAll('.step-connector');
@@ -78,9 +76,7 @@ describe('ProgressIndicator', () => {
 
   it('marks completed connectors', () => {
     const steps = makeSteps(3);
-    const { container } = render(
-      <ProgressIndicator steps={steps} currentStep={3} />,
-    );
+    const { container } = render(<ProgressIndicator steps={steps} currentStep={3} />);
 
     const completedConnectors = container.querySelectorAll('.step-connector.completed');
     // Steps 1 and 2 are completed, so their connectors should be completed

@@ -80,12 +80,7 @@ export function UPLConfirmationModal({
       >
         <div className="upl-modal-header">
           <h2 className="upl-modal-title">{title}</h2>
-          <button
-            type="button"
-            className="upl-modal-close"
-            onClick={onCancel}
-            aria-label="Close"
-          >
+          <button type="button" className="upl-modal-close" onClick={onCancel} aria-label="Close">
             <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
               <path
                 fillRule="evenodd"
@@ -122,11 +117,7 @@ export function UPLConfirmationModal({
           <Button variant="outline" onClick={onCancel}>
             Cancel
           </Button>
-          <Button
-            variant="primary"
-            onClick={onConfirm}
-            disabled={!acknowledged}
-          >
+          <Button variant="primary" onClick={onConfirm} disabled={!acknowledged}>
             Continue
           </Button>
         </div>

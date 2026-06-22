@@ -131,10 +131,7 @@ export function IntakeProvider({ children }: IntakeProviderProps) {
   /**
    * Update current wizard step
    */
-  const updateCurrentStep = async (
-    step: number,
-    data?: Partial<IntakeSession>
-  ): Promise<void> => {
+  const updateCurrentStep = async (step: number, data?: Partial<IntakeSession>): Promise<void> => {
     if (!session) {
       setError('No active session found. Please start a new intake.');
       return;

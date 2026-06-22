@@ -6,3 +6,4 @@ export { ProgressIndicator } from './ProgressIndicator';
 export { FormField, FormTextarea, FormSelect } from './FormField';
 export { Button } from './Button';
 export { SkipNavigation } from './SkipNavigation';
+export { AppHeader } from './AppHeader';

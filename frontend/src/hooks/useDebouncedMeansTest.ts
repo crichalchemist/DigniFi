@@ -68,7 +68,9 @@ export function useDebouncedMeansTest({
       if (err instanceof APIClientError && err.statusCode === 400) {
         setStatusMessage(INCOMPLETE_DATA_MESSAGE);
       } else {
-        setStatusMessage('Unable to estimate eligibility right now. This is not an error with your information.');
+        setStatusMessage(
+          'Unable to estimate eligibility right now. This is not an error with your information.'
+        );
       }
     } finally {
       if (!abortRef.current?.signal.aborted) {

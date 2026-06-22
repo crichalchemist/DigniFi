@@ -17,10 +17,7 @@ describe('UPLDisclaimer', () => {
 
   it('has correct aria-label for inline', () => {
     render(<UPLDisclaimer text="test" variant="inline" />);
-    expect(screen.getByRole('note')).toHaveAttribute(
-      'aria-label',
-      'Legal information disclaimer',
-    );
+    expect(screen.getByRole('note')).toHaveAttribute('aria-label', 'Legal information disclaimer');
   });
 
   it('renders info icon in inline variant', () => {
@@ -42,10 +39,7 @@ describe('UPLDisclaimer', () => {
 
   it('has correct aria-label for banner', () => {
     render(<UPLDisclaimer text="test" variant="banner" />);
-    expect(screen.getByRole('note')).toHaveAttribute(
-      'aria-label',
-      'Important legal disclaimer',
-    );
+    expect(screen.getByRole('note')).toHaveAttribute('aria-label', 'Important legal disclaimer');
   });
 
   // ---------------------------------------------------------------------------
@@ -54,13 +48,7 @@ describe('UPLDisclaimer', () => {
 
   it('renders checkbox variant with input', () => {
     const onAcknowledge = vi.fn();
-    render(
-      <UPLDisclaimer
-        text="I acknowledge"
-        variant="checkbox"
-        onAcknowledge={onAcknowledge}
-      />,
-    );
+    render(<UPLDisclaimer text="I acknowledge" variant="checkbox" onAcknowledge={onAcknowledge} />);
 
     const checkbox = screen.getByRole('checkbox');
     expect(checkbox).toBeInTheDocument();
@@ -70,26 +58,14 @@ describe('UPLDisclaimer', () => {
   it('calls onAcknowledge when checkbox is toggled', async () => {
     const user = userEvent.setup();
     const onAcknowledge = vi.fn();
-    render(
-      <UPLDisclaimer
-        text="I acknowledge"
-        variant="checkbox"
-        onAcknowledge={onAcknowledge}
-      />,
-    );
+    render(<UPLDisclaimer text="I acknowledge" variant="checkbox" onAcknowledge={onAcknowledge} />);
 
     await user.click(screen.getByRole('checkbox'));
     expect(onAcknowledge).toHaveBeenCalledWith(true);
   });
 
   it('respects controlled acknowledged prop', () => {
-    render(
-      <UPLDisclaimer
-        text="I acknowledge"
-        variant="checkbox"
-        acknowledged={true}
-      />,
-    );
+    render(<UPLDisclaimer text="I acknowledge" variant="checkbox" acknowledged={true} />);
     expect(screen.getByRole('checkbox')).toBeChecked();
   });
 
@@ -98,9 +74,7 @@ describe('UPLDisclaimer', () => {
   // ---------------------------------------------------------------------------
 
   it('returns null for modal variant (use UPLConfirmationModal instead)', () => {
-    const { container } = render(
-      <UPLDisclaimer text="test" variant="modal" />,
-    );
+    const { container } = render(<UPLDisclaimer text="test" variant="modal" />);
     expect(container.innerHTML).toBe('');
   });
 
@@ -109,9 +83,7 @@ describe('UPLDisclaimer', () => {
   // ---------------------------------------------------------------------------
 
   it('applies custom className', () => {
-    render(
-      <UPLDisclaimer text="test" variant="banner" className="my-custom" />,
-    );
+    render(<UPLDisclaimer text="test" variant="banner" className="my-custom" />);
     expect(screen.getByRole('note')).toHaveClass('my-custom');
   });
 });

@@ -70,9 +70,11 @@ describe('FormDashboard', () => {
     localStorage.removeItem('current_session_id');
 
     render(
-      <IntakeProvider>
-        <FormDashboard />
-      </IntakeProvider>
+      <MemoryRouter>
+        <IntakeProvider>
+          <FormDashboard />
+        </IntakeProvider>
+      </MemoryRouter>
     );
 
     await waitFor(() => {

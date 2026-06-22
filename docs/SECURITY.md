@@ -6,9 +6,9 @@ DigniFi handles sensitive Personally Identifiable Information (PII) for individu
 
 ## Supported Versions
 
-| Version | Supported          | Notes |
-| ------- | ------------------ | ----- |
-| 1.x.x   | :white_check_mark: | Current MVP release |
+| Version | Supported          | Notes                    |
+| ------- | ------------------ | ------------------------ |
+| 1.x.x   | :white_check_mark: | Current MVP release      |
 | < 1.0   | :x:                | Development/testing only |
 
 ## Reporting a Vulnerability
@@ -27,6 +27,7 @@ DigniFi handles sensitive Personally Identifiable Information (PII) for individu
    - Your contact information for follow-up
 
 **What to Expect:**
+
 - **Acknowledgment:** Within 48 hours
 - **Initial Assessment:** Within 5 business days
 - **Status Updates:** Every 7 days until resolved
@@ -42,6 +43,7 @@ DigniFi handles sensitive Personally Identifiable Information (PII) for individu
 ### Severity Levels
 
 **Critical (P0) - Immediate Response Required:**
+
 - Unauthorized access to user PII
 - Authentication bypass
 - Remote code execution
@@ -49,18 +51,21 @@ DigniFi handles sensitive Personally Identifiable Information (PII) for individu
 - Mass data exfiltration
 
 **High (P1) - Fix Within 7 Days:**
+
 - XSS vulnerabilities affecting PII
 - Privilege escalation
 - Insecure cryptographic storage
 - Session fixation
 
 **Medium (P2) - Fix Within 30 Days:**
+
 - CSRF on sensitive endpoints
 - Information disclosure (non-PII)
 - Insecure dependencies with known exploits
 - Denial of service vectors
 
 **Low (P3) - Fix Within 90 Days:**
+
 - Security headers missing
 - Information leakage in errors
 - Weak password policies
@@ -93,6 +98,7 @@ Quick checklist for all contributions:
 ## Security Roadmap
 
 **Short-term (Next 3 Months):**
+
 - [ ] Implement MFA for user accounts
 - [ ] Add account lockout after failed login attempts
 - [ ] Externalize audit logs to secure storage
@@ -100,6 +106,7 @@ Quick checklist for all contributions:
 - [ ] Add security headers (CSP, HSTS, etc.)
 
 **Medium-term (3-6 Months):**
+
 - [ ] SOC 2 Type II preparation
 - [ ] Penetration testing
 - [ ] SIEM integration
@@ -107,6 +114,7 @@ Quick checklist for all contributions:
 - [ ] Automated security scanning in CI/CD
 
 **Long-term (6-12 Months):**
+
 - [ ] HSM for encryption keys
 - [ ] Real-time anomaly detection
 - [ ] Bug bounty program
@@ -117,7 +125,7 @@ Quick checklist for all contributions:
 
 We thank security researchers who have responsibly disclosed vulnerabilities:
 
-- *None yet - be the first!*
+- _None yet - be the first!_
 
 ## Contact
 

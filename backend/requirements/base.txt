@@ -8,7 +8,7 @@ django-environ==0.11.2
 django-encrypted-model-fields==0.6.5
 django-phonenumber-field[phonenumbers]==7.2.0
 pypdf==6.13.1
-pydantic==2.5.3
+pydantic>=2.9.0,<3.0.0
 opendataloader-pdf[hybrid]
 google-genai>=0.8
 pymupdf
