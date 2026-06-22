@@ -240,7 +240,6 @@ PDF_OUTPUT_DIRECTORY = MEDIA_ROOT / "generated_forms"
 # OCR & Document Processing Settings
 # ============================================
 
-# LLM Configuration — replaced by Gemini in v2. LLM_BASE_URL, LLM_API_KEY, LLM_MODEL removed.
 GEMINI_API_KEY = env("GEMINI_API_KEY", default="")
 
 # Document Storage
