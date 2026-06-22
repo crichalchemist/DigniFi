@@ -5,7 +5,7 @@
 ## Quick Commands
 
 ```bash
-docker compose up                              # Start all 4 services (db, backend, frontend, llm)
+docker compose up                              # Start all 4 services (db, backend, frontend, odl-hybrid)
 docker compose exec backend python -m pytest    # Backend tests (uses sqlite :memory:, no postgres needed)
 docker compose exec backend python manage.py migrate
 docker compose exec backend python manage.py loaddata ilnd_2025_data   # Required before seed
@@ -33,7 +33,7 @@ cd backend && ruff check . --fix               # Backend lint (pinned ruff==0.8.
 - **heroku.yml release** — must be one command string (not argv list). `heroku releases:output` is empty; use `heroku logs --dyno release`.
 - **CI ruff is pinned** — `ci.yml` installs `ruff==0.8.5`. Unpinned ruff broke CI when new rules shipped.
 - **opendataloader-pdf needs a JRE** — both Dockerfiles install `default-jre-headless`. Without it, PDF upload errored (tests mock the module so CI can't catch it).
-- **llama.cpp binary path** — `ghcr.io/ggml-org/llama.cpp:server` moved binary to `/app/llama-server`; `scripts/pull_model.sh` tries both paths.
+- **opendataloader-pdf healthcheck** — 60s start_period; backend `depends_on: odl-hybrid` condition `service_healthy`.
 - **Pre-commit prettier** — reformats staged files on first commit; re-`git add` and commit again.
 - **Colima volume mounts** — Colima only mounts `$HOME` by default; `/Volumes/Containers` must be added in `~/.colima/default/colima.yaml`.
 - **Compose backend** — command must chain `python manage.py migrate && ...` before `runserver`.
@@ -49,7 +49,7 @@ cd backend && ruff check . --fix               # Backend lint (pinned ruff==0.8.
 - **Frontend:** React 19 + Vite 7 + TypeScript, Context API (not Redux), react-router-dom v7
 - **PDF:** pypdf fills official AO court templates. Each generator in `backend/apps/forms/services/` implements `pdf_field_map() -> dict[str, str]` mapping session data to PDF field names. `PDFFormFiller.fill(form_type, field_map)` loads from `data/forms/pdfs/`.
 - **PDF templates:** 64 official AO court PDFs in `data/forms/pdfs/` (committed). Baked into Heroku image.
-- **LLM service:** Gemma 3 4B via llama.cpp (`ghcr.io/ggml-org/llama.cpp:server`), 300s start_period health check, backend `depends_on: llm`.
+- **OCR service:** Gemini 2.0 Flash via Google AI API (`GEMINI_API_KEY`). No local model — document processing calls the API directly.
 - **Auth:** JWT (simplejwt). Access in memory, refresh in localStorage. `GET /api/token/obtain/` + `/api/token/refresh/`.
 - **E2E:** 5 AI persona briefs in `docs/testing/persona-briefs/`. `seed_demo_data` creates synthetic sessions with all intake data.
 
@@ -91,7 +91,7 @@ cd backend && ruff check . --fix               # Backend lint (pinned ruff==0.8.
 
 **Infra:**
 
-- `docker-compose.yml` — 4 services: db (postgres:15), backend, frontend, llm
+- `docker-compose.yml` — 4 services: db (postgres:15), backend, frontend, odl-hybrid (opendataloader-pdf)
 - `Dockerfile.heroku` — multi-stage (Node → Python), bakes PDF templates + static assets
 - `heroku.yml` — release phase runs migrations (single command string)
 - `.github/workflows/ci.yml` — lint → backend tests → frontend tests → E2E (sequential gates)
