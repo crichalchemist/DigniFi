@@ -616,6 +616,18 @@ a {
   color: var(--color-gold);
 }
 
+.app-header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.app-header-user {
+  font-family: var(--font-body);
+  font-size: var(--text-caption);
+  color: var(--color-cream);
+}
+
 .app-header-signout {
   font-family: var(--font-body);
   font-size: var(--text-caption);
@@ -625,11 +637,10 @@ a {
   border: none;
   padding: var(--space-1) 0;
   cursor: pointer;
-  opacity: 0.75;
+  transition: color var(--transition-fast);
 }
 
 .app-header-signout:hover {
-  opacity: 1;
   color: var(--color-gold);
 }
 
