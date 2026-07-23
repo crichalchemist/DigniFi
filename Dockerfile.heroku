@@ -24,8 +24,12 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-# pymupdf needs the shared libs; opendataloader-pdf shells out to `java`
+# pymupdf needs the shared libs; opendataloader-pdf shells out to `java`.
+# curl is required by Heroku's release-phase log streamer — without it the
+# release command fails ("curl: not found", exit 143), so `migrate` never runs
+# and config-var changes silently roll back.
 RUN apt-get update && apt-get install -y --no-install-recommends \
+        curl \
         libglib2.0-0 \
         libgl1 \
         default-jre-headless \
