@@ -7,6 +7,7 @@ from datetime import timedelta
 from django.contrib.auth import get_user_model
 from django.db import models
 from django.utils import timezone
+from encrypted_model_fields.fields import EncryptedTextField
 
 User = get_user_model()
 
@@ -128,8 +129,8 @@ class OCRResult(models.Model):
     status = models.CharField(max_length=20, choices=OCRStatus.choices, default=OCRStatus.PENDING)
     ocr_provider = models.CharField(max_length=50, default="gemini", help_text="OCR provider used")
 
-    # Extracted data (encrypted JSON)
-    extracted_data = models.TextField(help_text="JSON structure of extracted fields")
+    # Extracted data — encrypted at rest (contains parsed PII: SSNs, account numbers).
+    extracted_data = EncryptedTextField(help_text="Encrypted JSON of extracted fields")
     confidence_scores = models.JSONField(
         default=dict, help_text="Per-field confidence scores (0-100)"
     )

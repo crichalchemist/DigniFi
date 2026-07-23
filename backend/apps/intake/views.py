@@ -36,6 +36,19 @@ from .serializers import (
 )
 
 
+def _assert_session_owned(session, user):
+    """Reject writes that attach a row to another user's intake session (IDOR guard).
+
+    ``get_queryset`` scopes reads, but DRF never consults it on create/update — a
+    client-supplied ``session`` PK must be checked explicitly. Mirrors the guard in
+    ``FeeWaiverViewSet.perform_create``.
+    """
+    from rest_framework.exceptions import PermissionDenied
+
+    if session.user != user:
+        raise PermissionDenied("You do not have access to this session.")
+
+
 class IntakeSessionViewSet(viewsets.ModelViewSet):
     """
     ViewSet for intake session management.
@@ -465,6 +478,16 @@ class AssetViewSet(viewsets.ModelViewSet):
         """Return only assets for user's intake sessions."""
         return AssetInfo.objects.filter(session__user=self.request.user).select_related("session")
 
+    def perform_create(self, serializer):
+        _assert_session_owned(serializer.validated_data["session"], self.request.user)
+        serializer.save()
+
+    def perform_update(self, serializer):
+        session = serializer.validated_data.get("session")
+        if session is not None:
+            _assert_session_owned(session, self.request.user)
+        serializer.save()
+
 
 class DebtViewSet(viewsets.ModelViewSet):
     """
@@ -480,6 +503,16 @@ class DebtViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         """Return only debts for user's intake sessions."""
         return DebtInfo.objects.filter(session__user=self.request.user).select_related("session")
+
+    def perform_create(self, serializer):
+        _assert_session_owned(serializer.validated_data["session"], self.request.user)
+        serializer.save()
+
+    def perform_update(self, serializer):
+        session = serializer.validated_data.get("session")
+        if session is not None:
+            _assert_session_owned(session, self.request.user)
+        serializer.save()
 
 
 class FeeWaiverViewSet(viewsets.ModelViewSet):
