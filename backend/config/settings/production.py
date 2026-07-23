@@ -55,3 +55,32 @@ REST_FRAMEWORK = {  # noqa: F405
         "auth": "5/minute",  # Login/register attempts per IP
     },
 }
+
+# ── Error monitoring (Sentry) ────────────────────────────────────────
+# DSN comes from the SENTRY_DSN env var — never hardcode it (public repo).
+# Guarded: with no DSN, Sentry stays off (local prod runs, review apps).
+SENTRY_DSN = env("SENTRY_DSN", default="")  # noqa: F405
+if SENTRY_DSN:
+    import logging
+
+    import sentry_sdk
+    from sentry_sdk.integrations.django import DjangoIntegration
+
+    try:
+        sentry_sdk.init(
+            dsn=SENTRY_DSN,
+            integrations=[DjangoIntegration()],
+            environment="production",
+            # Legal-PII product — Sentry must NEVER capture personal data. These
+            # deliberately override Sentry's default snippet (send_default_pii=True),
+            # which would ship SSNs / account numbers / IPs to a third party.
+            send_default_pii=False,
+            include_local_variables=False,  # keep SSNs out of stack-trace locals
+            max_request_body_size="never",  # never attach request bodies
+            traces_sample_rate=env.float("SENTRY_TRACES_SAMPLE_RATE", default=0.0),  # noqa: F405
+        )
+    except Exception:
+        # A malformed DSN must never take down the app it is meant to monitor.
+        logging.getLogger(__name__).warning(
+            "Sentry initialization failed; continuing without error monitoring.", exc_info=True
+        )
