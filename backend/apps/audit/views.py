@@ -21,6 +21,13 @@ class AuditLogViewSet(viewsets.ModelViewSet):
     ordering_fields = ["timestamp", "action"]
     ordering = ["-timestamp"]
 
+    # Audit trail is per-user and append-only: no cross-tenant reads, no edits/deletes.
+    http_method_names = ["get", "post", "head", "options"]
+
+    def get_queryset(self):
+        """Scope audit records to the requesting user (prevents cross-tenant reads)."""
+        return AuditLog.objects.filter(user=self.request.user)
+
     def perform_create(self, serializer):
         # Automatically set user and IP from request
         x_forwarded_for = self.request.META.get("HTTP_X_FORWARDED_FOR")
