@@ -3,7 +3,7 @@
 from datetime import date
 from decimal import Decimal
 
-from pydantic import Field, field_validator
+from pydantic import ConfigDict, Field, field_validator
 
 from .base import BaseExtractionSchema
 
@@ -60,10 +60,8 @@ class BalanceSheetExtraction(BaseExtractionSchema):
 
         return v
 
-    class Config:
-        """Pydantic configuration."""
-
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "as_of_date": "2026-01-31",
                 "cash": "5000.00",
@@ -78,6 +76,7 @@ class BalanceSheetExtraction(BaseExtractionSchema):
                 "confidence_score": 88,
             }
         }
+    )
 
 
 class ProfitLossExtraction(BaseExtractionSchema):
@@ -108,10 +107,8 @@ class ProfitLossExtraction(BaseExtractionSchema):
 
         return v
 
-    class Config:
-        """Pydantic configuration."""
-
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "period_start": "2025-01-01",
                 "period_end": "2025-12-31",
@@ -121,3 +118,4 @@ class ProfitLossExtraction(BaseExtractionSchema):
                 "confidence_score": 90,
             }
         }
+    )
