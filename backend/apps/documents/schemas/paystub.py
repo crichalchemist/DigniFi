@@ -3,7 +3,7 @@
 from datetime import date
 from decimal import Decimal
 
-from pydantic import Field, field_validator
+from pydantic import ConfigDict, Field, field_validator
 
 from .base import BaseExtractionSchema
 
@@ -33,10 +33,8 @@ class PayStubExtraction(BaseExtractionSchema):
             raise ValueError("Pay period end must be after start date")
         return v
 
-    class Config:
-        """Pydantic configuration."""
-
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "employer_name": "Acme Corporation",
                 "gross_pay": "3240.00",
@@ -48,3 +46,4 @@ class PayStubExtraction(BaseExtractionSchema):
                 "confidence_score": 92,
             }
         }
+    )

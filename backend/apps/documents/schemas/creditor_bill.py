@@ -3,7 +3,7 @@
 from datetime import date
 from decimal import Decimal
 
-from pydantic import Field
+from pydantic import ConfigDict, Field
 
 from .base import BaseExtractionSchema
 
@@ -59,10 +59,8 @@ class CreditorBillExtraction(BaseExtractionSchema):
         """Map creditor_type to internal debt classification."""
         return CREDITOR_TYPE_TO_DEBT_TYPE.get(self.creditor_type, "other")
 
-    class Config:
-        """Pydantic configuration."""
-
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "creditor_name": "Capital One",
                 "account_number": "4111",
@@ -73,3 +71,4 @@ class CreditorBillExtraction(BaseExtractionSchema):
                 "confidence_score": 88,
             }
         }
+    )

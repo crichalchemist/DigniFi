@@ -12,7 +12,6 @@ from apps.documents.models import DocumentType, OCRResult, OCRStatus, UploadedDo
 from apps.documents.services.aggregator import AggregateIngestionService
 from apps.documents.services.draft_debt import DraftDebtCreator
 from apps.documents.services.processor import DocumentProcessor
-from apps.documents.services.providers.gemini import GeminiProvider
 from apps.intake.models import IntakeSession
 
 logger = logging.getLogger(__name__)
@@ -21,6 +20,10 @@ ALLOWED_MIME_TYPES = {"application/pdf", "image/jpeg", "image/png", "image/webp"
 
 
 def _get_processor() -> DocumentProcessor:
+    # Imported lazily so the documents URLconf doesn't pull the google-genai SDK
+    # at module load (and so a missing SDK/key surfaces at OCR time, not app boot).
+    from apps.documents.services.providers.gemini import GeminiProvider
+
     provider = GeminiProvider(
         model="gemini-2.0-flash",
     )

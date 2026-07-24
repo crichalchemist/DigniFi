@@ -73,7 +73,45 @@ jobs:
 
       - name: Run tests with coverage
         working-directory: backend
-        run: pytest --cov=apps --cov=config --tb=short -q
+        # --cov-fail-under floors coverage (currently ~95%) so it can't silently regress.
+        run: pytest --cov=apps --cov=config --cov-fail-under=90 --tb=short -q
+
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Bandit SAST (fail on high severity)
+        run: |
+          pip install bandit
+          bandit -r backend/apps backend/config --severity-level high --confidence-level medium -q
+
+      - name: pip-audit — backend dependency CVEs (advisory)
+        # Advisory for now: the pinned deps carry known CVEs tracked under BIZ-61.
+        # Surface them without blocking; flip to blocking once the backlog is cleared.
+        continue-on-error: true
+        run: |
+          pip install pip-audit
+          pip-audit -r backend/requirements/base.txt
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: npm audit — frontend dependencies (advisory)
+        # Advisory for now: ~2 high-severity advisories remain in production deps
+        # (plus dev-toolchain ones) — tracked under BIZ-61. Surface, don't block;
+        # flip to blocking after `npm audit fix` clears them.
+        continue-on-error: true
+        working-directory: frontend
+        run: npm audit --audit-level=high
 
   frontend-lint:
     name: Frontend Lint
