@@ -82,9 +82,19 @@ class TestHealthCheckEndpoint:
         assert data["version"] == VERSION
         assert "checks" in data
         assert "database" in data["checks"]
-        assert "disk_generated_forms" in data["checks"]
         assert "disk_media" in data["checks"]
         assert "uptime" in data["checks"]
+
+    def test_health_check_detailed_omits_unwritten_pdf_directory(self):
+        """PDF_OUTPUT_DIRECTORY has no writer — downloads stream from memory.
+
+        Checking it made the endpoint report status:error in production for a
+        directory the app never creates or uses. Readiness must only reflect
+        resources we actually depend on.
+        """
+        request = self.factory.get("/health/detailed/")
+        response = health_check_detailed(request)
+        assert "disk_generated_forms" not in _parse(response)["checks"]
 
     def test_health_check_detailed_overall_status(self):
         request = self.factory.get("/health/detailed/")
