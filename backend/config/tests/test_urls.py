@@ -7,8 +7,8 @@ pin the boundary: backend-owned prefixes must not be swallowed, and React deep-l
 must still be.
 
 Note: templates/frontend/index.html is produced by the Docker frontend build and does
-not exist here, so SPA expectations are asserted through resolve() rather than by
-rendering.
+not exist here. Routing expectations are asserted through resolve(); rendering is
+covered separately using a locmem stand-in for that template.
 """
 
 import pytest
@@ -17,6 +17,24 @@ from django.urls import Resolver404, resolve
 from django.views.generic import TemplateView
 
 from config.urls import BACKEND_ROUTE_PREFIXES, SPA_CATCHALL_PATTERN, urlpatterns
+
+# Stands in for the real index.html, which the Docker frontend build produces into
+# templates/frontend/. Lets us assert the catch-all actually *renders* rather than
+# only resolving — E2E runs against the Vite dev server, so this suite is the only
+# place Django-served SPA routing is exercised.
+_SPA_STUB = '<!doctype html><html><body><div id="root"></div></body></html>'
+
+_STUB_TEMPLATES = [
+    {
+        "BACKEND": "django.template.backends.django.DjangoTemplates",
+        "DIRS": [],
+        "OPTIONS": {
+            "loaders": [
+                ("django.template.loaders.locmem.Loader", {"frontend/index.html": _SPA_STUB}),
+            ],
+        },
+    }
+]
 
 
 def _resolves_to_spa(path: str) -> bool:
@@ -74,6 +92,32 @@ class TestSpaRoutingIsPreserved:
     def test_unknown_non_backend_path_still_serves_the_spa(self):
         """React renders its own 404 page, so unknown paths stay with the SPA."""
         assert _resolves_to_spa("/some-page-that-does-not-exist")
+
+
+@pytest.mark.django_db
+class TestSpaActuallyRenders:
+    """Prove the catch-all serves real HTML, not just that it resolves.
+
+    Narrowing the catch-all regex risks 404ing every client-side deep link at once,
+    and E2E only exercises the Vite dev server — so without these, a deploy would be
+    the first time Django-rendered SPA routing was tested.
+    """
+
+    @pytest.fixture(autouse=True)
+    def _stub_spa_template(self, settings):
+        """Swap in a stand-in index.html; the real one is built by Docker."""
+        settings.TEMPLATES = _STUB_TEMPLATES
+
+    @pytest.mark.parametrize("route", ["/", "/intake", "/forms", "/deep/link/react/handles"])
+    def test_deep_links_render_the_react_shell(self, route, client):
+        response = client.get(route)
+        assert response.status_code == 200
+        assert response["Content-Type"] == "text/html"
+        assert b'id="root"' in response.content
+
+    def test_backend_paths_do_not_render_the_shell(self, client):
+        """The same request that renders HTML for /intake must not for /api/nope."""
+        assert client.get("/api/nope/").status_code == 404
 
 
 class TestCatchAllStaysInSyncWithBackendRoutes:
