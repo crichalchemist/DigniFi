@@ -1,7 +1,7 @@
 # Document Ingestion Prefill v2 — Design Spec
 
 **Date:** 2026-06-20  
-**Status:** Approved, pending implementation
+**Status:** Superseded in part by `2026-10-09-upload-remediation-design.md` (the §2 hybrid sidecar and the §7 empty credit report)
 
 ## Overview
 

@@ -12,6 +12,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { FormField } from '../../common';
 import { parseAmount } from '../../../utils/parseAmount';
 import type { ExpenseInfo } from '../../../types/api';
+import { EXPENSE_FIELDS } from '../../../types/api';
 
 interface ExpenseInfoStepProps {
   initialData?: Partial<ExpenseInfo>;
@@ -29,18 +30,10 @@ export function ExpenseInfoStep({
   const [formData, setFormData] = useState<Partial<ExpenseInfo>>(initialData || {});
 
   // Calculate total monthly expenses
-  const totalMonthlyExpenses =
-    (formData.rent_or_mortgage || 0) +
-    (formData.utilities || 0) +
-    (formData.home_maintenance || 0) +
-    (formData.car_payment || 0) +
-    (formData.car_insurance || 0) +
-    (formData.gas_transportation || 0) +
-    (formData.food_groceries || 0) +
-    (formData.childcare || 0) +
-    (formData.medical_expenses || 0) +
-    (formData.insurance_not_deducted || 0) +
-    (formData.other_necessary_expenses || 0);
+  const totalMonthlyExpenses = EXPENSE_FIELDS.reduce(
+    (sum, field) => sum + (formData[field] || 0),
+    0
+  );
 
   const errors = useMemo<Record<string, string>>(() => {
     const newErrors: Record<string, string> = {};
@@ -162,26 +155,26 @@ export function ExpenseInfoStep({
         <div className="form-row">
           <FormField
             label="Car Payment"
-            name="car_payment"
+            name="vehicle_payment"
             type="number"
             min="0"
             step="0.01"
-            value={formData.car_payment ?? ''}
-            onChange={(e) => handleChange('car_payment', e.target.value)}
-            error={errors.car_payment}
+            value={formData.vehicle_payment ?? ''}
+            onChange={(e) => handleChange('vehicle_payment', e.target.value)}
+            error={errors.vehicle_payment}
             helpText="Monthly auto loan or lease payment"
             placeholder="0.00"
           />
 
           <FormField
             label="Car Insurance"
-            name="car_insurance"
+            name="vehicle_insurance"
             type="number"
             min="0"
             step="0.01"
-            value={formData.car_insurance ?? ''}
-            onChange={(e) => handleChange('car_insurance', e.target.value)}
-            error={errors.car_insurance}
+            value={formData.vehicle_insurance ?? ''}
+            onChange={(e) => handleChange('vehicle_insurance', e.target.value)}
+            error={errors.vehicle_insurance}
             helpText="Monthly auto insurance premium"
             placeholder="0.00"
           />
@@ -189,13 +182,13 @@ export function ExpenseInfoStep({
 
         <FormField
           label="Gas & Transportation"
-          name="gas_transportation"
+          name="vehicle_maintenance"
           type="number"
           min="0"
           step="0.01"
-          value={formData.gas_transportation ?? ''}
-          onChange={(e) => handleChange('gas_transportation', e.target.value)}
-          error={errors.gas_transportation}
+          value={formData.vehicle_maintenance ?? ''}
+          onChange={(e) => handleChange('vehicle_maintenance', e.target.value)}
+          error={errors.vehicle_maintenance}
           helpText="Gas, public transit, parking, tolls"
           placeholder="0.00"
         />
@@ -211,13 +204,13 @@ export function ExpenseInfoStep({
         <div className="form-row">
           <FormField
             label="Food & Groceries"
-            name="food_groceries"
+            name="food_and_groceries"
             type="number"
             min="0"
             step="0.01"
-            value={formData.food_groceries ?? ''}
-            onChange={(e) => handleChange('food_groceries', e.target.value)}
-            error={errors.food_groceries}
+            value={formData.food_and_groceries ?? ''}
+            onChange={(e) => handleChange('food_and_groceries', e.target.value)}
+            error={errors.food_and_groceries}
             helpText="Groceries, dining out, household supplies"
             placeholder="0.00"
           />
@@ -264,15 +257,43 @@ export function ExpenseInfoStep({
           />
         </div>
 
+        <div className="form-row">
+          <FormField
+            label="Clothing"
+            name="clothing"
+            type="number"
+            min="0"
+            step="0.01"
+            value={formData.clothing ?? ''}
+            onChange={(e) => handleChange('clothing', e.target.value)}
+            error={errors.clothing}
+            helpText="Clothes, shoes, laundry, and dry cleaning"
+            placeholder="0.00"
+          />
+
+          <FormField
+            label="Child Support Paid"
+            name="child_support_paid"
+            type="number"
+            min="0"
+            step="0.01"
+            value={formData.child_support_paid ?? ''}
+            onChange={(e) => handleChange('child_support_paid', e.target.value)}
+            error={errors.child_support_paid}
+            helpText="Court-ordered support you pay to someone else"
+            placeholder="0.00"
+          />
+        </div>
+
         <FormField
           label="Other Necessary Expenses"
-          name="other_necessary_expenses"
+          name="other_expenses"
           type="number"
           min="0"
           step="0.01"
-          value={formData.other_necessary_expenses ?? ''}
-          onChange={(e) => handleChange('other_necessary_expenses', e.target.value)}
-          error={errors.other_necessary_expenses}
+          value={formData.other_expenses ?? ''}
+          onChange={(e) => handleChange('other_expenses', e.target.value)}
+          error={errors.other_expenses}
           helpText="Clothing, laundry, personal care, pet care, other essentials"
           placeholder="0.00"
         />

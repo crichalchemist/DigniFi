@@ -9,8 +9,10 @@ import { useState, useEffect, useRef, useLayoutEffect } from 'react';
 import { useAutoSave } from '../hooks/useAutoSave';
 import { useNavigate } from 'react-router-dom';
 import { useIntake } from '../context/IntakeContext';
-import { api } from '../api/client';
+import { api, APIClientError } from '../api/client';
 import { trackEvent } from '../utils/analytics';
+import { hydrateAmounts } from '../utils/parseAmount';
+import { Button } from '../components/common';
 import { WizardLayout } from '../components/wizard/WizardLayout';
 import { MeansTestPreview } from '../components/wizard/MeansTestPreview';
 import {
@@ -31,6 +33,7 @@ import type {
   AssetInfo,
   DebtInfo,
 } from '../types/api';
+import { EXPENSE_FIELDS } from '../types/api';
 
 // ============================================================================
 // Wizard Configuration
@@ -47,14 +50,24 @@ const WIZARD_STEPS = [
   { number: 8, label: 'Review & Results', key: 'review' },
 ];
 
+// DRF sends these decimals as strings ("2500.00"). The steps add and compare them,
+// so they become numbers as session data enters wizard state.
+const ASSET_AMOUNT_FIELDS = ['current_value', 'amount_owed'] as const;
+const DEBT_AMOUNT_FIELDS = ['amount_owed', 'monthly_payment'] as const;
+
 export function IntakeWizard() {
   const navigate = useNavigate();
-  const { session, createSession, updateCurrentStep, completeSession, calculateMeansTest } =
-    useIntake();
+  const {
+    session,
+    createSession,
+    loadSession,
+    updateCurrentStep,
+    completeSession,
+    calculateMeansTest,
+  } = useIntake();
   const [currentStepNumber, setCurrentStepNumber] = useState(1);
   const [canProceed, setCanProceed] = useState(false);
   const sessionStartRef = useRef<number>(0);
-  const syncedSessionIdRef = useRef<number | null>(null);
 
   // Initialize session start time after first render
   useLayoutEffect(() => {
@@ -69,26 +82,71 @@ export function IntakeWizard() {
   const [debtsData, setDebtsData] = useState<Partial<DebtInfo>[]>([]);
 
   // =========================================================================
-  // Initialize session on mount
+  // Read the session on mount
   // =========================================================================
 
+  // Fixed at mount: the session in context, else the saved resume pointer, else null for a
+  // filer with no saved session. A failed read is retried for this same session rather
+  // than starting a new one, even if the pointer was cleared in the meantime.
+  const [sessionIdToRead] = useState<number | null>(() => {
+    const savedSessionId = localStorage.getItem('current_session_id');
+    return session?.id ?? (savedSessionId ? parseInt(savedSessionId, 10) : null);
+  });
+  const [sessionRead, setSessionRead] = useState<'pending' | 'failed' | 'done'>('pending');
+  const [readAttempt, setReadAttempt] = useState(0);
+
+  // Every wizard entry re-reads the session, and no step renders until the read returns
+  // (DIG-1, DIG-30). The copy in context can predate an upload on /documents; a step that
+  // mounted on it would autosave that stale copy over what the server now holds.
   useEffect(() => {
-    if (!session && !localStorage.getItem('current_session_id')) {
-      // No session in context AND no saved session — create a new one (District ID 1 = ILND)
-      createSession(1);
-    } else if (session && syncedSessionIdRef.current !== session.id) {
-      // Session became available (loaded from localStorage or just created).
-      // Sync wizard state once per session id to avoid overwriting in-flight steps.
-      syncedSessionIdRef.current = session.id;
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- initializer: syncing external session state into local wizard state on session arrival
-      setCurrentStepNumber(session.current_step);
-      if (session.debtor_info) setDebtorData(session.debtor_info);
-      if (session.income_info) setIncomeData(session.income_info);
-      if (session.expense_info) setExpenseData(session.expense_info);
-      if (session.assets) setAssetsData(session.assets);
-      if (session.debts) setDebtsData(session.debts);
-    }
-  }, [session, createSession]);
+    let cancelled = false;
+
+    const openSession = async (): Promise<IntakeSession> => {
+      if (sessionIdToRead === null) {
+        // No session in context AND no saved session — create a new one (District ID 1 = ILND)
+        return createSession(1);
+      }
+      try {
+        return await loadSession(sessionIdToRead);
+      } catch (error) {
+        // A 404 means the saved session is gone or belongs to someone else (a shared
+        // computer). Retrying cannot help, so start a new one, as for a new filer.
+        if (error instanceof APIClientError && error.statusCode === 404) {
+          return createSession(1);
+        }
+        throw error;
+      }
+    };
+
+    openSession()
+      .then((fresh) => {
+        if (cancelled) return;
+        setCurrentStepNumber(fresh.current_step);
+        if (fresh.debtor_info) setDebtorData(fresh.debtor_info);
+        if (fresh.income_info) setIncomeData(fresh.income_info);
+        if (fresh.expense_info) setExpenseData(hydrateAmounts(fresh.expense_info, EXPENSE_FIELDS));
+        if (fresh.assets)
+          setAssetsData(fresh.assets.map((asset) => hydrateAmounts(asset, ASSET_AMOUNT_FIELDS)));
+        if (fresh.debts)
+          setDebtsData(fresh.debts.map((debt) => hydrateAmounts(debt, DEBT_AMOUNT_FIELDS)));
+        setSessionRead('done');
+      })
+      .catch(() => {
+        if (!cancelled) setSessionRead('failed');
+      });
+
+    return () => {
+      cancelled = true;
+    };
+    // Runs once per wizard entry and once per Try again. createSession and loadSession are
+    // fresh closures on every render, so listing them would re-read on every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [readAttempt]);
+
+  const handleRetry = () => {
+    setSessionRead('pending');
+    setReadAttempt((attempt) => attempt + 1);
+  };
 
   // =========================================================================
   // Autosave
@@ -136,6 +194,17 @@ export function IntakeWizard() {
     try {
       const nextStep = currentStepNumber + 1;
       await updateCurrentStep(nextStep);
+
+      // Document upload sits between step 1 and step 2. The debtor's own details are
+      // typed by hand; uploads then pre-fill the financial steps that follow, so the
+      // detour has to happen before Income rather than after Review. current_step is
+      // already persisted as 2, so returning to /intake resumes at Income — see the
+      // session-read effect above.
+      if (nextStep === 2) {
+        navigate('/documents');
+        return;
+      }
+
       setCurrentStepNumber(nextStep);
       // Contracts (6) and Codebtors (7) are optional — pre-approve so Continue stays enabled
       setCanProceed(nextStep === 6 || nextStep === 7);
@@ -193,18 +262,14 @@ export function IntakeWizard() {
         } as Partial<IntakeSession>);
         break;
 
-      case 'income_info': {
-        // Transform detailed income data to backend format (6-month array)
-        // MVP Assumption: Current monthly income is consistent for last 6 months
-        const incomePayload = {
-          ...incomeData,
-          monthly_income: Array(6).fill(incomeData.total_monthly_income || 0),
-        };
+      case 'income_info':
+        // Send the months alone: IncomeInfoStep re-emits them as stored unless the filer
+        // entered source amounts. Echoing other fields read from the server (a blank
+        // marital_status) is a 400 that would strand the filer on Income.
         await api.intake.updateSession(session.id, {
-          income_info: incomePayload,
+          income_info: { monthly_income: incomeData.monthly_income },
         } as Partial<IntakeSession>);
         break;
-      }
 
       case 'expense_info':
         await api.intake.updateSession(session.id, {
@@ -319,7 +384,19 @@ export function IntakeWizard() {
   // Render
   // =========================================================================
 
-  if (!session) {
+  if (sessionRead === 'failed') {
+    return (
+      <div className="wizard-loading">
+        <p role="alert">
+          We couldn't get your latest information just now. Please try again in a moment.
+        </p>
+        <Button onClick={handleRetry}>Try again</Button>
+      </div>
+    );
+  }
+
+  // Steps mount only once the read has filled them, so the first autosave sends server data.
+  if (!session || sessionRead !== 'done') {
     return (
       <div className="wizard-loading">
         <div className="loading-spinner">
@@ -344,7 +421,11 @@ export function IntakeWizard() {
             />
           </svg>
         </div>
-        <p>Starting your intake session...</p>
+        <p>
+          {sessionIdToRead === null
+            ? 'Starting your intake session...'
+            : 'Loading your information...'}
+        </p>
       </div>
     );
   }

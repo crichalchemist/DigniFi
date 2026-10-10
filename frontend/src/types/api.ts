@@ -108,20 +108,42 @@ export interface ExpenseInfo {
   home_maintenance: number;
 
   // Transportation
-  car_payment: number;
-  car_insurance: number;
-  gas_transportation: number;
+  vehicle_payment: number;
+  vehicle_insurance: number;
+  vehicle_maintenance: number;
 
   // Living expenses
-  food_groceries: number;
+  food_and_groceries: number;
+  clothing: number;
   childcare: number;
+  child_support_paid: number;
   medical_expenses: number;
   insurance_not_deducted: number;
-  other_necessary_expenses: number;
+  other_expenses: number;
 
   // Calculated field
   total_monthly_expenses: number;
 }
+
+/**
+ * The 13 monthly expense amounts, under the names the backend stores and the court forms
+ * read. DRF drops any other name without an error, so the step sums and sends only these.
+ */
+export const EXPENSE_FIELDS = [
+  'rent_or_mortgage',
+  'utilities',
+  'home_maintenance',
+  'vehicle_payment',
+  'vehicle_insurance',
+  'vehicle_maintenance',
+  'food_and_groceries',
+  'clothing',
+  'medical_expenses',
+  'childcare',
+  'child_support_paid',
+  'insurance_not_deducted',
+  'other_expenses',
+] as const;
 
 export interface AssetInfo {
   id: number;
@@ -332,13 +354,15 @@ export const FORM_TYPE_METADATA: Record<
 
 export type OCRStatus = 'pending' | 'processing' | 'completed' | 'failed' | 'validated';
 
+/** Why a failed scan failed. Blank on every other status, and on rows from before 0006. */
+export type OCRFailureReason = 'nothing_found' | 'processing_error';
+
 export interface OCRResult {
   status: OCRStatus;
-  extracted_data: Record<string, unknown>;
+  failure_reason: OCRFailureReason | '';
   confidence_scores: Record<string, number>;
   overall_confidence: number;
   user_validated: boolean;
-  error_message: string | null;
 }
 
 export interface UploadedDocument {

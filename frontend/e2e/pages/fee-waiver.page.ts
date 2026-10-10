@@ -8,6 +8,11 @@ import type { Page } from '@playwright/test';
 export class FeeWaiverPage {
   constructor(private page: Page) {}
 
+  /** The expenses box, which the page pre-fills from the total the intake saved. */
+  monthlyExpenses() {
+    return this.page.getByLabel(/total monthly expenses/i);
+  }
+
   async submit(householdSize: number, monthlyIncome: number, monthlyExpenses: number) {
     await this.page.getByLabel(/household size/i).fill(String(householdSize));
     await this.page.getByLabel(/total monthly income/i).fill(String(monthlyIncome));

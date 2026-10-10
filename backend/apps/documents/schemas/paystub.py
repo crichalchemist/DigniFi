@@ -15,6 +15,9 @@ class PayStubExtraction(BaseExtractionSchema):
     Used for Schedule I (Income) and means test calculations.
     """
 
+    # The processor pops confidence_score before storing extracted_data, so the stored
+    # pay stub never carries one; without a default no real pay stub would validate.
+    confidence_score: int = Field(default=0, ge=0, le=100)
     employer_name: str | None = Field(default=None, description="Employer or company name")
     gross_pay: Decimal = Field(gt=0, description="Gross pay for this period")
     pay_period_start: date = Field(description="Pay period start date (YYYY-MM-DD)")

@@ -625,13 +625,25 @@ export async function uploadDocument(
   formData.append('document_type', documentType);
   formData.append('session_id', String(sessionId));
 
-  const token = getAccessToken();
-  const res = await fetch(`${API_BASE_URL}/documents/upload/`, {
-    method: 'POST',
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
-    body: formData,
-  });
-  if (!res.ok) throw new Error(`Upload failed: ${res.status}`);
+  // Raw fetch, not apiFetch: apiFetch forces Content-Type: application/json, which
+  // would replace the multipart boundary the browser sets for FormData.
+  const doFetch = () => {
+    const token = getAccessToken();
+    return fetch(`${API_BASE_URL}/documents/upload/`, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: formData,
+    });
+  };
+  let res = await doFetch();
+  // Access tokens last 30 minutes; a filer who lingered gets one refresh and one retry.
+  if (res.status === 401 && getRefreshToken()) {
+    const refreshed = await attemptTokenRefresh();
+    if (refreshed) res = await doFetch();
+  }
+  if (!res.ok) {
+    throw new APIClientError(`Upload failed (${res.status})`, res.status);
+  }
   return res.json();
 }
 

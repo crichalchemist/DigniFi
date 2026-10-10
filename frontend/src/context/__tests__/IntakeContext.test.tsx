@@ -127,6 +127,8 @@ describe('IntakeContext', () => {
 
     const user = userEvent.setup();
     renderWithIntake();
+    // Set the pointer after mount, so the provider's own startup load can't be what clears it.
+    localStorage.setItem('current_session_id', '1');
 
     await act(async () => {
       await user.click(screen.getByText('Load Session'));
@@ -137,6 +139,30 @@ describe('IntakeContext', () => {
     });
 
     expect(localStorage.getItem('current_session_id')).toBeNull();
+    expect(screen.getByTestId('error')).not.toHaveTextContent('none');
+  });
+
+  it('keeps the resume pointer when a load fails for a reason that can pass, such as a busy server', async () => {
+    server.use(
+      http.get('http://localhost:8000/api/intake/sessions/:id/', () =>
+        HttpResponse.json({ detail: 'Request was throttled.' }, { status: 429 })
+      )
+    );
+
+    const user = userEvent.setup();
+    renderWithIntake();
+    // Set the pointer after mount, so the provider's own startup load can't consume it.
+    localStorage.setItem('current_session_id', '1');
+
+    await act(async () => {
+      await user.click(screen.getByText('Load Session'));
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('loading')).toHaveTextContent('false');
+    });
+
+    expect(localStorage.getItem('current_session_id')).toBe('1');
     expect(screen.getByTestId('error')).not.toHaveTextContent('none');
   });
 

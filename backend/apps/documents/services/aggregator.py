@@ -31,8 +31,11 @@ class AggregateIngestionService:
                 ).delete()
 
         except Exception as exc:
-            logger.exception(
-                "Failed to recalculate ingestion aggregates for session %s: %s", session_id, exc
+            # Type only, no traceback: logs reach Sentry, and exception text can quote pay figures.
+            logger.error(
+                "Failed to recalculate ingestion aggregates for session %s: %s",
+                session_id,
+                type(exc).__name__,
             )
 
     @classmethod
@@ -63,7 +66,10 @@ class AggregateIngestionService:
                     most_recent_end = parsed.pay_period_end
                     most_recent_employer = parsed.employer_name or ""
             except Exception as e:
-                logger.warning("Skipping invalid paystub OCRResult %s: %s", ocr.id, e)
+                # The exception text quotes the pay-stub values; log only its class.
+                logger.warning(
+                    "Skipping invalid paystub OCRResult %s (%s)", ocr.id, type(e).__name__
+                )
 
         if valid_stubs > 0:
             avg_monthly_gross = (total_monthly_gross / Decimal(str(valid_stubs))).quantize(

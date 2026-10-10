@@ -154,6 +154,28 @@ export const handlers = [
     HttpResponse.json({ id: 1, session: 1, debt_type: 'credit_card', creditor_name: 'Visa' })
   ),
 
+  // -- Documents -----------------------------------------------------------
+
+  http.post(`${API}/documents/upload/`, () =>
+    HttpResponse.json({ id: 1, status: 'processing' }, { status: 202 })
+  ),
+
+  http.get(`${API}/documents/:id/`, ({ params }) =>
+    HttpResponse.json({
+      id: Number(params.id),
+      document_type: 'creditor_bill',
+      original_filename: 'bill.pdf',
+      uploaded_at: '2026-01-20T10:00:00Z',
+      ocr_result: {
+        status: 'completed',
+        failure_reason: '',
+        confidence_scores: {},
+        overall_confidence: 0.9,
+        user_validated: false,
+      },
+    })
+  ),
+
   // -- Forms ---------------------------------------------------------------
 
   http.post(`${API}/forms/generate_form_101/`, () =>

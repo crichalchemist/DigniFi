@@ -51,6 +51,13 @@ class OCRStatus(models.TextChoices):
     VALIDATED = "validated", "Validated by User"
 
 
+class OCRFailureReason(models.TextChoices):
+    """Why a FAILED scan failed, in terms the upload page can explain to the filer."""
+
+    NOTHING_FOUND = "nothing_found", "Nothing found"
+    PROCESSING_ERROR = "processing_error", "Processing error"
+
+
 class UploadedDocument(models.Model):
     """
     Encrypted storage for user-uploaded documents.
@@ -127,6 +134,13 @@ class OCRResult(models.Model):
 
     # Processing metadata
     status = models.CharField(max_length=20, choices=OCRStatus.choices, default=OCRStatus.PENDING)
+    failure_reason = models.CharField(
+        max_length=32,
+        choices=OCRFailureReason.choices,
+        blank=True,
+        default="",
+        help_text="Why a failed scan failed; the only failure detail the API returns",
+    )
     ocr_provider = models.CharField(max_length=50, default="gemini", help_text="OCR provider used")
 
     # Extracted data — encrypted at rest (contains parsed PII: SSNs, account numbers).
@@ -147,6 +161,8 @@ class OCRResult(models.Model):
     # Timing & errors
     processed_at = models.DateTimeField(auto_now_add=True)
     processing_duration = models.FloatField(null=True, help_text="Seconds to process")
+    # Operations only: exception class names and finish_reason, never model output.
+    # The documents API does not return it.
     error_message = models.TextField(blank=True, null=True)
 
     class Meta:

@@ -13,6 +13,23 @@ import { FormField } from '../../common';
 import { parseAmount } from '../../../utils/parseAmount';
 import type { IncomeInfo } from '../../../types/api';
 
+/**
+ * The ten per-source boxes. The server stores only the 6-month `monthly_income` array,
+ * never these, so a session read back from the server carries none of them.
+ */
+const SOURCE_FIELDS = [
+  'monthly_gross_wages',
+  'monthly_overtime',
+  'monthly_tips',
+  'monthly_rental_income',
+  'monthly_pension',
+  'monthly_social_security',
+  'monthly_unemployment',
+  'monthly_child_support',
+  'monthly_alimony',
+  'monthly_other_income',
+] as const;
+
 interface IncomeInfoStepProps {
   initialData?: Partial<IncomeInfo>;
   onDataChange: (data: Partial<IncomeInfo>) => void;
@@ -28,18 +45,18 @@ export function IncomeInfoStep({
   // blank, while a deliberately entered 0 is preserved by parseAmount + `?? ''`.
   const [formData, setFormData] = useState<Partial<IncomeInfo>>(initialData || {});
 
-  // Calculate total monthly income
-  const totalMonthlyIncome =
-    (formData.monthly_gross_wages || 0) +
-    (formData.monthly_overtime || 0) +
-    (formData.monthly_tips || 0) +
-    (formData.monthly_rental_income || 0) +
-    (formData.monthly_pension || 0) +
-    (formData.monthly_social_security || 0) +
-    (formData.monthly_unemployment || 0) +
-    (formData.monthly_child_support || 0) +
-    (formData.monthly_alimony || 0) +
-    (formData.monthly_other_income || 0);
+  // Typing in a box writes its key, so the step switches to source amounts once any key
+  // is present, even one cleared back to blank. Until then it keeps the saved months.
+  const usesSourceAmounts = SOURCE_FIELDS.some((field) => field in formData);
+  const savedMonthlyIncome =
+    !usesSourceAmounts && formData.monthly_income?.length === 6
+      ? formData.monthly_income
+      : undefined;
+
+  // Calculate total monthly income: the saved total until the filer enters source amounts
+  const totalMonthlyIncome = savedMonthlyIncome
+    ? (formData.total_monthly_income ?? 0)
+    : SOURCE_FIELDS.reduce((sum, field) => sum + (formData[field] || 0), 0);
 
   const errors = useMemo<Record<string, string>>(() => {
     const newErrors: Record<string, string> = {};
@@ -62,6 +79,10 @@ export function IncomeInfoStep({
   useEffect(() => {
     const dataWithTotal = {
       ...formData,
+      // Saved months go back exactly as stored. Source amounts replace them with six copies
+      // of their sum (MVP: the same income each month), and a new filer who enters nothing
+      // records six months of $0.
+      monthly_income: savedMonthlyIncome ?? Array(6).fill(totalMonthlyIncome),
       total_monthly_income: totalMonthlyIncome,
     };
     onDataChange(dataWithTotal);
@@ -95,6 +116,21 @@ export function IncomeInfoStep({
           </p>
         </div>
       </div>
+
+      {/* Saved total: only the total is stored, so the boxes start empty */}
+      {savedMonthlyIncome && (
+        <div className="info-box">
+          <p className="info-message">
+            Your saved total is $
+            {totalMonthlyIncome.toLocaleString('en-US', {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            })}{' '}
+            a month. We keep only the total, not the amount from each source, so the boxes below
+            start empty. If you enter amounts below, they will replace the saved total.
+          </p>
+        </div>
+      )}
 
       {/* General error */}
       {errors.general && (

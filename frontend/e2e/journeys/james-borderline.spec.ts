@@ -9,6 +9,7 @@ import { JAMES } from '../fixtures/personas';
 import { LandingPage } from '../pages/landing.page';
 import { RegisterPage } from '../pages/register.page';
 import { WizardPage } from '../pages/wizard.page';
+import { DocumentsPage } from '../pages/documents.page';
 import { DashboardPage } from '../pages/dashboard.page';
 import { SOFAPage } from '../pages/sofa.page';
 
@@ -17,6 +18,7 @@ test.describe('James Washington — Borderline', () => {
     const landing = new LandingPage(page);
     const register = new RegisterPage(page);
     const wizard = new WizardPage(page);
+    const documents = new DocumentsPage(page);
     const sofa = new SOFAPage(page);
     const dashboard = new DashboardPage(page);
 
@@ -27,6 +29,9 @@ test.describe('James Washington — Borderline', () => {
     // Step 1: Debtor Info
     await wizard.fillDebtorInfo(JAMES.debtor);
     await wizard.nextStep();
+
+    // Uploads come between basic info and Income; this journey types everything in
+    await documents.skip();
 
     // Step 2: Income (borderline — $5,833/mo × 12 = $69,996 < $71,304 median)
     await wizard.fillIncomeInfo(JAMES.income);

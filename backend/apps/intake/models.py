@@ -100,6 +100,18 @@ class IncomeInfo(models.Model):
             f"(Session: {self.session_id})"
         )
 
+    def calculate_total_monthly_income(self) -> float:
+        """Average monthly income over the stored months, to the cent.
+
+        Only the 6-month array is stored, never the per-source amounts the filer typed,
+        so this is the saved total the Income step shows when it reopens.
+        """
+        months = self.monthly_income or []
+        if not months:
+            return 0.0
+        total = sum(Decimal(str(amount)) for amount in months)
+        return float((total / len(months)).quantize(Decimal("0.01")))
+
 
 class ExpenseInfo(models.Model):
     """Monthly expense data for means test calculation."""

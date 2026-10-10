@@ -21,8 +21,8 @@ interface IntakeContextValue {
   meansTestResult: MeansTestResult | null;
 
   // Actions
-  createSession: (districtId: number) => Promise<void>;
-  loadSession: (sessionId: number) => Promise<void>;
+  createSession: (districtId: number) => Promise<IntakeSession>;
+  loadSession: (sessionId: number) => Promise<IntakeSession>;
   updateCurrentStep: (step: number, data?: Partial<IntakeSession>) => Promise<void>;
   completeSession: () => Promise<void>;
   calculateMeansTest: () => Promise<MeansTestResult>;
@@ -80,7 +80,7 @@ export function IntakeProvider({ children }: IntakeProviderProps) {
   /**
    * Create new intake session
    */
-  const createSession = async (districtId: number): Promise<void> => {
+  const createSession = async (districtId: number): Promise<IntakeSession> => {
     setIsLoading(true);
     setError(null);
 
@@ -91,6 +91,7 @@ export function IntakeProvider({ children }: IntakeProviderProps) {
       });
 
       setSession(response.session);
+      return response.session;
     } catch (err) {
       const errorMessage =
         err instanceof APIClientError
@@ -104,15 +105,16 @@ export function IntakeProvider({ children }: IntakeProviderProps) {
   };
 
   /**
-   * Load existing session by ID
+   * Load existing session by ID. Resolves with the session as the server holds it now.
    */
-  const loadSession = async (sessionId: number): Promise<void> => {
+  const loadSession = async (sessionId: number): Promise<IntakeSession> => {
     setIsLoading(true);
     setError(null);
 
     try {
       const loadedSession = await api.intake.getSession(sessionId);
       setSession(loadedSession);
+      return loadedSession;
     } catch (err) {
       const errorMessage =
         err instanceof APIClientError
@@ -120,8 +122,12 @@ export function IntakeProvider({ children }: IntakeProviderProps) {
           : 'Unable to load your session. Please try again.';
       setError(errorMessage);
 
-      // Clear invalid session from localStorage
-      localStorage.removeItem('current_session_id');
+      // Forget the resume pointer only on a 404, DRF's answer for a session that is gone
+      // or not this user's. A 429, a 5xx or a network error is temporary: keep the pointer
+      // so the filer can pick up where they left off.
+      if (err instanceof APIClientError && err.statusCode === 404) {
+        localStorage.removeItem('current_session_id');
+      }
       throw err;
     } finally {
       setIsLoading(false);

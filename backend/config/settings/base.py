@@ -241,6 +241,13 @@ PDF_OUTPUT_DIRECTORY = MEDIA_ROOT / "generated_forms"
 # ============================================
 
 GEMINI_API_KEY = env("GEMINI_API_KEY", default="")
+OPENAI_API_KEY = env("OPENAI_API_KEY", default="")
+
+# Which provider _get_processor() builds: "openai" or "gemini".
+# OCR_MODEL overrides the provider's own default model when set, so a model
+# change is a config var rather than a deploy.
+OCR_PROVIDER = env("OCR_PROVIDER", default="openai")
+OCR_MODEL = env("OCR_MODEL", default="")
 
 # Document Storage
 DOCUMENT_STORAGE_BACKEND = env("DOCUMENT_STORAGE_BACKEND", default="filesystem")
