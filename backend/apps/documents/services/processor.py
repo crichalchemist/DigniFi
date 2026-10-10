@@ -10,7 +10,7 @@ try:
 except ImportError:
     opendataloader_pdf = None
 
-from apps.documents.services.providers.base import BaseOCRProvider
+from apps.documents.services.providers.base import BaseOCRProvider, EmptyModelReply
 from apps.documents.services.providers.prompts.image_extraction import build_image_extraction_prompt
 from apps.documents.services.providers.prompts.text_extraction import build_text_extraction_prompt
 
@@ -36,15 +36,13 @@ def _read_odl_output(output_dir: str) -> str:
     return ""
 
 
-def _pdf_to_image_bytes(pdf_bytes: bytes, page_index: int = 0) -> bytes:
+def _pdf_to_page_images(pdf_bytes: bytes, max_pages: int = _MAX_SCANNED_PAGES) -> list[bytes]:
+    """Render the first ``max_pages`` pages as JPEG bytes, in page order. A PDF with
+    no pages gives an empty list."""
     import fitz  # pymupdf
 
-    doc = fitz.open(stream=pdf_bytes, filetype="pdf")
-    if page_index >= len(doc):
-        page_index = 0
-    page = doc[page_index]
-    pix = page.get_pixmap(dpi=150)
-    return pix.tobytes("jpeg")
+    with fitz.open(stream=pdf_bytes, filetype="pdf") as doc:
+        return [doc[i].get_pixmap(dpi=150).tobytes("jpeg") for i in range(min(len(doc), max_pages))]
 
 
 class DocumentProcessor:
@@ -60,11 +58,16 @@ class DocumentProcessor:
             else:
                 return ExtractionResult(error=f"Unsupported MIME type: {mime_type}")
         except Exception as exc:
-            return ExtractionResult(error=str(exc))
+            # error_message is operations-only (spec §4.7). EmptyModelReply's own text names
+            # finish_reason and never quotes the model; any other exception keeps only its
+            # class name, because a provider's error text can carry account or project details.
+            return ExtractionResult(
+                error=str(exc) if isinstance(exc, EmptyModelReply) else type(exc).__name__
+            )
 
     def _process_image(self, image_bytes: bytes, doc_type: str) -> ExtractionResult:
         prompt = build_image_extraction_prompt(doc_type)
-        raw = self._provider.extract(image_bytes, prompt)
+        raw = self._provider.extract([image_bytes], prompt)
         return self._parse_result(raw, doc_type)
 
     def _process_pdf(self, pdf_bytes: bytes, doc_type: str) -> ExtractionResult:
@@ -79,11 +82,16 @@ class DocumentProcessor:
             # than failing the whole upload.
             if opendataloader_pdf is not None:
                 try:
+                    # image_output="off": a scanned page yields no text, so it routes
+                    # to vision instead of sending image placeholders to the text
+                    # prompt. include_header_footer=True keeps the letterhead, where
+                    # creditor names and account numbers usually sit.
                     opendataloader_pdf.convert(
                         input_path=[pdf_path],
                         output_dir=tmp_out,
                         format="markdown",
-                        hybrid="docling-fast",
+                        image_output="off",
+                        include_header_footer=True,
                     )
                     text = _read_odl_output(tmp_out)
                 except Exception as exc:
@@ -97,11 +105,14 @@ class DocumentProcessor:
 
         if len(text.strip()) >= _MIN_TEXT_LENGTH:
             prompt = build_text_extraction_prompt(doc_type, text)
-            raw = self._provider.extract(b"", prompt)
+            raw = self._provider.extract([], prompt)
         else:
-            image_bytes = _pdf_to_image_bytes(pdf_bytes, page_index=0)
+            images = _pdf_to_page_images(pdf_bytes)
+            if not images:
+                # An empty list means text mode to a provider, so it must not reach one.
+                return ExtractionResult(error="PDF has no pages")
             prompt = build_image_extraction_prompt(doc_type)
-            raw = self._provider.extract(image_bytes, prompt)
+            raw = self._provider.extract(images, prompt)
 
         return self._parse_result(raw, doc_type)
 
@@ -113,7 +124,8 @@ class DocumentProcessor:
                 if clean.startswith("json"):
                     clean = clean[4:]
             data = json.loads(clean)
-            confidence_score = int(data.pop("confidence_score", 0))
+            # An all-null reply (a cover page) carries "confidence_score": null.
+            confidence_score = int(data.pop("confidence_score", None) or 0)
             return ExtractionResult(
                 fields=data,
                 confidence={"overall": confidence_score},
@@ -124,5 +136,5 @@ class DocumentProcessor:
                 fields={},
                 confidence={"overall": 0},
                 detected_type=doc_type,
-                error=f"Failed to parse LLM response: {raw[:200]}",
+                error=f"model reply was not valid JSON ({len(raw)} characters)",
             )

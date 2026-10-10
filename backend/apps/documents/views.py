@@ -2,16 +2,28 @@ import json
 import logging
 from concurrent.futures import ThreadPoolExecutor
 
-from rest_framework import status
+from django.conf import settings
+from django.core.exceptions import ImproperlyConfigured
+from pydantic import ValidationError
+from rest_framework import serializers, status
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import ViewSet
 
-from apps.documents.models import DocumentType, OCRResult, OCRStatus, UploadedDocument
+from apps.documents.models import (
+    DocumentType,
+    OCRFailureReason,
+    OCRResult,
+    OCRStatus,
+    UploadedDocument,
+)
+from apps.documents.schemas.credit_report import CreditReportExtraction
+from apps.documents.schemas.paystub import PayStubExtraction
 from apps.documents.services.aggregator import AggregateIngestionService
 from apps.documents.services.draft_debt import DraftDebtCreator
-from apps.documents.services.processor import DocumentProcessor
+from apps.documents.services.processor import DocumentProcessor, ExtractionResult
+from apps.documents.services.providers.base import BaseOCRProvider
 from apps.intake.models import IntakeSession
 
 logger = logging.getLogger(__name__)
@@ -20,14 +32,50 @@ ALLOWED_MIME_TYPES = {"application/pdf", "image/jpeg", "image/png", "image/webp"
 
 
 def _get_processor() -> DocumentProcessor:
-    # Imported lazily so the documents URLconf doesn't pull the google-genai SDK
+    # Providers are imported lazily so the documents URLconf doesn't pull an OCR SDK
     # at module load (and so a missing SDK/key surfaces at OCR time, not app boot).
-    from apps.documents.services.providers.gemini import GeminiProvider
+    provider_name = settings.OCR_PROVIDER.lower()
 
-    provider = GeminiProvider(
-        model="gemini-2.0-flash",
-    )
+    if provider_name == "openai":
+        from apps.documents.services.providers.openai_provider import OpenAIProvider
+
+        provider: BaseOCRProvider = OpenAIProvider(model=settings.OCR_MODEL or "gpt-4o")
+    elif provider_name == "gemini":
+        from apps.documents.services.providers.gemini import GeminiProvider
+
+        provider = GeminiProvider(model=settings.OCR_MODEL or "gemini-2.0-flash")
+    else:
+        raise ImproperlyConfigured(
+            f"Unknown OCR_PROVIDER {provider_name!r}; expected 'openai' or 'gemini'."
+        )
+
     return DocumentProcessor(provider=provider)
+
+
+def _record_findings(doc: UploadedDocument, result: ExtractionResult) -> bool:
+    """Store what a scan found. False when it found nothing the filer can use.
+
+    Empty means unread, judged per type: a bill needs a creditor name, a pay stub
+    must pass PayStubExtraction (gross pay and both pay-period dates required), the
+    check the income aggregate applies, and a credit report needs one readable
+    account. Other types are not judged and count as read.
+    """
+    if doc.document_type == DocumentType.CREDITOR_BILL:
+        return DraftDebtCreator().create_from_result(result, doc.session, doc) is not None
+    if doc.document_type == DocumentType.PAY_STUB:
+        try:
+            PayStubExtraction.model_validate(result.fields)
+        except ValidationError:
+            return False
+        return True
+    if doc.document_type == DocumentType.CREDIT_REPORT:
+        report = CreditReportExtraction.model_validate(result.fields)
+        if not report.tradelines:
+            return False
+        # A report whose accounts are all paid off is read, and adds no debts.
+        DraftDebtCreator().create_from_credit_report(report, doc.session, doc)
+        return True
+    return True
 
 
 def _run_processing(doc_id: int) -> None:
@@ -43,30 +91,19 @@ def _run_processing(doc_id: int) -> None:
 
         if result.error:
             ocr.status = OCRStatus.FAILED
+            ocr.failure_reason = OCRFailureReason.PROCESSING_ERROR
             ocr.error_message = result.error
             ocr.extracted_data = "{}"
             ocr.overall_confidence = 0
         else:
-            ocr.status = OCRStatus.COMPLETED
             ocr.extracted_data = json.dumps(result.fields)
             ocr.confidence_scores = result.confidence
             ocr.overall_confidence = result.confidence.get("overall", 0)
-
-            if doc.document_type == DocumentType.CREDITOR_BILL:
-                try:
-                    DraftDebtCreator().create_from_result(result, doc.session, doc)
-                except Exception as exc:
-                    logger.warning("DraftDebtCreator failed for doc %s: %s", doc_id, exc)
-            elif doc.document_type == DocumentType.CREDIT_REPORT:
-                try:
-                    from apps.documents.schemas.credit_report import CreditReportExtraction
-
-                    schema_obj = CreditReportExtraction.model_validate(result.fields)
-                    DraftDebtCreator().create_from_credit_report(schema_obj, doc.session, doc)
-                except Exception as exc:
-                    logger.warning(
-                        "DraftDebtCreator (credit report) failed for doc %s: %s", doc_id, exc
-                    )
+            if _record_findings(doc, result):
+                ocr.status = OCRStatus.COMPLETED
+            else:
+                ocr.status = OCRStatus.FAILED
+                ocr.failure_reason = OCRFailureReason.NOTHING_FOUND
 
         ocr.save()
 
@@ -74,13 +111,17 @@ def _run_processing(doc_id: int) -> None:
             try:
                 AggregateIngestionService.recalculate(doc.session_id)
             except Exception as exc:
-                logger.warning("Recalculate failed for doc %s: %s", doc_id, exc)
+                logger.warning("Recalculate failed for doc %s: %s", doc_id, type(exc).__name__)
 
     except Exception as exc:
-        logger.exception("Processing failed for document %s: %s", doc_id, exc)
+        # Type only, no traceback: logs reach Sentry, and exception text can quote filer data.
+        logger.error("Processing failed for document %s: %s", doc_id, type(exc).__name__)
         try:
+            # The class name only: a pydantic error's text quotes the document's values.
             OCRResult.objects.filter(document_id=doc_id).update(
-                status=OCRStatus.FAILED, error_message=str(exc)
+                status=OCRStatus.FAILED,
+                failure_reason=OCRFailureReason.PROCESSING_ERROR,
+                error_message=type(exc).__name__,
             )
         except Exception:
             pass
@@ -125,6 +166,7 @@ class DocumentViewSet(ViewSet):
         OCRResult.objects.create(
             document=doc,
             status=OCRStatus.PENDING,
+            ocr_provider=settings.OCR_PROVIDER.lower(),
             extracted_data="{}",
             confidence_scores={},
             overall_confidence=0,
@@ -165,6 +207,17 @@ class DocumentViewSet(ViewSet):
             return Response(status=status.HTTP_404_NOT_FOUND)
 
         fields = request.data.get("fields", {})
+        draft_fields = {k: v for k, v in fields.items() if k in ("creditor_name", "amount_owed")}
+        if "amount_owed" in draft_fields:
+            # Amounts are readable on every session read, and DecimalField(12, 2) cannot
+            # represent a wider value, so refuse it here before anything is written.
+            try:
+                draft_fields["amount_owed"] = serializers.DecimalField(
+                    max_digits=12, decimal_places=2
+                ).run_validation(draft_fields["amount_owed"])
+            except serializers.ValidationError as exc:
+                return Response({"amount_owed": exc.detail}, status=status.HTTP_400_BAD_REQUEST)
+
         ocr = doc.ocr_result
         existing = json.loads(ocr.extracted_data or "{}")
         existing.update(fields)
@@ -174,14 +227,12 @@ class DocumentViewSet(ViewSet):
         ocr.save()
 
         if doc.document_type == DocumentType.CREDITOR_BILL:
-            doc.draft_debts.filter(is_draft=True).update(
-                **{k: v for k, v in fields.items() if k in ("creditor_name", "amount_owed")}
-            )
+            doc.draft_debts.filter(is_draft=True).update(**draft_fields)
 
         try:
             AggregateIngestionService.recalculate(doc.session_id)
         except Exception as exc:
-            logger.warning("Recalculate failed on validate for doc %s: %s", pk, exc)
+            logger.warning("Recalculate failed on validate for doc %s: %s", pk, type(exc).__name__)
 
         return Response(_serialize_ocr(ocr))
 
@@ -200,11 +251,12 @@ def _serialize_doc(doc: UploadedDocument) -> dict:
 
 
 def _serialize_ocr(ocr: OCRResult) -> dict:
+    # Never error_message (operations text) or extracted_data (decrypted PII): the
+    # upload page reads only status and failure_reason.
     return {
         "status": ocr.status,
-        "extracted_data": json.loads(ocr.extracted_data or "{}"),
+        "failure_reason": ocr.failure_reason,
         "confidence_scores": ocr.confidence_scores,
         "overall_confidence": float(ocr.overall_confidence),
         "user_validated": ocr.user_validated,
-        "error_message": ocr.error_message,
     }

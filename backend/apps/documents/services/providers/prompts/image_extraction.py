@@ -13,6 +13,17 @@ _FIELD_HINTS = {
         "ytd_gross (decimal string or null), net_pay (decimal string or null), "
         "deductions_total (decimal string or null)"
     ),
+    # Keys match TradelineItem (schemas/credit_report.py), which the importer validates.
+    DocumentType.CREDIT_REPORT: (
+        "tradelines (a list with one object per account on the report, each with: "
+        "creditor_name (string), account_number (string or null), "
+        "amount_owed (the current balance as a plain number such as 1234.56, without "
+        "a dollar sign or commas; 0 for a credit balance or a paid-off account), "
+        "account_type (one of: credit_card, auto_loan, student_loan, mortgage, medical, "
+        "personal_loan, other), account_status (one of: open, closed, charged_off, "
+        "in_collections, delinquent), credit_limit (plain number or null); "
+        "leave out any account whose creditor name or balance you cannot read)"
+    ),
 }
 
 _DEFAULT_FIELDS = "all visible fields as key-value pairs"

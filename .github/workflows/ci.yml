@@ -74,7 +74,9 @@ jobs:
       - name: Run tests with coverage
         working-directory: backend
         # --cov-fail-under floors coverage (currently ~95%) so it can't silently regress.
-        run: pytest --cov=apps --cov=config --cov-fail-under=90 --tb=short -q
+        # -rs lists each skipped test with its reason, so a real-JVM contract test that
+        # skips (no `java` on the runner) shows in the log instead of passing quietly.
+        run: pytest --cov=apps --cov=config --cov-fail-under=90 --tb=short -q -rs
 
   security-scan:
     name: Security Scan
@@ -188,6 +190,13 @@ jobs:
       # this the browser blocks account creation. Previously supplied by the committed
       # .env, which was untracked in BIZ-60 — CI now declares it explicitly.
       CORS_ALLOWED_ORIGINS: http://localhost:5173,http://127.0.0.1:5173
+      # The scanned-bill journey starts a fake OpenAI server on 127.0.0.1:4010 inside its
+      # Playwright worker (frontend/e2e/fixtures/fake-openai.ts). The backend reaches it
+      # because the openai SDK reads OPENAI_BASE_URL itself; the journey reads the same
+      # variable to confirm the wiring and fails in CI without it. The key is a dummy.
+      OCR_PROVIDER: openai
+      OPENAI_API_KEY: e2e-dummy-key-not-a-secret
+      OPENAI_BASE_URL: http://127.0.0.1:4010/v1
 
     steps:
       - uses: actions/checkout@v4

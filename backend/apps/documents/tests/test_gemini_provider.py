@@ -47,7 +47,7 @@ class TestGeminiProviderClassify:
 class TestGeminiProviderExtract:
     def test_text_mode_sets_json_mime(self, provider, mock_genai_client):
 
-        provider.extract(b"", "Extract fields")
+        provider.extract([], "Extract fields")
         call_args = mock_genai_client.models.generate_content.call_args
         config = call_args.kwargs.get("config")
         assert config is not None
@@ -55,7 +55,7 @@ class TestGeminiProviderExtract:
 
     def test_vision_mode_sets_json_mime(self, provider, mock_genai_client):
 
-        provider.extract(b"\xff\xd8\xff", "Extract fields from image")
+        provider.extract([b"\xff\xd8\xff"], "Extract fields from image")
         call_args = mock_genai_client.models.generate_content.call_args
         config = call_args.kwargs.get("config")
         assert config is not None
@@ -67,13 +67,23 @@ class TestGeminiProviderExtract:
             with patch("apps.documents.services.providers.gemini.genai") as mock_g:
                 mock_g.Client.return_value = mock_genai_client
                 p = GeminiProvider()
-        result = p.extract(b"", "Extract")
+        result = p.extract([], "Extract")
         assert result == ""
 
     def test_vision_mode_passes_image_part_first(self, provider, mock_genai_client):
-        provider.extract(b"\xff\xd8\xff", "Extract")
+        provider.extract([b"\xff\xd8\xff"], "Extract")
         call_args = mock_genai_client.models.generate_content.call_args
         contents = call_args.kwargs["contents"]
         assert isinstance(contents, list)
         # first element is the image Part, second is the prompt string
         assert isinstance(contents[1], str)
+
+    def test_every_scanned_page_reaches_gemini_in_page_order(self, provider, mock_genai_client):
+        provider.extract([b"page-1", b"page-2", b"page-3"], "Extract")
+        contents = mock_genai_client.models.generate_content.call_args.kwargs["contents"]
+        assert [part.inline_data.data for part in contents[:-1]] == [
+            b"page-1",
+            b"page-2",
+            b"page-3",
+        ]
+        assert contents[-1] == "Extract"

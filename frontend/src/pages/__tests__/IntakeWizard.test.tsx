@@ -1,10 +1,10 @@
 import { render, screen, waitFor, act, fireEvent } from '@testing-library/react';
 import { vi } from 'vitest';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter, Routes, Route } from 'react-router-dom';
+import { MemoryRouter, Routes, Route, useNavigate } from 'react-router-dom';
 import { http, HttpResponse } from 'msw';
 import { server } from '../../test/mocks/server';
-import { IntakeProvider } from '../../context/IntakeContext';
+import { IntakeProvider, useIntake } from '../../context/IntakeContext';
 import IntakeWizard from '../IntakeWizard';
 
 // DebtorInfoStep reads account email via useAuth; wizard test renders without
@@ -60,6 +60,7 @@ function renderWizard() {
           <Route path="/fee-waiver" element={<div>FeeWaiverPage</div>} />
           <Route path="/forms" element={<div>FormDashboard</div>} />
           <Route path="/sofa" element={<div>Statement of Financial Affairs</div>} />
+          <Route path="/documents" element={<div>DocumentUploadPage</div>} />
         </Routes>
       </IntakeProvider>
     </MemoryRouter>
@@ -238,6 +239,51 @@ describe('IntakeWizard autosave', { timeout: 15_000 }, () => {
     );
   });
 
+  it('sends the filer to document upload after basic info, so uploads can pre-fill the money steps', async () => {
+    renderWizard();
+    await screen.findByRole('heading', { name: /your information/i, level: 2 });
+    await fillDebtorInfoFields();
+
+    await act(async () => {
+      await userEvent.click(screen.getByRole('button', { name: /continue/i }));
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('DocumentUploadPage')).toBeInTheDocument();
+    });
+  });
+
+  it('persists current_step 2 before detouring, so returning from upload resumes at Income rather than bouncing back to upload', async () => {
+    // updateCurrentStep is POST /update_step/, not the PATCH that saves step data.
+    const persistedSteps: unknown[] = [];
+    server.use(
+      http.post(
+        'http://localhost:8000/api/intake/sessions/:id/update_step/',
+        async ({ request }) => {
+          const body = (await request.json()) as Record<string, unknown>;
+          persistedSteps.push(body.current_step);
+          return HttpResponse.json({
+            session: { ...sessionAtStep1, current_step: 2 },
+            message: 'Step updated.',
+          });
+        }
+      )
+    );
+
+    renderWizard();
+    await screen.findByRole('heading', { name: /your information/i, level: 2 });
+    await fillDebtorInfoFields();
+
+    await act(async () => {
+      await userEvent.click(screen.getByRole('button', { name: /continue/i }));
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('DocumentUploadPage')).toBeInTheDocument();
+    });
+    expect(persistedSteps).toContain(2);
+  });
+
   it('shows save-error copy and does NOT advance to step 2 when the PATCH fails', async () => {
     // Override the PATCH to fail with a 400 so saveCurrentStepData() throws.
     // A client error is thrown immediately (utils/retry only retries 5xx), so the
@@ -273,5 +319,359 @@ describe('IntakeWizard autosave', { timeout: 15_000 }, () => {
 
     // Must still be on step 1 — the Income step heading must NOT be present
     expect(screen.queryByRole('heading', { name: /income/i, level: 2 })).not.toBeInTheDocument();
+  });
+});
+
+// ===========================================================================
+// Re-reading the session on every wizard entry (DIG-1, DIG-30)
+// ===========================================================================
+
+/** Session sitting on step 5 (Amounts Owed) with no debts yet. */
+const sessionAtStep5 = {
+  ...sessionAtStep1,
+  current_step: 5,
+  debtor_info: { first_name: 'Jane', last_name: 'Doe' },
+};
+
+/** A draft debt the document processor created from an uploaded bill. */
+const debtFromUploadedBill = {
+  id: 7,
+  session: 1,
+  data_source: 'uploaded_document',
+  creditor_name: 'Lakeshore Medical Group',
+  debt_type: 'medical',
+  priority_classification: 'unsecured',
+  monthly_payment: '0.00',
+  is_in_collections: false,
+  notes: '',
+  created_at: '2026-10-09T10:00:00Z',
+  updated_at: '2026-10-09T10:00:00Z',
+  is_draft: true,
+  source_document_name: 'lakeshore-bill.pdf',
+};
+
+/** Stands in for DocumentUploadPage, whose Continue button only navigates to /intake. */
+function UploadPageStandIn() {
+  const navigate = useNavigate();
+  const { session } = useIntake();
+  if (!session) return <p>Loading uploads</p>;
+  return (
+    <button type="button" onClick={() => navigate('/intake')}>
+      Continue
+    </button>
+  );
+}
+
+describe('IntakeWizard session re-read', { timeout: 15_000 }, () => {
+  it('shows a debt read from an uploaded bill at Amounts Owed when the filer continues from uploads, without a reload', async () => {
+    // The filer reached Amounts Owed, went back to /documents (header link or browser Back)
+    // and uploaded a bill. The provider loaded the session before the upload, so the copy
+    // in context has no debts; only the server holds the draft.
+    let serverSession: Record<string, unknown> = sessionAtStep5;
+    server.use(
+      http.get('http://localhost:8000/api/intake/sessions/:id/', () =>
+        HttpResponse.json(serverSession)
+      ),
+      http.patch('http://localhost:8000/api/intake/sessions/:id/', () =>
+        HttpResponse.json(serverSession)
+      )
+    );
+    localStorage.setItem('current_session_id', '1');
+    render(
+      <MemoryRouter initialEntries={['/documents']}>
+        <IntakeProvider>
+          <Routes>
+            <Route path="/intake" element={<IntakeWizard />} />
+            <Route path="/documents" element={<UploadPageStandIn />} />
+          </Routes>
+        </IntakeProvider>
+      </MemoryRouter>
+    );
+    const continueButton = await screen.findByRole('button', { name: 'Continue' });
+
+    // The bill has been read: the server now holds a draft debt the context never saw.
+    serverSession = { ...sessionAtStep5, debts: [debtFromUploadedBill] };
+    await userEvent.click(continueButton);
+
+    await screen.findByRole('heading', { name: /amounts owed/i, level: 2 });
+    expect(screen.getByDisplayValue('Lakeshore Medical Group')).toBeInTheDocument();
+    expect(screen.getByText('From scan')).toBeInTheDocument();
+  });
+
+  it("keeps the filer's saved place and lets them try again when the re-read fails", async () => {
+    let serverBusy = true;
+    let sessionsCreated = 0;
+    server.use(
+      http.get('http://localhost:8000/api/intake/sessions/:id/', () =>
+        serverBusy
+          ? HttpResponse.json({ detail: 'Request was throttled.' }, { status: 429 })
+          : HttpResponse.json({ ...sessionAtStep1, current_step: 3 })
+      ),
+      http.post('http://localhost:8000/api/intake/sessions/', () => {
+        sessionsCreated += 1;
+        return HttpResponse.json(
+          { session: sessionAtStep1, message: 'Session created.' },
+          { status: 201 }
+        );
+      }),
+      http.patch('http://localhost:8000/api/intake/sessions/:id/', () =>
+        HttpResponse.json({ ...sessionAtStep1, current_step: 3 })
+      )
+    );
+
+    renderWizard();
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      "We couldn't get your latest information just now. Please try again in a moment."
+    );
+    // No step renders after a failed read, so autosave has nothing stale to send.
+    expect(screen.queryByRole('heading', { level: 2 })).not.toBeInTheDocument();
+
+    serverBusy = false;
+    await userEvent.click(screen.getByRole('button', { name: 'Try again' }));
+
+    expect(await screen.findByRole('heading', { name: /expenses/i, level: 2 })).toBeInTheDocument();
+    // The filer kept their own session: nothing started a new one behind their back.
+    expect(sessionsCreated).toBe(0);
+  });
+
+  it('starts one new session when the saved one is gone or belongs to someone else', async () => {
+    // A shared computer: the resume pointer names another account's session, so DRF says 404.
+    let sessionsCreated = 0;
+    server.use(
+      http.get('http://localhost:8000/api/intake/sessions/:id/', () =>
+        HttpResponse.json({ detail: 'Not found.' }, { status: 404 })
+      ),
+      http.post('http://localhost:8000/api/intake/sessions/', () => {
+        sessionsCreated += 1;
+        return HttpResponse.json(
+          { session: { ...sessionAtStep1, id: 2 }, message: 'Session created.' },
+          { status: 201 }
+        );
+      })
+    );
+
+    renderWizard();
+
+    expect(
+      await screen.findByRole('heading', { name: /your information/i, level: 2 })
+    ).toBeInTheDocument();
+    expect(sessionsCreated).toBe(1);
+  });
+});
+
+// ===========================================================================
+// Amounts loaded from the server (DIG-2)
+// ===========================================================================
+
+/** A returning filer on Amounts Owed. DRF sends decimal amounts as strings. */
+const sessionAtStep5WithDebts = {
+  ...sessionAtStep1,
+  current_step: 5,
+  debts: [
+    {
+      id: 7,
+      session: 1,
+      data_source: 'uploaded_document',
+      creditor_name: 'Chase',
+      debt_type: 'credit_card',
+      priority_classification: 'unsecured',
+      amount_owed: '2500.00',
+      monthly_payment: '75.00',
+      is_in_collections: false,
+      notes: '',
+      is_draft: false,
+      source_document_name: null,
+    },
+    {
+      id: 8,
+      session: 1,
+      data_source: 'manual',
+      creditor_name: 'Mercy Hospital',
+      debt_type: 'medical',
+      priority_classification: 'unsecured',
+      amount_owed: '100.50',
+      monthly_payment: null,
+      is_in_collections: false,
+      notes: '',
+      is_draft: false,
+      source_document_name: null,
+    },
+  ],
+};
+
+/** A returning filer on Assets. The API never sends an asset's account number. */
+const sessionAtStep4WithAssets = {
+  ...sessionAtStep1,
+  current_step: 4,
+  assets: [
+    {
+      id: 3,
+      session: 1,
+      asset_type: 'vehicle',
+      data_source: 'manual',
+      description: '2015 Honda Civic',
+      current_value: '8000.00',
+      amount_owed: '3000.00',
+      equity: 5000,
+      financial_institution: '',
+    },
+  ],
+};
+
+describe('IntakeWizard amounts a returning filer already entered', { timeout: 15_000 }, () => {
+  let patchBodies: unknown[];
+
+  beforeEach(() => {
+    patchBodies = [];
+    server.use(
+      http.get('http://localhost:8000/api/intake/sessions/:id/', () =>
+        HttpResponse.json(sessionAtStep5WithDebts)
+      ),
+      // Loaded rows are valid, so autosave PATCHes about 2 s after the step appears.
+      http.patch('http://localhost:8000/api/intake/sessions/:id/', async ({ request }) => {
+        patchBodies.push(await request.json());
+        return HttpResponse.json(sessionAtStep5WithDebts);
+      })
+    );
+  });
+
+  it('shows each saved amount and adds them up instead of joining them as text', async () => {
+    renderWizard();
+
+    expect(await screen.findByText('$2,600.50')).toBeInTheDocument();
+    const amountInputs = screen.getAllByRole('spinbutton', { name: /^amount owed/i });
+    expect(amountInputs[0]).toHaveValue(2500);
+    expect(amountInputs[1]).toHaveValue(100.5);
+  });
+
+  // A row saved without its id is deleted and created again, losing what the browser never
+  // receives: the account number, the link to the scanned bill and the secured flag (DIG-21).
+  it('saves each debt back under its own id, with its amounts as numbers', async () => {
+    renderWizard();
+    await screen.findByRole('heading', { name: /amounts owed/i, level: 2 });
+
+    await waitFor(() => expect(patchBodies.length).toBeGreaterThan(0));
+    const { debts } = patchBodies[0] as { debts: Record<string, unknown>[] };
+    expect(debts.map((debt) => debt.id)).toEqual([7, 8]);
+    expect(debts[0].amount_owed).toBe(2500);
+    expect(debts[0].monthly_payment).toBe(75);
+  });
+
+  it('saves each asset back under its own id, with its amounts as numbers', async () => {
+    server.use(
+      http.get('http://localhost:8000/api/intake/sessions/:id/', () =>
+        HttpResponse.json(sessionAtStep4WithAssets)
+      )
+    );
+    renderWizard();
+    await screen.findByRole('heading', { name: /assets/i, level: 2 });
+
+    await waitFor(() => expect(patchBodies.length).toBeGreaterThan(0));
+    const { assets } = patchBodies[0] as { assets: Record<string, unknown>[] };
+    expect(assets.map((asset) => asset.id)).toEqual([3]);
+    expect(assets[0].current_value).toBe(8000);
+    expect(assets[0].amount_owed).toBe(3000);
+  });
+});
+
+// ===========================================================================
+// Income save (DIG-41)
+// ===========================================================================
+
+describe('IntakeWizard income save', { timeout: 15_000 }, () => {
+  it("saves a returning filer's months exactly as stored, and nothing else, when they continue without changes", async () => {
+    // What the API returns for a filer who saved income earlier through the wizard: the
+    // months, their average, and the blank household fields a wizard-created row holds.
+    const savedSession = {
+      ...sessionAtStep1,
+      current_step: 2,
+      income_info: {
+        marital_status: '',
+        number_of_dependents: 0,
+        monthly_income: [3100, 3300, 3200, 3200, 3150, 3250],
+        total_monthly_income: 3200,
+        created_at: '2026-10-01T10:00:00Z',
+      },
+    };
+    const patchBodies: unknown[] = [];
+    server.use(
+      http.get('http://localhost:8000/api/intake/sessions/:id/', () =>
+        HttpResponse.json(savedSession)
+      ),
+      http.patch('http://localhost:8000/api/intake/sessions/:id/', async ({ request }) => {
+        patchBodies.push(await request.json());
+        return HttpResponse.json(savedSession);
+      }),
+      http.post('http://localhost:8000/api/intake/sessions/:id/update_step/', () =>
+        HttpResponse.json({
+          session: { ...savedSession, current_step: 3 },
+          message: 'Step updated.',
+        })
+      ),
+      // Continue also posts a step-completed analytics event; answer it so this test adds
+      // no unhandled-request warning (DIG-93 tracks the older tests that still do).
+      http.post(
+        'http://localhost:8000/api/audit/logs/',
+        () => new HttpResponse(null, { status: 201 })
+      )
+    );
+
+    renderWizard();
+    await screen.findByRole('heading', { name: /income/i, level: 2 });
+    await userEvent.click(screen.getByRole('button', { name: /continue/i }));
+    await screen.findByRole('heading', { name: /expenses/i, level: 2 });
+
+    expect(patchBodies.length).toBeGreaterThan(0);
+    for (const body of patchBodies) {
+      expect(body).toEqual({
+        income_info: { monthly_income: [3100, 3300, 3200, 3200, 3150, 3250] },
+      });
+    }
+  });
+});
+
+// ===========================================================================
+// Expenses read back from the server (DIG-45)
+// ===========================================================================
+
+describe('IntakeWizard expense hydration', { timeout: 15_000 }, () => {
+  it("adds up a returning filer's saved expenses, which the API sends as decimal strings", async () => {
+    const savedSession = {
+      ...sessionAtStep1,
+      current_step: 3,
+      expense_info: {
+        data_source: 'manual',
+        rent_or_mortgage: '1100.00',
+        utilities: '180.00',
+        home_maintenance: '0.00',
+        vehicle_payment: '0.00',
+        vehicle_insurance: '85.00',
+        vehicle_maintenance: '40.00',
+        food_and_groceries: '450.00',
+        clothing: '60.00',
+        medical_expenses: '75.00',
+        childcare: '400.00',
+        child_support_paid: '0.00',
+        insurance_not_deducted: '120.00',
+        other_expenses: '50.00',
+        total_monthly_expenses: 2560.0,
+        created_at: '2026-10-01T10:00:00Z',
+        updated_at: '2026-10-01T10:00:00Z',
+      },
+    };
+    server.use(
+      http.get('http://localhost:8000/api/intake/sessions/:id/', () =>
+        HttpResponse.json(savedSession)
+      ),
+      http.patch('http://localhost:8000/api/intake/sessions/:id/', () =>
+        HttpResponse.json(savedSession)
+      )
+    );
+
+    renderWizard();
+    await screen.findByRole('heading', { name: /expenses/i, level: 2 });
+
+    expect(screen.getByText('$2,560.00')).toBeInTheDocument();
   });
 });

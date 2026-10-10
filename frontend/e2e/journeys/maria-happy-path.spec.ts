@@ -10,6 +10,7 @@ import { MARIA } from '../fixtures/personas';
 import { LandingPage } from '../pages/landing.page';
 import { RegisterPage } from '../pages/register.page';
 import { WizardPage } from '../pages/wizard.page';
+import { DocumentsPage } from '../pages/documents.page';
 import { FeeWaiverPage } from '../pages/fee-waiver.page';
 import { DashboardPage } from '../pages/dashboard.page';
 
@@ -18,6 +19,7 @@ test.describe('Maria Torres — Happy Path', () => {
     const landing = new LandingPage(page);
     const register = new RegisterPage(page);
     const wizard = new WizardPage(page);
+    const documents = new DocumentsPage(page);
     const feeWaiver = new FeeWaiverPage(page);
     const dashboard = new DashboardPage(page);
 
@@ -32,6 +34,9 @@ test.describe('Maria Torres — Happy Path', () => {
     // Step 1: Debtor Info
     await wizard.fillDebtorInfo(MARIA.debtor);
     await wizard.nextStep();
+
+    // Uploads come between basic info and Income; this journey types everything in
+    await documents.skip();
 
     // Step 2: Income
     await wizard.fillIncomeInfo(MARIA.income);
@@ -71,6 +76,9 @@ test.describe('Maria Torres — Happy Path', () => {
 
     // Maria is fee-waiver eligible → routed to the waiver application first
     const totalExpenses = Object.values(MARIA.expenses).reduce((a, b) => a + b, 0);
+    // Every expense she typed was saved under a name the backend keeps, so the
+    // pre-filled total is her full $2,560, not just the fields that kept their names.
+    await expect(feeWaiver.monthlyExpenses()).toHaveValue(String(totalExpenses));
     await feeWaiver.submit(
       MARIA.debtor.household_size,
       MARIA.income.total_monthly_income,

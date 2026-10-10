@@ -150,12 +150,12 @@ dignifi/
 - **Encryption**: django-encrypted-model-fields (Fernet) for PII
 - **Testing**: pytest, vitest, Playwright, vitest-axe (accessibility)
 - **CI/CD**: GitHub Actions (lint, backend tests, frontend tests, E2E)
-- **Document Scanning**: Gemini 2.0 Flash (Google AI), opendataloader-pdf, pymupdf
+- **Document Scanning**: OpenAI GPT-4o by default, or Gemini 2.0 Flash (chosen by `OCR_PROVIDER`; `OCR_MODEL` overrides the model), opendataloader-pdf, pymupdf
 - **Infrastructure**: Docker, Docker Compose (dev); Heroku Container Stack (production)
 
 ## Core Features
 
-- Document scanning (v2): drag-and-drop upload → Gemini 2.0 Flash OCR → credit reports extract tradelines into debt drafts (with "From scan" badge); paystubs aggregate income into Schedule I prefill
+- Document scanning (v2): drag-and-drop upload → OCR by the configured provider (OpenAI GPT-4o by default) → credit reports extract tradelines into debt drafts (with "From scan" badge); paystubs aggregate income into Schedule I prefill
 - User authentication with JWT (access in memory, refresh in localStorage)
 - 6-step intake wizard: Debtor Info → Income → Expenses → Assets → Debts → Review
 - Chapter 7 means test calculator (11 U.S.C. § 707(b) — annualized CMI vs. Census median by household size)
