@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 import pytest
 
 from apps.districts.models import District
@@ -86,6 +88,45 @@ def test_non_creditor_bill_raises(db, session, uploaded_doc):
     creator = DraftDebtCreator()
     with pytest.raises(ValueError, match="CREDITOR_BILL"):
         creator.create_from_result(result, session, uploaded_doc)
+
+
+def _scanned_bill(amount_owed) -> ExtractionResult:
+    return ExtractionResult(
+        fields={
+            "creditor_name": "Lakeshore Medical Group",
+            "amount_owed": amount_owed,
+            "creditor_type": "medical",
+        },
+        confidence={"overall": 70},
+        detected_type=DocumentType.CREDITOR_BILL,
+    )
+
+
+@pytest.mark.parametrize("scanned_balance", ["2450.75", "9999999999.99"])
+def test_readable_balance_is_recorded_to_the_cent(db, session, uploaded_doc, scanned_balance):
+    debt = DraftDebtCreator().create_from_result(
+        _scanned_bill(scanned_balance), session, uploaded_doc
+    )
+
+    debt.refresh_from_db()
+    assert debt.amount_owed == Decimal(scanned_balance)
+
+
+@pytest.mark.parametrize(
+    "scanned_balance",
+    ["-250.00", "about $1,200", "NaN", "Infinity", "1e12", "10000000000.00", None],
+)
+def test_negative_or_non_numeric_balance_is_not_recorded(
+    db, session, uploaded_doc, scanned_balance
+):
+    """A balance the filer never owed must not reach the schedules, and an amount
+    DecimalField(12, 2) cannot render would 500 every read of the filer's session."""
+    debt = DraftDebtCreator().create_from_result(
+        _scanned_bill(scanned_balance), session, uploaded_doc
+    )
+
+    debt.refresh_from_db()
+    assert debt.amount_owed == Decimal("0")
 
 
 class TestDraftDebtCreatorCreditReport:

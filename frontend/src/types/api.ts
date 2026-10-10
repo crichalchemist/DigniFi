@@ -332,13 +332,15 @@ export const FORM_TYPE_METADATA: Record<
 
 export type OCRStatus = 'pending' | 'processing' | 'completed' | 'failed' | 'validated';
 
+/** Why a failed scan failed. Blank on every other status, and on rows from before 0006. */
+export type OCRFailureReason = 'nothing_found' | 'processing_error';
+
 export interface OCRResult {
   status: OCRStatus;
-  extracted_data: Record<string, unknown>;
+  failure_reason: OCRFailureReason | '';
   confidence_scores: Record<string, number>;
   overall_confidence: number;
   user_validated: boolean;
-  error_message: string | null;
 }
 
 export interface UploadedDocument {

@@ -10,7 +10,7 @@ try:
 except ImportError:
     opendataloader_pdf = None
 
-from apps.documents.services.providers.base import BaseOCRProvider
+from apps.documents.services.providers.base import BaseOCRProvider, EmptyModelReply
 from apps.documents.services.providers.prompts.image_extraction import build_image_extraction_prompt
 from apps.documents.services.providers.prompts.text_extraction import build_text_extraction_prompt
 
@@ -58,7 +58,12 @@ class DocumentProcessor:
             else:
                 return ExtractionResult(error=f"Unsupported MIME type: {mime_type}")
         except Exception as exc:
-            return ExtractionResult(error=str(exc))
+            # error_message is operations-only (spec §4.7). EmptyModelReply's own text names
+            # finish_reason and never quotes the model; any other exception keeps only its
+            # class name, because a provider's error text can carry account or project details.
+            return ExtractionResult(
+                error=str(exc) if isinstance(exc, EmptyModelReply) else type(exc).__name__
+            )
 
     def _process_image(self, image_bytes: bytes, doc_type: str) -> ExtractionResult:
         prompt = build_image_extraction_prompt(doc_type)
@@ -119,7 +124,8 @@ class DocumentProcessor:
                 if clean.startswith("json"):
                     clean = clean[4:]
             data = json.loads(clean)
-            confidence_score = int(data.pop("confidence_score", 0))
+            # An all-null reply (a cover page) carries "confidence_score": null.
+            confidence_score = int(data.pop("confidence_score", None) or 0)
             return ExtractionResult(
                 fields=data,
                 confidence={"overall": confidence_score},
