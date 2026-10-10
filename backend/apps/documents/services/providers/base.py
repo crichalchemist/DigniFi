@@ -7,7 +7,7 @@ class BaseOCRProvider(ABC):
     """
     Abstract base class for OCR providers.
 
-    Implementations: GeminiProvider
+    Implementations: GeminiProvider, OpenAIProvider
     """
 
     @abstractmethod

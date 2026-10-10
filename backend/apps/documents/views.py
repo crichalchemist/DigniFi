@@ -2,6 +2,8 @@ import json
 import logging
 from concurrent.futures import ThreadPoolExecutor
 
+from django.conf import settings
+from django.core.exceptions import ImproperlyConfigured
 from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
@@ -12,6 +14,7 @@ from apps.documents.models import DocumentType, OCRResult, OCRStatus, UploadedDo
 from apps.documents.services.aggregator import AggregateIngestionService
 from apps.documents.services.draft_debt import DraftDebtCreator
 from apps.documents.services.processor import DocumentProcessor
+from apps.documents.services.providers.base import BaseOCRProvider
 from apps.intake.models import IntakeSession
 
 logger = logging.getLogger(__name__)
@@ -20,13 +23,23 @@ ALLOWED_MIME_TYPES = {"application/pdf", "image/jpeg", "image/png", "image/webp"
 
 
 def _get_processor() -> DocumentProcessor:
-    # Imported lazily so the documents URLconf doesn't pull the google-genai SDK
+    # Providers are imported lazily so the documents URLconf doesn't pull an OCR SDK
     # at module load (and so a missing SDK/key surfaces at OCR time, not app boot).
-    from apps.documents.services.providers.gemini import GeminiProvider
+    provider_name = settings.OCR_PROVIDER.lower()
 
-    provider = GeminiProvider(
-        model="gemini-2.0-flash",
-    )
+    if provider_name == "openai":
+        from apps.documents.services.providers.openai_provider import OpenAIProvider
+
+        provider: BaseOCRProvider = OpenAIProvider(model=settings.OCR_MODEL or "gpt-4o")
+    elif provider_name == "gemini":
+        from apps.documents.services.providers.gemini import GeminiProvider
+
+        provider = GeminiProvider(model=settings.OCR_MODEL or "gemini-2.0-flash")
+    else:
+        raise ImproperlyConfigured(
+            f"Unknown OCR_PROVIDER {provider_name!r}; expected 'openai' or 'gemini'."
+        )
+
     return DocumentProcessor(provider=provider)
 
 

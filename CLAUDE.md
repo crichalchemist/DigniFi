@@ -25,7 +25,7 @@ cd backend && ruff check . --fix               # Backend lint (pinned ruff==0.8.
 - **Enum mismatches are silent** — frontend/backend enum drift only surfaces at runtime; check both when adding fields.
 - **Seed order** — `seed_demo_data` requires `loaddata ilnd_2025_data` first, or means test has no median income data.
 - **household_size defaults to 1** — `DebtorInfo.household_size` has `default=1`; the means test prefers it over deriving from marital status + dependents. Always set it explicitly.
-- **Form 103B needs a FeeWaiverApplication** — its generator raises without one. `generate_all` yields 12/13 forms for filers who don't qualify for the waiver.
+- **Form 103B needs a FeeWaiverApplication** — its generator raises without one. `generate_all` yields 17/18 forms for filers who don't qualify for the waiver. (103B is the only generator with a conditional precondition; Form 121's raises are about missing DebtorInfo / malformed SSN, which a complete intake always satisfies.)
 - **SSN on forms** — Form 101's `Debtor1.SSNum` PDF field is 4 chars (last-4 only); full SSN appears on Form 121. pypdf truncates from the front.
 - **Means test units** — CMI is monthly, Census median is annual. `MeansTest.calculate()` annualizes CMI ×12 per § 707(b)(7). The original bug passed everyone.
 - **GenerateAll vs single** — `/generate_all` returns `{generated, errors}`; single returns `{form, message}`.
@@ -42,16 +42,24 @@ cd backend && ruff check . --fix               # Backend lint (pinned ruff==0.8.
 - **Backend test settings** — `DJANGO_SETTINGS_MODULE=config.settings.test` uses sqlite `:memory:`, no postgres. E2E tests use `config.settings.development` (needs postgres).
 - **FIELD_ENCRYPTION_KEY** — must be a real Fernet key (32 url-safe base64 bytes). CI uses `U9HKckkKBeT8wag2jMcOx2Cez2M2jtvNG4qxSHuYcAo=` (synthetic, encrypts nothing).
 - **UPL compliance** — all user-facing text must be information, never advice. See `docs/UPL_COMPLIANCE.md`.
+- **Nested `CLAUDE.md` files are empty stubs** — they are auto-generated `claude-mem` placeholders (~170 bytes each) reading `*No recent activity*`. This root file is the only real one; don't go looking for per-app conventions in them.
+- **OCR provider is config-driven** — `_get_processor()` branches on `settings.OCR_PROVIDER` (`openai` | `gemini`) and lazy-imports the provider, so a missing SDK/key surfaces at OCR time, not app boot. `OCR_MODEL` empty ⇒ the provider's own default. Don't hardcode a provider.
+- **`openai_provider.py`, never `openai.py`** — a module named `openai.py` inside `providers/` would shadow the installed `openai` package.
+- **Prod throttling lives in `production.py`, not `base.py`** — base defines only the `auth` scope (`30/minute`); production adds `DEFAULT_THROTTLE_CLASSES` with `anon: 60/minute`, `user: 120/minute`, `auth: 5/minute`. Reading base alone wrongly concludes endpoints are unthrottled — polling ~14 documents exhausts `user` fast.
+- **Upload is synchronous despite the 202** — `views.py` uses `with ThreadPoolExecutor(...)`, whose `__exit__` calls `shutdown(wait=True)`, so `{"status": "processing"}` is returned _after_ OCR completes and holds a gunicorn worker. No `Future` is retained — that's the tell.
+- **`hybrid="docling-fast"` can't work on Heroku** — it needs the `odl-hybrid` sidecar on `localhost:5002` from `docker-compose.yml`; Heroku runs a single container. It's caught and falls back to vision OCR, so the `Hybrid server is not available` log noise is not the failure.
+- **Vision fallback reads page 1 only** — `_pdf_to_image_bytes(pdf_bytes, page_index=0)`; multi-page creditor bills extract partially even on success.
 
 ## Architecture (quick)
 
 - **Backend:** Django 5.0 + DRF, Python 3.11, PostgreSQL 15, `encrypted-model-fields` (Fernet PII encryption)
 - **Frontend:** React 19 + Vite 7 + TypeScript, Context API (not Redux), react-router-dom v7
 - **PDF:** pypdf fills official AO court templates. Each generator in `backend/apps/forms/services/` implements `pdf_field_map() -> dict[str, str]` mapping session data to PDF field names. `PDFFormFiller.fill(form_type, field_map)` loads from `data/forms/pdfs/`.
-- **PDF templates:** 64 official AO court PDFs in `data/forms/pdfs/` (committed). Baked into Heroku image.
-- **OCR service:** Gemini 2.0 Flash via Google AI API (`GEMINI_API_KEY`). No local model — document processing calls the API directly.
+- **PDF templates:** 67 official AO court PDFs in `data/forms/pdfs/` (committed). Baked into Heroku image.
+- **Forms:** 18 generators registered in `apps/forms/registry.py` (`FORM_REGISTRY` / `get_all_form_types()`). `generate_all` iterates the registry inside one `transaction.atomic()`.
+- **OCR service:** provider-agnostic. `OCR_PROVIDER` selects `openai` (default, `gpt-4o`, `OPENAI_API_KEY`) or `gemini` (`gemini-2.0-flash`, `GEMINI_API_KEY`); `OCR_MODEL` overrides the model so a model change is a config var, not a deploy. No local model — both call a hosted API directly.
 - **Auth:** JWT (simplejwt). Access in memory, refresh in localStorage. `GET /api/token/obtain/` + `/api/token/refresh/`.
-- **E2E:** 5 AI persona briefs in `docs/testing/persona-briefs/`. `seed_demo_data` creates synthetic sessions with all intake data.
+- **E2E:** 5 AI persona briefs in `docs/testing/persona-briefs/` (deshawn, james, maria, priya, sarah) driving 6 journey specs — one per persona plus `sofa-journey.spec.ts`. `seed_demo_data` creates synthetic sessions with all intake data.
 
 ## File Map (what lives where)
 
@@ -63,12 +71,15 @@ cd backend && ruff check . --fix               # Backend lint (pinned ruff==0.8.
 - `apps/intake/serializers.py` — nested serializers; DRF silently drops unknown fields (mismatch with frontend)
 - `apps/intake/management/commands/seed_demo_data.py` — 5 AI personas
 - `apps/eligibility/services/means_test_calculator.py` — § 707(b) logic, annualizes CMI
-- `apps/forms/services/` — 13 generators + `pdf_filler.py` (`FORM_TEMPLATES` dict + `PDFFormFiller`)
+- `apps/forms/registry.py` — `FORM_REGISTRY` (18 form_type → generator) + `get_all_form_types()` in filing order
+- `apps/forms/services/` — 18 generators + `pdf_filler.py` (`FORM_TEMPLATES` + `PDFFormFiller`), `fill_resolver.py` + `derivations.py` (schema-driven fill engine)
 - `apps/forms/views.py` — GeneratedFormViewSet (generate, generate_all, download, mark_filed)
-- `apps/documents/` — OCR pipeline: LlamaCppProvider, DocumentProcessor, DraftDebtCreator
+- `apps/documents/services/providers/` — `base.py` (`BaseOCRProvider`), `openai_provider.py`, `gemini.py`, `prompts/`
+- `apps/documents/services/` — `processor.py` (DocumentProcessor), `draft_debt.py`, `aggregator.py` (AggregateIngestionService)
 - `apps/audit/models.py` — AuditLog
 - `config/settings/test.py` — sqlite `:memory:`, fast hashers
-- `config/settings/base.py` — DRF config, throttle rates (`auth: 30/minute`)
+- `config/settings/base.py` — DRF config, OCR provider vars, `auth: 30/minute` throttle
+- `config/settings/production.py` — anon/user throttle classes, Sentry DSN (see gotcha above)
 
 **Frontend:**
 
@@ -76,17 +87,20 @@ cd backend && ruff check . --fix               # Backend lint (pinned ruff==0.8.
 - `src/context/AuthContext.tsx` — JWT auth, silent refresh
 - `src/context/IntakeContext.tsx` — Session state
 - `src/api/client.ts` — typed API client, `getAccessToken()`, `downloadForm()`
-- `src/pages/IntakeWizard.tsx` — 6-step wizard orchestrator
+- `src/pages/IntakeWizard.tsx` — 8-step wizard orchestrator (`WIZARD_STEPS`: debtor_info, income_info, expense_info, assets, debts, contracts, codebtors, review)
+- `src/pages/DocumentUploadPage.tsx` — upload + OCR queue; auto-creates a session if none exists
 - `src/pages/FormDashboard.tsx` — Generate All, download, mark filed
+- `src/pages/SOFAStep.tsx` (`/sofa`), `FeeWaiverPage.tsx` (`/fee-waiver`) — post-intake branches; `handleComplete` routes to one or the other on `qualifies_for_fee_waiver`
+- `src/pages/AskModulePage.tsx` — `/ask/:formType`
 - `src/components/compliance/UPLConfirmationModal.tsx` — gates form generation
 - `src/types/api.ts` — TypeScript interfaces matching DRF serializers
 - `src/test/setup.ts` — vitest globals, MSW, vitest-axe matchers
-- `e2e/journeys/` — Playwright journey specs
+- `e2e/journeys/` — 6 Playwright journey specs (5 personas + SOFA)
 - `e2e/playwright.config.ts` — Chromium only, 60s timeout, `reuseExistingServer`
 
 **Data:**
 
-- `data/forms/pdfs/` — 64 official AO court PDF templates (committed)
+- `data/forms/pdfs/` — 67 official AO court PDF templates (committed)
 - `backend/apps/districts/fixtures/ilnd_2025_data.json` — ILND median income & exemptions
 
 **Infra:**
