@@ -72,9 +72,8 @@ def health_check_detailed(request):
     """Comprehensive readiness probe — DB, disk, version, uptime."""
     checks = {
         "database": _check_database(),
-        "disk_generated_forms": _check_disk_space(
-            getattr(settings, "PDF_OUTPUT_DIRECTORY", Path("/tmp"))
-        ),
+        # Only MEDIA_ROOT is checked: it backs DocumentUpload.file. PDF_OUTPUT_DIRECTORY
+        # is not checked because nothing writes there — downloads stream from memory.
         "disk_media": _check_disk_space(getattr(settings, "MEDIA_ROOT", Path("/tmp"))),
         "uptime": _check_uptime(),
     }

@@ -1,0 +1,36 @@
+name: Keep Warm
+
+# Pings the prod /health/ endpoint so the single Heroku Eco dyno never sits
+# idle long enough to sleep (~30 min). A cold wake can exceed the router's
+# ~30s wait window and surface as H99 503s to real users; this prevents that.
+#
+# GitHub cron is best-effort and often runs several minutes late, so we ping
+# every 10 min to keep real gaps comfortably under the 30-min sleep threshold.
+# Note: GitHub disables scheduled workflows after 60 days with no repo activity.
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch: {}
+
+permissions: {}
+
+# Never let slow cold-start runs stack up on top of each other.
+concurrency:
+  group: keep-warm
+  cancel-in-progress: true
+
+jobs:
+  ping:
+    name: Ping prod health endpoint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wake and verify dyno
+        # --retry rides out the 30-90s Eco cold-start (H99/503) so we only fail
+        # on a genuine outage. Each attempt caps at 40s; 5 retries × 15s delay
+        # covers the worst-case churning wake before declaring the app down.
+        run: |
+          curl --fail --silent --show-error --location \
+               --retry 5 --retry-delay 15 --retry-all-errors \
+               --max-time 40 \
+               https://dignifi.crichalchemist.com/health/

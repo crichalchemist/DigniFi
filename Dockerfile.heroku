@@ -48,7 +48,11 @@ COPY data/forms/schemas/ /data/forms/schemas/
 #   index.html → templates/frontend/index.html  (served by TemplateView catch-all)
 #   assets/    → static/frontend/               (picked up by collectstatic)
 # The Vite base '/static/frontend/' makes these paths line up with whitenoise.
-RUN mkdir -p templates/frontend static/frontend logs
+# media/ backs DocumentUpload.file (upload_to="documents/%Y/%m/"). Django creates
+# the dated subdirs on save but not MEDIA_ROOT itself, so /health/detailed/ reported
+# status:error until this existed. Note: the dyno filesystem is ephemeral — uploads
+# do not survive a restart; durable storage is tracked separately.
+RUN mkdir -p templates/frontend static/frontend logs media
 COPY --from=frontend-build /app/frontend/dist/index.html ./templates/frontend/index.html
 COPY --from=frontend-build /app/frontend/dist/assets/ ./static/frontend/assets/
 
