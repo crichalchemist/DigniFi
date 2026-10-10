@@ -167,3 +167,16 @@ def test_a_pdf_with_no_pages_fails_instead_of_completing_empty(filer, openai_cli
 
     assert ocr.status == OCRStatus.FAILED
     openai_client.chat.completions.create.assert_not_called()
+
+
+def test_an_empty_reply_is_retried_once_and_its_cause_is_recorded(filer, openai_client):
+    openai_client.chat.completions.create.return_value = chat_completion(
+        " \n", finish_reason="length"
+    )
+
+    ocr = upload(filer, b"\xff\xd8\xff", "bill.jpg", "image/jpeg", DocumentType.CREDITOR_BILL)
+
+    assert openai_client.chat.completions.create.call_count == 2
+    assert ocr.status == OCRStatus.FAILED
+    assert "finish_reason=length" in ocr.error_message
+    assert "refusal=absent" in ocr.error_message

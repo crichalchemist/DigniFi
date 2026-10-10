@@ -6,7 +6,7 @@ from typing import Any
 
 from openai import OpenAI
 
-from .base import BaseOCRProvider
+from .base import BaseOCRProvider, EmptyModelReply
 
 
 class OpenAIProvider(BaseOCRProvider):
@@ -60,5 +60,16 @@ class OpenAIProvider(BaseOCRProvider):
         }
         if json_mode:
             kwargs["response_format"] = {"type": "json_object"}
-        response = self._client.chat.completions.create(**kwargs)
-        return response.choices[0].message.content or ""
+        choice = self._client.chat.completions.create(**kwargs).choices[0]
+        # An empty reply is often a one-off, so it gets one retry. A refusal or a
+        # content filter would only repeat, so neither is retried.
+        refused = bool(choice.message.refusal) or choice.finish_reason == "content_filter"
+        if not (choice.message.content or "").strip() and not refused:
+            choice = self._client.chat.completions.create(**kwargs).choices[0]
+        reply = choice.message.content or ""
+        if not reply.strip():
+            raise EmptyModelReply(
+                f"model reply was empty (finish_reason={choice.finish_reason}, "
+                f"refusal={'present' if choice.message.refusal else 'absent'})"
+            )
+        return reply

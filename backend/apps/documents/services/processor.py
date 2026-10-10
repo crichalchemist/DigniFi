@@ -130,5 +130,5 @@ class DocumentProcessor:
                 fields={},
                 confidence={"overall": 0},
                 detected_type=doc_type,
-                error=f"Failed to parse LLM response: {raw[:200]}",
+                error=f"model reply was not valid JSON ({len(raw)} characters)",
             )

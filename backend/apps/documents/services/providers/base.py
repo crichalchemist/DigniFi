@@ -3,6 +3,15 @@
 from abc import ABC, abstractmethod
 
 
+class EmptyModelReply(RuntimeError):
+    """The model sent back no text, after a retry where one could help.
+
+    The message names ``finish_reason`` and whether a refusal was present. It never
+    includes the refusal's wording, because it is stored in ``OCRResult.error_message``
+    and a refusal can quote the filer's document.
+    """
+
+
 class BaseOCRProvider(ABC):
     """
     Abstract base class for OCR providers.

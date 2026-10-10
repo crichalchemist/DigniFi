@@ -57,6 +57,15 @@ def test_invalid_json_returns_failed_result(processor, mock_provider):
     assert result.confidence["overall"] == 0
 
 
+def test_an_unparseable_reply_is_recorded_without_its_text(processor, mock_provider):
+    # error_message is an operations field, and a reply can quote the filer's document.
+    reply = "Jordan Sample, SSN 900-12-3456, owes $1,284.50"
+    mock_provider.extract.return_value = reply
+    result = processor.process(b"\xff\xd8", "image/jpeg", DocumentType.CREDITOR_BILL)
+    assert result.error == f"model reply was not valid JSON ({len(reply)} characters)"
+    assert "900-12-3456" not in result.error
+
+
 def test_pdf_with_text_routes_to_text_path(processor, mock_provider):
     mock_provider.extract.return_value = (
         '{"employer_name": "Acme", "gross_pay": "3200.00", '

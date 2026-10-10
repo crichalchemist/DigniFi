@@ -5,7 +5,9 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from apps.documents.services.providers.base import EmptyModelReply
 from apps.documents.services.providers.openai_provider import OpenAIProvider
+from apps.documents.tests.builders import chat_completion
 
 
 @pytest.fixture
@@ -82,13 +84,59 @@ class TestStructuredOutputGuarantee:
 
 class TestProviderContract:
     """BaseOCRProvider promises a str. A None completion must not leak downstream as a
-    TypeError inside json.loads."""
+    TypeError inside json.loads; it raises EmptyModelReply instead."""
 
-    def test_empty_completion_becomes_empty_string(self, provider, mock_openai_client):
-        mock_openai_client.chat.completions.create.return_value.choices[0].message.content = None
-        assert provider.extract([], "Return ONLY a valid JSON object.") == ""
+    def test_empty_completion_raises_instead_of_reaching_the_parser(
+        self, provider, mock_openai_client
+    ):
+        mock_openai_client.chat.completions.create.return_value = chat_completion(None)
+        with pytest.raises(EmptyModelReply):
+            provider.extract([], "Return ONLY a valid JSON object.")
 
     def test_configured_model_is_the_one_requested(self, mock_openai_client):
         OpenAIProvider(model="gpt-4o-mini").extract([], "Return ONLY a valid JSON object.")
         kwargs = mock_openai_client.chat.completions.create.call_args.kwargs
         assert kwargs["model"] == "gpt-4o-mini"
+
+
+class TestEmptyReplies:
+    """An empty reply used to reach json.loads and fail as unparseable, leaving no trace
+    of why. It is now retried once when a retry can help, and the error says why the
+    reply was empty without quoting anything the model wrote."""
+
+    def test_a_whitespace_reply_is_retried_once_then_reported(self, provider, mock_openai_client):
+        mock_openai_client.chat.completions.create.return_value = chat_completion(
+            " \n\t", finish_reason="length"
+        )
+        with pytest.raises(EmptyModelReply, match=r"finish_reason=length, refusal=absent"):
+            provider.extract([], "Return ONLY a valid JSON object.")
+        assert mock_openai_client.chat.completions.create.call_count == 2
+
+    def test_a_retry_that_answers_is_used(self, provider, mock_openai_client):
+        mock_openai_client.chat.completions.create.side_effect = [
+            chat_completion(None),
+            chat_completion('{"creditor_name": "Lakeshore Medical Billing"}'),
+        ]
+        reply = provider.extract([], "Return ONLY a valid JSON object.")
+        assert reply == '{"creditor_name": "Lakeshore Medical Billing"}'
+
+    def test_a_refusal_is_not_retried_and_its_wording_is_not_kept(
+        self, provider, mock_openai_client
+    ):
+        mock_openai_client.chat.completions.create.return_value = chat_completion(
+            None, refusal="I can't read the statement for Jordan Sample, SSN 900-12-3456."
+        )
+        with pytest.raises(EmptyModelReply) as raised:
+            provider.extract([b"\xff\xd8\xff"], "Return ONLY a valid JSON object.")
+        assert mock_openai_client.chat.completions.create.call_count == 1
+        assert "refusal=present" in str(raised.value)
+        assert "Jordan Sample" not in str(raised.value)
+        assert "900-12-3456" not in str(raised.value)
+
+    def test_a_filtered_reply_is_not_retried(self, provider, mock_openai_client):
+        mock_openai_client.chat.completions.create.return_value = chat_completion(
+            None, finish_reason="content_filter"
+        )
+        with pytest.raises(EmptyModelReply, match="finish_reason=content_filter"):
+            provider.extract([b"\xff\xd8\xff"], "Return ONLY a valid JSON object.")
+        assert mock_openai_client.chat.completions.create.call_count == 1
