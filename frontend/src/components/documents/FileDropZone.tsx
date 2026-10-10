@@ -1,6 +1,7 @@
 import { useRef } from 'react';
 
 interface FileDropZoneProps {
+  label: string;
   onFiles: (files: File[]) => void;
   disabled?: boolean;
 }
@@ -8,11 +9,12 @@ interface FileDropZoneProps {
 const ACCEPTED_TYPES = ['application/pdf', 'image/jpeg', 'image/png'];
 const ACCEPTED_EXTS = '.pdf,.jpg,.jpeg,.png';
 
-export function FileDropZone({ onFiles, disabled }: FileDropZoneProps) {
+export function FileDropZone({ label, onFiles, disabled }: FileDropZoneProps) {
   const inputRef = useRef<HTMLInputElement>(null);
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
+    if (disabled) return;
     const files = Array.from(e.dataTransfer.files).filter((f) => ACCEPTED_TYPES.includes(f.type));
     if (files.length) onFiles(files);
   };
@@ -26,7 +28,7 @@ export function FileDropZone({ onFiles, disabled }: FileDropZoneProps) {
     <div
       role="button"
       tabIndex={0}
-      aria-label="Drop files here or click to upload"
+      aria-label={`${label}: drop files here or click to upload`}
       aria-disabled={disabled}
       onDrop={handleDrop}
       onDragOver={(e) => e.preventDefault()}
@@ -48,6 +50,7 @@ export function FileDropZone({ onFiles, disabled }: FileDropZoneProps) {
         accept={ACCEPTED_EXTS}
         multiple
         hidden
+        disabled={disabled}
         onChange={handleChange}
       />
     </div>

@@ -8,6 +8,26 @@ import type { UploadedDocument } from '../types/api';
 
 const ILND_DISTRICT_ID = 1;
 
+const UPLOAD_AREAS = [
+  {
+    type: 'creditor_bill',
+    label: 'Bills and statements',
+    help: 'Bills or statements for money you owe. What we find will show up in the Amounts Owed step, marked "From scan." You can check or change it there.',
+  },
+  {
+    type: 'pay_stub',
+    label: 'Pay stubs',
+    help: "Recent pay stubs from your job. Your employer's name and your pay before taxes are used for your income form (Schedule I).",
+  },
+  {
+    type: 'credit_report',
+    label: 'Credit report',
+    help: 'Accounts with a balance will show up in the Amounts Owed step, marked "From scan." If you also uploaded a bill for the same account, it may show up twice. We may miss some, so please check that list.',
+  },
+] as const;
+
+type UploadType = (typeof UPLOAD_AREAS)[number]['type'];
+
 interface QueuedUpload {
   docId: number;
   filename: string;
@@ -32,7 +52,7 @@ export function DocumentUploadPage() {
   const [error, setError] = useState<string>('');
 
   const handleFiles = useCallback(
-    async (files: File[]) => {
+    async (files: File[], documentType: UploadType) => {
       if (!session?.id) {
         setError('No active session. Please start from the beginning.');
         return;
@@ -43,7 +63,7 @@ export function DocumentUploadPage() {
       const newItems: QueuedUpload[] = [];
       for (const file of files) {
         try {
-          const res = await uploadDocument(session.id, file, 'creditor_bill');
+          const res = await uploadDocument(session.id, file, documentType);
           newItems.push({ docId: res.id, filename: file.name, doc: null });
         } catch {
           setError(`Failed to upload ${file.name}.`);
@@ -67,6 +87,18 @@ export function DocumentUploadPage() {
 
   const isEmpty = queue.length === 0 && !uploading;
 
+  const areas = UPLOAD_AREAS.map((area) => (
+    <section key={area.type} aria-labelledby={`upload-area-${area.type}`}>
+      <h2 id={`upload-area-${area.type}`}>{area.label}</h2>
+      <p>{area.help}</p>
+      <FileDropZone
+        label={area.label}
+        onFiles={(files) => handleFiles(files, area.type)}
+        disabled={uploading || !session}
+      />
+    </section>
+  ));
+
   return (
     <main className="document-page">
       <h1>Upload your documents</h1>
@@ -86,12 +118,12 @@ export function DocumentUploadPage() {
         </p>
       )}
 
-      {isEmpty && <FileDropZone onFiles={handleFiles} disabled={uploading} />}
+      {isEmpty && areas}
 
       {queue.length > 0 && (
         <>
           <UploadQueue items={queue} onAllComplete={handleAllComplete} />
-          {!allComplete && <FileDropZone onFiles={handleFiles} disabled={uploading} />}
+          {!allComplete && areas}
         </>
       )}
 
