@@ -33,6 +33,7 @@ import type {
   AssetInfo,
   DebtInfo,
 } from '../types/api';
+import { EXPENSE_FIELDS } from '../types/api';
 
 // ============================================================================
 // Wizard Configuration
@@ -123,7 +124,7 @@ export function IntakeWizard() {
         setCurrentStepNumber(fresh.current_step);
         if (fresh.debtor_info) setDebtorData(fresh.debtor_info);
         if (fresh.income_info) setIncomeData(fresh.income_info);
-        if (fresh.expense_info) setExpenseData(fresh.expense_info);
+        if (fresh.expense_info) setExpenseData(hydrateAmounts(fresh.expense_info, EXPENSE_FIELDS));
         if (fresh.assets)
           setAssetsData(fresh.assets.map((asset) => hydrateAmounts(asset, ASSET_AMOUNT_FIELDS)));
         if (fresh.debts)

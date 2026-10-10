@@ -630,3 +630,48 @@ describe('IntakeWizard income save', { timeout: 15_000 }, () => {
     }
   });
 });
+
+// ===========================================================================
+// Expenses read back from the server (DIG-45)
+// ===========================================================================
+
+describe('IntakeWizard expense hydration', { timeout: 15_000 }, () => {
+  it("adds up a returning filer's saved expenses, which the API sends as decimal strings", async () => {
+    const savedSession = {
+      ...sessionAtStep1,
+      current_step: 3,
+      expense_info: {
+        data_source: 'manual',
+        rent_or_mortgage: '1100.00',
+        utilities: '180.00',
+        home_maintenance: '0.00',
+        vehicle_payment: '0.00',
+        vehicle_insurance: '85.00',
+        vehicle_maintenance: '40.00',
+        food_and_groceries: '450.00',
+        clothing: '60.00',
+        medical_expenses: '75.00',
+        childcare: '400.00',
+        child_support_paid: '0.00',
+        insurance_not_deducted: '120.00',
+        other_expenses: '50.00',
+        total_monthly_expenses: 2560.0,
+        created_at: '2026-10-01T10:00:00Z',
+        updated_at: '2026-10-01T10:00:00Z',
+      },
+    };
+    server.use(
+      http.get('http://localhost:8000/api/intake/sessions/:id/', () =>
+        HttpResponse.json(savedSession)
+      ),
+      http.patch('http://localhost:8000/api/intake/sessions/:id/', () =>
+        HttpResponse.json(savedSession)
+      )
+    );
+
+    renderWizard();
+    await screen.findByRole('heading', { name: /expenses/i, level: 2 });
+
+    expect(screen.getByText('$2,560.00')).toBeInTheDocument();
+  });
+});

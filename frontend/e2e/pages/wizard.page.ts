@@ -114,32 +114,10 @@ export class WizardPage {
 
   // ── Step 3: Expenses ────────────────────────────────────────────
 
-  /** Persona expense keys → current ExpenseInfoStep field names. */
-  private static readonly EXPENSE_FIELD_MAP: Record<string, string> = {
-    rent_or_mortgage: 'rent_or_mortgage',
-    utilities: 'utilities',
-    home_maintenance: 'home_maintenance',
-    vehicle_payment: 'car_payment',
-    vehicle_insurance: 'car_insurance',
-    vehicle_maintenance: 'gas_transportation',
-    food_and_groceries: 'food_groceries',
-    clothing: 'other_necessary_expenses',
-    medical_expenses: 'medical_expenses',
-    childcare: 'childcare',
-    child_support_paid: 'other_necessary_expenses',
-    insurance_not_deducted: 'insurance_not_deducted',
-    other_expenses: 'other_necessary_expenses',
-  };
-
   async fillExpenses(expenses: Record<string, number>) {
-    // Sum persona values into their mapped fields (several map to "other")
-    const totals: Record<string, number> = {};
-    for (const [key, value] of Object.entries(expenses)) {
-      const field = WizardPage.EXPENSE_FIELD_MAP[key];
-      if (!field) continue;
-      totals[field] = (totals[field] || 0) + value;
-    }
-    for (const [field, value] of Object.entries(totals)) {
+    // Persona keys are the backend's ExpenseInfo names, and ExpenseInfoStep names each
+    // box the same way, so every amount goes straight into its own box.
+    for (const [field, value] of Object.entries(expenses)) {
       await this.page.locator(`input[name="${field}"]`).fill(String(value));
     }
   }
