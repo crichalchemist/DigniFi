@@ -21,6 +21,8 @@ export function FileDropZone({ label, onFiles, disabled }: FileDropZoneProps) {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []);
+    // Clear the pick so choosing the same file again (a retry) fires another change.
+    e.target.value = '';
     if (files.length) onFiles(files);
   };
 

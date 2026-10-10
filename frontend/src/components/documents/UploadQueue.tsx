@@ -1,68 +1,145 @@
-import { useEffect, useState } from 'react';
-import { pollDocument } from '../../api/client';
-import type { UploadedDocument } from '../../types/api';
+import { useEffect } from 'react';
+import { pollDocument, APIClientError } from '../../api/client';
+import type { OCRFailureReason } from '../../types/api';
 
-interface QueueItem {
-  docId: number;
+export type UploadStatus =
+  | 'waiting'
+  | 'uploading'
+  | 'checking'
+  | 'done'
+  | 'failed'
+  | 'not_uploaded'
+  | 'unchecked';
+
+export interface QueueItem {
+  /** Client-side key: a row exists before the server gives the file an id. */
+  key: number;
   filename: string;
-  doc: UploadedDocument | null;
+  documentType: string;
+  docId: number | null;
+  status: UploadStatus;
+  failureReason: OCRFailureReason | '';
+  /** The upload was refused with a 400, which is how the server rejects a file type. */
+  wrongFileType: boolean;
 }
 
 interface UploadQueueProps {
   items: QueueItem[];
-  onAllComplete: (docs: UploadedDocument[]) => void;
+  onSettled: (key: number, patch: Partial<QueueItem>) => void;
 }
 
-export function UploadQueue({ items, onAllComplete }: UploadQueueProps) {
-  const [states, setStates] = useState<Record<number, UploadedDocument | null>>({});
+const CHECK_INTERVAL_MS = 3000;
+// The upload POST returns only after the file has been read, so the first check
+// is normally the final answer. This ceiling only stops a row from waiting forever.
+const GIVE_UP_AFTER_MS = 120000;
 
+const NOTHING_FOUND: Record<string, string> = {
+  creditor_bill:
+    "We couldn't find the name of the company you owe in this file. You can upload a different page, or add this bill yourself in a later step.",
+  pay_stub:
+    "We couldn't find the pay amount and pay dates in this file. You can upload a different page, or type your income in yourself in a later step.",
+  credit_report:
+    "We couldn't find any accounts in this file. You can upload a different file, or add your bills yourself in a later step.",
+};
+
+const COULD_NOT_READ =
+  "We couldn't read this file. You can try again, or type the details in yourself in a later step.";
+
+function statusText(item: QueueItem): string {
+  switch (item.status) {
+    case 'waiting':
+      return 'Waiting…';
+    case 'uploading':
+    case 'checking':
+      return 'Reading your file…';
+    case 'done':
+      return '✓ Done';
+    case 'failed':
+      return (
+        (item.failureReason === 'nothing_found' && NOTHING_FOUND[item.documentType]) ||
+        COULD_NOT_READ
+      );
+    case 'not_uploaded':
+      return item.wrongFileType
+        ? "This file didn't upload. You can try again. Please use a PDF, JPEG, or PNG file."
+        : "This file didn't upload. You can try again.";
+    case 'unchecked':
+      return "We couldn't check on this file. If we read it, what we found will still be used.";
+  }
+}
+
+function QueueRow({
+  item,
+  onSettled,
+}: {
+  item: QueueItem;
+  onSettled: UploadQueueProps['onSettled'];
+}) {
+  const { key, docId, status } = item;
+
+  // Each row checks on its own file, so adding files never restarts another row.
   useEffect(() => {
-    if (!items.length) return;
+    if (status !== 'checking' || docId === null) return;
 
-    const intervals: ReturnType<typeof setInterval>[] = [];
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let busyReplies = 0;
+    const startedAt = Date.now();
 
-    items.forEach((item) => {
-      const interval = setInterval(async () => {
-        try {
-          const doc = await pollDocument(item.docId);
-          if (doc.ocr_result?.status === 'completed' || doc.ocr_result?.status === 'failed') {
-            clearInterval(interval);
-            setStates((prev) => ({ ...prev, [item.docId]: doc }));
-          }
-        } catch {
-          clearInterval(interval);
+    const check = async () => {
+      let wait = CHECK_INTERVAL_MS;
+      try {
+        const ocr = (await pollDocument(docId)).ocr_result;
+        if (cancelled) return;
+        if (ocr?.status === 'completed' || ocr?.status === 'validated') {
+          onSettled(key, { status: 'done' });
+          return;
         }
-      }, 3000);
-      intervals.push(interval);
-    });
+        if (ocr?.status === 'failed') {
+          onSettled(key, { status: 'failed', failureReason: ocr.failure_reason ?? '' });
+          return;
+        }
+        busyReplies = 0;
+      } catch (err) {
+        if (cancelled) return;
+        const busy =
+          !(err instanceof APIClientError) || err.statusCode === 429 || err.statusCode >= 500;
+        if (!busy) {
+          onSettled(key, { status: 'unchecked' });
+          return;
+        }
+        // Back off on 429, 5xx and network errors: 6 s, 12 s, 24 s, ...
+        busyReplies += 1;
+        wait = CHECK_INTERVAL_MS * 2 ** busyReplies;
+      }
+      const elapsed = Date.now() - startedAt;
+      if (elapsed >= GIVE_UP_AFTER_MS) {
+        onSettled(key, { status: 'unchecked' });
+        return;
+      }
+      timer = setTimeout(check, Math.min(wait, GIVE_UP_AFTER_MS - elapsed));
+    };
 
-    return () => intervals.forEach(clearInterval);
-  }, [items]);
+    check();
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [key, docId, status, onSettled]);
 
-  useEffect(() => {
-    if (!items.length) return;
-    const completed = items.filter((i) => states[i.docId] !== undefined);
-    if (completed.length === items.length) {
-      onAllComplete(Object.values(states).filter(Boolean) as UploadedDocument[]);
-    }
-  }, [states, items, onAllComplete]);
+  return (
+    <li className="upload-queue-item">
+      <span>{item.filename}</span>
+      <span aria-live="polite">{statusText(item)}</span>
+    </li>
+  );
+}
 
-  const statusLabel = (docId: number) => {
-    const doc = states[docId];
-    if (!doc) return 'Processing…';
-    const s = doc.ocr_result?.status;
-    if (s === 'completed') return '✓ Done';
-    if (s === 'failed') return '✗ Failed';
-    return 'Processing…';
-  };
-
+export function UploadQueue({ items, onSettled }: UploadQueueProps) {
   return (
     <ul aria-label="Upload queue" className="upload-queue">
       {items.map((item) => (
-        <li key={item.docId} className="upload-queue-item">
-          <span>{item.filename}</span>
-          <span aria-live="polite">{statusLabel(item.docId)}</span>
-        </li>
+        <QueueRow key={item.key} item={item} onSettled={onSettled} />
       ))}
     </ul>
   );
