@@ -183,6 +183,11 @@ jobs:
       # validates it at import. CI-only; encrypts nothing but synthetic test data.
       FIELD_ENCRYPTION_KEY: U9HKckkKBeT8wag2jMcOx2Cez2M2jtvNG4qxSHuYcAo=
       DEBUG: "True"
+      # Playwright serves the app on :5173 and calls the backend at :8000 (cross-origin),
+      # so the registration POST is CORS-checked. base.py defaults to :3000 only; without
+      # this the browser blocks account creation. Previously supplied by the committed
+      # .env, which was untracked in BIZ-60 — CI now declares it explicitly.
+      CORS_ALLOWED_ORIGINS: http://localhost:5173,http://127.0.0.1:5173
 
     steps:
       - uses: actions/checkout@v4
