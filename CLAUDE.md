@@ -5,7 +5,7 @@
 ## Quick Commands
 
 ```bash
-docker compose up                              # Start all 4 services (db, backend, frontend, odl-hybrid)
+docker compose up                              # Start all 3 services (db, backend, frontend)
 docker compose exec backend python -m pytest    # Backend tests (uses sqlite :memory:, no postgres needed)
 docker compose exec backend python manage.py migrate
 docker compose exec backend python manage.py loaddata ilnd_2025_data   # Required before seed
@@ -34,7 +34,7 @@ cd backend && ruff check . --fix               # Backend lint (pinned ruff==0.8.
 - **heroku.yml release** — must be one command string (not argv list). `heroku releases:output` is empty; use `heroku logs --dyno release`.
 - **CI ruff is pinned** — `ci.yml` installs `ruff==0.8.5`. Unpinned ruff broke CI when new rules shipped.
 - **opendataloader-pdf needs a JRE** — both Dockerfiles install `default-jre-headless`. Without one, every PDF falls back to vision. `TestRealJvmContract` (`apps/documents/tests/test_processor.py`) runs the real CLI wherever `java` is on PATH and skips with a visible reason elsewhere (`-rs` in CI); every other test uses a stand-in for the module.
-- **opendataloader-pdf healthcheck** — 60s start_period; backend `depends_on: odl-hybrid` condition `service_healthy`.
+- **No PDF sidecar** — the `odl-hybrid` service and the `opendataloader-pdf[hybrid]` extra are gone; the backend runs the Java CLI itself. A stack or venv built before the removal still has them: run `docker compose up --build --remove-orphans` and recreate `backend/.venv` (`pip install -r` never uninstalls docling or torch).
 - **Pre-commit prettier** — reformats staged files on first commit; re-`git add` and commit again.
 - **Colima volume mounts** — Colima only mounts `$HOME` by default; `/Volumes/Containers` must be added in `~/.colima/default/colima.yaml`.
 - **Compose backend** — command must chain `python manage.py migrate && ...` before `runserver`.
@@ -110,7 +110,7 @@ cd backend && ruff check . --fix               # Backend lint (pinned ruff==0.8.
 
 **Infra:**
 
-- `docker-compose.yml` — 4 services: db (postgres:15), backend, frontend, odl-hybrid (opendataloader-pdf)
+- `docker-compose.yml` — 3 services: db (postgres:15), backend, frontend
 - `Dockerfile.heroku` — multi-stage (Node → Python), bakes PDF templates + static assets
 - `heroku.yml` — release phase runs migrations (single command string)
 - `.github/workflows/ci.yml` — lint → backend tests → frontend tests → E2E (sequential gates)

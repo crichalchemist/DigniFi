@@ -34,8 +34,6 @@ services:
     depends_on:
       db:
         condition: service_healthy
-      odl-hybrid:
-        condition: service_healthy
 
   frontend:
     build:
@@ -51,22 +49,6 @@ services:
       - VITE_API_URL=${VITE_API_URL:-http://localhost:8000/api}
     stdin_open: true
     tty: true
-
-  odl-hybrid:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-      args:
-        REQUIREMENTS_FILE: requirements/development.txt
-    command: opendataloader-pdf-hybrid --port 5002 --force-ocr
-    ports:
-      - '5002:5002'
-    healthcheck:
-      test: ['CMD', 'curl', '-f', 'http://localhost:5002/health']
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 60s
 
 volumes:
   postgres_data:
