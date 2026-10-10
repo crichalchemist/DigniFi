@@ -1,10 +1,10 @@
 import { render, screen, waitFor, act, fireEvent } from '@testing-library/react';
 import { vi } from 'vitest';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter, Routes, Route } from 'react-router-dom';
+import { MemoryRouter, Routes, Route, useNavigate } from 'react-router-dom';
 import { http, HttpResponse } from 'msw';
 import { server } from '../../test/mocks/server';
-import { IntakeProvider } from '../../context/IntakeContext';
+import { IntakeProvider, useIntake } from '../../context/IntakeContext';
 import IntakeWizard from '../IntakeWizard';
 
 // DebtorInfoStep reads account email via useAuth; wizard test renders without
@@ -319,5 +319,143 @@ describe('IntakeWizard autosave', { timeout: 15_000 }, () => {
 
     // Must still be on step 1 — the Income step heading must NOT be present
     expect(screen.queryByRole('heading', { name: /income/i, level: 2 })).not.toBeInTheDocument();
+  });
+});
+
+// ===========================================================================
+// Re-reading the session on every wizard entry (DIG-1, DIG-30)
+// ===========================================================================
+
+/** Session sitting on step 5 (Amounts Owed) with no debts yet. */
+const sessionAtStep5 = {
+  ...sessionAtStep1,
+  current_step: 5,
+  debtor_info: { first_name: 'Jane', last_name: 'Doe' },
+};
+
+/** A draft debt the document processor created from an uploaded bill. */
+const debtFromUploadedBill = {
+  id: 7,
+  session: 1,
+  data_source: 'uploaded_document',
+  creditor_name: 'Lakeshore Medical Group',
+  debt_type: 'medical',
+  priority_classification: 'unsecured',
+  monthly_payment: '0.00',
+  is_in_collections: false,
+  notes: '',
+  created_at: '2026-10-09T10:00:00Z',
+  updated_at: '2026-10-09T10:00:00Z',
+  is_draft: true,
+  source_document_name: 'lakeshore-bill.pdf',
+};
+
+/** Stands in for DocumentUploadPage, whose Continue button only navigates to /intake. */
+function UploadPageStandIn() {
+  const navigate = useNavigate();
+  const { session } = useIntake();
+  if (!session) return <p>Loading uploads</p>;
+  return (
+    <button type="button" onClick={() => navigate('/intake')}>
+      Continue
+    </button>
+  );
+}
+
+describe('IntakeWizard session re-read', { timeout: 15_000 }, () => {
+  it('shows a debt read from an uploaded bill at Amounts Owed when the filer continues from uploads, without a reload', async () => {
+    // The filer reached Amounts Owed, went back to /documents (header link or browser Back)
+    // and uploaded a bill. The provider loaded the session before the upload, so the copy
+    // in context has no debts; only the server holds the draft.
+    let serverSession: Record<string, unknown> = sessionAtStep5;
+    server.use(
+      http.get('http://localhost:8000/api/intake/sessions/:id/', () =>
+        HttpResponse.json(serverSession)
+      ),
+      http.patch('http://localhost:8000/api/intake/sessions/:id/', () =>
+        HttpResponse.json(serverSession)
+      )
+    );
+    localStorage.setItem('current_session_id', '1');
+    render(
+      <MemoryRouter initialEntries={['/documents']}>
+        <IntakeProvider>
+          <Routes>
+            <Route path="/intake" element={<IntakeWizard />} />
+            <Route path="/documents" element={<UploadPageStandIn />} />
+          </Routes>
+        </IntakeProvider>
+      </MemoryRouter>
+    );
+    const continueButton = await screen.findByRole('button', { name: 'Continue' });
+
+    // The bill has been read: the server now holds a draft debt the context never saw.
+    serverSession = { ...sessionAtStep5, debts: [debtFromUploadedBill] };
+    await userEvent.click(continueButton);
+
+    await screen.findByRole('heading', { name: /amounts owed/i, level: 2 });
+    expect(screen.getByDisplayValue('Lakeshore Medical Group')).toBeInTheDocument();
+    expect(screen.getByText('From scan')).toBeInTheDocument();
+  });
+
+  it("keeps the filer's saved place and lets them try again when the re-read fails", async () => {
+    let serverBusy = true;
+    let sessionsCreated = 0;
+    server.use(
+      http.get('http://localhost:8000/api/intake/sessions/:id/', () =>
+        serverBusy
+          ? HttpResponse.json({ detail: 'Request was throttled.' }, { status: 429 })
+          : HttpResponse.json({ ...sessionAtStep1, current_step: 3 })
+      ),
+      http.post('http://localhost:8000/api/intake/sessions/', () => {
+        sessionsCreated += 1;
+        return HttpResponse.json(
+          { session: sessionAtStep1, message: 'Session created.' },
+          { status: 201 }
+        );
+      }),
+      http.patch('http://localhost:8000/api/intake/sessions/:id/', () =>
+        HttpResponse.json({ ...sessionAtStep1, current_step: 3 })
+      )
+    );
+
+    renderWizard();
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      "We couldn't get your latest information just now. Please try again in a moment."
+    );
+    // No step renders after a failed read, so autosave has nothing stale to send.
+    expect(screen.queryByRole('heading', { level: 2 })).not.toBeInTheDocument();
+
+    serverBusy = false;
+    await userEvent.click(screen.getByRole('button', { name: 'Try again' }));
+
+    expect(await screen.findByRole('heading', { name: /expenses/i, level: 2 })).toBeInTheDocument();
+    // The filer kept their own session: nothing started a new one behind their back.
+    expect(sessionsCreated).toBe(0);
+  });
+
+  it('starts one new session when the saved one is gone or belongs to someone else', async () => {
+    // A shared computer: the resume pointer names another account's session, so DRF says 404.
+    let sessionsCreated = 0;
+    server.use(
+      http.get('http://localhost:8000/api/intake/sessions/:id/', () =>
+        HttpResponse.json({ detail: 'Not found.' }, { status: 404 })
+      ),
+      http.post('http://localhost:8000/api/intake/sessions/', () => {
+        sessionsCreated += 1;
+        return HttpResponse.json(
+          { session: { ...sessionAtStep1, id: 2 }, message: 'Session created.' },
+          { status: 201 }
+        );
+      })
+    );
+
+    renderWizard();
+
+    expect(
+      await screen.findByRole('heading', { name: /your information/i, level: 2 })
+    ).toBeInTheDocument();
+    expect(sessionsCreated).toBe(1);
   });
 });

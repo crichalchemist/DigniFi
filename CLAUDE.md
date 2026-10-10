@@ -52,6 +52,7 @@ cd backend && ruff check . --fix               # Backend lint (pinned ruff==0.8.
 - **Upload is synchronous despite the 202** — `views.py` uses `with ThreadPoolExecutor(...)`, whose `__exit__` calls `shutdown(wait=True)`, so `{"status": "processing"}` is returned _after_ OCR completes and holds a gunicorn worker. No `Future` is retained — that's the tell.
 - **`hybrid="docling-fast"` can't work on Heroku** — it needs the `odl-hybrid` sidecar on `localhost:5002` from `docker-compose.yml`; Heroku runs a single container. It's caught and falls back to vision OCR, so the `Hybrid server is not available` log noise is not the failure.
 - **Vision fallback reads page 1 only** — `_pdf_to_image_bytes(pdf_bytes, page_index=0)`; multi-page creditor bills extract partially even on success.
+- **The wizard re-reads the session on every mount** — `IntakeWizard` fixes the session id at mount (context session, else `current_session_id`), calls `loadSession(id)`, and renders no step until it returns, so steps and autosave start from server data, not the context copy (which predates any upload on `/documents`). A failed read shows a "Try again" alert for the same id; a 404 starts a new session. `loadSession`/`createSession` resolve with the session, and `loadSession` clears `current_session_id` only on a 404, but the provider's own startup load still clears it on any error (DIG-11).
 
 ## Architecture (quick)
 
