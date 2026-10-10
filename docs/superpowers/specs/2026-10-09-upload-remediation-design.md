@@ -1,7 +1,7 @@
 # Upload Remediation — Design Spec
 
 **Date:** 2026-10-09
-**Status:** Approved in brainstorming; pending owner review of this document
+**Status:** Approved in brainstorming. Revised 2026-10-09: every court-form fix moved to a separate forms project on `feat/forms-rebinding` (§4.6). Pending owner review of this document.
 **Branch:** `fix/upload-remediation`
 **Supersedes in part:** `2026-06-20-document-ingestion-prefill-v2-design.md`, which assumed:
 
@@ -10,7 +10,7 @@
 
 **Tickets fixed (Plane, project DIG):**
 
-- **Core:** DIG-1, 2, 3, 4, 5, 6, 7, 9, 13, 41, 45, 52
+- **Core:** DIG-1, 2, 3, 4, 5, 6, 7, 9, 13, 41, 45
 - **Traceability:** DIG-21, 30, 37
 
 ---
@@ -31,13 +31,13 @@ A live local triage on 2026-10-09 drove the upload flow end to end with syntheti
 
 - **Replace-all save.** It deletes and recreates nested debts and assets. Autosave fires about 2 s after the filer lands on a step, so once amounts become readable, every visit to step 5 would recreate the rows. Write-only `account_number`, the scan link and `is_secured` would be lost (DIG-21). Re-sending a row loaded from the server raises a 500 today (DIG-37).
 - **Income step.** It rebuilds `monthly_income` from per-source boxes the server never stores, so reopening Income writes six zeros (DIG-41).
-- **Expense step.** It sends five field names the backend does not know. DRF drops them silently, so car, food and other costs save as $0 (DIG-45). Schedule J also binds several expense fields to the wrong PDF lines, which today print $0 and would print real numbers in the wrong places once DIG-45 ships.
+- **Expense step.** It sends five field names the backend does not know. DRF drops them silently, so car, food and other costs save as $0 (DIG-45). Schedule J also binds several expense fields to the wrong PDF lines, which today print $0 and would print real numbers in the wrong places once DIG-45 ships. A field-index audit on the same day found that every generated court form needs the same kind of rebinding, so those fixes are a separate project (§4.6), and production waits for it (§7).
 
 ## 2. Decisions
 
 | Topic              | Decision                                                                                                                                                                                   | Rejected                                                                                                                                                                             |
 | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Scope              | DIG-1, 2, 3, 4, 5, 6, 7, 9, 13, 41, 45, plus traceability DIG-21/30/37 and the Schedule J bindings                                                                                         | Data-loss-only PR; every upload ticket in one PR                                                                                                                                     |
+| Scope              | DIG-1, 2, 3, 4, 5, 6, 7, 9, 13, 41, 45, plus traceability DIG-21/30/37                                                                                                                     | Data-loss-only PR; every upload ticket in one PR                                                                                                                                     |
 | Branching          | Health/SPA commits ship as their own PR. `fix/upload-remediation` branches from them.                                                                                                      | One PR for everything                                                                                                                                                                |
 | Saving nested rows | **Upsert by id.** A sent row with an id updates only the fields sent. A row without an id is created. A stored row absent from the payload is deleted. A client-sent `session` is ignored. | Keeping replace-all (silent field loss); preserving drafts on save (resurrects drafts the filer deleted); per-item CRUD for debts and assets (rewrites two steps' save and autosave) |
 | Stale wizard       | **Re-read the session on every wizard mount.** Steps render only after the re-read returns.                                                                                                | Refreshing only when leaving `/documents` (the header logo link and browser Back bypass it)                                                                                          |
@@ -45,7 +45,7 @@ A live local triage on 2026-10-09 drove the upload flow end to end with syntheti
 | PDF reading        | **Drop the hybrid sidecar everywhere.** Java-only opendataloader reads text-layer PDFs. Scans get vision on up to 3 pages. One code path, one `OPENAI_API_KEY`.                            | Hosting the sidecar (no auth on client or server, no default timeout, Heroku H12, every option still sends content to OpenAI); configurable sidecar (local and prod diverge)         |
 | Document type      | Three labelled upload areas: bills and statements, pay stubs, credit report                                                                                                                | Per-file picker; auto-classify                                                                                                                                                       |
 | E2E proof          | A local fake OpenAI server; the backend reads `OPENAI_BASE_URL`                                                                                                                            | Seeding drafts through the API (skips upload); vitest only                                                                                                                           |
-| Schedule J         | Fix the field bindings in this PR, alongside DIG-45                                                                                                                                        | A separate PR behind a deploy gate                                                                                                                                                   |
+| Court forms        | A separate forms project on `feat/forms-rebinding` fixes the bindings (DIG-52, 59, 60, 63–83), starting from the verified field index in `data/forms/field_index/`                         | Fixing Schedule J here: the audit found every generated form needs the same rebinding                                                                                                |
 
 ## 3. Prerequisites
 
@@ -124,41 +124,16 @@ The backend names are canonical: model, serializer, Schedule J, 122A-2, means te
   - `maria-happy-path` asserts that the fee-waiver form prefills the full expense total.
 - **Existing rows:** every expense row saved through the wizard since `169b34e` holds 0 in the seven affected fields. Nothing can be recovered (§7).
 
-### 4.6 Schedule J field bindings — DIG-52
+### 4.6 Court forms — moved to the forms project
 
-The template is `form_b106j.pdf`. Its field names match the printed line numbers; I checked this by comparing each widget's position with the label beside it. The schema binds most expenses to the wrong field names. Fix these files so each expense lands on its labelled line:
+This PR does not change any court-form schema, derivation or generator. The first version of this section fixed the Schedule J bindings (DIG-52). Its corrected-line table is in commit `2c38c99` and in DIG-52, and the forms project starts from it.
 
-- `data/forms/schemas/schedule_j.json`
-- the child-support fold in `backend/apps/forms/services/derivations.py` (`schedule_j_other_expenses`, ~544-546)
-- the plan doc `docs/superpowers/plans/2026-06-04-pdf-field-mappings.md` (~577-587)
-- `backend/apps/forms/tests/test_pdf_field_maps.py:207-213`, which asserts the wrong fields today
+On 2026-10-09 a verified index of every fillable box on the 17 templates (`data/forms/field_index/`, committed on `feat/forms-rebinding`) was used to audit all 735 schema bindings. Only 52 print the right thing today. No checkbox ever ticks, Schedules C–H list no rows, and every "asked" field is empty (DIG-68 to DIG-83). Rebinding one schedule inside an upload PR would not change that, so the owner split the work out.
 
-| Expense field            | Bound today to                   | Correct field       | Printed line                                        |
-| ------------------------ | -------------------------------- | ------------------- | --------------------------------------------------- |
-| `rent_or_mortgage`       | `10` (personal care)             | `4`                 | Rental or home ownership expenses                   |
-| `home_maintenance`       | `14` (charitable contributions)  | `4c`                | Home maintenance, repair, and upkeep                |
-| `utilities`              | `12` (transportation)            | `6d` + `Other 6d`   | Utilities, other (see note)                         |
-| `food_and_groceries`     | `15a` (life insurance)           | `7`                 | Food and housekeeping supplies                      |
-| `childcare`              | `15b` (health insurance)         | `8`                 | Childcare and children's education                  |
-| `clothing`               | `15c` (vehicle insurance)        | `9`                 | Clothing, laundry, and dry cleaning                 |
-| `medical_expenses`       | `16` (taxes)                     | `11`                | Medical and dental expenses                         |
-| `vehicle_maintenance`    | `17a` (Vehicle 1 payments)       | `12`                | Transportation: gas, maintenance, bus or train fare |
-| `vehicle_insurance`      | `17c` (other installments)       | `15c`               | Vehicle insurance                                   |
-| `insurance_not_deducted` | `20a` (other-property mortgages) | `15d` + `Other 15d` | Other insurance (see note)                          |
-| `vehicle_payment`        | `17b` (Vehicle 2 payments)       | `17a`               | Car payments for Vehicle 1                          |
-| `child_support_paid`     | added into `21`                  | `18`                | Alimony, maintenance, and support                   |
-| `other_expenses`         | `21`, plus child support         | `21` + `Other 21`   | Other                                               |
+The two questions this section left open move to the forms project's spec:
 
-**Combined amounts.** The wizard collects some amounts as one figure where the form splits them:
-
-- `utilities` ("Gas, electric, water, etc.") covers lines 6a–6c together.
-- `insurance_not_deducted` ("Health, life, or disability insurance not deducted from paycheck") covers 15a, 15b and 15d together.
-
-Putting a combined figure on a category line such as 6a or 15b would state a breakdown the filer never gave. Each one goes on the line's "Other" row instead. A derived rule fills the matching "Specify" box ("All utilities, combined"; "Health, life, or disability, combined") only when the amount is above zero; otherwise the box stays blank. `Other 21` reads "Other necessary expenses" on the same condition. The line totals and line 22a are unaffected. This placement is a judgment call for the owner to confirm; collecting the split itself is out of scope.
-
-**Unchanged:** `22a` (total expenses) and `23a` (income) keep their current rules. Lines 22c, 23b and 23c stay blank (DIG-61). The source of 23a belongs to DIG-56.
-
-**Test:** for each canonical expense field, a distinct amount lands in the PDF field whose on-page label matches that expense's line. The label check reads widget rects and label positions from the template with pypdf, so it fails if a binding drifts.
+- where the combined utilities and insurance amounts go on Schedule J;
+- how much of Form 122A-1 to fix.
 
 ### 4.7 Extraction outcomes and filer-safe failure reasons — DIG-7
 
@@ -321,12 +296,8 @@ DIG-58 tracks these checks. Run them before deploying. Production checks are rea
 3. **Zeroed expenses:** `ExpenseInfo` rows saved through the wizard (`data_source='manual'`, excluding demo users) with all seven affected fields at 0 (DIG-45). The data is unrecoverable; contact affected filers directly.
 4. **Key:** `OPENAI_API_KEY` is set on Heroku (check its length, not its value).
 5. **After deploy:** `heroku run python manage.py showmigrations documents` shows `0006` applied, and `/health/detailed/` returns ok.
-6. **The owner's own intake** (run on v30/v31): re-enter Expenses, regenerate the forms and redo the fee-waiver application before filing anything. This PR does not fix the other court-form defects, so check those forms by hand even after it ships:
-   - Form 122A-1: DIG-49, 51, 53, 56, 59
-   - Form 122A-2: DIG-50, 60
-   - In-app means test transport allowance: DIG-62
-   - Schedule I: DIG-36, 56
-   - Schedule J lines 22c–23c: DIG-61
+6. **Production waits for the forms project.** The owner decided on 2026-10-09 to make no production change until this work and the forms project are done. There is also a dependency: DIG-45 makes real expense amounts reach Schedule J, whose bindings stay wrong until DIG-52 lands in the forms project.
+7. **The owner's own intake** (run on v30/v31): re-enter Expenses once this PR is deployed. The generated court forms cannot be used for filing until the forms project lands (DIG-68 to DIG-83), so do not regenerate them for filing before then.
 
 ## 8. Tests
 
@@ -342,9 +313,8 @@ Tests are named for outcomes and mock only boundaries: the OpenAI client, the ne
   - A returning filer gets the saved income total.
   - Saving income amounts keeps the household details.
   - An income PATCH with a blank `marital_status` returns 400.
-- **Backend, expenses and Schedule J (§4.5–4.6):**
-  - An expense-step save reaches every Schedule J line, asserted through the generator.
-  - Each expense lands on its labelled Schedule J field.
+- **Backend, expenses (§4.5):**
+  - An expense saved under each canonical name is stored and returned by the API.
 - **Backend, `test_processing_outcomes.py`** (real processor and provider; only `openai_provider.OpenAI` patched):
   - The balance on page 2 of a text PDF reaches the model.
   - A scanned PDF sends at most three page images, in order.
@@ -393,19 +363,20 @@ Each commit passes on its own:
 | 10  | fix(documents): ask the model for each account on a credit report               | DIG-3                |
 | 11  | fix(intake): show filers the amounts they already entered                       | DIG-2                |
 | 12  | fix(intake): keep saved income when the Income step reopens                     | DIG-41               |
-| 13  | fix(forms): put each Schedule J expense on its labelled line                    | DIG-52               |
-| 14  | fix(intake): save expenses under the names the court forms read                 | DIG-45               |
-| 15  | feat(frontend): give bills, pay stubs and credit reports their own upload areas | DIG-3                |
-| 16  | fix(frontend): show each file's real outcome and let the filer retry            | DIG-5, DIG-13        |
-| 17  | test(e2e): follow a scanned bill from upload to Amounts Owed                    | DIG-1, DIG-6         |
+| 13  | fix(intake): save expenses under the names the court forms read                 | DIG-45               |
+| 14  | feat(frontend): give bills, pay stubs and credit reports their own upload areas | DIG-3                |
+| 15  | fix(frontend): show each file's real outcome and let the filer retry            | DIG-5, DIG-13        |
+| 16  | test(e2e): follow a scanned bill from upload to Amounts Owed                    | DIG-1, DIG-6         |
 
 **Commit contents:**
 
 - **Commit 1:** also sets the June spec's status to "Superseded in part by 2026-10-09-upload-remediation-design.md".
 - **Commit 2:** adds tests for provider selection (the openai default, the gemini branch, the `OCR_MODEL` override, an unknown provider failing at read time). It also adds `OPENAI_API_KEY`, `OCR_PROVIDER` and `OCR_MODEL` to both `.env.example` files and updates the provider line in the README.
 - **Commit 3:** carries the E2E page-object fixes, so E2E is never committed broken.
-- **Commits 4–17:** each updates the CLAUDE.md gotchas its own code makes true or false.
+- **Commits 4–16:** each updates the CLAUDE.md gotchas its own code makes true or false.
 
 ## 10. Follow-ups (filed, not in this PR)
 
-DIG-8, 10, 11, 12, 14, 15, 16 (the `.dockerignore` part), 17, 18–20, 22–29, 31–36, 38–40, 42–44, 46–51, 53–57 and 59–62. DIG-58 is the deploy-check task in §7.
+- **Forms project (`feat/forms-rebinding`):** DIG-36, 49–53, 56, 59–62 and 63–83.
+- **Other follow-ups:** DIG-8, 10, 11, 12, 14, 15, 16 (the `.dockerignore` part), 17, 18–20, 22–29, 31–35, 38–40, 42–44, 46–48, 54, 55 and 57.
+- **Deploy checks:** DIG-58 tracks §7.
