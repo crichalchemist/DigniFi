@@ -18,21 +18,56 @@ jobs:
       (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude')) ||
       (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')))
     runs-on: ubuntu-latest
+    # Write access so @claude can push fixes to the PR branch (or its own claude/ branch for an
+    # issue). Only users with write access to the repo can trigger the action.
     permissions:
-      contents: read
-      pull-requests: read
-      issues: read
+      contents: write
+      pull-requests: write
+      issues: write
       id-token: write
       actions: read # Required for Claude to read CI results on PRs
+
+    # ci.yml's backend-test environment, so Claude can run the checks before it pushes.
+    env:
+      DJANGO_SETTINGS_MODULE: config.settings.test
+      DJANGO_SECRET_KEY: ci-test-secret-key-not-for-production
+      DEBUG: "True"
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
 
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: backend/requirements/test.txt
+
+      - name: Install backend dependencies
+        # ruff pinned to match ci.yml
+        run: pip install -r backend/requirements/test.txt ruff==0.8.5 && mkdir -p backend/logs
+
+      - name: Generate a throwaway encryption key
+        # encrypted_model_fields validates FIELD_ENCRYPTION_KEY at import. A fresh key per run
+        # keeps a key literal out of the repo; it encrypts nothing but test data.
+        run: echo "FIELD_ENCRYPTION_KEY=$(python -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())')" >> "$GITHUB_ENV"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
       - name: Run Claude Code
         id: claude
-        uses: anthropics/claude-code-action@v1
+        # Pinned by commit: @v1 moves with every release, and this job can push.
+        uses: anthropics/claude-code-action@756cc22e19660d20e8cc9496b4f242475a7f7790 # v1.0.235
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
 
@@ -40,11 +75,12 @@ jobs:
           additional_permissions: |
             actions: read
 
-          # Optional: Give a custom prompt to Claude. If this is not specified, Claude will perform the instructions specified in the comment that tagged it.
-          # prompt: 'Update the pull request description to include a summary of changes.'
+          # No commit trailer naming Claude. The action still credits the person who asked
+          # with a Co-authored-by line.
+          settings: '{"attribution": {"commit": "", "pr": ""}}'
 
-          # Optional: Add claude_args to customize behavior and configuration
           # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
           # or https://code.claude.com/docs/en/cli-reference for available options
-          # claude_args: '--allowed-tools Bash(gh pr:*)'
-
+          claude_args: |
+            --allowedTools "Bash(cd:*),Bash(git status:*),Bash(git diff:*),Bash(git log:*),Bash(ruff:*),Bash(pytest:*),Bash(python -m pytest:*),Bash(npm test:*),Bash(npm run lint:*),Bash(npx tsc:*),Bash(npx vitest:*)"
+            --append-system-prompt "You are working on DigniFi; follow CLAUDE.md. Before you commit, run the checks for what you changed. Backend: ruff check backend/, then cd backend and run pytest -q. Frontend: cd frontend, then npm run lint, npx tsc -b and npm test. Push only when they pass; if one fails and you cannot fix it, say so instead of pushing. End the commit message with the last line about the change: no trailer naming Claude or any AI model, and no session link. The Co-authored-by line for the person who asked is fine. Never edit .github/workflows or anything that deploys."
