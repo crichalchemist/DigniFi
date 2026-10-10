@@ -2,22 +2,16 @@ name: Claude Code Review
 
 on:
   pull_request:
-    types: [opened, synchronize]
-    # Optional: Only run on specific file changes
-    # paths:
-    #   - "src/**/*.ts"
-    #   - "src/**/*.tsx"
-    #   - "src/**/*.js"
-    #   - "src/**/*.jsx"
+    types: [opened, synchronize, reopened, ready_for_review]
+
+# A new push supersedes the review of the previous one.
+concurrency:
+  group: claude-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
 
 jobs:
   claude-review:
-    # Optional: Filter by PR author
-    # if: |
-    #   github.event.pull_request.user.login == 'external-contributor' ||
-    #   github.event.pull_request.user.login == 'new-developer' ||
-    #   github.event.pull_request.author_association == 'FIRST_TIME_CONTRIBUTOR'
-
+    if: github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -29,29 +23,55 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 1
+          # HEAD is GitHub's merge of the PR into its base; depth 2 brings the base parent,
+          # so `git diff HEAD^1 HEAD` is exactly what the PR changes.
+          fetch-depth: 2
 
       - name: Run Claude Code Review
         id: claude-review
-        uses: anthropics/claude-code-action@v1
+        # Pinned by commit: @v1 moves with every release.
+        uses: anthropics/claude-code-action@756cc22e19660d20e8cc9496b4f242475a7f7790 # v1.0.235
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           prompt: |
             REPO: ${{ github.repository }}
             PR NUMBER: ${{ github.event.pull_request.number }}
 
-            Please review this pull request and provide feedback on:
-            - Code quality and best practices
-            - Potential bugs or issues
-            - Performance considerations
-            - Security concerns
-            - Test coverage
+            Review this pull request to DigniFi, a Chapter 7 bankruptcy filing tool for people
+            without a lawyer. Read CLAUDE.md first: its gotchas are the mistakes this codebase
+            keeps making.
 
-            Use the repository's CLAUDE.md for guidance on style and conventions. Be constructive and helpful in your feedback.
+            Read the whole change, one file at a time:
+            - `git diff --stat HEAD^1 HEAD` lists every changed file.
+            - `git diff HEAD^1 HEAD -- <path>` shows one file's change.
+            Don't review from a single `gh pr diff`: on a large PR its output gets cut off and
+            most of the change goes unread. Skip only lockfiles and binary files, and say so.
 
-            Use `gh pr comment` with your Bash tool to leave your review as a comment on the PR.
+            Look for:
+            1. Bugs: wrong logic, missed edge cases, frontend and backend field names or enum
+               values that no longer match, models and migrations that disagree.
+            2. Tests that would still pass if the logic broke, or that pin the code's current
+               output instead of the outcome a filer needs.
+            3. Filer data leaking: SSNs, account numbers, income figures or document contents
+               in log messages, exception text, stored error fields, API responses, or anything
+               Sentry receives. `logger.exception` and `str(exc)` are the usual way in.
+            4. Legal advice: text a filer sees must give information, never advice
+               (docs/UPL_COMPLIANCE.md). Flag telling a filer what they should do, file or claim,
+               and any prediction of their outcome. Flag copy that isn't plain language
+               (docs/PLAIN_LANGUAGE_GUIDE.md).
+            5. Security: one user reaching another user's session or documents, unvalidated
+               input, secrets in code.
+
+            Post each finding on its line with mcp__github_inline_comment__create_inline_comment
+            (confirmed: true). Start it with **Blocking**, **Should fix** or **Nit**, say what goes
+            wrong and when, and suggest a fix.
+
+            Then post one summary with `gh pr comment`, under the heading "## Claude review".
+            List blocking findings first, end with "Reviewed N of N changed files", and name any
+            file you skipped. Leave out praise and anything that is fine. If your most recent
+            comment on this PR is an earlier summary under that heading, replace it with
+            `gh pr comment <number> --edit-last` instead of adding another.
 
           # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
           # or https://code.claude.com/docs/en/cli-reference for available options
-          claude_args: '--allowed-tools "Bash(gh issue view:*),Bash(gh search:*),Bash(gh issue list:*),Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh pr list:*)"'
-
+          claude_args: '--allowed-tools "Read,Grep,Glob,Bash(git diff:*),Bash(git log:*),Bash(gh issue view:*),Bash(gh search:*),Bash(gh issue list:*),Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh pr list:*),mcp__github_inline_comment__create_inline_comment"'
