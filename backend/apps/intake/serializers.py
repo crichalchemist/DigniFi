@@ -73,15 +73,22 @@ class DebtorInfoSerializer(serializers.ModelSerializer):
 class IncomeInfoSerializer(serializers.ModelSerializer):
     """Serializer for income information."""
 
+    total_monthly_income = serializers.SerializerMethodField()
+
     class Meta:
         model = IncomeInfo
         fields = [
             "marital_status",
             "number_of_dependents",
             "monthly_income",
+            "total_monthly_income",
             "created_at",
         ]
-        read_only_fields = ["created_at"]
+        read_only_fields = ["created_at", "total_monthly_income"]
+
+    def get_total_monthly_income(self, obj):
+        """Return the saved monthly income total (the average of the stored months)."""
+        return obj.calculate_total_monthly_income()
 
     def validate_monthly_income(self, value):
         """

@@ -261,18 +261,14 @@ export function IntakeWizard() {
         } as Partial<IntakeSession>);
         break;
 
-      case 'income_info': {
-        // Transform detailed income data to backend format (6-month array)
-        // MVP Assumption: Current monthly income is consistent for last 6 months
-        const incomePayload = {
-          ...incomeData,
-          monthly_income: Array(6).fill(incomeData.total_monthly_income || 0),
-        };
+      case 'income_info':
+        // Send the months alone: IncomeInfoStep re-emits them as stored unless the filer
+        // entered source amounts. Echoing other fields read from the server (a blank
+        // marital_status) is a 400 that would strand the filer on Income.
         await api.intake.updateSession(session.id, {
-          income_info: incomePayload,
+          income_info: { monthly_income: incomeData.monthly_income },
         } as Partial<IntakeSession>);
         break;
-      }
 
       case 'expense_info':
         await api.intake.updateSession(session.id, {

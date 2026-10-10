@@ -574,3 +574,59 @@ describe('IntakeWizard amounts a returning filer already entered', { timeout: 15
     expect(assets[0].amount_owed).toBe(3000);
   });
 });
+
+// ===========================================================================
+// Income save (DIG-41)
+// ===========================================================================
+
+describe('IntakeWizard income save', { timeout: 15_000 }, () => {
+  it("saves a returning filer's months exactly as stored, and nothing else, when they continue without changes", async () => {
+    // What the API returns for a filer who saved income earlier through the wizard: the
+    // months, their average, and the blank household fields a wizard-created row holds.
+    const savedSession = {
+      ...sessionAtStep1,
+      current_step: 2,
+      income_info: {
+        marital_status: '',
+        number_of_dependents: 0,
+        monthly_income: [3100, 3300, 3200, 3200, 3150, 3250],
+        total_monthly_income: 3200,
+        created_at: '2026-10-01T10:00:00Z',
+      },
+    };
+    const patchBodies: unknown[] = [];
+    server.use(
+      http.get('http://localhost:8000/api/intake/sessions/:id/', () =>
+        HttpResponse.json(savedSession)
+      ),
+      http.patch('http://localhost:8000/api/intake/sessions/:id/', async ({ request }) => {
+        patchBodies.push(await request.json());
+        return HttpResponse.json(savedSession);
+      }),
+      http.post('http://localhost:8000/api/intake/sessions/:id/update_step/', () =>
+        HttpResponse.json({
+          session: { ...savedSession, current_step: 3 },
+          message: 'Step updated.',
+        })
+      ),
+      // Continue also posts a step-completed analytics event; answer it so this test adds
+      // no unhandled-request warning (DIG-93 tracks the older tests that still do).
+      http.post(
+        'http://localhost:8000/api/audit/logs/',
+        () => new HttpResponse(null, { status: 201 })
+      )
+    );
+
+    renderWizard();
+    await screen.findByRole('heading', { name: /income/i, level: 2 });
+    await userEvent.click(screen.getByRole('button', { name: /continue/i }));
+    await screen.findByRole('heading', { name: /expenses/i, level: 2 });
+
+    expect(patchBodies.length).toBeGreaterThan(0);
+    for (const body of patchBodies) {
+      expect(body).toEqual({
+        income_info: { monthly_income: [3100, 3300, 3200, 3200, 3150, 3250] },
+      });
+    }
+  });
+});
