@@ -221,6 +221,46 @@ class DebtInfoSerializer(serializers.ModelSerializer):
         return None
 
 
+class NestedAssetInfoSerializer(AssetInfoSerializer):
+    """An asset row inside a session save.
+
+    The id is writable so a row the wizard loaded updates in place. AssetViewSet keeps
+    the base serializer, so per-item create never accepts a client id.
+    """
+
+    id = serializers.IntegerField(required=False)
+
+
+class NestedDebtInfoSerializer(DebtInfoSerializer):
+    """A debt row inside a session save. See NestedAssetInfoSerializer."""
+
+    id = serializers.IntegerField(required=False)
+
+
+def _save_rows_by_id(session, model, rows) -> None:
+    """Save a session's nested assets or debts by id.
+
+    A row whose id is one of this session's rows updates only the fields it sent, so
+    what the browser never received (account numbers, the scanned-bill link, the
+    secured flag) survives. Any other row is created on this session, so a client-sent
+    ``session`` or another user's id never touches another session. Stored rows the
+    payload left out are deleted.
+    """
+    existing = {row.pk: row for row in model.objects.filter(session=session)}
+    kept = set()
+    for data in rows:
+        data.pop("session", None)
+        row = existing.get(data.pop("id", None))
+        if row is None:
+            model.objects.create(session=session, **data)
+            continue
+        for attr, value in data.items():
+            setattr(row, attr, value)
+        row.save()
+        kept.add(row.pk)
+    model.objects.filter(pk__in=existing.keys() - kept).delete()
+
+
 class IntakeSessionSerializer(serializers.ModelSerializer):
     """
     Serializer for intake session with nested related data.
@@ -231,8 +271,8 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
     debtor_info = DebtorInfoSerializer(required=False, allow_null=True)
     income_info = IncomeInfoSerializer(required=False, allow_null=True)
     expense_info = ExpenseInfoSerializer(required=False, allow_null=True)
-    assets = AssetInfoSerializer(many=True, required=False)
-    debts = DebtInfoSerializer(many=True, required=False)
+    assets = NestedAssetInfoSerializer(many=True, required=False)
+    debts = NestedDebtInfoSerializer(many=True, required=False)
 
     district_name = serializers.CharField(source="district.name", read_only=True)
 
@@ -296,7 +336,7 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
         Update intake session with nested related data.
 
         Updates or creates debtor_info, income_info, expense_info.
-        For assets/debts, replaces entire list (for simplicity in MVP).
+        Saves assets/debts by id (see _save_rows_by_id).
         """
         debtor_data = validated_data.pop("debtor_info", None)
         income_data = validated_data.pop("income_info", None)
@@ -319,16 +359,11 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
         if expense_data:
             ExpenseInfo.objects.update_or_create(session=instance, defaults=expense_data)
 
-        # For MVP: Replace assets/debts entirely (future: partial updates)
         if assets_data is not None:
-            instance.assets.all().delete()
-            for asset_data in assets_data:
-                AssetInfo.objects.create(session=instance, **asset_data)
+            _save_rows_by_id(instance, AssetInfo, assets_data)
 
         if debts_data is not None:
-            instance.debts.all().delete()
-            for debt_data in debts_data:
-                DebtInfo.objects.create(session=instance, **debt_data)
+            _save_rows_by_id(instance, DebtInfo, debts_data)
 
         return instance
 
