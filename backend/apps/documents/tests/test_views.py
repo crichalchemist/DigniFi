@@ -1,4 +1,5 @@
 import json
+from decimal import Decimal
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -7,7 +8,7 @@ from rest_framework.test import APIClient
 
 from apps.districts.models import District
 from apps.documents.models import DocumentType, OCRResult, OCRStatus, UploadedDocument
-from apps.intake.models import IntakeSession
+from apps.intake.models import DebtInfo, IntakeSession
 from apps.users.models import User
 
 
@@ -128,3 +129,71 @@ def test_validate_updates_ocr_result(db, auth_client, session):
     ocr.refresh_from_db()
     assert ocr.user_validated is True
     assert json.loads(ocr.extracted_data)["creditor_name"] == "Chase Bank NA"
+
+
+def _scanned_bill_with_draft(session, user):
+    doc = UploadedDocument.objects.create(
+        session=session,
+        uploaded_by=user,
+        document_type=DocumentType.CREDITOR_BILL,
+        user_declared_type=DocumentType.CREDITOR_BILL,
+        original_filename="bill.pdf",
+        file_size=100,
+        mime_type="application/pdf",
+        file="documents/x.pdf",
+    )
+    ocr = OCRResult.objects.create(
+        document=doc,
+        status=OCRStatus.COMPLETED,
+        extracted_data='{"creditor_name": "Chase"}',
+        confidence_scores={},
+        overall_confidence=80,
+    )
+    draft = DebtInfo.objects.create(
+        session=session,
+        creditor_name="Chase",
+        debt_type="credit_card",
+        amount_owed=Decimal("500.00"),
+        is_draft=True,
+        source_document=doc,
+    )
+    return doc, ocr, draft
+
+
+@pytest.mark.parametrize("bad_amount", ["99999999999.99", "not a number"])
+def test_a_correction_too_large_or_unreadable_is_refused_and_the_session_still_opens(
+    db, auth_client, session, bad_amount
+):
+    """A stored amount wider than DecimalField(12, 2) would 500 every read of the
+    session once amounts are readable (DIG-2), so validate refuses it before writing."""
+    client, user = auth_client
+    doc, ocr, draft = _scanned_bill_with_draft(session, user)
+
+    response = client.post(
+        f"/api/documents/{doc.id}/validate/",
+        {"fields": {"amount_owed": bad_amount}},
+        format="json",
+    )
+
+    assert response.status_code == 400
+    assert "amount_owed" in response.json()
+    draft.refresh_from_db()
+    assert draft.amount_owed == Decimal("500.00")
+    ocr.refresh_from_db()
+    assert ocr.user_validated is False
+    assert client.get(f"/api/intake/sessions/{session.id}/").status_code == 200
+
+
+def test_a_corrected_amount_reaches_the_draft_debt(db, auth_client, session):
+    client, user = auth_client
+    doc, _, draft = _scanned_bill_with_draft(session, user)
+
+    response = client.post(
+        f"/api/documents/{doc.id}/validate/",
+        {"fields": {"amount_owed": "650.00"}},
+        format="json",
+    )
+
+    assert response.status_code == 200
+    draft.refresh_from_db()
+    assert draft.amount_owed == Decimal("650.00")

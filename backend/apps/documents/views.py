@@ -5,7 +5,7 @@ from concurrent.futures import ThreadPoolExecutor
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
 from pydantic import ValidationError
-from rest_framework import status
+from rest_framework import serializers, status
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -206,6 +206,17 @@ class DocumentViewSet(ViewSet):
             return Response(status=status.HTTP_404_NOT_FOUND)
 
         fields = request.data.get("fields", {})
+        draft_fields = {k: v for k, v in fields.items() if k in ("creditor_name", "amount_owed")}
+        if "amount_owed" in draft_fields:
+            # Amounts are readable on every session read, and DecimalField(12, 2) cannot
+            # represent a wider value, so refuse it here before anything is written.
+            try:
+                draft_fields["amount_owed"] = serializers.DecimalField(
+                    max_digits=12, decimal_places=2
+                ).run_validation(draft_fields["amount_owed"])
+            except serializers.ValidationError as exc:
+                return Response({"amount_owed": exc.detail}, status=status.HTTP_400_BAD_REQUEST)
+
         ocr = doc.ocr_result
         existing = json.loads(ocr.extracted_data or "{}")
         existing.update(fields)
@@ -215,9 +226,7 @@ class DocumentViewSet(ViewSet):
         ocr.save()
 
         if doc.document_type == DocumentType.CREDITOR_BILL:
-            doc.draft_debts.filter(is_draft=True).update(
-                **{k: v for k, v in fields.items() if k in ("creditor_name", "amount_owed")}
-            )
+            doc.draft_debts.filter(is_draft=True).update(**draft_fields)
 
         try:
             AggregateIngestionService.recalculate(doc.session_id)

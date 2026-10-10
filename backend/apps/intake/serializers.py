@@ -153,9 +153,9 @@ class AssetInfoSerializer(serializers.ModelSerializer):
 
     equity = serializers.SerializerMethodField()
     # Explicit field declarations — EncryptedDecimalField confuses DRF's auto-mapper
-    current_value = serializers.DecimalField(max_digits=12, decimal_places=2, write_only=True)
+    current_value = serializers.DecimalField(max_digits=12, decimal_places=2)
     amount_owed = serializers.DecimalField(
-        max_digits=12, decimal_places=2, write_only=True, required=False, default=0
+        max_digits=12, decimal_places=2, required=False, default=0
     )
 
     class Meta:
@@ -188,7 +188,7 @@ class DebtInfoSerializer(serializers.ModelSerializer):
     """Serializer for debt/creditor information (trauma-informed language)."""
 
     # Explicit field declaration — EncryptedDecimalField confuses DRF's auto-mapper
-    amount_owed = serializers.DecimalField(max_digits=12, decimal_places=2, write_only=True)
+    amount_owed = serializers.DecimalField(max_digits=12, decimal_places=2)
     source_document_name = serializers.SerializerMethodField()
 
     class Meta:

@@ -459,3 +459,118 @@ describe('IntakeWizard session re-read', { timeout: 15_000 }, () => {
     expect(sessionsCreated).toBe(1);
   });
 });
+
+// ===========================================================================
+// Amounts loaded from the server (DIG-2)
+// ===========================================================================
+
+/** A returning filer on Amounts Owed. DRF sends decimal amounts as strings. */
+const sessionAtStep5WithDebts = {
+  ...sessionAtStep1,
+  current_step: 5,
+  debts: [
+    {
+      id: 7,
+      session: 1,
+      data_source: 'uploaded_document',
+      creditor_name: 'Chase',
+      debt_type: 'credit_card',
+      priority_classification: 'unsecured',
+      amount_owed: '2500.00',
+      monthly_payment: '75.00',
+      is_in_collections: false,
+      notes: '',
+      is_draft: false,
+      source_document_name: null,
+    },
+    {
+      id: 8,
+      session: 1,
+      data_source: 'manual',
+      creditor_name: 'Mercy Hospital',
+      debt_type: 'medical',
+      priority_classification: 'unsecured',
+      amount_owed: '100.50',
+      monthly_payment: null,
+      is_in_collections: false,
+      notes: '',
+      is_draft: false,
+      source_document_name: null,
+    },
+  ],
+};
+
+/** A returning filer on Assets. The API never sends an asset's account number. */
+const sessionAtStep4WithAssets = {
+  ...sessionAtStep1,
+  current_step: 4,
+  assets: [
+    {
+      id: 3,
+      session: 1,
+      asset_type: 'vehicle',
+      data_source: 'manual',
+      description: '2015 Honda Civic',
+      current_value: '8000.00',
+      amount_owed: '3000.00',
+      equity: 5000,
+      financial_institution: '',
+    },
+  ],
+};
+
+describe('IntakeWizard amounts a returning filer already entered', { timeout: 15_000 }, () => {
+  let patchBodies: unknown[];
+
+  beforeEach(() => {
+    patchBodies = [];
+    server.use(
+      http.get('http://localhost:8000/api/intake/sessions/:id/', () =>
+        HttpResponse.json(sessionAtStep5WithDebts)
+      ),
+      // Loaded rows are valid, so autosave PATCHes about 2 s after the step appears.
+      http.patch('http://localhost:8000/api/intake/sessions/:id/', async ({ request }) => {
+        patchBodies.push(await request.json());
+        return HttpResponse.json(sessionAtStep5WithDebts);
+      })
+    );
+  });
+
+  it('shows each saved amount and adds them up instead of joining them as text', async () => {
+    renderWizard();
+
+    expect(await screen.findByText('$2,600.50')).toBeInTheDocument();
+    const amountInputs = screen.getAllByRole('spinbutton', { name: /^amount owed/i });
+    expect(amountInputs[0]).toHaveValue(2500);
+    expect(amountInputs[1]).toHaveValue(100.5);
+  });
+
+  // A row saved without its id is deleted and created again, losing what the browser never
+  // receives: the account number, the link to the scanned bill and the secured flag (DIG-21).
+  it('saves each debt back under its own id, with its amounts as numbers', async () => {
+    renderWizard();
+    await screen.findByRole('heading', { name: /amounts owed/i, level: 2 });
+
+    await waitFor(() => expect(patchBodies.length).toBeGreaterThan(0));
+    const { debts } = patchBodies[0] as { debts: Record<string, unknown>[] };
+    expect(debts.map((debt) => debt.id)).toEqual([7, 8]);
+    expect(debts[0].amount_owed).toBe(2500);
+    expect(debts[0].monthly_payment).toBe(75);
+  });
+
+  it('saves each asset back under its own id, with its amounts as numbers', async () => {
+    server.use(
+      http.get('http://localhost:8000/api/intake/sessions/:id/', () =>
+        HttpResponse.json(sessionAtStep4WithAssets)
+      )
+    );
+    renderWizard();
+    await screen.findByRole('heading', { name: /assets/i, level: 2 });
+
+    await waitFor(() => expect(patchBodies.length).toBeGreaterThan(0));
+    const { assets } = patchBodies[0] as { assets: Record<string, unknown>[] };
+    expect(assets.map((asset) => asset.id)).toEqual([3]);
+    expect(assets[0].current_value).toBe(8000);
+    expect(assets[0].amount_owed).toBe(3000);
+  });
+});

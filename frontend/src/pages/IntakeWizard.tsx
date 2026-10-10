@@ -11,6 +11,7 @@ import { useNavigate } from 'react-router-dom';
 import { useIntake } from '../context/IntakeContext';
 import { api, APIClientError } from '../api/client';
 import { trackEvent } from '../utils/analytics';
+import { hydrateAmounts } from '../utils/parseAmount';
 import { Button } from '../components/common';
 import { WizardLayout } from '../components/wizard/WizardLayout';
 import { MeansTestPreview } from '../components/wizard/MeansTestPreview';
@@ -47,6 +48,11 @@ const WIZARD_STEPS = [
   { number: 7, label: 'Codebtors', key: 'codebtors' },
   { number: 8, label: 'Review & Results', key: 'review' },
 ];
+
+// DRF sends these decimals as strings ("2500.00"). The steps add and compare them,
+// so they become numbers as session data enters wizard state.
+const ASSET_AMOUNT_FIELDS = ['current_value', 'amount_owed'] as const;
+const DEBT_AMOUNT_FIELDS = ['amount_owed', 'monthly_payment'] as const;
 
 export function IntakeWizard() {
   const navigate = useNavigate();
@@ -118,8 +124,10 @@ export function IntakeWizard() {
         if (fresh.debtor_info) setDebtorData(fresh.debtor_info);
         if (fresh.income_info) setIncomeData(fresh.income_info);
         if (fresh.expense_info) setExpenseData(fresh.expense_info);
-        if (fresh.assets) setAssetsData(fresh.assets);
-        if (fresh.debts) setDebtsData(fresh.debts);
+        if (fresh.assets)
+          setAssetsData(fresh.assets.map((asset) => hydrateAmounts(asset, ASSET_AMOUNT_FIELDS)));
+        if (fresh.debts)
+          setDebtsData(fresh.debts.map((debt) => hydrateAmounts(debt, DEBT_AMOUNT_FIELDS)));
         setSessionRead('done');
       })
       .catch(() => {
