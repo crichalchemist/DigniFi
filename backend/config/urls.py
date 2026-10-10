@@ -21,6 +21,14 @@ class ThrottledTokenRefreshView(TokenRefreshView):
     throttle_scope = "auth"
 
 
+# Top-level paths owned by the backend (URLconf routes plus STATIC_URL/MEDIA_URL).
+# The SPA catch-all excludes these so an unmatched backend URL 404s — or redirects
+# via APPEND_SLASH — instead of returning the React shell with a 200, which reads
+# as healthy to uptime monitoring. Keep in sync with urlpatterns; a test enforces it.
+BACKEND_ROUTE_PREFIXES = ("admin", "api", "health", "metrics", "static", "media")
+
+SPA_CATCHALL_PATTERN = rf"^(?!(?:{'|'.join(BACKEND_ROUTE_PREFIXES)})(?:/|$)).*"
+
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("health/", health_check, name="health_check"),
@@ -35,8 +43,11 @@ urlpatterns = [
     path("api/districts/", include("apps.districts.urls")),
     path("api/audit/", include("apps.audit.urls")),
     path("api/documents/", include("apps.documents.urls", namespace="documents")),
-    # SPA catch-all — must be last; serves React index.html for all non-API routes
+    # SPA catch-all — must be last; serves React index.html for client-side routes
+    # (/intake, /forms, /documents, ...). Unknown non-backend paths still land here
+    # so React renders its own 404 page.
     re_path(
-        r".*", TemplateView.as_view(template_name="frontend/index.html", content_type="text/html")
+        SPA_CATCHALL_PATTERN,
+        TemplateView.as_view(template_name="frontend/index.html", content_type="text/html"),
     ),
 ]
