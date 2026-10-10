@@ -111,10 +111,11 @@ def _run_processing(doc_id: int) -> None:
             try:
                 AggregateIngestionService.recalculate(doc.session_id)
             except Exception as exc:
-                logger.warning("Recalculate failed for doc %s: %s", doc_id, exc)
+                logger.warning("Recalculate failed for doc %s: %s", doc_id, type(exc).__name__)
 
     except Exception as exc:
-        logger.exception("Processing failed for document %s: %s", doc_id, exc)
+        # Type only, no traceback: logs reach Sentry, and exception text can quote filer data.
+        logger.error("Processing failed for document %s: %s", doc_id, type(exc).__name__)
         try:
             # The class name only: a pydantic error's text quotes the document's values.
             OCRResult.objects.filter(document_id=doc_id).update(
@@ -231,7 +232,7 @@ class DocumentViewSet(ViewSet):
         try:
             AggregateIngestionService.recalculate(doc.session_id)
         except Exception as exc:
-            logger.warning("Recalculate failed on validate for doc %s: %s", pk, exc)
+            logger.warning("Recalculate failed on validate for doc %s: %s", pk, type(exc).__name__)
 
         return Response(_serialize_ocr(ocr))
 

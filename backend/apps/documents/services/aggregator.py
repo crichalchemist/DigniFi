@@ -31,8 +31,11 @@ class AggregateIngestionService:
                 ).delete()
 
         except Exception as exc:
-            logger.exception(
-                "Failed to recalculate ingestion aggregates for session %s: %s", session_id, exc
+            # Type only, no traceback: logs reach Sentry, and exception text can quote pay figures.
+            logger.error(
+                "Failed to recalculate ingestion aggregates for session %s: %s",
+                session_id,
+                type(exc).__name__,
             )
 
     @classmethod

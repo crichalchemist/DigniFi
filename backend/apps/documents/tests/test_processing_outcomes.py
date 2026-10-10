@@ -14,6 +14,7 @@ test transaction, so these tests use ``transactional_db``. A test that calls
 
 import base64
 import json
+import logging
 import os
 import subprocess
 from decimal import Decimal
@@ -429,6 +430,26 @@ def test_a_crash_while_saving_what_was_read_is_reported_as_a_processing_error(fi
     assert doc["ocr_result"]["status"] == "failed"
     assert doc["ocr_result"]["failure_reason"] == "processing_error"
     assert ocr.error_message == "RuntimeError"
+
+
+def test_a_failed_upload_is_logged_by_error_type_never_by_what_the_file_said(
+    filer, openai_client, caplog
+):
+    # Logs reach Sentry, and a database error's DETAIL can quote the filer's values (DIG-105).
+    # Same sanctioned internal patch as above: it is the only deterministic way in.
+    leaked = "DETAIL: Key (account_number)=(900-12-3456) already exists."
+    with patch("apps.documents.views._record_findings", side_effect=RuntimeError(leaked)):
+        with caplog.at_level(logging.WARNING, logger="apps.documents"):
+            ocr = upload(
+                filer, b"\xff\xd8\xff", "bill.jpg", "image/jpeg", DocumentType.CREDITOR_BILL
+            )
+
+    failures = [r for r in caplog.records if "RuntimeError" in r.getMessage()]
+    assert failures, "the failure must still be logged, by its type"
+    assert str(ocr.document_id) in failures[0].getMessage()
+    for record in caplog.records:
+        assert "900-12-3456" not in record.getMessage()
+        assert record.exc_info is None  # a traceback would carry the message to Sentry
 
 
 def test_document_api_never_returns_what_was_read_from_the_file(filer, openai_client):
