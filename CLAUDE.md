@@ -40,7 +40,8 @@ cd backend && ruff check . --fix               # Backend lint (pinned ruff==0.8.
 - **Colima volume mounts** — Colima only mounts `$HOME` by default; `/Volumes/Containers` must be added in `~/.colima/default/colima.yaml`.
 - **Compose backend** — command must chain `python manage.py migrate && ...` before `runserver`.
 - **Frontend tests use MSW** — network requests are intercepted in `src/test/setup.ts`. Write MSW handlers for new API calls.
-- **E2E needs full stack** — Playwright tests (`frontend/e2e/journeys/`) require backend running, migrations applied, and `seed_demo_data` loaded.
+- **E2E needs full stack** — Playwright tests (`frontend/e2e/journeys/`) require backend running, migrations applied, and `seed_demo_data` loaded. `scanned-bill-journey` also needs `OPENAI_BASE_URL=http://127.0.0.1:4010/v1` in both the backend's and Playwright's environment, plus `OCR_PROVIDER=openai` and a dummy `OPENAI_API_KEY` for the backend; the spec starts the fake OpenAI server itself (`e2e/fixtures/fake-openai.ts`). Without the wiring it skips locally (printing why) and fails in CI. Export the dummy key: exported variables beat the repo-root `.env`, which may hold a real one.
+- **`OPENAI_BASE_URL` comes from the SDK, not settings** — `OpenAIProvider` passes only the key; the `openai` SDK reads `OPENAI_BASE_URL` from the environment itself. An empty value (`OPENAI_BASE_URL=` in `.env`) is not ignored: the SDK uses `''` as the base URL and every OCR call fails.
 - **Backend test settings** — `DJANGO_SETTINGS_MODULE=config.settings.test` uses sqlite `:memory:`, no postgres. E2E tests use `config.settings.development` (needs postgres).
 - **FIELD_ENCRYPTION_KEY** — must be a real Fernet key (32 url-safe base64 bytes). CI uses `U9HKckkKBeT8wag2jMcOx2Cez2M2jtvNG4qxSHuYcAo=` (synthetic, encrypts nothing).
 - **UPL compliance** — all user-facing text must be information, never advice. See `docs/UPL_COMPLIANCE.md`.
@@ -48,7 +49,7 @@ cd backend && ruff check . --fix               # Backend lint (pinned ruff==0.8.
 - **OCR provider is config-driven** — `_get_processor()` branches on `settings.OCR_PROVIDER` (`openai` | `gemini`) and lazy-imports the provider, so a missing SDK/key surfaces at OCR time, not app boot. `OCR_MODEL` empty ⇒ the provider's own default. Don't hardcode a provider.
 - **`openai_provider.py`, never `openai.py`** — a module named `openai.py` inside `providers/` would shadow the installed `openai` package.
 - **Prod throttling lives in `production.py`, not `base.py`** — base defines only the `auth` scope (`30/minute`); production adds `DEFAULT_THROTTLE_CLASSES` with `anon: 60/minute`, `user: 120/minute`, `auth: 5/minute`. Reading base alone wrongly concludes endpoints are unthrottled — polling ~14 documents exhausts `user` fast.
-- **Document upload sits mid-wizard** — the flow is `login → /intake` step 1 → `/documents` → `/intake` steps 2–8, so uploads pre-fill the money steps. `IntakeWizard.handleNext` detours when `nextStep === 2`. Nothing currently links back to `/documents` after a skip. E2E journeys pass the detour with `DocumentsPage.skip()` (`e2e/pages/documents.page.ts`) after step 1.
+- **Document upload sits mid-wizard** — the flow is `login → /intake` step 1 → `/documents` → `/intake` steps 2–8. A scanned bill or credit report pre-fills Amounts Owed; pay stubs feed Schedule I through `IngestedAggregate`, never the Income step. `IntakeWizard.handleNext` detours when `nextStep === 2`. Nothing currently links back to `/documents` after a skip. The persona journeys pass the detour with `DocumentsPage.skip()` (`e2e/pages/documents.page.ts`) after step 1; `scanned-bill-journey` uploads with `uploadBill()` and clicks Continue.
 - **`updateCurrentStep` is POST `/intake/sessions/{id}/update_step/`** — _not_ the PATCH that saves step data. Mocking the PATCH to assert step advancement silently captures the wrong call and passes vacuously.
 - **Upload is synchronous despite the 202** — `views.py` uses `with ThreadPoolExecutor(...)`, whose `__exit__` calls `shutdown(wait=True)`, so `{"status": "processing"}` is returned _after_ OCR completes and holds a gunicorn worker. No `Future` is retained — that's the tell.
 - **PDFs: text layer first, then up to 3 scanned pages** — `processor.py` runs `opendataloader_pdf.convert(..., format="markdown", image_output="off", include_header_footer=True)` with no hybrid arguments. Text of at least `_MIN_TEXT_LENGTH` (30) characters goes to the text prompt; otherwise `_pdf_to_page_images()` sends up to `_MAX_SCANNED_PAGES` (3) JPEG pages to vision, and a PDF with no pages fails. Without `image_output="off"` a scan's image placeholders reach the text prompt; without `include_header_footer=True` the letterhead naming the creditor is dropped.
@@ -77,7 +78,7 @@ cd backend && ruff check . --fix               # Backend lint (pinned ruff==0.8.
 - **Forms:** 18 generators registered in `apps/forms/registry.py` (`FORM_REGISTRY` / `get_all_form_types()`). `generate_all` iterates the registry inside one `transaction.atomic()`.
 - **OCR service:** provider-agnostic. `OCR_PROVIDER` selects `openai` (default, `gpt-4o`, `OPENAI_API_KEY`) or `gemini` (`gemini-2.0-flash`, `GEMINI_API_KEY`); `OCR_MODEL` overrides the model so a model change is a config var, not a deploy. No local model — both call a hosted API directly.
 - **Auth:** JWT (simplejwt). Access in memory, refresh in localStorage. `GET /api/token/obtain/` + `/api/token/refresh/`.
-- **E2E:** 5 AI persona briefs in `docs/testing/persona-briefs/` (deshawn, james, maria, priya, sarah) driving 6 journey specs — one per persona plus `sofa-journey.spec.ts`. `seed_demo_data` creates synthetic sessions with all intake data.
+- **E2E:** 5 AI persona briefs in `docs/testing/persona-briefs/` (deshawn, james, maria, priya, sarah) driving 7 journey specs — one per persona plus `sofa-journey.spec.ts` and `scanned-bill-journey.spec.ts` (an upload read through a fake OpenAI server). `seed_demo_data` creates synthetic sessions with all intake data.
 
 ## File Map (what lives where)
 
@@ -114,7 +115,8 @@ cd backend && ruff check . --fix               # Backend lint (pinned ruff==0.8.
 - `src/components/compliance/UPLConfirmationModal.tsx` — gates form generation
 - `src/types/api.ts` — TypeScript interfaces matching DRF serializers
 - `src/test/setup.ts` — vitest globals, MSW, vitest-axe matchers
-- `e2e/journeys/` — 6 Playwright journey specs (5 personas + SOFA)
+- `e2e/journeys/` — 7 Playwright journey specs (5 personas + SOFA + scanned bill)
+- `e2e/fixtures/fake-openai.ts` — fake OpenAI Chat Completions server (`startFakeOpenAI`, `CANNED_BILL`) for `scanned-bill-journey`
 - `e2e/playwright.config.ts` — Chromium only, 60s timeout, `reuseExistingServer`
 
 **Data:**
