@@ -136,6 +136,17 @@ export function IntakeWizard() {
     try {
       const nextStep = currentStepNumber + 1;
       await updateCurrentStep(nextStep);
+
+      // Document upload sits between step 1 and step 2. The debtor's own details are
+      // typed by hand; uploads then pre-fill the financial steps that follow, so the
+      // detour has to happen before Income rather than after Review. current_step is
+      // already persisted as 2, so returning to /intake resumes at Income — see the
+      // session-sync effect above.
+      if (nextStep === 2) {
+        navigate('/documents');
+        return;
+      }
+
       setCurrentStepNumber(nextStep);
       // Contracts (6) and Codebtors (7) are optional — pre-approve so Continue stays enabled
       setCanProceed(nextStep === 6 || nextStep === 7);

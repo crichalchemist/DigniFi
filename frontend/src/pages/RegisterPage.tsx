@@ -30,7 +30,7 @@ export function RegisterPage() {
 
   useEffect(() => {
     if (isAuthenticated) {
-      navigate('/documents', { replace: true });
+      navigate('/intake', { replace: true });
     }
   }, [isAuthenticated, navigate]);
 
@@ -52,7 +52,7 @@ export function RegisterPage() {
         agreed_to_upl_disclaimer: agreedToUpl,
         agreed_to_terms: agreedToTerms,
       });
-      navigate('/documents', { replace: true });
+      navigate('/intake', { replace: true });
     } catch {
       // Error handled by AuthContext
     }

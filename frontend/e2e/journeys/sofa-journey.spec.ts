@@ -13,6 +13,7 @@ import { JAMES } from '../fixtures/personas';
 import { LandingPage } from '../pages/landing.page';
 import { RegisterPage } from '../pages/register.page';
 import { WizardPage } from '../pages/wizard.page';
+import { DocumentsPage } from '../pages/documents.page';
 import { DashboardPage } from '../pages/dashboard.page';
 import { SOFAPage } from '../pages/sofa.page';
 
@@ -26,6 +27,7 @@ test.describe('SOFA — Form 107 Financial History', () => {
     const landing = new LandingPage(page);
     const register = new RegisterPage(page);
     const wizard = new WizardPage(page);
+    const documents = new DocumentsPage(page);
     const sofa = new SOFAPage(page);
     const dashboard = new DashboardPage(page);
 
@@ -48,6 +50,9 @@ test.describe('SOFA — Form 107 Financial History', () => {
     // Step 1: Debtor Info
     await wizard.fillDebtorInfo(debtorData);
     await wizard.nextStep();
+
+    // Uploads come between basic info and Income; this journey types everything in
+    await documents.skip();
 
     // Step 2: Income
     await wizard.fillIncomeInfo(JAMES.income);

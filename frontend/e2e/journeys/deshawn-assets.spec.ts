@@ -10,6 +10,7 @@ import { DESHAWN } from '../fixtures/personas';
 import { LandingPage } from '../pages/landing.page';
 import { RegisterPage } from '../pages/register.page';
 import { WizardPage } from '../pages/wizard.page';
+import { DocumentsPage } from '../pages/documents.page';
 import { FeeWaiverPage } from '../pages/fee-waiver.page';
 import { DashboardPage } from '../pages/dashboard.page';
 
@@ -18,6 +19,7 @@ test.describe('DeShawn Mitchell — Assets', () => {
     const landing = new LandingPage(page);
     const register = new RegisterPage(page);
     const wizard = new WizardPage(page);
+    const documents = new DocumentsPage(page);
     const feeWaiver = new FeeWaiverPage(page);
     const dashboard = new DashboardPage(page);
 
@@ -28,6 +30,9 @@ test.describe('DeShawn Mitchell — Assets', () => {
     // Step 1: Debtor Info
     await wizard.fillDebtorInfo(DESHAWN.debtor);
     await wizard.nextStep();
+
+    // Uploads come between basic info and Income; this journey types everything in
+    await documents.skip();
 
     // Step 2: Income (married, no dependents, $3,500/mo)
     await wizard.fillIncomeInfo(DESHAWN.income);

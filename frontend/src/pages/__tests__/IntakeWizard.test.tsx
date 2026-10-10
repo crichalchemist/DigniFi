@@ -60,6 +60,7 @@ function renderWizard() {
           <Route path="/fee-waiver" element={<div>FeeWaiverPage</div>} />
           <Route path="/forms" element={<div>FormDashboard</div>} />
           <Route path="/sofa" element={<div>Statement of Financial Affairs</div>} />
+          <Route path="/documents" element={<div>DocumentUploadPage</div>} />
         </Routes>
       </IntakeProvider>
     </MemoryRouter>
@@ -236,6 +237,51 @@ describe('IntakeWizard autosave', { timeout: 15_000 }, () => {
     expect(patchBodies[patchBodies.length - 1]).toEqual(
       expect.objectContaining({ debtor_info: expect.any(Object) })
     );
+  });
+
+  it('sends the filer to document upload after basic info, so uploads can pre-fill the money steps', async () => {
+    renderWizard();
+    await screen.findByRole('heading', { name: /your information/i, level: 2 });
+    await fillDebtorInfoFields();
+
+    await act(async () => {
+      await userEvent.click(screen.getByRole('button', { name: /continue/i }));
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('DocumentUploadPage')).toBeInTheDocument();
+    });
+  });
+
+  it('persists current_step 2 before detouring, so returning from upload resumes at Income rather than bouncing back to upload', async () => {
+    // updateCurrentStep is POST /update_step/, not the PATCH that saves step data.
+    const persistedSteps: unknown[] = [];
+    server.use(
+      http.post(
+        'http://localhost:8000/api/intake/sessions/:id/update_step/',
+        async ({ request }) => {
+          const body = (await request.json()) as Record<string, unknown>;
+          persistedSteps.push(body.current_step);
+          return HttpResponse.json({
+            session: { ...sessionAtStep1, current_step: 2 },
+            message: 'Step updated.',
+          });
+        }
+      )
+    );
+
+    renderWizard();
+    await screen.findByRole('heading', { name: /your information/i, level: 2 });
+    await fillDebtorInfoFields();
+
+    await act(async () => {
+      await userEvent.click(screen.getByRole('button', { name: /continue/i }));
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('DocumentUploadPage')).toBeInTheDocument();
+    });
+    expect(persistedSteps).toContain(2);
   });
 
   it('shows save-error copy and does NOT advance to step 2 when the PATCH fails', async () => {

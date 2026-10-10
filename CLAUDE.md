@@ -46,6 +46,8 @@ cd backend && ruff check . --fix               # Backend lint (pinned ruff==0.8.
 - **OCR provider is config-driven** — `_get_processor()` branches on `settings.OCR_PROVIDER` (`openai` | `gemini`) and lazy-imports the provider, so a missing SDK/key surfaces at OCR time, not app boot. `OCR_MODEL` empty ⇒ the provider's own default. Don't hardcode a provider.
 - **`openai_provider.py`, never `openai.py`** — a module named `openai.py` inside `providers/` would shadow the installed `openai` package.
 - **Prod throttling lives in `production.py`, not `base.py`** — base defines only the `auth` scope (`30/minute`); production adds `DEFAULT_THROTTLE_CLASSES` with `anon: 60/minute`, `user: 120/minute`, `auth: 5/minute`. Reading base alone wrongly concludes endpoints are unthrottled — polling ~14 documents exhausts `user` fast.
+- **Document upload sits mid-wizard** — the flow is `login → /intake` step 1 → `/documents` → `/intake` steps 2–8, so uploads pre-fill the money steps. `IntakeWizard.handleNext` detours when `nextStep === 2`. Nothing currently links back to `/documents` after a skip. E2E journeys pass the detour with `DocumentsPage.skip()` (`e2e/pages/documents.page.ts`) after step 1.
+- **`updateCurrentStep` is POST `/intake/sessions/{id}/update_step/`** — _not_ the PATCH that saves step data. Mocking the PATCH to assert step advancement silently captures the wrong call and passes vacuously.
 - **Upload is synchronous despite the 202** — `views.py` uses `with ThreadPoolExecutor(...)`, whose `__exit__` calls `shutdown(wait=True)`, so `{"status": "processing"}` is returned _after_ OCR completes and holds a gunicorn worker. No `Future` is retained — that's the tell.
 - **`hybrid="docling-fast"` can't work on Heroku** — it needs the `odl-hybrid` sidecar on `localhost:5002` from `docker-compose.yml`; Heroku runs a single container. It's caught and falls back to vision OCR, so the `Hybrid server is not available` log noise is not the failure.
 - **Vision fallback reads page 1 only** — `_pdf_to_image_bytes(pdf_bytes, page_index=0)`; multi-page creditor bills extract partially even on success.
@@ -87,11 +89,12 @@ cd backend && ruff check . --fix               # Backend lint (pinned ruff==0.8.
 - `src/context/AuthContext.tsx` — JWT auth, silent refresh
 - `src/context/IntakeContext.tsx` — Session state
 - `src/api/client.ts` — typed API client, `getAccessToken()`, `downloadForm()`
-- `src/pages/IntakeWizard.tsx` — 8-step wizard orchestrator (`WIZARD_STEPS`: debtor_info, income_info, expense_info, assets, debts, contracts, codebtors, review)
+- `src/pages/IntakeWizard.tsx` — 8-step wizard orchestrator (`WIZARD_STEPS`: debtor_info, income_info, expense_info, assets, debts, contracts, codebtors, review); detours to `/documents` after step 1
 - `src/pages/DocumentUploadPage.tsx` — upload + OCR queue; auto-creates a session if none exists
 - `src/pages/FormDashboard.tsx` — Generate All, download, mark filed
 - `src/pages/SOFAStep.tsx` (`/sofa`), `FeeWaiverPage.tsx` (`/fee-waiver`) — post-intake branches; `handleComplete` routes to one or the other on `qualifies_for_fee_waiver`
 - `src/pages/AskModulePage.tsx` — `/ask/:formType`
+- `src/pages/LandingPage.tsx`, `LoginPage.tsx`, `RegisterPage.tsx`, `TermsPage.tsx` — public routes; all three auth entry points send authenticated users to `/intake`
 - `src/components/compliance/UPLConfirmationModal.tsx` — gates form generation
 - `src/types/api.ts` — TypeScript interfaces matching DRF serializers
 - `src/test/setup.ts` — vitest globals, MSW, vitest-axe matchers

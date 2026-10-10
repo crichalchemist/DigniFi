@@ -76,7 +76,8 @@ export function DocumentUploadPage() {
         before submitting.
       </p>
       <p className="text-muted">
-        Your documents are processed locally and never sent to any external service.
+        To read your documents, we send them to OpenAI, an outside AI service. If you&apos;d rather
+        not, you can skip this step and type your information in by hand.
       </p>
 
       {error && (
@@ -106,7 +107,7 @@ export function DocumentUploadPage() {
           disabled={uploading}
           className="button button--primary button--md"
         >
-          {allComplete ? 'Continue to intake' : 'Skip for now'}
+          {allComplete ? 'Continue' : 'Skip for now'}
         </button>
       </div>
     </main>
