@@ -1,0 +1,345 @@
+[
+  {
+    "pdf_field": "Name",
+    "source": "derived",
+    "producer": "rule:full_name",
+    "produces": "Debtor 1 full name 'First Middle Last' (rule full_name)",
+    "targets": [
+      {
+        "full_name": "Debtor1.Name",
+        "page": 1,
+        "line": "",
+        "label": "Debtor 1 name (First, Middle, Last)",
+        "column": ""
+      },
+      {
+        "full_name": "Debtor2.Name",
+        "page": 1,
+        "line": "",
+        "label": "Debtor 2 (Spouse, if filing) name (First, Middle, Last)",
+        "column": ""
+      },
+      {
+        "full_name": "Debtor1.Name",
+        "page": 2,
+        "line": "",
+        "label": "Debtor 1 name (page header)",
+        "column": ""
+      },
+      {
+        "full_name": "Debtor1.Name",
+        "page": 3,
+        "line": "",
+        "label": "Debtor 1 name (page header)",
+        "column": ""
+      },
+      {
+        "full_name": "Debtor1.Name",
+        "page": 4,
+        "line": "",
+        "label": "Debtor 1 name (page header)",
+        "column": ""
+      },
+      {
+        "full_name": "Debtor1.Name",
+        "page": 5,
+        "line": "",
+        "label": "Debtor 1 name (page header)",
+        "column": ""
+      },
+      {
+        "full_name": "Debtor1.Name",
+        "page": 6,
+        "line": "",
+        "label": "Debtor 1 name (page header)",
+        "column": ""
+      },
+      {
+        "full_name": "Debtor1.Name",
+        "page": 7,
+        "line": "",
+        "label": "Debtor 1 name (page header)",
+        "column": ""
+      },
+      {
+        "full_name": "Debtor1.Name",
+        "page": 8,
+        "line": "",
+        "label": "Debtor 1 name (page header)",
+        "column": ""
+      },
+      {
+        "full_name": "Debtor1.Name",
+        "page": 9,
+        "line": "",
+        "label": "Debtor 1 name (page header)",
+        "column": ""
+      }
+    ],
+    "verdicts": ["collision"],
+    "correct_target": "Debtor1.Name",
+    "known": "DIG-63",
+    "note": "Bare key 'Name' fills Debtor1.Name (one field, page-header widgets on p1-p9) and Debtor2.Name (p1 T2, 'Debtor 2 (Spouse, if filing)')."
+  },
+  {
+    "pdf_field": "Bankruptcy District Information",
+    "source": "derived",
+    "producer": "rule:district_name",
+    "produces": "District.name, e.g. 'Northern District of Illinois' (exact /Opt entry)",
+    "targets": [
+      {
+        "full_name": "Bankruptcy District Information",
+        "page": 1,
+        "line": "",
+        "label": "United States Bankruptcy Court for the: ___ District of ___",
+        "column": ""
+      }
+    ],
+    "verdicts": ["correct"],
+    "correct_target": "Bankruptcy District Information",
+    "known": "",
+    "note": "Printed 'United States Bankruptcy Court for the: ___ District of ___'."
+  },
+  {
+    "pdf_field": "Quest1",
+    "source": "derived",
+    "producer": "rule:means_test_total_deductions",
+    "produces": "MeansTest.total_allowable_expenses = min(food actual, IRS food std) + min(medical actual, health std) + min(rent_or_mortgage, housing std) + min(vehicle_payment, transport operating std) (rule means_test_total_deductions); MeansTest fields default to 0, so below-median filers (no above-median calculation) get '0.00' written, not a blank",
+    "targets": [
+      {
+        "full_name": "Quest1",
+        "page": 1,
+        "line": "1",
+        "label": "Copy your total current monthly income (copy line 11 from Official Form 122A-1)",
+        "column": ""
+      }
+    ],
+    "verdicts": ["wrong_box"],
+    "correct_target": "undefined_104",
+    "known": "DIG-60",
+    "note": "Quest1 (p1 T8) is printed '1. Copy your total current monthly income ... Copy line 11 from Official Form 122A-1 here' and should get monthly CMI (existing rule 'cmi'). A total-deductions figure corresponds to line 38 'Total deductions' (undefined_104: p8 T13/T14, also the 39b copy T16), though this partial 4-category sum (DIG-62) is not a valid line-38 total either."
+  },
+  {
+    "pdf_field": "Quest5",
+    "source": "derived",
+    "producer": "rule:means_test_priority_debts",
+    "produces": "MeansTest.priority_debts_monthly = sum of DebtInfo.monthly_payment where is_priority (rule means_test_priority_debts); MeansTest fields default to 0, so below-median filers (no above-median calculation) get '0.00' written, not a blank",
+    "targets": [
+      {
+        "full_name": "Quest5",
+        "page": 2,
+        "line": "5",
+        "label": "The number of people used in determining your deductions from income (exemptions on federal return + additional dependents you support)",
+        "column": ""
+      }
+    ],
+    "verdicts": ["wrong_box"],
+    "correct_target": "",
+    "known": "DIG-60",
+    "note": "Quest5 (p2 T3) is printed '5. The number of people used in determining your deductions from income' and needs a head count. Current monthly payments on priority debts match no 122A-2 box: line 35 asks for PAST-DUE priority claims (undefined_93 total, undefined_93-1 divided by 60), and current court-ordered support goes on line 19 (undefined_51)."
+  },
+  {
+    "pdf_field": "Quest6",
+    "source": "derived",
+    "producer": "rule:schedule_j_food_and_groceries",
+    "produces": "ExpenseInfo.food_and_groceries, the actual monthly food expense (rule schedule_j_food_and_groceries)",
+    "targets": [
+      {
+        "full_name": "Quest6",
+        "page": 2,
+        "line": "6",
+        "label": "Food, clothing, and other items - IRS National Standards amount for the number of people on line 5",
+        "column": ""
+      }
+    ],
+    "verdicts": ["wrong_value"],
+    "correct_target": "Quest6",
+    "known": "DIG-66",
+    "note": "Quest6 (p2 T4) is printed 'Food, clothing, and other items: Using the number of people you entered in line 5 and the IRS National Standards, fill in the dollar amount' and needs the IRS National Standard (food + clothing + housekeeping + personal care + misc), not actual groceries. Actual food/clothing above the standard (at most 5%) goes on line 30 (undefined_65)."
+  },
+  {
+    "pdf_field": "Quest8",
+    "source": "derived",
+    "producer": "rule:schedule_j_rent_or_mortgage",
+    "produces": "ExpenseInfo.rent_or_mortgage, the actual monthly rent or mortgage payment (rule schedule_j_rent_or_mortgage)",
+    "targets": [
+      {
+        "full_name": "Quest8",
+        "page": 3,
+        "line": "8",
+        "label": "Housing and utilities - Insurance and operating expenses: U.S. Trustee chart amount for your county and the number of people on line 5",
+        "column": ""
+      }
+    ],
+    "verdicts": ["wrong_box", "wrong_value"],
+    "correct_target": "",
+    "known": "DIG-66",
+    "note": "Quest8 (p3 T3) is printed '8. Housing and utilities - Insurance and operating expenses: ... fill in the dollar amount listed for your county for insurance and operating expenses' and needs the U.S. Trustee chart amount. Rent/mortgage is the line-9 category: a mortgage payment belongs in the 9b table (Quest9B creditor name1 / Quest9B creditor amount1, 60-month average) and actual rent has no 122A-2 box."
+  },
+  {
+    "pdf_field": "Quest9",
+    "source": "derived",
+    "producer": "rule:schedule_j_utilities",
+    "produces": "ExpenseInfo.utilities, the actual monthly utilities (rule schedule_j_utilities)",
+    "targets": [
+      {
+        "full_name": "Quest9",
+        "page": 3,
+        "line": "9a",
+        "label": "Housing and utilities - Mortgage or rent expenses: U.S. Trustee chart amount for your county and the number of people on line 5",
+        "column": ""
+      }
+    ],
+    "verdicts": ["wrong_box", "wrong_value"],
+    "correct_target": "leave blank",
+    "known": "DIG-66",
+    "note": "Quest9 (p3 T4) is printed '9a. Using the number of people you entered in line 5, fill in the dollar amount listed for your county for mortgage or rent expenses' and needs the U.S. Trustee mortgage/rent chart amount. Utilities are covered by line 8's insurance-and-operating standard; only home-energy costs above that standard go on line 28 (undefined_63), with documentation."
+  },
+  {
+    "pdf_field": "Quest10",
+    "source": "derived",
+    "producer": "rule:means_test_total_deductions",
+    "produces": "MeansTest.total_allowable_expenses (rule means_test_total_deductions); same figure as Quest1; MeansTest fields default to 0, so below-median filers (no above-median calculation) get '0.00' written, not a blank",
+    "targets": [
+      {
+        "full_name": "Quest10",
+        "page": 3,
+        "line": "10",
+        "label": "If you claim that the U.S. Trustee Program's division of the IRS Local Standard for housing is incorrect and affects the calculation of your monthly expenses, fill in any additional amount you claim.",
+        "column": ""
+      }
+    ],
+    "verdicts": ["wrong_box"],
+    "correct_target": "undefined_104",
+    "known": "DIG-60",
+    "note": "Quest10 (p3 T15) is printed '10. If you claim that the U.S. Trustee Program's division of the IRS Local Standard for housing is incorrect ... fill in any additional amount you claim' and requires an explanation in 'Explain 1'/'Explain 2'. It should be blank by default. Total deductions belong on line 38 (undefined_104)."
+  },
+  {
+    "pdf_field": "Quest12",
+    "source": "derived",
+    "producer": "rule:schedule_j_vehicle_maintenance",
+    "produces": "ExpenseInfo.vehicle_maintenance, the actual monthly vehicle maintenance (rule schedule_j_vehicle_maintenance)",
+    "targets": [
+      {
+        "full_name": "Quest12",
+        "page": 3,
+        "line": "12",
+        "label": "Vehicle operation expense: IRS Local Standards Operating Costs for your Census region or metropolitan statistical area",
+        "column": ""
+      }
+    ],
+    "verdicts": ["wrong_value"],
+    "correct_target": "Quest12",
+    "known": "DIG-66",
+    "note": "Quest12 (p3 T21) is printed '12. Vehicle operation expense: Using the IRS Local Standards and the number of vehicles for which you claim the operating expenses, fill in the Operating Costs' and needs the IRS Operating Costs standard for the region and the line-11 vehicle count."
+  },
+  {
+    "pdf_field": "Quest13D",
+    "source": "derived",
+    "producer": "rule:schedule_j_vehicle_payment",
+    "produces": "ExpenseInfo.vehicle_payment, the actual monthly car payment (rule schedule_j_vehicle_payment)",
+    "targets": [
+      {
+        "full_name": "Quest13D",
+        "page": 4,
+        "line": "13d",
+        "label": "Vehicle 2: Ownership or leasing costs using IRS Local Standard",
+        "column": ""
+      }
+    ],
+    "verdicts": ["wrong_box"],
+    "correct_target": "Quest13B amount for vehicle 1-1",
+    "known": "DIG-50",
+    "note": "Quest13D (p4 T16) is printed '13d. Ownership or leasing costs using IRS Local Standard' for Vehicle 2. A Vehicle 1 loan payment belongs in the 13b table (Quest13B Creditor for vehicle 1-1 / Quest13B amount for vehicle 1-1; 60-month average; total in 'Quest13B Total amount for vehicle 1', which repeats on 33b)."
+  },
+  {
+    "pdf_field": "Quest14",
+    "source": "derived",
+    "producer": "rule:schedule_j_vehicle_payment",
+    "produces": "ExpenseInfo.vehicle_payment, the actual monthly car payment (rule schedule_j_vehicle_payment)",
+    "targets": [
+      {
+        "full_name": "Quest14",
+        "page": 4,
+        "line": "14",
+        "label": "Public transportation expense: if you claimed 0 vehicles in line 11, the IRS Local Standards Public Transportation allowance",
+        "column": ""
+      }
+    ],
+    "verdicts": ["wrong_box"],
+    "correct_target": "Quest13B amount for vehicle 1-1",
+    "known": "DIG-50",
+    "note": "Quest14 (p4 T25) is printed '14. Public transportation expense: If you claimed 0 vehicles in line 11, ... fill in the Public Transportation expense allowance'. It is mutually exclusive with having a vehicle, yet it receives the car payment."
+  },
+  {
+    "pdf_field": "Quest15",
+    "source": "derived",
+    "producer": "rule:schedule_j_vehicle_payment",
+    "produces": "ExpenseInfo.vehicle_payment, the actual monthly car payment (rule schedule_j_vehicle_payment)",
+    "targets": [
+      {
+        "full_name": "Quest15",
+        "page": 4,
+        "line": "15",
+        "label": "Additional public transportation expense: if you claimed 1 or more vehicles in line 11; not more than the IRS Local Standard for Public Transportation",
+        "column": ""
+      }
+    ],
+    "verdicts": ["wrong_box"],
+    "correct_target": "Quest13B amount for vehicle 1-1",
+    "known": "DIG-50",
+    "note": "Quest15 (p4 T26) is printed '15. Additional public transportation expense: If you claimed 1 or more vehicles in line 11 ... you may not claim more than the IRS Local Standard for Public Transportation'. Together with Quest13D and Quest14, the same car payment is entered three times."
+  },
+  {
+    "pdf_field": "sig",
+    "source": "derived",
+    "producer": "rule:full_name",
+    "produces": "Debtor 1 full name typed as text (rule full_name)",
+    "targets": [
+      {
+        "full_name": "Debtor1.sig",
+        "page": 9,
+        "line": "Part 5",
+        "label": "Signature of Debtor 1",
+        "column": ""
+      },
+      {
+        "full_name": "Debtor2.sig",
+        "page": 9,
+        "line": "Part 5",
+        "label": "Signature of Debtor 2",
+        "column": ""
+      }
+    ],
+    "verdicts": ["collision", "needs_legal_review"],
+    "correct_target": "Debtor1.sig",
+    "known": "DIG-63",
+    "note": "Bare key 'sig' fills Debtor1.sig (p9 T18 'Signature of Debtor 1') and Debtor2.sig (p9 T19 'Signature of Debtor 2'). Part 5 declares 'under penalty of perjury'; pre-typing the name before review and the acceptability of a typed signature are legal questions."
+  },
+  {
+    "pdf_field": "Date signed",
+    "source": "derived",
+    "producer": "rule:today_iso",
+    "produces": "today's date in ISO format 'YYYY-MM-DD' at generation time (rule today_iso)",
+    "targets": [
+      {
+        "full_name": "Debtor1.Date signed",
+        "page": 9,
+        "line": "Part 5",
+        "label": "Date (MM / DD / YYYY) - Debtor 1",
+        "column": ""
+      },
+      {
+        "full_name": "Debtor2.Date signed",
+        "page": 9,
+        "line": "Part 5",
+        "label": "Date (MM / DD / YYYY) - Debtor 2",
+        "column": ""
+      }
+    ],
+    "verdicts": ["collision", "wrong_value"],
+    "correct_target": "Debtor1.Date signed",
+    "known": "DIG-63, NEW",
+    "note": "Fills Debtor1.Date signed (p9 T20) and Debtor2.Date signed (p9 T21). The printed box reads 'Date ___ MM / DD / YYYY' (tooltip 'Date signed (format mm/dd/yyyy)'), but the value is ISO YYYY-MM-DD and is the generation date."
+  }
+]

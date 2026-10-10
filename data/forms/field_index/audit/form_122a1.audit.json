@@ -1,0 +1,593 @@
+[
+  {
+    "pdf_field": "Name",
+    "source": "derived",
+    "producer": "rule:full_name",
+    "produces": "Debtor 1 full name 'First Middle Last' from DebtorInfo (rule full_name)",
+    "targets": [
+      {
+        "full_name": "Debtor1.Name",
+        "page": 1,
+        "line": "",
+        "label": "Debtor 1 name (First, Middle, Last)",
+        "column": ""
+      },
+      {
+        "full_name": "Debtor2.Name",
+        "page": 1,
+        "line": "",
+        "label": "Debtor 2 (Spouse, if filing) name (First, Middle, Last)",
+        "column": ""
+      },
+      {
+        "full_name": "Debtor1.Name",
+        "page": 2,
+        "line": "",
+        "label": "Debtor 1 name (page header)",
+        "column": ""
+      },
+      {
+        "full_name": "Debtor1.Name",
+        "page": 3,
+        "line": "",
+        "label": "Debtor 1 name (page header)",
+        "column": ""
+      }
+    ],
+    "verdicts": ["collision"],
+    "correct_target": "Debtor1.Name",
+    "known": "DIG-63",
+    "note": "Bare key 'Name' is the short name of Debtor1.Name (p1 T1, p2 T1, p3 T1, the page headers) AND Debtor2.Name (p1 T3, printed 'Debtor 2 (Spouse, if filing)'), so Debtor 1's name is also written on the spouse line. Use full key 'Debtor1.Name'."
+  },
+  {
+    "pdf_field": "Bankruptcy District Information",
+    "source": "derived",
+    "producer": "rule:district_name",
+    "produces": "District.name, e.g. 'Northern District of Illinois' (an exact /Opt entry of this combo box)",
+    "targets": [
+      {
+        "full_name": "Bankruptcy District Information",
+        "page": 1,
+        "line": "",
+        "label": "United States Bankruptcy Court for the: ___ District of ___",
+        "column": ""
+      }
+    ],
+    "verdicts": ["correct"],
+    "correct_target": "Bankruptcy District Information",
+    "known": "",
+    "note": "Printed 'United States Bankruptcy Court for the: ___ District of ___'; value matches a combo option."
+  },
+  {
+    "pdf_field": "0",
+    "source": "derived",
+    "producer": "rule:line1_wages",
+    "produces": "always '0.00' (rule line1_wages; rule reads a per-source attribute that IncomeInfo does not have (IncomeInfo fields: marital_status, number_of_dependents, monthly_income); _get_income_field's getattr(..., None) returns None, so the result is always '0.00')",
+    "targets": [
+      {
+        "full_name": "Debto1.Quest2.0",
+        "page": 1,
+        "line": "2",
+        "label": "Your gross wages, salary, tips, bonuses, overtime, and commissions (before all payroll deductions)",
+        "column": "Column A (Debtor 1)"
+      },
+      {
+        "full_name": "Debto2.Quest2.0",
+        "page": 1,
+        "line": "2",
+        "label": "Your gross wages, salary, tips, bonuses, overtime, and commissions (before all payroll deductions)",
+        "column": "Column B (Debtor 2 or non-filing spouse)"
+      },
+      {
+        "full_name": "Debto1.Quest8.0",
+        "page": 2,
+        "line": "8",
+        "label": "Unemployment compensation",
+        "column": "Column A (Debtor 1)"
+      },
+      {
+        "full_name": "Debto2.Quest8.0",
+        "page": 2,
+        "line": "8",
+        "label": "Unemployment compensation",
+        "column": "Column B (Debtor 2 or non-filing spouse)"
+      }
+    ],
+    "verdicts": ["wrong_value", "collision"],
+    "correct_target": "Debto1.Quest2.0",
+    "known": "DIG-56, DIG-63",
+    "note": "Concept (gross wages) fits line 2 Column A (p1 T14 'Your gross wages, salary, tips, bonuses, overtime, and commissions'), but the value is a constant $0.00, so real wages never appear. Bare key '0' is the short name of four widgets: Debto1.Quest2.0 / Debto2.Quest2.0 (line 2 Columns A and B) and Debto1.Quest8.0 / Debto2.Quest8.0 (p2 T3/T4, line 8 'Unemployment compensation' Columns A and B). Correct: full key 'Debto1.Quest2.0' <- average monthly gross wages; Column B only when Column B is filled."
+  },
+  {
+    "pdf_field": "Quest3",
+    "source": "derived",
+    "producer": "rule:line2_business_income",
+    "produces": "always '0.00' (rule line2_business_income; rule reads a per-source attribute that IncomeInfo does not have (IncomeInfo fields: marital_status, number_of_dependents, monthly_income); _get_income_field's getattr(..., None) returns None, so the result is always '0.00')",
+    "targets": [
+      {
+        "full_name": "Debto1.Quest3",
+        "page": 1,
+        "line": "3",
+        "label": "Alimony and maintenance payments (not from a spouse if Column B is filled in)",
+        "column": "Column A (Debtor 1)"
+      },
+      {
+        "full_name": "Debto2.Quest3",
+        "page": 1,
+        "line": "3",
+        "label": "Alimony and maintenance payments (not from a spouse if Column B is filled in)",
+        "column": "Column B (Debtor 2 or non-filing spouse)"
+      }
+    ],
+    "verdicts": ["wrong_box", "wrong_value", "collision"],
+    "correct_target": "Debto1.Quest5C",
+    "known": "DIG-56, DIG-63",
+    "note": "Targets are line 3 'Alimony and maintenance payments' (p1 T16 Column A, T17 Column B). Business income belongs on line 5 'Net income from operating a business, profession, or farm': Debto1.Quest5A gross receipts, Debto1.Quest5B operating expenses, Debto1.Quest5C net (one field, two widgets: worksheet T24 and Column A 'Copy here' T26)."
+  },
+  {
+    "pdf_field": "Quest4",
+    "source": "derived",
+    "producer": "rule:line3_real_property_income",
+    "produces": "always '0.00' (rule line3_real_property_income; rule reads a per-source attribute that IncomeInfo does not have (IncomeInfo fields: marital_status, number_of_dependents, monthly_income); _get_income_field's getattr(..., None) returns None, so the result is always '0.00')",
+    "targets": [
+      {
+        "full_name": "Debto1.Quest4",
+        "page": 1,
+        "line": "4",
+        "label": "All amounts from any source regularly paid for household expenses of you or your dependents, including child support",
+        "column": "Column A (Debtor 1)"
+      }
+    ],
+    "verdicts": ["wrong_box", "wrong_value"],
+    "correct_target": "Debto1.Quest6C",
+    "known": "DIG-56",
+    "note": "Only target is p1 T18, line 4 Column A 'All amounts from any source which are regularly paid for household expenses of you or your dependents, including child support'. Rental/real-property income belongs on line 6 (Debto1.Quest6A gross, Debto1.Quest6B expenses, Debto1.Quest6C net, the latter filling worksheet T32 and Column A copy T34)."
+  },
+  {
+    "pdf_field": "2",
+    "source": "derived",
+    "producer": "rule:line4_interest_dividends",
+    "produces": "always '0.00' (rule line4_interest_dividends; rule reads a per-source attribute that IncomeInfo does not have (IncomeInfo fields: marital_status, number_of_dependents, monthly_income); _get_income_field's getattr(..., None) returns None, so the result is always '0.00')",
+    "targets": [
+      {
+        "full_name": "Debto2.Quest2.2",
+        "page": 1,
+        "line": "4",
+        "label": "All amounts from any source regularly paid for household expenses of you or your dependents, including child support",
+        "column": "Column B (Debtor 2 or non-filing spouse)"
+      }
+    ],
+    "verdicts": ["wrong_box", "wrong_value"],
+    "correct_target": "Debto1.Quest7",
+    "known": "DIG-56, DIG-63",
+    "note": "Bare key '2' matches only Debto2.Quest2.2, which the image shows is p1 T19, line 4 Column B (Debtor 2 or non-filing spouse), household-expense contributions. Interest/dividends belong on line 7 'Interest, dividends, and royalties' Column A (Debto1.Quest7, p1 T36)."
+  },
+  {
+    "pdf_field": "Quest5A",
+    "source": "derived",
+    "producer": "rule:line5a_pension_retirement",
+    "produces": "always '0.00' (rule line5a_pension_retirement; rule reads a per-source attribute that IncomeInfo does not have (IncomeInfo fields: marital_status, number_of_dependents, monthly_income); _get_income_field's getattr(..., None) returns None, so the result is always '0.00')",
+    "targets": [
+      {
+        "full_name": "Debto1.Quest5A",
+        "page": 1,
+        "line": "5",
+        "label": "Net income from operating a business, profession, or farm - Gross receipts (before all deductions)",
+        "column": "Debtor 1 (line-5/6 worksheet)"
+      },
+      {
+        "full_name": "Debto2.Quest5A",
+        "page": 1,
+        "line": "5",
+        "label": "Net income from operating a business, profession, or farm - Gross receipts (before all deductions)",
+        "column": "Debtor 2 (line-5/6 worksheet)"
+      }
+    ],
+    "verdicts": ["wrong_box", "wrong_value", "collision"],
+    "correct_target": "Debto1.Quest9",
+    "known": "DIG-56, DIG-63",
+    "note": "Targets are line 5 business worksheet 'Gross receipts (before all deductions)' for Debtor 1 (p1 T20) and Debtor 2 (T21). Pension/retirement belongs on line 9 'Pension or retirement income' Column A (Debto1.Quest9, p2 T7)."
+  },
+  {
+    "pdf_field": "Quest5B",
+    "source": "derived",
+    "producer": "rule:line5b_social_security",
+    "produces": "always '0.00' (rule line5b_social_security; rule reads a per-source attribute that IncomeInfo does not have (IncomeInfo fields: marital_status, number_of_dependents, monthly_income); _get_income_field's getattr(..., None) returns None, so the result is always '0.00')",
+    "targets": [
+      {
+        "full_name": "Debto1.Quest5B",
+        "page": 1,
+        "line": "5",
+        "label": "Business/profession/farm - Ordinary and necessary operating expenses (subtracted)",
+        "column": "Debtor 1 (line-5/6 worksheet)"
+      },
+      {
+        "full_name": "Debto2.Quest5B",
+        "page": 1,
+        "line": "5",
+        "label": "Business/profession/farm - Ordinary and necessary operating expenses (subtracted)",
+        "column": "Debtor 2 (line-5/6 worksheet)"
+      }
+    ],
+    "verdicts": ["wrong_box", "collision"],
+    "correct_target": "leave blank",
+    "known": "DIG-56, DIG-49",
+    "note": "Targets are line 5 'Ordinary and necessary operating expenses' (subtracted) for Debtor 1 (p1 T22) and Debtor 2 (T23). Social Security Act benefits are excluded from current monthly income; lines 9 and 10 print 'Do not include any benefits received under the Social Security Act'. No 122A-1 box takes Social Security; the line-8 'For you / For your spouse' boxes are only for unemployment compensation claimed as an SSA benefit."
+  },
+  {
+    "pdf_field": "Quest6A",
+    "source": "derived",
+    "producer": "rule:line6a_unemployment",
+    "produces": "always '0.00' (rule line6a_unemployment; rule reads a per-source attribute that IncomeInfo does not have (IncomeInfo fields: marital_status, number_of_dependents, monthly_income); _get_income_field's getattr(..., None) returns None, so the result is always '0.00')",
+    "targets": [
+      {
+        "full_name": "Debto1.Quest6A",
+        "page": 1,
+        "line": "6",
+        "label": "Net income from rental and other real property - Gross receipts (before all deductions)",
+        "column": "Debtor 1 (line-5/6 worksheet)"
+      },
+      {
+        "full_name": "Debto2.Quest6A",
+        "page": 1,
+        "line": "6",
+        "label": "Net income from rental and other real property - Gross receipts (before all deductions)",
+        "column": "Debtor 2 (line-5/6 worksheet)"
+      }
+    ],
+    "verdicts": ["wrong_box", "wrong_value", "collision"],
+    "correct_target": "Debto1.Quest8.0",
+    "known": "DIG-56, DIG-63",
+    "note": "Targets are line 6 rental worksheet 'Gross receipts (before all deductions)' Debtor 1 (p1 T28) and Debtor 2 (T29). Unemployment compensation belongs on line 8 Column A (Debto1.Quest8.0, p2 T3) - which the bare key '0' already overwrites with the wage value."
+  },
+  {
+    "pdf_field": "Quest6B",
+    "source": "derived",
+    "producer": "rule:line6b_child_support_alimony",
+    "produces": "always '0.00' (rule line6b_child_support_alimony; rule reads a per-source attribute that IncomeInfo does not have (IncomeInfo fields: marital_status, number_of_dependents, monthly_income); _get_income_field's getattr(..., None) returns None, so the result is always '0.00')",
+    "targets": [
+      {
+        "full_name": "Debto1.Quest6B",
+        "page": 1,
+        "line": "6",
+        "label": "Rental/real property - Ordinary and necessary operating expenses (subtracted)",
+        "column": "Debtor 1 (line-5/6 worksheet)"
+      },
+      {
+        "full_name": "Debto2.Quest6B",
+        "page": 1,
+        "line": "6",
+        "label": "Rental/real property - Ordinary and necessary operating expenses (subtracted)",
+        "column": "Debtor 2 (line-5/6 worksheet)"
+      }
+    ],
+    "verdicts": ["wrong_box", "wrong_value", "collision"],
+    "correct_target": "Debto1.Quest4",
+    "known": "DIG-56, DIG-63",
+    "note": "Targets are line 6 rental worksheet 'Ordinary and necessary operating expenses' Debtor 1 (p1 T30) and Debtor 2 (T31). Child support received belongs on line 4 (Debto1.Quest4); alimony/maintenance on line 3 (Debto1.Quest3). The combined source must be split."
+  },
+  {
+    "pdf_field": "Quest7",
+    "source": "derived",
+    "producer": "rule:line7_other_income",
+    "produces": "always '0.00' (rule line7_other_income; rule reads a per-source attribute that IncomeInfo does not have (IncomeInfo fields: marital_status, number_of_dependents, monthly_income); _get_income_field's getattr(..., None) returns None, so the result is always '0.00')",
+    "targets": [
+      {
+        "full_name": "Debto1.Quest7",
+        "page": 1,
+        "line": "7",
+        "label": "Interest, dividends, and royalties",
+        "column": "Column A (Debtor 1)"
+      },
+      {
+        "full_name": "Debto2.Quest7",
+        "page": 1,
+        "line": "7",
+        "label": "Interest, dividends, and royalties",
+        "column": "Column B (Debtor 2 or non-filing spouse)"
+      }
+    ],
+    "verdicts": ["wrong_box", "wrong_value", "collision"],
+    "correct_target": "Debto1.Quest10A",
+    "known": "DIG-56, DIG-63",
+    "note": "Targets are line 7 'Interest, dividends, and royalties' Column A (p1 T36) and Column B (T37). Other income belongs on line 10 'Income from all other sources not listed above': amount Debto1.Quest10A with the source described in 'terrorism If necessary list other sources on a separate page and put the total below 1' (p2 T9)."
+  },
+  {
+    "pdf_field": "Quest8A",
+    "source": "derived",
+    "producer": "rule:line8a_total_gross_income",
+    "produces": "always '0.00' (rule line8a_total_gross_income = sum of nine per-source attributes, all missing; the sum would also include social_security)",
+    "targets": [
+      {
+        "full_name": "Debto1.Quest8A",
+        "page": 2,
+        "line": "8",
+        "label": "Unemployment compensation you contend is a Social Security Act benefit (listed here, not counted) - For you",
+        "column": ""
+      },
+      {
+        "full_name": "Debto2.Quest8A",
+        "page": 2,
+        "line": "8",
+        "label": "Unemployment compensation you contend is a Social Security Act benefit (listed here, not counted) - For your spouse",
+        "column": ""
+      }
+    ],
+    "verdicts": ["wrong_box", "wrong_value", "collision"],
+    "correct_target": "Debto1.Quest11",
+    "known": "DIG-56, DIG-63, DIG-49",
+    "note": "Targets are p2 T5 'For you' and T6 'For your spouse' under line 8 ('Do not enter the amount if you contend that the amount received was a benefit under the Social Security Act. Instead, list it here'), memo boxes for SSA-claimed unemployment compensation that are not counted. A gross-income total corresponds to line 11 Column A (Debto1.Quest11), and must exclude Social Security."
+  },
+  {
+    "pdf_field": "Quest9",
+    "source": "derived",
+    "producer": "rule:family_size",
+    "produces": "DebtorInfo.household_size as a string (rule family_size; default '1')",
+    "targets": [
+      {
+        "full_name": "Debto1.Quest9",
+        "page": 2,
+        "line": "9",
+        "label": "Pension or retirement income (excluding Social Security and listed uniformed-services payments)",
+        "column": "Column A (Debtor 1)"
+      },
+      {
+        "full_name": "Debto2.Quest9",
+        "page": 2,
+        "line": "9",
+        "label": "Pension or retirement income (excluding Social Security and listed uniformed-services payments)",
+        "column": "Column B (Debtor 2 or non-filing spouse)"
+      }
+    ],
+    "verdicts": ["wrong_box", "collision"],
+    "correct_target": "13B",
+    "known": "DIG-59, DIG-63",
+    "note": "Targets are line 9 'Pension or retirement income' Column A (p2 T7) and Column B (T8): a head count is written as a dollar amount in both columns. Household size belongs on line 13 'Fill in the number of people in your household.' (13B, p2 T23)."
+  },
+  {
+    "pdf_field": "Quest10A",
+    "source": "derived",
+    "producer": "rule:line10a_deductions",
+    "produces": "always '0.00' (rule line10a_deductions; rule reads a per-source attribute that IncomeInfo does not have (IncomeInfo fields: marital_status, number_of_dependents, monthly_income); _get_income_field's getattr(..., None) returns None, so the result is always '0.00')",
+    "targets": [
+      {
+        "full_name": "Debto1.Quest10A",
+        "page": 2,
+        "line": "10",
+        "label": "Income from all other sources not listed above - amount, row 1",
+        "column": "Column A (Debtor 1)"
+      },
+      {
+        "full_name": "Debto2.Quest10A",
+        "page": 2,
+        "line": "10",
+        "label": "Income from all other sources not listed above - amount, row 1",
+        "column": "Column B (Debtor 2 or non-filing spouse)"
+      }
+    ],
+    "verdicts": ["wrong_box", "collision"],
+    "correct_target": "leave blank",
+    "known": "DIG-56, DIG-63",
+    "note": "Targets are line 10 'Income from all other sources' amount row 1, Column A (p2 T10) and Column B (T11). Payroll deductions have no place on 122A-1 (line 2 is gross 'before all payroll deductions')."
+  },
+  {
+    "pdf_field": "Quest10B",
+    "source": "derived",
+    "producer": "rule:line10b_total_deductions",
+    "produces": "always '0.00' (rule line10b_total_deductions; rule reads a per-source attribute that IncomeInfo does not have (IncomeInfo fields: marital_status, number_of_dependents, monthly_income); _get_income_field's getattr(..., None) returns None, so the result is always '0.00')",
+    "targets": [
+      {
+        "full_name": "Debto1.Quest10B",
+        "page": 2,
+        "line": "10",
+        "label": "Income from all other sources not listed above - amount, row 2",
+        "column": "Column A (Debtor 1)"
+      },
+      {
+        "full_name": "Debto2.Quest10B",
+        "page": 2,
+        "line": "10",
+        "label": "Income from all other sources not listed above - amount, row 2",
+        "column": "Column B (Debtor 2 or non-filing spouse)"
+      }
+    ],
+    "verdicts": ["wrong_box", "collision"],
+    "correct_target": "leave blank",
+    "known": "DIG-56, DIG-63",
+    "note": "Targets are line 10 other-income amount row 2, Column A (p2 T13) and Column B (T14). Deductions have no 122A-1 box."
+  },
+  {
+    "pdf_field": "Quest10C",
+    "source": "derived",
+    "producer": "rule:line10c_net_income",
+    "produces": "always '0.00' (rule line10c_net_income = line8a_total_gross_income - line10b_total_deductions, both 0.00)",
+    "targets": [
+      {
+        "full_name": "Debto1.Quest10C",
+        "page": 2,
+        "line": "10",
+        "label": "Total amounts from separate pages, if any",
+        "column": "Column A (Debtor 1)"
+      },
+      {
+        "full_name": "Debto2.Quest10C",
+        "page": 2,
+        "line": "10",
+        "label": "Total amounts from separate pages, if any",
+        "column": "Column B (Debtor 2 or non-filing spouse)"
+      }
+    ],
+    "verdicts": ["wrong_box", "collision"],
+    "correct_target": "leave blank",
+    "known": "DIG-56, DIG-63",
+    "note": "Targets are line 10 'Total amounts from separate pages, if any.' Column A (p2 T15) and Column B (T16). A net-of-deductions income figure is not a 122A-1 concept."
+  },
+  {
+    "pdf_field": "Quest11",
+    "source": "derived",
+    "producer": "rule:line11_annualized_income",
+    "produces": "CMI x 12 (ANNUAL), where CMI = sum(IncomeInfo.monthly_income)/6 (rule line11_annualized_income)",
+    "targets": [
+      {
+        "full_name": "Debto1.Quest11",
+        "page": 2,
+        "line": "11",
+        "label": "Calculate your total current monthly income - add lines 2 through 10 for the column (monthly)",
+        "column": "Column A (Debtor 1)"
+      },
+      {
+        "full_name": "Debto2.Quest11",
+        "page": 2,
+        "line": "11",
+        "label": "Calculate your total current monthly income - add lines 2 through 10 for the column (monthly)",
+        "column": "Column B (Debtor 2 or non-filing spouse)"
+      },
+      {
+        "full_name": "Quest11",
+        "page": 2,
+        "line": "11",
+        "label": "Total current monthly income (Column A + Column B) (monthly)",
+        "column": "Total"
+      },
+      {
+        "full_name": "Quest11",
+        "page": 2,
+        "line": "12a",
+        "label": "Copy your total current monthly income from line 11 (monthly; then multiply by 12)",
+        "column": ""
+      }
+    ],
+    "verdicts": ["wrong_value", "collision"],
+    "correct_target": "Quest11",
+    "known": "DIG-56, DIG-63",
+    "note": "All four targets are monthly boxes: p2 T17 Debto1.Quest11 (line 11 Column A subtotal), T18 Debto2.Quest11 (line 11 Column B subtotal), T19 Quest11 (line 11 'Total current monthly income'), T20 Quest11 (line 12a 'Copy your total current monthly income from line 11'). The annual figure makes 12a x 12 differ from 12b, which also receives the annual figure. Correct: Quest11 <- monthly CMI (existing rule 'cmi'); Debto1.Quest11 <- Column A sum of lines 2-10; Debto2.Quest11 blank unless Column B is filled."
+  },
+  {
+    "pdf_field": "12B",
+    "source": "derived",
+    "producer": "rule:line12b_annualized_cmi",
+    "produces": "CMI x 12 (annual) (rule line12b_annualized_cmi)",
+    "targets": [
+      {
+        "full_name": "12B",
+        "page": 2,
+        "line": "12b",
+        "label": "The result is your annual income for this part of the form (line 12a x 12)",
+        "column": ""
+      }
+    ],
+    "verdicts": ["correct"],
+    "correct_target": "12B",
+    "known": "",
+    "note": "Printed line 12b 'The result is your annual income for this part of the form.' Correct concept and quantity; CMI inherits whatever IncomeInfo.monthly_income contains (DIG-49 if it includes Social Security)."
+  },
+  {
+    "pdf_field": "13A",
+    "source": "derived",
+    "producer": "rule:line13a_median_income",
+    "produces": "annual median family income from MedianIncome for size = 1 + number_of_dependents (+1 if IncomeInfo.marital_status is married_*), ignoring DebtorInfo.household_size (rule line13a_median_income)",
+    "targets": [
+      {
+        "full_name": "13A",
+        "page": 2,
+        "line": "13",
+        "label": "Fill in the state in which you live.",
+        "column": ""
+      }
+    ],
+    "verdicts": ["wrong_box"],
+    "correct_target": "13C",
+    "known": "DIG-59, DIG-51",
+    "note": "Target 13A (p2 T22) is printed 'Fill in the state in which you live.' (tooltip 'State in which you live'). The median belongs in 13C (p2 T24, 'Fill in the median family income for your state and size of household'). The household size used also differs from MeansTest, which prefers DebtorInfo.household_size (DIG-51)."
+  },
+  {
+    "pdf_field": "13B",
+    "source": "derived",
+    "producer": "rule:line13b_annualized_income",
+    "produces": "CMI x 12 (annual) (rule line13b_annualized_income)",
+    "targets": [
+      {
+        "full_name": "13B",
+        "page": 2,
+        "line": "13",
+        "label": "Fill in the number of people in your household.",
+        "column": ""
+      }
+    ],
+    "verdicts": ["wrong_box"],
+    "correct_target": "12B",
+    "known": "DIG-59",
+    "note": "Target 13B (p2 T23) is printed 'Fill in the number of people in your household.' (tooltip 'Number of people in your household'). Annual income already appears at 12B; 13B needs the household size (rule family_size, currently mis-bound to Quest9)."
+  },
+  {
+    "pdf_field": "13C",
+    "source": "derived",
+    "producer": "rule:line13c_difference",
+    "produces": "(CMI x 12) - median (rule line13c_difference)",
+    "targets": [
+      {
+        "full_name": "13C",
+        "page": 2,
+        "line": "13",
+        "label": "Fill in the median family income for your state and size of household (annual)",
+        "column": ""
+      }
+    ],
+    "verdicts": ["wrong_box"],
+    "correct_target": "leave blank",
+    "known": "DIG-59",
+    "note": "Target 13C (p2 T24) is printed 'Fill in the median family income for your state and size of household.' The difference has no box on the form; the comparison is recorded by the line 14a/14b checkbox (field '14a'). 13C should receive the median (rule line13a_median_income, after its DIG-51 fix)."
+  },
+  {
+    "pdf_field": "sig",
+    "source": "derived",
+    "producer": "rule:full_name",
+    "produces": "Debtor 1 full name typed as text (rule full_name)",
+    "targets": [
+      {
+        "full_name": "Debtor1.sig",
+        "page": 3,
+        "line": "Part 3",
+        "label": "Signature of Debtor 1",
+        "column": ""
+      },
+      {
+        "full_name": "Debtor2.sig",
+        "page": 3,
+        "line": "Part 3",
+        "label": "Signature of Debtor 2",
+        "column": ""
+      }
+    ],
+    "verdicts": ["collision", "needs_legal_review"],
+    "correct_target": "Debtor1.sig",
+    "known": "DIG-63",
+    "note": "Bare key 'sig' fills Debtor1.sig (p3 T3 'Signature of Debtor 1') and Debtor2.sig (p3 T4 'Signature of Debtor 2'), so the spouse signature line gets Debtor 1's name. Pre-typing a name on a line declared 'under penalty of perjury' before the debtor reviews it, and whether a typed or '/s/' signature satisfies ILND rules, is a legal question."
+  },
+  {
+    "pdf_field": "Date signed",
+    "source": "derived",
+    "producer": "rule:today_iso",
+    "produces": "today's date in ISO format 'YYYY-MM-DD' at generation time (rule today_iso)",
+    "targets": [
+      {
+        "full_name": "Debtor1.Date signed",
+        "page": 3,
+        "line": "Part 3",
+        "label": "Date (MM / DD / YYYY) - Debtor 1",
+        "column": ""
+      },
+      {
+        "full_name": "Debtor2.Date signed",
+        "page": 3,
+        "line": "Part 3",
+        "label": "Date (MM / DD / YYYY) - Debtor 2",
+        "column": ""
+      }
+    ],
+    "verdicts": ["collision", "wrong_value"],
+    "correct_target": "Debtor1.Date signed",
+    "known": "DIG-63, NEW",
+    "note": "Bare key fills Debtor1.Date signed (p3 T5) and Debtor2.Date signed (p3 T6). The printed box reads 'Date ___ MM / DD / YYYY' (tooltip 'Date signed (format mm/dd/yyyy)'), but the value is written as YYYY-MM-DD, and it is the generation date rather than the signing date."
+  }
+]

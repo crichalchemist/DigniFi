@@ -1,0 +1,251 @@
+[
+  {
+    "pdf_field": "Bankruptcy District Information",
+    "source": "derived",
+    "producer": "rule:district_name",
+    "produces": "session.district.name, e.g. \"Northern District of Illinois\"",
+    "targets": [
+      {
+        "full_name": "Bankruptcy District Information",
+        "page": 1,
+        "tag": "T1",
+        "line": "",
+        "label": "United States Bankruptcy Court for the:",
+        "column": ""
+      }
+    ],
+    "verdicts": ["correct"],
+    "correct_target": "",
+    "known": "",
+    "note": "Exact /Opt entry."
+  },
+  {
+    "pdf_field": "Debtor1.First name",
+    "source": "derived",
+    "producer": "rule:first_name",
+    "produces": "DebtorInfo.first_name (Debtor 1)",
+    "targets": [
+      {
+        "full_name": "Debtor1.First name",
+        "page": 1,
+        "tag": "T3",
+        "line": "1",
+        "label": "First name",
+        "column": "For Debtor 1:"
+      }
+    ],
+    "verdicts": ["correct"],
+    "correct_target": "",
+    "known": "",
+    "note": "Exact full-name match, line 1 Debtor 1 column only."
+  },
+  {
+    "pdf_field": "Debtor1.Middle name",
+    "source": "derived",
+    "producer": "rule:middle_name",
+    "produces": "DebtorInfo.middle_name (Debtor 1)",
+    "targets": [
+      {
+        "full_name": "Debtor1.Middle name",
+        "page": 1,
+        "tag": "T5",
+        "line": "1",
+        "label": "Middle name",
+        "column": "For Debtor 1:"
+      }
+    ],
+    "verdicts": ["correct"],
+    "correct_target": "",
+    "known": "",
+    "note": ""
+  },
+  {
+    "pdf_field": "Debtor1.Last name",
+    "source": "derived",
+    "producer": "rule:last_name",
+    "produces": "DebtorInfo.last_name (Debtor 1)",
+    "targets": [
+      {
+        "full_name": "Debtor1.Last name",
+        "page": 1,
+        "tag": "T7",
+        "line": "1",
+        "label": "Last name",
+        "column": "For Debtor 1:"
+      }
+    ],
+    "verdicts": ["correct"],
+    "correct_target": "",
+    "known": "",
+    "note": ""
+  },
+  {
+    "pdf_field": "Debtor1a.SSNum",
+    "source": "derived",
+    "producer": "rule:ssn_formatted",
+    "produces": "Debtor 1 SSN as NNN-NN-NNNN (11 chars) or \"\"",
+    "targets": [
+      {
+        "full_name": "Debtor1a.SSNum",
+        "page": 1,
+        "tag": "T9",
+        "line": "2",
+        "label": "All Social Security Numbers you have used",
+        "column": "For Debtor 1:"
+      }
+    ],
+    "verdicts": ["correct"],
+    "correct_target": "",
+    "known": "",
+    "note": "Line 2 Debtor 1 first SSN box. Comb field, MaxLen 11, so \"123-45-6789\" fits exactly. Short name \"SSNum\" is shared with Debtor1b.SSNum, but the key is fully qualified, so only T9 is filled."
+  },
+  {
+    "pdf_field": "Check Box1",
+    "source": "derived",
+    "producer": "rule:has_ssn_check",
+    "produces": "\"true\" if Debtor 1 has an SSN, else \"\" -> checkbox emits on_states[0] \"/Yes\"",
+    "targets": [
+      {
+        "full_name": "Check Box1",
+        "page": 1,
+        "tag": "T13",
+        "line": "2",
+        "label": "You do not have a Social Security number.",
+        "column": "Debtor 1"
+      }
+    ],
+    "verdicts": ["wrong_value", "checkbox_state"],
+    "correct_target": "leave blank",
+    "known": "NEW",
+    "note": "Check Box1 (T13) is Debtor 1's \"You do not have a Social Security number.\" has_ssn_check returns \"true\" when the debtor HAS an SSN, so this logic is inverted. It is harmless today only because the emitted \"/Yes\" does not match on_state \"On\" (pypdf writes /Off). Fixing only on_states would falsely tell the court that every SSN-holder has no SSN. Having an SSN is shown by writing it in Debtor1a.SSNum, so this box stays blank."
+  },
+  {
+    "pdf_field": "Check Box2",
+    "source": "derived",
+    "producer": "rule:no_ssn_check",
+    "produces": "\"true\" if Debtor 1 has no SSN, else \"\" -> checkbox emits \"/Yes\"",
+    "targets": [
+      {
+        "full_name": "Check Box2",
+        "page": 1,
+        "tag": "T14",
+        "line": "2",
+        "label": "You do not have a Social Security number.",
+        "column": "Debtor 2"
+      }
+    ],
+    "verdicts": ["wrong_box", "checkbox_state"],
+    "correct_target": "Check Box1",
+    "known": "NEW",
+    "note": "Check Box2 (T14) is the Debtor 2 column's \"You do not have a Social Security number.\" no_ssn_check describes Debtor 1, so it belongs on Check Box1. It also never ticks: \"/Yes\" vs on_state \"On\"."
+  },
+  {
+    "pdf_field": "Debtor2a.First name",
+    "source": "derived",
+    "producer": "rule:first_name",
+    "produces": "DebtorInfo.first_name (Debtor 1) [only when has_joint_filer]",
+    "targets": [],
+    "verdicts": ["missing_field", "wrong_value"],
+    "correct_target": "Debtor2.First name",
+    "known": "DIG-64",
+    "note": "No widget is named Debtor2a.First name; the real box is \"Debtor2.First name\" (T4), so nothing is written. Even if it were, rule first_name returns Debtor 1's first name, not the spouse's. Gated by has_joint_filer (latent: joint_filer_gate is never written)."
+  },
+  {
+    "pdf_field": "Debtor2a.Middle name",
+    "source": "derived",
+    "producer": "rule:middle_name",
+    "produces": "DebtorInfo.middle_name (Debtor 1) [only when has_joint_filer]",
+    "targets": [],
+    "verdicts": ["missing_field", "wrong_value"],
+    "correct_target": "Debtor2.Middle name_2",
+    "known": "DIG-64",
+    "note": "The real box is \"Debtor2.Middle name_2\" (T6). The rule returns Debtor 1's middle name."
+  },
+  {
+    "pdf_field": "Debtor2a.Last name",
+    "source": "derived",
+    "producer": "rule:last_name",
+    "produces": "DebtorInfo.last_name (Debtor 1) [only when has_joint_filer]",
+    "targets": [],
+    "verdicts": ["missing_field", "wrong_value"],
+    "correct_target": "Debtor2.Last name",
+    "known": "DIG-64",
+    "note": "The real box is \"Debtor2.Last name\" (T8). The rule returns Debtor 1's last name."
+  },
+  {
+    "pdf_field": "Debtor2a SSNum",
+    "source": "derived",
+    "producer": "rule:ssn_formatted",
+    "produces": "Debtor 1 SSN as NNN-NN-NNNN (11 chars) or \"\" [only when has_joint_filer]",
+    "targets": [
+      {
+        "full_name": "Debtor2a SSNum",
+        "page": 1,
+        "tag": "T10",
+        "line": "2",
+        "label": "All Social Security Numbers you have used",
+        "column": "For Debtor 2 (Only If Spouse Is Filing):"
+      }
+    ],
+    "verdicts": ["wrong_value"],
+    "correct_target": "Debtor2a SSNum",
+    "known": "NEW",
+    "note": "The box is right: line 2, Debtor 2 column (T10). But ssn_formatted reads session.debtor_info.ssn, which is Debtor 1, so for a joint filer Debtor 1's full SSN is printed as the spouse's SSN. The co-debtor SSN entered in the wizard (co_debtor_ssn) is not stored at all, because DebtorInfo and its serializer have no such field. Gated by has_joint_filer (latent: joint_filer_gate is never written)."
+  },
+  {
+    "pdf_field": "signature",
+    "source": "derived",
+    "producer": "rule:full_name",
+    "produces": "Debtor 1 \"first middle last\" from DebtorInfo",
+    "targets": [
+      {
+        "full_name": "Debtor1.signature",
+        "page": 1,
+        "tag": "T21",
+        "line": "Part 3",
+        "label": "Signature of Debtor 1",
+        "column": "Debtor 1"
+      },
+      {
+        "full_name": "Debtor2.signature",
+        "page": 1,
+        "tag": "T22",
+        "line": "Part 3",
+        "label": "Signature of Debtor 2",
+        "column": "Debtor 2"
+      }
+    ],
+    "verdicts": ["collision"],
+    "correct_target": "Debtor1.signature",
+    "known": "DIG-63",
+    "note": "Short name \"signature\" matches Debtor1.signature (T21) and Debtor2.signature (T22), so a single filer's name also appears on the \"Signature of Debtor 2\" line. Typed full name (no '/s/') written into a wet-signature line."
+  },
+  {
+    "pdf_field": "Executed on",
+    "source": "derived",
+    "producer": "rule:today_iso",
+    "produces": "today as YYYY-MM-DD",
+    "targets": [
+      {
+        "full_name": "Executed on",
+        "page": 1,
+        "tag": "T23",
+        "line": "Part 3",
+        "label": "Date (Debtor 1 signature, MM/DD/YYYY)",
+        "column": "Debtor 1"
+      },
+      {
+        "full_name": "Debtor2.Executed on",
+        "page": 1,
+        "tag": "T24",
+        "line": "Part 3",
+        "label": "Date (Debtor 2 signature, MM/DD/YYYY)",
+        "column": "Debtor 2"
+      }
+    ],
+    "verdicts": ["collision"],
+    "correct_target": "Executed on",
+    "known": "DIG-63",
+    "note": "The key matches \"Executed on\" (T23, Debtor 1 date) and, by short name, \"Debtor2.Executed on\" (T24). Short-name matching makes T23 impossible to address alone. today_iso writes 'YYYY-MM-DD'; the printed box asks MM/DD/YYYY (format only)."
+  }
+]

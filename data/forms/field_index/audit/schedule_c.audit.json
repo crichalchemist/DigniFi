@@ -1,0 +1,214 @@
+[
+  {
+    "pdf_field": "Debtor 1",
+    "source": "derived",
+    "producer": "rule:full_name",
+    "produces": "derivations._full_name: f'{first_name} {middle_name} {last_name}' of session.debtor_info, double spaces collapsed (Debtor 1's legal name)",
+    "targets": [
+      {
+        "full_name": "Debtor 1",
+        "page": 1,
+        "tag": "T1",
+        "line": "",
+        "label": "Debtor 1 (First Name, Middle Name, Last Name)",
+        "column": ""
+      },
+      {
+        "full_name": "Debtor 1",
+        "page": 2,
+        "tag": "T1",
+        "line": "",
+        "label": "Debtor 1 (First Name, Middle Name, Last Name)",
+        "column": ""
+      }
+    ],
+    "verdicts": ["correct"],
+    "correct_target": "Debtor 1",
+    "known": "",
+    "note": "Fills the 'Debtor 1' header on page 1 and the repeated header on page 2 (same field); both ask for Debtor 1's name."
+  },
+  {
+    "pdf_field": "Bankruptcy District Information",
+    "source": "derived",
+    "producer": "rule:district_name",
+    "produces": "derivations 'district_name' = session.district.name, e.g. 'Northern District of Illinois'",
+    "targets": [
+      {
+        "full_name": "Bankruptcy District Information",
+        "page": 1,
+        "tag": "T3",
+        "line": "",
+        "label": "United States Bankruptcy Court for the: ____ District of ____",
+        "column": ""
+      }
+    ],
+    "verdicts": ["correct"],
+    "correct_target": "Bankruptcy District Information",
+    "known": "",
+    "note": "Combo box /Opt on this template contains 'Northern District of Illinois' exactly (Ff 393216 = combo+edit), so the value selects a real option."
+  },
+  {
+    "pdf_field": "2.1",
+    "source": "asked",
+    "producer": "binding:answer:schedule_c.desc_2.1",
+    "produces": "FormAnswer schedule_c/desc_2.1 (by key name, a property description for line 2 row 1); never collected, so '' in practice",
+    "targets": [
+      {
+        "full_name": "2.1",
+        "page": 1,
+        "tag": "T8",
+        "line": "2",
+        "label": "Specific laws that allow exemption (row 1)",
+        "column": "Specific laws that allow exemption"
+      }
+    ],
+    "verdicts": ["wrong_box"],
+    "correct_target": "description",
+    "known": "NEW",
+    "note": "Field '2.1' (page 1, x 451-581, y 506-544) is the 'Specific laws that allow exemption' box of line 2 row 1. A description belongs in 'description' (Brief description:, row 1). No asked field in any schema has a 'ui' block, so FormSchemaUIView never shows this question, and nothing in backend/frontend writes FormAnswer(form_type='schedule_c', field_key=this key); in practice resolve() returns '' and _emit() writes nothing."
+  },
+  {
+    "pdf_field": "2.2",
+    "source": "asked",
+    "producer": "binding:answer:schedule_c.statute_2.2",
+    "produces": "FormAnswer schedule_c/statute_2.2 (by key name, the exemption statute for line 2 row 2); never collected, so '' in practice",
+    "targets": [
+      {
+        "full_name": "2.2",
+        "page": 1,
+        "tag": "T15",
+        "line": "2",
+        "label": "Specific laws that allow exemption (row 2)",
+        "column": "Specific laws that allow exemption"
+      }
+    ],
+    "verdicts": ["correct", "needs_legal_review"],
+    "correct_target": "2.2",
+    "known": "",
+    "note": "Box is right: '2.2' is 'Specific laws that allow exemption' for line 2 row 2. Choosing the exemption statute is a legal conclusion (UPL boundary); schema already sets legal_review=true. Inconsistent sibling keys (desc_2.1 / statute_2.2 / amount_2.3) show rows 1 and 3 were bound to the wrong concept. No asked field in any schema has a 'ui' block, so FormSchemaUIView never shows this question, and nothing in backend/frontend writes FormAnswer(form_type='schedule_c', field_key=this key); in practice resolve() returns '' and _emit() writes nothing."
+  },
+  {
+    "pdf_field": "2.3",
+    "source": "asked",
+    "producer": "binding:answer:schedule_c.amount_2.3",
+    "produces": "FormAnswer schedule_c/amount_2.3 (by key name, an exemption dollar amount for line 2 row 3); never collected, so '' in practice",
+    "targets": [
+      {
+        "full_name": "2.3",
+        "page": 1,
+        "tag": "T22",
+        "line": "2",
+        "label": "Specific laws that allow exemption (row 3)",
+        "column": "Specific laws that allow exemption"
+      }
+    ],
+    "verdicts": ["wrong_box"],
+    "correct_target": "undefined_9",
+    "known": "NEW",
+    "note": "'2.3' is the 'Specific laws that allow exemption' box of line 2 row 3. A dollar amount belongs in 'undefined_9' (Amount of the exemption you claim, $ specific amount, row 3); if 'amount' meant current value, 'undefined_8'. Verified with pypdf 6.13.1: key '3' (desc_3) also writes the '2.3' widget and is processed later in schema order, so even a collected amount_2.3 would be overwritten. No asked field in any schema has a 'ui' block, so FormSchemaUIView never shows this question, and nothing in backend/frontend writes FormAnswer(form_type='schedule_c', field_key=this key); in practice resolve() returns '' and _emit() writes nothing."
+  },
+  {
+    "pdf_field": "3",
+    "source": "asked",
+    "producer": "binding:answer:schedule_c.desc_3",
+    "produces": "FormAnswer schedule_c/desc_3 (by key name, the property description for the first Part 2 row); never collected, so '' in practice",
+    "targets": [
+      {
+        "full_name": "check 2.3",
+        "page": 1,
+        "tag": "T25",
+        "line": "2",
+        "label": "Amount of the exemption you claim: check only one box (row 3)",
+        "column": "Amount of the exemption you claim (Check only one box for each exemption)"
+      },
+      {
+        "full_name": "check 2.3",
+        "page": 1,
+        "tag": "T27",
+        "line": "2",
+        "label": "Amount of the exemption you claim: check only one box (row 3)",
+        "column": "Amount of the exemption you claim (Check only one box for each exemption)"
+      },
+      {
+        "full_name": "2.3",
+        "page": 1,
+        "tag": "T22",
+        "line": "2",
+        "label": "Specific laws that allow exemption (row 3)",
+        "column": "Specific laws that allow exemption"
+      },
+      {
+        "full_name": "3",
+        "page": 2,
+        "tag": "T3",
+        "line": "2",
+        "label": "Specific laws that allow exemption (Part 2 Additional Page row 1)",
+        "column": "Specific laws that allow exemption"
+      }
+    ],
+    "verdicts": ["wrong_box", "collision", "checkbox_state"],
+    "correct_target": "description_4",
+    "known": "DIG-63",
+    "note": "Short-name match: '3' fills page 2 field '3' (Specific laws, Part 2 Additional Page row 1) AND page 1 '2.3' (Specific laws, line 2 row 3, short name '3') AND both widgets of 'check 2.3' (row 3 'Amount of the exemption' options, on_states 'On' and 'fair#20market'). Fill test: check 2.3 /V becomes the description text, which matches no on_state (AS stays /Off), and '2.3' ends with desc_3, overwriting amount_2.3. The description itself belongs in 'description_4'. No asked field in any schema has a 'ui' block, so FormSchemaUIView never shows this question, and nothing in backend/frontend writes FormAnswer(form_type='schedule_c', field_key=this key); in practice resolve() returns '' and _emit() writes nothing."
+  },
+  {
+    "pdf_field": "4",
+    "source": "asked",
+    "producer": "binding:answer:schedule_c.desc_4",
+    "produces": "FormAnswer schedule_c/desc_4 (property description, Part 2 row 2); never collected, so '' in practice",
+    "targets": [
+      {
+        "full_name": "4",
+        "page": 2,
+        "tag": "T10",
+        "line": "2",
+        "label": "Specific laws that allow exemption (Part 2 Additional Page row 2)",
+        "column": "Specific laws that allow exemption"
+      }
+    ],
+    "verdicts": ["wrong_box"],
+    "correct_target": "description_5",
+    "known": "NEW",
+    "note": "Page 2 field '4' is 'Specific laws that allow exemption' for Part 2 Additional Page row 2; fill test shows no other widget has short name '4'. Description belongs in 'description_5'. No asked field in any schema has a 'ui' block, so FormSchemaUIView never shows this question, and nothing in backend/frontend writes FormAnswer(form_type='schedule_c', field_key=this key); in practice resolve() returns '' and _emit() writes nothing."
+  },
+  {
+    "pdf_field": "5",
+    "source": "asked",
+    "producer": "binding:answer:schedule_c.desc_5",
+    "produces": "FormAnswer schedule_c/desc_5 (property description, Part 2 row 3); never collected, so '' in practice",
+    "targets": [
+      {
+        "full_name": "5",
+        "page": 2,
+        "tag": "T17",
+        "line": "2",
+        "label": "Specific laws that allow exemption (Part 2 Additional Page row 3)",
+        "column": "Specific laws that allow exemption"
+      }
+    ],
+    "verdicts": ["wrong_box"],
+    "correct_target": "description_6",
+    "known": "NEW",
+    "note": "Page 2 field '5' is 'Specific laws that allow exemption' for Part 2 Additional Page row 3. Description belongs in 'description_6'. No asked field in any schema has a 'ui' block, so FormSchemaUIView never shows this question, and nothing in backend/frontend writes FormAnswer(form_type='schedule_c', field_key=this key); in practice resolve() returns '' and _emit() writes nothing."
+  },
+  {
+    "pdf_field": "6",
+    "source": "asked",
+    "producer": "binding:answer:schedule_c.desc_6",
+    "produces": "FormAnswer schedule_c/desc_6 (property description, Part 2 row 4); never collected, so '' in practice",
+    "targets": [
+      {
+        "full_name": "6",
+        "page": 2,
+        "tag": "T24",
+        "line": "2",
+        "label": "Specific laws that allow exemption (Part 2 Additional Page row 4)",
+        "column": "Specific laws that allow exemption"
+      }
+    ],
+    "verdicts": ["wrong_box"],
+    "correct_target": "description_7",
+    "known": "NEW",
+    "note": "Page 2 field '6' is 'Specific laws that allow exemption' for Part 2 Additional Page row 4. Description belongs in 'description_7'. No asked field in any schema has a 'ui' block, so FormSchemaUIView never shows this question, and nothing in backend/frontend writes FormAnswer(form_type='schedule_c', field_key=this key); in practice resolve() returns '' and _emit() writes nothing."
+  }
+]

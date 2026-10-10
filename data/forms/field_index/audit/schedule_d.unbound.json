@@ -1,0 +1,145 @@
+[
+  {
+    "full_name": "check1",
+    "pages": [1],
+    "line": "1",
+    "label": "Do any creditors have claims secured by your property?",
+    "column": "",
+    "kind": "checkbox",
+    "why_needed": "Line 1 'Do any creditors have claims secured by your property?' No/Yes must be answered.",
+    "available_source": "count of DebtInfo is_secured (ScheduleDGenerator.generate()['number_of_secured_claims'])",
+    "known": "DIG-26 related"
+  },
+  {
+    "full_name": "undefined_24",
+    "pages": [2],
+    "line": "2",
+    "label": "If this is the last page of your form, add the dollar value totals from all pages. Write that number here: (grand total of Column A)",
+    "column": "Column A: Amount of claim (Do not deduct the value of collateral)",
+    "kind": "amount",
+    "why_needed": "Column A grand total ('If this is the last page..., add the dollar value totals from all pages'); the correct target for total_secured_claims.",
+    "available_source": "derivation total_secured_claims (currently misbound to undefined_27)",
+    "known": ""
+  },
+  {
+    "full_name": "undefined_9",
+    "pages": [1],
+    "line": "2",
+    "label": "Add the dollar value of your entries in Column A on this page. Write that number here: (page 1 subtotal)",
+    "column": "Column A: Amount of claim (Do not deduct the value of collateral)",
+    "kind": "amount",
+    "why_needed": "Column A page 1 subtotal.",
+    "available_source": "sum of rows 2.1-2.2",
+    "known": ""
+  },
+  {
+    "full_name": "Creditors Name",
+    "pages": [1],
+    "line": "2.1",
+    "label": "Creditor's Name",
+    "column": "",
+    "kind": "text",
+    "why_needed": "Line 2.1 Creditor's Name.",
+    "available_source": "generate()['secured_creditors'][i]['creditor_name']",
+    "known": "DIG-26 related"
+  },
+  {
+    "full_name": "undefined",
+    "pages": [1],
+    "line": "2.1",
+    "label": "Amount of claim",
+    "column": "Column A: Amount of claim (Do not deduct the value of collateral)",
+    "kind": "amount",
+    "why_needed": "Line 2.1 Column A Amount of claim.",
+    "available_source": "secured_creditors[i]['amount_owed']",
+    "known": "DIG-26 related"
+  },
+  {
+    "full_name": "undefined_2",
+    "pages": [1],
+    "line": "2.1",
+    "label": "Value of collateral that supports this claim",
+    "column": "Column B: Value of collateral that supports this claim",
+    "kind": "amount",
+    "why_needed": "Line 2.1 Column B Value of collateral that supports this claim.",
+    "available_source": "AssetInfo current_value of the collateral",
+    "known": ""
+  },
+  {
+    "full_name": "undefined_3",
+    "pages": [1],
+    "line": "2.1",
+    "label": "Unsecured portion",
+    "column": "Column C: Unsecured portion (If any)",
+    "kind": "amount",
+    "why_needed": "Line 2.1 Column C Unsecured portion.",
+    "available_source": "max(0, A - B)",
+    "known": ""
+  },
+  {
+    "full_name": "As of the date you file the claim is Check all that apply",
+    "pages": [1],
+    "line": "2.1",
+    "label": "Describe the property that secures the claim: (tooltip 'As of the date you file...' is wrong)",
+    "column": "",
+    "kind": "text",
+    "why_needed": "Line 2.1 'Describe the property that secures the claim' (tooltip is wrong).",
+    "available_source": "secured_creditors[i]['collateral_description']",
+    "known": ""
+  },
+  {
+    "full_name": "check 2",
+    "pages": [1],
+    "line": "2.1",
+    "label": "Who owes the debt? Check one.",
+    "column": "",
+    "kind": "checkbox",
+    "why_needed": "Line 2.1 'Who owes the debt? Check one.'",
+    "available_source": "none for joint; Debtor 1 only for individual filers",
+    "known": ""
+  },
+  {
+    "full_name": "An agreement you made such as mortgage or secured",
+    "pages": [1],
+    "line": "2.1",
+    "label": "Nature of lien. Check all that apply.",
+    "column": "",
+    "kind": "checkbox",
+    "why_needed": "Line 2.1 Nature of lien.",
+    "available_source": "none",
+    "known": ""
+  },
+  {
+    "full_name": "Contingent",
+    "pages": [1],
+    "line": "2.1",
+    "label": "As of the date you file, the claim is: Check all that apply.",
+    "column": "",
+    "kind": "checkbox",
+    "why_needed": "Line 2.1 contingent/unliquidated/disputed status.",
+    "available_source": "DebtInfo is_contingent / is_unliquidated / is_disputed",
+    "known": ""
+  },
+  {
+    "full_name": "account number",
+    "pages": [1, 3],
+    "line": "2.1",
+    "label": "Last 4 digits of account number",
+    "column": "",
+    "kind": "text",
+    "why_needed": "Line 2.1 last 4 digits of account number (field also shared with Part 2 entry 4 on page 3).",
+    "available_source": "DebtInfo.account_number",
+    "known": ""
+  },
+  {
+    "full_name": "Date debt was incurred",
+    "pages": [1],
+    "line": "2.1",
+    "label": "Date debt was incurred",
+    "column": "",
+    "kind": "date",
+    "why_needed": "Line 2.1 date incurred.",
+    "available_source": "DebtInfo.date_incurred",
+    "known": ""
+  }
+]

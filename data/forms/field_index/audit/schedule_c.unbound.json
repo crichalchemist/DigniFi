@@ -1,0 +1,101 @@
+[
+  {
+    "full_name": "check 1",
+    "pages": [1],
+    "line": "1",
+    "label": "Which set of exemptions are you claiming? Check one only, even if your spouse is filing with you.",
+    "column": "",
+    "kind": "checkbox",
+    "why_needed": "Line 1 (state+federal nonbankruptcy vs federal exemptions) must be answered on every Schedule C; Illinois has opted out, so ILND filers use the 522(b)(3) box. Legal conclusion: needs_legal_review.",
+    "available_source": "ScheduleCGenerator.generate() already applies Illinois exemptions (735 ILCS 5/12-901 ff.) but pdf_field_map ignores it",
+    "known": ""
+  },
+  {
+    "full_name": "description",
+    "pages": [1],
+    "line": "2",
+    "label": "Brief description: (row 1)",
+    "column": "Brief description of the property and line on Schedule A/B that lists this property",
+    "kind": "text",
+    "why_needed": "Line 2 row 1 Brief description of the exempt property; without rows the schedule claims nothing exempt.",
+    "available_source": "AssetInfo.description via generate()['exemptions'][i]['property_description']",
+    "known": ""
+  },
+  {
+    "full_name": "undefined_2",
+    "pages": [1],
+    "line": "2",
+    "label": "Amount of the exemption you claim: $ specific dollar amount (row 1)",
+    "column": "Amount of the exemption you claim (Check only one box for each exemption)",
+    "kind": "amount",
+    "why_needed": "Line 2 row 1 'Amount of the exemption you claim' ($ specific amount).",
+    "available_source": "generate()['exemptions'][i]['amount_claimed']",
+    "known": ""
+  },
+  {
+    "full_name": "check 2.1",
+    "pages": [1],
+    "line": "2",
+    "label": "Amount of the exemption you claim: check only one box (row 1)",
+    "column": "Amount of the exemption you claim (Check only one box for each exemption)",
+    "kind": "checkbox",
+    "why_needed": "Line 2 row 1 'check only one box' ($ amount vs 100% of FMV up to statutory limit).",
+    "available_source": "generate() is_fully_exempt / is_unlimited",
+    "known": ""
+  },
+  {
+    "full_name": "undefined",
+    "pages": [1],
+    "line": "2",
+    "label": "Current value of the portion you own, $ (row 1)",
+    "column": "Current value of the portion you own (Copy the value from Schedule A/B)",
+    "kind": "amount",
+    "why_needed": "Line 2 row 1 'Current value of the portion you own' (copy from Schedule A/B).",
+    "available_source": "generate()['exemptions'][i]['current_value']",
+    "known": ""
+  },
+  {
+    "full_name": "Schedule AB",
+    "pages": [1],
+    "line": "2",
+    "label": "Line from Schedule A/B: (row 1)",
+    "column": "Brief description of the property and line on Schedule A/B that lists this property",
+    "kind": "text",
+    "why_needed": "Line 2 row 1 'Line from Schedule A/B' cross-reference.",
+    "available_source": "none (Schedule A/B line numbering not tracked)",
+    "known": ""
+  },
+  {
+    "full_name": "check 3",
+    "pages": [1],
+    "line": "3",
+    "label": "Are you claiming a homestead exemption of more than $214,000?",
+    "column": "",
+    "kind": "checkbox",
+    "why_needed": "Line 3 homestead > $214,000 (No/Yes) must be answered.",
+    "available_source": "AssetInfo real_property + exemption amount",
+    "known": ""
+  },
+  {
+    "full_name": "Case number",
+    "pages": [1, 2],
+    "line": "",
+    "label": "Case number (if known)",
+    "column": "",
+    "kind": "text",
+    "why_needed": "Case number header on both pages (blank is acceptable before filing).",
+    "available_source": "none",
+    "known": ""
+  },
+  {
+    "full_name": "page",
+    "pages": [1, 2],
+    "line": "",
+    "label": "page 1 of ___ (total number of pages)",
+    "column": "",
+    "kind": "count",
+    "why_needed": "page ___ of ___ total-page boxes.",
+    "available_source": "page count",
+    "known": ""
+  }
+]

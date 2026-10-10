@@ -1,0 +1,78 @@
+[
+  {
+    "pdf_field": "undefined_27",
+    "source": "derived",
+    "producer": "rule:total_secured_claims",
+    "produces": "derivations._total_secured_debts: sum of DebtInfo.amount_owed where is_secured=True, formatted '0.00' style (a dollar total)",
+    "targets": [
+      {
+        "full_name": "undefined_27",
+        "page": 3,
+        "tag": "T22",
+        "line": "Part 2",
+        "label": "On which line in Part 1 did you enter the creditor? (Part 2 entry 3)",
+        "column": ""
+      }
+    ],
+    "verdicts": ["wrong_box"],
+    "correct_target": "undefined_24",
+    "known": "NEW",
+    "note": "'undefined_27' is on page 3 (Part 2: List Others to Be Notified), entry 3, the box after 'On which line in Part 1 did you enter the creditor?' (x 526-547, y 332-344). A dollar total belongs in 'undefined_24' (page 2: 'If this is the last page of your form, add the dollar value totals from all pages'); the page subtotals 'undefined_9' (p1) and 'undefined_23' (p2) are also unbound. _emit() writes '0.00' (only None/'' are skipped), so every filing puts a number on a Part 2 page the form says not to submit when unused. Value is also near-always 0.00 because of known DIG-26."
+  },
+  {
+    "pdf_field": "Debtor 1",
+    "source": "derived",
+    "producer": "rule:full_name",
+    "produces": "derivations._full_name: f'{first_name} {middle_name} {last_name}' of session.debtor_info, double spaces collapsed (Debtor 1's legal name)",
+    "targets": [
+      {
+        "full_name": "Debtor 1",
+        "page": 1,
+        "tag": "T1",
+        "line": "",
+        "label": "Debtor 1 (First Name, Middle Name, Last Name)",
+        "column": ""
+      },
+      {
+        "full_name": "Debtor 1",
+        "page": 2,
+        "tag": "T1",
+        "line": "",
+        "label": "Debtor 1 (First Name, Middle Name, Last Name)",
+        "column": ""
+      },
+      {
+        "full_name": "Debtor 1",
+        "page": 3,
+        "tag": "T1",
+        "line": "",
+        "label": "Debtor 1 (First Name, Middle Name, Last Name)",
+        "column": ""
+      }
+    ],
+    "verdicts": ["correct"],
+    "correct_target": "Debtor 1",
+    "known": "",
+    "note": "Fills the 'Debtor 1' header on pages 1-3 (one field); every page asks for Debtor 1's name."
+  },
+  {
+    "pdf_field": "Bankruptcy District Information",
+    "source": "derived",
+    "producer": "rule:district_name",
+    "produces": "derivations 'district_name' = session.district.name, e.g. 'Northern District of Illinois'",
+    "targets": [
+      {
+        "full_name": "Bankruptcy District Information",
+        "page": 1,
+        "tag": "T3",
+        "line": "",
+        "label": "United States Bankruptcy Court for the: ____ District of ____",
+        "column": ""
+      }
+    ],
+    "verdicts": ["correct"],
+    "correct_target": "Bankruptcy District Information",
+    "known": "",
+    "note": "Combo box /Opt on this template contains 'Northern District of Illinois' exactly (Ff 393216 = combo+edit), so the value selects a real option."
+  }
+]
