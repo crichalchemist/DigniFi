@@ -12,8 +12,9 @@ class GeminiProvider(BaseOCRProvider):
     """
     Gemini vision/text provider.
 
-    Uses text mode (opendataloader-pdf extracted markdown → prompt) when image_data is empty.
-    Uses vision mode (pymupdf JPEG or direct image upload) when image_data is non-empty.
+    Uses text mode (opendataloader-pdf extracted markdown → prompt) when there are no images.
+    Uses vision mode (pymupdf JPEG pages or a direct image upload) otherwise, sending one
+    inline image part per page, in page order, before the prompt.
     extract() sets response_mime_type="application/json" for reliable structured output.
     """
 
@@ -23,12 +24,12 @@ class GeminiProvider(BaseOCRProvider):
 
     def classify(self, image_data: bytes, prompt: str) -> str:
         if image_data:
-            return self._vision(image_data, prompt)
+            return self._vision([image_data], prompt)
         return self._text(prompt)
 
-    def extract(self, image_data: bytes, prompt: str) -> str:
-        if image_data:
-            return self._vision(image_data, prompt, json_mode=True)
+    def extract(self, images: list[bytes], prompt: str) -> str:
+        if images:
+            return self._vision(images, prompt, json_mode=True)
         return self._text(prompt, json_mode=True)
 
     def _text(self, prompt: str, *, json_mode: bool = False) -> str:
@@ -44,16 +45,18 @@ class GeminiProvider(BaseOCRProvider):
         )
         return response.text or ""
 
-    def _vision(self, image_data: bytes, prompt: str, *, json_mode: bool = False) -> str:
+    def _vision(self, images: list[bytes], prompt: str, *, json_mode: bool = False) -> str:
         config = (
             types.GenerateContentConfig(response_mime_type="application/json")
             if json_mode
             else None
         )
-        image_part = types.Part.from_bytes(data=image_data, mime_type="image/jpeg")
+        image_parts = [
+            types.Part.from_bytes(data=image, mime_type="image/jpeg") for image in images
+        ]
         response = self._client.models.generate_content(
             model=self.model,
-            contents=[image_part, prompt],
+            contents=[*image_parts, prompt],
             config=config,
         )
         return response.text or ""

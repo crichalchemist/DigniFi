@@ -25,12 +25,14 @@ class BaseOCRProvider(ABC):
         pass
 
     @abstractmethod
-    def extract(self, image_data: bytes, prompt: str) -> str:
+    def extract(self, images: list[bytes], prompt: str) -> str:
         """
         Extract structured data from document.
 
         Args:
-            image_data: Raw image bytes (PDF/JPG/PNG)
+            images: JPEG bytes, one per page, in page order (a direct photo upload is a
+                one-item list). An empty list means text mode: the document's text is
+                already inside the prompt.
             prompt: Extraction prompt with JSON schema
 
         Returns:

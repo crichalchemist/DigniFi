@@ -74,7 +74,9 @@ jobs:
       - name: Run tests with coverage
         working-directory: backend
         # --cov-fail-under floors coverage (currently ~95%) so it can't silently regress.
-        run: pytest --cov=apps --cov=config --cov-fail-under=90 --tb=short -q
+        # -rs lists each skipped test with its reason, so a real-JVM contract test that
+        # skips (no `java` on the runner) shows in the log instead of passing quietly.
+        run: pytest --cov=apps --cov=config --cov-fail-under=90 --tb=short -q -rs
 
   security-scan:
     name: Security Scan
