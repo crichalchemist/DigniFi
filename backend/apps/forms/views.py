@@ -9,6 +9,7 @@ encrypted snapshot (GeneratedForm.field_values) that the API never returns.
 import json
 import logging
 
+import django_filters
 from django.db import transaction
 from django.http import HttpResponse
 from rest_framework import status, viewsets
@@ -146,6 +147,20 @@ def _generate_and_persist(session: IntakeSession, form_type: str, user) -> Gener
     return generated_form
 
 
+class GeneratedFormFilter(django_filters.FilterSet):
+    """GET /api/forms/?session=<id>, as the dashboard asks."""
+
+    # Only the requester's own sessions are valid choices, so another user's session id
+    # gets the same 400 as one that doesn't exist: the list never says which ids exist.
+    session = django_filters.ModelChoiceFilter(
+        queryset=lambda request: IntakeSession.objects.filter(user=request.user)
+    )
+
+    class Meta:
+        model = GeneratedForm
+        fields = ["session"]
+
+
 class GeneratedFormViewSet(viewsets.ReadOnlyModelViewSet):
     """
     ViewSet for bankruptcy form generation and management.
@@ -162,7 +177,7 @@ class GeneratedFormViewSet(viewsets.ReadOnlyModelViewSet):
 
     serializer_class = GeneratedFormSerializer
     permission_classes = [IsAuthenticated]
-    filterset_fields = ["session"]  # GET /api/forms/?session=<id>, as the dashboard asks
+    filterset_class = GeneratedFormFilter
 
     def get_queryset(self):
         """Return only forms for the authenticated user's sessions."""

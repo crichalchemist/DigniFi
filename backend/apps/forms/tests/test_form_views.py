@@ -544,22 +544,26 @@ class TestListRetrieve:
             assert resp.data["count"] == 1
 
     def test_list_shows_only_the_asked_sessions_forms(
-        self, api_client, session_with_debtor, user, district, other_session, other_user
+        self, api_client, session_with_debtor, user, district
     ):
         # The dashboard asks for one session; a filer's other sessions must not mix in.
         second = IntakeSession.objects.create(user=user, district=district)
-        for session, owner in [
-            (session_with_debtor, user),
-            (second, user),
-            (other_session, other_user),
-        ]:
-            GeneratedForm.objects.create(session=session, form_type="form_101", generated_by=owner)
+        for session in [session_with_debtor, second]:
+            GeneratedForm.objects.create(session=session, form_type="form_101", generated_by=user)
 
         resp = api_client.get("/api/forms/", {"session": second.id})
         assert [f["session"] for f in resp.data["results"]] == [second.id]
 
-        resp = api_client.get("/api/forms/", {"session": other_session.id})
-        assert resp.data["results"] == []
+    def test_list_never_says_whether_another_users_session_exists(
+        self, api_client, other_session, other_user
+    ):
+        GeneratedForm.objects.create(
+            session=other_session, form_type="form_101", generated_by=other_user
+        )
+        foreign = api_client.get("/api/forms/", {"session": other_session.id})
+        missing = api_client.get("/api/forms/", {"session": other_session.id + 1000})
+        assert foreign.status_code == missing.status_code == status.HTTP_400_BAD_REQUEST
+        assert foreign.data == missing.data
 
     def test_retrieve_own_form(self, api_client, session_with_debtor, user):
         form = GeneratedForm.objects.create(
