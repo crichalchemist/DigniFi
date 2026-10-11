@@ -11,7 +11,6 @@ const mockForm: GeneratedForm = {
   form_type_display: 'Form 101 - Voluntary Petition',
   status: 'generated',
   status_display: 'Generated',
-  form_data: {},
   pdf_file_path: '/media/forms/form_101_1.pdf',
   upl_disclaimer: 'This form was prepared using information you provided.',
   generated_by: 1,

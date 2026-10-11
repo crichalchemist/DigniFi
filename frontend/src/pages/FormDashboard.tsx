@@ -1,7 +1,7 @@
 /**
- * FormDashboard - Checklist of all 13 bankruptcy forms with status tracking
+ * FormDashboard - Checklist of the forms in the filer's packet, with status tracking
  *
- * Reached after completing the intake wizard. Shows all required forms,
+ * Reached after completing the intake wizard. Shows the forms that apply to this filer,
  * their generation status, and actions for download/filing.
  * Includes UPL disclaimer on every form interaction.
  */
@@ -17,21 +17,15 @@ import { UPL_FORM_DISCLAIMER } from '../constants/upl';
 import { Button } from '../components/common';
 import { PostTaskSurvey } from '../components/survey/PostTaskSurvey';
 import type { GeneratedForm, FormType, GenerateAllFormsResponse } from '../types/api';
-import { FORM_TYPE_METADATA } from '../types/api';
 import { trackEvent } from '../utils/analytics';
-
-/** All form types in filing order */
-const ALL_FORM_TYPES: FormType[] = (
-  Object.entries(FORM_TYPE_METADATA) as [FormType, { order: number }][]
-)
-  .sort(([, a], [, b]) => a.order - b.order)
-  .map(([key]) => key);
 
 type GenerateAllError = GenerateAllFormsResponse['errors'][number];
 
 export function FormDashboard() {
   const { session, isLoading: sessionLoading } = useIntake();
   const [forms, setForms] = useState<GeneratedForm[]>([]);
+  // The form types that apply to this filer, in filing order
+  const [packet, setPacket] = useState<FormType[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showSurvey, setShowSurvey] = useState(false);
@@ -44,8 +38,12 @@ export function FormDashboard() {
 
     setIsLoading(true);
     try {
-      const loadedForms = await api.forms.listBySession(session.id);
+      const [loadedForms, packetTypes] = await Promise.all([
+        api.forms.listBySession(session.id),
+        api.forms.packet(session.id),
+      ]);
       setForms(loadedForms);
+      setPacket(packetTypes);
       setError(null);
     } catch {
       setError('Unable to load your forms. Please try refreshing the page.');
@@ -118,7 +116,8 @@ export function FormDashboard() {
   }
 
   const filedCount = forms.filter((f) => f.status === 'filed').length;
-  const generatedCount = forms.length;
+  const generatedCount = forms.filter((f) => packet.includes(f.form_type)).length;
+  const totalCount = packet.length;
 
   return (
     <div className="form-dashboard">
@@ -157,34 +156,39 @@ export function FormDashboard() {
         </div>
       )}
 
-      {/* Progress summary */}
-      <div className="form-dashboard-progress" aria-label="Form generation progress">
-        <div className="form-dashboard-progress-bar">
-          <div
-            className="form-dashboard-progress-fill"
-            style={{ width: `${(generatedCount / ALL_FORM_TYPES.length) * 100}%` }}
-            role="progressbar"
-            aria-valuenow={generatedCount}
-            aria-valuemin={0}
-            aria-valuemax={ALL_FORM_TYPES.length}
-            aria-label={`${generatedCount} of ${ALL_FORM_TYPES.length} forms generated`}
-          />
-        </div>
-        <p className="form-dashboard-progress-text">
-          {generatedCount} of {ALL_FORM_TYPES.length} generated
-          {filedCount > 0 && ` | ${filedCount} filed`}
-        </p>
-      </div>
+      {/* Nothing to count until the packet has loaded */}
+      {totalCount > 0 && (
+        <>
+          {/* Progress summary */}
+          <div className="form-dashboard-progress" aria-label="Form generation progress">
+            <div className="form-dashboard-progress-bar">
+              <div
+                className="form-dashboard-progress-fill"
+                style={{ width: `${(generatedCount / totalCount) * 100}%` }}
+                role="progressbar"
+                aria-valuenow={generatedCount}
+                aria-valuemin={0}
+                aria-valuemax={totalCount}
+                aria-label={`${generatedCount} of ${totalCount} forms generated`}
+              />
+            </div>
+            <p className="form-dashboard-progress-text">
+              {generatedCount} of {totalCount} generated
+              {filedCount > 0 && ` | ${filedCount} filed`}
+            </p>
+          </div>
 
-      {/* Generate All button */}
-      <div className="form-dashboard-generate-all">
-        <GenerateAllButton
-          onGenerateAll={handleGenerateAll}
-          generatedCount={generatedCount}
-          totalCount={ALL_FORM_TYPES.length}
-          disabled={isLoading}
-        />
-      </div>
+          {/* Generate All button */}
+          <div className="form-dashboard-generate-all">
+            <GenerateAllButton
+              onGenerateAll={handleGenerateAll}
+              generatedCount={generatedCount}
+              totalCount={totalCount}
+              disabled={isLoading}
+            />
+          </div>
+        </>
+      )}
 
       {/* Form cards grid */}
       {isLoading ? (
@@ -193,7 +197,7 @@ export function FormDashboard() {
         </div>
       ) : (
         <div className="form-dashboard-grid">
-          {ALL_FORM_TYPES.map((formType) => (
+          {packet.map((formType) => (
             <FormCard
               key={formType}
               formType={formType}
