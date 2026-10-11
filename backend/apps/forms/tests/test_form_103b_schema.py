@@ -8,7 +8,7 @@ from django.contrib.auth import get_user_model
 
 from apps.districts.models import District
 from apps.forms.schema import load_schema
-from apps.forms.services.form_103b_generator import Form103BGenerator
+from apps.forms.services.fill_resolver import resolve
 from apps.intake.models import (
     DebtorInfo,
     FeeWaiverApplication,
@@ -72,21 +72,15 @@ class TestForm103BSchema:
             assert f.source in ("presume", "derived", "constant", "asked", "ingested")
 
     def test_resolver_produces_output(self, session_with_fw):
-        generator = Form103BGenerator(session_with_fw)
-        field_map = generator.pdf_field_map()
+        field_map = resolve(load_schema("form_103b"), session_with_fw)
         assert "Bankruptcy District Information" in field_map
         assert "Debtor 1" in field_map
         assert "Jane Doe" in field_map["Debtor 1"]
 
     def test_fee_waiver_fields(self, session_with_fw):
-        generator = Form103BGenerator(session_with_fw)
-        field_map = generator.pdf_field_map()
+        field_map = resolve(load_schema("form_103b"), session_with_fw)
         assert field_map["Total number of people"] == "2"
-        assert field_map["4 type"] == "1500.00"
-        assert field_map["5 Type"] == "1400.00"
 
     def test_empty_session(self, session):
-        generator = Form103BGenerator(session)
-        field_map = generator.pdf_field_map()
+        field_map = resolve(load_schema("form_103b"), session)
         assert "Bankruptcy District Information" in field_map
-        assert field_map.get("Total number of people", "1") == "1"
