@@ -234,6 +234,7 @@ TRAUMA_SENSITIVE_TERMS = {
 PDF_GENERATION_BACKEND = "PyPDF2"  # Alternative: 'pdfrw'
 PDF_FORMS_DIRECTORY = BASE_DIR.parent / "data" / "forms" / "pdfs"
 FORM_SCHEMAS_DIRECTORY = BASE_DIR.parent / "data" / "forms" / "schemas"
+FORM_INDEX_DIRECTORY = BASE_DIR.parent / "data" / "forms" / "field_index"
 PDF_OUTPUT_DIRECTORY = MEDIA_ROOT / "generated_forms"
 
 # ============================================

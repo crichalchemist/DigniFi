@@ -43,6 +43,9 @@ COPY backend/ .
 # Bake official AO court PDF templates into the image for PDF filling at runtime.
 COPY data/forms/pdfs/ /data/forms/pdfs/
 COPY data/forms/schemas/ /data/forms/schemas/
+# The verified field index: apps.forms.checks validates every schema against it at
+# migrate (the release phase), and the filler fills only the full names it lists.
+COPY data/forms/field_index/*.index.json /data/forms/field_index/
 
 # Wire up the frontend build artefacts:
 #   index.html → templates/frontend/index.html  (served by TemplateView catch-all)
