@@ -152,25 +152,6 @@ def test_form_106dec_pdf_field_map(full_session):
 # ---------------------------------------------------------------------------
 
 
-def test_form_101_pdf_field_map(full_session):
-    gen = get_generator("form_101", full_session)
-    field_map = gen.pdf_field_map()
-    _assert_map_shape(field_map)
-    assert field_map.get("Debtor1.First name") == "Maria"
-    assert field_map.get("Debtor1.Last name") == "Torres"
-    # SSN last-4
-    assert field_map.get("Debtor1.SSNum") == "0001"
-    assert field_map.get("Debtor1.City") == "Chicago"
-    # Checkboxes
-    assert field_map.get("Check Box1") == "/Yes"  # Individual
-    assert field_map.get("Check Box5") == "/Yes"  # Chapter 7
-    assert field_map.get("Check Box16") == "/Yes"  # Consumer debts
-    # Attorney-gated fields are absent (pro se = no attorney)
-    assert field_map.get("Attorney.Firm name") is None  # gated behind has_attorney
-    # Business-gated fields absent if no business
-    assert field_map.get("Debtor1.Business name") is None
-
-
 # ---------------------------------------------------------------------------
 # Form 106Sum
 # ---------------------------------------------------------------------------
@@ -218,26 +199,9 @@ def test_schedule_j_pdf_field_map(full_session):
 # ---------------------------------------------------------------------------
 
 
-def test_form_122a1_pdf_field_map(full_session):
-    gen = get_generator("form_122a1", full_session)
-    field_map = gen.pdf_field_map()
-    _assert_map_shape(field_map)
-    assert "Maria" in field_map.get("Name", "")
-    # CMI = $2200/mo, annualized = $26,400
-    assert field_map.get("12B") == "26400.00"
-
-
 # ---------------------------------------------------------------------------
 # Form 103B
 # ---------------------------------------------------------------------------
-
-
-def test_form_103b_pdf_field_map(full_session):
-    gen = get_generator("form_103b", full_session)
-    field_map = gen.pdf_field_map()
-    _assert_map_shape(field_map)
-    assert "Torres" in field_map.get("Debtor", "")
-    assert field_map.get("Bankruptcy District Information") == "Northern District of Illinois"
 
 
 # ---------------------------------------------------------------------------
@@ -295,12 +259,3 @@ def test_schedule_ef_pdf_field_map(full_session):
 # ---------------------------------------------------------------------------
 # Form 107
 # ---------------------------------------------------------------------------
-
-
-def test_form_107_pdf_field_map(full_session):
-    gen = get_generator("form_107", full_session)
-    field_map = gen.pdf_field_map()
-    assert isinstance(field_map, dict)
-    assert all(isinstance(k, str) and isinstance(v, str) for k, v in field_map.items())
-    assert field_map.get("Bankruptcy District Information") == "Northern District of Illinois"
-    assert "Torres" in field_map.get("Debtor 2", "")

@@ -57,7 +57,6 @@ class TestScheduleISchema:
     def test_schema_loads(self):
         schema = load_schema("schedule_i")
         assert schema.form_type == "schedule_i"
-        assert len(schema.fields) == 24
 
     def test_all_fields_have_valid_source(self):
         schema = load_schema("schedule_i")

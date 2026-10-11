@@ -1,0 +1,786 @@
+{
+  "totals": {
+    "exact": 709,
+    "single": 2,
+    "multi": 21,
+    "pre_decided": 5,
+    "kept_wrong_box": 11,
+    "placeholders_removed": 1194,
+    "tbd_removed": 50,
+    "tbd_converted": 1,
+    "template_version_corrected": 3,
+    "held_unmapped": 1,
+    "dropped": {
+      "joint_filer_gate": 19,
+      "debtor_2": 63,
+      "form_control": 2,
+      "no_widget": 4
+    }
+  },
+  "forms": {
+    "form_101": {
+      "renamed": {},
+      "dropped": [
+        {
+          "pdf_field": "Debtor2 SSNum",
+          "target": "Debtor2 SSNum",
+          "reason": "joint_filer_gate"
+        },
+        {
+          "pdf_field": "Debtor2.Tax Payer IDNum",
+          "target": "Debtor2.Tax Payer IDNum",
+          "reason": "joint_filer_gate"
+        },
+        {
+          "pdf_field": "Debtor2.Middle name_2",
+          "target": "Debtor2.Middle name_2",
+          "reason": "debtor_2"
+        },
+        {
+          "pdf_field": "Suffix Sr Jr II III_2",
+          "target": "Suffix Sr Jr II III_2",
+          "reason": "debtor_2"
+        },
+        {
+          "pdf_field": "Debtor2.First name_4",
+          "target": "Debtor2.First name_4",
+          "reason": "joint_filer_gate"
+        },
+        {
+          "pdf_field": "Debtor2.Middle name_4",
+          "target": "Debtor2.Middle name_4",
+          "reason": "joint_filer_gate"
+        },
+        {
+          "pdf_field": "Debtor2.Last name_4",
+          "target": "Debtor2.Last name_4",
+          "reason": "joint_filer_gate"
+        },
+        {
+          "pdf_field": "Debtor2.First name_6",
+          "target": "Debtor2.First name_6",
+          "reason": "joint_filer_gate"
+        },
+        {
+          "pdf_field": "Debtor2.Middle name_6",
+          "target": "Debtor2.Middle name_6",
+          "reason": "joint_filer_gate"
+        },
+        {
+          "pdf_field": "Debtor2.Last name_6",
+          "target": "Debtor2.Last name_6",
+          "reason": "joint_filer_gate"
+        },
+        {
+          "pdf_field": "Debtor2.Business name_4",
+          "target": "Debtor2.Business name_4",
+          "reason": "debtor_2"
+        },
+        {
+          "pdf_field": "Debtor2 Employer Identification Number2",
+          "target": "Debtor2 Employer Identification Number2",
+          "reason": "joint_filer_gate"
+        },
+        {
+          "pdf_field": "Debtor2.Street2",
+          "target": "Debtor2.Street2",
+          "reason": "debtor_2"
+        },
+        {
+          "pdf_field": "Debtor2.ZIP",
+          "target": "Debtor2.ZIP",
+          "reason": "debtor_2"
+        },
+        {
+          "pdf_field": "County_2",
+          "target": "County_2",
+          "reason": "debtor_2"
+        },
+        {
+          "pdf_field": "ZIP Code_4",
+          "target": "ZIP Code_4",
+          "reason": "debtor_2"
+        },
+        {
+          "pdf_field": "Debtor2.See 28 USC  1408 1_2",
+          "target": "Debtor2.See 28 USC  1408 1_2",
+          "reason": "debtor_2"
+        },
+        {
+          "pdf_field": "Debtor2.See 28 USC  1408 2_2",
+          "target": "Debtor2.See 28 USC  1408 2_2",
+          "reason": "debtor_2"
+        },
+        {
+          "pdf_field": "Debtor2.See 28 USC  1408 3_2",
+          "target": "Debtor2.See 28 USC  1408 3_2",
+          "reason": "debtor_2"
+        },
+        {
+          "pdf_field": "Debtor2.See 28 USC  1408 4_2",
+          "target": "Debtor2.See 28 USC  1408 4_2",
+          "reason": "debtor_2"
+        },
+        {
+          "pdf_field": "Debtor2.Contact phone",
+          "target": "Debtor2.Contact phone",
+          "reason": "debtor_2"
+        },
+        {
+          "pdf_field": "Button.Print1",
+          "target": "Button.Print1",
+          "reason": "form_control"
+        }
+      ],
+      "kept_wrong_box": [],
+      "unmapped_groups": ["Check Box1", "Check Box5", "Check Box16"],
+      "held_unmapped": [],
+      "tbd_removed": [],
+      "tbd_converted": [],
+      "placeholders_removed": 3,
+      "template_version_corrected": false
+    },
+    "form_103b": {
+      "renamed": {
+        "Debtor": "Debtor 1"
+      },
+      "dropped": [],
+      "kept_wrong_box": [],
+      "unmapped_groups": [],
+      "held_unmapped": [],
+      "tbd_removed": [],
+      "tbd_converted": [],
+      "placeholders_removed": 36,
+      "template_version_corrected": true
+    },
+    "form_106dec": {
+      "renamed": {
+        "signature": "Debtor1.signature"
+      },
+      "dropped": [
+        {
+          "pdf_field": "Debtor 2",
+          "target": "Debtor 2",
+          "reason": "joint_filer_gate"
+        },
+        {
+          "pdf_field": "Check if this is an",
+          "target": "Check if this is an",
+          "reason": "joint_filer_gate"
+        }
+      ],
+      "kept_wrong_box": [],
+      "unmapped_groups": [],
+      "held_unmapped": [],
+      "tbd_removed": [],
+      "tbd_converted": [],
+      "placeholders_removed": 1,
+      "template_version_corrected": false
+    },
+    "form_106sum": {
+      "renamed": {},
+      "dropped": [
+        {
+          "pdf_field": "Debtor 2",
+          "target": "Debtor 2",
+          "reason": "joint_filer_gate"
+        },
+        {
+          "pdf_field": "Check if this is an",
+          "target": "Check if this is an",
+          "reason": "joint_filer_gate"
+        }
+      ],
+      "kept_wrong_box": [],
+      "unmapped_groups": [],
+      "held_unmapped": [],
+      "tbd_removed": [],
+      "tbd_converted": [],
+      "placeholders_removed": 7,
+      "template_version_corrected": false
+    },
+    "form_107": {
+      "renamed": {},
+      "dropped": [
+        {
+          "pdf_field": "Debtor 2",
+          "target": "Debtor 2",
+          "reason": "debtor_2"
+        },
+        {
+          "pdf_field": "check1b",
+          "target": "check1b",
+          "reason": "debtor_2"
+        },
+        {
+          "pdf_field": "check1b2",
+          "target": "check1b2",
+          "reason": "debtor_2"
+        },
+        {
+          "pdf_field": "Street address 1b Debtor 2",
+          "target": "Street address 1b Debtor 2",
+          "reason": "debtor_2"
+        },
+        {
+          "pdf_field": "Date from 1b Debtor2",
+          "target": "Date from 1b Debtor2",
+          "reason": "debtor_2"
+        },
+        {
+          "pdf_field": "Date to 1b Debtor2",
+          "target": "Date to 1b Debtor2",
+          "reason": "debtor_2"
+        },
+        {
+          "pdf_field": "Street address 2b Debtor 2",
+          "target": "Street address 2b Debtor 2",
+          "reason": "debtor_2"
+        },
+        {
+          "pdf_field": "City 1b Debtor2",
+          "target": "City 1b Debtor2",
+          "reason": "debtor_2"
+        },
+        {
+          "pdf_field": "State 1b Debtor2",
+          "target": "State 1b Debtor2",
+          "reason": "debtor_2"
+        },
+        {
+          "pdf_field": "ZIP Code 1b Debtor 2",
+          "target": "ZIP Code 1b Debtor 2",
+          "reason": "debtor_2"
+        },
+        {
+          "pdf_field": "check1c",
+          "target": "check1c",
+          "reason": "debtor_2"
+        },
+        {
+          "pdf_field": "check1c2",
+          "target": "check1c2",
+          "reason": "debtor_2"
+        },
+        {
+          "pdf_field": "Street address 1c Debtor 2",
+          "target": "Street address 1c Debtor 2",
+          "reason": "debtor_2"
+        },
+        {
+          "pdf_field": "Date from 1c Debtor2",
+          "target": "Date from 1c Debtor2",
+          "reason": "debtor_2"
+        },
+        {
+          "pdf_field": "Street address 2c Debtor 2",
+          "target": "Street address 2c Debtor 2",
+          "reason": "debtor_2"
+        },
+        {
+          "pdf_field": "Date to 1c Debtor2",
+          "target": "Date to 1c Debtor2",
+          "reason": "debtor_2"
+        },
+        {
+          "pdf_field": "City 1c Debtor2",
+          "target": "City 1c Debtor2",
+          "reason": "debtor_2"
+        },
+        {
+          "pdf_field": "State 1c Debtor2",
+          "target": "State 1c Debtor2",
+          "reason": "debtor_2"
+        },
+        {
+          "pdf_field": "ZIP Code 1c Debtor 2",
+          "target": "ZIP Code 1c Debtor 2",
+          "reason": "debtor_2"
+        },
+        {
+          "pdf_field": "check4a Debtor 2",
+          "target": "check4a Debtor 2",
+          "reason": "debtor_2"
+        },
+        {
+          "pdf_field": "Income 4a Debtor 2",
+          "target": "Income 4a Debtor 2",
+          "reason": "debtor_2"
+        },
+        {
+          "pdf_field": "check4b Debtor 2",
+          "target": "check4b Debtor 2",
+          "reason": "debtor_2"
+        },
+        {
+          "pdf_field": "check4c Debtor 2",
+          "target": "check4c Debtor 2",
+          "reason": "debtor_2"
+        },
+        {
+          "pdf_field": "Income 4b Debtor 2",
+          "target": "Income 4b Debtor 2",
+          "reason": "debtor_2"
+        },
+        {
+          "pdf_field": "check4d Debtor 2",
+          "target": "check4d Debtor 2",
+          "reason": "debtor_2"
+        },
+        {
+          "pdf_field": "check4e Debtor 2",
+          "target": "check4e Debtor 2",
+          "reason": "debtor_2"
+        },
+        {
+          "pdf_field": "check4f Debtor 2",
+          "target": "check4f Debtor 2",
+          "reason": "debtor_2"
+        },
+        {
+          "pdf_field": "Income 4c Debtor 2",
+          "target": "Income 4c Debtor 2",
+          "reason": "debtor_2"
+        },
+        {
+          "pdf_field": "Income source 5a Debtor 2",
+          "target": "Income source 5a Debtor 2",
+          "reason": "debtor_2"
+        },
+        {
+          "pdf_field": "Income 5a Debtor 2",
+          "target": "Income 5a Debtor 2",
+          "reason": "debtor_2"
+        },
+        {
+          "pdf_field": "Income source 5b Debtor 2",
+          "target": "Income source 5b Debtor 2",
+          "reason": "debtor_2"
+        },
+        {
+          "pdf_field": "Income 5b Debtor 2",
+          "target": "Income 5b Debtor 2",
+          "reason": "debtor_2"
+        },
+        {
+          "pdf_field": "Income source 5c Debtor 2",
+          "target": "Income source 5c Debtor 2",
+          "reason": "debtor_2"
+        },
+        {
+          "pdf_field": "Income 5c Debtor 2",
+          "target": "Income 5c Debtor 2",
+          "reason": "debtor_2"
+        },
+        {
+          "pdf_field": "Income source 5d Debtor 2",
+          "target": "Income source 5d Debtor 2",
+          "reason": "debtor_2"
+        },
+        {
+          "pdf_field": "Income 5d Debtor 2",
+          "target": "Income 5d Debtor 2",
+          "reason": "debtor_2"
+        },
+        {
+          "pdf_field": "Income source 5e Debtor 2",
+          "target": "Income source 5e Debtor 2",
+          "reason": "debtor_2"
+        },
+        {
+          "pdf_field": "Income 5e Debtor 2",
+          "target": "Income 5e Debtor 2",
+          "reason": "debtor_2"
+        },
+        {
+          "pdf_field": "Income source 5f Debtor 2",
+          "target": "Income source 5f Debtor 2",
+          "reason": "debtor_2"
+        },
+        {
+          "pdf_field": "Income 5f Debtor 2",
+          "target": "Income 5f Debtor 2",
+          "reason": "debtor_2"
+        },
+        {
+          "pdf_field": "Income source 5g Debtor 2",
+          "target": "Income source 5g Debtor 2",
+          "reason": "debtor_2"
+        },
+        {
+          "pdf_field": "Income 5g Debtor 2",
+          "target": "Income 5g Debtor 2",
+          "reason": "debtor_2"
+        },
+        {
+          "pdf_field": "Income source 5h Debtor 2",
+          "target": "Income source 5h Debtor 2",
+          "reason": "debtor_2"
+        },
+        {
+          "pdf_field": "Income 5h Debtor 2",
+          "target": "Income 5h Debtor 2",
+          "reason": "debtor_2"
+        },
+        {
+          "pdf_field": "Income source 5i Debtor 2",
+          "target": "Income source 5i Debtor 2",
+          "reason": "debtor_2"
+        },
+        {
+          "pdf_field": "Income 5i Debtor 2",
+          "target": "Income 5i Debtor 2",
+          "reason": "debtor_2"
+        },
+        {
+          "pdf_field": "Signature of Debtor 2",
+          "target": "Signature of Debtor 2",
+          "reason": "debtor_2"
+        },
+        {
+          "pdf_field": "Date signed Debtor 2",
+          "target": "Date signed Debtor 2",
+          "reason": "debtor_2"
+        },
+        {
+          "pdf_field": "attach",
+          "target": "attach",
+          "reason": "form_control"
+        }
+      ],
+      "kept_wrong_box": [],
+      "unmapped_groups": [],
+      "held_unmapped": [],
+      "tbd_removed": [],
+      "tbd_converted": [],
+      "placeholders_removed": 1,
+      "template_version_corrected": false
+    },
+    "form_121": {
+      "renamed": {
+        "signature": "Debtor1.signature"
+      },
+      "dropped": [
+        {
+          "pdf_field": "Check Box2",
+          "target": "Check Box2",
+          "reason": "debtor_2"
+        },
+        {
+          "pdf_field": "Debtor2a.First name",
+          "target": null,
+          "reason": "no_widget"
+        },
+        {
+          "pdf_field": "Debtor2a.Middle name",
+          "target": null,
+          "reason": "no_widget"
+        },
+        {
+          "pdf_field": "Debtor2a.Last name",
+          "target": null,
+          "reason": "no_widget"
+        },
+        {
+          "pdf_field": "Debtor2a SSNum",
+          "target": "Debtor2a SSNum",
+          "reason": "joint_filer_gate"
+        }
+      ],
+      "kept_wrong_box": [],
+      "unmapped_groups": [],
+      "held_unmapped": ["Check Box1"],
+      "tbd_removed": [],
+      "tbd_converted": [],
+      "placeholders_removed": 7,
+      "template_version_corrected": false
+    },
+    "form_122a1": {
+      "renamed": {
+        "Name": "Debtor1.Name",
+        "0": "Debto1.Quest2.0",
+        "Quest3": "Debto1.Quest3",
+        "Quest4": "Debto1.Quest4",
+        "Quest5A": "Debto1.Quest5A",
+        "Quest5B": "Debto1.Quest5B",
+        "Quest6A": "Debto1.Quest6A",
+        "Quest6B": "Debto1.Quest6B",
+        "Quest7": "Debto1.Quest7",
+        "Quest8A": "Debto1.Quest8A",
+        "Quest9": "Debto1.Quest9",
+        "Quest10A": "Debto1.Quest10A",
+        "Quest10B": "Debto1.Quest10B",
+        "Quest10C": "Debto1.Quest10C",
+        "sig": "Debtor1.sig",
+        "Date signed": "Debtor1.Date signed"
+      },
+      "dropped": [
+        {
+          "pdf_field": "2",
+          "target": "Debto2.Quest2.2",
+          "reason": "debtor_2"
+        }
+      ],
+      "kept_wrong_box": [
+        {
+          "pdf_field": "Debto1.Quest3",
+          "audit_target": "Debto1.Quest5C"
+        },
+        {
+          "pdf_field": "Debto1.Quest5A",
+          "audit_target": "Debto1.Quest9"
+        },
+        {
+          "pdf_field": "Debto1.Quest5B",
+          "audit_target": "leave blank"
+        },
+        {
+          "pdf_field": "Debto1.Quest6A",
+          "audit_target": "Debto1.Quest8.0"
+        },
+        {
+          "pdf_field": "Debto1.Quest6B",
+          "audit_target": "Debto1.Quest4"
+        },
+        {
+          "pdf_field": "Debto1.Quest7",
+          "audit_target": "Debto1.Quest10A"
+        },
+        {
+          "pdf_field": "Debto1.Quest8A",
+          "audit_target": "Debto1.Quest11"
+        },
+        {
+          "pdf_field": "Debto1.Quest9",
+          "audit_target": "13B"
+        },
+        {
+          "pdf_field": "Debto1.Quest10A",
+          "audit_target": "leave blank"
+        },
+        {
+          "pdf_field": "Debto1.Quest10B",
+          "audit_target": "leave blank"
+        },
+        {
+          "pdf_field": "Debto1.Quest10C",
+          "audit_target": "leave blank"
+        }
+      ],
+      "unmapped_groups": [],
+      "held_unmapped": [],
+      "tbd_removed": [],
+      "tbd_converted": [],
+      "placeholders_removed": 1,
+      "template_version_corrected": true
+    },
+    "form_122a1_supp": {
+      "renamed": {
+        "Name": "Debtor1.Name"
+      },
+      "dropped": [],
+      "kept_wrong_box": [],
+      "unmapped_groups": [],
+      "held_unmapped": [],
+      "tbd_removed": [],
+      "tbd_converted": [],
+      "placeholders_removed": 8,
+      "template_version_corrected": false
+    },
+    "form_122a2": {
+      "renamed": {
+        "Name": "Debtor1.Name",
+        "sig": "Debtor1.sig",
+        "Date signed": "Debtor1.Date signed"
+      },
+      "dropped": [],
+      "kept_wrong_box": [],
+      "unmapped_groups": [],
+      "held_unmapped": [],
+      "tbd_removed": [],
+      "tbd_converted": [],
+      "placeholders_removed": 94,
+      "template_version_corrected": false
+    },
+    "schedule_a_b": {
+      "renamed": {},
+      "dropped": [
+        {
+          "pdf_field": "Debtor 2",
+          "target": "Debtor 2",
+          "reason": "joint_filer_gate"
+        },
+        {
+          "pdf_field": "17",
+          "target": null,
+          "reason": "no_widget"
+        }
+      ],
+      "kept_wrong_box": [],
+      "unmapped_groups": [],
+      "held_unmapped": [],
+      "tbd_removed": [],
+      "tbd_converted": [],
+      "placeholders_removed": 373,
+      "template_version_corrected": false
+    },
+    "schedule_c": {
+      "renamed": {},
+      "dropped": [],
+      "kept_wrong_box": [],
+      "unmapped_groups": [],
+      "held_unmapped": [],
+      "tbd_removed": [],
+      "tbd_converted": [],
+      "placeholders_removed": 98,
+      "template_version_corrected": false
+    },
+    "schedule_d": {
+      "renamed": {},
+      "dropped": [],
+      "kept_wrong_box": [],
+      "unmapped_groups": [],
+      "held_unmapped": [],
+      "tbd_removed": [],
+      "tbd_converted": [],
+      "placeholders_removed": 190,
+      "template_version_corrected": false
+    },
+    "schedule_e_f": {
+      "renamed": {},
+      "dropped": [
+        {
+          "pdf_field": "Debtor 2",
+          "target": "Debtor 2",
+          "reason": "debtor_2"
+        }
+      ],
+      "kept_wrong_box": [],
+      "unmapped_groups": [],
+      "held_unmapped": [],
+      "tbd_removed": [],
+      "tbd_converted": [],
+      "placeholders_removed": 333,
+      "template_version_corrected": false
+    },
+    "schedule_g": {
+      "renamed": {},
+      "dropped": [
+        {
+          "pdf_field": "Debtor 2",
+          "target": "Debtor 2",
+          "reason": "joint_filer_gate"
+        }
+      ],
+      "kept_wrong_box": [],
+      "unmapped_groups": [],
+      "held_unmapped": [],
+      "tbd_removed": [],
+      "tbd_converted": [],
+      "placeholders_removed": 19,
+      "template_version_corrected": false
+    },
+    "schedule_h": {
+      "renamed": {},
+      "dropped": [
+        {
+          "pdf_field": "Debtor 2",
+          "target": "Debtor 2",
+          "reason": "joint_filer_gate"
+        }
+      ],
+      "kept_wrong_box": [],
+      "unmapped_groups": [],
+      "held_unmapped": [],
+      "tbd_removed": [],
+      "tbd_converted": [],
+      "placeholders_removed": 23,
+      "template_version_corrected": false
+    },
+    "schedule_i": {
+      "renamed": {},
+      "dropped": [
+        {
+          "pdf_field": "Debtor 2",
+          "target": "Debtor 2",
+          "reason": "joint_filer_gate"
+        }
+      ],
+      "kept_wrong_box": [],
+      "unmapped_groups": [],
+      "held_unmapped": [],
+      "tbd_removed": [],
+      "tbd_converted": [],
+      "placeholders_removed": 0,
+      "template_version_corrected": true
+    },
+    "schedule_j": {
+      "renamed": {},
+      "dropped": [
+        {
+          "pdf_field": "Debtor 2",
+          "target": "Debtor 2",
+          "reason": "joint_filer_gate"
+        }
+      ],
+      "kept_wrong_box": [],
+      "unmapped_groups": [],
+      "held_unmapped": [],
+      "tbd_removed": [
+        "Supplemental income date",
+        "Dependant Relation 2a",
+        "Dependant age 2a",
+        "Dependant Relation 2b",
+        "Dependant age 2b",
+        "Dependant Relation 2c",
+        "Dependant age 2c",
+        "Dependant Relation 2d",
+        "Dependant age 2d",
+        "Dependant Relation 2e",
+        "Dependant age 2e",
+        "4",
+        "4a",
+        "4b",
+        "4c",
+        "4d",
+        "5",
+        "6a",
+        "6b",
+        "6c",
+        "Other 6d",
+        "6d",
+        "7",
+        "8",
+        "9",
+        "11",
+        "13",
+        "Other 15d",
+        "15d",
+        "Other 16",
+        "Other 17c",
+        "Other 17d",
+        "17d",
+        "18",
+        "Other 19",
+        "19",
+        "20b",
+        "20c",
+        "20d",
+        "20e",
+        "Other 21",
+        "22b",
+        "22c",
+        "23b",
+        "23c",
+        "Other 24",
+        "Print1",
+        "SaveAs",
+        "attach",
+        "Reset"
+      ],
+      "tbd_converted": ["Bankruptcy District Information"],
+      "placeholders_removed": 0,
+      "template_version_corrected": false
+    }
+  }
+}

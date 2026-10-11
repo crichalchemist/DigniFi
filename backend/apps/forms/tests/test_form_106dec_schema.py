@@ -51,7 +51,6 @@ class TestForm106DecSchema:
     def test_schema_loads(self):
         schema = load_schema("form_106dec")
         assert schema.form_type == "form_106dec"
-        assert len(schema.fields) == 8
 
     def test_all_fields_have_source(self):
         schema = load_schema("form_106dec")

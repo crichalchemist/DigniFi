@@ -37,10 +37,9 @@ class UIFieldSpec:
 class FieldSpec:
     """Specification for a single form field."""
 
-    pdf_field: str
+    pdf_field: str  # an index full_name (apps.forms.field_index)
     type: str  # text | checkbox | radio | choice
-    source: str  # constant | derived | asked | ingested | signature | TBD
-    on_states: tuple[str, ...]
+    source: str  # constant | derived | asked | ingested | signature
     page: int
     label: str
     required: bool
@@ -53,6 +52,9 @@ class FieldSpec:
     repeat_capacity: int | None
     row: int | None
     legal_review: bool
+    # checkbox/radio only: normalised answer → export state. {"true": state} is
+    # a single box; {} means not mapped yet, and the binding emits nothing.
+    choices: dict[str, str] | None = None
     ui: UIFieldSpec | None = None
 
 

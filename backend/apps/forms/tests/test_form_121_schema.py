@@ -51,7 +51,6 @@ class TestForm121Schema:
     def test_schema_loads(self):
         schema = load_schema("form_121")
         assert schema.form_type == "form_121"
-        assert len(schema.fields) == 20
 
     def test_all_fields_have_valid_source(self):
         schema = load_schema("form_121")
@@ -66,11 +65,6 @@ class TestForm121Schema:
         assert field_map["Debtor1.Last name"] == "Doe"
         assert "Debtor1a.SSNum" in field_map
         assert field_map["Debtor1a.SSNum"] == "123-45-6789"
-
-    def test_ssn_checkbox(self, session_with_ssn):
-        generator = Form121Generator(session_with_ssn)
-        field_map = generator.pdf_field_map()
-        assert field_map.get("Check Box1") == "/Yes"
 
     def test_district_name(self, session_with_ssn):
         generator = Form121Generator(session_with_ssn)

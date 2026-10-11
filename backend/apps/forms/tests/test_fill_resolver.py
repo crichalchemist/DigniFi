@@ -8,7 +8,12 @@ from django.contrib.auth import get_user_model
 from apps.districts.models import District
 from apps.documents.models import IngestedAggregate
 from apps.forms.schema import FieldSpec, FormSchema
-from apps.forms.services.fill_resolver import RepeatOverflow, resolve, resolve_binding
+from apps.forms.services.fill_resolver import (
+    RepeatOverflow,
+    UnmappedChoice,
+    resolve,
+    resolve_binding,
+)
 from apps.intake.models import (
     DebtorInfo,
     FormAnswer,
@@ -75,7 +80,6 @@ def _field(**kw):
         "pdf_field": "F",
         "type": "text",
         "source": "constant",
-        "on_states": [],
         "page": 1,
         "label": "",
         "required": False,
@@ -147,25 +151,51 @@ def test_none_value_dropped(session):
     assert "Inert" not in resolve(schema, session)
 
 
-def test_checkbox_emits_on_state(session):
-    FormAnswer.objects.create(
-        session=session,
-        form_type="form_107",
-        field_key="q1",
-        value="yes",
-    )
+def _answer(session, value):
+    FormAnswer.objects.create(session=session, form_type="form_107", field_key="q1", value=value)
+
+
+def _box(**kw):
+    return _field(type="checkbox", source="asked", binding="answer:form_107.q1", **kw)
+
+
+def test_single_box_ticks_for_a_yes_answer(session):
+    _answer(session, "Yes")
+    schema = _schema([_box(pdf_field="Box", choices={"true": "/Yes"})])
+    assert resolve(schema, session)["Box"] == "/Yes"
+
+
+def test_single_box_stays_off_for_a_no_answer(session):
+    # The old _emit ticked any non-empty value, "false" included (DIG-68).
+    _answer(session, "false")
+    schema = _schema([_box(pdf_field="Box", choices={"true": "/Yes"})])
+    assert "Box" not in resolve(schema, session)
+
+
+def test_option_group_ticks_the_chosen_option(session):
+    _answer(session, "Chapter_7")
+    choices = {"chapter_7": "/Chapter 7", "chapter_13": "/Chapter 13"}
+    schema = _schema([_box(pdf_field="Chapter", choices=choices)])
+    assert resolve(schema, session)["Chapter"] == "/Chapter 7"
+
+
+def test_answer_with_no_box_raises_instead_of_printing_nothing(session):
+    _answer(session, "maybe")
+    schema = _schema([_box(pdf_field="Box", choices={"true": "/Yes"})])
+    with pytest.raises(UnmappedChoice):
+        resolve(schema, session)
+
+
+def test_unmapped_box_emits_nothing_and_reads_no_value(session):
+    # An unknown rule would raise if the resolver looked the value up.
     schema = _schema(
         [
             _field(
-                pdf_field="Box",
-                type="checkbox",
-                source="asked",
-                on_states=["/Yes"],
-                binding="answer:form_107.q1",
-            ),
+                pdf_field="Box", type="checkbox", source="derived", rule="no_such_rule", choices={}
+            )
         ]
     )
-    assert resolve(schema, session)["Box"] == "/Yes"
+    assert resolve(schema, session) == {}
 
 
 def test_repeat_group_expands_rows(session):

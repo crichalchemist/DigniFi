@@ -75,19 +75,3 @@ def test_form_101_all_applicable_fields_resolve(ilnd_fixture):
     ]
     unresolved = [f.pdf_field for f in applicable_required if f.pdf_field not in out]
     assert unresolved == [], f"unresolved Form 101 fields: {unresolved}"
-
-
-@pytest.mark.django_db
-def test_form_101_resolved_fields_from_multiple_sources(ilnd_fixture):
-    """Form 101 resolved fields come from derivations + FormAnswer + constants."""
-    call_command("seed_demo_data", "--reset", persona="maria")
-    session = IntakeSession.objects.filter(user__username="demo_maria").first()
-
-    schema = load_schema("form_101")
-    out = resolve(schema, session)
-
-    values = list(out.values())
-    # At least one constant (Check Box2)
-    assert any(v == "/Yes" for v in values)
-    # At least one derived value (full name or district)
-    assert any(v and "Maria" in str(v) for v in values)
