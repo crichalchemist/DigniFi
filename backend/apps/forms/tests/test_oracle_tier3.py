@@ -192,7 +192,12 @@ CASES = list(_cases())
 
 @cache
 def _printed(persona):
-    """(form_type, full name) → what the persona's filled forms show there."""
+    """
+    (form_type, full name) → what the persona's filled forms show there.
+
+    A box shows its tick, the /AS of each widget that isn't /Off, and never its /V
+    (spec §6). A text box has no /AS, and shows its /V.
+    """
     if not District.objects.filter(code="ilnd").exists():
         call_command("loaddata", "ilnd_2025_data", verbosity=0)
     call_command("seed_demo_data", "--reset", persona=persona, verbosity=0)
@@ -201,7 +206,12 @@ def _printed(persona):
     for form_type in EXPECTED[persona]:
         values = build_field_values(form_type, session)
         for w in read_widgets(PDFFormFiller().fill(form_type, values)):
-            shown = w.state if w.state not in (None, "/Off") else w.value
+            if w.state is None:
+                shown = w.value
+            elif w.state != "/Off":
+                shown = w.state
+            else:
+                continue
             if shown is not None:
                 printed.setdefault((form_type, w.full_name), set()).add(shown)
     return printed
@@ -218,7 +228,9 @@ def _amount(text):
 @pytest.mark.parametrize("form_type,pdf_field,case,expected", CASES)
 def test_persona_packet_prints_the_right_figure(form_type, pdf_field, case, expected):
     shown = _printed(case).get((form_type, pdf_field), set())
-    if _amount(expected) is not None and not expected.startswith("/"):
+    if expected.startswith("/"):  # a box: this tick and no other
+        assert shown == {expected}, f"wrong_value: ticks {sorted(shown)}, expected {expected}"
+    elif _amount(expected) is not None:
         assert {_amount(s) for s in shown} == {
             _amount(expected)
         }, f"wrong_value: prints {sorted(shown)}, expected {expected}"
