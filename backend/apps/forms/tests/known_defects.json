@@ -678,5 +678,461 @@
     "case": "",
     "class": "wrong_box",
     "ticket": "DIG-52"
+  },
+  {
+    "form_type": "form_101",
+    "pdf_field": "Check Box1",
+    "tier": "3",
+    "case": "deshawn",
+    "class": "wrong_value",
+    "ticket": "DIG-68"
+  },
+  {
+    "form_type": "form_101",
+    "pdf_field": "Check Box1",
+    "tier": "3",
+    "case": "james",
+    "class": "wrong_value",
+    "ticket": "DIG-68"
+  },
+  {
+    "form_type": "form_101",
+    "pdf_field": "Check Box1",
+    "tier": "3",
+    "case": "maria",
+    "class": "wrong_value",
+    "ticket": "DIG-68"
+  },
+  {
+    "form_type": "form_101",
+    "pdf_field": "Check Box1",
+    "tier": "3",
+    "case": "priya",
+    "class": "wrong_value",
+    "ticket": "DIG-68"
+  },
+  {
+    "form_type": "form_101",
+    "pdf_field": "Check Box1",
+    "tier": "3",
+    "case": "sarah",
+    "class": "wrong_value",
+    "ticket": "DIG-68"
+  },
+  {
+    "form_type": "form_106sum",
+    "pdf_field": "3c",
+    "tier": "3",
+    "case": "deshawn",
+    "class": "wrong_value",
+    "ticket": "DIG-79"
+  },
+  {
+    "form_type": "form_106sum",
+    "pdf_field": "3c",
+    "tier": "3",
+    "case": "james",
+    "class": "wrong_value",
+    "ticket": "DIG-79"
+  },
+  {
+    "form_type": "form_106sum",
+    "pdf_field": "4",
+    "tier": "3",
+    "case": "deshawn",
+    "class": "wrong_value",
+    "ticket": "DIG-79"
+  },
+  {
+    "form_type": "form_106sum",
+    "pdf_field": "4",
+    "tier": "3",
+    "case": "james",
+    "class": "wrong_value",
+    "ticket": "DIG-79"
+  },
+  {
+    "form_type": "form_106sum",
+    "pdf_field": "4",
+    "tier": "3",
+    "case": "maria",
+    "class": "wrong_value",
+    "ticket": "DIG-79"
+  },
+  {
+    "form_type": "form_106sum",
+    "pdf_field": "4",
+    "tier": "3",
+    "case": "priya",
+    "class": "wrong_value",
+    "ticket": "DIG-79"
+  },
+  {
+    "form_type": "form_106sum",
+    "pdf_field": "4",
+    "tier": "3",
+    "case": "sarah",
+    "class": "wrong_value",
+    "ticket": "DIG-79"
+  },
+  {
+    "form_type": "form_106sum",
+    "pdf_field": "5",
+    "tier": "3",
+    "case": "deshawn",
+    "class": "wrong_value",
+    "ticket": "DIG-79"
+  },
+  {
+    "form_type": "form_106sum",
+    "pdf_field": "5",
+    "tier": "3",
+    "case": "james",
+    "class": "wrong_value",
+    "ticket": "DIG-79"
+  },
+  {
+    "form_type": "form_106sum",
+    "pdf_field": "5",
+    "tier": "3",
+    "case": "maria",
+    "class": "wrong_value",
+    "ticket": "DIG-79"
+  },
+  {
+    "form_type": "form_106sum",
+    "pdf_field": "5",
+    "tier": "3",
+    "case": "priya",
+    "class": "wrong_value",
+    "ticket": "DIG-79"
+  },
+  {
+    "form_type": "form_106sum",
+    "pdf_field": "5",
+    "tier": "3",
+    "case": "sarah",
+    "class": "wrong_value",
+    "ticket": "DIG-79"
+  },
+  {
+    "form_type": "form_122a1",
+    "pdf_field": "13B",
+    "tier": "3",
+    "case": "deshawn",
+    "class": "wrong_value",
+    "ticket": "DIG-59"
+  },
+  {
+    "form_type": "form_122a1",
+    "pdf_field": "13B",
+    "tier": "3",
+    "case": "james",
+    "class": "wrong_value",
+    "ticket": "DIG-59"
+  },
+  {
+    "form_type": "form_122a1",
+    "pdf_field": "13B",
+    "tier": "3",
+    "case": "maria",
+    "class": "wrong_value",
+    "ticket": "DIG-59"
+  },
+  {
+    "form_type": "form_122a1",
+    "pdf_field": "13B",
+    "tier": "3",
+    "case": "priya",
+    "class": "wrong_value",
+    "ticket": "DIG-59"
+  },
+  {
+    "form_type": "form_122a1",
+    "pdf_field": "13B",
+    "tier": "3",
+    "case": "sarah",
+    "class": "wrong_value",
+    "ticket": "DIG-59"
+  },
+  {
+    "form_type": "form_122a1",
+    "pdf_field": "13C",
+    "tier": "3",
+    "case": "deshawn",
+    "class": "wrong_value",
+    "ticket": "DIG-59"
+  },
+  {
+    "form_type": "form_122a1",
+    "pdf_field": "13C",
+    "tier": "3",
+    "case": "james",
+    "class": "wrong_value",
+    "ticket": "DIG-59"
+  },
+  {
+    "form_type": "form_122a1",
+    "pdf_field": "13C",
+    "tier": "3",
+    "case": "maria",
+    "class": "wrong_value",
+    "ticket": "DIG-59"
+  },
+  {
+    "form_type": "form_122a1",
+    "pdf_field": "13C",
+    "tier": "3",
+    "case": "priya",
+    "class": "wrong_value",
+    "ticket": "DIG-59"
+  },
+  {
+    "form_type": "form_122a1",
+    "pdf_field": "13C",
+    "tier": "3",
+    "case": "sarah",
+    "class": "wrong_value",
+    "ticket": "DIG-59"
+  },
+  {
+    "form_type": "form_122a1",
+    "pdf_field": "14a",
+    "tier": "3",
+    "case": "deshawn",
+    "class": "wrong_value",
+    "ticket": "DIG-65"
+  },
+  {
+    "form_type": "form_122a1",
+    "pdf_field": "14a",
+    "tier": "3",
+    "case": "james",
+    "class": "wrong_value",
+    "ticket": "DIG-65"
+  },
+  {
+    "form_type": "form_122a1",
+    "pdf_field": "14a",
+    "tier": "3",
+    "case": "maria",
+    "class": "wrong_value",
+    "ticket": "DIG-65"
+  },
+  {
+    "form_type": "form_122a1",
+    "pdf_field": "14a",
+    "tier": "3",
+    "case": "priya",
+    "class": "wrong_value",
+    "ticket": "DIG-65"
+  },
+  {
+    "form_type": "form_122a1",
+    "pdf_field": "14a",
+    "tier": "3",
+    "case": "sarah",
+    "class": "wrong_value",
+    "ticket": "DIG-65"
+  },
+  {
+    "form_type": "form_122a1",
+    "pdf_field": "Debto1.Quest11",
+    "tier": "3",
+    "case": "deshawn",
+    "class": "wrong_value",
+    "ticket": "DIG-59"
+  },
+  {
+    "form_type": "form_122a1",
+    "pdf_field": "Debto1.Quest11",
+    "tier": "3",
+    "case": "james",
+    "class": "wrong_value",
+    "ticket": "DIG-59"
+  },
+  {
+    "form_type": "form_122a1",
+    "pdf_field": "Debto1.Quest11",
+    "tier": "3",
+    "case": "maria",
+    "class": "wrong_value",
+    "ticket": "DIG-59"
+  },
+  {
+    "form_type": "form_122a1",
+    "pdf_field": "Debto1.Quest11",
+    "tier": "3",
+    "case": "priya",
+    "class": "wrong_value",
+    "ticket": "DIG-59"
+  },
+  {
+    "form_type": "form_122a1",
+    "pdf_field": "Debto1.Quest11",
+    "tier": "3",
+    "case": "sarah",
+    "class": "wrong_value",
+    "ticket": "DIG-59"
+  },
+  {
+    "form_type": "form_122a1",
+    "pdf_field": "Quest11",
+    "tier": "3",
+    "case": "deshawn",
+    "class": "wrong_value",
+    "ticket": "DIG-59"
+  },
+  {
+    "form_type": "form_122a1",
+    "pdf_field": "Quest11",
+    "tier": "3",
+    "case": "james",
+    "class": "wrong_value",
+    "ticket": "DIG-59"
+  },
+  {
+    "form_type": "form_122a1",
+    "pdf_field": "Quest11",
+    "tier": "3",
+    "case": "maria",
+    "class": "wrong_value",
+    "ticket": "DIG-59"
+  },
+  {
+    "form_type": "form_122a1",
+    "pdf_field": "Quest11",
+    "tier": "3",
+    "case": "priya",
+    "class": "wrong_value",
+    "ticket": "DIG-59"
+  },
+  {
+    "form_type": "form_122a1",
+    "pdf_field": "Quest11",
+    "tier": "3",
+    "case": "sarah",
+    "class": "wrong_value",
+    "ticket": "DIG-59"
+  },
+  {
+    "form_type": "schedule_j",
+    "pdf_field": "22c",
+    "tier": "3",
+    "case": "deshawn",
+    "class": "wrong_value",
+    "ticket": "DIG-61"
+  },
+  {
+    "form_type": "schedule_j",
+    "pdf_field": "22c",
+    "tier": "3",
+    "case": "james",
+    "class": "wrong_value",
+    "ticket": "DIG-61"
+  },
+  {
+    "form_type": "schedule_j",
+    "pdf_field": "22c",
+    "tier": "3",
+    "case": "maria",
+    "class": "wrong_value",
+    "ticket": "DIG-61"
+  },
+  {
+    "form_type": "schedule_j",
+    "pdf_field": "22c",
+    "tier": "3",
+    "case": "priya",
+    "class": "wrong_value",
+    "ticket": "DIG-61"
+  },
+  {
+    "form_type": "schedule_j",
+    "pdf_field": "22c",
+    "tier": "3",
+    "case": "sarah",
+    "class": "wrong_value",
+    "ticket": "DIG-61"
+  },
+  {
+    "form_type": "schedule_j",
+    "pdf_field": "23b",
+    "tier": "3",
+    "case": "deshawn",
+    "class": "wrong_value",
+    "ticket": "DIG-61"
+  },
+  {
+    "form_type": "schedule_j",
+    "pdf_field": "23b",
+    "tier": "3",
+    "case": "james",
+    "class": "wrong_value",
+    "ticket": "DIG-61"
+  },
+  {
+    "form_type": "schedule_j",
+    "pdf_field": "23b",
+    "tier": "3",
+    "case": "maria",
+    "class": "wrong_value",
+    "ticket": "DIG-61"
+  },
+  {
+    "form_type": "schedule_j",
+    "pdf_field": "23b",
+    "tier": "3",
+    "case": "priya",
+    "class": "wrong_value",
+    "ticket": "DIG-61"
+  },
+  {
+    "form_type": "schedule_j",
+    "pdf_field": "23b",
+    "tier": "3",
+    "case": "sarah",
+    "class": "wrong_value",
+    "ticket": "DIG-61"
+  },
+  {
+    "form_type": "schedule_j",
+    "pdf_field": "23c",
+    "tier": "3",
+    "case": "deshawn",
+    "class": "wrong_value",
+    "ticket": "DIG-61"
+  },
+  {
+    "form_type": "schedule_j",
+    "pdf_field": "23c",
+    "tier": "3",
+    "case": "james",
+    "class": "wrong_value",
+    "ticket": "DIG-61"
+  },
+  {
+    "form_type": "schedule_j",
+    "pdf_field": "23c",
+    "tier": "3",
+    "case": "maria",
+    "class": "wrong_value",
+    "ticket": "DIG-61"
+  },
+  {
+    "form_type": "schedule_j",
+    "pdf_field": "23c",
+    "tier": "3",
+    "case": "priya",
+    "class": "wrong_value",
+    "ticket": "DIG-61"
+  },
+  {
+    "form_type": "schedule_j",
+    "pdf_field": "23c",
+    "tier": "3",
+    "case": "sarah",
+    "class": "wrong_value",
+    "ticket": "DIG-61"
   }
 ]

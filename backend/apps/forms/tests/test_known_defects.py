@@ -10,11 +10,13 @@ import re
 
 from apps.forms.tests import test_oracle_tier1 as tier1
 from apps.forms.tests import test_oracle_tier2 as tier2
+from apps.forms.tests import test_oracle_tier3 as tier3
 from apps.forms.tests.oracle import DEFECT_CLASSES, KNOWN_DEFECTS
 
 ORACLE_CASES = {
     "1": tier1.TEXT_CASES + tier1.BOX_CASES + tier1.UNMAPPED_CASES,
     "2": tier2.CASES,
+    "3": tier3.CASES,
 }
 
 
