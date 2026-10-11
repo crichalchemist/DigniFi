@@ -27,10 +27,13 @@ cd backend && ruff check . --fix               # Backend lint (pinned ruff==0.8.
 - **Debt and asset amounts are readable, as strings** — the owner gets `DebtInfo.amount_owed` and `AssetInfo.current_value`/`amount_owed` back (SSN and `account_number` stay write-only). DRF sends decimals as strings (`"2500.00"`), so the wizard converts them with `hydrateAmounts` (`utils/parseAmount.ts`) as session data enters step state; a raw string in a step's `reduce` joins as text (`$02500.00100.50`). A stored amount wider than `DecimalField(12, 2)` makes every read of that session 500, so every write path must bound it (`DraftDebtCreator` stores it as 0; documents `validate` returns 400).
 - **Seed order** — `seed_demo_data` requires `loaddata ilnd_2025_data` first, or means test has no median income data.
 - **household_size defaults to 1** — `DebtorInfo.household_size` has `default=1`; the means test prefers it over deriving from marital status + dependents. Always set it explicitly.
-- **Form 103B needs a FeeWaiverApplication** — its generator raises without one. `generate_all` yields 17/18 forms for filers who don't qualify for the waiver. (103B is the only generator with a conditional precondition; Form 121's raises are about missing DebtorInfo / malformed SSN, which a complete intake always satisfies.)
+- **The packet decides which forms a filer gets** — `apps/forms/registry.py` maps each form to `applies(session)` and `requires(session)`. 103B applies only with a `FeeWaiverApplication`; 122A-2 only when `MeansTest.calculated_cmi × 12 ≥ median_income_threshold` (never `above_median_calculated`, which is sticky, DIG-128); 122A-1Supp not until step 4; 122B is gone. A packet holds 14–16 forms. `generate` on a form outside the packet, or with a missing precondition (`PreconditionMissing`), is a 422 in plain words; any other failure is a 500 logged by exception type only.
 - **SSN on forms** — Form 101's `Debtor1.SSNum` PDF field is 4 chars (last-4 only); full SSN appears on Form 121. pypdf truncates from the front.
 - **Means test units** — CMI is monthly, Census median is annual. `MeansTest.calculate()` annualizes CMI ×12 per § 707(b)(7). The original bug passed everyone.
-- **GenerateAll vs single** — `/generate_all` returns `{generated, errors}`; single returns `{form, message}`.
+- **GenerateAll vs single** — `/generate_all` returns `{generated, errors}`; single returns `{form, message}`. `generate_all` covers only the packet and deletes the rows of forms that no longer apply. `GET /api/forms/packet/?session=<id>` returns `{session, form_types}` in filing order, and the dashboard renders from it.
+- **Schemas are checked at startup** — `apps/forms/checks.py` validates all 17 schemas against the field index (forms.E001–E007: template hash, full names, widget types, export states, `/Opt` values, duplicate bindings, TBD). `manage.py check`, `runserver` and `migrate` (so the Heroku release) fail on a bad schema; pytest runs no system checks, `test_checks.py` does. A checkbox or radio binding carries `choices` (answer → export state): `{"true": state}` is one box, `{}` is unmapped and prints nothing.
+- **Known form defects are strict xfails** — `backend/apps/forms/tests/known_defects.json` lists every oracle case (tiers 1–3) that fails today, each with its DIG ticket. Fixing a defect turns its xfail into a failure until you delete the entry. Regenerate it with `data/forms/field_index/tools/record_known_defects.py` (usage in its docstring) and review the diff by hand.
+- **`field_values`, not `form_data`** — `GeneratedForm.field_values` holds the resolved values as encrypted JSON, and the API never returns it. `form_data` is blank; its column is dropped one release after this code is live. A filed form downloads its stored `field_values`; an unfiled one is resolved fresh on every download.
 - **Analytics auth** — `trackEvent()` must use `getAccessToken()` for Bearer header, not raw fetch.
 - **heroku.yml release** — must be one command string (not argv list). `heroku releases:output` is empty; use `heroku logs --dyno release`.
 - **CI ruff is pinned** — `ci.yml` installs `ruff==0.8.5`. Unpinned ruff broke CI when new rules shipped.
@@ -73,9 +76,9 @@ cd backend && ruff check . --fix               # Backend lint (pinned ruff==0.8.
 
 - **Backend:** Django 5.0 + DRF, Python 3.11, PostgreSQL 15, `encrypted-model-fields` (Fernet PII encryption)
 - **Frontend:** React 19 + Vite 7 + TypeScript, Context API (not Redux), react-router-dom v7
-- **PDF:** pypdf fills official AO court templates. Each generator in `backend/apps/forms/services/` implements `pdf_field_map() -> dict[str, str]` mapping session data to PDF field names. `PDFFormFiller.fill(form_type, field_map)` loads from `data/forms/pdfs/`.
+- **PDF:** pypdf fills official AO court templates. Each schema in `data/forms/schemas/` binds a field to a widget's full name in the field index (`data/forms/field_index/<template stem>.index.json`). `build_field_values(form_type, session)` checks the form's preconditions and resolves its schema; `PDFFormFiller().fill(form_type, values)` fills exactly those full names in the template from `data/forms/pdfs/` and raises `UnknownField` for any other name.
 - **PDF templates:** 67 official AO court PDFs in `data/forms/pdfs/` (committed). Baked into Heroku image.
-- **Forms:** 18 generators registered in `apps/forms/registry.py` (`FORM_REGISTRY` / `get_all_form_types()`). `generate_all` iterates the registry inside one `transaction.atomic()`.
+- **Forms:** 17 form types in `apps/forms/registry.py` (`FORM_REGISTRY` / `get_all_form_types()` / `packet(session)`). `generate_all` gives each form its own savepoint.
 - **OCR service:** provider-agnostic. `OCR_PROVIDER` selects `openai` (default, `gpt-4o`, `OPENAI_API_KEY`) or `gemini` (`gemini-2.0-flash`, `GEMINI_API_KEY`); `OCR_MODEL` overrides the model so a model change is a config var, not a deploy. No local model — both call a hosted API directly.
 - **Auth:** JWT (simplejwt). Access in memory, refresh in localStorage. `GET /api/token/obtain/` + `/api/token/refresh/`.
 - **E2E:** 5 AI persona briefs in `docs/testing/persona-briefs/` (deshawn, james, maria, priya, sarah) driving 7 journey specs — one per persona plus `sofa-journey.spec.ts` and `scanned-bill-journey.spec.ts` (an upload read through a fake OpenAI server). `seed_demo_data` creates synthetic sessions with all intake data.
@@ -90,8 +93,9 @@ cd backend && ruff check . --fix               # Backend lint (pinned ruff==0.8.
 - `apps/intake/serializers.py` — nested serializers; DRF silently drops unknown fields (mismatch with frontend)
 - `apps/intake/management/commands/seed_demo_data.py` — 5 AI personas
 - `apps/eligibility/services/means_test_calculator.py` — § 707(b) logic, annualizes CMI
-- `apps/forms/registry.py` — `FORM_REGISTRY` (18 form_type → generator) + `get_all_form_types()` in filing order
-- `apps/forms/services/` — 18 generators + `pdf_filler.py` (`FORM_TEMPLATES` + `PDFFormFiller`), `fill_resolver.py` + `derivations.py` (schema-driven fill engine)
+- `apps/forms/registry.py` — `FORM_REGISTRY` (17 form_type → `PacketForm(applies, requires)`) in filing order, `packet()`, `build_field_values()`
+- `apps/forms/services/` — `pdf_filler.py` (`PDFFormFiller`, exact full names), `fill_resolver.py` + `derivations.py` (schema-driven fill engine)
+- `apps/forms/field_index.py` + `apps/forms/checks.py` — the field index loader and the schema system check
 - `apps/forms/views.py` — GeneratedFormViewSet (generate, generate_all, download, mark_filed)
 - `apps/documents/services/providers/` — `base.py` (`BaseOCRProvider`), `openai_provider.py`, `gemini.py`, `prompts/`
 - `apps/documents/services/` — `processor.py` (DocumentProcessor), `draft_debt.py`, `aggregator.py` (AggregateIngestionService)
