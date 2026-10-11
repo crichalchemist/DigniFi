@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { http, HttpResponse } from 'msw';
@@ -161,5 +161,9 @@ describe('FormDashboard', () => {
       expect(screen.getByRole('alert')).toBeInTheDocument();
       expect(screen.getByText(/1 form.*could not be generated/i)).toBeInTheDocument();
     });
+    // The error names the form as its card does, never by its internal key
+    const failure = within(screen.getByRole('alert')).getByRole('listitem');
+    expect(failure).toHaveTextContent('Form 101 - Voluntary Petition: Missing debtor name');
+    expect(failure).not.toHaveTextContent('form_101');
   });
 });

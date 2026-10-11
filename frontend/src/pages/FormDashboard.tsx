@@ -17,6 +17,7 @@ import { UPL_FORM_DISCLAIMER } from '../constants/upl';
 import { Button } from '../components/common';
 import { PostTaskSurvey } from '../components/survey/PostTaskSurvey';
 import type { GeneratedForm, FormType, GenerateAllFormsResponse } from '../types/api';
+import { FORM_TYPE_METADATA } from '../types/api';
 import { trackEvent } from '../utils/analytics';
 
 type GenerateAllError = GenerateAllFormsResponse['errors'][number];
@@ -149,7 +150,7 @@ export function FormDashboard() {
           <ul>
             {generationErrors.map((e) => (
               <li key={e.form_type}>
-                {e.form_type}: {e.error}
+                {FORM_TYPE_METADATA[e.form_type as FormType]?.label ?? e.form_type}: {e.error}
               </li>
             ))}
           </ul>
