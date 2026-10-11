@@ -1,0 +1,682 @@
+[
+  {
+    "form_type": "form_101",
+    "pdf_field": "Check Box1",
+    "tier": "1",
+    "case": "",
+    "class": "unmapped_choice",
+    "ticket": "DIG-68"
+  },
+  {
+    "form_type": "form_101",
+    "pdf_field": "Check Box16",
+    "tier": "1",
+    "case": "",
+    "class": "unmapped_choice",
+    "ticket": "DIG-68"
+  },
+  {
+    "form_type": "form_101",
+    "pdf_field": "Check Box5",
+    "tier": "1",
+    "case": "",
+    "class": "unmapped_choice",
+    "ticket": "DIG-68"
+  },
+  {
+    "form_type": "form_121",
+    "pdf_field": "Check Box1",
+    "tier": "1",
+    "case": "",
+    "class": "unmapped_choice",
+    "ticket": "DIG-68"
+  },
+  {
+    "form_type": "form_101",
+    "pdf_field": "Attorney.Street address_3",
+    "tier": "2",
+    "case": "",
+    "class": "wrong_box",
+    "ticket": "DIG-76"
+  },
+  {
+    "form_type": "form_101",
+    "pdf_field": "Business Street address2",
+    "tier": "2",
+    "case": "",
+    "class": "wrong_box",
+    "ticket": "DIG-76"
+  },
+  {
+    "form_type": "form_101",
+    "pdf_field": "Check Box16",
+    "tier": "2",
+    "case": "",
+    "class": "wrong_box",
+    "ticket": "DIG-76"
+  },
+  {
+    "form_type": "form_101",
+    "pdf_field": "Check Box5",
+    "tier": "2",
+    "case": "",
+    "class": "wrong_box",
+    "ticket": "DIG-76"
+  },
+  {
+    "form_type": "form_101",
+    "pdf_field": "City_2",
+    "tier": "2",
+    "case": "",
+    "class": "wrong_box",
+    "ticket": "DIG-76"
+  },
+  {
+    "form_type": "form_101",
+    "pdf_field": "Debtor",
+    "tier": "2",
+    "case": "",
+    "class": "wrong_box",
+    "ticket": "DIG-76"
+  },
+  {
+    "form_type": "form_101",
+    "pdf_field": "Debtor1.Business name_3",
+    "tier": "2",
+    "case": "",
+    "class": "wrong_box",
+    "ticket": "DIG-76"
+  },
+  {
+    "form_type": "form_101",
+    "pdf_field": "Debtor1.Employer Identification Number2",
+    "tier": "2",
+    "case": "",
+    "class": "wrong_box",
+    "ticket": "DIG-76"
+  },
+  {
+    "form_type": "form_101",
+    "pdf_field": "Debtor1.First name_3",
+    "tier": "2",
+    "case": "",
+    "class": "wrong_box",
+    "ticket": "DIG-76"
+  },
+  {
+    "form_type": "form_101",
+    "pdf_field": "Debtor1.First name_5",
+    "tier": "2",
+    "case": "",
+    "class": "wrong_box",
+    "ticket": "DIG-76"
+  },
+  {
+    "form_type": "form_101",
+    "pdf_field": "Debtor1.Last name_3",
+    "tier": "2",
+    "case": "",
+    "class": "wrong_box",
+    "ticket": "DIG-76"
+  },
+  {
+    "form_type": "form_101",
+    "pdf_field": "Debtor1.Last name_5",
+    "tier": "2",
+    "case": "",
+    "class": "wrong_box",
+    "ticket": "DIG-76"
+  },
+  {
+    "form_type": "form_101",
+    "pdf_field": "Debtor1.Middle name_3",
+    "tier": "2",
+    "case": "",
+    "class": "wrong_box",
+    "ticket": "DIG-76"
+  },
+  {
+    "form_type": "form_101",
+    "pdf_field": "Debtor1.Middle name_5",
+    "tier": "2",
+    "case": "",
+    "class": "wrong_box",
+    "ticket": "DIG-76"
+  },
+  {
+    "form_type": "form_101",
+    "pdf_field": "Debtor1.Street1",
+    "tier": "2",
+    "case": "",
+    "class": "wrong_box",
+    "ticket": "DIG-76"
+  },
+  {
+    "form_type": "form_101",
+    "pdf_field": "Debtor_2",
+    "tier": "2",
+    "case": "",
+    "class": "wrong_box",
+    "ticket": "DIG-76"
+  },
+  {
+    "form_type": "form_101",
+    "pdf_field": "If immediate attention is needed why is it needed2",
+    "tier": "2",
+    "case": "",
+    "class": "wrong_box",
+    "ticket": "DIG-76"
+  },
+  {
+    "form_type": "form_101",
+    "pdf_field": "Street_7",
+    "tier": "2",
+    "case": "",
+    "class": "wrong_box",
+    "ticket": "DIG-76"
+  },
+  {
+    "form_type": "form_101",
+    "pdf_field": "What is the hazard2",
+    "tier": "2",
+    "case": "",
+    "class": "wrong_box",
+    "ticket": "DIG-76"
+  },
+  {
+    "form_type": "form_103b",
+    "pdf_field": "4 type",
+    "tier": "2",
+    "case": "",
+    "class": "wrong_box",
+    "ticket": "DIG-78"
+  },
+  {
+    "form_type": "form_103b",
+    "pdf_field": "5 Type",
+    "tier": "2",
+    "case": "",
+    "class": "wrong_box",
+    "ticket": "DIG-78"
+  },
+  {
+    "form_type": "form_103b",
+    "pdf_field": "Amount you owe",
+    "tier": "2",
+    "case": "",
+    "class": "wrong_box",
+    "ticket": "DIG-78"
+  },
+  {
+    "form_type": "form_106sum",
+    "pdf_field": "4",
+    "tier": "2",
+    "case": "",
+    "class": "wrong_box",
+    "ticket": "DIG-79"
+  },
+  {
+    "form_type": "form_106sum",
+    "pdf_field": "9a",
+    "tier": "2",
+    "case": "",
+    "class": "wrong_box",
+    "ticket": "DIG-79"
+  },
+  {
+    "form_type": "form_107",
+    "pdf_field": "Income 5a Debtor 1",
+    "tier": "2",
+    "case": "",
+    "class": "wrong_box",
+    "ticket": "DIG-77"
+  },
+  {
+    "form_type": "form_107",
+    "pdf_field": "Income 5b Debtor 1",
+    "tier": "2",
+    "case": "",
+    "class": "wrong_box",
+    "ticket": "DIG-77"
+  },
+  {
+    "form_type": "form_107",
+    "pdf_field": "Income 5c Debtor 1",
+    "tier": "2",
+    "case": "",
+    "class": "wrong_box",
+    "ticket": "DIG-77"
+  },
+  {
+    "form_type": "form_121",
+    "pdf_field": "Check Box1",
+    "tier": "2",
+    "case": "",
+    "class": "wrong_box",
+    "ticket": "DIG-68"
+  },
+  {
+    "form_type": "form_122a1",
+    "pdf_field": "13A",
+    "tier": "2",
+    "case": "",
+    "class": "wrong_box",
+    "ticket": "DIG-59"
+  },
+  {
+    "form_type": "form_122a1",
+    "pdf_field": "13B",
+    "tier": "2",
+    "case": "",
+    "class": "wrong_box",
+    "ticket": "DIG-59"
+  },
+  {
+    "form_type": "form_122a1",
+    "pdf_field": "13C",
+    "tier": "2",
+    "case": "",
+    "class": "wrong_box",
+    "ticket": "DIG-59"
+  },
+  {
+    "form_type": "form_122a1",
+    "pdf_field": "Debto1.Quest10A",
+    "tier": "2",
+    "case": "",
+    "class": "wrong_box",
+    "ticket": "DIG-56"
+  },
+  {
+    "form_type": "form_122a1",
+    "pdf_field": "Debto1.Quest10B",
+    "tier": "2",
+    "case": "",
+    "class": "wrong_box",
+    "ticket": "DIG-56"
+  },
+  {
+    "form_type": "form_122a1",
+    "pdf_field": "Debto1.Quest10C",
+    "tier": "2",
+    "case": "",
+    "class": "wrong_box",
+    "ticket": "DIG-56"
+  },
+  {
+    "form_type": "form_122a1",
+    "pdf_field": "Debto1.Quest3",
+    "tier": "2",
+    "case": "",
+    "class": "wrong_box",
+    "ticket": "DIG-56"
+  },
+  {
+    "form_type": "form_122a1",
+    "pdf_field": "Debto1.Quest4",
+    "tier": "2",
+    "case": "",
+    "class": "wrong_box",
+    "ticket": "DIG-56"
+  },
+  {
+    "form_type": "form_122a1",
+    "pdf_field": "Debto1.Quest5A",
+    "tier": "2",
+    "case": "",
+    "class": "wrong_box",
+    "ticket": "DIG-56"
+  },
+  {
+    "form_type": "form_122a1",
+    "pdf_field": "Debto1.Quest5B",
+    "tier": "2",
+    "case": "",
+    "class": "wrong_box",
+    "ticket": "DIG-56"
+  },
+  {
+    "form_type": "form_122a1",
+    "pdf_field": "Debto1.Quest6A",
+    "tier": "2",
+    "case": "",
+    "class": "wrong_box",
+    "ticket": "DIG-56"
+  },
+  {
+    "form_type": "form_122a1",
+    "pdf_field": "Debto1.Quest6B",
+    "tier": "2",
+    "case": "",
+    "class": "wrong_box",
+    "ticket": "DIG-56"
+  },
+  {
+    "form_type": "form_122a1",
+    "pdf_field": "Debto1.Quest7",
+    "tier": "2",
+    "case": "",
+    "class": "wrong_box",
+    "ticket": "DIG-56"
+  },
+  {
+    "form_type": "form_122a1",
+    "pdf_field": "Debto1.Quest8A",
+    "tier": "2",
+    "case": "",
+    "class": "wrong_box",
+    "ticket": "DIG-56"
+  },
+  {
+    "form_type": "form_122a1",
+    "pdf_field": "Debto1.Quest9",
+    "tier": "2",
+    "case": "",
+    "class": "wrong_box",
+    "ticket": "DIG-59"
+  },
+  {
+    "form_type": "form_122a2",
+    "pdf_field": "Quest1",
+    "tier": "2",
+    "case": "",
+    "class": "wrong_box",
+    "ticket": "DIG-60"
+  },
+  {
+    "form_type": "form_122a2",
+    "pdf_field": "Quest10",
+    "tier": "2",
+    "case": "",
+    "class": "wrong_box",
+    "ticket": "DIG-60"
+  },
+  {
+    "form_type": "form_122a2",
+    "pdf_field": "Quest13D",
+    "tier": "2",
+    "case": "",
+    "class": "wrong_box",
+    "ticket": "DIG-50"
+  },
+  {
+    "form_type": "form_122a2",
+    "pdf_field": "Quest14",
+    "tier": "2",
+    "case": "",
+    "class": "wrong_box",
+    "ticket": "DIG-50"
+  },
+  {
+    "form_type": "form_122a2",
+    "pdf_field": "Quest15",
+    "tier": "2",
+    "case": "",
+    "class": "wrong_box",
+    "ticket": "DIG-50"
+  },
+  {
+    "form_type": "form_122a2",
+    "pdf_field": "Quest5",
+    "tier": "2",
+    "case": "",
+    "class": "wrong_box",
+    "ticket": "DIG-60"
+  },
+  {
+    "form_type": "form_122a2",
+    "pdf_field": "Quest8",
+    "tier": "2",
+    "case": "",
+    "class": "wrong_box",
+    "ticket": "DIG-66"
+  },
+  {
+    "form_type": "form_122a2",
+    "pdf_field": "Quest9",
+    "tier": "2",
+    "case": "",
+    "class": "wrong_box",
+    "ticket": "DIG-66"
+  },
+  {
+    "form_type": "schedule_a_b",
+    "pdf_field": "12",
+    "tier": "2",
+    "case": "",
+    "class": "wrong_box",
+    "ticket": "DIG-80"
+  },
+  {
+    "form_type": "schedule_a_b",
+    "pdf_field": "16 Cash amount",
+    "tier": "2",
+    "case": "",
+    "class": "wrong_box",
+    "ticket": "DIG-80"
+  },
+  {
+    "form_type": "schedule_c",
+    "pdf_field": "2.1",
+    "tier": "2",
+    "case": "",
+    "class": "wrong_box",
+    "ticket": "DIG-81"
+  },
+  {
+    "form_type": "schedule_c",
+    "pdf_field": "2.3",
+    "tier": "2",
+    "case": "",
+    "class": "wrong_box",
+    "ticket": "DIG-81"
+  },
+  {
+    "form_type": "schedule_c",
+    "pdf_field": "3",
+    "tier": "2",
+    "case": "",
+    "class": "wrong_box",
+    "ticket": "DIG-81"
+  },
+  {
+    "form_type": "schedule_c",
+    "pdf_field": "4",
+    "tier": "2",
+    "case": "",
+    "class": "wrong_box",
+    "ticket": "DIG-81"
+  },
+  {
+    "form_type": "schedule_c",
+    "pdf_field": "5",
+    "tier": "2",
+    "case": "",
+    "class": "wrong_box",
+    "ticket": "DIG-81"
+  },
+  {
+    "form_type": "schedule_c",
+    "pdf_field": "6",
+    "tier": "2",
+    "case": "",
+    "class": "wrong_box",
+    "ticket": "DIG-81"
+  },
+  {
+    "form_type": "schedule_d",
+    "pdf_field": "undefined_27",
+    "tier": "2",
+    "case": "",
+    "class": "wrong_box",
+    "ticket": "DIG-69"
+  },
+  {
+    "form_type": "schedule_i",
+    "pdf_field": "Amount 3 Debtor 1",
+    "tier": "2",
+    "case": "",
+    "class": "wrong_box",
+    "ticket": "DIG-56"
+  },
+  {
+    "form_type": "schedule_i",
+    "pdf_field": "Amount 4 Debtor 1",
+    "tier": "2",
+    "case": "",
+    "class": "wrong_box",
+    "ticket": "DIG-56"
+  },
+  {
+    "form_type": "schedule_i",
+    "pdf_field": "Amount 5a Debtor 1",
+    "tier": "2",
+    "case": "",
+    "class": "wrong_box",
+    "ticket": "DIG-56"
+  },
+  {
+    "form_type": "schedule_i",
+    "pdf_field": "Amount 5b Debtor 1",
+    "tier": "2",
+    "case": "",
+    "class": "wrong_box",
+    "ticket": "DIG-56"
+  },
+  {
+    "form_type": "schedule_i",
+    "pdf_field": "Amount 5c Debtor 1",
+    "tier": "2",
+    "case": "",
+    "class": "wrong_box",
+    "ticket": "DIG-56"
+  },
+  {
+    "form_type": "schedule_i",
+    "pdf_field": "Amount 5d Debtor 1",
+    "tier": "2",
+    "case": "",
+    "class": "wrong_box",
+    "ticket": "DIG-56"
+  },
+  {
+    "form_type": "schedule_i",
+    "pdf_field": "Amount 5e Debtor 1",
+    "tier": "2",
+    "case": "",
+    "class": "wrong_box",
+    "ticket": "DIG-56"
+  },
+  {
+    "form_type": "schedule_i",
+    "pdf_field": "Amount 5f Debtor 1",
+    "tier": "2",
+    "case": "",
+    "class": "wrong_box",
+    "ticket": "DIG-56"
+  },
+  {
+    "form_type": "schedule_i",
+    "pdf_field": "Amount 5g Debtor 1",
+    "tier": "2",
+    "case": "",
+    "class": "wrong_box",
+    "ticket": "DIG-56"
+  },
+  {
+    "form_type": "schedule_i",
+    "pdf_field": "Supplemental income date",
+    "tier": "2",
+    "case": "",
+    "class": "wrong_box",
+    "ticket": "DIG-82"
+  },
+  {
+    "form_type": "schedule_j",
+    "pdf_field": "10",
+    "tier": "2",
+    "case": "",
+    "class": "wrong_box",
+    "ticket": "DIG-52"
+  },
+  {
+    "form_type": "schedule_j",
+    "pdf_field": "12",
+    "tier": "2",
+    "case": "",
+    "class": "wrong_box",
+    "ticket": "DIG-52"
+  },
+  {
+    "form_type": "schedule_j",
+    "pdf_field": "14",
+    "tier": "2",
+    "case": "",
+    "class": "wrong_box",
+    "ticket": "DIG-52"
+  },
+  {
+    "form_type": "schedule_j",
+    "pdf_field": "15a",
+    "tier": "2",
+    "case": "",
+    "class": "wrong_box",
+    "ticket": "DIG-52"
+  },
+  {
+    "form_type": "schedule_j",
+    "pdf_field": "15b",
+    "tier": "2",
+    "case": "",
+    "class": "wrong_box",
+    "ticket": "DIG-52"
+  },
+  {
+    "form_type": "schedule_j",
+    "pdf_field": "15c",
+    "tier": "2",
+    "case": "",
+    "class": "wrong_box",
+    "ticket": "DIG-52"
+  },
+  {
+    "form_type": "schedule_j",
+    "pdf_field": "16",
+    "tier": "2",
+    "case": "",
+    "class": "wrong_box",
+    "ticket": "DIG-52"
+  },
+  {
+    "form_type": "schedule_j",
+    "pdf_field": "17a",
+    "tier": "2",
+    "case": "",
+    "class": "wrong_box",
+    "ticket": "DIG-52"
+  },
+  {
+    "form_type": "schedule_j",
+    "pdf_field": "17b",
+    "tier": "2",
+    "case": "",
+    "class": "wrong_box",
+    "ticket": "DIG-52"
+  },
+  {
+    "form_type": "schedule_j",
+    "pdf_field": "17c",
+    "tier": "2",
+    "case": "",
+    "class": "wrong_box",
+    "ticket": "DIG-52"
+  },
+  {
+    "form_type": "schedule_j",
+    "pdf_field": "20a",
+    "tier": "2",
+    "case": "",
+    "class": "wrong_box",
+    "ticket": "DIG-52"
+  }
+]
