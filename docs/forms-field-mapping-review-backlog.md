@@ -27,13 +27,14 @@ add a coercion/filter pass: drop `None`, `str()` everything else.
 `fill()` documents raising `KeyError` (unknown `form_type`) and `FileNotFoundError`
 (missing template), but the `download` action only catches `NotImplementedError` (→ 501).
 The other two propagate as unhandled 500s. These are exactly the failure modes you hit
-while reconciling mappings (a `form_type` with no `FORM_TEMPLATES` entry, a renamed
-template). Add explicit handling → 500 with a `detail`, or 422.
+while reconciling mappings (a `form_type` missing from the registry's `FORM_REGISTRY`, a
+template with no field index, a renamed template). Add explicit handling → 500 with a `detail`, or 422.
 
 ### 3. Persist template filename + version on `GeneratedForm` · heavy lift · `models.py` + migration
 
-`GeneratedForm` stores only `form_type`; the template is resolved at download time via
-`FORM_TEMPLATES[form_type]`. When the AO updates a form (CLAUDE.md risk #2, "Form Version
+`GeneratedForm` stores `form_type` and `template_version`; the template itself is resolved
+at download time from the registered form's schema (`template_filename`), whose field
+index names its widgets. When the AO updates a form (CLAUDE.md risk #2, "Form Version
 Drift"), historical downloads silently shift to the new revision — legal artifacts stop
 being reproducible. Mapping reconciliation is the natural moment to bind a template
 filename + version to each generated form. Flagged independently by both bots
