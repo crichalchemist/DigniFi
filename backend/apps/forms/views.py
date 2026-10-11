@@ -39,24 +39,38 @@ logger = logging.getLogger(__name__)
 class NotInPacket(Exception):
     """The form isn't part of this filer's packet (registry applies() is false)."""
 
-    def __init__(self):
-        super().__init__("This form isn't part of your packet.")
+
+class FormIsFiled(Exception):
+    """The form is marked filed, so it keeps the values it was filed with (spec §5.5)."""
 
 
-# Failures a filer can act on: 422 with the reason (spec §5.7). Anything else is a 500.
-_EXPECTED_FAILURES = (
-    PreconditionMissing,
-    NotInPacket,
-    RepeatOverflow,
-    UnmappedChoice,
-    TemplateHasNoForm,
-)
+# Failures a filer can act on: 422 in plain words (spec §5.7). Anything else is a 500.
+# PreconditionMissing carries its own plain reason (registry.py). Every other class gets
+# a fixed sentence, because their messages name form keys, repeat groups and PDF
+# widgets. None names the form: the dashboard shows its label beside the error.
+_FAILURE_SENTENCES = {
+    NotInPacket: "This form isn't part of your packet, based on the answers you've given.",
+    FormIsFiled: "This form is marked as filed, so it keeps the answers it was filed with.",
+    RepeatOverflow: (
+        "You have more entries than this form has room for. The extra entries need a "
+        "continuation page, which this app can't make yet."
+    ),
+    UnmappedChoice: (
+        "One of your answers doesn't match a choice printed on this form, "
+        "so it can't be filled in yet."
+    ),
+    TemplateHasNoForm: "This form's blank court template can't be filled in right now.",
+}
 
 
 def _failure(form_type: str, exc: Exception) -> tuple[dict, int]:
     """The error body and status for a form that could not be filled."""
-    if isinstance(exc, _EXPECTED_FAILURES):
-        return {"form_type": form_type, "error": str(exc)}, status.HTTP_422_UNPROCESSABLE_ENTITY
+    if isinstance(exc, PreconditionMissing):
+        error = str(exc)
+    else:
+        error = _FAILURE_SENTENCES.get(type(exc))
+    if error is not None:
+        return {"form_type": form_type, "error": error}, status.HTTP_422_UNPROCESSABLE_ENTITY
     # Type only: a message or traceback can quote filer data, and logs reach Sentry (DIG-105).
     logger.error("Filling %s failed: %s", form_type, type(exc).__name__)
     return (
@@ -68,11 +82,13 @@ def _failure(form_type: str, exc: Exception) -> tuple[dict, int]:
     )
 
 
-def _session_or_error(request, session_id) -> tuple[IntakeSession | None, Response | None]:
-    """The requesting user's session, or (None, a 400/404 Response)."""
+def _session_or_error(
+    request, session_id, param: str = "session_id"
+) -> tuple[IntakeSession | None, Response | None]:
+    """The requesting user's session, or (None, a 400/404 Response). param names the input."""
     if not session_id:
         return None, Response(
-            {"error": "session_id is required"},
+            {"error": f"{param} is required"},
             status=status.HTTP_400_BAD_REQUEST,
         )
     try:
@@ -117,6 +133,8 @@ def _store(generated_form: GeneratedForm, values: dict[str, str]) -> None:
 
 def _generate_and_persist(session: IntakeSession, form_type: str, user) -> GeneratedForm:
     """Fill the form (which proves it fills) and keep its values as the snapshot."""
+    if GeneratedForm.objects.filter(session=session, form_type=form_type, status="filed").exists():
+        raise FormIsFiled()
     values, _ = _fill(form_type, session)
     generated_form, _ = GeneratedForm.objects.get_or_create(
         session=session, form_type=form_type, defaults={"generated_by": user}
@@ -144,6 +162,7 @@ class GeneratedFormViewSet(viewsets.ReadOnlyModelViewSet):
 
     serializer_class = GeneratedFormSerializer
     permission_classes = [IsAuthenticated]
+    filterset_fields = ["session"]  # GET /api/forms/?session=<id>, as the dashboard asks
 
     def get_queryset(self):
         """Return only forms for the authenticated user's sessions."""
@@ -162,7 +181,7 @@ class GeneratedFormViewSet(viewsets.ReadOnlyModelViewSet):
 
         GET /api/forms/packet/?session=1
         """
-        session, err = _session_or_error(request, request.query_params.get("session"))
+        session, err = _session_or_error(request, request.query_params.get("session"), "session")
         if err:
             return err
         return Response({"session": session.id, "form_types": packet(session)})
@@ -213,7 +232,8 @@ class GeneratedFormViewSet(viewsets.ReadOnlyModelViewSet):
         { "session_id": 1 }
 
         Each form gets its own savepoint, so one form's failure can't undo the
-        others. Rows for forms that no longer apply are deleted.
+        others. Rows for forms that no longer apply are deleted. A filed form
+        that still applies is returned as it is: not resolved again, not un-filed.
         """
         session, err = _session_or_error(request, request.data.get("session_id"))
         if err:
@@ -221,10 +241,16 @@ class GeneratedFormViewSet(viewsets.ReadOnlyModelViewSet):
 
         form_types = packet(session)
         GeneratedForm.objects.filter(session=session).exclude(form_type__in=form_types).delete()
+        filed = {
+            f.form_type: f for f in GeneratedForm.objects.filter(session=session, status="filed")
+        }
 
         results = []
         errors = []
         for form_type in form_types:
+            if form_type in filed:
+                results.append(self.get_serializer(filed[form_type]).data)
+                continue
             try:
                 with transaction.atomic():
                     generated_form = _generate_and_persist(session, form_type, request.user)

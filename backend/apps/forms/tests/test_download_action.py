@@ -88,7 +88,9 @@ def test_form_no_longer_in_the_packet_is_refused(api_client_authed, generated_fo
     response = _download(api_client_authed, form)
 
     assert response.status_code == 422
-    assert response.data["error"] == "This form isn't part of your packet."
+    assert response.data["error"] == (
+        "This form isn't part of your packet, based on the answers you've given."
+    )
 
 
 def test_missing_data_is_a_422_with_its_reason(api_client_authed, generated_form_factory):
@@ -107,6 +109,12 @@ def test_too_many_rows_is_a_422(api_client_authed, generated_form_factory):
     with patch("apps.forms.views.build_field_values", side_effect=overflow):
         response = _download(api_client_authed, form)
     assert response.status_code == 422
+    # No repeat group name or capacity: the filer reads this beside the form's label.
+    assert response.data == {
+        "form_type": "form_121",
+        "error": "You have more entries than this form has room for. The extra entries "
+        "need a continuation page, which this app can't make yet.",
+    }
 
 
 def test_unexpected_failure_logs_only_its_type(api_client_authed, generated_form_factory, caplog):

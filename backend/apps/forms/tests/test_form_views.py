@@ -26,6 +26,13 @@ from rest_framework.test import APIClient
 
 from apps.districts.models import District
 from apps.forms.models import GeneratedForm
+from apps.forms.services.fill_resolver import UnmappedChoice
+from apps.forms.services.pdf_filler import (
+    InvalidFieldValue,
+    PDFFormFiller,
+    TemplateHasNoForm,
+    UnknownField,
+)
 from apps.intake.models import (
     DebtorInfo,
     IncomeInfo,
@@ -33,6 +40,8 @@ from apps.intake.models import (
 )
 
 User = get_user_model()
+
+FILED = "This form is marked as filed, so it keeps the answers it was filed with."
 
 # ── Fixtures ──────────────────────────────────────────────────────────
 
@@ -124,6 +133,22 @@ def session_with_income(session_with_debtor):
 @pytest.fixture
 def other_session(other_user, district):
     return IntakeSession.objects.create(user=other_user, district=district)
+
+
+def _filed_form(session, user, form_type, values):
+    return GeneratedForm.objects.create(
+        session=session,
+        form_type=form_type,
+        status="filed",
+        generated_by=user,
+        field_values=json.dumps(values),
+    )
+
+
+def _rename_filer(session, first_name):
+    debtor = session.debtor_info
+    debtor.first_name = first_name
+    debtor.save()
 
 
 # ── Generate Endpoint ─────────────────────────────────────────────────
@@ -244,7 +269,7 @@ class TestGenerateEndpoint:
         assert resp.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
         assert resp.data == {
             "form_type": "form_103b",
-            "error": "This form isn't part of your packet.",
+            "error": "This form isn't part of your packet, based on the answers you've given.",
         }
 
     def test_missing_data_is_named_instead_of_filled_blank(self, api_client, session):
@@ -270,6 +295,78 @@ class TestGenerateEndpoint:
         assert "900-12-3456" not in json.dumps(resp.data)
         assert "900-12-3456" not in caplog.text
         assert "ValueError" in caplog.text
+
+    # The dashboard shows the form's label beside the error, so the sentence
+    # names no form, and no internal key or PDF widget the filer can't act on.
+    @pytest.mark.parametrize(
+        "target,exc,error",
+        [
+            (
+                "apps.forms.views.build_field_values",
+                UnmappedChoice("Check Box1"),
+                "One of your answers doesn't match a choice printed on this form, "
+                "so it can't be filled in yet.",
+            ),
+            (
+                "apps.forms.views.PDFFormFiller.fill",
+                TemplateHasNoForm("form_101"),
+                "This form's blank court template can't be filled in right now.",
+            ),
+        ],
+        ids=["unmapped_choice", "template_has_no_form"],
+    )
+    def test_expected_failure_is_explained_in_plain_words(
+        self, api_client, session_with_debtor, target, exc, error
+    ):
+        with patch(target, side_effect=exc):
+            resp = api_client.post(
+                self.URL,
+                {"session_id": session_with_debtor.id, "form_type": "form_101"},
+                format="json",
+            )
+        assert resp.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert resp.data == {"form_type": "form_101", "error": error}
+
+    @pytest.mark.parametrize(
+        "exc",
+        [
+            UnknownField("form_101", ["Debtor1.SSNum"]),
+            InvalidFieldValue("form_101", "Debtor1.SSNum"),
+        ],
+        ids=lambda exc: type(exc).__name__,
+    )
+    def test_filler_fault_is_a_500_logged_by_type_only(
+        self, api_client, session_with_debtor, caplog, exc
+    ):
+        with patch.object(PDFFormFiller, "fill", side_effect=exc):
+            resp = api_client.post(
+                self.URL,
+                {"session_id": session_with_debtor.id, "form_type": "form_101"},
+                format="json",
+            )
+        assert resp.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
+        assert resp.data == {
+            "form_type": "form_101",
+            "error": "This form couldn't be prepared. Please try again later.",
+        }
+        assert type(exc).__name__ in caplog.text
+        assert "Debtor1.SSNum" not in caplog.text
+
+    def test_filed_form_keeps_what_was_filed(self, api_client, session_with_debtor, user):
+        form = _filed_form(session_with_debtor, user, "form_101", {"Debtor1.First name": "Jane"})
+        _rename_filer(session_with_debtor, "Janet")
+
+        resp = api_client.post(
+            self.URL,
+            {"session_id": session_with_debtor.id, "form_type": "form_101"},
+            format="json",
+        )
+
+        assert resp.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert resp.data == {"form_type": "form_101", "error": FILED}
+        form.refresh_from_db()
+        assert form.status == "filed"
+        assert json.loads(form.field_values) == {"Debtor1.First name": "Jane"}
 
 
 # ── Generate All Endpoint ─────────────────────────────────────────────
@@ -305,6 +402,23 @@ class TestGenerateAllEndpoint:
             session=session_with_income, form_type="form_103b"
         ).exists()
 
+    def test_filed_form_is_returned_as_filed(self, api_client, session_with_income, user):
+        # The dashboard replaces its list with `generated`, so a filed form must be in it.
+        form = _filed_form(session_with_income, user, "form_106dec", {"Debtor 1": "Jane Doe"})
+        _rename_filer(session_with_income, "Janet")
+
+        resp = api_client.post(self.URL, {"session_id": session_with_income.id}, format="json")
+
+        assert resp.status_code == status.HTTP_200_OK
+        returned = [f for f in resp.data["generated"] if f["form_type"] == "form_106dec"]
+        assert [(f["id"], f["status"]) for f in returned] == [(form.id, "filed")]
+        form.refresh_from_db()
+        assert form.status == "filed"
+        assert json.loads(form.field_values) == {"Debtor 1": "Jane Doe"}
+        # The forms not yet filed are resolved from the current answers.
+        petition = GeneratedForm.objects.get(session=session_with_income, form_type="form_101")
+        assert json.loads(petition.field_values)["Debtor1.First name"] == "Janet"
+
     def test_missing_session_id(self, api_client):
         resp = api_client.post(self.URL, {}, format="json")
         assert resp.status_code == status.HTTP_400_BAD_REQUEST
@@ -332,6 +446,18 @@ class TestRegenerateEndpoint:
 
         form.refresh_from_db()
         assert json.loads(form.field_values)["Debtor 1"] == "Jane Doe"
+
+    def test_filed_form_keeps_what_was_filed(self, api_client, session_with_debtor, user):
+        form = _filed_form(session_with_debtor, user, "form_106dec", {"Debtor 1": "Jane Doe"})
+        _rename_filer(session_with_debtor, "Janet")
+
+        resp = api_client.post(f"/api/forms/{form.id}/regenerate/")
+
+        assert resp.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert resp.data == {"form_type": "form_106dec", "error": FILED}
+        form.refresh_from_db()
+        assert form.status == "filed"
+        assert json.loads(form.field_values) == {"Debtor 1": "Jane Doe"}
 
     def test_regenerate_other_users_form(self, api_client, other_session, other_user):
         form = GeneratedForm.objects.create(
@@ -417,6 +543,24 @@ class TestListRetrieve:
         else:
             assert resp.data["count"] == 1
 
+    def test_list_shows_only_the_asked_sessions_forms(
+        self, api_client, session_with_debtor, user, district, other_session, other_user
+    ):
+        # The dashboard asks for one session; a filer's other sessions must not mix in.
+        second = IntakeSession.objects.create(user=user, district=district)
+        for session, owner in [
+            (session_with_debtor, user),
+            (second, user),
+            (other_session, other_user),
+        ]:
+            GeneratedForm.objects.create(session=session, form_type="form_101", generated_by=owner)
+
+        resp = api_client.get("/api/forms/", {"session": second.id})
+        assert [f["session"] for f in resp.data["results"]] == [second.id]
+
+        resp = api_client.get("/api/forms/", {"session": other_session.id})
+        assert resp.data["results"] == []
+
     def test_retrieve_own_form(self, api_client, session_with_debtor, user):
         form = GeneratedForm.objects.create(
             session=session_with_debtor,
@@ -461,7 +605,9 @@ class TestPacketEndpoint:
         assert len(resp.data["form_types"]) == 14
 
     def test_missing_session(self, api_client):
-        assert api_client.get(self.URL).status_code == status.HTTP_400_BAD_REQUEST
+        resp = api_client.get(self.URL)
+        assert resp.status_code == status.HTTP_400_BAD_REQUEST
+        assert resp.data == {"error": "session is required"}
 
     def test_other_users_session(self, api_client, other_session):
         resp = api_client.get(self.URL, {"session": other_session.id})
