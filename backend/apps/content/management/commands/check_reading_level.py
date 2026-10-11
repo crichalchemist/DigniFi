@@ -153,11 +153,11 @@ def _collect_backend_texts() -> dict[str, str]:
     except (ImportError, AttributeError, OSError):
         pass
 
-    # UPL disclaimer from forms views
+    # UPL disclaimer from the forms app
     try:
-        from apps.forms.views import _UPL_DISCLAIMER
+        from apps.forms.constants import _UPL_DISCLAIMER
 
-        texts["forms.views._UPL_DISCLAIMER"] = _UPL_DISCLAIMER
+        texts["forms.constants._UPL_DISCLAIMER"] = _UPL_DISCLAIMER
     except (ImportError, AttributeError):
         pass
 

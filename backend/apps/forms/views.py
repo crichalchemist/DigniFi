@@ -1,13 +1,14 @@
 """
 API views for bankruptcy form generation.
 
-Uses a registry-based dispatch pattern so one endpoint serves all 14 form
-types. DB persistence lives here; generators stay pure (data in → data out).
+One path fills every form: registry.build_field_values() resolves a session's
+values, PDFFormFiller fills the template, and the values are kept as an
+encrypted snapshot (GeneratedForm.field_values) that the API never returns.
 """
 
 import json
+import logging
 
-from django.core.serializers.json import DjangoJSONEncoder
 from django.db import transaction
 from django.http import HttpResponse
 from rest_framework import status, viewsets
@@ -20,37 +21,63 @@ from rest_framework.views import APIView
 from apps.intake.models import IntakeSession
 
 from .models import GeneratedForm
-from .registry import FORM_REGISTRY, get_all_form_types, get_generator
+from .registry import (
+    FORM_REGISTRY,
+    PreconditionMissing,
+    build_field_values,
+    get_all_form_types,
+    packet,
+)
 from .schema import load_schema
 from .serializers import GeneratedFormSerializer
-from .services.fill_resolver import RepeatOverflow
-from .services.pdf_filler import PDFFormFiller
+from .services.fill_resolver import RepeatOverflow, UnmappedChoice
+from .services.pdf_filler import PDFFormFiller, TemplateHasNoForm
 
-# UPL-compliant disclaimer appended to every preview response
-_UPL_DISCLAIMER = (
-    "This is a preview based on the information you provided. "
-    "This software provides legal information, not legal advice. "
-    "You are responsible for reviewing all information for accuracy before filing."
+logger = logging.getLogger(__name__)
+
+
+class NotInPacket(Exception):
+    """The form isn't part of this filer's packet (registry applies() is false)."""
+
+    def __init__(self):
+        super().__init__("This form isn't part of your packet.")
+
+
+# Failures a filer can act on: 422 with the reason (spec §5.7). Anything else is a 500.
+_EXPECTED_FAILURES = (
+    PreconditionMissing,
+    NotInPacket,
+    RepeatOverflow,
+    UnmappedChoice,
+    TemplateHasNoForm,
 )
 
 
-def _resolve_session(request) -> tuple[IntakeSession | None, Response | None]:
-    """
-    Extract and validate session_id from request data.
+def _failure(form_type: str, exc: Exception) -> tuple[dict, int]:
+    """The error body and status for a form that could not be filled."""
+    if isinstance(exc, _EXPECTED_FAILURES):
+        return {"form_type": form_type, "error": str(exc)}, status.HTTP_422_UNPROCESSABLE_ENTITY
+    # Type only: a message or traceback can quote filer data, and logs reach Sentry (DIG-105).
+    logger.error("Filling %s failed: %s", form_type, type(exc).__name__)
+    return (
+        {
+            "form_type": form_type,
+            "error": "This form couldn't be prepared. Please try again later.",
+        },
+        status.HTTP_500_INTERNAL_SERVER_ERROR,
+    )
 
-    Returns (session, None) on success or (None, error_response) on failure.
-    """
-    session_id = request.data.get("session_id")
+
+def _session_or_error(request, session_id) -> tuple[IntakeSession | None, Response | None]:
+    """The requesting user's session, or (None, a 400/404 Response)."""
     if not session_id:
         return None, Response(
             {"error": "session_id is required"},
             status=status.HTTP_400_BAD_REQUEST,
         )
-
     try:
-        session = IntakeSession.objects.get(id=session_id, user=request.user)
-        return session, None
-    except IntakeSession.DoesNotExist:
+        return IntakeSession.objects.get(id=session_id, user=request.user), None
+    except (IntakeSession.DoesNotExist, ValueError):
         return None, Response(
             {"error": "Session not found or you don't have permission"},
             status=status.HTTP_404_NOT_FOUND,
@@ -75,34 +102,29 @@ def _validate_form_type(form_type: str | None) -> Response | None:
     return None
 
 
-def _json_safe(data: dict) -> dict:
-    """
-    Round-trip through DjangoJSONEncoder to convert Decimal → str.
-
-    Generators return Decimal for financial precision; JSONField needs
-    natively serializable types.
-    """
-    return json.loads(json.dumps(data, cls=DjangoJSONEncoder))
+def _fill(form_type: str, session: IntakeSession) -> tuple[dict[str, str], bytes]:
+    """Resolve a form that applies to this filer and fill its template."""
+    if not FORM_REGISTRY[form_type].applies(session):
+        raise NotInPacket()
+    values = build_field_values(form_type, session)
+    return values, PDFFormFiller().fill(form_type, values)
 
 
-def _generate_and_persist(
-    session: IntakeSession,
-    form_type: str,
-    user,
-) -> GeneratedForm:
-    """Run generator and persist result to DB. Returns the GeneratedForm."""
-    generator = get_generator(form_type, session)
-    form_data = _json_safe(generator.generate())
+def _store(generated_form: GeneratedForm, values: dict[str, str]) -> None:
+    generated_form.field_values = json.dumps(values)
+    generated_form.template_version = load_schema(generated_form.form_type).template_version
 
-    generated_form, _ = GeneratedForm.objects.update_or_create(
-        session=session,
-        form_type=form_type,
-        defaults={
-            "form_data": form_data,
-            "status": "generated",
-            "generated_by": user,
-        },
+
+def _generate_and_persist(session: IntakeSession, form_type: str, user) -> GeneratedForm:
+    """Fill the form (which proves it fills) and keep its values as the snapshot."""
+    values, _ = _fill(form_type, session)
+    generated_form, _ = GeneratedForm.objects.get_or_create(
+        session=session, form_type=form_type, defaults={"generated_by": user}
     )
+    _store(generated_form, values)
+    generated_form.status = "generated"
+    generated_form.generated_by = user
+    generated_form.save()
     return generated_form
 
 
@@ -111,10 +133,11 @@ class GeneratedFormViewSet(viewsets.ReadOnlyModelViewSet):
     ViewSet for bankruptcy form generation and management.
 
     Endpoints:
-      POST /api/forms/generate/       Generate a single form
-      POST /api/forms/generate_all/   Generate all 14 forms for a session
-      POST /api/forms/preview/        Preview form data without persisting
-      POST /api/forms/{id}/regenerate/ Regenerate an existing form
+      GET  /api/forms/packet/?session=<id>  The form types this filer's packet holds
+      POST /api/forms/generate/              Generate a single form
+      POST /api/forms/generate_all/          Generate every form in the packet
+      POST /api/forms/{id}/regenerate/       Regenerate an existing form
+      GET  /api/forms/{id}/download/         Fill and stream the PDF
       POST /api/forms/{id}/mark_downloaded/
       POST /api/forms/{id}/mark_filed/
     """
@@ -129,6 +152,22 @@ class GeneratedFormViewSet(viewsets.ReadOnlyModelViewSet):
         )
 
     # ------------------------------------------------------------------
+    # The packet
+    # ------------------------------------------------------------------
+
+    @action(detail=False, methods=["get"])
+    def packet(self, request):
+        """
+        The ordered form types that apply to this filer.
+
+        GET /api/forms/packet/?session=1
+        """
+        session, err = _session_or_error(request, request.query_params.get("session"))
+        if err:
+            return err
+        return Response({"session": session.id, "form_types": packet(session)})
+
+    # ------------------------------------------------------------------
     # Generate single form
     # ------------------------------------------------------------------
 
@@ -140,7 +179,7 @@ class GeneratedFormViewSet(viewsets.ReadOnlyModelViewSet):
         POST /api/forms/generate/
         { "session_id": 1, "form_type": "form_101" }
         """
-        session, err = _resolve_session(request)
+        session, err = _session_or_error(request, request.data.get("session_id"))
         if err:
             return err
 
@@ -151,21 +190,15 @@ class GeneratedFormViewSet(viewsets.ReadOnlyModelViewSet):
 
         try:
             generated_form = _generate_and_persist(session, form_type, request.user)
-            serializer = self.get_serializer(generated_form)
-            return Response(
-                {
-                    "form": serializer.data,
-                    "message": f"{generated_form.get_form_type_display()} generated successfully",
-                }
-            )
-        except (ValueError, KeyError) as e:
-            return Response(
-                {
-                    "error": str(e),
-                    "message": "Unable to generate form. Please ensure all required information is provided.",
-                },
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+        except Exception as exc:
+            body, code = _failure(form_type, exc)
+            return Response(body, status=code)
+        return Response(
+            {
+                "form": self.get_serializer(generated_form).data,
+                "message": f"{generated_form.get_form_type_display()} generated successfully",
+            }
+        )
 
     # ------------------------------------------------------------------
     # Generate all forms for a session
@@ -174,28 +207,30 @@ class GeneratedFormViewSet(viewsets.ReadOnlyModelViewSet):
     @action(detail=False, methods=["post"], url_path="generate_all")
     def generate_all(self, request):
         """
-        Generate all 14 bankruptcy forms for a session in one request.
+        Generate every form in the filer's packet.
 
         POST /api/forms/generate_all/
         { "session_id": 1 }
 
-        Wraps all writes in a single transaction — either all succeed or
-        none persist.
+        Each form gets its own savepoint, so one form's failure can't undo the
+        others. Rows for forms that no longer apply are deleted.
         """
-        session, err = _resolve_session(request)
+        session, err = _session_or_error(request, request.data.get("session_id"))
         if err:
             return err
 
+        form_types = packet(session)
+        GeneratedForm.objects.filter(session=session).exclude(form_type__in=form_types).delete()
+
         results = []
         errors = []
-
-        with transaction.atomic():
-            for form_type in get_all_form_types():
-                try:
+        for form_type in form_types:
+            try:
+                with transaction.atomic():
                     generated_form = _generate_and_persist(session, form_type, request.user)
-                    results.append(self.get_serializer(generated_form).data)
-                except Exception as e:
-                    errors.append({"form_type": form_type, "error": str(e)})
+                results.append(self.get_serializer(generated_form).data)
+            except Exception as exc:
+                errors.append(_failure(form_type, exc)[0])
 
         return Response(
             {
@@ -205,44 +240,6 @@ class GeneratedFormViewSet(viewsets.ReadOnlyModelViewSet):
                 "total_errors": len(errors),
             }
         )
-
-    # ------------------------------------------------------------------
-    # Preview (no DB write)
-    # ------------------------------------------------------------------
-
-    @action(detail=False, methods=["post"])
-    def preview(self, request):
-        """
-        Preview form data without persisting to DB.
-
-        POST /api/forms/preview/
-        { "session_id": 1, "form_type": "form_101" }
-        """
-        session, err = _resolve_session(request)
-        if err:
-            return err
-
-        form_type = request.data.get("form_type")
-        err = _validate_form_type(form_type)
-        if err:
-            return err
-
-        try:
-            generator = get_generator(form_type, session)
-            preview_data = _json_safe(generator.preview())
-            return Response(
-                {
-                    "form_type": form_type,
-                    "preview": True,
-                    "data": preview_data,
-                    "upl_disclaimer": _UPL_DISCLAIMER,
-                }
-            )
-        except (ValueError, KeyError) as e:
-            return Response(
-                {"error": str(e)},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
 
     # ------------------------------------------------------------------
     # Regenerate existing form
@@ -256,28 +253,19 @@ class GeneratedFormViewSet(viewsets.ReadOnlyModelViewSet):
         POST /api/forms/{id}/regenerate/
         """
         generated_form = self.get_object()
-
         try:
-            generator = get_generator(generated_form.form_type, generated_form.session)
-            form_data = _json_safe(generator.generate())
-
-            generated_form.form_data = form_data
-            generated_form.status = "generated"
-            generated_form.generated_by = request.user
-            generated_form.save()
-
-            serializer = self.get_serializer(generated_form)
-            return Response(
-                {
-                    "form": serializer.data,
-                    "message": "Form regenerated successfully",
-                }
+            generated_form = _generate_and_persist(
+                generated_form.session, generated_form.form_type, request.user
             )
-        except (ValueError, KeyError) as e:
-            return Response(
-                {"error": str(e), "message": "Unable to regenerate form"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+        except Exception as exc:
+            body, code = _failure(generated_form.form_type, exc)
+            return Response(body, status=code)
+        return Response(
+            {
+                "form": self.get_serializer(generated_form).data,
+                "message": "Form regenerated successfully",
+            }
+        )
 
     # ------------------------------------------------------------------
     # Status transitions
@@ -318,42 +306,35 @@ class GeneratedFormViewSet(viewsets.ReadOnlyModelViewSet):
 
     @action(detail=True, methods=["get"])
     def download(self, request, pk=None):
-        """Fill the official AO PDF template with session data and stream it."""
+        """
+        Fill the official AO template and stream it.
+
+        A form not yet filed is resolved fresh, so the filer always downloads
+        their current answers, and its snapshot is refreshed. A filed form
+        fills from its snapshot, so it matches what was filed.
+        """
         generated_form = self.get_object()
-
-        generator = get_generator(generated_form.form_type, generated_form.session)
-        try:
-            field_map = generator.pdf_field_map()
-        except NotImplementedError:
-            return Response(
-                {"error": "PDF download is not yet available for this form."},
-                status=status.HTTP_501_NOT_IMPLEMENTED,
-            )
-        except RepeatOverflow as exc:
-            return Response(
-                {"detail": str(exc)},
-                status=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            )
+        form_type = generated_form.form_type
+        session = generated_form.session
 
         try:
-            pdf_bytes = PDFFormFiller().fill(generated_form.form_type, field_map)
-        except (KeyError, FileNotFoundError):
-            return Response(
-                {"detail": "Form template is unavailable. Please contact support."},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            )
-
-        try:
-            generated_form.template_version = load_schema(generated_form.form_type).template_version
-        except FileNotFoundError:
-            pass  # form not yet schema-migrated
+            if generated_form.status == "filed" and generated_form.field_values:
+                if not FORM_REGISTRY[form_type].applies(session):
+                    raise NotInPacket()
+                pdf_bytes = PDFFormFiller().fill(form_type, json.loads(generated_form.field_values))
+            else:
+                values, pdf_bytes = _fill(form_type, session)
+                _store(generated_form, values)
+        except Exception as exc:
+            body, code = _failure(form_type, exc)
+            return Response(body, status=code)
 
         if generated_form.status == "generated":
             generated_form.status = "downloaded"
         generated_form.save()
 
         response = HttpResponse(pdf_bytes, content_type="application/pdf")
-        response["Content-Disposition"] = f'attachment; filename="{generated_form.form_type}.pdf"'
+        response["Content-Disposition"] = f'attachment; filename="{form_type}.pdf"'
         return response
 
 

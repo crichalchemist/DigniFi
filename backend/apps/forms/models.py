@@ -2,6 +2,7 @@
 
 from django.conf import settings
 from django.db import models
+from encrypted_model_fields.fields import EncryptedTextField
 
 
 class GeneratedForm(models.Model):
@@ -57,8 +58,13 @@ class GeneratedForm(models.Model):
         help_text="Current status of the form",
     )
 
-    # Form data (JSON storage for form field values)
-    form_data = models.JSONField(help_text="Populated form field data ready for PDF generation")
+    # Blank since forms step 1 (DIG-124): it held Form 121's full SSN in plain
+    # JSON. Nothing reads or writes it; its column is dropped one release later.
+    form_data = models.JSONField(default=dict, help_text="Unused; see field_values")
+
+    # The values the form printed, as encrypted JSON {full name: value}. The API
+    # never returns it; download fills a filed form from it.
+    field_values = EncryptedTextField(blank=True, default="", help_text="Encrypted JSON")
 
     # Schema / template version (reproducibility)
     template_version = models.CharField(
