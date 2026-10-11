@@ -22,7 +22,6 @@ class GeneratedForm(models.Model):
         ("form_122a1", "Form 122A-1 - Means Test"),
         ("form_122a1_supp", "Form 122A-1 Supplement"),
         ("form_122a2", "Form 122A-2 - Means Test Calculation"),
-        ("form_122b", "Form 122B - Alternative Means Test"),
         ("schedule_a_b", "Schedule A/B - Property"),
         ("schedule_c", "Schedule C - Exemptions"),
         ("schedule_d", "Schedule D - Secured Creditors"),

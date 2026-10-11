@@ -14,7 +14,6 @@ from .form_121_generator import Form121GenerationError, Form121Generator
 from .form_122a1_generator import Form122A1Generator
 from .form_122a1_supp_generator import Form122A1SuppGenerator
 from .form_122a2_generator import Form122A2Generator
-from .form_122b_generator import Form122BGenerator
 from .schedule_ab_generator import ScheduleABGenerator
 from .schedule_c_generator import ScheduleCGenerator
 from .schedule_d_generator import ScheduleDGenerator
@@ -36,7 +35,6 @@ __all__ = [
     "Form122A1Generator",
     "Form122A1SuppGenerator",
     "Form122A2Generator",
-    "Form122BGenerator",
     "ScheduleABGenerator",
     "ScheduleCGenerator",
     "ScheduleDGenerator",

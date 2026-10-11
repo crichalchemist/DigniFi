@@ -127,7 +127,7 @@ def full_session(db):
 class TestGenerateAll13Forms:
     def test_all_form_types_registered(self):
         """All form types are in the registry."""
-        assert len(get_all_form_types()) == 18
+        assert len(get_all_form_types()) == 17
 
     def test_all_forms_generate_without_error(self, full_session):
         """Every form type generates without raising an exception."""

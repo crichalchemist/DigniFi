@@ -22,6 +22,7 @@ import pytest
 from django.contrib.auth import get_user_model
 
 from apps.districts.models import District
+from apps.forms.models import GeneratedForm
 from apps.forms.registry import (
     FORM_REGISTRY,
     get_all_form_types,
@@ -106,17 +107,22 @@ def session_with_debtor(session):
 class TestRegistryStructure:
     """Test the registry data structure and basic operations."""
 
-    def test_get_all_form_types_returns_18_entries(self):
+    def test_get_all_form_types_returns_17_entries(self):
         """
-        Verify get_all_form_types() returns exactly 18 entries.
+        Verify get_all_form_types() returns exactly 17 entries.
 
-        DigniFi supports 18 forms for Chapter 7 filing.
+        DigniFi supports 17 forms for Chapter 7 filing.
         """
         form_types = get_all_form_types()
-        assert len(form_types) == 18
+        assert len(form_types) == 17
+
+    def test_chapter_11_means_test_is_not_offered(self):
+        # Form 122B is the Chapter 11 statement, and its download raised a 500 (DIG-125).
+        assert "form_122b" not in FORM_REGISTRY
+        assert "form_122b" not in dict(GeneratedForm.FORM_TYPE_CHOICES)
 
     def test_all_expected_form_types_present(self):
-        """Verify all 18 expected form type keys exist in registry."""
+        """Verify all 17 expected form type keys exist in registry."""
         expected_form_types = [
             "form_101",
             "form_103b",
@@ -127,7 +133,6 @@ class TestRegistryStructure:
             "form_122a1",
             "form_122a1_supp",
             "form_122a2",
-            "form_122b",
             "schedule_a_b",
             "schedule_c",
             "schedule_d",

@@ -26,7 +26,6 @@ FORM_TEMPLATES: dict[str, str] = {
     "form_122a1": "b_122a-1.pdf",
     "form_122a2": "b_122a-2_0425-form.pdf",
     "form_122a1_supp": "form_b122a-1supp.pdf",
-    "form_122b": "form_b122b.pdf",
     "schedule_a_b": "form_b106ab.pdf",
     "schedule_c": "b_106c_0425-form.pdf",
     "schedule_d": "form_b106d.pdf",
