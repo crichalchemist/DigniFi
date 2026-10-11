@@ -150,15 +150,30 @@ def validate_schema(
             errors.append(("E004", f"{f.pdf_field!r} is a push button"))
         elif not types <= _WIDGET_TYPES.get(f.type, set()):
             errors.append(("E004", f"{f.pdf_field!r} is bound as {f.type} but is {sorted(types)}"))
-        if (f.type in ("checkbox", "radio")) != (f.choices is not None):
-            errors.append(("E004", f"{f.pdf_field!r}: choices go on checkbox and radio only"))
+        is_box = f.type in ("checkbox", "radio")
+        if is_box and f.choices is None:
+            errors.append(("E004", f"{f.pdf_field!r}: a {f.type} binding needs choices"))
+        if not is_box and f.choices is not None:
+            errors.append(
+                ("E004", f"{f.pdf_field!r}: choices go on checkbox and radio only, not on {f.type}")
+            )
 
         if f.choices:
+            # The filler lower-cases the answer before the lookup (spec §5.1).
+            for key in sorted(k for k in f.choices if k != k.lower()):
+                errors.append(
+                    (
+                        "E004",
+                        f"{f.pdf_field!r}: choices key {key!r} isn't lower-case, "
+                        "so no answer can match it",
+                    )
+                )
             states = {export_state(w.on_state) for w in widgets if w.on_state}
             for state in sorted(set(f.choices.values()) - states):
                 errors.append(("E005", f"{f.pdf_field!r} has no state {state!r}"))
         if f.type == "choice" and f.source == "constant":
-            options = [str(o) for o in template_fields[f.pdf_field].get("/Opt", [])]
+            # .get: a template that has drifted from its index is an error, not a crash.
+            options = [str(o) for o in template_fields.get(f.pdf_field, {}).get("/Opt", [])]
             if f.value not in options:
                 errors.append(("E005", f"{f.pdf_field!r} has no option {f.value!r}"))
 

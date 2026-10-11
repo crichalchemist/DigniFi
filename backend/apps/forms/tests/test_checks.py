@@ -9,6 +9,7 @@ deliberately broken copies of real schemas.
 import json
 import shutil
 
+import pypdf
 import pytest
 from django.conf import settings as django_settings
 from django.core.management import call_command
@@ -42,6 +43,10 @@ def _field(data, pdf_field):
 
 def _ids(form_type):
     return [e.id for e in validate_form(form_type)]
+
+
+def _errors(form_type):
+    return [(e.id, e.msg) for e in validate_form(form_type)]
 
 
 @pytest.mark.parametrize("form_type", get_all_form_types())
@@ -99,7 +104,30 @@ def test_push_button_binding_is_reported(schema_copy):
 
 def test_checkbox_without_choices_is_reported(schema_copy):
     _edit(schema_copy, "form_121", lambda d: _field(d, "Check Box1").pop("choices"))
-    assert _ids("form_121") == ["forms.E004"]
+    assert _errors("form_121") == [
+        ("forms.E004", "form_121: 'Check Box1': a checkbox binding needs choices")
+    ]
+
+
+def test_choices_on_a_text_binding_are_reported(schema_copy):
+    _edit(schema_copy, "form_121", lambda d: _field(d, "Debtor1.First name").update(choices={}))
+    assert _errors("form_121") == [
+        (
+            "forms.E004",
+            "form_121: 'Debtor1.First name': choices go on checkbox and radio only, not on text",
+        )
+    ]
+
+
+def test_choices_key_that_isnt_lower_case_is_reported(schema_copy):
+    # The filler lower-cases the answer before the lookup, so "True" could never match.
+    _edit(schema_copy, "form_107", lambda d: _field(d, "check5").update(choices={"True": "/no"}))
+    assert _errors("form_107") == [
+        (
+            "forms.E004",
+            "form_107: 'check5': choices key 'True' isn't lower-case, so no answer can match it",
+        )
+    ]
 
 
 def test_state_the_template_lacks_is_reported(schema_copy):
@@ -117,6 +145,21 @@ def test_district_constant_outside_the_options_is_reported(schema_copy):
         "form_121",
         lambda d: _field(d, district).update(source="constant", rule=None, value="Nowhere"),
     )
+    assert _ids("form_121") == ["forms.E005"]
+
+
+def test_constant_option_on_a_box_the_template_lacks_is_reported(schema_copy, monkeypatch):
+    # The index still names the box, but the template has drifted: an error, not a crash.
+    district = "Bankruptcy District Information"
+    _edit(
+        schema_copy,
+        "form_121",
+        lambda d: _field(d, district).update(
+            source="constant", rule=None, value="Northern District of Illinois"
+        ),
+    )
+    assert _ids("form_121") == []
+    monkeypatch.setattr(pypdf.PdfReader, "get_fields", lambda self, *args, **kwargs: {})
     assert _ids("form_121") == ["forms.E005"]
 
 

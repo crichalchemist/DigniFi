@@ -198,6 +198,25 @@ def test_unmapped_box_emits_nothing_and_reads_no_value(session):
     assert resolve(schema, session) == {}
 
 
+def test_unmapped_box_in_a_repeat_group_emits_nothing_and_reads_no_value(session):
+    # An unknown binding would raise if the resolver looked the value up (spec §5.1).
+    schema = _schema(
+        [
+            _field(
+                pdf_field="Box1",
+                type="checkbox",
+                source="asked",
+                binding="nowhere.rows[].x",
+                repeat="rows",
+                repeat_capacity=1,
+                row=1,
+                choices={},
+            )
+        ]
+    )
+    assert resolve(schema, session) == {}
+
+
 def test_repeat_group_expands_rows(session):
     report = SOFAReport.objects.create(session=session, has_creditor_payments=True)
     for name, amt in [("Acme", "100.00"), ("Beta", "200.00")]:

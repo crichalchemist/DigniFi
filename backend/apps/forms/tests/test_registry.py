@@ -5,6 +5,7 @@ applies() decides which forms are in the packet; requires() stops a form from
 filling silently when data it needs is missing.
 """
 
+import re
 from datetime import date
 from decimal import Decimal
 
@@ -193,3 +194,13 @@ def test_field_values_name_index_widgets(session):
     widgets = load_index(load_schema("form_101").template_filename)
     assert values["Debtor1.First name"] == "Sarah"
     assert set(values) <= set(widgets)
+
+
+@pytest.mark.parametrize("ssn", ["900-55-0005", "900550005"])
+def test_petition_prints_only_the_last_four_ssn_digits(session, ssn):
+    # The petition is public; only Form 121, which is not, carries the full number.
+    _debtor(session, ssn=ssn)
+    values = build_field_values("form_101", session)
+    assert values["Debtor1.SSNum"] == "0005"
+    leaks = [name for name, value in values.items() if "900550005" in re.sub(r"\D", "", value)]
+    assert leaks == []

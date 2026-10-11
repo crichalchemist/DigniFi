@@ -167,10 +167,13 @@ def resolve(schema: FormSchema, session: IntakeSession) -> dict[str, str]:
         if emitted is not None:
             out[f.pdf_field] = emitted
 
-    # Repeat groups
+    # Repeat groups. An unmapped box is dropped before any lookup, so its binding
+    # is never resolved and never counts toward RepeatOverflow (spec §5.1).
     groups: dict[str, list[FieldSpec]] = {}
     for f in schema.fields:
-        if f.repeat is not None and _section_applies(f, session, answer_cache=_form_answers):
+        if f.repeat is None or _unmapped(f):
+            continue
+        if _section_applies(f, session, answer_cache=_form_answers):
             groups.setdefault(f.repeat, []).append(f)
 
     for group_name, fields in groups.items():
@@ -185,7 +188,7 @@ def resolve(schema: FormSchema, session: IntakeSession) -> dict[str, str]:
         if actual > capacity:
             raise RepeatOverflow(schema.form_type, group_name, capacity, actual)
         for f in fields:
-            if _unmapped(f) or (f.legal_review and f.source != "asked"):
+            if f.legal_review and f.source != "asked":
                 continue
             if f.binding:
                 vals = resolved_cols.get(f.pdf_field)
