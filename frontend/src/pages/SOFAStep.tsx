@@ -39,13 +39,16 @@ export function SOFAStep() {
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
 
-  // Load report on mount
+  // Load report on mount. A superseded load (StrictMode's second mount, or a new session)
+  // is ignored, so its late reply can't undo what the filer has already ticked.
   useEffect(() => {
     if (!session) return;
+    let cancelled = false;
     setLoading(true);
     sofaReportAPI
       .get(session.id)
       .then((data) => {
+        if (cancelled) return;
         // Ensure at least one empty row in each section when gated on
         const newReport = { ...data };
         if (newReport.has_prior_income && newReport.prior_income.length === 0) {
@@ -56,8 +59,16 @@ export function SOFAStep() {
         }
         setReport(newReport);
       })
-      .catch(() => setError('Could not load your financial history data.'))
-      .finally(() => setLoading(false));
+      .catch(() => {
+        if (!cancelled) setError('Could not load your financial history data.');
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [session]);
 
   // ── Gate toggles ──────────────────────────────────────────────
