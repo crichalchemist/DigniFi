@@ -1,0 +1,101 @@
+[
+  {
+    "pdf_field": "CheckBox1",
+    "page": 1,
+    "line": "top box 1/2/3",
+    "on_states": ["No#20Abuse", "Presumption#20of#20abuse#20applies", "Does#20not#20apply"],
+    "label": "Page-1 result box: 1 There is no presumption of abuse / 2 calculation will be made under Form 122A-2 / 3 Means Test does not apply now (military)",
+    "why": "Every filing must check exactly one; it is the form's outcome and must agree with line 14a/14b (or the 122A-1Supp). No schema field writes CheckBox1.",
+    "known": "DIG-65"
+  },
+  {
+    "pdf_field": "14a",
+    "page": 2,
+    "line": "14a/14b",
+    "on_states": ["12b#20less#20or#20equal#20to#2013", "12b#20more#20than#2013"],
+    "label": "How do the lines compare? 14a: line 12b <= line 13 / 14b: line 12b > line 13",
+    "why": "Required comparison result; it decides whether Form 122A-2 is filed. Both widgets share field name '14a'; the export values distinguish them.",
+    "known": "DIG-65"
+  },
+  {
+    "pdf_field": "CheckBox3",
+    "page": 1,
+    "line": "1",
+    "on_states": ["Not#20married", "Maried#20and#20filing", "Married#20but#20not#20filing"],
+    "label": "What is your marital and filing status? Check one only.",
+    "why": "Required; it determines whether Column B is filled. Note the misspelled export value 'Maried#20and#20filing'. Marital status is not collected (DIG-53).",
+    "known": "DIG-65, DIG-53"
+  },
+  {
+    "pdf_field": "CheckBox3A",
+    "page": 1,
+    "line": "1",
+    "on_states": ["together", "separately"],
+    "label": "Married, spouse NOT filing: living in same household / living separately or legally separated",
+    "why": "Required when CheckBox3 = Married#20but#20not#20filing; 'separately' is a declaration under penalty of perjury (707(b)(7)(B)), so it must be an asked answer.",
+    "known": "DIG-53"
+  },
+  {
+    "pdf_field": "13A",
+    "page": 2,
+    "line": "13",
+    "on_states": [],
+    "label": "Fill in the state in which you live.",
+    "why": "Required. Currently receives the median-income figure; no binding produces the state (e.g. from DebtorInfo.state).",
+    "known": "DIG-59"
+  },
+  {
+    "pdf_field": "13B",
+    "page": 2,
+    "line": "13",
+    "on_states": [],
+    "label": "Fill in the number of people in your household.",
+    "why": "Required. Currently receives annualized income; household size (rule family_size) is written into line 9 instead.",
+    "known": "DIG-59"
+  },
+  {
+    "pdf_field": "13C",
+    "page": 2,
+    "line": "13",
+    "on_states": [],
+    "label": "Fill in the median family income for your state and size of household.",
+    "why": "Required for the line 14 comparison. Currently receives (annual CMI - median); the median itself goes to 13A.",
+    "known": "DIG-59, DIG-51"
+  },
+  {
+    "pdf_field": "Quest11",
+    "page": 2,
+    "line": "11 / 12a",
+    "on_states": [],
+    "label": "Total current monthly income (line 11 total, p2 T19) and its copy on line 12a (p2 T20) - one field, two widgets",
+    "why": "The form's central figure. Currently receives an ANNUAL amount; no binding writes monthly CMI here.",
+    "known": "DIG-56"
+  },
+  {
+    "pdf_field": "Debto1.Quest2.0 .. Debto1.Quest10A (Column A per-source lines 2-10)",
+    "page": 1,
+    "line": "2-10",
+    "on_states": [],
+    "label": "Column A per-source monthly income (wages line 2, business line 5, rental line 6, interest line 7, unemployment line 8, pension line 9, other line 10)",
+    "why": "All per-source rules return a constant 0.00, so Column A lines 2-10 never sum to the CMI on line 11. IncomeInfo stores only a 6-month total array.",
+    "known": "DIG-56"
+  },
+  {
+    "pdf_field": "Debto1.Quest5C / Debto1.Quest6C",
+    "page": 1,
+    "line": "5 / 6",
+    "on_states": [],
+    "label": "Net monthly business income / net monthly rental income (each fills the worksheet box and the Column A 'Copy here' box)",
+    "why": "No binding targets these; they are needed whenever the debtor has business or rental income.",
+    "known": "DIG-56"
+  },
+  {
+    "pdf_field": "terrorism If necessary list other sources on a separate page and put the total below 1",
+    "page": 2,
+    "line": "10",
+    "on_states": [],
+    "label": "Income from all other sources - source description, row 1 (row 2: '... below 2')",
+    "why": "A line-10 amount needs its source named; there is no binding.",
+    "known": "DIG-56"
+  }
+]

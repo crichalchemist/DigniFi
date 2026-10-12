@@ -1,0 +1,79 @@
+[
+  {
+    "full_name": "Debtor 1",
+    "pages": [1, 2],
+    "line": "",
+    "label": "Debtor 1 (First Name, Middle Name, Last Name)",
+    "column": "",
+    "kind": "text",
+    "why_needed": "Debtor 1 header on pages 1-2; the schema has no 'Debtor 1' field at all.",
+    "available_source": "derivation full_name",
+    "known": ""
+  },
+  {
+    "full_name": "check1",
+    "pages": [1],
+    "line": "1",
+    "label": "Do you have any codebtors? (If you are filing a joint case, do not list either spouse as a codebtor.) (tooltip 'Any creditors claims secured by property' is copied from Schedule D)",
+    "column": "",
+    "kind": "checkbox",
+    "why_needed": "Line 1 'Do you have any codebtors?' No/Yes; the form says 'Answer every question'.",
+    "available_source": "count of Codebtor rows",
+    "known": ""
+  },
+  {
+    "full_name": "check2",
+    "pages": [1],
+    "line": "2",
+    "label": "Within the last 8 years, have you lived in a community property state or territory?",
+    "column": "",
+    "kind": "checkbox",
+    "why_needed": "Line 2 community property state in last 8 years No/Yes must be answered.",
+    "available_source": "none collected",
+    "known": ""
+  },
+  {
+    "full_name": "Codebtor Name 3.1",
+    "pages": [1],
+    "line": "3.1",
+    "label": "Name",
+    "column": "Column 1: Your codebtor",
+    "kind": "text",
+    "why_needed": "Line 3.1 Column 1 codebtor name.",
+    "available_source": "Codebtor.name (model exists, collected by the 'codebtors' intake step)",
+    "known": ""
+  },
+  {
+    "full_name": "Codebtor Street 3.1",
+    "pages": [1],
+    "line": "3.1",
+    "label": "Number Street",
+    "column": "Column 1: Your codebtor",
+    "kind": "text",
+    "why_needed": "Line 3.1 codebtor address (City/State/Zip 3.1 likewise).",
+    "available_source": "Codebtor.street_address / city / state / zip_code",
+    "known": ""
+  },
+  {
+    "full_name": "check schedule line D 3.1",
+    "pages": [1],
+    "line": "3.1",
+    "label": "Check all schedules that apply: Schedule D",
+    "column": "Column 2: The creditor to whom you owe the debt (Check all schedules that apply)",
+    "kind": "checkbox",
+    "why_needed": "Line 3.1 Column 2: which schedule (D, E/F, G) lists the creditor, and the line number there.",
+    "available_source": "none (Codebtor has no link to a DebtInfo)",
+    "known": ""
+  },
+  {
+    "full_name": "Case number",
+    "pages": [1, 2],
+    "line": "",
+    "label": "Case number (if known)",
+    "column": "",
+    "kind": "text",
+    "why_needed": "Case number header (blank acceptable before filing).",
+    "available_source": "none",
+    "known": ""
+  }
+]

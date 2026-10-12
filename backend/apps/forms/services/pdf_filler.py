@@ -1,12 +1,14 @@
 """
-PDFFormFiller — fills AO court PDF templates with field values.
+PDFFormFiller — fills an AO court PDF template with resolved field values.
 
-Uses pypdf to load a fillable PDF template, write values into form fields,
-and return the filled PDF as bytes. Unknown field names are silently ignored.
+Keys are index full names (apps.forms.field_index). A key fills only the
+widgets whose qualified name equals it exactly. pypdf's
+update_page_form_field_values also matches a parent's partial /T, which put
+the filer's name and dates in Debtor 2 boxes (DIG-63), so the filler walks the
+widgets itself.
 
 Usage:
-    filler = PDFFormFiller()
-    pdf_bytes = filler.fill("form_121", {"Debtor1.First name": "Maria"})
+    pdf_bytes = PDFFormFiller().fill("form_121", {"Debtor1.First name": "Maria"})
 """
 
 from io import BytesIO
@@ -14,57 +16,128 @@ from pathlib import Path
 
 import pypdf
 from django.conf import settings
+from pypdf.generic import DictionaryObject, NameObject, TextStringObject
 
-# Maps form_type key → filename under PDF_FORMS_DIRECTORY
-FORM_TEMPLATES: dict[str, str] = {
-    "form_101": "form_b_101_0624_fillable_clean.pdf",
-    "form_103b": "form_b103b.pdf",
-    "form_106dec": "form_b106dec.pdf",
-    "form_106sum": "form_b106sum.pdf",
-    "form_107": "b_107_0425-form.pdf",
-    "form_121": "form_b121.pdf",
-    "form_122a1": "b_122a-1.pdf",
-    "form_122a2": "b_122a-2_0425-form.pdf",
-    "form_122a1_supp": "form_b122a-1supp.pdf",
-    "form_122b": "form_b122b.pdf",
-    "schedule_a_b": "form_b106ab.pdf",
-    "schedule_c": "b_106c_0425-form.pdf",
-    "schedule_d": "form_b106d.pdf",
-    "schedule_e_f": "form_b106ef.pdf",
-    "schedule_g": "form_b106g.pdf",
-    "schedule_h": "form_b106h.pdf",
-    "schedule_i": "form_b106i.pdf",
-    "schedule_j": "form_b106j.pdf",
-}
+# pypdf internal, pinned with pypdf==6.13.1; test_pdf_filler.py fails if it moves.
+from pypdf.generic._appearance_stream import TextStreamAppearance
+
+from apps.forms.schema import load_schema
+
+
+class UnknownField(Exception):
+    """A key names no widget in the template."""
+
+    def __init__(self, form_type: str, names: list[str]):
+        self.form_type = form_type
+        self.names = names
+        super().__init__(f"{form_type}: no widget named {names}")
+
+
+class TemplateHasNoForm(Exception):
+    """The template PDF has no /AcroForm, so nothing can be filled."""
+
+    def __init__(self, form_type: str):
+        self.form_type = form_type
+        super().__init__(f"{form_type}: the template has no fillable form")
+
+
+class InvalidFieldValue(Exception):
+    """A button value is no widget's appearance state, or a combo value is not in /Opt."""
+
+    def __init__(self, form_type: str, name: str):
+        self.form_type = form_type
+        self.name = name
+        super().__init__(f"{form_type}: {name!r} can't take this value")
+
+
+def qualified_name(field: DictionaryObject) -> str:
+    """The field's full name: every /T up the /Parent chain, joined with dots."""
+    parts = []
+    node = field
+    while node is not None:
+        if "/T" in node:
+            parts.append(str(node["/T"]))
+        parent = node.get("/Parent")
+        node = parent.get_object() if parent is not None else None
+    return ".".join(reversed(parts))
+
+
+def field_of(widget: DictionaryObject) -> DictionaryObject:
+    """The field a widget belongs to: the widget itself when it carries /T, else its parent."""
+    return widget if "/T" in widget else widget["/Parent"].get_object()
 
 
 class PDFFormFiller:
     """Fill AO court PDF templates with field values and return bytes."""
 
-    def fill(self, form_type: str, field_map: dict[str, str]) -> bytes:
+    def fill(self, form_type: str, field_values: dict[str, str]) -> bytes:
         """
-        Load template for form_type, write field_map into every page, return PDF bytes.
+        Fill the form's template with field_values and return the PDF bytes.
 
         Args:
-            form_type: One of the keys in FORM_TEMPLATES (e.g. "form_101").
-            field_map: {pdf_field_name: value_string}. Unknown field names are
-                       silently ignored. Checkbox fields expect "/Yes" or "/Off".
+            form_type: a registered form type; its schema names the template.
+            field_values: {full_name: value}. A value is text, an /Opt entry for
+                a combo box, or an export state such as "/Chapter 7" for a button.
 
         Raises:
-            KeyError: form_type not in FORM_TEMPLATES.
-            FileNotFoundError: template PDF missing from PDF_FORMS_DIRECTORY.
+            UnknownField: a key names no widget.
+            TemplateHasNoForm: the template has no /AcroForm.
+            InvalidFieldValue: a button state or combo option the template lacks.
         """
-        filename = FORM_TEMPLATES[form_type]  # KeyError if unknown
-        template_path = Path(settings.PDF_FORMS_DIRECTORY) / filename
+        schema = load_schema(form_type)
+        template_path = Path(settings.PDF_FORMS_DIRECTORY) / schema.template_filename
+        writer = pypdf.PdfWriter(clone_from=str(template_path))
+        if "/AcroForm" not in writer.root_object:
+            raise TemplateHasNoForm(form_type)
+        acro_form = writer.root_object["/AcroForm"].get_object()
+        # Viewers draw the appearance streams written here, not their own.
+        writer.set_need_appearances_writer(False)
 
-        reader = pypdf.PdfReader(str(template_path))
-        writer = pypdf.PdfWriter()
-        writer.append(reader)
-
-        # update_page_form_field_values fills matching fields on one page at a time.
-        # auto_regenerate=False keeps visual appearance stable across viewers.
+        filled: set[str] = set()
+        buttons: set[str] = set()
+        ticked: set[str] = set()
         for page in writer.pages:
-            writer.update_page_form_field_values(page, field_map, auto_regenerate=False)
+            for annot in page.get("/Annots") or []:
+                widget = annot.get_object()
+                if widget.get("/Subtype") != "/Widget":
+                    continue
+                field = field_of(widget)
+                name = qualified_name(field)
+                if name not in field_values:
+                    continue
+                filled.add(name)
+                value = field_values[name]
+
+                if field.get_inherited("/FT") == "/Btn":
+                    buttons.add(name)
+                    field[NameObject("/V")] = NameObject(value)
+                    if value in widget["/AP"]["/N"]:
+                        widget[NameObject("/AS")] = NameObject(value)
+                        ticked.add(name)
+                    else:
+                        widget[NameObject("/AS")] = NameObject("/Off")
+                    continue
+
+                if field.get_inherited("/FT") == "/Ch":
+                    options = [str(o) for o in field.get_inherited("/Opt", [])]
+                    if value not in options:
+                        raise InvalidFieldValue(form_type, name)
+                    if "/I" in field:  # a stale selected index would override /V
+                        del field["/I"]
+                field[NameObject("/V")] = TextStringObject(value)
+                # pypdf internal, pinned: builds the text appearance from /DA and /V.
+                appearance = TextStreamAppearance.from_text_annotation(
+                    writer, page, False, acro_form, field, widget
+                )
+                widget[NameObject("/AP")] = DictionaryObject(
+                    {NameObject("/N"): writer._add_object(appearance)}
+                )
+
+        unknown = sorted(set(field_values) - filled)
+        if unknown:
+            raise UnknownField(form_type, unknown)
+        for name in sorted(buttons - ticked):
+            raise InvalidFieldValue(form_type, name)
 
         buf = BytesIO()
         writer.write(buf)

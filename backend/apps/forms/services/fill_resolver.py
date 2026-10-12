@@ -27,6 +27,19 @@ class RepeatOverflow(Exception):
         )
 
 
+class UnmappedChoice(Exception):
+    """A checkbox or radio answer has no export state in its binding's choices."""
+
+    def __init__(self, pdf_field: str):
+        self.pdf_field = pdf_field
+        super().__init__(f"No box on the form matches the answer for {pdf_field!r}")
+
+
+# Single-box answers, compared case-insensitively (spec §5.1).
+_TICK = {"yes", "y", "true", "1", "on"}
+_NO_TICK = {"no", "n", "false", "0", "off", ""}
+
+
 def resolve_binding(binding: str, session: IntakeSession) -> str | list[str]:
     """
     Resolve a schema ``binding``:
@@ -98,12 +111,27 @@ def _scalar_value(
     return None
 
 
+def _unmapped(field: FieldSpec) -> bool:
+    """A checkbox or radio binding whose choices are not mapped yet emits nothing."""
+    return field.type in ("checkbox", "radio") and not field.choices
+
+
 def _emit(field: FieldSpec, value: str | None) -> str | None:
-    """Apply checkbox on-state semantics and string coercion. None = skip."""
+    """Turn a resolved value into what the filler writes. None = leave the box alone."""
+    if field.type in ("checkbox", "radio"):
+        key = "" if value is None else str(value).strip().lower()
+        if set(field.choices) == {"true"}:  # a single box
+            if key in _TICK:
+                return field.choices["true"]
+            if key in _NO_TICK:
+                return None
+        elif key == "":
+            return None
+        elif key in field.choices:
+            return field.choices[key]
+        raise UnmappedChoice(field.pdf_field)
     if value is None or value == "":
         return None
-    if field.type in ("checkbox", "radio"):
-        return field.on_states[0] if field.on_states else "/Yes"
     return str(value)
 
 
@@ -128,7 +156,7 @@ def resolve(schema: FormSchema, session: IntakeSession) -> dict[str, str]:
 
     # Non-repeat fields
     for f in schema.fields:
-        if f.repeat is not None:
+        if f.repeat is not None or _unmapped(f):
             continue
         if not _section_applies(f, session, answer_cache=_form_answers):
             continue
@@ -139,10 +167,13 @@ def resolve(schema: FormSchema, session: IntakeSession) -> dict[str, str]:
         if emitted is not None:
             out[f.pdf_field] = emitted
 
-    # Repeat groups
+    # Repeat groups. An unmapped box is dropped before any lookup, so its binding
+    # is never resolved and never counts toward RepeatOverflow (spec §5.1).
     groups: dict[str, list[FieldSpec]] = {}
     for f in schema.fields:
-        if f.repeat is not None and _section_applies(f, session, answer_cache=_form_answers):
+        if f.repeat is None or _unmapped(f):
+            continue
+        if _section_applies(f, session, answer_cache=_form_answers):
             groups.setdefault(f.repeat, []).append(f)
 
     for group_name, fields in groups.items():

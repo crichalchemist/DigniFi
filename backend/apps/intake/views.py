@@ -2,7 +2,7 @@
 API views for intake workflow.
 
 Provides REST API endpoints for multi-step bankruptcy intake process,
-including session management, means test calculation, and form preview.
+including session management and means test calculation.
 """
 
 from django.db import transaction
@@ -12,7 +12,6 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from apps.eligibility.services import MeansTestCalculator
-from apps.forms.services import Form101Generator
 
 from .models import (
     AssetInfo,
@@ -231,38 +230,6 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
                 {
                     "error": str(e),
                     "message": "Unable to calculate means test. Please ensure all income information is provided.",
-                },
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-    @action(detail=True, methods=["get"])
-    def preview_form_101(self, request, pk=None):
-        """
-        Preview Form 101 (Voluntary Petition) for this session.
-
-        GET /api/intake/sessions/{id}/preview_form_101/
-
-        Returns:
-            Form 101 data structure ready for display/preview
-        """
-        session = self.get_object()
-
-        try:
-            generator = Form101Generator(session)
-            preview_data = generator.preview()
-
-            return Response(
-                {
-                    "form_preview": preview_data,
-                    "session_id": session.id,
-                }
-            )
-
-        except ValueError as e:
-            return Response(
-                {
-                    "error": str(e),
-                    "message": "Unable to generate form preview. Please ensure all required information is provided.",
                 },
                 status=status.HTTP_400_BAD_REQUEST,
             )

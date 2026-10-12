@@ -8,7 +8,7 @@ from django.contrib.auth import get_user_model
 
 from apps.districts.models import District
 from apps.forms.schema import load_schema
-from apps.forms.services.form_106dec_generator import Form106DecGenerator
+from apps.forms.services.fill_resolver import resolve
 from apps.intake.models import DebtorInfo, IntakeSession
 
 User = get_user_model()
@@ -51,7 +51,6 @@ class TestForm106DecSchema:
     def test_schema_loads(self):
         schema = load_schema("form_106dec")
         assert schema.form_type == "form_106dec"
-        assert len(schema.fields) == 8
 
     def test_all_fields_have_source(self):
         schema = load_schema("form_106dec")
@@ -64,17 +63,14 @@ class TestForm106DecSchema:
         assert len(required) >= 2  # District and Debtor 1 at minimum
 
     def test_resolver_produces_output(self, session_with_debtor):
-        generator = Form106DecGenerator(session_with_debtor)
-        field_map = generator.pdf_field_map()
+        field_map = resolve(load_schema("form_106dec"), session_with_debtor)
         assert "Debtor 1" in field_map
         assert "Jane Marie Doe" in field_map["Debtor 1"]
         assert "Bankruptcy District Information" in field_map
         assert "Northern District of Illinois" in field_map["Bankruptcy District Information"]
 
     def test_resolver_without_debtor(self, session):
-        generator = Form106DecGenerator(session)
-        field_map = generator.pdf_field_map()
+        field_map = resolve(load_schema("form_106dec"), session)
         assert "Bankruptcy District Information" in field_map
-        # Debtor 1 should be empty or absent when no debtor_info
-        debtor_val = field_map.get("Debtor 1", "")
-        assert debtor_val == "" or "Debtor 1" not in field_map
+        # No name is printed when there is no debtor_info
+        assert "Debtor 1" not in field_map

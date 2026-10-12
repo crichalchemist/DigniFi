@@ -1,0 +1,230 @@
+[
+  {
+    "pdf_field": "23c",
+    "widgets": [
+      {
+        "full_name": "23c",
+        "page": 3,
+        "tag": "T10",
+        "line": "23c",
+        "label": "Subtract your monthly expenses from your monthly income. The result is your monthly net income.",
+        "column": "Your expenses",
+        "on_state": null
+      }
+    ],
+    "why": "Line 23c 'Subtract your monthly expenses from your monthly income. The result is your monthly net income.' Boxed result line; blank.",
+    "known": "DIG-61"
+  },
+  {
+    "pdf_field": "22c",
+    "widgets": [
+      {
+        "full_name": "22c",
+        "page": 3,
+        "tag": "T7",
+        "line": "22c",
+        "label": "Add line 22a and 22b. The result is your monthly expenses.",
+        "column": "Your expenses",
+        "on_state": null
+      }
+    ],
+    "why": "Line 22c 'Add line 22a and 22b. The result is your monthly expenses.' Blank although 22a is filled.",
+    "known": "DIG-61"
+  },
+  {
+    "pdf_field": "23b",
+    "widgets": [
+      {
+        "full_name": "23b",
+        "page": 3,
+        "tag": "T9",
+        "line": "23b",
+        "label": "Copy your monthly expenses from line 22c above.",
+        "column": "Your expenses",
+        "on_state": null
+      }
+    ],
+    "why": "Line 23b 'Copy your monthly expenses from line 22c above.' Blank.",
+    "known": "DIG-61"
+  },
+  {
+    "pdf_field": "check1",
+    "widgets": [
+      {
+        "full_name": "check1",
+        "page": 1,
+        "tag": "T8",
+        "line": "1",
+        "label": "Is this a joint case?",
+        "column": "",
+        "on_state": "no"
+      },
+      {
+        "full_name": "check1",
+        "page": 1,
+        "tag": "T9",
+        "line": "1",
+        "label": "Is this a joint case?",
+        "column": "",
+        "on_state": "yes"
+      }
+    ],
+    "why": "Line 1 'Is this a joint case?' No. Go to line 2 / Yes (on_states no/yes; sub-question 'check1a' Does Debtor 2 live in a separate household?). Answer-every-question; DebtorInfo.filing_type is collected but unused here.",
+    "known": "NEW"
+  },
+  {
+    "pdf_field": "check2",
+    "widgets": [
+      {
+        "full_name": "check2",
+        "page": 1,
+        "tag": "T12",
+        "line": "2",
+        "label": "Do you have dependents?",
+        "column": "",
+        "on_state": "no"
+      },
+      {
+        "full_name": "check2",
+        "page": 1,
+        "tag": "T13",
+        "line": "2",
+        "label": "Do you have dependents?",
+        "column": "",
+        "on_state": "yes"
+      }
+    ],
+    "why": "Line 2 'Do you have dependents?' No/Yes (on_states no/yes). IncomeInfo.number_of_dependents exists (default 0) but the wizard never sends it; DebtorInfo.household_size is collected and could gate it.",
+    "known": "NEW"
+  },
+  {
+    "pdf_field": "Dependant Relation 2a",
+    "widgets": [
+      {
+        "full_name": "Dependant Relation 2a",
+        "page": 1,
+        "tag": "T15",
+        "line": "2",
+        "label": "Dependent’s relationship to Debtor 1 or Debtor 2 (dependent row a)",
+        "column": "Dependent’s relationship to Debtor 1 or Debtor 2",
+        "on_state": null
+      }
+    ],
+    "why": "Line 2 dependents table rows a-e: 'Dependant Relation 2a..2e', 'Dependant age 2a..2e', 'check2a..2e' (lives with you? no/yes). Required when check2 = Yes; relationship and ages are never collected. All schema entries are source TBD.",
+    "known": "NEW"
+  },
+  {
+    "pdf_field": "check3",
+    "widgets": [
+      {
+        "full_name": "check3",
+        "page": 1,
+        "tag": "T34",
+        "line": "3",
+        "label": "Do your expenses include expenses of people other than yourself and your dependents?",
+        "column": "",
+        "on_state": "no"
+      },
+      {
+        "full_name": "check3",
+        "page": 1,
+        "tag": "T35",
+        "line": "3",
+        "label": "Do your expenses include expenses of people other than yourself and your dependents?",
+        "column": "",
+        "on_state": "yes"
+      }
+    ],
+    "why": "Line 3 'Do your expenses include expenses of people other than yourself and your dependents?' No/Yes. Answer-every-question; never asked.",
+    "known": "NEW"
+  },
+  {
+    "pdf_field": "check24",
+    "widgets": [
+      {
+        "full_name": "check24",
+        "page": 3,
+        "tag": "T11",
+        "line": "24",
+        "label": "Do you expect an increase or decrease in your expenses within the year after you file this form?",
+        "column": "",
+        "on_state": "no"
+      },
+      {
+        "full_name": "check24",
+        "page": 3,
+        "tag": "T13",
+        "line": "24",
+        "label": "Do you expect an increase or decrease in your expenses within the year after you file this form?",
+        "column": "",
+        "on_state": "yes"
+      }
+    ],
+    "why": "Line 24 'Do you expect an increase or decrease in your expenses within the year after you file this form?' No./Yes. plus 'Other 24' Explain here. Required answer; never asked.",
+    "known": "NEW"
+  },
+  {
+    "pdf_field": "Bankruptcy District Information",
+    "widgets": [
+      {
+        "full_name": "Bankruptcy District Information",
+        "page": 1,
+        "tag": "T5",
+        "line": "",
+        "label": "United States Bankruptcy Court for the: ____ District of ____",
+        "column": "",
+        "on_state": null
+      }
+    ],
+    "why": "Case-header district ComboBox. Source TBD on schedule_j although schedule_i binds the same widget name with rule district_name ('Northern District of Illinois').",
+    "known": "NEW"
+  },
+  {
+    "pdf_field": "Other 21",
+    "widgets": [
+      {
+        "full_name": "Other 21",
+        "page": 3,
+        "tag": "T3",
+        "line": "21",
+        "label": "Other. Specify:",
+        "column": "",
+        "on_state": null
+      }
+    ],
+    "why": "Line 21 'Other. Specify:' text. The line 21 amount is filled (other_expenses + child_support_paid) with no description.",
+    "known": "DIG-52"
+  },
+  {
+    "pdf_field": "6c",
+    "widgets": [
+      {
+        "full_name": "6c",
+        "page": 2,
+        "tag": "T6",
+        "line": "6c",
+        "label": "Telephone, cell phone, Internet, satellite, and cable services",
+        "column": "Your expenses",
+        "on_state": null
+      }
+    ],
+    "why": "Line 6c 'Telephone, cell phone, Internet, satellite, and cable services'. No expense field exists; utilities is one lumped number.",
+    "known": "NEW"
+  },
+  {
+    "pdf_field": "22b",
+    "widgets": [
+      {
+        "full_name": "22b",
+        "page": 3,
+        "tag": "T6",
+        "line": "22b",
+        "label": "Copy line 22 (monthly expenses for Debtor 2), if any, from Official Form 106J-2",
+        "column": "Your expenses",
+        "on_state": null
+      }
+    ],
+    "why": "Line 22b 'Copy line 22 (monthly expenses for Debtor 2), if any, from Official Form 106J-2'. Blank; $0 unless Debtor 2 keeps a separate household (check1a = Yes).",
+    "known": "DIG-61"
+  }
+]

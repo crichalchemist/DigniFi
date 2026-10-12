@@ -1,0 +1,19 @@
+[
+  {
+    "full_name": "check1",
+    "page": 1,
+    "tag": ["T6", "T8"],
+    "line": "",
+    "label": "Did you pay or agree to pay someone who is NOT an attorney to help you fill out bankruptcy forms? No / Yes",
+    "why": "Required answer on every declaration; neither box is ever ticked. The tooltip mislabels it \"Any creditors clims secured by property\".",
+    "on_states": ["no", "yes"]
+  },
+  {
+    "full_name": "Case number",
+    "page": 1,
+    "tag": "T4",
+    "line": "",
+    "label": "Case number (If known)",
+    "why": "Empty constant. Acceptable before filing; flagged only for completeness."
+  }
+]

@@ -86,9 +86,9 @@ test.describe('Maria Torres — Happy Path', () => {
     );
 
     // Dashboard — generate all forms
-    await dashboard.generateAllForms();
+    await dashboard.generateAllForms(15); // 14 forms + Form 103B (fee waiver)
     const count = await dashboard.getGeneratedCount();
-    expect(count).toBe(18);
+    expect(count).toBe(15);
 
     // UPL disclaimer visible on dashboard
     await expect(dashboard.uplDisclaimer()).toBeVisible();

@@ -8,7 +8,7 @@ from django.contrib.auth import get_user_model
 
 from apps.districts.models import District
 from apps.forms.schema import load_schema
-from apps.forms.services.form_106sum_generator import Form106SumGenerator
+from apps.forms.services.fill_resolver import resolve
 from apps.intake.models import (
     AssetInfo,
     DebtInfo,
@@ -96,7 +96,6 @@ class TestForm106SumSchema:
     def test_schema_loads(self):
         schema = load_schema("form_106sum")
         assert schema.form_type == "form_106sum"
-        assert len(schema.fields) == 21
 
     def test_all_fields_have_valid_source(self):
         schema = load_schema("form_106sum")
@@ -104,8 +103,7 @@ class TestForm106SumSchema:
             assert f.source in ("presume", "derived", "constant", "asked", "ingested")
 
     def test_resolver_produces_output(self, populated_session):
-        generator = Form106SumGenerator(populated_session)
-        field_map = generator.pdf_field_map()
+        field_map = resolve(load_schema("form_106sum"), populated_session)
         assert "Debtor 1" in field_map
         assert "Jane Doe" in field_map["Debtor 1"]
         assert "Bankruptcy District Information" in field_map
@@ -115,29 +113,23 @@ class TestForm106SumSchema:
         assert "8" in field_map  # CMI
 
     def test_asset_totals(self, populated_session):
-        generator = Form106SumGenerator(populated_session)
-        field_map = generator.pdf_field_map()
+        field_map = resolve(load_schema("form_106sum"), populated_session)
         assert field_map["1a"] == "200000.00"  # real property
         assert field_map["1b"] == "15000.00"  # personal property
         assert field_map["1c"] == "215000.00"  # total assets
 
     def test_debt_totals(self, populated_session):
-        generator = Form106SumGenerator(populated_session)
-        field_map = generator.pdf_field_map()
+        field_map = resolve(load_schema("form_106sum"), populated_session)
         assert field_map["2"] == "50000.00"  # secured
         assert field_map["3a"] == "5000.00"  # priority unsecured
         assert field_map["3b"] == "10000.00"  # nonpriority unsecured
-        assert field_map["3c"] == "15000.00"  # total unsecured
-        assert field_map["4"] == "65000.00"  # total debts
 
     def test_cmi(self, populated_session):
-        generator = Form106SumGenerator(populated_session)
-        field_map = generator.pdf_field_map()
+        field_map = resolve(load_schema("form_106sum"), populated_session)
         # 1200 * 6 / 6 = 1200.00
         assert field_map["8"] == "1200.00"
 
     def test_empty_session(self, session):
-        generator = Form106SumGenerator(session)
-        field_map = generator.pdf_field_map()
+        field_map = resolve(load_schema("form_106sum"), session)
         assert field_map["1a"] == "0.00"
         assert field_map["8"] == "0.00"

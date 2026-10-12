@@ -9,26 +9,9 @@ schema", not "rebuild the engine".
 import pytest
 
 from apps.districts.models import District
-from apps.forms.management.commands.ingest_form_schema import build_draft_schema
-from apps.forms.schema import FieldSpec, FormSchema, validate_schema
-from apps.forms.services.derivations import DERIVATIONS, PREDICATES
+from apps.forms.schema import FormSchema
 from apps.forms.services.fill_resolver import resolve
 from apps.intake.models import IntakeSession
-
-
-def test_ingest_runs_on_a_second_form():
-    """build_draft_schema works on any AO template, not just form_107."""
-    draft = build_draft_schema("schedule_j")
-    assert len(draft["fields"]) > 0
-    assert all(f["source"] == "TBD" for f in draft["fields"])
-
-
-def test_validate_flags_uncurated_draft():
-    """An uncurated draft has TBD sources, which validate_schema flags."""
-    draft = build_draft_schema("schedule_j")
-    schema = FormSchema(**{**draft, "fields": [FieldSpec(**f) for f in draft["fields"]]})
-    errors = validate_schema(schema, set(DERIVATIONS), set(PREDICATES))
-    assert any("TBD" in e for e in errors), "uncurated draft should be flagged"
 
 
 @pytest.mark.django_db
@@ -59,7 +42,6 @@ def test_scalar_value_raises_on_asked_without_binding():
         type="text",
         source="asked",
         binding=None,
-        on_states=[],
         page=1,
         label="Test",
         required=False,

@@ -1,0 +1,320 @@
+[
+  {
+    "pdf_field": "Debtor 2",
+    "source": "derived",
+    "producer": "rule:full_name (conditional_on has_joint_filer)",
+    "produces": "Debtor 1's own name again (_full_name), only when has_joint_filer is true",
+    "targets": [
+      {
+        "full_name": "Debtor 2",
+        "page": 1,
+        "line": "",
+        "label": "Debtor 2 (Spouse, if filing)",
+        "column": ""
+      }
+    ],
+    "verdicts": ["wrong_value"],
+    "correct_target": "Debtor 2",
+    "known": "NEW",
+    "note": "Same defect as schedule_i 'Debtor 2': box is 'Debtor 2 (Spouse, if filing)'. Latent: 'joint_filer_gate' is never asked, so nothing is written today. Should carry the joint debtor's name; blank until joint-debtor data exists."
+  },
+  {
+    "pdf_field": "Debtor 1",
+    "source": "derived",
+    "producer": "rule:full_name",
+    "produces": "Debtor 1 'first middle last' from DebtorInfo",
+    "targets": [
+      {
+        "full_name": "Debtor 1",
+        "page": 1,
+        "line": "",
+        "label": "Debtor 1",
+        "column": ""
+      },
+      {
+        "full_name": "Debtor 1",
+        "page": 2,
+        "line": "",
+        "label": "Debtor 1",
+        "column": ""
+      },
+      {
+        "full_name": "Debtor 1",
+        "page": 3,
+        "line": "",
+        "label": "Debtor 1",
+        "column": ""
+      }
+    ],
+    "verdicts": ["correct"],
+    "correct_target": "Debtor 1",
+    "known": "",
+    "note": "Fills the case-header name (p1) and the running headers on p2 and p3."
+  },
+  {
+    "pdf_field": "10",
+    "source": "derived",
+    "producer": "rule:schedule_j_rent_or_mortgage",
+    "produces": "ExpenseInfo.rent_or_mortgage (monthly housing payment)",
+    "targets": [
+      {
+        "full_name": "10",
+        "page": 2,
+        "line": "10",
+        "label": "Personal care products and services",
+        "column": "Your expenses"
+      }
+    ],
+    "verdicts": ["wrong_box"],
+    "correct_target": "4",
+    "known": "DIG-52",
+    "note": "Box 10 is 'Personal care products and services'. Rent/first mortgage belongs on line 4 'The rental or home ownership expenses for your residence'. The UI field name matches the backend, so a real value lands in the wrong box."
+  },
+  {
+    "pdf_field": "12",
+    "source": "derived",
+    "producer": "rule:schedule_j_utilities",
+    "produces": "ExpenseInfo.utilities ('Gas, electric, water, etc.')",
+    "targets": [
+      {
+        "full_name": "12",
+        "page": 2,
+        "line": "12",
+        "label": "Transportation. Include gas, maintenance, bus or train fare. Do not include car payments.",
+        "column": "Your expenses"
+      }
+    ],
+    "verdicts": ["wrong_box"],
+    "correct_target": "6a",
+    "known": "DIG-52",
+    "note": "Box 12 is 'Transportation. Include gas, maintenance, bus or train fare.' Utilities belong on 6a 'Electricity, heat, natural gas' / 6b 'Water, sewer, garbage collection' (and 6c for phone/internet); one lumped figure needs a split or 6a+6d with Specify."
+  },
+  {
+    "pdf_field": "14",
+    "source": "derived",
+    "producer": "rule:schedule_j_home_maintenance",
+    "produces": "ExpenseInfo.home_maintenance ('Repairs and upkeep')",
+    "targets": [
+      {
+        "full_name": "14",
+        "page": 2,
+        "line": "14",
+        "label": "Charitable contributions and religious donations",
+        "column": "Your expenses"
+      }
+    ],
+    "verdicts": ["wrong_box"],
+    "correct_target": "4c",
+    "known": "DIG-52",
+    "note": "Box 14 is 'Charitable contributions and religious donations'. Home repairs belong on 4c 'Home maintenance, repair, and upkeep expenses'. NOT in DIG-52's enumerated list (rent->10, utilities->12, food->15a, ...); the ticket should add home_maintenance->14."
+  },
+  {
+    "pdf_field": "15a",
+    "source": "derived",
+    "producer": "rule:schedule_j_food_and_groceries",
+    "produces": "ExpenseInfo.food_and_groceries (0.00 for every wizard user: UI sends food_groceries, DIG-54)",
+    "targets": [
+      {
+        "full_name": "15a",
+        "page": 2,
+        "line": "15a",
+        "label": "Life insurance",
+        "column": "Your expenses"
+      }
+    ],
+    "verdicts": ["wrong_box"],
+    "correct_target": "7",
+    "known": "DIG-52",
+    "note": "Box 15a is 'Life insurance'. Food belongs on line 7 'Food and housekeeping supplies'."
+  },
+  {
+    "pdf_field": "15b",
+    "source": "derived",
+    "producer": "rule:schedule_j_childcare",
+    "produces": "ExpenseInfo.childcare",
+    "targets": [
+      {
+        "full_name": "15b",
+        "page": 2,
+        "line": "15b",
+        "label": "Health insurance",
+        "column": "Your expenses"
+      }
+    ],
+    "verdicts": ["wrong_box"],
+    "correct_target": "8",
+    "known": "DIG-52",
+    "note": "Box 15b is 'Health insurance'. Childcare belongs on line 8 'Childcare and children's education costs'."
+  },
+  {
+    "pdf_field": "15c",
+    "source": "derived",
+    "producer": "rule:schedule_j_clothing",
+    "produces": "ExpenseInfo.clothing (always 0.00 from the wizard: no UI input)",
+    "targets": [
+      {
+        "full_name": "15c",
+        "page": 2,
+        "line": "15c",
+        "label": "Vehicle insurance",
+        "column": "Your expenses"
+      }
+    ],
+    "verdicts": ["wrong_box"],
+    "correct_target": "9",
+    "known": "DIG-52",
+    "note": "Box 15c is 'Vehicle insurance'. Clothing belongs on line 9 'Clothing, laundry, and dry cleaning'."
+  },
+  {
+    "pdf_field": "16",
+    "source": "derived",
+    "producer": "rule:schedule_j_medical_expenses",
+    "produces": "ExpenseInfo.medical_expenses (out-of-pocket healthcare)",
+    "targets": [
+      {
+        "full_name": "16",
+        "page": 2,
+        "line": "16",
+        "label": "Taxes. Do not include taxes deducted from your pay or included in lines 4 or 20. (amount)",
+        "column": "Your expenses"
+      }
+    ],
+    "verdicts": ["wrong_box"],
+    "correct_target": "11",
+    "known": "DIG-52",
+    "note": "Box 16 is 'Taxes. Do not include taxes deducted from your pay or included in lines 4 or 20. Specify:'. Medical belongs on line 11 'Medical and dental expenses'."
+  },
+  {
+    "pdf_field": "17a",
+    "source": "derived",
+    "producer": "rule:schedule_j_vehicle_maintenance",
+    "produces": "ExpenseInfo.vehicle_maintenance ('Gas, repairs, registration'; 0.00 from the wizard because the UI sends gas_transportation, DIG-54)",
+    "targets": [
+      {
+        "full_name": "17a",
+        "page": 2,
+        "line": "17a",
+        "label": "Car payments for Vehicle 1",
+        "column": "Your expenses"
+      }
+    ],
+    "verdicts": ["wrong_box"],
+    "correct_target": "12",
+    "known": "DIG-52",
+    "note": "Box 17a is 'Car payments for Vehicle 1'. Gas/maintenance belongs on line 12 'Transportation. Include gas, maintenance, bus or train fare.' (bus/train fare has no field: DIG-57)."
+  },
+  {
+    "pdf_field": "17b",
+    "source": "derived",
+    "producer": "rule:schedule_j_vehicle_payment",
+    "produces": "ExpenseInfo.vehicle_payment ('Car loan or lease payment'; 0.00 from the wizard because the UI sends car_payment, DIG-54)",
+    "targets": [
+      {
+        "full_name": "17b",
+        "page": 2,
+        "line": "17b",
+        "label": "Car payments for Vehicle 2",
+        "column": "Your expenses"
+      }
+    ],
+    "verdicts": ["wrong_box"],
+    "correct_target": "17a",
+    "known": "DIG-52",
+    "note": "Box 17b is 'Car payments for Vehicle 2'. A filer's (first) car payment belongs on 17a 'Car payments for Vehicle 1'."
+  },
+  {
+    "pdf_field": "17c",
+    "source": "derived",
+    "producer": "rule:schedule_j_vehicle_insurance",
+    "produces": "ExpenseInfo.vehicle_insurance (0.00 from the wizard because the UI sends car_insurance, DIG-54)",
+    "targets": [
+      {
+        "full_name": "17c",
+        "page": 2,
+        "line": "17c",
+        "label": "Installment or lease payments: Other. Specify: (amount)",
+        "column": "Your expenses"
+      }
+    ],
+    "verdicts": ["wrong_box"],
+    "correct_target": "15c",
+    "known": "DIG-52",
+    "note": "Box 17c is the amount for 'Installment or lease payments: 17c. Other. Specify:'; its Specify text ('Other 17c') stays blank. Vehicle insurance belongs on 15c 'Vehicle insurance'."
+  },
+  {
+    "pdf_field": "20a",
+    "source": "derived",
+    "producer": "rule:schedule_j_insurance_not_deducted",
+    "produces": "ExpenseInfo.insurance_not_deducted ('Health, life, or disability insurance not deducted from paycheck')",
+    "targets": [
+      {
+        "full_name": "20a",
+        "page": 2,
+        "line": "20a",
+        "label": "Other real property expenses: Mortgages on other property",
+        "column": "Your expenses"
+      }
+    ],
+    "verdicts": ["wrong_box"],
+    "correct_target": "15b",
+    "known": "DIG-52",
+    "note": "Box 20a is 'Mortgages on other property' (line 20 other real property). This insurance belongs on line 15: 15b 'Health insurance', 15a 'Life insurance', or 15d 'Other insurance. Specify:' (disability). One lumped figure cannot be split without asking; 15b is the most likely single target."
+  },
+  {
+    "pdf_field": "21",
+    "source": "derived",
+    "producer": "rule:schedule_j_other_expenses",
+    "produces": "ExpenseInfo.other_expenses + ExpenseInfo.child_support_paid (other_expenses is 0.00 from the wizard because the UI sends other_necessary_expenses, DIG-54; child_support_paid has no UI input)",
+    "targets": [
+      {
+        "full_name": "21",
+        "page": 3,
+        "line": "21",
+        "label": "Other. Specify: (amount)",
+        "column": "Your expenses"
+      }
+    ],
+    "verdicts": ["wrong_value"],
+    "correct_target": "21",
+    "known": "DIG-52",
+    "note": "Box 21 is 'Other. Specify:' (amount); right box for other_expenses, but court-ordered support paid belongs on line 18 'Your payments of alimony, maintenance, and support that you did not report as deducted from your pay on line 5, Schedule I'. The Specify text ('Other 21') is never filled."
+  },
+  {
+    "pdf_field": "22a",
+    "source": "derived",
+    "producer": "rule:schedule_j_total_expenses",
+    "produces": "ExpenseInfo.calculate_total_monthly_expenses() = sum of all 13 expense fields",
+    "targets": [
+      {
+        "full_name": "22a",
+        "page": 3,
+        "line": "22a",
+        "label": "Calculate your monthly expenses: Add lines 4 through 21.",
+        "column": "Your expenses"
+      }
+    ],
+    "verdicts": ["correct"],
+    "correct_target": "22a",
+    "known": "",
+    "note": "Box 22a 'Add lines 4 through 21.' Each of the 13 fields lands on exactly one bound line (10,12,14,15a,15b,15c,16,17a,17b,17c,20a and 21 twice), so 22a reconciles with the printed lines even though those lines are mis-placed (DIG-52)."
+  },
+  {
+    "pdf_field": "23a",
+    "source": "derived",
+    "producer": "rule:schedule_j_total_income",
+    "produces": "rule schedule_j_total_income = cmi (pre-deduction 6-month average of typed total income)",
+    "targets": [
+      {
+        "full_name": "23a",
+        "page": 3,
+        "line": "23a",
+        "label": "Copy line 12 (your combined monthly income) from Schedule I.",
+        "column": "Your expenses"
+      }
+    ],
+    "verdicts": ["wrong_value"],
+    "correct_target": "23a",
+    "known": "DIG-61",
+    "note": "Box 23a 'Copy line 12 (your combined monthly income) from Schedule I.' Same producer as schedule_i 'Amount 12', so the two forms agree with each other; the value is still CMI/pre-deduction gross rather than Schedule I's net combined monthly income (see schedule_i Amount 10/12). Fix by binding 23a to whatever Schedule I line 12 becomes."
+  }
+]
