@@ -7,13 +7,17 @@ plus load_schema() function to load form schemas from JSON files.
 
 from __future__ import annotations
 
+import hashlib
 import json
 from dataclasses import dataclass
 from functools import lru_cache
+from io import BytesIO
 from pathlib import Path
 
 import pypdf
 from django.conf import settings
+
+from apps.forms.field_index import export_state, load_index
 
 
 @dataclass(frozen=True)
@@ -37,10 +41,9 @@ class UIFieldSpec:
 class FieldSpec:
     """Specification for a single form field."""
 
-    pdf_field: str
+    pdf_field: str  # an index full_name (apps.forms.field_index)
     type: str  # text | checkbox | radio | choice
-    source: str  # constant | derived | asked | ingested | signature | TBD
-    on_states: tuple[str, ...]
+    source: str  # constant | derived | asked | ingested | signature
     page: int
     label: str
     required: bool
@@ -53,6 +56,9 @@ class FieldSpec:
     repeat_capacity: int | None
     row: int | None
     legal_review: bool
+    # checkbox/radio only: normalised answer → export state. {"true": state} is
+    # a single box; {} means not mapped yet, and the binding emits nothing.
+    choices: dict[str, str] | None = None
     ui: UIFieldSpec | None = None
 
 
@@ -104,33 +110,87 @@ def load_schema(form_type: str) -> FormSchema:
     )
 
 
-def template_field_names(template_path: Path) -> set[str]:
-    """Return the set of AcroForm field names in a PDF template."""
-    reader = pypdf.PdfReader(str(template_path))
-    return set((reader.get_fields() or {}).keys())
+# Index widget types each binding type may target (spec §5.4 check 4).
+_WIDGET_TYPES = {
+    "text": {"Text"},
+    "choice": {"ComboBox"},
+    "checkbox": {"CheckBox", "RadioButton"},
+    "radio": {"CheckBox", "RadioButton"},
+}
+_BINDING_NAMESPACES = ("answer:", "sofa.")
 
 
-def validate_schema(schema: FormSchema, derivations: set[str], predicates: set[str]) -> list[str]:
+def validate_schema(
+    schema: FormSchema, derivations: set[str], predicates: set[str]
+) -> list[tuple[str, str]]:
     """
-    Return a list of error strings. Empty list = schema is valid.
+    Check a schema against its template and field index (spec §5.4, checks 2-7).
 
-    Checks: every pdf_field exists in the live template; no source left "TBD";
-    derived rules and conditional_on predicates resolve; repeat groups carry a
-    capacity. Run as a test so drift/typos fail CI, not a court filing.
+    Returns (code, message) pairs; an empty list means the schema is valid.
+    apps.forms.checks reports each pair as a forms.<code> system-check error.
     """
-    errors: list[str] = []
-    template_path = Path(settings.PDF_FORMS_DIRECTORY) / schema.template_filename
-    real_fields = template_field_names(template_path)
+    errors: list[tuple[str, str]] = []
+    template = (Path(settings.PDF_FORMS_DIRECTORY) / schema.template_filename).read_bytes()
+    if hashlib.sha256(template).hexdigest() != schema.template_version:
+        errors.append(("E002", "template_version is not the template's SHA-256"))
+
+    index = load_index(schema.template_filename)
+    template_fields = pypdf.PdfReader(BytesIO(template)).get_fields() or {}
+    seen: dict[str, list[FieldSpec]] = {}
 
     for f in schema.fields:
-        if f.pdf_field not in real_fields:
-            errors.append(f"pdf_field not in template: {f.pdf_field!r}")
+        widgets = index.get(f.pdf_field)
+        if widgets is None:
+            errors.append(("E003", f"{f.pdf_field!r} is not a full name in the field index"))
+            continue
+        seen.setdefault(f.pdf_field, []).append(f)
+
+        types = {w.type for w in widgets}
+        if any(w.basis == "form_control" for w in widgets):
+            errors.append(("E004", f"{f.pdf_field!r} is a push button"))
+        elif not types <= _WIDGET_TYPES.get(f.type, set()):
+            errors.append(("E004", f"{f.pdf_field!r} is bound as {f.type} but is {sorted(types)}"))
+        is_box = f.type in ("checkbox", "radio")
+        if is_box and f.choices is None:
+            errors.append(("E004", f"{f.pdf_field!r}: a {f.type} binding needs choices"))
+        if not is_box and f.choices is not None:
+            errors.append(
+                ("E004", f"{f.pdf_field!r}: choices go on checkbox and radio only, not on {f.type}")
+            )
+
+        if f.choices:
+            # The filler lower-cases the answer before the lookup (spec §5.1).
+            for key in sorted(k for k in f.choices if k != k.lower()):
+                errors.append(
+                    (
+                        "E004",
+                        f"{f.pdf_field!r}: choices key {key!r} isn't lower-case, "
+                        "so no answer can match it",
+                    )
+                )
+            states = {export_state(w.on_state) for w in widgets if w.on_state}
+            for state in sorted(set(f.choices.values()) - states):
+                errors.append(("E005", f"{f.pdf_field!r} has no state {state!r}"))
+        if f.type == "choice" and f.source == "constant":
+            # .get: a template that has drifted from its index is an error, not a crash.
+            options = [str(o) for o in template_fields.get(f.pdf_field, {}).get("/Opt", [])]
+            if f.value not in options:
+                errors.append(("E005", f"{f.pdf_field!r} has no option {f.value!r}"))
+
         if f.source == "TBD":
-            errors.append(f"source still TBD: {f.pdf_field!r}")
+            errors.append(("E007", f"{f.pdf_field!r}: source is still TBD"))
         if f.source == "derived" and f.rule not in derivations:
-            errors.append(f"unknown derivation rule {f.rule!r} on {f.pdf_field!r}")
+            errors.append(("E007", f"{f.pdf_field!r}: unknown derivation rule {f.rule!r}"))
         if f.conditional_on is not None and f.conditional_on not in predicates:
-            errors.append(f"unknown predicate {f.conditional_on!r} on {f.pdf_field!r}")
+            errors.append(("E007", f"{f.pdf_field!r}: unknown predicate {f.conditional_on!r}"))
+        if f.binding is not None and not f.binding.startswith(_BINDING_NAMESPACES):
+            errors.append(("E007", f"{f.pdf_field!r}: unknown binding namespace {f.binding!r}"))
         if f.repeat is not None and not f.repeat_capacity:
-            errors.append(f"repeat group {f.repeat!r} missing repeat_capacity")
+            errors.append(("E007", f"repeat group {f.repeat!r} has no repeat_capacity"))
+
+    for name, bindings in seen.items():
+        rows = {(b.repeat, b.row) for b in bindings}
+        same_group = len({b.repeat for b in bindings}) == 1 and bindings[0].repeat is not None
+        if len(bindings) > 1 and not (same_group and len(rows) == len(bindings)):
+            errors.append(("E006", f"{name!r} is bound {len(bindings)} times"))
     return errors

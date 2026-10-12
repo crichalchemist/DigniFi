@@ -1,0 +1,795 @@
+[
+  {
+    "pdf_fields": ["Debtor 1"],
+    "widgets": [
+      {
+        "full_name": "Debtor 1",
+        "page": 1,
+        "tag": "T1",
+        "on_state": null,
+        "option_text": ""
+      },
+      {
+        "full_name": "Debtor 1",
+        "page": 2,
+        "tag": "T1",
+        "on_state": null,
+        "option_text": ""
+      },
+      {
+        "full_name": "Debtor 1",
+        "page": 3,
+        "tag": "T1",
+        "on_state": null,
+        "option_text": ""
+      },
+      {
+        "full_name": "Debtor 1",
+        "page": 4,
+        "tag": "T1",
+        "on_state": null,
+        "option_text": ""
+      },
+      {
+        "full_name": "Debtor 1",
+        "page": 5,
+        "tag": "T1",
+        "on_state": null,
+        "option_text": ""
+      },
+      {
+        "full_name": "Debtor 1",
+        "page": 6,
+        "tag": "T1",
+        "on_state": null,
+        "option_text": ""
+      },
+      {
+        "full_name": "Debtor 1",
+        "page": 7,
+        "tag": "T1",
+        "on_state": null,
+        "option_text": ""
+      },
+      {
+        "full_name": "Debtor 1",
+        "page": 8,
+        "tag": "T1",
+        "on_state": null,
+        "option_text": ""
+      },
+      {
+        "full_name": "Debtor 1",
+        "page": 9,
+        "tag": "T1",
+        "on_state": null,
+        "option_text": ""
+      },
+      {
+        "full_name": "Debtor 1",
+        "page": 10,
+        "tag": "T1",
+        "on_state": null,
+        "option_text": ""
+      },
+      {
+        "full_name": "Debtor 1",
+        "page": 11,
+        "tag": "T1",
+        "on_state": null,
+        "option_text": ""
+      },
+      {
+        "full_name": "Debtor 1",
+        "page": 12,
+        "tag": "T1",
+        "on_state": null,
+        "option_text": ""
+      }
+    ],
+    "line": "header",
+    "label": "Debtor 1 First/Middle/Last Name (page header on all 12 pages)",
+    "why": "Every page must identify the debtor; the name goes to 'Debtor 2' instead (see audit).",
+    "known": "NEW"
+  },
+  {
+    "pdf_fields": ["check1"],
+    "widgets": [
+      {
+        "full_name": "check1",
+        "page": 1,
+        "tag": "T6",
+        "on_state": "married",
+        "option_text": "Married"
+      },
+      {
+        "full_name": "check1",
+        "page": 1,
+        "tag": "T7",
+        "on_state": "yes",
+        "option_text": "Not married"
+      }
+    ],
+    "line": "1",
+    "label": "What is your current marital status? Married (on=married) / Not married (on=yes)",
+    "why": "Required Part 1 answer; marital status is never collected.",
+    "known": "known DIG-53"
+  },
+  {
+    "pdf_fields": ["check4"],
+    "widgets": [
+      {
+        "full_name": "check4",
+        "page": 2,
+        "tag": "T3",
+        "on_state": "no",
+        "option_text": "No"
+      },
+      {
+        "full_name": "check4",
+        "page": 2,
+        "tag": "T4",
+        "on_state": "yes",
+        "option_text": "Yes. Fill in the details."
+      }
+    ],
+    "line": "4/5",
+    "label": "Line 4 No/Yes (check4); line 5 Yes is template field check3 (p2 T26), line 5 No is check5 (bound, but never ticks)",
+    "why": "Line 4 has no Yes/No binding. Line 5's binding (check5) targets 'No' with an unmatched state, and line 5 Yes shares field 'check3' with line 3.",
+    "known": "NEW"
+  },
+  {
+    "pdf_fields": ["Year from 4b Debtor1", "Year from 4c Debtor1"],
+    "widgets": [
+      {
+        "full_name": "Year from 4b Debtor1",
+        "page": 2,
+        "tag": "T15",
+        "on_state": null,
+        "option_text": ""
+      },
+      {
+        "full_name": "Year from 4b Debtor1",
+        "page": 2,
+        "tag": "T47",
+        "on_state": null,
+        "option_text": ""
+      },
+      {
+        "full_name": "Year from 4c Debtor1",
+        "page": 2,
+        "tag": "T22",
+        "on_state": null,
+        "option_text": ""
+      },
+      {
+        "full_name": "Year from 4c Debtor1",
+        "page": 2,
+        "tag": "T56",
+        "on_state": null,
+        "option_text": ""
+      }
+    ],
+    "line": "4/5",
+    "label": "YYYY for 'last calendar year' and 'the calendar year before that'",
+    "why": "The period years for lines 4 and 5 are never written; SOFAPriorIncome.year exists but is unbound.",
+    "known": "NEW"
+  },
+  {
+    "pdf_fields": ["check6", "check6a", "check6b"],
+    "widgets": [
+      {
+        "full_name": "check6",
+        "page": 3,
+        "tag": "T3",
+        "on_state": "no",
+        "option_text": "No. Neither Debtor 1 nor Debtor 2 has primarily consumer debts."
+      },
+      {
+        "full_name": "check6",
+        "page": 3,
+        "tag": "T6",
+        "on_state": "yes",
+        "option_text": "Yes. Debtor 1 or Debtor 2 or both have primarily consumer debts."
+      },
+      {
+        "full_name": "check6a",
+        "page": 3,
+        "tag": "T4",
+        "on_state": "no",
+        "option_text": "No. Go to line 7."
+      },
+      {
+        "full_name": "check6a",
+        "page": 3,
+        "tag": "T5",
+        "on_state": "yes",
+        "option_text": "Yes. List below each creditor to whom you paid a total of $8,575* or more in one or more payments and the total amount you paid that creditor."
+      },
+      {
+        "full_name": "check6b",
+        "page": 3,
+        "tag": "T7",
+        "on_state": "no",
+        "option_text": "No. Go to line 7."
+      },
+      {
+        "full_name": "check6b",
+        "page": 3,
+        "tag": "T8",
+        "on_state": "yes",
+        "option_text": "Yes. List below each creditor to whom you paid a total of $600 or more and the total amount you paid that creditor."
+      }
+    ],
+    "line": "6",
+    "label": "Primarily consumer debts? No/Yes; then $8,575* (check6a) or $600 (check6b) 90-day payment question No/Yes",
+    "why": "Gate for Part 3; creditor rows are filled without the governing answer.",
+    "known": "NEW"
+  },
+  {
+    "pdf_fields": ["check2"],
+    "widgets": [
+      {
+        "full_name": "check2",
+        "page": 1,
+        "tag": "T8",
+        "on_state": "no",
+        "option_text": "No"
+      },
+      {
+        "full_name": "check2",
+        "page": 1,
+        "tag": "T9",
+        "on_state": "yes",
+        "option_text": "Yes. List all of the places you lived in the last 3 years. Do not include where you live now."
+      }
+    ],
+    "line": "2",
+    "label": "During the last 3 years, have you lived anywhere other than where you live now? No/Yes",
+    "why": "Required Part 1 answer; the address rows are bound but the question is not.",
+    "known": "NEW"
+  },
+  {
+    "pdf_fields": ["check3"],
+    "widgets": [
+      {
+        "full_name": "check3",
+        "page": 1,
+        "tag": "T42",
+        "on_state": "no",
+        "option_text": "No"
+      },
+      {
+        "full_name": "check3",
+        "page": 1,
+        "tag": "T43",
+        "on_state": "yes",
+        "option_text": "Yes. Make sure you fill out Schedule H: Your Codebtors (Official Form 106H)."
+      },
+      {
+        "full_name": "check3",
+        "page": 2,
+        "tag": "T26",
+        "on_state": "yes",
+        "option_text": "Yes. Fill in the details."
+      }
+    ],
+    "line": "3",
+    "label": "Lived with a spouse in a community property state within 8 years? No (p1 T42) / Yes (p1 T43)",
+    "why": "Required Part 1 answer; template shares this field with line 5 Yes (p2 T26), so ticking Yes here also ticks line 5 Yes.",
+    "known": "NEW"
+  },
+  {
+    "pdf_fields": ["check7", "check8"],
+    "widgets": [
+      {
+        "full_name": "check7",
+        "page": 4,
+        "tag": "T3",
+        "on_state": "no",
+        "option_text": "No"
+      },
+      {
+        "full_name": "check7",
+        "page": 4,
+        "tag": "T4",
+        "on_state": "yes",
+        "option_text": "Yes. List all payments to an insider."
+      },
+      {
+        "full_name": "check8",
+        "page": 4,
+        "tag": "T29",
+        "on_state": "no",
+        "option_text": "No"
+      },
+      {
+        "full_name": "check8",
+        "page": 4,
+        "tag": "T30",
+        "on_state": "yes",
+        "option_text": "Yes. List all payments that benefited an insider."
+      }
+    ],
+    "line": "7/8",
+    "label": "Payments to insiders / payments benefiting insiders: No/Yes",
+    "why": "Required answers; insider rows are bound but the questions are not.",
+    "known": "NEW"
+  },
+  {
+    "pdf_fields": ["check9", "check10", "check11", "check12"],
+    "widgets": [
+      {
+        "full_name": "check9",
+        "page": 5,
+        "tag": "T3",
+        "on_state": "no",
+        "option_text": "No"
+      },
+      {
+        "full_name": "check9",
+        "page": 5,
+        "tag": "T4",
+        "on_state": "yes",
+        "option_text": "Yes. Fill in the details."
+      },
+      {
+        "full_name": "check10",
+        "page": 5,
+        "tag": "T29",
+        "on_state": "no",
+        "option_text": "No. Go to line 11."
+      },
+      {
+        "full_name": "check10",
+        "page": 5,
+        "tag": "T30",
+        "on_state": "yes",
+        "option_text": "Yes. Fill in the information below."
+      },
+      {
+        "full_name": "check11",
+        "page": 6,
+        "tag": "T3",
+        "on_state": "no",
+        "option_text": "No"
+      },
+      {
+        "full_name": "check11",
+        "page": 6,
+        "tag": "T4",
+        "on_state": "yes",
+        "option_text": "Yes. Fill in the details."
+      },
+      {
+        "full_name": "check12",
+        "page": 6,
+        "tag": "T15",
+        "on_state": "no",
+        "option_text": "No"
+      },
+      {
+        "full_name": "check12",
+        "page": 6,
+        "tag": "T16",
+        "on_state": "yes",
+        "option_text": "Yes"
+      }
+    ],
+    "line": "9-12",
+    "label": "Part 4: lawsuits; repossession/foreclosure/garnishment; setoffs; property held by assignee/receiver: No/Yes",
+    "why": "Required answers ('Answer every question'); line 12 has no detail rows at all.",
+    "known": "NEW"
+  },
+  {
+    "pdf_fields": ["check13", "check14", "check15"],
+    "widgets": [
+      {
+        "full_name": "check13",
+        "page": 6,
+        "tag": "T17",
+        "on_state": "no",
+        "option_text": "No"
+      },
+      {
+        "full_name": "check13",
+        "page": 6,
+        "tag": "T18",
+        "on_state": "yes",
+        "option_text": "Yes. Fill in the details for each gift."
+      },
+      {
+        "full_name": "check14",
+        "page": 7,
+        "tag": "T3",
+        "on_state": "no",
+        "option_text": "No"
+      },
+      {
+        "full_name": "check14",
+        "page": 7,
+        "tag": "T4",
+        "on_state": "yes",
+        "option_text": "Yes. Fill in the details for each gift or contribution."
+      },
+      {
+        "full_name": "check15",
+        "page": 7,
+        "tag": "T16",
+        "on_state": "no",
+        "option_text": "No"
+      },
+      {
+        "full_name": "check15",
+        "page": 7,
+        "tag": "T17",
+        "on_state": "yes",
+        "option_text": "Yes. Fill in the details."
+      }
+    ],
+    "line": "13-15",
+    "label": "Gifts > $600; charitable gifts > $600; losses from theft/fire/disaster/gambling: No/Yes",
+    "why": "Required answers.",
+    "known": "NEW"
+  },
+  {
+    "pdf_fields": ["check16", "check17", "check18", "check19"],
+    "widgets": [
+      {
+        "full_name": "check16",
+        "page": 7,
+        "tag": "T22",
+        "on_state": "no",
+        "option_text": "No"
+      },
+      {
+        "full_name": "check16",
+        "page": 7,
+        "tag": "T23",
+        "on_state": "yes",
+        "option_text": "Yes. Fill in the details."
+      },
+      {
+        "full_name": "check17",
+        "page": 8,
+        "tag": "T16",
+        "on_state": "no",
+        "option_text": "No"
+      },
+      {
+        "full_name": "check17",
+        "page": 8,
+        "tag": "T17",
+        "on_state": "yes",
+        "option_text": "Yes. Fill in the details."
+      },
+      {
+        "full_name": "check18",
+        "page": 8,
+        "tag": "T29",
+        "on_state": "no",
+        "option_text": "No"
+      },
+      {
+        "full_name": "check18",
+        "page": 8,
+        "tag": "T30",
+        "on_state": "yes",
+        "option_text": "Yes. Fill in the details."
+      },
+      {
+        "full_name": "check19",
+        "page": 9,
+        "tag": "T3",
+        "on_state": "no",
+        "option_text": "No"
+      },
+      {
+        "full_name": "check19",
+        "page": 9,
+        "tag": "T4",
+        "on_state": "yes",
+        "option_text": "Yes. Fill in the details."
+      }
+    ],
+    "line": "16-19",
+    "label": "Payments for bankruptcy help; debt-relief payments; other transfers; self-settled trust transfers: No/Yes",
+    "why": "Required answers; line 16 also needs the paid preparer/attorney disclosure.",
+    "known": "NEW"
+  },
+  {
+    "pdf_fields": ["check20", "check21", "check22", "check23"],
+    "widgets": [
+      {
+        "full_name": "check20",
+        "page": 9,
+        "tag": "T9",
+        "on_state": "no",
+        "option_text": "No"
+      },
+      {
+        "full_name": "check20",
+        "page": 9,
+        "tag": "T10",
+        "on_state": "yes",
+        "option_text": "Yes. Fill in the details."
+      },
+      {
+        "full_name": "check21",
+        "page": 9,
+        "tag": "T41",
+        "on_state": "no",
+        "option_text": "No"
+      },
+      {
+        "full_name": "check21",
+        "page": 9,
+        "tag": "T42",
+        "on_state": "yes",
+        "option_text": "Yes. Fill in the details."
+      },
+      {
+        "full_name": "check22",
+        "page": 10,
+        "tag": "T3",
+        "on_state": "no",
+        "option_text": "No"
+      },
+      {
+        "full_name": "check22",
+        "page": 10,
+        "tag": "T4",
+        "on_state": "yes",
+        "option_text": "Yes. Fill in the details."
+      },
+      {
+        "full_name": "check23",
+        "page": 10,
+        "tag": "T19",
+        "on_state": "no",
+        "option_text": "No"
+      },
+      {
+        "full_name": "check23",
+        "page": 10,
+        "tag": "T20",
+        "on_state": "yes",
+        "option_text": "Yes. Fill in the details."
+      }
+    ],
+    "line": "20-23",
+    "label": "Closed financial accounts; safe deposit box; storage unit; property held for someone else: No/Yes",
+    "why": "Required answers.",
+    "known": "NEW"
+  },
+  {
+    "pdf_fields": ["check24", "check25", "check26", "check27a", "check28"],
+    "widgets": [
+      {
+        "full_name": "check24",
+        "page": 10,
+        "tag": "T34",
+        "on_state": "no",
+        "option_text": "No"
+      },
+      {
+        "full_name": "check24",
+        "page": 10,
+        "tag": "T35",
+        "on_state": "yes",
+        "option_text": "Yes. Fill in the details."
+      },
+      {
+        "full_name": "check25",
+        "page": 11,
+        "tag": "T3",
+        "on_state": "no",
+        "option_text": "No"
+      },
+      {
+        "full_name": "check25",
+        "page": 11,
+        "tag": "T4",
+        "on_state": "yes",
+        "option_text": "Yes. Fill in the details."
+      },
+      {
+        "full_name": "check26",
+        "page": 11,
+        "tag": "T18",
+        "on_state": "no",
+        "option_text": "No"
+      },
+      {
+        "full_name": "check26",
+        "page": 11,
+        "tag": "T19",
+        "on_state": "yes",
+        "option_text": "Yes. Fill in the details."
+      },
+      {
+        "full_name": "check26",
+        "page": 11,
+        "tag": "T23",
+        "on_state": "pending",
+        "option_text": "Pending"
+      },
+      {
+        "full_name": "check26",
+        "page": 11,
+        "tag": "T25",
+        "on_state": "on#20appeal",
+        "option_text": "On appeal"
+      },
+      {
+        "full_name": "check26",
+        "page": 11,
+        "tag": "T27",
+        "on_state": "concluded",
+        "option_text": "Concluded"
+      },
+      {
+        "full_name": "check27a",
+        "page": 11,
+        "tag": "T37",
+        "on_state": "no",
+        "option_text": "No. None of the above applies. Go to Part 12."
+      },
+      {
+        "full_name": "check27a",
+        "page": 11,
+        "tag": "T38",
+        "on_state": "yes",
+        "option_text": "Yes. Check all that apply above and fill in the details below for each business."
+      },
+      {
+        "full_name": "check28",
+        "page": 12,
+        "tag": "T14",
+        "on_state": "no",
+        "option_text": "No"
+      },
+      {
+        "full_name": "check28",
+        "page": 12,
+        "tag": "T15",
+        "on_state": "yes",
+        "option_text": "Yes. Fill in the details below."
+      }
+    ],
+    "line": "24-28",
+    "label": "Environmental notices/releases/proceedings; business connections (No/Yes); financial statements to anyone: No/Yes",
+    "why": "Required answers. Template field 'check26' also holds line 26's case-status boxes (pending/on appeal/concluded).",
+    "known": "NEW"
+  },
+  {
+    "pdf_fields": ["check29", "check30"],
+    "widgets": [
+      {
+        "full_name": "check29",
+        "page": 12,
+        "tag": "T27",
+        "on_state": "no",
+        "option_text": "No"
+      },
+      {
+        "full_name": "check29",
+        "page": 12,
+        "tag": "T28",
+        "on_state": "yes",
+        "option_text": "Yes"
+      },
+      {
+        "full_name": "check30",
+        "page": 12,
+        "tag": "T29",
+        "on_state": "no",
+        "option_text": "No"
+      },
+      {
+        "full_name": "check30",
+        "page": 12,
+        "tag": "T31",
+        "on_state": "yes",
+        "option_text": "Yes."
+      }
+    ],
+    "line": "Part 12",
+    "label": "Did you attach additional pages? No/Yes; Did you pay a non-attorney to help fill out the forms? No/Yes",
+    "why": "Required Part 12 answers; schema binds the 'attach' push button instead of check29, and 'Name of person agreed to pay' without check30.",
+    "known": "NEW"
+  },
+  {
+    "pdf_fields": ["Case number"],
+    "widgets": [
+      {
+        "full_name": "Case number",
+        "page": 1,
+        "tag": "T4",
+        "on_state": null,
+        "option_text": ""
+      },
+      {
+        "full_name": "Case number",
+        "page": 2,
+        "tag": "T2",
+        "on_state": null,
+        "option_text": ""
+      },
+      {
+        "full_name": "Case number",
+        "page": 3,
+        "tag": "T2",
+        "on_state": null,
+        "option_text": ""
+      },
+      {
+        "full_name": "Case number",
+        "page": 4,
+        "tag": "T2",
+        "on_state": null,
+        "option_text": ""
+      },
+      {
+        "full_name": "Case number",
+        "page": 5,
+        "tag": "T2",
+        "on_state": null,
+        "option_text": ""
+      },
+      {
+        "full_name": "Case number",
+        "page": 6,
+        "tag": "T2",
+        "on_state": null,
+        "option_text": ""
+      },
+      {
+        "full_name": "Case number",
+        "page": 7,
+        "tag": "T2",
+        "on_state": null,
+        "option_text": ""
+      },
+      {
+        "full_name": "Case number",
+        "page": 8,
+        "tag": "T2",
+        "on_state": null,
+        "option_text": ""
+      },
+      {
+        "full_name": "Case number",
+        "page": 9,
+        "tag": "T2",
+        "on_state": null,
+        "option_text": ""
+      },
+      {
+        "full_name": "Case number",
+        "page": 10,
+        "tag": "T2",
+        "on_state": null,
+        "option_text": ""
+      },
+      {
+        "full_name": "Case number",
+        "page": 11,
+        "tag": "T2",
+        "on_state": null,
+        "option_text": ""
+      },
+      {
+        "full_name": "Case number",
+        "page": 12,
+        "tag": "T2",
+        "on_state": null,
+        "option_text": ""
+      }
+    ],
+    "line": "header",
+    "label": "Case number (if known) on all 12 page headers",
+    "why": "Blank at initial filing is acceptable; needed on any amended or later-filed Form 107.",
+    "known": "NEW"
+  }
+]

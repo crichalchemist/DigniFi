@@ -1,0 +1,137 @@
+[
+  {
+    "pdf_field": "CheckBox1",
+    "page": 1,
+    "line": "top box 1/2",
+    "on_states": ["No#20Abuse", "Presumption#20of#20abuse#20applies"],
+    "label": "Page-1 result box: 1 There is no presumption of abuse / 2 There is a presumption of abuse (check as directed in lines 40 or 42)",
+    "why": "The form's outcome; every 122A-2 must check one. Not in the schema.",
+    "known": "NEW"
+  },
+  {
+    "pdf_field": "CheckBox14",
+    "page": 8,
+    "line": "40",
+    "on_states": ["1", "2", "On"],
+    "label": "Line 40: 39d < $10,275 (export '1') / 39d > $17,150 (export '2') / between - go to line 41 (export 'On')",
+    "why": "Required presumption test; not in the schema. The third option exports 'On', not '3'.",
+    "known": "NEW"
+  },
+  {
+    "pdf_field": "undefined_107 / undefined_108",
+    "page": 8,
+    "line": "39c / 39d",
+    "on_states": [],
+    "label": "Monthly disposable income (39c, two widgets) and x 60 total (39d, two widgets)",
+    "why": "These figures drive line 40; not in the schema (MeansTest.disposable_income exists but is never written).",
+    "known": "NEW"
+  },
+  {
+    "pdf_field": "undefined_104",
+    "page": 8,
+    "line": "38 / 39b",
+    "on_states": [],
+    "label": "Total deductions (line 38 total + copy) and line 39b 'Copy line 38' - one field, three widgets",
+    "why": "Required total. The total-deductions figure is instead written into Quest1 (line 1) and Quest10 (line 10).",
+    "known": "DIG-60"
+  },
+  {
+    "pdf_field": "Quest4",
+    "page": 1,
+    "line": "4 / 39a",
+    "on_states": [],
+    "label": "Adjusted current monthly income (line 4; also fills line 39a on p8)",
+    "why": "Starting figure of Part 3; not in the schema.",
+    "known": "NEW"
+  },
+  {
+    "pdf_field": "CheckBox15 + undefined_110 / undefined_111",
+    "page": 9,
+    "line": "41a / 41b / 42",
+    "on_states": ["No", "Yes"],
+    "label": "41a total nonpriority unsecured debt; 41b 25% of it (two widgets); 42 '39d < 41b' (export 'No') / '39d >= 41b' (export 'Yes')",
+    "why": "Required when line 40 = 'On' (middle band). The existing rule total_nonpriority_unsecured could feed undefined_110; none of these are in the schema.",
+    "known": "NEW"
+  },
+  {
+    "pdf_field": "Quest5",
+    "page": 2,
+    "line": "5",
+    "on_states": [],
+    "label": "The number of people used in determining your deductions from income",
+    "why": "Drives every IRS standard on lines 6-9; receives a dollar figure (priority debt payments) instead of a head count.",
+    "known": "DIG-60"
+  },
+  {
+    "pdf_field": "undefined_56 / undefined_67 / undefined_100",
+    "page": 5,
+    "line": "24 / 32 / 37",
+    "on_states": [],
+    "label": "Subtotals: IRS expense allowances (24), additional expense deductions (32), deductions for debt payment (37)",
+    "why": "Required subtotals feeding line 38 (copied into undefined_101/102/103); not in the schema.",
+    "known": "NEW"
+  },
+  {
+    "pdf_field": "Quest7A / Quest7B / Quest7C / Quest7G",
+    "page": 2,
+    "line": "7a-7g",
+    "on_states": [],
+    "label": "Out-of-pocket health care allowance per person, count under 65, subtotal, total (7d-7f for 65 or older)",
+    "why": "IRS National Standard deduction; the schema has constants with null values.",
+    "known": "NEW"
+  },
+  {
+    "pdf_field": "CheckBox6",
+    "page": 3,
+    "line": "11",
+    "on_states": ["0", "1", "On"],
+    "label": "Number of vehicles claimed: 0 / 1 / 2 or more (export 'On')",
+    "why": "Gates lines 12-15; not in the schema.",
+    "known": "DIG-50"
+  },
+  {
+    "pdf_field": "Quest13A / Quest13B Creditor for vehicle 1-1 / Quest13B amount for vehicle 1-1 / Quest13C",
+    "page": 4,
+    "line": "13a-13c",
+    "on_states": [],
+    "label": "Vehicle 1 IRS ownership standard, secured creditor and 60-month average payment, net ownership expense",
+    "why": "The car payment's correct home (and the 33b repeat); unbound while the payment is written into 13d/14/15.",
+    "known": "DIG-50"
+  },
+  {
+    "pdf_field": "undefined_48 / undefined_49 / undefined_51 / undefined_53",
+    "page": 5,
+    "line": "16 / 17 / 19 / 21",
+    "on_states": [],
+    "label": "Taxes; involuntary payroll deductions; court-ordered payments (e.g. child support paid); childcare",
+    "why": "Common, often large Other Necessary Expenses; the schema has constants with null values even though ExpenseInfo.childcare and child_support_paid exist.",
+    "known": "NEW"
+  },
+  {
+    "pdf_field": "CheckBox3 / CheckBox4 / CheckBox5 + Quest3",
+    "page": 1,
+    "line": "2 / 3",
+    "on_states": ["No", "Yes", "On"],
+    "label": "Line 2 Column B filled? / spouse filing? ; line 3 marital adjustment Yes/No (CheckBox5 Yes exports 'On') and its total Quest3 (two widgets)",
+    "why": "Required Part 1 answers; not in the schema; they depend on marital status, which is not collected (DIG-53).",
+    "known": "DIG-53"
+  },
+  {
+    "pdf_field": "Quest9B creditor name1/amount1 ... + undefined_80 + CheckBox11 / CheckBox12 / CheckBox13",
+    "page": 3,
+    "line": "9b / 33 / 34 / 35 / 36",
+    "on_states": ["No", "Yes"],
+    "label": "Home-secured debt payments (9b, repeat 33a), 33e total, and the Yes/No answers for lines 34 (cure), 35 (past-due priority), 36 (Chapter 13 eligible)",
+    "why": "Deductions for debt payment and required Yes/No answers; nothing is bound. Secured debts are saved as unsecured (DIG-26), so no secured-payment data exists to bind here.",
+    "known": "DIG-26"
+  },
+  {
+    "pdf_field": "CheckBox16",
+    "page": 9,
+    "line": "43",
+    "on_states": ["No", "Yes"],
+    "label": "Special circumstances? No - go to Part 5 / Yes",
+    "why": "Required Part 4 answer; not in the schema.",
+    "known": "NEW"
+  }
+]

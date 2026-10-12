@@ -8,7 +8,7 @@ from django.contrib.auth import get_user_model
 
 from apps.districts.models import District
 from apps.forms.schema import load_schema
-from apps.forms.services.schedule_i_generator import ScheduleIGenerator
+from apps.forms.services.fill_resolver import resolve
 from apps.intake.models import DebtorInfo, IncomeInfo, IntakeSession
 
 User = get_user_model()
@@ -57,7 +57,6 @@ class TestScheduleISchema:
     def test_schema_loads(self):
         schema = load_schema("schedule_i")
         assert schema.form_type == "schedule_i"
-        assert len(schema.fields) == 24
 
     def test_all_fields_have_valid_source(self):
         schema = load_schema("schedule_i")
@@ -65,21 +64,18 @@ class TestScheduleISchema:
             assert f.source in ("presume", "derived", "constant", "asked", "ingested")
 
     def test_resolver_produces_output(self, session_with_income):
-        generator = ScheduleIGenerator(session_with_income)
-        field_map = generator.pdf_field_map()
+        field_map = resolve(load_schema("schedule_i"), session_with_income)
         assert "Bankruptcy District Information" in field_map
         assert "Debtor 1" in field_map
         assert "Jane Doe" in field_map["Debtor 1"]
         assert "Amount 12" in field_map
 
     def test_cmi_in_field_map(self, session_with_income):
-        generator = ScheduleIGenerator(session_with_income)
-        field_map = generator.pdf_field_map()
+        field_map = resolve(load_schema("schedule_i"), session_with_income)
         # 2000 * 6 / 6 = 2000
         assert field_map["Amount 12"] == "2000.00"
         assert field_map["Amount 10 Debtor 1"] == "2000.00"
 
     def test_empty_session(self, session):
-        generator = ScheduleIGenerator(session)
-        field_map = generator.pdf_field_map()
+        field_map = resolve(load_schema("schedule_i"), session)
         assert "Bankruptcy District Information" in field_map

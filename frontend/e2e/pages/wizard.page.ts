@@ -14,7 +14,18 @@ export class WizardPage {
   // ── Navigation ──────────────────────────────────────────────────
 
   async nextStep() {
+    const progress = this.page
+      .getByRole('navigation', { name: 'Intake progress' })
+      .locator('[aria-live="polite"]');
+    const [before] = await progress.allTextContents();
     await this.page.getByRole('button', { name: /continue/i }).click();
+    // Wait for the step to change, or for step 1's detour to /documents. A step's
+    // save can outlast the fixed delay below, and a click during it lands a step behind.
+    await expect(async () => {
+      const leftWizard = !new URL(this.page.url()).pathname.startsWith('/intake');
+      const [now] = await progress.allTextContents();
+      expect(leftWizard || (now !== undefined && now !== before)).toBe(true);
+    }).toPass({ timeout: 15_000 });
     // Wait for step transition (network + render)
     await this.page.waitForTimeout(500);
   }

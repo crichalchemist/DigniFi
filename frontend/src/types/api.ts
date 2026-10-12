@@ -221,7 +221,7 @@ export interface MeansTestResult {
 // Form Generation
 // ============================================================================
 
-/** All 18 form types registered in the backend form registry */
+/** All 17 form types registered in the backend form registry */
 export type FormType =
   | 'form_101' // Voluntary Petition
   | 'form_103b' // Fee Waiver Application
@@ -232,7 +232,6 @@ export type FormType =
   | 'form_122a1' // Means Test
   | 'form_122a1_supp' // Means Test Supplement
   | 'form_122a2' // Means Test Expense Calculation
-  | 'form_122b' // Chapter 7 Statement of Exemption
   | 'schedule_a_b' // Property
   | 'schedule_c' // Exemptions
   | 'schedule_d' // Secured Creditors
@@ -251,7 +250,6 @@ export interface GeneratedForm {
   form_type_display: string;
   status: FormStatus;
   status_display: string;
-  form_data: Record<string, unknown>;
   pdf_file_path: string | null;
   upl_disclaimer?: string;
   generated_by: number;
@@ -308,11 +306,6 @@ export const FORM_TYPE_METADATA: Record<
     label: 'Form 122A-2 - Means Test Expenses',
     description: 'Chapter 7 means test expense calculation',
     order: 9,
-  },
-  form_122b: {
-    label: 'Form 122B - Chapter 7 Exemption',
-    description: 'Statement that income is primarily consumer debt',
-    order: 10,
   },
   schedule_a_b: {
     label: 'Schedule A/B - Property',
@@ -427,6 +420,12 @@ export interface GenerateAllFormsResponse {
   errors: Array<{ form_type: string; error: string }>;
   total_generated: number;
   total_errors: number;
+}
+
+/** The forms that apply to this filer, in filing order */
+export interface FormPacketResponse {
+  session: number;
+  form_types: FormType[];
 }
 
 export interface SessionSummaryResponse {

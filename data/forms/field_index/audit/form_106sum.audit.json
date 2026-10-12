@@ -1,0 +1,290 @@
+[
+  {
+    "pdf_field": "Bankruptcy District Information",
+    "source": "derived",
+    "producer": "rule:district_name",
+    "produces": "session.district.name, e.g. \"Northern District of Illinois\"",
+    "targets": [
+      {
+        "full_name": "Bankruptcy District Information",
+        "page": 1,
+        "tag": "T3",
+        "line": "",
+        "label": "United States Bankruptcy Court for the:",
+        "column": ""
+      }
+    ],
+    "verdicts": ["correct"],
+    "correct_target": "",
+    "known": "",
+    "note": ""
+  },
+  {
+    "pdf_field": "Debtor 1",
+    "source": "derived",
+    "producer": "rule:full_name",
+    "produces": "Debtor 1 \"first middle last\" from DebtorInfo",
+    "targets": [
+      {
+        "full_name": "Debtor 1",
+        "page": 1,
+        "tag": "T1",
+        "line": "",
+        "label": "Debtor 1",
+        "column": ""
+      },
+      {
+        "full_name": "Debtor 1",
+        "page": 2,
+        "tag": "T1",
+        "line": "",
+        "label": "Debtor 1",
+        "column": ""
+      }
+    ],
+    "verdicts": ["correct"],
+    "correct_target": "",
+    "known": "",
+    "note": "One field with two widgets: the p1 caption and the p2 continuation caption. Both are Debtor 1, as intended."
+  },
+  {
+    "pdf_field": "Debtor 2",
+    "source": "derived",
+    "producer": "rule:full_name",
+    "produces": "Debtor 1 \"first middle last\" from DebtorInfo [only when has_joint_filer]",
+    "targets": [
+      {
+        "full_name": "Debtor 2",
+        "page": 1,
+        "tag": "T2",
+        "line": "",
+        "label": "Debtor 2 (Spouse, if filing)",
+        "column": ""
+      }
+    ],
+    "verdicts": ["wrong_value"],
+    "correct_target": "Debtor 2",
+    "known": "NEW",
+    "note": "Rule full_name reads session.debtor_info, i.e. Debtor 1. For a joint filer (predicate has_joint_filer) Debtor 2's caption box receives Debtor 1's own name; no derivation reads a co-debtor (the frontend's co_debtor_* inputs have no DebtorInfo/serializer field, so DRF drops them). Non-joint filers: section skipped, box blank (correct). Latent today: nothing in backend/apps, the schemas, or the frontend writes FormAnswer 'joint_filer_gate', so has_joint_filer is always False and this never fires."
+  },
+  {
+    "pdf_field": "Check if this is an",
+    "source": "derived",
+    "producer": "rule:joint_filer_check",
+    "produces": "\"true\" when FormAnswer joint_filer_gate is yes -> _emit on dict on_states raises KeyError(0) [only when has_joint_filer]",
+    "targets": [
+      {
+        "full_name": "Check if this is an",
+        "page": 1,
+        "tag": "T5",
+        "line": "",
+        "label": "Check if this is an amended filing",
+        "column": ""
+      }
+    ],
+    "verdicts": ["wrong_box", "checkbox_state"],
+    "correct_target": "leave blank",
+    "known": "NEW",
+    "note": "Printed box T5 reads 'Check if this is an amended filing' (on_state 'On'); the schema calls it 'Joint filing' and ticks it from joint_filer_check. on_states is a JSON dict {'true':'/Yes'}, so _emit evaluates on_states[0] -> KeyError(0) (reproduced with load_schema + _emit): resolve() raises for every joint filer, so this form cannot be generated for them. Even with a list, '/Yes' != on_state 'On' (pypdf 6.13.1 writes /Off). generate_all catches per-form exceptions, so the form would be listed under errors as '0' and the others would still generate. Latent today: nothing in backend/apps, the schemas, or the frontend writes FormAnswer 'joint_filer_gate', so has_joint_filer is always False and this never fires."
+  },
+  {
+    "pdf_field": "1a",
+    "source": "derived",
+    "producer": "rule:total_real_property",
+    "produces": "sum AssetInfo.current_value where asset_type=real_property",
+    "targets": [
+      {
+        "full_name": "1a",
+        "page": 1,
+        "tag": "T6",
+        "line": "1a",
+        "label": "Copy line 55, Total real estate, from Schedule A/B",
+        "column": "Your assets: Value of what you own"
+      }
+    ],
+    "verdicts": ["correct"],
+    "correct_target": "",
+    "known": "",
+    "note": "Sum of real_property AssetInfo.current_value = Schedule A/B line 55. A/B line 55 itself (undefined_159) is unbound, so the \"copy\" has no source on A/B."
+  },
+  {
+    "pdf_field": "1b",
+    "source": "derived",
+    "producer": "rule:total_personal_property",
+    "produces": "sum AssetInfo.current_value where asset_type != real_property",
+    "targets": [
+      {
+        "full_name": "1b",
+        "page": 1,
+        "tag": "T7",
+        "line": "1b",
+        "label": "Copy line 62, Total personal property, from Schedule A/B",
+        "column": "Your assets: Value of what you own"
+      }
+    ],
+    "verdicts": ["correct"],
+    "correct_target": "",
+    "known": "",
+    "note": "All non-real-property assets = A/B line 62 (unbound on A/B)."
+  },
+  {
+    "pdf_field": "1c",
+    "source": "derived",
+    "producer": "rule:total_assets",
+    "produces": "sum of all AssetInfo.current_value",
+    "targets": [
+      {
+        "full_name": "1c",
+        "page": 1,
+        "tag": "T8",
+        "line": "1c",
+        "label": "Copy line 63, Total of all property on Schedule A/B",
+        "column": "Your assets: Value of what you own"
+      }
+    ],
+    "verdicts": ["correct"],
+    "correct_target": "",
+    "known": "",
+    "note": "All assets = A/B line 63 (unbound on A/B)."
+  },
+  {
+    "pdf_field": "2",
+    "source": "derived",
+    "producer": "rule:total_secured_debts",
+    "produces": "sum DebtInfo.amount_owed where is_secured",
+    "targets": [
+      {
+        "full_name": "2",
+        "page": 1,
+        "tag": "T9",
+        "line": "2a",
+        "label": "Copy the total you listed in Column A, Amount of claim, at the bottom of the last page of Part 1 of Schedule D",
+        "column": "Your liabilities: Amount you owe"
+      }
+    ],
+    "verdicts": ["correct"],
+    "correct_target": "",
+    "known": "",
+    "note": "Field \"2\" is the printed 2a box: \"Copy the total you listed in Column A, Amount of claim ... of Schedule D\". Sum of DebtInfo with is_secured=True. The binding is right, but because of DIG-26 (secured debts saved as unsecured) it is $0 in practice."
+  },
+  {
+    "pdf_field": "3a",
+    "source": "derived",
+    "producer": "rule:total_priority_unsecured",
+    "produces": "sum DebtInfo.amount_owed where not secured and is_priority",
+    "targets": [
+      {
+        "full_name": "3a",
+        "page": 1,
+        "tag": "T10",
+        "line": "3a",
+        "label": "Copy the total claims from Part 1 (priority unsecured claims) from line 6e of Schedule E/F",
+        "column": "Your liabilities: Amount you owe"
+      }
+    ],
+    "verdicts": ["correct"],
+    "correct_target": "",
+    "known": "",
+    "note": "Unsecured priority debts = Schedule E/F line 6e."
+  },
+  {
+    "pdf_field": "3b",
+    "source": "derived",
+    "producer": "rule:total_nonpriority_unsecured",
+    "produces": "sum DebtInfo.amount_owed where not secured and not priority",
+    "targets": [
+      {
+        "full_name": "3b",
+        "page": 1,
+        "tag": "T11",
+        "line": "3b",
+        "label": "Copy the total claims from Part 2 (nonpriority unsecured claims) from line 6j of Schedule E/F",
+        "column": "Your liabilities: Amount you owe"
+      }
+    ],
+    "verdicts": ["correct"],
+    "correct_target": "",
+    "known": "",
+    "note": "Unsecured non-priority debts = E/F line 6j. DIG-26 inflates this with secured debts saved as unsecured."
+  },
+  {
+    "pdf_field": "3c",
+    "source": "derived",
+    "producer": "rule:total_unsecured_debts",
+    "produces": "sum DebtInfo.amount_owed where not secured (3a+3b)",
+    "targets": [
+      {
+        "full_name": "3c",
+        "page": 1,
+        "tag": "T12",
+        "line": "3c",
+        "label": "Your total liabilities (unnumbered row = 2a + 3a + 3b)",
+        "column": "Your liabilities: Amount you owe"
+      }
+    ],
+    "verdicts": ["wrong_value"],
+    "correct_target": "3c",
+    "known": "NEW",
+    "note": "Printed row (unnumbered, field 3c): \"Your total liabilities\" = 2a + 3a + 3b. Rule total_unsecured_debts gives 3a+3b only and leaves out secured claims. Rule total_debts (currently bound to \"4\") is the right producer."
+  },
+  {
+    "pdf_field": "4",
+    "source": "derived",
+    "producer": "rule:total_debts",
+    "produces": "sum of all DebtInfo.amount_owed (lifetime balance), 2dp",
+    "targets": [
+      {
+        "full_name": "4",
+        "page": 1,
+        "tag": "T13",
+        "line": "4",
+        "label": "Line 4: Copy your combined monthly income from line 12 of Schedule I",
+        "column": ""
+      }
+    ],
+    "verdicts": ["wrong_box"],
+    "correct_target": "3c",
+    "known": "NEW",
+    "note": "Line 4 box: \"Copy your combined monthly income from line 12 of Schedule I\". It gets total_debts, the lifetime total of all debts. That value belongs in the \"Your total liabilities\" box (3c). No derivation produces Schedule I line 12."
+  },
+  {
+    "pdf_field": "8",
+    "source": "derived",
+    "producer": "rule:cmi",
+    "produces": "mean of IncomeInfo.monthly_income (6 equal copies of total_monthly_income, incl. Social Security)",
+    "targets": [
+      {
+        "full_name": "8",
+        "page": 2,
+        "tag": "T7",
+        "line": "8",
+        "label": "Line 8: Copy your total current monthly income from Official Form 122A-1 Line 11 (or 122B Line 11 / 122C-1 Line 14)",
+        "column": ""
+      }
+    ],
+    "verdicts": ["wrong_value"],
+    "correct_target": "8",
+    "known": "DIG-49",
+    "note": "The box is right: line 8, \"Copy your total current monthly income from Official Form 122A-1 Line 11\". _cmi averages income_info.monthly_income, which IntakeWizard builds as Array(6).fill(total_monthly_income), and that total includes monthly_social_security. CMI under \u00a7 101(10A) excludes Social Security."
+  },
+  {
+    "pdf_field": "9a",
+    "source": "derived",
+    "producer": "rule:total_monthly_expenses",
+    "produces": "ExpenseInfo.calculate_total_monthly_expenses(), monthly",
+    "targets": [
+      {
+        "full_name": "9a",
+        "page": 2,
+        "tag": "T8",
+        "line": "9a",
+        "label": "Domestic support obligations (Copy line 6a.)",
+        "column": "Total claim"
+      }
+    ],
+    "verdicts": ["wrong_box"],
+    "correct_target": "5",
+    "known": "NEW",
+    "note": "Line 9a: \"Domestic support obligations (Copy line 6a.)\" from Schedule E/F Part 4. It gets total monthly household expenses. That value belongs on line 5, \"Copy your monthly expenses from line 22c of Schedule J\" (field \"5\", p1 T14), which is otherwise unbound."
+  }
+]

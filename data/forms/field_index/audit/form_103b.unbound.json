@@ -1,0 +1,132 @@
+[
+  {
+    "full_name": "Debtor 1",
+    "page": [1, 4],
+    "tag": ["T1", "T1"],
+    "line": "",
+    "label": "Debtor 1 caption (application p1 and Order p4)",
+    "why": "No name appears on the application: the schema key \"Debtor\" matches no widget (DIG-64)."
+  },
+  {
+    "full_name": "undefined_6",
+    "page": 1,
+    "tag": "T15",
+    "line": "2",
+    "label": "Your family's average monthly net income (Total)",
+    "why": "This is the core figure the court tests against 150% of the poverty line, and nothing fills it. The value is sent to the line 4 narrative box instead."
+  },
+  {
+    "full_name": ["undefined_2", "undefined_3", "undefined_4", "undefined_5"],
+    "page": 1,
+    "tag": ["T11", "T12", "T13", "T14"],
+    "line": "2",
+    "label": "You / Your spouse / Subtotal / minus non-cash assistance (take-home pay)",
+    "why": "The line 2 components are all blank."
+  },
+  {
+    "full_name": "undefined_7",
+    "page": 2,
+    "tag": "T3",
+    "line": "6",
+    "label": "Estimate your average monthly expenses",
+    "why": "The value goes into the line 5 narrative box instead."
+  },
+  {
+    "full_name": ["You", "Your spouse", "Your dependents", "How many dependents"],
+    "page": 1,
+    "tag": ["T6", "T7", "T10", "T8"],
+    "line": "1",
+    "label": "What is the size of your family? Check all that apply / How many dependents?",
+    "why": "Only the total is filled. \"You\" (on_state On) is true for every applicant and is never ticked.",
+    "on_states": ["On", "On", "On"]
+  },
+  {
+    "full_name": "check 3",
+    "page": 1,
+    "tag": ["T16", "T18"],
+    "line": "3",
+    "label": "Do you receive non-cash governmental assistance? No / Yes. Describe (+ \"3 type\")",
+    "why": "FeeWaiverApplication.receives_public_benefits and benefit_programs exist but are not bound.",
+    "on_states": ["no", "yes"]
+  },
+  {
+    "full_name": "Check 4",
+    "page": 1,
+    "tag": ["T19", "T21"],
+    "line": "4",
+    "label": "Do you expect your family's average monthly net income to increase or decrease by more than 10% during the next 6 months?",
+    "why": "Required answer; no box is ticked.",
+    "on_states": ["no", "yes"]
+  },
+  {
+    "full_name": "Check 7",
+    "page": 2,
+    "tag": ["T4", "T6"],
+    "line": "7",
+    "label": "Do these expenses cover anyone who is not included in your family as reported in line 1?",
+    "why": "Required answer. The No box's on_state is \"On\", not \"no\".",
+    "on_states": ["On", "yes"]
+  },
+  {
+    "full_name": "Check 8",
+    "page": 2,
+    "tag": ["T7", "T9"],
+    "line": "8",
+    "label": "Does anyone other than you regularly pay any of these expenses?",
+    "why": "Required answer.",
+    "on_states": ["no", "yes"]
+  },
+  {
+    "full_name": "Check 9",
+    "page": 2,
+    "tag": ["T10", "T12"],
+    "line": "9",
+    "label": "Do you expect your average monthly expenses to increase or decrease by more than 10% during the next 6 months?",
+    "why": "Required answer.",
+    "on_states": ["no", "yes"]
+  },
+  {
+    "full_name": ["check_17", "check_18", "check_19"],
+    "page": 3,
+    "tag": ["T13", "T14", "T20", "T21", "T27", "T28"],
+    "line": "17-19",
+    "label": "Payments for bankruptcy services (paid / promised / paid on your behalf)",
+    "why": "Required No/Yes answers. Whether DigniFi counts as a preparer is the same \u00a7 110 question raised on 106Dec.",
+    "on_states": ["no", "yes"]
+  },
+  {
+    "full_name": "check_20",
+    "page": 3,
+    "tag": ["T40", "T44"],
+    "line": "20",
+    "label": "Have you filed for bankruptcy within the last 8 years?",
+    "why": "Required answer; a prior_bankruptcy_gate predicate exists but is unused here.",
+    "on_states": ["no", "yes"]
+  },
+  {
+    "full_name": [
+      "undefined_11",
+      "Institution name",
+      "undefined_12",
+      "undefined_13",
+      "undefined_14",
+      "Make",
+      "Model",
+      "Year",
+      "undefined_21"
+    ],
+    "page": 2,
+    "tag": ["T13", "T15", "T14", "T17", "T16", "T30", "T32", "T33", "T31"],
+    "line": "10-14",
+    "label": "Part 3 property: cash, bank accounts, home, other real estate, vehicles",
+    "why": "Part 3 is blank. The form allows attaching Schedule A/B instead (\"If you have already filled out Schedule A/B ... attach copies and go to Part 4\"), but nothing marks that the schedule is attached."
+  },
+  {
+    "full_name": ["Date", "Debtor.Name1"],
+    "page": 3,
+    "tag": ["T53", "T1"],
+    "line": "Part 5",
+    "label": "Date of Debtor 1 signature; Debtor 1 continuation captions (p2, p3)",
+    "why": "Both are unbound. Unlike the other forms, 103B binds no signature-date key at all."
+  }
+]

@@ -77,34 +77,24 @@ export function FormCard({
           </>
         )}
 
-        {status === 'generated' && generatedForm && (
-          <>
-            <Button
-              size="sm"
-              variant="primary"
-              onClick={() => handleAction(() => onDownload(generatedForm.id))}
-              isLoading={isLoading}
-              loadingText="Preparing..."
-            >
-              Download
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => handleAction(() => onMarkFiled(generatedForm.id))}
-            >
-              Mark as Filed
-            </Button>
-          </>
+        {/* Every stored form downloads; a filed one serves what was filed */}
+        {generatedForm && (
+          <Button
+            size="sm"
+            variant="primary"
+            onClick={() => handleAction(() => onDownload(generatedForm.id))}
+            isLoading={isLoading}
+            loadingText="Preparing..."
+          >
+            Download
+          </Button>
         )}
 
-        {status === 'downloaded' && generatedForm && (
+        {(status === 'generated' || status === 'downloaded') && generatedForm && (
           <Button
             size="sm"
             variant="outline"
             onClick={() => handleAction(() => onMarkFiled(generatedForm.id))}
-            isLoading={isLoading}
-            loadingText="Updating..."
           >
             Mark as Filed
           </Button>

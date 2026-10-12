@@ -1,0 +1,45 @@
+[
+  {
+    "full_name": "Check Box3",
+    "page": 1,
+    "tag": "T19",
+    "line": "3",
+    "label": "You do not have an ITIN. (Debtor 1)",
+    "why": "Every filer must either list ITINs or tick this box. The ITINNum constant is empty and Check Box3 is an empty constant, so neither happens.",
+    "on_states": ["On"]
+  },
+  {
+    "full_name": ["Debtor2.First name", "Debtor2.Middle name_2", "Debtor2.Last name"],
+    "page": 1,
+    "tag": ["T4", "T6", "T8"],
+    "line": "1",
+    "label": "Your name, For Debtor 2",
+    "why": "The schema targets the nonexistent Debtor2a.* names, so a joint filer's spouse is never named (DIG-64)."
+  },
+  {
+    "full_name": "Check Box4",
+    "page": 1,
+    "tag": "T20",
+    "line": "3",
+    "label": "You do not have an ITIN. (Debtor 2)",
+    "why": "Needed for joint filers; the schema binds only empty constants for Debtor 2 ITINs.",
+    "on_states": ["On"]
+  },
+  {
+    "full_name": "Check Box1",
+    "page": 1,
+    "tag": "T13",
+    "line": "2",
+    "label": "You do not have a Social Security number. (Debtor 1)",
+    "why": "The no-SSN case is routed to Debtor 2's box (Check Box2) with a non-matching on_state, so a filer without an SSN gets no box ticked.",
+    "on_states": ["On"]
+  },
+  {
+    "full_name": "Debtor1a.ITINNum",
+    "page": 1,
+    "tag": "T15",
+    "line": "3",
+    "label": "ITIN (Debtor 1)",
+    "why": "Filers who use an ITIN have nowhere to enter it. The schema key \"ITINNum\" is an empty constant and, by short name, would hit both Debtor1a.ITINNum and Debtor1b.ITINNum."
+  }
+]

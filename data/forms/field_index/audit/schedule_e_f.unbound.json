@@ -1,0 +1,167 @@
+[
+  {
+    "full_name": "check1",
+    "pages": [1],
+    "line": "1",
+    "label": "Do any creditors have priority unsecured claims against you?",
+    "column": "",
+    "kind": "checkbox",
+    "why_needed": "Line 1 'Do any creditors have priority unsecured claims against you?' No/Yes must be answered.",
+    "available_source": "count of DebtInfo is_secured=False, is_priority=True",
+    "known": ""
+  },
+  {
+    "full_name": "check7",
+    "pages": [3],
+    "line": "3",
+    "label": "Do any creditors have nonpriority unsecured claims against you?",
+    "column": "",
+    "kind": "checkbox",
+    "why_needed": "Line 3 'Do any creditors have nonpriority unsecured claims against you?' No/Yes must be answered.",
+    "available_source": "count of DebtInfo is_secured=False, is_priority=False",
+    "known": ""
+  },
+  {
+    "full_name": "Total_6j",
+    "pages": [6],
+    "line": "6j",
+    "label": "Total. Add lines 6f through 6i.",
+    "column": "Total claims from Part 2 (Total claim)",
+    "kind": "amount",
+    "why_needed": "Line 6j total nonpriority unsecured claims (statistical, 28 U.S.C. 159).",
+    "available_source": "derivation total_nonpriority_unsecured exists but is unbound",
+    "known": ""
+  },
+  {
+    "full_name": "Total_6e",
+    "pages": [6],
+    "line": "6e",
+    "label": "Total. Add lines 6a through 6d.",
+    "column": "Total claims from Part 1 (Total claim)",
+    "kind": "amount",
+    "why_needed": "Line 6e total priority unsecured claims.",
+    "available_source": "derivation total_priority_unsecured exists but is unbound",
+    "known": ""
+  },
+  {
+    "full_name": "Total_6i",
+    "pages": [6],
+    "line": "6i",
+    "label": "Other. Add all other nonpriority unsecured claims. Write that amount here.",
+    "column": "Total claims from Part 2 (Total claim)",
+    "kind": "amount",
+    "why_needed": "Line 6i other nonpriority claims (the bucket most consumer debts fall in).",
+    "available_source": "sum of nonpriority debts not student loan/divorce/pension",
+    "known": ""
+  },
+  {
+    "full_name": "Creditors Name_6",
+    "pages": [3],
+    "line": "4.1",
+    "label": "Nonpriority Creditor's Name",
+    "column": "",
+    "kind": "text",
+    "why_needed": "Line 4.1 Nonpriority Creditor's Name; no nonpriority creditor is ever listed.",
+    "available_source": "ScheduleEFGenerator.generate()['nonpriority_creditors']",
+    "known": ""
+  },
+  {
+    "full_name": "Total_26",
+    "pages": [3],
+    "line": "4.1",
+    "label": "Total claim",
+    "column": "Total claim",
+    "kind": "amount",
+    "why_needed": "Line 4.1 Total claim.",
+    "available_source": "nonpriority_creditors[i]['amount_owed']",
+    "known": ""
+  },
+  {
+    "full_name": "Street_6",
+    "pages": [3],
+    "line": "4.1",
+    "label": "Number Street",
+    "column": "",
+    "kind": "text",
+    "why_needed": "Line 4.1 creditor street address (City 4.1 / State 4.1 / Zip 4.1 likewise).",
+    "available_source": "DebtInfo has no address field",
+    "known": ""
+  },
+  {
+    "full_name": "Other_6",
+    "pages": [3],
+    "line": "4.1",
+    "label": "Type of NONPRIORITY unsecured claim:",
+    "column": "",
+    "kind": "checkbox",
+    "why_needed": "Line 4.1 Type of NONPRIORITY unsecured claim (Other. Specify + 'Other unsecurecured claim 4.1').",
+    "available_source": "DebtInfo.debt_type",
+    "known": ""
+  },
+  {
+    "full_name": "check 6",
+    "pages": [3],
+    "line": "4.1",
+    "label": "Who incurred the debt? Check one.",
+    "column": "",
+    "kind": "checkbox",
+    "why_needed": "Line 4.1 'Who incurred the debt? Check one.'",
+    "available_source": "Debtor 1 only for individual filers",
+    "known": ""
+  },
+  {
+    "full_name": "check8",
+    "pages": [3],
+    "line": "4.1",
+    "label": "Is the claim subject to offset?",
+    "column": "",
+    "kind": "checkbox",
+    "why_needed": "Line 4.1 'Is the claim subject to offset?' No/Yes.",
+    "available_source": "none",
+    "known": ""
+  },
+  {
+    "full_name": "Creditors Name",
+    "pages": [1],
+    "line": "2.1",
+    "label": "Priority Creditor's Name",
+    "column": "",
+    "kind": "text",
+    "why_needed": "Line 2.1 Priority Creditor's Name.",
+    "available_source": "generate()['priority_creditors']",
+    "known": ""
+  },
+  {
+    "full_name": "undefined",
+    "pages": [1],
+    "line": "2.1",
+    "label": "Total claim",
+    "column": "Total claim",
+    "kind": "amount",
+    "why_needed": "Line 2.1 Total claim (undefined_2 priority amount, undefined_3 nonpriority amount likewise).",
+    "available_source": "priority_creditors[i]['amount_owed']",
+    "known": ""
+  },
+  {
+    "full_name": "Domestic support obligations",
+    "pages": [1],
+    "line": "2.1",
+    "label": "Type of PRIORITY unsecured claim:",
+    "column": "",
+    "kind": "checkbox",
+    "why_needed": "Line 2.1 Type of PRIORITY unsecured claim checkboxes.",
+    "available_source": "DebtInfo.priority_classification",
+    "known": ""
+  },
+  {
+    "full_name": "account number 6",
+    "pages": [3],
+    "line": "4.1",
+    "label": "Last 4 digits of account number",
+    "column": "",
+    "kind": "text",
+    "why_needed": "Line 4.1 last 4 digits of account number.",
+    "available_source": "DebtInfo.account_number",
+    "known": ""
+  }
+]

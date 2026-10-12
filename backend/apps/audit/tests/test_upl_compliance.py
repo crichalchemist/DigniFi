@@ -22,7 +22,7 @@ from django.contrib.auth import get_user_model
 from apps.audit.middleware import AuditLoggingMiddleware
 from apps.districts.models import District, MedianIncome
 from apps.eligibility.services.means_test_calculator import MeansTestCalculator
-from apps.forms.views import _UPL_DISCLAIMER
+from apps.forms.constants import _UPL_DISCLAIMER
 from apps.intake.models import DebtorInfo, IncomeInfo, IntakeSession
 
 User = get_user_model()
@@ -159,7 +159,7 @@ class TestFormsViewUPLCompliance:
     """Verify forms view UPL disclaimers and messaging."""
 
     def test_upl_disclaimer_constant_exists(self):
-        """_UPL_DISCLAIMER constant must be defined in forms views."""
+        """_UPL_DISCLAIMER constant must be defined in the forms app."""
         assert _UPL_DISCLAIMER is not None
         assert len(_UPL_DISCLAIMER) > 0
 

@@ -1,0 +1,42 @@
+[
+  {
+    "pdf_field": "Debtor 2",
+    "source": "derived",
+    "producer": "rule:full_name (conditional_on has_joint_filer)",
+    "produces": "_full_name = Debtor 1's own name, written only when FormAnswer joint_filer_gate is yes/true",
+    "targets": [
+      {
+        "full_name": "Debtor 2",
+        "page": 1,
+        "tag": "T2",
+        "line": "",
+        "label": "Debtor 2 (Spouse, if filing) (First Name, Middle Name, Last Name)",
+        "column": ""
+      }
+    ],
+    "verdicts": ["wrong_value"],
+    "correct_target": "leave blank",
+    "known": "NEW",
+    "note": "Page 1 'Debtor 2' is 'Debtor 2 (Spouse, if filing)'. When the joint gate is on it gets Debtor 1's name instead of the spouse's; no model stores a spouse name. The gate reads FormAnswer 'joint_filer_gate', which nothing writes (grep), and ignores DebtorInfo.filing_type, so in practice the box stays blank. Meanwhile the schema has no 'Debtor 1' field at all (see unbound)."
+  },
+  {
+    "pdf_field": "Bankruptcy District Information",
+    "source": "derived",
+    "producer": "rule:district_name",
+    "produces": "derivations 'district_name' = session.district.name, e.g. 'Northern District of Illinois'",
+    "targets": [
+      {
+        "full_name": "Bankruptcy District Information",
+        "page": 1,
+        "tag": "T3",
+        "line": "",
+        "label": "United States Bankruptcy Court for the: ____ District of ____",
+        "column": ""
+      }
+    ],
+    "verdicts": ["correct"],
+    "correct_target": "Bankruptcy District Information",
+    "known": "",
+    "note": "Combo box /Opt on this template contains 'Northern District of Illinois' exactly (Ff 393216 = combo+edit), so the value selects a real option."
+  }
+]

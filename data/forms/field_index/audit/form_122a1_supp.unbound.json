@@ -1,0 +1,65 @@
+[
+  {
+    "pdf_field": "CheckBox2",
+    "page": 1,
+    "line": "1",
+    "on_states": ["no", "Yes"],
+    "label": "Are your debts primarily consumer debts?",
+    "why": "Required on any filed supplement ('No' is the non-consumer-debt exemption, which pairs with 122A-1 top box 1). Unbound, though DebtInfo.consumer_business_classification exists.",
+    "known": "NEW"
+  },
+  {
+    "pdf_field": "CheckBox3",
+    "page": 1,
+    "line": "2",
+    "on_states": ["no", "Yes"],
+    "label": "Are you a disabled veteran (38 U.S.C. 3741(1))?",
+    "why": "Required on a filed supplement; unbound.",
+    "known": "NEW"
+  },
+  {
+    "pdf_field": "CheckBox4",
+    "page": 1,
+    "line": "2",
+    "on_states": ["no", "Yes"],
+    "label": "(Disabled veteran) Did you incur debts mostly while on active duty or performing a homeland defense activity?",
+    "why": "Required if CheckBox3 = Yes; unbound.",
+    "known": "NEW"
+  },
+  {
+    "pdf_field": "CheckBox5",
+    "page": 1,
+    "line": "3",
+    "on_states": ["no", "Yes"],
+    "label": "Are you or have you been a Reservist or member of the National Guard?",
+    "why": "Required on a filed supplement; unbound.",
+    "known": "NEW"
+  },
+  {
+    "pdf_field": "CheckBox6",
+    "page": 1,
+    "line": "3",
+    "on_states": ["no", "Yes"],
+    "label": "(Reservist/Guard) Were you called to active duty or did you perform a homeland defense activity?",
+    "why": "Required if CheckBox5 = Yes; unbound.",
+    "known": "NEW"
+  },
+  {
+    "pdf_field": "CheckBox7",
+    "page": 1,
+    "line": "3",
+    "on_states": ["1", "2", "3", "4"],
+    "label": "Active-duty / homeland-defense category (check one)",
+    "why": "Required if CheckBox6 = Yes; unbound. It pairs with 122A-1 top box 3.",
+    "known": "NEW"
+  },
+  {
+    "pdf_field": "Date1 / Date2",
+    "page": 1,
+    "line": "3",
+    "on_states": [],
+    "label": "Date released from active duty (category 2) / date homeland defense activity ended (category 4)",
+    "why": "Required with categories 2 and 4; the schema has constant null.",
+    "known": "NEW"
+  }
+]

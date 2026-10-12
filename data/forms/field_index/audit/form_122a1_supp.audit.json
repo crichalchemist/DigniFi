@@ -1,0 +1,47 @@
+[
+  {
+    "pdf_field": "Name",
+    "source": "derived",
+    "producer": "rule:full_name",
+    "produces": "Debtor 1 full name 'First Middle Last' (rule full_name)",
+    "targets": [
+      {
+        "full_name": "Debtor1.Name",
+        "page": 1,
+        "line": "",
+        "label": "Debtor 1 name (First, Middle, Last)",
+        "column": ""
+      },
+      {
+        "full_name": "Debtor2.Name",
+        "page": 1,
+        "line": "",
+        "label": "Debtor 2 (Spouse, if filing) name (First, Middle, Last)",
+        "column": ""
+      }
+    ],
+    "verdicts": ["collision"],
+    "correct_target": "Debtor1.Name",
+    "known": "DIG-63",
+    "note": "Bare key 'Name' fills Debtor1.Name (p1 T1) and Debtor2.Name (p1 T2, 'Debtor 2 (Spouse, if filing)')."
+  },
+  {
+    "pdf_field": "Bankruptcy District Information",
+    "source": "derived",
+    "producer": "rule:district_name",
+    "produces": "District.name, e.g. 'Northern District of Illinois' (exact /Opt entry)",
+    "targets": [
+      {
+        "full_name": "Bankruptcy District Information",
+        "page": 1,
+        "line": "",
+        "label": "United States Bankruptcy Court for the: ___ District of ___",
+        "column": ""
+      }
+    ],
+    "verdicts": ["correct"],
+    "correct_target": "Bankruptcy District Information",
+    "known": "",
+    "note": "Printed 'United States Bankruptcy Court for the: ___ District of ___'."
+  }
+]

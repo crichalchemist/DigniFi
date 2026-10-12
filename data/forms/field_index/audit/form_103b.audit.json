@@ -1,0 +1,121 @@
+[
+  {
+    "pdf_field": "Bankruptcy District Information",
+    "source": "derived",
+    "producer": "rule:district_name",
+    "produces": "session.district.name, e.g. \"Northern District of Illinois\"",
+    "targets": [
+      {
+        "full_name": "Bankruptcy District Information",
+        "page": 1,
+        "tag": "T3",
+        "line": "",
+        "label": "United States Bankruptcy Court for the:",
+        "column": ""
+      },
+      {
+        "full_name": "Bankruptcy District Information",
+        "page": 4,
+        "tag": "T3",
+        "line": "",
+        "label": "United States Bankruptcy Court for the:",
+        "column": ""
+      }
+    ],
+    "verdicts": ["correct"],
+    "correct_target": "",
+    "known": "",
+    "note": "district_name -> session.district.name (\"Northern District of Illinois\", an exact /Opt entry). Fills the p1 caption and the p4 Order caption (same field)."
+  },
+  {
+    "pdf_field": "Debtor",
+    "source": "derived",
+    "producer": "rule:full_name",
+    "produces": "Debtor 1 \"first middle last\" from DebtorInfo",
+    "targets": [],
+    "verdicts": ["missing_field"],
+    "correct_target": "Debtor 1",
+    "known": "DIG-64",
+    "note": "No widget is named \"Debtor\" (it is only the parent of \"Debtor.Name1\"); pypdf 6.13.1 writes nothing. The name boxes are \"Debtor 1\" (p1 T1, p4 T1) and \"Debtor.Name1\" (p2/p3 continuation captions), all left blank."
+  },
+  {
+    "pdf_field": "Total number of people",
+    "source": "derived",
+    "producer": "rule:fee_waiver_household_size",
+    "produces": "FeeWaiverApplication.household_size (fallback \"1\")",
+    "targets": [
+      {
+        "full_name": "Total number of people",
+        "page": 1,
+        "tag": "T9",
+        "line": "1",
+        "label": "Total number of people",
+        "column": ""
+      }
+    ],
+    "verdicts": ["correct"],
+    "correct_target": "",
+    "known": "",
+    "note": "Line 1 box \"Total number of people\" (p1 T9). FeeWaiverApplication.household_size, fallback \"1\"."
+  },
+  {
+    "pdf_field": "4 type",
+    "source": "derived",
+    "producer": "rule:fee_waiver_monthly_income",
+    "produces": "FeeWaiverApplication.monthly_income, 2dp (pre-filled from gross total monthly income)",
+    "targets": [
+      {
+        "full_name": "4 type",
+        "page": 1,
+        "tag": "T20",
+        "line": "4",
+        "label": "Line 4 Yes. Explain. (explanation of expected >10% income change)",
+        "column": ""
+      }
+    ],
+    "verdicts": ["wrong_box"],
+    "correct_target": "undefined_6",
+    "known": "NEW",
+    "note": "The number lands in line 4's \"Yes. Explain.\" narrative box (p1 T20; question: \"Do you expect your family's average monthly net income to increase or decrease by more than 10%...\"). It belongs on line 2 \"Your family's average monthly net income\" (Total box undefined_6, or \"You\" undefined_2). There is also a concept gap: fw.monthly_income is pre-filled from income_info.total_monthly_income, which is gross and all-source, but line 2 asks for take-home pay plus non-cash assistance."
+  },
+  {
+    "pdf_field": "5 Type",
+    "source": "derived",
+    "producer": "rule:fee_waiver_monthly_expenses",
+    "produces": "FeeWaiverApplication.monthly_expenses, 2dp",
+    "targets": [
+      {
+        "full_name": "5 Type",
+        "page": 1,
+        "tag": "T22",
+        "line": "5",
+        "label": "Line 5: Tell the court why you are unable to pay the filing fee in installments within 120 days (explanation)",
+        "column": ""
+      }
+    ],
+    "verdicts": ["wrong_box"],
+    "correct_target": "undefined_7",
+    "known": "NEW",
+    "note": "The number lands in line 5's narrative box \"Tell the court why you are unable to pay the filing fee in installments within 120 days\" (p1 T22). It belongs on line 6 \"Estimate your average monthly expenses\" (p2 T3 undefined_7). Line 5 then never receives the narrative it asks for."
+  },
+  {
+    "pdf_field": "Amount you owe",
+    "source": "derived",
+    "producer": "rule:total_debts",
+    "produces": "sum of all DebtInfo.amount_owed (lifetime balance), 2dp",
+    "targets": [
+      {
+        "full_name": "Amount you owe",
+        "page": 3,
+        "tag": "T4",
+        "line": "15",
+        "label": "Line 15 Other assets: Describe the other assets",
+        "column": ""
+      }
+    ],
+    "verdicts": ["wrong_box"],
+    "correct_target": "leave blank",
+    "known": "NEW",
+    "note": "The widget named \"Amount you owe\" is the line 15 \"Describe the other assets:\" text box (p3 T4; its tooltip is a template copy error). Total debt is written as the description of other assets. 103B has no total-debt box; lines 12-15 ask for per-asset \"Amount you owe on liens\", so this rule should not be bound here."
+  }
+]

@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { http, HttpResponse } from 'msw';
@@ -107,15 +107,29 @@ describe('FormDashboard', () => {
   // Generate All
   // ---------------------------------------------------------------------------
 
-  it('renders Generate All button', async () => {
-    // Return empty forms list so all are "pending"
-    server.use(http.get('http://localhost:8000/api/forms/', () => HttpResponse.json([])));
+  it('offers only the forms in the filer’s packet', async () => {
+    // A stored form that no longer applies (122A-2 after income dropped) is neither shown nor counted
+    server.use(
+      http.get('http://localhost:8000/api/forms/packet/', () =>
+        HttpResponse.json({ session: 1, form_types: ['form_101', 'form_121'] })
+      ),
+      http.get('http://localhost:8000/api/forms/', () =>
+        HttpResponse.json([
+          { id: 1, session: 1, form_type: 'form_101', status: 'generated' },
+          { id: 2, session: 1, form_type: 'form_122a2', status: 'generated' },
+        ])
+      )
+    );
 
     renderFormDashboard();
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /generate all 18 forms/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /generate all 2 forms/i })).toBeInTheDocument();
     });
+    expect(screen.getByText('1 of 2 generated')).toBeInTheDocument();
+    expect(screen.getByText('Form 121 - SSN Statement')).toBeInTheDocument();
+    expect(screen.queryByText('Form 103B - Fee Waiver Application')).not.toBeInTheDocument();
+    expect(screen.queryByText('Form 122A-2 - Means Test Expenses')).not.toBeInTheDocument();
   });
 
   it('shows error banner when generate_all returns partial failures', async () => {
@@ -133,8 +147,8 @@ describe('FormDashboard', () => {
     renderFormDashboard();
     await waitFor(() => expect(screen.getByText('Your Court Forms')).toBeInTheDocument());
 
-    // Click "Generate All" — opens UPL confirmation modal
-    const generateAllBtn = screen.getByRole('button', { name: /generate all/i });
+    // Click "Generate All" (shown once the packet loads) — opens UPL confirmation modal
+    const generateAllBtn = await screen.findByRole('button', { name: /generate all/i });
     await userEvent.click(generateAllBtn);
 
     // Acknowledge the UPL disclaimer checkbox, then confirm
@@ -147,5 +161,9 @@ describe('FormDashboard', () => {
       expect(screen.getByRole('alert')).toBeInTheDocument();
       expect(screen.getByText(/1 form.*could not be generated/i)).toBeInTheDocument();
     });
+    // The error names the form as its card does, never by its internal key
+    const failure = within(screen.getByRole('alert')).getByRole('listitem');
+    expect(failure).toHaveTextContent('Form 101 - Voluntary Petition: Missing debtor name');
+    expect(failure).not.toHaveTextContent('form_101');
   });
 });

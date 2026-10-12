@@ -1,0 +1,465 @@
+[
+  {
+    "pdf_field": "Bankruptcy District Information",
+    "source": "derived",
+    "producer": "rule:district_name",
+    "produces": "session.district.name, e.g. 'Northern District of Illinois' (an exact /Opt entry of this editable ComboBox)",
+    "targets": [
+      {
+        "full_name": "Bankruptcy District Information",
+        "page": 1,
+        "line": "",
+        "label": "United States Bankruptcy Court for the: ____ District of ____",
+        "column": ""
+      }
+    ],
+    "verdicts": ["correct"],
+    "correct_target": "Bankruptcy District Information",
+    "known": "",
+    "note": "Printed 'United States Bankruptcy Court for the: ____ District of ____'; fixture ilnd_2025_data name matches option list."
+  },
+  {
+    "pdf_field": "Debtor 1",
+    "source": "derived",
+    "producer": "rule:full_name",
+    "produces": "Debtor 1 'first middle last' from DebtorInfo",
+    "targets": [
+      {
+        "full_name": "Debtor 1",
+        "page": 1,
+        "line": "",
+        "label": "Debtor 1",
+        "column": ""
+      },
+      {
+        "full_name": "Debtor 1",
+        "page": 2,
+        "line": "",
+        "label": "Debtor 1",
+        "column": ""
+      }
+    ],
+    "verdicts": ["correct"],
+    "correct_target": "Debtor 1",
+    "known": "",
+    "note": "Fills the case-header name on p1 and the running header on p2; both are Debtor 1 name boxes."
+  },
+  {
+    "pdf_field": "Debtor 2",
+    "source": "derived",
+    "producer": "rule:full_name (conditional_on has_joint_filer)",
+    "produces": "Debtor 1's own name again (_full_name reads session.debtor_info); only when predicate has_joint_filer is true",
+    "targets": [
+      {
+        "full_name": "Debtor 2",
+        "page": 1,
+        "line": "",
+        "label": "Debtor 2 (Spouse, if filing)",
+        "column": ""
+      }
+    ],
+    "verdicts": ["wrong_value"],
+    "correct_target": "Debtor 2",
+    "known": "NEW",
+    "note": "Box is 'Debtor 2 (Spouse, if filing)'. No joint-debtor data exists, so a joint case would print Debtor 1's name on the Debtor 2 line; the box should carry the joint debtor's name and stay blank until joint-debtor data exists. Latent today: no schema or UI ever asks FormAnswer 'joint_filer_gate', so the predicate is always false and nothing is written."
+  },
+  {
+    "pdf_field": "Supplemental income date",
+    "source": "derived",
+    "producer": "rule:today_iso",
+    "produces": "today's date as ISO 'YYYY-MM-DD' (rule today_iso), unconditionally",
+    "targets": [
+      {
+        "full_name": "Supplemental income date",
+        "page": 1,
+        "line": "",
+        "label": "A supplement showing postpetition chapter 13 income as of the following date: MM / DD / YYYY",
+        "column": ""
+      }
+    ],
+    "verdicts": ["wrong_box"],
+    "correct_target": "leave blank",
+    "known": "NEW",
+    "note": "Box is the date after 'A supplement showing postpetition chapter 13 income as of the following date: MM / DD / YYYY' (tooltip 'Date (format mm/dd/yyyy)'). A chapter 7 original Schedule I must leave it blank; the supplement checkbox (Check 1 = supplemental) is not ticked, so the filed form carries a stray date in the wrong format."
+  },
+  {
+    "pdf_field": "Occupation Debtor 1",
+    "source": "derived",
+    "producer": "rule:schedule_i_occupation_debtor1",
+    "produces": "'' always: _safe_debtor_attr(session,'occupation') hits AttributeError (DebtorInfo has no occupation field) and returns ''; _emit skips ''",
+    "targets": [
+      {
+        "full_name": "Occupation Debtor 1",
+        "page": 1,
+        "line": "1",
+        "label": "Occupation",
+        "column": "Debtor 1"
+      }
+    ],
+    "verdicts": ["missing_field"],
+    "correct_target": "Occupation Debtor 1",
+    "known": "NEW",
+    "note": "Right box (line 1 'Occupation', Debtor 1 column) but no producer data; the form note says occupation may be 'student or homemaker', so it applies to unemployed filers too. Same family as DIG-36 but DIG-36 names only wages/employer."
+  },
+  {
+    "pdf_field": "Employers Name Debtor 1",
+    "source": "ingested",
+    "producer": "ingest_key:paystub.employer_name",
+    "produces": "most recent pay stub's employer_name (IngestedAggregate 'paystub.employer_name'), else nothing",
+    "targets": [
+      {
+        "full_name": "Employers Name Debtor 1",
+        "page": 1,
+        "line": "1",
+        "label": "Employer’s name",
+        "column": "Debtor 1"
+      }
+    ],
+    "verdicts": ["correct"],
+    "correct_target": "Employers Name Debtor 1",
+    "known": "DIG-36",
+    "note": "Box and concept right; blank for anyone without a successfully parsed pay stub (DIG-36). Per DIG-36 evidence the pay-stub path is currently dead for everyone: processor.py:116 pops confidence_score from the extracted fields while schemas/base.py:9 requires it, so aggregator.py's PayStubExtraction(**data) rejects every stub (seen in the current tree; not reproduced here)."
+  },
+  {
+    "pdf_field": "Employers Street1 Debtor 1",
+    "source": "derived",
+    "producer": "rule:schedule_i_employer_street_debtor1",
+    "produces": "'' always: DebtorInfo has no employer_street; _safe_debtor_attr returns ''",
+    "targets": [
+      {
+        "full_name": "Employers Street1 Debtor 1",
+        "page": 1,
+        "line": "1",
+        "label": "Employer’s address (Number Street)",
+        "column": "Debtor 1"
+      }
+    ],
+    "verdicts": ["missing_field"],
+    "correct_target": "Employers Street1 Debtor 1",
+    "known": "DIG-36",
+    "note": "Right box (Employer's address Number Street, Debtor 1). Blank even WITH a pay stub: PayStubExtraction has no address field, so DIG-36's 'unless a pay stub was read' caveat does not hold for the address lines."
+  },
+  {
+    "pdf_field": "Employers City Debtor 1",
+    "source": "derived",
+    "producer": "rule:schedule_i_employer_city_debtor1",
+    "produces": "'' always: DebtorInfo has no employer_city",
+    "targets": [
+      {
+        "full_name": "Employers City Debtor 1",
+        "page": 1,
+        "line": "1",
+        "label": "Employer’s address City",
+        "column": "Debtor 1"
+      }
+    ],
+    "verdicts": ["missing_field"],
+    "correct_target": "Employers City Debtor 1",
+    "known": "DIG-36",
+    "note": "Right box (City under Debtor 1 employer address); never populated, even with a pay stub."
+  },
+  {
+    "pdf_field": "Employers State Debtor 1",
+    "source": "derived",
+    "producer": "rule:schedule_i_employer_state_debtor1",
+    "produces": "'' always: DebtorInfo has no employer_state",
+    "targets": [
+      {
+        "full_name": "Employers State Debtor 1",
+        "page": 1,
+        "line": "1",
+        "label": "Employer’s address State",
+        "column": "Debtor 1"
+      }
+    ],
+    "verdicts": ["missing_field"],
+    "correct_target": "Employers State Debtor 1",
+    "known": "DIG-36",
+    "note": "Right box (State under Debtor 1 employer address); never populated."
+  },
+  {
+    "pdf_field": "Employers Zip debtor 1",
+    "source": "derived",
+    "producer": "rule:schedule_i_employer_zip_debtor1",
+    "produces": "'' always: DebtorInfo has no employer_zip",
+    "targets": [
+      {
+        "full_name": "Employers Zip debtor 1",
+        "page": 1,
+        "line": "1",
+        "label": "Employer’s address ZIP Code",
+        "column": "Debtor 1"
+      }
+    ],
+    "verdicts": ["missing_field"],
+    "correct_target": "Employers Zip debtor 1",
+    "known": "DIG-36",
+    "note": "Right box (ZIP Code under Debtor 1 employer address); never populated."
+  },
+  {
+    "pdf_field": "Amount 2 Debtor 1",
+    "source": "ingested",
+    "producer": "ingest_key:paystub.gross",
+    "produces": "average monthly-normalized pay-stub gross (gross_pay / period days x 30.41667, averaged over stubs) from 'paystub.gross', else nothing",
+    "targets": [
+      {
+        "full_name": "Amount 2 Debtor 1",
+        "page": 1,
+        "line": "2",
+        "label": "List monthly gross wages, salary, and commissions",
+        "column": "For Debtor 1"
+      }
+    ],
+    "verdicts": ["correct"],
+    "correct_target": "Amount 2 Debtor 1",
+    "known": "DIG-36",
+    "note": "Line 2 'List monthly gross wages, salary, and commissions (before all payroll deductions). If not paid monthly, calculate what the monthly wage would be.' Concept matches; blank without a pay stub (DIG-36). Per DIG-36 evidence the pay-stub path is currently dead for everyone: processor.py:116 pops confidence_score from the extracted fields while schemas/base.py:9 requires it, so aggregator.py's PayStubExtraction(**data) rejects every stub (seen in the current tree; not reproduced here)."
+  },
+  {
+    "pdf_field": "Amount 10 Debtor 1",
+    "source": "derived",
+    "producer": "rule:cmi",
+    "produces": "rule cmi: sum(IncomeInfo.monthly_income)/6; the wizard stores six copies of the typed 'total monthly income before taxes and deductions' (all sources)",
+    "targets": [
+      {
+        "full_name": "Amount 10 Debtor 1",
+        "page": 2,
+        "line": "10",
+        "label": "Calculate monthly income. Add line 7 + line 9.",
+        "column": "For Debtor 1"
+      }
+    ],
+    "verdicts": ["wrong_value"],
+    "correct_target": "Amount 10 Debtor 1",
+    "known": "NEW",
+    "note": "Line 10 Debtor 1 = 'Calculate monthly income. Add line 7 + line 9', where line 7 is take-home pay AFTER payroll deductions (line 4 - line 6). The producer is pre-deduction gross, so for any wage earner it overstates line 10 by tax/Medicare/SS withholding; it is right only for filers with no wages. It also never equals the printed arithmetic: line 7 and the line 8 boxes are 0.00 (DIG-56) and line 9 is blank. Same producer feeds Schedule J 23a (DIG-61)."
+  },
+  {
+    "pdf_field": "Amount 12",
+    "source": "derived",
+    "producer": "rule:cmi",
+    "produces": "rule cmi: same pre-deduction 6-month average as Amount 10 Debtor 1",
+    "targets": [
+      {
+        "full_name": "Amount 12",
+        "page": 2,
+        "line": "12",
+        "label": "Add the amount in the last column of line 10 to the amount in line 11 (Combined monthly income)",
+        "column": "Combined monthly income"
+      }
+    ],
+    "verdicts": ["wrong_value"],
+    "correct_target": "Amount 12",
+    "known": "NEW",
+    "note": "Line 12 = last column of line 10 (Amount 10, the D1+D2 total, which is unbound) + line 11 (Amount 11, unbound): 'the combined monthly income'. Pre-deduction gross overstates it for wage earners; also flows to Form 106Sum and Schedule J 23a."
+  },
+  {
+    "pdf_field": "Amount 3 Debtor 1",
+    "source": "derived",
+    "producer": "rule:schedule_i_net_wages_debtor1",
+    "produces": "'0.00' always (rule schedule_i_net_wages_debtor1 reads nonexistent IncomeInfo.wages_salaries_tips)",
+    "targets": [
+      {
+        "full_name": "Amount 3 Debtor 1",
+        "page": 1,
+        "line": "3",
+        "label": "Estimate and list monthly overtime pay.",
+        "column": "For Debtor 1"
+      }
+    ],
+    "verdicts": ["wrong_box", "missing_field"],
+    "correct_target": "Amount 2 Debtor 1",
+    "known": "DIG-56",
+    "note": "Box is line 3 'Estimate and list monthly overtime pay' (Debtor 1). The rule is labelled 'net wages' but reads the wage attribute, which belongs on line 2 (already bound to paystub.gross). Overtime (collected in the UI as 'Monthly Overtime', then dropped by the serializer) has no producer. Rule calls _get_income_field(session, 'wages_salaries_tips'); IncomeInfo has no such attribute (model fields: marital_status, number_of_dependents, monthly_income), so getattr(...,None) -> _ZERO and _fmt prints '0.00', which _emit does not skip: the box always prints 0.00."
+  },
+  {
+    "pdf_field": "Amount 4 Debtor 1",
+    "source": "derived",
+    "producer": "rule:schedule_i_self_employment_debtor1",
+    "produces": "'0.00' always (rule schedule_i_self_employment_debtor1 reads nonexistent IncomeInfo.business_income)",
+    "targets": [
+      {
+        "full_name": "Amount 4 Debtor 1",
+        "page": 1,
+        "line": "4",
+        "label": "Calculate gross income.",
+        "column": "For Debtor 1"
+      }
+    ],
+    "verdicts": ["wrong_box", "missing_field"],
+    "correct_target": "Amount 8a Debtor 1",
+    "known": "DIG-56",
+    "note": "Box is line 4 'Calculate gross income. Add line 2 + line 3' (Debtor 1). Business income belongs on line 8a 'Net income from rental property and from operating a business, profession, or farm'. Printed result: line 4 shows 0.00 while line 2 may show pay-stub gross, so line 4 != line 2 + line 3. Rule calls _get_income_field(session, 'business_income'); IncomeInfo has no such attribute (model fields: marital_status, number_of_dependents, monthly_income), so getattr(...,None) -> _ZERO and _fmt prints '0.00', which _emit does not skip: the box always prints 0.00."
+  },
+  {
+    "pdf_field": "Amount 5a Debtor 1",
+    "source": "derived",
+    "producer": "rule:schedule_i_unemployment_debtor1",
+    "produces": "'0.00' always (unemployment_compensation, nonexistent)",
+    "targets": [
+      {
+        "full_name": "Amount 5a Debtor 1",
+        "page": 2,
+        "line": "5a",
+        "label": "Tax, Medicare, and Social Security deductions",
+        "column": "For Debtor 1"
+      }
+    ],
+    "verdicts": ["wrong_box", "missing_field"],
+    "correct_target": "Amount 8d Debtor 1",
+    "known": "DIG-56",
+    "note": "Box is payroll deduction 5a 'Tax, Medicare, and Social Security deductions'; unemployment income belongs on 8d 'Unemployment compensation'. Rule calls _get_income_field(session, 'unemployment_compensation'); IncomeInfo has no such attribute (model fields: marital_status, number_of_dependents, monthly_income), so getattr(...,None) -> _ZERO and _fmt prints '0.00', which _emit does not skip: the box always prints 0.00."
+  },
+  {
+    "pdf_field": "Amount 5b Debtor 1",
+    "source": "derived",
+    "producer": "rule:schedule_i_social_security_debtor1",
+    "produces": "'0.00' always (social_security, nonexistent)",
+    "targets": [
+      {
+        "full_name": "Amount 5b Debtor 1",
+        "page": 2,
+        "line": "5b",
+        "label": "Mandatory contributions for retirement plans",
+        "column": "For Debtor 1"
+      }
+    ],
+    "verdicts": ["wrong_box", "missing_field"],
+    "correct_target": "Amount 8e Debtor 1",
+    "known": "DIG-56",
+    "note": "Box is 5b 'Mandatory contributions for retirement plans'; Social Security income belongs on 8e 'Social Security'. Rule calls _get_income_field(session, 'social_security'); IncomeInfo has no such attribute (model fields: marital_status, number_of_dependents, monthly_income), so getattr(...,None) -> _ZERO and _fmt prints '0.00', which _emit does not skip: the box always prints 0.00."
+  },
+  {
+    "pdf_field": "Amount 5c Debtor 1",
+    "source": "derived",
+    "producer": "rule:schedule_i_pension_debtor1",
+    "produces": "'0.00' always (pension_retirement, nonexistent)",
+    "targets": [
+      {
+        "full_name": "Amount 5c Debtor 1",
+        "page": 2,
+        "line": "5c",
+        "label": "Voluntary contributions for retirement plans",
+        "column": "For Debtor 1"
+      }
+    ],
+    "verdicts": ["wrong_box", "missing_field"],
+    "correct_target": "Amount 8g Debtor 1",
+    "known": "DIG-56",
+    "note": "Box is 5c 'Voluntary contributions for retirement plans'; pension income belongs on 8g 'Pension or retirement income'. Rule calls _get_income_field(session, 'pension_retirement'); IncomeInfo has no such attribute (model fields: marital_status, number_of_dependents, monthly_income), so getattr(...,None) -> _ZERO and _fmt prints '0.00', which _emit does not skip: the box always prints 0.00."
+  },
+  {
+    "pdf_field": "Amount 5d Debtor 1",
+    "source": "derived",
+    "producer": "rule:schedule_i_child_support_debtor1",
+    "produces": "'0.00' always (child_support_alimony, nonexistent)",
+    "targets": [
+      {
+        "full_name": "Amount 5d Debtor 1",
+        "page": 2,
+        "line": "5d",
+        "label": "Required repayments of retirement fund loans",
+        "column": "For Debtor 1"
+      }
+    ],
+    "verdicts": ["wrong_box", "missing_field"],
+    "correct_target": "Amount 8c Debtor 1",
+    "known": "DIG-56",
+    "note": "Box is 5d 'Required repayments of retirement fund loans'; support received belongs on 8c 'Family support payments that you, a non-filing spouse, or a dependent regularly receive'. Rule calls _get_income_field(session, 'child_support_alimony'); IncomeInfo has no such attribute (model fields: marital_status, number_of_dependents, monthly_income), so getattr(...,None) -> _ZERO and _fmt prints '0.00', which _emit does not skip: the box always prints 0.00."
+  },
+  {
+    "pdf_field": "Amount 5e Debtor 1",
+    "source": "derived",
+    "producer": "rule:schedule_i_interest_debtor1",
+    "produces": "'0.00' always (interest_dividends, nonexistent)",
+    "targets": [
+      {
+        "full_name": "Amount 5e Debtor 1",
+        "page": 2,
+        "line": "5e",
+        "label": "Insurance",
+        "column": "For Debtor 1"
+      }
+    ],
+    "verdicts": ["wrong_box", "missing_field"],
+    "correct_target": "Amount 8b Debtor 1",
+    "known": "DIG-56",
+    "note": "Box is 5e 'Insurance' (payroll deduction); interest belongs on 8b 'Interest and dividends'. Rule calls _get_income_field(session, 'interest_dividends'); IncomeInfo has no such attribute (model fields: marital_status, number_of_dependents, monthly_income), so getattr(...,None) -> _ZERO and _fmt prints '0.00', which _emit does not skip: the box always prints 0.00."
+  },
+  {
+    "pdf_field": "Amount 5f Debtor 1",
+    "source": "derived",
+    "producer": "rule:schedule_i_rental_debtor1",
+    "produces": "'0.00' always (real_property_income, nonexistent)",
+    "targets": [
+      {
+        "full_name": "Amount 5f Debtor 1",
+        "page": 2,
+        "line": "5f",
+        "label": "Domestic support obligations",
+        "column": "For Debtor 1"
+      }
+    ],
+    "verdicts": ["wrong_box", "missing_field"],
+    "correct_target": "Amount 8a Debtor 1",
+    "known": "DIG-56",
+    "note": "Box is 5f 'Domestic support obligations' (payroll deduction); rental income belongs on 8a (net rental/business income), the same box business income belongs in, so the two producers must be summed there. Rule calls _get_income_field(session, 'real_property_income'); IncomeInfo has no such attribute (model fields: marital_status, number_of_dependents, monthly_income), so getattr(...,None) -> _ZERO and _fmt prints '0.00', which _emit does not skip: the box always prints 0.00."
+  },
+  {
+    "pdf_field": "Amount 5g Debtor 1",
+    "source": "derived",
+    "producer": "rule:schedule_i_other_income_debtor1",
+    "produces": "'0.00' always (other_income, nonexistent)",
+    "targets": [
+      {
+        "full_name": "Amount 5g Debtor 1",
+        "page": 2,
+        "line": "5g",
+        "label": "Union dues",
+        "column": "For Debtor 1"
+      }
+    ],
+    "verdicts": ["wrong_box", "missing_field"],
+    "correct_target": "Amount 8h Debtor 1",
+    "known": "DIG-56",
+    "note": "Box is 5g 'Union dues'; other income belongs on 8h 'Other monthly income. Specify:' (with text in 'Other income 8h'). Rule calls _get_income_field(session, 'other_income'); IncomeInfo has no such attribute (model fields: marital_status, number_of_dependents, monthly_income), so getattr(...,None) -> _ZERO and _fmt prints '0.00', which _emit does not skip: the box always prints 0.00."
+  },
+  {
+    "pdf_field": "Amount 6 Debtor 1",
+    "source": "derived",
+    "producer": "rule:schedule_i_total_deductions_debtor1",
+    "produces": "'0.00' always (rule schedule_i_total_deductions_debtor1 reads nonexistent IncomeInfo.deductions)",
+    "targets": [
+      {
+        "full_name": "Amount 6 Debtor 1",
+        "page": 2,
+        "line": "6",
+        "label": "Add the payroll deductions. Add lines 5a + 5b + 5c + 5d + 5e +5f + 5g + 5h.",
+        "column": "For Debtor 1"
+      }
+    ],
+    "verdicts": ["missing_field"],
+    "correct_target": "Amount 6 Debtor 1",
+    "known": "DIG-56",
+    "note": "Right box: line 6 'Add the payroll deductions. Add lines 5a + ... + 5h.' No payroll-deduction data is collected (the pay stub's deductions_total is extracted but not aggregated). Rule calls _get_income_field(session, 'deductions'); IncomeInfo has no such attribute (model fields: marital_status, number_of_dependents, monthly_income), so getattr(...,None) -> _ZERO and _fmt prints '0.00', which _emit does not skip: the box always prints 0.00."
+  },
+  {
+    "pdf_field": "Amount 7 Debtor 1",
+    "source": "derived",
+    "producer": "rule:schedule_i_net_income_debtor1",
+    "produces": "'0.00' always: (sum of nine nonexistent per-source income attributes) - (nonexistent deductions)",
+    "targets": [
+      {
+        "full_name": "Amount 7 Debtor 1",
+        "page": 2,
+        "line": "7",
+        "label": "Calculate total monthly take-home pay. Subtract line 6 from line 4.",
+        "column": "For Debtor 1"
+      }
+    ],
+    "verdicts": ["wrong_value", "missing_field"],
+    "correct_target": "Amount 7 Debtor 1",
+    "known": "DIG-56",
+    "note": "Line 7 'Calculate total monthly take-home pay. Subtract line 6 from line 4.' is wages-only; the rule subtracts deductions from ALL-source gross (line8a_total_gross_income), mixing line 8 income into take-home pay. Every input is a missing attribute, so it prints 0.00."
+  }
+]

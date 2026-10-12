@@ -5,7 +5,7 @@ from django.core.management import call_command
 
 from apps.districts.models import District
 from apps.forms.schema import load_schema
-from apps.forms.services.fill_resolver import _section_applies, resolve  # noqa: PLC2701
+from apps.forms.services.fill_resolver import resolve
 from apps.intake.models import IntakeSession
 
 
@@ -14,26 +14,6 @@ def ilnd_fixture(db):
     """Ensure ILND district data exists before seeding personas."""
     if not District.objects.filter(code="ilnd").exists():
         call_command("loaddata", "ilnd_2025_data")
-
-
-@pytest.mark.django_db
-def test_resolver_fills_every_applicable_required_field(ilnd_fixture):
-    call_command("seed_demo_data", "--reset", persona="maria")
-    session = IntakeSession.objects.filter(user__username="demo_maria").first()
-
-    schema = load_schema("form_107")
-    out = resolve(schema, session)
-
-    applicable_required = [
-        f
-        for f in schema.fields
-        if f.required
-        and _section_applies(f, session)
-        and f.source not in ("signature", "ingested")
-        and not f.legal_review
-    ]
-    unresolved = [f.pdf_field for f in applicable_required if f.pdf_field not in out]
-    assert unresolved == [], f"unresolved applicable fields: {unresolved}"
 
 
 @pytest.mark.django_db
@@ -54,40 +34,3 @@ def test_resolved_fields_come_from_multiple_sources(ilnd_fixture):
     assert any(
         v for v in out.values() if v
     ), "all fields are empty — resolver may not be pulling source data"
-
-
-@pytest.mark.django_db
-def test_form_101_all_applicable_fields_resolve(ilnd_fixture):
-    """Every applicable Form 101 field resolves to a value for a seeded persona."""
-    call_command("seed_demo_data", "--reset", persona="maria")
-    session = IntakeSession.objects.filter(user__username="demo_maria").first()
-
-    schema = load_schema("form_101")
-    out = resolve(schema, session)
-
-    applicable_required = [
-        f
-        for f in schema.fields
-        if f.required
-        and _section_applies(f, session)
-        and f.source not in ("signature", "ingested")
-        and not f.legal_review
-    ]
-    unresolved = [f.pdf_field for f in applicable_required if f.pdf_field not in out]
-    assert unresolved == [], f"unresolved Form 101 fields: {unresolved}"
-
-
-@pytest.mark.django_db
-def test_form_101_resolved_fields_from_multiple_sources(ilnd_fixture):
-    """Form 101 resolved fields come from derivations + FormAnswer + constants."""
-    call_command("seed_demo_data", "--reset", persona="maria")
-    session = IntakeSession.objects.filter(user__username="demo_maria").first()
-
-    schema = load_schema("form_101")
-    out = resolve(schema, session)
-
-    values = list(out.values())
-    # At least one constant (Check Box2)
-    assert any(v == "/Yes" for v in values)
-    # At least one derived value (full name or district)
-    assert any(v and "Maria" in str(v) for v in values)

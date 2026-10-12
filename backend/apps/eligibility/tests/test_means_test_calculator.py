@@ -25,7 +25,7 @@ from django.contrib.auth import get_user_model
 from apps.districts.models import District, MedianIncome
 from apps.eligibility.models import MeansTest
 from apps.eligibility.services.means_test_calculator import MeansTestCalculator
-from apps.forms.registry import get_generator
+from apps.forms.registry import build_field_values
 from apps.intake.models import DebtorInfo, ExpenseInfo, IncomeInfo, IntakeSession
 
 User = get_user_model()
@@ -1045,6 +1045,5 @@ class TestAboveMedianEndToEnd:
         assert session.means_test.above_median_calculated is True
         assert session.means_test.disposable_income is not None
 
-        gen = get_generator("form_122a2", session)
-        field_map = gen.pdf_field_map()
-        assert "Bankruptcy District Information" in field_map
+        values = build_field_values("form_122a2", session)
+        assert "Bankruptcy District Information" in values

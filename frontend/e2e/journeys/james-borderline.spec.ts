@@ -77,9 +77,9 @@ test.describe('James Washington — Borderline', () => {
     await sofa.skipForNow();
 
     // Forms generated (passes means test). James doesn't qualify for the
-    // fee waiver, so Form 103B (the waiver application) is not generated.
-    await dashboard.generateAllForms(17);
+    // fee waiver, so Form 103B (the waiver application) is not in his packet.
+    await dashboard.generateAllForms(14);
     const count = await dashboard.getGeneratedCount();
-    expect(count).toBe(17);
+    expect(count).toBe(14);
   });
 });

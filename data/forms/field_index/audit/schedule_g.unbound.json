@@ -1,0 +1,68 @@
+[
+  {
+    "full_name": "Debtor 1",
+    "pages": [1, 2],
+    "line": "",
+    "label": "Debtor 1 (First Name, Middle Name, Last Name)",
+    "column": "",
+    "kind": "text",
+    "why_needed": "Debtor 1 header on pages 1-2; the schema has no 'Debtor 1' field at all, so the filer's name never appears.",
+    "available_source": "derivation full_name",
+    "known": ""
+  },
+  {
+    "full_name": "check1",
+    "pages": [1],
+    "line": "1",
+    "label": "Do you have any executory contracts or unexpired leases? (tooltip 'Any creditors clims secured by property' is copied from Schedule D)",
+    "column": "",
+    "kind": "checkbox",
+    "why_needed": "Line 1 'Do you have any executory contracts or unexpired leases?' No/Yes must be answered.",
+    "available_source": "count of ExecutoryContract rows",
+    "known": ""
+  },
+  {
+    "full_name": "Company Name 2.1",
+    "pages": [1],
+    "line": "2.1",
+    "label": "Name",
+    "column": "Person or company with whom you have the contract or lease",
+    "kind": "text",
+    "why_needed": "Line 2.1 Person or company with whom you have the contract or lease.",
+    "available_source": "ExecutoryContract.counterparty_name (model exists, collected by the 'contracts' intake step)",
+    "known": ""
+  },
+  {
+    "full_name": "Contact Info 2.1",
+    "pages": [1],
+    "line": "2.1",
+    "label": "State what the contract or lease is for",
+    "column": "State what the contract or lease is for",
+    "kind": "text",
+    "why_needed": "Line 2.1 'State what the contract or lease is for'.",
+    "available_source": "ExecutoryContract.description / contract_type",
+    "known": ""
+  },
+  {
+    "full_name": "Street 2.1",
+    "pages": [1],
+    "line": "2.1",
+    "label": "Number Street",
+    "column": "Person or company with whom you have the contract or lease",
+    "kind": "text",
+    "why_needed": "Line 2.1 counterparty address (City/State/Zip 2.1 likewise).",
+    "available_source": "none (ExecutoryContract has no address)",
+    "known": ""
+  },
+  {
+    "full_name": "Case number",
+    "pages": [1, 2],
+    "line": "",
+    "label": "Case number (if known)",
+    "column": "",
+    "kind": "text",
+    "why_needed": "Case number header (blank acceptable before filing).",
+    "available_source": "none",
+    "known": ""
+  }
+]

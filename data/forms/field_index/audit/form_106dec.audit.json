@@ -1,0 +1,158 @@
+[
+  {
+    "pdf_field": "Bankruptcy District Information",
+    "source": "derived",
+    "producer": "rule:district_name",
+    "produces": "session.district.name, e.g. \"Northern District of Illinois\"",
+    "targets": [
+      {
+        "full_name": "Bankruptcy District Information",
+        "page": 1,
+        "tag": "T3",
+        "line": "",
+        "label": "United States Bankruptcy Court for the:",
+        "column": ""
+      }
+    ],
+    "verdicts": ["correct"],
+    "correct_target": "",
+    "known": "",
+    "note": ""
+  },
+  {
+    "pdf_field": "Debtor 1",
+    "source": "derived",
+    "producer": "rule:full_name",
+    "produces": "Debtor 1 \"first middle last\" from DebtorInfo",
+    "targets": [
+      {
+        "full_name": "Debtor 1",
+        "page": 1,
+        "tag": "T1",
+        "line": "",
+        "label": "Debtor 1",
+        "column": ""
+      }
+    ],
+    "verdicts": ["correct"],
+    "correct_target": "",
+    "known": "",
+    "note": "A single full-name caption box (First/Middle/Last on one line)."
+  },
+  {
+    "pdf_field": "Debtor 2",
+    "source": "derived",
+    "producer": "rule:full_name",
+    "produces": "Debtor 1 \"first middle last\" from DebtorInfo [only when has_joint_filer]",
+    "targets": [
+      {
+        "full_name": "Debtor 2",
+        "page": 1,
+        "tag": "T2",
+        "line": "",
+        "label": "Debtor 2 (Spouse, if filing)",
+        "column": ""
+      }
+    ],
+    "verdicts": ["wrong_value"],
+    "correct_target": "Debtor 2",
+    "known": "NEW",
+    "note": "Rule full_name reads session.debtor_info, i.e. Debtor 1. For a joint filer (predicate has_joint_filer) Debtor 2's caption box receives Debtor 1's own name; no derivation reads a co-debtor (the frontend's co_debtor_* inputs have no DebtorInfo/serializer field, so DRF drops them). Non-joint filers: section skipped, box blank (correct). Latent today: nothing in backend/apps, the schemas, or the frontend writes FormAnswer 'joint_filer_gate', so has_joint_filer is always False and this never fires."
+  },
+  {
+    "pdf_field": "Check if this is an",
+    "source": "derived",
+    "producer": "rule:joint_filer_check",
+    "produces": "\"true\" when FormAnswer joint_filer_gate is yes -> _emit on dict on_states raises KeyError(0) [only when has_joint_filer]",
+    "targets": [
+      {
+        "full_name": "Check if this is an",
+        "page": 1,
+        "tag": "T5",
+        "line": "",
+        "label": "Check if this is an amended filing",
+        "column": ""
+      }
+    ],
+    "verdicts": ["wrong_box", "checkbox_state"],
+    "correct_target": "leave blank",
+    "known": "NEW",
+    "note": "Printed box T5 reads 'Check if this is an amended filing' (on_state 'On'); the schema calls it 'Joint filing' and ticks it from joint_filer_check. on_states is a JSON dict {'true':'/Yes'}, so _emit evaluates on_states[0] -> KeyError(0) (reproduced with load_schema + _emit): resolve() raises for every joint filer, so this form cannot be generated for them. Even with a list, '/Yes' != on_state 'On' (pypdf 6.13.1 writes /Off). generate_all catches per-form exceptions, so the form would be listed under errors as '0' and the others would still generate. Latent today: nothing in backend/apps, the schemas, or the frontend writes FormAnswer 'joint_filer_gate', so has_joint_filer is always False and this never fires."
+  },
+  {
+    "pdf_field": "Name of person payed to help file",
+    "source": "presume",
+    "producer": "presume",
+    "produces": "nothing (source \"presume\" falls through _scalar_value -> None)",
+    "targets": [
+      {
+        "full_name": "Name of person payed to help file",
+        "page": 1,
+        "tag": "T7",
+        "line": "",
+        "label": "Yes. Name of person (non-attorney preparer)",
+        "column": ""
+      }
+    ],
+    "verdicts": ["needs_legal_review"],
+    "correct_target": "Name of person payed to help file",
+    "known": "",
+    "note": "source \"presume\" has no branch in fill_resolver._scalar_value, so it returns None and nothing is written. The box (T7) belongs to \"Did you pay or agree to pay someone who is NOT an attorney to help you fill out bankruptcy forms? Yes. Name of person ___ Attach Bankruptcy Petition Preparer's Notice ... (Official Form 119)\". Blank is right only if the No box applies, and check1 is unbound. Whether DigniFi itself must be disclosed here is a 11 U.S.C. \u00a7 110 question."
+  },
+  {
+    "pdf_field": "signature",
+    "source": "derived",
+    "producer": "rule:full_name",
+    "produces": "Debtor 1 \"first middle last\" from DebtorInfo",
+    "targets": [
+      {
+        "full_name": "Debtor1.signature",
+        "page": 1,
+        "tag": "T9",
+        "line": "",
+        "label": "Signature of Debtor 1",
+        "column": "Debtor 1"
+      },
+      {
+        "full_name": "Debtor2.signature",
+        "page": 1,
+        "tag": "T10",
+        "line": "",
+        "label": "Signature of Debtor 2",
+        "column": "Debtor 2"
+      }
+    ],
+    "verdicts": ["collision"],
+    "correct_target": "Debtor1.signature",
+    "known": "DIG-63",
+    "note": "Fills Debtor1.signature (T9) and Debtor2.signature (T10). Typed full name (no '/s/') written into a wet-signature line."
+  },
+  {
+    "pdf_field": "Executed on",
+    "source": "derived",
+    "producer": "rule:today_iso",
+    "produces": "today as YYYY-MM-DD",
+    "targets": [
+      {
+        "full_name": "Executed on",
+        "page": 1,
+        "tag": "T11",
+        "line": "",
+        "label": "Date (Debtor 1 signature, MM/DD/YYYY)",
+        "column": "Debtor 1"
+      },
+      {
+        "full_name": "Debtor2.Executed on",
+        "page": 1,
+        "tag": "T12",
+        "line": "",
+        "label": "Date (Debtor 2 signature, MM/DD/YYYY)",
+        "column": "Debtor 2"
+      }
+    ],
+    "verdicts": ["collision"],
+    "correct_target": "Executed on",
+    "known": "DIG-63",
+    "note": "Fills \"Executed on\" (T11) and \"Debtor2.Executed on\" (T12). today_iso writes 'YYYY-MM-DD'; the printed box asks MM/DD/YYYY (format only)."
+  }
+]

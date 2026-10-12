@@ -2,7 +2,7 @@
 Comprehensive end-to-end tests for intake flow.
 
 Tests the complete intake workflow from session creation through means test
-calculation and form preview, including permission isolation and error handling.
+calculation, including permission isolation and error handling.
 """
 
 from decimal import Decimal
@@ -721,85 +721,6 @@ class TestMeansTestCalculation:
         assert response.status_code == status.HTTP_200_OK
         result = response.data["means_test_result"]
         assert result["qualifies_for_fee_waiver"] is True
-
-
-@pytest.mark.django_db
-class TestForm101Preview:
-    """Test suite for Form 101 preview functionality."""
-
-    @pytest.fixture
-    def complete_session(self, api_client, district, median_income):
-        """Create session with all required data."""
-        url = reverse("intake-session-list")
-        response = api_client.post(url, {"district": district.id, "current_step": 1}, format="json")
-        session = IntakeSession.objects.get(id=response.data["session"]["id"])
-
-        DebtorInfo.objects.create(
-            session=session,
-            first_name="John",
-            last_name="Doe",
-            middle_name="Q",
-            ssn="123456789",
-            date_of_birth="1980-01-01",
-            phone="555-555-5555",
-            email="john@example.com",
-            street_address="123 Main St",
-            city="Chicago",
-            state="IL",
-            zip_code="60601",
-        )
-
-        IncomeInfo.objects.create(
-            session=session,
-            marital_status="single",
-            number_of_dependents=0,
-            monthly_income=[5000, 5000, 5000, 5000, 5000, 5000],
-        )
-
-        ExpenseInfo.objects.create(
-            session=session,
-            rent_or_mortgage=Decimal("1500.00"),
-            utilities=Decimal("200.00"),
-            home_maintenance=Decimal("50.00"),
-            vehicle_payment=Decimal("300.00"),
-            vehicle_insurance=Decimal("100.00"),
-            vehicle_maintenance=Decimal("150.00"),
-            food_and_groceries=Decimal("400.00"),
-            childcare=Decimal("0.00"),
-            medical_expenses=Decimal("50.00"),
-            insurance_not_deducted=Decimal("0.00"),
-            other_expenses=Decimal("100.00"),
-        )
-
-        return session
-
-    def test_preview_form_101_success(self, api_client, complete_session):
-        """Test successful Form 101 preview generation."""
-        url = reverse("intake-session-preview-form-101", args=[complete_session.id])
-        response = api_client.get(url)
-
-        assert response.status_code == status.HTTP_200_OK
-        assert "form_preview" in response.data
-        assert "session_id" in response.data
-
-        preview = response.data["form_preview"]
-        assert "debtor_name" in preview
-        assert "debtor_address" in preview
-        assert "case_type" in preview
-
-    def test_preview_form_101_without_debtor_info(self, api_client, district):
-        """Test Form 101 preview without debtor info returns 400."""
-        # Create session without debtor info
-        url = reverse("intake-session-list")
-        response = api_client.post(url, {"district": district.id, "current_step": 1}, format="json")
-        session_id = response.data["session"]["id"]
-
-        # Try to preview form
-        preview_url = reverse("intake-session-preview-form-101", args=[session_id])
-        response = api_client.get(preview_url)
-
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
-        assert "error" in response.data
 
 
 @pytest.mark.django_db

@@ -1,0 +1,189 @@
+[
+  {
+    "pdf_field": "Check emploment status Debtor 1",
+    "widgets": [
+      {
+        "full_name": "Check emploment status Debtor 1",
+        "page": 1,
+        "tag": "T8",
+        "line": "1",
+        "label": "Employment status",
+        "column": "Debtor 1",
+        "on_state": "employed"
+      },
+      {
+        "full_name": "Check emploment status Debtor 1",
+        "page": 1,
+        "tag": "T10",
+        "line": "1",
+        "label": "Employment status",
+        "column": "Debtor 1",
+        "on_state": "unemployed"
+      }
+    ],
+    "why": "Line 1 Employment status (Employed / Not employed), Debtor 1. Answer-every-question item; on_states 'employed'/'unemployed'. Derivable from whether wages were entered.",
+    "known": "NEW"
+  },
+  {
+    "pdf_field": "Amount 10",
+    "widgets": [
+      {
+        "full_name": "Amount 10",
+        "page": 2,
+        "tag": "T48",
+        "line": "10",
+        "label": "Add the entries in line 10 for Debtor 1 and Debtor 2 or non-filing spouse",
+        "column": "Total (Debtor 1 + Debtor 2)",
+        "on_state": null
+      }
+    ],
+    "why": "Line 10 total column ('Add the entries in line 10 for Debtor 1 and Debtor 2 or non-filing spouse'). Line 12 is filled but this box, which line 12 is built from, is blank.",
+    "known": "NEW"
+  },
+  {
+    "pdf_field": "Check increase",
+    "widgets": [
+      {
+        "full_name": "Check increase",
+        "page": 2,
+        "tag": "T52",
+        "line": "13",
+        "label": "Do you expect an increase or decrease within the year after you file this form?",
+        "column": "",
+        "on_state": "no"
+      },
+      {
+        "full_name": "Check increase",
+        "page": 2,
+        "tag": "T54",
+        "line": "13",
+        "label": "Do you expect an increase or decrease within the year after you file this form?",
+        "column": "",
+        "on_state": "yes"
+      }
+    ],
+    "why": "Line 13 'Do you expect an increase or decrease within the year after you file this form?' No./Yes. (on_states no/yes) plus 'Increase/Decrease 13' Explain text. Required answer; nothing asks it.",
+    "known": "NEW"
+  },
+  {
+    "pdf_field": "Amount 9 Debtor 1",
+    "widgets": [
+      {
+        "full_name": "Amount 9 Debtor 1",
+        "page": 2,
+        "tag": "T44",
+        "line": "9",
+        "label": "Add all other income.",
+        "column": "For Debtor 1",
+        "on_state": null
+      }
+    ],
+    "why": "Line 9 'Add all other income. Add lines 8a + ... + 8h.' Total never printed; line 10 should equal line 7 + line 9.",
+    "known": "DIG-56"
+  },
+  {
+    "pdf_field": "Amount 4 Debtor 1a",
+    "widgets": [
+      {
+        "full_name": "Amount 4 Debtor 1a",
+        "page": 2,
+        "tag": "T3",
+        "line": "4",
+        "label": "Copy line 4 here",
+        "column": "For Debtor 1",
+        "on_state": null
+      }
+    ],
+    "why": "Page 2 'Copy line 4 here' (Debtor 1). Blank, while page-1 line 4 shows 0.00.",
+    "known": "DIG-56"
+  },
+  {
+    "pdf_field": "Amount 11",
+    "widgets": [
+      {
+        "full_name": "Amount 11",
+        "page": 2,
+        "tag": "T50",
+        "line": "11",
+        "label": "State all other regular contributions to the expenses that you list in Schedule J",
+        "column": "Total",
+        "on_state": null
+      }
+    ],
+    "why": "Line 11 'State all other regular contributions to the expenses that you list in Schedule J' (unmarried partner, household members, roommates). Needed for line 12 even when $0; never asked. Its Specify text box is the widget named 'Assistance 8f' (shared with line 8f).",
+    "known": "NEW"
+  },
+  {
+    "pdf_field": "Amount 2 Debtor 2",
+    "widgets": [
+      {
+        "full_name": "Amount 2 Debtor 2",
+        "page": 1,
+        "tag": "T31",
+        "line": "2",
+        "label": "List monthly gross wages, salary, and commissions",
+        "column": "For Debtor 2 or non-filing spouse",
+        "on_state": null
+      }
+    ],
+    "why": "Debtor 2 / non-filing spouse column (lines 1-10: Check emploment status Debtor 2, Occupation/Employers ... Debtor 2, Amount 2..10 Debtor 2). Form: 'Include your non-filing spouse unless you are separated.' No spouse income is collected, so a married non-separated filer's spouse column is blank.",
+    "known": "DIG-53"
+  },
+  {
+    "pdf_field": "Amount 8f Debtor 1",
+    "widgets": [
+      {
+        "full_name": "Amount 8f Debtor 1",
+        "page": 2,
+        "tag": "T37",
+        "line": "8f",
+        "label": "Other government assistance that you regularly receive",
+        "column": "For Debtor 1",
+        "on_state": null
+      }
+    ],
+    "why": "Line 8f 'Other government assistance that you regularly receive' (cash assistance, SNAP, housing subsidies) with Specify text 'Assistance 8f'. Common for this user base; the income step has no field for it.",
+    "known": "NEW"
+  },
+  {
+    "pdf_field": "Time employed Debtor 1",
+    "widgets": [
+      {
+        "full_name": "Time employed Debtor 1",
+        "page": 1,
+        "tag": "T28",
+        "line": "1",
+        "label": "How long employed there?",
+        "column": "Debtor 1",
+        "on_state": null
+      },
+      {
+        "full_name": "Time employed Debtor 1",
+        "page": 1,
+        "tag": "T29",
+        "line": "1",
+        "label": "How long employed there?",
+        "column": "Debtor 2 or non-filing spouse",
+        "on_state": null
+      }
+    ],
+    "why": "Line 1 'How long employed there?'. Template quirk: BOTH the Debtor 1 box (p1 T28) and the Debtor 2 box (p1 T29) are named 'Time employed Debtor 1', so any future binding writes the same value into both columns.",
+    "known": "NEW"
+  },
+  {
+    "pdf_field": "Amount 5h Debtor 1",
+    "widgets": [
+      {
+        "full_name": "Amount 5h Debtor 1",
+        "page": 2,
+        "tag": "T20",
+        "line": "5h",
+        "label": "Other deductions. Specify:",
+        "column": "For Debtor 1",
+        "on_state": null
+      }
+    ],
+    "why": "Line 5h 'Other deductions. Specify:' (with 'Other deductions 5h' text) - part of line 6 total; no producer. Lower priority.",
+    "known": "DIG-56"
+  }
+]

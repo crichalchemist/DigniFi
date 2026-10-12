@@ -15,7 +15,7 @@ from django.db import transaction
 
 from apps.districts.models import District
 from apps.eligibility.services.means_test_calculator import MeansTestCalculator
-from apps.forms.registry import get_all_form_types, get_generator
+from apps.forms.registry import build_field_values, packet
 from apps.intake.models import (
     AssetInfo,
     DebtInfo,
@@ -596,11 +596,10 @@ class Command(BaseCommand):
                 status="pending",
             )
 
-        # Generate forms for eligible personas
+        # Check that every form in an eligible persona's packet resolves (none are stored)
         if result["passes_means_test"]:
-            for form_type in get_all_form_types():
+            for form_type in packet(session):
                 try:
-                    generator = get_generator(form_type, session)
-                    generator.generate()
+                    build_field_values(form_type, session)
                 except Exception as exc:
                     self.stderr.write(self.style.WARNING(f"    Skipped {form_type}: {exc}"))

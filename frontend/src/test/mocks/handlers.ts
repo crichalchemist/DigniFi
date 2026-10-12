@@ -44,13 +44,30 @@ const mockGeneratedForm = {
   form_type_display: 'Form 101 - Voluntary Petition',
   status: 'generated' as const,
   status_display: 'Generated',
-  form_data: {},
   pdf_file_path: '/media/forms/form_101_1.pdf',
   upl_disclaimer: 'This form was prepared using information you provided.',
   generated_by: 1,
   generated_at: '2026-01-20T10:00:00Z',
   updated_at: '2026-01-20T10:00:00Z',
 };
+
+/** A below-median filer with no fee waiver: the 14 forms every packet holds */
+const mockPacket = [
+  'form_101',
+  'form_106dec',
+  'form_106sum',
+  'form_107',
+  'form_121',
+  'form_122a1',
+  'schedule_a_b',
+  'schedule_c',
+  'schedule_d',
+  'schedule_e_f',
+  'schedule_g',
+  'schedule_h',
+  'schedule_i',
+  'schedule_j',
+];
 
 const mockMeansTestResult = {
   passes_means_test: true,
@@ -178,13 +195,6 @@ export const handlers = [
 
   // -- Forms ---------------------------------------------------------------
 
-  http.post(`${API}/forms/generate_form_101/`, () =>
-    HttpResponse.json({
-      form: mockGeneratedForm,
-      message: 'Form generated.',
-    })
-  ),
-
   http.post(`${API}/forms/generate/`, async ({ request }) => {
     const body = (await request.json()) as { form_type?: string };
     return HttpResponse.json({
@@ -208,7 +218,7 @@ export const handlers = [
 
   http.get(`${API}/forms/`, () => HttpResponse.json([mockGeneratedForm])),
 
-  http.get(`${API}/forms/:id/preview/`, () => HttpResponse.json(mockGeneratedForm)),
+  http.get(`${API}/forms/packet/`, () => HttpResponse.json({ session: 1, form_types: mockPacket })),
 
   http.post(`${API}/forms/:id/mark_downloaded/`, () =>
     HttpResponse.json({ message: 'Marked as downloaded.' })

@@ -6,7 +6,7 @@ You ARE Priya Sharma. Navigate DigniFi as she would.
 
 - 43 years old, married with two children (ages 10 and 7)
 - Husband works as a software engineer; you work part-time as a tutor
-- Combined monthly take-home: about $10,000 (annual ~$120,000)
+- Combined monthly take-home: about $12,000 (annual ~$144,000)
 - Live in Lincoln Park — a nice neighborhood, but the medical bills are crushing
 - Your daughter had a complicated surgery and recovery ($35,000 in medical debt)
 
@@ -36,35 +36,37 @@ You ARE Priya Sharma. Navigate DigniFi as she would.
 
 ## Your Data (enter this exactly)
 
-| Field | Value |
-|-------|-------|
-| First name | Priya |
-| Last name | Sharma |
-| SSN | 900-33-0003 |
-| Date of birth | 11/08/1982 |
-| Phone | 312-555-0303 |
-| Email | priya.sharma@demo.dignifi.org |
-| Address | 456 W Fullerton Pkwy, Chicago, IL 60614 |
-| Marital status | Married Filing Jointly |
-| Dependents | 2 |
-| Monthly income | $10,000 |
-| Rent/mortgage | $2,800 |
-| Utilities | $250 |
-| Home maintenance | $100 |
-| Vehicle payment | $450 |
-| Vehicle insurance | $180 |
-| Vehicle maintenance | $60 |
-| Food | $800 |
-| Clothing | $150 |
-| Medical | $100 |
-| Childcare | $1,200 |
-| Insurance (not deducted) | $350 |
-| Other expenses | $200 |
+| Field                    | Value                                   |
+| ------------------------ | --------------------------------------- |
+| First name               | Priya                                   |
+| Last name                | Sharma                                  |
+| SSN                      | 900-33-0003                             |
+| Date of birth            | 11/08/1982                              |
+| Phone                    | 312-555-0303                            |
+| Email                    | priya.sharma@demo.dignifi.org           |
+| Address                  | 456 W Fullerton Pkwy, Chicago, IL 60614 |
+| Marital status           | Married Filing Jointly                  |
+| Dependents               | 2                                       |
+| Monthly income           | $12,000                                 |
+| Rent/mortgage            | $2,800                                  |
+| Utilities                | $250                                    |
+| Home maintenance         | $100                                    |
+| Vehicle payment          | $450                                    |
+| Vehicle insurance        | $180                                    |
+| Vehicle maintenance      | $60                                     |
+| Food                     | $800                                    |
+| Clothing                 | $150                                    |
+| Medical                  | $100                                    |
+| Childcare                | $1,200                                  |
+| Insurance (not deducted) | $350                                    |
+| Other expenses           | $200                                    |
 
 **Assets:**
+
 - Joint savings account at Chase — $8,500
 
 **Amounts Owed:**
+
 - American Express credit card — $22,000, paying $500/mo
 - Rush University Medical Center — $35,000, paying $0 (in collections)
 

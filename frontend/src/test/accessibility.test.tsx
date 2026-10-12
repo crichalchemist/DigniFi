@@ -176,7 +176,6 @@ describe('Accessibility: Form Components', () => {
       form_type_display: 'Form 101',
       status: 'generated',
       status_display: 'Generated',
-      form_data: {},
       pdf_file_path: '/forms/101.pdf',
       upl_disclaimer: 'Test disclaimer.',
       generated_by: 1,

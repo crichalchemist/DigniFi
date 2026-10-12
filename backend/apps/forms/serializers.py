@@ -13,7 +13,8 @@ class GeneratedFormSerializer(serializers.ModelSerializer):
     """
     Serializer for generated bankruptcy forms.
 
-    Provides access to form metadata and data for preview/download.
+    Returns form metadata only. The printed values (field_values) are encrypted
+    and never leave the server; download fills the PDF from them.
     """
 
     form_type_display = serializers.CharField(source="get_form_type_display", read_only=True)
@@ -28,7 +29,6 @@ class GeneratedFormSerializer(serializers.ModelSerializer):
             "form_type_display",
             "status",
             "status_display",
-            "form_data",
             "pdf_file_path",
             "generated_by",
             "generated_at",

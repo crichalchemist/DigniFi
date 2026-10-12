@@ -1,0 +1,136 @@
+[
+  {
+    "pdf_field": "Check Box1",
+    "page": [1, 3],
+    "line": "header / 7",
+    "label": "Chapter you are filing under / The chapter of the Bankruptcy Code you are choosing to file under",
+    "value_needed": "/Chapter 7 (decoded name; ticks p1 and p3 Chapter 7 widgets together)",
+    "why": "Bound only by a \"/Yes\" constant that ticks nothing, so the petition never states its chapter. Every filing needs this.",
+    "pdf_fields": ["Check Box1"]
+  },
+  {
+    "pdf_field": "Check Box16",
+    "page": [6],
+    "line": "15",
+    "label": "Tell the court whether you have received a briefing about credit counseling (You must check one), Debtor 1",
+    "value_needed": "asked: /1 (certificate), /2 (briefing, no certificate yet), /On (30-day temporary waiver), /4 (not required) + Check Box16A reason",
+    "why": "The printed line says \"You must check one... If you cannot do so, you are not eligible to file.\" Its only binding is a \"/Yes\" constant that matches no on-state.",
+    "pdf_fields": ["Check Box16", "Check Box16A"]
+  },
+  {
+    "pdf_field": "Check Box7",
+    "page": [3],
+    "line": "8",
+    "label": "How you will pay the fee",
+    "value_needed": "asked: /Pay entirely | /Pay in installments | /Request fees waived",
+    "why": "Every petition must choose a fee method. Choosing waiver must agree with Form 103B being generated (the app knows qualifies_for_fee_waiver, but the choice is the debtor's).",
+    "pdf_fields": ["Check Box7"]
+  },
+  {
+    "pdf_field": "Check Box18",
+    "page": [7],
+    "line": "16a",
+    "label": "Are your debts primarily consumer debts?",
+    "value_needed": "asked: /Yes or /No (Check Box19 for 16b if No)",
+    "why": "Required, and it decides whether the means test (Form 122A) applies. Never bound; the Check Box16 constant was evidently meant for it.",
+    "pdf_fields": ["Check Box18", "Check Box19"]
+  },
+  {
+    "pdf_field": "Check Box20",
+    "page": [7],
+    "line": "17",
+    "label": "Are you filing under Chapter 7? + Check Box20A: Do you estimate that ... funds will be available to distribute to unsecured creditors?",
+    "value_needed": "Check Box20 /Yes; Check Box20A asked /No or /Yes",
+    "why": "Required for a Chapter 7 petition; neither box is bound.",
+    "pdf_fields": ["Check Box20", "Check Box20A"]
+  },
+  {
+    "pdf_field": "Check Box5",
+    "page": [2],
+    "line": "6",
+    "label": "Why you are choosing this district to file for bankruptcy (Check one), Debtor 1",
+    "value_needed": "asked: /Lived in this district or /Other (+ explanation lines)",
+    "why": "Venue basis is required. The only binding is a \"/Yes\" constant, which matches neither on-state.",
+    "pdf_fields": ["Check Box5"]
+  },
+  {
+    "pdf_field": "Check Box21",
+    "page": [7],
+    "line": "18",
+    "label": "How many creditors do you estimate that you owe?",
+    "value_needed": "one of /1-49 /50-99 /100-199 /200-999 ... (derivable from count of DebtInfo rows)",
+    "why": "Required statistical item; unbound.",
+    "pdf_fields": ["Check Box21"]
+  },
+  {
+    "pdf_field": "Check Box22",
+    "page": [7],
+    "line": "19",
+    "label": "How much do you estimate your assets to be worth?",
+    "value_needed": "range on-state, e.g. /0-50000 (derivable from total assets)",
+    "why": "Required statistical item; unbound. The legacy _estimate_asset_range in form_101_generator.py is a placeholder that the PDF never uses.",
+    "pdf_fields": ["Check Box22"]
+  },
+  {
+    "pdf_field": "Check Box23",
+    "page": [7],
+    "line": "20",
+    "label": "How much do you estimate your liabilities to be?",
+    "value_needed": "range on-state, e.g. /0-50000 (derivable from total debts)",
+    "why": "Required statistical item; unbound.",
+    "pdf_fields": ["Check Box23"]
+  },
+  {
+    "pdf_field": "Check Box8 / Check Box9 / Check Box10 / Check Box12 / Check Box14 / Check Box15",
+    "page": [3, 4, 5],
+    "line": "9, 10, 11, 12, 13, 14",
+    "label": "No/Yes answer boxes: prior bankruptcy in 8 years (9); pending case by spouse/partner/affiliate (10); rent residence (11, + Check Box11 eviction judgment); sole proprietor (12); Chapter 11 small business (13: \"No. I am not filing under Chapter 11\"); hazardous property (14)",
+    "value_needed": "asked No/Yes per line; line 13 = /Not filing under Chapter 11 for a Chapter 7 case",
+    "why": "The form says \"Answer every question.\" The detail boxes under these lines are bound, but the No/Yes boxes themselves are not, so a petition with no prior cases, no business and no hazard leaves lines 9-14 blank.",
+    "pdf_fields": [
+      "Check Box8",
+      "Check Box9",
+      "Check Box10",
+      "Check Box12",
+      "Check Box14",
+      "Check Box15",
+      "Check Box11"
+    ]
+  },
+  {
+    "pdf_field": "Check Box24 / Check Box25 / Check Box26",
+    "page": [9],
+    "line": "Part 7 (pro se)",
+    "label": "Are you aware that filing for bankruptcy is a serious action...? / Are you aware that bankruptcy fraud is a serious crime...? / Did you pay or agree to pay someone who is not an attorney to help you fill out your bankruptcy forms?",
+    "value_needed": "asked: Box24 /Yes|/No, Box25 /Yes|/no (lower-case \"no\" on-state), Box26 /no|/Yes",
+    "why": "DigniFi filers are self-represented, so page 9 is mandatory. The three acknowledgement boxes are unbound; only the preparer-name line is bound. Whether DigniFi counts as a paid non-attorney preparer (11 U.S.C. § 110) is a question for legal review.",
+    "pdf_fields": ["Check Box24", "Check Box25", "Check Box26"]
+  },
+  {
+    "pdf_field": "Debtor1.Date signed",
+    "page": [9],
+    "line": "Part 7 (pro se)",
+    "label": "Date (MM/DD/YYYY) under Signature of Debtor 1",
+    "value_needed": "signing date (same source as executed_on)",
+    "why": "The mandatory pro se signature block has no date binding (Debtor2.Date signed is also unbound, correctly for single filers).",
+    "pdf_fields": ["Debtor1.Date signed"]
+  },
+  {
+    "pdf_field": "Debtor1.Name",
+    "page": [2, 3, 4, 5, 6, 7, 8, 9],
+    "line": "header",
+    "label": "Running header: Debtor 1 (First Name Middle Name Last Name)",
+    "value_needed": "full_name rule (one field, 8 widgets)",
+    "why": "The name must head every page so detached pages can be identified; never bound.",
+    "pdf_fields": ["Debtor1.Name"]
+  },
+  {
+    "pdf_field": "Debtor2.First name / Debtor2.Middle name_2 / Debtor2.Last name",
+    "page": [1],
+    "line": "1",
+    "label": "Your full name, About Debtor 2 (Spouse Only in a Joint Case)",
+    "value_needed": "debtor2_first/middle/last_name gated on has_joint_filer",
+    "why": "Joint filings only. The spouse's current name is bound to line 2 (other names) instead; Debtor2.Middle name_2 is source=skip and the other two are absent from the schema.",
+    "pdf_fields": ["Debtor2.First name", "Debtor2.Middle name_2", "Debtor2.Last name"]
+  }
+]

@@ -1,0 +1,68 @@
+[
+  {
+    "full_name": "check6",
+    "page": 2,
+    "tag": ["T3", "T4"],
+    "line": "6",
+    "label": "Are you filing for bankruptcy under Chapters 7, 11, or 13?",
+    "why": "Always \"Yes\" (on_state yes) for a DigniFi Chapter 7 filer, but never ticked, so Part 4 reads as unanswered.",
+    "on_states": ["no", "yes"]
+  },
+  {
+    "full_name": "check7",
+    "page": 2,
+    "tag": ["T5", "T6"],
+    "line": "7",
+    "label": "What kind of debt do you have? primarily consumer / not primarily consumer",
+    "why": "Required, and it decides whether lines 8-9g apply; the debtor's answer is never collected or bound.",
+    "on_states": ["consumer", "not#20consumer"]
+  },
+  {
+    "full_name": "5",
+    "page": 1,
+    "tag": "T14",
+    "line": "5",
+    "label": "Copy your monthly expenses from line 22c of Schedule J",
+    "why": "Empty constant; the expense total is sent to 9a instead."
+  },
+  {
+    "full_name": "9g",
+    "page": 2,
+    "tag": "T14",
+    "line": "9g",
+    "label": "Total. Add lines 9a through 9f.",
+    "why": "Empty constant."
+  },
+  {
+    "full_name": "9d",
+    "page": 2,
+    "tag": "T11",
+    "line": "9d",
+    "label": "Student loans. (Copy line 6f.)",
+    "why": "Empty constant. This is the most common special category for consumer filers."
+  },
+  {
+    "full_name": "9b",
+    "page": 2,
+    "tag": "T9",
+    "line": "9b",
+    "label": "Taxes and certain other debts you owe the government. (Copy line 6b.)",
+    "why": "Empty constant."
+  },
+  {
+    "full_name": ["9c", "9e", "9f"],
+    "page": 2,
+    "tag": ["T10", "T12", "T13"],
+    "line": "9c/9e/9f",
+    "label": "Death or personal injury while intoxicated; separation/divorce obligations; pension/profit-sharing debts",
+    "why": "Empty constants. 9a, the domestic-support box, holds the expense total instead."
+  },
+  {
+    "full_name": "Case number",
+    "page": [1, 2],
+    "tag": ["T4", "T2"],
+    "line": "",
+    "label": "Case number (If known)",
+    "why": "Not bound; acceptable before filing."
+  }
+]

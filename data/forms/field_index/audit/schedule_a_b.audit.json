@@ -1,0 +1,185 @@
+[
+  {
+    "pdf_field": "Debtor 2",
+    "source": "derived",
+    "producer": "rule:full_name",
+    "produces": "Debtor 1 \"first middle last\" from DebtorInfo [only when has_joint_filer]",
+    "targets": [
+      {
+        "full_name": "Debtor 2",
+        "page": 1,
+        "tag": "T2",
+        "line": "",
+        "label": "Debtor 2",
+        "column": ""
+      }
+    ],
+    "verdicts": ["wrong_value"],
+    "correct_target": "Debtor 2",
+    "known": "NEW",
+    "note": "Rule full_name reads session.debtor_info, i.e. Debtor 1. For a joint filer (predicate has_joint_filer) Debtor 2's caption box receives Debtor 1's own name; no derivation reads a co-debtor (the frontend's co_debtor_* inputs have no DebtorInfo/serializer field, so DRF drops them). Non-joint filers: section skipped, box blank (correct). Latent today: nothing in backend/apps, the schemas, or the frontend writes FormAnswer 'joint_filer_gate', so has_joint_filer is always False and this never fires."
+  },
+  {
+    "pdf_field": "12",
+    "source": "derived",
+    "producer": "rule:total_retirement_accounts",
+    "produces": "sum AssetInfo.current_value where asset_type=retirement_account",
+    "targets": [
+      {
+        "full_name": "12",
+        "page": 1,
+        "tag": "T33",
+        "line": "1.2.",
+        "label": "Street address, if available, or other description",
+        "column": ""
+      }
+    ],
+    "verdicts": ["wrong_box"],
+    "correct_target": "",
+    "known": "NEW",
+    "note": "Widget \"12\" (p1 T33) is line 1.2's \"Street address, if available, or other description\" for a second real property, so a dollar total of retirement accounts lands in an address box. Retirement accounts belong on line 21, one row per account (e.g. \"21.1 401k or similar plan\" + \"21.1 401k or similar plan amount\" ... \"21.7 Additional account amount\"). Line 21 has no total box."
+  },
+  {
+    "pdf_field": "Debtor 1",
+    "source": "derived",
+    "producer": "rule:full_name",
+    "produces": "Debtor 1 \"first middle last\" from DebtorInfo",
+    "targets": [
+      {
+        "full_name": "Debtor 1",
+        "page": 1,
+        "tag": "T1",
+        "line": "",
+        "label": "Debtor 1",
+        "column": ""
+      },
+      {
+        "full_name": "Debtor 1",
+        "page": 2,
+        "tag": "T1",
+        "line": "",
+        "label": "Debtor 1",
+        "column": ""
+      },
+      {
+        "full_name": "Debtor 1",
+        "page": 3,
+        "tag": "T1",
+        "line": "",
+        "label": "Debtor 1",
+        "column": ""
+      },
+      {
+        "full_name": "Debtor 1",
+        "page": 4,
+        "tag": "T1",
+        "line": "",
+        "label": "Debtor 1",
+        "column": ""
+      },
+      {
+        "full_name": "Debtor 1",
+        "page": 5,
+        "tag": "T1",
+        "line": "",
+        "label": "Debtor 1",
+        "column": ""
+      },
+      {
+        "full_name": "Debtor 1",
+        "page": 6,
+        "tag": "T1",
+        "line": "",
+        "label": "Debtor 1",
+        "column": ""
+      },
+      {
+        "full_name": "Debtor 1",
+        "page": 7,
+        "tag": "T1",
+        "line": "",
+        "label": "Debtor 1",
+        "column": ""
+      },
+      {
+        "full_name": "Debtor 1",
+        "page": 8,
+        "tag": "T1",
+        "line": "",
+        "label": "Debtor 1",
+        "column": ""
+      },
+      {
+        "full_name": "Debtor 1",
+        "page": 9,
+        "tag": "T1",
+        "line": "",
+        "label": "Debtor 1",
+        "column": ""
+      },
+      {
+        "full_name": "Debtor 1",
+        "page": 10,
+        "tag": "T1",
+        "line": "",
+        "label": "Debtor 1",
+        "column": ""
+      }
+    ],
+    "verdicts": ["correct"],
+    "correct_target": "",
+    "known": "",
+    "note": "One field, 10 caption widgets (p1 and the p2-p10 continuation captions)."
+  },
+  {
+    "pdf_field": "17",
+    "source": "derived",
+    "producer": "rule:total_other_assets",
+    "produces": "sum AssetInfo.current_value where asset_type=other",
+    "targets": [],
+    "verdicts": ["missing_field"],
+    "correct_target": "",
+    "known": "DIG-64",
+    "note": "\"17\" is only the parent node of 17.1-17.9 (e.g. \"17.1 Checking account\"); it has no widget, and pypdf writes nothing. The concept is also wrong: total_other_assets sums asset_type=\"other\", not deposits. Other property belongs to line 53, with value boxes undefined_155/156/157."
+  },
+  {
+    "pdf_field": "16 Cash amount",
+    "source": "derived",
+    "producer": "rule:total_bank_accounts",
+    "produces": "sum AssetInfo.current_value where asset_type=bank_account",
+    "targets": [
+      {
+        "full_name": "16 Cash amount",
+        "page": 5,
+        "tag": "T5",
+        "line": "16",
+        "label": "Cash:",
+        "column": "Current value of the portion you own?"
+      }
+    ],
+    "verdicts": ["wrong_box"],
+    "correct_target": "17.1 Checking amount",
+    "known": "NEW",
+    "note": "Line 16 box: \"Cash: ... Current value of the portion you own\" (p5 T5). It gets the total of bank_account assets. Deposits belong on line 17, one row per account: institution \"17.N ... account\" plus value \"17.N ... amount\" (checking 17.1/17.2, savings 17.3/17.4, CDs 17.5, other 17.6-17.9). Cash on hand is never collected."
+  },
+  {
+    "pdf_field": "Bankruptcy District Information",
+    "source": "derived",
+    "producer": "rule:district_name",
+    "produces": "session.district.name, e.g. \"Northern District of Illinois\"",
+    "targets": [
+      {
+        "full_name": "Bankruptcy District Information",
+        "page": 1,
+        "tag": "T3",
+        "line": "",
+        "label": "United States Bankruptcy Court for the:",
+        "column": ""
+      }
+    ],
+    "verdicts": ["correct"],
+    "correct_target": "",
+    "known": "",
+    "note": ""
+  }
+]

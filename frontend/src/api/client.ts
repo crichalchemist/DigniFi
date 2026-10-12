@@ -15,9 +15,9 @@ import type {
   UpdateStepRequest,
   UpdateStepResponse,
   CalculateMeansTestResponse,
-  GenerateFormRequest,
   GenerateFormResponse,
   GenerateAllFormsResponse,
+  FormPacketResponse,
   SessionSummaryResponse,
   AssetInfo,
   DebtInfo,
@@ -354,14 +354,6 @@ export const intakeAPI = {
   },
 
   /**
-   * Preview Form 101
-   * GET /api/intake/sessions/{id}/preview_form_101/
-   */
-  previewForm101: async (sessionId: number): Promise<unknown> => {
-    return apiFetch<unknown>(`/intake/sessions/${sessionId}/preview_form_101/`);
-  },
-
-  /**
    * Get session summary
    * GET /api/intake/sessions/{id}/summary/
    */
@@ -529,7 +521,7 @@ export const formsAPI = {
   },
 
   /**
-   * Generate all 13 forms atomically
+   * Generate every form in the session's packet
    * POST /api/forms/generate_all/
    */
   generateAll: async (sessionId: number): Promise<GenerateAllFormsResponse> => {
@@ -540,11 +532,12 @@ export const formsAPI = {
   },
 
   /**
-   * Preview form data without generating
-   * GET /api/forms/{id}/preview/
+   * The form types that apply to this filer, in filing order
+   * GET /api/forms/packet/?session={sessionId}
    */
-  preview: async (formId: number): Promise<GeneratedForm> => {
-    return apiFetch<GeneratedForm>(`/forms/${formId}/preview/`);
+  packet: async (sessionId: number): Promise<FormType[]> => {
+    const response = await apiFetch<FormPacketResponse>(`/forms/packet/?session=${sessionId}`);
+    return response.form_types;
   },
 
   /**
@@ -557,14 +550,6 @@ export const formsAPI = {
     );
     // Handle both paginated ({results: [...]}) and unpaginated ([...]) responses
     return Array.isArray(response) ? response : (response.results ?? []);
-  },
-
-  /** @deprecated Use generate() with form_type */
-  generateForm101: async (data: GenerateFormRequest): Promise<GenerateFormResponse> => {
-    return apiFetch<GenerateFormResponse>('/forms/generate_form_101/', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
   },
 
   markDownloaded: async (formId: number): Promise<{ message: string }> => {

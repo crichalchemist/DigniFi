@@ -1,0 +1,2152 @@
+[
+  {
+    "pdf_field": "Bankruptcy District Information",
+    "source": "derived",
+    "producer": "district_name",
+    "produces": "District.name, e.g. \"Northern District of Illinois\"",
+    "targets": [
+      {
+        "full_name": "Bankruptcy District Information",
+        "page": 1,
+        "line": "",
+        "label": "United States Bankruptcy Court for the: ____ District of ____ (court district)",
+        "column": ""
+      }
+    ],
+    "verdicts": ["correct"],
+    "correct_target": "Bankruptcy District Information",
+    "known": "",
+    "note": "ComboBox; value exactly matches one of its 95 /Opt entries (\"Northern District of Illinois\"). Printed: \"United States Bankruptcy Court for the: ___ District of ___\"."
+  },
+  {
+    "pdf_field": "Debtor1.SSNum",
+    "source": "derived",
+    "producer": "ssn_last_4",
+    "produces": "last 4 characters of DebtorInfo.ssn",
+    "targets": [
+      {
+        "full_name": "Debtor1.SSNum",
+        "page": 1,
+        "line": "3",
+        "label": "Social Security number",
+        "column": "Debtor 1"
+      }
+    ],
+    "verdicts": ["correct"],
+    "correct_target": "Debtor1.SSNum",
+    "known": "",
+    "note": "p1 line 3 Debtor 1 \"xxx - xx - ____\" (Only the last 4 digits of your Social Security number); widget MaxLen 4."
+  },
+  {
+    "pdf_field": "Debtor1 Tax Payer IDNum",
+    "source": "asked",
+    "producer": "answer:form_101.debtor_tax_id",
+    "produces": "FormAnswer form_101.debtor_tax_id verbatim (no last-4 truncation)",
+    "targets": [
+      {
+        "full_name": "Debtor1 Tax Payer IDNum",
+        "page": 1,
+        "line": "3",
+        "label": "Individual Taxpayer Identification number (ITIN)",
+        "column": "Debtor 1"
+      }
+    ],
+    "verdicts": ["unclear"],
+    "correct_target": "Debtor1 Tax Payer IDNum",
+    "known": "NEW",
+    "note": "Right box (p1 line 3 Debtor 1 \"9 xx - xx - ____\" ITIN last 4, MaxLen 4) but the key is a whole tax id and nothing truncates it; pypdf 6.13.1 stores the full string in /V (it only warns \"input truncated\" for the appearance), so a full ITIN would sit in the public petition's field data. Not gated on \"debtor has no SSN\" (box is the OR alternative to the SSN). Never collected: form_101 schema has no \"ui\" specs, so FormSchemaUIView/DynamicFormWizard never ask it and resolve_binding returns \"\" (box stays blank today)."
+  },
+  {
+    "pdf_field": "Debtor2 SSNum",
+    "source": "asked",
+    "producer": "answer:form_101.debtor2_ssn",
+    "produces": "FormAnswer form_101.debtor2_ssn verbatim (no last-4 truncation)",
+    "targets": [
+      {
+        "full_name": "Debtor2 SSNum",
+        "page": 1,
+        "line": "3",
+        "label": "Social Security number",
+        "column": "Debtor 2"
+      }
+    ],
+    "verdicts": ["unclear"],
+    "correct_target": "Debtor2 SSNum",
+    "known": "NEW",
+    "note": "Right box (p1 line 3 Debtor 2 \"xxx - xx - ____\", MaxLen 4). Debtor 1 uses rule ssn_last_4 but Debtor 2 binds the raw answer; verified with pypdf 6.13.1 that writing \"123-45-6789\" keeps the full SSN in /V (only the appearance is truncated) -> full SSN embedded in the filed petition if the answer is a full SSN. Never collected: form_101 schema has no \"ui\" specs, so FormSchemaUIView/DynamicFormWizard never ask it and resolve_binding returns \"\" (box stays blank today)."
+  },
+  {
+    "pdf_field": "Debtor2.Tax Payer IDNum",
+    "source": "asked",
+    "producer": "answer:form_101.debtor2_tax_id",
+    "produces": "FormAnswer form_101.debtor2_tax_id verbatim",
+    "targets": [
+      {
+        "full_name": "Debtor2.Tax Payer IDNum",
+        "page": 1,
+        "line": "3",
+        "label": "Individual Taxpayer Identification number (ITIN)",
+        "column": "Debtor 2"
+      }
+    ],
+    "verdicts": ["unclear"],
+    "correct_target": "Debtor2.Tax Payer IDNum",
+    "known": "NEW",
+    "note": "Right box (p1 line 3 Debtor 2 ITIN last 4, MaxLen 4); same full-value-in-/V risk as Debtor2 SSNum. Never collected: form_101 schema has no \"ui\" specs, so FormSchemaUIView/DynamicFormWizard never ask it and resolve_binding returns \"\" (box stays blank today)."
+  },
+  {
+    "pdf_field": "Debtor1.First name",
+    "source": "derived",
+    "producer": "first_name",
+    "produces": "DebtorInfo.first_name",
+    "targets": [
+      {
+        "full_name": "Debtor1.First name",
+        "page": 1,
+        "line": "1",
+        "label": "First name",
+        "column": "About Debtor 1:"
+      }
+    ],
+    "verdicts": ["correct"],
+    "correct_target": "Debtor1.First name",
+    "known": "",
+    "note": "p1 line 1 \"Your full name\" Debtor 1 First name."
+  },
+  {
+    "pdf_field": "Debtor1.Middle name",
+    "source": "derived",
+    "producer": "middle_name",
+    "produces": "DebtorInfo.middle_name",
+    "targets": [
+      {
+        "full_name": "Debtor1.Middle name",
+        "page": 1,
+        "line": "1",
+        "label": "Middle name",
+        "column": "About Debtor 1:"
+      }
+    ],
+    "verdicts": ["correct"],
+    "correct_target": "Debtor1.Middle name",
+    "known": "",
+    "note": "p1 line 1 \"Your full name\" Debtor 1 Middle name."
+  },
+  {
+    "pdf_field": "Debtor1.Last name",
+    "source": "derived",
+    "producer": "last_name",
+    "produces": "DebtorInfo.last_name",
+    "targets": [
+      {
+        "full_name": "Debtor1.Last name",
+        "page": 1,
+        "line": "1",
+        "label": "Last name",
+        "column": "About Debtor 1:"
+      }
+    ],
+    "verdicts": ["correct"],
+    "correct_target": "Debtor1.Last name",
+    "known": "",
+    "note": "p1 line 1 \"Your full name\" Debtor 1 Last name."
+  },
+  {
+    "pdf_field": "Debtor1.Suffix Sr Jr II III",
+    "source": "asked",
+    "producer": "answer:form_101.name_suffix",
+    "produces": "FormAnswer form_101.name_suffix",
+    "targets": [
+      {
+        "full_name": "Debtor1.Suffix Sr Jr II III",
+        "page": 1,
+        "line": "1",
+        "label": "Suffix (Sr., Jr., II, III)",
+        "column": "About Debtor 1:"
+      }
+    ],
+    "verdicts": ["correct"],
+    "correct_target": "Debtor1.Suffix Sr Jr II III",
+    "known": "",
+    "note": "p1 line 1 Debtor 1 \"Suffix (Sr., Jr., II, III)\". Never collected: form_101 schema has no \"ui\" specs, so FormSchemaUIView/DynamicFormWizard never ask it and resolve_binding returns \"\" (box stays blank today)."
+  },
+  {
+    "pdf_field": "Suffix Sr Jr II III_2",
+    "source": "asked",
+    "producer": "answer:form_101.name_suffix",
+    "produces": "FormAnswer form_101.name_suffix (Debtor 1's suffix)",
+    "targets": [
+      {
+        "full_name": "Suffix Sr Jr II III_2",
+        "page": 1,
+        "line": "1",
+        "label": "Suffix (Sr., Jr., II, III)",
+        "column": "About Debtor 2 (Spouse Only in a Joint Case):"
+      }
+    ],
+    "verdicts": ["wrong_box"],
+    "correct_target": "leave blank",
+    "known": "NEW",
+    "note": "Widget \"Suffix Sr Jr II III_2\" is p1 line 1 Suffix under \"About Debtor 2 (Spouse Only in a Joint Case)\". It receives the same name_suffix answer as Debtor 1 and has no has_joint_filer condition, so a single filer's suffix would also print in the spouse column. Never collected: form_101 schema has no \"ui\" specs, so FormSchemaUIView/DynamicFormWizard never ask it and resolve_binding returns \"\" (box stays blank today)."
+  },
+  {
+    "pdf_field": "Debtor1.First name_3",
+    "source": "derived",
+    "producer": "first_name",
+    "produces": "DebtorInfo.first_name (the debtor's current legal name)",
+    "targets": [
+      {
+        "full_name": "Debtor1.First name_3",
+        "page": 1,
+        "line": "2",
+        "label": "First name",
+        "column": "About Debtor 1:"
+      }
+    ],
+    "verdicts": ["wrong_value"],
+    "correct_target": "leave blank",
+    "known": "NEW",
+    "note": "Widget is p1 line 2 \"All other names you have used in the last 8 years. Include your married or maiden names and any assumed, trade names and doing business as names.\" Debtor 1, first name set, First name. The derived rule repeats the line-1 current name, so every generated petition lists the debtor's own current name as an \"other name\". Live on every filing (derived, ungated). Line 2 needs a separate asked list of prior/other names, blank if none."
+  },
+  {
+    "pdf_field": "Debtor1.Middle name_3",
+    "source": "derived",
+    "producer": "middle_name",
+    "produces": "DebtorInfo.middle_name (the debtor's current legal name)",
+    "targets": [
+      {
+        "full_name": "Debtor1.Middle name_3",
+        "page": 1,
+        "line": "2",
+        "label": "Middle name",
+        "column": "About Debtor 1:"
+      }
+    ],
+    "verdicts": ["wrong_value"],
+    "correct_target": "leave blank",
+    "known": "NEW",
+    "note": "Widget is p1 line 2 \"All other names you have used in the last 8 years. Include your married or maiden names and any assumed, trade names and doing business as names.\" Debtor 1, first name set, Middle name. The derived rule repeats the line-1 current name, so every generated petition lists the debtor's own current name as an \"other name\". Live on every filing (derived, ungated). Line 2 needs a separate asked list of prior/other names, blank if none."
+  },
+  {
+    "pdf_field": "Debtor1.Last name_3",
+    "source": "derived",
+    "producer": "last_name",
+    "produces": "DebtorInfo.last_name (the debtor's current legal name)",
+    "targets": [
+      {
+        "full_name": "Debtor1.Last name_3",
+        "page": 1,
+        "line": "2",
+        "label": "Last name",
+        "column": "About Debtor 1:"
+      }
+    ],
+    "verdicts": ["wrong_value"],
+    "correct_target": "leave blank",
+    "known": "NEW",
+    "note": "Widget is p1 line 2 \"All other names you have used in the last 8 years. Include your married or maiden names and any assumed, trade names and doing business as names.\" Debtor 1, first name set, Last name. The derived rule repeats the line-1 current name, so every generated petition lists the debtor's own current name as an \"other name\". Live on every filing (derived, ungated). Line 2 needs a separate asked list of prior/other names, blank if none."
+  },
+  {
+    "pdf_field": "Debtor1.First name_5",
+    "source": "derived",
+    "producer": "first_name",
+    "produces": "DebtorInfo.first_name (the debtor's current legal name)",
+    "targets": [
+      {
+        "full_name": "Debtor1.First name_5",
+        "page": 1,
+        "line": "2",
+        "label": "First name",
+        "column": "Debtor 1"
+      }
+    ],
+    "verdicts": ["wrong_value"],
+    "correct_target": "leave blank",
+    "known": "NEW",
+    "note": "Widget is p1 line 2 \"All other names you have used in the last 8 years. Include your married or maiden names and any assumed, trade names and doing business as names.\" Debtor 1, second name set, First name. The derived rule repeats the line-1 current name, so every generated petition lists the debtor's own current name as an \"other name\". Live on every filing (derived, ungated). Line 2 needs a separate asked list of prior/other names, blank if none."
+  },
+  {
+    "pdf_field": "Debtor1.Middle name_5",
+    "source": "derived",
+    "producer": "middle_name",
+    "produces": "DebtorInfo.middle_name (the debtor's current legal name)",
+    "targets": [
+      {
+        "full_name": "Debtor1.Middle name_5",
+        "page": 1,
+        "line": "2",
+        "label": "Middle name",
+        "column": "Debtor 1"
+      }
+    ],
+    "verdicts": ["wrong_value"],
+    "correct_target": "leave blank",
+    "known": "NEW",
+    "note": "Widget is p1 line 2 \"All other names you have used in the last 8 years. Include your married or maiden names and any assumed, trade names and doing business as names.\" Debtor 1, second name set, Middle name. The derived rule repeats the line-1 current name, so every generated petition lists the debtor's own current name as an \"other name\". Live on every filing (derived, ungated). Line 2 needs a separate asked list of prior/other names, blank if none."
+  },
+  {
+    "pdf_field": "Debtor1.Last name_5",
+    "source": "derived",
+    "producer": "last_name",
+    "produces": "DebtorInfo.last_name (the debtor's current legal name)",
+    "targets": [
+      {
+        "full_name": "Debtor1.Last name_5",
+        "page": 1,
+        "line": "2",
+        "label": "Last name",
+        "column": "Debtor 1"
+      }
+    ],
+    "verdicts": ["wrong_value"],
+    "correct_target": "leave blank",
+    "known": "NEW",
+    "note": "Widget is p1 line 2 \"All other names you have used in the last 8 years. Include your married or maiden names and any assumed, trade names and doing business as names.\" Debtor 1, second name set, Last name. The derived rule repeats the line-1 current name, so every generated petition lists the debtor's own current name as an \"other name\". Live on every filing (derived, ungated). Line 2 needs a separate asked list of prior/other names, blank if none."
+  },
+  {
+    "pdf_field": "Debtor2.First name_4",
+    "source": "asked",
+    "producer": "answer:form_101.debtor2_first_name",
+    "produces": "FormAnswer form_101.debtor2_first_name (spouse's current name)",
+    "targets": [
+      {
+        "full_name": "Debtor2.First name_4",
+        "page": 1,
+        "line": "2",
+        "label": "First name",
+        "column": "About Debtor 2 (Spouse Only in a Joint Case):"
+      }
+    ],
+    "verdicts": ["wrong_box"],
+    "correct_target": "Debtor2.First name",
+    "known": "NEW",
+    "note": "Widget is p1 line 2 \"All other names you have used in the last 8 years\", Debtor 2 column, first set, First name. The spouse's current name belongs on line 1 \"Your full name\", Debtor 2 column (Debtor2.First name); line 1 Debtor 2 is never filled (Debtor2.First name and Debtor2.Last name are not in the schema; Debtor2.Middle name_2 is source=skip). Never collected: form_101 schema has no \"ui\" specs, so FormSchemaUIView/DynamicFormWizard never ask it and resolve_binding returns \"\" (box stays blank today)."
+  },
+  {
+    "pdf_field": "Debtor2.Middle name_4",
+    "source": "asked",
+    "producer": "answer:form_101.debtor2_middle_name",
+    "produces": "FormAnswer form_101.debtor2_middle_name (spouse's current name)",
+    "targets": [
+      {
+        "full_name": "Debtor2.Middle name_4",
+        "page": 1,
+        "line": "2",
+        "label": "Middle name",
+        "column": "About Debtor 2 (Spouse Only in a Joint Case):"
+      }
+    ],
+    "verdicts": ["wrong_box"],
+    "correct_target": "Debtor2.Middle name_2",
+    "known": "NEW",
+    "note": "Widget is p1 line 2 \"All other names you have used in the last 8 years\", Debtor 2 column, first set, Middle name. The spouse's current name belongs on line 1 \"Your full name\", Debtor 2 column (Debtor2.Middle name_2); line 1 Debtor 2 is never filled (Debtor2.First name and Debtor2.Last name are not in the schema; Debtor2.Middle name_2 is source=skip). Never collected: form_101 schema has no \"ui\" specs, so FormSchemaUIView/DynamicFormWizard never ask it and resolve_binding returns \"\" (box stays blank today)."
+  },
+  {
+    "pdf_field": "Debtor2.Last name_4",
+    "source": "asked",
+    "producer": "answer:form_101.debtor2_last_name",
+    "produces": "FormAnswer form_101.debtor2_last_name (spouse's current name)",
+    "targets": [
+      {
+        "full_name": "Debtor2.Last name_4",
+        "page": 1,
+        "line": "2",
+        "label": "Last name",
+        "column": "About Debtor 2 (Spouse Only in a Joint Case):"
+      }
+    ],
+    "verdicts": ["wrong_box"],
+    "correct_target": "Debtor2.Last name",
+    "known": "NEW",
+    "note": "Widget is p1 line 2 \"All other names you have used in the last 8 years\", Debtor 2 column, first set, Last name. The spouse's current name belongs on line 1 \"Your full name\", Debtor 2 column (Debtor2.Last name); line 1 Debtor 2 is never filled (Debtor2.First name and Debtor2.Last name are not in the schema; Debtor2.Middle name_2 is source=skip). Never collected: form_101 schema has no \"ui\" specs, so FormSchemaUIView/DynamicFormWizard never ask it and resolve_binding returns \"\" (box stays blank today)."
+  },
+  {
+    "pdf_field": "Debtor2.First name_6",
+    "source": "asked",
+    "producer": "answer:form_101.debtor2_first_name",
+    "produces": "FormAnswer form_101.debtor2_first_name (spouse's current name)",
+    "targets": [
+      {
+        "full_name": "Debtor2.First name_6",
+        "page": 1,
+        "line": "2",
+        "label": "First name",
+        "column": "Debtor 2"
+      }
+    ],
+    "verdicts": ["wrong_box"],
+    "correct_target": "leave blank",
+    "known": "NEW",
+    "note": "Widget is p1 line 2 \"All other names you have used in the last 8 years\", Debtor 2 column, second set, First name. Repeats the spouse's current name as an other name; it belongs on line 1 (see Debtor2.*_4 entries). Never collected: form_101 schema has no \"ui\" specs, so FormSchemaUIView/DynamicFormWizard never ask it and resolve_binding returns \"\" (box stays blank today)."
+  },
+  {
+    "pdf_field": "Debtor2.Middle name_6",
+    "source": "asked",
+    "producer": "answer:form_101.debtor2_middle_name",
+    "produces": "FormAnswer form_101.debtor2_middle_name (spouse's current name)",
+    "targets": [
+      {
+        "full_name": "Debtor2.Middle name_6",
+        "page": 1,
+        "line": "2",
+        "label": "Middle name",
+        "column": "Debtor 2"
+      }
+    ],
+    "verdicts": ["wrong_box"],
+    "correct_target": "leave blank",
+    "known": "NEW",
+    "note": "Widget is p1 line 2 \"All other names you have used in the last 8 years\", Debtor 2 column, second set, Middle name. Repeats the spouse's current name as an other name; it belongs on line 1 (see Debtor2.*_4 entries). Never collected: form_101 schema has no \"ui\" specs, so FormSchemaUIView/DynamicFormWizard never ask it and resolve_binding returns \"\" (box stays blank today)."
+  },
+  {
+    "pdf_field": "Debtor2.Last name_6",
+    "source": "asked",
+    "producer": "answer:form_101.debtor2_last_name",
+    "produces": "FormAnswer form_101.debtor2_last_name (spouse's current name)",
+    "targets": [
+      {
+        "full_name": "Debtor2.Last name_6",
+        "page": 1,
+        "line": "2",
+        "label": "Last name",
+        "column": "Debtor 2"
+      }
+    ],
+    "verdicts": ["wrong_box"],
+    "correct_target": "leave blank",
+    "known": "NEW",
+    "note": "Widget is p1 line 2 \"All other names you have used in the last 8 years\", Debtor 2 column, second set, Last name. Repeats the spouse's current name as an other name; it belongs on line 1 (see Debtor2.*_4 entries). Never collected: form_101 schema has no \"ui\" specs, so FormSchemaUIView/DynamicFormWizard never ask it and resolve_binding returns \"\" (box stays blank today)."
+  },
+  {
+    "pdf_field": "Debtor1.Business name",
+    "source": "asked",
+    "producer": "answer:form_101.business_name",
+    "produces": "FormAnswer form_101.business_name",
+    "targets": [
+      {
+        "full_name": "Debtor1.Business name",
+        "page": 1,
+        "line": "2",
+        "label": "Business name (if applicable)",
+        "column": "Debtor 1"
+      }
+    ],
+    "verdicts": ["correct"],
+    "correct_target": "Debtor1.Business name",
+    "known": "",
+    "note": "p1 line 2 Debtor 1 \"Business name (if applicable)\" (assumed/trade/doing-business-as names). A sole-proprietor business name is a d/b/a name. Gated on has_business (SOFAReport.has_business). Never collected: form_101 schema has no \"ui\" specs, so FormSchemaUIView/DynamicFormWizard never ask it and resolve_binding returns \"\" (box stays blank today)."
+  },
+  {
+    "pdf_field": "Debtor1.Business name_3",
+    "source": "asked",
+    "producer": "answer:form_101.business_name",
+    "produces": "FormAnswer form_101.business_name (same value as Debtor1.Business name)",
+    "targets": [
+      {
+        "full_name": "Debtor1.Business name_3",
+        "page": 1,
+        "line": "2",
+        "label": "Business name (if applicable)",
+        "column": "Debtor 1"
+      }
+    ],
+    "verdicts": ["wrong_value"],
+    "correct_target": "leave blank",
+    "known": "NEW",
+    "note": "p1 line 2 Debtor 1 second \"Business name (if applicable)\" line; it duplicates the first business name instead of holding a second, different one. Never collected: form_101 schema has no \"ui\" specs, so FormSchemaUIView/DynamicFormWizard never ask it and resolve_binding returns \"\" (box stays blank today)."
+  },
+  {
+    "pdf_field": "Debtor2.Business name_4",
+    "source": "asked",
+    "producer": "answer:form_101.business_name",
+    "produces": "FormAnswer form_101.business_name (Debtor 1's business)",
+    "targets": [
+      {
+        "full_name": "Debtor2.Business name_4",
+        "page": 1,
+        "line": "2",
+        "label": "Business name (if applicable)",
+        "column": "Debtor 2"
+      }
+    ],
+    "verdicts": ["wrong_box"],
+    "correct_target": "leave blank",
+    "known": "NEW",
+    "note": "Widget is p1 line 2 Debtor 2 column, second \"Business name (if applicable)\". Debtor 1's business name prints in the spouse column; gated only on has_business, not has_joint_filer. Never collected: form_101 schema has no \"ui\" specs, so FormSchemaUIView/DynamicFormWizard never ask it and resolve_binding returns \"\" (box stays blank today)."
+  },
+  {
+    "pdf_field": "Debtor1.Employer Identification Number1",
+    "source": "asked",
+    "producer": "answer:form_101.employer_ein",
+    "produces": "FormAnswer form_101.employer_ein",
+    "targets": [
+      {
+        "full_name": "Debtor1.Employer Identification Number1",
+        "page": 2,
+        "line": "4",
+        "label": "Your Employer Identification Number (EIN), if any: EIN (first line)",
+        "column": "Debtor 1"
+      }
+    ],
+    "verdicts": ["unclear"],
+    "correct_target": "Debtor1.Employer Identification Number1",
+    "known": "NEW",
+    "note": "p2 line 4 \"Your Employer Identification Number (EIN), if any\" Debtor 1 first EIN. Line 4 asks for the debtor's own EIN (e.g. as a sole proprietor); the key name \"employer_ein\" reads as the debtor's employer's EIN (a W-2 employer). There is no prompt to settle which. Widget MaxLen 9. Never collected: form_101 schema has no \"ui\" specs, so FormSchemaUIView/DynamicFormWizard never ask it and resolve_binding returns \"\" (box stays blank today)."
+  },
+  {
+    "pdf_field": "Debtor1.Employer Identification Number2",
+    "source": "asked",
+    "producer": "answer:form_101.employer_ein",
+    "produces": "FormAnswer form_101.employer_ein (same value as the first EIN line)",
+    "targets": [
+      {
+        "full_name": "Debtor1.Employer Identification Number2",
+        "page": 2,
+        "line": "4",
+        "label": "Your Employer Identification Number (EIN), if any: EIN (second line)",
+        "column": "Debtor 1"
+      }
+    ],
+    "verdicts": ["wrong_value"],
+    "correct_target": "leave blank",
+    "known": "NEW",
+    "note": "p2 line 4 Debtor 1 second \"EIN\" line; it duplicates the first EIN instead of holding a second EIN. Same employer-vs-own ambiguity as Number1. Never collected: form_101 schema has no \"ui\" specs, so FormSchemaUIView/DynamicFormWizard never ask it and resolve_binding returns \"\" (box stays blank today)."
+  },
+  {
+    "pdf_field": "Debtor2 Employer Identification Number2",
+    "source": "asked",
+    "producer": "answer:form_101.debtor2_employer_ein",
+    "produces": "FormAnswer form_101.debtor2_employer_ein",
+    "targets": [
+      {
+        "full_name": "Debtor2 Employer Identification Number2",
+        "page": 2,
+        "line": "4",
+        "label": "Your Employer Identification Number (EIN), if any: EIN (second line)",
+        "column": "Debtor 2"
+      }
+    ],
+    "verdicts": ["wrong_box"],
+    "correct_target": "Debtor2.Employer Identification Number1",
+    "known": "NEW",
+    "note": "Widget is p2 line 4 Debtor 2 SECOND EIN line; Debtor 2's first EIN line (Debtor2.Employer Identification Number1) stays blank. Same employer-vs-own ambiguity. Never collected: form_101 schema has no \"ui\" specs, so FormSchemaUIView/DynamicFormWizard never ask it and resolve_binding returns \"\" (box stays blank today)."
+  },
+  {
+    "pdf_field": "Debtor1.Street",
+    "source": "derived",
+    "producer": "street_address",
+    "produces": "DebtorInfo.street_address",
+    "targets": [
+      {
+        "full_name": "Debtor1.Street",
+        "page": 2,
+        "line": "5",
+        "label": "Where you live: Number Street",
+        "column": "Debtor 1"
+      }
+    ],
+    "verdicts": ["correct"],
+    "correct_target": "Debtor1.Street",
+    "known": "",
+    "note": "p2 line 5 \"Where you live\" Debtor 1 Number Street."
+  },
+  {
+    "pdf_field": "Debtor1.Street1",
+    "source": "derived",
+    "producer": "street_address",
+    "produces": "DebtorInfo.street_address (same as Debtor1.Street)",
+    "targets": [
+      {
+        "full_name": "Debtor1.Street1",
+        "page": 2,
+        "line": "5",
+        "label": "Where you live: second address line (unlabeled, below Number Street)",
+        "column": "Debtor 1"
+      }
+    ],
+    "verdicts": ["wrong_value"],
+    "correct_target": "leave blank",
+    "known": "NEW",
+    "note": "p2 line 5 Debtor 1 second, unlabeled address line under \"Number Street\". Rule street_address repeats line 1 of the street, so every generated petition prints the street twice. Live on every filing."
+  },
+  {
+    "pdf_field": "Debtor1.City",
+    "source": "derived",
+    "producer": "city",
+    "produces": "DebtorInfo.city",
+    "targets": [
+      {
+        "full_name": "Debtor1.City",
+        "page": 2,
+        "line": "5",
+        "label": "Where you live: City",
+        "column": "Debtor 1"
+      }
+    ],
+    "verdicts": ["correct"],
+    "correct_target": "Debtor1.City",
+    "known": "",
+    "note": "p2 line 5 \"Where you live\" Debtor 1 City."
+  },
+  {
+    "pdf_field": "Debtor1.State",
+    "source": "derived",
+    "producer": "state",
+    "produces": "DebtorInfo.state",
+    "targets": [
+      {
+        "full_name": "Debtor1.State",
+        "page": 2,
+        "line": "5",
+        "label": "Where you live: State",
+        "column": "Debtor 1"
+      }
+    ],
+    "verdicts": ["correct"],
+    "correct_target": "Debtor1.State",
+    "known": "",
+    "note": "p2 line 5 \"Where you live\" Debtor 1 State."
+  },
+  {
+    "pdf_field": "Debtor1.ZIP Code",
+    "source": "derived",
+    "producer": "zip_code",
+    "produces": "DebtorInfo.zip_code",
+    "targets": [
+      {
+        "full_name": "Debtor1.ZIP Code",
+        "page": 2,
+        "line": "5",
+        "label": "Where you live: ZIP Code",
+        "column": "Debtor 1"
+      }
+    ],
+    "verdicts": ["correct"],
+    "correct_target": "Debtor1.ZIP Code",
+    "known": "",
+    "note": "p2 line 5 \"Where you live\" Debtor 1 ZIP Code."
+  },
+  {
+    "pdf_field": "Debtor2.Street2",
+    "source": "asked",
+    "producer": "answer:form_101.mailing_street",
+    "produces": "FormAnswer form_101.mailing_street (Debtor 1 mailing street)",
+    "targets": [
+      {
+        "full_name": "Debtor2.Street2",
+        "page": 2,
+        "line": "5",
+        "label": "If Debtor 2 lives at a different address: second address line (unlabeled, below Number Street)",
+        "column": "Debtor 2"
+      }
+    ],
+    "verdicts": ["wrong_box"],
+    "correct_target": "leave blank",
+    "known": "NEW",
+    "note": "Widget \"Debtor2.Street2\" is p2 line 5 \"If Debtor 2 lives at a different address\", second address line (Debtor 2 residence). The mailing street already goes to Debtor1.Street_2 (the correct box), so this copy spills into the spouse residence block; ungated. Never collected: form_101 schema has no \"ui\" specs, so FormSchemaUIView/DynamicFormWizard never ask it and resolve_binding returns \"\" (box stays blank today)."
+  },
+  {
+    "pdf_field": "Debtor2.ZIP",
+    "source": "asked",
+    "producer": "answer:form_101.mailing_zip",
+    "produces": "FormAnswer form_101.mailing_zip (Debtor 1 mailing ZIP)",
+    "targets": [
+      {
+        "full_name": "Debtor2.ZIP",
+        "page": 2,
+        "line": "5",
+        "label": "If Debtor 2 lives at a different address: ZIP Code",
+        "column": "Debtor 2"
+      }
+    ],
+    "verdicts": ["wrong_box"],
+    "correct_target": "Debtor1.ZIP Code_2",
+    "known": "NEW",
+    "note": "Widget \"Debtor2.ZIP\" is p2 line 5 \"If Debtor 2 lives at a different address\" ZIP Code (Debtor 2 residence). The mailing ZIP belongs in Debtor 1's mailing block ZIP (Debtor1.ZIP Code_2), which instead gets the residence ZIP from rule zip_code. Never collected: form_101 schema has no \"ui\" specs, so FormSchemaUIView/DynamicFormWizard never ask it and resolve_binding returns \"\" (box stays blank today)."
+  },
+  {
+    "pdf_field": "Debtor1.County",
+    "source": "asked",
+    "producer": "answer:form_101.county",
+    "produces": "FormAnswer form_101.county",
+    "targets": [
+      {
+        "full_name": "Debtor1.County",
+        "page": 2,
+        "line": "5",
+        "label": "Where you live: County",
+        "column": "Debtor 1"
+      }
+    ],
+    "verdicts": ["correct"],
+    "correct_target": "Debtor1.County",
+    "known": "",
+    "note": "p2 line 5 \"Where you live\" Debtor 1 County. DebtorInfo has no county field. Never collected: form_101 schema has no \"ui\" specs, so FormSchemaUIView/DynamicFormWizard never ask it and resolve_binding returns \"\" (box stays blank today)."
+  },
+  {
+    "pdf_field": "County_2",
+    "source": "asked",
+    "producer": "answer:form_101.county",
+    "produces": "FormAnswer form_101.county (Debtor 1 county)",
+    "targets": [
+      {
+        "full_name": "County_2",
+        "page": 2,
+        "line": "5",
+        "label": "If Debtor 2 lives at a different address: County",
+        "column": "Debtor 2"
+      }
+    ],
+    "verdicts": ["wrong_box"],
+    "correct_target": "leave blank",
+    "known": "NEW",
+    "note": "Widget \"County_2\" is p2 line 5 County under \"If Debtor 2 lives at a different address\" (Debtor 2 column). Debtor 1's county prints in the spouse block; ungated. Single widget, so this is a binding error rather than a short-name spill. Never collected: form_101 schema has no \"ui\" specs, so FormSchemaUIView/DynamicFormWizard never ask it and resolve_binding returns \"\" (box stays blank today)."
+  },
+  {
+    "pdf_field": "Debtor1.Street_2",
+    "source": "asked",
+    "producer": "answer:form_101.mailing_street",
+    "produces": "FormAnswer form_101.mailing_street",
+    "targets": [
+      {
+        "full_name": "Debtor1.Street_2",
+        "page": 2,
+        "line": "5",
+        "label": "If your mailing address is different from the one above (mailing address): Number Street",
+        "column": "Debtor 1"
+      }
+    ],
+    "verdicts": ["correct"],
+    "correct_target": "Debtor1.Street_2",
+    "known": "",
+    "note": "p2 line 5 \"If your mailing address is different from the one above\" Debtor 1 Number Street. Never collected: form_101 schema has no \"ui\" specs, so FormSchemaUIView/DynamicFormWizard never ask it and resolve_binding returns \"\" (box stays blank today)."
+  },
+  {
+    "pdf_field": "Debtor1.PO Box",
+    "source": "asked",
+    "producer": "answer:form_101.po_box",
+    "produces": "FormAnswer form_101.po_box",
+    "targets": [
+      {
+        "full_name": "Debtor1.PO Box",
+        "page": 2,
+        "line": "5",
+        "label": "If your mailing address is different from the one above (mailing address): P.O. Box",
+        "column": "Debtor 1"
+      }
+    ],
+    "verdicts": ["correct"],
+    "correct_target": "Debtor1.PO Box",
+    "known": "",
+    "note": "p2 line 5 Debtor 1 mailing-address \"P.O. Box\". Never collected: form_101 schema has no \"ui\" specs, so FormSchemaUIView/DynamicFormWizard never ask it and resolve_binding returns \"\" (box stays blank today)."
+  },
+  {
+    "pdf_field": "City_2",
+    "source": "asked",
+    "producer": "answer:form_101.mailing_city",
+    "produces": "FormAnswer form_101.mailing_city",
+    "targets": [
+      {
+        "full_name": "Debtor1.City_2",
+        "page": 2,
+        "line": "5",
+        "label": "If your mailing address is different from the one above (mailing address): City",
+        "column": "Debtor 1"
+      },
+      {
+        "full_name": "Debtor2.City_2",
+        "page": 2,
+        "line": "5",
+        "label": "If Debtor 2's mailing address is different from yours (mailing address): City",
+        "column": "Debtor 2"
+      },
+      {
+        "full_name": "City_2",
+        "page": 5,
+        "line": "14",
+        "label": "Where is the property? City",
+        "column": ""
+      }
+    ],
+    "verdicts": ["collision"],
+    "correct_target": "Debtor1.City_2",
+    "known": "DIG-63",
+    "note": "Key \"City_2\" equals the short name of three widgets: Debtor1.City_2 (p2 line 5 Debtor 1 mailing City, intended), Debtor2.City_2 (p2 line 5 \"If Debtor 2's mailing address is different from yours\" City), and City_2 (p5 line 14 \"Where is the property?\" City). Confirmed by a pypdf 6.13.1 fill: one value lands in all three. The page-5 hazard-property spill is not named in DIG-63; hazard city has no binding of its own. Never collected: form_101 schema has no \"ui\" specs, so FormSchemaUIView/DynamicFormWizard never ask it and resolve_binding returns \"\" (box stays blank today). Schema-only fix: use key \"Debtor1.City_2\" (a full name, matching no other short name)."
+  },
+  {
+    "pdf_field": "Debtor1.State_2",
+    "source": "asked",
+    "producer": "answer:form_101.mailing_state",
+    "produces": "FormAnswer form_101.mailing_state",
+    "targets": [
+      {
+        "full_name": "Debtor1.State_2",
+        "page": 2,
+        "line": "5",
+        "label": "If your mailing address is different from the one above (mailing address): State",
+        "column": "Debtor 1"
+      }
+    ],
+    "verdicts": ["correct"],
+    "correct_target": "Debtor1.State_2",
+    "known": "",
+    "note": "p2 line 5 Debtor 1 mailing-address State. Never collected: form_101 schema has no \"ui\" specs, so FormSchemaUIView/DynamicFormWizard never ask it and resolve_binding returns \"\" (box stays blank today)."
+  },
+  {
+    "pdf_field": "ZIP Code_4",
+    "source": "asked",
+    "producer": "answer:form_101.mailing_zip",
+    "produces": "FormAnswer form_101.mailing_zip (Debtor 1 mailing ZIP)",
+    "targets": [
+      {
+        "full_name": "ZIP Code_4",
+        "page": 2,
+        "line": "5",
+        "label": "If Debtor 2's mailing address is different from yours (mailing address): ZIP Code",
+        "column": "Debtor 2"
+      }
+    ],
+    "verdicts": ["wrong_box"],
+    "correct_target": "Debtor1.ZIP Code_2",
+    "known": "NEW",
+    "note": "Widget \"ZIP Code_4\" is p2 line 5 ZIP Code under \"If Debtor 2's mailing address is different from yours\" (Debtor 2 column). The mailing ZIP belongs in Debtor1.ZIP Code_2. Never collected: form_101 schema has no \"ui\" specs, so FormSchemaUIView/DynamicFormWizard never ask it and resolve_binding returns \"\" (box stays blank today)."
+  },
+  {
+    "pdf_field": "Debtor1.See 28 USC  1408 1",
+    "source": "asked",
+    "producer": "answer:form_101.venue_1_district",
+    "produces": "FormAnswer form_101.venue_1_district",
+    "targets": [
+      {
+        "full_name": "Debtor1.See 28 USC  1408 1",
+        "page": 2,
+        "line": "6",
+        "label": "I have another reason. Explain. (See 28 U.S.C. § 1408.)",
+        "column": "Debtor 1"
+      }
+    ],
+    "verdicts": ["wrong_value"],
+    "correct_target": "Debtor1.See 28 USC  1408 1",
+    "known": "NEW",
+    "note": "p2 line 6 Debtor 1 explanation line 1 under \"I have another reason. Explain. (See 28 U.S.C. § 1408.)\". The four lines together hold one free-text explanation. The binding pairs venue_N_district (Debtor 1 column) with venue_N_basis (Debtor 2 column), reading the two debtor columns as a district|basis table, so a district name lands where the explanation goes. Check Box5 (\"Other\") is never ticked either. Never collected: form_101 schema has no \"ui\" specs, so FormSchemaUIView/DynamicFormWizard never ask it and resolve_binding returns \"\" (box stays blank today)."
+  },
+  {
+    "pdf_field": "Debtor1.See 28 USC  1408 2",
+    "source": "asked",
+    "producer": "answer:form_101.venue_2_district",
+    "produces": "FormAnswer form_101.venue_2_district",
+    "targets": [
+      {
+        "full_name": "Debtor1.See 28 USC  1408 2",
+        "page": 2,
+        "line": "6",
+        "label": "I have another reason. Explain. (See 28 U.S.C. § 1408.)",
+        "column": "Debtor 1"
+      }
+    ],
+    "verdicts": ["wrong_value"],
+    "correct_target": "Debtor1.See 28 USC  1408 2",
+    "known": "NEW",
+    "note": "p2 line 6 Debtor 1 explanation line 2 under \"I have another reason. Explain. (See 28 U.S.C. § 1408.)\". The four lines together hold one free-text explanation. The binding pairs venue_N_district (Debtor 1 column) with venue_N_basis (Debtor 2 column), reading the two debtor columns as a district|basis table, so a district name lands where the explanation goes. Check Box5 (\"Other\") is never ticked either. Never collected: form_101 schema has no \"ui\" specs, so FormSchemaUIView/DynamicFormWizard never ask it and resolve_binding returns \"\" (box stays blank today)."
+  },
+  {
+    "pdf_field": "Debtor1.See 28 USC  1408 3",
+    "source": "asked",
+    "producer": "answer:form_101.venue_3_district",
+    "produces": "FormAnswer form_101.venue_3_district",
+    "targets": [
+      {
+        "full_name": "Debtor1.See 28 USC  1408 3",
+        "page": 2,
+        "line": "6",
+        "label": "I have another reason. Explain. (See 28 U.S.C. § 1408.)",
+        "column": "Debtor 1"
+      }
+    ],
+    "verdicts": ["wrong_value"],
+    "correct_target": "Debtor1.See 28 USC  1408 3",
+    "known": "NEW",
+    "note": "p2 line 6 Debtor 1 explanation line 3 under \"I have another reason. Explain. (See 28 U.S.C. § 1408.)\". The four lines together hold one free-text explanation. The binding pairs venue_N_district (Debtor 1 column) with venue_N_basis (Debtor 2 column), reading the two debtor columns as a district|basis table, so a district name lands where the explanation goes. Check Box5 (\"Other\") is never ticked either. Never collected: form_101 schema has no \"ui\" specs, so FormSchemaUIView/DynamicFormWizard never ask it and resolve_binding returns \"\" (box stays blank today)."
+  },
+  {
+    "pdf_field": "Debtor1.See 28 USC  1408 4",
+    "source": "asked",
+    "producer": "answer:form_101.venue_4_district",
+    "produces": "FormAnswer form_101.venue_4_district",
+    "targets": [
+      {
+        "full_name": "Debtor1.See 28 USC  1408 4",
+        "page": 2,
+        "line": "6",
+        "label": "I have another reason. Explain. (See 28 U.S.C. § 1408.)",
+        "column": "Debtor 1"
+      }
+    ],
+    "verdicts": ["wrong_value"],
+    "correct_target": "Debtor1.See 28 USC  1408 4",
+    "known": "NEW",
+    "note": "p2 line 6 Debtor 1 explanation line 4 under \"I have another reason. Explain. (See 28 U.S.C. § 1408.)\". The four lines together hold one free-text explanation. The binding pairs venue_N_district (Debtor 1 column) with venue_N_basis (Debtor 2 column), reading the two debtor columns as a district|basis table, so a district name lands where the explanation goes. Check Box5 (\"Other\") is never ticked either. Never collected: form_101 schema has no \"ui\" specs, so FormSchemaUIView/DynamicFormWizard never ask it and resolve_binding returns \"\" (box stays blank today)."
+  },
+  {
+    "pdf_field": "Debtor2.See 28 USC  1408 1_2",
+    "source": "asked",
+    "producer": "answer:form_101.venue_1_basis",
+    "produces": "FormAnswer form_101.venue_1_basis",
+    "targets": [
+      {
+        "full_name": "Debtor2.See 28 USC  1408 1_2",
+        "page": 2,
+        "line": "6",
+        "label": "I have another reason. Explain. (See 28 U.S.C. § 1408.)",
+        "column": "Debtor 2"
+      }
+    ],
+    "verdicts": ["wrong_box"],
+    "correct_target": "Debtor1.See 28 USC  1408 1",
+    "known": "NEW",
+    "note": "Widget is p2 line 6 explanation line 1 in the Debtor 2 column (\"About Debtor 2 (Spouse Only in a Joint Case)\"). Debtor 1's venue basis prints in the spouse column; ungated by has_joint_filer. Never collected: form_101 schema has no \"ui\" specs, so FormSchemaUIView/DynamicFormWizard never ask it and resolve_binding returns \"\" (box stays blank today)."
+  },
+  {
+    "pdf_field": "Debtor2.See 28 USC  1408 2_2",
+    "source": "asked",
+    "producer": "answer:form_101.venue_2_basis",
+    "produces": "FormAnswer form_101.venue_2_basis",
+    "targets": [
+      {
+        "full_name": "Debtor2.See 28 USC  1408 2_2",
+        "page": 2,
+        "line": "6",
+        "label": "I have another reason. Explain. (See 28 U.S.C. § 1408.)",
+        "column": "Debtor 2"
+      }
+    ],
+    "verdicts": ["wrong_box"],
+    "correct_target": "Debtor1.See 28 USC  1408 2",
+    "known": "NEW",
+    "note": "Widget is p2 line 6 explanation line 2 in the Debtor 2 column (\"About Debtor 2 (Spouse Only in a Joint Case)\"). Debtor 1's venue basis prints in the spouse column; ungated by has_joint_filer. Never collected: form_101 schema has no \"ui\" specs, so FormSchemaUIView/DynamicFormWizard never ask it and resolve_binding returns \"\" (box stays blank today)."
+  },
+  {
+    "pdf_field": "Debtor2.See 28 USC  1408 3_2",
+    "source": "asked",
+    "producer": "answer:form_101.venue_3_basis",
+    "produces": "FormAnswer form_101.venue_3_basis",
+    "targets": [
+      {
+        "full_name": "Debtor2.See 28 USC  1408 3_2",
+        "page": 2,
+        "line": "6",
+        "label": "I have another reason. Explain. (See 28 U.S.C. § 1408.)",
+        "column": "Debtor 2"
+      }
+    ],
+    "verdicts": ["wrong_box"],
+    "correct_target": "Debtor1.See 28 USC  1408 3",
+    "known": "NEW",
+    "note": "Widget is p2 line 6 explanation line 3 in the Debtor 2 column (\"About Debtor 2 (Spouse Only in a Joint Case)\"). Debtor 1's venue basis prints in the spouse column; ungated by has_joint_filer. Never collected: form_101 schema has no \"ui\" specs, so FormSchemaUIView/DynamicFormWizard never ask it and resolve_binding returns \"\" (box stays blank today)."
+  },
+  {
+    "pdf_field": "Debtor2.See 28 USC  1408 4_2",
+    "source": "asked",
+    "producer": "answer:form_101.venue_4_basis",
+    "produces": "FormAnswer form_101.venue_4_basis",
+    "targets": [
+      {
+        "full_name": "Debtor2.See 28 USC  1408 4_2",
+        "page": 2,
+        "line": "6",
+        "label": "I have another reason. Explain. (See 28 U.S.C. § 1408.)",
+        "column": "Debtor 2"
+      }
+    ],
+    "verdicts": ["wrong_box"],
+    "correct_target": "Debtor1.See 28 USC  1408 4",
+    "known": "NEW",
+    "note": "Widget is p2 line 6 explanation line 4 in the Debtor 2 column (\"About Debtor 2 (Spouse Only in a Joint Case)\"). Debtor 1's venue basis prints in the spouse column; ungated by has_joint_filer. Never collected: form_101 schema has no \"ui\" specs, so FormSchemaUIView/DynamicFormWizard never ask it and resolve_binding returns \"\" (box stays blank today)."
+  },
+  {
+    "pdf_field": "Debtor1.ZIP Code_2",
+    "source": "derived",
+    "producer": "zip_code",
+    "produces": "DebtorInfo.zip_code (residence ZIP)",
+    "targets": [
+      {
+        "full_name": "Debtor1.ZIP Code_2",
+        "page": 2,
+        "line": "5",
+        "label": "If your mailing address is different from the one above (mailing address): ZIP Code",
+        "column": "Debtor 1"
+      }
+    ],
+    "verdicts": ["wrong_value"],
+    "correct_target": "Debtor1.ZIP Code_2",
+    "known": "NEW",
+    "note": "p2 line 5 \"If your mailing address is different from the one above, fill it in here\" Debtor 1 ZIP Code. The derived residence ZIP is written on every filing, so the mailing block shows a lone ZIP even when there is no separate mailing address. It should be the mailing_zip answer, blank when there is no different mailing address."
+  },
+  {
+    "pdf_field": "District",
+    "source": "asked",
+    "producer": "answer:form_101.prior_bankruptcy_1_district",
+    "produces": "FormAnswer form_101.prior_bankruptcy_1_district",
+    "targets": [
+      {
+        "full_name": "District",
+        "page": 3,
+        "line": "9",
+        "label": "Have you filed for bankruptcy within the last 8 years? Yes. District (row 1)",
+        "column": ""
+      }
+    ],
+    "verdicts": ["correct"],
+    "correct_target": "District",
+    "known": "",
+    "note": "p3 line 9 \"Have you filed for bankruptcy within the last 8 years? Yes.\" row 1 District. Gated on has_prior_bankruptcy. The Yes checkbox (Check Box8 on_state Yes) is unbound. Never collected: form_101 schema has no \"ui\" specs, so FormSchemaUIView/DynamicFormWizard never ask it and resolve_binding returns \"\" (box stays blank today). Gate predicate reads a *_gate FormAnswer that nothing in the repo writes, so the section is always skipped today."
+  },
+  {
+    "pdf_field": "When",
+    "source": "asked",
+    "producer": "answer:form_101.prior_bankruptcy_1_when",
+    "produces": "FormAnswer form_101.prior_bankruptcy_1_when",
+    "targets": [
+      {
+        "full_name": "When",
+        "page": 3,
+        "line": "9",
+        "label": "Have you filed for bankruptcy within the last 8 years? Yes. When (MM/DD/YYYY) (row 1)",
+        "column": ""
+      }
+    ],
+    "verdicts": ["correct"],
+    "correct_target": "When",
+    "known": "",
+    "note": "p3 line 9 \"Have you filed for bankruptcy within the last 8 years? Yes.\" row 1 When (MM/DD/YYYY). Gated on has_prior_bankruptcy. The Yes checkbox (Check Box8 on_state Yes) is unbound. Never collected: form_101 schema has no \"ui\" specs, so FormSchemaUIView/DynamicFormWizard never ask it and resolve_binding returns \"\" (box stays blank today). Gate predicate reads a *_gate FormAnswer that nothing in the repo writes, so the section is always skipped today."
+  },
+  {
+    "pdf_field": "Case number",
+    "source": "asked",
+    "producer": "answer:form_101.prior_bankruptcy_1_case_number",
+    "produces": "FormAnswer form_101.prior_bankruptcy_1_case_number",
+    "targets": [
+      {
+        "full_name": "Case number",
+        "page": 3,
+        "line": "9",
+        "label": "Have you filed for bankruptcy within the last 8 years? Yes. Case number (row 1)",
+        "column": ""
+      }
+    ],
+    "verdicts": ["correct"],
+    "correct_target": "Case number",
+    "known": "",
+    "note": "p3 line 9 \"Have you filed for bankruptcy within the last 8 years? Yes.\" row 1 Case number. Gated on has_prior_bankruptcy. The Yes checkbox (Check Box8 on_state Yes) is unbound. Never collected: form_101 schema has no \"ui\" specs, so FormSchemaUIView/DynamicFormWizard never ask it and resolve_binding returns \"\" (box stays blank today). Gate predicate reads a *_gate FormAnswer that nothing in the repo writes, so the section is always skipped today."
+  },
+  {
+    "pdf_field": "District_2",
+    "source": "asked",
+    "producer": "answer:form_101.prior_bankruptcy_2_district",
+    "produces": "FormAnswer form_101.prior_bankruptcy_2_district",
+    "targets": [
+      {
+        "full_name": "District_2",
+        "page": 3,
+        "line": "9",
+        "label": "Have you filed for bankruptcy within the last 8 years? Yes. District (row 2)",
+        "column": ""
+      }
+    ],
+    "verdicts": ["correct"],
+    "correct_target": "District_2",
+    "known": "",
+    "note": "p3 line 9 \"Have you filed for bankruptcy within the last 8 years? Yes.\" row 2 District. Gated on has_prior_bankruptcy. The Yes checkbox (Check Box8 on_state Yes) is unbound. Never collected: form_101 schema has no \"ui\" specs, so FormSchemaUIView/DynamicFormWizard never ask it and resolve_binding returns \"\" (box stays blank today). Gate predicate reads a *_gate FormAnswer that nothing in the repo writes, so the section is always skipped today."
+  },
+  {
+    "pdf_field": "When_2",
+    "source": "asked",
+    "producer": "answer:form_101.prior_bankruptcy_2_when",
+    "produces": "FormAnswer form_101.prior_bankruptcy_2_when",
+    "targets": [
+      {
+        "full_name": "When_2",
+        "page": 3,
+        "line": "9",
+        "label": "Have you filed for bankruptcy within the last 8 years? Yes. When (MM/DD/YYYY) (row 2)",
+        "column": ""
+      }
+    ],
+    "verdicts": ["correct"],
+    "correct_target": "When_2",
+    "known": "",
+    "note": "p3 line 9 \"Have you filed for bankruptcy within the last 8 years? Yes.\" row 2 When (MM/DD/YYYY). Gated on has_prior_bankruptcy. The Yes checkbox (Check Box8 on_state Yes) is unbound. Never collected: form_101 schema has no \"ui\" specs, so FormSchemaUIView/DynamicFormWizard never ask it and resolve_binding returns \"\" (box stays blank today). Gate predicate reads a *_gate FormAnswer that nothing in the repo writes, so the section is always skipped today."
+  },
+  {
+    "pdf_field": "Case number_2",
+    "source": "asked",
+    "producer": "answer:form_101.prior_bankruptcy_2_case_number",
+    "produces": "FormAnswer form_101.prior_bankruptcy_2_case_number",
+    "targets": [
+      {
+        "full_name": "Case number_2",
+        "page": 3,
+        "line": "9",
+        "label": "Have you filed for bankruptcy within the last 8 years? Yes. Case number (row 2)",
+        "column": ""
+      }
+    ],
+    "verdicts": ["correct"],
+    "correct_target": "Case number_2",
+    "known": "",
+    "note": "p3 line 9 \"Have you filed for bankruptcy within the last 8 years? Yes.\" row 2 Case number. Gated on has_prior_bankruptcy. The Yes checkbox (Check Box8 on_state Yes) is unbound. Never collected: form_101 schema has no \"ui\" specs, so FormSchemaUIView/DynamicFormWizard never ask it and resolve_binding returns \"\" (box stays blank today). Gate predicate reads a *_gate FormAnswer that nothing in the repo writes, so the section is always skipped today."
+  },
+  {
+    "pdf_field": "District_3",
+    "source": "asked",
+    "producer": "answer:form_101.prior_bankruptcy_3_district",
+    "produces": "FormAnswer form_101.prior_bankruptcy_3_district",
+    "targets": [
+      {
+        "full_name": "District_3",
+        "page": 3,
+        "line": "9",
+        "label": "Have you filed for bankruptcy within the last 8 years? Yes. District (row 3)",
+        "column": ""
+      }
+    ],
+    "verdicts": ["correct"],
+    "correct_target": "District_3",
+    "known": "",
+    "note": "p3 line 9 \"Have you filed for bankruptcy within the last 8 years? Yes.\" row 3 District. Gated on has_prior_bankruptcy. The Yes checkbox (Check Box8 on_state Yes) is unbound. Never collected: form_101 schema has no \"ui\" specs, so FormSchemaUIView/DynamicFormWizard never ask it and resolve_binding returns \"\" (box stays blank today). Gate predicate reads a *_gate FormAnswer that nothing in the repo writes, so the section is always skipped today."
+  },
+  {
+    "pdf_field": "When_3",
+    "source": "asked",
+    "producer": "answer:form_101.prior_bankruptcy_3_when",
+    "produces": "FormAnswer form_101.prior_bankruptcy_3_when",
+    "targets": [
+      {
+        "full_name": "When_3",
+        "page": 3,
+        "line": "9",
+        "label": "Have you filed for bankruptcy within the last 8 years? Yes. When (MM/DD/YYYY) (row 3)",
+        "column": ""
+      }
+    ],
+    "verdicts": ["correct"],
+    "correct_target": "When_3",
+    "known": "",
+    "note": "p3 line 9 \"Have you filed for bankruptcy within the last 8 years? Yes.\" row 3 When (MM/DD/YYYY). Gated on has_prior_bankruptcy. The Yes checkbox (Check Box8 on_state Yes) is unbound. Never collected: form_101 schema has no \"ui\" specs, so FormSchemaUIView/DynamicFormWizard never ask it and resolve_binding returns \"\" (box stays blank today). Gate predicate reads a *_gate FormAnswer that nothing in the repo writes, so the section is always skipped today."
+  },
+  {
+    "pdf_field": "Case number_3",
+    "source": "asked",
+    "producer": "answer:form_101.prior_bankruptcy_3_case_number",
+    "produces": "FormAnswer form_101.prior_bankruptcy_3_case_number",
+    "targets": [
+      {
+        "full_name": "Case number_3",
+        "page": 3,
+        "line": "9",
+        "label": "Have you filed for bankruptcy within the last 8 years? Yes. Case number (row 3)",
+        "column": ""
+      }
+    ],
+    "verdicts": ["correct"],
+    "correct_target": "Case number_3",
+    "known": "",
+    "note": "p3 line 9 \"Have you filed for bankruptcy within the last 8 years? Yes.\" row 3 Case number. Gated on has_prior_bankruptcy. The Yes checkbox (Check Box8 on_state Yes) is unbound. Never collected: form_101 schema has no \"ui\" specs, so FormSchemaUIView/DynamicFormWizard never ask it and resolve_binding returns \"\" (box stays blank today). Gate predicate reads a *_gate FormAnswer that nothing in the repo writes, so the section is always skipped today."
+  },
+  {
+    "pdf_field": "Debtor",
+    "source": "derived",
+    "producer": "full_name",
+    "produces": "full_name rule: the filer's own \"first middle last\"",
+    "targets": [
+      {
+        "full_name": "Debtor",
+        "page": 3,
+        "line": "10",
+        "label": "Debtor",
+        "column": ""
+      }
+    ],
+    "verdicts": ["wrong_value"],
+    "correct_target": "leave blank",
+    "known": "NEW",
+    "note": "p3 line 10 \"Are any bankruptcy cases pending or being filed by a spouse who is not filing this case with you, or by a business partner, or by an affiliate? Yes.\" row 1 \"Debtor\". The box wants the name of the OTHER debtor (spouse, partner or affiliate) whose case is pending, not the filer. Also gated on has_prior_bankruptcy (line 9's own-prior-case gate), not on a pending-related-case answer. Gate predicate reads a *_gate FormAnswer that nothing in the repo writes, so the section is always skipped today."
+  },
+  {
+    "pdf_field": "Relationship to you",
+    "source": "asked",
+    "producer": "answer:form_101.prior_bankruptcy_1_relationship",
+    "produces": "FormAnswer form_101.prior_bankruptcy_1_relationship",
+    "targets": [
+      {
+        "full_name": "Relationship to you",
+        "page": 3,
+        "line": "10",
+        "label": "Relationship to you",
+        "column": ""
+      }
+    ],
+    "verdicts": ["wrong_value"],
+    "correct_target": "Relationship to you",
+    "known": "NEW",
+    "note": "p3 line 10 \"Are any bankruptcy cases pending or being filed by a spouse who is not filing this case with you, or by a business partner, or by an affiliate? Yes.\" row 1 \"Relationship to you\". The key belongs to the line-9 prior-bankruptcy group (the filer's own earlier cases, which have no relationship), while row 1's District/When/Case number come from prior_bankruptcy_4_* and row 2's from pending_bankruptcy_*. The concept is incoherent with the box. Gated on has_prior_bankruptcy. Never collected: form_101 schema has no \"ui\" specs, so FormSchemaUIView/DynamicFormWizard never ask it and resolve_binding returns \"\" (box stays blank today). Gate predicate reads a *_gate FormAnswer that nothing in the repo writes, so the section is always skipped today."
+  },
+  {
+    "pdf_field": "District_4",
+    "source": "asked",
+    "producer": "answer:form_101.prior_bankruptcy_4_district",
+    "produces": "FormAnswer form_101.prior_bankruptcy_4_district (a 4th prior case of the filer)",
+    "targets": [
+      {
+        "full_name": "District_4",
+        "page": 3,
+        "line": "10",
+        "label": "District",
+        "column": ""
+      }
+    ],
+    "verdicts": ["wrong_value"],
+    "correct_target": "District_4",
+    "known": "NEW",
+    "note": "p3 line 10 \"Are any bankruptcy cases pending or being filed by a spouse who is not filing this case with you, or by a business partner, or by an affiliate? Yes.\" row 1 District. The key is a 4th own prior bankruptcy (line 9 concept, and line 9 has only 3 rows). The box asks about a case pending for a spouse, partner or affiliate. Gated on has_prior_bankruptcy. Never collected: form_101 schema has no \"ui\" specs, so FormSchemaUIView/DynamicFormWizard never ask it and resolve_binding returns \"\" (box stays blank today). Gate predicate reads a *_gate FormAnswer that nothing in the repo writes, so the section is always skipped today."
+  },
+  {
+    "pdf_field": "When_4",
+    "source": "asked",
+    "producer": "answer:form_101.prior_bankruptcy_4_when",
+    "produces": "FormAnswer form_101.prior_bankruptcy_4_when (a 4th prior case of the filer)",
+    "targets": [
+      {
+        "full_name": "When_4",
+        "page": 3,
+        "line": "10",
+        "label": "When",
+        "column": ""
+      }
+    ],
+    "verdicts": ["wrong_value"],
+    "correct_target": "When_4",
+    "known": "NEW",
+    "note": "p3 line 10 \"Are any bankruptcy cases pending or being filed by a spouse who is not filing this case with you, or by a business partner, or by an affiliate? Yes.\" row 1 When. The key is a 4th own prior bankruptcy (line 9 concept, and line 9 has only 3 rows). The box asks about a case pending for a spouse, partner or affiliate. Gated on has_prior_bankruptcy. Never collected: form_101 schema has no \"ui\" specs, so FormSchemaUIView/DynamicFormWizard never ask it and resolve_binding returns \"\" (box stays blank today). Gate predicate reads a *_gate FormAnswer that nothing in the repo writes, so the section is always skipped today."
+  },
+  {
+    "pdf_field": "Case number if known_3",
+    "source": "asked",
+    "producer": "answer:form_101.prior_bankruptcy_4_case_number",
+    "produces": "FormAnswer form_101.prior_bankruptcy_4_case_number (a 4th prior case of the filer)",
+    "targets": [
+      {
+        "full_name": "Case number if known_3",
+        "page": 3,
+        "line": "10",
+        "label": "Case number, if known",
+        "column": ""
+      }
+    ],
+    "verdicts": ["wrong_value"],
+    "correct_target": "Case number if known_3",
+    "known": "NEW",
+    "note": "p3 line 10 \"Are any bankruptcy cases pending or being filed by a spouse who is not filing this case with you, or by a business partner, or by an affiliate? Yes.\" row 1 Case number, if known. The key is a 4th own prior bankruptcy (line 9 concept, and line 9 has only 3 rows). The box asks about a case pending for a spouse, partner or affiliate. Gated on has_prior_bankruptcy. Never collected: form_101 schema has no \"ui\" specs, so FormSchemaUIView/DynamicFormWizard never ask it and resolve_binding returns \"\" (box stays blank today). Gate predicate reads a *_gate FormAnswer that nothing in the repo writes, so the section is always skipped today."
+  },
+  {
+    "pdf_field": "Debtor_2",
+    "source": "derived",
+    "producer": "full_name",
+    "produces": "full_name rule: the filer's own \"first middle last\"",
+    "targets": [
+      {
+        "full_name": "Debtor_2",
+        "page": 3,
+        "line": "10",
+        "label": "Debtor",
+        "column": ""
+      }
+    ],
+    "verdicts": ["wrong_value"],
+    "correct_target": "leave blank",
+    "known": "NEW",
+    "note": "p3 line 10 \"Are any bankruptcy cases pending or being filed by a spouse who is not filing this case with you, or by a business partner, or by an affiliate? Yes.\" row 2 \"Debtor\". Same as \"Debtor\": the filer's own name where the related debtor's name is asked. Gate predicate reads a *_gate FormAnswer that nothing in the repo writes, so the section is always skipped today."
+  },
+  {
+    "pdf_field": "Relationship to you_2",
+    "source": "asked",
+    "producer": "answer:form_101.prior_bankruptcy_2_relationship",
+    "produces": "FormAnswer form_101.prior_bankruptcy_2_relationship",
+    "targets": [
+      {
+        "full_name": "Relationship to you_2",
+        "page": 3,
+        "line": "10",
+        "label": "Relationship to you",
+        "column": ""
+      }
+    ],
+    "verdicts": ["wrong_value"],
+    "correct_target": "Relationship to you_2",
+    "known": "NEW",
+    "note": "p3 line 10 \"Are any bankruptcy cases pending or being filed by a spouse who is not filing this case with you, or by a business partner, or by an affiliate? Yes.\" row 2 \"Relationship to you\". Same prior-vs-pending conflation as \"Relationship to you\"; row 2's other boxes use pending_bankruptcy_*. Never collected: form_101 schema has no \"ui\" specs, so FormSchemaUIView/DynamicFormWizard never ask it and resolve_binding returns \"\" (box stays blank today). Gate predicate reads a *_gate FormAnswer that nothing in the repo writes, so the section is always skipped today."
+  },
+  {
+    "pdf_field": "District_5",
+    "source": "asked",
+    "producer": "answer:form_101.pending_bankruptcy_district",
+    "produces": "FormAnswer form_101.pending_bankruptcy_district",
+    "targets": [
+      {
+        "full_name": "District_5",
+        "page": 3,
+        "line": "10",
+        "label": "District",
+        "column": ""
+      }
+    ],
+    "verdicts": ["correct"],
+    "correct_target": "District_5",
+    "known": "",
+    "note": "p3 line 10 \"Are any bankruptcy cases pending or being filed by a spouse who is not filing this case with you, or by a business partner, or by an affiliate? Yes.\" row 2 District. Concept matches. Caveats: gated on has_prior_bankruptcy (line 9 gate) instead of a line-10 gate, so a filer with a pending related case but no own prior case gets it suppressed; and it fills row 2 while row 1 holds the prior_bankruptcy_4 keys. Line 10 No/Yes (Check Box9) is unbound. Never collected: form_101 schema has no \"ui\" specs, so FormSchemaUIView/DynamicFormWizard never ask it and resolve_binding returns \"\" (box stays blank today). Gate predicate reads a *_gate FormAnswer that nothing in the repo writes, so the section is always skipped today."
+  },
+  {
+    "pdf_field": "When_5",
+    "source": "asked",
+    "producer": "answer:form_101.pending_bankruptcy_when",
+    "produces": "FormAnswer form_101.pending_bankruptcy_when",
+    "targets": [
+      {
+        "full_name": "When_5",
+        "page": 3,
+        "line": "10",
+        "label": "When",
+        "column": ""
+      }
+    ],
+    "verdicts": ["correct"],
+    "correct_target": "When_5",
+    "known": "",
+    "note": "p3 line 10 \"Are any bankruptcy cases pending or being filed by a spouse who is not filing this case with you, or by a business partner, or by an affiliate? Yes.\" row 2 When. Concept matches. Caveats: gated on has_prior_bankruptcy (line 9 gate) instead of a line-10 gate, so a filer with a pending related case but no own prior case gets it suppressed; and it fills row 2 while row 1 holds the prior_bankruptcy_4 keys. Line 10 No/Yes (Check Box9) is unbound. Never collected: form_101 schema has no \"ui\" specs, so FormSchemaUIView/DynamicFormWizard never ask it and resolve_binding returns \"\" (box stays blank today). Gate predicate reads a *_gate FormAnswer that nothing in the repo writes, so the section is always skipped today."
+  },
+  {
+    "pdf_field": "Case number if known_4",
+    "source": "asked",
+    "producer": "answer:form_101.pending_bankruptcy_case_number",
+    "produces": "FormAnswer form_101.pending_bankruptcy_case_number",
+    "targets": [
+      {
+        "full_name": "Case number if known_4",
+        "page": 3,
+        "line": "10",
+        "label": "Case number, if known",
+        "column": ""
+      }
+    ],
+    "verdicts": ["correct"],
+    "correct_target": "Case number if known_4",
+    "known": "",
+    "note": "p3 line 10 \"Are any bankruptcy cases pending or being filed by a spouse who is not filing this case with you, or by a business partner, or by an affiliate? Yes.\" row 2 Case number, if known. Concept matches. Caveats: gated on has_prior_bankruptcy (line 9 gate) instead of a line-10 gate, so a filer with a pending related case but no own prior case gets it suppressed; and it fills row 2 while row 1 holds the prior_bankruptcy_4 keys. Line 10 No/Yes (Check Box9) is unbound. Never collected: form_101 schema has no \"ui\" specs, so FormSchemaUIView/DynamicFormWizard never ask it and resolve_binding returns \"\" (box stays blank today). Gate predicate reads a *_gate FormAnswer that nothing in the repo writes, so the section is always skipped today."
+  },
+  {
+    "pdf_field": "Name of business if any",
+    "source": "asked",
+    "producer": "answer:form_101.business_name",
+    "produces": "FormAnswer form_101.business_name",
+    "targets": [
+      {
+        "full_name": "Name of business if any",
+        "page": 4,
+        "line": "12",
+        "label": "Name of business, if any",
+        "column": ""
+      }
+    ],
+    "verdicts": ["correct"],
+    "correct_target": "Name of business if any",
+    "known": "",
+    "note": "p4 line 12 \"Yes. Name and location of business\" Name of business, if any. Check Box12 (line 12 No/Yes) is unbound. Never collected: form_101 schema has no \"ui\" specs, so FormSchemaUIView/DynamicFormWizard never ask it and resolve_binding returns \"\" (box stays blank today)."
+  },
+  {
+    "pdf_field": "Business Street address",
+    "source": "asked",
+    "producer": "answer:form_101.business_street",
+    "produces": "FormAnswer form_101.business_street",
+    "targets": [
+      {
+        "full_name": "Business Street address",
+        "page": 4,
+        "line": "12",
+        "label": "Number Street",
+        "column": ""
+      }
+    ],
+    "verdicts": ["correct"],
+    "correct_target": "Business Street address",
+    "known": "",
+    "note": "p4 line 12 business Number Street. Never collected: form_101 schema has no \"ui\" specs, so FormSchemaUIView/DynamicFormWizard never ask it and resolve_binding returns \"\" (box stays blank today)."
+  },
+  {
+    "pdf_field": "Business Street address2",
+    "source": "asked",
+    "producer": "answer:form_101.business_street",
+    "produces": "FormAnswer form_101.business_street (same as Business Street address)",
+    "targets": [
+      {
+        "full_name": "Business Street address2",
+        "page": 4,
+        "line": "12",
+        "label": "Name and location of business: second address line (unlabeled, below Number Street)",
+        "column": ""
+      }
+    ],
+    "verdicts": ["wrong_value"],
+    "correct_target": "leave blank",
+    "known": "NEW",
+    "note": "p4 line 12 second, unlabeled business-address line; duplicates the street. Never collected: form_101 schema has no \"ui\" specs, so FormSchemaUIView/DynamicFormWizard never ask it and resolve_binding returns \"\" (box stays blank today)."
+  },
+  {
+    "pdf_field": "Business City",
+    "source": "asked",
+    "producer": "answer:form_101.business_city",
+    "produces": "FormAnswer form_101.business_city",
+    "targets": [
+      {
+        "full_name": "Business City",
+        "page": 4,
+        "line": "12",
+        "label": "City",
+        "column": ""
+      }
+    ],
+    "verdicts": ["correct"],
+    "correct_target": "Business City",
+    "known": "",
+    "note": "p4 line 12 business City. Never collected: form_101 schema has no \"ui\" specs, so FormSchemaUIView/DynamicFormWizard never ask it and resolve_binding returns \"\" (box stays blank today)."
+  },
+  {
+    "pdf_field": "Business State",
+    "source": "asked",
+    "producer": "answer:form_101.business_state",
+    "produces": "FormAnswer form_101.business_state",
+    "targets": [
+      {
+        "full_name": "Business State",
+        "page": 4,
+        "line": "12",
+        "label": "State",
+        "column": ""
+      }
+    ],
+    "verdicts": ["correct"],
+    "correct_target": "Business State",
+    "known": "",
+    "note": "p4 line 12 business State. Never collected: form_101 schema has no \"ui\" specs, so FormSchemaUIView/DynamicFormWizard never ask it and resolve_binding returns \"\" (box stays blank today)."
+  },
+  {
+    "pdf_field": "ZIP Code_5",
+    "source": "asked",
+    "producer": "answer:form_101.business_zip",
+    "produces": "FormAnswer form_101.business_zip",
+    "targets": [
+      {
+        "full_name": "ZIP Code_5",
+        "page": 4,
+        "line": "12",
+        "label": "ZIP Code",
+        "column": ""
+      }
+    ],
+    "verdicts": ["correct"],
+    "correct_target": "ZIP Code_5",
+    "known": "",
+    "note": "p4 line 12 business ZIP Code. Never collected: form_101 schema has no \"ui\" specs, so FormSchemaUIView/DynamicFormWizard never ask it and resolve_binding returns \"\" (box stays blank today)."
+  },
+  {
+    "pdf_field": "What is the hazard1",
+    "source": "asked",
+    "producer": "answer:form_101.hazard_description",
+    "produces": "FormAnswer form_101.hazard_description",
+    "targets": [
+      {
+        "full_name": "What is the hazard1",
+        "page": 5,
+        "line": "14",
+        "label": "What is the hazard?",
+        "column": ""
+      }
+    ],
+    "verdicts": ["correct"],
+    "correct_target": "What is the hazard1",
+    "known": "",
+    "note": "p5 line 14 \"Yes. What is the hazard?\" first line. Not gated, and Check Box15 (line 14 No/Yes) is unbound. Never collected: form_101 schema has no \"ui\" specs, so FormSchemaUIView/DynamicFormWizard never ask it and resolve_binding returns \"\" (box stays blank today)."
+  },
+  {
+    "pdf_field": "What is the hazard2",
+    "source": "asked",
+    "producer": "answer:form_101.hazard_description",
+    "produces": "FormAnswer form_101.hazard_description (same as line 1)",
+    "targets": [
+      {
+        "full_name": "What is the hazard2",
+        "page": 5,
+        "line": "14",
+        "label": "What is the hazard?",
+        "column": ""
+      }
+    ],
+    "verdicts": ["wrong_value"],
+    "correct_target": "leave blank",
+    "known": "NEW",
+    "note": "p5 line 14 \"What is the hazard?\" second line; duplicates the first line instead of continuing it. Never collected: form_101 schema has no \"ui\" specs, so FormSchemaUIView/DynamicFormWizard never ask it and resolve_binding returns \"\" (box stays blank today)."
+  },
+  {
+    "pdf_field": "If immediate attention is needed why is it needed1",
+    "source": "asked",
+    "producer": "answer:form_101.hazard_reason",
+    "produces": "FormAnswer form_101.hazard_reason",
+    "targets": [
+      {
+        "full_name": "If immediate attention is needed why is it needed1",
+        "page": 5,
+        "line": "14",
+        "label": "If immediate attention is needed, why is it needed?",
+        "column": ""
+      }
+    ],
+    "verdicts": ["correct"],
+    "correct_target": "If immediate attention is needed why is it needed1",
+    "known": "",
+    "note": "p5 line 14 \"If immediate attention is needed, why is it needed?\" first line. Never collected: form_101 schema has no \"ui\" specs, so FormSchemaUIView/DynamicFormWizard never ask it and resolve_binding returns \"\" (box stays blank today)."
+  },
+  {
+    "pdf_field": "If immediate attention is needed why is it needed2",
+    "source": "asked",
+    "producer": "answer:form_101.hazard_reason",
+    "produces": "FormAnswer form_101.hazard_reason (same as line 1)",
+    "targets": [
+      {
+        "full_name": "If immediate attention is needed why is it needed2",
+        "page": 5,
+        "line": "14",
+        "label": "If immediate attention is needed, why is it needed?",
+        "column": ""
+      }
+    ],
+    "verdicts": ["wrong_value"],
+    "correct_target": "leave blank",
+    "known": "NEW",
+    "note": "p5 line 14 \"why is it needed?\" second line; duplicates the first line. Never collected: form_101 schema has no \"ui\" specs, so FormSchemaUIView/DynamicFormWizard never ask it and resolve_binding returns \"\" (box stays blank today)."
+  },
+  {
+    "pdf_field": "Street_6",
+    "source": "asked",
+    "producer": "answer:form_101.hazard_street",
+    "produces": "FormAnswer form_101.hazard_street",
+    "targets": [
+      {
+        "full_name": "Street_6",
+        "page": 5,
+        "line": "14",
+        "label": "Where is the property? Number Street",
+        "column": ""
+      }
+    ],
+    "verdicts": ["correct"],
+    "correct_target": "Street_6",
+    "known": "",
+    "note": "p5 line 14 \"Where is the property?\" Number Street. Never collected: form_101 schema has no \"ui\" specs, so FormSchemaUIView/DynamicFormWizard never ask it and resolve_binding returns \"\" (box stays blank today)."
+  },
+  {
+    "pdf_field": "Street_7",
+    "source": "asked",
+    "producer": "answer:form_101.hazard_street",
+    "produces": "FormAnswer form_101.hazard_street (same as Street_6)",
+    "targets": [
+      {
+        "full_name": "Street_7",
+        "page": 5,
+        "line": "14",
+        "label": "Where is the property? second address line (unlabeled)",
+        "column": ""
+      }
+    ],
+    "verdicts": ["wrong_value"],
+    "correct_target": "leave blank",
+    "known": "NEW",
+    "note": "p5 line 14 \"Where is the property?\" second, unlabeled address line; duplicates the street. (The hazard City box gets the mailing city via the City_2 collision.) Never collected: form_101 schema has no \"ui\" specs, so FormSchemaUIView/DynamicFormWizard never ask it and resolve_binding returns \"\" (box stays blank today)."
+  },
+  {
+    "pdf_field": "State_6",
+    "source": "asked",
+    "producer": "answer:form_101.hazard_state",
+    "produces": "FormAnswer form_101.hazard_state",
+    "targets": [
+      {
+        "full_name": "State_6",
+        "page": 5,
+        "line": "14",
+        "label": "Where is the property? State",
+        "column": ""
+      }
+    ],
+    "verdicts": ["correct"],
+    "correct_target": "State_6",
+    "known": "",
+    "note": "p5 line 14 \"Where is the property?\" State (MaxLen 2). Never collected: form_101 schema has no \"ui\" specs, so FormSchemaUIView/DynamicFormWizard never ask it and resolve_binding returns \"\" (box stays blank today)."
+  },
+  {
+    "pdf_field": "ZIP Code_6",
+    "source": "asked",
+    "producer": "answer:form_101.hazard_zip",
+    "produces": "FormAnswer form_101.hazard_zip",
+    "targets": [
+      {
+        "full_name": "ZIP Code_6",
+        "page": 5,
+        "line": "14",
+        "label": "Where is the property? ZIP Code",
+        "column": ""
+      }
+    ],
+    "verdicts": ["correct"],
+    "correct_target": "ZIP Code_6",
+    "known": "",
+    "note": "p5 line 14 \"Where is the property?\" ZIP Code. Never collected: form_101 schema has no \"ui\" specs, so FormSchemaUIView/DynamicFormWizard never ask it and resolve_binding returns \"\" (box stays blank today)."
+  },
+  {
+    "pdf_field": "16c State the type of debts you owe that are not consumer debts or business debts",
+    "source": "asked",
+    "producer": "answer:form_101.non_consumer_debt_type",
+    "produces": "FormAnswer form_101.non_consumer_debt_type",
+    "targets": [
+      {
+        "full_name": "16c State the type of debts you owe that are not consumer debts or business debts",
+        "page": 7,
+        "line": "16c",
+        "label": "State the type of debts you owe that are not consumer debts or business debts.",
+        "column": ""
+      }
+    ],
+    "verdicts": ["correct"],
+    "correct_target": "16c State the type of debts you owe that are not consumer debts or business debts",
+    "known": "",
+    "note": "p7 line 16c \"State the type of debts you owe that are not consumer debts or business debts.\" The 16a/16b checkboxes (Check Box18/19) are unbound. Never collected: form_101 schema has no \"ui\" specs, so FormSchemaUIView/DynamicFormWizard never ask it and resolve_binding returns \"\" (box stays blank today)."
+  },
+  {
+    "pdf_field": "Debtor1.signature",
+    "source": "signature",
+    "producer": "signature",
+    "produces": "nothing (source=signature; the resolver returns None)",
+    "targets": [
+      {
+        "full_name": "Debtor1.signature",
+        "page": 7,
+        "line": "Part 7",
+        "label": "Sign Below, For you: Signature of Debtor 1",
+        "column": "Debtor 1"
+      }
+    ],
+    "verdicts": ["correct"],
+    "correct_target": "Debtor1.signature",
+    "known": "",
+    "note": "p7 Part 7 \"Sign Below, For you: Signature of Debtor 1\". Left blank for the debtor's signature."
+  },
+  {
+    "pdf_field": "Executed on",
+    "source": "asked",
+    "producer": "answer:form_101.executed_on",
+    "produces": "FormAnswer form_101.executed_on",
+    "targets": [
+      {
+        "full_name": "Executed on",
+        "page": 7,
+        "line": "Part 7",
+        "label": "Sign Below, For you: Executed on (MM/DD/YYYY)",
+        "column": "Debtor 1"
+      },
+      {
+        "full_name": "Debtor2.Executed on",
+        "page": 7,
+        "line": "Part 7",
+        "label": "Sign Below, For you: Executed on (MM/DD/YYYY)",
+        "column": "Debtor 2"
+      }
+    ],
+    "verdicts": ["collision"],
+    "correct_target": "Executed on",
+    "known": "DIG-63",
+    "note": "Key \"Executed on\" equals the full name of p7 Part 7 Debtor 1 \"Executed on\" AND the short name of Debtor2.Executed on (p7 Part 7 Debtor 2 \"Executed on\"). Confirmed by a pypdf 6.13.1 fill: both dates receive the value, so a single filer's petition shows a Debtor 2 execution date. Never collected: form_101 schema has no \"ui\" specs, so FormSchemaUIView/DynamicFormWizard never ask it and resolve_binding returns \"\" (box stays blank today). Fix needs a filler change (match full names only, or rename the template field): the Debtor 1 field's full name is the bare \"Executed on\", which is also the short name of Debtor2.Executed on, so no schema key fills one without the other. City_2, by contrast, is fixed by keying \"Debtor1.City_2\"."
+  },
+  {
+    "pdf_field": "Attorney.Sig",
+    "source": "signature",
+    "producer": "signature",
+    "produces": "nothing (source=signature)",
+    "targets": [
+      {
+        "full_name": "Attorney.Sig",
+        "page": 8,
+        "line": "Part 7",
+        "label": "For your attorney, if you are represented by one: Signature of Attorney for Debtor",
+        "column": "Attorney"
+      }
+    ],
+    "verdicts": ["correct"],
+    "correct_target": "Attorney.Sig",
+    "known": "",
+    "note": "p8 Part 7 \"For your attorney... Signature of Attorney for Debtor\". Gated on has_attorney."
+  },
+  {
+    "pdf_field": "Attorney.Date signed",
+    "source": "asked",
+    "producer": "answer:form_101.attorney_date_signed",
+    "produces": "FormAnswer form_101.attorney_date_signed",
+    "targets": [
+      {
+        "full_name": "Attorney.Date signed",
+        "page": 8,
+        "line": "Part 7",
+        "label": "For your attorney, if you are represented by one: Date (MM/DD/YYYY)",
+        "column": "Attorney"
+      }
+    ],
+    "verdicts": ["correct"],
+    "correct_target": "Attorney.Date signed",
+    "known": "",
+    "note": "p8 Part 7 attorney block \"Date\". Gated on has_attorney. Attorney.City and Attorney.State are not in the schema. Never collected: form_101 schema has no \"ui\" specs, so FormSchemaUIView/DynamicFormWizard never ask it and resolve_binding returns \"\" (box stays blank today). Gate predicate reads a *_gate FormAnswer that nothing in the repo writes, so the section is always skipped today."
+  },
+  {
+    "pdf_field": "Attorney.Printed name",
+    "source": "asked",
+    "producer": "answer:form_101.attorney_printed_name",
+    "produces": "FormAnswer form_101.attorney_printed_name",
+    "targets": [
+      {
+        "full_name": "Attorney.Printed name",
+        "page": 8,
+        "line": "Part 7",
+        "label": "For your attorney, if you are represented by one: Printed name",
+        "column": "Attorney"
+      }
+    ],
+    "verdicts": ["correct"],
+    "correct_target": "Attorney.Printed name",
+    "known": "",
+    "note": "p8 Part 7 attorney block \"Printed name\". Gated on has_attorney. Attorney.City and Attorney.State are not in the schema. Never collected: form_101 schema has no \"ui\" specs, so FormSchemaUIView/DynamicFormWizard never ask it and resolve_binding returns \"\" (box stays blank today). Gate predicate reads a *_gate FormAnswer that nothing in the repo writes, so the section is always skipped today."
+  },
+  {
+    "pdf_field": "Attorney.Firm name",
+    "source": "asked",
+    "producer": "answer:form_101.attorney_firm_name",
+    "produces": "FormAnswer form_101.attorney_firm_name",
+    "targets": [
+      {
+        "full_name": "Attorney.Firm name",
+        "page": 8,
+        "line": "Part 7",
+        "label": "For your attorney, if you are represented by one: Firm name",
+        "column": "Attorney"
+      }
+    ],
+    "verdicts": ["correct"],
+    "correct_target": "Attorney.Firm name",
+    "known": "",
+    "note": "p8 Part 7 attorney block \"Firm name\". Gated on has_attorney. Attorney.City and Attorney.State are not in the schema. Never collected: form_101 schema has no \"ui\" specs, so FormSchemaUIView/DynamicFormWizard never ask it and resolve_binding returns \"\" (box stays blank today). Gate predicate reads a *_gate FormAnswer that nothing in the repo writes, so the section is always skipped today."
+  },
+  {
+    "pdf_field": "Attorney.Street address_2",
+    "source": "asked",
+    "producer": "answer:form_101.attorney_street",
+    "produces": "FormAnswer form_101.attorney_street",
+    "targets": [
+      {
+        "full_name": "Attorney.Street address_2",
+        "page": 8,
+        "line": "Part 7",
+        "label": "For your attorney, if you are represented by one: Number Street",
+        "column": "Attorney"
+      }
+    ],
+    "verdicts": ["correct"],
+    "correct_target": "Attorney.Street address_2",
+    "known": "",
+    "note": "p8 Part 7 attorney block \"Number Street\". Gated on has_attorney. Attorney.City and Attorney.State are not in the schema. Never collected: form_101 schema has no \"ui\" specs, so FormSchemaUIView/DynamicFormWizard never ask it and resolve_binding returns \"\" (box stays blank today). Gate predicate reads a *_gate FormAnswer that nothing in the repo writes, so the section is always skipped today."
+  },
+  {
+    "pdf_field": "Attorney.Street address_3",
+    "source": "asked",
+    "producer": "answer:form_101.attorney_street",
+    "produces": "FormAnswer form_101.attorney_street (same as Attorney.Street address_2)",
+    "targets": [
+      {
+        "full_name": "Attorney.Street address_3",
+        "page": 8,
+        "line": "Part 7",
+        "label": "For your attorney, if you are represented by one: second address line (unlabeled, below Number Street)",
+        "column": "Attorney"
+      }
+    ],
+    "verdicts": ["wrong_value"],
+    "correct_target": "leave blank",
+    "known": "NEW",
+    "note": "p8 Part 7 attorney block second, unlabeled address line; duplicates the street. Never collected: form_101 schema has no \"ui\" specs, so FormSchemaUIView/DynamicFormWizard never ask it and resolve_binding returns \"\" (box stays blank today). Gate predicate reads a *_gate FormAnswer that nothing in the repo writes, so the section is always skipped today."
+  },
+  {
+    "pdf_field": "Attorney.Zip",
+    "source": "asked",
+    "producer": "answer:form_101.attorney_zip",
+    "produces": "FormAnswer form_101.attorney_zip",
+    "targets": [
+      {
+        "full_name": "Attorney.Zip",
+        "page": 8,
+        "line": "Part 7",
+        "label": "For your attorney, if you are represented by one: ZIP Code",
+        "column": "Attorney"
+      }
+    ],
+    "verdicts": ["correct"],
+    "correct_target": "Attorney.Zip",
+    "known": "",
+    "note": "p8 Part 7 attorney block \"ZIP Code\". Gated on has_attorney. Attorney.City and Attorney.State are not in the schema. Never collected: form_101 schema has no \"ui\" specs, so FormSchemaUIView/DynamicFormWizard never ask it and resolve_binding returns \"\" (box stays blank today). Gate predicate reads a *_gate FormAnswer that nothing in the repo writes, so the section is always skipped today."
+  },
+  {
+    "pdf_field": "Attorney.phone",
+    "source": "asked",
+    "producer": "answer:form_101.attorney_phone",
+    "produces": "FormAnswer form_101.attorney_phone",
+    "targets": [
+      {
+        "full_name": "Attorney.phone",
+        "page": 8,
+        "line": "Part 7",
+        "label": "For your attorney, if you are represented by one: Contact phone",
+        "column": "Attorney"
+      }
+    ],
+    "verdicts": ["correct"],
+    "correct_target": "Attorney.phone",
+    "known": "",
+    "note": "p8 Part 7 attorney block \"Contact phone\". Gated on has_attorney. Attorney.City and Attorney.State are not in the schema. Never collected: form_101 schema has no \"ui\" specs, so FormSchemaUIView/DynamicFormWizard never ask it and resolve_binding returns \"\" (box stays blank today). Gate predicate reads a *_gate FormAnswer that nothing in the repo writes, so the section is always skipped today."
+  },
+  {
+    "pdf_field": "Attorney.Email address",
+    "source": "asked",
+    "producer": "answer:form_101.attorney_email",
+    "produces": "FormAnswer form_101.attorney_email",
+    "targets": [
+      {
+        "full_name": "Attorney.Email address",
+        "page": 8,
+        "line": "Part 7",
+        "label": "For your attorney, if you are represented by one: Email address",
+        "column": "Attorney"
+      }
+    ],
+    "verdicts": ["correct"],
+    "correct_target": "Attorney.Email address",
+    "known": "",
+    "note": "p8 Part 7 attorney block \"Email address\". Gated on has_attorney. Attorney.City and Attorney.State are not in the schema. Never collected: form_101 schema has no \"ui\" specs, so FormSchemaUIView/DynamicFormWizard never ask it and resolve_binding returns \"\" (box stays blank today). Gate predicate reads a *_gate FormAnswer that nothing in the repo writes, so the section is always skipped today."
+  },
+  {
+    "pdf_field": "Attorney.Bar number",
+    "source": "asked",
+    "producer": "answer:form_101.attorney_bar_number",
+    "produces": "FormAnswer form_101.attorney_bar_number",
+    "targets": [
+      {
+        "full_name": "Attorney.Bar number",
+        "page": 8,
+        "line": "Part 7",
+        "label": "For your attorney, if you are represented by one: Bar number",
+        "column": "Attorney"
+      }
+    ],
+    "verdicts": ["correct"],
+    "correct_target": "Attorney.Bar number",
+    "known": "",
+    "note": "p8 Part 7 attorney block \"Bar number\". Gated on has_attorney. Attorney.City and Attorney.State are not in the schema. Never collected: form_101 schema has no \"ui\" specs, so FormSchemaUIView/DynamicFormWizard never ask it and resolve_binding returns \"\" (box stays blank today). Gate predicate reads a *_gate FormAnswer that nothing in the repo writes, so the section is always skipped today."
+  },
+  {
+    "pdf_field": "Attorney.Bar State",
+    "source": "asked",
+    "producer": "answer:form_101.attorney_bar_state",
+    "produces": "FormAnswer form_101.attorney_bar_state",
+    "targets": [
+      {
+        "full_name": "Attorney.Bar State",
+        "page": 8,
+        "line": "Part 7",
+        "label": "For your attorney, if you are represented by one: Bar State",
+        "column": "Attorney"
+      }
+    ],
+    "verdicts": ["correct"],
+    "correct_target": "Attorney.Bar State",
+    "known": "",
+    "note": "p8 Part 7 attorney block \"Bar State\". Gated on has_attorney. Attorney.City and Attorney.State are not in the schema. Never collected: form_101 schema has no \"ui\" specs, so FormSchemaUIView/DynamicFormWizard never ask it and resolve_binding returns \"\" (box stays blank today). Gate predicate reads a *_gate FormAnswer that nothing in the repo writes, so the section is always skipped today."
+  },
+  {
+    "pdf_field": "Name of person payed to help file",
+    "source": "asked",
+    "producer": "answer:form_101.preparer_name",
+    "produces": "FormAnswer form_101.preparer_name",
+    "targets": [
+      {
+        "full_name": "Name of person payed to help file",
+        "page": 9,
+        "line": "Part 7",
+        "label": "For you if you are filing this bankruptcy without an attorney: Did you pay or agree to pay someone who is not an attorney to help you fill out your bankruptcy forms? Yes. Name of Person",
+        "column": ""
+      }
+    ],
+    "verdicts": ["correct"],
+    "correct_target": "Name of person payed to help file",
+    "known": "",
+    "note": "p9 Part 7 pro se block \"Did you pay or agree to pay someone who is not an attorney to help you fill out your bankruptcy forms? Yes. Name of Person\". The No/Yes boxes (Check Box26) are unbound. Never collected: form_101 schema has no \"ui\" specs, so FormSchemaUIView/DynamicFormWizard never ask it and resolve_binding returns \"\" (box stays blank today)."
+  },
+  {
+    "pdf_field": "Debtor1.Signature",
+    "source": "signature",
+    "producer": "signature",
+    "produces": "nothing (source=signature)",
+    "targets": [
+      {
+        "full_name": "Debtor1.Signature",
+        "page": 9,
+        "line": "Part 7",
+        "label": "For you if you are filing this bankruptcy without an attorney: Signature of Debtor 1",
+        "column": "Debtor 1"
+      }
+    ],
+    "verdicts": ["correct"],
+    "correct_target": "Debtor1.Signature",
+    "known": "",
+    "note": "p9 Part 7 pro se block \"Signature of Debtor 1\"."
+  },
+  {
+    "pdf_field": "Debtor1.Contact phone_2",
+    "source": "asked",
+    "producer": "answer:form_101.preparer_phone",
+    "produces": "FormAnswer form_101.preparer_phone (the paid non-attorney preparer's phone)",
+    "targets": [
+      {
+        "full_name": "Debtor1.Contact phone_2",
+        "page": 9,
+        "line": "Part 7",
+        "label": "For you if you are filing this bankruptcy without an attorney: Contact phone",
+        "column": "Debtor 1"
+      }
+    ],
+    "verdicts": ["wrong_value"],
+    "correct_target": "Debtor1.Contact phone_2",
+    "known": "NEW",
+    "note": "p9 Part 7 pro se signature block, Debtor 1 \"Contact phone\": the DEBTOR's own phone. The preparer's phone does not belong on Form 101 (it goes on Form 119). It should get the debtor's phone (rule phone), which currently goes only to Cell phone. Never collected: form_101 schema has no \"ui\" specs, so FormSchemaUIView/DynamicFormWizard never ask it and resolve_binding returns \"\" (box stays blank today)."
+  },
+  {
+    "pdf_field": "Debtor2.Contact phone",
+    "source": "asked",
+    "producer": "answer:form_101.preparer_phone",
+    "produces": "FormAnswer form_101.preparer_phone",
+    "targets": [
+      {
+        "full_name": "Debtor2.Contact phone",
+        "page": 9,
+        "line": "Part 7",
+        "label": "For you if you are filing this bankruptcy without an attorney: Contact phone",
+        "column": "Debtor 2"
+      }
+    ],
+    "verdicts": ["wrong_box"],
+    "correct_target": "leave blank",
+    "known": "NEW",
+    "note": "p9 Part 7 pro se signature block, Debtor 2 \"Contact phone\". The preparer's phone prints in the spouse column; ungated. Never collected: form_101 schema has no \"ui\" specs, so FormSchemaUIView/DynamicFormWizard never ask it and resolve_binding returns \"\" (box stays blank today)."
+  },
+  {
+    "pdf_field": "Debtor1.Cell phone",
+    "source": "derived",
+    "producer": "phone",
+    "produces": "DebtorInfo.phone",
+    "targets": [
+      {
+        "full_name": "Debtor1.Cell phone",
+        "page": 9,
+        "line": "Part 7",
+        "label": "For you if you are filing this bankruptcy without an attorney: Cell phone",
+        "column": "Debtor 1"
+      }
+    ],
+    "verdicts": ["correct"],
+    "correct_target": "Debtor1.Cell phone",
+    "known": "",
+    "note": "p9 Part 7 pro se block Debtor 1 \"Cell phone\". DebtorInfo.phone has no phone type, so it is acceptable here."
+  },
+  {
+    "pdf_field": "Debtor1.Email address_2",
+    "source": "derived",
+    "producer": "email",
+    "produces": "DebtorInfo.email",
+    "targets": [
+      {
+        "full_name": "Debtor1.Email address_2",
+        "page": 9,
+        "line": "Part 7",
+        "label": "For you if you are filing this bankruptcy without an attorney: Email address",
+        "column": "Debtor 1"
+      }
+    ],
+    "verdicts": ["correct"],
+    "correct_target": "Debtor1.Email address_2",
+    "known": "",
+    "note": "p9 Part 7 pro se block Debtor 1 \"Email address\"."
+  },
+  {
+    "pdf_field": "Button.Print1",
+    "source": "constant",
+    "producer": "/Yes",
+    "produces": "\"/Yes\" (constant, schema type checkbox)",
+    "targets": [
+      {
+        "full_name": "Button.Print1",
+        "page": 9,
+        "line": "",
+        "label": "Print",
+        "column": ""
+      }
+    ],
+    "verdicts": ["checkbox_state"],
+    "correct_target": "leave blank",
+    "known": "NEW",
+    "note": "Target is the p9 \"Print\" push button (form control, no on_state). A pypdf 6.13.1 fill sets /V=/Off on it with no visible effect. Harmless, but it is a junk binding."
+  },
+  {
+    "pdf_field": "Check Box1",
+    "source": "constant",
+    "producer": "/Yes",
+    "produces": "\"/Yes\" (constant; _emit returns on_states[0]=\"/Yes\"; schema label \"Individual\")",
+    "targets": [
+      {
+        "full_name": "Check Box1",
+        "page": 1,
+        "line": "",
+        "label": "Chapter you are filing under:",
+        "column": ""
+      },
+      {
+        "full_name": "Check Box1",
+        "page": 1,
+        "line": "",
+        "label": "Chapter you are filing under:",
+        "column": ""
+      },
+      {
+        "full_name": "Check Box1",
+        "page": 1,
+        "line": "",
+        "label": "Chapter you are filing under:",
+        "column": ""
+      },
+      {
+        "full_name": "Check Box1",
+        "page": 1,
+        "line": "",
+        "label": "Chapter you are filing under:",
+        "column": ""
+      },
+      {
+        "full_name": "Check Box1",
+        "page": 3,
+        "line": "7",
+        "label": "The chapter of the Bankruptcy Code you are choosing to file under",
+        "column": ""
+      },
+      {
+        "full_name": "Check Box1",
+        "page": 3,
+        "line": "7",
+        "label": "The chapter of the Bankruptcy Code you are choosing to file under",
+        "column": ""
+      },
+      {
+        "full_name": "Check Box1",
+        "page": 3,
+        "line": "7",
+        "label": "The chapter of the Bankruptcy Code you are choosing to file under",
+        "column": ""
+      },
+      {
+        "full_name": "Check Box1",
+        "page": 3,
+        "line": "7",
+        "label": "The chapter of the Bankruptcy Code you are choosing to file under",
+        "column": ""
+      }
+    ],
+    "verdicts": ["checkbox_state"],
+    "correct_target": "Check Box1",
+    "known": "NEW",
+    "note": "Check Box1 has 8 widgets: p1 header \"Chapter you are filing under:\" Chapter 7/11/12/13 and p3 line 7 \"The chapter of the Bankruptcy Code you are choosing to file under\" Chapter 7/11/12/13. Their on-states decode to /Chapter 7, /Chapter 11, /Chapter 12, /Chapter 13 (raw names Chapter#207 etc.). A pypdf 6.13.1 fill with \"/Yes\" sets V=/Yes and leaves every /AS at /Off, so NO chapter is ticked on either page. Writing \"/Chapter 7\" (decoded; \"/Chapter#207\" does not work) ticks both Chapter 7 boxes, which is what line 7 asks: \"Also, go to the top of page 1 and check the appropriate box.\" Live on every filing."
+  },
+  {
+    "pdf_field": "Check Box5",
+    "source": "constant",
+    "producer": "/Yes",
+    "produces": "\"/Yes\" (constant; schema label \"Chapter 7\", page 1)",
+    "targets": [
+      {
+        "full_name": "Check Box5",
+        "page": 2,
+        "line": "6",
+        "label": "Why you are choosing this district to file for bankruptcy (Check one)",
+        "column": "Debtor 1"
+      },
+      {
+        "full_name": "Check Box5",
+        "page": 2,
+        "line": "6",
+        "label": "Why you are choosing this district to file for bankruptcy (Check one)",
+        "column": "Debtor 1"
+      }
+    ],
+    "verdicts": ["checkbox_state", "wrong_box"],
+    "correct_target": "Check Box1",
+    "known": "NEW",
+    "note": "Check Box5 is p2 line 6 \"Why you are choosing this district to file for bankruptcy\", Debtor 1, with on-states \"Lived in this district\" and \"Other\". \"/Yes\" matches neither, so nothing ticks. The label shows the constant was meant to tick Chapter 7, which is Check Box1 = \"/Chapter 7\". Line 6 venue (a 28 U.S.C. § 1408 fact) needs its own asked answer: \"/Lived in this district\" or \"/Other\"."
+  },
+  {
+    "pdf_field": "Check Box16",
+    "source": "constant",
+    "producer": "/Yes",
+    "produces": "\"/Yes\" (constant; schema label \"Consumer debts\", page 1)",
+    "targets": [
+      {
+        "full_name": "Check Box16",
+        "page": 6,
+        "line": "15",
+        "label": "You must check one:",
+        "column": "About Debtor 1:"
+      },
+      {
+        "full_name": "Check Box16",
+        "page": 6,
+        "line": "15",
+        "label": "You must check one:",
+        "column": "About Debtor 1:"
+      },
+      {
+        "full_name": "Check Box16",
+        "page": 6,
+        "line": "15",
+        "label": "I certify that I asked for credit counseling services from an approved agency, but was unable to obtain those services during the 7 days after I made my request, and exigent circumstances merit a 30-day temporary waiver of the requirement.",
+        "column": "Debtor 1"
+      },
+      {
+        "full_name": "Check Box16",
+        "page": 6,
+        "line": "15",
+        "label": "Tell the court whether you have received a briefing about credit counseling (You must check one)",
+        "column": "Debtor 1"
+      }
+    ],
+    "verdicts": ["checkbox_state", "wrong_box", "needs_legal_review"],
+    "correct_target": "Check Box18",
+    "known": "NEW",
+    "note": "Check Box16 is p6 line 15 credit-counseling \"You must check one\", Debtor 1, with on-states 1, 2, On and 4. \"/Yes\" matches none, so nothing ticks. The label shows the intent was line 16a \"Are your debts primarily consumer debts?\": Check Box18 on_state Yes (\"Yes. Go to line 17\"). Hard-coding the consumer-debt characterization (11 U.S.C. § 101(8)), which also decides whether the means test applies, is a legal characterization; it should be an asked answer or legal-reviewed. Line 15 (required, or the case can be dismissed) is also left blank."
+  }
+]

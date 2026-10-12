@@ -11,7 +11,6 @@ const mockForm: GeneratedForm = {
   form_type_display: 'Form 101 - Voluntary Petition',
   status: 'generated',
   status_display: 'Generated',
-  form_data: {},
   pdf_file_path: '/media/forms/form_101_1.pdf',
   upl_disclaimer: 'This form was prepared using information you provided.',
   generated_by: 1,
@@ -107,15 +106,15 @@ describe('FormCard', () => {
   // Downloaded state
   // ---------------------------------------------------------------------------
 
-  it('shows Mark as Filed button when downloaded', () => {
+  it('keeps Download and Mark as Filed after the first download', () => {
     const downloadedForm = { ...mockForm, status: 'downloaded' as const };
     render(
       <MemoryRouter>
         <FormCard {...defaultProps} generatedForm={downloadedForm} />
       </MemoryRouter>
     );
+    expect(screen.getByRole('button', { name: /download/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /mark as filed/i })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /download/i })).not.toBeInTheDocument();
   });
 
   // ---------------------------------------------------------------------------
@@ -131,8 +130,24 @@ describe('FormCard', () => {
     );
     // Status badge shows "Filed", and the filed-check also shows "Filed"
     expect(screen.getByRole('status')).toHaveTextContent('Filed');
+    expect(screen.getByLabelText('Filed with court')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /generate/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /download/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /mark as filed/i })).not.toBeInTheDocument();
+  });
+
+  it('downloads a filed form, which serves what was filed', async () => {
+    const user = userEvent.setup();
+    const onDownload = vi.fn().mockResolvedValue(undefined);
+    const filedForm = { ...mockForm, status: 'filed' as const };
+    render(
+      <MemoryRouter>
+        <FormCard {...defaultProps} generatedForm={filedForm} onDownload={onDownload} />
+      </MemoryRouter>
+    );
+
+    await user.click(screen.getByRole('button', { name: /download/i }));
+
+    expect(onDownload).toHaveBeenCalledWith(1);
   });
 
   // ---------------------------------------------------------------------------
