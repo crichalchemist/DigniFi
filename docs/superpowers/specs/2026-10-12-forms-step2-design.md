@@ -97,9 +97,19 @@ Every one of those boxes is already a known wrong-box defect (DIG-56), and produ
   - The packet list stays readable. For an unfinished session it returns the packet from stored data and never refuses; it recalculates the means test only for a completed session (§5.6).
   - The check lives in the views, not in `build_field_values`, so value-building and oracle tests are unaffected. The seeds already set `status="completed"` (`seed_demo_data.py:551`). View tests switch their session fixture to a completed session in this commit.
 - **Reopening.** Any edit after completing sets the session back to in progress, and the filer presses Complete again, which re-runs the completion checks and the fee-waiver routing (owner ruling after the spec review began).
+
   - `update_step` already does this (`intake/views.py:136`), so pressing Continue reopens.
-  - A session PATCH that carries `debtor_info`, `income_info`, `expense_info`, `debts` or `assets` also sets `status` back to `"in_progress"`. The SOFA and fee-waiver pages save through their own endpoints (`sofaReportAPI.patch`, `api.feeWaiver.create`), so they never reopen it.
+  - One server helper sets a completed session's `status` back to `"in_progress"` on every intake-data write (owner ruling while planning 2a). It runs on:
+
+    - a session PATCH that carries `debtor_info`, `income_info`, `expense_info`, `debts` or `assets`;
+    - the contracts and codebtors endpoints;
+    - the per-item debt and asset endpoints (`DebtViewSet`, `AssetViewSet`), which no screen uses today;
+    - a document upload that adds a draft debt or pay-stub data.
+
+    Form questions (`answers/bulk`), SOFA (`sofaReportAPI.patch`) and the fee-waiver page (`api.feeWaiver.create`) are not intake data and never reopen it.
+
   - The wizard's autosave fires whenever the step's data object changes (`useAutoSave.ts:67-82`), so stepping back with Previous would save unchanged data and reopen the session. `useAutoSave` skips a save whose data equals the last saved or loaded copy. Only a real edit reopens.
+
 - **A failed Complete or means-test call keeps the filer on Review** with the reason, instead of sending them to `/forms` (`IntakeWizard.tsx` `handleComplete`, DIG-150). When only the means test fails, the session is already complete. The dashboard shows "Finish your intake", with a link back, until the session is complete.
 - **The blank-expenses trap (DIG-153).** Saving the Expenses step always creates the expense record, storing blanks as $0, the columns' existing default. Without this, a filer who leaves every expense blank can never complete.
 
