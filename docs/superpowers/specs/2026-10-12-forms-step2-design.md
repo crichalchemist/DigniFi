@@ -1,6 +1,6 @@
 # Forms step 2: collected data in the right boxes
 
-**Status:** approved in brainstorming on 2026-10-12, design sections 1–7 one at a time. Revised after an adversarial verification against the code, the field index, the audit, the approved decisions and Plane, which confirmed 59 findings (11 blocking); every one is resolved below. This is step 2 of the forms project. Appendix E lists the few items this document settles that the sections did not show the owner one by one.
+**Status:** approved in brainstorming on 2026-10-12, design sections 1–7 one at a time. Revised after an adversarial verification against the code, the field index, the audit, the approved decisions and Plane, which confirmed 59 findings (11 blocking); every one is resolved below. A scoped re-check of that revision found four more errors and five unclear points, also resolved, and the owner kept section 2's rule that any edit after Complete reopens the intake (§5.3). This is step 2 of the forms project. Appendix E lists the few items this document settles that the sections did not show the owner one by one.
 
 **Branch:** `feat/forms-step2`, on `main` at `49f287e` (step 1, PR #18).
 
@@ -62,7 +62,7 @@ Step 1 gave the packet one fill path and an oracle that checks printed boxes aga
 1. **Oracle re-key** (§7.2).
 2. **Completion check** (§5.3).
 3. **Save and flow fixes** (§5.4): DIG-147, DIG-26 with its backfill, DIG-47, DIG-120, DIG-149, DIG-148, DIG-55. The three waiver journeys gain the SOFA step here. The API read-back test (§7.6) starts here.
-4. **Income per source** (§5.5): the model, the migration, the Income step, the shared CMI that leaves out Social Security, the income rules' new bodies, the "Enter your income by source" refusal, and the seeds' ten amounts. This commit stops writing the old total, so everything that reads income moves with it.
+4. **Income per source** (§5.5): the model, the migration, the Income step, the shared CMI that leaves out Social Security, new bodies for the existing income rules, the "Enter your income by source" refusal, and the seeds' ten amounts. This commit stops writing the old total, so everything that reads income moves with it.
 5. **Means test** (§5.6): the median tie, rounding to the cent, recalculating at generate time, the DIG-128 reset and message, keeping and downloading filed forms, and the dashboard showing a whole-call refusal (DIG-156).
 6. **Fee-waiver page** (§5.7): the new columns, the page, the seeds' take-home figures and answers, the page object and its end-to-end data.
 7. **Docs:** the persona briefs and CLAUDE.md.
@@ -73,7 +73,14 @@ Step 1 gave the packet one fill path and an oracle that checks printed boxes aga
 
 ### 5.1 What 2a changes and what it leaves
 
-2a changes data, saves and the generate flow. It moves no binding, with one exception: the re-key changes how tier 2 names its cases, not what any box prints. The pay-stub help text (`DocumentUploadPage.tsx:19`) changes in 2b's Schedule I commit, where stubs stop feeding line 2. It becomes "Your employer's name is used for your income form (Schedule I)."
+2a changes data, saves and the generate flow. It moves no binding, with one exception: the re-key changes how tier 2 names its cases, not what any box prints. The pay-stub help text (`DocumentUploadPage.tsx:19`) changes in 2b's Schedule I commit, where stubs stop feeding line 2. It becomes "Recent pay stubs from your job. Your employer's name is used for your income form (Schedule I)."
+
+Commit 4 gives the existing income rules real figures while their bindings stay where they are. So, until 2b moves them:
+
+- Schedule I line 3 (overtime) prints wages and tips.
+- A journey-built session prints blank, not 0.00, on the 5a–5g payroll-deduction boxes.
+
+Every one of those boxes is already a known wrong-box defect (DIG-56), and production waits for step 4.
 
 ### 5.2 Ground rules for every 2a change
 
@@ -89,7 +96,10 @@ Step 1 gave the packet one fill path and an oracle that checks printed boxes aga
   - Generate, regenerate and download of an unfiled form share it through `_fill`.
   - The packet list stays readable. For an unfinished session it returns the packet from stored data and never refuses; it recalculates the means test only for a completed session (§5.6).
   - The check lives in the views, not in `build_field_values`, so value-building and oracle tests are unaffected. The seeds already set `status="completed"` (`seed_demo_data.py:551`). View tests switch their session fixture to a completed session in this commit.
-- **Reopening.** Pressing Continue in the wizard after completing calls `update_step`, which sets the session back to in progress, and the filer presses Complete again. Edits saved after only pressing Previous keep the session complete; the means test is recalculated at generate time (§5.6), so the forms still reflect them (Appendix E).
+- **Reopening.** Any edit after completing sets the session back to in progress, and the filer presses Complete again, which re-runs the completion checks and the fee-waiver routing (owner ruling after the spec review began).
+  - `update_step` already does this (`intake/views.py:136`), so pressing Continue reopens.
+  - A session PATCH that carries `debtor_info`, `income_info`, `expense_info`, `debts` or `assets` also sets `status` back to `"in_progress"`. The SOFA and fee-waiver pages save through their own endpoints (`sofaReportAPI.patch`, `api.feeWaiver.create`), so they never reopen it.
+  - The wizard's autosave fires whenever the step's data object changes (`useAutoSave.ts:67-82`), so stepping back with Previous would save unchanged data and reopen the session. `useAutoSave` skips a save whose data equals the last saved or loaded copy. Only a real edit reopens.
 - **A failed Complete or means-test call keeps the filer on Review** with the reason, instead of sending them to `/forms` (`IntakeWizard.tsx` `handleComplete`, DIG-150). When only the means test fails, the session is already complete. The dashboard shows "Finish your intake", with a link back, until the session is complete.
 - **The blank-expenses trap (DIG-153).** Saving the Expenses step always creates the expense record, storing blanks as $0, the columns' existing default. Without this, a filer who leaves every expense blank can never complete.
 
@@ -118,11 +128,16 @@ These make an empty list mean "the filer said none", which the Q8 boxes rely on.
   - A saved total above $0 leaves the ten amounts empty. The Income step shows "You entered $X a month in total. Please split it by source," and income forms refuse until the filer does.
   - A saved total of $0 becomes ten $0 amounts, since nothing is lost.
 - **The Income step** loads the ten amounts through `hydrateAmounts`. Empty boxes stay empty and are never saved as $0 unless typed. The "We keep only the total" note goes. "Rental Income" becomes "Rental income after the property's costs", because both forms ask for the net figure.
-- **One CMI.** CMI = the sum of the ten amounts minus Social Security; commit 5 adds the rounding to the cent (§5.6). One function serves the means test (`eligibility/models.py`), the above-median calculator (`expense_deduction_calculator.py` `_get_cmi`) and the form rule `cmi` (`derivations.py`). The API's read-only `total_monthly_income` becomes the sum of the ten.
-- **A separate Schedule I income total** includes Social Security. 2b binds it to Schedule I lines 10 and 12 and 106Sum line 4; Schedule J 23a gets it through `schedule_j_total_income`.
+- **One CMI.** CMI = the sum of the ten amounts minus Social Security; commit 5 adds the rounding to the cent (§5.6). One function, in `apps/eligibility/` beside the means test, serves the means test (`eligibility/models.py`), the above-median calculator (`expense_deduction_calculator.py` `_get_cmi`) and the form rule `cmi` (`derivations.py`). The API's read-only `total_monthly_income` becomes the sum of the ten.
+- **A separate Schedule I income total** includes Social Security. 2b creates it as `schedule_i_income_total` and binds it to Schedule I lines 10 and 12 and 106Sum line 4. In the same 2b commit, `schedule_j_total_income` takes it as its new body, so Schedule J 23a prints it.
 - **The fee-waiver flag** (`qualifies_fee_waiver`, `eligibility/models.py:172`) keeps comparing the shared CMI, now without Social Security, until DIG-145 replaces the whole standard (Appendix E).
-- **The income rules read the new columns.** Every derivation that reads a per-source amount switches in this commit to its `monthly_*` column and prints blank when that column is NULL (B2). Today they read attributes `IncomeInfo` never had (`pension_retirement`, `unemployment_compensation`, `social_security`, `child_support_alimony`, `real_property_income`, `other_income`), and `_get_income_field` (`derivations.py:183-193`) turns each missing one into 0. §6.2 lists every rule and its source. Their bindings move in 2b.
-- **The refusal.** When the ten amounts are empty, the CMI function raises a precondition error that reads "Enter your income by source on the Income step." Building a form that needs CMI returns it as a 422, and the means-test endpoint returns it as a 400 instead of a 500.
+- **The income rules read the new columns.** Today they read attributes `IncomeInfo` never had (`wages_salaries_tips`, `pension_retirement`, `unemployment_compensation`, `social_security`, `child_support_alimony`, `real_property_income`, `other_income`). `_get_income_field` (`derivations.py:183-193`) turns each missing one into 0, so every wage box prints 0.00 today.
+  - **Switched in this commit.** Each existing rule that §6.2 keeps switches to its `monthly_*` column and prints blank when that column is NULL (B2). These are `cmi`, `schedule_i_net_wages_debtor1`, the six `schedule_i_*_debtor1` source rules, `line1_wages`, `line6b_child_support_alimony`, `line3_real_property_income`, `line6a_unemployment`, `line5a_pension_retirement` and `line7_other_income`. Their bindings move in 2b.
+  - **Created in 2b.** §6.2's new income rules (`schedule_i_income_total`, `schedule_i_overtime_debtor1`, `schedule_i_gross_income_debtor1`, `schedule_i_other_income_total_debtor1`, `other_income_label` and `line3_alimony`) are created in 2b, each in the commit that first binds it.
+  - **Left alone until 2b.** Five existing rules read per-source attributes but lose their last binding in 2b: `line5b_social_security`, `line8a_total_gross_income`, `line10c_net_income`, `schedule_i_net_income_debtor1`, and the already unbound `schedule_i_gross_wages_debtor1`. They keep reading through `_get_income_field` and print what they print today. 2b deletes each one in the commit that removes its last binding, and deletes `_get_income_field` with the last of them.
+- **The refusal.** When the ten amounts are empty, the CMI function raises `IncomeNotSplit`, a `ValueError` subclass defined beside it, with the message "Enter your income by source on the Income step."
+  - Building a form that needs CMI returns that sentence as a 422: `forms/views.py` `_failure` treats it as it treats `PreconditionMissing`.
+  - The means-test endpoint returns the same sentence as a 400 instead of a 500, through its existing `except ValueError`. The calculator re-raises `IncomeNotSplit` as it is, without the "Means test calculation failed:" prefix it adds to other `ValueError`s (`means_test_calculator.py:84-85`).
 - **Seeds.** Each persona gets the ten amounts, with wages equal to today's figure and the rest $0. The journeys type only wages, so a journey-built session stores the other nine as empty and prints them blank; the seeds' $0 prints 0.00 (Appendix D).
 
 | Income step box        | Schedule I         | 122A-1                    |
@@ -141,7 +156,7 @@ The placements apply in 2b. Deductions are not stored until step 3 (OQ-7), so Sc
 
 ### 5.6 The means test (commit 5)
 
-- **Recalculated every time.** The means test is recalculated from the stored intake after the completion check and before the packet is decided: in Generate All, Generate, Regenerate and the download of an unfiled form, and in the packet list for a completed session (an unfinished one gets the stored packet, §5.3). 122A-1 is then always in the packet and always current. A stale row no longer decides the packet (DIG-160).
+- **Recalculated every time.** The means test is recalculated from the stored intake after the completion check and before the packet is decided: in Generate All, Generate, Regenerate and the download of an unfiled form, and in the packet list for a completed session (an unfinished one gets the stored packet, §5.3). 122A-1 is then always in the packet and always current. For a completed session, a stale row no longer decides the packet (DIG-160).
 - **When it can't run.** Income not split by source is the filer's to fix: 422 "Enter your income by source on the Income step." Missing district median data is an operations fault: 500, logged by exception type only. One refusal covers the whole call, the packet list included, and the dashboard shows its message.
 - **The median tie (DIG-136).** `eligibility/models.py:139` changes `<` to `<=` and `registry.py:54` changes `>=` to `>`, together. `test_at_median_income_fails` flips. `test_registry.py` gains an exact-median case (CMI × 12 equal to the threshold, so 122A-2 doesn't apply), and its `test_122a2_applies_at_or_above_the_median` becomes `test_122a2_applies_only_above_the_median`. The step 1 spec's §5.6 rule is amended to `>` with a pointer here.
 - **One rounding.** CMI is quantized to the cent (half-even) before both comparisons and before printing, so the verdict, the packet and 122A-1 line 12b agree on totals that differ by a fraction of a cent. One comparison function serves the means test, the packet rule and the Q5 ticks. Tests: exactly at the median, one cent over, and a fractional-cent total.
@@ -162,7 +177,7 @@ The placements apply in 2b. Deductions are not stored until step 3 (OQ-7), so Sc
   - The income box becomes "Your average monthly take-home pay (after taxes and payroll deductions)", never pre-filled.
   - "Do you receive non-cash help from the government, such as SNAP (food stamps) or a housing subsidy?" gets Yes and No buttons with neither selected. Yes opens "What kind?". An answer is required.
   - The expenses box goes. 103B line 6 copies Schedule J line 22c in 2b.
-- **Seeds and journeys.** Maria, DeShawn and Sarah qualify for a waiver; James and Priya don't. Synthetic figures: Maria $2,800 take-home, Yes, "SNAP (food stamps)"; DeShawn $3,050, No; Sarah $1,750, No. The fee-waiver page object types the take-home figure and the answer, and loses its expenses argument. Maria's journey drops its pre-fill assertion and its setup (`maria-happy-path.spec.ts:77-80`).
+- **Seeds and journeys.** Maria, DeShawn and Sarah qualify for a waiver; James and Priya don't. Synthetic figures: Maria $2,800 take-home, Yes, "SNAP (food stamps)"; DeShawn $3,050, No; Sarah $1,750, No. The fee-waiver page object types the take-home figure and the answer, and loses its expenses argument. Maria's journey drops its pre-fill assertion and its setup (`maria-happy-path.spec.ts:78-81`) and the `totalExpenses` argument it passes to `submit` (line 85).
 
 ### 5.8 Docs (commit 7)
 
@@ -184,7 +199,7 @@ The placements apply in 2b. Deductions are not stored until step 3 (OQ-7), so Sc
 
 ### 6.2 New and changed rules
 
-Every income rule below reads its `monthly_*` column from commit 4 (§5.5) and prints blank when that column is NULL; a sum prints when at least one of its inputs was given, counting the rest as zero (§6.1).
+Every income rule below reads its `monthly_*` column and prints blank when that column is NULL. The existing ones switch in 2a commit 4, and the new ones are created in 2b (§5.5); a sum prints when at least one of its inputs was given, counting the rest as zero (§6.1).
 
 | Rule                                                                                                                                                                                              | Returns                                                                                    | Notes                                                       |
 | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ | ----------------------------------------------------------- |
@@ -303,7 +318,7 @@ Tier 3 skips any box expected to hold zero today ("step 2 decides where blank re
 
 ### 7.7 Tests named for what they protect
 
-For example: `test_unfinished_intake_cannot_prepare_forms`, `test_browser_cannot_mark_intake_complete`, `test_social_security_never_counts_toward_cmi`, `test_income_exactly_at_median_is_below_median`, `test_one_cent_over_median_is_above_median`, `test_fractional_cent_cmi_rounds_before_the_median_comparison`, `test_above_median_filer_who_passes_is_not_told_below_median`, `test_filed_form_survives_leaving_the_packet` (it also downloads the filed form), `test_expense_line_prints_only_above_zero`, `test_second_save_does_not_duplicate_codebtors`, `test_legacy_income_total_must_be_split_before_forms_print`, `test_new_filer_saves_income_by_source_without_a_total`, and `test_each_income_source_prints_on_its_own_line`, which gives each of the ten sources a distinct non-zero amount and requires each on its 122A-1 and Schedule I box (the seeds can't catch a dead rule body, since their nine non-wage sources are $0). Mocks stand only at boundaries.
+For example: `test_unfinished_intake_cannot_prepare_forms`, `test_browser_cannot_mark_intake_complete`, `test_social_security_never_counts_toward_cmi`, `test_income_exactly_at_median_is_below_median`, `test_one_cent_over_median_is_above_median`, `test_fractional_cent_cmi_rounds_before_the_median_comparison`, `test_above_median_filer_who_passes_is_not_told_below_median`, `test_filed_form_survives_leaving_the_packet` (it also downloads the filed form), `test_expense_line_prints_only_above_zero`, `test_second_save_does_not_duplicate_codebtors`, `test_editing_a_completed_intake_asks_for_complete_again`, a `useAutoSave` test that stepping back without an edit sends no save, `test_legacy_income_total_must_be_split_before_forms_print`, `test_new_filer_saves_income_by_source_without_a_total`, and `test_each_income_source_prints_on_its_own_line`. That test lands in 2b, in the commit that binds the last income box it checks. It gives each of the ten sources a distinct non-zero amount, chosen so that every sum is unique, and requires each amount on its Schedule I and 122A-1 boxes (§5.5's table). Where sources share a box (122A-1 line 2, Schedule I line 2, Schedule I 8c), it requires their sum. Social Security appears only on Schedule I 8e and on no 122A-1 box. In 2a, commit 4 checks the same thing one level down: each switched rule, run on a session with those amounts, returns its own source's figure. The seeds can't catch a dead rule body, because their nine non-wage sources are $0. Mocks stand only at boundaries.
 
 ### 7.8 Data migrations
 
@@ -755,9 +770,8 @@ These follow from approved rules or the audit, but the owner should check them i
 10. **The means-test endpoint** returns a 400 in plain words, not a 500, when income isn't split by source.
 11. **Moved rules keep their names** (§6.1).
 12. **The packet list's rule.** Section 2 said the packet list stays readable; section 4 said it recalculates and refuses as a whole. Both hold this way: for an unfinished session it returns the stored packet and never refuses; for a completed one it recalculates and can return the 422, which the dashboard shows (§5.3, §5.6).
-13. **Edits after Complete.** Section 2 said edits mean pressing Complete again. Only Continue reopens the session; edits saved after pressing Previous keep it complete. Forms still reflect them, because the means test is recalculated at generate time (§5.3).
-14. **The totals rule grew.** 6c approved counting unasked lines as zero for Schedule I lines 7, 10 and 12. The same rule covers Schedule I line 9, 122A-1 lines 11 and 12b and their copies, the A/B Part 4 and summary totals with their copies, and 103B line 2 (§6.1).
-15. **The fee-waiver flag** keeps comparing the shared CMI, now without Social Security, until DIG-145 replaces the standard. Whether a fee-waiver test should count Social Security is a legal question to record on DIG-145 (§5.5).
-16. **Q6's signing guidance** (the dashboard says which pages to sign and date) is step 4 work with DIG-73.
-17. **Schedule I's "Copy line 4 here" box** (`Amount 4 Debtor 1a`) is line 4's copy at the top of page 2, not line 5, which 6d called it. Line 5 is the payroll-deduction list and stays blank.
-18. **Smaller additions:** `update_step` accepts only 1–8 (DIG-151); the Debtor step reads `phone` as well as sending it (DIG-120); a failed means-test call also keeps the filer on Review (DIG-150); a filed form downloads after leaving the packet (DIG-155); the means-test result message branches on the median first (DIG-128); the married personas' briefs say whose income each figure is (DIG-141); the CLAUDE.md addendum gotcha lands in 2b.
+13. **The totals rule grew.** 6c approved counting unasked lines as zero for Schedule I lines 7, 10 and 12. The same rule covers Schedule I line 9, 122A-1 lines 11 and 12b and their copies, the A/B Part 4 and summary totals with their copies, and 103B line 2 (§6.1).
+14. **The fee-waiver flag** keeps comparing the shared CMI, now without Social Security, until DIG-145 replaces the standard. Whether a fee-waiver test should count Social Security is a legal question to record on DIG-145 (§5.5).
+15. **Q6's signing guidance** (the dashboard says which pages to sign and date) is step 4 work with DIG-73.
+16. **Schedule I's "Copy line 4 here" box** (`Amount 4 Debtor 1a`) is line 4's copy at the top of page 2, not line 5, which 6d called it. Line 5 is the payroll-deduction list and stays blank.
+17. **Smaller additions:** `update_step` accepts only 1–8 (DIG-151); the Debtor step reads `phone` as well as sending it (DIG-120); a failed means-test call also keeps the filer on Review (DIG-150); a filed form downloads after leaving the packet (DIG-155); the means-test result message branches on the median first (DIG-128); the married personas' briefs say whose income each figure is (DIG-141); the CLAUDE.md addendum gotcha lands in 2b.
