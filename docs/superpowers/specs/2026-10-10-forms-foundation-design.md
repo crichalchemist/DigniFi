@@ -343,7 +343,7 @@ All three tiers run in the backend test suite. The budget is about 30 seconds:
 
 **The known-defects list** is `backend/apps/forms/tests/known_defects.json`.
 
-- **Entries:** each is keyed by `(form_type, pdf_field, tier, case)`, with its defect class and DIG ticket. `case` is the persona for tier 3 and the choice key for a tier 1 checkbox case; otherwise it's empty. A defect that shows for some personas and not others can therefore be listed exactly.
+- **Entries:** each is keyed by `(form_type, pdf_field, tier, case)`, with its defect class and DIG ticket. `case` is the persona for tier 3, the choice key for a tier 1 checkbox case and the binding key for tier 2 (step 2 spec §7.2); otherwise it's empty. A defect that shows for some personas and not others can therefore be listed exactly.
 - **Strict expected failures:** matching cases are marked `xfail(strict=True)`. A new break fails CI, and so does a fix until its entry is deleted.
 - **No orphans:** the test session fails if any entry matches no test that ran. So the list's length is exactly the number of known defects left.
 - **Who maintains it:** step 1 creates it. Step 2 empties it for collected data, and steps 3 and 4 add and remove entries as their bindings land.
