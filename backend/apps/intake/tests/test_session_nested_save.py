@@ -1,9 +1,9 @@
 """Saving the Assets and Amounts Owed steps updates rows in place (DIG-21, DIG-37).
 
 Business intent: the wizard sends back the rows it loaded. A row must keep what the
-browser never receives (the encrypted account number, the link to the scanned bill,
-the secured flag), a corrected amount must save instead of crashing, and a nested row
-can only ever change the filer's own session.
+browser never receives (the encrypted account number, the link to the scanned bill),
+a corrected amount must save instead of crashing, and a nested row can only ever
+change the filer's own session.
 """
 
 from decimal import Decimal

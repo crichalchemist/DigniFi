@@ -243,6 +243,7 @@ class AssetInfo(models.Model):
         ("vehicle", "Vehicle"),
         ("bank_account", "Bank Account"),
         ("retirement_account", "Retirement Account (401k, IRA)"),
+        ("personal_property", "Personal Property (furniture, jewelry, collectibles)"),
         ("other", "Other Asset"),
     ]
 

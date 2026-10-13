@@ -149,7 +149,7 @@ export interface AssetInfo {
   id: number;
   session: number;
   asset_type:
-    | 'real_estate'
+    | 'real_property'
     | 'vehicle'
     | 'bank_account'
     | 'retirement_account'

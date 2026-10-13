@@ -211,6 +211,8 @@ class DebtInfoSerializer(serializers.ModelSerializer):
             "amount_owed",
             "monthly_payment",
             "is_in_collections",
+            "is_secured",
+            "collateral_description",
             "notes",
             "created_at",
             "updated_at",
@@ -248,8 +250,8 @@ def _save_rows_by_id(session, model, rows) -> None:
     """Save a session's nested assets or debts, or its contracts or codebtors list, by id.
 
     A row whose id is one of this session's rows updates only the fields it sent, so
-    what the browser never received (account numbers, the scanned-bill link, the
-    secured flag) survives. Any other row is created on this session, so a client-sent
+    what the browser never received (account numbers, the scanned-bill link)
+    survives. Any other row is created on this session, so a client-sent
     ``session`` or another user's id never touches another session. Stored rows the
     payload left out are deleted.
     """
