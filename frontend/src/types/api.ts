@@ -58,7 +58,7 @@ export interface DebtorInfo {
   city: string;
   state: string;
   zip_code: string;
-  phone_number: string;
+  phone: string;
   email: string;
 
   // Household information

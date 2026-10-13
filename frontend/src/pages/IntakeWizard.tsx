@@ -191,10 +191,12 @@ export function IntakeWizard() {
         } as Partial<IntakeSession>;
 
       case 'expense_info': {
-        // The total is read-only on the server. The step adds it up in floating point, so
-        // it can differ from the server's decimal sum in the last digit.
-        const expenses = { ...expenseData };
-        delete expenses.total_monthly_expenses;
+        // The 13 amounts alone. The total is read-only on the server: the step adds it up in
+        // floating point, so it can differ from the server's decimal sum in the last digit. A
+        // blank box is sent as 0, the column's default; left out, a box the filer cleared would
+        // keep its old amount on the server (DIG-55).
+        const expenses: Partial<ExpenseInfo> = {};
+        for (const field of EXPENSE_FIELDS) expenses[field] = expenseData[field] ?? 0;
         return { expense_info: expenses } as Partial<IntakeSession>;
       }
 

@@ -38,7 +38,7 @@ export const createMockDebtorInfo = (overrides?: Partial<DebtorInfo>): DebtorInf
   city: 'Chicago',
   state: 'IL',
   zip_code: '60601',
-  phone_number: '312-555-0100',
+  phone: '312-555-0100',
   email: 'jane@example.com',
   household_size: 1,
   filing_type: 'individual',

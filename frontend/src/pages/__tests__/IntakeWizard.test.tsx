@@ -878,6 +878,130 @@ describe('IntakeWizard expense hydration', { timeout: 15_000 }, () => {
 });
 
 // ===========================================================================
+// Phone number (DIG-120)
+// ===========================================================================
+
+// The server stores the phone as `phone`, and DRF drops any other name without an error, so a
+// number sent under another name never reached Form 101 and a returning filer had to retype it.
+describe('IntakeWizard phone number', { timeout: 15_000 }, () => {
+  let patchBodies: Record<string, unknown>[];
+
+  beforeEach(() => {
+    patchBodies = [];
+    server.use(
+      http.patch('http://localhost:8000/api/intake/sessions/:id/', async ({ request }) => {
+        patchBodies.push((await request.json()) as Record<string, unknown>);
+        return HttpResponse.json(sessionAtStep1);
+      }),
+      http.post(
+        'http://localhost:8000/api/audit/logs/',
+        () => new HttpResponse(null, { status: 201 })
+      )
+    );
+  });
+
+  it('shows a returning filer the phone number they saved', async () => {
+    server.use(
+      http.get('http://localhost:8000/api/intake/sessions/:id/', () =>
+        HttpResponse.json({
+          ...sessionAtStep1,
+          debtor_info: { first_name: 'Jane', last_name: 'Doe', phone: '312-555-0188' },
+        })
+      )
+    );
+
+    renderWizard();
+    await screen.findByRole('heading', { name: /your information/i, level: 2 });
+
+    expect(screen.getByRole('textbox', { name: /phone number/i })).toHaveValue('312-555-0188');
+  });
+
+  it('saves the phone number under the name the server stores', async () => {
+    server.use(
+      http.get('http://localhost:8000/api/intake/sessions/:id/', () =>
+        HttpResponse.json(sessionAtStep1)
+      )
+    );
+
+    renderWizard();
+    await screen.findByRole('heading', { name: /your information/i, level: 2 });
+    await fillDebtorInfoFields();
+    await userEvent.click(screen.getByRole('button', { name: /continue/i }));
+    await screen.findByText('DocumentUploadPage');
+
+    const debtorInfo = patchBodies[patchBodies.length - 1].debtor_info as Record<string, unknown>;
+    expect(debtorInfo.phone).toBe('312-555-1234');
+    expect(debtorInfo).not.toHaveProperty('phone_number');
+  });
+});
+
+// ===========================================================================
+// A cleared expense (DIG-55)
+// ===========================================================================
+
+describe('IntakeWizard cleared expense', { timeout: 15_000 }, () => {
+  it('saves a cleared expense box as $0, so the old amount does not stay on the server', async () => {
+    const savedSession = {
+      ...sessionAtStep1,
+      current_step: 3,
+      expense_info: {
+        data_source: 'manual',
+        rent_or_mortgage: '1100.00',
+        utilities: '180.00',
+        home_maintenance: '0.00',
+        vehicle_payment: '0.00',
+        vehicle_insurance: '85.00',
+        vehicle_maintenance: '40.00',
+        food_and_groceries: '450.00',
+        clothing: '60.00',
+        medical_expenses: '75.00',
+        childcare: '400.00',
+        child_support_paid: '0.00',
+        insurance_not_deducted: '120.00',
+        other_expenses: '50.00',
+        total_monthly_expenses: 2560.0,
+        created_at: '2026-10-01T10:00:00Z',
+        updated_at: '2026-10-01T10:00:00Z',
+      },
+    };
+    const patchBodies: Record<string, unknown>[] = [];
+    server.use(
+      http.get('http://localhost:8000/api/intake/sessions/:id/', () =>
+        HttpResponse.json(savedSession)
+      ),
+      http.patch('http://localhost:8000/api/intake/sessions/:id/', async ({ request }) => {
+        patchBodies.push((await request.json()) as Record<string, unknown>);
+        return HttpResponse.json(savedSession);
+      }),
+      http.post('http://localhost:8000/api/intake/sessions/:id/update_step/', () =>
+        HttpResponse.json({
+          session: { ...savedSession, current_step: 4 },
+          message: 'Step updated.',
+        })
+      ),
+      http.post(
+        'http://localhost:8000/api/audit/logs/',
+        () => new HttpResponse(null, { status: 201 })
+      )
+    );
+
+    renderWizard();
+    await screen.findByRole('heading', { name: /expenses/i, level: 2 });
+    fireEvent.change(screen.getByRole('spinbutton', { name: /rent or mortgage payment/i }), {
+      target: { value: '' },
+    });
+    await userEvent.click(screen.getByRole('button', { name: /continue/i }));
+    await screen.findByRole('heading', { name: /assets/i, level: 2 });
+
+    const expenseInfo = patchBodies[patchBodies.length - 1].expense_info as Record<string, unknown>;
+    expect(expenseInfo.rent_or_mortgage).toBe(0);
+    // The boxes the filer left alone keep their saved amounts
+    expect(expenseInfo.utilities).toBe(180);
+    expect(expenseInfo.food_and_groceries).toBe(450);
+  });
+});
+
+// ===========================================================================
 // Contracts and codebtors (DIG-147, DIG-165, DIG-166)
 // ===========================================================================
 
