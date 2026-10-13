@@ -1,6 +1,6 @@
 /**
  * Fee Waiver Page Object — the waiver application shown after intake
- * completion for fee-waiver-eligible sessions (routes to /forms on submit).
+ * completion for fee-waiver-eligible sessions (continues to /sofa on submit).
  */
 
 import type { Page } from '@playwright/test';
@@ -20,6 +20,6 @@ export class FeeWaiverPage {
     await this.page.getByLabel(/cannot pay the full filing fee/i).check();
     await this.page.getByLabel(/cannot pay the filing fee in installments/i).check();
     await this.page.getByRole('button', { name: /submit waiver application/i }).click();
-    await this.page.waitForURL('**/forms');
+    await this.page.waitForURL('**/sofa');
   }
 }

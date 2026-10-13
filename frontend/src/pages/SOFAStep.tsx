@@ -12,7 +12,7 @@
  * - No shame around financial history
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useIntake } from '../context/IntakeContext';
 import { sofaReportAPI } from '../api/client';
@@ -29,6 +29,45 @@ function emptyCreditorPayment(): SOFACreditorPayment {
   return { id: Math.random(), creditor_name: '', total_paid: '', dates_of_payments: '' };
 }
 
+// A row counts once the filer types in it; the year the page fills in doesn't count.
+function incomeRowStarted(row: SOFAPriorIncome): boolean {
+  return Boolean(row.source?.trim() || row.gross_amount);
+}
+
+function paymentRowStarted(row: SOFACreditorPayment): boolean {
+  return Boolean(row.creditor_name?.trim() || row.total_paid || row.dates_of_payments?.trim());
+}
+
+/**
+ * The boxes still empty in the started rows of the sections switched on, keyed by the box's
+ * field name. The server refuses a row without them, which used to fail the whole save with a
+ * generic error (DIG-148), so each message names the row and the box to finish.
+ */
+function unfinishedBoxes(report: SOFAReport): Record<string, string> {
+  const missing: Record<string, string> = {};
+  const ask = (name: string, box: string, row: string) => {
+    missing[name] = `Please fill in the ${box} for ${row}.`;
+  };
+  if (report.has_prior_income) {
+    report.prior_income.forEach((row, idx) => {
+      if (!incomeRowStarted(row)) return;
+      const label = `Income source ${idx + 1}`;
+      if (!row.year) ask(`prior-income-year-${idx}`, 'Year', label);
+      if (!row.source?.trim()) ask(`prior-income-source-${idx}`, 'Source', label);
+      if (!row.gross_amount) ask(`prior-income-amount-${idx}`, 'Gross Amount', label);
+    });
+  }
+  if (report.has_creditor_payments) {
+    report.creditor_payments.forEach((row, idx) => {
+      if (!paymentRowStarted(row)) return;
+      const label = `Creditor ${idx + 1}`;
+      if (!row.creditor_name?.trim()) ask(`creditor-name-${idx}`, 'Creditor Name', label);
+      if (!row.total_paid) ask(`creditor-paid-${idx}`, 'Total Amount Paid', label);
+    });
+  }
+  return missing;
+}
+
 export function SOFAStep() {
   const navigate = useNavigate();
   const { session } = useIntake();
@@ -38,6 +77,12 @@ export function SOFAStep() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  const [showUnfinished, setShowUnfinished] = useState(false);
+
+  // Once a save finds unfinished rows, each empty box says what it needs until it is filled
+  const unfinished = useMemo(() => (report ? unfinishedBoxes(report) : {}), [report]);
+  const hasUnfinished = Object.keys(unfinished).length > 0;
+  const boxError = (name: string) => (showUnfinished ? unfinished[name] : undefined);
 
   // Load report on mount. A superseded load (StrictMode's second mount, or a new session)
   // is ignored, so its late reply can't undo what the filer has already ticked.
@@ -159,19 +204,23 @@ export function SOFAStep() {
 
   const handleSave = async () => {
     if (!session || !report) return;
-    setSaving(true);
     setError(null);
+    if (hasUnfinished) {
+      setShowUnfinished(true);
+      return;
+    }
+    setSaving(true);
     setSaved(false);
 
     try {
-      // Clean empty rows before saving
-      const clean = {
-        ...report,
-        prior_income: report.prior_income.filter((r) => r.source?.trim() || r.gross_amount),
-        creditor_payments: report.creditor_payments.filter(
-          (r) => r.creditor_name?.trim() || r.total_paid
-        ),
-      };
+      // Blank rows are left out. A section switched off sends no rows: its rows don't print, the
+      // server keeps the ones it has, and a half-filled row the filer can't see can't fail the save.
+      const { prior_income, creditor_payments, ...flags } = report;
+      const clean: Partial<SOFAReport> = { ...flags };
+      if (report.has_prior_income) clean.prior_income = prior_income.filter(incomeRowStarted);
+      if (report.has_creditor_payments) {
+        clean.creditor_payments = creditor_payments.filter(paymentRowStarted);
+      }
       await sofaReportAPI.patch(session.id, clean);
       setSaved(true);
       setTimeout(() => navigate('/forms'), 800);
@@ -220,6 +269,13 @@ export function SOFAStep() {
       {error && (
         <div className="info-box info-box--error" role="alert">
           {error}
+        </div>
+      )}
+
+      {showUnfinished && hasUnfinished && (
+        <div className="info-box info-box--error" role="alert">
+          Some rows aren&apos;t finished, so nothing has been saved yet. Please fill in the boxes
+          marked below, or clear any row you don&apos;t need.
         </div>
       )}
 
@@ -278,6 +334,7 @@ export function SOFAStep() {
                       updatePriorIncomeRow(idx, 'year', parseInt(e.target.value, 10) || 0)
                     }
                     placeholder="2025"
+                    error={boxError(`prior-income-year-${idx}`)}
                   />
                   <FormField
                     label="Source"
@@ -287,6 +344,8 @@ export function SOFAStep() {
                     onChange={(e) => updatePriorIncomeRow(idx, 'source', e.target.value)}
                     placeholder="Employer name or income type"
                     helpText="e.g., 'Walmart', 'Self-employment', 'Unemployment benefits'"
+                    maxLength={255}
+                    error={boxError(`prior-income-source-${idx}`)}
                   />
                   <FormField
                     label="Gross Amount"
@@ -297,6 +356,7 @@ export function SOFAStep() {
                     value={row.gross_amount}
                     onChange={(e) => updatePriorIncomeRow(idx, 'gross_amount', e.target.value)}
                     placeholder="0.00"
+                    error={boxError(`prior-income-amount-${idx}`)}
                   />
                 </div>
               </div>
@@ -353,6 +413,8 @@ export function SOFAStep() {
                     value={row.creditor_name}
                     onChange={(e) => updateCreditorPaymentRow(idx, 'creditor_name', e.target.value)}
                     placeholder="Name of the creditor"
+                    maxLength={255}
+                    error={boxError(`creditor-name-${idx}`)}
                   />
                   <FormField
                     label="Total Amount Paid"
@@ -363,6 +425,7 @@ export function SOFAStep() {
                     value={row.total_paid}
                     onChange={(e) => updateCreditorPaymentRow(idx, 'total_paid', e.target.value)}
                     placeholder="0.00"
+                    error={boxError(`creditor-paid-${idx}`)}
                   />
                   <FormField
                     label="Dates of Payments"
@@ -374,6 +437,7 @@ export function SOFAStep() {
                     }
                     placeholder="e.g., Monthly Jan-Mar 2026"
                     helpText="When did you make these payments?"
+                    maxLength={255}
                   />
                 </div>
               </div>

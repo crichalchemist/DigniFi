@@ -14,6 +14,7 @@ function renderFeeWaiver() {
       <IntakeProvider>
         <Routes>
           <Route path="/fee-waiver" element={<FeeWaiverPage />} />
+          <Route path="/sofa" element={<div>Statement of Financial Affairs</div>} />
           <Route path="/forms" element={<div>FormDashboard</div>} />
         </Routes>
       </IntakeProvider>
@@ -56,7 +57,7 @@ describe('FeeWaiverPage', () => {
     });
   });
 
-  it('navigates to /forms on successful submission', async () => {
+  it('continues to the financial history questions (SOFA), not the forms, once the application is sent', async () => {
     renderFeeWaiver();
     await waitFor(() => screen.getByRole('heading', { name: /filing fee waiver/i }));
 
@@ -66,9 +67,11 @@ describe('FeeWaiverPage', () => {
 
     await userEvent.click(screen.getByRole('button', { name: /submit/i }));
 
+    // Form 107 is in every packet, so a waiver filer answers its questions before the forms (DIG-149)
     await waitFor(() => {
-      expect(screen.getByText('FormDashboard')).toBeInTheDocument();
+      expect(screen.getByText('Statement of Financial Affairs')).toBeInTheDocument();
     });
+    expect(screen.queryByText('FormDashboard')).not.toBeInTheDocument();
   });
 
   it('shows error when submission fails', async () => {
@@ -123,7 +126,7 @@ describe('FeeWaiverPage', () => {
     expect(screen.getByLabelText(/monthly expenses/i)).toHaveValue(1800);
   });
 
-  it('shows an off-ramp instead of the form when the filer is fee-waiver ineligible', async () => {
+  it('shows an off-ramp instead of the form when the filer is fee-waiver ineligible, and it leads on to SOFA', async () => {
     server.use(
       http.post('http://localhost:8000/api/intake/sessions/:id/calculate_means_test/', () =>
         HttpResponse.json({ means_test_result: ineligibleResult, session_id: 1 })
@@ -137,6 +140,7 @@ describe('FeeWaiverPage', () => {
           <MeansTestTrigger />
           <Routes>
             <Route path="/fee-waiver" element={<FeeWaiverPage />} />
+            <Route path="/sofa" element={<div>Statement of Financial Affairs</div>} />
             <Route path="/forms" element={<div>FormDashboard</div>} />
           </Routes>
         </IntakeProvider>
@@ -147,10 +151,15 @@ describe('FeeWaiverPage', () => {
     await waitFor(() => {
       expect(screen.getByText(/don't appear to qualify/i)).toBeInTheDocument();
     });
-    expect(screen.getByRole('button', { name: /continue to my forms/i })).toBeInTheDocument();
+    const continueButton = screen.getByRole('button', { name: /^continue$/i });
 
     // ...and the application form itself is hidden — no fields to fill out.
     expect(screen.queryByLabelText(/household size/i)).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /submit waiver/i })).not.toBeInTheDocument();
+
+    // The off-ramp leads where every filer goes next: the financial history questions
+    await userEvent.click(continueButton);
+    expect(await screen.findByText('Statement of Financial Affairs')).toBeInTheDocument();
+    expect(screen.queryByText('FormDashboard')).not.toBeInTheDocument();
   });
 });

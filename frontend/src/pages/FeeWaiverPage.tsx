@@ -56,7 +56,8 @@ export function FeeWaiverPage() {
         cannot_pay_full: cannotPayFull,
         cannot_pay_installments: cannotPayInstallments,
       });
-      navigate('/forms');
+      // Form 107 is in every packet, so its questions come before the forms (DIG-149)
+      navigate('/sofa');
     } catch {
       setError('Unable to submit your fee waiver application. Please try again.');
     } finally {
@@ -72,10 +73,11 @@ export function FeeWaiverPage() {
         <div className="fee-waiver-ineligible info-box" role="status">
           <p>
             Based on the information you entered, you don't appear to qualify for a filing fee
-            waiver. That's okay — you can continue to your forms. A court makes the final decision.
+            waiver. That's okay — you can continue to your financial history and then your forms. A
+            court makes the final decision.
           </p>
-          <Button type="button" onClick={() => navigate('/forms')}>
-            Continue to my forms
+          <Button type="button" onClick={() => navigate('/sofa')}>
+            Continue
           </Button>
         </div>
       )}

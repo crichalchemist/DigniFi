@@ -13,6 +13,7 @@ import { WizardPage } from '../pages/wizard.page';
 import { DocumentsPage } from '../pages/documents.page';
 import { FeeWaiverPage } from '../pages/fee-waiver.page';
 import { DashboardPage } from '../pages/dashboard.page';
+import { SOFAPage } from '../pages/sofa.page';
 
 test.describe('Maria Torres — Happy Path', () => {
   test('completes full intake and generates all forms', async ({ page }) => {
@@ -22,6 +23,7 @@ test.describe('Maria Torres — Happy Path', () => {
     const documents = new DocumentsPage(page);
     const feeWaiver = new FeeWaiverPage(page);
     const dashboard = new DashboardPage(page);
+    const sofa = new SOFAPage(page);
 
     // Landing → Register
     await landing.goto();
@@ -84,6 +86,12 @@ test.describe('Maria Torres — Happy Path', () => {
       MARIA.income.total_monthly_income,
       totalExpenses
     );
+
+    // The waiver application continues to the SOFA step (DIG-149). This journey isn't about
+    // financial history, so skip SOFA to reach the forms dashboard. (The SOFA save path
+    // itself is covered by sofa-journey.spec.ts.)
+    await sofa.waitForLoad();
+    await sofa.skipForNow();
 
     // Dashboard — generate all forms
     await dashboard.generateAllForms(15); // 14 forms + Form 103B (fee waiver)
