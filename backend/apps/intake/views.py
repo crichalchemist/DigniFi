@@ -26,13 +26,33 @@ from .models import (
 from .serializers import (
     AssetInfoSerializer,
     BulkAnswerPayloadSerializer,
+    CodebtorRowSerializer,
     CodebtorSerializer,
     DebtInfoSerializer,
+    ExecutoryContractRowSerializer,
     ExecutoryContractSerializer,
     FeeWaiverApplicationSerializer,
     IntakeSessionSerializer,
     SOFAReportSerializer,
+    _save_rows_by_id,
 )
+
+
+def _save_list(session, model, row_serializer, rows):
+    """Save the whole list the Contracts or Codebtors step shows (DIG-147).
+
+    Every row is checked before anything is written, so one bad row saves nothing. Then a
+    row carrying one of this session's ids updates in place, any other row is created, and
+    a stored row the list left out is deleted (see _save_rows_by_id). Returns the saved
+    rows in id order, so the wizard keeps their ids for the next save.
+    """
+    serializer = row_serializer(data=rows, many=True)
+    serializer.is_valid(raise_exception=True)
+    with transaction.atomic():
+        _save_rows_by_id(session, model, serializer.validated_data)
+        session.reopen()
+    saved = model.objects.filter(session=session).order_by("id")
+    return Response(row_serializer(saved, many=True).data)
 
 
 def _assert_session_owned(session, user):
@@ -356,13 +376,17 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
 
         return Response({"status": "success", "created": created_count, "updated": updated_count})
 
-    @action(detail=True, methods=["get", "post"], url_path="contracts", url_name="contracts")
+    @action(detail=True, methods=["get", "post", "put"], url_path="contracts", url_name="contracts")
     def contracts(self, request, pk=None):
         session = self.get_object()
         if request.method == "GET":
-            contracts = ExecutoryContract.objects.filter(session=session)
+            contracts = ExecutoryContract.objects.filter(session=session).order_by("id")
             serializer = ExecutoryContractSerializer(contracts, many=True)
             return Response(serializer.data)
+        if request.method == "PUT":
+            return _save_list(
+                session, ExecutoryContract, ExecutoryContractRowSerializer, request.data
+            )
         serializer = ExecutoryContractSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.save(session=session)
@@ -385,13 +409,15 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
         except ExecutoryContract.DoesNotExist:
             return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
 
-    @action(detail=True, methods=["get", "post"], url_path="codebtors", url_name="codebtors")
+    @action(detail=True, methods=["get", "post", "put"], url_path="codebtors", url_name="codebtors")
     def codebtors(self, request, pk=None):
         session = self.get_object()
         if request.method == "GET":
-            codebtors = Codebtor.objects.filter(session=session)
+            codebtors = Codebtor.objects.filter(session=session).order_by("id")
             serializer = CodebtorSerializer(codebtors, many=True)
             return Response(serializer.data)
+        if request.method == "PUT":
+            return _save_list(session, Codebtor, CodebtorRowSerializer, request.data)
         serializer = CodebtorSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.save(session=session)

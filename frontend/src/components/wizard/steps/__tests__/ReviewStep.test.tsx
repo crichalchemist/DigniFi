@@ -12,6 +12,8 @@ const baseProps = {
   expenseData: {},
   assetsData: [],
   debtsData: [],
+  contractsData: [],
+  codebtorsData: [],
 };
 
 describe('ReviewStep null-safe rendering', () => {
@@ -42,6 +44,46 @@ describe('ReviewStep null-safe rendering', () => {
     // The whole point: no `undefined` or `NaN` ever leaks into the summary,
     // even from the row the user left empty.
     expect(document.body.textContent).not.toMatch(/undefined|NaN/);
+  });
+
+  // DIG-166: the filer's last look before completing includes steps 6 and 7, so a lost or
+  // doubled contract or codebtor shows here instead of only on Schedules G and H.
+  it('lists the contracts and codebtors the filer saved, or says there are none', () => {
+    const { rerender } = render(
+      <ReviewStep
+        {...baseProps}
+        contractsData={[
+          {
+            id: 4,
+            counterparty_name: 'Oak Street Apartments',
+            contract_type: 'lease',
+            description: 'Apartment lease',
+          },
+        ]}
+        codebtorsData={[
+          {
+            id: 3,
+            name: 'Sam Doe',
+            street_address: '',
+            city: 'Chicago',
+            state: 'IL',
+            zip_code: '',
+            relationship: 'former_spouse',
+          },
+        ]}
+        onValidationChange={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText('Contracts & Leases (1)')).toBeInTheDocument();
+    expect(screen.getByText(/Oak Street Apartments/)).toHaveTextContent('(lease)');
+    expect(screen.getByText('Codebtors (1)')).toBeInTheDocument();
+    expect(screen.getByText(/Sam Doe/)).toHaveTextContent('(former spouse)');
+
+    rerender(<ReviewStep {...baseProps} onValidationChange={vi.fn()} />);
+
+    expect(screen.getByText('No contracts or leases listed.')).toBeInTheDocument();
+    expect(screen.getByText('No codebtors listed.')).toBeInTheDocument();
   });
 
   it('signals the step is always valid to proceed', () => {

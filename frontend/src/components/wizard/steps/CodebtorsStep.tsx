@@ -2,22 +2,18 @@
  * CodebtorsStep - Codebtor information (Schedule H)
  *
  * Lists people who are jointly liable on debts with the debtor.
- * Typically a spouse in community property states.
+ * Typically a spouse in community property states. The wizard saves
+ * the whole list when the filer presses Continue (DIG-147).
  */
 
-import { useState } from 'react';
-import { useIntake } from '../../../context/IntakeContext';
-import { api } from '../../../api/client';
+import { useState, useEffect, useMemo } from 'react';
 import { Button } from '../../common';
+import type { Codebtor } from '../../../types/api';
 
-interface Codebtor {
-  id?: number;
-  name: string;
-  street_address: string;
-  city: string;
-  state: string;
-  zip_code: string;
-  relationship: string;
+interface CodebtorsStepProps {
+  initialData?: Codebtor[];
+  onDataChange: (data: Codebtor[]) => void;
+  onValidationChange: (isValid: boolean) => void;
 }
 
 const RELATIONSHIPS = [
@@ -38,26 +34,34 @@ const EMPTY_CODEBTOR: Codebtor = {
   relationship: 'other',
 };
 
-export function CodebtorsStep() {
-  const { session } = useIntake();
-  const [codebtors, setCodebtors] = useState<Codebtor[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+export function CodebtorsStep({
+  initialData,
+  onDataChange,
+  onValidationChange,
+}: CodebtorsStepProps) {
+  const [codebtors, setCodebtors] = useState<Codebtor[]>(initialData ?? []);
 
-  const loadCodebtors = async () => {
-    if (!session) return;
-    try {
-      const data = await api.intake.codebtors(session.id);
-      setCodebtors(data as Codebtor[]);
-    } catch {
-      // ignore
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  // A row left blank is not saved; a row the filer started needs the person's name
+  const errors = useMemo(
+    () =>
+      codebtors.map((codebtor) =>
+        !codebtor.name.trim() &&
+        [codebtor.street_address, codebtor.city, codebtor.state, codebtor.zip_code].some((value) =>
+          value.trim()
+        )
+          ? "Please enter this person's full name"
+          : undefined
+      ),
+    [codebtors]
+  );
+  const isValid = errors.every((error) => !error);
 
-  useState(() => {
-    loadCodebtors();
-  });
+  // Update parent when codebtors change
+  useEffect(() => {
+    onDataChange(codebtors);
+    onValidationChange(isValid);
+    // both callbacks are useState setters in IntakeWizard — stable identities
+  }, [codebtors, isValid, onDataChange, onValidationChange]);
 
   const addCodebtor = () => {
     setCodebtors([...codebtors, { ...EMPTY_CODEBTOR }]);
@@ -69,32 +73,9 @@ export function CodebtorsStep() {
     setCodebtors(updated);
   };
 
-  const removeCodebtor = async (index: number) => {
-    const codebtor = codebtors[index];
-    if (codebtor.id && session) {
-      try {
-        await api.intake.deleteCodebtor(session.id, codebtor.id);
-      } catch {
-        // ignore
-      }
-    }
+  const removeCodebtor = (index: number) => {
     setCodebtors(codebtors.filter((_, i) => i !== index));
   };
-
-  const handleSave = async () => {
-    if (!session) return;
-    for (const codebtor of codebtors) {
-      if (!codebtor.name.trim()) continue;
-      if (codebtor.id) continue;
-      try {
-        await api.intake.createCodebtor(session.id, codebtor);
-      } catch {
-        // ignore
-      }
-    }
-  };
-
-  if (isLoading) return <div>Loading codebtors...</div>;
 
   return (
     <div className="codebtors-step">
@@ -121,7 +102,13 @@ export function CodebtorsStep() {
                 value={codebtor.name}
                 onChange={(e) => updateCodebtor(index, 'name', e.target.value)}
                 placeholder="e.g., Jane Smith"
+                maxLength={255}
               />
+              {errors[index] && (
+                <p className="form-error" role="alert" aria-live="assertive">
+                  {errors[index]}
+                </p>
+              )}
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">Relationship</label>
@@ -146,6 +133,7 @@ export function CodebtorsStep() {
                 className="w-full border rounded px-3 py-2"
                 value={codebtor.street_address}
                 onChange={(e) => updateCodebtor(index, 'street_address', e.target.value)}
+                maxLength={255}
               />
             </div>
             <div>
@@ -155,6 +143,7 @@ export function CodebtorsStep() {
                 className="w-full border rounded px-3 py-2"
                 value={codebtor.city}
                 onChange={(e) => updateCodebtor(index, 'city', e.target.value)}
+                maxLength={100}
               />
             </div>
             <div className="grid grid-cols-2 gap-2">
@@ -175,6 +164,7 @@ export function CodebtorsStep() {
                   className="w-full border rounded px-3 py-2"
                   value={codebtor.zip_code}
                   onChange={(e) => updateCodebtor(index, 'zip_code', e.target.value)}
+                  maxLength={10}
                 />
               </div>
             </div>
@@ -188,14 +178,6 @@ export function CodebtorsStep() {
       <Button variant="outline" onClick={addCodebtor} className="mt-2">
         + Add Codebtor
       </Button>
-
-      {codebtors.length > 0 && (
-        <div className="mt-4">
-          <Button variant="primary" onClick={handleSave}>
-            Save Codebtors
-          </Button>
-        </div>
-      )}
     </div>
   );
 }

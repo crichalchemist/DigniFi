@@ -32,6 +32,8 @@ import type {
   ExpenseInfo,
   AssetInfo,
   DebtInfo,
+  ExecutoryContract,
+  Codebtor,
 } from '../types/api';
 import { EXPENSE_FIELDS } from '../types/api';
 
@@ -80,6 +82,8 @@ export function IntakeWizard() {
   const [expenseData, setExpenseData] = useState<Partial<ExpenseInfo>>({});
   const [assetsData, setAssetsData] = useState<Partial<AssetInfo>[]>([]);
   const [debtsData, setDebtsData] = useState<Partial<DebtInfo>[]>([]);
+  const [contractsData, setContractsData] = useState<ExecutoryContract[]>([]);
+  const [codebtorsData, setCodebtorsData] = useState<Codebtor[]>([]);
 
   // =========================================================================
   // Read the session on mount
@@ -101,25 +105,38 @@ export function IntakeWizard() {
   useEffect(() => {
     let cancelled = false;
 
-    const openSession = async (): Promise<IntakeSession> => {
+    // Contracts and codebtors have their own endpoints, and a new session has none yet. Both
+    // lists load before any step shows: Review lists them (DIG-166), and Continue on steps 6
+    // and 7 saves the whole list, so a list that failed to load is never saved as empty.
+    const openSession = async (): Promise<{
+      fresh: IntakeSession;
+      contracts: ExecutoryContract[];
+      codebtors: Codebtor[];
+    }> => {
       if (sessionIdToRead === null) {
         // No session in context AND no saved session — create a new one (District ID 1 = ILND)
-        return createSession(1);
+        return { fresh: await createSession(1), contracts: [], codebtors: [] };
       }
+      let fresh: IntakeSession;
       try {
-        return await loadSession(sessionIdToRead);
+        fresh = await loadSession(sessionIdToRead);
       } catch (error) {
         // A 404 means the saved session is gone or belongs to someone else (a shared
         // computer). Retrying cannot help, so start a new one, as for a new filer.
         if (error instanceof APIClientError && error.statusCode === 404) {
-          return createSession(1);
+          return { fresh: await createSession(1), contracts: [], codebtors: [] };
         }
         throw error;
       }
+      const [contracts, codebtors] = await Promise.all([
+        api.intake.contracts(fresh.id),
+        api.intake.codebtors(fresh.id),
+      ]);
+      return { fresh, contracts, codebtors };
     };
 
     openSession()
-      .then((fresh) => {
+      .then(({ fresh, contracts, codebtors }) => {
         if (cancelled) return;
         setCurrentStepNumber(fresh.current_step);
         if (fresh.debtor_info) setDebtorData(fresh.debtor_info);
@@ -129,6 +146,8 @@ export function IntakeWizard() {
           setAssetsData(fresh.assets.map((asset) => hydrateAmounts(asset, ASSET_AMOUNT_FIELDS)));
         if (fresh.debts)
           setDebtsData(fresh.debts.map((debt) => hydrateAmounts(debt, DEBT_AMOUNT_FIELDS)));
+        setContractsData(contracts);
+        setCodebtorsData(codebtors);
         setSessionRead('done');
       })
       .catch(() => {
@@ -153,7 +172,8 @@ export function IntakeWizard() {
   // =========================================================================
 
   // What saving the step on screen sends: PATCH /api/intake/sessions/{id}/, whose nested
-  // serializer creates and updates each section. null for the steps the wizard doesn't save.
+  // serializer creates and updates each section. null for Review, and for Contracts and
+  // Codebtors, whose lists save through their own endpoints (saveCurrentStepData).
   // useAutoSave compares it with the step's last saved or loaded copy, so a step that only
   // shows what the server holds (a blank row, a recomputed total) sends nothing.
   const currentStepKey = WIZARD_STEPS[currentStepNumber - 1]?.key;
@@ -235,8 +255,8 @@ export function IntakeWizard() {
       }
 
       setCurrentStepNumber(nextStep);
-      // Contracts (6) and Codebtors (7) are optional — pre-approve so Continue stays enabled
-      setCanProceed(nextStep === 6 || nextStep === 7);
+      // Each step reports its own validity once it shows (Contracts and Codebtors too, DIG-165)
+      setCanProceed(false);
     } catch (error) {
       console.error('Error advancing to next step:', error);
     }
@@ -281,6 +301,20 @@ export function IntakeWizard() {
 
   const saveCurrentStepData = async (body: Partial<IntakeSession> | null) => {
     if (!session) return;
+
+    // Contracts and codebtors save as whole lists, only from Continue: their step body is null,
+    // so autosave never sends them. Blank rows are left out. The saved rows come back with
+    // their ids, so the next save updates them instead of adding them again (DIG-147).
+    if (currentStepKey === 'contracts') {
+      const named = contractsData.filter((contract) => contract.counterparty_name.trim());
+      setContractsData(await api.intake.saveContracts(session.id, named));
+      return;
+    }
+    if (currentStepKey === 'codebtors') {
+      const named = codebtorsData.filter((codebtor) => codebtor.name.trim());
+      setCodebtorsData(await api.intake.saveCodebtors(session.id, named));
+      return;
+    }
 
     if (body === null) {
       console.log(`Saving data for ${currentStepKey} not yet implemented`);
@@ -342,10 +376,22 @@ export function IntakeWizard() {
         );
 
       case 6:
-        return <ContractsStep />;
+        return (
+          <ContractsStep
+            initialData={contractsData}
+            onDataChange={setContractsData}
+            onValidationChange={setCanProceed}
+          />
+        );
 
       case 7:
-        return <CodebtorsStep />;
+        return (
+          <CodebtorsStep
+            initialData={codebtorsData}
+            onDataChange={setCodebtorsData}
+            onValidationChange={setCanProceed}
+          />
+        );
 
       case 8:
         return (
@@ -355,6 +401,8 @@ export function IntakeWizard() {
             expenseData={expenseData}
             assetsData={assetsData}
             debtsData={debtsData}
+            contractsData={contractsData}
+            codebtorsData={codebtorsData}
             onValidationChange={setCanProceed}
           />
         );

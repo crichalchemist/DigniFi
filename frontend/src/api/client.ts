@@ -21,6 +21,8 @@ import type {
   SessionSummaryResponse,
   AssetInfo,
   DebtInfo,
+  ExecutoryContract,
+  Codebtor,
   GeneratedForm,
   APIError,
   LoginRequest,
@@ -376,34 +378,36 @@ export const intakeAPI = {
   },
 
   // Contracts (Schedule G)
-  contracts: async (sessionId: number): Promise<unknown[]> => {
-    return apiFetch<unknown[]>(`/intake/sessions/${sessionId}/contracts/`);
+  contracts: async (sessionId: number): Promise<ExecutoryContract[]> => {
+    return apiFetch<ExecutoryContract[]>(`/intake/sessions/${sessionId}/contracts/`);
   },
-  createContract: async (sessionId: number, data: unknown): Promise<unknown> => {
-    return apiFetch<unknown>(`/intake/sessions/${sessionId}/contracts/`, {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
-  },
-  deleteContract: async (sessionId: number, contractId: number): Promise<void> => {
-    await apiFetch<void>(`/intake/sessions/${sessionId}/contracts/${contractId}/`, {
-      method: 'DELETE',
+  /**
+   * Save the Contracts step's whole list: a row with an id updates, a row without one is
+   * created, and a saved row the list leaves out is deleted. Resolves with the saved rows.
+   * PUT /api/intake/sessions/{id}/contracts/
+   */
+  saveContracts: async (
+    sessionId: number,
+    contracts: ExecutoryContract[]
+  ): Promise<ExecutoryContract[]> => {
+    return apiFetch<ExecutoryContract[]>(`/intake/sessions/${sessionId}/contracts/`, {
+      method: 'PUT',
+      body: JSON.stringify(contracts),
     });
   },
 
   // Codebtors (Schedule H)
-  codebtors: async (sessionId: number): Promise<unknown[]> => {
-    return apiFetch<unknown[]>(`/intake/sessions/${sessionId}/codebtors/`);
+  codebtors: async (sessionId: number): Promise<Codebtor[]> => {
+    return apiFetch<Codebtor[]>(`/intake/sessions/${sessionId}/codebtors/`);
   },
-  createCodebtor: async (sessionId: number, data: unknown): Promise<unknown> => {
-    return apiFetch<unknown>(`/intake/sessions/${sessionId}/codebtors/`, {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
-  },
-  deleteCodebtor: async (sessionId: number, codebtorId: number): Promise<void> => {
-    await apiFetch<void>(`/intake/sessions/${sessionId}/codebtors/${codebtorId}/`, {
-      method: 'DELETE',
+  /**
+   * Save the Codebtors step's whole list, as saveContracts does.
+   * PUT /api/intake/sessions/{id}/codebtors/
+   */
+  saveCodebtors: async (sessionId: number, codebtors: Codebtor[]): Promise<Codebtor[]> => {
+    return apiFetch<Codebtor[]>(`/intake/sessions/${sessionId}/codebtors/`, {
+      method: 'PUT',
+      body: JSON.stringify(codebtors),
     });
   },
   getDischargeability: async (sessionId: number): Promise<unknown[]> => {

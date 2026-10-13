@@ -194,6 +194,25 @@ export interface DebtInfo {
   source_document_name?: string | null;
 }
 
+/** A contract or lease (Schedule G), as the contracts list endpoint sends and saves it */
+export interface ExecutoryContract {
+  id?: number;
+  counterparty_name: string;
+  contract_type: 'lease' | 'contract' | 'other';
+  description: string;
+}
+
+/** A codebtor (Schedule H), as the codebtors list endpoint sends and saves it */
+export interface Codebtor {
+  id?: number;
+  name: string;
+  street_address: string;
+  city: string;
+  state: string;
+  zip_code: string;
+  relationship: 'spouse' | 'former_spouse' | 'relative' | 'friend' | 'business_partner' | 'other';
+}
+
 // ============================================================================
 // Means Test
 // ============================================================================

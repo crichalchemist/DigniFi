@@ -171,6 +171,20 @@ export const handlers = [
     HttpResponse.json({ id: 1, session: 1, debt_type: 'credit_card', creditor_name: 'Visa' })
   ),
 
+  // -- Contracts / Codebtors (the wizard reads both lists with the session) --
+
+  http.get(`${API}/intake/sessions/:id/contracts/`, () => HttpResponse.json([])),
+
+  http.put(`${API}/intake/sessions/:id/contracts/`, async ({ request }) =>
+    HttpResponse.json(await request.json())
+  ),
+
+  http.get(`${API}/intake/sessions/:id/codebtors/`, () => HttpResponse.json([])),
+
+  http.put(`${API}/intake/sessions/:id/codebtors/`, async ({ request }) =>
+    HttpResponse.json(await request.json())
+  ),
+
   // -- Documents -----------------------------------------------------------
 
   http.post(`${API}/documents/upload/`, () =>

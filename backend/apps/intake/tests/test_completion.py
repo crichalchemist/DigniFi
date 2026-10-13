@@ -258,6 +258,25 @@ def test_adding_or_removing_a_contract_or_codebtor_after_complete_reopens_it(
 
 
 @pytest.mark.parametrize(
+    "endpoint,row",
+    [
+        ("contracts", {"counterparty_name": "Oak Street Apartments", "contract_type": "lease"}),
+        ("codebtors", {"name": "Sam Doe", "relationship": "relative"}),
+    ],
+)
+def test_saving_the_contracts_or_codebtors_list_after_complete_reopens_it(
+    filer, completed, endpoint, row
+):
+    # Continue on steps 6 and 7 saves the whole list (DIG-147).
+    client, _ = filer
+
+    response = client.put(_session_url(completed, f"{endpoint}/"), [row], format="json")
+
+    assert response.status_code == 200
+    assert _status(completed) == "in_progress"
+
+
+@pytest.mark.parametrize(
     "endpoint,row,change",
     [
         (

@@ -318,6 +318,15 @@ describe('IntakeWizard stepping back', { timeout: 30_000 }, () => {
       http.get('http://localhost:8000/api/intake/sessions/:id/codebtors/', () =>
         HttpResponse.json([])
       ),
+      // A list save reopens a completed intake too
+      http.put('http://localhost:8000/api/intake/sessions/:id/contracts/', () => {
+        sessionSaves += 1;
+        return HttpResponse.json([]);
+      }),
+      http.put('http://localhost:8000/api/intake/sessions/:id/codebtors/', () => {
+        sessionSaves += 1;
+        return HttpResponse.json([]);
+      }),
       http.post(
         'http://localhost:8000/api/audit/logs/',
         () => new HttpResponse(null, { status: 201 })
@@ -865,5 +874,292 @@ describe('IntakeWizard expense hydration', { timeout: 15_000 }, () => {
     await screen.findByRole('heading', { name: /expenses/i, level: 2 });
 
     expect(screen.getByText('$2,560.00')).toBeInTheDocument();
+  });
+});
+
+// ===========================================================================
+// Contracts and codebtors (DIG-147, DIG-165, DIG-166)
+// ===========================================================================
+
+const storedLease = {
+  id: 4,
+  counterparty_name: 'Oak Street Apartments',
+  contract_type: 'lease',
+  description: 'Apartment lease',
+};
+const storedGym = {
+  id: 5,
+  counterparty_name: 'Metro Gym',
+  contract_type: 'contract',
+  description: '',
+};
+const storedCodebtor = {
+  id: 3,
+  name: 'Sam Doe',
+  street_address: '',
+  city: 'Chicago',
+  state: 'IL',
+  zip_code: '',
+  relationship: 'relative',
+};
+
+describe('IntakeWizard contracts and codebtors', { timeout: 15_000 }, () => {
+  let contractSaves: unknown[];
+  let codebtorSaves: unknown[];
+  let stepUpdates: unknown[];
+
+  /** A filer who stopped at `step`, with these lists saved earlier. */
+  function serveFiler(
+    step: number,
+    contracts: Record<string, unknown>[] = [],
+    codebtors: Record<string, unknown>[] = []
+  ) {
+    // The server gives each new row the next id, as the list save does
+    let nextId = 10;
+    const saveList =
+      (saves: unknown[]) =>
+      async ({ request }: { request: Request }) => {
+        const rows = (await request.json()) as Record<string, unknown>[];
+        saves.push(rows);
+        return HttpResponse.json(rows.map((row) => ({ ...row, id: row.id ?? nextId++ })));
+      };
+    server.use(
+      http.get('http://localhost:8000/api/intake/sessions/:id/', () =>
+        HttpResponse.json({
+          ...sessionAtStep1,
+          current_step: step,
+          debtor_info: { first_name: 'Jane', last_name: 'Doe' },
+        })
+      ),
+      http.get('http://localhost:8000/api/intake/sessions/:id/contracts/', () =>
+        HttpResponse.json(contracts)
+      ),
+      http.get('http://localhost:8000/api/intake/sessions/:id/codebtors/', () =>
+        HttpResponse.json(codebtors)
+      ),
+      http.put('http://localhost:8000/api/intake/sessions/:id/contracts/', saveList(contractSaves)),
+      http.put('http://localhost:8000/api/intake/sessions/:id/codebtors/', saveList(codebtorSaves))
+    );
+  }
+
+  /** The wizard's own step title (each list step repeats it in a heading of its own). */
+  async function expectStep(title: string) {
+    await waitFor(() => expect(document.querySelector('.step-title')).toHaveTextContent(title));
+  }
+
+  beforeEach(() => {
+    contractSaves = [];
+    codebtorSaves = [];
+    stepUpdates = [];
+    server.use(
+      http.post(
+        'http://localhost:8000/api/intake/sessions/:id/update_step/',
+        async ({ request }) => {
+          const body = (await request.json()) as { current_step: number };
+          stepUpdates.push(body.current_step);
+          return HttpResponse.json({
+            session: { ...sessionAtStep1, current_step: body.current_step, status: 'in_progress' },
+            message: 'Step updated.',
+          });
+        }
+      ),
+      http.post(
+        'http://localhost:8000/api/audit/logs/',
+        () => new HttpResponse(null, { status: 201 })
+      )
+    );
+  });
+
+  it.each([
+    [6, 'Contracts & Leases'],
+    [7, 'Codebtors'],
+  ])('lets a filer who resumes at step %i (%s) continue', async (step, title) => {
+    serveFiler(step);
+    renderWizard();
+    await expectStep(title);
+
+    // The step reports itself valid just after it shows
+    await waitFor(() => expect(screen.getByRole('button', { name: /continue/i })).toBeEnabled());
+  });
+
+  it('saves the whole contracts list on Continue, and sends the saved ids on the next save instead of adding rows again', async () => {
+    serveFiler(6, [storedLease, storedGym]);
+    renderWizard();
+    await expectStep('Contracts & Leases');
+
+    // Remove the gym, add a storage unit, and add a row the filer leaves blank
+    await userEvent.click(screen.getAllByRole('button', { name: 'Remove' })[1]);
+    await userEvent.click(screen.getByRole('button', { name: /add contract/i }));
+    await userEvent.type(
+      screen.getAllByPlaceholderText('e.g., Landlord Inc.')[1],
+      'Lakeview Storage'
+    );
+    await userEvent.click(screen.getByRole('button', { name: /add contract/i }));
+    await userEvent.click(screen.getByRole('button', { name: /continue/i }));
+    await expectStep('Codebtors');
+
+    const lakeview = {
+      counterparty_name: 'Lakeview Storage',
+      contract_type: 'contract',
+      description: '',
+    };
+    expect(contractSaves).toEqual([[storedLease, lakeview]]);
+
+    // Back to Contracts and on again: the storage unit now carries the id the save returned
+    await userEvent.click(screen.getByRole('button', { name: 'Go Back' }));
+    await expectStep('Contracts & Leases');
+    await userEvent.click(screen.getByRole('button', { name: /continue/i }));
+    await expectStep('Codebtors');
+
+    expect(contractSaves[1]).toEqual([storedLease, { ...lakeview, id: 10 }]);
+  });
+
+  // An empty list means the filer has none: a removed last row must not stay stored and
+  // print on Schedule G or H
+  it.each([
+    [6, 'Contracts & Leases', 'Codebtors', [storedLease], [], () => contractSaves],
+    [7, 'Codebtors', 'Review & Results', [], [storedCodebtor], () => codebtorSaves],
+  ])(
+    'saves an empty list when the filer removes the last row on step %i (%s)',
+    async (step, title, nextTitle, contracts, codebtors, saves) => {
+      serveFiler(step, contracts, codebtors);
+      renderWizard();
+      await expectStep(title);
+
+      await userEvent.click(screen.getByRole('button', { name: 'Remove' }));
+      await userEvent.click(screen.getByRole('button', { name: /continue/i }));
+      await expectStep(nextTitle);
+
+      expect(saves()).toEqual([[]]);
+    }
+  );
+
+  it.each([
+    [6, 'Contracts & Leases', 'contracts', [storedLease], [], 'counterparty_name'],
+    [7, 'Codebtors', 'codebtors', [], [storedCodebtor], 'name'],
+  ])(
+    'keeps the filer on step %i (%s) and says so when the list cannot be saved',
+    async (step, title, list, contracts, codebtors, field) => {
+      serveFiler(step, contracts, codebtors);
+      server.use(
+        http.put(`http://localhost:8000/api/intake/sessions/:id/${list}/`, () =>
+          HttpResponse.json([{ [field]: ['This field may not be blank.'] }], {
+            status: 400,
+          })
+        )
+      );
+      renderWizard();
+      await expectStep(title);
+
+      await userEvent.click(screen.getByRole('button', { name: /continue/i }));
+
+      expect(await screen.findByText(/couldn't save just now/i)).toBeInTheDocument();
+      expect(document.querySelector('.step-title')).toHaveTextContent(title);
+      expect(stepUpdates).toEqual([]);
+    }
+  );
+
+  it("asks for the other party's name before a contract the filer started can be saved", async () => {
+    serveFiler(6);
+    renderWizard();
+    await expectStep('Contracts & Leases');
+
+    await userEvent.click(screen.getByRole('button', { name: /add contract/i }));
+    await userEvent.type(screen.getByPlaceholderText('e.g., Apartment lease, car loan'), 'Lease');
+
+    expect(screen.getByRole('alert')).toHaveTextContent('Please enter the name of the other party');
+    expect(screen.getByRole('button', { name: /continue/i })).toBeDisabled();
+
+    await userEvent.type(screen.getByPlaceholderText('e.g., Landlord Inc.'), 'Oak Street');
+    expect(screen.getByRole('button', { name: /continue/i })).toBeEnabled();
+  });
+
+  it("asks for the person's name before a codebtor the filer started can be saved", async () => {
+    serveFiler(7);
+    renderWizard();
+    await expectStep('Codebtors');
+
+    await userEvent.click(screen.getByRole('button', { name: /add codebtor/i }));
+    // The City label has no htmlFor yet, so the box is the element after it
+    await userEvent.type(screen.getByText('City').nextElementSibling as HTMLElement, 'Chicago');
+
+    expect(screen.getByRole('alert')).toHaveTextContent("Please enter this person's full name");
+    expect(screen.getByRole('button', { name: /continue/i })).toBeDisabled();
+
+    await userEvent.type(screen.getByPlaceholderText('e.g., Jane Smith'), 'Ana Ruiz');
+    expect(screen.getByRole('button', { name: /continue/i })).toBeEnabled();
+  });
+
+  it('saves the codebtors list on Continue and lists both lists on Review', async () => {
+    serveFiler(7, [storedLease], [storedCodebtor]);
+    renderWizard();
+    await expectStep('Codebtors');
+
+    // Add Ana, and add a row the filer leaves blank
+    await userEvent.click(screen.getByRole('button', { name: /add codebtor/i }));
+    await userEvent.type(screen.getAllByPlaceholderText('e.g., Jane Smith')[1], 'Ana Ruiz');
+    await userEvent.click(screen.getByRole('button', { name: /add codebtor/i }));
+    await userEvent.click(screen.getByRole('button', { name: /continue/i }));
+    await expectStep('Review & Results');
+
+    expect(codebtorSaves).toEqual([
+      [
+        storedCodebtor,
+        {
+          name: 'Ana Ruiz',
+          street_address: '',
+          city: '',
+          state: '',
+          zip_code: '',
+          relationship: 'other',
+        },
+      ],
+    ]);
+    // Review lists the rows the save returned, not the step's copy with the blank row in it
+    expect(screen.getByText('Codebtors (2)')).toBeInTheDocument();
+    expect(screen.getByText(/Oak Street Apartments/)).toBeInTheDocument();
+    expect(screen.getByText(/Sam Doe/)).toBeInTheDocument();
+    expect(screen.getByText(/Ana Ruiz/)).toBeInTheDocument();
+  });
+
+  it('shows the saved contracts and codebtors on Review to a filer who resumes there', async () => {
+    serveFiler(8, [storedLease], [storedCodebtor]);
+    renderWizard();
+    await expectStep('Review & Results');
+
+    expect(screen.getByText(/Oak Street Apartments/)).toBeInTheDocument();
+    expect(screen.getByText(/Sam Doe/)).toBeInTheDocument();
+  });
+
+  it('shows no step when the saved contracts cannot be read, so Continue never saves an empty list over them', async () => {
+    serveFiler(6, [storedLease]);
+    server.use(
+      http.get('http://localhost:8000/api/intake/sessions/:id/contracts/', () =>
+        HttpResponse.json({ detail: 'Request was throttled.' }, { status: 429 })
+      )
+    );
+    renderWizard();
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      "We couldn't get your latest information just now. Please try again in a moment."
+    );
+    expect(screen.queryByRole('button', { name: /continue/i })).not.toBeInTheDocument();
+    expect(contractSaves).toEqual([]);
+  });
+
+  it('shows no step when the saved codebtors cannot be read, so Continue never saves an empty list over them', async () => {
+    serveFiler(7, [], [storedCodebtor]);
+    server.use(
+      http.get('http://localhost:8000/api/intake/sessions/:id/codebtors/', () =>
+        HttpResponse.json({ detail: 'Request was throttled.' }, { status: 429 })
+      )
+    );
+    renderWizard();
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      "We couldn't get your latest information just now. Please try again in a moment."
+    );
+    expect(screen.queryByRole('button', { name: /continue/i })).not.toBeInTheDocument();
+    expect(codebtorSaves).toEqual([]);
   });
 });

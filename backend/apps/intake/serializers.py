@@ -245,7 +245,7 @@ class NestedDebtInfoSerializer(DebtInfoSerializer):
 
 
 def _save_rows_by_id(session, model, rows) -> None:
-    """Save a session's nested assets or debts by id.
+    """Save a session's nested assets or debts, or its contracts or codebtors list, by id.
 
     A row whose id is one of this session's rows updates only the fields it sent, so
     what the browser never received (account numbers, the scanned-bill link, the
@@ -583,3 +583,19 @@ class CodebtorSerializer(serializers.ModelSerializer):
             "zip_code",
             "relationship",
         ]
+
+
+class ExecutoryContractRowSerializer(ExecutoryContractSerializer):
+    """A contract row in the Contracts step's list save.
+
+    The id is writable so a row the wizard loaded updates in place. The single-contract
+    POST keeps the base serializer, so it never accepts a client id.
+    """
+
+    id = serializers.IntegerField(required=False)
+
+
+class CodebtorRowSerializer(CodebtorSerializer):
+    """A codebtor row in the Codebtors step's list save. See ExecutoryContractRowSerializer."""
+
+    id = serializers.IntegerField(required=False)

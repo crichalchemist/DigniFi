@@ -2,19 +2,18 @@
  * ContractsStep - Executory contracts and unexpired leases (Schedule G)
  *
  * Lists contracts/leases the debtor is party to. Each entry needs
- * counterparty name, type, and description.
+ * counterparty name, type, and description. The wizard saves the whole
+ * list when the filer presses Continue (DIG-147).
  */
 
-import { useState } from 'react';
-import { useIntake } from '../../../context/IntakeContext';
-import { api } from '../../../api/client';
+import { useState, useEffect, useMemo } from 'react';
 import { Button } from '../../common';
+import type { ExecutoryContract } from '../../../types/api';
 
-interface Contract {
-  id?: number;
-  counterparty_name: string;
-  contract_type: string;
-  description: string;
+interface ContractsStepProps {
+  initialData?: ExecutoryContract[];
+  onDataChange: (data: ExecutoryContract[]) => void;
+  onValidationChange: (isValid: boolean) => void;
 }
 
 const CONTRACT_TYPES = [
@@ -23,70 +22,51 @@ const CONTRACT_TYPES = [
   { value: 'other', label: 'Other' },
 ];
 
-const EMPTY_CONTRACT: Contract = {
+const EMPTY_CONTRACT: ExecutoryContract = {
   counterparty_name: '',
   contract_type: 'contract',
   description: '',
 };
 
-export function ContractsStep() {
-  const { session } = useIntake();
-  const [contracts, setContracts] = useState<Contract[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+export function ContractsStep({
+  initialData,
+  onDataChange,
+  onValidationChange,
+}: ContractsStepProps) {
+  const [contracts, setContracts] = useState<ExecutoryContract[]>(initialData ?? []);
 
-  const loadContracts = async () => {
-    if (!session) return;
-    try {
-      const data = await api.intake.contracts(session.id);
-      setContracts(data as Contract[]);
-    } catch {
-      // ignore
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  // A row left blank is not saved; a row the filer started needs the other party's name
+  const errors = useMemo(
+    () =>
+      contracts.map((contract) =>
+        !contract.counterparty_name.trim() && contract.description.trim()
+          ? 'Please enter the name of the other party'
+          : undefined
+      ),
+    [contracts]
+  );
+  const isValid = errors.every((error) => !error);
 
-  // Load on mount
-  useState(() => {
-    loadContracts();
-  });
+  // Update parent when contracts change
+  useEffect(() => {
+    onDataChange(contracts);
+    onValidationChange(isValid);
+    // both callbacks are useState setters in IntakeWizard — stable identities
+  }, [contracts, isValid, onDataChange, onValidationChange]);
 
   const addContract = () => {
     setContracts([...contracts, { ...EMPTY_CONTRACT }]);
   };
 
-  const updateContract = (index: number, field: keyof Contract, value: string) => {
+  const updateContract = (index: number, field: keyof ExecutoryContract, value: string) => {
     const updated = [...contracts];
     updated[index] = { ...updated[index], [field]: value };
     setContracts(updated);
   };
 
-  const removeContract = async (index: number) => {
-    const contract = contracts[index];
-    if (contract.id && session) {
-      try {
-        await api.intake.deleteContract(session.id, contract.id);
-      } catch {
-        // ignore
-      }
-    }
+  const removeContract = (index: number) => {
     setContracts(contracts.filter((_, i) => i !== index));
   };
-
-  const handleSave = async () => {
-    if (!session) return;
-    for (const contract of contracts) {
-      if (!contract.counterparty_name.trim()) continue;
-      if (contract.id) continue; // already saved
-      try {
-        await api.intake.createContract(session.id, contract);
-      } catch {
-        // ignore
-      }
-    }
-  };
-
-  if (isLoading) return <div>Loading contracts...</div>;
 
   return (
     <div className="contracts-step">
@@ -113,7 +93,13 @@ export function ContractsStep() {
                 value={contract.counterparty_name}
                 onChange={(e) => updateContract(index, 'counterparty_name', e.target.value)}
                 placeholder="e.g., Landlord Inc."
+                maxLength={255}
               />
+              {errors[index] && (
+                <p className="form-error" role="alert" aria-live="assertive">
+                  {errors[index]}
+                </p>
+              )}
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">Type</label>
@@ -149,14 +135,6 @@ export function ContractsStep() {
       <Button variant="outline" onClick={addContract} className="mt-2">
         + Add Contract
       </Button>
-
-      {contracts.length > 0 && (
-        <div className="mt-4">
-          <Button variant="primary" onClick={handleSave}>
-            Save Contracts
-          </Button>
-        </div>
-      )}
     </div>
   );
 }
