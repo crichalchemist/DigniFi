@@ -474,3 +474,66 @@ def test_scan_records_the_provider_that_read_it(filer, openai_client):
     doc = scan_photo(filer, openai_client, DocumentType.CREDITOR_BILL, reply=bill)
 
     assert OCRResult.objects.get(document_id=doc["id"]).ocr_provider == "openai"
+
+
+# A scan that adds a debt or pay figures changes the intake, so a completed intake goes
+# back to in progress and the filer presses Complete again (spec §5.3).
+
+PAY_STUB = {
+    "employer_name": "Acme Logistics",
+    "gross_pay": "1000.00",
+    "pay_period_start": "2026-01-01",
+    "pay_period_end": "2026-01-14",
+    "confidence_score": 92,
+}
+
+
+@pytest.mark.parametrize(
+    "document_type,reply",
+    [
+        (
+            DocumentType.CREDITOR_BILL,
+            {"creditor_name": "ComEd", "amount_owed": "96.12", "creditor_type": "utility"},
+        ),
+        (DocumentType.PAY_STUB, PAY_STUB),
+        (
+            DocumentType.CREDIT_REPORT,
+            {"tradelines": [{"creditor_name": "Discover", "amount_owed": "310.00"}]},
+        ),
+    ],
+    ids=["bill", "pay-stub", "credit-report"],
+)
+def test_a_scan_that_adds_a_debt_or_pay_figures_reopens_a_completed_intake(
+    filer, openai_client, document_type, reply
+):
+    _, session = filer
+    IntakeSession.objects.filter(pk=session.pk).update(status="completed")
+
+    doc = scan_photo(filer, openai_client, document_type, reply=reply)
+
+    assert doc["ocr_result"]["status"] == "completed"
+    session.refresh_from_db()
+    assert session.status == "in_progress"
+
+
+@pytest.mark.parametrize(
+    "document_type,reply",
+    [
+        (DocumentType.CREDITOR_BILL, {"creditor_name": None, "amount_owed": "125.00"}),
+        (
+            DocumentType.CREDIT_REPORT,
+            {"tradelines": [{"creditor_name": "Discover", "amount_owed": "0"}]},
+        ),
+    ],
+    ids=["nothing-found", "paid-off-accounts-only"],
+)
+def test_a_scan_that_adds_nothing_leaves_a_completed_intake_complete(
+    filer, openai_client, document_type, reply
+):
+    _, session = filer
+    IntakeSession.objects.filter(pk=session.pk).update(status="completed")
+
+    scan_photo(filer, openai_client, document_type, reply=reply)
+
+    session.refresh_from_db()
+    assert session.status == "completed"

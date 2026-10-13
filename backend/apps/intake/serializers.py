@@ -268,6 +268,10 @@ def _save_rows_by_id(session, model, rows) -> None:
     model.objects.filter(pk__in=existing.keys() - kept).delete()
 
 
+# The intake sections a session save can carry (spec §5.3).
+_INTAKE_DATA = {"debtor_info", "income_info", "expense_info", "assets", "debts"}
+
+
 class IntakeSessionSerializer(serializers.ModelSerializer):
     """
     Serializer for intake session with nested related data.
@@ -300,7 +304,16 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
             "created_at",
             "completed_at",
         ]
-        read_only_fields = ["id", "user", "created_at", "completed_at", "district_name"]
+        # Only the complete and update_step actions set status and current_step (DIG-151).
+        read_only_fields = [
+            "id",
+            "user",
+            "status",
+            "current_step",
+            "created_at",
+            "completed_at",
+            "district_name",
+        ]
 
     def create(self, validated_data):
         """
@@ -344,7 +357,11 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
 
         Updates or creates debtor_info, income_info, expense_info.
         Saves assets/debts by id (see _save_rows_by_id).
+        Saving any of them reopens a completed intake.
         """
+        if _INTAKE_DATA.intersection(validated_data):
+            instance.reopen()
+
         debtor_data = validated_data.pop("debtor_info", None)
         income_data = validated_data.pop("income_info", None)
         expense_data = validated_data.pop("expense_info", None)
@@ -363,7 +380,9 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
         if income_data:
             IncomeInfo.objects.update_or_create(session=instance, defaults=income_data)
 
-        if expense_data:
+        # Every box left blank arrives as {}, and still creates the record with its $0
+        # defaults, so the filer can complete (DIG-153).
+        if expense_data is not None:
             ExpenseInfo.objects.update_or_create(session=instance, defaults=expense_data)
 
         if assets_data is not None:

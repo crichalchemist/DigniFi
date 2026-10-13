@@ -45,11 +45,16 @@ class FormIsFiled(Exception):
     """The form is marked filed, so it keeps the values it was filed with (spec §5.5)."""
 
 
+class IntakeNotFinished(Exception):
+    """The filer hasn't completed the intake, so an empty list can't yet mean "none"."""
+
+
 # Failures a filer can act on: 422 in plain words (spec §5.7). Anything else is a 500.
 # PreconditionMissing carries its own plain reason (registry.py). Every other class gets
 # a fixed sentence, because their messages name form keys, repeat groups and PDF
 # widgets. None names the form: the dashboard shows its label beside the error.
 _FAILURE_SENTENCES = {
+    IntakeNotFinished: "Finish your intake before preparing your forms.",
     NotInPacket: "This form isn't part of your packet, based on the answers you've given.",
     FormIsFiled: "This form is marked as filed, so it keeps the answers it was filed with.",
     RepeatOverflow: (
@@ -119,8 +124,19 @@ def _validate_form_type(form_type: str | None) -> Response | None:
     return None
 
 
+def _check_finished(session: IntakeSession) -> None:
+    """Refuse an intake the filer hasn't completed (step 2 spec §5.3).
+
+    Only the intake's complete action sets "completed", and an edit to intake data
+    after it sets the intake back to in progress.
+    """
+    if session.status != "completed":
+        raise IntakeNotFinished()
+
+
 def _fill(form_type: str, session: IntakeSession) -> tuple[dict[str, str], bytes]:
     """Resolve a form that applies to this filer and fill its template."""
+    _check_finished(session)
     if not FORM_REGISTRY[form_type].applies(session):
         raise NotInPacket()
     values = build_field_values(form_type, session)
@@ -249,10 +265,19 @@ class GeneratedFormViewSet(viewsets.ReadOnlyModelViewSet):
         Each form gets its own savepoint, so one form's failure can't undo the
         others. Rows for forms that no longer apply are deleted. A filed form
         that still applies is returned as it is: not resolved again, not un-filed.
+        An unfinished intake gets one refusal for the whole packet, before anything
+        is deleted.
         """
         session, err = _session_or_error(request, request.data.get("session_id"))
         if err:
             return err
+        try:
+            _check_finished(session)
+        except IntakeNotFinished:
+            return Response(
+                {"error": _FAILURE_SENTENCES[IntakeNotFinished]},
+                status=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            )
 
         form_types = packet(session)
         GeneratedForm.objects.filter(session=session).exclude(form_type__in=form_types).delete()

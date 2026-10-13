@@ -95,7 +95,8 @@ def district(db):
 
 @pytest.fixture
 def session(user, district):
-    return IntakeSession.objects.create(user=user, district=district)
+    # Forms are prepared only from an intake the filer completed (spec §5.3).
+    return IntakeSession.objects.create(user=user, district=district, status="completed")
 
 
 @pytest.fixture
@@ -616,6 +617,76 @@ class TestPacketEndpoint:
     def test_other_users_session(self, api_client, other_session):
         resp = api_client.get(self.URL, {"session": other_session.id})
         assert resp.status_code == status.HTTP_404_NOT_FOUND
+
+
+# ── Only a completed intake prepares forms (spec §5.3) ────────────────
+
+FINISH = "Finish your intake before preparing your forms."
+
+
+@pytest.mark.django_db
+class TestCompletionCheck:
+    """Until the filer presses Complete, an empty list can't mean "none"."""
+
+    def test_unfinished_intake_cannot_prepare_forms(self, api_client, session_with_income, user):
+        session = session_with_income
+        session.status = "in_progress"
+        session.save()
+        # No fee waiver application, so 103B has left the packet; 101 is in it, unfiled.
+        GeneratedForm.objects.create(session=session, form_type="form_103b", generated_by=user)
+        unfiled = GeneratedForm.objects.create(
+            session=session, form_type="form_101", status="generated", generated_by=user
+        )
+
+        generate_all = api_client.post(
+            "/api/forms/generate_all/", {"session_id": session.id}, format="json"
+        )
+        generate = api_client.post(
+            "/api/forms/generate/",
+            {"session_id": session.id, "form_type": "form_106dec"},
+            format="json",
+        )
+        regenerate = api_client.post(f"/api/forms/{unfiled.id}/regenerate/")
+        download = api_client.get(f"/api/forms/{unfiled.id}/download/")
+
+        # One refusal for the whole packet, not one per form.
+        assert generate_all.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert generate_all.data == {"error": FINISH}
+        for resp, form_type in [
+            (generate, "form_106dec"),
+            (regenerate, "form_101"),
+            (download, "form_101"),
+        ]:
+            assert resp.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+            assert resp.data == {"form_type": form_type, "error": FINISH}
+        # Generate All refused before it dropped the form that left the packet.
+        assert set(
+            GeneratedForm.objects.filter(session=session).values_list("form_type", flat=True)
+        ) == {"form_101", "form_103b"}
+        unfiled.refresh_from_db()
+        assert (unfiled.status, unfiled.field_values) == ("generated", "")
+
+    def test_unfinished_intake_can_still_read_its_packet(self, api_client, session_with_debtor):
+        session_with_debtor.status = "in_progress"
+        session_with_debtor.save()
+
+        resp = api_client.get("/api/forms/packet/", {"session": session_with_debtor.id})
+
+        assert resp.status_code == status.HTTP_200_OK
+        assert len(resp.data["form_types"]) == 14
+
+    def test_filed_form_still_downloads_while_the_intake_is_reopened(
+        self, api_client, session_with_debtor, user
+    ):
+        # The filer needs the copy they filed even after an edit sent them back to Review.
+        form = _filed_form(session_with_debtor, user, "form_121", {"Debtor1.First name": "Jane"})
+        session_with_debtor.status = "in_progress"
+        session_with_debtor.save()
+
+        resp = api_client.get(f"/api/forms/{form.id}/download/")
+
+        assert resp.status_code == status.HTTP_200_OK
+        assert resp["Content-Type"] == "application/pdf"
 
 
 # ── The snapshot stays on the server (DIG-124) ────────────────────────

@@ -82,10 +82,7 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
             "current_step": 1
         }
         """
-        data = request.data.copy()
-        data["status"] = "started"
-
-        serializer = self.get_serializer(data=data)
+        serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
 
@@ -130,11 +127,21 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
         """
         session = self.get_object()
 
+        # Only one of the wizard's 8 steps; anything else is a client fault (DIG-151).
         current_step = request.data.get("current_step")
-        if current_step:
-            session.current_step = current_step
-            session.status = "in_progress"
-            session.save()
+        if (
+            not isinstance(current_step, int)
+            or isinstance(current_step, bool)
+            or not 1 <= current_step <= 8
+        ):
+            return Response(
+                {"current_step": ["Must be a whole number from 1 to 8."]},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        session.current_step = current_step
+        session.status = "in_progress"
+        session.save()
 
         # Update with any provided data
         if "data" in request.data:
@@ -359,6 +366,7 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
         serializer = ExecutoryContractSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.save(session=session)
+        session.reopen()
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     @action(
@@ -372,6 +380,7 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
         try:
             contract = ExecutoryContract.objects.get(pk=contract_id, session=session)
             contract.delete()
+            session.reopen()
             return Response(status=status.HTTP_204_NO_CONTENT)
         except ExecutoryContract.DoesNotExist:
             return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
@@ -386,6 +395,7 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
         serializer = CodebtorSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.save(session=session)
+        session.reopen()
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     @action(
@@ -399,6 +409,7 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
         try:
             codebtor = Codebtor.objects.get(pk=codebtor_id, session=session)
             codebtor.delete()
+            session.reopen()
             return Response(status=status.HTTP_204_NO_CONTENT)
         except Codebtor.DoesNotExist:
             return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
@@ -448,12 +459,20 @@ class AssetViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         _assert_session_owned(serializer.validated_data["session"], self.request.user)
         serializer.save()
+        serializer.instance.session.reopen()
 
     def perform_update(self, serializer):
         session = serializer.validated_data.get("session")
         if session is not None:
             _assert_session_owned(session, self.request.user)
+        # A row moved to another of the filer's sessions changes both.
+        serializer.instance.session.reopen()
         serializer.save()
+        serializer.instance.session.reopen()
+
+    def perform_destroy(self, instance):
+        instance.delete()
+        instance.session.reopen()
 
 
 class DebtViewSet(viewsets.ModelViewSet):
@@ -474,12 +493,20 @@ class DebtViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         _assert_session_owned(serializer.validated_data["session"], self.request.user)
         serializer.save()
+        serializer.instance.session.reopen()
 
     def perform_update(self, serializer):
         session = serializer.validated_data.get("session")
         if session is not None:
             _assert_session_owned(session, self.request.user)
+        # A row moved to another of the filer's sessions changes both.
+        serializer.instance.session.reopen()
         serializer.save()
+        serializer.instance.session.reopen()
+
+    def perform_destroy(self, instance):
+        instance.delete()
+        instance.session.reopen()
 
 
 class FeeWaiverViewSet(viewsets.ModelViewSet):

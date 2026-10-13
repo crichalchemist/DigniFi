@@ -38,6 +38,17 @@ class IntakeSession(models.Model):
     def __str__(self) -> str:
         return f"Intake {self.id} - {self.user} ({self.status})"
 
+    def reopen(self) -> None:
+        """Set a completed intake back to in progress, because its intake data changed.
+
+        The filer then presses Complete again, which re-runs the completion checks and
+        the fee-waiver routing (spec §5.3). Form answers, SOFA and the fee-waiver
+        application are not intake data and never call this.
+        """
+        if self.status == "completed":
+            self.status = "in_progress"
+            self.save(update_fields=["status"])
+
 
 class DebtorInfo(models.Model):
     """Personal information for debtor (PII encrypted)."""
