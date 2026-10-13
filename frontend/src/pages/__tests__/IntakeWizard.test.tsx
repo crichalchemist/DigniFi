@@ -171,6 +171,189 @@ describe('IntakeWizard handleComplete routing', { timeout: 30_000 }, () => {
       expect(screen.getByText('Statement of Financial Affairs')).toBeInTheDocument();
     });
   });
+
+  // DIG-150: the dashboard can't prepare forms from an unfinished intake, and it never showed
+  // why the filer had landed there. The reason belongs on Review, where they can act on it.
+  it('keeps the filer on Review with the reason when Complete fails', async () => {
+    renderWizard();
+    const completeBtn = await screen.findByRole('button', { name: /complete intake/i });
+    server.use(
+      http.post('http://localhost:8000/api/intake/sessions/:id/complete/', () =>
+        HttpResponse.json(
+          {
+            errors: ['Expense information is required'],
+            message: 'Please complete all required sections before finalizing',
+          },
+          { status: 400 }
+        )
+      )
+    );
+
+    await userEvent.click(completeBtn);
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Please complete all required sections before finalizing'
+    );
+    expect(
+      screen.getByRole('heading', { name: /review & results/i, level: 2 })
+    ).toBeInTheDocument();
+    expect(screen.queryByText('FormDashboard')).not.toBeInTheDocument();
+    expect(screen.queryByText('Statement of Financial Affairs')).not.toBeInTheDocument();
+  });
+
+  it('keeps the filer on Review with the reason when only the means test fails', async () => {
+    renderWizard();
+    const completeBtn = await screen.findByRole('button', { name: /complete intake/i });
+    server.use(
+      http.post('http://localhost:8000/api/intake/sessions/:id/calculate_means_test/', () =>
+        HttpResponse.json(
+          {
+            error: 'No median income data for this district',
+            message:
+              'Unable to calculate means test. Please ensure all income information is provided.',
+          },
+          { status: 400 }
+        )
+      )
+    );
+
+    await userEvent.click(completeBtn);
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Unable to calculate means test. Please ensure all income information is provided.'
+    );
+    expect(
+      screen.getByRole('heading', { name: /review & results/i, level: 2 })
+    ).toBeInTheDocument();
+    expect(screen.queryByText('FormDashboard')).not.toBeInTheDocument();
+    expect(screen.queryByText('FeeWaiverPage')).not.toBeInTheDocument();
+    expect(screen.queryByText('Statement of Financial Affairs')).not.toBeInTheDocument();
+  });
+});
+
+// ===========================================================================
+// Stepping back after Complete (forms step 2 §5.3)
+// ===========================================================================
+
+/**
+ * A completed intake as the API returns it. Any intake save reopens it on the server, so the
+ * filer would have to press Complete again. The expenses have cents, the filer listed no assets,
+ * and the debt amounts arrive as decimal strings.
+ */
+const completedSession = {
+  ...sessionAtStep8,
+  status: 'completed' as const,
+  completed_at: '2026-10-12T10:00:00Z',
+  debtor_info: {
+    first_name: 'Jane',
+    last_name: 'Doe',
+    date_of_birth: '1985-06-15',
+    street_address: '123 Main St',
+    city: 'Chicago',
+    state: 'IL',
+    zip_code: '60601',
+    email: 'jane@example.com',
+    household_size: 2,
+    filing_type: 'individual',
+  },
+  income_info: {
+    marital_status: 'single',
+    number_of_dependents: 1,
+    monthly_income: [3100, 3300, 3200, 3200, 3150, 3250],
+    total_monthly_income: 3200,
+  },
+  expense_info: {
+    data_source: 'manual',
+    rent_or_mortgage: '1100.00',
+    utilities: '180.10',
+    home_maintenance: '0.00',
+    vehicle_payment: '0.00',
+    vehicle_insurance: '85.00',
+    vehicle_maintenance: '40.00',
+    food_and_groceries: '450.20',
+    clothing: '60.00',
+    medical_expenses: '75.00',
+    childcare: '400.00',
+    child_support_paid: '0.00',
+    insurance_not_deducted: '120.00',
+    other_expenses: '50.15',
+    // The server's exact decimal sum; adding the amounts in the browser gives 2560.4500000000003
+    total_monthly_expenses: 2560.45,
+    created_at: '2026-10-01T10:00:00Z',
+    updated_at: '2026-10-01T10:00:00Z',
+  },
+  assets: [],
+  debts: [
+    {
+      id: 7,
+      session: 1,
+      data_source: 'manual',
+      creditor_name: 'Chase',
+      debt_type: 'credit_card',
+      priority_classification: 'unsecured',
+      amount_owed: '2500.00',
+      monthly_payment: '75.00',
+      is_in_collections: false,
+      notes: '',
+      is_draft: false,
+      source_document_name: null,
+    },
+  ],
+};
+
+describe('IntakeWizard stepping back', { timeout: 30_000 }, () => {
+  it('sends no save when the filer steps back through a completed intake without changing it', async () => {
+    let sessionSaves = 0;
+    server.use(
+      http.get('http://localhost:8000/api/intake/sessions/:id/', () =>
+        HttpResponse.json(completedSession)
+      ),
+      http.patch('http://localhost:8000/api/intake/sessions/:id/', () => {
+        sessionSaves += 1;
+        return HttpResponse.json({ ...completedSession, status: 'in_progress' });
+      }),
+      http.get('http://localhost:8000/api/intake/sessions/:id/contracts/', () =>
+        HttpResponse.json([])
+      ),
+      http.get('http://localhost:8000/api/intake/sessions/:id/codebtors/', () =>
+        HttpResponse.json([])
+      ),
+      http.post(
+        'http://localhost:8000/api/audit/logs/',
+        () => new HttpResponse(null, { status: 201 })
+      )
+    );
+
+    const { container } = renderWizard();
+    await screen.findByRole('heading', { name: /review & results/i, level: 2 });
+
+    // Each step gets longer than the 2 s autosave delay. findBy needs real timers, so the
+    // step title is read directly while the clock is fake.
+    vi.useFakeTimers();
+    try {
+      for (const step of [
+        'Codebtors',
+        'Contracts & Leases',
+        'Amounts Owed',
+        'Assets',
+        'Expenses',
+        'Income',
+        'Your Information',
+      ]) {
+        act(() => {
+          fireEvent.click(screen.getByRole('button', { name: 'Go Back' }));
+        });
+        for (let second = 0; second < 3; second += 1) {
+          await act(() => vi.advanceTimersByTimeAsync(1000));
+        }
+        expect(container.querySelector('.step-title')).toHaveTextContent(step);
+      }
+    } finally {
+      vi.useRealTimers();
+    }
+
+    expect(sessionSaves).toBe(0);
+  });
 });
 
 // ===========================================================================
@@ -528,11 +711,18 @@ describe('IntakeWizard amounts a returning filer already entered', { timeout: 15
       http.get('http://localhost:8000/api/intake/sessions/:id/', () =>
         HttpResponse.json(sessionAtStep5WithDebts)
       ),
-      // Loaded rows are valid, so autosave PATCHes about 2 s after the step appears.
+      // Continue saves the step, even when the filer changed nothing.
       http.patch('http://localhost:8000/api/intake/sessions/:id/', async ({ request }) => {
         patchBodies.push(await request.json());
         return HttpResponse.json(sessionAtStep5WithDebts);
-      })
+      }),
+      http.get('http://localhost:8000/api/intake/sessions/:id/contracts/', () =>
+        HttpResponse.json([])
+      ),
+      http.post(
+        'http://localhost:8000/api/audit/logs/',
+        () => new HttpResponse(null, { status: 201 })
+      )
     );
   });
 
@@ -550,6 +740,7 @@ describe('IntakeWizard amounts a returning filer already entered', { timeout: 15
   it('saves each debt back under its own id, with its amounts as numbers', async () => {
     renderWizard();
     await screen.findByRole('heading', { name: /amounts owed/i, level: 2 });
+    await userEvent.click(screen.getByRole('button', { name: /continue/i }));
 
     await waitFor(() => expect(patchBodies.length).toBeGreaterThan(0));
     const { debts } = patchBodies[0] as { debts: Record<string, unknown>[] };
@@ -566,6 +757,7 @@ describe('IntakeWizard amounts a returning filer already entered', { timeout: 15
     );
     renderWizard();
     await screen.findByRole('heading', { name: /assets/i, level: 2 });
+    await userEvent.click(screen.getByRole('button', { name: /continue/i }));
 
     await waitFor(() => expect(patchBodies.length).toBeGreaterThan(0));
     const { assets } = patchBodies[0] as { assets: Record<string, unknown>[] };

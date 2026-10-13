@@ -132,6 +132,19 @@ export function FormDashboard() {
 
       <UPLDisclaimer text={UPL_FORM_DISCLAIMER} variant="banner" />
 
+      {/* Forms are prepared only from an intake the server marked complete (forms step 2 §5.3) */}
+      {session.status !== 'completed' && (
+        <div className="form-dashboard-notice">
+          <p>
+            Your forms are prepared from your finished intake. To finish it, go back to your intake
+            and press Complete Intake on the last step.
+          </p>
+          <Link to="/intake" className="button button--primary">
+            Finish your intake
+          </Link>
+        </div>
+      )}
+
       {error && (
         <div className="form-dashboard-error" role="alert">
           <p>{error}</p>

@@ -141,7 +141,8 @@ def test_wizard_step_must_be_one_of_the_eight_steps(filer, completed, step):
 
 
 def test_filer_who_leaves_every_expense_blank_can_complete(filer, district):
-    # DIG-153: the Expenses step sends only its computed total when every box is blank.
+    # DIG-153: with every box blank, the Expenses step sends no amounts. The server drops the
+    # read-only total sent here, so this body is the same as the step's empty one.
     client, user = filer
     session = IntakeSession.objects.create(user=user, district=district, current_step=3)
     DebtorInfo.objects.create(

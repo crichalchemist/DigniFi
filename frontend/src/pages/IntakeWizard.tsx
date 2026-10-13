@@ -5,7 +5,7 @@
  * and handles data persistence to backend API.
  */
 
-import { useState, useEffect, useRef, useLayoutEffect } from 'react';
+import { useState, useEffect, useMemo, useRef, useLayoutEffect } from 'react';
 import { useAutoSave } from '../hooks/useAutoSave';
 import { useNavigate } from 'react-router-dom';
 import { useIntake } from '../context/IntakeContext';
@@ -152,27 +152,56 @@ export function IntakeWizard() {
   // Autosave
   // =========================================================================
 
-  // The data object for the step currently on screen. useAutoSave watches this;
-  // when it changes (the user typing), it debounces a call to saveCurrentStepData.
+  // What saving the step on screen sends: PATCH /api/intake/sessions/{id}/, whose nested
+  // serializer creates and updates each section. null for the steps the wizard doesn't save.
+  // useAutoSave compares it with the step's last saved or loaded copy, so a step that only
+  // shows what the server holds (a blank row, a recomputed total) sends nothing.
   const currentStepKey = WIZARD_STEPS[currentStepNumber - 1]?.key;
-  const currentStepData =
-    currentStepKey === 'debtor_info'
-      ? debtorData
-      : currentStepKey === 'income_info'
-        ? incomeData
-        : currentStepKey === 'expense_info'
-          ? expenseData
-          : currentStepKey === 'assets'
-            ? assetsData
-            : currentStepKey === 'debts'
-              ? debtsData
-              : null;
+  const currentStepBody = useMemo((): Partial<IntakeSession> | null => {
+    switch (currentStepKey) {
+      case 'debtor_info':
+        return { debtor_info: debtorData } as Partial<IntakeSession>;
+
+      case 'income_info':
+        // Send the months alone: IncomeInfoStep re-emits them as stored unless the filer
+        // entered source amounts. Echoing other fields read from the server (a blank
+        // marital_status) is a 400 that would strand the filer on Income.
+        return {
+          income_info: { monthly_income: incomeData.monthly_income },
+        } as Partial<IntakeSession>;
+
+      case 'expense_info': {
+        // The total is read-only on the server. The step adds it up in floating point, so
+        // it can differ from the server's decimal sum in the last digit.
+        const expenses = { ...expenseData };
+        delete expenses.total_monthly_expenses;
+        return { expense_info: expenses } as Partial<IntakeSession>;
+      }
+
+      case 'assets':
+        // Filter out empty/blank asset forms before sending
+        return {
+          assets: assetsData.filter((a) => a.asset_type && a.description?.trim()),
+        } as Partial<IntakeSession>;
+
+      case 'debts':
+        // Filter empty forms — debt_type, is_secured, and priority_classification
+        // are already set by DebtsStep via DEBT_CATEGORY_META lookup
+        return {
+          debts: debtsData.filter((d) => d.creditor_name?.trim()),
+        } as Partial<IntakeSession>;
+
+      default:
+        return null;
+    }
+  }, [currentStepKey, debtorData, incomeData, expenseData, assetsData, debtsData]);
 
   const { saveStatus, saveNow, lastSavedAt } = useAutoSave({
-    data: currentStepData,
-    // saveCurrentStepData reads the latest step state from its closure, so the
-    // `data` snapshot useAutoSave passes to onSave is intentionally unused here.
-    onSave: () => saveCurrentStepData(),
+    data: currentStepBody,
+    // Until the read returns, the steps hold empty placeholders, not the session's data, so
+    // they are kept under no step's name.
+    dataKey: sessionRead === 'done' ? currentStepKey : undefined,
+    onSave: (body) => saveCurrentStepData(body),
     // Only autosave a complete, valid step (see architecture rationale). 'review' has nothing
     // to save; disabled until a session exists.
     enabled: !!session && canProceed && currentStepKey !== 'review',
@@ -239,8 +268,10 @@ export function IntakeWizard() {
         navigate('/sofa');
       }
     } catch (error) {
+      // The filer stays on Review, where WizardLayout shows the reason the context recorded
+      // (DIG-150). If only the means test failed, the intake is already complete, and
+      // pressing Complete again retries both calls.
       console.error('Error completing intake:', error);
-      navigate('/forms');
     }
   };
 
@@ -248,57 +279,15 @@ export function IntakeWizard() {
   // Data Persistence
   // =========================================================================
 
-  const saveCurrentStepData = async () => {
+  const saveCurrentStepData = async (body: Partial<IntakeSession> | null) => {
     if (!session) return;
 
-    const currentStep = WIZARD_STEPS[currentStepNumber - 1];
-
-    // All step data is saved via PATCH /api/intake/sessions/{id}/
-    // The backend IntakeSessionSerializer handles nested create/update
-    switch (currentStep.key) {
-      case 'debtor_info':
-        await api.intake.updateSession(session.id, {
-          debtor_info: debtorData,
-        } as Partial<IntakeSession>);
-        break;
-
-      case 'income_info':
-        // Send the months alone: IncomeInfoStep re-emits them as stored unless the filer
-        // entered source amounts. Echoing other fields read from the server (a blank
-        // marital_status) is a 400 that would strand the filer on Income.
-        await api.intake.updateSession(session.id, {
-          income_info: { monthly_income: incomeData.monthly_income },
-        } as Partial<IntakeSession>);
-        break;
-
-      case 'expense_info':
-        await api.intake.updateSession(session.id, {
-          expense_info: expenseData,
-        } as Partial<IntakeSession>);
-        break;
-
-      case 'assets': {
-        // Filter out empty/blank asset forms before sending
-        const filledAssets = assetsData.filter((a) => a.asset_type && a.description?.trim());
-        await api.intake.updateSession(session.id, {
-          assets: filledAssets,
-        } as Partial<IntakeSession>);
-        break;
-      }
-
-      case 'debts': {
-        // Filter empty forms — debt_type, is_secured, and priority_classification
-        // are already set by DebtsStep via DEBT_CATEGORY_META lookup
-        const filledDebts = debtsData.filter((d) => d.creditor_name?.trim());
-        await api.intake.updateSession(session.id, {
-          debts: filledDebts,
-        } as Partial<IntakeSession>);
-        break;
-      }
-
-      default:
-        console.log(`Saving data for ${currentStep.key} not yet implemented`);
+    if (body === null) {
+      console.log(`Saving data for ${currentStepKey} not yet implemented`);
+      return;
     }
+
+    await api.intake.updateSession(session.id, body);
   };
 
   // =========================================================================

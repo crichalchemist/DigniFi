@@ -21,7 +21,32 @@ function renderFormDashboard() {
   );
 }
 
+/** Forms are prepared only from an intake the server marked complete. */
+const completedSession = {
+  id: 1,
+  user: 1,
+  district: 1,
+  current_step: 8,
+  status: 'completed',
+  created_at: '2026-01-20T10:00:00Z',
+  updated_at: '2026-01-20T10:00:00Z',
+  completed_at: '2026-01-20T11:00:00Z',
+  debtor_info: null,
+  income_info: null,
+  expense_info: null,
+  assets: [],
+  debts: [],
+};
+
 describe('FormDashboard', () => {
+  beforeEach(() => {
+    server.use(
+      http.get('http://localhost:8000/api/intake/sessions/:id/', () =>
+        HttpResponse.json(completedSession)
+      )
+    );
+  });
+
   // ---------------------------------------------------------------------------
   // Loading and display
   // ---------------------------------------------------------------------------
@@ -80,6 +105,33 @@ describe('FormDashboard', () => {
     await waitFor(() => {
       expect(screen.getByText(/no active intake session/i)).toBeInTheDocument();
     });
+  });
+
+  // ---------------------------------------------------------------------------
+  // An unfinished intake (forms step 2 §5.3)
+  // ---------------------------------------------------------------------------
+
+  it('asks the filer to finish their intake, with a link back, until it is complete', async () => {
+    server.use(
+      http.get('http://localhost:8000/api/intake/sessions/:id/', () =>
+        HttpResponse.json({ ...completedSession, status: 'in_progress', completed_at: null })
+      )
+    );
+
+    renderFormDashboard();
+
+    await screen.findByText('Form 101 - Voluntary Petition');
+    expect(screen.getByRole('link', { name: 'Finish your intake' })).toHaveAttribute(
+      'href',
+      '/intake'
+    );
+  });
+
+  it('does not ask a filer whose intake is complete to finish it', async () => {
+    renderFormDashboard();
+
+    await screen.findByText('Form 101 - Voluntary Petition');
+    expect(screen.queryByRole('link', { name: 'Finish your intake' })).not.toBeInTheDocument();
   });
 
   // ---------------------------------------------------------------------------
