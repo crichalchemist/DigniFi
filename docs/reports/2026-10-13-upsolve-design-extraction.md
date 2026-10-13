@@ -11,7 +11,7 @@ Upsolve is the closest peer to DigniFi: a free, nonprofit, self-serve Chapter 7 
 ## 1. Method and limits
 
 - **Rendered capture.** Headless Chromium (Playwright 1.58.2, from `frontend/node_modules`) at 1280×900 and 390×844. For named roles (nav, nav link, CTA, headings, stat, body paragraph, footer, footer link) I recorded `getComputedStyle`: family, size, weight, line height, colour, background, radius, shadow and padding. Values in §2 are computed values, not guesses from screenshots.
-- **Stylesheet frequency.** Counts of colours, sizes, radii, shadows, transitions and breakpoints in the homepage's inline CSS (Gatsby 5.16.1, styled-components and emotion, about 54 KB inlined). Counts show what is common, not what each value is for. Roles come from the rendered capture.
+- **Stylesheet frequency.** Counts of colours, sizes, radii, shadows, transitions and breakpoints in the homepage's inline CSS (Gatsby 5.16.1, styled-components and emotion, about 54 KB inlined). Counts show what is common, not what each value is for. A role named in §2.1 was either measured in the rendered capture or read from the screenshots. Values tagged `freq` are common in the CSS, but their role was not measured.
 - **Public pages.** `/learn/how-to-file-bankruptcy/`, `/learn/how-upsolve-is-free/`, `/no-legal-advice/` and `/learn/chapter-7-means-test-calculator/`.
 - **Filing app, view only.** The screener's intro (variants A and B) and its first question, reached by one click on "Get Started". **No answers were entered, nothing was submitted and no account was created.** Everything after the first question sits behind answers and an account. §4 describes it from Upsolve's own public description, and says so where it does.
 - **Screenshots are not committed.** They contain Upsolve's photography, logo and funders' logos. They lived in the job's scratch directory only.
@@ -25,20 +25,20 @@ Upsolve is the closest peer to DigniFi: a free, nonprofit, self-serve Chapter 7 
 ```yaml
 # REFERENCE ONLY. Measured from upsolve.org on 2026-10-13. Do not import into DigniFi.
 color:
-  brand-blue: '#3C5DFF' # nav band, primary CTA fill, theme-color, highlighted words ("4 months"); 18 uses in CSS
-  blue-press: '#2C2EE0' # app "Next" button fill; deepest map states
-  blue-hover: '#324EDB'
-  blue-mid: '#7C93FF' # 5 uses
-  blue-pale: '#BFCAFF'
+  brand-blue: '#3C5DFF' # theme-color and app "Get Started" fill (measured); nav band, hero CTA, highlighted words (screenshots); 18 uses in CSS
+  blue-press: '#2C2EE0' # app "Next" button fill (measured)
+  blue-hover: '#324EDB' # freq: 2 uses, role not measured
+  blue-mid: '#7C93FF' # freq: 5 uses, role not measured
+  blue-pale: '#BFCAFF' # freq, role not measured
   blue-tint: '#EBEFFF' # footer background
   cream: '#EDE8DA' # alternating section background, review cards
   gray-section: '#D9D9D9' # "Why Trust Upsolve?" section
   ink: '#4D555B' # body text and serif headings (7.59:1 on white, 6.20:1 on cream)
-  ink-2: '#656A6F'
-  ink-muted: '#8E8E9B' # 3.23:1 on white, below 4.5:1 for body-size text
-  line: '#D0D5DD'
-  line-faint: '#F0F1F2' # app input border (1.13:1 on white)
-  app-canvas: '#F7F7FA'
+  ink-2: '#656A6F' # freq, role not measured
+  ink-muted: '#8E8E9B' # freq, role not measured; 3.23:1 on white, below 4.5:1 for body-size text
+  line: '#D0D5DD' # freq, role not measured
+  line-faint: '#F0F1F2' # app input border (measured; 1.13:1 on white)
+  app-canvas: '#F7F7FA' # freq, role not measured
   on-blue: '#FFFFFF' # white on brand blue = 5.00:1
 typography:
   sans: 'Averta (commercial; light 300 / regular 400 / semibold 600, self-hosted woff2)'
@@ -54,7 +54,8 @@ typography:
   letter-spacing: none anywhere
 radius:
   [4px, 6-6.7px, 8px, 10px, 12px, 16px, 18px, 31px, 34.7px, 50%]
-  # 4px: app buttons, inputs, FAQ rows · 8px: hero card · 12px: nav CTA (desktop) · 31px+: pill CTAs · 50%: avatars, carousel arrows
+  # measured: 4px app buttons and inputs · 12px nav CTA (desktop) · 31px nav CTA (mobile)
+  # read from screenshots: 4px-ish FAQ rows · 8px-ish hero card · pill hero CTA · round avatars and carousel arrows
 shadow:
   - '0 5px 15px -5px rgba(0,0,25,0.2)'
   - '0 4px 16px 0 #E4E4E6'
@@ -104,8 +105,7 @@ The hand-off from site to app changes typeface, shape and density at the exact m
 - **Body text at weight 300, footer links at weight 200.** The colours pass contrast, but thin strokes at 16px are harder to read on low-end screens.
 - **Screener input border `#F0F1F2` on white is 1.13:1**, far below the 3:1 non-text minimum, so the field barely shows as a field.
 - **The screener question is not a `<label>`.** No `<label>` element was found on the first question screen. aria attributes were not checked.
-- **Hard line break in the hero copy.** On mobile it leaves "forms," alone on a line.
-- **The headline numbers disagree.** The hero says "$1.2 billion" and the counter says "$1,285,714,675".
+- **The hero sentence breaks badly on mobile.** At 390px it leaves "forms," alone on a line (seen in the screenshot; the cause was not confirmed in the markup).
 
 ---
 
@@ -118,7 +118,7 @@ Rules cited are DigniFi's: `DESIGN.md` (New Deal Civic named rules), `docs/PRODU
 | #   | Upsolve pattern                                                                                                                | Why it fits DigniFi                                                                                                                                                              | What DigniFi's version must change                                                                                                                                                                                                                                                                            |
 | --- | ------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | A1  | **Expectation card before the account** (screener intro: cost, fit, "not your lawyer", time, what happens next)                | TI §II.1 "Clear expectations at every step" and "No hidden requirements: upfront document checklist before intake begins". UPL §4.1 wants the disclaimer "visible on page load". | Say what the tool covers (Chapter 7 forms for the Northern District of Illinois, which the filer files themselves), what to have ready, how long it takes and that progress saves, and that it gives information, not advice. **Never the word "qualify"** (see R2). Durations must be measured, not guessed. |
-| A2  | **Numbered process with a duration per step**                                                                                  | TI §II.1 asks for time estimates ("This intake will take 45-60 minutes"). Bold verb lead-ins match Plain Language §IV (headings and lists).                                      | Process time only. No outcome date (see R3). Steps must be DigniFi's real flow (§5), including the parts DigniFi leaves to the filer: court, counseling courses, the meeting with the trustee.                                                                                                                |
+| A2  | **Numbered process with a duration per step**                                                                                  | TI §II.1 asks for time estimates ("This intake will take 45-60 minutes"). Bold verb lead-ins match Plain Language §IV (headings and lists).                                      | Process time only. No outcome date (see R3). Steps must be DigniFi's real flow (§4), including the parts DigniFi leaves to the filer: court, counseling courses, the meeting with the trustee.                                                                                                                |
 | A3  | **FAQ of general questions** ("What is Chapter 7?", "How much does it cost to file?")                                          | UPL §III permits general information. It answers the questions a filer has before committing, without a wall of text (PRODUCT anti-reference: generic government portal).        | Square bordered rows, pine chevron, native `<details>`/`<summary>`. Answers state general rules ("typically", "depends on") and pass the prohibited-phrase list (UPL §4.2–4.3). "Who's eligible?" gets a general-rule answer, never a judgment.                                                               |
 | A4  | **One action in the hero, Sign In in the header**                                                                              | `DESIGN.md` Buttons: one primary per view. PRODUCT "One thing at a time".                                                                                                        | DigniFi's hero has three buttons today: Get Started, Sign In and Try Demo (`LandingPage.tsx:56-69`). Move Sign In to a header link. Deciding where Try Demo goes is the owner's call.                                                                                                                         |
 | A5  | **A privacy claim the filer can check** ("It only leaves our servers when you print out your forms.")                          | Concrete beats general (Plain Language §II.5).                                                                                                                                   | DigniFi's claim must be **true**: uploads are read by an outside AI service. The fix to the current "never shared" line is **DIG-42**. This item only asks that the new wording be as concrete as Upsolve's.                                                                                                  |
