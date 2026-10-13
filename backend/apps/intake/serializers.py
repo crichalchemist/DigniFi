@@ -6,6 +6,7 @@ validation, nested relationships, and trauma-informed error messages.
 """
 
 import re
+from decimal import Decimal
 
 from django.contrib.auth import get_user_model
 from django.core.exceptions import FieldDoesNotExist
@@ -429,7 +430,7 @@ class FeeWaiverApplicationSerializer(serializers.ModelSerializer):
 class SOFAPriorIncomeSerializer(serializers.ModelSerializer):
     """Prior income row for SOFA Form 107 Part 1."""
 
-    gross_amount = serializers.DecimalField(max_digits=12, decimal_places=2)
+    gross_amount = serializers.DecimalField(max_digits=12, decimal_places=2, min_value=Decimal("0"))
 
     class Meta:
         model = SOFAPriorIncome
@@ -439,7 +440,7 @@ class SOFAPriorIncomeSerializer(serializers.ModelSerializer):
 class SOFACreditorPaymentSerializer(serializers.ModelSerializer):
     """Creditor payment row for SOFA Form 107 Part 2."""
 
-    total_paid = serializers.DecimalField(max_digits=12, decimal_places=2)
+    total_paid = serializers.DecimalField(max_digits=12, decimal_places=2, min_value=Decimal("0"))
 
     class Meta:
         model = SOFACreditorPayment
