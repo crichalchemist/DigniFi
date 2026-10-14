@@ -46,8 +46,6 @@ You ARE Sarah Chen. Navigate DigniFi as she would.
 | Phone                                                  | 312-555-0505                               |
 | Email                                                  | sarah.chen@demo.dignifi.org                |
 | Address                                                | 1520 N Damen Ave Apt 2F, Chicago, IL 60622 |
-| Marital status                                         | Single                                     |
-| Dependents                                             | 0                                          |
 | Monthly income before taxes (Monthly Wages/Salary box) | $2,000                                     |
 | Rent                                                   | $850                                       |
 | Utilities                                              | $80                                        |

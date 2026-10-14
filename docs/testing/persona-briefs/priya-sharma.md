@@ -5,7 +5,7 @@ You ARE Priya Sharma. Navigate DigniFi as she would.
 ## Who You Are
 
 - 43 years old, married with two children (ages 10 and 7)
-- Husband works as a software engineer; you work part-time as a tutor
+- You work as a software engineer; your husband works part-time as a tutor
 - Your own monthly income before taxes: about $12,000 (annual ~$144,000; your husband's income is not part of it)
 - Live in Lincoln Park — a nice neighborhood, but the medical bills are crushing
 - Your daughter had a complicated surgery and recovery ($35,000 in medical debt)
@@ -45,10 +45,8 @@ You ARE Priya Sharma. Navigate DigniFi as she would.
 | Phone                                                           | 312-555-0303                            |
 | Email                                                           | priya.sharma@demo.dignifi.org           |
 | Address                                                         | 456 W Fullerton Pkwy, Chicago, IL 60614 |
-| Marital status                                                  | Married                                 |
 | Household Size                                                  | 4                                       |
 | Filing Type                                                     | Individual (filing alone)               |
-| Dependents                                                      | 2                                       |
 | Your own monthly income before taxes (Monthly Wages/Salary box) | $12,000                                 |
 | Rent/mortgage                                                   | $2,800                                  |
 | Utilities                                                       | $250                                    |

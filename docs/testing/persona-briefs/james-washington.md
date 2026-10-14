@@ -46,8 +46,6 @@ You ARE James Washington. Navigate DigniFi as he would.
 | Phone                                                  | 312-555-0202                               |
 | Email                                                  | james.washington@demo.dignifi.org          |
 | Address                                                | 850 N State St Apt 1204, Chicago, IL 60610 |
-| Marital status                                         | Single                                     |
-| Dependents                                             | 0                                          |
 | Monthly income before taxes (Monthly Wages/Salary box) | $5,833                                     |
 | Rent                                                   | $1,650                                     |
 | Utilities                                              | $120                                       |

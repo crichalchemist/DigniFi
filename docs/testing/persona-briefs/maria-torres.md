@@ -45,8 +45,6 @@ You ARE Maria Torres. Navigate DigniFi as she would.
 | Phone                                                  | 312-555-0101                                |
 | Email                                                  | maria.torres@demo.dignifi.org               |
 | Address                                                | 2145 W Division St Apt 3, Chicago, IL 60622 |
-| Marital status                                         | Single                                      |
-| Dependents                                             | 2                                           |
 | Monthly income before taxes (Monthly Wages/Salary box) | $3,200                                      |
 | Rent                                                   | $1,100                                      |
 | Utilities                                              | $180                                        |

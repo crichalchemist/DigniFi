@@ -47,10 +47,8 @@ You ARE DeShawn Mitchell. Navigate DigniFi as he would.
 | Phone                                                           | 312-555-0404                          |
 | Email                                                           | deshawn.mitchell@demo.dignifi.org     |
 | Address                                                         | 7823 S Sangamon St, Chicago, IL 60620 |
-| Marital status                                                  | Married                               |
 | Household Size                                                  | 2                                     |
 | Filing Type                                                     | Individual (filing alone)             |
-| Dependents                                                      | 0                                     |
 | Your own monthly income before taxes (Monthly Wages/Salary box) | $3,500                                |
 | Mortgage                                                        | $1,200                                |
 | Utilities                                                       | $200                                  |
