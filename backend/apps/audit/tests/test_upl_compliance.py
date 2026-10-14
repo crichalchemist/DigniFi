@@ -65,9 +65,8 @@ def _create_session_with_income(
 ) -> IntakeSession:
     """Create intake session with income info.
 
-    monthly_income is the desired CMI (Current Monthly Income).
-    The model stores a 6-month array; we fill all 6 months with the same value
-    so that the average equals the requested CMI.
+    monthly_income is the desired CMI (Current Monthly Income). It is stored as
+    wages, the filer's only income source, so CMI equals it.
     """
     session = IntakeSession.objects.create(user=user, district=district)
 
@@ -90,7 +89,7 @@ def _create_session_with_income(
         session=session,
         marital_status=marital_status,
         number_of_dependents=number_of_dependents,
-        monthly_income=[float(monthly_income)] * 6,
+        monthly_gross_wages=monthly_income,
     )
 
     return session

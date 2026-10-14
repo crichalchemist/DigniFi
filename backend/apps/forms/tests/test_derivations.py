@@ -1,13 +1,14 @@
 """Tests for factual derivations and section predicates."""
 
 from datetime import date
+from decimal import Decimal
 
 import pytest
 from django.contrib.auth import get_user_model
 
 from apps.districts.models import District
 from apps.forms.services.derivations import DERIVATIONS, PREDICATES
-from apps.intake.models import DebtorInfo, IntakeSession
+from apps.intake.models import DebtorInfo, IncomeInfo, IntakeSession
 
 User = get_user_model()
 
@@ -99,3 +100,83 @@ def test_has_attorney_predicate():
         session=session, form_type="form_107", field_key="attorney_gate", value="yes"
     )
     assert PREDICATES["has_attorney"](session) is True
+
+
+# ---------------------------------------------------------------------------
+# Income rules read the Income step's ten amounts (forms step 2 spec §5.5, §7.7)
+# ---------------------------------------------------------------------------
+
+# Each source gets a distinct power of two, so every sum of sources is unique and a rule
+# that reads the wrong source, or adds one too many, returns a different figure.
+TEN_SOURCES = {
+    "monthly_gross_wages": Decimal("1.00"),
+    "monthly_overtime": Decimal("2.00"),
+    "monthly_tips": Decimal("4.00"),
+    "monthly_rental_income": Decimal("8.00"),
+    "monthly_pension": Decimal("16.00"),
+    "monthly_social_security": Decimal("32.00"),
+    "monthly_unemployment": Decimal("64.00"),
+    "monthly_child_support": Decimal("128.00"),
+    "monthly_alimony": Decimal("256.00"),
+    "monthly_other_income": Decimal("512.00"),
+}
+
+# The rules switched in 2a commit 4, with the sources each one adds up (spec §6.2's
+# "Returns"). Their names still describe their old lines until 2b moves the bindings.
+SWITCHED_RULES = {
+    "cmi": [field for field in TEN_SOURCES if field != "monthly_social_security"],
+    "schedule_i_net_wages_debtor1": ["monthly_gross_wages", "monthly_tips"],
+    "schedule_i_rental_debtor1": ["monthly_rental_income"],
+    "schedule_i_child_support_debtor1": ["monthly_child_support", "monthly_alimony"],
+    "schedule_i_unemployment_debtor1": ["monthly_unemployment"],
+    "schedule_i_social_security_debtor1": ["monthly_social_security"],
+    "schedule_i_pension_debtor1": ["monthly_pension"],
+    "schedule_i_other_income_debtor1": ["monthly_other_income"],
+    "line1_wages": ["monthly_gross_wages", "monthly_tips", "monthly_overtime"],
+    "line6b_child_support_alimony": ["monthly_child_support"],
+    "line3_real_property_income": ["monthly_rental_income"],
+    "line6a_unemployment": ["monthly_unemployment"],
+    "line5a_pension_retirement": ["monthly_pension"],
+    "line7_other_income": ["monthly_other_income"],
+}
+
+
+@pytest.mark.parametrize("rule,sources", list(SWITCHED_RULES.items()))
+def test_each_switched_income_rule_returns_its_own_sources_figure(session, rule, sources):
+    IncomeInfo.objects.create(session=session, **TEN_SOURCES)
+
+    expected = sum((TEN_SOURCES[field] for field in sources), Decimal("0"))
+    assert DERIVATIONS[rule](session) == f"{expected:.2f}"
+
+
+@pytest.mark.parametrize("rule", [rule for rule in SWITCHED_RULES if rule != "cmi"])
+def test_an_income_rule_prints_blank_when_the_filer_gave_none_of_its_sources(session, rule):
+    # Every other source was given, so the rule must not borrow one of them.
+    given = {f: a for f, a in TEN_SOURCES.items() if f not in SWITCHED_RULES[rule]}
+    IncomeInfo.objects.create(session=session, **given)
+
+    assert DERIVATIONS[rule](session) == ""
+
+
+@pytest.mark.parametrize("rule", [rule for rule in SWITCHED_RULES if rule != "cmi"])
+def test_an_income_source_typed_as_zero_prints_zero(session, rule):
+    IncomeInfo.objects.create(session=session, **{field: Decimal("0") for field in TEN_SOURCES})
+
+    assert DERIVATIONS[rule](session) == "0.00"
+
+
+def test_an_income_sum_counts_an_empty_source_as_zero(session):
+    # Alimony given, child support left empty: Schedule I's support line still prints.
+    IncomeInfo.objects.create(session=session, monthly_alimony=Decimal("300.00"))
+
+    assert DERIVATIONS["schedule_i_child_support_debtor1"](session) == "300.00"
+
+
+def test_cmi_refuses_a_session_with_no_income_by_source(session):
+    from apps.eligibility.cmi import IncomeNotSplit
+
+    with pytest.raises(IncomeNotSplit):
+        DERIVATIONS["cmi"](session)
+    IncomeInfo.objects.create(session=session, monthly_income=[2500] * 6)
+    with pytest.raises(IncomeNotSplit):
+        DERIVATIONS["cmi"](session)

@@ -11,6 +11,8 @@ Covers:
   - Permission enforcement (users see only their own sessions)
   - The error contract: 422 with a reason, 500 logged by type only
   - The encrypted snapshot never leaves the server
+  - The means test is worked out again on every call that decides the packet
+  - A filed form stays, and downloads, after it leaves the packet
 """
 
 import json
@@ -20,11 +22,13 @@ from unittest.mock import patch
 
 import pytest
 from django.contrib.auth import get_user_model
+from django.core.management import call_command
 from django.db import connection
 from rest_framework import status
 from rest_framework.test import APIClient
 
-from apps.districts.models import District
+from apps.districts.models import District, MedianIncome
+from apps.eligibility.models import MeansTest
 from apps.forms.models import GeneratedForm
 from apps.forms.services.fill_resolver import UnmappedChoice
 from apps.forms.services.pdf_filler import (
@@ -33,8 +37,10 @@ from apps.forms.services.pdf_filler import (
     TemplateHasNoForm,
     UnknownField,
 )
+from apps.forms.tests.pdf_readback import read_widgets
 from apps.intake.models import (
     DebtorInfo,
+    ExpenseInfo,
     IncomeInfo,
     IntakeSession,
 )
@@ -83,19 +89,23 @@ def unauth_client():
 
 @pytest.fixture
 def district(db):
-    return District.objects.create(
-        code="ilnd",
-        name="Northern District of Illinois",
-        state="IL",
-        court_name="U.S. Bankruptcy Court, Northern District of Illinois",
-        pro_se_efiling_allowed=False,
-        filing_fee_chapter_7=Decimal("338.00"),
-    )
+    # The real ILND data: preparing forms works the means test out against its median income.
+    call_command("loaddata", "ilnd_2025_data", verbosity=0)
+    return District.objects.get(code="ilnd")
 
 
 @pytest.fixture
 def session(user, district):
-    return IntakeSession.objects.create(user=user, district=district)
+    # Forms are prepared only from an intake the filer completed (spec §5.3), and Complete
+    # requires income, which the means test reads on every call (spec §5.6).
+    session = IntakeSession.objects.create(user=user, district=district, status="completed")
+    IncomeInfo.objects.create(
+        session=session,
+        marital_status="single",
+        number_of_dependents=0,
+        monthly_gross_wages=Decimal("3000.00"),
+    )
+    return session
 
 
 @pytest.fixture
@@ -116,18 +126,6 @@ def session_with_debtor(session):
         zip_code="60601",
     )
     return session
-
-
-@pytest.fixture
-def session_with_income(session_with_debtor):
-    """Session with debtor + income info for means test generators."""
-    IncomeInfo.objects.create(
-        session=session_with_debtor,
-        marital_status="single",
-        number_of_dependents=0,
-        monthly_income=[3000, 3000, 3000, 3000, 3000, 3000],
-    )
-    return session_with_debtor
 
 
 @pytest.fixture
@@ -194,10 +192,10 @@ class TestGenerateEndpoint:
         assert resp.status_code == status.HTTP_200_OK
         assert resp.data["form"]["form_type"] == "schedule_a_b"
 
-    def test_generate_schedule_i(self, api_client, session_with_income):
+    def test_generate_schedule_i(self, api_client, session_with_debtor):
         resp = api_client.post(
             self.URL,
-            {"session_id": session_with_income.id, "form_type": "schedule_i"},
+            {"session_id": session_with_debtor.id, "form_type": "schedule_i"},
             format="json",
         )
         assert resp.status_code == status.HTTP_200_OK
@@ -378,36 +376,42 @@ class TestGenerateAllEndpoint:
 
     URL = "/api/forms/generate_all/"
 
-    def test_generates_every_form_in_the_packet(self, api_client, session_with_income):
+    def test_generates_every_form_in_the_packet(self, api_client, session_with_debtor):
         """One form's missing data is reported and doesn't undo the others."""
+        debtor = session_with_debtor.debtor_info
+        debtor.ssn = ""
+        debtor.save()
         resp = api_client.post(
             self.URL,
-            {"session_id": session_with_income.id},
+            {"session_id": session_with_debtor.id},
             format="json",
         )
         assert resp.status_code == status.HTTP_200_OK
-        # No fee waiver: no 103B. No means test yet: 122A-1 can't fill, and no 122A-2.
+        # No fee waiver: no 103B. Income below the median: no 122A-2. Form 121 needs the SSN.
         assert resp.data["errors"] == [
-            {"form_type": "form_122a1", "error": "The eligibility check hasn't been run yet."}
+            {
+                "form_type": "form_121",
+                "error": "Your Social Security number is missing or isn't 9 digits.",
+            }
         ]
         assert resp.data["total_generated"] == 13
-        assert GeneratedForm.objects.filter(session=session_with_income).count() == 13
+        assert GeneratedForm.objects.filter(session=session_with_debtor).count() == 13
 
-    def test_drops_forms_that_no_longer_apply(self, api_client, session_with_income, user):
+    def test_drops_forms_that_no_longer_apply(self, api_client, session_with_debtor, user):
         GeneratedForm.objects.create(
-            session=session_with_income, form_type="form_103b", generated_by=user
+            session=session_with_debtor, form_type="form_103b", generated_by=user
         )
-        api_client.post(self.URL, {"session_id": session_with_income.id}, format="json")
+        api_client.post(self.URL, {"session_id": session_with_debtor.id}, format="json")
         assert not GeneratedForm.objects.filter(
-            session=session_with_income, form_type="form_103b"
+            session=session_with_debtor, form_type="form_103b"
         ).exists()
 
-    def test_filed_form_is_returned_as_filed(self, api_client, session_with_income, user):
+    def test_filed_form_is_returned_as_filed(self, api_client, session_with_debtor, user):
         # The dashboard replaces its list with `generated`, so a filed form must be in it.
-        form = _filed_form(session_with_income, user, "form_106dec", {"Debtor 1": "Jane Doe"})
-        _rename_filer(session_with_income, "Janet")
+        form = _filed_form(session_with_debtor, user, "form_106dec", {"Debtor 1": "Jane Doe"})
+        _rename_filer(session_with_debtor, "Janet")
 
-        resp = api_client.post(self.URL, {"session_id": session_with_income.id}, format="json")
+        resp = api_client.post(self.URL, {"session_id": session_with_debtor.id}, format="json")
 
         assert resp.status_code == status.HTTP_200_OK
         returned = [f for f in resp.data["generated"] if f["form_type"] == "form_106dec"]
@@ -416,7 +420,7 @@ class TestGenerateAllEndpoint:
         assert form.status == "filed"
         assert json.loads(form.field_values) == {"Debtor 1": "Jane Doe"}
         # The forms not yet filed are resolved from the current answers.
-        petition = GeneratedForm.objects.get(session=session_with_income, form_type="form_101")
+        petition = GeneratedForm.objects.get(session=session_with_debtor, form_type="form_101")
         assert json.loads(petition.field_values)["Debtor1.First name"] == "Janet"
 
     def test_missing_session_id(self, api_client):
@@ -616,6 +620,309 @@ class TestPacketEndpoint:
     def test_other_users_session(self, api_client, other_session):
         resp = api_client.get(self.URL, {"session": other_session.id})
         assert resp.status_code == status.HTTP_404_NOT_FOUND
+
+
+# ── Only a completed intake prepares forms (spec §5.3) ────────────────
+
+FINISH = "Finish your intake before preparing your forms."
+
+
+@pytest.mark.django_db
+class TestCompletionCheck:
+    """Until the filer presses Complete, an empty list can't mean "none"."""
+
+    def test_unfinished_intake_cannot_prepare_forms(self, api_client, session_with_debtor, user):
+        session = session_with_debtor
+        session.status = "in_progress"
+        session.save()
+        # No fee waiver application, so 103B has left the packet; 101 is in it, unfiled.
+        GeneratedForm.objects.create(session=session, form_type="form_103b", generated_by=user)
+        unfiled = GeneratedForm.objects.create(
+            session=session, form_type="form_101", status="generated", generated_by=user
+        )
+
+        generate_all = api_client.post(
+            "/api/forms/generate_all/", {"session_id": session.id}, format="json"
+        )
+        generate = api_client.post(
+            "/api/forms/generate/",
+            {"session_id": session.id, "form_type": "form_106dec"},
+            format="json",
+        )
+        regenerate = api_client.post(f"/api/forms/{unfiled.id}/regenerate/")
+        download = api_client.get(f"/api/forms/{unfiled.id}/download/")
+
+        # One refusal for the whole packet, not one per form.
+        assert generate_all.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert generate_all.data == {"error": FINISH}
+        for resp, form_type in [
+            (generate, "form_106dec"),
+            (regenerate, "form_101"),
+            (download, "form_101"),
+        ]:
+            assert resp.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+            assert resp.data == {"form_type": form_type, "error": FINISH}
+        # Generate All refused before it dropped the form that left the packet.
+        assert set(
+            GeneratedForm.objects.filter(session=session).values_list("form_type", flat=True)
+        ) == {"form_101", "form_103b"}
+        unfiled.refresh_from_db()
+        assert (unfiled.status, unfiled.field_values) == ("generated", "")
+
+    def test_unfinished_intake_can_still_read_its_packet(self, api_client, session_with_debtor):
+        session_with_debtor.status = "in_progress"
+        session_with_debtor.save()
+
+        resp = api_client.get("/api/forms/packet/", {"session": session_with_debtor.id})
+
+        assert resp.status_code == status.HTTP_200_OK
+        assert len(resp.data["form_types"]) == 14
+
+    def test_filed_form_still_downloads_while_the_intake_is_reopened(
+        self, api_client, session_with_debtor, user
+    ):
+        # The filer needs the copy they filed even after an edit sent them back to Review.
+        form = _filed_form(session_with_debtor, user, "form_121", {"Debtor1.First name": "Jane"})
+        session_with_debtor.status = "in_progress"
+        session_with_debtor.save()
+
+        resp = api_client.get(f"/api/forms/{form.id}/download/")
+
+        assert resp.status_code == status.HTTP_200_OK
+        assert resp["Content-Type"] == "application/pdf"
+
+
+# ── The means test is worked out again before the packet is decided (spec §5.6) ──
+
+SPLIT_BY_SOURCE = "Enter your income by source on the Income step."
+NOT_PREPARED = "This form couldn't be prepared. Please try again later."
+
+
+def _set_wages(session, wages):
+    income = session.income_info
+    income.monthly_gross_wages = None if wages is None else Decimal(wages)
+    income.save()
+
+
+def _stale_means_test(session, cmi):
+    """A stored result, worked out from income the filer has since changed."""
+    MeansTest.objects.update_or_create(
+        session=session,
+        defaults={
+            "district": session.district,
+            "median_income_threshold": Decimal("71304.00"),
+            "calculated_cmi": Decimal(cmi),
+            "passes_means_test": Decimal(cmi) * 12 <= Decimal("71304.00"),
+        },
+    )
+
+
+@pytest.mark.django_db
+class TestMeansTestWorkedOutAgain:
+    """122A-2 and 122A-1 follow the filer's current income, never an old result (DIG-160)."""
+
+    @pytest.mark.parametrize(
+        "wages,stale_cmi,above_median",
+        [("3000.00", "9000.00", False), ("9000.00", "3000.00", True)],
+        ids=["income_fell_below_the_median", "income_rose_above_the_median"],
+    )
+    def test_stale_means_test_no_longer_decides_the_packet(
+        self, api_client, session_with_debtor, wages, stale_cmi, above_median
+    ):
+        session = session_with_debtor
+        _set_wages(session, wages)
+
+        _stale_means_test(session, stale_cmi)
+        listed = api_client.get("/api/forms/packet/", {"session": session.id})
+        _stale_means_test(session, stale_cmi)
+        generated = api_client.post(
+            "/api/forms/generate_all/", {"session_id": session.id}, format="json"
+        )
+        _stale_means_test(session, stale_cmi)
+        single = api_client.post(
+            "/api/forms/generate/",
+            {"session_id": session.id, "form_type": "form_122a2"},
+            format="json",
+        )
+
+        assert ("form_122a2" in listed.data["form_types"]) is above_median
+        assert generated.data["errors"] == []
+        assert ("form_122a2" in [f["form_type"] for f in generated.data["generated"]]) is (
+            above_median
+        )
+        assert single.status_code == (
+            status.HTTP_200_OK if above_median else status.HTTP_422_UNPROCESSABLE_ENTITY
+        )
+        # The stored result is the one worked out from the filer's current income.
+        assert MeansTest.objects.get(session=session).calculated_cmi == Decimal(wages)
+
+    def test_unfinished_intake_reads_the_packet_its_stored_data_gives(
+        self, api_client, session_with_debtor
+    ):
+        # Never refused, even with income not yet split by source, and nothing is redone.
+        session = session_with_debtor
+        session.status = "in_progress"
+        session.save()
+        session.income_info.monthly_income = [3000] * 6
+        _set_wages(session, None)
+        _stale_means_test(session, "9000.00")
+
+        resp = api_client.get("/api/forms/packet/", {"session": session.id})
+
+        assert resp.status_code == status.HTTP_200_OK
+        assert "form_122a2" in resp.data["form_types"]
+        assert MeansTest.objects.get(session=session).calculated_cmi == Decimal("9000.00")
+
+    def test_income_not_split_refuses_every_call_that_prepares_forms(
+        self, api_client, session_with_debtor, user
+    ):
+        session = session_with_debtor
+        # A total saved before income was stored by source.
+        session.income_info.monthly_income = [3000] * 6
+        _set_wages(session, None)
+        # No fee waiver application, so 103B has left the packet. 106B-Dec reads no income.
+        GeneratedForm.objects.create(session=session, form_type="form_103b", generated_by=user)
+        unfiled = GeneratedForm.objects.create(
+            session=session, form_type="form_106dec", status="generated", generated_by=user
+        )
+        filed = _filed_form(session, user, "form_121", {"Debtor1.First name": "Jane"})
+
+        generate_all = api_client.post(
+            "/api/forms/generate_all/", {"session_id": session.id}, format="json"
+        )
+        listed = api_client.get("/api/forms/packet/", {"session": session.id})
+        generate = api_client.post(
+            "/api/forms/generate/",
+            {"session_id": session.id, "form_type": "form_106dec"},
+            format="json",
+        )
+        regenerate = api_client.post(f"/api/forms/{unfiled.id}/regenerate/")
+        download = api_client.get(f"/api/forms/{unfiled.id}/download/")
+        filed_download = api_client.get(f"/api/forms/{filed.id}/download/")
+
+        # One refusal covers the whole call, the packet list included.
+        for resp in (generate_all, listed):
+            assert resp.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+            assert resp.data == {"error": SPLIT_BY_SOURCE}
+        for resp in (generate, regenerate, download):
+            assert resp.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+            assert resp.data == {"form_type": "form_106dec", "error": SPLIT_BY_SOURCE}
+        # Generate All refused before it dropped the form that left the packet.
+        assert set(
+            GeneratedForm.objects.filter(session=session).values_list("form_type", flat=True)
+        ) == {"form_103b", "form_106dec", "form_121"}
+        # The filed copy prints what was filed, which needs no means test.
+        assert filed_download.status_code == status.HTTP_200_OK
+
+    def test_completed_intake_with_no_income_asks_for_income_by_source(
+        self, api_client, session_with_debtor
+    ):
+        # No income at all is income not entered by source: the filer can fix it, so it is
+        # the plain-words 422, not a 500.
+        session = session_with_debtor
+        session.income_info.delete()
+
+        generate_all = api_client.post(
+            "/api/forms/generate_all/", {"session_id": session.id}, format="json"
+        )
+        listed = api_client.get("/api/forms/packet/", {"session": session.id})
+        generate = api_client.post(
+            "/api/forms/generate/",
+            {"session_id": session.id, "form_type": "form_106dec"},
+            format="json",
+        )
+
+        for resp in (generate_all, listed):
+            assert resp.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+            assert resp.data == {"error": SPLIT_BY_SOURCE}
+        assert generate.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert generate.data == {"form_type": "form_106dec", "error": SPLIT_BY_SOURCE}
+
+    def test_missing_median_income_is_a_500_logged_by_type_only(
+        self, api_client, session_with_debtor, user, caplog
+    ):
+        session = session_with_debtor
+        MedianIncome.objects.filter(district=session.district).delete()
+        GeneratedForm.objects.create(session=session, form_type="form_103b", generated_by=user)
+        unfiled = GeneratedForm.objects.create(
+            session=session, form_type="form_106dec", status="generated", generated_by=user
+        )
+
+        generate_all = api_client.post(
+            "/api/forms/generate_all/", {"session_id": session.id}, format="json"
+        )
+        listed = api_client.get("/api/forms/packet/", {"session": session.id})
+        generate = api_client.post(
+            "/api/forms/generate/",
+            {"session_id": session.id, "form_type": "form_106dec"},
+            format="json",
+        )
+        download = api_client.get(f"/api/forms/{unfiled.id}/download/")
+
+        for resp in (generate_all, listed):
+            assert resp.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
+            assert resp.data == {"error": NOT_PREPARED}
+        for resp in (generate, download):
+            assert resp.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
+            assert resp.data == {"form_type": "form_106dec", "error": NOT_PREPARED}
+        assert set(
+            GeneratedForm.objects.filter(session=session).values_list("form_type", flat=True)
+        ) == {"form_103b", "form_106dec"}
+        # Operations fix this; the log names the exception's type and nothing it says.
+        assert "ValueError" in caplog.text
+        assert "median income data" not in caplog.text
+
+
+# ── A filed form is kept after it leaves the packet (DIG-155) ─────────
+
+
+@pytest.mark.django_db
+def test_filed_form_survives_leaving_the_packet(api_client, session_with_debtor):
+    session = session_with_debtor
+    ExpenseInfo.objects.create(session=session)  # Complete requires it
+    _set_wages(session, "9000.00")  # above the median: 122A-2 is in the packet
+    api_client.post("/api/forms/generate_all/", {"session_id": session.id}, format="json")
+    form = GeneratedForm.objects.get(session=session, form_type="form_122a2")
+    assert api_client.post(f"/api/forms/{form.id}/mark_filed/").status_code == 200
+    form.refresh_from_db()
+    filed_values = json.loads(form.field_values)
+
+    # The filer's income falls below the median, they correct their first name, and they
+    # complete the intake again.
+    session_url = f"/api/intake/sessions/{session.id}/"
+    lowered = api_client.patch(
+        session_url,
+        {
+            "income_info": {"monthly_gross_wages": "3000.00"},
+            "debtor_info": {"first_name": "Janet"},
+        },
+        format="json",
+    )
+    assert lowered.status_code == 200
+    assert api_client.post(f"{session_url}complete/").status_code == 200
+    regenerated = api_client.post(
+        "/api/forms/generate_all/", {"session_id": session.id}, format="json"
+    )
+    listed = api_client.get("/api/forms/packet/", {"session": session.id})
+    download = api_client.get(f"/api/forms/{form.id}/download/")
+
+    assert "form_122a2" not in listed.data["form_types"]
+    # Generate All keeps it as filed, and returns it, so the dashboard still shows it.
+    assert [
+        (f["id"], f["status"])
+        for f in regenerated.data["generated"]
+        if f["form_type"] == "form_122a2"
+    ] == [(form.id, "filed")]
+    form.refresh_from_db()
+    assert json.loads(form.field_values) == filed_values
+    # It downloads, and prints what was filed, the old name included.
+    assert download.status_code == status.HTTP_200_OK
+    printed = {w.full_name: w.value for w in read_widgets(download.content)}
+    typed = {
+        name: value for name, value in filed_values.items() if value and not value.startswith("/")
+    }
+    assert "Jane Doe" in typed.values()
+    assert {name: printed.get(name) for name in typed} == typed
 
 
 # ── The snapshot stays on the server (DIG-124) ────────────────────────

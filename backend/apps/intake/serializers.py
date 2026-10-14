@@ -6,6 +6,7 @@ validation, nested relationships, and trauma-informed error messages.
 """
 
 import re
+from decimal import Decimal
 
 from django.contrib.auth import get_user_model
 from django.core.exceptions import FieldDoesNotExist
@@ -71,7 +72,11 @@ class DebtorInfoSerializer(serializers.ModelSerializer):
 
 
 class IncomeInfoSerializer(serializers.ModelSerializer):
-    """Serializer for income information."""
+    """Serializer for income information, stored by source (forms step 2 spec §5.5).
+
+    monthly_income, the total saved before step 2, is read-only: the Income step shows it
+    while asking the filer to split it.
+    """
 
     total_monthly_income = serializers.SerializerMethodField()
 
@@ -80,46 +85,16 @@ class IncomeInfoSerializer(serializers.ModelSerializer):
         fields = [
             "marital_status",
             "number_of_dependents",
+            *IncomeInfo.SOURCE_FIELDS,
             "monthly_income",
             "total_monthly_income",
             "created_at",
         ]
-        read_only_fields = ["created_at", "total_monthly_income"]
+        read_only_fields = ["created_at", "monthly_income", "total_monthly_income"]
 
     def get_total_monthly_income(self, obj):
-        """Return the saved monthly income total (the average of the stored months)."""
+        """Return the ten amounts added up, or None when the filer gave none of them."""
         return obj.calculate_total_monthly_income()
-
-    def validate_monthly_income(self, value):
-        """
-        Validate monthly_income is a list of 6 positive numbers.
-
-        Args:
-            value: List of monthly income amounts
-
-        Returns:
-            list: Validated monthly income list
-
-        Raises:
-            ValidationError: If format is invalid
-        """
-        if not isinstance(value, list):
-            raise serializers.ValidationError("Please provide income as a list of monthly amounts")
-
-        if len(value) != 6:
-            raise serializers.ValidationError("Please provide income for the last 6 months")
-
-        for i, amount in enumerate(value):
-            try:
-                float_amount = float(amount)
-                if float_amount < 0:
-                    raise serializers.ValidationError(f"Income for month {i+1} cannot be negative")
-            except (TypeError, ValueError) as err:
-                raise serializers.ValidationError(
-                    f"Income for month {i+1} must be a valid number"
-                ) from err
-
-        return value
 
 
 class ExpenseInfoSerializer(serializers.ModelSerializer):
@@ -211,6 +186,8 @@ class DebtInfoSerializer(serializers.ModelSerializer):
             "amount_owed",
             "monthly_payment",
             "is_in_collections",
+            "is_secured",
+            "collateral_description",
             "notes",
             "created_at",
             "updated_at",
@@ -245,11 +222,11 @@ class NestedDebtInfoSerializer(DebtInfoSerializer):
 
 
 def _save_rows_by_id(session, model, rows) -> None:
-    """Save a session's nested assets or debts by id.
+    """Save a session's nested assets or debts, or its contracts or codebtors list, by id.
 
     A row whose id is one of this session's rows updates only the fields it sent, so
-    what the browser never received (account numbers, the scanned-bill link, the
-    secured flag) survives. Any other row is created on this session, so a client-sent
+    what the browser never received (account numbers, the scanned-bill link)
+    survives. Any other row is created on this session, so a client-sent
     ``session`` or another user's id never touches another session. Stored rows the
     payload left out are deleted.
     """
@@ -266,6 +243,10 @@ def _save_rows_by_id(session, model, rows) -> None:
         row.save()
         kept.add(row.pk)
     model.objects.filter(pk__in=existing.keys() - kept).delete()
+
+
+# The intake sections a session save can carry (spec §5.3).
+_INTAKE_DATA = {"debtor_info", "income_info", "expense_info", "assets", "debts"}
 
 
 class IntakeSessionSerializer(serializers.ModelSerializer):
@@ -300,7 +281,16 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
             "created_at",
             "completed_at",
         ]
-        read_only_fields = ["id", "user", "created_at", "completed_at", "district_name"]
+        # Only the complete and update_step actions set status and current_step (DIG-151).
+        read_only_fields = [
+            "id",
+            "user",
+            "status",
+            "current_step",
+            "created_at",
+            "completed_at",
+            "district_name",
+        ]
 
     def create(self, validated_data):
         """
@@ -344,7 +334,11 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
 
         Updates or creates debtor_info, income_info, expense_info.
         Saves assets/debts by id (see _save_rows_by_id).
+        Saving any of them reopens a completed intake.
         """
+        if _INTAKE_DATA.intersection(validated_data):
+            instance.reopen()
+
         debtor_data = validated_data.pop("debtor_info", None)
         income_data = validated_data.pop("income_info", None)
         expense_data = validated_data.pop("expense_info", None)
@@ -363,7 +357,9 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
         if income_data:
             IncomeInfo.objects.update_or_create(session=instance, defaults=income_data)
 
-        if expense_data:
+        # An empty body still creates the record with its $0 defaults, so the filer can
+        # complete (DIG-153). The wizard sends all 13 amounts, a blank box as 0.
+        if expense_data is not None:
             ExpenseInfo.objects.update_or_create(session=instance, defaults=expense_data)
 
         if assets_data is not None:
@@ -376,9 +372,24 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
 
 
 class FeeWaiverApplicationSerializer(serializers.ModelSerializer):
-    # Explicit field declarations — EncryptedDecimalField confuses DRF's auto-mapper
-    monthly_income = serializers.DecimalField(max_digits=10, decimal_places=2)
-    monthly_expenses = serializers.DecimalField(max_digits=10, decimal_places=2)
+    """The fee-waiver page's answers (forms step 2 spec §5.7).
+
+    The old income, expenses and benefits answers are no longer written, so they are not
+    fields here. Take-home pay and the non-cash answer are required, so a page that sent
+    either under another name gets a 400 instead of losing it.
+    """
+
+    # Explicit field declaration — EncryptedDecimalField confuses DRF's auto-mapper.
+    # Zero or more and within the column, like every amount the filer types.
+    monthly_take_home_pay = serializers.DecimalField(
+        max_digits=10, decimal_places=2, min_value=Decimal("0")
+    )
+    # The model allows empty, for rows saved before the question existed.
+    receives_noncash_assistance = serializers.BooleanField()
+    # The "What kind?" answer: each kind is a non-blank line of text.
+    benefit_types = serializers.ListField(
+        child=serializers.CharField(max_length=255), required=False
+    )
     # Remove the auto-generated UniqueValidator on session so that a second POST
     # from the same session passes validation — perform_create uses update_or_create
     # to handle the upsert safely.
@@ -392,9 +403,8 @@ class FeeWaiverApplicationSerializer(serializers.ModelSerializer):
             "id",
             "session",
             "household_size",
-            "monthly_income",
-            "monthly_expenses",
-            "receives_public_benefits",
+            "monthly_take_home_pay",
+            "receives_noncash_assistance",
             "benefit_types",
             "cannot_pay_full",
             "cannot_pay_installments",
@@ -404,11 +414,28 @@ class FeeWaiverApplicationSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["id", "status", "created_at", "updated_at"]
 
+    def validate(self, attrs):
+        """A Yes to non-cash help needs "What kind?" answered, and a No keeps no kind.
+
+        A PATCH may send only one of the two, so the other is the stored one.
+        """
+        answer = attrs.get(
+            "receives_noncash_assistance",
+            getattr(self.instance, "receives_noncash_assistance", None),
+        )
+        if answer is False:
+            attrs["benefit_types"] = []
+        elif answer and not attrs.get("benefit_types", getattr(self.instance, "benefit_types", [])):
+            raise serializers.ValidationError(
+                {"benefit_types": [self.fields["benefit_types"].error_messages["required"]]}
+            )
+        return attrs
+
 
 class SOFAPriorIncomeSerializer(serializers.ModelSerializer):
     """Prior income row for SOFA Form 107 Part 1."""
 
-    gross_amount = serializers.DecimalField(max_digits=12, decimal_places=2)
+    gross_amount = serializers.DecimalField(max_digits=12, decimal_places=2, min_value=Decimal("0"))
 
     class Meta:
         model = SOFAPriorIncome
@@ -418,7 +445,7 @@ class SOFAPriorIncomeSerializer(serializers.ModelSerializer):
 class SOFACreditorPaymentSerializer(serializers.ModelSerializer):
     """Creditor payment row for SOFA Form 107 Part 2."""
 
-    total_paid = serializers.DecimalField(max_digits=12, decimal_places=2)
+    total_paid = serializers.DecimalField(max_digits=12, decimal_places=2, min_value=Decimal("0"))
 
     class Meta:
         model = SOFACreditorPayment
@@ -564,3 +591,19 @@ class CodebtorSerializer(serializers.ModelSerializer):
             "zip_code",
             "relationship",
         ]
+
+
+class ExecutoryContractRowSerializer(ExecutoryContractSerializer):
+    """A contract row in the Contracts step's list save.
+
+    The id is writable so a row the wizard loaded updates in place. The single-contract
+    POST keeps the base serializer, so it never accepts a client id.
+    """
+
+    id = serializers.IntegerField(required=False)
+
+
+class CodebtorRowSerializer(CodebtorSerializer):
+    """A codebtor row in the Codebtors step's list save. See ExecutoryContractRowSerializer."""
+
+    id = serializers.IntegerField(required=False)

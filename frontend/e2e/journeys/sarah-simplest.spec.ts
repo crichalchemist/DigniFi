@@ -13,6 +13,7 @@ import { WizardPage } from '../pages/wizard.page';
 import { DocumentsPage } from '../pages/documents.page';
 import { FeeWaiverPage } from '../pages/fee-waiver.page';
 import { DashboardPage } from '../pages/dashboard.page';
+import { SOFAPage } from '../pages/sofa.page';
 
 test.describe('Sarah Chen — Simplest Case', () => {
   test('completes intake with no assets (fastest path)', async ({ page }) => {
@@ -22,6 +23,7 @@ test.describe('Sarah Chen — Simplest Case', () => {
     const documents = new DocumentsPage(page);
     const feeWaiver = new FeeWaiverPage(page);
     const dashboard = new DashboardPage(page);
+    const sofa = new SOFAPage(page);
 
     await landing.goto();
     await landing.clickGetStarted();
@@ -74,12 +76,17 @@ test.describe('Sarah Chen — Simplest Case', () => {
     await wizard.completeIntake();
 
     // Sarah is fee-waiver eligible → routed to the waiver application first
-    const totalExpenses = Object.values(SARAH.expenses).reduce((a, b) => a + b, 0);
     await feeWaiver.submit(
       SARAH.debtor.household_size,
-      SARAH.income.total_monthly_income,
-      totalExpenses
+      SARAH.fee_waiver.take_home_pay,
+      SARAH.fee_waiver.noncash_assistance
     );
+
+    // The waiver application continues to the SOFA step (DIG-149). This journey isn't about
+    // financial history, so skip SOFA to reach the forms dashboard. (The SOFA save path
+    // itself is covered by sofa-journey.spec.ts.)
+    await sofa.waitForLoad();
+    await sofa.skipForNow();
 
     // Generate all forms
     await dashboard.generateAllForms(15); // 14 forms + Form 103B (fee waiver)

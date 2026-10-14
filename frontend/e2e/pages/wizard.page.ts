@@ -105,7 +105,7 @@ export class WizardPage {
     // authenticated user. The persona registered with data.email, so the field
     // already holds it — assert instead of fill (fill() times out on readOnly).
     await expect(this.page.locator('input[name="email"]')).toHaveValue(data.email);
-    await fill('phone_number', data.phone);
+    await fill('phone', data.phone);
 
     // Household & filing info (required since the joint-filing feature)
     await fill('household_size', String(data.household_size));

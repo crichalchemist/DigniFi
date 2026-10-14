@@ -5,7 +5,7 @@
  * and handles data persistence to backend API.
  */
 
-import { useState, useEffect, useRef, useLayoutEffect } from 'react';
+import { useState, useEffect, useMemo, useRef, useLayoutEffect } from 'react';
 import { useAutoSave } from '../hooks/useAutoSave';
 import { useNavigate } from 'react-router-dom';
 import { useIntake } from '../context/IntakeContext';
@@ -32,8 +32,10 @@ import type {
   ExpenseInfo,
   AssetInfo,
   DebtInfo,
+  ExecutoryContract,
+  Codebtor,
 } from '../types/api';
-import { EXPENSE_FIELDS } from '../types/api';
+import { EXPENSE_FIELDS, INCOME_FIELDS } from '../types/api';
 
 // ============================================================================
 // Wizard Configuration
@@ -68,6 +70,9 @@ export function IntakeWizard() {
   const [currentStepNumber, setCurrentStepNumber] = useState(1);
   const [canProceed, setCanProceed] = useState(false);
   const sessionStartRef = useRef<number>(0);
+  // Set while a Continue or Complete press is saving, so a second press can't save the step
+  // again: a list saved twice prints each row twice on Schedule G or H
+  const pressInFlightRef = useRef(false);
 
   // Initialize session start time after first render
   useLayoutEffect(() => {
@@ -80,6 +85,8 @@ export function IntakeWizard() {
   const [expenseData, setExpenseData] = useState<Partial<ExpenseInfo>>({});
   const [assetsData, setAssetsData] = useState<Partial<AssetInfo>[]>([]);
   const [debtsData, setDebtsData] = useState<Partial<DebtInfo>[]>([]);
+  const [contractsData, setContractsData] = useState<ExecutoryContract[]>([]);
+  const [codebtorsData, setCodebtorsData] = useState<Codebtor[]>([]);
 
   // =========================================================================
   // Read the session on mount
@@ -101,34 +108,49 @@ export function IntakeWizard() {
   useEffect(() => {
     let cancelled = false;
 
-    const openSession = async (): Promise<IntakeSession> => {
+    // Contracts and codebtors have their own endpoints, and a new session has none yet. Both
+    // lists load before any step shows: Review lists them (DIG-166), and Continue on steps 6
+    // and 7 saves the whole list, so a list that failed to load is never saved as empty.
+    const openSession = async (): Promise<{
+      fresh: IntakeSession;
+      contracts: ExecutoryContract[];
+      codebtors: Codebtor[];
+    }> => {
       if (sessionIdToRead === null) {
         // No session in context AND no saved session — create a new one (District ID 1 = ILND)
-        return createSession(1);
+        return { fresh: await createSession(1), contracts: [], codebtors: [] };
       }
+      let fresh: IntakeSession;
       try {
-        return await loadSession(sessionIdToRead);
+        fresh = await loadSession(sessionIdToRead);
       } catch (error) {
         // A 404 means the saved session is gone or belongs to someone else (a shared
         // computer). Retrying cannot help, so start a new one, as for a new filer.
         if (error instanceof APIClientError && error.statusCode === 404) {
-          return createSession(1);
+          return { fresh: await createSession(1), contracts: [], codebtors: [] };
         }
         throw error;
       }
+      const [contracts, codebtors] = await Promise.all([
+        api.intake.contracts(fresh.id),
+        api.intake.codebtors(fresh.id),
+      ]);
+      return { fresh, contracts, codebtors };
     };
 
     openSession()
-      .then((fresh) => {
+      .then(({ fresh, contracts, codebtors }) => {
         if (cancelled) return;
         setCurrentStepNumber(fresh.current_step);
         if (fresh.debtor_info) setDebtorData(fresh.debtor_info);
-        if (fresh.income_info) setIncomeData(fresh.income_info);
+        if (fresh.income_info) setIncomeData(hydrateAmounts(fresh.income_info, INCOME_FIELDS));
         if (fresh.expense_info) setExpenseData(hydrateAmounts(fresh.expense_info, EXPENSE_FIELDS));
         if (fresh.assets)
           setAssetsData(fresh.assets.map((asset) => hydrateAmounts(asset, ASSET_AMOUNT_FIELDS)));
         if (fresh.debts)
           setDebtsData(fresh.debts.map((debt) => hydrateAmounts(debt, DEBT_AMOUNT_FIELDS)));
+        setContractsData(contracts);
+        setCodebtorsData(codebtors);
         setSessionRead('done');
       })
       .catch(() => {
@@ -152,27 +174,61 @@ export function IntakeWizard() {
   // Autosave
   // =========================================================================
 
-  // The data object for the step currently on screen. useAutoSave watches this;
-  // when it changes (the user typing), it debounces a call to saveCurrentStepData.
+  // What saving the step on screen sends: PATCH /api/intake/sessions/{id}/, whose nested
+  // serializer creates and updates each section. null for Review, and for Contracts and
+  // Codebtors, whose lists save through their own endpoints (saveCurrentStepData).
+  // useAutoSave compares it with the step's last saved or loaded copy, so a step that only
+  // shows what the server holds (a blank row, a recomputed total) sends nothing.
   const currentStepKey = WIZARD_STEPS[currentStepNumber - 1]?.key;
-  const currentStepData =
-    currentStepKey === 'debtor_info'
-      ? debtorData
-      : currentStepKey === 'income_info'
-        ? incomeData
-        : currentStepKey === 'expense_info'
-          ? expenseData
-          : currentStepKey === 'assets'
-            ? assetsData
-            : currentStepKey === 'debts'
-              ? debtsData
-              : null;
+  const currentStepBody = useMemo((): Partial<IntakeSession> | null => {
+    switch (currentStepKey) {
+      case 'debtor_info':
+        return { debtor_info: debtorData } as Partial<IntakeSession>;
+
+      case 'income_info': {
+        // The ten amounts alone. A blank box is sent as null, so it stays empty on the server
+        // and a box the filer cleared is emptied there too, never saved as $0. Echoing other
+        // fields read from the server (a blank marital_status) is a 400 that would strand the
+        // filer on Income, and the old six-month total is read-only.
+        const income: Partial<IncomeInfo> = {};
+        for (const field of INCOME_FIELDS) income[field] = incomeData[field] ?? null;
+        return { income_info: income } as Partial<IntakeSession>;
+      }
+
+      case 'expense_info': {
+        // The 13 amounts alone. The total is read-only on the server: the step adds it up in
+        // floating point, so it can differ from the server's decimal sum in the last digit. A
+        // blank box is sent as 0, the column's default; left out, a box the filer cleared would
+        // keep its old amount on the server (DIG-55).
+        const expenses: Partial<ExpenseInfo> = {};
+        for (const field of EXPENSE_FIELDS) expenses[field] = expenseData[field] ?? 0;
+        return { expense_info: expenses } as Partial<IntakeSession>;
+      }
+
+      case 'assets':
+        // Filter out empty/blank asset forms before sending
+        return {
+          assets: assetsData.filter((a) => a.asset_type && a.description?.trim()),
+        } as Partial<IntakeSession>;
+
+      case 'debts':
+        // Filter empty forms — debt_type, is_secured, and priority_classification
+        // are already set by DebtsStep via DEBT_CATEGORY_META lookup
+        return {
+          debts: debtsData.filter((d) => d.creditor_name?.trim()),
+        } as Partial<IntakeSession>;
+
+      default:
+        return null;
+    }
+  }, [currentStepKey, debtorData, incomeData, expenseData, assetsData, debtsData]);
 
   const { saveStatus, saveNow, lastSavedAt } = useAutoSave({
-    data: currentStepData,
-    // saveCurrentStepData reads the latest step state from its closure, so the
-    // `data` snapshot useAutoSave passes to onSave is intentionally unused here.
-    onSave: () => saveCurrentStepData(),
+    data: currentStepBody,
+    // Until the read returns, the steps hold empty placeholders, not the session's data, so
+    // they are kept under no step's name.
+    dataKey: sessionRead === 'done' ? currentStepKey : undefined,
+    onSave: (body) => saveCurrentStepData(body),
     // Only autosave a complete, valid step (see architecture rationale). 'review' has nothing
     // to save; disabled until a session exists.
     enabled: !!session && canProceed && currentStepKey !== 'review',
@@ -183,33 +239,38 @@ export function IntakeWizard() {
   // =========================================================================
 
   const handleNext = async () => {
-    if (!session) return;
+    if (!session || pressInFlightRef.current) return;
+    pressInFlightRef.current = true;
 
-    // Save the current step immediately (flushes any pending debounce). If it
-    // fails, do NOT advance — the WizardLayout indicator shows the error.
-    const saved = await saveNow();
-    if (!saved) return;
-
-    // Advance to next step (updateCurrentStep can rethrow, so keep in try/catch)
     try {
-      const nextStep = currentStepNumber + 1;
-      await updateCurrentStep(nextStep);
+      // Save the current step immediately (flushes any pending debounce). If it
+      // fails, do NOT advance — the WizardLayout indicator shows the error.
+      const saved = await saveNow();
+      if (!saved) return;
 
-      // Document upload sits between step 1 and step 2. The debtor's own details are
-      // typed by hand; uploads then pre-fill the financial steps that follow, so the
-      // detour has to happen before Income rather than after Review. current_step is
-      // already persisted as 2, so returning to /intake resumes at Income — see the
-      // session-read effect above.
-      if (nextStep === 2) {
-        navigate('/documents');
-        return;
+      // Advance to next step (updateCurrentStep can rethrow, so keep in try/catch)
+      try {
+        const nextStep = currentStepNumber + 1;
+        await updateCurrentStep(nextStep);
+
+        // Document upload sits between step 1 and step 2. The debtor's own details are
+        // typed by hand; uploads then pre-fill the financial steps that follow, so the
+        // detour has to happen before Income rather than after Review. current_step is
+        // already persisted as 2, so returning to /intake resumes at Income — see the
+        // session-read effect above.
+        if (nextStep === 2) {
+          navigate('/documents');
+          return;
+        }
+
+        setCurrentStepNumber(nextStep);
+        // Each step reports its own validity once it shows (Contracts and Codebtors too, DIG-165)
+        setCanProceed(false);
+      } catch (error) {
+        console.error('Error advancing to next step:', error);
       }
-
-      setCurrentStepNumber(nextStep);
-      // Contracts (6) and Codebtors (7) are optional — pre-approve so Continue stays enabled
-      setCanProceed(nextStep === 6 || nextStep === 7);
-    } catch (error) {
-      console.error('Error advancing to next step:', error);
+    } finally {
+      pressInFlightRef.current = false;
     }
   };
 
@@ -222,25 +283,34 @@ export function IntakeWizard() {
   };
 
   const handleComplete = async () => {
-    // Save the current step immediately. If it fails, do NOT complete.
-    const saved = await saveNow();
-    if (!saved) return;
+    if (pressInFlightRef.current) return;
+    pressInFlightRef.current = true;
 
     try {
-      await completeSession();
-      trackEvent('intake_completed', {
-        total_duration_ms: Date.now() - sessionStartRef.current,
-        session_id: session?.id,
-      });
-      const result = await calculateMeansTest();
-      if (result.qualifies_for_fee_waiver) {
-        navigate('/fee-waiver');
-      } else {
-        navigate('/sofa');
+      // Save the current step immediately. If it fails, do NOT complete.
+      const saved = await saveNow();
+      if (!saved) return;
+
+      try {
+        await completeSession();
+        trackEvent('intake_completed', {
+          total_duration_ms: Date.now() - sessionStartRef.current,
+          session_id: session?.id,
+        });
+        const result = await calculateMeansTest();
+        if (result.qualifies_for_fee_waiver) {
+          navigate('/fee-waiver');
+        } else {
+          navigate('/sofa');
+        }
+      } catch (error) {
+        // The filer stays on Review, where WizardLayout shows the reason the context recorded
+        // (DIG-150). If only the means test failed, the intake is already complete, and
+        // pressing Complete again retries both calls.
+        console.error('Error completing intake:', error);
       }
-    } catch (error) {
-      console.error('Error completing intake:', error);
-      navigate('/forms');
+    } finally {
+      pressInFlightRef.current = false;
     }
   };
 
@@ -248,57 +318,29 @@ export function IntakeWizard() {
   // Data Persistence
   // =========================================================================
 
-  const saveCurrentStepData = async () => {
+  const saveCurrentStepData = async (body: Partial<IntakeSession> | null) => {
     if (!session) return;
 
-    const currentStep = WIZARD_STEPS[currentStepNumber - 1];
-
-    // All step data is saved via PATCH /api/intake/sessions/{id}/
-    // The backend IntakeSessionSerializer handles nested create/update
-    switch (currentStep.key) {
-      case 'debtor_info':
-        await api.intake.updateSession(session.id, {
-          debtor_info: debtorData,
-        } as Partial<IntakeSession>);
-        break;
-
-      case 'income_info':
-        // Send the months alone: IncomeInfoStep re-emits them as stored unless the filer
-        // entered source amounts. Echoing other fields read from the server (a blank
-        // marital_status) is a 400 that would strand the filer on Income.
-        await api.intake.updateSession(session.id, {
-          income_info: { monthly_income: incomeData.monthly_income },
-        } as Partial<IntakeSession>);
-        break;
-
-      case 'expense_info':
-        await api.intake.updateSession(session.id, {
-          expense_info: expenseData,
-        } as Partial<IntakeSession>);
-        break;
-
-      case 'assets': {
-        // Filter out empty/blank asset forms before sending
-        const filledAssets = assetsData.filter((a) => a.asset_type && a.description?.trim());
-        await api.intake.updateSession(session.id, {
-          assets: filledAssets,
-        } as Partial<IntakeSession>);
-        break;
-      }
-
-      case 'debts': {
-        // Filter empty forms — debt_type, is_secured, and priority_classification
-        // are already set by DebtsStep via DEBT_CATEGORY_META lookup
-        const filledDebts = debtsData.filter((d) => d.creditor_name?.trim());
-        await api.intake.updateSession(session.id, {
-          debts: filledDebts,
-        } as Partial<IntakeSession>);
-        break;
-      }
-
-      default:
-        console.log(`Saving data for ${currentStep.key} not yet implemented`);
+    // Contracts and codebtors save as whole lists, only from Continue: their step body is null,
+    // so autosave never sends them. Blank rows are left out. The saved rows come back with
+    // their ids, so the next save updates them instead of adding them again (DIG-147).
+    if (currentStepKey === 'contracts') {
+      const named = contractsData.filter((contract) => contract.counterparty_name.trim());
+      setContractsData(await api.intake.saveContracts(session.id, named));
+      return;
     }
+    if (currentStepKey === 'codebtors') {
+      const named = codebtorsData.filter((codebtor) => codebtor.name.trim());
+      setCodebtorsData(await api.intake.saveCodebtors(session.id, named));
+      return;
+    }
+
+    if (body === null) {
+      console.log(`Saving data for ${currentStepKey} not yet implemented`);
+      return;
+    }
+
+    await api.intake.updateSession(session.id, body);
   };
 
   // =========================================================================
@@ -353,10 +395,22 @@ export function IntakeWizard() {
         );
 
       case 6:
-        return <ContractsStep />;
+        return (
+          <ContractsStep
+            initialData={contractsData}
+            onDataChange={setContractsData}
+            onValidationChange={setCanProceed}
+          />
+        );
 
       case 7:
-        return <CodebtorsStep />;
+        return (
+          <CodebtorsStep
+            initialData={codebtorsData}
+            onDataChange={setCodebtorsData}
+            onValidationChange={setCanProceed}
+          />
+        );
 
       case 8:
         return (
@@ -366,6 +420,8 @@ export function IntakeWizard() {
             expenseData={expenseData}
             assetsData={assetsData}
             debtsData={debtsData}
+            contractsData={contractsData}
+            codebtorsData={codebtorsData}
             onValidationChange={setCanProceed}
           />
         );

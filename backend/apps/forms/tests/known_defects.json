@@ -35,7 +35,7 @@
     "form_type": "form_101",
     "pdf_field": "Attorney.Street address_3",
     "tier": "2",
-    "case": "",
+    "case": "asked:answer:form_101.attorney_street",
     "class": "wrong_box",
     "ticket": "DIG-76"
   },
@@ -43,7 +43,7 @@
     "form_type": "form_101",
     "pdf_field": "Business Street address2",
     "tier": "2",
-    "case": "",
+    "case": "asked:answer:form_101.business_street",
     "class": "wrong_box",
     "ticket": "DIG-76"
   },
@@ -51,7 +51,7 @@
     "form_type": "form_101",
     "pdf_field": "Check Box16",
     "tier": "2",
-    "case": "",
+    "case": "constant:/Yes",
     "class": "wrong_box",
     "ticket": "DIG-76"
   },
@@ -59,7 +59,7 @@
     "form_type": "form_101",
     "pdf_field": "Check Box5",
     "tier": "2",
-    "case": "",
+    "case": "constant:/Yes",
     "class": "wrong_box",
     "ticket": "DIG-76"
   },
@@ -67,7 +67,7 @@
     "form_type": "form_101",
     "pdf_field": "City_2",
     "tier": "2",
-    "case": "",
+    "case": "asked:answer:form_101.mailing_city",
     "class": "wrong_box",
     "ticket": "DIG-76"
   },
@@ -75,7 +75,7 @@
     "form_type": "form_101",
     "pdf_field": "Debtor",
     "tier": "2",
-    "case": "",
+    "case": "derived:full_name",
     "class": "wrong_box",
     "ticket": "DIG-76"
   },
@@ -83,7 +83,7 @@
     "form_type": "form_101",
     "pdf_field": "Debtor1.Business name_3",
     "tier": "2",
-    "case": "",
+    "case": "asked:answer:form_101.business_name",
     "class": "wrong_box",
     "ticket": "DIG-76"
   },
@@ -91,7 +91,7 @@
     "form_type": "form_101",
     "pdf_field": "Debtor1.Employer Identification Number2",
     "tier": "2",
-    "case": "",
+    "case": "asked:answer:form_101.employer_ein",
     "class": "wrong_box",
     "ticket": "DIG-76"
   },
@@ -99,7 +99,7 @@
     "form_type": "form_101",
     "pdf_field": "Debtor1.First name_3",
     "tier": "2",
-    "case": "",
+    "case": "derived:first_name",
     "class": "wrong_box",
     "ticket": "DIG-76"
   },
@@ -107,7 +107,7 @@
     "form_type": "form_101",
     "pdf_field": "Debtor1.First name_5",
     "tier": "2",
-    "case": "",
+    "case": "derived:first_name",
     "class": "wrong_box",
     "ticket": "DIG-76"
   },
@@ -115,7 +115,7 @@
     "form_type": "form_101",
     "pdf_field": "Debtor1.Last name_3",
     "tier": "2",
-    "case": "",
+    "case": "derived:last_name",
     "class": "wrong_box",
     "ticket": "DIG-76"
   },
@@ -123,7 +123,7 @@
     "form_type": "form_101",
     "pdf_field": "Debtor1.Last name_5",
     "tier": "2",
-    "case": "",
+    "case": "derived:last_name",
     "class": "wrong_box",
     "ticket": "DIG-76"
   },
@@ -131,7 +131,7 @@
     "form_type": "form_101",
     "pdf_field": "Debtor1.Middle name_3",
     "tier": "2",
-    "case": "",
+    "case": "derived:middle_name",
     "class": "wrong_box",
     "ticket": "DIG-76"
   },
@@ -139,7 +139,7 @@
     "form_type": "form_101",
     "pdf_field": "Debtor1.Middle name_5",
     "tier": "2",
-    "case": "",
+    "case": "derived:middle_name",
     "class": "wrong_box",
     "ticket": "DIG-76"
   },
@@ -147,7 +147,7 @@
     "form_type": "form_101",
     "pdf_field": "Debtor1.Street1",
     "tier": "2",
-    "case": "",
+    "case": "derived:street_address",
     "class": "wrong_box",
     "ticket": "DIG-76"
   },
@@ -155,7 +155,7 @@
     "form_type": "form_101",
     "pdf_field": "Debtor_2",
     "tier": "2",
-    "case": "",
+    "case": "derived:full_name",
     "class": "wrong_box",
     "ticket": "DIG-76"
   },
@@ -163,7 +163,7 @@
     "form_type": "form_101",
     "pdf_field": "If immediate attention is needed why is it needed2",
     "tier": "2",
-    "case": "",
+    "case": "asked:answer:form_101.hazard_reason",
     "class": "wrong_box",
     "ticket": "DIG-76"
   },
@@ -171,7 +171,7 @@
     "form_type": "form_101",
     "pdf_field": "Street_7",
     "tier": "2",
-    "case": "",
+    "case": "asked:answer:form_101.hazard_street",
     "class": "wrong_box",
     "ticket": "DIG-76"
   },
@@ -179,7 +179,7 @@
     "form_type": "form_101",
     "pdf_field": "What is the hazard2",
     "tier": "2",
-    "case": "",
+    "case": "asked:answer:form_101.hazard_description",
     "class": "wrong_box",
     "ticket": "DIG-76"
   },
@@ -187,7 +187,7 @@
     "form_type": "form_103b",
     "pdf_field": "4 type",
     "tier": "2",
-    "case": "",
+    "case": "derived:fee_waiver_monthly_income",
     "class": "wrong_box",
     "ticket": "DIG-78"
   },
@@ -195,7 +195,7 @@
     "form_type": "form_103b",
     "pdf_field": "5 Type",
     "tier": "2",
-    "case": "",
+    "case": "derived:fee_waiver_monthly_expenses",
     "class": "wrong_box",
     "ticket": "DIG-78"
   },
@@ -203,7 +203,7 @@
     "form_type": "form_103b",
     "pdf_field": "Amount you owe",
     "tier": "2",
-    "case": "",
+    "case": "derived:total_debts",
     "class": "wrong_box",
     "ticket": "DIG-78"
   },
@@ -211,7 +211,7 @@
     "form_type": "form_106sum",
     "pdf_field": "4",
     "tier": "2",
-    "case": "",
+    "case": "derived:total_debts",
     "class": "wrong_box",
     "ticket": "DIG-79"
   },
@@ -219,7 +219,7 @@
     "form_type": "form_106sum",
     "pdf_field": "9a",
     "tier": "2",
-    "case": "",
+    "case": "derived:total_monthly_expenses",
     "class": "wrong_box",
     "ticket": "DIG-79"
   },
@@ -227,7 +227,7 @@
     "form_type": "form_107",
     "pdf_field": "Income 5a Debtor 1",
     "tier": "2",
-    "case": "",
+    "case": "asked:sofa.prior_income[].source",
     "class": "wrong_box",
     "ticket": "DIG-77"
   },
@@ -235,7 +235,7 @@
     "form_type": "form_107",
     "pdf_field": "Income 5b Debtor 1",
     "tier": "2",
-    "case": "",
+    "case": "asked:sofa.prior_income[].source",
     "class": "wrong_box",
     "ticket": "DIG-77"
   },
@@ -243,7 +243,7 @@
     "form_type": "form_107",
     "pdf_field": "Income 5c Debtor 1",
     "tier": "2",
-    "case": "",
+    "case": "asked:sofa.prior_income[].source",
     "class": "wrong_box",
     "ticket": "DIG-77"
   },
@@ -251,7 +251,7 @@
     "form_type": "form_121",
     "pdf_field": "Check Box1",
     "tier": "2",
-    "case": "",
+    "case": "derived:has_ssn_check",
     "class": "wrong_box",
     "ticket": "DIG-68"
   },
@@ -259,7 +259,7 @@
     "form_type": "form_122a1",
     "pdf_field": "13A",
     "tier": "2",
-    "case": "",
+    "case": "derived:line13a_median_income",
     "class": "wrong_box",
     "ticket": "DIG-59"
   },
@@ -267,7 +267,7 @@
     "form_type": "form_122a1",
     "pdf_field": "13B",
     "tier": "2",
-    "case": "",
+    "case": "derived:line13b_annualized_income",
     "class": "wrong_box",
     "ticket": "DIG-59"
   },
@@ -275,7 +275,7 @@
     "form_type": "form_122a1",
     "pdf_field": "13C",
     "tier": "2",
-    "case": "",
+    "case": "derived:line13c_difference",
     "class": "wrong_box",
     "ticket": "DIG-59"
   },
@@ -283,7 +283,7 @@
     "form_type": "form_122a1",
     "pdf_field": "Debto1.Quest10A",
     "tier": "2",
-    "case": "",
+    "case": "derived:line10a_deductions",
     "class": "wrong_box",
     "ticket": "DIG-56"
   },
@@ -291,7 +291,7 @@
     "form_type": "form_122a1",
     "pdf_field": "Debto1.Quest10B",
     "tier": "2",
-    "case": "",
+    "case": "derived:line10b_total_deductions",
     "class": "wrong_box",
     "ticket": "DIG-56"
   },
@@ -299,7 +299,7 @@
     "form_type": "form_122a1",
     "pdf_field": "Debto1.Quest10C",
     "tier": "2",
-    "case": "",
+    "case": "derived:line10c_net_income",
     "class": "wrong_box",
     "ticket": "DIG-56"
   },
@@ -307,7 +307,7 @@
     "form_type": "form_122a1",
     "pdf_field": "Debto1.Quest3",
     "tier": "2",
-    "case": "",
+    "case": "derived:line2_business_income",
     "class": "wrong_box",
     "ticket": "DIG-56"
   },
@@ -315,7 +315,7 @@
     "form_type": "form_122a1",
     "pdf_field": "Debto1.Quest4",
     "tier": "2",
-    "case": "",
+    "case": "derived:line3_real_property_income",
     "class": "wrong_box",
     "ticket": "DIG-56"
   },
@@ -323,7 +323,7 @@
     "form_type": "form_122a1",
     "pdf_field": "Debto1.Quest5A",
     "tier": "2",
-    "case": "",
+    "case": "derived:line5a_pension_retirement",
     "class": "wrong_box",
     "ticket": "DIG-56"
   },
@@ -331,7 +331,7 @@
     "form_type": "form_122a1",
     "pdf_field": "Debto1.Quest5B",
     "tier": "2",
-    "case": "",
+    "case": "derived:line5b_social_security",
     "class": "wrong_box",
     "ticket": "DIG-56"
   },
@@ -339,7 +339,7 @@
     "form_type": "form_122a1",
     "pdf_field": "Debto1.Quest6A",
     "tier": "2",
-    "case": "",
+    "case": "derived:line6a_unemployment",
     "class": "wrong_box",
     "ticket": "DIG-56"
   },
@@ -347,7 +347,7 @@
     "form_type": "form_122a1",
     "pdf_field": "Debto1.Quest6B",
     "tier": "2",
-    "case": "",
+    "case": "derived:line6b_child_support_alimony",
     "class": "wrong_box",
     "ticket": "DIG-56"
   },
@@ -355,7 +355,7 @@
     "form_type": "form_122a1",
     "pdf_field": "Debto1.Quest7",
     "tier": "2",
-    "case": "",
+    "case": "derived:line7_other_income",
     "class": "wrong_box",
     "ticket": "DIG-56"
   },
@@ -363,7 +363,7 @@
     "form_type": "form_122a1",
     "pdf_field": "Debto1.Quest8A",
     "tier": "2",
-    "case": "",
+    "case": "derived:line8a_total_gross_income",
     "class": "wrong_box",
     "ticket": "DIG-56"
   },
@@ -371,7 +371,7 @@
     "form_type": "form_122a1",
     "pdf_field": "Debto1.Quest9",
     "tier": "2",
-    "case": "",
+    "case": "derived:family_size",
     "class": "wrong_box",
     "ticket": "DIG-59"
   },
@@ -379,7 +379,7 @@
     "form_type": "form_122a2",
     "pdf_field": "Quest1",
     "tier": "2",
-    "case": "",
+    "case": "derived:means_test_total_deductions",
     "class": "wrong_box",
     "ticket": "DIG-60"
   },
@@ -387,7 +387,7 @@
     "form_type": "form_122a2",
     "pdf_field": "Quest10",
     "tier": "2",
-    "case": "",
+    "case": "derived:means_test_total_deductions",
     "class": "wrong_box",
     "ticket": "DIG-60"
   },
@@ -395,7 +395,7 @@
     "form_type": "form_122a2",
     "pdf_field": "Quest13D",
     "tier": "2",
-    "case": "",
+    "case": "derived:schedule_j_vehicle_payment",
     "class": "wrong_box",
     "ticket": "DIG-50"
   },
@@ -403,7 +403,7 @@
     "form_type": "form_122a2",
     "pdf_field": "Quest14",
     "tier": "2",
-    "case": "",
+    "case": "derived:schedule_j_vehicle_payment",
     "class": "wrong_box",
     "ticket": "DIG-50"
   },
@@ -411,7 +411,7 @@
     "form_type": "form_122a2",
     "pdf_field": "Quest15",
     "tier": "2",
-    "case": "",
+    "case": "derived:schedule_j_vehicle_payment",
     "class": "wrong_box",
     "ticket": "DIG-50"
   },
@@ -419,7 +419,7 @@
     "form_type": "form_122a2",
     "pdf_field": "Quest5",
     "tier": "2",
-    "case": "",
+    "case": "derived:means_test_priority_debts",
     "class": "wrong_box",
     "ticket": "DIG-60"
   },
@@ -427,7 +427,7 @@
     "form_type": "form_122a2",
     "pdf_field": "Quest8",
     "tier": "2",
-    "case": "",
+    "case": "derived:schedule_j_rent_or_mortgage",
     "class": "wrong_box",
     "ticket": "DIG-66"
   },
@@ -435,7 +435,7 @@
     "form_type": "form_122a2",
     "pdf_field": "Quest9",
     "tier": "2",
-    "case": "",
+    "case": "derived:schedule_j_utilities",
     "class": "wrong_box",
     "ticket": "DIG-66"
   },
@@ -443,7 +443,7 @@
     "form_type": "schedule_a_b",
     "pdf_field": "12",
     "tier": "2",
-    "case": "",
+    "case": "derived:total_retirement_accounts",
     "class": "wrong_box",
     "ticket": "DIG-80"
   },
@@ -451,7 +451,7 @@
     "form_type": "schedule_a_b",
     "pdf_field": "16 Cash amount",
     "tier": "2",
-    "case": "",
+    "case": "derived:total_bank_accounts",
     "class": "wrong_box",
     "ticket": "DIG-80"
   },
@@ -459,7 +459,7 @@
     "form_type": "schedule_c",
     "pdf_field": "2.1",
     "tier": "2",
-    "case": "",
+    "case": "asked:answer:schedule_c.desc_2.1",
     "class": "wrong_box",
     "ticket": "DIG-81"
   },
@@ -467,7 +467,7 @@
     "form_type": "schedule_c",
     "pdf_field": "2.3",
     "tier": "2",
-    "case": "",
+    "case": "asked:answer:schedule_c.amount_2.3",
     "class": "wrong_box",
     "ticket": "DIG-81"
   },
@@ -475,7 +475,7 @@
     "form_type": "schedule_c",
     "pdf_field": "3",
     "tier": "2",
-    "case": "",
+    "case": "asked:answer:schedule_c.desc_3",
     "class": "wrong_box",
     "ticket": "DIG-81"
   },
@@ -483,7 +483,7 @@
     "form_type": "schedule_c",
     "pdf_field": "4",
     "tier": "2",
-    "case": "",
+    "case": "asked:answer:schedule_c.desc_4",
     "class": "wrong_box",
     "ticket": "DIG-81"
   },
@@ -491,7 +491,7 @@
     "form_type": "schedule_c",
     "pdf_field": "5",
     "tier": "2",
-    "case": "",
+    "case": "asked:answer:schedule_c.desc_5",
     "class": "wrong_box",
     "ticket": "DIG-81"
   },
@@ -499,7 +499,7 @@
     "form_type": "schedule_c",
     "pdf_field": "6",
     "tier": "2",
-    "case": "",
+    "case": "asked:answer:schedule_c.desc_6",
     "class": "wrong_box",
     "ticket": "DIG-81"
   },
@@ -507,7 +507,7 @@
     "form_type": "schedule_d",
     "pdf_field": "undefined_27",
     "tier": "2",
-    "case": "",
+    "case": "derived:total_secured_claims",
     "class": "wrong_box",
     "ticket": "DIG-69"
   },
@@ -515,7 +515,7 @@
     "form_type": "schedule_i",
     "pdf_field": "Amount 3 Debtor 1",
     "tier": "2",
-    "case": "",
+    "case": "derived:schedule_i_net_wages_debtor1",
     "class": "wrong_box",
     "ticket": "DIG-56"
   },
@@ -523,7 +523,7 @@
     "form_type": "schedule_i",
     "pdf_field": "Amount 4 Debtor 1",
     "tier": "2",
-    "case": "",
+    "case": "derived:schedule_i_self_employment_debtor1",
     "class": "wrong_box",
     "ticket": "DIG-56"
   },
@@ -531,7 +531,7 @@
     "form_type": "schedule_i",
     "pdf_field": "Amount 5a Debtor 1",
     "tier": "2",
-    "case": "",
+    "case": "derived:schedule_i_unemployment_debtor1",
     "class": "wrong_box",
     "ticket": "DIG-56"
   },
@@ -539,7 +539,7 @@
     "form_type": "schedule_i",
     "pdf_field": "Amount 5b Debtor 1",
     "tier": "2",
-    "case": "",
+    "case": "derived:schedule_i_social_security_debtor1",
     "class": "wrong_box",
     "ticket": "DIG-56"
   },
@@ -547,7 +547,7 @@
     "form_type": "schedule_i",
     "pdf_field": "Amount 5c Debtor 1",
     "tier": "2",
-    "case": "",
+    "case": "derived:schedule_i_pension_debtor1",
     "class": "wrong_box",
     "ticket": "DIG-56"
   },
@@ -555,7 +555,7 @@
     "form_type": "schedule_i",
     "pdf_field": "Amount 5d Debtor 1",
     "tier": "2",
-    "case": "",
+    "case": "derived:schedule_i_child_support_debtor1",
     "class": "wrong_box",
     "ticket": "DIG-56"
   },
@@ -563,7 +563,7 @@
     "form_type": "schedule_i",
     "pdf_field": "Amount 5e Debtor 1",
     "tier": "2",
-    "case": "",
+    "case": "derived:schedule_i_interest_debtor1",
     "class": "wrong_box",
     "ticket": "DIG-56"
   },
@@ -571,7 +571,7 @@
     "form_type": "schedule_i",
     "pdf_field": "Amount 5f Debtor 1",
     "tier": "2",
-    "case": "",
+    "case": "derived:schedule_i_rental_debtor1",
     "class": "wrong_box",
     "ticket": "DIG-56"
   },
@@ -579,7 +579,7 @@
     "form_type": "schedule_i",
     "pdf_field": "Amount 5g Debtor 1",
     "tier": "2",
-    "case": "",
+    "case": "derived:schedule_i_other_income_debtor1",
     "class": "wrong_box",
     "ticket": "DIG-56"
   },
@@ -587,7 +587,7 @@
     "form_type": "schedule_i",
     "pdf_field": "Supplemental income date",
     "tier": "2",
-    "case": "",
+    "case": "derived:today_iso",
     "class": "wrong_box",
     "ticket": "DIG-82"
   },
@@ -595,7 +595,7 @@
     "form_type": "schedule_j",
     "pdf_field": "10",
     "tier": "2",
-    "case": "",
+    "case": "derived:schedule_j_rent_or_mortgage",
     "class": "wrong_box",
     "ticket": "DIG-52"
   },
@@ -603,7 +603,7 @@
     "form_type": "schedule_j",
     "pdf_field": "12",
     "tier": "2",
-    "case": "",
+    "case": "derived:schedule_j_utilities",
     "class": "wrong_box",
     "ticket": "DIG-52"
   },
@@ -611,7 +611,7 @@
     "form_type": "schedule_j",
     "pdf_field": "14",
     "tier": "2",
-    "case": "",
+    "case": "derived:schedule_j_home_maintenance",
     "class": "wrong_box",
     "ticket": "DIG-52"
   },
@@ -619,7 +619,7 @@
     "form_type": "schedule_j",
     "pdf_field": "15a",
     "tier": "2",
-    "case": "",
+    "case": "derived:schedule_j_food_and_groceries",
     "class": "wrong_box",
     "ticket": "DIG-52"
   },
@@ -627,7 +627,7 @@
     "form_type": "schedule_j",
     "pdf_field": "15b",
     "tier": "2",
-    "case": "",
+    "case": "derived:schedule_j_childcare",
     "class": "wrong_box",
     "ticket": "DIG-52"
   },
@@ -635,7 +635,7 @@
     "form_type": "schedule_j",
     "pdf_field": "15c",
     "tier": "2",
-    "case": "",
+    "case": "derived:schedule_j_clothing",
     "class": "wrong_box",
     "ticket": "DIG-52"
   },
@@ -643,7 +643,7 @@
     "form_type": "schedule_j",
     "pdf_field": "16",
     "tier": "2",
-    "case": "",
+    "case": "derived:schedule_j_medical_expenses",
     "class": "wrong_box",
     "ticket": "DIG-52"
   },
@@ -651,7 +651,7 @@
     "form_type": "schedule_j",
     "pdf_field": "17a",
     "tier": "2",
-    "case": "",
+    "case": "derived:schedule_j_vehicle_maintenance",
     "class": "wrong_box",
     "ticket": "DIG-52"
   },
@@ -659,7 +659,7 @@
     "form_type": "schedule_j",
     "pdf_field": "17b",
     "tier": "2",
-    "case": "",
+    "case": "derived:schedule_j_vehicle_payment",
     "class": "wrong_box",
     "ticket": "DIG-52"
   },
@@ -667,7 +667,7 @@
     "form_type": "schedule_j",
     "pdf_field": "17c",
     "tier": "2",
-    "case": "",
+    "case": "derived:schedule_j_vehicle_insurance",
     "class": "wrong_box",
     "ticket": "DIG-52"
   },
@@ -675,7 +675,7 @@
     "form_type": "schedule_j",
     "pdf_field": "20a",
     "tier": "2",
-    "case": "",
+    "case": "derived:schedule_j_insurance_not_deducted",
     "class": "wrong_box",
     "ticket": "DIG-52"
   },

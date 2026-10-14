@@ -12,7 +12,8 @@
  * - No shame around financial history
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { useIntake } from '../context/IntakeContext';
 import { sofaReportAPI } from '../api/client';
@@ -20,6 +21,7 @@ import { Button, FormField } from '../components/common';
 import { UPLDisclaimer } from '../components/compliance';
 import { UPL_WIZARD_DISCLAIMER } from '../constants/upl';
 import type { SOFAReport, SOFAPriorIncome, SOFACreditorPayment } from '../types/api';
+import { amountError } from '../utils/parseAmount';
 
 function emptyPriorIncome(): SOFAPriorIncome {
   return { id: Math.random(), year: new Date().getFullYear() - 1, source: '', gross_amount: '' };
@@ -27,6 +29,69 @@ function emptyPriorIncome(): SOFAPriorIncome {
 
 function emptyCreditorPayment(): SOFACreditorPayment {
   return { id: Math.random(), creditor_name: '', total_paid: '', dates_of_payments: '' };
+}
+
+// A row counts once the filer types in it; the year the page fills in doesn't count.
+function incomeRowStarted(row: SOFAPriorIncome): boolean {
+  return Boolean(row.source?.trim() || row.gross_amount);
+}
+
+function paymentRowStarted(row: SOFACreditorPayment): boolean {
+  return Boolean(row.creditor_name?.trim() || row.total_paid || row.dates_of_payments?.trim());
+}
+
+/**
+ * The boxes still empty in the started rows of the sections switched on, keyed by the box's
+ * field name. The server refuses a row without them, which used to fail the whole save with a
+ * generic error (DIG-148), so each message names the row and the box to finish.
+ */
+function unfinishedBoxes(report: SOFAReport): Record<string, string> {
+  const missing: Record<string, string> = {};
+  const ask = (name: string, box: string, row: string) => {
+    missing[name] = `Please fill in the ${box} for ${row}.`;
+  };
+  if (report.has_prior_income) {
+    report.prior_income.forEach((row, idx) => {
+      if (!incomeRowStarted(row)) return;
+      const label = `Income source ${idx + 1}`;
+      if (!row.year) ask(`prior-income-year-${idx}`, 'Year', label);
+      if (!row.source?.trim()) ask(`prior-income-source-${idx}`, 'Source', label);
+      if (!row.gross_amount) ask(`prior-income-amount-${idx}`, 'Gross Amount', label);
+    });
+  }
+  if (report.has_creditor_payments) {
+    report.creditor_payments.forEach((row, idx) => {
+      if (!paymentRowStarted(row)) return;
+      const label = `Creditor ${idx + 1}`;
+      if (!row.creditor_name?.trim()) ask(`creditor-name-${idx}`, 'Creditor Name', label);
+      if (!row.total_paid) ask(`creditor-paid-${idx}`, 'Total Amount Paid', label);
+    });
+  }
+  return missing;
+}
+
+/**
+ * The amounts the server would refuse in the started rows of the sections switched on, keyed by
+ * the box's field name in page order, with the words the intake uses. Both amounts are
+ * DecimalField(max_digits=12, decimal_places=2, min_value=0) (amountError).
+ */
+function amountBoxErrors(report: SOFAReport): Record<string, string> {
+  const errors: Record<string, string> = {};
+  const check = (name: string, amount: string) => {
+    const message = amount ? amountError(Number(amount), 12) : undefined;
+    if (message) errors[name] = message;
+  };
+  if (report.has_prior_income) {
+    report.prior_income.forEach((row, idx) => {
+      if (incomeRowStarted(row)) check(`prior-income-amount-${idx}`, row.gross_amount);
+    });
+  }
+  if (report.has_creditor_payments) {
+    report.creditor_payments.forEach((row, idx) => {
+      if (paymentRowStarted(row)) check(`creditor-paid-${idx}`, row.total_paid);
+    });
+  }
+  return errors;
 }
 
 export function SOFAStep() {
@@ -38,6 +103,23 @@ export function SOFAStep() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  const [showUnfinished, setShowUnfinished] = useState(false);
+  const [showAmountErrors, setShowAmountErrors] = useState(false);
+  const unfinishedNoteRef = useRef<HTMLDivElement>(null);
+
+  // Once a save finds unfinished rows, the note shows and each empty box says what it needs until
+  // it is filled. Once a save is refused, each amount to fix says what is wrong until it is fixed.
+  const unfinished = useMemo(() => (report ? unfinishedBoxes(report) : {}), [report]);
+  const amountErrors = useMemo(() => (report ? amountBoxErrors(report) : {}), [report]);
+  const hasUnfinished = Object.keys(unfinished).length > 0;
+  const hasAmountErrors = Object.keys(amountErrors).length > 0;
+  // Once every empty box is filled, the empty boxes of a row the filer starts next aren't marked
+  // while they type it, even when an amount is still to fix
+  if (showUnfinished && !hasUnfinished) setShowUnfinished(false);
+  if (showAmountErrors && !hasUnfinished && !hasAmountErrors) setShowAmountErrors(false);
+  const boxError = (name: string) =>
+    (showUnfinished ? unfinished[name] : undefined) ??
+    (showAmountErrors ? amountErrors[name] : undefined);
 
   // Load report on mount. A superseded load (StrictMode's second mount, or a new session)
   // is ignored, so its late reply can't undo what the filer has already ticked.
@@ -159,19 +241,39 @@ export function SOFAStep() {
 
   const handleSave = async () => {
     if (!session || !report) return;
-    setSaving(true);
     setError(null);
+    if (hasUnfinished || hasAmountErrors) {
+      // The note is at the top of the page and the button at the bottom, so focus moves to the
+      // note on each blocked press. It has to be shown first. With every box filled in, the note
+      // would be untrue, so focus moves to the first amount to fix instead (W-9).
+      flushSync(() => {
+        setShowUnfinished(hasUnfinished);
+        setShowAmountErrors(true);
+      });
+      if (hasUnfinished) unfinishedNoteRef.current?.focus();
+      else document.getElementById(`field-${Object.keys(amountErrors)[0]}`)?.focus();
+      return;
+    }
+    setSaving(true);
     setSaved(false);
 
     try {
-      // Clean empty rows before saving
-      const clean = {
-        ...report,
-        prior_income: report.prior_income.filter((r) => r.source?.trim() || r.gross_amount),
-        creditor_payments: report.creditor_payments.filter(
-          (r) => r.creditor_name?.trim() || r.total_paid
-        ),
-      };
+      // Blank rows are left out. A section switched off sends no rows: its rows don't print, the
+      // server keeps the ones it has, and a half-filled row the filer can't see can't fail the save.
+      // Each amount goes as the number amountError checked: the server counts the zeros past the
+      // cents of "1250.500" as decimal places and refuses it.
+      const { prior_income, creditor_payments, ...flags } = report;
+      const clean: Partial<SOFAReport> = { ...flags };
+      if (report.has_prior_income) {
+        clean.prior_income = prior_income
+          .filter(incomeRowStarted)
+          .map((row) => ({ ...row, gross_amount: String(Number(row.gross_amount)) }));
+      }
+      if (report.has_creditor_payments) {
+        clean.creditor_payments = creditor_payments
+          .filter(paymentRowStarted)
+          .map((row) => ({ ...row, total_paid: String(Number(row.total_paid)) }));
+      }
       await sofaReportAPI.patch(session.id, clean);
       setSaved(true);
       setTimeout(() => navigate('/forms'), 800);
@@ -220,6 +322,18 @@ export function SOFAStep() {
       {error && (
         <div className="info-box info-box--error" role="alert">
           {error}
+        </div>
+      )}
+
+      {showUnfinished && hasUnfinished && (
+        <div
+          className="info-box info-box--error"
+          role="alert"
+          ref={unfinishedNoteRef}
+          tabIndex={-1}
+        >
+          Some rows aren&apos;t finished, so nothing has been saved yet. Please fill in the boxes
+          marked below, or clear any row you don&apos;t need.
         </div>
       )}
 
@@ -278,6 +392,7 @@ export function SOFAStep() {
                       updatePriorIncomeRow(idx, 'year', parseInt(e.target.value, 10) || 0)
                     }
                     placeholder="2025"
+                    error={boxError(`prior-income-year-${idx}`)}
                   />
                   <FormField
                     label="Source"
@@ -287,6 +402,8 @@ export function SOFAStep() {
                     onChange={(e) => updatePriorIncomeRow(idx, 'source', e.target.value)}
                     placeholder="Employer name or income type"
                     helpText="e.g., 'Walmart', 'Self-employment', 'Unemployment benefits'"
+                    maxLength={255}
+                    error={boxError(`prior-income-source-${idx}`)}
                   />
                   <FormField
                     label="Gross Amount"
@@ -297,6 +414,7 @@ export function SOFAStep() {
                     value={row.gross_amount}
                     onChange={(e) => updatePriorIncomeRow(idx, 'gross_amount', e.target.value)}
                     placeholder="0.00"
+                    error={boxError(`prior-income-amount-${idx}`)}
                   />
                 </div>
               </div>
@@ -353,6 +471,8 @@ export function SOFAStep() {
                     value={row.creditor_name}
                     onChange={(e) => updateCreditorPaymentRow(idx, 'creditor_name', e.target.value)}
                     placeholder="Name of the creditor"
+                    maxLength={255}
+                    error={boxError(`creditor-name-${idx}`)}
                   />
                   <FormField
                     label="Total Amount Paid"
@@ -363,6 +483,7 @@ export function SOFAStep() {
                     value={row.total_paid}
                     onChange={(e) => updateCreditorPaymentRow(idx, 'total_paid', e.target.value)}
                     placeholder="0.00"
+                    error={boxError(`creditor-paid-${idx}`)}
                   />
                   <FormField
                     label="Dates of Payments"
@@ -374,6 +495,7 @@ export function SOFAStep() {
                     }
                     placeholder="e.g., Monthly Jan-Mar 2026"
                     helpText="When did you make these payments?"
+                    maxLength={255}
                   />
                 </div>
               </div>

@@ -6,7 +6,8 @@ You ARE Sarah Chen. Navigate DigniFi as she would.
 
 - 31 years old, single, no children
 - Work part-time at a bookstore while looking for full-time work
-- Monthly take-home: about $2,000
+- Monthly income before taxes: about $2,000
+- Monthly take-home pay (after taxes and payroll deductions): about $1,750
 - Live in a shared apartment in Wicker Park (your name is on the lease)
 - No car, no savings, no property — just student loans and a medical bill
 
@@ -36,29 +37,31 @@ You ARE Sarah Chen. Navigate DigniFi as she would.
 
 ## Your Data (enter this exactly)
 
-| Field | Value |
-|-------|-------|
-| First name | Sarah |
-| Last name | Chen |
-| SSN | 900-55-0005 |
-| Date of birth | 01/20/1995 |
-| Phone | 312-555-0505 |
-| Email | sarah.chen@demo.dignifi.org |
-| Address | 1520 N Damen Ave Apt 2F, Chicago, IL 60622 |
-| Marital status | Single |
-| Dependents | 0 |
-| Monthly income | $2,000 |
-| Rent | $850 |
-| Utilities | $80 |
-| Food | $250 |
-| Clothing | $30 |
-| Medical | $20 |
-| Other expenses | $50 |
+| Field                                                  | Value                                      |
+| ------------------------------------------------------ | ------------------------------------------ |
+| First name                                             | Sarah                                      |
+| Last name                                              | Chen                                       |
+| SSN                                                    | 900-55-0005                                |
+| Date of birth                                          | 01/20/1995                                 |
+| Phone                                                  | 312-555-0505                               |
+| Email                                                  | sarah.chen@demo.dignifi.org                |
+| Address                                                | 1520 N Damen Ave Apt 2F, Chicago, IL 60622 |
+| Monthly income before taxes (Monthly Wages/Salary box) | $2,000                                     |
+| Rent                                                   | $850                                       |
+| Utilities                                              | $80                                        |
+| Food                                                   | $250                                       |
+| Clothing                                               | $30                                        |
+| Medical                                                | $20                                        |
+| Other expenses                                         | $50                                        |
+| Take-home pay (fee waiver page)                        | $1,750                                     |
+| Non-cash help from the government (fee waiver page)    | No                                         |
 
 **Assets:**
+
 - None
 
 **Amounts Owed:**
+
 - Navient student loan — $28,000, paying $0
 - University of Illinois Hospital medical — $3,400, paying $0 (in collections)
 

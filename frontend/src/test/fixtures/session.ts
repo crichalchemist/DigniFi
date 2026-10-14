@@ -38,7 +38,7 @@ export const createMockDebtorInfo = (overrides?: Partial<DebtorInfo>): DebtorInf
   city: 'Chicago',
   state: 'IL',
   zip_code: '60601',
-  phone_number: '312-555-0100',
+  phone: '312-555-0100',
   email: 'jane@example.com',
   household_size: 1,
   filing_type: 'individual',
@@ -54,7 +54,7 @@ export const createMockIncomeInfo = (overrides?: Partial<IncomeInfo>): IncomeInf
   id: 1,
   session: 1,
   data_source: 'manual',
-  monthly_income: [3500, 3500, 3500, 3500, 3500, 3500],
+  monthly_gross_wages: 3500,
   total_monthly_income: 3500,
   ...overrides,
 });
@@ -126,7 +126,7 @@ export const createMockMeansTestResult = (
   median_income_threshold: 71304,
   family_size: 1,
   message:
-    'Based on the information you provided, your income is below the median income threshold for your household size in your district.',
+    'Based on the information you provided, your income is at or below the median income threshold for your household size in your district.',
   details: {
     cmi: 3500,
     annualized_cmi: 42000,

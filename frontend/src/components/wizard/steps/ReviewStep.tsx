@@ -8,7 +8,15 @@
 import { useEffect } from 'react';
 import { UPLDisclaimer } from '../../compliance';
 import { UPL_REVIEW_DISCLAIMER } from '../../../constants/upl';
-import type { DebtorInfo, IncomeInfo, ExpenseInfo, AssetInfo, DebtInfo } from '../../../types/api';
+import type {
+  DebtorInfo,
+  IncomeInfo,
+  ExpenseInfo,
+  AssetInfo,
+  DebtInfo,
+  ExecutoryContract,
+  Codebtor,
+} from '../../../types/api';
 
 interface ReviewStepProps {
   debtorData: Partial<DebtorInfo>;
@@ -16,6 +24,8 @@ interface ReviewStepProps {
   expenseData: Partial<ExpenseInfo>;
   assetsData: Partial<AssetInfo>[];
   debtsData: Partial<DebtInfo>[];
+  contractsData: ExecutoryContract[];
+  codebtorsData: Codebtor[];
   onValidationChange: (isValid: boolean) => void;
 }
 
@@ -25,6 +35,8 @@ export function ReviewStep({
   expenseData,
   assetsData,
   debtsData,
+  contractsData,
+  codebtorsData,
   onValidationChange,
 }: ReviewStepProps) {
   // Always valid to proceed from review (unless we add specific checks)
@@ -32,7 +44,7 @@ export function ReviewStep({
     onValidationChange(true);
   }, [onValidationChange]);
 
-  const formatCurrency = (amount?: number) => {
+  const formatCurrency = (amount?: number | null) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
@@ -135,6 +147,42 @@ export function ReviewStep({
                   {debt.debt_type ? ` (${debt.debt_type})` : ''}
                 </span>
                 <span className="review-field-value">{formatCurrency(debt.amount_owed)}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      {/* Contracts Summary */}
+      <section className="review-section">
+        <h4 className="review-section-title">Contracts & Leases ({contractsData.length})</h4>
+        {contractsData.length === 0 ? (
+          <p className="review-empty">No contracts or leases listed.</p>
+        ) : (
+          <ul className="review-list">
+            {contractsData.map((contract, index) => (
+              <li key={contract.id || index} className="review-list-item">
+                <span>
+                  {contract.counterparty_name} ({contract.contract_type})
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      {/* Codebtors Summary */}
+      <section className="review-section">
+        <h4 className="review-section-title">Codebtors ({codebtorsData.length})</h4>
+        {codebtorsData.length === 0 ? (
+          <p className="review-empty">No codebtors listed.</p>
+        ) : (
+          <ul className="review-list">
+            {codebtorsData.map((codebtor, index) => (
+              <li key={codebtor.id || index} className="review-list-item">
+                <span>
+                  {codebtor.name} ({codebtor.relationship.replace('_', ' ')})
+                </span>
               </li>
             ))}
           </ul>

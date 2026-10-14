@@ -76,7 +76,7 @@ const mockMeansTestResult = {
   median_income_threshold: 71304,
   family_size: 1,
   message:
-    'Based on the information you provided, your income is below the median income threshold for your household size in your district.',
+    'Based on the information you provided, your income is at or below the median income threshold for your household size in your district.',
   details: {
     cmi: 3500,
     annualized_cmi: 42000,
@@ -143,15 +143,19 @@ export const handlers = [
   ),
 
   // -- Fee Waiver -----------------------------------------------------------
+  // No application saved yet for the session the page reads (paginated, like every DRF list)
+  http.get(`${API}/intake/fee-waiver/`, () =>
+    HttpResponse.json({ count: 0, next: null, previous: null, results: [] })
+  ),
+
   http.post(`${API}/intake/fee-waiver/`, async ({ request }) => {
     const body = (await request.json()) as { session: number };
     return HttpResponse.json({
       id: 1,
       session: body.session,
       household_size: 1,
-      monthly_income: '1200.00',
-      monthly_expenses: '1000.00',
-      receives_public_benefits: false,
+      monthly_take_home_pay: '1200.00',
+      receives_noncash_assistance: false,
       benefit_types: [],
       cannot_pay_full: true,
       cannot_pay_installments: true,
@@ -169,6 +173,20 @@ export const handlers = [
 
   http.post(`${API}/intake/debts/`, () =>
     HttpResponse.json({ id: 1, session: 1, debt_type: 'credit_card', creditor_name: 'Visa' })
+  ),
+
+  // -- Contracts / Codebtors (the wizard reads both lists with the session) --
+
+  http.get(`${API}/intake/sessions/:id/contracts/`, () => HttpResponse.json([])),
+
+  http.put(`${API}/intake/sessions/:id/contracts/`, async ({ request }) =>
+    HttpResponse.json(await request.json())
+  ),
+
+  http.get(`${API}/intake/sessions/:id/codebtors/`, () => HttpResponse.json([])),
+
+  http.put(`${API}/intake/sessions/:id/codebtors/`, async ({ request }) =>
+    HttpResponse.json(await request.json())
   ),
 
   // -- Documents -----------------------------------------------------------

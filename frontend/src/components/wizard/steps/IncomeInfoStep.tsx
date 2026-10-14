@@ -10,25 +10,9 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { FormField } from '../../common';
-import { parseAmount } from '../../../utils/parseAmount';
+import { amountError, decimalToNumber, parseAmount } from '../../../utils/parseAmount';
+import { INCOME_FIELDS } from '../../../types/api';
 import type { IncomeInfo } from '../../../types/api';
-
-/**
- * The ten per-source boxes. The server stores only the 6-month `monthly_income` array,
- * never these, so a session read back from the server carries none of them.
- */
-const SOURCE_FIELDS = [
-  'monthly_gross_wages',
-  'monthly_overtime',
-  'monthly_tips',
-  'monthly_rental_income',
-  'monthly_pension',
-  'monthly_social_security',
-  'monthly_unemployment',
-  'monthly_child_support',
-  'monthly_alimony',
-  'monthly_other_income',
-] as const;
 
 interface IncomeInfoStepProps {
   initialData?: Partial<IncomeInfo>;
@@ -45,32 +29,31 @@ export function IncomeInfoStep({
   // blank, while a deliberately entered 0 is preserved by parseAmount + `?? ''`.
   const [formData, setFormData] = useState<Partial<IncomeInfo>>(initialData || {});
 
-  // Typing in a box writes its key, so the step switches to source amounts once any key
-  // is present, even one cleared back to blank. Until then it keeps the saved months.
-  const usesSourceAmounts = SOURCE_FIELDS.some((field) => field in formData);
-  const savedMonthlyIncome =
-    !usesSourceAmounts && formData.monthly_income?.length === 6
-      ? formData.monthly_income
-      : undefined;
+  // Calculate total monthly income
+  const totalMonthlyIncome = INCOME_FIELDS.reduce((sum, field) => sum + (formData[field] || 0), 0);
 
-  // Calculate total monthly income: the saved total until the filer enters source amounts
-  const totalMonthlyIncome = savedMonthlyIncome
-    ? (formData.total_monthly_income ?? 0)
-    : SOURCE_FIELDS.reduce((sum, field) => sum + (formData[field] || 0), 0);
+  // A filer who saved income before it was stored by source has only the old six-month total,
+  // read-only. It counts toward nothing, so the step asks them to split it until they enter an
+  // amount in any box (forms step 2 §5.5).
+  const savedMonths = Array.isArray(formData.monthly_income) ? formData.monthly_income : [];
+  const savedTotal = savedMonths.length
+    ? savedMonths.reduce((sum, month) => sum + (decimalToNumber(month) ?? 0), 0) /
+      savedMonths.length
+    : 0;
+  const asksToSplit = savedTotal > 0 && INCOME_FIELDS.every((field) => formData[field] == null);
 
   const errors = useMemo<Record<string, string>>(() => {
     const newErrors: Record<string, string> = {};
 
-    // No "at least one source" gate: $0 total income is a valid answer for a
-    // bankruptcy filer (and the help text invites leaving fields blank or 0).
+    // No "at least one source" gate: a blank box means none of that kind, and a filer
+    // with no income types $0 in a box (O-1). The means test refuses all ten blank.
 
-    // Validate non-negative values
-    Object.keys(formData).forEach((key) => {
-      const value = formData[key as keyof IncomeInfo];
-      if (typeof value === 'number' && value < 0) {
-        newErrors[key] = 'Amount cannot be negative';
-      }
-    });
+    // Each amount as the server stores it (amountError). Only the boxes: the total the step
+    // last added up comes back in initialData, and no box shows it.
+    for (const field of INCOME_FIELDS) {
+      const message = amountError(formData[field] ?? undefined, 10);
+      if (message) newErrors[field] = message;
+    }
 
     return newErrors;
   }, [formData]);
@@ -79,10 +62,6 @@ export function IncomeInfoStep({
   useEffect(() => {
     const dataWithTotal = {
       ...formData,
-      // Saved months go back exactly as stored. Source amounts replace them with six copies
-      // of their sum (MVP: the same income each month), and a new filer who enters nothing
-      // records six months of $0.
-      monthly_income: savedMonthlyIncome ?? Array(6).fill(totalMonthlyIncome),
       total_monthly_income: totalMonthlyIncome,
     };
     onDataChange(dataWithTotal);
@@ -111,23 +90,22 @@ export function IncomeInfoStep({
           <h3 className="info-title">Why we ask about income</h3>
           <p className="info-message">
             Income information helps determine which bankruptcy chapter you may qualify for. Enter
-            your average monthly income before taxes. If you don't have income from a source, you
-            can leave it blank or enter $0.
+            your average monthly income before taxes. Leave a box blank if you don't get that kind
+            of income. If you have no income at all, enter $0 in any box.
           </p>
         </div>
       </div>
 
-      {/* Saved total: only the total is stored, so the boxes start empty */}
-      {savedMonthlyIncome && (
+      {/* A total saved before income was stored by source */}
+      {asksToSplit && (
         <div className="info-box">
           <p className="info-message">
-            Your saved total is $
-            {totalMonthlyIncome.toLocaleString('en-US', {
+            You entered $
+            {savedTotal.toLocaleString('en-US', {
               minimumFractionDigits: 2,
               maximumFractionDigits: 2,
             })}{' '}
-            a month. We keep only the total, not the amount from each source, so the boxes below
-            start empty. If you enter amounts below, they will replace the saved total.
+            a month in total. Please split it by source.
           </p>
         </div>
       )}
@@ -244,7 +222,7 @@ export function IncomeInfoStep({
           />
 
           <FormField
-            label="Rental Income"
+            label="Rental income after the property's costs"
             name="monthly_rental_income"
             type="number"
             min="0"

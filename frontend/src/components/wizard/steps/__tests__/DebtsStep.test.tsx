@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { DebtsStep } from '../DebtsStep';
 import type { DebtInfo } from '../../../../types/api';
 
@@ -115,5 +116,29 @@ describe('DebtsStep draft badge', () => {
     expect(
       screen.getByRole('generic', { name: /pre-filled from document scan/i })
     ).toBeInTheDocument();
+  });
+});
+
+// Schedule D lists a secured amount owed with what secures it, and the server reads both
+// under these names: a renamed key is dropped without an error (DIG-26)
+describe('DebtsStep secured amounts owed', () => {
+  it('marks a car loan secured and keeps what secures it, under the names the server stores', async () => {
+    const onDataChange = vi.fn();
+    render(<DebtsStep onDataChange={onDataChange} onValidationChange={noop} />);
+    const user = userEvent.setup();
+
+    await user.selectOptions(
+      screen.getByLabelText(/what kind of amount owed is this/i),
+      'Car or vehicle loan'
+    );
+    await user.type(screen.getByLabelText(/what secures this amount owed/i), '2015 Honda Civic');
+
+    expect(onDataChange).toHaveBeenLastCalledWith([
+      expect.objectContaining({
+        debt_type: 'auto_loan',
+        is_secured: true,
+        collateral_description: '2015 Honda Civic',
+      }),
+    ]);
   });
 });

@@ -3,6 +3,7 @@
 from dataclasses import dataclass
 from decimal import Decimal
 
+from apps.eligibility.cmi import current_monthly_income
 from apps.eligibility.services.irs_standards import get_local_standard, get_national_standard
 from apps.intake.models import IntakeSession
 
@@ -109,9 +110,8 @@ class ExpenseDeductionCalculator:
         return sum((d.monthly_payment or zero for d in priority), zero)
 
     def _get_cmi(self) -> Decimal:
-        try:
-            ii = self.session.income_info
-            total = sum(Decimal(str(v)) for v in (ii.monthly_income or []))
-            return total / Decimal("6") if total else Decimal("0")
-        except Exception:
+        # The means test's own CMI. Income not split by source raises IncomeNotSplit.
+        ii = getattr(self.session, "income_info", None)
+        if ii is None:
             return Decimal("0")
+        return current_monthly_income(ii)
