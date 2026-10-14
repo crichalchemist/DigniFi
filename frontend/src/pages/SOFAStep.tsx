@@ -12,7 +12,8 @@
  * - No shame around financial history
  */
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { useIntake } from '../context/IntakeContext';
 import { sofaReportAPI } from '../api/client';
@@ -83,6 +84,7 @@ export function SOFAStep() {
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [showUnfinished, setShowUnfinished] = useState(false);
+  const unfinishedNoteRef = useRef<HTMLDivElement>(null);
 
   // Once a save finds unfinished rows, each empty box says what it needs until it is filled
   const unfinished = useMemo(() => (report ? unfinishedBoxes(report) : {}), [report]);
@@ -213,7 +215,10 @@ export function SOFAStep() {
     if (!session || !report) return;
     setError(null);
     if (hasUnfinished) {
-      setShowUnfinished(true);
+      // The note is at the top of the page and the button at the bottom, so focus moves to the
+      // note on each blocked press. It has to be shown first.
+      flushSync(() => setShowUnfinished(true));
+      unfinishedNoteRef.current?.focus();
       return;
     }
     setSaving(true);
@@ -280,7 +285,12 @@ export function SOFAStep() {
       )}
 
       {showUnfinished && hasUnfinished && (
-        <div className="info-box info-box--error" role="alert">
+        <div
+          className="info-box info-box--error"
+          role="alert"
+          ref={unfinishedNoteRef}
+          tabIndex={-1}
+        >
           Some rows aren&apos;t finished, so nothing has been saved yet. Please fill in the boxes
           marked below, or clear any row you don&apos;t need.
         </div>

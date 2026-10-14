@@ -178,6 +178,25 @@ describe('SOFAStep unfinished rows (DIG-148)', () => {
     ]);
   });
 
+  // The note sits at the top of the page and the button at the bottom
+  it('moves focus to the note on each blocked save, so the filer learns why nothing was saved', async () => {
+    const { user } = renderSOFA();
+    await user.click(
+      await screen.findByRole('checkbox', { name: /i had income in the past 3 years/i })
+    );
+    await user.type(screen.getByLabelText('Source'), 'Temp Agency');
+
+    await user.click(save());
+    const note = screen.getByText(/nothing has been saved yet/i);
+    expect(note).toHaveFocus();
+
+    // Pressed again after working on the page, the note gets focus again
+    await user.click(screen.getByLabelText('Source'));
+    expect(note).not.toHaveFocus();
+    await user.click(save());
+    expect(note).toHaveFocus();
+  });
+
   it('asks nothing of a row the filer starts after a blocked save, while they type it', async () => {
     const { user } = renderSOFA();
     await user.click(
