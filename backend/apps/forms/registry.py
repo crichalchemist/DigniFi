@@ -12,6 +12,7 @@ import re
 from collections.abc import Callable
 from dataclasses import dataclass
 
+from apps.eligibility.cmi import is_above_median
 from apps.forms.schema import load_schema
 from apps.forms.services.fill_resolver import resolve
 from apps.intake.models import IntakeSession
@@ -44,14 +45,15 @@ def _has_fee_waiver(session: IntakeSession) -> bool:
 
 def _above_median(session: IntakeSession) -> bool:
     """
-    Annualized income at or above the median, from the stored MeansTest.
+    Annualized income above the median, from the stored MeansTest, by the means test's own
+    comparison: income exactly at the median counts as below it (DIG-136).
 
-    Not above_median_calculated: calculate() sets it and never clears it (DIG-128).
+    Not above_median_calculated: a row calculated before DIG-128 was fixed can still carry it.
     """
     means_test = getattr(session, "means_test", None)
     if means_test is None:
         return False
-    return means_test.calculated_cmi * 12 >= means_test.median_income_threshold
+    return is_above_median(means_test.calculated_cmi, means_test.median_income_threshold)
 
 
 def _nothing(session: IntakeSession) -> None:

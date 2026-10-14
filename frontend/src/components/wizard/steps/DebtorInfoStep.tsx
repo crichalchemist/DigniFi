@@ -118,10 +118,10 @@ export function DebtorInfoStep({
       newErrors.email = 'Please enter a valid email address';
     }
 
-    if (!formData.phone_number?.trim()) {
-      newErrors.phone_number = 'Please enter your phone number';
-    } else if (!/^\d{3}-?\d{3}-?\d{4}$/.test(formData.phone_number)) {
-      newErrors.phone_number = 'Please enter a valid phone number (XXX-XXX-XXXX)';
+    if (!formData.phone?.trim()) {
+      newErrors.phone = 'Please enter your phone number';
+    } else if (!/^\d{3}-?\d{3}-?\d{4}$/.test(formData.phone)) {
+      newErrors.phone = 'Please enter a valid phone number (XXX-XXX-XXXX)';
     }
 
     if (!formData.household_size || formData.household_size < 1) {
@@ -300,13 +300,13 @@ export function DebtorInfoStep({
 
           <FormField
             label="Phone Number"
-            name="phone_number"
+            name="phone"
             type="tel"
             inputMode="numeric"
             maxLength={12}
-            value={formData.phone_number || ''}
-            onChange={(e) => handleChange('phone_number', formatPhone(e.target.value))}
-            error={errors.phone_number}
+            value={formData.phone || ''}
+            onChange={(e) => handleChange('phone', formatPhone(e.target.value))}
+            error={errors.phone}
             required
             autoComplete="tel"
             placeholder="XXX-XXX-XXXX"

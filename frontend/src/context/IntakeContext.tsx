@@ -209,9 +209,11 @@ export function IntakeProvider({ children }: IntakeProviderProps) {
       setMeansTestResult(response.means_test_result);
       return response.means_test_result;
     } catch (err) {
+      // A 400 refusal's own sentence says what to fix (income not split by source); its
+      // `message` is generic.
       const errorMessage =
         err instanceof APIClientError
-          ? err.message
+          ? (err.statusCode === 400 && err.serverError) || err.message
           : 'Unable to calculate means test. Please ensure all income information is provided.';
       setError(errorMessage);
       throw err;

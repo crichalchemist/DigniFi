@@ -265,6 +265,24 @@ def test_bill_with_a_creditor_but_unreadable_balance_becomes_a_draft_to_complete
     assert draft.source_document_id == doc["id"]
 
 
+def test_a_scanned_car_loan_bill_reads_back_as_secured(filer, openai_client):
+    # The Amounts Owed step shows the flag the session read returns, and saves it back
+    client, session = filer
+    bill = {
+        "creditor_name": "Midwest Auto Finance",
+        "amount_owed": "12000.00",
+        "creditor_type": "auto_loan",
+    }
+
+    doc = scan_photo(filer, openai_client, DocumentType.CREDITOR_BILL, reply=bill)
+
+    assert doc["ocr_result"]["status"] == "completed"
+    debts = client.get(f"/api/intake/sessions/{session.id}/").json()["debts"]
+    assert [(debt["creditor_name"], debt["is_secured"]) for debt in debts] == [
+        ("Midwest Auto Finance", True)
+    ]
+
+
 def test_pay_stub_upload_produces_monthly_income_for_schedule_i(filer, openai_client):
     _, session = filer
     pay_stub = {
@@ -474,3 +492,73 @@ def test_scan_records_the_provider_that_read_it(filer, openai_client):
     doc = scan_photo(filer, openai_client, DocumentType.CREDITOR_BILL, reply=bill)
 
     assert OCRResult.objects.get(document_id=doc["id"]).ocr_provider == "openai"
+
+
+# A scan that adds a debt or pay figures changes the intake, so a completed intake goes
+# back to in progress and the filer presses Complete again (spec §5.3).
+
+PAY_STUB = {
+    "employer_name": "Acme Logistics",
+    "gross_pay": "1000.00",
+    "pay_period_start": "2026-01-01",
+    "pay_period_end": "2026-01-14",
+    "confidence_score": 92,
+}
+
+
+@pytest.mark.parametrize(
+    "document_type,reply",
+    [
+        (
+            DocumentType.CREDITOR_BILL,
+            {"creditor_name": "ComEd", "amount_owed": "96.12", "creditor_type": "utility"},
+        ),
+        (DocumentType.PAY_STUB, PAY_STUB),
+        (
+            DocumentType.CREDIT_REPORT,
+            {"tradelines": [{"creditor_name": "Discover", "amount_owed": "310.00"}]},
+        ),
+    ],
+    ids=["bill", "pay-stub", "credit-report"],
+)
+def test_a_scan_that_adds_a_debt_or_pay_figures_reopens_a_completed_intake(
+    filer, openai_client, document_type, reply
+):
+    _, session = filer
+    IntakeSession.objects.filter(pk=session.pk).update(status="completed")
+
+    doc = scan_photo(filer, openai_client, document_type, reply=reply)
+
+    assert doc["ocr_result"]["status"] == "completed"
+    session.refresh_from_db()
+    assert session.status == "in_progress"
+
+
+@pytest.mark.parametrize(
+    "document_type,reply,outcome",
+    [
+        (
+            DocumentType.CREDITOR_BILL,
+            {"creditor_name": None, "amount_owed": "125.00"},
+            ("failed", "nothing_found"),
+        ),
+        (
+            DocumentType.CREDIT_REPORT,
+            {"tradelines": [{"creditor_name": "Discover", "amount_owed": "0"}]},
+            ("completed", ""),
+        ),
+    ],
+    ids=["nothing-found", "paid-off-accounts-only"],
+)
+def test_a_scan_that_adds_nothing_leaves_a_completed_intake_complete(
+    filer, openai_client, document_type, reply, outcome
+):
+    _, session = filer
+    IntakeSession.objects.filter(pk=session.pk).update(status="completed")
+
+    doc = scan_photo(filer, openai_client, document_type, reply=reply)
+
+    # Each scan ended the way that adds nothing, not with a processing error
+    assert (doc["ocr_result"]["status"], doc["ocr_result"]["failure_reason"]) == outcome
+    session.refresh_from_db()
+    assert session.status == "completed"

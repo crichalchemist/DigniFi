@@ -10,7 +10,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { FormField } from '../../common';
-import { parseAmount } from '../../../utils/parseAmount';
+import { amountError, parseAmount } from '../../../utils/parseAmount';
 import type { ExpenseInfo } from '../../../types/api';
 import { EXPENSE_FIELDS } from '../../../types/api';
 
@@ -41,13 +41,12 @@ export function ExpenseInfoStep({
     // No "at least one expense" gate: a blank or $0 expense is a valid answer
     // (the help text invites leaving categories blank or 0).
 
-    // Validate non-negative values
-    Object.keys(formData).forEach((key) => {
-      const value = formData[key as keyof ExpenseInfo];
-      if (typeof value === 'number' && value < 0) {
-        newErrors[key] = 'Amount cannot be negative';
-      }
-    });
+    // Each amount as the server stores it (amountError). Only the boxes: the total the step
+    // last added up comes back in initialData, and no box shows it.
+    for (const field of EXPENSE_FIELDS) {
+      const message = amountError(formData[field] ?? undefined, 10);
+      if (message) newErrors[field] = message;
+    }
 
     return newErrors;
   }, [formData]);

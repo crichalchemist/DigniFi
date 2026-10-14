@@ -38,6 +38,23 @@ class IntakeSession(models.Model):
     def __str__(self) -> str:
         return f"Intake {self.id} - {self.user} ({self.status})"
 
+    def reopen(self) -> None:
+        """Set a completed intake back to in progress, because its intake data changed.
+
+        The filer then presses Complete again, which re-runs the completion checks and
+        the fee-waiver routing (spec §5.3). Form answers, SOFA and the fee-waiver
+        application are not intake data and never call this.
+
+        The database decides, not this copy: an upload loads the session seconds before it
+        reopens it, and the filer may have pressed Complete meanwhile. The copy is updated too,
+        so a full save of it afterwards never writes a stale "completed" back.
+        """
+        reopened = IntakeSession.objects.filter(pk=self.pk, status="completed").update(
+            status="in_progress"
+        )
+        if reopened or self.status == "completed":
+            self.status = "in_progress"
+
 
 class DebtorInfo(models.Model):
     """Personal information for debtor (PII encrypted)."""
@@ -76,6 +93,20 @@ class DebtorInfo(models.Model):
 class IncomeInfo(models.Model):
     """Income data for means test."""
 
+    # The Income step's ten monthly amounts, by source (forms step 2 spec §5.5)
+    SOURCE_FIELDS: ClassVar[tuple[str, ...]] = (
+        "monthly_gross_wages",
+        "monthly_overtime",
+        "monthly_tips",
+        "monthly_rental_income",
+        "monthly_pension",
+        "monthly_social_security",
+        "monthly_unemployment",
+        "monthly_child_support",
+        "monthly_alimony",
+        "monthly_other_income",
+    )
+
     session = models.OneToOneField(
         IntakeSession, on_delete=models.CASCADE, related_name="income_info"
     )
@@ -88,7 +119,86 @@ class IncomeInfo(models.Model):
         ],
     )
     number_of_dependents = models.IntegerField(default=0)
-    monthly_income = models.JSONField(help_text="6-month income array")  # [month1, month2, ...]
+    # The total the Income step saved before step 2. It is no longer written, and stays for
+    # one release as the only record of what an earlier filer entered.
+    monthly_income = models.JSONField(
+        null=True, blank=True, help_text="6-month income array"
+    )  # [month1, month2, ...]
+    # No default: an amount the filer never gave stays empty. A default of 0 would give
+    # every earlier filer $0 income, and so a passed means test.
+    monthly_gross_wages = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(Decimal("0"))],
+    )
+    monthly_overtime = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(Decimal("0"))],
+    )
+    monthly_tips = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(Decimal("0"))],
+    )
+    monthly_rental_income = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(Decimal("0"))],
+        help_text="After the property's costs",
+    )
+    monthly_pension = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(Decimal("0"))],
+    )
+    monthly_social_security = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(Decimal("0"))],
+    )
+    monthly_unemployment = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(Decimal("0"))],
+    )
+    monthly_child_support = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(Decimal("0"))],
+        help_text="Child support received",
+    )
+    monthly_alimony = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(Decimal("0"))],
+        help_text="Alimony received",
+    )
+    monthly_other_income = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(Decimal("0"))],
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -100,17 +210,18 @@ class IncomeInfo(models.Model):
             f"(Session: {self.session_id})"
         )
 
-    def calculate_total_monthly_income(self) -> float:
-        """Average monthly income over the stored months, to the cent.
+    def calculate_total_monthly_income(self) -> float | None:
+        """The ten monthly amounts added up, Social Security included.
 
-        Only the 6-month array is stored, never the per-source amounts the filer typed,
-        so this is the saved total the Income step shows when it reopens.
+        An amount left empty counts as zero once another one was given. None when the filer
+        gave none of them, so a total saved before step 2 never reads as $0.
         """
-        months = self.monthly_income or []
-        if not months:
-            return 0.0
-        total = sum(Decimal(str(amount)) for amount in months)
-        return float((total / len(months)).quantize(Decimal("0.01")))
+        given = [
+            getattr(self, field) for field in self.SOURCE_FIELDS if getattr(self, field) is not None
+        ]
+        if not given:
+            return None
+        return float(sum(given, Decimal("0")))
 
 
 class ExpenseInfo(models.Model):
@@ -232,6 +343,7 @@ class AssetInfo(models.Model):
         ("vehicle", "Vehicle"),
         ("bank_account", "Bank Account"),
         ("retirement_account", "Retirement Account (401k, IRA)"),
+        ("personal_property", "Personal Property (furniture, jewelry, collectibles)"),
         ("other", "Other Asset"),
     ]
 
@@ -468,13 +580,27 @@ class FeeWaiverApplication(models.Model):
         help_text="Number of people in household (must be at least 1)",
     )
 
-    # Financial information (encrypted)
+    # Financial information (encrypted). monthly_income, monthly_expenses and
+    # receives_public_benefits are no longer written: the page stopped asking them, and they
+    # stay one release for the rows saved before (forms step 2 spec §5.7).
     monthly_income = EncryptedDecimalField(
-        max_digits=10, decimal_places=2, help_text="Total monthly income from all sources"
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="Total monthly income from all sources",
     )
 
     monthly_expenses = EncryptedDecimalField(
-        max_digits=10, decimal_places=2, help_text="Total monthly expenses"
+        max_digits=10, decimal_places=2, null=True, blank=True, help_text="Total monthly expenses"
+    )
+
+    monthly_take_home_pay = EncryptedDecimalField(
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="Average monthly take-home pay, after taxes and payroll deductions (103B line 2)",
     )
 
     # Public benefits
@@ -482,6 +608,12 @@ class FeeWaiverApplication(models.Model):
         default=False, help_text="Receives SSI, SNAP, TANF, or other means-tested benefits"
     )
 
+    # Empty until the filer answers: a stored False prints a sworn "No" on 103B line 3.
+    receives_noncash_assistance = models.BooleanField(
+        null=True, help_text="Receives non-cash help from the government (103B line 3)"
+    )
+
+    # The "What kind?" answer when receives_noncash_assistance is True
     benefit_types = models.JSONField(
         default=list, blank=True, help_text="List of benefit programs (e.g., ['SNAP', 'Medicaid'])"
     )

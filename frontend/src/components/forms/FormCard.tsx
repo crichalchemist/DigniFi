@@ -15,6 +15,8 @@ import { FORM_TYPE_METADATA } from '../../types/api';
 interface FormCardProps {
   formType: FormType;
   generatedForm?: GeneratedForm;
+  /** A filed form whose type is no longer in the filer's packet */
+  leftPacket?: boolean;
   onGenerate: (formType: FormType) => Promise<void>;
   onDownload: (formId: number) => Promise<void>;
   onMarkFiled: (formId: number) => Promise<void>;
@@ -23,6 +25,7 @@ interface FormCardProps {
 export function FormCard({
   formType,
   generatedForm,
+  leftPacket = false,
   onGenerate,
   onDownload,
   onMarkFiled,
@@ -49,6 +52,9 @@ export function FormCard({
         <div className="form-card-info">
           <h3 className="form-card-title">{metadata.label}</h3>
           <p className="form-card-description">{metadata.description}</p>
+          {leftPacket && (
+            <p className="form-card-description">Filed, no longer in your current packet</p>
+          )}
         </div>
         <FormStatusBadge status={status} />
       </div>

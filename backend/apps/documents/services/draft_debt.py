@@ -56,6 +56,9 @@ class DraftDebtCreator:
             debt_type=debt_type,
             account_number=str(fields.get("account_number") or ""),
             amount_owed=_bounded_amount(fields.get("amount_owed")),
+            # Secured as the Debts step makes a car loan or mortgage (spec §5.4)
+            is_secured=debt_type in ("auto_loan", "mortgage"),
+            priority_classification=self._priority_for_type(debt_type),
             data_source="uploaded_document",
             is_draft=True,
             source_document=source_document,

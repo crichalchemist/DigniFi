@@ -7,6 +7,8 @@ from django.db import models
 from django.utils import timezone
 from encrypted_model_fields.fields import EncryptedTextField
 
+from .cmi import current_monthly_income, is_above_median
+
 
 class MeansTest(models.Model):
     """Chapter 7 means test calculation (11 U.S.C. § 707(b))."""
@@ -93,7 +95,8 @@ class MeansTest(models.Model):
         Calculate means test using 11 U.S.C. § 707(b) methodology.
 
         Returns:
-            bool: True if debtor passes means test (CMI < median income)
+            bool: True if debtor passes means test (CMI × 12 at or below the median income, or
+            above it with disposable income under the threshold)
 
         Raises:
             ValueError: If required intake data is missing
@@ -104,13 +107,8 @@ class MeansTest(models.Model):
         except AttributeError as err:
             raise ValueError("IntakeSession must have income_info to calculate means test") from err
 
-        # Calculate Current Monthly Income (CMI) - average of last 6 months
-        monthly_income_data = income_info.monthly_income
-        if not isinstance(monthly_income_data, list) or len(monthly_income_data) != 6:
-            raise ValueError("monthly_income must be a list of 6 monthly income values")
-
-        total_6_month_income = sum(Decimal(str(amt)) for amt in monthly_income_data)
-        cmi = total_6_month_income / Decimal("6")
+        # Current Monthly Income (CMI): the Income step's amounts, without Social Security
+        cmi = current_monthly_income(income_info)
 
         # Get family size for median income lookup. The wizard collects
         # household_size on the debtor step; sessions without it fall back
@@ -136,7 +134,7 @@ class MeansTest(models.Model):
         # Determine if passes means test. CMI is monthly; the Census median
         # is annual, so annualize per 11 U.S.C. § 707(b)(7).
         annualized_cmi = cmi * Decimal("12")
-        passes_test = annualized_cmi < median_income_threshold
+        passes_test = not is_above_median(cmi, median_income_threshold)
 
         # Initialize calculation details (used by above-median pathway below)
         details: dict = {}
@@ -166,19 +164,30 @@ class MeansTest(models.Model):
                 "priority_debts": float(ded_result.priority_debts_monthly),
                 "passes_above_median": self.passes_above_median,
             }
+        else:
+            # At or below the median: an earlier above-median result no longer holds (DIG-128).
+            self.total_allowable_expenses = Decimal("0")
+            self.disposable_income = Decimal("0")
+            self.priority_debts_monthly = Decimal("0")
+            self.passes_above_median = False
+            self.above_median_calculated = False
 
         # Calculate fee waiver eligibility (CMI < 150% of poverty line)
         # For MVP, simplified: qualifies if income is very low (< 60% of median)
         qualifies_fee_waiver = annualized_cmi < (median_income_threshold * Decimal("0.60"))
 
-        # Store calculation details (encrypted)
+        # Store calculation details (encrypted). JSON has no Decimal, and an empty box stays empty.
+        income_by_source = {}
+        for field in income_info.SOURCE_FIELDS:
+            amount = getattr(income_info, field)
+            income_by_source[field] = None if amount is None else float(amount)
         details.update(
             {
                 "cmi": float(cmi),
                 "annualized_cmi": float(annualized_cmi),
                 "median_income_threshold": float(median_income_threshold),
                 "family_size": family_size,
-                "monthly_income_breakdown": monthly_income_data,
+                "income_by_source": income_by_source,
                 "marital_status": income_info.marital_status,
                 "number_of_dependents": income_info.number_of_dependents,
                 "passes_test": passes_test,

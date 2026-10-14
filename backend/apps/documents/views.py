@@ -59,21 +59,28 @@ def _record_findings(doc: UploadedDocument, result: ExtractionResult) -> bool:
     must pass PayStubExtraction (gross pay and both pay-period dates required), the
     check the income aggregate applies, and a credit report needs one readable
     account. Other types are not judged and count as read.
+
+    A draft debt or pay-stub figures change the intake, so they reopen a completed one.
     """
     if doc.document_type == DocumentType.CREDITOR_BILL:
-        return DraftDebtCreator().create_from_result(result, doc.session, doc) is not None
+        if DraftDebtCreator().create_from_result(result, doc.session, doc) is None:
+            return False
+        doc.session.reopen()
+        return True
     if doc.document_type == DocumentType.PAY_STUB:
         try:
             PayStubExtraction.model_validate(result.fields)
         except ValidationError:
             return False
+        doc.session.reopen()
         return True
     if doc.document_type == DocumentType.CREDIT_REPORT:
         report = CreditReportExtraction.model_validate(result.fields)
         if not report.tradelines:
             return False
         # A report whose accounts are all paid off is read, and adds no debts.
-        DraftDebtCreator().create_from_credit_report(report, doc.session, doc)
+        if DraftDebtCreator().create_from_credit_report(report, doc.session, doc):
+            doc.session.reopen()
         return True
     return True
 
@@ -228,6 +235,9 @@ class DocumentViewSet(ViewSet):
 
         if doc.document_type == DocumentType.CREDITOR_BILL:
             doc.draft_debts.filter(is_draft=True).update(**draft_fields)
+        # A bill's draft debt and a pay stub's figures are intake data.
+        if doc.document_type in (DocumentType.CREDITOR_BILL, DocumentType.PAY_STUB):
+            doc.session.reopen()
 
         try:
             AggregateIngestionService.recalculate(doc.session_id)

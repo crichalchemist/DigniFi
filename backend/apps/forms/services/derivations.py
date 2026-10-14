@@ -14,6 +14,7 @@ from datetime import date
 from decimal import Decimal
 from functools import reduce
 
+from apps.eligibility.cmi import IncomeNotSplit, current_monthly_income
 from apps.intake.models import IntakeSession
 
 _ZERO = Decimal("0.00")
@@ -67,6 +68,20 @@ def _fmt(d: Decimal) -> str:
 
 def _sum_encrypted(queryset, field_name: str) -> Decimal:
     return reduce(lambda acc, obj: acc + (getattr(obj, field_name) or _ZERO), queryset, _ZERO)
+
+
+def _income_amounts(session: IntakeSession, *fields: str) -> str:
+    """The sum of these Income step amounts, or blank when the filer gave none of them.
+
+    An amount left empty counts as zero once another one was given (step 2 spec §6.1, B2).
+    """
+    income_info = getattr(session, "income_info", None)
+    if income_info is None:
+        return ""
+    given = [getattr(income_info, f) for f in fields if getattr(income_info, f) is not None]
+    if not given:
+        return ""
+    return _fmt(sum(given, _ZERO))
 
 
 # ---------------------------------------------------------------------------
@@ -157,12 +172,9 @@ def _cmi(session: IntakeSession) -> str:
     try:
         income_info = session.income_info
     except IncomeInfo.DoesNotExist:
-        return "0.00"
-    monthly = getattr(income_info, "monthly_income", None) or []
-    if not monthly:
-        return "0.00"
-    total = reduce(lambda acc, v: acc + Decimal(str(v)), monthly, _ZERO)
-    return _fmt(total / Decimal("6"))
+        # No income at all is income not entered by source.
+        raise IncomeNotSplit() from None
+    return _fmt(current_monthly_income(income_info))
 
 
 def _total_monthly_expenses(session: IntakeSession) -> str:
@@ -194,7 +206,7 @@ def _get_income_field(session: IntakeSession, field: str) -> Decimal:
 
 
 def _line1_wages(session: IntakeSession) -> str:
-    return _fmt(_get_income_field(session, "wages_salaries_tips"))
+    return _income_amounts(session, "monthly_gross_wages", "monthly_tips", "monthly_overtime")
 
 
 def _line2_business_income(session: IntakeSession) -> str:
@@ -202,7 +214,7 @@ def _line2_business_income(session: IntakeSession) -> str:
 
 
 def _line3_real_property_income(session: IntakeSession) -> str:
-    return _fmt(_get_income_field(session, "real_property_income"))
+    return _income_amounts(session, "monthly_rental_income")
 
 
 def _line4_interest_dividends(session: IntakeSession) -> str:
@@ -210,7 +222,7 @@ def _line4_interest_dividends(session: IntakeSession) -> str:
 
 
 def _line5a_pension_retirement(session: IntakeSession) -> str:
-    return _fmt(_get_income_field(session, "pension_retirement"))
+    return _income_amounts(session, "monthly_pension")
 
 
 def _line5b_social_security(session: IntakeSession) -> str:
@@ -218,15 +230,15 @@ def _line5b_social_security(session: IntakeSession) -> str:
 
 
 def _line6a_unemployment(session: IntakeSession) -> str:
-    return _fmt(_get_income_field(session, "unemployment_compensation"))
+    return _income_amounts(session, "monthly_unemployment")
 
 
 def _line6b_child_support_alimony(session: IntakeSession) -> str:
-    return _fmt(_get_income_field(session, "child_support_alimony"))
+    return _income_amounts(session, "monthly_child_support")
 
 
 def _line7_other_income(session: IntakeSession) -> str:
-    return _fmt(_get_income_field(session, "other_income"))
+    return _income_amounts(session, "monthly_other_income")
 
 
 def _line8a_total_gross_income(session: IntakeSession) -> str:
@@ -348,7 +360,7 @@ def _schedule_i_gross_wages_debtor1(session: IntakeSession) -> str:
 
 
 def _schedule_i_net_wages_debtor1(session: IntakeSession) -> str:
-    return _fmt(_get_income_field(session, "wages_salaries_tips"))
+    return _income_amounts(session, "monthly_gross_wages", "monthly_tips")
 
 
 def _schedule_i_self_employment_debtor1(session: IntakeSession) -> str:
@@ -356,19 +368,19 @@ def _schedule_i_self_employment_debtor1(session: IntakeSession) -> str:
 
 
 def _schedule_i_unemployment_debtor1(session: IntakeSession) -> str:
-    return _fmt(_get_income_field(session, "unemployment_compensation"))
+    return _income_amounts(session, "monthly_unemployment")
 
 
 def _schedule_i_social_security_debtor1(session: IntakeSession) -> str:
-    return _fmt(_get_income_field(session, "social_security"))
+    return _income_amounts(session, "monthly_social_security")
 
 
 def _schedule_i_pension_debtor1(session: IntakeSession) -> str:
-    return _fmt(_get_income_field(session, "pension_retirement"))
+    return _income_amounts(session, "monthly_pension")
 
 
 def _schedule_i_child_support_debtor1(session: IntakeSession) -> str:
-    return _fmt(_get_income_field(session, "child_support_alimony"))
+    return _income_amounts(session, "monthly_child_support", "monthly_alimony")
 
 
 def _schedule_i_interest_debtor1(session: IntakeSession) -> str:
@@ -376,11 +388,11 @@ def _schedule_i_interest_debtor1(session: IntakeSession) -> str:
 
 
 def _schedule_i_rental_debtor1(session: IntakeSession) -> str:
-    return _fmt(_get_income_field(session, "real_property_income"))
+    return _income_amounts(session, "monthly_rental_income")
 
 
 def _schedule_i_other_income_debtor1(session: IntakeSession) -> str:
-    return _fmt(_get_income_field(session, "other_income"))
+    return _income_amounts(session, "monthly_other_income")
 
 
 def _schedule_i_total_deductions_debtor1(session: IntakeSession) -> str:

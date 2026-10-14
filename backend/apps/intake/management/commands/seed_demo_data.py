@@ -34,6 +34,13 @@ User = get_user_model()
 DEMO_PASSWORD = "DigniFi-Demo-2026!"
 
 
+def _wages_only(wages: Decimal) -> dict:
+    """The Income step's ten amounts for a persona whose only income is wages: the rest $0."""
+    amounts = dict.fromkeys(IncomeInfo.SOURCE_FIELDS, Decimal("0.00"))
+    amounts["monthly_gross_wages"] = wages
+    return amounts
+
+
 # ── Persona data functions ──────────────────────────────────────────
 
 
@@ -62,7 +69,7 @@ def _maria_torres() -> dict:
         "income": {
             "marital_status": "single",
             "number_of_dependents": 2,
-            "monthly_income": [3200, 3200, 3200, 3200, 3200, 3200],
+            **_wages_only(Decimal("3200.00")),
         },
         "expenses": {
             "rent_or_mortgage": Decimal("1100.00"),
@@ -149,6 +156,12 @@ def _maria_torres() -> dict:
                 },
             ],
         },
+        # The fee-waiver page's answers (Form 103B lines 2 and 3)
+        "fee_waiver": {
+            "monthly_take_home_pay": Decimal("2800.00"),
+            "receives_noncash_assistance": True,
+            "benefit_types": ["SNAP (food stamps)"],
+        },
     }
 
 
@@ -177,7 +190,7 @@ def _james_washington() -> dict:
         "income": {
             "marital_status": "single",
             "number_of_dependents": 0,
-            "monthly_income": [5833, 5833, 5833, 5833, 5833, 5833],
+            **_wages_only(Decimal("5833.00")),
         },
         "expenses": {
             "rent_or_mortgage": Decimal("1650.00"),
@@ -259,7 +272,7 @@ def _priya_sharma() -> dict:
             "number_of_dependents": 2,
             # $12,000/month = $144,000/year — above the $134,366 HH4 median,
             # so the annualized § 707(b) comparison fails as intended.
-            "monthly_income": [12000, 12000, 12000, 12000, 12000, 12000],
+            **_wages_only(Decimal("12000.00")),
         },
         "expenses": {
             "rent_or_mortgage": Decimal("2800.00"),
@@ -331,7 +344,7 @@ def _deshawn_mitchell() -> dict:
         "income": {
             "marital_status": "married_joint",
             "number_of_dependents": 0,
-            "monthly_income": [3500, 3500, 3500, 3500, 3500, 3500],
+            **_wages_only(Decimal("3500.00")),
         },
         "expenses": {
             "rent_or_mortgage": Decimal("1200.00"),
@@ -405,6 +418,12 @@ def _deshawn_mitchell() -> dict:
                 "consumer_business_classification": "consumer",
             },
         ],
+        # The fee-waiver page's answers (Form 103B lines 2 and 3)
+        "fee_waiver": {
+            "monthly_take_home_pay": Decimal("3050.00"),
+            "receives_noncash_assistance": False,
+            "benefit_types": [],
+        },
     }
 
 
@@ -433,7 +452,7 @@ def _sarah_chen() -> dict:
         "income": {
             "marital_status": "single",
             "number_of_dependents": 0,
-            "monthly_income": [2000, 2000, 2000, 2000, 2000, 2000],
+            **_wages_only(Decimal("2000.00")),
         },
         "expenses": {
             "rent_or_mortgage": Decimal("850.00"),
@@ -469,6 +488,12 @@ def _sarah_chen() -> dict:
                 "consumer_business_classification": "consumer",
             },
         ],
+        # The fee-waiver page's answers (Form 103B lines 2 and 3)
+        "fee_waiver": {
+            "monthly_take_home_pay": Decimal("1750.00"),
+            "receives_noncash_assistance": False,
+            "benefit_types": [],
+        },
     }
 
 
@@ -580,17 +605,10 @@ class Command(BaseCommand):
         # Create FeeWaiverApplication for fee-waiver-eligible personas
         # (required by Form 103B generator)
         if result["qualifies_for_fee_waiver"]:
-            income_data = data["income"]
-            household_size = data["debtor"]["household_size"]
-            monthly_income = Decimal(str(income_data["monthly_income"][0]))
-            total_expenses = sum(data["expenses"].values())
-
             FeeWaiverApplication.objects.create(
                 session=session,
-                household_size=household_size,
-                monthly_income=monthly_income,
-                monthly_expenses=total_expenses,
-                receives_public_benefits=False,
+                household_size=data["debtor"]["household_size"],
+                **data["fee_waiver"],
                 cannot_pay_full=True,
                 cannot_pay_installments=True,
                 status="pending",

@@ -21,6 +21,8 @@ import type {
   SessionSummaryResponse,
   AssetInfo,
   DebtInfo,
+  ExecutoryContract,
+  Codebtor,
   GeneratedForm,
   APIError,
   LoginRequest,
@@ -82,12 +84,20 @@ export function clearTokens(): void {
 export class APIClientError extends Error {
   statusCode: number;
   details?: Record<string, unknown>;
+  /** The response's own `error` sentence, kept even when its `message` is the one shown. */
+  serverError?: string;
 
-  constructor(message: string, statusCode: number, details?: Record<string, unknown>) {
+  constructor(
+    message: string,
+    statusCode: number,
+    details?: Record<string, unknown>,
+    serverError?: string
+  ) {
     super(message);
     this.name = 'APIClientError';
     this.statusCode = statusCode;
     this.details = details;
+    this.serverError = serverError;
   }
 }
 
@@ -106,7 +116,8 @@ async function handleAPIError(response: Response): Promise<never> {
   throw new APIClientError(
     errorData.message || errorData.error || 'Request failed',
     response.status,
-    errorData.details
+    errorData.details,
+    errorData.error
   );
 }
 
@@ -376,34 +387,36 @@ export const intakeAPI = {
   },
 
   // Contracts (Schedule G)
-  contracts: async (sessionId: number): Promise<unknown[]> => {
-    return apiFetch<unknown[]>(`/intake/sessions/${sessionId}/contracts/`);
+  contracts: async (sessionId: number): Promise<ExecutoryContract[]> => {
+    return apiFetch<ExecutoryContract[]>(`/intake/sessions/${sessionId}/contracts/`);
   },
-  createContract: async (sessionId: number, data: unknown): Promise<unknown> => {
-    return apiFetch<unknown>(`/intake/sessions/${sessionId}/contracts/`, {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
-  },
-  deleteContract: async (sessionId: number, contractId: number): Promise<void> => {
-    await apiFetch<void>(`/intake/sessions/${sessionId}/contracts/${contractId}/`, {
-      method: 'DELETE',
+  /**
+   * Save the Contracts step's whole list: a row with an id updates, a row without one is
+   * created, and a saved row the list leaves out is deleted. Resolves with the saved rows.
+   * PUT /api/intake/sessions/{id}/contracts/
+   */
+  saveContracts: async (
+    sessionId: number,
+    contracts: ExecutoryContract[]
+  ): Promise<ExecutoryContract[]> => {
+    return apiFetch<ExecutoryContract[]>(`/intake/sessions/${sessionId}/contracts/`, {
+      method: 'PUT',
+      body: JSON.stringify(contracts),
     });
   },
 
   // Codebtors (Schedule H)
-  codebtors: async (sessionId: number): Promise<unknown[]> => {
-    return apiFetch<unknown[]>(`/intake/sessions/${sessionId}/codebtors/`);
+  codebtors: async (sessionId: number): Promise<Codebtor[]> => {
+    return apiFetch<Codebtor[]>(`/intake/sessions/${sessionId}/codebtors/`);
   },
-  createCodebtor: async (sessionId: number, data: unknown): Promise<unknown> => {
-    return apiFetch<unknown>(`/intake/sessions/${sessionId}/codebtors/`, {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
-  },
-  deleteCodebtor: async (sessionId: number, codebtorId: number): Promise<void> => {
-    await apiFetch<void>(`/intake/sessions/${sessionId}/codebtors/${codebtorId}/`, {
-      method: 'DELETE',
+  /**
+   * Save the Codebtors step's whole list, as saveContracts does.
+   * PUT /api/intake/sessions/{id}/codebtors/
+   */
+  saveCodebtors: async (sessionId: number, codebtors: Codebtor[]): Promise<Codebtor[]> => {
+    return apiFetch<Codebtor[]>(`/intake/sessions/${sessionId}/codebtors/`, {
+      method: 'PUT',
+      body: JSON.stringify(codebtors),
     });
   },
   getDischargeability: async (sessionId: number): Promise<unknown[]> => {
@@ -472,9 +485,9 @@ export const debtsAPI = {
 export interface FeeWaiverPayload {
   session: number;
   household_size: number;
-  monthly_income: string;
-  monthly_expenses: string;
-  receives_public_benefits: boolean;
+  monthly_take_home_pay: string;
+  receives_noncash_assistance: boolean;
+  // The "What kind?" answer; empty when the filer gets no non-cash help
   benefit_types: string[];
   cannot_pay_full: boolean;
   cannot_pay_installments: boolean;
@@ -484,9 +497,9 @@ export interface FeeWaiverApplication {
   id: number;
   session: number;
   household_size: number;
-  monthly_income: string;
-  monthly_expenses: string;
-  receives_public_benefits: boolean;
+  // Both null on an application saved before the page asked them
+  monthly_take_home_pay: string | null;
+  receives_noncash_assistance: boolean | null;
   benefit_types: string[];
   cannot_pay_full: boolean;
   cannot_pay_installments: boolean;
@@ -501,6 +514,19 @@ export const feeWaiverAPI = {
       method: 'POST',
       body: JSON.stringify(data),
     });
+  },
+
+  /**
+   * The application this session already sent, or null
+   * GET /api/intake/fee-waiver/?session={sessionId}
+   */
+  getBySession: async (sessionId: number): Promise<FeeWaiverApplication | null> => {
+    const response = await apiFetch<FeeWaiverApplication[] | { results: FeeWaiverApplication[] }>(
+      `/intake/fee-waiver/?session=${sessionId}`
+    );
+    // Handle both paginated ({results: [...]}) and unpaginated ([...]) responses
+    const applications = Array.isArray(response) ? response : (response.results ?? []);
+    return applications[0] ?? null;
   },
 };
 

@@ -6,7 +6,8 @@ You ARE Maria Torres. Navigate DigniFi as she would.
 
 - 36 years old, single mother of two (ages 8 and 5)
 - Work two jobs: daytime cashier at Walgreens, evening shift at a restaurant
-- Monthly take-home: about $3,200
+- Monthly income before taxes: about $3,200
+- Monthly take-home pay (after taxes and payroll deductions): about $2,800
 - Live in a 2-bedroom apartment in Wicker Park, Chicago
 - Have a 2015 Honda Civic (paid off) that you need for getting kids to school
 
@@ -35,34 +36,36 @@ You ARE Maria Torres. Navigate DigniFi as she would.
 
 ## Your Data (enter this exactly)
 
-| Field | Value |
-|-------|-------|
-| First name | Maria |
-| Last name | Torres |
-| SSN | 900-11-0001 |
-| Date of birth | 06/15/1988 |
-| Phone | 312-555-0101 |
-| Email | maria.torres@demo.dignifi.org |
-| Address | 2145 W Division St Apt 3, Chicago, IL 60622 |
-| Marital status | Single |
-| Dependents | 2 |
-| Monthly income | $3,200 |
-| Rent | $1,100 |
-| Utilities | $180 |
-| Vehicle insurance | $85 |
-| Vehicle maintenance | $40 |
-| Food | $450 |
-| Clothing | $60 |
-| Medical | $75 |
-| Childcare | $400 |
-| Insurance (not deducted) | $120 |
-| Other expenses | $50 |
+| Field                                                  | Value                                       |
+| ------------------------------------------------------ | ------------------------------------------- |
+| First name                                             | Maria                                       |
+| Last name                                              | Torres                                      |
+| SSN                                                    | 900-11-0001                                 |
+| Date of birth                                          | 06/15/1988                                  |
+| Phone                                                  | 312-555-0101                                |
+| Email                                                  | maria.torres@demo.dignifi.org               |
+| Address                                                | 2145 W Division St Apt 3, Chicago, IL 60622 |
+| Monthly income before taxes (Monthly Wages/Salary box) | $3,200                                      |
+| Rent                                                   | $1,100                                      |
+| Utilities                                              | $180                                        |
+| Vehicle insurance                                      | $85                                         |
+| Vehicle maintenance                                    | $40                                         |
+| Food                                                   | $450                                        |
+| Clothing                                               | $60                                         |
+| Medical                                                | $75                                         |
+| Childcare                                              | $400                                        |
+| Insurance (not deducted)                               | $120                                        |
+| Other expenses                                         | $50                                         |
+| Take-home pay (fee waiver page)                        | $2,800                                      |
+| Non-cash help from the government (fee waiver page)    | Yes. What kind? SNAP (food stamps)          |
 
 **Assets:**
+
 - 2015 Honda Civic — value $6,500, owed $0
 - Chase checking account — $340
 
 **Amounts Owed:**
+
 - Capital One credit card — $4,200, paying $85/mo (in collections)
 - Northwestern Memorial Hospital — $12,800, paying $0 (in collections)
 - Discover Financial personal loan — $3,500, paying $120/mo

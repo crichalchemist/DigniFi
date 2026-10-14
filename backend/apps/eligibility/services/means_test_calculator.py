@@ -10,6 +10,7 @@ from typing import Any
 
 from django.db import transaction
 
+from apps.eligibility.cmi import IncomeNotSplit, is_above_median
 from apps.eligibility.models import MeansTest
 from apps.intake.models import IntakeSession
 
@@ -78,9 +79,11 @@ class MeansTestCalculator:
         if not created:
             means_test.district = self.district
 
-        # Perform calculation
+        # Perform calculation. Income not split by source already says what to do.
         try:
             means_test.calculate()
+        except IncomeNotSplit:
+            raise
         except ValueError as e:
             raise ValueError(f"Means test calculation failed: {str(e)}") from e
 
@@ -128,12 +131,14 @@ class MeansTestCalculator:
         Returns:
             str: UPL-compliant informational message
         """
-        if means_test.passes_means_test:
+        # Which side of the median first, then the expense test: an above-median filer who
+        # passes it must not be told their income is below the median (DIG-128).
+        if not is_above_median(means_test.calculated_cmi, means_test.median_income_threshold):
             message = (
-                "Based on the information provided, your income is below the median "
+                "Based on the information provided, your income is at or below the median "
                 f"income for a household of this size in {self.district.state}. "
                 "This means you may be eligible to file Chapter 7 bankruptcy. "
-                "Chapter 7 typically allows debtors with income below the median to "
+                "Chapter 7 typically allows debtors with income at or below the median to "
                 "discharge unsecured debts without a repayment plan."
             )
 
@@ -196,7 +201,7 @@ class MeansTestCalculator:
 
         return {
             "income_history": {
-                "monthly_values": details.get("monthly_income_breakdown", []),
+                "by_source": details.get("income_by_source", {}),
                 "average_cmi": float(means_test.calculated_cmi),
             },
             "family_composition": {

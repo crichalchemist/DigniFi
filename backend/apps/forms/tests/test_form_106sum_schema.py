@@ -7,6 +7,7 @@ import pytest
 from django.contrib.auth import get_user_model
 
 from apps.districts.models import District
+from apps.eligibility.cmi import IncomeNotSplit
 from apps.forms.schema import load_schema
 from apps.forms.services.fill_resolver import resolve
 from apps.intake.models import (
@@ -80,7 +81,7 @@ def populated_session(session):
         is_secured=False,
         is_priority=True,
     )
-    IncomeInfo.objects.create(session=session, monthly_income=[1200, 1200, 1200, 1200, 1200, 1200])
+    IncomeInfo.objects.create(session=session, monthly_gross_wages=Decimal("1200.00"))
     ExpenseInfo.objects.create(
         session=session,
         rent_or_mortgage=Decimal("1000"),
@@ -126,10 +127,17 @@ class TestForm106SumSchema:
 
     def test_cmi(self, populated_session):
         field_map = resolve(load_schema("form_106sum"), populated_session)
-        # 1200 * 6 / 6 = 1200.00
+        # 1200 wages = 1200.00 CMI
         assert field_map["8"] == "1200.00"
 
-    def test_empty_session(self, session):
+    def test_empty_session_is_asked_for_income_by_source(self, session):
+        # Line 8 is CMI, and a filer who gave no income has none to print (spec §5.5).
+        with pytest.raises(IncomeNotSplit):
+            resolve(load_schema("form_106sum"), session)
+
+    def test_a_filer_with_no_property_who_typed_zero_income_prints_zeros(self, session):
+        # Line 1a is not an income box: no real property prints 0.00. Line 8 prints the $0 typed.
+        IncomeInfo.objects.create(session=session, monthly_gross_wages=Decimal("0.00"))
         field_map = resolve(load_schema("form_106sum"), session)
         assert field_map["1a"] == "0.00"
         assert field_map["8"] == "0.00"

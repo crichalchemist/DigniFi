@@ -173,3 +173,38 @@ class TestSOFAUpdate:
         assert data["prior_income"][0]["source"] == "Temp Agency"
         assert len(data["creditor_payments"]) == 1
         assert data["creditor_payments"][0]["creditor_name"] == "Capital One"
+
+    def test_negative_prior_income_is_refused_and_not_stored(self, auth_client_session):
+        # Form 107 binds gross_amount, so a stored -500 would print as income.
+        client, session = auth_client_session
+        report = SOFAReport.objects.create(session=session)
+        report.prior_income.create(year=2024, source="Old Job", gross_amount="30000.00")
+
+        response = client.patch(
+            f"/api/intake/sofa-report/{session.pk}/",
+            {"prior_income": [{"year": 2025, "source": "Job", "gross_amount": "-500.00"}]},
+            format="json",
+        )
+
+        assert response.status_code == 400
+        assert [r.source for r in report.prior_income.all()] == ["Old Job"]
+
+    def test_negative_creditor_payment_is_refused_and_not_stored(self, auth_client_session):
+        client, session = auth_client_session
+        report = SOFAReport.objects.create(session=session)
+        report.creditor_payments.create(
+            creditor_name="OldCred", total_paid="100.00", dates_of_payments="Jan 2025"
+        )
+
+        response = client.patch(
+            f"/api/intake/sofa-report/{session.pk}/",
+            {
+                "creditor_payments": [
+                    {"creditor_name": "Cred", "total_paid": "-1.00", "dates_of_payments": "x"}
+                ]
+            },
+            format="json",
+        )
+
+        assert response.status_code == 400
+        assert [p.creditor_name for p in report.creditor_payments.all()] == ["OldCred"]

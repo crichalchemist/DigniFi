@@ -26,13 +26,33 @@ from .models import (
 from .serializers import (
     AssetInfoSerializer,
     BulkAnswerPayloadSerializer,
+    CodebtorRowSerializer,
     CodebtorSerializer,
     DebtInfoSerializer,
+    ExecutoryContractRowSerializer,
     ExecutoryContractSerializer,
     FeeWaiverApplicationSerializer,
     IntakeSessionSerializer,
     SOFAReportSerializer,
+    _save_rows_by_id,
 )
+
+
+def _save_list(session, model, row_serializer, rows):
+    """Save the whole list the Contracts or Codebtors step shows (DIG-147).
+
+    Every row is checked before anything is written, so one bad row saves nothing. Then a
+    row carrying one of this session's ids updates in place, any other row is created, and
+    a stored row the list left out is deleted (see _save_rows_by_id). Returns the saved
+    rows in id order, so the wizard keeps their ids for the next save.
+    """
+    serializer = row_serializer(data=rows, many=True)
+    serializer.is_valid(raise_exception=True)
+    with transaction.atomic():
+        _save_rows_by_id(session, model, serializer.validated_data)
+        session.reopen()
+    saved = model.objects.filter(session=session).order_by("id")
+    return Response(row_serializer(saved, many=True).data)
 
 
 def _assert_session_owned(session, user):
@@ -82,10 +102,7 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
             "current_step": 1
         }
         """
-        data = request.data.copy()
-        data["status"] = "started"
-
-        serializer = self.get_serializer(data=data)
+        serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
 
@@ -130,11 +147,21 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
         """
         session = self.get_object()
 
+        # Only one of the wizard's 8 steps; anything else is a client fault (DIG-151).
         current_step = request.data.get("current_step")
-        if current_step:
-            session.current_step = current_step
-            session.status = "in_progress"
-            session.save()
+        if (
+            not isinstance(current_step, int)
+            or isinstance(current_step, bool)
+            or not 1 <= current_step <= 8
+        ):
+            return Response(
+                {"current_step": ["Must be a whole number from 1 to 8."]},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        session.current_step = current_step
+        session.status = "in_progress"
+        session.save()
 
         # Update with any provided data
         if "data" in request.data:
@@ -349,16 +376,21 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
 
         return Response({"status": "success", "created": created_count, "updated": updated_count})
 
-    @action(detail=True, methods=["get", "post"], url_path="contracts", url_name="contracts")
+    @action(detail=True, methods=["get", "post", "put"], url_path="contracts", url_name="contracts")
     def contracts(self, request, pk=None):
         session = self.get_object()
         if request.method == "GET":
-            contracts = ExecutoryContract.objects.filter(session=session)
+            contracts = ExecutoryContract.objects.filter(session=session).order_by("id")
             serializer = ExecutoryContractSerializer(contracts, many=True)
             return Response(serializer.data)
+        if request.method == "PUT":
+            return _save_list(
+                session, ExecutoryContract, ExecutoryContractRowSerializer, request.data
+            )
         serializer = ExecutoryContractSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.save(session=session)
+        session.reopen()
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     @action(
@@ -372,20 +404,24 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
         try:
             contract = ExecutoryContract.objects.get(pk=contract_id, session=session)
             contract.delete()
+            session.reopen()
             return Response(status=status.HTTP_204_NO_CONTENT)
         except ExecutoryContract.DoesNotExist:
             return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
 
-    @action(detail=True, methods=["get", "post"], url_path="codebtors", url_name="codebtors")
+    @action(detail=True, methods=["get", "post", "put"], url_path="codebtors", url_name="codebtors")
     def codebtors(self, request, pk=None):
         session = self.get_object()
         if request.method == "GET":
-            codebtors = Codebtor.objects.filter(session=session)
+            codebtors = Codebtor.objects.filter(session=session).order_by("id")
             serializer = CodebtorSerializer(codebtors, many=True)
             return Response(serializer.data)
+        if request.method == "PUT":
+            return _save_list(session, Codebtor, CodebtorRowSerializer, request.data)
         serializer = CodebtorSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.save(session=session)
+        session.reopen()
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     @action(
@@ -399,6 +435,7 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
         try:
             codebtor = Codebtor.objects.get(pk=codebtor_id, session=session)
             codebtor.delete()
+            session.reopen()
             return Response(status=status.HTTP_204_NO_CONTENT)
         except Codebtor.DoesNotExist:
             return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
@@ -448,12 +485,20 @@ class AssetViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         _assert_session_owned(serializer.validated_data["session"], self.request.user)
         serializer.save()
+        serializer.instance.session.reopen()
 
     def perform_update(self, serializer):
         session = serializer.validated_data.get("session")
         if session is not None:
             _assert_session_owned(session, self.request.user)
+        # A row moved to another of the filer's sessions changes both.
+        serializer.instance.session.reopen()
         serializer.save()
+        serializer.instance.session.reopen()
+
+    def perform_destroy(self, instance):
+        instance.delete()
+        instance.session.reopen()
 
 
 class DebtViewSet(viewsets.ModelViewSet):
@@ -474,25 +519,48 @@ class DebtViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         _assert_session_owned(serializer.validated_data["session"], self.request.user)
         serializer.save()
+        serializer.instance.session.reopen()
 
     def perform_update(self, serializer):
         session = serializer.validated_data.get("session")
         if session is not None:
             _assert_session_owned(session, self.request.user)
+        # A row moved to another of the filer's sessions changes both.
+        serializer.instance.session.reopen()
         serializer.save()
+        serializer.instance.session.reopen()
+
+    def perform_destroy(self, instance):
+        instance.delete()
+        instance.session.reopen()
 
 
 class FeeWaiverViewSet(viewsets.ModelViewSet):
-    """CRUD for fee waiver applications, scoped to authenticated user's sessions."""
+    """CRUD for fee waiver applications, scoped to authenticated user's sessions.
+
+    GET /api/intake/fee-waiver/?session={id} reads one session's application, so the page
+    opens with the answers already sent (DIG-157). The read never creates one: an
+    application puts Form 103B in the packet.
+    """
 
     serializer_class = FeeWaiverApplicationSerializer
     permission_classes = [IsAuthenticated]
     http_method_names = ["get", "post", "patch", "head", "options"]
+    filterset_fields = ["session"]
 
     def get_queryset(self):
-        return FeeWaiverApplication.objects.filter(session__user=self.request.user).select_related(
-            "session"
+        return (
+            FeeWaiverApplication.objects.filter(session__user=self.request.user)
+            .select_related("session")
+            .order_by("id")
         )
+
+    def perform_update(self, serializer):
+        # A PATCH can't move the application onto another user's session (DIG-178).
+        session = serializer.validated_data.get("session")
+        if session is not None:
+            _assert_session_owned(session, self.request.user)
+        serializer.save()
 
     def perform_create(self, serializer):
         # FeeWaiverApplication is OneToOne with IntakeSession — second POST from

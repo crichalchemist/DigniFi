@@ -111,3 +111,13 @@ export const ERROR_GENERIC =
 
 export const ERROR_SESSION_EXPIRED =
   'Your session has ended. Please sign in again to continue where you left off.';
+
+// ============================================================================
+// Amount Box Messages (shown beside the box, see amountError)
+// ============================================================================
+
+export const AMOUNT_NEGATIVE = 'Amount cannot be negative';
+
+export const AMOUNT_DECIMALS = 'Please enter dollars and cents, like 1250.50';
+
+export const AMOUNT_TOO_LARGE = 'This amount is too large. Please check it';

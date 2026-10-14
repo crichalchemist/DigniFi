@@ -197,3 +197,42 @@ def test_a_corrected_amount_reaches_the_draft_debt(db, auth_client, session):
     assert response.status_code == 200
     draft.refresh_from_db()
     assert draft.amount_owed == Decimal("650.00")
+
+
+@pytest.mark.parametrize(
+    "document_type,fields",
+    [
+        (DocumentType.CREDITOR_BILL, {"amount_owed": "650.00"}),
+        (DocumentType.PAY_STUB, {"gross_pay": "1100.00"}),
+    ],
+    ids=["bill", "pay-stub"],
+)
+def test_correcting_a_scanned_bill_or_pay_stub_reopens_a_completed_intake(
+    db, auth_client, session, document_type, fields
+):
+    # A bill's draft debt and a pay stub's figures are intake data (spec §5.3).
+    client, user = auth_client
+    doc = UploadedDocument.objects.create(
+        session=session,
+        uploaded_by=user,
+        document_type=document_type,
+        user_declared_type=document_type,
+        original_filename="scan.pdf",
+        file_size=100,
+        mime_type="application/pdf",
+        file="documents/x.pdf",
+    )
+    OCRResult.objects.create(
+        document=doc,
+        status=OCRStatus.COMPLETED,
+        extracted_data="{}",
+        confidence_scores={},
+        overall_confidence=80,
+    )
+    IntakeSession.objects.filter(pk=session.pk).update(status="completed")
+
+    response = client.post(f"/api/documents/{doc.id}/validate/", {"fields": fields}, format="json")
+
+    assert response.status_code == 200
+    session.refresh_from_db()
+    assert session.status == "in_progress"

@@ -396,7 +396,7 @@ class TestIntakeSessionCompletion:
             session=session,
             marital_status="single",
             number_of_dependents=0,
-            monthly_income=[5000, 5000, 5000, 5000, 5000, 5000],
+            monthly_gross_wages=Decimal("5000.00"),
         )
 
         # Add expense info
@@ -430,7 +430,7 @@ class TestIntakeSessionCompletion:
             session=session,
             marital_status="single",
             number_of_dependents=0,
-            monthly_income=[5000, 5000, 5000, 5000, 5000, 5000],
+            monthly_gross_wages=Decimal("5000.00"),
         )
 
         ExpenseInfo.objects.create(
@@ -511,7 +511,7 @@ class TestIntakeSessionCompletion:
             session=session,
             marital_status="single",
             number_of_dependents=0,
-            monthly_income=[5000, 5000, 5000, 5000, 5000, 5000],
+            monthly_gross_wages=Decimal("5000.00"),
         )
 
         url = reverse("intake-session-complete", args=[session.id])
@@ -630,7 +630,7 @@ class TestMeansTestCalculation:
             session=session,
             marital_status="single",
             number_of_dependents=0,
-            monthly_income=[5000, 5000, 5000, 5000, 5000, 5000],
+            monthly_gross_wages=Decimal("5000.00"),
         )
 
         ExpenseInfo.objects.create(
@@ -669,7 +669,7 @@ class TestMeansTestCalculation:
     def test_calculate_means_test_below_median(self, api_client, complete_session):
         """Test means test with income below median (should pass)."""
         # Update income to be below median ($71,304 annual = $5,942/month)
-        complete_session.income_info.monthly_income = [4000, 4000, 4000, 4000, 4000, 4000]
+        complete_session.income_info.monthly_gross_wages = Decimal("4000.00")
         complete_session.income_info.save()
 
         url = reverse("intake-session-calculate-means-test", args=[complete_session.id])
@@ -684,7 +684,7 @@ class TestMeansTestCalculation:
         """Test means test with income above median (should fail)."""
         # Note: calculator compares monthly CMI to annual threshold directly.
         # Median is $71,304 annual, so CMI must exceed that to fail.
-        complete_session.income_info.monthly_income = [80000, 80000, 80000, 80000, 80000, 80000]
+        complete_session.income_info.monthly_gross_wages = Decimal("80000.00")
         complete_session.income_info.save()
 
         url = reverse("intake-session-calculate-means-test", args=[complete_session.id])
@@ -712,7 +712,7 @@ class TestMeansTestCalculation:
     def test_fee_waiver_qualification(self, api_client, complete_session, median_income):
         """Test fee waiver qualification for income < 150% poverty line."""
         # Set income very low for fee waiver (150% of poverty line ~$22k annual = $1,833/month)
-        complete_session.income_info.monthly_income = [1500, 1500, 1500, 1500, 1500, 1500]
+        complete_session.income_info.monthly_gross_wages = Decimal("1500.00")
         complete_session.income_info.save()
 
         url = reverse("intake-session-calculate-means-test", args=[complete_session.id])
@@ -752,7 +752,7 @@ class TestSessionSummary:
             session=session,
             marital_status="single",
             number_of_dependents=0,
-            monthly_income=[5000, 5000, 5000, 5000, 5000, 5000],
+            monthly_gross_wages=Decimal("5000.00"),
         )
 
         # Add an asset
