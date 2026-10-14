@@ -6,6 +6,7 @@ import { http, HttpResponse } from 'msw';
 import { server } from '../../test/mocks/server';
 import { IntakeProvider, useIntake } from '../../context/IntakeContext';
 import IntakeWizard from '../IntakeWizard';
+import { EXPENSE_FIELDS } from '../../types/api';
 
 // DebtorInfoStep reads account email via useAuth; wizard test renders without
 // AuthProvider, so we stub just the user object the step needs.
@@ -1052,11 +1053,27 @@ describe('IntakeWizard cleared expense', { timeout: 15_000 }, () => {
     await userEvent.click(screen.getByRole('button', { name: /continue/i }));
     await screen.findByRole('heading', { name: /assets/i, level: 2 });
 
-    const expenseInfo = patchBodies[patchBodies.length - 1].expense_info as Record<string, unknown>;
-    expect(expenseInfo.rent_or_mortgage).toBe(0);
-    // The boxes the filer left alone keep their saved amounts
-    expect(expenseInfo.utilities).toBe(180);
-    expect(expenseInfo.food_and_groceries).toBe(450);
+    const body = patchBodies[patchBodies.length - 1];
+    expect(Object.keys(body)).toEqual(['expense_info']);
+    const expenseInfo = body.expense_info as Record<string, unknown>;
+    // The 13 names the server stores, in their order, and nothing else (DRF drops any other
+    // name silently). The boxes the filer left alone keep their saved amounts.
+    expect(Object.keys(expenseInfo)).toEqual([...EXPENSE_FIELDS]);
+    expect(expenseInfo).toEqual({
+      rent_or_mortgage: 0,
+      utilities: 180,
+      home_maintenance: 0,
+      vehicle_payment: 0,
+      vehicle_insurance: 85,
+      vehicle_maintenance: 40,
+      food_and_groceries: 450,
+      clothing: 60,
+      medical_expenses: 75,
+      childcare: 400,
+      child_support_paid: 0,
+      insurance_not_deducted: 120,
+      other_expenses: 50,
+    });
   });
 });
 
