@@ -70,6 +70,9 @@ export function IntakeWizard() {
   const [currentStepNumber, setCurrentStepNumber] = useState(1);
   const [canProceed, setCanProceed] = useState(false);
   const sessionStartRef = useRef<number>(0);
+  // Set while a Continue or Complete press is saving, so a second press can't save the step
+  // again: a list saved twice prints each row twice on Schedule G or H
+  const pressInFlightRef = useRef(false);
 
   // Initialize session start time after first render
   useLayoutEffect(() => {
@@ -236,33 +239,38 @@ export function IntakeWizard() {
   // =========================================================================
 
   const handleNext = async () => {
-    if (!session) return;
+    if (!session || pressInFlightRef.current) return;
+    pressInFlightRef.current = true;
 
-    // Save the current step immediately (flushes any pending debounce). If it
-    // fails, do NOT advance — the WizardLayout indicator shows the error.
-    const saved = await saveNow();
-    if (!saved) return;
-
-    // Advance to next step (updateCurrentStep can rethrow, so keep in try/catch)
     try {
-      const nextStep = currentStepNumber + 1;
-      await updateCurrentStep(nextStep);
+      // Save the current step immediately (flushes any pending debounce). If it
+      // fails, do NOT advance — the WizardLayout indicator shows the error.
+      const saved = await saveNow();
+      if (!saved) return;
 
-      // Document upload sits between step 1 and step 2. The debtor's own details are
-      // typed by hand; uploads then pre-fill the financial steps that follow, so the
-      // detour has to happen before Income rather than after Review. current_step is
-      // already persisted as 2, so returning to /intake resumes at Income — see the
-      // session-read effect above.
-      if (nextStep === 2) {
-        navigate('/documents');
-        return;
+      // Advance to next step (updateCurrentStep can rethrow, so keep in try/catch)
+      try {
+        const nextStep = currentStepNumber + 1;
+        await updateCurrentStep(nextStep);
+
+        // Document upload sits between step 1 and step 2. The debtor's own details are
+        // typed by hand; uploads then pre-fill the financial steps that follow, so the
+        // detour has to happen before Income rather than after Review. current_step is
+        // already persisted as 2, so returning to /intake resumes at Income — see the
+        // session-read effect above.
+        if (nextStep === 2) {
+          navigate('/documents');
+          return;
+        }
+
+        setCurrentStepNumber(nextStep);
+        // Each step reports its own validity once it shows (Contracts and Codebtors too, DIG-165)
+        setCanProceed(false);
+      } catch (error) {
+        console.error('Error advancing to next step:', error);
       }
-
-      setCurrentStepNumber(nextStep);
-      // Each step reports its own validity once it shows (Contracts and Codebtors too, DIG-165)
-      setCanProceed(false);
-    } catch (error) {
-      console.error('Error advancing to next step:', error);
+    } finally {
+      pressInFlightRef.current = false;
     }
   };
 
@@ -275,27 +283,34 @@ export function IntakeWizard() {
   };
 
   const handleComplete = async () => {
-    // Save the current step immediately. If it fails, do NOT complete.
-    const saved = await saveNow();
-    if (!saved) return;
+    if (pressInFlightRef.current) return;
+    pressInFlightRef.current = true;
 
     try {
-      await completeSession();
-      trackEvent('intake_completed', {
-        total_duration_ms: Date.now() - sessionStartRef.current,
-        session_id: session?.id,
-      });
-      const result = await calculateMeansTest();
-      if (result.qualifies_for_fee_waiver) {
-        navigate('/fee-waiver');
-      } else {
-        navigate('/sofa');
+      // Save the current step immediately. If it fails, do NOT complete.
+      const saved = await saveNow();
+      if (!saved) return;
+
+      try {
+        await completeSession();
+        trackEvent('intake_completed', {
+          total_duration_ms: Date.now() - sessionStartRef.current,
+          session_id: session?.id,
+        });
+        const result = await calculateMeansTest();
+        if (result.qualifies_for_fee_waiver) {
+          navigate('/fee-waiver');
+        } else {
+          navigate('/sofa');
+        }
+      } catch (error) {
+        // The filer stays on Review, where WizardLayout shows the reason the context recorded
+        // (DIG-150). If only the means test failed, the intake is already complete, and
+        // pressing Complete again retries both calls.
+        console.error('Error completing intake:', error);
       }
-    } catch (error) {
-      // The filer stays on Review, where WizardLayout shows the reason the context recorded
-      // (DIG-150). If only the means test failed, the intake is already complete, and
-      // pressing Complete again retries both calls.
-      console.error('Error completing intake:', error);
+    } finally {
+      pressInFlightRef.current = false;
     }
   };
 

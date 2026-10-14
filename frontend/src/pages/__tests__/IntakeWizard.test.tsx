@@ -1189,6 +1189,23 @@ describe('IntakeWizard contracts and codebtors', { timeout: 15_000 }, () => {
     expect(contractSaves[1]).toEqual([storedLease, { ...lakeview, id: 10 }]);
   });
 
+  // A second press while the first save is on its way would save the list twice, and Schedule G
+  // would print each contract twice
+  it('saves the contracts list once when the filer double-clicks Continue', async () => {
+    serveFiler(6, [storedLease]);
+    renderWizard();
+    await expectStep('Contracts & Leases');
+    const continueButton = screen.getByRole('button', { name: /continue/i });
+    await waitFor(() => expect(continueButton).toBeEnabled());
+
+    fireEvent.click(continueButton);
+    fireEvent.click(continueButton);
+    await expectStep('Codebtors');
+
+    expect(contractSaves).toEqual([[storedLease]]);
+    expect(stepUpdates).toEqual([7]);
+  });
+
   // An empty list means the filer has none: a removed last row must not stay stored and
   // print on Schedule G or H
   it.each([
