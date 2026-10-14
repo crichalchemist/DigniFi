@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { http, HttpResponse } from 'msw';
@@ -414,6 +414,23 @@ describe('FeeWaiverPage', () => {
     );
     expect(sent).toEqual([]);
     expect(screen.queryByText('Statement of Financial Affairs')).not.toBeInTheDocument();
+  });
+
+  // "1250.500" is 1250.5 to the filer, but the server counts the zeros past the cents and refuses it
+  it('sends take-home pay typed with zeros past the cents as the dollars and cents it is', async () => {
+    const sent = captureSent();
+    renderFeeWaiver();
+
+    await userEvent.type(await screen.findByLabelText(/household size/i), '1');
+    // user-event drops the trailing zeros a browser keeps, so the box gets the raw string
+    fireEvent.change(screen.getByLabelText(/take-home pay/i), { target: { value: '1250.500' } });
+    expect(screen.getByLabelText(/take-home pay/i)).toHaveProperty('value', '1250.500');
+    await userEvent.click(screen.getByRole('radio', { name: 'No' }));
+    await userEvent.click(screen.getByRole('button', { name: /submit/i }));
+
+    await screen.findByText('Statement of Financial Affairs');
+    expect(sent).toHaveLength(1);
+    expect(sent[0]).toMatchObject({ monthly_take_home_pay: '1250.5' });
   });
 
   it('shows no form when the saved answers cannot be read, and reads them again on Try again', async () => {

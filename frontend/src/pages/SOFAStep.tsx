@@ -253,11 +253,19 @@ export function SOFAStep() {
     try {
       // Blank rows are left out. A section switched off sends no rows: its rows don't print, the
       // server keeps the ones it has, and a half-filled row the filer can't see can't fail the save.
+      // Each amount goes as the number amountError checked: the server counts the zeros past the
+      // cents of "1250.500" as decimal places and refuses it.
       const { prior_income, creditor_payments, ...flags } = report;
       const clean: Partial<SOFAReport> = { ...flags };
-      if (report.has_prior_income) clean.prior_income = prior_income.filter(incomeRowStarted);
+      if (report.has_prior_income) {
+        clean.prior_income = prior_income
+          .filter(incomeRowStarted)
+          .map((row) => ({ ...row, gross_amount: String(Number(row.gross_amount)) }));
+      }
       if (report.has_creditor_payments) {
-        clean.creditor_payments = creditor_payments.filter(paymentRowStarted);
+        clean.creditor_payments = creditor_payments
+          .filter(paymentRowStarted)
+          .map((row) => ({ ...row, total_paid: String(Number(row.total_paid)) }));
       }
       await sofaReportAPI.patch(session.id, clean);
       setSaved(true);

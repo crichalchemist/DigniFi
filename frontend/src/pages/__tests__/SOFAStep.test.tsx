@@ -1,5 +1,5 @@
 import { StrictMode } from 'react';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { http, HttpResponse, delay } from 'msw';
@@ -293,6 +293,37 @@ describe('SOFAStep unfinished rows (DIG-148)', () => {
     expect(saves).toHaveLength(1);
     expect(saves[0].creditor_payments).toEqual([
       expect.objectContaining({ creditor_name: 'Capital One', total_paid: '9999999999.99' }),
+    ]);
+  });
+
+  // "1250.500" is 1250.5 to the filer, but the server counts the zeros past the cents and refuses it
+  it('saves an amount typed with zeros past the cents as the dollars and cents it is', async () => {
+    const { saves, user } = renderSOFA();
+    await user.click(
+      await screen.findByRole('checkbox', { name: /i had income in the past 3 years/i })
+    );
+    await user.click(
+      await screen.findByRole('checkbox', { name: /payments to creditors in the past year/i })
+    );
+
+    await user.type(screen.getByLabelText('Source'), 'Temp Agency');
+    await user.type(screen.getByLabelText('Creditor Name'), 'Capital One');
+    // user-event drops the trailing zeros a browser keeps, so the boxes get the raw strings
+    fireEvent.change(screen.getByLabelText('Gross Amount'), { target: { value: '1250.500' } });
+    fireEvent.change(screen.getByLabelText('Total Amount Paid'), {
+      target: { value: '24000.000' },
+    });
+    expect(screen.getByLabelText('Gross Amount')).toHaveProperty('value', '1250.500');
+    expect(screen.getByLabelText('Total Amount Paid')).toHaveProperty('value', '24000.000');
+    await user.click(save());
+
+    expect(await screen.findByText('FormDashboard', {}, { timeout: 2000 })).toBeInTheDocument();
+    expect(saves).toHaveLength(1);
+    expect(saves[0].prior_income).toEqual([
+      expect.objectContaining({ source: 'Temp Agency', gross_amount: '1250.5' }),
+    ]);
+    expect(saves[0].creditor_payments).toEqual([
+      expect.objectContaining({ creditor_name: 'Capital One', total_paid: '24000' }),
     ]);
   });
 

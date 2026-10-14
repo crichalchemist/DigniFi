@@ -97,7 +97,9 @@ export function FeeWaiverPage() {
       await api.feeWaiver.create({
         session: session.id,
         household_size: parseInt(householdSize, 10),
-        monthly_take_home_pay: takeHomePay,
+        // The number amountError checked: the server counts the zeros past the cents of
+        // "1250.500" as decimal places and refuses it
+        monthly_take_home_pay: String(Number(takeHomePay)),
         receives_noncash_assistance: receivesNoncash,
         benefit_types: receivesNoncash ? [noncashKind.trim()] : [],
         cannot_pay_full: cannotPayFull,
