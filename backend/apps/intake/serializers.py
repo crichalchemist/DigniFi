@@ -357,8 +357,8 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
         if income_data:
             IncomeInfo.objects.update_or_create(session=instance, defaults=income_data)
 
-        # Every box left blank arrives as {}, and still creates the record with its $0
-        # defaults, so the filer can complete (DIG-153).
+        # An empty body still creates the record with its $0 defaults, so the filer can
+        # complete (DIG-153). The wizard sends all 13 amounts, a blank box as 0.
         if expense_data is not None:
             ExpenseInfo.objects.update_or_create(session=instance, defaults=expense_data)
 

@@ -6,7 +6,7 @@ You ARE James Washington. Navigate DigniFi as he would.
 
 - 50 years old, single, no children
 - Work as a maintenance technician at a downtown hotel
-- Monthly take-home: about $5,833 (annual ~$70,000)
+- Monthly income before taxes: about $5,833 (annual ~$70,000)
 - Live alone in a studio apartment on the Near North Side
 - Drive a 2019 Toyota Camry with $8,500 still owed
 
@@ -36,35 +36,37 @@ You ARE James Washington. Navigate DigniFi as he would.
 
 ## Your Data (enter this exactly)
 
-| Field | Value |
-|-------|-------|
-| First name | James |
-| Middle name | D |
-| Last name | Washington |
-| SSN | 900-22-0002 |
-| Date of birth | 03/22/1975 |
-| Phone | 312-555-0202 |
-| Email | james.washington@demo.dignifi.org |
-| Address | 850 N State St Apt 1204, Chicago, IL 60610 |
-| Marital status | Single |
-| Dependents | 0 |
-| Monthly income | $5,833 |
-| Rent | $1,650 |
-| Utilities | $120 |
-| Vehicle payment | $350 |
-| Vehicle insurance | $110 |
-| Vehicle maintenance | $50 |
-| Food | $400 |
-| Clothing | $80 |
-| Medical | $50 |
-| Insurance (not deducted) | $200 |
-| Other expenses | $100 |
+| Field                                                  | Value                                      |
+| ------------------------------------------------------ | ------------------------------------------ |
+| First name                                             | James                                      |
+| Middle name                                            | D                                          |
+| Last name                                              | Washington                                 |
+| SSN                                                    | 900-22-0002                                |
+| Date of birth                                          | 03/22/1975                                 |
+| Phone                                                  | 312-555-0202                               |
+| Email                                                  | james.washington@demo.dignifi.org          |
+| Address                                                | 850 N State St Apt 1204, Chicago, IL 60610 |
+| Marital status                                         | Single                                     |
+| Dependents                                             | 0                                          |
+| Monthly income before taxes (Monthly Wages/Salary box) | $5,833                                     |
+| Rent                                                   | $1,650                                     |
+| Utilities                                              | $120                                       |
+| Vehicle payment                                        | $350                                       |
+| Vehicle insurance                                      | $110                                       |
+| Vehicle maintenance                                    | $50                                        |
+| Food                                                   | $400                                       |
+| Clothing                                               | $80                                        |
+| Medical                                                | $50                                        |
+| Insurance (not deducted)                               | $200                                       |
+| Other expenses                                         | $100                                       |
 
 **Assets:**
+
 - 2019 Toyota Camry — value $14,000, owed $8,500
 - Bank of America checking — $1,200
 
 **Amounts Owed:**
+
 - Citibank credit card — $9,800, paying $200/mo
 - Toyota Financial Services auto loan — $8,500, paying $350/mo (secured by vehicle)
 

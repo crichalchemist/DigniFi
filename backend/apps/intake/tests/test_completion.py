@@ -138,8 +138,8 @@ def test_wizard_step_must_be_one_of_the_eight_steps(filer, completed, step):
 
 
 def test_filer_who_leaves_every_expense_blank_can_complete(filer, district):
-    # DIG-153: with every box blank, the Expenses step sends no amounts. The server drops the
-    # read-only total sent here, so this body is the same as the step's empty one.
+    # DIG-153: a body with no amounts still creates the record with its $0 defaults. The server
+    # drops the read-only total sent here. The wizard sends all 13 amounts, a blank box as 0.
     client, user = filer
     session = IntakeSession.objects.create(user=user, district=district, current_step=3)
     DebtorInfo.objects.create(

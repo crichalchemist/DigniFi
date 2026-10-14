@@ -264,7 +264,7 @@ A plan step is complete only when a search for `Generator\b`, `get_generator`, `
 - **Later: 108.** It is added in step 3.
 - **Packet size.** A packet therefore holds 14 to 16 forms.
 - **Always a yes or no.** `applies` never raises. `packet` therefore always returns a list, and generate-all deletes a stored 122A-2 row whenever `applies` is false.
-- **Why not `above_median_calculated`.** That flag is sticky: `calculate()` sets it true and never resets it, and the wizard's live preview saves calculations during intake. A filer who briefly entered above-median income would keep 122A-2 for good. The same code also gives above-median filers who pass the expense test the below-median message. Both are DIG-128.
+- **Why not `above_median_calculated`.** That flag is sticky: `calculate()` sets it true and never resets it, and the wizard's live preview saves calculations during intake. A filer who briefly entered above-median income would keep 122A-2 for good. The same code also gives above-median filers who pass the expense test the below-median message. Both are DIG-128 (fixed by the step 2 spec §5.6, DIG-128).
 - **Known inconsistency.** Line 13 of 122A-1 and `MeansTest` use different household sizes (DIG-51). Step 2 fixes that; until then, `applies` follows `MeansTest`, the figure the app already shows the filer.
 
 ### 5.7 Preconditions and the error contract
