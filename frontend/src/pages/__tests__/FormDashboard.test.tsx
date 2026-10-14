@@ -380,13 +380,19 @@ describe('FormDashboard', () => {
       expect(await screen.findByText('Form 122A-2 - Means Test Expenses')).toBeInTheDocument();
     });
 
-    it('reloads the packet after Generate All is refused', async () => {
+    it('reloads the packet after Generate All is refused, and a later one that succeeds clears the refusal', async () => {
+      let generateAllCalls = 0;
       server.use(
         packetThatGains122a2(),
-        http.post('http://localhost:8000/api/forms/generate_all/', () =>
-          HttpResponse.json({ error: FINISH_INTAKE }, { status: 422 })
-        )
+        // Refused the first time; the next one succeeds
+        http.post('http://localhost:8000/api/forms/generate_all/', () => {
+          generateAllCalls += 1;
+          return generateAllCalls === 1
+            ? HttpResponse.json({ error: FINISH_INTAKE }, { status: 422 })
+            : HttpResponse.json({ generated: [], errors: [], total_generated: 0, total_errors: 0 });
+        })
       );
+      const survey = { name: 'Feedback survey' };
 
       renderFormDashboard();
       const continueBtn = await openGenerateAll();
@@ -395,6 +401,14 @@ describe('FormDashboard', () => {
 
       expect(await screen.findByText('Form 122A-2 - Means Test Expenses')).toBeInTheDocument();
       expect(screen.getByText(FINISH_INTAKE)).toBeInTheDocument();
+      // A refused Generate All prepared nothing, so it asks for no feedback
+      expect(screen.queryByRole('form', survey)).not.toBeInTheDocument();
+
+      await userEvent.click(await openGenerateAll());
+
+      expect(await screen.findByRole('form', survey)).toBeInTheDocument();
+      expect(screen.queryByText(FINISH_INTAKE)).not.toBeInTheDocument();
+      expect(generateAllCalls).toBe(2);
     });
 
     it('shows the packet list’s refusal when it reloads after Generate All', async () => {
