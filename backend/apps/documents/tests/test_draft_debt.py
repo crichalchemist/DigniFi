@@ -129,6 +129,31 @@ def test_negative_or_non_numeric_balance_is_not_recorded(
     assert debt.amount_owed == Decimal("0")
 
 
+@pytest.mark.parametrize(
+    "creditor_type,secured", [("auto_loan", True), ("mortgage", True), ("medical", False)]
+)
+def test_a_scanned_car_loan_or_mortgage_bill_is_secured(
+    db, session, uploaded_doc, creditor_type, secured
+):
+    """A car loan or mortgage is secured, as the Debts step makes it when the filer picks the
+    category, so Schedule D and the summary list it with the secured debts (spec §5.4)."""
+    result = ExtractionResult(
+        fields={
+            "creditor_name": "Midwest Auto Finance",
+            "amount_owed": "12000.00",
+            "creditor_type": creditor_type,
+        },
+        confidence={"overall": 80},
+        detected_type=DocumentType.CREDITOR_BILL,
+    )
+
+    debt = DraftDebtCreator().create_from_result(result, session, uploaded_doc)
+
+    debt.refresh_from_db()
+    assert debt.is_secured is secured
+    assert debt.priority_classification == ("secured" if secured else "unsecured")
+
+
 class TestDraftDebtCreatorCreditReport:
     """Tests for multi-tradeline credit report extraction."""
 

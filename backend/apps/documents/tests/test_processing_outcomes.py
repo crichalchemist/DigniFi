@@ -265,6 +265,24 @@ def test_bill_with_a_creditor_but_unreadable_balance_becomes_a_draft_to_complete
     assert draft.source_document_id == doc["id"]
 
 
+def test_a_scanned_car_loan_bill_reads_back_as_secured(filer, openai_client):
+    # The Amounts Owed step shows the flag the session read returns, and saves it back
+    client, session = filer
+    bill = {
+        "creditor_name": "Midwest Auto Finance",
+        "amount_owed": "12000.00",
+        "creditor_type": "auto_loan",
+    }
+
+    doc = scan_photo(filer, openai_client, DocumentType.CREDITOR_BILL, reply=bill)
+
+    assert doc["ocr_result"]["status"] == "completed"
+    debts = client.get(f"/api/intake/sessions/{session.id}/").json()["debts"]
+    assert [(debt["creditor_name"], debt["is_secured"]) for debt in debts] == [
+        ("Midwest Auto Finance", True)
+    ]
+
+
 def test_pay_stub_upload_produces_monthly_income_for_schedule_i(filer, openai_client):
     _, session = filer
     pay_stub = {
