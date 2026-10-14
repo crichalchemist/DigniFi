@@ -26,6 +26,13 @@ describe('parseAmount', () => {
   it('keeps a negative value so downstream validation can flag it', () => {
     expect(parseAmount('-5')).toBe(-5);
   });
+
+  it('returns undefined for a number too large to hold, as for junk, so Infinity is never saved', () => {
+    // Income sent Infinity as null, stored as empty; Expenses got a 400
+    expect(parseAmount('1e400')).toBeUndefined();
+    expect(parseAmount('-1e400')).toBeUndefined();
+    expect(parseAmount('Infinity')).toBeUndefined();
+  });
 });
 
 describe('decimalToNumber', () => {

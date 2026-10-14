@@ -13,7 +13,8 @@ export function parseAmount(value: string): number | undefined {
   const trimmed = value.trim();
   if (trimmed === '') return undefined;
   const parsed = Number.parseFloat(trimmed);
-  return Number.isNaN(parsed) ? undefined : parsed;
+  // Not finite covers NaN and a number too large to hold ("1e400" is Infinity)
+  return Number.isFinite(parsed) ? parsed : undefined;
 }
 
 /**
