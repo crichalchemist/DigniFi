@@ -79,6 +79,11 @@ export function FeeWaiverPage() {
       setError('Please fill in all required fields.');
       return;
     }
+    // The server refuses a negative amount, and its refusal could only say to try again
+    if (Number(takeHomePay) < 0) {
+      setError('Amount cannot be negative');
+      return;
+    }
 
     setIsSubmitting(true);
     setError(null);

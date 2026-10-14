@@ -354,6 +354,21 @@ describe('FeeWaiverPage', () => {
     expect(screen.queryByText('Statement of Financial Affairs')).not.toBeInTheDocument();
   });
 
+  // The server refuses a negative amount, and its refusal could only say to try again
+  it('says a negative take-home pay cannot be, and sends nothing', async () => {
+    const sent = captureSent();
+    renderFeeWaiver();
+
+    await userEvent.type(await screen.findByLabelText(/household size/i), '1');
+    await userEvent.type(screen.getByLabelText(/take-home pay/i), '-50');
+    await userEvent.click(screen.getByRole('radio', { name: 'No' }));
+    await userEvent.click(screen.getByRole('button', { name: /submit/i }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/^Amount cannot be negative$/);
+    expect(sent).toEqual([]);
+    expect(screen.queryByText('Statement of Financial Affairs')).not.toBeInTheDocument();
+  });
+
   it('shows no form when the saved answers cannot be read, and reads them again on Try again', async () => {
     // An empty form would send unticked "cannot pay" boxes over the saved ones (DIG-157)
     let reads = 0;

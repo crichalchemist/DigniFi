@@ -38,10 +38,13 @@ function paymentRowStarted(row: SOFACreditorPayment): boolean {
   return Boolean(row.creditor_name?.trim() || row.total_paid || row.dates_of_payments?.trim());
 }
 
+const NEGATIVE = 'Amount cannot be negative';
+
 /**
  * The boxes still empty in the started rows of the sections switched on, keyed by the box's
  * field name. The server refuses a row without them, which used to fail the whole save with a
- * generic error (DIG-148), so each message names the row and the box to finish.
+ * generic error (DIG-148), so each message names the row and the box to finish. It refuses a
+ * negative amount too, so an amount box holding one is listed with the words the intake uses.
  */
 function unfinishedBoxes(report: SOFAReport): Record<string, string> {
   const missing: Record<string, string> = {};
@@ -55,6 +58,7 @@ function unfinishedBoxes(report: SOFAReport): Record<string, string> {
       if (!row.year) ask(`prior-income-year-${idx}`, 'Year', label);
       if (!row.source?.trim()) ask(`prior-income-source-${idx}`, 'Source', label);
       if (!row.gross_amount) ask(`prior-income-amount-${idx}`, 'Gross Amount', label);
+      else if (Number(row.gross_amount) < 0) missing[`prior-income-amount-${idx}`] = NEGATIVE;
     });
   }
   if (report.has_creditor_payments) {
@@ -63,6 +67,7 @@ function unfinishedBoxes(report: SOFAReport): Record<string, string> {
       const label = `Creditor ${idx + 1}`;
       if (!row.creditor_name?.trim()) ask(`creditor-name-${idx}`, 'Creditor Name', label);
       if (!row.total_paid) ask(`creditor-paid-${idx}`, 'Total Amount Paid', label);
+      else if (Number(row.total_paid) < 0) missing[`creditor-paid-${idx}`] = NEGATIVE;
     });
   }
   return missing;

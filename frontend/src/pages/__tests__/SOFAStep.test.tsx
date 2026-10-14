@@ -178,6 +178,31 @@ describe('SOFAStep unfinished rows (DIG-148)', () => {
     ]);
   });
 
+  // The server refuses a negative amount, and its refusal could only say to try again
+  it('says by each box that an amount cannot be negative, and saves nothing', async () => {
+    const { saves, user } = renderSOFA();
+    await user.click(
+      await screen.findByRole('checkbox', { name: /i had income in the past 3 years/i })
+    );
+    await user.click(
+      await screen.findByRole('checkbox', { name: /payments to creditors in the past year/i })
+    );
+
+    await user.type(screen.getByLabelText('Source'), 'Temp Agency');
+    await user.type(screen.getByLabelText('Gross Amount'), '-24000');
+    await user.type(screen.getByLabelText('Creditor Name'), 'Capital One');
+    await user.type(screen.getByLabelText('Total Amount Paid'), '-1500');
+    await user.click(save());
+
+    expect(screen.getByLabelText('Gross Amount')).toHaveAccessibleDescription(
+      'Amount cannot be negative'
+    );
+    expect(screen.getByLabelText('Total Amount Paid')).toHaveAccessibleDescription(
+      'Amount cannot be negative'
+    );
+    expect(saves).toHaveLength(0);
+  });
+
   it('leaves a blank row out of the save instead of asking the filer to finish it', async () => {
     const { saves, user } = renderSOFA();
     await user.click(
