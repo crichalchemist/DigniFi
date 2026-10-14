@@ -7,27 +7,60 @@ import { Button } from '../components/common';
 export function FeeWaiverPage() {
   const navigate = useNavigate();
   const { session, meansTestResult } = useIntake();
+  const sessionId = session?.id;
 
   const [householdSize, setHouseholdSize] = useState('');
-  const [monthlyIncome, setMonthlyIncome] = useState('');
-  const [monthlyExpenses, setMonthlyExpenses] = useState('');
-  const [receivesPublicBenefits, setReceivesPublicBenefits] = useState(false);
+  const [takeHomePay, setTakeHomePay] = useState('');
+  // null until the filer picks Yes or No: neither is selected to start with
+  const [receivesNoncash, setReceivesNoncash] = useState<boolean | null>(null);
+  const [noncashKind, setNoncashKind] = useState('');
   const [cannotPayFull, setCannotPayFull] = useState(false);
   const [cannotPayInstallments, setCannotPayInstallments] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [savedRead, setSavedRead] = useState<'pending' | 'done' | 'failed'>('pending');
+  const [readAttempt, setReadAttempt] = useState(0);
 
-  // Pre-fill the figures the filer already gave during intake — they only need
-  // to confirm them. Functional updates avoid clobbering any edits they make.
+  // Pre-fill the household size the filer already gave during intake — they only need
+  // to confirm it. Take-home pay is never pre-filled: the intake asks income before taxes.
   useEffect(() => {
-    if (!session) return;
-    const hh = session.debtor_info?.household_size;
-    const income = session.income_info?.total_monthly_income;
-    const expenses = session.expense_info?.total_monthly_expenses;
+    const hh = session?.debtor_info?.household_size;
     if (hh != null) setHouseholdSize((cur) => cur || String(hh));
-    if (income != null) setMonthlyIncome((cur) => cur || String(income));
-    if (expenses != null) setMonthlyExpenses((cur) => cur || String(expenses));
   }, [session]);
+
+  // Open with the answers this session already sent. They win over the pre-fill, so sending
+  // the application again keeps every box the filer ticked (DIG-157). The form waits for the
+  // read: an empty form sent over the saved answers would undo them.
+  useEffect(() => {
+    if (sessionId == null) return;
+    let cancelled = false;
+    api.feeWaiver
+      .getBySession(sessionId)
+      .then((saved) => {
+        if (cancelled) return;
+        if (saved) {
+          setHouseholdSize(String(saved.household_size));
+          setTakeHomePay(saved.monthly_take_home_pay ?? '');
+          setReceivesNoncash(saved.receives_noncash_assistance);
+          setNoncashKind(saved.benefit_types.join(', '));
+          setCannotPayFull(saved.cannot_pay_full);
+          setCannotPayInstallments(saved.cannot_pay_installments);
+        }
+        setSavedRead('done');
+      })
+      .catch(() => {
+        if (!cancelled) setSavedRead('failed');
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [sessionId, readAttempt]);
+
+  const handleRetry = () => {
+    setSavedRead('pending');
+    setReadAttempt((attempt) => attempt + 1);
+  };
 
   // Only show the application to filers the means test flags as fee-waiver
   // eligible. If we have a result and it says no, offer a gentle off-ramp
@@ -37,7 +70,12 @@ export function FeeWaiverPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!session) return;
-    if (!householdSize || !monthlyIncome || !monthlyExpenses) {
+    if (
+      !householdSize ||
+      !takeHomePay ||
+      receivesNoncash === null ||
+      (receivesNoncash && !noncashKind.trim())
+    ) {
       setError('Please fill in all required fields.');
       return;
     }
@@ -49,10 +87,9 @@ export function FeeWaiverPage() {
       await api.feeWaiver.create({
         session: session.id,
         household_size: parseInt(householdSize, 10),
-        monthly_income: monthlyIncome,
-        monthly_expenses: monthlyExpenses,
-        receives_public_benefits: receivesPublicBenefits,
-        benefit_types: [],
+        monthly_take_home_pay: takeHomePay,
+        receives_noncash_assistance: receivesNoncash,
+        benefit_types: receivesNoncash ? [noncashKind.trim()] : [],
         cannot_pay_full: cannotPayFull,
         cannot_pay_installments: cannotPayInstallments,
       });
@@ -89,97 +126,125 @@ export function FeeWaiverPage() {
             Please confirm the details below.
           </p>
 
+          {savedRead === 'failed' && (
+            <div className="fee-waiver-error">
+              <p role="alert">
+                We couldn't get your latest information just now. Please try again in a moment.
+              </p>
+              <Button type="button" onClick={handleRetry}>
+                Try again
+              </Button>
+            </div>
+          )}
+
           {error && (
             <div className="fee-waiver-error" role="alert">
               <p>{error}</p>
             </div>
           )}
 
-          <form onSubmit={handleSubmit} noValidate>
-            <div className="form-field">
-              <label className="form-label" htmlFor="household-size">
-                Household Size
-              </label>
-              <input
-                className="form-input"
-                id="household-size"
-                type="number"
-                min={1}
-                value={householdSize}
-                onChange={(e) => setHouseholdSize(e.target.value)}
-                required
-              />
-            </div>
-
-            <div className="form-field">
-              <label className="form-label" htmlFor="monthly-income">
-                Total Monthly Income
-              </label>
-              <input
-                className="form-input"
-                id="monthly-income"
-                type="number"
-                min={0}
-                step="0.01"
-                value={monthlyIncome}
-                onChange={(e) => setMonthlyIncome(e.target.value)}
-                required
-              />
-            </div>
-
-            <div className="form-field">
-              <label className="form-label" htmlFor="monthly-expenses">
-                Total Monthly Expenses
-              </label>
-              <input
-                className="form-input"
-                id="monthly-expenses"
-                type="number"
-                min={0}
-                step="0.01"
-                value={monthlyExpenses}
-                onChange={(e) => setMonthlyExpenses(e.target.value)}
-                required
-              />
-            </div>
-
-            <div className="form-field">
-              <label className="fee-waiver-checkbox">
+          {savedRead === 'done' && (
+            <form onSubmit={handleSubmit} noValidate>
+              <div className="form-field">
+                <label className="form-label" htmlFor="household-size">
+                  Household Size
+                </label>
                 <input
-                  type="checkbox"
-                  checked={receivesPublicBenefits}
-                  onChange={(e) => setReceivesPublicBenefits(e.target.checked)}
-                />{' '}
-                I receive SSI, SNAP, TANF, or other means-tested public benefits
-              </label>
-            </div>
+                  className="form-input"
+                  id="household-size"
+                  type="number"
+                  min={1}
+                  value={householdSize}
+                  onChange={(e) => setHouseholdSize(e.target.value)}
+                  required
+                />
+              </div>
 
-            <div className="form-field">
-              <label className="fee-waiver-checkbox">
+              <div className="form-field">
+                <label className="form-label" htmlFor="take-home-pay">
+                  Your average monthly take-home pay (after taxes and payroll deductions)
+                </label>
                 <input
-                  type="checkbox"
-                  checked={cannotPayFull}
-                  onChange={(e) => setCannotPayFull(e.target.checked)}
-                />{' '}
-                I cannot pay the full filing fee ($338) today
-              </label>
-            </div>
+                  className="form-input"
+                  id="take-home-pay"
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  value={takeHomePay}
+                  onChange={(e) => setTakeHomePay(e.target.value)}
+                  required
+                />
+              </div>
 
-            <div className="form-field">
-              <label className="fee-waiver-checkbox">
-                <input
-                  type="checkbox"
-                  checked={cannotPayInstallments}
-                  onChange={(e) => setCannotPayInstallments(e.target.checked)}
-                />{' '}
-                I cannot pay the filing fee in installments
-              </label>
-            </div>
+              <fieldset className="form-field fee-waiver-question">
+                <legend className="form-label">
+                  Do you receive non-cash help from the government, such as SNAP (food stamps) or a
+                  housing subsidy?
+                </legend>
+                <label className="fee-waiver-checkbox">
+                  <input
+                    type="radio"
+                    name="receives-noncash-assistance"
+                    checked={receivesNoncash === true}
+                    onChange={() => setReceivesNoncash(true)}
+                  />{' '}
+                  Yes
+                </label>
+                <label className="fee-waiver-checkbox">
+                  <input
+                    type="radio"
+                    name="receives-noncash-assistance"
+                    checked={receivesNoncash === false}
+                    onChange={() => setReceivesNoncash(false)}
+                  />{' '}
+                  No
+                </label>
+              </fieldset>
 
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? 'Submitting...' : 'Submit Waiver Application'}
-            </Button>
-          </form>
+              {receivesNoncash && (
+                <div className="form-field">
+                  <label className="form-label" htmlFor="noncash-kind">
+                    What kind?
+                  </label>
+                  <input
+                    className="form-input"
+                    id="noncash-kind"
+                    type="text"
+                    maxLength={255}
+                    value={noncashKind}
+                    onChange={(e) => setNoncashKind(e.target.value)}
+                    required
+                  />
+                </div>
+              )}
+
+              <div className="form-field">
+                <label className="fee-waiver-checkbox">
+                  <input
+                    type="checkbox"
+                    checked={cannotPayFull}
+                    onChange={(e) => setCannotPayFull(e.target.checked)}
+                  />{' '}
+                  I cannot pay the full filing fee ($338) today
+                </label>
+              </div>
+
+              <div className="form-field">
+                <label className="fee-waiver-checkbox">
+                  <input
+                    type="checkbox"
+                    checked={cannotPayInstallments}
+                    onChange={(e) => setCannotPayInstallments(e.target.checked)}
+                  />{' '}
+                  I cannot pay the filing fee in installments
+                </label>
+              </div>
+
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? 'Submitting...' : 'Submit Waiver Application'}
+              </Button>
+            </form>
+          )}
         </>
       )}
     </main>

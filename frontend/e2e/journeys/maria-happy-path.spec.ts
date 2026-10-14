@@ -77,14 +77,10 @@ test.describe('Maria Torres — Happy Path', () => {
     await wizard.completeIntake();
 
     // Maria is fee-waiver eligible → routed to the waiver application first
-    const totalExpenses = Object.values(MARIA.expenses).reduce((a, b) => a + b, 0);
-    // Every expense she typed was saved under a name the backend keeps, so the
-    // pre-filled total is her full $2,560, not just the fields that kept their names.
-    await expect(feeWaiver.monthlyExpenses()).toHaveValue(String(totalExpenses));
     await feeWaiver.submit(
       MARIA.debtor.household_size,
-      MARIA.income.total_monthly_income,
-      totalExpenses
+      MARIA.fee_waiver.take_home_pay,
+      MARIA.fee_waiver.noncash_assistance
     );
 
     // The waiver application continues to the SOFA step (DIG-149). This journey isn't about

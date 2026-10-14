@@ -76,11 +76,10 @@ test.describe('Sarah Chen — Simplest Case', () => {
     await wizard.completeIntake();
 
     // Sarah is fee-waiver eligible → routed to the waiver application first
-    const totalExpenses = Object.values(SARAH.expenses).reduce((a, b) => a + b, 0);
     await feeWaiver.submit(
       SARAH.debtor.household_size,
-      SARAH.income.total_monthly_income,
-      totalExpenses
+      SARAH.fee_waiver.take_home_pay,
+      SARAH.fee_waiver.noncash_assistance
     );
 
     // The waiver application continues to the SOFA step (DIG-149). This journey isn't about

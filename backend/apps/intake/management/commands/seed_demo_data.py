@@ -156,6 +156,12 @@ def _maria_torres() -> dict:
                 },
             ],
         },
+        # The fee-waiver page's answers (Form 103B lines 2 and 3)
+        "fee_waiver": {
+            "monthly_take_home_pay": Decimal("2800.00"),
+            "receives_noncash_assistance": True,
+            "benefit_types": ["SNAP (food stamps)"],
+        },
     }
 
 
@@ -412,6 +418,12 @@ def _deshawn_mitchell() -> dict:
                 "consumer_business_classification": "consumer",
             },
         ],
+        # The fee-waiver page's answers (Form 103B lines 2 and 3)
+        "fee_waiver": {
+            "monthly_take_home_pay": Decimal("3050.00"),
+            "receives_noncash_assistance": False,
+            "benefit_types": [],
+        },
     }
 
 
@@ -476,6 +488,12 @@ def _sarah_chen() -> dict:
                 "consumer_business_classification": "consumer",
             },
         ],
+        # The fee-waiver page's answers (Form 103B lines 2 and 3)
+        "fee_waiver": {
+            "monthly_take_home_pay": Decimal("1750.00"),
+            "receives_noncash_assistance": False,
+            "benefit_types": [],
+        },
     }
 
 
@@ -587,17 +605,10 @@ class Command(BaseCommand):
         # Create FeeWaiverApplication for fee-waiver-eligible personas
         # (required by Form 103B generator)
         if result["qualifies_for_fee_waiver"]:
-            income_data = data["income"]
-            household_size = data["debtor"]["household_size"]
-            monthly_income = income_data["monthly_gross_wages"]
-            total_expenses = sum(data["expenses"].values())
-
             FeeWaiverApplication.objects.create(
                 session=session,
-                household_size=household_size,
-                monthly_income=monthly_income,
-                monthly_expenses=total_expenses,
-                receives_public_benefits=False,
+                household_size=data["debtor"]["household_size"],
+                **data["fee_waiver"],
                 cannot_pay_full=True,
                 cannot_pay_installments=True,
                 status="pending",

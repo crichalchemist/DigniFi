@@ -143,15 +143,19 @@ export const handlers = [
   ),
 
   // -- Fee Waiver -----------------------------------------------------------
+  // No application saved yet for the session the page reads (paginated, like every DRF list)
+  http.get(`${API}/intake/fee-waiver/`, () =>
+    HttpResponse.json({ count: 0, next: null, previous: null, results: [] })
+  ),
+
   http.post(`${API}/intake/fee-waiver/`, async ({ request }) => {
     const body = (await request.json()) as { session: number };
     return HttpResponse.json({
       id: 1,
       session: body.session,
       household_size: 1,
-      monthly_income: '1200.00',
-      monthly_expenses: '1000.00',
-      receives_public_benefits: false,
+      monthly_take_home_pay: '1200.00',
+      receives_noncash_assistance: false,
       benefit_types: [],
       cannot_pay_full: true,
       cannot_pay_installments: true,

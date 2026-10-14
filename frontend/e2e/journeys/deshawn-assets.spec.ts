@@ -77,11 +77,10 @@ test.describe('DeShawn Mitchell — Assets', () => {
 
     // $42,000/year is below 60% of the HH2 median ($54,915.60), so DeShawn
     // is fee-waiver eligible and gets routed to the waiver application first.
-    const totalExpenses = Object.values(DESHAWN.expenses).reduce((a, b) => a + b, 0);
     await feeWaiver.submit(
       DESHAWN.debtor.household_size,
-      DESHAWN.income.total_monthly_income,
-      totalExpenses
+      DESHAWN.fee_waiver.take_home_pay,
+      DESHAWN.fee_waiver.noncash_assistance
     );
 
     // The waiver application continues to the SOFA step (DIG-149). This journey isn't about

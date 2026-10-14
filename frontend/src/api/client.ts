@@ -485,9 +485,9 @@ export const debtsAPI = {
 export interface FeeWaiverPayload {
   session: number;
   household_size: number;
-  monthly_income: string;
-  monthly_expenses: string;
-  receives_public_benefits: boolean;
+  monthly_take_home_pay: string;
+  receives_noncash_assistance: boolean;
+  // The "What kind?" answer; empty when the filer gets no non-cash help
   benefit_types: string[];
   cannot_pay_full: boolean;
   cannot_pay_installments: boolean;
@@ -497,9 +497,9 @@ export interface FeeWaiverApplication {
   id: number;
   session: number;
   household_size: number;
-  monthly_income: string;
-  monthly_expenses: string;
-  receives_public_benefits: boolean;
+  // Both null on an application saved before the page asked them
+  monthly_take_home_pay: string | null;
+  receives_noncash_assistance: boolean | null;
   benefit_types: string[];
   cannot_pay_full: boolean;
   cannot_pay_installments: boolean;
@@ -514,6 +514,19 @@ export const feeWaiverAPI = {
       method: 'POST',
       body: JSON.stringify(data),
     });
+  },
+
+  /**
+   * The application this session already sent, or null
+   * GET /api/intake/fee-waiver/?session={sessionId}
+   */
+  getBySession: async (sessionId: number): Promise<FeeWaiverApplication | null> => {
+    const response = await apiFetch<FeeWaiverApplication[] | { results: FeeWaiverApplication[] }>(
+      `/intake/fee-waiver/?session=${sessionId}`
+    );
+    // Handle both paginated ({results: [...]}) and unpaginated ([...]) responses
+    const applications = Array.isArray(response) ? response : (response.results ?? []);
+    return applications[0] ?? null;
   },
 };
 

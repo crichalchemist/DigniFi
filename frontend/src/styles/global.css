@@ -1759,6 +1759,13 @@ a {
   margin-top: 0.2em;
 }
 
+/* The Yes/No question: a fieldset for its legend, without the browser's frame */
+.fee-waiver-question {
+  border: none;
+  padding: 0;
+  min-width: 0;
+}
+
 /* =========================================================================
    SOFA Page (Form 107 - Statement of Financial Affairs)
    ========================================================================= */

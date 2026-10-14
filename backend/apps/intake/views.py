@@ -536,16 +536,31 @@ class DebtViewSet(viewsets.ModelViewSet):
 
 
 class FeeWaiverViewSet(viewsets.ModelViewSet):
-    """CRUD for fee waiver applications, scoped to authenticated user's sessions."""
+    """CRUD for fee waiver applications, scoped to authenticated user's sessions.
+
+    GET /api/intake/fee-waiver/?session={id} reads one session's application, so the page
+    opens with the answers already sent (DIG-157). The read never creates one: an
+    application puts Form 103B in the packet.
+    """
 
     serializer_class = FeeWaiverApplicationSerializer
     permission_classes = [IsAuthenticated]
     http_method_names = ["get", "post", "patch", "head", "options"]
+    filterset_fields = ["session"]
 
     def get_queryset(self):
-        return FeeWaiverApplication.objects.filter(session__user=self.request.user).select_related(
-            "session"
+        return (
+            FeeWaiverApplication.objects.filter(session__user=self.request.user)
+            .select_related("session")
+            .order_by("id")
         )
+
+    def perform_update(self, serializer):
+        # A PATCH can't move the application onto another user's session (DIG-178).
+        session = serializer.validated_data.get("session")
+        if session is not None:
+            _assert_session_owned(session, self.request.user)
+        serializer.save()
 
     def perform_create(self, serializer):
         # FeeWaiverApplication is OneToOne with IntakeSession — second POST from

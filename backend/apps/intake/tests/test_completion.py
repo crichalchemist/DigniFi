@@ -348,9 +348,8 @@ def test_form_answers_sofa_and_fee_waiver_leave_a_completed_intake_complete(file
         {
             "session": completed.pk,
             "household_size": 1,
-            "monthly_income": "1800.00",
-            "monthly_expenses": "1600.00",
-            "receives_public_benefits": False,
+            "monthly_take_home_pay": "1600.00",
+            "receives_noncash_assistance": False,
             "benefit_types": [],
             "cannot_pay_full": True,
             "cannot_pay_installments": True,

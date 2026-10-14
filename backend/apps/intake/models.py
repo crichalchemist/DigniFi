@@ -574,13 +574,27 @@ class FeeWaiverApplication(models.Model):
         help_text="Number of people in household (must be at least 1)",
     )
 
-    # Financial information (encrypted)
+    # Financial information (encrypted). monthly_income, monthly_expenses and
+    # receives_public_benefits are no longer written: the page stopped asking them, and they
+    # stay one release for the rows saved before (forms step 2 spec §5.7).
     monthly_income = EncryptedDecimalField(
-        max_digits=10, decimal_places=2, help_text="Total monthly income from all sources"
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="Total monthly income from all sources",
     )
 
     monthly_expenses = EncryptedDecimalField(
-        max_digits=10, decimal_places=2, help_text="Total monthly expenses"
+        max_digits=10, decimal_places=2, null=True, blank=True, help_text="Total monthly expenses"
+    )
+
+    monthly_take_home_pay = EncryptedDecimalField(
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="Average monthly take-home pay, after taxes and payroll deductions (103B line 2)",
     )
 
     # Public benefits
@@ -588,6 +602,12 @@ class FeeWaiverApplication(models.Model):
         default=False, help_text="Receives SSI, SNAP, TANF, or other means-tested benefits"
     )
 
+    # Empty until the filer answers: a stored False prints a sworn "No" on 103B line 3.
+    receives_noncash_assistance = models.BooleanField(
+        null=True, help_text="Receives non-cash help from the government (103B line 3)"
+    )
+
+    # The "What kind?" answer when receives_noncash_assistance is True
     benefit_types = models.JSONField(
         default=list, blank=True, help_text="List of benefit programs (e.g., ['SNAP', 'Medicaid'])"
     )

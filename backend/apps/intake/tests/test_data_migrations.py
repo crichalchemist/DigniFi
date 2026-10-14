@@ -18,6 +18,7 @@ BEFORE_BACKFILL = [("intake", "0011_assetinfo_personal_property")]
 BACKFILL = [("intake", "0012_backfill_secured_debts")]
 INCOME_COLUMNS = [("intake", "0013_incomeinfo_income_by_source")]
 INCOME_SPLIT = [("intake", "0014_split_income_saved_as_zero")]
+FEE_WAIVER_QUESTIONS = [("intake", "0015_feewaiverapplication_take_home_and_noncash")]
 INCOME_SOURCES = [
     "monthly_gross_wages",
     "monthly_overtime",
@@ -193,3 +194,31 @@ def test_undoing_the_income_split_leaves_income_as_it_is(migrate):
     apps = migrate(INCOME_COLUMNS)
 
     assert _stored_income(apps) == AFTER_THE_SPLIT
+
+
+def test_saved_fee_waiver_applications_leave_the_new_questions_unanswered(migrate):
+    # A stored False would print a sworn "No" on Form 103B line 3, and a stored amount a
+    # take-home figure nobody gave, so rows saved before the questions existed stay empty.
+    apps = migrate(INCOME_SPLIT)
+    FeeWaiverApplication = apps.get_model("intake", "FeeWaiverApplication")
+    FeeWaiverApplication.objects.create(
+        session_id=_session(apps).pk,
+        household_size=3,
+        monthly_income=Decimal("3200.00"),
+        monthly_expenses=Decimal("2560.00"),
+        receives_public_benefits=True,
+    )
+
+    apps = migrate(FEE_WAIVER_QUESTIONS)
+
+    FeeWaiverApplication = apps.get_model("intake", "FeeWaiverApplication")
+    fw = FeeWaiverApplication.objects.get()
+    assert fw.monthly_take_home_pay is None
+    assert fw.receives_noncash_assistance is None
+    assert fw.benefit_types == []
+    assert (fw.household_size, fw.monthly_income, fw.monthly_expenses) == (
+        3,
+        Decimal("3200.00"),
+        Decimal("2560.00"),
+    )
+    assert fw.receives_public_benefits is True

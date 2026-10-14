@@ -65,7 +65,19 @@ export interface PersonaData {
   };
 }
 
-export const MARIA: PersonaData = {
+/** What a persona answers on the fee-waiver page (Form 103B lines 2 and 3) */
+export interface PersonaFeeWaiver {
+  take_home_pay: number;
+  // The "What kind?" answer, or null for a persona who gets no non-cash help
+  noncash_assistance: string | null;
+}
+
+/** A persona the means test sends to the fee-waiver page */
+export interface WaiverPersonaData extends PersonaData {
+  fee_waiver: PersonaFeeWaiver;
+}
+
+export const MARIA: WaiverPersonaData = {
   username: `e2e_maria_${RUN_ID}`,
   password: 'TestPass-2026!',
   debtor: {
@@ -136,6 +148,7 @@ export const MARIA: PersonaData = {
       is_in_collections: false,
     },
   ],
+  fee_waiver: { take_home_pay: 2800, noncash_assistance: 'SNAP (food stamps)' },
   expected: { passes_means_test: true, fee_waiver_eligible: true },
 };
 
@@ -280,7 +293,7 @@ export const PRIYA: PersonaData = {
   expected: { passes_means_test: false, fee_waiver_eligible: false },
 };
 
-export const DESHAWN: PersonaData = {
+export const DESHAWN: WaiverPersonaData = {
   username: `e2e_deshawn_${RUN_ID}`,
   password: 'TestPass-2026!',
   debtor: {
@@ -365,12 +378,13 @@ export const DESHAWN: PersonaData = {
       is_in_collections: true,
     },
   ],
+  fee_waiver: { take_home_pay: 3050, noncash_assistance: null },
   // $3,500/month = $42,000/year — below 60% of the HH2 median ($54,915.60),
   // so DeShawn qualifies for the fee waiver as well as Chapter 7.
   expected: { passes_means_test: true, fee_waiver_eligible: true },
 };
 
-export const SARAH: PersonaData = {
+export const SARAH: WaiverPersonaData = {
   username: `e2e_sarah_${RUN_ID}`,
   password: 'TestPass-2026!',
   debtor: {
@@ -425,5 +439,6 @@ export const SARAH: PersonaData = {
       is_in_collections: true,
     },
   ],
+  fee_waiver: { take_home_pay: 1750, noncash_assistance: null },
   expected: { passes_means_test: true, fee_waiver_eligible: true },
 };

@@ -56,12 +56,24 @@ def _fee_waiver_application(data):
     """The application the seed stores, as the fee-waiver page sends it."""
     return {
         "household_size": data["debtor"]["household_size"],
-        "monthly_income": data["income"]["monthly_gross_wages"],
-        "monthly_expenses": sum(data["expenses"].values()),
-        "receives_public_benefits": False,
-        "benefit_types": [],
+        **data["fee_waiver"],
         "cannot_pay_full": True,
         "cannot_pay_installments": True,
+    }
+
+
+def _fee_waiver_answers(session):
+    """What the session's fee-waiver application holds, or None without one."""
+    fw = getattr(session, "fee_waiver", None)
+    if fw is None:
+        return None
+    return {
+        "household_size": fw.household_size,
+        "monthly_take_home_pay": fw.monthly_take_home_pay,
+        "receives_noncash_assistance": fw.receives_noncash_assistance,
+        "benefit_types": fw.benefit_types,
+        "cannot_pay_full": fw.cannot_pay_full,
+        "cannot_pay_installments": fw.cannot_pay_installments,
     }
 
 
@@ -162,6 +174,11 @@ def test_forms_built_through_the_api_print_what_the_seeded_forms_print(persona):
         form_type: _comparable(form_type, build_field_values(form_type, seeded))
         for form_type in packet(seeded)
     }
+    # No form prints take-home pay or the non-cash answer until 2b binds them on Form 103B,
+    # so the stored applications are compared directly.
+    built = IntakeSession.objects.get(pk=session_id)
+    assert _fee_waiver_answers(built) == _fee_waiver_answers(seeded)
+    assert (_fee_waiver_answers(built) is None) == (persona not in WAIVER_FILERS)
     # Only Priya's income is above the median, so only her packet holds 122A-2, and it
     # prints figures worked out from her own expenses.
     assert ("form_122a2" in stored) == (persona == "priya")
