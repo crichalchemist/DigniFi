@@ -15,6 +15,7 @@ expects.
 """
 
 import json
+import re
 from decimal import Decimal, InvalidOperation
 
 import pytest
@@ -45,6 +46,10 @@ WIZARD_STEPS = [
     ("assets", "assets"),
     ("debts", "debts"),
 ]
+
+# What a signing-date box compares as: the date is today's when it is built, and a run that
+# straddles midnight stores one day and rebuilds the next.
+TODAY = "<today>"
 
 
 def _sent(data):
@@ -90,7 +95,7 @@ def _send_through_the_api(persona):
     created = client.post(
         "/api/intake/sessions/", {"district": district.pk, "current_step": 1}, format="json"
     )
-    assert created.status_code == 201
+    assert created.status_code == 201, created.data
     session_id = created.data["session"]["id"]
     session_url = f"/api/intake/sessions/{session_id}/"
 
@@ -106,7 +111,8 @@ def _send_through_the_api(persona):
 
     # Complete Intake, then the pages that follow it. Their saves keep the intake complete.
     # No means-test call: Generate All works it out from the stored intake (spec §5.6).
-    assert client.post(f"{session_url}complete/").status_code == 200
+    response = client.post(f"{session_url}complete/")
+    assert response.status_code == 200, response.data
     if persona in WAIVER_FILERS:
         response = client.post(
             "/api/intake/fee-waiver/",
@@ -121,7 +127,7 @@ def _send_through_the_api(persona):
         assert response.status_code == 200, response.data
 
     generated = client.post("/api/forms/generate_all/", {"session_id": session_id}, format="json")
-    assert generated.status_code == 200
+    assert generated.status_code == 200, generated.data
     assert generated.data["errors"] == []
     # Generate All worked the means test out, and it qualifies exactly the filers the wizard
     # sends to the fee-waiver page.
@@ -132,14 +138,20 @@ def _send_through_the_api(persona):
 
 def _comparable(form_type, values):
     """
-    A form's values, with each repeat group's rows in a fixed order.
+    A form's values, with each repeat group's rows in a fixed order and each date it was
+    built on as TODAY.
 
     Stored rows have no fixed order (DIG-164), so Form 107's rows compare regardless of it.
     Each row keeps its own values together, so an amount that moves to another row differs.
+    A signing date must still print as a date, but need not be the same day on both sides.
     """
     fixed = dict(values)
     rows = {}
     for field in load_schema(form_type).fields:
+        if field.rule == "today_iso":
+            date_printed = fixed.get(field.pdf_field, "")
+            assert re.fullmatch(r"\d{4}-\d{2}-\d{2}", date_printed), (form_type, field.pdf_field)
+            fixed[field.pdf_field] = TODAY
         if field.repeat and field.row and field.pdf_field in fixed:
             cell = (field.binding or "", fixed.pop(field.pdf_field))
             rows.setdefault((field.repeat, field.row), []).append(cell)
