@@ -84,9 +84,11 @@ export function FeeWaiverPage() {
       setError('Please fill in all required fields.');
       return;
     }
-    // Said beside the box. An earlier alert for the whole form no longer holds.
+    // Said beside the box. An earlier alert for the whole form no longer holds. The message
+    // showed while the filer typed, so focus goes to the box to show why nothing was sent.
     if (takeHomePayError) {
       setError(null);
+      document.getElementById('take-home-pay')?.focus();
       return;
     }
 

@@ -378,6 +378,19 @@ describe('FeeWaiverPage', () => {
     expect(screen.queryByText('Statement of Financial Affairs')).not.toBeInTheDocument();
   });
 
+  // The message beside the box showed while the filer typed, so the press itself changes nothing
+  // else on the page. Focus shows why nothing was sent, as on SOFA.
+  it('takes the filer to the take-home pay box when its amount stops Submit', async () => {
+    renderFeeWaiver();
+
+    await userEvent.type(await screen.findByLabelText(/household size/i), '1');
+    await userEvent.type(screen.getByLabelText(/take-home pay/i), '-50');
+    await userEvent.click(screen.getByRole('radio', { name: 'No' }));
+    await userEvent.click(screen.getByRole('button', { name: /submit/i }));
+
+    expect(screen.getByLabelText(/take-home pay/i)).toHaveFocus();
+  });
+
   // The server stores it as DecimalField(max_digits=10, decimal_places=2) (W-9)
   it('asks for dollars and cents beside the take-home pay box, and sends nothing', async () => {
     const sent = captureSent();
