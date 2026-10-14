@@ -17,7 +17,7 @@ interface UseAutoSaveOptions<T> {
   /** The data to auto-save */
   data: T;
   /**
-   * Names whose data `data` is, for a caller that shows one of several (the wizard's steps).
+   * The name of the data in `data`, for a caller that shows one of several (the wizard's steps).
    * Each name keeps its own last saved copy; the first data seen under a name is its loaded copy.
    */
   dataKey?: string;
