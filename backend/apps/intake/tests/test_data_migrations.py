@@ -16,6 +16,20 @@ from apps.users.models import User
 BEFORE_STEP_2 = [("intake", "0010_add_adversary_proceedings")]
 BEFORE_BACKFILL = [("intake", "0011_assetinfo_personal_property")]
 BACKFILL = [("intake", "0012_backfill_secured_debts")]
+INCOME_COLUMNS = [("intake", "0013_incomeinfo_income_by_source")]
+INCOME_SPLIT = [("intake", "0014_split_income_saved_as_zero")]
+INCOME_SOURCES = [
+    "monthly_gross_wages",
+    "monthly_overtime",
+    "monthly_tips",
+    "monthly_rental_income",
+    "monthly_pension",
+    "monthly_social_security",
+    "monthly_unemployment",
+    "monthly_child_support",
+    "monthly_alimony",
+    "monthly_other_income",
+]
 
 
 @pytest.fixture
@@ -116,3 +130,66 @@ def test_stored_other_assets_stay_other_once_personal_property_exists(migrate):
 
     AssetInfo = apps.get_model("intake", "AssetInfo")
     assert AssetInfo.objects.get(description="Living room furniture").asset_type == "other"
+
+
+def _income_rows(apps, saved_totals):
+    """One session per saved six-month total, each holding only that total."""
+    user = User.objects.create_user(username="filer", password="pw")
+    district = District.objects.create(
+        code="ILND",
+        name="Illinois Northern",
+        state="IL",
+        court_name="U.S. Bankruptcy Court ILND",
+        filing_fee_chapter_7=Decimal("338.00"),
+    )
+    IntakeSession = apps.get_model("intake", "IntakeSession")
+    IncomeInfo = apps.get_model("intake", "IncomeInfo")
+    for name, months in saved_totals.items():
+        session = IntakeSession.objects.create(user_id=user.pk, district_id=district.pk)
+        IncomeInfo.objects.create(session_id=session.pk, marital_status=name, monthly_income=months)
+
+
+def _stored_income(apps):
+    """Each row's saved total and the set of its ten amounts, keyed by the row's label."""
+    IncomeInfo = apps.get_model("intake", "IncomeInfo")
+    return {
+        row.marital_status: (
+            row.monthly_income,
+            {getattr(row, field) for field in INCOME_SOURCES},
+        )
+        for row in IncomeInfo.objects.all()
+    }
+
+
+# Labelled through marital_status, which the migration doesn't read.
+SAVED_TOTALS = {
+    "above_zero": [3100, 3300, 3200, 3200, 3150, 3250],
+    "zero": [0, 0, 0, 0, 0, 0],
+    "no_months": [],
+}
+AFTER_THE_SPLIT = {
+    "above_zero": (SAVED_TOTALS["above_zero"], {None}),
+    "zero": (SAVED_TOTALS["zero"], {Decimal("0.00")}),
+    "no_months": ([], {None}),
+}
+
+
+def test_a_saved_total_above_zero_waits_for_the_filer_and_zero_becomes_ten_zeros(migrate):
+    # Nothing recorded the amount from each source, so only a $0 total can be split without
+    # the filer: every source was $0. Any other total is kept for the Income step to show.
+    apps = migrate(BACKFILL)
+    _income_rows(apps, SAVED_TOTALS)
+
+    apps = migrate(INCOME_SPLIT)
+
+    assert _stored_income(apps) == AFTER_THE_SPLIT
+
+
+def test_undoing_the_income_split_leaves_income_as_it_is(migrate):
+    apps = migrate(BACKFILL)
+    _income_rows(apps, SAVED_TOTALS)
+    migrate(INCOME_SPLIT)
+
+    apps = migrate(INCOME_COLUMNS)
+
+    assert _stored_income(apps) == AFTER_THE_SPLIT

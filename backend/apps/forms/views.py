@@ -19,6 +19,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.eligibility.cmi import IncomeNotSplit
 from apps.intake.models import IntakeSession
 
 from .models import GeneratedForm
@@ -50,9 +51,10 @@ class IntakeNotFinished(Exception):
 
 
 # Failures a filer can act on: 422 in plain words (spec §5.7). Anything else is a 500.
-# PreconditionMissing carries its own plain reason (registry.py). Every other class gets
-# a fixed sentence, because their messages name form keys, repeat groups and PDF
-# widgets. None names the form: the dashboard shows its label beside the error.
+# PreconditionMissing and IncomeNotSplit carry their own plain reasons (registry.py,
+# eligibility/cmi.py). Every other class gets a fixed sentence, because their messages
+# name form keys, repeat groups and PDF widgets. None names the form: the dashboard shows
+# its label beside the error.
 _FAILURE_SENTENCES = {
     IntakeNotFinished: "Finish your intake before preparing your forms.",
     NotInPacket: "This form isn't part of your packet, based on the answers you've given.",
@@ -71,7 +73,7 @@ _FAILURE_SENTENCES = {
 
 def _failure(form_type: str, exc: Exception) -> tuple[dict, int]:
     """The error body and status for a form that could not be filled."""
-    if isinstance(exc, PreconditionMissing):
+    if isinstance(exc, PreconditionMissing | IncomeNotSplit):
         error = str(exc)
     else:
         error = _FAILURE_SENTENCES.get(type(exc))

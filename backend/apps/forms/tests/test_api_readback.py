@@ -28,7 +28,7 @@ from apps.forms.models import GeneratedForm
 from apps.forms.registry import build_field_values, packet
 from apps.forms.schema import load_schema
 from apps.intake.management.commands.seed_demo_data import PERSONAS
-from apps.intake.models import IntakeSession
+from apps.intake.models import IncomeInfo, IntakeSession
 
 User = get_user_model()
 
@@ -55,7 +55,7 @@ def _fee_waiver_application(data):
     """The application the seed stores, as the fee-waiver page sends it."""
     return {
         "household_size": data["debtor"]["household_size"],
-        "monthly_income": data["income"]["monthly_income"][0],
+        "monthly_income": data["income"]["monthly_gross_wages"],
         "monthly_expenses": sum(data["expenses"].values()),
         "receives_public_benefits": False,
         "benefit_types": [],
@@ -67,6 +67,9 @@ def _fee_waiver_application(data):
 def _send_through_the_api(persona):
     """Enter the persona as a filer would, then Generate All. Returns (session id, form types)."""
     data = PERSONAS[persona]()
+    # The typed $0 amounts this sends: each persona typed every Income box, $0 where they
+    # get none of that kind, so no box is left blank.
+    assert all(data["income"][field] is not None for field in IncomeInfo.SOURCE_FIELDS)
     client = APIClient()
     client.force_authenticate(User.objects.create_user(username=f"api_{persona}", password="pw"))
 

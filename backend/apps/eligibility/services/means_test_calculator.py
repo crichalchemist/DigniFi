@@ -10,6 +10,7 @@ from typing import Any
 
 from django.db import transaction
 
+from apps.eligibility.cmi import IncomeNotSplit
 from apps.eligibility.models import MeansTest
 from apps.intake.models import IntakeSession
 
@@ -78,9 +79,11 @@ class MeansTestCalculator:
         if not created:
             means_test.district = self.district
 
-        # Perform calculation
+        # Perform calculation. Income not split by source already says what to do.
         try:
             means_test.calculate()
+        except IncomeNotSplit:
+            raise
         except ValueError as e:
             raise ValueError(f"Means test calculation failed: {str(e)}") from e
 
@@ -196,7 +199,7 @@ class MeansTestCalculator:
 
         return {
             "income_history": {
-                "monthly_values": details.get("monthly_income_breakdown", []),
+                "by_source": details.get("income_by_source", {}),
                 "average_cmi": float(means_test.calculated_cmi),
             },
             "family_composition": {

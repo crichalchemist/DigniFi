@@ -72,7 +72,11 @@ class DebtorInfoSerializer(serializers.ModelSerializer):
 
 
 class IncomeInfoSerializer(serializers.ModelSerializer):
-    """Serializer for income information."""
+    """Serializer for income information, stored by source (forms step 2 spec §5.5).
+
+    monthly_income, the total saved before step 2, is read-only: the Income step shows it
+    while asking the filer to split it.
+    """
 
     total_monthly_income = serializers.SerializerMethodField()
 
@@ -81,46 +85,16 @@ class IncomeInfoSerializer(serializers.ModelSerializer):
         fields = [
             "marital_status",
             "number_of_dependents",
+            *IncomeInfo.SOURCE_FIELDS,
             "monthly_income",
             "total_monthly_income",
             "created_at",
         ]
-        read_only_fields = ["created_at", "total_monthly_income"]
+        read_only_fields = ["created_at", "monthly_income", "total_monthly_income"]
 
     def get_total_monthly_income(self, obj):
-        """Return the saved monthly income total (the average of the stored months)."""
+        """Return the ten amounts added up, or None when the filer gave none of them."""
         return obj.calculate_total_monthly_income()
-
-    def validate_monthly_income(self, value):
-        """
-        Validate monthly_income is a list of 6 positive numbers.
-
-        Args:
-            value: List of monthly income amounts
-
-        Returns:
-            list: Validated monthly income list
-
-        Raises:
-            ValidationError: If format is invalid
-        """
-        if not isinstance(value, list):
-            raise serializers.ValidationError("Please provide income as a list of monthly amounts")
-
-        if len(value) != 6:
-            raise serializers.ValidationError("Please provide income for the last 6 months")
-
-        for i, amount in enumerate(value):
-            try:
-                float_amount = float(amount)
-                if float_amount < 0:
-                    raise serializers.ValidationError(f"Income for month {i+1} cannot be negative")
-            except (TypeError, ValueError) as err:
-                raise serializers.ValidationError(
-                    f"Income for month {i+1} must be a valid number"
-                ) from err
-
-        return value
 
 
 class ExpenseInfoSerializer(serializers.ModelSerializer):

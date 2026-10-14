@@ -126,7 +126,7 @@ def session_with_income(session_with_debtor):
         session=session_with_debtor,
         marital_status="single",
         number_of_dependents=0,
-        monthly_income=[3000, 3000, 3000, 3000, 3000, 3000],
+        monthly_gross_wages=Decimal("3000.00"),
     )
     return session_with_debtor
 

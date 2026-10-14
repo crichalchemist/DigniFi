@@ -44,7 +44,7 @@ export function ReviewStep({
     onValidationChange(true);
   }, [onValidationChange]);
 
-  const formatCurrency = (amount?: number) => {
+  const formatCurrency = (amount?: number | null) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',

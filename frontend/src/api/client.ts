@@ -84,12 +84,20 @@ export function clearTokens(): void {
 export class APIClientError extends Error {
   statusCode: number;
   details?: Record<string, unknown>;
+  /** The response's own `error` sentence, kept even when its `message` is the one shown. */
+  serverError?: string;
 
-  constructor(message: string, statusCode: number, details?: Record<string, unknown>) {
+  constructor(
+    message: string,
+    statusCode: number,
+    details?: Record<string, unknown>,
+    serverError?: string
+  ) {
     super(message);
     this.name = 'APIClientError';
     this.statusCode = statusCode;
     this.details = details;
+    this.serverError = serverError;
   }
 }
 
@@ -108,7 +116,8 @@ async function handleAPIError(response: Response): Promise<never> {
   throw new APIClientError(
     errorData.message || errorData.error || 'Request failed',
     response.status,
-    errorData.details
+    errorData.details,
+    errorData.error
   );
 }
 

@@ -54,7 +54,7 @@ export const createMockIncomeInfo = (overrides?: Partial<IncomeInfo>): IncomeInf
   id: 1,
   session: 1,
   data_source: 'manual',
-  monthly_income: [3500, 3500, 3500, 3500, 3500, 3500],
+  monthly_gross_wages: 3500,
   total_monthly_income: 3500,
   ...overrides,
 });

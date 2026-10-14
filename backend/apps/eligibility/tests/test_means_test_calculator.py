@@ -10,7 +10,7 @@ Tests cover:
 - Fee waiver non-qualification (CMI >= 60% of median)
 - Missing income_info raises ValueError
 - None session raises ValueError
-- Invalid monthly_income (not 6 elements) raises ValueError
+- A total saved before income was stored by source is never read (IncomeNotSplit)
 - UPL prohibited phrase scanning in all messages
 - Recalculation idempotency (calculate twice, only 1 MeansTest record)
 """
@@ -23,6 +23,7 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 
 from apps.districts.models import District, MedianIncome
+from apps.eligibility.cmi import IncomeNotSplit
 from apps.eligibility.models import MeansTest
 from apps.eligibility.services.means_test_calculator import MeansTestCalculator
 from apps.forms.registry import build_field_values
@@ -113,7 +114,7 @@ class TestMeansTestCalculatorInitialization:
             session=session,
             marital_status="single",
             number_of_dependents=0,
-            monthly_income=[5000, 5000, 5000, 5000, 5000, 5000],
+            monthly_gross_wages=Decimal("5000.00"),
         )
 
         calculator = MeansTestCalculator(session)
@@ -133,7 +134,7 @@ class TestBelowMedianIncomePassesMeansTest:
             session=session,
             marital_status="single",
             number_of_dependents=0,
-            monthly_income=[5000, 5000, 5000, 5000, 5000, 5000],
+            monthly_gross_wages=Decimal("5000.00"),
         )
 
         calculator = MeansTestCalculator(session)
@@ -152,7 +153,7 @@ class TestBelowMedianIncomePassesMeansTest:
             session=session,
             marital_status="married_joint",
             number_of_dependents=0,
-            monthly_income=[7000, 7000, 7000, 7000, 7000, 7000],
+            monthly_gross_wages=Decimal("7000.00"),
         )
 
         calculator = MeansTestCalculator(session)
@@ -171,7 +172,7 @@ class TestBelowMedianIncomePassesMeansTest:
             session=session,
             marital_status="single",
             number_of_dependents=2,
-            monthly_income=[8500, 8500, 8500, 8500, 8500, 8500],
+            monthly_gross_wages=Decimal("8500.00"),
         )
 
         calculator = MeansTestCalculator(session)
@@ -195,7 +196,7 @@ class TestAboveMedianIncomeFailsMeansTest:
             session=session,
             marital_status="single",
             number_of_dependents=0,
-            monthly_income=[80000, 80000, 80000, 80000, 80000, 80000],
+            monthly_gross_wages=Decimal("80000.00"),
         )
 
         calculator = MeansTestCalculator(session)
@@ -214,7 +215,7 @@ class TestAboveMedianIncomeFailsMeansTest:
             session=session,
             marital_status="married_separate",
             number_of_dependents=2,
-            monthly_income=[140000, 140000, 140000, 140000, 140000, 140000],
+            monthly_gross_wages=Decimal("140000.00"),
         )
 
         calculator = MeansTestCalculator(session)
@@ -238,7 +239,7 @@ class TestAtMedianIncomeEdgeCase:
             session=session,
             marital_status="single",
             number_of_dependents=0,
-            monthly_income=[5942, 5942, 5942, 5942, 5942, 5942],
+            monthly_gross_wages=Decimal("5942.00"),
         )
 
         calculator = MeansTestCalculator(session)
@@ -260,7 +261,7 @@ class TestAllHouseholdSizes:
             session=session,
             marital_status="single",
             number_of_dependents=0,
-            monthly_income=[5000, 5000, 5000, 5000, 5000, 5000],
+            monthly_gross_wages=Decimal("5000.00"),
         )
 
         calculator = MeansTestCalculator(session)
@@ -275,7 +276,7 @@ class TestAllHouseholdSizes:
             session=session,
             marital_status="married_joint",
             number_of_dependents=0,
-            monthly_income=[7000, 7000, 7000, 7000, 7000, 7000],
+            monthly_gross_wages=Decimal("7000.00"),
         )
 
         calculator = MeansTestCalculator(session)
@@ -290,7 +291,7 @@ class TestAllHouseholdSizes:
             session=session,
             marital_status="single",
             number_of_dependents=2,
-            monthly_income=[8000, 8000, 8000, 8000, 8000, 8000],
+            monthly_gross_wages=Decimal("8000.00"),
         )
 
         calculator = MeansTestCalculator(session)
@@ -305,7 +306,7 @@ class TestAllHouseholdSizes:
             session=session,
             marital_status="married_separate",
             number_of_dependents=2,
-            monthly_income=[10000, 10000, 10000, 10000, 10000, 10000],
+            monthly_gross_wages=Decimal("10000.00"),
         )
 
         calculator = MeansTestCalculator(session)
@@ -320,7 +321,7 @@ class TestAllHouseholdSizes:
             session=session,
             marital_status="married_joint",
             number_of_dependents=3,
-            monthly_income=[11000, 11000, 11000, 11000, 11000, 11000],
+            monthly_gross_wages=Decimal("11000.00"),
         )
 
         calculator = MeansTestCalculator(session)
@@ -335,7 +336,7 @@ class TestAllHouseholdSizes:
             session=session,
             marital_status="married_separate",
             number_of_dependents=4,
-            monthly_income=[12000, 12000, 12000, 12000, 12000, 12000],
+            monthly_gross_wages=Decimal("12000.00"),
         )
 
         calculator = MeansTestCalculator(session)
@@ -350,7 +351,7 @@ class TestAllHouseholdSizes:
             session=session,
             marital_status="single",
             number_of_dependents=6,
-            monthly_income=[13000, 13000, 13000, 13000, 13000, 13000],
+            monthly_gross_wages=Decimal("13000.00"),
         )
 
         calculator = MeansTestCalculator(session)
@@ -365,7 +366,7 @@ class TestAllHouseholdSizes:
             session=session,
             marital_status="married_joint",
             number_of_dependents=6,
-            monthly_income=[14000, 14000, 14000, 14000, 14000, 14000],
+            monthly_gross_wages=Decimal("14000.00"),
         )
 
         calculator = MeansTestCalculator(session)
@@ -388,7 +389,7 @@ class TestFeeWaiverQualification:
             session=session,
             marital_status="single",
             number_of_dependents=0,
-            monthly_income=[3000, 3000, 3000, 3000, 3000, 3000],
+            monthly_gross_wages=Decimal("3000.00"),
         )
 
         calculator = MeansTestCalculator(session)
@@ -403,7 +404,7 @@ class TestFeeWaiverQualification:
             session=session,
             marital_status="single",
             number_of_dependents=0,
-            monthly_income=[0, 0, 0, 0, 0, 0],
+            monthly_gross_wages=Decimal("0.00"),
         )
 
         calculator = MeansTestCalculator(session)
@@ -426,7 +427,7 @@ class TestFeeWaiverNonQualification:
             session=session,
             marital_status="single",
             number_of_dependents=0,
-            monthly_income=[3565.20, 3565.20, 3565.20, 3565.20, 3565.20, 3565.20],
+            monthly_gross_wages=Decimal("3565.20"),
         )
 
         calculator = MeansTestCalculator(session)
@@ -445,7 +446,7 @@ class TestFeeWaiverNonQualification:
             session=session,
             marital_status="single",
             number_of_dependents=0,
-            monthly_income=[4166.67, 4166.67, 4166.67, 4166.67, 4166.67, 4166.67],
+            monthly_gross_wages=Decimal("4166.67"),
         )
 
         calculator = MeansTestCalculator(session)
@@ -456,73 +457,26 @@ class TestFeeWaiverNonQualification:
 
 
 @pytest.mark.django_db
-class TestInvalidMonthlyIncomeData:
-    """Tests for invalid monthly_income data validation."""
+class TestTotalSavedBeforeIncomeBySource:
+    """The six-month total saved before step 2 is never read, whatever its shape."""
 
-    def test_raises_error_with_fewer_than_6_months(self, session, median_income):
-        """Test that monthly_income with < 6 elements raises ValueError."""
+    @pytest.mark.parametrize(
+        "months",
+        [[5000] * 6, [5000] * 3, [5000] * 8, [], "not a list"],
+        ids=["six_months", "three_months", "eight_months", "empty", "not_a_list"],
+    )
+    def test_income_not_split_by_source_is_refused(self, session, median_income, months):
         IncomeInfo.objects.create(
             session=session,
             marital_status="single",
             number_of_dependents=0,
-            monthly_income=[5000, 5000, 5000],  # Only 3 months
+            monthly_income=months,
         )
 
         calculator = MeansTestCalculator(session)
 
         with pytest.raises(
-            ValueError, match="monthly_income must be a list of 6 monthly income values"
-        ):
-            calculator.calculate()
-
-    def test_raises_error_with_more_than_6_months(self, session, median_income):
-        """Test that monthly_income with > 6 elements raises ValueError."""
-        IncomeInfo.objects.create(
-            session=session,
-            marital_status="single",
-            number_of_dependents=0,
-            monthly_income=[5000, 5000, 5000, 5000, 5000, 5000, 5000, 5000],  # 8 months
-        )
-
-        calculator = MeansTestCalculator(session)
-
-        with pytest.raises(
-            ValueError, match="monthly_income must be a list of 6 monthly income values"
-        ):
-            calculator.calculate()
-
-    def test_raises_error_with_empty_list(self, session, median_income):
-        """Test that empty monthly_income list raises ValueError."""
-        IncomeInfo.objects.create(
-            session=session,
-            marital_status="single",
-            number_of_dependents=0,
-            monthly_income=[],  # Empty
-        )
-
-        calculator = MeansTestCalculator(session)
-
-        with pytest.raises(
-            ValueError, match="monthly_income must be a list of 6 monthly income values"
-        ):
-            calculator.calculate()
-
-    def test_raises_error_with_non_list_monthly_income(self, session, median_income):
-        """Test that non-list monthly_income raises ValueError."""
-        # Note: Django JSONField will coerce strings, but not primitives
-        # We create the IncomeInfo directly without JSONField validation
-        income_info = IncomeInfo(
-            session=session,
-            marital_status="single",
-            number_of_dependents=0,
-            monthly_income="not a list",
-        )
-        income_info.save()
-
-        calculator = MeansTestCalculator(session)
-
-        with pytest.raises(
-            ValueError, match="monthly_income must be a list of 6 monthly income values"
+            IncomeNotSplit, match="^Enter your income by source on the Income step.$"
         ):
             calculator.calculate()
 
@@ -537,7 +491,7 @@ class TestUPLProhibitedPhrases:
             session=session,
             marital_status="single",
             number_of_dependents=0,
-            monthly_income=[5000, 5000, 5000, 5000, 5000, 5000],
+            monthly_gross_wages=Decimal("5000.00"),
         )
 
         calculator = MeansTestCalculator(session)
@@ -557,7 +511,7 @@ class TestUPLProhibitedPhrases:
             session=session,
             marital_status="single",
             number_of_dependents=0,
-            monthly_income=[80000, 80000, 80000, 80000, 80000, 80000],
+            monthly_gross_wages=Decimal("80000.00"),
         )
 
         calculator = MeansTestCalculator(session)
@@ -577,7 +531,7 @@ class TestUPLProhibitedPhrases:
             session=session,
             marital_status="single",
             number_of_dependents=0,
-            monthly_income=[3000, 3000, 3000, 3000, 3000, 3000],
+            monthly_gross_wages=Decimal("3000.00"),
         )
 
         calculator = MeansTestCalculator(session)
@@ -597,7 +551,7 @@ class TestUPLProhibitedPhrases:
             session=session,
             marital_status="single",
             number_of_dependents=0,
-            monthly_income=[5000, 5000, 5000, 5000, 5000, 5000],
+            monthly_gross_wages=Decimal("5000.00"),
         )
 
         calculator = MeansTestCalculator(session)
@@ -621,7 +575,7 @@ class TestRecalculationIdempotency:
             session=session,
             marital_status="single",
             number_of_dependents=0,
-            monthly_income=[5000, 5000, 5000, 5000, 5000, 5000],
+            monthly_gross_wages=Decimal("5000.00"),
         )
 
         calculator = MeansTestCalculator(session)
@@ -646,7 +600,7 @@ class TestRecalculationIdempotency:
             session=session,
             marital_status="single",
             number_of_dependents=0,
-            monthly_income=[5000, 5000, 5000, 5000, 5000, 5000],
+            monthly_gross_wages=Decimal("5000.00"),
         )
 
         calculator = MeansTestCalculator(session)
@@ -656,7 +610,7 @@ class TestRecalculationIdempotency:
         assert result1["passes_means_test"] is True
 
         # Update income to above median
-        income_info.monthly_income = [80000, 80000, 80000, 80000, 80000, 80000]
+        income_info.monthly_gross_wages = Decimal("80000.00")
         income_info.save()
 
         # Recalculate with new data
@@ -675,7 +629,7 @@ class TestRecalculationIdempotency:
             session=session,
             marital_status="single",
             number_of_dependents=0,
-            monthly_income=[5000, 5000, 5000, 5000, 5000, 5000],
+            monthly_gross_wages=Decimal("5000.00"),
         )
 
         calculator = MeansTestCalculator(session)
@@ -726,33 +680,18 @@ class TestRecalculationIdempotency:
 
 
 @pytest.mark.django_db
-class TestVariableMonthlyIncome:
-    """Tests for variable monthly income scenarios (6 different values)."""
+class TestIncomeFromSeveralSources:
+    """CMI adds up every source the filer gave on the Income step."""
 
-    def test_variable_income_calculates_correct_average(self, session, median_income):
-        """Test that variable monthly income correctly calculates CMI average."""
-        # Variable income: average should be (6000 + 6000 + 5000 + 5000 + 4000 + 4000) / 6 = 5000
+    def test_cmi_adds_every_source_the_filer_gave(self, session, median_income):
+        # 3000 + 1000 + 1000 = 5000: below the $5,942/month median for one person
         IncomeInfo.objects.create(
             session=session,
             marital_status="single",
             number_of_dependents=0,
-            monthly_income=[6000, 6000, 5000, 5000, 4000, 4000],
-        )
-
-        calculator = MeansTestCalculator(session)
-        result = calculator.calculate()
-
-        assert result["cmi"] == Decimal("5000.00")
-        assert result["passes_means_test"] is True
-
-    def test_declining_income_calculates_correct_average(self, session, median_income):
-        """Test that declining income pattern correctly calculates CMI."""
-        # Declining income: (10000 + 8000 + 6000 + 4000 + 2000 + 0) / 6 = 5000
-        IncomeInfo.objects.create(
-            session=session,
-            marital_status="single",
-            number_of_dependents=0,
-            monthly_income=[10000, 8000, 6000, 4000, 2000, 0],
+            monthly_gross_wages=Decimal("3000.00"),
+            monthly_pension=Decimal("1000.00"),
+            monthly_child_support=Decimal("1000.00"),
         )
 
         calculator = MeansTestCalculator(session)
@@ -772,7 +711,7 @@ class TestDetailedBreakdown:
             session=session,
             marital_status="single",
             number_of_dependents=0,
-            monthly_income=[5000, 5000, 5000, 5000, 5000, 5000],
+            monthly_gross_wages=Decimal("5000.00"),
         )
 
         calculator = MeansTestCalculator(session)
@@ -791,7 +730,7 @@ class TestDetailedBreakdown:
             session=session,
             marital_status="single",
             number_of_dependents=0,
-            monthly_income=[5000, 5000, 5000, 5000, 5000, 5000],
+            monthly_gross_wages=Decimal("5000.00"),
         )
 
         calculator = MeansTestCalculator(session)
@@ -807,14 +746,18 @@ class TestDetailedBreakdown:
 
         # Verify income history
         assert breakdown["income_history"]["average_cmi"] == 5000.00
-        assert breakdown["income_history"]["monthly_values"] == [
-            5000,
-            5000,
-            5000,
-            5000,
-            5000,
-            5000,
-        ]
+        assert breakdown["income_history"]["by_source"] == {
+            "monthly_gross_wages": 5000.0,
+            "monthly_overtime": None,
+            "monthly_tips": None,
+            "monthly_rental_income": None,
+            "monthly_pension": None,
+            "monthly_social_security": None,
+            "monthly_unemployment": None,
+            "monthly_child_support": None,
+            "monthly_alimony": None,
+            "monthly_other_income": None,
+        }
 
         # Verify family composition
         assert breakdown["family_composition"]["marital_status"] == "single"
@@ -846,7 +789,7 @@ class TestAnnualizedComparison:
             session=session,
             marital_status="single",
             number_of_dependents=0,
-            monthly_income=[10000, 10000, 10000, 10000, 10000, 10000],
+            monthly_gross_wages=Decimal("10000.00"),
         )
 
         result = MeansTestCalculator(session).calculate()
@@ -881,7 +824,7 @@ class TestHouseholdSizeFromDebtorInfo:
             session=session,
             marital_status="single",
             number_of_dependents=0,
-            monthly_income=[9000, 9000, 9000, 9000, 9000, 9000],
+            monthly_gross_wages=Decimal("9000.00"),
         )
 
         result = MeansTestCalculator(session).calculate()
@@ -920,7 +863,7 @@ def session_with_above_median_income(user, district, median_income):
         session=s,
         marital_status="single",
         number_of_dependents=0,
-        monthly_income=[7000, 7000, 7000, 7000, 7000, 7000],
+        monthly_gross_wages=Decimal("7000.00"),
     )
     return s
 
@@ -952,7 +895,7 @@ def session_with_below_median_income(user, district, median_income):
         session=s,
         marital_status="single",
         number_of_dependents=0,
-        monthly_income=[5000, 5000, 5000, 5000, 5000, 5000],
+        monthly_gross_wages=Decimal("5000.00"),
     )
     return s
 
@@ -1028,7 +971,7 @@ class TestAboveMedianEndToEnd:
         )
         IncomeInfo.objects.create(
             session=session,
-            monthly_income=[6000] * 6,
+            monthly_gross_wages=Decimal("6000.00"),
             marital_status="single",
             number_of_dependents=0,
         )

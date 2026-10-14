@@ -7,6 +7,8 @@ from django.db import models
 from django.utils import timezone
 from encrypted_model_fields.fields import EncryptedTextField
 
+from .cmi import current_monthly_income
+
 
 class MeansTest(models.Model):
     """Chapter 7 means test calculation (11 U.S.C. § 707(b))."""
@@ -104,13 +106,8 @@ class MeansTest(models.Model):
         except AttributeError as err:
             raise ValueError("IntakeSession must have income_info to calculate means test") from err
 
-        # Calculate Current Monthly Income (CMI) - average of last 6 months
-        monthly_income_data = income_info.monthly_income
-        if not isinstance(monthly_income_data, list) or len(monthly_income_data) != 6:
-            raise ValueError("monthly_income must be a list of 6 monthly income values")
-
-        total_6_month_income = sum(Decimal(str(amt)) for amt in monthly_income_data)
-        cmi = total_6_month_income / Decimal("6")
+        # Current Monthly Income (CMI): the Income step's amounts, without Social Security
+        cmi = current_monthly_income(income_info)
 
         # Get family size for median income lookup. The wizard collects
         # household_size on the debtor step; sessions without it fall back
@@ -171,14 +168,18 @@ class MeansTest(models.Model):
         # For MVP, simplified: qualifies if income is very low (< 60% of median)
         qualifies_fee_waiver = annualized_cmi < (median_income_threshold * Decimal("0.60"))
 
-        # Store calculation details (encrypted)
+        # Store calculation details (encrypted). JSON has no Decimal, and an empty box stays empty.
+        income_by_source = {}
+        for field in income_info.SOURCE_FIELDS:
+            amount = getattr(income_info, field)
+            income_by_source[field] = None if amount is None else float(amount)
         details.update(
             {
                 "cmi": float(cmi),
                 "annualized_cmi": float(annualized_cmi),
                 "median_income_threshold": float(median_income_threshold),
                 "family_size": family_size,
-                "monthly_income_breakdown": monthly_income_data,
+                "income_by_source": income_by_source,
                 "marital_status": income_info.marital_status,
                 "number_of_dependents": income_info.number_of_dependents,
                 "passes_test": passes_test,

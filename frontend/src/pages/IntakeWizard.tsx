@@ -35,7 +35,7 @@ import type {
   ExecutoryContract,
   Codebtor,
 } from '../types/api';
-import { EXPENSE_FIELDS } from '../types/api';
+import { EXPENSE_FIELDS, INCOME_FIELDS } from '../types/api';
 
 // ============================================================================
 // Wizard Configuration
@@ -140,7 +140,7 @@ export function IntakeWizard() {
         if (cancelled) return;
         setCurrentStepNumber(fresh.current_step);
         if (fresh.debtor_info) setDebtorData(fresh.debtor_info);
-        if (fresh.income_info) setIncomeData(fresh.income_info);
+        if (fresh.income_info) setIncomeData(hydrateAmounts(fresh.income_info, INCOME_FIELDS));
         if (fresh.expense_info) setExpenseData(hydrateAmounts(fresh.expense_info, EXPENSE_FIELDS));
         if (fresh.assets)
           setAssetsData(fresh.assets.map((asset) => hydrateAmounts(asset, ASSET_AMOUNT_FIELDS)));
@@ -182,13 +182,15 @@ export function IntakeWizard() {
       case 'debtor_info':
         return { debtor_info: debtorData } as Partial<IntakeSession>;
 
-      case 'income_info':
-        // Send the months alone: IncomeInfoStep re-emits them as stored unless the filer
-        // entered source amounts. Echoing other fields read from the server (a blank
-        // marital_status) is a 400 that would strand the filer on Income.
-        return {
-          income_info: { monthly_income: incomeData.monthly_income },
-        } as Partial<IntakeSession>;
+      case 'income_info': {
+        // The ten amounts alone. A blank box is sent as null, so it stays empty on the server
+        // and a box the filer cleared is emptied there too, never saved as $0. Echoing other
+        // fields read from the server (a blank marital_status) is a 400 that would strand the
+        // filer on Income, and the old six-month total is read-only.
+        const income: Partial<IncomeInfo> = {};
+        for (const field of INCOME_FIELDS) income[field] = incomeData[field] ?? null;
+        return { income_info: income } as Partial<IntakeSession>;
+      }
 
       case 'expense_info': {
         // The 13 amounts alone. The total is read-only on the server: the step adds it up in

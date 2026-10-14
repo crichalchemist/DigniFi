@@ -27,7 +27,7 @@ const sessionAtStep8 = {
   updated_at: '2026-01-20T10:00:00Z',
   completed_at: null,
   debtor_info: { first_name: 'Jane', last_name: 'Doe' },
-  income_info: { monthly_income: [1200, 1200, 1200, 1200, 1200, 1200] },
+  income_info: { monthly_gross_wages: '1200.00', total_monthly_income: 1200 },
   expense_info: { rent_or_mortgage: 1000 },
   assets: [],
   debts: [],
@@ -201,6 +201,8 @@ describe('IntakeWizard handleComplete routing', { timeout: 30_000 }, () => {
     expect(screen.queryByText('Statement of Financial Affairs')).not.toBeInTheDocument();
   });
 
+  // A filer who left every Income box blank is refused by the means test. Its 400 carries its own
+  // sentence, which says what to do, beside a generic message, which doesn't (ruling C-5).
   it('keeps the filer on Review with the reason when only the means test fails', async () => {
     renderWizard();
     const completeBtn = await screen.findByRole('button', { name: /complete intake/i });
@@ -208,7 +210,7 @@ describe('IntakeWizard handleComplete routing', { timeout: 30_000 }, () => {
       http.post('http://localhost:8000/api/intake/sessions/:id/calculate_means_test/', () =>
         HttpResponse.json(
           {
-            error: 'No median income data for this district',
+            error: 'Enter your income by source on the Income step.',
             message:
               'Unable to calculate means test. Please ensure all income information is provided.',
           },
@@ -219,9 +221,9 @@ describe('IntakeWizard handleComplete routing', { timeout: 30_000 }, () => {
 
     await userEvent.click(completeBtn);
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      'Unable to calculate means test. Please ensure all income information is provided.'
-    );
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent('Enter your income by source on the Income step.');
+    expect(alert).not.toHaveTextContent(/unable to calculate means test/i);
     expect(
       screen.getByRole('heading', { name: /review & results/i, level: 2 })
     ).toBeInTheDocument();
@@ -259,7 +261,18 @@ const completedSession = {
   income_info: {
     marital_status: 'single',
     number_of_dependents: 1,
-    monthly_income: [3100, 3300, 3200, 3200, 3150, 3250],
+    // The API sends each amount as a decimal string, and an amount never given as null
+    monthly_gross_wages: '3100.50',
+    monthly_overtime: null,
+    monthly_tips: '0.00',
+    monthly_rental_income: null,
+    monthly_pension: null,
+    monthly_social_security: '99.50',
+    monthly_unemployment: null,
+    monthly_child_support: null,
+    monthly_alimony: null,
+    monthly_other_income: null,
+    monthly_income: null,
     total_monthly_income: 3200,
   },
   expense_info: {
@@ -781,21 +794,46 @@ describe('IntakeWizard amounts a returning filer already entered', { timeout: 15
 // ===========================================================================
 
 describe('IntakeWizard income save', { timeout: 15_000 }, () => {
-  it("saves a returning filer's months exactly as stored, and nothing else, when they continue without changes", async () => {
-    // What the API returns for a filer who saved income earlier through the wizard: the
-    // months, their average, and the blank household fields a wizard-created row holds.
-    const savedSession = {
-      ...sessionAtStep1,
-      current_step: 2,
-      income_info: {
-        marital_status: '',
-        number_of_dependents: 0,
-        monthly_income: [3100, 3300, 3200, 3200, 3150, 3250],
-        total_monthly_income: 3200,
-        created_at: '2026-10-01T10:00:00Z',
-      },
-    };
-    const patchBodies: unknown[] = [];
+  // What the API returns for a filer who saved income by source through the wizard: decimal
+  // strings, null for a box left empty, and the blank household fields a wizard-created row
+  // holds. Echoing those back is a 400, and the old total is read-only.
+  const savedSession = {
+    ...sessionAtStep1,
+    current_step: 2,
+    income_info: {
+      marital_status: '',
+      number_of_dependents: 0,
+      monthly_gross_wages: '3100.50',
+      monthly_overtime: null,
+      monthly_tips: '0.00',
+      monthly_rental_income: null,
+      monthly_pension: null,
+      monthly_social_security: '99.50',
+      monthly_unemployment: null,
+      monthly_child_support: null,
+      monthly_alimony: null,
+      monthly_other_income: null,
+      monthly_income: null,
+      total_monthly_income: 3200,
+      created_at: '2026-10-01T10:00:00Z',
+    },
+  };
+  const savedAmounts = {
+    monthly_gross_wages: 3100.5,
+    monthly_overtime: null,
+    monthly_tips: 0,
+    monthly_rental_income: null,
+    monthly_pension: null,
+    monthly_social_security: 99.5,
+    monthly_unemployment: null,
+    monthly_child_support: null,
+    monthly_alimony: null,
+    monthly_other_income: null,
+  };
+  let patchBodies: unknown[];
+
+  beforeEach(() => {
+    patchBodies = [];
     server.use(
       http.get('http://localhost:8000/api/intake/sessions/:id/', () =>
         HttpResponse.json(savedSession)
@@ -817,18 +855,31 @@ describe('IntakeWizard income save', { timeout: 15_000 }, () => {
         () => new HttpResponse(null, { status: 201 })
       )
     );
+  });
 
+  it("sends a returning filer's ten amounts as numbers, a box left empty as empty, and nothing else", async () => {
     renderWizard();
     await screen.findByRole('heading', { name: /income/i, level: 2 });
+    expect(screen.getByLabelText(/monthly wages/i)).toHaveValue(3100.5);
     await userEvent.click(screen.getByRole('button', { name: /continue/i }));
     await screen.findByRole('heading', { name: /expenses/i, level: 2 });
 
     expect(patchBodies.length).toBeGreaterThan(0);
     for (const body of patchBodies) {
-      expect(body).toEqual({
-        income_info: { monthly_income: [3100, 3300, 3200, 3200, 3150, 3250] },
-      });
+      expect(body).toEqual({ income_info: savedAmounts });
     }
+  });
+
+  it('empties a box on the server too when the filer clears it', async () => {
+    renderWizard();
+    await screen.findByRole('heading', { name: /income/i, level: 2 });
+    await userEvent.clear(screen.getByLabelText(/social security/i));
+    await userEvent.click(screen.getByRole('button', { name: /continue/i }));
+    await screen.findByRole('heading', { name: /expenses/i, level: 2 });
+
+    expect(patchBodies.at(-1)).toEqual({
+      income_info: { ...savedAmounts, monthly_social_security: null },
+    });
   });
 });
 

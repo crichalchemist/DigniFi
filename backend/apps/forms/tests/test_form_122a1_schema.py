@@ -6,6 +6,7 @@ import pytest
 from django.contrib.auth import get_user_model
 
 from apps.districts.models import District
+from apps.eligibility.cmi import IncomeNotSplit
 from apps.forms.schema import load_schema
 from apps.forms.services.fill_resolver import resolve
 from apps.intake.models import IncomeInfo, IntakeSession
@@ -30,7 +31,7 @@ def session(db):
 def session_with_income(session):
     IncomeInfo.objects.create(
         session=session,
-        monthly_income=[2000, 2000, 2000, 2000, 2000, 2000],
+        monthly_gross_wages=Decimal("2000.00"),
         marital_status="single",
         number_of_dependents=0,
     )
@@ -55,9 +56,10 @@ class TestForm122A1Schema:
 
     def test_cmi_calculation(self, session_with_income):
         field_map = resolve(load_schema("form_122a1"), session_with_income)
-        # 2000 * 6 / 6 = 2000 CMI, annualized = 24000
+        # 2000 wages = 2000 CMI, annualized = 24000
         assert field_map["12B"] == "24000.00"
 
-    def test_empty_session(self, session):
-        field_map = resolve(load_schema("form_122a1"), session)
-        assert "Bankruptcy District Information" in field_map
+    def test_empty_session_is_asked_for_income_by_source(self, session):
+        # Lines 11 to 13 are CMI, and a filer who gave no income has none (spec §5.5).
+        with pytest.raises(IncomeNotSplit):
+            resolve(load_schema("form_122a1"), session)

@@ -71,7 +71,7 @@ def completed(filer, district):
         session=session,
         marital_status="single",
         number_of_dependents=0,
-        monthly_income=[3000, 3000, 3000, 3000, 3000, 3000],
+        monthly_gross_wages=Decimal("3000.00"),
     )
     ExpenseInfo.objects.create(session=session)
     return session
@@ -156,7 +156,7 @@ def test_filer_who_leaves_every_expense_blank_can_complete(filer, district):
         state="IL",
         zip_code="60601",
     )
-    IncomeInfo.objects.create(session=session, monthly_income=[0, 0, 0, 0, 0, 0])
+    IncomeInfo.objects.create(session=session, monthly_gross_wages=Decimal("0.00"))
 
     saved = client.patch(
         _session_url(session), {"expense_info": {"total_monthly_expenses": 0}}, format="json"
@@ -195,7 +195,7 @@ def test_editing_a_completed_intake_asks_for_complete_again(filer, completed):
     "section,value",
     [
         ("debtor_info", {"first_name": "Janet"}),
-        ("income_info", {"monthly_income": [3100, 3100, 3100, 3100, 3100, 3100]}),
+        ("income_info", {"monthly_gross_wages": "3100.00", "monthly_tips": None}),
         ("expense_info", {"rent_or_mortgage": 900}),
         ("debts", [{"creditor_name": "Chase", "debt_type": "credit_card", "amount_owed": 500}]),
         (

@@ -78,24 +78,43 @@ export interface IncomeInfo {
   session: number;
   data_source: 'manual' | 'bank_import' | 'tax_return';
 
-  // Backend expects this
-  monthly_income?: number[];
+  // The six-month total saved before income was stored by source. Read-only: the Income step
+  // shows it while asking the filer to split it.
+  monthly_income?: number[] | null;
 
-  // Frontend form fields (not in backend model, but useful for state)
-  monthly_gross_wages?: number;
-  monthly_overtime?: number;
-  monthly_tips?: number;
-  monthly_rental_income?: number;
-  monthly_pension?: number;
-  monthly_social_security?: number;
-  monthly_unemployment?: number;
-  monthly_child_support?: number;
-  monthly_alimony?: number;
-  monthly_other_income?: number;
+  // The ten monthly amounts by source (INCOME_FIELDS). Empty (null) when the filer gave none.
+  monthly_gross_wages?: number | null;
+  monthly_overtime?: number | null;
+  monthly_tips?: number | null;
+  monthly_rental_income?: number | null;
+  monthly_pension?: number | null;
+  monthly_social_security?: number | null;
+  monthly_unemployment?: number | null;
+  monthly_child_support?: number | null;
+  monthly_alimony?: number | null;
+  monthly_other_income?: number | null;
 
-  // Calculated field
-  total_monthly_income: number;
+  // Calculated field: the ten added up, null when the filer gave none of them
+  total_monthly_income: number | null;
 }
+
+/**
+ * The ten monthly income amounts, under the names the backend stores and the court forms read.
+ * DRF drops any other name without an error, so the step saves only these. The API sends each
+ * as a decimal string or null.
+ */
+export const INCOME_FIELDS = [
+  'monthly_gross_wages',
+  'monthly_overtime',
+  'monthly_tips',
+  'monthly_rental_income',
+  'monthly_pension',
+  'monthly_social_security',
+  'monthly_unemployment',
+  'monthly_child_support',
+  'monthly_alimony',
+  'monthly_other_income',
+] as const;
 
 export interface ExpenseInfo {
   id: number;
