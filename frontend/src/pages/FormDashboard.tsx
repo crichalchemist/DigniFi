@@ -67,6 +67,10 @@ export function FormDashboard() {
 
   // Map form_type → GeneratedForm for quick lookup
   const formsByType = new Map(forms.map((f) => [f.form_type, f]));
+  // A filed form stays after it leaves the packet, with what was filed (forms step 2 §5.6)
+  const filedOutsidePacket = forms.filter(
+    (f) => f.status === 'filed' && !packet.includes(f.form_type)
+  );
 
   const handleGenerate = async (formType: FormType) => {
     if (!session) return;
@@ -216,6 +220,17 @@ export function FormDashboard() {
               key={formType}
               formType={formType}
               generatedForm={formsByType.get(formType)}
+              onGenerate={handleGenerate}
+              onDownload={handleDownload}
+              onMarkFiled={handleMarkFiled}
+            />
+          ))}
+          {filedOutsidePacket.map((form) => (
+            <FormCard
+              key={form.form_type}
+              formType={form.form_type}
+              generatedForm={form}
+              leftPacket
               onGenerate={handleGenerate}
               onDownload={handleDownload}
               onMarkFiled={handleMarkFiled}

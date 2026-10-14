@@ -24,6 +24,7 @@ from django.core.serializers.json import DjangoJSONEncoder
 from rest_framework.test import APIClient
 
 from apps.districts.models import District
+from apps.eligibility.models import MeansTest
 from apps.forms.models import GeneratedForm
 from apps.forms.registry import build_field_values, packet
 from apps.forms.schema import load_schema
@@ -92,11 +93,8 @@ def _send_through_the_api(persona):
         assert response.status_code == 200, (endpoint, response.data)
 
     # Complete Intake, then the pages that follow it. Their saves keep the intake complete.
+    # No means-test call: Generate All works it out from the stored intake (spec §5.6).
     assert client.post(f"{session_url}complete/").status_code == 200
-    means_test = client.post(f"{session_url}calculate_means_test/")
-    assert means_test.status_code == 200
-    qualifies = means_test.data["means_test_result"]["qualifies_for_fee_waiver"]
-    assert qualifies == (persona in WAIVER_FILERS)
     if persona in WAIVER_FILERS:
         response = client.post(
             "/api/intake/fee-waiver/",
@@ -113,6 +111,10 @@ def _send_through_the_api(persona):
     generated = client.post("/api/forms/generate_all/", {"session_id": session_id}, format="json")
     assert generated.status_code == 200
     assert generated.data["errors"] == []
+    # Generate All worked the means test out, and it qualifies exactly the filers the wizard
+    # sends to the fee-waiver page.
+    qualifies = MeansTest.objects.get(session_id=session_id).qualifies_for_fee_waiver
+    assert qualifies == (persona in WAIVER_FILERS)
     return session_id, [form["form_type"] for form in generated.data["generated"]]
 
 

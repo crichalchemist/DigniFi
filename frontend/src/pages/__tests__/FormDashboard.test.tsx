@@ -184,6 +184,36 @@ describe('FormDashboard', () => {
     expect(screen.queryByText('Form 122A-2 - Means Test Expenses')).not.toBeInTheDocument();
   });
 
+  it('keeps showing a filed form after it leaves the packet, and says so', async () => {
+    // 122A-2 was filed, then income dropped below the median (forms step 2 §5.6, DIG-155)
+    server.use(
+      http.get('http://localhost:8000/api/forms/packet/', () =>
+        HttpResponse.json({ session: 1, form_types: ['form_101', 'form_121'] })
+      ),
+      http.get('http://localhost:8000/api/forms/', () =>
+        HttpResponse.json([
+          { id: 1, session: 1, form_type: 'form_101', status: 'generated' },
+          { id: 2, session: 1, form_type: 'form_121', status: 'filed' },
+          { id: 3, session: 1, form_type: 'form_122a2', status: 'filed' },
+          { id: 4, session: 1, form_type: 'form_103b', status: 'generated' },
+        ])
+      )
+    );
+
+    renderFormDashboard();
+    await screen.findByText('Form 101 - Voluntary Petition');
+
+    // Only the filed form outside the packet carries the note; filed 121 is in the packet
+    const notes = screen.queryAllByText('Filed, no longer in your current packet');
+    expect(notes).toHaveLength(1);
+    const leftPacket = notes[0].closest('article') as HTMLElement;
+    expect(leftPacket).toHaveAttribute('aria-label', 'Form 122A-2 - Means Test Expenses');
+    expect(within(leftPacket).getByRole('button', { name: /download/i })).toBeInTheDocument();
+    // A form that left the packet without being filed is neither shown nor counted
+    expect(screen.queryByText('Form 103B - Fee Waiver Application')).not.toBeInTheDocument();
+    expect(screen.getByText(/^2 of 2 generated/)).toBeInTheDocument();
+  });
+
   it('shows error banner when generate_all returns partial failures', async () => {
     server.use(
       http.post('http://localhost:8000/api/forms/generate_all/', () =>

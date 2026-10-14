@@ -11,6 +11,7 @@ from datetime import date
 from decimal import Decimal
 
 import pytest
+from django.core.management import call_command
 from rest_framework.test import APIClient
 
 from apps.districts.models import District
@@ -29,14 +30,10 @@ FINISH = "Finish your intake before preparing your forms."
 
 @pytest.fixture
 def district(db):
-    # The name is one of the court forms' district choices, so forms fill.
-    return District.objects.create(
-        code="ilnd",
-        name="Northern District of Illinois",
-        state="IL",
-        court_name="U.S. Bankruptcy Court, Northern District of Illinois",
-        filing_fee_chapter_7=Decimal("338.00"),
-    )
+    # The real ILND data: its name is one of the court forms' district choices, and preparing
+    # forms works the means test out against its median income.
+    call_command("loaddata", "ilnd_2025_data", verbosity=0)
+    return District.objects.get(code="ilnd")
 
 
 @pytest.fixture

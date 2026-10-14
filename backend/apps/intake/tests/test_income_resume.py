@@ -11,6 +11,7 @@ from datetime import date
 from decimal import Decimal
 
 import pytest
+from django.core.management import call_command
 from rest_framework.test import APIClient
 
 from apps.districts.models import District
@@ -35,14 +36,10 @@ TEN_EMPTY = {
 
 @pytest.fixture
 def filer_session(db):
-    # The name is one of the court forms' district choices, so forms fill.
-    district = District.objects.create(
-        code="ilnd",
-        name="Northern District of Illinois",
-        state="IL",
-        court_name="U.S. Bankruptcy Court, Northern District of Illinois",
-        filing_fee_chapter_7=Decimal("338.00"),
-    )
+    # The real ILND data: its name is one of the court forms' district choices, and preparing
+    # forms works the means test out against its median income.
+    call_command("loaddata", "ilnd_2025_data", verbosity=0)
+    district = District.objects.get(code="ilnd")
     filer = User.objects.create_user(username="filer", password="pw")
     session = IntakeSession.objects.create(user=filer, district=district)
     client = APIClient()
@@ -226,8 +223,10 @@ def test_legacy_income_total_must_be_split_before_forms_print(filer_session):
     refused = client.post("/api/forms/generate/", generate, format="json")
     assert refused.status_code == 422
     assert refused.data == {"form_type": "schedule_i", "error": SPLIT_BY_SOURCE}
+    # Every form waits for the split, since each call works the means test out first.
     every_form = client.post("/api/forms/generate_all/", {"session_id": session.pk}, format="json")
-    assert {"form_type": "schedule_i", "error": SPLIT_BY_SOURCE} in every_form.data["errors"]
+    assert every_form.status_code == 422
+    assert every_form.data == {"error": SPLIT_BY_SOURCE}
 
     # The filer splits the total on the Income step and completes the intake again.
     split = client.patch(

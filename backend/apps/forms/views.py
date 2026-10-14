@@ -20,6 +20,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.eligibility.cmi import IncomeNotSplit
+from apps.eligibility.services import MeansTestCalculator
 from apps.intake.models import IntakeSession
 
 from .models import GeneratedForm
@@ -71,23 +72,25 @@ _FAILURE_SENTENCES = {
 }
 
 
-def _failure(form_type: str, exc: Exception) -> tuple[dict, int]:
-    """The error body and status for a form that could not be filled."""
+def _failure(form_type: str | None, exc: Exception) -> tuple[dict, int]:
+    """The error body and status for a form that could not be filled.
+
+    form_type is None when the whole call is refused before any form is filled (Generate
+    All, the packet list): the body then names no form.
+    """
     if isinstance(exc, PreconditionMissing | IncomeNotSplit):
         error = str(exc)
     else:
         error = _FAILURE_SENTENCES.get(type(exc))
-    if error is not None:
-        return {"form_type": form_type, "error": error}, status.HTTP_422_UNPROCESSABLE_ENTITY
-    # Type only: a message or traceback can quote filer data, and logs reach Sentry (DIG-105).
-    logger.error("Filling %s failed: %s", form_type, type(exc).__name__)
-    return (
-        {
-            "form_type": form_type,
-            "error": "This form couldn't be prepared. Please try again later.",
-        },
-        status.HTTP_500_INTERNAL_SERVER_ERROR,
-    )
+    code = status.HTTP_422_UNPROCESSABLE_ENTITY
+    if error is None:
+        # Type only: a message or traceback can quote filer data, and logs reach Sentry (DIG-105).
+        logger.error("Filling %s failed: %s", form_type or "the packet", type(exc).__name__)
+        error = "This form couldn't be prepared. Please try again later."
+        code = status.HTTP_500_INTERNAL_SERVER_ERROR
+    if form_type is None:
+        return {"error": error}, code
+    return {"form_type": form_type, "error": error}, code
 
 
 def _session_or_error(
@@ -136,9 +139,25 @@ def _check_finished(session: IntakeSession) -> None:
         raise IntakeNotFinished()
 
 
-def _fill(form_type: str, session: IntakeSession) -> tuple[dict[str, str], bytes]:
-    """Resolve a form that applies to this filer and fill its template."""
+def _recalculate_means_test(session: IntakeSession) -> None:
+    """Work the means test out again from the stored intake (step 2 spec §5.6).
+
+    It runs before the packet is decided, so a result worked out from income the filer has
+    since changed never decides which forms they get (DIG-160). Raises IncomeNotSplit when
+    the income isn't entered by source, and ValueError when the district's median income
+    data is missing, which operations must fix.
+    """
+    MeansTestCalculator(session).calculate()
+
+
+def _prepare(session: IntakeSession) -> None:
+    """Refuse an unfinished intake, then work its means test out again. Once per call."""
     _check_finished(session)
+    _recalculate_means_test(session)
+
+
+def _fill(form_type: str, session: IntakeSession) -> tuple[dict[str, str], bytes]:
+    """Resolve a form that applies to this filer and fill its template. _prepare() runs first."""
     if not FORM_REGISTRY[form_type].applies(session):
         raise NotInPacket()
     values = build_field_values(form_type, session)
@@ -151,7 +170,10 @@ def _store(generated_form: GeneratedForm, values: dict[str, str]) -> None:
 
 
 def _generate_and_persist(session: IntakeSession, form_type: str, user) -> GeneratedForm:
-    """Fill the form (which proves it fills) and keep its values as the snapshot."""
+    """Fill the form (which proves it fills) and keep its values as the snapshot.
+
+    _prepare() runs first.
+    """
     if GeneratedForm.objects.filter(session=session, form_type=form_type, status="filed").exists():
         raise FormIsFiled()
     values, _ = _fill(form_type, session)
@@ -213,10 +235,20 @@ class GeneratedFormViewSet(viewsets.ReadOnlyModelViewSet):
         The ordered form types that apply to this filer.
 
         GET /api/forms/packet/?session=1
+
+        For a completed intake the means test is worked out again first, and a refusal
+        covers the whole list. An unfinished intake gets the packet its stored data gives,
+        and is never refused (step 2 spec §5.3, §5.6).
         """
         session, err = _session_or_error(request, request.query_params.get("session"), "session")
         if err:
             return err
+        if session.status == "completed":
+            try:
+                _recalculate_means_test(session)
+            except Exception as exc:
+                body, code = _failure(None, exc)
+                return Response(body, status=code)
         return Response({"session": session.id, "form_types": packet(session)})
 
     # ------------------------------------------------------------------
@@ -241,6 +273,7 @@ class GeneratedFormViewSet(viewsets.ReadOnlyModelViewSet):
             return err
 
         try:
+            _prepare(session)
             generated_form = _generate_and_persist(session, form_type, request.user)
         except Exception as exc:
             body, code = _failure(form_type, exc)
@@ -265,24 +298,25 @@ class GeneratedFormViewSet(viewsets.ReadOnlyModelViewSet):
         { "session_id": 1 }
 
         Each form gets its own savepoint, so one form's failure can't undo the
-        others. Rows for forms that no longer apply are deleted. A filed form
-        that still applies is returned as it is: not resolved again, not un-filed.
-        An unfinished intake gets one refusal for the whole packet, before anything
+        others. Rows for forms that no longer apply are deleted. A filed form is
+        returned as it is, in the packet or out of it: not resolved again, not
+        un-filed, not deleted (DIG-155). An unfinished intake, or a means test that
+        can't be worked out, gets one refusal for the whole packet, before anything
         is deleted.
         """
         session, err = _session_or_error(request, request.data.get("session_id"))
         if err:
             return err
         try:
-            _check_finished(session)
-        except IntakeNotFinished:
-            return Response(
-                {"error": _FAILURE_SENTENCES[IntakeNotFinished]},
-                status=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            )
+            _prepare(session)
+        except Exception as exc:
+            body, code = _failure(None, exc)
+            return Response(body, status=code)
 
         form_types = packet(session)
-        GeneratedForm.objects.filter(session=session).exclude(form_type__in=form_types).delete()
+        GeneratedForm.objects.filter(session=session).exclude(form_type__in=form_types).exclude(
+            status="filed"
+        ).delete()
         filed = {
             f.form_type: f for f in GeneratedForm.objects.filter(session=session, status="filed")
         }
@@ -299,6 +333,13 @@ class GeneratedFormViewSet(viewsets.ReadOnlyModelViewSet):
                 results.append(self.get_serializer(generated_form).data)
             except Exception as exc:
                 errors.append(_failure(form_type, exc)[0])
+        # Filed forms that left the packet go last: the dashboard replaces its list with
+        # `generated`, so a form missing from it would vanish from the dashboard.
+        results += [
+            self.get_serializer(form).data
+            for form_type, form in filed.items()
+            if form_type not in form_types
+        ]
 
         return Response(
             {
@@ -322,6 +363,7 @@ class GeneratedFormViewSet(viewsets.ReadOnlyModelViewSet):
         """
         generated_form = self.get_object()
         try:
+            _prepare(generated_form.session)
             generated_form = _generate_and_persist(
                 generated_form.session, generated_form.form_type, request.user
             )
@@ -379,7 +421,8 @@ class GeneratedFormViewSet(viewsets.ReadOnlyModelViewSet):
 
         A form not yet filed is resolved fresh, so the filer always downloads
         their current answers, and its snapshot is refreshed. A filed form
-        fills from its snapshot, so it matches what was filed.
+        fills from its snapshot, so it matches what was filed, even after it
+        has left the packet (DIG-155).
         """
         generated_form = self.get_object()
         form_type = generated_form.form_type
@@ -387,10 +430,9 @@ class GeneratedFormViewSet(viewsets.ReadOnlyModelViewSet):
 
         try:
             if generated_form.status == "filed" and generated_form.field_values:
-                if not FORM_REGISTRY[form_type].applies(session):
-                    raise NotInPacket()
                 pdf_bytes = PDFFormFiller().fill(form_type, json.loads(generated_form.field_values))
             else:
+                _prepare(session)
                 values, pdf_bytes = _fill(form_type, session)
                 _store(generated_form, values)
         except Exception as exc:
