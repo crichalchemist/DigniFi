@@ -585,6 +585,24 @@ class TestUPLProhibitedPhrases:
                 phrase.lower() not in message
             ), f"UPL prohibited phrase '{phrase}' found in fee waiver message: {message}"
 
+    def test_above_median_passing_message_contains_no_upl_violations(
+        self, session_with_above_median_income
+    ):
+        """The message an above-median filer who passes the expense test sees (DIG-128)."""
+        session = session_with_above_median_income
+        _expenses_and_priority_debt(session)
+
+        result = MeansTestCalculator(session).calculate()
+        assert result["passes_above_median"] is True
+
+        message = result["message"].lower()
+
+        # Check all prohibited phrases from settings
+        for phrase in settings.UPL_PROHIBITED_PHRASES:
+            assert (
+                phrase.lower() not in message
+            ), f"UPL prohibited phrase '{phrase}' found in above-median message: {message}"
+
     def test_message_contains_permitted_informational_language(self, session, median_income):
         """Test that messages use permitted informational language."""
         IncomeInfo.objects.create(
