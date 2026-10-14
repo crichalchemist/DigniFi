@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { http, HttpResponse } from 'msw';
@@ -141,7 +141,7 @@ describe('FormDashboard', () => {
   it('shows error message when form loading fails', async () => {
     server.use(
       http.get('http://localhost:8000/api/forms/', () =>
-        HttpResponse.json({ message: 'Server error' }, { status: 422 })
+        HttpResponse.json({ message: 'Server error' }, { status: 400 })
       )
     );
 
@@ -247,5 +247,230 @@ describe('FormDashboard', () => {
     const failure = within(screen.getByRole('alert')).getByRole('listitem');
     expect(failure).toHaveTextContent('Form 101 - Voluntary Petition: Missing debtor name');
     expect(failure).not.toHaveTextContent('form_101');
+  });
+
+  // ---------------------------------------------------------------------------
+  // A refusal of the whole call (forms step 2 §5.6, DIG-156)
+  // ---------------------------------------------------------------------------
+
+  describe('when Generate All or the packet list is refused', { timeout: 15_000 }, () => {
+    const FINISH_INTAKE = 'Finish your intake before preparing your forms.';
+    const INCOME_NOT_SPLIT = 'Enter your income by source on the Income step.';
+    // The server's sentence for a 500 speaks of one form, so the dashboard never shows it
+    const SERVER_FAILURE = "This form couldn't be prepared. Please try again later.";
+    const GENERIC =
+      'Something went wrong. Your information is safe — please try again in a moment.';
+
+    /** Open Generate All and tick the UPL notice; returns the notice's Continue button. */
+    async function openGenerateAll() {
+      await userEvent.click(await screen.findByRole('button', { name: /generate all/i }));
+      await userEvent.click(screen.getByRole('checkbox'));
+      return screen.getByRole('button', { name: /continue/i });
+    }
+
+    /** A packet that gains Form 122A-2 once the means test is worked out again. */
+    function packetThatGains122a2() {
+      let calls = 0;
+      return http.get('http://localhost:8000/api/forms/packet/', () => {
+        calls += 1;
+        return HttpResponse.json({
+          session: 1,
+          form_types:
+            calls === 1 ? ['form_101', 'form_121'] : ['form_101', 'form_121', 'form_122a2'],
+        });
+      });
+    }
+
+    it('shows the packet list’s refusal in its own words', async () => {
+      server.use(
+        http.get('http://localhost:8000/api/forms/packet/', () =>
+          HttpResponse.json({ error: INCOME_NOT_SPLIT }, { status: 422 })
+        )
+      );
+
+      renderFormDashboard();
+
+      expect(await screen.findByText(INCOME_NOT_SPLIT)).toBeInTheDocument();
+      expect(screen.queryByText(/unable to load your forms/i)).not.toBeInTheDocument();
+    });
+
+    it('offers the way back to the intake, not a retry, when the packet list is refused', async () => {
+      // A completed filer whose income isn't split gets the same refusal on every reload
+      server.use(
+        http.get('http://localhost:8000/api/forms/packet/', () =>
+          HttpResponse.json({ error: INCOME_NOT_SPLIT }, { status: 422 })
+        )
+      );
+
+      renderFormDashboard();
+
+      await screen.findByText(INCOME_NOT_SPLIT);
+      expect(screen.getByRole('link', { name: 'Finish your intake' })).toHaveAttribute(
+        'href',
+        '/intake'
+      );
+      expect(screen.queryByRole('button', { name: /try again/i })).not.toBeInTheDocument();
+    });
+
+    it('shows generic words, never the server’s, when the packet list fails on the server', async () => {
+      server.use(
+        http.get('http://localhost:8000/api/forms/packet/', () =>
+          HttpResponse.json({ error: SERVER_FAILURE }, { status: 500 })
+        )
+      );
+
+      renderFormDashboard();
+
+      // A 500 is tried three more times, 3.5 s of backoff, before the dashboard gives up
+      expect(
+        await screen.findByText(/unable to load your forms/i, {}, { timeout: 8000 })
+      ).toBeInTheDocument();
+      expect(screen.queryByText(SERVER_FAILURE)).not.toBeInTheDocument();
+    });
+
+    it('shows Generate All’s refusal in its own words', async () => {
+      server.use(
+        http.post('http://localhost:8000/api/forms/generate_all/', () =>
+          HttpResponse.json({ error: FINISH_INTAKE }, { status: 422 })
+        )
+      );
+
+      renderFormDashboard();
+      await userEvent.click(await openGenerateAll());
+
+      expect(await screen.findByText(FINISH_INTAKE)).toBeInTheDocument();
+      expect(screen.queryByText(GENERIC)).not.toBeInTheDocument();
+    });
+
+    it('shows generic words, never the server’s, when Generate All fails on the server', async () => {
+      server.use(
+        http.post('http://localhost:8000/api/forms/generate_all/', () =>
+          HttpResponse.json({ error: SERVER_FAILURE }, { status: 500 })
+        )
+      );
+
+      renderFormDashboard();
+      const continueBtn = await openGenerateAll();
+
+      // A 500 is tried three more times (0.5 s, 1 s, 2 s apart) before the dashboard gives up
+      vi.useFakeTimers();
+      try {
+        fireEvent.click(continueBtn);
+        for (let second = 0; second < 5; second += 1) {
+          await act(async () => {
+            await vi.advanceTimersByTimeAsync(1000);
+          });
+        }
+      } finally {
+        vi.useRealTimers();
+      }
+
+      expect(await screen.findByText(GENERIC)).toBeInTheDocument();
+      expect(screen.queryByText(SERVER_FAILURE)).not.toBeInTheDocument();
+    });
+
+    it('reloads the packet after Generate All succeeds', async () => {
+      server.use(packetThatGains122a2());
+
+      renderFormDashboard();
+      const continueBtn = await openGenerateAll();
+      expect(screen.queryByText('Form 122A-2 - Means Test Expenses')).not.toBeInTheDocument();
+      await userEvent.click(continueBtn);
+
+      expect(await screen.findByText('Form 122A-2 - Means Test Expenses')).toBeInTheDocument();
+    });
+
+    it('reloads the packet after Generate All is refused', async () => {
+      server.use(
+        packetThatGains122a2(),
+        http.post('http://localhost:8000/api/forms/generate_all/', () =>
+          HttpResponse.json({ error: FINISH_INTAKE }, { status: 422 })
+        )
+      );
+
+      renderFormDashboard();
+      const continueBtn = await openGenerateAll();
+      expect(screen.queryByText('Form 122A-2 - Means Test Expenses')).not.toBeInTheDocument();
+      await userEvent.click(continueBtn);
+
+      expect(await screen.findByText('Form 122A-2 - Means Test Expenses')).toBeInTheDocument();
+      expect(screen.getByText(FINISH_INTAKE)).toBeInTheDocument();
+    });
+
+    it('shows the packet list’s refusal when it reloads after Generate All', async () => {
+      let calls = 0;
+      server.use(
+        http.get('http://localhost:8000/api/forms/packet/', () => {
+          calls += 1;
+          return calls === 1
+            ? HttpResponse.json({ session: 1, form_types: ['form_101', 'form_121'] })
+            : HttpResponse.json({ error: INCOME_NOT_SPLIT }, { status: 422 });
+        })
+      );
+
+      renderFormDashboard();
+      await userEvent.click(await openGenerateAll());
+
+      expect(await screen.findByText(INCOME_NOT_SPLIT)).toBeInTheDocument();
+      expect(screen.getByRole('link', { name: 'Finish your intake' })).toHaveAttribute(
+        'href',
+        '/intake'
+      );
+      expect(screen.queryByRole('button', { name: /try again/i })).not.toBeInTheDocument();
+    });
+
+    it('still offers a retry when the reload after Generate All fails on the server', async () => {
+      let calls = 0;
+      server.use(
+        http.get('http://localhost:8000/api/forms/packet/', () => {
+          calls += 1;
+          return calls === 1
+            ? HttpResponse.json({ session: 1, form_types: ['form_101', 'form_121'] })
+            : HttpResponse.json({ error: SERVER_FAILURE }, { status: 500 });
+        })
+      );
+
+      renderFormDashboard();
+      const continueBtn = await openGenerateAll();
+
+      // The reload's 500 is tried three more times (0.5 s, 1 s, 2 s apart) before it gives up
+      vi.useFakeTimers();
+      try {
+        fireEvent.click(continueBtn);
+        for (let second = 0; second < 5; second += 1) {
+          await act(async () => {
+            await vi.advanceTimersByTimeAsync(1000);
+          });
+        }
+      } finally {
+        vi.useRealTimers();
+      }
+
+      expect(await screen.findByText(/unable to load your forms/i)).toBeInTheDocument();
+      expect(screen.queryByText(SERVER_FAILURE)).not.toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /try again/i })).toBeInTheDocument();
+    });
+
+    it('clears a failed reload once a later reload after Generate All succeeds', async () => {
+      let calls = 0;
+      server.use(
+        http.get('http://localhost:8000/api/forms/packet/', () => {
+          calls += 1;
+          return calls === 2
+            ? HttpResponse.json({ error: INCOME_NOT_SPLIT }, { status: 422 })
+            : HttpResponse.json({ session: 1, form_types: ['form_101', 'form_121'] });
+        })
+      );
+
+      renderFormDashboard();
+      await userEvent.click(await openGenerateAll());
+      await screen.findByText(INCOME_NOT_SPLIT);
+
+      await userEvent.click(await openGenerateAll());
+
+      await waitFor(() => expect(calls).toBe(3));
+      await waitFor(() => expect(screen.queryByText(INCOME_NOT_SPLIT)).not.toBeInTheDocument());
+      expect(screen.getByText('Form 121 - SSN Statement')).toBeInTheDocument();
+    });
   });
 });

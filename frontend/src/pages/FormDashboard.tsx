@@ -9,11 +9,12 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useIntake } from '../context/IntakeContext';
-import { api } from '../api/client';
+import { api, APIClientError } from '../api/client';
 import { FormCard, GenerateAllButton, DebtExplanationsPanel } from '../components/forms';
 import type { DebtClassification } from '../components/forms/DebtExplanationsPanel';
 import { UPLDisclaimer } from '../components/compliance';
 import { UPL_FORM_DISCLAIMER } from '../constants/upl';
+import { ERROR_GENERIC } from '../constants/copy';
 import { Button } from '../components/common';
 import { PostTaskSurvey } from '../components/survey/PostTaskSurvey';
 import type { GeneratedForm, FormType, GenerateAllFormsResponse } from '../types/api';
@@ -21,6 +22,17 @@ import { FORM_TYPE_METADATA } from '../types/api';
 import { trackEvent } from '../utils/analytics';
 
 type GenerateAllError = GenerateAllFormsResponse['errors'][number];
+
+const LOAD_ERROR = 'Unable to load your forms. Please try refreshing the page.';
+
+/**
+ * What the filer reads when Generate All or the packet list is refused as a whole
+ * (forms step 2 §5.6): a 422 says in plain words what to fix; anything else gets the
+ * generic words, since a 500's text is for operations.
+ */
+function wholeCallRefusal(err: unknown, generic: string): string {
+  return err instanceof APIClientError && err.statusCode === 422 ? err.message : generic;
+}
 
 export function FormDashboard() {
   const { session, isLoading: sessionLoading } = useIntake();
@@ -31,6 +43,7 @@ export function FormDashboard() {
   const [error, setError] = useState<string | null>(null);
   const [showSurvey, setShowSurvey] = useState(false);
   const [generationErrors, setGenerationErrors] = useState<GenerateAllError[]>([]);
+  const [generateAllRefusal, setGenerateAllRefusal] = useState<string | null>(null);
   const [dischargeData, setDischargeData] = useState<DebtClassification[]>([]);
 
   // Load existing forms on mount
@@ -46,8 +59,8 @@ export function FormDashboard() {
       setForms(loadedForms);
       setPacket(packetTypes);
       setError(null);
-    } catch {
-      setError('Unable to load your forms. Please try refreshing the page.');
+    } catch (err) {
+      setError(wholeCallRefusal(err, LOAD_ERROR));
     } finally {
       setIsLoading(false);
     }
@@ -82,11 +95,23 @@ export function FormDashboard() {
   const handleGenerateAll = async () => {
     if (!session) return;
     setGenerationErrors([]);
-    const response = await api.forms.generateAll(session.id);
-    setForms(response.generated);
-    setGenerationErrors(response.errors);
-    trackEvent('form_generated', { form_type: 'all', session_id: session.id });
-    setShowSurvey(true);
+    setGenerateAllRefusal(null);
+    try {
+      const response = await api.forms.generateAll(session.id);
+      setForms(response.generated);
+      setGenerationErrors(response.errors);
+      trackEvent('form_generated', { form_type: 'all', session_id: session.id });
+      setShowSurvey(true);
+    } catch (err) {
+      setGenerateAllRefusal(wholeCallRefusal(err, ERROR_GENERIC));
+    }
+    // Generate All works the means test out again, so the packet may have changed
+    try {
+      setPacket(await api.forms.packet(session.id));
+      setError(null);
+    } catch (err) {
+      setError(wholeCallRefusal(err, LOAD_ERROR));
+    }
   };
 
   const handleDownload = async (formId: number) => {
@@ -152,9 +177,23 @@ export function FormDashboard() {
       {error && (
         <div className="form-dashboard-error" role="alert">
           <p>{error}</p>
-          <Button variant="outline" size="sm" onClick={loadForms}>
-            Try Again
-          </Button>
+          {/* Our own words mean the load failed and may work again; a 422's words name
+              something to fix at the intake, which a retry can't */}
+          {error === LOAD_ERROR ? (
+            <Button variant="outline" size="sm" onClick={loadForms}>
+              Try Again
+            </Button>
+          ) : (
+            <Link to="/intake" className="button button--primary">
+              Finish your intake
+            </Link>
+          )}
+        </div>
+      )}
+
+      {generateAllRefusal && (
+        <div className="form-dashboard-error" role="alert">
+          <p>{generateAllRefusal}</p>
         </div>
       )}
 
