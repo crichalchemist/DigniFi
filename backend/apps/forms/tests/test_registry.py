@@ -79,7 +79,7 @@ def _means_test(session, monthly_cmi, annual_median, above_median_flag=False):
         district=session.district,
         calculated_cmi=Decimal(monthly_cmi),
         median_income_threshold=Decimal(annual_median),
-        passes_means_test=Decimal(monthly_cmi) * 12 < Decimal(annual_median),
+        passes_means_test=Decimal(monthly_cmi) * 12 <= Decimal(annual_median),
         above_median_calculated=above_median_flag,
     )
 
@@ -134,16 +134,20 @@ def test_fee_waiver_application_adds_form_103b(session):
 
 
 @pytest.mark.parametrize(
-    "monthly_cmi,applies",
-    [("11197.17", True), ("11197.16", False)],  # 134366.04 and 134365.92 a year
+    "monthly_cmi,annual_median,applies",
+    [
+        ("11197.17", "134366.00", True),  # 134366.04 a year
+        ("11197.16", "134366.00", False),  # 134365.92 a year
+        ("5942.00", "71304.00", False),  # exactly the median, which counts as below (DIG-136)
+    ],
 )
-def test_122a2_applies_at_or_above_the_median(session, monthly_cmi, applies):
-    _means_test(session, monthly_cmi, "134366.00")
+def test_122a2_applies_only_above_the_median(session, monthly_cmi, annual_median, applies):
+    _means_test(session, monthly_cmi, annual_median)
     assert ("form_122a2" in packet(session)) is applies
 
 
 def test_122a2_ignores_the_sticky_above_median_flag(session):
-    # calculate() sets above_median_calculated and never clears it (DIG-128).
+    # A row calculated before DIG-128 was fixed can still carry above_median_calculated.
     _means_test(session, "2000.00", "71304.00", above_median_flag=True)
     assert "form_122a2" not in packet(session)
 

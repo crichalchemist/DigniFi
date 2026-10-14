@@ -10,7 +10,7 @@ from typing import Any
 
 from django.db import transaction
 
-from apps.eligibility.cmi import IncomeNotSplit
+from apps.eligibility.cmi import IncomeNotSplit, is_above_median
 from apps.eligibility.models import MeansTest
 from apps.intake.models import IntakeSession
 
@@ -131,7 +131,9 @@ class MeansTestCalculator:
         Returns:
             str: UPL-compliant informational message
         """
-        if means_test.passes_means_test:
+        # Which side of the median first, then the expense test: an above-median filer who
+        # passes it must not be told their income is below the median (DIG-128).
+        if not is_above_median(means_test.calculated_cmi, means_test.median_income_threshold):
             message = (
                 "Based on the information provided, your income is below the median "
                 f"income for a household of this size in {self.district.state}. "

@@ -4,7 +4,7 @@ Comprehensive tests for MeansTestCalculator service.
 Tests cover:
 - Below-median income (passes means test)
 - Above-median income (fails means test)
-- At-median income (edge case: fails with < operator)
+- At-median income (edge case: counts as below the median, DIG-136), and CMI rounded to the cent
 - All household sizes (1-8+) with dependents + marital status
 - Fee waiver qualification (CMI < 60% of median)
 - Fee waiver non-qualification (CMI >= 60% of median)
@@ -26,8 +26,9 @@ from apps.districts.models import District, MedianIncome
 from apps.eligibility.cmi import IncomeNotSplit
 from apps.eligibility.models import MeansTest
 from apps.eligibility.services.means_test_calculator import MeansTestCalculator
-from apps.forms.registry import build_field_values
-from apps.intake.models import DebtorInfo, ExpenseInfo, IncomeInfo, IntakeSession
+from apps.forms.registry import build_field_values, packet
+from apps.forms.services.derivations import DERIVATIONS
+from apps.intake.models import DebtInfo, DebtorInfo, ExpenseInfo, IncomeInfo, IntakeSession
 
 User = get_user_model()
 
@@ -229,10 +230,10 @@ class TestAboveMedianIncomeFailsMeansTest:
 
 @pytest.mark.django_db
 class TestAtMedianIncomeEdgeCase:
-    """Test edge case: income exactly equal to median (uses < not <=)."""
+    """Income exactly at the median counts as below it (DIG-136), in the means test and the
+    packet alike: Form 122A-1 line 14a reads "less than or equal to"."""
 
-    def test_at_median_income_fails(self, session, median_income):
-        """Test that income exactly equal to median FAILS (< not <=)."""
+    def test_income_exactly_at_median_is_below_median(self, session, median_income):
         # Median for family size 1: $71,304/year
         # At median: $5,942/month annualizes to exactly $71,304/year
         IncomeInfo.objects.create(
@@ -245,10 +246,49 @@ class TestAtMedianIncomeEdgeCase:
         calculator = MeansTestCalculator(session)
         result = calculator.calculate()
 
-        # CRITICAL: At-median fails because code uses < (not <=)
-        assert result["passes_means_test"] is False
+        assert result["passes_means_test"] is True
+        assert result["above_median_calculated"] is False
+        assert "your income is below the median" in result["message"]
         assert result["cmi"] == Decimal("5942.00")
         assert result["median_income_threshold"] == Decimal("71304.00")
+        assert "form_122a2" not in packet(session)
+
+    def test_one_cent_over_median_is_above_median(self, session, median_income):
+        # $5,942.01/month annualizes to $71,304.12/year, over the $71,304 median
+        IncomeInfo.objects.create(
+            session=session,
+            marital_status="single",
+            number_of_dependents=0,
+            monthly_gross_wages=Decimal("5942.01"),
+        )
+
+        result = MeansTestCalculator(session).calculate()
+
+        assert result["passes_means_test"] is False
+        assert result["above_median_calculated"] is True
+        assert "your income is above the median" in result["message"]
+        assert "form_122a2" in packet(session)
+
+    def test_fractional_cent_cmi_rounds_before_the_median_comparison(self, session, median_income):
+        # Stored amounts are whole cents, so a fraction of a cent can only come from arithmetic
+        # on unsaved amounts, as here. Rounded half-even, $5,942.005 is $5,942.00, exactly the
+        # median a month. Unrounded it is $71,304.06 a year, and rounded half up $5,942.01:
+        # both above the median, while 122A-1 would print $5,942.00. The verdict, the packet
+        # and the printed CMI must agree on one figure.
+        IncomeInfo.objects.create(
+            session=session,
+            marital_status="single",
+            number_of_dependents=0,
+            monthly_gross_wages=Decimal("5942.005"),
+        )
+
+        result = MeansTestCalculator(session).calculate()
+
+        assert result["cmi"] == Decimal("5942.00")
+        assert result["passes_means_test"] is True
+        assert "form_122a2" not in packet(session)
+        assert DERIVATIONS["cmi"](session) == "5942.00"
+        assert DERIVATIONS["line12b_annualized_cmi"](session) == "71304.00"
 
 
 @pytest.mark.django_db
@@ -927,6 +967,71 @@ class TestAboveMedianCalculation:
         calculator = MeansTestCalculator(session_with_below_median_income)
         result = calculator.calculate()
         assert result["above_median_calculated"] is False
+
+
+def _expenses_and_priority_debt(session):
+    """Expenses at the IRS caps ($2,799 allowed for one person) and $3,500 a month of priority
+    debt: $7,000 of CMI leaves $701 of disposable income, under the $756.25 threshold."""
+    ExpenseInfo.objects.create(
+        session=session,
+        rent_or_mortgage=Decimal("1730.00"),
+        food_and_groceries=Decimal("713.00"),
+        medical_expenses=Decimal("73.00"),
+        vehicle_payment=Decimal("283.00"),
+    )
+    DebtInfo.objects.create(
+        session=session,
+        creditor_name="Illinois Department of Revenue",
+        debt_type="other",
+        amount_owed=Decimal("42000.00"),
+        monthly_payment=Decimal("3500.00"),
+        is_priority=True,
+    )
+
+
+@pytest.mark.django_db
+class TestAboveMedianResultAndMessage:
+    """DIG-128: the message says which side of the median the filer is on before it says
+    anything about the expense test, and a recalculation at or below the median leaves no
+    above-median result behind."""
+
+    def test_above_median_filer_who_passes_is_not_told_below_median(
+        self, session_with_above_median_income
+    ):
+        session = session_with_above_median_income
+        _expenses_and_priority_debt(session)
+
+        result = MeansTestCalculator(session).calculate()
+
+        assert result["passes_means_test"] is True
+        assert result["passes_above_median"] is True
+        assert "below the median" not in result["message"]
+        assert "your income is above the median" in result["message"]
+        assert "may still be eligible" in result["message"]
+
+    def test_recalculating_below_the_median_clears_the_above_median_results(
+        self, session_with_above_median_income
+    ):
+        session = session_with_above_median_income
+        _expenses_and_priority_debt(session)
+        first = MeansTestCalculator(session).calculate()
+        assert first["above_median_calculated"] is True
+        assert first["passes_above_median"] is True
+        assert first["total_allowable_expenses"] == Decimal("2799.00")
+        assert first["priority_debts_monthly"] == Decimal("3500.00")
+        assert first["disposable_income"] == Decimal("701.00")
+
+        session.income_info.monthly_gross_wages = Decimal("5000.00")
+        session.income_info.save()
+        MeansTestCalculator(session).calculate()
+
+        stored = MeansTest.objects.get(session=session)
+        assert stored.passes_means_test is True
+        assert stored.above_median_calculated is False
+        assert stored.passes_above_median is False
+        assert stored.total_allowable_expenses == Decimal("0")
+        assert stored.disposable_income == Decimal("0")
+        assert stored.priority_debts_monthly == Decimal("0")
 
 
 @pytest.mark.django_db

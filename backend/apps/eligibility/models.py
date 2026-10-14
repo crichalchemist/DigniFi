@@ -7,7 +7,7 @@ from django.db import models
 from django.utils import timezone
 from encrypted_model_fields.fields import EncryptedTextField
 
-from .cmi import current_monthly_income
+from .cmi import current_monthly_income, is_above_median
 
 
 class MeansTest(models.Model):
@@ -95,7 +95,8 @@ class MeansTest(models.Model):
         Calculate means test using 11 U.S.C. § 707(b) methodology.
 
         Returns:
-            bool: True if debtor passes means test (CMI < median income)
+            bool: True if debtor passes means test (CMI × 12 at or below the median income, or
+            above it with disposable income under the threshold)
 
         Raises:
             ValueError: If required intake data is missing
@@ -133,7 +134,7 @@ class MeansTest(models.Model):
         # Determine if passes means test. CMI is monthly; the Census median
         # is annual, so annualize per 11 U.S.C. § 707(b)(7).
         annualized_cmi = cmi * Decimal("12")
-        passes_test = annualized_cmi < median_income_threshold
+        passes_test = not is_above_median(cmi, median_income_threshold)
 
         # Initialize calculation details (used by above-median pathway below)
         details: dict = {}
@@ -163,6 +164,13 @@ class MeansTest(models.Model):
                 "priority_debts": float(ded_result.priority_debts_monthly),
                 "passes_above_median": self.passes_above_median,
             }
+        else:
+            # At or below the median: an earlier above-median result no longer holds (DIG-128).
+            self.total_allowable_expenses = Decimal("0")
+            self.disposable_income = Decimal("0")
+            self.priority_debts_monthly = Decimal("0")
+            self.passes_above_median = False
+            self.above_median_calculated = False
 
         # Calculate fee waiver eligibility (CMI < 150% of poverty line)
         # For MVP, simplified: qualifies if income is very low (< 60% of median)
