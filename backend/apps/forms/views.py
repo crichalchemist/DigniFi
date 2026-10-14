@@ -147,6 +147,9 @@ def _recalculate_means_test(session: IntakeSession) -> None:
     the income isn't entered by source, and ValueError when the district's median income
     data is missing, which operations must fix.
     """
+    if getattr(session, "income_info", None) is None:
+        # No income at all is income not entered by source, as derivations._cmi rules.
+        raise IncomeNotSplit()
     MeansTestCalculator(session).calculate()
 
 

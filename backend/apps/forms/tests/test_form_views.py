@@ -814,6 +814,30 @@ class TestMeansTestWorkedOutAgain:
         # The filed copy prints what was filed, which needs no means test.
         assert filed_download.status_code == status.HTTP_200_OK
 
+    def test_completed_intake_with_no_income_asks_for_income_by_source(
+        self, api_client, session_with_debtor
+    ):
+        # No income at all is income not entered by source: the filer can fix it, so it is
+        # the plain-words 422, not a 500.
+        session = session_with_debtor
+        session.income_info.delete()
+
+        generate_all = api_client.post(
+            "/api/forms/generate_all/", {"session_id": session.id}, format="json"
+        )
+        listed = api_client.get("/api/forms/packet/", {"session": session.id})
+        generate = api_client.post(
+            "/api/forms/generate/",
+            {"session_id": session.id, "form_type": "form_106dec"},
+            format="json",
+        )
+
+        for resp in (generate_all, listed):
+            assert resp.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+            assert resp.data == {"error": SPLIT_BY_SOURCE}
+        assert generate.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert generate.data == {"form_type": "form_106dec", "error": SPLIT_BY_SOURCE}
+
     def test_missing_median_income_is_a_500_logged_by_type_only(
         self, api_client, session_with_debtor, user, caplog
     ):
