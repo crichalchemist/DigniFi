@@ -48,4 +48,22 @@ describe('CodebtorsStep', () => {
       },
     ]);
   });
+
+  it("ties the missing-name message to the person's name box, so a screen reader hears it there", async () => {
+    render(
+      <CodebtorsStep
+        initialData={[codebtor]}
+        onDataChange={() => {}}
+        onValidationChange={() => {}}
+      />
+    );
+
+    const nameBox = screen.getByRole('textbox', { name: 'Full Name' });
+    expect(nameBox).toBeValid();
+
+    await userEvent.setup().clear(nameBox);
+
+    expect(nameBox).toBeInvalid();
+    expect(nameBox).toHaveAccessibleDescription("Please enter this person's full name");
+  });
 });

@@ -33,4 +33,18 @@ describe('ContractsStep', () => {
       { ...lease, counterparty_name: 'O'.repeat(255) },
     ]);
   });
+
+  it("ties the missing-name message to the other party's name box, so a screen reader hears it there", async () => {
+    render(
+      <ContractsStep initialData={[lease]} onDataChange={() => {}} onValidationChange={() => {}} />
+    );
+
+    const nameBox = screen.getByRole('textbox', { name: 'Counterparty Name' });
+    expect(nameBox).toBeValid();
+
+    await userEvent.setup().clear(nameBox);
+
+    expect(nameBox).toBeInvalid();
+    expect(nameBox).toHaveAccessibleDescription('Please enter the name of the other party');
+  });
 });

@@ -95,17 +95,30 @@ export function CodebtorsStep({
         <div key={index} className="border rounded p-4 mb-4">
           <div className="grid grid-cols-2 gap-4 mb-3">
             <div>
-              <label className="block text-sm font-medium mb-1">Full Name</label>
+              <label
+                htmlFor={`field-codebtor_name_${index}`}
+                className="block text-sm font-medium mb-1"
+              >
+                Full Name
+              </label>
               <input
+                id={`field-codebtor_name_${index}`}
                 type="text"
                 className="w-full border rounded px-3 py-2"
                 value={codebtor.name}
                 onChange={(e) => updateCodebtor(index, 'name', e.target.value)}
                 placeholder="e.g., Jane Smith"
                 maxLength={255}
+                aria-describedby={errors[index] ? `field-codebtor_name_${index}-error` : undefined}
+                aria-invalid={errors[index] ? 'true' : 'false'}
               />
               {errors[index] && (
-                <p className="form-error" role="alert" aria-live="assertive">
+                <p
+                  id={`field-codebtor_name_${index}-error`}
+                  className="form-error"
+                  role="alert"
+                  aria-live="assertive"
+                >
                   {errors[index]}
                 </p>
               )}
