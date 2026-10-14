@@ -175,6 +175,8 @@ describe('IntakeWizard handleComplete routing', { timeout: 30_000 }, () => {
   // DIG-150: the dashboard can't prepare forms from an unfinished intake, and it never showed
   // why the filer had landed there. The reason belongs on Review, where they can act on it.
   it('keeps the filer on Review with the reason when Complete fails', async () => {
+    // The wizard logs the failure; silenced so it doesn't read as a broken test
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
     renderWizard();
     const completeBtn = await screen.findByRole('button', { name: /complete intake/i });
     server.use(
@@ -199,11 +201,15 @@ describe('IntakeWizard handleComplete routing', { timeout: 30_000 }, () => {
     ).toBeInTheDocument();
     expect(screen.queryByText('FormDashboard')).not.toBeInTheDocument();
     expect(screen.queryByText('Statement of Financial Affairs')).not.toBeInTheDocument();
+    expect(consoleError).toHaveBeenCalledWith('Error completing intake:', expect.anything());
+    consoleError.mockRestore();
   });
 
   // A filer who left every Income box blank is refused by the means test. Its 400 carries its own
   // sentence, which says what to do, beside a generic message, which doesn't (ruling C-5).
   it('keeps the filer on Review with the reason when only the means test fails', async () => {
+    // The wizard logs the failure; silenced so it doesn't read as a broken test
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
     renderWizard();
     const completeBtn = await screen.findByRole('button', { name: /complete intake/i });
     server.use(
@@ -230,6 +236,8 @@ describe('IntakeWizard handleComplete routing', { timeout: 30_000 }, () => {
     expect(screen.queryByText('FormDashboard')).not.toBeInTheDocument();
     expect(screen.queryByText('FeeWaiverPage')).not.toBeInTheDocument();
     expect(screen.queryByText('Statement of Financial Affairs')).not.toBeInTheDocument();
+    expect(consoleError).toHaveBeenCalledWith('Error completing intake:', expect.anything());
+    consoleError.mockRestore();
   });
 });
 
