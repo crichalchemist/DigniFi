@@ -14,7 +14,7 @@ import { FormCard, GenerateAllButton, DebtExplanationsPanel } from '../component
 import type { DebtClassification } from '../components/forms/DebtExplanationsPanel';
 import { UPLDisclaimer } from '../components/compliance';
 import { UPL_FORM_DISCLAIMER } from '../constants/upl';
-import { ERROR_GENERIC } from '../constants/copy';
+import { DASHBOARD_ERROR, ERROR_GENERIC } from '../constants/copy';
 import { Button } from '../components/common';
 import { PostTaskSurvey } from '../components/survey/PostTaskSurvey';
 import type { GeneratedForm, FormType, GenerateAllFormsResponse } from '../types/api';
@@ -22,8 +22,6 @@ import { FORM_TYPE_METADATA } from '../types/api';
 import { trackEvent } from '../utils/analytics';
 
 type GenerateAllError = GenerateAllFormsResponse['errors'][number];
-
-const LOAD_ERROR = 'Unable to load your forms. Please try refreshing the page.';
 
 /**
  * What the filer reads when Generate All or the packet list is refused as a whole
@@ -60,7 +58,7 @@ export function FormDashboard() {
       setPacket(packetTypes);
       setError(null);
     } catch (err) {
-      setError(wholeCallRefusal(err, LOAD_ERROR));
+      setError(wholeCallRefusal(err, DASHBOARD_ERROR));
     } finally {
       setIsLoading(false);
     }
@@ -110,7 +108,7 @@ export function FormDashboard() {
       setPacket(await api.forms.packet(session.id));
       setError(null);
     } catch (err) {
-      setError(wholeCallRefusal(err, LOAD_ERROR));
+      setError(wholeCallRefusal(err, DASHBOARD_ERROR));
     }
   };
 
@@ -179,7 +177,7 @@ export function FormDashboard() {
           <p>{error}</p>
           {/* Our own words mean the load failed and may work again; a 422's words name
               something to fix at the intake, which a retry can't */}
-          {error === LOAD_ERROR ? (
+          {error === DASHBOARD_ERROR ? (
             <Button variant="outline" size="sm" onClick={loadForms}>
               Try Again
             </Button>

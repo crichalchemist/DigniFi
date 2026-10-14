@@ -147,8 +147,9 @@ describe('FormDashboard', () => {
 
     renderFormDashboard();
 
+    // The one sentence the app uses when the forms list can't load (W-6)
     await waitFor(() => {
-      expect(screen.getByText(/unable to load your forms/i)).toBeInTheDocument();
+      expect(screen.getByText('Unable to load your forms. Please try again.')).toBeInTheDocument();
     });
 
     // Retry button should be present
