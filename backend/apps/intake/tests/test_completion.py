@@ -324,6 +324,20 @@ def test_moving_a_debt_to_another_intake_reopens_both(filer, completed, district
     assert (_status(completed), _status(other)) == ("in_progress", "in_progress")
 
 
+def test_a_write_that_loaded_the_intake_before_complete_still_reopens_it(completed):
+    # An upload loads the session, then reads the file for several seconds. The filer can press
+    # Complete meanwhile, so the copy the upload holds still says in progress.
+    IntakeSession.objects.filter(pk=completed.pk).update(status="in_progress")
+    loaded_before_complete = IntakeSession.objects.get(pk=completed.pk)
+    _complete_again(completed)
+
+    loaded_before_complete.reopen()
+
+    assert _status(completed) == "in_progress"
+    # A full save of the copy afterwards (as the session PATCH does) keeps it in progress
+    assert loaded_before_complete.status == "in_progress"
+
+
 # ── What is not intake data ───────────────────────────────────────────
 
 

@@ -44,10 +44,16 @@ class IntakeSession(models.Model):
         The filer then presses Complete again, which re-runs the completion checks and
         the fee-waiver routing (spec §5.3). Form answers, SOFA and the fee-waiver
         application are not intake data and never call this.
+
+        The database decides, not this copy: an upload loads the session seconds before it
+        reopens it, and the filer may have pressed Complete meanwhile. The copy is updated too,
+        so a full save of it afterwards never writes a stale "completed" back.
         """
-        if self.status == "completed":
+        reopened = IntakeSession.objects.filter(pk=self.pk, status="completed").update(
+            status="in_progress"
+        )
+        if reopened or self.status == "completed":
             self.status = "in_progress"
-            self.save(update_fields=["status"])
 
 
 class DebtorInfo(models.Model):
