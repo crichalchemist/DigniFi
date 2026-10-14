@@ -104,18 +104,22 @@ export function SOFAStep() {
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [showUnfinished, setShowUnfinished] = useState(false);
+  const [showAmountErrors, setShowAmountErrors] = useState(false);
   const unfinishedNoteRef = useRef<HTMLDivElement>(null);
 
-  // Once a save finds unfinished rows or amounts to fix, each marked box says what it needs
-  // until it is fixed
+  // Once a save finds unfinished rows, the note shows and each empty box says what it needs until
+  // it is filled. Once a save is refused, each amount to fix says what is wrong until it is fixed.
   const unfinished = useMemo(() => (report ? unfinishedBoxes(report) : {}), [report]);
   const amountErrors = useMemo(() => (report ? amountBoxErrors(report) : {}), [report]);
   const hasUnfinished = Object.keys(unfinished).length > 0;
   const hasAmountErrors = Object.keys(amountErrors).length > 0;
-  // Once every marked box is fixed, a row the filer starts next isn't marked while they type it
-  if (showUnfinished && !hasUnfinished && !hasAmountErrors) setShowUnfinished(false);
+  // Once every empty box is filled, the empty boxes of a row the filer starts next aren't marked
+  // while they type it, even when an amount is still to fix
+  if (showUnfinished && !hasUnfinished) setShowUnfinished(false);
+  if (showAmountErrors && !hasUnfinished && !hasAmountErrors) setShowAmountErrors(false);
   const boxError = (name: string) =>
-    showUnfinished ? (unfinished[name] ?? amountErrors[name]) : undefined;
+    (showUnfinished ? unfinished[name] : undefined) ??
+    (showAmountErrors ? amountErrors[name] : undefined);
 
   // Load report on mount. A superseded load (StrictMode's second mount, or a new session)
   // is ignored, so its late reply can't undo what the filer has already ticked.
@@ -242,7 +246,10 @@ export function SOFAStep() {
       // The note is at the top of the page and the button at the bottom, so focus moves to the
       // note on each blocked press. It has to be shown first. With every box filled in, the note
       // would be untrue, so focus moves to the first amount to fix instead (W-9).
-      flushSync(() => setShowUnfinished(true));
+      flushSync(() => {
+        setShowUnfinished(hasUnfinished);
+        setShowAmountErrors(true);
+      });
       if (hasUnfinished) unfinishedNoteRef.current?.focus();
       else document.getElementById(`field-${Object.keys(amountErrors)[0]}`)?.focus();
       return;

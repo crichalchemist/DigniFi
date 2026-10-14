@@ -351,6 +351,50 @@ describe('SOFAStep unfinished rows (DIG-148)', () => {
     expect(saves).toHaveLength(0);
   });
 
+  it('shows the note and says what each box needs when one row has an empty box and an amount to fix', async () => {
+    const { saves, user } = renderSOFA();
+    await user.click(
+      await screen.findByRole('checkbox', { name: /i had income in the past 3 years/i })
+    );
+
+    // The Source is left empty and the amount is negative, in the same row
+    await user.type(screen.getByLabelText('Gross Amount'), '-5');
+    await user.click(save());
+
+    expect(screen.getByText(/nothing has been saved yet/i)).toHaveFocus();
+    expect(screen.getByText('Please fill in the Source for Income source 1.')).toBeInTheDocument();
+    expect(screen.getByLabelText('Gross Amount')).toHaveAccessibleDescription(
+      'Amount cannot be negative'
+    );
+    expect(saves).toHaveLength(0);
+  });
+
+  // The note is about empty boxes, so a save refused only for an amount doesn't raise it later
+  it('asks nothing of a row the filer starts after a save refused only for an amount, while they type it', async () => {
+    const { user } = renderSOFA();
+    await user.click(
+      await screen.findByRole('checkbox', { name: /i had income in the past 3 years/i })
+    );
+
+    await user.type(screen.getByLabelText('Source'), 'Temp Agency');
+    await user.type(screen.getByLabelText('Gross Amount'), '-5');
+    await user.click(save());
+    expect(screen.getByLabelText('Gross Amount')).toHaveAccessibleDescription(
+      'Amount cannot be negative'
+    );
+
+    // The first keystroke in a new row asks nothing yet
+    await user.click(screen.getByRole('button', { name: /add another income source/i }));
+    await user.type(screen.getAllByLabelText('Source')[1], 'W');
+
+    expect(screen.queryByText(/nothing has been saved yet/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/please fill in/i)).not.toBeInTheDocument();
+    // The amount still to fix keeps its message
+    expect(screen.getAllByLabelText('Gross Amount')[0]).toHaveAccessibleDescription(
+      'Amount cannot be negative'
+    );
+  });
+
   it('leaves a blank row out of the save instead of asking the filer to finish it', async () => {
     const { saves, user } = renderSOFA();
     await user.click(
