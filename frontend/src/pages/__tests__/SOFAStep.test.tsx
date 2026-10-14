@@ -241,6 +241,82 @@ describe('SOFAStep unfinished rows (DIG-148)', () => {
     expect(screen.getByLabelText('Total Amount Paid')).toHaveAccessibleDescription(
       'Amount cannot be negative'
     );
+    // Every box is filled in, so the note about unfinished rows would be untrue (W-9)
+    expect(screen.queryByText(/nothing has been saved yet/i)).not.toBeInTheDocument();
+    // The button is at the bottom of the page, so focus goes to the first amount to fix
+    expect(screen.getByLabelText('Gross Amount')).toHaveFocus();
+    expect(saves).toHaveLength(0);
+  });
+
+  // The server stores both amounts as DecimalField(max_digits=12, decimal_places=2)
+  it('asks for dollars and cents by an amount with a third decimal place, and saves nothing', async () => {
+    const { saves, user } = renderSOFA();
+    await user.click(
+      await screen.findByRole('checkbox', { name: /i had income in the past 3 years/i })
+    );
+
+    await user.type(screen.getByLabelText('Source'), 'Temp Agency');
+    await user.type(screen.getByLabelText('Gross Amount'), '24000.125');
+    await user.click(save());
+
+    expect(screen.getByLabelText('Gross Amount')).toHaveAccessibleDescription(
+      'Please enter dollars and cents, like 1250.50'
+    );
+    expect(screen.queryByText(/nothing has been saved yet/i)).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Gross Amount')).toHaveFocus();
+    expect(saves).toHaveLength(0);
+  });
+
+  it('says an amount over $9,999,999,999.99 is too large, and saves once it is corrected', async () => {
+    const { saves, user } = renderSOFA();
+    await user.click(
+      await screen.findByRole('checkbox', { name: /payments to creditors in the past year/i })
+    );
+
+    await user.type(screen.getByLabelText('Creditor Name'), 'Capital One');
+    await user.type(screen.getByLabelText('Total Amount Paid'), '10000000000');
+    await user.click(save());
+
+    expect(screen.getByLabelText('Total Amount Paid')).toHaveAccessibleDescription(
+      'This amount is too large. Please check it'
+    );
+    expect(screen.getByLabelText('Total Amount Paid')).toHaveFocus();
+    expect(saves).toHaveLength(0);
+
+    // The largest amount the server stores goes through
+    await user.clear(screen.getByLabelText('Total Amount Paid'));
+    await user.type(screen.getByLabelText('Total Amount Paid'), '9999999999.99');
+    expect(screen.queryByText(/too large/i)).not.toBeInTheDocument();
+    await user.click(save());
+
+    expect(await screen.findByText('FormDashboard', {}, { timeout: 2000 })).toBeInTheDocument();
+    expect(saves).toHaveLength(1);
+    expect(saves[0].creditor_payments).toEqual([
+      expect.objectContaining({ creditor_name: 'Capital One', total_paid: '9999999999.99' }),
+    ]);
+  });
+
+  it('still shows the note when a row has an empty box, beside an amount to fix in another', async () => {
+    const { saves, user } = renderSOFA();
+    await user.click(
+      await screen.findByRole('checkbox', { name: /i had income in the past 3 years/i })
+    );
+    await user.click(
+      await screen.findByRole('checkbox', { name: /payments to creditors in the past year/i })
+    );
+
+    // The income row is missing its Source; the creditor row has a negative amount
+    await user.type(screen.getByLabelText('Gross Amount'), '24000');
+    await user.type(screen.getByLabelText('Creditor Name'), 'Capital One');
+    await user.type(screen.getByLabelText('Total Amount Paid'), '-1500');
+    await user.click(save());
+
+    const note = screen.getByText(/nothing has been saved yet/i);
+    expect(note).toHaveFocus();
+    expect(screen.getByText('Please fill in the Source for Income source 1.')).toBeInTheDocument();
+    expect(screen.getByLabelText('Total Amount Paid')).toHaveAccessibleDescription(
+      'Amount cannot be negative'
+    );
     expect(saves).toHaveLength(0);
   });
 

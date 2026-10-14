@@ -10,7 +10,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { FormField } from '../../common';
-import { decimalToNumber, parseAmount } from '../../../utils/parseAmount';
+import { amountError, decimalToNumber, parseAmount } from '../../../utils/parseAmount';
 import { INCOME_FIELDS } from '../../../types/api';
 import type { IncomeInfo } from '../../../types/api';
 
@@ -48,13 +48,12 @@ export function IncomeInfoStep({
     // No "at least one source" gate: a blank box means none of that kind, and a filer
     // with no income types $0 in a box (O-1). The means test refuses all ten blank.
 
-    // Validate non-negative values
-    Object.keys(formData).forEach((key) => {
-      const value = formData[key as keyof IncomeInfo];
-      if (typeof value === 'number' && value < 0) {
-        newErrors[key] = 'Amount cannot be negative';
-      }
-    });
+    // Each amount as the server stores it (amountError). Only the boxes: the total the step
+    // last added up comes back in initialData, and no box shows it.
+    for (const field of INCOME_FIELDS) {
+      const message = amountError(formData[field] ?? undefined, 10);
+      if (message) newErrors[field] = message;
+    }
 
     return newErrors;
   }, [formData]);

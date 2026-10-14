@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { decimalToNumber, hydrateAmounts, parseAmount } from '../parseAmount';
+import { AMOUNT_DECIMALS, AMOUNT_NEGATIVE, AMOUNT_TOO_LARGE } from '../../constants/copy';
+import { amountError, decimalToNumber, hydrateAmounts, parseAmount } from '../parseAmount';
 
 describe('parseAmount', () => {
   it('preserves an explicit 0 (the bug: 0 must not blank out)', () => {
@@ -77,5 +78,39 @@ describe('hydrateAmounts', () => {
     const row = { amount_owed: '2500.00' };
     hydrateAmounts(row, ['amount_owed']);
     expect(row.amount_owed).toBe('2500.00');
+  });
+});
+
+describe('amountError', () => {
+  it('accepts dollars and cents, and $0', () => {
+    expect(amountError(12.34, 10)).toBeUndefined();
+    expect(amountError(0, 10)).toBeUndefined();
+  });
+
+  it('says nothing about a blank box', () => {
+    expect(amountError(undefined, 10)).toBeUndefined();
+  });
+
+  it('refuses a negative amount, as the server does', () => {
+    expect(amountError(-1, 10)).toBe(AMOUNT_NEGATIVE);
+  });
+
+  it('asks for dollars and cents when an amount has more than 2 decimal places', () => {
+    expect(amountError(12.345, 10)).toBe(AMOUNT_DECIMALS);
+  });
+
+  it('takes the largest amount a 10-digit box stores and refuses one cent more', () => {
+    expect(amountError(99999999.99, 10)).toBeUndefined();
+    expect(amountError(100000000, 10)).toBe(AMOUNT_TOO_LARGE);
+  });
+
+  it('takes the largest amount a 12-digit box stores and refuses one cent more', () => {
+    expect(amountError(9999999999.99, 12)).toBeUndefined();
+    expect(amountError(10000000000, 12)).toBe(AMOUNT_TOO_LARGE);
+  });
+
+  it('names one problem at a time: negative first, then decimals, then size', () => {
+    expect(amountError(-100000000.123, 10)).toBe(AMOUNT_NEGATIVE);
+    expect(amountError(100000000.123, 10)).toBe(AMOUNT_DECIMALS);
   });
 });

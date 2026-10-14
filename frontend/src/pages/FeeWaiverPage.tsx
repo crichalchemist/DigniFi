@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useIntake } from '../context/IntakeContext';
 import { api } from '../api/client';
 import { Button } from '../components/common';
+import { amountError } from '../utils/parseAmount';
 
 export function FeeWaiverPage() {
   const navigate = useNavigate();
@@ -67,6 +68,10 @@ export function FeeWaiverPage() {
   // rather than a form they can't benefit from (note 21).
   const ineligible = meansTestResult != null && !meansTestResult.qualifies_for_fee_waiver;
 
+  // The server refuses an amount it can't store, and its refusal could only say to try again,
+  // so the box says what is wrong, as on the Income and Expenses steps
+  const takeHomePayError = takeHomePay === '' ? undefined : amountError(Number(takeHomePay), 10);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!session) return;
@@ -79,9 +84,9 @@ export function FeeWaiverPage() {
       setError('Please fill in all required fields.');
       return;
     }
-    // The server refuses a negative amount, and its refusal could only say to try again
-    if (Number(takeHomePay) < 0) {
-      setError('Amount cannot be negative');
+    // Said beside the box. An earlier alert for the whole form no longer holds.
+    if (takeHomePayError) {
+      setError(null);
       return;
     }
 
@@ -165,7 +170,7 @@ export function FeeWaiverPage() {
                 />
               </div>
 
-              <div className="form-field">
+              <div className={`form-field ${takeHomePayError ? 'has-error' : ''}`}>
                 <label className="form-label" htmlFor="take-home-pay">
                   Your average monthly take-home pay (after taxes and payroll deductions)
                 </label>
@@ -177,8 +182,20 @@ export function FeeWaiverPage() {
                   step="0.01"
                   value={takeHomePay}
                   onChange={(e) => setTakeHomePay(e.target.value)}
+                  aria-describedby={takeHomePayError ? 'take-home-pay-error' : undefined}
+                  aria-invalid={takeHomePayError ? 'true' : 'false'}
                   required
                 />
+                {takeHomePayError && (
+                  <p
+                    id="take-home-pay-error"
+                    className="form-error"
+                    role="alert"
+                    aria-live="assertive"
+                  >
+                    {takeHomePayError}
+                  </p>
+                )}
               </div>
 
               <fieldset className="form-field fee-waiver-question">

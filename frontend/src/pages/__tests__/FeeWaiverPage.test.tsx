@@ -360,7 +360,7 @@ describe('FeeWaiverPage', () => {
   });
 
   // The server refuses a negative amount, and its refusal could only say to try again
-  it('says a negative take-home pay cannot be, and sends nothing', async () => {
+  it('says beside the take-home pay box that it cannot be negative, and sends nothing', async () => {
     const sent = captureSent();
     renderFeeWaiver();
 
@@ -369,7 +369,49 @@ describe('FeeWaiverPage', () => {
     await userEvent.click(screen.getByRole('radio', { name: 'No' }));
     await userEvent.click(screen.getByRole('button', { name: /submit/i }));
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(/^Amount cannot be negative$/);
+    // Beside the box, as on the Income and Expenses steps, not in the alert for the whole form
+    const pay = screen.getByLabelText(/take-home pay/i);
+    expect(pay).toHaveAccessibleDescription('Amount cannot be negative');
+    expect(pay).toHaveAttribute('aria-invalid', 'true');
+    expect(screen.getAllByRole('alert')).toHaveLength(1);
+    expect(sent).toEqual([]);
+    expect(screen.queryByText('Statement of Financial Affairs')).not.toBeInTheDocument();
+  });
+
+  // The server stores it as DecimalField(max_digits=10, decimal_places=2) (W-9)
+  it('asks for dollars and cents beside the take-home pay box, and sends nothing', async () => {
+    const sent = captureSent();
+    renderFeeWaiver();
+
+    await userEvent.type(await screen.findByLabelText(/household size/i), '1');
+    await userEvent.type(screen.getByLabelText(/take-home pay/i), '1200.555');
+    await userEvent.click(screen.getByRole('button', { name: /submit/i }));
+    // A missing answer is still said for the whole form
+    expect(screen.getByText('Please fill in all required fields.')).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('radio', { name: 'No' }));
+    await userEvent.click(screen.getByRole('button', { name: /submit/i }));
+
+    expect(screen.getByLabelText(/take-home pay/i)).toHaveAccessibleDescription(
+      'Please enter dollars and cents, like 1250.50'
+    );
+    // Every question is answered now, so the form's alert has gone
+    expect(screen.queryByText('Please fill in all required fields.')).not.toBeInTheDocument();
+    expect(sent).toEqual([]);
+  });
+
+  it('says beside the take-home pay box that an amount over $99,999,999.99 is too large, and sends nothing', async () => {
+    const sent = captureSent();
+    renderFeeWaiver();
+
+    await userEvent.type(await screen.findByLabelText(/household size/i), '1');
+    await userEvent.type(screen.getByLabelText(/take-home pay/i), '100000000');
+    await userEvent.click(screen.getByRole('radio', { name: 'No' }));
+    await userEvent.click(screen.getByRole('button', { name: /submit/i }));
+
+    expect(screen.getByLabelText(/take-home pay/i)).toHaveAccessibleDescription(
+      'This amount is too large. Please check it'
+    );
     expect(sent).toEqual([]);
     expect(screen.queryByText('Statement of Financial Affairs')).not.toBeInTheDocument();
   });

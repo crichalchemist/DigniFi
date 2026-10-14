@@ -30,16 +30,20 @@ const SPLIT_IT = 'You entered $3,200.00 a month in total. Please split it by sou
 
 function renderStep(initialData: Partial<IncomeInfo>) {
   const onDataChange = vi.fn();
+  const onValidationChange = vi.fn();
   render(
     <IncomeInfoStep
       initialData={initialData}
       onDataChange={onDataChange}
-      onValidationChange={vi.fn()}
+      onValidationChange={onValidationChange}
     />
   );
   const lastEmitted = () =>
     onDataChange.mock.calls[onDataChange.mock.calls.length - 1][0] as Partial<IncomeInfo>;
-  return { lastEmitted };
+  // Whether the wizard lets the filer press Continue
+  const canContinue = () =>
+    onValidationChange.mock.calls[onValidationChange.mock.calls.length - 1][0] as boolean;
+  return { lastEmitted, canContinue };
 }
 
 describe('IncomeInfoStep', () => {
@@ -119,5 +123,50 @@ describe('IncomeInfoStep', () => {
     renderStep({ monthly_income: [0, 0, 0, 0, 0, 0], total_monthly_income: null });
 
     expect(screen.queryByText(/please split it by source/i)).not.toBeInTheDocument();
+  });
+
+  // The server stores each amount as DecimalField(max_digits=10, decimal_places=2) and refuses
+  // anything else, so the box says what is wrong before Continue saves it (W-9)
+  it('asks for dollars and cents beside a box with a third decimal place, and blocks Continue', () => {
+    const { canContinue } = renderStep({});
+
+    fireEvent.change(screen.getByLabelText(/unemployment/i), { target: { value: '12.345' } });
+
+    expect(screen.getByLabelText(/unemployment/i)).toHaveAccessibleDescription(
+      'Please enter dollars and cents, like 1250.50'
+    );
+    expect(canContinue()).toBe(false);
+  });
+
+  it('says beside the box that an amount over $99,999,999.99 is too large, and blocks Continue', () => {
+    const { canContinue } = renderStep({});
+
+    fireEvent.change(screen.getByLabelText(/unemployment/i), { target: { value: '100000000' } });
+
+    expect(screen.getByLabelText(/unemployment/i)).toHaveAccessibleDescription(
+      'This amount is too large. Please check it'
+    );
+    expect(canContinue()).toBe(false);
+  });
+
+  it('takes the largest amount the server stores, $99,999,999.99', () => {
+    const { lastEmitted, canContinue } = renderStep({});
+
+    fireEvent.change(screen.getByLabelText(/unemployment/i), { target: { value: '99999999.99' } });
+
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(canContinue()).toBe(true);
+    expect(lastEmitted().monthly_unemployment).toBe(99999999.99);
+  });
+
+  // Coming back to the step, the wizard hands it the total it last added up, which no box shows
+  it('lets a returning filer continue when the total their amounts add up to is not a whole cent', () => {
+    const { canContinue } = renderStep({
+      monthly_gross_wages: 10.1,
+      monthly_tips: 20.2,
+      total_monthly_income: 10.1 + 20.2,
+    });
+
+    expect(canContinue()).toBe(true);
   });
 });

@@ -21,6 +21,7 @@ import { Button, FormField } from '../components/common';
 import { UPLDisclaimer } from '../components/compliance';
 import { UPL_WIZARD_DISCLAIMER } from '../constants/upl';
 import type { SOFAReport, SOFAPriorIncome, SOFACreditorPayment } from '../types/api';
+import { amountError } from '../utils/parseAmount';
 
 function emptyPriorIncome(): SOFAPriorIncome {
   return { id: Math.random(), year: new Date().getFullYear() - 1, source: '', gross_amount: '' };
@@ -39,13 +40,10 @@ function paymentRowStarted(row: SOFACreditorPayment): boolean {
   return Boolean(row.creditor_name?.trim() || row.total_paid || row.dates_of_payments?.trim());
 }
 
-const NEGATIVE = 'Amount cannot be negative';
-
 /**
  * The boxes still empty in the started rows of the sections switched on, keyed by the box's
  * field name. The server refuses a row without them, which used to fail the whole save with a
- * generic error (DIG-148), so each message names the row and the box to finish. It refuses a
- * negative amount too, so an amount box holding one is listed with the words the intake uses.
+ * generic error (DIG-148), so each message names the row and the box to finish.
  */
 function unfinishedBoxes(report: SOFAReport): Record<string, string> {
   const missing: Record<string, string> = {};
@@ -59,7 +57,6 @@ function unfinishedBoxes(report: SOFAReport): Record<string, string> {
       if (!row.year) ask(`prior-income-year-${idx}`, 'Year', label);
       if (!row.source?.trim()) ask(`prior-income-source-${idx}`, 'Source', label);
       if (!row.gross_amount) ask(`prior-income-amount-${idx}`, 'Gross Amount', label);
-      else if (Number(row.gross_amount) < 0) missing[`prior-income-amount-${idx}`] = NEGATIVE;
     });
   }
   if (report.has_creditor_payments) {
@@ -68,10 +65,33 @@ function unfinishedBoxes(report: SOFAReport): Record<string, string> {
       const label = `Creditor ${idx + 1}`;
       if (!row.creditor_name?.trim()) ask(`creditor-name-${idx}`, 'Creditor Name', label);
       if (!row.total_paid) ask(`creditor-paid-${idx}`, 'Total Amount Paid', label);
-      else if (Number(row.total_paid) < 0) missing[`creditor-paid-${idx}`] = NEGATIVE;
     });
   }
   return missing;
+}
+
+/**
+ * The amounts the server would refuse in the started rows of the sections switched on, keyed by
+ * the box's field name in page order, with the words the intake uses. Both amounts are
+ * DecimalField(max_digits=12, decimal_places=2, min_value=0) (amountError).
+ */
+function amountBoxErrors(report: SOFAReport): Record<string, string> {
+  const errors: Record<string, string> = {};
+  const check = (name: string, amount: string) => {
+    const message = amount ? amountError(Number(amount), 12) : undefined;
+    if (message) errors[name] = message;
+  };
+  if (report.has_prior_income) {
+    report.prior_income.forEach((row, idx) => {
+      if (incomeRowStarted(row)) check(`prior-income-amount-${idx}`, row.gross_amount);
+    });
+  }
+  if (report.has_creditor_payments) {
+    report.creditor_payments.forEach((row, idx) => {
+      if (paymentRowStarted(row)) check(`creditor-paid-${idx}`, row.total_paid);
+    });
+  }
+  return errors;
 }
 
 export function SOFAStep() {
@@ -86,12 +106,16 @@ export function SOFAStep() {
   const [showUnfinished, setShowUnfinished] = useState(false);
   const unfinishedNoteRef = useRef<HTMLDivElement>(null);
 
-  // Once a save finds unfinished rows, each empty box says what it needs until it is filled
+  // Once a save finds unfinished rows or amounts to fix, each marked box says what it needs
+  // until it is fixed
   const unfinished = useMemo(() => (report ? unfinishedBoxes(report) : {}), [report]);
+  const amountErrors = useMemo(() => (report ? amountBoxErrors(report) : {}), [report]);
   const hasUnfinished = Object.keys(unfinished).length > 0;
-  // Once every marked box is filled, a row the filer starts next isn't marked while they type it
-  if (showUnfinished && !hasUnfinished) setShowUnfinished(false);
-  const boxError = (name: string) => (showUnfinished ? unfinished[name] : undefined);
+  const hasAmountErrors = Object.keys(amountErrors).length > 0;
+  // Once every marked box is fixed, a row the filer starts next isn't marked while they type it
+  if (showUnfinished && !hasUnfinished && !hasAmountErrors) setShowUnfinished(false);
+  const boxError = (name: string) =>
+    showUnfinished ? (unfinished[name] ?? amountErrors[name]) : undefined;
 
   // Load report on mount. A superseded load (StrictMode's second mount, or a new session)
   // is ignored, so its late reply can't undo what the filer has already ticked.
@@ -214,11 +238,13 @@ export function SOFAStep() {
   const handleSave = async () => {
     if (!session || !report) return;
     setError(null);
-    if (hasUnfinished) {
+    if (hasUnfinished || hasAmountErrors) {
       // The note is at the top of the page and the button at the bottom, so focus moves to the
-      // note on each blocked press. It has to be shown first.
+      // note on each blocked press. It has to be shown first. With every box filled in, the note
+      // would be untrue, so focus moves to the first amount to fix instead (W-9).
       flushSync(() => setShowUnfinished(true));
-      unfinishedNoteRef.current?.focus();
+      if (hasUnfinished) unfinishedNoteRef.current?.focus();
+      else document.getElementById(`field-${Object.keys(amountErrors)[0]}`)?.focus();
       return;
     }
     setSaving(true);
