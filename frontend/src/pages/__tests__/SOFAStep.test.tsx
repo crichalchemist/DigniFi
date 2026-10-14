@@ -264,6 +264,30 @@ describe('SOFAStep unfinished rows (DIG-148)', () => {
     ]);
   });
 
+  it('saves without a row the filer cleared, as the note suggests', async () => {
+    const { saves, user } = renderSOFA();
+    await user.click(
+      await screen.findByRole('checkbox', { name: /i had income in the past 3 years/i })
+    );
+
+    // Income source 1 is finished; Income source 2 gets a Source the filer then clears
+    await user.type(screen.getByLabelText('Source'), 'Temp Agency');
+    await user.type(screen.getByLabelText('Gross Amount'), '24000');
+    await user.click(screen.getByRole('button', { name: /add another income source/i }));
+    await user.type(screen.getAllByLabelText('Source')[1], 'Walgreens');
+    await user.click(save());
+    expect(screen.getByText(/clear any row you don.t need/i)).toBeInTheDocument();
+
+    await user.clear(screen.getAllByLabelText('Source')[1]);
+    await user.click(save());
+
+    expect(await screen.findByText('FormDashboard', {}, { timeout: 2000 })).toBeInTheDocument();
+    expect(saves).toHaveLength(1);
+    expect(saves[0].prior_income).toEqual([
+      expect.objectContaining({ source: 'Temp Agency', gross_amount: '24000' }),
+    ]);
+  });
+
   it('saves without the rows of a section the filer switched off, even a half-filled one', async () => {
     const { saves, user } = renderSOFA();
     const priorIncome = await screen.findByRole('checkbox', {
@@ -316,6 +340,7 @@ describe('SOFAStep unfinished rows (DIG-148)', () => {
     await user.click(save());
 
     expect(await screen.findByText('FormDashboard', {}, { timeout: 2000 })).toBeInTheDocument();
+    expect(saves).toHaveLength(1);
     expect(saves[0].prior_income).toEqual([expect.objectContaining({ source: 'S'.repeat(255) })]);
     expect(saves[0].creditor_payments).toEqual([
       expect.objectContaining({
