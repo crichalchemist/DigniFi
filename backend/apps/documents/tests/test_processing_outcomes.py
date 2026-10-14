@@ -535,23 +535,30 @@ def test_a_scan_that_adds_a_debt_or_pay_figures_reopens_a_completed_intake(
 
 
 @pytest.mark.parametrize(
-    "document_type,reply",
+    "document_type,reply,outcome",
     [
-        (DocumentType.CREDITOR_BILL, {"creditor_name": None, "amount_owed": "125.00"}),
+        (
+            DocumentType.CREDITOR_BILL,
+            {"creditor_name": None, "amount_owed": "125.00"},
+            ("failed", "nothing_found"),
+        ),
         (
             DocumentType.CREDIT_REPORT,
             {"tradelines": [{"creditor_name": "Discover", "amount_owed": "0"}]},
+            ("completed", ""),
         ),
     ],
     ids=["nothing-found", "paid-off-accounts-only"],
 )
 def test_a_scan_that_adds_nothing_leaves_a_completed_intake_complete(
-    filer, openai_client, document_type, reply
+    filer, openai_client, document_type, reply, outcome
 ):
     _, session = filer
     IntakeSession.objects.filter(pk=session.pk).update(status="completed")
 
-    scan_photo(filer, openai_client, document_type, reply=reply)
+    doc = scan_photo(filer, openai_client, document_type, reply=reply)
 
+    # Each scan ended the way that adds nothing, not with a processing error
+    assert (doc["ocr_result"]["status"], doc["ocr_result"]["failure_reason"]) == outcome
     session.refresh_from_db()
     assert session.status == "completed"
