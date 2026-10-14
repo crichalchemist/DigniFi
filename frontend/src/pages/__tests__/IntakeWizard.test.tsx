@@ -316,6 +316,8 @@ const completedSession = {
       amount_owed: '2500.00',
       monthly_payment: '75.00',
       is_in_collections: false,
+      is_secured: false,
+      collateral_description: '',
       notes: '',
       is_draft: false,
       source_document_name: null,
