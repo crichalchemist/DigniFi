@@ -244,8 +244,13 @@ describe('FeeWaiverPage', () => {
     const read = new Promise<void>((resolve) => {
       answer = resolve;
     });
+    let readStarted: () => void = () => {};
+    const started = new Promise<void>((resolve) => {
+      readStarted = resolve;
+    });
     server.use(
       http.get(`${API}/intake/fee-waiver/`, async () => {
+        readStarted();
         await read;
         return HttpResponse.json({ count: 1, results: [savedApplication({})] });
       })
@@ -254,8 +259,8 @@ describe('FeeWaiverPage', () => {
     renderFeeWaiver();
 
     await screen.findByRole('heading', { name: /filing fee waiver/i });
-    // Let the session load and the read start, then check the form is still held back
-    await new Promise((resolve) => setTimeout(resolve, 100));
+    // Once the session has loaded and the read has started, the form is still held back
+    await started;
     expect(screen.queryByLabelText(/household size/i)).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /submit/i })).not.toBeInTheDocument();
 
