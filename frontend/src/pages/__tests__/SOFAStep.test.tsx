@@ -178,6 +178,28 @@ describe('SOFAStep unfinished rows (DIG-148)', () => {
     ]);
   });
 
+  it('asks nothing of a row the filer starts after a blocked save, while they type it', async () => {
+    const { user } = renderSOFA();
+    await user.click(
+      await screen.findByRole('checkbox', { name: /i had income in the past 3 years/i })
+    );
+
+    // A blocked save, then the filer finishes the row
+    await user.type(screen.getByLabelText('Source'), 'Temp Agency');
+    await user.click(save());
+    expect(
+      screen.getByText('Please fill in the Gross Amount for Income source 1.')
+    ).toBeInTheDocument();
+    await user.type(screen.getByLabelText('Gross Amount'), '24000');
+
+    // The first keystroke in a new row asks nothing yet
+    await user.click(screen.getByRole('button', { name: /add another income source/i }));
+    await user.type(screen.getAllByLabelText('Source')[1], 'W');
+
+    expect(screen.queryByText(/please fill in/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/nothing has been saved yet/i)).not.toBeInTheDocument();
+  });
+
   // The server refuses a negative amount, and its refusal could only say to try again
   it('says by each box that an amount cannot be negative, and saves nothing', async () => {
     const { saves, user } = renderSOFA();

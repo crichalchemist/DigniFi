@@ -87,6 +87,8 @@ export function SOFAStep() {
   // Once a save finds unfinished rows, each empty box says what it needs until it is filled
   const unfinished = useMemo(() => (report ? unfinishedBoxes(report) : {}), [report]);
   const hasUnfinished = Object.keys(unfinished).length > 0;
+  // Once every marked box is filled, a row the filer starts next isn't marked while they type it
+  if (showUnfinished && !hasUnfinished) setShowUnfinished(false);
   const boxError = (name: string) => (showUnfinished ? unfinished[name] : undefined);
 
   // Load report on mount. A superseded load (StrictMode's second mount, or a new session)
