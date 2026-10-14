@@ -135,10 +135,10 @@ class MeansTestCalculator:
         # passes it must not be told their income is below the median (DIG-128).
         if not is_above_median(means_test.calculated_cmi, means_test.median_income_threshold):
             message = (
-                "Based on the information provided, your income is below the median "
+                "Based on the information provided, your income is at or below the median "
                 f"income for a household of this size in {self.district.state}. "
                 "This means you may be eligible to file Chapter 7 bankruptcy. "
-                "Chapter 7 typically allows debtors with income below the median to "
+                "Chapter 7 typically allows debtors with income at or below the median to "
                 "discharge unsecured debts without a repayment plan."
             )
 

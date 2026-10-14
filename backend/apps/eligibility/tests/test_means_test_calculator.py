@@ -233,7 +233,9 @@ class TestAtMedianIncomeEdgeCase:
     """Income exactly at the median counts as below it (DIG-136), in the means test and the
     packet alike: Form 122A-1 line 14a reads "less than or equal to"."""
 
-    def test_income_exactly_at_median_is_below_median(self, session, median_income):
+    def test_filer_exactly_at_median_passes_and_is_told_at_or_below_the_median(
+        self, session, median_income
+    ):
         # Median for family size 1: $71,304/year
         # At median: $5,942/month annualizes to exactly $71,304/year
         IncomeInfo.objects.create(
@@ -248,7 +250,9 @@ class TestAtMedianIncomeEdgeCase:
 
         assert result["passes_means_test"] is True
         assert result["above_median_calculated"] is False
-        assert "your income is below the median" in result["message"]
+        # § 707(b)(7) reads "equal to or less than": "below" alone is untrue for this filer (W-1)
+        assert "your income is at or below the median" in result["message"]
+        assert "debtors with income at or below the median" in result["message"]
         assert result["cmi"] == Decimal("5942.00")
         assert result["median_income_threshold"] == Decimal("71304.00")
         assert "form_122a2" not in packet(session)
