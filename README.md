@@ -1,18 +1,24 @@
-# DigniFi - Trauma-Informed Bankruptcy Filing Platform
+# DigniFi — Trauma-Informed Bankruptcy Filing Platform
+
+<p align="center">
+  <img src="assets/img/landing-page.png" alt="DigniFi landing page — hero section with 'Take the first step toward financial relief' headline, Get Started / Sign In / Try Demo buttons, and three value cards: Free to Use, Private & Secure, Legal Information" width="700">
+</p>
 
 **Mission**: Democratize access to bankruptcy relief for low-income, pro se Americans by translating complex legal processes into plain-language guidance and auto-populated court forms.
 
-**CRITICAL**: This platform provides legal **INFORMATION**, never legal **ADVICE**. All development must respect UPL (Unauthorized Practice of Law) boundaries.
+> **CRITICAL**: This platform provides legal **INFORMATION**, never legal **ADVICE**. All development must respect UPL (Unauthorized Practice of Law) boundaries.
 
 ## Project Status
 
-**MVP Complete & Deployed** — Full-stack application validated through AI persona testing and live on Heroku (Jun 2026)
+**MVP Complete & Deployed** — Full-stack application validated through AI persona testing and live on Heroku (June 2026)
 
-**Pilot District**: Northern District of Illinois (ILND)
-**MVP Scope**: Chapter 7 bankruptcy filing assistance
-**Next Milestone**: Paper prototype testing with target demographic
+|                    |                                        |
+| ------------------ | -------------------------------------- |
+| **Pilot District** | Northern District of Illinois (ILND)   |
+| **MVP Scope**      | Chapter 7 bankruptcy filing assistance |
+| **Next Milestone** | Public beta with coalition partners    |
 
-### Test Results (Jun 2026)
+### Test Results
 
 | Suite             | Count          | Status          |
 | ----------------- | -------------- | --------------- |
