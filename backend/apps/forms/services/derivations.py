@@ -158,6 +158,7 @@ def _cmi(session: IntakeSession) -> str:
 
 
 def _total_monthly_expenses(session: IntakeSession) -> str:
+    """Schedule J line 22c, which 22a, 23b, 106Sum line 5 and 103B line 6 copy: 0.00 with no Expenses row."""
     from apps.intake.models import ExpenseInfo
 
     try:
@@ -508,14 +509,6 @@ def _expense_label(session: IntakeSession, field: str, label: str) -> str:
     return label if _expense_amount(session, field) > 0 else ""
 
 
-def _schedule_j_total_expenses(session: IntakeSession) -> str:
-
-    try:
-        return _fmt(Decimal(str(session.expense_info.calculate_total_monthly_expenses())))
-    except Exception:
-        return "0.00"
-
-
 def _schedule_j_monthly_net_income(session: IntakeSession) -> str:
     """
     Line 23c, 23a - 23b: blank while 23a is, and below zero when expenses pass income.
@@ -525,7 +518,7 @@ def _schedule_j_monthly_net_income(session: IntakeSession) -> str:
     income = _schedule_i_income_total(session)
     if income == "":
         return ""
-    return _fmt(Decimal(income) - Decimal(_schedule_j_total_expenses(session)))
+    return _fmt(Decimal(income) - Decimal(_total_monthly_expenses(session)))
 
 
 def _schedule_j_joint_case(session: IntakeSession) -> str:
@@ -624,7 +617,7 @@ DERIVATIONS: dict[str, Callable[[IntakeSession], str]] = {
     "fee_waiver_household_size": _fee_waiver_household_size,
     "fee_waiver_monthly_income": _fee_waiver_monthly_income,
     # Line 6 is Schedule J line 22c: one figure on both forms
-    "fee_waiver_monthly_expenses": _schedule_j_total_expenses,
+    "fee_waiver_monthly_expenses": _total_monthly_expenses,
     "fee_waiver_noncash_assistance": _fee_waiver_noncash_assistance,
     "fee_waiver_benefit_types": _fee_waiver_benefit_types,
     # Schedule I income line item derivations
@@ -663,7 +656,7 @@ DERIVATIONS: dict[str, Callable[[IntakeSession], str]] = {
     ),
     "schedule_j_support_paid": lambda s: _expense_line(s, "child_support_paid"),
     "schedule_j_other_expenses": lambda s: _expense_line(s, "other_expenses"),
-    "schedule_j_total_expenses": _schedule_j_total_expenses,
+    "schedule_j_total_expenses": _total_monthly_expenses,
     # Line 23a is Schedule I line 12: one figure on both forms
     "schedule_j_total_income": _schedule_i_income_total,
     "schedule_j_monthly_net_income": _schedule_j_monthly_net_income,

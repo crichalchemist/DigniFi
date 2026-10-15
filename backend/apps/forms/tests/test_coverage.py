@@ -1,4 +1,4 @@
-"""Headline proof: the resolver fills a filer's forms from every kind of source they bind."""
+"""Headline proof: the resolver fills a filer's forms from the constant, derived and asked sources they bind."""
 
 import pytest
 from django.core.management import call_command

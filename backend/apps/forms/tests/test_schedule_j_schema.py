@@ -2,6 +2,7 @@
 
 from datetime import date
 from decimal import Decimal
+from unittest.mock import patch
 
 import pytest
 from django.contrib.auth import get_user_model
@@ -197,3 +198,36 @@ def test_only_an_individual_filing_answers_no_to_is_this_a_joint_case(session, f
     printed = resolve(load_schema("schedule_j"), session)
 
     assert printed.get("check1") == ticks
+
+
+def test_a_broken_expense_read_fails_the_form_instead_of_printing_0_00(session):
+    # A decryption or database error must not become a plausible sworn $0.00 of expenses.
+    ExpenseInfo.objects.create(session=session, **EXPENSES)
+
+    with patch.object(
+        ExpenseInfo, "calculate_total_monthly_expenses", side_effect=RuntimeError("decrypt failed")
+    ):
+        with pytest.raises(RuntimeError):
+            resolve(load_schema("schedule_j"), session)
+
+
+def test_every_form_that_copies_the_monthly_expense_total_prints_line_22c(session):
+    # Schedule J 22a, 22c and 23b, 106Sum line 5 and 103B line 6 are one figure on four forms,
+    # so a filer's sworn expenses can't differ between them.
+    IncomeInfo.objects.create(
+        session=session, marital_status="single", monthly_gross_wages=Decimal("9000.00")
+    )
+    ExpenseInfo.objects.create(session=session, **EXPENSES)
+
+    schedule_j = resolve(load_schema("schedule_j"), session)
+    form_106sum = resolve(load_schema("form_106sum"), session)
+    form_103b = resolve(load_schema("form_103b"), session)
+
+    printed = [
+        schedule_j.get("22a"),
+        schedule_j.get("22c"),
+        schedule_j.get("23b"),
+        form_106sum.get("5"),
+        form_103b.get("undefined_7"),
+    ]
+    assert printed == ["8191.00"] * 5
