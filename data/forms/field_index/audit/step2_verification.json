@@ -818,5 +818,15 @@
     "status": "confirmed",
     "correct_target": "9d",
     "evidence": "Field index: 9d p2 line 9d, 'Student loans. (Copy line 6f.)', column 'Total claim', sampled_ok. The rule is Schedule E/F line 6f's, so both forms print one figure. total_student_loans sums the unsecured debts of type student_loan; a student loan saved as secured is on Schedule D (Ruling T16-a: E/F is the unsecured schedule, and 6i, 6j - 6f, never goes below zero). Step 2 spec §6.1 (totals before item rows, B5): the total prints once its inputs follow B2; the rows behind it arrive in step 3. An empty list prints 0.00 (Ruling T0-e). Spec §6.4 and Appendix A.4. The audit has no row on this box."
+  },
+  {
+    "schema": "form_107",
+    "pdf_field": "Debtor 1",
+    "producer": "derived:full_name",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Debtor 1",
+    "evidence": "Field index: Debtor 1, 'Debtor 1', one field with a text widget in the header of each of pages 1-12 (basis header, so not a checked basis). Step 2 spec §6.4 and Appendix A.11: the header name prints on every page. The audit's 'Debtor 2' row, confirmed in verification.json, found this key on the spouse's box and names 'Debtor 1' as its correct target, so the moved-here join would assert this box too; the row is kept per Ruling T0-b (A.14 counts it ADD). The audit has no row on this box."
   }
 ]
