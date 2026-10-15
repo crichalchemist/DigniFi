@@ -183,7 +183,7 @@ def test_only_an_individual_filing_answers_no_to_is_this_a_joint_case(session, f
             first_name="Jane",
             middle_name="",
             last_name="Doe",
-            ssn="123-45-6789",
+            ssn="900-13-0001",
             date_of_birth=date(1990, 1, 15),
             phone="312-555-0100",
             email="jane@example.com",
