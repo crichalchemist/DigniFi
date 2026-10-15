@@ -1,0 +1,832 @@
+[
+  {
+    "schema": "form_101",
+    "pdf_field": "Debtor1.ZIP Code_2",
+    "producer": "asked:answer:form_101.mailing_zip",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Debtor1.ZIP Code_2",
+    "evidence": "Field index: Debtor1.ZIP Code_2 p2 line 5 'If your mailing address is different from the one above (mailing address): ZIP Code' (adjudicated). The audit's own row on this box says the residence ZIP doesn't belong here, and its confirmed rows on Debtor2.ZIP and ZIP Code_4 name this box for the mailing_zip answer. Owner's decision 6d (step 2 spec Appendix E 2, §6.4): the mailing ZIP reads the mailing answer, like the street, city and state beside it."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "Check Box20",
+    "producer": "constant:yes",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Check Box20",
+    "evidence": "Field index: Check Box20 p7 line 17 'Are you filing under Chapter 7?', states /No and /Yes. Step 2 spec §6.4: line 17 is Yes; every DigniFi filing is Chapter 7."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "Check Box21",
+    "producer": "derived:creditor_count_range",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Check Box21",
+    "evidence": "Field index: Check Box21 p7 line 18 'How many creditors do you estimate that you owe?', ten states from /1-49 to /More than 100000. Step 2 spec §6.2 and §6.4: lines 18-20 tick their ranges; creditor_count_range buckets the number of debts in the intake and is blank with none."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "Check Box22",
+    "producer": "derived:total_assets_range",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Check Box22",
+    "evidence": "Field index: Check Box22 p7 line 19 'How much do you estimate your assets to be worth?', twelve states from /0-50000 to /More than 50000000000; this line spells the $100M range /100000000-500000000. Step 2 spec §6.1 (B5) and §6.2: total_assets_range buckets the total of every asset, the figure 106Sum line 1c prints."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "Check Box23",
+    "producer": "derived:total_debts_range",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Check Box23",
+    "evidence": "Field index: Check Box23 p7 line 20 'How much do you estimate your liabilities to be?', twelve states from /0-50000 to /More than 50000000000; this line spells the $100M range /100000001-500000000. Step 2 spec §6.1 (B5) and §6.2: total_debts_range buckets the total of every debt (total_debts)."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "Debtor1.Name",
+    "producer": "derived:full_name",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Debtor1.Name",
+    "evidence": "Field index: Debtor1.Name 'Running header: Debtor 1 (First Name Middle Name Last Name)', one field with a widget on each of pages 2-9 (header). Step 2 spec §6.4: the header name prints on pages 2-9."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "Debtor1.Contact phone_2",
+    "producer": "derived:phone",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Debtor1.Contact phone_2",
+    "evidence": "Field index: Debtor1.Contact phone_2 p9 Part 7 'For you if you are filing this bankruptcy without an attorney: Contact phone' (adjudicated). The audit's confirmed note on this box: the debtor's own phone, which the phone rule gives; the preparer's phone belongs on Form 119. Step 2 spec §6.4: Contact phone gets the phone, and Cell phone stays blank because the wizard never asks whether the number is a cell."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "Check Box18",
+    "producer": "asked:answer:form_101.primarily_consumer_debts",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Check Box18",
+    "evidence": "Field index: Check Box18 p7 line 16a 'Are your debts primarily consumer debts?', states /No (sampled_ok) and /Yes (vision_agreed). form_101.unbound.json names this box for the answer: 'the Check Box16 constant was evidently meant for it'. Owner's answer Q7 (DIG-121; step 2 spec §3, §6.3): each filer answers 'primarily consumer debts', and the answer prints on 101 Check Box18, 106Sum check7 and 107 check6, marked for legal review."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "Check Box26",
+    "producer": "asked:answer:form_101.paid_non_attorney_preparer",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Check Box26",
+    "evidence": "Field index: Check Box26 p9 Part 7 'For you if you are filing this bankruptcy without an attorney: Did you pay or agree to pay someone who is not an attorney to help you fill out your bankruptcy forms?', states /no ('No') and /Yes ('Yes. Name of Person'), adjudicated. Owner's answer Q12 (step 2 spec §3, §6.3): DigniFi is free, so it is not a petition preparer; each filer answers the form's own question, and the paid-help answer prints on 101 Check Box26, 106Dec check1 and 107 check30."
+  },
+  {
+    "schema": "form_103b",
+    "pdf_field": "check_17",
+    "producer": "asked:answer:form_103b.paid_anyone_for_services",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check_17",
+    "evidence": "Field index: check_17 p3 line 17 'Have you paid anyone for services for this case, including filling out this application, the bankruptcy filing package, or the schedules?', states /no ('No', sampled_ok) and /yes ('Yes. Whom did you pay?', adjudicated). Owner's answer Q12 (step 2 spec §3, §6.3): 103B lines 17-19 ask different things from the paid-help question (line 17 counts attorneys too), so each line has its own answer."
+  },
+  {
+    "schema": "form_103b",
+    "pdf_field": "check_18",
+    "producer": "asked:answer:form_103b.promised_to_pay_for_services",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check_18",
+    "evidence": "Field index: check_18 p3 line 18 'Have you promised to pay or do you expect to pay someone for services for your bankruptcy case?', states /no ('No') and /yes ('Yes. Whom do you expect to pay?'), adjudicated. Owner's answer Q12 (step 2 spec §3, §6.3): 103B lines 17-19 ask different things from the paid-help question (line 17 counts attorneys too), so each line has its own answer."
+  },
+  {
+    "schema": "form_103b",
+    "pdf_field": "check_19",
+    "producer": "asked:answer:form_103b.someone_paid_on_your_behalf",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check_19",
+    "evidence": "Field index: check_19 p3 line 19 'Has anyone paid someone on your behalf for services for this case?', states /no ('No') and /yes ('Yes. Who was paid on your behalf?'), adjudicated. Owner's answer Q12 (step 2 spec §3, §6.3): 103B lines 17-19 ask different things from the paid-help question (line 17 counts attorneys too), so each line has its own answer."
+  },
+  {
+    "schema": "form_106dec",
+    "pdf_field": "check1",
+    "producer": "asked:answer:form_101.paid_non_attorney_preparer",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check1",
+    "evidence": "Field index: check1 p1 'Did you pay or agree to pay someone who is NOT an attorney to help you fill out bankruptcy forms?', states /no ('No') and /yes ('Yes.'), adjudicated. The index tooltip 'Any creditors clims secured by property' is a template copy error; the label and option text decide the box. Owner's answer Q12 (step 2 spec §3, §6.3): DigniFi is free, so it is not a petition preparer; each filer answers the form's own question, and the paid-help answer prints on 101 Check Box26, 106Dec check1 and 107 check30."
+  },
+  {
+    "schema": "form_106dec",
+    "pdf_field": "Name of person payed to help file",
+    "producer": "asked:answer:form_101.preparer_name",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Name of person payed to help file",
+    "evidence": "Field index: Name of person payed to help file p1 'Yes. Name of person (non-attorney preparer)', adjudicated. The audit judged this box under presume: (needs_legal_review: whether DigniFi is a § 110 preparer). Owner's answer Q12 (step 2 spec §3, §6.3): the filer names their paid helper once, in answer:form_101.preparer_name, which prints on the three name boxes (101, 106Dec, 107)."
+  },
+  {
+    "schema": "form_106sum",
+    "pdf_field": "check7",
+    "producer": "asked:answer:form_101.primarily_consumer_debts",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check7",
+    "evidence": "Field index: check7 p2 line 7 'What kind of debt do you have?', states /consumer ('Your debts are primarily consumer debts') and /not consumer (on_state not#20consumer), both sampled_ok. Yes ticks /consumer and No ticks /not consumer. Owner's answer Q7 (DIG-121; step 2 spec §3, §6.3): each filer answers 'primarily consumer debts', and the answer prints on 101 Check Box18, 106Sum check7 and 107 check6, marked for legal review."
+  },
+  {
+    "schema": "form_107",
+    "pdf_field": "check6",
+    "producer": "asked:answer:form_101.primarily_consumer_debts",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check6",
+    "evidence": "Field index: check6 p3 line 6 'Are either Debtor 1’s or Debtor 2’s debts primarily consumer debts?', states /no ('No. Neither Debtor 1 nor Debtor 2 has primarily consumer debts.') and /yes ('Yes. Debtor 1 or Debtor 2 or both have primarily consumer debts.'), sampled_ok. check6a and check6b stay blank. Owner's answer Q7 (DIG-121; step 2 spec §3, §6.3): each filer answers 'primarily consumer debts', and the answer prints on 101 Check Box18, 106Sum check7 and 107 check6, marked for legal review."
+  },
+  {
+    "schema": "form_107",
+    "pdf_field": "check30",
+    "producer": "asked:answer:form_101.paid_non_attorney_preparer",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check30",
+    "evidence": "Field index: check30 p12 'Did you pay or agree to pay someone who is not an attorney to help you fill out bankruptcy forms?', states /no ('No') and /yes ('Yes.'), adjudicated. Owner's answer Q12 (step 2 spec §3, §6.3): DigniFi is free, so it is not a petition preparer; each filer answers the form's own question, and the paid-help answer prints on 101 Check Box26, 106Dec check1 and 107 check30."
+  },
+  {
+    "schema": "form_107",
+    "pdf_field": "Name of person agreed to pay",
+    "producer": "asked:answer:form_101.preparer_name",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Name of person agreed to pay",
+    "evidence": "Field index: Name of person agreed to pay p12 'Yes. Name of person (attach Official Form 119)' (tooltip 'Name of person to help fill out forms (not an attorney)'), adjudicated. The audit's row judged a separate answer, form_107.Name_of_person_agreed_to_pay. Owner's answer Q12 (step 2 spec §3, §6.3): the filer names their paid helper once, in answer:form_101.preparer_name, which prints on the three name boxes (101, 106Dec, 107)."
+  },
+  {
+    "schema": "form_103b",
+    "pdf_field": "You",
+    "producer": "constant:true",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "You",
+    "evidence": "Field index: You p1 line 1 'You' (option 'You', state /On, sampled_ok), the first 'check all that apply' box of the family-size question. Step 2 spec §6.4 and Appendix A.2: You is ticked; the filer is always one of the people counted."
+  },
+  {
+    "schema": "form_103b",
+    "pdf_field": "undefined_2",
+    "producer": "derived:fee_waiver_monthly_income",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_2",
+    "evidence": "Field index: undefined_2 p1 line 2 'You', column 'That person’s average monthly net income (take-home pay)' (sampled_ok). Owner's answer Q10 (step 2 spec §3, §6.3, DIG-78): 103B line 2 prints the take-home pay the filer typed on the fee-waiver page, on You, Subtotal and the family's net income; Your spouse and the non-cash subtraction stay blank (Appendix E 6)."
+  },
+  {
+    "schema": "form_103b",
+    "pdf_field": "undefined_4",
+    "producer": "derived:fee_waiver_monthly_income",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_4",
+    "evidence": "Field index: undefined_4 p1 line 2 'Subtotal', column 'That person’s average monthly net income (take-home pay)' (sampled_ok). Owner's answer Q10 (step 2 spec §3, §6.3, DIG-78): 103B line 2 prints the take-home pay the filer typed on the fee-waiver page, on You, Subtotal and the family's net income; Your spouse and the non-cash subtraction stay blank (Appendix E 6)."
+  },
+  {
+    "schema": "form_103b",
+    "pdf_field": "check 3",
+    "producer": "derived:fee_waiver_noncash_assistance",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check 3",
+    "evidence": "Field index: check 3 p1 line 3 'Do you receive non-cash governmental assistance?', states /no ('No') and /yes ('Yes. Describe.'), sampled_ok. Owner's answer Q11 (step 2 spec §3, §6.3): line 3 is a Yes/No question in the form's own words with \"What kind?\", answered on the fee-waiver page; blank until answered (DIG-193)."
+  },
+  {
+    "schema": "form_103b",
+    "pdf_field": "3 type",
+    "producer": "derived:fee_waiver_benefit_types",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "3 type",
+    "evidence": "Field index: 3 type p1 line 3 'Type of assistance' (sampled_ok), the box beside 'Yes. Describe.'. Owner's answer Q11 (step 2 spec §3, §6.3): line 3 is a Yes/No question in the form's own words with \"What kind?\", answered on the fee-waiver page; blank until answered (DIG-193). The kinds print only with a Yes."
+  },
+  {
+    "schema": "form_103b",
+    "pdf_field": "Debtor.Name1",
+    "producer": "derived:full_name",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Debtor.Name1",
+    "evidence": "Field index: Debtor.Name1 'Debtor 1 (continuation-page caption)', one field with a widget on pages 2 and 3 (adjudicated; its tooltip \"Judge's Signature\" is a template error). Step 2 spec §6.4 and Appendix A.2: the page 2-3 caption prints the name. The audit's derived:full_name row on 'Debtor' names 'Debtor 1', so it doesn't place this box."
+  },
+  {
+    "schema": "form_106sum",
+    "pdf_field": "check6",
+    "producer": "constant:yes",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check6",
+    "evidence": "Field index: check6 p2 line 6 'Are you filing for bankruptcy under Chapters 7, 11, or 13?', states /no ('No. You have nothing to report on this part of the form...') and /yes ('Yes'), both sampled_ok. Step 2 spec §6.4 and Appendix A.4: check6 is Yes; every DigniFi filing is Chapter 7."
+  },
+  {
+    "schema": "form_122a1",
+    "pdf_field": "Debto1.Quest3",
+    "producer": "derived:line3_alimony",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Debto1.Quest3",
+    "evidence": "Field index: Debto1.Quest3 p1 line 3, Column A (Debtor 1), 'Alimony and maintenance payments (not from a spouse if Column B is filled in)' (adjudicated). Step 2 spec §5.5 table (alimony received: 122A-1 line 3), §6.2 and Appendix E 5: 122A-1 line 3 prints alimony. The audit's row on this box judged the old line2_business_income binding."
+  },
+  {
+    "schema": "form_122a1",
+    "pdf_field": "terrorism If necessary list other sources on a separate page and put the total below 1",
+    "producer": "derived:other_income_label",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "terrorism If necessary list other sources on a separate page and put the total below 1",
+    "evidence": "Field index: this box p2 line 10 'Income from all other sources not listed above - source description, row 1' (adjudicated), beside its amount Debto1.Quest10A. Step 2 spec §5.5 table (other: 122A-1 line 10, \"Other income\"), §6.2 and Appendix E 5: the line 10 source box prints \"Other income\" when other income is above $0."
+  },
+  {
+    "schema": "form_122a1",
+    "pdf_field": "Debto1.Quest11",
+    "producer": "derived:cmi",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Debto1.Quest11",
+    "evidence": "Field index: Debto1.Quest11 p2 line 11, Column A (Debtor 1), 'Calculate your total current monthly income - add lines 2 through 10 for the column (monthly)' (adjudicated). Step 2 spec §6.1 (C1, two income totals): CMI, without Social Security, goes on 122A-1 lines 11-12b; lines 5 and 7 are never asked and count as zero. The audit's row on Quest8A names this box for the income total, under the old line8a_total_gross_income key, not cmi."
+  },
+  {
+    "schema": "form_122a1",
+    "pdf_field": "Quest11",
+    "producer": "derived:cmi",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Quest11",
+    "evidence": "Field index: Quest11 p2, one full name with two widgets: line 11, column Total, 'Total current monthly income (Column A + Column B) (monthly)', and line 12a, 'Copy your total current monthly income from line 11 (monthly; then multiply by 12)', both adjudicated. Both are monthly; only 12B is the year. Step 2 spec §6.1 (C1): CMI goes on 122A-1 lines 11-12b. The audit's row on this box judged the old line11_annualized_income binding, which printed CMI x 12."
+  },
+  {
+    "schema": "form_122a1",
+    "pdf_field": "13A",
+    "producer": "derived:state",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "13A",
+    "evidence": "Field index: 13A p2 line 13 'Fill in the state in which you live.' (adjudicated). Step 2 spec §6.4 (122A-1: line 13's state) and Appendix B chain d: 13A takes derived:state; its old median binding moves to 13C, where the audit's verified row for 13A places it."
+  },
+  {
+    "schema": "form_122a1",
+    "pdf_field": "14a",
+    "producer": "derived:median_comparison",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "14a",
+    "evidence": "Field index: 14a p2, one full name with two widgets, 'How do the lines compare?' (adjudicated): line 14a, state /12b less or equal to 13, 'Line 12b is less than or equal to line 13. On the top of page 1, check box 1'; line 14b, state /12b more than 13, 'Line 12b is more than line 13. On the top of page 1, check box 2'. Owner's answer Q5 (DIG-65; step 2 spec §3, §6.3): tick line 14 and the page-1 box from line 12b against line 13; at or below the median is below (Q2, DIG-136)."
+  },
+  {
+    "schema": "form_122a1",
+    "pdf_field": "CheckBox1",
+    "producer": "derived:median_comparison",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "CheckBox1",
+    "evidence": "Field index: CheckBox1 p1, three widgets (adjudicated): top box 1, state /No Abuse, 'There is no presumption of abuse.'; top box 2, state /Presumption of abuse applies, 'The calculation to determine if a presumption of abuse applies will be made under Chapter 7 Means Test Calculation (Official Form 122A-2).'; top box 3, state /Does not apply (qualified military service). Owner's answer Q5 (DIG-65; step 2 spec §3, §6.3): at or below the median, box 1; above, box 2; box 3 is never ticked."
+  },
+  {
+    "schema": "schedule_i",
+    "pdf_field": "Amount 3 Debtor 1",
+    "producer": "derived:schedule_i_overtime_debtor1",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Amount 3 Debtor 1",
+    "evidence": "Field index: Amount 3 Debtor 1 p1 line 3, column 'For Debtor 1', 'Estimate and list monthly overtime pay.' (adjudicated). Owner's answer Q3 (income per source) and step 2 spec §5.5's table (Overtime -> Schedule I line 3); §6.2 (schedule_i_overtime_debtor1, new; line 3). The audit's verified row on this box judged the old schedule_i_net_wages_debtor1 binding, which belongs on line 2."
+  },
+  {
+    "schema": "schedule_i",
+    "pdf_field": "Amount 4 Debtor 1",
+    "producer": "derived:schedule_i_gross_income_debtor1",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Amount 4 Debtor 1",
+    "evidence": "Field index: Amount 4 Debtor 1 p1 line 4, column 'For Debtor 1', 'Calculate gross income.' (adjudicated). Step 2 spec §6.2 (schedule_i_gross_income_debtor1: line 2 + line 3; line 4) and §6.1 B1 (line 4 keeps its box with the gross-income rule). The audit's verified row on this box judged the old schedule_i_self_employment_debtor1 binding, which it placed on 8a."
+  },
+  {
+    "schema": "schedule_i",
+    "pdf_field": "Amount 4 Debtor 1a",
+    "producer": "derived:schedule_i_gross_income_debtor1",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Amount 4 Debtor 1a",
+    "evidence": "Field index: Amount 4 Debtor 1a p2 line 4, column 'For Debtor 1', 'Copy line 4 here' (adjudicated). Step 2 spec §6.2 (schedule_i_gross_income_debtor1: line 4's copy at the top of page 2) and Appendix E 16 (line 4's copy, not line 5). The audit has no row for this box."
+  },
+  {
+    "schema": "schedule_i",
+    "pdf_field": "Amount 7 Debtor 1",
+    "producer": "derived:schedule_i_gross_income_debtor1",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Amount 7 Debtor 1",
+    "evidence": "Field index: Amount 7 Debtor 1 p2 line 7, column 'For Debtor 1', 'Calculate total monthly take-home pay. Subtract line 6 from line 4.' (adjudicated). Payroll deductions (lines 5a-6) are not asked until step 3 (OQ-7), so line 6 counts as zero and line 7 equals line 4: step 2 spec §5.5 ('Schedule I line 7 (take-home) equals gross for now'), §6.1 (totals that count an unasked line as zero; the section 6c decision covers Schedule I line 7) and §6.2."
+  },
+  {
+    "schema": "schedule_i",
+    "pdf_field": "Other income 8h",
+    "producer": "derived:other_income_label",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Other income 8h",
+    "evidence": "Field index: Other income 8h p2 line 8h, 'Other monthly income. Specify:' (adjudicated; tooltip 'Specify'), the text box beside Amount 8h Debtor 1. Step 2 spec §5.5's table (Other -> 8h, 'Other income'), §6.2 (other_income_label, shared with 122A-1 line 10) and Appendix E 5: 'Other income' when other income is above $0. The audit has no row for this box."
+  },
+  {
+    "schema": "schedule_i",
+    "pdf_field": "Amount 9 Debtor 1",
+    "producer": "derived:schedule_i_other_income_total_debtor1",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Amount 9 Debtor 1",
+    "evidence": "Field index: Amount 9 Debtor 1 p2 line 9, column 'For Debtor 1', 'Add all other income.' (adjudicated). Step 2 spec §6.2 (schedule_i_other_income_total_debtor1: the sum of 8a-8h; line 9) and §6.1 (8b and 8f are never asked and count as zero). The audit has no row for this box."
+  },
+  {
+    "schema": "form_106sum",
+    "pdf_field": "4",
+    "producer": "derived:schedule_i_income_total",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "4",
+    "evidence": "Field index: 4 p1 line 4, 'Line 4: Copy your combined monthly income from line 12 of Schedule I' (adjudicated). Step 2 spec §5.5 (a separate Schedule I income total, bound to Schedule I lines 10 and 12 and 106Sum line 4), §6.1 C1 (two income totals: CMI without Social Security on 106Sum line 8, the Schedule I income total on line 4) and §6.2 (schedule_i_income_total); Appendix B's 106Sum chain. The audit's verified row on this box judged the old total_debts binding, which belongs on 3c."
+  },
+  {
+    "schema": "schedule_i",
+    "pdf_field": "Amount 10 Debtor 1",
+    "producer": "derived:schedule_i_income_total",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Amount 10 Debtor 1",
+    "evidence": "Field index: Amount 10 Debtor 1 p2 line 10, column 'For Debtor 1', 'Calculate monthly income. Add line 7 + line 9.' (adjudicated). Line 7 (lines 2 + 3, Schedule I's gross income, until payroll deductions are asked) plus line 9 (8a-8h) is all ten Income step sources. Step 2 spec §5.5, §6.1 B1 and C1 (lines 10 and 12 take the Schedule I income total, Social Security included) and §6.2 (schedule_i_income_total). The audit's verified row on this box judged the old cmi binding, which leaves Social Security out."
+  },
+  {
+    "schema": "schedule_i",
+    "pdf_field": "Amount 10",
+    "producer": "derived:schedule_i_income_total",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Amount 10",
+    "evidence": "Field index: Amount 10 p2 line 10, column 'Total (Debtor 1 + Debtor 2)', 'Add the entries in line 10 for Debtor 1 and Debtor 2 or non-filing spouse' (adjudicated). Step 2 never fills the spouse column, so the total equals Debtor 1's line 10: step 2 spec §6.1 (totals that count an unasked line as zero; line 10's combined column adds a spouse column step 2 never fills; the section 6c decision covers Schedule I line 10), §5.5 and §6.2 (schedule_i_income_total). The audit has no row for this box."
+  },
+  {
+    "schema": "schedule_i",
+    "pdf_field": "Amount 12",
+    "producer": "derived:schedule_i_income_total",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Amount 12",
+    "evidence": "Field index: Amount 12 p2 line 12, column 'Combined monthly income', 'Add the amount in the last column of line 10 to the amount in line 11 (Combined monthly income)' (adjudicated). Line 11 (others' regular contributions) is never asked and counts as zero: step 2 spec §6.1 (totals that count an unasked line as zero; the section 6c decision covers Schedule I line 12) and C1 (the Schedule I income total, Social Security included), §5.5 and §6.2 (schedule_i_income_total). Appendix B R4: the box keeps a binding. The audit's verified row on this box judged the old cmi binding, which leaves Social Security out."
+  },
+  {
+    "schema": "schedule_j",
+    "pdf_field": "6d",
+    "producer": "derived:schedule_j_utilities",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "6d",
+    "evidence": "Field index: 6d p2 line 6d, column 'Your expenses', 'Utilities: Other. Specify: (amount)' (adjudicated). Owner Q4 (step 2 spec §3, DIG-52): utilities go on 6d with 'Utilities (combined)', insurance not deducted from pay on 15d with 'Insurance (combined)'; each label prints only above $0. The Expenses step stores one utilities figure, which 6a-6c can't take without a split. Step 2 spec Appendix A.8 and Appendix B chain a (12 -> 6d); §6.1 and §6.2 (blank at $0, 6c option A). The audit's verified row on 12 names 6a for this rule; Q4 overrides it."
+  },
+  {
+    "schema": "schedule_j",
+    "pdf_field": "Other 6d",
+    "producer": "derived:schedule_j_utilities_label",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Other 6d",
+    "evidence": "Field index: Other 6d p2 line 6d, tooltip 'Specify', 'Utilities: Other. Specify:' (adjudicated): the text naming 6d's amount. Owner Q4 (step 2 spec §3, DIG-52): utilities go on 6d with 'Utilities (combined)', insurance not deducted from pay on 15d with 'Insurance (combined)'; each label prints only above $0. Step 2 spec Appendix A.8, §6.2 (schedule_j_utilities_label). The audit has no row for this box."
+  },
+  {
+    "schema": "schedule_j",
+    "pdf_field": "15d",
+    "producer": "derived:schedule_j_insurance_not_deducted",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "15d",
+    "evidence": "Field index: 15d p2 line 15d, column 'Your expenses', 'Other insurance. Specify: (amount)' (adjudicated). Owner Q4 (step 2 spec §3, DIG-52): utilities go on 6d with 'Utilities (combined)', insurance not deducted from pay on 15d with 'Insurance (combined)'; each label prints only above $0. The Expenses step stores one figure for health, life or disability insurance not deducted from pay, which 15a and 15b can't take without a split. Step 2 spec Appendix A.8 (20a -> 15d); §6.1 and §6.2 (blank at $0, 6c option A). The audit's verified row on 20a names 15b for this rule; Q4 overrides it."
+  },
+  {
+    "schema": "schedule_j",
+    "pdf_field": "Other 15d",
+    "producer": "derived:schedule_j_insurance_label",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Other 15d",
+    "evidence": "Field index: Other 15d p2 line 15d, tooltip 'Specify', 'Other insurance. Specify:' (adjudicated): the text naming 15d's amount. Owner Q4 (step 2 spec §3, DIG-52): utilities go on 6d with 'Utilities (combined)', insurance not deducted from pay on 15d with 'Insurance (combined)'; each label prints only above $0. Step 2 spec Appendix A.8, §6.2 (schedule_j_insurance_label). The audit has no row for this box."
+  },
+  {
+    "schema": "schedule_j",
+    "pdf_field": "18",
+    "producer": "derived:schedule_j_support_paid",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "18",
+    "evidence": "Field index: 18 p2 line 18, column 'Your expenses', 'Your payments of alimony, maintenance, and support that you did not report as deducted from your pay on line 5, Schedule I' (adjudicated). ExpenseInfo.child_support_paid is court-ordered support paid. The audit's verified row on 21 (wrong_value) says court-ordered support paid belongs on line 18, not in line 21's other expenses. Step 2 spec Appendix A.8, §6.1 and §6.2 (schedule_j_support_paid, blank at $0, 6c option A)."
+  },
+  {
+    "schema": "schedule_j",
+    "pdf_field": "check1",
+    "producer": "derived:schedule_j_joint_case",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check1",
+    "evidence": "Field index: check1 p1 line 1, 'Is this a joint case?', option 'No. Go to line 2.' (on_state 'no', export state /no; adjudicated); its other widget is 'Yes. Does Debtor 2 live in a separate household?' (on_state 'yes'). Not 'Check 1', the amended/supplemental box. DebtorInfo.filing_type 'individual' is a single filer's case. Step 2 spec Appendix A.8, §6.2 (schedule_j_joint_case: 'no' for an individual filing, blank for Joint) and §10: a joint filer still gets a single filer's packet, so line 1 stays blank for them (DIG-177). The audit lists check1 as unbound (schedule_j.unbound.json)."
+  },
+  {
+    "schema": "schedule_j",
+    "pdf_field": "22c",
+    "producer": "derived:schedule_j_total_expenses",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "22c",
+    "evidence": "Field index: 22c p3 line 22c, column 'Your expenses', 'Add line 22a and 22b. The result is your monthly expenses.' (adjudicated). 22b copies Debtor 2's expenses from Official Form 106J-2, which is never asked, so 22c is 22a: all 13 Expenses step amounts. Step 2 spec Appendix A.8, §6.1 (totals still print: Schedule J 22a and 22c) and Appendix C.3 (DIG-61). The audit's one row with this key is on 22a and targets 22a, so the moved-here join can't assert 22c; the audit lists 22c as unbound (schedule_j.unbound.json, DIG-61)."
+  },
+  {
+    "schema": "schedule_j",
+    "pdf_field": "23b",
+    "producer": "derived:schedule_j_total_expenses",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "23b",
+    "evidence": "Field index: 23b p3 line 23b, column 'Your expenses', 'Copy your monthly expenses from line 22c above.' (adjudicated): the same figure as 22c. Step 2 spec Appendix A.8 and Appendix C.3 (DIG-61). The audit's one row with this key is on 22a and targets 22a; the audit lists 23b as unbound (schedule_j.unbound.json, DIG-61)."
+  },
+  {
+    "schema": "schedule_j",
+    "pdf_field": "23c",
+    "producer": "derived:schedule_j_monthly_net_income",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "23c",
+    "evidence": "Field index: 23c p3 line 23c, column 'Your expenses', 'Subtract your monthly expenses from your monthly income. The result is your monthly net income.' (adjudicated): 23a (Schedule I line 12, schedule_i_income_total) minus 23b (line 22c). Step 2 spec Appendix A.8, §6.2 (schedule_j_monthly_net_income, 23a - 23b), Appendix B R4 (after 23a's new body) and Appendix C.3 (DIG-61); ruling T0-f: blank while 23a is blank, a negative result prints with a minus sign. The audit lists 23c as unbound (schedule_j.unbound.json, DIG-61)."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "Quest1",
+    "producer": "derived:cmi",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Quest1",
+    "evidence": "Field index: Quest1 p1 line 1, 'Copy your total current monthly income (copy line 11 from Official Form 122A-1)' (adjudicated). 122A-1 line 11 prints cmi (Debto1.Quest11, Quest11). Step 2 spec Appendix A.6, §6.1 (C1, two income totals: CMI, without Social Security, goes on 122A-2 line 1) and §6.4. The audit's verified row on this box judged the old means_test_total_deductions binding, whose total belongs on line 38 (undefined_104), and its auditor note names cmi for line 1; this row joins on (box, key), so that row's target never applies to cmi."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "undefined_51",
+    "producer": "derived:schedule_j_support_paid",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_51",
+    "evidence": "Field index: undefined_51 p5 line 19, 'Court-ordered payments: total monthly amount paid under court/agency order (e.g., spousal or child support), excluding past-due amounts' (adjudicated). ExpenseInfo.child_support_paid is court-ordered support paid, the figure Schedule J line 18 prints. Step 2 spec Appendix A.6, §6.1 (expense lines, 6c option A: 122A-2 lines 19 and 21 print only above $0), §6.2 (schedule_j_support_paid, Schedule J 18 and 122A-2 line 19) and §6.4. The audit has no row on this box."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "undefined_53",
+    "producer": "derived:schedule_j_childcare",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_53",
+    "evidence": "Field index: undefined_53 p5 line 21, 'Childcare (babysitting, daycare, nursery, preschool)' (adjudicated). ExpenseInfo.childcare is the filer's childcare, the figure Schedule J line 8 prints. Step 2 spec Appendix A.6, §6.1 (expense lines, 6c option A: 122A-2 lines 19 and 21 print only above $0) and §6.4. The audit has no row on this box."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "Check 2",
+    "producer": "derived:has_real_property",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Check 2",
+    "evidence": "Field index: Check 2 p1 line 1, 'Do you own or have any legal or equitable interest in any residence, building, land, or similar property?'. Its 'No. Go to Part 2.' widget exports On and its 'Yes. Where is the property?' widget exports yes (both sampled_ok), so the choices are {yes: /yes, no: /On}. has_real_property is 'yes' when the filer listed a real_property asset. Owner's answer Q8 (DIG-80, DIG-69; step 2 spec §3, §6.3): the section Yes/No boxes are derived from the lists, Yes with rows and No without. Spec Appendix A.9. The audit has no row on this box."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "Check 3",
+    "producer": "derived:has_vehicles",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Check 3",
+    "evidence": "Field index: Check 3 p2 line 3, 'Cars, vans, trucks, tractors, sport utility vehicles, motorcycles', options No (no) and Yes (yes), vision_agreed. has_vehicles is 'yes' when the filer listed a vehicle asset; line 4 (boats and other vehicles) stays blank, so an RV entered as a vehicle ticks line 3 (spec §10). Owner's answer Q8 (DIG-80, DIG-69; step 2 spec §3, §6.3): the section Yes/No boxes are derived from the lists, Yes with rows and No without. Spec Appendix A.9. The audit has no row on this box."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "Check 17",
+    "producer": "derived:has_bank_accounts",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Check 17",
+    "evidence": "Field index: Check 17 p5 line 17, 'Deposits of money', options No (no) and Yes (yes), sampled_ok. has_bank_accounts is 'yes' when the filer listed a bank_account asset. Owner's answer Q8 (DIG-80, DIG-69; step 2 spec §3, §6.3): the section Yes/No boxes are derived from the lists, Yes with rows and No without. Spec Appendix A.9. The audit has no row on this box."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "check 21",
+    "producer": "derived:has_retirement_accounts",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check 21",
+    "evidence": "Field index: check 21 p6 line 21, 'Retirement or pension accounts', options No (no) and 'Yes. List each account separately.' (yes), sampled_ok. has_retirement_accounts is 'yes' when the filer listed a retirement_account asset. Owner's answer Q8 (DIG-80, DIG-69; step 2 spec §3, §6.3): the section Yes/No boxes are derived from the lists, Yes with rows and No without. Spec Appendix A.9. The audit has no row on this box."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "check 53",
+    "producer": "derived:has_other_assets",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check 53",
+    "evidence": "Field index: check 53 p10 line 53, 'Do you have other property of any kind you did not already list?'. Its No widget exports no and its 'Yes. Give specific information.' widget exports On (both sampled_ok), so the choices are {yes: /On, no: /no}. has_other_assets is 'yes' when the filer listed an 'Other Asset'. Owner's answer Q8 (DIG-80, DIG-69; step 2 spec §3, §6.3): the section Yes/No boxes are derived from the lists, Yes with rows and No without. Owner's answer Q9: 'Other Asset' prints on line 53. Spec Appendix A.9. The audit has no row on this box."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "53 Examples Season tickets country club membership",
+    "producer": "derived:other_asset_descriptions",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "53 Examples Season tickets country club membership",
+    "evidence": "Field index: p10 line 53, 'Line 53 Other property: Give specific information.', tooltip 'Examples: Season tickets, country club membership' (adjudicated). other_asset_descriptions joins the 'Other' assets' descriptions with '; ' in id order, the order the filer listed them (DIG-164). Owner's answer Q9 (step 2 spec §3, §6.3, Appendix E 7); spec §6.2 and Appendix A.9. Line 53's amount boxes (undefined_155-157) stay blank until step 3. The audit has no row on this box."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "undefined_13",
+    "producer": "derived:total_real_property",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_13",
+    "evidence": "Field index: undefined_13 p2 line 2, 'Add the dollar value of the portion you own for all of your entries from Part 1, including any entries for pages you have attached for Part 1. Write that number here.' (vision_agreed). total_real_property sums the real_property assets' current values, the figure 106Sum line 1a copies from line 55. Step 2 spec §6.1 (totals before item rows, B5): the total prints once its inputs follow B2; the rows behind it arrive in step 3. An empty list prints 0.00 (Ruling T0-e). Spec Appendix A.9. The audit has no row on this box."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "undefined_159",
+    "producer": "derived:total_real_property",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_159",
+    "evidence": "Field index: undefined_159 p10 line 55, 'Part 1: Total real estate, line 2' (sampled_ok). Line 55 copies line 2 (undefined_13), and 106Sum line 1a copies line 55. Step 2 spec §6.1 (totals before item rows, B5): the total prints once its inputs follow B2; the rows behind it arrive in step 3. An empty list prints 0.00 (Ruling T0-e). Spec Appendix A.9. The audit has no row on this box."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "undefined_26",
+    "producer": "derived:total_vehicles",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_26",
+    "evidence": "Field index: undefined_26 p3 line 5, 'Add the dollar value of the portion you own for all of your entries from Part 2, including any entries for pages you have attached for Part 2. Write that number here' (sampled_ok). total_vehicles sums the vehicle assets' current values. Step 2 spec §6.1 (totals before item rows, B5): the total prints once its inputs follow B2; the rows behind it arrive in step 3. An empty list prints 0.00 (Ruling T0-e). Spec §6.2 and Appendix A.9. The audit has no row on this box."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "undefined_160",
+    "producer": "derived:total_vehicles",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_160",
+    "evidence": "Field index: undefined_160 p10 line 56, 'Part 2: Total vehicles, line 5' (sampled_ok). Line 56 copies line 5 (undefined_26). Step 2 spec §6.1 (totals before item rows, B5): the total prints once its inputs follow B2; the rows behind it arrive in step 3. An empty list prints 0.00 (Ruling T0-e). Spec Appendix A.9. The audit has no row on this box."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "15 amount",
+    "producer": "derived:total_household_items",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "15 amount",
+    "evidence": "Field index: 15 amount p4 line 15, 'Write that number here' (sampled_ok), the Part 3 total ('Add the dollar value of all of your entries from Part 3'). total_household_items sums the personal_property assets' current values. Owner's answer Q9: personal property feeds line 15 and line 57. Step 2 spec §6.1 (totals before item rows, B5): the total prints once its inputs follow B2; the rows behind it arrive in step 3. An empty list prints 0.00 (Ruling T0-e). Spec §6.2 and Appendix A.9. The audit has no row on this box."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "undefined_161",
+    "producer": "derived:total_household_items",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_161",
+    "evidence": "Field index: undefined_161 p10 line 57, 'Part 3: Total personal and household items, line 15' (sampled_ok). Line 57 copies line 15. Owner's answer Q9: personal property feeds line 15 and line 57. Step 2 spec §6.1 (totals before item rows, B5): the total prints once its inputs follow B2; the rows behind it arrive in step 3. An empty list prints 0.00 (Ruling T0-e). Spec Appendix A.9. The audit has no row on this box."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "undefined_124",
+    "producer": "derived:total_financial_assets",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_124",
+    "evidence": "Field index: undefined_124 p8 line 36, 'Write that number here', column 'Current value of the portion you own' (vision_agreed), the Part 4 total. total_financial_assets sums the bank_account (line 17) and retirement_account (line 21) assets' current values; Part 4 has sources only for lines 17 and 21, so its other lines count as zero (step 2 spec §6.1). Step 2 spec §6.1 (totals before item rows, B5): the total prints once its inputs follow B2; the rows behind it arrive in step 3. An empty list prints 0.00 (Ruling T0-e). Spec §6.2 and Appendix A.9. The audit has no row on this box."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "undefined_162",
+    "producer": "derived:total_financial_assets",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_162",
+    "evidence": "Field index: undefined_162 p10 line 58, 'Part 4: Total financial assets, line 36' (sampled_ok). Line 58 copies line 36 (undefined_124). Step 2 spec §6.1 (totals before item rows, B5): the total prints once its inputs follow B2; the rows behind it arrive in step 3. An empty list prints 0.00 (Ruling T0-e). Spec §6.1 and Appendix A.9. The audit has no row on this box."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "undefined_158",
+    "producer": "derived:total_other_assets",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_158",
+    "evidence": "Field index: undefined_158 p10 line 54, 'Write that number here' (sampled_ok), the Part 7 total. total_other_assets sums the 'Other' assets' current values. Owner's answer Q9: 'Other Asset' counts in the line 54 and 61 totals. Step 2 spec §6.1 (totals before item rows, B5): the total prints once its inputs follow B2; the rows behind it arrive in step 3. An empty list prints 0.00 (Ruling T0-e). Spec Appendix A.9. The audit's A/B row '17' has this key, but its verification.json correct_target is '' (missing_field), so the moved-here join can't assert this box; this row does."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "undefined_165",
+    "producer": "derived:total_other_assets",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_165",
+    "evidence": "Field index: undefined_165 p10 line 61, 'Part 7: Total other property not listed, line 54' (sampled_ok). Line 61 copies line 54 (undefined_158). Owner's answer Q9: 'Other Asset' counts in the line 54 and 61 totals. Step 2 spec §6.1 (totals before item rows, B5): the total prints once its inputs follow B2; the rows behind it arrive in step 3. An empty list prints 0.00 (Ruling T0-e). Spec Appendix A.9. The audit's A/B row '17' has this key, but its correct_target is '', so the moved-here join can't assert this box; this row does."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "undefined_166",
+    "producer": "derived:total_personal_property",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_166",
+    "evidence": "Field index: undefined_166 p10 line 62, one full name with two widgets: 'Total personal property. Add lines 56 through 61.' (sampled_ok) and 'Copy personal property total' (adjudicated); one binding fills both. total_personal_property sums every asset but real_property, which equals lines 56 + 57 + 58 + 61 because asset_type has exactly six kinds; lines 59 and 60 (business, farm) are never asked and count as zero (step 2 spec §6.1). 106Sum line 1b copies line 62. Step 2 spec §6.1 (totals before item rows, B5): the total prints once its inputs follow B2; the rows behind it arrive in step 3. An empty list prints 0.00 (Ruling T0-e). Spec Appendix A.9. The audit has no row on this box."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "undefined_167",
+    "producer": "derived:total_assets",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_167",
+    "evidence": "Field index: undefined_167 p10 line 63, 'Total of all property on Schedule A/B. Add line 55 + line 62.' (sampled_ok). total_assets sums every asset, which is line 55 + line 62. 106Sum line 1c copies line 63, and Form 101 line 19 buckets it. Step 2 spec §6.1 (totals before item rows, B5): the total prints once its inputs follow B2; the rows behind it arrive in step 3. An empty list prints 0.00 (Ruling T0-e). Spec §6.1 and Appendix A.9. The audit has no row on this box."
+  },
+  {
+    "schema": "schedule_g",
+    "pdf_field": "Debtor 1",
+    "producer": "derived:full_name",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Debtor 1",
+    "evidence": "Field index: Debtor 1, 'Debtor 1 (First Name, Middle Name, Last Name)', one field with a widget on pages 1 and 2 (basis header, so not a checked basis). Step 2 spec §6.4 and Appendix A.10: G and H print the header name. The G audit's checked 'Debtor 2' row has this key, but its correct_target is 'leave blank', so the moved-here join can't assert this box; this row does."
+  },
+  {
+    "schema": "schedule_g",
+    "pdf_field": "check1",
+    "producer": "derived:has_executory_contracts",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check1",
+    "evidence": "Field index: check1 p1 line 1, 'Do you have any executory contracts or unexpired leases?' (its tooltip was copied from Schedule D). Options 'No. Check this box and file this form with the court...' (no) and 'Yes. Fill in all of the information below even if the contracts or leases are listed on Schedule A/B' (yes), sampled_ok. has_executory_contracts is 'yes' when the filer saved a contract or lease. Owner's answer Q8 (DIG-80, DIG-69; step 2 spec §3, §6.3): the section Yes/No boxes are derived from the lists, Yes with rows and No without. Spec Appendix A.10. The audit has no row on this box."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "Debtor 1",
+    "producer": "derived:full_name",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Debtor 1",
+    "evidence": "Field index: Debtor 1, 'Debtor 1 (First Name, Middle Name, Last Name)', one field with a widget on pages 1 and 2 (basis header, so not a checked basis). Step 2 spec §6.4 and Appendix A.10: G and H print the header name. The H audit's 'Debtor 2' row has this key, but its correct_target is 'leave blank', so the moved-here join can't assert this box; this row does."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "check1",
+    "producer": "derived:has_codebtors",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check1",
+    "evidence": "Field index: check1 p1 line 1, 'Do you have any codebtors? (If you are filing a joint case, do not list either spouse as a codebtor.)', options No (no) and Yes (yes), adjudicated. has_codebtors is 'yes' when the filer saved a codebtor. Owner's answer Q8 (DIG-80, DIG-69; step 2 spec §3, §6.3): the section Yes/No boxes are derived from the lists, Yes with rows and No without. Spec Appendix A.10. The audit has no row on this box."
+  },
+  {
+    "schema": "schedule_d",
+    "pdf_field": "check1",
+    "producer": "derived:has_secured_debts",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check1",
+    "evidence": "Field index: check1 p1 line 1, 'Do any creditors have claims secured by your property?', options 'No. Check this box and submit this form to the court with your other schedules. You have nothing else to report on this form.' (no) and 'Yes. Fill in all of the information below.' (yes), sampled_ok. has_secured_debts is 'yes' when the filer saved a debt marked secured (is_secured, saved since step 2a). Owner's answer Q8 (DIG-80, DIG-69; step 2 spec §3, §6.3): the section Yes/No boxes are derived from the lists, Yes with rows and No without. Spec Appendix A.10. The audit has no row on this box."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "check7",
+    "producer": "derived:has_nonpriority_debts",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check7",
+    "evidence": "Field index: check7 p3 line 3, 'Do any creditors have nonpriority unsecured claims against you?', options 'No. You have nothing to report in this part. Submit this form to the court with your other schedules.' (no) and 'Yes' (yes), sampled_ok. has_nonpriority_debts is 'yes' when the filer saved a debt not marked secured. Until priority is asked (OQ-3), every unsecured debt counts as nonpriority and the priority lines stay blank (step 2 spec §6.1 B5). E/F check1, line 1's priority question, stays blank. Owner's answer Q8 (DIG-80, DIG-69; step 2 spec §3, §6.3): the section Yes/No boxes are derived from the lists, Yes with rows and No without. Spec Appendix A.10. The audit has no row on this box."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "Total_6f",
+    "producer": "derived:total_student_loans",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Total_6f",
+    "evidence": "Field index: Total_6f p6 line 6f, 'Student loans', column 'Total claims from Part 2 (Total claim)', sampled_ok. total_student_loans sums the unsecured debts of type student_loan; a student loan saved as secured is on Schedule D (Ruling T16-a: E/F is the unsecured schedule, and 6i, 6j - 6f, never goes below zero). 106Sum line 9d copies it. Step 2 spec §6.1 (totals before item rows, B5): the total prints once its inputs follow B2; the rows behind it arrive in step 3. An empty list prints 0.00 (Ruling T0-e). Spec §6.2 and Appendix A.10. The audit has no row on this box."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "Total_6i",
+    "producer": "derived:total_other_nonpriority",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Total_6i",
+    "evidence": "Field index: Total_6i p6 line 6i, 'Other. Add all other nonpriority unsecured claims. Write that amount here.', column 'Total claims from Part 2 (Total claim)', adjudicated. total_other_nonpriority is 6j - 6f: lines 6g and 6h are never asked, so every other unsecured debt is on 6i (spec Appendix E 8). Step 2 spec §6.1 (totals before item rows, B5): the total prints once its inputs follow B2; the rows behind it arrive in step 3. An empty list prints 0.00 (Ruling T0-e). Spec §6.2 and Appendix A.10. The audit has no row on this box."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "Total_6j",
+    "producer": "derived:total_nonpriority_unsecured",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Total_6j",
+    "evidence": "Field index: Total_6j p6 line 6j, 'Total. Add lines 6f through 6i.', column 'Total claims from Part 2 (Total claim)', adjudicated. total_nonpriority_unsecured sums every unsecured debt (spec §6.2: its is_priority filter is dropped). Until priority is asked (OQ-3), every unsecured debt counts as nonpriority and the priority lines stay blank (step 2 spec §6.1 B5). 106Sum line 3b copies it. Step 2 spec §6.1 (totals before item rows, B5): the total prints once its inputs follow B2; the rows behind it arrive in step 3. An empty list prints 0.00 (Ruling T0-e). Spec Appendix A.10. The audit has no row on this box."
+  },
+  {
+    "schema": "form_106sum",
+    "pdf_field": "9d",
+    "producer": "derived:total_student_loans",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "9d",
+    "evidence": "Field index: 9d p2 line 9d, 'Student loans. (Copy line 6f.)', column 'Total claim', sampled_ok. The rule is Schedule E/F line 6f's, so both forms print one figure. total_student_loans sums the unsecured debts of type student_loan; a student loan saved as secured is on Schedule D (Ruling T16-a: E/F is the unsecured schedule, and 6i, 6j - 6f, never goes below zero). Step 2 spec §6.1 (totals before item rows, B5): the total prints once its inputs follow B2; the rows behind it arrive in step 3. An empty list prints 0.00 (Ruling T0-e). Spec §6.4 and Appendix A.4. The audit has no row on this box."
+  },
+  {
+    "schema": "form_107",
+    "pdf_field": "Debtor 1",
+    "producer": "derived:full_name",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Debtor 1",
+    "evidence": "Field index: Debtor 1, 'Debtor 1', one field with a text widget in the header of each of pages 1-12 (basis header, so not a checked basis). Step 2 spec §6.4 and Appendix A.11: the header name prints on every page. The audit's 'Debtor 2' row, confirmed in verification.json, found this key on the spouse's box and names 'Debtor 1' as its correct target, so the moved-here join would assert this box too; the row is kept per Ruling T0-b (A.14 counts it ADD). The audit has no row on this box."
+  }
+]

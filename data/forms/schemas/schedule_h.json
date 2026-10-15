@@ -4,6 +4,44 @@
   "template_version": "e20d32f18c2d3f80c75079dc821372ddc1ecfc8be228ad93a636b67a0778bdb8",
   "fields": [
     {
+      "pdf_field": "Debtor 1",
+      "type": "text",
+      "source": "derived",
+      "page": 1,
+      "label": "Debtor 1",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": "full_name",
+      "ingest_key": null,
+      "binding": null,
+      "repeat": null,
+      "repeat_capacity": null,
+      "row": null,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "check1",
+      "type": "checkbox",
+      "source": "derived",
+      "choices": {
+        "yes": "/yes",
+        "no": "/no"
+      },
+      "page": 1,
+      "label": "Do you have any codebtors?",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": "has_codebtors",
+      "ingest_key": null,
+      "binding": null,
+      "repeat": null,
+      "repeat_capacity": null,
+      "row": null,
+      "legal_review": false
+    },
+    {
       "pdf_field": "Bankruptcy District Information",
       "type": "choice",
       "source": "derived",

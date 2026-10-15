@@ -72,3 +72,31 @@ class TestForm121Schema:
     def test_without_debtor(self, session):
         field_map = resolve(load_schema("form_121"), session)
         assert "Bankruptcy District Information" in field_map
+
+    def test_a_filer_with_a_social_security_number_is_never_marked_as_having_none(
+        self, session_with_ssn
+    ):
+        # Line 2's Debtor 1 box says "You do not have a Social Security number". The old
+        # rule would have ticked it for exactly the filers who have one (DIG-68).
+        field_map = resolve(load_schema("form_121"), session_with_ssn)
+        assert "Check Box1" not in field_map
+
+    def test_a_filer_without_a_social_security_number_is_marked_as_having_none(self, session):
+        # Only resolve() reaches this: the packet refuses Form 121 without a 9-digit
+        # number (registry._needs_ssn), so a generated packet never ticks the box.
+        DebtorInfo.objects.create(
+            session=session,
+            first_name="Jane",
+            middle_name="Marie",
+            last_name="Doe",
+            ssn="",
+            date_of_birth=date(1990, 1, 15),
+            phone="312-555-0100",
+            email="jane@example.com",
+            street_address="123 Main St",
+            city="Chicago",
+            state="IL",
+            zip_code="60601",
+        )
+        field_map = resolve(load_schema("form_121"), session)
+        assert field_map.get("Check Box1") == "/On"

@@ -10,6 +10,8 @@ from apps.districts.models import District
 from apps.eligibility.cmi import IncomeNotSplit
 from apps.forms.schema import load_schema
 from apps.forms.services.fill_resolver import resolve
+from apps.forms.services.pdf_filler import PDFFormFiller
+from apps.forms.tests.pdf_readback import read_widgets
 from apps.intake.models import (
     AssetInfo,
     DebtInfo,
@@ -122,8 +124,45 @@ class TestForm106SumSchema:
     def test_debt_totals(self, populated_session):
         field_map = resolve(load_schema("form_106sum"), populated_session)
         assert field_map["2"] == "50000.00"  # secured
-        assert field_map["3a"] == "5000.00"  # priority unsecured
-        assert field_map["3b"] == "10000.00"  # nonpriority unsecured
+        # Every unsecured debt, the IRS debt marked priority too: priority isn't asked (OQ-3).
+        assert field_map["3b"] == "15000.00"
+
+    def test_total_liabilities_print_on_3c_and_combined_monthly_income_on_line_4(
+        self, populated_session
+    ):
+        # 3c totals every debt, secured, unsecured and priority alike. Line 4 copies
+        # Schedule I line 12, which counts Social Security; line 8, CMI, never does (C1).
+        income = populated_session.income_info
+        income.monthly_social_security = Decimal("800.00")
+        income.save()
+        field_map = resolve(load_schema("form_106sum"), populated_session)
+        assert field_map["3c"] == "65000.00"  # 50000 + 10000 + 5000
+        assert field_map["4"] == "2000.00"  # 1200 wages + 800 Social Security
+        assert field_map["8"] == "1200.00"
+
+    def test_line_3a_stays_blank_until_the_filer_is_asked_which_debts_have_priority(
+        self, populated_session
+    ):
+        # The fixture's IRS debt is marked priority, but DigniFi never asks which debts
+        # have priority (OQ-3), and deciding it is a legal judgment: line 3a stays blank,
+        # and 3b counts the debt with the other unsecured ones (step 2 spec §6.1 B5).
+        field_map = resolve(load_schema("form_106sum"), populated_session)
+        assert "3a" not in field_map
+
+    def test_monthly_expenses_print_on_line_5_not_on_the_support_obligations_line(
+        self, populated_session
+    ):
+        # Line 5 copies Schedule J line 22c. Line 9a asks for domestic support
+        # obligations, which DigniFi never asks (step 2 spec §6.4).
+        field_map = resolve(load_schema("form_106sum"), populated_session)
+        assert field_map.get("5") == "1900.00"  # 1000 + 200 + 400 + 300
+        assert "9a" not in field_map
+
+    def test_line_6_says_the_filer_is_filing_under_chapter_7_11_or_13(self, populated_session):
+        # Every DigniFi filing is Chapter 7, so line 6's Yes ticks and its No stays off.
+        values = resolve(load_schema("form_106sum"), populated_session)
+        widgets = read_widgets(PDFFormFiller().fill("form_106sum", values))
+        assert sorted(w.state for w in widgets if w.full_name == "check6") == ["/Off", "/yes"]
 
     def test_cmi(self, populated_session):
         field_map = resolve(load_schema("form_106sum"), populated_session)

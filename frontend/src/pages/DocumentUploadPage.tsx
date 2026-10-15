@@ -16,7 +16,7 @@ const UPLOAD_AREAS = [
   {
     type: 'pay_stub',
     label: 'Pay stubs',
-    help: "Recent pay stubs from your job. Your employer's name and your pay before taxes are used for your income form (Schedule I).",
+    help: "Recent pay stubs from your job. Your employer's name is used for your income form (Schedule I).",
   },
   {
     type: 'credit_report',

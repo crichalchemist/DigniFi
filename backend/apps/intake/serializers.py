@@ -384,8 +384,10 @@ class FeeWaiverApplicationSerializer(serializers.ModelSerializer):
     monthly_take_home_pay = serializers.DecimalField(
         max_digits=10, decimal_places=2, min_value=Decimal("0")
     )
-    # The model allows empty, for rows saved before the question existed.
-    receives_noncash_assistance = serializers.BooleanField()
+    # The model allows empty, for rows saved before the question existed. allow_null makes a
+    # form-encoded request that leaves the answer out read as empty, not as No (DIG-193), and
+    # validate() refuses the empty answer.
+    receives_noncash_assistance = serializers.BooleanField(allow_null=True)
     # The "What kind?" answer: each kind is a non-blank line of text.
     benefit_types = serializers.ListField(
         child=serializers.CharField(max_length=255), required=False
@@ -417,12 +419,22 @@ class FeeWaiverApplicationSerializer(serializers.ModelSerializer):
     def validate(self, attrs):
         """A Yes to non-cash help needs "What kind?" answered, and a No keeps no kind.
 
-        A PATCH may send only one of the two, so the other is the stored one.
+        The answer is required on create and can't be sent empty: Form 103B line 3 prints a
+        stored answer as a sworn Yes or No (DIG-193). A PATCH may send only one of the two, so
+        the other is the stored one, which is empty on a row saved before the question; a kind
+        sent there needs a Yes first.
         """
+        required = self.fields["receives_noncash_assistance"].error_messages["required"]
+        if attrs.get("receives_noncash_assistance") is None and (
+            self.instance is None or "receives_noncash_assistance" in attrs
+        ):
+            raise serializers.ValidationError({"receives_noncash_assistance": [required]})
         answer = attrs.get(
             "receives_noncash_assistance",
             getattr(self.instance, "receives_noncash_assistance", None),
         )
+        if answer is None and attrs.get("benefit_types"):
+            raise serializers.ValidationError({"receives_noncash_assistance": [required]})
         if answer is False:
             attrs["benefit_types"] = []
         elif answer and not attrs.get("benefit_types", getattr(self.instance, "benefit_types", [])):

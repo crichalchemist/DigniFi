@@ -1,12 +1,13 @@
-"""Headline proof: the resolver fills every applicable form field."""
+"""Headline proof: the resolver fills a filer's forms from the constant, derived and asked sources they bind."""
 
 import pytest
 from django.core.management import call_command
 
 from apps.districts.models import District
+from apps.forms.registry import packet
 from apps.forms.schema import load_schema
 from apps.forms.services.fill_resolver import resolve
-from apps.intake.models import IntakeSession
+from apps.intake.models import FormAnswer, IntakeSession
 
 
 @pytest.fixture
@@ -18,19 +19,21 @@ def ilnd_fixture(db):
 
 @pytest.mark.django_db
 def test_resolved_fields_come_from_multiple_sources(ilnd_fixture):
-    """Resolver pulls from derivations, SOFA, constants — not just one source."""
+    """Resolver pulls from derivations, constants and the filer's answers — not just one source."""
     call_command("seed_demo_data", "--reset", persona="maria")
     session = IntakeSession.objects.filter(user__username="demo_maria").first()
+    # The seeds store no answers, so Maria gives one, as step 4 will ask her to.
+    FormAnswer.objects.create(
+        session=session, form_type="form_101", field_key="primarily_consumer_debts", value="yes"
+    )
 
-    out = resolve(load_schema("form_107"), session)
-    # Hand-authored map filled ~6 fields. Schema-driven resolver
-    # fills every applicable field with available data:
-    #   - constants: chapter, debtor_type
-    #   - derivations: full_name, family_size, district_name
-    #   - SOFA: prior income rows x N, creditor payment rows x M
-    #   - signature: 4 placeholder fields
-    assert len(out) >= 10, f"only {len(out)} fields resolved"
-    # Verify we have data from multiple resolvers
-    assert any(
-        v for v in out.values() if v
-    ), "all fields are empty — resolver may not be pulling source data"
+    # The kind of source behind every box Maria's packet prints.
+    sources = set()
+    for form_type in packet(session):
+        schema = load_schema(form_type)
+        out = resolve(schema, session)
+        sources |= {f.source for f in schema.fields if out.get(f.pdf_field)}
+    #   - constants: Chapter 7, the 106Sum and 103B ticks
+    #   - derivations: name, address, district, totals, income
+    #   - answers: whether her debts are primarily consumer debts
+    assert {"constant", "derived", "asked"} <= sources

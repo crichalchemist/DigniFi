@@ -2,19 +2,20 @@
 Factual/clerical derivations (DERIVATIONS) and section-applicability
 predicates (PREDICATES) for the fill engine.
 
-UPL boundary: these encode ONLY facts and clerical transforms. No legal
-conclusion (exemption-statute choice, debt priority, means-test verdict) may
-live here — those are ``asked`` + ``legal_review`` in the schema.
+UPL boundary: these encode ONLY facts and clerical transforms. A rule may
+apply a comparison the form itself spells out (122A-1 line 14: line 12b
+against line 13), but no rule may choose exemptions, decide priority, or
+answer anything the form leaves to the filer — those are ``asked`` +
+``legal_review`` in the schema.
 """
 
 from __future__ import annotations
 
 from collections.abc import Callable
-from datetime import date
 from decimal import Decimal
 from functools import reduce
 
-from apps.eligibility.cmi import IncomeNotSplit, current_monthly_income
+from apps.eligibility.cmi import IncomeNotSplit, current_monthly_income, is_above_median
 from apps.intake.models import IntakeSession
 
 _ZERO = Decimal("0.00")
@@ -117,21 +118,14 @@ def _total_secured_debts(session: IntakeSession) -> str:
     return _fmt(_sum_encrypted(qs, "amount_owed"))
 
 
-def _total_priority_unsecured(session: IntakeSession) -> str:
-    from apps.intake.models import DebtInfo
-
-    qs = DebtInfo.objects.filter(session=session, is_secured=False, is_priority=True)
-    return _fmt(_sum_encrypted(qs, "amount_owed"))
-
-
 def _total_nonpriority_unsecured(session: IntakeSession) -> str:
-    from apps.intake.models import DebtInfo
+    """
+    E/F line 6j and 106Sum 3b: every unsecured debt.
 
-    qs = DebtInfo.objects.filter(session=session, is_secured=False, is_priority=False)
-    return _fmt(_sum_encrypted(qs, "amount_owed"))
-
-
-def _total_unsecured_debts(session: IntakeSession) -> str:
+    Which debts have priority is never asked (OQ-3), and a rule may not decide it, so
+    every unsecured debt counts as nonpriority and the priority lines stay blank
+    (step 2 spec §6.1 B5).
+    """
     from apps.intake.models import DebtInfo
 
     qs = DebtInfo.objects.filter(session=session, is_secured=False)
@@ -143,20 +137,6 @@ def _total_debts(session: IntakeSession) -> str:
 
     qs = DebtInfo.objects.filter(session=session)
     return _fmt(_sum_encrypted(qs, "amount_owed"))
-
-
-def _total_bank_accounts(session: IntakeSession) -> str:
-    from apps.intake.models import AssetInfo
-
-    qs = AssetInfo.objects.filter(session=session, asset_type="bank_account")
-    return _fmt(_sum_encrypted(qs, "current_value"))
-
-
-def _total_retirement_accounts(session: IntakeSession) -> str:
-    from apps.intake.models import AssetInfo
-
-    qs = AssetInfo.objects.filter(session=session, asset_type="retirement_account")
-    return _fmt(_sum_encrypted(qs, "current_value"))
 
 
 def _total_other_assets(session: IntakeSession) -> str:
@@ -178,6 +158,7 @@ def _cmi(session: IntakeSession) -> str:
 
 
 def _total_monthly_expenses(session: IntakeSession) -> str:
+    """Schedule J line 22c, which 22a, 23b, 106Sum line 5 and 103B line 6 copy: 0.00 with no Expenses row."""
     from apps.intake.models import ExpenseInfo
 
     try:
@@ -188,45 +169,151 @@ def _total_monthly_expenses(session: IntakeSession) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Form 122A-1 means test derivations
+# Schedule A/B part totals, line 53, and the section questions of A/B, G and H
 # ---------------------------------------------------------------------------
 
 
-def _get_income_field(session: IntakeSession, field: str) -> Decimal:
-    try:
-        income_info = session.income_info
-        val = getattr(income_info, field, None)
-        if val is None:
-            return _ZERO
-        if isinstance(val, list):
-            return sum((Decimal(str(v)) for v in val), _ZERO) / Decimal(str(len(val)))
-        return Decimal(str(val))
-    except Exception:
-        return _ZERO
+def _total_vehicles(session: IntakeSession) -> str:
+    from apps.intake.models import AssetInfo
+
+    qs = AssetInfo.objects.filter(session=session, asset_type="vehicle")
+    return _fmt(_sum_encrypted(qs, "current_value"))
+
+
+def _total_household_items(session: IntakeSession) -> str:
+    from apps.intake.models import AssetInfo
+
+    qs = AssetInfo.objects.filter(session=session, asset_type="personal_property")
+    return _fmt(_sum_encrypted(qs, "current_value"))
+
+
+def _total_financial_assets(session: IntakeSession) -> str:
+    """Part 4, line 36: deposits (17) and retirement accounts (21), the only lines asked."""
+    from apps.intake.models import AssetInfo
+
+    qs = AssetInfo.objects.filter(
+        session=session, asset_type__in=("bank_account", "retirement_account")
+    )
+    return _fmt(_sum_encrypted(qs, "current_value"))
+
+
+def _other_asset_descriptions(session: IntakeSession) -> str:
+    """Line 53: the "Other" assets in the order the filer listed them (DIG-164)."""
+    from apps.intake.models import AssetInfo
+
+    # The model orders by encrypted value, so the filer's order is the id's.
+    qs = AssetInfo.objects.filter(session=session, asset_type="other").order_by("id")
+    return "; ".join(qs.values_list("description", flat=True))
+
+
+def _yes_if_any(rows) -> str:
+    """A section's Yes/No question (owner Q8): "yes" when the filer listed one, else "no"."""
+    return "yes" if rows.exists() else "no"
+
+
+# ---------------------------------------------------------------------------
+# Schedule E/F line 6 totals
+# ---------------------------------------------------------------------------
+
+
+def _total_student_loans(session: IntakeSession) -> str:
+    """
+    E/F line 6f and 106Sum 9d: the unsecured student loans.
+
+    A student loan saved as secured is on Schedule D, not E/F (Ruling T16-a).
+    """
+    from apps.intake.models import DebtInfo
+
+    qs = DebtInfo.objects.filter(session=session, is_secured=False, debt_type="student_loan")
+    return _fmt(_sum_encrypted(qs, "amount_owed"))
+
+
+def _total_other_nonpriority(session: IntakeSession) -> str:
+    """E/F line 6i, 6j - 6f: lines 6g and 6h are never asked, so 6i holds the rest."""
+    return _fmt(
+        Decimal(_total_nonpriority_unsecured(session)) - Decimal(_total_student_loans(session))
+    )
+
+
+# ---------------------------------------------------------------------------
+# Form 101 lines 18-20: estimated creditors, assets and liabilities
+# ---------------------------------------------------------------------------
+
+# (a range's top, its lowest figure). Each box's choices map the lowest figure to that
+# box's own spelling of the range, which differs between lines 19 and 20.
+_CREDITOR_RANGES = (
+    (49, "1"),
+    (99, "50"),
+    (199, "100"),
+    (999, "200"),
+    (5000, "1000"),
+    (10000, "5001"),
+    (25000, "10001"),
+    (50000, "25001"),
+    (100000, "50001"),
+)
+_AMOUNT_RANGES = (
+    (50000, "0"),
+    (100000, "50001"),
+    (500000, "100001"),
+    (1000000, "500001"),
+    (10000000, "1000001"),
+    (50000000, "10000001"),
+    (100000000, "50000001"),
+    (500000000, "100000001"),
+    (1000000000, "500000001"),
+    (10000000000, "1000000001"),
+    (50000000000, "10000000001"),
+)
+
+
+def _range(figure, ranges) -> str:
+    """
+    The lowest figure of the first range whose top `figure` doesn't pass, or "more".
+
+    Comparing with each range's top puts cents between two ranges in the higher one.
+    """
+    for top, lowest in ranges:
+        if figure <= top:
+            return lowest
+    return "more"
+
+
+def _creditor_count_range(session: IntakeSession) -> str:
+    from apps.intake.models import DebtInfo
+
+    count = DebtInfo.objects.filter(session=session).count()
+    return _range(count, _CREDITOR_RANGES) if count else ""
+
+
+def _total_assets_range(session: IntakeSession) -> str:
+    # No assets is the $0-$50,000 range, not a blank line.
+    return _range(Decimal(_total_assets(session)), _AMOUNT_RANGES)
+
+
+def _total_debts_range(session: IntakeSession) -> str:
+    return _range(Decimal(_total_debts(session)), _AMOUNT_RANGES)
+
+
+# ---------------------------------------------------------------------------
+# Form 122A-1 means test derivations
+# ---------------------------------------------------------------------------
 
 
 def _line1_wages(session: IntakeSession) -> str:
     return _income_amounts(session, "monthly_gross_wages", "monthly_tips", "monthly_overtime")
 
 
-def _line2_business_income(session: IntakeSession) -> str:
-    return _fmt(_get_income_field(session, "business_income"))
+def _line3_alimony(session: IntakeSession) -> str:
+    return _income_amounts(session, "monthly_alimony")
 
 
 def _line3_real_property_income(session: IntakeSession) -> str:
     return _income_amounts(session, "monthly_rental_income")
 
 
-def _line4_interest_dividends(session: IntakeSession) -> str:
-    return _fmt(_get_income_field(session, "interest_dividends"))
-
-
 def _line5a_pension_retirement(session: IntakeSession) -> str:
     return _income_amounts(session, "monthly_pension")
-
-
-def _line5b_social_security(session: IntakeSession) -> str:
-    return _fmt(_get_income_field(session, "social_security"))
 
 
 def _line6a_unemployment(session: IntakeSession) -> str:
@@ -241,36 +328,11 @@ def _line7_other_income(session: IntakeSession) -> str:
     return _income_amounts(session, "monthly_other_income")
 
 
-def _line8a_total_gross_income(session: IntakeSession) -> str:
-    total = sum(
-        (
-            _get_income_field(session, "wages_salaries_tips"),
-            _get_income_field(session, "business_income"),
-            _get_income_field(session, "real_property_income"),
-            _get_income_field(session, "interest_dividends"),
-            _get_income_field(session, "pension_retirement"),
-            _get_income_field(session, "social_security"),
-            _get_income_field(session, "unemployment_compensation"),
-            _get_income_field(session, "child_support_alimony"),
-            _get_income_field(session, "other_income"),
-        ),
-        _ZERO,
-    )
-    return _fmt(total)
-
-
-def _line10a_deductions(session: IntakeSession) -> str:
-    return _fmt(_get_income_field(session, "deductions"))
-
-
-def _line10b_total_deductions(session: IntakeSession) -> str:
-    return _fmt(_get_income_field(session, "total_deductions"))
-
-
-def _line10c_net_income(session: IntakeSession) -> str:
-    gross = Decimal(_line8a_total_gross_income(session))
-    deductions = Decimal(_line10b_total_deductions(session))
-    return _fmt(gross - deductions)
+def _other_income_label(session: IntakeSession) -> str:
+    """What the other income is, on 122A-1 line 10 and Schedule I 8h: named only above $0."""
+    income_info = getattr(session, "income_info", None)
+    other = None if income_info is None else income_info.monthly_other_income
+    return "Other income" if other is not None and other > 0 else ""
 
 
 def _line11_annualized_income(session: IntakeSession) -> str:
@@ -283,31 +345,26 @@ def _line12b_annualized_cmi(session: IntakeSession) -> str:
 
 
 def _line13a_median_income(session: IntakeSession) -> str:
-    from apps.districts.models import MedianIncome
-
-    try:
-        income_info = session.income_info
-        size = 1 + income_info.number_of_dependents
-        if income_info.marital_status in ("married_joint", "married_separate"):
-            size += 1
-    except Exception:
-        size = 1
-    median = (
-        MedianIncome.objects.filter(district=session.district).order_by("-effective_date").first()
-    )
-    if median is None:
-        return "0.00"
-    return _fmt(median.get_median_income(size))
+    """Line 13: the median the means test compared against (DIG-51), blank before it runs."""
+    means_test = getattr(session, "means_test", None)
+    if means_test is None:
+        return ""
+    return _fmt(means_test.median_income_threshold)
 
 
-def _line13b_annualized_income(session: IntakeSession) -> str:
-    return _line11_annualized_income(session)
+def _median_comparison(session: IntakeSession) -> str:
+    """
+    Line 14 and the page-1 result: line 12b against line 13, as the form says to compare.
 
-
-def _line13c_difference(session: IntakeSession) -> str:
-    annualized = Decimal(_line11_annualized_income(session))
-    median = Decimal(_line13a_median_income(session))
-    return _fmt(annualized - median)
+    The packet's comparison (exactly the median is below it, DIG-136), so the ticks always
+    agree with whether Form 122A-2 is filed. Blank before the means test runs.
+    """
+    means_test = getattr(session, "means_test", None)
+    if means_test is None:
+        return ""
+    if is_above_median(means_test.calculated_cmi, means_test.median_income_threshold):
+        return "above"
+    return "below"
 
 
 # ---------------------------------------------------------------------------
@@ -325,21 +382,30 @@ def _fee_waiver_household_size(session: IntakeSession) -> str:
 
 
 def _fee_waiver_monthly_income(session: IntakeSession) -> str:
+    """Line 2: the take-home pay the filer typed, blank if they never gave it (B2)."""
+    fw = getattr(session, "fee_waiver", None)
+    if fw is None or fw.monthly_take_home_pay is None:
+        return ""
+    return _fmt(Decimal(str(fw.monthly_take_home_pay)))
 
-    try:
-        fw = session.fee_waiver
-        return _fmt(Decimal(str(fw.monthly_income)))
-    except Exception:
-        return "0.00"
+
+def _fee_waiver_noncash_assistance(session: IntakeSession) -> str:
+    """Line 3: the filer's own yes or no, blank until they answer (DIG-193)."""
+    fw = getattr(session, "fee_waiver", None)
+    answer = None if fw is None else fw.receives_noncash_assistance
+    if answer is True:
+        return "yes"
+    if answer is False:
+        return "no"
+    return ""
 
 
-def _fee_waiver_monthly_expenses(session: IntakeSession) -> str:
-
-    try:
-        fw = session.fee_waiver
-        return _fmt(Decimal(str(fw.monthly_expenses)))
-    except Exception:
-        return "0.00"
+def _fee_waiver_benefit_types(session: IntakeSession) -> str:
+    """Line 3's "Describe": the kinds of help, joined as the fee-waiver page shows them."""
+    fw = getattr(session, "fee_waiver", None)
+    if fw is None or fw.receives_noncash_assistance is not True:
+        return ""
+    return ", ".join(fw.benefit_types)
 
 
 # ---------------------------------------------------------------------------
@@ -355,16 +421,17 @@ def _schedule_i_employer_debtor1(session: IntakeSession) -> str:
     return _safe_debtor_attr(session, "employer_name", "")
 
 
-def _schedule_i_gross_wages_debtor1(session: IntakeSession) -> str:
-    return _fmt(_get_income_field(session, "wages_salaries_tips"))
-
-
 def _schedule_i_net_wages_debtor1(session: IntakeSession) -> str:
     return _income_amounts(session, "monthly_gross_wages", "monthly_tips")
 
 
-def _schedule_i_self_employment_debtor1(session: IntakeSession) -> str:
-    return _fmt(_get_income_field(session, "business_income"))
+def _schedule_i_overtime_debtor1(session: IntakeSession) -> str:
+    return _income_amounts(session, "monthly_overtime")
+
+
+def _schedule_i_gross_income_debtor1(session: IntakeSession) -> str:
+    """Line 4, line 2 + line 3, and line 7 until payroll deductions are asked (step 3)."""
+    return _income_amounts(session, "monthly_gross_wages", "monthly_tips", "monthly_overtime")
 
 
 def _schedule_i_unemployment_debtor1(session: IntakeSession) -> str:
@@ -383,10 +450,6 @@ def _schedule_i_child_support_debtor1(session: IntakeSession) -> str:
     return _income_amounts(session, "monthly_child_support", "monthly_alimony")
 
 
-def _schedule_i_interest_debtor1(session: IntakeSession) -> str:
-    return _fmt(_get_income_field(session, "interest_dividends"))
-
-
 def _schedule_i_rental_debtor1(session: IntakeSession) -> str:
     return _income_amounts(session, "monthly_rental_income")
 
@@ -395,14 +458,29 @@ def _schedule_i_other_income_debtor1(session: IntakeSession) -> str:
     return _income_amounts(session, "monthly_other_income")
 
 
-def _schedule_i_total_deductions_debtor1(session: IntakeSession) -> str:
-    return _fmt(_get_income_field(session, "deductions"))
+def _schedule_i_other_income_total_debtor1(session: IntakeSession) -> str:
+    """Line 9, 8a through 8h: interest (8b) and other assistance (8f) are never asked."""
+    return _income_amounts(
+        session,
+        "monthly_rental_income",
+        "monthly_child_support",
+        "monthly_alimony",
+        "monthly_unemployment",
+        "monthly_social_security",
+        "monthly_pension",
+        "monthly_other_income",
+    )
 
 
-def _schedule_i_net_income_debtor1(session: IntakeSession) -> str:
-    gross = Decimal(_line8a_total_gross_income(session))
-    deductions = Decimal(_schedule_i_total_deductions_debtor1(session))
-    return _fmt(gross - deductions)
+def _schedule_i_income_total(session: IntakeSession) -> str:
+    """
+    Schedule I lines 10 and 12: all ten sources, Social Security included (C1), unlike CMI.
+
+    Line 10's spouse column and line 11 are never asked and count as zero (step 2 spec §6.1).
+    """
+    from apps.intake.models import IncomeInfo
+
+    return _income_amounts(session, *IncomeInfo.SOURCE_FIELDS)
 
 
 # ---------------------------------------------------------------------------
@@ -410,47 +488,55 @@ def _schedule_i_net_income_debtor1(session: IntakeSession) -> str:
 # ---------------------------------------------------------------------------
 
 
-def _get_expense_field(session: IntakeSession, field: str) -> Decimal:
-    try:
-        expense_info = session.expense_info
-        val = getattr(expense_info, field, None)
-        return Decimal(str(val)) if val is not None else _ZERO
-    except Exception:
-        return _ZERO
+def _expense_amount(session: IntakeSession, field: str) -> Decimal:
+    """An Expenses step amount, or $0 when the step was never saved."""
+    expense_info = getattr(session, "expense_info", None)
+    return _ZERO if expense_info is None else Decimal(str(getattr(expense_info, field)))
 
 
-def _schedule_j_total_expenses(session: IntakeSession) -> str:
+def _expense_line(session: IntakeSession, field: str) -> str:
+    """
+    An expense line prints only above $0 (step 2 spec §6.1, 6c option A).
 
-    try:
-        return _fmt(Decimal(str(session.expense_info.calculate_total_monthly_expenses())))
-    except Exception:
-        return "0.00"
+    An expense left empty is stored as $0, so $0 can't be told from "left blank".
+    """
+    amount = _expense_amount(session, field)
+    return _fmt(amount) if amount > 0 else ""
 
 
-def _schedule_j_total_income(session: IntakeSession) -> str:
-    return _fmt(Decimal(_cmi(session)))
+def _expense_label(session: IntakeSession, field: str, label: str) -> str:
+    """An "Other. Specify:" line's text, printed only when its amount prints (Q4)."""
+    return label if _expense_amount(session, field) > 0 else ""
+
+
+def _schedule_j_monthly_net_income(session: IntakeSession) -> str:
+    """
+    Line 23c, 23a - 23b: blank while 23a is, and below zero when expenses pass income.
+
+    23a is Schedule I line 12 and 23b is line 22c, so 23c is computed from those rules.
+    """
+    income = _schedule_i_income_total(session)
+    if income == "":
+        return ""
+    return _fmt(Decimal(income) - Decimal(_total_monthly_expenses(session)))
+
+
+def _schedule_j_joint_case(session: IntakeSession) -> str:
+    """
+    Line 1: "no" for an individual filing, blank for a joint one (DIG-177).
+
+    A joint filer still gets a single filer's packet, so line 1 says nothing for them.
+    """
+    debtor_info = getattr(session, "debtor_info", None)
+    if debtor_info is not None and debtor_info.filing_type == "individual":
+        return "no"
+    return ""
 
 
 def _means_test_disposable_income(session: IntakeSession) -> str:
     try:
         mt = session.means_test
         return _fmt(mt.disposable_income)
-    except Exception:
-        return "0.00"
-
-
-def _means_test_total_deductions(session: IntakeSession) -> str:
-    try:
-        mt = session.means_test
-        return _fmt(mt.total_allowable_expenses)
-    except Exception:
-        return "0.00"
-
-
-def _means_test_priority_debts(session: IntakeSession) -> str:
-    try:
-        mt = session.means_test
-        return _fmt(mt.priority_debts_monthly)
     except Exception:
         return "0.00"
 
@@ -475,9 +561,7 @@ DERIVATIONS: dict[str, Callable[[IntakeSession], str]] = {
     "chapter": lambda s: "7",
     "debtor_type": lambda s: "Individual",
     "district_name": lambda s: s.district.name,
-    "today_iso": lambda s: date.today().isoformat(),
     "ssn_formatted": _ssn_formatted,
-    "has_ssn_check": lambda s: "true" if _has_ssn(s) else "",
     "no_ssn_check": lambda s: "" if _has_ssn(s) else "true",
     "joint_filer_check": lambda s: (
         "true" if _form_answer_predicate(s, "joint_filer_gate") else ""
@@ -486,40 +570,56 @@ DERIVATIONS: dict[str, Callable[[IntakeSession], str]] = {
     "total_personal_property": _total_personal_property,
     "total_assets": _total_assets,
     "total_secured_debts": _total_secured_debts,
-    "total_priority_unsecured": _total_priority_unsecured,
     "total_nonpriority_unsecured": _total_nonpriority_unsecured,
-    "total_unsecured_debts": _total_unsecured_debts,
     "total_debts": _total_debts,
-    "total_bank_accounts": _total_bank_accounts,
-    "total_retirement_accounts": _total_retirement_accounts,
     "total_other_assets": _total_other_assets,
     "total_secured_claims": _total_secured_debts,
     "joint_filer_name": _full_name,
     "cmi": _cmi,
     "total_monthly_expenses": _total_monthly_expenses,
+    # Schedule A/B part totals, line 53, and the section questions of A/B, G and H
+    "total_vehicles": _total_vehicles,
+    "total_household_items": _total_household_items,
+    "total_financial_assets": _total_financial_assets,
+    "other_asset_descriptions": _other_asset_descriptions,
+    "has_real_property": lambda s: _yes_if_any(s.assets.filter(asset_type="real_property")),
+    "has_vehicles": lambda s: _yes_if_any(s.assets.filter(asset_type="vehicle")),
+    "has_bank_accounts": lambda s: _yes_if_any(s.assets.filter(asset_type="bank_account")),
+    "has_retirement_accounts": lambda s: _yes_if_any(
+        s.assets.filter(asset_type="retirement_account")
+    ),
+    "has_other_assets": lambda s: _yes_if_any(s.assets.filter(asset_type="other")),
+    "has_executory_contracts": lambda s: _yes_if_any(s.executory_contracts.all()),
+    "has_codebtors": lambda s: _yes_if_any(s.codebtors.all()),
+    # Schedules D and E/F: the section questions and E/F's line 6 totals
+    "has_secured_debts": lambda s: _yes_if_any(s.debts.filter(is_secured=True)),
+    # Every unsecured debt is nonpriority until priority is asked (OQ-3), as on line 6j.
+    "has_nonpriority_debts": lambda s: _yes_if_any(s.debts.filter(is_secured=False)),
+    "total_student_loans": _total_student_loans,
+    "total_other_nonpriority": _total_other_nonpriority,
+    # Form 101 lines 18-20
+    "creditor_count_range": _creditor_count_range,
+    "total_assets_range": _total_assets_range,
+    "total_debts_range": _total_debts_range,
     # Form 122A-1 means test derivations
     "line1_wages": _line1_wages,
-    "line2_business_income": _line2_business_income,
+    "line3_alimony": _line3_alimony,
     "line3_real_property_income": _line3_real_property_income,
-    "line4_interest_dividends": _line4_interest_dividends,
     "line5a_pension_retirement": _line5a_pension_retirement,
-    "line5b_social_security": _line5b_social_security,
     "line6a_unemployment": _line6a_unemployment,
     "line6b_child_support_alimony": _line6b_child_support_alimony,
     "line7_other_income": _line7_other_income,
-    "line8a_total_gross_income": _line8a_total_gross_income,
-    "line10a_deductions": _line10a_deductions,
-    "line10b_total_deductions": _line10b_total_deductions,
-    "line10c_net_income": _line10c_net_income,
-    "line11_annualized_income": _line11_annualized_income,
+    "other_income_label": _other_income_label,
     "line12b_annualized_cmi": _line12b_annualized_cmi,
     "line13a_median_income": _line13a_median_income,
-    "line13b_annualized_income": _line13b_annualized_income,
-    "line13c_difference": _line13c_difference,
+    "median_comparison": _median_comparison,
     # Form 103B fee waiver derivations
     "fee_waiver_household_size": _fee_waiver_household_size,
     "fee_waiver_monthly_income": _fee_waiver_monthly_income,
-    "fee_waiver_monthly_expenses": _fee_waiver_monthly_expenses,
+    # Line 6 is Schedule J line 22c: one figure on both forms
+    "fee_waiver_monthly_expenses": _total_monthly_expenses,
+    "fee_waiver_noncash_assistance": _fee_waiver_noncash_assistance,
+    "fee_waiver_benefit_types": _fee_waiver_benefit_types,
     # Schedule I income line item derivations
     "schedule_i_occupation_debtor1": _schedule_i_occupation_debtor1,
     "schedule_i_employer_debtor1": _schedule_i_employer_debtor1,
@@ -527,41 +627,42 @@ DERIVATIONS: dict[str, Callable[[IntakeSession], str]] = {
     "schedule_i_employer_city_debtor1": lambda s: _safe_debtor_attr(s, "employer_city", ""),
     "schedule_i_employer_state_debtor1": lambda s: _safe_debtor_attr(s, "employer_state", ""),
     "schedule_i_employer_zip_debtor1": lambda s: _safe_debtor_attr(s, "employer_zip", ""),
-    "schedule_i_gross_wages_debtor1": _schedule_i_gross_wages_debtor1,
     "schedule_i_net_wages_debtor1": _schedule_i_net_wages_debtor1,
-    "schedule_i_self_employment_debtor1": _schedule_i_self_employment_debtor1,
+    "schedule_i_overtime_debtor1": _schedule_i_overtime_debtor1,
+    "schedule_i_gross_income_debtor1": _schedule_i_gross_income_debtor1,
     "schedule_i_unemployment_debtor1": _schedule_i_unemployment_debtor1,
     "schedule_i_social_security_debtor1": _schedule_i_social_security_debtor1,
     "schedule_i_pension_debtor1": _schedule_i_pension_debtor1,
     "schedule_i_child_support_debtor1": _schedule_i_child_support_debtor1,
-    "schedule_i_interest_debtor1": _schedule_i_interest_debtor1,
     "schedule_i_rental_debtor1": _schedule_i_rental_debtor1,
     "schedule_i_other_income_debtor1": _schedule_i_other_income_debtor1,
-    "schedule_i_total_deductions_debtor1": _schedule_i_total_deductions_debtor1,
-    "schedule_i_net_income_debtor1": _schedule_i_net_income_debtor1,
+    "schedule_i_other_income_total_debtor1": _schedule_i_other_income_total_debtor1,
+    "schedule_i_income_total": _schedule_i_income_total,
     # Schedule J expense line item derivations
-    "schedule_j_rent_or_mortgage": lambda s: _fmt(_get_expense_field(s, "rent_or_mortgage")),
-    "schedule_j_utilities": lambda s: _fmt(_get_expense_field(s, "utilities")),
-    "schedule_j_home_maintenance": lambda s: _fmt(_get_expense_field(s, "home_maintenance")),
-    "schedule_j_food_and_groceries": lambda s: _fmt(_get_expense_field(s, "food_and_groceries")),
-    "schedule_j_childcare": lambda s: _fmt(_get_expense_field(s, "childcare")),
-    "schedule_j_clothing": lambda s: _fmt(_get_expense_field(s, "clothing")),
-    "schedule_j_medical_expenses": lambda s: _fmt(_get_expense_field(s, "medical_expenses")),
-    "schedule_j_vehicle_maintenance": lambda s: _fmt(_get_expense_field(s, "vehicle_maintenance")),
-    "schedule_j_vehicle_payment": lambda s: _fmt(_get_expense_field(s, "vehicle_payment")),
-    "schedule_j_vehicle_insurance": lambda s: _fmt(_get_expense_field(s, "vehicle_insurance")),
-    "schedule_j_insurance_not_deducted": lambda s: _fmt(
-        _get_expense_field(s, "insurance_not_deducted")
+    "schedule_j_rent_or_mortgage": lambda s: _expense_line(s, "rent_or_mortgage"),
+    "schedule_j_utilities": lambda s: _expense_line(s, "utilities"),
+    "schedule_j_utilities_label": lambda s: _expense_label(s, "utilities", "Utilities (combined)"),
+    "schedule_j_home_maintenance": lambda s: _expense_line(s, "home_maintenance"),
+    "schedule_j_food_and_groceries": lambda s: _expense_line(s, "food_and_groceries"),
+    "schedule_j_childcare": lambda s: _expense_line(s, "childcare"),
+    "schedule_j_clothing": lambda s: _expense_line(s, "clothing"),
+    "schedule_j_medical_expenses": lambda s: _expense_line(s, "medical_expenses"),
+    "schedule_j_vehicle_maintenance": lambda s: _expense_line(s, "vehicle_maintenance"),
+    "schedule_j_vehicle_payment": lambda s: _expense_line(s, "vehicle_payment"),
+    "schedule_j_vehicle_insurance": lambda s: _expense_line(s, "vehicle_insurance"),
+    "schedule_j_insurance_not_deducted": lambda s: _expense_line(s, "insurance_not_deducted"),
+    "schedule_j_insurance_label": lambda s: _expense_label(
+        s, "insurance_not_deducted", "Insurance (combined)"
     ),
-    "schedule_j_other_expenses": lambda s: _fmt(
-        _get_expense_field(s, "other_expenses") + _get_expense_field(s, "child_support_paid")
-    ),
-    "schedule_j_total_expenses": _schedule_j_total_expenses,
-    "schedule_j_total_income": _schedule_j_total_income,
+    "schedule_j_support_paid": lambda s: _expense_line(s, "child_support_paid"),
+    "schedule_j_other_expenses": lambda s: _expense_line(s, "other_expenses"),
+    "schedule_j_total_expenses": _total_monthly_expenses,
+    # Line 23a is Schedule I line 12: one figure on both forms
+    "schedule_j_total_income": _schedule_i_income_total,
+    "schedule_j_monthly_net_income": _schedule_j_monthly_net_income,
+    "schedule_j_joint_case": _schedule_j_joint_case,
     # Form 122A-2 means test expense deduction derivations
     "means_test_disposable_income": _means_test_disposable_income,
-    "means_test_total_deductions": _means_test_total_deductions,
-    "means_test_priority_debts": _means_test_priority_debts,
 }
 
 

@@ -1,4 +1,5 @@
 from decimal import Decimal
+from urllib.parse import urlencode
 
 import pytest
 from django.db import connection
@@ -351,6 +352,119 @@ def test_the_old_income_expense_and_benefit_answers_are_no_longer_written(setup)
     assert {"monthly_income", "monthly_expenses", "receives_public_benefits"}.isdisjoint(
         resp.json()
     )
+
+
+# ── An answer the filer never gave (DIG-193) ──────────────────────────
+#
+# Form 103B line 3 prints the stored answer as a sworn Yes or No, so the server stores one
+# only when the filer gave it, whatever the encoding, and keeps no kind of help without a Yes.
+
+ENCODINGS = ["json", "multipart", "urlencoded"]
+
+
+def _send(client, method, url, payload, encoding):
+    if encoding == "json":
+        return getattr(client, method)(url, payload, format="json")
+    # A form can't carry null: a question left unanswered is missing from the body.
+    form = {key: value for key, value in payload.items() if value is not None}
+    if encoding == "multipart":
+        return getattr(client, method)(url, form, format="multipart")
+    return getattr(client, method)(
+        url, urlencode(form, doseq=True), content_type="application/x-www-form-urlencoded"
+    )
+
+
+@pytest.mark.parametrize(
+    ("encoding", "sent"),
+    [
+        ("json", "left out"),
+        ("json", None),
+        ("multipart", "left out"),
+        ("multipart", ""),
+        ("urlencoded", "left out"),
+        ("urlencoded", ""),
+    ],
+)
+def test_an_application_that_does_not_answer_non_cash_help_is_refused(setup, encoding, sent):
+    client, session, _ = setup
+    payload = _application(session, receives_noncash_assistance=sent)
+    if sent == "left out":
+        del payload["receives_noncash_assistance"]
+
+    resp = _send(client, "post", "/api/intake/fee-waiver/", payload, encoding)
+
+    assert resp.status_code == 400
+    assert "receives_noncash_assistance" in resp.json()
+    assert not FeeWaiverApplication.objects.filter(session=session).exists()
+
+
+@pytest.mark.parametrize("encoding", ["multipart", "urlencoded"])
+@pytest.mark.parametrize(("answer", "kinds"), [(False, []), (True, ["SNAP (food stamps)"])])
+def test_a_form_encoded_application_keeps_the_answer_it_gives(setup, encoding, answer, kinds):
+    client, session, _ = setup
+    payload = _application(session, receives_noncash_assistance=answer, benefit_types=kinds)
+
+    resp = _send(client, "post", "/api/intake/fee-waiver/", payload, encoding)
+
+    assert resp.status_code == 201, resp.json()
+    fw = FeeWaiverApplication.objects.get(session=session)
+    assert (fw.receives_noncash_assistance, fw.benefit_types) == (answer, kinds)
+
+
+def _saved_before_the_question(session):
+    """An application saved before the page asked take-home pay and non-cash help."""
+    return FeeWaiverApplication.objects.create(
+        session=session, household_size=2, monthly_income=Decimal("1200.00")
+    )
+
+
+@pytest.mark.parametrize("encoding", ENCODINGS)
+def test_a_kind_of_help_needs_a_yes_on_an_application_saved_before_the_question(setup, encoding):
+    client, session, _ = setup
+    fw = _saved_before_the_question(session)
+
+    resp = _send(
+        client, "patch", f"/api/intake/fee-waiver/{fw.id}/", {"benefit_types": ["SNAP"]}, encoding
+    )
+
+    fw.refresh_from_db()
+    assert resp.status_code == 400
+    assert (fw.receives_noncash_assistance, fw.benefit_types) == (None, [])
+
+
+def test_an_application_saved_before_the_question_can_still_be_changed(setup):
+    client, session, _ = setup
+    fw = _saved_before_the_question(session)
+
+    resp = client.patch(f"/api/intake/fee-waiver/{fw.id}/", {"household_size": 4}, format="json")
+
+    fw.refresh_from_db()
+    assert resp.status_code == 200
+    assert (fw.household_size, fw.receives_noncash_assistance) == (4, None)
+
+
+@pytest.mark.parametrize(("encoding", "sent"), [("json", None), ("urlencoded", "")])
+def test_an_answer_given_cannot_be_taken_back_to_no_answer(setup, encoding, sent):
+    # The filer answered line 3; an empty answer would print it blank and leave the kind stored.
+    client, session, _ = setup
+    client.post(
+        "/api/intake/fee-waiver/",
+        _application(session, receives_noncash_assistance=True, benefit_types=["SNAP"]),
+        format="json",
+    )
+    fw = FeeWaiverApplication.objects.get(session=session)
+
+    resp = _send(
+        client,
+        "patch",
+        f"/api/intake/fee-waiver/{fw.id}/",
+        {"receives_noncash_assistance": sent},
+        encoding,
+    )
+
+    fw.refresh_from_db()
+    assert resp.status_code == 400
+    assert (fw.receives_noncash_assistance, fw.benefit_types) == (True, ["SNAP"])
 
 
 # ── Reading the application back by session (DIG-157) ─────────────────
