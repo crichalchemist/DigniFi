@@ -456,6 +456,30 @@ def _schedule_j_total_expenses(session: IntakeSession) -> str:
         return "0.00"
 
 
+def _schedule_j_monthly_net_income(session: IntakeSession) -> str:
+    """
+    Line 23c, 23a - 23b: blank while 23a is, and below zero when expenses pass income.
+
+    23a is Schedule I line 12 and 23b is line 22c, so 23c is computed from those rules.
+    """
+    income = _schedule_i_income_total(session)
+    if income == "":
+        return ""
+    return _fmt(Decimal(income) - Decimal(_schedule_j_total_expenses(session)))
+
+
+def _schedule_j_joint_case(session: IntakeSession) -> str:
+    """
+    Line 1: "no" for an individual filing, blank for a joint one (DIG-177).
+
+    A joint filer still gets a single filer's packet, so line 1 says nothing for them.
+    """
+    debtor_info = getattr(session, "debtor_info", None)
+    if debtor_info is not None and debtor_info.filing_type == "individual":
+        return "no"
+    return ""
+
+
 def _means_test_disposable_income(session: IntakeSession) -> str:
     try:
         mt = session.means_test
@@ -580,6 +604,8 @@ DERIVATIONS: dict[str, Callable[[IntakeSession], str]] = {
     "schedule_j_total_expenses": _schedule_j_total_expenses,
     # Line 23a is Schedule I line 12: one figure on both forms
     "schedule_j_total_income": _schedule_i_income_total,
+    "schedule_j_monthly_net_income": _schedule_j_monthly_net_income,
+    "schedule_j_joint_case": _schedule_j_joint_case,
     # Form 122A-2 means test expense deduction derivations
     "means_test_disposable_income": _means_test_disposable_income,
     "means_test_total_deductions": _means_test_total_deductions,

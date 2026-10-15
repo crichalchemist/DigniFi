@@ -468,5 +468,45 @@
     "status": "confirmed",
     "correct_target": "18",
     "evidence": "Field index: 18 p2 line 18, column 'Your expenses', 'Your payments of alimony, maintenance, and support that you did not report as deducted from your pay on line 5, Schedule I' (adjudicated). ExpenseInfo.child_support_paid is court-ordered support paid. The audit's verified row on 21 (wrong_value) says court-ordered support paid belongs on line 18, not in line 21's other expenses. Step 2 spec Appendix A.8, §6.1 and §6.2 (schedule_j_support_paid, blank at $0, 6c option A)."
+  },
+  {
+    "schema": "schedule_j",
+    "pdf_field": "check1",
+    "producer": "derived:schedule_j_joint_case",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check1",
+    "evidence": "Field index: check1 p1 line 1, 'Is this a joint case?', option 'No. Go to line 2.' (on_state 'no', export state /no; adjudicated); its other widget is 'Yes. Does Debtor 2 live in a separate household?' (on_state 'yes'). Not 'Check 1', the amended/supplemental box. DebtorInfo.filing_type 'individual' is a single filer's case. Step 2 spec Appendix A.8, §6.2 (schedule_j_joint_case: 'no' for an individual filing, blank for Joint) and §10: a joint filer still gets a single filer's packet, so line 1 stays blank for them (DIG-177). The audit lists check1 as unbound (schedule_j.unbound.json)."
+  },
+  {
+    "schema": "schedule_j",
+    "pdf_field": "22c",
+    "producer": "derived:schedule_j_total_expenses",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "22c",
+    "evidence": "Field index: 22c p3 line 22c, column 'Your expenses', 'Add line 22a and 22b. The result is your monthly expenses.' (adjudicated). 22b copies Debtor 2's expenses from Official Form 106J-2, which is never asked, so 22c is 22a: all 13 Expenses step amounts. Step 2 spec Appendix A.8, §6.1 (totals still print: Schedule J 22a and 22c) and Appendix C.3 (DIG-61). The audit's one row with this key is on 22a and targets 22a, so the moved-here join can't assert 22c; the audit lists 22c as unbound (schedule_j.unbound.json, DIG-61)."
+  },
+  {
+    "schema": "schedule_j",
+    "pdf_field": "23b",
+    "producer": "derived:schedule_j_total_expenses",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "23b",
+    "evidence": "Field index: 23b p3 line 23b, column 'Your expenses', 'Copy your monthly expenses from line 22c above.' (adjudicated): the same figure as 22c. Step 2 spec Appendix A.8 and Appendix C.3 (DIG-61). The audit's one row with this key is on 22a and targets 22a; the audit lists 23b as unbound (schedule_j.unbound.json, DIG-61)."
+  },
+  {
+    "schema": "schedule_j",
+    "pdf_field": "23c",
+    "producer": "derived:schedule_j_monthly_net_income",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "23c",
+    "evidence": "Field index: 23c p3 line 23c, column 'Your expenses', 'Subtract your monthly expenses from your monthly income. The result is your monthly net income.' (adjudicated): 23a (Schedule I line 12, schedule_i_income_total) minus 23b (line 22c). Step 2 spec Appendix A.8, §6.2 (schedule_j_monthly_net_income, 23a - 23b), Appendix B R4 (after 23a's new body) and Appendix C.3 (DIG-61); ruling T0-f: blank while 23a is blank, a negative result prints with a minus sign. The audit lists 23c as unbound (schedule_j.unbound.json, DIG-61)."
   }
 ]

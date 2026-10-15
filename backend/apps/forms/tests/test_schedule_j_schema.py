@@ -1,5 +1,6 @@
 """Schedule J: each expense prints on the line that asks for it, and only above $0."""
 
+from datetime import date
 from decimal import Decimal
 
 import pytest
@@ -8,7 +9,7 @@ from django.contrib.auth import get_user_model
 from apps.districts.models import District
 from apps.forms.schema import load_schema
 from apps.forms.services.fill_resolver import resolve
-from apps.intake.models import ExpenseInfo, IntakeSession
+from apps.intake.models import DebtorInfo, ExpenseInfo, IncomeInfo, IntakeSession
 
 User = get_user_model()
 
@@ -49,6 +50,8 @@ LINE_BY_EXPENSE = {
 }
 # Lines no expense belongs on, which the old bindings filled.
 VACATED = {"10", "14", "15a", "15b", "16", "17b", "17c", "20a"}
+# The 13 amounts above, added: 1 + 2 + 4 + ... + 4096.
+EXPENSE_TOTAL = "8191.00"
 
 
 @pytest.fixture
@@ -102,3 +105,95 @@ def test_support_paid_prints_on_line_18_and_never_on_line_21(session):
     printed = resolve(load_schema("schedule_j"), session)
 
     assert (printed.get("18"), printed.get("21")) == ("450.00", None)
+
+
+def test_monthly_expenses_print_on_22c_and_again_on_23b(session):
+    # 22c adds 22a and 22b (Debtor 2's separate household, never asked); 23b copies 22c.
+    ExpenseInfo.objects.create(session=session, **EXPENSES)
+
+    printed = resolve(load_schema("schedule_j"), session)
+
+    totals = ("22a", "22c", "23b")
+    assert {box: printed.get(box) for box in totals} == dict.fromkeys(totals, EXPENSE_TOTAL)
+
+
+def test_monthly_net_income_is_income_less_expenses(session):
+    # 23a copies Schedule I line 12, Social Security included (C1); 23c is 23a - 23b.
+    IncomeInfo.objects.create(
+        session=session,
+        marital_status="single",
+        monthly_gross_wages=Decimal("9000.00"),
+        monthly_social_security=Decimal("200.00"),
+    )
+    ExpenseInfo.objects.create(session=session, **EXPENSES)
+
+    printed = resolve(load_schema("schedule_j"), session)
+
+    assert {box: printed.get(box) for box in ("23a", "23b", "23c")} == {
+        "23a": "9200.00",
+        "23b": EXPENSE_TOTAL,
+        "23c": "1009.00",
+    }
+
+
+def test_a_month_that_runs_short_prints_net_income_below_zero(session):
+    # The form's own arithmetic: expenses above income leave a negative net income.
+    IncomeInfo.objects.create(
+        session=session, marital_status="single", monthly_gross_wages=Decimal("100.00")
+    )
+    ExpenseInfo.objects.create(session=session, rent_or_mortgage=Decimal("250.00"))
+
+    printed = resolve(load_schema("schedule_j"), session)
+
+    assert printed.get("23c") == "-150.00"
+
+
+@pytest.mark.parametrize("income_saved", [True, False])
+def test_net_income_stays_blank_until_income_is_given(session, income_saved):
+    # With no income given, 23a is blank and 23c has nothing to subtract from, so it is
+    # blank too, never the expenses as a loss. The expense total still prints.
+    if income_saved:  # the Income step was saved with every source left empty
+        IncomeInfo.objects.create(session=session, marital_status="single")
+    ExpenseInfo.objects.create(session=session, **EXPENSES)
+
+    printed = resolve(load_schema("schedule_j"), session)
+
+    assert {box: printed.get(box) for box in ("22c", "23a", "23b", "23c")} == {
+        "22c": EXPENSE_TOTAL,
+        "23a": None,
+        "23b": EXPENSE_TOTAL,
+        "23c": None,
+    }
+
+
+@pytest.mark.parametrize(
+    "filing_type,ticks",
+    [
+        ("individual", "/no"),
+        ("joint", None),
+        (None, None),  # the Debtor step was never saved
+    ],
+)
+def test_only_an_individual_filing_answers_no_to_is_this_a_joint_case(session, filing_type, ticks):
+    # A joint filer still gets a single filer's packet (DIG-177), so line 1 stays blank for
+    # them rather than say "No", and nothing ever ticks "Yes".
+    if filing_type is not None:
+        DebtorInfo.objects.create(
+            session=session,
+            first_name="Jane",
+            middle_name="",
+            last_name="Doe",
+            ssn="123-45-6789",
+            date_of_birth=date(1990, 1, 15),
+            phone="312-555-0100",
+            email="jane@example.com",
+            street_address="123 Main St",
+            city="Chicago",
+            state="IL",
+            zip_code="60601",
+            filing_type=filing_type,
+        )
+
+    printed = resolve(load_schema("schedule_j"), session)
+
+    assert printed.get("check1") == ticks
