@@ -22,13 +22,5 @@
     "case": "asked:sofa.prior_income[].source",
     "class": "wrong_box",
     "ticket": "DIG-77"
-  },
-  {
-    "form_type": "schedule_d",
-    "pdf_field": "undefined_27",
-    "tier": "2",
-    "case": "derived:total_secured_claims",
-    "class": "wrong_box",
-    "ticket": "DIG-69"
   }
 ]

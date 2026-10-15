@@ -4,11 +4,11 @@
   "template_version": "0d0a009235bf4c70d5dd89c80616712c8c681537e49f17d7473e7367d608428b",
   "fields": [
     {
-      "pdf_field": "undefined_27",
+      "pdf_field": "undefined_24",
       "type": "text",
       "source": "derived",
-      "page": 1,
-      "label": "undefined",
+      "page": 2,
+      "label": "Line 2: grand total of Column A, Amount of claim",
       "required": false,
       "conditional_on": null,
       "value": null,
@@ -30,6 +30,27 @@
       "conditional_on": null,
       "value": null,
       "rule": "full_name",
+      "ingest_key": null,
+      "binding": null,
+      "repeat": null,
+      "repeat_capacity": null,
+      "row": null,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "check1",
+      "type": "checkbox",
+      "source": "derived",
+      "choices": {
+        "yes": "/yes",
+        "no": "/no"
+      },
+      "page": 1,
+      "label": "Do any creditors have claims secured by your property?",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": "has_secured_debts",
       "ingest_key": null,
       "binding": null,
       "repeat": null,

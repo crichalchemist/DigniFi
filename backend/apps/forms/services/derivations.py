@@ -119,9 +119,16 @@ def _total_secured_debts(session: IntakeSession) -> str:
 
 
 def _total_nonpriority_unsecured(session: IntakeSession) -> str:
+    """
+    E/F line 6j and 106Sum 3b: every unsecured debt.
+
+    Which debts have priority is never asked (OQ-3), and a rule may not decide it, so
+    every unsecured debt counts as nonpriority and the priority lines stay blank
+    (step 2 spec §6.1 B5).
+    """
     from apps.intake.models import DebtInfo
 
-    qs = DebtInfo.objects.filter(session=session, is_secured=False, is_priority=False)
+    qs = DebtInfo.objects.filter(session=session, is_secured=False)
     return _fmt(_sum_encrypted(qs, "amount_owed"))
 
 
@@ -201,6 +208,30 @@ def _other_asset_descriptions(session: IntakeSession) -> str:
 def _yes_if_any(rows) -> str:
     """A section's Yes/No question (owner Q8): "yes" when the filer listed one, else "no"."""
     return "yes" if rows.exists() else "no"
+
+
+# ---------------------------------------------------------------------------
+# Schedule E/F line 6 totals
+# ---------------------------------------------------------------------------
+
+
+def _total_student_loans(session: IntakeSession) -> str:
+    """
+    E/F line 6f and 106Sum 9d: the unsecured student loans.
+
+    A student loan saved as secured is on Schedule D, not E/F (Ruling T16-a).
+    """
+    from apps.intake.models import DebtInfo
+
+    qs = DebtInfo.objects.filter(session=session, is_secured=False, debt_type="student_loan")
+    return _fmt(_sum_encrypted(qs, "amount_owed"))
+
+
+def _total_other_nonpriority(session: IntakeSession) -> str:
+    """E/F line 6i, 6j - 6f: lines 6g and 6h are never asked, so 6i holds the rest."""
+    return _fmt(
+        Decimal(_total_nonpriority_unsecured(session)) - Decimal(_total_student_loans(session))
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -567,6 +598,12 @@ DERIVATIONS: dict[str, Callable[[IntakeSession], str]] = {
     "has_other_assets": lambda s: _yes_if_any(s.assets.filter(asset_type="other")),
     "has_executory_contracts": lambda s: _yes_if_any(s.executory_contracts.all()),
     "has_codebtors": lambda s: _yes_if_any(s.codebtors.all()),
+    # Schedules D and E/F: the section questions and E/F's line 6 totals
+    "has_secured_debts": lambda s: _yes_if_any(s.debts.filter(is_secured=True)),
+    # Every unsecured debt is nonpriority until priority is asked (OQ-3), as on line 6j.
+    "has_nonpriority_debts": lambda s: _yes_if_any(s.debts.filter(is_secured=False)),
+    "total_student_loans": _total_student_loans,
+    "total_other_nonpriority": _total_other_nonpriority,
     # Form 101 lines 18-20
     "creditor_count_range": _creditor_count_range,
     "total_assets_range": _total_assets_range,

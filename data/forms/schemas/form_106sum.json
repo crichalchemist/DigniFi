@@ -230,6 +230,23 @@
       "repeat_capacity": null,
       "row": null,
       "legal_review": false
+    },
+    {
+      "pdf_field": "9d",
+      "type": "text",
+      "source": "derived",
+      "page": 2,
+      "label": "Student loans (Schedule E/F line 6f)",
+      "required": true,
+      "conditional_on": null,
+      "value": null,
+      "rule": "total_student_loans",
+      "ingest_key": null,
+      "binding": null,
+      "repeat": null,
+      "repeat_capacity": null,
+      "row": null,
+      "legal_review": false
     }
   ]
 }

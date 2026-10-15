@@ -758,5 +758,65 @@
     "status": "confirmed",
     "correct_target": "check1",
     "evidence": "Field index: check1 p1 line 1, 'Do you have any codebtors? (If you are filing a joint case, do not list either spouse as a codebtor.)', options No (no) and Yes (yes), adjudicated. has_codebtors is 'yes' when the filer saved a codebtor. Owner's answer Q8 (DIG-80, DIG-69; step 2 spec §3, §6.3): the section Yes/No boxes are derived from the lists, Yes with rows and No without. Spec Appendix A.10. The audit has no row on this box."
+  },
+  {
+    "schema": "schedule_d",
+    "pdf_field": "check1",
+    "producer": "derived:has_secured_debts",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check1",
+    "evidence": "Field index: check1 p1 line 1, 'Do any creditors have claims secured by your property?', options 'No. Check this box and submit this form to the court with your other schedules. You have nothing else to report on this form.' (no) and 'Yes. Fill in all of the information below.' (yes), sampled_ok. has_secured_debts is 'yes' when the filer saved a debt marked secured (is_secured, saved since step 2a). Owner's answer Q8 (DIG-80, DIG-69; step 2 spec §3, §6.3): the section Yes/No boxes are derived from the lists, Yes with rows and No without. Spec Appendix A.10. The audit has no row on this box."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "check7",
+    "producer": "derived:has_nonpriority_debts",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check7",
+    "evidence": "Field index: check7 p3 line 3, 'Do any creditors have nonpriority unsecured claims against you?', options 'No. You have nothing to report in this part. Submit this form to the court with your other schedules.' (no) and 'Yes' (yes), sampled_ok. has_nonpriority_debts is 'yes' when the filer saved a debt not marked secured. Until priority is asked (OQ-3), every unsecured debt counts as nonpriority and the priority lines stay blank (step 2 spec §6.1 B5). E/F check1, line 1's priority question, stays blank. Owner's answer Q8 (DIG-80, DIG-69; step 2 spec §3, §6.3): the section Yes/No boxes are derived from the lists, Yes with rows and No without. Spec Appendix A.10. The audit has no row on this box."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "Total_6f",
+    "producer": "derived:total_student_loans",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Total_6f",
+    "evidence": "Field index: Total_6f p6 line 6f, 'Student loans', column 'Total claims from Part 2 (Total claim)', sampled_ok. total_student_loans sums the unsecured debts of type student_loan; a student loan saved as secured is on Schedule D (Ruling T16-a: E/F is the unsecured schedule, and 6i, 6j - 6f, never goes below zero). 106Sum line 9d copies it. Step 2 spec §6.1 (totals before item rows, B5): the total prints once its inputs follow B2; the rows behind it arrive in step 3. An empty list prints 0.00 (Ruling T0-e). Spec §6.2 and Appendix A.10. The audit has no row on this box."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "Total_6i",
+    "producer": "derived:total_other_nonpriority",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Total_6i",
+    "evidence": "Field index: Total_6i p6 line 6i, 'Other. Add all other nonpriority unsecured claims. Write that amount here.', column 'Total claims from Part 2 (Total claim)', adjudicated. total_other_nonpriority is 6j - 6f: lines 6g and 6h are never asked, so every other unsecured debt is on 6i (spec Appendix E 8). Step 2 spec §6.1 (totals before item rows, B5): the total prints once its inputs follow B2; the rows behind it arrive in step 3. An empty list prints 0.00 (Ruling T0-e). Spec §6.2 and Appendix A.10. The audit has no row on this box."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "Total_6j",
+    "producer": "derived:total_nonpriority_unsecured",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Total_6j",
+    "evidence": "Field index: Total_6j p6 line 6j, 'Total. Add lines 6f through 6i.', column 'Total claims from Part 2 (Total claim)', adjudicated. total_nonpriority_unsecured sums every unsecured debt (spec §6.2: its is_priority filter is dropped). Until priority is asked (OQ-3), every unsecured debt counts as nonpriority and the priority lines stay blank (step 2 spec §6.1 B5). 106Sum line 3b copies it. Step 2 spec §6.1 (totals before item rows, B5): the total prints once its inputs follow B2; the rows behind it arrive in step 3. An empty list prints 0.00 (Ruling T0-e). Spec Appendix A.10. The audit has no row on this box."
+  },
+  {
+    "schema": "form_106sum",
+    "pdf_field": "9d",
+    "producer": "derived:total_student_loans",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "9d",
+    "evidence": "Field index: 9d p2 line 9d, 'Student loans. (Copy line 6f.)', column 'Total claim', sampled_ok. The rule is Schedule E/F line 6f's, so both forms print one figure. total_student_loans sums the unsecured debts of type student_loan; a student loan saved as secured is on Schedule D (Ruling T16-a: E/F is the unsecured schedule, and 6i, 6j - 6f, never goes below zero). Step 2 spec §6.1 (totals before item rows, B5): the total prints once its inputs follow B2; the rows behind it arrive in step 3. An empty list prints 0.00 (Ruling T0-e). Spec §6.4 and Appendix A.4. The audit has no row on this box."
   }
 ]
