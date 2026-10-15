@@ -268,5 +268,55 @@
     "status": "confirmed",
     "correct_target": "terrorism If necessary list other sources on a separate page and put the total below 1",
     "evidence": "Field index: this box p2 line 10 'Income from all other sources not listed above - source description, row 1' (adjudicated), beside its amount Debto1.Quest10A. Step 2 spec §5.5 table (other: 122A-1 line 10, \"Other income\"), §6.2 and Appendix E 5: the line 10 source box prints \"Other income\" when other income is above $0."
+  },
+  {
+    "schema": "form_122a1",
+    "pdf_field": "Debto1.Quest11",
+    "producer": "derived:cmi",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Debto1.Quest11",
+    "evidence": "Field index: Debto1.Quest11 p2 line 11, Column A (Debtor 1), 'Calculate your total current monthly income - add lines 2 through 10 for the column (monthly)' (adjudicated). Step 2 spec §6.1 (C1, two income totals): CMI, without Social Security, goes on 122A-1 lines 11-12b; lines 5 and 7 are never asked and count as zero. The audit's row on Quest8A names this box for the income total, under the old line8a_total_gross_income key, not cmi."
+  },
+  {
+    "schema": "form_122a1",
+    "pdf_field": "Quest11",
+    "producer": "derived:cmi",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Quest11",
+    "evidence": "Field index: Quest11 p2, one full name with two widgets: line 11, column Total, 'Total current monthly income (Column A + Column B) (monthly)', and line 12a, 'Copy your total current monthly income from line 11 (monthly; then multiply by 12)', both adjudicated. Both are monthly; only 12B is the year. Step 2 spec §6.1 (C1): CMI goes on 122A-1 lines 11-12b. The audit's row on this box judged the old line11_annualized_income binding, which printed CMI x 12."
+  },
+  {
+    "schema": "form_122a1",
+    "pdf_field": "13A",
+    "producer": "derived:state",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "13A",
+    "evidence": "Field index: 13A p2 line 13 'Fill in the state in which you live.' (adjudicated). Step 2 spec §6.4 (122A-1: line 13's state) and Appendix B chain d: 13A takes derived:state; its old median binding moves to 13C, where the audit's verified row for 13A places it."
+  },
+  {
+    "schema": "form_122a1",
+    "pdf_field": "14a",
+    "producer": "derived:median_comparison",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "14a",
+    "evidence": "Field index: 14a p2, one full name with two widgets, 'How do the lines compare?' (adjudicated): line 14a, state /12b less or equal to 13, 'Line 12b is less than or equal to line 13. On the top of page 1, check box 1'; line 14b, state /12b more than 13, 'Line 12b is more than line 13. On the top of page 1, check box 2'. Owner's answer Q5 (DIG-65; step 2 spec §3, §6.3): tick line 14 and the page-1 box from line 12b against line 13; at or below the median is below (Q2, DIG-136)."
+  },
+  {
+    "schema": "form_122a1",
+    "pdf_field": "CheckBox1",
+    "producer": "derived:median_comparison",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "CheckBox1",
+    "evidence": "Field index: CheckBox1 p1, three widgets (adjudicated): top box 1, state /No Abuse, 'There is no presumption of abuse.'; top box 2, state /Presumption of abuse applies, 'The calculation to determine if a presumption of abuse applies will be made under Chapter 7 Means Test Calculation (Official Form 122A-2).'; top box 3, state /Does not apply (qualified military service). Owner's answer Q5 (DIG-65; step 2 spec §3, §6.3): at or below the median, box 1; above, box 2; box 3 is never ticked."
   }
 ]

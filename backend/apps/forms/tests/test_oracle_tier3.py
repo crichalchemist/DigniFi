@@ -116,7 +116,6 @@ EXPECTED = {
         "form_122a1": {
             "Debto1.Quest7": "",
             "Debto1.Quest9": "0.00",
-            "Debto1.Quest11": "12000.00",
             "Quest11": "12000.00",
             "12B": "144000.00",
             "13B": "4",
@@ -148,7 +147,6 @@ EXPECTED = {
         "form_122a1": {
             "Debto1.Quest7": "",
             "Debto1.Quest9": "0.00",
-            "Debto1.Quest11": "3500.00",
             "Quest11": "3500.00",
             "12B": "42000.00",
             "13B": "2",

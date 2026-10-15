@@ -2,9 +2,11 @@
 Factual/clerical derivations (DERIVATIONS) and section-applicability
 predicates (PREDICATES) for the fill engine.
 
-UPL boundary: these encode ONLY facts and clerical transforms. No legal
-conclusion (exemption-statute choice, debt priority, means-test verdict) may
-live here — those are ``asked`` + ``legal_review`` in the schema.
+UPL boundary: these encode ONLY facts and clerical transforms. A rule may
+apply a comparison the form itself spells out (122A-1 line 14: line 12b
+against line 13), but no rule may choose exemptions, decide priority, or
+answer anything the form leaves to the filer — those are ``asked`` +
+``legal_review`` in the schema.
 """
 
 from __future__ import annotations
@@ -14,7 +16,7 @@ from datetime import date
 from decimal import Decimal
 from functools import reduce
 
-from apps.eligibility.cmi import IncomeNotSplit, current_monthly_income
+from apps.eligibility.cmi import IncomeNotSplit, current_monthly_income, is_above_median
 from apps.intake.models import IntakeSession
 
 _ZERO = Decimal("0.00")
@@ -325,27 +327,26 @@ def _line12b_annualized_cmi(session: IntakeSession) -> str:
 
 
 def _line13a_median_income(session: IntakeSession) -> str:
-    from apps.districts.models import MedianIncome
-
-    try:
-        income_info = session.income_info
-        size = 1 + income_info.number_of_dependents
-        if income_info.marital_status in ("married_joint", "married_separate"):
-            size += 1
-    except Exception:
-        size = 1
-    median = (
-        MedianIncome.objects.filter(district=session.district).order_by("-effective_date").first()
-    )
-    if median is None:
-        return "0.00"
-    return _fmt(median.get_median_income(size))
+    """Line 13: the median the means test compared against (DIG-51), blank before it runs."""
+    means_test = getattr(session, "means_test", None)
+    if means_test is None:
+        return ""
+    return _fmt(means_test.median_income_threshold)
 
 
-def _line13c_difference(session: IntakeSession) -> str:
-    annualized = Decimal(_line11_annualized_income(session))
-    median = Decimal(_line13a_median_income(session))
-    return _fmt(annualized - median)
+def _median_comparison(session: IntakeSession) -> str:
+    """
+    Line 14 and the page-1 result: line 12b against line 13, as the form says to compare.
+
+    The packet's comparison (exactly the median is below it, DIG-136), so the ticks always
+    agree with whether Form 122A-2 is filed. Blank before the means test runs.
+    """
+    means_test = getattr(session, "means_test", None)
+    if means_test is None:
+        return ""
+    if is_above_median(means_test.calculated_cmi, means_test.median_income_threshold):
+        return "above"
+    return "below"
 
 
 # ---------------------------------------------------------------------------
@@ -556,10 +557,9 @@ DERIVATIONS: dict[str, Callable[[IntakeSession], str]] = {
     "line6b_child_support_alimony": _line6b_child_support_alimony,
     "line7_other_income": _line7_other_income,
     "other_income_label": _other_income_label,
-    "line11_annualized_income": _line11_annualized_income,
     "line12b_annualized_cmi": _line12b_annualized_cmi,
     "line13a_median_income": _line13a_median_income,
-    "line13c_difference": _line13c_difference,
+    "median_comparison": _median_comparison,
     # Form 103B fee waiver derivations
     "fee_waiver_household_size": _fee_waiver_household_size,
     "fee_waiver_monthly_income": _fee_waiver_monthly_income,
