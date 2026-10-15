@@ -1,1 +1,72 @@
-[]
+[
+  {
+    "schema": "form_101",
+    "pdf_field": "Debtor1.ZIP Code_2",
+    "producer": "asked:answer:form_101.mailing_zip",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Debtor1.ZIP Code_2",
+    "evidence": "Field index: Debtor1.ZIP Code_2 p2 line 5 'If your mailing address is different from the one above (mailing address): ZIP Code' (adjudicated). The audit's own row on this box says the residence ZIP doesn't belong here, and its confirmed rows on Debtor2.ZIP and ZIP Code_4 name this box for the mailing_zip answer. Owner's decision 6d (step 2 spec Appendix E 2, §6.4): the mailing ZIP reads the mailing answer, like the street, city and state beside it."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "Check Box20",
+    "producer": "constant:yes",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Check Box20",
+    "evidence": "Field index: Check Box20 p7 line 17 'Are you filing under Chapter 7?', states /No and /Yes. Step 2 spec §6.4: line 17 is Yes; every DigniFi filing is Chapter 7."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "Check Box21",
+    "producer": "derived:creditor_count_range",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Check Box21",
+    "evidence": "Field index: Check Box21 p7 line 18 'How many creditors do you estimate that you owe?', ten states from /1-49 to /More than 100000. Step 2 spec §6.2 and §6.4: lines 18-20 tick their ranges; creditor_count_range buckets the number of debts in the intake and is blank with none."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "Check Box22",
+    "producer": "derived:total_assets_range",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Check Box22",
+    "evidence": "Field index: Check Box22 p7 line 19 'How much do you estimate your assets to be worth?', twelve states from /0-50000 to /More than 50000000000; this line spells the $100M range /100000000-500000000. Step 2 spec §6.1 (B5) and §6.2: total_assets_range buckets the total of every asset, the figure 106Sum line 1c prints."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "Check Box23",
+    "producer": "derived:total_debts_range",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Check Box23",
+    "evidence": "Field index: Check Box23 p7 line 20 'How much do you estimate your liabilities to be?', twelve states from /0-50000 to /More than 50000000000; this line spells the $100M range /100000001-500000000. Step 2 spec §6.1 (B5) and §6.2: total_debts_range buckets the total of every debt (total_debts)."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "Debtor1.Name",
+    "producer": "derived:full_name",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Debtor1.Name",
+    "evidence": "Field index: Debtor1.Name 'Running header: Debtor 1 (First Name Middle Name Last Name)', one field with a widget on each of pages 2-9 (header). Step 2 spec §6.4: the header name prints on pages 2-9."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "Debtor1.Contact phone_2",
+    "producer": "derived:phone",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Debtor1.Contact phone_2",
+    "evidence": "Field index: Debtor1.Contact phone_2 p9 Part 7 'For you if you are filing this bankruptcy without an attorney: Contact phone' (adjudicated). The audit's confirmed note on this box: the debtor's own phone, which the phone rule gives; the preparer's phone belongs on Form 119. Step 2 spec §6.4: Contact phone gets the phone, and Cell phone stays blank because the wizard never asks whether the number is a cell."
+  }
+]

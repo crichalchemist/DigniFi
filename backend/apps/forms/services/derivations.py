@@ -188,6 +188,66 @@ def _total_monthly_expenses(session: IntakeSession) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Form 101 lines 18-20: estimated creditors, assets and liabilities
+# ---------------------------------------------------------------------------
+
+# (a range's top, its lowest figure). Each box's choices map the lowest figure to that
+# box's own spelling of the range, which differs between lines 19 and 20.
+_CREDITOR_RANGES = (
+    (49, "1"),
+    (99, "50"),
+    (199, "100"),
+    (999, "200"),
+    (5000, "1000"),
+    (10000, "5001"),
+    (25000, "10001"),
+    (50000, "25001"),
+    (100000, "50001"),
+)
+_AMOUNT_RANGES = (
+    (50000, "0"),
+    (100000, "50001"),
+    (500000, "100001"),
+    (1000000, "500001"),
+    (10000000, "1000001"),
+    (50000000, "10000001"),
+    (100000000, "50000001"),
+    (500000000, "100000001"),
+    (1000000000, "500000001"),
+    (10000000000, "1000000001"),
+    (50000000000, "10000000001"),
+)
+
+
+def _range(figure, ranges) -> str:
+    """
+    The lowest figure of the first range whose top `figure` doesn't pass, or "more".
+
+    Comparing with each range's top puts cents between two ranges in the higher one.
+    """
+    for top, lowest in ranges:
+        if figure <= top:
+            return lowest
+    return "more"
+
+
+def _creditor_count_range(session: IntakeSession) -> str:
+    from apps.intake.models import DebtInfo
+
+    count = DebtInfo.objects.filter(session=session).count()
+    return _range(count, _CREDITOR_RANGES) if count else ""
+
+
+def _total_assets_range(session: IntakeSession) -> str:
+    # No assets is the $0-$50,000 range, not a blank line.
+    return _range(Decimal(_total_assets(session)), _AMOUNT_RANGES)
+
+
+def _total_debts_range(session: IntakeSession) -> str:
+    return _range(Decimal(_total_debts(session)), _AMOUNT_RANGES)
+
+
+# ---------------------------------------------------------------------------
 # Form 122A-1 means test derivations
 # ---------------------------------------------------------------------------
 
@@ -497,6 +557,10 @@ DERIVATIONS: dict[str, Callable[[IntakeSession], str]] = {
     "joint_filer_name": _full_name,
     "cmi": _cmi,
     "total_monthly_expenses": _total_monthly_expenses,
+    # Form 101 lines 18-20
+    "creditor_count_range": _creditor_count_range,
+    "total_assets_range": _total_assets_range,
+    "total_debts_range": _total_debts_range,
     # Form 122A-1 means test derivations
     "line1_wages": _line1_wages,
     "line2_business_income": _line2_business_income,
