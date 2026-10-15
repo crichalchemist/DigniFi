@@ -21,8 +21,8 @@
 
 ### Authentication Data
 
-- Passwords (Argon2 hashed via Django)
-- Session tokens (Redis or secure cookies)
+- Passwords (PBKDF2-SHA256 hashed via Django)
+- Admin session IDs (database-backed, used by the Django admin and /metrics/; HttpOnly cookie, Secure in production)
 - JWT tokens (short-lived, HttpOnly)
 
 ## Current Implementation
@@ -33,17 +33,22 @@
 
 **Implementation:**
 
-- Custom `EncryptedCharField` and `EncryptedDecimalField` in `backend/apps/intake/fields.py`
+- `EncryptedCharField` and `EncryptedTextField` from `django-encrypted-model-fields`, plus a custom `EncryptedDecimalField` in `backend/apps/intake/fields.py`
 - Encryption keys stored in environment variable `FIELD_ENCRYPTION_KEY`
 - Never commit encryption keys to git
 
 **Encrypted Models:**
 
 - `DebtorInfo.ssn` - Social Security Number
-- `IncomeInfo` - All income amounts
-- `ExpenseInfo` - All expense amounts
-- `AssetInfo.current_value` - Asset valuations
-- `DebtInfo.amount_owed`, `DebtInfo.creditor_name` - Debt details
+- `AssetInfo.current_value`, `amount_owed`, `account_number` - Asset values and account numbers
+- `DebtInfo.amount_owed`, `DebtInfo.account_number` - Debt details
+- `FeeWaiverApplication` `monthly_income`, `monthly_expenses`, `monthly_take_home_pay` - Fee waiver amounts
+- `SOFAPriorIncome.gross_amount`, `SOFACreditorPayment.total_paid` - Financial affairs amounts
+- `MeansTest.calculation_details` - Means test working
+- `GeneratedForm.field_values` - Resolved form values
+- `OCRResult.extracted_data` - Fields read from uploaded documents
+
+**Not encrypted (among others):** `IncomeInfo` and `ExpenseInfo` amounts, `MeansTest` amounts (`calculated_cmi`, `disposable_income` and the rest), `IngestedAggregate.value` (pay-stub gross pay), `DebtInfo.creditor_name` and `monthly_payment`, `SOFACreditorPayment.creditor_name`, `SOFAPriorIncome.source`, `AssetInfo.description`
 
 ### Database Security
 
@@ -107,8 +112,7 @@
 **Log Redaction:**
 
 - No PII values in logs (only masked/hashed identifiers)
-- SSN logged as "XXX-XX-1234" format
-- Dollar amounts logged as ranges, not exact values
+- Request rows hold method, path, status code and IP; the frontend's analytics events add session id, form type, step timings and survey answers (some free text). None of these events has an SSN or dollar-amount field.
 
 ## Encryption Key Management
 
@@ -191,7 +195,7 @@ python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().d
 **Right to Access:**
 
 - Users can download all their data (JSON export)
-- API endpoint: `GET /api/intake/sessions/{id}/export/`
+- API endpoint: none yet (no export action exists)
 
 **Right to Deletion:**
 
@@ -202,7 +206,7 @@ python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().d
 **Right to Correction:**
 
 - Users can edit all intake data before form generation
-- No data correction after forms are generated (filed with court)
+- Intake data stays editable after forms are generated; a form marked filed keeps the answers it was filed with
 
 ## Compliance
 
@@ -213,7 +217,7 @@ python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().d
 **Requirements:**
 
 - Safeguards Rule: Implement data security program (✓ Field encryption, audit logs)
-- Privacy Rule: Privacy policy explaining data use (✓ Privacy Policy published)
+- Privacy Rule: Privacy policy explaining data use (⚠️ only a short privacy section in the Terms)
 - Pretexting Rule: Prevent identity theft (✓ Authentication required for all access)
 
 ### CCPA/CPRA (California Privacy Rights)
@@ -222,10 +226,10 @@ python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().d
 
 **Requirements:**
 
-- Right to know what data is collected (✓ Privacy Policy)
-- Right to deletion (✓ Account deletion API)
+- Right to know what data is collected (⚠️ not yet: the Terms do not list it)
+- Right to deletion (⚠️ session delete API only; no account deletion yet)
 - Right to opt-out of data sales (N/A - we don't sell data)
-- Privacy policy disclosure (✓)
+- Privacy policy disclosure (⚠️ only a short privacy section in the Terms)
 
 ### State Breach Notification Laws
 
@@ -244,12 +248,12 @@ python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().d
 
 ### Generated PDFs (Current MVP)
 
-**Storage Location:** Local filesystem (`/app/generated_forms/` in Docker)
+**Storage Location:** none. Each form's values are kept encrypted in `GeneratedForm.field_values`, and the PDF is filled on each download.
 
 **Security Limitations:**
 
-- Not encrypted at rest (relies on filesystem encryption)
-- No access logging for file reads
+- No generated PDF is stored; the form values are encrypted at rest (field-level)
+- Each download is recorded in the audit log
 - Suitable for internal clinic network only
 
 **Deletion:** Auto-deleted after 22 days along with user data

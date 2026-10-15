@@ -72,7 +72,7 @@ For legal advice about your specific situation, consult a licensed attorney.
    - Provide privacy policy to users
    - Explain what data is collected and why
    - Allow opt-out of data sharing (if applicable)
-   - **DigniFi Status:** ✅ Privacy policy published
+   - **DigniFi Status:** ⚠️ Privacy policy not published yet (only a short privacy section in the Terms)
 
 2. **Safeguards Rule:**
 
@@ -115,8 +115,8 @@ For legal advice about your specific situation, consult a licensed attorney.
 
 **DigniFi Implementation:**
 
-- ✅ Privacy policy explains data collection
-- ✅ Account deletion API endpoint
+- ⚠️ Privacy policy explains data collection (not yet: only a short privacy section in the Terms, which does not list the data collected)
+- ⚠️ Account deletion API endpoint (not yet: only `DELETE /api/intake/sessions/{id}/`, which no screen calls)
 - ✅ No data sales (not applicable)
 - ✅ Users can edit intake data
 - ✅ No price discrimination
@@ -196,7 +196,7 @@ For legal advice about your specific situation, consult a licensed attorney.
 **DigniFi Implementation:**
 
 - Automatic fee waiver calculation based on income
-- Form 103B generated if eligible
+- Form 103B joins the packet once the filer submits the fee-waiver application
 - Disclaimers that waiver is not guaranteed
 
 ## Data Retention & Destruction
@@ -383,7 +383,7 @@ DigniFi Security Team
 - ✅ UPL compliance (disclaimers, audit logging)
 - ✅ Field-level PII encryption
 - ✅ Basic breach notification plan
-- ✅ Privacy policy published
+- ⚠️ Privacy policy published (not yet: only a short privacy section in the Terms)
 
 ### Short-term (3-6 Months)
 

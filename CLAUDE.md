@@ -6,7 +6,7 @@
 
 ```bash
 docker compose up                              # Start all 3 services (db, backend, frontend)
-docker compose exec backend python -m pytest    # Backend tests (uses sqlite :memory:, no postgres needed)
+docker compose exec backend python -m pytest --ds=config.settings.test    # Backend tests (sqlite :memory:, no postgres needed)
 docker compose exec backend python manage.py migrate
 docker compose exec backend python manage.py loaddata ilnd_2025_data   # Required before seed
 docker compose exec backend python manage.py seed_demo_data            # Loads 5 AI personas
@@ -32,7 +32,7 @@ cd backend && ruff check . --fix               # Backend lint (pinned ruff==0.8.
 - **SSN on forms** — Form 101's `Debtor1.SSNum` gets the last 4 digits from the `ssn_last_4` derivation; the full SSN appears only on Form 121.
 - **Means test units** — CMI is monthly, Census median is annual. `MeansTest.calculate()` annualizes CMI ×12 per § 707(b)(7). The original bug passed everyone.
 - **GenerateAll vs single** — `/generate_all` returns `{generated, errors}`; single returns `{form, message}`. A refusal of the whole call is `{error}` with no `form_type`: Generate All for an unfinished intake (422), and Generate All or a completed intake's packet list for income not entered by source (422) or missing median data (500). `generate_all` covers only the packet and deletes the rows of unfiled forms that no longer apply. A form marked filed keeps its stored answers, even after it leaves the packet (DIG-155): `generate_all` leaves it untouched and returns it in `generated`, in its packet position, or after the packet's forms once it has left the packet; its download fills from its stored `field_values` without the packet check; `generate` and `regenerate` return 422 for it, but only after the completion check and the means test, whose refusal comes first. `GET /api/forms/packet/?session=<id>` returns `{session, form_types}` in filing order, and the dashboard renders from it, reloads it after every Generate All, and shows a filed form outside it as "Filed, no longer in your current packet".
-- **Schemas are checked at startup** — `apps/forms/checks.py` validates all 17 schemas against the field index (forms.E001–E007: template hash, full names, widget types, export states, `/Opt` values, duplicate bindings, TBD). `manage.py check`, `runserver` and `migrate` (so the Heroku release) fail on a bad schema; pytest runs no system checks, `test_checks.py` does. A checkbox or radio binding carries `choices` (answer → export state): `{"true": state}` is one box. Any other map takes only its own keys: a rule or answer feeding it must return one of them or `""` (blank), and any other value raises `UnmappedChoice`, a 422 in plain words. `{}` prints nothing, and tier 1's `test_every_checkbox_binding_maps_its_answers_to_a_box` fails on it.
+- **Schemas are checked at startup** — `apps/forms/checks.py` validates all 17 schemas against the field index (forms.E001–E007: missing schema or index, template hash, full names, widget types and choices, export states and `/Opt` values, duplicate bindings, TBD sources and unknown rules, predicates, namespaces or repeat capacity). `manage.py check`, `runserver` and `migrate` (so the Heroku release) fail on a bad schema; pytest runs no system checks, `test_checks.py` does. A checkbox or radio binding carries `choices` (answer → export state): `{"true": state}` is one box. Any other map takes only its own keys: a rule or answer feeding it must return one of them or `""` (blank), and any other value raises `UnmappedChoice`, a 422 in plain words. `{}` prints nothing, and tier 1's `test_every_checkbox_binding_maps_its_answers_to_a_box` fails on it.
 - **Known form defects are strict xfails** — `backend/apps/forms/tests/known_defects.json` lists every oracle case (tiers 1–3) that fails, each with its DIG ticket. It has been empty (`[]`) since forms step 2b: every oracle case passes, and the one xfail pytest still reports is a marker in `apps/intake/tests/test_integration_flow.py`, outside the list. Fixing a defect turns its xfail into a failure until you delete the entry. A tier 2 case is keyed on its box and its binding key, `<source>:<producer>` (for example `derived:schedule_j_vehicle_payment`), so re-ruling or moving a listed binding orphans its entry, and the orphan test fails until you delete it; tier 2 also pins how many cases it asserts (`ASSERTED_CASES` in `test_oracle_tier2.py`), so a binding change that alters coverage updates that number on purpose. Delete cleared entries by hand, not by running the recorder (`data/forms/field_index/tools/record_known_defects.py`, usage in its docstring): a green suite proves the list exact, since a listed case that passes is a strict XPASS and an entry with no case behind it fails the orphan test. Deleting by hand also keeps the recorder's missing tickets for five forms (DIG-143) out of the list.
 - **A new placement needs its addendum row in the same commit** — tier 2 asserts a binding only where a checked row covers its box and key. A binding the audit never judged (step 2's ADD rows) needs a row in `data/forms/field_index/audit/step2_verification.json`, committed with the binding: `verification.json`'s shape plus `producer`, spelled as the whole binding key (`derived:phone`, `constant:yes`), its evidence citing the box's field-index label and any owner answer that decided it. Tier 2 joins it on (box, key) before the audit rows, and `test_every_step2_placement_matches_a_binding` fails on a row no binding matches. A binding moved onto the box an audit row names needs no row: the moved-here join asserts it.
 - **Blank, not 0.00, on the forms** — a derivation must not turn a missing input into 0.00: a line DigniFi never asks (interest, payroll deductions, priority, a spouse's column) and an income source left empty print blank, and a source typed as $0 prints 0.00. A total counts an unasked line as zero and still prints. The 13 expense amounts are stored as $0 when left empty, so an expense line (Schedule J, 122A-2 lines 19 and 21) prints only above $0, while the totals (Schedule J 22a and 22c, 106Sum line 5, 103B line 6) still print. One exception remains: with no `ExpenseInfo` row at all, those totals and Schedule J 23b print 0.00, and 23c prints the income less 0.00 (`_total_monthly_expenses`, the one function behind all of them; any other error fails the form). Signature lines and signing dates stay blank for wet ink (`test_signing_lines.py`). No production schema has a repeat group: Form 107's prior-income and creditor-payment rows came off until steps 3–4 ask what they need, and the SOFA answers stay stored. The engine (`repeat`, `RepeatOverflow` and its 422) stays for later steps; only synthetic tests reach it.
@@ -40,6 +40,7 @@ cd backend && ruff check . --fix               # Backend lint (pinned ruff==0.8.
 - **Analytics auth** — `trackEvent()` must use `getAccessToken()` for Bearer header, not raw fetch.
 - **heroku.yml release** — must be one command string (not argv list). `heroku releases:output` is empty; use `heroku logs --dyno release`.
 - **CI ruff is pinned** — `ci.yml` installs `ruff==0.8.5`. Unpinned ruff broke CI when new rules shipped.
+- **Branches: develop → main → prod** — `develop`, `main` and `prod` are the three long-lived branches. Every feature PR targets `develop` (`gh pr create --base develop`) and is squash-merged. When a body of work is finished, `develop` is promoted to `main` by a fast-forward push; `main` is the stable copy for people who run DigniFi on their own machine and stays the GitHub default branch. `prod` is what Heroku runs: a deploy fast-forwards `prod` to `main`, then runs `git push heroku prod:main` (not `git push heroku main`, which older plans show), and only the owner deploys. Promotions are fast-forward pushes, never PRs: the repo disallows merge commits, and squash or rebase merges would give the branches different commits. CI runs on pushes and PRs for all three branches, and a ruleset blocks deletion and force-push on all three.
 - **opendataloader-pdf needs a JRE** — both Dockerfiles install `default-jre-headless`. Without one, every PDF falls back to vision. `TestRealJvmContract` (`apps/documents/tests/test_processor.py`) runs the real CLI wherever `java` is on PATH and skips with a visible reason elsewhere (`-rs` in CI); every other test uses a stand-in for the module.
 - **No PDF sidecar** — the `odl-hybrid` service and the `opendataloader-pdf[hybrid]` extra are gone; the backend runs the Java CLI itself. A stack or venv built before the removal still has them: run `docker compose up --build --remove-orphans` and recreate `backend/.venv` (`pip install -r` never uninstalls docling or torch).
 - **Pre-commit prettier** — reformats staged files on first commit; re-`git add` and commit again.
@@ -85,7 +86,7 @@ cd backend && ruff check . --fix               # Backend lint (pinned ruff==0.8.
 - **PDF templates:** 67 official AO court PDFs in `data/forms/pdfs/` (committed). Baked into Heroku image.
 - **Forms:** 17 form types in `apps/forms/registry.py` (`FORM_REGISTRY` / `get_all_form_types()` / `packet(session)`). `generate_all` gives each form its own savepoint.
 - **OCR service:** provider-agnostic. `OCR_PROVIDER` selects `openai` (default, `gpt-4o`, `OPENAI_API_KEY`) or `gemini` (`gemini-2.0-flash`, `GEMINI_API_KEY`); `OCR_MODEL` overrides the model so a model change is a config var, not a deploy. No local model — both call a hosted API directly.
-- **Auth:** JWT (simplejwt). Access in memory, refresh in localStorage. `GET /api/token/obtain/` + `/api/token/refresh/`.
+- **Auth:** JWT (simplejwt). Access in memory, refresh in localStorage. `POST /api/token/obtain/` + `/api/token/refresh/`.
 - **E2E:** 5 AI persona briefs in `docs/testing/persona-briefs/` (deshawn, james, maria, priya, sarah) driving 7 journey specs — one per persona plus `sofa-journey.spec.ts` and `scanned-bill-journey.spec.ts` (an upload read through a fake OpenAI server). `seed_demo_data` creates synthetic sessions with all intake data.
 
 ## File Map (what lives where)
@@ -97,7 +98,7 @@ cd backend && ruff check . --fix               # Backend lint (pinned ruff==0.8.
 - `apps/intake/views.py` — IntakeSessionViewSet, AssetViewSet, DebtViewSet
 - `apps/intake/serializers.py` — nested serializers; DRF silently drops unknown fields (mismatch with frontend)
 - `apps/intake/management/commands/seed_demo_data.py` — 5 AI personas
-- `apps/eligibility/services/means_test_calculator.py` — § 707(b) logic, annualizes CMI
+- `apps/eligibility/services/means_test_calculator.py` — `MeansTestCalculator`, which runs and saves `MeansTest.calculate()` (`apps/eligibility/models.py`, where CMI is annualized)
 - `apps/eligibility/cmi.py` — `current_monthly_income` (the one CMI), `IncomeNotSplit`, `is_above_median`
 - `apps/forms/registry.py` — `FORM_REGISTRY` (17 form_type → `PacketForm(applies, requires)`) in filing order, `packet()`, `build_field_values()`
 - `apps/forms/services/` — `pdf_filler.py` (`PDFFormFiller`, exact full names), `fill_resolver.py` + `derivations.py` (schema-driven fill engine)
@@ -127,7 +128,7 @@ cd backend && ruff check . --fix               # Backend lint (pinned ruff==0.8.
 - `src/test/setup.ts` — vitest globals, MSW, vitest-axe matchers
 - `e2e/journeys/` — 7 Playwright journey specs (5 personas + SOFA + scanned bill)
 - `e2e/fixtures/fake-openai.ts` — fake OpenAI Chat Completions server (`startFakeOpenAI`, `CANNED_BILL`) for `scanned-bill-journey`
-- `e2e/playwright.config.ts` — Chromium only, 60s timeout, `reuseExistingServer`
+- `e2e/playwright.config.ts` — Chromium only, 120s timeout, `reuseExistingServer`
 
 **Data:**
 
@@ -139,7 +140,7 @@ cd backend && ruff check . --fix               # Backend lint (pinned ruff==0.8.
 - `docker-compose.yml` — 3 services: db (postgres:15), backend, frontend
 - `Dockerfile.heroku` — multi-stage (Node → Python), bakes PDF templates + static assets
 - `heroku.yml` — release phase runs migrations (single command string)
-- `.github/workflows/ci.yml` — lint → backend tests → frontend tests → E2E (sequential gates)
+- `.github/workflows/ci.yml` — backend and frontend lint, backend and frontend tests and a security scan run in parallel; E2E runs after both test jobs pass
 
 ## Key Docs
 

@@ -3,7 +3,8 @@
 ## Form 122A-2, Lines 44-47 Implementation Framework
 
 **Date:** January 4, 2026  
-**Status:** Technical Design (Ready for Implementation)  
+**Status:** Not built. It was superseded by `docs/superpowers/specs/2026-06-17-special-circumstances-llm-design.md`, which was not built either.  
+**Note:** The 04/25 Official Form 122A-2 puts special circumstances on line 43 (Part 4). Every "Lines 44-47" in this document means line 43.  
 **Priority:** P0 (Critical Path Blocker per PRD v0.3)  
 **Owners:** Backend (LLM integration) + Frontend (narrative capture UI)
 
@@ -36,14 +37,14 @@
 **Official Form 122A-2** Section dedicated to special circumstances:
 
 ```
-Lines 44-47: SPECIAL CIRCUMSTANCES
+Line 43 (Part 4): SPECIAL CIRCUMSTANCES
 
-Line 44: Do you have any special circumstances?
+Line 43: Do you have any special circumstances that justify additional expenses or adjustments of
+         current monthly income for which there is no reasonable alternative? 11 U.S.C. § 707(b)(2)(B).
          ☐ No  ☐ Yes
 
-Lines 45-47: [If yes] Describe any special circumstances that make the payment of the monthly expenses
-            not reasonably necessary or any circumstances that justify the debtor's monthly income to be
-            adjusted downward...
+[If yes] Up to four rows: a detailed explanation and the average monthly expense or income
+         adjustment for each.
 ```
 
 **Critical Role:** Lines 44-47 are the _sole mechanism_ for pro se filers to claim rebuttal. Without clear, compelling prose here:
@@ -1156,7 +1157,7 @@ export const IntakeWizard: React.FC = () => {
 
 ### Phase 1: Backend Foundation (Weeks 1-2, Jan 6-20)
 
-- [ ] Create `SpecialCircumstances` model (DONE)
+- [ ] Create `SpecialCircumstances` model
 - [ ] Implement `SpecialCircumstancesRefiner` service with Anthropic integration
 - [ ] Add API endpoints for refinement + approval
 - [ ] Write integration tests for LLM service
@@ -1184,7 +1185,7 @@ export const IntakeWizard: React.FC = () => {
 
 ### Phase 4: Founder Dry Run (Week 5, Feb 10-15)
 
-- [ ] Courtney uses system end-to-end with her own intake
+- [ ] Courtney uses system end-to-end with a personal intake
 - [ ] Collects feedback on UX, narrative quality, completeness
 - [ ] Documents any AI-generated prose issues
 - [ ] Verifies Form 122A-2 PDF generation includes refined narrative

@@ -8,7 +8,7 @@ a human perspective. This produces quantitative PRD metrics and qualitative
 UX insights before real participant recruitment.
 
 Personas are adapted from the PRD UX research personas
-(`Product Docs/UI_UX_RESEARCH.md`) to exercise distinct eligibility paths
+(`docs/internal/UI_UX_RESEARCH.md`) to exercise distinct eligibility paths
 through the ILND means test calculator.
 
 ## Persona Briefs
@@ -18,7 +18,7 @@ through the ILND means test calculator.
 | `maria-torres.md`     | Below-median single parent | Passes, fee waiver | Full happy path                    |
 | `james-washington.md` | Borderline single filer    | Passes (barely)    | Near-threshold messaging           |
 | `priya-sharma.md`     | Above-median family        | Fails              | Dignity-preserving ineligibility   |
-| `deshawn-mitchell.md` | Asset-heavy homeowner      | Passes             | Multi-asset entry, exemptions      |
+| `deshawn-mitchell.md` | Asset-heavy homeowner      | Passes, fee waiver | Multi-asset entry, exemptions      |
 | `sarah-chen.md`       | Simplest case, no assets   | Passes, fee waiver | Fastest path, empty-state handling |
 
 ## How to Run
@@ -30,6 +30,7 @@ through the ILND means test calculator.
 docker compose up
 
 # 2. Seed demo data (for login-based tests)
+docker compose exec backend python manage.py loaddata ilnd_2025_data
 docker compose exec backend python manage.py seed_demo_data
 
 # 3. Install Playwright browser
@@ -42,8 +43,10 @@ cd frontend && npx playwright install chromium
 cd frontend && npm run e2e
 ```
 
-This runs 5 journey specs that exercise each persona's data path
-programmatically. No AI involved — pure deterministic E2E testing.
+This runs 7 journey specs programmatically: one for each persona's data path,
+plus the SOFA and scanned-bill journeys (the scanned-bill journey skips locally
+unless OPENAI_BASE_URL points at its fake OpenAI server; see the spec's header).
+No AI involved — pure deterministic E2E testing.
 
 ### AI Persona Simulation (subagent-driven)
 

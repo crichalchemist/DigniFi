@@ -7,6 +7,7 @@
 docker compose up
 
 # 2. Demo data seeded
+docker compose exec backend python manage.py loaddata ilnd_2025_data
 docker compose exec backend python manage.py seed_demo_data
 
 # 3. Playwright browser installed

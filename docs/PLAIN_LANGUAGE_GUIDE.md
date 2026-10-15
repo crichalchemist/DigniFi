@@ -234,16 +234,16 @@ To file for bankruptcy, gather:
 
 ### A-D
 
-| Legal Term                       | Plain Definition                                                              | Example in Sentence                                                        |
-| -------------------------------- | ----------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
-| **Automatic stay**               | Court order stopping creditor calls and lawsuits                              | "Once you file, the automatic stay stops creditors from calling you."      |
-| **BAPCPA**                       | 2005 bankruptcy law (we don't use this acronym; say "federal bankruptcy law") | "Federal bankruptcy law requires a means test."                            |
-| **Chapter 7**                    | Type of bankruptcy that eliminates debts                                      | "Chapter 7 cancels most debts in 3-4 months."                              |
-| **Chapter 13**                   | Type of bankruptcy with repayment plan                                        | "Chapter 13 requires a 3-5 year repayment plan."                           |
-| **Current Monthly Income (CMI)** | Your average monthly income over the last 6 months                            | "We'll calculate your average monthly income from your last 6 pay stubs."  |
-| **Creditor**                     | Person or company you owe money to                                            | "List all creditors: credit card companies, medical providers, landlords." |
-| **Discharge**                    | Court order canceling debts                                                   | "Most debts are discharged (eliminated) in Chapter 7."                     |
-| **Debtor**                       | Person filing for bankruptcy                                                  | We use "you" or "filer" instead of "debtor"                                |
+| Legal Term                       | Plain Definition                                                              | Example in Sentence                                                                                   |
+| -------------------------------- | ----------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| **Automatic stay**               | Court order stopping creditor calls and lawsuits                              | "Once you file, the automatic stay stops creditors from calling you."                                 |
+| **BAPCPA**                       | 2005 bankruptcy law (we don't use this acronym; say "federal bankruptcy law") | "Federal bankruptcy law requires a means test."                                                       |
+| **Chapter 7**                    | Type of bankruptcy that eliminates debts                                      | "Chapter 7 cancels most debts in 3-4 months."                                                         |
+| **Chapter 13**                   | Type of bankruptcy with repayment plan                                        | "Chapter 13 requires a 3-5 year repayment plan."                                                      |
+| **Current Monthly Income (CMI)** | Your average monthly income over the last 6 months                            | "We'll add up the average monthly income you enter for each source, except Social Security benefits." |
+| **Creditor**                     | Person or company you owe money to                                            | "List all creditors: credit card companies, medical providers, landlords."                            |
+| **Discharge**                    | Court order canceling debts                                                   | "Most debts are discharged (eliminated) in Chapter 7."                                                |
+| **Debtor**                       | Person filing for bankruptcy                                                  | We use "you" or "filer" instead of "debtor"                                                           |
 
 ### E-M
 
@@ -292,9 +292,9 @@ Why it exists: Bankruptcy law tries to ensure Chapter 7 is for
 people who truly can't afford to repay debts.
 [Brief explanation]
 
-How it works: We calculate your average monthly income from the
-last 6 months. If it's below $4,200 (for a single person in Illinois),
-you typically qualify.
+How it works: We add up the average monthly income you enter for
+each source, except Social Security benefits. If it's at or below
+$5,942 (for a single person in Illinois), you typically qualify.
 [Concrete numbers]
 ```
 
@@ -408,7 +408,7 @@ Need help? Click the [?] icon.
 ```
 Based on the calculation of your Current Monthly Income pursuant
 to 11 U.S.C. § 707(b)(2)(A)(ii), your annualized CMI of $38,400
-is below the applicable median family income threshold of $50,960
+is below the applicable median family income threshold of $91,526
 for a household of two persons in the Northern District of Illinois,
 thereby establishing a presumption that granting relief under
 Chapter 7 would not constitute an abuse under § 707(b)(2).
@@ -420,14 +420,12 @@ Chapter 7 would not constitute an abuse under § 707(b)(2).
 Means Test Result: You May Qualify
 
 Your average monthly income: $3,200
-State median for 2-person household: $4,247
+State median for 2-person household: $7,627
 
 Your income is below the median.
 
 What this means: You may be eligible to file Chapter 7 bankruptcy.
 Chapter 7 eliminates most debts in 3-4 months without a repayment plan.
-
-Next step: Continue to the Special Circumstances review.
 ```
 
 ### Example 2: Special Circumstances Prompt
@@ -477,7 +475,7 @@ Filing Fee Waiver
 The bankruptcy filing fee is $338.
 
 You may qualify for a fee waiver if your household income is below
-150% of the poverty line. For a single person, that's about $2,200/month.
+150% of the poverty line. For a single person, that's about $2,000/month.
 
 Good news: Based on your income, you may qualify for a fee waiver.
 We'll help you request it when you file.

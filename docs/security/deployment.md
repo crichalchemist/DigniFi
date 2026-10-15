@@ -1,5 +1,7 @@
 # Deployment Security
 
+> **Status (2026-10-15):** Production runs on Heroku: `heroku.yml` builds the image from `Dockerfile.heroku`, gunicorn serves Django and whitenoise serves the static files, and the release phase runs `python manage.py migrate`. Heroku runs the `prod` branch; a deploy fast-forwards `prod` to `main`, then runs `git push heroku prod:main`, and only the owner deploys. The Nginx, certbot, UFW, AWS security group, PostgreSQL hardening and cron backup sections describe a self-hosted server, not production.
+
 ## Production Readiness Checklist
 
 Before deploying to production, complete this checklist:
@@ -51,9 +53,7 @@ Before deploying to production, complete this checklist:
 DEBUG = False
 
 # Strong secret key from environment
-SECRET_KEY = os.environ['SECRET_KEY']
-if not SECRET_KEY or len(SECRET_KEY) < 50:
-    raise ImproperlyConfigured("SECRET_KEY must be 50+ characters")
+SECRET_KEY = env("DJANGO_SECRET_KEY", default="")  # base.py; raises only when empty and DEBUG is off
 
 # Restrict allowed hosts
 ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '').split(',')
@@ -70,83 +70,28 @@ SECURE_HSTS_PRELOAD = True
 # Cookie security
 SESSION_COOKIE_SECURE = True
 SESSION_COOKIE_HTTPONLY = True
-SESSION_COOKIE_SAMESITE = 'Strict'
+SESSION_COOKIE_SAMESITE = 'Lax'
 CSRF_COOKIE_SECURE = True
 CSRF_COOKIE_HTTPONLY = True
-CSRF_COOKIE_SAMESITE = 'Strict'
+CSRF_COOKIE_SAMESITE = 'Lax'
 
 # Content security
 SECURE_CONTENT_TYPE_NOSNIFF = True
 SECURE_BROWSER_XSS_FILTER = True
 X_FRAME_OPTIONS = 'DENY'
 
-# File upload limits
-FILE_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10MB
-DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024
-
-# Admin security
-ADMIN_URL = os.environ.get('ADMIN_URL', 'admin/')  # Obscure URL
+# File upload limits: none enforced yet (DOCUMENT_UPLOAD_MAX_SIZE in base.py is unused)
 ```
 
 ### Database Configuration
 
 ```python
-# Use DATABASE_URL for easy configuration
-import dj_database_url
-
-DATABASES = {
-    'default': dj_database_url.config(
-        conn_max_age=600,
-        conn_health_checks=True,
-        ssl_require=True,
-    )
-}
+DATABASES = {"default": env.db("DATABASE_URL", default="postgres://dignifi:dignifi@localhost:5432/dignifi_dev")}  # base.py; production.py sets CONN_MAX_AGE from DATABASE_CONN_MAX_AGE (default 600)
 ```
 
 ### Logging Configuration
 
-```python
-LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': False,
-    'formatters': {
-        'verbose': {
-            'format': '{levelname} {asctime} {module} {message}',
-            'style': '{',
-        },
-    },
-    'handlers': {
-        'file': {
-            'level': 'WARNING',
-            'class': 'logging.handlers.RotatingFileHandler',
-            'filename': '/var/log/dignifi/app.log',
-            'maxBytes': 10485760,  # 10MB
-            'backupCount': 10,
-            'formatter': 'verbose',
-        },
-        'security': {
-            'level': 'INFO',
-            'class': 'logging.handlers.RotatingFileHandler',
-            'filename': '/var/log/dignifi/security.log',
-            'maxBytes': 10485760,
-            'backupCount': 10,
-            'formatter': 'verbose',
-        },
-    },
-    'loggers': {
-        'django.security': {
-            'handlers': ['security'],
-            'level': 'INFO',
-            'propagate': False,
-        },
-        'django': {
-            'handlers': ['file'],
-            'level': 'WARNING',
-            'propagate': False,
-        },
-    },
-}
-```
+Production uses base.py's `LOGGING`: JSON lines to the console (Heroku logs), and the `dignifi.audit` and `dignifi.upl` loggers also write `logs/audit.log`.
 
 ## Web Server Configuration
 
@@ -197,7 +142,7 @@ server {
         add_header Cache-Control "public, immutable";
     }
 
-    # Media files (generated forms)
+    # Media files (uploaded documents) — never served directly; generated forms stream from Django
     location /media/ {
         alias /var/www/dignifi/media/;
         internal;  # Only accessible via X-Accel-Redirect from Django
@@ -213,8 +158,8 @@ server {
         proxy_set_header X-Forwarded-Proto $scheme;
     }
 
-    # Auth endpoints (stricter rate limit)
-    location /api/auth/ {
+    # Login and token refresh (stricter rate limit; /api/users/register/ and /api/users/demo/ need the same)
+    location /api/token/ {
         limit_req zone=auth burst=2 nodelay;
         proxy_pass http://127.0.0.1:8000;
         proxy_set_header Host $host;
@@ -338,21 +283,25 @@ host    dignifi         dignifi_app     10.0.0.0/8              scram-sha-256
 
 ```python
 # backend/config/settings/production.py
-import sentry_sdk
-from sentry_sdk.integrations.django import DjangoIntegration
+SENTRY_DSN = env("SENTRY_DSN", default="")
+if SENTRY_DSN:  # optional; without a DSN, Sentry stays off
+    import sentry_sdk
+    from sentry_sdk.integrations.django import DjangoIntegration
 
-sentry_sdk.init(
-    dsn=os.environ['SENTRY_DSN'],
-    integrations=[DjangoIntegration()],
-    traces_sample_rate=0.1,
-    send_default_pii=False,  # Don't send PII to Sentry
-)
+    sentry_sdk.init(
+        dsn=SENTRY_DSN,
+        integrations=[DjangoIntegration()],
+        traces_sample_rate=env.float("SENTRY_TRACES_SAMPLE_RATE", default=0.0),
+        send_default_pii=False,  # Don't send PII to Sentry
+        include_local_variables=False,
+        max_request_body_size="never",
+    )
 ```
 
 **Health Check Endpoint:**
 
 ```python
-# backend/apps/core/views.py
+# backend/config/views.py  (/health/ and /health/detailed/)
 from django.http import JsonResponse
 from django.db import connection
 
@@ -361,10 +310,10 @@ def health_check(request):
     try:
         with connection.cursor() as cursor:
             cursor.execute("SELECT 1")
-    except Exception as e:
-        return JsonResponse({'status': 'unhealthy', 'database': str(e)}, status=503)
+    except Exception:
+        return JsonResponse({'status': 'error', 'database': 'error'})  # HTTP 200 even when the database is down
 
-    return JsonResponse({'status': 'healthy', 'database': 'ok'})
+    return JsonResponse({'status': 'ok', 'database': 'ok'})
 ```
 
 ### Security Monitoring

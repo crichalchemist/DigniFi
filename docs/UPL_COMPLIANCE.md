@@ -139,15 +139,15 @@ PROHIBITED_PHRASES = [
 - Performs mathematical calculations (means test, fee waiver)
 - Explains general legal rules
 - Helps users organize information for forms
-- Provides procedural guidance (deadlines, filing locations)
+- May provide procedural guidance, such as deadlines and filing locations (none is shown yet)
 
 ---
 
 ## V. Special Circumstances & AI/ML Compliance
 
-### 5.1 LLM-Generated Content (Form 122A-2, Lines 44-47)
+### 5.1 LLM-Generated Content (Form 122A-2, Line 43)
 
-**The Challenge:** AI refines user narratives for legal clarity. Could this constitute legal advice?
+**The Challenge:** A planned feature (not built) would use AI to refine user narratives for legal clarity. Could this constitute legal advice?
 
 **Compliance Strategy:**
 
@@ -188,7 +188,7 @@ PROHIBITED_PHRASES = [
 
 ### 5.2 Template Mode (Fallback)
 
-If AI refinement raises UPL concerns, DigniFi can operate in **template mode**:
+If AI refinement raises UPL concerns, DigniFi can operate in **template mode** (not built):
 
 1. Provide pre-written example narratives for each special circumstances category
 2. User selects most similar example
@@ -209,7 +209,7 @@ Every UPL-sensitive action is logged with:
 class AuditLog(models.Model):
     user = ForeignKey(User)
     timestamp = DateTimeField(auto_now_add=True)
-    action = CharField()  # e.g., "means_test_calculated"
+    action = CharField()  # e.g., "POST /api/intake/sessions/12/calculate_means_test/"
     upl_sensitive = BooleanField()  # True for UPL-critical actions
     ip_address = GenericIPAddressField()
     user_agent = TextField()

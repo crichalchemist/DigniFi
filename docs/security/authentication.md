@@ -7,7 +7,7 @@
 **Token Types:**
 
 - **Access Token:** Short-lived (15 minutes), used for API requests
-- **Refresh Token:** Long-lived (7 days), used to obtain new access tokens
+- **Refresh Token:** Long-lived (1 day), used to obtain new access tokens
 
 **Storage:**
 
@@ -18,10 +18,11 @@
 
 ```json
 {
-  "user_id": 123,
-  "username": "user@example.com",
+  "token_type": "access",
   "exp": 1234567890,
-  "iat": 1234567800
+  "iat": 1234567800,
+  "jti": "<random id>",
+  "user_id": 123
 }
 ```
 
@@ -33,12 +34,12 @@
 
 ### Password Security
 
-**Hashing Algorithm:** Argon2 (Django 4.x default)
+**Hashing Algorithm:** PBKDF2-SHA256 (Django's default)
 
 **Password Requirements (Current):**
 
-- Minimum 8 characters
-- Django's built-in validators (common passwords, similarity to username)
+- Minimum 10 characters
+- Django's built-in validators (common passwords, all-digit passwords, similarity to username)
 
 **Planned Improvements:**
 
@@ -57,7 +58,7 @@
 
 **Django Sessions:**
 
-- Backend stores session data (Redis or database)
+- Backend stores session data in the database (used only by the Django admin and the staff-only /metrics/ page; the API uses JWTs)
 - Session ID in cookie (httpOnly, Secure, SameSite=Strict)
 - Session expiry: 7 days of inactivity
 
@@ -66,7 +67,7 @@
 1. User logs in → receive access + refresh tokens
 2. Access token expires after 15 minutes
 3. Frontend automatically uses refresh token to get new access token
-4. Refresh token expires after 7 days → user must log in again
+4. Refresh token expires 1 day after login → user must log in again
 
 ## Authorization Patterns
 
@@ -75,7 +76,7 @@
 **DRF Permission Classes:**
 
 - `IsAuthenticated` - All PII endpoints require authentication
-- `IsOwner` - Users can only access their own data
+- Each view filters by `request.user` (no `IsOwner` class) - Users can only access their own data
 
 **Example:**
 
@@ -124,7 +125,7 @@ REST_FRAMEWORK = {
 
 **Endpoint-Specific Rates:**
 
-- Authentication: 30 requests/minute (prevents brute force)
+- Authentication: 5 requests/minute in production (30/minute elsewhere), one budget shared by login, token refresh, register and demo login (prevents brute force)
 - Form generation: 10 requests/hour per session (prevents abuse)
 - File downloads: 100 requests/hour (reasonable for legitimate use)
 
@@ -182,17 +183,10 @@ REST_FRAMEWORK = {
 **Production Configuration:**
 
 ```python
-CORS_ALLOWED_ORIGINS = [
-    "https://dignifi.org",
-    "https://app.dignifi.org",
-]
+CORS_ALLOWED_ORIGINS = env.list("CORS_ALLOWED_ORIGINS", default=["http://localhost:3000"])  # set per environment
 ```
 
-**Development:**
-
-```python
-CORS_ALLOW_ALL_ORIGINS = True  # Only for localhost
-```
+**Development:** the same `CORS_ALLOWED_ORIGINS` env list; include `http://localhost:5173` for the Vite dev server.
 
 ### CSRF Protection
 
@@ -200,28 +194,26 @@ CORS_ALLOW_ALL_ORIGINS = True  # Only for localhost
 
 **AJAX Requests:**
 
-- CSRF token in `X-CSRFToken` header
-- Token obtained from cookie
-- Required for POST/PUT/PATCH/DELETE
+- API requests need no CSRF token: they authenticate only with a JWT in the `Authorization` header, which is not a cookie, so a cross-site page cannot make the browser send it
+- CSRF middleware still protects the Django admin, which uses session login
 
 **Exempt Endpoints:**
 
 - JWT authentication endpoints (stateless, no CSRF needed)
-- Explicitly marked with `@csrf_exempt` decorator
 
 ### Security Headers
 
-**Recommended Headers (add to middleware):**
+**Set in production.py:**
 
 ```python
 SECURE_HSTS_SECONDS = 31536000  # 1 year
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
-SECURE_BROWSER_XSS_FILTER = True
+SECURE_BROWSER_XSS_FILTER = True  # no effect: Django 4.0 removed this setting
 X_FRAME_OPTIONS = 'DENY'
 ```
 
-**Content Security Policy (CSP):**
+**Recommended Content Security Policy (CSP) (not sent on Heroku yet):**
 
 ```
 default-src 'self';

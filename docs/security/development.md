@@ -20,29 +20,24 @@ Before committing code, verify:
 
 **Always in environment (NEVER commit):**
 
-- `SECRET_KEY` - Django secret key
+- `DJANGO_SECRET_KEY` - Django secret key (also signs JWTs)
 - `FIELD_ENCRYPTION_KEY` - Fernet key for PII encryption
-- `DATABASE_PASSWORD` - PostgreSQL password
-- `JWT_SECRET` - JWT signing key (if separate from SECRET_KEY)
-- `API_KEYS` - Third-party service keys (credit counseling, etc.)
+- `DATABASE_URL` - PostgreSQL URL, including the password
+- `OPENAI_API_KEY`, `GEMINI_API_KEY`, `SENTRY_DSN` - third-party service keys
 
 **Example .env file:**
 
 ```bash
 # Django
-SECRET_KEY=<50-char-random-string>
+DJANGO_SECRET_KEY=<50-char-random-string>
 DEBUG=False
 ALLOWED_HOSTS=localhost,127.0.0.1
 
 # Database
 DATABASE_URL=postgresql://user:password@localhost:5432/dignifi
-DATABASE_PASSWORD=<strong-password>
 
 # Encryption
 FIELD_ENCRYPTION_KEY=<fernet-key>
-
-# Email (production)
-EMAIL_HOST_PASSWORD=<smtp-password>
 ```
 
 ### Generating Secrets
@@ -71,7 +66,7 @@ openssl rand -base64 32
 
 ```bash
 # Django
-SECRET_KEY=changeme
+DJANGO_SECRET_KEY=changeme
 DEBUG=True
 ALLOWED_HOSTS=localhost
 
@@ -81,6 +76,8 @@ DATABASE_URL=postgresql://user:password@localhost:5432/dignifi
 # Encryption
 FIELD_ENCRYPTION_KEY=changeme
 ```
+
+The committed `.env.example` and `backend/.env.example` list more, such as `CORS_ALLOWED_ORIGINS`, `OCR_PROVIDER`, `OCR_MODEL` and `OPENAI_API_KEY`.
 
 ## Git Security
 
@@ -95,16 +92,7 @@ pip install detect-secrets
 detect-secrets scan --baseline .secrets.baseline
 ```
 
-**Pre-commit hook (.git/hooks/pre-commit):**
-
-```bash
-#!/bin/bash
-detect-secrets-hook --baseline .secrets.baseline $(git diff --cached --name-only)
-if [ $? -ne 0 ]; then
-  echo "❌ Secrets detected! Aborting commit."
-  exit 1
-fi
-```
+**Pre-commit hook:** add detect-secrets to `.pre-commit-config.yaml` (it has no secret scan today); don't hand-write `.git/hooks/pre-commit`, which `pre-commit install` owns.
 
 ### .gitignore
 
@@ -208,11 +196,11 @@ truffleHog --regex --entropy=True .
 
 ### Automated Scanning
 
-**Python (Safety):**
+**Python (pip-audit, as CI runs it):**
 
 ```bash
-pip install safety
-safety check --full-report
+pip install pip-audit
+pip-audit -r backend/requirements/base.txt
 ```
 
 **Node.js (npm audit):**
@@ -225,7 +213,7 @@ npm audit fix  # Apply patches
 
 **GitHub Dependabot:**
 
-- Enabled by default on GitHub
+- Not enabled for this repository yet
 - Automatic PRs for security updates
 - Configure in `.github/dependabot.yml`
 
@@ -296,12 +284,12 @@ def test_user_cannot_access_other_user_data(authenticated_client, other_user_ses
 **Input Validation:**
 
 ```python
-def test_invalid_ssn_rejected(authenticated_client):
-    response = authenticated_client.post('/api/intake/debtor-info/', {
-        'ssn': 'invalid-format'
-    })
+def test_invalid_ssn_rejected(authenticated_client, session):
+    response = authenticated_client.patch(f'/api/intake/sessions/{session.id}/', {
+        'debtor_info': {'ssn': 'invalid-format'}
+    }, format='json')
     assert response.status_code == 400
-    assert 'ssn' in response.json()
+    assert 'ssn' in response.json()['debtor_info']
 ```
 
 **SQL Injection (Django ORM protects, but test anyway):**
@@ -309,7 +297,7 @@ def test_invalid_ssn_rejected(authenticated_client):
 ```python
 def test_special_chars_in_search(authenticated_client):
     # Should not cause error or return unexpected results
-    response = authenticated_client.get('/api/creditors/?q=test\' OR 1=1--')
+    response = authenticated_client.get("/api/audit/logs/?search=test' OR 1=1--")
     assert response.status_code == 200
 ```
 
@@ -390,36 +378,7 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO dignifi_a
 
 ### CI/CD Integration
 
-**GitHub Actions (.github/workflows/security.yml):**
-
-```yaml
-name: Security Scan
-
-on: [push, pull_request]
-
-jobs:
-  python-security:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - name: Run Safety
-        run: |
-          pip install safety
-          safety check --json
-      - name: Run Bandit
-        run: |
-          pip install bandit
-          bandit -r backend/ -f json -o bandit-report.json
-
-  javascript-security:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - name: Install dependencies
-        run: cd frontend && npm ci
-      - name: Run npm audit
-        run: cd frontend && npm audit --audit-level=moderate
-```
+**GitHub Actions (`security-scan` job in `.github/workflows/ci.yml`):** Bandit on `backend/apps` and `backend/config` fails the job on high-severity findings; pip-audit and `npm audit --audit-level=high` report but do not block.
 
 ---
 

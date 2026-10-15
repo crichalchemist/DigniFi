@@ -6,7 +6,7 @@ Project-level hooks for the `.remember/` continuity system.
 | ------------------- | ----------------------- | ------------------------------------------------------------------------------ |
 | `session-start.sh`  | Session start           | Inject `now.md`, today's log, recent, archive into context; run daily rollover |
 | `post-save.sh`      | After significant work  | Append timestamped entry to `today-YYYY-MM-DD.md`                              |
-| `daily-rollover.sh` | Session start or manual | Rename yesterday's `.md` → `.done.md`, update archive + recent                 |
+| `daily-rollover.sh` | Manual                  | Rename yesterday's `.md` → `.done.md`, update archive + recent                 |
 
 ## Usage
 

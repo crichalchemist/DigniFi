@@ -420,9 +420,12 @@ We'll ask about this later.
 
 **Primary:**
 
-- DigniFi Blue: `#2C5F8D` (trustworthy, calm)
-- Success Green: `#2D7A3E` (affirmation)
-- Neutral Gray: `#4A5568` (body text)
+- Pine: `#2e4034` (header band, headings, primary text)
+- Gold: `#d9a441` (primary buttons, progress fill)
+- Sage: `#5b7c52` (success)
+- Body: `#4d5345` (body text)
+
+The full palette and its contrast rules are in `frontend/src/styles/tokens.css`.
 
 **Avoid:**
 
@@ -434,7 +437,7 @@ We'll ask about this later.
 
 **Body text:**
 
-- Font: Inter, SF Pro, or system sans-serif
+- Font: Public Sans (body) and Jost (headings, buttons), with a system sans-serif fallback
 - Size: 16px minimum (18px for long-form content)
 - Line height: 1.6 (generous spacing)
 - Paragraph width: Max 65 characters (readable)
@@ -545,6 +548,8 @@ DigniFi's voice is:
 
 ## VIII. Case Study: Special Circumstances Wizard
 
+**Status:** Not built. This case study describes a planned design.
+
 **Context:** Users must disclose difficult circumstances (job loss, medical crisis, DV) for Form 122A-2.
 
 **Trauma-Informed Approach:**
@@ -574,7 +579,7 @@ DigniFi's voice is:
    bankruptcy petition if you choose to file.
    ```
 
-**Outcome:** Users disclose sensitive information without feeling exploited or judged.
+**Intended outcome:** Users disclose sensitive information without feeling exploited or judged.
 
 ---
 
