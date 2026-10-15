@@ -4,6 +4,44 @@
   "template_version": "61ece0c241f110549349889be12a2ff140a15a8a8b5ba825bac2a5f284849880",
   "fields": [
     {
+      "pdf_field": "Debtor 1",
+      "type": "text",
+      "source": "derived",
+      "page": 1,
+      "label": "Debtor 1",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": "full_name",
+      "ingest_key": null,
+      "binding": null,
+      "repeat": null,
+      "repeat_capacity": null,
+      "row": null,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "check1",
+      "type": "checkbox",
+      "source": "derived",
+      "choices": {
+        "yes": "/yes",
+        "no": "/no"
+      },
+      "page": 1,
+      "label": "Do you have any executory contracts or unexpired leases?",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": "has_executory_contracts",
+      "ingest_key": null,
+      "binding": null,
+      "repeat": null,
+      "repeat_capacity": null,
+      "row": null,
+      "legal_review": false
+    },
+    {
       "pdf_field": "Bankruptcy District Information",
       "type": "choice",
       "source": "derived",

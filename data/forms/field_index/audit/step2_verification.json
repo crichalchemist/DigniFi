@@ -538,5 +538,225 @@
     "status": "confirmed",
     "correct_target": "undefined_53",
     "evidence": "Field index: undefined_53 p5 line 21, 'Childcare (babysitting, daycare, nursery, preschool)' (adjudicated). ExpenseInfo.childcare is the filer's childcare, the figure Schedule J line 8 prints. Step 2 spec Appendix A.6, §6.1 (expense lines, 6c option A: 122A-2 lines 19 and 21 print only above $0) and §6.4. The audit has no row on this box."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "Check 2",
+    "producer": "derived:has_real_property",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Check 2",
+    "evidence": "Field index: Check 2 p1 line 1, 'Do you own or have any legal or equitable interest in any residence, building, land, or similar property?'. Its 'No. Go to Part 2.' widget exports On and its 'Yes. Where is the property?' widget exports yes (both sampled_ok), so the choices are {yes: /yes, no: /On}. has_real_property is 'yes' when the filer listed a real_property asset. Owner's answer Q8 (DIG-80, DIG-69; step 2 spec §3, §6.3): the section Yes/No boxes are derived from the lists, Yes with rows and No without. Spec Appendix A.9. The audit has no row on this box."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "Check 3",
+    "producer": "derived:has_vehicles",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Check 3",
+    "evidence": "Field index: Check 3 p2 line 3, 'Cars, vans, trucks, tractors, sport utility vehicles, motorcycles', options No (no) and Yes (yes), vision_agreed. has_vehicles is 'yes' when the filer listed a vehicle asset; line 4 (boats and other vehicles) stays blank, so an RV entered as a vehicle ticks line 3 (spec §10). Owner's answer Q8 (DIG-80, DIG-69; step 2 spec §3, §6.3): the section Yes/No boxes are derived from the lists, Yes with rows and No without. Spec Appendix A.9. The audit has no row on this box."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "Check 17",
+    "producer": "derived:has_bank_accounts",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Check 17",
+    "evidence": "Field index: Check 17 p5 line 17, 'Deposits of money', options No (no) and Yes (yes), sampled_ok. has_bank_accounts is 'yes' when the filer listed a bank_account asset. Owner's answer Q8 (DIG-80, DIG-69; step 2 spec §3, §6.3): the section Yes/No boxes are derived from the lists, Yes with rows and No without. Spec Appendix A.9. The audit has no row on this box."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "check 21",
+    "producer": "derived:has_retirement_accounts",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check 21",
+    "evidence": "Field index: check 21 p6 line 21, 'Retirement or pension accounts', options No (no) and 'Yes. List each account separately.' (yes), sampled_ok. has_retirement_accounts is 'yes' when the filer listed a retirement_account asset. Owner's answer Q8 (DIG-80, DIG-69; step 2 spec §3, §6.3): the section Yes/No boxes are derived from the lists, Yes with rows and No without. Spec Appendix A.9. The audit has no row on this box."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "check 53",
+    "producer": "derived:has_other_assets",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check 53",
+    "evidence": "Field index: check 53 p10 line 53, 'Do you have other property of any kind you did not already list?'. Its No widget exports no and its 'Yes. Give specific information.' widget exports On (both sampled_ok), so the choices are {yes: /On, no: /no}. has_other_assets is 'yes' when the filer listed an 'Other Asset'. Owner's answer Q8 (DIG-80, DIG-69; step 2 spec §3, §6.3): the section Yes/No boxes are derived from the lists, Yes with rows and No without. Owner's answer Q9: 'Other Asset' prints on line 53. Spec Appendix A.9. The audit has no row on this box."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "53 Examples Season tickets country club membership",
+    "producer": "derived:other_asset_descriptions",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "53 Examples Season tickets country club membership",
+    "evidence": "Field index: p10 line 53, 'Line 53 Other property: Give specific information.', tooltip 'Examples: Season tickets, country club membership' (adjudicated). other_asset_descriptions joins the 'Other' assets' descriptions with '; ' in id order, the order the filer listed them (DIG-164). Owner's answer Q9 (step 2 spec §3, §6.3, Appendix E 7); spec §6.2 and Appendix A.9. Line 53's amount boxes (undefined_155-157) stay blank until step 3. The audit has no row on this box."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "undefined_13",
+    "producer": "derived:total_real_property",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_13",
+    "evidence": "Field index: undefined_13 p2 line 2, 'Add the dollar value of the portion you own for all of your entries from Part 1, including any entries for pages you have attached for Part 1. Write that number here.' (vision_agreed). total_real_property sums the real_property assets' current values, the figure 106Sum line 1a copies from line 55. Step 2 spec §6.1 (totals before item rows, B5): the total prints once its inputs follow B2; the rows behind it arrive in step 3. An empty list prints 0.00 (Ruling T0-e). Spec Appendix A.9. The audit has no row on this box."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "undefined_159",
+    "producer": "derived:total_real_property",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_159",
+    "evidence": "Field index: undefined_159 p10 line 55, 'Part 1: Total real estate, line 2' (sampled_ok). Line 55 copies line 2 (undefined_13), and 106Sum line 1a copies line 55. Step 2 spec §6.1 (totals before item rows, B5): the total prints once its inputs follow B2; the rows behind it arrive in step 3. An empty list prints 0.00 (Ruling T0-e). Spec Appendix A.9. The audit has no row on this box."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "undefined_26",
+    "producer": "derived:total_vehicles",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_26",
+    "evidence": "Field index: undefined_26 p3 line 5, 'Add the dollar value of the portion you own for all of your entries from Part 2, including any entries for pages you have attached for Part 2. Write that number here' (sampled_ok). total_vehicles sums the vehicle assets' current values. Step 2 spec §6.1 (totals before item rows, B5): the total prints once its inputs follow B2; the rows behind it arrive in step 3. An empty list prints 0.00 (Ruling T0-e). Spec §6.2 and Appendix A.9. The audit has no row on this box."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "undefined_160",
+    "producer": "derived:total_vehicles",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_160",
+    "evidence": "Field index: undefined_160 p10 line 56, 'Part 2: Total vehicles, line 5' (sampled_ok). Line 56 copies line 5 (undefined_26). Step 2 spec §6.1 (totals before item rows, B5): the total prints once its inputs follow B2; the rows behind it arrive in step 3. An empty list prints 0.00 (Ruling T0-e). Spec Appendix A.9. The audit has no row on this box."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "15 amount",
+    "producer": "derived:total_household_items",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "15 amount",
+    "evidence": "Field index: 15 amount p4 line 15, 'Write that number here' (sampled_ok), the Part 3 total ('Add the dollar value of all of your entries from Part 3'). total_household_items sums the personal_property assets' current values. Owner's answer Q9: personal property feeds line 15 and line 57. Step 2 spec §6.1 (totals before item rows, B5): the total prints once its inputs follow B2; the rows behind it arrive in step 3. An empty list prints 0.00 (Ruling T0-e). Spec §6.2 and Appendix A.9. The audit has no row on this box."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "undefined_161",
+    "producer": "derived:total_household_items",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_161",
+    "evidence": "Field index: undefined_161 p10 line 57, 'Part 3: Total personal and household items, line 15' (sampled_ok). Line 57 copies line 15. Owner's answer Q9: personal property feeds line 15 and line 57. Step 2 spec §6.1 (totals before item rows, B5): the total prints once its inputs follow B2; the rows behind it arrive in step 3. An empty list prints 0.00 (Ruling T0-e). Spec Appendix A.9. The audit has no row on this box."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "undefined_124",
+    "producer": "derived:total_financial_assets",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_124",
+    "evidence": "Field index: undefined_124 p8 line 36, 'Write that number here', column 'Current value of the portion you own' (vision_agreed), the Part 4 total. total_financial_assets sums the bank_account (line 17) and retirement_account (line 21) assets' current values; Part 4 has sources only for lines 17 and 21, so its other lines count as zero (step 2 spec §6.1). Step 2 spec §6.1 (totals before item rows, B5): the total prints once its inputs follow B2; the rows behind it arrive in step 3. An empty list prints 0.00 (Ruling T0-e). Spec §6.2 and Appendix A.9. The audit has no row on this box."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "undefined_162",
+    "producer": "derived:total_financial_assets",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_162",
+    "evidence": "Field index: undefined_162 p10 line 58, 'Part 4: Total financial assets, line 36' (sampled_ok). Line 58 copies line 36 (undefined_124). Step 2 spec §6.1 (totals before item rows, B5): the total prints once its inputs follow B2; the rows behind it arrive in step 3. An empty list prints 0.00 (Ruling T0-e). Spec §6.1 and Appendix A.9. The audit has no row on this box."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "undefined_158",
+    "producer": "derived:total_other_assets",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_158",
+    "evidence": "Field index: undefined_158 p10 line 54, 'Write that number here' (sampled_ok), the Part 7 total. total_other_assets sums the 'Other' assets' current values. Owner's answer Q9: 'Other Asset' counts in the line 54 and 61 totals. Step 2 spec §6.1 (totals before item rows, B5): the total prints once its inputs follow B2; the rows behind it arrive in step 3. An empty list prints 0.00 (Ruling T0-e). Spec Appendix A.9. The audit's A/B row '17' has this key, but its verification.json correct_target is '' (missing_field), so the moved-here join can't assert this box; this row does."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "undefined_165",
+    "producer": "derived:total_other_assets",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_165",
+    "evidence": "Field index: undefined_165 p10 line 61, 'Part 7: Total other property not listed, line 54' (sampled_ok). Line 61 copies line 54 (undefined_158). Owner's answer Q9: 'Other Asset' counts in the line 54 and 61 totals. Step 2 spec §6.1 (totals before item rows, B5): the total prints once its inputs follow B2; the rows behind it arrive in step 3. An empty list prints 0.00 (Ruling T0-e). Spec Appendix A.9. The audit's A/B row '17' has this key, but its correct_target is '', so the moved-here join can't assert this box; this row does."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "undefined_166",
+    "producer": "derived:total_personal_property",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_166",
+    "evidence": "Field index: undefined_166 p10 line 62, one full name with two widgets: 'Total personal property. Add lines 56 through 61.' (sampled_ok) and 'Copy personal property total' (adjudicated); one binding fills both. total_personal_property sums every asset but real_property, which equals lines 56 + 57 + 58 + 61 because asset_type has exactly six kinds; lines 59 and 60 (business, farm) are never asked and count as zero (step 2 spec §6.1). 106Sum line 1b copies line 62. Step 2 spec §6.1 (totals before item rows, B5): the total prints once its inputs follow B2; the rows behind it arrive in step 3. An empty list prints 0.00 (Ruling T0-e). Spec Appendix A.9. The audit has no row on this box."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "undefined_167",
+    "producer": "derived:total_assets",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_167",
+    "evidence": "Field index: undefined_167 p10 line 63, 'Total of all property on Schedule A/B. Add line 55 + line 62.' (sampled_ok). total_assets sums every asset, which is line 55 + line 62. 106Sum line 1c copies line 63, and Form 101 line 19 buckets it. Step 2 spec §6.1 (totals before item rows, B5): the total prints once its inputs follow B2; the rows behind it arrive in step 3. An empty list prints 0.00 (Ruling T0-e). Spec §6.1 and Appendix A.9. The audit has no row on this box."
+  },
+  {
+    "schema": "schedule_g",
+    "pdf_field": "Debtor 1",
+    "producer": "derived:full_name",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Debtor 1",
+    "evidence": "Field index: Debtor 1, 'Debtor 1 (First Name, Middle Name, Last Name)', one field with a widget on pages 1 and 2 (basis header, so not a checked basis). Step 2 spec §6.4 and Appendix A.10: G and H print the header name. The G audit's checked 'Debtor 2' row has this key, but its correct_target is 'leave blank', so the moved-here join can't assert this box; this row does."
+  },
+  {
+    "schema": "schedule_g",
+    "pdf_field": "check1",
+    "producer": "derived:has_executory_contracts",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check1",
+    "evidence": "Field index: check1 p1 line 1, 'Do you have any executory contracts or unexpired leases?' (its tooltip was copied from Schedule D). Options 'No. Check this box and file this form with the court...' (no) and 'Yes. Fill in all of the information below even if the contracts or leases are listed on Schedule A/B' (yes), sampled_ok. has_executory_contracts is 'yes' when the filer saved a contract or lease. Owner's answer Q8 (DIG-80, DIG-69; step 2 spec §3, §6.3): the section Yes/No boxes are derived from the lists, Yes with rows and No without. Spec Appendix A.10. The audit has no row on this box."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "Debtor 1",
+    "producer": "derived:full_name",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Debtor 1",
+    "evidence": "Field index: Debtor 1, 'Debtor 1 (First Name, Middle Name, Last Name)', one field with a widget on pages 1 and 2 (basis header, so not a checked basis). Step 2 spec §6.4 and Appendix A.10: G and H print the header name. The H audit's 'Debtor 2' row has this key, but its correct_target is 'leave blank', so the moved-here join can't assert this box; this row does."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "check1",
+    "producer": "derived:has_codebtors",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check1",
+    "evidence": "Field index: check1 p1 line 1, 'Do you have any codebtors? (If you are filing a joint case, do not list either spouse as a codebtor.)', options No (no) and Yes (yes), adjudicated. has_codebtors is 'yes' when the filer saved a codebtor. Owner's answer Q8 (DIG-80, DIG-69; step 2 spec §3, §6.3): the section Yes/No boxes are derived from the lists, Yes with rows and No without. Spec Appendix A.10. The audit has no row on this box."
   }
 ]

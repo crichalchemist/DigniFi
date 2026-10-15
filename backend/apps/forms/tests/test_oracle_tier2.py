@@ -34,7 +34,7 @@ from apps.forms.tests.oracle import case_param
 TIER = "2"
 CHECKED_BASES = {"adjudicated", "sampled_ok"}
 LEAVE_BLANK = "leave blank"
-ASSERTED_CASES = 414
+ASSERTED_CASES = 428
 
 
 def _audit_dir():

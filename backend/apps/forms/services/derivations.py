@@ -132,20 +132,6 @@ def _total_debts(session: IntakeSession) -> str:
     return _fmt(_sum_encrypted(qs, "amount_owed"))
 
 
-def _total_bank_accounts(session: IntakeSession) -> str:
-    from apps.intake.models import AssetInfo
-
-    qs = AssetInfo.objects.filter(session=session, asset_type="bank_account")
-    return _fmt(_sum_encrypted(qs, "current_value"))
-
-
-def _total_retirement_accounts(session: IntakeSession) -> str:
-    from apps.intake.models import AssetInfo
-
-    qs = AssetInfo.objects.filter(session=session, asset_type="retirement_account")
-    return _fmt(_sum_encrypted(qs, "current_value"))
-
-
 def _total_other_assets(session: IntakeSession) -> str:
     from apps.intake.models import AssetInfo
 
@@ -172,6 +158,49 @@ def _total_monthly_expenses(session: IntakeSession) -> str:
     except ExpenseInfo.DoesNotExist:
         return "0.00"
     return _fmt(Decimal(str(expense_info.calculate_total_monthly_expenses())))
+
+
+# ---------------------------------------------------------------------------
+# Schedule A/B part totals, line 53, and the section questions of A/B, G and H
+# ---------------------------------------------------------------------------
+
+
+def _total_vehicles(session: IntakeSession) -> str:
+    from apps.intake.models import AssetInfo
+
+    qs = AssetInfo.objects.filter(session=session, asset_type="vehicle")
+    return _fmt(_sum_encrypted(qs, "current_value"))
+
+
+def _total_household_items(session: IntakeSession) -> str:
+    from apps.intake.models import AssetInfo
+
+    qs = AssetInfo.objects.filter(session=session, asset_type="personal_property")
+    return _fmt(_sum_encrypted(qs, "current_value"))
+
+
+def _total_financial_assets(session: IntakeSession) -> str:
+    """Part 4, line 36: deposits (17) and retirement accounts (21), the only lines asked."""
+    from apps.intake.models import AssetInfo
+
+    qs = AssetInfo.objects.filter(
+        session=session, asset_type__in=("bank_account", "retirement_account")
+    )
+    return _fmt(_sum_encrypted(qs, "current_value"))
+
+
+def _other_asset_descriptions(session: IntakeSession) -> str:
+    """Line 53: the "Other" assets in the order the filer listed them (DIG-164)."""
+    from apps.intake.models import AssetInfo
+
+    # The model orders by encrypted value, so the filer's order is the id's.
+    qs = AssetInfo.objects.filter(session=session, asset_type="other").order_by("id")
+    return "; ".join(qs.values_list("description", flat=True))
+
+
+def _yes_if_any(rows) -> str:
+    """A section's Yes/No question (owner Q8): "yes" when the filer listed one, else "no"."""
+    return "yes" if rows.exists() else "no"
 
 
 # ---------------------------------------------------------------------------
@@ -519,13 +548,25 @@ DERIVATIONS: dict[str, Callable[[IntakeSession], str]] = {
     "total_secured_debts": _total_secured_debts,
     "total_nonpriority_unsecured": _total_nonpriority_unsecured,
     "total_debts": _total_debts,
-    "total_bank_accounts": _total_bank_accounts,
-    "total_retirement_accounts": _total_retirement_accounts,
     "total_other_assets": _total_other_assets,
     "total_secured_claims": _total_secured_debts,
     "joint_filer_name": _full_name,
     "cmi": _cmi,
     "total_monthly_expenses": _total_monthly_expenses,
+    # Schedule A/B part totals, line 53, and the section questions of A/B, G and H
+    "total_vehicles": _total_vehicles,
+    "total_household_items": _total_household_items,
+    "total_financial_assets": _total_financial_assets,
+    "other_asset_descriptions": _other_asset_descriptions,
+    "has_real_property": lambda s: _yes_if_any(s.assets.filter(asset_type="real_property")),
+    "has_vehicles": lambda s: _yes_if_any(s.assets.filter(asset_type="vehicle")),
+    "has_bank_accounts": lambda s: _yes_if_any(s.assets.filter(asset_type="bank_account")),
+    "has_retirement_accounts": lambda s: _yes_if_any(
+        s.assets.filter(asset_type="retirement_account")
+    ),
+    "has_other_assets": lambda s: _yes_if_any(s.assets.filter(asset_type="other")),
+    "has_executory_contracts": lambda s: _yes_if_any(s.executory_contracts.all()),
+    "has_codebtors": lambda s: _yes_if_any(s.codebtors.all()),
     # Form 101 lines 18-20
     "creditor_count_range": _creditor_count_range,
     "total_assets_range": _total_assets_range,
