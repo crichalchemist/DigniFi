@@ -6,7 +6,7 @@
 
 **Token Types:**
 
-- **Access Token:** Short-lived (15 minutes), used for API requests
+- **Access Token:** Short-lived (15 minutes; the code sets 30 today, DIG-249), used for API requests
 - **Refresh Token:** Long-lived (1 day), used to obtain new access tokens
 
 **Storage:**
@@ -65,7 +65,7 @@
 **JWT Refresh Flow:**
 
 1. User logs in → receive access + refresh tokens
-2. Access token expires after 15 minutes
+2. Access token expires after 15 minutes (30 in the code today, DIG-249)
 3. Frontend automatically uses refresh token to get new access token
 4. Refresh token expires 1 day after login → user must log in again
 
