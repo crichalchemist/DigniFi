@@ -1363,6 +1363,6 @@ export const IntakeWizard: React.FC = () => {
 
 ---
 
-**Document Status:** Ready for Implementation  
-**Next Action:** Backend team begins Phase 1 development (Jan 6, 2026)  
+**Document Status:** Not built (see the status note at the top)  
+**Next Action:** None planned; this design was superseded  
 **Review Cadence:** Weekly progress meetings; legal review post-Phase 3 (Jan 27)
