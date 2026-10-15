@@ -117,13 +117,6 @@ def _total_secured_debts(session: IntakeSession) -> str:
     return _fmt(_sum_encrypted(qs, "amount_owed"))
 
 
-def _total_priority_unsecured(session: IntakeSession) -> str:
-    from apps.intake.models import DebtInfo
-
-    qs = DebtInfo.objects.filter(session=session, is_secured=False, is_priority=True)
-    return _fmt(_sum_encrypted(qs, "amount_owed"))
-
-
 def _total_nonpriority_unsecured(session: IntakeSession) -> str:
     from apps.intake.models import DebtInfo
 
@@ -546,7 +539,6 @@ DERIVATIONS: dict[str, Callable[[IntakeSession], str]] = {
     "district_name": lambda s: s.district.name,
     "today_iso": lambda s: date.today().isoformat(),
     "ssn_formatted": _ssn_formatted,
-    "has_ssn_check": lambda s: "true" if _has_ssn(s) else "",
     "no_ssn_check": lambda s: "" if _has_ssn(s) else "true",
     "joint_filer_check": lambda s: (
         "true" if _form_answer_predicate(s, "joint_filer_gate") else ""
@@ -555,7 +547,6 @@ DERIVATIONS: dict[str, Callable[[IntakeSession], str]] = {
     "total_personal_property": _total_personal_property,
     "total_assets": _total_assets,
     "total_secured_debts": _total_secured_debts,
-    "total_priority_unsecured": _total_priority_unsecured,
     "total_nonpriority_unsecured": _total_nonpriority_unsecured,
     "total_unsecured_debts": _total_unsecured_debts,
     "total_debts": _total_debts,

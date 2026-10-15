@@ -238,5 +238,15 @@
     "status": "confirmed",
     "correct_target": "Debtor.Name1",
     "evidence": "Field index: Debtor.Name1 'Debtor 1 (continuation-page caption)', one field with a widget on pages 2 and 3 (adjudicated; its tooltip \"Judge's Signature\" is a template error). Step 2 spec §6.4 and Appendix A.2: the page 2-3 caption prints the name. The audit's derived:full_name row on 'Debtor' names 'Debtor 1', so it doesn't place this box."
+  },
+  {
+    "schema": "form_106sum",
+    "pdf_field": "check6",
+    "producer": "constant:yes",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check6",
+    "evidence": "Field index: check6 p2 line 6 'Are you filing for bankruptcy under Chapters 7, 11, or 13?', states /no ('No. You have nothing to report on this part of the form...') and /yes ('Yes'), both sampled_ok. Step 2 spec §6.4 and Appendix A.4: check6 is Yes; every DigniFi filing is Chapter 7."
   }
 ]

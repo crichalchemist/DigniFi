@@ -1,25 +1,9 @@
 [
   {
-    "form_type": "form_121",
-    "pdf_field": "Check Box1",
-    "tier": "1",
-    "case": "",
-    "class": "unmapped_choice",
-    "ticket": "DIG-68"
-  },
-  {
     "form_type": "form_106sum",
     "pdf_field": "4",
     "tier": "2",
     "case": "derived:total_debts",
-    "class": "wrong_box",
-    "ticket": "DIG-79"
-  },
-  {
-    "form_type": "form_106sum",
-    "pdf_field": "9a",
-    "tier": "2",
-    "case": "derived:total_monthly_expenses",
     "class": "wrong_box",
     "ticket": "DIG-79"
   },
@@ -46,14 +30,6 @@
     "case": "asked:sofa.prior_income[].source",
     "class": "wrong_box",
     "ticket": "DIG-77"
-  },
-  {
-    "form_type": "form_121",
-    "pdf_field": "Check Box1",
-    "tier": "2",
-    "case": "derived:has_ssn_check",
-    "class": "wrong_box",
-    "ticket": "DIG-68"
   },
   {
     "form_type": "form_122a1",
@@ -530,46 +506,6 @@
   {
     "form_type": "form_106sum",
     "pdf_field": "4",
-    "tier": "3",
-    "case": "sarah",
-    "class": "wrong_value",
-    "ticket": "DIG-79"
-  },
-  {
-    "form_type": "form_106sum",
-    "pdf_field": "5",
-    "tier": "3",
-    "case": "deshawn",
-    "class": "wrong_value",
-    "ticket": "DIG-79"
-  },
-  {
-    "form_type": "form_106sum",
-    "pdf_field": "5",
-    "tier": "3",
-    "case": "james",
-    "class": "wrong_value",
-    "ticket": "DIG-79"
-  },
-  {
-    "form_type": "form_106sum",
-    "pdf_field": "5",
-    "tier": "3",
-    "case": "maria",
-    "class": "wrong_value",
-    "ticket": "DIG-79"
-  },
-  {
-    "form_type": "form_106sum",
-    "pdf_field": "5",
-    "tier": "3",
-    "case": "priya",
-    "class": "wrong_value",
-    "ticket": "DIG-79"
-  },
-  {
-    "form_type": "form_106sum",
-    "pdf_field": "5",
     "tier": "3",
     "case": "sarah",
     "class": "wrong_value",

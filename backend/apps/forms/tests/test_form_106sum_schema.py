@@ -10,6 +10,8 @@ from apps.districts.models import District
 from apps.eligibility.cmi import IncomeNotSplit
 from apps.forms.schema import load_schema
 from apps.forms.services.fill_resolver import resolve
+from apps.forms.services.pdf_filler import PDFFormFiller
+from apps.forms.tests.pdf_readback import read_widgets
 from apps.intake.models import (
     AssetInfo,
     DebtInfo,
@@ -122,8 +124,30 @@ class TestForm106SumSchema:
     def test_debt_totals(self, populated_session):
         field_map = resolve(load_schema("form_106sum"), populated_session)
         assert field_map["2"] == "50000.00"  # secured
-        assert field_map["3a"] == "5000.00"  # priority unsecured
         assert field_map["3b"] == "10000.00"  # nonpriority unsecured
+
+    def test_priority_debts_print_nowhere_until_the_filer_is_asked_which_have_priority(
+        self, populated_session
+    ):
+        # The fixture's IRS debt is marked priority, but DigniFi never asks which debts
+        # have priority (OQ-3), and deciding it is a legal judgment: line 3a stays blank.
+        field_map = resolve(load_schema("form_106sum"), populated_session)
+        assert "3a" not in field_map
+
+    def test_monthly_expenses_print_on_line_5_not_on_the_support_obligations_line(
+        self, populated_session
+    ):
+        # Line 5 copies Schedule J line 22c. Line 9a asks for domestic support
+        # obligations, which DigniFi never asks (step 2 spec §6.4).
+        field_map = resolve(load_schema("form_106sum"), populated_session)
+        assert field_map.get("5") == "1900.00"  # 1000 + 200 + 400 + 300
+        assert "9a" not in field_map
+
+    def test_line_6_says_the_filer_is_filing_under_chapter_7_11_or_13(self, populated_session):
+        # Every DigniFi filing is Chapter 7, so line 6's Yes ticks and its No stays off.
+        values = resolve(load_schema("form_106sum"), populated_session)
+        widgets = read_widgets(PDFFormFiller().fill("form_106sum", values))
+        assert sorted(w.state for w in widgets if w.full_name == "check6") == ["/Off", "/yes"]
 
     def test_cmi(self, populated_session):
         field_map = resolve(load_schema("form_106sum"), populated_session)
