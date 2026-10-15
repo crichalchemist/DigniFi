@@ -385,21 +385,30 @@ def _fee_waiver_household_size(session: IntakeSession) -> str:
 
 
 def _fee_waiver_monthly_income(session: IntakeSession) -> str:
+    """Line 2: the take-home pay the filer typed, blank if they never gave it (B2)."""
+    fw = getattr(session, "fee_waiver", None)
+    if fw is None or fw.monthly_take_home_pay is None:
+        return ""
+    return _fmt(Decimal(str(fw.monthly_take_home_pay)))
 
-    try:
-        fw = session.fee_waiver
-        return _fmt(Decimal(str(fw.monthly_income)))
-    except Exception:
-        return "0.00"
+
+def _fee_waiver_noncash_assistance(session: IntakeSession) -> str:
+    """Line 3: the filer's own yes or no, blank until they answer (DIG-193)."""
+    fw = getattr(session, "fee_waiver", None)
+    answer = None if fw is None else fw.receives_noncash_assistance
+    if answer is True:
+        return "yes"
+    if answer is False:
+        return "no"
+    return ""
 
 
-def _fee_waiver_monthly_expenses(session: IntakeSession) -> str:
-
-    try:
-        fw = session.fee_waiver
-        return _fmt(Decimal(str(fw.monthly_expenses)))
-    except Exception:
-        return "0.00"
+def _fee_waiver_benefit_types(session: IntakeSession) -> str:
+    """Line 3's "Describe": the kinds of help, joined as the fee-waiver page shows them."""
+    fw = getattr(session, "fee_waiver", None)
+    if fw is None or fw.receives_noncash_assistance is not True:
+        return ""
+    return ", ".join(fw.benefit_types)
 
 
 # ---------------------------------------------------------------------------
@@ -583,7 +592,10 @@ DERIVATIONS: dict[str, Callable[[IntakeSession], str]] = {
     # Form 103B fee waiver derivations
     "fee_waiver_household_size": _fee_waiver_household_size,
     "fee_waiver_monthly_income": _fee_waiver_monthly_income,
-    "fee_waiver_monthly_expenses": _fee_waiver_monthly_expenses,
+    # Line 6 is Schedule J line 22c: one figure on both forms
+    "fee_waiver_monthly_expenses": _schedule_j_total_expenses,
+    "fee_waiver_noncash_assistance": _fee_waiver_noncash_assistance,
+    "fee_waiver_benefit_types": _fee_waiver_benefit_types,
     # Schedule I income line item derivations
     "schedule_i_occupation_debtor1": _schedule_i_occupation_debtor1,
     "schedule_i_employer_debtor1": _schedule_i_employer_debtor1,

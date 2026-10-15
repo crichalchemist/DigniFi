@@ -8,30 +8,6 @@
     "ticket": "DIG-68"
   },
   {
-    "form_type": "form_103b",
-    "pdf_field": "4 type",
-    "tier": "2",
-    "case": "derived:fee_waiver_monthly_income",
-    "class": "wrong_box",
-    "ticket": "DIG-78"
-  },
-  {
-    "form_type": "form_103b",
-    "pdf_field": "5 Type",
-    "tier": "2",
-    "case": "derived:fee_waiver_monthly_expenses",
-    "class": "wrong_box",
-    "ticket": "DIG-78"
-  },
-  {
-    "form_type": "form_103b",
-    "pdf_field": "Amount you owe",
-    "tier": "2",
-    "case": "derived:total_debts",
-    "class": "wrong_box",
-    "ticket": "DIG-78"
-  },
-  {
     "form_type": "form_106sum",
     "pdf_field": "4",
     "tier": "2",

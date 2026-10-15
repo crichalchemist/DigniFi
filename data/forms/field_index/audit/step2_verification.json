@@ -178,5 +178,65 @@
     "status": "confirmed",
     "correct_target": "Name of person agreed to pay",
     "evidence": "Field index: Name of person agreed to pay p12 'Yes. Name of person (attach Official Form 119)' (tooltip 'Name of person to help fill out forms (not an attorney)'), adjudicated. The audit's row judged a separate answer, form_107.Name_of_person_agreed_to_pay. Owner's answer Q12 (step 2 spec §3, §6.3): the filer names their paid helper once, in answer:form_101.preparer_name, which prints on the three name boxes (101, 106Dec, 107)."
+  },
+  {
+    "schema": "form_103b",
+    "pdf_field": "You",
+    "producer": "constant:true",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "You",
+    "evidence": "Field index: You p1 line 1 'You' (option 'You', state /On, sampled_ok), the first 'check all that apply' box of the family-size question. Step 2 spec §6.4 and Appendix A.2: You is ticked; the filer is always one of the people counted."
+  },
+  {
+    "schema": "form_103b",
+    "pdf_field": "undefined_2",
+    "producer": "derived:fee_waiver_monthly_income",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_2",
+    "evidence": "Field index: undefined_2 p1 line 2 'You', column 'That person’s average monthly net income (take-home pay)' (sampled_ok). Owner's answer Q10 (step 2 spec §3, §6.3, DIG-78): 103B line 2 prints the take-home pay the filer typed on the fee-waiver page, on You, Subtotal and the family's net income; Your spouse and the non-cash subtraction stay blank (Appendix E 6)."
+  },
+  {
+    "schema": "form_103b",
+    "pdf_field": "undefined_4",
+    "producer": "derived:fee_waiver_monthly_income",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_4",
+    "evidence": "Field index: undefined_4 p1 line 2 'Subtotal', column 'That person’s average monthly net income (take-home pay)' (sampled_ok). Owner's answer Q10 (step 2 spec §3, §6.3, DIG-78): 103B line 2 prints the take-home pay the filer typed on the fee-waiver page, on You, Subtotal and the family's net income; Your spouse and the non-cash subtraction stay blank (Appendix E 6)."
+  },
+  {
+    "schema": "form_103b",
+    "pdf_field": "check 3",
+    "producer": "derived:fee_waiver_noncash_assistance",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check 3",
+    "evidence": "Field index: check 3 p1 line 3 'Do you receive non-cash governmental assistance?', states /no ('No') and /yes ('Yes. Describe.'), sampled_ok. Owner's answer Q11 (step 2 spec §3, §6.3): line 3 is a Yes/No question in the form's own words with \"What kind?\", answered on the fee-waiver page; blank until answered (DIG-193)."
+  },
+  {
+    "schema": "form_103b",
+    "pdf_field": "3 type",
+    "producer": "derived:fee_waiver_benefit_types",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "3 type",
+    "evidence": "Field index: 3 type p1 line 3 'Type of assistance' (sampled_ok), the box beside 'Yes. Describe.'. Owner's answer Q11 (step 2 spec §3, §6.3): line 3 is a Yes/No question in the form's own words with \"What kind?\", answered on the fee-waiver page; blank until answered (DIG-193). The kinds print only with a Yes."
+  },
+  {
+    "schema": "form_103b",
+    "pdf_field": "Debtor.Name1",
+    "producer": "derived:full_name",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Debtor.Name1",
+    "evidence": "Field index: Debtor.Name1 'Debtor 1 (continuation-page caption)', one field with a widget on pages 2 and 3 (adjudicated; its tooltip \"Judge's Signature\" is a template error). Step 2 spec §6.4 and Appendix A.2: the page 2-3 caption prints the name. The audit's derived:full_name row on 'Debtor' names 'Debtor 1', so it doesn't place this box."
   }
 ]

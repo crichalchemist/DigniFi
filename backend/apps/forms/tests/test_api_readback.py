@@ -186,8 +186,8 @@ def test_forms_built_through_the_api_print_what_the_seeded_forms_print(persona):
         form_type: _comparable(form_type, build_field_values(form_type, seeded))
         for form_type in packet(seeded)
     }
-    # No form prints take-home pay or the non-cash answer until 2b binds them on Form 103B,
-    # so the stored applications are compared directly.
+    # Form 103B prints take-home pay and the non-cash answer, but no form prints the two
+    # "cannot pay" answers, so the stored applications are compared directly.
     built = IntakeSession.objects.get(pk=session_id)
     assert _fee_waiver_answers(built) == _fee_waiver_answers(seeded)
     assert (_fee_waiver_answers(built) is None) == (persona not in WAIVER_FILERS)
