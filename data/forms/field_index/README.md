@@ -11,7 +11,7 @@ Ground truth for every fillable box on the 17 AO templates in `../pdfs/` that th
 - `audit/step2_verification.json`: forms step 2's own placements, the bindings the audit never judged. Each row has `verification.json`'s shape plus `producer`, the whole binding key (`derived:phone`), and cites the box's label in the index. Tier 2 (`backend/apps/forms/tests/test_oracle_tier2.py`) reads these rows before the audit's, matching on box and binding key, and fails on a row that no binding matches.
 - The audit, unbound and verification files are the 2026-10-09 audit's record. Later steps don't edit them, so some boxes listed as unbound are bound now.
 - `audit/ocr_cross.json`: where the vision reading and the text-layer reading disagreed.
-- `tools/`: the scripts that built the index (`form_ocr.py`, `ocr_crosscheck.py`, `field_index.py`).
+- `tools/`: the scripts that built the index (`form_ocr.py`, `ocr_crosscheck.py`, `field_index.py`), the one-off conversion of the schemas to full-name bindings (`convert_schemas.py`), and the recorder of failing oracle cases in `known_defects.json` (`record_known_defects.py`).
 
 ## How each row was established (`basis`)
 

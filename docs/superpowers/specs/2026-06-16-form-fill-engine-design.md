@@ -176,6 +176,8 @@ PREDICATES:  dict[str, Callable[[IntakeSession], bool]]  # conditional_on → ap
 
 **UPL boundary (hard rule):** no legal conclusions. Exemption-statute choice, debt-priority classification, and means-test verdicts are **never** derivations — they are `asked` + `legal_review: true`. This is the information-vs-advice line that the entire product depends on.
 
+> Superseded (2026-10-12): a rule may apply a comparison the form itself spells out (122A-1 line 14), but still may not choose exemptions, decide priority or answer anything the form leaves to the filer, and 122A-2's result boxes stay blank — see `docs/superpowers/specs/2026-10-12-forms-step2-design.md` §6.1 Rule 9.
+
 ### 6. Hybrid data model — `backend/apps/intake/models.py` (+ migration `0007`)
 
 **Structured** (always/often-applicable, PII-bearing — encrypted amounts via the existing `EncryptedDecimalField` from `apps/intake/fields.py`):

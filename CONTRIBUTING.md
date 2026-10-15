@@ -104,12 +104,17 @@ Our users face financial crisis, often with accompanying mental health challenge
 ### Getting Started
 
 1. **Fork the repository** - Work in your own fork
-2. **Create a feature branch** - `git checkout -b feature/your-feature-name`
+2. **Create a feature branch from `develop`** - `git fetch upstream && git checkout -b feature/your-feature-name upstream/develop` (once per clone: `git remote add upstream https://github.com/crichalchemist/DigniFi.git`)
 3. **Set up environment** - See [Environment Setup](#environment-setup)
-4. **Make your changes** - Follow code style guidelines in [CLAUDE.md](CLAUDE.md)
+4. **Make your changes** - Follow the lint and format rules (see [Code Quality & Formatting](#code-quality--formatting))
 5. **Write tests** - All new code needs tests (see [Testing Requirements](#testing-requirements))
 6. **Commit with clear messages** - Use conventional commits format
-7. **Push and create PR** - Fill out the PR template completely
+7. **Push and create PR** - Open it against `develop` (`gh pr create --base develop`) and describe what changed and why
+8. **Squash-merge** - The PR lands on `develop` as one squashed commit
+
+`develop`, `main` and `prod` are the three long-lived branches. When a body of work is finished, `develop` is promoted to `main` by a fast-forward push. `main` is the stable copy for people who run DigniFi on their own machine, and it stays the GitHub default branch. `prod` is what Heroku runs: a deploy fast-forwards `prod` to `main`, then runs `git push heroku prod:main`. Only the owner deploys.
+
+Promotions are fast-forward pushes, never PRs: the repo disallows merge commits, and squash or rebase merges would give the branches different commits. CI runs on pushes and PRs for all three branches, and a ruleset blocks deletion and force-push on all three.
 
 ### Branch Naming
 
@@ -171,7 +176,7 @@ Co-Authored-By: Jane Doe <jane@example.com>
 4. **E2E Tests** (Playwright)
    - Full user journeys, persona-based scenarios
    - `python3 docs/testing/test_maria_quick.py` (quick smoke test)
-   - `python3 docs/testing/test_persona_full_flow.py` (full 5-persona suite)
+   - `cd frontend && npm run e2e` (7 journey specs; needs the backend running and seeded)
 
 ### Running Tests Locally
 
@@ -185,13 +190,13 @@ npm test
 # E2E smoke test
 python3 docs/testing/test_maria_quick.py
 
-# Full persona suite
-python3 docs/testing/test_persona_full_flow.py
+# E2E journeys (backend running and seeded)
+cd frontend && npm run e2e
 ```
 
 ### Test Coverage
 
-While we don't enforce coverage metrics, aim for:
+CI fails backend tests below 90% coverage. Beyond that, aim for:
 
 - **Critical paths:** 100% (means test, form generation, UPL boundaries)
 - **Business logic:** 90%+
@@ -227,7 +232,7 @@ Reviewers will check:
 ### 3. Technical Quality
 
 - [ ] Tests pass (backend + frontend + E2E)
-- [ ] Code follows project style (see CLAUDE.md)
+- [ ] Code follows project style (see [Code Quality & Formatting](#code-quality--formatting))
 - [ ] No security vulnerabilities (PII handling, injection, XSS)
 - [ ] Proper error handling
 - [ ] Performance considerations
@@ -281,9 +286,9 @@ source venv/bin/activate  # or `venv\Scripts\activate` on Windows
 pip install -r requirements/development.txt
 
 # Create .env
-cp .env.example .env
+cp .env.example ../.env
 python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
-# Add output to FIELD_ENCRYPTION_KEY in .env
+# Add output to FIELD_ENCRYPTION_KEY in ../.env
 
 # Run migrations
 python manage.py migrate
@@ -310,7 +315,7 @@ npm run dev
 # Windows: Download from postgresql.org
 
 # Create database
-createdb dignifi_db
+createdb dignifi_dev
 ```
 
 See [README.md](README.md) for complete setup instructions.
@@ -367,10 +372,10 @@ pre-commit run --all-files
 
 ### Questions?
 
-- **General questions:** Open a [Discussion](https://github.com/yourusername/dignifi/discussions)
-- **Bug reports:** Open an [Issue](https://github.com/yourusername/dignifi/issues/new?template=bug_report.md)
-- **UPL uncertainty:** Open a [UPL Concern Issue](https://github.com/yourusername/dignifi/issues/new?template=upl_concern.md)
-- **Accessibility issues:** Open an [Accessibility Issue](https://github.com/yourusername/dignifi/issues/new?template=accessibility.md)
+- **General questions:** Open an [Issue](https://github.com/crichalchemist/DigniFi/issues/new)
+- **Bug reports:** Open an [Issue](https://github.com/crichalchemist/DigniFi/issues/new)
+- **UPL uncertainty:** Open a [UPL Concern Issue](https://github.com/crichalchemist/DigniFi/issues/new)
+- **Accessibility issues:** Open an [Accessibility Issue](https://github.com/crichalchemist/DigniFi/issues/new)
 
 ### Areas We Need Help With
 

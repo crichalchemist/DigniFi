@@ -6,10 +6,9 @@ DigniFi handles sensitive Personally Identifiable Information (PII) for individu
 
 ## Supported Versions
 
-| Version | Supported          | Notes                    |
-| ------- | ------------------ | ------------------------ |
-| 1.x.x   | :white_check_mark: | Current MVP release      |
-| < 1.0   | :x:                | Development/testing only |
+| Version | Supported          | Notes               |
+| ------- | ------------------ | ------------------- |
+| 0.2.x   | :white_check_mark: | Current MVP release |
 
 ## Reporting a Vulnerability
 
@@ -75,12 +74,11 @@ DigniFi handles sensitive Personally Identifiable Information (PII) for individu
 
 Detailed security guidance is organized by topic:
 
-- **[Data Protection & Encryption](docs/security/data-protection.md)** - PII handling, encryption, data retention
-- **[Authentication & Authorization](docs/security/authentication.md)** - JWT, permissions, rate limiting
-- **[Input Validation](docs/security/input-validation.md)** - XSS, SQLi, CSRF prevention patterns
-- **[Development Security](docs/security/development.md)** - Code review checklist, testing, git security
-- **[Deployment Security](docs/security/deployment.md)** - Production checklist, infrastructure hardening
-- **[Compliance](docs/security/compliance.md)** - GLBA, CCPA, UPL, breach notification
+- **[Data Protection & Encryption](security/data-protection.md)** - PII handling, encryption, data retention
+- **[Authentication & Authorization](security/authentication.md)** - JWT, permissions, rate limiting
+- **[Development Security](security/development.md)** - Code review checklist, testing, git security
+- **[Deployment Security](security/deployment.md)** - Production checklist, infrastructure hardening
+- **[Compliance](security/compliance.md)** - GLBA, CCPA, UPL, breach notification
 
 ## Code Review Checklist
 
@@ -103,15 +101,15 @@ Quick checklist for all contributions:
 - [ ] Add account lockout after failed login attempts
 - [ ] Externalize audit logs to secure storage
 - [ ] Implement key rotation mechanism
-- [ ] Add security headers (CSP, HSTS, etc.)
+- [ ] Add a Content Security Policy (HSTS, nosniff and X-Frame-Options are set in production.py)
 
 **Medium-term (3-6 Months):**
 
 - [ ] SOC 2 Type II preparation
 - [ ] Penetration testing
 - [ ] SIEM integration
-- [ ] Encrypted S3 storage for generated forms
-- [ ] Automated security scanning in CI/CD
+- [ ] Encrypted storage for uploaded documents (generated forms are not stored as files)
+- [x] Automated security scanning in CI/CD (Bandit fails the CI run on high severity; pip-audit and npm audit are advisory)
 
 **Long-term (6-12 Months):**
 
@@ -136,5 +134,5 @@ We thank security researchers who have responsibly disclosed vulnerabilities:
 
 ---
 
-**Last Updated:** March 2026
-**Next Review:** June 2026 (quarterly review cycle)
+**Last Updated:** October 2026
+**Next Review:** January 2027 (quarterly review cycle)

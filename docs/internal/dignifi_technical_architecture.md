@@ -1,5 +1,7 @@
 # DigniFi Technical Architecture Analysis
 
+> **Status (2026-10-15):** Only "Implementation Status & Technology Stack" describes the built system; everything else, including section 9's "DigniFi Implementation" bullets, "Infrastructure Considerations", the diagram and the risks, is the original pre-build requirements analysis. The Architecture section of the root `CLAUDE.md` describes the current system.
+
 Based on the project documents, DigniFi describes a platform with several functional requirements but leaves the technical architecture largely implicit. This document outlines what a viable architecture would require.
 
 ---
@@ -215,13 +217,13 @@ This is where the architecture becomes non-trivial.
 - Backend: Django 5.0 + Django REST Framework with modular app architecture
 - Frontend: React 19 + TypeScript + Vite
 - Database: PostgreSQL 15 with Fernet field-level encryption for PII
-- Infrastructure: Docker Compose for development; local server deployment for MVP
+- Infrastructure: Docker Compose for development; Heroku (container build from `Dockerfile.heroku`) for the MVP
 - Security: JWT authentication, audit logging, UPL compliance middleware
 - Forms: pypdf integration for PDF generation and form population
 
 **Key Architectural Decisions:**
 
-- Domain-driven design with service layer (MeansTestCalculator, Form101Generator)
+- Domain-driven design with service layer (MeansTestCalculator, and the schema-driven `build_field_values` and `PDFFormFiller` for forms)
 - Encrypted model fields for SSN, account numbers, and sensitive financial data
 - Audit logging for all authenticated requests with UPL-sensitive action flagging
 - Token rotation and blacklisting for JWT security

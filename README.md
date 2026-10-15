@@ -1,24 +1,30 @@
-# DigniFi - Trauma-Informed Bankruptcy Filing Platform
+# DigniFi — Trauma-Informed Bankruptcy Filing Platform
+
+<p align="center">
+  <img src="assets/img/landing-page.png" alt="DigniFi landing page — hero section with 'Take the first step toward financial relief' headline, Get Started / Sign In / Try Demo buttons, and three value cards: Free to Use, Private & Secure, Legal Information" width="700">
+</p>
 
 **Mission**: Democratize access to bankruptcy relief for low-income, pro se Americans by translating complex legal processes into plain-language guidance and auto-populated court forms.
 
-**CRITICAL**: This platform provides legal **INFORMATION**, never legal **ADVICE**. All development must respect UPL (Unauthorized Practice of Law) boundaries.
+> **CRITICAL**: This platform provides legal **INFORMATION**, never legal **ADVICE**. All development must respect UPL (Unauthorized Practice of Law) boundaries.
 
 ## Project Status
 
-**MVP Complete & Deployed** — Full-stack application validated through AI persona testing and live on Heroku (Jun 2026)
+**MVP Complete & Deployed** — Full-stack application validated through AI persona testing and live on Heroku (June 2026)
 
-**Pilot District**: Northern District of Illinois (ILND)
-**MVP Scope**: Chapter 7 bankruptcy filing assistance
-**Next Milestone**: Paper prototype testing with target demographic
+|                    |                                        |
+| ------------------ | -------------------------------------- |
+| **Pilot District** | Northern District of Illinois (ILND)   |
+| **MVP Scope**      | Chapter 7 bankruptcy filing assistance |
+| **Next Milestone** | Public beta with coalition partners    |
 
-### Test Results (Jun 2026)
+### Test Results
 
-| Suite             | Count          | Status          |
-| ----------------- | -------------- | --------------- |
-| Backend (pytest)  | 655 (+1 xfail) | Passing         |
-| Frontend (vitest) | 207            | Passing         |
-| E2E persona tests | 5/5 personas   | All steps green |
+| Suite                     | Count            | Status          |
+| ------------------------- | ---------------- | --------------- |
+| Backend (pytest)          | 2,096 (+1 xfail) | Passing         |
+| Frontend (vitest)         | 358              | Passing         |
+| E2E journeys (Playwright) | 7/7 journeys     | All steps green |
 
 ## Quick Start
 
@@ -26,7 +32,7 @@
 
 - Docker & Docker Compose (or Colima on macOS)
 - Python 3.11+ (for local development without Docker)
-- Node.js 18+ (for local development without Docker)
+- Node.js 20.19+ or 22.12+ (for local development without Docker)
 
 ### Running with Docker (Recommended)
 
@@ -36,7 +42,7 @@ cp .env.example .env
 
 # 2. Generate encryption key
 python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
-# Add the output to FIELD_ENCRYPTION_KEY in backend/.env
+# Add the output to FIELD_ENCRYPTION_KEY in .env
 
 # 3. Start services
 docker compose up -d
@@ -96,8 +102,8 @@ cd backend
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements/development.txt
-cp .env.example .env
-# Edit .env with your local database settings
+cp .env.example ../.env
+# Edit ../.env with your local database settings
 python manage.py migrate
 python manage.py runserver
 ```
@@ -119,10 +125,10 @@ dignifi/
 │   │   ├── users/          # Authentication & profiles
 │   │   ├── audit/          # UPL compliance + analytics logging
 │   │   ├── districts/      # District-specific rules & data
-│   │   ├── intake/         # Data collection (6-step wizard)
+│   │   ├── intake/         # Data collection (8-step wizard)
 │   │   ├── eligibility/    # Means test calculator
 │   │   ├── documents/      # Document scanning pipeline (OCR → draft debts)
-│   │   └── forms/          # 18 bankruptcy form generators + PDF filler
+│   │   └── forms/          # 17 court forms: registry, fill engine, PDF filler
 │   ├── config/             # Django settings (base, dev, prod)
 │   └── requirements/       # Python dependencies
 ├── frontend/               # React 19 + TypeScript SPA
@@ -133,7 +139,7 @@ dignifi/
 │   │   ├── api/            # Typed API client
 │   │   └── utils/          # Analytics, helpers
 │   └── e2e/                # Playwright page objects & journey specs
-├── data/forms/pdfs/        # 64 official AO court PDF templates
+├── data/forms/pdfs/        # 67 official AO court PDF templates
 └── docs/                   # Reference documentation
     ├── internal/           # PRD, briefs, architecture analysis
     ├── testing/            # Persona briefs, test scripts, run protocol
@@ -145,7 +151,7 @@ dignifi/
 
 - **Backend**: Python 3.11, Django 5.0, Django REST Framework, PostgreSQL 15
 - **Frontend**: React 19, Vite 7, TypeScript (Context API for state management)
-- **PDF Generation**: pypdf 6.x — 18 generators fill official AO court templates
+- **PDF Generation**: pypdf 6.x — 17 form schemas fill official AO court templates
 - **Authentication**: JWT (djangorestframework-simplejwt) with silent refresh
 - **Encryption**: django-encrypted-model-fields (Fernet) for PII
 - **Testing**: pytest, vitest, Playwright, vitest-axe (accessibility)
@@ -155,13 +161,13 @@ dignifi/
 
 ## Core Features
 
-- Document scanning (v2): drag-and-drop upload → OCR by the configured provider (OpenAI GPT-4o by default) → credit reports extract tradelines into debt drafts (with "From scan" badge); paystubs aggregate income into Schedule I prefill
+- Document scanning (v2): drag-and-drop upload → OCR by the configured provider (OpenAI GPT-4o by default) → credit reports extract tradelines into debt drafts (with "From scan" badge); a pay stub fills the employer's name on Schedule I
 - User authentication with JWT (access in memory, refresh in localStorage)
-- 6-step intake wizard: Debtor Info → Income → Expenses → Assets → Debts → Review
+- 8-step intake wizard: Your Information → Income → Expenses → Assets → Amounts Owed → Contracts & Leases → Codebtors → Review & Results
 - Chapter 7 means test calculator (11 U.S.C. § 707(b) — annualized CMI vs. Census median by household size)
 - Fee waiver eligibility assessment (28 U.S.C. § 1930(f))
-- 18 bankruptcy form generators (Form 101 through Schedules A/B–J + adversary proceeding forms)
-- PDF download — generators fill the official AO court templates via pypdf
+- 17 court forms (Form 101 through Schedules A/B–J); each filer's packet holds 14–16 of them
+- PDF download — each form's schema fills its official AO court template via pypdf
 - UPL confirmation modal gates all form generation
 - Post-task usability survey (3 Likert + 2 open text)
 - Fire-and-forget analytics via AuditLog API
@@ -203,14 +209,14 @@ See `docs/UPL_COMPLIANCE.md` for complete guidelines.
 ## Testing
 
 ```bash
-# Backend (655 tests + 1 xfail)
+# Backend (2,096 tests + 1 xfail)
 docker compose exec backend pytest -q
 
-# Frontend (207 tests)
+# Frontend (358 tests)
 cd frontend && npx vitest run
 
-# Full persona E2E (5 personas × full flow)
-python3 docs/testing/test_persona_full_flow.py
+# Full E2E (7 Playwright journeys; backend running and seeded)
+cd frontend && npm run e2e
 
 # Quick smoke test (Maria only)
 python3 docs/testing/test_maria_quick.py
@@ -228,7 +234,7 @@ Key endpoints:
 | PATCH  | `/api/intake/sessions/{id}/`                      | Update session data (nested serializer) |
 | POST   | `/api/intake/sessions/{id}/complete/`             | Finalize intake                         |
 | POST   | `/api/intake/sessions/{id}/calculate_means_test/` | Run means test                          |
-| POST   | `/api/forms/generate_all/`                        | Generate all 18 forms                   |
+| POST   | `/api/forms/generate_all/`                        | Generate every form in the packet       |
 | GET    | `/api/forms/?session={id}`                        | List generated forms                    |
 
 ## Contributing
@@ -236,8 +242,9 @@ Key endpoints:
 1. Review `docs/UPL_COMPLIANCE.md` — UPL boundaries are non-negotiable
 2. Follow plain-language guidelines (`docs/PLAIN_LANGUAGE_GUIDE.md`)
 3. Use trauma-informed design principles (`docs/TRAUMA_INFORMED_DESIGN.md`)
-4. All PRs must pass CI (lint, backend tests, frontend tests)
-5. Maintain 80%+ test coverage
+4. Open PRs against `develop`; `develop` is promoted to `main`, and `main` to `prod`, by fast-forward (see `CONTRIBUTING.md`)
+5. All PRs must pass CI (lint, security scan, backend tests, frontend tests, E2E)
+6. Keep backend coverage at 90%+ (CI fails below it)
 
 ## Deployment
 
@@ -251,11 +258,13 @@ Key endpoints:
 - [ ] Configure email service
 - [ ] Review security settings in `config/settings/production.py`
 
+Production runs on Heroku from the `prod` branch. A deploy fast-forwards `prod` to `main`, then runs `git push heroku prod:main`. Only the owner deploys.
+
 ## License
 
 This project is licensed under the [Elastic License 2.0 (ELv2)](LICENSE).
 
-You may use, modify, and distribute it freely for non-commercial and internal purposes. You may not offer it as a managed service to third parties. See `LICENSE` for full terms.
+You may use, modify, and distribute it freely. You may not offer it as a managed service to third parties. See `LICENSE` for full terms.
 
 ## Contact
 

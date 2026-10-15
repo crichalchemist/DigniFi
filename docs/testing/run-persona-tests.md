@@ -7,6 +7,7 @@
 docker compose up
 
 # 2. Demo data seeded
+docker compose exec backend python manage.py loaddata ilnd_2025_data
 docker compose exec backend python manage.py seed_demo_data
 
 # 3. Playwright browser installed
@@ -105,16 +106,16 @@ reports. If a subagent fails or times out, record it as:
 
 The orchestrator computes:
 
-| Metric | Calculation |
-|--------|-------------|
-| **Completion rate** | count(completed=true) / 5 |
-| **Mean comprehension** | avg(survey_responses.comprehension) |
-| **Mean dignity** | avg(survey_responses.dignity) |
-| **Mean confidence** | avg(survey_responses.confidence) |
-| **Friction density** | total friction_points / 5 |
-| **High-severity count** | count(severity="high") |
-| **Trust score** | avg(trust_score) |
-| **NPS proxy** | count(would_recommend=true) / 5 |
+| Metric                  | Calculation                         |
+| ----------------------- | ----------------------------------- |
+| **Completion rate**     | count(completed=true) / 5           |
+| **Mean comprehension**  | avg(survey_responses.comprehension) |
+| **Mean dignity**        | avg(survey_responses.dignity)       |
+| **Mean confidence**     | avg(survey_responses.confidence)    |
+| **Friction density**    | total friction_points / 5           |
+| **High-severity count** | count(severity="high")              |
+| **Trust score**         | avg(trust_score)                    |
+| **NPS proxy**           | count(would_recommend=true) / 5     |
 
 ### Step 5: Rank Friction Points
 
@@ -131,23 +132,29 @@ Save to `docs/reports/YYYY-MM-DD-usability-test.md` with:
 # Usability Test Report — YYYY-MM-DD
 
 ## Summary Metrics
+
 [table of metrics vs targets]
 
 ## Stop Rule Evaluation
+
 - Completion: [pass/fail]
 - Dignity: [pass/fail]
 - Action: [continue / pause / redesign / celebrate]
 
 ## Top Friction Points
+
 [ranked list with persona context]
 
 ## Per-Persona Summaries
+
 [brief narrative for each]
 
 ## Recommendations
+
 [prioritized list of changes]
 
 ## Raw Data
+
 [link to individual JSON reports]
 ```
 
@@ -155,12 +162,12 @@ Save to `docs/reports/YYYY-MM-DD-usability-test.md` with:
 
 From the PRD experiment plan:
 
-| Condition | Action |
-|-----------|--------|
-| 2+ personas cannot complete | **PAUSE** — fix blockers before continuing |
-| Mean dignity < 3.0 | **REDESIGN** — fundamental tone/language issues |
-| All 5 complete, mean dignity >= 4.0 | **CELEBRATE** — ready for real user testing |
-| 1 persona fails, dignity >= 3.5 | **ITERATE** — fix specific issue, rerun |
+| Condition                           | Action                                          |
+| ----------------------------------- | ----------------------------------------------- |
+| 2+ personas cannot complete         | **PAUSE** — fix blockers before continuing      |
+| Mean dignity < 3.0                  | **REDESIGN** — fundamental tone/language issues |
+| All 5 complete, mean dignity >= 4.0 | **CELEBRATE** — ready for real user testing     |
+| 1 persona fails, dignity >= 3.5     | **ITERATE** — fix specific issue, rerun         |
 
 ## Quick-Start Command
 

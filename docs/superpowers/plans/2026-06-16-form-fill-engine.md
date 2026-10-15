@@ -17,6 +17,7 @@ Every task's requirements implicitly include this section.
 - **pypdf 6.13** — pinned; 3.17 raises `KeyError /AP`.
 - **Encryption** — financial amounts use `EncryptedDecimalField` (`apps/intake/fields.py`); never store amounts in plaintext.
 - **UPL** — legal information, never advice. `legal_review: true` fields fill only from an explicit confirmed answer; no derivation encodes a legal conclusion (exemption choice, debt priority, means-test verdict).
+  - Superseded (2026-10-12): a rule may apply a comparison the form itself spells out (122A-1 line 14), but still may not choose exemptions, decide priority or answer anything the form leaves to the filer, and 122A-2's result boxes stay blank — see `docs/superpowers/specs/2026-10-12-forms-step2-design.md` §6.1 Rule 9.
 - **Schemas are committed + version-pinned.** A schema whose `template_version` hash no longer matches its template must fail tests, not silently fill.
 - **Sworn-document safety** — the resolver never silently truncates a repeat group; overflow raises `RepeatOverflow`.
 - **DRF pagination** returns `{count, results}` — frontend guards with `Array.isArray`.
@@ -568,6 +569,8 @@ Run: `docker compose exec backend python -m pytest apps/forms/tests/test_derivat
 Expected: FAIL — `ModuleNotFoundError: No module named 'apps.forms.services.derivations'`.
 
 - [ ] **Step 3: Write minimal implementation**
+
+> Superseded (2026-10-12): a rule may apply a comparison the form itself spells out (122A-1 line 14), but still may not choose exemptions, decide priority or answer anything the form leaves to the filer, and 122A-2's result boxes stay blank — see `docs/superpowers/specs/2026-10-12-forms-step2-design.md` §6.1 Rule 9.
 
 Create `backend/apps/forms/services/derivations.py`:
 
