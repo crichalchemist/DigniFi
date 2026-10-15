@@ -248,5 +248,25 @@
     "status": "confirmed",
     "correct_target": "check6",
     "evidence": "Field index: check6 p2 line 6 'Are you filing for bankruptcy under Chapters 7, 11, or 13?', states /no ('No. You have nothing to report on this part of the form...') and /yes ('Yes'), both sampled_ok. Step 2 spec §6.4 and Appendix A.4: check6 is Yes; every DigniFi filing is Chapter 7."
+  },
+  {
+    "schema": "form_122a1",
+    "pdf_field": "Debto1.Quest3",
+    "producer": "derived:line3_alimony",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Debto1.Quest3",
+    "evidence": "Field index: Debto1.Quest3 p1 line 3, Column A (Debtor 1), 'Alimony and maintenance payments (not from a spouse if Column B is filled in)' (adjudicated). Step 2 spec §5.5 table (alimony received: 122A-1 line 3), §6.2 and Appendix E 5: 122A-1 line 3 prints alimony. The audit's row on this box judged the old line2_business_income binding."
+  },
+  {
+    "schema": "form_122a1",
+    "pdf_field": "terrorism If necessary list other sources on a separate page and put the total below 1",
+    "producer": "derived:other_income_label",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "terrorism If necessary list other sources on a separate page and put the total below 1",
+    "evidence": "Field index: this box p2 line 10 'Income from all other sources not listed above - source description, row 1' (adjudicated), beside its amount Debto1.Quest10A. Step 2 spec §5.5 table (other: 122A-1 line 10, \"Other income\"), §6.2 and Appendix E 5: the line 10 source box prints \"Other income\" when other income is above $0."
   }
 ]

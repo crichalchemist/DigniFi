@@ -262,8 +262,8 @@ def _line1_wages(session: IntakeSession) -> str:
     return _income_amounts(session, "monthly_gross_wages", "monthly_tips", "monthly_overtime")
 
 
-def _line2_business_income(session: IntakeSession) -> str:
-    return _fmt(_get_income_field(session, "business_income"))
+def _line3_alimony(session: IntakeSession) -> str:
+    return _income_amounts(session, "monthly_alimony")
 
 
 def _line3_real_property_income(session: IntakeSession) -> str:
@@ -278,10 +278,6 @@ def _line5a_pension_retirement(session: IntakeSession) -> str:
     return _income_amounts(session, "monthly_pension")
 
 
-def _line5b_social_security(session: IntakeSession) -> str:
-    return _fmt(_get_income_field(session, "social_security"))
-
-
 def _line6a_unemployment(session: IntakeSession) -> str:
     return _income_amounts(session, "monthly_unemployment")
 
@@ -292,6 +288,13 @@ def _line6b_child_support_alimony(session: IntakeSession) -> str:
 
 def _line7_other_income(session: IntakeSession) -> str:
     return _income_amounts(session, "monthly_other_income")
+
+
+def _other_income_label(session: IntakeSession) -> str:
+    """What the other income is, on 122A-1 line 10 and Schedule I 8h: named only above $0."""
+    income_info = getattr(session, "income_info", None)
+    other = None if income_info is None else income_info.monthly_other_income
+    return "Other income" if other is not None and other > 0 else ""
 
 
 def _line8a_total_gross_income(session: IntakeSession) -> str:
@@ -310,20 +313,6 @@ def _line8a_total_gross_income(session: IntakeSession) -> str:
         _ZERO,
     )
     return _fmt(total)
-
-
-def _line10a_deductions(session: IntakeSession) -> str:
-    return _fmt(_get_income_field(session, "deductions"))
-
-
-def _line10b_total_deductions(session: IntakeSession) -> str:
-    return _fmt(_get_income_field(session, "total_deductions"))
-
-
-def _line10c_net_income(session: IntakeSession) -> str:
-    gross = Decimal(_line8a_total_gross_income(session))
-    deductions = Decimal(_line10b_total_deductions(session))
-    return _fmt(gross - deductions)
 
 
 def _line11_annualized_income(session: IntakeSession) -> str:
@@ -351,10 +340,6 @@ def _line13a_median_income(session: IntakeSession) -> str:
     if median is None:
         return "0.00"
     return _fmt(median.get_median_income(size))
-
-
-def _line13b_annualized_income(session: IntakeSession) -> str:
-    return _line11_annualized_income(session)
 
 
 def _line13c_difference(session: IntakeSession) -> str:
@@ -563,22 +548,17 @@ DERIVATIONS: dict[str, Callable[[IntakeSession], str]] = {
     "total_debts_range": _total_debts_range,
     # Form 122A-1 means test derivations
     "line1_wages": _line1_wages,
-    "line2_business_income": _line2_business_income,
+    "line3_alimony": _line3_alimony,
     "line3_real_property_income": _line3_real_property_income,
     "line4_interest_dividends": _line4_interest_dividends,
     "line5a_pension_retirement": _line5a_pension_retirement,
-    "line5b_social_security": _line5b_social_security,
     "line6a_unemployment": _line6a_unemployment,
     "line6b_child_support_alimony": _line6b_child_support_alimony,
     "line7_other_income": _line7_other_income,
-    "line8a_total_gross_income": _line8a_total_gross_income,
-    "line10a_deductions": _line10a_deductions,
-    "line10b_total_deductions": _line10b_total_deductions,
-    "line10c_net_income": _line10c_net_income,
+    "other_income_label": _other_income_label,
     "line11_annualized_income": _line11_annualized_income,
     "line12b_annualized_cmi": _line12b_annualized_cmi,
     "line13a_median_income": _line13a_median_income,
-    "line13b_annualized_income": _line13b_annualized_income,
     "line13c_difference": _line13c_difference,
     # Form 103B fee waiver derivations
     "fee_waiver_household_size": _fee_waiver_household_size,

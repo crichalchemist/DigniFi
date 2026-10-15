@@ -121,8 +121,8 @@ TEN_SOURCES = {
     "monthly_other_income": Decimal("512.00"),
 }
 
-# The rules switched in 2a commit 4, with the sources each one adds up (spec §6.2's
-# "Returns"). Their names still describe their old lines until 2b moves the bindings.
+# The rules switched in 2a commit 4 or created in 2b, with the sources each one adds up
+# (spec §6.2's "Returns"). Moved rules keep names that describe their old lines (§6.1).
 SWITCHED_RULES = {
     "cmi": [field for field in TEN_SOURCES if field != "monthly_social_security"],
     "schedule_i_net_wages_debtor1": ["monthly_gross_wages", "monthly_tips"],
@@ -138,6 +138,7 @@ SWITCHED_RULES = {
     "line6a_unemployment": ["monthly_unemployment"],
     "line5a_pension_retirement": ["monthly_pension"],
     "line7_other_income": ["monthly_other_income"],
+    "line3_alimony": ["monthly_alimony"],
 }
 
 
@@ -170,6 +171,23 @@ def test_an_income_sum_counts_an_empty_source_as_zero(session):
     IncomeInfo.objects.create(session=session, monthly_alimony=Decimal("300.00"))
 
     assert DERIVATIONS["schedule_i_child_support_debtor1"](session) == "300.00"
+
+
+@pytest.mark.parametrize(
+    "other_income,named",
+    [(Decimal("0.01"), "Other income"), (Decimal("0"), ""), (None, "")],
+)
+def test_other_income_is_named_only_when_the_filer_has_some(session, other_income, named):
+    # 122A-1 line 10 and Schedule I 8h ask what the other income is (Appendix E 5).
+    IncomeInfo.objects.create(
+        session=session, monthly_gross_wages=Decimal("100.00"), monthly_other_income=other_income
+    )
+
+    assert DERIVATIONS["other_income_label"](session) == named
+
+
+def test_other_income_is_not_named_before_the_filer_gives_any_income(session):
+    assert DERIVATIONS["other_income_label"](session) == ""
 
 
 def test_cmi_refuses_a_session_with_no_income_by_source(session):

@@ -41,113 +41,9 @@
   },
   {
     "form_type": "form_122a1",
-    "pdf_field": "13B",
-    "tier": "2",
-    "case": "derived:line13b_annualized_income",
-    "class": "wrong_box",
-    "ticket": "DIG-59"
-  },
-  {
-    "form_type": "form_122a1",
     "pdf_field": "13C",
     "tier": "2",
     "case": "derived:line13c_difference",
-    "class": "wrong_box",
-    "ticket": "DIG-59"
-  },
-  {
-    "form_type": "form_122a1",
-    "pdf_field": "Debto1.Quest10A",
-    "tier": "2",
-    "case": "derived:line10a_deductions",
-    "class": "wrong_box",
-    "ticket": "DIG-56"
-  },
-  {
-    "form_type": "form_122a1",
-    "pdf_field": "Debto1.Quest10B",
-    "tier": "2",
-    "case": "derived:line10b_total_deductions",
-    "class": "wrong_box",
-    "ticket": "DIG-56"
-  },
-  {
-    "form_type": "form_122a1",
-    "pdf_field": "Debto1.Quest10C",
-    "tier": "2",
-    "case": "derived:line10c_net_income",
-    "class": "wrong_box",
-    "ticket": "DIG-56"
-  },
-  {
-    "form_type": "form_122a1",
-    "pdf_field": "Debto1.Quest3",
-    "tier": "2",
-    "case": "derived:line2_business_income",
-    "class": "wrong_box",
-    "ticket": "DIG-56"
-  },
-  {
-    "form_type": "form_122a1",
-    "pdf_field": "Debto1.Quest4",
-    "tier": "2",
-    "case": "derived:line3_real_property_income",
-    "class": "wrong_box",
-    "ticket": "DIG-56"
-  },
-  {
-    "form_type": "form_122a1",
-    "pdf_field": "Debto1.Quest5A",
-    "tier": "2",
-    "case": "derived:line5a_pension_retirement",
-    "class": "wrong_box",
-    "ticket": "DIG-56"
-  },
-  {
-    "form_type": "form_122a1",
-    "pdf_field": "Debto1.Quest5B",
-    "tier": "2",
-    "case": "derived:line5b_social_security",
-    "class": "wrong_box",
-    "ticket": "DIG-56"
-  },
-  {
-    "form_type": "form_122a1",
-    "pdf_field": "Debto1.Quest6A",
-    "tier": "2",
-    "case": "derived:line6a_unemployment",
-    "class": "wrong_box",
-    "ticket": "DIG-56"
-  },
-  {
-    "form_type": "form_122a1",
-    "pdf_field": "Debto1.Quest6B",
-    "tier": "2",
-    "case": "derived:line6b_child_support_alimony",
-    "class": "wrong_box",
-    "ticket": "DIG-56"
-  },
-  {
-    "form_type": "form_122a1",
-    "pdf_field": "Debto1.Quest7",
-    "tier": "2",
-    "case": "derived:line7_other_income",
-    "class": "wrong_box",
-    "ticket": "DIG-56"
-  },
-  {
-    "form_type": "form_122a1",
-    "pdf_field": "Debto1.Quest8A",
-    "tier": "2",
-    "case": "derived:line8a_total_gross_income",
-    "class": "wrong_box",
-    "ticket": "DIG-56"
-  },
-  {
-    "form_type": "form_122a1",
-    "pdf_field": "Debto1.Quest9",
-    "tier": "2",
-    "case": "derived:family_size",
     "class": "wrong_box",
     "ticket": "DIG-59"
   },
@@ -510,46 +406,6 @@
     "case": "sarah",
     "class": "wrong_value",
     "ticket": "DIG-79"
-  },
-  {
-    "form_type": "form_122a1",
-    "pdf_field": "13B",
-    "tier": "3",
-    "case": "deshawn",
-    "class": "wrong_value",
-    "ticket": "DIG-59"
-  },
-  {
-    "form_type": "form_122a1",
-    "pdf_field": "13B",
-    "tier": "3",
-    "case": "james",
-    "class": "wrong_value",
-    "ticket": "DIG-59"
-  },
-  {
-    "form_type": "form_122a1",
-    "pdf_field": "13B",
-    "tier": "3",
-    "case": "maria",
-    "class": "wrong_value",
-    "ticket": "DIG-59"
-  },
-  {
-    "form_type": "form_122a1",
-    "pdf_field": "13B",
-    "tier": "3",
-    "case": "priya",
-    "class": "wrong_value",
-    "ticket": "DIG-59"
-  },
-  {
-    "form_type": "form_122a1",
-    "pdf_field": "13B",
-    "tier": "3",
-    "case": "sarah",
-    "class": "wrong_value",
-    "ticket": "DIG-59"
   },
   {
     "form_type": "form_122a1",
