@@ -53,7 +53,8 @@ def ticket_for(tier, defect_class, form_type, pdf_field):
         from apps.forms.tests.test_oracle_tier2 import _audit, _renamed
 
         old = {new: old for old, new in _renamed(form_type).items()}.get(pdf_field, pdf_field)
-        cited = re.findall(r"DIG-\d+", _audit(form_type).get(old, {}).get("known") or "")
+        rows = _audit(form_type).get(old, [])
+        cited = re.findall(r"DIG-\d+", " ".join(r.get("known") or "" for r in rows))
         open_tickets = [t for t in cited if t not in CLOSED]
         if open_tickets:
             return open_tickets[0]

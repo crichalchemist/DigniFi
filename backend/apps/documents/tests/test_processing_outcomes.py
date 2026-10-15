@@ -283,7 +283,7 @@ def test_a_scanned_car_loan_bill_reads_back_as_secured(filer, openai_client):
     ]
 
 
-def test_pay_stub_upload_produces_monthly_income_for_schedule_i(filer, openai_client):
+def test_pay_stub_upload_stores_its_monthly_gross_pay_and_no_debt(filer, openai_client):
     _, session = filer
     pay_stub = {
         "employer_name": "Acme Logistics",
@@ -299,7 +299,8 @@ def test_pay_stub_upload_produces_monthly_income_for_schedule_i(filer, openai_cl
     doc = scan_photo(filer, openai_client, DocumentType.PAY_STUB, reply=pay_stub)
 
     assert doc["ocr_result"]["status"] == "completed"
-    # Schedule I reads ingest_key "paystub.gross": 1000 / 14 days * 30.41667 = 2172.62.
+    # No form reads "paystub.gross" since step 2: Schedule I line 2 prints the wages typed on
+    # the Income step. The stub's monthly figure is still stored: 1000 / 14 days * 30.41667.
     gross = IngestedAggregate.objects.get(session=session, ingest_key="paystub.gross")
     assert gross.value == "2172.62"
     assert not DebtInfo.objects.filter(session=session).exists()

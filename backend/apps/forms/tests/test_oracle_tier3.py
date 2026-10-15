@@ -5,8 +5,9 @@ Expected values are worked out by hand from each persona's data (the seed, which
 matches docs/testing/persona-briefs/ except Priya's stale income line), never
 from the app's derivations. Boxes are named from the verified field index, not
 from the schema, so a value bound to the wrong line fails here. Money compares
-as a number, so "3,200.00" equals "3200.00". A box expected to hold zero is not
-asserted: step 2 decides where blank replaces 0.00.
+as a number, so "3,200.00" equals "3200.00". An expected "" means the box shows
+nothing (step 2 spec §7.5): a line DigniFi never asks prints blank, and so does
+an expense at $0, but an income source typed as $0 prints 0.00.
 """
 
 from decimal import Decimal, InvalidOperation
@@ -52,6 +53,8 @@ EXPECTED = {
             "5": "2560.00",
         },
         "form_122a1": {
+            "Debto1.Quest7": "",
+            "Debto1.Quest9": "0.00",
             "Debto1.Quest11": "3200.00",
             "Quest11": "3200.00",
             "12B": "38400.00",
@@ -59,8 +62,13 @@ EXPECTED = {
             "13C": "110712.00",
             "14a": BELOW_MEDIAN,
         },
-        "schedule_i": {"Amount 12": "3200.00"},
+        "schedule_i": {
+            "Amount 8b Debtor 1": "",
+            "Amount 8e Debtor 1": "0.00",
+            "Amount 12": "3200.00",
+        },
         "schedule_j": {
+            "18": "",
             "22a": "2560.00",
             "22c": "2560.00",
             "23a": "3200.00",
@@ -80,6 +88,8 @@ EXPECTED = {
             "5": "3110.00",
         },
         "form_122a1": {
+            "Debto1.Quest7": "",
+            "Debto1.Quest9": "0.00",
             "Debto1.Quest11": "5833.00",
             "Quest11": "5833.00",
             "12B": "69996.00",
@@ -87,8 +97,13 @@ EXPECTED = {
             "13C": "71304.00",
             "14a": BELOW_MEDIAN,
         },
-        "schedule_i": {"Amount 12": "5833.00"},
+        "schedule_i": {
+            "Amount 8b Debtor 1": "",
+            "Amount 8e Debtor 1": "0.00",
+            "Amount 12": "5833.00",
+        },
         "schedule_j": {
+            "18": "",
             "22a": "3110.00",
             "22c": "3110.00",
             "23a": "5833.00",
@@ -107,15 +122,21 @@ EXPECTED = {
             "5": "6640.00",
         },
         "form_122a1": {
-            "Debto1.Quest11": "12000.00",
+            "Debto1.Quest7": "",
+            "Debto1.Quest9": "0.00",
             "Quest11": "12000.00",
             "12B": "144000.00",
             "13B": "4",
             "13C": "134366.00",
             "14a": ABOVE_MEDIAN,
         },
-        "schedule_i": {"Amount 12": "12000.00"},
+        "schedule_i": {
+            "Amount 8b Debtor 1": "",
+            "Amount 8e Debtor 1": "0.00",
+            "Amount 12": "12000.00",
+        },
         "schedule_j": {
+            "18": "",
             "22a": "6640.00",
             "22c": "6640.00",
             "23a": "12000.00",
@@ -136,15 +157,21 @@ EXPECTED = {
             "5": "2295.00",
         },
         "form_122a1": {
-            "Debto1.Quest11": "3500.00",
+            "Debto1.Quest7": "",
+            "Debto1.Quest9": "0.00",
             "Quest11": "3500.00",
             "12B": "42000.00",
             "13B": "2",
             "13C": "91526.00",
             "14a": BELOW_MEDIAN,
         },
-        "schedule_i": {"Amount 12": "3500.00"},
+        "schedule_i": {
+            "Amount 8b Debtor 1": "",
+            "Amount 8e Debtor 1": "0.00",
+            "Amount 12": "3500.00",
+        },
         "schedule_j": {
+            "18": "",
             "22a": "2295.00",
             "22c": "2295.00",
             "23a": "3500.00",
@@ -161,6 +188,8 @@ EXPECTED = {
             "5": "1280.00",
         },
         "form_122a1": {
+            "Debto1.Quest7": "",
+            "Debto1.Quest9": "0.00",
             "Debto1.Quest11": "2000.00",
             "Quest11": "2000.00",
             "12B": "24000.00",
@@ -168,8 +197,13 @@ EXPECTED = {
             "13C": "71304.00",
             "14a": BELOW_MEDIAN,
         },
-        "schedule_i": {"Amount 12": "2000.00"},
+        "schedule_i": {
+            "Amount 8b Debtor 1": "",
+            "Amount 8e Debtor 1": "0.00",
+            "Amount 12": "2000.00",
+        },
         "schedule_j": {
+            "18": "",
             "22a": "1280.00",
             "22c": "1280.00",
             "23a": "2000.00",
@@ -196,7 +230,9 @@ def _printed(persona):
     (form_type, full name) → what the persona's filled forms show there.
 
     A box shows its tick, the /AS of each widget that isn't /Off, and never its /V
-    (spec §6). A text box has no /AS, and shows its /V.
+    (spec §6). A text box has no /AS, and shows its /V unless that is empty. Every
+    box in the filled forms has an entry, so an expected blank can't pass on a
+    name that is no box.
     """
     if not District.objects.filter(code="ilnd").exists():
         call_command("loaddata", "ilnd_2025_data", verbosity=0)
@@ -206,14 +242,15 @@ def _printed(persona):
     for form_type in EXPECTED[persona]:
         values = build_field_values(form_type, session)
         for w in read_widgets(PDFFormFiller().fill(form_type, values)):
+            shows = printed.setdefault((form_type, w.full_name), set())
             if w.state is None:
                 shown = w.value
             elif w.state != "/Off":
                 shown = w.state
             else:
                 continue
-            if shown is not None:
-                printed.setdefault((form_type, w.full_name), set()).add(shown)
+            if shown:
+                shows.add(shown)
     return printed
 
 
@@ -227,8 +264,12 @@ def _amount(text):
 @pytest.mark.django_db
 @pytest.mark.parametrize("form_type,pdf_field,case,expected", CASES)
 def test_persona_packet_prints_the_right_figure(form_type, pdf_field, case, expected):
-    shown = _printed(case).get((form_type, pdf_field), set())
-    if expected.startswith("/"):  # a box: this tick and no other
+    printed = _printed(case)
+    shown = printed.get((form_type, pdf_field), set())
+    if expected == "":  # the box shows nothing
+        assert (form_type, pdf_field) in printed, f"no box named {pdf_field!r} on {form_type}"
+        assert shown == set(), f"wrong_value: prints {sorted(shown)}, expected blank"
+    elif expected.startswith("/"):  # a box: this tick and no other
         assert shown == {expected}, f"wrong_value: ticks {sorted(shown)}, expected {expected}"
     elif _amount(expected) is not None:
         assert {_amount(s) for s in shown} == {

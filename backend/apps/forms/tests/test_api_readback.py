@@ -15,7 +15,6 @@ expects.
 """
 
 import json
-import re
 from decimal import Decimal, InvalidOperation
 
 import pytest
@@ -46,10 +45,6 @@ WIZARD_STEPS = [
     ("assets", "assets"),
     ("debts", "debts"),
 ]
-
-# What a signing-date box compares as: the date is today's when it is built, and a run that
-# straddles midnight stores one day and rebuilds the next.
-TODAY = "<today>"
 
 
 def _sent(data):
@@ -138,20 +133,15 @@ def _send_through_the_api(persona):
 
 def _comparable(form_type, values):
     """
-    A form's values, with each repeat group's rows in a fixed order and each date it was
-    built on as TODAY.
+    A form's values, with each repeat group's rows in a fixed order.
 
-    Stored rows have no fixed order (DIG-164), so Form 107's rows compare regardless of it.
+    No production schema has a repeat group since step 2 took Form 107's off. Stored rows
+    have no fixed order (DIG-164), so a group a later step binds compares regardless of it.
     Each row keeps its own values together, so an amount that moves to another row differs.
-    A signing date must still print as a date, but need not be the same day on both sides.
     """
     fixed = dict(values)
     rows = {}
     for field in load_schema(form_type).fields:
-        if field.rule == "today_iso":
-            date_printed = fixed.get(field.pdf_field, "")
-            assert re.fullmatch(r"\d{4}-\d{2}-\d{2}", date_printed), (form_type, field.pdf_field)
-            fixed[field.pdf_field] = TODAY
         if field.repeat and field.row and field.pdf_field in fixed:
             cell = (field.binding or "", fixed.pop(field.pdf_field))
             rows.setdefault((field.repeat, field.row), []).append(cell)
@@ -186,13 +176,13 @@ def test_forms_built_through_the_api_print_what_the_seeded_forms_print(persona):
         form_type: _comparable(form_type, build_field_values(form_type, seeded))
         for form_type in packet(seeded)
     }
-    # No form prints take-home pay or the non-cash answer until 2b binds them on Form 103B,
-    # so the stored applications are compared directly.
+    # Form 103B prints take-home pay and the non-cash answer, but no form prints the two
+    # "cannot pay" answers, so the stored applications are compared directly.
     built = IntakeSession.objects.get(pk=session_id)
     assert _fee_waiver_answers(built) == _fee_waiver_answers(seeded)
     assert (_fee_waiver_answers(built) is None) == (persona not in WAIVER_FILERS)
     # Only Priya's income is above the median, so only her packet holds 122A-2, and it
-    # prints figures worked out from her own expenses.
+    # prints her own figures: her monthly income on line 1 and her childcare on line 21.
     assert ("form_122a2" in stored) == (persona == "priya")
     if persona == "priya":
         amounts = [_amount(value) for value in stored["form_122a2"].values()]

@@ -50,9 +50,8 @@ def session_with_fw(session):
     FeeWaiverApplication.objects.create(
         session=session,
         household_size=2,
-        monthly_income=Decimal("1500.00"),
-        monthly_expenses=Decimal("1400.00"),
-        receives_public_benefits=True,
+        monthly_take_home_pay=Decimal("1500.00"),
+        receives_noncash_assistance=True,
         benefit_types=["SNAP"],
         cannot_pay_full=True,
         cannot_pay_installments=True,
