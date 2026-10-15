@@ -1,6 +1,6 @@
 # Document Scanning Implementation - Task Tracker
 
-**Status:** In Progress  
+**Status:** Closed. Document scanning shipped on a different design: hosted OCR providers (`openai_provider.py`, `gemini.py`) instead of a local llama.cpp service, so Tasks 1 and 5 were dropped. The boxes below were never ticked.  
 **Started:** 2026-05-12
 
 ## Completed Tasks

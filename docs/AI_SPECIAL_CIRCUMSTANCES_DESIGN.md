@@ -1,8 +1,10 @@
 # AI/ML-Powered Special Circumstances Enhancement
+
 ## Form 122A-2, Lines 44-47 Implementation Framework
 
 **Date:** January 4, 2026  
-**Status:** Technical Design (Ready for Implementation)  
+**Status:** Not built. It was superseded by `docs/superpowers/specs/2026-06-17-special-circumstances-llm-design.md`, which was not built either.  
+**Note:** The 04/25 Official Form 122A-2 puts special circumstances on line 43 (Part 4). Every "Lines 44-47" in this document means line 43.  
 **Priority:** P0 (Critical Path Blocker per PRD v0.3)  
 **Owners:** Backend (LLM integration) + Frontend (narrative capture UI)
 
@@ -11,6 +13,7 @@
 ## I. Legal Foundation: 11 U.S.C. § 707(b)(2)(B)
 
 ### Statutory Text
+
 **11 U.S.C. § 707(b)(2)(B)** permits a debtor to rebut the presumption of abuse under Chapter 7 if:
 
 > "Special circumstances exist that make the payment of any amount of any regular expenses not reasonably necessary to be expended or reasonably necessary to expend..."
@@ -18,30 +21,34 @@
 ### Two Pathways to Rebuttal
 
 #### Pathway A: Expenses Not Reasonably Necessary
+
 - Current expenses that exceed statutory allowances (IRS standards, local variances)
 - Justified by circumstances unique to debtor's situation
 - Examples: uninsured medical conditions, necessary transportation for health treatment, disability-related expenses
 
 #### Pathway B: Special Circumstances Justifying Lower Income or Higher Expenses
+
 - Life circumstances that affect ability to generate income or increase legitimate expenses
 - Examples: recent job loss, ongoing medical condition, disability, education commitment, child support obligations
 - **Outcome:** Downward adjustment to CMI or upward adjustment to allowable expenses
 
 ### Form 122A-2, Lines 44-47 Implementation
+
 **Official Form 122A-2** Section dedicated to special circumstances:
 
 ```
-Lines 44-47: SPECIAL CIRCUMSTANCES
+Line 43 (Part 4): SPECIAL CIRCUMSTANCES
 
-Line 44: Do you have any special circumstances?
+Line 43: Do you have any special circumstances that justify additional expenses or adjustments of
+         current monthly income for which there is no reasonable alternative? 11 U.S.C. § 707(b)(2)(B).
          ☐ No  ☐ Yes
 
-Lines 45-47: [If yes] Describe any special circumstances that make the payment of the monthly expenses 
-            not reasonably necessary or any circumstances that justify the debtor's monthly income to be 
-            adjusted downward...
+[If yes] Up to four rows: a detailed explanation and the average monthly expense or income
+         adjustment for each.
 ```
 
-**Critical Role:** Lines 44-47 are the *sole mechanism* for pro se filers to claim rebuttal. Without clear, compelling prose here:
+**Critical Role:** Lines 44-47 are the _sole mechanism_ for pro se filers to claim rebuttal. Without clear, compelling prose here:
+
 - Court may dismiss rebuttal (inaction = consent to presumption of abuse)
 - Fee waiver claims fail (must reference § 1930(f) exemption pathways)
 - Above-median filers lose only remaining qualification pathway
@@ -51,22 +58,28 @@ Lines 45-47: [If yes] Describe any special circumstances that make the payment o
 ## II. The Perception & Language Problem
 
 ### Research Findings
+
 **Case Law Analysis (PRD v0.3):**
+
 - Debtors with identical financial profiles achieve **55-90% success rates** when special circumstances are properly documented
 - Attorney-drafted rebuttals: **85-90% success rate** (clear narrative, legal framing)
 - Pro se rebuttals: **15-25% success rate** (vague, unfamiliar legal language, missing critical connections)
 - **Root cause:** Language, not facts. Same circumstances, radically different outcomes based on articulation.
 
 ### The Language Gap
+
 **What filers say (natural language):**
+
 > "My job got eliminated last year. I was making good money but now I'm unemployed. I have medical bills from my diabetes. My bills are too high."
 
 **What courts need (legal prose):**
+
 > "Debtor's household income was artificially inflated in the lookback period due to employment that has been permanently terminated. Debtor's current monthly income reflects involuntary unemployment. Additionally, debtor has documented medical expenses exceeding IRS standards due to a chronic condition requiring ongoing treatment and medication. These special circumstances—involuntary job loss and necessary medical expenses—make the payment of the monthly expenses not reasonably necessary under 11 U.S.C. § 707(b)(2)(B)."
 
 **Difference:** Same facts. Second version has 3x higher success probability.
 
 ### Why AI/ML Fits
+
 1. **Perception amplification, not legal advice:** AI transforms articulation, not substance
 2. **Scales pro se access:** Automates the attorney advantage without crossing UPL line
 3. **Preserves user ownership:** Filer reviews and approves all changes (human-in-loop)
@@ -105,6 +118,7 @@ User Input (Natural Language)
 **Recommended Model:** **Claude 3.5 Sonnet** (or equivalent)
 
 **Why:**
+
 - Strong legal reasoning capability without requiring fine-tuning
 - Excellent instruction-following for constrained prompting (no hallucination)
 - Supports long context (100K tokens) for case law examples
@@ -115,11 +129,13 @@ User Input (Natural Language)
   - GitHub Models (if using GitHub deployment)
 
 **Alternative:** OpenAI GPT-4o
+
 - Slightly faster inference
 - Reliable structured output (JSON mode)
 - Higher cost ($15 per million input tokens)
 
 **Not Recommended:**
+
 - Open-source models (llama2, mistral): lower legal reasoning quality
 - GPT-3.5 turbo: insufficient legal instruction-following
 - Fine-tuned models: data requirements (bankruptcy cases with annotations) too high for MVP
@@ -132,9 +148,9 @@ User Input (Natural Language)
 
 ```python
 SYSTEM_PROMPT = """
-You are a legal document editor specializing in Chapter 7 bankruptcy special circumstances 
-statements (11 U.S.C. § 707(b)(2)(B)). Your role is NOT to provide legal advice, but to 
-help filers articulate their circumstances in legally defensible prose suitable for Form 122A-2, 
+You are a legal document editor specializing in Chapter 7 bankruptcy special circumstances
+statements (11 U.S.C. § 707(b)(2)(B)). Your role is NOT to provide legal advice, but to
+help filers articulate their circumstances in legally defensible prose suitable for Form 122A-2,
 Lines 44-47.
 
 CONSTRAINTS:
@@ -144,7 +160,7 @@ CONSTRAINTS:
 4. Always use "may be" instead of "is" (non-determinative language)
 
 LEGAL FRAMEWORK YOU MUST ENCODE:
-- 11 U.S.C. § 707(b)(2)(B) permits rebuttal if special circumstances exist that make payment 
+- 11 U.S.C. § 707(b)(2)(B) permits rebuttal if special circumstances exist that make payment
   of expenses "not reasonably necessary" or justify adjusted income
 - Lines 44-47 are the *only* space pro se filers have to make this argument
 - Court must consider and respond to rebuttal claims (Bankruptcy Rule 1008)
@@ -193,7 +209,7 @@ Transform the user's narrative into a short paragraph (150-250 words) that:
 ```python
 def generate_refinement_prompt(user_narrative: str, intake_data: dict) -> str:
     """Generate context-aware refinement prompt."""
-    
+
     return f"""
 FILER'S NARRATIVE:
 "{user_narrative}"
@@ -218,7 +234,7 @@ Refine the above narrative into a legally defensible statement suitable for Form
 5. Use language that a bankruptcy court will recognize as serious/credible
 
 OUTPUT:
-Provide ONLY the refined paragraph (no preamble or explanation). The output will be read directly 
+Provide ONLY the refined paragraph (no preamble or explanation). The output will be read directly
 by the filer and inserted into their bankruptcy petition.
 """
 ```
@@ -254,11 +270,11 @@ FEW_SHOT_EXAMPLES = [
 class SpecialCircumstances(models.Model):
     """
     Capture and refine special circumstances narrative for Form 122A-2, Lines 44-47.
-    
-    Implements 11 U.S.C. § 707(b)(2)(B) rebuttal mechanism with LLM-powered narrative 
+
+    Implements 11 U.S.C. § 707(b)(2)(B) rebuttal mechanism with LLM-powered narrative
     refinement to enhance pro se filer articulation.
     """
-    
+
     CIRCUMSTANCE_CATEGORIES = [
         ('income_reduction', 'Involuntary Income Reduction'),
         ('medical', 'Medical/Health Condition'),
@@ -267,31 +283,31 @@ class SpecialCircumstances(models.Model):
         ('education', 'Education/Workforce Development'),
         ('other', 'Other'),
     ]
-    
+
     session = models.OneToOneField(
-        "intake.IntakeSession", 
-        on_delete=models.CASCADE, 
+        "intake.IntakeSession",
+        on_delete=models.CASCADE,
         related_name="special_circumstances"
     )
-    
+
     # User's initial narrative (natural language input)
     user_narrative = EncryptedTextField(
         blank=True,
         help_text="User's raw description of special circumstances"
     )
-    
+
     # Extracted categories (from intake wizard checkboxes)
     identified_categories = models.JSONField(
         default=list,
         help_text="Categories user selected: income_reduction, medical, family_support, etc."
     )
-    
+
     # LLM-refined narrative (legally defensible prose)
     refined_narrative = EncryptedTextField(
         blank=True,
         help_text="AI-refined special circumstances statement for Form 122A-2"
     )
-    
+
     # Refinement metadata
     refinement_version = models.IntegerField(
         default=1,
@@ -307,7 +323,7 @@ class SpecialCircumstances(models.Model):
         blank=True,
         help_text="When refinement was generated"
     )
-    
+
     # User approval (human-in-loop)
     user_approved = models.BooleanField(
         default=False,
@@ -321,7 +337,7 @@ class SpecialCircumstances(models.Model):
         blank=True,
         help_text="User's requested modifications before approval"
     )
-    
+
     # Audit trail
     refinement_prompt_hash = models.CharField(
         max_length=64,
@@ -332,30 +348,30 @@ class SpecialCircumstances(models.Model):
         blank=True,
         help_text="Full LLM response (for debugging/audit)"
     )
-    
+
     # Form integration
     included_in_form_122a2 = models.BooleanField(
         default=False,
         help_text="Whether narrative was included in generated Form 122A-2 PDF"
     )
-    
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    
+
     class Meta:
         db_table = "special_circumstances"
         indexes = [
             models.Index(fields=['session', 'user_approved']),
             models.Index(fields=['refinement_timestamp']),
         ]
-    
+
     def __str__(self):
         return f"Special Circumstances - Session {self.session_id} ({'Approved' if self.user_approved else 'Pending'})"
-    
+
     def get_identified_categories(self) -> list:
         """Return list of identified special circumstance categories."""
         return self.identified_categories or []
-    
+
     def get_refined_narrative(self) -> str:
         """Return approved refined narrative, fallback to user narrative."""
         if self.user_approved and self.refined_narrative:
@@ -377,36 +393,36 @@ from apps.eligibility.models import SpecialCircumstances
 
 class SpecialCircumstancesRefiner:
     """
-    LLM-powered service to refine user special circumstances narratives into 
+    LLM-powered service to refine user special circumstances narratives into
     legally defensible prose suitable for Form 122A-2, Lines 44-47.
-    
+
     This service is NOT legal advice generation—it's language enhancement that
     preserves the user's facts while improving articulation for court readability.
     """
-    
+
     # System prompt encoding legal framework
     SYSTEM_PROMPT = """[See Section IV.1 above]"""
-    
+
     FEW_SHOT_EXAMPLES = """[See Section IV.3 above]"""
-    
+
     def __init__(self, api_key: Optional[str] = None):
         """Initialize Anthropic client."""
         self.client = anthropic.Anthropic(api_key=api_key)
         self.model = "claude-3-5-sonnet-20241022"  # Latest Sonnet
-    
+
     @transaction.atomic
     def refine_narrative(
-        self, 
+        self,
         special_circumstances: SpecialCircumstances,
         intake_data: Dict[str, Any]
     ) -> Dict[str, Any]:
         """
         Refine user's special circumstances narrative using LLM.
-        
+
         Args:
             special_circumstances: SpecialCircumstances model instance
             intake_data: Dict with means test results, family size, CMI, etc.
-        
+
         Returns:
             {
                 'success': bool,
@@ -416,7 +432,7 @@ class SpecialCircumstancesRefiner:
                 'tokens_used': int
             }
         """
-        
+
         try:
             # Build context-aware prompt
             user_prompt = self._build_user_prompt(
@@ -424,7 +440,7 @@ class SpecialCircumstancesRefiner:
                 special_circumstances.identified_categories,
                 intake_data
             )
-            
+
             # Call LLM with safety constraints
             response = self.client.messages.create(
                 model=self.model,
@@ -435,9 +451,9 @@ class SpecialCircumstancesRefiner:
                 ],
                 temperature=0.3,  # Lower temp for consistency
             )
-            
+
             refined_text = response.content[0].text.strip()
-            
+
             # Store refinement results
             special_circumstances.refined_narrative = refined_text
             special_circumstances.refinement_version += 1
@@ -448,20 +464,20 @@ class SpecialCircumstancesRefiner:
                 user_prompt.encode()
             ).hexdigest()
             special_circumstances.save()
-            
+
             return {
                 'success': True,
                 'refined_narrative': refined_text,
                 'refinement_version': special_circumstances.refinement_version,
                 'tokens_used': response.usage.input_tokens + response.usage.output_tokens,
             }
-        
+
         except anthropic.APIError as e:
             return {
                 'success': False,
                 'error': f"LLM API error: {str(e)}",
             }
-    
+
     def _build_user_prompt(
         self,
         user_narrative: str,
@@ -469,9 +485,9 @@ class SpecialCircumstancesRefiner:
         intake_data: Dict[str, Any]
     ) -> str:
         """Build context-aware prompt for LLM."""
-        
+
         categories_text = self._format_categories(identified_categories, intake_data)
-        
+
         return f"""
 FILER'S NARRATIVE:
 "{user_narrative}"
@@ -498,10 +514,10 @@ Follow these principles:
 OUTPUT:
 Provide ONLY the refined paragraph (150-250 words). Do not include explanations or commentary.
 """
-    
+
     def _format_categories(self, categories: list, intake_data: dict) -> str:
         """Format identified categories with supporting intake data."""
-        
+
         formatted = []
         for cat in categories:
             if cat == 'income_reduction' and intake_data.get('recent_job_loss'):
@@ -513,17 +529,17 @@ Provide ONLY the refined paragraph (150-250 words). Do not include explanations 
                 formatted.append(f"- Child support: ${intake_data.get('child_support_amount')}/month")
             elif cat == 'education' and intake_data.get('education_program'):
                 formatted.append(f"- Workforce development: {intake_data.get('education_program')}")
-        
+
         return '\n'.join(formatted) if formatted else "- User indicated special circumstances apply"
-    
+
     def validate_output(self, refined_text: str) -> Dict[str, Any]:
         """
         Validate LLM output for safety/appropriateness.
-        
+
         Returns:
             {'is_valid': bool, 'issues': [str]}
         """
-        
+
         issues = []
         prohibited_phrases = [
             "you will win",
@@ -533,15 +549,15 @@ Provide ONLY the refined paragraph (150-250 words). Do not include explanations 
             "legally, you",
             "you have a strong case"
         ]
-        
+
         text_lower = refined_text.lower()
         for phrase in prohibited_phrases:
             if phrase in text_lower:
                 issues.append(f"Contains prohibited phrase: '{phrase}'")
-        
+
         if len(refined_text) < 100 or len(refined_text) > 1500:
             issues.append(f"Output length {len(refined_text)} words is outside target 150-250")
-        
+
         return {
             'is_valid': len(issues) == 0,
             'issues': issues
@@ -565,14 +581,14 @@ from apps.eligibility.services.special_circumstances_refiner import SpecialCircu
 def refine_special_circumstances(request):
     """
     POST /api/eligibility/special-circumstances/refine/
-    
+
     Request body:
     {
         "session_id": int,
         "user_narrative": str,
         "identified_categories": [str]
     }
-    
+
     Response:
     {
         "success": bool,
@@ -582,23 +598,23 @@ def refine_special_circumstances(request):
         "refinement_version": int
     }
     """
-    
+
     try:
         session = IntakeSession.objects.get(
             id=request.data['session_id'],
             user=request.user
         )
-        
+
         # Get or create special circumstances record
         spec_circ, created = SpecialCircumstances.objects.get_or_create(
             session=session
         )
-        
+
         # Store user's initial narrative
         spec_circ.user_narrative = request.data.get('user_narrative', '')
         spec_circ.identified_categories = request.data.get('identified_categories', [])
         spec_circ.save()
-        
+
         # Call LLM refinement service
         refiner = SpecialCircumstancesRefiner()
         intake_data = {
@@ -608,9 +624,9 @@ def refine_special_circumstances(request):
             'median_income': session.means_test.median_income_threshold if hasattr(session, 'means_test') else None,
             'means_test_status': 'passes' if session.means_test.passes_means_test else 'fails' if hasattr(session, 'means_test') else None,
         }
-        
+
         result = refiner.refine_narrative(spec_circ, intake_data)
-        
+
         if not result['success']:
             return Response(
                 {
@@ -620,7 +636,7 @@ def refine_special_circumstances(request):
                 },
                 status=status.HTTP_400_BAD_REQUEST
             )
-        
+
         # Validate output safety
         validation = refiner.validate_output(result['refined_narrative'])
         if not validation['is_valid']:
@@ -633,7 +649,7 @@ def refine_special_circumstances(request):
                 },
                 status=status.HTTP_400_BAD_REQUEST
             )
-        
+
         return Response(
             {
                 'success': True,
@@ -644,7 +660,7 @@ def refine_special_circumstances(request):
             },
             status=status.HTTP_200_OK
         )
-    
+
     except IntakeSession.DoesNotExist:
         return Response(
             {'error': 'Session not found'},
@@ -657,14 +673,14 @@ def refine_special_circumstances(request):
 def approve_special_circumstances(request):
     """
     POST /api/eligibility/special-circumstances/approve/
-    
+
     Request body:
     {
         "session_id": int,
         "approved_narrative": str (optional - if user made edits),
         "approval_notes": str (optional)
     }
-    
+
     Response:
     {
         "success": bool,
@@ -672,24 +688,24 @@ def approve_special_circumstances(request):
         "special_circumstances_id": int
     }
     """
-    
+
     try:
         session = IntakeSession.objects.get(
             id=request.data['session_id'],
             user=request.user
         )
-        
+
         spec_circ = SpecialCircumstances.objects.get(session=session)
-        
+
         # Allow user to override refined narrative before approval
         if 'approved_narrative' in request.data:
             spec_circ.refined_narrative = request.data['approved_narrative']
-        
+
         spec_circ.approval_notes = request.data.get('approval_notes', '')
         spec_circ.user_approved = True
         spec_circ.user_approval_timestamp = timezone.now()
         spec_circ.save()
-        
+
         # Log approval for audit trail
         AuditLog.objects.create(
             user=request.user,
@@ -701,7 +717,7 @@ def approve_special_circumstances(request):
                 'has_approval_notes': bool(spec_circ.approval_notes),
             }
         )
-        
+
         return Response(
             {
                 'success': True,
@@ -710,7 +726,7 @@ def approve_special_circumstances(request):
             },
             status=status.HTTP_200_OK
         )
-    
+
     except SpecialCircumstances.DoesNotExist:
         return Response(
             {'error': 'Special circumstances record not found'},
@@ -861,7 +877,7 @@ export const SpecialCircumstancesWizard: React.FC<SpecialCircumstancesWizardProp
       <div className="special-circumstances-review">
         <h2>Review Your Special Circumstances Statement</h2>
         <p className="instruction-text">
-          Below is your special circumstances statement, refined for legal clarity. 
+          Below is your special circumstances statement, refined for legal clarity.
           Please review it carefully. You can edit it before finalizing.
         </p>
 
@@ -969,7 +985,7 @@ export const SpecialCircumstancesWizard: React.FC<SpecialCircumstancesWizardProp
         <div className="narrative-step">
           <h2>Describe Your Situation in Your Own Words</h2>
           <p className="instruction-text">
-            Tell us more about your circumstances. The more details you provide, the stronger 
+            Tell us more about your circumstances. The more details you provide, the stronger
             your case will be. Include dates, amounts, and specific conditions if possible.
           </p>
 
@@ -1021,15 +1037,15 @@ import { SpecialCircumstancesWizard } from '../components/SpecialCircumstancesWi
 
 export const IntakeWizard: React.FC = () => {
   const { step, sessionId, moveToNextStep } = useIntakeContext();
-  
+
   return (
     <WizardLayout>
       {/* ... existing steps ... */}
-      
+
       {step === 'means_test_results' && (
         <MeansTestResults onContinue={moveToNextStep} />
       )}
-      
+
       {/* NEW: Special Circumstances Review - CRITICAL PATH STEP */}
       {step === 'special_circumstances' && (
         <SpecialCircumstancesWizard
@@ -1037,7 +1053,7 @@ export const IntakeWizard: React.FC = () => {
           onComplete={moveToNextStep}
         />
       )}
-      
+
       {step === 'form_generation' && (
         <FormGeneration onContinue={moveToNextStep} />
       )}
@@ -1055,27 +1071,31 @@ export const IntakeWizard: React.FC = () => {
 **This implementation maintains UPL compliance by:**
 
 1. **No Legal Judgment**
+
    - System does NOT evaluate whether circumstances legally qualify
    - System does NOT predict court outcomes
    - System does NOT recommend filing chapter selection
    - ✅ Only: Improves articulation of user-provided facts
 
 2. **Explicit Disclaimer on UI**
+
    ```
-   ⓘ IMPORTANT: This tool refines how you describe your situation. It does not 
-   provide legal advice, evaluate whether your circumstances qualify legally, or 
-   predict court decisions. Only a qualified bankruptcy attorney or legal 
-   professional can advise whether you are eligible for Chapter 7. This is legal 
+   ⓘ IMPORTANT: This tool refines how you describe your situation. It does not
+   provide legal advice, evaluate whether your circumstances qualify legally, or
+   predict court decisions. Only a qualified bankruptcy attorney or legal
+   professional can advise whether you are eligible for Chapter 7. This is legal
    INFORMATION, not legal ADVICE.
    ```
 
 3. **Audit Trail (10-year retention per PRD)**
+
    - Every refinement request logged with timestamp
    - Prompt and response hashes stored
    - User approval explicitly recorded
    - Classified as "upl_sensitive" in AuditLog
 
 4. **Validation Guards**
+
    - Output validated for prohibited phrases (see Service layer)
    - LLM temperature set low (0.3) for consistency
    - Response length constrained (150-250 words)
@@ -1091,11 +1111,13 @@ export const IntakeWizard: React.FC = () => {
 **Precedent for Information Platform Safe Harbor:**
 
 - **Rocket Lawyer, LegalZoom, Nolo Safe Harbors**
+
   - Form population + plain language explanation = information, not advice
   - Court appearances in 20+ UPL enforcement cases where platforms survived
   - Key factor: No evaluation of user's specific case facts
 
 - **Illinois Pro Se Resources Safe Harbors (IPRPC § 5.3 & 5.5)**
+
   - Court-approved websites providing bankruptcy information don't constitute practice of law
   - DigniFi's design: Information platform (what is Chapter 7?) + form tools
   - Not: Attorney services (what should you file?), legal analysis (will you qualify?)
@@ -1111,11 +1133,13 @@ export const IntakeWizard: React.FC = () => {
 **If Legal Challenge Arises:**
 
 1. **Cease AI Refinement, Keep Information Platform**
+
    - Remove LLM refinement feature (30-day development cost: $8K-12K)
    - Maintain all other platform features
    - Continue providing non-AI special circumstances guidance
 
 2. **Shift to "Template Library" Model**
+
    - Pre-written special circumstances examples (one per category)
    - User selects most similar example
    - User directly edits example to match their facts
@@ -1133,7 +1157,7 @@ export const IntakeWizard: React.FC = () => {
 
 ### Phase 1: Backend Foundation (Weeks 1-2, Jan 6-20)
 
-- [ ] Create `SpecialCircumstances` model (DONE)
+- [ ] Create `SpecialCircumstances` model
 - [ ] Implement `SpecialCircumstancesRefiner` service with Anthropic integration
 - [ ] Add API endpoints for refinement + approval
 - [ ] Write integration tests for LLM service
@@ -1161,7 +1185,7 @@ export const IntakeWizard: React.FC = () => {
 
 ### Phase 4: Founder Dry Run (Week 5, Feb 10-15)
 
-- [ ] Courtney uses system end-to-end with her own intake
+- [ ] Courtney uses system end-to-end with a personal intake
 - [ ] Collects feedback on UX, narrative quality, completeness
 - [ ] Documents any AI-generated prose issues
 - [ ] Verifies Form 122A-2 PDF generation includes refined narrative
@@ -1181,17 +1205,21 @@ export const IntakeWizard: React.FC = () => {
 ### 9.1 API Costs (Per Refinement)
 
 **Claude 3.5 Sonnet (Recommended):**
+
 - Input tokens: ~500 (prompt + context)
 - Output tokens: ~200 (refined narrative)
 - Cost per refinement: $(500 + 200) / 1M × $3 = **$0.0021** (~0.2 cents)
 
 **Monthly Operational Cost (100 refinements/month MVP):**
+
 - $0.0021 × 100 = **$0.21/month** (negligible)
 
 **At Scale (10,000 refinements/month in Year 2):**
+
 - $0.0021 × 10,000 = **$21/month** ($252/year)
 
 **Notes:**
+
 - Anthropic Batch API: 50% discount available (refinements can be batched overnight)
 - Monthly cost even at 1,000 refinements: **$2.10** (negligible)
 - LLM costs are NOT a cost driver for this platform
@@ -1199,12 +1227,14 @@ export const IntakeWizard: React.FC = () => {
 ### 9.2 Token Usage Optimization
 
 **Current Prompt Design:**
+
 - System prompt: ~1,200 tokens (encoded legal framework)
 - User prompt: ~400 tokens (narrative + context)
 - Few-shot examples: ~600 tokens (2-3 examples)
 - **Total input: ~2,200 tokens per request**
 
 **Optimization Opportunities:**
+
 1. Cache system prompt + examples (Anthropic prompt caching = 90% discount on repeated tokens)
 2. Batch refinements overnight (50% discount via Anthropic Batch API)
 3. **Optimized cost: $0.0003 per refinement** (vs. $0.0021 unoptimized)
@@ -1215,52 +1245,56 @@ export const IntakeWizard: React.FC = () => {
 
 ### 10.1 Technical Success Metrics
 
-| Metric | Target | Rationale |
-|--------|--------|-----------|
-| **Refinement Success Rate** | ≥95% | LLM failures should be <5% (validation guards catch most) |
-| **Output Quality** | ≥90% filer approval | Filers must find refined narrative helpful/authentic |
-| **Response Latency** | <5 seconds | User experience must not feel delayed |
-| **UPL Compliance** | 100% | Zero prohibited phrases in output; audit trail complete |
-| **Cost per Refinement** | <$0.01 | Operational cost must be negligible |
+| Metric                      | Target              | Rationale                                                 |
+| --------------------------- | ------------------- | --------------------------------------------------------- |
+| **Refinement Success Rate** | ≥95%                | LLM failures should be <5% (validation guards catch most) |
+| **Output Quality**          | ≥90% filer approval | Filers must find refined narrative helpful/authentic      |
+| **Response Latency**        | <5 seconds          | User experience must not feel delayed                     |
+| **UPL Compliance**          | 100%                | Zero prohibited phrases in output; audit trail complete   |
+| **Cost per Refinement**     | <$0.01              | Operational cost must be negligible                       |
 
 ### 10.2 Legal Success Metrics
 
-| Metric | Target | Rationale |
-|--------|--------|-----------|
+| Metric                    | Target                            | Rationale                                                    |
+| ------------------------- | --------------------------------- | ------------------------------------------------------------ |
 | **Case Outcome Tracking** | Track outcomes of 50+ first users | Measure if AI-refined narratives improve court success rates |
-| **Court Feedback** | Collect from 10+ trustee reviews | Qualitative assessment: "Is this articulation credible?" |
-| **No UPL Complaints** | Zero within Year 1 | No bar association complaints filed against platform |
-| **Safe Harbor Precedent** | Cited in 1+ legal decision | Establish authoritative safe harbor for similar tools |
+| **Court Feedback**        | Collect from 10+ trustee reviews  | Qualitative assessment: "Is this articulation credible?"     |
+| **No UPL Complaints**     | Zero within Year 1                | No bar association complaints filed against platform         |
+| **Safe Harbor Precedent** | Cited in 1+ legal decision        | Establish authoritative safe harbor for similar tools        |
 
 ### 10.3 User Experience Metrics
 
-| Metric | Target | Rationale |
-|--------|--------|-----------|
-| **Time to Approve** | <10 min for special circumstances flow | Should be faster than manual writing |
-| **Edit Rate** | ≥50% of users edit refined narrative | Shows users are engaged, personalizing output |
-| **Confidence Score** | ≥7/10 (post-completion survey) | Users must feel confident submitting refined prose |
-| **Accessibility** | Accessible to 11th grade reading level | Pro se filers often have lower literacy; tool must be clear |
+| Metric               | Target                                 | Rationale                                                   |
+| -------------------- | -------------------------------------- | ----------------------------------------------------------- |
+| **Time to Approve**  | <10 min for special circumstances flow | Should be faster than manual writing                        |
+| **Edit Rate**        | ≥50% of users edit refined narrative   | Shows users are engaged, personalizing output               |
+| **Confidence Score** | ≥7/10 (post-completion survey)         | Users must feel confident submitting refined prose          |
+| **Accessibility**    | Accessible to 11th grade reading level | Pro se filers often have lower literacy; tool must be clear |
 
 ---
 
 ## XI. Future Enhancements (Phase 2+)
 
 ### 11.1 Multi-Turn Refinement
+
 - User request revision: "Can you emphasize the medical condition more?"
 - LLM iteratively refines based on user feedback
 - Preserves refinement versions for audit trail
 
 ### 11.2 Special Circumstances Templates
+
 - Pre-written exemplars for each category (e.g., "Job loss template")
 - User selects template, edits to match facts
 - Reduces LLM load, improves consistency
 
 ### 11.3 Chapter 13 Repayment Plan Calculation
+
 - Extend special circumstances to Chapter 13 means test
 - Calculate adjusted disposable income (ADI) with special circumstances
 - Generate Chapter 13 Plan (Form 113)
 
 ### 11.4 Real-Time Form Population
+
 - As user approves special circumstances, auto-populate Form 122A-2 Lines 44-47
 - Show "live preview" of final form with their narrative
 - Reduce surprises at filing stage
@@ -1270,18 +1304,22 @@ export const IntakeWizard: React.FC = () => {
 ## XII. Open Questions & Decisions Required
 
 1. **LLM Provider Preference?**
+
    - Claude 3.5 Sonnet (recommended) vs. GPT-4o vs. self-hosted
    - Decision impacts: cost, latency, UPL defensibility
 
 2. **Refinement Approach?**
+
    - Single refinement (current design) vs. multi-turn iterative
    - Trade-off: Simplicity vs. user control
 
 3. **Transparency Requirement?**
+
    - Disclose to court that AI was used? ("This statement was refined using AI")
    - Legal advantage vs. transparency concern
 
 4. **Batch Processing?**
+
    - Overnight batch refinements (cheaper) vs. real-time (better UX)
    - MVP: Real-time; optimization: Batch
 
@@ -1294,18 +1332,21 @@ export const IntakeWizard: React.FC = () => {
 ## XIII. References & Case Law
 
 **Statutory Framework:**
+
 - 11 U.S.C. § 707(b)(2)(B) (Special circumstances rebuttal)
 - Bankruptcy Form 122A-2 (Official Form, updated 2024)
 - BAPCPA § 707(b) (Means test formula)
 
 **Case Law (Special Circumstances Success Rates):**
-- *In re Bealer*, 565 B.R. 1 (Bankr. E.D. Pa. 2017): 80% success rate with detailed special circumstances documentation
-- *In re Lozada*, 613 F.3d 414 (3d Cir. BAP 2010): Burden on debtor to articulate special circumstances; poorly documented claims fail
-- *In re Bajon*, 490 B.R. 652 (Bankr. D. Kan. 2013): Court must consider special circumstances under 707(b)(2)(B); dismissal without consideration is abuse of discretion
+
+- _In re Bealer_, 565 B.R. 1 (Bankr. E.D. Pa. 2017): 80% success rate with detailed special circumstances documentation
+- _In re Lozada_, 613 F.3d 414 (3d Cir. BAP 2010): Burden on debtor to articulate special circumstances; poorly documented claims fail
+- _In re Bajon_, 490 B.R. 652 (Bankr. D. Kan. 2013): Court must consider special circumstances under 707(b)(2)(B); dismissal without consideration is abuse of discretion
 
 **UPL Safe Harbor Precedent:**
+
 - Illinois State Bar Opinion 2001-09: Court-approved websites providing bankruptcy information do not constitute unauthorized practice of law
-- *In re Unauthorized Practice of Law Committee* (Ill. App. Ct. 1989): Information about law vs. legal advice; clear distinction established
+- _In re Unauthorized Practice of Law Committee_ (Ill. App. Ct. 1989): Information about law vs. legal advice; clear distinction established
 - Rocket Lawyer, LegalZoom safe harbor precedents (20+ cases, all platforms survived UPL challenges)
 
 ---
@@ -1322,6 +1363,6 @@ export const IntakeWizard: React.FC = () => {
 
 ---
 
-**Document Status:** Ready for Implementation  
-**Next Action:** Backend team begins Phase 1 development (Jan 6, 2026)  
-**Review Cadence:** Weekly progress meetings; legal review post-Phase 3 (Jan 27)  
+**Document Status:** Not built (see the status note at the top)  
+**Next Action:** None planned; this design was superseded  
+**Review Cadence:** Weekly progress meetings; legal review post-Phase 3 (Jan 27)

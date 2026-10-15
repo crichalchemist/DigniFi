@@ -9,22 +9,26 @@ DigniFi operates at the intersection of legal services, financial services, and 
 ### Core Principle
 
 **Legal Information vs. Legal Advice:**
+
 - **Information** (✅ Permitted): Explaining what the law says, providing forms, showing eligibility criteria
 - **Advice** (❌ Prohibited): Recommending specific actions, interpreting law for user's situation, predicting outcomes
 
 ### UPL Compliance Requirements
 
 **1. No Attorney-Client Relationship:**
+
 - Disclaimers at every decision point
 - No representation in court
 - No personalized legal advice
 
 **2. Audit Trail:**
+
 - Log all guidance provided to users
 - Track user decisions and form submissions
 - Records may be subpoenaed in UPL investigations
 
 **3. Language Patterns:**
+
 ```
 ✅ Permitted:
 - "You may be eligible for Chapter 7 if..."
@@ -38,6 +42,7 @@ DigniFi operates at the intersection of legal services, financial services, and 
 ```
 
 **4. Required Disclaimers:**
+
 ```
 This platform provides legal information, not legal advice.
 We cannot tell you whether to file bankruptcy or which chapter to choose.
@@ -47,6 +52,7 @@ For legal advice about your specific situation, consult a licensed attorney.
 ### Security Implications
 
 **Incident Response:**
+
 - If guidance crosses into advice → legal counsel review required
 - Audit logs may be evidence in UPL investigations
 - Platform must never appear to provide legal advice
@@ -62,12 +68,14 @@ For legal advice about your specific situation, consult a licensed attorney.
 **Three Rules:**
 
 1. **Financial Privacy Rule:**
+
    - Provide privacy policy to users
    - Explain what data is collected and why
    - Allow opt-out of data sharing (if applicable)
-   - **DigniFi Status:** ✅ Privacy policy published
+   - **DigniFi Status:** ⚠️ Privacy policy not published yet (only a short privacy section in the Terms)
 
 2. **Safeguards Rule:**
+
    - Implement written information security program
    - Designate security coordinator
    - Conduct risk assessments
@@ -84,6 +92,7 @@ For legal advice about your specific situation, consult a licensed attorney.
 **Applicability:** If providing credit information or score interpretation
 
 **Requirements:**
+
 - Accuracy of credit information
 - Dispute resolution process
 - User consent before accessing credit reports
@@ -97,6 +106,7 @@ For legal advice about your specific situation, consult a licensed attorney.
 **Applicability:** Users in California (>= $25M revenue or >50K CA residents)
 
 **Consumer Rights:**
+
 1. **Right to Know:** What data is collected, how it's used, who it's shared with
 2. **Right to Delete:** Request deletion of personal information
 3. **Right to Opt-Out:** Opt-out of sale of personal information
@@ -104,8 +114,9 @@ For legal advice about your specific situation, consult a licensed attorney.
 5. **Right to Non-Discrimination:** Cannot charge more for exercising privacy rights
 
 **DigniFi Implementation:**
-- ✅ Privacy policy explains data collection
-- ✅ Account deletion API endpoint
+
+- ⚠️ Privacy policy explains data collection (not yet: only a short privacy section in the Terms, which does not list the data collected)
+- ⚠️ Account deletion API endpoint (not yet: only `DELETE /api/intake/sessions/{id}/`, which no screen calls)
 - ✅ No data sales (not applicable)
 - ✅ Users can edit intake data
 - ✅ No price discrimination
@@ -121,16 +132,19 @@ For legal advice about your specific situation, consult a licensed attorney.
 **All 50 states have breach notification laws**
 
 **Common Requirements:**
+
 - Notify affected residents within 30-90 days
 - Notify state attorney general (if > 500 residents)
 - Provide free credit monitoring (if SSNs compromised)
 - Disclose nature of breach, data types affected, remediation steps
 
 **California (SB 1386) - Most Stringent:**
+
 - Notification "without unreasonable delay"
 - Notify California AG within 48 hours (if > 500 CA residents)
 
 **New York SHIELD Act:**
+
 - Requires "reasonable" data security measures
 - Stricter penalties for non-compliance
 
@@ -139,17 +153,20 @@ For legal advice about your specific situation, consult a licensed attorney.
 ### E-Filing Requirements
 
 **PACER/CM-ECF System:**
+
 - Electronic filing required in most districts
 - Pro se filers may have limited e-filing access
 - Document format: PDF/A (long-term archival format)
 
 **Redaction Rules:**
+
 - SSN must be redacted (show last 4 digits only)
 - Minor children identified by initials only
 - Financial account numbers redacted (last 4 digits only)
 - Birth dates truncated (year only)
 
 **DigniFi Compliance:**
+
 - Generated PDFs follow redaction rules
 - Forms use XXX-XX-1234 format for SSN display
 - Account numbers automatically truncated
@@ -157,11 +174,13 @@ For legal advice about your specific situation, consult a licensed attorney.
 ### Credit Counseling Requirement
 
 **11 U.S.C. § 109(h):**
+
 - Debtor must complete credit counseling within 180 days before filing
 - Counseling must be from DOJ-approved provider
 - Certificate must be filed with petition
 
 **DigniFi Integration:**
+
 - Links to DOJ-approved providers
 - Certificate upload functionality
 - Validation that certificate is < 180 days old
@@ -169,13 +188,15 @@ For legal advice about your specific situation, consult a licensed attorney.
 ### Fee Waiver Requirements
 
 **28 U.S.C. § 1930(f):**
+
 - Fee waiver available if income < 150% of poverty guidelines
 - Application submitted with Form 103B
 - Judge may grant or deny
 
 **DigniFi Implementation:**
+
 - Automatic fee waiver calculation based on income
-- Form 103B generated if eligible
+- Form 103B joins the packet once the filer submits the fee-waiver application
 - Disclaimers that waiver is not guaranteed
 
 ## Data Retention & Destruction
@@ -183,16 +204,19 @@ For legal advice about your specific situation, consult a licensed attorney.
 ### Retention Periods
 
 **User Data:**
+
 - **Active sessions:** Until case filed or 22 days of inactivity
 - **Deleted accounts:** Immediate destruction (soft delete for 30 days, then purge)
 - **Generated forms:** 22 days after case filing or abandonment
 
 **Audit Logs:**
+
 - **Retention:** 7 years (compliance requirement)
 - **Purpose:** Fraud investigation, UPL defense, breach forensics
 - **Storage:** Encrypted, append-only, tamper-evident
 
 **Backups:**
+
 - **User data backups:** 30 days retention
 - **Audit log backups:** 7 years retention
 - **Backup encryption:** AES-256 with separate keys
@@ -200,6 +224,7 @@ For legal advice about your specific situation, consult a licensed attorney.
 ### Secure Destruction
 
 **Data Deletion Process:**
+
 1. User triggers deletion (account delete or auto-deletion after 22 days)
 2. Soft delete: Mark records as deleted, preserve for 30 days (in case of dispute)
 3. Hard delete: Overwrite with random data, remove from database
@@ -207,6 +232,7 @@ For legal advice about your specific situation, consult a licensed attorney.
 5. Log destruction event in audit log
 
 **Media Sanitization (Physical Drives):**
+
 - NIST SP 800-88 guidelines
 - Secure erase (ATA SECURE ERASE command)
 - Physical destruction for decommissioned drives
@@ -216,6 +242,7 @@ For legal advice about your specific situation, consult a licensed attorney.
 ### Breach Definition
 
 **What Constitutes a Breach:**
+
 - Unauthorized access to PII
 - Accidental disclosure of PII
 - Loss or theft of devices containing PII
@@ -223,6 +250,7 @@ For legal advice about your specific situation, consult a licensed attorney.
 - Insider theft of data
 
 **What is NOT a Breach:**
+
 - Encrypted data exposure (if keys not compromised)
 - Authorized employee access for legitimate purposes
 - User error (e.g., sharing own password)
@@ -230,17 +258,20 @@ For legal advice about your specific situation, consult a licensed attorney.
 ### Notification Timeline
 
 **California (Strictest - Use as Baseline):**
+
 - **Discovery:** Within 48 hours of discovering breach
 - **Notification:** "Without unreasonable delay"
 - **AG Notification:** If > 500 CA residents affected
 
 **Other States:**
+
 - Typically 30-90 days from discovery
 - Some require notification "as soon as possible"
 
 ### Notification Content
 
 **Required Information:**
+
 1. **Date of breach** (or estimated date range)
 2. **Type of data compromised** (SSN, income data, etc.)
 3. **Number of affected users**
@@ -250,6 +281,7 @@ For legal advice about your specific situation, consult a licensed attorney.
 7. **Contact information** for questions
 
 **Example Notification:**
+
 ```
 Subject: Important Security Notice - Data Breach at DigniFi
 
@@ -284,16 +316,19 @@ DigniFi Security Team
 ### Credit Monitoring Obligation
 
 **When Required:**
+
 - SSN compromised
 - Financial account numbers compromised
 - Sufficient data for identity theft
 
 **Services:**
+
 - 1-2 years of free credit monitoring
 - Identity theft insurance
 - Credit report access
 
 **Providers:**
+
 - Experian IdentityWorks
 - Equifax Identity Restoration
 - LifeLock
@@ -305,6 +340,7 @@ DigniFi Security Team
 **Timeline:** 6-12 months post-funding
 
 **Trust Service Criteria:**
+
 1. **Security:** Access controls, encryption, monitoring
 2. **Availability:** Uptime, disaster recovery
 3. **Processing Integrity:** Data accuracy, completeness
@@ -312,6 +348,7 @@ DigniFi Security Team
 5. **Privacy:** GDPR/CCPA compliance
 
 **Audit Process:**
+
 1. Gap assessment (3 months)
 2. Remediation (3-6 months)
 3. Readiness assessment (1 month)
@@ -320,6 +357,7 @@ DigniFi Security Team
 6. SOC 2 Type II audit (1 month)
 
 **Cost:**
+
 - Auditor fees: $15K-$50K (depending on scope)
 - Remediation costs: Variable (tooling, consulting)
 - Ongoing compliance: $10K-$20K/year
@@ -327,11 +365,13 @@ DigniFi Security Team
 ### Benefits
 
 **Business:**
+
 - Required for enterprise sales
 - Differentiates from competitors
 - Reduces cyber insurance premiums
 
 **Security:**
+
 - Forces formalization of security controls
 - Regular third-party validation
 - Demonstrates commitment to security
@@ -343,7 +383,7 @@ DigniFi Security Team
 - ✅ UPL compliance (disclaimers, audit logging)
 - ✅ Field-level PII encryption
 - ✅ Basic breach notification plan
-- ✅ Privacy policy published
+- ⚠️ Privacy policy published (not yet: only a short privacy section in the Terms)
 
 ### Short-term (3-6 Months)
 
@@ -377,16 +417,19 @@ DigniFi Security Team
 ### Regulatory Agencies
 
 **FTC (Federal Trade Commission):**
+
 - GLBA enforcement
 - Data breach reporting (if FTC jurisdiction)
 - https://www.ftc.gov/
 
 **DOJ Bankruptcy Trustee:**
+
 - Credit counseling agency approvals
 - Bankruptcy fraud investigations
 - https://www.justice.gov/ust
 
 **State Attorneys General:**
+
 - Breach notification
 - State data protection law enforcement
 - Varies by state

@@ -36,7 +36,7 @@ DigniFi speaks like a knowledgeable friend at the public library — not a lawye
 
 ## Accessibility & Inclusion
 
-- WCAG 2.1 AA minimum, with most colors verified at 4.5:1+ (documented in `src/styles/tokens.css`)
+- WCAG 2.1 AA minimum, with most colors verified at 4.5:1+ (documented in `frontend/src/styles/tokens.css`)
 - Trauma-informed: avoid alarm-red for non-errors; avoid language that implies the user is at fault
 - Reduced motion: all animations must have `prefers-reduced-motion` alternatives
 - Skip navigation implemented for keyboard users
