@@ -8,7 +8,7 @@ Before deploying to production, complete this checklist:
 
 - [ ] `DEBUG=False` in Django settings
 - [ ] Unique `SECRET_KEY` (not the default or dev key)
-- [ ] `ALLOWED_HOSTS` configured (not "*")
+- [ ] `ALLOWED_HOSTS` configured (not "\*")
 - [ ] HTTPS enforced (redirect HTTP → HTTPS)
 - [ ] Database credentials rotated from defaults
 - [ ] File upload limits enforced (10MB max)
@@ -234,6 +234,7 @@ server {
 ### SSL/TLS Configuration
 
 **Let's Encrypt (Free Certificates):**
+
 ```bash
 # Install certbot
 sudo apt-get install certbot python3-certbot-nginx
@@ -246,6 +247,7 @@ sudo systemctl enable certbot.timer
 ```
 
 **SSL Test:**
+
 - Test with https://www.ssllabs.com/ssltest/
 - Target: A+ rating
 
@@ -301,6 +303,7 @@ REVOKE ALL ON pg_database FROM PUBLIC;
 ```
 
 **PostgreSQL Configuration (postgresql.conf):**
+
 ```ini
 # Network
 listen_addresses = 'localhost'  # Or private IP
@@ -319,6 +322,7 @@ log_statement = 'all'
 ```
 
 **Authentication (pg_hba.conf):**
+
 ```
 # TYPE  DATABASE        USER            ADDRESS                 METHOD
 local   all             postgres                                peer
@@ -331,6 +335,7 @@ host    dignifi         dignifi_app     10.0.0.0/8              scram-sha-256
 ### Application Monitoring
 
 **Sentry (Error Tracking):**
+
 ```python
 # backend/config/settings/production.py
 import sentry_sdk
@@ -345,6 +350,7 @@ sentry_sdk.init(
 ```
 
 **Health Check Endpoint:**
+
 ```python
 # backend/apps/core/views.py
 from django.http import JsonResponse
@@ -364,12 +370,14 @@ def health_check(request):
 ### Security Monitoring
 
 **Log Monitoring:**
+
 - Failed authentication attempts
 - Unusual API access patterns
 - High error rates
 - Slow queries (potential DoS)
 
 **Alerting Rules:**
+
 - > 10 failed logins from same IP in 1 hour
 - > 100 4xx errors in 5 minutes
 - > 10 5xx errors in 1 minute
@@ -379,11 +387,13 @@ def health_check(request):
 ### Uptime Monitoring
 
 **Services:**
+
 - UptimeRobot (free tier available)
 - Pingdom
 - StatusCake
 
 **Monitor:**
+
 - HTTPS endpoint (every 1 minute)
 - Health check endpoint
 - API response time
@@ -394,6 +404,7 @@ def health_check(request):
 ### Database Backups
 
 **Automated Backups (cron):**
+
 ```bash
 #!/bin/bash
 # /usr/local/bin/backup-db.sh
@@ -419,6 +430,7 @@ find "${BACKUP_DIR}" -name "*.gpg" -mtime +30 -delete
 ```
 
 **Crontab:**
+
 ```cron
 # Daily backup at 2 AM
 0 2 * * * /usr/local/bin/backup-db.sh
@@ -427,6 +439,7 @@ find "${BACKUP_DIR}" -name "*.gpg" -mtime +30 -delete
 ### Backup Testing
 
 **Quarterly Restore Drill:**
+
 1. Download latest backup from S3
 2. Decrypt backup
 3. Restore to test database
@@ -438,22 +451,26 @@ find "${BACKUP_DIR}" -name "*.gpg" -mtime +30 -delete
 ### Incident Severity Levels
 
 **P0 (Critical) - Respond Immediately:**
+
 - Data breach (PII exposed)
 - Total service outage
 - Authentication bypass
 - Active attack in progress
 
 **P1 (High) - Respond Within 1 Hour:**
+
 - Partial service outage
 - Security vulnerability confirmed
 - Data corruption detected
 
 **P2 (Medium) - Respond Within 4 Hours:**
+
 - Performance degradation
 - Non-critical errors
 - Suspicious activity detected
 
 **P3 (Low) - Respond Within 1 Business Day:**
+
 - Minor bugs
 - Optimization opportunities
 - General inquiries
@@ -461,36 +478,42 @@ find "${BACKUP_DIR}" -name "*.gpg" -mtime +30 -delete
 ### Incident Response Playbook
 
 **1. Detection & Triage (0-15 minutes):**
+
 - Confirm incident is real (not false alarm)
 - Classify severity
 - Notify incident commander
 - Create incident ticket
 
 **2. Containment (15-60 minutes):**
+
 - Isolate affected systems
 - Stop the bleeding (prevent further damage)
 - Preserve evidence (logs, snapshots)
 - Block malicious actors (IP bans, etc.)
 
 **3. Investigation (1-4 hours):**
+
 - Determine root cause
 - Identify scope of impact
 - Check for data exfiltration
 - Review audit logs
 
 **4. Remediation (4-24 hours):**
+
 - Fix vulnerability
 - Restore service
 - Patch systems
 - Verify fix works
 
 **5. Communication (24-72 hours):**
+
 - Notify affected users
 - Public disclosure (if applicable)
 - Report to authorities (if required)
 - Document incident
 
 **6. Post-Mortem (1 week):**
+
 - Write incident report
 - Update runbooks
 - Implement preventive measures

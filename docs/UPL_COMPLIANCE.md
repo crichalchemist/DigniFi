@@ -22,16 +22,19 @@ The **Unauthorized Practice of Law (UPL)** refers to providing legal services wi
 ### Illinois Rules of Professional Conduct (IPRPC)
 
 **IPRPC Rule 5.3**: Responsibilities Regarding Nonlawyer Assistance
+
 - Lawyers may employ nonlawyers to assist with legal work under proper supervision
 - Technology platforms are analogous: they assist users but don't replace attorney judgment
 
 **IPRPC Rule 5.5**: Unauthorized Practice of Law
+
 - Prohibits practicing law without a license
 - **Safe harbor**: Providing legal information (court forms, procedural explanations) is NOT practicing law
 
 ### Illinois State Bar Association Precedents
 
 **Opinion 2001-09**: Court-approved websites providing bankruptcy information do not constitute UPL if they:
+
 1. Clearly disclaim legal advice
 2. Do not evaluate user's specific circumstances
 3. Provide forms + explanations without legal judgment
@@ -45,25 +48,25 @@ The **Unauthorized Practice of Law (UPL)** refers to providing legal services wi
 
 ### ❌ PROHIBITED (Legal Advice)
 
-| Category | Example | Why Prohibited |
-|----------|---------|----------------|
-| **Filing recommendations** | "You should file Chapter 7" | Evaluates user's specific situation; recommends action |
-| **Outcome predictions** | "You will probably qualify" | Predicts legal outcome; implies certainty |
-| **Strategy guidance** | "File in this district to maximize exemptions" | Legal judgment about optimal strategy |
-| **Creditor negotiations** | "Offer them 50% settlement" | Represents user in legal matter |
-| **Court representation** | "Tell the judge X" | Appears before court on user's behalf |
-| **Legal interpretation** | "This statute means you can..." | Applies law to user's facts |
+| Category                   | Example                                        | Why Prohibited                                         |
+| -------------------------- | ---------------------------------------------- | ------------------------------------------------------ |
+| **Filing recommendations** | "You should file Chapter 7"                    | Evaluates user's specific situation; recommends action |
+| **Outcome predictions**    | "You will probably qualify"                    | Predicts legal outcome; implies certainty              |
+| **Strategy guidance**      | "File in this district to maximize exemptions" | Legal judgment about optimal strategy                  |
+| **Creditor negotiations**  | "Offer them 50% settlement"                    | Represents user in legal matter                        |
+| **Court representation**   | "Tell the judge X"                             | Appears before court on user's behalf                  |
+| **Legal interpretation**   | "This statute means you can..."                | Applies law to user's facts                            |
 
 ### ✅ PERMITTED (Legal Information)
 
-| Category | Example | Why Permitted |
-|----------|---------|----------------|
-| **General eligibility** | "Chapter 7 typically requires income below median" | States general rule, not specific judgment |
-| **Procedural information** | "Forms must be filed within 15 days" | Factual procedural information |
-| **Form assistance** | "Enter your monthly income here" | Helps user complete forms, doesn't evaluate |
-| **Calculation automation** | "Your CMI is $3,200 (6-month average)" | Performs math, doesn't interpret results |
-| **Resource direction** | "Consult an attorney for personalized advice" | Points user to proper legal resources |
-| **Legal definitions** | "Median income means the middle income for your household size" | Defines terms, doesn't apply to user's case |
+| Category                   | Example                                                         | Why Permitted                               |
+| -------------------------- | --------------------------------------------------------------- | ------------------------------------------- |
+| **General eligibility**    | "Chapter 7 typically requires income below median"              | States general rule, not specific judgment  |
+| **Procedural information** | "Forms must be filed within 15 days"                            | Factual procedural information              |
+| **Form assistance**        | "Enter your monthly income here"                                | Helps user complete forms, doesn't evaluate |
+| **Calculation automation** | "Your CMI is $3,200 (6-month average)"                          | Performs math, doesn't interpret results    |
+| **Resource direction**     | "Consult an attorney for personalized advice"                   | Points user to proper legal resources       |
+| **Legal definitions**      | "Median income means the middle income for your household size" | Defines terms, doesn't apply to user's case |
 
 ---
 
@@ -80,6 +83,7 @@ For personalized legal advice, consult a licensed bankruptcy attorney.
 ```
 
 **Placement requirements:**
+
 - Visible on page load (no scroll required)
 - At least 12pt font
 - Visually distinct (border, background color, or icon)
@@ -104,6 +108,7 @@ PROHIBITED_PHRASES = [
 ```
 
 **Enforcement:**
+
 - Pre-deployment: Lint all content files for prohibited phrases
 - Runtime: Validate all dynamic messages before display
 - Code review: Reject PRs containing prohibited phrases
@@ -112,23 +117,25 @@ PROHIBITED_PHRASES = [
 
 **Always use conditional, informational language:**
 
-| Instead of | Use |
-|------------|-----|
-| "You are eligible" | "You may be eligible" |
-| "You should file Chapter 7" | "Chapter 7 typically allows..." |
-| "I recommend" | "Many filers in this situation..." |
-| "You will qualify" | "Qualification depends on..." |
-| "This is your best option" | "Chapter 7 and Chapter 13 each have different requirements" |
+| Instead of                  | Use                                                         |
+| --------------------------- | ----------------------------------------------------------- |
+| "You are eligible"          | "You may be eligible"                                       |
+| "You should file Chapter 7" | "Chapter 7 typically allows..."                             |
+| "I recommend"               | "Many filers in this situation..."                          |
+| "You will qualify"          | "Qualification depends on..."                               |
+| "This is your best option"  | "Chapter 7 and Chapter 13 each have different requirements" |
 
 ### 4.4 No Legal Judgment
 
 **DigniFi never evaluates:**
+
 - Whether bankruptcy is right for the user
 - Which chapter the user should file
 - Whether the user's circumstances legally qualify
 - What the court will decide
 
 **DigniFi only:**
+
 - Performs mathematical calculations (means test, fee waiver)
 - Explains general legal rules
 - Helps users organize information for forms
@@ -145,21 +152,25 @@ PROHIBITED_PHRASES = [
 **Compliance Strategy:**
 
 1. **No Legal Judgment in Prompt**
+
    - System prompt explicitly forbids evaluating whether circumstances legally qualify
    - LLM does NOT assess "Will this argument succeed?"
    - LLM ONLY improves articulation of user-provided facts
 
 2. **Human-in-Loop Approval**
+
    - User must review and explicitly approve all AI-refined text
    - User can edit AI output before approval
    - User cannot proceed without approval confirmation
 
 3. **Preserve Original Narrative**
+
    - Original user text stored alongside refined version
    - Audit trail shows user wrote original, AI only clarified language
    - Demonstrates user ownership of content
 
 4. **Explicit Disclosure**
+
    ```
    ℹ️ This narrative was clarified for legal readability using AI.
    The facts and circumstances are yours. The AI only improved phrasing.
@@ -171,6 +182,7 @@ PROHIBITED_PHRASES = [
    - Rollback to template mode if error rate >5%
 
 **Legal Distinction:**
+
 - ❌ Legal advice: "Your medical condition qualifies you for special circumstances"
 - ✅ Information: "Your medical condition narrative has been refined for court clarity"
 
@@ -205,6 +217,7 @@ class AuditLog(models.Model):
 ```
 
 **UPL-sensitive actions flagged:**
+
 - Means test calculation
 - Fee waiver determination
 - Special circumstances refinement
@@ -216,6 +229,7 @@ class AuditLog(models.Model):
 **10-year retention** for all UPL-sensitive logs (longer than typical 7-year statute of limitations).
 
 **Use case:** If Illinois State Bar investigates UPL complaint, we can provide:
+
 - Complete audit trail of every message shown to user
 - Proof that no legal advice was given
 - Documentation of all disclaimers presented
@@ -226,12 +240,14 @@ class AuditLog(models.Model):
 **If UPL complaint received:**
 
 1. **Immediate Actions (Day 1)**
+
    - Notify legal counsel
    - Export all audit logs for complainant's session
    - Preserve all code versions (Git tags)
    - Prepare response showing compliance framework
 
 2. **Response Strategy**
+
    - Provide audit logs showing no legal advice given
    - Cite Illinois Opinion 2001-09 safe harbor
    - Reference similar platforms (LegalZoom, Rocket Lawyer precedents)
@@ -265,11 +281,13 @@ class AuditLog(models.Model):
 ### For Developers
 
 **Read these before coding:**
+
 1. This document (UPL_COMPLIANCE.md)
 2. Illinois IPRPC Rules 5.3 & 5.5
 3. LegalZoom UPL case law summary (see References)
 
 **Test your understanding:**
+
 - [x] "Enter your monthly income" = ✅ Permitted (form assistance)
 - [x] "You should file Chapter 7" = ❌ Prohibited (legal recommendation)
 - [x] "Your CMI is $3,200" = ✅ Permitted (calculation output)
@@ -278,11 +296,13 @@ class AuditLog(models.Model):
 ### For Content Writers
 
 **Review:**
+
 1. PLAIN_LANGUAGE_GUIDE.md (defines 6th-8th grade reading level)
 2. TRAUMA_INFORMED_DESIGN.md (supportive messaging)
 3. This document (UPL boundaries)
 
 **Writing checklist:**
+
 - [ ] No "you should" language
 - [ ] Explain what law says, not what user should do
 - [ ] Define legal terms on first use
@@ -295,14 +315,17 @@ class AuditLog(models.Model):
 ### Supporting DigniFi's Model
 
 **Rocket Lawyer, Inc. v. Chong (Cal. Super. Ct. 2017)**
+
 - Holding: Automated form completion + legal information ≠ practice of law
 - Relevance: DigniFi's model nearly identical (forms + explanations)
 
 **LegalZoom.com, Inc. (FTC Consent Order 2016)**
+
 - Holding: Platform not practicing law if it disclaims advice, doesn't evaluate cases
 - Relevance: DigniFi's disclaimers and non-evaluation approach follow same model
 
 **Illinois State Bar Opinion 2001-09**
+
 - Holding: Court-approved websites providing bankruptcy info don't violate UPL
 - Relevance: DigniFi provides exactly this: forms + procedural information
 
@@ -310,15 +333,17 @@ class AuditLog(models.Model):
 
 **Areas where platforms HAVE been found to violate UPL:**
 
-1. **Personalized recommendations** (*Florida Bar v. Brumbaugh*)
+1. **Personalized recommendations** (_Florida Bar v. Brumbaugh_)
+
    - Platform told user which forms to file based on their case
    - DigniFi avoids: We provide all forms; user chooses
 
-2. **Attorney impersonation** (*Unauthorized Practice of Law Committee v. Parsons Technology*)
+2. **Attorney impersonation** (_Unauthorized Practice of Law Committee v. Parsons Technology_)
+
    - Software claimed to "replace your lawyer"
    - DigniFi avoids: Explicit disclaimers; always recommend attorney consultation
 
-3. **Legal strategy** (*State v. Buyers Service Co.*)
+3. **Legal strategy** (_State v. Buyers Service Co._)
    - Platform advised on timing of filing, which creditors to include
    - DigniFi avoids: We explain general rules; user makes decisions
 
@@ -327,16 +352,19 @@ class AuditLog(models.Model):
 ## X. References
 
 **Illinois Rules:**
+
 - Illinois Rules of Professional Conduct (IPRPC) § 5.3, 5.5
 - Illinois State Bar Association Opinion 2001-09
 
 **Case Law:**
-- *Rocket Lawyer, Inc. v. Chong*, No. BC638382 (Cal. Super. Ct. 2017)
-- *LegalZoom.com, Inc.*, FTC File No. 1423158 (2016)
-- *Florida Bar v. Brumbaugh*, 355 So. 2d 1186 (Fla. 1978)
-- *Unauthorized Practice of Law Committee v. Parsons Technology*, 1999 WL 47235 (N.D. Tex. 1999)
+
+- _Rocket Lawyer, Inc. v. Chong_, No. BC638382 (Cal. Super. Ct. 2017)
+- _LegalZoom.com, Inc._, FTC File No. 1423158 (2016)
+- _Florida Bar v. Brumbaugh_, 355 So. 2d 1186 (Fla. 1978)
+- _Unauthorized Practice of Law Committee v. Parsons Technology_, 1999 WL 47235 (N.D. Tex. 1999)
 
 **Secondary Sources:**
+
 - ABA Model Rules on the Unauthorized Practice of Law (2003)
 - Richard Zorza, "Access to Justice: The Emerging Consensus and Some Questions and Implications" (2011)
 
@@ -368,6 +396,7 @@ A: ⚠️ Careful. General referral to legal aid = ✅ Permitted. Recommending s
 **Ownership:** Legal counsel + Founder
 
 **Change Process:**
+
 1. Propose changes via PR with legal review required
 2. Founder + counsel approve
 3. All contributors notified of updates

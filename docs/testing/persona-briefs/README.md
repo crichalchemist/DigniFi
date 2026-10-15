@@ -13,13 +13,13 @@ through the ILND means test calculator.
 
 ## Persona Briefs
 
-| Brief | Archetype | Means Test | Key Test |
-|-------|-----------|------------|----------|
-| `maria-torres.md` | Below-median single parent | Passes, fee waiver | Full happy path |
-| `james-washington.md` | Borderline single filer | Passes (barely) | Near-threshold messaging |
-| `priya-sharma.md` | Above-median family | Fails | Dignity-preserving ineligibility |
-| `deshawn-mitchell.md` | Asset-heavy homeowner | Passes | Multi-asset entry, exemptions |
-| `sarah-chen.md` | Simplest case, no assets | Passes, fee waiver | Fastest path, empty-state handling |
+| Brief                 | Archetype                  | Means Test         | Key Test                           |
+| --------------------- | -------------------------- | ------------------ | ---------------------------------- |
+| `maria-torres.md`     | Below-median single parent | Passes, fee waiver | Full happy path                    |
+| `james-washington.md` | Borderline single filer    | Passes (barely)    | Near-threshold messaging           |
+| `priya-sharma.md`     | Above-median family        | Fails              | Dignity-preserving ineligibility   |
+| `deshawn-mitchell.md` | Asset-heavy homeowner      | Passes             | Multi-asset entry, exemptions      |
+| `sarah-chen.md`       | Simplest case, no assets   | Passes, fee waiver | Fastest path, empty-state handling |
 
 ## How to Run
 
@@ -89,13 +89,13 @@ Each subagent returns a JSON report:
 
 ## PRD Metrics Evaluated
 
-| Metric | Target | Measurement |
-|--------|--------|-------------|
-| Completion rate | 100% (5/5 personas complete) | `completed` field |
-| Mean comprehension | >= 3.5 / 5 | `survey_responses.comprehension` |
-| Mean dignity | >= 4.0 / 5 | `survey_responses.dignity` |
-| Mean confidence | >= 3.5 / 5 | `survey_responses.confidence` |
-| Friction points per persona | <= 3 high-severity | `friction_points` count |
+| Metric                      | Target                       | Measurement                      |
+| --------------------------- | ---------------------------- | -------------------------------- |
+| Completion rate             | 100% (5/5 personas complete) | `completed` field                |
+| Mean comprehension          | >= 3.5 / 5                   | `survey_responses.comprehension` |
+| Mean dignity                | >= 4.0 / 5                   | `survey_responses.dignity`       |
+| Mean confidence             | >= 3.5 / 5                   | `survey_responses.confidence`    |
+| Friction points per persona | <= 3 high-severity           | `friction_points` count          |
 
 ## Stop Rules
 

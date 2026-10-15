@@ -19,6 +19,7 @@ Before committing code, verify:
 ### What Belongs in .env
 
 **Always in environment (NEVER commit):**
+
 - `SECRET_KEY` - Django secret key
 - `FIELD_ENCRYPTION_KEY` - Fernet key for PII encryption
 - `DATABASE_PASSWORD` - PostgreSQL password
@@ -26,6 +27,7 @@ Before committing code, verify:
 - `API_KEYS` - Third-party service keys (credit counseling, etc.)
 
 **Example .env file:**
+
 ```bash
 # Django
 SECRET_KEY=<50-char-random-string>
@@ -46,16 +48,19 @@ EMAIL_HOST_PASSWORD=<smtp-password>
 ### Generating Secrets
 
 **SECRET_KEY:**
+
 ```bash
 python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"
 ```
 
 **FIELD_ENCRYPTION_KEY:**
+
 ```bash
 python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
 ```
 
 **Random Password:**
+
 ```bash
 openssl rand -base64 32
 ```
@@ -63,6 +68,7 @@ openssl rand -base64 32
 ### .env.example Template
 
 **Commit .env.example (without real values):**
+
 ```bash
 # Django
 SECRET_KEY=changeme
@@ -83,12 +89,14 @@ FIELD_ENCRYPTION_KEY=changeme
 **Prevent Secrets in Commits:**
 
 Install `detect-secrets`:
+
 ```bash
 pip install detect-secrets
 detect-secrets scan --baseline .secrets.baseline
 ```
 
 **Pre-commit hook (.git/hooks/pre-commit):**
+
 ```bash
 #!/bin/bash
 detect-secrets-hook --baseline .secrets.baseline $(git diff --cached --name-only)
@@ -101,6 +109,7 @@ fi
 ### .gitignore
 
 **Essential entries:**
+
 ```gitignore
 # Environment variables
 .env
@@ -134,6 +143,7 @@ secrets/
 ### Checking Git History for Secrets
 
 **Search for accidentally committed secrets:**
+
 ```bash
 # Search all history for patterns
 git log -p --all -S 'password' --source --name-only
@@ -147,6 +157,7 @@ truffleHog --regex --entropy=True .
 ```
 
 **If secret found in history:**
+
 1. Rotate the secret immediately (generate new value, update in production)
 2. Use `git filter-repo` to remove from history (or BFG Repo-Cleaner)
 3. Force push to remote (coordinate with team)
@@ -157,18 +168,21 @@ truffleHog --regex --entropy=True .
 ### Security-Focused Review
 
 **For All PRs:**
+
 - Run test suite (backend + frontend + E2E)
 - Check for hardcoded secrets
 - Verify input validation
 - Check authentication/authorization
 
 **For PII-Handling PRs:**
+
 - Confirm encrypted fields used for PII
 - Verify audit logging added
 - Check user isolation (can't access other users' data)
 - Confirm error messages don't leak PII
 
 **For Authentication/Auth PRs:**
+
 - Verify permission_classes on new viewsets
 - Check rate limiting configuration
 - Confirm CSRF protection (if applicable)
@@ -195,12 +209,14 @@ truffleHog --regex --entropy=True .
 ### Automated Scanning
 
 **Python (Safety):**
+
 ```bash
 pip install safety
 safety check --full-report
 ```
 
 **Node.js (npm audit):**
+
 ```bash
 cd frontend
 npm audit
@@ -208,6 +224,7 @@ npm audit fix  # Apply patches
 ```
 
 **GitHub Dependabot:**
+
 - Enabled by default on GitHub
 - Automatic PRs for security updates
 - Configure in `.github/dependabot.yml`
@@ -215,16 +232,19 @@ npm audit fix  # Apply patches
 ### Update Policy
 
 **Security Patches:**
+
 - Apply within 7 days of disclosure
 - Test in staging before production
 - Critical (P0) patches may require immediate deployment
 
 **Minor Updates:**
+
 - Review quarterly
 - Check changelog for breaking changes
 - Update in development first
 
 **Major Updates:**
+
 - Evaluate impact (breaking changes)
 - Test thoroughly in staging
 - Plan migration (may require code changes)
@@ -232,6 +252,7 @@ npm audit fix  # Apply patches
 ### Known Vulnerabilities
 
 **Check before merge:**
+
 ```bash
 # Backend
 safety check
@@ -243,12 +264,13 @@ npm outdated
 ```
 
 **Allow exceptions (document why):**
+
 ```yaml
 # .safety-policy.yml
 security:
   ignore-vulnerabilities:
     # Vulnerability in dev-only dependency
-    - 12345: "Used only in tests, not in production"
+    - 12345: 'Used only in tests, not in production'
 ```
 
 ## Testing Security
@@ -256,6 +278,7 @@ security:
 ### Security Test Cases
 
 **Authentication:**
+
 ```python
 def test_unauthenticated_access_denied(api_client):
     response = api_client.get('/api/intake/sessions/')
@@ -263,6 +286,7 @@ def test_unauthenticated_access_denied(api_client):
 ```
 
 **Authorization:**
+
 ```python
 def test_user_cannot_access_other_user_data(authenticated_client, other_user_session):
     response = authenticated_client.get(f'/api/intake/sessions/{other_user_session.id}/')
@@ -270,6 +294,7 @@ def test_user_cannot_access_other_user_data(authenticated_client, other_user_ses
 ```
 
 **Input Validation:**
+
 ```python
 def test_invalid_ssn_rejected(authenticated_client):
     response = authenticated_client.post('/api/intake/debtor-info/', {
@@ -280,6 +305,7 @@ def test_invalid_ssn_rejected(authenticated_client):
 ```
 
 **SQL Injection (Django ORM protects, but test anyway):**
+
 ```python
 def test_special_chars_in_search(authenticated_client):
     # Should not cause error or return unexpected results
@@ -290,6 +316,7 @@ def test_special_chars_in_search(authenticated_client):
 ### Negative Testing
 
 **Test what SHOULDN'T work:**
+
 - Unauthenticated access to protected endpoints
 - Users accessing other users' data
 - Invalid input formats
@@ -301,6 +328,7 @@ def test_special_chars_in_search(authenticated_client):
 ### Docker Security
 
 **Don't run as root:**
+
 ```dockerfile
 # Create non-root user
 RUN useradd -m -u 1000 app
@@ -308,6 +336,7 @@ USER app
 ```
 
 **Limit container permissions:**
+
 ```yaml
 # docker-compose.yml
 services:
@@ -323,11 +352,13 @@ services:
 ### Database Security
 
 **Development Database:**
+
 - Use different credentials than production
 - No production data in development
 - Synthetic test data only
 
 **PostgreSQL Configuration:**
+
 ```sql
 -- Create limited user for app
 CREATE USER dignifi_app WITH PASSWORD 'dev_password';
@@ -340,16 +371,19 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO dignifi_a
 ### Recommended Tools
 
 **Python:**
+
 - `bandit` - Find common security issues in Python code
 - `safety` - Check dependencies for known vulnerabilities
 - `detect-secrets` - Prevent secrets in git commits
 
 **JavaScript:**
+
 - `npm audit` - Check dependencies
 - `eslint-plugin-security` - ESLint security rules
 - `retire.js` - Find vulnerable JS libraries
 
 **General:**
+
 - `git-secrets` - Prevent secrets in git
 - `truffleHog` - Find secrets in git history
 - `OWASP ZAP` - Web application security scanner (manual)
@@ -357,6 +391,7 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO dignifi_a
 ### CI/CD Integration
 
 **GitHub Actions (.github/workflows/security.yml):**
+
 ```yaml
 name: Security Scan
 
