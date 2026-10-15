@@ -342,40 +342,6 @@
       "repeat_capacity": null,
       "row": null,
       "legal_review": false
-    },
-    {
-      "pdf_field": "Debtor1.sig",
-      "type": "text",
-      "source": "derived",
-      "page": 3,
-      "label": "Signature of debtor",
-      "required": false,
-      "conditional_on": null,
-      "value": null,
-      "rule": "full_name",
-      "ingest_key": null,
-      "binding": null,
-      "repeat": null,
-      "repeat_capacity": null,
-      "row": null,
-      "legal_review": false
-    },
-    {
-      "pdf_field": "Debtor1.Date signed",
-      "type": "text",
-      "source": "derived",
-      "page": 3,
-      "label": "Date signed",
-      "required": false,
-      "conditional_on": null,
-      "value": null,
-      "rule": "today_iso",
-      "ingest_key": null,
-      "binding": null,
-      "repeat": null,
-      "repeat_capacity": null,
-      "row": null,
-      "legal_review": false
     }
   ]
 }
