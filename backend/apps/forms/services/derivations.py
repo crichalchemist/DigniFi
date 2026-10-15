@@ -488,22 +488,6 @@ def _means_test_disposable_income(session: IntakeSession) -> str:
         return "0.00"
 
 
-def _means_test_total_deductions(session: IntakeSession) -> str:
-    try:
-        mt = session.means_test
-        return _fmt(mt.total_allowable_expenses)
-    except Exception:
-        return "0.00"
-
-
-def _means_test_priority_debts(session: IntakeSession) -> str:
-    try:
-        mt = session.means_test
-        return _fmt(mt.priority_debts_monthly)
-    except Exception:
-        return "0.00"
-
-
 # ---------------------------------------------------------------------------
 # DERIVATIONS dict (all referenced functions must be defined above)
 # ---------------------------------------------------------------------------
@@ -608,8 +592,6 @@ DERIVATIONS: dict[str, Callable[[IntakeSession], str]] = {
     "schedule_j_joint_case": _schedule_j_joint_case,
     # Form 122A-2 means test expense deduction derivations
     "means_test_disposable_income": _means_test_disposable_income,
-    "means_test_total_deductions": _means_test_total_deductions,
-    "means_test_priority_debts": _means_test_priority_debts,
 }
 
 

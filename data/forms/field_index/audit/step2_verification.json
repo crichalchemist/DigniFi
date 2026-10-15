@@ -508,5 +508,35 @@
     "status": "confirmed",
     "correct_target": "23c",
     "evidence": "Field index: 23c p3 line 23c, column 'Your expenses', 'Subtract your monthly expenses from your monthly income. The result is your monthly net income.' (adjudicated): 23a (Schedule I line 12, schedule_i_income_total) minus 23b (line 22c). Step 2 spec Appendix A.8, §6.2 (schedule_j_monthly_net_income, 23a - 23b), Appendix B R4 (after 23a's new body) and Appendix C.3 (DIG-61); ruling T0-f: blank while 23a is blank, a negative result prints with a minus sign. The audit lists 23c as unbound (schedule_j.unbound.json, DIG-61)."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "Quest1",
+    "producer": "derived:cmi",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Quest1",
+    "evidence": "Field index: Quest1 p1 line 1, 'Copy your total current monthly income (copy line 11 from Official Form 122A-1)' (adjudicated). 122A-1 line 11 prints cmi (Debto1.Quest11, Quest11). Step 2 spec Appendix A.6, §6.1 (C1, two income totals: CMI, without Social Security, goes on 122A-2 line 1) and §6.4. The audit's verified row on this box judged the old means_test_total_deductions binding, whose total belongs on line 38 (undefined_104), and its auditor note names cmi for line 1; this row joins on (box, key), so that row's target never applies to cmi."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "undefined_51",
+    "producer": "derived:schedule_j_support_paid",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_51",
+    "evidence": "Field index: undefined_51 p5 line 19, 'Court-ordered payments: total monthly amount paid under court/agency order (e.g., spousal or child support), excluding past-due amounts' (adjudicated). ExpenseInfo.child_support_paid is court-ordered support paid, the figure Schedule J line 18 prints. Step 2 spec Appendix A.6, §6.1 (expense lines, 6c option A: 122A-2 lines 19 and 21 print only above $0), §6.2 (schedule_j_support_paid, Schedule J 18 and 122A-2 line 19) and §6.4. The audit has no row on this box."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "undefined_53",
+    "producer": "derived:schedule_j_childcare",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_53",
+    "evidence": "Field index: undefined_53 p5 line 21, 'Childcare (babysitting, daycare, nursery, preschool)' (adjudicated). ExpenseInfo.childcare is the filer's childcare, the figure Schedule J line 8 prints. Step 2 spec Appendix A.6, §6.1 (expense lines, 6c option A: 122A-2 lines 19 and 21 print only above $0) and §6.4. The audit has no row on this box."
   }
 ]

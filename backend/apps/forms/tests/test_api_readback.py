@@ -181,7 +181,7 @@ def test_forms_built_through_the_api_print_what_the_seeded_forms_print(persona):
     assert _fee_waiver_answers(built) == _fee_waiver_answers(seeded)
     assert (_fee_waiver_answers(built) is None) == (persona not in WAIVER_FILERS)
     # Only Priya's income is above the median, so only her packet holds 122A-2, and it
-    # prints figures worked out from her own expenses.
+    # prints her own figures: her monthly income on line 1 and her childcare on line 21.
     assert ("form_122a2" in stored) == (persona == "priya")
     if persona == "priya":
         amounts = [_amount(value) for value in stored["form_122a2"].values()]
