@@ -378,5 +378,45 @@
     "status": "confirmed",
     "correct_target": "Amount 9 Debtor 1",
     "evidence": "Field index: Amount 9 Debtor 1 p2 line 9, column 'For Debtor 1', 'Add all other income.' (adjudicated). Step 2 spec §6.2 (schedule_i_other_income_total_debtor1: the sum of 8a-8h; line 9) and §6.1 (8b and 8f are never asked and count as zero). The audit has no row for this box."
+  },
+  {
+    "schema": "form_106sum",
+    "pdf_field": "4",
+    "producer": "derived:schedule_i_income_total",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "4",
+    "evidence": "Field index: 4 p1 line 4, 'Line 4: Copy your combined monthly income from line 12 of Schedule I' (adjudicated). Step 2 spec §5.5 (a separate Schedule I income total, bound to Schedule I lines 10 and 12 and 106Sum line 4), §6.1 C1 (two income totals: CMI without Social Security on 106Sum line 8, the Schedule I income total on line 4) and §6.2 (schedule_i_income_total); Appendix B's 106Sum chain. The audit's verified row on this box judged the old total_debts binding, which belongs on 3c."
+  },
+  {
+    "schema": "schedule_i",
+    "pdf_field": "Amount 10 Debtor 1",
+    "producer": "derived:schedule_i_income_total",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Amount 10 Debtor 1",
+    "evidence": "Field index: Amount 10 Debtor 1 p2 line 10, column 'For Debtor 1', 'Calculate monthly income. Add line 7 + line 9.' (adjudicated). Line 7 (lines 2 + 3, Schedule I's gross income, until payroll deductions are asked) plus line 9 (8a-8h) is all ten Income step sources. Step 2 spec §5.5, §6.1 B1 and C1 (lines 10 and 12 take the Schedule I income total, Social Security included) and §6.2 (schedule_i_income_total). The audit's verified row on this box judged the old cmi binding, which leaves Social Security out."
+  },
+  {
+    "schema": "schedule_i",
+    "pdf_field": "Amount 10",
+    "producer": "derived:schedule_i_income_total",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Amount 10",
+    "evidence": "Field index: Amount 10 p2 line 10, column 'Total (Debtor 1 + Debtor 2)', 'Add the entries in line 10 for Debtor 1 and Debtor 2 or non-filing spouse' (adjudicated). Step 2 never fills the spouse column, so the total equals Debtor 1's line 10: step 2 spec §6.1 (totals that count an unasked line as zero; line 10's combined column adds a spouse column step 2 never fills; the section 6c decision covers Schedule I line 10), §5.5 and §6.2 (schedule_i_income_total). The audit has no row for this box."
+  },
+  {
+    "schema": "schedule_i",
+    "pdf_field": "Amount 12",
+    "producer": "derived:schedule_i_income_total",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Amount 12",
+    "evidence": "Field index: Amount 12 p2 line 12, column 'Combined monthly income', 'Add the amount in the last column of line 10 to the amount in line 11 (Combined monthly income)' (adjudicated). Line 11 (others' regular contributions) is never asked and counts as zero: step 2 spec §6.1 (totals that count an unasked line as zero; the section 6c decision covers Schedule I line 12) and C1 (the Schedule I income total, Social Security included), §5.5 and §6.2 (schedule_i_income_total). Appendix B R4: the box keeps a binding. The audit's verified row on this box judged the old cmi binding, which leaves Social Security out."
   }
 ]

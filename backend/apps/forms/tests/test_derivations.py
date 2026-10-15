@@ -150,6 +150,9 @@ SWITCHED_RULES = {
     "line5a_pension_retirement": ["monthly_pension"],
     "line7_other_income": ["monthly_other_income"],
     "line3_alimony": ["monthly_alimony"],
+    # Schedule I line 12 and Schedule J 23a, which copies it: Social Security included (C1)
+    "schedule_i_income_total": list(TEN_SOURCES),
+    "schedule_j_total_income": list(TEN_SOURCES),
 }
 
 

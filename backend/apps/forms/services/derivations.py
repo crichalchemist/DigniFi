@@ -125,13 +125,6 @@ def _total_nonpriority_unsecured(session: IntakeSession) -> str:
     return _fmt(_sum_encrypted(qs, "amount_owed"))
 
 
-def _total_unsecured_debts(session: IntakeSession) -> str:
-    from apps.intake.models import DebtInfo
-
-    qs = DebtInfo.objects.filter(session=session, is_secured=False)
-    return _fmt(_sum_encrypted(qs, "amount_owed"))
-
-
 def _total_debts(session: IntakeSession) -> str:
     from apps.intake.models import DebtInfo
 
@@ -418,6 +411,17 @@ def _schedule_i_other_income_total_debtor1(session: IntakeSession) -> str:
     )
 
 
+def _schedule_i_income_total(session: IntakeSession) -> str:
+    """
+    Schedule I lines 10 and 12: all ten sources, Social Security included (C1), unlike CMI.
+
+    Line 10's spouse column and line 11 are never asked and count as zero (step 2 spec §6.1).
+    """
+    from apps.intake.models import IncomeInfo
+
+    return _income_amounts(session, *IncomeInfo.SOURCE_FIELDS)
+
+
 # ---------------------------------------------------------------------------
 # Schedule J expense line item derivations
 # ---------------------------------------------------------------------------
@@ -438,10 +442,6 @@ def _schedule_j_total_expenses(session: IntakeSession) -> str:
         return _fmt(Decimal(str(session.expense_info.calculate_total_monthly_expenses())))
     except Exception:
         return "0.00"
-
-
-def _schedule_j_total_income(session: IntakeSession) -> str:
-    return _fmt(Decimal(_cmi(session)))
 
 
 def _means_test_disposable_income(session: IntakeSession) -> str:
@@ -498,7 +498,6 @@ DERIVATIONS: dict[str, Callable[[IntakeSession], str]] = {
     "total_assets": _total_assets,
     "total_secured_debts": _total_secured_debts,
     "total_nonpriority_unsecured": _total_nonpriority_unsecured,
-    "total_unsecured_debts": _total_unsecured_debts,
     "total_debts": _total_debts,
     "total_bank_accounts": _total_bank_accounts,
     "total_retirement_accounts": _total_retirement_accounts,
@@ -547,6 +546,7 @@ DERIVATIONS: dict[str, Callable[[IntakeSession], str]] = {
     "schedule_i_rental_debtor1": _schedule_i_rental_debtor1,
     "schedule_i_other_income_debtor1": _schedule_i_other_income_debtor1,
     "schedule_i_other_income_total_debtor1": _schedule_i_other_income_total_debtor1,
+    "schedule_i_income_total": _schedule_i_income_total,
     # Schedule J expense line item derivations
     "schedule_j_rent_or_mortgage": lambda s: _fmt(_get_expense_field(s, "rent_or_mortgage")),
     "schedule_j_utilities": lambda s: _fmt(_get_expense_field(s, "utilities")),
@@ -565,7 +565,8 @@ DERIVATIONS: dict[str, Callable[[IntakeSession], str]] = {
         _get_expense_field(s, "other_expenses") + _get_expense_field(s, "child_support_paid")
     ),
     "schedule_j_total_expenses": _schedule_j_total_expenses,
-    "schedule_j_total_income": _schedule_j_total_income,
+    # Line 23a is Schedule I line 12: one figure on both forms
+    "schedule_j_total_income": _schedule_i_income_total,
     # Form 122A-2 means test expense deduction derivations
     "means_test_disposable_income": _means_test_disposable_income,
     "means_test_total_deductions": _means_test_total_deductions,

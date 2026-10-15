@@ -126,6 +126,19 @@ class TestForm106SumSchema:
         assert field_map["2"] == "50000.00"  # secured
         assert field_map["3b"] == "10000.00"  # nonpriority unsecured
 
+    def test_total_liabilities_print_on_3c_and_combined_monthly_income_on_line_4(
+        self, populated_session
+    ):
+        # 3c totals every debt, secured, unsecured and priority alike. Line 4 copies
+        # Schedule I line 12, which counts Social Security; line 8, CMI, never does (C1).
+        income = populated_session.income_info
+        income.monthly_social_security = Decimal("800.00")
+        income.save()
+        field_map = resolve(load_schema("form_106sum"), populated_session)
+        assert field_map["3c"] == "65000.00"  # 50000 + 10000 + 5000
+        assert field_map["4"] == "2000.00"  # 1200 wages + 800 Social Security
+        assert field_map["8"] == "1200.00"
+
     def test_priority_debts_print_nowhere_until_the_filer_is_asked_which_have_priority(
         self, populated_session
     ):

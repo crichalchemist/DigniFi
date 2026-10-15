@@ -1,13 +1,5 @@
 [
   {
-    "form_type": "form_106sum",
-    "pdf_field": "4",
-    "tier": "2",
-    "case": "derived:total_debts",
-    "class": "wrong_box",
-    "ticket": "DIG-79"
-  },
-  {
     "form_type": "form_107",
     "pdf_field": "Income 5a Debtor 1",
     "tier": "2",
@@ -254,62 +246,6 @@
     "case": "derived:schedule_j_insurance_not_deducted",
     "class": "wrong_box",
     "ticket": "DIG-52"
-  },
-  {
-    "form_type": "form_106sum",
-    "pdf_field": "3c",
-    "tier": "3",
-    "case": "deshawn",
-    "class": "wrong_value",
-    "ticket": "DIG-79"
-  },
-  {
-    "form_type": "form_106sum",
-    "pdf_field": "3c",
-    "tier": "3",
-    "case": "james",
-    "class": "wrong_value",
-    "ticket": "DIG-79"
-  },
-  {
-    "form_type": "form_106sum",
-    "pdf_field": "4",
-    "tier": "3",
-    "case": "deshawn",
-    "class": "wrong_value",
-    "ticket": "DIG-79"
-  },
-  {
-    "form_type": "form_106sum",
-    "pdf_field": "4",
-    "tier": "3",
-    "case": "james",
-    "class": "wrong_value",
-    "ticket": "DIG-79"
-  },
-  {
-    "form_type": "form_106sum",
-    "pdf_field": "4",
-    "tier": "3",
-    "case": "maria",
-    "class": "wrong_value",
-    "ticket": "DIG-79"
-  },
-  {
-    "form_type": "form_106sum",
-    "pdf_field": "4",
-    "tier": "3",
-    "case": "priya",
-    "class": "wrong_value",
-    "ticket": "DIG-79"
-  },
-  {
-    "form_type": "form_106sum",
-    "pdf_field": "4",
-    "tier": "3",
-    "case": "sarah",
-    "class": "wrong_value",
-    "ticket": "DIG-79"
   },
   {
     "form_type": "schedule_j",
