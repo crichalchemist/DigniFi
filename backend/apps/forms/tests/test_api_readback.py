@@ -135,7 +135,8 @@ def _comparable(form_type, values):
     """
     A form's values, with each repeat group's rows in a fixed order.
 
-    Stored rows have no fixed order (DIG-164), so Form 107's rows compare regardless of it.
+    No production schema has a repeat group since step 2 took Form 107's off. Stored rows
+    have no fixed order (DIG-164), so a group a later step binds compares regardless of it.
     Each row keeps its own values together, so an amount that moves to another row differs.
     """
     fixed = dict(values)

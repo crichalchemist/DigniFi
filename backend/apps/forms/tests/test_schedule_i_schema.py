@@ -120,9 +120,9 @@ class TestScheduleISchema:
         assert "Jane Doe" in field_map["Debtor 1"]
         assert "Amount 12" in field_map
 
-    def test_cmi_in_field_map(self, session_with_income):
+    def test_lines_10_and_12_print_the_income_total(self, session_with_income):
         field_map = resolve(load_schema("schedule_i"), session_with_income)
-        # CMI is the wages, the only source given
+        # The wages are the only source given, so the Schedule I income total is the wages
         assert field_map["Amount 12"] == "2000.00"
         assert field_map["Amount 10 Debtor 1"] == "2000.00"
 
