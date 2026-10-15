@@ -174,6 +174,27 @@
       "legal_review": false
     },
     {
+      "pdf_field": "check7",
+      "type": "checkbox",
+      "source": "asked",
+      "choices": {
+        "yes": "/consumer",
+        "no": "/not consumer"
+      },
+      "page": 2,
+      "label": "What kind of debt do you have?",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "answer:form_101.primarily_consumer_debts",
+      "repeat": null,
+      "repeat_capacity": null,
+      "row": null,
+      "legal_review": true
+    },
+    {
       "pdf_field": "8",
       "type": "text",
       "source": "derived",

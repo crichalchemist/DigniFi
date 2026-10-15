@@ -756,6 +756,27 @@
       "legal_review": false
     },
     {
+      "pdf_field": "check6",
+      "type": "checkbox",
+      "source": "asked",
+      "choices": {
+        "yes": "/yes",
+        "no": "/no"
+      },
+      "page": 3,
+      "label": "Are either Debtor 1’s or Debtor 2’s debts primarily consumer debts?",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "answer:form_101.primarily_consumer_debts",
+      "repeat": null,
+      "repeat_capacity": null,
+      "row": null,
+      "legal_review": true
+    },
+    {
       "pdf_field": "Creditors Name 1",
       "type": "text",
       "source": "asked",
@@ -7509,6 +7530,27 @@
       "legal_review": false
     },
     {
+      "pdf_field": "check30",
+      "type": "checkbox",
+      "source": "asked",
+      "choices": {
+        "yes": "/yes",
+        "no": "/no"
+      },
+      "page": 12,
+      "label": "Did you pay or agree to pay someone who is not an attorney to help you fill out bankruptcy forms?",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "answer:form_101.paid_non_attorney_preparer",
+      "repeat": null,
+      "repeat_capacity": null,
+      "row": null,
+      "legal_review": false
+    },
+    {
       "pdf_field": "Name of person agreed to pay",
       "type": "text",
       "source": "asked",
@@ -7519,7 +7561,7 @@
       "value": null,
       "rule": null,
       "ingest_key": null,
-      "binding": "answer:form_107.Name_of_person_agreed_to_pay",
+      "binding": "answer:form_101.preparer_name",
       "repeat": null,
       "repeat_capacity": null,
       "row": null,

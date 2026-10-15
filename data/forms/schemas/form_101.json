@@ -1146,6 +1146,27 @@
       "legal_review": false
     },
     {
+      "pdf_field": "Check Box18",
+      "type": "checkbox",
+      "source": "asked",
+      "choices": {
+        "yes": "/Yes",
+        "no": "/No"
+      },
+      "page": 7,
+      "label": "Are your debts primarily consumer debts?",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "answer:form_101.primarily_consumer_debts",
+      "repeat": null,
+      "repeat_capacity": null,
+      "row": null,
+      "legal_review": true
+    },
+    {
       "pdf_field": "Check Box20",
       "type": "checkbox",
       "source": "constant",
@@ -1251,6 +1272,27 @@
       "rule": "total_debts_range",
       "ingest_key": null,
       "binding": null,
+      "repeat": null,
+      "repeat_capacity": null,
+      "row": null,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "Check Box26",
+      "type": "checkbox",
+      "source": "asked",
+      "choices": {
+        "yes": "/Yes",
+        "no": "/no"
+      },
+      "page": 9,
+      "label": "Did you pay or agree to pay someone who is not an attorney to help you fill out your bankruptcy forms?",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "answer:form_101.paid_non_attorney_preparer",
       "repeat": null,
       "repeat_capacity": null,
       "row": null,

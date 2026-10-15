@@ -104,6 +104,69 @@
       "repeat_capacity": null,
       "row": null,
       "legal_review": false
+    },
+    {
+      "pdf_field": "check_17",
+      "type": "checkbox",
+      "source": "asked",
+      "choices": {
+        "yes": "/yes",
+        "no": "/no"
+      },
+      "page": 3,
+      "label": "Have you paid anyone for services for this case, including filling out this application, the bankruptcy filing package, or the schedules?",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "answer:form_103b.paid_anyone_for_services",
+      "repeat": null,
+      "repeat_capacity": null,
+      "row": null,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "check_18",
+      "type": "checkbox",
+      "source": "asked",
+      "choices": {
+        "yes": "/yes",
+        "no": "/no"
+      },
+      "page": 3,
+      "label": "Have you promised to pay or do you expect to pay someone for services for your bankruptcy case?",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "answer:form_103b.promised_to_pay_for_services",
+      "repeat": null,
+      "repeat_capacity": null,
+      "row": null,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "check_19",
+      "type": "checkbox",
+      "source": "asked",
+      "choices": {
+        "yes": "/yes",
+        "no": "/no"
+      },
+      "page": 3,
+      "label": "Has anyone paid someone on your behalf for services for this case?",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "answer:form_103b.someone_paid_on_your_behalf",
+      "repeat": null,
+      "repeat_capacity": null,
+      "row": null,
+      "legal_review": false
     }
   ]
 }

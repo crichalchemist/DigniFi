@@ -68,5 +68,115 @@
     "status": "confirmed",
     "correct_target": "Debtor1.Contact phone_2",
     "evidence": "Field index: Debtor1.Contact phone_2 p9 Part 7 'For you if you are filing this bankruptcy without an attorney: Contact phone' (adjudicated). The audit's confirmed note on this box: the debtor's own phone, which the phone rule gives; the preparer's phone belongs on Form 119. Step 2 spec §6.4: Contact phone gets the phone, and Cell phone stays blank because the wizard never asks whether the number is a cell."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "Check Box18",
+    "producer": "asked:answer:form_101.primarily_consumer_debts",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Check Box18",
+    "evidence": "Field index: Check Box18 p7 line 16a 'Are your debts primarily consumer debts?', states /No (sampled_ok) and /Yes (vision_agreed). form_101.unbound.json names this box for the answer: 'the Check Box16 constant was evidently meant for it'. Owner's answer Q7 (DIG-121; step 2 spec §3, §6.3): each filer answers 'primarily consumer debts', and the answer prints on 101 Check Box18, 106Sum check7 and 107 check6, marked for legal review."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "Check Box26",
+    "producer": "asked:answer:form_101.paid_non_attorney_preparer",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Check Box26",
+    "evidence": "Field index: Check Box26 p9 Part 7 'For you if you are filing this bankruptcy without an attorney: Did you pay or agree to pay someone who is not an attorney to help you fill out your bankruptcy forms?', states /no ('No') and /Yes ('Yes. Name of Person'), adjudicated. Owner's answer Q12 (step 2 spec §3, §6.3): DigniFi is free, so it is not a petition preparer; each filer answers the form's own question, and the paid-help answer prints on 101 Check Box26, 106Dec check1 and 107 check30."
+  },
+  {
+    "schema": "form_103b",
+    "pdf_field": "check_17",
+    "producer": "asked:answer:form_103b.paid_anyone_for_services",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check_17",
+    "evidence": "Field index: check_17 p3 line 17 'Have you paid anyone for services for this case, including filling out this application, the bankruptcy filing package, or the schedules?', states /no ('No', sampled_ok) and /yes ('Yes. Whom did you pay?', adjudicated). Owner's answer Q12 (step 2 spec §3, §6.3): 103B lines 17-19 ask different things from the paid-help question (line 17 counts attorneys too), so each line has its own answer."
+  },
+  {
+    "schema": "form_103b",
+    "pdf_field": "check_18",
+    "producer": "asked:answer:form_103b.promised_to_pay_for_services",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check_18",
+    "evidence": "Field index: check_18 p3 line 18 'Have you promised to pay or do you expect to pay someone for services for your bankruptcy case?', states /no ('No') and /yes ('Yes. Whom do you expect to pay?'), adjudicated. Owner's answer Q12 (step 2 spec §3, §6.3): 103B lines 17-19 ask different things from the paid-help question (line 17 counts attorneys too), so each line has its own answer."
+  },
+  {
+    "schema": "form_103b",
+    "pdf_field": "check_19",
+    "producer": "asked:answer:form_103b.someone_paid_on_your_behalf",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check_19",
+    "evidence": "Field index: check_19 p3 line 19 'Has anyone paid someone on your behalf for services for this case?', states /no ('No') and /yes ('Yes. Who was paid on your behalf?'), adjudicated. Owner's answer Q12 (step 2 spec §3, §6.3): 103B lines 17-19 ask different things from the paid-help question (line 17 counts attorneys too), so each line has its own answer."
+  },
+  {
+    "schema": "form_106dec",
+    "pdf_field": "check1",
+    "producer": "asked:answer:form_101.paid_non_attorney_preparer",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check1",
+    "evidence": "Field index: check1 p1 'Did you pay or agree to pay someone who is NOT an attorney to help you fill out bankruptcy forms?', states /no ('No') and /yes ('Yes.'), adjudicated. The index tooltip 'Any creditors clims secured by property' is a template copy error; the label and option text decide the box. Owner's answer Q12 (step 2 spec §3, §6.3): DigniFi is free, so it is not a petition preparer; each filer answers the form's own question, and the paid-help answer prints on 101 Check Box26, 106Dec check1 and 107 check30."
+  },
+  {
+    "schema": "form_106dec",
+    "pdf_field": "Name of person payed to help file",
+    "producer": "asked:answer:form_101.preparer_name",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Name of person payed to help file",
+    "evidence": "Field index: Name of person payed to help file p1 'Yes. Name of person (non-attorney preparer)', adjudicated. The audit judged this box under presume: (needs_legal_review: whether DigniFi is a § 110 preparer). Owner's answer Q12 (step 2 spec §3, §6.3): the filer names their paid helper once, in answer:form_101.preparer_name, which prints on the three name boxes (101, 106Dec, 107)."
+  },
+  {
+    "schema": "form_106sum",
+    "pdf_field": "check7",
+    "producer": "asked:answer:form_101.primarily_consumer_debts",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check7",
+    "evidence": "Field index: check7 p2 line 7 'What kind of debt do you have?', states /consumer ('Your debts are primarily consumer debts') and /not consumer (on_state not#20consumer), both sampled_ok. Yes ticks /consumer and No ticks /not consumer. Owner's answer Q7 (DIG-121; step 2 spec §3, §6.3): each filer answers 'primarily consumer debts', and the answer prints on 101 Check Box18, 106Sum check7 and 107 check6, marked for legal review."
+  },
+  {
+    "schema": "form_107",
+    "pdf_field": "check6",
+    "producer": "asked:answer:form_101.primarily_consumer_debts",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check6",
+    "evidence": "Field index: check6 p3 line 6 'Are either Debtor 1’s or Debtor 2’s debts primarily consumer debts?', states /no ('No. Neither Debtor 1 nor Debtor 2 has primarily consumer debts.') and /yes ('Yes. Debtor 1 or Debtor 2 or both have primarily consumer debts.'), sampled_ok. check6a and check6b stay blank. Owner's answer Q7 (DIG-121; step 2 spec §3, §6.3): each filer answers 'primarily consumer debts', and the answer prints on 101 Check Box18, 106Sum check7 and 107 check6, marked for legal review."
+  },
+  {
+    "schema": "form_107",
+    "pdf_field": "check30",
+    "producer": "asked:answer:form_101.paid_non_attorney_preparer",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check30",
+    "evidence": "Field index: check30 p12 'Did you pay or agree to pay someone who is not an attorney to help you fill out bankruptcy forms?', states /no ('No') and /yes ('Yes.'), adjudicated. Owner's answer Q12 (step 2 spec §3, §6.3): DigniFi is free, so it is not a petition preparer; each filer answers the form's own question, and the paid-help answer prints on 101 Check Box26, 106Dec check1 and 107 check30."
+  },
+  {
+    "schema": "form_107",
+    "pdf_field": "Name of person agreed to pay",
+    "producer": "asked:answer:form_101.preparer_name",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Name of person agreed to pay",
+    "evidence": "Field index: Name of person agreed to pay p12 'Yes. Name of person (attach Official Form 119)' (tooltip 'Name of person to help fill out forms (not an attorney)'), adjudicated. The audit's row judged a separate answer, form_107.Name_of_person_agreed_to_pay. Owner's answer Q12 (step 2 spec §3, §6.3): the filer names their paid helper once, in answer:form_101.preparer_name, which prints on the three name boxes (101, 106Dec, 107)."
   }
 ]
