@@ -418,5 +418,55 @@
     "status": "confirmed",
     "correct_target": "Amount 12",
     "evidence": "Field index: Amount 12 p2 line 12, column 'Combined monthly income', 'Add the amount in the last column of line 10 to the amount in line 11 (Combined monthly income)' (adjudicated). Line 11 (others' regular contributions) is never asked and counts as zero: step 2 spec §6.1 (totals that count an unasked line as zero; the section 6c decision covers Schedule I line 12) and C1 (the Schedule I income total, Social Security included), §5.5 and §6.2 (schedule_i_income_total). Appendix B R4: the box keeps a binding. The audit's verified row on this box judged the old cmi binding, which leaves Social Security out."
+  },
+  {
+    "schema": "schedule_j",
+    "pdf_field": "6d",
+    "producer": "derived:schedule_j_utilities",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "6d",
+    "evidence": "Field index: 6d p2 line 6d, column 'Your expenses', 'Utilities: Other. Specify: (amount)' (adjudicated). Owner Q4 (step 2 spec §3, DIG-52): utilities go on 6d with 'Utilities (combined)', insurance not deducted from pay on 15d with 'Insurance (combined)'; each label prints only above $0. The Expenses step stores one utilities figure, which 6a-6c can't take without a split. Step 2 spec Appendix A.8 and Appendix B chain a (12 -> 6d); §6.1 and §6.2 (blank at $0, 6c option A). The audit's verified row on 12 names 6a for this rule; Q4 overrides it."
+  },
+  {
+    "schema": "schedule_j",
+    "pdf_field": "Other 6d",
+    "producer": "derived:schedule_j_utilities_label",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Other 6d",
+    "evidence": "Field index: Other 6d p2 line 6d, tooltip 'Specify', 'Utilities: Other. Specify:' (adjudicated): the text naming 6d's amount. Owner Q4 (step 2 spec §3, DIG-52): utilities go on 6d with 'Utilities (combined)', insurance not deducted from pay on 15d with 'Insurance (combined)'; each label prints only above $0. Step 2 spec Appendix A.8, §6.2 (schedule_j_utilities_label). The audit has no row for this box."
+  },
+  {
+    "schema": "schedule_j",
+    "pdf_field": "15d",
+    "producer": "derived:schedule_j_insurance_not_deducted",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "15d",
+    "evidence": "Field index: 15d p2 line 15d, column 'Your expenses', 'Other insurance. Specify: (amount)' (adjudicated). Owner Q4 (step 2 spec §3, DIG-52): utilities go on 6d with 'Utilities (combined)', insurance not deducted from pay on 15d with 'Insurance (combined)'; each label prints only above $0. The Expenses step stores one figure for health, life or disability insurance not deducted from pay, which 15a and 15b can't take without a split. Step 2 spec Appendix A.8 (20a -> 15d); §6.1 and §6.2 (blank at $0, 6c option A). The audit's verified row on 20a names 15b for this rule; Q4 overrides it."
+  },
+  {
+    "schema": "schedule_j",
+    "pdf_field": "Other 15d",
+    "producer": "derived:schedule_j_insurance_label",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Other 15d",
+    "evidence": "Field index: Other 15d p2 line 15d, tooltip 'Specify', 'Other insurance. Specify:' (adjudicated): the text naming 15d's amount. Owner Q4 (step 2 spec §3, DIG-52): utilities go on 6d with 'Utilities (combined)', insurance not deducted from pay on 15d with 'Insurance (combined)'; each label prints only above $0. Step 2 spec Appendix A.8, §6.2 (schedule_j_insurance_label). The audit has no row for this box."
+  },
+  {
+    "schema": "schedule_j",
+    "pdf_field": "18",
+    "producer": "derived:schedule_j_support_paid",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "18",
+    "evidence": "Field index: 18 p2 line 18, column 'Your expenses', 'Your payments of alimony, maintenance, and support that you did not report as deducted from your pay on line 5, Schedule I' (adjudicated). ExpenseInfo.child_support_paid is court-ordered support paid. The audit's verified row on 21 (wrong_value) says court-ordered support paid belongs on line 18, not in line 21's other expenses. Step 2 spec Appendix A.8, §6.1 and §6.2 (schedule_j_support_paid, blank at $0, 6c option A)."
   }
 ]

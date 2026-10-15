@@ -38,10 +38,10 @@
       "legal_review": false
     },
     {
-      "pdf_field": "10",
+      "pdf_field": "4",
       "type": "text",
       "source": "derived",
-      "page": 2,
+      "page": 1,
       "label": "",
       "required": false,
       "conditional_on": null,
@@ -55,7 +55,24 @@
       "legal_review": false
     },
     {
-      "pdf_field": "12",
+      "pdf_field": "4c",
+      "type": "text",
+      "source": "derived",
+      "page": 1,
+      "label": "",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": "schedule_j_home_maintenance",
+      "ingest_key": null,
+      "binding": null,
+      "repeat": null,
+      "repeat_capacity": null,
+      "row": null,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "6d",
       "type": "text",
       "source": "derived",
       "page": 2,
@@ -72,7 +89,7 @@
       "legal_review": false
     },
     {
-      "pdf_field": "14",
+      "pdf_field": "Other 6d",
       "type": "text",
       "source": "derived",
       "page": 2,
@@ -80,7 +97,7 @@
       "required": false,
       "conditional_on": null,
       "value": null,
-      "rule": "schedule_j_home_maintenance",
+      "rule": "schedule_j_utilities_label",
       "ingest_key": null,
       "binding": null,
       "repeat": null,
@@ -89,7 +106,7 @@
       "legal_review": false
     },
     {
-      "pdf_field": "15a",
+      "pdf_field": "7",
       "type": "text",
       "source": "derived",
       "page": 2,
@@ -106,7 +123,7 @@
       "legal_review": false
     },
     {
-      "pdf_field": "15b",
+      "pdf_field": "8",
       "type": "text",
       "source": "derived",
       "page": 2,
@@ -123,7 +140,7 @@
       "legal_review": false
     },
     {
-      "pdf_field": "15c",
+      "pdf_field": "9",
       "type": "text",
       "source": "derived",
       "page": 2,
@@ -140,7 +157,7 @@
       "legal_review": false
     },
     {
-      "pdf_field": "16",
+      "pdf_field": "11",
       "type": "text",
       "source": "derived",
       "page": 2,
@@ -157,7 +174,7 @@
       "legal_review": false
     },
     {
-      "pdf_field": "17a",
+      "pdf_field": "12",
       "type": "text",
       "source": "derived",
       "page": 2,
@@ -174,24 +191,7 @@
       "legal_review": false
     },
     {
-      "pdf_field": "17b",
-      "type": "text",
-      "source": "derived",
-      "page": 2,
-      "label": "",
-      "required": false,
-      "conditional_on": null,
-      "value": null,
-      "rule": "schedule_j_vehicle_payment",
-      "ingest_key": null,
-      "binding": null,
-      "repeat": null,
-      "repeat_capacity": null,
-      "row": null,
-      "legal_review": false
-    },
-    {
-      "pdf_field": "17c",
+      "pdf_field": "15c",
       "type": "text",
       "source": "derived",
       "page": 2,
@@ -208,7 +208,7 @@
       "legal_review": false
     },
     {
-      "pdf_field": "20a",
+      "pdf_field": "15d",
       "type": "text",
       "source": "derived",
       "page": 2,
@@ -217,6 +217,57 @@
       "conditional_on": null,
       "value": null,
       "rule": "schedule_j_insurance_not_deducted",
+      "ingest_key": null,
+      "binding": null,
+      "repeat": null,
+      "repeat_capacity": null,
+      "row": null,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "Other 15d",
+      "type": "text",
+      "source": "derived",
+      "page": 2,
+      "label": "",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": "schedule_j_insurance_label",
+      "ingest_key": null,
+      "binding": null,
+      "repeat": null,
+      "repeat_capacity": null,
+      "row": null,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "17a",
+      "type": "text",
+      "source": "derived",
+      "page": 2,
+      "label": "",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": "schedule_j_vehicle_payment",
+      "ingest_key": null,
+      "binding": null,
+      "repeat": null,
+      "repeat_capacity": null,
+      "row": null,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "18",
+      "type": "text",
+      "source": "derived",
+      "page": 2,
+      "label": "",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": "schedule_j_support_paid",
       "ingest_key": null,
       "binding": null,
       "repeat": null,

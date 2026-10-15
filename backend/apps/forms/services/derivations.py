@@ -427,13 +427,25 @@ def _schedule_i_income_total(session: IntakeSession) -> str:
 # ---------------------------------------------------------------------------
 
 
-def _get_expense_field(session: IntakeSession, field: str) -> Decimal:
-    try:
-        expense_info = session.expense_info
-        val = getattr(expense_info, field, None)
-        return Decimal(str(val)) if val is not None else _ZERO
-    except Exception:
-        return _ZERO
+def _expense_amount(session: IntakeSession, field: str) -> Decimal:
+    """An Expenses step amount, or $0 when the step was never saved."""
+    expense_info = getattr(session, "expense_info", None)
+    return _ZERO if expense_info is None else Decimal(str(getattr(expense_info, field)))
+
+
+def _expense_line(session: IntakeSession, field: str) -> str:
+    """
+    An expense line prints only above $0 (step 2 spec §6.1, 6c option A).
+
+    An expense left empty is stored as $0, so $0 can't be told from "left blank".
+    """
+    amount = _expense_amount(session, field)
+    return _fmt(amount) if amount > 0 else ""
+
+
+def _expense_label(session: IntakeSession, field: str, label: str) -> str:
+    """An "Other. Specify:" line's text, printed only when its amount prints (Q4)."""
+    return label if _expense_amount(session, field) > 0 else ""
 
 
 def _schedule_j_total_expenses(session: IntakeSession) -> str:
@@ -548,22 +560,23 @@ DERIVATIONS: dict[str, Callable[[IntakeSession], str]] = {
     "schedule_i_other_income_total_debtor1": _schedule_i_other_income_total_debtor1,
     "schedule_i_income_total": _schedule_i_income_total,
     # Schedule J expense line item derivations
-    "schedule_j_rent_or_mortgage": lambda s: _fmt(_get_expense_field(s, "rent_or_mortgage")),
-    "schedule_j_utilities": lambda s: _fmt(_get_expense_field(s, "utilities")),
-    "schedule_j_home_maintenance": lambda s: _fmt(_get_expense_field(s, "home_maintenance")),
-    "schedule_j_food_and_groceries": lambda s: _fmt(_get_expense_field(s, "food_and_groceries")),
-    "schedule_j_childcare": lambda s: _fmt(_get_expense_field(s, "childcare")),
-    "schedule_j_clothing": lambda s: _fmt(_get_expense_field(s, "clothing")),
-    "schedule_j_medical_expenses": lambda s: _fmt(_get_expense_field(s, "medical_expenses")),
-    "schedule_j_vehicle_maintenance": lambda s: _fmt(_get_expense_field(s, "vehicle_maintenance")),
-    "schedule_j_vehicle_payment": lambda s: _fmt(_get_expense_field(s, "vehicle_payment")),
-    "schedule_j_vehicle_insurance": lambda s: _fmt(_get_expense_field(s, "vehicle_insurance")),
-    "schedule_j_insurance_not_deducted": lambda s: _fmt(
-        _get_expense_field(s, "insurance_not_deducted")
+    "schedule_j_rent_or_mortgage": lambda s: _expense_line(s, "rent_or_mortgage"),
+    "schedule_j_utilities": lambda s: _expense_line(s, "utilities"),
+    "schedule_j_utilities_label": lambda s: _expense_label(s, "utilities", "Utilities (combined)"),
+    "schedule_j_home_maintenance": lambda s: _expense_line(s, "home_maintenance"),
+    "schedule_j_food_and_groceries": lambda s: _expense_line(s, "food_and_groceries"),
+    "schedule_j_childcare": lambda s: _expense_line(s, "childcare"),
+    "schedule_j_clothing": lambda s: _expense_line(s, "clothing"),
+    "schedule_j_medical_expenses": lambda s: _expense_line(s, "medical_expenses"),
+    "schedule_j_vehicle_maintenance": lambda s: _expense_line(s, "vehicle_maintenance"),
+    "schedule_j_vehicle_payment": lambda s: _expense_line(s, "vehicle_payment"),
+    "schedule_j_vehicle_insurance": lambda s: _expense_line(s, "vehicle_insurance"),
+    "schedule_j_insurance_not_deducted": lambda s: _expense_line(s, "insurance_not_deducted"),
+    "schedule_j_insurance_label": lambda s: _expense_label(
+        s, "insurance_not_deducted", "Insurance (combined)"
     ),
-    "schedule_j_other_expenses": lambda s: _fmt(
-        _get_expense_field(s, "other_expenses") + _get_expense_field(s, "child_support_paid")
-    ),
+    "schedule_j_support_paid": lambda s: _expense_line(s, "child_support_paid"),
+    "schedule_j_other_expenses": lambda s: _expense_line(s, "other_expenses"),
     "schedule_j_total_expenses": _schedule_j_total_expenses,
     # Line 23a is Schedule I line 12: one figure on both forms
     "schedule_j_total_income": _schedule_i_income_total,
