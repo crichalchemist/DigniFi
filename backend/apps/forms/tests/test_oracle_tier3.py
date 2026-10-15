@@ -62,7 +62,11 @@ EXPECTED = {
             "13C": "110712.00",
             "14a": BELOW_MEDIAN,
         },
-        "schedule_i": {"Amount 8b Debtor 1": "", "Amount 12": "3200.00"},
+        "schedule_i": {
+            "Amount 8b Debtor 1": "",
+            "Amount 8e Debtor 1": "0.00",
+            "Amount 12": "3200.00",
+        },
         "schedule_j": {
             "18": "",
             "22a": "2560.00",
@@ -93,7 +97,11 @@ EXPECTED = {
             "13C": "71304.00",
             "14a": BELOW_MEDIAN,
         },
-        "schedule_i": {"Amount 8b Debtor 1": "", "Amount 12": "5833.00"},
+        "schedule_i": {
+            "Amount 8b Debtor 1": "",
+            "Amount 8e Debtor 1": "0.00",
+            "Amount 12": "5833.00",
+        },
         "schedule_j": {
             "18": "",
             "22a": "3110.00",
@@ -122,7 +130,11 @@ EXPECTED = {
             "13C": "134366.00",
             "14a": ABOVE_MEDIAN,
         },
-        "schedule_i": {"Amount 8b Debtor 1": "", "Amount 12": "12000.00"},
+        "schedule_i": {
+            "Amount 8b Debtor 1": "",
+            "Amount 8e Debtor 1": "0.00",
+            "Amount 12": "12000.00",
+        },
         "schedule_j": {
             "18": "",
             "22a": "6640.00",
@@ -153,7 +165,11 @@ EXPECTED = {
             "13C": "91526.00",
             "14a": BELOW_MEDIAN,
         },
-        "schedule_i": {"Amount 8b Debtor 1": "", "Amount 12": "3500.00"},
+        "schedule_i": {
+            "Amount 8b Debtor 1": "",
+            "Amount 8e Debtor 1": "0.00",
+            "Amount 12": "3500.00",
+        },
         "schedule_j": {
             "18": "",
             "22a": "2295.00",
@@ -181,7 +197,11 @@ EXPECTED = {
             "13C": "71304.00",
             "14a": BELOW_MEDIAN,
         },
-        "schedule_i": {"Amount 8b Debtor 1": "", "Amount 12": "2000.00"},
+        "schedule_i": {
+            "Amount 8b Debtor 1": "",
+            "Amount 8e Debtor 1": "0.00",
+            "Amount 12": "2000.00",
+        },
         "schedule_j": {
             "18": "",
             "22a": "1280.00",

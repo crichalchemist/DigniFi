@@ -318,5 +318,65 @@
     "status": "confirmed",
     "correct_target": "CheckBox1",
     "evidence": "Field index: CheckBox1 p1, three widgets (adjudicated): top box 1, state /No Abuse, 'There is no presumption of abuse.'; top box 2, state /Presumption of abuse applies, 'The calculation to determine if a presumption of abuse applies will be made under Chapter 7 Means Test Calculation (Official Form 122A-2).'; top box 3, state /Does not apply (qualified military service). Owner's answer Q5 (DIG-65; step 2 spec §3, §6.3): at or below the median, box 1; above, box 2; box 3 is never ticked."
+  },
+  {
+    "schema": "schedule_i",
+    "pdf_field": "Amount 3 Debtor 1",
+    "producer": "derived:schedule_i_overtime_debtor1",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Amount 3 Debtor 1",
+    "evidence": "Field index: Amount 3 Debtor 1 p1 line 3, column 'For Debtor 1', 'Estimate and list monthly overtime pay.' (adjudicated). Owner's answer Q3 (income per source) and step 2 spec §5.5's table (Overtime -> Schedule I line 3); §6.2 (schedule_i_overtime_debtor1, new; line 3). The audit's verified row on this box judged the old schedule_i_net_wages_debtor1 binding, which belongs on line 2."
+  },
+  {
+    "schema": "schedule_i",
+    "pdf_field": "Amount 4 Debtor 1",
+    "producer": "derived:schedule_i_gross_income_debtor1",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Amount 4 Debtor 1",
+    "evidence": "Field index: Amount 4 Debtor 1 p1 line 4, column 'For Debtor 1', 'Calculate gross income.' (adjudicated). Step 2 spec §6.2 (schedule_i_gross_income_debtor1: line 2 + line 3; line 4) and §6.1 B1 (line 4 keeps its box with the gross-income rule). The audit's verified row on this box judged the old schedule_i_self_employment_debtor1 binding, which it placed on 8a."
+  },
+  {
+    "schema": "schedule_i",
+    "pdf_field": "Amount 4 Debtor 1a",
+    "producer": "derived:schedule_i_gross_income_debtor1",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Amount 4 Debtor 1a",
+    "evidence": "Field index: Amount 4 Debtor 1a p2 line 4, column 'For Debtor 1', 'Copy line 4 here' (adjudicated). Step 2 spec §6.2 (schedule_i_gross_income_debtor1: line 4's copy at the top of page 2) and Appendix E 16 (line 4's copy, not line 5). The audit has no row for this box."
+  },
+  {
+    "schema": "schedule_i",
+    "pdf_field": "Amount 7 Debtor 1",
+    "producer": "derived:schedule_i_gross_income_debtor1",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Amount 7 Debtor 1",
+    "evidence": "Field index: Amount 7 Debtor 1 p2 line 7, column 'For Debtor 1', 'Calculate total monthly take-home pay. Subtract line 6 from line 4.' (adjudicated). Payroll deductions (lines 5a-6) are not asked until step 3 (OQ-7), so line 6 counts as zero and line 7 equals line 4: step 2 spec §5.5 ('Schedule I line 7 (take-home) equals gross for now'), §6.1 (totals that count an unasked line as zero; the section 6c decision covers Schedule I line 7) and §6.2."
+  },
+  {
+    "schema": "schedule_i",
+    "pdf_field": "Other income 8h",
+    "producer": "derived:other_income_label",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Other income 8h",
+    "evidence": "Field index: Other income 8h p2 line 8h, 'Other monthly income. Specify:' (adjudicated; tooltip 'Specify'), the text box beside Amount 8h Debtor 1. Step 2 spec §5.5's table (Other -> 8h, 'Other income'), §6.2 (other_income_label, shared with 122A-1 line 10) and Appendix E 5: 'Other income' when other income is above $0. The audit has no row for this box."
+  },
+  {
+    "schema": "schedule_i",
+    "pdf_field": "Amount 9 Debtor 1",
+    "producer": "derived:schedule_i_other_income_total_debtor1",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Amount 9 Debtor 1",
+    "evidence": "Field index: Amount 9 Debtor 1 p2 line 9, column 'For Debtor 1', 'Add all other income.' (adjudicated). Step 2 spec §6.2 (schedule_i_other_income_total_debtor1: the sum of 8a-8h; line 9) and §6.1 (8b and 8f are never asked and count as zero). The audit has no row for this box."
   }
 ]

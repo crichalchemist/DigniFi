@@ -15,7 +15,6 @@ expects.
 """
 
 import json
-import re
 from decimal import Decimal, InvalidOperation
 
 import pytest
@@ -46,10 +45,6 @@ WIZARD_STEPS = [
     ("assets", "assets"),
     ("debts", "debts"),
 ]
-
-# What a signing-date box compares as: the date is today's when it is built, and a run that
-# straddles midnight stores one day and rebuilds the next.
-TODAY = "<today>"
 
 
 def _sent(data):
@@ -138,20 +133,14 @@ def _send_through_the_api(persona):
 
 def _comparable(form_type, values):
     """
-    A form's values, with each repeat group's rows in a fixed order and each date it was
-    built on as TODAY.
+    A form's values, with each repeat group's rows in a fixed order.
 
     Stored rows have no fixed order (DIG-164), so Form 107's rows compare regardless of it.
     Each row keeps its own values together, so an amount that moves to another row differs.
-    A signing date must still print as a date, but need not be the same day on both sides.
     """
     fixed = dict(values)
     rows = {}
     for field in load_schema(form_type).fields:
-        if field.rule == "today_iso":
-            date_printed = fixed.get(field.pdf_field, "")
-            assert re.fullmatch(r"\d{4}-\d{2}-\d{2}", date_printed), (form_type, field.pdf_field)
-            fixed[field.pdf_field] = TODAY
         if field.repeat and field.row and field.pdf_field in fixed:
             cell = (field.binding or "", fixed.pop(field.pdf_field))
             rows.setdefault((field.repeat, field.row), []).append(cell)

@@ -12,7 +12,6 @@ answer anything the form leaves to the filer — those are ``asked`` +
 from __future__ import annotations
 
 from collections.abc import Callable
-from datetime import date
 from decimal import Decimal
 from functools import reduce
 
@@ -247,19 +246,6 @@ def _total_debts_range(session: IntakeSession) -> str:
 # ---------------------------------------------------------------------------
 
 
-def _get_income_field(session: IntakeSession, field: str) -> Decimal:
-    try:
-        income_info = session.income_info
-        val = getattr(income_info, field, None)
-        if val is None:
-            return _ZERO
-        if isinstance(val, list):
-            return sum((Decimal(str(v)) for v in val), _ZERO) / Decimal(str(len(val)))
-        return Decimal(str(val))
-    except Exception:
-        return _ZERO
-
-
 def _line1_wages(session: IntakeSession) -> str:
     return _income_amounts(session, "monthly_gross_wages", "monthly_tips", "monthly_overtime")
 
@@ -270,10 +256,6 @@ def _line3_alimony(session: IntakeSession) -> str:
 
 def _line3_real_property_income(session: IntakeSession) -> str:
     return _income_amounts(session, "monthly_rental_income")
-
-
-def _line4_interest_dividends(session: IntakeSession) -> str:
-    return _fmt(_get_income_field(session, "interest_dividends"))
 
 
 def _line5a_pension_retirement(session: IntakeSession) -> str:
@@ -297,24 +279,6 @@ def _other_income_label(session: IntakeSession) -> str:
     income_info = getattr(session, "income_info", None)
     other = None if income_info is None else income_info.monthly_other_income
     return "Other income" if other is not None and other > 0 else ""
-
-
-def _line8a_total_gross_income(session: IntakeSession) -> str:
-    total = sum(
-        (
-            _get_income_field(session, "wages_salaries_tips"),
-            _get_income_field(session, "business_income"),
-            _get_income_field(session, "real_property_income"),
-            _get_income_field(session, "interest_dividends"),
-            _get_income_field(session, "pension_retirement"),
-            _get_income_field(session, "social_security"),
-            _get_income_field(session, "unemployment_compensation"),
-            _get_income_field(session, "child_support_alimony"),
-            _get_income_field(session, "other_income"),
-        ),
-        _ZERO,
-    )
-    return _fmt(total)
 
 
 def _line11_annualized_income(session: IntakeSession) -> str:
@@ -403,16 +367,17 @@ def _schedule_i_employer_debtor1(session: IntakeSession) -> str:
     return _safe_debtor_attr(session, "employer_name", "")
 
 
-def _schedule_i_gross_wages_debtor1(session: IntakeSession) -> str:
-    return _fmt(_get_income_field(session, "wages_salaries_tips"))
-
-
 def _schedule_i_net_wages_debtor1(session: IntakeSession) -> str:
     return _income_amounts(session, "monthly_gross_wages", "monthly_tips")
 
 
-def _schedule_i_self_employment_debtor1(session: IntakeSession) -> str:
-    return _fmt(_get_income_field(session, "business_income"))
+def _schedule_i_overtime_debtor1(session: IntakeSession) -> str:
+    return _income_amounts(session, "monthly_overtime")
+
+
+def _schedule_i_gross_income_debtor1(session: IntakeSession) -> str:
+    """Line 4, line 2 + line 3, and line 7 until payroll deductions are asked (step 3)."""
+    return _income_amounts(session, "monthly_gross_wages", "monthly_tips", "monthly_overtime")
 
 
 def _schedule_i_unemployment_debtor1(session: IntakeSession) -> str:
@@ -431,10 +396,6 @@ def _schedule_i_child_support_debtor1(session: IntakeSession) -> str:
     return _income_amounts(session, "monthly_child_support", "monthly_alimony")
 
 
-def _schedule_i_interest_debtor1(session: IntakeSession) -> str:
-    return _fmt(_get_income_field(session, "interest_dividends"))
-
-
 def _schedule_i_rental_debtor1(session: IntakeSession) -> str:
     return _income_amounts(session, "monthly_rental_income")
 
@@ -443,14 +404,18 @@ def _schedule_i_other_income_debtor1(session: IntakeSession) -> str:
     return _income_amounts(session, "monthly_other_income")
 
 
-def _schedule_i_total_deductions_debtor1(session: IntakeSession) -> str:
-    return _fmt(_get_income_field(session, "deductions"))
-
-
-def _schedule_i_net_income_debtor1(session: IntakeSession) -> str:
-    gross = Decimal(_line8a_total_gross_income(session))
-    deductions = Decimal(_schedule_i_total_deductions_debtor1(session))
-    return _fmt(gross - deductions)
+def _schedule_i_other_income_total_debtor1(session: IntakeSession) -> str:
+    """Line 9, 8a through 8h: interest (8b) and other assistance (8f) are never asked."""
+    return _income_amounts(
+        session,
+        "monthly_rental_income",
+        "monthly_child_support",
+        "monthly_alimony",
+        "monthly_unemployment",
+        "monthly_social_security",
+        "monthly_pension",
+        "monthly_other_income",
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -523,7 +488,6 @@ DERIVATIONS: dict[str, Callable[[IntakeSession], str]] = {
     "chapter": lambda s: "7",
     "debtor_type": lambda s: "Individual",
     "district_name": lambda s: s.district.name,
-    "today_iso": lambda s: date.today().isoformat(),
     "ssn_formatted": _ssn_formatted,
     "no_ssn_check": lambda s: "" if _has_ssn(s) else "true",
     "joint_filer_check": lambda s: (
@@ -551,7 +515,6 @@ DERIVATIONS: dict[str, Callable[[IntakeSession], str]] = {
     "line1_wages": _line1_wages,
     "line3_alimony": _line3_alimony,
     "line3_real_property_income": _line3_real_property_income,
-    "line4_interest_dividends": _line4_interest_dividends,
     "line5a_pension_retirement": _line5a_pension_retirement,
     "line6a_unemployment": _line6a_unemployment,
     "line6b_child_support_alimony": _line6b_child_support_alimony,
@@ -574,18 +537,16 @@ DERIVATIONS: dict[str, Callable[[IntakeSession], str]] = {
     "schedule_i_employer_city_debtor1": lambda s: _safe_debtor_attr(s, "employer_city", ""),
     "schedule_i_employer_state_debtor1": lambda s: _safe_debtor_attr(s, "employer_state", ""),
     "schedule_i_employer_zip_debtor1": lambda s: _safe_debtor_attr(s, "employer_zip", ""),
-    "schedule_i_gross_wages_debtor1": _schedule_i_gross_wages_debtor1,
     "schedule_i_net_wages_debtor1": _schedule_i_net_wages_debtor1,
-    "schedule_i_self_employment_debtor1": _schedule_i_self_employment_debtor1,
+    "schedule_i_overtime_debtor1": _schedule_i_overtime_debtor1,
+    "schedule_i_gross_income_debtor1": _schedule_i_gross_income_debtor1,
     "schedule_i_unemployment_debtor1": _schedule_i_unemployment_debtor1,
     "schedule_i_social_security_debtor1": _schedule_i_social_security_debtor1,
     "schedule_i_pension_debtor1": _schedule_i_pension_debtor1,
     "schedule_i_child_support_debtor1": _schedule_i_child_support_debtor1,
-    "schedule_i_interest_debtor1": _schedule_i_interest_debtor1,
     "schedule_i_rental_debtor1": _schedule_i_rental_debtor1,
     "schedule_i_other_income_debtor1": _schedule_i_other_income_debtor1,
-    "schedule_i_total_deductions_debtor1": _schedule_i_total_deductions_debtor1,
-    "schedule_i_net_income_debtor1": _schedule_i_net_income_debtor1,
+    "schedule_i_other_income_total_debtor1": _schedule_i_other_income_total_debtor1,
     # Schedule J expense line item derivations
     "schedule_j_rent_or_mortgage": lambda s: _fmt(_get_expense_field(s, "rent_or_mortgage")),
     "schedule_j_utilities": lambda s: _fmt(_get_expense_field(s, "utilities")),

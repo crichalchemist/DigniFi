@@ -112,6 +112,18 @@ describe('DocumentUploadPage', () => {
     expect(sentTypes).toEqual(['creditor_bill', 'pay_stub', 'credit_report']);
   });
 
+  it('never tells the filer a pay stub fills in their pay', async () => {
+    renderUploadPage();
+    const payStubs = screen.getByRole('region', { name: 'Pay stubs' });
+
+    // Schedule I prints the pay typed on the Income step; a stub supplies only the employer's name.
+    expect(payStubs).toHaveTextContent(
+      "Your employer's name is used for your income form (Schedule I)."
+    );
+    expect(payStubs).not.toHaveTextContent(/pay before taxes/i);
+    await readyZone('Pay stubs');
+  });
+
   it('counts only the files that were read in the summary, in plain words', async () => {
     serveDocuments({ 1: { status: 'failed', failure_reason: 'nothing_found' } });
     renderUploadPage();
