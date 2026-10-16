@@ -1,6 +1,6 @@
 # Forms step 3: schedule rows and models
 
-**Status:** approved in brainstorming on 2026-10-16. The owner answered 31 questions (Q0–Q30), chose approach "a" (ten PRs, income before rows), and approved design sections 1–5 one at a time. Appendix B lists what this document settles that the sections did not show the owner.
+**Status:** approved in brainstorming on 2026-10-16. The owner answered 31 questions (Q0–Q30), chose approach "a" (ten PRs, income before rows), and approved design sections 1–5 one at a time. Appendix B lists what this document settles that the sections did not show the owner. The owner then approved the written spec and the persona drafts on 2026-10-16, asking for fictional creditor names.
 
 **What this is:** the umbrella spec the owner chose in Q0 `[Q0]`. It fixes step 3's scope, the rules every step 3 PR follows, and the order of the ten PRs. Each PR then gets its own short spec, plan and build. A PR spec asks the owner only the judgment calls this document leaves open, and it never reopens one this document settles.
 
@@ -226,6 +226,8 @@ Two interim choices fall to the 3a1 spec:
 
 3a1 also updates every doc and test that counts five personas or seven journeys.
 
+**Fictional creditor names `[Q28.names]`.** 3a1 renames the five personas' private creditors in the seeds, briefs and E2E fixture to the fictional names in the companion document's rename table. No real firm's name ever gets an address on a List of Creditors. Government creditors keep their real names.
+
 **Source code link.** A "Source code" link in the app's footer points to the public repository. The AGPL expects this of a network service (§10).
 
 ### 5.4 PR 3a2: drawing engine
@@ -326,7 +328,7 @@ Each form counts the list by its own definition:
 
 **One expense design `[Q4.everyday]`.** The Schedule J lines DigniFi never asks join the Expenses step: 4a, 4b, 4d, 10, 13, 14, 16, 19, 20a–20e and Other 21. One expense model serves Schedule J and 122A-2, so each amount is asked once. The new amounts are encrypted from the start.
 
-**Schedule J line 3 `[CORR.J3]`.** "Do your expenses include expenses of people other than yourself and your dependents?" is asked in the form's words on the Expenses step. No PR placed it until the persona drafts found it; the owner confirms at the spec review. A filer whose expenses include a non-filing spouse's would answer Yes.
+**Schedule J line 3 `[CORR.J3]`.** "Do your expenses include expenses of people other than yourself and your dependents?" is asked in the form's words on the Expenses step. No PR placed it until the persona drafts found it; the owner confirmed it at the spec review. A filer whose expenses include a non-filing spouse's would answer Yes.
 
 Four neighbouring groups of lines are placed elsewhere:
 
@@ -429,7 +431,7 @@ A vehicle lease is a Schedule G contract that gains a monthly payment and a "veh
 
 Two duplicate sources retire: `AssetInfo.amount_owed`, which no form reads, and `ExpenseInfo.vehicle_payment`. The seeds are corrected.
 
-**The home's payments `[CORR.J45]`.** For a filer whose home secures debts linked to "my home", Schedule J line 4's first-mortgage payment and line 5 (additional mortgage payments, such as home equity loans) come from those debts' monthly payments. A renter keeps typing rent on line 4. Q4 had placed line 5 on 3e2's Expenses step, but Q13 makes a debt's payment its only source, and the two would ask the same money twice. DeShawn's seeded $1,200 `rent_or_mortgage` duplicates his mortgage's $1,200 payment today. Q13 wins, since it is the specific rule; the owner confirms at the spec review.
+**The home's payments `[CORR.J45]`.** For a filer whose home secures debts linked to "my home", Schedule J line 4's first-mortgage payment and line 5 (additional mortgage payments, such as home equity loans) come from those debts' monthly payments. A renter keeps typing rent on line 4. Q4 had placed line 5 on 3e2's Expenses step, but Q13 makes a debt's payment its only source, and the two would ask the same money twice. DeShawn's seeded $1,200 `rent_or_mortgage` duplicates his mortgage's $1,200 payment today. Q13 wins, since it is the specific rule; the owner confirmed it at the spec review.
 
 **Priya's car payment `[DIG-282]`.** Priya's $450 `vehicle_payment` has no car or loan behind it. The link and her persona update resolve it.
 
@@ -576,9 +578,9 @@ The owner chose (Q28) to have the persona updates drafted for review `[Q28.draft
 - updates to the five existing briefs;
 - a sixth persona, a gig driver.
 
-All figures are synthetic, and SSNs use only the 900 range. The owner reviews the drafts together with this spec, before anything is committed.
+All figures are synthetic, and SSNs use only the 900 range. The owner approved the drafts with this spec on 2026-10-16 `[Q28.drafts]`. Every private creditor, notice party and lender has a fictional name. Government creditors keep their real names and public addresses: the IRS and the Illinois Tollway.
 
-Once approved, the drafts are committed as one companion document beside this spec: `docs/superpowers/specs/2026-10-16-forms-step3-personas.md`. It is the target. The briefs in `docs/testing/persona-briefs/` change only as each PR lands, and each PR applies only its own slice, together with the seeds and journeys that need it. A brief never runs ahead of its seed again, the mistake behind DIG-129.
+The approved drafts are committed as one companion document beside this spec: `docs/superpowers/specs/2026-10-16-forms-step3-personas.md`. It is the target. The briefs in `docs/testing/persona-briefs/` change only as each PR lands, and each PR applies only its own slice, together with the seeds and journeys that need it. A brief never runs ahead of its seed again, the mistake behind DIG-129.
 
 **What the five gain:**
 
@@ -699,90 +701,91 @@ The last three are not tracked anywhere. One ticket is proposed, to be filed wit
 
 Every owner answer, controller ruling, ticket and counsel item maps to exactly one PR, the umbrella (U), step 4 (S4) or step 5 (S5). A script kept with the step 3 working notes (`check_spec_tags.py`) checks two things: each item below is tagged in its PR's section of this spec, and this table matches the working map row for row.
 
-| Item               | PR  | What lands                                                                                                                        |
-| ------------------ | --- | --------------------------------------------------------------------------------------------------------------------------------- |
-| Q0                 | U   | This umbrella spec, then a spec, plan and build per PR                                                                            |
-| Q1.list            | 3c  | ILND's List of Creditors from the D/E/F/G/H rows                                                                                  |
-| Q1.108data         | 3c  | The debt-to-property link and a personal-property-lease flag on contracts                                                         |
-| Q1.108form         | S4  | Form 108's intentions and the form                                                                                                |
-| Q1.103A            | S4  | Form 103A; until then a "get it from the court" message (3f)                                                                      |
-| Q1.checklist       | U   | The packet checked against ILND's pro se Chapter 7 requirements (§11)                                                             |
-| Q2                 | 3e1 | Marital status in 122A-1 line 1 terms; the spouse's income by source; CMI = A+B everywhere                                        |
-| Q3                 | S4  | Form 107 lines 4–6 (3c supplies debt addresses and stable ids)                                                                    |
-| Q4.everyday        | 3e2 | The never-asked Schedule J lines on the Expenses step; one expense model shared with 122A-2                                       |
-| Q4.122a2only       | 3h  | 122A-2-only deductions in the details step                                                                                        |
-| Q5                 | 3e2 | Business gross, expenses and net; the rental split; interest; the 8a statement on 3a2's sheet generator                           |
-| Q6                 | 3e2 | Schedule I 8f asked once on the Income step (103B line 3 reads it in 3f)                                                          |
-| Q6.lines11_13      | S4  | Schedule I lines 11 and 13                                                                                                        |
-| Q7.assets          | 3b  | Encrypt `AssetInfo` `description` and `financial_institution`                                                                     |
-| Q7.claims          | 3c  | Encrypt `DebtInfo`'s plaintext filer columns, `Codebtor` and `ExecutoryContract`                                                  |
-| Q7.income          | 3e2 | Encrypt `IncomeInfo`'s ten amounts and `ExpenseInfo`'s 13                                                                         |
-| Q7.marital         | 3e1 | Encrypt `IncomeInfo.marital_status`                                                                                               |
-| Q8                 | 3a2 | Per-widget drawing and flattening, official continuation copies, the oracle rebuilt, pymupdf pinned                               |
-| Q9                 | 3a2 | The attached-sheet generator for forms with no extra page                                                                         |
-| Q10                | 3a1 | The dated reference-data model, the lookup, the refusal, the runbook                                                              |
-| Q11                | 3a1 | The median fix as the first commit                                                                                                |
-| Q12                | 3a1 | The refusal framework (Complete vs `requires()`, naming the step that fixes it; DIG-181)                                          |
-| Q13.link           | 3c  | The debt-to-asset link, Columns B and C, J 17a–17d, vehicle leases with a payment; two duplicate sources retired                  |
-| Q13.122a2          | 3h  | 122A-2 lines 9b, 11, 13, 33 and 34 from the links                                                                                 |
-| Q14                | 3c  | Column B only for sole-owned collateral; co-owned rows blank with a note                                                          |
-| Q14.values         | 3b  | Both A/B values stored (entire, portion)                                                                                          |
-| Q15                | 3d  | Priority asked in E/F Part 1's words; the split and the past-due amount; encrypted `is_priority`                                  |
-| Q16                | 3e2 | Payroll deductions 5a–5h, filer and spouse; line 7 = 4 − 6                                                                        |
-| Q17                | 3e1 | The household list (encrypted); each form's count by its own definition                                                           |
-| Q18                | 3h  | Opt-in claimable deductions 15, 22, 25 and 26–31; line 10 blank                                                                   |
-| Q19                | 3h  | 122A-2 result ticks from the shared comparison; the form's wording at $17,150                                                     |
-| Q20                | 3h  | Line 36 Yes/No, plan payment and multiplier                                                                                       |
-| Q21                | 3f  | Form 101 line 8 chosen by the filer; 103B by that choice; routing and off-ramp removed                                            |
-| Q22                | 3f  | The threshold and the filer's § 820.20 figure shown as information                                                                |
-| Q23                | 3g  | The Schedule C package                                                                                                            |
-| Q24                | 3b  | The A/B package: every line walked, gates derived, the vehicle split, ownership, old rows                                         |
-| Q25                | 3c  | The claims package: addresses, notice parties, status, secured, codebtor links, contracts on E/F                                  |
-| Q26                | 3e2 | The six-month average plus "income now different?"                                                                                |
-| Q27                | 3e2 | $0.00 for asked-blank lines on Schedule I and 122A-1; the gotcha rewritten                                                        |
-| Q28.drafts         | U   | Drafts of the five brief updates and the sixth persona, reviewed with this spec                                                   |
-| Q28.data           | 3a1 | The sixth persona's seed and journey skeleton; each later PR adds what its features need                                          |
-| Q29                | U   | The relicence (`d29109c`) lands with the umbrella PR; 3a2's engine uses PyMuPDF                                                   |
-| Q30                | U   | AGPL-3.0-or-later; the footer source link lands in 3a1                                                                            |
-| OQ9.county         | 3e1 | County asked on the Debtor step, encrypted with the household record; Form 101 County rebinds                                     |
-| OQ9.standards      | 3h  | The IRS standards on the dated data, read by county                                                                               |
-| CORR.county        | 3e1 | County and the household list kept off `DebtorInfo`; `household_size` left unread                                                 |
-| CORR.valid_through | 3a1 | `valid_through` per table; irregular tables guarded only by the runbook; tests pin the fill date                                  |
-| CORR.J3            | 3e2 | Schedule J line 3 asked in the form's words on the Expenses step (owner confirms)                                                 |
-| CORR.J45           | 3c  | A homeowner's J line 4 mortgage payment and J line 5 from the debts linked to "my home"; 3e2 does not ask line 5 (owner confirms) |
-| SPIKE              | 3a2 | The engine method (PyMuPDF `insert_text` plus `delete_widget`; exact-clip oracle)                                                 |
-| DIG-273            | 3a1 | The id round-trip for assets and debts, and the `useAutoSave` baseline                                                            |
-| DIG-274            | 3a1 | The median fix                                                                                                                    |
-| DIG-275            | 3h  | Line 35's past-due amount ÷ 60 in the one calculator                                                                              |
-| DIG-276            | 3h  | The under-65 split from the household's ages                                                                                      |
-| DIG-277            | 3e1 | Form 101 County                                                                                                                   |
-| DIG-278            | S5  | `IngestedAggregate`'s plaintext gross (or with DIG-176)                                                                           |
-| DIG-279            | 3f  | The fee-waiver answers encrypted                                                                                                  |
-| DIG-280            | 3c  | The three misleading wizard texts                                                                                                 |
-| DIG-281            | 3c  | Contract and codebtor edits saved on Go Back                                                                                      |
-| DIG-282            | 3c  | Priya's $450 resolved by the link and the persona update                                                                          |
-| DIG-163            | 3a1 | Drafts left out of rows and totals                                                                                                |
-| DIG-188            | 3a1 | The session lock before rows bind                                                                                                 |
-| DIG-146            | 3h  | The verdict bands from the one calculator                                                                                         |
-| DIG-145            | 3f  | The 150% poverty test as information, no gate                                                                                     |
-| DIG-152            | 3h  | One calculator, no zeros for missing data                                                                                         |
-| DIG-159            | 3e1 | The household-size cap becomes a limit on the list's length                                                                       |
-| DIG-164            | 3b  | Ordering in Python on decrypted values (assets; debts follow in 3c)                                                               |
-| DIG-119            | 3d  | `priority_classification` no longer written                                                                                       |
-| DIG-123            | 3c  | The pro se List of Creditors and the fixture's text                                                                               |
-| DIG-53             | 3e1 | Marital status and the seeds                                                                                                      |
-| DIG-223            | 3f  | `_fee_waiver_household_size` fails loud                                                                                           |
-| C-1                | 3c  | Co-owned collateral value                                                                                                         |
-| C-2                | 3d  | Priority definitions                                                                                                              |
-| C-3                | 3e1 | The 122A-1 line 13 household reading                                                                                              |
-| C-4                | 3h  | Claimable-deduction help text                                                                                                     |
-| C-5                | 3h  | Line 40 at exactly $17,150                                                                                                        |
-| C-6                | 3h  | Line 36 and plan-payment guidance                                                                                                 |
-| C-7                | 3f  | Fee-waiver wording and § 820.20 readings                                                                                          |
-| C-8                | 3g  | Schedule C summaries, limits, notes and stacking                                                                                  |
-| C-9                | 3c  | Claim-status definitions and the List of Creditors                                                                                |
-| C-10               | 3e2 | Six-month-average wording                                                                                                         |
-| GOTCHAS            | U   | Each PR rewrites the CLAUDE.md gotchas its change touches (§5.1)                                                                  |
+| Item               | PR  | What lands                                                                                                                         |
+| ------------------ | --- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| Q0                 | U   | This umbrella spec, then a spec, plan and build per PR                                                                             |
+| Q1.list            | 3c  | ILND's List of Creditors from the D/E/F/G/H rows                                                                                   |
+| Q1.108data         | 3c  | The debt-to-property link and a personal-property-lease flag on contracts                                                          |
+| Q1.108form         | S4  | Form 108's intentions and the form                                                                                                 |
+| Q1.103A            | S4  | Form 103A; until then a "get it from the court" message (3f)                                                                       |
+| Q1.checklist       | U   | The packet checked against ILND's pro se Chapter 7 requirements (§11)                                                              |
+| Q2                 | 3e1 | Marital status in 122A-1 line 1 terms; the spouse's income by source; CMI = A+B everywhere                                         |
+| Q3                 | S4  | Form 107 lines 4–6 (3c supplies debt addresses and stable ids)                                                                     |
+| Q4.everyday        | 3e2 | The never-asked Schedule J lines on the Expenses step; one expense model shared with 122A-2                                        |
+| Q4.122a2only       | 3h  | 122A-2-only deductions in the details step                                                                                         |
+| Q5                 | 3e2 | Business gross, expenses and net; the rental split; interest; the 8a statement on 3a2's sheet generator                            |
+| Q6                 | 3e2 | Schedule I 8f asked once on the Income step (103B line 3 reads it in 3f)                                                           |
+| Q6.lines11_13      | S4  | Schedule I lines 11 and 13                                                                                                         |
+| Q7.assets          | 3b  | Encrypt `AssetInfo` `description` and `financial_institution`                                                                      |
+| Q7.claims          | 3c  | Encrypt `DebtInfo`'s plaintext filer columns, `Codebtor` and `ExecutoryContract`                                                   |
+| Q7.income          | 3e2 | Encrypt `IncomeInfo`'s ten amounts and `ExpenseInfo`'s 13                                                                          |
+| Q7.marital         | 3e1 | Encrypt `IncomeInfo.marital_status`                                                                                                |
+| Q8                 | 3a2 | Per-widget drawing and flattening, official continuation copies, the oracle rebuilt, pymupdf pinned                                |
+| Q9                 | 3a2 | The attached-sheet generator for forms with no extra page                                                                          |
+| Q10                | 3a1 | The dated reference-data model, the lookup, the refusal, the runbook                                                               |
+| Q11                | 3a1 | The median fix as the first commit                                                                                                 |
+| Q12                | 3a1 | The refusal framework (Complete vs `requires()`, naming the step that fixes it; DIG-181)                                           |
+| Q13.link           | 3c  | The debt-to-asset link, Columns B and C, J 17a–17d, vehicle leases with a payment; two duplicate sources retired                   |
+| Q13.122a2          | 3h  | 122A-2 lines 9b, 11, 13, 33 and 34 from the links                                                                                  |
+| Q14                | 3c  | Column B only for sole-owned collateral; co-owned rows blank with a note                                                           |
+| Q14.values         | 3b  | Both A/B values stored (entire, portion)                                                                                           |
+| Q15                | 3d  | Priority asked in E/F Part 1's words; the split and the past-due amount; encrypted `is_priority`                                   |
+| Q16                | 3e2 | Payroll deductions 5a–5h, filer and spouse; line 7 = 4 − 6                                                                         |
+| Q17                | 3e1 | The household list (encrypted); each form's count by its own definition                                                            |
+| Q18                | 3h  | Opt-in claimable deductions 15, 22, 25 and 26–31; line 10 blank                                                                    |
+| Q19                | 3h  | 122A-2 result ticks from the shared comparison; the form's wording at $17,150                                                      |
+| Q20                | 3h  | Line 36 Yes/No, plan payment and multiplier                                                                                        |
+| Q21                | 3f  | Form 101 line 8 chosen by the filer; 103B by that choice; routing and off-ramp removed                                             |
+| Q22                | 3f  | The threshold and the filer's § 820.20 figure shown as information                                                                 |
+| Q23                | 3g  | The Schedule C package                                                                                                             |
+| Q24                | 3b  | The A/B package: every line walked, gates derived, the vehicle split, ownership, old rows                                          |
+| Q25                | 3c  | The claims package: addresses, notice parties, status, secured, codebtor links, contracts on E/F                                   |
+| Q26                | 3e2 | The six-month average plus "income now different?"                                                                                 |
+| Q27                | 3e2 | $0.00 for asked-blank lines on Schedule I and 122A-1; the gotcha rewritten                                                         |
+| Q28.drafts         | U   | Drafts of the five brief updates and the sixth persona, reviewed with this spec                                                    |
+| Q28.names          | 3a1 | Private creditors renamed to fictional names in seeds, briefs and E2E fixture; government creditors keep real names                |
+| Q28.data           | 3a1 | The sixth persona's seed and journey skeleton; each later PR adds what its features need                                           |
+| Q29                | U   | The relicence (`d29109c`) lands with the umbrella PR; 3a2's engine uses PyMuPDF                                                    |
+| Q30                | U   | AGPL-3.0-or-later; the footer source link lands in 3a1                                                                             |
+| OQ9.county         | 3e1 | County asked on the Debtor step, encrypted with the household record; Form 101 County rebinds                                      |
+| OQ9.standards      | 3h  | The IRS standards on the dated data, read by county                                                                                |
+| CORR.county        | 3e1 | County and the household list kept off `DebtorInfo`; `household_size` left unread                                                  |
+| CORR.valid_through | 3a1 | `valid_through` per table; irregular tables guarded only by the runbook; tests pin the fill date                                   |
+| CORR.J3            | 3e2 | Schedule J line 3 asked in the form's words on the Expenses step (owner confirmed)                                                 |
+| CORR.J45           | 3c  | A homeowner's J line 4 mortgage payment and J line 5 from the debts linked to "my home"; 3e2 does not ask line 5 (owner confirmed) |
+| SPIKE              | 3a2 | The engine method (PyMuPDF `insert_text` plus `delete_widget`; exact-clip oracle)                                                  |
+| DIG-273            | 3a1 | The id round-trip for assets and debts, and the `useAutoSave` baseline                                                             |
+| DIG-274            | 3a1 | The median fix                                                                                                                     |
+| DIG-275            | 3h  | Line 35's past-due amount ÷ 60 in the one calculator                                                                               |
+| DIG-276            | 3h  | The under-65 split from the household's ages                                                                                       |
+| DIG-277            | 3e1 | Form 101 County                                                                                                                    |
+| DIG-278            | S5  | `IngestedAggregate`'s plaintext gross (or with DIG-176)                                                                            |
+| DIG-279            | 3f  | The fee-waiver answers encrypted                                                                                                   |
+| DIG-280            | 3c  | The three misleading wizard texts                                                                                                  |
+| DIG-281            | 3c  | Contract and codebtor edits saved on Go Back                                                                                       |
+| DIG-282            | 3c  | Priya's $450 resolved by the link and the persona update                                                                           |
+| DIG-163            | 3a1 | Drafts left out of rows and totals                                                                                                 |
+| DIG-188            | 3a1 | The session lock before rows bind                                                                                                  |
+| DIG-146            | 3h  | The verdict bands from the one calculator                                                                                          |
+| DIG-145            | 3f  | The 150% poverty test as information, no gate                                                                                      |
+| DIG-152            | 3h  | One calculator, no zeros for missing data                                                                                          |
+| DIG-159            | 3e1 | The household-size cap becomes a limit on the list's length                                                                        |
+| DIG-164            | 3b  | Ordering in Python on decrypted values (assets; debts follow in 3c)                                                                |
+| DIG-119            | 3d  | `priority_classification` no longer written                                                                                        |
+| DIG-123            | 3c  | The pro se List of Creditors and the fixture's text                                                                                |
+| DIG-53             | 3e1 | Marital status and the seeds                                                                                                       |
+| DIG-223            | 3f  | `_fee_waiver_household_size` fails loud                                                                                            |
+| C-1                | 3c  | Co-owned collateral value                                                                                                          |
+| C-2                | 3d  | Priority definitions                                                                                                               |
+| C-3                | 3e1 | The 122A-1 line 13 household reading                                                                                               |
+| C-4                | 3h  | Claimable-deduction help text                                                                                                      |
+| C-5                | 3h  | Line 40 at exactly $17,150                                                                                                         |
+| C-6                | 3h  | Line 36 and plan-payment guidance                                                                                                  |
+| C-7                | 3f  | Fee-waiver wording and § 820.20 readings                                                                                           |
+| C-8                | 3g  | Schedule C summaries, limits, notes and stacking                                                                                   |
+| C-9                | 3c  | Claim-status definitions and the List of Creditors                                                                                 |
+| C-10               | 3e2 | Six-month-average wording                                                                                                          |
+| GOTCHAS            | U   | Each PR rewrites the CLAUDE.md gotchas its change touches (§5.1)                                                                   |
 
 ## Appendix B: what this spec settles that the sections did not show
 
@@ -796,8 +799,8 @@ Every owner answer, controller ruling, ticket and counsel item maps to exactly o
 8. **The dated tables each PR loads.** 3a1 loads only the median. HHS lands in 3f, the exemption law catalog in 3g, and the IRS standards, § 104 amounts and district multiplier in 3h (§5.3). The USTP district multiplier joins Q10's list of dated tables, since Q20 prints it.
 9. **ILND's checklist.** Done in §11. It found no form missing at filing, and three documents the filer supplies are untracked. One ticket is proposed.
 10. **The marital adjustment is 122A-2 line 3.** The decision record placed it on line 13. The form's own text puts it on line 3, and line 13 is the vehicle ownership or lease expense that Q13 derives from the links (§5.12). Checked against the template on 2026-10-16.
-11. **Schedule J line 3 is asked in 3e2.** No answer placed it; the persona drafts found the gap (§5.6). For the owner to confirm.
-12. **A homeowner's J lines 4 and 5 come from the linked debts.** Q4 placed line 5 on the Expenses step, and Q13 makes a debt's payment its only source. The spec follows Q13, so 3e2 does not ask line 5 (§5.6, §5.9). For the owner to confirm.
+11. **Schedule J line 3 is asked in 3e2.** No answer placed it; the persona drafts found the gap (§5.6). Confirmed by the owner at the spec review.
+12. **A homeowner's J lines 4 and 5 come from the linked debts.** Q4 placed line 5 on the Expenses step, and Q13 makes a debt's payment its only source. The spec follows Q13, so 3e2 does not ask line 5 (§5.6, §5.9). Confirmed by the owner at the spec review.
 13. **Points from the gig driver's draft,** each left to the PR spec named:
     - a leased vehicle on A/B line 3 (3b, §5.8);
     - costs used for both business and home (3e2, §5.6);
