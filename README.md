@@ -262,9 +262,9 @@ Production runs on Heroku from the `prod` branch. A deploy fast-forwards `prod` 
 
 ## License
 
-This project is licensed under the [Elastic License 2.0 (ELv2)](LICENSE).
+This project is licensed under the [GNU Affero General Public License v3.0 or later (AGPL-3.0-or-later)](LICENSE).
 
-You may use, modify, and distribute it freely. You may not offer it as a managed service to third parties. See `LICENSE` for full terms.
+You may use, modify, and share it, and run it as a service. If you share a modified version, or let people use one over a network, you must offer them its complete source under the same license. See `LICENSE` for full terms.
 
 ## Contact
 
