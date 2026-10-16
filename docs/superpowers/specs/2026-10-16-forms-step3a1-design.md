@@ -355,11 +355,11 @@ Not renamed, because none is persona data and none carries an address:
 - The exemption, IRS, § 104 and multiplier tables (3g, 3h).
 - **The order of ordinary reads.** Rows still sort on ciphertext there (DIG-164, for 3b).
 - **Other `expected` fields in the persona fixture.** Andrés's journey uses only his own, and the five journeys don't read theirs.
-- **The thin Priya journey** (to be filed, §14).
+- **The thin Priya journey** (DIG-291).
 
 ## 14. Defects found while scoping
 
-Each was checked against the code, and Plane was searched for duplicates on 2026-10-16. New tickets and comments need the owner's yes.
+Each was checked against the code, and Plane was searched for duplicates on 2026-10-16. The owner approved filing the new tickets and comments, and they were filed the same day.
 
 **Already ticketed:**
 
@@ -367,10 +367,10 @@ Each was checked against the code, and Plane was searched for duplicates on 2026
 - **The fee-waiver rule** is DIG-145. Its comment says 150% of the poverty line, but the code tests 60% of the median (`apps/eligibility/models.py:175-177`). 3f replaces the rule.
 - **The seed's step number** is part of DIG-151. The seed sets `current_step=6` on an 8-step wizard (`seed_demo_data.py:576-577`).
 
-**New, to be filed:**
+**New tickets:**
 
-- **Persona data nothing uses.** Nothing reads `expected` in `personas.ts` (`:62,152,225,293,384,443`). The page objects never enter `financial_institution` or `is_in_collections`, which the fixture carries (`wizard.page.ts:144-184`).
-- **The Priya journey stops at Complete.** After `completeIntake()` it checks only that the page has no "error" text (`priya-ineligible.spec.ts:74-79`). It never reaches `/sofa` or `/forms`, so the only above-median persona's packet, 122A-2 included, is never generated in E2E.
+- **Persona data nothing uses (DIG-290).** Nothing reads `expected` in `personas.ts` (`:62,152,225,293,384,443`). The page objects never enter `financial_institution` or `is_in_collections`, which the fixture carries (`wizard.page.ts:144-184`).
+- **The Priya journey stops at Complete (DIG-291).** After `completeIntake()` it checks only that the page has no "error" text (`priya-ineligible.spec.ts:74-79`). It never reaches `/sofa` or `/forms`, so the only above-median persona's packet, 122A-2 included, is never generated in E2E.
 
 **Comments on existing tickets:**
 
