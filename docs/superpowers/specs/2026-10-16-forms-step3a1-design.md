@@ -353,20 +353,27 @@ Not renamed, because none is persona data and none carries an address:
 - The fee answer and the HHS table (3f).
 - Addresses (3c).
 - The exemption, IRS, § 104 and multiplier tables (3g, 3h).
-- **The order of ordinary reads.** Rows still sort on ciphertext there (filed below for 3b).
+- **The order of ordinary reads.** Rows still sort on ciphertext there (DIG-164, for 3b).
 - **Other `expected` fields in the persona fixture.** Andrés's journey uses only his own, and the five journeys don't read theirs.
-- **The thin Priya journey** (filed below).
+- **The thin Priya journey** (to be filed, §14).
 
 ## 14. Defects found while scoping
 
-Each was checked against the code. Each is to be ticketed in Plane, or added as a comment on its ticket, with the owner's yes.
+Each was checked against the code, and Plane was searched for duplicates on 2026-10-16. New tickets and comments need the owner's yes.
 
-- **Arbitrary row order.** `AssetInfo` and `DebtInfo` sort on encrypted columns (`apps/intake/models.py:397,547`), so rows read back in arbitrary order within a type. Rows print in that order once 3b and 3c list them. Target: 3b.
-- **A wrong comment on the fee-waiver flag.** It says 150% of the poverty line, but the code tests 60% of the median (`apps/eligibility/models.py:175-177`). 3f replaces the rule.
-- **The seed's step number.** The seed sets `current_step=6` on an 8-step wizard (`seed_demo_data.py:576-577`).
-- **E2E gaps:**
-  - nothing reads `expected` in `personas.ts`;
-  - the Priya journey never reaches `/sofa` or `/forms`;
-  - the page objects never enter `financial_institution` or `is_in_collections`.
-- **A comment on DIG-188.** `update_step` isn't atomic, and `complete`'s full save can overwrite a concurrent `reopen()`. 3a1 fixes both (§7).
-- **A comment on DIG-274.** Missing median data is a 400 in one view and a 500 in the others, and the breakdown mislabels its date. 3a1 fixes both (§3.4).
+**Already ticketed:**
+
+- **Arbitrary row order** is DIG-164. `AssetInfo` and `DebtInfo` sort on encrypted columns (`apps/intake/models.py:397,547`), so rows read back in arbitrary order within a type. Rows print in that order once 3b and 3c list them. A comment notes the target, 3b.
+- **The fee-waiver rule** is DIG-145. Its comment says 150% of the poverty line, but the code tests 60% of the median (`apps/eligibility/models.py:175-177`). 3f replaces the rule.
+- **The seed's step number** is part of DIG-151. The seed sets `current_step=6` on an 8-step wizard (`seed_demo_data.py:576-577`).
+
+**New, to be filed:**
+
+- **Persona data nothing uses.** Nothing reads `expected` in `personas.ts` (`:62,152,225,293,384,443`). The page objects never enter `financial_institution` or `is_in_collections`, which the fixture carries (`wizard.page.ts:144-184`).
+- **The Priya journey stops at Complete.** After `completeIntake()` it checks only that the page has no "error" text (`priya-ineligible.spec.ts:74-79`). It never reaches `/sofa` or `/forms`, so the only above-median persona's packet, 122A-2 included, is never generated in E2E.
+
+**Comments on existing tickets:**
+
+- **DIG-188:** `update_step` isn't atomic, and `complete`'s full save can overwrite a concurrent `reopen()`. 3a1 fixes both (§7).
+- **DIG-274:** missing median data is a 400 in one view and a 500 in the others, and the breakdown mislabels its date. 3a1 fixes both (§3.4).
+- **DIG-164:** the target is 3b. Separately, 3a1's PATCH responses keep the sent order (§5.2).
