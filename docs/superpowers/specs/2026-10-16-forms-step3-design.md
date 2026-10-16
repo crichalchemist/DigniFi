@@ -4,7 +4,7 @@
 
 **What this is:** the umbrella spec the owner chose in Q0 `[Q0]`. It fixes step 3's scope, the rules every step 3 PR follows, and the order of the ten PRs. Each PR then gets its own short spec, plan and build. A PR spec asks the owner only the judgment calls this document leaves open, and it never reopens one this document settles.
 
-**Branch:** `feat/forms-step3`, on `develop` at `9bd6665`, plus the relicence commit `d29109c`.
+**Branch:** `feat/forms-step3`, on `develop` at `9bd6665`. The relicence to the AGPL lands in the same PR (#25).
 
 **Production:** nothing deploys until steps 3, 4 and 5 are done and DIG-146 is fixed. Production stays at v31 (`3416f4c`).
 
@@ -604,7 +604,7 @@ The persona is below median, so 122A-2 does not apply. Priya remains the only ab
 
 ### 8.1 Branches and reviews
 
-- This spec, the persona drafts and the relicence commit `d29109c` go to `develop` as one small PR, so the licence and the plan land first. Each of the ten PRs then branches from `develop`.
+- This spec, the persona drafts and the relicence go to `develop` as one small PR (#25), so the licence and the plan land first. Each of the ten PRs then branches from `develop`.
 - **Each PR's cycle:**
   1. a short spec drawn from this one, asking the owner only the judgment calls it leaves open;
   2. a plan;
@@ -647,14 +647,15 @@ A review of the AGPL relicence is also recommended before `develop` is promoted 
 
 ## 10. Licence
 
-DigniFi is now licensed under the AGPL-3.0-or-later (`d29109c`). The owner chose to relicense rather than drop PyMuPDF `[Q29]`, and chose the "or later" variant `[Q30]`.
+DigniFi is now licensed under the AGPL-3.0-or-later, from PR #25. The owner chose to relicense rather than drop PyMuPDF `[Q29]`, and chose the "or later" variant `[Q30]`.
 
 - **Why.** PyMuPDF, which the document processor already imports (`documents/services/processor.py:42`) and the drawing engine uses, is licensed under the AGPL-3.0 or Artifex's commercial licence. The Elastic License 2.0 appears incompatible with it.
 - **Where the licence is declared:**
   - `LICENSE`, the official text from gnu.org;
   - the README;
   - `frontend/package.json`;
-  - the root entry of `frontend/package-lock.json`.
+  - the root entry of `frontend/package-lock.json`;
+  - `backend/pyproject.toml`.
 - **Source link.** A network service under the AGPL should offer its users the source, so 3a1 adds the footer link (§5.3).
 - **Dependencies.** Every new dependency must be AGPL-compatible.
 - **Copyright.** The owner holds copyright in every commit.
@@ -745,7 +746,7 @@ Every owner answer, controller ruling, ticket and counsel item maps to exactly o
 | Q28.drafts         | U   | Drafts of the five brief updates and the sixth persona, reviewed with this spec                                                    |
 | Q28.names          | 3a1 | Private creditors renamed to fictional names in seeds, briefs and E2E fixture; government creditors keep real names                |
 | Q28.data           | 3a1 | The sixth persona's seed and journey skeleton; each later PR adds what its features need                                           |
-| Q29                | U   | The relicence (`d29109c`) lands with the umbrella PR; 3a2's engine uses PyMuPDF                                                    |
+| Q29                | U   | The relicence lands with the umbrella PR (#25); 3a2's engine uses PyMuPDF                                                          |
 | Q30                | U   | AGPL-3.0-or-later; the footer source link lands in 3a1                                                                             |
 | OQ9.county         | 3e1 | County asked on the Debtor step, encrypted with the household record; Form 101 County rebinds                                      |
 | OQ9.standards      | 3h  | The IRS standards on the dated data, read by county                                                                                |
