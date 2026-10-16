@@ -1,6 +1,6 @@
 [project]
 name = "dignifi"
-license = {text = "Elastic-2.0"}
+license = {text = "AGPL-3.0-or-later"}
 
 [tool.black]
 line-length = 100
