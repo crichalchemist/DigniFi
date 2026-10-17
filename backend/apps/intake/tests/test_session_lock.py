@@ -189,10 +189,11 @@ def test_two_saves_of_the_same_new_contract_store_it_once(ready):
     save_rows = intake_views._save_rows_by_id
 
     def first_save_pauses_before_commit(*args, **kwargs):
-        save_rows(*args, **kwargs)
+        saved = save_rows(*args, **kwargs)
         if not first_saved.is_set():
             first_saved.set()
             go_on.wait(WAIT)
+        return saved
 
     def save():
         return _client(user).put(_session_url(session, "contracts/"), [NEW_CONTRACT], format="json")

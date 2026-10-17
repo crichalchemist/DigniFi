@@ -165,6 +165,8 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
         response = super().partial_update(request, *args, **kwargs)
         if "debts" in request.data:
             DebtInfo.objects.filter(session=instance, is_draft=True).update(is_draft=False)
+            for debt in response.data["debts"]:
+                debt["is_draft"] = False
         return response
 
     def perform_create(self, serializer):
