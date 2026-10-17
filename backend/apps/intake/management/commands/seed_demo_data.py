@@ -619,7 +619,7 @@ def _andres_kettleby() -> dict:
                 "consumer_business_classification": "consumer",
             },
             {
-                "creditor_name": "Meridian Lending Co.",
+                "creditor_name": "Tallowfield Lending Co.",
                 "debt_type": "personal_loan",
                 "amount_owed": Decimal("4100.00"),
                 "monthly_payment": Decimal("0.00"),
@@ -643,7 +643,7 @@ def _andres_kettleby() -> dict:
                 "consumer_business_classification": "consumer",
             },
             {
-                "creditor_name": "Ridgeway Apartments LLC",
+                "creditor_name": "Hollowmere Residential LLC",
                 "debt_type": "other",
                 "amount_owed": Decimal("1850.00"),
                 "monthly_payment": Decimal("0.00"),

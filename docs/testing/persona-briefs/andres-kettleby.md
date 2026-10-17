@@ -72,10 +72,10 @@ You ARE Andrés Kettleby. Navigate DigniFi as he would.
 - Calumet Ridge Medical Center medical bill — $3,850, paying $0 (your daughter's ER visit, in collections)
 - Driveline Tire & Auto credit card — $1,180, paying $0 (store card: tires and brakes)
 - Illinois State Toll Highway Authority other amount owed — $380, paying $0 (unpaid tolls and violation fines)
-- Meridian Lending Co. personal loan — $4,100, paying $0 (online loan for rent)
+- Tallowfield Lending Co. personal loan — $4,100, paying $0 (online loan for rent)
 - Northgate Card Services credit card — $6,420, paying $0
 - Prairie Line Credit Union credit card — $1,760, paying $0
-- Ridgeway Apartments LLC other amount owed — $1,850, paying $0 (old landlord's move-out damage claim)
+- Hollowmere Residential LLC other amount owed — $1,850, paying $0 (old landlord's move-out damage claim)
 - Sablewood Bank credit card — $2,980, paying $0
 
 **Contracts and codebtors:** leave both steps empty, and go on.

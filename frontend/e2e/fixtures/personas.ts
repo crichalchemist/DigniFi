@@ -579,7 +579,7 @@ export const ANDRES: PersonaData = {
       is_in_collections: false,
     },
     {
-      creditor_name: 'Meridian Lending Co.',
+      creditor_name: 'Tallowfield Lending Co.',
       debt_type: 'personal_loan',
       amount_owed: 4100,
       monthly_payment: 0,
@@ -600,7 +600,7 @@ export const ANDRES: PersonaData = {
       is_in_collections: false,
     },
     {
-      creditor_name: 'Ridgeway Apartments LLC',
+      creditor_name: 'Hollowmere Residential LLC',
       debt_type: 'other',
       amount_owed: 1850,
       monthly_payment: 0,
