@@ -184,7 +184,12 @@ describe('IntakeWizard handleComplete routing', { timeout: 30_000 }, () => {
       http.post('http://localhost:8000/api/intake/sessions/:id/complete/', () =>
         HttpResponse.json(
           {
-            errors: ['Expense information is required'],
+            errors: [
+              {
+                step: 'expense_info',
+                message: 'Go through the Expenses step, even if you have no expenses to enter.',
+              },
+            ],
             message: 'Please complete all required sections before finalizing',
           },
           { status: 400 }
@@ -239,6 +244,182 @@ describe('IntakeWizard handleComplete routing', { timeout: 30_000 }, () => {
     expect(screen.queryByText('Statement of Financial Affairs')).not.toBeInTheDocument();
     expect(consoleError).toHaveBeenCalledWith('Error completing intake:', expect.anything());
     consoleError.mockRestore();
+  });
+});
+
+// ===========================================================================
+// What Complete found missing (step 3a1 spec §4.4, DIG-181)
+// ===========================================================================
+
+describe("IntakeWizard Complete's reasons", { timeout: 30_000 }, () => {
+  const REFUSED = 'Please complete all required sections before finalizing';
+  const NO_INCOME = {
+    step: 'income_info',
+    message: 'Enter your income by source on the Income step.',
+  };
+  const NO_EXPENSES = {
+    step: 'expense_info',
+    message: 'Go through the Expenses step, even if you have no expenses to enter.',
+  };
+
+  /** Complete refuses with these reasons; returns the update_step bodies the wizard sends. */
+  function refuseComplete(errors: Array<{ step: string; message: string }>) {
+    const stepUpdates: unknown[] = [];
+    server.use(
+      http.post('http://localhost:8000/api/intake/sessions/:id/complete/', () =>
+        HttpResponse.json({ message: REFUSED, errors }, { status: 400 })
+      ),
+      http.post(
+        'http://localhost:8000/api/intake/sessions/:id/update_step/',
+        async ({ request }) => {
+          stepUpdates.push(await request.json());
+          return HttpResponse.json({ session: sessionAtStep8, message: 'Step updated.' });
+        }
+      )
+    );
+    return stepUpdates;
+  }
+
+  beforeEach(() => {
+    // The wizard logs each refusal; silenced so it doesn't read as a broken test
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    server.use(
+      http.get('http://localhost:8000/api/intake/sessions/:id/', () =>
+        HttpResponse.json(sessionAtStep8)
+      )
+    );
+  });
+  afterEach(() => vi.mocked(console.error).mockRestore());
+
+  it('lists each thing Complete found missing under its general message, with a way to each step', async () => {
+    renderWizard();
+    const completeBtn = await screen.findByRole('button', { name: /complete intake/i });
+    const stepUpdates = refuseComplete([NO_INCOME, NO_EXPENSES]);
+
+    await userEvent.click(completeBtn);
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent(REFUSED);
+    const firstReason = screen.getByText(NO_INCOME.message);
+    // The general message comes first, then the list
+    expect(
+      alert.compareDocumentPosition(firstReason) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+    expect(screen.getByText(NO_EXPENSES.message)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Go to Income' })).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Go to Expenses' }));
+
+    expect(await screen.findByRole('heading', { name: 'Expenses', level: 2 })).toBeInTheDocument();
+    // Like Go Back, it moves without telling the server where the filer is
+    expect(stepUpdates).toEqual([]);
+  });
+
+  // A live region announces only changes to a region already on the page
+  it('reads the reasons out to a screen reader, in a polite region that was on Review before them', async () => {
+    const { container } = renderWizard();
+    const completeBtn = await screen.findByRole('button', { name: /complete intake/i });
+    const politeRegionsBefore = Array.from(container.querySelectorAll('[aria-live="polite"]'));
+    refuseComplete([NO_INCOME, NO_EXPENSES]);
+
+    await userEvent.click(completeBtn);
+
+    const reason = await screen.findByText(NO_INCOME.message);
+    const region = reason.closest('[aria-live="polite"]');
+    expect(politeRegionsBefore).toContain(region);
+    expect(region).toHaveTextContent(NO_EXPENSES.message);
+  });
+
+  it('keeps the reasons on Review after the filer dismisses the general message', async () => {
+    renderWizard();
+    const completeBtn = await screen.findByRole('button', { name: /complete intake/i });
+    refuseComplete([NO_INCOME, NO_EXPENSES]);
+    await userEvent.click(completeBtn);
+    await screen.findByRole('alert');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Dismiss error message' }));
+
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(screen.getByText(NO_INCOME.message)).toBeInTheDocument();
+    expect(screen.getByText(NO_EXPENSES.message)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Go to Income' })).toBeInTheDocument();
+  });
+
+  it('shows none of the old reasons after "Go to" a step and back to Review', async () => {
+    const UNCHECKED_DEBTS = {
+      step: 'debts',
+      message: 'Check the debts read from your documents on the Amounts Owed step.',
+    };
+    // Amounts Owed lets the filer continue once it holds a debt
+    const sessionWithDebt = { ...sessionAtStep8, debts: completedSession.debts };
+    server.use(
+      http.get('http://localhost:8000/api/intake/sessions/:id/', () =>
+        HttpResponse.json(sessionWithDebt)
+      ),
+      http.patch('http://localhost:8000/api/intake/sessions/:id/', () =>
+        HttpResponse.json(sessionWithDebt)
+      )
+    );
+    const { container } = renderWizard();
+    const completeBtn = await screen.findByRole('button', { name: /complete intake/i });
+    refuseComplete([UNCHECKED_DEBTS]);
+    await userEvent.click(completeBtn);
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Go to Amounts Owed' }));
+    for (const next of ['Contracts & Leases', 'Codebtors', 'Review & Results']) {
+      const continueBtn = screen.getByRole('button', { name: 'Continue' });
+      await waitFor(() => expect(continueBtn).toBeEnabled());
+      await userEvent.click(continueBtn);
+      await waitFor(() => expect(container.querySelector('.step-title')).toHaveTextContent(next));
+    }
+
+    expect(screen.queryByText(UNCHECKED_DEBTS.message)).not.toBeInTheDocument();
+  });
+
+  it('shows none of the old reasons once the filer leaves Review and comes back', async () => {
+    renderWizard();
+    const completeBtn = await screen.findByRole('button', { name: /complete intake/i });
+    const stepUpdates = refuseComplete([NO_EXPENSES]);
+    await userEvent.click(completeBtn);
+    await screen.findByText(NO_EXPENSES.message);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Go Back' }));
+    // On Codebtors, the step before Review
+    const continueBtn = await screen.findByRole('button', { name: 'Continue' });
+    await waitFor(() => expect(continueBtn).toBeEnabled());
+    await userEvent.click(continueBtn);
+
+    await screen.findByRole('heading', { name: /review & results/i, level: 2 });
+    expect(stepUpdates).toEqual([{ current_step: 8 }]);
+    expect(screen.queryByText(NO_EXPENSES.message)).not.toBeInTheDocument();
+  });
+
+  it('drops the reasons once Complete accepts the intake, even if the eligibility check then fails', async () => {
+    renderWizard();
+    const completeBtn = await screen.findByRole('button', { name: /complete intake/i });
+    refuseComplete([NO_EXPENSES]);
+    await userEvent.click(completeBtn);
+    await screen.findByText(NO_EXPENSES.message);
+    server.use(
+      http.post('http://localhost:8000/api/intake/sessions/:id/complete/', () =>
+        HttpResponse.json({ message: 'Session completed.' })
+      ),
+      http.post('http://localhost:8000/api/intake/sessions/:id/calculate_means_test/', () =>
+        HttpResponse.json(
+          {
+            error: NO_INCOME.message,
+            message:
+              'Unable to calculate means test. Please ensure all income information is provided.',
+          },
+          { status: 400 }
+        )
+      )
+    );
+
+    await userEvent.click(completeBtn);
+
+    await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent(NO_INCOME.message));
+    expect(screen.queryByText(NO_EXPENSES.message)).not.toBeInTheDocument();
   });
 });
 

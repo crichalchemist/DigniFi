@@ -64,9 +64,11 @@ export function useDebouncedMeansTest({
     } catch (err) {
       if (abortRef.current?.signal.aborted) return;
 
-      // Gracefully handle incomplete data errors
+      // Gracefully handle incomplete data errors. A 400's `error` is a sentence for the filer
+      // (no median table in force, income not entered by source), which says what stands in
+      // the way better than asking for income they may already have given.
       if (err instanceof APIClientError && err.statusCode === 400) {
-        setStatusMessage(INCOMPLETE_DATA_MESSAGE);
+        setStatusMessage(err.serverError || INCOMPLETE_DATA_MESSAGE);
       } else {
         setStatusMessage(
           'Unable to estimate eligibility right now. This is not an error with your information.'

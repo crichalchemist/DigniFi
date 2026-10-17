@@ -34,6 +34,7 @@ import type {
   DebtInfo,
   ExecutoryContract,
   Codebtor,
+  CompletionError,
 } from '../types/api';
 import { EXPENSE_FIELDS, INCOME_FIELDS } from '../types/api';
 
@@ -87,6 +88,8 @@ export function IntakeWizard() {
   const [debtsData, setDebtsData] = useState<Partial<DebtInfo>[]>([]);
   const [contractsData, setContractsData] = useState<ExecutoryContract[]>([]);
   const [codebtorsData, setCodebtorsData] = useState<Codebtor[]>([]);
+  // What Complete last said is missing, listed on Review until the step changes
+  const [completionErrors, setCompletionErrors] = useState<CompletionError[]>([]);
 
   // =========================================================================
   // Read the session on mount
@@ -274,10 +277,17 @@ export function IntakeWizard() {
     }
   };
 
+  // Go Back, and the "Go to" button beside each reason Complete gave, move without update_step:
+  // current_step stays where Continue last put it. Leaving Review drops its reasons.
+  const moveToStep = (stepNumber: number) => {
+    setCurrentStepNumber(stepNumber);
+    setCompletionErrors([]);
+  };
+
   const handlePrevious = () => {
     const prevStep = currentStepNumber - 1;
     if (prevStep >= 1) {
-      setCurrentStepNumber(prevStep);
+      moveToStep(prevStep);
       // Load data for previous step if needed
     }
   };
@@ -285,6 +295,7 @@ export function IntakeWizard() {
   const handleComplete = async () => {
     if (pressInFlightRef.current) return;
     pressInFlightRef.current = true;
+    setCompletionErrors([]);
 
     try {
       // Save the current step immediately. If it fails, do NOT complete.
@@ -305,8 +316,10 @@ export function IntakeWizard() {
         }
       } catch (error) {
         // The filer stays on Review, where WizardLayout shows the reason the context recorded
-        // (DIG-150). If only the means test failed, the intake is already complete, and
-        // pressing Complete again retries both calls.
+        // (DIG-150), and Review lists each thing Complete found missing. If only the means
+        // test failed, the intake is already complete, and pressing Complete again retries
+        // both calls.
+        if (error instanceof APIClientError && error.errors) setCompletionErrors(error.errors);
         console.error('Error completing intake:', error);
       }
     } finally {
@@ -423,6 +436,11 @@ export function IntakeWizard() {
             contractsData={contractsData}
             codebtorsData={codebtorsData}
             onValidationChange={setCanProceed}
+            completionReasons={completionErrors.map((reason) => ({
+              message: reason.message,
+              step: WIZARD_STEPS.find((step) => step.key === reason.step),
+            }))}
+            onGoToStep={moveToStep}
           />
         );
 

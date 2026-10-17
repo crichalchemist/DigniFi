@@ -322,6 +322,10 @@ describe('FormDashboard', () => {
   describe('when Generate All or the packet list is refused', { timeout: 15_000 }, () => {
     const FINISH_INTAKE = 'Finish your intake before preparing your forms.';
     const INCOME_NOT_SPLIT = 'Enter your income by source on the Income step.';
+    // The refusal as the server sends it, naming the wizard step that fixes it
+    const NOT_SPLIT = { error: INCOME_NOT_SPLIT, step: 'income_info' };
+    const NO_TABLE =
+      "DigniFi doesn't have the income figures for today's date yet, so it can't prepare your forms. Please try again later.";
     // The server's sentence for a 500 speaks of one form, so the dashboard never shows it
     const SERVER_FAILURE = "This form couldn't be prepared. Please try again later.";
     const GENERIC =
@@ -350,7 +354,7 @@ describe('FormDashboard', () => {
     it('shows the packet list’s refusal in its own words', async () => {
       server.use(
         http.get('http://localhost:8000/api/forms/packet/', () =>
-          HttpResponse.json({ error: INCOME_NOT_SPLIT }, { status: 422 })
+          HttpResponse.json(NOT_SPLIT, { status: 422 })
         )
       );
 
@@ -364,7 +368,7 @@ describe('FormDashboard', () => {
       // A completed filer whose income isn't split gets the same refusal on every reload
       server.use(
         http.get('http://localhost:8000/api/forms/packet/', () =>
-          HttpResponse.json({ error: INCOME_NOT_SPLIT }, { status: 422 })
+          HttpResponse.json(NOT_SPLIT, { status: 422 })
         )
       );
 
@@ -375,6 +379,21 @@ describe('FormDashboard', () => {
         'href',
         '/intake'
       );
+      expect(screen.queryByRole('button', { name: /try again/i })).not.toBeInTheDocument();
+    });
+
+    // Ruling R4-b: no step of the filer's fixes a missing median table (spec §4.3)
+    it('offers neither the intake nor a retry when the packet list’s refusal names no fix', async () => {
+      server.use(
+        http.get('http://localhost:8000/api/forms/packet/', () =>
+          HttpResponse.json({ error: NO_TABLE }, { status: 422 })
+        )
+      );
+
+      renderFormDashboard();
+
+      await screen.findByText(NO_TABLE);
+      expect(screen.queryByRole('link', { name: 'Finish your intake' })).not.toBeInTheDocument();
       expect(screen.queryByRole('button', { name: /try again/i })).not.toBeInTheDocument();
     });
 
@@ -435,6 +454,85 @@ describe('FormDashboard', () => {
       expect(screen.queryByText(SERVER_FAILURE)).not.toBeInTheDocument();
     });
 
+    // The intake was reopened since this page loaded it as complete (step 3a1 spec §4.4)
+    it('links a refused Generate All to the page that fixes it', async () => {
+      server.use(
+        http.post('http://localhost:8000/api/forms/generate_all/', () =>
+          HttpResponse.json({ error: FINISH_INTAKE, page: '/intake' }, { status: 422 })
+        )
+      );
+
+      renderFormDashboard();
+      await userEvent.click(await openGenerateAll());
+
+      await screen.findByText(FINISH_INTAKE);
+      const links = screen.getAllByRole('link', { name: 'Finish your intake' });
+      expect(links).toHaveLength(1);
+      expect(links[0]).toHaveAttribute('href', '/intake');
+    });
+
+    // Ruling R4-a: the notice for an unfinished intake already links back to it
+    it('adds no second link back to the intake when the dashboard already offers one', async () => {
+      server.use(
+        http.get('http://localhost:8000/api/intake/sessions/:id/', () =>
+          HttpResponse.json({ ...completedSession, status: 'in_progress', completed_at: null })
+        ),
+        http.post('http://localhost:8000/api/forms/generate_all/', () =>
+          HttpResponse.json({ error: FINISH_INTAKE, page: '/intake' }, { status: 422 })
+        )
+      );
+
+      renderFormDashboard();
+      await userEvent.click(await openGenerateAll());
+
+      await screen.findByText(FINISH_INTAKE);
+      expect(screen.getAllByRole('link', { name: 'Finish your intake' })).toHaveLength(1);
+    });
+
+    // This page loaded the intake as unfinished; it was completed since, elsewhere
+    it('adds no second link back to the intake when a refused packet list names its fix', async () => {
+      server.use(
+        http.get('http://localhost:8000/api/intake/sessions/:id/', () =>
+          HttpResponse.json({ ...completedSession, status: 'in_progress', completed_at: null })
+        ),
+        http.get('http://localhost:8000/api/forms/packet/', () =>
+          HttpResponse.json(NOT_SPLIT, { status: 422 })
+        )
+      );
+
+      renderFormDashboard();
+
+      await screen.findByText(INCOME_NOT_SPLIT);
+      expect(screen.getAllByRole('link', { name: 'Finish your intake' })).toHaveLength(1);
+    });
+
+    // This page loaded the intake as complete; it was reopened since, elsewhere
+    it('adds no second link back to the intake when both the packet list and Generate All are refused', async () => {
+      let packetCalls = 0;
+      server.use(
+        http.get('http://localhost:8000/api/forms/packet/', () => {
+          packetCalls += 1;
+          return packetCalls === 1
+            ? HttpResponse.json({ session: 1, form_types: ['form_101', 'form_121'] })
+            : HttpResponse.json(NOT_SPLIT, { status: 422 });
+        }),
+        http.post('http://localhost:8000/api/forms/generate_all/', () =>
+          HttpResponse.json({ error: FINISH_INTAKE, page: '/intake' }, { status: 422 })
+        )
+      );
+
+      renderFormDashboard();
+      // Marking a form filed reloads the packet list, which is now refused
+      await userEvent.click(await screen.findByRole('button', { name: /mark as filed/i }));
+      await screen.findByText(INCOME_NOT_SPLIT);
+      await userEvent.click(await openGenerateAll());
+
+      await screen.findByText(FINISH_INTAKE);
+      // Generate All reloads the packet list too, and it is refused again
+      await waitFor(() => expect(packetCalls).toBe(3));
+      expect(screen.getAllByRole('link', { name: 'Finish your intake' })).toHaveLength(1);
+    });
+
     it('reloads the packet after Generate All succeeds', async () => {
       server.use(packetThatGains122a2());
 
@@ -484,7 +582,7 @@ describe('FormDashboard', () => {
           calls += 1;
           return calls === 1
             ? HttpResponse.json({ session: 1, form_types: ['form_101', 'form_121'] })
-            : HttpResponse.json({ error: INCOME_NOT_SPLIT }, { status: 422 });
+            : HttpResponse.json(NOT_SPLIT, { status: 422 });
         })
       );
 
@@ -537,7 +635,7 @@ describe('FormDashboard', () => {
         http.get('http://localhost:8000/api/forms/packet/', () => {
           calls += 1;
           return calls === 2
-            ? HttpResponse.json({ error: INCOME_NOT_SPLIT }, { status: 422 })
+            ? HttpResponse.json(NOT_SPLIT, { status: 422 })
             : HttpResponse.json({ session: 1, form_types: ['form_101', 'form_121'] });
         })
       );

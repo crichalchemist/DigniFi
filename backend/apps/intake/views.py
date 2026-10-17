@@ -11,6 +11,7 @@ from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from apps.districts.dated_tables import NoTableInForce
 from apps.eligibility.cmi import IncomeNotSplit, current_monthly_income
 from apps.eligibility.services import MeansTestCalculator
 from apps.forms.registry import PreconditionMissing, _needs_ssn
@@ -268,10 +269,20 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
                 }
             )
 
-        except ValueError as e:
+        # Only these two refusals carry their own plain words for the filer in `error`, as in
+        # the forms views. Any other ValueError's text is for operations (no income row yet
+        # reads "IntakeSession must have income_info..."), so it stays out of the response.
+        except (IncomeNotSplit, NoTableInForce) as e:
             return Response(
                 {
                     "error": str(e),
+                    "message": "Unable to calculate means test. Please ensure all income information is provided.",
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        except ValueError:
+            return Response(
+                {
                     "message": "Unable to calculate means test. Please ensure all income information is provided.",
                 },
                 status=status.HTTP_400_BAD_REQUEST,

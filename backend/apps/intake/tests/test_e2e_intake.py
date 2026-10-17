@@ -706,7 +706,12 @@ class TestMeansTestCalculation:
         assert Decimal(result["cmi"]) == Decimal("80000.00")
 
     def test_calculate_means_test_without_income_info(self, api_client, district):
-        """Test means test calculation without income info returns 400."""
+        """Without income saved yet, the means test is a 400 with only its general message.
+
+        The wizard's preview asks this at the Income step before anything is saved. The
+        calculator's own words ("IntakeSession must have income_info...") are for operations,
+        so the body carries no `error` for the preview to show.
+        """
         # Create session without income info
         url = reverse("intake-session-list")
         response = api_client.post(url, {"district": district.id, "current_step": 1}, format="json")
@@ -717,7 +722,9 @@ class TestMeansTestCalculation:
         response = api_client.post(calc_url)
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
-        assert "error" in response.data
+        assert response.data == {
+            "message": "Unable to calculate means test. Please ensure all income information is provided."
+        }
 
     def test_fee_waiver_qualification(self, api_client, complete_session, median_income):
         """Test fee waiver qualification for income < 150% poverty line."""

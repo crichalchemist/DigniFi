@@ -573,10 +573,22 @@ export interface SOFAReport {
   creditor_payments: SOFACreditorPayment[];
 }
 
+/** One thing Complete found missing, with the wizard step (a `WIZARD_STEPS` key) that fixes it */
+export interface CompletionError {
+  step: string;
+  message: string;
+}
+
 export interface APIError {
   error: string;
   message: string;
   details?: Record<string, unknown>;
+  /** Complete's refusal: each thing missing, in wizard order */
+  errors?: CompletionError[];
+  /** The wizard step key that fixes a refusal, when one does */
+  step?: string;
+  /** The page (a route) that fixes a refusal, when one does */
+  page?: string;
 }
 
 // ============================================================================

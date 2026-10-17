@@ -368,6 +368,12 @@ a {
   gap: var(--space-5);
 }
 
+/* The live region for Complete's reasons is on the step from the start. Empty, it gives back
+   the gap after it, so the step looks as it did. */
+.review-reasons:empty {
+  margin-bottom: calc(-1 * var(--space-5));
+}
+
 .review-section {
   border: 1px solid var(--color-sand);
   background-color: var(--color-paper);

@@ -37,6 +37,21 @@ function wholeCallRefusal(err: unknown, generic: string): string {
   return err instanceof APIClientError && err.statusCode === 422 ? err.message : generic;
 }
 
+/** The words of the link to each page a refusal can name as its fix (step 3a1 spec §4.3) */
+const PAGE_LINK_LABELS: Record<string, string> = { '/intake': 'Finish your intake' };
+
+/**
+ * A failed packet list in the filer's words, and whether its refusal names a fix: a wizard step
+ * or a page (step 3a1 spec §4.3). No step fixes one that names neither, such as no median table
+ * in force on the fill date.
+ */
+function loadFailure(err: unknown): { message: string; namesFix: boolean } {
+  return {
+    message: wholeCallRefusal(err, DASHBOARD_ERROR),
+    namesFix: err instanceof APIClientError && err.statusCode === 422 && !!(err.step || err.page),
+  };
+}
+
 const MONTHS = [
   'January',
   'February',
@@ -75,10 +90,13 @@ export function FormDashboard() {
   const [packet, setPacket] = useState<FormType[]>([]);
   const [tables, setTables] = useState<DatedTableUsed[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<{ message: string; namesFix: boolean } | null>(null);
   const [showSurvey, setShowSurvey] = useState(false);
   const [generationErrors, setGenerationErrors] = useState<GenerateAllError[]>([]);
-  const [generateAllRefusal, setGenerateAllRefusal] = useState<string | null>(null);
+  const [generateAllRefusal, setGenerateAllRefusal] = useState<{
+    message: string;
+    page?: string;
+  } | null>(null);
   const [dischargeData, setDischargeData] = useState<DebtClassification[]>([]);
 
   // Load existing forms on mount
@@ -96,7 +114,7 @@ export function FormDashboard() {
       setTables(loadedPacket.tables);
       setError(null);
     } catch (err) {
-      setError(wholeCallRefusal(err, DASHBOARD_ERROR));
+      setError(loadFailure(err));
     } finally {
       setIsLoading(false);
     }
@@ -139,7 +157,10 @@ export function FormDashboard() {
       trackEvent('form_generated', { form_type: 'all', session_id: session.id });
       setShowSurvey(true);
     } catch (err) {
-      setGenerateAllRefusal(wholeCallRefusal(err, ERROR_GENERIC));
+      setGenerateAllRefusal({
+        message: wholeCallRefusal(err, ERROR_GENERIC),
+        page: err instanceof APIClientError ? err.page : undefined,
+      });
     }
     // Generate All works the means test out again, so the packet may have changed
     try {
@@ -148,7 +169,7 @@ export function FormDashboard() {
       setTables(reloaded.tables);
       setError(null);
     } catch (err) {
-      setError(wholeCallRefusal(err, DASHBOARD_ERROR));
+      setError(loadFailure(err));
     }
   };
 
@@ -186,6 +207,16 @@ export function FormDashboard() {
   const filedCount = forms.filter((f) => f.status === 'filed').length;
   const generatedCount = forms.filter((f) => packet.includes(f.form_type)).length;
   const totalCount = packet.length;
+  // "Finish your intake" shows at most once, on the first block that offers it: the notice for
+  // an unfinished intake, then a packet-list refusal that names its fix, then the page Generate
+  // All's refusal names (ruling R4-a). The context's status and the server's can disagree.
+  const noticeLinksIntake = session.status !== 'completed';
+  const errorLinksIntake = !noticeLinksIntake && !!error?.namesFix;
+  const refusalPage = generateAllRefusal?.page;
+  const refusalLinkLabel =
+    refusalPage && !(refusalPage === '/intake' && (noticeLinksIntake || errorLinksIntake))
+      ? PAGE_LINK_LABELS[refusalPage]
+      : undefined;
 
   return (
     <div className="form-dashboard">
@@ -200,7 +231,7 @@ export function FormDashboard() {
       <UPLDisclaimer text={UPL_FORM_DISCLAIMER} variant="banner" />
 
       {/* Forms are prepared only from an intake the server marked complete (forms step 2 §5.3) */}
-      {session.status !== 'completed' && (
+      {noticeLinksIntake && (
         <div className="form-dashboard-notice">
           <p>
             Your forms are prepared from your finished intake. To finish it, go back to your intake
@@ -214,24 +245,32 @@ export function FormDashboard() {
 
       {error && (
         <div className="form-dashboard-error" role="alert">
-          <p>{error}</p>
+          <p>{error.message}</p>
           {/* Our own words mean the load failed and may work again; a 422's words name
-              something to fix at the intake, which a retry can't */}
-          {error === DASHBOARD_ERROR ? (
+              something to fix, which a retry can't. Only a refusal that names a step or page
+              has a fix at the intake (ruling R4-b). */}
+          {error.message === DASHBOARD_ERROR ? (
             <Button variant="outline" size="sm" onClick={loadForms}>
               Try Again
             </Button>
           ) : (
-            <Link to="/intake" className="button button--primary">
-              Finish your intake
-            </Link>
+            errorLinksIntake && (
+              <Link to="/intake" className="button button--primary">
+                Finish your intake
+              </Link>
+            )
           )}
         </div>
       )}
 
       {generateAllRefusal && (
         <div className="form-dashboard-error" role="alert">
-          <p>{generateAllRefusal}</p>
+          <p>{generateAllRefusal.message}</p>
+          {refusalPage && refusalLinkLabel && (
+            <Link to={refusalPage} className="button button--primary">
+              {refusalLinkLabel}
+            </Link>
+          )}
         </div>
       )}
 
