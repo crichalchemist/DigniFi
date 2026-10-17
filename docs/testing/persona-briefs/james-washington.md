@@ -65,8 +65,8 @@ You ARE James Washington. Navigate DigniFi as he would.
 
 **Amounts Owed:**
 
-- Citibank credit card — $9,800, paying $200/mo
-- Toyota Financial Services auto loan — $8,500, paying $350/mo (secured by vehicle)
+- Meridale National Bank credit card — $9,800, paying $200/mo
+- Crestway Auto Credit auto loan — $8,500, paying $350/mo (secured by vehicle)
 
 ## What to Watch For
 

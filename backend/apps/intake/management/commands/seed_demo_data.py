@@ -105,7 +105,7 @@ def _maria_torres() -> dict:
         ],
         "debts": [
             {
-                "creditor_name": "Capital One",
+                "creditor_name": "Brightwater Card Services",
                 "debt_type": "credit_card",
                 "amount_owed": Decimal("4200.00"),
                 "monthly_payment": Decimal("85.00"),
@@ -113,7 +113,7 @@ def _maria_torres() -> dict:
                 "consumer_business_classification": "consumer",
             },
             {
-                "creditor_name": "Northwestern Memorial Hospital",
+                "creditor_name": "Larkfield General Hospital",
                 "debt_type": "medical",
                 "amount_owed": Decimal("12800.00"),
                 "monthly_payment": Decimal("0.00"),
@@ -121,7 +121,7 @@ def _maria_torres() -> dict:
                 "consumer_business_classification": "consumer",
             },
             {
-                "creditor_name": "Discover Financial",
+                "creditor_name": "Ironbridge Card Company",
                 "debt_type": "personal_loan",
                 "amount_owed": Decimal("3500.00"),
                 "monthly_payment": Decimal("120.00"),
@@ -136,23 +136,23 @@ def _maria_torres() -> dict:
             "prior_income": [
                 {
                     "year": 2025,
-                    "source": "Wages - CNA at Northwestern Hospital",
+                    "source": "Wages - CNA at Larkfield General Hospital",
                     "gross_amount": Decimal("38400.00"),
                 },
                 {
                     "year": 2024,
-                    "source": "Wages - CNA at Northwestern Hospital",
+                    "source": "Wages - CNA at Larkfield General Hospital",
                     "gross_amount": Decimal("37000.00"),
                 },
             ],
             "creditor_payments": [
                 {
-                    "creditor_name": "Capital One",
+                    "creditor_name": "Brightwater Card Services",
                     "total_paid": Decimal("1020.00"),
                     "dates_of_payments": "Monthly Jan-Mar 2026",
                 },
                 {
-                    "creditor_name": "Discover Financial",
+                    "creditor_name": "Ironbridge Card Company",
                     "total_paid": Decimal("720.00"),
                     "dates_of_payments": "Monthly Jan-Mar 2026",
                 },
@@ -226,7 +226,7 @@ def _james_washington() -> dict:
         ],
         "debts": [
             {
-                "creditor_name": "Citibank",
+                "creditor_name": "Meridale National Bank",
                 "debt_type": "credit_card",
                 "amount_owed": Decimal("9800.00"),
                 "monthly_payment": Decimal("200.00"),
@@ -234,7 +234,7 @@ def _james_washington() -> dict:
                 "consumer_business_classification": "consumer",
             },
             {
-                "creditor_name": "Toyota Financial Services",
+                "creditor_name": "Crestway Auto Credit",
                 "debt_type": "auto_loan",
                 "amount_owed": Decimal("8500.00"),
                 "monthly_payment": Decimal("350.00"),
@@ -302,7 +302,7 @@ def _priya_sharma() -> dict:
         ],
         "debts": [
             {
-                "creditor_name": "American Express",
+                "creditor_name": "Silverpine Card Services",
                 "debt_type": "credit_card",
                 "amount_owed": Decimal("22000.00"),
                 "monthly_payment": Decimal("500.00"),
@@ -310,7 +310,7 @@ def _priya_sharma() -> dict:
                 "consumer_business_classification": "consumer",
             },
             {
-                "creditor_name": "Rush University Medical Center",
+                "creditor_name": "Westhaven University Medical Center",
                 "debt_type": "medical",
                 "amount_owed": Decimal("35000.00"),
                 "monthly_payment": Decimal("0.00"),
@@ -386,7 +386,7 @@ def _deshawn_mitchell() -> dict:
         ],
         "debts": [
             {
-                "creditor_name": "Wells Fargo Home Mortgage",
+                "creditor_name": "Harrowgate Home Loans",
                 "debt_type": "mortgage",
                 "amount_owed": Decimal("160000.00"),
                 "monthly_payment": Decimal("1200.00"),
@@ -396,7 +396,7 @@ def _deshawn_mitchell() -> dict:
                 "collateral_description": "Single-family home, 7823 S Sangamon St",
             },
             {
-                "creditor_name": "Midland Credit Management",
+                "creditor_name": "Tallgrass Credit Management",
                 "debt_type": "credit_card",
                 "amount_owed": Decimal("6700.00"),
                 "monthly_payment": Decimal("0.00"),
@@ -404,7 +404,7 @@ def _deshawn_mitchell() -> dict:
                 "consumer_business_classification": "consumer",
             },
             {
-                "creditor_name": "ComEd",
+                "creditor_name": "Lakeline Electric",
                 "debt_type": "utility",
                 "amount_owed": Decimal("800.00"),
                 "monthly_payment": Decimal("0.00"),
@@ -412,7 +412,7 @@ def _deshawn_mitchell() -> dict:
                 "consumer_business_classification": "consumer",
             },
             {
-                "creditor_name": "Advocate Health",
+                "creditor_name": "Southmoor Health",
                 "debt_type": "medical",
                 "amount_owed": Decimal("4200.00"),
                 "monthly_payment": Decimal("0.00"),
@@ -474,7 +474,7 @@ def _sarah_chen() -> dict:
         "assets": [],
         "debts": [
             {
-                "creditor_name": "Navient",
+                "creditor_name": "Keelson Loan Servicing",
                 "debt_type": "student_loan",
                 "amount_owed": Decimal("28000.00"),
                 "monthly_payment": Decimal("0.00"),
@@ -482,7 +482,7 @@ def _sarah_chen() -> dict:
                 "consumer_business_classification": "consumer",
             },
             {
-                "creditor_name": "University of Illinois Hospital",
+                "creditor_name": "Lakemont University Hospital",
                 "debt_type": "medical",
                 "amount_owed": Decimal("3400.00"),
                 "monthly_payment": Decimal("0.00"),

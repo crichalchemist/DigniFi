@@ -127,21 +127,21 @@ export const MARIA: WaiverPersonaData = {
   ],
   debts: [
     {
-      creditor_name: 'Capital One',
+      creditor_name: 'Brightwater Card Services',
       debt_type: 'credit_card',
       amount_owed: 4200,
       monthly_payment: 85,
       is_in_collections: true,
     },
     {
-      creditor_name: 'Northwestern Memorial Hospital',
+      creditor_name: 'Larkfield General Hospital',
       debt_type: 'medical',
       amount_owed: 12800,
       monthly_payment: 0,
       is_in_collections: true,
     },
     {
-      creditor_name: 'Discover Financial',
+      creditor_name: 'Ironbridge Card Company',
       debt_type: 'personal_loan',
       amount_owed: 3500,
       monthly_payment: 120,
@@ -207,14 +207,14 @@ export const JAMES: PersonaData = {
   ],
   debts: [
     {
-      creditor_name: 'Citibank',
+      creditor_name: 'Meridale National Bank',
       debt_type: 'credit_card',
       amount_owed: 9800,
       monthly_payment: 200,
       is_in_collections: false,
     },
     {
-      creditor_name: 'Toyota Financial Services',
+      creditor_name: 'Crestway Auto Credit',
       debt_type: 'auto_loan',
       amount_owed: 8500,
       monthly_payment: 350,
@@ -276,14 +276,14 @@ export const PRIYA: PersonaData = {
   ],
   debts: [
     {
-      creditor_name: 'American Express',
+      creditor_name: 'Silverpine Card Services',
       debt_type: 'credit_card',
       amount_owed: 22000,
       monthly_payment: 500,
       is_in_collections: false,
     },
     {
-      creditor_name: 'Rush University Medical Center',
+      creditor_name: 'Westhaven University Medical Center',
       debt_type: 'medical',
       amount_owed: 35000,
       monthly_payment: 0,
@@ -349,7 +349,7 @@ export const DESHAWN: WaiverPersonaData = {
   ],
   debts: [
     {
-      creditor_name: 'Wells Fargo Home Mortgage',
+      creditor_name: 'Harrowgate Home Loans',
       debt_type: 'mortgage',
       amount_owed: 160000,
       monthly_payment: 1200,
@@ -357,21 +357,21 @@ export const DESHAWN: WaiverPersonaData = {
       collateral_description: 'Single-family home, 7823 S Sangamon St',
     },
     {
-      creditor_name: 'Midland Credit Management',
+      creditor_name: 'Tallgrass Credit Management',
       debt_type: 'credit_card',
       amount_owed: 6700,
       monthly_payment: 0,
       is_in_collections: true,
     },
     {
-      creditor_name: 'ComEd',
+      creditor_name: 'Lakeline Electric',
       debt_type: 'utility',
       amount_owed: 800,
       monthly_payment: 0,
       is_in_collections: true,
     },
     {
-      creditor_name: 'Advocate Health',
+      creditor_name: 'Southmoor Health',
       debt_type: 'medical',
       amount_owed: 4200,
       monthly_payment: 0,
@@ -425,14 +425,14 @@ export const SARAH: WaiverPersonaData = {
   assets: [],
   debts: [
     {
-      creditor_name: 'Navient',
+      creditor_name: 'Keelson Loan Servicing',
       debt_type: 'student_loan',
       amount_owed: 28000,
       monthly_payment: 0,
       is_in_collections: false,
     },
     {
-      creditor_name: 'University of Illinois Hospital',
+      creditor_name: 'Lakemont University Hospital',
       debt_type: 'medical',
       amount_owed: 3400,
       monthly_payment: 0,

@@ -66,9 +66,9 @@ You ARE Maria Torres. Navigate DigniFi as she would.
 
 **Amounts Owed:**
 
-- Capital One credit card — $4,200, paying $85/mo (in collections)
-- Northwestern Memorial Hospital — $12,800, paying $0 (in collections)
-- Discover Financial personal loan — $3,500, paying $120/mo
+- Brightwater Card Services credit card — $4,200, paying $85/mo (in collections)
+- Larkfield General Hospital — $12,800, paying $0 (in collections)
+- Ironbridge Card Company personal loan — $3,500, paying $120/mo
 
 ## What to Watch For
 
