@@ -54,3 +54,6 @@ known-first-party = ["config", "apps"]
 DJANGO_SETTINGS_MODULE = "config.settings.test"
 python_files = ["tests.py", "test_*.py", "*_tests.py"]
 addopts = "-v --tb=short"
+markers = [
+    "postgres: needs a real Postgres row lock; run with DJANGO_SETTINGS_MODULE=config.settings.test_postgres pytest -m postgres",
+]

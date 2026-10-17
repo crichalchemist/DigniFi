@@ -222,11 +222,15 @@ def test_legacy_income_total_must_be_split_before_forms_print(filer_session):
 
     refused = client.post("/api/forms/generate/", generate, format="json")
     assert refused.status_code == 422
-    assert refused.data == {"form_type": "schedule_i", "error": SPLIT_BY_SOURCE}
+    assert refused.data == {
+        "form_type": "schedule_i",
+        "error": SPLIT_BY_SOURCE,
+        "step": "income_info",
+    }
     # Every form waits for the split, since each call works the means test out first.
     every_form = client.post("/api/forms/generate_all/", {"session_id": session.pk}, format="json")
     assert every_form.status_code == 422
-    assert every_form.data == {"error": SPLIT_BY_SOURCE}
+    assert every_form.data == {"error": SPLIT_BY_SOURCE, "step": "income_info"}
 
     # The filer splits the total on the Income step and completes the intake again.
     split = client.patch(

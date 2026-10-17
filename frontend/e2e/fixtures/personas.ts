@@ -27,10 +27,24 @@ export interface PersonaDebtor {
   filing_type: 'individual' | 'joint';
 }
 
+/** The Income step's ten boxes, named as the backend stores them (INCOME_FIELDS in types/api.ts) */
+export type IncomeSourceKey =
+  | 'monthly_gross_wages'
+  | 'monthly_overtime'
+  | 'monthly_tips'
+  | 'monthly_rental_income'
+  | 'monthly_pension'
+  | 'monthly_social_security'
+  | 'monthly_unemployment'
+  | 'monthly_child_support'
+  | 'monthly_alimony'
+  | 'monthly_other_income';
+
 export interface PersonaIncome {
   marital_status: string;
   number_of_dependents: number;
-  total_monthly_income: number;
+  // Each amount the persona types, in its own box. A source left out stays blank.
+  sources: Partial<Record<IncomeSourceKey, number>>;
 }
 
 export interface PersonaAsset {
@@ -98,7 +112,7 @@ export const MARIA: WaiverPersonaData = {
   income: {
     marital_status: 'single',
     number_of_dependents: 2,
-    total_monthly_income: 3200,
+    sources: { monthly_gross_wages: 3200 },
   },
   expenses: {
     rent_or_mortgage: 1100,
@@ -127,21 +141,21 @@ export const MARIA: WaiverPersonaData = {
   ],
   debts: [
     {
-      creditor_name: 'Capital One',
+      creditor_name: 'Brightwater Card Services',
       debt_type: 'credit_card',
       amount_owed: 4200,
       monthly_payment: 85,
       is_in_collections: true,
     },
     {
-      creditor_name: 'Northwestern Memorial Hospital',
+      creditor_name: 'Larkfield General Hospital',
       debt_type: 'medical',
       amount_owed: 12800,
       monthly_payment: 0,
       is_in_collections: true,
     },
     {
-      creditor_name: 'Discover Financial',
+      creditor_name: 'Ironbridge Card Company',
       debt_type: 'personal_loan',
       amount_owed: 3500,
       monthly_payment: 120,
@@ -173,7 +187,7 @@ export const JAMES: PersonaData = {
   income: {
     marital_status: 'single',
     number_of_dependents: 0,
-    total_monthly_income: 5833,
+    sources: { monthly_gross_wages: 5833 },
   },
   expenses: {
     rent_or_mortgage: 1650,
@@ -207,14 +221,14 @@ export const JAMES: PersonaData = {
   ],
   debts: [
     {
-      creditor_name: 'Citibank',
+      creditor_name: 'Meridale National Bank',
       debt_type: 'credit_card',
       amount_owed: 9800,
       monthly_payment: 200,
       is_in_collections: false,
     },
     {
-      creditor_name: 'Toyota Financial Services',
+      creditor_name: 'Crestway Auto Credit',
       debt_type: 'auto_loan',
       amount_owed: 8500,
       monthly_payment: 350,
@@ -246,9 +260,9 @@ export const PRIYA: PersonaData = {
   income: {
     marital_status: 'married_joint',
     number_of_dependents: 2,
-    // $12,000/month = $144,000/year — above the $134,366 HH4 median, so the
+    // $12,000/month = $144,000/year — above the $137,902 HH4 median, so the
     // annualized § 707(b) comparison fails as the persona intends.
-    total_monthly_income: 12000,
+    sources: { monthly_gross_wages: 12000 },
   },
   expenses: {
     rent_or_mortgage: 2800,
@@ -276,14 +290,14 @@ export const PRIYA: PersonaData = {
   ],
   debts: [
     {
-      creditor_name: 'American Express',
+      creditor_name: 'Silverpine Card Services',
       debt_type: 'credit_card',
       amount_owed: 22000,
       monthly_payment: 500,
       is_in_collections: false,
     },
     {
-      creditor_name: 'Rush University Medical Center',
+      creditor_name: 'Westhaven University Medical Center',
       debt_type: 'medical',
       amount_owed: 35000,
       monthly_payment: 0,
@@ -314,7 +328,7 @@ export const DESHAWN: WaiverPersonaData = {
   income: {
     marital_status: 'married_joint',
     number_of_dependents: 0,
-    total_monthly_income: 3500,
+    sources: { monthly_gross_wages: 3500 },
   },
   expenses: {
     rent_or_mortgage: 1200,
@@ -349,7 +363,7 @@ export const DESHAWN: WaiverPersonaData = {
   ],
   debts: [
     {
-      creditor_name: 'Wells Fargo Home Mortgage',
+      creditor_name: 'Harrowgate Home Loans',
       debt_type: 'mortgage',
       amount_owed: 160000,
       monthly_payment: 1200,
@@ -357,21 +371,21 @@ export const DESHAWN: WaiverPersonaData = {
       collateral_description: 'Single-family home, 7823 S Sangamon St',
     },
     {
-      creditor_name: 'Midland Credit Management',
+      creditor_name: 'Tallgrass Credit Management',
       debt_type: 'credit_card',
       amount_owed: 6700,
       monthly_payment: 0,
       is_in_collections: true,
     },
     {
-      creditor_name: 'ComEd',
+      creditor_name: 'Lakeline Electric',
       debt_type: 'utility',
       amount_owed: 800,
       monthly_payment: 0,
       is_in_collections: true,
     },
     {
-      creditor_name: 'Advocate Health',
+      creditor_name: 'Southmoor Health',
       debt_type: 'medical',
       amount_owed: 4200,
       monthly_payment: 0,
@@ -379,7 +393,7 @@ export const DESHAWN: WaiverPersonaData = {
     },
   ],
   fee_waiver: { take_home_pay: 3050, noncash_assistance: null },
-  // $3,500/month = $42,000/year — below 60% of the HH2 median ($54,915.60),
+  // $3,500/month = $42,000/year — below 60% of the HH2 median ($56,360.40),
   // so DeShawn qualifies for the fee waiver as well as Chapter 7.
   expected: { passes_means_test: true, fee_waiver_eligible: true },
 };
@@ -405,7 +419,7 @@ export const SARAH: WaiverPersonaData = {
   income: {
     marital_status: 'single',
     number_of_dependents: 0,
-    total_monthly_income: 2000,
+    sources: { monthly_gross_wages: 2000 },
   },
   expenses: {
     rent_or_mortgage: 850,
@@ -425,14 +439,14 @@ export const SARAH: WaiverPersonaData = {
   assets: [],
   debts: [
     {
-      creditor_name: 'Navient',
+      creditor_name: 'Keelson Loan Servicing',
       debt_type: 'student_loan',
       amount_owed: 28000,
       monthly_payment: 0,
       is_in_collections: false,
     },
     {
-      creditor_name: 'University of Illinois Hospital',
+      creditor_name: 'Lakemont University Hospital',
       debt_type: 'medical',
       amount_owed: 3400,
       monthly_payment: 0,
@@ -440,5 +454,167 @@ export const SARAH: WaiverPersonaData = {
     },
   ],
   fee_waiver: { take_home_pay: 1750, noncash_assistance: null },
+  expected: { passes_means_test: true, fee_waiver_eligible: true },
+};
+
+// Data from docs/testing/persona-briefs/andres-kettleby.md, with an SSN of the journey's own:
+// the seed's demo_andres has 900-66-0006.
+export const ANDRES: PersonaData = {
+  username: `e2e_andres_${RUN_ID}`,
+  password: 'TestPass-2026!',
+  debtor: {
+    first_name: 'Andrés',
+    last_name: 'Kettleby',
+    middle_name: 'J',
+    ssn: '900-66-6006',
+    date_of_birth: '1988-04-12',
+    phone: '630-555-0161',
+    email: `andres.e2e+${RUN_ID}@test.dignifi.org`,
+    household_size: 2,
+    filing_type: 'individual',
+    street_address: '1418 Marquette Ave Apt 2',
+    city: 'Aurora',
+    state: 'IL',
+    zip_code: '60505',
+  },
+  income: {
+    marital_status: 'single',
+    number_of_dependents: 1,
+    // What he keeps from driving ($4,200 from the apps less $830 of driving costs) is other
+    // income until the Income step asks for business income (3a1.Q1). Every other box is $0.
+    sources: {
+      monthly_gross_wages: 0,
+      monthly_overtime: 0,
+      monthly_tips: 0,
+      monthly_rental_income: 0,
+      monthly_pension: 0,
+      monthly_social_security: 0,
+      monthly_unemployment: 0,
+      monthly_child_support: 0,
+      monthly_alimony: 0,
+      monthly_other_income: 3370,
+    },
+  },
+  expenses: {
+    rent_or_mortgage: 1150,
+    utilities: 210,
+    home_maintenance: 0,
+    // The Corolla lease, his only car
+    vehicle_payment: 389,
+    vehicle_insurance: 165,
+    vehicle_maintenance: 60,
+    food_and_groceries: 520,
+    clothing: 60,
+    medical_expenses: 45,
+    childcare: 180,
+    child_support_paid: 0,
+    insurance_not_deducted: 0,
+    other_expenses: 0,
+  },
+  assets: [
+    // His half of a car titled to him and his brother
+    {
+      asset_type: 'vehicle',
+      description: '2017 Honda Fit',
+      current_value: 4300,
+      amount_owed: 7800,
+    },
+    {
+      asset_type: 'personal_property',
+      description: 'Household goods, electronics and clothing',
+      current_value: 1900,
+      amount_owed: 0,
+    },
+    {
+      asset_type: 'bank_account',
+      description: 'Harborline Bank checking',
+      current_value: 412,
+      amount_owed: 0,
+      financial_institution: 'Harborline Bank',
+    },
+    {
+      asset_type: 'bank_account',
+      description: 'Prairie Line Credit Union share savings',
+      current_value: 85,
+      amount_owed: 0,
+      financial_institution: 'Prairie Line Credit Union',
+    },
+  ],
+  debts: [
+    {
+      creditor_name: 'Copperline Auto Finance',
+      debt_type: 'auto_loan',
+      amount_owed: 7800,
+      // His brother drives the car and pays the loan he co-signed
+      monthly_payment: 0,
+      is_in_collections: false,
+      collateral_description: '2017 Honda Fit, co-owned with my brother',
+    },
+    {
+      creditor_name: 'Bright Signal Wireless',
+      debt_type: 'utility',
+      amount_owed: 640,
+      monthly_payment: 0,
+      is_in_collections: false,
+    },
+    {
+      creditor_name: 'Calumet Ridge Medical Center',
+      debt_type: 'medical',
+      amount_owed: 3850,
+      monthly_payment: 0,
+      is_in_collections: true,
+    },
+    {
+      creditor_name: 'Driveline Tire & Auto',
+      debt_type: 'credit_card',
+      amount_owed: 1180,
+      monthly_payment: 0,
+      is_in_collections: false,
+    },
+    {
+      creditor_name: 'Illinois State Toll Highway Authority',
+      debt_type: 'other',
+      amount_owed: 380,
+      monthly_payment: 0,
+      is_in_collections: false,
+    },
+    {
+      creditor_name: 'Tallowfield Lending Co.',
+      debt_type: 'personal_loan',
+      amount_owed: 4100,
+      monthly_payment: 0,
+      is_in_collections: false,
+    },
+    {
+      creditor_name: 'Northgate Card Services',
+      debt_type: 'credit_card',
+      amount_owed: 6420,
+      monthly_payment: 0,
+      is_in_collections: false,
+    },
+    {
+      creditor_name: 'Prairie Line Credit Union',
+      debt_type: 'credit_card',
+      amount_owed: 1760,
+      monthly_payment: 0,
+      is_in_collections: false,
+    },
+    {
+      creditor_name: 'Hollowmere Residential LLC',
+      debt_type: 'other',
+      amount_owed: 1850,
+      monthly_payment: 0,
+      is_in_collections: false,
+    },
+    {
+      creditor_name: 'Sablewood Bank',
+      debt_type: 'credit_card',
+      amount_owed: 2980,
+      monthly_payment: 0,
+      is_in_collections: false,
+    },
+  ],
+  // Today's flag (income under 60% of the median) qualifies him for a fee waiver, but he pays
+  // in installments and files no application (3a1.Q2), so he has no fee_waiver answers.
   expected: { passes_means_test: true, fee_waiver_eligible: true },
 };

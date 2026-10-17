@@ -14,11 +14,12 @@ import { FormField, FormSelect, FormTextarea, Button } from '../../common';
 import { UPLDisclaimer } from '../../compliance';
 import { UPL_EXEMPTION_DISCLAIMER } from '../../../constants/upl';
 import { parseAmount } from '../../../utils/parseAmount';
-import type { DebtInfo } from '../../../types/api';
+import type { DebtInfo, WizardRow } from '../../../types/api';
 
 interface DebtsStepProps {
-  initialData?: Partial<DebtInfo>[];
-  onDataChange: (data: Partial<DebtInfo>[]) => void;
+  /** The wizard's rows. The step keeps no copy, so an id a save writes into a row stays there. */
+  rows: WizardRow<DebtInfo>[];
+  onRowsChange: (rows: WizardRow<DebtInfo>[]) => void;
   onValidationChange: (isValid: boolean) => void;
 }
 
@@ -51,10 +52,15 @@ const DEBT_CATEGORY_OPTIONS = Object.entries(DEBT_CATEGORY_META).map(([value, { 
   label,
 }));
 
-export function DebtsStep({ initialData, onDataChange, onValidationChange }: DebtsStepProps) {
-  const [debts, setDebts] = useState<Partial<DebtInfo>[]>(
-    initialData && initialData.length > 0 ? initialData : [createEmptyDebt()]
-  );
+// The last new row's key: unique while the page is open, and the prefix keeps it apart from a
+// loaded row's key, which is its id
+let nextKey = 0;
+
+export function DebtsStep({ rows, onRowsChange, onValidationChange }: DebtsStepProps) {
+  // With no rows, the step shows one blank row. It joins the wizard's rows at the filer's first
+  // edit, and a blank row is never saved.
+  const [blankRow] = useState(createEmptyDebt);
+  const debts = useMemo(() => (rows.length > 0 ? rows : [blankRow]), [rows, blankRow]);
 
   const { errors, isValid } = useMemo(() => {
     const newErrors: Record<number, Record<string, string>> = {};
@@ -103,16 +109,16 @@ export function DebtsStep({ initialData, onDataChange, onValidationChange }: Deb
     return { errors: newErrors, isValid: valid };
   }, [debts]);
 
-  // Update parent when debts change
+  // Tell the parent whether the step can be saved
   /* eslint-disable react-hooks/exhaustive-deps */
   useEffect(() => {
-    onDataChange(debts);
     onValidationChange(isValid);
-  }, [debts, isValid]);
+  }, [isValid]);
   /* eslint-enable react-hooks/exhaustive-deps */
 
-  function createEmptyDebt(): Partial<DebtInfo> {
+  function createEmptyDebt(): WizardRow<DebtInfo> {
     return {
+      _key: `new-${++nextKey}`,
       debt_type: undefined,
       creditor_name: '',
       account_number: '',
@@ -124,15 +130,15 @@ export function DebtsStep({ initialData, onDataChange, onValidationChange }: Deb
   }
 
   const handleAddDebt = () => {
-    setDebts([...debts, createEmptyDebt()]);
+    onRowsChange([...debts, createEmptyDebt()]);
   };
 
   const handleRemoveDebt = (index: number) => {
     if (debts.length === 1) {
       // Keep at least one debt form
-      setDebts([createEmptyDebt()]);
+      onRowsChange([createEmptyDebt()]);
     } else {
-      setDebts(debts.filter((_, i) => i !== index));
+      onRowsChange(debts.filter((_, i) => i !== index));
     }
   };
 
@@ -161,7 +167,7 @@ export function DebtsStep({ initialData, onDataChange, onValidationChange }: Deb
       };
     }
 
-    setDebts(updatedDebts);
+    onRowsChange(updatedDebts);
   };
 
   return (

@@ -6,6 +6,7 @@
  */
 
 import { useEffect } from 'react';
+import { Button } from '../../common';
 import { UPLDisclaimer } from '../../compliance';
 import { UPL_REVIEW_DISCLAIMER } from '../../../constants/upl';
 import type {
@@ -27,6 +28,10 @@ interface ReviewStepProps {
   contractsData: ExecutoryContract[];
   codebtorsData: Codebtor[];
   onValidationChange: (isValid: boolean) => void;
+  /** Each thing Complete found missing, with the wizard step that fixes it when there is one */
+  completionReasons?: { message: string; step?: { number: number; label: string } }[];
+  /** Moves to a wizard step, the way Go Back does */
+  onGoToStep?: (stepNumber: number) => void;
 }
 
 export function ReviewStep({
@@ -38,6 +43,8 @@ export function ReviewStep({
   contractsData,
   codebtorsData,
   onValidationChange,
+  completionReasons = [],
+  onGoToStep,
 }: ReviewStepProps) {
   // Always valid to proceed from review (unless we add specific checks)
   useEffect(() => {
@@ -58,6 +65,28 @@ export function ReviewStep({
 
   return (
     <div className="review-step">
+      {/* Below the wizard's alert, which keeps Complete's general message (step 3a1 spec §4.4).
+          A polite live region from the start, so a screen reader reads out the reasons a
+          refused Complete adds to it. */}
+      <div className="review-reasons" aria-live="polite">
+        {completionReasons.length > 0 && (
+          <section className="review-section">
+            <ul className="review-list">
+              {completionReasons.map(({ message, step }, index) => (
+                <li key={index} className="review-list-item">
+                  <span>{message}</span>
+                  {step && (
+                    <Button variant="outline" size="sm" onClick={() => onGoToStep?.(step.number)}>
+                      Go to {step.label}
+                    </Button>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+      </div>
+
       <div className="info-box">
         <h3 className="info-title">Review Your Information</h3>
         <p className="info-message">

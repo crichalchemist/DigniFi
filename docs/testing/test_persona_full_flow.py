@@ -1,7 +1,7 @@
 """
 Full persona test: login → forms dashboard → generate all → verify → survey.
 
-Tests all 5 seeded personas through form generation and survey collection.
+Tests all 6 seeded personas through form generation and survey collection.
 Uses pre-seeded accounts (seed_demo_data) which already have completed sessions.
 
 Strategy: Login via API, set tokens + session ID in localStorage,
@@ -23,6 +23,7 @@ PERSONAS = [
     {"username": "demo_priya", "name": "Priya Sharma"},
     {"username": "demo_deshawn", "name": "DeShawn Mitchell"},
     {"username": "demo_sarah", "name": "Sarah Chen"},
+    {"username": "demo_andres", "name": "Andrés Kettleby"},
 ]
 PASSWORD = "DigniFi-Demo-2026!"
 

@@ -68,6 +68,7 @@ def median_income(district):
         family_size_6=Decimal("143108.00"),
         family_size_7=Decimal("152708.00"),
         family_size_8=Decimal("162308.00"),
+        family_size_additional=Decimal("11100.00"),
     )
 
 
@@ -383,7 +384,7 @@ class TestIntakeSessionCompletion:
             session=session,
             first_name="John",
             last_name="Doe",
-            ssn="123456789",
+            ssn="900123456",  # IRS-reserved range: synthetic
             date_of_birth="1980-01-01",
             street_address="123 Main St",
             city="Chicago",
@@ -452,8 +453,12 @@ class TestIntakeSessionCompletion:
         response = api_client.post(url)
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
-        assert "errors" in response.data
-        assert "Debtor information is required" in response.data["errors"]
+        assert response.data["errors"] == [
+            {
+                "step": "debtor_info",
+                "message": "Enter your name and address on the Your Information step.",
+            }
+        ]
 
     def test_complete_session_missing_income_info(self, api_client, session):
         """Test completing session without income info returns 400."""
@@ -462,7 +467,7 @@ class TestIntakeSessionCompletion:
             session=session,
             first_name="John",
             last_name="Doe",
-            ssn="123456789",
+            ssn="900123456",  # IRS-reserved range: synthetic
             date_of_birth="1980-01-01",
             street_address="123 Main St",
             city="Chicago",
@@ -489,8 +494,9 @@ class TestIntakeSessionCompletion:
         response = api_client.post(url)
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
-        assert "errors" in response.data
-        assert "Income information is required" in response.data["errors"]
+        assert response.data["errors"] == [
+            {"step": "income_info", "message": "Enter your income by source on the Income step."}
+        ]
 
     def test_complete_session_missing_expense_info(self, api_client, session):
         """Test completing session without expense info returns 400."""
@@ -499,7 +505,7 @@ class TestIntakeSessionCompletion:
             session=session,
             first_name="John",
             last_name="Doe",
-            ssn="123456789",
+            ssn="900123456",  # IRS-reserved range: synthetic
             date_of_birth="1980-01-01",
             street_address="123 Main St",
             city="Chicago",
@@ -518,8 +524,12 @@ class TestIntakeSessionCompletion:
         response = api_client.post(url)
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
-        assert "errors" in response.data
-        assert "Expense information is required" in response.data["errors"]
+        assert response.data["errors"] == [
+            {
+                "step": "expense_info",
+                "message": "Go through the Expenses step, even if you have no expenses to enter.",
+            }
+        ]
 
 
 @pytest.mark.django_db
@@ -696,7 +706,12 @@ class TestMeansTestCalculation:
         assert Decimal(result["cmi"]) == Decimal("80000.00")
 
     def test_calculate_means_test_without_income_info(self, api_client, district):
-        """Test means test calculation without income info returns 400."""
+        """Without income saved yet, the means test is a 400 with only its general message.
+
+        The wizard's preview asks this at the Income step before anything is saved. The
+        calculator's own words ("IntakeSession must have income_info...") are for operations,
+        so the body carries no `error` for the preview to show.
+        """
         # Create session without income info
         url = reverse("intake-session-list")
         response = api_client.post(url, {"district": district.id, "current_step": 1}, format="json")
@@ -707,7 +722,9 @@ class TestMeansTestCalculation:
         response = api_client.post(calc_url)
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
-        assert "error" in response.data
+        assert response.data == {
+            "message": "Unable to calculate means test. Please ensure all income information is provided."
+        }
 
     def test_fee_waiver_qualification(self, api_client, complete_session, median_income):
         """Test fee waiver qualification for income < 150% poverty line."""

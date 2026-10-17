@@ -19,7 +19,9 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.districts.dated_tables import NoTableInForce
 from apps.eligibility.cmi import IncomeNotSplit
+from apps.eligibility.models import MeansTest
 from apps.eligibility.services import MeansTestCalculator
 from apps.intake.models import IntakeSession
 
@@ -50,10 +52,13 @@ class FormIsFiled(Exception):
 class IntakeNotFinished(Exception):
     """The filer hasn't completed the intake, so an empty list can't yet mean "none"."""
 
+    page = "/intake"  # where the filer finishes it
+
 
 # Failures a filer can act on: 422 in plain words (spec §5.7). Anything else is a 500.
-# PreconditionMissing and IncomeNotSplit carry their own plain reasons (registry.py,
-# eligibility/cmi.py). Every other class gets a fixed sentence, because their messages
+# PreconditionMissing, IncomeNotSplit and NoTableInForce carry their own plain reasons
+# (registry.py, eligibility/cmi.py, districts/dated_tables.py, which logs its own
+# refusal). Every other class gets a fixed sentence, because their messages
 # name form keys, repeat groups and PDF widgets. None names the form: the dashboard shows
 # its label beside the error.
 _FAILURE_SENTENCES = {
@@ -76,9 +81,10 @@ def _failure(form_type: str | None, exc: Exception) -> tuple[dict, int]:
     """The error body and status for a form that could not be filled.
 
     form_type is None when the whole call is refused before any form is filled (Generate
-    All, the packet list): the body then names no form.
+    All, the packet list): the body then names no form. A refusal the filer fixes on a
+    wizard step or a page also carries that `step` or `page` (forms step 3a1 spec §4.3).
     """
-    if isinstance(exc, PreconditionMissing | IncomeNotSplit):
+    if isinstance(exc, PreconditionMissing | IncomeNotSplit | NoTableInForce):
         error = str(exc)
     else:
         error = _FAILURE_SENTENCES.get(type(exc))
@@ -88,9 +94,13 @@ def _failure(form_type: str | None, exc: Exception) -> tuple[dict, int]:
         logger.error("Filling %s failed: %s", form_type or "the packet", type(exc).__name__)
         error = "This form couldn't be prepared. Please try again later."
         code = status.HTTP_500_INTERNAL_SERVER_ERROR
-    if form_type is None:
-        return {"error": error}, code
-    return {"form_type": form_type, "error": error}, code
+    body = {"error": error} if form_type is None else {"form_type": form_type, "error": error}
+    if code == status.HTTP_422_UNPROCESSABLE_ENTITY:
+        # Only a refusal: an unexpected exception's own step or page attribute means nothing here.
+        for key in ("step", "page"):
+            if getattr(exc, key, None):
+                body[key] = getattr(exc, key)
+    return body, code
 
 
 def _session_or_error(
@@ -144,13 +154,23 @@ def _recalculate_means_test(session: IntakeSession) -> None:
 
     It runs before the packet is decided, so a result worked out from income the filer has
     since changed never decides which forms they get (DIG-160). Raises IncomeNotSplit when
-    the income isn't entered by source, and ValueError when the district's median income
-    data is missing, which operations must fix.
+    the income isn't entered by source, and NoTableInForce when no median income table is in
+    force on the fill date, which operations must fix.
     """
     if getattr(session, "income_info", None) is None:
         # No income at all is income not entered by source, as derivations._cmi rules.
         raise IncomeNotSplit()
     MeansTestCalculator(session).calculate()
+
+
+def _tables_used(session: IntakeSession) -> list[dict]:
+    """The dated tables the session's means test used (forms step 3a1 spec §3.6).
+
+    Empty when there is no means test, or a stored one that predates the record.
+    """
+    means_test = MeansTest.objects.filter(session=session).first()
+    table = means_test.get_calculation_details().get("median_table") if means_test else None
+    return [table] if table else []
 
 
 def _prepare(session: IntakeSession) -> None:
@@ -209,7 +229,7 @@ class GeneratedFormViewSet(viewsets.ReadOnlyModelViewSet):
     ViewSet for bankruptcy form generation and management.
 
     Endpoints:
-      GET  /api/forms/packet/?session=<id>  The form types this filer's packet holds
+      GET  /api/forms/packet/?session=<id>  The packet's form types and its median table
       POST /api/forms/generate/              Generate a single form
       POST /api/forms/generate_all/          Generate every form in the packet
       POST /api/forms/{id}/regenerate/       Regenerate an existing form
@@ -241,7 +261,8 @@ class GeneratedFormViewSet(viewsets.ReadOnlyModelViewSet):
 
         For a completed intake the means test is worked out again first, and a refusal
         covers the whole list. An unfinished intake gets the packet its stored data gives,
-        and is never refused (step 2 spec §5.3, §5.6).
+        and is never refused (step 2 spec §5.3, §5.6). `tables` holds the median table the means
+        test recorded, and is `[]` when there is no means test or it recorded none.
         """
         session, err = _session_or_error(request, request.query_params.get("session"), "session")
         if err:
@@ -252,7 +273,9 @@ class GeneratedFormViewSet(viewsets.ReadOnlyModelViewSet):
             except Exception as exc:
                 body, code = _failure(None, exc)
                 return Response(body, status=code)
-        return Response({"session": session.id, "form_types": packet(session)})
+        return Response(
+            {"session": session.id, "form_types": packet(session), "tables": _tables_used(session)}
+        )
 
     # ------------------------------------------------------------------
     # Generate single form

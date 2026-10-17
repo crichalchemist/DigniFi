@@ -115,12 +115,12 @@ export class WizardPage {
   // ── Step 2: Income Info ─────────────────────────────────────────
 
   async fillIncomeInfo(income: PersonaIncome) {
-    // The income step itemizes sources and requires a total > 0; enter the
-    // persona's total as gross wages. Marital status / dependents are no
-    // longer collected on this step.
-    await this.page
-      .locator('input[name="monthly_gross_wages"]')
-      .fill(String(income.total_monthly_income));
+    // The income step has a box for each source, named as the backend stores it, so each
+    // amount goes into its own box and a source the persona leaves out stays blank.
+    // Marital status / dependents are no longer collected on this step.
+    for (const [source, amount] of Object.entries(income.sources)) {
+      await this.page.locator(`input[name="${source}"]`).fill(String(amount));
+    }
   }
 
   // ── Step 3: Expenses ────────────────────────────────────────────

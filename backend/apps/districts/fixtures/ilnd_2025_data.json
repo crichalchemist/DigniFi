@@ -19,6 +19,8 @@
     "fields": {
       "district": 1,
       "effective_date": "2025-11-01",
+      "valid_through": "2026-03-31",
+      "source_url": "https://www.justice.gov/ust/eo/bapcpa/20251101/bci_data/median_income_table.htm",
       "family_size_1": "71304.00",
       "family_size_2": "91526.00",
       "family_size_3": "110712.00",
@@ -29,6 +31,26 @@
       "family_size_8": "178766.00",
       "family_size_additional": "11100.00",
       "created_at": "2025-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "districts.medianincome",
+    "pk": 2,
+    "fields": {
+      "district": 1,
+      "effective_date": "2026-04-01",
+      "valid_through": "2026-10-31",
+      "source_url": "https://www.justice.gov/ust/eo/bapcpa/20260401/bci_data/median_income_table.htm",
+      "family_size_1": "73180.00",
+      "family_size_2": "93934.00",
+      "family_size_3": "113625.00",
+      "family_size_4": "137902.00",
+      "family_size_5": "149002.00",
+      "family_size_6": "160102.00",
+      "family_size_7": "171202.00",
+      "family_size_8": "182302.00",
+      "family_size_additional": "11100.00",
+      "created_at": "2026-10-16T00:00:00Z"
     }
   },
   {

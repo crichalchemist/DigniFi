@@ -213,6 +213,13 @@ export interface DebtInfo {
   source_document_name?: string | null;
 }
 
+/**
+ * An asset or debt row as the wizard holds it. `_key` is the browser's own name for the row and
+ * never reaches the server: a loaded row's id, or `new-<n>` from a counter for a new row. A save
+ * writes the id the server gave each row into the row with that key (DIG-273).
+ */
+export type WizardRow<T> = Partial<T> & { _key: string };
+
 /** A contract or lease (Schedule G), as the contracts list endpoint sends and saves it */
 export interface ExecutoryContract {
   id?: number;
@@ -460,10 +467,27 @@ export interface GenerateAllFormsResponse {
   total_errors: number;
 }
 
+/** A dated reference table the forms were filled from (forms step 3a1 spec §3.6) */
+export interface DatedTableUsed {
+  name: string;
+  /** ISO date, YYYY-MM-DD */
+  effective_date: string;
+  /** ISO date; null when no newer table is expected */
+  valid_through: string | null;
+  source_url: string;
+}
+
 /** The forms that apply to this filer, in filing order */
 export interface FormPacketResponse {
   session: number;
   form_types: FormType[];
+  tables: DatedTableUsed[];
+}
+
+/** What `api.forms.packet` returns */
+export interface Packet {
+  form_types: FormType[];
+  tables: DatedTableUsed[];
 }
 
 export interface SessionSummaryResponse {
@@ -556,10 +580,22 @@ export interface SOFAReport {
   creditor_payments: SOFACreditorPayment[];
 }
 
+/** One thing Complete found missing, with the wizard step (a `WIZARD_STEPS` key) that fixes it */
+export interface CompletionError {
+  step: string;
+  message: string;
+}
+
 export interface APIError {
   error: string;
   message: string;
   details?: Record<string, unknown>;
+  /** Complete's refusal: each thing missing, in wizard order */
+  errors?: CompletionError[];
+  /** The wizard step key that fixes a refusal, when one does */
+  step?: string;
+  /** The page (a route) that fixes a refusal, when one does */
+  page?: string;
 }
 
 // ============================================================================

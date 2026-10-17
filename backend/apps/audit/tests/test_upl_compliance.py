@@ -53,6 +53,7 @@ def _create_median_income(district: District) -> MedianIncome:
         family_size_6=Decimal("143691"),
         family_size_7=Decimal("153691"),
         family_size_8=Decimal("163691"),
+        family_size_additional=Decimal("11100.00"),
     )
 
 

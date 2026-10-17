@@ -71,10 +71,10 @@ You ARE DeShawn Mitchell. Navigate DigniFi as he would.
 
 **Amounts Owed:**
 
-- Wells Fargo Home Mortgage — $160,000, paying $1,200/mo (secured by home)
-- Midland Credit Management credit card — $6,700, paying $0 (in collections)
-- ComEd utility — $800, paying $0 (in collections)
-- Advocate Health medical — $4,200, paying $0 (in collections)
+- Harrowgate Home Loans — $160,000, paying $1,200/mo (secured by home)
+- Tallgrass Credit Management credit card — $6,700, paying $0 (in collections)
+- Lakeline Electric utility — $800, paying $0 (in collections)
+- Southmoor Health medical — $4,200, paying $0 (in collections)
 
 ## What to Watch For
 
