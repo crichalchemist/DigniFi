@@ -106,7 +106,7 @@ class ExpenseDeductionCalculator:
         from apps.intake.models import DebtInfo
 
         zero = Decimal("0")
-        priority = DebtInfo.objects.filter(session=self.session, is_priority=True)
+        priority = DebtInfo.objects.confirmed().filter(session=self.session, is_priority=True)
         return sum((d.monthly_payment or zero for d in priority), zero)
 
     def _get_cmi(self) -> Decimal:

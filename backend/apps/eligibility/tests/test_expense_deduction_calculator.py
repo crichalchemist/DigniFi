@@ -61,6 +61,25 @@ class TestExpenseDeductionCalculator:
         result = calc.calculate()
         assert result.priority_debts_monthly > Decimal("0")
 
+    def test_a_scanned_priority_debt_the_filer_has_not_confirmed_is_not_deducted(
+        self, session_with_expenses
+    ):
+        # A draft read from a document is only what a model read until the filer saves the
+        # Amounts Owed step (DIG-163), so it never lowers the means test's disposable income.
+        DebtInfo.objects.create(
+            session=session_with_expenses,
+            creditor_name="Illinois Department of Revenue",
+            amount_owed=Decimal("3000"),
+            is_priority=True,
+            debt_type="other",
+            monthly_payment=Decimal("400"),
+            is_draft=True,
+        )
+
+        result = ExpenseDeductionCalculator(session_with_expenses).calculate()
+
+        assert result.priority_debts_monthly == Decimal("200")
+
     def test_empty_session(self, db):
         user = User.objects.create_user(username="emptycalc", password="pass")
         district = District.objects.create(

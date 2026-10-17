@@ -216,6 +216,16 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
                 }
             )
 
+        # A scanned debt stays off the forms until the filer saves the Amounts Owed step
+        # (DIG-163). An upload after Complete reopens the intake, and Review is one press away.
+        if session.debts.filter(is_draft=True).exists():
+            errors.append(
+                {
+                    "step": "debts",
+                    "message": "Check the debts read from your documents on the Amounts Owed step.",
+                }
+            )
+
         if errors:
             return Response(
                 {
