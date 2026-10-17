@@ -19,10 +19,10 @@ cd frontend && npm run e2e
 
 ## Execution Protocol
 
-### Step 1: Launch 5 Subagents in Parallel
+### Step 1: Launch 6 Subagents in Parallel
 
-The orchestrator (main Claude session) launches 5 subagents using the
-Agent tool with `subagent_type: "general-purpose"`. All 5 launch in a
+The orchestrator (main Claude session) launches 6 subagents using the
+Agent tool with `subagent_type: "general-purpose"`. All 6 launch in a
 single message for maximum parallelism.
 
 Each subagent receives:
@@ -91,7 +91,7 @@ OUTPUT FORMAT:
 
 ### Step 3: Collect Reports
 
-After all 5 subagents complete, the orchestrator collects the 5 JSON
+After all 6 subagents complete, the orchestrator collects the 6 JSON
 reports. If a subagent fails or times out, record it as:
 
 ```json
@@ -108,14 +108,14 @@ The orchestrator computes:
 
 | Metric                  | Calculation                         |
 | ----------------------- | ----------------------------------- |
-| **Completion rate**     | count(completed=true) / 5           |
+| **Completion rate**     | count(completed=true) / 6           |
 | **Mean comprehension**  | avg(survey_responses.comprehension) |
 | **Mean dignity**        | avg(survey_responses.dignity)       |
 | **Mean confidence**     | avg(survey_responses.confidence)    |
-| **Friction density**    | total friction_points / 5           |
+| **Friction density**    | total friction_points / 6           |
 | **High-severity count** | count(severity="high")              |
 | **Trust score**         | avg(trust_score)                    |
-| **NPS proxy**           | count(would_recommend=true) / 5     |
+| **NPS proxy**           | count(would_recommend=true) / 6     |
 
 ### Step 5: Rank Friction Points
 
@@ -166,7 +166,7 @@ From the PRD experiment plan:
 | ----------------------------------- | ----------------------------------------------- |
 | 2+ personas cannot complete         | **PAUSE** — fix blockers before continuing      |
 | Mean dignity < 3.0                  | **REDESIGN** — fundamental tone/language issues |
-| All 5 complete, mean dignity >= 4.0 | **CELEBRATE** — ready for real user testing     |
+| All 6 complete, mean dignity >= 4.0 | **CELEBRATE** — ready for real user testing     |
 | 1 persona fails, dignity >= 3.5     | **ITERATE** — fix specific issue, rerun         |
 
 ## Quick-Start Command
@@ -174,15 +174,15 @@ From the PRD experiment plan:
 For the orchestrator to copy-paste:
 
 ```
-Launch 5 subagents in parallel using Agent tool (subagent_type:
+Launch 6 subagents in parallel using Agent tool (subagent_type:
 "general-purpose"). For each persona (maria-torres, james-washington,
-priya-sharma, deshawn-mitchell, sarah-chen):
+priya-sharma, deshawn-mitchell, sarah-chen, andres-kettleby):
 
 1. Read docs/testing/persona-briefs/<name>.md
 2. Invoke /webapp-testing skill
 3. Navigate http://localhost:5173 as the persona
 4. Return JSON report per the schema above
 
-After all 5 complete, aggregate results into
+After all 6 complete, aggregate results into
 docs/reports/YYYY-MM-DD-usability-test.md
 ```

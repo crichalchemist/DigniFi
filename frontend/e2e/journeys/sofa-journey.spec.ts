@@ -103,7 +103,7 @@ test.describe('SOFA — Form 107 Financial History', () => {
     // Toggle Creditor Payments on and fill a row
     await sofa.toggleCreditorPayments(true);
     await sofa.addCreditorPaymentRow({
-      creditorName: 'Capital One',
+      creditorName: 'Brightwater Card Services',
       totalPaid: '1500',
       datesOfPayments: 'Monthly Jan-Mar 2026',
     });

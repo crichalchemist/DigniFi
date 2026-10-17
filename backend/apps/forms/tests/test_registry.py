@@ -163,15 +163,24 @@ def test_122a1_supplement_waits_for_its_questions(session):
 
 
 def test_petition_needs_the_filers_name_and_address(session):
-    with pytest.raises(PreconditionMissing, match="name and address"):
+    with pytest.raises(PreconditionMissing) as refused:
         build_field_values("form_101", session)
+    # The sentence and the step that fixes it, as Complete shows them (3a1 spec §4.2).
+    assert (str(refused.value), refused.value.step) == (
+        "Enter your name and address on the Your Information step.",
+        "debtor_info",
+    )
 
 
 @pytest.mark.parametrize("ssn", ["", "1234", "900-55-000"])
 def test_ssn_statement_needs_a_nine_digit_ssn(session, ssn):
     _debtor(session, ssn=ssn)
-    with pytest.raises(PreconditionMissing, match="Social Security number"):
+    with pytest.raises(PreconditionMissing) as refused:
         build_field_values("form_121", session)
+    assert (str(refused.value), refused.value.step) == (
+        "Enter your 9-digit Social Security number on the Your Information step.",
+        "debtor_info",
+    )
 
 
 @pytest.mark.parametrize("ssn", ["900-55-0005", "900550005"])
@@ -188,8 +197,12 @@ def test_ssn_statement_without_a_debtor_fails_instead_of_ticking_no_ssn(session)
 
 def test_means_test_form_needs_the_eligibility_check(session):
     _debtor(session)
-    with pytest.raises(PreconditionMissing, match="eligibility check"):
+    with pytest.raises(PreconditionMissing) as refused:
         build_field_values("form_122a1", session)
+    assert (str(refused.value), refused.value.step) == (
+        "Press Complete on the Review & Results step to run the eligibility check.",
+        "review",
+    )
 
 
 def test_field_values_name_index_widgets(session):

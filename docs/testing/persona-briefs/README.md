@@ -2,7 +2,7 @@
 
 ## Overview
 
-Five AI subagents, each embodying a synthetic persona, navigate the live
+Six AI subagents, each embodying a synthetic persona, navigate the live
 DigniFi application through Playwright and report usability findings from
 a human perspective. This produces quantitative PRD metrics and qualitative
 UX insights before real participant recruitment.
@@ -13,13 +13,14 @@ through the ILND means test calculator.
 
 ## Persona Briefs
 
-| Brief                 | Archetype                  | Means Test         | Key Test                           |
-| --------------------- | -------------------------- | ------------------ | ---------------------------------- |
-| `maria-torres.md`     | Below-median single parent | Passes, fee waiver | Full happy path                    |
-| `james-washington.md` | Borderline single filer    | Passes (barely)    | Near-threshold messaging           |
-| `priya-sharma.md`     | Above-median family        | Fails              | Dignity-preserving ineligibility   |
-| `deshawn-mitchell.md` | Asset-heavy homeowner      | Passes, fee waiver | Multi-asset entry, exemptions      |
-| `sarah-chen.md`       | Simplest case, no assets   | Passes, fee waiver | Fastest path, empty-state handling |
+| Brief                 | Archetype                  | Means Test                    | Key Test                                  |
+| --------------------- | -------------------------- | ----------------------------- | ----------------------------------------- |
+| `maria-torres.md`     | Below-median single parent | Passes, fee waiver            | Full happy path                           |
+| `james-washington.md` | Borderline single filer    | Passes (barely)               | Near-threshold messaging                  |
+| `priya-sharma.md`     | Above-median family        | Fails                         | Dignity-preserving ineligibility          |
+| `deshawn-mitchell.md` | Asset-heavy homeowner      | Passes, fee waiver            | Multi-asset entry, exemptions             |
+| `sarah-chen.md`       | Simplest case, no assets   | Passes, fee waiver            | Fastest path, empty-state handling        |
+| `andres-kettleby.md`  | Self-employed gig driver   | Passes, no waiver application | Income that isn't wages, ten amounts owed |
 
 ## How to Run
 
@@ -43,14 +44,14 @@ cd frontend && npx playwright install chromium
 cd frontend && npm run e2e
 ```
 
-This runs 7 journey specs programmatically: one for each persona's data path,
+This runs 8 journey specs programmatically: one for each persona's data path,
 plus the SOFA and scanned-bill journeys (the scanned-bill journey skips locally
 unless OPENAI_BASE_URL points at its fake OpenAI server; see the spec's header).
 No AI involved — pure deterministic E2E testing.
 
 ### AI Persona Simulation (subagent-driven)
 
-The orchestrator (main Claude session) launches 5 subagents in parallel
+The orchestrator (main Claude session) launches 6 subagents in parallel
 using the Agent tool:
 
 1. Each subagent receives its persona brief
@@ -94,7 +95,7 @@ Each subagent returns a JSON report:
 
 | Metric                      | Target                       | Measurement                      |
 | --------------------------- | ---------------------------- | -------------------------------- |
-| Completion rate             | 100% (5/5 personas complete) | `completed` field                |
+| Completion rate             | 100% (6/6 personas complete) | `completed` field                |
 | Mean comprehension          | >= 3.5 / 5                   | `survey_responses.comprehension` |
 | Mean dignity                | >= 4.0 / 5                   | `survey_responses.dignity`       |
 | Mean confidence             | >= 3.5 / 5                   | `survey_responses.confidence`    |
@@ -106,4 +107,4 @@ From the PRD experiment plan:
 
 - **Pause if:** 2+ personas cannot complete the wizard
 - **Redesign if:** Mean dignity score < 3.0
-- **Celebrate if:** All 5 complete with mean dignity >= 4.0
+- **Celebrate if:** All 6 complete with mean dignity >= 4.0

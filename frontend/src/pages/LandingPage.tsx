@@ -140,8 +140,8 @@ export function LandingPage() {
         </div>
       </main>
 
-      {/* UPL Disclaimer Footer */}
-      <footer className="landing-footer">
+      {/* UPL disclaimer: a div, since SiteFooter is the page's one contentinfo landmark */}
+      <div className="landing-footer">
         <div className="landing-container">
           <p className="landing-disclaimer">
             DigniFi provides legal <strong>information</strong>, not legal advice. This platform
@@ -149,7 +149,7 @@ export function LandingPage() {
             consult a licensed attorney in your jurisdiction.
           </p>
         </div>
-      </footer>
+      </div>
     </div>
   );
 }

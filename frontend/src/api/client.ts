@@ -18,6 +18,7 @@ import type {
   GenerateFormResponse,
   GenerateAllFormsResponse,
   FormPacketResponse,
+  Packet,
   SessionSummaryResponse,
   AssetInfo,
   DebtInfo,
@@ -25,6 +26,7 @@ import type {
   Codebtor,
   GeneratedForm,
   APIError,
+  CompletionError,
   LoginRequest,
   LoginResponse,
   DemoLoginResponse,
@@ -86,19 +88,39 @@ export class APIClientError extends Error {
   details?: Record<string, unknown>;
   /** The response's own `error` sentence, kept even when its `message` is the one shown. */
   serverError?: string;
+  /** Complete's refusal: each thing missing, with the wizard step that fixes it */
+  errors?: CompletionError[];
+  /** The wizard step key that fixes a refusal, when the server names one */
+  step?: string;
+  /** The page (a route) that fixes a refusal, when the server names one */
+  page?: string;
 
   constructor(
     message: string,
     statusCode: number,
     details?: Record<string, unknown>,
-    serverError?: string
+    serverError?: string,
+    pointers: { errors?: CompletionError[]; step?: string; page?: string } = {}
   ) {
     super(message);
     this.name = 'APIClientError';
     this.statusCode = statusCode;
     this.details = details;
     this.serverError = serverError;
+    this.errors = pointers.errors;
+    this.step = pointers.step;
+    this.page = pointers.page;
   }
+}
+
+/** A Complete refusal's entry, as long as it names both its step and its sentence */
+function isCompletionError(entry: unknown): entry is CompletionError {
+  return (
+    typeof entry === 'object' &&
+    entry !== null &&
+    typeof (entry as CompletionError).step === 'string' &&
+    typeof (entry as CompletionError).message === 'string'
+  );
 }
 
 /**
@@ -113,11 +135,18 @@ async function handleAPIError(response: Response): Promise<never> {
     throw new APIClientError('An unexpected error occurred. Please try again.', response.status);
   }
 
+  // What a refusal says fixes it, kept only in the shapes the server sends (step 3a1 spec §4)
+  const errors: unknown = errorData.errors;
   throw new APIClientError(
     errorData.message || errorData.error || 'Request failed',
     response.status,
     errorData.details,
-    errorData.error
+    errorData.error,
+    {
+      errors: Array.isArray(errors) ? errors.filter(isCompletionError) : undefined,
+      step: typeof errorData.step === 'string' ? errorData.step : undefined,
+      page: typeof errorData.page === 'string' ? errorData.page : undefined,
+    }
   );
 }
 
@@ -561,9 +590,9 @@ export const formsAPI = {
    * The form types that apply to this filer, in filing order
    * GET /api/forms/packet/?session={sessionId}
    */
-  packet: async (sessionId: number): Promise<FormType[]> => {
+  packet: async (sessionId: number): Promise<Packet> => {
     const response = await apiFetch<FormPacketResponse>(`/forms/packet/?session=${sessionId}`);
-    return response.form_types;
+    return { form_types: response.form_types, tables: response.tables ?? [] };
   },
 
   /**

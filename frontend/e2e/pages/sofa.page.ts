@@ -23,9 +23,12 @@ export class SOFAPage {
 
   /**
    * Wait for the SOFA page to be fully loaded.
+   * @param timeout ms to wait for the heading, when the page loads from a full reload
    */
-  async waitForLoad() {
-    await expect(this.page.locator('h1')).toContainText('Statement of Financial Affairs');
+  async waitForLoad(timeout?: number) {
+    await expect(this.page.locator('h1')).toContainText('Statement of Financial Affairs', {
+      timeout,
+    });
   }
 
   /**

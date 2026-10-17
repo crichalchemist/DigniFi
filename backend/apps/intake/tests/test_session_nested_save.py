@@ -268,3 +268,121 @@ def test_a_nested_row_carrying_another_users_row_id_never_changes_that_row(filer
     own = DebtInfo.objects.get(session=session)
     assert own.creditor_name == "Owner Clinic"
     assert own.pk != their_debt.pk
+
+
+def _new_debt(name, amount):
+    return {"creditor_name": name, "debt_type": "credit_card", "amount_owed": amount}
+
+
+def test_a_save_hands_back_new_debts_in_the_order_they_were_sent_with_their_ids(filer):
+    # The wizard pairs each row it sent with the response row at the same index, so a
+    # new row learns its id and keeps it on every later save (DIG-273).
+    client, session = filer
+    kept = DebtInfo.objects.create(
+        session=session, creditor_name="Kept", debt_type="medical", amount_owed=Decimal("40.00")
+    )
+    sent = [
+        _new_debt("First new", "10.00"),
+        {"id": kept.pk, **_new_debt("Kept", "40.00")},
+        _new_debt("Second new", "900.00"),
+        _new_debt("Third new", "5.00"),
+        _new_debt("Fourth new", "300.00"),
+    ]
+
+    response = client.patch(_session_url(session), {"debts": sent}, format="json")
+
+    assert response.status_code == 200
+    assert [row["creditor_name"] for row in response.data["debts"]] == [
+        row["creditor_name"] for row in sent
+    ]
+    assert response.data["debts"][1]["id"] == kept.pk
+    stored = {debt.creditor_name: debt.pk for debt in DebtInfo.objects.filter(session=session)}
+    assert [row["id"] for row in response.data["debts"]] == [
+        stored[row["creditor_name"]] for row in sent
+    ]
+    assert all(row["is_draft"] is False for row in response.data["debts"])
+
+
+def test_a_save_hands_back_assets_in_the_order_they_were_sent(filer):
+    client, session = filer
+    sent = [
+        {"asset_type": "vehicle", "description": name, "current_value": value}
+        for name, value in [("A", "10.00"), ("B", "7000.00"), ("C", "300.00"), ("D", "55.00")]
+    ]
+
+    response = client.patch(_session_url(session), {"assets": sent}, format="json")
+
+    assert [row["description"] for row in response.data["assets"]] == ["A", "B", "C", "D"]
+    stored = {a.description: a.pk for a in AssetInfo.objects.filter(session=session)}
+    assert [row["id"] for row in response.data["assets"]] == [stored[n] for n in "ABCD"]
+
+
+def test_a_row_sent_with_another_filers_id_comes_back_at_its_place_with_a_new_id(
+    filer, other_session
+):
+    client, session = filer
+    theirs = DebtInfo.objects.create(
+        session=other_session,
+        creditor_name="Their Bank",
+        debt_type="credit_card",
+        amount_owed=Decimal("900.00"),
+    )
+    sent = [
+        _new_debt("Mine first", "1.00"),
+        {"id": theirs.pk, **_new_debt("Mine second", "75.00")},
+        _new_debt("Mine third", "2.00"),
+    ]
+
+    response = client.patch(_session_url(session), {"debts": sent}, format="json")
+
+    names = [row["creditor_name"] for row in response.data["debts"]]
+    assert names == ["Mine first", "Mine second", "Mine third"]
+    assert theirs.pk not in [row["id"] for row in response.data["debts"]]
+    assert len({row["id"] for row in response.data["debts"]}) == 3
+
+
+def test_a_later_read_keeps_model_order_after_a_save_in_sent_order(filer):
+    client, session = filer
+    sent = [_new_debt(f"Debt {i}", f"{i * 37}.00") for i in range(1, 6)]
+    client.patch(_session_url(session), {"debts": sent}, format="json")
+
+    read = client.get(_session_url(session))
+
+    assert [row["id"] for row in read.data["debts"]] == [
+        debt.pk for debt in DebtInfo.objects.filter(session=session)
+    ]
+
+
+def test_a_save_carrying_only_assets_leaves_the_debts_in_model_order(filer):
+    client, session = filer
+    for i in range(1, 6):
+        DebtInfo.objects.create(
+            session=session,
+            creditor_name=f"Debt {i}",
+            debt_type="credit_card",
+            amount_owed=Decimal(f"{i * 37}.00"),
+        )
+    sent = [
+        {"asset_type": "vehicle", "description": name, "current_value": value}
+        for name, value in [("A", "10.00"), ("B", "7000.00"), ("C", "300.00")]
+    ]
+
+    response = client.patch(_session_url(session), {"assets": sent}, format="json")
+
+    assert [row["description"] for row in response.data["assets"]] == ["A", "B", "C"]
+    assert [row["id"] for row in response.data["debts"]] == [
+        debt.pk for debt in DebtInfo.objects.filter(session=session)
+    ]
+
+
+def test_a_stored_debt_left_out_of_the_sent_list_is_deleted_and_not_returned(filer):
+    client, session = filer
+    left_out = DebtInfo.objects.create(
+        session=session, creditor_name="Left out", debt_type="medical", amount_owed=Decimal("40.00")
+    )
+    sent = [_new_debt("Only new", "10.00")]
+
+    response = client.patch(_session_url(session), {"debts": sent}, format="json")
+
+    assert [row["creditor_name"] for row in response.data["debts"]] == ["Only new"]
+    assert not DebtInfo.objects.filter(pk=left_out.pk).exists()

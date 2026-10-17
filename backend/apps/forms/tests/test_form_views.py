@@ -16,6 +16,7 @@ Covers:
 """
 
 import json
+import logging
 from datetime import date
 from decimal import Decimal
 from unittest.mock import patch
@@ -350,6 +351,24 @@ class TestGenerateEndpoint:
         assert type(exc).__name__ in caplog.text
         assert "Debtor1.SSNum" not in caplog.text
 
+    def test_unexpected_failure_points_the_filer_to_no_step_or_page(
+        self, api_client, session_with_debtor
+    ):
+        # Only a refusal names where the filer fixes it; nothing they enter fixes a fault.
+        fault = RuntimeError("page 3 could not be written")
+        fault.step, fault.page = "debtor_info", 3
+        with patch.object(PDFFormFiller, "fill", side_effect=fault):
+            resp = api_client.post(
+                self.URL,
+                {"session_id": session_with_debtor.id, "form_type": "form_101"},
+                format="json",
+            )
+        assert resp.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
+        assert resp.data == {
+            "form_type": "form_101",
+            "error": "This form couldn't be prepared. Please try again later.",
+        }
+
     def test_filed_form_keeps_what_was_filed(self, api_client, session_with_debtor, user):
         form = _filed_form(session_with_debtor, user, "form_101", {"Debtor1.First name": "Jane"})
         _rename_filer(session_with_debtor, "Janet")
@@ -387,11 +406,13 @@ class TestGenerateAllEndpoint:
             format="json",
         )
         assert resp.status_code == status.HTTP_200_OK
-        # No fee waiver: no 103B. Income below the median: no 122A-2. Form 121 needs the SSN.
+        # No fee waiver: no 103B. Income below the median: no 122A-2. Form 121 needs the SSN,
+        # which the filer enters on the step the error names.
         assert resp.data["errors"] == [
             {
                 "form_type": "form_121",
-                "error": "Your Social Security number is missing or isn't 9 digits.",
+                "error": "Enter your 9-digit Social Security number on the Your Information step.",
+                "step": "debtor_info",
             }
         ]
         assert resp.data["total_generated"] == 13
@@ -612,6 +633,43 @@ class TestPacketEndpoint:
         assert "form_103b" not in resp.data["form_types"]
         assert len(resp.data["form_types"]) == 14
 
+    def test_a_completed_intake_names_the_median_table_its_forms_use(
+        self, api_client, session_with_debtor
+    ):
+        resp = api_client.get(self.URL, {"session": session_with_debtor.id})
+        assert resp.status_code == status.HTTP_200_OK
+        assert resp.data["tables"] == [
+            {
+                "name": "Census median income",
+                "effective_date": "2026-04-01",
+                "valid_through": "2026-10-31",
+                "source_url": (
+                    "https://www.justice.gov/ust/eo/bapcpa/20260401/bci_data/"
+                    "median_income_table.htm"
+                ),
+            }
+        ]
+
+    def test_a_filer_with_no_means_test_is_shown_no_table(self, api_client, session_with_debtor):
+        session = session_with_debtor
+        session.status = "in_progress"
+        session.save()
+        MeansTest.objects.filter(session=session).delete()
+        resp = api_client.get(self.URL, {"session": session.id})
+        assert resp.status_code == status.HTTP_200_OK
+        assert resp.data["tables"] == []
+
+    def test_a_means_test_stored_before_the_record_names_no_table(
+        self, api_client, session_with_debtor
+    ):
+        session = session_with_debtor
+        session.status = "in_progress"
+        session.save()
+        _stale_means_test(session, "3000.00")
+        resp = api_client.get(self.URL, {"session": session.id})
+        assert resp.status_code == status.HTTP_200_OK
+        assert resp.data["tables"] == []
+
     def test_missing_session(self, api_client):
         resp = api_client.get(self.URL)
         assert resp.status_code == status.HTTP_400_BAD_REQUEST
@@ -652,16 +710,16 @@ class TestCompletionCheck:
         regenerate = api_client.post(f"/api/forms/{unfiled.id}/regenerate/")
         download = api_client.get(f"/api/forms/{unfiled.id}/download/")
 
-        # One refusal for the whole packet, not one per form.
+        # One refusal for the whole packet, not one per form, with the page that fixes it.
         assert generate_all.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
-        assert generate_all.data == {"error": FINISH}
+        assert generate_all.data == {"error": FINISH, "page": "/intake"}
         for resp, form_type in [
             (generate, "form_106dec"),
             (regenerate, "form_101"),
             (download, "form_101"),
         ]:
             assert resp.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
-            assert resp.data == {"form_type": form_type, "error": FINISH}
+            assert resp.data == {"form_type": form_type, "error": FINISH, "page": "/intake"}
         # Generate All refused before it dropped the form that left the packet.
         assert set(
             GeneratedForm.objects.filter(session=session).values_list("form_type", flat=True)
@@ -695,7 +753,11 @@ class TestCompletionCheck:
 # ── The means test is worked out again before the packet is decided (spec §5.6) ──
 
 SPLIT_BY_SOURCE = "Enter your income by source on the Income step."
-NOT_PREPARED = "This form couldn't be prepared. Please try again later."
+NO_MEDIAN_TABLE = (
+    "DigniFi doesn't have the income figures for today's date yet, so it can't prepare your "
+    "forms. Please try again later."
+)
+NO_MEDIAN_TABLE_LOGGED = "No Census median income table in force on 2026-10-16 for district ilnd"
 
 
 def _set_wages(session, wages):
@@ -800,13 +862,18 @@ class TestMeansTestWorkedOutAgain:
         download = api_client.get(f"/api/forms/{unfiled.id}/download/")
         filed_download = api_client.get(f"/api/forms/{filed.id}/download/")
 
-        # One refusal covers the whole call, the packet list included.
+        # One refusal covers the whole call, the packet list included, with the step that
+        # fixes it.
         for resp in (generate_all, listed):
             assert resp.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
-            assert resp.data == {"error": SPLIT_BY_SOURCE}
+            assert resp.data == {"error": SPLIT_BY_SOURCE, "step": "income_info"}
         for resp in (generate, regenerate, download):
             assert resp.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
-            assert resp.data == {"form_type": "form_106dec", "error": SPLIT_BY_SOURCE}
+            assert resp.data == {
+                "form_type": "form_106dec",
+                "error": SPLIT_BY_SOURCE,
+                "step": "income_info",
+            }
         # Generate All refused before it dropped the form that left the packet.
         assert set(
             GeneratedForm.objects.filter(session=session).values_list("form_type", flat=True)
@@ -834,11 +901,15 @@ class TestMeansTestWorkedOutAgain:
 
         for resp in (generate_all, listed):
             assert resp.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
-            assert resp.data == {"error": SPLIT_BY_SOURCE}
+            assert resp.data == {"error": SPLIT_BY_SOURCE, "step": "income_info"}
         assert generate.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
-        assert generate.data == {"form_type": "form_106dec", "error": SPLIT_BY_SOURCE}
+        assert generate.data == {
+            "form_type": "form_106dec",
+            "error": SPLIT_BY_SOURCE,
+            "step": "income_info",
+        }
 
-    def test_missing_median_income_is_a_500_logged_by_type_only(
+    def test_no_median_table_in_force_is_refused_in_plain_words_and_logged_without_filer_data(
         self, api_client, session_with_debtor, user, caplog
     ):
         session = session_with_debtor
@@ -848,29 +919,34 @@ class TestMeansTestWorkedOutAgain:
             session=session, form_type="form_106dec", status="generated", generated_by=user
         )
 
+        def logged_errors():
+            return [r.getMessage() for r in caplog.records if r.levelno >= logging.ERROR]
+
         generate_all = api_client.post(
             "/api/forms/generate_all/", {"session_id": session.id}, format="json"
         )
+        # Operations fix this, so the refusal is logged once: the table, the date and the
+        # district, and nothing about the filer (logs reach Sentry, DIG-105).
+        assert logged_errors() == [NO_MEDIAN_TABLE_LOGGED]
         listed = api_client.get("/api/forms/packet/", {"session": session.id})
         generate = api_client.post(
             "/api/forms/generate/",
             {"session_id": session.id, "form_type": "form_106dec"},
             format="json",
         )
+        regenerate = api_client.post(f"/api/forms/{unfiled.id}/regenerate/")
         download = api_client.get(f"/api/forms/{unfiled.id}/download/")
 
         for resp in (generate_all, listed):
-            assert resp.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
-            assert resp.data == {"error": NOT_PREPARED}
-        for resp in (generate, download):
-            assert resp.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
-            assert resp.data == {"form_type": "form_106dec", "error": NOT_PREPARED}
+            assert resp.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+            assert resp.data == {"error": NO_MEDIAN_TABLE}
+        for resp in (generate, regenerate, download):
+            assert resp.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+            assert resp.data == {"form_type": "form_106dec", "error": NO_MEDIAN_TABLE}
         assert set(
             GeneratedForm.objects.filter(session=session).values_list("form_type", flat=True)
         ) == {"form_103b", "form_106dec"}
-        # Operations fix this; the log names the exception's type and nothing it says.
-        assert "ValueError" in caplog.text
-        assert "median income data" not in caplog.text
+        assert logged_errors() == [NO_MEDIAN_TABLE_LOGGED] * 5
 
 
 # ── A filed form is kept after it leaves the packet (DIG-155) ─────────

@@ -1,7 +1,7 @@
 /**
  * Priya Sharma — Ineligible (Above Median)
  *
- * $144k annual income with 4-person household — above the $134,366
+ * $144k annual income with 4-person household — above the $137,902
  * HH4 median, so the means test fails.
  * Tests the dignity-preserving ineligibility path.
  */

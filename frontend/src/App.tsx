@@ -10,7 +10,7 @@ import { BrowserRouter, Routes, Route, Outlet } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { IntakeProvider } from './context/IntakeContext';
 import { ProtectedRoute } from './components/auth/ProtectedRoute';
-import { SkipNavigation, AppHeader } from './components/common';
+import { SkipNavigation, AppHeader, SiteFooter } from './components/common';
 import { LandingPage } from './pages/LandingPage';
 import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
@@ -83,6 +83,7 @@ function App() {
                 </Route>
               </Route>
             </Routes>
+            <SiteFooter />
           </div>
         </ErrorBoundary>
       </AuthProvider>

@@ -24,7 +24,7 @@
 | ------------------------- | ---------------- | --------------- |
 | Backend (pytest)          | 2,096 (+1 xfail) | Passing         |
 | Frontend (vitest)         | 358              | Passing         |
-| E2E journeys (Playwright) | 7/7 journeys     | All steps green |
+| E2E journeys (Playwright) | 8/8 journeys     | All steps green |
 
 ## Quick Start
 
@@ -215,7 +215,7 @@ docker compose exec backend pytest -q
 # Frontend (358 tests)
 cd frontend && npx vitest run
 
-# Full E2E (7 Playwright journeys; backend running and seeded)
+# Full E2E (8 Playwright journeys; backend running and seeded)
 cd frontend && npm run e2e
 
 # Quick smoke test (Maria only)

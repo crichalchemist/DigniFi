@@ -170,7 +170,7 @@ export function WizardLayout({
       </main>
 
       {/* Footer with navigation buttons */}
-      <footer className="wizard-footer">
+      <div className="wizard-footer">
         <div className="wizard-container">
           <div className="wizard-navigation">
             {/* Previous button (hidden on first step) */}
@@ -266,7 +266,7 @@ export function WizardLayout({
             )}
           </p>
         </div>
-      </footer>
+      </div>
 
       {/* Loading overlay (for network requests) */}
       {isLoading && (

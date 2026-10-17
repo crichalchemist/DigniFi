@@ -15,6 +15,8 @@ from django.core.management import call_command
 from rest_framework.test import APIClient
 
 from apps.districts.models import District
+from apps.forms.schema import load_schema
+from apps.forms.services.fill_resolver import resolve
 from apps.intake.models import (
     AssetInfo,
     DebtInfo,
@@ -164,6 +166,139 @@ def test_filer_who_leaves_every_expense_blank_can_complete(filer, district):
     assert expenses.calculate_total_monthly_expenses() == 0
     assert client.post(_session_url(session, "complete/")).status_code == 200
     assert _status(session) == "completed"
+
+
+# ── Complete names the step that fixes each gap (forms step 3a1 spec §4.2) ──
+
+NOT_FINISHED = "Please complete all required sections before finalizing"
+NAME_AND_ADDRESS = "Enter your name and address on the Your Information step."
+NINE_DIGIT_SSN = "Enter your 9-digit Social Security number on the Your Information step."
+INCOME_BY_SOURCE = "Enter your income by source on the Income step."
+EXPENSES_STEP = "Go through the Expenses step, even if you have no expenses to enter."
+SCANNED_DEBTS = "Check the debts read from your documents on the Amounts Owed step."
+
+
+def _no_debtor(session):
+    session.debtor_info.delete()
+
+
+def _eight_digit_ssn(session):
+    session.debtor_info.ssn = "90012345"
+    session.debtor_info.save()
+
+
+def _income_boxes_all_empty(session):
+    session.income_info.monthly_gross_wages = None
+    session.income_info.save()
+
+
+def _expenses_step_never_saved(session):
+    session.expense_info.delete()
+
+
+def _scanned_debt(session):
+    # What an upload creates: a draft the filer hasn't checked on the Amounts Owed step yet.
+    return DebtInfo.objects.create(
+        session=session,
+        creditor_name="Larkfield General Hospital",
+        debt_type="medical",
+        amount_owed=Decimal("2000.00"),
+        data_source="uploaded_document",
+        is_draft=True,
+    )
+
+
+@pytest.mark.parametrize(
+    "gap,step,message",
+    [
+        (_no_debtor, "debtor_info", NAME_AND_ADDRESS),
+        (_eight_digit_ssn, "debtor_info", NINE_DIGIT_SSN),
+        (_income_boxes_all_empty, "income_info", INCOME_BY_SOURCE),
+        (_expenses_step_never_saved, "expense_info", EXPENSES_STEP),
+        (_scanned_debt, "debts", SCANNED_DEBTS),
+    ],
+    ids=[
+        "no_name_and_address",
+        "eight_digit_ssn",
+        "no_income_by_source",
+        "no_expenses_step",
+        "unconfirmed_scanned_debt",
+    ],
+)
+def test_complete_names_the_step_that_fixes_each_gap(filer, completed, gap, step, message):
+    # The filer reads why on Review, with a way to the step that fixes it (DIG-181).
+    client, _ = filer
+    completed.status = "in_progress"
+    completed.save()
+    gap(completed)
+
+    response = client.post(_session_url(completed, "complete/"))
+
+    assert response.status_code == 400
+    assert response.data == {
+        "message": NOT_FINISHED,
+        "errors": [{"step": step, "message": message}],
+    }
+    assert _status(completed) == "in_progress"
+
+
+def test_complete_lists_every_gap_in_wizard_order(filer, district):
+    client, user = filer
+    session = IntakeSession.objects.create(user=user, district=district, current_step=8)
+    _scanned_debt(session)
+
+    response = client.post(_session_url(session, "complete/"))
+
+    assert response.status_code == 400
+    assert response.data["errors"] == [
+        {"step": "debtor_info", "message": NAME_AND_ADDRESS},
+        {"step": "income_info", "message": INCOME_BY_SOURCE},
+        {"step": "expense_info", "message": EXPENSES_STEP},
+        {"step": "debts", "message": SCANNED_DEBTS},
+    ]
+    assert _status(session) == "started"
+
+
+def test_saving_the_amounts_owed_step_confirms_a_scanned_debt_so_complete_passes(filer, completed):
+    # An upload after Complete reopens the intake (DIG-163). Until the filer saves the Amounts
+    # Owed step, the scanned debt is on no form, so Complete sends them there first.
+    client, _ = filer
+    completed.status = "in_progress"
+    completed.save()
+    typed = DebtInfo.objects.create(
+        session=completed,
+        creditor_name="Brightwater Card Services",
+        debt_type="credit_card",
+        amount_owed=Decimal("1000.00"),
+    )
+    scanned = _scanned_debt(completed)
+
+    refused = client.post(_session_url(completed, "complete/"))
+    assert refused.status_code == 400
+    assert refused.data["errors"] == [{"step": "debts", "message": SCANNED_DEBTS}]
+
+    # Continue on Amounts Owed sends every row the step shows, each with its id.
+    saved = client.patch(
+        _session_url(completed),
+        {
+            "debts": [
+                {
+                    "id": row.pk,
+                    "creditor_name": row.creditor_name,
+                    "debt_type": row.debt_type,
+                    "amount_owed": str(row.amount_owed),
+                }
+                for row in (typed, scanned)
+            ]
+        },
+        format="json",
+    )
+    assert saved.status_code == 200
+
+    scanned.refresh_from_db()  # the same row, now confirmed
+    assert scanned.is_draft is False
+    assert client.post(_session_url(completed, "complete/")).status_code == 200
+    assert resolve(load_schema("schedule_e_f"), completed)["Total_6j"] == "3000.00"
 
 
 # ── An edit after Complete reopens the intake ─────────────────────────

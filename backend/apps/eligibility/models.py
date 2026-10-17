@@ -7,7 +7,12 @@ from django.db import models
 from django.utils import timezone
 from encrypted_model_fields.fields import EncryptedTextField
 
+from apps.districts.dated_tables import fill_date, in_force
+
 from .cmi import current_monthly_income, is_above_median
+
+# The means test's dated table, by the name its refusals log and calculation_details records.
+MEDIAN_TABLE = "Census median income"
 
 
 class MeansTest(models.Model):
@@ -100,6 +105,7 @@ class MeansTest(models.Model):
 
         Raises:
             ValueError: If required intake data is missing
+            NoTableInForce: If no median income table is in force on the fill date
         """
         # Get income info from session
         try:
@@ -121,15 +127,16 @@ class MeansTest(models.Model):
             if income_info.marital_status in ["married_joint", "married_separate"]:
                 family_size += 1  # Add spouse
 
-        # Get median income threshold from district
-        try:
-            median_income_record = self.district.median_incomes.latest("effective_date")
-        except Exception as err:
-            raise ValueError(
-                f"No median income data found for district {self.district.code}"
-            ) from err
+        # The district's median income table in force on the day the forms are filled.
+        # None in force raises NoTableInForce; no older table stands in.
+        median_table = in_force(
+            self.district.median_incomes.all(),
+            fill_date(),
+            MEDIAN_TABLE,
+            self.district.code,
+        )
 
-        median_income_threshold = median_income_record.get_median_income(family_size)
+        median_income_threshold = median_table.get_median_income(family_size)
 
         # Determine if passes means test. CMI is monthly; the Census median
         # is annual, so annualize per 11 U.S.C. § 707(b)(7).
@@ -186,6 +193,16 @@ class MeansTest(models.Model):
                 "cmi": float(cmi),
                 "annualized_cmi": float(annualized_cmi),
                 "median_income_threshold": float(median_income_threshold),
+                "median_table": {
+                    "name": MEDIAN_TABLE,
+                    "effective_date": median_table.effective_date.isoformat(),
+                    "valid_through": (
+                        median_table.valid_through.isoformat()
+                        if median_table.valid_through
+                        else None
+                    ),
+                    "source_url": median_table.source_url,
+                },
                 "family_size": family_size,
                 "income_by_source": income_by_source,
                 "marital_status": income_info.marital_status,

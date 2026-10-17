@@ -17,6 +17,8 @@ class IncomeNotSplit(ValueError):
     A total saved before income was stored by source can't be split by anyone but the filer.
     """
 
+    step = "income_info"  # the wizard step where the filer enters it
+
     def __init__(self) -> None:
         super().__init__("Enter your income by source on the Income step.")
 

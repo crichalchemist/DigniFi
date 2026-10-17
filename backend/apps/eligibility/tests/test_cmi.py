@@ -9,12 +9,15 @@ so CMI refuses it in plain words instead of guessing (forms step 2 spec §5.5).
 
 from datetime import date
 from decimal import Decimal
+from unittest.mock import patch
 
 import pytest
 from rest_framework.test import APIClient
 
+from apps.districts.dated_tables import NoTableInForce
 from apps.districts.models import District, MedianIncome
 from apps.eligibility.cmi import IncomeNotSplit, current_monthly_income
+from apps.eligibility.models import MeansTest
 from apps.eligibility.services.expense_deduction_calculator import ExpenseDeductionCalculator
 from apps.eligibility.services.means_test_calculator import MeansTestCalculator
 from apps.forms.services.derivations import DERIVATIONS
@@ -22,6 +25,10 @@ from apps.intake.models import IncomeInfo, IntakeSession
 from apps.users.models import User
 
 SPLIT_BY_SOURCE = "Enter your income by source on the Income step."
+NO_MEDIAN_TABLE = (
+    "DigniFi doesn't have the income figures for today's date yet, so it can't prepare your "
+    "forms. Please try again later."
+)
 
 
 @pytest.fixture
@@ -116,13 +123,24 @@ def test_the_means_test_passes_the_refusal_on_without_its_failure_prefix(filer):
     assert str(refused.value) == SPLIT_BY_SOURCE
 
 
-def test_other_means_test_failures_keep_their_prefix(filer):
+def test_the_means_test_passes_a_missing_median_table_on_without_its_failure_prefix(filer):
     _, session = filer
     IncomeInfo.objects.create(session=session, monthly_gross_wages=Decimal("3000.00"))
     MedianIncome.objects.all().delete()
 
-    with pytest.raises(ValueError, match="^Means test calculation failed: No median income"):
+    with pytest.raises(NoTableInForce) as refused:
         MeansTestCalculator(session).calculate()
+
+    assert str(refused.value) == NO_MEDIAN_TABLE
+
+
+def test_other_means_test_failures_keep_their_prefix(filer):
+    _, session = filer
+    IncomeInfo.objects.create(session=session, monthly_gross_wages=Decimal("3000.00"))
+
+    with patch.object(MeansTest, "calculate", side_effect=ValueError("x")):
+        with pytest.raises(ValueError, match="^Means test calculation failed: x$"):
+            MeansTestCalculator(session).calculate()
 
 
 def test_the_above_median_calculator_refuses_income_not_split_instead_of_using_zero(filer):
@@ -143,3 +161,16 @@ def test_means_test_endpoint_asks_for_income_by_source_as_a_400(filer):
 
     assert response.status_code == 400
     assert response.data["error"] == SPLIT_BY_SOURCE
+
+
+def test_means_test_endpoint_refuses_without_a_median_table_in_force_as_a_400(filer):
+    user, session = filer
+    IncomeInfo.objects.create(session=session, monthly_gross_wages=Decimal("3000.00"))
+    MedianIncome.objects.all().delete()
+    client = APIClient()
+    client.force_authenticate(user=user)
+
+    response = client.post(f"/api/intake/sessions/{session.pk}/calculate_means_test/")
+
+    assert response.status_code == 400
+    assert response.data["error"] == NO_MEDIAN_TABLE

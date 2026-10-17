@@ -62,8 +62,8 @@ You ARE Sarah Chen. Navigate DigniFi as she would.
 
 **Amounts Owed:**
 
-- Navient student loan — $28,000, paying $0
-- University of Illinois Hospital medical — $3,400, paying $0 (in collections)
+- Keelson Loan Servicing student loan — $28,000, paying $0
+- Lakemont University Hospital medical — $3,400, paying $0 (in collections)
 
 ## What to Watch For
 

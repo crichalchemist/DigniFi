@@ -826,8 +826,9 @@ class TestDetailedBreakdown:
         assert breakdown["family_composition"]["number_of_dependents"] == 0
         assert breakdown["family_composition"]["total_family_size"] == 1
 
-        # Verify means test threshold
+        # Verify means test threshold: dated by the median table, not by the calculation
         assert breakdown["means_test_threshold"]["median_income"] == 71304.00
+        assert breakdown["means_test_threshold"]["effective_date"] == "2025-11-01"
         assert breakdown["means_test_threshold"]["district"] == "ILND"
 
         # Verify results
@@ -1079,6 +1080,7 @@ class TestAboveMedianEndToEnd:
             family_size_6=Decimal("105000"),
             family_size_7=Decimal("115000"),
             family_size_8=Decimal("125000"),
+            family_size_additional=Decimal("11100"),
         )
         session = IntakeSession.objects.create(user=user, district=district)
         DebtorInfo.objects.create(

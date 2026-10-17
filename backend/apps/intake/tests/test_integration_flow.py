@@ -42,6 +42,7 @@ class IntakeFlowIntegrationTest(APITestCase):
             family_size_6=Decimal("125000.00"),
             family_size_7=Decimal("135000.00"),
             family_size_8=Decimal("145000.00"),
+            family_size_additional=Decimal("11100.00"),
         )
 
     def test_full_intake_flow(self):

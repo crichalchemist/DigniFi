@@ -176,7 +176,7 @@ Co-Authored-By: Jane Doe <jane@example.com>
 4. **E2E Tests** (Playwright)
    - Full user journeys, persona-based scenarios
    - `python3 docs/testing/test_maria_quick.py` (quick smoke test)
-   - `cd frontend && npm run e2e` (7 journey specs; needs the backend running and seeded)
+   - `cd frontend && npm run e2e` (8 journey specs; needs the backend running and seeded)
 
 ### Running Tests Locally
 

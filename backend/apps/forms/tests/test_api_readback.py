@@ -34,8 +34,11 @@ from apps.intake.models import IncomeInfo, IntakeSession
 User = get_user_model()
 
 # The means test qualifies these personas for a fee waiver, so after Complete the wizard
-# sends them to the fee-waiver page, and the seed gives them an application.
-WAIVER_FILERS = {"maria", "deshawn", "sarah"}
+# sends them to the fee-waiver page.
+QUALIFIES = {"maria", "deshawn", "sarah", "andres"}
+# These apply for the waiver there, and the seed gives them an application. Andrés means to
+# pay in installments (3a1 spec §2, 3a1.Q2), so the two sets differ until step 3f.
+APPLIES = {"maria", "deshawn", "sarah"}
 
 # Each wizard step's session save: (the section it sends, the persona's data for it).
 WIZARD_STEPS = [
@@ -108,7 +111,7 @@ def _send_through_the_api(persona):
     # No means-test call: Generate All works it out from the stored intake (spec §5.6).
     response = client.post(f"{session_url}complete/")
     assert response.status_code == 200, response.data
-    if persona in WAIVER_FILERS:
+    if persona in APPLIES:
         response = client.post(
             "/api/intake/fee-waiver/",
             {"session": session_id, **_sent(_fee_waiver_application(data))},
@@ -127,7 +130,7 @@ def _send_through_the_api(persona):
     # Generate All worked the means test out, and it qualifies exactly the filers the wizard
     # sends to the fee-waiver page.
     qualifies = MeansTest.objects.get(session_id=session_id).qualifies_for_fee_waiver
-    assert qualifies == (persona in WAIVER_FILERS)
+    assert qualifies == (persona in QUALIFIES)
     return session_id, [form["form_type"] for form in generated.data["generated"]]
 
 
@@ -180,7 +183,7 @@ def test_forms_built_through_the_api_print_what_the_seeded_forms_print(persona):
     # "cannot pay" answers, so the stored applications are compared directly.
     built = IntakeSession.objects.get(pk=session_id)
     assert _fee_waiver_answers(built) == _fee_waiver_answers(seeded)
-    assert (_fee_waiver_answers(built) is None) == (persona not in WAIVER_FILERS)
+    assert (_fee_waiver_answers(built) is None) == (persona not in APPLIES)
     # Only Priya's income is above the median, so only her packet holds 122A-2, and it
     # prints her own figures: her monthly income on line 1 and her childcare on line 21.
     assert ("form_122a2" in stored) == (persona == "priya")

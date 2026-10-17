@@ -75,7 +75,7 @@ test.describe('DeShawn Mitchell — Assets', () => {
     await wizard.fillReview();
     await wizard.completeIntake();
 
-    // $42,000/year is below 60% of the HH2 median ($54,915.60), so DeShawn
+    // $42,000/year is below 60% of the HH2 median ($56,360.40), so DeShawn
     // is fee-waiver eligible and gets routed to the waiver application first.
     await feeWaiver.submit(
       DESHAWN.debtor.household_size,

@@ -21,7 +21,14 @@ _SSN = re.compile(r"\d{3}-\d{2}-\d{4}|\d{9}")
 
 
 class PreconditionMissing(Exception):
-    """A form can't be filled yet; the message tells the filer what is missing."""
+    """A form can't be filled yet; the message tells the filer what is missing.
+
+    step is the wizard step (a WIZARD_STEPS key) where the filer fixes it, or None.
+    """
+
+    def __init__(self, message: str, step: str | None = None) -> None:
+        super().__init__(message)
+        self.step = step
 
 
 @dataclass(frozen=True)
@@ -62,18 +69,26 @@ def _nothing(session: IntakeSession) -> None:
 
 def _needs_debtor_info(session: IntakeSession) -> None:
     if not hasattr(session, "debtor_info"):
-        raise PreconditionMissing("Your name and address haven't been entered yet.")
+        raise PreconditionMissing(
+            "Enter your name and address on the Your Information step.", step="debtor_info"
+        )
 
 
 def _needs_ssn(session: IntakeSession) -> None:
     _needs_debtor_info(session)
     if not _SSN.fullmatch((session.debtor_info.ssn or "").strip()):
-        raise PreconditionMissing("Your Social Security number is missing or isn't 9 digits.")
+        raise PreconditionMissing(
+            "Enter your 9-digit Social Security number on the Your Information step.",
+            step="debtor_info",
+        )
 
 
 def _needs_means_test(session: IntakeSession) -> None:
     if not hasattr(session, "means_test"):
-        raise PreconditionMissing("The eligibility check hasn't been run yet.")
+        raise PreconditionMissing(
+            "Press Complete on the Review & Results step to run the eligibility check.",
+            step="review",
+        )
 
 
 # form_type → PacketForm. Every key must match a GeneratedForm.FORM_TYPE_CHOICES value.

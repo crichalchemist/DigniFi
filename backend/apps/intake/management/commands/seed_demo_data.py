@@ -1,4 +1,4 @@
-"""Seed 5 synthetic personas for partner demos and E2E testing.
+"""Seed 6 synthetic personas for partner demos and E2E testing.
 
 Each persona exercises a distinct eligibility path through the ILND
 means test calculator and form generation pipeline.  SSNs use the
@@ -13,7 +13,9 @@ from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand
 from django.db import transaction
 
+from apps.districts.dated_tables import NoTableInForce, fill_date, in_force
 from apps.districts.models import District
+from apps.eligibility.models import MEDIAN_TABLE
 from apps.eligibility.services.means_test_calculator import MeansTestCalculator
 from apps.forms.registry import build_field_values, packet
 from apps.intake.models import (
@@ -103,7 +105,7 @@ def _maria_torres() -> dict:
         ],
         "debts": [
             {
-                "creditor_name": "Capital One",
+                "creditor_name": "Brightwater Card Services",
                 "debt_type": "credit_card",
                 "amount_owed": Decimal("4200.00"),
                 "monthly_payment": Decimal("85.00"),
@@ -111,7 +113,7 @@ def _maria_torres() -> dict:
                 "consumer_business_classification": "consumer",
             },
             {
-                "creditor_name": "Northwestern Memorial Hospital",
+                "creditor_name": "Larkfield General Hospital",
                 "debt_type": "medical",
                 "amount_owed": Decimal("12800.00"),
                 "monthly_payment": Decimal("0.00"),
@@ -119,7 +121,7 @@ def _maria_torres() -> dict:
                 "consumer_business_classification": "consumer",
             },
             {
-                "creditor_name": "Discover Financial",
+                "creditor_name": "Ironbridge Card Company",
                 "debt_type": "personal_loan",
                 "amount_owed": Decimal("3500.00"),
                 "monthly_payment": Decimal("120.00"),
@@ -134,23 +136,23 @@ def _maria_torres() -> dict:
             "prior_income": [
                 {
                     "year": 2025,
-                    "source": "Wages - CNA at Northwestern Hospital",
+                    "source": "Wages - CNA at Larkfield General Hospital",
                     "gross_amount": Decimal("38400.00"),
                 },
                 {
                     "year": 2024,
-                    "source": "Wages - CNA at Northwestern Hospital",
+                    "source": "Wages - CNA at Larkfield General Hospital",
                     "gross_amount": Decimal("37000.00"),
                 },
             ],
             "creditor_payments": [
                 {
-                    "creditor_name": "Capital One",
+                    "creditor_name": "Brightwater Card Services",
                     "total_paid": Decimal("1020.00"),
                     "dates_of_payments": "Monthly Jan-Mar 2026",
                 },
                 {
-                    "creditor_name": "Discover Financial",
+                    "creditor_name": "Ironbridge Card Company",
                     "total_paid": Decimal("720.00"),
                     "dates_of_payments": "Monthly Jan-Mar 2026",
                 },
@@ -166,7 +168,7 @@ def _maria_torres() -> dict:
 
 
 def _james_washington() -> dict:
-    """Borderline case — just below single-filer median ($71,304)."""
+    """Borderline case — just below single-filer median ($73,180)."""
     return {
         "username": "demo_james",
         "email": "james.washington@demo.dignifi.org",
@@ -224,7 +226,7 @@ def _james_washington() -> dict:
         ],
         "debts": [
             {
-                "creditor_name": "Citibank",
+                "creditor_name": "Meridale National Bank",
                 "debt_type": "credit_card",
                 "amount_owed": Decimal("9800.00"),
                 "monthly_payment": Decimal("200.00"),
@@ -232,7 +234,7 @@ def _james_washington() -> dict:
                 "consumer_business_classification": "consumer",
             },
             {
-                "creditor_name": "Toyota Financial Services",
+                "creditor_name": "Crestway Auto Credit",
                 "debt_type": "auto_loan",
                 "amount_owed": Decimal("8500.00"),
                 "monthly_payment": Decimal("350.00"),
@@ -270,7 +272,7 @@ def _priya_sharma() -> dict:
         "income": {
             "marital_status": "married_joint",
             "number_of_dependents": 2,
-            # $12,000/month = $144,000/year — above the $134,366 HH4 median,
+            # $12,000/month = $144,000/year — above the $137,902 HH4 median,
             # so the annualized § 707(b) comparison fails as intended.
             **_wages_only(Decimal("12000.00")),
         },
@@ -300,7 +302,7 @@ def _priya_sharma() -> dict:
         ],
         "debts": [
             {
-                "creditor_name": "American Express",
+                "creditor_name": "Silverpine Card Services",
                 "debt_type": "credit_card",
                 "amount_owed": Decimal("22000.00"),
                 "monthly_payment": Decimal("500.00"),
@@ -308,7 +310,7 @@ def _priya_sharma() -> dict:
                 "consumer_business_classification": "consumer",
             },
             {
-                "creditor_name": "Rush University Medical Center",
+                "creditor_name": "Westhaven University Medical Center",
                 "debt_type": "medical",
                 "amount_owed": Decimal("35000.00"),
                 "monthly_payment": Decimal("0.00"),
@@ -384,7 +386,7 @@ def _deshawn_mitchell() -> dict:
         ],
         "debts": [
             {
-                "creditor_name": "Wells Fargo Home Mortgage",
+                "creditor_name": "Harrowgate Home Loans",
                 "debt_type": "mortgage",
                 "amount_owed": Decimal("160000.00"),
                 "monthly_payment": Decimal("1200.00"),
@@ -394,7 +396,7 @@ def _deshawn_mitchell() -> dict:
                 "collateral_description": "Single-family home, 7823 S Sangamon St",
             },
             {
-                "creditor_name": "Midland Credit Management",
+                "creditor_name": "Tallgrass Credit Management",
                 "debt_type": "credit_card",
                 "amount_owed": Decimal("6700.00"),
                 "monthly_payment": Decimal("0.00"),
@@ -402,7 +404,7 @@ def _deshawn_mitchell() -> dict:
                 "consumer_business_classification": "consumer",
             },
             {
-                "creditor_name": "ComEd",
+                "creditor_name": "Lakeline Electric",
                 "debt_type": "utility",
                 "amount_owed": Decimal("800.00"),
                 "monthly_payment": Decimal("0.00"),
@@ -410,7 +412,7 @@ def _deshawn_mitchell() -> dict:
                 "consumer_business_classification": "consumer",
             },
             {
-                "creditor_name": "Advocate Health",
+                "creditor_name": "Southmoor Health",
                 "debt_type": "medical",
                 "amount_owed": Decimal("4200.00"),
                 "monthly_payment": Decimal("0.00"),
@@ -472,7 +474,7 @@ def _sarah_chen() -> dict:
         "assets": [],
         "debts": [
             {
-                "creditor_name": "Navient",
+                "creditor_name": "Keelson Loan Servicing",
                 "debt_type": "student_loan",
                 "amount_owed": Decimal("28000.00"),
                 "monthly_payment": Decimal("0.00"),
@@ -480,7 +482,7 @@ def _sarah_chen() -> dict:
                 "consumer_business_classification": "consumer",
             },
             {
-                "creditor_name": "University of Illinois Hospital",
+                "creditor_name": "Lakemont University Hospital",
                 "debt_type": "medical",
                 "amount_owed": Decimal("3400.00"),
                 "monthly_payment": Decimal("0.00"),
@@ -497,12 +499,177 @@ def _sarah_chen() -> dict:
     }
 
 
+def _andres_kettleby() -> dict:
+    """Gig driver, below median. Qualifies for a fee waiver but pays in installments."""
+    return {
+        "username": "demo_andres",
+        "email": "andres.kettleby@demo.dignifi.org",
+        "first_name": "Andrés",
+        "last_name": "Kettleby",
+        "debtor": {
+            "first_name": "Andrés",
+            "last_name": "Kettleby",
+            "middle_name": "J",
+            "ssn": "900-66-0006",
+            "date_of_birth": date(1988, 4, 12),
+            "phone": "630-555-0161",
+            "email": "andres.kettleby@demo.dignifi.org",
+            "street_address": "1418 Marquette Ave Apt 2",
+            "city": "Aurora",
+            "state": "IL",
+            "zip_code": "60505",
+            "household_size": 2,
+            "filing_type": "individual",
+        },
+        "income": {
+            "marital_status": "single",
+            "number_of_dependents": 1,
+            # His net driving income ($4,200 from the apps less $830 of driving costs) is
+            # other income until the Income step asks for business income (3a1.Q1).
+            **dict.fromkeys(IncomeInfo.SOURCE_FIELDS, Decimal("0.00")),
+            "monthly_other_income": Decimal("3370.00"),
+        },
+        "expenses": {
+            "rent_or_mortgage": Decimal("1150.00"),
+            "utilities": Decimal("210.00"),
+            "home_maintenance": Decimal("0.00"),
+            # The Corolla lease, his only car
+            "vehicle_payment": Decimal("389.00"),
+            "vehicle_insurance": Decimal("165.00"),
+            "vehicle_maintenance": Decimal("60.00"),
+            "food_and_groceries": Decimal("520.00"),
+            "clothing": Decimal("60.00"),
+            "medical_expenses": Decimal("45.00"),
+            "childcare": Decimal("180.00"),
+            "child_support_paid": Decimal("0.00"),
+            "insurance_not_deducted": Decimal("0.00"),
+            "other_expenses": Decimal("0.00"),
+        },
+        "assets": [
+            {
+                "asset_type": "vehicle",
+                "description": "2017 Honda Fit",
+                # His half of a car titled to him and his brother
+                "current_value": Decimal("4300.00"),
+                "amount_owed": Decimal("7800.00"),
+            },
+            {
+                "asset_type": "personal_property",
+                "description": "Household goods, electronics and clothing",
+                "current_value": Decimal("1900.00"),
+                "amount_owed": Decimal("0.00"),
+            },
+            {
+                "asset_type": "bank_account",
+                "description": "Harborline Bank checking",
+                "current_value": Decimal("412.00"),
+                "amount_owed": Decimal("0.00"),
+                "financial_institution": "Harborline Bank",
+            },
+            {
+                "asset_type": "bank_account",
+                "description": "Prairie Line Credit Union share savings",
+                "current_value": Decimal("85.00"),
+                "amount_owed": Decimal("0.00"),
+                "financial_institution": "Prairie Line Credit Union",
+            },
+        ],
+        "debts": [
+            {
+                "creditor_name": "Copperline Auto Finance",
+                "debt_type": "auto_loan",
+                "amount_owed": Decimal("7800.00"),
+                # His brother drives the car and pays the loan he co-signed
+                "monthly_payment": Decimal("0.00"),
+                "is_in_collections": False,
+                "consumer_business_classification": "consumer",
+                "is_secured": True,
+                "collateral_description": "2017 Honda Fit, co-owned with my brother",
+            },
+            {
+                "creditor_name": "Bright Signal Wireless",
+                "debt_type": "utility",
+                "amount_owed": Decimal("640.00"),
+                "monthly_payment": Decimal("0.00"),
+                "is_in_collections": False,
+                "consumer_business_classification": "consumer",
+            },
+            {
+                "creditor_name": "Calumet Ridge Medical Center",
+                "debt_type": "medical",
+                "amount_owed": Decimal("3850.00"),
+                "monthly_payment": Decimal("0.00"),
+                "is_in_collections": True,
+                "consumer_business_classification": "consumer",
+            },
+            {
+                "creditor_name": "Driveline Tire & Auto",
+                "debt_type": "credit_card",
+                "amount_owed": Decimal("1180.00"),
+                "monthly_payment": Decimal("0.00"),
+                "is_in_collections": False,
+                "consumer_business_classification": "business",
+            },
+            {
+                "creditor_name": "Illinois State Toll Highway Authority",
+                "debt_type": "other",
+                "amount_owed": Decimal("380.00"),
+                "monthly_payment": Decimal("0.00"),
+                "is_in_collections": False,
+                "consumer_business_classification": "consumer",
+            },
+            {
+                "creditor_name": "Tallowfield Lending Co.",
+                "debt_type": "personal_loan",
+                "amount_owed": Decimal("4100.00"),
+                "monthly_payment": Decimal("0.00"),
+                "is_in_collections": False,
+                "consumer_business_classification": "consumer",
+            },
+            {
+                "creditor_name": "Northgate Card Services",
+                "debt_type": "credit_card",
+                "amount_owed": Decimal("6420.00"),
+                "monthly_payment": Decimal("0.00"),
+                "is_in_collections": False,
+                "consumer_business_classification": "consumer",
+            },
+            {
+                "creditor_name": "Prairie Line Credit Union",
+                "debt_type": "credit_card",
+                "amount_owed": Decimal("1760.00"),
+                "monthly_payment": Decimal("0.00"),
+                "is_in_collections": False,
+                "consumer_business_classification": "consumer",
+            },
+            {
+                "creditor_name": "Hollowmere Residential LLC",
+                "debt_type": "other",
+                "amount_owed": Decimal("1850.00"),
+                "monthly_payment": Decimal("0.00"),
+                "is_in_collections": False,
+                "consumer_business_classification": "consumer",
+            },
+            {
+                "creditor_name": "Sablewood Bank",
+                "debt_type": "credit_card",
+                "amount_owed": Decimal("2980.00"),
+                "monthly_payment": Decimal("0.00"),
+                "is_in_collections": False,
+                "consumer_business_classification": "consumer",
+            },
+        ],
+        # No "fee_waiver": he means to pay the fee in installments (3a1.Q2).
+    }
+
+
 PERSONAS: dict[str, Callable[[], dict]] = {
     "maria": _maria_torres,
     "james": _james_washington,
     "priya": _priya_sharma,
     "deshawn": _deshawn_mitchell,
     "sarah": _sarah_chen,
+    "andres": _andres_kettleby,
 }
 
 
@@ -510,7 +677,7 @@ PERSONAS: dict[str, Callable[[], dict]] = {
 
 
 class Command(BaseCommand):
-    help = "Seed 5 synthetic demo personas for partner demos and E2E testing."
+    help = "Seed 6 synthetic demo personas for partner demos and E2E testing."
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -522,7 +689,7 @@ class Command(BaseCommand):
             "--persona",
             type=str,
             choices=list(PERSONAS.keys()),
-            help="Seed a single persona instead of all 5",
+            help="Seed a single persona instead of all 6",
         )
 
     def handle(self, *args, **options):
@@ -531,6 +698,20 @@ class Command(BaseCommand):
             self.stderr.write(
                 self.style.ERROR(
                     "ILND district not found. " "Run: python manage.py loaddata ilnd_2025_data"
+                )
+            )
+            return
+
+        # Every persona's means test needs a median table in force today; check before
+        # --reset deletes anything, so a refused reseed leaves the existing personas.
+        try:
+            in_force(district.median_incomes.all(), fill_date(), MEDIAN_TABLE, district.code)
+        except NoTableInForce:
+            self.stderr.write(
+                self.style.ERROR(
+                    "No ILND median income table is in force today, so nothing was changed. "
+                    "Add the current table as docs/REFERENCE_TABLES.md describes, then run: "
+                    "python manage.py loaddata ilnd_2025_data"
                 )
             )
             return
@@ -602,9 +783,9 @@ class Command(BaseCommand):
         calculator = MeansTestCalculator(session)
         result = calculator.calculate()
 
-        # Create FeeWaiverApplication for fee-waiver-eligible personas
-        # (required by Form 103B generator)
-        if result["qualifies_for_fee_waiver"]:
+        # Create FeeWaiverApplication for fee-waiver-eligible personas who apply
+        # (required by Form 103B generator); one with no "fee_waiver" answers doesn't
+        if result["qualifies_for_fee_waiver"] and "fee_waiver" in data:
             FeeWaiverApplication.objects.create(
                 session=session,
                 household_size=data["debtor"]["household_size"],

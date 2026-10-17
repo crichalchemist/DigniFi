@@ -81,6 +81,35 @@ describe('useAutoSave', () => {
     expect(onSave).not.toHaveBeenCalled();
   });
 
+  // The wizard returns its rows with the ids the save gave them (DIG-273). Once the ids reach its
+  // data, they must not count as an edit, or each save of a new row would send one more.
+  it('keeps the copy a save returns as the saved copy, so the new ids reaching the data send nothing', async () => {
+    const onSave = vi
+      .fn()
+      .mockResolvedValueOnce({ debts: [{ creditor: 'Elm Street Clinic', id: 101 }] })
+      .mockResolvedValue(undefined);
+    const { rerender } = renderHook(({ data }) => useAutoSave({ data, onSave, debounceMs: 2000 }), {
+      initialProps: { data: { debts: [] as Array<{ creditor: string; id?: number }> } },
+    });
+
+    rerender({ data: { debts: [{ creditor: 'Elm Street Clinic' }] } });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2000);
+    });
+    rerender({ data: { debts: [{ creditor: 'Elm Street Clinic', id: 101 }] } });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(3000);
+    });
+    expect(onSave).toHaveBeenCalledTimes(1);
+
+    // The copy that was sent is no longer what the server holds
+    rerender({ data: { debts: [{ creditor: 'Elm Street Clinic' }] } });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2000);
+    });
+    expect(onSave).toHaveBeenCalledTimes(2);
+  });
+
   it('saves a change back to an earlier value, since the server holds the later one', async () => {
     const onSave = vi.fn().mockResolvedValue(undefined);
     const { rerender } = renderHook(({ data }) => useAutoSave({ data, onSave, debounceMs: 2000 }), {

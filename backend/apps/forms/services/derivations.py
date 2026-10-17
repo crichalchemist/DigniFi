@@ -114,7 +114,7 @@ def _total_assets(session: IntakeSession) -> str:
 def _total_secured_debts(session: IntakeSession) -> str:
     from apps.intake.models import DebtInfo
 
-    qs = DebtInfo.objects.filter(session=session, is_secured=True)
+    qs = DebtInfo.objects.confirmed().filter(session=session, is_secured=True)
     return _fmt(_sum_encrypted(qs, "amount_owed"))
 
 
@@ -128,14 +128,14 @@ def _total_nonpriority_unsecured(session: IntakeSession) -> str:
     """
     from apps.intake.models import DebtInfo
 
-    qs = DebtInfo.objects.filter(session=session, is_secured=False)
+    qs = DebtInfo.objects.confirmed().filter(session=session, is_secured=False)
     return _fmt(_sum_encrypted(qs, "amount_owed"))
 
 
 def _total_debts(session: IntakeSession) -> str:
     from apps.intake.models import DebtInfo
 
-    qs = DebtInfo.objects.filter(session=session)
+    qs = DebtInfo.objects.confirmed().filter(session=session)
     return _fmt(_sum_encrypted(qs, "amount_owed"))
 
 
@@ -224,7 +224,9 @@ def _total_student_loans(session: IntakeSession) -> str:
     """
     from apps.intake.models import DebtInfo
 
-    qs = DebtInfo.objects.filter(session=session, is_secured=False, debt_type="student_loan")
+    qs = DebtInfo.objects.confirmed().filter(
+        session=session, is_secured=False, debt_type="student_loan"
+    )
     return _fmt(_sum_encrypted(qs, "amount_owed"))
 
 
@@ -282,7 +284,7 @@ def _range(figure, ranges) -> str:
 def _creditor_count_range(session: IntakeSession) -> str:
     from apps.intake.models import DebtInfo
 
-    count = DebtInfo.objects.filter(session=session).count()
+    count = DebtInfo.objects.confirmed().filter(session=session).count()
     return _range(count, _CREDITOR_RANGES) if count else ""
 
 
@@ -592,9 +594,9 @@ DERIVATIONS: dict[str, Callable[[IntakeSession], str]] = {
     "has_executory_contracts": lambda s: _yes_if_any(s.executory_contracts.all()),
     "has_codebtors": lambda s: _yes_if_any(s.codebtors.all()),
     # Schedules D and E/F: the section questions and E/F's line 6 totals
-    "has_secured_debts": lambda s: _yes_if_any(s.debts.filter(is_secured=True)),
+    "has_secured_debts": lambda s: _yes_if_any(s.debts.confirmed().filter(is_secured=True)),
     # Every unsecured debt is nonpriority until priority is asked (OQ-3), as on line 6j.
-    "has_nonpriority_debts": lambda s: _yes_if_any(s.debts.filter(is_secured=False)),
+    "has_nonpriority_debts": lambda s: _yes_if_any(s.debts.confirmed().filter(is_secured=False)),
     "total_student_loans": _total_student_loans,
     "total_other_nonpriority": _total_other_nonpriority,
     # Form 101 lines 18-20

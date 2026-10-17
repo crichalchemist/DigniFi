@@ -405,6 +405,16 @@ class AssetInfo(models.Model):
         return float(self.current_value - self.amount_owed)
 
 
+class DebtInfoQuerySet(models.QuerySet):
+    def confirmed(self):
+        """The debts the filer has confirmed, without the drafts read from scanned documents.
+
+        A scanned debt stays a draft until the filer saves the Amounts Owed step (DIG-163).
+        Every reader that feeds a form or the means test reads through this.
+        """
+        return self.filter(is_draft=False)
+
+
 class DebtInfo(models.Model):
     """Creditor and amounts owed information (trauma-informed language)."""
 
@@ -541,6 +551,8 @@ class DebtInfo(models.Model):
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    objects = DebtInfoQuerySet.as_manager()
 
     class Meta:
         db_table = "debt_info"

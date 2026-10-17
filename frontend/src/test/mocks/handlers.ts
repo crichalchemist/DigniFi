@@ -236,7 +236,9 @@ export const handlers = [
 
   http.get(`${API}/forms/`, () => HttpResponse.json([mockGeneratedForm])),
 
-  http.get(`${API}/forms/packet/`, () => HttpResponse.json({ session: 1, form_types: mockPacket })),
+  http.get(`${API}/forms/packet/`, () =>
+    HttpResponse.json({ session: 1, form_types: mockPacket, tables: [] })
+  ),
 
   http.post(`${API}/forms/:id/mark_downloaded/`, () =>
     HttpResponse.json({ message: 'Marked as downloaded.' })

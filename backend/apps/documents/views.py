@@ -4,6 +4,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
+from django.db import transaction
 from pydantic import ValidationError
 from rest_framework import serializers, status
 from rest_framework.decorators import action
@@ -24,6 +25,7 @@ from apps.documents.services.aggregator import AggregateIngestionService
 from apps.documents.services.draft_debt import DraftDebtCreator
 from apps.documents.services.processor import DocumentProcessor, ExtractionResult
 from apps.documents.services.providers.base import BaseOCRProvider
+from apps.intake.locking import lock_session
 from apps.intake.models import IntakeSession
 
 logger = logging.getLogger(__name__)
@@ -96,29 +98,37 @@ def _run_processing(doc_id: int) -> None:
         processor = _get_processor()
         result = processor.process(file_bytes, doc.mime_type, doc.document_type)
 
-        if result.error:
-            ocr.status = OCRStatus.FAILED
-            ocr.failure_reason = OCRFailureReason.PROCESSING_ERROR
-            ocr.error_message = result.error
-            ocr.extracted_data = "{}"
-            ocr.overall_confidence = 0
-        else:
-            ocr.extracted_data = json.dumps(result.fields)
-            ocr.confidence_scores = result.confidence
-            ocr.overall_confidence = result.confidence.get("overall", 0)
-            if _record_findings(doc, result):
-                ocr.status = OCRStatus.COMPLETED
-            else:
+        # The findings are intake data, so their writes lock the session (DIG-188): only
+        # here, after the call to the hosted model, and only on this worker thread. The
+        # upload request waits for this thread, so a lock taken there would deadlock.
+        with transaction.atomic():
+            lock_session(doc.session_id)
+            if result.error:
                 ocr.status = OCRStatus.FAILED
-                ocr.failure_reason = OCRFailureReason.NOTHING_FOUND
+                ocr.failure_reason = OCRFailureReason.PROCESSING_ERROR
+                ocr.error_message = result.error
+                ocr.extracted_data = "{}"
+                ocr.overall_confidence = 0
+            else:
+                ocr.extracted_data = json.dumps(result.fields)
+                ocr.confidence_scores = result.confidence
+                ocr.overall_confidence = result.confidence.get("overall", 0)
+                if _record_findings(doc, result):
+                    ocr.status = OCRStatus.COMPLETED
+                else:
+                    ocr.status = OCRStatus.FAILED
+                    ocr.failure_reason = OCRFailureReason.NOTHING_FOUND
 
-        ocr.save()
+            ocr.save()
 
-        if ocr.status == OCRStatus.COMPLETED:
-            try:
-                AggregateIngestionService.recalculate(doc.session_id)
-            except Exception as exc:
-                logger.warning("Recalculate failed for doc %s: %s", doc_id, type(exc).__name__)
+            if ocr.status == OCRStatus.COMPLETED:
+                try:
+                    # Its own savepoint: recalculate logs and swallows its errors, and on
+                    # Postgres one failed statement would otherwise roll the findings back.
+                    with transaction.atomic():
+                        AggregateIngestionService.recalculate(doc.session_id)
+                except Exception as exc:
+                    logger.warning("Recalculate failed for doc %s: %s", doc_id, type(exc).__name__)
 
     except Exception as exc:
         # Type only, no traceback: logs reach Sentry, and exception text can quote filer data.
@@ -205,6 +215,7 @@ class DocumentViewSet(ViewSet):
         return Response(_serialize_doc(doc))
 
     @action(detail=True, methods=["post"], url_path="validate")
+    @transaction.atomic
     def validate(self, request, pk=None):
         try:
             doc = UploadedDocument.objects.select_related("ocr_result", "session").get(
@@ -225,7 +236,10 @@ class DocumentViewSet(ViewSet):
             except serializers.ValidationError as exc:
                 return Response({"amount_owed": exc.detail}, status=status.HTTP_400_BAD_REQUEST)
 
+        # A correction changes the draft debt and the pay-stub figures (DIG-188).
+        lock_session(doc.session_id)
         ocr = doc.ocr_result
+        ocr.refresh_from_db()  # the findings as stored once the lock is held
         existing = json.loads(ocr.extracted_data or "{}")
         existing.update(fields)
         ocr.extracted_data = json.dumps(existing)
@@ -240,7 +254,8 @@ class DocumentViewSet(ViewSet):
             doc.session.reopen()
 
         try:
-            AggregateIngestionService.recalculate(doc.session_id)
+            with transaction.atomic():  # its own savepoint, as in _run_processing
+                AggregateIngestionService.recalculate(doc.session_id)
         except Exception as exc:
             logger.warning("Recalculate failed on validate for doc %s: %s", pk, type(exc).__name__)
 

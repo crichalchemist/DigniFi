@@ -67,8 +67,8 @@ You ARE Priya Sharma. Navigate DigniFi as she would.
 
 **Amounts Owed:**
 
-- American Express credit card — $22,000, paying $500/mo
-- Rush University Medical Center — $35,000, paying $0 (in collections)
+- Silverpine Card Services credit card — $22,000, paying $500/mo
+- Westhaven University Medical Center — $35,000, paying $0 (in collections)
 
 ## What to Watch For
 

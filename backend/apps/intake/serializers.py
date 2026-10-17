@@ -221,28 +221,31 @@ class NestedDebtInfoSerializer(DebtInfoSerializer):
     id = serializers.IntegerField(required=False)
 
 
-def _save_rows_by_id(session, model, rows) -> None:
+def _save_rows_by_id(session, model, rows) -> list:
     """Save a session's nested assets or debts, or its contracts or codebtors list, by id.
 
     A row whose id is one of this session's rows updates only the fields it sent, so
     what the browser never received (account numbers, the scanned-bill link)
     survives. Any other row is created on this session, so a client-sent
     ``session`` or another user's id never touches another session. Stored rows the
-    payload left out are deleted.
+    payload left out are deleted. Returns the saved rows in payload order, each with its id.
     """
     existing = {row.pk: row for row in model.objects.filter(session=session)}
     kept = set()
+    saved = []
     for data in rows:
         data.pop("session", None)
         row = existing.get(data.pop("id", None))
         if row is None:
-            model.objects.create(session=session, **data)
+            saved.append(model.objects.create(session=session, **data))
             continue
         for attr, value in data.items():
             setattr(row, attr, value)
         row.save()
         kept.add(row.pk)
+        saved.append(row)
     model.objects.filter(pk__in=existing.keys() - kept).delete()
+    return saved
 
 
 # The intake sections a session save can carry (spec §5.3).
@@ -362,13 +365,22 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
         if expense_data is not None:
             ExpenseInfo.objects.update_or_create(session=instance, defaults=expense_data)
 
+        # The response lists a sent list in sent order, so the wizard can pair each row it
+        # sent with its id (DIG-273). Every other read keeps model order.
+        instance.sent_rows = {}
         if assets_data is not None:
-            _save_rows_by_id(instance, AssetInfo, assets_data)
+            instance.sent_rows["assets"] = _save_rows_by_id(instance, AssetInfo, assets_data)
 
         if debts_data is not None:
-            _save_rows_by_id(instance, DebtInfo, debts_data)
+            instance.sent_rows["debts"] = _save_rows_by_id(instance, DebtInfo, debts_data)
 
         return instance
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        for name, rows in getattr(instance, "sent_rows", {}).items():
+            data[name] = self.fields[name].to_representation(rows)
+        return data
 
 
 class FeeWaiverApplicationSerializer(serializers.ModelSerializer):

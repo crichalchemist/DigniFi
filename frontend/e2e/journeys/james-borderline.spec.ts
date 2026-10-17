@@ -1,7 +1,7 @@
 /**
  * James Washington — Borderline Case
  *
- * Just below single-filer median ($71,304). Tests near-threshold messaging.
+ * Just below single-filer median ($73,180). Tests near-threshold messaging.
  */
 
 import { test, expect } from '@playwright/test';
@@ -33,7 +33,7 @@ test.describe('James Washington — Borderline', () => {
     // Uploads come between basic info and Income; this journey types everything in
     await documents.skip();
 
-    // Step 2: Income (borderline — $5,833/mo × 12 = $69,996 < $71,304 median)
+    // Step 2: Income (borderline — $5,833/mo × 12 = $69,996 < $73,180 median)
     await wizard.fillIncomeInfo(JAMES.income);
     await wizard.nextStep();
 
