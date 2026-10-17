@@ -10,7 +10,7 @@ The umbrella settles what 3a2 delivers. This spec turns it into a design for the
 ## 1. What 3a2 does
 
 1. **Every form prints through one engine** `[Q8]`. Each widget gets its own value, drawn with the template's own layout, and the page is flattened, so the packet has no fillable fields left.
-2. **Refusals instead of silent damage.** A letter the form's font can't print, or a value too long for its box even in small print, is refused in plain words. Today the first prints as "?" and the second is cut off.
+2. **Refusals instead of silent damage.** A letter the form's font can't print, or a value too long for its box even in small print, is refused in plain words, and the dashboard links each refusal to the step or page that fixes it. Today the first prints as "?" and the second is cut off.
 3. **Extra rows** `[Q8]` `[Q9]` continue on copies of the form's extra page, or on an attached sheet when the template has none. This is proven on synthetic schemas; the first real rows arrive in 3e2, 3b and 3c.
 4. **Filed forms redraw exactly what was filed**, page copy by page copy.
 5. **Generate All checks without drawing** `[DIG-137]`, and the browser stops retrying it. Download draws.
@@ -44,9 +44,10 @@ The umbrella (§5.4, Appendix A row SPIKE) recorded the method from two flatteni
   - 547 text boxes are right-aligned and 51 are comb boxes, which spread one character into each printed cell. The SSN on Forms 101 and 121 is in a comb box.
   - 94 boxes are multi-line.
   - `insert_text` draws one left-aligned line, so amounts move left, Form 121's SSN crams into the first cells, and descriptions run off the box.
-  - Today's filler (pypdf 6.13.1) honours all three.
+  - Today's filler (pypdf 6.13.1) honours alignment and comb cells. It wraps only auto-size boxes, so 3a2's check does the wrapping itself (§4.3).
 - **It erases parts of the form.** On Form 103B the empty checkbox squares are drawn by the widgets themselves, so deleting an unticked widget removes its square from the printed page.
-- **It is slower.** For all 17 templates with every widget filled, run locally, it took 12.1 s against 5.5 s for the method below.
+
+Speed did not decide it. With every widget of the 17 templates filled, the spike's `insert_text` took 12.1 s locally against 5.5 s for the method below, but it made one call per widget, which could be made faster.
 
 **The method 3a2 uses:**
 
@@ -55,7 +56,7 @@ The umbrella (§5.4, Appendix A row SPIKE) recorded the method from two flatteni
 
 Tested on the same templates, this method:
 
-- keeps alignment, comb cells and wrapping;
+- keeps alignment and comb cells, and draws pre-wrapped lines whole at 10, 8 and 6 pt;
 - prints different values in shared-name boxes, such as Schedule I's two "Assistance 8f" boxes and A/B's two "24.1" boxes;
 - renders ticks with the template's own check mark;
 - keeps 103B's squares;
@@ -67,7 +68,14 @@ The umbrella's goal is unchanged: one printing path, values drawn per widget, th
 
 ### 4.1 Today
 
-`PDFFormFiller.fill(form_type, values)` (`apps/forms/services/pdf_filler.py`) takes `{full name: value}`. It sets the field's `/V`, builds an appearance with pypdf's `TextStreamAppearance` (an internal API, pinned and checked by `test_pdf_filler.py`), and returns a fillable PDF. Every widget that shares a full name shows the same value. A value wider than a fixed-size box is clipped at the box's edge: "Sentinel" prints as "Sen" in Schedule D's entry-number box. A letter outside the font's encoding prints as "?": Wąsowicz prints as "W?sowicz", Dvořák as "Dvo?ák" and Nguyễn as "Nguy?n". pypdf logs a warning and nothing else happens.
+`PDFFormFiller.fill(form_type, values)` (`apps/forms/services/pdf_filler.py`) takes `{full name: value}`. It sets the field's `/V`, builds an appearance with pypdf's `TextStreamAppearance` (an internal API, pinned and checked by `test_pdf_filler.py`), and returns a fillable PDF. Every widget that shares a full name shows the same value.
+
+Two kinds of silent damage happen today:
+
+- **A value wider than a fixed-size box is clipped at the box's edge.** "Sentinel" prints as "Sen" in Schedule D's entry-number box.
+  - pypdf wraps only the 10 auto-size boxes, so in a fixed-size multi-line box, such as Form 107's descriptions, a long value prints as one line and is cut off too.
+  - The seeded personas hit this today: the email on Form 101 for James, DeShawn and Andrés, the annualized income on 122A-1 lines 12b and 13c for Maria and Priya, and one 122A-2 amount for Priya.
+- **A letter outside the font's encoding prints as "?".** Wąsowicz prints as "W?sowicz", Dvořák as "Dvo?ák" and Nguyễn as "Nguy?n". pypdf logs a warning and nothing else happens.
 
 ### 4.2 Widgets and their address
 
@@ -94,12 +102,14 @@ The umbrella's goal is unchanged: one printing path, values drawn per widget, th
 
   - **A single-line box** fits a value whose width, plus pypdf's 2 pt padding on each side, is no wider than the box.
   - **A comb box** fits a value no longer than its cell count (`MaxLen`). Shrinking doesn't help a comb box.
-  - **A multi-line box** fits a value whose wrapped lines, at pypdf's own line spacing, are no taller than the box.
+  - **A multi-line box** fits a value whose wrapped lines, at pypdf's own line spacing, are no taller than the box. The check wraps the value itself, at word boundaries, using Helvetica's widths and the box's width less the padding. It hands pypdf the lines joined by line breaks, which pypdf draws one per line. A single word wider than the box doesn't fit.
   - **Any other box with a `MaxLen`** fits a value no longer than `MaxLen`, as with Schedule D's 4-digit account box.
 
   The check starts at the box's own size. That size is 10 pt for 1,959 boxes, 9 pt for 65 and 12 pt for 19, and the 10 auto-size boxes start at the size pypdf picks today. It shrinks in 0.5 pt steps to 6 pt. The first size that fits goes in the plan; if none fits, the value is refused.
 
 The check measures with the font widths and padding pypdf uses when it draws, and §9's tests prove the two agree on every text box.
+
+**What this means for the personas.** Their 604 text values, checked on 2026-10-17, include no letter the font can't print and no value too long even at 6 pt, so no persona is refused. The 7 values that are cut off today shrink instead (§4.1).
 
 ### 4.4 Drawing: `fill()`
 
@@ -132,6 +142,19 @@ Where each refusal sends the filer depends on where the value came from:
 | a constant                                        | nothing: a constant that fails is a defect in DigniFi, and a test checks every constant                    |
 
 A test fails on any derived rule that feeds a text box and is missing from the map.
+
+**Getting the filer there.** Today the dashboard links a refusal's `page` only when Generate All is refused as a whole. Three gaps stop a letter or length refusal from reaching its fix:
+
+- Generate All's per-form errors are listed as plain text, under "You can try generating them individually below".
+- A single form's refused Generate or Download shows nothing: `FormCard` catches the error and drops it, and `downloadForm` throws "Download failed (422)" without reading the body.
+- The wizard can't open at a named step; it always opens at the session's saved step, which is Review once the intake is complete.
+
+3a2 closes all three:
+
+- **Each refusal links to its fix.** Every per-form refusal on the dashboard, from Generate All, Generate, Regenerate or Download, shows its message with a link. A `step` links to `/intake?step=<key>` and a `page` to that page.
+- **The retry advice goes.** "Try generating them individually" is dropped for a refusal that names a fix.
+- **`downloadForm` reads the refusal's body**, as `handleAPIError` does.
+- **The wizard opens at the step named in `?step=`**, when the key is one of `WIZARD_STEPS`, after its usual session read; otherwise it opens at the saved step as today.
 
 ### 4.6 PyMuPDF pinned
 
@@ -254,7 +277,7 @@ Tests are named for what they protect. New tests:
 - **Refusals:**
   - `a_letter_the_form_cannot_print_is_refused`, with é, ñ, ü and Ł printing and ą, ř and ễ refused;
   - `a_long_value_shrinks_before_it_is_refused`;
-  - `no_value_is_ever_cut_off`: on every text box, a value that just fits reads back whole, and one that just doesn't is refused;
+  - `no_value_is_ever_cut_off`: on every text box, a value that just fits reads back whole, and one that just doesn't is refused. A whole read-back proves it: MuPDF's text extraction leaves out characters a box's clip hides, which is how today's Form 101 email reads back as "deshawn.washington.synthetic@";
   - `every_refusal_names_where_to_fix_it`: the rule-to-step map covers every derived text rule.
 - **What the page shows:**
   - `the_packet_has_no_fillable_fields_left`;
@@ -266,6 +289,11 @@ Tests are named for what they protect. New tests:
   - `every_constant_prints`: every constant binding passes `check()`.
 - **Every drawn PDF opens cleanly** in pypdf and PyMuPDF, with its page count. The build also traces MuPDF's "No common ancestor in structure tree" message, which Form 101 prints when opened; it may come from the template's tagging rather than the engine.
 - **Timing:** `time_packet` runs once under the budgets of §7. It is not part of CI.
+- **The frontend (vitest):**
+  - `a_refused_form_links_to_the_step_that_fixes_it`, for each of Generate All, Generate and Download;
+  - `a_refused_download_shows_its_reason`;
+  - `the_wizard_opens_at_the_step_a_link_names`, plus an unknown `?step=` opening the saved step;
+  - `generate_all_is_sent_once_on_a_server_error`.
 
 **Existing tests that change:**
 
@@ -289,6 +317,8 @@ CLAUDE.md's gotchas are rewritten in the same PR (umbrella §5.1):
 - **The Architecture "PDF" line**: pypdf builds each widget's appearance, PyMuPDF bakes it, and the output is not fillable.
 - **The File Map line for `pdf_filler.py`**, plus the sheet generator's module.
 
+The umbrella spec's §5.4 and its SPIKE row get a one-line pointer to this spec's §3, so a later reader doesn't follow the old method.
+
 `docs/security/deployment.md` gains a short "Forms step 3: before deploying" list under its Production Readiness Checklist:
 
 - 3a1's three steps, which today live only in PR #26's description:
@@ -307,7 +337,10 @@ CLAUDE.md's gotchas are rewritten in the same PR (umbrella §5.1):
 
 ## 12. Defects found while scoping
 
-These two are in today's filler, on production now. 3a2 fixes both. They still get tickets, filed with the owner's yes:
+These three are on production now. 3a2 fixes all three. They still get tickets, filed with the owner's yes:
 
-- **A value wider than its box is cut off at the edge, with no warning.** Examples: "Sentinel" as "Sen", and a long creditor name as "A c". It goes unnoticed because tier 1 reads `/V`, not the drawn page.
+- **A value wider than its box is cut off at the edge, with no warning**, and a fixed-size multi-line box never wraps.
+  - Examples: "Sentinel" as "Sen", a long creditor name as "A c", and the seeded personas' Form 101 emails and 122A-1 lines 12b and 13c.
+  - It goes unnoticed because tier 1 reads `/V`, not the drawn page.
 - **Letters outside the form font's encoding print as "?", with no warning.** Examples: Wąsowicz as W?sowicz, Dvořák as Dvo?ák, Nguyễn as Nguy?n. pypdf only logs a warning.
+- **A refused Generate or Download on the dashboard shows the filer nothing.** `FormCard` catches the error and drops it ("Error handled by parent", but the parent doesn't). `downloadForm` throws a generic "Download failed (422)" without reading the refusal's words.
