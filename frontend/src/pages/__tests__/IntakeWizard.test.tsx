@@ -1250,6 +1250,81 @@ describe.each([
         expect.objectContaining({ id: 102, [nameKey]: 'Harbor Light Dental' }),
       ]);
     });
+
+    // On a slow link the filer's next edit can be saved before the first save's reply brings the
+    // new row's id. The wizard must settle on the id the server holds: a save carrying an id the
+    // server has already replaced creates the row again, and each such save can start another.
+    it('keeps the id the server holds when the filer edits while a save is on its way, without a save loop', async () => {
+      const saves = serveSessionSaves(onStep);
+      renderWizard();
+      await screen.findByRole('heading', { name: title, level: 2 });
+      const landFirstSave = saves.holdNextReply();
+
+      vi.useFakeTimers();
+      try {
+        fill(0, 'Elm Street Clinic', '1200');
+        await waitSeconds(3);
+        expect(saves.bodies).toHaveLength(1);
+
+        const landSecondSave = saves.holdNextReply();
+        fireEvent.change(field(`${nameKey}_0`), { target: { value: 'Elm Street Health' } });
+        await waitSeconds(3);
+        // The two replies land 2.5 s apart, longer than the autosave delay
+        await act(async () => landFirstSave());
+        await waitSeconds(2);
+        await act(() => vi.advanceTimersByTimeAsync(500));
+        await act(async () => landSecondSave());
+        await waitSeconds(15);
+
+        // The next edit updates the row the server holds instead of replacing it
+        fireEvent.change(field(`${nameKey}_0`), { target: { value: 'Elm Street Health Center' } });
+        await waitSeconds(5);
+      } finally {
+        vi.useRealTimers();
+      }
+
+      expect(saves.bodies.length).toBeLessThanOrEqual(3);
+      const [lastSent] = rowsSent(saves.bodies[saves.bodies.length - 1]);
+      expect(lastSent.id).toBe(rowsSent(saves.stored())[0].id);
+    });
+
+    it('keeps the id the server holds when the filer presses Continue while a save is on its way', async () => {
+      const saves = serveSessionSaves(onStep);
+      const { container } = renderWizard();
+      await screen.findByRole('heading', { name: title, level: 2 });
+      const landAutosave = saves.holdNextReply();
+
+      vi.useFakeTimers();
+      try {
+        fill(0, 'Elm Street Clinic', '1200');
+        await waitSeconds(3);
+        expect(saves.bodies).toHaveLength(1);
+
+        const landContinue = saves.holdNextReply();
+        fireEvent.change(field(`${nameKey}_0`), { target: { value: 'Elm Street Health' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+        await waitSeconds(1);
+        // The two replies land 2.5 s apart, longer than the autosave delay
+        await act(async () => landAutosave());
+        await waitSeconds(2);
+        await act(() => vi.advanceTimersByTimeAsync(500));
+        await act(async () => landContinue());
+        await waitSeconds(3);
+        expect(container.querySelector('.step-title')).not.toHaveTextContent(title);
+
+        // Back on the step, the next edit updates the row the server holds instead of replacing it
+        fireEvent.click(screen.getByRole('button', { name: 'Go Back' }));
+        await waitSeconds(3);
+        fireEvent.change(field(`${nameKey}_0`), { target: { value: 'Elm Street Health Center' } });
+        await waitSeconds(5);
+      } finally {
+        vi.useRealTimers();
+      }
+
+      expect(saves.bodies.length).toBeLessThanOrEqual(3);
+      const [lastSent] = rowsSent(saves.bodies[saves.bodies.length - 1]);
+      expect(lastSent.id).toBe(rowsSent(saves.stored())[0].id);
+    });
   }
 );
 

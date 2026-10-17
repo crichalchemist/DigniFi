@@ -109,6 +109,10 @@ export function IntakeWizard() {
   // Set while a Continue or Complete press is saving, so a second press can't save the step
   // again: a list saved twice prints each row twice on Schedule G or H
   const pressInFlightRef = useRef(false);
+  // How many saves of each list have gone out. A reply writes its ids only if no later save of
+  // the list has gone out since: that save left before these ids arrived, so the server has
+  // already replaced any row this one created, and the later save's reply brings the ids that hold
+  const listSavesRef = useRef({ assets: 0, debts: 0 });
 
   // Initialize session start time after first render
   useLayoutEffect(() => {
@@ -410,17 +414,23 @@ export function IntakeWizard() {
     const request: Partial<Record<keyof IntakeSession, unknown>> = { ...body };
     if (assets) request.assets = assets.map(withoutKey);
     if (debts) request.debts = debts.map(withoutKey);
+    const assetsSave = assets ? ++listSavesRef.current.assets : 0;
+    const debtsSave = debts ? ++listSavesRef.current.debts : 0;
     const saved = await api.intake.updateSession(session.id, request as Partial<IntakeSession>);
 
     // A new row keeps the id its first save gave it, so the next save updates that row instead of
     // replacing it. The copy returned is what the server now holds, built by the same merge as
     // the rows, so autosave sends nothing more until the filer changes something (DIG-273).
+    // An older save's reply, once a later save of the list has gone out, changes nothing and
+    // keeps the copy sent.
     if (assets) {
+      if (assetsSave !== listSavesRef.current.assets) return;
       const ids = savedIds(assets, saved.assets);
       setAssetsData((rows) => withSavedIds(rows, ids));
       return { ...body, assets: withSavedIds(assets, ids) } as Partial<IntakeSession>;
     }
     if (debts) {
+      if (debtsSave !== listSavesRef.current.debts) return;
       const ids = savedIds(debts, saved.debts);
       setDebtsData((rows) => withSavedIds(rows, ids));
       return { ...body, debts: withSavedIds(debts, ids) } as Partial<IntakeSession>;
