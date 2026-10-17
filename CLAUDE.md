@@ -9,7 +9,7 @@ docker compose up                              # Start all 3 services (db, backe
 docker compose exec backend python -m pytest --ds=config.settings.test    # Backend tests (sqlite :memory:, no postgres needed)
 docker compose exec backend python manage.py migrate
 docker compose exec backend python manage.py loaddata ilnd_2025_data   # Required before seed
-docker compose exec backend python manage.py seed_demo_data            # Loads 5 AI personas
+docker compose exec backend python manage.py seed_demo_data            # Loads 6 AI personas
 
 cd frontend && npm test                        # Frontend tests (vitest)
 cd frontend && npm run e2e                     # E2E (requires backend running + seeded)
@@ -89,7 +89,7 @@ cd backend && ruff check . --fix               # Backend lint (pinned ruff==0.8.
 - **Forms:** 17 form types in `apps/forms/registry.py` (`FORM_REGISTRY` / `get_all_form_types()` / `packet(session)`). `generate_all` gives each form its own savepoint.
 - **OCR service:** provider-agnostic. `OCR_PROVIDER` selects `openai` (default, `gpt-4o`, `OPENAI_API_KEY`) or `gemini` (`gemini-2.0-flash`, `GEMINI_API_KEY`); `OCR_MODEL` overrides the model so a model change is a config var, not a deploy. No local model — both call a hosted API directly.
 - **Auth:** JWT (simplejwt). Access in memory, refresh in localStorage. `POST /api/token/obtain/` + `/api/token/refresh/`.
-- **E2E:** 5 AI persona briefs in `docs/testing/persona-briefs/` (deshawn, james, maria, priya, sarah) driving 7 journey specs — one per persona plus `sofa-journey.spec.ts` and `scanned-bill-journey.spec.ts` (an upload read through a fake OpenAI server). `seed_demo_data` creates synthetic sessions with all intake data.
+- **E2E:** 6 AI persona briefs in `docs/testing/persona-briefs/` (andres, deshawn, james, maria, priya, sarah) driving 8 journey specs — one per persona plus `sofa-journey.spec.ts` and `scanned-bill-journey.spec.ts` (an upload read through a fake OpenAI server). `seed_demo_data` creates synthetic sessions with all intake data.
 
 ## File Map (what lives where)
 
@@ -99,7 +99,7 @@ cd backend && ruff check . --fix               # Backend lint (pinned ruff==0.8.
 - `apps/intake/fields.py` — Custom `EncryptedDecimalField`
 - `apps/intake/views.py` — IntakeSessionViewSet, AssetViewSet, DebtViewSet
 - `apps/intake/serializers.py` — nested serializers; DRF silently drops unknown fields (mismatch with frontend)
-- `apps/intake/management/commands/seed_demo_data.py` — 5 AI personas
+- `apps/intake/management/commands/seed_demo_data.py` — 6 AI personas
 - `apps/eligibility/services/means_test_calculator.py` — `MeansTestCalculator`, which runs and saves `MeansTest.calculate()` (`apps/eligibility/models.py`, where CMI is annualized)
 - `apps/eligibility/cmi.py` — `current_monthly_income` (the one CMI), `IncomeNotSplit`, `is_above_median`
 - `apps/forms/registry.py` — `FORM_REGISTRY` (17 form_type → `PacketForm(applies, requires)`) in filing order, `packet()`, `build_field_values()`
@@ -128,7 +128,7 @@ cd backend && ruff check . --fix               # Backend lint (pinned ruff==0.8.
 - `src/components/compliance/UPLConfirmationModal.tsx` — gates form generation
 - `src/types/api.ts` — TypeScript interfaces matching DRF serializers
 - `src/test/setup.ts` — vitest globals, MSW, vitest-axe matchers
-- `e2e/journeys/` — 7 Playwright journey specs (5 personas + SOFA + scanned bill)
+- `e2e/journeys/` — 8 Playwright journey specs (6 personas + SOFA + scanned bill)
 - `e2e/fixtures/fake-openai.ts` — fake OpenAI Chat Completions server (`startFakeOpenAI`, `CANNED_BILL`) for `scanned-bill-journey`
 - `e2e/playwright.config.ts` — Chromium only, 120s timeout, `reuseExistingServer`
 
