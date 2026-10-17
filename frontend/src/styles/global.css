@@ -1889,3 +1889,10 @@ a {
   padding-top: var(--space-4);
   border-top: 1px solid var(--color-border);
 }
+
+/* Site footer: the source code link the AGPL expects */
+.site-footer {
+  margin: 0 auto;
+  padding: var(--space-4) var(--space-5);
+  font-size: var(--text-caption);
+}

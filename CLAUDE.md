@@ -116,6 +116,7 @@ cd backend && ruff check . --fix               # Backend lint (pinned ruff==0.8.
 **Frontend:**
 
 - `src/App.tsx` — Routes, ErrorBoundary, IntakeLayout (shared provider via Outlet)
+- `src/components/common/SiteFooter.tsx` — the one `<footer>` (the page's `contentinfo`), rendered after `</Routes>` on every route: a "Source code" link to the GitHub repo, as the AGPL expects. The landing page's disclaimer is a `div.landing-footer`, not a second footer; keep it so, since the landing page must have one `contentinfo`
 - `src/context/AuthContext.tsx` — JWT auth, silent refresh
 - `src/context/IntakeContext.tsx` — Session state
 - `src/api/client.ts` — typed API client, `getAccessToken()`, `downloadForm()`
