@@ -1,6 +1,6 @@
 # Forms step 3a2: drawing engine
 
-- **Status:** draft for the owner's review, 2026-10-17.
+- **Status:** approved by the owner, 2026-10-17. Factual corrections from the code survey followed the same day (§3, §4.3, §4.5, §8).
 - **Drawn from:** the step 3 umbrella spec, `docs/superpowers/specs/2026-10-16-forms-step3-design.md`: §4.6, §5.4, §6.1 and §8.2 risk 1.
 - **Branch:** `feat/forms-step3a2`, from develop `06111b6` (3a1 merged). The PR targets develop.
 - **Tags** such as `[Q8]` trace each part to the umbrella's map of answers and tickets.
@@ -44,7 +44,7 @@ The umbrella (§5.4, Appendix A row SPIKE) recorded the method from two flatteni
   - 547 text boxes are right-aligned and 51 are comb boxes, which spread one character into each printed cell. The SSN on Forms 101 and 121 is in a comb box.
   - 94 boxes are multi-line.
   - `insert_text` draws one left-aligned line, so amounts move left, Form 121's SSN crams into the first cells, and descriptions run off the box.
-  - Today's filler (pypdf 6.13.1) honours alignment and comb cells. It wraps only auto-size boxes, so 3a2's check does the wrapping itself (§4.3).
+  - Today's filler (pypdf 6.13.1) honours alignment and comb cells. The exception is a comb box whose `MaxLen` is set on its parent field, which pypdf doesn't read: Schedule D's two `account number` boxes would print every digit in the first cell. The engine reads `MaxLen` from the parent too (§4.3). pypdf wraps only auto-size boxes, so 3a2's check does the wrapping itself.
 - **It erases parts of the form.** On Form 103B the empty checkbox squares are drawn by the widgets themselves, so deleting an unticked widget removes its square from the printed page.
 
 Speed did not decide it. With every widget of the 17 templates filled, the spike's `insert_text` took 12.1 s locally against 5.5 s for the method below, but it made one call per widget, which could be made faster.
@@ -100,10 +100,10 @@ Two kinds of silent damage happen today:
   - In a single-line box a line break prints as a space; in a multi-line box it starts a new line.
 - **A value that doesn't fit** (`ValueTooLong`):
 
-  - **A single-line box** fits a value whose width, plus pypdf's 2 pt padding on each side, is no wider than the box.
-  - **A comb box** fits a value no longer than its cell count (`MaxLen`). Shrinking doesn't help a comb box.
+  - **A single-line box** fits a value whose width, plus pypdf's padding on each side, is no wider than the box. The padding is 2 pt for most boxes; pypdf makes it twice the box's border margin, so Form 103B's 14 boxes with a 3 pt border get 6 pt.
+  - **A comb box** fits a value no longer than its cell count (`MaxLen`). Shrinking doesn't help a comb box. Where `MaxLen` sits on the parent field, as on Schedule D's account boxes, the engine reads it there and gives it to the widget, so the digits land in their cells.
   - **A multi-line box** fits a value whose wrapped lines, at pypdf's own line spacing, are no taller than the box. The check wraps the value itself, at word boundaries, using Helvetica's widths and the box's width less the padding. It hands pypdf the lines joined by line breaks, which pypdf draws one per line. A single word wider than the box doesn't fit.
-  - **Any other box with a `MaxLen`** fits a value no longer than `MaxLen`, as with Schedule D's 4-digit account box.
+  - **Any other box with a `MaxLen`** fits a value no longer than `MaxLen`.
 
   The check starts at the box's own size. That size is 10 pt for 1,959 boxes, 9 pt for 65 and 12 pt for 19, and the 10 auto-size boxes start at the size pypdf picks today. It shrinks in 0.5 pt steps to 6 pt. The first size that fits goes in the plan; if none fits, the value is refused.
 
@@ -135,13 +135,15 @@ Where each refusal sends the filer depends on where the value came from:
 | The value comes from                              | The refusal carries                                                                                        |
 | ------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
 | a derived rule (77 rules feed text boxes)         | the `step` (a `WIZARD_STEPS` key) or `page` that holds the rule's input, from one map beside `DERIVATIONS` |
-| an asked answer, `answer:<form_type>.<key>`       | `page`: `/ask/<form_type>`                                                                                 |
+| an asked answer, `answer:<form_type>.<key>`       | `page`: `/ask/<form_type>`, with the form type the binding names                                           |
 | SOFA, `sofa.…`                                    | `page`: `/sofa`                                                                                            |
 | an ingested value (the pay stub's employer name)  | `page`: `/documents`                                                                                       |
-| the fee-waiver application (`fee_waiver_*` rules) | `page`: `/fee-waiver`                                                                                      |
+| the fee-waiver application (`fee_waiver_*` rules) | `page`: `/fee-waiver`, except 103B line 6, which reads the Expenses step                                   |
 | a constant                                        | nothing: a constant that fails is a defect in DigniFi, and a test checks every constant                    |
 
-A test fails on any derived rule that feeds a text box and is missing from the map.
+A test fails on any derived rule that feeds a text box and is missing from the map. A rule whose input no filer edits is in the map with no link: the median on 122A-1 line 13, which comes from the district's table, and five Schedule I rules (occupation and the employer's address) that read fields no model has, so they always print blank.
+
+An asked answer is written only on `/ask/<form_type>`, and no schema field yet carries the `ui` that page shows, so today a filer can't give an answer in DigniFi and none can be refused. The link is there for the steps that add questions.
 
 **Getting the filer there.** Today the dashboard links a refusal's `page` only when Generate All is refused as a whole. Three gaps stop a letter or length refusal from reaching its fix:
 
@@ -257,7 +259,7 @@ A `form` part holds the values for the template's own pages. A `copy` part holds
   - Every tick choice is tried, and the check mark must appear only in that choice's widgets.
   - A new engine check gives every widget of every shared full name in the 17 templates its own sentinel through the per-widget selector, and reads each widget back separately.
   - Tier 1 thereby covers the shared-name boxes the old filler could not separate, the 18 combo boxes and the 2 radio buttons.
-- **Tier 2 (bindings against the audit)** keeps its (box, binding key) join and its asserted-case count, and reads drawn text instead of `/V`.
+- **Tier 2 (bindings against the audit)** keeps its (box, binding key) join and its asserted-case count. It compares schemas with the audit and reads no PDF, so the engine leaves it as it is.
 - **Tier 3 (personas' printed values)** keeps its persona cases and reads drawn text. Copies and sheets are covered by §9's capacity tests on the synthetic schemas of §5.4, until the first production rows bring them into tier 3 in 3e2, 3b and 3c.
 - **Known defects.** `known_defects.json` keeps its key shape (form type, full name, tier, case) and stays `[]`.
 
@@ -297,7 +299,7 @@ Tests are named for what they protect. New tests:
 
 **Existing tests that change:**
 
-- tiers 1–3 (§8);
+- tiers 1 and 3 (§8);
 - `test_pdf_filler.py`, which keeps its pin on `TextStreamAppearance` and adds `check()`;
 - `test_download_action.py` and the filed-form tests in `test_form_views.py`;
 - the `RepeatOverflow` tests, which become capacity tests;
