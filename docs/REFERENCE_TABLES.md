@@ -24,6 +24,8 @@ DigniFi compares each filer's income with this table on Form 122A-1 (line 13), a
 - New Census figures apply to cases filed on or after **April 1** and **November 1** each year.
 - The U.S. Trustee usually posts them a few weeks ahead. The November 2025 table was posted on October 16, 2025, and the April 2026 table on March 18, 2026.
 - Some periods on that page change only the IRS figures. The July 15, 2026 period is one: its Illinois median row matches the April 2026 table, so it needs no new row.
+- The U.S. Trustee's period list, not the calendar, sets a row's dates (`effective_date` and `valid_through`). Updates sometimes slip: the list has a period of 5/15/2021 to 3/31/2022, so one November update was skipped, and a period that starts on 11/15/2013.
+- When a scheduled update is skipped or late, extend the current row's `valid_through` to the real end of its period, so filers aren't refused while the old figures still apply. Then add the next row with its own `effective_date`, as below.
 
 ### The rows DigniFi loads
 
