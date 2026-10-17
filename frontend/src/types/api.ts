@@ -460,10 +460,27 @@ export interface GenerateAllFormsResponse {
   total_errors: number;
 }
 
+/** A dated reference table the forms were filled from (forms step 3a1 spec §3.6) */
+export interface DatedTableUsed {
+  name: string;
+  /** ISO date, YYYY-MM-DD */
+  effective_date: string;
+  /** ISO date; null when no newer table is expected */
+  valid_through: string | null;
+  source_url: string;
+}
+
 /** The forms that apply to this filer, in filing order */
 export interface FormPacketResponse {
   session: number;
   form_types: FormType[];
+  tables: DatedTableUsed[];
+}
+
+/** What `api.forms.packet` returns */
+export interface Packet {
+  form_types: FormType[];
+  tables: DatedTableUsed[];
 }
 
 export interface SessionSummaryResponse {

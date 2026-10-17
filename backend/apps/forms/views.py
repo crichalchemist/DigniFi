@@ -21,6 +21,7 @@ from rest_framework.views import APIView
 
 from apps.districts.dated_tables import NoTableInForce
 from apps.eligibility.cmi import IncomeNotSplit
+from apps.eligibility.models import MeansTest
 from apps.eligibility.services import MeansTestCalculator
 from apps.intake.models import IntakeSession
 
@@ -155,6 +156,16 @@ def _recalculate_means_test(session: IntakeSession) -> None:
     MeansTestCalculator(session).calculate()
 
 
+def _tables_used(session: IntakeSession) -> list[dict]:
+    """The dated tables the session's means test used (forms step 3a1 spec §3.6).
+
+    Empty when there is no means test, or a stored one that predates the record.
+    """
+    means_test = MeansTest.objects.filter(session=session).first()
+    table = means_test.get_calculation_details().get("median_table") if means_test else None
+    return [table] if table else []
+
+
 def _prepare(session: IntakeSession) -> None:
     """Refuse an unfinished intake, then work its means test out again. Once per call."""
     _check_finished(session)
@@ -211,7 +222,7 @@ class GeneratedFormViewSet(viewsets.ReadOnlyModelViewSet):
     ViewSet for bankruptcy form generation and management.
 
     Endpoints:
-      GET  /api/forms/packet/?session=<id>  The form types this filer's packet holds
+      GET  /api/forms/packet/?session=<id>  The packet's form types and its median table
       POST /api/forms/generate/              Generate a single form
       POST /api/forms/generate_all/          Generate every form in the packet
       POST /api/forms/{id}/regenerate/       Regenerate an existing form
@@ -243,7 +254,8 @@ class GeneratedFormViewSet(viewsets.ReadOnlyModelViewSet):
 
         For a completed intake the means test is worked out again first, and a refusal
         covers the whole list. An unfinished intake gets the packet its stored data gives,
-        and is never refused (step 2 spec §5.3, §5.6).
+        and is never refused (step 2 spec §5.3, §5.6). `tables` holds the median table the means
+        test recorded, and is `[]` when there is no means test or it recorded none.
         """
         session, err = _session_or_error(request, request.query_params.get("session"), "session")
         if err:
@@ -254,7 +266,9 @@ class GeneratedFormViewSet(viewsets.ReadOnlyModelViewSet):
             except Exception as exc:
                 body, code = _failure(None, exc)
                 return Response(body, status=code)
-        return Response({"session": session.id, "form_types": packet(session)})
+        return Response(
+            {"session": session.id, "form_types": packet(session), "tables": _tables_used(session)}
+        )
 
     # ------------------------------------------------------------------
     # Generate single form

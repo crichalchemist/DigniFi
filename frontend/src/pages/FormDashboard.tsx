@@ -17,7 +17,12 @@ import { UPL_FORM_DISCLAIMER } from '../constants/upl';
 import { DASHBOARD_ERROR, ERROR_GENERIC } from '../constants/copy';
 import { Button } from '../components/common';
 import { PostTaskSurvey } from '../components/survey/PostTaskSurvey';
-import type { GeneratedForm, FormType, GenerateAllFormsResponse } from '../types/api';
+import type {
+  GeneratedForm,
+  FormType,
+  GenerateAllFormsResponse,
+  DatedTableUsed,
+} from '../types/api';
 import { FORM_TYPE_METADATA } from '../types/api';
 import { trackEvent } from '../utils/analytics';
 
@@ -32,11 +37,43 @@ function wholeCallRefusal(err: unknown, generic: string): string {
   return err instanceof APIClientError && err.statusCode === 422 ? err.message : generic;
 }
 
+const MONTHS = [
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
+];
+
+/**
+ * "2026-04-01" as "April 1, 2026", built from the ISO string's parts. Never `new Date(iso)`:
+ * that is UTC midnight, which shows the day before in Chicago.
+ */
+function formatIsoDate(iso: string): string {
+  const [year, month, day] = iso.split('-').map(Number);
+  return `${MONTHS[month - 1]} ${day}, ${year}`;
+}
+
+/** What the forms say about the dated table they were filled from (step 3a1 spec §3.6) */
+function tableNotice(table: DatedTableUsed): string {
+  const first = `These forms use the median income figures the U.S. Trustee applies to cases filed on or after ${formatIsoDate(table.effective_date)}.`;
+  if (!table.valid_through) return first;
+  return `${first} New figures are expected after ${formatIsoDate(table.valid_through)}. If you file after that date, download your forms again.`;
+}
+
 export function FormDashboard() {
   const { session, isLoading: sessionLoading } = useIntake();
   const [forms, setForms] = useState<GeneratedForm[]>([]);
   // The form types that apply to this filer, in filing order
   const [packet, setPacket] = useState<FormType[]>([]);
+  const [tables, setTables] = useState<DatedTableUsed[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showSurvey, setShowSurvey] = useState(false);
@@ -50,12 +87,13 @@ export function FormDashboard() {
 
     setIsLoading(true);
     try {
-      const [loadedForms, packetTypes] = await Promise.all([
+      const [loadedForms, loadedPacket] = await Promise.all([
         api.forms.listBySession(session.id),
         api.forms.packet(session.id),
       ]);
       setForms(loadedForms);
-      setPacket(packetTypes);
+      setPacket(loadedPacket.form_types);
+      setTables(loadedPacket.tables);
       setError(null);
     } catch (err) {
       setError(wholeCallRefusal(err, DASHBOARD_ERROR));
@@ -105,7 +143,9 @@ export function FormDashboard() {
     }
     // Generate All works the means test out again, so the packet may have changed
     try {
-      setPacket(await api.forms.packet(session.id));
+      const reloaded = await api.forms.packet(session.id);
+      setPacket(reloaded.form_types);
+      setTables(reloaded.tables);
       setError(null);
     } catch (err) {
       setError(wholeCallRefusal(err, DASHBOARD_ERROR));
@@ -244,6 +284,12 @@ export function FormDashboard() {
           </div>
         </>
       )}
+
+      {tables.map((table) => (
+        <p key={table.name} className="form-dashboard-notice">
+          {tableNotice(table)}
+        </p>
+      ))}
 
       {/* Form cards grid */}
       {isLoading ? (

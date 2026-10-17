@@ -160,6 +160,71 @@ describe('FormDashboard', () => {
   // Generate All
   // ---------------------------------------------------------------------------
 
+  describe('the median table notice', () => {
+    const aprilTable = {
+      name: 'Census median income',
+      effective_date: '2026-04-01',
+      valid_through: '2026-10-31',
+      source_url: 'https://www.justice.gov/ust/eo/bapcpa/20260401/bci_data/median_income_table.htm',
+    };
+
+    function packetWith(tables: unknown[]) {
+      server.use(
+        http.get('http://localhost:8000/api/forms/packet/', () =>
+          HttpResponse.json({ session: 1, form_types: ['form_101', 'form_121'], tables })
+        )
+      );
+    }
+
+    it('tells the filer which figures the forms use and when to download again', async () => {
+      packetWith([aprilTable]);
+      renderFormDashboard();
+
+      expect(
+        await screen.findByText(
+          'These forms use the median income figures the U.S. Trustee applies to cases filed on or after April 1, 2026. New figures are expected after October 31, 2026. If you file after that date, download your forms again.'
+        )
+      ).toBeInTheDocument();
+    });
+
+    it('says only what applies today when no newer figures are expected', async () => {
+      packetWith([{ ...aprilTable, valid_through: null }]);
+      renderFormDashboard();
+
+      expect(
+        await screen.findByText(
+          'These forms use the median income figures the U.S. Trustee applies to cases filed on or after April 1, 2026.'
+        )
+      ).toBeInTheDocument();
+      expect(screen.queryByText(/New figures are expected/)).not.toBeInTheDocument();
+    });
+
+    it('shows no notice when the forms used no dated table', async () => {
+      packetWith([]);
+      renderFormDashboard();
+
+      await screen.findByText('Form 121 - SSN Statement');
+      expect(screen.queryByText(/median income figures/)).not.toBeInTheDocument();
+    });
+
+    it('names the day the table starts, not the day before, for a filer west of UTC', async () => {
+      // new Date('2026-04-01') is UTC midnight: March 31 in Chicago
+      const savedTz = process.env.TZ;
+      process.env.TZ = 'America/Chicago';
+      try {
+        packetWith([aprilTable]);
+        renderFormDashboard();
+
+        expect(await screen.findByText(/on or after April 1, 2026\./)).toBeInTheDocument();
+        expect(screen.queryByText(/March 31/)).not.toBeInTheDocument();
+        expect(screen.getByText(/after October 31, 2026\./)).toBeInTheDocument();
+      } finally {
+        if (savedTz === undefined) delete process.env.TZ;
+        else process.env.TZ = savedTz;
+      }
+    });
+  });
+
   it('offers only the forms in the filer’s packet', async () => {
     // A stored form that no longer applies (122A-2 after income dropped) is neither shown nor counted
     server.use(

@@ -18,6 +18,7 @@ import type {
   GenerateFormResponse,
   GenerateAllFormsResponse,
   FormPacketResponse,
+  Packet,
   SessionSummaryResponse,
   AssetInfo,
   DebtInfo,
@@ -561,9 +562,9 @@ export const formsAPI = {
    * The form types that apply to this filer, in filing order
    * GET /api/forms/packet/?session={sessionId}
    */
-  packet: async (sessionId: number): Promise<FormType[]> => {
+  packet: async (sessionId: number): Promise<Packet> => {
     const response = await apiFetch<FormPacketResponse>(`/forms/packet/?session=${sessionId}`);
-    return response.form_types;
+    return { form_types: response.form_types, tables: response.tables ?? [] };
   },
 
   /**

@@ -613,6 +613,43 @@ class TestPacketEndpoint:
         assert "form_103b" not in resp.data["form_types"]
         assert len(resp.data["form_types"]) == 14
 
+    def test_a_completed_intake_names_the_median_table_its_forms_use(
+        self, api_client, session_with_debtor
+    ):
+        resp = api_client.get(self.URL, {"session": session_with_debtor.id})
+        assert resp.status_code == status.HTTP_200_OK
+        assert resp.data["tables"] == [
+            {
+                "name": "Census median income",
+                "effective_date": "2026-04-01",
+                "valid_through": "2026-10-31",
+                "source_url": (
+                    "https://www.justice.gov/ust/eo/bapcpa/20260401/bci_data/"
+                    "median_income_table.htm"
+                ),
+            }
+        ]
+
+    def test_a_filer_with_no_means_test_is_shown_no_table(self, api_client, session_with_debtor):
+        session = session_with_debtor
+        session.status = "in_progress"
+        session.save()
+        MeansTest.objects.filter(session=session).delete()
+        resp = api_client.get(self.URL, {"session": session.id})
+        assert resp.status_code == status.HTTP_200_OK
+        assert resp.data["tables"] == []
+
+    def test_a_means_test_stored_before_the_record_names_no_table(
+        self, api_client, session_with_debtor
+    ):
+        session = session_with_debtor
+        session.status = "in_progress"
+        session.save()
+        _stale_means_test(session, "3000.00")
+        resp = api_client.get(self.URL, {"session": session.id})
+        assert resp.status_code == status.HTTP_200_OK
+        assert resp.data["tables"] == []
+
     def test_missing_session(self, api_client):
         resp = api_client.get(self.URL)
         assert resp.status_code == status.HTTP_400_BAD_REQUEST
