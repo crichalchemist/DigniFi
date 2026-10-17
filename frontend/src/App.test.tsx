@@ -36,4 +36,15 @@ describe('Source code link', () => {
     });
     expect(results).toHaveNoViolations();
   });
+
+  it('a wizard page has exactly one contentinfo landmark, the site footer', async () => {
+    localStorage.setItem('refresh_token', 'refresh-token');
+    renderAt('/intake');
+    await screen.findByRole('button', { name: 'Sign out' });
+    // The wizard's Continue button lives in its own footer; wait for it to render.
+    await screen.findByRole('button', { name: /continue|next/i });
+    const landmarks = screen.getAllByRole('contentinfo');
+    expect(landmarks).toHaveLength(1);
+    expect(landmarks[0]).toContainElement(screen.getByRole('link', { name: 'Source code' }));
+  });
 });
