@@ -16,6 +16,7 @@ Covers:
 """
 
 import json
+import logging
 from datetime import date
 from decimal import Decimal
 from unittest.mock import patch
@@ -695,7 +696,11 @@ class TestCompletionCheck:
 # ── The means test is worked out again before the packet is decided (spec §5.6) ──
 
 SPLIT_BY_SOURCE = "Enter your income by source on the Income step."
-NOT_PREPARED = "This form couldn't be prepared. Please try again later."
+NO_MEDIAN_TABLE = (
+    "DigniFi doesn't have the income figures for today's date yet, so it can't prepare your "
+    "forms. Please try again later."
+)
+NO_MEDIAN_TABLE_LOGGED = "No Census median income table in force on 2026-10-16 for district ilnd"
 
 
 def _set_wages(session, wages):
@@ -838,7 +843,7 @@ class TestMeansTestWorkedOutAgain:
         assert generate.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
         assert generate.data == {"form_type": "form_106dec", "error": SPLIT_BY_SOURCE}
 
-    def test_missing_median_income_is_a_500_logged_by_type_only(
+    def test_no_median_table_in_force_is_refused_in_plain_words_and_logged_without_filer_data(
         self, api_client, session_with_debtor, user, caplog
     ):
         session = session_with_debtor
@@ -848,29 +853,34 @@ class TestMeansTestWorkedOutAgain:
             session=session, form_type="form_106dec", status="generated", generated_by=user
         )
 
+        def logged_errors():
+            return [r.getMessage() for r in caplog.records if r.levelno >= logging.ERROR]
+
         generate_all = api_client.post(
             "/api/forms/generate_all/", {"session_id": session.id}, format="json"
         )
+        # Operations fix this, so the refusal is logged once: the table, the date and the
+        # district, and nothing about the filer (logs reach Sentry, DIG-105).
+        assert logged_errors() == [NO_MEDIAN_TABLE_LOGGED]
         listed = api_client.get("/api/forms/packet/", {"session": session.id})
         generate = api_client.post(
             "/api/forms/generate/",
             {"session_id": session.id, "form_type": "form_106dec"},
             format="json",
         )
+        regenerate = api_client.post(f"/api/forms/{unfiled.id}/regenerate/")
         download = api_client.get(f"/api/forms/{unfiled.id}/download/")
 
         for resp in (generate_all, listed):
-            assert resp.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
-            assert resp.data == {"error": NOT_PREPARED}
-        for resp in (generate, download):
-            assert resp.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
-            assert resp.data == {"form_type": "form_106dec", "error": NOT_PREPARED}
+            assert resp.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+            assert resp.data == {"error": NO_MEDIAN_TABLE}
+        for resp in (generate, regenerate, download):
+            assert resp.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+            assert resp.data == {"form_type": "form_106dec", "error": NO_MEDIAN_TABLE}
         assert set(
             GeneratedForm.objects.filter(session=session).values_list("form_type", flat=True)
         ) == {"form_103b", "form_106dec"}
-        # Operations fix this; the log names the exception's type and nothing it says.
-        assert "ValueError" in caplog.text
-        assert "median income data" not in caplog.text
+        assert logged_errors() == [NO_MEDIAN_TABLE_LOGGED] * 5
 
 
 # ── A filed form is kept after it leaves the packet (DIG-155) ─────────

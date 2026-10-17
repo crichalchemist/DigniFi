@@ -13,7 +13,9 @@ from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand
 from django.db import transaction
 
+from apps.districts.dated_tables import NoTableInForce, fill_date, in_force
 from apps.districts.models import District
+from apps.eligibility.models import MEDIAN_TABLE
 from apps.eligibility.services.means_test_calculator import MeansTestCalculator
 from apps.forms.registry import build_field_values, packet
 from apps.intake.models import (
@@ -166,7 +168,7 @@ def _maria_torres() -> dict:
 
 
 def _james_washington() -> dict:
-    """Borderline case — just below single-filer median ($71,304)."""
+    """Borderline case — just below single-filer median ($73,180)."""
     return {
         "username": "demo_james",
         "email": "james.washington@demo.dignifi.org",
@@ -270,7 +272,7 @@ def _priya_sharma() -> dict:
         "income": {
             "marital_status": "married_joint",
             "number_of_dependents": 2,
-            # $12,000/month = $144,000/year — above the $134,366 HH4 median,
+            # $12,000/month = $144,000/year — above the $137,902 HH4 median,
             # so the annualized § 707(b) comparison fails as intended.
             **_wages_only(Decimal("12000.00")),
         },
@@ -531,6 +533,20 @@ class Command(BaseCommand):
             self.stderr.write(
                 self.style.ERROR(
                     "ILND district not found. " "Run: python manage.py loaddata ilnd_2025_data"
+                )
+            )
+            return
+
+        # Every persona's means test needs a median table in force today; check before
+        # --reset deletes anything, so a refused reseed leaves the existing personas.
+        try:
+            in_force(district.median_incomes.all(), fill_date(), MEDIAN_TABLE, district.code)
+        except NoTableInForce:
+            self.stderr.write(
+                self.style.ERROR(
+                    "No ILND median income table is in force today, so nothing was changed. "
+                    "Add the current table as docs/REFERENCE_TABLES.md describes, then run: "
+                    "python manage.py loaddata ilnd_2025_data"
                 )
             )
             return

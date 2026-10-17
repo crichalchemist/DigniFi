@@ -246,7 +246,7 @@ export const PRIYA: PersonaData = {
   income: {
     marital_status: 'married_joint',
     number_of_dependents: 2,
-    // $12,000/month = $144,000/year — above the $134,366 HH4 median, so the
+    // $12,000/month = $144,000/year — above the $137,902 HH4 median, so the
     // annualized § 707(b) comparison fails as the persona intends.
     total_monthly_income: 12000,
   },
@@ -379,7 +379,7 @@ export const DESHAWN: WaiverPersonaData = {
     },
   ],
   fee_waiver: { take_home_pay: 3050, noncash_assistance: null },
-  // $3,500/month = $42,000/year — below 60% of the HH2 median ($54,915.60),
+  // $3,500/month = $42,000/year — below 60% of the HH2 median ($56,360.40),
   // so DeShawn qualifies for the fee waiver as well as Chapter 7.
   expected: { passes_means_test: true, fee_waiver_eligible: true },
 };

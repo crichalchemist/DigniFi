@@ -68,6 +68,7 @@ def median_income(district):
         family_size_6=Decimal("143108.00"),
         family_size_7=Decimal("152708.00"),
         family_size_8=Decimal("162308.00"),
+        family_size_additional=Decimal("11100.00"),
     )
 
 

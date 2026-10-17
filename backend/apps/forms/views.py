@@ -19,6 +19,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.districts.dated_tables import NoTableInForce
 from apps.eligibility.cmi import IncomeNotSplit
 from apps.eligibility.services import MeansTestCalculator
 from apps.intake.models import IntakeSession
@@ -52,8 +53,9 @@ class IntakeNotFinished(Exception):
 
 
 # Failures a filer can act on: 422 in plain words (spec §5.7). Anything else is a 500.
-# PreconditionMissing and IncomeNotSplit carry their own plain reasons (registry.py,
-# eligibility/cmi.py). Every other class gets a fixed sentence, because their messages
+# PreconditionMissing, IncomeNotSplit and NoTableInForce carry their own plain reasons
+# (registry.py, eligibility/cmi.py, districts/dated_tables.py, which logs its own
+# refusal). Every other class gets a fixed sentence, because their messages
 # name form keys, repeat groups and PDF widgets. None names the form: the dashboard shows
 # its label beside the error.
 _FAILURE_SENTENCES = {
@@ -78,7 +80,7 @@ def _failure(form_type: str | None, exc: Exception) -> tuple[dict, int]:
     form_type is None when the whole call is refused before any form is filled (Generate
     All, the packet list): the body then names no form.
     """
-    if isinstance(exc, PreconditionMissing | IncomeNotSplit):
+    if isinstance(exc, PreconditionMissing | IncomeNotSplit | NoTableInForce):
         error = str(exc)
     else:
         error = _FAILURE_SENTENCES.get(type(exc))
@@ -144,8 +146,8 @@ def _recalculate_means_test(session: IntakeSession) -> None:
 
     It runs before the packet is decided, so a result worked out from income the filer has
     since changed never decides which forms they get (DIG-160). Raises IncomeNotSplit when
-    the income isn't entered by source, and ValueError when the district's median income
-    data is missing, which operations must fix.
+    the income isn't entered by source, and NoTableInForce when no median income table is in
+    force on the fill date, which operations must fix.
     """
     if getattr(session, "income_info", None) is None:
         # No income at all is income not entered by source, as derivations._cmi rules.

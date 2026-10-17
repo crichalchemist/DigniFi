@@ -8,6 +8,8 @@ from decimal import Decimal
 from django.core.validators import RegexValidator
 from django.db import models
 
+from .dated_tables import DatedTable
+
 
 class District(models.Model):
     """
@@ -55,21 +57,20 @@ class District(models.Model):
         return f"{self.name} ({self.code.upper()})"
 
 
-class MedianIncome(models.Model):
+class MedianIncome(DatedTable):
     """
     Median income thresholds per district and effective period, for means test qualification.
 
     Fields:
         district (District): Reference to the relevant district.
         effective_date (date): Date this threshold became effective.
+        valid_through (date): Last day before the next Census update; empty means open-ended.
+        source_url (str): The U.S. Trustee page the figures come from.
         family_size_1..8 (Decimal): Median annual household income by family size.
         created_at (datetime): Timestamp of record creation.
     """
 
     district = models.ForeignKey(District, on_delete=models.CASCADE, related_name="median_incomes")
-    effective_date = models.DateField(
-        help_text="Date when this median income threshold became effective."
-    )
     family_size_1 = models.DecimalField(
         max_digits=12, decimal_places=2, help_text="1-person household median income."
     )
@@ -98,7 +99,6 @@ class MedianIncome(models.Model):
         max_digits=12,
         decimal_places=2,
         help_text="Amount to add for each additional person above 8.",
-        default=9900.00,
     )
     created_at = models.DateTimeField(auto_now_add=True, help_text="Record creation time.")
 
@@ -122,7 +122,7 @@ class MedianIncome(models.Model):
             Decimal: The median income for the specified family size.
 
         Raises:
-            ValueError: If family_size is less than 1.
+            ValueError: If family_size is less than 1, or above 8 with no extra-person amount.
         """
         if family_size < 1:
             raise ValueError("Family size must be at least 1.")
@@ -130,14 +130,11 @@ class MedianIncome(models.Model):
         if family_size <= 8:
             return getattr(self, f"family_size_{family_size}")
 
-        # For family size > 8, extrapolate
+        # For family size > 8, extrapolate by the table's own extra-person amount
+        if self.family_size_additional is None:
+            raise ValueError("This median income table has no amount for each extra person.")
         additional_people = family_size - 8
-        additional_amount = (
-            self.family_size_additional
-            if self.family_size_additional is not None
-            else Decimal("9900.00")
-        )
-        return self.family_size_8 + (Decimal(additional_people) * additional_amount)
+        return self.family_size_8 + (Decimal(additional_people) * self.family_size_additional)
 
 
 class ExemptionSchedule(models.Model):

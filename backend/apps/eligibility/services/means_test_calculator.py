@@ -10,6 +10,7 @@ from typing import Any
 
 from django.db import transaction
 
+from apps.districts.dated_tables import NoTableInForce
 from apps.eligibility.cmi import IncomeNotSplit, is_above_median
 from apps.eligibility.models import MeansTest
 from apps.intake.models import IntakeSession
@@ -79,10 +80,11 @@ class MeansTestCalculator:
         if not created:
             means_test.district = self.district
 
-        # Perform calculation. Income not split by source already says what to do.
+        # Perform calculation. Income not split by source and a missing median table already
+        # say what happened in plain words.
         try:
             means_test.calculate()
-        except IncomeNotSplit:
+        except (IncomeNotSplit, NoTableInForce):
             raise
         except ValueError as e:
             raise ValueError(f"Means test calculation failed: {str(e)}") from e
@@ -212,7 +214,8 @@ class MeansTestCalculator:
             "means_test_threshold": {
                 "median_income": float(means_test.median_income_threshold),
                 "district": self.district.code.upper(),
-                "effective_date": details.get("calculated_at"),
+                # The median table's own date; None for a row calculated before tables were dated.
+                "effective_date": details.get("median_table", {}).get("effective_date"),
             },
             "results": {
                 "passes_means_test": means_test.passes_means_test,
