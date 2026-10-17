@@ -65,7 +65,7 @@ The umbrella left two interim choices to this spec. The owner answered both on 2
 
 ### 3.4 The lookup and the refusal
 
-- **The lookup.** `in_force(rows, on)` returns the newest row whose effective date is on or before `on`, and whose `valid_through` is empty or on or after `on`. It replaces `latest()` and the bare `except`.
+- **The lookup.** `in_force(rows, on)` takes the newest row whose effective date is on or before `on`, and returns it unless its `valid_through` is set and earlier than `on`. It replaces `latest()` and the bare `except`.
 - **No table in force.** The lookup raises `NoTableInForce`, a `ValueError`. It never falls back to an older table. The refusal reads:
 
   > DigniFi doesn't have the income figures for today's date yet, so it can't prepare your forms. Please try again later.
