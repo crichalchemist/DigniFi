@@ -211,6 +211,47 @@ EXPECTED = {
             "23c": "720.00",
         },
     },
+    # His net driving income is other income until step 3e2 (3a1 spec §2, 3a1.Q1).
+    "andres": {
+        "form_106sum": {
+            "1a": "0.00",
+            "1b": "6697.00",
+            "1c": "6697.00",
+            "2": "7800.00",
+            "3a": "",
+            "3b": "23160.00",
+            "3c": "30960.00",
+            "4": "3370.00",
+            "5": "2779.00",
+        },
+        "form_122a1": {
+            "CheckBox1": "/No Abuse",
+            "terrorism If necessary list other sources on a separate page and put the total below 1": "Other income",
+            "Debto1.Quest10A": "3370.00",
+            "Debto1.Quest11": "3370.00",
+            "Quest11": "3370.00",
+            "12B": "40440.00",
+            "13A": "IL",
+            "13B": "2",
+            "13C": "93934.00",
+            "14a": BELOW_MEDIAN,
+        },
+        "schedule_i": {
+            "Other income 8h": "Other income",
+            "Amount 8h Debtor 1": "3370.00",
+            "Amount 10 Debtor 1": "3370.00",
+            "Amount 10": "3370.00",
+            "Amount 12": "3370.00",
+        },
+        "schedule_j": {
+            "17a": "389.00",
+            "22a": "2779.00",
+            "22c": "2779.00",
+            "23a": "3370.00",
+            "23b": "2779.00",
+            "23c": "591.00",
+        },
+    },
 }
 
 
