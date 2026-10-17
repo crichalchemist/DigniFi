@@ -213,6 +213,13 @@ export interface DebtInfo {
   source_document_name?: string | null;
 }
 
+/**
+ * An asset or debt row as the wizard holds it. `_key` is the browser's own name for the row and
+ * never reaches the server: a loaded row's id, or `new-<n>` from a counter for a new row. A save
+ * writes the id the server gave each row into the row with that key (DIG-273).
+ */
+export type WizardRow<T> = Partial<T> & { _key: string };
+
 /** A contract or lease (Schedule G), as the contracts list endpoint sends and saves it */
 export interface ExecutoryContract {
   id?: number;

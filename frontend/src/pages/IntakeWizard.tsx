@@ -35,6 +35,7 @@ import type {
   ExecutoryContract,
   Codebtor,
   CompletionError,
+  WizardRow,
 } from '../types/api';
 import { EXPENSE_FIELDS, INCOME_FIELDS } from '../types/api';
 
@@ -57,6 +58,40 @@ const WIZARD_STEPS = [
 // so they become numbers as session data enters wizard state.
 const ASSET_AMOUNT_FIELDS = ['current_value', 'amount_owed'] as const;
 const DEBT_AMOUNT_FIELDS = ['amount_owed', 'monthly_payment'] as const;
+
+/** A row as the server takes it, without the browser's own key */
+function withoutKey<Row extends { _key: string }>(row: Row): Partial<Row> {
+  const sent: Partial<Row> = { ...row };
+  delete sent._key;
+  return sent;
+}
+
+/**
+ * The id each sent row came back with, by the row's key. A session save returns a list it was
+ * sent in the order sent (DIG-273), so the row sent at each position takes the id at that
+ * position, a row sent with a stale or foreign id included.
+ */
+function savedIds(sent: { _key: string }[], saved: { id: number }[] | undefined) {
+  if (saved?.length !== sent.length) {
+    throw new Error('The session save did not return each row it was sent');
+  }
+  return new Map(sent.map((row, index) => [row._key, saved[index].id]));
+}
+
+/**
+ * Writes each saved row's id into the row with the same key, wherever that row now sits. A key no
+ * longer present (a row removed while its save was on its way) is skipped. Nothing else comes from
+ * the reply, so the amounts stay as the filer typed them.
+ */
+function withSavedIds<Row extends { _key: string; id?: number }>(
+  rows: Row[],
+  ids: Map<string, number>
+): Row[] {
+  return rows.map((row) => {
+    const id = ids.get(row._key);
+    return id === undefined ? row : { ...row, id };
+  });
+}
 
 export function IntakeWizard() {
   const navigate = useNavigate();
@@ -84,8 +119,8 @@ export function IntakeWizard() {
   const [debtorData, setDebtorData] = useState<Partial<DebtorInfo>>({});
   const [incomeData, setIncomeData] = useState<Partial<IncomeInfo>>({});
   const [expenseData, setExpenseData] = useState<Partial<ExpenseInfo>>({});
-  const [assetsData, setAssetsData] = useState<Partial<AssetInfo>[]>([]);
-  const [debtsData, setDebtsData] = useState<Partial<DebtInfo>[]>([]);
+  const [assetsData, setAssetsData] = useState<WizardRow<AssetInfo>[]>([]);
+  const [debtsData, setDebtsData] = useState<WizardRow<DebtInfo>[]>([]);
   const [contractsData, setContractsData] = useState<ExecutoryContract[]>([]);
   const [codebtorsData, setCodebtorsData] = useState<Codebtor[]>([]);
   // What Complete last said is missing, listed on Review until the step changes
@@ -148,10 +183,21 @@ export function IntakeWizard() {
         if (fresh.debtor_info) setDebtorData(fresh.debtor_info);
         if (fresh.income_info) setIncomeData(hydrateAmounts(fresh.income_info, INCOME_FIELDS));
         if (fresh.expense_info) setExpenseData(hydrateAmounts(fresh.expense_info, EXPENSE_FIELDS));
+        // A loaded row's key is its id
         if (fresh.assets)
-          setAssetsData(fresh.assets.map((asset) => hydrateAmounts(asset, ASSET_AMOUNT_FIELDS)));
+          setAssetsData(
+            fresh.assets.map((asset) => ({
+              ...hydrateAmounts(asset, ASSET_AMOUNT_FIELDS),
+              _key: String(asset.id),
+            }))
+          );
         if (fresh.debts)
-          setDebtsData(fresh.debts.map((debt) => hydrateAmounts(debt, DEBT_AMOUNT_FIELDS)));
+          setDebtsData(
+            fresh.debts.map((debt) => ({
+              ...hydrateAmounts(debt, DEBT_AMOUNT_FIELDS),
+              _key: String(debt.id),
+            }))
+          );
         setContractsData(contracts);
         setCodebtorsData(codebtors);
         setSessionRead('done');
@@ -209,7 +255,8 @@ export function IntakeWizard() {
       }
 
       case 'assets':
-        // Filter out empty/blank asset forms before sending
+        // Filter out empty/blank asset forms before sending. Each row keeps its `_key` here;
+        // saveCurrentStepData leaves it out of the request.
         return {
           assets: assetsData.filter((a) => a.asset_type && a.description?.trim()),
         } as Partial<IntakeSession>;
@@ -331,7 +378,9 @@ export function IntakeWizard() {
   // Data Persistence
   // =========================================================================
 
-  const saveCurrentStepData = async (body: Partial<IntakeSession> | null) => {
+  const saveCurrentStepData = async (
+    body: Partial<IntakeSession> | null
+  ): Promise<Partial<IntakeSession> | void> => {
     if (!session) return;
 
     // Contracts and codebtors save as whole lists, only from Continue: their step body is null,
@@ -353,7 +402,29 @@ export function IntakeWizard() {
       return;
     }
 
-    await api.intake.updateSession(session.id, body);
+    // Assets and debts carry the browser's own key, which never reaches the server
+    const { assets, debts } = body as {
+      assets?: WizardRow<AssetInfo>[];
+      debts?: WizardRow<DebtInfo>[];
+    };
+    const request: Partial<Record<keyof IntakeSession, unknown>> = { ...body };
+    if (assets) request.assets = assets.map(withoutKey);
+    if (debts) request.debts = debts.map(withoutKey);
+    const saved = await api.intake.updateSession(session.id, request as Partial<IntakeSession>);
+
+    // A new row keeps the id its first save gave it, so the next save updates that row instead of
+    // replacing it. The copy returned is what the server now holds, built by the same merge as
+    // the rows, so autosave sends nothing more until the filer changes something (DIG-273).
+    if (assets) {
+      const ids = savedIds(assets, saved.assets);
+      setAssetsData((rows) => withSavedIds(rows, ids));
+      return { ...body, assets: withSavedIds(assets, ids) } as Partial<IntakeSession>;
+    }
+    if (debts) {
+      const ids = savedIds(debts, saved.debts);
+      setDebtsData((rows) => withSavedIds(rows, ids));
+      return { ...body, debts: withSavedIds(debts, ids) } as Partial<IntakeSession>;
+    }
   };
 
   // =========================================================================
@@ -392,8 +463,8 @@ export function IntakeWizard() {
       case 4:
         return (
           <AssetsStep
-            initialData={assetsData}
-            onDataChange={setAssetsData}
+            rows={assetsData}
+            onRowsChange={setAssetsData}
             onValidationChange={setCanProceed}
           />
         );
@@ -401,8 +472,8 @@ export function IntakeWizard() {
       case 5:
         return (
           <DebtsStep
-            initialData={debtsData}
-            onDataChange={setDebtsData}
+            rows={debtsData}
+            onRowsChange={setDebtsData}
             onValidationChange={setCanProceed}
           />
         );

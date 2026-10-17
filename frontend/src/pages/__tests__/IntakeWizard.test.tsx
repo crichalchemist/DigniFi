@@ -925,10 +925,12 @@ describe('IntakeWizard amounts a returning filer already entered', { timeout: 15
       http.get('http://localhost:8000/api/intake/sessions/:id/', () =>
         HttpResponse.json(sessionAtStep5WithDebts)
       ),
-      // Continue saves the step, even when the filer changed nothing.
+      // Continue saves the step, even when the filer changed nothing. A saved list comes back
+      // in the order sent, each row with its id (DIG-273).
       http.patch('http://localhost:8000/api/intake/sessions/:id/', async ({ request }) => {
-        patchBodies.push(await request.json());
-        return HttpResponse.json(sessionAtStep5WithDebts);
+        const body = (await request.json()) as Record<string, unknown>;
+        patchBodies.push(body);
+        return HttpResponse.json({ ...sessionAtStep5WithDebts, ...body });
       }),
       http.get('http://localhost:8000/api/intake/sessions/:id/contracts/', () =>
         HttpResponse.json([])
@@ -978,6 +980,336 @@ describe('IntakeWizard amounts a returning filer already entered', { timeout: 15
     expect(assets.map((asset) => asset.id)).toEqual([3]);
     expect(assets[0].current_value).toBe(8000);
     expect(assets[0].amount_owed).toBe(3000);
+  });
+});
+
+// ===========================================================================
+// New assets and debts keep one id (step 3a1 spec §5, DIG-273)
+// ===========================================================================
+
+/**
+ * The session server for one filer. GET sends `loaded`. A PATCH that carries assets or debts
+ * stores that list as sent and returns it in the order sent, each row with its id: a row sent
+ * without an id, or with one the server doesn't hold, gets the next new id, and a stored row left
+ * out is gone. Amounts come back as decimal strings, and any save reopens a completed intake.
+ */
+function serveSessionSaves(
+  loaded: Record<string, unknown>,
+  held: Record<string, unknown> = loaded
+) {
+  let stored = held;
+  let nextId = 101;
+  let heldReply: Promise<void> | null = null;
+  const bodies: Record<string, unknown>[] = [];
+  server.use(
+    http.get('http://localhost:8000/api/intake/sessions/:id/', () => HttpResponse.json(loaded)),
+    http.patch('http://localhost:8000/api/intake/sessions/:id/', async ({ request }) => {
+      const body = (await request.json()) as Record<string, unknown>;
+      bodies.push(body);
+      stored = { ...stored, status: 'in_progress' };
+      for (const list of ['assets', 'debts']) {
+        const sent = body[list] as Record<string, unknown>[] | undefined;
+        if (!sent) continue;
+        const heldIds = (stored[list] as Record<string, unknown>[]).map((row) => row.id);
+        stored[list] = sent.map((row) => {
+          const saved: Record<string, unknown> = {
+            ...row,
+            id: heldIds.includes(row.id) ? row.id : nextId++,
+          };
+          for (const amount of ['current_value', 'amount_owed', 'monthly_payment']) {
+            if (typeof saved[amount] === 'number') saved[amount] = saved[amount].toFixed(2);
+          }
+          return saved;
+        });
+      }
+      const reply = HttpResponse.json(stored);
+      if (heldReply) {
+        const wait = heldReply;
+        heldReply = null;
+        await wait;
+      }
+      return reply;
+    }),
+    http.post('http://localhost:8000/api/intake/sessions/:id/complete/', () => {
+      stored = { ...stored, status: 'completed' };
+      return HttpResponse.json({ message: 'Session completed.' });
+    })
+  );
+  return {
+    bodies,
+    stored: () => stored,
+    /** Keeps the next save's reply on its way until the returned function is called */
+    holdNextReply: () => {
+      let release = () => {};
+      heldReply = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      return release;
+    },
+  };
+}
+
+/** A form control by its name, as the journeys find them */
+function field(name: string) {
+  const control = document.querySelector(`[name="${name}"]`);
+  if (!control) throw new Error(`No control named ${name}`);
+  return control;
+}
+
+/** Moves the fake clock on in 1 s steps, so each save's reply lands before the next timer */
+async function waitSeconds(seconds: number) {
+  for (let second = 0; second < seconds; second += 1) {
+    await act(() => vi.advanceTimersByTimeAsync(1000));
+  }
+}
+
+describe.each([
+  {
+    list: 'debts',
+    step: 5,
+    title: /amounts owed/i,
+    nameKey: 'creditor_name',
+    amountKey: 'amount_owed',
+    removeLabel: 'Remove amount owed 1',
+    addLabel: /add another amount owed/i,
+    fill: (index: number, name: string, amount: string) => {
+      fireEvent.change(field(`debt_type_${index}`), { target: { value: 'credit_card' } });
+      fireEvent.change(field(`creditor_name_${index}`), { target: { value: name } });
+      fireEvent.change(field(`amount_owed_${index}`), { target: { value: amount } });
+    },
+    stored: {
+      id: 7,
+      session: 1,
+      data_source: 'manual',
+      creditor_name: 'Northwind Card Services',
+      debt_type: 'credit_card',
+      priority_classification: 'unsecured',
+      amount_owed: '2500.00',
+      monthly_payment: '75.00',
+      is_in_collections: false,
+      is_secured: false,
+      collateral_description: '',
+      notes: '',
+      is_draft: false,
+      source_document_name: null,
+    },
+  },
+  {
+    list: 'assets',
+    step: 4,
+    title: /assets/i,
+    nameKey: 'description',
+    amountKey: 'current_value',
+    removeLabel: 'Remove asset 1',
+    addLabel: /add another asset/i,
+    fill: (index: number, name: string, amount: string) => {
+      fireEvent.change(field(`asset_type_${index}`), { target: { value: 'vehicle' } });
+      fireEvent.change(field(`description_${index}`), { target: { value: name } });
+      fireEvent.change(field(`current_value_${index}`), { target: { value: amount } });
+    },
+    stored: {
+      id: 3,
+      session: 1,
+      asset_type: 'vehicle',
+      data_source: 'manual',
+      description: 'Family car',
+      current_value: '8000.00',
+      amount_owed: '3000.00',
+      equity: 5000,
+      financial_institution: '',
+    },
+  },
+])(
+  'IntakeWizard new $list keep one id',
+  { timeout: 30_000 },
+  ({ list, step, title, nameKey, amountKey, removeLabel, addLabel, fill, stored }) => {
+    const onStep = { ...sessionAtStep1, current_step: step };
+    const rowsSent = (body: Record<string, unknown>) => body[list] as Record<string, unknown>[];
+    const idsSent = (bodies: Record<string, unknown>[]) =>
+      bodies.map((body) => rowsSent(body).map((row) => row.id));
+
+    beforeEach(() => {
+      server.use(
+        http.post(
+          'http://localhost:8000/api/intake/sessions/:id/update_step/',
+          async ({ request }) => {
+            const { current_step } = (await request.json()) as { current_step: number };
+            return HttpResponse.json({
+              session: { ...onStep, current_step },
+              message: 'Step updated.',
+            });
+          }
+        ),
+        http.post(
+          'http://localhost:8000/api/audit/logs/',
+          () => new HttpResponse(null, { status: 201 })
+        )
+      );
+    });
+
+    // A save of a row without its id replaces the row, and step 3c links rows by id
+    it('saves a new row under one id across autosave, an edit and autosave, once per edit', async () => {
+      const { bodies } = serveSessionSaves(onStep);
+      renderWizard();
+      await screen.findByRole('heading', { name: title, level: 2 });
+
+      vi.useFakeTimers();
+      try {
+        // Each wait outlasts the 2 s autosave delay after the save lands
+        fill(0, 'Elm Street Clinic', '1200');
+        await waitSeconds(5);
+        fireEvent.change(field(`${nameKey}_0`), { target: { value: 'Elm Street Health' } });
+        await waitSeconds(5);
+      } finally {
+        vi.useRealTimers();
+      }
+
+      expect(idsSent(bodies)).toEqual([[undefined], [101]]);
+      const [, second] = bodies.map(rowsSent);
+      expect(second[0][nameKey]).toBe('Elm Street Health');
+      // The amount the filer typed, never the reply's decimal string
+      expect(second[0][amountKey]).toBe(1200);
+      // The browser's own key stays in the browser
+      expect(second[0]).not.toHaveProperty('_key');
+    });
+
+    it('saves a new row under one id across Continue, Go Back, an edit and Continue', async () => {
+      const { bodies } = serveSessionSaves(onStep);
+      const { container } = renderWizard();
+      await screen.findByRole('heading', { name: title, level: 2 });
+
+      vi.useFakeTimers();
+      try {
+        fill(0, 'Elm Street Clinic', '1200');
+        fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+        await waitSeconds(1);
+        expect(container.querySelector('.step-title')).not.toHaveTextContent(title);
+
+        // Going back sends nothing: the new row's id is already in the saved copy
+        fireEvent.click(screen.getByRole('button', { name: 'Go Back' }));
+        await waitSeconds(3);
+        expect(bodies).toHaveLength(1);
+
+        fireEvent.change(field(`${nameKey}_0`), { target: { value: 'Elm Street Health' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+        await waitSeconds(3);
+      } finally {
+        vi.useRealTimers();
+      }
+
+      expect(idsSent(bodies)).toEqual([[undefined], [101]]);
+    });
+
+    // Another tab, or a save the filer never saw land, can leave the browser with an id the server
+    // no longer holds: the server stores that row under a new id, and the browser must use it
+    it('saves a row sent with an id the server no longer holds under the new id it got', async () => {
+      const { bodies } = serveSessionSaves(
+        { ...onStep, [list]: [stored] },
+        { ...onStep, [list]: [] }
+      );
+      renderWizard();
+      await screen.findByRole('heading', { name: title, level: 2 });
+
+      vi.useFakeTimers();
+      try {
+        fireEvent.change(field(`${nameKey}_0`), { target: { value: 'Edited once' } });
+        await waitSeconds(3);
+        fireEvent.change(field(`${nameKey}_0`), { target: { value: 'Edited twice' } });
+        await waitSeconds(3);
+      } finally {
+        vi.useRealTimers();
+      }
+
+      expect(idsSent(bodies)).toEqual([[stored.id], [101]]);
+    });
+
+    it('drops a row the filer removed while its save was on its way, and keeps the other new row', async () => {
+      const saves = serveSessionSaves(onStep);
+      renderWizard();
+      await screen.findByRole('heading', { name: title, level: 2 });
+      const landSave = saves.holdNextReply();
+
+      vi.useFakeTimers();
+      try {
+        fill(0, 'Elm Street Clinic', '1200');
+        fireEvent.click(screen.getByRole('button', { name: addLabel }));
+        fill(1, 'Harbor Light Dental', '300');
+        await waitSeconds(3);
+        expect(saves.bodies).toHaveLength(1);
+
+        fireEvent.click(screen.getByRole('button', { name: removeLabel }));
+        await act(async () => landSave());
+        await waitSeconds(4);
+      } finally {
+        vi.useRealTimers();
+      }
+
+      expect(idsSent(saves.bodies)).toEqual([[undefined, undefined], [102]]);
+      expect(rowsSent(saves.bodies[1])[0][nameKey]).toBe('Harbor Light Dental');
+      expect(rowsSent(saves.stored())).toEqual([
+        expect.objectContaining({ id: 102, [nameKey]: 'Harbor Light Dental' }),
+      ]);
+    });
+  }
+);
+
+describe('IntakeWizard a new debt after Complete', { timeout: 30_000 }, () => {
+  // Any save reopens a completed intake, and the filer would have to press Complete again. Once a
+  // new debt has its id, stepping back over Amounts Owed must not save it again.
+  it('keeps a completed intake completed when the filer steps back to the debt they added', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const saves = serveSessionSaves({ ...sessionAtStep1, current_step: 5 });
+    server.use(
+      http.post(
+        'http://localhost:8000/api/intake/sessions/:id/update_step/',
+        async ({ request }) => {
+          const { current_step } = (await request.json()) as { current_step: number };
+          return HttpResponse.json({
+            session: { ...sessionAtStep1, current_step },
+            message: 'Step updated.',
+          });
+        }
+      ),
+      // The means test fails after Complete accepts the intake, so the filer stays on Review
+      http.post('http://localhost:8000/api/intake/sessions/:id/calculate_means_test/', () =>
+        HttpResponse.json({ message: 'Unable to calculate means test.' }, { status: 400 })
+      ),
+      http.post(
+        'http://localhost:8000/api/audit/logs/',
+        () => new HttpResponse(null, { status: 201 })
+      )
+    );
+    const { container } = renderWizard();
+    await screen.findByRole('heading', { name: /amounts owed/i, level: 2 });
+    const stepTitle = () => container.querySelector('.step-title');
+
+    fireEvent.change(field('debt_type_0'), { target: { value: 'credit_card' } });
+    fireEvent.change(field('creditor_name_0'), { target: { value: 'Elm Street Clinic' } });
+    fireEvent.change(field('amount_owed_0'), { target: { value: '1200' } });
+    for (const next of ['Contracts & Leases', 'Codebtors', 'Review & Results']) {
+      const continueBtn = screen.getByRole('button', { name: 'Continue' });
+      await waitFor(() => expect(continueBtn).toBeEnabled());
+      await userEvent.click(continueBtn);
+      await waitFor(() => expect(stepTitle()).toHaveTextContent(next));
+    }
+    await userEvent.click(screen.getByRole('button', { name: /complete intake/i }));
+    await screen.findByRole('alert');
+    expect(saves.stored().status).toBe('completed');
+
+    vi.useFakeTimers();
+    try {
+      for (const step of ['Codebtors', 'Contracts & Leases', 'Amounts Owed']) {
+        fireEvent.click(screen.getByRole('button', { name: 'Go Back' }));
+        await waitSeconds(3);
+        expect(stepTitle()).toHaveTextContent(step);
+      }
+    } finally {
+      vi.useRealTimers();
+    }
+
+    expect(saves.bodies).toHaveLength(1);
+    expect(saves.stored().status).toBe('completed');
+    consoleError.mockRestore();
   });
 });
 

@@ -21,8 +21,12 @@ interface UseAutoSaveOptions<T> {
    * Each name keeps its own last saved copy; the first data seen under a name is its loaded copy.
    */
   dataKey?: string;
-  /** Async function that persists the data */
-  onSave: (data: T) => Promise<void>;
+  /**
+   * Async function that persists the data. It may return the copy the server now holds (the
+   * wizard's rows with the ids the save gave them), which becomes the last saved copy in place
+   * of the data sent.
+   */
+  onSave: (data: T) => Promise<T | void>;
   /** Debounce delay in milliseconds (default: 2000) */
   debounceMs?: number;
   /** Whether auto-save is enabled (default: true) */
@@ -69,8 +73,8 @@ export function useAutoSave<T>({
     sendingCopiesRef.current.set(key, copy);
     setSaveStatus('saving');
     try {
-      await onSaveRef.current(dataRef.current);
-      savedCopiesRef.current.set(key, copy);
+      const savedCopy = await onSaveRef.current(dataRef.current);
+      savedCopiesRef.current.set(key, savedCopy === undefined ? copy : JSON.stringify(savedCopy));
       setSaveStatus('saved');
       setLastSavedAt(new Date());
 

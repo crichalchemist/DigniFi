@@ -13,11 +13,12 @@ import { FormField, FormSelect, Button } from '../../common';
 import { UPLDisclaimer } from '../../compliance';
 import { UPL_EXEMPTION_DISCLAIMER } from '../../../constants/upl';
 import { parseAmount } from '../../../utils/parseAmount';
-import type { AssetInfo } from '../../../types/api';
+import type { AssetInfo, WizardRow } from '../../../types/api';
 
 interface AssetsStepProps {
-  initialData?: Partial<AssetInfo>[];
-  onDataChange: (data: Partial<AssetInfo>[]) => void;
+  /** The wizard's rows. The step keeps no copy, so an id a save writes into a row stays there. */
+  rows: WizardRow<AssetInfo>[];
+  onRowsChange: (rows: WizardRow<AssetInfo>[]) => void;
   onValidationChange: (isValid: boolean) => void;
 }
 
@@ -30,10 +31,15 @@ const ASSET_TYPES = [
   { value: 'other', label: 'Other Asset' },
 ];
 
-export function AssetsStep({ initialData, onDataChange, onValidationChange }: AssetsStepProps) {
-  const [assets, setAssets] = useState<Partial<AssetInfo>[]>(
-    initialData && initialData.length > 0 ? initialData : [createEmptyAsset()]
-  );
+// The last new row's key: unique while the page is open, and the prefix keeps it apart from a
+// loaded row's key, which is its id
+let nextKey = 0;
+
+export function AssetsStep({ rows, onRowsChange, onValidationChange }: AssetsStepProps) {
+  // With no rows, the step shows one blank row. It joins the wizard's rows at the filer's first
+  // edit, and a blank row is never saved.
+  const [blankRow] = useState(createEmptyAsset);
+  const assets = useMemo(() => (rows.length > 0 ? rows : [blankRow]), [rows, blankRow]);
 
   const { errors, isValid } = useMemo(() => {
     const newErrors: Record<number, Record<string, string>> = {};
@@ -79,15 +85,15 @@ export function AssetsStep({ initialData, onDataChange, onValidationChange }: As
     return { errors: newErrors, isValid: valid };
   }, [assets]);
 
-  // Update parent when assets change
+  // Tell the parent whether the step can be saved
   useEffect(() => {
-    onDataChange(assets);
     onValidationChange(isValid);
-    // both callbacks are useState setters in IntakeWizard — stable identities
-  }, [assets, isValid, onDataChange, onValidationChange]);
+    // a useState setter in IntakeWizard — a stable identity
+  }, [isValid, onValidationChange]);
 
-  function createEmptyAsset(): Partial<AssetInfo> {
+  function createEmptyAsset(): WizardRow<AssetInfo> {
     return {
+      _key: `new-${++nextKey}`,
       asset_type: undefined,
       description: '',
       current_value: undefined,
@@ -97,15 +103,15 @@ export function AssetsStep({ initialData, onDataChange, onValidationChange }: As
   }
 
   const handleAddAsset = () => {
-    setAssets([...assets, createEmptyAsset()]);
+    onRowsChange([...assets, createEmptyAsset()]);
   };
 
   const handleRemoveAsset = (index: number) => {
     if (assets.length === 1) {
       // Keep at least one asset form
-      setAssets([createEmptyAsset()]);
+      onRowsChange([createEmptyAsset()]);
     } else {
-      setAssets(assets.filter((_, i) => i !== index));
+      onRowsChange(assets.filter((_, i) => i !== index));
     }
   };
 
@@ -124,7 +130,7 @@ export function AssetsStep({ initialData, onDataChange, onValidationChange }: As
       };
     }
 
-    setAssets(updatedAssets);
+    onRowsChange(updatedAssets);
   };
 
   const calculateEquity = (asset: Partial<AssetInfo>): number => {
