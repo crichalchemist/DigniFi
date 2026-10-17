@@ -78,6 +78,15 @@ jobs:
         # skips (no `java` on the runner) shows in the log instead of passing quietly.
         run: pytest --cov=apps --cov=config --cov-fail-under=90 --tb=short -q -rs
 
+      - name: Run the Postgres-only tests
+        working-directory: backend
+        # select_for_update does nothing on sqlite, so the tests that prove one save at a
+        # time on a session (DIG-188) skip above and run here, against the job's Postgres
+        # service. -rs shows any that skip.
+        env:
+          DJANGO_SETTINGS_MODULE: config.settings.test_postgres
+        run: pytest -m postgres --tb=short -q -rs
+
   security-scan:
     name: Security Scan
     runs-on: ubuntu-latest

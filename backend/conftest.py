@@ -12,6 +12,9 @@ collect_ignore = [
     "test_fee_waiver_manual.py",
     "test_debt_classification.py",
     "test_schedule_ab_logic.py",
+    # A settings module, not tests: its name matches python_files, and importing it during
+    # collection would point the running settings' default database at DATABASE_URL.
+    "config/settings/test_postgres.py",
 ]
 
 

@@ -16,6 +16,7 @@ from apps.eligibility.cmi import IncomeNotSplit, current_monthly_income
 from apps.eligibility.services import MeansTestCalculator
 from apps.forms.registry import PreconditionMissing, _needs_ssn
 
+from .locking import lock_session
 from .models import (
     AssetInfo,
     Codebtor,
@@ -52,6 +53,7 @@ def _save_list(session, model, row_serializer, rows):
     serializer = row_serializer(data=rows, many=True)
     serializer.is_valid(raise_exception=True)
     with transaction.atomic():
+        lock_session(session.pk)
         _save_rows_by_id(session, model, serializer.validated_data)
         session.reopen()
     saved = model.objects.filter(session=session).order_by("id")
@@ -69,6 +71,29 @@ def _assert_session_owned(session, user):
 
     if session.user != user:
         raise PermissionDenied("You do not have access to this session.")
+
+
+def _lock_for_row_update(serializer):
+    """Lock the sessions a per-item asset or debt update changes, then read the row again.
+
+    A row moved to another of the filer's sessions changes both, so both are locked, in id
+    order, so two moves between the same sessions can't wait on each other (DIG-188). A row
+    that another save deleted or moved while this one waited is a 404, as a missing row is.
+    """
+    from rest_framework.exceptions import NotFound
+
+    row = serializer.instance
+    session = serializer.validated_data.get("session")
+    moved_to = session.pk if session is not None else row.session_id
+    locked = sorted({row.session_id, moved_to})
+    for session_id in locked:
+        lock_session(session_id)
+    try:
+        row.refresh_from_db()  # the row as stored once the lock is held
+    except row.DoesNotExist:
+        raise NotFound() from None
+    if row.session_id not in locked:
+        raise NotFound()  # moved meanwhile: locking its session now would break id order
 
 
 class IntakeSessionViewSet(viewsets.ModelViewSet):
@@ -118,6 +143,17 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
         )
 
     @transaction.atomic
+    def update(self, request, *args, **kwargs):
+        """
+        PUT /api/intake/sessions/{id}/, and every PATCH through partial_update.
+
+        Locks the session before the save reads it and its stored rows, so two saves of one
+        session run one after the other (DIG-188).
+        """
+        lock_session(self.get_object().pk)  # get_object first: another user's session is a 404
+        return super().update(request, *args, **kwargs)
+
+    @transaction.atomic
     def partial_update(self, request, *args, **kwargs):
         """
         PATCH /api/intake/sessions/{id}/
@@ -138,6 +174,7 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
         serializer.save(user=self.request.user)
 
     @action(detail=True, methods=["post"])
+    @transaction.atomic
     def update_step(self, request, pk=None):
         """
         Update current step in intake wizard.
@@ -148,7 +185,7 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
             "data": {...}  // Step-specific data
         }
         """
-        session = self.get_object()
+        session = lock_session(self.get_object().pk)
 
         # Only one of the wizard's 8 steps; anything else is a client fault (DIG-151).
         current_step = request.data.get("current_step")
@@ -180,6 +217,7 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
         )
 
     @action(detail=True, methods=["post"])
+    @transaction.atomic
     def complete(self, request, pk=None):
         """
         Mark intake session as completed.
@@ -187,9 +225,10 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
         POST /api/intake/sessions/{id}/complete/
 
         Refuses with a 400 naming, in wizard order, the step that fixes each gap
-        (forms step 3a1 spec §4.2).
+        (forms step 3a1 spec §4.2). The session stays locked from the checks to the status
+        write, so a save can't land between them, and a save that waited reopens it.
         """
-        session = self.get_object()
+        session = lock_session(self.get_object().pk)
 
         # Validate session is complete
         errors = []
@@ -240,7 +279,7 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
 
         session.status = "completed"
         session.completed_at = timezone.now()
-        session.save()
+        session.save(update_fields=["status", "completed_at"])
 
         return Response(
             {
@@ -426,8 +465,10 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
             )
         serializer = ExecutoryContractSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        serializer.save(session=session)
-        session.reopen()
+        with transaction.atomic():
+            lock_session(session.pk)
+            serializer.save(session=session)
+            session.reopen()
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     @action(
@@ -436,8 +477,9 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
         url_path="contracts/(?P<contract_id>[0-9]+)",
         url_name="contract-detail",
     )
+    @transaction.atomic
     def delete_contract(self, request, pk=None, contract_id=None):
-        session = self.get_object()
+        session = lock_session(self.get_object().pk)
         try:
             contract = ExecutoryContract.objects.get(pk=contract_id, session=session)
             contract.delete()
@@ -457,8 +499,10 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
             return _save_list(session, Codebtor, CodebtorRowSerializer, request.data)
         serializer = CodebtorSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        serializer.save(session=session)
-        session.reopen()
+        with transaction.atomic():
+            lock_session(session.pk)
+            serializer.save(session=session)
+            session.reopen()
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     @action(
@@ -467,8 +511,9 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
         url_path="codebtors/(?P<codebtor_id>[0-9]+)",
         url_name="codebtor-detail",
     )
+    @transaction.atomic
     def delete_codebtor(self, request, pk=None, codebtor_id=None):
-        session = self.get_object()
+        session = lock_session(self.get_object().pk)
         try:
             codebtor = Codebtor.objects.get(pk=codebtor_id, session=session)
             codebtor.delete()
@@ -519,21 +564,27 @@ class AssetViewSet(viewsets.ModelViewSet):
         """Return only assets for user's intake sessions."""
         return AssetInfo.objects.filter(session__user=self.request.user).select_related("session")
 
+    @transaction.atomic
     def perform_create(self, serializer):
         _assert_session_owned(serializer.validated_data["session"], self.request.user)
+        lock_session(serializer.validated_data["session"].pk)
         serializer.save()
         serializer.instance.session.reopen()
 
+    @transaction.atomic
     def perform_update(self, serializer):
         session = serializer.validated_data.get("session")
         if session is not None:
             _assert_session_owned(session, self.request.user)
+        _lock_for_row_update(serializer)
         # A row moved to another of the filer's sessions changes both.
         serializer.instance.session.reopen()
         serializer.save()
         serializer.instance.session.reopen()
 
+    @transaction.atomic
     def perform_destroy(self, instance):
+        lock_session(instance.session_id)
         instance.delete()
         instance.session.reopen()
 
@@ -553,21 +604,27 @@ class DebtViewSet(viewsets.ModelViewSet):
         """Return only debts for user's intake sessions."""
         return DebtInfo.objects.filter(session__user=self.request.user).select_related("session")
 
+    @transaction.atomic
     def perform_create(self, serializer):
         _assert_session_owned(serializer.validated_data["session"], self.request.user)
+        lock_session(serializer.validated_data["session"].pk)
         serializer.save()
         serializer.instance.session.reopen()
 
+    @transaction.atomic
     def perform_update(self, serializer):
         session = serializer.validated_data.get("session")
         if session is not None:
             _assert_session_owned(session, self.request.user)
+        _lock_for_row_update(serializer)
         # A row moved to another of the filer's sessions changes both.
         serializer.instance.session.reopen()
         serializer.save()
         serializer.instance.session.reopen()
 
+    @transaction.atomic
     def perform_destroy(self, instance):
+        lock_session(instance.session_id)
         instance.delete()
         instance.session.reopen()
 
