@@ -166,6 +166,75 @@ def test_filer_who_leaves_every_expense_blank_can_complete(filer, district):
     assert _status(session) == "completed"
 
 
+# ── Complete names the step that fixes each gap (forms step 3a1 spec §4.2) ──
+
+NOT_FINISHED = "Please complete all required sections before finalizing"
+NAME_AND_ADDRESS = "Enter your name and address on the Your Information step."
+NINE_DIGIT_SSN = "Enter your 9-digit Social Security number on the Your Information step."
+INCOME_BY_SOURCE = "Enter your income by source on the Income step."
+EXPENSES_STEP = "Go through the Expenses step, even if you have no expenses to enter."
+
+
+def _no_debtor(session):
+    session.debtor_info.delete()
+
+
+def _eight_digit_ssn(session):
+    session.debtor_info.ssn = "90012345"
+    session.debtor_info.save()
+
+
+def _income_boxes_all_empty(session):
+    session.income_info.monthly_gross_wages = None
+    session.income_info.save()
+
+
+def _expenses_step_never_saved(session):
+    session.expense_info.delete()
+
+
+@pytest.mark.parametrize(
+    "gap,step,message",
+    [
+        (_no_debtor, "debtor_info", NAME_AND_ADDRESS),
+        (_eight_digit_ssn, "debtor_info", NINE_DIGIT_SSN),
+        (_income_boxes_all_empty, "income_info", INCOME_BY_SOURCE),
+        (_expenses_step_never_saved, "expense_info", EXPENSES_STEP),
+    ],
+    ids=["no_name_and_address", "eight_digit_ssn", "no_income_by_source", "no_expenses_step"],
+)
+def test_complete_names_the_step_that_fixes_each_gap(filer, completed, gap, step, message):
+    # The filer reads why on Review, with a way to the step that fixes it (DIG-181).
+    client, _ = filer
+    completed.status = "in_progress"
+    completed.save()
+    gap(completed)
+
+    response = client.post(_session_url(completed, "complete/"))
+
+    assert response.status_code == 400
+    assert response.data == {
+        "message": NOT_FINISHED,
+        "errors": [{"step": step, "message": message}],
+    }
+    assert _status(completed) == "in_progress"
+
+
+def test_complete_lists_every_gap_in_wizard_order(filer, district):
+    client, user = filer
+    session = IntakeSession.objects.create(user=user, district=district, current_step=8)
+
+    response = client.post(_session_url(session, "complete/"))
+
+    assert response.status_code == 400
+    assert response.data["errors"] == [
+        {"step": "debtor_info", "message": NAME_AND_ADDRESS},
+        {"step": "income_info", "message": INCOME_BY_SOURCE},
+        {"step": "expense_info", "message": EXPENSES_STEP},
+    ]
+    assert _status(session) == "started"
+
+
 # ── An edit after Complete reopens the intake ─────────────────────────
 
 

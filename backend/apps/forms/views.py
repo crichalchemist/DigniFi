@@ -52,6 +52,8 @@ class FormIsFiled(Exception):
 class IntakeNotFinished(Exception):
     """The filer hasn't completed the intake, so an empty list can't yet mean "none"."""
 
+    page = "/intake"  # where the filer finishes it
+
 
 # Failures a filer can act on: 422 in plain words (spec §5.7). Anything else is a 500.
 # PreconditionMissing, IncomeNotSplit and NoTableInForce carry their own plain reasons
@@ -79,7 +81,8 @@ def _failure(form_type: str | None, exc: Exception) -> tuple[dict, int]:
     """The error body and status for a form that could not be filled.
 
     form_type is None when the whole call is refused before any form is filled (Generate
-    All, the packet list): the body then names no form.
+    All, the packet list): the body then names no form. A refusal the filer fixes on a
+    wizard step or a page also carries that `step` or `page` (forms step 3a1 spec §4.3).
     """
     if isinstance(exc, PreconditionMissing | IncomeNotSplit | NoTableInForce):
         error = str(exc)
@@ -91,9 +94,13 @@ def _failure(form_type: str | None, exc: Exception) -> tuple[dict, int]:
         logger.error("Filling %s failed: %s", form_type or "the packet", type(exc).__name__)
         error = "This form couldn't be prepared. Please try again later."
         code = status.HTTP_500_INTERNAL_SERVER_ERROR
-    if form_type is None:
-        return {"error": error}, code
-    return {"form_type": form_type, "error": error}, code
+    body = {"error": error} if form_type is None else {"form_type": form_type, "error": error}
+    if code == status.HTTP_422_UNPROCESSABLE_ENTITY:
+        # Only a refusal: an unexpected exception's own step or page attribute means nothing here.
+        for key in ("step", "page"):
+            if getattr(exc, key, None):
+                body[key] = getattr(exc, key)
+    return body, code
 
 
 def _session_or_error(

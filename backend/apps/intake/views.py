@@ -11,7 +11,9 @@ from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from apps.eligibility.cmi import IncomeNotSplit, current_monthly_income
 from apps.eligibility.services import MeansTestCalculator
+from apps.forms.registry import PreconditionMissing, _needs_ssn
 
 from .models import (
     AssetInfo,
@@ -183,21 +185,35 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
 
         POST /api/intake/sessions/{id}/complete/
 
-        Validates that all required data is present before completion.
+        Refuses with a 400 naming, in wizard order, the step that fixes each gap
+        (forms step 3a1 spec §4.2).
         """
         session = self.get_object()
 
         # Validate session is complete
         errors = []
 
-        if not hasattr(session, "debtor_info"):
-            errors.append("Debtor information is required")
+        # The forms' own identity checks, so Complete and the forms say the same thing.
+        try:
+            _needs_ssn(session)  # checks the name and address first
+        except PreconditionMissing as exc:
+            errors.append({"step": exc.step, "message": str(exc)})
 
-        if not hasattr(session, "income_info"):
-            errors.append("Income information is required")
+        try:
+            income_info = getattr(session, "income_info", None)
+            if income_info is None:
+                raise IncomeNotSplit()  # no income at all is income not entered by source
+            current_monthly_income(income_info)
+        except IncomeNotSplit as exc:
+            errors.append({"step": exc.step, "message": str(exc)})
 
         if not hasattr(session, "expense_info"):
-            errors.append("Expense information is required")
+            errors.append(
+                {
+                    "step": "expense_info",
+                    "message": "Go through the Expenses step, even if you have no expenses to enter.",
+                }
+            )
 
         if errors:
             return Response(
