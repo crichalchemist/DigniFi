@@ -26,11 +26,12 @@ from pypdf.generic._appearance_stream import TextStreamAppearance
 
 from apps.districts.models import District
 from apps.forms.registry import build_field_values, get_all_form_types, packet
-from apps.forms.schema import load_schema
+from apps.forms.schema import SheetColumn, SheetSpec, load_schema
 from apps.forms.services.pdf_filler import PDFFormFiller, UnprintableLetter, ValueTooLong
-from apps.forms.services.text_fit import font_for
+from apps.forms.services.sheets import draw_sheet, plan_sheet
+from apps.forms.services.text_fit import font_for, printable
 from apps.forms.services.widgets import field_of, template_widgets, widget_for
-from apps.forms.tests.pdf_readback import read_drawn
+from apps.forms.tests.pdf_readback import read_drawn, read_sheets
 from apps.intake.management.commands.seed_demo_data import PERSONAS
 from apps.intake.models import IntakeSession
 
@@ -743,3 +744,78 @@ def test_check_agrees_with_the_drawing_on_every_letter():
                 f"U+{ord(c):04X}" for w, c in as_itself if _pixels(alone, w) != _pixels(empty, w)
             ]
     assert inked == []
+
+
+# ── An attached sheet's letter check agrees with what it prints ───────
+
+_SHEET = SheetSpec(
+    "Official Form 106A/B, Schedule A/B: Property",
+    (SheetColumn("Make", "sofa.creditor_payments[].creditor_name", 300.0),),
+)
+
+
+def _sheet_of(cells):
+    """A sheet part with a row for each cell, numbered from 3.5."""
+    return {
+        "kind": "sheet",
+        "group": "ab_line_3",
+        "title": _SHEET.title,
+        "columns": [{"label": "Make", "width": 300.0}],
+        "name": "Maria Torres",
+        "rows": [{"line": f"3.{n}", "cells": [cell]} for n, cell in enumerate(cells, start=5)],
+    }
+
+
+def _sheet_rows(cells):
+    """What each row's cell of a sheet drawn with those cells reads back as."""
+    pages = read_sheets(draw_sheet(_SHEET, _sheet_of(cells)), _SHEET)
+    return [row[1] for page in pages for row in page.rows]
+
+
+def _cell_ink(cell):
+    """The Make cell of a sheet's one row holding `cell`, rendered."""
+    page = pymupdf.open("pdf", draw_sheet(_SHEET, _sheet_of([cell])))[0]
+    line = page.search_for("3.5")[0]
+    return page.get_pixmap(dpi=288, clip=pymupdf.Rect(90, line.y0, 390, line.y1)).samples
+
+
+def _template_letters():
+    """Every BMP character a template's text font prints (text_fit.printable), in code order."""
+    font = font_for(_template("schedule_a_b"), "/Helv")
+    return [chr(c) for c in range(0x10000) if not 0xD800 <= c <= 0xDFFF and printable(font, chr(c))]
+
+
+def test_the_sheets_letter_check_agrees_with_what_it_prints():
+    # plan_sheet() refuses exactly the letters the sheet can't print as themselves (spec
+    # §5.3, §4.3): one it accepts reads back as it prints, and leaves ink alone in its
+    # cell; one it refuses, drawn without the check, reads back as something else or
+    # leaves no ink. The sheet prints in the templates' encoding (R62), so every letter a
+    # template's text font prints is drawn, those at codes other than WinAnsi's among
+    # them, and so is □, which a template's /.notdef reads as.
+    letters = _template_letters()
+    accepted, refused = [], []
+    for letter in dict.fromkeys([*_LETTERS, *letters, "□"]):
+        try:
+            plan_sheet("schedule_a_b", _SHEET, _sheet_of([f"x{letter}x"]))
+            accepted.append(letter)
+        except UnprintableLetter:
+            refused.append(letter)
+    # Of the font's letters, the sheet refuses only control characters, as check() does.
+    assert [f"U+{ord(c):04X}" for c in letters if c in refused and c.isprintable()] == []
+    assert "□" in refused
+    invisible = [c for c in refused if c == "\t" or unicodedata.category(c) in ("Zs", "Cf")]
+    assert [f"U+{ord(c):04X}" for c in invisible] == []
+
+    printed = _sheet_rows([f"x{c}x" for c in accepted])
+    assert {
+        f"U+{ord(c):04X}": p for c, p in zip(accepted, printed, strict=True) if p != _as_printed(c)
+    } == {}
+    glyphs = [c for c in accepted if _as_printed(c) == f"x{c}x" and not c.isspace()]
+    with _no_anti_aliasing():
+        empty = _cell_ink("")
+        assert [f"U+{ord(c):04X}" for c in glyphs if _cell_ink(c) == empty] == []
+
+    printed = _sheet_rows([f"x{c}x" for c in refused])
+    as_itself = [c for c, p in zip(refused, printed, strict=True) if p == f"x{c}x"]
+    with _no_anti_aliasing():
+        assert [f"U+{ord(c):04X}" for c in as_itself if _cell_ink(c) != empty] == []

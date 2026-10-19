@@ -5,7 +5,8 @@ binding with a tag, {"<pdf_field>@<page>:<tag>": str}.
 Source priority is encoded per-field in the schema (constant/derived/asked/
 ingested/signature). This module resolves ``binding`` references; resolve_parts()
 orchestrates dispatch, conditional sections, and repeat groups, whose rows past the
-last slot continue on copies of an extra page, and resolve() returns its form part.
+last slot continue on copies of an extra page or on an attached sheet, and resolve()
+returns its form part.
 """
 
 from __future__ import annotations
@@ -253,6 +254,45 @@ def _copies(
     return copies
 
 
+def _sheet(
+    group: GroupSpec,
+    fields: list[FieldSpec],
+    printed: list[FieldSpec],
+    columns: dict[str, str | list[str]],
+    capacity: int,
+    actual: int,
+    session: IntakeSession,
+    ingested_cache: dict,
+) -> dict:
+    """
+    The attached sheet that prints the group's rows past `capacity` (spec §5.3): each row
+    labelled with its line, the group's number for its position, and a cell per column,
+    the column's binding for that row as the group's slot of that binding prints it. A
+    column whose slots the UPL guard keeps blank is blank, as on the form and its copies.
+    The sheet carries the filer's name for its header (R23), and its title and its columns'
+    labels and widths (R63), so a filed sheet redraws as it was filed.
+    """
+    rows = []
+    for position in range(capacity + 1, actual + 1):
+        cells = []
+        for column in group.sheet.columns:
+            slots = [f for f in fields if f.binding == column.binding]  # one at least: E007
+            emitted = None
+            if all(f in printed for f in slots):
+                emitted = _cell(slots[0], position, columns, session, ingested_cache)
+            cells.append(emitted or "")
+        rows.append({"line": group.number.format(n=position), "cells": cells})
+    name = DERIVATIONS["full_name"](session)
+    return {
+        "kind": "sheet",
+        "group": group.name,
+        "title": group.sheet.title,
+        "columns": [{"label": c.label, "width": c.width} for c in group.sheet.columns],
+        "name": name,
+        "rows": rows,
+    }
+
+
 def resolve(schema: FormSchema, session: IntakeSession) -> dict[str, str]:
     """The values the form's own pages print: resolve_parts()'s form part."""
     return resolve_parts(schema, session)["parts"][0]["values"]
@@ -261,11 +301,15 @@ def resolve(schema: FormSchema, session: IntakeSession) -> dict[str, str]:
 def resolve_parts(schema: FormSchema, session: IntakeSession) -> dict:
     """
     The form's values as the parts it prints, in printing order (spec §6):
-    {"version": 2, "parts": [{"kind": "form", "values": {key: value}}, *copies]}.
+    {"version": 2, "parts": [{"kind": "form", "values": {key: value}}, *copies, *sheets]}.
 
     A repeat group fills its slots in row order. Rows past its last slot continue on
     copies of the extra page its declaration names (spec §5.2), each
-    {"kind": "copy", "page": <extra page>, "number": <from 1>, "values": {key: value}}.
+    {"kind": "copy", "page": <extra page>, "number": <from 1>, "values": {key: value}},
+    or on the attached sheet it declares (spec §5.3, R23, R63), one part for all of them:
+    {"kind": "sheet", "group": <group>, "title": <its title>,
+    "columns": [{"label": str, "width": <points>}], "name": <the filer's full name>,
+    "rows": [{"line": "3.5", "cells": [<one per column>]}]}.
     """
     out: dict[str, str] = {}
 
@@ -308,6 +352,7 @@ def resolve_parts(schema: FormSchema, session: IntakeSession) -> dict:
             groups.setdefault(f.repeat, []).append(f)
 
     copies: list[dict] = []
+    sheets: list[dict] = []
     overflowing = []
     for group_name, fields in groups.items():
         capacity = fields[0].repeat_capacity or 0
@@ -327,7 +372,20 @@ def resolve_parts(schema: FormSchema, session: IntakeSession) -> dict:
             for row, key in group.number_boxes.items():
                 if row <= min(actual, capacity):
                     out[key] = group.number.format(n=row)
-        if actual > capacity:
+        if actual > capacity and group is not None and group.sheet is not None:
+            sheets.append(
+                _sheet(
+                    group,
+                    fields,
+                    printed,
+                    resolved_cols,
+                    capacity,
+                    actual,
+                    session,
+                    _ingested_cache,
+                )
+            )
+        elif actual > capacity:
             if group is None or group.extra_page is None:
                 # The startup check refuses such a schema (forms.E007); never drop a row.
                 raise ValueError(f"{schema.form_type}: group {group_name!r} names no extra page")
@@ -347,4 +405,4 @@ def resolve_parts(schema: FormSchema, session: IntakeSession) -> dict:
             session,
             _ingested_cache,
         )
-    return {"version": 2, "parts": [{"kind": "form", "values": out}, *copies]}
+    return {"version": 2, "parts": [{"kind": "form", "values": out}, *copies, *sheets]}

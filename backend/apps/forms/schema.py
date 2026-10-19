@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from dataclasses import dataclass, field
 from functools import lru_cache
 from io import BytesIO
@@ -80,10 +81,28 @@ class PageNumberBoxes:
 
 
 @dataclass(frozen=True)
+class SheetColumn:
+    """One column of an attached sheet: its label, the list binding its cells print, its width."""
+
+    label: str
+    binding: str  # "sofa.<collection>[].<attr>"
+    width: float  # points
+
+
+@dataclass(frozen=True)
+class SheetSpec:
+    """An attached sheet (3a2 spec §5.3): the form's title, and the columns of the group's row."""
+
+    title: str
+    columns: tuple[SheetColumn, ...]
+
+
+@dataclass(frozen=True)
 class GroupSpec:
     """
-    A repeat group's declaration (3a2 spec §5.2): the template page whose copies take the
-    rows past its last slot, and the boxes that number the rows and the pages.
+    A repeat group's declaration (3a2 spec §5.2, §5.3): the template page whose copies take
+    the rows past its last slot, or the attached sheet that takes them, and the boxes that
+    number the rows and the pages.
     """
 
     name: str
@@ -91,6 +110,7 @@ class GroupSpec:
     number: str | None  # the entry number, such as "2.{n}", n the row's position in the group
     number_boxes: dict[int, str]  # slot row → the key of that slot's entry-number box
     page_numbers: tuple[PageNumberBoxes, ...]
+    sheet: SheetSpec | None = None
 
 
 @dataclass(frozen=True)
@@ -144,6 +164,7 @@ def load_schema(form_type: str) -> FormSchema:
                 PageNumberBoxes(page=boxes["page"], this=boxes.get("this"), of=boxes.get("of"))
                 for boxes in group.get("page_numbers", [])
             ),
+            sheet=_sheet(group["sheet"]) if "sheet" in group else None,
         )
         for name, group in raw.get("groups", {}).items()
     }
@@ -154,6 +175,17 @@ def load_schema(form_type: str) -> FormSchema:
         template_version=raw["template_version"],
         fields=fields,
         groups=groups,
+    )
+
+
+def _sheet(sheet: dict) -> SheetSpec:
+    """A group's "sheet": {"title": str, "columns": [{"label", "binding", "width"}]}."""
+    return SheetSpec(
+        title=sheet["title"],
+        columns=tuple(
+            SheetColumn(label=c["label"], binding=c["binding"], width=float(c["width"]))
+            for c in sheet["columns"]
+        ),
     )
 
 
@@ -369,8 +401,54 @@ def validate_schema(
         pages = {f.page for f in paged}
         if group is None:
             errors.append(("E007", f"repeat group {name!r} isn't declared in groups"))
+        elif group.extra_page is not None and group.sheet is not None:
+            errors.append(("E007", f"group {name!r} names both an extra_page and a sheet"))
+        elif group.sheet is not None:
+            # The rows a sheet prints are the slots' rows: a column of another list would
+            # print rows that aren't the group's, or leave some of them out. A cell prints
+            # its slot's text, and a box's answer is a state, which a sheet can't tick.
+            for column in group.sheet.columns:
+                bound = [f for f in mapped if f.binding == column.binding]
+                if not bound:
+                    errors.append(
+                        (
+                            "E007",
+                            f"group {name!r}: sheet column {column.label!r} binds "
+                            f"{column.binding!r}, which no slot of the group binds",
+                        )
+                    )
+                elif any(f.type in ("checkbox", "radio") for f in bound):
+                    errors.append(
+                        (
+                            "E007",
+                            f"group {name!r}: sheet column {column.label!r} binds a box's "
+                            "answer, which a sheet can't tick",
+                        )
+                    )
+            # And every slot's value prints in a column, or the rows past the slots would
+            # drop it: a text or combo slot needs a column of its binding, and a box slot
+            # can't continue at all. (A sheet with no columns is reported as such below.)
+            columns = {column.binding for column in group.sheet.columns}
+            unprinted = {f.binding for f in mapped if f.binding} - columns if columns else set()
+            for binding in sorted(unprinted):
+                if any(f.type in ("checkbox", "radio") for f in mapped if f.binding == binding):
+                    errors.append(
+                        (
+                            "E007",
+                            f"group {name!r}: a box slot binds {binding!r}, and a sheet "
+                            "can't tick a box",
+                        )
+                    )
+                else:
+                    errors.append(
+                        (
+                            "E007",
+                            f"group {name!r}: no sheet column prints {binding!r}, "
+                            "which a slot of the group binds",
+                        )
+                    )
         elif group.extra_page is None:
-            errors.append(("E007", f"group {name!r} names no extra_page"))
+            errors.append(("E007", f"group {name!r} names neither an extra_page nor a sheet"))
         elif group.extra_page not in pages:
             errors.append(
                 ("E007", f"group {name!r}: extra_page {group.extra_page} holds none of its slots")
@@ -397,7 +475,11 @@ def validate_schema(
             )
         )
     for name, group in schema.groups.items():
-        if (group.number is not None or group.number_boxes) and "{n}" not in (group.number or ""):
+        if group.sheet is not None:
+            errors += _sheet_errors(name, group, schema.template_filename)
+        # A sheet labels each row with the line it continues, its number.
+        numbered_rows = group.number is not None or group.number_boxes or group.sheet is not None
+        if numbered_rows and "{n}" not in (group.number or ""):
             errors.append(("E007", f"group {name!r}: number must contain {{n}}"))
         elif group.number is not None:
             try:
@@ -413,6 +495,22 @@ def validate_schema(
                             "for every row",
                         )
                     )
+                elif group.sheet is not None:
+                    # The sheet's first row is the one past the slots: its line must print
+                    # whole in the line column, or every Generate with a sheet would fail.
+                    from apps.forms.services.sheets import LINE_WIDTH, fits_line_column
+
+                    capacities = {f.repeat_capacity for f in slots.get(name, [])}
+                    if len(capacities) == 1 and (capacity := capacities.pop()):
+                        line = group.number.format(n=capacity + 1)
+                        if not fits_line_column(line, schema.template_filename):
+                            errors.append(
+                                (
+                                    "E007",
+                                    f"group {name!r}: its sheet can't print its first line, "
+                                    f"{line!r}, whole in the {LINE_WIDTH:g} pt line column",
+                                )
+                            )
         if widget_map is None:
             continue
         # A row is on its mapped boxes' page: an unmapped box prints nothing, wherever it is.
@@ -445,6 +543,70 @@ def validate_schema(
                         f"{_pages_drawn(key, drawn)}, so it needs a tag",
                     )
                 )
+    return errors
+
+
+_LIST_BINDING = re.compile(r"sofa\.\w+\[\]\.\w+")
+
+
+def _sheet_errors(name: str, group: GroupSpec, template: str) -> list[tuple[str, str]]:
+    """
+    What keeps a group's attached sheet from printing every row whole (3a2 spec §5.3): its
+    columns must fit the 7 in between the sheet's margins beside the line column, each
+    print a list's rows, and each label, like the title, print whole in its width, in the
+    letters the form's template prints.
+    """
+    from apps.forms.services.sheets import (  # here: it imports this module
+        LINE_WIDTH,
+        WIDTH,
+        inner_width,
+        prints_whole,
+    )
+
+    sheet = group.sheet
+    errors = []
+    # Page numbers are filled when a group has copies (R21), and a sheet group has none.
+    if group.page_numbers:
+        errors.append(
+            ("E007", f"group {name!r}: a sheet group has no copies, so it numbers no pages")
+        )
+    if not sheet.columns:
+        errors.append(("E007", f"group {name!r}: its sheet has no columns for its rows"))
+    total = LINE_WIDTH + sum(c.width for c in sheet.columns)
+    if total > WIDTH:
+        errors.append(
+            (
+                "E007",
+                f"group {name!r}: its sheet's columns and line column are {total:g} pt wide, "
+                f"more than the {WIDTH:g} pt (7 in) between its margins",
+            )
+        )
+    if not prints_whole(f"{sheet.title} (attached sheet)", WIDTH, template):
+        errors.append(("E007", f"group {name!r}: its sheet can't print its title whole"))
+    # A label names one column, to the filer and to a refusal's fix (sheets._fixes).
+    labels = [column.label for column in sheet.columns]
+    for label in sorted({label for label in labels if labels.count(label) > 1}):
+        errors.append(
+            ("E007", f"group {name!r}: its sheet has more than one column labelled {label!r}")
+        )
+    for column in sheet.columns:
+        if not _LIST_BINDING.fullmatch(column.binding):
+            errors.append(
+                (
+                    "E007",
+                    f"group {name!r}: sheet column {column.label!r} binds {column.binding!r}, "
+                    "not a sofa.<collection>[].<attr> list",
+                )
+            )
+        width = inner_width(column.width)
+        if width <= 0 or not prints_whole(column.label, width, template):
+            errors.append(
+                (
+                    "E007",
+                    f"group {name!r}: sheet column {column.label!r} can't print its label "
+                    f"whole in {column.width:g} pt",
+                )
+            )
     return errors
 
 

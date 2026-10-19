@@ -338,7 +338,7 @@ def _row_3_numbered_on_the_page_of_its_unmapped_box(d):
         ),
         (
             _group(lambda g: g.pop("extra_page")),
-            ("forms.E007", "schedule_d: group 'd_part_1' names no extra_page"),
+            ("forms.E007", "schedule_d: group 'd_part_1' names neither an extra_page nor a sheet"),
         ),
         (
             # Page 3 is Part 2's: no row of Part 1 is there.
@@ -704,7 +704,7 @@ def test_an_untagged_box_slot_whose_boxes_each_have_their_own_state_passes(
     assert _errors("schedule_d") == []
 
 
-def _part_2(extra_page):
+def _part_2(declaration):
     """Add a second group to the synthetic Schedule D: Part 2's six names on page 3."""
 
     def add(d):
@@ -720,14 +720,14 @@ def _part_2(extra_page):
                     "row": row,
                 }
             )
-        d["groups"]["d_part_2"] = {} if extra_page is None else {"extra_page": extra_page}
+        d["groups"]["d_part_2"] = declaration
 
     return add
 
 
 def test_a_second_group_continued_on_copies_is_reported(schedule_d_with_copies):
     # 3a2 numbers a form's pages counting one group's copies only (R21, R56).
-    _edit(schedule_d_with_copies, "schedule_d", _part_2(extra_page=3))
+    _edit(schedule_d_with_copies, "schedule_d", _part_2({"extra_page": 3}))
     assert _errors("schedule_d") == [
         (
             "forms.E007",
@@ -738,11 +738,248 @@ def test_a_second_group_continued_on_copies_is_reported(schedule_d_with_copies):
 
 
 def test_a_group_with_no_extra_page_is_not_counted_as_a_second(schedule_d_with_copies):
-    # Such a group is refused for its own reason (T7's sheet groups will declare a sheet).
-    _edit(schedule_d_with_copies, "schedule_d", _part_2(extra_page=None))
+    # Such a group is refused for its own reason.
+    _edit(schedule_d_with_copies, "schedule_d", _part_2({}))
     assert _errors("schedule_d") == [
-        ("forms.E007", "schedule_d: group 'd_part_2' names no extra_page")
+        ("forms.E007", "schedule_d: group 'd_part_2' names neither an extra_page nor a sheet")
     ]
+
+
+def test_a_group_continued_on_an_attached_sheet_is_not_counted_as_a_second(
+    schedule_d_with_copies,
+):
+    # A sheet's pages aren't copies of the form's, so they number none of its pages (R56).
+    sheet = {
+        "title": "Official Form 106D, Schedule D: Creditors Who Have Claims Secured by Property",
+        "columns": [
+            {"label": "Name", "binding": "sofa.creditor_payments[].creditor_name", "width": 300}
+        ],
+    }
+    _edit(schedule_d_with_copies, "schedule_d", _part_2({"number": "3.{n}", "sheet": sheet}))
+    assert _errors("schedule_d") == []
+
+
+def test_a_group_continued_on_an_attached_sheet_passes(schedule_a_b_with_sheet):
+    assert _errors("schedule_a_b") == []
+
+
+def _sheet(change):
+    """Change the synthetic Schedule A/B group's declaration."""
+    return lambda d: change(d["groups"]["ab_line_3"])
+
+
+def _column(n, **change):
+    """Change the nth column of the synthetic Schedule A/B group's sheet."""
+    return _sheet(lambda g: g["sheet"]["columns"][n].update(change))
+
+
+def _makes_asked_on_ask_page(d):
+    # The slots and the column bind one answer: a binding, but no list of rows.
+    for f in d["fields"]:
+        if f["repeat"] == "ab_line_3" and f["binding"].endswith("creditor_name"):
+            f["binding"] = "answer:schedule_a_b.make"
+    d["groups"]["ab_line_3"]["sheet"]["columns"][0]["binding"] = "answer:schedule_a_b.make"
+
+
+def _community_property_boxes(d):
+    # Each vehicle's community-property box, ticked from a list: a sheet has no box to tick.
+    for row, (page, box) in enumerate([(2, ""), (2, "_2"), (3, "_3"), (3, "_4")], start=1):
+        d["fields"].append(
+            {
+                **_text(f"Check if this is community property see{box}", page, None),
+                "type": "checkbox",
+                "source": "asked",
+                "value": None,
+                "choices": {"true": "/On"},
+                "binding": "sofa.creditor_payments[].dates_of_payments",
+                "repeat": "ab_line_3",
+                "repeat_capacity": 4,
+                "row": row,
+            }
+        )
+
+
+def _a_column_of_boxes(d):
+    _community_property_boxes(d)
+    columns = d["groups"]["ab_line_3"]["sheet"]["columns"]
+    columns[0]["width"] = 200
+    columns.append(
+        {
+            "label": "Community property",
+            "binding": "sofa.creditor_payments[].dates_of_payments",
+            "width": 100,
+        }
+    )
+
+
+def _another_lists_column(d):
+    columns = d["groups"]["ab_line_3"]["sheet"]["columns"]
+    columns[0]["width"] = 200
+    columns.append(
+        {"label": "Paid on", "binding": "sofa.creditor_payments[].dates_of_payments", "width": 100}
+    )
+
+
+def _ab_slots(change):
+    """Change every field of the synthetic Schedule A/B group."""
+    return lambda d: [change(f) for f in d["fields"] if f["repeat"] == "ab_line_3"]
+
+
+def _swap_rows_2_and_3(f):
+    f["row"] = {2: 3, 3: 2}.get(f["row"], f["row"])
+
+
+_AB = "schedule_a_b: group 'ab_line_3'"
+
+
+@pytest.mark.parametrize(
+    "change, error",
+    [
+        (
+            _sheet(lambda g: g.update(extra_page=3)),
+            ("forms.E007", f"{_AB} names both an extra_page and a sheet"),
+        ),
+        (
+            # T6's slot rules hold for a sheet group's slots too.
+            _ab_slots(lambda f: f.update(repeat_capacity=5)),
+            (
+                "forms.E007",
+                "schedule_a_b: repeat group 'ab_line_3': its slot rows aren't exactly 1 to "
+                "its repeat_capacity, 5",
+            ),
+        ),
+        (
+            _ab_slots(_swap_rows_2_and_3),
+            (
+                "forms.E007",
+                "schedule_a_b: repeat group 'ab_line_3': row 3 is on a page before row 2's",
+            ),
+        ),
+        (
+            # A sheet labels each row with the line it continues.
+            _sheet(lambda g: g.pop("number")),
+            ("forms.E007", f"{_AB}: number must contain {{n}}"),
+        ),
+        (
+            _sheet(lambda g: g.update(page_numbers=[{"page": 2}])),
+            ("forms.E007", f"{_AB}: a sheet group has no copies, so it numbers no pages"),
+        ),
+        (
+            # A row of line numbers alone.
+            _sheet(lambda g: g["sheet"].update(columns=[])),
+            ("forms.E007", f"{_AB}: its sheet has no columns for its rows"),
+        ),
+        (
+            # 36 pt of line column, then 301 and 168: one point past the margins.
+            _column(0, width=301),
+            (
+                "forms.E007",
+                f"{_AB}: its sheet's columns and line column are 505 pt wide, "
+                "more than the 504 pt (7 in) between its margins",
+            ),
+        ),
+        (
+            _makes_asked_on_ask_page,
+            (
+                "forms.E007",
+                f"{_AB}: sheet column 'Make' binds 'answer:schedule_a_b.make', "
+                "not a sofa.<collection>[].<attr> list",
+            ),
+        ),
+        (
+            # Another list of the same report: its rows aren't the group's.
+            _another_lists_column,
+            (
+                "forms.E007",
+                f"{_AB}: sheet column 'Paid on' binds "
+                "'sofa.creditor_payments[].dates_of_payments', which no slot of the group binds",
+            ),
+        ),
+        (
+            _a_column_of_boxes,
+            (
+                "forms.E007",
+                f"{_AB}: sheet column 'Community property' binds a box's answer, "
+                "which a sheet can't tick",
+            ),
+        ),
+        (
+            # Rows 1 to 4 print their values on the form, the fifth's nowhere.
+            _sheet(lambda g: g["sheet"].update(columns=g["sheet"]["columns"][:1])),
+            (
+                "forms.E007",
+                f"{_AB}: no sheet column prints 'sofa.creditor_payments[].total_paid', "
+                "which a slot of the group binds",
+            ),
+        ),
+        (
+            # Rows 1 to 4 tick their boxes on the form; a fifth row has no box to tick.
+            _community_property_boxes,
+            (
+                "forms.E007",
+                f"{_AB}: a box slot binds 'sofa.creditor_payments[].dates_of_payments', "
+                "and a sheet can't tick a box",
+            ),
+        ),
+        (
+            # "Line 3.5" is 35.58 pt at 10 pt, wider than the 32 pt inside the line column's
+            # padding: it would print on two lines.
+            _sheet(lambda g: g.update(number="Line 3.{n}")),
+            (
+                "forms.E007",
+                f"{_AB}: its sheet can't print its first line, 'Line 3.5', whole in the "
+                "36 pt line column",
+            ),
+        ),
+        (
+            # The filer couldn't tell the two apart, nor could a refusal's fix.
+            _column(1, label="Make"),
+            ("forms.E007", f"{_AB}: its sheet has more than one column labelled 'Make'"),
+        ),
+        (
+            # "Make" is 24.45 pt wide at 10 pt: it doesn't fit 20 pt less its padding.
+            _column(0, width=20),
+            ("forms.E007", f"{_AB}: sheet column 'Make' can't print its label whole in 20 pt"),
+        ),
+        (
+            _column(0, width=0),
+            ("forms.E007", f"{_AB}: sheet column 'Make' can't print its label whole in 0 pt"),
+        ),
+        (
+            _column(0, label="Mąke"),
+            ("forms.E007", f"{_AB}: sheet column 'Mąke' can't print its label whole in 300 pt"),
+        ),
+        (
+            _sheet(lambda g: g["sheet"].update(title="Schedule A/B: Własność")),
+            ("forms.E007", f"{_AB}: its sheet can't print its title whole"),
+        ),
+    ],
+    ids=[
+        "an extra page too",
+        "capacity other than the slots",
+        "rows that go back a page",
+        "no number",
+        "page numbers",
+        "no columns",
+        "wider than the margins",
+        "a column of no list",
+        "a column of another list",
+        "a column of boxes",
+        "a slot with no column",
+        "a box slot",
+        "a first line wider than the line column",
+        "two columns with one label",
+        "a label wider than its column",
+        "a column with no width",
+        "a label with a letter the sheet can't print",
+        "a title with a letter the sheet can't print",
+    ],
+)
+def test_a_sheet_that_cannot_print_its_rows_whole_is_reported(
+    schedule_a_b_with_sheet, change, error
+):
+    _edit(schedule_a_b_with_sheet, "schedule_a_b", change)
+    assert _errors("schedule_a_b") == [error]
 
 
 def test_a_template_that_doesnt_match_its_index_is_reported_not_raised(schema_copy, index_copy):

@@ -21,7 +21,9 @@ Usage:
 
 import re
 import unicodedata
+from collections.abc import Callable
 from dataclasses import dataclass
+from functools import partial
 from io import BytesIO
 from pathlib import Path
 
@@ -29,9 +31,8 @@ import pymupdf
 import pypdf
 from django.conf import settings
 
-# pypdf._font and pypdf.generic._appearance_stream are pypdf internals, pinned with
-# pypdf==6.13.1; test_pdf_filler.py fails if they move.
-from pypdf._font import Font
+# pypdf.generic._appearance_stream is a pypdf internal, pinned with pypdf==6.13.1;
+# test_pdf_filler.py fails if it moves.
 from pypdf.generic import (
     ArrayObject,
     DictionaryObject,
@@ -174,16 +175,17 @@ def _as_printed(text: str) -> str:
     )
 
 
-def _refused_letter(widget: TemplateWidget, font: Font, text: str) -> str | None:
+def _refused_letter(text: str, prints: Callable[[str], bool], comb: bool = False) -> str | None:
     """
-    The first character the box can't print: one its font can't encode, a control
-    character, or in a comb box ( ) or \\. Line breaks aren't letters (G15).
+    The first character a box can't print: one its font can't encode (`prints` says which
+    it can), a control character, or in a comb box ( ) or \\. Line breaks aren't letters
+    (G15). An attached sheet's cells are checked the same way (apps.forms.services.sheets).
     """
     for letter in "".join(text.splitlines()):
         if (
-            not printable(font, letter)
+            not prints(letter)
             or unicodedata.category(letter) == "Cc"
-            or (widget.comb and letter in _COMB_BREAKERS)
+            or (comb and letter in _COMB_BREAKERS)
         ):
             return letter
     return None
@@ -309,27 +311,34 @@ class PDFFormFiller:
                 name, which fills every drawn widget of that name, or
                 "<full name>@<page>:<tag>", which fills that one widget and wins over
                 the full name there. A value is text, a combo's option, or a box's
-                export state such as "/Chapter 7".
+                export state such as "/Chapter 7". A sheet part's rows print on an
+                attached sheet under the title and columns the part stores, never the
+                schema's (R63; sheets.plan_sheet checks them).
 
         Returns:
             One planned part per part, each holding every widget a key fills in page
             and tag order: a text or combo box with its text as drawn and its size, a
-            box with its state or "/Off".
+            box with its state or "/Off". A sheet part fills no widget.
 
         Raises:
             UnknownField: a key names no drawn widget (on a copy's page, for a copy), or
                 is neither form of key.
             InvalidFieldValue: a box state or combo option the template lacks.
-            UnprintableLetter: a letter the box can't print.
-            ValueTooLong: a value too long for its box even at 6 pt.
-            ValueError: a part of a kind other than "form" and "copy".
+            UnprintableLetter: a letter the box, or the sheet, can't print.
+            ValueTooLong: a value too long for its box even at 6 pt, or for its sheet.
+            ValueError: a part of a kind other than "form", "copy" and "sheet".
         """
+        from apps.forms.services.sheets import plan_sheet, sheet_spec  # here: they import this
+
         planned = []
         for part in parts_of(values):
             if part["kind"] == "form":
                 widgets = self._plan(form_type, part["values"])
             elif part["kind"] == "copy":
                 widgets = self._plan(form_type, part["values"], page=part["page"])
+            elif part["kind"] == "sheet":
+                plan_sheet(form_type, sheet_spec(part), part)
+                widgets = ()
             else:
                 raise ValueError(f"{form_type}: no part of kind {part['kind']!r}")
             planned.append(PlannedPart(part, widgets))
@@ -385,7 +394,7 @@ class PDFFormFiller:
                 raise InvalidFieldValue(form_type, widget.full_name)
             font = font_for(schema.template_filename, widget.font)
             text = _as_printed(value)
-            letter = _refused_letter(widget, font, text)
+            letter = _refused_letter(text, partial(printable, font), widget.comb)
             if letter is not None:
                 raise UnprintableLetter(form_type, letter, *_source(schema, key, widget))
             fitted = fit(widget, schema.template_filename, text)
@@ -403,7 +412,8 @@ class PDFFormFiller:
         second widget of each stacked pair are removed; and PyMuPDF bakes every other
         widget into its page. An unfilled widget prints as the blank form shows it. Each
         copy of an extra page is drawn alone, on a clone of the template of its own, and
-        goes in right after that page, or after the copy of it before (spec §5.2).
+        goes in right after that page, or after the copy of it before (spec §5.2). Each
+        attached sheet follows the form's pages and copies (spec §5.3).
 
         Args:
             form_type: a registered form type; its schema names the template.
@@ -414,7 +424,10 @@ class PDFFormFiller:
             UnknownField, InvalidFieldValue, UnprintableLetter, ValueTooLong, ValueError:
                 as check().
         """
-        template = load_schema(form_type).template_filename
+        from apps.forms.services.sheets import draw_sheet, sheet_spec  # here: they import this
+
+        schema = load_schema(form_type)
+        template = schema.template_filename
         writer = _clone(form_type, template)
         planned = self.check(form_type, values)
         form = tuple(p for part in planned if part.part["kind"] == "form" for p in part.widgets)
@@ -428,5 +441,9 @@ class PDFFormFiller:
             at = max(i for i, template_page in enumerate(shown) if template_page == page) + 1
             document.insert_pdf(copy, start_at=at)
             shown.insert(at, page)
+        for part in planned:
+            if part.part["kind"] == "sheet":
+                sheet = draw_sheet(sheet_spec(part.part), part.part)
+                document.insert_pdf(pymupdf.open("pdf", sheet))
         document.xref_set_key(document.pdf_catalog(), "AcroForm", "null")
         return document.tobytes()

@@ -99,6 +99,9 @@ def _pypdf_stream(form_type, widget, value, size=-1):
         ("Wąsowicz", "ą"),
         ("Dvořák", "ř"),
         ("Nguyễn", "ễ"),
+        # pypdf reads the template's /.notdef, at code 173, as □: drawn, it prints that code,
+        # a soft hyphen.
+        ("Nowak□", "□"),
     ],
 )
 def test_a_letter_the_form_cannot_print_is_refused(last_name, letter):

@@ -11,9 +11,10 @@ import pymupdf
 import pytest
 from django.urls import reverse
 
+from apps.forms.checks import validate_form
 from apps.forms.schema import load_schema
 from apps.forms.services.pdf_filler import PDFFormFiller, TemplateHasNoForm
-from apps.forms.tests.pdf_readback import read_drawn
+from apps.forms.tests.pdf_readback import read_drawn, read_sheets
 
 
 def _download(client, form):
@@ -61,48 +62,136 @@ def test_unfiled_form_prints_the_filers_current_answers(api_client_authed, gener
     assert part["values"]["Debtor1.First name"] == "Marisol"
 
 
+_FILED_SHEET = [
+    # Schedule A/B's fifth and sixth vehicles, on its attached sheet, under the filer's name.
+    ("Maria Torres", (("3.5", "Volvo", "500.00"), ("3.6", "Kia", "600.00")))
+]
+
+
 @pytest.mark.parametrize(
-    "form_type, parts, box, printed",
+    "form_type, parts, box, printed, sheets",
     [
-        ("form_121", ["form"], "Debtor1.First name", {(None, "Maria")}),
+        ("form_121", ["form"], "Debtor1.First name", {(None, "Maria")}, []),
         # Schedule D's sixth row prints on a copy of page 2, under the filer's name.
-        ("schedule_d", ["form", "copy"], "Debtor 1", {(None, "Maria Torres"), (1, "Maria Torres")}),
+        (
+            "schedule_d",
+            ["form", "copy"],
+            "Debtor 1",
+            {(None, "Maria Torres"), (1, "Maria Torres")},
+            [],
+        ),
+        ("schedule_a_b", ["form", "sheet"], "Debtor 1", {(None, "Maria Torres")}, _FILED_SHEET),
     ],
-    ids=["form", "with a copy"],
+    ids=["form", "with a copy", "with a sheet"],
 )
 def test_a_filed_form_downloads_exactly_what_was_filed(
     api_client_authed,
     generated_form_factory,
     schedule_d_with_copies,
+    schedule_a_b_with_sheet,
     creditor_payments,
     form_type,
     parts,
     box,
     printed,
+    sheets,
 ):
     form = generated_form_factory(status="generated")
     form.form_type = form_type
     form.save()
-    rows = creditor_payments(form.session, 6)
+    rows = creditor_payments(
+        form.session, 6, ["Honda", "Toyota", "Subaru", "Mazda", "Volvo", "Kia"]
+    )
     regenerate = reverse("generated-forms-regenerate", kwargs={"pk": form.pk})
     mark_filed = reverse("generated-forms-mark-filed", kwargs={"pk": form.pk})
     assert api_client_authed.post(regenerate).status_code == 200
     assert api_client_authed.post(mark_filed).status_code == 200
     form.refresh_from_db()
     filed = form.field_values
-    # Spec §6's parts document: a version, the form's own part, then one part per copy.
+    # Spec §6's parts document: a version, the form's own part, then one part per copy, then
+    # one per attached sheet.
     document = json.loads(filed)
     assert (document["version"], [part["kind"] for part in document["parts"]]) == (2, parts)
     _rename_filer(form, "Marisol")  # the filer's later edits
-    rows[5].delete()  # Schedule D would now print five rows, and no copy
+    rows[5].delete()  # Schedule D would now print five rows, and no copy; A/B one sheet row
 
     response = _download(api_client_authed, form)
 
     assert response.status_code == 200
     drawn = read_drawn(form_type, response.content, document["parts"])
     assert {(w.copy, w.value) for w in drawn if w.full_name == box} == printed
+    spec = load_schema("schedule_a_b").groups["ab_line_3"].sheet
+    assert [(page.header[0], page.rows) for page in read_sheets(response.content, spec)] == sheets
     form.refresh_from_db()
     assert (form.status, form.field_values) == ("filed", filed)
+
+
+def _words(pdf):
+    """Each page's words with their boxes, as MuPDF reads them."""
+    return [page.get_text("words") for page in pymupdf.open("pdf", pdf)]
+
+
+def _ab_group(change):
+    """Change the synthetic Schedule A/B group's declaration."""
+    return lambda d: change(d["groups"]["ab_line_3"])
+
+
+def _rename_the_group(d):
+    d["groups"]["ab_vehicles"] = d["groups"].pop("ab_line_3")
+    for f in d["fields"]:
+        if f["repeat"] == "ab_line_3":
+            f["repeat"] = "ab_vehicles"
+
+
+def _add_a_column(d):
+    columns = d["groups"]["ab_line_3"]["sheet"]["columns"]
+    columns[0]["width"] = 200
+    columns.insert(
+        1, {"label": "Model", "binding": "sofa.creditor_payments[].creditor_name", "width": 100}
+    )
+
+
+def _relabel(sheet):
+    sheet["title"] = "Schedule A/B (renamed)"
+    sheet["columns"][0]["label"] = "Model"
+
+
+@pytest.mark.parametrize(
+    "edit",
+    [
+        _rename_the_group,
+        _add_a_column,
+        _ab_group(lambda g: g["sheet"]["columns"][0].update(width=29)),
+        _ab_group(lambda g: _relabel(g["sheet"])),
+    ],
+    ids=["rename the group", "add a column", "narrow a column", "relabel"],
+)
+def test_a_filed_sheet_prints_what_was_filed_whatever_its_schema_says_later(
+    api_client_authed, generated_form_factory, schedule_a_b_with_sheet, creditor_payments, edit
+):
+    # A sheet part stores the title and columns it was drawn with (R63), so a schema edit
+    # that passes startup changes nothing a filed form prints (spec §6, DIG-155).
+    form = generated_form_factory(status="generated")
+    form.form_type = "schedule_a_b"
+    form.save()
+    creditor_payments(form.session, 6, ["Honda", "Toyota", "Subaru", "Mazda", "Volvo", "Kia"])
+    regenerate = reverse("generated-forms-regenerate", kwargs={"pk": form.pk})
+    mark_filed = reverse("generated-forms-mark-filed", kwargs={"pk": form.pk})
+    assert api_client_authed.post(regenerate).status_code == 200
+    assert api_client_authed.post(mark_filed).status_code == 200
+    filed = _download(api_client_authed, form)
+    path = schedule_a_b_with_sheet / "schedule_a_b.json"
+    schema = json.loads(path.read_text())
+    edit(schema)
+    path.write_text(json.dumps(schema))
+    load_schema.cache_clear()
+    assert validate_form("schedule_a_b") == []
+
+    response = _download(api_client_authed, form)
+
+    assert response.status_code == 200
+    # Every word of every page, where it prints. (The bytes differ: each PDF has its own /ID.)
+    assert _words(response.content) == _words(filed.content)
 
 
 def test_a_form_filed_before_3a2_still_downloads(api_client_authed, generated_form_factory):

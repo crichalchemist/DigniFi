@@ -17,7 +17,8 @@ from pathlib import Path
 import pypdf
 from django.conf import settings
 
-# pypdf internal, pinned with pypdf==6.13.1; test_pdf_filler.py fails if it moves.
+# pypdf internals, pinned with pypdf==6.13.1; test_pdf_filler.py fails if they move.
+from pypdf._codecs import adobe_glyphs
 from pypdf._font import Font
 
 from apps.forms.services.widgets import TemplateWidget
@@ -45,8 +46,12 @@ def reverse_cmap_for(template_filename: str, font_name: str) -> dict[str, str]:
 
 
 def printable(font: Font, letter: str) -> bool:
-    """The font's encoding has the letter: pypdf draws it, not "?" or another glyph (R7)."""
-    return font.can_encode(letter)
+    """
+    The font's encoding has the letter: pypdf draws it, not "?" or another glyph (R7). pypdf
+    reads the glyph /.notdef as "□", which no font draws: a template's /Helv has it at 173,
+    which prints a soft hyphen's code, so □ isn't printable.
+    """
+    return font.can_encode(letter) and letter != adobe_glyphs["/.notdef"]
 
 
 def _escaped(text: str) -> str:

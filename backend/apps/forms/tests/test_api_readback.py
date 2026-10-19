@@ -157,11 +157,15 @@ def _comparable(form_type, values):
 
 
 def _comparable_document(form_type, document):
-    """A form's parts document, each part's values made comparable as _comparable does."""
+    """
+    A form's parts document, each part's values made comparable as _comparable does. An
+    attached sheet's part has no values: its rows are compared as they are.
+    """
     return {
         **document,
         "parts": [
-            {**part, "values": _comparable(form_type, part["values"])} for part in document["parts"]
+            {**part, "values": _comparable(form_type, part["values"])} if "values" in part else part
+            for part in document["parts"]
         ],
     }
 

@@ -14,6 +14,7 @@ from io import BytesIO
 import pymupdf
 import pypdf
 import pytest
+from pypdf._codecs import adobe_glyphs
 from pypdf._font import Font
 from pypdf.generic import NullObject
 from pypdf.generic._appearance_stream import TextStreamAppearance
@@ -107,6 +108,7 @@ def test_text_is_measured_with_pinned_pypdf_font_internals():
     assert reverse_cmap_for("form_b121.pdf", "/Helv") == reverse_cmap
     assert font.get_text_width(reverse_cmap["W"]) == 944  # Helvetica's W
     assert font.can_encode("é") and not font.can_encode("ą")
+    assert adobe_glyphs["/.notdef"] == "□"  # what printable() leaves out
     bbox = font.font_descriptor.bbox
     assert (bbox[1], bbox[3]) == (-225, 931)  # its line spacing
 

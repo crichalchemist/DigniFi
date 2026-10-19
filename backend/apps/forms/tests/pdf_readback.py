@@ -6,7 +6,8 @@ mark, while the templates print their own words in Arial, Wingdings and Times. A
 character belongs to a widget when its centre lies inside the widget's rect from the
 field index: two pairs of boxes overlap by about 2 pt, and a glyph merely touching a
 rect would put a neighbour's tick in it. A copy of an extra page is read as the template
-page it copies, found through the form's parts.
+page it copies, found through the form's parts. An attached sheet has no widget: its
+pages are read line by line under its columns (read_sheets).
 """
 
 from dataclasses import dataclass, replace
@@ -19,7 +20,8 @@ import pypdf
 from django.conf import settings
 from pypdf.generic import ArrayObject, NameObject
 
-from apps.forms.schema import load_schema
+from apps.forms.schema import SheetSpec, load_schema
+from apps.forms.services.sheets import LINE_WIDTH, MARGIN
 from apps.forms.services.widgets import TemplateWidget, page_count, template_widgets, widget_for
 
 _BOXES = ("CheckBox", "RadioButton")
@@ -44,6 +46,7 @@ class _Character:
     centre: tuple[float, float]
     line: tuple[int, int]  # MuPDF's (block, line) on the page
     baseline: float
+    box: tuple[float, float, float, float]
 
 
 def _characters(page: pymupdf.Page) -> list[_Character]:
@@ -63,6 +66,7 @@ def _characters(page: pymupdf.Page) -> list[_Character]:
                             ((x0 + x1) / 2, (y0 + y1) / 2),
                             (b, n),
                             char["origin"][1],
+                            (x0, y0, x1, y1),
                         )
                     )
     return characters
@@ -152,7 +156,8 @@ def read_drawn(
     """
     What the drawn form prints in each widget of its template, one entry per index row
     in page and tag order. With `parts`, the parts it was drawn from (spec §6), each copy
-    of an extra page follows that page, its widgets read with their copy number. A text
+    of an extra page follows that page, its widgets read with their copy number, and the
+    pages of its attached sheets, which come last, are left to read_sheets(). A text
     box that prints exactly what the blank form prints there reads as "": nothing the
     template prints passes for a value, so a value equal to that box's blank text reads
     blank too.
@@ -161,9 +166,9 @@ def read_drawn(
         ValueError: a page still has a widget. MuPDF reads an unbaked widget's appearance
             as text, and a viewer may rebuild it from the field's one value, so only a
             baked page shows what prints. Not an assertion, so a listed defect's xfail
-            never takes a missing bake for that defect. Also when the PDF has a page
-            count other than the template's and its copies', so no copy is read as
-            another page.
+            never takes a missing bake for that defect. Also when the PDF's pages aren't
+            the template's and its copies', then at least one attached sheet page per
+            sheet part and nothing else, so no copy or sheet is read as another page.
     """
     template = load_schema(form_type).template_filename
     blank = _blank(template)
@@ -172,9 +177,127 @@ def read_drawn(
     if unbaked:
         raise ValueError(f"the PDF still has widgets on pages {unbaked}: it was never baked")
     pages = _pages(template, parts or [])
-    if len(document) != len(pages):
-        raise ValueError(f"the PDF has {len(document)} pages, but its parts print {len(pages)}")
+    # An attached sheet's pages come after the form's pages and copies, each headed by its
+    # title "… (attached sheet)" (spec §5.3); they hold no widget, so they aren't read here.
+    sheets = sum(part["kind"] == "sheet" for part in parts or [])
+    form, after = list(document)[: len(pages)], list(document)[len(pages) :]
+    if (
+        len(form) != len(pages)
+        or any(_is_sheet(page) for page in form)
+        or not all(_is_sheet(page) for page in after)
+        or len(after) < sheets
+        or (after and not sheets)
+    ):
+        raise ValueError(
+            f"the PDF has {len(document)} pages, but its parts print {len(pages)}"
+            + (f" and {sheets} attached sheet(s)" if sheets else "")
+        )
     return [
         replace(w, value="") if w.value and blank.get((w.page, w.tag)) == w.value else w
-        for w in _read(template, document, pages)
+        for w in _read(template, form, pages)
     ]
+
+
+_SHEET_TITLE = "(attached sheet)"
+
+
+def _is_sheet(page: pymupdf.Page) -> bool:
+    """Whether the page is an attached sheet's: its header's title says so."""
+    return _SHEET_TITLE in " ".join(page.get_text().split())
+
+
+@dataclass(frozen=True)
+class SheetPage:
+    """One page of an attached sheet, read the way a person reads it."""
+
+    header: tuple[str, ...]  # its lines down to "Case number (if known)", top to bottom
+    labels: tuple[str, ...]  # each column's label, the line column's ("") first
+    rows: tuple[tuple[str, ...], ...]  # each row: its line, then its cells, column by column
+    lines: tuple[tuple[tuple[str, ...], ...], ...]  # each row's cells, each as its lines
+    ink: tuple[float, float, float, float]  # the box every character of the page lies in
+    # Below the header, each character not inside its column. A space is left out: it
+    # prints nothing, and MuPDF reads the gap between two cells' text as one.
+    crossing: tuple[str, ...]
+    overlapping: tuple[str, ...]  # each line whose characters reach into the next line's
+
+
+def read_sheets(pdf_bytes: bytes, spec: SheetSpec) -> list[SheetPage]:
+    """
+    Each attached sheet page of a drawn form, read under the columns of `spec`: the line
+    column's 36 pt from the left margin (0.75 in), then the group's columns, each as wide
+    as declared. A character belongs to the column its centre lies in, and to the line of
+    its baseline. A row starts at each line that prints a line number, and takes every line
+    down to the next; a cell's lines, like a label's, are joined with spaces in `rows` and
+    kept apart in `lines`. A character's box is MuPDF's, from its font's ascender to its
+    descender.
+    """
+    edges = [MARGIN, MARGIN + LINE_WIDTH]
+    for column in spec.columns:
+        edges.append(edges[-1] + column.width)
+    pages = []
+    for page in pymupdf.open("pdf", pdf_bytes):
+        if not _is_sheet(page):
+            continue
+        characters = [c for c in _characters(page) if c.font == _TEXT_FONT]
+        baselines: dict[float, list[_Character]] = {}
+        for character in characters:
+            baselines.setdefault(round(character.baseline, 1), []).append(character)
+        texts, lines, columns = [], [], []  # each line's text, its cells, its characters' columns
+        for baseline in sorted(baselines):
+            ordered = sorted(baselines[baseline], key=lambda c: c.centre[0])
+            texts.append("".join(c.text for c in ordered).strip())
+            cells = [""] * (len(edges) - 1)
+            for character in ordered:
+                column = max(
+                    (i for i, edge in enumerate(edges[:-1]) if edge <= character.centre[0]),
+                    default=0,
+                )
+                cells[column] += character.text
+                columns.append((character, column))
+            lines.append([cell.strip() for cell in cells])
+        case_number = next(i for i, text in enumerate(texts) if text.startswith("Case number"))
+        header = texts[: case_number + 1]
+        below = sorted(baselines)[case_number + 1 :]
+        crossing = tuple(
+            c.text
+            for c, i in columns
+            if round(c.baseline, 1) in below
+            and not c.text.isspace()
+            and not (edges[i] - 0.01 <= c.box[0] and c.box[2] <= edges[i + 1] + 0.01)
+        )
+        extents = [
+            (texts[n], min(c.box[1] for c in baselines[b]), max(c.box[3] for c in baselines[b]))
+            for n, b in enumerate(sorted(baselines))
+        ]
+        overlapping = tuple(
+            text
+            for (text, _, bottom), (_, top, _) in zip(extents, extents[1:], strict=False)
+            if bottom > top + 0.01
+        )
+        body = lines[case_number + 1 :]
+        starts = [i for i, line in enumerate(body) if line[0]] + [len(body)]
+        labels = _joined(body[: starts[0]], len(edges) - 1)
+        spans = list(zip(starts, starts[1:], strict=False))
+        rows = [_joined(body[a:b], len(edges) - 1) for a, b in spans]
+        lines_of = [
+            tuple(tuple(line[i] for line in body[a:b] if line[i]) for i in range(len(edges) - 1))
+            for a, b in spans
+        ]
+        boxes = [c.box for c in characters]
+        ink = (
+            min(b[0] for b in boxes),
+            min(b[1] for b in boxes),
+            max(b[2] for b in boxes),
+            max(b[3] for b in boxes),
+        )
+        pages.append(
+            SheetPage(
+                tuple(header), labels, tuple(rows), tuple(lines_of), ink, crossing, overlapping
+            )
+        )
+    return pages
+
+
+def _joined(lines: list[list[str]], columns: int) -> tuple[str, ...]:
+    """Each column's text over several lines, its non-empty lines joined with spaces."""
+    return tuple(" ".join(line[i] for line in lines if line[i]) for i in range(columns))

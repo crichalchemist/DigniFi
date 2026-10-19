@@ -43,6 +43,43 @@ _D_PART_1 = [
 _D_PART_2 = [
     (3, [(box, *_NAME)]) for box in ["Name", "Name_2", "Name_3", "Name_4", "Name_5", "Name_6"]
 ]
+# Schedule A/B line 3's four vehicles, 3.1 and 3.2 on page 2, 3.3 and 3.4 on page 3: each a
+# make and the current value of the portion the filer owns, kept as a SOFA creditor payment's
+# name and amount (R19: no new list source in 3a2).
+_MAKE = ("Make", "creditor_name")
+_VALUE = ("Current value of the portion you own", "total_paid")
+_AB_LINE_3 = [
+    (2, [("3 1", *_MAKE), ("undefined_15", *_VALUE)]),
+    (2, [("If you own or have more than one describe here", *_MAKE), ("undefined_17", *_VALUE)]),
+    (3, [("1_3", *_MAKE), ("undefined_19", *_VALUE)]),
+    (3, [("1_4", *_MAKE), ("undefined_21", *_VALUE)]),
+]
+_AB_SHEET = {
+    "title": "Official Form 106A/B, Schedule A/B: Property",
+    "columns": [
+        {"label": "Make", "binding": "sofa.creditor_payments[].creditor_name", "width": 300},
+        {
+            "label": "Current value of the portion you own",
+            "binding": "sofa.creditor_payments[].total_paid",
+            "width": 168,
+        },
+    ],
+}
+_D_SHEET = {
+    "title": "Official Form 106D, Schedule D: Creditors Who Have Claims Secured by Property",
+    "columns": [
+        {
+            "label": "Creditor's name",
+            "binding": "sofa.creditor_payments[].creditor_name",
+            "width": 300,
+        },
+        {
+            "label": "Amount of claim",
+            "binding": "sofa.creditor_payments[].total_paid",
+            "width": 168,
+        },
+    ],
+}
 _CREDITORS = [
     "Ashby Auto Credit",
     "Birchfield Lending",
@@ -80,16 +117,18 @@ def index_copy(tmp_path, settings):
     template_widgets.cache_clear()
 
 
-def _schedule_d_with_group(tmp_path, settings, group, rows, declaration):
+def _with_group(tmp_path, settings, form_type, group, rows, declaration):
     """
-    Copy the real schemas into tmp_path and point FORM_SCHEMAS_DIRECTORY there, with a
-    synthetic repeat group on Schedule D: row n's slot is rows[n - 1], (page, boxes), each
-    box bound to that SOFA creditor payment's attribute; the group's declaration is
-    `declaration`. Returns the schemas directory.
+    Copy the real schemas into tmp_path, unless an earlier fixture of the test has, and point
+    FORM_SCHEMAS_DIRECTORY there, with a synthetic repeat group on form_type: row n's slot is
+    rows[n - 1], (page, boxes), each box bound to that SOFA creditor payment's attribute; the
+    group's declaration is `declaration`, beside any group added before. Returns the
+    schemas directory.
     """
     schemas = tmp_path / "schemas"
-    shutil.copytree(django_settings.FORM_SCHEMAS_DIRECTORY, schemas)
-    path = schemas / "schedule_d.json"
+    if not schemas.exists():
+        shutil.copytree(django_settings.FORM_SCHEMAS_DIRECTORY, schemas)
+    path = schemas / f"{form_type}.json"
     schema = json.loads(path.read_text())
     for row, (page, boxes) in enumerate(rows, start=1):
         for pdf_field, label, attr in boxes:
@@ -112,7 +151,7 @@ def _schedule_d_with_group(tmp_path, settings, group, rows, declaration):
                     "legal_review": False,
                 }
             )
-    schema["groups"] = {group: declaration}
+    schema.setdefault("groups", {})[group] = declaration
     path.write_text(json.dumps(schema))
     settings.FORM_SCHEMAS_DIRECTORY = schemas
     return schemas
@@ -141,7 +180,7 @@ def schedule_d_with_copies(tmp_path, settings):
             {"page": 3, "this": "fill_28.1.1", "of": "fill_28.1.2"},
         ],
     }
-    schemas = _schedule_d_with_group(tmp_path, settings, "d_part_1", _D_PART_1, declaration)
+    schemas = _with_group(tmp_path, settings, "schedule_d", "d_part_1", _D_PART_1, declaration)
     load_schema.cache_clear()
     yield schemas
     load_schema.cache_clear()
@@ -154,7 +193,39 @@ def schedule_d_part_2_with_copies(tmp_path, settings):
     entries on page 3, continued on copies of that page, the template's last, as C, G
     and H continue theirs. Yields the schemas directory.
     """
-    schemas = _schedule_d_with_group(tmp_path, settings, "d_part_2", _D_PART_2, {"extra_page": 3})
+    schemas = _with_group(
+        tmp_path, settings, "schedule_d", "d_part_2", _D_PART_2, {"extra_page": 3}
+    )
+    load_schema.cache_clear()
+    yield schemas
+    load_schema.cache_clear()
+
+
+@pytest.fixture
+def schedule_a_b_with_sheet(tmp_path, settings):
+    """
+    A copy of the real schemas whose Schedule A/B has a synthetic repeat group (3a2 spec
+    §5.4, R18, R19): line 3's four vehicles, each a make and its value, continued on an
+    attached sheet under those two columns, its rows numbered "3.{n}". Yields the schemas
+    directory, cleared from the schema cache before and after, as schedule_d_with_copies.
+    """
+    declaration = {"number": "3.{n}", "sheet": _AB_SHEET}
+    schemas = _with_group(tmp_path, settings, "schedule_a_b", "ab_line_3", _AB_LINE_3, declaration)
+    load_schema.cache_clear()
+    yield schemas
+    load_schema.cache_clear()
+
+
+@pytest.fixture
+def schedule_d_with_a_copy_and_a_sheet(tmp_path, settings):
+    """
+    Schedule D with both continuations (R56): Part 2's six entries on copies of page 3, the
+    template's last, and Part 1's five rows on an attached sheet, numbered "2.{n}" under a
+    name column and an amount column. Yields the schemas directory.
+    """
+    _with_group(tmp_path, settings, "schedule_d", "d_part_2", _D_PART_2, {"extra_page": 3})
+    declaration = {"number": "2.{n}", "sheet": _D_SHEET}
+    schemas = _with_group(tmp_path, settings, "schedule_d", "d_part_1", _D_PART_1, declaration)
     load_schema.cache_clear()
     yield schemas
     load_schema.cache_clear()
@@ -162,14 +233,18 @@ def schedule_d_part_2_with_copies(tmp_path, settings):
 
 @pytest.fixture
 def creditor_payments():
-    """add(session, count): that many SOFA creditor payments, each a firm and an amount."""
+    """
+    add(session, count, names=None): that many SOFA creditor payments, the nth named
+    names[n - 1] (by default a firm), each at n00.00.
+    """
 
-    def add(session, count):
+    def add(session, count, names=None):
+        names = names or _CREDITORS
         report = SOFAReport.objects.create(session=session, has_creditor_payments=True)
         return [
             SOFACreditorPayment.objects.create(
                 report=report,
-                creditor_name=_CREDITORS[n - 1] if n <= len(_CREDITORS) else f"Creditor {n}",
+                creditor_name=names[n - 1] if n <= len(names) else f"Creditor {n}",
                 total_paid=Decimal(f"{n}00.00"),
             )
             for n in range(1, count + 1)
