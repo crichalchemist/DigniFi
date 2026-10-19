@@ -406,9 +406,10 @@ def validate_schema(
         elif group.sheet is not None:
             # The rows a sheet prints are the slots' rows: a column of another list would
             # print rows that aren't the group's, or leave some of them out. A cell prints
-            # its slot's text, and a box's answer is a state, which a sheet can't tick.
+            # its slot's text, and a box's answer is a state, which a sheet can't tick, mapped
+            # to one yet or not.
             for column in group.sheet.columns:
-                bound = [f for f in mapped if f.binding == column.binding]
+                bound = [f for f in rows if f.binding == column.binding]
                 if not bound:
                     errors.append(
                         (
@@ -426,12 +427,14 @@ def validate_schema(
                         )
                     )
             # And every slot's value prints in a column, or the rows past the slots would
-            # drop it: a text or combo slot needs a column of its binding, and a box slot
-            # can't continue at all. (A sheet with no columns is reported as such below.)
+            # drop it: a text or combo slot needs a column of its binding, so one with no
+            # binding (a constant, a derived value) can't continue, and a box slot can't
+            # continue at all, bound or not. (A sheet with no columns is reported as such
+            # below.)
             columns = {column.binding for column in group.sheet.columns}
-            unprinted = {f.binding for f in mapped if f.binding} - columns if columns else set()
+            unprinted = {f.binding for f in rows if f.binding} - columns if columns else set()
             for binding in sorted(unprinted):
-                if any(f.type in ("checkbox", "radio") for f in mapped if f.binding == binding):
+                if any(f.type in ("checkbox", "radio") for f in rows if f.binding == binding):
                     errors.append(
                         (
                             "E007",
@@ -445,6 +448,25 @@ def validate_schema(
                             "E007",
                             f"group {name!r}: no sheet column prints {binding!r}, "
                             "which a slot of the group binds",
+                        )
+                    )
+            for f in rows if columns else ():
+                if f.binding:
+                    continue
+                if f.type in ("checkbox", "radio"):
+                    errors.append(
+                        (
+                            "E007",
+                            f"group {name!r}: a box slot fills {f.pdf_field!r} on row {f.row}, "
+                            "and a sheet can't tick a box",
+                        )
+                    )
+                else:
+                    errors.append(
+                        (
+                            "E007",
+                            f"group {name!r}: no sheet column prints {f.pdf_field!r} on row "
+                            f"{f.row}, a slot of the group that binds no list",
                         )
                     )
         elif group.extra_page is None:

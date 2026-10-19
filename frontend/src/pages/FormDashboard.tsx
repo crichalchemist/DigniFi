@@ -143,7 +143,9 @@ export function FormDashboard() {
   const [generationErrors, setGenerationErrors] = useState<GenerateAllError[]>([]);
   const [generateAllRefusal, setGenerateAllRefusal] = useState<Refusal | null>(null);
   // Each form's last refused Generate or Download, until its own Generate or Download next
-  // succeeds, Generate All returns it in `generated` (a filed form included), or it is marked filed
+  // succeeds, Generate All answers (its lists then hold every checked form's current refusal; a
+  // filed form, which it returns unchecked, shows none until its next Download), or it is marked
+  // filed. A refusal of Generate All's whole call leaves them.
   const [formRefusals, setFormRefusals] = useState<Partial<Record<FormType, Refusal>>>({});
   const [dischargeData, setDischargeData] = useState<DebtClassification[]>([]);
 
@@ -209,9 +211,9 @@ export function FormDashboard() {
     try {
       const response = await api.forms.generateAll(session.id);
       setForms(response.generated);
-      // Every form Generate All returns in `generated` loses its card's refusal, a filed form
-      // included, which Generate All returns untouched
-      response.generated.forEach((form) => setFormRefusal(form.form_type, undefined));
+      // Generate All's answer replaces every card's refusal: a form it refused again is in its
+      // list, so the same words and link don't show twice, and an older refusal can't stay
+      setFormRefusals({});
       setGenerationErrors(response.errors);
       trackEvent('form_generated', { form_type: 'all', session_id: session.id });
       setShowSurvey(true);

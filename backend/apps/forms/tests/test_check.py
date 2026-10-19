@@ -12,6 +12,7 @@ metrics, so "the first size that fits" isn't checked against check()'s own arith
 
 import dataclasses
 import re
+import unicodedata
 from pathlib import Path
 
 import pymupdf
@@ -123,6 +124,35 @@ def test_a_letter_the_form_cannot_print_is_refused(last_name, letter):
     )
 
 
+@pytest.mark.parametrize("last_name", ["Varée", "Peñalta", "Grünholt"])
+def test_a_letter_typed_as_a_letter_and_its_mark_prints_as_the_one_letter(last_name):
+    # Text pasted from a file name or some PDFs, or typed with combining marks, holds é as
+    # e and U+0301: the form prints it as é, the one letter its font has.
+    decomposed = unicodedata.normalize("NFD", last_name)
+    assert len(decomposed) == len(last_name) + 1
+    (planned,) = _plan("form_101", {LAST_NAME: decomposed})
+    assert (planned.value, planned.size) == (last_name, 10.0)
+
+
+def test_a_letter_typed_with_its_marks_apart_is_refused_as_the_whole_letter():
+    # ễ is e with two marks: the form can't print ễ, so the refusal names ễ, not a mark.
+    with pytest.raises(UnprintableLetter) as refused:
+        PDFFormFiller().check("form_101", {LAST_NAME: unicodedata.normalize("NFD", "Nguyễn")})
+    assert refused.value.letter == "ễ"
+    assert str(refused.value) == (
+        "The court form can't print the letter “ễ” in “Last name”. "
+        "Change it to a letter without the mark."
+    )
+
+
+def test_a_mark_no_letter_takes_is_refused_at_the_mark():
+    # No single letter is n with a diaeresis, so the mark stays apart and is refused itself
+    # (the sentence for it is the owner's, W-1).
+    with pytest.raises(UnprintableLetter) as refused:
+        PDFFormFiller().check("form_101", {LAST_NAME: "Mun\N{COMBINING DIAERESIS}oz"})
+    assert refused.value.letter == "\N{COMBINING DIAERESIS}"
+
+
 @pytest.mark.parametrize(
     "space", ["\t", "\N{NO-BREAK SPACE}", "\N{THIN SPACE}", "\N{NARROW NO-BREAK SPACE}"]
 )
@@ -172,6 +202,18 @@ def test_a_refusal_names_the_box_as_its_binding_does():
         with pytest.raises(UnprintableLetter) as unbound:
             PDFFormFiller().check("form_101", {key: "Wąsowicz"})
         assert (unbound.value.label, unbound.value.step, unbound.value.page) == (label, None, None)
+
+
+def test_a_box_whose_binding_has_no_label_is_named_by_its_index_row():
+    # Schedule J's amount boxes are bound with an empty label; a refusal names the box as
+    # the field index does, never as “”, and still links to the step its rule reads.
+    with pytest.raises(UnprintableLetter) as refused:
+        PDFFormFiller().check("schedule_j", {"7": "Wąsowicz"})
+    assert (refused.value.label, refused.value.step, refused.value.page) == (
+        "Food and housekeeping supplies",
+        "expense_info",
+        None,
+    )
 
 
 # ── Fit ───────────────────────────────────────────────────────────────
@@ -344,9 +386,17 @@ def test_a_widgets_own_key_fills_only_that_widget():
     first, second = _widgets("schedule_i", "Assistance 8f")
     planned = _plan("schedule_i", {first.key: "SNAP"})
     assert [(p.widget, p.value) for p in planned] == [(first, "SNAP")]
-    # It wins over its full name, which still fills the name's other widget.
-    planned = _plan("schedule_i", {"Assistance 8f": "Housing aid", second.key: "SNAP"})
-    assert [(p.widget, p.value) for p in planned] == [(first, "Housing aid"), (second, "SNAP")]
+    # It wins over its full name, which still fills the name's other widget, whichever key
+    # comes first.
+    for values in (
+        {"Assistance 8f": "Housing aid", second.key: "SNAP"},
+        {second.key: "SNAP", "Assistance 8f": "Housing aid"},
+    ):
+        planned = _plan("schedule_i", values)
+        assert [(p.widget, p.value) for p in planned] == [
+            (first, "Housing aid"),
+            (second, "SNAP"),
+        ]
 
 
 def test_a_full_name_fills_every_drawn_widget_but_never_a_stacked_one():

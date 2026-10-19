@@ -823,6 +823,14 @@ def _community_property_boxes(d):
         )
 
 
+def _unmapped_community_property_boxes(d):
+    # Not yet mapped to a state, so they tick nothing for now; once mapped, they would.
+    _community_property_boxes(d)
+    for f in d["fields"]:
+        if f["repeat"] == "ab_line_3" and f["type"] == "checkbox":
+            f["choices"] = {}
+
+
 def _a_column_of_boxes(d):
     _community_property_boxes(d)
     columns = d["groups"]["ab_line_3"]["sheet"]["columns"]
@@ -834,6 +842,18 @@ def _a_column_of_boxes(d):
             "width": 100,
         }
     )
+
+
+def _ab_slot(**binding):
+    """Add a slot to row 1 of the synthetic Schedule A/B group, filled as `binding` says."""
+
+    def change(d):
+        d["fields"].append(
+            {**_text(None, 2, None), "repeat": "ab_line_3", "repeat_capacity": 4, "row": 1}
+            | binding
+        )
+
+    return change
 
 
 def _another_lists_column(d):
@@ -946,6 +966,54 @@ _AB = "schedule_a_b: group 'ab_line_3'"
             ),
         ),
         (
+            # A box in the Make column's list, its answer not yet mapped to a state: once
+            # mapped, it would tick a box the sheet doesn't have.
+            _ab_slot(
+                pdf_field="Check if this is community property see",
+                type="checkbox",
+                source="asked",
+                value=None,
+                choices={},
+                binding="sofa.creditor_payments[].creditor_name",
+            ),
+            (
+                "forms.E007",
+                f"{_AB}: sheet column 'Make' binds a box's answer, which a sheet can't tick",
+            ),
+        ),
+        (
+            _unmapped_community_property_boxes,
+            (
+                "forms.E007",
+                f"{_AB}: a box slot binds 'sofa.creditor_payments[].dates_of_payments', "
+                "and a sheet can't tick a box",
+            ),
+        ),
+        (
+            # A box ticked for every row, bound to nothing: still no box on the sheet.
+            _ab_slot(
+                pdf_field="Check if this is community property see",
+                type="checkbox",
+                value="yes",
+                choices={"true": "/On"},
+            ),
+            (
+                "forms.E007",
+                f"{_AB}: a box slot fills 'Check if this is community property see' on row 1, "
+                "and a sheet can't tick a box",
+            ),
+        ),
+        (
+            # A value DigniFi works out (the filer's name, in row 1's model box): no column
+            # holds it, so a fifth row would lose it.
+            _ab_slot(pdf_field="3 2", source="derived", value=None, rule="full_name"),
+            (
+                "forms.E007",
+                f"{_AB}: no sheet column prints '3 2' on row 1, a slot of the group that "
+                "binds no list",
+            ),
+        ),
+        (
             # "Line 3.5" is 35.58 pt at 10 pt, wider than the 32 pt inside the line column's
             # padding: it would print on two lines.
             _sheet(lambda g: g.update(number="Line 3.{n}")),
@@ -991,6 +1059,10 @@ _AB = "schedule_a_b: group 'ab_line_3'"
         "a column of boxes",
         "a slot with no column",
         "a box slot",
+        "a box slot not yet mapped, in a column",
+        "a box slot not yet mapped",
+        "a constant box slot",
+        "a derived slot",
         "a first line wider than the line column",
         "two columns with one label",
         "a label wider than its column",

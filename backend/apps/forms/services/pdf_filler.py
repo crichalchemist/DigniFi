@@ -148,29 +148,35 @@ def _source(schema: FormSchema, key: str, widget: TemplateWidget) -> tuple[str, 
     """
     The box's label and where the filer fixes its value, from the binding that produced
     the key. A key no binding produced (a test's, the oracle's) gets the index row's
-    label and no fix.
+    label and no fix; a binding with an empty label, the index row's label and its fix.
     """
     name, page, tag = parse_key(key)
+    fix: dict[str, str] = {}
     for field in schema.fields:
         if field.pdf_field == name and field.tag == tag and (tag is None or field.page == page):
-            return field.label, fix_for(field)
+            if field.label:
+                return field.label, fix_for(field)
+            fix = fix_for(field)
+            break
     row = next(
         row
         for row in load_index(schema.template_filename)[name]
         if (row.page, row.tag) == (widget.page, widget.tag)
     )
-    return row.label, {}
+    return row.label, fix
 
 
 def _as_printed(text: str) -> str:
     """
-    The text with every space (a tab, or any Unicode space separator) as a plain space,
-    and format characters such as a soft hyphen left out: the template's font has no
-    glyph for them, and draws U+00A0 as € (R34, R36).
+    The text composed (NFC), so a letter typed as a base letter and a combining mark, such
+    as e and U+0301, is the one letter é the font prints; then with every space (a tab, or
+    any Unicode space separator) as a plain space, and format characters such as a soft
+    hyphen left out: the template's font has no glyph for them, and draws U+00A0 as €
+    (R34, R36).
     """
     return "".join(
         " " if letter == "\t" or unicodedata.category(letter) == "Zs" else letter
-        for letter in text
+        for letter in unicodedata.normalize("NFC", text)
         if unicodedata.category(letter) != "Cf"
     )
 

@@ -9,6 +9,7 @@ page 3.
 
 import json
 import re
+import unicodedata
 from io import BytesIO, StringIO
 from pathlib import Path
 
@@ -268,6 +269,29 @@ def test_the_sheet_prints_every_letter_the_form_prints(session, creditor_payment
     assert "Łucja Kıłıç" in text and "Łada Niva ł ı" in text
 
 
+def test_letters_typed_with_their_marks_apart_print_whole_on_the_form_and_the_sheet(
+    session, creditor_payments
+):
+    # é typed as e and U+0301 (pasted from a file name, say) is checked, measured and drawn
+    # as é, the one letter the font prints, on the form's boxes and on its sheet alike.
+    debtor = session.debtor_info
+    debtor.first_name = unicodedata.normalize("NFD", "José")
+    debtor.last_name = unicodedata.normalize("NFD", "Muñoz")
+    debtor.save()
+    creditor_payments(session, 5, [*MAKES[:4], unicodedata.normalize("NFD", "Citroën Müller")])
+
+    parts, pdf = _drawn(session)
+
+    (sheet,) = read_sheets(pdf, _spec())
+    assert (sheet.header[0], sheet.rows) == (
+        "José Muñoz",
+        (("3.5", "Citroën Müller", "500.00"),),
+    )
+    name_boxes = {f.pdf_field for f in load_schema("schedule_a_b").fields if f.rule == "full_name"}
+    printed = [w.value for w in read_drawn("schedule_a_b", pdf, parts) if w.full_name in name_boxes]
+    assert printed and set(printed) == {"José Muñoz"}
+
+
 def test_a_name_neither_the_form_nor_the_sheet_can_print_is_refused_on_the_form(
     session, creditor_payments
 ):
@@ -515,3 +539,10 @@ def test_a_form_with_a_copy_and_a_sheet_prints_the_sheet_last(
     }
     (sheet,) = read_sheets(pdf, sheet_spec(document["parts"][2]))
     assert sheet.rows == (("2.6", "Kia", "600.00"), ("2.7", "Saab", "700.00"))
+    # Headed with Schedule D's own title, not another form's
+    assert sheet.header == (
+        "Maria Torres",
+        "Official Form 106D, Schedule D: Creditors Who Have Claims Secured by Property "
+        "(attached sheet)",
+        "Case number (if known)",
+    )

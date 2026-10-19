@@ -894,6 +894,42 @@ describe('IntakeWizard session re-read', { timeout: 15_000 }, () => {
     expect(stepUpdates.count).toBe(0);
   });
 
+  /** The forms dashboard's link to a step, shown once the shared session has loaded */
+  function DashboardLink() {
+    const { session } = useIntake();
+    const navigate = useNavigate();
+    return session ? (
+      <button type="button" onClick={() => navigate('/intake?step=expense_info')}>
+        Go to Expenses
+      </button>
+    ) : null;
+  }
+
+  // The dashboard and the wizard share one IntakeProvider (App's IntakeLayout): the session is
+  // already loaded when a link opens the wizard, so an update_step sent through the context, as
+  // Continue sends it, would reach the server
+  it('opens the step a dashboard link names, the session already loaded, without moving the filer’s saved place', async () => {
+    const stepUpdates = savedAs({ ...sessionAtStep8, status: 'completed' });
+    localStorage.setItem('current_session_id', '1');
+    render(
+      <MemoryRouter initialEntries={['/forms']}>
+        <IntakeProvider>
+          <Routes>
+            <Route path="/intake" element={<IntakeWizard />} />
+            <Route path="/forms" element={<DashboardLink />} />
+          </Routes>
+        </IntakeProvider>
+      </MemoryRouter>
+    );
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Go to Expenses' }));
+
+    expect(await screen.findByRole('heading', { name: 'Expenses', level: 2 })).toBeInTheDocument();
+    // Long enough for a request sent as the step opened to reach the server
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    expect(stepUpdates.count).toBe(0);
+  });
+
   // A refresh then opens the saved step, and Back leaves the wizard rather than reopening the link
   it('drops the step from the address once it has opened it, without a new history entry', async () => {
     const stepUpdates = savedAs({ ...sessionAtStep8, status: 'completed' });

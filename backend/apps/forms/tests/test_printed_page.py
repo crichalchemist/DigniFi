@@ -520,8 +520,8 @@ def test_no_value_is_ever_cut_off(form_type):
     # The longest value check() lets through prints whole, every character inside its box,
     # and one letter or line more is refused, never drawn cut off (spec §9). A short value
     # at the box's own size stays inside too: there R38's 37 boxes hang Ç's cedilla up to
-    # 0.108 pt under the rect, as the template always has. (Combo boxes take only their
-    # own options, so they have no boundary to probe.)
+    # 0.108 pt under the rect, as the template always has. A combo box takes only its own
+    # options, so it has no boundary to probe: it prints its widest whole.
     boxes = [w for w in template_widgets(_template(form_type)) if w.drawn and w.kind == "Text"]
     boundaries = {}  # boxes alike in every measure check() takes share a boundary
     just, over, short = {}, {}, {}
@@ -537,6 +537,17 @@ def test_no_value_is_ever_cut_off(form_type):
     assert [key for key in over if _fits(form_type, key, over[key])] == []
     assert _cut_off(form_type, just) == []
     assert _cut_off(form_type, short) == []
+    # Every form has its district box, which lists every district.
+    widest = {
+        w.key: max(
+            (o for o in w.options if o.strip()),
+            key=lambda o: pymupdf.get_text_length(o, fontname="helv", fontsize=10),
+        )
+        for w in template_widgets(_template(form_type))
+        if w.drawn and w.kind == "ComboBox"
+    }
+    assert widest
+    assert _cut_off(form_type, widest) == []
 
 
 # ── A capital's mark on a multi-line box's first line ─────────────────

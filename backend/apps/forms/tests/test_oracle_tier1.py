@@ -97,13 +97,16 @@ def _text_fill(form_type):
 
 @cache
 def _box_fill(form_type, position):
-    """Fill the position-th choice of every mapped box at once; boxes share no widgets."""
+    """
+    Fill the position-th choice of every mapped box at once; boxes share no widgets.
+    Returns the values drawn, and what each drawn widget prints with them.
+    """
     values = {}
     for f in _fields(form_type, ("checkbox", "radio")):
         keys = sorted(f.choices or {})
         if position < len(keys):
             values[f.pdf_field] = f.choices[keys[position]]
-    return _drawn(form_type, values)
+    return values, _drawn(form_type, values)
 
 
 _TEXT_KINDS = ("Text", "ComboBox")
@@ -238,14 +241,19 @@ def test_checkbox_ticks_only_the_widgets_for_its_answer(form_type, pdf_field, ca
         for w in template_widgets(template)
         if w.full_name == pdf_field and w.drawn and state in w.states
     )
-    own = [
-        w
-        for w in _box_fill(form_type, sorted(field.choices).index(case))
-        if w.full_name == pdf_field
-    ]
+    values, drawn = _box_fill(form_type, sorted(field.choices).index(case))
+    own = [w for w in drawn if w.full_name == pdf_field]
     ticked = [w for w in own if w.state == state]
     assert len(ticked) == expected, f"no_widget: {len(ticked)} of {expected} widgets show {state}"
     assert all(w.state == "/Off" for w in own if w.state != state), "spill: another option is on"
+    # The check mark appears only in the widgets of the choices drawn (spec §8), never in a
+    # widget of another name.
+    stray = sorted(
+        (w.full_name, w.page, w.tag)
+        for w in drawn
+        if w.state not in ("", "/Off") and values.get(w.full_name) != w.state
+    )
+    assert stray == [], f"spill: a tick also prints in {stray}"
 
 
 def test_every_checkbox_binding_maps_its_answers_to_a_box():

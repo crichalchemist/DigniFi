@@ -1055,6 +1055,59 @@ describe('FormDashboard', () => {
       expect(within(card).queryByRole('link')).not.toBeInTheDocument();
     });
 
+    it('shows a form’s refusal once, in Generate All’s list, when Generate All refuses it again', async () => {
+      server.use(
+        http.post('http://localhost:8000/api/forms/generate_all/', () =>
+          HttpResponse.json({
+            generated: [],
+            errors: [{ form_type: 'form_101', error: LETTER, step: 'debtor_info' }],
+            total_generated: 0,
+            total_errors: 1,
+          })
+        )
+      );
+      downloads(refused({ form_type: 'form_101', error: LETTER, step: 'debtor_info' }));
+
+      renderFormDashboard();
+      const card = await cardOf(GENERATED);
+      await userEvent.click(within(card).getByRole('button', { name: 'Download' }));
+      await within(card).findByText(LETTER);
+
+      await generateAll();
+      await screen.findByText(/1 form could not be generated/);
+
+      // A list item reads "<form>: <refusal>", so the words are matched within it
+      const shown = screen.getAllByText(LETTER, { exact: false });
+      expect(shown).toHaveLength(1);
+      expect(shown[0].closest('li')).not.toBeNull();
+      expect(screen.getAllByRole('link', { name: 'Go to Your Information' })).toHaveLength(1);
+    });
+
+    // A refusal of the whole call checked no form, so it says nothing about the card's
+    it('keeps a form’s refusal when Generate All is refused as a whole', async () => {
+      server.use(
+        http.post('http://localhost:8000/api/forms/generate_all/', () =>
+          HttpResponse.json({ error: INCOME_NOT_SPLIT, step: 'income_info' }, { status: 422 })
+        )
+      );
+      downloads(refused({ form_type: 'form_101', error: LETTER, step: 'debtor_info' }));
+
+      renderFormDashboard();
+      const card = await cardOf(GENERATED);
+      await userEvent.click(within(card).getByRole('button', { name: 'Download' }));
+      await within(card).findByText(LETTER);
+
+      await generateAll();
+
+      const wholeCall = await screen.findByRole('alert');
+      expect(within(wholeCall).getByText(INCOME_NOT_SPLIT)).toBeInTheDocument();
+      expect(within(card).getByText(LETTER)).toBeInTheDocument();
+      expect(within(card).getByRole('link', { name: 'Go to Your Information' })).toHaveAttribute(
+        'href',
+        '/intake?step=debtor_info'
+      );
+    });
+
     it('clears a form’s refusal once it is marked filed', async () => {
       downloads(refused({ form_type: 'form_101', error: LETTER, step: 'debtor_info' }));
 

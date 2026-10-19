@@ -17,6 +17,7 @@ Covers:
 
 import json
 import logging
+import unicodedata
 from datetime import date
 from decimal import Decimal
 from unittest.mock import patch
@@ -611,6 +612,23 @@ def test_each_generate_names_the_step_that_fixes_a_letter_the_form_cannot_print(
     form.refresh_from_db()
     assert (form.status, form.field_values) == ("generated", "")
     assert "ą" not in caplog.text
+
+
+@pytest.mark.django_db
+def test_a_name_saved_with_its_marks_apart_generates_form_101(api_client, session_with_debtor):
+    # The intake keeps a name as typed, so é can arrive as e and U+0301: the form prints é,
+    # never a refusal that quotes a lone accent.
+    debtor = session_with_debtor.debtor_info
+    debtor.first_name = unicodedata.normalize("NFD", "José")
+    debtor.save()
+
+    response = api_client.post(
+        "/api/forms/generate/",
+        {"session_id": session_with_debtor.id, "form_type": "form_101"},
+        format="json",
+    )
+
+    assert response.status_code == status.HTTP_200_OK, response.data
 
 
 # ── Status Transition Endpoints ───────────────────────────────────────

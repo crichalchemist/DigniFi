@@ -7,25 +7,65 @@ A constant links nowhere: a constant that can't print is DigniFi's defect, and
 test_check.py's test_every_constant_prints keeps every constant printable.
 """
 
-import pytest
+import ast
+import re
 
+import pytest
+from django.conf import settings
+
+from apps.eligibility.cmi import IncomeNotSplit
 from apps.forms.registry import get_all_form_types
 from apps.forms.schema import FieldSpec, load_schema
 from apps.forms.services.derivations import DERIVATIONS, RULE_FIXES
 from apps.forms.services.fill_resolver import fix_for
+from apps.forms.views import IntakeNotFinished
 
-# The keys of WIZARD_STEPS in frontend/src/constants/wizardSteps.ts: what /intake?step= opens.
-WIZARD_STEPS = {
-    "debtor_info",
-    "income_info",
-    "expense_info",
-    "assets",
-    "debts",
-    "contracts",
-    "codebtors",
-    "review",
-}
-PAGES = {"/fee-waiver", "/documents", "/sofa"} | {f"/ask/{ft}" for ft in get_all_form_types()}
+FRONTEND = settings.BASE_DIR.parent / "frontend" / "src"
+
+
+def _wizard_steps():
+    """
+    The keys of WIZARD_STEPS in frontend/src/constants/wizardSteps.ts: what /intake?step=
+    opens.
+    """
+    steps = (FRONTEND / "constants" / "wizardSteps.ts").read_text()
+    return set(re.findall(r"key: '(\w+)'", steps))
+
+
+def _pages():
+    """
+    The pages the forms dashboard links a refusal to: PAGE_LINK_LABELS in
+    frontend/src/pages/FormDashboard.tsx, and each form's questions page, /ask/<form type>.
+    """
+    dashboard = (FRONTEND / "pages" / "FormDashboard.tsx").read_text()
+    labels = re.search(r"const PAGE_LINK_LABELS[^{]*\{(.*?)\};", dashboard, re.DOTALL)[1]
+    return set(re.findall(r"'(/[^']*)':", labels)) | {f"/ask/{ft}" for ft in get_all_form_types()}
+
+
+def _precondition_steps():
+    """
+    The step each PreconditionMissing(...) in the backend's code names, read from its source,
+    so a new place that raises one is checked too.
+    """
+    steps, unread = set(), []
+    for path in (settings.BASE_DIR / "apps").rglob("*.py"):
+        if {"tests", "migrations"} & set(path.parts):
+            continue
+        for node in ast.walk(ast.parse(path.read_text())):
+            if not (
+                isinstance(node, ast.Call)
+                and getattr(node.func, "id", None) == "PreconditionMissing"
+            ):
+                continue
+            step = next((k.value for k in node.keywords if k.arg == "step"), None)
+            if step is None and len(node.args) > 1:
+                step = node.args[1]
+            if isinstance(step, ast.Constant):
+                steps.add(step.value)
+            elif step is not None:
+                unread.append(f"{path.name}:{node.lineno}")
+    assert unread == [], "a step this test can't read"
+    return steps
 
 
 def _field(source, rule=None, binding=None, ingest_key=None, value=None):
@@ -59,8 +99,35 @@ def test_every_refusal_names_where_to_fix_it():
     for rule, fix in RULE_FIXES.items():
         assert rule in DERIVATIONS, rule
         assert len(fix) <= 1, rule
-        for kind, target in fix.items():
-            assert target in {"step": WIZARD_STEPS, "page": PAGES}[kind], rule
+
+
+def test_every_fix_is_a_step_or_page_the_dashboard_links():
+    # Read from the frontend itself, so a step key or a route renamed on either side fails
+    # here: the dashboard would otherwise drop the link and tell the filer to try again.
+    if not FRONTEND.is_dir():
+        pytest.skip("the frontend's source isn't here (compose's backend mounts backend/ only)")
+    targets = {"step": _wizard_steps(), "page": _pages()}
+    # Every fix a refusal can carry: each rule's, each text or combo binding's on the forms
+    # (an answer's questions page, a scan's), a SOFA list's, which no form binds yet, and
+    # each one an exception names itself: a missing precondition's, wherever it is raised,
+    # income not entered by source and an unfinished intake.
+    preconditions = _precondition_steps()
+    assert preconditions  # Forms 101 and 121 need a debtor and an SSN
+    fixes = [
+        *RULE_FIXES.values(),
+        *(
+            fix_for(f)
+            for form_type in get_all_form_types()
+            for f in load_schema(form_type).fields
+            if f.type in ("text", "choice")
+        ),
+        fix_for(_field("asked", binding="sofa.creditor_payments[].creditor_name")),
+        *({"step": step} for step in preconditions),
+        {"step": IncomeNotSplit.step},
+        {"page": IntakeNotFinished.page},
+    ]
+    unlinked = [fix for fix in fixes for kind, target in fix.items() if target not in targets[kind]]
+    assert unlinked == []
 
 
 @pytest.mark.parametrize(
