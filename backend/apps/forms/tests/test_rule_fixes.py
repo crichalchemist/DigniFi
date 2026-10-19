@@ -14,7 +14,7 @@ from apps.forms.schema import FieldSpec, load_schema
 from apps.forms.services.derivations import DERIVATIONS, RULE_FIXES
 from apps.forms.services.fill_resolver import fix_for
 
-# The keys of WIZARD_STEPS in frontend/src/pages/IntakeWizard.tsx: what /intake?step= opens.
+# The keys of WIZARD_STEPS in frontend/src/constants/wizardSteps.ts: what /intake?step= opens.
 WIZARD_STEPS = {
     "debtor_info",
     "income_info",

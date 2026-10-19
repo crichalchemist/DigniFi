@@ -1,7 +1,7 @@
 import { render, screen, waitFor, act, fireEvent } from '@testing-library/react';
 import { vi } from 'vitest';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter, Routes, Route, useNavigate } from 'react-router-dom';
+import { MemoryRouter, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import { http, HttpResponse } from 'msw';
 import { server } from '../../test/mocks/server';
 import { IntakeProvider, useIntake } from '../../context/IntakeContext';
@@ -51,10 +51,10 @@ const sessionAtStep1 = {
   debts: [],
 };
 
-function renderWizard() {
+function renderWizard(entry = '/intake') {
   localStorage.setItem('current_session_id', '1');
   return render(
-    <MemoryRouter initialEntries={['/intake']}>
+    <MemoryRouter initialEntries={[entry]}>
       <IntakeProvider>
         <Routes>
           <Route path="/intake" element={<IntakeWizard />} />
@@ -854,6 +854,121 @@ describe('IntakeWizard session re-read', { timeout: 15_000 }, () => {
       await screen.findByRole('heading', { name: /your information/i, level: 2 })
     ).toBeInTheDocument();
     expect(sessionsCreated).toBe(1);
+  });
+
+  /** The server holds this session; returns how many update_step calls went out. */
+  function savedAs(saved: Record<string, unknown>) {
+    const stepUpdates = { count: 0 };
+    server.use(
+      http.get('http://localhost:8000/api/intake/sessions/:id/', () => HttpResponse.json(saved)),
+      http.post('http://localhost:8000/api/intake/sessions/:id/update_step/', () => {
+        stepUpdates.count += 1;
+        return HttpResponse.json({ session: saved, message: 'Step updated.' });
+      })
+    );
+    return stepUpdates;
+  }
+
+  /** What the address bar holds, and the browser's Back button */
+  function AddressBar() {
+    const location = useLocation();
+    const navigate = useNavigate();
+    return (
+      <>
+        <p data-testid="address">{location.pathname + location.search}</p>
+        <button type="button" onClick={() => navigate(-1)}>
+          Browser back
+        </button>
+      </>
+    );
+  }
+
+  // The dashboard links a refusal to the step that fixes it (step 3a2 spec §4.5)
+  it('opens at the step a link names, without moving the filer’s saved place', async () => {
+    // The intake is complete, so it would open at Review
+    const stepUpdates = savedAs({ ...sessionAtStep8, status: 'completed' });
+
+    renderWizard('/intake?step=expense_info');
+
+    expect(await screen.findByRole('heading', { name: 'Expenses', level: 2 })).toBeInTheDocument();
+    expect(stepUpdates.count).toBe(0);
+  });
+
+  // A refresh then opens the saved step, and Back leaves the wizard rather than reopening the link
+  it('drops the step from the address once it has opened it, without a new history entry', async () => {
+    const stepUpdates = savedAs({ ...sessionAtStep8, status: 'completed' });
+    localStorage.setItem('current_session_id', '1');
+    render(
+      <MemoryRouter initialEntries={['/forms', '/intake?step=expense_info']} initialIndex={1}>
+        <IntakeProvider>
+          <Routes>
+            <Route path="/intake" element={<IntakeWizard />} />
+            <Route path="/forms" element={<div>FormDashboard</div>} />
+          </Routes>
+          <AddressBar />
+        </IntakeProvider>
+      </MemoryRouter>
+    );
+
+    await screen.findByRole('heading', { name: 'Expenses', level: 2 });
+    await waitFor(() => expect(screen.getByTestId('address')).toHaveTextContent(/^\/intake$/));
+    expect(stepUpdates.count).toBe(0);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Browser back' }));
+
+    expect(await screen.findByText('FormDashboard')).toBeInTheDocument();
+  });
+
+  // The step is dropped only once it has opened, so a refresh during a failed read still opens it
+  it('keeps the linked step in the address while the read fails, and drops it once Try again opens it', async () => {
+    let serverBusy = true;
+    const stepUpdates = { count: 0 };
+    server.use(
+      http.get('http://localhost:8000/api/intake/sessions/:id/', () =>
+        serverBusy
+          ? HttpResponse.json({ detail: 'Request was throttled.' }, { status: 429 })
+          : HttpResponse.json({ ...sessionAtStep8, status: 'completed' })
+      ),
+      http.post('http://localhost:8000/api/intake/sessions/:id/update_step/', () => {
+        stepUpdates.count += 1;
+        return HttpResponse.json({ session: sessionAtStep8, message: 'Step updated.' });
+      })
+    );
+    localStorage.setItem('current_session_id', '1');
+    render(
+      <MemoryRouter initialEntries={['/intake?step=expense_info']}>
+        <IntakeProvider>
+          <Routes>
+            <Route path="/intake" element={<IntakeWizard />} />
+          </Routes>
+          <AddressBar />
+        </IntakeProvider>
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      "We couldn't get your latest information just now. Please try again in a moment."
+    );
+    expect(screen.getByTestId('address')).toHaveTextContent('/intake?step=expense_info');
+
+    serverBusy = false;
+    await userEvent.click(screen.getByRole('button', { name: 'Try again' }));
+
+    expect(await screen.findByRole('heading', { name: 'Expenses', level: 2 })).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByTestId('address')).toHaveTextContent(/^\/intake$/));
+    expect(stepUpdates.count).toBe(0);
+  });
+
+  it('opens at the saved step when a link names no step of the wizard', async () => {
+    // Saved mid-wizard, so neither the first step nor the last stands in for it
+    const stepUpdates = savedAs({ ...sessionAtStep1, current_step: 5 });
+
+    renderWizard('/intake?step=sofa');
+
+    expect(
+      await screen.findByRole('heading', { name: 'Amounts Owed', level: 2 })
+    ).toBeInTheDocument();
+    expect(stepUpdates.count).toBe(0);
   });
 });
 

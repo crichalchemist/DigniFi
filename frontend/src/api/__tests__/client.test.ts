@@ -1,6 +1,6 @@
 import { http, HttpResponse } from 'msw';
 import { server } from '../../test/mocks/server';
-import { api, APIClientError } from '../client';
+import { api, APIClientError, setAccessToken, setRefreshToken } from '../client';
 
 /** The error a call rejects with, so its fields can be read. */
 async function refusalOf(call: Promise<unknown>): Promise<APIClientError> {
@@ -71,6 +71,65 @@ describe('what a refusal says fixes it', () => {
     expect(unfinished.step).toBeUndefined();
     expect(notSplit.step).toBe('income_info');
     expect(notSplit.page).toBeUndefined();
+  });
+
+  it('keeps a refused download’s own words and the step that fixes it', async () => {
+    const letter =
+      "The court form can't print the letter “ą” in “Last name”. Change it to a letter without the mark.";
+    server.use(
+      http.get('http://localhost:8000/api/forms/:id/download/', () =>
+        HttpResponse.json(
+          { form_type: 'form_101', error: letter, step: 'debtor_info' },
+          { status: 422 }
+        )
+      )
+    );
+
+    const err = await refusalOf(api.forms.downloadForm(1, 'form_101.pdf'));
+
+    expect(err.statusCode).toBe(422);
+    expect(err.message).toBe(letter);
+    expect(err.serverError).toBe(letter);
+    expect(err.step).toBe('debtor_info');
+    expect(err.page).toBeUndefined();
+  });
+
+  // An access token lasts 30 minutes: an expired one is refreshed once before the refusal is read
+  it('reads a refused download’s words only after refreshing an expired token', async () => {
+    const notSplit = 'Enter your income by source on the Income step.';
+    let downloads = 0;
+    let refreshes = 0;
+    server.use(
+      http.get('http://localhost:8000/api/forms/:id/download/', () => {
+        downloads += 1;
+        return downloads === 1
+          ? HttpResponse.json(
+              { detail: 'Given token not valid for any token type' },
+              { status: 401 }
+            )
+          : HttpResponse.json(
+              { form_type: 'form_101', error: notSplit, step: 'income_info' },
+              { status: 422 }
+            );
+      }),
+      http.post('http://localhost:8000/api/token/refresh/', () => {
+        refreshes += 1;
+        return HttpResponse.json({ access: 'refreshed-access-token' });
+      })
+    );
+    setRefreshToken('mock-refresh-token');
+
+    try {
+      const err = await refusalOf(api.forms.downloadForm(1, 'form_101.pdf'));
+
+      expect(refreshes).toBe(1);
+      expect(downloads).toBe(2);
+      expect(err.statusCode).toBe(422);
+      expect(err.message).toBe(notSplit);
+      expect(err.step).toBe('income_info');
+    } finally {
+      setAccessToken(null);
+    }
   });
 
   it('keeps no step or page that is not a string, such as a field error', async () => {

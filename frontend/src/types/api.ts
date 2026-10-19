@@ -462,7 +462,8 @@ export type GenerateForm101Response = GenerateFormResponse;
 
 export interface GenerateAllFormsResponse {
   generated: GeneratedForm[];
-  errors: Array<{ form_type: string; error: string }>;
+  /** Each form refused, with the wizard step (a `WIZARD_STEPS` key) or page that fixes it, if any */
+  errors: Array<{ form_type: string; error: string; step?: string; page?: string }>;
   total_generated: number;
   total_errors: number;
 }
