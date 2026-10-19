@@ -17,7 +17,7 @@ from apps.districts.models import District
 from apps.forms.schema import load_schema
 from apps.forms.services.fill_resolver import resolve
 from apps.forms.services.pdf_filler import PDFFormFiller
-from apps.forms.tests.pdf_readback import read_widgets
+from apps.forms.tests.pdf_readback import read_drawn
 from apps.intake.models import Codebtor, DebtorInfo, ExecutoryContract, IntakeSession
 
 User = get_user_model()
@@ -66,9 +66,9 @@ def session(db):
 
 
 def _printed(session, form_type):
-    """The filled form's widgets, as a viewer sees them."""
+    """What the drawn form prints in each widget."""
     values = resolve(load_schema(form_type), session)
-    return read_widgets(PDFFormFiller().fill(form_type, values))
+    return read_drawn(form_type, PDFFormFiller().fill(form_type, values))
 
 
 @pytest.mark.parametrize("form_type", LISTS)
@@ -79,7 +79,7 @@ def test_the_filers_name_heads_every_page(session, form_type):
     named = {w.page for w in widgets if w.full_name == "Debtor 1" and w.value == "Jane Doe"}
     assert named == {1, 2}
     # A single filer's packet: the spouse's line stays blank.
-    assert [w.value for w in widgets if w.full_name == "Debtor 2"] == [None]
+    assert [w.value for w in widgets if w.full_name == "Debtor 2"] == [""]
 
 
 @pytest.mark.parametrize("listed,ticks", [(True, {"/yes"}), (False, {"/no"})])

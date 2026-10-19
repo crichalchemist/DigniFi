@@ -237,6 +237,8 @@ Two interim choices fall to the 3a1 spec:
 - per widget, PyMuPDF `page.insert_text(Point(rect.x0 + 2, rect.y1 - 0.25 * h), text, fontname="helv")` (`insert_textbox` drew nothing on 14 pt boxes);
 - then `delete_widget` on every widget, and `/AcroForm` set to null.
 
+This method was replaced in 3a2: pypdf builds each widget's appearance and PyMuPDF bakes it (`docs/superpowers/specs/2026-10-17-forms-step3a2-design.md` §3).
+
 Writing each value at its own widget's rectangle, not by field name, fixes the shared-name boxes:
 
 - `undefined_19`;
@@ -754,7 +756,7 @@ Every owner answer, controller ruling, ticket and counsel item maps to exactly o
 | CORR.valid_through | 3a1 | `valid_through` per table; irregular tables guarded only by the runbook; tests pin the fill date                                   |
 | CORR.J3            | 3e2 | Schedule J line 3 asked in the form's words on the Expenses step (owner confirmed)                                                 |
 | CORR.J45           | 3c  | A homeowner's J line 4 mortgage payment and J line 5 from the debts linked to "my home"; 3e2 does not ask line 5 (owner confirmed) |
-| SPIKE              | 3a2 | The engine method (PyMuPDF `insert_text` plus `delete_widget`; exact-clip oracle)                                                  |
+| SPIKE              | 3a2 | The engine method (PyMuPDF `insert_text` plus `delete_widget`; exact-clip oracle), replaced by 3a2's spec §3                       |
 | DIG-273            | 3a1 | The id round-trip for assets and debts, and the `useAutoSave` baseline                                                             |
 | DIG-274            | 3a1 | The median fix                                                                                                                     |
 | DIG-275            | 3h  | Line 35's past-due amount ÷ 60 in the one calculator                                                                               |

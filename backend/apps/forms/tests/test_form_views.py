@@ -40,7 +40,7 @@ from apps.forms.services.pdf_filler import (
     UnprintableLetter,
     ValueTooLong,
 )
-from apps.forms.tests.pdf_readback import read_widgets
+from apps.forms.tests.pdf_readback import read_drawn
 from apps.intake.models import (
     DebtorInfo,
     ExpenseInfo,
@@ -1034,14 +1034,19 @@ def test_filed_form_survives_leaving_the_packet(api_client, session_with_debtor)
     ] == [(form.id, "filed")]
     form.refresh_from_db()
     assert json.loads(form.field_values) == filed_values
-    # It downloads, and prints what was filed, the old name included.
+    # It downloads, and prints what was filed, the old name included, in every widget of
+    # each name.
     assert download.status_code == status.HTTP_200_OK
-    printed = {w.full_name: w.value for w in read_widgets(download.content)}
+    printed = {}
+    for w in read_drawn("form_122a2", download.content):
+        printed.setdefault(w.full_name, set()).add(w.value)
     typed = {
         name: value for name, value in filed_values.items() if value and not value.startswith("/")
     }
     assert "Jane Doe" in typed.values()
-    assert {name: printed.get(name) for name in typed} == typed
+    assert {name: printed.get(name) for name in typed} == {
+        name: {value} for name, value in typed.items()
+    }
 
 
 # ── The snapshot stays on the server (DIG-124) ────────────────────────

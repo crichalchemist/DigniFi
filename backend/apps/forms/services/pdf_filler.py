@@ -1,5 +1,5 @@
 """
-PDFFormFiller — fills an AO court PDF template with resolved field values.
+PDFFormFiller — draws resolved field values on an AO court PDF template.
 
 Keys are index full names (apps.forms.field_index). A key fills only the
 widgets whose qualified name equals it exactly. pypdf's
@@ -11,23 +11,34 @@ check() plans what each widget a values dict fills will print, and at what size,
 without drawing. It refuses a letter a box's font can't print and a value too long
 for its box even in small print, naming the box and where the filer fixes the value.
 
+fill() draws that plan: pypdf builds each planned widget's own appearance, and
+PyMuPDF bakes every widget into the page, so the PDF has no fillable field left.
+
 Usage:
     pdf_bytes = PDFFormFiller().fill("form_121", {"Debtor1.First name": "Maria"})
     plan = PDFFormFiller().check("form_121", {"Debtor1.First name": "Maria"})
 """
 
+import re
 import unicodedata
 from dataclasses import dataclass
 from io import BytesIO
 from pathlib import Path
 
+import pymupdf
 import pypdf
 from django.conf import settings
 
 # pypdf._font and pypdf.generic._appearance_stream are pypdf internals, pinned with
 # pypdf==6.13.1; test_pdf_filler.py fails if they move.
 from pypdf._font import Font
-from pypdf.generic import DictionaryObject, NameObject, TextStringObject
+from pypdf.generic import (
+    ArrayObject,
+    DictionaryObject,
+    NameObject,
+    NumberObject,
+    TextStringObject,
+)
 from pypdf.generic._appearance_stream import TextStreamAppearance
 
 from apps.forms.field_index import load_index
@@ -38,13 +49,15 @@ from apps.forms.services.widgets import (
     TemplateWidget,
     field_of,
     parse_key,
-    qualified_name,
     template_widgets,
+    widget_for,
 )
 
 _BOXES = ("CheckBox", "RadioButton")
 # pypdf draws each character of a comb box as its own string, which these break (R33).
 _COMB_BREAKERS = "()\\"
+# The first text move in pypdf's appearance stream: "<x> <y> Td", before any string.
+_FIRST_MOVE = re.compile(rb"^(\S+) (\S+) Td$", re.MULTILINE)
 
 
 class UnknownField(Exception):
@@ -166,6 +179,68 @@ def _refused_letter(widget: TemplateWidget, font: Font, text: str) -> str | None
     return None
 
 
+def _lower_first_line(appearance: TextStreamAppearance, by: float) -> None:
+    """
+    Move a multi-line box's first line down by `by` points. pypdf hangs line 1 from the
+    font's bounding box top at the box's height plus its margin, so the box cuts off a
+    capital's mark; 2 × margin lower, that top sits at the clip's top (R35). A stream
+    with no line (an empty value) is left as it is.
+    """
+    data = appearance.get_data()
+    move = _FIRST_MOVE.search(data)
+    if move is None:
+        return
+    y = float(move[2]) - by
+    appearance.set_data(data[: move.start(2)] + str(y).encode() + data[move.end(2) :])
+
+
+def _draw(
+    writer: pypdf.PdfWriter,
+    page: pypdf.PageObject,
+    acro_form: DictionaryObject,
+    annotation: DictionaryObject,
+    planned: Planned,
+) -> None:
+    """Give one widget its planned value: a box its state, a text or combo box its appearance."""
+    widget = planned.widget
+    field = field_of(annotation)
+    if widget.kind in _BOXES:
+        # The template's own check mark prints from /AS; /V keeps the state ticked.
+        if planned.value != "/Off":
+            field[NameObject("/V")] = NameObject(planned.value)
+        annotation[NameObject("/AS")] = NameObject(planned.value)
+        return
+    if "/I" in field:  # a combo's stale selected index would override /V
+        del field["/I"]
+    # A widget's own /DR lacks the template's encoding: pypdf would encode with it and
+    # print "?" for letters the AcroForm font draws (R32).
+    if "/DR" in annotation:
+        del annotation["/DR"]
+    # pypdf reads a comb box's cell count from the widget alone (R4).
+    if widget.comb and widget.max_len is not None and "/MaxLen" not in annotation:
+        annotation[NameObject("/MaxLen")] = NumberObject(widget.max_len)
+    # pypdf reads the value and the alignment from the field, which a widget may share
+    # with its siblings, so both are this widget's own just before it is built (R8, R26).
+    original = field.get("/V")
+    field[NameObject("/V")] = TextStringObject(planned.value)
+    field[NameObject("/Q")] = NumberObject(widget.align)
+    # pypdf internals, pinned: build the text appearance at the planned size, and add it.
+    appearance = TextStreamAppearance.from_text_annotation(
+        writer, page, False, acro_form, field, annotation, user_font_size=planned.size
+    )
+    if widget.multiline:
+        _lower_first_line(appearance, 2 * widget.margin)
+    annotation[NameObject("/AP")] = DictionaryObject(
+        {NameObject("/N"): writer._add_object(appearance)}
+    )
+    # The bake builds an appearance from the field's /V for a sibling that has none of
+    # its own, so the field keeps the value it had: this one prints only here (R42).
+    if original is None:
+        del field["/V"]
+    else:
+        field[NameObject("/V")] = original
+
+
 class PDFFormFiller:
     """Fill AO court PDF templates with field values and return bytes."""
 
@@ -245,75 +320,49 @@ class PDFFormFiller:
             planned.append(Planned(widget, *fitted))
         return (PlannedPart({"kind": "form", "values": values}, tuple(planned)),)
 
-    def fill(self, form_type: str, field_values: dict[str, str]) -> bytes:
+    def fill(self, form_type: str, values: dict) -> bytes:
         """
-        Fill the form's template with field_values and return the PDF bytes.
+        Draw the values on the form's template and return a PDF with no fillable field.
+
+        check() plans every widget first. pypdf then builds each planned widget's own
+        appearance at its planned size; the widgets the template doesn't print and the
+        second widget of each stacked pair are removed; and PyMuPDF bakes every other
+        widget into its page. An unfilled widget prints as the blank form shows it.
 
         Args:
             form_type: a registered form type; its schema names the template.
-            field_values: {full_name: value}. A value is text, an /Opt entry for
-                a combo box, or an export state such as "/Chapter 7" for a button.
+            values: as check() takes them.
 
         Raises:
-            UnknownField: a key names no widget.
             TemplateHasNoForm: the template has no /AcroForm.
-            InvalidFieldValue: a button state or combo option the template lacks.
+            UnknownField, InvalidFieldValue, UnprintableLetter, ValueTooLong: as check().
         """
-        schema = load_schema(form_type)
-        template_path = Path(settings.PDF_FORMS_DIRECTORY) / schema.template_filename
-        writer = pypdf.PdfWriter(clone_from=str(template_path))
+        template = load_schema(form_type).template_filename
+        writer = pypdf.PdfWriter(clone_from=str(Path(settings.PDF_FORMS_DIRECTORY) / template))
         if "/AcroForm" not in writer.root_object:
             raise TemplateHasNoForm(form_type)
+        (part,) = self.check(form_type, values)
+        planned = {(p.widget.page, p.widget.tag): p for p in part.widgets}
         acro_form = writer.root_object["/AcroForm"].get_object()
-        # Viewers draw the appearance streams written here, not their own.
-        writer.set_need_appearances_writer(False)
 
-        filled: set[str] = set()
-        buttons: set[str] = set()
-        ticked: set[str] = set()
-        for page in writer.pages:
-            for annot in page.get("/Annots") or []:
-                widget = annot.get_object()
-                if widget.get("/Subtype") != "/Widget":
-                    continue
-                field = field_of(widget)
-                name = qualified_name(field)
-                if name not in field_values:
-                    continue
-                filled.add(name)
-                value = field_values[name]
+        for number, page in enumerate(writer.pages, start=1):
+            if "/Annots" not in page:
+                continue
+            kept = ArrayObject()
+            for annot in page["/Annots"]:
+                annotation = annot.get_object()
+                if annotation.get("/Subtype") == "/Widget":
+                    widget = widget_for(template, number, annotation, float(page.mediabox.top))
+                    if not widget.drawn:
+                        continue
+                    if (number, widget.tag) in planned:
+                        _draw(writer, page, acro_form, annotation, planned[(number, widget.tag)])
+                kept.append(annot)
+            page[NameObject("/Annots")] = kept
 
-                if field.get_inherited("/FT") == "/Btn":
-                    buttons.add(name)
-                    field[NameObject("/V")] = NameObject(value)
-                    if value in widget["/AP"]["/N"]:
-                        widget[NameObject("/AS")] = NameObject(value)
-                        ticked.add(name)
-                    else:
-                        widget[NameObject("/AS")] = NameObject("/Off")
-                    continue
-
-                if field.get_inherited("/FT") == "/Ch":
-                    options = [str(o) for o in field.get_inherited("/Opt", [])]
-                    if value not in options:
-                        raise InvalidFieldValue(form_type, name)
-                    if "/I" in field:  # a stale selected index would override /V
-                        del field["/I"]
-                field[NameObject("/V")] = TextStringObject(value)
-                # pypdf internal, pinned: builds the text appearance from /DA and /V.
-                appearance = TextStreamAppearance.from_text_annotation(
-                    writer, page, False, acro_form, field, widget
-                )
-                widget[NameObject("/AP")] = DictionaryObject(
-                    {NameObject("/N"): writer._add_object(appearance)}
-                )
-
-        unknown = sorted(set(field_values) - filled)
-        if unknown:
-            raise UnknownField(form_type, unknown)
-        for name in sorted(buttons - ticked):
-            raise InvalidFieldValue(form_type, name)
-
-        buf = BytesIO()
-        writer.write(buf)
-        return buf.getvalue()
+        buffer = BytesIO()
+        writer.write(buffer)
+        document = pymupdf.open("pdf", buffer.getvalue())
+        document.bake(annots=False, widgets=True)
+        document.xref_set_key(document.pdf_catalog(), "AcroForm", "null")
+        return document.tobytes()

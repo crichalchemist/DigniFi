@@ -14,7 +14,7 @@ from django.core.management import call_command
 
 from apps.forms.registry import build_field_values
 from apps.forms.services.pdf_filler import PDFFormFiller
-from apps.forms.tests.pdf_readback import read_widgets
+from apps.forms.tests.pdf_readback import read_drawn
 from apps.intake.models import FormAnswer, IntakeSession
 
 # Each form's Debtor 1 signature line and signing date that held a binding before Q6.
@@ -41,8 +41,8 @@ STILL_PRINTS = {
 @cache
 def _printed():
     """
-    (form_type, full name) → the text Priya's filled forms show there, once she has given
-    a signing date and named an attorney. Every box in the filled forms has an entry, so a
+    (form_type, full name) → the text Priya's drawn forms print there, once she has given
+    a signing date and named an attorney. Every box of the template has an entry, so a
     box name that is no box can't pass as blank.
     """
     call_command("loaddata", "ilnd_2025_data", verbosity=0)
@@ -58,7 +58,7 @@ def _printed():
     printed = {}
     for form_type in SIGNING_LINES:
         values = build_field_values(form_type, session)
-        for widget in read_widgets(PDFFormFiller().fill(form_type, values)):
+        for widget in read_drawn(form_type, PDFFormFiller().fill(form_type, values)):
             shows = printed.setdefault((form_type, widget.full_name), set())
             if widget.value:
                 shows.add(widget.value)

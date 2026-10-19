@@ -4,12 +4,13 @@ is filed, and exactly what was filed afterwards (spec §5.5).
 """
 
 import json
+import logging
 from unittest.mock import patch
 
 from django.urls import reverse
 
 from apps.forms.services.fill_resolver import RepeatOverflow
-from apps.forms.tests.pdf_readback import read_widgets
+from apps.forms.tests.pdf_readback import read_drawn
 
 
 def _download(client, form):
@@ -17,7 +18,8 @@ def _download(client, form):
 
 
 def _printed(response, full_name):
-    return {w.value for w in read_widgets(response.content) if w.full_name == full_name}
+    """What the downloaded Form 121 prints in each widget of that name."""
+    return {w.value for w in read_drawn("form_121", response.content) if w.full_name == full_name}
 
 
 def _rename_filer(form, first_name):
@@ -78,6 +80,26 @@ def test_filed_form_without_a_snapshot_is_resolved_once_and_kept(
     assert _printed(response, "Debtor1.First name") == {"Maria"}
     form.refresh_from_db()
     assert json.loads(form.field_values)["Debtor1.First name"] == "Maria"
+
+
+def test_a_letter_the_form_cannot_print_refuses_the_download(
+    api_client_authed, generated_form_factory, caplog
+):
+    # An invented surname: ą is outside the court form's font, which would print "?".
+    form = generated_form_factory(status="generated")
+    _rename_filer(form, "Wąsowicz")
+
+    with caplog.at_level(logging.DEBUG):
+        response = _download(api_client_authed, form)
+
+    assert response.status_code == 422
+    assert response.data == {
+        "form_type": "form_121",
+        "error": "The court form can't print the letter “ą” in “Debtor 1 first name”. "
+        "Change it to a letter without the mark.",
+        "step": "debtor_info",
+    }
+    assert [r.getMessage() for r in caplog.records if "Wąsowicz" in r.getMessage()] == []
 
 
 def test_form_no_longer_in_the_packet_is_refused(api_client_authed, generated_form_factory):
