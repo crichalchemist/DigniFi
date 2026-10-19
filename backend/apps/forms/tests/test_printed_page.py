@@ -801,7 +801,10 @@ def test_check_agrees_with_the_drawing_on_every_letter():
     # accepts prints as itself, and one it refuses would print as "?", as another glyph,
     # or as nothing. MuPDF reads back a character's code even where the font draws
     # nothing for it, so whether a letter prints is judged by its ink too. Every
-    # template's text font has the same encoding, so one form's boxes stand for all 17.
+    # template's text font has the same encoding, so one form's boxes stand for all 17
+    # here. Form 107's boxes carry no /DR of their own. Some boxes on five other templates
+    # do, and the drawing deletes it (R32): undoing that deletion fails test_pdf_filler.py's
+    # test_a_letter_outside_latin_1_prints_on_every_box.
     assert len({_encoding(_template(form_type)) for form_type in get_all_form_types()}) == 1
     template = _template("form_107")
     names = Counter(w.full_name for w in template_widgets(template) if w.drawn)

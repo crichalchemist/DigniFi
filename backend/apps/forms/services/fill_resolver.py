@@ -216,7 +216,7 @@ def _copies(
     ingested_cache: dict,
 ) -> list[dict]:
     """
-    The copies of the group's extra page that print its rows past `capacity` (spec §5.2):
+    The copies of the group's extra page that print its rows past `capacity` (3a2 spec §5.2):
     each holds as many rows as that page has slots, in the slots' order, numbers them as
     the group does, and repeats the form's page headers. With copies, every page-number
     box counts them, the form's own (written into `form`) included (R21). The group's
@@ -265,7 +265,7 @@ def _sheet(
     ingested_cache: dict,
 ) -> dict:
     """
-    The attached sheet that prints the group's rows past `capacity` (spec §5.3): each row
+    The attached sheet that prints the group's rows past `capacity` (3a2 spec §5.3): each row
     labelled with its line, the group's number for its position, and a cell per column,
     the column's binding for that row as the group's slot of that binding prints it. A
     column whose slots the UPL guard keeps blank is blank, as on the form and its copies.
@@ -300,13 +300,13 @@ def resolve(schema: FormSchema, session: IntakeSession) -> dict[str, str]:
 
 def resolve_parts(schema: FormSchema, session: IntakeSession) -> dict:
     """
-    The form's values as the parts it prints, in printing order (spec §6):
+    The form's values as the parts it prints, in printing order (3a2 spec §6):
     {"version": 2, "parts": [{"kind": "form", "values": {key: value}}, *copies, *sheets]}.
 
     A repeat group fills its slots in row order. Rows past its last slot continue on
-    copies of the extra page its declaration names (spec §5.2), each
+    copies of the extra page its declaration names (3a2 spec §5.2), each
     {"kind": "copy", "page": <extra page>, "number": <from 1>, "values": {key: value}},
-    or on the attached sheet it declares (spec §5.3, R23, R63), one part for all of them:
+    or on the attached sheet it declares (3a2 spec §5.3, R23, R63), one part for all of them:
     {"kind": "sheet", "group": <group>, "title": <its title>,
     "columns": [{"label": str, "width": <points>}], "name": <the filer's full name>,
     "rows": [{"line": "3.5", "cells": [<one per column>]}]}.

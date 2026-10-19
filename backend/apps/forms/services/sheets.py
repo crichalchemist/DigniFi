@@ -257,7 +257,7 @@ def plan_sheet(form_type: str, spec: SheetSpec, part: dict) -> None:
         ValueTooLong: a word wider than its cell, or a row taller than a page, named by the
             column with the most lines.
         ValueError: a row's line that doesn't print whole on one line of the line column
-            (the group's number pattern; forms.E007 checks the first).
+            (the group's number pattern; forms.E007 checks the first line and row 9999's).
     """
     schema = load_schema(form_type)
     template = schema.template_filename

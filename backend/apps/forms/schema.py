@@ -525,7 +525,9 @@ def validate_schema(
                     capacities = {f.repeat_capacity for f in slots.get(name, [])}
                     if len(capacities) == 1 and (capacity := capacities.pop()):
                         # Its first line, and row 9999's: Helvetica's digits are all one
-                        # width, so no line up to that row is wider (R65(2)).
+                        # width, so while the number prints n in decimal no line up to that
+                        # row is wider (R65(2)). Another format can be: "{{n}}{n:x}" prints
+                        # a wider line at row 4096 than at row 9999.
                         for n, which in (
                             (capacity + 1, "its first line"),
                             (9999, "row 9999's line"),

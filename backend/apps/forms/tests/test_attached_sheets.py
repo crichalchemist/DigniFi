@@ -483,8 +483,10 @@ def test_a_column_with_one_guarded_slot_prints_blank_on_the_sheet(
 def test_a_refused_sheet_cell_names_where_its_columns_slot_is_fixed(
     schedule_a_b_with_sheet, session, creditor_payments
 ):
-    # The Make slots derive the filer's name, so a refusal in their column is fixed
-    # where that rule's input is (fix_for), the debtor's step, not the SOFA page.
+    # The Make slots are declared derived (rule full_name) but keep their SOFA binding, so
+    # they still print the creditor's name, a state no production schema has. A refusal in
+    # their column takes the slot's own fix (fix_for), that rule's step, not the SOFA page:
+    # a cell's fix comes from its column's slot, not from the value it prints.
     path = schedule_a_b_with_sheet / "schedule_a_b.json"
     data = json.loads(path.read_text())
     for f in data["fields"]:

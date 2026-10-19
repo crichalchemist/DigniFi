@@ -127,7 +127,9 @@ def packet(session: IntakeSession) -> list[str]:
 
 def build_field_values(form_type: str, session: IntakeSession) -> dict[str, str]:
     """
-    The values a form prints for this session, as {full name: value}.
+    The values the form's own pages print for this session (build_parts' form part), as
+    {key: value}, a key being a full name or "<full name>@<page>:<tag>". Rows past a
+    group's last slot print on copies or an attached sheet, which only build_parts returns.
 
     Raises:
         KeyError: form_type is not registered.

@@ -212,7 +212,8 @@ export function FormDashboard() {
       const response = await api.forms.generateAll(session.id);
       setForms(response.generated);
       // Generate All's answer replaces every card's refusal: a form it refused again is in its
-      // list, so the same words and link don't show twice, and an older refusal can't stay
+      // list, so as it answers the same words and link don't show twice (a card's own refusal
+      // after that can repeat them), and an older refusal can't stay
       setFormRefusals({});
       setGenerationErrors(response.errors);
       trackEvent('form_generated', { form_type: 'all', session_id: session.id });

@@ -1,8 +1,12 @@
 """
 PDFFormFiller — draws resolved field values on an AO court PDF template.
 
-Keys are index full names (apps.forms.field_index). A key fills only the
-widgets whose qualified name equals it exactly. pypdf's
+Values are a parts document (registry.build_parts) or {key: value} alone (parts_of).
+A key is a full name from the field index (apps.forms.field_index), or
+"<full name>@<page>:<tag>" for one widget (widgets.parse_key). A full name fills only
+the drawn widgets whose qualified name equals it exactly, never a widget the template
+doesn't print or the second of a stacked pair; a widget's own key fills that widget.
+A copy part's keys fill only widgets on its page. pypdf's
 update_page_form_field_values also matches a parent's partial /T, which put
 the filer's name and dates in Debtor 2 boxes (DIG-63), so the filler walks the
 widgets itself.
@@ -332,7 +336,9 @@ class PDFFormFiller:
             InvalidFieldValue: a box state or combo option the template lacks.
             UnprintableLetter: a letter the box, or the sheet, can't print.
             ValueTooLong: a value too long for its box even at 6 pt, or for its sheet.
-            ValueError: a part of a kind other than "form", "copy" and "sheet".
+            ValueError: a part of a kind other than "form", "copy" and "sheet", or a sheet
+                row's line that doesn't print whole on one line of the line column
+                (sheets.plan_sheet).
         """
         from apps.forms.services.sheets import plan_sheet, sheet_spec  # here: they import this
 

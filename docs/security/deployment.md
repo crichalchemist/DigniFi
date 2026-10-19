@@ -44,6 +44,7 @@ Before deploying to production, complete this checklist:
 
 ### Forms step 3: before deploying
 
+- [ ] Check that `ilnd_2025_data` holds a median row in force on the deploy date. Its last row ends on 2026-10-31, so a deploy from November 1, 2026 first needs the November 2026 table, added as `docs/REFERENCE_TABLES.md` describes (DIG-315). Without one, DigniFi refuses to prepare forms, `seed_demo_data --reset` changes nothing and `time_packet` fails.
 - [ ] Run `python manage.py loaddata ilnd_2025_data` right after the release: the districts migration 0003 ends production's existing median row on 2026-03-31.
 - [ ] Reseed the personas with `python manage.py seed_demo_data --reset`.
 - [ ] Count the completed sessions that still hold a draft debt: their forms now leave it off.
