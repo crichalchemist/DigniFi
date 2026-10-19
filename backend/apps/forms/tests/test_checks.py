@@ -168,6 +168,138 @@ def test_box_bound_twice_is_reported(schema_copy):
     assert _ids("form_121") == ["forms.E006"]
 
 
+def _text(pdf_field, page, tag):
+    """A constant text binding of one widget: the name's widget `tag` on `page`."""
+    return {
+        "pdf_field": pdf_field,
+        "type": "text",
+        "source": "constant",
+        "page": page,
+        "label": "",
+        "required": False,
+        "conditional_on": None,
+        "value": "x",
+        "rule": None,
+        "ingest_key": None,
+        "binding": None,
+        "repeat": None,
+        "repeat_capacity": None,
+        "row": None,
+        "legal_review": False,
+        "tag": tag,
+    }
+
+
+@pytest.mark.parametrize(
+    "page, tag",
+    [(1, "T7"), (2, "T3")],  # T7 is Debtor1.Last name; T3 is this name's widget, but on page 1
+)
+def test_a_tag_that_isnt_one_of_the_names_widgets_on_its_page_is_reported(schema_copy, page, tag):
+    _edit(
+        schema_copy,
+        "form_121",
+        lambda d: _field(d, "Debtor1.First name").update(page=page, tag=tag),
+    )
+    assert _errors("form_121") == [
+        (
+            "forms.E003",
+            f"form_121: 'Debtor1.First name' has no drawn widget {tag!r} on page {page}",
+        )
+    ]
+
+
+def test_a_tag_on_the_second_of_a_stacked_pair_is_reported(schema_copy):
+    # Schedule D page 2 lays 4_3's T14 over T13; only T13 prints a value.
+    _edit(schema_copy, "schedule_d", lambda d: d["fields"].append(_text("4_3", 2, "T14")))
+    assert _ids("schedule_d") == ["forms.E003"]
+    _edit(schema_copy, "schedule_d", lambda d: _field(d, "4_3").update(tag="T13"))
+    load_schema.cache_clear()
+    assert _ids("schedule_d") == []
+
+
+def test_a_tag_on_a_print_button_is_reported(schema_copy):
+    _edit(schema_copy, "form_101", lambda d: d["fields"].append(_text("Button.Print1", 9, "T20")))
+    assert _ids("form_101") == ["forms.E003", "forms.E004"]
+
+
+def test_two_tagged_bindings_on_different_widgets_of_one_name_pass(schema_copy):
+    # Schedule I prints "Assistance 8f" twice on page 2; each can take its own value.
+    def change(d):
+        d["fields"] += [_text("Assistance 8f", 2, "T36"), _text("Assistance 8f", 2, "T49")]
+
+    _edit(schema_copy, "schedule_i", change)
+    assert _ids("schedule_i") == []
+
+
+def test_a_tagged_and_an_untagged_binding_of_one_name_are_reported(schema_copy):
+    # The untagged binding fills both widgets, so T49 would get two values.
+    def change(d):
+        d["fields"] += [_text("Assistance 8f", 2, None), _text("Assistance 8f", 2, "T49")]
+
+    _edit(schema_copy, "schedule_i", change)
+    assert _errors("schedule_i") == [
+        ("forms.E006", "schedule_i: 'Assistance 8f' is bound 2 times on page 2")
+    ]
+
+
+def _row(tag, row):
+    """Row `row` of a repeat group of creditor payments, bound to Assistance 8f's widget `tag`."""
+    return {
+        **_text("Assistance 8f", 2, tag),
+        "source": "asked",
+        "value": None,
+        "binding": "sofa.creditor_payments[].creditor_name",
+        "repeat": "cp",
+        "repeat_capacity": 2,
+        "row": row,
+    }
+
+
+@pytest.mark.parametrize(
+    "first, second",
+    [(("T49", 1), ("T49", 2)), ((None, 1), ("T49", 2))],
+    ids=["two rows tagged to one widget", "an untagged and a tagged row"],
+)
+def test_two_rows_of_a_group_that_would_fill_one_widget_are_reported(schema_copy, first, second):
+    # A box shows one value: the later row would overwrite the earlier one.
+    _edit(schema_copy, "schedule_i", lambda d: d["fields"].extend([_row(*first), _row(*second)]))
+    assert _errors("schedule_i") == [
+        ("forms.E006", "schedule_i: 'Assistance 8f' is bound 2 times on page 2")
+    ]
+
+
+def test_rows_of_a_group_on_different_widgets_of_one_name_pass(schema_copy):
+    _edit(schema_copy, "schedule_i", lambda d: d["fields"].extend([_row("T36", 1), _row("T49", 2)]))
+    assert _ids("schedule_i") == []
+
+
+def test_a_template_that_doesnt_match_its_index_is_reported_not_raised(schema_copy, index_copy):
+    def move_a_row_off_its_widget(rows):
+        next(row for row in rows if row["page"] == 2)["rect"] = [1, 1, 2, 2]
+
+    index_copy("form_b106d.pdf", move_a_row_off_its_widget)
+    # The tag check needs the widget map, so it is skipped: this good tag adds no error.
+    _edit(schema_copy, "schedule_d", lambda d: d["fields"].append(_text("4_3", 2, "T13")))
+    assert _errors("schedule_d") == [
+        (
+            "forms.E003",
+            "schedule_d: form_b106d.pdf page 2: "
+            "the widgets don't match the field index one-to-one",
+        )
+    ]
+
+
+def test_a_full_name_with_an_at_sign_in_the_index_is_reported(index_copy):
+    # "@" separates a full name from a widget's page and tag in the resolved values.
+    def rename(rows):
+        next(row for row in rows if row["full_name"] == "Case number1")["full_name"] = "Case@1"
+
+    index_copy("form_b121.pdf", rename)
+    assert _errors("form_121") == [
+        ("forms.E003", "form_121: 'Case@1': a full name in the field index contains '@'")
+    ]
+
+
 @pytest.mark.parametrize(
     "change",
     [

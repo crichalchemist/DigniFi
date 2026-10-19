@@ -18,6 +18,7 @@ import pypdf
 from django.conf import settings
 
 from apps.forms.field_index import export_state, load_index
+from apps.forms.services.widgets import TemplateMismatch, TemplateWidget, template_widgets
 
 
 @dataclass(frozen=True)
@@ -59,6 +60,8 @@ class FieldSpec:
     # checkbox/radio only: normalised answer → export state. {"true": state} is
     # a single box; {} means not mapped yet, and the binding emits nothing.
     choices: dict[str, str] | None = None
+    # One widget of pdf_field: its index tag on `page`. None fills every widget of the name.
+    tag: str | None = None
     ui: UIFieldSpec | None = None
 
 
@@ -136,6 +139,20 @@ def validate_schema(
 
     index = load_index(schema.template_filename)
     template_fields = pypdf.PdfReader(BytesIO(template)).get_fields() or {}
+    # "@" marks a widget's own key in the resolved values: "<full name>@<page>:<tag>".
+    for name in sorted(name for name in index if "@" in name):
+        errors.append(("E003", f"{name!r}: a full name in the field index contains '@'"))
+    # A template that has drifted from its index is an error, not a crash. The tag and
+    # E006 checks need the widget map, so they are skipped for this form.
+    try:
+        widget_map: tuple[TemplateWidget, ...] | None = template_widgets(schema.template_filename)
+    except TemplateMismatch as mismatch:
+        errors.append(("E003", str(mismatch)))
+        widget_map = None
+    drawn: dict[str, list[TemplateWidget]] = {}
+    for widget in widget_map or ():
+        if widget.drawn:
+            drawn.setdefault(widget.full_name, []).append(widget)
     seen: dict[str, list[FieldSpec]] = {}
 
     for f in schema.fields:
@@ -143,6 +160,14 @@ def validate_schema(
         if widgets is None:
             errors.append(("E003", f"{f.pdf_field!r} is not a full name in the field index"))
             continue
+        if (
+            f.tag is not None
+            and widget_map is not None
+            and not any((w.page, w.tag) == (f.page, f.tag) for w in drawn.get(f.pdf_field, ()))
+        ):
+            errors.append(
+                ("E003", f"{f.pdf_field!r} has no drawn widget {f.tag!r} on page {f.page}")
+            )
         seen.setdefault(f.pdf_field, []).append(f)
 
         types = {w.type for w in widgets}
@@ -189,8 +214,16 @@ def validate_schema(
             errors.append(("E007", f"repeat group {f.repeat!r} has no repeat_capacity"))
 
     for name, bindings in seen.items():
-        rows = {(b.repeat, b.row) for b in bindings}
-        same_group = len({b.repeat for b in bindings}) == 1 and bindings[0].repeat is not None
-        if len(bindings) > 1 and not (same_group and len(rows) == len(bindings)):
-            errors.append(("E006", f"{name!r} is bound {len(bindings)} times"))
+        # A binding fills every drawn widget of its name, or with a tag only that one. A
+        # widget shows one value, so two bindings that would fill it conflict, rows of
+        # one repeat group included.
+        for widget in drawn.get(name, ()):
+            fills = [
+                b for b in bindings if b.tag is None or (b.page, b.tag) == (widget.page, widget.tag)
+            ]
+            if len(fills) > 1:
+                errors.append(
+                    ("E006", f"{name!r} is bound {len(fills)} times on page {widget.page}")
+                )
+                break
     return errors

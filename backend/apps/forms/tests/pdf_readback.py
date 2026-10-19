@@ -5,7 +5,7 @@ from io import BytesIO
 
 import pypdf
 
-from apps.forms.services.pdf_filler import field_of, qualified_name
+from apps.forms.services.widgets import field_of, qualified_name
 
 
 @dataclass(frozen=True)

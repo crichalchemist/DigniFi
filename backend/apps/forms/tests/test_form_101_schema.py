@@ -18,7 +18,8 @@ from django.contrib.auth import get_user_model
 from apps.districts.models import District
 from apps.forms.schema import load_schema
 from apps.forms.services.fill_resolver import resolve
-from apps.forms.services.pdf_filler import PDFFormFiller, field_of, qualified_name
+from apps.forms.services.pdf_filler import PDFFormFiller
+from apps.forms.services.widgets import field_of, qualified_name
 from apps.intake.models import (
     AssetInfo,
     DebtInfo,

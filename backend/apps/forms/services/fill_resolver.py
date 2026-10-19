@@ -1,5 +1,6 @@
 """
-Fill resolver — turns a FormSchema + IntakeSession into {pdf_field: str}.
+Fill resolver — turns a FormSchema + IntakeSession into {pdf_field: str}, or, for a
+binding with a tag, {"<pdf_field>@<page>:<tag>": str}.
 
 Source priority is encoded per-field in the schema (constant/derived/asked/
 ingested/signature). This module resolves ``binding`` references; resolve()
@@ -111,6 +112,13 @@ def _scalar_value(
     return None
 
 
+def _key(field: FieldSpec) -> str:
+    """The values key a binding fills: its full name, or "<name>@<page>:<tag>" for one widget."""
+    if field.tag is None:
+        return field.pdf_field
+    return f"{field.pdf_field}@{field.page}:{field.tag}"
+
+
 def _unmapped(field: FieldSpec) -> bool:
     """A checkbox or radio binding whose choices are not mapped yet emits nothing."""
     return field.type in ("checkbox", "radio") and not field.choices
@@ -165,7 +173,7 @@ def resolve(schema: FormSchema, session: IntakeSession) -> dict[str, str]:
             continue
         emitted = _emit(f, _scalar_value(f, session, ingested_cache=_ingested_cache))
         if emitted is not None:
-            out[f.pdf_field] = emitted
+            out[_key(f)] = emitted
 
     # Repeat groups. An unmapped box is dropped before any lookup, so its binding
     # is never resolved and never counts toward RepeatOverflow (spec §5.1).
@@ -178,9 +186,7 @@ def resolve(schema: FormSchema, session: IntakeSession) -> dict[str, str]:
 
     for group_name, fields in groups.items():
         capacity = fields[0].repeat_capacity or 0
-        resolved_cols = {
-            f.pdf_field: resolve_binding(f.binding, session) for f in fields if f.binding
-        }
+        resolved_cols = {_key(f): resolve_binding(f.binding, session) for f in fields if f.binding}
         actual = max(
             (len(v) for v in resolved_cols.values() if isinstance(v, list)),
             default=0,
@@ -191,14 +197,14 @@ def resolve(schema: FormSchema, session: IntakeSession) -> dict[str, str]:
             if f.legal_review and f.source != "asked":
                 continue
             if f.binding:
-                vals = resolved_cols.get(f.pdf_field)
+                vals = resolved_cols.get(_key(f))
                 if isinstance(vals, list) and f.row and f.row <= len(vals):
                     emitted = _emit(f, str(vals[f.row - 1]))
                     if emitted is not None:
-                        out[f.pdf_field] = emitted
+                        out[_key(f)] = emitted
             else:
                 emitted = _emit(f, _scalar_value(f, session, ingested_cache=_ingested_cache))
                 if emitted is not None:
-                    out[f.pdf_field] = emitted
+                    out[_key(f)] = emitted
 
     return out

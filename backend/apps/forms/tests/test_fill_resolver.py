@@ -259,6 +259,54 @@ def test_repeat_group_expands_rows(session):
     assert "Cred3" not in out  # only two rows of data
 
 
+def test_a_tagged_binding_resolves_under_its_widget_address(session):
+    # Schedule I prints "Assistance 8f" twice; a tag gives each widget a value of its own.
+    schema = _schema(
+        [
+            _field(pdf_field="Assistance 8f", page=2, tag="T36", value="SNAP"),
+            _field(pdf_field="Assistance 8f", page=2, tag="T49", value="WIC"),
+        ]
+    )
+    assert resolve(schema, session) == {
+        "Assistance 8f@2:T36": "SNAP",
+        "Assistance 8f@2:T49": "WIC",
+    }
+
+
+def test_repeat_rows_of_a_shared_name_land_on_their_own_widgets(session):
+    report = SOFAReport.objects.create(session=session, has_creditor_payments=True)
+    for name, amt in [("Acme", "100.00"), ("Beta", "200.00")]:
+        SOFACreditorPayment.objects.create(
+            report=report, creditor_name=name, total_paid=Decimal(amt)
+        )
+
+    def cell(tag, row, attr):
+        return _field(
+            pdf_field="Line",
+            tag=tag,
+            source="asked",
+            repeat="cp",
+            repeat_capacity=2,
+            row=row,
+            binding=f"sofa.creditor_payments[].{attr}",
+        )
+
+    schema = _schema(
+        [
+            cell("T5", 1, "creditor_name"),
+            cell("T6", 1, "total_paid"),
+            cell("T9", 2, "creditor_name"),
+            cell("T10", 2, "total_paid"),
+        ]
+    )
+    assert resolve(schema, session) == {
+        "Line@1:T5": "Acme",
+        "Line@1:T6": "100.00",
+        "Line@1:T9": "Beta",
+        "Line@1:T10": "200.00",
+    }
+
+
 def test_repeat_overflow_raises(session):
     report = SOFAReport.objects.create(session=session, has_creditor_payments=True)
     for i in range(4):

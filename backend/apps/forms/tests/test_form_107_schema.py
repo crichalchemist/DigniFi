@@ -23,7 +23,8 @@ from apps.districts.models import District
 from apps.forms.field_index import index_path
 from apps.forms.schema import load_schema
 from apps.forms.services.fill_resolver import resolve
-from apps.forms.services.pdf_filler import PDFFormFiller, field_of, qualified_name
+from apps.forms.services.pdf_filler import PDFFormFiller
+from apps.forms.services.widgets import field_of, qualified_name
 from apps.forms.tests.pdf_readback import read_widgets
 from apps.intake.models import DebtorInfo, IntakeSession, SOFAReport
 

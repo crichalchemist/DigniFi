@@ -22,6 +22,7 @@ from pypdf.generic import DictionaryObject, NameObject, TextStringObject
 from pypdf.generic._appearance_stream import TextStreamAppearance
 
 from apps.forms.schema import load_schema
+from apps.forms.services.widgets import field_of, qualified_name
 
 
 class UnknownField(Exception):
@@ -48,23 +49,6 @@ class InvalidFieldValue(Exception):
         self.form_type = form_type
         self.name = name
         super().__init__(f"{form_type}: {name!r} can't take this value")
-
-
-def qualified_name(field: DictionaryObject) -> str:
-    """The field's full name: every /T up the /Parent chain, joined with dots."""
-    parts = []
-    node = field
-    while node is not None:
-        if "/T" in node:
-            parts.append(str(node["/T"]))
-        parent = node.get("/Parent")
-        node = parent.get_object() if parent is not None else None
-    return ".".join(reversed(parts))
-
-
-def field_of(widget: DictionaryObject) -> DictionaryObject:
-    """The field a widget belongs to: the widget itself when it carries /T, else its parent."""
-    return widget if "/T" in widget else widget["/Parent"].get_object()
 
 
 class PDFFormFiller:

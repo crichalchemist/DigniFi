@@ -1,18 +1,48 @@
 """Shared test fixtures for the forms app."""
 
+import json
+import shutil
 from datetime import date
 from decimal import Decimal
+from pathlib import Path
 
 import pytest
+from django.conf import settings as django_settings
 from django.contrib.auth import get_user_model
 from django.core.management import call_command
 from rest_framework.test import APIClient
 
 from apps.districts.models import District
+from apps.forms.field_index import load_index
 from apps.forms.models import GeneratedForm
+from apps.forms.services.widgets import template_widgets
 from apps.intake.models import DebtorInfo, IncomeInfo, IntakeSession
 
 User = get_user_model()
+
+
+@pytest.fixture
+def index_copy(tmp_path, settings):
+    """
+    A writable copy of the field index. edit(template, change) rewrites one
+    template's rows. The caches built from an index are cleared before and after,
+    so the copy never poisons, or is poisoned by, the real index.
+    """
+    for path in Path(django_settings.FORM_INDEX_DIRECTORY).glob("*.index.json"):
+        shutil.copy(path, tmp_path)
+    settings.FORM_INDEX_DIRECTORY = tmp_path
+    load_index.cache_clear()
+    template_widgets.cache_clear()
+
+    def edit(template_filename, change):
+        path = tmp_path / f"{Path(template_filename).stem}.index.json"
+        rows = json.loads(path.read_text())
+        change(rows)
+        path.write_text(json.dumps(rows))
+
+    yield edit
+    load_index.cache_clear()
+    template_widgets.cache_clear()
 
 
 @pytest.fixture
