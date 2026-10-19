@@ -36,7 +36,12 @@ from .registry import (
 from .schema import load_schema
 from .serializers import GeneratedFormSerializer
 from .services.fill_resolver import RepeatOverflow, UnmappedChoice
-from .services.pdf_filler import PDFFormFiller, TemplateHasNoForm
+from .services.pdf_filler import (
+    PDFFormFiller,
+    TemplateHasNoForm,
+    UnprintableLetter,
+    ValueTooLong,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -58,7 +63,8 @@ class IntakeNotFinished(Exception):
 # Failures a filer can act on: 422 in plain words (spec §5.7). Anything else is a 500.
 # PreconditionMissing, IncomeNotSplit and NoTableInForce carry their own plain reasons
 # (registry.py, eligibility/cmi.py, districts/dated_tables.py, which logs its own
-# refusal). Every other class gets a fixed sentence, because their messages
+# refusal), and so do UnprintableLetter and ValueTooLong (pdf_filler.py), which name the
+# letter and the box. Every other class gets a fixed sentence, because their messages
 # name form keys, repeat groups and PDF widgets. None names the form: the dashboard shows
 # its label beside the error.
 _FAILURE_SENTENCES = {
@@ -84,7 +90,10 @@ def _failure(form_type: str | None, exc: Exception) -> tuple[dict, int]:
     All, the packet list): the body then names no form. A refusal the filer fixes on a
     wizard step or a page also carries that `step` or `page` (forms step 3a1 spec §4.3).
     """
-    if isinstance(exc, PreconditionMissing | IncomeNotSplit | NoTableInForce):
+    if isinstance(
+        exc,
+        PreconditionMissing | IncomeNotSplit | NoTableInForce | UnprintableLetter | ValueTooLong,
+    ):
         error = str(exc)
     else:
         error = _FAILURE_SENTENCES.get(type(exc))

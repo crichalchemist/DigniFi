@@ -10,7 +10,7 @@ ingested/signature). This module resolves ``binding`` references; resolve()
 from __future__ import annotations
 
 from apps.forms.schema import FieldSpec, FormSchema
-from apps.forms.services.derivations import DERIVATIONS, PREDICATES
+from apps.forms.services.derivations import DERIVATIONS, PREDICATES, RULE_FIXES
 from apps.intake.models import FormAnswer, IntakeSession
 
 
@@ -117,6 +117,27 @@ def _key(field: FieldSpec) -> str:
     if field.tag is None:
         return field.pdf_field
     return f"{field.pdf_field}@{field.page}:{field.tag}"
+
+
+def fix_for(field: FieldSpec) -> dict[str, str]:
+    """
+    Where the filer changes a binding's value, for a refusal to link to (3a2 spec §4.5):
+    {"step": <a WIZARD_STEPS key>}, {"page": <path>}, or {} when no filer edits it.
+    """
+    if field.source == "derived":
+        return dict(RULE_FIXES[field.rule])  # a copy: the map is shared by every refusal
+    if field.source in ("ingested", "db_aggregate"):
+        return {"page": "/documents"}
+    binding = (field.binding or "").strip()
+    if binding.startswith("answer:"):
+        # The form the binding names, which isn't always the one printing it: Form 101's
+        # preparer prints on 106Dec and 107 too.
+        form_type, _, _ = binding[len("answer:") :].partition(".")
+        return {"page": f"/ask/{form_type}"}
+    if binding.startswith("sofa."):
+        return {"page": "/sofa"}
+    # A constant or a signature: a refusal there is DigniFi's defect, not the filer's.
+    return {}
 
 
 def _unmapped(field: FieldSpec) -> bool:

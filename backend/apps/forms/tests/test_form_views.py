@@ -37,6 +37,8 @@ from apps.forms.services.pdf_filler import (
     PDFFormFiller,
     TemplateHasNoForm,
     UnknownField,
+    UnprintableLetter,
+    ValueTooLong,
 )
 from apps.forms.tests.pdf_readback import read_widgets
 from apps.intake.models import (
@@ -350,6 +352,47 @@ class TestGenerateEndpoint:
         }
         assert type(exc).__name__ in caplog.text
         assert "Debtor1.SSNum" not in caplog.text
+
+    # A letter the form can't print, or a value too long for its box, is the filer's to
+    # change: a 422 naming the box and where to change it. It is no fault, so nothing is
+    # logged, and the filer's letter never reaches the logs (DIG-105).
+    @pytest.mark.parametrize(
+        "exc,refusal",
+        [
+            (
+                UnprintableLetter("form_101", "ą", "Last name", {"step": "debtor_info"}),
+                {
+                    "error": "The court form can't print the letter “ą” in “Last name”. "
+                    "Change it to a letter without the mark.",
+                    "step": "debtor_info",
+                },
+            ),
+            (
+                ValueTooLong("form_101", "Type of assistance", {"page": "/fee-waiver"}),
+                {
+                    "error": "“Type of assistance” is too long to fit on the court form, "
+                    "even in small print. Shorten it.",
+                    "page": "/fee-waiver",
+                },
+            ),
+        ],
+        ids=["unprintable_letter", "value_too_long"],
+    )
+    def test_a_refused_letter_or_length_names_where_to_fix_it(
+        self, api_client, session_with_debtor, caplog, exc, refusal
+    ):
+        caplog.set_level(logging.DEBUG)
+        with patch.object(PDFFormFiller, "fill", side_effect=exc):
+            resp = api_client.post(
+                self.URL,
+                {"session_id": session_with_debtor.id, "form_type": "form_101"},
+                format="json",
+            )
+        assert resp.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert resp.data == {"form_type": "form_101", **refusal}
+        assert not [r for r in caplog.records if r.name.startswith("apps.")]
+        assert exc.label not in caplog.text
+        assert "ą" not in caplog.text
 
     def test_unexpected_failure_points_the_filer_to_no_step_or_page(
         self, api_client, session_with_debtor

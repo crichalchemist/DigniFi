@@ -10,6 +10,7 @@ from io import BytesIO
 
 import pypdf
 import pytest
+from pypdf._font import Font
 
 from apps.forms.services.pdf_filler import (
     InvalidFieldValue,
@@ -17,6 +18,7 @@ from apps.forms.services.pdf_filler import (
     TemplateHasNoForm,
     UnknownField,
 )
+from apps.forms.services.text_fit import font_for
 from apps.forms.tests.pdf_readback import read_widgets
 
 
@@ -49,6 +51,18 @@ def test_text_prints_from_a_stored_appearance():
         and a.get_object()["/Parent"].get("/T") == "Debtor1"
     )
     assert b"Maria" in widget["/AP"]["/N"].get_data()
+
+
+def test_text_is_measured_with_pinned_pypdf_font_internals():
+    """check() measures and encodes with pypdf 6.13.1's Font, as the drawing does; this pins it."""
+    assert pypdf.__version__ == "6.13.1"
+    font = font_for("form_b121.pdf", "/Helv")  # Font.from_font_resource
+    assert isinstance(font, Font)
+    reverse_cmap, _ = font._get_typographic_maps()
+    assert font.get_text_width(reverse_cmap["W"]) == 944  # Helvetica's W
+    assert font.can_encode("é") and not font.can_encode("ą")
+    bbox = font.font_descriptor.bbox
+    assert (bbox[1], bbox[3]) == (-225, 931)  # its line spacing
 
 
 def test_checkbox_ticks_only_the_widgets_for_its_state():
