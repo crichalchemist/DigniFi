@@ -99,7 +99,8 @@ def test_a_letter_the_form_cannot_print_refuses_the_download(
         "Change it to a letter without the mark.",
         "step": "debtor_info",
     }
-    assert [r.getMessage() for r in caplog.records if "Wąsowicz" in r.getMessage()] == []
+    assert "ą" not in caplog.text  # the letter, and so the name that holds it
+    assert "Debtor 1 first name" not in caplog.text
 
 
 def test_form_no_longer_in_the_packet_is_refused(api_client_authed, generated_form_factory):
