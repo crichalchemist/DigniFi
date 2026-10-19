@@ -191,10 +191,22 @@ def schedule_d_part_2_with_copies(tmp_path, settings):
     """
     As schedule_d_with_copies, but Schedule D's one synthetic group is Part 2's six
     entries on page 3, continued on copies of that page, the template's last, as C, G
-    and H continue theirs. Yields the schemas directory.
+    and H continue theirs, with the page-number boxes of pages 1 to 3. Yields the schemas directory.
     """
     schemas = _with_group(
-        tmp_path, settings, "schedule_d", "d_part_2", _D_PART_2, {"extra_page": 3}
+        tmp_path,
+        settings,
+        "schedule_d",
+        "d_part_2",
+        _D_PART_2,
+        {
+            "extra_page": 3,
+            "page_numbers": [
+                {"page": 1, "this": None, "of": "fill_27.0"},
+                {"page": 2, "this": "fill_27.1.0", "of": "fill_27.1.1"},
+                {"page": 3, "this": "fill_28.1.1", "of": "fill_28.1.2"},
+            ],
+        },
     )
     load_schema.cache_clear()
     yield schemas

@@ -314,6 +314,10 @@ def test_a_group_continued_on_copies_of_its_extra_page_passes(schedule_d_with_co
     assert _errors("schedule_d") == []
 
 
+def test_a_group_continued_on_copies_of_the_last_page_passes(schedule_d_part_2_with_copies):
+    assert _errors("schedule_d") == []
+
+
 def _group(change):
     """Change the synthetic Schedule D group's declaration."""
     return lambda d: change(d["groups"]["d_part_1"])
@@ -596,12 +600,15 @@ def test_a_repeat_group_whose_rows_sit_on_the_wrong_pages_is_reported(
         (_group(lambda g: g["number_boxes"].update({"4": "undefined_19@2:T63"})), "undefined_19"),
         # Page 2's position written into row 5's amount box.
         (_group(lambda g: g["page_numbers"][1].update({"this": "undefined_20"})), "undefined_20"),
+        # Page 2's page count written into row 5's amount box.
+        (_group(lambda g: g["page_numbers"][1].update({"of": "undefined_20"})), "undefined_20"),
     ],
     ids=[
         "a number box on a slot's own box",
         "a number box on a bound widget's tagged spelling",
         "two rows naming one number box",
         "a page-number box on a slot's box",
+        "a page-count box on a slot's box",
     ],
 )
 def test_a_group_box_that_another_writer_fills_is_reported(schedule_d_with_copies, change, name):

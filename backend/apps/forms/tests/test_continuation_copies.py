@@ -200,6 +200,13 @@ def test_a_copy_of_the_last_page_goes_after_it(
         ("Name", None): rows[0].creditor_name,
         ("Name", 1): rows[6].creditor_name,
     }
+    # Pages 1 and 2 come before the copied page, so they keep their numbers.
+    assert _page_numbers(drawn) == [
+        {"of": "4"},
+        {"this": "2", "of": "4"},
+        {"this": "3", "of": "4"},
+        {"this": "4", "of": "4"},
+    ]
 
 
 def test_a_letter_refused_on_a_copy_names_where_to_fix_it(session, creditor_payments):
