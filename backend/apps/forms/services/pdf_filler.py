@@ -141,7 +141,7 @@ class PlannedPart:
 def parts_of(values: dict) -> list[dict]:
     """
     The parts a form's values hold: a parts document's own, {"version": 2, "parts": [...]}
-    (spec §6), or any other dict, such as a form filed before 3a2, as one form part.
+    (3a2 spec §6), or any other dict, such as a form filed before 3a2, as one form part.
     """
     if values.get("version") == 2:
         return values["parts"]
@@ -424,8 +424,8 @@ class PDFFormFiller:
         second widget of each stacked pair are removed; and PyMuPDF bakes every other
         widget into its page. An unfilled widget prints as the blank form shows it. Each
         copy of an extra page is drawn alone, on a clone of the template of its own, and
-        goes in right after that page, or after the copy of it before (spec §5.2). Each
-        attached sheet follows the form's pages and copies (spec §5.3).
+        goes in right after that page, or after the copy of it before (3a2 spec §5.2).
+        Each attached sheet follows the form's pages and copies (3a2 spec §5.3).
 
         Args:
             form_type: a registered form type; its schema names the template.

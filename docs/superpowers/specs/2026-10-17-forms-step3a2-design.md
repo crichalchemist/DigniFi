@@ -1,6 +1,6 @@
 # Forms step 3a2: drawing engine
 
-- **Status:** approved by the owner, 2026-10-17. Factual corrections from the code survey followed the same day (§3, §4.3, §4.5, §8). Corrections from the build followed on 2026-10-19 (§4.3, §4.5, §5.2, §5.3, §6, §8, §9, §10, §11). Four of them change what was approved, and each says so: "This is a build ruling for the owner to review."
+- **Status:** approved by the owner, 2026-10-17. Factual corrections from the code survey followed the same day (§3, §4.3, §4.5, §8). Corrections from the build followed on 2026-10-19 (§1, §4.3, §4.5, §5.2, §5.3, §6, §7, §8, §9, §10, §11). Four of them change what was approved, and each says so: "This is a build ruling for the owner to review."
 - **Drawn from:** the step 3 umbrella spec, `docs/superpowers/specs/2026-10-16-forms-step3-design.md`: §4.6, §5.4, §6.1 and §8.2 risk 1.
 - **Branch:** `feat/forms-step3a2`, from develop `06111b6` (3a1 merged). The PR targets develop.
 - **Tags** such as `[Q8]` trace each part to the umbrella's map of answers and tickets.
@@ -12,7 +12,7 @@ The umbrella settles what 3a2 delivers. This spec turns it into a design for the
 1. **Every form prints through one engine** `[Q8]`. Each widget gets its own value, drawn with the template's own layout, and the page is flattened, so the packet has no fillable fields left.
 2. **Refusals instead of silent damage.** A letter the form's font can't print, or a value too long for its box even in small print, is refused in plain words, and the dashboard links each refusal to the step or page that fixes it. Today the first prints as "?" and the second is cut off.
 3. **Extra rows** `[Q8]` `[Q9]` continue on copies of the form's extra page, or on an attached sheet when the template has none. This is proven on synthetic schemas; the first real rows arrive in 3e2, 3b and 3c.
-4. **Filed forms redraw exactly what was filed**, page copy by page copy.
+4. **Filed forms redraw exactly what was filed**, page copy by page copy, from their stored parts. A filed form with no stored values is drawn from the current intake instead (§6).
 5. **Generate All checks without drawing** `[DIG-137]`, and the browser stops retrying it. Download draws.
 6. **The oracle is rebuilt** to read what is drawn on the page.
 7. **PyMuPDF is pinned.**
@@ -111,7 +111,7 @@ Two kinds of silent damage happen today:
 
   The check starts at the box's own size. That size is 10 pt for 1,959 boxes, 9 pt for 65 and 12 pt for 19, and the 10 auto-size boxes start at the size pypdf picks today. It shrinks in 0.5 pt steps to 6 pt. The first size that fits goes in the plan; if none fits, the value is refused.
 
-The check measures with the font widths and padding pypdf uses when it draws, and §9's tests prove the two agree on every text box.
+The check measures with the font widths and padding pypdf uses when it draws. §9's `no_value_is_ever_cut_off` proves, on every text box the forms draw, that a value that just fits prints whole, inside the box but for the hairline above. On a single-line box that isn't comb and has no `MaxLen`, it also proves that the check and pypdf agree on width, to within 0.01 pt: a value that just fits ends inside pypdf's padding at the size the check plans, and one letter more reaches past it even at 6 pt.
 
 **What this means for the personas.** Their 604 text values, checked on 2026-10-17, include no letter the font can't print and no value too long even at 6 pt, so no persona is refused. The 7 values that are cut off today shrink instead (§4.1).
 
@@ -240,7 +240,7 @@ For example, with synthetic values from three forms:
 
 A `form` part holds the values for the template's own pages. A `copy` part holds one copy of extra page `page`, the `number`-th. A `sheet` part holds one group's rows on its attached sheet, with what the sheet prints them under: its title, its columns' labels and widths, and the filer's name for its header. `check()` and `fill()` take a sheet's title, columns and rows from its part, never from the schema. A refusal still looks there: for a refused cell's link to its fix, and for the label of the form's name box when the filer's name is refused.
 
-- **A filed form** downloads by drawing its stored parts, so it shows exactly what was filed, copy by copy and sheet by sheet, even after it has left the packet (DIG-155).
+- **A filed form** with stored values downloads by drawing its stored parts, so it shows exactly what was filed, copy by copy and sheet by sheet, even after it has left the packet (DIG-155). One with no stored values (an empty `field_values`) downloads as an unfiled form does (§7): it is resolved, checked and drawn from the current intake, through the completion and packet checks, and the parts it draws are stored as its filed ones if it is still filed when the draw ends.
 - **A row stored in today's shape** (`{full name: value}`, with no `version`) is read as one `form` part. Production v31 predates `field_values`, so it holds no such row. `main`, the copy self-hosters run, has stored rows in this shape since forms step 1, so a self-hoster's database can hold a filed one (§11). A test proves a form filed in today's shape still downloads.
 - **The API never returns `field_values`**, as today.
 
@@ -248,8 +248,8 @@ A `form` part holds the values for the template's own pages. A `copy` part holds
 
 - **Generate All, Generate and Regenerate check without drawing.** Each resolves the form's values, runs `check()` and stores the parts. A letter or length refusal comes back like today's other per-form refusals: in Generate All's `errors` with the form type, or as a single form's 422, with its `step` or `page`.
 - **Download draws.**
-  - An unfiled form is resolved, checked and drawn fresh, and its parts are stored again.
-  - A filed form draws its stored parts.
+  - An unfiled form is resolved, checked and drawn fresh, and its parts are stored again if its status is still the one Download read before drawing: one marked filed meanwhile keeps what it held, and a row deleted meanwhile stays deleted.
+  - A filed form draws its stored parts; one with none stored downloads as an unfiled form does (§6).
 - **No retry on Generate All.** `formsAPI.generateAll` (`frontend/src/api/client.ts`) calls `apiFetchOnce` instead of `apiFetch`, so a slow or failed run is never repeated behind the filer's back. Today `withRetry` retries a 5xx three times, which can start four runs at once. The dashboard shows the error, and the filer can press again.
 - **Timing.**
   - A management command, `time_packet --session <id>`, times one session's Generate All checks and the download of each form in its packet, and writes nothing.

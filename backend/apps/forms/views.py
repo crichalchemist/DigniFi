@@ -4,7 +4,7 @@ API views for bankruptcy form generation.
 One path fills every form: registry.build_parts() resolves a session's values,
 PDFFormFiller checks that the template can print them, and they are kept as an
 encrypted parts document (GeneratedForm.field_values) that the API never returns.
-Generate, Generate All and Regenerate only check; Download draws (spec §7).
+Generate, Generate All and Regenerate only check; Download draws (3a2 spec §7).
 """
 
 import json
@@ -199,7 +199,7 @@ def _store(generated_form: GeneratedForm, document: dict) -> None:
 
 
 def _generate_and_persist(session: IntakeSession, form_type: str, user) -> GeneratedForm:
-    """Check that the form prints its values, without drawing it, and keep them (spec §7).
+    """Check that the form prints its values, without drawing it, and keep them (3a2 spec §7).
 
     _prepare() runs first.
     """
@@ -459,7 +459,7 @@ class GeneratedFormViewSet(viewsets.ReadOnlyModelViewSet):
         3a2, so it matches what was filed, even after it has left the packet (DIG-155). A
         filed form with no stored values is drawn as one not yet filed, through the completion
         and packet checks, from the current intake, and the parts it draws are kept as its
-        filed ones.
+        filed ones if it is still filed when the draw ends.
         """
         generated_form = self.get_object()
         form_type = generated_form.form_type
