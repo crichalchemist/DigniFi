@@ -42,6 +42,13 @@ Before deploying to production, complete this checklist:
 - [ ] DDoS protection enabled
 - [ ] WAF configured (if available)
 
+### Forms step 3: before deploying
+
+- [ ] Run `python manage.py loaddata ilnd_2025_data` right after the release: the districts migration 0003 ends production's existing median row on 2026-03-31.
+- [ ] Reseed the personas with `python manage.py seed_demo_data --reset`.
+- [ ] Count the completed sessions that still hold a draft debt: their forms now leave it off.
+- [ ] Run `python manage.py time_packet --session <id> --budget-generate 15 --budget-download 15` on the Eco dyno for one persona's session. It times Generate All and each download and writes nothing; a missed budget fails the command and names it.
+
 ## Django Settings for Production
 
 ### Security Settings

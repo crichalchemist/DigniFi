@@ -26,7 +26,7 @@ from apps.forms.services.pdf_filler import (
     TemplateHasNoForm,
     UnknownField,
 )
-from apps.forms.services.text_fit import font_for
+from apps.forms.services.text_fit import font_for, reverse_cmap_for
 from apps.forms.services.widgets import parse_key, template_widgets
 from apps.forms.tests.pdf_readback import read_drawn
 
@@ -103,6 +103,8 @@ def test_text_is_measured_with_pinned_pypdf_font_internals():
     font = font_for("form_b121.pdf", "/Helv")  # Font.from_font_resource
     assert isinstance(font, Font)
     reverse_cmap, _ = font._get_typographic_maps()
+    # check() measures by the map pypdf builds, kept once per font (R51).
+    assert reverse_cmap_for("form_b121.pdf", "/Helv") == reverse_cmap
     assert font.get_text_width(reverse_cmap["W"]) == 944  # Helvetica's W
     assert font.can_encode("é") and not font.can_encode("ą")
     bbox = font.font_descriptor.bbox

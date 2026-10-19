@@ -26,7 +26,7 @@ from rest_framework.test import APIClient
 from apps.districts.models import District
 from apps.eligibility.models import MeansTest
 from apps.forms.models import GeneratedForm
-from apps.forms.registry import build_field_values, packet
+from apps.forms.registry import build_parts, packet
 from apps.forms.schema import load_schema
 from apps.intake.management.commands.seed_demo_data import PERSONAS
 from apps.intake.models import IncomeInfo, IntakeSession
@@ -154,6 +154,16 @@ def _comparable(form_type, values):
     return fixed, {group: sorted(group_rows) for group, group_rows in groups.items()}
 
 
+def _comparable_document(form_type, document):
+    """A form's parts document, each part's values made comparable as _comparable does."""
+    return {
+        **document,
+        "parts": [
+            {**part, "values": _comparable(form_type, part["values"])} for part in document["parts"]
+        ],
+    }
+
+
 def _amount(text):
     try:
         return Decimal(text)
@@ -175,8 +185,11 @@ def test_forms_built_through_the_api_print_what_the_seeded_forms_print(persona):
         form.form_type: json.loads(form.field_values)
         for form in GeneratedForm.objects.filter(session_id=session_id)
     }
-    assert {form_type: _comparable(form_type, values) for form_type, values in stored.items()} == {
-        form_type: _comparable(form_type, build_field_values(form_type, seeded))
+    assert {
+        form_type: _comparable_document(form_type, document)
+        for form_type, document in stored.items()
+    } == {
+        form_type: _comparable_document(form_type, build_parts(form_type, seeded))
         for form_type in packet(seeded)
     }
     # Form 103B prints take-home pay and the non-cash answer, but no form prints the two
@@ -188,5 +201,6 @@ def test_forms_built_through_the_api_print_what_the_seeded_forms_print(persona):
     # prints her own figures: her monthly income on line 1 and her childcare on line 21.
     assert ("form_122a2" in stored) == (persona == "priya")
     if persona == "priya":
-        amounts = [_amount(value) for value in stored["form_122a2"].values()]
+        (part,) = stored["form_122a2"]["parts"]
+        amounts = [_amount(value) for value in part["values"].values()]
         assert any(amount is not None and amount > 0 for amount in amounts)

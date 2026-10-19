@@ -4,7 +4,9 @@ The Chapter 7 packet: which forms a filer needs, and what each needs first (spec
 Each form_type maps to applies(session), which says whether the form is part
 of this filer's packet and never raises, and requires(session), which raises
 PreconditionMissing when data the form can't be filled without is absent.
-build_field_values() is the one path from a session to a form's printed values.
+build_parts() is the path the views take from a session to a form's printed values: the
+parts document they check, store and draw. build_field_values() returns the form's
+{key: value}.
 FORM_REGISTRY is in filing order.
 """
 
@@ -14,7 +16,7 @@ from dataclasses import dataclass
 
 from apps.eligibility.cmi import is_above_median
 from apps.forms.schema import load_schema
-from apps.forms.services.fill_resolver import resolve
+from apps.forms.services.fill_resolver import resolve, resolve_parts
 from apps.intake.models import IntakeSession
 
 _SSN = re.compile(r"\d{3}-\d{2}-\d{4}|\d{9}")
@@ -133,3 +135,16 @@ def build_field_values(form_type: str, session: IntakeSession) -> dict[str, str]
     """
     FORM_REGISTRY[form_type].requires(session)
     return resolve(load_schema(form_type), session)
+
+
+def build_parts(form_type: str, session: IntakeSession) -> dict:
+    """
+    The parts a form prints for this session, as GeneratedForm.field_values stores them:
+    {"version": 2, "parts": [...]} (spec §6).
+
+    Raises:
+        KeyError: form_type is not registered.
+        PreconditionMissing: the form needs data the session lacks.
+    """
+    FORM_REGISTRY[form_type].requires(session)
+    return resolve_parts(load_schema(form_type), session)

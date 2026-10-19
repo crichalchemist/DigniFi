@@ -31,7 +31,7 @@ from apps.forms.services.pdf_filler import (
     UnprintableLetter,
     ValueTooLong,
 )
-from apps.forms.services.text_fit import MIN_SIZE, fit, font_for
+from apps.forms.services.text_fit import MIN_SIZE, fit
 from apps.forms.services.widgets import field_of, template_widgets, widget_for
 
 LAST_NAME = "Debtor1.Last name"  # Form 101 page 1: derived last_name, label "Last name"
@@ -326,11 +326,12 @@ def test_a_value_pypdf_would_print_below_6_pt_is_refused():
 def test_branches_no_template_has():
     # No template has a multi-line auto-size box or a comb box without a MaxLen.
     (lines,) = _widgets("schedule_a_b", OTHER_PROPERTY)
-    font = font_for(load_schema("schedule_a_b").template_filename, lines.font)
-    assert fit(dataclasses.replace(lines, size=0.0), font, "A canoe") == ("A canoe", 12.0)
+    template = load_schema("schedule_a_b").template_filename
+    assert fit(dataclasses.replace(lines, size=0.0), template, "A canoe") == ("A canoe", 12.0)
     (cells,) = _widgets("form_121", SSN)
     uncounted = dataclasses.replace(cells, max_len=None)
-    assert fit(uncounted, font, "900-12-3456-78") == ("900-12-3456-78", cells.size)
+    template = load_schema("form_121").template_filename
+    assert fit(uncounted, template, "900-12-3456-78") == ("900-12-3456-78", cells.size)
 
 
 # ── Which widgets a key fills ─────────────────────────────────────────

@@ -34,6 +34,16 @@ def font_for(template_filename: str, font_name: str) -> Font:
     return Font.from_font_resource(reader.root_object["/AcroForm"]["/DR"]["/Font"][font_name])
 
 
+@lru_cache(maxsize=64)
+def reverse_cmap_for(template_filename: str, font_name: str) -> dict[str, str]:
+    """
+    The font's map from each character to the glyph pypdf measures it by, built once:
+    pypdf's Font._get_typographic_maps() builds it again on every call (R51).
+    """
+    reverse_cmap, _ = font_for(template_filename, font_name)._get_typographic_maps()
+    return reverse_cmap
+
+
 def printable(font: Font, letter: str) -> bool:
     """The font's encoding has the letter: pypdf draws it, not "?" or another glyph (R7)."""
     return font.can_encode(letter)
@@ -56,14 +66,16 @@ def _leading(font: Font) -> float:
     return (bbox[3] - bbox[1]) / 1000
 
 
-def wrap(font: Font, text: str, size: float, width: float) -> list[str] | None:
+def wrap(
+    font: Font, reverse_cmap: dict[str, str], text: str, size: float, width: float
+) -> list[str] | None:
     """
     One paragraph broken at spaces into lines no wider than width at size, each line
     taking as many words as fit. Spaces are kept as typed, except one at each break.
+    reverse_cmap is the font's, from reverse_cmap_for().
 
     Returns None when a word is wider than width.
     """
-    reverse_cmap, _ = font._get_typographic_maps()
     lines: list[str] = []
     line: str | None = None
     for word in text.split(" "):
@@ -91,15 +103,17 @@ def _sizes(start: float) -> list[float]:
     return [size for size in sizes if size >= MIN_SIZE]
 
 
-def fit(widget: TemplateWidget, font: Font, text: str) -> tuple[str, float] | None:
+def fit(widget: TemplateWidget, template_filename: str, text: str) -> tuple[str, float] | None:
     """
     The text as the box will draw it and the size to draw it at: the box's own size,
-    or the first 0.5 pt step below it at which the text fits, down to 6 pt.
+    or the first 0.5 pt step below it at which the text fits, down to 6 pt. The box's
+    font is the one its /DA names in the template.
 
     A line break starts a new line in a multi-line box and is a space in any other
     box. Returns None when the text fits at no size.
     """
-    reverse_cmap, _ = font._get_typographic_maps()
+    font = font_for(template_filename, widget.font)
+    reverse_cmap = reverse_cmap_for(template_filename, widget.font)
     field_width = widget.width - 4 * widget.margin
     paragraphs = text.splitlines()
     text = "\n".join(paragraphs) if widget.multiline else " ".join(paragraphs)
@@ -126,7 +140,9 @@ def fit(widget: TemplateWidget, font: Font, text: str) -> tuple[str, float] | No
             if _width(font, reverse_cmap, text, size) <= field_width:
                 return text, size
             continue
-        wrapped = [wrap(font, paragraph, size, field_width) for paragraph in paragraphs]
+        wrapped = [
+            wrap(font, reverse_cmap, paragraph, size, field_width) for paragraph in paragraphs
+        ]
         if None in wrapped:
             continue
         lines = [line for paragraph in wrapped for line in paragraph]

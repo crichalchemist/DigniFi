@@ -133,6 +133,16 @@ class PlannedPart:
     widgets: tuple[Planned, ...]
 
 
+def parts_of(values: dict) -> list[dict]:
+    """
+    The parts a form's values hold: a parts document's own, {"version": 2, "parts": [...]}
+    (spec §6), or any other dict, such as a form filed before 3a2, as one form part.
+    """
+    if values.get("version") == 2:
+        return values["parts"]
+    return [{"kind": "form", "values": values}]
+
+
 def _source(schema: FormSchema, key: str, widget: TemplateWidget) -> tuple[str, dict[str, str]]:
     """
     The box's label and where the filer fixes its value, from the binding that produced
@@ -250,15 +260,17 @@ class PDFFormFiller:
 
         Args:
             form_type: a registered form type; its schema names the template.
-            values: {key: value}. A key is a full name, which fills every drawn widget
-                of that name, or "<full name>@<page>:<tag>", which fills that one
-                widget and wins over the full name there. A value is text, a combo's
-                option, or a box's export state such as "/Chapter 7".
+            values: a parts document, {"version": 2, "parts": [...]}, whose form part
+                holds {key: value}, or {key: value} alone (parts_of). A key is a full
+                name, which fills every drawn widget of that name, or
+                "<full name>@<page>:<tag>", which fills that one widget and wins over
+                the full name there. A value is text, a combo's option, or a box's
+                export state such as "/Chapter 7".
 
         Returns:
-            One part, holding every widget a key fills in page and tag order: a text
-            or combo box with its text as drawn and its size, a box with its state or
-            "/Off".
+            One planned part per part, each holding every widget a key fills in page
+            and tag order: a text or combo box with its text as drawn and its size, a
+            box with its state or "/Off".
 
         Raises:
             UnknownField: a key names no drawn widget, or is neither form of key.
@@ -266,6 +278,12 @@ class PDFFormFiller:
             UnprintableLetter: a letter the box can't print.
             ValueTooLong: a value too long for its box even at 6 pt.
         """
+        return tuple(
+            PlannedPart(part, self._plan(form_type, part["values"])) for part in parts_of(values)
+        )
+
+    def _plan(self, form_type: str, values: dict) -> tuple[Planned, ...]:
+        """What each widget one part's {key: value} fills prints, as check() describes."""
         schema = load_schema(form_type)
         by_name: dict[str, list[TemplateWidget]] = {}
         for widget in template_widgets(schema.template_filename):
@@ -314,11 +332,11 @@ class PDFFormFiller:
             letter = _refused_letter(widget, font, text)
             if letter is not None:
                 raise UnprintableLetter(form_type, letter, *_source(schema, key, widget))
-            fitted = fit(widget, font, text)
+            fitted = fit(widget, schema.template_filename, text)
             if fitted is None:
                 raise ValueTooLong(form_type, *_source(schema, key, widget))
             planned.append(Planned(widget, *fitted))
-        return (PlannedPart({"kind": "form", "values": values}, tuple(planned)),)
+        return tuple(planned)
 
     def fill(self, form_type: str, values: dict) -> bytes:
         """
@@ -341,8 +359,11 @@ class PDFFormFiller:
         writer = pypdf.PdfWriter(clone_from=str(Path(settings.PDF_FORMS_DIRECTORY) / template))
         if "/AcroForm" not in writer.root_object:
             raise TemplateHasNoForm(form_type)
-        (part,) = self.check(form_type, values)
-        planned = {(p.widget.page, p.widget.tag): p for p in part.widgets}
+        planned = {
+            (p.widget.page, p.widget.tag): p
+            for part in self.check(form_type, values)
+            for p in part.widgets
+        }
         acro_form = writer.root_object["/AcroForm"].get_object()
 
         for number, page in enumerate(writer.pages, start=1):

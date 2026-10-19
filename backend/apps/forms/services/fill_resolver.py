@@ -229,3 +229,11 @@ def resolve(schema: FormSchema, session: IntakeSession) -> dict[str, str]:
                     out[_key(f)] = emitted
 
     return out
+
+
+def resolve_parts(schema: FormSchema, session: IntakeSession) -> dict:
+    """
+    The form's values as the parts it prints, in printing order (spec §6):
+    {"version": 2, "parts": [{"kind": "form", "values": {key: value}}]}.
+    """
+    return {"version": 2, "parts": [{"kind": "form", "values": resolve(schema, session)}]}
