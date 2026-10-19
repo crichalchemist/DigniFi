@@ -179,6 +179,11 @@ BOX_CASES = list(_box_cases())
 WIDGET_TEXT_CASES = list(_widget_cases(_TEXT_KINDS))
 WIDGET_BOX_CASES = list(_widget_cases(_BOX_KINDS))
 WIDGET_CASES = WIDGET_TEXT_CASES + WIDGET_BOX_CASES
+SPLIT_FORMS = [
+    form_type
+    for form_type in get_all_form_types()
+    if len(_fields(form_type, ("checkbox", "radio"))) >= 2
+]
 
 
 @pytest.mark.parametrize("form_type,pdf_field,case", TEXT_CASES)
@@ -246,14 +251,44 @@ def test_checkbox_ticks_only_the_widgets_for_its_answer(form_type, pdf_field, ca
     ticked = [w for w in own if w.state == state]
     assert len(ticked) == expected, f"no_widget: {len(ticked)} of {expected} widgets show {state}"
     assert all(w.state == "/Off" for w in own if w.state != state), "spill: another option is on"
-    # The check mark appears only in the widgets of the choices drawn (spec §8), never in a
-    # widget of another name.
+    # The check mark appears only in the widgets of the choices drawn (spec §8);
+    # test_a_tick_never_spills_into_a_box_the_filer_left_blank separates the boxes drawn
+    # together here.
     stray = sorted(
         (w.full_name, w.page, w.tag)
         for w in drawn
         if w.state not in ("", "/Off") and values.get(w.full_name) != w.state
     )
     assert stray == [], f"spill: a tick also prints in {stray}"
+
+
+@pytest.mark.parametrize("form_type", SPLIT_FORMS)
+def test_a_tick_never_spills_into_a_box_the_filer_left_blank(form_type):
+    # _box_fill ticks every single box at once, so a tick spilling from one into another
+    # reads as the other's own answer. Split the boxes by each bit of their index: every
+    # pair is then drawn once with one ticked and the other left blank (spec §8).
+    fields = sorted(_fields(form_type, ("checkbox", "radio")), key=lambda f: f.pdf_field)
+    stray = []
+    for p in range(max(len(f.choices or {}) for f in fields)):
+        boxes = [f for f in fields if len(f.choices or {}) > p]
+        if len(boxes) < 2:
+            continue
+        for k in range((len(boxes) - 1).bit_length()):
+            for side in (1, 0):
+                values = {
+                    f.pdf_field: f.choices[sorted(f.choices)[p]]
+                    for i, f in enumerate(boxes)
+                    if (i >> k) & 1 == side
+                }
+                stray += [
+                    (p, k, side, w.full_name, w.page, w.tag)
+                    for w in _drawn(form_type, values)
+                    if w.state not in ("", "/Off") and values.get(w.full_name) != w.state
+                ]
+    assert stray == [], (
+        "spill: a tick prints in a box left blank, as (position, bit, side, name, page, tag):"
+        f" {stray}"
+    )
 
 
 def test_every_checkbox_binding_maps_its_answers_to_a_box():
