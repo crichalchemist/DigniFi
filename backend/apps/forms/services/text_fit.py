@@ -115,7 +115,8 @@ def fit(widget: TemplateWidget, template_filename: str, text: str) -> tuple[str,
     font is the one its /DA names in the template.
 
     A line break starts a new line in a multi-line box and is a space in any other
-    box. Returns None when the text fits at no size.
+    box. A multi-line box leaves out empty lines at the end, so they take no room.
+    Returns None when the text fits at no size.
     """
     font = font_for(template_filename, widget.font)
     reverse_cmap = reverse_cmap_for(template_filename, widget.font)
@@ -151,6 +152,8 @@ def fit(widget: TemplateWidget, template_filename: str, text: str) -> tuple[str,
         if None in wrapped:
             continue
         lines = [line for paragraph in wrapped for line in paragraph]
+        while lines and not lines[-1]:  # empty lines at the end print nothing
+            lines.pop()
         # Each line takes one line height below line 1, which T3 lowers by 2 × margin so the
         # font's top sits at the clip's top (R35): the last line then stays above its bottom.
         if len(lines) * size * _leading(font) <= widget.height - 2 * widget.margin:

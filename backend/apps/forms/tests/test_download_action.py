@@ -251,6 +251,34 @@ def test_filed_form_without_a_snapshot_is_resolved_once_and_kept(
     assert part["values"]["Debtor1.First name"] == "Maria"
 
 
+def test_marking_a_form_filed_during_its_download_keeps_it_filed(
+    api_client_authed, generated_form_factory
+):
+    # Drawing can take seconds, and Mark as Filed can be pressed meanwhile. The form keeps
+    # the values it was filed with, so a later Generate All can't replace them (DIG-155).
+    form = generated_form_factory(status="generated")
+    regenerate = reverse("generated-forms-regenerate", kwargs={"pk": form.pk})
+    mark_filed = reverse("generated-forms-mark-filed", kwargs={"pk": form.pk})
+    assert api_client_authed.post(regenerate).status_code == 200
+    form.refresh_from_db()
+    filed = form.field_values
+    _rename_filer(form, "Marisol")  # so the download draws values other than the stored ones
+    draw = PDFFormFiller.fill
+    marked = []
+
+    def draw_then_mark_filed(filler, form_type, values):
+        pdf = draw(filler, form_type, values)
+        marked.append(api_client_authed.post(mark_filed).status_code)
+        return pdf
+
+    with patch.object(PDFFormFiller, "fill", draw_then_mark_filed):
+        response = _download(api_client_authed, form)
+
+    assert (response.status_code, marked) == (200, [200])
+    form.refresh_from_db()
+    assert (form.status, form.field_values) == ("filed", filed)
+
+
 def test_a_letter_the_form_cannot_print_refuses_the_download(
     api_client_authed, generated_form_factory, caplog
 ):

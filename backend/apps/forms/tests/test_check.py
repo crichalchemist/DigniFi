@@ -326,6 +326,18 @@ def test_a_multi_line_value_shrinks_to_the_largest_size_its_lines_fit():
         assert (lowest >= box.margin) is fits, size
 
 
+def test_empty_lines_after_a_multi_line_value_dont_shrink_it():
+    # Empty lines at the end print nothing, so they take no room in the box.
+    (box,) = _widgets("schedule_a_b", OTHER_PROPERTY)
+    items = ["A canoe", "A bicycle", "A tent", "A saddle", "A kiln"]
+    (alone,) = _plan("schedule_a_b", {OTHER_PROPERTY: "\n".join(items)})
+    # One more line wouldn't fit at that size, so counting an empty one would shrink the value.
+    assert (len(items) + 1) * alone.size * _LEADING > box.height - 2 * box.margin
+
+    (planned,) = _plan("schedule_a_b", {OTHER_PROPERTY: "\n".join(items) + "\n\n"})
+    assert (planned.value.split("\n"), planned.size) == (items, alone.size)
+
+
 @pytest.mark.parametrize("line_break", ["\r\n", "\r", "\N{LINE SEPARATOR}"])
 def test_a_line_break_starts_a_new_line_only_in_a_multi_line_box(line_break):
     (multi_line,) = _plan("schedule_a_b", {OTHER_PROPERTY: f"A canoe{line_break}A bicycle"})

@@ -13,6 +13,7 @@ import logging
 import django_filters
 from django.db import transaction
 from django.http import HttpResponse
+from django.utils import timezone
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import NotFound
@@ -436,7 +437,7 @@ class GeneratedFormViewSet(viewsets.ReadOnlyModelViewSet):
         generated_form = self.get_object()
 
         generated_form.status = "filed"
-        generated_form.save()
+        generated_form.save(update_fields=["status", "updated_at"])
 
         return Response(
             {
@@ -452,9 +453,10 @@ class GeneratedFormViewSet(viewsets.ReadOnlyModelViewSet):
         Draw the official AO template and stream it.
 
         A form not yet filed is resolved, checked and drawn fresh, so the filer always
-        downloads their current answers, and its parts are stored again. A filed form
-        draws its stored parts, or its values stored before 3a2, so it matches what was
-        filed, even after it has left the packet (DIG-155).
+        downloads their current answers, and its parts are stored again if its status is
+        still the one read before drawing: a form marked filed meanwhile keeps the values
+        it was filed with. A filed form draws its stored parts, or its values stored before
+        3a2, so it matches what was filed, even after it has left the packet (DIG-155).
         """
         generated_form = self.get_object()
         form_type = generated_form.form_type
@@ -477,9 +479,16 @@ class GeneratedFormViewSet(viewsets.ReadOnlyModelViewSet):
                 body.pop("page", None)
             return Response(body, status=code)
 
-        if generated_form.status == "generated":
-            generated_form.status = "downloaded"
-        generated_form.save()
+        if not filed:
+            # Only over the status read before drawing: a form marked filed meanwhile keeps
+            # the values it was filed with (DIG-155).
+            status_read = generated_form.status
+            GeneratedForm.objects.filter(pk=generated_form.pk, status=status_read).update(
+                field_values=generated_form.field_values,
+                template_version=generated_form.template_version,
+                status="downloaded" if status_read == "generated" else status_read,
+                updated_at=timezone.now(),
+            )
 
         response = HttpResponse(pdf_bytes, content_type="application/pdf")
         response["Content-Disposition"] = f'attachment; filename="{form_type}.pdf"'
