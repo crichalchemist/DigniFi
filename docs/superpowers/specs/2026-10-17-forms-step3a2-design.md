@@ -1,6 +1,6 @@
 # Forms step 3a2: drawing engine
 
-- **Status:** approved by the owner, 2026-10-17. Factual corrections from the code survey followed the same day (§3, §4.3, §4.5, §8).
+- **Status:** approved by the owner, 2026-10-17. Factual corrections from the code survey followed the same day (§3, §4.3, §4.5, §8). Corrections from the build followed on 2026-10-19 (§4.3, §4.5, §5.2, §5.3, §6, §8, §9, §10, §11). Four of them change what was approved, and each says so: "This is a build ruling for the owner to review."
 - **Drawn from:** the step 3 umbrella spec, `docs/superpowers/specs/2026-10-16-forms-step3-design.md`: §4.6, §5.4, §6.1 and §8.2 risk 1.
 - **Branch:** `feat/forms-step3a2`, from develop `06111b6` (3a1 merged). The PR targets develop.
 - **Tags** such as `[Q8]` trace each part to the umbrella's map of answers and tickets.
@@ -95,14 +95,18 @@ Two kinds of silent damage happen today:
 
 - **A key that names no widget, a tick state the box doesn't have, or a combo choice the box doesn't list**, as `fill()` does today (`UnknownField`, `InvalidFieldValue`).
 - **A letter the box's font can't print** (`UnprintableLetter`).
-  - Printable letters are exactly the ones the box's font encoding maps to a glyph. The check uses the same encoder as the drawing, so the two can't disagree.
+  - Printable letters are exactly the ones the box's font encoding maps to a glyph. The check and the drawing both encode with the template's own font, so the two can't disagree. 567 text and combo widgets on five templates (101, 122A-2, A/B, C and D) carry a font of their own without the template's encoding, and pypdf would encode with that font first and print "?" for letters the template's font draws. The drawing removes it from each widget it draws.
   - Today that covers é, ñ, ü, ø, ë, Ł, Š and Œ, and it excludes ą, ć, ę, ń, ś, ź, ż, ř, ş and ễ.
-  - In a single-line box a line break prints as a space; in a multi-line box it starts a new line.
+  - The check first composes the text (Unicode NFC), so a letter typed as a base letter and a combining mark, as text pasted from some systems arrives, is checked and drawn as the one letter: e followed by a combining acute accent is é. A character Unicode treats as the same as a letter the form prints, such as the Ångström sign (Å) or the Kelvin sign (K), prints as that letter. A mark with no composed letter, such as n̈, is refused at its mark.
+  - In a single-line box a line break prints as a space; in a multi-line box it starts a new line. A line break is wherever Python's `str.splitlines()` breaks a line, so a vertical tab and a form feed are line breaks too.
+  - A tab and every Unicode space separator print as a plain space: the template's font draws the no-break space as "€" and has no glyph for the others. Format characters, such as the soft hyphen and the zero-width space, are left out, since the font has no glyph for them either. Any other control character that isn't a line break is refused. This is a build ruling for the owner to review.
+  - In a comb box, `(`, `)` and `\` are refused too: pypdf draws each cell's character as its own string, and these break it. This is a build ruling for the owner to review.
+  - A refused character that isn't a letter gets the letter sentence of §4.5 for now. Its wording for such characters is the owner's to settle.
 - **A value that doesn't fit** (`ValueTooLong`):
 
-  - **A single-line box** fits a value whose width, plus pypdf's padding on each side, is no wider than the box. The padding is 2 pt for most boxes; pypdf makes it twice the box's border margin, so Form 103B's 14 boxes with a 3 pt border get 6 pt.
+  - **A single-line box** fits a value whose width, plus pypdf's padding on each side, is no wider than the box. The padding is 2 pt for most boxes; pypdf makes it twice the box's border margin, so Form 103B's 14 boxes with a 3 pt border get 6 pt. A single-line box's height isn't checked. pypdf centres the line in the box, and at the box's own size only Ç's cedilla reaches outside it: up to 0.108 pt below 37 boxes, where the box cuts that hairline off, as it does today. Nine of them are bound: Form 101's `Debtor1.Name` page headers on pages 2 to 9, and its `Attorney.Sig`. This is a build ruling for the owner to review.
   - **A comb box** fits a value no longer than its cell count (`MaxLen`). Shrinking doesn't help a comb box. Where `MaxLen` sits on the parent field, as on Schedule D's account boxes, the engine reads it there and gives it to the widget, so the digits land in their cells.
-  - **A multi-line box** fits a value whose wrapped lines, at pypdf's own line spacing, are no taller than the box. The check wraps the value itself, at word boundaries, using Helvetica's widths and the box's width less the padding. It hands pypdf the lines joined by line breaks, which pypdf draws one per line. A single word wider than the box doesn't fit.
+  - **A multi-line box** fits a value whose wrapped lines, at pypdf's own line spacing, are no taller than the box's height less one padding (twice its border margin). pypdf hangs the first line from the font's top at the box's height plus its border margin, so the box would cut the mark off a capital such as É; the drawing lowers the first line by that one padding, so it prints whole. The check wraps the value itself, at word boundaries, using Helvetica's widths and the box's width less the padding on each side. It hands pypdf the lines joined by line breaks, which pypdf draws one per line. A single word wider than the box doesn't fit.
   - **Any other box with a `MaxLen`** fits a value no longer than `MaxLen`.
 
   The check starts at the box's own size. That size is 10 pt for 1,959 boxes, 9 pt for 65 and 12 pt for 19, and the 10 auto-size boxes start at the size pypdf picks today. It shrinks in 0.5 pt steps to 6 pt. The first size that fits goes in the plan; if none fits, the value is refused.
@@ -138,10 +142,11 @@ Where each refusal sends the filer depends on where the value came from:
 | an asked answer, `answer:<form_type>.<key>`       | `page`: `/ask/<form_type>`, with the form type the binding names                                           |
 | SOFA, `sofa.…`                                    | `page`: `/sofa`                                                                                            |
 | an ingested value (the pay stub's employer name)  | `page`: `/documents`                                                                                       |
+| a `db_aggregate` value (no schema binds one yet)  | `page`: `/documents`                                                                                       |
 | the fee-waiver application (`fee_waiver_*` rules) | `page`: `/fee-waiver`, except 103B line 6, which reads the Expenses step                                   |
 | a constant                                        | nothing: a constant that fails is a defect in DigniFi, and a test checks every constant                    |
 
-A test fails on any derived rule that feeds a text box and is missing from the map. A rule whose input no filer edits is in the map with no link: the median on 122A-1 line 13, which comes from the district's table, and five Schedule I rules (occupation and the employer's address) that read fields no model has, so they always print blank.
+A test fails on any derived rule that feeds a text or combo box and is missing from the map. A rule whose input no filer edits is in the map with no link: the district name in the forms' district boxes, which comes from DigniFi's own data; the median on 122A-1 line 13, which comes from the district's table; and five Schedule I rules (occupation and the employer's address) that read fields no model has, so they always print blank.
 
 An asked answer is written only on `/ask/<form_type>`, and no schema field yet carries the `ui` that page shows, so today a filer can't give an answer in DigniFi and none can be refused. The link is there for the steps that add questions.
 
@@ -153,8 +158,8 @@ An asked answer is written only on `/ask/<form_type>`, and no schema field yet c
 
 3a2 closes all three:
 
-- **Each refusal links to its fix.** Every per-form refusal on the dashboard, from Generate All, Generate, Regenerate or Download, shows its message with a link. A `step` links to `/intake?step=<key>` and a `page` to that page.
-- **The retry advice goes.** "Try generating them individually" is dropped for a refusal that names a fix.
+- **Each refusal links to its fix.** Every per-form refusal on the dashboard, from Generate All, Generate or Download, shows its message. One that names a wizard step, or a page the dashboard has link words for, also shows a link. The dashboard has no Regenerate button. A `step` links to `/intake?step=<key>` and a `page` to that page. "Finish your intake" still shows at most once on the dashboard.
+- **The retry advice narrows.** "You can try generating them individually below" shows only when a form in Generate All's list names no fix the dashboard can link to.
 - **`downloadForm` reads the refusal's body**, as `handleAPIError` does.
 - **The wizard opens at the step named in `?step=`**, when the key is one of `WIZARD_STEPS`, after its usual session read; otherwise it opens at the saved step as today.
 
@@ -184,11 +189,12 @@ Totals never come from the printed slots: the derivations already add up every r
 ### 5.2 Continuation copies
 
 - **The group names its extra page.** A repeat group declares which template page continues it, and that page's own slots come first.
-- **Copies are drawn alone.** Each further copy draws that one template page with the copy's rows, bakes it, and inserts it right after the previous copy. Copies never share field objects with each other or with the form.
+- **Copies are drawn alone.** Each further copy draws that one template page with the copy's rows and the form's page headers, bakes it, and inserts it right after the previous copy. A page header is a box on that page whose full name prints on another page too, such as "Debtor 1" and "Case number"; a group's own boxes are never one. Copies never share field objects with each other or with the form.
 - **Numbers on each copy.**
   - **Entry numbers.** A group may declare an entry-number box and a pattern such as `2.{n}`, where `n` is the row's position in the whole group. Each slot's entry-number box then shows the row's number as the form writes it: 2.3, 2.4 and so on.
   - **Page numbers.** The continuation pages of D, E/F, G and H have a `page ___ (this page number)` box, and 106C page 2 also has `of ___`. A group may declare these boxes. Each page then shows its position in the form as printed, with the copies counted.
 - **No overflow, no change.** When no row overflows, the form prints exactly as today, its extra page included.
+- **One group per form continues on copies.** The page numbers count one group's copies, so the startup check (forms.E007) refuses a form with more than one group that names an extra page. A group whose rows go on an attached sheet doesn't count. Several forms of §5.1 need more than one, such as E/F with pages 2 and 4, so 3c lifts the limit and counts every group's copies in the page numbers. This is a build ruling for the owner to review.
 
 ### 5.3 Attached sheets
 
@@ -197,7 +203,7 @@ An attached sheet is drawn by PyMuPDF on a plain US Letter page with 0.75 in mar
 - **The header**, repeated on every page of the sheet: the filer's name, the form's official title with "(attached sheet)", and a blank "Case number (if known)".
 - **The rows.** Each row is labelled with the form line it continues, under the same columns as the form's row. The group declares the column labels and widths.
 - **Long text** wraps inside its cell, and the sheet runs to as many pages as its rows need.
-- **The same rules as the form:** Helvetica at 10 pt, the letter check of §4.3, and no text ever cut off.
+- **The same rules as the form:** Helvetica at 10 pt, the letter check of §4.3, and no text ever cut off. PyMuPDF draws its Helvetica in WinAnsiEncoding, which lacks 13 letters the forms print, Ł, ł and ı among them, so the sheet's Helvetica takes the encoding all 17 templates give theirs. The sheet then prints exactly the letters the forms print.
 
 The same generator will make Schedule I's 8a business and rental statement (3e2) and the additional-employers page. A sheet is part of its form's output, with no registry entry, schema or field index, so startup check forms.E001 is unchanged.
 
@@ -209,27 +215,33 @@ No production schema has a repeat group (checked again 2026-10-17). 3a2 proves c
 
 `GeneratedForm.field_values` (encrypted JSON) changes shape. It now holds the checked plan's parts, in printing order:
 
-For example, with synthetic values:
+For example, with synthetic values from three forms:
 
 ```json
 {
   "version": 2,
   "parts": [
     { "kind": "form", "values": { "Debtor 1": "Andrés Kettleby", "Quest11@2:T20": "3370.00" } },
-    { "kind": "copy", "page": 2, "number": 1, "values": { "undefined_19": "2.6" } },
+    { "kind": "copy", "page": 2, "number": 1, "values": { "undefined_12": "2.6" } },
     {
       "kind": "sheet",
       "group": "ab_line_3",
+      "title": "Official Form 106A/B, Schedule A/B: Property",
+      "columns": [
+        { "label": "Make", "width": 300 },
+        { "label": "Current value of the portion you own", "width": 168 }
+      ],
+      "name": "Andrés Kettleby",
       "rows": [{ "line": "3.5", "cells": ["2014 Honda Fit", "4200.00"] }]
     }
   ]
 }
 ```
 
-A `form` part holds the values for the template's own pages. A `copy` part holds one copy of extra page `page`, the `number`-th. A `sheet` part holds one group's rows on its attached sheet.
+A `form` part holds the values for the template's own pages. A `copy` part holds one copy of extra page `page`, the `number`-th. A `sheet` part holds one group's rows on its attached sheet, with what the sheet prints them under: its title, its columns' labels and widths, and the filer's name for its header. `check()` and `fill()` take a sheet's title, columns and rows from its part, never from the schema. A refusal still looks there: for a refused cell's link to its fix, and for the label of the form's name box when the filer's name is refused.
 
 - **A filed form** downloads by drawing its stored parts, so it shows exactly what was filed, copy by copy and sheet by sheet, even after it has left the packet (DIG-155).
-- **A row stored in today's shape** (`{full name: value}`, with no `version`) is read as one `form` part. Such rows exist only in development and test databases: production v31 predates `field_values`. A test proves a form filed in today's shape still downloads.
+- **A row stored in today's shape** (`{full name: value}`, with no `version`) is read as one `form` part. Production v31 predates `field_values`, so it holds no such row. `main`, the copy self-hosters run, has stored rows in this shape since forms step 1, so a self-hoster's database can hold a filed one (§11). A test proves a form filed in today's shape still downloads.
 - **The API never returns `field_values`**, as today.
 
 ## 7. Generate All, download and timing `[DIG-137]`
@@ -247,17 +259,19 @@ A `form` part holds the values for the template's own pages. A `copy` part holds
 
 ## 8. The oracle, rebuilt (umbrella §6.1)
 
-- **Reading back.** One helper replaces `pdf_readback.read_widgets`. It reads a drawn PDF the way a person would, inside each widget's exact rectangle from the field index (PyMuPDF `get_text(clip=rect)`):
+- **Reading back.** One helper, `pdf_readback.read_drawn`, replaces `pdf_readback.read_widgets`. It reads a drawn PDF the way a person would, inside each widget's exact rectangle from the field index. It reads each page's characters once (PyMuPDF `get_text("rawdict")`), and a character belongs to a widget when its centre lies inside the widget's rectangle: two pairs of boxes overlap by about 2 pt, so a glyph that only touches a rectangle would put a neighbour's tick in it.
 
-  - **a widget's text** is the Helvetica spans in its box;
-  - **a box is ticked** when a ZapfDingbats span, the check mark, lies inside it.
+  - **a widget's text** is the Helvetica characters in its box;
+  - **a box is ticked** when a ZapfDingbats character, the check mark, lies inside it.
 
-  The templates print their own words in Arial, Wingdings and Times. On all 3,003 widgets of the 17 blank templates, no Helvetica or ZapfDingbats text lies inside any box, so nothing the template prints can pass for a drawn value. For copies and sheets, the helper maps each output page back to its template page through the plan's parts.
+  The templates print their own words in Arial, Wingdings and Times. Left blank and baked, 23 widgets still print a default of their own in Helvetica: the 18 district boxes' placeholder, A/B's three "0%" boxes on line 19, and a "2" in one box each on C and G. The helper bakes each blank template once and reads a box that prints exactly its blank text as blank, so nothing the template prints can pass for a drawn value. A drawn value equal to that text, such as "2" or "0%" in those boxes, reads blank too, so tier 1's text sentinels always hold a letter.
+
+  The helper refuses a PDF that still has a widget, with a `ValueError` rather than a failed assertion: MuPDF reads an unbaked widget's appearance as text, and a listed defect's xfail must never take a missing bake for its defect. For copies, the helper maps each output page back to its template page through the plan's parts. An attached sheet's pages have no widget; a second helper, `read_sheets`, reads them line by line under the sheet's columns.
 
 - **Tier 1 (sentinels).**
   - Every text and combo binding gets a short unique value, shrunk to fit like any value. Each must print in the widgets its key names and nowhere else.
   - Every tick choice is tried, and the check mark must appear only in that choice's widgets.
-  - A new engine check gives every widget of every shared full name in the 17 templates its own sentinel through the per-widget selector, and reads each widget back separately.
+  - A new engine check gives every drawn widget of every shared text or combo full name in the 17 templates its own sentinel through the per-widget selector, and reads each widget back separately. A box has no value of its own, so each widget of a shared box name is ticked alone through its own key, one draw per position: it must print its tick, and its siblings none.
   - Tier 1 thereby covers the shared-name boxes the old filler could not separate, the 18 combo boxes and the 2 radio buttons.
 - **Tier 2 (bindings against the audit)** keeps its (box, binding key) join and its asserted-case count. It compares schemas with the audit and reads no PDF, so the engine leaves it as it is.
 - **Tier 3 (personas' printed values)** keeps its persona cases and reads drawn text. Copies and sheets are covered by §9's capacity tests on the synthetic schemas of §5.4, until the first production rows bring them into tier 3 in 3e2, 3b and 3c.
@@ -279,8 +293,8 @@ Tests are named for what they protect. New tests:
 - **Refusals:**
   - `a_letter_the_form_cannot_print_is_refused`, with é, ñ, ü and Ł printing and ą, ř and ễ refused;
   - `a_long_value_shrinks_before_it_is_refused`;
-  - `no_value_is_ever_cut_off`: on every text box, a value that just fits reads back whole, and one that just doesn't is refused. A whole read-back proves it: MuPDF's text extraction leaves out characters a box's clip hides, which is how today's Form 101 email reads back as "deshawn.washington.synthetic@";
-  - `every_refusal_names_where_to_fix_it`: the rule-to-step map covers every derived text rule.
+  - `no_value_is_ever_cut_off`: on every text box, a value that just fits prints whole, and one that just doesn't is refused. A read-back alone can't prove it. MuPDF's text extraction leaves out a character the box's clip hides entirely, which is how today's Form 101 email reads back as "deshawn.washington.synthetic@", but it reads a character the clip hides in part as whole. So the test also measures each character against its box, allowing for §4.3's cedilla, up to 0.108 pt below 37 boxes;
+  - `every_refusal_names_where_to_fix_it`: the rule-to-step map covers every derived rule that feeds a text or combo box.
 - **What the page shows:**
   - `the_packet_has_no_fillable_fields_left`;
   - `print_buttons_never_print`;
@@ -291,7 +305,7 @@ Tests are named for what they protect. New tests:
   - `every_constant_prints`: every constant binding passes `check()`.
 - **Every drawn PDF opens cleanly** in pypdf and PyMuPDF, with its page count. The build also traces MuPDF's "No common ancestor in structure tree" message, which Form 101 prints when opened; it may come from the template's tagging rather than the engine.
 - **Timing:** `time_packet` runs once under the budgets of §7. It is not part of CI.
-- **The frontend (vitest):**
+- **The frontend (vitest)**, whose tests carry these meanings in prose names, as the frontend's tests are named:
   - `a_refused_form_links_to_the_step_that_fixes_it`, for each of Generate All, Generate and Download;
   - `a_refused_download_shows_its_reason`;
   - `the_wizard_opens_at_the_step_a_link_names`, plus an unknown `?step=` opening the saved step;
@@ -313,7 +327,7 @@ CLAUDE.md's gotchas are rewritten in the same PR (umbrella §5.1):
 
 - **"`field_values`, not `form_data`"**: the parts shape, the filed redraw, and the legacy shape.
 - **"Schemas are checked at startup"**: the `tag` selector and the `@` check.
-- **"Known form defects are strict xfails"**: tiers read drawn text.
+- **"Known form defects are strict xfails"**: tiers 1 and 3 read drawn text.
 - **"Blank, not 0.00"**: its repeat note becomes copies and sheets; `RepeatOverflow` is gone.
 - **"GenerateAll vs single"**: no drawing, the letter and length refusals, and no retry.
 - **The Architecture "PDF" line**: pypdf builds each widget's appearance, PyMuPDF bakes it, and the output is not fillable.
@@ -332,6 +346,10 @@ The umbrella spec's §5.4 and its SPIKE row get a one-line pointer to this spec'
 ## 11. Not in 3a2
 
 - **Any production repeat group, and any production use of the per-widget selector.** These come in 3e2, 3b and 3c.
+- **More than one group per form that continues on copies** (§5.2). 3c lifts the limit.
+- **Two-digit entry numbers on Schedule D.** The entry-number box of page 2's first row is too narrow for a two-digit number even at 6 pt. A group's 12th row, numbered 2.12, is the first with two digits to land there, so `check()` refuses the form once a group has 12 rows. The refusal names the box by its field-index label and links nowhere. How such numbers print is an open question for the owner, and real Schedule D rows don't bind until it is answered (3c).
+- **Correcting a scanned value the form can't print.** Schedule I's employer name comes only from a pay stub. When it holds a letter the form can't print, or is too long for its box even at 6 pt, the refusal links to `/documents` (§4.5's table), where nothing can change it, so Schedule I can't be prepared. How the filer corrects it is an open question for the owner: a correction field on the upload page (the documents API's `validate` already re-reads the pay stub), no link and a sentence of its own, or a bound when the pay stub is read.
+- **A self-hoster's filed form that the check now refuses.** `main` draws a filed form's stored values as they are, so a letter the form can't print came out as "?" and a long value was cut off. After 3a2, a filed form holding such a letter, or a value too long for its box even at 6 pt, downloads as a refusal naming the letter or the box, with no link, since nothing changes what was filed. Production v31 stores no values. Whether to keep the refusal, draw a form filed before 3a2 without it, misprints included, or check self-hosters' filed rows before `main` is promoted is an open question for the owner. Until it is answered, the refusal stays.
 - **A Unicode font** (3a2.Q1).
 - **Dropping unused extra pages from the packet.** They print as today.
 - **Background generation.**
