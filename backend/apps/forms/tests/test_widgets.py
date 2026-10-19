@@ -226,7 +226,9 @@ def test_a_values_key_names_a_full_name_or_one_widget():
     assert parse_key(second.key) == (second.full_name, second.page, second.tag)
 
 
-@pytest.mark.parametrize("key", ["x@2", "x@a:T1", "x@2:", "x@:T1", "x@2:7", "@2:T1", ""])
+@pytest.mark.parametrize(
+    "key", ["x@2", "x@a:T1", "x@2:", "x@:T1", "x@2:7", "@2:T1", "", "x@2:T1x", "x@2:T37@3:T1"]
+)
 def test_a_malformed_values_key_is_refused(key):
     with pytest.raises(ValueError):
         parse_key(key)
