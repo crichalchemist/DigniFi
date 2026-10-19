@@ -6,6 +6,8 @@ leave every row as it found it, and a budget it misses must say which.
 """
 
 import json
+import re
+import time
 import traceback
 from datetime import date
 from decimal import Decimal
@@ -20,6 +22,7 @@ from apps.districts.models import District
 from apps.eligibility.models import MeansTest
 from apps.forms.models import GeneratedForm
 from apps.forms.registry import build_parts, packet
+from apps.forms.services.pdf_filler import PDFFormFiller
 from apps.intake.models import DebtorInfo, IncomeInfo, IntakeSession
 
 User = get_user_model()
@@ -193,6 +196,69 @@ def test_time_packet_draws_a_filed_form_stored_without_values_from_the_intake(se
         (filed.id, "filed", "")
     ]
     assert MeansTest.objects.count() == 0
+
+
+def test_generate_all_times_every_forms_check(session, monkeypatch):
+    # Each check sleeps 0.2 s first, so a Generate All that runs every check it should
+    # reports at least 0.2 s for each.
+    delay = 0.2
+    real_check = PDFFormFiller.check
+
+    def slow_check(self, form_type, values):
+        time.sleep(delay)
+        return real_check(self, form_type, values)
+
+    monkeypatch.setattr(PDFFormFiller, "check", slow_check)
+    _file(session, "form_101", build_parts("form_101", session))
+    out = StringIO()
+
+    call_command(
+        "time_packet", session=session.id, budget_generate=600, budget_download=600, stdout=out
+    )
+
+    # Generate All checks every packet form but a filed one, which it returns untouched.
+    filed = set(GeneratedForm.objects.filter(status="filed").values_list("form_type", flat=True))
+    checked = set(packet(session)) - filed
+    timed = _timed(session, out)
+    assert {form_type for form_type, row in timed.items() if row[0] != "filed"} == checked
+    generate_all = float(re.search(r"^Generate All: ([\d.]+) s", out.getvalue(), re.M)[1])
+    assert generate_all >= delay * len(checked)
+
+
+def test_each_timed_download_draws_the_filers_intake(session, monkeypatch):
+    # A filed form whose values were never stored is drawn from the intake, as the download
+    # view draws it, and so is every form not filed.
+    GeneratedForm.objects.create(
+        session=session,
+        form_type="form_101",
+        status="filed",
+        generated_by=session.user,
+        field_values="",
+    )
+    real_fill = PDFFormFiller.fill
+    drawn, intake = [], []
+
+    def recording_fill(self, form_type, values):
+        drawn.append((form_type, values))
+        # Resolved here, inside the command's transaction, while the means test it worked
+        # out is still there: Form 122A-1 needs it, and it's rolled back with the rest.
+        current = IntakeSession.objects.get(id=session.id)
+        intake.append((form_type, build_parts(form_type, current)))
+        return real_fill(self, form_type, values)
+
+    monkeypatch.setattr(PDFFormFiller, "fill", recording_fill)
+
+    call_command(
+        "time_packet",
+        session=session.id,
+        budget_generate=600,
+        budget_download=600,
+        stdout=StringIO(),
+    )
+
+    assert [form_type for form_type, _ in drawn] == packet(session)
+    assert drawn == intake
+    assert dict(drawn)["form_101"] != {}  # the filed form's intake, not a blank form
 
 
 def test_time_packet_keeps_the_filers_letter_out_of_a_filed_forms_refusal(session):

@@ -6,10 +6,11 @@ time_packet: how long one session's Generate All and each form's download take (
 It runs the views' own code: Generate All's preparation and each packet form's check,
 then each form's download, which prepares, resolves and draws the form again. A filed
 form isn't checked, as Generate All returns it untouched, and its download draws what was
-filed, as the download view does. It times the first run of a fresh process, every cache
-cold, as a dyno meets its first request after waking, and judges it against the budgets
-(DIG-137). Everything runs in one transaction that is rolled back, so it writes nothing
-(R13).
+filed, as the download view does. Generate All is timed cold, as the first work of a fresh
+process, the way a dyno meets its first request after waking. Each download is timed after
+it, with the caches Generate All warmed, so only a filed form, which Generate All doesn't
+check, is drawn cold. Both are judged against the budgets (DIG-137). Everything runs in
+one transaction that is rolled back, so it writes nothing (R13).
 """
 
 import json

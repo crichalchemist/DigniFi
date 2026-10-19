@@ -35,27 +35,40 @@ def _wizard_steps():
 def _pages():
     """
     The pages the forms dashboard links a refusal to: PAGE_LINK_LABELS in
-    frontend/src/pages/FormDashboard.tsx, and each form's questions page, /ask/<form type>.
+    frontend/src/pages/FormDashboard.tsx, and each form's questions page, the prefix fixLink
+    matches there (/ask/) followed by a form type. The form types are the backend's.
     """
     dashboard = (FRONTEND / "pages" / "FormDashboard.tsx").read_text()
     labels = re.search(r"const PAGE_LINK_LABELS[^{]*\{(.*?)\};", dashboard, re.DOTALL)[1]
-    return set(re.findall(r"'(/[^']*)':", labels)) | {f"/ask/{ft}" for ft in get_all_form_types()}
+    ask = re.search(r"function fixLink.*?page\.startsWith\('([^']+)'\)", dashboard, re.DOTALL)
+    assert ask, "FormDashboard.tsx's fixLink no longer matches a page.startsWith('...') prefix"
+    questions = {f"{ask[1]}{ft}" for ft in get_all_form_types()}
+    return set(re.findall(r"'(/[^']*)':", labels)) | questions
+
+
+def _raises_precondition(node):
+    """
+    Whether the node calls PreconditionMissing, by its name or as an attribute, such as
+    registry.PreconditionMissing.
+    """
+    return isinstance(node, ast.Call) and (
+        getattr(node.func, "id", None) == "PreconditionMissing"
+        or getattr(node.func, "attr", None) == "PreconditionMissing"
+    )
 
 
 def _precondition_steps():
     """
-    The step each PreconditionMissing(...) in the backend's code names, read from its source,
-    so a new place that raises one is checked too.
+    The step each call of PreconditionMissing in the backend's code names, read from its
+    source, so a new place that raises one is checked too. A call by its name or as an
+    attribute (registry.PreconditionMissing(...)) is read; one under an import alias isn't.
     """
     steps, unread = set(), []
     for path in (settings.BASE_DIR / "apps").rglob("*.py"):
         if {"tests", "migrations"} & set(path.parts):
             continue
         for node in ast.walk(ast.parse(path.read_text())):
-            if not (
-                isinstance(node, ast.Call)
-                and getattr(node.func, "id", None) == "PreconditionMissing"
-            ):
+            if not _raises_precondition(node):
                 continue
             step = next((k.value for k in node.keywords if k.arg == "step"), None)
             if step is None and len(node.args) > 1:
@@ -102,8 +115,9 @@ def test_every_refusal_names_where_to_fix_it():
 
 
 def test_every_fix_is_a_step_or_page_the_dashboard_links():
-    # Read from the frontend itself, so a step key or a route renamed on either side fails
-    # here: the dashboard would otherwise drop the link and tell the filer to try again.
+    # Read from the frontend itself, so a step key, a PAGE_LINK_LABELS page or the questions
+    # pages' prefix in fixLink, renamed on one side only, fails here: the dashboard would
+    # otherwise drop the link and tell the filer to try again.
     if not FRONTEND.is_dir():
         pytest.skip("the frontend's source isn't here (compose's backend mounts backend/ only)")
     targets = {"step": _wizard_steps(), "page": _pages()}
@@ -128,6 +142,19 @@ def test_every_fix_is_a_step_or_page_the_dashboard_links():
     ]
     unlinked = [fix for fix in fixes for kind, target in fix.items() if target not in targets[kind]]
     assert unlinked == []
+
+
+@pytest.mark.parametrize(
+    "source,raises",
+    [
+        ("PreconditionMissing('x', step='nope')", True),
+        ("registry.PreconditionMissing('x', step='nope')", True),
+        ("registry.packet(session)", False),
+    ],
+    ids=["by_name", "as_an_attribute", "another_call"],
+)
+def test_a_precondition_is_read_by_its_name_or_as_an_attribute(source, raises):
+    assert _raises_precondition(ast.parse(source, mode="eval").body) is raises
 
 
 @pytest.mark.parametrize(
