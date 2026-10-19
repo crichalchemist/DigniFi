@@ -187,8 +187,10 @@ def test_a_long_value_shrinks_before_it_is_refused():
     assert _helvetica(email, planned.size) <= _room(box)
     assert _helvetica(email, planned.size + 0.5) > _room(box)
 
-    too_long = "kestrel.wanamaker.okonkwo.marchetti-oyelaran@example.org"
-    assert _helvetica(too_long, MIN_SIZE) > _room(box)
+    too_long = "kestrel.wanamaker.okonkwo.marchetti-oyel@example.org"
+    # Too wide at 6 pt, the smallest size the check prints, though it would fit at 5.5.
+    assert _helvetica(too_long, 6.0) > _room(box)
+    assert _helvetica(too_long, 5.5) <= _room(box)
     with pytest.raises(ValueTooLong) as refused:
         PDFFormFiller().check("form_101", {EMAIL: too_long})
     assert (refused.value.label, refused.value.step, refused.value.page) == (
@@ -310,8 +312,15 @@ def test_an_auto_size_box_starts_where_pypdf_would_size_it(form_type, name, page
 
 def test_a_value_pypdf_would_print_below_6_pt_is_refused():
     # pypdf's auto size goes down to 4 pt; the check stops at 6.
+    box = next(w for w in _widgets("form_101", "Case number1") if w.page == 1)
+    assert box.size == 0  # auto size
+    value = "24-10001 and 24-10002 and 24-10003 and 24-10004"
+    pypdf_size = float(re.search(rb"/Helv ([0-9.]+) Tf", _pypdf_stream("form_101", box, value))[1])
+    # pypdf would print it below 6 pt, where it fits, so only the floor refuses it.
+    assert pypdf_size < 6.0
+    assert _helvetica(value, pypdf_size) <= _room(box)
     with pytest.raises(ValueTooLong):
-        PDFFormFiller().check("form_101", {"Case number1": "24-10001 " * 12})
+        PDFFormFiller().check("form_101", {box.key: value})
 
 
 def test_branches_no_template_has():
