@@ -3,29 +3,17 @@ Fill resolver — turns a FormSchema + IntakeSession into {pdf_field: str}, or, 
 binding with a tag, {"<pdf_field>@<page>:<tag>": str}.
 
 Source priority is encoded per-field in the schema (constant/derived/asked/
-ingested/signature). This module resolves ``binding`` references; resolve()
-(Task 8) orchestrates dispatch, conditional sections, and repeat groups.
+ingested/signature). This module resolves ``binding`` references; resolve_parts()
+orchestrates dispatch, conditional sections, and repeat groups, whose rows past the
+last slot continue on copies of an extra page, and resolve() returns its form part.
 """
 
 from __future__ import annotations
 
-from apps.forms.schema import FieldSpec, FormSchema
+from apps.forms.schema import FieldSpec, FormSchema, GroupSpec, PageNumberBoxes
 from apps.forms.services.derivations import DERIVATIONS, PREDICATES, RULE_FIXES
+from apps.forms.services.widgets import TemplateWidget, page_count, parse_key, template_widgets
 from apps.intake.models import FormAnswer, IntakeSession
-
-
-class RepeatOverflow(Exception):
-    """A bound collection exceeded its template's pre-printed row capacity."""
-
-    def __init__(self, form_type: str, group: str, capacity: int, actual: int):
-        self.form_type = form_type
-        self.group = group
-        self.capacity = capacity
-        self.actual = actual
-        super().__init__(
-            f"{form_type}: repeat group {group!r} has {actual} rows but template "
-            f"holds {capacity}. A continuation attachment is required."
-        )
 
 
 class UnmappedChoice(Exception):
@@ -164,7 +152,121 @@ def _emit(field: FieldSpec, value: str | None) -> str | None:
     return str(value)
 
 
+def _cell(
+    field: FieldSpec,
+    position: int | None,
+    columns: dict[str, str | list[str]],
+    session: IntakeSession,
+    ingested_cache: dict,
+) -> str | None:
+    """What a repeat group's binding prints for the row at `position` (from 1) in the group."""
+    if not field.binding:
+        return _emit(field, _scalar_value(field, session, ingested_cache=ingested_cache))
+    vals = columns.get(_key(field))
+    if isinstance(vals, list) and position and position <= len(vals):
+        return _emit(field, str(vals[position - 1]))
+    return None
+
+
+def _number_page(values: dict[str, str], boxes: PageNumberBoxes, position: int, total: int) -> None:
+    """A page's position in the form, and the form's page count, in its page-number boxes."""
+    if boxes.this:
+        values[boxes.this] = str(position)
+    if boxes.of:
+        values[boxes.of] = str(total)
+
+
+def _headers(schema: FormSchema, form: dict[str, str], page: int) -> dict[str, str]:
+    """
+    The form's values a copy of `page` repeats: those of a box whose full name prints on
+    `page` and on another page too, such as "Debtor 1" and "Case number" (R24). Never a
+    box that prints on one page alone, such as a page total, and never a group's own box.
+    """
+    drawn: dict[str, list[TemplateWidget]] = {}
+    for widget in template_widgets(schema.template_filename):
+        if widget.drawn:
+            drawn.setdefault(widget.full_name, []).append(widget)
+    own = {_key(f) for f in schema.fields if f.repeat is not None}
+    for group in schema.groups.values():
+        own |= set(group.number_boxes.values())
+        own |= {key for boxes in group.page_numbers for key in (boxes.this, boxes.of) if key}
+    headers = {}
+    for key, value in form.items():
+        name, at, tag = parse_key(key)
+        widgets = drawn.get(name, [])
+        here = [
+            w for w in widgets if w.page == page and (tag is None or (at, tag) == (w.page, w.tag))
+        ]
+        if key not in own and here and any(w.page != page for w in widgets):
+            headers[key] = value
+    return headers
+
+
+def _copies(
+    schema: FormSchema,
+    group: GroupSpec,
+    fields: list[FieldSpec],
+    printed: list[FieldSpec],
+    columns: dict[str, str | list[str]],
+    capacity: int,
+    actual: int,
+    form: dict[str, str],
+    session: IntakeSession,
+    ingested_cache: dict,
+) -> list[dict]:
+    """
+    The copies of the group's extra page that print its rows past `capacity` (spec §5.2):
+    each holds as many rows as that page has slots, in the slots' order, numbers them as
+    the group does, and repeats the form's page headers. With copies, every page-number
+    box counts them, the form's own (written into `form`) included (R21). The group's
+    `fields` decide its slots and `printed` the cells that print, as on the form's pages.
+    """
+    page = group.extra_page
+    slots = sorted({f.row for f in fields if f.page == page and f.row})
+    positions = list(range(capacity + 1, actual + 1))
+    copies = []
+    for start in range(0, len(positions), len(slots)):
+        values: dict[str, str] = {}
+        # The last copy may hold fewer rows than the page has slots.
+        for row, position in zip(slots, positions[start : start + len(slots)], strict=False):
+            for f in printed:
+                if f.row == row and f.page == page:
+                    emitted = _cell(f, position, columns, session, ingested_cache)
+                    if emitted is not None:
+                        values[_key(f)] = emitted
+            if row in group.number_boxes:
+                values[group.number_boxes[row]] = group.number.format(n=position)
+        copies.append({"kind": "copy", "page": page, "number": len(copies) + 1, "values": values})
+
+    if group.page_numbers:
+        total = page_count(schema.template_filename) + len(copies)
+        for boxes in group.page_numbers:
+            # Copy n prints right after page `page`, as page `page` + n of the form.
+            position = boxes.page if boxes.page <= page else boxes.page + len(copies)
+            _number_page(form, boxes, position, total)
+            if boxes.page == page:
+                for copy in copies:
+                    _number_page(copy["values"], boxes, page + copy["number"], total)
+    headers = _headers(schema, form, page)
+    for copy in copies:
+        copy["values"] = {**headers, **copy["values"]}
+    return copies
+
+
 def resolve(schema: FormSchema, session: IntakeSession) -> dict[str, str]:
+    """The values the form's own pages print: resolve_parts()'s form part."""
+    return resolve_parts(schema, session)["parts"][0]["values"]
+
+
+def resolve_parts(schema: FormSchema, session: IntakeSession) -> dict:
+    """
+    The form's values as the parts it prints, in printing order (spec §6):
+    {"version": 2, "parts": [{"kind": "form", "values": {key: value}}, *copies]}.
+
+    A repeat group fills its slots in row order. Rows past its last slot continue on
+    copies of the extra page its declaration names (spec §5.2), each
+    {"kind": "copy", "page": <extra page>, "number": <from 1>, "values": {key: value}}.
+    """
     out: dict[str, str] = {}
 
     from apps.documents.models import IngestedAggregate
@@ -197,7 +299,7 @@ def resolve(schema: FormSchema, session: IntakeSession) -> dict[str, str]:
             out[_key(f)] = emitted
 
     # Repeat groups. An unmapped box is dropped before any lookup, so its binding
-    # is never resolved and never counts toward RepeatOverflow (spec §5.1).
+    # is never resolved and never counts as a row (spec §5.1).
     groups: dict[str, list[FieldSpec]] = {}
     for f in schema.fields:
         if f.repeat is None or _unmapped(f):
@@ -205,6 +307,8 @@ def resolve(schema: FormSchema, session: IntakeSession) -> dict[str, str]:
         if _section_applies(f, session, answer_cache=_form_answers):
             groups.setdefault(f.repeat, []).append(f)
 
+    copies: list[dict] = []
+    overflowing = []
     for group_name, fields in groups.items():
         capacity = fields[0].repeat_capacity or 0
         resolved_cols = {_key(f): resolve_binding(f.binding, session) for f in fields if f.binding}
@@ -212,28 +316,35 @@ def resolve(schema: FormSchema, session: IntakeSession) -> dict[str, str]:
             (len(v) for v in resolved_cols.values() if isinstance(v, list)),
             default=0,
         )
+        # UPL guard, as above
+        printed = [f for f in fields if not (f.legal_review and f.source != "asked")]
+        for f in printed:
+            emitted = _cell(f, f.row, resolved_cols, session, _ingested_cache)
+            if emitted is not None:
+                out[_key(f)] = emitted
+        group = schema.groups.get(group_name)
+        if group is not None:
+            for row, key in group.number_boxes.items():
+                if row <= min(actual, capacity):
+                    out[key] = group.number.format(n=row)
         if actual > capacity:
-            raise RepeatOverflow(schema.form_type, group_name, capacity, actual)
-        for f in fields:
-            if f.legal_review and f.source != "asked":
-                continue
-            if f.binding:
-                vals = resolved_cols.get(_key(f))
-                if isinstance(vals, list) and f.row and f.row <= len(vals):
-                    emitted = _emit(f, str(vals[f.row - 1]))
-                    if emitted is not None:
-                        out[_key(f)] = emitted
-            else:
-                emitted = _emit(f, _scalar_value(f, session, ingested_cache=_ingested_cache))
-                if emitted is not None:
-                    out[_key(f)] = emitted
+            if group is None or group.extra_page is None:
+                # The startup check refuses such a schema (forms.E007); never drop a row.
+                raise ValueError(f"{schema.form_type}: group {group_name!r} names no extra page")
+            overflowing.append((group, fields, printed, resolved_cols, capacity, actual))
 
-    return out
-
-
-def resolve_parts(schema: FormSchema, session: IntakeSession) -> dict:
-    """
-    The form's values as the parts it prints, in printing order (spec §6):
-    {"version": 2, "parts": [{"kind": "form", "values": {key: value}}]}.
-    """
-    return {"version": 2, "parts": [{"kind": "form", "values": resolve(schema, session)}]}
+    # Copies once the form's own values are all in: they repeat its page headers.
+    for group, fields, printed, resolved_cols, capacity, actual in overflowing:
+        copies += _copies(
+            schema,
+            group,
+            fields,
+            printed,
+            resolved_cols,
+            capacity,
+            actual,
+            out,
+            session,
+            _ingested_cache,
+        )
+    return {"version": 2, "parts": [{"kind": "form", "values": out}, *copies]}

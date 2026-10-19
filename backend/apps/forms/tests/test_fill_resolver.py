@@ -7,12 +7,12 @@ from django.contrib.auth import get_user_model
 
 from apps.districts.models import District
 from apps.documents.models import IngestedAggregate
-from apps.forms.schema import FieldSpec, FormSchema
+from apps.forms.schema import FieldSpec, FormSchema, GroupSpec
 from apps.forms.services.fill_resolver import (
-    RepeatOverflow,
     UnmappedChoice,
     resolve,
     resolve_binding,
+    resolve_parts,
 )
 from apps.intake.models import (
     DebtorInfo,
@@ -307,28 +307,120 @@ def test_repeat_rows_of_a_shared_name_land_on_their_own_widgets(session):
     }
 
 
-def test_repeat_overflow_raises(session):
+def _payments(session, count):
     report = SOFAReport.objects.create(session=session, has_creditor_payments=True)
-    for i in range(4):
+    for i in range(count):
         SOFACreditorPayment.objects.create(
             report=report,
             creditor_name=f"C{i}",
             total_paid=Decimal("1.00"),
         )
-    schema = _schema(
-        [
-            _field(
-                pdf_field="Cred1",
-                source="asked",
-                repeat="cp",
-                repeat_capacity=3,
-                row=1,
-                binding="sofa.creditor_payments[].creditor_name",
-            ),
-        ]
+
+
+def _slots():
+    """Group cp's four slots, one creditor each: Cred1 and Cred2 on page 1, Cred3 and Cred4 on 2."""
+    return [
+        _field(
+            pdf_field=f"Cred{row}",
+            page=1 if row <= 2 else 2,
+            source="asked",
+            repeat="cp",
+            repeat_capacity=4,
+            row=row,
+            binding="sofa.creditor_payments[].creditor_name",
+        )
+        for row in range(1, 5)
+    ]
+
+
+def test_rows_past_the_slots_go_to_copies_of_the_extra_page(session):
+    _payments(session, 7)
+    schema = FormSchema(
+        "form_107",
+        "b_107_0425-form.pdf",
+        "v1",
+        _slots(),
+        groups={"cp": GroupSpec("cp", extra_page=2, number=None, number_boxes={}, page_numbers=())},
     )
-    with pytest.raises(RepeatOverflow):
-        resolve(schema, session)
+
+    # Page 2's two slots take rows 5 and 6 on its first copy, and row 7 on its second.
+    assert resolve_parts(schema, session)["parts"] == [
+        {"kind": "form", "values": {"Cred1": "C0", "Cred2": "C1", "Cred3": "C2", "Cred4": "C3"}},
+        {"kind": "copy", "page": 2, "number": 1, "values": {"Cred3": "C4", "Cred4": "C5"}},
+        {"kind": "copy", "page": 2, "number": 2, "values": {"Cred3": "C6"}},
+    ]
+    assert resolve(schema, session) == {"Cred1": "C0", "Cred2": "C1", "Cred3": "C2", "Cred4": "C3"}
+
+
+def test_a_legal_review_row_prints_neither_in_the_slots_nor_on_a_copy(session):
+    # UPL guard: a legal_review binding fills only from an explicit asked answer, on the
+    # form's own slots and on the copies alike.
+    _payments(session, 7)
+    reviewed = [
+        _field(
+            pdf_field=f"Amt{row}",
+            page=1 if row <= 2 else 2,
+            source="derived",
+            legal_review=True,
+            repeat="cp",
+            repeat_capacity=4,
+            row=row,
+            binding="sofa.creditor_payments[].total_paid",
+        )
+        for row in range(1, 5)
+    ]
+    group = GroupSpec("cp", extra_page=2, number=None, number_boxes={}, page_numbers=())
+    schema = FormSchema("form_107", "b_107_0425-form.pdf", "v1", _slots() + reviewed, {"cp": group})
+
+    parts = resolve_parts(schema, session)["parts"]
+
+    assert [sorted(part["values"]) for part in parts] == [
+        ["Cred1", "Cred2", "Cred3", "Cred4"],
+        ["Cred3", "Cred4"],
+        ["Cred3"],
+    ]
+
+
+def test_a_copy_never_repeats_a_row_from_the_form(session):
+    # Schedule D's Part 2 entry 4 box on page 3 shares its full name with a page 1 box, as
+    # a page header does. A copy of page 3 with one row leaves that slot blank.
+    _payments(session, 7)
+    boxes = [
+        "account number 6",
+        "account number 7",
+        "account number 8",
+        "account number",
+        "account number 10",
+        "account number 11",
+    ]
+    fields = [
+        _field(
+            pdf_field=box,
+            page=3,
+            tag="T33" if box == "account number" else None,
+            source="asked",
+            repeat="notified",
+            repeat_capacity=6,
+            row=row,
+            binding="sofa.creditor_payments[].creditor_name",
+        )
+        for row, box in enumerate(boxes, start=1)
+    ]
+    group = GroupSpec("notified", extra_page=3, number=None, number_boxes={}, page_numbers=())
+    schema = FormSchema("schedule_d", "form_b106d.pdf", "v1", fields, {"notified": group})
+
+    form, copy = resolve_parts(schema, session)["parts"]
+
+    assert form["values"]["account number@3:T33"] == "C3"
+    assert copy["values"] == {"account number 6": "C6"}
+
+
+def test_rows_past_the_slots_of_a_group_with_no_extra_page_are_never_dropped(session):
+    # The startup check refuses such a schema (forms.E007); a row must never vanish.
+    _payments(session, 5)
+    schema = _schema(_slots())
+    with pytest.raises(ValueError, match="names no extra page"):
+        resolve_parts(schema, session)
 
 
 def test_legal_review_field_not_filled_without_answer(session):

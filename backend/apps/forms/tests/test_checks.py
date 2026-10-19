@@ -99,7 +99,8 @@ def test_push_button_binding_is_reported(schema_copy):
         "legal_review": False,
     }
     _edit(schema_copy, "form_101", lambda d: d["fields"].append(print_button))
-    assert _ids("form_101") == ["forms.E004"]
+    # A print button is never drawn, so its page holds no widget that prints (E003).
+    assert _ids("form_101") == ["forms.E003", "forms.E004"]
 
 
 def test_checkbox_without_choices_is_reported(schema_copy):
@@ -208,6 +209,14 @@ def test_a_tag_that_isnt_one_of_the_names_widgets_on_its_page_is_reported(schema
     ]
 
 
+def test_an_untagged_binding_on_a_page_without_its_widget_is_reported(schema_copy):
+    # Form 121 prints Debtor1.First name on page 1 only.
+    _edit(schema_copy, "form_121", lambda d: _field(d, "Debtor1.First name").update(page=2))
+    assert _errors("form_121") == [
+        ("forms.E003", "form_121: 'Debtor1.First name' has no drawn widget on page 2")
+    ]
+
+
 def test_a_tag_on_the_second_of_a_stacked_pair_is_reported(schema_copy):
     # Schedule D page 2 lays 4_3's T14 over T13; only T13 prints a value.
     _edit(schema_copy, "schedule_d", lambda d: d["fields"].append(_text("4_3", 2, "T14")))
@@ -255,22 +264,485 @@ def _row(tag, row):
     }
 
 
+def _rows(*rows):
+    """Add the rows to the schema, and declare their group, continued on page 2."""
+
+    def change(d):
+        d["fields"].extend(rows)
+        d["groups"] = {"cp": {"extra_page": 2}}
+
+    return change
+
+
+_UNTAGGED_SLOT_ON_A_TWIN = (
+    "forms.E007",
+    "schedule_i: repeat group 'cp': 'Assistance 8f' is drawn 2 times, on pages [2], "
+    "so its slot needs a tag",
+)
+
+
 @pytest.mark.parametrize(
-    "first, second",
-    [(("T49", 1), ("T49", 2)), ((None, 1), ("T49", 2))],
+    "first, second, also",
+    [(("T49", 1), ("T49", 2), []), ((None, 1), ("T49", 2), [_UNTAGGED_SLOT_ON_A_TWIN])],
     ids=["two rows tagged to one widget", "an untagged and a tagged row"],
 )
-def test_two_rows_of_a_group_that_would_fill_one_widget_are_reported(schema_copy, first, second):
-    # A box shows one value: the later row would overwrite the earlier one.
-    _edit(schema_copy, "schedule_i", lambda d: d["fields"].extend([_row(*first), _row(*second)]))
+def test_two_rows_of_a_group_that_would_fill_one_widget_are_reported(
+    schema_copy, first, second, also
+):
+    # A box shows one value: the later row would overwrite the earlier one. The untagged row
+    # is also refused on its own, below.
+    _edit(schema_copy, "schedule_i", _rows(_row(*first), _row(*second)))
     assert _errors("schedule_i") == [
-        ("forms.E006", "schedule_i: 'Assistance 8f' is bound 2 times on page 2")
+        ("forms.E006", "schedule_i: 'Assistance 8f' is bound 2 times on page 2"),
+        *also,
     ]
 
 
 def test_rows_of_a_group_on_different_widgets_of_one_name_pass(schema_copy):
-    _edit(schema_copy, "schedule_i", lambda d: d["fields"].extend([_row("T36", 1), _row("T49", 2)]))
+    _edit(schema_copy, "schedule_i", _rows(_row("T36", 1), _row("T49", 2)))
     assert _ids("schedule_i") == []
+
+
+def test_an_untagged_slot_whose_name_is_drawn_twice_on_its_page_is_reported(schema_copy):
+    # Page 2 draws Assistance 8f twice, and nothing else writes it: row 1 would print in both.
+    row_2 = {**_row(None, 2), "pdf_field": "Other deductions 5h"}  # drawn once, on page 2
+    _edit(schema_copy, "schedule_i", _rows(_row(None, 1), row_2))
+    assert _errors("schedule_i") == [_UNTAGGED_SLOT_ON_A_TWIN]
+
+
+def test_a_group_continued_on_copies_of_its_extra_page_passes(schedule_d_with_copies):
+    assert _errors("schedule_d") == []
+
+
+def _group(change):
+    """Change the synthetic Schedule D group's declaration."""
+    return lambda d: change(d["groups"]["d_part_1"])
+
+
+def _row_3_numbered_on_the_page_of_its_unmapped_box(d):
+    # An unmapped box prints nothing, so row 3 is still on page 2, where undefined_2 isn't.
+    # Listed before the group's other fields, such a box used to decide the row's page.
+    box = {**_text("Contingent", 1, None), "type": "checkbox", "value": None, "choices": {}}
+    box |= {"repeat": "d_part_1", "repeat_capacity": 5, "row": 3}
+    first = next(i for i, f in enumerate(d["fields"]) if f["repeat"] == "d_part_1")
+    d["fields"].insert(first, box)
+    d["groups"]["d_part_1"]["number_boxes"]["3"] = "undefined_2"
+
+
+@pytest.mark.parametrize(
+    "change, error",
+    [
+        (
+            lambda d: d.pop("groups"),
+            ("forms.E007", "schedule_d: repeat group 'd_part_1' isn't declared in groups"),
+        ),
+        (
+            _group(lambda g: g.pop("extra_page")),
+            ("forms.E007", "schedule_d: group 'd_part_1' names no extra_page"),
+        ),
+        (
+            # Page 3 is Part 2's: no row of Part 1 is there.
+            _group(lambda g: g.update(extra_page=3)),
+            ("forms.E007", "schedule_d: group 'd_part_1': extra_page 3 holds none of its slots"),
+        ),
+        (
+            # Page 1's copies would print the rows past 2.5 before page 2's 2.3 to 2.5.
+            _group(lambda g: g.update(extra_page=1)),
+            (
+                "forms.E007",
+                "schedule_d: group 'd_part_1': extra_page 1 isn't the page of its last slots, 2",
+            ),
+        ),
+        (
+            _group(lambda g: g.update(number="2.")),
+            ("forms.E007", "schedule_d: group 'd_part_1': number must contain {n}"),
+        ),
+        (
+            # {m} has no value: numbering the first row would fail at Generate.
+            _group(lambda g: g.update(number="2.{n}{m}")),
+            ("forms.E007", "schedule_d: group 'd_part_1': number '2.{n}{m}' doesn't format"),
+        ),
+        (
+            # A number has no index: this one fails with a TypeError, not a KeyError.
+            _group(lambda g: g.update(number="2.{n}{n[0]}")),
+            ("forms.E007", "schedule_d: group 'd_part_1': number '2.{n}{n[0]}' doesn't format"),
+        ),
+        (
+            _group(lambda g: g.update(number="2.{n[0]}")),
+            ("forms.E007", "schedule_d: group 'd_part_1': number must contain {n}"),
+        ),
+        (
+            # Escaped braces: every row would be numbered "2.{n}".
+            _group(lambda g: g.update(number="2.{{n}}")),
+            (
+                "forms.E007",
+                "schedule_d: group 'd_part_1': number '2.{{n}}' prints the same for every row",
+            ),
+        ),
+        (
+            # Entry-number boxes, and no number to put in them.
+            _group(lambda g: g.pop("number")),
+            ("forms.E007", "schedule_d: group 'd_part_1': number must contain {n}"),
+        ),
+        (
+            # A box nothing else writes (row 3's own box would also be two writers, E006).
+            _group(lambda g: g["number_boxes"].update({"6": "4_3@2:T13"})),
+            (
+                "forms.E003",
+                "schedule_d: group 'd_part_1': '4_3@2:T13' numbers row 6, "
+                "which isn't a slot row",
+            ),
+        ),
+        (
+            # 4_3's T14 is the stacked second of a pair, which never prints.
+            _group(lambda g: g["number_boxes"].update({"3": "4_3@2:T14"})),
+            (
+                "forms.E003",
+                "schedule_d: group 'd_part_1': '4_3@2:T14' is no drawn widget on page 2",
+            ),
+        ),
+        (
+            # Page 1's undefined_2 would number row 3, whose name and amount are on page 2.
+            _row_3_numbered_on_the_page_of_its_unmapped_box,
+            (
+                "forms.E003",
+                "schedule_d: group 'd_part_1': 'undefined_2' is no drawn widget on page 2",
+            ),
+        ),
+        (
+            # Page 2's own "of" box, declared as page 1's.
+            _group(lambda g: g["page_numbers"][0].update({"of": "fill_27.1.1"})),
+            (
+                "forms.E003",
+                "schedule_d: group 'd_part_1': 'fill_27.1.1' is no drawn widget on page 1",
+            ),
+        ),
+    ],
+    ids=[
+        "undeclared",
+        "no extra page",
+        "extra page without a slot",
+        "extra page before its last slots",
+        "number without {n}",
+        "number that doesn't format",
+        "number that indexes n",
+        "number with only an indexed n",
+        "number with escaped braces",
+        "entry-number boxes without a number",
+        "entry-number box for a row no slot has",
+        "entry-number box that never prints",
+        "entry-number box on the page of its row's unmapped box",
+        "page-number box on another page",
+    ],
+)
+def test_a_repeat_group_whose_rows_cannot_continue_is_reported(
+    schedule_d_with_copies, change, error
+):
+    _edit(schedule_d_with_copies, "schedule_d", change)
+    assert _errors("schedule_d") == [error]
+
+
+def _slots(change, first_only=False):
+    """Change every field of the synthetic Schedule D group, or only its first."""
+
+    def apply(d):
+        fields = [f for f in d["fields"] if f["repeat"] == "d_part_1"]
+        for f in fields[:1] if first_only else fields:
+            f.update(change)
+
+    return apply
+
+
+@pytest.mark.parametrize(
+    "change, error",
+    [
+        (
+            # Row 5 would print in its slot on page 2 and again on a copy.
+            _slots({"repeat_capacity": 4}),
+            "repeat group 'd_part_1': its slot rows aren't exactly 1 to its repeat_capacity, 4",
+        ),
+        (
+            # Row 6 would print nowhere: past the last slot, and before the first copy row.
+            _slots({"repeat_capacity": 6}),
+            "repeat group 'd_part_1': its slot rows aren't exactly 1 to its repeat_capacity, 6",
+        ),
+        (
+            # Which capacity counts would hang on the first field left after filtering.
+            _slots({"repeat_capacity": 4}, first_only=True),
+            "repeat group 'd_part_1' has more than one repeat_capacity",
+        ),
+        (
+            # The group would print in part: some of a row's boxes, and not the others.
+            _slots({"conditional_on": "has_creditor_payments"}, first_only=True),
+            "repeat group 'd_part_1' has more than one conditional_on",
+        ),
+    ],
+    ids=[
+        "capacity below the slots",
+        "capacity above the slots",
+        "two capacities",
+        "two conditions",
+    ],
+)
+def test_a_repeat_group_whose_capacity_isnt_its_slots_is_reported(
+    schedule_d_with_copies, change, error
+):
+    _edit(schedule_d_with_copies, "schedule_d", change)
+    assert _errors("schedule_d") == [("forms.E007", f"schedule_d: {error}")]
+
+
+def _slot(box, **change):
+    """Change one field of the synthetic Schedule D group, found by its full name."""
+
+    def apply(d):
+        next(f for f in d["fields"] if f["repeat"] == "d_part_1" and f["pdf_field"] == box).update(
+            change
+        )
+
+    return apply
+
+
+def _amount_of_row_5_on_page_3(d):
+    # Page 3's Name_6 is a drawn widget there, so every page is right: the row spans two.
+    _slot("undefined_20", pdf_field="Name_6", page=3)(d)
+    d["groups"]["d_part_1"]["extra_page"] = 3
+    d["groups"]["d_part_1"]["number_boxes"].pop("5")
+
+
+def _rows_1_to_3_on_page_2(d):
+    # Page 1's two slots take rows 4 and 5, so the form would print 2.4 before 2.1.
+    rows = {"Creditors Name_3": 1, "undefined_10": 1, "Creditors Name_4": 2, "undefined_14": 2}
+    rows |= {"Creditors Name_5": 3, "undefined_20": 3, "Creditors Name": 4, "undefined": 4}
+    rows |= {"Creditors Name_2": 5, "undefined_5": 5}
+    for f in d["fields"]:
+        if f["repeat"] == "d_part_1":
+            f["row"] = rows[f["pdf_field"]]
+    d["groups"]["d_part_1"].pop("number")
+    d["groups"]["d_part_1"]["number_boxes"] = {}
+
+
+@pytest.mark.parametrize(
+    "change, errors",
+    [
+        (
+            # Row 5's amount is a page 2 widget: a copy would print its name and not its amount.
+            _slot("undefined_20", page=1),
+            [
+                ("forms.E003", "schedule_d: 'undefined_20' has no drawn widget on page 1"),
+                (
+                    "forms.E007",
+                    "schedule_d: repeat group 'd_part_1': row 5 is on pages [1, 2], not one",
+                ),
+            ],
+        ),
+        (
+            # Row 2's amount is a page 1 widget: a copy would take row 2's box as one of its own.
+            _slot("undefined_5", page=2),
+            [
+                ("forms.E003", "schedule_d: 'undefined_5' has no drawn widget on page 2"),
+                (
+                    "forms.E007",
+                    "schedule_d: repeat group 'd_part_1': row 2 is on pages [1, 2], not one",
+                ),
+            ],
+        ),
+        (
+            # A null page names no page: reported, not a crash comparing None with a page.
+            _slot("undefined_20", page=None),
+            [("forms.E003", "schedule_d: 'undefined_20' has no drawn widget on page None")],
+        ),
+        (
+            _amount_of_row_5_on_page_3,
+            [
+                (
+                    "forms.E007",
+                    "schedule_d: repeat group 'd_part_1': row 5 is on pages [2, 3], not one",
+                )
+            ],
+        ),
+        (
+            _rows_1_to_3_on_page_2,
+            [
+                (
+                    "forms.E007",
+                    "schedule_d: repeat group 'd_part_1': row 4 is on a page before row 3's",
+                )
+            ],
+        ),
+    ],
+    ids=[
+        "a box declared on the page before its widget's",
+        "a box declared on the page after its widget's",
+        "a box with no page",
+        "a row on two pages",
+        "rows that go back a page",
+    ],
+)
+def test_a_repeat_group_whose_rows_sit_on_the_wrong_pages_is_reported(
+    schedule_d_with_copies, change, errors
+):
+    _edit(schedule_d_with_copies, "schedule_d", change)
+    assert _errors("schedule_d") == errors
+
+
+@pytest.mark.parametrize(
+    "change, name",
+    [
+        # A one-digit typo: row 3's number box written as row 3's own amount box.
+        (_group(lambda g: g["number_boxes"].update({"3": "undefined_10"})), "undefined_10"),
+        # Row 5's amount box by its tagged spelling.
+        (_group(lambda g: g["number_boxes"].update({"5": "undefined_20@2:T65"})), "undefined_20"),
+        # Rows 4 and 5 both number themselves in row 5's box.
+        (_group(lambda g: g["number_boxes"].update({"4": "undefined_19@2:T63"})), "undefined_19"),
+        # Page 2's position written into row 5's amount box.
+        (_group(lambda g: g["page_numbers"][1].update({"this": "undefined_20"})), "undefined_20"),
+    ],
+    ids=[
+        "a number box on a slot's own box",
+        "a number box on a bound widget's tagged spelling",
+        "two rows naming one number box",
+        "a page-number box on a slot's box",
+    ],
+)
+def test_a_group_box_that_another_writer_fills_is_reported(schedule_d_with_copies, change, name):
+    # The later key would overwrite the other's value without a word.
+    _edit(schedule_d_with_copies, "schedule_d", change)
+    assert _errors("schedule_d") == [
+        ("forms.E006", f"schedule_d: {name!r} is bound 2 times on page 2")
+    ]
+
+
+def test_a_page_count_box_drawn_on_two_pages_is_one_writer(schema_copy):
+    # Schedule E/F draws one "of" box, fill_27.1.7, on pages 5 and 6. Every page prints the
+    # same count, so declaring it for both pages can't conflict.
+    def declare(d):
+        d["groups"] = {
+            "e_f": {
+                "extra_page": 6,
+                "page_numbers": [
+                    {"page": 5, "of": "fill_27.1.7"},
+                    {"page": 6, "of": "fill_27.1.7"},
+                ],
+            }
+        }
+
+    _edit(schema_copy, "schedule_e_f", declare)
+    assert _errors("schedule_e_f") == []
+
+
+@pytest.mark.parametrize(
+    "change, error",
+    [
+        (
+            # Case number is drawn on pages 1 to 3: row 1's amount would print on each.
+            _slot("undefined", pdf_field="Case number"),
+            (
+                "forms.E007",
+                "schedule_d: repeat group 'd_part_1': 'Case number' is drawn 3 times, on pages "
+                "[1, 2, 3], so its slot needs a tag",
+            ),
+        ),
+        (
+            # Row 3's number would print on pages 1 and 3 as well.
+            _group(lambda g: g["number_boxes"].update({"3": "Case number"})),
+            (
+                "forms.E003",
+                "schedule_d: group 'd_part_1': 'Case number' is drawn 3 times, on pages "
+                "[1, 2, 3], so it needs a tag",
+            ),
+        ),
+        (
+            # Page 2 draws undefined_19 twice: row 3's number would print in rows 4 and 5's.
+            _group(lambda g: g.update(number_boxes={"3": "undefined_19"})),
+            (
+                "forms.E003",
+                "schedule_d: group 'd_part_1': 'undefined_19' is drawn 2 times, on pages [2], "
+                "so it needs a tag",
+            ),
+        ),
+    ],
+    ids=["a slot", "a number box", "a number box with a twin on its page"],
+)
+def test_an_untagged_group_key_drawn_on_other_pages_is_reported(
+    schedule_d_with_copies, change, error
+):
+    _edit(schedule_d_with_copies, "schedule_d", change)
+    assert _errors("schedule_d") == [error]
+
+
+def _box_slot(pdf_field, row, choices, value):
+    """Add an untagged checkbox slot to the synthetic Schedule D group: row `row`, on page 2."""
+    box = {**_text(pdf_field, 2, None), "type": "checkbox", "value": value, "choices": choices}
+    box |= {"repeat": "d_part_1", "repeat_capacity": 5, "row": row}
+    return lambda d: d["fields"].append(box)
+
+
+def test_an_untagged_box_slot_whose_boxes_share_a_state_is_reported(schedule_d_with_copies):
+    # Row 4's "Who owes the debt?" draws four boxes, each on at /On: one answer would tick all.
+    _edit(schedule_d_with_copies, "schedule_d", _box_slot("check 5", 4, {"true": "/On"}, "true"))
+    assert _errors("schedule_d") == [
+        (
+            "forms.E007",
+            "schedule_d: repeat group 'd_part_1': 'check 5' is drawn 4 times, on pages [2], "
+            "so its slot needs a tag",
+        )
+    ]
+
+
+def test_an_untagged_box_slot_whose_boxes_each_have_their_own_state_passes(
+    schedule_d_with_copies,
+):
+    # Row 3's "Who owes the debt?": each of its four boxes has its own state, so an answer
+    # ticks one of them.
+    choices = {
+        "debtor 1": "/debtor 1",
+        "debtor 2": "/debtor 2",
+        "both": "/Debtor 1 and 2",
+        "another": "/One of debtors and another",
+    }
+    _edit(schedule_d_with_copies, "schedule_d", _box_slot("check 4", 3, choices, "debtor 2"))
+    assert _errors("schedule_d") == []
+
+
+def _part_2(extra_page):
+    """Add a second group to the synthetic Schedule D: Part 2's six names on page 3."""
+
+    def add(d):
+        for row, box in enumerate(["Name", "Name_2", "Name_3", "Name_4", "Name_5", "Name_6"], 1):
+            d["fields"].append(
+                {
+                    **_text(box, 3, None),
+                    "source": "asked",
+                    "value": None,
+                    "binding": "sofa.creditor_payments[].creditor_name",
+                    "repeat": "d_part_2",
+                    "repeat_capacity": 6,
+                    "row": row,
+                }
+            )
+        d["groups"]["d_part_2"] = {} if extra_page is None else {"extra_page": extra_page}
+
+    return add
+
+
+def test_a_second_group_continued_on_copies_is_reported(schedule_d_with_copies):
+    # 3a2 numbers a form's pages counting one group's copies only (R21, R56).
+    _edit(schedule_d_with_copies, "schedule_d", _part_2(extra_page=3))
+    assert _errors("schedule_d") == [
+        (
+            "forms.E007",
+            "schedule_d: groups 'd_part_1' and 'd_part_2' both declare extra_page; "
+            "3a2 continues one group per form on copies",
+        )
+    ]
+
+
+def test_a_group_with_no_extra_page_is_not_counted_as_a_second(schedule_d_with_copies):
+    # Such a group is refused for its own reason (T7's sheet groups will declare a sheet).
+    _edit(schedule_d_with_copies, "schedule_d", _part_2(extra_page=None))
+    assert _errors("schedule_d") == [
+        ("forms.E007", "schedule_d: group 'd_part_2' names no extra_page")
+    ]
 
 
 def test_a_template_that_doesnt_match_its_index_is_reported_not_raised(schema_copy, index_copy):

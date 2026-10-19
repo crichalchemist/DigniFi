@@ -5,11 +5,13 @@ is filed, and exactly what was filed afterwards (spec §5.5).
 
 import json
 import logging
-from unittest.mock import ANY, patch
+from unittest.mock import patch
 
+import pymupdf
+import pytest
 from django.urls import reverse
 
-from apps.forms.services.fill_resolver import RepeatOverflow
+from apps.forms.schema import load_schema
 from apps.forms.services.pdf_filler import PDFFormFiller, TemplateHasNoForm
 from apps.forms.tests.pdf_readback import read_drawn
 
@@ -59,22 +61,46 @@ def test_unfiled_form_prints_the_filers_current_answers(api_client_authed, gener
     assert part["values"]["Debtor1.First name"] == "Marisol"
 
 
-def test_a_filed_form_downloads_exactly_what_was_filed(api_client_authed, generated_form_factory):
+@pytest.mark.parametrize(
+    "form_type, parts, box, printed",
+    [
+        ("form_121", ["form"], "Debtor1.First name", {(None, "Maria")}),
+        # Schedule D's sixth row prints on a copy of page 2, under the filer's name.
+        ("schedule_d", ["form", "copy"], "Debtor 1", {(None, "Maria Torres"), (1, "Maria Torres")}),
+    ],
+    ids=["form", "with a copy"],
+)
+def test_a_filed_form_downloads_exactly_what_was_filed(
+    api_client_authed,
+    generated_form_factory,
+    schedule_d_with_copies,
+    creditor_payments,
+    form_type,
+    parts,
+    box,
+    printed,
+):
     form = generated_form_factory(status="generated")
+    form.form_type = form_type
+    form.save()
+    rows = creditor_payments(form.session, 6)
     regenerate = reverse("generated-forms-regenerate", kwargs={"pk": form.pk})
     mark_filed = reverse("generated-forms-mark-filed", kwargs={"pk": form.pk})
     assert api_client_authed.post(regenerate).status_code == 200
     assert api_client_authed.post(mark_filed).status_code == 200
     form.refresh_from_db()
     filed = form.field_values
-    # Spec §6's parts document: a version and the form's own part.
-    assert json.loads(filed) == {"version": 2, "parts": [{"kind": "form", "values": ANY}]}
-    _rename_filer(form, "Marisol")  # the filer's later edit
+    # Spec §6's parts document: a version, the form's own part, then one part per copy.
+    document = json.loads(filed)
+    assert (document["version"], [part["kind"] for part in document["parts"]]) == (2, parts)
+    _rename_filer(form, "Marisol")  # the filer's later edits
+    rows[5].delete()  # Schedule D would now print five rows, and no copy
 
     response = _download(api_client_authed, form)
 
     assert response.status_code == 200
-    assert _printed(response, "Debtor1.First name") == {"Maria"}
+    drawn = read_drawn(form_type, response.content, document["parts"])
+    assert {(w.copy, w.value) for w in drawn if w.full_name == box} == printed
     form.refresh_from_db()
     assert (form.status, form.field_values) == ("filed", filed)
 
@@ -171,18 +197,70 @@ def test_missing_data_is_a_422_with_its_reason(api_client_authed, generated_form
     assert "name and address" in response.data["error"]
 
 
-def test_too_many_rows_is_a_422(api_client_authed, generated_form_factory):
+def test_rows_past_the_slots_download_on_a_copy(
+    api_client_authed, generated_form_factory, schedule_d_with_copies, creditor_payments
+):
     form = generated_form_factory(status="generated")
-    overflow = RepeatOverflow("form_121", "rows", capacity=3, actual=4)
-    with patch("apps.forms.views.build_parts", side_effect=overflow):
-        response = _download(api_client_authed, form)
-    assert response.status_code == 422
-    # No repeat group name or capacity: the filer reads this beside the form's label.
-    assert response.data == {
-        "form_type": "form_121",
-        "error": "You have more entries than this form has room for. The extra entries "
-        "need a continuation page, which this app can't make yet.",
+    form.form_type = "schedule_d"
+    form.save()
+    rows = creditor_payments(form.session, 6)
+
+    response = _download(api_client_authed, form)
+
+    assert response.status_code == 200
+    form.refresh_from_db()
+    parts = json.loads(form.field_values)["parts"]
+    assert [part["kind"] for part in parts] == ["form", "copy"]
+    # Page 2's first slot holds the third row; its copy holds the sixth.
+    drawn = read_drawn("schedule_d", response.content, parts)
+    assert {(w.copy, w.value) for w in drawn if w.full_name == "Creditors Name_3"} == {
+        (None, rows[2].creditor_name),
+        (1, rows[5].creditor_name),
     }
+
+
+@pytest.mark.parametrize(
+    "count, entries",
+    [
+        (6, ["2.3", "2.4", "2.5", "2.6", "", ""]),
+        (8, ["2.3", "2.4", "2.5", "2.6", "2.7", "2.8"]),
+    ],
+    ids=["one row on the copy", "a full copy"],
+)
+def test_a_page_of_guarded_slots_still_takes_its_rows_on_a_copy(
+    api_client_authed,
+    generated_form_factory,
+    schedule_d_with_copies,
+    creditor_payments,
+    count,
+    entries,
+):
+    # UPL guard: page 2's boxes print only an asked answer, so they print nothing here. The
+    # guard decides which boxes print, never which slots exist: rows past the last slot
+    # still go to the copy's slots, numbered, as rows 3 to 5 do on page 2.
+    path = schedule_d_with_copies / "schedule_d.json"
+    data = json.loads(path.read_text())
+    for f in data["fields"]:
+        if f["repeat"] == "d_part_1" and f["page"] == 2:
+            f.update(source="derived", rule="full_name", legal_review=True)
+    path.write_text(json.dumps(data))
+    load_schema.cache_clear()
+    form = generated_form_factory(status="generated")
+    form.form_type = "schedule_d"
+    form.save()
+    rows = creditor_payments(form.session, count)
+
+    response = _download(api_client_authed, form)
+
+    assert response.status_code == 200
+    form.refresh_from_db()
+    parts = json.loads(form.field_values)["parts"]
+    drawn = read_drawn("schedule_d", response.content, parts)
+    assert [w.value for w in drawn if w.full_name in ("undefined_12", "undefined_19")] == entries
+    text = "".join(page.get_text() for page in pymupdf.open("pdf", response.content))
+    assert rows[0].creditor_name in text  # page 1's boxes aren't guarded
+    guarded = {r.creditor_name for r in rows[2:]} | {str(r.total_paid) for r in rows[2:]}
+    assert [value for value in guarded if value in text] == []
 
 
 def test_a_template_with_no_form_is_explained_in_plain_words(

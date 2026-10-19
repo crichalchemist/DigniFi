@@ -251,6 +251,49 @@ def _draw(
         field[NameObject("/V")] = original
 
 
+def _clone(form_type: str, template: str) -> pypdf.PdfWriter:
+    """A fresh copy of the template to draw on."""
+    writer = pypdf.PdfWriter(clone_from=str(Path(settings.PDF_FORMS_DIRECTORY) / template))
+    if "/AcroForm" not in writer.root_object:
+        raise TemplateHasNoForm(form_type)
+    return writer
+
+
+def _baked(
+    writer: pypdf.PdfWriter, template: str, widgets: tuple[Planned, ...], only: int | None = None
+) -> pymupdf.Document:
+    """
+    Draw the planned widgets on a clone of the template, and bake every page, or with
+    `only`, that one page alone: the widgets that don't print are removed, each planned
+    widget gets its own appearance, and PyMuPDF bakes every widget left into its page.
+    """
+    planned = {(p.widget.page, p.widget.tag): p for p in widgets}
+    acro_form = writer.root_object["/AcroForm"].get_object()
+
+    for number, page in enumerate(writer.pages, start=1):
+        if "/Annots" not in page or (only is not None and number != only):
+            continue
+        kept = ArrayObject()
+        for annot in page["/Annots"]:
+            annotation = annot.get_object()
+            if annotation.get("/Subtype") == "/Widget":
+                widget = widget_for(template, number, annotation, float(page.mediabox.top))
+                if not widget.drawn:
+                    continue
+                if (number, widget.tag) in planned:
+                    _draw(writer, page, acro_form, annotation, planned[(number, widget.tag)])
+            kept.append(annot)
+        page[NameObject("/Annots")] = kept
+
+    buffer = BytesIO()
+    writer.write(buffer)
+    document = pymupdf.open("pdf", buffer.getvalue())
+    if only is not None:
+        document.select([only - 1])
+    document.bake(annots=False, widgets=True)
+    return document
+
+
 class PDFFormFiller:
     """Fill AO court PDF templates with field values and return bytes."""
 
@@ -260,8 +303,9 @@ class PDFFormFiller:
 
         Args:
             form_type: a registered form type; its schema names the template.
-            values: a parts document, {"version": 2, "parts": [...]}, whose form part
-                holds {key: value}, or {key: value} alone (parts_of). A key is a full
+            values: a parts document, {"version": 2, "parts": [...]}, or {key: value}
+                alone (parts_of). A form part's {key: value} fills the form's own pages;
+                a copy part's fills only the widgets on its extra `page`. A key is a full
                 name, which fills every drawn widget of that name, or
                 "<full name>@<page>:<tag>", which fills that one widget and wins over
                 the full name there. A value is text, a combo's option, or a box's
@@ -273,35 +317,47 @@ class PDFFormFiller:
             box with its state or "/Off".
 
         Raises:
-            UnknownField: a key names no drawn widget, or is neither form of key.
+            UnknownField: a key names no drawn widget (on a copy's page, for a copy), or
+                is neither form of key.
             InvalidFieldValue: a box state or combo option the template lacks.
             UnprintableLetter: a letter the box can't print.
             ValueTooLong: a value too long for its box even at 6 pt.
+            ValueError: a part of a kind other than "form" and "copy".
         """
-        return tuple(
-            PlannedPart(part, self._plan(form_type, part["values"])) for part in parts_of(values)
-        )
+        planned = []
+        for part in parts_of(values):
+            if part["kind"] == "form":
+                widgets = self._plan(form_type, part["values"])
+            elif part["kind"] == "copy":
+                widgets = self._plan(form_type, part["values"], page=part["page"])
+            else:
+                raise ValueError(f"{form_type}: no part of kind {part['kind']!r}")
+            planned.append(PlannedPart(part, widgets))
+        return tuple(planned)
 
-    def _plan(self, form_type: str, values: dict) -> tuple[Planned, ...]:
-        """What each widget one part's {key: value} fills prints, as check() describes."""
+    def _plan(self, form_type: str, values: dict, page: int | None = None) -> tuple[Planned, ...]:
+        """
+        What each widget one part's {key: value} fills prints, as check() describes: on
+        any page of the form, or with `page`, on that page alone.
+        """
         schema = load_schema(form_type)
         by_name: dict[str, list[TemplateWidget]] = {}
         for widget in template_widgets(schema.template_filename):
-            if widget.drawn:
+            if widget.drawn and (page is None or widget.page == page):
                 by_name.setdefault(widget.full_name, []).append(widget)
 
         reached: dict[str, list[TemplateWidget]] = {}
         unknown = []
         for key in values:
             try:
-                name, page, tag = parse_key(key)
+                name, at, tag = parse_key(key)
             except ValueError:
                 unknown.append(key)
                 continue
             reached[key] = [
                 widget
                 for widget in by_name.get(name, ())
-                if tag is None or (widget.page, widget.tag) == (page, tag)
+                if tag is None or (widget.page, widget.tag) == (at, tag)
             ]
             if not reached[key]:
                 unknown.append(key)
@@ -345,7 +401,9 @@ class PDFFormFiller:
         check() plans every widget first. pypdf then builds each planned widget's own
         appearance at its planned size; the widgets the template doesn't print and the
         second widget of each stacked pair are removed; and PyMuPDF bakes every other
-        widget into its page. An unfilled widget prints as the blank form shows it.
+        widget into its page. An unfilled widget prints as the blank form shows it. Each
+        copy of an extra page is drawn alone, on a clone of the template of its own, and
+        goes in right after that page, or after the copy of it before (spec §5.2).
 
         Args:
             form_type: a registered form type; its schema names the template.
@@ -353,37 +411,22 @@ class PDFFormFiller:
 
         Raises:
             TemplateHasNoForm: the template has no /AcroForm.
-            UnknownField, InvalidFieldValue, UnprintableLetter, ValueTooLong: as check().
+            UnknownField, InvalidFieldValue, UnprintableLetter, ValueTooLong, ValueError:
+                as check().
         """
         template = load_schema(form_type).template_filename
-        writer = pypdf.PdfWriter(clone_from=str(Path(settings.PDF_FORMS_DIRECTORY) / template))
-        if "/AcroForm" not in writer.root_object:
-            raise TemplateHasNoForm(form_type)
-        planned = {
-            (p.widget.page, p.widget.tag): p
-            for part in self.check(form_type, values)
-            for p in part.widgets
-        }
-        acro_form = writer.root_object["/AcroForm"].get_object()
-
-        for number, page in enumerate(writer.pages, start=1):
-            if "/Annots" not in page:
+        writer = _clone(form_type, template)
+        planned = self.check(form_type, values)
+        form = tuple(p for part in planned if part.part["kind"] == "form" for p in part.widgets)
+        document = _baked(writer, template, form)
+        shown = list(range(1, len(document) + 1))  # the template page each page shows
+        for part in planned:
+            if part.part["kind"] != "copy":
                 continue
-            kept = ArrayObject()
-            for annot in page["/Annots"]:
-                annotation = annot.get_object()
-                if annotation.get("/Subtype") == "/Widget":
-                    widget = widget_for(template, number, annotation, float(page.mediabox.top))
-                    if not widget.drawn:
-                        continue
-                    if (number, widget.tag) in planned:
-                        _draw(writer, page, acro_form, annotation, planned[(number, widget.tag)])
-                kept.append(annot)
-            page[NameObject("/Annots")] = kept
-
-        buffer = BytesIO()
-        writer.write(buffer)
-        document = pymupdf.open("pdf", buffer.getvalue())
-        document.bake(annots=False, widgets=True)
+            page = part.part["page"]
+            copy = _baked(_clone(form_type, template), template, part.widgets, page)
+            at = max(i for i, template_page in enumerate(shown) if template_page == page) + 1
+            document.insert_pdf(copy, start_at=at)
+            shown.insert(at, page)
         document.xref_set_key(document.pdf_catalog(), "AcroForm", "null")
         return document.tobytes()

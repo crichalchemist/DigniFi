@@ -246,6 +246,12 @@ def template_widgets(template_filename: str) -> tuple[TemplateWidget, ...]:
     return tuple(sorted(widgets, key=lambda w: (w.page, int(w.tag[1:]))))
 
 
+@lru_cache(maxsize=32)
+def page_count(template_filename: str) -> int:
+    """How many pages the template has."""
+    return len(pypdf.PdfReader(Path(settings.PDF_FORMS_DIRECTORY) / template_filename).pages)
+
+
 def widget_for(
     template_filename: str, page: int, annotation: DictionaryObject, page_top: float
 ) -> TemplateWidget:

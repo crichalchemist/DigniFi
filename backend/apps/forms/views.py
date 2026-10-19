@@ -36,7 +36,7 @@ from .registry import (
 )
 from .schema import load_schema
 from .serializers import GeneratedFormSerializer
-from .services.fill_resolver import RepeatOverflow, UnmappedChoice
+from .services.fill_resolver import UnmappedChoice
 from .services.pdf_filler import (
     PDFFormFiller,
     TemplateHasNoForm,
@@ -66,16 +66,12 @@ class IntakeNotFinished(Exception):
 # (registry.py, eligibility/cmi.py, districts/dated_tables.py, which logs its own
 # refusal), and so do UnprintableLetter and ValueTooLong (pdf_filler.py), which name the
 # letter and the box. Every other class gets a fixed sentence, because their messages
-# name form keys, repeat groups and PDF widgets. None names the form: the dashboard shows
+# name form keys and PDF widgets. None names the form: the dashboard shows
 # its label beside the error.
 _FAILURE_SENTENCES = {
     IntakeNotFinished: "Finish your intake before preparing your forms.",
     NotInPacket: "This form isn't part of your packet, based on the answers you've given.",
     FormIsFiled: "This form is marked as filed, so it keeps the answers it was filed with.",
-    RepeatOverflow: (
-        "You have more entries than this form has room for. The extra entries need a "
-        "continuation page, which this app can't make yet."
-    ),
     UnmappedChoice: (
         "One of your answers doesn't match a choice printed on this form, "
         "so it can't be filled in yet."
