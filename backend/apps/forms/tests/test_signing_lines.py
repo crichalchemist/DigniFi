@@ -13,7 +13,9 @@ import pytest
 from django.core.management import call_command
 
 from apps.forms.registry import build_field_values
+from apps.forms.schema import load_schema
 from apps.forms.services.pdf_filler import PDFFormFiller
+from apps.forms.services.widgets import template_widgets
 from apps.forms.tests.pdf_readback import read_drawn
 from apps.intake.models import FormAnswer, IntakeSession
 
@@ -41,9 +43,10 @@ STILL_PRINTS = {
 @cache
 def _printed():
     """
-    (form_type, full name) → the text Priya's drawn forms print there, once she has given
-    a signing date and named an attorney. Every box of the template has an entry, so a
-    box name that is no box can't pass as blank.
+    (form_type, full name) → the texts Priya's drawn forms print in each drawn widget of
+    that name, once she has given a signing date and named an attorney; "" for a widget
+    that prints nothing, so a name that prints on only some of its widgets shows it. Every
+    box of the template has an entry, so a box name that is no box can't pass as blank.
     """
     call_command("loaddata", "ilnd_2025_data", verbosity=0)
     call_command("seed_demo_data", persona="priya", verbosity=0)
@@ -58,10 +61,11 @@ def _printed():
     printed = {}
     for form_type in SIGNING_LINES:
         values = build_field_values(form_type, session)
+        template = load_schema(form_type).template_filename
+        drawn = {(w.page, w.tag) for w in template_widgets(template) if w.drawn}
         for widget in read_drawn(form_type, PDFFormFiller().fill(form_type, values)):
-            shows = printed.setdefault((form_type, widget.full_name), set())
-            if widget.value:
-                shows.add(widget.value)
+            if (widget.page, widget.tag) in drawn:
+                printed.setdefault((form_type, widget.full_name), set()).add(widget.value)
     return printed
 
 
@@ -73,6 +77,7 @@ def _printed():
 def test_signature_lines_and_signing_dates_stay_blank_for_wet_ink(form_type, box):
     printed = _printed()
     assert (form_type, box) in printed, f"no box named {box!r} on {form_type}"
-    assert printed[(form_type, box)] == set()
+    assert printed[(form_type, box)] == {""}
+    # Every widget of each neighbour prints it: a page header blank on one page fails.
     for neighbour, value in STILL_PRINTS[form_type].items():
         assert printed[(form_type, neighbour)] == {value}

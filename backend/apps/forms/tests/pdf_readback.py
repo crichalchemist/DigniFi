@@ -129,14 +129,24 @@ def read_drawn(form_type: str, pdf_bytes: bytes) -> list[DrawnWidget]:
     in page and tag order. A text box that prints exactly what the blank form prints
     there reads as "": nothing the template prints passes for a value, so a value equal
     to that box's blank text reads blank too.
+
+    Raises:
+        ValueError: a page still has a widget. MuPDF reads an unbaked widget's appearance
+            as text, and a viewer may rebuild it from the field's one value, so only a
+            baked page shows what prints. Not an assertion, so a listed defect's xfail
+            never takes a missing bake for that defect.
     """
     template = load_schema(form_type).template_filename
     blank = _blank(template)
+    document = pymupdf.open("pdf", pdf_bytes)
+    unbaked = [page.number + 1 for page in document if page.first_widget]
+    if unbaked:
+        raise ValueError(f"the PDF still has widgets on pages {unbaked}: it was never baked")
     return [
         (
             DrawnWidget(w.full_name, w.page, w.tag, "", w.state)
             if w.value and blank.get((w.page, w.tag)) == w.value
             else w
         )
-        for w in _read(template, pymupdf.open("pdf", pdf_bytes))
+        for w in _read(template, document)
     ]
