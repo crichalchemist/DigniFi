@@ -496,21 +496,28 @@ def validate_schema(
                         )
                     )
                 elif group.sheet is not None:
-                    # The sheet's first row is the one past the slots: its line must print
-                    # whole in the line column, or every Generate with a sheet would fail.
+                    # The sheet's rows start past the slots: each row's line must print whole
+                    # in the line column, or Generate fails for that row and every later one.
                     from apps.forms.services.sheets import LINE_WIDTH, fits_line_column
 
                     capacities = {f.repeat_capacity for f in slots.get(name, [])}
                     if len(capacities) == 1 and (capacity := capacities.pop()):
-                        line = group.number.format(n=capacity + 1)
-                        if not fits_line_column(line, schema.template_filename):
-                            errors.append(
-                                (
-                                    "E007",
-                                    f"group {name!r}: its sheet can't print its first line, "
-                                    f"{line!r}, whole in the {LINE_WIDTH:g} pt line column",
+                        # Its first line, and row 9999's: Helvetica's digits are all one
+                        # width, so no line up to that row is wider (R65(2)).
+                        for n, which in (
+                            (capacity + 1, "its first line"),
+                            (9999, "row 9999's line"),
+                        ):
+                            line = group.number.format(n=n)
+                            if not fits_line_column(line, schema.template_filename):
+                                errors.append(
+                                    (
+                                        "E007",
+                                        f"group {name!r}: its sheet can't print {which}, "
+                                        f"{line!r}, whole in the {LINE_WIDTH:g} pt line column",
+                                    )
                                 )
-                            )
+                                break
         if widget_map is None:
             continue
         # A row is on its mapped boxes' page: an unmapped box prints nothing, wherever it is.

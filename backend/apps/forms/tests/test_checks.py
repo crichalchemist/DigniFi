@@ -770,6 +770,23 @@ def test_a_group_continued_on_an_attached_sheet_passes(schedule_a_b_with_sheet):
     assert _errors("schedule_a_b") == []
 
 
+def test_a_sheet_line_too_wide_for_a_later_row_is_reported(schedule_a_b_with_sheet):
+    # "Line 5", the first line, fits the 36 pt line column; "Line 10" doesn't, so every
+    # Generate of ten rows or more would fail. Row 9999's line is the widest checked.
+    _edit(
+        schedule_a_b_with_sheet,
+        "schedule_a_b",
+        lambda d: d["groups"]["ab_line_3"].update(number="Line {n}"),
+    )
+    assert _errors("schedule_a_b") == [
+        (
+            "forms.E007",
+            "schedule_a_b: group 'ab_line_3': its sheet can't print row 9999's line, "
+            "'Line 9999', whole in the 36 pt line column",
+        )
+    ]
+
+
 def _sheet(change):
     """Change the synthetic Schedule A/B group's declaration."""
     return lambda d: change(d["groups"]["ab_line_3"])

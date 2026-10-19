@@ -433,6 +433,66 @@ def test_a_guarded_column_prints_blank_on_the_sheet(
     assert log.getvalue() == ""
 
 
+def test_a_column_with_one_guarded_slot_prints_blank_on_the_sheet(
+    schedule_a_b_with_sheet, session, creditor_payments
+):
+    # One guarded slot is enough (R59(a)): with only row 1's value slot guarded, the
+    # column's sheet cells print nothing, while rows 2 to 4 print their values.
+    path = schedule_a_b_with_sheet / "schedule_a_b.json"
+    data = json.loads(path.read_text())
+    for f in data["fields"]:
+        if f["repeat"] == "ab_line_3" and f["binding"].endswith("total_paid") and f["row"] == 1:
+            f.update(source="derived", rule="full_name", legal_review=True)
+    path.write_text(json.dumps(data))
+    load_schema.cache_clear()
+    creditor_payments(session, 5, MAKES)
+
+    _, pdf = _drawn(session)
+
+    (sheet,) = read_sheets(pdf, _spec())
+    assert sheet.rows == (("3.5", "Volvo", ""),)
+    text = "".join(page.get_text() for page in pymupdf.open("pdf", pdf))
+    printed = [a for a in ("100.00", "200.00", "300.00", "400.00", "500.00") if a in text]
+    assert printed == ["200.00", "300.00", "400.00"]
+
+
+def test_a_refused_sheet_cell_names_where_its_columns_slot_is_fixed(
+    schedule_a_b_with_sheet, session, creditor_payments
+):
+    # The Make slots derive the filer's name, so a refusal in their column is fixed
+    # where that rule's input is (fix_for), the debtor's step, not the SOFA page.
+    path = schedule_a_b_with_sheet / "schedule_a_b.json"
+    data = json.loads(path.read_text())
+    for f in data["fields"]:
+        if f["repeat"] == "ab_line_3" and f["binding"].endswith("creditor_name"):
+            f.update(source="derived", rule="full_name")
+    path.write_text(json.dumps(data))
+    load_schema.cache_clear()
+    rows = creditor_payments(session, 5, MAKES)
+    rows[4].creditor_name = "Wąsowicz Motors"
+    rows[4].save()
+
+    with pytest.raises(UnprintableLetter) as refused:
+        PDFFormFiller().check("schedule_a_b", build_parts("schedule_a_b", session))
+
+    assert (refused.value.label, refused.value.step, refused.value.page) == (
+        "Make",
+        "debtor_info",
+        None,
+    )
+
+
+def test_a_cell_written_like_a_pdf_operand_prints_as_typed(session, creditor_payments):
+    # PyMuPDF takes a line written "[<…>]" as a ready-made text operand: "[<4F4B>]" would
+    # print "OK", and a longer one could draw anything on the page.
+    creditor_payments(session, 5, [*MAKES[:4], "[<4F4B>]"])
+
+    _, pdf = _drawn(session)
+
+    (sheet,) = read_sheets(pdf, _spec())
+    assert sheet.rows == (("3.5", "[<4F4B>]", "500.00"),)
+
+
 def test_a_form_with_a_copy_and_a_sheet_prints_the_sheet_last(
     session, schedule_d_with_a_copy_and_a_sheet, creditor_payments
 ):

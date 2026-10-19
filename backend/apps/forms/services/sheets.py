@@ -286,10 +286,14 @@ def _text(page: pymupdf.Page, x: float, top: float, lines: list[str]) -> None:
     for n, line in enumerate(lines):
         if not line:
             continue  # nothing to print, and PyMuPDF logs a traceback for an empty line
-        # A list, so insert_text never splits the line at a byte it reads as a line break
-        # (– is the templates' 0x85, NEL).
+        # A ready-made hex operand: insert_text never splits it at a byte it reads as a
+        # line break (– is the templates' 0x85, NEL), and never takes text the filer typed
+        # as "[<…>]" for an operand of its own.
         page.insert_text(
-            (x, top + n * LEADING + _BASELINE), [_encoded(line)], fontname="helv", fontsize=SIZE
+            (x, top + n * LEADING + _BASELINE),
+            ["[<" + _encoded(line).encode("latin-1").hex() + ">]"],
+            fontname="helv",
+            fontsize=SIZE,
         )
 
 
