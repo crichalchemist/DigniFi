@@ -5,7 +5,8 @@ fill() builds each widget's value with pypdf and PyMuPDF bakes it into the page,
 filer gets a page, not a form to fill. These tests look at that page: what prints in each
 box, where each character sits, and, where text can't tell, its pixels. MuPDF extracts a
 character whole even when the box hides part of it, so a cut is judged from where the
-character sits (its origin and size, against Helvetica's bounding box), not from text.
+character sits (its origin and size, and its outline in the Helvetica MuPDF draws the page
+with), not from text.
 """
 
 import unicodedata
@@ -35,10 +36,11 @@ from apps.forms.tests.pdf_readback import read_drawn, read_sheets
 from apps.intake.management.commands.seed_demo_data import PERSONAS
 from apps.intake.models import IntakeSession
 
-# Helvetica's bounding box per point of size: a glyph's highest point (Å's ring) sits
-# 0.931 above its baseline and its lowest (Ç's cedilla) 0.225 below.
-_TOP = 0.931
-_BOTTOM = 0.225
+# The Helvetica MuPDF draws and reads the baked page with. A glyph's outline, per point of
+# size, is glyph_bbox: of the characters a form prints, Å's ring reaches highest, 0.953
+# above the baseline, and µ's tail lowest, 0.220 below (g, j, p, q and y 0.218).
+_HELV = pymupdf.Font("helv")
+_TALLEST, _DEEPEST = "Å", "µ"
 _BOXES = ("CheckBox", "RadioButton")
 
 
@@ -386,8 +388,9 @@ def test_every_drawn_pdf_opens_cleanly(form_type):
 
 # ── Nothing is cut off ────────────────────────────────────────────────
 
-# Å's ring reaches nearly to the font's top, Ç's cedilla to its bottom, g and q below the
-# baseline. No digits: a box's blank text ("2") reads as blank.
+# Å's ring reaches higher than any other letter's, g's and q's tails hang within 0.002 of
+# the size of the lowest (µ's), and Ç's cedilla nearly as low. No digits: a box's blank
+# text ("2") reads as blank.
 _CYCLE = "ÅgÇq"
 
 
@@ -425,19 +428,94 @@ def _boundary(form_type, widget):
     return "\n".join([word] * lines), "\n".join([word] * (lines + 1))
 
 
-def _hangs_below(template, widget):
+def _overshoot(template, widget):
     """
-    Drawn at its own size, the font's lowest point sits below the box (R38): pypdf
-    centres a single-line box's ascent in it, and on 37 boxes Ç's cedilla then dips up to
-    0.108 pt under the rect, as it always has.
+    side → how far, in points, the tallest and the deepest letter reach past a single-line
+    box's rect at the box's own size, where they do (R38): pypdf centres the font's ascent
+    in the box, so on a few boxes Å's ring rises past the top and µ's tail hangs past the
+    bottom. Both reach less far at a smaller size. check() plans Å or µ alone at the box's
+    own size, and never plans a value larger. A multi-line box, or one that sizes its
+    text itself, gets nothing.
     """
     if widget.multiline or not widget.size:
-        return False
-    font = font_for(template, widget.font).font_descriptor
-    baseline = (
-        widget.margin + (widget.height - 2 * widget.margin - font.ascent * widget.size / 1000) / 2
-    )
-    return baseline + font.bbox[1] * widget.size / 1000 < 0
+        return {}
+    size = widget.size
+    ascent = font_for(template, widget.font).font_descriptor.ascent
+    baseline = widget.margin + (widget.height - 2 * widget.margin - ascent * size / 1000) / 2
+    reach = {
+        "top": baseline + _HELV.glyph_bbox(ord(_TALLEST)).y1 * size - widget.height,
+        "bottom": -(baseline + _HELV.glyph_bbox(ord(_DEEPEST)).y0 * size),
+    }
+    return {side: by for side, by in reach.items() if by > 0}
+
+
+# (form type, box, side) where _overshoot finds a letter past the rect: the only boxes the
+# cut-off test lets a letter cross, by that much. Å rises up to 0.228 pt above 45 boxes and
+# µ hangs up to 0.048 pt below 16 of them (g and q 0.024 pt); Ç stays inside. Whether
+# filers' forms may print this hairline is the owner's R38 question.
+_R38_HAIRLINES = [
+    ("form_101", "Attorney.Sig@8:T3", "bottom"),
+    ("form_101", "Attorney.Sig@8:T3", "top"),
+    ("form_101", "Case number1@2:T2", "bottom"),
+    ("form_101", "Case number1@2:T2", "top"),
+    ("form_101", "Debtor1.Name@2:T1", "bottom"),
+    ("form_101", "Debtor1.Name@2:T1", "top"),
+    ("form_101", "Debtor1.Name@3:T1", "bottom"),
+    ("form_101", "Debtor1.Name@3:T1", "top"),
+    ("form_101", "Debtor1.Name@4:T1", "bottom"),
+    ("form_101", "Debtor1.Name@4:T1", "top"),
+    ("form_101", "Debtor1.Name@5:T1", "bottom"),
+    ("form_101", "Debtor1.Name@5:T1", "top"),
+    ("form_101", "Debtor1.Name@6:T1", "bottom"),
+    ("form_101", "Debtor1.Name@6:T1", "top"),
+    ("form_101", "Debtor1.Name@7:T1", "bottom"),
+    ("form_101", "Debtor1.Name@7:T1", "top"),
+    ("form_101", "Debtor1.Name@8:T1", "bottom"),
+    ("form_101", "Debtor1.Name@8:T1", "top"),
+    ("form_101", "Debtor1.Name@9:T1", "bottom"),
+    ("form_101", "Debtor1.Name@9:T1", "top"),
+    ("form_103b", "13 Other real estate city sate@2:T29", "top"),
+    ("form_103b", "Case number@1:T4", "top"),
+    ("form_103b", "Case number@2:T2", "top"),
+    ("form_103b", "Case number@3:T2", "top"),
+    ("form_103b", "Case number@4:T4", "top"),
+    ("form_103b", "Debtor 1@1:T1", "top"),
+    ("form_103b", "Debtor 1@4:T1", "top"),
+    ("form_103b", "Debtor.Name1@2:T1", "top"),
+    ("form_103b", "Debtor.Name1@3:T1", "top"),
+    ("form_103b", "Examples House condominium@2:T24", "top"),
+    ("form_103b", "Mileage_2@2:T41", "bottom"),
+    ("form_103b", "Mileage_2@2:T41", "top"),
+    ("form_103b", "Year_2@2:T39", "bottom"),
+    ("form_103b", "Year_2@2:T39", "top"),
+    ("form_103b", "undefined_29@3:T10", "bottom"),
+    ("form_103b", "undefined_29@3:T10", "top"),
+    ("form_121", "Case number1@1:T2", "bottom"),
+    ("form_121", "Case number1@1:T2", "top"),
+    ("schedule_a_b", "23.3 Annuities amount@6:T54", "top"),
+    ("schedule_a_b", "undefined_12@2:T17", "top"),
+    ("schedule_a_b", "undefined_4@1:T23", "top"),
+    ("schedule_a_b", "undefined_8@1:T47", "top"),
+    ("schedule_c", "Schedule AB@1:T14", "top"),
+    ("schedule_c", "Schedule AB_2@1:T21", "top"),
+    ("schedule_c", "Schedule AB_3@1:T28", "top"),
+    ("schedule_c", "description@1:T9", "top"),
+    ("schedule_c", "description_2@1:T16", "top"),
+    ("schedule_c", "description_3@1:T23", "top"),
+    ("schedule_c", "undefined@1:T10", "top"),
+    ("schedule_c", "undefined_2@1:T12", "top"),
+    ("schedule_c", "undefined_6@1:T17", "top"),
+    ("schedule_c", "undefined_7@1:T19", "top"),
+    ("schedule_c", "undefined_8@1:T24", "top"),
+    ("schedule_c", "undefined_9@1:T26", "top"),
+    ("schedule_d", "On which line in Part 1 did you enter the creditor_4@3:T32", "bottom"),
+    ("schedule_d", "On which line in Part 1 did you enter the creditor_4@3:T32", "top"),
+    ("schedule_d", "On which line in Part 1 did you enter the creditor_5@3:T41", "bottom"),
+    ("schedule_d", "On which line in Part 1 did you enter the creditor_5@3:T41", "top"),
+    ("schedule_d", "On which line in Part 1 did you enter the creditor_6@3:T50", "top"),
+    ("schedule_d", "undefined_26@3:T14", "top"),
+    ("schedule_d", "undefined_27@3:T22", "top"),
+]
 
 
 @cache
@@ -482,16 +560,21 @@ def _cut_off(form_type, values):
         if printed[(widget.page, widget.tag)] != " ".join(values[widget.key].splitlines()):
             cut.append((widget.key, printed[(widget.page, widget.tag)]))
         rect = _rects(template)[(widget.page, widget.tag)]
-        allowed = {"top": 0, "bottom": 0.11 if _hangs_below(template, widget) else 0}
+        allowed = {
+            side: by
+            for side, by in _overshoot(template, widget).items()
+            if (form_type, widget.key, side) in _R38_HAIRLINES
+        }
         if widget.page not in pages:
             pages[widget.page] = _glyphs(document[widget.page - 1])
         for g in pages[widget.page]:
             # A space prints nothing; MuPDF also adds one where a line's text breaks off.
             if g.font != "Helvetica" or not g.text.strip() or not g.inside(rect):
                 continue
+            outline = _HELV.glyph_bbox(ord(g.text))
             past = {
-                "top": rect[1] - (g.origin[1] - _TOP * g.size),
-                "bottom": g.origin[1] + _BOTTOM * g.size - rect[3],
+                "top": rect[1] - (g.origin[1] - outline.y1 * g.size),
+                "bottom": g.origin[1] - outline.y0 * g.size - rect[3],
                 "left": rect[0] - g.bbox[0],
                 "right": g.bbox[2] - rect[2],
             }
@@ -503,25 +586,51 @@ def _cut_off(form_type, values):
     return cut
 
 
-def test_r38s_cedilla_tolerance_covers_only_its_37_boxes():
-    # The cut-off test lets these boxes' bottoms hang 0.11 pt under the rect. Should a
-    # template or pypdf change make more boxes hang, the allowance must not grow with them.
-    hanging = [
-        (form_type, w.key)
+def test_a_letter_reaches_past_its_box_only_where_r38_allows():
+    # The cut-off test lets a letter past the rect only on the boxes _R38_HAIRLINES lists.
+    # Should a revised template or another PyMuPDF add a box to them or drop one, this
+    # fails until the list changes with it, so no box gains the allowance unseen.
+    reaching = sorted(
+        (form_type, w.key, side)
         for form_type in get_all_form_types()
         for w in template_widgets(_template(form_type))
-        if w.drawn and w.kind == "Text" and _hangs_below(_template(form_type), w)
-    ]
-    assert len(hanging) == 37, hanging
+        if w.drawn and w.kind == "Text"
+        for side in _overshoot(_template(form_type), w)
+    )
+    assert reaching == _R38_HAIRLINES
+
+
+def _past_padding(form_type, widget, just, over):
+    """
+    pypdf clips a single-line box's text 2 × margin in from its left and right edges (R5),
+    and a glyph inside the rect can still cross that clip. So the value that just fits
+    must be no wider than the clip at the size check() plans it at, and one letter more
+    must be wider than the clip even at 6 pt. Returns each that isn't: (key, which value,
+    how far past or short of the clip).
+    """
+    room = widget.width - 4 * widget.margin
+    # Font.text_length, not get_text_length, which under-measures text with Å or Ç in it.
+    # On every value this test measures, its width is text_fit's to within 0.00001 pt.
+    # 0.01 pt: one letter more in Schedule J's Other 15d box is as wide as the clip to
+    # within 0.0001 pt.
+    fits = _HELV.text_length(just, _planned_size(form_type, widget.key, just)) - room
+    refused = _HELV.text_length(over, 6.0) - room
+    past = []
+    if fits > 0.01:
+        past.append((widget.key, "just", round(fits, 3)))
+    if refused <= -0.01:
+        past.append((widget.key, "over", round(refused, 3)))
+    return past
 
 
 @pytest.mark.parametrize("form_type", get_all_form_types())
 def test_no_value_is_ever_cut_off(form_type):
     # The longest value check() lets through prints whole, every character inside its box,
-    # and one letter or line more is refused, never drawn cut off (spec §9). A short value
-    # at the box's own size stays inside too: there R38's 37 boxes hang Ç's cedilla up to
-    # 0.108 pt under the rect, as the template always has. A combo box takes only its own
-    # options, so it has no boundary to probe: it prints its widest whole.
+    # and one letter or line more is refused, never drawn cut off (spec §9). In a
+    # single-line box that isn't comb and has no MaxLen, it must also end inside pypdf's
+    # padding. A short value stays inside too, but for R38's hairline on the boxes
+    # _R38_HAIRLINES lists. A combo box takes only its own options, so it has no boundary
+    # to probe: it prints its widest whole.
     boxes = [w for w in template_widgets(_template(form_type)) if w.drawn and w.kind == "Text"]
     boundaries = {}  # boxes alike in every measure check() takes share a boundary
     just, over, short = {}, {}, {}
@@ -535,6 +644,12 @@ def test_no_value_is_ever_cut_off(form_type):
             short[w.key] = just[w.key]
     assert all(just.values()), [key for key, value in just.items() if not value]
     assert [key for key in over if _fits(form_type, key, over[key])] == []
+    assert [
+        past
+        for w in boxes
+        if not (w.multiline or w.comb) and w.max_len is None
+        for past in _past_padding(form_type, w, just[w.key], over[w.key])
+    ] == []
     assert _cut_off(form_type, just) == []
     assert _cut_off(form_type, short) == []
     # Every form has its district box, which lists every district.
