@@ -208,14 +208,23 @@ def test_a_form_filed_before_3a2_still_downloads(api_client_authed, generated_fo
     assert form.status == "filed"
 
 
+@pytest.mark.parametrize(
+    "form_type,key,label",
+    [
+        ("form_121", "Debtor1.First name", "Debtor 1 first name"),  # fixed on a step
+        ("form_103b", "3 type", "Type of assistance"),  # fixed on a page
+    ],
+)
 def test_a_filed_form_whose_values_cannot_print_is_refused_without_a_step_or_page(
-    api_client_authed, generated_form_factory
+    api_client_authed, generated_form_factory, form_type, key, label
 ):
-    # Only a development or test database can hold one (spec §6). No step changes what was
-    # filed, so the refusal names none (R46).
+    # A form filed before 3a2 was stored without a check, so a self-hoster's database can
+    # hold one (spec §6, §11). No step or page changes what was filed, so the refusal
+    # names neither (R46).
     form = generated_form_factory(status="filed")
+    form.form_type = form_type  # a filed form downloads without the packet check
     form.field_values = json.dumps(
-        {"version": 2, "parts": [{"kind": "form", "values": {"Debtor1.First name": "Wąsowicz"}}]}
+        {"version": 2, "parts": [{"kind": "form", "values": {key: "Wąsowicz"}}]}
     )
     form.save()
 
@@ -223,8 +232,8 @@ def test_a_filed_form_whose_values_cannot_print_is_refused_without_a_step_or_pag
 
     assert response.status_code == 422
     assert response.data == {
-        "form_type": "form_121",
-        "error": "The court form can't print the letter “ą” in “Debtor 1 first name”. "
+        "form_type": form_type,
+        "error": f"The court form can't print the letter “ą” in “{label}”. "
         "Change it to a letter without the mark.",
     }
 
