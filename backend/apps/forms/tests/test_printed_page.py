@@ -609,7 +609,8 @@ def _past_padding(form_type, widget, just, over):
     how far past or short of the clip).
     """
     room = widget.width - 4 * widget.margin
-    # Font.text_length, not get_text_length, which under-measures text with Å or Ç in it.
+    # Font.text_length, not get_text_length, which drops the letter after any of U+00A0 to
+    # U+00FF ("Åg" measures as "Å") and mis-measures letters above U+00FF.
     # On every value this test measures, its width is text_fit's to within 0.00001 pt.
     # 0.01 pt: one letter more in Schedule J's Other 15d box is as wide as the clip to
     # within 0.0001 pt.

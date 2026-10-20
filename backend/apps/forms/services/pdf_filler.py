@@ -5,7 +5,8 @@ Values are a parts document (registry.build_parts) or {key: value} alone (parts_
 A key is a full name from the field index (apps.forms.field_index), or
 "<full name>@<page>:<tag>" for one widget (widgets.parse_key). A full name fills only
 the drawn widgets whose qualified name equals it exactly, never a widget the template
-doesn't print or the second of a stacked pair; a widget's own key fills that widget.
+doesn't print or the second of a stacked pair; a drawn widget's own key fills that
+widget, and a key that names no drawn widget is refused (UnknownField).
 A copy part's keys fill only widgets on its page. pypdf's
 update_page_form_field_values also matches a parent's partial /T, which put
 the filer's name and dates in Debtor 2 boxes (DIG-63), so the filler walks the
