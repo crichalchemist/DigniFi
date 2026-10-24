@@ -21,7 +21,7 @@ from apps.forms.schema import load_schema
 from apps.forms.services.derivations import DERIVATIONS
 from apps.forms.services.fill_resolver import resolve
 from apps.forms.services.pdf_filler import PDFFormFiller
-from apps.forms.tests.pdf_readback import read_widgets
+from apps.forms.tests.pdf_readback import read_drawn
 from apps.intake.models import (
     DebtInfo,
     DebtorInfo,
@@ -91,11 +91,11 @@ def _apply(session, **answers):
 
 
 def _filled(session):
-    """Box → what a viewer sees in it once the form is filled: the ticked states, or the text."""
+    """Box → what the drawn form prints in it: the ticked states, or the text."""
     shows = {}
     for widget in _widgets(session):
         seen = shows.setdefault(widget.full_name, set())
-        if widget.state is not None:
+        if widget.state:
             if widget.state != "/Off":
                 seen.add(widget.state)
         elif widget.value:
@@ -105,7 +105,7 @@ def _filled(session):
 
 def _widgets(session):
     values = resolve(load_schema("form_103b"), session)
-    return read_widgets(PDFFormFiller().fill("form_103b", values))
+    return read_drawn("form_103b", PDFFormFiller().fill("form_103b", values))
 
 
 def test_line_2_prints_take_home_pay_for_you_the_subtotal_and_the_family_total(session):

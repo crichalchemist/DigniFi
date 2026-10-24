@@ -17,6 +17,7 @@ Covers:
 
 import json
 import logging
+import unicodedata
 from datetime import date
 from decimal import Decimal
 from unittest.mock import patch
@@ -31,14 +32,16 @@ from rest_framework.test import APIClient
 from apps.districts.models import District, MedianIncome
 from apps.eligibility.models import MeansTest
 from apps.forms.models import GeneratedForm
+from apps.forms.registry import build_parts, packet
 from apps.forms.services.fill_resolver import UnmappedChoice
 from apps.forms.services.pdf_filler import (
     InvalidFieldValue,
     PDFFormFiller,
-    TemplateHasNoForm,
     UnknownField,
+    UnprintableLetter,
+    ValueTooLong,
 )
-from apps.forms.tests.pdf_readback import read_widgets
+from apps.forms.tests.pdf_readback import read_drawn
 from apps.intake.models import (
     DebtorInfo,
     ExpenseInfo,
@@ -282,9 +285,7 @@ class TestGenerateEndpoint:
         assert not GeneratedForm.objects.filter(session=session).exists()
 
     def test_unexpected_failure_logs_only_its_type(self, api_client, session_with_debtor, caplog):
-        with patch(
-            "apps.forms.views.build_field_values", side_effect=ValueError("900-12-3456 leaked")
-        ):
+        with patch("apps.forms.views.build_parts", side_effect=ValueError("900-12-3456 leaked")):
             resp = api_client.post(
                 self.URL,
                 {"session_id": session_with_debtor.id, "form_type": "form_101"},
@@ -301,18 +302,13 @@ class TestGenerateEndpoint:
         "target,exc,error",
         [
             (
-                "apps.forms.views.build_field_values",
+                "apps.forms.views.build_parts",
                 UnmappedChoice("Check Box1"),
                 "One of your answers doesn't match a choice printed on this form, "
                 "so it can't be filled in yet.",
             ),
-            (
-                "apps.forms.views.PDFFormFiller.fill",
-                TemplateHasNoForm("form_101"),
-                "This form's blank court template can't be filled in right now.",
-            ),
         ],
-        ids=["unmapped_choice", "template_has_no_form"],
+        ids=["unmapped_choice"],
     )
     def test_expected_failure_is_explained_in_plain_words(
         self, api_client, session_with_debtor, target, exc, error
@@ -337,7 +333,7 @@ class TestGenerateEndpoint:
     def test_filler_fault_is_a_500_logged_by_type_only(
         self, api_client, session_with_debtor, caplog, exc
     ):
-        with patch.object(PDFFormFiller, "fill", side_effect=exc):
+        with patch.object(PDFFormFiller, "check", side_effect=exc):
             resp = api_client.post(
                 self.URL,
                 {"session_id": session_with_debtor.id, "form_type": "form_101"},
@@ -351,13 +347,54 @@ class TestGenerateEndpoint:
         assert type(exc).__name__ in caplog.text
         assert "Debtor1.SSNum" not in caplog.text
 
+    # A letter the form can't print, or a value too long for its box, is the filer's to
+    # change: a 422 naming the box and where to change it. It is no fault, so nothing is
+    # logged, and the filer's letter never reaches the logs (DIG-105).
+    @pytest.mark.parametrize(
+        "exc,refusal",
+        [
+            (
+                UnprintableLetter("form_101", "ą", "Last name", {"step": "debtor_info"}),
+                {
+                    "error": "The court form can't print the letter “ą” in “Last name”. "
+                    "Change it to a letter without the mark.",
+                    "step": "debtor_info",
+                },
+            ),
+            (
+                ValueTooLong("form_101", "Type of assistance", {"page": "/fee-waiver"}),
+                {
+                    "error": "“Type of assistance” is too long to fit on the court form, "
+                    "even in small print. Shorten it.",
+                    "page": "/fee-waiver",
+                },
+            ),
+        ],
+        ids=["unprintable_letter", "value_too_long"],
+    )
+    def test_a_refused_letter_or_length_names_where_to_fix_it(
+        self, api_client, session_with_debtor, caplog, exc, refusal
+    ):
+        caplog.set_level(logging.DEBUG)
+        with patch.object(PDFFormFiller, "check", side_effect=exc):
+            resp = api_client.post(
+                self.URL,
+                {"session_id": session_with_debtor.id, "form_type": "form_101"},
+                format="json",
+            )
+        assert resp.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert resp.data == {"form_type": "form_101", **refusal}
+        assert not [r for r in caplog.records if r.name.startswith("apps.")]
+        assert exc.label not in caplog.text
+        assert "ą" not in caplog.text
+
     def test_unexpected_failure_points_the_filer_to_no_step_or_page(
         self, api_client, session_with_debtor
     ):
         # Only a refusal names where the filer fixes it; nothing they enter fixes a fault.
         fault = RuntimeError("page 3 could not be written")
         fault.step, fault.page = "debtor_info", 3
-        with patch.object(PDFFormFiller, "fill", side_effect=fault):
+        with patch.object(PDFFormFiller, "check", side_effect=fault):
             resp = api_client.post(
                 self.URL,
                 {"session_id": session_with_debtor.id, "form_type": "form_101"},
@@ -442,7 +479,8 @@ class TestGenerateAllEndpoint:
         assert json.loads(form.field_values) == {"Debtor 1": "Jane Doe"}
         # The forms not yet filed are resolved from the current answers.
         petition = GeneratedForm.objects.get(session=session_with_debtor, form_type="form_101")
-        assert json.loads(petition.field_values)["Debtor1.First name"] == "Janet"
+        (part,) = json.loads(petition.field_values)["parts"]
+        assert part["values"]["Debtor1.First name"] == "Janet"
 
     def test_missing_session_id(self, api_client):
         resp = api_client.post(self.URL, {}, format="json")
@@ -470,7 +508,8 @@ class TestRegenerateEndpoint:
         assert resp.data["message"] == "Form regenerated successfully"
 
         form.refresh_from_db()
-        assert json.loads(form.field_values)["Debtor 1"] == "Jane Doe"
+        (part,) = json.loads(form.field_values)["parts"]
+        assert part["values"]["Debtor 1"] == "Jane Doe"
 
     def test_filed_form_keeps_what_was_filed(self, api_client, session_with_debtor, user):
         form = _filed_form(session_with_debtor, user, "form_106dec", {"Debtor 1": "Jane Doe"})
@@ -493,6 +532,103 @@ class TestRegenerateEndpoint:
         )
         resp = api_client.post(f"/api/forms/{form.id}/regenerate/")
         assert resp.status_code == status.HTTP_404_NOT_FOUND
+
+
+# ── Generate, Generate All and Regenerate check; only Download draws (spec §7) ──
+
+
+@pytest.mark.django_db
+def test_generate_all_checks_without_drawing(api_client, session_with_debtor):
+    # Drawing takes most of a form's time, so a packet's Generate All only checks what each
+    # form prints, and stays inside its budget (DIG-137). Download draws.
+    session = session_with_debtor
+    with patch.object(PDFFormFiller, "fill") as fill:
+        generate = api_client.post(
+            "/api/forms/generate/",
+            {"session_id": session.id, "form_type": "form_101"},
+            format="json",
+        )
+        generate_all = api_client.post(
+            "/api/forms/generate_all/", {"session_id": session.id}, format="json"
+        )
+        regenerate = api_client.post(f"/api/forms/{generate.data['form']['id']}/regenerate/")
+
+    assert fill.call_count == 0
+    assert [r.status_code for r in (generate, generate_all, regenerate)] == [200, 200, 200]
+    assert generate_all.data["errors"] == []
+    # Each form keeps the parts it was checked with, which its download draws.
+    stored = GeneratedForm.objects.filter(session=session)
+    assert stored.count() == generate_all.data["total_generated"]
+    for form in stored:
+        assert json.loads(form.field_values) == build_parts(form.form_type, session)
+
+
+@pytest.mark.django_db
+def test_each_generate_names_the_step_that_fixes_a_letter_the_form_cannot_print(
+    api_client, session_with_debtor, user, caplog
+):
+    # An invented surname: ą is outside the court form's font, which would print "?".
+    session = session_with_debtor
+    debtor = session.debtor_info
+    debtor.last_name = "Wąsowicz"
+    debtor.save()
+    caplog.set_level(logging.DEBUG)
+
+    generate = api_client.post(
+        "/api/forms/generate/", {"session_id": session.id, "form_type": "form_101"}, format="json"
+    )
+    generate_all = api_client.post(
+        "/api/forms/generate_all/", {"session_id": session.id}, format="json"
+    )
+
+    refusal = {
+        "form_type": "form_101",
+        "error": "The court form can't print the letter “ą” in “Last name”. "
+        "Change it to a letter without the mark.",
+        "step": "debtor_info",
+    }
+    assert generate.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+    assert generate.data == refusal
+    # Every form of the packet prints the surname, so Generate All refuses each the same way.
+    errors = generate_all.data["errors"]
+    assert refusal in errors
+    assert {error["step"] for error in errors} == {"debtor_info"}
+    assert all(
+        error["error"].startswith("The court form can't print the letter “ą” in “")
+        for error in errors
+    )
+    assert sorted(error["form_type"] for error in errors) == sorted(packet(session))
+    assert generate_all.data["generated"] == []
+    assert not GeneratedForm.objects.filter(session=session).exists()
+
+    # Regenerate refuses a form generated before the change the same way, and keeps it.
+    form = GeneratedForm.objects.create(
+        session=session, form_type="form_101", status="generated", generated_by=user
+    )
+    regenerate = api_client.post(f"/api/forms/{form.id}/regenerate/")
+
+    assert regenerate.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+    assert regenerate.data == refusal
+    form.refresh_from_db()
+    assert (form.status, form.field_values) == ("generated", "")
+    assert "ą" not in caplog.text
+
+
+@pytest.mark.django_db
+def test_a_name_saved_with_its_marks_apart_generates_form_101(api_client, session_with_debtor):
+    # The intake keeps a name as typed, so é can arrive as e and U+0301: the form prints é,
+    # never a refusal that quotes a lone accent.
+    debtor = session_with_debtor.debtor_info
+    debtor.first_name = unicodedata.normalize("NFD", "José")
+    debtor.save()
+
+    response = api_client.post(
+        "/api/forms/generate/",
+        {"session_id": session_with_debtor.id, "form_type": "form_101"},
+        format="json",
+    )
+
+    assert response.status_code == status.HTTP_200_OK, response.data
 
 
 # ── Status Transition Endpoints ───────────────────────────────────────
@@ -991,14 +1127,20 @@ def test_filed_form_survives_leaving_the_packet(api_client, session_with_debtor)
     ] == [(form.id, "filed")]
     form.refresh_from_db()
     assert json.loads(form.field_values) == filed_values
-    # It downloads, and prints what was filed, the old name included.
+    # It downloads, and prints what was filed, the old name included, in every widget of
+    # each name.
     assert download.status_code == status.HTTP_200_OK
-    printed = {w.full_name: w.value for w in read_widgets(download.content)}
+    printed = {}
+    for w in read_drawn("form_122a2", download.content):
+        printed.setdefault(w.full_name, set()).add(w.value)
+    (part,) = filed_values["parts"]
     typed = {
-        name: value for name, value in filed_values.items() if value and not value.startswith("/")
+        name: value for name, value in part["values"].items() if value and not value.startswith("/")
     }
     assert "Jane Doe" in typed.values()
-    assert {name: printed.get(name) for name in typed} == typed
+    assert {name: printed.get(name) for name in typed} == {
+        name: {value} for name, value in typed.items()
+    }
 
 
 # ── The snapshot stays on the server (DIG-124) ────────────────────────

@@ -1,9 +1,10 @@
 """
 API views for bankruptcy form generation.
 
-One path fills every form: registry.build_field_values() resolves a session's
-values, PDFFormFiller fills the template, and the values are kept as an
-encrypted snapshot (GeneratedForm.field_values) that the API never returns.
+One path fills every form: registry.build_parts() resolves a session's values,
+PDFFormFiller checks that the template can print them, and they are kept as an
+encrypted parts document (GeneratedForm.field_values) that the API never returns.
+Generate, Generate All and Regenerate only check; Download draws (3a2 spec §7).
 """
 
 import json
@@ -12,6 +13,7 @@ import logging
 import django_filters
 from django.db import transaction
 from django.http import HttpResponse
+from django.utils import timezone
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import NotFound
@@ -29,14 +31,19 @@ from .models import GeneratedForm
 from .registry import (
     FORM_REGISTRY,
     PreconditionMissing,
-    build_field_values,
+    build_parts,
     get_all_form_types,
     packet,
 )
 from .schema import load_schema
 from .serializers import GeneratedFormSerializer
-from .services.fill_resolver import RepeatOverflow, UnmappedChoice
-from .services.pdf_filler import PDFFormFiller, TemplateHasNoForm
+from .services.fill_resolver import UnmappedChoice
+from .services.pdf_filler import (
+    PDFFormFiller,
+    TemplateHasNoForm,
+    UnprintableLetter,
+    ValueTooLong,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -58,17 +65,14 @@ class IntakeNotFinished(Exception):
 # Failures a filer can act on: 422 in plain words (spec §5.7). Anything else is a 500.
 # PreconditionMissing, IncomeNotSplit and NoTableInForce carry their own plain reasons
 # (registry.py, eligibility/cmi.py, districts/dated_tables.py, which logs its own
-# refusal). Every other class gets a fixed sentence, because their messages
-# name form keys, repeat groups and PDF widgets. None names the form: the dashboard shows
+# refusal), and so do UnprintableLetter and ValueTooLong (pdf_filler.py), which name the
+# letter and the box. Every other class gets a fixed sentence, because their messages
+# name form keys and PDF widgets. None names the form: the dashboard shows
 # its label beside the error.
 _FAILURE_SENTENCES = {
     IntakeNotFinished: "Finish your intake before preparing your forms.",
     NotInPacket: "This form isn't part of your packet, based on the answers you've given.",
     FormIsFiled: "This form is marked as filed, so it keeps the answers it was filed with.",
-    RepeatOverflow: (
-        "You have more entries than this form has room for. The extra entries need a "
-        "continuation page, which this app can't make yet."
-    ),
     UnmappedChoice: (
         "One of your answers doesn't match a choice printed on this form, "
         "so it can't be filled in yet."
@@ -84,7 +88,10 @@ def _failure(form_type: str | None, exc: Exception) -> tuple[dict, int]:
     All, the packet list): the body then names no form. A refusal the filer fixes on a
     wizard step or a page also carries that `step` or `page` (forms step 3a1 spec §4.3).
     """
-    if isinstance(exc, PreconditionMissing | IncomeNotSplit | NoTableInForce):
+    if isinstance(
+        exc,
+        PreconditionMissing | IncomeNotSplit | NoTableInForce | UnprintableLetter | ValueTooLong,
+    ):
         error = str(exc)
     else:
         error = _FAILURE_SENTENCES.get(type(exc))
@@ -179,31 +186,31 @@ def _prepare(session: IntakeSession) -> None:
     _recalculate_means_test(session)
 
 
-def _fill(form_type: str, session: IntakeSession) -> tuple[dict[str, str], bytes]:
-    """Resolve a form that applies to this filer and fill its template. _prepare() runs first."""
+def _resolve(form_type: str, session: IntakeSession) -> dict:
+    """The parts a form that applies to this filer prints. _prepare() runs first."""
     if not FORM_REGISTRY[form_type].applies(session):
         raise NotInPacket()
-    values = build_field_values(form_type, session)
-    return values, PDFFormFiller().fill(form_type, values)
+    return build_parts(form_type, session)
 
 
-def _store(generated_form: GeneratedForm, values: dict[str, str]) -> None:
-    generated_form.field_values = json.dumps(values)
+def _store(generated_form: GeneratedForm, document: dict) -> None:
+    generated_form.field_values = json.dumps(document)
     generated_form.template_version = load_schema(generated_form.form_type).template_version
 
 
 def _generate_and_persist(session: IntakeSession, form_type: str, user) -> GeneratedForm:
-    """Fill the form (which proves it fills) and keep its values as the snapshot.
+    """Check that the form prints its values, without drawing it, and keep them (3a2 spec §7).
 
     _prepare() runs first.
     """
     if GeneratedForm.objects.filter(session=session, form_type=form_type, status="filed").exists():
         raise FormIsFiled()
-    values, _ = _fill(form_type, session)
+    document = _resolve(form_type, session)
+    PDFFormFiller().check(form_type, document)
     generated_form, _ = GeneratedForm.objects.get_or_create(
         session=session, form_type=form_type, defaults={"generated_by": user}
     )
-    _store(generated_form, values)
+    _store(generated_form, document)
     generated_form.status = "generated"
     generated_form.generated_by = user
     generated_form.save()
@@ -233,7 +240,7 @@ class GeneratedFormViewSet(viewsets.ReadOnlyModelViewSet):
       POST /api/forms/generate/              Generate a single form
       POST /api/forms/generate_all/          Generate every form in the packet
       POST /api/forms/{id}/regenerate/       Regenerate an existing form
-      GET  /api/forms/{id}/download/         Fill and stream the PDF
+      GET  /api/forms/{id}/download/         Draw and stream the PDF
       POST /api/forms/{id}/mark_downloaded/
       POST /api/forms/{id}/mark_filed/
     """
@@ -430,7 +437,7 @@ class GeneratedFormViewSet(viewsets.ReadOnlyModelViewSet):
         generated_form = self.get_object()
 
         generated_form.status = "filed"
-        generated_form.save()
+        generated_form.save(update_fields=["status", "updated_at"])
 
         return Response(
             {
@@ -443,31 +450,48 @@ class GeneratedFormViewSet(viewsets.ReadOnlyModelViewSet):
     @action(detail=True, methods=["get"])
     def download(self, request, pk=None):
         """
-        Fill the official AO template and stream it.
+        Draw the official AO template and stream it.
 
-        A form not yet filed is resolved fresh, so the filer always downloads
-        their current answers, and its snapshot is refreshed. A filed form
-        fills from its snapshot, so it matches what was filed, even after it
-        has left the packet (DIG-155).
+        A form not yet filed is resolved, checked and drawn fresh, so the filer always
+        downloads their current answers, and its parts are stored again if its status is
+        still the one read before drawing: a form marked filed meanwhile keeps the values
+        it was filed with. A filed form draws its stored parts, or its values stored before
+        3a2, so it matches what was filed, even after it has left the packet (DIG-155). A
+        filed form with no stored values is drawn as one not yet filed, through the completion
+        and packet checks, from the current intake, and the parts it draws are kept as its
+        filed ones if it is still filed when the draw ends.
         """
         generated_form = self.get_object()
         form_type = generated_form.form_type
         session = generated_form.session
+        filed = generated_form.status == "filed" and bool(generated_form.field_values)
 
         try:
-            if generated_form.status == "filed" and generated_form.field_values:
+            if filed:
                 pdf_bytes = PDFFormFiller().fill(form_type, json.loads(generated_form.field_values))
             else:
                 _prepare(session)
-                values, pdf_bytes = _fill(form_type, session)
-                _store(generated_form, values)
+                document = _resolve(form_type, session)
+                pdf_bytes = PDFFormFiller().fill(form_type, document)
+                _store(generated_form, document)
         except Exception as exc:
             body, code = _failure(form_type, exc)
+            if filed:
+                # No step or page changes the values a form was filed with (R46).
+                body.pop("step", None)
+                body.pop("page", None)
             return Response(body, status=code)
 
-        if generated_form.status == "generated":
-            generated_form.status = "downloaded"
-        generated_form.save()
+        if not filed:
+            # Only over the status read before drawing: a form marked filed meanwhile keeps
+            # the values it was filed with (DIG-155).
+            status_read = generated_form.status
+            GeneratedForm.objects.filter(pk=generated_form.pk, status=status_read).update(
+                field_values=generated_form.field_values,
+                template_version=generated_form.template_version,
+                status="downloaded" if status_read == "generated" else status_read,
+                updated_at=timezone.now(),
+            )
 
         response = HttpResponse(pdf_bytes, content_type="application/pdf")
         response["Content-Disposition"] = f'attachment; filename="{form_type}.pdf"'

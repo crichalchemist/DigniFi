@@ -16,7 +16,7 @@ from apps.districts.models import District
 from apps.forms.schema import load_schema
 from apps.forms.services.fill_resolver import resolve
 from apps.forms.services.pdf_filler import PDFFormFiller
-from apps.forms.tests.pdf_readback import read_widgets
+from apps.forms.tests.pdf_readback import read_drawn
 from apps.intake.models import AssetInfo, IncomeInfo, IntakeSession
 
 User = get_user_model()
@@ -101,12 +101,12 @@ def _asset(session, asset_type, value, description="Item"):
 
 
 def _filled(session):
-    """Box → what a viewer sees in it once the form is filled: the ticked states, or the text."""
+    """Box → what the drawn form prints in it: the ticked states, or the text."""
     values = resolve(load_schema("schedule_a_b"), session)
     shows = {}
-    for widget in read_widgets(PDFFormFiller().fill("schedule_a_b", values)):
+    for widget in read_drawn("schedule_a_b", PDFFormFiller().fill("schedule_a_b", values)):
         seen = shows.setdefault(widget.full_name, set())
-        if widget.state is not None:
+        if widget.state:
             if widget.state != "/Off":
                 seen.add(widget.state)
         elif widget.value:

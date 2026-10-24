@@ -7,7 +7,7 @@
 
 import { useState, useEffect, useMemo, useRef, useLayoutEffect } from 'react';
 import { useAutoSave } from '../hooks/useAutoSave';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useIntake } from '../context/IntakeContext';
 import { api, APIClientError } from '../api/client';
 import { trackEvent } from '../utils/analytics';
@@ -38,21 +38,11 @@ import type {
   WizardRow,
 } from '../types/api';
 import { EXPENSE_FIELDS, INCOME_FIELDS } from '../types/api';
+import { WIZARD_STEPS } from '../constants/wizardSteps';
 
 // ============================================================================
 // Wizard Configuration
 // ============================================================================
-
-const WIZARD_STEPS = [
-  { number: 1, label: 'Your Information', key: 'debtor_info' },
-  { number: 2, label: 'Income', key: 'income_info' },
-  { number: 3, label: 'Expenses', key: 'expense_info' },
-  { number: 4, label: 'Assets', key: 'assets' },
-  { number: 5, label: 'Amounts Owed', key: 'debts' },
-  { number: 6, label: 'Contracts & Leases', key: 'contracts' },
-  { number: 7, label: 'Codebtors', key: 'codebtors' },
-  { number: 8, label: 'Review & Results', key: 'review' },
-];
 
 // DRF sends these decimals as strings ("2500.00"). The steps add and compare them,
 // so they become numbers as session data enters wizard state.
@@ -95,6 +85,7 @@ function withSavedIds<Row extends { _key: string; id?: number }>(
 
 export function IntakeWizard() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const {
     session,
     createSession,
@@ -141,6 +132,12 @@ export function IntakeWizard() {
     const savedSessionId = localStorage.getItem('current_session_id');
     return session?.id ?? (savedSessionId ? parseInt(savedSessionId, 10) : null);
   });
+  // Fixed at mount too: the step a link names (`?step=<key>`, from a refusal on the forms
+  // dashboard), opened instead of the saved step once the read returns, and then dropped from the
+  // address. Opening it sends no update_step, so the saved step stays where Continue last put it.
+  const [linkedStep] = useState(
+    () => WIZARD_STEPS.find((step) => step.key === searchParams.get('step'))?.number
+  );
   const [sessionRead, setSessionRead] = useState<'pending' | 'failed' | 'done'>('pending');
   const [readAttempt, setReadAttempt] = useState(0);
 
@@ -183,7 +180,20 @@ export function IntakeWizard() {
     openSession()
       .then(({ fresh, contracts, codebtors }) => {
         if (cancelled) return;
-        setCurrentStepNumber(fresh.current_step);
+        setCurrentStepNumber(linkedStep ?? fresh.current_step);
+        // The link has done its work. Dropped from the address in place, with no new history
+        // entry, so a refresh, or Back to the wizard from a later page, opens the saved step,
+        // not the linked one again.
+        if (linkedStep !== undefined) {
+          setSearchParams(
+            (params) => {
+              const next = new URLSearchParams(params);
+              next.delete('step');
+              return next;
+            },
+            { replace: true }
+          );
+        }
         if (fresh.debtor_info) setDebtorData(fresh.debtor_info);
         if (fresh.income_info) setIncomeData(hydrateAmounts(fresh.income_info, INCOME_FIELDS));
         if (fresh.expense_info) setExpenseData(hydrateAmounts(fresh.expense_info, EXPENSE_FIELDS));

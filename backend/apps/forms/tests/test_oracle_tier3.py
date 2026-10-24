@@ -18,9 +18,11 @@ from django.core.management import call_command
 
 from apps.districts.models import District
 from apps.forms.registry import build_field_values
+from apps.forms.schema import load_schema
 from apps.forms.services.pdf_filler import PDFFormFiller
+from apps.forms.services.widgets import template_widgets
 from apps.forms.tests.oracle import case_param
-from apps.forms.tests.pdf_readback import read_widgets
+from apps.forms.tests.pdf_readback import read_drawn
 from apps.intake.models import IntakeSession
 
 TIER = "3"
@@ -268,12 +270,13 @@ CASES = list(_cases())
 @cache
 def _printed(persona):
     """
-    (form_type, full name) → what the persona's filled forms show there.
+    (form_type, full name) → what the persona's drawn forms print there.
 
-    A box shows its tick, the /AS of each widget that isn't /Off, and never its /V
-    (spec §6). A text box has no /AS, and shows its /V unless that is empty. Every
-    box in the filled forms has an entry, so an expected blank can't pass on a
-    name that is no box.
+    A box shows its tick: the state of each of its widgets with the check mark printed
+    inside (spec §6, 3a2 spec §8). A text box shows the text printed in each of its
+    drawn widgets, "" for one that prints nothing, so every widget of the name must
+    print the expected text. Every box of the template has an entry, so an expected
+    blank can't pass on a name that is no box.
     """
     if not District.objects.filter(code="ilnd").exists():
         call_command("loaddata", "ilnd_2025_data", verbosity=0)
@@ -282,16 +285,16 @@ def _printed(persona):
     printed = {}
     for form_type in EXPECTED[persona]:
         values = build_field_values(form_type, session)
-        for w in read_widgets(PDFFormFiller().fill(form_type, values)):
-            shows = printed.setdefault((form_type, w.full_name), set())
-            if w.state is None:
-                shown = w.value
-            elif w.state != "/Off":
-                shown = w.state
-            else:
+        template = load_schema(form_type).template_filename
+        drawn = {(w.page, w.tag) for w in template_widgets(template) if w.drawn}
+        for w in read_drawn(form_type, PDFFormFiller().fill(form_type, values)):
+            if (w.page, w.tag) not in drawn:
                 continue
-            if shown:
-                shows.add(shown)
+            shows = printed.setdefault((form_type, w.full_name), set())
+            if not w.state:
+                shows.add(w.value)
+            elif w.state != "/Off":
+                shows.add(w.state)
     return printed
 
 
@@ -307,14 +310,14 @@ def _amount(text):
 def test_persona_packet_prints_the_right_figure(form_type, pdf_field, case, expected):
     printed = _printed(case)
     shown = printed.get((form_type, pdf_field), set())
-    if expected == "":  # the box shows nothing
+    if expected == "":  # the box shows nothing, in any of its widgets
         assert (form_type, pdf_field) in printed, f"no box named {pdf_field!r} on {form_type}"
-        assert shown == set(), f"wrong_value: prints {sorted(shown)}, expected blank"
+        assert shown <= {""}, f"wrong_value: prints {sorted(shown - {''})}, expected blank"
     elif expected.startswith("/"):  # a box: this tick and no other
         assert shown == {expected}, f"wrong_value: ticks {sorted(shown)}, expected {expected}"
-    elif _amount(expected) is not None:
+    elif _amount(expected) is not None:  # every widget prints it; a blank one is no amount
         assert {_amount(s) for s in shown} == {
             _amount(expected)
         }, f"wrong_value: prints {sorted(shown)}, expected {expected}"
-    else:
-        assert expected in shown, f"wrong_value: prints {sorted(shown)}, expected {expected}"
+    else:  # every widget prints it
+        assert shown == {expected}, f"wrong_value: prints {sorted(shown)}, expected {expected}"

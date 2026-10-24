@@ -669,6 +669,108 @@ DERIVATIONS: dict[str, Callable[[IntakeSession], str]] = {
 
 
 # ---------------------------------------------------------------------------
+# RULE_FIXES — where the filer changes what a rule prints (3a2 spec §4.5)
+# ---------------------------------------------------------------------------
+
+# Every rule bound to a text or choice box, with where a refusal of its value (a letter
+# the form can't print, a value too long for its box) sends the filer: the wizard step
+# ({"step": <a WIZARD_STEPS key>}) or page ({"page": <path>}) that holds the rule's input.
+# {} links nowhere: no filer edits the input. test_rule_fixes.py fails on a bound rule
+# missing here.
+RULE_FIXES: dict[str, dict[str, str]] = {
+    # Your Information
+    "full_name": {"step": "debtor_info"},
+    "first_name": {"step": "debtor_info"},
+    "middle_name": {"step": "debtor_info"},
+    "last_name": {"step": "debtor_info"},
+    "street_address": {"step": "debtor_info"},
+    "city": {"step": "debtor_info"},
+    "state": {"step": "debtor_info"},
+    "zip_code": {"step": "debtor_info"},
+    "phone": {"step": "debtor_info"},
+    "email": {"step": "debtor_info"},
+    "ssn_last_4": {"step": "debtor_info"},
+    "ssn_formatted": {"step": "debtor_info"},
+    "family_size": {"step": "debtor_info"},
+    # Income
+    "cmi": {"step": "income_info"},
+    "line12b_annualized_cmi": {"step": "income_info"},
+    "line1_wages": {"step": "income_info"},
+    "line3_alimony": {"step": "income_info"},
+    "line3_real_property_income": {"step": "income_info"},
+    "line5a_pension_retirement": {"step": "income_info"},
+    "line6a_unemployment": {"step": "income_info"},
+    "line6b_child_support_alimony": {"step": "income_info"},
+    "line7_other_income": {"step": "income_info"},
+    "other_income_label": {"step": "income_info"},
+    "schedule_i_net_wages_debtor1": {"step": "income_info"},
+    "schedule_i_overtime_debtor1": {"step": "income_info"},
+    "schedule_i_gross_income_debtor1": {"step": "income_info"},
+    "schedule_i_unemployment_debtor1": {"step": "income_info"},
+    "schedule_i_social_security_debtor1": {"step": "income_info"},
+    "schedule_i_pension_debtor1": {"step": "income_info"},
+    "schedule_i_child_support_debtor1": {"step": "income_info"},
+    "schedule_i_rental_debtor1": {"step": "income_info"},
+    "schedule_i_other_income_debtor1": {"step": "income_info"},
+    "schedule_i_other_income_total_debtor1": {"step": "income_info"},
+    "schedule_i_income_total": {"step": "income_info"},
+    "schedule_j_total_income": {"step": "income_info"},
+    # Income less expenses: the earlier of its two steps
+    "schedule_j_monthly_net_income": {"step": "income_info"},
+    # Expenses
+    "schedule_j_rent_or_mortgage": {"step": "expense_info"},
+    "schedule_j_utilities": {"step": "expense_info"},
+    "schedule_j_utilities_label": {"step": "expense_info"},
+    "schedule_j_home_maintenance": {"step": "expense_info"},
+    "schedule_j_food_and_groceries": {"step": "expense_info"},
+    "schedule_j_childcare": {"step": "expense_info"},
+    "schedule_j_clothing": {"step": "expense_info"},
+    "schedule_j_medical_expenses": {"step": "expense_info"},
+    "schedule_j_vehicle_maintenance": {"step": "expense_info"},
+    "schedule_j_vehicle_payment": {"step": "expense_info"},
+    "schedule_j_vehicle_insurance": {"step": "expense_info"},
+    "schedule_j_insurance_not_deducted": {"step": "expense_info"},
+    "schedule_j_insurance_label": {"step": "expense_info"},
+    "schedule_j_support_paid": {"step": "expense_info"},
+    "schedule_j_other_expenses": {"step": "expense_info"},
+    "schedule_j_total_expenses": {"step": "expense_info"},
+    "total_monthly_expenses": {"step": "expense_info"},
+    # 103B line 6 is Schedule J line 22c, from the Expenses step
+    "fee_waiver_monthly_expenses": {"step": "expense_info"},
+    # Assets
+    "total_real_property": {"step": "assets"},
+    "total_personal_property": {"step": "assets"},
+    "total_assets": {"step": "assets"},
+    "total_other_assets": {"step": "assets"},
+    "total_vehicles": {"step": "assets"},
+    "total_household_items": {"step": "assets"},
+    "total_financial_assets": {"step": "assets"},
+    "other_asset_descriptions": {"step": "assets"},
+    # Amounts Owed
+    "total_secured_debts": {"step": "debts"},
+    "total_secured_claims": {"step": "debts"},
+    "total_debts": {"step": "debts"},
+    "total_nonpriority_unsecured": {"step": "debts"},
+    "total_student_loans": {"step": "debts"},
+    "total_other_nonpriority": {"step": "debts"},
+    # The fee-waiver application
+    "fee_waiver_household_size": {"page": "/fee-waiver"},
+    "fee_waiver_monthly_income": {"page": "/fee-waiver"},
+    "fee_waiver_benefit_types": {"page": "/fee-waiver"},
+    # No link. The district and its median income table come from DigniFi's own data.
+    # The Schedule I occupation and employer address read fields no model has, so they
+    # always print blank.
+    "district_name": {},
+    "line13a_median_income": {},
+    "schedule_i_occupation_debtor1": {},
+    "schedule_i_employer_street_debtor1": {},
+    "schedule_i_employer_city_debtor1": {},
+    "schedule_i_employer_state_debtor1": {},
+    "schedule_i_employer_zip_debtor1": {},
+}
+
+
+# ---------------------------------------------------------------------------
 # PREDICATES — section-applicability checks
 # ---------------------------------------------------------------------------
 

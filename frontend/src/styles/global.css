@@ -1538,6 +1538,12 @@ a {
   flex-wrap: wrap;
 }
 
+/* The live region for a refused Generate or Download is on the card from the start. Empty, it
+   gives back the gap before it, so the card looks as it did. */
+.form-card-refusal:empty {
+  margin-top: calc(-1 * var(--space-3));
+}
+
 .form-card-filed-check {
   color: var(--color-sage);
   font-weight: 600;

@@ -6,17 +6,24 @@
  */
 
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '../common';
 import { FormStatusBadge } from './FormStatusBadge';
 import type { GeneratedForm, FormType } from '../../types/api';
 import { FORM_TYPE_METADATA } from '../../types/api';
+
+/** Why this form's last Generate or Download was refused, and the link to its fix, if any */
+export interface FormRefusal {
+  message: string;
+  link?: { to: string; label: string };
+}
 
 interface FormCardProps {
   formType: FormType;
   generatedForm?: GeneratedForm;
   /** A filed form whose type is no longer in the filer's packet */
   leftPacket?: boolean;
+  refusal?: FormRefusal;
   onGenerate: (formType: FormType) => Promise<void>;
   onDownload: (formId: number) => Promise<void>;
   onMarkFiled: (formId: number) => Promise<void>;
@@ -26,6 +33,7 @@ export function FormCard({
   formType,
   generatedForm,
   leftPacket = false,
+  refusal,
   onGenerate,
   onDownload,
   onMarkFiled,
@@ -117,6 +125,21 @@ export function FormCard({
             </svg>
             Filed
           </span>
+        )}
+      </div>
+
+      {/* A polite live region from the start, so a screen reader reads out a refusal that
+          Generate or Download adds to it (step 3a2 spec §4.5) */}
+      <div className="form-card-refusal" aria-live="polite">
+        {refusal && (
+          <>
+            <p>{refusal.message}</p>
+            {refusal.link && (
+              <Link to={refusal.link.to} className="button button--primary">
+                {refusal.link.label}
+              </Link>
+            )}
+          </>
         )}
       </div>
     </article>
