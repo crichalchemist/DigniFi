@@ -13,11 +13,14 @@ jobs:
   claude-review:
     if: github.event.pull_request.draft == false
     runs-on: ubuntu-latest
+    # The review uses this job's own token, not the Claude app's, so its comments come from
+    # github-actions[bot]. Anthropic's token exchange won't issue the app's token while this
+    # file differs from main's copy, and the action then skips, so a change here would skip
+    # the review of every PR into develop until develop reached main.
     permissions:
       contents: read
-      pull-requests: read
+      pull-requests: write
       issues: read
-      id-token: write
 
     steps:
       - name: Checkout repository
@@ -38,6 +41,7 @@ jobs:
         uses: anthropics/claude-code-action@756cc22e19660d20e8cc9496b4f242475a7f7790 # v1.0.235
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          github_token: ${{ github.token }}
           prompt: |
             REPO: ${{ github.repository }}
             PR NUMBER: ${{ github.event.pull_request.number }}
@@ -50,7 +54,8 @@ jobs:
             - `git diff --stat HEAD^1 HEAD` lists every changed file.
             - `git diff HEAD^1 HEAD -- <path>` shows one file's change.
             Don't review from a single `gh pr diff`: on a large PR its output gets cut off and
-            most of the change goes unread. Skip only lockfiles and binary files, and say so.
+            most of the change goes unread. Skip only lockfiles, binary files and the
+            implementation plans under `docs/superpowers/plans/`, and say so.
 
             Look for:
             1. Bugs: wrong logic, missed edge cases, frontend and backend field names or enum
@@ -90,8 +95,11 @@ jobs:
 
       - name: Show the review's turns, cost and refused calls
         # The execution file holds every message the model wrote, so print only the turn count,
-        # the cost and each call the allowed tools refused, its input cut to 200 characters.
+        # the cost, the final message's length and whether it starts with the summary's heading
+        # (a run that posts nothing may have written its summary there instead), and each call
+        # the allowed tools refused, its input cut to 200 characters.
         # Each refused call's line starts with "- ", so no input can pass as a workflow command.
+        # The summary run below writes its execution file to the same path, so this runs first.
         if: ${{ !cancelled() }}
         env:
           EXECUTION_FILE: ${{ steps.claude-review.outputs.execution_file }}
@@ -106,15 +114,18 @@ jobs:
               else
                 "Turns: \(.num_turns)",
                 "Cost (USD): \(.total_cost_usd)",
+                (if (.result | type) == "string"
+                 then "Final message: \(.result | length) characters, starts with \"## Claude review\": \(.result | startswith("## Claude review"))"
+                 else "Final message: none" end),
                 "Refused calls: \((.permission_denials // []) | length)",
                 ((.permission_denials // [])[] | "- \(.tool_name): \(.tool_input | tojson | .[0:200])")
               end
           ' "$EXECUTION_FILE"
 
-      - name: Check the review posted its summary
-        # A green run once posted nothing at all (DIG-144). Fail unless a comment under
-        # "## Claude review" was posted, or an earlier one edited, since the review started.
-        # updated_at equals created_at on a new comment and moves on an edit, so it covers both.
+      - name: Look for the review's summary
+        # Same search as the last step: a "## Claude review" comment by github-actions[bot]
+        # posted, or an earlier one edited, since the review started.
+        id: summary
         if: ${{ !cancelled() }}
         env:
           GH_TOKEN: ${{ github.token }}
@@ -122,7 +133,61 @@ jobs:
         run: |
           : "${REVIEW_STARTED_AT:?the start time was never recorded}"
           posted=$(gh api --paginate "repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/comments" \
-            --jq '.[] | select((.body | startswith("## Claude review")) and .updated_at >= env.REVIEW_STARTED_AT) | .id')
+            --jq '.[] | select((.body | startswith("## Claude review")) and .user.login == "github-actions[bot]" and .updated_at >= env.REVIEW_STARTED_AT) | .id')
+          if [ -n "$posted" ]; then
+            echo "posted=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "posted=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Resume the review to post its summary
+        # The review has more than once ended "success" without posting anything (DIG-144).
+        # Resume its session, so the model keeps the context it ended the review with, and ask
+        # for the summary alone. A resumed run counts only its own turns against --max-turns.
+        # The action sets session_id only when the review's Claude run ended in success, so a
+        # review whose Claude run failed is not resumed.
+        id: claude-summary
+        if: ${{ !cancelled() && steps.summary.outputs.posted == 'false' && steps.claude-review.outputs.session_id != '' }}
+        # The last step, not this one, fails the job: a run that posts and then fails (on its
+        # turn limit, say) still rescued the review. Its outcome stays "failure", not "skipped",
+        # so the last step still warns.
+        continue-on-error: true
+        uses: anthropics/claude-code-action@756cc22e19660d20e8cc9496b4f242475a7f7790 # v1.0.235
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          github_token: ${{ github.token }}
+          # The review's run has already been through the step that posts its buffered inline
+          # comments, and that step leaves the buffer file in place, so this run must not post
+          # them again.
+          classify_inline_comments: "false"
+          prompt: |
+            Your review ended without a `## Claude review` summary on the PR.
+            Post the summary now, and don't read anything else first. Its first line must be
+            exactly `## Claude review`. List the findings you reached, blocking ones first,
+            end with "Reviewed N of M changed files", and name every changed file you didn't
+            read. Write it to review-summary.md with the Write tool, then run
+            `gh pr comment ${{ github.event.pull_request.number }} --body-file review-summary.md`
+            on its own.
+          claude_args: '--resume ${{ steps.claude-review.outputs.session_id }} --max-turns 8 --allowed-tools "Read,Edit(./review-summary.md),Bash(gh pr comment:*)"'
+
+      - name: Check the review posted its summary
+        # A green run once posted nothing at all (DIG-144). Fail unless a comment by
+        # github-actions[bot] under "## Claude review" was posted, or an earlier one edited, since
+        # the review started. Anyone can comment on a public PR, so the comment must come from
+        # github-actions[bot], the login the review posts as.
+        # updated_at equals created_at on a new comment and moves on an edit, so it covers both.
+        if: ${{ !cancelled() }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          SUMMARY_RUN: ${{ steps.claude-summary.outcome }}
+        run: |
+          : "${REVIEW_STARTED_AT:?the start time was never recorded}"
+          if [ "$SUMMARY_RUN" != "skipped" ]; then
+            echo "::warning::No summary was found after the review, so a second run was started to resume it and post one (DIG-144)."
+          fi
+          posted=$(gh api --paginate "repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/comments" \
+            --jq '.[] | select((.body | startswith("## Claude review")) and .user.login == "github-actions[bot]" and .updated_at >= env.REVIEW_STARTED_AT) | .id')
           if [ -z "$posted" ]; then
             echo "::error::The review posted no \"## Claude review\" summary on this PR."
             exit 1
