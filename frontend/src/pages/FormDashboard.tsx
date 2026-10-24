@@ -12,9 +12,11 @@ import { useIntake } from '../context/IntakeContext';
 import { api, APIClientError } from '../api/client';
 import { FormCard, GenerateAllButton, DebtExplanationsPanel } from '../components/forms';
 import type { DebtClassification } from '../components/forms/DebtExplanationsPanel';
+import type { FormRefusal } from '../components/forms/FormCard';
 import { UPLDisclaimer } from '../components/compliance';
 import { UPL_FORM_DISCLAIMER } from '../constants/upl';
 import { DASHBOARD_ERROR, ERROR_GENERIC } from '../constants/copy';
+import { WIZARD_STEPS } from '../constants/wizardSteps';
 import { Button } from '../components/common';
 import { PostTaskSurvey } from '../components/survey/PostTaskSurvey';
 import type {
@@ -28,27 +30,73 @@ import { trackEvent } from '../utils/analytics';
 
 type GenerateAllError = GenerateAllFormsResponse['errors'][number];
 
+/** What a refusal names as its fix: a wizard step (a `WIZARD_STEPS` key) or a page */
+type Fix = { step?: string; page?: string };
+
+/** A refusal in the filer's words, with what fixes it */
+type Refusal = { message: string } & Fix;
+
 /**
- * What the filer reads when Generate All or the packet list is refused as a whole
- * (forms step 2 §5.6): a 422 says in plain words what to fix; anything else gets the
- * generic words, since a 500's text is for operations.
+ * What the filer reads when a call is refused (forms step 2 §5.6), and what fixes it (step 3a2
+ * spec §4.5): a 422 says in plain words what to fix, with the step or page that fixes it;
+ * anything else gets the generic words, since a 500's text is for operations.
  */
-function wholeCallRefusal(err: unknown, generic: string): string {
-  return err instanceof APIClientError && err.statusCode === 422 ? err.message : generic;
+function refusalOf(err: unknown, generic: string): Refusal {
+  return err instanceof APIClientError && err.statusCode === 422
+    ? { message: err.message, step: err.step, page: err.page }
+    : { message: generic };
 }
 
-/** The words of the link to each page a refusal can name as its fix (step 3a1 spec §4.3) */
-const PAGE_LINK_LABELS: Record<string, string> = { '/intake': 'Finish your intake' };
+/**
+ * The words of the link to each page a refusal can name as its fix (step 3a1 spec §4.3): the
+ * intake's own words, and "Go to" with each other page's heading (step 3a2 spec §4.5, ruling R22)
+ */
+const PAGE_LINK_LABELS: Record<string, string> = {
+  '/intake': 'Finish your intake',
+  '/fee-waiver': 'Go to Filing Fee Waiver Application',
+  '/sofa': 'Go to Statement of Financial Affairs',
+  '/documents': 'Go to Upload your documents',
+};
 
 /**
- * A failed packet list in the filer's words, and whether its refusal names a fix: a wizard step
- * or a page (step 3a1 spec §4.3). No step fixes one that names neither, such as no median table
- * in force on the fill date.
+ * The link to what fixes a refusal (step 3a2 spec §4.5): a wizard step opens the intake at that
+ * step, `/ask/<form type>` takes its form's label, and any other page its words above. None when
+ * the refusal names no fix, or one this page has no words for. Only the maps' own keys count, so a
+ * name such as "constructor" is no form and no page.
  */
-function loadFailure(err: unknown): { message: string; namesFix: boolean } {
-  return {
-    message: wholeCallRefusal(err, DASHBOARD_ERROR),
-    namesFix: err instanceof APIClientError && err.statusCode === 422 && !!(err.step || err.page),
+function fixLink({ step, page }: Fix): FormRefusal['link'] {
+  const wizardStep = WIZARD_STEPS.find((s) => s.key === step);
+  if (wizardStep) {
+    return { to: `/intake?step=${wizardStep.key}`, label: `Go to ${wizardStep.label}` };
+  }
+  if (!page) return undefined;
+  if (page.startsWith('/ask/')) {
+    const formType = page.slice('/ask/'.length);
+    return Object.hasOwn(FORM_TYPE_METADATA, formType)
+      ? {
+          to: page,
+          label: `Answer the questions for ${FORM_TYPE_METADATA[formType as FormType].label}`,
+        }
+      : undefined;
+  }
+  return Object.hasOwn(PAGE_LINK_LABELS, page)
+    ? { to: page, label: PAGE_LINK_LABELS[page] }
+    : undefined;
+}
+
+/**
+ * Hands out the link to each refusal's fix, called in the order the page shows them. "Finish your
+ * intake" goes only to the first block that offers it (ruling R4-a), so `intakeLinked` says
+ * whether a block above the refusals already does.
+ */
+function linksInPageOrder(intakeLinked: boolean) {
+  let linked = intakeLinked;
+  return (fix: Fix): FormRefusal['link'] => {
+    const link = fixLink(fix);
+    if (link?.to !== '/intake') return link;
+    if (linked) return undefined;
+    linked = true;
+    return link;
   };
 }
 
@@ -90,13 +138,15 @@ export function FormDashboard() {
   const [packet, setPacket] = useState<FormType[]>([]);
   const [tables, setTables] = useState<DatedTableUsed[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<{ message: string; namesFix: boolean } | null>(null);
+  const [error, setError] = useState<Refusal | null>(null);
   const [showSurvey, setShowSurvey] = useState(false);
   const [generationErrors, setGenerationErrors] = useState<GenerateAllError[]>([]);
-  const [generateAllRefusal, setGenerateAllRefusal] = useState<{
-    message: string;
-    page?: string;
-  } | null>(null);
+  const [generateAllRefusal, setGenerateAllRefusal] = useState<Refusal | null>(null);
+  // Each form's last refused Generate or Download, until its own Generate or Download next
+  // succeeds, Generate All answers (its lists then hold every checked form's current refusal; a
+  // filed form, which it returns unchecked, shows none until its next Download), or it is marked
+  // filed. A refusal of Generate All's whole call leaves them.
+  const [formRefusals, setFormRefusals] = useState<Partial<Record<FormType, Refusal>>>({});
   const [dischargeData, setDischargeData] = useState<DebtClassification[]>([]);
 
   // Load existing forms on mount
@@ -114,7 +164,7 @@ export function FormDashboard() {
       setTables(loadedPacket.tables);
       setError(null);
     } catch (err) {
-      setError(loadFailure(err));
+      setError(refusalOf(err, DASHBOARD_ERROR));
     } finally {
       setIsLoading(false);
     }
@@ -139,11 +189,19 @@ export function FormDashboard() {
     (f) => f.status === 'filed' && !packet.includes(f.form_type)
   );
 
+  const setFormRefusal = (formType: FormType, refusal?: Refusal) =>
+    setFormRefusals((prev) => ({ ...prev, [formType]: refusal }));
+
   const handleGenerate = async (formType: FormType) => {
     if (!session) return;
-    const response = await api.forms.generate(session.id, formType);
-    setForms((prev) => [...prev.filter((f) => f.form_type !== formType), response.form]);
-    trackEvent('form_generated', { form_type: formType, session_id: session.id });
+    try {
+      const response = await api.forms.generate(session.id, formType);
+      setForms((prev) => [...prev.filter((f) => f.form_type !== formType), response.form]);
+      setFormRefusal(formType, undefined);
+      trackEvent('form_generated', { form_type: formType, session_id: session.id });
+    } catch (err) {
+      setFormRefusal(formType, refusalOf(err, ERROR_GENERIC));
+    }
   };
 
   const handleGenerateAll = async () => {
@@ -153,14 +211,15 @@ export function FormDashboard() {
     try {
       const response = await api.forms.generateAll(session.id);
       setForms(response.generated);
+      // Generate All's answer replaces every card's refusal: a form it refused again is in its
+      // list, so as it answers the same words and link don't show twice (a card's own refusal
+      // after that can repeat them), and an older refusal can't stay
+      setFormRefusals({});
       setGenerationErrors(response.errors);
       trackEvent('form_generated', { form_type: 'all', session_id: session.id });
       setShowSurvey(true);
     } catch (err) {
-      setGenerateAllRefusal({
-        message: wholeCallRefusal(err, ERROR_GENERIC),
-        page: err instanceof APIClientError ? err.page : undefined,
-      });
+      setGenerateAllRefusal(refusalOf(err, ERROR_GENERIC));
     }
     // Generate All works the means test out again, so the packet may have changed
     try {
@@ -169,19 +228,28 @@ export function FormDashboard() {
       setTables(reloaded.tables);
       setError(null);
     } catch (err) {
-      setError(loadFailure(err));
+      setError(refusalOf(err, DASHBOARD_ERROR));
     }
   };
 
   const handleDownload = async (formId: number) => {
     const form = forms.find((f) => f.id === formId);
     const filename = form ? `${form.form_type}.pdf` : `form_${formId}.pdf`;
-    await api.forms.downloadForm(formId, filename);
+    try {
+      await api.forms.downloadForm(formId, filename);
+    } catch (err) {
+      if (form) setFormRefusal(form.form_type, refusalOf(err, ERROR_GENERIC));
+      return;
+    }
+    if (form) setFormRefusal(form.form_type, undefined);
     await loadForms();
   };
 
   const handleMarkFiled = async (formId: number) => {
+    const form = forms.find((f) => f.id === formId);
     await api.forms.markFiled(formId);
+    // A filed form prints what was filed, which no step changes (ruling R46)
+    if (form) setFormRefusal(form.form_type, undefined);
     await loadForms();
   };
 
@@ -207,16 +275,21 @@ export function FormDashboard() {
   const filedCount = forms.filter((f) => f.status === 'filed').length;
   const generatedCount = forms.filter((f) => packet.includes(f.form_type)).length;
   const totalCount = packet.length;
-  // "Finish your intake" shows at most once, on the first block that offers it: the notice for
-  // an unfinished intake, then a packet-list refusal that names its fix, then the page Generate
-  // All's refusal names (ruling R4-a). The context's status and the server's can disagree.
+  // Each refusal links to what fixes it, a step or a page (step 3a2 spec §4.5). "Finish your
+  // intake" shows at most once, on the first block that offers it: the notice for an unfinished
+  // intake, then the packet list's refusal, then Generate All's, then each form Generate All
+  // refused, then each card's refusal (ruling R4-a). The context's status and the server's can
+  // disagree.
   const noticeLinksIntake = session.status !== 'completed';
-  const errorLinksIntake = !noticeLinksIntake && !!error?.namesFix;
-  const refusalPage = generateAllRefusal?.page;
-  const refusalLinkLabel =
-    refusalPage && !(refusalPage === '/intake' && (noticeLinksIntake || errorLinksIntake))
-      ? PAGE_LINK_LABELS[refusalPage]
-      : undefined;
+  const linkTo = linksInPageOrder(noticeLinksIntake);
+  const errorLink = error ? linkTo(error) : undefined;
+  const refusalLink = generateAllRefusal ? linkTo(generateAllRefusal) : undefined;
+  const generationErrorLinks = generationErrors.map((e) => linkTo(e));
+  const cardRefusals = new Map<FormType, FormRefusal>();
+  for (const formType of [...packet, ...filedOutsidePacket.map((form) => form.form_type)]) {
+    const refusal = formRefusals[formType];
+    if (refusal) cardRefusals.set(formType, { message: refusal.message, link: linkTo(refusal) });
+  }
 
   return (
     <div className="form-dashboard">
@@ -248,15 +321,15 @@ export function FormDashboard() {
           <p>{error.message}</p>
           {/* Our own words mean the load failed and may work again; a 422's words name
               something to fix, which a retry can't. Only a refusal that names a step or page
-              has a fix at the intake (ruling R4-b). */}
+              links to its fix (ruling R4-b). */}
           {error.message === DASHBOARD_ERROR ? (
             <Button variant="outline" size="sm" onClick={loadForms}>
               Try Again
             </Button>
           ) : (
-            errorLinksIntake && (
-              <Link to="/intake" className="button button--primary">
-                Finish your intake
+            errorLink && (
+              <Link to={errorLink.to} className="button button--primary">
+                {errorLink.label}
               </Link>
             )
           )}
@@ -266,9 +339,9 @@ export function FormDashboard() {
       {generateAllRefusal && (
         <div className="form-dashboard-error" role="alert">
           <p>{generateAllRefusal.message}</p>
-          {refusalPage && refusalLinkLabel && (
-            <Link to={refusalPage} className="button button--primary">
-              {refusalLinkLabel}
+          {refusalLink && (
+            <Link to={refusalLink.to} className="button button--primary">
+              {refusalLink.label}
             </Link>
           )}
         </div>
@@ -278,14 +351,28 @@ export function FormDashboard() {
         <div className="form-dashboard-error" role="alert">
           <p>
             {generationErrors.length} form{generationErrors.length > 1 ? 's' : ''} could not be
-            generated. You can try generating them individually below.
+            generated.
+            {/* Trying again is all the filer can do about a form whose refusal names no fix */}
+            {generationErrors.some((e) => !fixLink(e)) &&
+              ' You can try generating them individually below.'}
           </p>
           <ul>
-            {generationErrors.map((e) => (
-              <li key={e.form_type}>
-                {FORM_TYPE_METADATA[e.form_type as FormType]?.label ?? e.form_type}: {e.error}
-              </li>
-            ))}
+            {generationErrors.map((e, index) => {
+              const link = generationErrorLinks[index];
+              return (
+                <li key={e.form_type}>
+                  {FORM_TYPE_METADATA[e.form_type as FormType]?.label ?? e.form_type}: {e.error}
+                  {link && (
+                    <>
+                      {' '}
+                      <Link to={link.to} className="button button--primary">
+                        {link.label}
+                      </Link>
+                    </>
+                  )}
+                </li>
+              );
+            })}
           </ul>
         </div>
       )}
@@ -342,6 +429,7 @@ export function FormDashboard() {
               key={formType}
               formType={formType}
               generatedForm={formsByType.get(formType)}
+              refusal={cardRefusals.get(formType)}
               onGenerate={handleGenerate}
               onDownload={handleDownload}
               onMarkFiled={handleMarkFiled}
@@ -353,6 +441,7 @@ export function FormDashboard() {
               formType={form.form_type}
               generatedForm={form}
               leftPacket
+              refusal={cardRefusals.get(form.form_type)}
               onGenerate={handleGenerate}
               onDownload={handleDownload}
               onMarkFiled={handleMarkFiled}

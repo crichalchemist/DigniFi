@@ -9,16 +9,15 @@ into a neighbouring box, and a line the intake doesn't ask stays blank (DIG-76, 
 
 from datetime import date
 from decimal import Decimal
-from io import BytesIO
 
-import pypdf
 import pytest
 from django.contrib.auth import get_user_model
 
 from apps.districts.models import District
 from apps.forms.schema import load_schema
 from apps.forms.services.fill_resolver import resolve
-from apps.forms.services.pdf_filler import PDFFormFiller, field_of, qualified_name
+from apps.forms.services.pdf_filler import PDFFormFiller
+from apps.forms.tests.pdf_readback import read_drawn
 from apps.intake.models import (
     AssetInfo,
     DebtInfo,
@@ -145,16 +144,12 @@ def test_line_19_reads_what_the_filer_owns_and_line_20_what_they_owe(session):
 
 def test_header_name_prints_on_pages_2_to_9(session):
     pdf = PDFFormFiller().fill("form_101", _petition(session))
-    # A viewer draws each widget's own appearance stream, so every page must have one.
-    pages = []
-    for number, page in enumerate(pypdf.PdfReader(BytesIO(pdf)).pages, start=1):
-        for annot in page.get("/Annots") or []:
-            widget = annot.get_object()
-            if qualified_name(field_of(widget)) != "Debtor1.Name":
-                continue
-            appearance = widget.get("/AP")
-            if appearance is not None and b"Jane Q Doe" in appearance["/N"].get_data():
-                pages.append(number)
+    # Each page's header widget is drawn on its own page.
+    pages = [
+        w.page
+        for w in read_drawn("form_101", pdf)
+        if w.full_name == "Debtor1.Name" and w.value == "Jane Q Doe"
+    ]
     assert pages == list(range(2, 10))
 
 

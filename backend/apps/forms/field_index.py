@@ -36,6 +36,8 @@ class IndexWidget:
 
     full_name: str
     page: int
+    tag: str  # T1, T2, …: unique on its page
+    rect: tuple[float, float, float, float]  # x0, y0, x1, y1 from the page's top left
     type: str  # Text | CheckBox | RadioButton | ComboBox | Button
     on_state: str | None
     basis: str
@@ -67,6 +69,8 @@ def load_index(template_filename: str) -> dict[str, tuple[IndexWidget, ...]]:
             IndexWidget(
                 full_name=row["full_name"],
                 page=row["page"],
+                tag=row["tag"],
+                rect=tuple(float(v) for v in row["rect"]),
                 type=row["type"],
                 on_state=row["on_state"],
                 basis=row["basis"],

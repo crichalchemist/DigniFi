@@ -21,7 +21,7 @@ from apps.districts.models import District
 from apps.forms.schema import load_schema
 from apps.forms.services.fill_resolver import resolve
 from apps.forms.services.pdf_filler import PDFFormFiller
-from apps.forms.tests.pdf_readback import read_widgets
+from apps.forms.tests.pdf_readback import read_drawn
 from apps.intake.models import DebtInfo, DebtorInfo, IncomeInfo, IntakeSession
 
 User = get_user_model()
@@ -81,16 +81,16 @@ def debts(session):
 
 
 def _widgets(session, form_type):
-    """The filled form's widgets, as a viewer sees them."""
+    """What the drawn form prints in each widget."""
     values = resolve(load_schema(form_type), session)
-    return read_widgets(PDFFormFiller().fill(form_type, values))
+    return read_drawn(form_type, PDFFormFiller().fill(form_type, values))
 
 
 def _printed(session, form_type):
-    """Each box as a viewer sees it: a text box's value, or the states a checkbox ticks."""
+    """Each box as printed: a text box's value, or the states a checkbox ticks."""
     shown = {}
     for w in _widgets(session, form_type):
-        if w.state is None:
+        if not w.state:
             shown[w.full_name] = w.value
         elif w.state != "/Off":
             shown.setdefault(w.full_name, set()).add(w.state)
@@ -103,7 +103,7 @@ def test_schedule_d_prints_its_secured_total_in_the_grand_total_box(debts):
     widgets = _widgets(debts, "schedule_d")
 
     assert [(w.page, w.value) for w in widgets if w.full_name == "undefined_24"] == [(2, "3000.00")]
-    assert [w.value for w in widgets if w.full_name == "undefined_27"] == [None]
+    assert [w.value for w in widgets if w.full_name == "undefined_27"] == [""]
 
 
 def test_line_6j_totals_every_unsecured_debt_and_6f_the_unsecured_student_loans(debts):
@@ -180,4 +180,4 @@ def test_lines_the_intake_never_asks_print_nothing(debts):
 
     assert "check1" not in shown
     for box in ("Total_6a", "Total_6b", "Total_6c", "Total_6d", "Total_6e", "Total_6g", "Total_6h"):
-        assert shown[box] is None, box
+        assert shown[box] == "", box

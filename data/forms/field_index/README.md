@@ -4,7 +4,7 @@ Ground truth for every fillable box on the 17 AO templates in `../pdfs/` that th
 
 ## Files
 
-- `<template-stem>.index.json`: one row per widget. Each row has `full_name`, `page`, `rect`, `type`, `on_state`, `tooltip`, `line`, `label`, `column`, `kind`, `option_text` and `basis`.
+- `<template-stem>.index.json`: one row per widget. Each row has `full_name`, `page`, `tag`, `rect`, `type`, `on_state`, `tooltip`, `line`, `label`, `column`, `kind`, `option_text` and `basis`.
 - `audit/<schema>.audit.json`: every schema binding checked against the index. For each binding it records the field it targets, what it writes, its verdicts and the correct target.
 - `audit/<schema>.unbound.json`: boxes a complete filing needs that no binding fills.
 - `audit/verification.json`: an independent re-check of every non-correct verdict, plus a sample of correct ones. **Where it disagrees with a per-schema audit file, `verification.json` wins.** It modifies 13 verdicts and adds 18 the audit files mark correct.

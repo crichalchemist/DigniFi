@@ -13,9 +13,7 @@ answers stay stored for those steps.
 import json
 from datetime import date
 from decimal import Decimal
-from io import BytesIO
 
-import pypdf
 import pytest
 from django.contrib.auth import get_user_model
 
@@ -23,8 +21,8 @@ from apps.districts.models import District
 from apps.forms.field_index import index_path
 from apps.forms.schema import load_schema
 from apps.forms.services.fill_resolver import resolve
-from apps.forms.services.pdf_filler import PDFFormFiller, field_of, qualified_name
-from apps.forms.tests.pdf_readback import read_widgets
+from apps.forms.services.pdf_filler import PDFFormFiller
+from apps.forms.tests.pdf_readback import read_drawn
 from apps.intake.models import DebtorInfo, IntakeSession, SOFAReport
 
 User = get_user_model()
@@ -86,21 +84,13 @@ def _boxes_on_lines(*lines):
 
 
 def test_the_filers_name_heads_every_page(session):
-    pdf = _fill(session)
+    printed = read_drawn("form_107", _fill(session))
 
-    # A viewer draws each widget's own appearance stream, so every page must have one.
-    pages = []
-    for number, page in enumerate(pypdf.PdfReader(BytesIO(pdf)).pages, start=1):
-        for annot in page.get("/Annots") or []:
-            widget = annot.get_object()
-            if qualified_name(field_of(widget)) != "Debtor 1":
-                continue
-            appearance = widget.get("/AP")
-            if appearance is not None and b"Jane Q Doe" in appearance["/N"].get_data():
-                pages.append(number)
+    # Each page's header widget is drawn on its own page.
+    pages = [w.page for w in printed if w.full_name == "Debtor 1" and w.value == "Jane Q Doe"]
     assert pages == list(range(1, 13))
     # A single filer's statement: the spouse's line stays blank.
-    assert [w.value for w in read_widgets(pdf) if w.full_name == "Debtor 2"] == [None]
+    assert [w.value for w in printed if w.full_name == "Debtor 2"] == [""]
 
 
 def test_saved_sofa_rows_print_nothing_on_lines_4_to_6(session):
@@ -108,9 +98,9 @@ def test_saved_sofa_rows_print_nothing_on_lines_4_to_6(session):
 
     printed = {
         w.full_name
-        for w in read_widgets(_fill(session))
+        for w in read_drawn("form_107", _fill(session))
         if w.full_name in _boxes_on_lines("4", "5", "6")
-        and (w.value not in (None, "") or w.state not in (None, "/Off"))
+        and (w.value or w.state not in ("", "/Off"))
     }
 
     assert printed == set()

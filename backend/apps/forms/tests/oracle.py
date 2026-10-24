@@ -2,10 +2,11 @@
 Shared pieces of the court-form oracle (spec §6): case keys and the known-defects list.
 
 Every oracle case has a key (form_type, pdf_field, tier, case). `case` is the
-persona for tier 3, the choice key for a tier 1 checkbox case and the binding key
-for tier 2; otherwise it is empty. A key listed in known_defects.json runs as a
-strict expected failure, so a new break fails CI and so does a fix until its
-entry is deleted. test_known_defects.py fails on an entry that matches no
+persona for tier 3, the choice key for a tier 1 checkbox case, "each_widget" for a
+tier 1 case that fills each widget of a shared name through its own key, and the
+binding key for tier 2; otherwise it is empty. A key listed in known_defects.json
+runs as a strict expected failure, so a new break fails CI and so does a fix until
+its entry is deleted. test_known_defects.py fails on an entry that matches no
 generated case.
 """
 

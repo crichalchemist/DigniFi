@@ -578,9 +578,11 @@ export const formsAPI = {
   /**
    * Generate every form in the session's packet
    * POST /api/forms/generate_all/
+   * Sent once, never retried: a slow or failed run is not repeated behind the filer's back
+   * (step 3a2 spec §7). The dashboard shows the error, and the filer can press again.
    */
   generateAll: async (sessionId: number): Promise<GenerateAllFormsResponse> => {
-    return apiFetch<GenerateAllFormsResponse>('/forms/generate_all/', {
+    return apiFetchOnce<GenerateAllFormsResponse>('/forms/generate_all/', {
       method: 'POST',
       body: JSON.stringify({ session_id: sessionId }),
     });
@@ -622,7 +624,8 @@ export const formsAPI = {
   /**
    * Download a generated form as a filled PDF.
    * GET /api/forms/{id}/download/
-   * Triggers a browser file save dialog.
+   * Triggers a browser file save dialog. A refused download throws the refusal's own words and
+   * the step or page that fixes it, as every other call does.
    */
   downloadForm: async (formId: number, filename: string): Promise<void> => {
     const doFetch = () => {
@@ -637,7 +640,7 @@ export const formsAPI = {
       if (refreshed) response = await doFetch();
     }
     if (!response.ok) {
-      throw new APIClientError(`Download failed (${response.status})`, response.status);
+      await handleAPIError(response);
     }
     const blob = await response.blob();
     const url = URL.createObjectURL(blob);

@@ -62,8 +62,11 @@ class GeneratedForm(models.Model):
     # JSON. Nothing reads or writes it; its column is dropped one release later.
     form_data = models.JSONField(default=dict, help_text="Unused; see field_values")
 
-    # The values the form printed, as encrypted JSON {full name: value}. The API
-    # never returns it; download fills a filed form from it.
+    # The values the form prints, as encrypted JSON: a parts document,
+    # {"version": 2, "parts": [{"kind": "form", "values": {key: value}}, ...]}, or, for
+    # a form filed before 3a2, {full name: value}, read as one form part. The API never
+    # returns it; download draws a filed form from it, or, when it is empty, resolves the
+    # form from the current intake as for an unfiled one and stores that as its filed one.
     field_values = EncryptedTextField(blank=True, default="", help_text="Encrypted JSON")
 
     # Schema / template version (reproducibility)

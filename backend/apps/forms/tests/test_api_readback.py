@@ -26,7 +26,7 @@ from rest_framework.test import APIClient
 from apps.districts.models import District
 from apps.eligibility.models import MeansTest
 from apps.forms.models import GeneratedForm
-from apps.forms.registry import build_field_values, packet
+from apps.forms.registry import build_parts, packet
 from apps.forms.schema import load_schema
 from apps.intake.management.commands.seed_demo_data import PERSONAS
 from apps.intake.models import IncomeInfo, IntakeSession
@@ -136,10 +136,12 @@ def _send_through_the_api(persona):
 
 def _comparable(form_type, values):
     """
-    A form's values, with each repeat group's rows in a fixed order.
+    One part's values, with each repeat group's rows in a fixed order.
 
     No production schema has a repeat group since step 2 took Form 107's off. Stored rows
-    have no fixed order (DIG-164), so a group a later step binds compares regardless of it.
+    have no fixed order (DIG-164), so within one part a group a later step binds compares
+    regardless of it. Across parts it doesn't: a group past its last slot puts its rows on
+    the form part and its copies by position, so another order moves other rows to a copy.
     Each row keeps its own values together, so an amount that moves to another row differs.
     """
     fixed = dict(values)
@@ -152,6 +154,20 @@ def _comparable(form_type, values):
     for (group, _), cells in rows.items():
         groups.setdefault(group, []).append(sorted(cells))
     return fixed, {group: sorted(group_rows) for group, group_rows in groups.items()}
+
+
+def _comparable_document(form_type, document):
+    """
+    A form's parts document, each part's values made comparable as _comparable does. An
+    attached sheet's part has no values: its rows are compared as they are.
+    """
+    return {
+        **document,
+        "parts": [
+            {**part, "values": _comparable(form_type, part["values"])} if "values" in part else part
+            for part in document["parts"]
+        ],
+    }
 
 
 def _amount(text):
@@ -175,8 +191,11 @@ def test_forms_built_through_the_api_print_what_the_seeded_forms_print(persona):
         form.form_type: json.loads(form.field_values)
         for form in GeneratedForm.objects.filter(session_id=session_id)
     }
-    assert {form_type: _comparable(form_type, values) for form_type, values in stored.items()} == {
-        form_type: _comparable(form_type, build_field_values(form_type, seeded))
+    assert {
+        form_type: _comparable_document(form_type, document)
+        for form_type, document in stored.items()
+    } == {
+        form_type: _comparable_document(form_type, build_parts(form_type, seeded))
         for form_type in packet(seeded)
     }
     # Form 103B prints take-home pay and the non-cash answer, but no form prints the two
@@ -188,5 +207,6 @@ def test_forms_built_through_the_api_print_what_the_seeded_forms_print(persona):
     # prints her own figures: her monthly income on line 1 and her childcare on line 21.
     assert ("form_122a2" in stored) == (persona == "priya")
     if persona == "priya":
-        amounts = [_amount(value) for value in stored["form_122a2"].values()]
+        (part,) = stored["form_122a2"]["parts"]
+        amounts = [_amount(value) for value in part["values"].values()]
         assert any(amount is not None and amount > 0 for amount in amounts)
