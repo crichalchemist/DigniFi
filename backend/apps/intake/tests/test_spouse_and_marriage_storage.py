@@ -68,14 +68,16 @@ def test_an_old_tax_filing_status_is_refused(filer, answer):
     assert not IncomeInfo.objects.filter(session=session).exists()
 
 
+@pytest.mark.parametrize("field", IncomeInfo.SOURCE_FIELDS)
 @pytest.mark.parametrize(
     "amount",
     ["-1.00", "100000000.00", "NaN", "Infinity", "12.345"],
     ids=["negative", "too_wide", "nan", "infinite", "fraction_of_a_cent"],
 )
-def test_a_spouse_amount_is_bounded_as_the_filers(filer, amount):
+def test_a_spouse_amount_is_bounded_as_the_filers(filer, field, amount):
+    # Each of the ten is bounded by its own declaration, so each one is checked.
     client, session = filer
-    assert _save(client, session, {"spouse_income": {"monthly_pension": amount}}).status_code == 400
+    assert _save(client, session, {"spouse_income": {field: amount}}).status_code == 400
     assert not SpouseIncome.objects.filter(session=session).exists()
 
 
@@ -91,7 +93,7 @@ def test_a_blank_spouse_box_is_null_not_zero(filer):
 def test_a_changed_marriage_answer_and_spouse_amount_come_back_in_the_reply(filer):
     # The second save updates stored rows: its reply shows them as saved, not as read before.
     client, session = filer
-    _save(
+    first = _save(
         client,
         session,
         {
@@ -99,6 +101,8 @@ def test_a_changed_marriage_answer_and_spouse_amount_come_back_in_the_reply(file
             "spouse_income": {"monthly_gross_wages": "1000.00"},
         },
     )
+    # Had the first save failed, the second would create the rows, and creating caches them.
+    assert first.status_code == 200
     reply = _save(
         client,
         session,
@@ -109,6 +113,29 @@ def test_a_changed_marriage_answer_and_spouse_amount_come_back_in_the_reply(file
     ).data
     assert reply["income_info"]["marital_status"] == "married_separately"
     assert reply["spouse_income"]["monthly_gross_wages"] == "1200.00"
+
+
+def test_the_spouses_income_stays_saved_when_the_marriage_answer_moves_away(filer):
+    # Spec §5.1: away from living together, the spouse's figures stop counting but stay saved,
+    # so they come back if the answer does.
+    client, session = filer
+    sent = {**TEN_EMPTY, "monthly_gross_wages": "1800.00", "monthly_pension": "250.00"}
+    saved = _save(
+        client,
+        session,
+        {"income_info": {"marital_status": "married_together"}, "spouse_income": sent},
+    )
+    assert saved.status_code == 200
+
+    moved = _save(client, session, {"income_info": {"marital_status": "married_separately"}})
+
+    assert moved.status_code == 200
+    spouse = SpouseIncome.objects.get(session=session)
+    assert (spouse.monthly_gross_wages, spouse.monthly_pension) == (
+        Decimal("1800.00"),
+        Decimal("250.00"),
+    )
+    assert moved.data["spouse_income"]["monthly_gross_wages"] == "1800.00"
 
 
 def test_an_income_rows_str_never_shows_its_marriage_answer(filer):

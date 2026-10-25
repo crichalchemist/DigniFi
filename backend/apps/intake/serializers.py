@@ -478,9 +478,9 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
         """
         Update intake session with nested related data.
 
-        Updates or creates debtor_info, income_info, expense_info.
+        Updates or creates debtor_info, income_info, expense_info, household and spouse_income.
         Saves assets/debts by id (see _save_rows_by_id).
-        Updates or creates household, setting only the keys sent (see _save_household).
+        A household save sets only the keys sent (see _save_household).
         Saving any of them reopens a completed intake. The session is pointed at the income and
         spouse rows saved, so the reply reads what this save stored rather than the copies
         select_related cached before it.
