@@ -467,8 +467,28 @@ describe('IncomeInfoStep, family first', () => {
     const total = (label: string) => screen.getByText(label, { selector: 'dt' }).nextElementSibling;
     expect(total('Your income')).toHaveTextContent('$12,000.00');
     expect(total("Your spouse's income")).toHaveTextContent('$1,800.00');
+    // The sentence under the totals never calls the spouse's figure "your total"
+    expect(
+      screen.getByText('Both totals are monthly, before taxes and deductions.')
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/this is your total monthly income/i)).not.toBeInTheDocument();
 
     pick('marital_status', 'not_married');
     expect(screen.queryByText("Your spouse's income")).not.toBeInTheDocument();
+    expect(
+      screen.getByText('This is your total monthly income before taxes and deductions.')
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/both totals/i)).not.toBeInTheDocument();
+  });
+
+  // The help under the filer's support boxes says "you receive", and the spouse's figures would
+  // count twice if a filer typed their own into the spouse's boxes
+  it("the spouse's boxes carry none of the filer's help", () => {
+    renderStep({ marital_status: 'married_together' });
+
+    for (const name of ['monthly_child_support', 'monthly_alimony']) {
+      expect(field(name)).toHaveAccessibleDescription(/you receive/i);
+      expect(field(`spouse_${name}`)).not.toHaveAccessibleDescription(/you receive/i);
+    }
   });
 });

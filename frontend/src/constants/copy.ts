@@ -157,5 +157,7 @@ export const AGE_OUT_OF_RANGE = 'Please enter an age from 0 to 120, in whole yea
 
 export const NOT_ANSWERED_YET = 'Not answered yet';
 
+export const BOTH_TOTALS_MONTHLY = 'Both totals are monthly, before taxes and deductions.';
+
 export const SPOUSE_INCOME_HELP =
   "Enter your spouse's average monthly income before taxes. Leave a box blank if your spouse doesn't get that kind of income. If your spouse has no income at all, enter $0 in any box.";

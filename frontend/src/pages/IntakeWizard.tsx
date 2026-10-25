@@ -460,12 +460,14 @@ export function IntakeWizard() {
     }
 
     // Assets, debts and household members carry the browser's own key, which never reaches the
-    // server. A household list of null (unanswered) has no rows to pair.
+    // server. A household list of null (unanswered) has no rows to pair, but it is still a save
+    // of the list: the server then holds no row an earlier save of the list created.
     const { assets, debts, household } = body as {
       assets?: WizardRow<AssetInfo>[];
       debts?: WizardRow<DebtInfo>[];
       household?: { members?: WizardRow<HouseholdMember>[] | null };
     };
+    const sendsMembers = household?.members !== undefined;
     const members = Array.isArray(household?.members) ? household.members : undefined;
     const request: Partial<Record<keyof IntakeSession, unknown>> = { ...body };
     if (assets) request.assets = assets.map(withoutKey);
@@ -473,7 +475,7 @@ export function IntakeWizard() {
     if (members) request.household = { members: members.map(withoutKey) };
     const assetsSave = assets ? ++listSavesRef.current.assets : 0;
     const debtsSave = debts ? ++listSavesRef.current.debts : 0;
-    const membersSave = members ? ++listSavesRef.current.members : 0;
+    const membersSave = sendsMembers ? ++listSavesRef.current.members : 0;
     const saved = await api.intake.updateSession(session.id, request as Partial<IntakeSession>);
 
     // A new row keeps the id its first save gave it, so the next save updates that row instead of

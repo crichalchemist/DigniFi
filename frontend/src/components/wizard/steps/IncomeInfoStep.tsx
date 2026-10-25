@@ -22,6 +22,7 @@ import {
 } from '../../../constants/formText';
 import {
   AGE_OUT_OF_RANGE,
+  BOTH_TOTALS_MONTHLY,
   NOT_ANSWERED_YET,
   SPOUSE_FILING_INFO,
   SPOUSE_INCOME_HELP,
@@ -301,7 +302,9 @@ export function IncomeInfoStep({
           spouse ? handleSpouseChange(field, e.target.value) : handleChange(field, e.target.value)
         }
         error={errors[name]}
-        helpText={helpText}
+        // The help speaks to the filer ("Child support you receive"); under a spouse's box it
+        // could draw the filer's own figures into the spouse's column, which would count twice
+        helpText={spouse ? undefined : helpText}
         placeholder="0.00"
       />
     );
@@ -481,7 +484,9 @@ export function IncomeInfoStep({
           )}
         </dl>
         <p className="total-help-text">
-          This is your total monthly income before taxes and deductions.
+          {livingTogether
+            ? BOTH_TOTALS_MONTHLY
+            : 'This is your total monthly income before taxes and deductions.'}
         </p>
       </section>
     </div>
