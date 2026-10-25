@@ -112,11 +112,59 @@ export class WizardPage {
   // ── Step 2: Income Info ─────────────────────────────────────────
 
   async fillIncomeInfo(income: PersonaIncome) {
-    // The income step has a box for each source, named as the backend stores it, so each
-    // amount goes into its own box and a source the persona leaves out stays blank.
-    // Marital status / dependents are no longer collected on this step.
+    // Line 1 first: picking "Living in the same household" adds the spouse's row, so it sits
+    // at index 0 and the persona's members line up with the rows.
+    if (
+      income.marital_status === 'married_together' ||
+      income.marital_status === 'married_separately'
+    ) {
+      await this.page.locator('input[name="marital_status"][value="not_filing"]').check();
+      await this.page
+        .locator(`input[name="spouse_household"][value="${income.marital_status}"]`)
+        .check();
+    } else {
+      await this.page
+        .locator(`input[name="marital_status"][value="${income.marital_status}"]`)
+        .check();
+    }
+
+    if (income.members.length === 0) {
+      await this.page
+        .getByRole('button', { name: 'No one else lives with me or depends on me.' })
+        .click();
+    }
+    const yesNo = (answer: boolean) => (answer ? 'yes' : 'no');
+    for (const [index, member] of income.members.entries()) {
+      const relationship = this.page.locator(`select[name="relationship_${index}"]`);
+      if ((await relationship.count()) === 0) {
+        await this.page.getByRole('button', { name: '+ Add a person' }).click();
+      }
+      await relationship.selectOption(member.relationship);
+      await this.page.locator(`input[name="age_${index}"]`).fill(String(member.age));
+      await this.page
+        .locator(`input[name="lives_with_you_${index}"][value="${yesNo(member.lives_with_you)}"]`)
+        .check();
+      await this.page
+        .locator(
+          `input[name="claimed_or_supported_${index}"][value="${yesNo(member.claimed_or_supported)}"]`
+        )
+        .check();
+      if (member.spouse_is_dependent !== undefined) {
+        await this.page
+          .locator(
+            `input[name="spouse_is_dependent_${index}"][value="${yesNo(member.spouse_is_dependent)}"]`
+          )
+          .check();
+      }
+    }
+
+    // A box for each source, named as the backend stores it, so each amount goes into its own
+    // box and a source the persona leaves out stays blank. The spouse's boxes add `spouse_`.
     for (const [source, amount] of Object.entries(income.sources)) {
       await this.page.locator(`input[name="${source}"]`).fill(String(amount));
+    }
+    for (const [source, amount] of Object.entries(income.spouse_sources ?? {})) {
+      await this.page.locator(`input[name="spouse_${source}"]`).fill(String(amount));
     }
   }
 

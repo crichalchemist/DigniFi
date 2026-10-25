@@ -6,7 +6,7 @@ import { http, HttpResponse } from 'msw';
 import { server } from '../../test/mocks/server';
 import { IntakeProvider, useIntake } from '../../context/IntakeContext';
 import IntakeWizard from '../IntakeWizard';
-import { EXPENSE_FIELDS } from '../../types/api';
+import { EXPENSE_FIELDS, INCOME_FIELDS } from '../../types/api';
 
 // DebtorInfoStep reads account email via useAuth; wizard test renders without
 // AuthProvider, so we stub just the user object the step needs.
@@ -448,8 +448,7 @@ const completedSession = {
     filing_type: 'individual',
   },
   income_info: {
-    marital_status: 'single',
-    number_of_dependents: 1,
+    marital_status: 'not_married',
     // The API sends each amount as a decimal string, and an amount never given as null
     monthly_gross_wages: '3100.50',
     monthly_overtime: null,
@@ -464,6 +463,7 @@ const completedSession = {
     monthly_income: null,
     total_monthly_income: 3200,
   },
+  household: { county: 'Cook', members: [] },
   expense_info: {
     data_source: 'manual',
     rent_or_mortgage: '1100.00',
@@ -1138,10 +1138,11 @@ describe('IntakeWizard amounts a returning filer already entered', { timeout: 15
 // ===========================================================================
 
 /**
- * The session server for one filer. GET sends `loaded`. A PATCH that carries assets or debts
- * stores that list as sent and returns it in the order sent, each row with its id: a row sent
- * without an id, or with one the server doesn't hold, gets the next new id, and a stored row left
- * out is gone. Amounts come back as decimal strings, and any save reopens a completed intake.
+ * The session server for one filer. GET sends `loaded`. A PATCH that carries assets, debts or a
+ * household list stores that list as sent and returns it in the order sent, each row with its id:
+ * a row sent without an id, or with one the server doesn't hold, gets the next new id, and a
+ * stored row left out is gone. A household list sent as null is stored as null. Amounts come back
+ * as decimal strings, and any save reopens a completed intake.
  */
 function serveSessionSaves(
   loaded: Record<string, unknown>,
@@ -1171,6 +1172,23 @@ function serveSessionSaves(
           }
           return saved;
         });
+      }
+      const household = body.household as
+        | { members?: Record<string, unknown>[] | null }
+        | undefined;
+      if (household?.members !== undefined) {
+        const held = (stored.household ?? {}) as { members?: Record<string, unknown>[] | null };
+        const heldIds = (held.members ?? []).map((row) => row.id);
+        stored.household = {
+          ...held,
+          members:
+            household.members === null
+              ? null
+              : household.members.map((row) => ({
+                  ...row,
+                  id: heldIds.includes(row.id) ? row.id : nextId++,
+                })),
+        };
       }
       const reply = HttpResponse.json(stored);
       if (heldReply) {
@@ -1544,14 +1562,13 @@ describe('IntakeWizard a new debt after Complete', { timeout: 30_000 }, () => {
 
 describe('IntakeWizard income save', { timeout: 15_000 }, () => {
   // What the API returns for a filer who saved income by source through the wizard: decimal
-  // strings, null for a box left empty, and the blank household fields a wizard-created row
-  // holds. Echoing those back is a 400, and the old total is read-only.
+  // strings, null for a box left empty, and null for the marriage question not yet answered.
+  // The old total is read-only.
   const savedSession = {
     ...sessionAtStep1,
     current_step: 2,
     income_info: {
-      marital_status: '',
-      number_of_dependents: 0,
+      marital_status: null,
       monthly_gross_wages: '3100.50',
       monthly_overtime: null,
       monthly_tips: '0.00',
@@ -1615,7 +1632,10 @@ describe('IntakeWizard income save', { timeout: 15_000 }, () => {
 
     expect(patchBodies.length).toBeGreaterThan(0);
     for (const body of patchBodies) {
-      expect(body).toEqual({ income_info: savedAmounts });
+      expect(body).toEqual({
+        income_info: { ...savedAmounts, marital_status: null },
+        household: { members: null },
+      });
     }
   });
 
@@ -1627,8 +1647,342 @@ describe('IntakeWizard income save', { timeout: 15_000 }, () => {
     await screen.findByRole('heading', { name: /expenses/i, level: 2 });
 
     expect(patchBodies.at(-1)).toEqual({
-      income_info: { ...savedAmounts, monthly_social_security: null },
+      income_info: { ...savedAmounts, monthly_social_security: null, marital_status: null },
+      household: { members: null },
     });
+  });
+});
+
+// ===========================================================================
+// Household and spouse on the Income step (3e1 spec §8.2)
+// ===========================================================================
+
+describe('IntakeWizard household and spouse', { timeout: 30_000 }, () => {
+  const NO_ONE_ELSE = 'No one else lives with me or depends on me.';
+  const onIncome = { ...sessionAtStep1, current_step: 2 };
+  const TEN_ZERO = Object.fromEntries(INCOME_FIELDS.map((field) => [field, '0.00']));
+  const priyaAtIncome = {
+    ...onIncome,
+    income_info: {
+      ...TEN_ZERO,
+      monthly_gross_wages: '12000.00',
+      marital_status: 'married_together',
+      total_monthly_income: 12000,
+    },
+    household: {
+      county: 'Cook',
+      members: [
+        {
+          id: 1,
+          relationship: 'spouse',
+          age: 45,
+          lives_with_you: true,
+          claimed_or_supported: true,
+          spouse_is_dependent: false,
+        },
+        {
+          id: 2,
+          relationship: 'daughter',
+          age: 10,
+          lives_with_you: true,
+          claimed_or_supported: true,
+        },
+        { id: 3, relationship: 'son', age: 7, lives_with_you: true, claimed_or_supported: true },
+      ],
+    },
+    spouse_income: { ...TEN_ZERO, monthly_gross_wages: '1800.00' },
+  };
+  const members = (body: Record<string, unknown>) =>
+    (body.household as { members: Record<string, unknown>[] | null }).members;
+  const pick = (name: string, value: string) => {
+    const radio = document.querySelector(`input[name="${name}"][value="${value}"]`);
+    if (!radio) throw new Error(`No answer ${value} to ${name}`);
+    fireEvent.click(radio);
+  };
+  const openIncome = () => screen.findByRole('heading', { name: /income/i, level: 2 });
+
+  beforeEach(() => {
+    server.use(
+      http.post(
+        'http://localhost:8000/api/intake/sessions/:id/update_step/',
+        async ({ request }) => {
+          const { current_step } = (await request.json()) as { current_step: number };
+          return HttpResponse.json({
+            session: { ...onIncome, current_step },
+            message: 'Step updated.',
+          });
+        }
+      ),
+      http.post(
+        'http://localhost:8000/api/audit/logs/',
+        () => new HttpResponse(null, { status: 201 })
+      )
+    );
+  });
+
+  // Line 1 has no fifth answer: Complete names the unanswered question
+  it('a half-answered line 1 saves marital_status null', async () => {
+    const { bodies } = serveSessionSaves({
+      ...onIncome,
+      income_info: { ...TEN_ZERO, marital_status: 'not_married', total_monthly_income: 0 },
+    });
+    renderWizard();
+    await openIncome();
+
+    vi.useFakeTimers();
+    try {
+      pick('marital_status', 'not_filing');
+      await waitSeconds(3);
+    } finally {
+      vi.useRealTimers();
+    }
+
+    const last = bodies.at(-1) as Record<string, unknown>;
+    expect((last.income_info as Record<string, unknown>).marital_status).toBeNull();
+    expect(last).not.toHaveProperty('spouse_income');
+    expect(
+      document.querySelector('input[name="marital_status"][value="not_filing"]')
+    ).toBeChecked();
+  });
+
+  // An unanswered question never blocks a save; Complete names it
+  it('a half-finished household row saves with the rest of the step', async () => {
+    const { bodies } = serveSessionSaves(onIncome);
+    renderWizard();
+    await openIncome();
+
+    vi.useFakeTimers();
+    try {
+      fireEvent.click(screen.getByRole('button', { name: '+ Add a person' }));
+      fireEvent.change(field('relationship_0'), { target: { value: 'daughter' } });
+      await waitSeconds(3);
+      // The id the reply gives the row sends nothing more
+      await waitSeconds(5);
+    } finally {
+      vi.useRealTimers();
+    }
+
+    expect(bodies).toHaveLength(1);
+    expect(bodies.at(-1)).toEqual({
+      income_info: expect.any(Object),
+      household: {
+        members: [
+          { relationship: 'daughter', age: null, lives_with_you: null, claimed_or_supported: null },
+        ],
+      },
+    });
+  });
+
+  it('a row added and never touched is not sent', async () => {
+    const { bodies } = serveSessionSaves(onIncome);
+    renderWizard();
+    await openIncome();
+
+    vi.useFakeTimers();
+    try {
+      fireEvent.click(screen.getByRole('button', { name: '+ Add a person' }));
+      fireEvent.change(field('monthly_gross_wages'), { target: { value: '3200' } });
+      await waitSeconds(3);
+    } finally {
+      vi.useRealTimers();
+    }
+
+    expect(members(bodies.at(-1) as Record<string, unknown>)).toBeNull();
+  });
+
+  // An empty list is only ever the filer's answer, so a save never drops a row they didn't remove
+  it('No one else… sends [] and a list never answered sends null', async () => {
+    const { bodies } = serveSessionSaves(onIncome);
+    renderWizard();
+    await openIncome();
+
+    vi.useFakeTimers();
+    try {
+      fireEvent.change(field('monthly_gross_wages'), { target: { value: '3200' } });
+      await waitSeconds(3);
+      expect(members(bodies.at(-1) as Record<string, unknown>)).toBeNull();
+
+      fireEvent.click(screen.getByRole('button', { name: NO_ONE_ELSE }));
+      await waitSeconds(3);
+    } finally {
+      vi.useRealTimers();
+    }
+
+    expect(members(bodies.at(-1) as Record<string, unknown>)).toEqual([]);
+    expect(screen.getByRole('button', { name: NO_ONE_ELSE })).toHaveAttribute(
+      'aria-pressed',
+      'true'
+    );
+  });
+
+  // A row saved without its id is stored again as a new row
+  it("a saved row's id reaches the row that sent it, wherever it now sits", async () => {
+    const saves = serveSessionSaves(onIncome);
+    renderWizard();
+    await openIncome();
+    const landSave = saves.holdNextReply();
+
+    vi.useFakeTimers();
+    try {
+      fireEvent.click(screen.getByRole('button', { name: '+ Add a person' }));
+      fireEvent.change(field('relationship_0'), { target: { value: 'son' } });
+      fireEvent.click(screen.getByRole('button', { name: '+ Add a person' }));
+      fireEvent.change(field('relationship_1'), { target: { value: 'daughter' } });
+      await waitSeconds(3);
+      expect(saves.bodies).toHaveLength(1);
+
+      fireEvent.click(screen.getByRole('button', { name: 'Remove person 1' }));
+      await act(async () => landSave());
+      await waitSeconds(4);
+    } finally {
+      vi.useRealTimers();
+    }
+
+    expect(saves.bodies.map((body) => members(body)?.map((row) => row.id))).toEqual([
+      [undefined, undefined],
+      [102],
+    ]);
+    const [daughter] = members(saves.bodies[1]) ?? [];
+    expect(daughter.relationship).toBe('daughter');
+    expect(daughter).not.toHaveProperty('_key');
+  });
+
+  // P10 #2: the server refuses the spouse's question on any other row, so every save would fail
+  it('a row changed away from spouse sends no spouse question at all', async () => {
+    const { bodies } = serveSessionSaves(priyaAtIncome);
+    renderWizard();
+    await openIncome();
+
+    vi.useFakeTimers();
+    try {
+      fireEvent.change(field('relationship_0'), { target: { value: 'other_relative' } });
+      await waitSeconds(3);
+    } finally {
+      vi.useRealTimers();
+    }
+
+    const [first] = members(bodies.at(-1) as Record<string, unknown>) ?? [];
+    expect(first).toEqual({
+      id: 1,
+      relationship: 'other_relative',
+      age: 45,
+      lives_with_you: true,
+      claimed_or_supported: true,
+    });
+    expect(first).not.toHaveProperty('spouse_is_dependent');
+  });
+
+  // 122A-1 fills Column B only for a spouse in the same household (§5.1)
+  it("the spouse's income is sent only while living together", async () => {
+    const { bodies } = serveSessionSaves(onIncome);
+    renderWizard();
+    await openIncome();
+
+    vi.useFakeTimers();
+    try {
+      pick('marital_status', 'not_filing');
+      pick('spouse_household', 'married_together');
+      fireEvent.change(field('spouse_monthly_gross_wages'), { target: { value: '1800' } });
+      await waitSeconds(3);
+      expect((bodies.at(-1) as Record<string, unknown>).spouse_income).toEqual({
+        ...Object.fromEntries(INCOME_FIELDS.map((field) => [field, null])),
+        monthly_gross_wages: 1800,
+      });
+
+      pick('spouse_household', 'married_separately');
+      await waitSeconds(3);
+    } finally {
+      vi.useRealTimers();
+    }
+
+    expect(bodies.at(-1)).not.toHaveProperty('spouse_income');
+  });
+
+  // Any intake save reopens a completed intake, and the filer would have to press Complete again
+  it('showing the Income step again sends nothing, so a completed intake stays completed', async () => {
+    const saves = serveSessionSaves({
+      ...priyaAtIncome,
+      status: 'completed',
+      current_step: 3,
+      expense_info: completedSession.expense_info,
+    });
+    const { container } = renderWizard();
+    await screen.findByRole('heading', { name: /expenses/i, level: 2 });
+
+    vi.useFakeTimers();
+    try {
+      fireEvent.click(screen.getByRole('button', { name: 'Go Back' }));
+      await waitSeconds(3);
+    } finally {
+      vi.useRealTimers();
+    }
+
+    expect(container.querySelector('.step-title')).toHaveTextContent('Income');
+    expect(saves.bodies).toEqual([]);
+    expect(saves.stored().status).toBe('completed');
+  });
+
+  it('a session with no household or spouse loads without error', async () => {
+    serveSessionSaves(onIncome);
+    renderWizard();
+    await openIncome();
+
+    for (const radio of screen.getAllByRole('radio')) expect(radio).not.toBeChecked();
+    expect(screen.getByRole('button', { name: NO_ONE_ELSE })).toHaveAttribute(
+      'aria-pressed',
+      'false'
+    );
+    expect(document.querySelector('[name^="spouse_"]')).toBeNull();
+  });
+
+  // AuditLog.details is plaintext (§8.5)
+  it('no household or spouse value is sent to analytics', async () => {
+    const auditBodies: unknown[] = [];
+    serveSessionSaves({
+      ...priyaAtIncome,
+      spouse_income: { ...priyaAtIncome.spouse_income, monthly_gross_wages: '1234.56' },
+    });
+    server.use(
+      http.post('http://localhost:8000/api/audit/logs/', async ({ request }) => {
+        auditBodies.push(await request.json());
+        return new HttpResponse(null, { status: 201 });
+      })
+    );
+    renderWizard();
+    await openIncome();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    await waitFor(() => expect(auditBodies.length).toBeGreaterThan(0));
+
+    expect(JSON.stringify(auditBodies)).not.toMatch(
+      /spouse|household|members|relationship|marital/i
+    );
+    // No duration or timestamp can hold this figure
+    expect(JSON.stringify(auditBodies)).not.toContain('1234.56');
+  });
+
+  // §8.2: a list loaded as [] shows the button pressed, and null would replace the stored "no one"
+  it('a list loaded as no one stays no one after another edit', async () => {
+    const { bodies } = serveSessionSaves({
+      ...onIncome,
+      household: { county: 'Cook', members: [] },
+    });
+    renderWizard();
+    await openIncome();
+    expect(screen.getByRole('button', { name: NO_ONE_ELSE })).toHaveAttribute(
+      'aria-pressed',
+      'true'
+    );
+
+    vi.useFakeTimers();
+    try {
+      fireEvent.change(field('monthly_gross_wages'), { target: { value: '3200' } });
+      await waitSeconds(3);
+    } finally {
+      vi.useRealTimers();
+    }
+
+    expect(members(bodies.at(-1) as Record<string, unknown>)).toEqual([]);
   });
 });
 

@@ -36,7 +36,7 @@ test.describe('DeShawn Mitchell — Assets', () => {
     // Uploads come between basic info and Income; this journey types everything in
     await documents.skip();
 
-    // Step 2: Income (married, no dependents, $3,500/mo)
+    // Step 2: Income (living with his spouse, no dependents, $3,500/mo plus the spouse's $1,000)
     await wizard.fillIncomeInfo(DESHAWN.income);
     await wizard.nextStep();
 
@@ -75,8 +75,8 @@ test.describe('DeShawn Mitchell — Assets', () => {
     await wizard.fillReview();
     await wizard.completeIntake();
 
-    // $42,000/year is below 60% of the HH2 median ($56,360.40), so DeShawn
-    // is fee-waiver eligible and gets routed to the waiver application first.
+    // $3,500 plus $1,000 is $54,000 a year, below 60% of the HH2 median ($56,360.40), so
+    // DeShawn is fee-waiver eligible and gets routed to the waiver application first.
     await feeWaiver.submit(
       DESHAWN.fee_waiver.household_size,
       DESHAWN.fee_waiver.take_home_pay,

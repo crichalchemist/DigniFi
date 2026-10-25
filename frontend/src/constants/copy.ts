@@ -87,6 +87,11 @@ export const MEANS_TEST_INCOMPLETE =
 
 export const MEANS_TEST_CALCULATING = 'Calculating...';
 
+export const MEANS_TEST_INCOME_LABEL = 'Monthly income for the means test';
+
+// DRAFT: counsel C-3
+export const MEDIAN_FOR_HOUSEHOLD_OF = 'Median for Household of';
+
 // ============================================================================
 // Auth Copy
 // ============================================================================
@@ -128,3 +133,29 @@ export const AMOUNT_TOO_LARGE = 'This amount is too large. Please check it';
 
 export const COUNTY_OUTSIDE_DISTRICT =
   'DigniFi prepares forms only for the Northern District of Illinois. Its 18 counties are the ones in this list.';
+
+// ============================================================================
+// Income Step
+// ============================================================================
+
+export const SPOUSE_FILING_INFO =
+  "DigniFi prepares forms for one person filing alone. It can't prepare a case your spouse files with you.";
+
+export const HOUSEHOLD_NO_NAMES =
+  "List everyone who lives with you, and anyone you support who lives somewhere else. Don't include yourself. Don't type anyone's name.";
+
+// DRAFT: counsel C-3
+export const LIVES_WITH_YOU_HELP = 'Answer Yes if this person lives in your home with you.';
+
+export const NO_ONE_ELSE = 'No one else lives with me or depends on me.';
+
+export const SPOUSE_DEPENDENT_QUESTION = 'Is your spouse a dependent of yours?';
+
+export const DEPENDENT_GLOSSARY_LEAD = "The court forms' instructions define a dependent as:";
+
+export const AGE_OUT_OF_RANGE = 'Please enter an age from 0 to 120, in whole years';
+
+export const NOT_ANSWERED_YET = 'Not answered yet';
+
+export const SPOUSE_INCOME_HELP =
+  "Enter your spouse's average monthly income before taxes. Leave a box blank if your spouse doesn't get that kind of income. If your spouse has no income at all, enter $0 in any box.";
