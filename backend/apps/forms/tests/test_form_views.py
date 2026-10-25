@@ -48,6 +48,7 @@ from apps.intake.models import (
     IncomeInfo,
     IntakeSession,
 )
+from apps.intake.tests.builders import answer_household
 
 User = get_user_model()
 
@@ -109,6 +110,7 @@ def session(user, district):
         number_of_dependents=0,
         monthly_gross_wages=Decimal("3000.00"),
     )
+    answer_household(session)
     return session
 
 

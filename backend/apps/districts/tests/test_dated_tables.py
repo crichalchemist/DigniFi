@@ -24,6 +24,7 @@ from apps.districts.models import District, MedianIncome
 from apps.eligibility.cmi import is_above_median
 from apps.eligibility.services.means_test_calculator import MeansTestCalculator
 from apps.intake.models import IncomeInfo, IntakeSession
+from apps.intake.tests.builders import answer_household
 from apps.users.models import User
 
 MEDIAN = "Census median income"
@@ -55,6 +56,7 @@ def _single_filer(district, monthly_wages):
         number_of_dependents=0,
         monthly_gross_wages=Decimal(monthly_wages),
     )
+    answer_household(session)
     return session
 
 

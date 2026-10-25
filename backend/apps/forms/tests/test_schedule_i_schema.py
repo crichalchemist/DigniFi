@@ -12,6 +12,7 @@ from apps.forms.services.fill_resolver import resolve
 from apps.forms.tests.test_derivations import TEN_SOURCES
 from apps.forms.tests.test_form_122a1_schema import LINE_BY_SOURCE as FORM_122A1_LINE_BY_SOURCE
 from apps.intake.models import DebtorInfo, IncomeInfo, IntakeSession
+from apps.intake.tests.builders import answer_household
 
 User = get_user_model()
 
@@ -99,6 +100,7 @@ def session_with_income(session):
         marital_status="not_married",
         number_of_dependents=0,
     )
+    answer_household(session)
     return session
 
 

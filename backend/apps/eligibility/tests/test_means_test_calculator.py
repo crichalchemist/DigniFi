@@ -29,6 +29,7 @@ from apps.eligibility.services.means_test_calculator import MeansTestCalculator
 from apps.forms.registry import build_field_values, packet
 from apps.forms.services.derivations import DERIVATIONS
 from apps.intake.models import DebtInfo, DebtorInfo, ExpenseInfo, IncomeInfo, IntakeSession
+from apps.intake.tests.builders import answer_household
 
 User = get_user_model()
 
@@ -928,6 +929,7 @@ def session_with_above_median_income(user, district, median_income):
         number_of_dependents=0,
         monthly_gross_wages=Decimal("7000.00"),
     )
+    answer_household(s)
     return s
 
 
@@ -960,6 +962,7 @@ def session_with_below_median_income(user, district, median_income):
         number_of_dependents=0,
         monthly_gross_wages=Decimal("5000.00"),
     )
+    answer_household(s)
     return s
 
 

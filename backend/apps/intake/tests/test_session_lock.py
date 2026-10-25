@@ -48,6 +48,7 @@ from apps.intake.models import (
     IncomeInfo,
     IntakeSession,
 )
+from apps.intake.tests.builders import answer_household
 from apps.users.models import User
 
 # CI runs these with config.settings.test_postgres. If those settings ever reach anything
@@ -119,6 +120,7 @@ def ready(transactional_db):
         number_of_dependents=0,
         monthly_gross_wages=Decimal("3000.00"),
     )
+    answer_household(session)
     ExpenseInfo.objects.create(session=session)
     return user, session
 

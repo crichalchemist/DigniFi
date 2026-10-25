@@ -22,6 +22,7 @@ from apps.intake.models import (
     IncomeInfo,
     IntakeSession,
 )
+from apps.intake.tests.builders import answer_household
 
 User = get_user_model()
 
@@ -642,6 +643,7 @@ class TestMeansTestCalculation:
             number_of_dependents=0,
             monthly_gross_wages=Decimal("5000.00"),
         )
+        answer_household(session)
 
         ExpenseInfo.objects.create(
             session=session,
@@ -771,6 +773,7 @@ class TestSessionSummary:
             number_of_dependents=0,
             monthly_gross_wages=Decimal("5000.00"),
         )
+        answer_household(session)
 
         # Add an asset
         AssetInfo.objects.create(

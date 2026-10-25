@@ -24,6 +24,7 @@ from apps.intake.models import (
     SOFACreditorPayment,
     SOFAReport,
 )
+from apps.intake.tests.builders import answer_household
 
 User = get_user_model()
 
@@ -297,6 +298,7 @@ def generated_form_factory(db, api_client_authed):
             zip_code="60622",
         )
         IncomeInfo.objects.create(session=session, monthly_gross_wages=Decimal("2800.00"))
+        answer_household(session)
         return GeneratedForm.objects.create(
             session=session,
             form_type="form_121",
