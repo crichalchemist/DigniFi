@@ -138,7 +138,7 @@ export function DebtorInfoStep({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [formData, errors]);
 
-  const handleChange = (field: keyof DebtorInfo, value: string | number) => {
+  const handleChange = (field: keyof DebtorInfo, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 

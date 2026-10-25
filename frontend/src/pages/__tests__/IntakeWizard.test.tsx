@@ -1775,6 +1775,10 @@ describe('IntakeWizard county', { timeout: 15_000 }, () => {
       vi.useRealTimers();
     }
     expect(patchBodies).toHaveLength(1);
+    expect(patchBodies[0]).toEqual({
+      debtor_info: expect.objectContaining({ first_name: 'Jane' }),
+      household: { county: 'Cook' },
+    });
   });
 
   it("step 1 sends the county beside the debtor's answers", async () => {
@@ -1805,7 +1809,11 @@ describe('IntakeWizard county', { timeout: 15_000 }, () => {
   it("a session with no county shows step 1's county as needed on load", async () => {
     server.use(
       http.get('http://localhost:8000/api/intake/sessions/:id/', () =>
-        HttpResponse.json({ ...sessionAtStep1, debtor_info: completedSession.debtor_info })
+        HttpResponse.json({
+          ...sessionAtStep1,
+          debtor_info: completedSession.debtor_info,
+          household: null,
+        })
       )
     );
     renderWizard();

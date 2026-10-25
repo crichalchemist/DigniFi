@@ -113,13 +113,6 @@ export const ERROR_SESSION_EXPIRED =
   'Your session has ended. Please sign in again to continue where you left off.';
 
 // ============================================================================
-// Your Information Step
-// ============================================================================
-
-export const COUNTY_OUTSIDE_DISTRICT =
-  'DigniFi prepares forms only for the Northern District of Illinois. Its 18 counties are the ones in this list.';
-
-// ============================================================================
 // Amount Box Messages (shown beside the box, see amountError)
 // ============================================================================
 
@@ -128,3 +121,10 @@ export const AMOUNT_NEGATIVE = 'Amount cannot be negative';
 export const AMOUNT_DECIMALS = 'Please enter dollars and cents, like 1250.50';
 
 export const AMOUNT_TOO_LARGE = 'This amount is too large. Please check it';
+
+// ============================================================================
+// Your Information Step
+// ============================================================================
+
+export const COUNTY_OUTSIDE_DISTRICT =
+  'DigniFi prepares forms only for the Northern District of Illinois. Its 18 counties are the ones in this list.';

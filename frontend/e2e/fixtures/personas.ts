@@ -161,11 +161,7 @@ export const MARIA: WaiverPersonaData = {
       is_in_collections: false,
     },
   ],
-  fee_waiver: {
-    take_home_pay: 2800,
-    noncash_assistance: 'SNAP (food stamps)',
-    household_size: 3,
-  },
+  fee_waiver: { take_home_pay: 2800, noncash_assistance: 'SNAP (food stamps)', household_size: 3 },
   expected: { passes_means_test: true, fee_waiver_eligible: true },
 };
 
