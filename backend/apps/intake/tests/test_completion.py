@@ -334,6 +334,7 @@ def test_editing_a_completed_intake_asks_for_complete_again(filer, completed):
             "assets",
             [{"asset_type": "bank_account", "description": "Checking", "current_value": 800}],
         ),
+        ("household", {"county": "Cook"}),
     ],
 )
 def test_saving_an_intake_step_after_complete_reopens_it(filer, completed, section, value):

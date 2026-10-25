@@ -12,6 +12,9 @@ from django.contrib.auth import get_user_model
 from django.core.exceptions import FieldDoesNotExist
 from rest_framework import serializers
 
+from apps.districts.counties import ILND_COUNTIES
+
+from .household import MAX_AGE, MAX_MEMBERS, RELATIONSHIP_WORDS
 from .models import (
     AssetInfo,
     Codebtor,
@@ -20,6 +23,7 @@ from .models import (
     ExecutoryContract,
     ExpenseInfo,
     FeeWaiverApplication,
+    Household,
     IncomeInfo,
     IntakeSession,
     SOFACreditorPayment,
@@ -248,8 +252,79 @@ def _save_rows_by_id(session, model, rows) -> list:
     return saved
 
 
+class HouseholdMemberSerializer(serializers.Serializer):
+    """One person on the household list (3e1 spec §4.2).
+
+    Every answer may be missing, for Complete to name; only a value no answer can have is
+    refused.
+    """
+
+    id = serializers.IntegerField(required=False)
+    relationship = serializers.ChoiceField(
+        choices=list(RELATIONSHIP_WORDS), allow_null=True, required=False
+    )
+    age = serializers.IntegerField(min_value=0, max_value=MAX_AGE, allow_null=True, required=False)
+    lives_with_you = serializers.BooleanField(allow_null=True, required=False)
+    claimed_or_supported = serializers.BooleanField(allow_null=True, required=False)
+    spouse_is_dependent = serializers.BooleanField(allow_null=True, required=False)
+
+
+class HouseholdSerializer(serializers.ModelSerializer):
+    """The filer's county and household list. A save sets only the keys it sends."""
+
+    county = serializers.ChoiceField(choices=list(ILND_COUNTIES), allow_null=True, required=False)
+    # write_only, because to_representation reads the stored JSON: ListField would iterate
+    # its string, and the child would add spouse_is_dependent to every row.
+    members = serializers.ListField(
+        child=HouseholdMemberSerializer(),
+        allow_null=True,
+        required=False,
+        max_length=MAX_MEMBERS,
+        write_only=True,
+    )
+
+    class Meta:
+        model = Household
+        fields = ["county", "members"]
+
+    def validate_members(self, rows):
+        if rows is None:
+            return rows
+        if sum(row.get("relationship") == "spouse" for row in rows) > 1:
+            raise serializers.ValidationError("Only one person on the list can be your spouse.")
+        if any(
+            row.get("relationship") != "spouse" and row.get("spouse_is_dependent") is not None
+            for row in rows
+        ):
+            raise serializers.ValidationError(
+                "Only your spouse's row answers whether your spouse is a dependent."
+            )
+        return rows
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        data["members"] = instance.get_members()
+        return data
+
+
+def _save_household(session: IntakeSession, data: dict) -> Household:
+    """Save a session's household, setting only the keys sent (3e1 spec §4.5).
+
+    The session's cached household is pointed at the row saved, so the reply reads what this
+    save stored rather than the copy select_related cached before it.
+    """
+    household, _ = Household.objects.get_or_create(session=session)
+    if "county" in data:
+        household.county = data["county"]
+    if "members" in data:
+        household.store_members(data["members"])
+    household.save()
+    session.household = household
+    return household
+
+
 # The intake sections a session save can carry (spec §5.3).
-_INTAKE_DATA = {"debtor_info", "income_info", "expense_info", "assets", "debts"}
+_INTAKE_DATA = {"debtor_info", "income_info", "expense_info", "assets", "debts", "household"}
 
 
 class IntakeSessionSerializer(serializers.ModelSerializer):
@@ -264,6 +339,7 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
     expense_info = ExpenseInfoSerializer(required=False, allow_null=True)
     assets = NestedAssetInfoSerializer(many=True, required=False)
     debts = NestedDebtInfoSerializer(many=True, required=False)
+    household = HouseholdSerializer(required=False, allow_null=True)
 
     district_name = serializers.CharField(source="district.name", read_only=True)
 
@@ -281,6 +357,7 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
             "expense_info",
             "assets",
             "debts",
+            "household",
             "created_at",
             "completed_at",
         ]
@@ -307,6 +384,7 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
         expense_data = validated_data.pop("expense_info", None)
         assets_data = validated_data.pop("assets", [])
         debts_data = validated_data.pop("debts", [])
+        household_data = validated_data.pop("household", None)
 
         # Create session
         session = IntakeSession.objects.create(**validated_data)
@@ -320,6 +398,9 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
 
         if expense_data:
             ExpenseInfo.objects.create(session=session, **expense_data)
+
+        if household_data:
+            _save_household(session, household_data)
 
         # Create assets
         for asset_data in assets_data:
@@ -337,6 +418,7 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
 
         Updates or creates debtor_info, income_info, expense_info.
         Saves assets/debts by id (see _save_rows_by_id).
+        Updates or creates household, setting only the keys sent (see _save_household).
         Saving any of them reopens a completed intake.
         """
         if _INTAKE_DATA.intersection(validated_data):
@@ -347,6 +429,7 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
         expense_data = validated_data.pop("expense_info", None)
         assets_data = validated_data.pop("assets", None)
         debts_data = validated_data.pop("debts", None)
+        household_data = validated_data.pop("household", None)
 
         # Update session fields
         for attr, value in validated_data.items():
@@ -364,6 +447,9 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
         # complete (DIG-153). The wizard sends all 13 amounts, a blank box as 0.
         if expense_data is not None:
             ExpenseInfo.objects.update_or_create(session=instance, defaults=expense_data)
+
+        if household_data:
+            _save_household(instance, household_data)
 
         # The response lists a sent list in sent order, so the wizard can pair each row it
         # sent with its id (DIG-273). Every other read keeps model order.
