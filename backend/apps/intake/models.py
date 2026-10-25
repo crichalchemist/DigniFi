@@ -108,18 +108,19 @@ class IncomeInfo(models.Model):
         "monthly_alimony",
         "monthly_other_income",
     )
+    # Form 122A-1 line 1's four answers (3e1 spec §3.2). Null means unanswered; there is no fifth.
+    MARITAL_ANSWERS: ClassVar[tuple[str, ...]] = (
+        "not_married",
+        "married_spouse_filing",
+        "married_together",
+        "married_separately",
+    )
 
     session = models.OneToOneField(
         IntakeSession, on_delete=models.CASCADE, related_name="income_info"
     )
-    marital_status = models.CharField(
-        max_length=30,
-        choices=[
-            ("single", "Single"),
-            ("married_joint", "Married Filing Jointly"),
-            ("married_separate", "Married Filing Separately"),
-        ],
-    )
+    # Line 1's answer, encrypted. The serializer takes only MARITAL_ANSWERS.
+    marital_status = EncryptedCharField(max_length=30, null=True, blank=True)
     number_of_dependents = models.IntegerField(default=0)
     # The total the Income step saved before step 2. It is no longer written, and stays for
     # one release as the only record of what an earlier filer entered.
@@ -207,10 +208,7 @@ class IncomeInfo(models.Model):
         db_table = "income_info"
 
     def __str__(self) -> str:
-        return (
-            f"IncomeInfo: {self.marital_status}, {self.number_of_dependents} dependents "
-            f"(Session: {self.session_id})"
-        )
+        return f"IncomeInfo: {self.number_of_dependents} dependents (Session: {self.session_id})"
 
     def calculate_total_monthly_income(self) -> float | None:
         """The ten monthly amounts added up, Social Security included.
@@ -282,6 +280,65 @@ class Household(models.Model):
             saved.append(member)
         self.members = json.dumps(saved)
         return saved
+
+
+class SpouseIncome(models.Model):
+    """The spouse's monthly income by the filer's ten sources (3e1 spec §5.2).
+
+    Asked of a filer who lives with their spouse. Encrypted from the start, and kept when the
+    marriage answer changes.
+    """
+
+    SOURCE_FIELDS: ClassVar[tuple[str, ...]] = IncomeInfo.SOURCE_FIELDS
+
+    session = models.OneToOneField(
+        IntakeSession, on_delete=models.CASCADE, related_name="spouse_income"
+    )
+    # No default: an amount the filer never gave stays empty.
+    monthly_gross_wages = EncryptedDecimalField(
+        max_digits=10, decimal_places=2, null=True, blank=True
+    )
+    monthly_overtime = EncryptedDecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    monthly_tips = EncryptedDecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    monthly_rental_income = EncryptedDecimalField(
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="After the property's costs",
+    )
+    monthly_pension = EncryptedDecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    monthly_social_security = EncryptedDecimalField(
+        max_digits=10, decimal_places=2, null=True, blank=True
+    )
+    monthly_unemployment = EncryptedDecimalField(
+        max_digits=10, decimal_places=2, null=True, blank=True
+    )
+    monthly_child_support = EncryptedDecimalField(
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="Child support received",
+    )
+    monthly_alimony = EncryptedDecimalField(
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="Alimony received",
+    )
+    monthly_other_income = EncryptedDecimalField(
+        max_digits=10, decimal_places=2, null=True, blank=True
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "spouse_income"
+
+    def __str__(self) -> str:
+        return f"SpouseIncome (Session: {self.session_id})"
 
 
 class ExpenseInfo(models.Model):

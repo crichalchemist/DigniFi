@@ -395,7 +395,7 @@ class TestIntakeSessionCompletion:
         # Add income info
         IncomeInfo.objects.create(
             session=session,
-            marital_status="single",
+            marital_status="not_married",
             number_of_dependents=0,
             monthly_gross_wages=Decimal("5000.00"),
         )
@@ -429,7 +429,7 @@ class TestIntakeSessionCompletion:
         # Add income and expense but not debtor
         IncomeInfo.objects.create(
             session=session,
-            marital_status="single",
+            marital_status="not_married",
             number_of_dependents=0,
             monthly_gross_wages=Decimal("5000.00"),
         )
@@ -515,7 +515,7 @@ class TestIntakeSessionCompletion:
 
         IncomeInfo.objects.create(
             session=session,
-            marital_status="single",
+            marital_status="not_married",
             number_of_dependents=0,
             monthly_gross_wages=Decimal("5000.00"),
         )
@@ -638,7 +638,7 @@ class TestMeansTestCalculation:
 
         IncomeInfo.objects.create(
             session=session,
-            marital_status="single",
+            marital_status="not_married",
             number_of_dependents=0,
             monthly_gross_wages=Decimal("5000.00"),
         )
@@ -767,7 +767,7 @@ class TestSessionSummary:
         # Add income info
         IncomeInfo.objects.create(
             session=session,
-            marital_status="single",
+            marital_status="not_married",
             number_of_dependents=0,
             monthly_gross_wages=Decimal("5000.00"),
         )

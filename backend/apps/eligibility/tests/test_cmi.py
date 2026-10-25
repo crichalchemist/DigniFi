@@ -62,7 +62,7 @@ def test_social_security_never_counts_toward_cmi(filer):
     _, session = filer
     IncomeInfo.objects.create(
         session=session,
-        marital_status="single",
+        marital_status="not_married",
         monthly_gross_wages=Decimal("2000.00"),
         monthly_social_security=Decimal("1500.00"),
         monthly_pension=Decimal("500.00"),

@@ -113,7 +113,7 @@ class TestMeansTestCalculatorInitialization:
         """Test successful initialization with income_info."""
         IncomeInfo.objects.create(
             session=session,
-            marital_status="single",
+            marital_status="not_married",
             number_of_dependents=0,
             monthly_gross_wages=Decimal("5000.00"),
         )
@@ -133,7 +133,7 @@ class TestBelowMedianIncomePassesMeansTest:
         # Below median: $5,000/month
         IncomeInfo.objects.create(
             session=session,
-            marital_status="single",
+            marital_status="not_married",
             number_of_dependents=0,
             monthly_gross_wages=Decimal("5000.00"),
         )
@@ -171,7 +171,7 @@ class TestBelowMedianIncomePassesMeansTest:
         # Below median: $8,500/month
         IncomeInfo.objects.create(
             session=session,
-            marital_status="single",
+            marital_status="not_married",
             number_of_dependents=2,
             monthly_gross_wages=Decimal("8500.00"),
         )
@@ -195,7 +195,7 @@ class TestAboveMedianIncomeFailsMeansTest:
         # Above median: $80,000/month average
         IncomeInfo.objects.create(
             session=session,
-            marital_status="single",
+            marital_status="not_married",
             number_of_dependents=0,
             monthly_gross_wages=Decimal("80000.00"),
         )
@@ -240,7 +240,7 @@ class TestAtMedianIncomeEdgeCase:
         # At median: $5,942/month annualizes to exactly $71,304/year
         IncomeInfo.objects.create(
             session=session,
-            marital_status="single",
+            marital_status="not_married",
             number_of_dependents=0,
             monthly_gross_wages=Decimal("5942.00"),
         )
@@ -261,7 +261,7 @@ class TestAtMedianIncomeEdgeCase:
         # $5,942.01/month annualizes to $71,304.12/year, over the $71,304 median
         IncomeInfo.objects.create(
             session=session,
-            marital_status="single",
+            marital_status="not_married",
             number_of_dependents=0,
             monthly_gross_wages=Decimal("5942.01"),
         )
@@ -281,7 +281,7 @@ class TestAtMedianIncomeEdgeCase:
         # and the printed CMI must agree on one figure.
         IncomeInfo.objects.create(
             session=session,
-            marital_status="single",
+            marital_status="not_married",
             number_of_dependents=0,
             monthly_gross_wages=Decimal("5942.005"),
         )
@@ -303,7 +303,7 @@ class TestAllHouseholdSizes:
         """Test family size 1: single, 0 dependents."""
         IncomeInfo.objects.create(
             session=session,
-            marital_status="single",
+            marital_status="not_married",
             number_of_dependents=0,
             monthly_gross_wages=Decimal("5000.00"),
         )
@@ -333,7 +333,7 @@ class TestAllHouseholdSizes:
         """Test family size 3: single, 2 dependents."""
         IncomeInfo.objects.create(
             session=session,
-            marital_status="single",
+            marital_status="not_married",
             number_of_dependents=2,
             monthly_gross_wages=Decimal("8000.00"),
         )
@@ -393,7 +393,7 @@ class TestAllHouseholdSizes:
         """Test family size 7: single, 6 dependents."""
         IncomeInfo.objects.create(
             session=session,
-            marital_status="single",
+            marital_status="not_married",
             number_of_dependents=6,
             monthly_gross_wages=Decimal("13000.00"),
         )
@@ -431,7 +431,7 @@ class TestFeeWaiverQualification:
         # Income: $3,000/month (below 60%)
         IncomeInfo.objects.create(
             session=session,
-            marital_status="single",
+            marital_status="not_married",
             number_of_dependents=0,
             monthly_gross_wages=Decimal("3000.00"),
         )
@@ -446,7 +446,7 @@ class TestFeeWaiverQualification:
         """Test that zero income qualifies for fee waiver."""
         IncomeInfo.objects.create(
             session=session,
-            marital_status="single",
+            marital_status="not_married",
             number_of_dependents=0,
             monthly_gross_wages=Decimal("0.00"),
         )
@@ -469,7 +469,7 @@ class TestFeeWaiverNonQualification:
         # Income: $3,565.20/month → annualized exactly at the 60% threshold
         IncomeInfo.objects.create(
             session=session,
-            marital_status="single",
+            marital_status="not_married",
             number_of_dependents=0,
             monthly_gross_wages=Decimal("3565.20"),
         )
@@ -488,7 +488,7 @@ class TestFeeWaiverNonQualification:
         # Income: $50,000/year = $4,166.67/month (above 60%, below 100%)
         IncomeInfo.objects.create(
             session=session,
-            marital_status="single",
+            marital_status="not_married",
             number_of_dependents=0,
             monthly_gross_wages=Decimal("4166.67"),
         )
@@ -512,7 +512,7 @@ class TestTotalSavedBeforeIncomeBySource:
     def test_income_not_split_by_source_is_refused(self, session, median_income, months):
         IncomeInfo.objects.create(
             session=session,
-            marital_status="single",
+            marital_status="not_married",
             number_of_dependents=0,
             monthly_income=months,
         )
@@ -533,7 +533,7 @@ class TestUPLProhibitedPhrases:
         """Test that passing means test message contains no UPL prohibited phrases."""
         IncomeInfo.objects.create(
             session=session,
-            marital_status="single",
+            marital_status="not_married",
             number_of_dependents=0,
             monthly_gross_wages=Decimal("5000.00"),
         )
@@ -553,7 +553,7 @@ class TestUPLProhibitedPhrases:
         """Test that failing means test message contains no UPL prohibited phrases."""
         IncomeInfo.objects.create(
             session=session,
-            marital_status="single",
+            marital_status="not_married",
             number_of_dependents=0,
             monthly_gross_wages=Decimal("80000.00"),
         )
@@ -573,7 +573,7 @@ class TestUPLProhibitedPhrases:
         """Test that fee waiver message contains no UPL prohibited phrases."""
         IncomeInfo.objects.create(
             session=session,
-            marital_status="single",
+            marital_status="not_married",
             number_of_dependents=0,
             monthly_gross_wages=Decimal("3000.00"),
         )
@@ -611,7 +611,7 @@ class TestUPLProhibitedPhrases:
         """Test that messages use permitted informational language."""
         IncomeInfo.objects.create(
             session=session,
-            marital_status="single",
+            marital_status="not_married",
             number_of_dependents=0,
             monthly_gross_wages=Decimal("5000.00"),
         )
@@ -635,7 +635,7 @@ class TestRecalculationIdempotency:
         """Test that calling calculate() twice on same session creates only 1 MeansTest."""
         IncomeInfo.objects.create(
             session=session,
-            marital_status="single",
+            marital_status="not_married",
             number_of_dependents=0,
             monthly_gross_wages=Decimal("5000.00"),
         )
@@ -660,7 +660,7 @@ class TestRecalculationIdempotency:
         """Test that recalculation updates existing MeansTest record with new data."""
         income_info = IncomeInfo.objects.create(
             session=session,
-            marital_status="single",
+            marital_status="not_married",
             number_of_dependents=0,
             monthly_gross_wages=Decimal("5000.00"),
         )
@@ -689,7 +689,7 @@ class TestRecalculationIdempotency:
         """Test that recalculation updates district if session district changes."""
         IncomeInfo.objects.create(
             session=session,
-            marital_status="single",
+            marital_status="not_married",
             number_of_dependents=0,
             monthly_gross_wages=Decimal("5000.00"),
         )
@@ -749,7 +749,7 @@ class TestIncomeFromSeveralSources:
         # 3000 + 1000 + 1000 = 5000: below the $5,942/month median for one person
         IncomeInfo.objects.create(
             session=session,
-            marital_status="single",
+            marital_status="not_married",
             number_of_dependents=0,
             monthly_gross_wages=Decimal("3000.00"),
             monthly_pension=Decimal("1000.00"),
@@ -771,7 +771,7 @@ class TestDetailedBreakdown:
         """Test that get_detailed_breakdown() before calculate() raises ValueError."""
         IncomeInfo.objects.create(
             session=session,
-            marital_status="single",
+            marital_status="not_married",
             number_of_dependents=0,
             monthly_gross_wages=Decimal("5000.00"),
         )
@@ -790,7 +790,7 @@ class TestDetailedBreakdown:
         # above the 60% fee waiver threshold ($42,782.40)
         IncomeInfo.objects.create(
             session=session,
-            marital_status="single",
+            marital_status="not_married",
             number_of_dependents=0,
             monthly_gross_wages=Decimal("5000.00"),
         )
@@ -822,7 +822,7 @@ class TestDetailedBreakdown:
         }
 
         # Verify family composition
-        assert breakdown["family_composition"]["marital_status"] == "single"
+        assert breakdown["family_composition"]["marital_status"] == "not_married"
         assert breakdown["family_composition"]["number_of_dependents"] == 0
         assert breakdown["family_composition"]["total_family_size"] == 1
 
@@ -850,7 +850,7 @@ class TestAnnualizedComparison:
         # $10,000/month = $120,000/year > $71,304 median for family of 1
         IncomeInfo.objects.create(
             session=session,
-            marital_status="single",
+            marital_status="not_married",
             number_of_dependents=0,
             monthly_gross_wages=Decimal("10000.00"),
         )
@@ -885,7 +885,7 @@ class TestHouseholdSizeFromDebtorInfo:
         # Income-derived family size would be 1 (single, no dependents)
         IncomeInfo.objects.create(
             session=session,
-            marital_status="single",
+            marital_status="not_married",
             number_of_dependents=0,
             monthly_gross_wages=Decimal("9000.00"),
         )
@@ -924,7 +924,7 @@ def session_with_above_median_income(user, district, median_income):
     )
     IncomeInfo.objects.create(
         session=s,
-        marital_status="single",
+        marital_status="not_married",
         number_of_dependents=0,
         monthly_gross_wages=Decimal("7000.00"),
     )
@@ -956,7 +956,7 @@ def session_with_below_median_income(user, district, median_income):
     )
     IncomeInfo.objects.create(
         session=s,
-        marital_status="single",
+        marital_status="not_married",
         number_of_dependents=0,
         monthly_gross_wages=Decimal("5000.00"),
     )
@@ -1101,7 +1101,7 @@ class TestAboveMedianEndToEnd:
         IncomeInfo.objects.create(
             session=session,
             monthly_gross_wages=Decimal("6000.00"),
-            marital_status="single",
+            marital_status="not_married",
             number_of_dependents=0,
         )
         ExpenseInfo.objects.create(

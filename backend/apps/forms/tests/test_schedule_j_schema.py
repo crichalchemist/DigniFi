@@ -122,7 +122,7 @@ def test_monthly_net_income_is_income_less_expenses(session):
     # 23a copies Schedule I line 12, Social Security included (C1); 23c is 23a - 23b.
     IncomeInfo.objects.create(
         session=session,
-        marital_status="single",
+        marital_status="not_married",
         monthly_gross_wages=Decimal("9000.00"),
         monthly_social_security=Decimal("200.00"),
     )
@@ -140,7 +140,7 @@ def test_monthly_net_income_is_income_less_expenses(session):
 def test_a_month_that_runs_short_prints_net_income_below_zero(session):
     # The form's own arithmetic: expenses above income leave a negative net income.
     IncomeInfo.objects.create(
-        session=session, marital_status="single", monthly_gross_wages=Decimal("100.00")
+        session=session, marital_status="not_married", monthly_gross_wages=Decimal("100.00")
     )
     ExpenseInfo.objects.create(session=session, rent_or_mortgage=Decimal("250.00"))
 
@@ -154,7 +154,7 @@ def test_net_income_stays_blank_until_income_is_given(session, income_saved):
     # With no income given, 23a is blank and 23c has nothing to subtract from, so it is
     # blank too, never the expenses as a loss. The expense total still prints.
     if income_saved:  # the Income step was saved with every source left empty
-        IncomeInfo.objects.create(session=session, marital_status="single")
+        IncomeInfo.objects.create(session=session, marital_status="not_married")
     ExpenseInfo.objects.create(session=session, **EXPENSES)
 
     printed = resolve(load_schema("schedule_j"), session)
@@ -215,7 +215,7 @@ def test_every_form_that_copies_the_monthly_expense_total_prints_line_22c(sessio
     # Schedule J 22a, 22c and 23b, 106Sum line 5 and 103B line 6 are one figure on four forms,
     # so a filer's sworn expenses can't differ between them.
     IncomeInfo.objects.create(
-        session=session, marital_status="single", monthly_gross_wages=Decimal("9000.00")
+        session=session, marital_status="not_married", monthly_gross_wages=Decimal("9000.00")
     )
     ExpenseInfo.objects.create(session=session, **EXPENSES)
 

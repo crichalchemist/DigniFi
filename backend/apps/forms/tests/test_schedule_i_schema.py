@@ -96,7 +96,7 @@ def session_with_income(session):
     IncomeInfo.objects.create(
         session=session,
         monthly_gross_wages=Decimal("2000.00"),
-        marital_status="single",
+        marital_status="not_married",
         number_of_dependents=0,
     )
     return session

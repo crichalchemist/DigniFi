@@ -115,7 +115,14 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
         """Return only sessions for the authenticated user."""
         return (
             IntakeSession.objects.filter(user=self.request.user)
-            .select_related("district", "debtor_info", "income_info", "expense_info", "household")
+            .select_related(
+                "district",
+                "debtor_info",
+                "income_info",
+                "expense_info",
+                "household",
+                "spouse_income",
+            )
             .prefetch_related("assets", "debts")
         )
 

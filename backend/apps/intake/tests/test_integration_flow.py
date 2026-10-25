@@ -77,7 +77,7 @@ class IntakeFlowIntegrationTest(APITestCase):
         # Note: Backend expects 'monthly_income' as a list of 6 values
         income_data = {
             "session": session_id,
-            "marital_status": "single",
+            "marital_status": "not_married",
             "number_of_dependents": 0,
             "monthly_income": [5000, 5000, 5000, 5000, 5000, 5000],  # $5000/month * 12 = $60k/year
         }

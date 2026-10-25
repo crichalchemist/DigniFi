@@ -115,7 +115,7 @@ def ready(transactional_db):
     )
     IncomeInfo.objects.create(
         session=session,
-        marital_status="single",
+        marital_status="not_married",
         number_of_dependents=0,
         monthly_gross_wages=Decimal("3000.00"),
     )

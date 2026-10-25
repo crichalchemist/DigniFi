@@ -29,6 +29,7 @@ from .models import (
     SOFACreditorPayment,
     SOFAPriorIncome,
     SOFAReport,
+    SpouseIncome,
 )
 
 User = get_user_model()
@@ -79,10 +80,14 @@ class IncomeInfoSerializer(serializers.ModelSerializer):
     """Serializer for income information, stored by source (forms step 2 spec §5.5).
 
     monthly_income, the total saved before step 2, is read-only: the Income step shows it
-    while asking the filer to split it.
+    while asking the filer to split it. marital_status is Form 122A-1 line 1's answer: one of
+    its four answers, or null while unanswered (3e1 spec §3.3).
     """
 
     total_monthly_income = serializers.SerializerMethodField()
+    marital_status = serializers.ChoiceField(
+        choices=IncomeInfo.MARITAL_ANSWERS, allow_null=True, required=False
+    )
 
     class Meta:
         model = IncomeInfo
@@ -99,6 +104,49 @@ class IncomeInfoSerializer(serializers.ModelSerializer):
     def get_total_monthly_income(self, obj):
         """Return the ten amounts added up, or None when the filer gave none of them."""
         return obj.calculate_total_monthly_income()
+
+
+class SpouseIncomeSerializer(serializers.ModelSerializer):
+    """The spouse's monthly income by the filer's ten sources (3e1 spec §5.2).
+
+    A blank box is null, never $0 unless typed.
+    """
+
+    # Explicit field declarations — EncryptedDecimalField confuses DRF's auto-mapper
+    monthly_gross_wages = serializers.DecimalField(
+        max_digits=10, decimal_places=2, min_value=Decimal("0"), allow_null=True, required=False
+    )
+    monthly_overtime = serializers.DecimalField(
+        max_digits=10, decimal_places=2, min_value=Decimal("0"), allow_null=True, required=False
+    )
+    monthly_tips = serializers.DecimalField(
+        max_digits=10, decimal_places=2, min_value=Decimal("0"), allow_null=True, required=False
+    )
+    monthly_rental_income = serializers.DecimalField(
+        max_digits=10, decimal_places=2, min_value=Decimal("0"), allow_null=True, required=False
+    )
+    monthly_pension = serializers.DecimalField(
+        max_digits=10, decimal_places=2, min_value=Decimal("0"), allow_null=True, required=False
+    )
+    monthly_social_security = serializers.DecimalField(
+        max_digits=10, decimal_places=2, min_value=Decimal("0"), allow_null=True, required=False
+    )
+    monthly_unemployment = serializers.DecimalField(
+        max_digits=10, decimal_places=2, min_value=Decimal("0"), allow_null=True, required=False
+    )
+    monthly_child_support = serializers.DecimalField(
+        max_digits=10, decimal_places=2, min_value=Decimal("0"), allow_null=True, required=False
+    )
+    monthly_alimony = serializers.DecimalField(
+        max_digits=10, decimal_places=2, min_value=Decimal("0"), allow_null=True, required=False
+    )
+    monthly_other_income = serializers.DecimalField(
+        max_digits=10, decimal_places=2, min_value=Decimal("0"), allow_null=True, required=False
+    )
+
+    class Meta:
+        model = SpouseIncome
+        fields = list(IncomeInfo.SOURCE_FIELDS)
 
 
 class ExpenseInfoSerializer(serializers.ModelSerializer):
@@ -324,7 +372,15 @@ def _save_household(session: IntakeSession, data: dict) -> Household:
 
 
 # The intake sections a session save can carry (spec §5.3).
-_INTAKE_DATA = {"debtor_info", "income_info", "expense_info", "assets", "debts", "household"}
+_INTAKE_DATA = {
+    "debtor_info",
+    "income_info",
+    "expense_info",
+    "assets",
+    "debts",
+    "household",
+    "spouse_income",
+}
 
 
 class IntakeSessionSerializer(serializers.ModelSerializer):
@@ -340,6 +396,7 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
     assets = NestedAssetInfoSerializer(many=True, required=False)
     debts = NestedDebtInfoSerializer(many=True, required=False)
     household = HouseholdSerializer(required=False, allow_null=True)
+    spouse_income = SpouseIncomeSerializer(required=False, allow_null=True)
 
     district_name = serializers.CharField(source="district.name", read_only=True)
 
@@ -358,6 +415,7 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
             "assets",
             "debts",
             "household",
+            "spouse_income",
             "created_at",
             "completed_at",
         ]
@@ -385,6 +443,7 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
         assets_data = validated_data.pop("assets", [])
         debts_data = validated_data.pop("debts", [])
         household_data = validated_data.pop("household", None)
+        spouse_data = validated_data.pop("spouse_income", None)
 
         # Create session
         session = IntakeSession.objects.create(**validated_data)
@@ -401,6 +460,9 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
 
         if household_data:
             _save_household(session, household_data)
+
+        if spouse_data:
+            SpouseIncome.objects.create(session=session, **spouse_data)
 
         # Create assets
         for asset_data in assets_data:
@@ -419,7 +481,9 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
         Updates or creates debtor_info, income_info, expense_info.
         Saves assets/debts by id (see _save_rows_by_id).
         Updates or creates household, setting only the keys sent (see _save_household).
-        Saving any of them reopens a completed intake.
+        Saving any of them reopens a completed intake. The session is pointed at the income and
+        spouse rows saved, so the reply reads what this save stored rather than the copies
+        select_related cached before it.
         """
         if _INTAKE_DATA.intersection(validated_data):
             instance.reopen()
@@ -430,6 +494,7 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
         assets_data = validated_data.pop("assets", None)
         debts_data = validated_data.pop("debts", None)
         household_data = validated_data.pop("household", None)
+        spouse_data = validated_data.pop("spouse_income", None)
 
         # Update session fields
         for attr, value in validated_data.items():
@@ -441,7 +506,9 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
             DebtorInfo.objects.update_or_create(session=instance, defaults=debtor_data)
 
         if income_data:
-            IncomeInfo.objects.update_or_create(session=instance, defaults=income_data)
+            instance.income_info, _ = IncomeInfo.objects.update_or_create(
+                session=instance, defaults=income_data
+            )
 
         # An empty body still creates the record with its $0 defaults, so the filer can
         # complete (DIG-153). The wizard sends all 13 amounts, a blank box as 0.
@@ -450,6 +517,11 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
 
         if household_data:
             _save_household(instance, household_data)
+
+        if spouse_data:
+            instance.spouse_income, _ = SpouseIncome.objects.update_or_create(
+                session=instance, defaults=spouse_data
+            )
 
         # The response lists a sent list in sent order, so the wizard can pair each row it
         # sent with its id (DIG-273). Every other read keeps model order.

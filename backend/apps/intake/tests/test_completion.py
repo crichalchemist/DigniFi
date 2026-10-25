@@ -68,7 +68,7 @@ def completed(filer, district):
     )
     IncomeInfo.objects.create(
         session=session,
-        marital_status="single",
+        marital_status="not_married",
         number_of_dependents=0,
         monthly_gross_wages=Decimal("3000.00"),
     )
@@ -335,6 +335,7 @@ def test_editing_a_completed_intake_asks_for_complete_again(filer, completed):
             [{"asset_type": "bank_account", "description": "Checking", "current_value": 800}],
         ),
         ("household", {"county": "Cook"}),
+        ("spouse_income", {"monthly_gross_wages": "100.00"}),
     ],
 )
 def test_saving_an_intake_step_after_complete_reopens_it(filer, completed, section, value):

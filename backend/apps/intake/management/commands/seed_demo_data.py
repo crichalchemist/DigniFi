@@ -69,7 +69,7 @@ def _maria_torres() -> dict:
             "filing_type": "individual",
         },
         "income": {
-            "marital_status": "single",
+            "marital_status": "not_married",
             "number_of_dependents": 2,
             **_wages_only(Decimal("3200.00")),
         },
@@ -190,7 +190,7 @@ def _james_washington() -> dict:
             "filing_type": "individual",
         },
         "income": {
-            "marital_status": "single",
+            "marital_status": "not_married",
             "number_of_dependents": 0,
             **_wages_only(Decimal("5833.00")),
         },
@@ -270,7 +270,7 @@ def _priya_sharma() -> dict:
             "filing_type": "individual",
         },
         "income": {
-            "marital_status": "married_joint",
+            "marital_status": "married_together",
             "number_of_dependents": 2,
             # $12,000/month = $144,000/year — above the $137,902 HH4 median,
             # so the annualized § 707(b) comparison fails as intended.
@@ -344,7 +344,7 @@ def _deshawn_mitchell() -> dict:
             "filing_type": "individual",
         },
         "income": {
-            "marital_status": "married_joint",
+            "marital_status": "married_together",
             "number_of_dependents": 0,
             **_wages_only(Decimal("3500.00")),
         },
@@ -452,7 +452,7 @@ def _sarah_chen() -> dict:
             "filing_type": "individual",
         },
         "income": {
-            "marital_status": "single",
+            "marital_status": "not_married",
             "number_of_dependents": 0,
             **_wages_only(Decimal("2000.00")),
         },
@@ -522,7 +522,7 @@ def _andres_kettleby() -> dict:
             "filing_type": "individual",
         },
         "income": {
-            "marital_status": "single",
+            "marital_status": "not_married",
             "number_of_dependents": 1,
             # His net driving income ($4,200 from the apps less $830 of driving costs) is
             # other income until the Income step asks for business income (3a1.Q1).
