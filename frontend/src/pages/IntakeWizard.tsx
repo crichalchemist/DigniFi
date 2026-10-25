@@ -112,6 +112,8 @@ export function IntakeWizard() {
 
   // Step-specific data
   const [debtorData, setDebtorData] = useState<Partial<DebtorInfo>>({});
+  // Saved under `household`, beside the debtor's answers
+  const [county, setCounty] = useState<string | null>(null);
   const [incomeData, setIncomeData] = useState<Partial<IncomeInfo>>({});
   const [expenseData, setExpenseData] = useState<Partial<ExpenseInfo>>({});
   const [assetsData, setAssetsData] = useState<WizardRow<AssetInfo>[]>([]);
@@ -195,6 +197,7 @@ export function IntakeWizard() {
           );
         }
         if (fresh.debtor_info) setDebtorData(fresh.debtor_info);
+        if (fresh.household) setCounty(fresh.household.county);
         if (fresh.income_info) setIncomeData(hydrateAmounts(fresh.income_info, INCOME_FIELDS));
         if (fresh.expense_info) setExpenseData(hydrateAmounts(fresh.expense_info, EXPENSE_FIELDS));
         // A loaded row's key is its id
@@ -246,7 +249,7 @@ export function IntakeWizard() {
   const currentStepBody = useMemo((): Partial<IntakeSession> | null => {
     switch (currentStepKey) {
       case 'debtor_info':
-        return { debtor_info: debtorData } as Partial<IntakeSession>;
+        return { debtor_info: debtorData, household: { county } } as Partial<IntakeSession>;
 
       case 'income_info': {
         // The ten amounts alone. A blank box is sent as null, so it stays empty on the server
@@ -285,7 +288,7 @@ export function IntakeWizard() {
       default:
         return null;
     }
-  }, [currentStepKey, debtorData, incomeData, expenseData, assetsData, debtsData]);
+  }, [currentStepKey, debtorData, county, incomeData, expenseData, assetsData, debtsData]);
 
   const { saveStatus, saveNow, lastSavedAt } = useAutoSave({
     data: currentStepBody,
@@ -459,6 +462,8 @@ export function IntakeWizard() {
             initialData={debtorData}
             onDataChange={setDebtorData}
             onValidationChange={setCanProceed}
+            county={county}
+            onCountyChange={setCounty}
           />
         );
 

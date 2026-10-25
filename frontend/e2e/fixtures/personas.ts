@@ -21,10 +21,8 @@ export interface PersonaDebtor {
   city: string;
   state: string;
   zip_code: string;
-  // Household & filing info (required on the DebtorInfo step).
-  // household_size mirrors seed_demo_data: dependents + 1 (+1 if married).
-  household_size: number;
-  filing_type: 'individual' | 'joint';
+  // One of the 18 counties step 1 lists
+  county: string;
 }
 
 /** The Income step's ten boxes, named as the backend stores them (INCOME_FIELDS in types/api.ts) */
@@ -84,6 +82,8 @@ export interface PersonaFeeWaiver {
   take_home_pay: number;
   // The "What kind?" answer, or null for a persona who gets no non-cash help
   noncash_assistance: string | null;
+  // Form 103B line 1's count (§4.4)
+  household_size: number;
 }
 
 /** A persona the means test sends to the fee-waiver page */
@@ -102,8 +102,7 @@ export const MARIA: WaiverPersonaData = {
     date_of_birth: '1988-06-15',
     phone: '312-555-0101',
     email: `maria.e2e+${RUN_ID}@test.dignifi.org`,
-    household_size: 3,
-    filing_type: 'individual',
+    county: 'Cook',
     street_address: '2145 W Division St Apt 3',
     city: 'Chicago',
     state: 'IL',
@@ -162,7 +161,11 @@ export const MARIA: WaiverPersonaData = {
       is_in_collections: false,
     },
   ],
-  fee_waiver: { take_home_pay: 2800, noncash_assistance: 'SNAP (food stamps)' },
+  fee_waiver: {
+    take_home_pay: 2800,
+    noncash_assistance: 'SNAP (food stamps)',
+    household_size: 3,
+  },
   expected: { passes_means_test: true, fee_waiver_eligible: true },
 };
 
@@ -177,8 +180,7 @@ export const JAMES: PersonaData = {
     date_of_birth: '1975-03-22',
     phone: '312-555-0202',
     email: `james.e2e+${RUN_ID}@test.dignifi.org`,
-    household_size: 1,
-    filing_type: 'individual',
+    county: 'Cook',
     street_address: '850 N State St Apt 1204',
     city: 'Chicago',
     state: 'IL',
@@ -250,8 +252,7 @@ export const PRIYA: PersonaData = {
     date_of_birth: '1982-11-08',
     phone: '312-555-0303',
     email: `priya.e2e+${RUN_ID}@test.dignifi.org`,
-    household_size: 4,
-    filing_type: 'individual',
+    county: 'Cook',
     street_address: '456 W Fullerton Pkwy',
     city: 'Chicago',
     state: 'IL',
@@ -318,8 +319,7 @@ export const DESHAWN: WaiverPersonaData = {
     date_of_birth: '1980-09-03',
     phone: '312-555-0404',
     email: `deshawn.e2e+${RUN_ID}@test.dignifi.org`,
-    household_size: 2,
-    filing_type: 'individual',
+    county: 'Cook',
     street_address: '7823 S Sangamon St',
     city: 'Chicago',
     state: 'IL',
@@ -392,7 +392,7 @@ export const DESHAWN: WaiverPersonaData = {
       is_in_collections: true,
     },
   ],
-  fee_waiver: { take_home_pay: 3050, noncash_assistance: null },
+  fee_waiver: { take_home_pay: 3050, noncash_assistance: null, household_size: 2 },
   // $3,500/month = $42,000/year — below 60% of the HH2 median ($56,360.40),
   // so DeShawn qualifies for the fee waiver as well as Chapter 7.
   expected: { passes_means_test: true, fee_waiver_eligible: true },
@@ -409,8 +409,7 @@ export const SARAH: WaiverPersonaData = {
     date_of_birth: '1995-01-20',
     phone: '312-555-0505',
     email: `sarah.e2e+${RUN_ID}@test.dignifi.org`,
-    household_size: 1,
-    filing_type: 'individual',
+    county: 'Cook',
     street_address: '1520 N Damen Ave Apt 2F',
     city: 'Chicago',
     state: 'IL',
@@ -453,7 +452,7 @@ export const SARAH: WaiverPersonaData = {
       is_in_collections: true,
     },
   ],
-  fee_waiver: { take_home_pay: 1750, noncash_assistance: null },
+  fee_waiver: { take_home_pay: 1750, noncash_assistance: null, household_size: 1 },
   expected: { passes_means_test: true, fee_waiver_eligible: true },
 };
 
@@ -470,8 +469,7 @@ export const ANDRES: PersonaData = {
     date_of_birth: '1988-04-12',
     phone: '630-555-0161',
     email: `andres.e2e+${RUN_ID}@test.dignifi.org`,
-    household_size: 2,
-    filing_type: 'individual',
+    county: 'Kane',
     street_address: '1418 Marquette Ave Apt 2',
     city: 'Aurora',
     state: 'IL',

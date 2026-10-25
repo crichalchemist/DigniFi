@@ -101,15 +101,12 @@ export class WizardPage {
     }
 
     await fill('zip_code', data.zip_code);
+    await this.page.locator('select[name="county"]').selectOption(data.county);
     // Email is locked (readOnly) to the account address and auto-filled from the
     // authenticated user. The persona registered with data.email, so the field
     // already holds it — assert instead of fill (fill() times out on readOnly).
     await expect(this.page.locator('input[name="email"]')).toHaveValue(data.email);
     await fill('phone', data.phone);
-
-    // Household & filing info (required since the joint-filing feature)
-    await fill('household_size', String(data.household_size));
-    await this.page.locator('select[name="filing_type"]').selectOption(data.filing_type);
   }
 
   // ── Step 2: Income Info ─────────────────────────────────────────

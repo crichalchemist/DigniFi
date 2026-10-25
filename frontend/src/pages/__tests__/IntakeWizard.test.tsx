@@ -76,7 +76,7 @@ function renderWizard(entry = '/intake') {
  * Fill all required DebtorInfoStep fields so that onValidationChange(true) fires.
  * Must be called after the wizard has rendered and the step is visible.
  */
-async function fillDebtorInfoFields() {
+async function fillDebtorInfoFields(county: string | null = 'Cook') {
   // The email field is readOnly and auto-populated from useAuth via useEffect —
   // we do not need to change it manually.
 
@@ -108,12 +108,11 @@ async function fillDebtorInfoFields() {
   fireEvent.change(screen.getByRole('textbox', { name: /phone number/i }), {
     target: { value: '312-555-1234' },
   });
-  fireEvent.change(screen.getByRole('spinbutton', { name: /household size/i }), {
-    target: { value: '2' },
-  });
-  fireEvent.change(screen.getByRole('combobox', { name: /filing type/i }), {
-    target: { value: 'individual' },
-  });
+  if (county !== null) {
+    fireEvent.change(screen.getByRole('combobox', { name: /county/i }), {
+      target: { value: county },
+    });
+  }
 }
 
 // ===========================================================================
@@ -1733,6 +1732,96 @@ describe('IntakeWizard phone number', { timeout: 15_000 }, () => {
     const debtorInfo = patchBodies[patchBodies.length - 1].debtor_info as Record<string, unknown>;
     expect(debtorInfo.phone).toBe('312-555-1234');
     expect(debtorInfo).not.toHaveProperty('phone_number');
+  });
+});
+
+// Form 101 prints the county, so step 1 asks for one and saves it under `household`.
+describe('IntakeWizard county', { timeout: 15_000 }, () => {
+  let patchBodies: Record<string, unknown>[];
+
+  beforeEach(() => {
+    patchBodies = [];
+    server.use(
+      http.patch('http://localhost:8000/api/intake/sessions/:id/', async ({ request }) => {
+        patchBodies.push((await request.json()) as Record<string, unknown>);
+        return HttpResponse.json(sessionAtStep1);
+      }),
+      http.post(
+        'http://localhost:8000/api/audit/logs/',
+        () => new HttpResponse(null, { status: 201 })
+      ),
+      http.get('http://localhost:8000/api/intake/sessions/:id/', () =>
+        HttpResponse.json(sessionAtStep1)
+      )
+    );
+  });
+
+  it('step 1 neither saves nor continues until a county is picked', async () => {
+    renderWizard();
+    await screen.findByRole('heading', { name: /your information/i, level: 2 });
+    vi.useFakeTimers();
+    try {
+      await act(async () => {
+        await fillDebtorInfoFields(null);
+      });
+      await waitSeconds(3);
+      expect(patchBodies).toHaveLength(0);
+      expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled();
+      fireEvent.change(screen.getByRole('combobox', { name: /county/i }), {
+        target: { value: 'Cook' },
+      });
+      await waitSeconds(3);
+    } finally {
+      vi.useRealTimers();
+    }
+    expect(patchBodies).toHaveLength(1);
+  });
+
+  it("step 1 sends the county beside the debtor's answers", async () => {
+    renderWizard();
+    await screen.findByRole('heading', { name: /your information/i, level: 2 });
+    await fillDebtorInfoFields();
+    await userEvent.click(screen.getByRole('button', { name: /continue/i }));
+    await screen.findByText('DocumentUploadPage');
+    expect(patchBodies.at(-1)).toEqual({
+      debtor_info: expect.objectContaining({ first_name: 'Jane', zip_code: '60601' }),
+      household: { county: 'Cook' },
+    });
+  });
+
+  it('no spouse SSN leaves the browser', async () => {
+    renderWizard();
+    await screen.findByRole('heading', { name: /your information/i, level: 2 });
+    expect(screen.queryByRole('option', { name: /joint/i })).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/spouse/i)).not.toBeInTheDocument();
+    await fillDebtorInfoFields();
+    await userEvent.click(screen.getByRole('button', { name: /continue/i }));
+    await screen.findByText('DocumentUploadPage');
+    expect(patchBodies.length).toBeGreaterThan(0);
+    for (const body of patchBodies) expect(JSON.stringify(body)).not.toContain('co_debtor');
+  });
+
+  // P10 #5. The SSN is write-only, so a loaded step 1 is never complete: the filer retypes it.
+  it("a session with no county shows step 1's county as needed on load", async () => {
+    server.use(
+      http.get('http://localhost:8000/api/intake/sessions/:id/', () =>
+        HttpResponse.json({ ...sessionAtStep1, debtor_info: completedSession.debtor_info })
+      )
+    );
+    renderWizard();
+    const county = await screen.findByRole('combobox', { name: /county/i });
+    expect(county).toHaveValue('');
+    expect(county).toBeInvalid();
+    expect(county).toHaveAccessibleDescription(
+      expect.stringContaining('Please choose your county')
+    );
+    fireEvent.change(screen.getByLabelText(/social security number/i), {
+      target: { value: '900-12-3456' },
+    });
+    fireEvent.change(screen.getByRole('textbox', { name: /phone number/i }), {
+      target: { value: '312-555-0100' },
+    });
+    expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled();
   });
 });
 

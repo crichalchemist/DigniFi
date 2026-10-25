@@ -80,10 +80,7 @@ export function CodebtorsStep({
   return (
     <div className="codebtors-step">
       <h2 className="text-lg font-semibold mb-4">Codebtors</h2>
-      <p className="text-gray-600 mb-4">
-        List anyone who is jointly liable on any of your debts. If you filed jointly with your
-        spouse, they will appear automatically.
-      </p>
+      <p className="text-gray-600 mb-4">List anyone who is jointly liable on any of your debts.</p>
 
       {codebtors.length === 0 && (
         <p className="text-gray-500 italic mb-4">

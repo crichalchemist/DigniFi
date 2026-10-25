@@ -113,6 +113,13 @@ export const ERROR_SESSION_EXPIRED =
   'Your session has ended. Please sign in again to continue where you left off.';
 
 // ============================================================================
+// Your Information Step
+// ============================================================================
+
+export const COUNTY_OUTSIDE_DISTRICT =
+  'DigniFi prepares forms only for the Northern District of Illinois. Its 18 counties are the ones in this list.';
+
+// ============================================================================
 // Amount Box Messages (shown beside the box, see amountError)
 // ============================================================================
 
