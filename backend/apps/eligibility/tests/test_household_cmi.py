@@ -198,6 +198,23 @@ def test_a_spouse_row_not_yet_answered_gives_one_sentence_not_two(session, membe
     assert _messages(session) == [ROW]
 
 
+def test_a_row_with_no_relationship_living_elsewhere_cant_be_the_spouse_at_home(session):
+    # It may yet be the spouse, but not the spouse at home, so the mismatch stands (P15).
+    _answered(
+        session,
+        marital_status="married_together",
+        members=[{**SON, "relationship": None, "lives_with_you": False}],
+        spouse_income=_spouse("1800.00"),
+    )
+    assert _messages(session) == [ROW, MISMATCH]
+
+
+def test_missing_amounts_for_both_the_filer_and_the_spouse_are_both_named(session):
+    IncomeInfo.objects.create(session=session)
+    answer_household(session, marital_status="married_together", members=[SPOUSE_AT_HOME])
+    assert _messages(session) == [INCOME_BY_SOURCE, SPOUSE_INCOME]
+
+
 def _nothing_stored(session):
     pass
 

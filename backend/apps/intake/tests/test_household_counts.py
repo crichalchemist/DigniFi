@@ -66,6 +66,12 @@ def test_line_5_counts_everyone_claimed_or_supported():
     assert count_exemptions(PRIYA) == 4
 
 
+def test_a_dependent_living_elsewhere_counts_on_line_5_but_not_line_13():
+    away = [_row("daughter", 5, False, True)]
+    assert count_family_size(away) == 1
+    assert count_exemptions(away) == 2
+
+
 @pytest.mark.parametrize("marital_status", ["married_together", "married_spouse_filing"])
 @pytest.mark.parametrize("spouse_is_dependent", [False, True])
 def test_103b_counts_a_spouse_at_home_once(marital_status, spouse_is_dependent):
