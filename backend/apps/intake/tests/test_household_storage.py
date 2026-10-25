@@ -79,6 +79,15 @@ def test_each_new_row_gets_the_next_id_and_ids_are_never_reused(filer):
     assert _ids(Household.objects.get(session=session).get_members()) == [1, 3, 4]
 
 
+@pytest.mark.parametrize("emptied", [[], None], ids=["no_one", "unanswered"])
+def test_ids_are_never_reused_after_the_list_is_emptied(filer, emptied):
+    client, session = filer
+    _members(client, session, [SON, DAUGHTER])
+    # The filer says no one (or the list goes back to unanswered), then adds someone.
+    assert _save(client, session, {"members": emptied}).data["household"]["members"] == emptied
+    assert _ids(_members(client, session, [ROOMMATE])) == [3]
+
+
 def test_a_sent_row_with_one_of_the_lists_ids_replaces_the_stored_row_whole(filer):
     client, session = filer
     [stored] = _members(client, session, [SON])
@@ -209,7 +218,9 @@ def test_a_household_patch_updates_only_the_keys_sent(filer):
 
     first = _save(client, session, {"county": "Cook"}).data["household"]
     assert (first["county"], first["members"]) == ("Cook", None)
-    _members(client, session, [SON])
+    # The wizard's order: step 2 sends only the list, and step 1's county stays.
+    listed = _save(client, session, {"members": [SON]}).data["household"]
+    assert listed["county"] == "Cook"
     kept = _save(client, session, {"county": "Kane"}).data["household"]
 
     assert kept["county"] == "Kane"
