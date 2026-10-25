@@ -1019,7 +1019,7 @@ class TestMeansTestWorkedOutAgain:
         # The filed copy prints what was filed, which needs no means test.
         assert filed_download.status_code == status.HTTP_200_OK
 
-    def test_completed_intake_with_no_income_asks_for_income_by_source(
+    def test_completed_intake_with_no_income_asks_the_marriage_question_first(
         self, api_client, session_with_debtor
     ):
         # No income row is first a marriage question never answered (3e1 spec §9.1): the

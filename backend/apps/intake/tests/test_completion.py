@@ -365,8 +365,15 @@ def test_complete_names_every_new_gap_by_its_step(filer, completed, gap, step, m
     completed.status = "in_progress"
     completed.save()
     gap(completed)
+
     response = client.post(_session_url(completed, "complete/"))
-    assert response.data["errors"] == [{"step": step, "message": message}]
+
+    assert response.status_code == 400
+    assert response.data == {
+        "message": NOT_FINISHED,
+        "errors": [{"step": step, "message": message}],
+    }
+    assert _status(completed) == "in_progress"
 
 
 def test_complete_lists_every_gap_in_wizard_order(filer, district):

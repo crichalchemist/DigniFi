@@ -211,7 +211,8 @@ REFUSED = {"error": MARRIAGE, "step": "income_info"}
 
 
 def _422(response):
-    assert response.status_code == 422, response.data
+    # A wrongly drawn PDF is a plain HttpResponse, with no .data: show its status instead.
+    assert response.status_code == 422, (response.status_code, getattr(response, "data", None))
     return response.data
 
 
@@ -285,6 +286,24 @@ def test_the_counts_are_null_while_a_gap_remains_and_a_bare_session_reads_withou
     )
     Household.objects.create(session=session, county="Cook")  # step 1 saved, list never answered
     got = client.get(url).data["household"]
+    assert (got["family_size"], got["fee_waiver_household_size"]) == (None, None)
+
+
+@pytest.mark.parametrize(
+    "household",
+    [
+        (None, [], "2000.00", None),  # the list says no one, the marriage question unanswered
+        ("married_together", [SPOUSE_44], "3500.00", None),  # no spouse's income entered
+    ],
+    ids=["marriage_unanswered", "spouse_income_not_entered"],
+)
+def test_the_counts_are_null_while_another_income_step_gap_remains(filer, household):
+    # The list is answered, so both counts could be worked out; the means test would still
+    # refuse, so neither is shown (spec §4.4).
+    client, session = filer
+    _answer(session, *household)
+    got = client.get(_url(session)).data["household"]
+    assert got["members"] is not None
     assert (got["family_size"], got["fee_waiver_household_size"]) == (None, None)
 
 

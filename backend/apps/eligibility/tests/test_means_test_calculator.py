@@ -802,7 +802,7 @@ class TestTheOldHouseholdSizeBox:
             last_name="User",
             ssn="900112222",
             date_of_birth=date(1990, 1, 1),
-            phone="3125550000",
+            phone="3125550142",
             email="test@example.com",
             street_address="1 Main St",
             city="Chicago",
