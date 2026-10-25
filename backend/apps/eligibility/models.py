@@ -8,8 +8,15 @@ from django.utils import timezone
 from encrypted_model_fields.fields import EncryptedTextField
 
 from apps.districts.dated_tables import fill_date, in_force
+from apps.intake.household import count_family_size
 
-from .cmi import current_monthly_income, is_above_median
+from .cmi import (
+    household_cmi,
+    household_members,
+    income_step_gaps,
+    is_above_median,
+    spouse_monthly_income,
+)
 
 # The means test's dated table, by the name its refusals log and calculation_details records.
 MEDIAN_TABLE = "Census median income"
@@ -104,28 +111,23 @@ class MeansTest(models.Model):
             above it with disposable income under the threshold)
 
         Raises:
+            IncomeStepGap: The first gap the Income step leaves (3e1 spec §9.1), before any
+                count is read, so no household is sized until the filer has answered it
             ValueError: If required intake data is missing
             NoTableInForce: If no median income table is in force on the fill date
         """
-        # Get income info from session
-        try:
-            income_info = self.session.income_info
-        except AttributeError as err:
-            raise ValueError("IntakeSession must have income_info to calculate means test") from err
+        gaps = income_step_gaps(self.session)
+        if gaps:
+            raise gaps[0]
+        income_info = self.session.income_info
 
-        # Current Monthly Income (CMI): the Income step's amounts, without Social Security
-        cmi = current_monthly_income(income_info)
+        # Current Monthly Income (CMI), without Social Security: the filer's, plus the spouse's
+        # (122A-1 column B) for a filer living with them (3e1 spec §5.3)
+        cmi = household_cmi(self.session)
+        spouse_cmi = spouse_monthly_income(self.session)
 
-        # Get family size for median income lookup. The wizard collects
-        # household_size on the debtor step; sessions without it fall back
-        # to deriving family size from marital status + dependents.
-        debtor_info = getattr(self.session, "debtor_info", None)
-        if debtor_info is not None and (debtor_info.household_size or 0) >= 1:
-            family_size = debtor_info.household_size
-        else:
-            family_size = income_info.number_of_dependents + 1  # Filer + dependents
-            if income_info.marital_status in ["married_joint", "married_separate"]:
-                family_size += 1  # Add spouse
+        # 122A-1 line 13, which sizes the median: the filer and everyone living with them
+        family_size = count_family_size(household_members(self.session))
 
         # The district's median income table in force on the day the forms are filled.
         # None in force raises NoTableInForce; no older table stands in.
@@ -206,7 +208,7 @@ class MeansTest(models.Model):
                 "family_size": family_size,
                 "income_by_source": income_by_source,
                 "marital_status": income_info.marital_status,
-                "number_of_dependents": income_info.number_of_dependents,
+                "spouse_cmi": None if spouse_cmi is None else float(spouse_cmi),
                 "passes_test": passes_test,
                 "qualifies_fee_waiver": qualifies_fee_waiver,
                 "calculated_at": timezone.now().isoformat(),

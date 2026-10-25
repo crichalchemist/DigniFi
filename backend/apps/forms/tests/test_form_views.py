@@ -107,7 +107,6 @@ def session(user, district):
     IncomeInfo.objects.create(
         session=session,
         marital_status="not_married",
-        number_of_dependents=0,
         monthly_gross_wages=Decimal("3000.00"),
     )
     answer_household(session)
@@ -891,6 +890,7 @@ class TestCompletionCheck:
 # ── The means test is worked out again before the packet is decided (spec §5.6) ──
 
 SPLIT_BY_SOURCE = "Enter your income by source on the Income step."
+MARRIAGE = "Answer the question about marriage on the Income step."
 NO_MEDIAN_TABLE = (
     "DigniFi doesn't have the income figures for today's date yet, so it can't prepare your "
     "forms. Please try again later."
@@ -1022,8 +1022,8 @@ class TestMeansTestWorkedOutAgain:
     def test_completed_intake_with_no_income_asks_for_income_by_source(
         self, api_client, session_with_debtor
     ):
-        # No income at all is income not entered by source: the filer can fix it, so it is
-        # the plain-words 422, not a 500.
+        # No income row is first a marriage question never answered (3e1 spec §9.1): the
+        # filer can fix it, so it is still the plain-words 422, not a 500.
         session = session_with_debtor
         session.income_info.delete()
 
@@ -1039,11 +1039,11 @@ class TestMeansTestWorkedOutAgain:
 
         for resp in (generate_all, listed):
             assert resp.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
-            assert resp.data == {"error": SPLIT_BY_SOURCE, "step": "income_info"}
+            assert resp.data == {"error": MARRIAGE, "step": "income_info"}
         assert generate.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
         assert generate.data == {
             "form_type": "form_106dec",
-            "error": SPLIT_BY_SOURCE,
+            "error": MARRIAGE,
             "step": "income_info",
         }
 

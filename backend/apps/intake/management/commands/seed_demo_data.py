@@ -73,7 +73,6 @@ def _maria_torres() -> dict:
         },
         "income": {
             "marital_status": "not_married",
-            "number_of_dependents": 2,
             **_wages_only(Decimal("3200.00")),
         },
         "household": {
@@ -212,7 +211,6 @@ def _james_washington() -> dict:
         },
         "income": {
             "marital_status": "not_married",
-            "number_of_dependents": 0,
             **_wages_only(Decimal("5833.00")),
         },
         "household": {"county": "Cook", "members": []},
@@ -294,7 +292,6 @@ def _priya_sharma() -> dict:
         },
         "income": {
             "marital_status": "married_together",
-            "number_of_dependents": 2,
             # Her own $12,000/month is $144,000/year, above the $137,902 HH4 median by
             # itself; with her husband's $1,800 (122A-1 Column B) it is $165,600/year.
             **_wages_only(Decimal("12000.00")),
@@ -393,7 +390,6 @@ def _deshawn_mitchell() -> dict:
         },
         "income": {
             "marital_status": "married_together",
-            "number_of_dependents": 0,
             **_wages_only(Decimal("3500.00")),
         },
         "household": {
@@ -514,7 +510,6 @@ def _sarah_chen() -> dict:
         },
         "income": {
             "marital_status": "not_married",
-            "number_of_dependents": 0,
             **_wages_only(Decimal("2000.00")),
         },
         "household": {
@@ -596,7 +591,6 @@ def _andres_kettleby() -> dict:
         },
         "income": {
             "marital_status": "not_married",
-            "number_of_dependents": 1,
             # His net driving income ($4,200 from the apps less $830 of driving costs) is
             # other income until the Income step asks for business income (3a1.Q1).
             **dict.fromkeys(IncomeInfo.SOURCE_FIELDS, Decimal("0.00")),

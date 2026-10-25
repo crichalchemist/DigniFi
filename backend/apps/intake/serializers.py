@@ -13,8 +13,15 @@ from django.core.exceptions import FieldDoesNotExist
 from rest_framework import serializers
 
 from apps.districts.counties import ILND_COUNTIES
+from apps.eligibility.cmi import income_step_gaps
 
-from .household import MAX_AGE, MAX_MEMBERS, RELATIONSHIP_WORDS
+from .household import (
+    MAX_AGE,
+    MAX_MEMBERS,
+    RELATIONSHIP_WORDS,
+    count_family_size,
+    count_fee_waiver_household,
+)
 from .models import (
     AssetInfo,
     Codebtor,
@@ -93,7 +100,6 @@ class IncomeInfoSerializer(serializers.ModelSerializer):
         model = IncomeInfo
         fields = [
             "marital_status",
-            "number_of_dependents",
             *IncomeInfo.SOURCE_FIELDS,
             "monthly_income",
             "total_monthly_income",
@@ -318,7 +324,11 @@ class HouseholdMemberSerializer(serializers.Serializer):
 
 
 class HouseholdSerializer(serializers.ModelSerializer):
-    """The filer's county and household list. A save sets only the keys it sends."""
+    """The filer's county and household list. A save sets only the keys it sends.
+
+    family_size (122A-1 line 13) and fee_waiver_household_size (103B line 1) are read-only
+    counts, null while the Income step leaves a gap (3e1 spec §4.4).
+    """
 
     county = serializers.ChoiceField(choices=list(ILND_COUNTIES), allow_null=True, required=False)
     # write_only, because to_representation reads the stored JSON: ListField would iterate
@@ -330,10 +340,22 @@ class HouseholdSerializer(serializers.ModelSerializer):
         max_length=MAX_MEMBERS,
         write_only=True,
     )
+    family_size = serializers.SerializerMethodField()
+    fee_waiver_household_size = serializers.SerializerMethodField()
 
     class Meta:
         model = Household
-        fields = ["county", "members"]
+        fields = ["county", "members", "family_size", "fee_waiver_household_size"]
+
+    def get_family_size(self, obj: Household) -> int | None:
+        if income_step_gaps(obj.session):
+            return None
+        return count_family_size(obj.get_members())
+
+    def get_fee_waiver_household_size(self, obj: Household) -> int | None:
+        if income_step_gaps(obj.session):
+            return None
+        return count_fee_waiver_household(obj.get_members(), obj.session.income_info.marital_status)
 
     def validate_members(self, rows):
         if rows is None:

@@ -117,7 +117,6 @@ def ready(transactional_db):
     IncomeInfo.objects.create(
         session=session,
         marital_status="not_married",
-        number_of_dependents=0,
         monthly_gross_wages=Decimal("3000.00"),
     )
     answer_household(session)
@@ -247,14 +246,14 @@ def _complete_pauses_in_its_checks():
     intake, then waits for `go_on`. Yields (checking, go_on)."""
     checking = threading.Event()
     go_on = threading.Event()
-    income = intake_views.current_monthly_income
+    gaps = intake_views.income_step_gaps
 
-    def check_income(income_info):
+    def check_gaps(session):
         checking.set()
         go_on.wait(WAIT)
-        return income(income_info)
+        return gaps(session)
 
-    with patch.object(intake_views, "current_monthly_income", check_income):
+    with patch.object(intake_views, "income_step_gaps", check_gaps):
         yield checking, go_on
 
 

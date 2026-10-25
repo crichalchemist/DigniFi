@@ -15,7 +15,8 @@ from collections.abc import Callable
 from decimal import Decimal
 from functools import reduce
 
-from apps.eligibility.cmi import IncomeNotSplit, current_monthly_income, is_above_median
+from apps.eligibility.cmi import household_cmi, household_members, is_above_median
+from apps.intake.household import count_family_size
 from apps.intake.models import IntakeSession
 
 _ZERO = Decimal("0.00")
@@ -147,14 +148,8 @@ def _total_other_assets(session: IntakeSession) -> str:
 
 
 def _cmi(session: IntakeSession) -> str:
-    from apps.intake.models import IncomeInfo
-
-    try:
-        income_info = session.income_info
-    except IncomeInfo.DoesNotExist:
-        # No income at all is income not entered by source.
-        raise IncomeNotSplit() from None
-    return _fmt(current_monthly_income(income_info))
+    """The household's CMI (3e1 spec §5.3); no income at all is income not entered by source."""
+    return _fmt(household_cmi(session))
 
 
 def _total_monthly_expenses(session: IntakeSession) -> str:
@@ -344,6 +339,11 @@ def _line11_annualized_income(session: IntakeSession) -> str:
 
 def _line12b_annualized_cmi(session: IntakeSession) -> str:
     return _line11_annualized_income(session)
+
+
+def _family_size(session: IntakeSession) -> str:
+    """Line 13: the filer and everyone living with them, the count the means test sizes by."""
+    return str(count_family_size(household_members(session)))
 
 
 def _line13a_median_income(session: IntakeSession) -> str:
@@ -549,7 +549,7 @@ def _means_test_disposable_income(session: IntakeSession) -> str:
 
 DERIVATIONS: dict[str, Callable[[IntakeSession], str]] = {
     "full_name": _full_name,
-    "family_size": lambda s: _safe_debtor_attr(s, "household_size", "1"),
+    "family_size": _family_size,
     "first_name": lambda s: _safe_debtor_attr(s, "first_name"),
     "middle_name": lambda s: _safe_debtor_attr(s, "middle_name"),
     "last_name": lambda s: _safe_debtor_attr(s, "last_name"),
@@ -691,8 +691,8 @@ RULE_FIXES: dict[str, dict[str, str]] = {
     "email": {"step": "debtor_info"},
     "ssn_last_4": {"step": "debtor_info"},
     "ssn_formatted": {"step": "debtor_info"},
-    "family_size": {"step": "debtor_info"},
     # Income
+    "family_size": {"step": "income_info"},
     "cmi": {"step": "income_info"},
     "line12b_annualized_cmi": {"step": "income_info"},
     "line1_wages": {"step": "income_info"},

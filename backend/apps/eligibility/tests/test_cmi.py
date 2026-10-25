@@ -22,6 +22,7 @@ from apps.eligibility.services.expense_deduction_calculator import ExpenseDeduct
 from apps.eligibility.services.means_test_calculator import MeansTestCalculator
 from apps.forms.services.derivations import DERIVATIONS
 from apps.intake.models import IncomeInfo, IntakeSession
+from apps.intake.tests.builders import answer_household
 from apps.users.models import User
 
 SPLIT_BY_SOURCE = "Enter your income by source on the Income step."
@@ -67,6 +68,7 @@ def test_social_security_never_counts_toward_cmi(filer):
         monthly_social_security=Decimal("1500.00"),
         monthly_pension=Decimal("500.00"),
     )
+    answer_household(session)
 
     assert current_monthly_income(session.income_info) == Decimal("2500.00")
     assert MeansTestCalculator(session).calculate()["cmi"] == Decimal("2500.00")
@@ -85,6 +87,7 @@ def test_a_source_left_empty_counts_as_zero_once_another_is_given(filer):
 def test_a_filer_who_typed_zero_income_has_a_cmi_of_zero(filer):
     _, session = filer
     IncomeInfo.objects.create(session=session, monthly_gross_wages=Decimal("0.00"))
+    answer_household(session)
 
     assert current_monthly_income(session.income_info) == Decimal("0.00")
     assert MeansTestCalculator(session).calculate()["passes_means_test"] is True
@@ -95,6 +98,7 @@ def test_a_filer_living_on_social_security_alone_has_a_cmi_of_zero_not_a_refusal
     # Social Security stays out of the sum, but it is still income the filer gave by source:
     # refusing it would stop an SSDI or SSI filer who did exactly what the Income step asks.
     IncomeInfo.objects.create(session=session, monthly_social_security=Decimal("1400.00"))
+    answer_household(session)
 
     assert current_monthly_income(session.income_info) == Decimal("0.00")
     assert MeansTestCalculator(session).calculate()["passes_means_test"] is True
@@ -116,6 +120,7 @@ def test_income_saved_only_as_a_total_is_refused_in_plain_words(filer):
 def test_the_means_test_passes_the_refusal_on_without_its_failure_prefix(filer):
     _, session = filer
     IncomeInfo.objects.create(session=session, monthly_income=[3000] * 6)
+    answer_household(session)
 
     with pytest.raises(IncomeNotSplit) as refused:
         MeansTestCalculator(session).calculate()
@@ -126,6 +131,7 @@ def test_the_means_test_passes_the_refusal_on_without_its_failure_prefix(filer):
 def test_the_means_test_passes_a_missing_median_table_on_without_its_failure_prefix(filer):
     _, session = filer
     IncomeInfo.objects.create(session=session, monthly_gross_wages=Decimal("3000.00"))
+    answer_household(session)
     MedianIncome.objects.all().delete()
 
     with pytest.raises(NoTableInForce) as refused:
@@ -154,6 +160,7 @@ def test_the_above_median_calculator_refuses_income_not_split_instead_of_using_z
 def test_means_test_endpoint_asks_for_income_by_source_as_a_400(filer):
     user, session = filer
     IncomeInfo.objects.create(session=session, monthly_income=[3000] * 6)
+    answer_household(session)
     client = APIClient()
     client.force_authenticate(user=user)
 
@@ -166,6 +173,7 @@ def test_means_test_endpoint_asks_for_income_by_source_as_a_400(filer):
 def test_means_test_endpoint_refuses_without_a_median_table_in_force_as_a_400(filer):
     user, session = filer
     IncomeInfo.objects.create(session=session, monthly_gross_wages=Decimal("3000.00"))
+    answer_household(session)
     MedianIncome.objects.all().delete()
     client = APIClient()
     client.force_authenticate(user=user)

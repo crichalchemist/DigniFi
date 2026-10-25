@@ -121,7 +121,6 @@ class IncomeInfo(models.Model):
     )
     # Line 1's answer, encrypted. The serializer takes only MARITAL_ANSWERS.
     marital_status = EncryptedCharField(max_length=30, null=True, blank=True)
-    number_of_dependents = models.IntegerField(default=0)
     # The total the Income step saved before step 2. It is no longer written, and stays for
     # one release as the only record of what an earlier filer entered.
     monthly_income = models.JSONField(
@@ -208,7 +207,7 @@ class IncomeInfo(models.Model):
         db_table = "income_info"
 
     def __str__(self) -> str:
-        return f"IncomeInfo: {self.number_of_dependents} dependents (Session: {self.session_id})"
+        return f"IncomeInfo (Session: {self.session_id})"
 
     def calculate_total_monthly_income(self) -> float | None:
         """The ten monthly amounts added up, Social Security included.

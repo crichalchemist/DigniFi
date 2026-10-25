@@ -28,7 +28,6 @@ from apps.eligibility.models import MeansTest
 from apps.forms.models import GeneratedForm
 from apps.forms.registry import build_parts, packet
 from apps.forms.schema import load_schema
-from apps.intake.household import count_fee_waiver_household
 from apps.intake.management.commands.seed_demo_data import PERSONAS
 from apps.intake.models import IncomeInfo, IntakeSession, SpouseIncome
 
@@ -68,15 +67,13 @@ def _sent(data):
     return json.loads(json.dumps(data, cls=DjangoJSONEncoder))
 
 
-def _fee_waiver_application(data):
+def _fee_waiver_application(data, household_size):
     """
-    The application the seed stores, as the fee-waiver page sends it: 103B line 1's count
-    of the household list, the one the page will pre-fill (spec §8.4).
+    The application the seed stores, as the fee-waiver page sends it: the household size is
+    103B line 1's count that Complete's reply carries, which the page fills in (spec §8.4).
     """
     return {
-        "household_size": count_fee_waiver_household(
-            data["household"]["members"], data["income"]["marital_status"]
-        ),
+        "household_size": household_size,
         **data["fee_waiver"],
         "cannot_pay_full": True,
         "cannot_pay_installments": True,
@@ -147,10 +144,12 @@ def _send_through_the_api(persona):
     # No means-test call: Generate All works it out from the stored intake (spec §5.6).
     response = client.post(f"{session_url}complete/")
     assert response.status_code == 200, response.data
+    household_size = response.data["session"]["household"]["fee_waiver_household_size"]
+    assert household_size is not None
     if persona in APPLIES:
         response = client.post(
             "/api/intake/fee-waiver/",
-            {"session": session_id, **_sent(_fee_waiver_application(data))},
+            {"session": session_id, **_sent(_fee_waiver_application(data, household_size))},
             format="json",
         )
         assert response.status_code == 201, response.data
@@ -243,7 +242,8 @@ def test_forms_built_through_the_api_print_what_the_seeded_forms_print(persona):
     assert _fee_waiver_answers(built) == _fee_waiver_answers(seeded)
     assert (_fee_waiver_answers(built) is None) == (persona not in APPLIES)
     # Only Priya's income is above the median, so only her packet holds 122A-2, and it
-    # prints her own figures: her monthly income on line 1 and her childcare on line 21.
+    # prints her own figures: her household's monthly income, hers and her husband's, on line 1
+    # and her childcare on line 21.
     assert ("form_122a2" in stored) == (persona == "priya")
     if persona == "priya":
         (part,) = stored["form_122a2"]["parts"]

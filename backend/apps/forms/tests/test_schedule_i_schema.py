@@ -98,7 +98,6 @@ def session_with_income(session):
         session=session,
         monthly_gross_wages=Decimal("2000.00"),
         marital_status="not_married",
-        number_of_dependents=0,
     )
     answer_household(session)
     return session
@@ -132,6 +131,7 @@ class TestScheduleISchema:
         # A distinct power of two per source, so a box that reads the wrong source, or
         # adds one too many, prints a different figure (step 2 spec §5.5's table, §7.7).
         IncomeInfo.objects.create(session=session, **TEN_SOURCES)
+        answer_household(session)
 
         schedule_i = resolve(load_schema("schedule_i"), session)
         form_122a1 = resolve(load_schema("form_122a1"), session)
@@ -166,6 +166,7 @@ class TestScheduleISchema:
         # Schedule I line 12 is all of the filer's income; current monthly income is not
         # (11 U.S.C. § 101(10A)(B)). Each form prints the one its line asks for.
         IncomeInfo.objects.create(session=session, **TEN_SOURCES)
+        answer_household(session)
 
         forms = {form_type for form_type, _ in COMBINED_INCOME}
         printed = {form_type: resolve(load_schema(form_type), session) for form_type in forms}

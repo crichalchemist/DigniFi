@@ -3,8 +3,9 @@
 from dataclasses import dataclass
 from decimal import Decimal
 
-from apps.eligibility.cmi import current_monthly_income
+from apps.eligibility.cmi import household_cmi, household_members
 from apps.eligibility.services.irs_standards import get_local_standard, get_national_standard
+from apps.intake.household import count_exemptions
 from apps.intake.models import IntakeSession
 
 
@@ -67,15 +68,10 @@ class ExpenseDeductionCalculator:
         )
 
     def _get_family_size(self) -> int:
-        di = getattr(self.session, "debtor_info", None)
-        if di and (di.household_size or 0) >= 1:
-            return di.household_size
+        # 122A-2 line 5: the filer and everyone they claim or support (3e1 spec §5.3).
+        # Any error falls back to 1 (DIG-152).
         try:
-            ii = self.session.income_info
-            size = ii.number_of_dependents + 1
-            if ii.marital_status in ("married_joint", "married_separate"):
-                size += 1
-            return size
+            return count_exemptions(household_members(self.session))
         except Exception:
             return 1
 
@@ -110,8 +106,9 @@ class ExpenseDeductionCalculator:
         return sum((d.monthly_payment or zero for d in priority), zero)
 
     def _get_cmi(self) -> Decimal:
-        # The means test's own CMI. Income not split by source raises IncomeNotSplit.
+        # The means test's own CMI, the household's (3e1 spec §5.3). Income not split by
+        # source raises IncomeNotSplit.
         ii = getattr(self.session, "income_info", None)
         if ii is None:
             return Decimal("0")
-        return current_monthly_income(ii)
+        return household_cmi(self.session)

@@ -7,10 +7,24 @@ import pytest
 from django.contrib.auth import get_user_model
 
 from apps.districts.models import District
+from apps.eligibility.cmi import IncomeStepGap
 from apps.forms.services.derivations import DERIVATIONS, PREDICATES
 from apps.intake.models import DebtorInfo, IncomeInfo, IntakeSession
+from apps.intake.tests.builders import answer_household
 
 User = get_user_model()
+
+HOUSEHOLD_LIST = (
+    "List the people in your home and the people you support on the Income step, "
+    "or tell us no one does."
+)
+# Lives with the filer, not claimed or supported.
+ROOMMATE_29 = {
+    "relationship": "roommate",
+    "age": 29,
+    "lives_with_you": True,
+    "claimed_or_supported": False,
+}
 
 
 @pytest.fixture
@@ -52,8 +66,17 @@ def test_full_name_includes_middle(session):
     assert DERIVATIONS["full_name"](session) == "Maria A. Torres"
 
 
-def test_family_size_reads_household_size(session):
-    assert DERIVATIONS["family_size"](session) == "3"
+def test_family_size_counts_the_filer_and_everyone_at_home_not_the_old_box(session):
+    IncomeInfo.objects.create(session=session, monthly_gross_wages=Decimal("100.00"))
+    answer_household(session, members=[ROOMMATE_29])
+    assert DERIVATIONS["family_size"](session) == "2"
+
+
+def test_family_size_refuses_until_the_household_list_is_answered(session):
+    # no Household: the list was never answered
+    with pytest.raises(IncomeStepGap) as refused:
+        DERIVATIONS["family_size"](session)
+    assert (str(refused.value), refused.value.step) == (HOUSEHOLD_LIST, "income_info")
 
 
 def test_chapter_constant(session):

@@ -161,7 +161,7 @@ def test_a_precondition_is_read_by_its_name_or_as_an_attribute(source, raises):
     "rule,fix",
     [
         ("last_name", {"step": "debtor_info"}),
-        ("family_size", {"step": "debtor_info"}),  # household size is asked with the name
+        ("family_size", {"step": "income_info"}),  # the household list is on the Income step
         ("cmi", {"step": "income_info"}),
         ("schedule_j_monthly_net_income", {"step": "income_info"}),  # the earlier of two
         ("schedule_j_utilities_label", {"step": "expense_info"}),

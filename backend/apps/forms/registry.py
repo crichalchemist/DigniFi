@@ -85,6 +85,15 @@ def _needs_ssn(session: IntakeSession) -> None:
         )
 
 
+def _needs_county(session: IntakeSession) -> None:
+    # Step 1 stores it on the household (3e1 spec §6); a session saved before 3e1 has none.
+    household = getattr(session, "household", None)
+    if household is None or not household.county:
+        raise PreconditionMissing(
+            "Choose your county on the Your Information step.", step="debtor_info"
+        )
+
+
 def _needs_means_test(session: IntakeSession) -> None:
     if not hasattr(session, "means_test"):
         raise PreconditionMissing(

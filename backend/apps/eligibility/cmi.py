@@ -1,11 +1,14 @@
 """
-Current monthly income (CMI), the one figure the means test, the above-median calculator
-and the court forms share (forms step 2 spec §5.5).
+Current monthly income (CMI) (forms step 2 spec §5.5, 3e1 spec §5.3).
 
-CMI counts the filer's monthly income from every source the Income step asks about except
-benefits under the Social Security Act, which 11 U.S.C. § 101(10A)(B) leaves out. It is
-rounded to the cent once, here, so the means test, the packet and 122A-1 compare and print
-the same figure (forms step 2 spec §5.6).
+The means test, the above-median check, the expense calculator and the forms' `cmi` rule read
+the household's CMI, household_cmi: the filer's, plus the spouse's for a filer living with
+their spouse (married_together), and the filer's alone otherwise.
+
+current_monthly_income works out one person's: their monthly income from every source the
+Income step asks about except benefits under the Social Security Act, which 11 U.S.C.
+§ 101(10A)(B) leaves out, rounded to the cent. So each column and their sum print and compare
+the same everywhere (forms step 2 spec §5.6).
 """
 
 from decimal import ROUND_HALF_EVEN, Decimal

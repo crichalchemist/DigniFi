@@ -63,7 +63,6 @@ def _create_session_with_income(
     district: District,
     monthly_income: Decimal,
     marital_status: str = "not_married",
-    number_of_dependents: int = 0,
 ) -> IntakeSession:
     """Create intake session with income info.
 
@@ -90,7 +89,6 @@ def _create_session_with_income(
     IncomeInfo.objects.create(
         session=session,
         marital_status=marital_status,
-        number_of_dependents=number_of_dependents,
         monthly_gross_wages=monthly_income,
     )
     answer_household(session, marital_status=marital_status)

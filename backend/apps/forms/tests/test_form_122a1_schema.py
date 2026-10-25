@@ -44,6 +44,33 @@ NEVER_ASKED = {
     "Debto1.Quest10C",
 }
 
+# Household rows as stored. Y, Y: lives with the filer, and claimed or supported.
+SON_8 = {"relationship": "son", "age": 8, "lives_with_you": True, "claimed_or_supported": True}
+DAUGHTER_5 = {
+    "relationship": "daughter",
+    "age": 5,
+    "lives_with_you": True,
+    "claimed_or_supported": True,
+}
+DAUGHTER_19_ELSEWHERE = {  # N, Y
+    "relationship": "daughter",
+    "age": 19,
+    "lives_with_you": False,
+    "claimed_or_supported": True,
+}
+ROOMMATE_29 = {  # Y, N
+    "relationship": "roommate",
+    "age": 29,
+    "lives_with_you": True,
+    "claimed_or_supported": False,
+}
+
+
+def _household_list(session, rows):
+    """Replace the session's household list with these rows."""
+    session.household.store_members([dict(r) for r in rows])
+    session.household.save()
+
 
 @pytest.fixture
 def session(db):
@@ -64,7 +91,6 @@ def session_with_income(session):
         session=session,
         monthly_gross_wages=Decimal("2000.00"),
         marital_status="not_married",
-        number_of_dependents=0,
     )
     answer_household(session)
     return session
@@ -118,6 +144,7 @@ class TestForm122A1Schema:
         # A distinct power of two per source, so a box that reads the wrong source, or
         # adds one too many, prints a different figure (step 2 spec §5.5's table).
         IncomeInfo.objects.create(session=session, **TEN_SOURCES)
+        answer_household(session)
 
         field_map = resolve(load_schema("form_122a1"), session)
 
@@ -129,20 +156,16 @@ class TestForm122A1Schema:
         # Business income, interest, rental gross and costs, unemployment claimed as
         # Social Security, a second other-income row: blank, never 0.00 (B2).
         IncomeInfo.objects.create(session=session, **TEN_SOURCES)
+        answer_household(session)
 
         field_map = resolve(load_schema("form_122a1"), session)
 
         assert sorted(NEVER_ASKED & field_map.keys()) == []
 
-    def test_line_13_prints_the_household_size(self, session_with_income):
-        DebtorInfo.objects.create(
-            session=session_with_income,
-            first_name="Maria",
-            last_name="Torres",
-            ssn="900-11-0001",  # IRS-reserved range: synthetic
-            date_of_birth=date(1988, 6, 15),
-            household_size=3,
-        )
+    def test_line_13_counts_the_filer_and_everyone_living_with_them(self, session_with_income):
+        # Two children at home count; a daughter of 19 the filer supports elsewhere doesn't.
+        # There is no Your Information step, so no old household-size box to read.
+        _household_list(session_with_income, [SON_8, DAUGHTER_5, DAUGHTER_19_ELSEWHERE])
 
         field_map = resolve(load_schema("form_122a1"), session_with_income)
 
@@ -152,6 +175,7 @@ class TestForm122A1Schema:
         # Line 11 adds lines 2-10 for the month in Column A and in the total box, whose
         # second widget is line 12a's copy; line 12b is the year (step 2 spec §6.1, C1).
         IncomeInfo.objects.create(session=session, **TEN_SOURCES)
+        answer_household(session)
 
         field_map = resolve(load_schema("form_122a1"), session)
 
@@ -159,11 +183,10 @@ class TestForm122A1Schema:
         printed = (field_map.get("Debto1.Quest11"), field_map.get("Quest11"), field_map.get("12B"))
         assert printed == ("991.00", "991.00", "11892.00")
 
-    def test_line_13_prints_the_state_and_the_median_the_means_test_compared_against(
-        self, session_with_income, median_income
-    ):
-        # DIG-51: the filer counts 3 people in the household, while single with no dependents
-        # would size it at 1. Line 13 must print the median the means test used.
+    def test_13b_and_13c_read_the_same_count(self, session_with_income, median_income):
+        # DIG-51: line 13 must print the median the means test used. The son and the roommate
+        # live with the filer, so line 13 is 3; line 5, the son alone, is 2, whose median
+        # would be 91,526.00.
         DebtorInfo.objects.create(
             session=session_with_income,
             first_name="Maria",
@@ -171,8 +194,8 @@ class TestForm122A1Schema:
             ssn="900-11-0001",  # IRS-reserved range: synthetic
             date_of_birth=date(1988, 6, 15),
             state="IL",
-            household_size=3,
         )
+        _household_list(session_with_income, [SON_8, ROOMMATE_29])
         MeansTestCalculator(session_with_income).calculate()
 
         field_map = resolve(load_schema("form_122a1"), session_with_income)
@@ -206,8 +229,8 @@ class TestForm122A1Schema:
             session=session,
             monthly_gross_wages=Decimal(monthly_wages),
             marital_status="not_married",
-            number_of_dependents=0,
         )
+        answer_household(session)
         MeansTestCalculator(session).calculate()
 
         field_map = resolve(load_schema("form_122a1"), session)

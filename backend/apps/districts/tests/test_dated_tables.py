@@ -53,7 +53,6 @@ def _single_filer(district, monthly_wages):
     IncomeInfo.objects.create(
         session=session,
         marital_status="not_married",
-        number_of_dependents=0,
         monthly_gross_wages=Decimal(monthly_wages),
     )
     answer_household(session)

@@ -16,6 +16,7 @@ from rest_framework.test import APIClient
 
 from apps.districts.models import District
 from apps.intake.models import DebtorInfo, ExpenseInfo, IncomeInfo, IntakeSession
+from apps.intake.tests.builders import answer_household
 from apps.users.models import User
 
 SPLIT_BY_SOURCE = "Enter your income by source on the Income step."
@@ -129,7 +130,6 @@ class TestIncomeBySource:
         IncomeInfo.objects.create(
             session=session,
             marital_status="married_together",
-            number_of_dependents=2,
             monthly_gross_wages=Decimal("2500.00"),
         )
 
@@ -143,7 +143,6 @@ class TestIncomeBySource:
         income = IncomeInfo.objects.get(session=session)
         assert income.monthly_gross_wages == Decimal("4000.00")
         assert income.marital_status == "married_together"
-        assert income.number_of_dependents == 2
 
     def test_a_wizard_created_income_row_reads_back_unanswered_and_saves_back_whole(
         self, filer_session
@@ -212,6 +211,7 @@ def _complete(session):
 def test_legacy_income_total_must_be_split_before_forms_print(filer_session):
     client, session = filer_session
     IncomeInfo.objects.create(session=session, monthly_income=[3000] * 6)
+    answer_household(session)
     _complete(session)
     generate = {"session_id": session.pk, "form_type": "schedule_i"}
 

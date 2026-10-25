@@ -78,7 +78,6 @@ class IntakeFlowIntegrationTest(APITestCase):
         income_data = {
             "session": session_id,
             "marital_status": "not_married",
-            "number_of_dependents": 0,
             "monthly_income": [5000, 5000, 5000, 5000, 5000, 5000],  # $5000/month * 12 = $60k/year
         }
         response = self.client.post(reverse("income-info-list"), income_data)

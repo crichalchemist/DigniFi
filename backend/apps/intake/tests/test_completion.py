@@ -24,6 +24,7 @@ from apps.intake.models import (
     ExpenseInfo,
     IncomeInfo,
     IntakeSession,
+    SpouseIncome,
 )
 from apps.intake.tests.builders import answer_household
 from apps.users.models import User
@@ -70,7 +71,6 @@ def completed(filer, district):
     IncomeInfo.objects.create(
         session=session,
         marital_status="not_married",
-        number_of_dependents=0,
         monthly_gross_wages=Decimal("3000.00"),
     )
     answer_household(session)
@@ -158,6 +158,7 @@ def test_filer_who_leaves_every_expense_blank_can_complete(filer, district):
         zip_code="60601",
     )
     IncomeInfo.objects.create(session=session, monthly_gross_wages=Decimal("0.00"))
+    answer_household(session)
 
     saved = client.patch(
         _session_url(session), {"expense_info": {"total_monthly_expenses": 0}}, format="json"
@@ -244,6 +245,130 @@ def test_complete_names_the_step_that_fixes_each_gap(filer, completed, gap, step
     assert _status(completed) == "in_progress"
 
 
+# ── Complete names each county, household and spouse gap (3e1 spec §9.1) ──
+
+COUNTY = "Choose your county on the Your Information step."
+MARRIAGE = "Answer the question about marriage on the Income step."
+SPOUSE_FILING = (
+    "DigniFi prepares forms for one person filing alone. "
+    "Check your answer about marriage on the Income step."
+)
+HOUSEHOLD_LIST = (
+    "List the people in your home and the people you support on the Income step, "
+    "or tell us no one does."
+)
+HOUSEHOLD_ROW = "Answer every question for each person on your household list on the Income step."
+MISMATCH = (
+    "Your household list and your answer about marriage don't match. "
+    "Check both on the Income step."
+)
+SPOUSE_INCOME = (
+    "Enter your spouse's income by source on the Income step. "
+    "If your spouse has no income, enter $0 in one box."
+)
+
+# Household rows as stored. Y, Y: lives with the filer, and claimed or supported.
+SPOUSE_44 = {
+    "relationship": "spouse",
+    "age": 44,
+    "lives_with_you": True,
+    "claimed_or_supported": True,
+    "spouse_is_dependent": False,
+}
+SON_8 = {"relationship": "son", "age": 8, "lives_with_you": True, "claimed_or_supported": True}
+
+
+def _marry(session, answer):
+    session.income_info.marital_status = answer
+    session.income_info.save()
+
+
+def _household_list(session, rows):
+    session.household.store_members([dict(r) for r in rows])
+    session.household.save()
+
+
+def _spouse_typed(session):
+    SpouseIncome.objects.create(session=session, monthly_gross_wages=Decimal("0.00"))
+
+
+def _no_county(session):
+    # household.county = None
+    session.household.county = None
+    session.household.save()
+
+
+def _marriage_unanswered(session):
+    _marry(session, None)
+
+
+def _spouse_filing_with_you(session):
+    # married_spouse_filing
+    _marry(session, "married_spouse_filing")
+
+
+def _household_list_unanswered(session):
+    # members None
+    session.household.store_members(None)
+    session.household.save()
+
+
+def _a_row_half_answered(session):
+    # son 8, lives_with_you None
+    _household_list(session, [{**SON_8, "lives_with_you": None}])
+
+
+def _a_spouse_row_but_not_married(session):
+    # [SPOUSE_44] under not_married
+    _household_list(session, [SPOUSE_44])
+
+
+def _living_together_with_twenty_others_and_no_spouse(session):
+    # Review Focus 3: 20 answered non-spouse rows, spouse typed $0
+    _marry(session, "married_together")
+    _household_list(session, [SON_8] * 20)
+    _spouse_typed(session)
+
+
+def _spouse_income_not_entered(session):
+    # married_together, [SPOUSE_44], SpouseIncome with no amounts
+    _marry(session, "married_together")
+    _household_list(session, [SPOUSE_44])
+    SpouseIncome.objects.create(session=session)
+
+
+@pytest.mark.parametrize(
+    "gap,step,message",
+    [
+        (_no_county, "debtor_info", COUNTY),
+        (_marriage_unanswered, "income_info", MARRIAGE),
+        (_spouse_filing_with_you, "income_info", SPOUSE_FILING),
+        (_household_list_unanswered, "income_info", HOUSEHOLD_LIST),
+        (_a_row_half_answered, "income_info", HOUSEHOLD_ROW),
+        (_a_spouse_row_but_not_married, "income_info", MISMATCH),
+        (_living_together_with_twenty_others_and_no_spouse, "income_info", MISMATCH),
+        (_spouse_income_not_entered, "income_info", SPOUSE_INCOME),
+    ],
+    ids=[
+        "no_county",
+        "marriage_unanswered",
+        "spouse_filing_with_you",
+        "household_list_unanswered",
+        "a_row_half_answered",
+        "a_spouse_row_but_not_married",
+        "living_together_with_twenty_others_and_no_spouse",
+        "spouse_income_not_entered",
+    ],
+)
+def test_complete_names_every_new_gap_by_its_step(filer, completed, gap, step, message):
+    client, _ = filer
+    completed.status = "in_progress"
+    completed.save()
+    gap(completed)
+    response = client.post(_session_url(completed, "complete/"))
+    assert response.data["errors"] == [{"step": step, "message": message}]
+
+
 def test_complete_lists_every_gap_in_wizard_order(filer, district):
     client, user = filer
     session = IntakeSession.objects.create(user=user, district=district, current_step=8)
@@ -254,6 +379,9 @@ def test_complete_lists_every_gap_in_wizard_order(filer, district):
     assert response.status_code == 400
     assert response.data["errors"] == [
         {"step": "debtor_info", "message": NAME_AND_ADDRESS},
+        {"step": "debtor_info", "message": COUNTY},
+        {"step": "income_info", "message": MARRIAGE},
+        {"step": "income_info", "message": HOUSEHOLD_LIST},
         {"step": "income_info", "message": INCOME_BY_SOURCE},
         {"step": "expense_info", "message": EXPENSES_STEP},
         {"step": "debts", "message": SCANNED_DEBTS},
