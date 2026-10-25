@@ -69,8 +69,10 @@ def _sent(data):
 
 
 def _fee_waiver_application(data):
-    """The application the seed stores, as the fee-waiver page sends it: 103B line 1's count
-    of the household list, the one the page will pre-fill (spec §8.4)."""
+    """
+    The application the seed stores, as the fee-waiver page sends it: 103B line 1's count
+    of the household list, the one the page will pre-fill (spec §8.4).
+    """
     return {
         "household_size": count_fee_waiver_household(
             data["household"]["members"], data["income"]["marital_status"]

@@ -845,13 +845,12 @@ class Command(BaseCommand):
 
         DebtorInfo.objects.create(session=session, **data["debtor"])
         IncomeInfo.objects.create(session=session, **data["income"])
-        ExpenseInfo.objects.create(session=session, **data["expenses"])
-
         household = Household(session=session, county=data["household"]["county"])
         household.store_members(data["household"]["members"])
         household.save()
         if data["spouse_income"] is not None:
             SpouseIncome.objects.create(session=session, **data["spouse_income"])
+        ExpenseInfo.objects.create(session=session, **data["expenses"])
 
         for asset in data["assets"]:
             AssetInfo.objects.create(session=session, **asset)

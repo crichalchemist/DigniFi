@@ -99,7 +99,8 @@ def test_the_seed_gives_each_persona_their_household_spouse_income_and_county(
 def test_the_seed_gives_the_fee_waiver_application_103b_line_1s_count(monkeypatch):
     call_command("loaddata", "ilnd_2025_data", verbosity=0)
     for persona in ("maria", "deshawn", "sarah"):
-        # Step 1's old Household Size box says 9, so only the household list can give 3, 2 and 1.
+        # Step 1's old Household Size box says 9, so the seed stores these sizes from the
+        # household list, not from that box. (test_household_counts.py pins the counting rule.)
         data = PERSONAS[persona]()
         data["debtor"]["household_size"] = 9
         monkeypatch.setitem(PERSONAS, persona, lambda data=data: data)
