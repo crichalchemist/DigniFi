@@ -99,7 +99,7 @@ export function HouseholdList({
     const row = rows[index];
     const relationship = value === '' ? null : (value as Relationship);
     const next: MemberRow = { ...row, relationship };
-    // The server refuses the spouse's question on any other row, even as false or null
+    // The server refuses an answer to the spouse's question on any other row, so only the spouse's row carries it
     if (relationship === 'spouse' && row.relationship !== 'spouse') next.spouse_is_dependent = null;
     if (relationship !== 'spouse') delete next.spouse_is_dependent;
     answer(index, next);

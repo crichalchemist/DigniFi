@@ -333,7 +333,7 @@ def test_a_patch_that_answers_the_income_step_returns_its_counts_in_the_reply(fi
 
 # ── The expense allowances (122A-2 line 5) and the stored details ───────
 #
-# Every expense case also stores DebtorInfo.household_size=3 and $1,200 of food. Food is the
+# The line 5 cases also store DebtorInfo.household_size=3 and $1,200 of food. Food is the
 # lesser of 1,200 and the IRS food figure for the size: 713, 904, 1,088 and 1,289 for 1 to 4
 # people, so a size read from line 13 or from the debtor box gives a different food figure.
 

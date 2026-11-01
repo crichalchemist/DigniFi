@@ -407,7 +407,8 @@ def validate_schema(
             # The rows a sheet prints are the slots' rows: a column of another list would
             # print rows that aren't the group's, or leave some of them out. A cell prints its
             # slot's text, or a box's answer in the words the form prints beside the state it
-            # maps to, so a box must give every answer its own state.
+            # maps to, so a box whose choices are {}, a single box's {"true": …} or two answers
+            # on one state is refused (a one-key map of another answer isn't yet).
             for column in group.sheet.columns:
                 bound = [f for f in rows if f.binding == column.binding]
                 if not bound:
