@@ -62,9 +62,6 @@ export interface DebtorInfo {
   zip_code: string;
   phone: string;
   email: string;
-
-  // Household information
-  household_size: number;
 }
 
 export interface IncomeInfo {

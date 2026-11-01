@@ -51,7 +51,11 @@ const ineligibleResult = {
   means_test_id: 1,
 };
 
-/** A session whose intake gave a household of 4 and income and expense totals */
+/**
+ * A session whose household list gives 103B line 1 a count of 3 and line 13 a count of 2 (a
+ * supported son lives elsewhere), so a test can tell which count the page read. It also has
+ * income and expense totals.
+ */
 function sessionWithIntakeFigures() {
   return http.get(`${API}/intake/sessions/:id/`, () =>
     HttpResponse.json({
@@ -63,7 +67,21 @@ function sessionWithIntakeFigures() {
       created_at: '2026-01-20T10:00:00Z',
       updated_at: '2026-01-20T10:00:00Z',
       completed_at: null,
-      debtor_info: { household_size: 4 },
+      household: {
+        county: 'Cook',
+        members: [
+          { id: 1, relationship: 'son', age: 8, lives_with_you: false, claimed_or_supported: true },
+          {
+            id: 2,
+            relationship: 'daughter',
+            age: 5,
+            lives_with_you: true,
+            claimed_or_supported: true,
+          },
+        ],
+        family_size: 2,
+        fee_waiver_household_size: 3,
+      },
       income_info: { total_monthly_income: '2500.00' },
       expense_info: { total_monthly_expenses: 1800 },
       assets: [],
@@ -148,14 +166,14 @@ describe('FeeWaiverPage', () => {
     });
   });
 
-  it('fills in the household size from the intake, but never take-home pay, and no longer asks for expenses', async () => {
+  it("the fee-waiver page fills household size from 103B line 1's count, but never take-home pay, and no longer asks for expenses", async () => {
     server.use(sessionWithIntakeFigures());
 
     renderFeeWaiver();
 
     // The filer only confirms the household they already gave
     await waitFor(() => {
-      expect(screen.getByLabelText(/household size/i)).toHaveValue(4);
+      expect(screen.getByLabelText(/household size/i)).toHaveValue(3);
     });
     // Form 103B line 2 asks for take-home pay, which the intake never asked: the box starts empty
     expect(

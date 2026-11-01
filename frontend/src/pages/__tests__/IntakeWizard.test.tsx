@@ -444,8 +444,6 @@ const completedSession = {
     state: 'IL',
     zip_code: '60601',
     email: 'jane@example.com',
-    household_size: 2,
-    filing_type: 'individual',
   },
   income_info: {
     marital_status: 'not_married',
@@ -2714,5 +2712,24 @@ describe('IntakeWizard contracts and codebtors', { timeout: 15_000 }, () => {
     );
     expect(screen.queryByRole('button', { name: /continue/i })).not.toBeInTheDocument();
     expect(codebtorSaves).toEqual([]);
+  });
+});
+
+describe('IntakeWizard Review household', { timeout: 15_000 }, () => {
+  it("Review shows line 13's count from the session the wizard read", async () => {
+    server.use(
+      http.get('http://localhost:8000/api/intake/sessions/:id/', () =>
+        HttpResponse.json({
+          ...sessionAtStep8,
+          household: { county: 'Kane', members: [], family_size: 2, fee_waiver_household_size: 3 },
+        })
+      )
+    );
+    renderWizard();
+    await screen.findByRole('heading', { name: /review & results/i, level: 2 });
+    expect(
+      screen.getByText('People in your home, counting you').nextElementSibling
+    ).toHaveTextContent(/^2$/);
+    expect(screen.getByText('County').nextElementSibling).toHaveTextContent('Kane');
   });
 });

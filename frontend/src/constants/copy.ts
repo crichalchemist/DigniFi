@@ -128,6 +128,13 @@ export const AMOUNT_DECIMALS = 'Please enter dollars and cents, like 1250.50';
 export const AMOUNT_TOO_LARGE = 'This amount is too large. Please check it';
 
 // ============================================================================
+// Review Step
+// ============================================================================
+
+// DRAFT: counsel C-3
+export const REVIEW_HOUSEHOLD_COUNT = 'People in your home, counting you';
+
+// ============================================================================
 // Your Information Step
 // ============================================================================
 

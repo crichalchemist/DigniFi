@@ -68,8 +68,6 @@ def _maria_torres() -> dict:
             "city": "Chicago",
             "state": "IL",
             "zip_code": "60622",
-            "household_size": 3,
-            "filing_type": "individual",
         },
         "income": {
             "marital_status": "not_married",
@@ -206,8 +204,6 @@ def _james_washington() -> dict:
             "city": "Chicago",
             "state": "IL",
             "zip_code": "60610",
-            "household_size": 1,
-            "filing_type": "individual",
         },
         "income": {
             "marital_status": "not_married",
@@ -287,8 +283,6 @@ def _priya_sharma() -> dict:
             "city": "Chicago",
             "state": "IL",
             "zip_code": "60614",
-            "household_size": 4,
-            "filing_type": "individual",
         },
         "income": {
             "marital_status": "married_together",
@@ -385,8 +379,6 @@ def _deshawn_mitchell() -> dict:
             "city": "Chicago",
             "state": "IL",
             "zip_code": "60620",
-            "household_size": 2,
-            "filing_type": "individual",
         },
         "income": {
             "marital_status": "married_together",
@@ -505,8 +497,6 @@ def _sarah_chen() -> dict:
             "city": "Chicago",
             "state": "IL",
             "zip_code": "60622",
-            "household_size": 1,
-            "filing_type": "individual",
         },
         "income": {
             "marital_status": "not_married",
@@ -586,8 +576,6 @@ def _andres_kettleby() -> dict:
             "city": "Aurora",
             "state": "IL",
             "zip_code": "60505",
-            "household_size": 2,
-            "filing_type": "individual",
         },
         "income": {
             "marital_status": "not_married",

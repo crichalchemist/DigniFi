@@ -596,6 +596,8 @@ export function IntakeWizard() {
             debtsData={debtsData}
             contractsData={contractsData}
             codebtorsData={codebtorsData}
+            householdCount={session?.household?.family_size ?? null}
+            county={county}
             onValidationChange={setCanProceed}
             completionReasons={completionErrors.map((reason) => ({
               message: reason.message,

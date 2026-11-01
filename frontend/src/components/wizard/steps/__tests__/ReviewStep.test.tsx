@@ -14,7 +14,11 @@ const baseProps = {
   debtsData: [],
   contractsData: [],
   codebtorsData: [],
+  householdCount: null,
+  county: null,
 };
+
+const value = (label: string) => screen.getByText(label).nextElementSibling;
 
 describe('ReviewStep null-safe rendering', () => {
   it('falls back to placeholders for assets and debts missing a name or type', () => {
@@ -91,4 +95,39 @@ describe('ReviewStep null-safe rendering', () => {
     render(<ReviewStep {...baseProps} onValidationChange={onValidationChange} />);
     expect(onValidationChange).toHaveBeenCalledWith(true);
   });
+});
+
+it("Review shows the marriage answer in the form's words, the household count and the county", () => {
+  const { rerender } = render(
+    <ReviewStep
+      {...baseProps}
+      incomeData={{ marital_status: 'married_together' }}
+      householdCount={4}
+      county="Cook"
+      onValidationChange={vi.fn()}
+    />
+  );
+  expect(value('County')).toHaveTextContent('Cook');
+  expect(value('Your marriage')).toHaveTextContent(
+    'Married and your spouse is NOT filing with you. You and your spouse are: Living in the same household and are not legally separated'
+  );
+  expect(value('People in your home, counting you')).toHaveTextContent(/^4$/);
+  rerender(
+    <ReviewStep
+      {...baseProps}
+      incomeData={{ marital_status: 'not_married' }}
+      householdCount={1}
+      county="Kane"
+      onValidationChange={vi.fn()}
+    />
+  );
+  expect(value('Your marriage')).toHaveTextContent(/^Not married$/);
+});
+
+it('Review shows a count not worked out yet as not answered yet', () => {
+  render(<ReviewStep {...baseProps} onValidationChange={vi.fn()} />);
+  for (const label of ['County', 'Your marriage', 'People in your home, counting you']) {
+    expect(value(label)).toHaveTextContent(/^Not answered yet$/);
+  }
+  expect(document.body.textContent).not.toMatch(/null|undefined|NaN/);
 });

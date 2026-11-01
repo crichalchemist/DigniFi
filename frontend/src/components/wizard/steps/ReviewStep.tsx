@@ -9,6 +9,8 @@ import { useEffect } from 'react';
 import { Button } from '../../common';
 import { UPLDisclaimer } from '../../compliance';
 import { UPL_REVIEW_DISCLAIMER } from '../../../constants/upl';
+import { NOT_ANSWERED_YET, REVIEW_HOUSEHOLD_COUNT } from '../../../constants/copy';
+import { MARRIAGE_ANSWER_WORDS, MARRIED_NOT_FILING } from '../../../constants/formText';
 import type {
   DebtorInfo,
   IncomeInfo,
@@ -27,6 +29,9 @@ interface ReviewStepProps {
   debtsData: Partial<DebtInfo>[];
   contractsData: ExecutoryContract[];
   codebtorsData: Codebtor[];
+  /** Form 122A-1 line 13's count, or null while the server can't work it out */
+  householdCount: number | null;
+  county: string | null;
   onValidationChange: (isValid: boolean) => void;
   /** Each thing Complete found missing, with the wizard step that fixes it when there is one */
   completionReasons?: { message: string; step?: { number: number; label: string } }[];
@@ -42,6 +47,8 @@ export function ReviewStep({
   debtsData,
   contractsData,
   codebtorsData,
+  householdCount,
+  county,
   onValidationChange,
   completionReasons = [],
   onGoToStep,
@@ -62,6 +69,13 @@ export function ReviewStep({
     [debtorData.first_name, debtorData.middle_name, debtorData.last_name]
       .filter(Boolean)
       .join(' ') || '—';
+
+  const marriage = incomeData.marital_status
+    ? incomeData.marital_status === 'not_married' ||
+      incomeData.marital_status === 'married_spouse_filing'
+      ? MARRIAGE_ANSWER_WORDS[incomeData.marital_status]
+      : `${MARRIED_NOT_FILING} ${MARRIAGE_ANSWER_WORDS[incomeData.marital_status]}`
+    : NOT_ANSWERED_YET;
 
   return (
     <div className="review-step">
@@ -106,6 +120,25 @@ export function ReviewStep({
           <div className="review-field">
             <span className="review-field-label">SSN</span>
             <span className="review-field-value">***-**-{debtorData.ssn?.slice(-4) || '****'}</span>
+          </div>
+        </div>
+      </section>
+
+      {/* Household Summary */}
+      <section className="review-section">
+        <h4 className="review-section-title">Your household</h4>
+        <div className="review-grid">
+          <div className="review-field">
+            <span className="review-field-label">County</span>
+            <span className="review-field-value">{county ?? NOT_ANSWERED_YET}</span>
+          </div>
+          <div className="review-field">
+            <span className="review-field-label">Your marriage</span>
+            <span className="review-field-value">{marriage}</span>
+          </div>
+          <div className="review-field">
+            <span className="review-field-label">{REVIEW_HOUSEHOLD_COUNT}</span>
+            <span className="review-field-value">{householdCount ?? NOT_ANSWERED_YET}</span>
           </div>
         </div>
       </section>

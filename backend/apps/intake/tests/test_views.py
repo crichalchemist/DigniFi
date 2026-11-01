@@ -2,13 +2,14 @@
 Tests for IntakeSessionViewSet PATCH behaviour.
 """
 
+from datetime import date
 from decimal import Decimal
 
 import pytest
 from rest_framework.test import APIClient
 
 from apps.districts.models import District
-from apps.intake.models import DebtInfo, IntakeSession
+from apps.intake.models import DebtInfo, DebtorInfo, IntakeSession
 from apps.users.models import User
 
 
@@ -50,3 +51,35 @@ def test_debts_patch_clears_is_draft(auth_client_with_session):
     )
     assert response.status_code in (200, 201)
     assert not DebtInfo.objects.filter(session=session, is_draft=True).exists()
+
+
+def test_the_session_no_longer_reads_or_takes_household_size_or_filing_type(
+    auth_client_with_session,
+):
+    """Step 1 stopped asking both (3e1 spec §4.3, §7): no step can set a joint filing or a
+    household size, so the session takes neither and offers neither back."""
+    client, session = auth_client_with_session
+    DebtorInfo.objects.create(
+        session=session,
+        first_name="Jane",
+        last_name="Doe",
+        ssn="900123456",
+        date_of_birth=date(1985, 6, 15),
+        phone="312-555-0100",
+        email="jane@example.com",
+        street_address="1 Main St",
+        city="Chicago",
+        state="IL",
+        zip_code="60601",
+    )
+    url = f"/api/intake/sessions/{session.id}/"
+    sent = {"debtor_info": {"first_name": "Janet", "household_size": 4, "filing_type": "joint"}}
+    assert client.patch(url, sent, format="json").status_code == 200
+    debtor = DebtorInfo.objects.get(session=session)
+    assert (debtor.first_name, debtor.household_size, debtor.filing_type) == (
+        "Janet",
+        1,
+        "individual",
+    )
+    read = client.get(url).json()["debtor_info"]
+    assert "household_size" not in read and "filing_type" not in read
