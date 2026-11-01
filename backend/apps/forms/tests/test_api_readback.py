@@ -175,9 +175,10 @@ def _comparable(form_type, values):
 
     Schedule J line 2 is the one production repeat group; its rows come in the household
     list's stored order, the same on both sides. A group a later step binds to stored rows
-    has no fixed order (DIG-164), so within one part it compares regardless of it. Across parts it doesn't: a group past its last slot puts its rows on
-    the form part and its copies by position, so another order moves other rows to a copy.
-    Each row keeps its own values together, so an amount that moves to another row differs.
+    has no fixed order (DIG-164), so within one part it compares regardless of it. Across
+    parts it doesn't: a group past its last slot puts its rows on the form part and its
+    copies by position, so another order moves other rows to a copy. Each row keeps its own
+    values together, so an amount that moves to another row differs.
     """
     fixed = dict(values)
     rows = {}

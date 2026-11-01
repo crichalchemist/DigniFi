@@ -30,6 +30,7 @@ from rest_framework import status
 from rest_framework.test import APIClient
 
 from apps.districts.models import District, MedianIncome
+from apps.eligibility.cmi import HOUSEHOLD_UNANSWERED
 from apps.eligibility.models import MeansTest
 from apps.forms.models import GeneratedForm
 from apps.forms.registry import build_parts, packet
@@ -197,6 +198,21 @@ class TestGenerateEndpoint:
             "step": "debtor_info",
             "error": "Choose your county on the Your Information step.",
         }
+        assert not GeneratedForm.objects.filter(session=session_with_debtor).exists()
+
+    def test_schedule_j_with_an_unanswered_household_list_names_the_income_step(
+        self, api_client, session_with_debtor
+    ):
+        # A list never answered is refused, not printed as "no dependents" (3e1 spec §9.2).
+        answer_household(session_with_debtor, members=None)
+        resp = api_client.post(
+            self.URL,
+            {"session_id": session_with_debtor.id, "form_type": "schedule_j"},
+            format="json",
+        )
+        assert resp.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert resp.data["step"] == "income_info"
+        assert resp.data["error"] == HOUSEHOLD_UNANSWERED
         assert not GeneratedForm.objects.filter(session=session_with_debtor).exists()
 
     def test_generate_form_106dec(self, api_client, session_with_debtor):
