@@ -187,12 +187,22 @@ def test_a_rule_links_to_where_its_input_is_entered(rule, fix):
         (_field("derived", rule="last_name"), {"step": "debtor_info"}),
         (_field("asked", binding="answer:form_107.gift_description"), {"page": "/ask/form_107"}),
         (_field("asked", binding="sofa.creditor_payments[].creditor_name"), {"page": "/sofa"}),
+        (_field("asked", binding="household.dependents[].relationship"), {"step": "income_info"}),
         (_field("ingested", ingest_key="paystub.employer_name"), {"page": "/documents"}),
         (_field("db_aggregate", ingest_key="paystub.employer_name"), {"page": "/documents"}),
         (_field("constant", value="Individual"), {}),
         (_field("signature"), {}),
     ],
-    ids=["derived", "answer", "sofa", "ingested", "db_aggregate", "constant", "signature"],
+    ids=[
+        "derived",
+        "answer",
+        "sofa",
+        "household",
+        "ingested",
+        "db_aggregate",
+        "constant",
+        "signature",
+    ],
 )
 def test_a_refusal_sends_the_filer_to_where_the_value_came_from(field, fix):
     assert fix_for(field) == fix

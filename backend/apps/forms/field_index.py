@@ -43,6 +43,7 @@ class IndexWidget:
     basis: str
     label: str
     column: str
+    option_text: str  # the words the form prints beside a box ("" for a text box)
 
 
 def index_path(template_filename: str) -> Path:
@@ -76,6 +77,21 @@ def load_index(template_filename: str) -> dict[str, tuple[IndexWidget, ...]]:
                 basis=row["basis"],
                 label=row["label"] or "",
                 column=row["column"] or "",
+                option_text=row["option_text"] or "",
             )
         )
     return {name: tuple(ws) for name, ws in widgets.items()}
+
+
+def option_text(template_filename: str, full_name: str, state: str) -> str:
+    """
+    The words the form prints beside the box of `full_name` whose export state is `state`
+    ("/yes" → "Yes").
+
+    Raises:
+        KeyError: no box of that name has that state.
+    """
+    for widget in load_index(template_filename)[full_name]:
+        if widget.on_state is not None and export_state(widget.on_state) == state:
+            return widget.option_text
+    raise KeyError(f"{full_name!r} has no box with the state {state!r}")
