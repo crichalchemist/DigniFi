@@ -102,6 +102,14 @@ def test_a_row_with_an_id_the_list_doesnt_hold_gets_a_new_one(filer):
     assert _ids(_members(client, session, [{**SON, "id": 99}])) == [4]
 
 
+def test_a_household_row_sent_with_a_null_id_is_kept_as_a_new_person(filer):
+    client, session = filer
+    [existing] = _members(client, session, [SON])
+    kept = _members(client, session, [existing, {**DAUGHTER, "id": None}])
+    assert [r["relationship"] for r in kept] == ["son", "daughter"]
+    assert isinstance(kept[1]["id"], int) and kept[1]["id"] != existing["id"]
+
+
 def test_an_id_sent_twice_keeps_it_only_once(filer):
     client, session = filer
     _members(client, session, [SON, DAUGHTER, ROOMMATE])

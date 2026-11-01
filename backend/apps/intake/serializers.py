@@ -311,7 +311,7 @@ class HouseholdMemberSerializer(serializers.Serializer):
     refused.
     """
 
-    id = serializers.IntegerField(required=False)
+    id = serializers.IntegerField(required=False, allow_null=True)
     relationship = serializers.ChoiceField(
         choices=list(RELATIONSHIP_WORDS), allow_null=True, required=False
     )
