@@ -24,6 +24,7 @@ DigniFi compares each filer's income with this table on Form 122A-1 (line 13), a
 - New Census figures apply to cases filed on or after **April 1** and **November 1** each year.
 - The U.S. Trustee usually posts them a few weeks ahead. The November 2025 table was posted on October 16, 2025, and the April 2026 table on March 18, 2026.
 - Some periods on that page change only the IRS figures. The July 15, 2026 period is one: its Illinois median row matches the April 2026 table, so it needs no new row.
+- The November 2026 update had not been posted on November 1, 2026: the period list still began with "7/15/2026 or After". As with the skipped November 2021 update, the April 2026 row now runs to March 31, 2027. If a table effective before then is posted, add its row; DigniFi uses the newest row that has started, so the new row takes over from its `effective_date`.
 - The U.S. Trustee's period list, not the calendar, sets a row's dates (`effective_date` and `valid_through`). Updates sometimes slip: the list has a period of 5/15/2021 to 3/31/2022, so one November update was skipped, and a period that starts on 11/15/2013.
 - When a scheduled update is skipped or late, extend the current row's `valid_through` to the real end of its period, so filers aren't refused while the old figures still apply. Then add the next row with its own `effective_date`, as below.
 
@@ -32,7 +33,7 @@ DigniFi compares each filer's income with this table on Form 122A-1 (line 13), a
 | Effective  | `valid_through` | Illinois, 1–4 people                    | Each person over 4 |
 | ---------- | --------------- | --------------------------------------- | ------------------ |
 | 2025-11-01 | 2026-03-31      | $71,304 / $91,526 / $110,712 / $134,366 | $11,100            |
-| 2026-04-01 | 2026-10-31      | $73,180 / $93,934 / $113,625 / $137,902 | $11,100            |
+| 2026-04-01 | 2027-03-31      | $73,180 / $93,934 / $113,625 / $137,902 | $11,100            |
 
 ### How to add a row
 
