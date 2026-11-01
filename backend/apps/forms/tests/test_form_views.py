@@ -778,7 +778,7 @@ class TestPacketEndpoint:
             {
                 "name": "Census median income",
                 "effective_date": "2026-04-01",
-                "valid_through": "2026-10-31",
+                "valid_through": "2027-03-31",
                 "source_url": (
                     "https://www.justice.gov/ust/eo/bapcpa/20260401/bci_data/"
                     "median_income_table.htm"
