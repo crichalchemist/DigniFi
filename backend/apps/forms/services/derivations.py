@@ -24,7 +24,7 @@ from apps.eligibility.cmi import (
     is_above_median,
     spouse_monthly_income,
 )
-from apps.intake.household import count_family_size
+from apps.intake.household import count_family_size, dependents
 from apps.intake.models import IntakeSession
 
 _ZERO = Decimal("0.00")
@@ -598,14 +598,27 @@ def _schedule_j_monthly_net_income(session: IntakeSession) -> str:
 
 def _schedule_j_joint_case(session: IntakeSession) -> str:
     """
-    Line 1: "no" for an individual filing, blank for a joint one (DIG-177).
+    Line 1: "no" for every session.
 
-    A joint filer still gets a single filer's packet, so line 1 says nothing for them.
+    No step offers joint filing and Complete refuses a case the spouse files too (3e1 spec
+    §7, DIG-177), so `filing_type` has no reader left.
     """
-    debtor_info = getattr(session, "debtor_info", None)
-    if debtor_info is not None and debtor_info.filing_type == "individual":
-        return "no"
-    return ""
+    return "no"
+
+
+def _schedule_j_has_dependents(session: IntakeSession) -> str:
+    """
+    Line 2's "Do you have dependents?": "yes" when the rows below it list anyone.
+
+    An unanswered list raises IncomeStepGap (from household_members) rather than swear to
+    a No the filer never gave.
+    """
+    return "yes" if dependents(household_members(session)) else "no"
+
+
+def _county(session: IntakeSession) -> str:
+    household = getattr(session, "household", None)
+    return (household.county if household else "") or ""
 
 
 def _means_test_disposable_income(session: IntakeSession) -> str:
@@ -631,6 +644,7 @@ DERIVATIONS: dict[str, Callable[[IntakeSession], str]] = {
     "city": lambda s: _safe_debtor_attr(s, "city"),
     "state": lambda s: _safe_debtor_attr(s, "state"),
     "zip_code": lambda s: _safe_debtor_attr(s, "zip_code"),
+    "county": _county,
     "phone": lambda s: _safe_debtor_attr(s, "phone"),
     "email": lambda s: _safe_debtor_attr(s, "email"),
     "chapter": lambda s: "7",
@@ -770,6 +784,7 @@ DERIVATIONS: dict[str, Callable[[IntakeSession], str]] = {
     "schedule_j_total_income": _schedule_i_income_total,
     "schedule_j_monthly_net_income": _schedule_j_monthly_net_income,
     "schedule_j_joint_case": _schedule_j_joint_case,
+    "schedule_j_has_dependents": _schedule_j_has_dependents,
     # Form 122A-2 means test expense deduction derivations
     "means_test_disposable_income": _means_test_disposable_income,
 }
@@ -794,6 +809,7 @@ RULE_FIXES: dict[str, dict[str, str]] = {
     "city": {"step": "debtor_info"},
     "state": {"step": "debtor_info"},
     "zip_code": {"step": "debtor_info"},
+    "county": {"step": "debtor_info"},
     "phone": {"step": "debtor_info"},
     "email": {"step": "debtor_info"},
     "ssn_last_4": {"step": "debtor_info"},

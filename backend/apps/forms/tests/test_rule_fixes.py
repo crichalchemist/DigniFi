@@ -162,6 +162,7 @@ def test_a_precondition_is_read_by_its_name_or_as_an_attribute(source, raises):
     [
         ("last_name", {"step": "debtor_info"}),
         ("family_size", {"step": "income_info"}),  # the household list is on the Income step
+        ("county", {"step": "debtor_info"}),  # chosen on Your Information since 3e1
         ("cmi", {"step": "income_info"}),
         ("filer_cmi", {"step": "income_info"}),
         ("spouse_cmi", {"step": "income_info"}),

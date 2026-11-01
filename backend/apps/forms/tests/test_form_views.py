@@ -179,6 +179,26 @@ class TestGenerateEndpoint:
             session=session_with_debtor, form_type="form_101"
         ).exists()
 
+    def test_form_101_without_a_county_names_the_your_information_step(
+        self, api_client, session_with_debtor
+    ):
+        # A session saved before 3e1 has no county (3e1 spec §9.2).
+        household = session_with_debtor.household
+        household.county = None
+        household.save()
+        resp = api_client.post(
+            self.URL,
+            {"session_id": session_with_debtor.id, "form_type": "form_101"},
+            format="json",
+        )
+        assert resp.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert resp.data == {
+            "form_type": "form_101",
+            "step": "debtor_info",
+            "error": "Choose your county on the Your Information step.",
+        }
+        assert not GeneratedForm.objects.filter(session=session_with_debtor).exists()
+
     def test_generate_form_106dec(self, api_client, session_with_debtor):
         resp = api_client.post(
             self.URL,

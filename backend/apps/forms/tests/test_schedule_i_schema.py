@@ -16,7 +16,7 @@ from apps.forms.tests.test_form_122a1_schema import (
     answer_income_step,
 )
 from apps.forms.tests.test_form_122a1_schema import LINE_BY_SOURCE as FORM_122A1_LINE_BY_SOURCE
-from apps.intake.models import DebtorInfo, IncomeInfo, IntakeSession, SpouseIncome
+from apps.intake.models import DebtorInfo, Household, IncomeInfo, IntakeSession, SpouseIncome
 from apps.intake.tests.builders import answer_household
 
 User = get_user_model()
@@ -191,6 +191,9 @@ class TestScheduleISchema:
             schedule_j = resolve(load_schema("schedule_j"), session)
             return sorted(INCOME_LINES & schedule_i.keys()), schedule_j.get("23a")
 
+        household = Household(session=session)
+        household.store_members([])
+        household.save()
         assert income_printed() == ([], None)
         # A total saved before income was stored by source is never split for the filer.
         IncomeInfo.objects.create(session=session, monthly_income=[3000] * 6)

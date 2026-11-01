@@ -90,6 +90,16 @@
     "evidence": "Field index: Check Box26 p9 Part 7 'For you if you are filing this bankruptcy without an attorney: Did you pay or agree to pay someone who is not an attorney to help you fill out your bankruptcy forms?', states /no ('No') and /Yes ('Yes. Name of Person'), adjudicated. Owner's answer Q12 (step 2 spec §3, §6.3): DigniFi is free, so it is not a petition preparer; each filer answers the form's own question, and the paid-help answer prints on 101 Check Box26, 106Dec check1 and 107 check30."
   },
   {
+    "schema": "form_101",
+    "pdf_field": "Debtor1.County",
+    "producer": "derived:county",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Debtor1.County",
+    "evidence": "Field index: Debtor1.County p2 line 5, column 'Debtor 1', 'Where you live: County' (adjudicated). 3e1 spec §6, §10.4 [DIG-277]: the county picked on Your Information, from the district's 18, printed bare (\"Cook\")."
+  },
+  {
     "schema": "form_103b",
     "pdf_field": "check_17",
     "producer": "asked:answer:form_103b.paid_anyone_for_services",
@@ -707,7 +717,7 @@
     "final_verdicts": ["correct"],
     "status": "confirmed",
     "correct_target": "check1",
-    "evidence": "Field index: check1 p1 line 1, 'Is this a joint case?', option 'No. Go to line 2.' (on_state 'no', export state /no; adjudicated); its other widget is 'Yes. Does Debtor 2 live in a separate household?' (on_state 'yes'). Not 'Check 1', the amended/supplemental box. DebtorInfo.filing_type 'individual' is a single filer's case. Step 2 spec Appendix A.8, §6.2 (schedule_j_joint_case: 'no' for an individual filing, blank for Joint) and §10: a joint filer still gets a single filer's packet, so line 1 stays blank for them (DIG-177). The audit lists check1 as unbound (schedule_j.unbound.json)."
+    "evidence": "Field index: check1 p1 line 1, 'Is this a joint case?', option 'No. Go to line 2.' (on_state 'no', export state /no; adjudicated); its other widget is 'Yes. Does Debtor 2 live in a separate household?' (on_state 'yes'). Not 'Check 1', the amended/supplemental box. 3e1 spec §7 (DIG-71, DIG-177, owner's answer 3e1.Q2): no step offers joint filing and Complete refuses a case the spouse files too, so line 1 answers No for every session; nothing ticks Yes. The audit lists check1 as unbound (schedule_j.unbound.json)."
   },
   {
     "schema": "schedule_j",
@@ -738,6 +748,166 @@
     "status": "confirmed",
     "correct_target": "23c",
     "evidence": "Field index: 23c p3 line 23c, column 'Your expenses', 'Subtract your monthly expenses from your monthly income. The result is your monthly net income.' (adjudicated): 23a (Schedule I line 12, schedule_i_income_total) minus 23b (line 22c). Step 2 spec Appendix A.8, §6.2 (schedule_j_monthly_net_income, 23a - 23b), Appendix B R4 (after 23a's new body) and Appendix C.3 (DIG-61); ruling T0-f: blank while 23a is blank, a negative result prints with a minus sign. The audit lists 23c as unbound (schedule_j.unbound.json, DIG-61)."
+  },
+  {
+    "schema": "schedule_j",
+    "pdf_field": "check2",
+    "producer": "derived:schedule_j_has_dependents",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check2",
+    "evidence": "Field index: check2 p1 line 2, 'Do you have dependents?' (adjudicated; T12 'No' is on_state 'no', T13 'Yes. Fill out this information for each dependent' is on_state 'yes'). 3e1 spec §10.3, §4.4: Yes when line 2 lists anyone; a spouse is listed only when the filer answers \"Is your spouse a dependent of yours?\" Yes (owner's answer 3e1.Q1), never for a joint tax return alone."
+  },
+  {
+    "schema": "schedule_j",
+    "pdf_field": "Dependant Relation 2a",
+    "producer": "asked:household.dependents[].relationship",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Dependant Relation 2a",
+    "evidence": "Field index: Dependant Relation 2a p1 line 2, column 'Dependent’s relationship to Debtor 1 or Debtor 2', 'Dependent’s relationship to Debtor 1 or Debtor 2 (dependent row a)' (adjudicated). 3e1 spec §10.3, §4.2: the relationship's words from the household list, in its order, row a; no name (the form: \"Do not state the dependents' names\")."
+  },
+  {
+    "schema": "schedule_j",
+    "pdf_field": "Dependant Relation 2b",
+    "producer": "asked:household.dependents[].relationship",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Dependant Relation 2b",
+    "evidence": "Field index: Dependant Relation 2b p1 line 2, column 'Dependent’s relationship to Debtor 1 or Debtor 2', 'Dependent’s relationship to Debtor 1 or Debtor 2 (dependent row b)' (adjudicated). 3e1 spec §10.3, §4.2: the relationship's words from the household list, in its order, row b; no name (the form: \"Do not state the dependents' names\")."
+  },
+  {
+    "schema": "schedule_j",
+    "pdf_field": "Dependant Relation 2c",
+    "producer": "asked:household.dependents[].relationship",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Dependant Relation 2c",
+    "evidence": "Field index: Dependant Relation 2c p1 line 2, column 'Dependent’s relationship to Debtor 1 or Debtor 2', 'Dependent’s relationship to Debtor 1 or Debtor 2 (dependent row c)' (adjudicated). 3e1 spec §10.3, §4.2: the relationship's words from the household list, in its order, row c; no name (the form: \"Do not state the dependents' names\")."
+  },
+  {
+    "schema": "schedule_j",
+    "pdf_field": "Dependant Relation 2d",
+    "producer": "asked:household.dependents[].relationship",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Dependant Relation 2d",
+    "evidence": "Field index: Dependant Relation 2d p1 line 2, column 'Dependent’s relationship to Debtor 1 or Debtor 2', 'Dependent’s relationship to Debtor 1 or Debtor 2 (dependent row d)' (adjudicated). 3e1 spec §10.3, §4.2: the relationship's words from the household list, in its order, row d; no name (the form: \"Do not state the dependents' names\")."
+  },
+  {
+    "schema": "schedule_j",
+    "pdf_field": "Dependant Relation 2e",
+    "producer": "asked:household.dependents[].relationship",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Dependant Relation 2e",
+    "evidence": "Field index: Dependant Relation 2e p1 line 2, column 'Dependent’s relationship to Debtor 1 or Debtor 2', 'Dependent’s relationship to Debtor 1 or Debtor 2 (dependent row e)' (adjudicated). 3e1 spec §10.3, §4.2: the relationship's words from the household list, in its order, row e; no name (the form: \"Do not state the dependents' names\")."
+  },
+  {
+    "schema": "schedule_j",
+    "pdf_field": "Dependant age 2a",
+    "producer": "asked:household.dependents[].age",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Dependant age 2a",
+    "evidence": "Field index: Dependant age 2a p1 line 2, column 'Dependent’s age', 'Dependent’s age (dependent row a)' (adjudicated). 3e1 spec §10.3: the age the filer gave, row a."
+  },
+  {
+    "schema": "schedule_j",
+    "pdf_field": "Dependant age 2b",
+    "producer": "asked:household.dependents[].age",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Dependant age 2b",
+    "evidence": "Field index: Dependant age 2b p1 line 2, column 'Dependent’s age', 'Dependent’s age (dependent row b)' (adjudicated). 3e1 spec §10.3: the age the filer gave, row b."
+  },
+  {
+    "schema": "schedule_j",
+    "pdf_field": "Dependant age 2c",
+    "producer": "asked:household.dependents[].age",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Dependant age 2c",
+    "evidence": "Field index: Dependant age 2c p1 line 2, column 'Dependent’s age', 'Dependent’s age (dependent row c)' (adjudicated). 3e1 spec §10.3: the age the filer gave, row c."
+  },
+  {
+    "schema": "schedule_j",
+    "pdf_field": "Dependant age 2d",
+    "producer": "asked:household.dependents[].age",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Dependant age 2d",
+    "evidence": "Field index: Dependant age 2d p1 line 2, column 'Dependent’s age', 'Dependent’s age (dependent row d)' (adjudicated). 3e1 spec §10.3: the age the filer gave, row d."
+  },
+  {
+    "schema": "schedule_j",
+    "pdf_field": "Dependant age 2e",
+    "producer": "asked:household.dependents[].age",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Dependant age 2e",
+    "evidence": "Field index: Dependant age 2e p1 line 2, column 'Dependent’s age', 'Dependent’s age (dependent row e)' (adjudicated). 3e1 spec §10.3: the age the filer gave, row e."
+  },
+  {
+    "schema": "schedule_j",
+    "pdf_field": "check2a",
+    "producer": "asked:household.dependents[].lives_with_you",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check2a",
+    "evidence": "Field index: check2a p1 line 2, column 'Does dependent live with you?', 'Does dependent live with you? (dependent row a)' (adjudicated). 3e1 spec §10.3: the filer's \"Lives with you?\" answer, 'no'/'yes' states, row a."
+  },
+  {
+    "schema": "schedule_j",
+    "pdf_field": "check2b",
+    "producer": "asked:household.dependents[].lives_with_you",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check2b",
+    "evidence": "Field index: check2b p1 line 2, column 'Does dependent live with you?', 'Does dependent live with you? (dependent row b)' (adjudicated). 3e1 spec §10.3: the filer's \"Lives with you?\" answer, 'no'/'yes' states, row b."
+  },
+  {
+    "schema": "schedule_j",
+    "pdf_field": "check2c",
+    "producer": "asked:household.dependents[].lives_with_you",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check2c",
+    "evidence": "Field index: check2c p1 line 2, column 'Does dependent live with you?', 'Does dependent live with you? (dependent row c)' (adjudicated). 3e1 spec §10.3: the filer's \"Lives with you?\" answer, 'no'/'yes' states, row c."
+  },
+  {
+    "schema": "schedule_j",
+    "pdf_field": "check2d",
+    "producer": "asked:household.dependents[].lives_with_you",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check2d",
+    "evidence": "Field index: check2d p1 line 2, column 'Does dependent live with you?', 'Does dependent live with you? (dependent row d)' (adjudicated). 3e1 spec §10.3: the filer's \"Lives with you?\" answer, 'no'/'yes' states, row d."
+  },
+  {
+    "schema": "schedule_j",
+    "pdf_field": "check2e",
+    "producer": "asked:household.dependents[].lives_with_you",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check2e",
+    "evidence": "Field index: check2e p1 line 2, column 'Does dependent live with you?', 'Does dependent live with you? (dependent row e)' (adjudicated). 3e1 spec §10.3: the filer's \"Lives with you?\" answer, 'no'/'yes' states, row e."
   },
   {
     "schema": "form_122a2",

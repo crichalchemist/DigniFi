@@ -173,9 +173,9 @@ def _comparable(form_type, values):
     """
     One part's values, with each repeat group's rows in a fixed order.
 
-    No production schema has a repeat group since step 2 took Form 107's off. Stored rows
-    have no fixed order (DIG-164), so within one part a group a later step binds compares
-    regardless of it. Across parts it doesn't: a group past its last slot puts its rows on
+    Schedule J line 2 is the one production repeat group; its rows come in the household
+    list's stored order, the same on both sides. A group a later step binds to stored rows
+    has no fixed order (DIG-164), so within one part it compares regardless of it. Across parts it doesn't: a group past its last slot puts its rows on
     the form part and its copies by position, so another order moves other rows to a copy.
     Each row keeps its own values together, so an amount that moves to another row differs.
     """

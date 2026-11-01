@@ -8,9 +8,13 @@ import pytest
 from django.contrib.auth import get_user_model
 
 from apps.districts.models import District
+from apps.eligibility.cmi import HOUSEHOLD_UNANSWERED, IncomeStepGap
+from apps.forms.registry import build_parts
 from apps.forms.schema import load_schema
 from apps.forms.services.fill_resolver import resolve
-from apps.intake.models import DebtorInfo, ExpenseInfo, IncomeInfo, IntakeSession
+from apps.forms.services.pdf_filler import PDFFormFiller
+from apps.forms.tests.pdf_readback import read_sheets
+from apps.intake.models import DebtorInfo, ExpenseInfo, Household, IncomeInfo, IntakeSession
 
 User = get_user_model()
 
@@ -55,6 +59,34 @@ VACATED = {"10", "14", "15a", "15b", "16", "17b", "17c", "20a"}
 EXPENSE_TOTAL = "8191.00"
 
 
+def _household(session, members):
+    # Change the instance the session holds: the rules read session.household, which a
+    # one-to-one keeps cached, so a fresh copy from the database would leave it stale.
+    household = getattr(session, "household", None) or Household(session=session)
+    household.store_members(members)
+    household.save()
+
+
+def _member(relationship, age, lives_with_you=True, claimed_or_supported=True, **spouse):
+    return {
+        "relationship": relationship,
+        "age": age,
+        "lives_with_you": lives_with_you,
+        "claimed_or_supported": claimed_or_supported,
+        **spouse,
+    }
+
+
+SIX = [
+    _member("son", 15),
+    _member("daughter", 12),
+    _member("stepchild", 10),
+    _member("grandchild", 4),
+    _member("parent", 70),
+    _member("other_relative", 30, lives_with_you=False),
+]
+
+
 @pytest.fixture
 def session(db):
     user = User.objects.create_user(username="schemasj", password="pass")
@@ -65,7 +97,10 @@ def session(db):
         court_name="U.S. Bankruptcy Court",
         filing_fee_chapter_7=Decimal("338.00"),
     )
-    return IntakeSession.objects.create(user=user, district=district)
+    session = IntakeSession.objects.create(user=user, district=district)
+    # line 2 refuses a list never answered (3e1 spec §9.2): "no one" here
+    _household(session, [])
+    return session
 
 
 def test_each_expense_prints_on_the_line_that_asks_for_it(session):
@@ -168,16 +203,11 @@ def test_net_income_stays_blank_until_income_is_given(session, income_saved):
 
 
 @pytest.mark.parametrize(
-    "filing_type,ticks",
-    [
-        ("individual", "/no"),
-        ("joint", None),
-        (None, None),  # the Debtor step was never saved
-    ],
-)
-def test_only_an_individual_filing_answers_no_to_is_this_a_joint_case(session, filing_type, ticks):
-    # A joint filer still gets a single filer's packet (DIG-177), so line 1 stays blank for
-    # them rather than say "No", and nothing ever ticks "Yes".
+    "filing_type", ["individual", "joint", None]
+)  # None: Your Information never saved
+def test_is_this_a_joint_case_answers_no_for_every_session(session, filing_type):
+    # No step offers joint filing since 3e1 and Complete refuses a case the spouse files too
+    # (3e1 spec §7), so a session saved as joint before then says No as well.
     if filing_type is not None:
         DebtorInfo.objects.create(
             session=session,
@@ -197,7 +227,79 @@ def test_only_an_individual_filing_answers_no_to_is_this_a_joint_case(session, f
 
     printed = resolve(load_schema("schedule_j"), session)
 
-    assert printed.get("check1") == ticks
+    assert printed.get("check1") == "/no"
+
+
+def test_line_2_holds_five_dependents_on_the_form(session):
+    _household(session, SIX[:5])
+    (form,) = build_parts("schedule_j", session)["parts"]  # no sheet
+    rows = [
+        tuple(
+            form["values"][f"{box}{x}"]
+            for box in ("Dependant Relation 2", "Dependant age 2", "check2")
+        )
+        for x in "abcde"
+    ]
+    assert rows == [
+        ("Son", "15", "/yes"),
+        ("Daughter", "12", "/yes"),
+        ("Stepchild", "10", "/yes"),
+        ("Grandchild", "4", "/yes"),
+        ("Parent", "70", "/yes"),
+    ]
+
+
+def test_a_sixth_dependent_continues_on_the_attached_sheet(generated_form_factory):
+    # The template has no extra page for line 2, so row 6 goes on a sheet (U:145), "2.6".
+    session = generated_form_factory().session
+    _household(session, SIX)
+    document = build_parts("schedule_j", session)
+    assert document["parts"][1:] == [
+        {
+            "kind": "sheet",
+            "group": "j_line_2",
+            "title": "Official Form 106J, Schedule J: Your Expenses, line 2",
+            "columns": [
+                {"label": "Relationship", "width": 220.0},
+                {"label": "Age", "width": 80.0},
+                {"label": "Lives with you", "width": 168.0},
+            ],
+            "name": "Maria Torres",
+            "rows": [{"line": "2.6", "cells": ["Other relative", "30", "No"]}],
+        }
+    ]
+    PDFFormFiller().check("schedule_j", document)  # every row prints whole
+    (sheet,) = read_sheets(
+        PDFFormFiller().fill("schedule_j", document),
+        load_schema("schedule_j").groups["j_line_2"].sheet,
+    )
+    assert sheet.rows == (("2.6", "Other relative", "30", "No"),)
+
+
+@pytest.mark.parametrize(
+    "members,ticks,row_a",
+    [
+        ([], "/no", None),  # "no one", James's answer
+        ([_member("roommate", 29, claimed_or_supported=False)], "/no", None),  # Sarah's
+        ([_member("spouse", 44, spouse_is_dependent=False)], "/no", None),  # DeShawn's (3e1.Q1)
+        ([_member("spouse", 44, spouse_is_dependent=True)], "/yes", "Spouse"),
+        ([_member("daughter", 9)], "/yes", "Daughter"),  # Andrés's
+    ],
+    ids=["no_one", "roommate", "spouse_on_the_tax_return", "spouse_a_dependent", "daughter"],
+)
+def test_do_you_have_dependents_answers_yes_only_when_line_2_lists_someone(
+    session, members, ticks, row_a
+):
+    _household(session, members)
+    printed = resolve(load_schema("schedule_j"), session)
+    assert (printed.get("check2"), printed.get("Dependant Relation 2a")) == (ticks, row_a)
+
+
+def test_an_unanswered_household_list_refuses_line_2_rather_than_answer_no(session):
+    _household(session, None)
+    with pytest.raises(IncomeStepGap) as refused:
+        resolve(load_schema("schedule_j"), session)
+    assert (str(refused.value), refused.value.step) == (HOUSEHOLD_UNANSWERED, "income_info")
 
 
 def test_a_broken_expense_read_fails_the_form_instead_of_printing_0_00(session):

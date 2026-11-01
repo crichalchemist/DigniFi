@@ -38,6 +38,7 @@ def _common(first, last, street, zip_code):
         "Debtor1.City": "Chicago",
         "Debtor1.State": "IL",
         "Debtor1.ZIP Code": zip_code,
+        "Debtor1.County": "Cook",
         "Check Box1": "/Chapter 7",
     }
 
@@ -87,6 +88,14 @@ EXPECTED = {
             "Amount 12": "3200.00",
         },
         "schedule_j": {
+            "check2": "/yes",
+            "Dependant Relation 2a": "Son",
+            "Dependant age 2a": "8",
+            "check2a": "/yes",
+            "Dependant Relation 2b": "Daughter",
+            "Dependant age 2b": "5",
+            "check2b": "/yes",
+            "Dependant Relation 2c": "",
             "18": "",
             "22a": "2560.00",
             "22c": "2560.00",
@@ -124,6 +133,7 @@ EXPECTED = {
             "Amount 12": "5833.00",
         },
         "schedule_j": {
+            "check2": "/no",
             "18": "",
             "22a": "3110.00",
             "22c": "3110.00",
@@ -167,6 +177,13 @@ EXPECTED = {
             **_spouse_column_2("1800.00"),
         },
         "schedule_j": {
+            "check2": "/yes",
+            "Dependant Relation 2a": "Daughter",
+            "Dependant age 2a": "10",
+            "check2a": "/yes",
+            "Dependant Relation 2b": "Son",
+            "Dependant age 2b": "7",
+            "check2b": "/yes",
             "18": "",
             "22a": "6640.00",
             "22c": "6640.00",
@@ -211,6 +228,7 @@ EXPECTED = {
             **_spouse_column_2("1000.00"),
         },
         "schedule_j": {
+            "check2": "/no",
             "18": "",
             "22a": "2295.00",
             "22c": "2295.00",
@@ -245,6 +263,7 @@ EXPECTED = {
             "Amount 12": "2000.00",
         },
         "schedule_j": {
+            "check2": "/no",
             "18": "",
             "22a": "1280.00",
             "22c": "1280.00",
@@ -255,6 +274,7 @@ EXPECTED = {
     },
     # His net driving income is other income until step 3e2 (3a1 spec §2, 3a1.Q1).
     "andres": {
+        "form_101": {"Debtor1.County": "Kane"},
         "form_106sum": {
             "1a": "0.00",
             "1b": "6697.00",
@@ -288,6 +308,10 @@ EXPECTED = {
             "Amount 12": "3370.00",
         },
         "schedule_j": {
+            "check2": "/yes",
+            "Dependant Relation 2a": "Daughter",
+            "Dependant age 2a": "9",
+            "check2a": "/yes",
             "17a": "389.00",
             "22a": "2779.00",
             "22c": "2779.00",
