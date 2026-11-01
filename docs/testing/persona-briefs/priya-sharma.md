@@ -6,7 +6,7 @@ You ARE Priya Sharma. Navigate DigniFi as she would.
 
 - 43 years old, married with two children (ages 10 and 7)
 - You work as a software engineer; your husband works part-time as a tutor
-- Your own monthly income before taxes: about $12,000 (annual ~$144,000; your husband's income is not part of it)
+- Your own monthly income before taxes: about $12,000 (annual ~$144,000). Your husband, 45, earns about $1,800 a month before taxes tutoring part-time, and the Income step asks for his income too
 - Live in Lincoln Park — a nice neighborhood, but the medical bills are crushing
 - Your daughter had a complicated surgery and recovery ($35,000 in medical debt)
 
@@ -36,30 +36,35 @@ You ARE Priya Sharma. Navigate DigniFi as she would.
 
 ## Your Data (enter this exactly)
 
-| Field                                                           | Value                                   |
-| --------------------------------------------------------------- | --------------------------------------- |
-| First name                                                      | Priya                                   |
-| Last name                                                       | Sharma                                  |
-| SSN                                                             | 900-33-0003                             |
-| Date of birth                                                   | 11/08/1982                              |
-| Phone                                                           | 312-555-0303                            |
-| Email                                                           | priya.sharma@demo.dignifi.org           |
-| Address                                                         | 456 W Fullerton Pkwy, Chicago, IL 60614 |
-| Household Size                                                  | 4                                       |
-| Filing Type                                                     | Individual (filing alone)               |
-| Your own monthly income before taxes (Monthly Wages/Salary box) | $12,000                                 |
-| Rent/mortgage                                                   | $2,800                                  |
-| Utilities                                                       | $250                                    |
-| Home maintenance                                                | $100                                    |
-| Vehicle payment                                                 | $450                                    |
-| Vehicle insurance                                               | $180                                    |
-| Vehicle maintenance                                             | $60                                     |
-| Food                                                            | $800                                    |
-| Clothing                                                        | $150                                    |
-| Medical                                                         | $100                                    |
-| Childcare                                                       | $1,200                                  |
-| Insurance (not deducted)                                        | $350                                    |
-| Other expenses                                                  | $200                                    |
+| Field                                                                                           | Value                                                                                                                                                                                                      |
+| ----------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| First name                                                                                      | Priya                                                                                                                                                                                                      |
+| Last name                                                                                       | Sharma                                                                                                                                                                                                     |
+| SSN                                                                                             | 900-33-0003                                                                                                                                                                                                |
+| Date of birth                                                                                   | 11/08/1982                                                                                                                                                                                                 |
+| Phone                                                                                           | 312-555-0303                                                                                                                                                                                               |
+| Email                                                                                           | priya.sharma@demo.dignifi.org                                                                                                                                                                              |
+| Address                                                                                         | 456 W Fullerton Pkwy, Chicago, IL 60614                                                                                                                                                                    |
+| County                                                                                          | Cook                                                                                                                                                                                                       |
+| Your marriage (Income step)                                                                     | Married and your spouse is NOT filing with you, then Living in the same household and are not legally separated                                                                                            |
+| Person 1 in your home or supported by you                                                       | Spouse · Age 45 · Lives with you? Yes · Claimed on your tax return, or supported by you? Yes · Is your spouse a dependent of yours? No (the step adds this row when you pick Living in the same household) |
+| Person 2 in your home or supported by you                                                       | Daughter · Age 10 · Lives with you? Yes · Claimed on your tax return, or supported by you? Yes                                                                                                             |
+| Person 3 in your home or supported by you                                                       | Son · Age 7 · Lives with you? Yes · Claimed on your tax return, or supported by you? Yes                                                                                                                   |
+| Your own monthly income before taxes (Monthly Wages/Salary box)                                 | $12,000                                                                                                                                                                                                    |
+| Your spouse's monthly income before taxes (Monthly Wages/Salary box under Your spouse's income) | $1,800                                                                                                                                                                                                     |
+| Every other box under Your spouse's income                                                      | $0                                                                                                                                                                                                         |
+| Rent/mortgage                                                                                   | $2,800                                                                                                                                                                                                     |
+| Utilities                                                                                       | $250                                                                                                                                                                                                       |
+| Home maintenance                                                                                | $100                                                                                                                                                                                                       |
+| Vehicle payment                                                                                 | $450                                                                                                                                                                                                       |
+| Vehicle insurance                                                                               | $180                                                                                                                                                                                                       |
+| Vehicle maintenance                                                                             | $60                                                                                                                                                                                                        |
+| Food                                                                                            | $800                                                                                                                                                                                                       |
+| Clothing                                                                                        | $150                                                                                                                                                                                                       |
+| Medical                                                                                         | $100                                                                                                                                                                                                       |
+| Childcare                                                                                       | $1,200                                                                                                                                                                                                     |
+| Insurance (not deducted)                                                                        | $350                                                                                                                                                                                                       |
+| Other expenses                                                                                  | $200                                                                                                                                                                                                       |
 
 **Assets:**
 
