@@ -294,3 +294,14 @@ class TestScheduleISchema:
         assert (
             sorted(b for b in field_map if b.startswith("Amount") or b == "Other income 8h") == []
         )
+
+    def test_a_spouse_with_no_income_given_adds_nothing_to_lines_10_and_12(self, session):
+        # A blank column counts as zero in the total, which still prints (step 2 spec §6.1).
+        answer_income_step(session, "married_together", {}, monthly_gross_wages=Decimal("12000.00"))
+        field_map = resolve(load_schema("schedule_i"), session)
+        assert sorted(b for b in field_map if "Debtor 2" in b) == []
+        assert (
+            field_map["Amount 10 Debtor 1"],
+            field_map["Amount 10"],
+            field_map["Amount 12"],
+        ) == ("12000.00",) * 3
