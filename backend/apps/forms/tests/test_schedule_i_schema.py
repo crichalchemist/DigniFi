@@ -10,8 +10,13 @@ from apps.districts.models import District
 from apps.forms.schema import load_schema
 from apps.forms.services.fill_resolver import resolve
 from apps.forms.tests.test_derivations import TEN_SOURCES
+from apps.forms.tests.test_form_122a1_schema import (
+    LINE_10_SOURCE,
+    SPOUSE_WAGES_ONLY,
+    answer_income_step,
+)
 from apps.forms.tests.test_form_122a1_schema import LINE_BY_SOURCE as FORM_122A1_LINE_BY_SOURCE
-from apps.intake.models import DebtorInfo, IncomeInfo, IntakeSession
+from apps.intake.models import DebtorInfo, IncomeInfo, IntakeSession, SpouseIncome
 from apps.intake.tests.builders import answer_household
 
 User = get_user_model()
@@ -54,7 +59,10 @@ NEVER_ASKED = {
 # Social Security included (step 2 spec §6.1, C1), 1 + 2 + 4 + ... + 512.
 COMBINED_INCOME = {
     ("schedule_i", "Amount 10 Debtor 1"): "1023.00",  # line 10: line 7 + line 9
-    ("schedule_i", "Amount 10"): "1023.00",  # line 10's total: no spouse column yet
+    (
+        "schedule_i",
+        "Amount 10",
+    ): "1023.00",  # line 10's total: Debtor 1 + a spouse at home, none here
     ("schedule_i", "Amount 12"): "1023.00",  # line 12: line 10 + line 11, never asked
     ("form_106sum", "4"): "1023.00",  # copies Schedule I line 12
     ("schedule_j", "23a"): "1023.00",  # copies Schedule I line 12
@@ -187,3 +195,102 @@ class TestScheduleISchema:
         # A total saved before income was stored by source is never split for the filer.
         IncomeInfo.objects.create(session=session, monthly_income=[3000] * 6)
         assert income_printed() == ([], None)
+
+    def test_schedule_i_column_2_prints_the_spouses_income_for_a_spouse_at_home(self, session):
+        answer_income_step(
+            session, "married_together", SPOUSE_WAGES_ONLY, monthly_gross_wages=Decimal("12000.00")
+        )
+        schedule_i = resolve(load_schema("schedule_i"), session)
+        form_106sum = resolve(load_schema("form_106sum"), session)
+        schedule_j = resolve(load_schema("schedule_j"), session)
+
+        wage_boxes = (
+            "Amount 2 Debtor 2",
+            "Amount 4 Debtor 2",
+            "Amount 4 Debtor 2a",
+            "Amount 7 Debtor 2",
+            "Amount 10 Debtor 2",
+        )
+        zero_boxes = tuple(
+            f"Amount {n} Debtor 2" for n in ("3", "8a", "8c", "8d", "8e", "8g", "8h", "9")
+        )
+        assert {b: schedule_i.get(b) for b in wage_boxes} == dict.fromkeys(wage_boxes, "1800.00")
+        assert {b: schedule_i.get(b) for b in zero_boxes} == dict.fromkeys(zero_boxes, "0.00")
+        assert schedule_i["Amount 10 Debtor 1"] == "12000.00"
+        assert (
+            schedule_i["Amount 10"],
+            schedule_i["Amount 12"],
+            form_106sum["4"],
+            schedule_j["23a"],
+        ) == ("13800.00",) * 4
+
+    @pytest.mark.parametrize("answer", ["not_married", "married_separately"])
+    def test_a_filer_with_no_spouse_at_home_gets_a_blank_column_2(self, session, answer):
+        answer_income_step(
+            session, answer, SPOUSE_WAGES_ONLY, monthly_gross_wages=Decimal("12000.00")
+        )
+        field_map = resolve(load_schema("schedule_i"), session)
+        assert sorted(b for b in field_map if "Debtor 2" in b) == []
+        assert (
+            field_map["Amount 10 Debtor 1"],
+            field_map["Amount 10"],
+            field_map["Amount 12"],
+        ) == ("12000.00",) * 3
+
+    def test_a_spouse_source_typed_as_0_prints_0_00_and_one_left_empty_prints_blank(self, session):
+        answer_income_step(
+            session,
+            "married_together",
+            {"monthly_gross_wages": Decimal("0.00")},
+            monthly_gross_wages=Decimal("12000.00"),
+        )
+        form_122a1 = resolve(load_schema("form_122a1"), session)
+        schedule_i = resolve(load_schema("schedule_i"), session)
+        assert {b: v for b, v in form_122a1.items() if b.startswith("Debto2.")} == {
+            "Debto2.Quest2.0": "0.00",
+            "Debto2.Quest11": "0.00",
+        }
+        assert {b: v for b, v in schedule_i.items() if "Debtor 2" in b} == dict.fromkeys(
+            (
+                "Amount 2 Debtor 2",
+                "Amount 4 Debtor 2",
+                "Amount 4 Debtor 2a",
+                "Amount 7 Debtor 2",
+                "Amount 10 Debtor 2",
+            ),
+            "0.00",
+        )
+
+    @pytest.mark.parametrize(
+        "answer,filer_other,spouse_other,named",
+        [
+            ("not_married", "512.00", None, "Other income"),
+            ("married_together", "0.00", "50.00", "Other income"),
+            ("married_separately", "0.00", "50.00", None),
+            ("married_together", "0.00", "0.00", None),
+        ],
+    )
+    def test_line_10s_description_names_other_income_from_either_column(
+        self, session, answer, filer_other, spouse_other, named
+    ):
+        answer_income_step(
+            session,
+            answer,
+            {
+                "monthly_gross_wages": Decimal("1.00"),
+                "monthly_other_income": None if spouse_other is None else Decimal(spouse_other),
+            },
+            monthly_gross_wages=Decimal("12000.00"),
+            monthly_other_income=Decimal(filer_other),
+        )
+        form_122a1 = resolve(load_schema("form_122a1"), session)
+        schedule_i = resolve(load_schema("schedule_i"), session)
+        assert (form_122a1.get(LINE_10_SOURCE), schedule_i.get("Other income 8h")) == (named, named)
+
+    def test_a_session_with_no_income_row_still_fills_the_other_boxes(self, session):
+        SpouseIncome.objects.create(session=session, monthly_gross_wages=Decimal("1800.00"))
+        field_map = resolve(load_schema("schedule_i"), session)
+        assert field_map["Bankruptcy District Information"] == "Northern District of Illinois"
+        assert (
+            sorted(b for b in field_map if b.startswith("Amount") or b == "Other income 8h") == []
+        )

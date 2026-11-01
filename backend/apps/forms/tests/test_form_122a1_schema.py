@@ -12,7 +12,7 @@ from apps.eligibility.services.means_test_calculator import MeansTestCalculator
 from apps.forms.registry import packet
 from apps.forms.schema import load_schema
 from apps.forms.services.fill_resolver import resolve
-from apps.forms.tests.test_derivations import TEN_SOURCES
+from apps.forms.tests.test_derivations import SPOUSE_AT_HOME, TEN_SOURCES
 from apps.intake.models import DebtorInfo, IncomeInfo, IntakeSession
 from apps.intake.tests.builders import answer_household
 
@@ -64,6 +64,22 @@ ROOMMATE_29 = {  # Y, N
     "lives_with_you": True,
     "claimed_or_supported": False,
 }
+LINE_10_SOURCE = (
+    "terrorism If necessary list other sources on a separate page and put the total below 1"
+)
+# Priya's spouse (3e1 spec §11): wages, the other nine typed $0.
+SPOUSE_WAGES_ONLY = {
+    **dict.fromkeys(IncomeInfo.SOURCE_FIELDS, Decimal("0.00")),
+    "monthly_gross_wages": Decimal("1800.00"),
+}
+
+
+def answer_income_step(session, marital_status, spouse_income=None, **amounts):
+    IncomeInfo.objects.create(session=session, **amounts)
+    members = [] if marital_status == "not_married" else [SPOUSE_AT_HOME]
+    answer_household(
+        session, marital_status=marital_status, members=members, spouse_income=spouse_income
+    )
 
 
 def _household_list(session, rows):
@@ -237,3 +253,58 @@ class TestForm122A1Schema:
 
         assert (field_map.get("14a"), field_map.get("CheckBox1")) == (line_14, page_1)
         assert ("form_122a2" in packet(session)) is form_122a2_applies
+
+    @pytest.mark.parametrize(
+        "answer,line_1,spouse_box",
+        [
+            ("not_married", "/Not married", None),
+            ("married_spouse_filing", "/Maried and filing", None),  # the template's own spelling
+            ("married_together", "/Married but not filing", "/together"),
+            ("married_separately", "/Married but not filing", "/separately"),
+        ],
+    )
+    def test_line_1_ticks_the_box_for_each_marriage_answer(
+        self, session, answer, line_1, spouse_box
+    ):
+        answer_income_step(
+            session,
+            answer,
+            {"monthly_gross_wages": Decimal("100.00")},
+            monthly_gross_wages=Decimal("2000.00"),
+        )
+        field_map = resolve(load_schema("form_122a1"), session)
+        assert (field_map.get("CheckBox3"), field_map.get("CheckBox3A")) == (line_1, spouse_box)
+
+    @pytest.mark.parametrize(
+        "answer,column_b,line_11",
+        [
+            (
+                "married_together",
+                {
+                    "Debto2.Quest2.0": "1800.00",
+                    "Debto2.Quest3": "0.00",
+                    "Debto2.Quest2.2": "0.00",
+                    "Debto2.Quest6C": "0.00",
+                    "Debto2.Quest8.0": "0.00",
+                    "Debto2.Quest9": "0.00",
+                    "Debto2.Quest10A": "0.00",
+                    "Debto2.Quest11": "1800.00",
+                },
+                "13800.00",
+            ),
+            ("married_separately", {}, "12000.00"),
+        ],
+    )
+    def test_column_b_prints_the_spouses_figures_only_for_a_spouse_at_home(
+        self, session, answer, column_b, line_11
+    ):
+        answer_income_step(
+            session, answer, SPOUSE_WAGES_ONLY, monthly_gross_wages=Decimal("12000.00")
+        )
+        field_map = resolve(load_schema("form_122a1"), session)
+        assert {b: v for b, v in field_map.items() if b.startswith("Debto2.")} == column_b
+        assert (field_map["Debto1.Quest11"], field_map["Quest11"], field_map["12B"]) == (
+            "12000.00",
+            line_11,
+            f"{Decimal(line_11) * 12:.2f}",
+        )

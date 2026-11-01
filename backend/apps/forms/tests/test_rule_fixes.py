@@ -163,6 +163,9 @@ def test_a_precondition_is_read_by_its_name_or_as_an_attribute(source, raises):
         ("last_name", {"step": "debtor_info"}),
         ("family_size", {"step": "income_info"}),  # the household list is on the Income step
         ("cmi", {"step": "income_info"}),
+        ("filer_cmi", {"step": "income_info"}),
+        ("spouse_cmi", {"step": "income_info"}),
+        ("schedule_i_income_total_spouse", {"step": "income_info"}),
         ("schedule_j_monthly_net_income", {"step": "income_info"}),  # the earlier of two
         ("schedule_j_utilities_label", {"step": "expense_info"}),
         ("fee_waiver_monthly_expenses", {"step": "expense_info"}),  # 103B line 6 is J 22c

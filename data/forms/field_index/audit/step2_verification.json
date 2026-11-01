@@ -272,12 +272,12 @@
   {
     "schema": "form_122a1",
     "pdf_field": "Debto1.Quest11",
-    "producer": "derived:cmi",
+    "producer": "derived:filer_cmi",
     "original_verdicts": [],
     "final_verdicts": ["correct"],
     "status": "confirmed",
     "correct_target": "Debto1.Quest11",
-    "evidence": "Field index: Debto1.Quest11 p2 line 11, Column A (Debtor 1), 'Calculate your total current monthly income - add lines 2 through 10 for the column (monthly)' (adjudicated). Step 2 spec §6.1 (C1, two income totals): CMI, without Social Security, goes on 122A-1 lines 11-12b; lines 5 and 7 are never asked and count as zero. The audit's row on Quest8A names this box for the income total, under the old line8a_total_gross_income key, not cmi."
+    "evidence": "Field index: Debto1.Quest11 p2 line 11, Column A (Debtor 1), 'Calculate your total current monthly income - add lines 2 through 10 for the column (monthly)' (adjudicated). 3e1 spec §10.1 [Q2]: Column A's line 11 is the filer's own current monthly income, without Social Security (step 2 spec §6.1, C1); Quest11, line 12a's copy, holds Column A + Column B. The audit's row on Quest8A names this box for the income total, under the old line8a_total_gross_income key, not filer_cmi."
   },
   {
     "schema": "form_122a1",
@@ -318,6 +318,106 @@
     "status": "confirmed",
     "correct_target": "CheckBox1",
     "evidence": "Field index: CheckBox1 p1, three widgets (adjudicated): top box 1, state /No Abuse, 'There is no presumption of abuse.'; top box 2, state /Presumption of abuse applies, 'The calculation to determine if a presumption of abuse applies will be made under Chapter 7 Means Test Calculation (Official Form 122A-2).'; top box 3, state /Does not apply (qualified military service). Owner's answer Q5 (DIG-65; step 2 spec §3, §6.3): at or below the median, box 1; above, box 2; box 3 is never ticked."
+  },
+  {
+    "schema": "form_122a1",
+    "pdf_field": "CheckBox3",
+    "producer": "derived:line1_marital_status",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "CheckBox3",
+    "evidence": "Field index: CheckBox3 p1 line 1, 'What is your marital and filing status? Check one only.' (adjudicated), three widgets with states Not#20married (T9), Maried#20and#20filing (T10, the template's spelling) and Married#20but#20not#20filing (T11). 3e1 spec §10.1 [Q2]: not_married ticks T9, married_together and married_separately tick T11; married_spouse_filing is mapped for completeness; Complete refuses it (owner's answer 3e1.Q2) [DIG-65]."
+  },
+  {
+    "schema": "form_122a1",
+    "pdf_field": "CheckBox3A",
+    "producer": "derived:line1_spouse_household",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "CheckBox3A",
+    "evidence": "Field index: CheckBox3A p1 line 1, 'Married and spouse NOT filing - you and your spouse are:' (adjudicated), two widgets with states together (T12) and separately (T13). 3e1 spec §10.1 [Q2]: ticked only for married_together and married_separately; living separately is the filer's sworn answer [U:80]."
+  },
+  {
+    "schema": "form_122a1",
+    "pdf_field": "Debto2.Quest2.0",
+    "producer": "derived:line1_wages_spouse",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Debto2.Quest2.0",
+    "evidence": "Field index: Debto2.Quest2.0 p1 line 2, column 'Column B (Debtor 2 or non-filing spouse)', 'Your gross wages, salary, tips, bonuses, overtime, and commissions (before all payroll deductions)' (adjudicated). 3e1 spec §10.1 [Q2]: for married_together only, the spouse's same source as line1_wages."
+  },
+  {
+    "schema": "form_122a1",
+    "pdf_field": "Debto2.Quest3",
+    "producer": "derived:line3_alimony_spouse",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Debto2.Quest3",
+    "evidence": "Field index: Debto2.Quest3 p1 line 3, column 'Column B (Debtor 2 or non-filing spouse)', 'Alimony and maintenance payments (not from a spouse if Column B is filled in)' (adjudicated). 3e1 spec §10.1 [Q2]: for married_together only, the spouse's same source as line3_alimony."
+  },
+  {
+    "schema": "form_122a1",
+    "pdf_field": "Debto2.Quest2.2",
+    "producer": "derived:line6b_child_support_alimony_spouse",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Debto2.Quest2.2",
+    "evidence": "Field index: Debto2.Quest2.2 p1 line 4, column 'Column B (Debtor 2 or non-filing spouse)', 'All amounts from any source regularly paid for household expenses of you or your dependents, including child support' (adjudicated). 3e1 spec §10.1 [Q2]: for married_together only, the spouse's same source as line6b_child_support_alimony."
+  },
+  {
+    "schema": "form_122a1",
+    "pdf_field": "Debto2.Quest6C",
+    "producer": "derived:line3_real_property_income_spouse",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Debto2.Quest6C",
+    "evidence": "Field index: Debto2.Quest6C p1 line 6, two widgets (adjudicated): T33, column 'Debtor 2 (line-5/6 worksheet)', 'Net monthly income from rental or other real property', and T35, column 'Column B (Debtor 2 or non-filing spouse)', 'Net monthly income from rental or other real property - Copy here'. 3e1 spec §10.1 [Q2]: both take the same figure, as Column A's do; for married_together only, the spouse's same source as line3_real_property_income."
+  },
+  {
+    "schema": "form_122a1",
+    "pdf_field": "Debto2.Quest8.0",
+    "producer": "derived:line6a_unemployment_spouse",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Debto2.Quest8.0",
+    "evidence": "Field index: Debto2.Quest8.0 p2 line 8, column 'Column B (Debtor 2 or non-filing spouse)', 'Unemployment compensation' (adjudicated). 3e1 spec §10.1 [Q2]: for married_together only, the spouse's same source as line6a_unemployment."
+  },
+  {
+    "schema": "form_122a1",
+    "pdf_field": "Debto2.Quest9",
+    "producer": "derived:line5a_pension_retirement_spouse",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Debto2.Quest9",
+    "evidence": "Field index: Debto2.Quest9 p2 line 9, column 'Column B (Debtor 2 or non-filing spouse)', 'Pension or retirement income (excluding Social Security and listed uniformed-services payments)' (adjudicated). 3e1 spec §10.1 [Q2]: for married_together only, the spouse's same source as line5a_pension_retirement."
+  },
+  {
+    "schema": "form_122a1",
+    "pdf_field": "Debto2.Quest10A",
+    "producer": "derived:line7_other_income_spouse",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Debto2.Quest10A",
+    "evidence": "Field index: Debto2.Quest10A p2 line 10, column 'Column B (Debtor 2 or non-filing spouse)', 'Income from all other sources not listed above - amount, row 1' (adjudicated). 3e1 spec §10.1 [Q2]: for married_together only, the spouse's same source as line7_other_income."
+  },
+  {
+    "schema": "form_122a1",
+    "pdf_field": "Debto2.Quest11",
+    "producer": "derived:spouse_cmi",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Debto2.Quest11",
+    "evidence": "Field index: Debto2.Quest11 p2 line 11, column 'Column B (Debtor 2 or non-filing spouse)', 'Calculate your total current monthly income - add lines 2 through 10 for the column (monthly)' (adjudicated). 3e1 spec §10.1 [Q2]: the spouse's current monthly income, without Social Security; Debto1.Quest11 + Debto2.Quest11 = Quest11."
   },
   {
     "schema": "schedule_i",
@@ -392,12 +492,12 @@
   {
     "schema": "schedule_i",
     "pdf_field": "Amount 10 Debtor 1",
-    "producer": "derived:schedule_i_income_total",
+    "producer": "derived:schedule_i_income_total_debtor1",
     "original_verdicts": [],
     "final_verdicts": ["correct"],
     "status": "confirmed",
     "correct_target": "Amount 10 Debtor 1",
-    "evidence": "Field index: Amount 10 Debtor 1 p2 line 10, column 'For Debtor 1', 'Calculate monthly income. Add line 7 + line 9.' (adjudicated). Line 7 (lines 2 + 3, Schedule I's gross income, until payroll deductions are asked) plus line 9 (8a-8h) is all ten Income step sources. Step 2 spec §5.5, §6.1 B1 and C1 (lines 10 and 12 take the Schedule I income total, Social Security included) and §6.2 (schedule_i_income_total). The audit's verified row on this box judged the old cmi binding, which leaves Social Security out."
+    "evidence": "Field index: Amount 10 Debtor 1 p2 line 10, column 'For Debtor 1', 'Calculate monthly income. Add line 7 + line 9.' (adjudicated). Column 1's line 10 is the filer's own ten Income step sources, Social Security included: step 2 spec §5.5, §6.1 B1 and C1 and 3e1 spec §10.2 [Q2] (schedule_i_income_total_debtor1, the body schedule_i_income_total had before column 2 was filled). The audit's verified row on this box judged the old cmi binding, which leaves Social Security out."
   },
   {
     "schema": "schedule_i",
@@ -407,7 +507,7 @@
     "final_verdicts": ["correct"],
     "status": "confirmed",
     "correct_target": "Amount 10",
-    "evidence": "Field index: Amount 10 p2 line 10, column 'Total (Debtor 1 + Debtor 2)', 'Add the entries in line 10 for Debtor 1 and Debtor 2 or non-filing spouse' (adjudicated). Step 2 never fills the spouse column, so the total equals Debtor 1's line 10: step 2 spec §6.1 (totals that count an unasked line as zero; line 10's combined column adds a spouse column step 2 never fills; the section 6c decision covers Schedule I line 10), §5.5 and §6.2 (schedule_i_income_total). The audit has no row for this box."
+    "evidence": "Field index: Amount 10 p2 line 10, column 'Total (Debtor 1 + Debtor 2)', 'Add the entries in line 10 for Debtor 1 and Debtor 2 or non-filing spouse' (adjudicated). 3e1 spec §10.2 [Q2]: column 1's line 10 plus column 2's for a spouse living in the same household and not legally separated (umbrella Q2), a blank column counting as zero (schedule_i_income_total); step 2 spec §5.5 and §6.2. The audit has no row for this box."
   },
   {
     "schema": "schedule_i",
@@ -418,6 +518,136 @@
     "status": "confirmed",
     "correct_target": "Amount 12",
     "evidence": "Field index: Amount 12 p2 line 12, column 'Combined monthly income', 'Add the amount in the last column of line 10 to the amount in line 11 (Combined monthly income)' (adjudicated). Line 11 (others' regular contributions) is never asked and counts as zero: step 2 spec §6.1 (totals that count an unasked line as zero; the section 6c decision covers Schedule I line 12) and C1 (the Schedule I income total, Social Security included), §5.5 and §6.2 (schedule_i_income_total). Appendix B R4: the box keeps a binding. The audit's verified row on this box judged the old cmi binding, which leaves Social Security out."
+  },
+  {
+    "schema": "schedule_i",
+    "pdf_field": "Amount 2 Debtor 2",
+    "producer": "derived:schedule_i_net_wages_spouse",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Amount 2 Debtor 2",
+    "evidence": "Field index: Amount 2 Debtor 2 p1 line 2, column 'For Debtor 2 or non-filing spouse', 'List monthly gross wages, salary, and commissions' (adjudicated). 3e1 spec §10.2 [Q2]: for married_together only, the spouse's same source as schedule_i_net_wages_debtor1."
+  },
+  {
+    "schema": "schedule_i",
+    "pdf_field": "Amount 3 Debtor 2",
+    "producer": "derived:schedule_i_overtime_spouse",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Amount 3 Debtor 2",
+    "evidence": "Field index: Amount 3 Debtor 2 p1 line 3, column 'For Debtor 2 or non-filing spouse', 'Estimate and list monthly overtime pay.' (adjudicated). 3e1 spec §10.2 [Q2]: for married_together only, the spouse's same source as schedule_i_overtime_debtor1."
+  },
+  {
+    "schema": "schedule_i",
+    "pdf_field": "Amount 4 Debtor 2",
+    "producer": "derived:schedule_i_gross_income_spouse",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Amount 4 Debtor 2",
+    "evidence": "Field index: Amount 4 Debtor 2 p1 line 4, column 'For Debtor 2 or non-filing spouse', 'Calculate gross income.' (adjudicated). 3e1 spec §10.2 [Q2]: for married_together only, the spouse's same source as schedule_i_gross_income_debtor1."
+  },
+  {
+    "schema": "schedule_i",
+    "pdf_field": "Amount 4 Debtor 2a",
+    "producer": "derived:schedule_i_gross_income_spouse",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Amount 4 Debtor 2a",
+    "evidence": "Field index: Amount 4 Debtor 2a p2 line 4, column 'For Debtor 2 or non-filing spouse', 'Copy line 4 here' (adjudicated). 3e1 spec §10.2 [Q2]: for married_together only, the spouse's same source as schedule_i_gross_income_debtor1."
+  },
+  {
+    "schema": "schedule_i",
+    "pdf_field": "Amount 7 Debtor 2",
+    "producer": "derived:schedule_i_gross_income_spouse",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Amount 7 Debtor 2",
+    "evidence": "Field index: Amount 7 Debtor 2 p2 line 7, column 'For Debtor 2 or non-filing spouse', 'Calculate total monthly take-home pay. Subtract line 6 from line 4.' (adjudicated). 3e1 spec §10.2 [Q2]: for married_together only, the spouse's same source as schedule_i_gross_income_debtor1."
+  },
+  {
+    "schema": "schedule_i",
+    "pdf_field": "Amount 8a Debtor 2",
+    "producer": "derived:schedule_i_rental_spouse",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Amount 8a Debtor 2",
+    "evidence": "Field index: Amount 8a Debtor 2 p2 line 8a, column 'For Debtor 2 or non-filing spouse', 'Net income from rental property and from operating a business, profession, or farm' (adjudicated). 3e1 spec §10.2 [Q2]: for married_together only, the spouse's same source as schedule_i_rental_debtor1."
+  },
+  {
+    "schema": "schedule_i",
+    "pdf_field": "Amount 8c Debtor 2",
+    "producer": "derived:schedule_i_child_support_spouse",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Amount 8c Debtor 2",
+    "evidence": "Field index: Amount 8c Debtor 2 p2 line 8c, column 'For Debtor 2 or non-filing spouse', 'Family support payments that you, a non-filing spouse, or a dependent regularly receive' (adjudicated). 3e1 spec §10.2 [Q2]: for married_together only, the spouse's same source as schedule_i_child_support_debtor1."
+  },
+  {
+    "schema": "schedule_i",
+    "pdf_field": "Amount 8d Debtor 2",
+    "producer": "derived:schedule_i_unemployment_spouse",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Amount 8d Debtor 2",
+    "evidence": "Field index: Amount 8d Debtor 2 p2 line 8d, column 'For Debtor 2 or non-filing spouse', 'Unemployment compensation' (adjudicated). 3e1 spec §10.2 [Q2]: for married_together only, the spouse's same source as schedule_i_unemployment_debtor1."
+  },
+  {
+    "schema": "schedule_i",
+    "pdf_field": "Amount 8e Debtor 2",
+    "producer": "derived:schedule_i_social_security_spouse",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Amount 8e Debtor 2",
+    "evidence": "Field index: Amount 8e Debtor 2 p2 line 8e, column 'For Debtor 2 or non-filing spouse', 'Social Security' (adjudicated). 3e1 spec §10.2 [Q2]: for married_together only, the spouse's same source as schedule_i_social_security_debtor1."
+  },
+  {
+    "schema": "schedule_i",
+    "pdf_field": "Amount 8g Debtor 2",
+    "producer": "derived:schedule_i_pension_spouse",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Amount 8g Debtor 2",
+    "evidence": "Field index: Amount 8g Debtor 2 p2 line 8g, column 'For Debtor 2 or non-filing spouse', 'Pension or retirement income' (adjudicated). 3e1 spec §10.2 [Q2]: for married_together only, the spouse's same source as schedule_i_pension_debtor1."
+  },
+  {
+    "schema": "schedule_i",
+    "pdf_field": "Amount 8h Debtor 2",
+    "producer": "derived:schedule_i_other_income_spouse",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Amount 8h Debtor 2",
+    "evidence": "Field index: Amount 8h Debtor 2 p2 line 8h, column 'For Debtor 2 or non-filing spouse', 'Other monthly income. Specify:' (adjudicated). 3e1 spec §10.2 [Q2]: for married_together only, the spouse's same source as schedule_i_other_income_debtor1."
+  },
+  {
+    "schema": "schedule_i",
+    "pdf_field": "Amount 9 Debtor 2",
+    "producer": "derived:schedule_i_other_income_total_spouse",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Amount 9 Debtor 2",
+    "evidence": "Field index: Amount 9 Debtor 2 p2 line 9, column 'For Debtor 2 or non-filing spouse', 'Add all other income.' (adjudicated). 3e1 spec §10.2 [Q2]: for married_together only, the spouse's same source as schedule_i_other_income_total_debtor1."
+  },
+  {
+    "schema": "schedule_i",
+    "pdf_field": "Amount 10 Debtor 2",
+    "producer": "derived:schedule_i_income_total_spouse",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Amount 10 Debtor 2",
+    "evidence": "Field index: Amount 10 Debtor 2 p2 line 10, column 'For Debtor 2 or non-filing spouse', 'Calculate monthly income. Add line 7 + line 9.' (adjudicated). 3e1 spec §10.2 [Q2]: for married_together only, the spouse's same source as schedule_i_income_total_debtor1."
   },
   {
     "schema": "schedule_j",

@@ -73,7 +73,8 @@ def test_line_1_copies_the_monthly_income_from_122a1_line_11(session):
 
     # Every source but Social Security's 32.00: 1023.00 - 32.00.
     assert printed.get("Quest1") == "991.00"
-    assert printed.get("Quest1") == resolve(load_schema("form_122a1"), session)["Debto1.Quest11"]
+    # line 11's total, Column A + Column B, which line 1 copies
+    assert printed.get("Quest1") == resolve(load_schema("form_122a1"), session)["Quest11"]
 
 
 def test_empty_session_is_asked_for_income_by_source(session):

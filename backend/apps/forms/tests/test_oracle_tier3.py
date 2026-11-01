@@ -42,6 +42,21 @@ def _common(first, last, street, zip_code):
     }
 
 
+def _spouse_column_2(wages):
+    """Schedule I column 2 for a spouse at home whose one income is wages, the other nine typed $0."""
+    wage_boxes = (
+        "Amount 2 Debtor 2",
+        "Amount 4 Debtor 2",
+        "Amount 4 Debtor 2a",
+        "Amount 7 Debtor 2",
+        "Amount 10 Debtor 2",
+    )
+    zero_boxes = tuple(
+        f"Amount {n} Debtor 2" for n in ("3", "8a", "8c", "8d", "8e", "8g", "8h", "9")
+    )
+    return {**dict.fromkeys(wage_boxes, wages), **dict.fromkeys(zero_boxes, "0.00")}
+
+
 # persona → form_type → full name → printed value
 EXPECTED = {
     "maria": {
@@ -58,6 +73,8 @@ EXPECTED = {
             "Debto1.Quest7": "",
             "Debto1.Quest9": "0.00",
             "Debto1.Quest11": "3200.00",
+            "CheckBox3": "/Not married",
+            "CheckBox3A": "",
             "Quest11": "3200.00",
             "12B": "38400.00",
             "13B": "3",
@@ -93,6 +110,8 @@ EXPECTED = {
             "Debto1.Quest7": "",
             "Debto1.Quest9": "0.00",
             "Debto1.Quest11": "5833.00",
+            "CheckBox3": "/Not married",
+            "CheckBox3A": "",
             "Quest11": "5833.00",
             "12B": "69996.00",
             "13B": "1",
@@ -120,13 +139,18 @@ EXPECTED = {
             "1c": "8500.00",
             "3b": "57000.00",
             "3c": "57000.00",
-            "4": "12000.00",
+            "4": "13800.00",
             "5": "6640.00",
             "8": "13800.00",
         },
         "form_122a1": {
             "Debto1.Quest7": "",
             "Debto1.Quest9": "0.00",
+            "Debto1.Quest11": "12000.00",
+            "Debto2.Quest2.0": "1800.00",
+            "Debto2.Quest11": "1800.00",
+            "CheckBox3": "/Married but not filing",
+            "CheckBox3A": "/together",
             "Quest11": "13800.00",
             "12B": "165600.00",
             "13B": "4",
@@ -137,15 +161,18 @@ EXPECTED = {
         "schedule_i": {
             "Amount 8b Debtor 1": "",
             "Amount 8e Debtor 1": "0.00",
-            "Amount 12": "12000.00",
+            "Amount 10 Debtor 1": "12000.00",
+            "Amount 10": "13800.00",
+            "Amount 12": "13800.00",
+            **_spouse_column_2("1800.00"),
         },
         "schedule_j": {
             "18": "",
             "22a": "6640.00",
             "22c": "6640.00",
-            "23a": "12000.00",
+            "23a": "13800.00",
             "23b": "6640.00",
-            "23c": "5360.00",
+            "23c": "7160.00",
         },
     },
     "deshawn": {
@@ -157,13 +184,18 @@ EXPECTED = {
             "2": "160000.00",
             "3b": "11700.00",
             "3c": "171700.00",
-            "4": "3500.00",
+            "4": "4500.00",
             "5": "2295.00",
             "8": "4500.00",
         },
         "form_122a1": {
             "Debto1.Quest7": "",
             "Debto1.Quest9": "0.00",
+            "Debto1.Quest11": "3500.00",
+            "Debto2.Quest2.0": "1000.00",
+            "Debto2.Quest11": "1000.00",
+            "CheckBox3": "/Married but not filing",
+            "CheckBox3A": "/together",
             "Quest11": "4500.00",
             "12B": "54000.00",
             "13B": "2",
@@ -173,15 +205,18 @@ EXPECTED = {
         "schedule_i": {
             "Amount 8b Debtor 1": "",
             "Amount 8e Debtor 1": "0.00",
-            "Amount 12": "3500.00",
+            "Amount 10 Debtor 1": "3500.00",
+            "Amount 10": "4500.00",
+            "Amount 12": "4500.00",
+            **_spouse_column_2("1000.00"),
         },
         "schedule_j": {
             "18": "",
             "22a": "2295.00",
             "22c": "2295.00",
-            "23a": "3500.00",
+            "23a": "4500.00",
             "23b": "2295.00",
-            "23c": "1205.00",
+            "23c": "2205.00",
         },
     },
     "sarah": {
@@ -196,6 +231,8 @@ EXPECTED = {
             "Debto1.Quest7": "",
             "Debto1.Quest9": "0.00",
             "Debto1.Quest11": "2000.00",
+            "CheckBox3": "/Not married",
+            "CheckBox3A": "",
             "Quest11": "2000.00",
             "12B": "24000.00",
             "13B": "2",
@@ -234,6 +271,8 @@ EXPECTED = {
             "terrorism If necessary list other sources on a separate page and put the total below 1": "Other income",
             "Debto1.Quest10A": "3370.00",
             "Debto1.Quest11": "3370.00",
+            "CheckBox3": "/Not married",
+            "CheckBox3A": "",
             "Quest11": "3370.00",
             "12B": "40440.00",
             "13A": "IL",
