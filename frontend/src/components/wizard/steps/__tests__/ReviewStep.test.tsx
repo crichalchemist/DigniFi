@@ -1,6 +1,8 @@
 import { render, screen } from '@testing-library/react';
 import { vi } from 'vitest';
 import { ReviewStep } from '../ReviewStep';
+import { REVIEW_HOUSEHOLD_COUNT } from '../../../../constants/copy';
+import { MARRIAGE_ANSWER_WORDS } from '../../../../constants/formText';
 
 // ReviewStep summarizes whatever the earlier steps captured. Assets and debts
 // can arrive partially filled (a row the user started but never named), so the
@@ -130,4 +132,29 @@ it('Review shows a count not worked out yet as not answered yet', () => {
     expect(value(label)).toHaveTextContent(/^Not answered yet$/);
   }
   expect(document.body.textContent).not.toMatch(/null|undefined|NaN/);
+});
+
+it("Review shows a spouse who is filing in that answer's own words, with no sub-answer in front", () => {
+  render(
+    <ReviewStep
+      {...baseProps}
+      incomeData={{ marital_status: 'married_spouse_filing' }}
+      onValidationChange={vi.fn()}
+    />
+  );
+  expect(value('Your marriage')).toHaveTextContent(
+    new RegExp(`^${MARRIAGE_ANSWER_WORDS.married_spouse_filing}$`)
+  );
+});
+
+it('Review shows a household count of 0 as 0, not as not answered yet', () => {
+  render(
+    <ReviewStep
+      {...baseProps}
+      incomeData={{ marital_status: 'not_married' }}
+      householdCount={0}
+      onValidationChange={vi.fn()}
+    />
+  );
+  expect(value(REVIEW_HOUSEHOLD_COUNT)).toHaveTextContent(/^0$/);
 });
