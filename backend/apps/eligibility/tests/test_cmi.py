@@ -183,3 +183,57 @@ def test_means_test_endpoint_refuses_without_a_median_table_in_force_as_a_400(fi
 
     assert response.status_code == 400
     assert response.data["error"] == NO_MEDIAN_TABLE
+
+
+GIG_ENTRY = {
+    "kind": "business",
+    "description": "Rideshare and delivery driving",
+    "gross": "4200.00",
+    "expenses": "830.00",
+    "current_gross": None,
+    "current_expenses": None,
+}
+
+
+def _income(session, entries, **amounts):
+    row = IncomeInfo(session=session, **amounts)
+    row.store_entries(entries)
+    row.save()
+    return row
+
+
+def test_a_gig_drivers_cmi_is_his_net(filer):
+    _, session = filer
+    row = _income(session, [GIG_ENTRY])  # gross 4200.00, expenses 830.00, nothing else typed
+    # an Andrés with only business income is not refused
+    assert current_monthly_income(row) == Decimal("3370.00")
+
+
+def test_a_business_loss_never_lowers_cmi_the_total_or_is_refused(filer):
+    _, session = filer
+    row = _income(
+        session,
+        [{"kind": "business", "gross": "500.00", "expenses": "900.00"}],
+        monthly_gross_wages=Decimal("2000.00"),
+    )
+    assert current_monthly_income(row) == Decimal("2000.00")
+    assert row.calculate_total_monthly_income() == 2000.0
+
+
+def test_a_business_loss_never_lowers_rental_income(filer):
+    _, session = filer
+    row = _income(
+        session,
+        [
+            {"kind": "business", "gross": "100.00", "expenses": "400.00"},
+            {"kind": "rental", "gross": "1200.00", "expenses": "200.00"},
+        ],
+        monthly_gross_wages=Decimal("2000.00"),
+    )
+    assert current_monthly_income(row) == Decimal("3000.00")
+
+
+def test_entries_with_no_figures_leave_income_not_entered(filer):
+    _, session = filer
+    with pytest.raises(IncomeNotSplit):
+        current_monthly_income(_income(session, [{"kind": "rental"}]))

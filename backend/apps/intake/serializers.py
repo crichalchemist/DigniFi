@@ -13,7 +13,8 @@ from django.core.exceptions import FieldDoesNotExist
 from rest_framework import serializers
 
 from apps.districts.counties import ILND_COUNTIES
-from apps.eligibility.cmi import income_step_gaps
+from apps.districts.dated_tables import fill_date
+from apps.eligibility.cmi import income_step_gaps, income_window
 
 from .household import (
     MAX_AGE,
@@ -622,6 +623,7 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
     spouse_income = SpouseIncomeSerializer(required=False, allow_null=True)
 
     district_name = serializers.CharField(source="district.name", read_only=True)
+    income_window = serializers.SerializerMethodField()
 
     class Meta:
         model = IntakeSession
@@ -639,6 +641,7 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
             "debts",
             "household",
             "spouse_income",
+            "income_window",
             "created_at",
             "completed_at",
         ]
@@ -651,7 +654,13 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
             "created_at",
             "completed_at",
             "district_name",
+            "income_window",
         ]
+
+    def get_income_window(self, obj) -> dict:
+        """The six full months before today, which the Income step's figures cover."""
+        start, end = income_window(fill_date())
+        return {"start": start.isoformat(), "end": end.isoformat()}
 
     def create(self, validated_data):
         """

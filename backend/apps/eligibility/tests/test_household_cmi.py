@@ -256,3 +256,35 @@ def test_the_shared_builder_makes_a_session_with_no_income_step_gap(session):
     assert fresh.household.county == "Cook"
     assert fresh.household.get_members() == []
     assert _messages(fresh) == []
+
+
+def test_one_persons_loss_never_lowers_the_others_income(session):
+    _answered(
+        session,
+        "2000.00",
+        marital_status="married_together",
+        members=[SPOUSE_AT_HOME],
+        spouse_income=_spouse("0.00"),
+    )
+    filer = session.income_info
+    filer.store_entries([{"kind": "rental", "gross": "1000.00", "expenses": "0.00"}])
+    filer.save()
+    spouse = session.spouse_income
+    spouse.store_entries([{"kind": "business", "gross": "0.00", "expenses": "500.00"}])
+    spouse.save()
+    assert household_cmi(IntakeSession.objects.get(pk=session.pk)) == Decimal("3000.00")
+
+
+def test_a_spouse_with_only_business_income_is_not_refused(session):
+    _answered(
+        session,
+        marital_status="married_together",
+        members=[SPOUSE_AT_HOME],
+        spouse_income=dict.fromkeys(SpouseIncome.SOURCE_FIELDS),
+    )
+    spouse = session.spouse_income
+    spouse.store_entries([{"kind": "business", "gross": "900.00", "expenses": "100.00"}])
+    spouse.save()
+    fresh = IntakeSession.objects.get(pk=session.pk)
+    assert spouse_monthly_income(fresh) == Decimal("800.00")
+    assert SPOUSE_INCOME not in _messages(fresh)

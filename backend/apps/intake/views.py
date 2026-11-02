@@ -11,8 +11,8 @@ from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from apps.districts.dated_tables import NoTableInForce
-from apps.eligibility.cmi import IncomeNotSplit, income_step_gaps
+from apps.districts.dated_tables import NoTableInForce, fill_date
+from apps.eligibility.cmi import IncomeNotSplit, income_step_gaps, income_window
 from apps.eligibility.services import MeansTestCalculator
 from apps.forms.registry import PreconditionMissing, _needs_county, _needs_ssn
 
@@ -211,6 +211,12 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
         session.current_step = current_step
         session.status = "in_progress"
         session.save()
+
+        # Continue from the Income step records the window the filer confirmed (3e2 spec §4.4)
+        income_info = getattr(session, "income_info", None)
+        if current_step == 3 and income_info is not None:
+            income_info.income_period_end = income_window(fill_date())[1]
+            income_info.save(update_fields=["income_period_end"])
 
         # Update with any provided data
         if "data" in request.data:

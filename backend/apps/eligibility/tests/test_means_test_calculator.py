@@ -1047,3 +1047,29 @@ class TestAboveMedianEndToEnd:
 
         values = build_field_values("form_122a2", session)
         assert "Bankruptcy District Information" in values
+
+
+@pytest.mark.django_db
+def test_calculation_details_store_the_floored_nets_cmi_added(session, median_income):
+    row = IncomeInfo.objects.create(
+        session=session,
+        monthly_gross_wages=Decimal("2000.00"),
+        marital_status="not_married",
+    )
+    answer_household(session)
+    row.store_entries(
+        [
+            {"kind": "business", "gross": "500.00", "expenses": "900.00"},
+            {"kind": "rental", "gross": "1200.00", "expenses": "200.00"},
+        ]
+    )
+    row.save()
+
+    MeansTestCalculator(session).calculate()
+
+    details = MeansTest.objects.get(session=session).get_calculation_details()
+    assert details["business_net"] == "0.00"
+    assert details["rental_net"] == "1000.00"
+    assert details["spouse_business_net"] is None
+    assert details["spouse_rental_net"] is None
+    assert details["cmi"] == 3000.0

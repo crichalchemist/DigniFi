@@ -11,10 +11,24 @@ Income step asks about except benefits under the Social Security Act, which 11 U
 the same everywhere (forms step 2 spec §5.6).
 """
 
+from datetime import date, timedelta
 from decimal import ROUND_HALF_EVEN, Decimal
 
 from apps.intake.household import is_answered
+from apps.intake.income import floored_net, has_entry_figures
 from apps.intake.models import IncomeInfo, SpouseIncome
+
+
+def income_window(on: date) -> tuple[date, date]:
+    """The six full calendar months before the month of `on` (122A-1's window, 3e2 spec §4.4)."""
+    end = on.replace(day=1) - timedelta(days=1)
+    months = end.year * 12 + end.month - 1 - 5
+    return date(months // 12, months % 12 + 1, 1), end
+
+
+def answered_window(period_end: date) -> tuple[date, date]:
+    """The window whose last day was stamped on the Income step."""
+    return income_window(period_end + timedelta(days=1))
 
 
 class IncomeNotSplit(ValueError):
@@ -42,12 +56,14 @@ def current_monthly_income(income_info) -> Decimal:
         for field in income_info.SOURCE_FIELDS
         if getattr(income_info, field) is not None
     }
-    if not given:
+    entries = income_info.get_entries()
+    if not given and not has_entry_figures(entries):
         raise IncomeNotSplit()
     total = sum(
         (amount for field, amount in given.items() if field != "monthly_social_security"),
         Decimal("0"),
     )
+    total += floored_net(entries, "business") + floored_net(entries, "rental")
     return total.quantize(Decimal("0.01"), rounding=ROUND_HALF_EVEN)
 
 
@@ -122,7 +138,11 @@ def spouse_monthly_income(session) -> Decimal | None:
     if _marriage_answer(session) != "married_together":
         return None
     row = counted_spouse_income(session)
-    if row is None or all(getattr(row, field) is None for field in row.SOURCE_FIELDS):
+    if (
+        row is None
+        or all(getattr(row, field) is None for field in row.SOURCE_FIELDS)
+        and not has_entry_figures(row.get_entries())
+    ):
         raise IncomeStepGap(SPOUSE_INCOME_NOT_SPLIT)
     return current_monthly_income(row)
 

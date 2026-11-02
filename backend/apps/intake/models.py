@@ -11,7 +11,7 @@ from encrypted_model_fields.fields import EncryptedCharField, EncryptedTextField
 
 from .fields import EncryptedDecimalField
 from .household import ANSWER_KEYS, SPOUSE_KEY
-from .income import ENTRY_AMOUNT_KEYS, ENTRY_KEYS
+from .income import ENTRY_AMOUNT_KEYS, ENTRY_KEYS, floored_net, has_entry_figures
 
 YES_NO = ("yes", "no")
 
@@ -348,17 +348,22 @@ class IncomeInfo(IncomeDetail):
         return json.loads(self.monthly_income)
 
     def calculate_total_monthly_income(self) -> float | None:
-        """The ten monthly amounts added up, Social Security included.
+        """The ten monthly amounts added up, Social Security included, plus the floored
+        business and rental nets of the averages.
 
         An amount left empty counts as zero once another one was given. None when the filer
-        gave none of them, so a total saved before step 2 never reads as $0.
+        gave none of them and no entry has a figure, so a total saved before step 2 never
+        reads as $0.
         """
         given = [
             getattr(self, field) for field in self.SOURCE_FIELDS if getattr(self, field) is not None
         ]
-        if not given:
+        entries = self.get_entries()
+        if not given and not has_entry_figures(entries):
             return None
-        return float(sum(given, Decimal("0")))
+        total = sum(given, Decimal("0"))
+        total += floored_net(entries, "business") + floored_net(entries, "rental")
+        return float(total)
 
 
 class Household(models.Model):
