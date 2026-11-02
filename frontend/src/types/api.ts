@@ -688,13 +688,13 @@ export interface DatedTableUsed {
   source_url: string;
 }
 
-/** The forms that apply to this filer, in filing order */
 /** The six months the filer last confirmed, and the six months in force now */
 export interface IncomePeriodNotice {
   answered_for: IncomePeriod | null;
   now: IncomePeriod;
 }
 
+/** What GET /api/forms/packet/ returns: the forms that apply to this filer, in filing order */
 export interface FormPacketResponse {
   session: number;
   form_types: FormType[];

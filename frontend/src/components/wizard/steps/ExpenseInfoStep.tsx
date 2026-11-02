@@ -115,6 +115,7 @@ export function ExpenseInfoStep({
 
   const line3Answer = formData.expenses_include_others;
   const line3NoteId = 'expenses_include_others-unanswered';
+  const line3InfoId = 'expenses_include_others-info';
 
   const amountBox = (field: ExpenseField) => (
     <FormField
@@ -175,7 +176,7 @@ export function ExpenseInfoStep({
       <section className="form-section">
         <fieldset
           className="form-field fee-waiver-question"
-          aria-describedby={line3Answer == null ? line3NoteId : undefined}
+          aria-describedby={line3Answer == null ? `${line3InfoId} ${line3NoteId}` : line3InfoId}
         >
           <legend className="form-label">{LINE_3_QUESTION}</legend>
           {(['no', 'yes'] as const).map((value) => (
@@ -190,7 +191,9 @@ export function ExpenseInfoStep({
               {value === 'yes' ? 'Yes' : 'No'}
             </label>
           ))}
-          <p className="form-help-text">{LINE_3_INFO}</p>
+          <p id={line3InfoId} className="form-help-text">
+            {LINE_3_INFO}
+          </p>
           {line3Answer == null && (
             <p id={line3NoteId} className="form-help-text">
               {NOT_ANSWERED_YET}

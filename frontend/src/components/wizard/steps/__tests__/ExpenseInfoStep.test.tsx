@@ -98,6 +98,14 @@ describe('ExpenseInfoStep', () => {
     expect(lastEmitted().expenses_include_others).toBe('yes');
   });
 
+  it('reads the sentence that explains line 3 with its question, answered or not', () => {
+    renderStep();
+    const line3 = screen.getByRole('group', { name: LINE_3_QUESTION });
+    expect(line3).toHaveAccessibleDescription(expect.stringContaining(LINE_3_INFO));
+    fireEvent.click(within(line3).getAllByRole('radio')[0]);
+    expect(line3).toHaveAccessibleDescription(LINE_3_INFO);
+  });
+
   it('adds all 26 amounts into the monthly total', () => {
     const { inputNamed, lastEmitted } = renderStep();
     for (const field of EXPENSE_FIELDS) {
