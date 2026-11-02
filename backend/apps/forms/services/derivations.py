@@ -712,6 +712,19 @@ def _expense_label(session: IntakeSession, field: str, label: str) -> str:
     return label if _expense_amount(session, field) > 0 else ""
 
 
+def _expense_text(session: IntakeSession, field: str, text_field: str) -> str:
+    """A "Specify" box's text, the filer's own, printed only when its amount prints."""
+    if _expense_amount(session, field) <= 0:
+        return ""
+    return getattr(session.expense_info, text_field)
+
+
+def _schedule_j_expenses_include_others(session: IntakeSession) -> str:
+    """Line 3 is the filer's own answer; with no row or no answer it stays blank."""
+    expense_info = getattr(session, "expense_info", None)
+    return "" if expense_info is None else (expense_info.expenses_include_others or "")
+
+
 def _schedule_j_monthly_net_income(session: IntakeSession) -> str:
     """
     Line 23c, 23a - 23b: blank while 23a is, and below zero when expenses pass income.
@@ -880,6 +893,27 @@ DERIVATIONS: dict[str, Callable[[IntakeSession], str]] = {
     ),
     "schedule_j_support_paid": lambda s: _expense_line(s, "child_support_paid"),
     "schedule_j_other_expenses": lambda s: _expense_line(s, "other_expenses"),
+    "schedule_j_expenses_include_others": _schedule_j_expenses_include_others,
+    "schedule_j_real_estate_taxes": lambda s: _expense_line(s, "real_estate_taxes"),
+    "schedule_j_home_insurance": lambda s: _expense_line(s, "home_insurance"),
+    "schedule_j_hoa_dues": lambda s: _expense_line(s, "hoa_dues"),
+    "schedule_j_personal_care": lambda s: _expense_line(s, "personal_care"),
+    "schedule_j_entertainment": lambda s: _expense_line(s, "entertainment"),
+    "schedule_j_charitable_contributions": lambda s: _expense_line(s, "charitable_contributions"),
+    "schedule_j_taxes_not_deducted": lambda s: _expense_line(s, "taxes_not_deducted"),
+    "schedule_j_taxes_label": lambda s: _expense_text(s, "taxes_not_deducted", "taxes_specify"),
+    "schedule_j_support_others": lambda s: _expense_line(s, "support_others"),
+    "schedule_j_support_others_label": lambda s: _expense_text(
+        s, "support_others", "support_others_specify"
+    ),
+    "schedule_j_other_property_mortgages": lambda s: _expense_line(s, "other_property_mortgages"),
+    "schedule_j_other_property_taxes": lambda s: _expense_line(s, "other_property_taxes"),
+    "schedule_j_other_property_insurance": lambda s: _expense_line(s, "other_property_insurance"),
+    "schedule_j_other_property_upkeep": lambda s: _expense_line(s, "other_property_upkeep"),
+    "schedule_j_other_property_hoa_dues": lambda s: _expense_line(s, "other_property_hoa_dues"),
+    "schedule_j_other_expenses_label": lambda s: _expense_text(
+        s, "other_expenses", "other_expenses_specify"
+    ),
     "schedule_j_total_expenses": _total_monthly_expenses,
     # Line 23a is Schedule I line 12: one figure on both forms
     "schedule_j_total_income": _schedule_i_income_total,
@@ -1006,6 +1040,23 @@ RULE_FIXES: dict[str, dict[str, str]] = {
     "schedule_j_insurance_label": {"step": "expense_info"},
     "schedule_j_support_paid": {"step": "expense_info"},
     "schedule_j_other_expenses": {"step": "expense_info"},
+    "schedule_j_expenses_include_others": {"step": "expense_info"},
+    "schedule_j_real_estate_taxes": {"step": "expense_info"},
+    "schedule_j_home_insurance": {"step": "expense_info"},
+    "schedule_j_hoa_dues": {"step": "expense_info"},
+    "schedule_j_personal_care": {"step": "expense_info"},
+    "schedule_j_entertainment": {"step": "expense_info"},
+    "schedule_j_charitable_contributions": {"step": "expense_info"},
+    "schedule_j_taxes_not_deducted": {"step": "expense_info"},
+    "schedule_j_support_others": {"step": "expense_info"},
+    "schedule_j_other_property_mortgages": {"step": "expense_info"},
+    "schedule_j_other_property_taxes": {"step": "expense_info"},
+    "schedule_j_other_property_insurance": {"step": "expense_info"},
+    "schedule_j_other_property_upkeep": {"step": "expense_info"},
+    "schedule_j_other_property_hoa_dues": {"step": "expense_info"},
+    "schedule_j_taxes_label": {"step": "expense_info"},
+    "schedule_j_support_others_label": {"step": "expense_info"},
+    "schedule_j_other_expenses_label": {"step": "expense_info"},
     "schedule_j_total_expenses": {"step": "expense_info"},
     "total_monthly_expenses": {"step": "expense_info"},
     # 103B line 6 is Schedule J line 22c, from the Expenses step

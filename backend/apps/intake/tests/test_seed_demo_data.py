@@ -246,3 +246,24 @@ def test_a_gig_drivers_business_entry_leaves_his_debts_as_he_classed_them_and_he
     assert classed == [d["consumer_business_classification"] for d in _andres_kettleby()["debts"]]
     assert classed.count("business") == 1
     assert len(packet(session)) == 14
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "persona,total",
+    [
+        ("maria", "2600.00"),
+        ("james", "3210.00"),
+        ("priya", "7050.00"),
+        ("deshawn", "2410.00"),
+        ("sarah", "1280.00"),
+        ("andres", "3034.00"),
+    ],
+)
+def test_each_personas_expense_total_takes_the_new_schedule_j_lines(persona, total):
+    # The Expenses step asks 26 lines now; a persona's sworn monthly expenses are the sum.
+    call_command("loaddata", "ilnd_2025_data", verbosity=0)
+    call_command("seed_demo_data", persona=persona, stdout=StringIO())
+    session = IntakeSession.objects.get(user__username=f"demo_{persona}")
+
+    assert Decimal(str(session.expense_info.calculate_total_monthly_expenses())) == Decimal(total)

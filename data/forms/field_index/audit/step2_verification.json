@@ -1608,5 +1608,175 @@
     "status": "confirmed",
     "correct_target": "Assistance 8f",
     "evidence": "Field index: Assistance 8f p2 line 8f, 'Other government assistance that you regularly receive. Specify:' (adjudicated). 3e2 spec §9.1: the cash then non-cash kind, only while the person answered Yes. Tagged T36: the name's other widget is T49, line 11, which stays blank."
+  },
+  {
+    "schema": "schedule_j",
+    "pdf_field": "check3",
+    "producer": "derived:schedule_j_expenses_include_others",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check3",
+    "evidence": "Field index: check3 p1 line 3, 'Do your expenses include expenses of people other than yourself and your dependents?', T34 /no and T35 /yes (adjudicated). 3e2 spec §9.4: ticks the filer's own answer to the Expenses step's line 3 question and stays blank while unanswered."
+  },
+  {
+    "schema": "schedule_j",
+    "pdf_field": "4a",
+    "producer": "derived:schedule_j_real_estate_taxes",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "4a",
+    "evidence": "Field index: 4a p1 T37, 'Real estate taxes' (adjudicated). 3e2 spec §9.4: the amount the filer typed on the Expenses step, printed only above $0."
+  },
+  {
+    "schema": "schedule_j",
+    "pdf_field": "4b",
+    "producer": "derived:schedule_j_home_insurance",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "4b",
+    "evidence": "Field index: 4b p1 T38, 'Property, homeowner’s, or renter’s insurance' (adjudicated). 3e2 spec §9.4: the amount the filer typed on the Expenses step, printed only above $0."
+  },
+  {
+    "schema": "schedule_j",
+    "pdf_field": "4d",
+    "producer": "derived:schedule_j_hoa_dues",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "4d",
+    "evidence": "Field index: 4d p1 T40, 'Homeowner’s association or condominium dues' (adjudicated). 3e2 spec §9.4: the amount the filer typed on the Expenses step, printed only above $0."
+  },
+  {
+    "schema": "schedule_j",
+    "pdf_field": "10",
+    "producer": "derived:schedule_j_personal_care",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "10",
+    "evidence": "Field index: 10 p2 T12, 'Personal care products and services' (adjudicated). 3e2 spec §9.4: the amount the filer typed on the Expenses step, printed only above $0."
+  },
+  {
+    "schema": "schedule_j",
+    "pdf_field": "13",
+    "producer": "derived:schedule_j_entertainment",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "13",
+    "evidence": "Field index: 13 p2 T15, 'Entertainment, clubs, recreation, newspapers, magazines, and books' (adjudicated). 3e2 spec §9.4: the amount the filer typed on the Expenses step, printed only above $0."
+  },
+  {
+    "schema": "schedule_j",
+    "pdf_field": "14",
+    "producer": "derived:schedule_j_charitable_contributions",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "14",
+    "evidence": "Field index: 14 p2 T16, 'Charitable contributions and religious donations' (adjudicated). 3e2 spec §9.4: the amount the filer typed on the Expenses step, printed only above $0."
+  },
+  {
+    "schema": "schedule_j",
+    "pdf_field": "16",
+    "producer": "derived:schedule_j_taxes_not_deducted",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "16",
+    "evidence": "Field index: 16 p2 T22, 'Taxes. Do not include taxes deducted from your pay or included in lines 4 or 20. (amount)' (adjudicated). 3e2 spec §9.4: the amount the filer typed on the Expenses step, printed only above $0."
+  },
+  {
+    "schema": "schedule_j",
+    "pdf_field": "Other 16",
+    "producer": "derived:schedule_j_taxes_label",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Other 16",
+    "evidence": "Field index: Other 16 p2 T23, 'Taxes. Specify:' (adjudicated). 3e2 spec §9.4: the filer's own Specify text from the Expenses step, printed only beside a printed amount."
+  },
+  {
+    "schema": "schedule_j",
+    "pdf_field": "19",
+    "producer": "derived:schedule_j_support_others",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "19",
+    "evidence": "Field index: 19 p2 T32, 'Other payments you make to support others who do not live with you. (amount)' (adjudicated). 3e2 spec §9.4: the amount the filer typed on the Expenses step, printed only above $0."
+  },
+  {
+    "schema": "schedule_j",
+    "pdf_field": "Other 19",
+    "producer": "derived:schedule_j_support_others_label",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Other 19",
+    "evidence": "Field index: Other 19 p2 T31, 'Other payments you make to support others who do not live with you. Specify:' (adjudicated). 3e2 spec §9.4: the filer's own Specify text from the Expenses step, printed only beside a printed amount."
+  },
+  {
+    "schema": "schedule_j",
+    "pdf_field": "20a",
+    "producer": "derived:schedule_j_other_property_mortgages",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "20a",
+    "evidence": "Field index: 20a p2 T33, 'Other real property expenses: Mortgages on other property' (adjudicated). 3e2 spec §9.4: the amount the filer typed on the Expenses step, printed only above $0."
+  },
+  {
+    "schema": "schedule_j",
+    "pdf_field": "20b",
+    "producer": "derived:schedule_j_other_property_taxes",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "20b",
+    "evidence": "Field index: 20b p2 T34, 'Other real property expenses: Real estate taxes' (adjudicated). 3e2 spec §9.4: the amount the filer typed on the Expenses step, printed only above $0."
+  },
+  {
+    "schema": "schedule_j",
+    "pdf_field": "20c",
+    "producer": "derived:schedule_j_other_property_insurance",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "20c",
+    "evidence": "Field index: 20c p2 T35, 'Other real property expenses: Property, homeowner’s, or renter’s insurance' (adjudicated). 3e2 spec §9.4: the amount the filer typed on the Expenses step, printed only above $0."
+  },
+  {
+    "schema": "schedule_j",
+    "pdf_field": "20d",
+    "producer": "derived:schedule_j_other_property_upkeep",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "20d",
+    "evidence": "Field index: 20d p2 T36, 'Other real property expenses: Maintenance, repair, and upkeep expenses' (adjudicated). 3e2 spec §9.4: the amount the filer typed on the Expenses step, printed only above $0."
+  },
+  {
+    "schema": "schedule_j",
+    "pdf_field": "20e",
+    "producer": "derived:schedule_j_other_property_hoa_dues",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "20e",
+    "evidence": "Field index: 20e p2 T37, 'Other real property expenses: Homeowner’s association or condominium dues' (adjudicated). 3e2 spec §9.4: the amount the filer typed on the Expenses step, printed only above $0."
+  },
+  {
+    "schema": "schedule_j",
+    "pdf_field": "Other 21",
+    "producer": "derived:schedule_j_other_expenses_label",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Other 21",
+    "evidence": "Field index: Other 21 p3 T3, 'Other. Specify:' (adjudicated). 3e2 spec §9.4: the filer's own Specify text from the Expenses step, printed only beside a printed amount."
   }
 ]

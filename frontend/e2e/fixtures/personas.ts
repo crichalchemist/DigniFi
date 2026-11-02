@@ -213,6 +213,10 @@ export const MARIA: WaiverPersonaData = {
     child_support_paid: 0,
     insurance_not_deducted: 120,
     other_expenses: 50,
+    personal_care: 40,
+  },
+  expense_texts: {
+    other_expenses_specify: 'School supplies and fees',
   },
   assets: [
     { asset_type: 'vehicle', description: '2015 Honda Civic', current_value: 6500, amount_owed: 0 },
@@ -292,6 +296,12 @@ export const JAMES: PersonaData = {
     child_support_paid: 0,
     insurance_not_deducted: 200,
     other_expenses: 100,
+    home_insurance: 15,
+    personal_care: 40,
+    entertainment: 45,
+  },
+  expense_texts: {
+    other_expenses_specify: 'Work boots and small tools for my job',
   },
   assets: [
     {
@@ -397,6 +407,15 @@ export const PRIYA: PersonaData = {
     child_support_paid: 0,
     insurance_not_deducted: 350,
     other_expenses: 200,
+    home_insurance: 20,
+    personal_care: 60,
+    entertainment: 80,
+    charitable_contributions: 50,
+    taxes_not_deducted: 200,
+  },
+  expense_texts: {
+    taxes_specify: 'IRS installment agreement, 2025 tax',
+    other_expenses_specify: "Children's after-school activities",
   },
   assets: [
     {
@@ -491,6 +510,12 @@ export const DESHAWN: WaiverPersonaData = {
     child_support_paid: 0,
     insurance_not_deducted: 150,
     other_expenses: 40,
+    personal_care: 40,
+    entertainment: 25,
+    charitable_contributions: 50,
+  },
+  expense_texts: {
+    other_expenses_specify: 'Printer ink, paper and postage',
   },
   assets: [
     {
@@ -588,7 +613,9 @@ export const SARAH: WaiverPersonaData = {
     childcare: 0,
     child_support_paid: 0,
     insurance_not_deducted: 0,
-    other_expenses: 50,
+    other_expenses: 0,
+    personal_care: 30,
+    entertainment: 20,
   },
   assets: [],
   debts: [
@@ -677,6 +704,14 @@ export const ANDRES: PersonaData = {
     child_support_paid: 0,
     insurance_not_deducted: 0,
     other_expenses: 0,
+    home_insurance: 15,
+    personal_care: 40,
+    entertainment: 30,
+    charitable_contributions: 20,
+    taxes_not_deducted: 150,
+  },
+  expense_texts: {
+    taxes_specify: '2026 estimated income tax',
   },
   assets: [
     // His half of a car titled to him and his brother

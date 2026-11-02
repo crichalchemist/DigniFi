@@ -118,6 +118,8 @@ def _maria_torres() -> dict:
             "child_support_paid": Decimal("0.00"),
             "insurance_not_deducted": Decimal("120.00"),
             "other_expenses": Decimal("50.00"),
+            "personal_care": Decimal("40.00"),
+            "other_expenses_specify": "School supplies and fees",
         },
         "assets": [
             {
@@ -241,6 +243,10 @@ def _james_washington() -> dict:
             "child_support_paid": Decimal("0.00"),
             "insurance_not_deducted": Decimal("200.00"),
             "other_expenses": Decimal("100.00"),
+            "home_insurance": Decimal("15.00"),
+            "personal_care": Decimal("40.00"),
+            "entertainment": Decimal("45.00"),
+            "other_expenses_specify": "Work boots and small tools for my job",
         },
         "assets": [
             {
@@ -349,6 +355,13 @@ def _priya_sharma() -> dict:
             "child_support_paid": Decimal("0.00"),
             "insurance_not_deducted": Decimal("350.00"),
             "other_expenses": Decimal("200.00"),
+            "home_insurance": Decimal("20.00"),
+            "personal_care": Decimal("60.00"),
+            "entertainment": Decimal("80.00"),
+            "charitable_contributions": Decimal("50.00"),
+            "taxes_not_deducted": Decimal("200.00"),
+            "taxes_specify": "IRS installment agreement, 2025 tax",
+            "other_expenses_specify": "Children's after-school activities",
         },
         "assets": [
             {
@@ -433,6 +446,10 @@ def _deshawn_mitchell() -> dict:
             "child_support_paid": Decimal("0.00"),
             "insurance_not_deducted": Decimal("150.00"),
             "other_expenses": Decimal("40.00"),
+            "personal_care": Decimal("40.00"),
+            "entertainment": Decimal("25.00"),
+            "charitable_contributions": Decimal("50.00"),
+            "other_expenses_specify": "Printer ink, paper and postage",
         },
         "assets": [
             {
@@ -551,7 +568,9 @@ def _sarah_chen() -> dict:
             "childcare": Decimal("0.00"),
             "child_support_paid": Decimal("0.00"),
             "insurance_not_deducted": Decimal("0.00"),
-            "other_expenses": Decimal("50.00"),
+            "other_expenses": Decimal("0.00"),
+            "personal_care": Decimal("30.00"),
+            "entertainment": Decimal("20.00"),
         },
         "assets": [],
         "debts": [
@@ -643,6 +662,12 @@ def _andres_kettleby() -> dict:
             "child_support_paid": Decimal("0.00"),
             "insurance_not_deducted": Decimal("0.00"),
             "other_expenses": Decimal("0.00"),
+            "home_insurance": Decimal("15.00"),
+            "personal_care": Decimal("40.00"),
+            "entertainment": Decimal("30.00"),
+            "charitable_contributions": Decimal("20.00"),
+            "taxes_not_deducted": Decimal("150.00"),
+            "taxes_specify": "2026 estimated income tax",
         },
         "assets": [
             {
