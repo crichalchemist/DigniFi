@@ -121,6 +121,17 @@ export interface IncomeInfo {
   noncash_assistance_kind?: string;
   noncash_assistance_value?: number | null;
 
+  // Payroll deductions (Schedule I lines 5a-5h), asked on the Take-home pay step
+  payroll_tax?: number | null;
+  payroll_mandatory_retirement?: number | null;
+  payroll_voluntary_retirement?: number | null;
+  payroll_retirement_loan?: number | null;
+  payroll_insurance?: number | null;
+  payroll_support?: number | null;
+  payroll_union_dues?: number | null;
+  payroll_other?: number | null;
+  payroll_other_specify?: string;
+
   // The last day of the six-month window the filer last confirmed. Read-only.
   readonly income_period_end?: string | null;
 
@@ -167,6 +178,20 @@ export const ASSISTANCE_AMOUNT_FIELDS = [
   'cash_assistance_amount',
   'noncash_assistance_value',
 ] as const;
+
+/** The eight payroll deductions, Schedule I lines 5a-5h, which the API sends as decimal strings */
+export const DEDUCTION_FIELDS = [
+  'payroll_tax',
+  'payroll_mandatory_retirement',
+  'payroll_voluntary_retirement',
+  'payroll_retirement_loan',
+  'payroll_insurance',
+  'payroll_support',
+  'payroll_union_dues',
+  'payroll_other',
+] as const;
+
+export type DeductionField = (typeof DEDUCTION_FIELDS)[number];
 
 /** A business or a rental property on the Income step's list */
 export type EntryKind = 'business' | 'rental';

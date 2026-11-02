@@ -848,7 +848,7 @@ class Command(BaseCommand):
             user=user,
             district=district,
             status="completed",
-            current_step=6,
+            current_step=7,
         )
 
         DebtorInfo.objects.create(session=session, **data["debtor"])

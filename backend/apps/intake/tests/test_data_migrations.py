@@ -26,6 +26,8 @@ MARRIAGE_ENCRYPTED = [("intake", "0017_incomeinfo_marital_status_encrypted")]
 BEFORE_ENCRYPTION = [("intake", "0019_remove_incomeinfo_number_of_dependents")]
 INCOME_ENCRYPTED = [("intake", "0022_incomeinfo_encrypt_swap")]
 EXPENSES_ENCRYPTED = [("intake", "0025_expenseinfo_encrypt_swap")]
+BEFORE = [("intake", "0027_expenseinfo_schedule_j_lines")]
+SHIFT = [("intake", "0028_shift_current_step")]
 INCOME_SOURCES = [
     "monthly_gross_wages",
     "monthly_overtime",
@@ -559,3 +561,49 @@ def test_adding_the_schedule_j_lines_keeps_saved_expenses_and_leaves_line_3_unan
     kept, undone = _schedule_j_lines_round_trip(migrate)
     assert kept == (Decimal("1100.00"), [0] * 13, None, ["", "", ""])
     assert undone == Decimal("1100.00")
+
+
+def _run_the_shift(migrate):
+    apps = migrate(BEFORE)
+    IntakeSession = apps.get_model("intake", "IntakeSession")
+    first = _session(apps)
+    rows = {
+        step: IntakeSession.objects.create(
+            user_id=first.user_id, district_id=first.district_id, current_step=step
+        )
+        for step in (1, 2, 3, 8, 0, 12)
+    }
+    apps = migrate(SHIFT)
+    after = {
+        step: apps.get_model("intake", "IntakeSession").objects.get(pk=row.pk).current_step
+        for step, row in rows.items()
+    }
+    take_home = apps.get_model("intake", "IntakeSession").objects.create(
+        user_id=first.user_id, district_id=first.district_id, current_step=3
+    )
+    apps = migrate(BEFORE)
+    undone = {
+        step: apps.get_model("intake", "IntakeSession").objects.get(pk=row.pk).current_step
+        for step, row in rows.items()
+    }
+    return (
+        after,
+        undone,
+        apps.get_model("intake", "IntakeSession").objects.get(pk=take_home.pk).current_step,
+    )
+
+
+def test_a_session_saved_before_take_home_pay_reopens_on_the_same_step(migrate):
+    after, undone, take_home = _run_the_shift(migrate)
+    assert after == {1: 1, 2: 2, 3: 4, 8: 9, 0: 0, 12: 12}
+    assert undone == {1: 1, 2: 2, 3: 3, 8: 8, 0: 0, 12: 12}
+    assert take_home == 3  # Take-home pay undone reads as the old Expenses
+
+
+@pytest.mark.postgres
+@ON_POSTGRES
+def test_a_session_saved_before_take_home_pay_reopens_on_the_same_step_on_postgres(migrate):
+    after, undone, take_home = _run_the_shift(migrate)
+    assert after == {1: 1, 2: 2, 3: 4, 8: 9, 0: 0, 12: 12}
+    assert undone == {1: 1, 2: 2, 3: 3, 8: 8, 0: 0, 12: 12}
+    assert take_home == 3

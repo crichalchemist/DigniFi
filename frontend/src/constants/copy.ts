@@ -270,3 +270,23 @@ export const SPOUSE_CASH_AMOUNT_LABEL = "Spouse's cash assistance a month";
 export const SPOUSE_NONCASH_KIND_LABEL = "Spouse's non-cash assistance: what kind?";
 
 export const SPOUSE_NONCASH_VALUE_LABEL = "Spouse's non-cash assistance value a month, if known";
+
+// Schedule I lines 5a-5h, on the Take-home pay step. §4.5's retirement sentence scored 14.93.
+export const PAY_PERIOD_HELP =
+  "Paid every two weeks? Multiply one paycheck's amount by 26, then divide by 12. Paid twice a month? Multiply by 2. Paid every week? Multiply by 52, then divide by 12.";
+
+export const RETIREMENT_HELP =
+  "Your pay stub, or your employer's benefits office, can tell you this. Mandatory means your job requires it. Voluntary means you chose it.";
+
+export const TAKE_HOME_PAY_INTRO =
+  'Enter what is taken out of your pay each month. Leave a box blank if nothing of that kind is taken out. If nothing is taken out at all, enter $0 in one box.';
+
+export const DEDUCTIONS_HEADING = 'Your deductions';
+
+export const SPOUSE_DEDUCTIONS_HEADING = "Your spouse's deductions";
+
+export const OTHER_DEDUCTIONS_SPECIFY_LABEL = 'What are the other deductions?';
+
+export const SPOUSE_OTHER_DEDUCTIONS_SPECIFY_LABEL = "What are your spouse's other deductions?";
+
+export const SPOUSE_DEDUCTION_LABEL_PREFIX = "Spouse's";

@@ -36,7 +36,11 @@ test.describe('Priya Sharma — Ineligible', () => {
     await wizard.fillIncomeInfo(PRIYA.income);
     await wizard.nextStep();
 
-    // Step 3: Expenses
+    // Step 3: Take-home pay
+    await wizard.fillTakeHomePay(PRIYA.deductions, PRIYA.spouse_deductions);
+    await wizard.nextStep();
+
+    // Step 4: Expenses
     await wizard.fillExpenses(PRIYA.expenses);
     await wizard.nextStep();
 
@@ -65,10 +69,10 @@ test.describe('Priya Sharma — Ineligible', () => {
     }
     await wizard.nextStep();
 
-    // Step 6: Contracts & Leases (optional — no entries needed)
+    // Step 7: Contracts & Leases (optional — no entries needed)
     await wizard.nextStep();
 
-    // Step 7: Codebtors (optional — no entries needed)
+    // Step 8: Codebtors (optional — no entries needed)
     await wizard.nextStep();
 
     await wizard.fillReview();

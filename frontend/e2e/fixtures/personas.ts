@@ -111,11 +111,26 @@ export interface PersonaDebt {
   collateral_description?: string;
 }
 
+/** The eight payroll deductions of Schedule I lines 5a-5h (DEDUCTION_FIELDS in types/api.ts) */
+export type DeductionField =
+  | 'payroll_tax'
+  | 'payroll_mandatory_retirement'
+  | 'payroll_voluntary_retirement'
+  | 'payroll_retirement_loan'
+  | 'payroll_insurance'
+  | 'payroll_support'
+  | 'payroll_union_dues'
+  | 'payroll_other';
+
 export interface PersonaData {
   username: string;
   password: string;
   debtor: PersonaDebtor;
   income: PersonaIncome;
+  // The Take-home pay step: each deduction typed, a box left out stays blank
+  deductions: Partial<Record<DeductionField, number>>;
+  // The spouse's, typed only by a persona living with their spouse
+  spouse_deductions?: Partial<Record<DeductionField, number>>;
   expenses: Record<string, number>;
   assets: PersonaAsset[];
   debts: PersonaDebt[];
@@ -166,6 +181,16 @@ export const MARIA: WaiverPersonaData = {
     business: [],
     now_different: 'no',
     assistance: { answer: 'yes', noncash_kind: 'SNAP (food stamps)', noncash_value: 350 },
+  },
+  deductions: {
+    payroll_tax: 400,
+    payroll_mandatory_retirement: 0,
+    payroll_voluntary_retirement: 0,
+    payroll_retirement_loan: 0,
+    payroll_insurance: 0,
+    payroll_support: 0,
+    payroll_union_dues: 0,
+    payroll_other: 0,
   },
   expenses: {
     rent_or_mortgage: 1100,
@@ -244,6 +269,7 @@ export const JAMES: PersonaData = {
     now_different: 'no',
     assistance: { answer: 'no' },
   },
+  deductions: { payroll_tax: 1288, payroll_union_dues: 45 },
   expenses: {
     rent_or_mortgage: 1650,
     utilities: 120,
@@ -346,6 +372,8 @@ export const PRIYA: PersonaData = {
     spouse_now_different: 'no',
     spouse_assistance: { answer: 'no' },
   },
+  deductions: { payroll_tax: 2450, payroll_voluntary_retirement: 600, payroll_insurance: 620 },
+  spouse_deductions: { payroll_tax: 250 },
   expenses: {
     rent_or_mortgage: 2800,
     utilities: 250,
@@ -437,6 +465,8 @@ export const DESHAWN: WaiverPersonaData = {
     spouse_now_different: 'no',
     spouse_assistance: { answer: 'no' },
   },
+  deductions: { payroll_tax: 450 },
+  spouse_deductions: { payroll_tax: 115 },
   expenses: {
     rent_or_mortgage: 1200,
     utilities: 200,
@@ -533,6 +563,7 @@ export const SARAH: WaiverPersonaData = {
     now_different: 'no',
     assistance: { answer: 'no' },
   },
+  deductions: { payroll_tax: 250 },
   expenses: {
     rent_or_mortgage: 850,
     utilities: 80,
@@ -611,6 +642,7 @@ export const ANDRES: PersonaData = {
     now_different: 'no',
     assistance: { answer: 'no' },
   },
+  deductions: {},
   expenses: {
     rent_or_mortgage: 1150,
     utilities: 210,

@@ -17,7 +17,7 @@
  *
  * Not asserted:
  * - The "From scan" badge after the reload. Saving debts clears is_draft
- *   (intake/views.py), so the badge is gone once step 5 has saved (DIG-14).
+ *   (intake/views.py), so the badge is gone once step 6 has saved (DIG-14).
  * - The account number. It is write-only; backend tests prove saving keeps it.
  */
 
@@ -95,6 +95,9 @@ test.describe('Scanned bill — upload to Amounts Owed', () => {
       await expect(stepTitle).toHaveText('Income');
       await wizard.fillIncomeInfo(FILER.income);
       await wizard.nextStep();
+      await expect(stepTitle).toHaveText('Take-home pay');
+      await wizard.fillTakeHomePay(FILER.deductions);
+      await wizard.nextStep();
       await expect(stepTitle).toHaveText('Expenses');
       await wizard.fillExpenses(FILER.expenses);
       await wizard.nextStep();
@@ -106,7 +109,7 @@ test.describe('Scanned bill — upload to Amounts Owed', () => {
       await expectScannedBill(page);
       await expect(page.getByText('From scan', { exact: true })).toBeVisible();
 
-      // Continue saves step 5 and stores step 6 as the place to resume
+      // Continue saves step 6 and stores step 7 as the place to resume
       await wizard.nextStep();
       await expect(stepTitle).toHaveText('Contracts & Leases');
 

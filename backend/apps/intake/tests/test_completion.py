@@ -56,7 +56,7 @@ def completed(filer, district):
     """An intake the filer completed, with the three sections Complete requires."""
     _, user = filer
     session = IntakeSession.objects.create(
-        user=user, district=district, status="completed", current_step=8
+        user=user, district=district, status="completed", current_step=9
     )
     DebtorInfo.objects.create(
         session=session,
@@ -128,10 +128,10 @@ _MISSING = object()
 
 @pytest.mark.parametrize(
     "step",
-    [0, 9, -1, "3", 3.0, 2.5, True, None, _MISSING],
-    ids=["0", "9", "-1", "string", "float", "fraction", "bool", "null", "missing"],
+    [0, 10, -1, "3", 3.0, 2.5, True, None, _MISSING],
+    ids=["0", "10", "-1", "string", "float", "fraction", "bool", "null", "missing"],
 )
-def test_wizard_step_must_be_one_of_the_eight_steps(filer, completed, step):
+def test_wizard_step_must_be_one_of_the_wizard_steps(filer, completed, step):
     # A step the wizard doesn't have is a client fault, not something the filer can fix.
     client, _ = filer
     body = {} if step is _MISSING else {"current_step": step}
@@ -141,14 +141,14 @@ def test_wizard_step_must_be_one_of_the_eight_steps(filer, completed, step):
     assert response.status_code == 400
     assert "current_step" in response.data
     completed.refresh_from_db()
-    assert (completed.status, completed.current_step) == ("completed", 8)
+    assert (completed.status, completed.current_step) == ("completed", 9)
 
 
 def test_filer_who_leaves_every_expense_blank_can_complete(filer, district):
     # DIG-153: a body with no amounts still creates the record with its $0 defaults. The server
     # drops the read-only total sent here. The wizard sends all 13 amounts, a blank box as 0.
     client, user = filer
-    session = IntakeSession.objects.create(user=user, district=district, current_step=3)
+    session = IntakeSession.objects.create(user=user, district=district, current_step=4)
     DebtorInfo.objects.create(
         session=session,
         first_name="Jane",
@@ -424,7 +424,7 @@ def test_a_rental_figure_saved_as_one_amount_refuses_the_means_test_and_the_form
 
 def test_complete_lists_every_gap_in_wizard_order(filer, district):
     client, user = filer
-    session = IntakeSession.objects.create(user=user, district=district, current_step=8)
+    session = IntakeSession.objects.create(user=user, district=district, current_step=9)
     _scanned_debt(session)
 
     response = client.post(_session_url(session, "complete/"))
@@ -540,6 +540,19 @@ def test_a_refused_save_leaves_a_completed_intake_complete(filer, completed):
     assert _status(completed) == "completed"
 
 
+def test_continue_from_codebtors_reaches_review_at_step_nine(filer, completed):
+    # Take-home pay made the wizard nine steps long: Review, the last, is step 9
+    client, _ = filer
+
+    response = client.post(
+        _session_url(completed, "update_step/"), {"current_step": 9}, format="json"
+    )
+
+    assert response.status_code == 200
+    completed.refresh_from_db()
+    assert completed.current_step == 9
+
+
 def test_moving_between_wizard_steps_after_complete_reopens_it(filer, completed):
     client, _ = filer
 
@@ -584,7 +597,7 @@ def test_adding_or_removing_a_contract_or_codebtor_after_complete_reopens_it(
 def test_saving_the_contracts_or_codebtors_list_after_complete_reopens_it(
     filer, completed, endpoint, row
 ):
-    # Continue on steps 6 and 7 saves the whole list (DIG-147).
+    # Continue on steps 7 and 8 saves the whole list (DIG-147).
     client, _ = filer
 
     response = client.put(_session_url(completed, f"{endpoint}/"), [row], format="json")

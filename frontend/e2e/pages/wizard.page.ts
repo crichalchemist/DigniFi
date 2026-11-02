@@ -7,6 +7,7 @@
 
 import { expect, type Page } from '@playwright/test';
 import type {
+  DeductionField,
   PersonaAssistance,
   PersonaDebtor,
   PersonaIncome,
@@ -246,7 +247,21 @@ export class WizardPage {
     }
   }
 
-  // ── Step 3: Expenses ────────────────────────────────────────────
+  // ── Step 3: Take-home pay ───────────────────────────────────────
+
+  async fillTakeHomePay(
+    deductions: Partial<Record<DeductionField, number>>,
+    spouseDeductions?: Partial<Record<DeductionField, number>>
+  ) {
+    for (const [field, value] of Object.entries(deductions)) {
+      await this.page.locator(`input[name="${field}"]`).fill(String(value));
+    }
+    for (const [field, value] of Object.entries(spouseDeductions ?? {})) {
+      await this.page.locator(`input[name="spouse_${field}"]`).fill(String(value));
+    }
+  }
+
+  // ── Step 4: Expenses ────────────────────────────────────────────
 
   async fillExpenses(expenses: Record<string, number>) {
     // Persona keys are the backend's ExpenseInfo names, and ExpenseInfoStep names each
@@ -256,7 +271,7 @@ export class WizardPage {
     }
   }
 
-  // ── Step 4: Assets ──────────────────────────────────────────────
+  // ── Step 5: Assets ──────────────────────────────────────────────
 
   // Both steps render one empty row by default and suffix field names with
   // the row index (asset_type_0, creditor_name_1, ...). Track how many rows
@@ -280,7 +295,7 @@ export class WizardPage {
     this.assetCount++;
   }
 
-  // ── Step 5: Debts ───────────────────────────────────────────────
+  // ── Step 6: Debts ───────────────────────────────────────────────
 
   async addDebt(debt: PersonaDebt) {
     const index = this.debtCount;
@@ -306,7 +321,7 @@ export class WizardPage {
     this.debtCount++;
   }
 
-  // ── Step 6: Review ──────────────────────────────────────────────
+  // ── Step 9: Review ──────────────────────────────────────────────
 
   async fillReview() {
     // Review step may just need a confirmation/acknowledgment

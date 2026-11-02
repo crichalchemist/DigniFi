@@ -58,32 +58,36 @@ test.describe('SOFA — Form 107 Financial History', () => {
     await wizard.fillIncomeInfo(JAMES.income);
     await wizard.nextStep();
 
-    // Step 3: Expenses
+    // Step 3: Take-home pay
+    await wizard.fillTakeHomePay(JAMES.deductions, JAMES.spouse_deductions);
+    await wizard.nextStep();
+
+    // Step 4: Expenses
     await wizard.fillExpenses(JAMES.expenses);
     await wizard.nextStep();
 
     // Means test check
     await wizard.waitForMeansTestEstimate();
 
-    // Step 4: Assets
+    // Step 5: Assets
     for (const asset of JAMES.assets) {
       await wizard.addAsset(asset);
     }
     await wizard.nextStep();
 
-    // Step 5: Debts
+    // Step 6: Debts
     for (const debt of JAMES.debts) {
       await wizard.addDebt(debt);
     }
     await wizard.nextStep();
 
-    // Step 6: Contracts & Leases (optional — no entries needed)
+    // Step 7: Contracts & Leases (optional — no entries needed)
     await wizard.nextStep();
 
-    // Step 7: Codebtors (optional — no entries needed)
+    // Step 8: Codebtors (optional — no entries needed)
     await wizard.nextStep();
 
-    // Step 8: Review & Complete
+    // Step 9: Review & Complete
     await wizard.fillReview();
     await wizard.completeIntake();
     // James is NOT fee-waiver eligible → handleComplete redirects to /sofa

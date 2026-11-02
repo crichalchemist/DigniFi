@@ -52,7 +52,7 @@ describe('ReviewStep null-safe rendering', () => {
     expect(document.body.textContent).not.toMatch(/undefined|NaN/);
   });
 
-  // DIG-166: the filer's last look before completing includes steps 6 and 7, so a lost or
+  // DIG-166: the filer's last look before completing includes steps 7 and 8, so a lost or
   // doubled contract or codebtor shows here instead of only on Schedules G and H.
   it('lists the contracts and codebtors the filer saved, or says there are none', () => {
     const { rerender } = render(

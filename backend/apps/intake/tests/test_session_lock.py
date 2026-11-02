@@ -99,7 +99,7 @@ def ready(transactional_db):
     )
     user = User.objects.create_user(username="filer", password="pw")
     session = IntakeSession.objects.create(
-        user=user, district=district, status="in_progress", current_step=8
+        user=user, district=district, status="in_progress", current_step=9
     )
     DebtorInfo.objects.create(
         session=session,

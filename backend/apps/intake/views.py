@@ -196,15 +196,15 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
         """
         session = lock_session(self.get_object().pk)
 
-        # Only one of the wizard's 8 steps; anything else is a client fault (DIG-151).
+        # Only one of the wizard's 9 steps; anything else is a client fault (DIG-151).
         current_step = request.data.get("current_step")
         if (
             not isinstance(current_step, int)
             or isinstance(current_step, bool)
-            or not 1 <= current_step <= 8
+            or not 1 <= current_step <= 9
         ):
             return Response(
-                {"current_step": ["Must be a whole number from 1 to 8."]},
+                {"current_step": ["Must be a whole number from 1 to 9."]},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 

@@ -21,6 +21,7 @@ import { MeansTestPreview } from '../components/wizard/MeansTestPreview';
 import {
   DebtorInfoStep,
   IncomeInfoStep,
+  TakeHomePayStep,
   ExpenseInfoStep,
   AssetsStep,
   DebtsStep,
@@ -47,6 +48,7 @@ import type {
 import {
   ASSISTANCE_AMOUNT_FIELDS,
   CURRENT_INCOME_FIELDS,
+  DEDUCTION_FIELDS,
   EXPENSE_FIELDS,
   INCOME_FIELDS,
 } from '../types/api';
@@ -60,13 +62,20 @@ import { WIZARD_STEPS } from '../constants/wizardSteps';
 // so they become numbers as session data enters wizard state.
 const ASSET_AMOUNT_FIELDS = ['current_value', 'amount_owed'] as const;
 const DEBT_AMOUNT_FIELDS = ['amount_owed', 'monthly_payment'] as const;
-// The Income step's amounts, the filer's and the spouse's: the ten, the ten now and the two
-// assistance amounts
+// The income amounts, the filer's and the spouse's: the ten, the ten now, the two assistance
+// amounts and the eight payroll deductions (the Take-home pay step's)
 const INCOME_AMOUNT_KEYS = [
   ...INCOME_FIELDS,
   ...CURRENT_INCOME_FIELDS,
   ...ASSISTANCE_AMOUNT_FIELDS,
+  ...DEDUCTION_FIELDS,
 ] as const;
+
+/** One person's eight deductions and the 5h text, a blank deduction as null (3e2 spec §7.4) */
+function addDeductions(body: Partial<IncomeInfo>, data: Partial<IncomeInfo>) {
+  for (const field of DEDUCTION_FIELDS) body[field] = data[field] ?? null;
+  body.payroll_other_specify = data.payroll_other_specify ?? '';
+}
 
 /**
  * Adds one person's "now different" answer, the current ten only while it is "yes" (the server
@@ -197,8 +206,8 @@ export function IntakeWizard() {
     let cancelled = false;
 
     // Contracts and codebtors have their own endpoints, and a new session has none yet. Both
-    // lists load before any step shows: Review lists them (DIG-166), and Continue on steps 6
-    // and 7 saves the whole list, so a list that failed to load is never saved as empty.
+    // lists load before any step shows: Review lists them (DIG-166), and Continue on steps 7
+    // and 8 saves the whole list, so a list that failed to load is never saved as empty.
     const openSession = async (): Promise<{
       fresh: IntakeSession;
       contracts: ExecutoryContract[];
@@ -338,6 +347,20 @@ export function IntakeWizard() {
             | IncomeEntry[]
             | null;
           addNowAndAssistance(spouse, spouseIncomeData);
+          body.spouse_income = spouse;
+        }
+        return body as Partial<IntakeSession>;
+      }
+
+      case 'take_home_pay': {
+        // The deductions alone, so neither this step's saved copy nor the Income step's can
+        // overwrite what the other saved. Lines 4, 6 and 7 are shown, never sent.
+        const income: Partial<IncomeInfo> = {};
+        addDeductions(income, incomeData);
+        const body: Partial<Record<keyof IntakeSession, unknown>> = { income_info: income };
+        if (incomeData.marital_status === 'married_together') {
+          const spouse: SpouseIncome = {};
+          addDeductions(spouse, spouseIncomeData);
           body.spouse_income = spouse;
         }
         return body as Partial<IntakeSession>;
@@ -621,9 +644,9 @@ export function IntakeWizard() {
   // Render Step Content
   // =========================================================================
 
-  const renderStepContent = (stepNumber: number) => {
-    switch (stepNumber) {
-      case 1:
+  const renderStepContent = (key: string) => {
+    switch (key) {
+      case 'debtor_info':
         return (
           <DebtorInfoStep
             initialData={debtorData}
@@ -634,7 +657,7 @@ export function IntakeWizard() {
           />
         );
 
-      case 2:
+      case 'income_info':
         return (
           <IncomeInfoStep
             initialData={incomeData}
@@ -659,7 +682,19 @@ export function IntakeWizard() {
           />
         );
 
-      case 3:
+      case 'take_home_pay':
+        return (
+          <TakeHomePayStep
+            incomeData={incomeData}
+            onIncomeDataChange={setIncomeData}
+            spouseIncomeData={spouseIncomeData}
+            onSpouseIncomeDataChange={setSpouseIncomeData}
+            maritalStatus={incomeData.marital_status}
+            onValidationChange={setCanProceed}
+          />
+        );
+
+      case 'expense_info':
         return (
           <ExpenseInfoStep
             initialData={expenseData}
@@ -668,7 +703,7 @@ export function IntakeWizard() {
           />
         );
 
-      case 4:
+      case 'assets':
         return (
           <AssetsStep
             rows={assetsData}
@@ -677,7 +712,7 @@ export function IntakeWizard() {
           />
         );
 
-      case 5:
+      case 'debts':
         return (
           <DebtsStep
             rows={debtsData}
@@ -686,7 +721,7 @@ export function IntakeWizard() {
           />
         );
 
-      case 6:
+      case 'contracts':
         return (
           <ContractsStep
             initialData={contractsData}
@@ -695,7 +730,7 @@ export function IntakeWizard() {
           />
         );
 
-      case 7:
+      case 'codebtors':
         return (
           <CodebtorsStep
             initialData={codebtorsData}
@@ -704,7 +739,7 @@ export function IntakeWizard() {
           />
         );
 
-      case 8:
+      case 'review':
         return (
           <ReviewStep
             debtorData={debtorData}
@@ -732,7 +767,7 @@ export function IntakeWizard() {
 
   const wizardSteps = WIZARD_STEPS.map((step) => ({
     ...step,
-    component: renderStepContent(step.number),
+    component: renderStepContent(step.key),
   }));
 
   // =========================================================================

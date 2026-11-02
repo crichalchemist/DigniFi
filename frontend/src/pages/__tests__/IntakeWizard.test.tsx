@@ -6,7 +6,12 @@ import { http, HttpResponse } from 'msw';
 import { server } from '../../test/mocks/server';
 import { IntakeProvider, useIntake } from '../../context/IntakeContext';
 import IntakeWizard from '../IntakeWizard';
-import { CURRENT_INCOME_FIELDS, EXPENSE_FIELDS, INCOME_FIELDS } from '../../types/api';
+import {
+  CURRENT_INCOME_FIELDS,
+  DEDUCTION_FIELDS,
+  EXPENSE_FIELDS,
+  INCOME_FIELDS,
+} from '../../types/api';
 
 // DebtorInfoStep reads account email via useAuth; wizard test renders without
 // AuthProvider, so we stub just the user object the step needs.
@@ -18,11 +23,11 @@ vi.mock('../../context/AuthContext', () => ({
 // Shared fixtures
 // ---------------------------------------------------------------------------
 
-const sessionAtStep8 = {
+const sessionAtStep9 = {
   id: 1,
   user: 1,
   district: 1,
-  current_step: 8,
+  current_step: 9,
   status: 'in_progress' as const,
   created_at: '2026-01-20T10:00:00Z',
   updated_at: '2026-01-20T10:00:00Z',
@@ -123,16 +128,16 @@ async function fillDebtorInfoFields(county: string | null = 'Cook') {
 
 describe('IntakeWizard handleComplete routing', { timeout: 30_000 }, () => {
   beforeEach(() => {
-    // POST (createSession) return step 8 (Review & Results — the last step)
+    // POST (createSession) return step 9 (Review & Results — the last step)
     server.use(
       http.get('http://localhost:8000/api/intake/sessions/:id/', () =>
-        HttpResponse.json(sessionAtStep8)
+        HttpResponse.json(sessionAtStep9)
       ),
       http.post('http://localhost:8000/api/intake/sessions/', () =>
-        HttpResponse.json({ session: sessionAtStep8, message: 'Session created.' }, { status: 201 })
+        HttpResponse.json({ session: sessionAtStep9, message: 'Session created.' }, { status: 201 })
       ),
       http.patch('http://localhost:8000/api/intake/sessions/:id/', () =>
-        HttpResponse.json(sessionAtStep8)
+        HttpResponse.json(sessionAtStep9)
       )
     );
   });
@@ -141,7 +146,7 @@ describe('IntakeWizard handleComplete routing', { timeout: 30_000 }, () => {
     renderWizard();
     const completeBtn = await screen.findByRole('button', { name: /complete intake/i });
 
-    // Register AFTER the session GET resolves (wizard is at step 8). Registering
+    // Register AFTER the session GET resolves (wizard is at step 9). Registering
     // before renderWizard() races with the GET under system load in the full suite.
     server.use(
       http.post('http://localhost:8000/api/intake/sessions/:id/calculate_means_test/', () =>
@@ -274,7 +279,7 @@ describe("IntakeWizard Complete's reasons", { timeout: 30_000 }, () => {
         'http://localhost:8000/api/intake/sessions/:id/update_step/',
         async ({ request }) => {
           stepUpdates.push(await request.json());
-          return HttpResponse.json({ session: sessionAtStep8, message: 'Step updated.' });
+          return HttpResponse.json({ session: sessionAtStep9, message: 'Step updated.' });
         }
       )
     );
@@ -286,7 +291,7 @@ describe("IntakeWizard Complete's reasons", { timeout: 30_000 }, () => {
     vi.spyOn(console, 'error').mockImplementation(() => {});
     server.use(
       http.get('http://localhost:8000/api/intake/sessions/:id/', () =>
-        HttpResponse.json(sessionAtStep8)
+        HttpResponse.json(sessionAtStep9)
       )
     );
   });
@@ -352,7 +357,7 @@ describe("IntakeWizard Complete's reasons", { timeout: 30_000 }, () => {
       message: 'Check the debts read from your documents on the Amounts Owed step.',
     };
     // Amounts Owed lets the filer continue once it holds a debt
-    const sessionWithDebt = { ...sessionAtStep8, debts: completedSession.debts };
+    const sessionWithDebt = { ...sessionAtStep9, debts: completedSession.debts };
     server.use(
       http.get('http://localhost:8000/api/intake/sessions/:id/', () =>
         HttpResponse.json(sessionWithDebt)
@@ -391,7 +396,7 @@ describe("IntakeWizard Complete's reasons", { timeout: 30_000 }, () => {
     await userEvent.click(continueBtn);
 
     await screen.findByRole('heading', { name: /review & results/i, level: 2 });
-    expect(stepUpdates).toEqual([{ current_step: 8 }]);
+    expect(stepUpdates).toEqual([{ current_step: 9 }]);
     expect(screen.queryByText(NO_EXPENSES.message)).not.toBeInTheDocument();
   });
 
@@ -434,7 +439,7 @@ describe("IntakeWizard Complete's reasons", { timeout: 30_000 }, () => {
  * and the debt amounts arrive as decimal strings.
  */
 const completedSession = {
-  ...sessionAtStep8,
+  ...sessionAtStep9,
   status: 'completed' as const,
   completed_at: '2026-10-12T10:00:00Z',
   debtor_info: {
@@ -550,6 +555,7 @@ describe('IntakeWizard stepping back', { timeout: 30_000 }, () => {
         'Amounts Owed',
         'Assets',
         'Expenses',
+        'Take-home pay',
         'Income',
         'Your Information',
       ]) {
@@ -722,10 +728,10 @@ describe('IntakeWizard autosave', { timeout: 15_000 }, () => {
 // Re-reading the session on every wizard entry (DIG-1, DIG-30)
 // ===========================================================================
 
-/** Session sitting on step 5 (Amounts Owed) with no debts yet. */
-const sessionAtStep5 = {
+/** Session sitting on step 6 (Amounts Owed) with no debts yet. */
+const sessionAtStep6 = {
   ...sessionAtStep1,
-  current_step: 5,
+  current_step: 6,
   debtor_info: { first_name: 'Jane', last_name: 'Doe' },
 };
 
@@ -763,7 +769,7 @@ describe('IntakeWizard session re-read', { timeout: 15_000 }, () => {
     // The filer reached Amounts Owed, went back to /documents (header link or browser Back)
     // and uploaded a bill. The provider loaded the session before the upload, so the copy
     // in context has no debts; only the server holds the draft.
-    let serverSession: Record<string, unknown> = sessionAtStep5;
+    let serverSession: Record<string, unknown> = sessionAtStep6;
     server.use(
       http.get('http://localhost:8000/api/intake/sessions/:id/', () =>
         HttpResponse.json(serverSession)
@@ -786,7 +792,7 @@ describe('IntakeWizard session re-read', { timeout: 15_000 }, () => {
     const continueButton = await screen.findByRole('button', { name: 'Continue' });
 
     // The bill has been read: the server now holds a draft debt the context never saw.
-    serverSession = { ...sessionAtStep5, debts: [debtFromUploadedBill] };
+    serverSession = { ...sessionAtStep6, debts: [debtFromUploadedBill] };
     await userEvent.click(continueButton);
 
     await screen.findByRole('heading', { name: /amounts owed/i, level: 2 });
@@ -801,7 +807,7 @@ describe('IntakeWizard session re-read', { timeout: 15_000 }, () => {
       http.get('http://localhost:8000/api/intake/sessions/:id/', () =>
         serverBusy
           ? HttpResponse.json({ detail: 'Request was throttled.' }, { status: 429 })
-          : HttpResponse.json({ ...sessionAtStep1, current_step: 3 })
+          : HttpResponse.json({ ...sessionAtStep1, current_step: 4 })
       ),
       http.post('http://localhost:8000/api/intake/sessions/', () => {
         sessionsCreated += 1;
@@ -811,7 +817,7 @@ describe('IntakeWizard session re-read', { timeout: 15_000 }, () => {
         );
       }),
       http.patch('http://localhost:8000/api/intake/sessions/:id/', () =>
-        HttpResponse.json({ ...sessionAtStep1, current_step: 3 })
+        HttpResponse.json({ ...sessionAtStep1, current_step: 4 })
       )
     );
 
@@ -885,7 +891,7 @@ describe('IntakeWizard session re-read', { timeout: 15_000 }, () => {
   // The dashboard links a refusal to the step that fixes it (step 3a2 spec §4.5)
   it('opens at the step a link names, without moving the filer’s saved place', async () => {
     // The intake is complete, so it would open at Review
-    const stepUpdates = savedAs({ ...sessionAtStep8, status: 'completed' });
+    const stepUpdates = savedAs({ ...sessionAtStep9, status: 'completed' });
 
     renderWizard('/intake?step=expense_info');
 
@@ -908,7 +914,7 @@ describe('IntakeWizard session re-read', { timeout: 15_000 }, () => {
   // already loaded when a link opens the wizard, so an update_step sent through the context, as
   // Continue sends it, would reach the server
   it('opens the step a dashboard link names, the session already loaded, without moving the filer’s saved place', async () => {
-    const stepUpdates = savedAs({ ...sessionAtStep8, status: 'completed' });
+    const stepUpdates = savedAs({ ...sessionAtStep9, status: 'completed' });
     localStorage.setItem('current_session_id', '1');
     render(
       <MemoryRouter initialEntries={['/forms']}>
@@ -931,7 +937,7 @@ describe('IntakeWizard session re-read', { timeout: 15_000 }, () => {
 
   // A refresh then opens the saved step, and Back leaves the wizard rather than reopening the link
   it('drops the step from the address once it has opened it, without a new history entry', async () => {
-    const stepUpdates = savedAs({ ...sessionAtStep8, status: 'completed' });
+    const stepUpdates = savedAs({ ...sessionAtStep9, status: 'completed' });
     localStorage.setItem('current_session_id', '1');
     render(
       <MemoryRouter initialEntries={['/forms', '/intake?step=expense_info']} initialIndex={1}>
@@ -962,11 +968,11 @@ describe('IntakeWizard session re-read', { timeout: 15_000 }, () => {
       http.get('http://localhost:8000/api/intake/sessions/:id/', () =>
         serverBusy
           ? HttpResponse.json({ detail: 'Request was throttled.' }, { status: 429 })
-          : HttpResponse.json({ ...sessionAtStep8, status: 'completed' })
+          : HttpResponse.json({ ...sessionAtStep9, status: 'completed' })
       ),
       http.post('http://localhost:8000/api/intake/sessions/:id/update_step/', () => {
         stepUpdates.count += 1;
-        return HttpResponse.json({ session: sessionAtStep8, message: 'Step updated.' });
+        return HttpResponse.json({ session: sessionAtStep9, message: 'Step updated.' });
       })
     );
     localStorage.setItem('current_session_id', '1');
@@ -996,7 +1002,7 @@ describe('IntakeWizard session re-read', { timeout: 15_000 }, () => {
 
   it('opens at the saved step when a link names no step of the wizard', async () => {
     // Saved mid-wizard, so neither the first step nor the last stands in for it
-    const stepUpdates = savedAs({ ...sessionAtStep1, current_step: 5 });
+    const stepUpdates = savedAs({ ...sessionAtStep1, current_step: 6 });
 
     renderWizard('/intake?step=sofa');
 
@@ -1012,9 +1018,9 @@ describe('IntakeWizard session re-read', { timeout: 15_000 }, () => {
 // ===========================================================================
 
 /** A returning filer on Amounts Owed. DRF sends decimal amounts as strings. */
-const sessionAtStep5WithDebts = {
+const sessionAtStep6WithDebts = {
   ...sessionAtStep1,
-  current_step: 5,
+  current_step: 6,
   debts: [
     {
       id: 7,
@@ -1048,9 +1054,9 @@ const sessionAtStep5WithDebts = {
 };
 
 /** A returning filer on Assets. The API never sends an asset's account number. */
-const sessionAtStep4WithAssets = {
+const sessionAtStep5WithAssets = {
   ...sessionAtStep1,
-  current_step: 4,
+  current_step: 5,
   assets: [
     {
       id: 3,
@@ -1073,14 +1079,14 @@ describe('IntakeWizard amounts a returning filer already entered', { timeout: 15
     patchBodies = [];
     server.use(
       http.get('http://localhost:8000/api/intake/sessions/:id/', () =>
-        HttpResponse.json(sessionAtStep5WithDebts)
+        HttpResponse.json(sessionAtStep6WithDebts)
       ),
       // Continue saves the step, even when the filer changed nothing. A saved list comes back
       // in the order sent, each row with its id (DIG-273).
       http.patch('http://localhost:8000/api/intake/sessions/:id/', async ({ request }) => {
         const body = (await request.json()) as Record<string, unknown>;
         patchBodies.push(body);
-        return HttpResponse.json({ ...sessionAtStep5WithDebts, ...body });
+        return HttpResponse.json({ ...sessionAtStep6WithDebts, ...body });
       }),
       http.get('http://localhost:8000/api/intake/sessions/:id/contracts/', () =>
         HttpResponse.json([])
@@ -1118,7 +1124,7 @@ describe('IntakeWizard amounts a returning filer already entered', { timeout: 15
   it('saves each asset back under its own id, with its amounts as numbers', async () => {
     server.use(
       http.get('http://localhost:8000/api/intake/sessions/:id/', () =>
-        HttpResponse.json(sessionAtStep4WithAssets)
+        HttpResponse.json(sessionAtStep5WithAssets)
       )
     );
     renderWizard();
@@ -1263,7 +1269,7 @@ async function waitSeconds(seconds: number) {
 describe.each([
   {
     list: 'debts',
-    step: 5,
+    step: 6,
     title: /amounts owed/i,
     nameKey: 'creditor_name',
     amountKey: 'amount_owed',
@@ -1293,7 +1299,7 @@ describe.each([
   },
   {
     list: 'assets',
-    step: 4,
+    step: 5,
     title: /assets/i,
     nameKey: 'description',
     amountKey: 'current_value',
@@ -1530,7 +1536,7 @@ describe('IntakeWizard a new debt after Complete', { timeout: 30_000 }, () => {
   // new debt has its id, stepping back over Amounts Owed must not save it again.
   it('keeps a completed intake completed when the filer steps back to the debt they added', async () => {
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
-    const saves = serveSessionSaves({ ...sessionAtStep1, current_step: 5 });
+    const saves = serveSessionSaves({ ...sessionAtStep1, current_step: 6 });
     server.use(
       http.post(
         'http://localhost:8000/api/intake/sessions/:id/update_step/',
@@ -1657,7 +1663,7 @@ describe('IntakeWizard income save', { timeout: 15_000 }, () => {
     await screen.findByRole('heading', { name: /income/i, level: 2 });
     expect(screen.getByLabelText(/monthly wages/i)).toHaveValue(3100.5);
     await userEvent.click(screen.getByRole('button', { name: /continue/i }));
-    await screen.findByRole('heading', { name: /expenses/i, level: 2 });
+    await screen.findByRole('heading', { name: /take-home pay/i, level: 2 });
 
     expect(patchBodies.length).toBeGreaterThan(0);
     for (const body of patchBodies) {
@@ -1678,7 +1684,7 @@ describe('IntakeWizard income save', { timeout: 15_000 }, () => {
     await screen.findByRole('heading', { name: /income/i, level: 2 });
     await userEvent.clear(screen.getByLabelText(/social security/i));
     await userEvent.click(screen.getByRole('button', { name: /continue/i }));
-    await screen.findByRole('heading', { name: /expenses/i, level: 2 });
+    await screen.findByRole('heading', { name: /take-home pay/i, level: 2 });
 
     expect(patchBodies.at(-1)).toEqual({
       income_info: {
@@ -1959,7 +1965,7 @@ describe('IntakeWizard household and spouse', { timeout: 30_000 }, () => {
     const saves = serveSessionSaves({
       ...priyaAtIncome,
       status: 'completed',
-      current_step: 3,
+      current_step: 4,
       expense_info: completedSession.expense_info,
     });
     const { container } = renderWizard();
@@ -1967,6 +1973,9 @@ describe('IntakeWizard household and spouse', { timeout: 30_000 }, () => {
 
     vi.useFakeTimers();
     try {
+      fireEvent.click(screen.getByRole('button', { name: 'Go Back' }));
+      await waitSeconds(3);
+      expect(container.querySelector('.step-title')).toHaveTextContent('Take-home pay');
       fireEvent.click(screen.getByRole('button', { name: 'Go Back' }));
       await waitSeconds(3);
     } finally {
@@ -2191,7 +2200,7 @@ describe('IntakeWizard expense hydration', { timeout: 15_000 }, () => {
   it("adds up a returning filer's saved expenses, which the API sends as decimal strings", async () => {
     const savedSession = {
       ...sessionAtStep1,
-      current_step: 3,
+      current_step: 4,
       expense_info: {
         data_source: 'manual',
         rent_or_mortgage: '1100.00',
@@ -2392,7 +2401,7 @@ describe('IntakeWizard cleared expense', { timeout: 15_000 }, () => {
   it('saves a cleared expense box as $0, so the old amount does not stay on the server', async () => {
     const savedSession = {
       ...sessionAtStep1,
-      current_step: 3,
+      current_step: 4,
       expense_info: {
         data_source: 'manual',
         rent_or_mortgage: '1100.00',
@@ -2424,7 +2433,7 @@ describe('IntakeWizard cleared expense', { timeout: 15_000 }, () => {
       }),
       http.post('http://localhost:8000/api/intake/sessions/:id/update_step/', () =>
         HttpResponse.json({
-          session: { ...savedSession, current_step: 4 },
+          session: { ...savedSession, current_step: 5 },
           message: 'Step updated.',
         })
       ),
@@ -2560,8 +2569,8 @@ describe('IntakeWizard contracts and codebtors', { timeout: 15_000 }, () => {
   });
 
   it.each([
-    [6, 'Contracts & Leases'],
-    [7, 'Codebtors'],
+    [7, 'Contracts & Leases'],
+    [8, 'Codebtors'],
   ])('lets a filer who resumes at step %i (%s) continue', async (step, title) => {
     serveFiler(step);
     renderWizard();
@@ -2572,7 +2581,7 @@ describe('IntakeWizard contracts and codebtors', { timeout: 15_000 }, () => {
   });
 
   it('saves the whole contracts list on Continue, and sends the saved ids on the next save instead of adding rows again', async () => {
-    serveFiler(6, [storedLease, storedGym]);
+    serveFiler(7, [storedLease, storedGym]);
     renderWizard();
     await expectStep('Contracts & Leases');
 
@@ -2606,7 +2615,7 @@ describe('IntakeWizard contracts and codebtors', { timeout: 15_000 }, () => {
   // A second press while the first save is on its way would save the list twice, and Schedule G
   // would print each contract twice
   it('saves the contracts list once when the filer double-clicks Continue', async () => {
-    serveFiler(6, [storedLease]);
+    serveFiler(7, [storedLease]);
     renderWizard();
     await expectStep('Contracts & Leases');
     const continueButton = screen.getByRole('button', { name: /continue/i });
@@ -2617,14 +2626,14 @@ describe('IntakeWizard contracts and codebtors', { timeout: 15_000 }, () => {
     await expectStep('Codebtors');
 
     expect(contractSaves).toEqual([[storedLease]]);
-    expect(stepUpdates).toEqual([7]);
+    expect(stepUpdates).toEqual([8]);
   });
 
   // An empty list means the filer has none: a removed last row must not stay stored and
   // print on Schedule G or H
   it.each([
-    [6, 'Contracts & Leases', 'Codebtors', [storedLease], [], () => contractSaves],
-    [7, 'Codebtors', 'Review & Results', [], [storedCodebtor], () => codebtorSaves],
+    [7, 'Contracts & Leases', 'Codebtors', [storedLease], [], () => contractSaves],
+    [8, 'Codebtors', 'Review & Results', [], [storedCodebtor], () => codebtorSaves],
   ])(
     'saves an empty list when the filer removes the last row on step %i (%s)',
     async (step, title, nextTitle, contracts, codebtors, saves) => {
@@ -2641,8 +2650,8 @@ describe('IntakeWizard contracts and codebtors', { timeout: 15_000 }, () => {
   );
 
   it.each([
-    [6, 'Contracts & Leases', 'contracts', [storedLease], [], 'counterparty_name'],
-    [7, 'Codebtors', 'codebtors', [], [storedCodebtor], 'name'],
+    [7, 'Contracts & Leases', 'contracts', [storedLease], [], 'counterparty_name'],
+    [8, 'Codebtors', 'codebtors', [], [storedCodebtor], 'name'],
   ])(
     'keeps the filer on step %i (%s) and says so when the list cannot be saved',
     async (step, title, list, contracts, codebtors, field) => {
@@ -2666,7 +2675,7 @@ describe('IntakeWizard contracts and codebtors', { timeout: 15_000 }, () => {
   );
 
   it("asks for the other party's name before a contract the filer started can be saved", async () => {
-    serveFiler(6);
+    serveFiler(7);
     renderWizard();
     await expectStep('Contracts & Leases');
 
@@ -2681,7 +2690,7 @@ describe('IntakeWizard contracts and codebtors', { timeout: 15_000 }, () => {
   });
 
   it("asks for the person's name before a codebtor the filer started can be saved", async () => {
-    serveFiler(7);
+    serveFiler(8);
     renderWizard();
     await expectStep('Codebtors');
 
@@ -2697,7 +2706,7 @@ describe('IntakeWizard contracts and codebtors', { timeout: 15_000 }, () => {
   });
 
   it('saves the codebtors list on Continue and lists both lists on Review', async () => {
-    serveFiler(7, [storedLease], [storedCodebtor]);
+    serveFiler(8, [storedLease], [storedCodebtor]);
     renderWizard();
     await expectStep('Codebtors');
 
@@ -2729,7 +2738,7 @@ describe('IntakeWizard contracts and codebtors', { timeout: 15_000 }, () => {
   });
 
   it('shows the saved contracts and codebtors on Review to a filer who resumes there', async () => {
-    serveFiler(8, [storedLease], [storedCodebtor]);
+    serveFiler(9, [storedLease], [storedCodebtor]);
     renderWizard();
     await expectStep('Review & Results');
 
@@ -2738,7 +2747,7 @@ describe('IntakeWizard contracts and codebtors', { timeout: 15_000 }, () => {
   });
 
   it('shows no step when the saved contracts cannot be read, so Continue never saves an empty list over them', async () => {
-    serveFiler(6, [storedLease]);
+    serveFiler(7, [storedLease]);
     server.use(
       http.get('http://localhost:8000/api/intake/sessions/:id/contracts/', () =>
         HttpResponse.json({ detail: 'Request was throttled.' }, { status: 429 })
@@ -2754,7 +2763,7 @@ describe('IntakeWizard contracts and codebtors', { timeout: 15_000 }, () => {
   });
 
   it('shows no step when the saved codebtors cannot be read, so Continue never saves an empty list over them', async () => {
-    serveFiler(7, [], [storedCodebtor]);
+    serveFiler(8, [], [storedCodebtor]);
     server.use(
       http.get('http://localhost:8000/api/intake/sessions/:id/codebtors/', () =>
         HttpResponse.json({ detail: 'Request was throttled.' }, { status: 429 })
@@ -2775,7 +2784,7 @@ describe('IntakeWizard Review household', { timeout: 15_000 }, () => {
     server.use(
       http.get('http://localhost:8000/api/intake/sessions/:id/', () =>
         HttpResponse.json({
-          ...sessionAtStep8,
+          ...sessionAtStep9,
           household: { county: 'Kane', members: [], family_size: 2, fee_waiver_household_size: 3 },
         })
       )
@@ -2972,7 +2981,7 @@ describe('IntakeWizard business and rental list', { timeout: 30_000 }, () => {
     const saves = serveSessionSaves({
       ...onIncome,
       status: 'completed',
-      current_step: 3,
+      current_step: 4,
       expense_info: completedSession.expense_info,
       income_info: {
         ...TEN_ZERO,
@@ -2997,6 +3006,9 @@ describe('IntakeWizard business and rental list', { timeout: 30_000 }, () => {
 
     vi.useFakeTimers();
     try {
+      fireEvent.click(screen.getByRole('button', { name: 'Go Back' }));
+      await waitSeconds(3);
+      expect(container.querySelector('.step-title')).toHaveTextContent('Take-home pay');
       fireEvent.click(screen.getByRole('button', { name: 'Go Back' }));
       await waitSeconds(3);
     } finally {
@@ -3122,7 +3134,7 @@ describe('IntakeWizard now different and assistance', { timeout: 30_000 }, () =>
     const loaded = {
       ...priyaAtIncome,
       status: 'completed',
-      current_step: 3,
+      current_step: 4,
       expense_info: completedSession.expense_info,
       income_info: {
         ...priyaAtIncome.income_info,
@@ -3156,6 +3168,9 @@ describe('IntakeWizard now different and assistance', { timeout: 30_000 }, () =>
     try {
       fireEvent.click(screen.getByRole('button', { name: 'Go Back' }));
       await waitSeconds(3);
+      expect(container.querySelector('.step-title')).toHaveTextContent('Take-home pay');
+      fireEvent.click(screen.getByRole('button', { name: 'Go Back' }));
+      await waitSeconds(3);
     } finally {
       vi.useRealTimers();
     }
@@ -3164,5 +3179,190 @@ describe('IntakeWizard now different and assistance', { timeout: 30_000 }, () =>
     expect(field('current_monthly_gross_wages')).toHaveValue(11000);
     expect(field('noncash_assistance_value')).toHaveValue(350);
     expect(saves.bodies).toEqual([]);
+  });
+});
+
+// ===========================================================================
+// The Take-home pay step, step 3 (3e2 spec §7.2, §7.4)
+// ===========================================================================
+
+describe('IntakeWizard take-home pay', { timeout: 30_000 }, () => {
+  const openTakeHomePay = () => screen.findByRole('heading', { name: /take-home pay/i, level: 2 });
+  const NULL_DEDUCTIONS = Object.fromEntries(DEDUCTION_FIELDS.map((name) => [name, null]));
+  let stepUpdates: number[];
+
+  beforeEach(() => {
+    stepUpdates = [];
+    server.use(
+      http.post(
+        'http://localhost:8000/api/intake/sessions/:id/update_step/',
+        async ({ request }) => {
+          const { current_step } = (await request.json()) as { current_step: number };
+          stepUpdates.push(current_step);
+          return HttpResponse.json({
+            session: { ...onIncome, current_step },
+            message: 'Step updated.',
+          });
+        }
+      ),
+      http.post(
+        'http://localhost:8000/api/audit/logs/',
+        () => new HttpResponse(null, { status: 201 })
+      )
+    );
+  });
+
+  const filerOnIncome = {
+    ...onIncome,
+    income_info: { ...TEN_ZERO, marital_status: 'not_married' },
+    household: { county: 'Cook', members: [] },
+  };
+
+  it('Continue on Income opens Take-home pay, and Continue there sends 4', async () => {
+    serveSessionSaves(filerOnIncome);
+    const { container } = renderWizard();
+    await screen.findByRole('heading', { name: /income/i, level: 2 });
+
+    await userEvent.click(screen.getByRole('button', { name: /continue/i }));
+    await openTakeHomePay();
+    expect(container.querySelector('.step-title')).toHaveTextContent('Take-home pay');
+    expect(stepUpdates).toEqual([3]);
+
+    await userEvent.click(screen.getByRole('button', { name: /continue/i }));
+    await screen.findByRole('heading', { name: /expenses/i, level: 2 });
+    expect(stepUpdates).toEqual([3, 4]);
+  });
+
+  it('the step 3 body carries only the deductions, a blank one as null', async () => {
+    const saves = serveSessionSaves({
+      ...filerOnIncome,
+      current_step: 3,
+      income_info: { ...TEN_ZERO, monthly_gross_wages: '3000.00', marital_status: 'not_married' },
+    });
+    renderWizard();
+    await openTakeHomePay();
+
+    vi.useFakeTimers();
+    try {
+      fireEvent.change(field('payroll_tax'), { target: { value: '400' } });
+      await waitSeconds(3);
+    } finally {
+      vi.useRealTimers();
+    }
+
+    expect(saves.bodies.at(-1)).toEqual({
+      income_info: { ...NULL_DEDUCTIONS, payroll_tax: 400, payroll_other_specify: '' },
+    });
+  });
+
+  it('showing Take-home pay again sends nothing', async () => {
+    const saves = serveSessionSaves({
+      ...filerOnIncome,
+      status: 'completed',
+      current_step: 4,
+      expense_info: completedSession.expense_info,
+      income_info: { ...TEN_ZERO, marital_status: 'not_married', payroll_tax: '400.00' },
+    });
+    const { container } = renderWizard();
+    await screen.findByRole('heading', { name: /expenses/i, level: 2 });
+
+    vi.useFakeTimers();
+    try {
+      fireEvent.click(screen.getByRole('button', { name: 'Go Back' }));
+      await waitSeconds(3);
+    } finally {
+      vi.useRealTimers();
+    }
+
+    expect(container.querySelector('.step-title')).toHaveTextContent('Take-home pay');
+    expect(saves.bodies).toEqual([]);
+    expect(saves.stored().status).toBe('completed');
+  });
+
+  it('line 4 follows the figures Schedule I uses, averages while unanswered', async () => {
+    serveSessionSaves({
+      ...filerOnIncome,
+      current_step: 3,
+      income_info: {
+        ...TEN_ZERO,
+        monthly_gross_wages: '3000.00',
+        marital_status: 'not_married',
+        income_now_different: null,
+      },
+    });
+    renderWizard();
+    await openTakeHomePay();
+    const line4 = () =>
+      screen.getByText('4. Calculate gross income', { selector: 'dt' }).nextElementSibling;
+    expect(line4()).toHaveTextContent('$3,000.00');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Go Back' }));
+    await screen.findByRole('heading', { name: /income/i, level: 2 });
+    pick('income_now_different', 'yes');
+    fireEvent.change(field('current_monthly_gross_wages'), { target: { value: '2500' } });
+    await userEvent.click(screen.getByRole('button', { name: /continue/i }));
+    await openTakeHomePay();
+
+    expect(line4()).toHaveTextContent('$2,500.00');
+  });
+
+  it("the Income step's save never carries a deduction", async () => {
+    const saves = serveSessionSaves(filerOnIncome);
+    renderWizard();
+    await screen.findByRole('heading', { name: /income/i, level: 2 });
+
+    vi.useFakeTimers();
+    try {
+      fireEvent.change(field('monthly_gross_wages'), { target: { value: '3000' } });
+      await waitSeconds(3);
+    } finally {
+      vi.useRealTimers();
+    }
+
+    const sent = (saves.bodies.at(-1) as { income_info: Record<string, unknown> }).income_info;
+    expect(sent.monthly_gross_wages).toBe(3000);
+    for (const name of [...DEDUCTION_FIELDS, 'payroll_other_specify']) {
+      expect(sent).not.toHaveProperty(name);
+    }
+  });
+
+  it("the spouse's deductions join the step 3 body only for a spouse at home", async () => {
+    const saves = serveSessionSaves({ ...priyaAtIncome, current_step: 3 });
+    const { unmount } = renderWizard();
+    await openTakeHomePay();
+
+    vi.useFakeTimers();
+    try {
+      fireEvent.change(field('spouse_payroll_tax'), { target: { value: '250' } });
+      await waitSeconds(3);
+    } finally {
+      vi.useRealTimers();
+    }
+
+    expect((saves.bodies.at(-1) as Record<string, unknown>).spouse_income).toEqual({
+      ...NULL_DEDUCTIONS,
+      payroll_tax: 250,
+      payroll_other_specify: '',
+    });
+    unmount();
+
+    const apart = serveSessionSaves({
+      ...priyaAtIncome,
+      current_step: 3,
+      income_info: { ...priyaAtIncome.income_info, marital_status: 'married_separately' },
+    });
+    renderWizard();
+    await openTakeHomePay();
+
+    vi.useFakeTimers();
+    try {
+      fireEvent.change(field('payroll_tax'), { target: { value: '400' } });
+      await waitSeconds(3);
+    } finally {
+      vi.useRealTimers();
+    }
+
+    expect(apart.bodies.at(-1)).not.toHaveProperty('spouse_income');
+    expect(apart.bodies.at(-1)).toHaveProperty('income_info');
   });
 });

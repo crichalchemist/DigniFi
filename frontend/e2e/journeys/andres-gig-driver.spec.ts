@@ -41,29 +41,33 @@ test.describe('Andrés Kettleby — Gig Driver', () => {
     await wizard.fillIncomeInfo(ANDRES.income);
     await wizard.nextStep();
 
-    // Step 3: Expenses
+    // Step 3: Take-home pay
+    await wizard.fillTakeHomePay(ANDRES.deductions, ANDRES.spouse_deductions);
+    await wizard.nextStep();
+
+    // Step 4: Expenses
     await wizard.fillExpenses(ANDRES.expenses);
     await wizard.nextStep();
 
-    // Step 4: Assets (his half of the Honda Fit, household goods, two accounts)
+    // Step 5: Assets (his half of the Honda Fit, household goods, two accounts)
     for (const asset of ANDRES.assets) {
       await wizard.addAsset(asset);
     }
     await wizard.nextStep();
 
-    // Step 5: Debts (the co-signed Honda Fit loan and nine unsecured debts)
+    // Step 6: Debts (the co-signed Honda Fit loan and nine unsecured debts)
     for (const debt of ANDRES.debts) {
       await wizard.addDebt(debt);
     }
     await wizard.nextStep();
 
-    // Step 6: Contracts & Leases (left empty)
+    // Step 7: Contracts & Leases (left empty)
     await wizard.nextStep();
 
-    // Step 7: Codebtors (left empty)
+    // Step 8: Codebtors (left empty)
     await wizard.nextStep();
 
-    // Step 8: Review & Complete
+    // Step 9: Review & Complete
     await wizard.fillReview();
     await wizard.completeIntake();
 

@@ -8,7 +8,7 @@
  * cut leaves at their end. Each constant names its cut. Nothing marks a cut on screen (rulings
  * P2).
  */
-import type { EntryKind, MaritalStatus } from '../types/api';
+import type { DeductionField, EntryKind, MaritalStatus } from '../types/api';
 
 // No cut: the question as printed
 export const LINE_1_QUESTION = 'What is your marital and filing status? Check one only.';
@@ -62,3 +62,24 @@ export const OPERATING_EXPENSES_LABEL = 'Ordinary and necessary operating expens
 // Schedule I line 8f, whole but for its last word, "Specify:" (form_b106i.pdf 8f)
 export const ASSISTANCE_QUESTION =
   'Other government assistance that you regularly receive. Include cash assistance and the value (if known) of any non-cash assistance that you receive, such as food stamps (benefits under the Supplemental Nutrition Assistance Program) or housing subsidies.';
+
+// Schedule I lines 5a-5h (form_b106i.pdf)
+export const DEDUCTION_WORDS: Record<DeductionField, string> = {
+  payroll_tax: '5a. Tax, Medicare, and Social Security deductions',
+  payroll_mandatory_retirement: '5b. Mandatory contributions for retirement plans',
+  payroll_voluntary_retirement: '5c. Voluntary contributions for retirement plans',
+  payroll_retirement_loan: '5d. Required repayments of retirement fund loans',
+  payroll_insurance: '5e. Insurance',
+  payroll_support: '5f. Domestic support obligations',
+  payroll_union_dues: '5g. Union dues',
+  payroll_other: '5h. Other deductions. Specify:',
+};
+
+// Schedule I line 4 (form_b106i.pdf), cut of ". Add line 2 + line 3."
+export const SCHEDULE_I_LINE_4 = '4. Calculate gross income';
+
+// Schedule I line 6 (form_b106i.pdf), cut of ". Add lines 5a + … + 5h."
+export const SCHEDULE_I_LINE_6 = '6. Add the payroll deductions';
+
+// Schedule I line 7 (form_b106i.pdf), cut of ". Subtract line 6 from line 4."
+export const SCHEDULE_I_LINE_7 = '7. Calculate total monthly take-home pay';
