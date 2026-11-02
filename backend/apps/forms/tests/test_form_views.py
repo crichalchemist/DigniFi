@@ -30,7 +30,7 @@ from rest_framework import status
 from rest_framework.test import APIClient
 
 from apps.districts.models import District, MedianIncome
-from apps.eligibility.cmi import HOUSEHOLD_UNANSWERED
+from apps.eligibility.cmi import HOUSEHOLD_UNANSWERED, NOW_DIFFERENT_UNANSWERED
 from apps.eligibility.models import MeansTest
 from apps.forms.models import GeneratedForm
 from apps.forms.registry import build_parts, packet
@@ -793,6 +793,10 @@ def test_generated_form_template_version_round_trip(db, template_version_form):
 # ── Packet ────────────────────────────────────────────────────────────
 
 
+# The root conftest pins today to 2026-10-16, so the six months in force are April to September
+INCOME_NOW = {"start": "2026-04-01", "end": "2026-09-30"}
+
+
 @pytest.mark.django_db
 class TestPacketEndpoint:
     """GET /api/forms/packet/?session=<id>"""
@@ -802,6 +806,7 @@ class TestPacketEndpoint:
     def test_lists_the_filers_forms_in_filing_order(self, api_client, session_with_debtor):
         resp = api_client.get(self.URL, {"session": session_with_debtor.id})
         assert resp.status_code == status.HTTP_200_OK
+        assert set(resp.data) == {"session", "form_types", "tables", "income_period"}
         assert resp.data["form_types"][:3] == ["form_101", "form_106dec", "form_106sum"]
         assert "form_103b" not in resp.data["form_types"]
         assert len(resp.data["form_types"]) == 14
@@ -842,6 +847,50 @@ class TestPacketEndpoint:
         resp = api_client.get(self.URL, {"session": session.id})
         assert resp.status_code == status.HTTP_200_OK
         assert resp.data["tables"] == []
+
+    def test_the_packet_says_which_six_months_the_income_was_answered_for(
+        self, api_client, session_with_debtor
+    ):
+        IncomeInfo.objects.filter(session=session_with_debtor).update(
+            income_period_end=date(2026, 8, 31)
+        )
+        resp = api_client.get(self.URL, {"session": session_with_debtor.id})
+        assert resp.data["income_period"] == {
+            "answered_for": {"start": "2026-03-01", "end": "2026-08-31"},
+            "now": INCOME_NOW,
+        }
+
+    def test_a_window_never_confirmed_is_answered_for_nothing(
+        self, api_client, session_with_debtor
+    ):
+        resp = api_client.get(self.URL, {"session": session_with_debtor.id})
+        assert resp.data["income_period"] == {"answered_for": None, "now": INCOME_NOW}
+
+    def test_continue_on_the_income_step_brings_the_answer_up_to_date(
+        self, api_client, session_with_debtor
+    ):
+        IncomeInfo.objects.filter(session=session_with_debtor).update(
+            income_period_end=date(2026, 8, 31)
+        )
+        # Continue on the Income step (step 2) sends update_step for the next step, 3
+        stepped = api_client.post(
+            f"/api/intake/sessions/{session_with_debtor.id}/update_step/",
+            {"current_step": 3},
+            format="json",
+        )
+        assert stepped.status_code == status.HTTP_200_OK
+        # update_step reopens the intake; an unfinished intake's packet list reads stored data
+        resp = api_client.get(self.URL, {"session": session_with_debtor.id})
+        assert resp.data["income_period"]["answered_for"] == INCOME_NOW
+
+    def test_a_completed_intake_with_an_open_gap_gets_the_refusal_not_the_notice(
+        self, api_client, session_with_debtor
+    ):
+        IncomeInfo.objects.filter(session=session_with_debtor).update(income_now_different=None)
+        resp = api_client.get(self.URL, {"session": session_with_debtor.id})
+        assert resp.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert resp.data == {"error": NOW_DIFFERENT_UNANSWERED, "step": "income_info"}
+        assert "income_period" not in resp.data
 
     def test_missing_session(self, api_client):
         resp = api_client.get(self.URL)

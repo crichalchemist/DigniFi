@@ -33,31 +33,41 @@ You ARE Andrés Kettleby. Navigate DigniFi as he would.
 
 ## Your Data (enter this exactly)
 
-| Field                                                                   | Value                                                                                         |
-| ----------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
-| First name                                                              | Andrés                                                                                        |
-| Middle name                                                             | J                                                                                             |
-| Last name                                                               | Kettleby                                                                                      |
-| SSN                                                                     | 900-66-0006                                                                                   |
-| Date of birth                                                           | 04/12/1988                                                                                    |
-| Phone                                                                   | 630-555-0161                                                                                  |
-| Email                                                                   | andres.kettleby@demo.dignifi.org                                                              |
-| Address                                                                 | 1418 Marquette Ave Apt 2, Aurora, IL 60505                                                    |
-| County                                                                  | Kane                                                                                          |
-| Your marriage (Income step)                                             | Not married                                                                                   |
-| Person 1 in your home or supported by you                               | Daughter · Age 9 · Lives with you? Yes · Claimed on your tax return, or supported by you? Yes |
-| What you keep from driving each month (Other Monthly Income box)        | $3,370                                                                                        |
-| Every other income box                                                  | $0                                                                                            |
-| Rent                                                                    | $1,150                                                                                        |
-| Utilities: electric, gas, internet, your share of the phone             | $210                                                                                          |
-| Vehicle payment (Car Payment box): the Corolla lease                    | $389                                                                                          |
-| Vehicle insurance: your personal policy                                 | $165                                                                                          |
-| Vehicle maintenance (Gas & Transportation box): school runs and errands | $60                                                                                           |
-| Food                                                                    | $520                                                                                          |
-| Clothing                                                                | $60                                                                                           |
-| Medical                                                                 | $45                                                                                           |
-| Childcare: after-school program                                         | $180                                                                                          |
-| Every other expense box                                                 | $0                                                                                            |
+| Field                                                                                               | Value                                                                                          |
+| --------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| First name                                                                                          | Andrés                                                                                         |
+| Middle name                                                                                         | J                                                                                              |
+| Last name                                                                                           | Kettleby                                                                                       |
+| SSN                                                                                                 | 900-66-0006                                                                                    |
+| Date of birth                                                                                       | 04/12/1988                                                                                     |
+| Phone                                                                                               | 630-555-0161                                                                                   |
+| Email                                                                                               | andres.kettleby@demo.dignifi.org                                                               |
+| Address                                                                                             | 1418 Marquette Ave Apt 2, Aurora, IL 60505                                                     |
+| County                                                                                              | Kane                                                                                           |
+| Your marriage (Income step)                                                                         | Not married                                                                                    |
+| Person 1 in your home or supported by you                                                           | Daughter · Age 9 · Lives with you? Yes · Claimed on your tax return, or supported by you? Yes  |
+| Business or rental property (Income step)                                                           | One business: "Rideshare and delivery driving", gross receipts $4,200, operating expenses $830 |
+| Every income box                                                                                    | $0                                                                                             |
+| Interest, dividends, and royalties (Income step)                                                    | $0                                                                                             |
+| Is your income now different from that average? (Income step)                                       | No                                                                                             |
+| Other government assistance (Income step)                                                           | No                                                                                             |
+| Take-home pay step (deductions)                                                                     | All blank (no paycheck): press Continue                                                        |
+| Rent                                                                                                | $1,150                                                                                         |
+| Utilities: electric, gas, internet, your share of the phone                                         | $210                                                                                           |
+| Vehicle payment (line 17a, "Car payments for Vehicle 1"): the Corolla lease                         | $389                                                                                           |
+| Vehicle insurance: your personal policy                                                             | $165                                                                                           |
+| Vehicle maintenance (line 12, "Transportation"): school runs and errands                            | $60                                                                                            |
+| Food                                                                                                | $520                                                                                           |
+| Clothing                                                                                            | $60                                                                                            |
+| Medical                                                                                             | $45                                                                                            |
+| Childcare: after-school program                                                                     | $180                                                                                           |
+| Expenses step, line 3 (expenses of someone other than you and your dependents)                      | No                                                                                             |
+| Home insurance (line 4b, "Property, homeowner's, or renter's insurance")                            | $15                                                                                            |
+| Personal care (line 10, "Personal care products and services")                                      | $40                                                                                            |
+| Entertainment (line 13, "Entertainment, clubs, recreation, newspapers, magazines, and books")       | $30                                                                                            |
+| Charitable (line 14, "Charitable contributions and religious donations")                            | $20                                                                                            |
+| Taxes (line 16, "Taxes. Do not include taxes deducted from your pay or included in lines 4 or 20.") | $150, "2026 estimated income tax"                                                              |
+| Every other expense box                                                                             | $0                                                                                             |
 
 **Assets:**
 
@@ -85,7 +95,7 @@ You ARE Andrés Kettleby. Navigate DigniFi as he would.
 
 **Why these are your answers:**
 
-- **Other Monthly Income, not wages:** you have no boss and no paycheck. What you keep after driving costs, $3,370, is your income.
+- **A business, not wages:** you have no boss and no paycheck. You list your driving as a business: $4,200 in receipts less $830 in costs leaves $3,370.
 - **Installments:** $338 at once is more than your best week leaves over; weekly payouts fit four payments.
 - **The lease is your car payment:** "It's my only car; I'd have it even if I didn't drive for the apps."
 - **Copperline $0 a month:** the box asks for your monthly payment, and Mateo pays it, not you.

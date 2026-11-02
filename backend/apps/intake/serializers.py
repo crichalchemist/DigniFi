@@ -14,7 +14,7 @@ from rest_framework import serializers
 
 from apps.districts.counties import ILND_COUNTIES
 from apps.districts.dated_tables import fill_date
-from apps.eligibility.cmi import income_step_gaps, income_window
+from apps.eligibility.cmi import answered_window, income_step_gaps, income_window
 
 from .household import (
     MAX_AGE,
@@ -188,6 +188,7 @@ class IncomeInfoSerializer(IncomeDetailSerializer):
     """
 
     total_monthly_income = serializers.SerializerMethodField()
+    answered_window = serializers.SerializerMethodField()
     marital_status = serializers.ChoiceField(
         choices=IncomeInfo.MARITAL_ANSWERS, allow_null=True, required=False
     )
@@ -227,6 +228,7 @@ class IncomeInfoSerializer(IncomeDetailSerializer):
             *IncomeInfo.SOURCE_FIELDS,
             *_INCOME_DETAIL_FIELDS,
             "income_period_end",
+            "answered_window",
             "monthly_income",
             "total_monthly_income",
             "created_at",
@@ -234,6 +236,7 @@ class IncomeInfoSerializer(IncomeDetailSerializer):
         read_only_fields = [
             "created_at",
             "income_period_end",
+            "answered_window",
             "monthly_income",
             "total_monthly_income",
         ]
@@ -241,6 +244,13 @@ class IncomeInfoSerializer(IncomeDetailSerializer):
     def get_total_monthly_income(self, obj):
         """Return the ten amounts added up, or None when the filer gave none of them."""
         return obj.calculate_total_monthly_income()
+
+    def get_answered_window(self, obj):
+        """The six months the filer last confirmed on the Income step, or None before then."""
+        if obj.income_period_end is None:
+            return None
+        start, end = answered_window(obj.income_period_end)
+        return {"start": start.isoformat(), "end": end.isoformat()}
 
     def to_representation(self, instance):
         data = super().to_representation(instance)

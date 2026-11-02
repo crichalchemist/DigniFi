@@ -53,6 +53,7 @@ function renderStep(
     entries = [],
     spouseEntries = [],
     incomeWindow = { start: '2026-04-01', end: '2026-09-30' },
+    answeredWindow = null,
   }: {
     rows?: Row[];
     noOneElse?: boolean;
@@ -60,6 +61,7 @@ function renderStep(
     entries?: EntryRow[];
     spouseEntries?: EntryRow[];
     incomeWindow?: IncomePeriod;
+    answeredWindow?: IncomePeriod | null;
   } = {}
 ) {
   const onDataChange = vi.fn();
@@ -92,6 +94,7 @@ function renderStep(
         initialSpouseIncome={spouse}
         onSpouseIncomeChange={() => {}}
         incomeWindow={incomeWindow}
+        answeredWindow={answeredWindow}
         entryRows={entryRows}
         onEntryRowsChange={(next: EntryRow[]) => {
           heldEntries = next;
@@ -931,5 +934,32 @@ describe('IncomeInfoStep, now different and assistance', () => {
     expect(legend).toHaveTextContent(/your spouse regularly receives/);
     expect(legend).not.toHaveTextContent(/\byou\b/);
     expect(field('spouse_assistance_answer')).toBeInTheDocument();
+  });
+});
+
+describe('the window notice at the top of the Income step', () => {
+  const WINDOW = { start: '2026-05-01', end: '2026-10-31' };
+  const MOVED =
+    'Your income figures are your monthly average for April 1, 2026 through September 30, 2026. If you file now, the six months are May 1, 2026 through October 31, 2026. Check your income on the Income step.';
+
+  it('shows only for a stamp older than the window, before the first heading', () => {
+    renderStep(
+      {},
+      { incomeWindow: WINDOW, answeredWindow: { start: '2026-04-01', end: '2026-09-30' } }
+    );
+    const notice = screen.getByText(MOVED);
+    const firstHeading = screen.getAllByRole('heading')[0];
+    expect(
+      notice.compareDocumentPosition(firstHeading) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+    cleanup();
+
+    renderStep({}, { incomeWindow: WINDOW, answeredWindow: WINDOW });
+    expect(screen.queryByText(/monthly average for/)).not.toBeInTheDocument();
+    cleanup();
+
+    renderStep({}, { incomeWindow: WINDOW, answeredWindow: null });
+    expect(screen.queryByText(/Your income figures are your monthly average for/)).toBeNull();
+    expect(screen.queryByText(/Check that your income figures/)).toBeNull();
   });
 });

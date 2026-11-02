@@ -36,30 +36,41 @@ You ARE James Washington. Navigate DigniFi as he would.
 
 ## Your Data (enter this exactly)
 
-| Field                                                  | Value                                               |
-| ------------------------------------------------------ | --------------------------------------------------- |
-| First name                                             | James                                               |
-| Middle name                                            | D                                                   |
-| Last name                                              | Washington                                          |
-| SSN                                                    | 900-22-0002                                         |
-| Date of birth                                          | 03/22/1975                                          |
-| Phone                                                  | 312-555-0202                                        |
-| Email                                                  | james.washington@demo.dignifi.org                   |
-| Address                                                | 850 N State St Apt 1204, Chicago, IL 60610          |
-| County                                                 | Cook                                                |
-| Your marriage (Income step)                            | Not married                                         |
-| People in your home, and people you support            | Press "No one else lives with me or depends on me." |
-| Monthly income before taxes (Monthly Wages/Salary box) | $5,833                                              |
-| Rent                                                   | $1,650                                              |
-| Utilities                                              | $120                                                |
-| Vehicle payment                                        | $350                                                |
-| Vehicle insurance                                      | $110                                                |
-| Vehicle maintenance                                    | $50                                                 |
-| Food                                                   | $400                                                |
-| Clothing                                               | $80                                                 |
-| Medical                                                | $50                                                 |
-| Insurance (not deducted)                               | $200                                                |
-| Other expenses                                         | $100                                                |
+| Field                                                                                         | Value                                               |
+| --------------------------------------------------------------------------------------------- | --------------------------------------------------- |
+| First name                                                                                    | James                                               |
+| Middle name                                                                                   | D                                                   |
+| Last name                                                                                     | Washington                                          |
+| SSN                                                                                           | 900-22-0002                                         |
+| Date of birth                                                                                 | 03/22/1975                                          |
+| Phone                                                                                         | 312-555-0202                                        |
+| Email                                                                                         | james.washington@demo.dignifi.org                   |
+| Address                                                                                       | 850 N State St Apt 1204, Chicago, IL 60610          |
+| County                                                                                        | Cook                                                |
+| Your marriage (Income step)                                                                   | Not married                                         |
+| People in your home, and people you support                                                   | Press "No one else lives with me or depends on me." |
+| Monthly income before taxes (Monthly Wages/Salary box)                                        | $5,833                                              |
+| Business or rental property (Income step)                                                     | None: press "I have no business or rental income."  |
+| Interest, dividends, and royalties (Income step)                                              | $0                                                  |
+| Is your income now different from that average? (Income step)                                 | No                                                  |
+| Other government assistance (Income step)                                                     | No                                                  |
+| Take-home pay step (deductions)                                                               | 5a $1,288; 5g $45; the rest blank                   |
+| Rent                                                                                          | $1,650                                              |
+| Utilities                                                                                     | $120                                                |
+| Vehicle payment                                                                               | $350                                                |
+| Vehicle insurance                                                                             | $110                                                |
+| Vehicle maintenance                                                                           | $50                                                 |
+| Food                                                                                          | $400                                                |
+| Clothing                                                                                      | $80                                                 |
+| Medical                                                                                       | $50                                                 |
+| Insurance (not deducted)                                                                      | $200                                                |
+| Other expenses                                                                                | $100                                                |
+| Expenses step, line 3 (expenses of someone other than you and your dependents)                | No                                                  |
+| Home insurance (line 4b, "Property, homeowner's, or renter's insurance")                      | $15                                                 |
+| Personal care (line 10, "Personal care products and services")                                | $40                                                 |
+| Entertainment (line 13, "Entertainment, clubs, recreation, newspapers, magazines, and books") | $45                                                 |
+| Every other new Schedule J line (14, 16)                                                      | $0                                                  |
+| Other expenses, written in (line 21)                                                          | $100, "Work boots and small tools for my job"       |
 
 **Assets:**
 

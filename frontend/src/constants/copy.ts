@@ -189,6 +189,19 @@ export const INCOME_WINDOW_LEAD = 'Your average monthly income for';
 // DRAFT: counsel C-10
 export const SPOUSE_INCOME_WINDOW_LEAD = "Your spouse's average monthly income for";
 
+// DRAFT: counsel C-10
+export const WINDOW_NOTICE_ANSWERED_LEAD = 'Your income figures are your monthly average for';
+
+// DRAFT: counsel C-10
+export const WINDOW_NOTICE_NOW_LEAD = 'If you file now, the six months are';
+
+// DRAFT: counsel C-10
+export const WINDOW_NOTICE_CHECK = 'Check your income on the Income step.';
+
+// DRAFT: counsel C-10
+export const WINDOW_NOTICE_UNANSWERED_LEAD =
+  'Check that your income figures are your monthly average for';
+
 export const INCOME_AVERAGE_HEADING = 'Your income: the six-month average';
 
 export const ENTRIES_HEADING = 'Businesses and rental property';

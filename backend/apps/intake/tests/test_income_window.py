@@ -96,3 +96,27 @@ def test_the_session_read_names_the_window(filer, monkeypatch):
     monkeypatch.setattr("apps.districts.dated_tables._today", lambda: date(2027, 3, 5))
     window = client.get(f"/api/intake/sessions/{session.pk}/").json()["income_window"]
     assert window == {"start": "2026-09-01", "end": "2027-02-28"}
+
+
+def test_the_session_read_says_which_window_the_income_was_answered_for(filer):
+    client, session = filer
+    IncomeInfo.objects.create(session=session, income_period_end=date(2027, 2, 28))
+    url = f"/api/intake/sessions/{session.pk}/"
+    assert client.get(url).json()["income_info"]["answered_window"] == {
+        "start": "2026-09-01",
+        "end": "2027-02-28",
+    }
+    # A window sent back changes nothing: the stamp is the server's
+    client.patch(
+        url,
+        {"income_info": {"answered_window": {"start": "2020-01-01", "end": "2020-06-30"}}},
+        format="json",
+    )
+    assert IncomeInfo.objects.get(session=session).income_period_end == date(2027, 2, 28)
+
+
+def test_a_window_never_confirmed_reads_as_null(filer):
+    client, session = filer
+    IncomeInfo.objects.create(session=session)
+    body = client.get(f"/api/intake/sessions/{session.pk}/").json()
+    assert body["income_info"]["answered_window"] is None

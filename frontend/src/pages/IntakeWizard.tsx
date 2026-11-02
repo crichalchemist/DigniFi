@@ -675,6 +675,7 @@ export function IntakeWizard() {
             onSpouseIncomeChange={setSpouseIncomeData}
             // Steps are built before the read, but mount only once `session` is set
             incomeWindow={session?.income_window as IncomePeriod}
+            answeredWindow={session?.income_info?.answered_window ?? null}
             entryRows={entryRows}
             onEntryRowsChange={setEntryRows}
             spouseEntryRows={spouseEntryRows}

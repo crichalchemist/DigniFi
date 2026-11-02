@@ -3468,3 +3468,53 @@ describe('IntakeWizard take-home pay', { timeout: 30_000 }, () => {
     expect(apart.bodies.at(-1)).toHaveProperty('income_info');
   });
 });
+
+describe('IntakeWizard window notice', { timeout: 30_000 }, () => {
+  const MOVED = /Your income figures are your monthly average for April 1, 2026/;
+  const income_window = { start: '2026-05-01', end: '2026-10-31' };
+  const onIncome = {
+    ...sessionAtStep1,
+    current_step: 2,
+    income_window,
+    income_info: {
+      marital_status: null,
+      monthly_gross_wages: '3100.50',
+      answered_window: { start: '2026-04-01', end: '2026-09-30' },
+    },
+  };
+
+  it('Continue on the Income step clears its window notice', async () => {
+    server.use(
+      http.get('http://localhost:8000/api/intake/sessions/:id/', () => HttpResponse.json(onIncome)),
+      http.patch('http://localhost:8000/api/intake/sessions/:id/', () =>
+        HttpResponse.json(onIncome)
+      ),
+      // Continue stamps the window, so the reply names the one in force
+      http.post('http://localhost:8000/api/intake/sessions/:id/update_step/', () =>
+        HttpResponse.json({
+          session: {
+            ...onIncome,
+            current_step: 3,
+            income_info: { ...onIncome.income_info, answered_window: income_window },
+          },
+          message: 'Updated to step 3',
+        })
+      ),
+      http.post(
+        'http://localhost:8000/api/audit/logs/',
+        () => new HttpResponse(null, { status: 201 })
+      )
+    );
+
+    renderWizard();
+    await screen.findByRole('heading', { name: /income/i, level: 2 });
+    expect(screen.getByText(MOVED)).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: /continue/i }));
+    await screen.findByRole('heading', { name: /take-home pay/i, level: 2 });
+    await userEvent.click(screen.getByRole('button', { name: 'Go Back' }));
+    await screen.findByRole('heading', { name: /income/i, level: 2 });
+
+    expect(screen.queryByText(/monthly average for/)).not.toBeInTheDocument();
+  });
+});

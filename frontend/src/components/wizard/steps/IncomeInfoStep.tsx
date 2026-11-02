@@ -17,6 +17,7 @@ import { newHouseholdMember } from '../../../utils/householdRows';
 import { flooredNet, startFromAverages } from '../../../utils/incomeEntries';
 import type { EntryRow } from '../../../utils/incomeEntries';
 import { formatIsoDate } from '../../../utils/formatIsoDate';
+import { windowNotice } from '../../../utils/windowNotice';
 import { MAX_AGE, MAX_HOUSEHOLD_ROWS } from '../../../constants/household';
 import {
   ASSISTANCE_QUESTION,
@@ -80,6 +81,8 @@ interface IncomeInfoStepProps {
   onSpouseIncomeChange: (data: SpouseIncome) => void;
   /** The six months the averages cover, worked out by the server */
   incomeWindow: IncomePeriod;
+  /** The six months the filer last confirmed by Continue, or null before they have */
+  answeredWindow: IncomePeriod | null;
   /** The wizard's businesses and rental properties, the filer's and the spouse's */
   entryRows: EntryRow[];
   onEntryRowsChange: (rows: EntryRow[]) => void;
@@ -248,6 +251,7 @@ export function IncomeInfoStep({
   initialSpouseIncome,
   onSpouseIncomeChange,
   incomeWindow,
+  answeredWindow,
   entryRows,
   onEntryRowsChange,
   spouseEntryRows,
@@ -592,6 +596,11 @@ export function IncomeInfoStep({
 
   return (
     <div className="income-info-step">
+      {/* Only a stamp older than the window; a filer who never confirmed one is told on the dashboard */}
+      {answeredWindow && answeredWindow.end < incomeWindow.end && (
+        <p className="form-dashboard-notice">{windowNotice(answeredWindow, incomeWindow)}</p>
+      )}
+
       {/* Explainer */}
       <div className="info-box">
         <svg className="info-icon" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">

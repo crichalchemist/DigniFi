@@ -24,10 +24,12 @@ import type {
   FormType,
   GenerateAllFormsResponse,
   DatedTableUsed,
+  Packet,
 } from '../types/api';
 import { FORM_TYPE_METADATA } from '../types/api';
 import { trackEvent } from '../utils/analytics';
 import { formatIsoDate } from '../utils/formatIsoDate';
+import { windowNotice } from '../utils/windowNotice';
 
 type GenerateAllError = GenerateAllFormsResponse['errors'][number];
 
@@ -114,6 +116,7 @@ export function FormDashboard() {
   // The form types that apply to this filer, in filing order
   const [packet, setPacket] = useState<FormType[]>([]);
   const [tables, setTables] = useState<DatedTableUsed[]>([]);
+  const [incomePeriod, setIncomePeriod] = useState<Packet['income_period']>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Refusal | null>(null);
   const [showSurvey, setShowSurvey] = useState(false);
@@ -139,8 +142,10 @@ export function FormDashboard() {
       setForms(loadedForms);
       setPacket(loadedPacket.form_types);
       setTables(loadedPacket.tables);
+      setIncomePeriod(loadedPacket.income_period);
       setError(null);
     } catch (err) {
+      setIncomePeriod(null);
       setError(refusalOf(err, DASHBOARD_ERROR));
     } finally {
       setIsLoading(false);
@@ -203,8 +208,10 @@ export function FormDashboard() {
       const reloaded = await api.forms.packet(session.id);
       setPacket(reloaded.form_types);
       setTables(reloaded.tables);
+      setIncomePeriod(reloaded.income_period);
       setError(null);
     } catch (err) {
+      setIncomePeriod(null);
       setError(refusalOf(err, DASHBOARD_ERROR));
     }
   };
@@ -257,6 +264,11 @@ export function FormDashboard() {
   // intake, then the packet list's refusal, then Generate All's, then each form Generate All
   // refused, then each card's refusal (ruling R4-a). The context's status and the server's can
   // disagree.
+  // The income window notice comes with the packet, so a refusal (which sets no window) replaces it
+  const incomeWindowNotice = incomePeriod
+    ? windowNotice(incomePeriod.answered_for, incomePeriod.now)
+    : null;
+  const incomeLink = fixLink({ step: 'income_info' });
   const noticeLinksIntake = session.status !== 'completed';
   const linkTo = linksInPageOrder(noticeLinksIntake);
   const errorLink = error ? linkTo(error) : undefined;
@@ -393,6 +405,15 @@ export function FormDashboard() {
           {tableNotice(table)}
         </p>
       ))}
+
+      {incomeWindowNotice && incomeLink && (
+        <div className="form-dashboard-notice">
+          <p>{incomeWindowNotice}</p>
+          <Link to={incomeLink.to} className="button button--primary">
+            {incomeLink.label}
+          </Link>
+        </div>
+      )}
 
       {/* Form cards grid */}
       {isLoading ? (

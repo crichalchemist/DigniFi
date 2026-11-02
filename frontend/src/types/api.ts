@@ -72,6 +72,8 @@ export type YesNo = 'yes' | 'no';
 export interface IncomeInfo {
   id: number;
   session: number;
+  /** The six months the filer last confirmed by Continue on the Income step. Read-only. */
+  answered_window?: IncomePeriod | null;
   data_source: 'manual' | 'bank_import' | 'tax_return';
 
   // The six-month total saved before income was stored by source. Read-only: the Income step
@@ -687,16 +689,24 @@ export interface DatedTableUsed {
 }
 
 /** The forms that apply to this filer, in filing order */
+/** The six months the filer last confirmed, and the six months in force now */
+export interface IncomePeriodNotice {
+  answered_for: IncomePeriod | null;
+  now: IncomePeriod;
+}
+
 export interface FormPacketResponse {
   session: number;
   form_types: FormType[];
   tables: DatedTableUsed[];
+  income_period?: IncomePeriodNotice;
 }
 
 /** What `api.forms.packet` returns */
 export interface Packet {
   form_types: FormType[];
   tables: DatedTableUsed[];
+  income_period: IncomePeriodNotice | null;
 }
 
 export interface SessionSummaryResponse {
