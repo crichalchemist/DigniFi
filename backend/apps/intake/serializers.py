@@ -332,24 +332,59 @@ class ExpenseInfoSerializer(serializers.ModelSerializer):
     other_expenses = serializers.DecimalField(
         max_digits=10, decimal_places=2, min_value=Decimal("0"), required=False, default=0
     )
+    real_estate_taxes = serializers.DecimalField(
+        max_digits=10, decimal_places=2, min_value=Decimal("0"), required=False, default=0
+    )
+    home_insurance = serializers.DecimalField(
+        max_digits=10, decimal_places=2, min_value=Decimal("0"), required=False, default=0
+    )
+    hoa_dues = serializers.DecimalField(
+        max_digits=10, decimal_places=2, min_value=Decimal("0"), required=False, default=0
+    )
+    personal_care = serializers.DecimalField(
+        max_digits=10, decimal_places=2, min_value=Decimal("0"), required=False, default=0
+    )
+    entertainment = serializers.DecimalField(
+        max_digits=10, decimal_places=2, min_value=Decimal("0"), required=False, default=0
+    )
+    charitable_contributions = serializers.DecimalField(
+        max_digits=10, decimal_places=2, min_value=Decimal("0"), required=False, default=0
+    )
+    taxes_not_deducted = serializers.DecimalField(
+        max_digits=10, decimal_places=2, min_value=Decimal("0"), required=False, default=0
+    )
+    support_others = serializers.DecimalField(
+        max_digits=10, decimal_places=2, min_value=Decimal("0"), required=False, default=0
+    )
+    other_property_mortgages = serializers.DecimalField(
+        max_digits=10, decimal_places=2, min_value=Decimal("0"), required=False, default=0
+    )
+    other_property_taxes = serializers.DecimalField(
+        max_digits=10, decimal_places=2, min_value=Decimal("0"), required=False, default=0
+    )
+    other_property_insurance = serializers.DecimalField(
+        max_digits=10, decimal_places=2, min_value=Decimal("0"), required=False, default=0
+    )
+    other_property_upkeep = serializers.DecimalField(
+        max_digits=10, decimal_places=2, min_value=Decimal("0"), required=False, default=0
+    )
+    other_property_hoa_dues = serializers.DecimalField(
+        max_digits=10, decimal_places=2, min_value=Decimal("0"), required=False, default=0
+    )
+    taxes_specify = serializers.CharField(max_length=100, allow_blank=True, required=False)
+    support_others_specify = serializers.CharField(max_length=100, allow_blank=True, required=False)
+    other_expenses_specify = serializers.CharField(max_length=100, allow_blank=True, required=False)
+    expenses_include_others = serializers.ChoiceField(
+        choices=YES_NO, allow_null=True, required=False
+    )
 
     class Meta:
         model = ExpenseInfo
         fields = [
             "data_source",
-            "rent_or_mortgage",
-            "utilities",
-            "home_maintenance",
-            "vehicle_payment",
-            "vehicle_insurance",
-            "vehicle_maintenance",
-            "food_and_groceries",
-            "clothing",
-            "medical_expenses",
-            "childcare",
-            "child_support_paid",
-            "insurance_not_deducted",
-            "other_expenses",
+            *ExpenseInfo.AMOUNT_FIELDS,
+            *ExpenseInfo.SPECIFY_FIELDS,
+            "expenses_include_others",
             "total_monthly_expenses",
             "created_at",
             "updated_at",

@@ -507,3 +507,55 @@ def test_adding_the_income_detail_columns_keeps_saved_income_and_leaves_them_una
     amounts = (Decimal("3000.00"), Decimal("900.00"), Decimal("1800.00"))
     assert kept == (amounts, [(None, None, 1), (None, None, 1)], None)
     assert undone == amounts
+
+
+EXPENSE_LINES = [("intake", "0027_expenseinfo_schedule_j_lines")]
+NEW_EXPENSE_AMOUNTS = [
+    "real_estate_taxes",
+    "home_insurance",
+    "hoa_dues",
+    "personal_care",
+    "entertainment",
+    "charitable_contributions",
+    "taxes_not_deducted",
+    "support_others",
+    "other_property_mortgages",
+    "other_property_taxes",
+    "other_property_insurance",
+    "other_property_upkeep",
+    "other_property_hoa_dues",
+]
+
+
+def _schedule_j_lines_round_trip(migrate):
+    apps = migrate(INCOME_DETAIL)
+    session = _session(apps)
+    apps.get_model("intake", "ExpenseInfo").objects.create(
+        session_id=session.pk, rent_or_mortgage=Decimal("1100.00")
+    )
+    apps = migrate(EXPENSE_LINES)
+    row = apps.get_model("intake", "ExpenseInfo").objects.get()
+    kept = (
+        row.rent_or_mortgage,
+        [getattr(row, name) for name in NEW_EXPENSE_AMOUNTS],
+        row.expenses_include_others,
+        [row.taxes_specify, row.support_others_specify, row.other_expenses_specify],
+    )
+    undone = migrate(INCOME_DETAIL).get_model("intake", "ExpenseInfo").objects.get()
+    return kept, undone.rent_or_mortgage
+
+
+def test_adding_the_schedule_j_lines_keeps_saved_expenses_and_leaves_line_3_unanswered(migrate):
+    kept, undone = _schedule_j_lines_round_trip(migrate)
+    assert kept == (Decimal("1100.00"), [0] * 13, None, ["", "", ""])
+    assert undone == Decimal("1100.00")
+
+
+@pytest.mark.postgres
+@ON_POSTGRES
+def test_adding_the_schedule_j_lines_keeps_saved_expenses_and_leaves_line_3_unanswered_on_postgres(
+    migrate,
+):
+    kept, undone = _schedule_j_lines_round_trip(migrate)
+    assert kept == (Decimal("1100.00"), [0] * 13, None, ["", "", ""])
+    assert undone == Decimal("1100.00")

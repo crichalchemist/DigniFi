@@ -490,6 +490,40 @@ class ExpenseInfo(models.Model):
         ("uploaded_document", "Uploaded Document"),
     ]
 
+    AMOUNT_FIELDS: ClassVar[tuple[str, ...]] = (
+        "rent_or_mortgage",
+        "real_estate_taxes",
+        "home_insurance",
+        "home_maintenance",
+        "hoa_dues",
+        "utilities",
+        "food_and_groceries",
+        "childcare",
+        "clothing",
+        "personal_care",
+        "medical_expenses",
+        "vehicle_maintenance",
+        "entertainment",
+        "charitable_contributions",
+        "vehicle_insurance",
+        "insurance_not_deducted",
+        "taxes_not_deducted",
+        "vehicle_payment",
+        "child_support_paid",
+        "support_others",
+        "other_property_mortgages",
+        "other_property_taxes",
+        "other_property_insurance",
+        "other_property_upkeep",
+        "other_property_hoa_dues",
+        "other_expenses",
+    )
+    SPECIFY_FIELDS: ClassVar[tuple[str, ...]] = (
+        "taxes_specify",
+        "support_others_specify",
+        "other_expenses_specify",
+    )
+
     session = models.OneToOneField(
         IntakeSession, on_delete=models.CASCADE, related_name="expense_info"
     )
@@ -563,6 +597,26 @@ class ExpenseInfo(models.Model):
         help_text="Other necessary monthly expenses",
     )
 
+    # Schedule J lines DigniFi never asked before 3e2: $0 when left empty
+    real_estate_taxes = EncryptedDecimalField(max_digits=10, decimal_places=2, default=0)
+    home_insurance = EncryptedDecimalField(max_digits=10, decimal_places=2, default=0)
+    hoa_dues = EncryptedDecimalField(max_digits=10, decimal_places=2, default=0)
+    personal_care = EncryptedDecimalField(max_digits=10, decimal_places=2, default=0)
+    entertainment = EncryptedDecimalField(max_digits=10, decimal_places=2, default=0)
+    charitable_contributions = EncryptedDecimalField(max_digits=10, decimal_places=2, default=0)
+    taxes_not_deducted = EncryptedDecimalField(max_digits=10, decimal_places=2, default=0)
+    support_others = EncryptedDecimalField(max_digits=10, decimal_places=2, default=0)
+    other_property_mortgages = EncryptedDecimalField(max_digits=10, decimal_places=2, default=0)
+    other_property_taxes = EncryptedDecimalField(max_digits=10, decimal_places=2, default=0)
+    other_property_insurance = EncryptedDecimalField(max_digits=10, decimal_places=2, default=0)
+    other_property_upkeep = EncryptedDecimalField(max_digits=10, decimal_places=2, default=0)
+    other_property_hoa_dues = EncryptedDecimalField(max_digits=10, decimal_places=2, default=0)
+    taxes_specify = EncryptedCharField(max_length=100, blank=True, default="")
+    support_others_specify = EncryptedCharField(max_length=100, blank=True, default="")
+    other_expenses_specify = EncryptedCharField(max_length=100, blank=True, default="")
+    # Line 3: null until the filer answers
+    expenses_include_others = EncryptedCharField(max_length=3, null=True, blank=True)
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -575,21 +629,8 @@ class ExpenseInfo(models.Model):
 
     def calculate_total_monthly_expenses(self) -> float:
         """Calculate total monthly expenses for means test."""
-        return float(
-            self.rent_or_mortgage
-            + self.utilities
-            + self.home_maintenance
-            + self.vehicle_payment
-            + self.vehicle_insurance
-            + self.vehicle_maintenance
-            + self.food_and_groceries
-            + self.clothing
-            + self.medical_expenses
-            + self.childcare
-            + self.child_support_paid
-            + self.insurance_not_deducted
-            + self.other_expenses
-        )
+        # Decimal(...) because an unsaved default is the int 0.
+        return float(sum(Decimal(getattr(self, f)) for f in self.AMOUNT_FIELDS))
 
 
 class AssetInfo(models.Model):
