@@ -42,6 +42,11 @@ import {
   NOT_ANSWERED_YET,
   NOW_DIFFERENT_QUESTION,
   SPOUSE_ASSISTANCE_HEADING,
+  SPOUSE_ASSISTANCE_QUESTION,
+  SPOUSE_CASH_AMOUNT_LABEL,
+  SPOUSE_CASH_KIND_LABEL,
+  SPOUSE_NONCASH_KIND_LABEL,
+  SPOUSE_NONCASH_VALUE_LABEL,
   SPOUSE_FILING_INFO,
   SPOUSE_INCOME_HELP,
   SPOUSE_INCOME_NOW_HEADING,
@@ -478,7 +483,6 @@ export function IncomeInfoStep({
       assistanceYes || ASSISTANCE_AMOUNT_FIELDS.some((field) => errors[`${prefix}${field}`]);
     const headingId = `${prefix}assistance-heading`;
     const nowHeadingId = `${prefix}income-now-heading`;
-    const label = (words: string) => (spouse ? `Spouse's: ${words}` : words);
 
     const startFromAverage = () => {
       const started = startFromAverages(data, rows);
@@ -529,7 +533,7 @@ export function IncomeInfoStep({
           </h3>
           <YesNoGroup
             name={`${prefix}assistance_answer`}
-            legend={ASSISTANCE_QUESTION}
+            legend={spouse ? SPOUSE_ASSISTANCE_QUESTION : ASSISTANCE_QUESTION}
             answer={data.assistance_answer}
             onAnswer={(answer) => updatePerson(spouse, { assistance_answer: answer })}
             headingId={spouse ? headingId : undefined}
@@ -538,7 +542,7 @@ export function IncomeInfoStep({
           {showAssistance && (
             <>
               <FormField
-                label={label(CASH_KIND_LABEL)}
+                label={spouse ? SPOUSE_CASH_KIND_LABEL : CASH_KIND_LABEL}
                 name={`${prefix}cash_assistance_kind`}
                 type="text"
                 maxLength={100}
@@ -546,7 +550,7 @@ export function IncomeInfoStep({
                 onChange={(e) => updatePerson(spouse, { cash_assistance_kind: e.target.value })}
               />
               <FormField
-                label={label(CASH_AMOUNT_LABEL)}
+                label={spouse ? SPOUSE_CASH_AMOUNT_LABEL : CASH_AMOUNT_LABEL}
                 name={`${prefix}cash_assistance_amount`}
                 type="number"
                 min="0"
@@ -559,7 +563,7 @@ export function IncomeInfoStep({
                 placeholder="0.00"
               />
               <FormField
-                label={label(NONCASH_KIND_LABEL)}
+                label={spouse ? SPOUSE_NONCASH_KIND_LABEL : NONCASH_KIND_LABEL}
                 name={`${prefix}noncash_assistance_kind`}
                 type="text"
                 maxLength={100}
@@ -567,7 +571,7 @@ export function IncomeInfoStep({
                 onChange={(e) => updatePerson(spouse, { noncash_assistance_kind: e.target.value })}
               />
               <FormField
-                label={label(NONCASH_VALUE_LABEL)}
+                label={spouse ? SPOUSE_NONCASH_VALUE_LABEL : NONCASH_VALUE_LABEL}
                 name={`${prefix}noncash_assistance_value`}
                 type="number"
                 min="0"

@@ -258,3 +258,15 @@ export const CASH_AMOUNT_LABEL = 'How much a month?';
 export const NONCASH_KIND_LABEL = 'Non-cash assistance: what kind?';
 
 export const NONCASH_VALUE_LABEL = 'Its value a month, if you know it';
+
+// Plan draft for the owner: 8f's words about the spouse, with no sentence that speaks to the filer
+export const SPOUSE_ASSISTANCE_QUESTION =
+  'Other government assistance that your spouse regularly receives. Include cash assistance. Include the value of non-cash assistance, if known. Food stamps and housing subsidies are examples.';
+
+export const SPOUSE_CASH_KIND_LABEL = "Spouse's cash assistance: what kind?";
+
+export const SPOUSE_CASH_AMOUNT_LABEL = "Spouse's cash assistance a month";
+
+export const SPOUSE_NONCASH_KIND_LABEL = "Spouse's non-cash assistance: what kind?";
+
+export const SPOUSE_NONCASH_VALUE_LABEL = "Spouse's non-cash assistance value a month, if known";

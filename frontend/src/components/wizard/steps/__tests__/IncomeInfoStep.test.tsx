@@ -921,4 +921,15 @@ describe('IncomeInfoStep, now different and assistance', () => {
     pick('income_now_different', 'no');
     expect(group).not.toHaveAccessibleDescription(expect.stringContaining('Not answered yet'));
   });
+
+  it('the spouse’s assistance question names the spouse, never "you"', () => {
+    renderStep({ marital_status: 'married_together' });
+    const group = screen.getByRole('group', {
+      name: /Your spouse's government assistance.*your spouse regularly receives/,
+    });
+    const legend = group.querySelector('legend');
+    expect(legend).toHaveTextContent(/your spouse regularly receives/);
+    expect(legend).not.toHaveTextContent(/\byou\b/);
+    expect(field('spouse_assistance_answer')).toBeInTheDocument();
+  });
 });
