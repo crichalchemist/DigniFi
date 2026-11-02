@@ -603,11 +603,17 @@ def _andres_kettleby() -> dict:
         },
         "income": {
             "marital_status": "not_married",
-            # His net driving income ($4,200 from the apps less $830 of driving costs) is
-            # other income until the Income step asks for business income (3a1.Q1).
             **dict.fromkeys(IncomeInfo.SOURCE_FIELDS, Decimal("0.00")),
-            "monthly_other_income": Decimal("3370.00"),
             **_no_business_and_no_assistance(),
+            # His driving ($4,200 from the apps less $830 of driving costs) is a business.
+            "business_and_rental": [
+                {
+                    "kind": "business",
+                    "description": "Rideshare and delivery driving",
+                    "gross": Decimal("4200.00"),
+                    "expenses": Decimal("830.00"),
+                }
+            ],
         },
         "household": {
             "county": "Kane",

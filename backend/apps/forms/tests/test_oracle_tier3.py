@@ -17,12 +17,14 @@ import pytest
 from django.core.management import call_command
 
 from apps.districts.models import District
-from apps.forms.registry import build_field_values
+from apps.forms.registry import build_field_values, build_parts
 from apps.forms.schema import load_schema
 from apps.forms.services.pdf_filler import PDFFormFiller
+from apps.forms.services.sheets import sheet_spec
 from apps.forms.services.widgets import template_widgets
 from apps.forms.tests.oracle import case_param
-from apps.forms.tests.pdf_readback import read_drawn
+from apps.forms.tests.pdf_readback import read_drawn, read_sheets
+from apps.forms.tests.test_form_122a1_schema import LINE_10_SOURCE
 from apps.intake.models import IntakeSession
 
 TIER = "3"
@@ -350,7 +352,7 @@ EXPECTED = {
             "23c": "470.00",
         },
     },
-    # His net driving income is other income until step 3e2 (3a1 spec §2, 3a1.Q1).
+    # His driving is a business on line 5 and 8a since 3e2 (§11).
     "andres": {
         "form_101": {"Debtor1.County": "Kane"},
         "form_106sum": {
@@ -366,14 +368,16 @@ EXPECTED = {
         },
         "form_122a1": {
             "CheckBox1": "/No Abuse",
+            "Debto1.Quest5A": "4200.00",
+            "Debto1.Quest5B": "830.00",
+            "Debto1.Quest5C": "3370.00",
             **dict.fromkeys(
-                ["Debto1.Quest5A", "Debto1.Quest5B", "Debto1.Quest5C"]
-                + ["Debto1.Quest6A", "Debto1.Quest6B", "Debto1.Quest6C", "Debto1.Quest7"],
+                ["Debto1.Quest6A", "Debto1.Quest6B", "Debto1.Quest6C", "Debto1.Quest7"],
                 "0.00",
             ),
             "Debto1.Quest8A": "",
-            "terrorism If necessary list other sources on a separate page and put the total below 1": "Other income",
-            "Debto1.Quest10A": "3370.00",
+            LINE_10_SOURCE: "",
+            "Debto1.Quest10A": "0.00",
             "Debto1.Quest11": "3370.00",
             "CheckBox3": "/Not married",
             "CheckBox3A": "",
@@ -387,9 +391,10 @@ EXPECTED = {
         "schedule_i": {
             **_deductions(total="0.00", pay="0.00"),
             "Amount 8b Debtor 1": "0.00",
+            "Amount 8a Debtor 1": "3370.00",
             "Amount 8f Debtor 1": "0.00",
-            "Other income 8h": "Other income",
-            "Amount 8h Debtor 1": "3370.00",
+            "Other income 8h": "",
+            "Amount 8h Debtor 1": "0.00",
             "Amount 10 Debtor 1": "3370.00",
             "Amount 10": "3370.00",
             "Amount 12": "3370.00",
@@ -474,3 +479,27 @@ def test_persona_packet_prints_the_right_figure(form_type, pdf_field, case, expe
         }, f"wrong_value: prints {sorted(shown)}, expected {expected}"
     else:  # every widget prints it
         assert shown == {expected}, f"wrong_value: prints {sorted(shown)}, expected {expected}"
+
+
+@pytest.mark.django_db
+def test_andres_statement_prints_his_driving_business():
+    if not District.objects.filter(code="ilnd").exists():
+        call_command("loaddata", "ilnd_2025_data", verbosity=0)
+    call_command("seed_demo_data", "--reset", persona="andres", verbosity=0)
+    session = IntakeSession.objects.filter(user__username="demo_andres").latest("id")
+    parts = build_parts("schedule_i", session)
+
+    (sheet,) = read_sheets(
+        PDFFormFiller().fill("schedule_i", parts), sheet_spec(parts["parts"][-1])
+    )
+
+    assert sheet.rows == (
+        (
+            "1",
+            "Debtor 1",
+            "Business: Rideshare and delivery driving",
+            "4200.00",
+            "830.00",
+            "3370.00",
+        ),
+    )

@@ -2,6 +2,41 @@
   "form_type": "schedule_i",
   "template_filename": "form_b106i.pdf",
   "template_version": "d0fbca7a9593220b3b7257844dfc0678d8628bcd818f522840325f6596945a2e",
+  "groups": {
+    "i_line_8a": {
+      "number": "{n}",
+      "sheet": {
+        "title": "Official Form 106I, Schedule I: Your Income, line 8a",
+        "columns": [
+          {
+            "label": "Income of",
+            "binding": "income.statement[].owner",
+            "width": 96
+          },
+          {
+            "label": "Property or business",
+            "binding": "income.statement[].description",
+            "width": 132
+          },
+          {
+            "label": "Gross receipts",
+            "binding": "income.statement[].gross",
+            "width": 80
+          },
+          {
+            "label": "Ordinary and necessary business expenses",
+            "binding": "income.statement[].expenses",
+            "width": 80
+          },
+          {
+            "label": "Total monthly net income",
+            "binding": "income.statement[].net",
+            "width": 80
+          }
+        ]
+      }
+    }
+  },
   "fields": [
     {
       "pdf_field": "Bankruptcy District Information",

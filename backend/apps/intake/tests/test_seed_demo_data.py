@@ -20,7 +20,7 @@ from apps.districts.models import MedianIncome
 from apps.eligibility.cmi import is_above_median
 from apps.eligibility.models import MeansTest
 from apps.forms.registry import packet
-from apps.intake.management.commands.seed_demo_data import PERSONAS
+from apps.intake.management.commands.seed_demo_data import PERSONAS, _andres_kettleby
 from apps.intake.models import FeeWaiverApplication, IncomeInfo, IntakeSession, SpouseIncome
 from apps.users.models import User
 
@@ -168,11 +168,12 @@ def test_every_seeded_persona_answers_each_new_income_question(persona):
     call_command("seed_demo_data", persona=persona, stdout=StringIO())
     session = IntakeSession.objects.get(user__username=f"demo_{persona}")
     filer_deductions, spouse_deductions = DEDUCTIONS[persona]
-    rows = [(session.income_info, filer_deductions)]
+    filer_row = session.income_info
+    rows = [(filer_row, filer_deductions)]
     if spouse_deductions is not None:
         rows.append((session.spouse_income, spouse_deductions))
     for row, deductions in rows:
-        assert row.get_entries() == []
+        assert len(row.get_entries()) == (1 if persona == "andres" and row is filer_row else 0)
         assert row.income_now_different == "no"
         assert row.monthly_interest_and_dividends == Decimal("0.00")
         assert row.monthly_rental_income is None
@@ -209,3 +210,39 @@ def test_the_new_answers_move_no_seeded_personas_means_test_fee_flag_or_packet(p
     forms = packet(session)
     assert ("form_122a2" in forms) is (persona == "priya")
     assert ("form_103b" in forms) is (persona in {"maria", "deshawn", "sarah"})
+
+
+@pytest.mark.django_db
+def test_andres_is_seeded_with_his_driving_as_a_business():
+    call_command("loaddata", "ilnd_2025_data", verbosity=0)
+    call_command("seed_demo_data", persona="andres", stdout=StringIO())
+    session = IntakeSession.objects.get(user__username="demo_andres")
+
+    assert session.income_info.get_entries() == [
+        {
+            "id": 1,
+            "kind": "business",
+            "description": "Rideshare and delivery driving",
+            "gross": "4200.00",
+            "expenses": "830.00",
+            "current_gross": None,
+            "current_expenses": None,
+        }
+    ]
+    assert session.income_info.monthly_other_income == Decimal("0.00")
+    assert MeansTest.objects.get(session=session).calculated_cmi == Decimal("3370.00")
+
+
+@pytest.mark.django_db
+def test_a_gig_drivers_business_entry_leaves_his_debts_as_he_classed_them_and_he_reaches_his_forms():
+    call_command("loaddata", "ilnd_2025_data", verbosity=0)
+    call_command("seed_demo_data", persona="andres", stdout=StringIO())
+    session = IntakeSession.objects.get(user__username="demo_andres")
+
+    classed = list(
+        session.debts.order_by("id").values_list("consumer_business_classification", flat=True)
+    )
+
+    assert classed == [d["consumer_business_classification"] for d in _andres_kettleby()["debts"]]
+    assert classed.count("business") == 1
+    assert len(packet(session)) == 14

@@ -635,8 +635,8 @@ export const ANDRES: PersonaData = {
     members: [
       { relationship: 'daughter', age: 9, lives_with_you: true, claimed_or_supported: true },
     ],
-    // What he keeps from driving ($4,200 from the apps less $830 of driving costs) is other
-    // income until the Income step asks for business income (3a1.Q1). Every other box is $0.
+    // His driving ($4,200 from the apps less $830 of driving costs) is a business entry.
+    // Every box is $0.
     sources: {
       monthly_gross_wages: 0,
       monthly_overtime: 0,
@@ -647,9 +647,16 @@ export const ANDRES: PersonaData = {
       monthly_unemployment: 0,
       monthly_child_support: 0,
       monthly_alimony: 0,
-      monthly_other_income: 3370,
+      monthly_other_income: 0,
     },
-    business: [],
+    business: [
+      {
+        kind: 'business',
+        description: 'Rideshare and delivery driving',
+        gross: 4200,
+        expenses: 830,
+      },
+    ],
     now_different: 'no',
     assistance: { answer: 'no' },
   },

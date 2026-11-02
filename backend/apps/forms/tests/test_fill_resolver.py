@@ -11,6 +11,7 @@ from apps.eligibility.cmi import HOUSEHOLD_UNANSWERED, IncomeStepGap
 from apps.forms.schema import FieldSpec, FormSchema, GroupSpec
 from apps.forms.services.fill_resolver import (
     UnmappedChoice,
+    binding_fix,
     resolve,
     resolve_binding,
     resolve_parts,
@@ -486,3 +487,17 @@ def test_resolve_ingested_source(session):
     IngestedAggregate.objects.create(session=session, ingest_key="paystub.gross", value="5000.00")
     out2 = resolve(schema, session)
     assert out2 == {"Income.Gross": "5000.00"}
+
+
+@pytest.mark.parametrize(
+    "binding,fix",
+    [
+        ("answer:form_101.mailing_zip", {"page": "/ask/form_101"}),
+        ("sofa.prior_income[].year", {"page": "/sofa"}),
+        ("household.dependents[].age", {"step": "income_info"}),
+        ("income.statement[].net", {"step": "income_info"}),
+        ("", {}),
+    ],
+)
+def test_a_bindings_fix_comes_from_its_namespace(binding, fix):
+    assert binding_fix(binding) == fix
