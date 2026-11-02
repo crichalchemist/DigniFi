@@ -12,6 +12,16 @@ from django.contrib.auth import get_user_model
 from django.core.exceptions import FieldDoesNotExist
 from rest_framework import serializers
 
+from apps.districts.counties import ILND_COUNTIES
+from apps.eligibility.cmi import income_step_gaps
+
+from .household import (
+    MAX_AGE,
+    MAX_MEMBERS,
+    RELATIONSHIP_WORDS,
+    count_family_size,
+    count_fee_waiver_household,
+)
 from .models import (
     AssetInfo,
     Codebtor,
@@ -20,11 +30,13 @@ from .models import (
     ExecutoryContract,
     ExpenseInfo,
     FeeWaiverApplication,
+    Household,
     IncomeInfo,
     IntakeSession,
     SOFACreditorPayment,
     SOFAPriorIncome,
     SOFAReport,
+    SpouseIncome,
 )
 
 User = get_user_model()
@@ -47,8 +59,6 @@ class DebtorInfoSerializer(serializers.ModelSerializer):
             "city",
             "state",
             "zip_code",
-            "household_size",
-            "filing_type",
         ]
         extra_kwargs = {
             "ssn": {"write_only": True},  # Never return SSN in API responses
@@ -75,16 +85,19 @@ class IncomeInfoSerializer(serializers.ModelSerializer):
     """Serializer for income information, stored by source (forms step 2 spec §5.5).
 
     monthly_income, the total saved before step 2, is read-only: the Income step shows it
-    while asking the filer to split it.
+    while asking the filer to split it. marital_status is Form 122A-1 line 1's answer: one of
+    its four answers, or null while unanswered (3e1 spec §3.3).
     """
 
     total_monthly_income = serializers.SerializerMethodField()
+    marital_status = serializers.ChoiceField(
+        choices=IncomeInfo.MARITAL_ANSWERS, allow_null=True, required=False
+    )
 
     class Meta:
         model = IncomeInfo
         fields = [
             "marital_status",
-            "number_of_dependents",
             *IncomeInfo.SOURCE_FIELDS,
             "monthly_income",
             "total_monthly_income",
@@ -95,6 +108,49 @@ class IncomeInfoSerializer(serializers.ModelSerializer):
     def get_total_monthly_income(self, obj):
         """Return the ten amounts added up, or None when the filer gave none of them."""
         return obj.calculate_total_monthly_income()
+
+
+class SpouseIncomeSerializer(serializers.ModelSerializer):
+    """The spouse's monthly income by the filer's ten sources (3e1 spec §5.2).
+
+    A blank box is null, never $0 unless typed.
+    """
+
+    # Explicit field declarations — EncryptedDecimalField confuses DRF's auto-mapper
+    monthly_gross_wages = serializers.DecimalField(
+        max_digits=10, decimal_places=2, min_value=Decimal("0"), allow_null=True, required=False
+    )
+    monthly_overtime = serializers.DecimalField(
+        max_digits=10, decimal_places=2, min_value=Decimal("0"), allow_null=True, required=False
+    )
+    monthly_tips = serializers.DecimalField(
+        max_digits=10, decimal_places=2, min_value=Decimal("0"), allow_null=True, required=False
+    )
+    monthly_rental_income = serializers.DecimalField(
+        max_digits=10, decimal_places=2, min_value=Decimal("0"), allow_null=True, required=False
+    )
+    monthly_pension = serializers.DecimalField(
+        max_digits=10, decimal_places=2, min_value=Decimal("0"), allow_null=True, required=False
+    )
+    monthly_social_security = serializers.DecimalField(
+        max_digits=10, decimal_places=2, min_value=Decimal("0"), allow_null=True, required=False
+    )
+    monthly_unemployment = serializers.DecimalField(
+        max_digits=10, decimal_places=2, min_value=Decimal("0"), allow_null=True, required=False
+    )
+    monthly_child_support = serializers.DecimalField(
+        max_digits=10, decimal_places=2, min_value=Decimal("0"), allow_null=True, required=False
+    )
+    monthly_alimony = serializers.DecimalField(
+        max_digits=10, decimal_places=2, min_value=Decimal("0"), allow_null=True, required=False
+    )
+    monthly_other_income = serializers.DecimalField(
+        max_digits=10, decimal_places=2, min_value=Decimal("0"), allow_null=True, required=False
+    )
+
+    class Meta:
+        model = SpouseIncome
+        fields = list(IncomeInfo.SOURCE_FIELDS)
 
 
 class ExpenseInfoSerializer(serializers.ModelSerializer):
@@ -248,8 +304,103 @@ def _save_rows_by_id(session, model, rows) -> list:
     return saved
 
 
+class HouseholdMemberSerializer(serializers.Serializer):
+    """One person on the household list (3e1 spec §4.2).
+
+    Every answer may be missing, for Complete to name; only a value no answer can have is
+    refused.
+    """
+
+    id = serializers.IntegerField(required=False, allow_null=True)
+    relationship = serializers.ChoiceField(
+        choices=list(RELATIONSHIP_WORDS), allow_null=True, required=False
+    )
+    age = serializers.IntegerField(min_value=0, max_value=MAX_AGE, allow_null=True, required=False)
+    lives_with_you = serializers.BooleanField(allow_null=True, required=False)
+    claimed_or_supported = serializers.BooleanField(allow_null=True, required=False)
+    spouse_is_dependent = serializers.BooleanField(allow_null=True, required=False)
+
+
+class HouseholdSerializer(serializers.ModelSerializer):
+    """The filer's county and household list. A save sets only the keys it sends.
+
+    family_size (122A-1 line 13) and fee_waiver_household_size (103B line 1) are read-only
+    counts, null while the Income step leaves a gap (3e1 spec §4.4).
+    """
+
+    county = serializers.ChoiceField(choices=list(ILND_COUNTIES), allow_null=True, required=False)
+    # write_only, because to_representation reads the stored JSON: ListField would iterate
+    # its string, and the child would add spouse_is_dependent to every row.
+    members = serializers.ListField(
+        child=HouseholdMemberSerializer(),
+        allow_null=True,
+        required=False,
+        max_length=MAX_MEMBERS,
+        write_only=True,
+    )
+    family_size = serializers.SerializerMethodField()
+    fee_waiver_household_size = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Household
+        fields = ["county", "members", "family_size", "fee_waiver_household_size"]
+
+    def get_family_size(self, obj: Household) -> int | None:
+        if income_step_gaps(obj.session):
+            return None
+        return count_family_size(obj.get_members())
+
+    def get_fee_waiver_household_size(self, obj: Household) -> int | None:
+        if income_step_gaps(obj.session):
+            return None
+        return count_fee_waiver_household(obj.get_members(), obj.session.income_info.marital_status)
+
+    def validate_members(self, rows):
+        if rows is None:
+            return rows
+        if sum(row.get("relationship") == "spouse" for row in rows) > 1:
+            raise serializers.ValidationError("Only one person on the list can be your spouse.")
+        if any(
+            row.get("relationship") != "spouse" and row.get("spouse_is_dependent") is not None
+            for row in rows
+        ):
+            raise serializers.ValidationError(
+                "Only your spouse's row answers whether your spouse is a dependent."
+            )
+        return rows
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        data["members"] = instance.get_members()
+        return data
+
+
+def _save_household(session: IntakeSession, data: dict) -> Household:
+    """Save a session's household, setting only the keys sent (3e1 spec §4.5).
+
+    The session's cached household is pointed at the row saved, so the reply reads what this
+    save stored rather than the copy select_related cached before it.
+    """
+    household, _ = Household.objects.get_or_create(session=session)
+    if "county" in data:
+        household.county = data["county"]
+    if "members" in data:
+        household.store_members(data["members"])
+    household.save()
+    session.household = household
+    return household
+
+
 # The intake sections a session save can carry (spec §5.3).
-_INTAKE_DATA = {"debtor_info", "income_info", "expense_info", "assets", "debts"}
+_INTAKE_DATA = {
+    "debtor_info",
+    "income_info",
+    "expense_info",
+    "assets",
+    "debts",
+    "household",
+    "spouse_income",
+}
 
 
 class IntakeSessionSerializer(serializers.ModelSerializer):
@@ -264,6 +415,8 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
     expense_info = ExpenseInfoSerializer(required=False, allow_null=True)
     assets = NestedAssetInfoSerializer(many=True, required=False)
     debts = NestedDebtInfoSerializer(many=True, required=False)
+    household = HouseholdSerializer(required=False, allow_null=True)
+    spouse_income = SpouseIncomeSerializer(required=False, allow_null=True)
 
     district_name = serializers.CharField(source="district.name", read_only=True)
 
@@ -281,6 +434,8 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
             "expense_info",
             "assets",
             "debts",
+            "household",
+            "spouse_income",
             "created_at",
             "completed_at",
         ]
@@ -307,6 +462,8 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
         expense_data = validated_data.pop("expense_info", None)
         assets_data = validated_data.pop("assets", [])
         debts_data = validated_data.pop("debts", [])
+        household_data = validated_data.pop("household", None)
+        spouse_data = validated_data.pop("spouse_income", None)
 
         # Create session
         session = IntakeSession.objects.create(**validated_data)
@@ -320,6 +477,12 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
 
         if expense_data:
             ExpenseInfo.objects.create(session=session, **expense_data)
+
+        if household_data:
+            _save_household(session, household_data)
+
+        if spouse_data:
+            SpouseIncome.objects.create(session=session, **spouse_data)
 
         # Create assets
         for asset_data in assets_data:
@@ -335,9 +498,12 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
         """
         Update intake session with nested related data.
 
-        Updates or creates debtor_info, income_info, expense_info.
+        Updates or creates debtor_info, income_info, expense_info, household and spouse_income.
         Saves assets/debts by id (see _save_rows_by_id).
-        Saving any of them reopens a completed intake.
+        A household save sets only the keys sent (see _save_household).
+        Saving any of them reopens a completed intake. The session is pointed at the income and
+        spouse rows saved, so the reply reads what this save stored rather than the copies
+        select_related cached before it.
         """
         if _INTAKE_DATA.intersection(validated_data):
             instance.reopen()
@@ -347,6 +513,8 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
         expense_data = validated_data.pop("expense_info", None)
         assets_data = validated_data.pop("assets", None)
         debts_data = validated_data.pop("debts", None)
+        household_data = validated_data.pop("household", None)
+        spouse_data = validated_data.pop("spouse_income", None)
 
         # Update session fields
         for attr, value in validated_data.items():
@@ -358,12 +526,22 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
             DebtorInfo.objects.update_or_create(session=instance, defaults=debtor_data)
 
         if income_data:
-            IncomeInfo.objects.update_or_create(session=instance, defaults=income_data)
+            instance.income_info, _ = IncomeInfo.objects.update_or_create(
+                session=instance, defaults=income_data
+            )
 
         # An empty body still creates the record with its $0 defaults, so the filer can
         # complete (DIG-153). The wizard sends all 13 amounts, a blank box as 0.
         if expense_data is not None:
             ExpenseInfo.objects.update_or_create(session=instance, defaults=expense_data)
+
+        if household_data:
+            _save_household(instance, household_data)
+
+        if spouse_data:
+            instance.spouse_income, _ = SpouseIncome.objects.update_or_create(
+                session=instance, defaults=spouse_data
+            )
 
         # The response lists a sent list in sent order, so the wizard can pair each row it
         # sent with its id (DIG-273). Every other read keeps model order.

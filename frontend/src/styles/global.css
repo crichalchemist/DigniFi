@@ -359,6 +359,11 @@ a {
   margin: var(--space-5) 0;
 }
 
+/* The Income step's totals: each amount sits under its label, without the browser's dd indent */
+.income-total dd {
+  margin: 0;
+}
+
 /* ============================================================================
    Review & Results summary (re-skinned off dead Tailwind utility classes)
    ============================================================================ */

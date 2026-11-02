@@ -39,7 +39,7 @@
     "fields": {
       "district": 1,
       "effective_date": "2026-04-01",
-      "valid_through": "2026-10-31",
+      "valid_through": "2027-03-31",
       "source_url": "https://www.justice.gov/ust/eo/bapcpa/20260401/bci_data/median_income_table.htm",
       "family_size_1": "73180.00",
       "family_size_2": "93934.00",

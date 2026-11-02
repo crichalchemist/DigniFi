@@ -85,7 +85,7 @@ class SheetColumn:
     """One column of an attached sheet: its label, the list binding its cells print, its width."""
 
     label: str
-    binding: str  # "sofa.<collection>[].<attr>"
+    binding: str  # "sofa.<collection>[].<attr>" or "household.dependents[].<attr>"
     width: float  # points
 
 
@@ -196,7 +196,7 @@ _WIDGET_TYPES = {
     "checkbox": {"CheckBox", "RadioButton"},
     "radio": {"CheckBox", "RadioButton"},
 }
-_BINDING_NAMESPACES = ("answer:", "sofa.")
+_BINDING_NAMESPACES = ("answer:", "sofa.", "household.")
 
 
 def validate_schema(
@@ -405,9 +405,10 @@ def validate_schema(
             errors.append(("E007", f"group {name!r} names both an extra_page and a sheet"))
         elif group.sheet is not None:
             # The rows a sheet prints are the slots' rows: a column of another list would
-            # print rows that aren't the group's, or leave some of them out. A cell prints
-            # its slot's text, and a box's answer is a state, which a sheet can't tick, mapped
-            # to one yet or not.
+            # print rows that aren't the group's, or leave some of them out. A cell prints its
+            # slot's text, or a box's answer in the words the form prints beside the state it
+            # maps to, so a box whose choices are {}, a single box's {"true": …} or two answers
+            # on one state is refused (a one-key map of another answer isn't yet).
             for column in group.sheet.columns:
                 bound = [f for f in rows if f.binding == column.binding]
                 if not bound:
@@ -418,38 +419,34 @@ def validate_schema(
                             f"{column.binding!r}, which no slot of the group binds",
                         )
                     )
-                elif any(f.type in ("checkbox", "radio") for f in bound):
+                elif any(
+                    _unmapped(f)
+                    or set(f.choices) == {"true"}  # a single box: its No would print blank
+                    or len(set(f.choices.values())) < len(f.choices)
+                    for f in bound
+                    if f.type in ("checkbox", "radio")
+                ):
                     errors.append(
                         (
                             "E007",
-                            f"group {name!r}: sheet column {column.label!r} binds a box's "
-                            "answer, which a sheet can't tick",
+                            f"group {name!r}: sheet column {column.label!r} binds a box that "
+                            "doesn't give every answer its own state",
                         )
                     )
             # And every slot's value prints in a column, or the rows past the slots would
-            # drop it: a text or combo slot needs a column of its binding, so one with no
-            # binding (a constant, a derived value) can't continue, and a box slot can't
-            # continue at all, bound or not. (A sheet with no columns is reported as such
-            # below.)
+            # drop it: every slot's binding needs a column, a box's included, and a slot with
+            # no binding (a constant, a derived value, a box ticked for every row) can't
+            # continue. (A sheet with no columns is reported as such below.)
             columns = {column.binding for column in group.sheet.columns}
             unprinted = {f.binding for f in rows if f.binding} - columns if columns else set()
             for binding in sorted(unprinted):
-                if any(f.type in ("checkbox", "radio") for f in rows if f.binding == binding):
-                    errors.append(
-                        (
-                            "E007",
-                            f"group {name!r}: a box slot binds {binding!r}, and a sheet "
-                            "can't tick a box",
-                        )
+                errors.append(
+                    (
+                        "E007",
+                        f"group {name!r}: no sheet column prints {binding!r}, "
+                        "which a slot of the group binds",
                     )
-                else:
-                    errors.append(
-                        (
-                            "E007",
-                            f"group {name!r}: no sheet column prints {binding!r}, "
-                            "which a slot of the group binds",
-                        )
-                    )
+                )
             for f in rows if columns else ():
                 if f.binding:
                     continue
@@ -577,7 +574,7 @@ def validate_schema(
     return errors
 
 
-_LIST_BINDING = re.compile(r"sofa\.\w+\[\]\.\w+")
+_LIST_BINDING = re.compile(r"(?:sofa\.\w+|household\.dependents)\[\]\.\w+")
 
 
 def _sheet_errors(name: str, group: GroupSpec, template: str) -> list[tuple[str, str]]:
@@ -626,7 +623,7 @@ def _sheet_errors(name: str, group: GroupSpec, template: str) -> list[tuple[str,
                 (
                     "E007",
                     f"group {name!r}: sheet column {column.label!r} binds {column.binding!r}, "
-                    "not a sofa.<collection>[].<attr> list",
+                    "not a sofa.<collection>[].<attr> or household.dependents[].<attr> list",
                 )
             )
         width = inner_width(column.width)

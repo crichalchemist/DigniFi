@@ -11,6 +11,7 @@ from apps.forms.schema import load_schema
 from apps.forms.services.fill_resolver import resolve
 from apps.forms.tests.test_derivations import TEN_SOURCES
 from apps.intake.models import ExpenseInfo, IncomeInfo, IntakeSession
+from apps.intake.tests.builders import answer_household
 
 User = get_user_model()
 
@@ -66,12 +67,14 @@ def test_line_1_copies_the_monthly_income_from_122a1_line_11(session):
     # Line 1 says "Copy line 11 from Official Form 122A-1 here": current monthly income,
     # which leaves Social Security out (C1), never an expense or deduction total.
     IncomeInfo.objects.create(session=session, **TEN_SOURCES)
+    answer_household(session)
 
     printed = resolve(load_schema("form_122a2"), session)
 
     # Every source but Social Security's 32.00: 1023.00 - 32.00.
     assert printed.get("Quest1") == "991.00"
-    assert printed.get("Quest1") == resolve(load_schema("form_122a1"), session)["Debto1.Quest11"]
+    # line 11's total, Column A + Column B, which line 1 copies
+    assert printed.get("Quest1") == resolve(load_schema("form_122a1"), session)["Quest11"]
 
 
 def test_empty_session_is_asked_for_income_by_source(session):

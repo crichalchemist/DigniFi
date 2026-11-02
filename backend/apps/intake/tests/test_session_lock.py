@@ -48,6 +48,7 @@ from apps.intake.models import (
     IncomeInfo,
     IntakeSession,
 )
+from apps.intake.tests.builders import answer_household
 from apps.users.models import User
 
 # CI runs these with config.settings.test_postgres. If those settings ever reach anything
@@ -115,10 +116,10 @@ def ready(transactional_db):
     )
     IncomeInfo.objects.create(
         session=session,
-        marital_status="single",
-        number_of_dependents=0,
+        marital_status="not_married",
         monthly_gross_wages=Decimal("3000.00"),
     )
+    answer_household(session)
     ExpenseInfo.objects.create(session=session)
     return user, session
 
@@ -245,14 +246,14 @@ def _complete_pauses_in_its_checks():
     intake, then waits for `go_on`. Yields (checking, go_on)."""
     checking = threading.Event()
     go_on = threading.Event()
-    income = intake_views.current_monthly_income
+    gaps = intake_views.income_step_gaps
 
-    def check_income(income_info):
+    def check_gaps(session):
         checking.set()
         go_on.wait(WAIT)
-        return income(income_info)
+        return gaps(session)
 
-    with patch.object(intake_views, "current_monthly_income", check_income):
+    with patch.object(intake_views, "income_step_gaps", check_gaps):
         yield checking, go_on
 
 
@@ -483,6 +484,12 @@ def _rows(session):
 # Every intake-data write: (method, path, body, expected status).
 WRITES = {
     "session PATCH": lambda s, r: ("patch", _session_url(s), {"debts": [NEW_DEBT]}, 200),
+    "household PATCH": lambda s, r: (
+        "patch",
+        _session_url(s),
+        {"household": {"county": "Cook"}},
+        200,
+    ),
     "session PUT": lambda s, r: ("put", _session_url(s), {"district": s.district_id}, 200),
     "Continue": lambda s, r: ("post", _session_url(s, "update_step/"), {"current_step": 3}, 200),
     "Complete": lambda s, r: ("post", _session_url(s, "complete/"), {}, 200),

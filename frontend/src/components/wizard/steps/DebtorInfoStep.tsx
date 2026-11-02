@@ -12,12 +12,17 @@ import { useState, useEffect, useMemo } from 'react';
 import { FormField, FormSelect } from '../../common';
 import { useAuth } from '../../../context/AuthContext';
 import { formatPhone } from '../../../utils/formatPhone';
+import { ILND_COUNTIES } from '../../../constants/counties';
+import { COUNTY_OUTSIDE_DISTRICT } from '../../../constants/copy';
 import type { DebtorInfo } from '../../../types/api';
 
 interface DebtorInfoStepProps {
   initialData?: Partial<DebtorInfo>;
   onDataChange: (data: Partial<DebtorInfo>) => void;
   onValidationChange: (isValid: boolean) => void;
+  // The wizard holds the county, because it saves under `household`, not `debtor_info`
+  county: string | null;
+  onCountyChange: (county: string | null) => void;
 }
 
 // US States for dropdown
@@ -28,15 +33,12 @@ const US_STATES = [
   // Add more states as needed for MVP
 ];
 
-const FILING_TYPES = [
-  { value: 'individual', label: 'Individual (filing alone)' },
-  { value: 'joint', label: 'Joint (filing with spouse)' },
-];
-
 export function DebtorInfoStep({
   initialData,
   onDataChange,
   onValidationChange,
+  county,
+  onCountyChange,
 }: DebtorInfoStepProps) {
   const [formData, setFormData] = useState<Partial<DebtorInfo>>(initialData || {});
   const { user } = useAuth();
@@ -124,16 +126,10 @@ export function DebtorInfoStep({
       newErrors.phone = 'Please enter a valid phone number (XXX-XXX-XXXX)';
     }
 
-    if (!formData.household_size || formData.household_size < 1) {
-      newErrors.household_size = 'Please enter your household size';
-    }
-
-    if (!formData.filing_type) {
-      newErrors.filing_type = 'Please select your filing type';
-    }
+    if (!county) newErrors.county = 'Please choose your county';
 
     return newErrors;
-  }, [formData]);
+  }, [formData, county]);
 
   // Update parent when form data changes
   useEffect(() => {
@@ -142,7 +138,7 @@ export function DebtorInfoStep({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [formData, errors]);
 
-  const handleChange = (field: keyof DebtorInfo, value: string | number) => {
+  const handleChange = (field: keyof DebtorInfo, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
@@ -285,6 +281,19 @@ export function DebtorInfoStep({
         </div>
 
         <div className="form-row">
+          <FormSelect
+            label="County"
+            name="county"
+            options={ILND_COUNTIES.map((name) => ({ value: name, label: name }))}
+            value={county ?? ''}
+            onChange={(value) => onCountyChange(value || null)}
+            error={errors.county}
+            required
+            helpText={COUNTY_OUTSIDE_DISTRICT}
+          />
+        </div>
+
+        <div className="form-row">
           <FormField
             label="Email Address"
             name="email"
@@ -312,98 +321,6 @@ export function DebtorInfoStep({
             placeholder="XXX-XXX-XXXX"
           />
         </div>
-      </section>
-
-      {/* Household & Filing Information */}
-      <section className="form-section">
-        <h3 className="section-title">Household & Filing Information</h3>
-
-        <div className="form-row">
-          <FormField
-            label="Household Size"
-            name="household_size"
-            type="number"
-            min="1"
-            value={formData.household_size || ''}
-            onChange={(e) => handleChange('household_size', parseInt(e.target.value, 10))}
-            error={errors.household_size}
-            required
-            helpText="Number of people living in your household (including yourself)"
-          />
-
-          <FormSelect
-            label="Filing Type"
-            name="filing_type"
-            options={FILING_TYPES}
-            value={formData.filing_type || ''}
-            onChange={(value) => handleChange('filing_type', value)}
-            error={errors.filing_type}
-            required
-            helpText="Are you filing alone or with your spouse?"
-          />
-        </div>
-
-        {/* Joint filing co-debtor fields (conditional) */}
-        {formData.filing_type === 'joint' && (
-          <>
-            <div className="info-box">
-              <p>For joint filings, please provide your spouse's information below.</p>
-            </div>
-
-            <h4 className="subsection-title">Spouse Information</h4>
-
-            <div className="form-row">
-              <FormField
-                label="Spouse's First Name"
-                name="co_debtor_first_name"
-                type="text"
-                value={formData.co_debtor_first_name || ''}
-                onChange={(e) => handleChange('co_debtor_first_name', e.target.value)}
-                required
-              />
-
-              <FormField
-                label="Spouse's Middle Name"
-                name="co_debtor_middle_name"
-                type="text"
-                value={formData.co_debtor_middle_name || ''}
-                onChange={(e) => handleChange('co_debtor_middle_name', e.target.value)}
-                helpText="Optional"
-              />
-
-              <FormField
-                label="Spouse's Last Name"
-                name="co_debtor_last_name"
-                type="text"
-                value={formData.co_debtor_last_name || ''}
-                onChange={(e) => handleChange('co_debtor_last_name', e.target.value)}
-                required
-              />
-            </div>
-
-            <div className="form-row">
-              <FormField
-                label="Spouse's Date of Birth"
-                name="co_debtor_date_of_birth"
-                type="date"
-                value={formData.co_debtor_date_of_birth || ''}
-                onChange={(e) => handleChange('co_debtor_date_of_birth', e.target.value)}
-                required
-              />
-
-              <FormField
-                label="Spouse's Social Security Number"
-                name="co_debtor_ssn"
-                type="text"
-                value={formData.co_debtor_ssn || ''}
-                onChange={(e) => handleChange('co_debtor_ssn', e.target.value)}
-                required
-                autoComplete="off"
-                placeholder="XXX-XX-XXXX"
-              />
-            </div>
-          </>
-        )}
       </section>
     </div>
   );

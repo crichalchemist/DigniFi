@@ -1,8 +1,17 @@
-import { render, screen, fireEvent } from '@testing-library/react';
+import { useState } from 'react';
+import { render, screen, fireEvent, within } from '@testing-library/react';
 import { vi } from 'vitest';
 import { IncomeInfoStep } from '../IncomeInfoStep';
 import { INCOME_FIELDS } from '../../../../types/api';
-import type { IncomeInfo } from '../../../../types/api';
+import type {
+  HouseholdMember,
+  IncomeInfo,
+  Relationship,
+  SpouseIncome,
+  WizardRow,
+} from '../../../../types/api';
+
+type Row = WizardRow<HouseholdMember>;
 
 // The server stores the ten amounts by source and drops any other name without an error, so
 // each box must carry the name the court forms read (forms step 2 §5.5).
@@ -28,22 +37,79 @@ const legacyIncome: Partial<IncomeInfo> = {
 
 const SPLIT_IT = 'You entered $3,200.00 a month in total. Please split it by source.';
 
-function renderStep(initialData: Partial<IncomeInfo>) {
+/**
+ * The step inside a stand-in for the wizard, which holds the household rows and the "No one
+ * else" answer as the wizard does, so a change the step hands up comes back down to it.
+ */
+function renderStep(
+  initialData: Partial<IncomeInfo>,
+  {
+    rows = [],
+    noOneElse = false,
+    spouse,
+  }: { rows?: Row[]; noOneElse?: boolean; spouse?: SpouseIncome } = {}
+) {
   const onDataChange = vi.fn();
   const onValidationChange = vi.fn();
-  render(
-    <IncomeInfoStep
-      initialData={initialData}
-      onDataChange={onDataChange}
-      onValidationChange={onValidationChange}
-    />
-  );
+  const onRowsChange = vi.fn();
+  let heldRows = rows;
+  function Wizard() {
+    const [householdRows, setHouseholdRows] = useState(rows);
+    const [pressed, setPressed] = useState(noOneElse);
+    return (
+      <IncomeInfoStep
+        initialData={initialData}
+        onDataChange={onDataChange}
+        onValidationChange={onValidationChange}
+        householdRows={householdRows}
+        onHouseholdRowsChange={(next: Row[]) => {
+          onRowsChange(next);
+          heldRows = next;
+          setHouseholdRows(next);
+        }}
+        noOneElse={pressed}
+        onNoOneElseChange={setPressed}
+        initialSpouseIncome={spouse}
+        onSpouseIncomeChange={() => {}}
+      />
+    );
+  }
+  render(<Wizard />);
   const lastEmitted = () =>
     onDataChange.mock.calls[onDataChange.mock.calls.length - 1][0] as Partial<IncomeInfo>;
   // Whether the wizard lets the filer press Continue
   const canContinue = () =>
     onValidationChange.mock.calls[onValidationChange.mock.calls.length - 1][0] as boolean;
-  return { lastEmitted, canContinue };
+  // The rows the wizard holds now
+  const lastRows = () => heldRows;
+  return { lastEmitted, canContinue, lastRows, onRowsChange };
+}
+
+/** A form control by its name, as the journeys find them */
+function field(name: string) {
+  const control = document.querySelector(`[name="${name}"]`);
+  if (!control) throw new Error(`No control named ${name}`);
+  return control as HTMLElement;
+}
+
+/** Picks one answer of a radio question by its value, as the journeys do */
+function pick(name: string, value: string) {
+  const radio = document.querySelector(`input[name="${name}"][value="${value}"]`);
+  if (!radio) throw new Error(`No answer ${value} to ${name}`);
+  fireEvent.click(radio);
+}
+
+/** A row loaded from the server, every question answered */
+function person(id: number, relationship: Relationship, extra: Partial<HouseholdMember> = {}): Row {
+  return {
+    _key: String(id),
+    id,
+    relationship,
+    age: 30,
+    lives_with_you: true,
+    claimed_or_supported: true,
+    ...extra,
+  };
 }
 
 describe('IncomeInfoStep', () => {
@@ -168,5 +234,261 @@ describe('IncomeInfoStep', () => {
     });
 
     expect(canContinue()).toBe(true);
+  });
+});
+
+// Form 122A-1 line 1 and the household list come first, in the form's words (3e1 spec §8.2)
+describe('IncomeInfoStep, family first', () => {
+  const SPOUSE_DEPENDENT = 'Is your spouse a dependent of yours?';
+  const NO_ONE_ELSE = 'No one else lives with me or depends on me.';
+
+  // Line 1 is the filer's sworn answer, so the step never picks one for them
+  it('nothing is selected on line 1 until the filer picks', () => {
+    const { lastEmitted } = renderStep({});
+
+    const radios = screen.getAllByRole('radio') as HTMLInputElement[];
+    expect(radios.map((radio) => [radio.name, radio.value])).toEqual([
+      ['marital_status', 'not_married'],
+      ['marital_status', 'married_spouse_filing'],
+      ['marital_status', 'not_filing'],
+    ]);
+    for (const radio of radios) expect(radio).not.toBeChecked();
+    expect(
+      screen.queryByLabelText('Living in the same household and are not legally separated')
+    ).not.toBeInTheDocument();
+    expect(lastEmitted().marital_status ?? null).toBeNull();
+  });
+
+  it('the spouse filing answer says DigniFi prepares forms for one person', () => {
+    const { lastEmitted, canContinue } = renderStep({});
+
+    pick('marital_status', 'married_spouse_filing');
+
+    expect(
+      screen.getByText(
+        "DigniFi prepares forms for one person filing alone. It can't prepare a case your spouse files with you."
+      )
+    ).toBeInTheDocument();
+    expect(lastEmitted().marital_status).toBe('married_spouse_filing');
+    // Complete names it, so the step still saves
+    expect(canContinue()).toBe(true);
+  });
+
+  // The Yes rests on the filer's own answer, so the added row follows that answer until the filer
+  // answers "Lives with you?" on it themselves
+  it('picking Living in the same household adds a spouse row that lives with you', () => {
+    const { lastRows } = renderStep({});
+
+    pick('marital_status', 'not_filing');
+    pick('spouse_household', 'married_together');
+
+    expect(lastRows()).toHaveLength(1);
+    expect(lastRows()[0]).toMatchObject({
+      _key: expect.stringMatching(/^new-\d+$/),
+      relationship: 'spouse',
+      age: null,
+      lives_with_you: true,
+      claimed_or_supported: null,
+    });
+
+    pick('spouse_household', 'married_separately');
+    expect(lastRows()[0].lives_with_you).toBeNull();
+
+    pick('spouse_household', 'married_together');
+    expect(lastRows()).toHaveLength(1);
+    expect(lastRows()[0].lives_with_you).toBe(true);
+
+    pick('lives_with_you_0', 'no');
+    pick('spouse_household', 'married_separately');
+    expect(lastRows()[0].lives_with_you).toBe(false);
+  });
+
+  // The list holds at most 20 rows; Complete names the missing spouse instead
+  it('with 20 rows, picking living together adds no spouse row', () => {
+    const rows = Array.from({ length: 20 }, (_, index) => person(index + 1, 'other'));
+    const { lastRows } = renderStep({}, { rows });
+
+    pick('marital_status', 'not_filing');
+    pick('spouse_household', 'married_together');
+
+    expect(lastRows()).toHaveLength(20);
+    expect(lastRows().some((row) => row.relationship === 'spouse')).toBe(false);
+  });
+
+  // A saved answer is the filer's own and is never inferred (U:308)
+  it("a loaded spouse row's answers are never changed by the marriage answer", () => {
+    const { onRowsChange } = renderStep(
+      {},
+      { rows: [person(1, 'spouse', { lives_with_you: false, spouse_is_dependent: false })] }
+    );
+
+    pick('marital_status', 'not_filing');
+    pick('spouse_household', 'married_together');
+    pick('spouse_household', 'married_separately');
+
+    expect(onRowsChange).not.toHaveBeenCalled();
+  });
+
+  // The server refuses a second spouse row
+  it('Spouse is offered only when no other row is the spouse', () => {
+    renderStep(
+      {},
+      { rows: [person(1, 'spouse', { spouse_is_dependent: false }), person(2, 'son')] }
+    );
+
+    const offered = (name: string) =>
+      Array.from((field(name) as HTMLSelectElement).options).map((option) => option.value);
+    expect(offered('relationship_0')).toContain('spouse');
+    expect(offered('relationship_1')).not.toContain('spouse');
+  });
+
+  // The server refuses the spouse's question on any other row, so every save would fail
+  it('changing a row away from spouse drops its spouse question', () => {
+    const { lastRows } = renderStep(
+      {},
+      { rows: [person(1, 'spouse', { spouse_is_dependent: false })] }
+    );
+    expect(screen.getByRole('group', { name: SPOUSE_DEPENDENT })).toBeInTheDocument();
+
+    fireEvent.change(field('relationship_0'), { target: { value: 'son' } });
+
+    expect(screen.queryByRole('group', { name: SPOUSE_DEPENDENT })).not.toBeInTheDocument();
+    expect(lastRows()[0]).not.toHaveProperty('spouse_is_dependent');
+  });
+
+  // The server refuses a 21st row
+  it('+ Add a person is disabled at 20 rows', () => {
+    const rows = Array.from({ length: 19 }, (_, index) => person(index + 1, 'other'));
+    renderStep({}, { rows });
+
+    const add = screen.getByRole('button', { name: '+ Add a person' });
+    expect(add).toBeEnabled();
+    fireEvent.click(add);
+    expect(add).toBeDisabled();
+  });
+
+  // The server refuses any other age, so the box says what is wrong before Continue saves it
+  it('an age outside 0–120 or not whole blocks saving', () => {
+    const { canContinue } = renderStep({}, { rows: [person(1, 'son')] });
+
+    for (const age of ['-1', '121', '7.5']) {
+      fireEvent.change(field('age_0'), { target: { value: age } });
+      expect(field('age_0')).toHaveAccessibleDescription(
+        'Please enter an age from 0 to 120, in whole years'
+      );
+      expect(canContinue()).toBe(false);
+    }
+    for (const age of ['0', '120']) {
+      fireEvent.change(field('age_0'), { target: { value: age } });
+      expect(canContinue()).toBe(true);
+    }
+  });
+
+  // The spouse's figures stay saved but count for nothing away from living together (§5.1)
+  it('a hidden spouse section neither saves nor blocks', () => {
+    const { canContinue } = renderStep(
+      { marital_status: 'married_together' },
+      { spouse: { monthly_gross_wages: 1800 } }
+    );
+
+    fireEvent.change(field('spouse_monthly_tips'), { target: { value: '12.345' } });
+    expect(canContinue()).toBe(false);
+
+    pick('spouse_household', 'married_separately');
+    expect(document.querySelector('[name="spouse_monthly_tips"]')).toBeNull();
+    expect(canContinue()).toBe(true);
+  });
+
+  it("the Income step asks the family first, in the form's words", () => {
+    renderStep(
+      { marital_status: 'married_together' },
+      { rows: [person(1, 'spouse', { spouse_is_dependent: false })] }
+    );
+
+    expect(
+      screen.getByRole('group', { name: 'What is your marital and filing status? Check one only.' })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'By checking this box, you declare under penalty of perjury that you and your spouse are legally separated under nonbankruptcy law that applies or that you and your spouse are living apart for reasons that do not include evading the Means Test requirements. 11 U.S.C. § 707(b)(7)(B).'
+      )
+    ).toBeInTheDocument();
+
+    const inOrder = [
+      screen.getByRole('heading', { name: 'Your marriage' }),
+      screen.getByRole('heading', { name: 'People in your home, and people you support' }),
+      field('monthly_gross_wages'),
+      screen.getByRole('heading', { name: "Your spouse's income" }),
+      field('spouse_monthly_gross_wages'),
+    ];
+    for (let index = 1; index < inOrder.length; index += 1) {
+      expect(
+        inOrder[index - 1].compareDocumentPosition(inOrder[index]) &
+          Node.DOCUMENT_POSITION_FOLLOWING
+      ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    }
+
+    expect(
+      screen.getByText(
+        "List everyone who lives with you, and anyone you support who lives somewhere else. Don't include yourself. Don't type anyone's name."
+      )
+    ).toBeInTheDocument();
+    const spouseCard = within(field('relationship_0').closest('section') as HTMLElement);
+    expect(spouseCard.getByRole('group', { name: SPOUSE_DEPENDENT })).toBeInTheDocument();
+    expect(
+      spouseCard.getByText(
+        'A person who is economically dependent on you regardless of whether the person can be claimed as a dependent on your federal tax return.',
+        { exact: false }
+      )
+    ).toBeInTheDocument();
+  });
+
+  it('answering anything on an added row clears No one else', () => {
+    renderStep({}, { noOneElse: true });
+
+    fireEvent.click(screen.getByRole('button', { name: '+ Add a person' }));
+    fireEvent.change(field('relationship_0'), { target: { value: 'son' } });
+    expect(screen.queryByRole('button', { name: NO_ONE_ELSE })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remove person 1' }));
+    expect(screen.getByRole('button', { name: NO_ONE_ELSE })).toHaveAttribute(
+      'aria-pressed',
+      'false'
+    );
+  });
+
+  it("the totals show the filer's and the spouse's income, a month each", () => {
+    renderStep(
+      { monthly_gross_wages: 12000, marital_status: 'married_together' },
+      { spouse: { monthly_gross_wages: 1800 } }
+    );
+
+    // The amount listed under a total's label
+    const total = (label: string) => screen.getByText(label, { selector: 'dt' }).nextElementSibling;
+    expect(total('Your income')).toHaveTextContent('$12,000.00');
+    expect(total("Your spouse's income")).toHaveTextContent('$1,800.00');
+    // The sentence under the totals never calls the spouse's figure "your total"
+    expect(
+      screen.getByText('Both totals are monthly, before taxes and deductions.')
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/this is your total monthly income/i)).not.toBeInTheDocument();
+
+    pick('marital_status', 'not_married');
+    expect(screen.queryByText("Your spouse's income")).not.toBeInTheDocument();
+    expect(
+      screen.getByText('This is your total monthly income before taxes and deductions.')
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/both totals/i)).not.toBeInTheDocument();
+  });
+
+  // The help under the filer's support boxes says "you receive", and the spouse's figures would
+  // count twice if a filer typed their own into the spouse's boxes
+  it("the spouse's boxes carry none of the filer's help", () => {
+    renderStep({ marital_status: 'married_together' });
+
+    for (const name of ['monthly_child_support', 'monthly_alimony']) {
+      expect(field(name)).toHaveAccessibleDescription(/you receive/i);
+      expect(field(`spouse_${name}`)).not.toHaveAccessibleDescription(/you receive/i);
+    }
   });
 });

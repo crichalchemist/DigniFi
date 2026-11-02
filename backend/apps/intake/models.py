@@ -1,14 +1,16 @@
 """Intake models for collecting bankruptcy petition data."""
 
+import json
 from decimal import Decimal
 from typing import ClassVar
 
 from django.conf import settings
 from django.core.validators import MinValueValidator
 from django.db import models
-from encrypted_model_fields.fields import EncryptedCharField
+from encrypted_model_fields.fields import EncryptedCharField, EncryptedTextField
 
 from .fields import EncryptedDecimalField
+from .household import ANSWER_KEYS, SPOUSE_KEY
 
 
 class IntakeSession(models.Model):
@@ -74,8 +76,7 @@ class DebtorInfo(models.Model):
     city = models.CharField(max_length=100)
     state = models.CharField(max_length=2)
     zip_code = models.CharField(max_length=10)
-    # Household & filing info (collected on the debtor step; the means test
-    # uses household_size for the median income lookup)
+    # Not asked since forms step 3e1, and read by nothing. Kept until step 5 migrates DebtorInfo.
     household_size = models.PositiveIntegerField(default=1)
     filing_type = models.CharField(
         max_length=20,
@@ -106,19 +107,19 @@ class IncomeInfo(models.Model):
         "monthly_alimony",
         "monthly_other_income",
     )
+    # Form 122A-1 line 1's four answers (3e1 spec §3.2). Null means unanswered; there is no fifth.
+    MARITAL_ANSWERS: ClassVar[tuple[str, ...]] = (
+        "not_married",
+        "married_spouse_filing",
+        "married_together",
+        "married_separately",
+    )
 
     session = models.OneToOneField(
         IntakeSession, on_delete=models.CASCADE, related_name="income_info"
     )
-    marital_status = models.CharField(
-        max_length=30,
-        choices=[
-            ("single", "Single"),
-            ("married_joint", "Married Filing Jointly"),
-            ("married_separate", "Married Filing Separately"),
-        ],
-    )
-    number_of_dependents = models.IntegerField(default=0)
+    # Line 1's answer, encrypted. The serializer takes only MARITAL_ANSWERS.
+    marital_status = EncryptedCharField(max_length=30, null=True, blank=True)
     # The total the Income step saved before step 2. It is no longer written, and stays for
     # one release as the only record of what an earlier filer entered.
     monthly_income = models.JSONField(
@@ -205,10 +206,7 @@ class IncomeInfo(models.Model):
         db_table = "income_info"
 
     def __str__(self) -> str:
-        return (
-            f"IncomeInfo: {self.marital_status}, {self.number_of_dependents} dependents "
-            f"(Session: {self.session_id})"
-        )
+        return f"IncomeInfo (Session: {self.session_id})"
 
     def calculate_total_monthly_income(self) -> float | None:
         """The ten monthly amounts added up, Social Security included.
@@ -222,6 +220,123 @@ class IncomeInfo(models.Model):
         if not given:
             return None
         return float(sum(given, Decimal("0")))
+
+
+class Household(models.Model):
+    """The filer's county and the people in their home or whom they support (3e1 spec §4.1).
+
+    Both are encrypted. members is JSON in the filer's order, so no encrypted column is ever
+    sorted. Null means unanswered; [] means the filer said no one.
+    """
+
+    session = models.OneToOneField(
+        IntakeSession, on_delete=models.CASCADE, related_name="household"
+    )
+    county = EncryptedCharField(max_length=20, null=True, blank=True)
+    members = EncryptedTextField(null=True, blank=True)
+    # The id the next new row gets. Ids are never reused.
+    next_member_id = models.PositiveIntegerField(default=1)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "household"
+
+    def __str__(self) -> str:
+        return f"Household (Session: {self.session_id})"
+
+    def get_members(self) -> list[dict] | None:
+        """The stored list, or None while the filer hasn't answered."""
+        if self.members is None:
+            return None
+        return json.loads(self.members)
+
+    def store_members(self, rows: list[dict] | None) -> list[dict] | None:
+        """Store the list in the order sent and return it as stored. Doesn't save.
+
+        A row keeps its id when the stored list holds it and no earlier row in this list
+        kept it; every other row gets next_member_id, which then goes up by one. Each row
+        holds its id, the four answers, and spouse_is_dependent on the spouse's row only,
+        with None for an answer the row didn't send. Storing None resets nothing.
+        """
+        if rows is None:
+            self.members = None
+            return None
+        stored_ids = {row["id"] for row in self.get_members() or []}
+        kept = set()
+        saved = []
+        for row in rows:
+            member_id = row.get("id")
+            if member_id in stored_ids and member_id not in kept:
+                kept.add(member_id)
+            else:
+                member_id = self.next_member_id
+                self.next_member_id += 1
+            member = {"id": member_id, **{key: row.get(key) for key in ANSWER_KEYS}}
+            if member["relationship"] == "spouse":
+                member[SPOUSE_KEY] = row.get(SPOUSE_KEY)
+            saved.append(member)
+        self.members = json.dumps(saved)
+        return saved
+
+
+class SpouseIncome(models.Model):
+    """The spouse's monthly income by the filer's ten sources (3e1 spec §5.2).
+
+    Asked of a filer who lives with their spouse. Encrypted from the start, and kept when the
+    marriage answer changes.
+    """
+
+    SOURCE_FIELDS: ClassVar[tuple[str, ...]] = IncomeInfo.SOURCE_FIELDS
+
+    session = models.OneToOneField(
+        IntakeSession, on_delete=models.CASCADE, related_name="spouse_income"
+    )
+    # No default: an amount the filer never gave stays empty.
+    monthly_gross_wages = EncryptedDecimalField(
+        max_digits=10, decimal_places=2, null=True, blank=True
+    )
+    monthly_overtime = EncryptedDecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    monthly_tips = EncryptedDecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    monthly_rental_income = EncryptedDecimalField(
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="After the property's costs",
+    )
+    monthly_pension = EncryptedDecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    monthly_social_security = EncryptedDecimalField(
+        max_digits=10, decimal_places=2, null=True, blank=True
+    )
+    monthly_unemployment = EncryptedDecimalField(
+        max_digits=10, decimal_places=2, null=True, blank=True
+    )
+    monthly_child_support = EncryptedDecimalField(
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="Child support received",
+    )
+    monthly_alimony = EncryptedDecimalField(
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="Alimony received",
+    )
+    monthly_other_income = EncryptedDecimalField(
+        max_digits=10, decimal_places=2, null=True, blank=True
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "spouse_income"
+
+    def __str__(self) -> str:
+        return f"SpouseIncome (Session: {self.session_id})"
 
 
 class ExpenseInfo(models.Model):

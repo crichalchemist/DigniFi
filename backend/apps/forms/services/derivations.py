@@ -15,7 +15,16 @@ from collections.abc import Callable
 from decimal import Decimal
 from functools import reduce
 
-from apps.eligibility.cmi import IncomeNotSplit, current_monthly_income, is_above_median
+from apps.eligibility.cmi import (
+    IncomeNotSplit,
+    counted_spouse_income,
+    current_monthly_income,
+    household_cmi,
+    household_members,
+    is_above_median,
+    spouse_monthly_income,
+)
+from apps.intake.household import count_family_size, dependents
 from apps.intake.models import IntakeSession
 
 _ZERO = Decimal("0.00")
@@ -76,13 +85,26 @@ def _income_amounts(session: IntakeSession, *fields: str) -> str:
 
     An amount left empty counts as zero once another one was given (step 2 spec §6.1, B2).
     """
-    income_info = getattr(session, "income_info", None)
-    if income_info is None:
+    return _given_amounts(getattr(session, "income_info", None), fields)
+
+
+def _spouse_amounts(session: IntakeSession, *fields: str) -> str:
+    """_income_amounts over the spouse's row: blank unless a spouse at home counts (3e1 spec §10)."""
+    return _given_amounts(counted_spouse_income(session), fields)
+
+
+def _given_amounts(row, fields: tuple[str, ...]) -> str:
+    if row is None:
         return ""
-    given = [getattr(income_info, f) for f in fields if getattr(income_info, f) is not None]
+    given = [getattr(row, f) for f in fields if getattr(row, f) is not None]
     if not given:
         return ""
     return _fmt(sum(given, _ZERO))
+
+
+def _spouse_rule(*fields: str) -> Callable[[IntakeSession], str]:
+    """A spouse-column rule that adds up the same sources as its filer twin."""
+    return lambda session: _spouse_amounts(session, *fields)
 
 
 # ---------------------------------------------------------------------------
@@ -147,14 +169,8 @@ def _total_other_assets(session: IntakeSession) -> str:
 
 
 def _cmi(session: IntakeSession) -> str:
-    from apps.intake.models import IncomeInfo
-
-    try:
-        income_info = session.income_info
-    except IncomeInfo.DoesNotExist:
-        # No income at all is income not entered by source.
-        raise IncomeNotSplit() from None
-    return _fmt(current_monthly_income(income_info))
+    """The household's CMI (3e1 spec §5.3); no income at all is income not entered by source."""
+    return _fmt(household_cmi(session))
 
 
 def _total_monthly_expenses(session: IntakeSession) -> str:
@@ -331,10 +347,40 @@ def _line7_other_income(session: IntakeSession) -> str:
 
 
 def _other_income_label(session: IntakeSession) -> str:
-    """What the other income is, on 122A-1 line 10 and Schedule I 8h: named only above $0."""
+    """What the other income is, on 122A-1 line 10 and Schedule I 8h: named only above $0.
+
+    Either column's other income names it; the spouse's counts only for a spouse at home.
+    """
+    for row in (getattr(session, "income_info", None), counted_spouse_income(session)):
+        other = None if row is None else row.monthly_other_income
+        if other is not None and other > 0:
+            return "Other income"
+    return ""
+
+
+def _line1_marital_status(session: IntakeSession) -> str:
+    """Line 1's stored answer; each answer is a box state in the schema's choices."""
+    return getattr(getattr(session, "income_info", None), "marital_status", None) or ""
+
+
+def _line1_spouse_household(session: IntakeSession) -> str:
+    """Line 1's second question, for a spouse who is not filing."""
+    answer = _line1_marital_status(session)
+    return {"married_together": "together", "married_separately": "separately"}.get(answer, "")
+
+
+def _filer_cmi(session: IntakeSession) -> str:
+    """Line 11, Column A: the filer's own CMI. No income row is income not entered by source."""
     income_info = getattr(session, "income_info", None)
-    other = None if income_info is None else income_info.monthly_other_income
-    return "Other income" if other is not None and other > 0 else ""
+    if income_info is None:
+        raise IncomeNotSplit()
+    return _fmt(current_monthly_income(income_info))
+
+
+def _spouse_cmi(session: IntakeSession) -> str:
+    """Line 11, Column B: the spouse's CMI, blank unless the filer lives with their spouse."""
+    spouse = spouse_monthly_income(session)
+    return "" if spouse is None else _fmt(spouse)
 
 
 def _line11_annualized_income(session: IntakeSession) -> str:
@@ -344,6 +390,11 @@ def _line11_annualized_income(session: IntakeSession) -> str:
 
 def _line12b_annualized_cmi(session: IntakeSession) -> str:
     return _line11_annualized_income(session)
+
+
+def _family_size(session: IntakeSession) -> str:
+    """Line 13: the filer and everyone living with them, the count the means test sizes by."""
+    return str(count_family_size(household_members(session)))
 
 
 def _line13a_median_income(session: IntakeSession) -> str:
@@ -474,15 +525,37 @@ def _schedule_i_other_income_total_debtor1(session: IntakeSession) -> str:
     )
 
 
-def _schedule_i_income_total(session: IntakeSession) -> str:
-    """
-    Schedule I lines 10 and 12: all ten sources, Social Security included (C1), unlike CMI.
-
-    Line 10's spouse column and line 11 are never asked and count as zero (step 2 spec §6.1).
-    """
+def _schedule_i_income_total_debtor1(session: IntakeSession) -> str:
+    """Line 10, column 1: the filer's ten sources, Social Security included (C1), unlike CMI."""
     from apps.intake.models import IncomeInfo
 
     return _income_amounts(session, *IncomeInfo.SOURCE_FIELDS)
+
+
+def _schedule_i_income_total_spouse(session: IntakeSession) -> str:
+    """Line 10, column 2: the spouse's ten sources, Social Security included."""
+    from apps.intake.models import IncomeInfo
+
+    return _spouse_amounts(session, *IncomeInfo.SOURCE_FIELDS)
+
+
+def _schedule_i_income_total(session: IntakeSession) -> str:
+    """
+    Schedule I lines 10 and 12: both columns, Social Security included (C1), unlike CMI.
+
+    The spouse's column counts only for a filer living with their spouse (3e1 spec §10.2). A
+    blank column counts as zero, and the total is blank only when both are. Line 11 is never
+    asked and counts as zero (step 2 spec §6.1).
+    """
+    from apps.intake.models import IncomeInfo
+
+    columns = (
+        _schedule_i_income_total_debtor1(session),
+        _spouse_amounts(session, *IncomeInfo.SOURCE_FIELDS),
+    )
+    if columns == ("", ""):
+        return ""
+    return _fmt(sum((Decimal(column or "0") for column in columns), _ZERO))
 
 
 # ---------------------------------------------------------------------------
@@ -525,14 +598,27 @@ def _schedule_j_monthly_net_income(session: IntakeSession) -> str:
 
 def _schedule_j_joint_case(session: IntakeSession) -> str:
     """
-    Line 1: "no" for an individual filing, blank for a joint one (DIG-177).
+    Line 1: "no" for every session.
 
-    A joint filer still gets a single filer's packet, so line 1 says nothing for them.
+    No step offers joint filing and Complete refuses a case the spouse files too (3e1 spec
+    §7, DIG-177), so `filing_type` has no reader left.
     """
-    debtor_info = getattr(session, "debtor_info", None)
-    if debtor_info is not None and debtor_info.filing_type == "individual":
-        return "no"
-    return ""
+    return "no"
+
+
+def _schedule_j_has_dependents(session: IntakeSession) -> str:
+    """
+    Line 2's "Do you have dependents?": "yes" when the rows below it list anyone.
+
+    An unanswered list raises IncomeStepGap (from household_members) rather than swear to
+    a No the filer never gave.
+    """
+    return "yes" if dependents(household_members(session)) else "no"
+
+
+def _county(session: IntakeSession) -> str:
+    household = getattr(session, "household", None)
+    return (household.county if household else "") or ""
 
 
 def _means_test_disposable_income(session: IntakeSession) -> str:
@@ -549,7 +635,7 @@ def _means_test_disposable_income(session: IntakeSession) -> str:
 
 DERIVATIONS: dict[str, Callable[[IntakeSession], str]] = {
     "full_name": _full_name,
-    "family_size": lambda s: _safe_debtor_attr(s, "household_size", "1"),
+    "family_size": _family_size,
     "first_name": lambda s: _safe_debtor_attr(s, "first_name"),
     "middle_name": lambda s: _safe_debtor_attr(s, "middle_name"),
     "last_name": lambda s: _safe_debtor_attr(s, "last_name"),
@@ -558,6 +644,7 @@ DERIVATIONS: dict[str, Callable[[IntakeSession], str]] = {
     "city": lambda s: _safe_debtor_attr(s, "city"),
     "state": lambda s: _safe_debtor_attr(s, "state"),
     "zip_code": lambda s: _safe_debtor_attr(s, "zip_code"),
+    "county": _county,
     "phone": lambda s: _safe_debtor_attr(s, "phone"),
     "email": lambda s: _safe_debtor_attr(s, "email"),
     "chapter": lambda s: "7",
@@ -611,6 +698,17 @@ DERIVATIONS: dict[str, Callable[[IntakeSession], str]] = {
     "line6a_unemployment": _line6a_unemployment,
     "line6b_child_support_alimony": _line6b_child_support_alimony,
     "line7_other_income": _line7_other_income,
+    "line1_marital_status": _line1_marital_status,
+    "line1_spouse_household": _line1_spouse_household,
+    "filer_cmi": _filer_cmi,
+    "spouse_cmi": _spouse_cmi,
+    "line1_wages_spouse": _spouse_rule("monthly_gross_wages", "monthly_tips", "monthly_overtime"),
+    "line3_alimony_spouse": _spouse_rule("monthly_alimony"),
+    "line6b_child_support_alimony_spouse": _spouse_rule("monthly_child_support"),
+    "line3_real_property_income_spouse": _spouse_rule("monthly_rental_income"),
+    "line6a_unemployment_spouse": _spouse_rule("monthly_unemployment"),
+    "line5a_pension_retirement_spouse": _spouse_rule("monthly_pension"),
+    "line7_other_income_spouse": _spouse_rule("monthly_other_income"),
     "other_income_label": _other_income_label,
     "line12b_annualized_cmi": _line12b_annualized_cmi,
     "line13a_median_income": _line13a_median_income,
@@ -639,7 +737,30 @@ DERIVATIONS: dict[str, Callable[[IntakeSession], str]] = {
     "schedule_i_rental_debtor1": _schedule_i_rental_debtor1,
     "schedule_i_other_income_debtor1": _schedule_i_other_income_debtor1,
     "schedule_i_other_income_total_debtor1": _schedule_i_other_income_total_debtor1,
+    "schedule_i_income_total_debtor1": _schedule_i_income_total_debtor1,
     "schedule_i_income_total": _schedule_i_income_total,
+    # Schedule I column 2: the spouse at home, source for source as column 1
+    "schedule_i_net_wages_spouse": _spouse_rule("monthly_gross_wages", "monthly_tips"),
+    "schedule_i_overtime_spouse": _spouse_rule("monthly_overtime"),
+    "schedule_i_gross_income_spouse": _spouse_rule(
+        "monthly_gross_wages", "monthly_tips", "monthly_overtime"
+    ),
+    "schedule_i_rental_spouse": _spouse_rule("monthly_rental_income"),
+    "schedule_i_child_support_spouse": _spouse_rule("monthly_child_support", "monthly_alimony"),
+    "schedule_i_unemployment_spouse": _spouse_rule("monthly_unemployment"),
+    "schedule_i_social_security_spouse": _spouse_rule("monthly_social_security"),
+    "schedule_i_pension_spouse": _spouse_rule("monthly_pension"),
+    "schedule_i_other_income_spouse": _spouse_rule("monthly_other_income"),
+    "schedule_i_other_income_total_spouse": _spouse_rule(
+        "monthly_rental_income",
+        "monthly_child_support",
+        "monthly_alimony",
+        "monthly_unemployment",
+        "monthly_social_security",
+        "monthly_pension",
+        "monthly_other_income",
+    ),
+    "schedule_i_income_total_spouse": _schedule_i_income_total_spouse,
     # Schedule J expense line item derivations
     "schedule_j_rent_or_mortgage": lambda s: _expense_line(s, "rent_or_mortgage"),
     "schedule_j_utilities": lambda s: _expense_line(s, "utilities"),
@@ -663,6 +784,7 @@ DERIVATIONS: dict[str, Callable[[IntakeSession], str]] = {
     "schedule_j_total_income": _schedule_i_income_total,
     "schedule_j_monthly_net_income": _schedule_j_monthly_net_income,
     "schedule_j_joint_case": _schedule_j_joint_case,
+    "schedule_j_has_dependents": _schedule_j_has_dependents,
     # Form 122A-2 means test expense deduction derivations
     "means_test_disposable_income": _means_test_disposable_income,
 }
@@ -687,12 +809,13 @@ RULE_FIXES: dict[str, dict[str, str]] = {
     "city": {"step": "debtor_info"},
     "state": {"step": "debtor_info"},
     "zip_code": {"step": "debtor_info"},
+    "county": {"step": "debtor_info"},
     "phone": {"step": "debtor_info"},
     "email": {"step": "debtor_info"},
     "ssn_last_4": {"step": "debtor_info"},
     "ssn_formatted": {"step": "debtor_info"},
-    "family_size": {"step": "debtor_info"},
     # Income
+    "family_size": {"step": "income_info"},
     "cmi": {"step": "income_info"},
     "line12b_annualized_cmi": {"step": "income_info"},
     "line1_wages": {"step": "income_info"},
@@ -702,6 +825,15 @@ RULE_FIXES: dict[str, dict[str, str]] = {
     "line6a_unemployment": {"step": "income_info"},
     "line6b_child_support_alimony": {"step": "income_info"},
     "line7_other_income": {"step": "income_info"},
+    "filer_cmi": {"step": "income_info"},
+    "spouse_cmi": {"step": "income_info"},
+    "line1_wages_spouse": {"step": "income_info"},
+    "line3_alimony_spouse": {"step": "income_info"},
+    "line6b_child_support_alimony_spouse": {"step": "income_info"},
+    "line3_real_property_income_spouse": {"step": "income_info"},
+    "line6a_unemployment_spouse": {"step": "income_info"},
+    "line5a_pension_retirement_spouse": {"step": "income_info"},
+    "line7_other_income_spouse": {"step": "income_info"},
     "other_income_label": {"step": "income_info"},
     "schedule_i_net_wages_debtor1": {"step": "income_info"},
     "schedule_i_overtime_debtor1": {"step": "income_info"},
@@ -714,6 +846,18 @@ RULE_FIXES: dict[str, dict[str, str]] = {
     "schedule_i_other_income_debtor1": {"step": "income_info"},
     "schedule_i_other_income_total_debtor1": {"step": "income_info"},
     "schedule_i_income_total": {"step": "income_info"},
+    "schedule_i_income_total_debtor1": {"step": "income_info"},
+    "schedule_i_net_wages_spouse": {"step": "income_info"},
+    "schedule_i_overtime_spouse": {"step": "income_info"},
+    "schedule_i_gross_income_spouse": {"step": "income_info"},
+    "schedule_i_rental_spouse": {"step": "income_info"},
+    "schedule_i_child_support_spouse": {"step": "income_info"},
+    "schedule_i_unemployment_spouse": {"step": "income_info"},
+    "schedule_i_social_security_spouse": {"step": "income_info"},
+    "schedule_i_pension_spouse": {"step": "income_info"},
+    "schedule_i_other_income_spouse": {"step": "income_info"},
+    "schedule_i_other_income_total_spouse": {"step": "income_info"},
+    "schedule_i_income_total_spouse": {"step": "income_info"},
     "schedule_j_total_income": {"step": "income_info"},
     # Income less expenses: the earlier of its two steps
     "schedule_j_monthly_net_income": {"step": "income_info"},

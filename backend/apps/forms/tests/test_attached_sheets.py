@@ -17,11 +17,14 @@ import pymupdf
 import pypdf
 import pytest
 from django.conf import settings
+from django.db import connection
+from django.test.utils import CaptureQueriesContext
 
 from apps.forms.registry import build_parts, get_all_form_types
 from apps.forms.schema import load_schema
 from apps.forms.services import sheets
 from apps.forms.services.derivations import DERIVATIONS
+from apps.forms.services.fill_resolver import resolve_parts
 from apps.forms.services.pdf_filler import PDFFormFiller, UnprintableLetter, ValueTooLong
 from apps.forms.services.sheets import draw_sheet, plan_sheet, sheet_spec
 from apps.forms.services.text_fit import font_for
@@ -548,3 +551,48 @@ def test_a_form_with_a_copy_and_a_sheet_prints_the_sheet_last(
         "(attached sheet)",
         "Case number (if known)",
     )
+
+
+J_TITLE = "Official Form 106J, Schedule J: Your Expenses, line 2"
+# Five sons fill line 2's rows a to e; the sixth and seventh dependents continue on the sheet.
+SEVEN = [
+    *(("son", age, True, True) for age in range(11, 16)),
+    ("son", 8, True, True),
+    ("daughter", 5, False, True),  # supported, but lives with her other parent
+]
+
+
+def test_a_sheet_prints_a_boxs_answer_in_the_forms_words(
+    generated_form_factory, schedule_j_with_dependents, household_list
+):
+    session = household_list(generated_form_factory().session, *SEVEN)
+    document = build_parts("schedule_j", session)
+    form, sheet = document["parts"]
+    assert form["values"]["check2e"] == "/yes"  # the box itself, on the form
+    assert sheet == {
+        "kind": "sheet",
+        "group": "j_line_2",
+        "title": J_TITLE,
+        "columns": [
+            {"label": "Relationship", "width": 220},
+            {"label": "Age", "width": 80},
+            {"label": "Lives with you", "width": 168},
+        ],
+        "name": "Maria Torres",
+        "rows": [
+            {"line": "2.6", "cells": ["Son", "8", "Yes"]},
+            {"line": "2.7", "cells": ["Daughter", "5", "No"]},
+        ],
+    }
+    PDFFormFiller().check("schedule_j", document)  # the words print in the form's letters
+
+
+def test_a_form_reads_the_household_once(
+    generated_form_factory, schedule_j_with_dependents, household_list
+):
+    # Line 2's fifteen slots and its sheet take every row from one read (§10.3, R71 m7).
+    session = household_list(generated_form_factory().session, *SEVEN)
+    schema = load_schema("schedule_j")
+    with CaptureQueriesContext(connection) as queries:
+        resolve_parts(schema, session)
+    assert sum('FROM "household"' in q["sql"] for q in queries.captured_queries) == 1

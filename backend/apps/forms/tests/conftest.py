@@ -17,13 +17,16 @@ from apps.forms.field_index import load_index
 from apps.forms.models import GeneratedForm
 from apps.forms.schema import load_schema
 from apps.forms.services.widgets import template_widgets
+from apps.intake.household import ANSWER_KEYS, SPOUSE_KEY
 from apps.intake.models import (
     DebtorInfo,
+    Household,
     IncomeInfo,
     IntakeSession,
     SOFACreditorPayment,
     SOFAReport,
 )
+from apps.intake.tests.builders import answer_household
 
 User = get_user_model()
 
@@ -243,6 +246,92 @@ def schedule_d_with_a_copy_and_a_sheet(tmp_path, settings):
     load_schema.cache_clear()
 
 
+# Schedule J line 2's rows a to e: the dependent's relationship, age and "Does dependent
+# live with you?" boxes.
+_J_LINE_2 = [(f"Dependant Relation 2{x}", f"Dependant age 2{x}", f"check2{x}") for x in "abcde"]
+_J_SHEET = {
+    "title": "Official Form 106J, Schedule J: Your Expenses, line 2",
+    "columns": [
+        {"label": "Relationship", "binding": "household.dependents[].relationship", "width": 220},
+        {"label": "Age", "binding": "household.dependents[].age", "width": 80},
+        {
+            "label": "Lives with you",
+            "binding": "household.dependents[].lives_with_you",
+            "width": 168,
+        },
+    ],
+}
+
+
+@pytest.fixture
+def schedule_j_with_dependents(tmp_path, settings):
+    """
+    A copy of the real schemas whose Schedule J has line 2 as 3e1 declares it (spec §10.3):
+    rows a to e, each a household dependent's relationship, age and "lives with you?"
+    boxes, continued on an attached sheet, its rows numbered "2.{n}". Any binding of those
+    boxes in the real schema is dropped first. Yields the schemas directory, cleared from
+    the schema cache before and after, as schedule_d_with_copies.
+    """
+    schemas = tmp_path / "schemas"
+    if not schemas.exists():
+        shutil.copytree(django_settings.FORM_SCHEMAS_DIRECTORY, schemas)
+    path = schemas / "schedule_j.json"
+    schema = json.loads(path.read_text())
+    boxes = {box for row in _J_LINE_2 for box in row}
+    schema["fields"] = [f for f in schema["fields"] if f["pdf_field"] not in boxes]
+    for row, (relationship, age, lives_with_you) in enumerate(_J_LINE_2, start=1):
+        for pdf_field, kind, attr, choices in [
+            (relationship, "text", "relationship", None),
+            (age, "text", "age", None),
+            (lives_with_you, "checkbox", "lives_with_you", {"yes": "/yes", "no": "/no"}),
+        ]:
+            slot = {
+                "pdf_field": pdf_field,
+                "type": kind,
+                "source": "asked",
+                "page": 1,
+                "label": pdf_field,
+                "required": False,
+                "conditional_on": None,
+                "value": None,
+                "rule": None,
+                "ingest_key": None,
+                "binding": f"household.dependents[].{attr}",
+                "repeat": "j_line_2",
+                "repeat_capacity": 5,
+                "row": row,
+                "legal_review": False,
+            }
+            if choices is not None:
+                slot["choices"] = choices
+            schema["fields"].append(slot)
+    schema.setdefault("groups", {})["j_line_2"] = {"number": "2.{n}", "sheet": _J_SHEET}
+    path.write_text(json.dumps(schema))
+    settings.FORM_SCHEMAS_DIRECTORY = schemas
+    load_schema.cache_clear()
+    yield schemas
+    load_schema.cache_clear()
+
+
+@pytest.fixture
+def household_list():
+    """
+    store(session, *rows): the session's household list, each row (relationship, age,
+    lives_with_you, claimed_or_supported[, spouse_is_dependent]); returns the session read
+    afresh from the database.
+    """
+
+    def store(session, *rows):
+        household, _ = Household.objects.get_or_create(session=session)
+        # A row without the spouse question stops at claimed_or_supported.
+        keys = (*ANSWER_KEYS, SPOUSE_KEY)
+        household.store_members([dict(zip(keys, row, strict=False)) for row in rows])
+        household.save()
+        return IntakeSession.objects.get(pk=session.pk)
+
+    return store
+
+
 @pytest.fixture
 def creditor_payments():
     """
@@ -297,6 +386,7 @@ def generated_form_factory(db, api_client_authed):
             zip_code="60622",
         )
         IncomeInfo.objects.create(session=session, monthly_gross_wages=Decimal("2800.00"))
+        answer_household(session)
         return GeneratedForm.objects.create(
             session=session,
             form_type="form_121",

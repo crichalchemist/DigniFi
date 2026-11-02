@@ -12,6 +12,7 @@ import { useIntake } from '../context/IntakeContext';
 import { api, APIClientError } from '../api/client';
 import { trackEvent } from '../utils/analytics';
 import { hydrateAmounts } from '../utils/parseAmount';
+import { membersToSend, sentMember } from '../utils/householdRows';
 import { Button } from '../components/common';
 import { WizardLayout } from '../components/wizard/WizardLayout';
 import { MeansTestPreview } from '../components/wizard/MeansTestPreview';
@@ -35,6 +36,8 @@ import type {
   ExecutoryContract,
   Codebtor,
   CompletionError,
+  HouseholdMember,
+  SpouseIncome,
   WizardRow,
 } from '../types/api';
 import { EXPENSE_FIELDS, INCOME_FIELDS } from '../types/api';
@@ -103,7 +106,7 @@ export function IntakeWizard() {
   // How many saves of each list have gone out. A reply writes its ids only if no later save of
   // the list has gone out since: that save left before these ids arrived, so the server has
   // already replaced any row this one created, and the later save's reply brings the ids that hold
-  const listSavesRef = useRef({ assets: 0, debts: 0 });
+  const listSavesRef = useRef({ assets: 0, debts: 0, members: 0 });
 
   // Initialize session start time after first render
   useLayoutEffect(() => {
@@ -112,7 +115,14 @@ export function IntakeWizard() {
 
   // Step-specific data
   const [debtorData, setDebtorData] = useState<Partial<DebtorInfo>>({});
+  // Saved under `household`, beside the debtor's answers
+  const [county, setCounty] = useState<string | null>(null);
   const [incomeData, setIncomeData] = useState<Partial<IncomeInfo>>({});
+  // The Income step's household list, saved under `household` beside the income, and whether
+  // the filer said no one else lives with them or depends on them
+  const [householdRows, setHouseholdRows] = useState<WizardRow<HouseholdMember>[]>([]);
+  const [noOneElse, setNoOneElse] = useState(false);
+  const [spouseIncomeData, setSpouseIncomeData] = useState<SpouseIncome>({});
   const [expenseData, setExpenseData] = useState<Partial<ExpenseInfo>>({});
   const [assetsData, setAssetsData] = useState<WizardRow<AssetInfo>[]>([]);
   const [debtsData, setDebtsData] = useState<WizardRow<DebtInfo>[]>([]);
@@ -195,7 +205,16 @@ export function IntakeWizard() {
           );
         }
         if (fresh.debtor_info) setDebtorData(fresh.debtor_info);
+        if (fresh.household) {
+          setCounty(fresh.household.county);
+          // A loaded row's key is its id. A list loaded as [] is the filer's "no one else".
+          const members = fresh.household.members;
+          setHouseholdRows((members ?? []).map((m) => ({ _key: String(m.id), ...m })));
+          setNoOneElse(members?.length === 0);
+        }
         if (fresh.income_info) setIncomeData(hydrateAmounts(fresh.income_info, INCOME_FIELDS));
+        if (fresh.spouse_income)
+          setSpouseIncomeData(hydrateAmounts(fresh.spouse_income, INCOME_FIELDS));
         if (fresh.expense_info) setExpenseData(hydrateAmounts(fresh.expense_info, EXPENSE_FIELDS));
         // A loaded row's key is its id
         if (fresh.assets)
@@ -246,16 +265,29 @@ export function IntakeWizard() {
   const currentStepBody = useMemo((): Partial<IntakeSession> | null => {
     switch (currentStepKey) {
       case 'debtor_info':
-        return { debtor_info: debtorData } as Partial<IntakeSession>;
+        return { debtor_info: debtorData, household: { county } } as Partial<IntakeSession>;
 
       case 'income_info': {
-        // The ten amounts alone. A blank box is sent as null, so it stays empty on the server
-        // and a box the filer cleared is emptied there too, never saved as $0. Echoing other
-        // fields read from the server (a blank marital_status) is a 400 that would strand the
-        // filer on Income, and the old six-month total is read-only.
+        // The ten amounts and the marriage answer. A blank box is sent as null, so it stays
+        // empty on the server and a box the filer cleared is emptied there too, never saved as
+        // $0. The old six-month total is read-only.
         const income: Partial<IncomeInfo> = {};
         for (const field of INCOME_FIELDS) income[field] = incomeData[field] ?? null;
-        return { income_info: income } as Partial<IntakeSession>;
+        income.marital_status = incomeData.marital_status ?? null;
+        // Each household row keeps its `_key` here; saveCurrentStepData leaves it out of the
+        // request.
+        const body: Partial<Record<keyof IntakeSession, unknown>> = {
+          income_info: income,
+          household: { members: membersToSend(householdRows, noOneElse) },
+        };
+        // The spouse's ten only while they live together, so a hidden section neither saves nor
+        // blocks, and the server keeps the figures it holds (3e1 spec §5.1)
+        if (incomeData.marital_status === 'married_together') {
+          const spouse: SpouseIncome = {};
+          for (const field of INCOME_FIELDS) spouse[field] = spouseIncomeData[field] ?? null;
+          body.spouse_income = spouse;
+        }
+        return body as Partial<IntakeSession>;
       }
 
       case 'expense_info': {
@@ -285,7 +317,18 @@ export function IntakeWizard() {
       default:
         return null;
     }
-  }, [currentStepKey, debtorData, incomeData, expenseData, assetsData, debtsData]);
+  }, [
+    currentStepKey,
+    debtorData,
+    county,
+    incomeData,
+    householdRows,
+    noOneElse,
+    spouseIncomeData,
+    expenseData,
+    assetsData,
+    debtsData,
+  ]);
 
   const { saveStatus, saveNow, lastSavedAt } = useAutoSave({
     data: currentStepBody,
@@ -416,16 +459,23 @@ export function IntakeWizard() {
       return;
     }
 
-    // Assets and debts carry the browser's own key, which never reaches the server
-    const { assets, debts } = body as {
+    // Assets, debts and household members carry the browser's own key, which never reaches the
+    // server. A household list of null (unanswered) has no rows to pair, but it is still a save
+    // of the list: the server then holds no row an earlier save of the list created.
+    const { assets, debts, household } = body as {
       assets?: WizardRow<AssetInfo>[];
       debts?: WizardRow<DebtInfo>[];
+      household?: { members?: WizardRow<HouseholdMember>[] | null };
     };
+    const sendsMembers = household?.members !== undefined;
+    const members = Array.isArray(household?.members) ? household.members : undefined;
     const request: Partial<Record<keyof IntakeSession, unknown>> = { ...body };
     if (assets) request.assets = assets.map(withoutKey);
     if (debts) request.debts = debts.map(withoutKey);
+    if (members) request.household = { members: members.map(withoutKey) };
     const assetsSave = assets ? ++listSavesRef.current.assets : 0;
     const debtsSave = debts ? ++listSavesRef.current.debts : 0;
+    const membersSave = sendsMembers ? ++listSavesRef.current.members : 0;
     const saved = await api.intake.updateSession(session.id, request as Partial<IntakeSession>);
 
     // A new row keeps the id its first save gave it, so the next save updates that row instead of
@@ -445,6 +495,18 @@ export function IntakeWizard() {
       setDebtsData((rows) => withSavedIds(rows, ids));
       return { ...body, debts: withSavedIds(debts, ids) } as Partial<IntakeSession>;
     }
+    // The saved copy goes back through sentMember, as the next body will, so the id written last
+    // into each row doesn't make that body differ
+    if (members) {
+      if (membersSave !== listSavesRef.current.members) return;
+      const ids = savedIds(members, saved.household?.members as { id: number }[] | undefined);
+      setHouseholdRows((rows) => withSavedIds(rows, ids));
+      const savedCopy: Partial<Record<keyof IntakeSession, unknown>> = {
+        ...body,
+        household: { members: withSavedIds(members, ids).map(sentMember) },
+      };
+      return savedCopy as Partial<IntakeSession>;
+    }
   };
 
   // =========================================================================
@@ -459,6 +521,8 @@ export function IntakeWizard() {
             initialData={debtorData}
             onDataChange={setDebtorData}
             onValidationChange={setCanProceed}
+            county={county}
+            onCountyChange={setCounty}
           />
         );
 
@@ -468,6 +532,12 @@ export function IntakeWizard() {
             initialData={incomeData}
             onDataChange={setIncomeData}
             onValidationChange={setCanProceed}
+            householdRows={householdRows}
+            onHouseholdRowsChange={setHouseholdRows}
+            noOneElse={noOneElse}
+            onNoOneElseChange={setNoOneElse}
+            initialSpouseIncome={spouseIncomeData}
+            onSpouseIncomeChange={setSpouseIncomeData}
           />
         );
 
@@ -526,6 +596,8 @@ export function IntakeWizard() {
             debtsData={debtsData}
             contractsData={contractsData}
             codebtorsData={codebtorsData}
+            householdCount={session?.household?.family_size ?? null}
+            county={county}
             onValidationChange={setCanProceed}
             completionReasons={completionErrors.map((reason) => ({
               message: reason.message,

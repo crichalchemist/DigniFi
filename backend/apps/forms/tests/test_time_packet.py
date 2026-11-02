@@ -24,6 +24,7 @@ from apps.forms.models import GeneratedForm
 from apps.forms.registry import build_parts, packet
 from apps.forms.services.pdf_filler import PDFFormFiller
 from apps.intake.models import DebtorInfo, IncomeInfo, IntakeSession
+from apps.intake.tests.builders import answer_household
 
 User = get_user_model()
 
@@ -54,6 +55,7 @@ def session(db):
         zip_code="60601",
     )
     IncomeInfo.objects.create(session=session, monthly_gross_wages=Decimal("3000.00"))
+    answer_household(session)
     return session
 
 

@@ -23,6 +23,7 @@ from apps.forms.services.fill_resolver import resolve
 from apps.forms.services.pdf_filler import PDFFormFiller
 from apps.forms.tests.pdf_readback import read_drawn
 from apps.intake.models import DebtorInfo, FormAnswer, IncomeInfo, IntakeSession
+from apps.intake.tests.builders import answer_household
 
 User = get_user_model()
 
@@ -77,6 +78,7 @@ def session(db):
     )
     # 106Sum line 8 prints CMI, which needs income entered by source.
     IncomeInfo.objects.create(session=session, monthly_gross_wages=Decimal("1200.00"))
+    answer_household(session)
     return session
 
 

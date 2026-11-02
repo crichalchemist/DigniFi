@@ -19,6 +19,8 @@ BACKFILL = [("intake", "0012_backfill_secured_debts")]
 INCOME_COLUMNS = [("intake", "0013_incomeinfo_income_by_source")]
 INCOME_SPLIT = [("intake", "0014_split_income_saved_as_zero")]
 FEE_WAIVER_QUESTIONS = [("intake", "0015_feewaiverapplication_take_home_and_noncash")]
+HOUSEHOLD = [("intake", "0016_household")]
+MARRIAGE_ENCRYPTED = [("intake", "0017_incomeinfo_marital_status_encrypted")]
 INCOME_SOURCES = [
     "monthly_gross_wages",
     "monthly_overtime",
@@ -222,3 +224,46 @@ def test_saved_fee_waiver_applications_leave_the_new_questions_unanswered(migrat
         Decimal("2560.00"),
     )
     assert fw.receives_public_benefits is True
+
+
+def _stored_marriage(apps):
+    """The one income row's raw marital_status column, and its wages as the model reads them."""
+    with connection.cursor() as cursor:
+        cursor.execute("SELECT marital_status FROM income_info")
+        [(raw,)] = cursor.fetchall()
+    return raw, apps.get_model("intake", "IncomeInfo").objects.get().monthly_gross_wages
+
+
+def _run_and_undo_the_marriage_migration(migrate):
+    """An old tax status saved before 0017: the row after 0017, then after undoing it."""
+    apps = migrate(HOUSEHOLD)
+    apps.get_model("intake", "IncomeInfo").objects.create(
+        session_id=_session(apps).pk,
+        marital_status="married_joint",
+        monthly_gross_wages=Decimal("3000.00"),
+    )
+    return _stored_marriage(migrate(MARRIAGE_ENCRYPTED)), _stored_marriage(migrate(HOUSEHOLD))
+
+
+def test_undoing_the_marriage_migration_restores_an_empty_column(migrate):
+    # No tax status is a line 1 answer, so none carries over. Undone, the old column comes
+    # back on a table with rows, empty in each, and the amounts are untouched both ways.
+    after, undone = _run_and_undo_the_marriage_migration(migrate)
+    assert after == (None, Decimal("3000.00"))
+    assert undone == ("", Decimal("3000.00"))
+
+
+@pytest.mark.postgres
+@pytest.mark.skipif(
+    connection.vendor != "postgresql",
+    reason="needs Postgres: the undo on a real column type; CI runs it with config.settings.test_postgres",
+)
+def test_undoing_the_marriage_migration_restores_an_empty_column_on_postgres(migrate):
+    after, undone = _run_and_undo_the_marriage_migration(migrate)
+    assert (after, undone) == ((None, Decimal("3000.00")), ("", Decimal("3000.00")))
+    with connection.cursor() as cursor:
+        cursor.execute(
+            "SELECT data_type, character_maximum_length FROM information_schema.columns"
+            " WHERE table_name = 'income_info' AND column_name = 'marital_status'"
+        )
+        assert cursor.fetchone() == ("character varying", 30)

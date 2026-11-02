@@ -23,6 +23,7 @@ from apps.intake.models import (
     DebtInfo,
     DebtorInfo,
     FormAnswer,
+    Household,
     IntakeSession,
     SOFAReport,
 )
@@ -231,3 +232,10 @@ def test_line_10_never_names_the_filer_as_the_other_debtor(session):
     petition = _petition(session)
     assert "Debtor" not in petition
     assert "Debtor_2" not in petition
+
+
+@pytest.mark.parametrize("county,printed", [("DuPage", "DuPage"), (None, None)])
+def test_form_101_prints_the_county_the_filer_chose(session, county, printed):
+    # The court's spelling, bare: "DuPage", never "DuPage County" (3e1 spec §6).
+    Household.objects.create(session=session, county=county)
+    assert _petition(session).get("Debtor1.County") == printed

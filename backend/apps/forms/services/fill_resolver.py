@@ -11,9 +11,12 @@ returns its form part.
 
 from __future__ import annotations
 
+from apps.eligibility.cmi import household_members
+from apps.forms.field_index import option_text
 from apps.forms.schema import FieldSpec, FormSchema, GroupSpec, PageNumberBoxes
 from apps.forms.services.derivations import DERIVATIONS, PREDICATES, RULE_FIXES
 from apps.forms.services.widgets import TemplateWidget, page_count, parse_key, template_widgets
+from apps.intake.household import RELATIONSHIP_WORDS, dependents
 from apps.intake.models import FormAnswer, IntakeSession
 
 
@@ -24,6 +27,13 @@ class UnmappedChoice(Exception):
         self.pdf_field = pdf_field
         super().__init__(f"No box on the form matches the answer for {pdf_field!r}")
 
+
+# What a household dependent's answer prints as, by attribute (an unanswered one prints "").
+_HOUSEHOLD_CELLS = {
+    "relationship": RELATIONSHIP_WORDS.__getitem__,
+    "age": str,  # 0 prints "0"
+    "lives_with_you": lambda lives: "yes" if lives else "no",
+}
 
 # Single-box answers, compared case-insensitively (spec §5.1).
 _TICK = {"yes", "y", "true", "1", "on"}
@@ -37,6 +47,7 @@ def resolve_binding(binding: str, session: IntakeSession) -> str | list[str]:
       - "answer:<form_type>.<key>" → the FormAnswer value, or "" if absent
       - "sofa.<collection>[].<attr>" → list of str over the collection
       - "sofa.<attr>" → scalar str on the SOFAReport
+      - "household.dependents[].<attr>" → list of str over Schedule J line 2's dependents
     """
     binding = binding.strip()
 
@@ -56,6 +67,15 @@ def resolve_binding(binding: str, session: IntakeSession) -> str | list[str]:
         if report is None:
             return ""
         return str(getattr(report, path))
+
+    if binding.startswith("household."):
+        collection, _, attr = binding[len("household.") :].partition("[].")
+        cell = _HOUSEHOLD_CELLS.get(attr) if collection == "dependents" else None
+        if cell is None:
+            raise ValueError(f"unrecognized binding: {binding!r}")
+        # A list never answered raises IncomeStepGap here: it is a gap, never "no dependents".
+        values = (row.get(attr) for row in dependents(household_members(session)))
+        return ["" if value is None else cell(value) for value in values]
 
     raise ValueError(f"unrecognized binding: {binding!r}")
 
@@ -125,6 +145,8 @@ def fix_for(field: FieldSpec) -> dict[str, str]:
         return {"page": f"/ask/{form_type}"}
     if binding.startswith("sofa."):
         return {"page": "/sofa"}
+    if binding.startswith("household."):
+        return {"step": "income_info"}
     # A constant or a signature: a refusal there is DigniFi's defect, not the filer's.
     return {}
 
@@ -263,12 +285,15 @@ def _sheet(
     actual: int,
     session: IntakeSession,
     ingested_cache: dict,
+    template_filename: str,
 ) -> dict:
     """
     The attached sheet that prints the group's rows past `capacity` (3a2 spec §5.3): each row
     labelled with its line, the group's number for its position, and a cell per column,
-    the column's binding for that row as the group's slot of that binding prints it. A
-    column whose slots the UPL guard keeps blank is blank, as on the form and its copies.
+    the column's binding for that row as the group's slot of that binding prints it; a box's
+    answer prints as the words the form prints beside the box it ticks (the field index's
+    `option_text`). A column whose slots the UPL guard keeps blank is blank, as on the form
+    and its copies.
     The sheet carries the filer's name for its header (R23), and its title and its columns'
     labels and widths (R63), so a filed sheet redraws as it was filed.
     """
@@ -280,6 +305,9 @@ def _sheet(
             emitted = None
             if all(f in printed for f in slots):
                 emitted = _cell(slots[0], position, columns, session, ingested_cache)
+            if emitted is not None and slots[0].type in ("checkbox", "radio"):
+                # E005 ties every choices value to one of the box's states.
+                emitted = option_text(template_filename, slots[0].pdf_field, emitted)
             cells.append(emitted or "")
         rows.append({"line": group.number.format(n=position), "cells": cells})
     name = DERIVATIONS["full_name"](session)
@@ -383,6 +411,7 @@ def resolve_parts(schema: FormSchema, session: IntakeSession) -> dict:
                     actual,
                     session,
                     _ingested_cache,
+                    schema.template_filename,
                 )
             )
         elif actual > capacity:

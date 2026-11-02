@@ -78,7 +78,7 @@ test.describe('Maria Torres — Happy Path', () => {
 
     // Maria is fee-waiver eligible → routed to the waiver application first
     await feeWaiver.submit(
-      MARIA.debtor.household_size,
+      MARIA.fee_waiver.household_size,
       MARIA.fee_waiver.take_home_pay,
       MARIA.fee_waiver.noncash_assistance
     );

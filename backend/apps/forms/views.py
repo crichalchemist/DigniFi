@@ -22,7 +22,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.districts.dated_tables import NoTableInForce
-from apps.eligibility.cmi import IncomeNotSplit
+from apps.eligibility.cmi import IncomeNotSplit, income_step_gaps
 from apps.eligibility.models import MeansTest
 from apps.eligibility.services import MeansTestCalculator
 from apps.intake.models import IntakeSession
@@ -160,13 +160,13 @@ def _recalculate_means_test(session: IntakeSession) -> None:
     """Work the means test out again from the stored intake (step 2 spec §5.6).
 
     It runs before the packet is decided, so a result worked out from income the filer has
-    since changed never decides which forms they get (DIG-160). Raises IncomeNotSplit when
-    the income isn't entered by source, and NoTableInForce when no median income table is in
-    force on the fill date, which operations must fix.
+    since changed never decides which forms they get (DIG-160). Raises the first gap the
+    Income step leaves (an IncomeStepGap, 3e1 spec §9.2), and NoTableInForce when no median
+    income table is in force on the fill date, which operations must fix.
     """
-    if getattr(session, "income_info", None) is None:
-        # No income at all is income not entered by source, as derivations._cmi rules.
-        raise IncomeNotSplit()
+    gaps = income_step_gaps(session)
+    if gaps:
+        raise gaps[0]
     MeansTestCalculator(session).calculate()
 
 

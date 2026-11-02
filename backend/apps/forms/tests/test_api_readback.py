@@ -29,7 +29,7 @@ from apps.forms.models import GeneratedForm
 from apps.forms.registry import build_parts, packet
 from apps.forms.schema import load_schema
 from apps.intake.management.commands.seed_demo_data import PERSONAS
-from apps.intake.models import IncomeInfo, IntakeSession
+from apps.intake.models import IncomeInfo, IntakeSession, SpouseIncome
 
 User = get_user_model()
 
@@ -40,14 +40,26 @@ QUALIFIES = {"maria", "deshawn", "sarah", "andres"}
 # pay in installments (3a1 spec §2, 3a1.Q2), so the two sets differ until step 3f.
 APPLIES = {"maria", "deshawn", "sarah"}
 
-# Each wizard step's session save: (the section it sends, the persona's data for it).
-WIZARD_STEPS = [
-    ("debtor_info", "debtor"),
-    ("income_info", "income"),
-    ("expense_info", "expenses"),
-    ("assets", "assets"),
-    ("debts", "debts"),
-]
+
+def _step_bodies(data):
+    """
+    Each wizard step's session save, as the step's autosave body sends it: one PATCH per
+    step. The spouse's income goes only while it is asked (spec §8.2), so a persona
+    without one sends none.
+    """
+    income_step = {
+        "income_info": data["income"],
+        "household": {"members": data["household"]["members"]},
+    }
+    if data["spouse_income"] is not None:
+        income_step["spouse_income"] = data["spouse_income"]
+    return [
+        {"debtor_info": data["debtor"], "household": {"county": data["household"]["county"]}},
+        income_step,
+        {"expense_info": data["expenses"]},
+        {"assets": data["assets"]},
+        {"debts": data["debts"]},
+    ]
 
 
 def _sent(data):
@@ -55,10 +67,13 @@ def _sent(data):
     return json.loads(json.dumps(data, cls=DjangoJSONEncoder))
 
 
-def _fee_waiver_application(data):
-    """The application the seed stores, as the fee-waiver page sends it."""
+def _fee_waiver_application(data, household_size):
+    """
+    The application the seed stores, as the fee-waiver page sends it: the household size is
+    103B line 1's count that Complete's reply carries, which the page fills in (spec §8.4).
+    """
     return {
-        "household_size": data["debtor"]["household_size"],
+        "household_size": household_size,
         **data["fee_waiver"],
         "cannot_pay_full": True,
         "cannot_pay_installments": True,
@@ -80,12 +95,30 @@ def _fee_waiver_answers(session):
     }
 
 
+def _household_answers(session):
+    """The marriage answer, county, household list and spouse's income the session holds."""
+    spouse = getattr(session, "spouse_income", None)
+    return {
+        "marital_status": session.income_info.marital_status,
+        "county": session.household.county,
+        "members": session.household.get_members(),
+        "spouse_income": (
+            None
+            if spouse is None
+            else {field: getattr(spouse, field) for field in SpouseIncome.SOURCE_FIELDS}
+        ),
+    }
+
+
 def _send_through_the_api(persona):
     """Enter the persona as a filer would, then Generate All. Returns (session id, form types)."""
     data = PERSONAS[persona]()
-    # The typed $0 amounts this sends: each persona typed every Income box, $0 where they
-    # get none of that kind, so no box is left blank.
+    # The typed $0 amounts this sends: each persona, and each spouse, typed every Income box,
+    # $0 where they get none of that kind, so no box is left blank.
     assert all(data["income"][field] is not None for field in IncomeInfo.SOURCE_FIELDS)
+    assert data["spouse_income"] is None or all(
+        data["spouse_income"][field] is not None for field in SpouseIncome.SOURCE_FIELDS
+    )
     client = APIClient()
     client.force_authenticate(User.objects.create_user(username=f"api_{persona}", password="pw"))
 
@@ -99,9 +132,9 @@ def _send_through_the_api(persona):
 
     # Continue saves each step on its own. Rows go in the seed's order, so they get ids in
     # the same order as the seeded rows.
-    for section, key in WIZARD_STEPS:
-        response = client.patch(session_url, {section: _sent(data[key])}, format="json")
-        assert response.status_code == 200, (section, response.data)
+    for body in _step_bodies(data):
+        response = client.patch(session_url, _sent(body), format="json")
+        assert response.status_code == 200, (list(body), response.data)
     # No persona has contracts or codebtors: Continue on steps 6 and 7 saves empty lists.
     for endpoint in ("contracts", "codebtors"):
         response = client.put(f"{session_url}{endpoint}/", [], format="json")
@@ -111,10 +144,12 @@ def _send_through_the_api(persona):
     # No means-test call: Generate All works it out from the stored intake (spec §5.6).
     response = client.post(f"{session_url}complete/")
     assert response.status_code == 200, response.data
+    household_size = response.data["session"]["household"]["fee_waiver_household_size"]
+    assert household_size is not None
     if persona in APPLIES:
         response = client.post(
             "/api/intake/fee-waiver/",
-            {"session": session_id, **_sent(_fee_waiver_application(data))},
+            {"session": session_id, **_sent(_fee_waiver_application(data, household_size))},
             format="json",
         )
         assert response.status_code == 201, response.data
@@ -138,11 +173,12 @@ def _comparable(form_type, values):
     """
     One part's values, with each repeat group's rows in a fixed order.
 
-    No production schema has a repeat group since step 2 took Form 107's off. Stored rows
-    have no fixed order (DIG-164), so within one part a group a later step binds compares
-    regardless of it. Across parts it doesn't: a group past its last slot puts its rows on
-    the form part and its copies by position, so another order moves other rows to a copy.
-    Each row keeps its own values together, so an amount that moves to another row differs.
+    Schedule J line 2 is the one production repeat group; its rows come in the household
+    list's stored order, the same on both sides. A group a later step binds to stored rows
+    has no fixed order (DIG-164), so within one part it compares regardless of it. Across
+    parts it doesn't: a group past its last slot puts its rows on the form part and its
+    copies by position, so another order moves other rows to a copy. Each row keeps its own
+    values together, so an amount that moves to another row differs.
     """
     fixed = dict(values)
     rows = {}
@@ -201,10 +237,14 @@ def test_forms_built_through_the_api_print_what_the_seeded_forms_print(persona):
     # Form 103B prints take-home pay and the non-cash answer, but no form prints the two
     # "cannot pay" answers, so the stored applications are compared directly.
     built = IntakeSession.objects.get(pk=session_id)
+    # No form reads these yet, so compare the stored answers directly: a member the API
+    # dropped would otherwise pass.
+    assert _household_answers(built) == _household_answers(seeded)
     assert _fee_waiver_answers(built) == _fee_waiver_answers(seeded)
     assert (_fee_waiver_answers(built) is None) == (persona not in APPLIES)
     # Only Priya's income is above the median, so only her packet holds 122A-2, and it
-    # prints her own figures: her monthly income on line 1 and her childcare on line 21.
+    # prints her own figures: her household's monthly income, hers and her husband's, on line 1
+    # and her childcare on line 21.
     assert ("form_122a2" in stored) == (persona == "priya")
     if persona == "priya":
         (part,) = stored["form_122a2"]["parts"]

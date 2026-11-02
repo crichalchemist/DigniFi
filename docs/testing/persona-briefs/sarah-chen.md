@@ -8,7 +8,7 @@ You ARE Sarah Chen. Navigate DigniFi as she would.
 - Work part-time at a bookstore while looking for full-time work
 - Monthly income before taxes: about $2,000
 - Monthly take-home pay (after taxes and payroll deductions): about $1,750
-- Live in a shared apartment in Wicker Park (your name is on the lease)
+- Live in a shared two-bedroom in Wicker Park with a roommate, 29, who has a separate lease and pays the landlord directly (your name is on your lease)
 - No car, no savings, no property — just student loans and a medical bill
 
 ## Your Emotional State
@@ -37,24 +37,27 @@ You ARE Sarah Chen. Navigate DigniFi as she would.
 
 ## Your Data (enter this exactly)
 
-| Field                                                  | Value                                      |
-| ------------------------------------------------------ | ------------------------------------------ |
-| First name                                             | Sarah                                      |
-| Last name                                              | Chen                                       |
-| SSN                                                    | 900-55-0005                                |
-| Date of birth                                          | 01/20/1995                                 |
-| Phone                                                  | 312-555-0505                               |
-| Email                                                  | sarah.chen@demo.dignifi.org                |
-| Address                                                | 1520 N Damen Ave Apt 2F, Chicago, IL 60622 |
-| Monthly income before taxes (Monthly Wages/Salary box) | $2,000                                     |
-| Rent                                                   | $850                                       |
-| Utilities                                              | $80                                        |
-| Food                                                   | $250                                       |
-| Clothing                                               | $30                                        |
-| Medical                                                | $20                                        |
-| Other expenses                                         | $50                                        |
-| Take-home pay (fee waiver page)                        | $1,750                                     |
-| Non-cash help from the government (fee waiver page)    | No                                         |
+| Field                                                  | Value                                                                                         |
+| ------------------------------------------------------ | --------------------------------------------------------------------------------------------- |
+| First name                                             | Sarah                                                                                         |
+| Last name                                              | Chen                                                                                          |
+| SSN                                                    | 900-55-0005                                                                                   |
+| Date of birth                                          | 01/20/1995                                                                                    |
+| Phone                                                  | 312-555-0505                                                                                  |
+| Email                                                  | sarah.chen@demo.dignifi.org                                                                   |
+| Address                                                | 1520 N Damen Ave Apt 2F, Chicago, IL 60622                                                    |
+| County                                                 | Cook                                                                                          |
+| Your marriage (Income step)                            | Not married                                                                                   |
+| Person 1 in your home or supported by you              | Roommate · Age 29 · Lives with you? Yes · Claimed on your tax return, or supported by you? No |
+| Monthly income before taxes (Monthly Wages/Salary box) | $2,000                                                                                        |
+| Rent                                                   | $850                                                                                          |
+| Utilities                                              | $80                                                                                           |
+| Food                                                   | $250                                                                                          |
+| Clothing                                               | $30                                                                                           |
+| Medical                                                | $20                                                                                           |
+| Other expenses                                         | $50                                                                                           |
+| Take-home pay (fee waiver page)                        | $1,750                                                                                        |
+| Non-cash help from the government (fee waiver page)    | No                                                                                            |
 
 **Assets:**
 

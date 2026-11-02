@@ -7,6 +7,7 @@ from django.contrib.auth import get_user_model
 
 from apps.districts.models import District
 from apps.documents.models import IngestedAggregate
+from apps.eligibility.cmi import HOUSEHOLD_UNANSWERED, IncomeStepGap
 from apps.forms.schema import FieldSpec, FormSchema, GroupSpec
 from apps.forms.services.fill_resolver import (
     UnmappedChoice,
@@ -70,6 +71,43 @@ def test_resolve_scalar_binding_returns_str(session):
 
 def test_resolve_scalar_binding_no_report_returns_empty(session):
     assert resolve_binding("sofa.has_business", session) == ""
+
+
+PRIYA = [("spouse", 45, True, True, False), ("daughter", 10, True, True), ("son", 7, True, True)]
+
+
+def test_line_2s_rows_come_from_the_household_in_the_filers_order(session, household_list):
+    session = household_list(session, *PRIYA)
+    # Her husband is on their joint return, but she says he isn't her dependent (3e1.Q1).
+    assert resolve_binding("household.dependents[].relationship", session) == ["Daughter", "Son"]
+    assert resolve_binding("household.dependents[].age", session) == ["10", "7"]
+    assert resolve_binding("household.dependents[].lives_with_you", session) == ["yes", "yes"]
+
+
+def test_a_newborn_dependent_prints_age_0(session, household_list):
+    session = household_list(session, ("daughter", 0, True, True))
+    assert resolve_binding("household.dependents[].age", session) == ["0"]
+
+
+def test_an_unanswered_household_value_prints_blank_not_none(session, household_list):
+    session = household_list(session, (None, None, None, True))
+    for attr in ("relationship", "age", "lives_with_you"):
+        assert resolve_binding(f"household.dependents[].{attr}", session) == [""]
+
+
+@pytest.mark.parametrize(
+    "binding", ["household.county", "household.dependents[].name", "household.members[].age"]
+)
+def test_an_unknown_household_binding_is_refused(session, binding):
+    # The bare session has no list: an unknown binding is refused before anything is read.
+    with pytest.raises(ValueError, match="unrecognized binding"):
+        resolve_binding(binding, session)
+
+
+def test_a_household_never_answered_refuses_in_the_income_steps_words(session):
+    with pytest.raises(IncomeStepGap) as never:
+        resolve_binding("household.dependents[].age", session)
+    assert (str(never.value), never.value.step) == (HOUSEHOLD_UNANSWERED, "income_info")
 
 
 # ── Task 8: resolve() dispatch, conditionals, repeats, UPL ────────────

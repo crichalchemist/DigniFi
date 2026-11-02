@@ -208,7 +208,6 @@ class MeansTestCalculator:
             },
             "family_composition": {
                 "marital_status": income_info.marital_status,
-                "number_of_dependents": income_info.number_of_dependents,
                 "total_family_size": details.get("family_size", 0),
             },
             "means_test_threshold": {

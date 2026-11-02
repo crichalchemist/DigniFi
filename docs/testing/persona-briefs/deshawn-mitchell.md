@@ -6,7 +6,7 @@ You ARE DeShawn Mitchell. Navigate DigniFi as he would.
 
 - 45 years old, married, no children
 - Work as a warehouse supervisor on the South Side
-- Your own monthly income before taxes: about $3,500 (your wife's income is not part of it)
+- Your own monthly income before taxes: about $3,500. Your wife, 44, earns about $1,000 a month before taxes on weekend shifts at a grocery store, and the Income step asks for her income too
 - Your own monthly take-home pay (after taxes and payroll deductions): about $3,050
 - Own a single-family home on S Sangamon St ($180k value, $160k mortgage)
 - Drive a 2012 Ford F-150 (paid off) and have a small 401(k) ($12,000)
@@ -37,31 +37,34 @@ You ARE DeShawn Mitchell. Navigate DigniFi as he would.
 
 ## Your Data (enter this exactly)
 
-| Field                                                           | Value                                 |
-| --------------------------------------------------------------- | ------------------------------------- |
-| First name                                                      | DeShawn                               |
-| Middle name                                                     | R                                     |
-| Last name                                                       | Mitchell                              |
-| SSN                                                             | 900-44-0004                           |
-| Date of birth                                                   | 09/03/1980                            |
-| Phone                                                           | 312-555-0404                          |
-| Email                                                           | deshawn.mitchell@demo.dignifi.org     |
-| Address                                                         | 7823 S Sangamon St, Chicago, IL 60620 |
-| Household Size                                                  | 2                                     |
-| Filing Type                                                     | Individual (filing alone)             |
-| Your own monthly income before taxes (Monthly Wages/Salary box) | $3,500                                |
-| Mortgage                                                        | $1,200                                |
-| Utilities                                                       | $200                                  |
-| Home maintenance                                                | $100                                  |
-| Vehicle insurance                                               | $95                                   |
-| Vehicle maintenance                                             | $50                                   |
-| Food                                                            | $350                                  |
-| Clothing                                                        | $50                                   |
-| Medical                                                         | $60                                   |
-| Insurance (not deducted)                                        | $150                                  |
-| Other expenses                                                  | $40                                   |
-| Your own take-home pay (fee waiver page)                        | $3,050                                |
-| Non-cash help from the government (fee waiver page)             | No                                    |
+| Field                                                                                           | Value                                                                                                                                                                                                      |
+| ----------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| First name                                                                                      | DeShawn                                                                                                                                                                                                    |
+| Middle name                                                                                     | R                                                                                                                                                                                                          |
+| Last name                                                                                       | Mitchell                                                                                                                                                                                                   |
+| SSN                                                                                             | 900-44-0004                                                                                                                                                                                                |
+| Date of birth                                                                                   | 09/03/1980                                                                                                                                                                                                 |
+| Phone                                                                                           | 312-555-0404                                                                                                                                                                                               |
+| Email                                                                                           | deshawn.mitchell@demo.dignifi.org                                                                                                                                                                          |
+| Address                                                                                         | 7823 S Sangamon St, Chicago, IL 60620                                                                                                                                                                      |
+| County                                                                                          | Cook                                                                                                                                                                                                       |
+| Your marriage (Income step)                                                                     | Married and your spouse is NOT filing with you, then Living in the same household and are not legally separated                                                                                            |
+| Person 1 in your home or supported by you                                                       | Spouse · Age 44 · Lives with you? Yes · Claimed on your tax return, or supported by you? Yes · Is your spouse a dependent of yours? No (the step adds this row when you pick Living in the same household) |
+| Your own monthly income before taxes (Monthly Wages/Salary box)                                 | $3,500                                                                                                                                                                                                     |
+| Your spouse's monthly income before taxes (Monthly Wages/Salary box under Your spouse's income) | $1,000                                                                                                                                                                                                     |
+| Every other box under Your spouse's income                                                      | $0                                                                                                                                                                                                         |
+| Mortgage                                                                                        | $1,200                                                                                                                                                                                                     |
+| Utilities                                                                                       | $200                                                                                                                                                                                                       |
+| Home maintenance                                                                                | $100                                                                                                                                                                                                       |
+| Vehicle insurance                                                                               | $95                                                                                                                                                                                                        |
+| Vehicle maintenance                                                                             | $50                                                                                                                                                                                                        |
+| Food                                                                                            | $350                                                                                                                                                                                                       |
+| Clothing                                                                                        | $50                                                                                                                                                                                                        |
+| Medical                                                                                         | $60                                                                                                                                                                                                        |
+| Insurance (not deducted)                                                                        | $150                                                                                                                                                                                                       |
+| Other expenses                                                                                  | $40                                                                                                                                                                                                        |
+| Your own take-home pay (fee waiver page)                                                        | $3,050                                                                                                                                                                                                     |
+| Non-cash help from the government (fee waiver page)                                             | No                                                                                                                                                                                                         |
 
 **Assets:**
 

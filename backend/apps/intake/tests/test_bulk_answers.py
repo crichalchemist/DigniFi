@@ -4,7 +4,7 @@ import pytest
 from rest_framework.test import APIClient
 
 from apps.districts.models import District
-from apps.intake.models import FormAnswer, IntakeSession
+from apps.intake.models import FormAnswer, Household, IntakeSession
 from apps.users.models import User
 
 
@@ -115,6 +115,19 @@ class TestBulkAnswerView:
         data = response.json()
         assert data["created"] == 0
         assert data["updated"] == 0
+
+    def test_the_bulk_answers_endpoint_never_writes_the_household(self, auth_client_with_session):
+        # The list is the Income step's, saved through the session PATCH alone.
+        client, session = auth_client_with_session
+        answer = {"form_type": "schedule_j", "binding": "household.dependents[0].relationship"}
+        response = client.post(
+            f"/api/intake/sessions/{session.pk}/answers/bulk/",
+            {"answers": [{**answer, "value": "son"}]},
+            format="json",
+        )
+        assert response.status_code == 400
+        assert not Household.objects.filter(session=session).exists()
+        assert not FormAnswer.objects.filter(session=session).exists()
 
     def test_bulk_upsert_invalid_prefix(self, auth_client_with_session):
         client, session = auth_client_with_session
