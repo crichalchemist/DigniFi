@@ -388,6 +388,45 @@ class TestLines5And6:
         assert fm["Debto1.Quest5C"] == "600.00"
         assert resolve(load_schema("schedule_i"), session)["Amount 8a Debtor 1"] == "0.00"
 
+    def test_the_spouses_receipts_and_costs_print_in_column_b_and_never_swap_with_the_filers(
+        self, session
+    ):
+        _zero_filer(session)
+        answer_household(
+            session,
+            marital_status="married_together",
+            members=[SPOUSE_AT_HOME],
+            spouse_income={"monthly_gross_wages": Decimal("0.00")},
+            business_and_rental=[
+                _entry("business", "4200.00", "830.00"),
+                _entry("rental", "900.00", "200.00"),
+            ],
+        )
+        answer_income_detail(
+            session.spouse_income,
+            business_and_rental=[
+                _entry("business", "3000.00", "700.00"),
+                _entry("rental", "1100.00", "1350.00"),
+            ],
+        )
+        fm = resolve(load_schema("form_122a1"), session)
+        assert [fm[f"Debto1.Quest{b}"] for b in ("5A", "5B", "5C", "6A", "6B", "6C")] == [
+            "4200.00",
+            "830.00",
+            "3370.00",
+            "900.00",
+            "200.00",
+            "700.00",
+        ]
+        assert [fm[f"Debto2.Quest{b}"] for b in ("5A", "5B", "5C", "6A", "6B", "6C")] == [
+            "3000.00",
+            "700.00",
+            "2300.00",
+            "1100.00",
+            "1350.00",
+            "0.00",
+        ]
+
     def test_a_business_loss_never_lowers_rental_income_and_one_persons_never_the_others(
         self, session
     ):

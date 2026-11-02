@@ -110,7 +110,7 @@ def _given_amounts(row, fields: tuple[str, ...]) -> str:
 
 
 def _asked_amounts(row, fields: tuple[str, ...]) -> str:
-    """A line Schedule I asks: blank with no row, 0.00 when none of these was given (§9.6, Q27)."""
+    """A line Schedule I or 122A-1 asks: blank with no row, 0.00 when none of these was given (§9.6, Q27)."""
     if row is None:
         return ""
     return _given_amounts(row, fields) or _fmt(_ZERO)
@@ -716,7 +716,7 @@ def _expense_text(session: IntakeSession, field: str, text_field: str) -> str:
     """A "Specify" box's text, the filer's own, printed only when its amount prints."""
     if _expense_amount(session, field) <= 0:
         return ""
-    return getattr(session.expense_info, text_field)
+    return (getattr(session.expense_info, text_field) or "").strip()
 
 
 def _schedule_j_expenses_include_others(session: IntakeSession) -> str:

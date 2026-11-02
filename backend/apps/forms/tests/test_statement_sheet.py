@@ -245,3 +245,123 @@ def test_a_form_reads_the_income_rows_once(session):
     sql = [q["sql"] for q in queries]
     assert sum('FROM "income_info"' in s for s in sql) == 1
     assert sum('FROM "spouse_income"' in s for s in sql) == 1
+
+
+def _nets(rows, owner):
+    """A person's net cells added up."""
+    return sum(Decimal(r["cells"][4]) for r in rows if r["cells"][0] == owner)
+
+
+def test_a_rental_floor_row_brings_the_rental_kind_to_0_00_beside_a_profitable_business(session):
+    session = _answer(
+        session,
+        [
+            _entry("business", "Shop", "900", "200"),
+            _entry("rental", "Unit 2", "100", "550"),
+        ],
+    )
+
+    part, _ = _statement(session)
+
+    assert [r["cells"] for r in part["rows"]] == [
+        ["Debtor 1", "Business: Shop", "900.00", "200.00", "700.00"],
+        ["Debtor 1", "Rental property: Unit 2", "100.00", "550.00", "-450.00"],
+        ["Debtor 1", "Rental property total below $0, brought up to $0.00", "", "", "450.00"],
+    ]
+    fm = resolve(load_schema("schedule_i"), session)
+    assert fm["Amount 8a Debtor 1"] == "700.00"
+    assert _nets(part["rows"], "Debtor 1") == Decimal(fm["Amount 8a Debtor 1"])
+
+
+def test_both_floor_rows_of_one_person_print_business_before_rental(session):
+    session = _answer(
+        session,
+        [
+            _entry("rental", "Unit 2", "100", "550"),
+            _entry("business", "Shop", "0", "200"),
+        ],
+    )
+
+    part, _ = _statement(session)
+
+    assert [r["cells"] for r in part["rows"]] == [
+        ["Debtor 1", "Rental property: Unit 2", "100.00", "550.00", "-450.00"],
+        ["Debtor 1", "Business: Shop", "0.00", "200.00", "-200.00"],
+        ["Debtor 1", "Business total below $0, brought up to $0.00", "", "", "200.00"],
+        ["Debtor 1", "Rental property total below $0, brought up to $0.00", "", "", "450.00"],
+    ]
+    fm = resolve(load_schema("schedule_i"), session)
+    assert fm["Amount 8a Debtor 1"] == "0.00"
+    assert _nets(part["rows"], "Debtor 1") == Decimal(fm["Amount 8a Debtor 1"])
+
+
+def test_a_spouses_floor_row_follows_the_spouses_entries_and_never_the_filers(session):
+    session = _answer(
+        session,
+        [_entry("business", "Shop", "900", "200")],
+        spouse=[
+            _entry("rental", "12 Elm St", "100", "130"),
+            _entry("business", "Crafts", "500", "100"),
+        ],
+        marital_status="married_together",
+    )
+
+    part, _ = _statement(session)
+
+    assert [r["cells"] for r in part["rows"]] == [
+        ["Debtor 1", "Business: Shop", "900.00", "200.00", "700.00"],
+        ["Non-filing spouse", "Rental property: 12 Elm St", "100.00", "130.00", "-30.00"],
+        ["Non-filing spouse", "Business: Crafts", "500.00", "100.00", "400.00"],
+        [
+            "Non-filing spouse",
+            "Rental property total below $0, brought up to $0.00",
+            "",
+            "",
+            "30.00",
+        ],
+    ]
+    fm = resolve(load_schema("schedule_i"), session)
+    assert (fm["Amount 8a Debtor 1"], fm["Amount 8a Debtor 2"]) == ("700.00", "400.00")
+    assert _nets(part["rows"], "Debtor 1") == Decimal(fm["Amount 8a Debtor 1"])
+    assert _nets(part["rows"], "Non-filing spouse") == Decimal(fm["Amount 8a Debtor 2"])
+
+
+def test_a_floor_row_is_judged_on_the_current_figures_while_income_is_now_different(session):
+    session = _answer(
+        session,
+        [_entry("business", "Shop", "1000", "400", "300", "900")],
+        income_now_different="yes",
+    )
+
+    part, _ = _statement(session)
+
+    assert [r["cells"] for r in part["rows"]] == [
+        ["Debtor 1", "Business: Shop", "300.00", "900.00", "-600.00"],
+        ["Debtor 1", "Business total below $0, brought up to $0.00", "", "", "600.00"],
+    ]
+    fm = resolve(load_schema("schedule_i"), session)
+    assert fm["Amount 8a Debtor 1"] == "0.00"
+    assert _nets(part["rows"], "Debtor 1") == Decimal(fm["Amount 8a Debtor 1"])
+
+
+def test_a_spouses_floor_row_follows_the_spouses_own_now_different_answer(session):
+    session = _answer(
+        session,
+        [_entry("business", "Shop", "900", "200", "100", "800")],
+        spouse=[_entry("business", "Crafts", "500", "100", "200", "700")],
+        marital_status="married_together",
+    )
+    row = session.spouse_income
+    row.income_now_different = "yes"
+    row.save()
+    session = IntakeSession.objects.get(pk=session.pk)
+
+    part, _ = _statement(session)
+
+    assert [r["cells"] for r in part["rows"]] == [
+        ["Debtor 1", "Business: Shop", "900.00", "200.00", "700.00"],
+        ["Non-filing spouse", "Business: Crafts", "200.00", "700.00", "-500.00"],
+        ["Non-filing spouse", "Business total below $0, brought up to $0.00", "", "", "500.00"],
+    ]
+    fm = resolve(load_schema("schedule_i"), session)
+    assert (fm["Amount 8a Debtor 1"], fm["Amount 8a Debtor 2"]) == ("700.00", "0.00")

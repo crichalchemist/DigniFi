@@ -6,8 +6,9 @@ the household's CMI, household_cmi: the filer's, plus the spouse's for a filer l
 their spouse (married_together), and the filer's alone otherwise.
 
 current_monthly_income works out one person's: their monthly income from every source the
-Income step asks about except benefits under the Social Security Act, which 11 U.S.C.
-§ 101(10A)(B) leaves out, rounded to the cent. So each column and their sum print and compare
+Income step asks about, except benefits under the Social Security Act, which 11 U.S.C.
+§ 101(10A)(B) leaves out, and the assistance the step asks about on Schedule I line 8f, which
+CMI also leaves out (C-11), rounded to the cent. So each column and their sum print and compare
 the same everywhere (forms step 2 spec §5.6).
 """
 
@@ -50,12 +51,14 @@ class IncomeNotSplit(ValueError):
 
 
 def current_monthly_income(income_info) -> Decimal:
-    """The ten Income step amounts added up, without Social Security, to the cent (half-even).
+    """The ten Income step amounts, without Social Security, plus the floored business and rental
+    nets, added up to the cent (half-even).
 
     An amount the filer left empty counts as zero once another one was given.
 
     Raises:
-        IncomeNotSplit: the filer gave none of the ten amounts.
+        IncomeNotSplit: the filer gave none of the ten amounts and no business or rental entry
+            has a figure.
     """
     given = {
         field: getattr(income_info, field)
@@ -180,14 +183,14 @@ def spouse_monthly_income(session) -> Decimal | None:
     """The spouse's CMI (122A-1 column B), or None unless the filer lives with their spouse.
 
     Raises:
-        IncomeStepGap: the filer lives with their spouse and gave none of the spouse's amounts.
+        IncomeStepGap: the filer lives with their spouse and gave none of the spouse's amounts
+            and no business or rental entry of the spouse's has a figure.
     """
     if _marriage_answer(session) != "married_together":
         return None
     row = counted_spouse_income(session)
-    if (
-        row is None
-        or all(getattr(row, field) is None for field in row.SOURCE_FIELDS)
+    if row is None or (
+        all(getattr(row, field) is None for field in row.SOURCE_FIELDS)
         and not has_entry_figures(row.get_entries())
     ):
         raise IncomeStepGap(SPOUSE_INCOME_NOT_SPLIT)

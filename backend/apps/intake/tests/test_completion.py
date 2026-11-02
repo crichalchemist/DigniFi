@@ -99,7 +99,7 @@ def _complete_again(session):
 
 def test_browser_cannot_mark_intake_complete(filer, district):
     client, _ = filer
-    claimed = {"status": "completed", "current_step": 8}
+    claimed = {"status": "completed", "current_step": 9}
 
     created = client.post(
         "/api/intake/sessions/", {"district": district.id, **claimed}, format="json"

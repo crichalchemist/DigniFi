@@ -38,7 +38,7 @@ def session(db):
         state="IL",
         filing_fee_chapter_7="338.00",
     )
-    s = IntakeSession.objects.create(user=user, district=d, status="completed", current_step=6)
+    s = IntakeSession.objects.create(user=user, district=d, status="completed", current_step=9)
     DebtorInfo.objects.create(
         session=s,
         first_name="Maria",

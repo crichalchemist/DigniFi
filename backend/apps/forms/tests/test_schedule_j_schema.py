@@ -423,3 +423,19 @@ def test_the_new_schedule_j_lines_reach_22a_and_23c(session):
         "190.00",
         "2810.00",
     )
+
+
+def test_a_specify_text_of_only_spaces_prints_blank_and_padding_is_trimmed(session):
+    # Spaces beside an amount would print as an apparently empty box.
+    ExpenseInfo.objects.create(
+        session=session,
+        taxes_not_deducted=Decimal("10.00"),
+        taxes_specify="   ",
+        support_others=Decimal("10.00"),
+        support_others_specify="  My mother ",
+    )
+
+    printed = resolve(load_schema("schedule_j"), session)
+
+    assert printed.get("Other 16", "") == ""
+    assert printed["Other 19"] == "My mother"

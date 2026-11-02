@@ -56,6 +56,20 @@ def test_an_entry_id_is_never_reused(filer):
     assert [e["id"] for e in _entries(client, session, [*kept, GIG])] == [2, 3]
 
 
+def test_an_id_repeated_within_one_list_keeps_the_first_row_and_gives_the_next_a_new_id(filer):
+    client, session = filer
+    first = _entries(client, session, [GIG, RENTAL])
+    saved = _entries(client, session, [first[0], first[0]])
+    assert [e["id"] for e in saved] == [1, 3]
+
+
+def test_the_sessions_total_monthly_income_counts_entries_alone(filer):
+    client, session = filer
+    _entries(client, session, [GIG])  # 4200.00 less 830.00, and nothing else on the step
+    income = client.get(f"/api/intake/sessions/{session.pk}/").json()["income_info"]
+    assert income["total_monthly_income"] == 3370.0
+
+
 def test_a_missing_entry_answer_saves_as_null(filer):
     client, session = filer
     [entry] = _entries(client, session, [{"kind": "business"}])
@@ -204,6 +218,9 @@ def test_every_new_income_column_is_ciphertext(filer, person, field, value, plai
 def test_a_session_is_unchanged_by_a_failed_list(filer):
     client, session = filer
     _entries(client, session, [GIG])
-    _save(client, session, {"income_info": {"business_and_rental": [{**GIG, "kind": "farm"}]}})
+    refused = _save(
+        client, session, {"income_info": {"business_and_rental": [{**GIG, "kind": "farm"}]}}
+    )
+    assert refused.status_code == 400
     assert IncomeInfo.objects.get(session=session).get_entries()[0]["id"] == 1
     assert IntakeSession.objects.filter(pk=session.pk).exists()
