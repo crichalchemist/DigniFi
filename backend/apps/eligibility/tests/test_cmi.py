@@ -7,6 +7,7 @@ A total saved before income was stored by source can't be split by anyone but th
 so CMI refuses it in plain words instead of guessing (forms step 2 spec §5.5).
 """
 
+import json
 from datetime import date
 from decimal import Decimal
 from unittest.mock import patch
@@ -108,7 +109,7 @@ def test_a_filer_living_on_social_security_alone_has_a_cmi_of_zero_not_a_refusal
 
 def test_income_saved_only_as_a_total_is_refused_in_plain_words(filer):
     _, session = filer
-    IncomeInfo.objects.create(session=session, monthly_income=[3000] * 6)
+    IncomeInfo.objects.create(session=session, monthly_income=json.dumps([3000] * 6))
 
     with pytest.raises(IncomeNotSplit) as refused:
         current_monthly_income(session.income_info)
@@ -119,7 +120,7 @@ def test_income_saved_only_as_a_total_is_refused_in_plain_words(filer):
 
 def test_the_means_test_passes_the_refusal_on_without_its_failure_prefix(filer):
     _, session = filer
-    IncomeInfo.objects.create(session=session, monthly_income=[3000] * 6)
+    IncomeInfo.objects.create(session=session, monthly_income=json.dumps([3000] * 6))
     answer_household(session)
 
     with pytest.raises(IncomeNotSplit) as refused:
@@ -151,7 +152,7 @@ def test_other_means_test_failures_keep_their_prefix(filer):
 
 def test_the_above_median_calculator_refuses_income_not_split_instead_of_using_zero(filer):
     _, session = filer
-    IncomeInfo.objects.create(session=session, monthly_income=[9000] * 6)
+    IncomeInfo.objects.create(session=session, monthly_income=json.dumps([9000] * 6))
 
     with pytest.raises(IncomeNotSplit):
         ExpenseDeductionCalculator(session).calculate()
@@ -159,7 +160,7 @@ def test_the_above_median_calculator_refuses_income_not_split_instead_of_using_z
 
 def test_means_test_endpoint_asks_for_income_by_source_as_a_400(filer):
     user, session = filer
-    IncomeInfo.objects.create(session=session, monthly_income=[3000] * 6)
+    IncomeInfo.objects.create(session=session, monthly_income=json.dumps([3000] * 6))
     answer_household(session)
     client = APIClient()
     client.force_authenticate(user=user)

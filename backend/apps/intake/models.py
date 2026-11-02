@@ -122,83 +122,72 @@ class IncomeInfo(models.Model):
     marital_status = EncryptedCharField(max_length=30, null=True, blank=True)
     # The total the Income step saved before step 2. It is no longer written, and stays for
     # one release as the only record of what an earlier filer entered.
-    monthly_income = models.JSONField(
-        null=True, blank=True, help_text="6-month income array"
-    )  # [month1, month2, ...]
+    monthly_income = EncryptedTextField(null=True, blank=True, help_text="6-month income array")
+    # JSON text of the array, encrypted; get_monthly_income() parses it.
     # No default: an amount the filer never gave stays empty. A default of 0 would give
     # every earlier filer $0 income, and so a passed means test.
-    monthly_gross_wages = models.DecimalField(
+    monthly_gross_wages = EncryptedDecimalField(
         max_digits=10,
         decimal_places=2,
         null=True,
         blank=True,
-        validators=[MinValueValidator(Decimal("0"))],
     )
-    monthly_overtime = models.DecimalField(
+    monthly_overtime = EncryptedDecimalField(
         max_digits=10,
         decimal_places=2,
         null=True,
         blank=True,
-        validators=[MinValueValidator(Decimal("0"))],
     )
-    monthly_tips = models.DecimalField(
+    monthly_tips = EncryptedDecimalField(
         max_digits=10,
         decimal_places=2,
         null=True,
         blank=True,
-        validators=[MinValueValidator(Decimal("0"))],
     )
-    monthly_rental_income = models.DecimalField(
+    monthly_rental_income = EncryptedDecimalField(
         max_digits=10,
         decimal_places=2,
         null=True,
         blank=True,
-        validators=[MinValueValidator(Decimal("0"))],
         help_text="After the property's costs",
     )
-    monthly_pension = models.DecimalField(
+    monthly_pension = EncryptedDecimalField(
         max_digits=10,
         decimal_places=2,
         null=True,
         blank=True,
-        validators=[MinValueValidator(Decimal("0"))],
     )
-    monthly_social_security = models.DecimalField(
+    monthly_social_security = EncryptedDecimalField(
         max_digits=10,
         decimal_places=2,
         null=True,
         blank=True,
-        validators=[MinValueValidator(Decimal("0"))],
     )
-    monthly_unemployment = models.DecimalField(
+    monthly_unemployment = EncryptedDecimalField(
         max_digits=10,
         decimal_places=2,
         null=True,
         blank=True,
-        validators=[MinValueValidator(Decimal("0"))],
     )
-    monthly_child_support = models.DecimalField(
+    monthly_child_support = EncryptedDecimalField(
         max_digits=10,
         decimal_places=2,
         null=True,
         blank=True,
-        validators=[MinValueValidator(Decimal("0"))],
         help_text="Child support received",
     )
-    monthly_alimony = models.DecimalField(
+    monthly_alimony = EncryptedDecimalField(
         max_digits=10,
         decimal_places=2,
         null=True,
         blank=True,
-        validators=[MinValueValidator(Decimal("0"))],
         help_text="Alimony received",
     )
-    monthly_other_income = models.DecimalField(
+    monthly_other_income = EncryptedDecimalField(
         max_digits=10,
         decimal_places=2,
         null=True,
         blank=True,
-        validators=[MinValueValidator(Decimal("0"))],
     )
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -207,6 +196,12 @@ class IncomeInfo(models.Model):
 
     def __str__(self) -> str:
         return f"IncomeInfo (Session: {self.session_id})"
+
+    def get_monthly_income(self) -> list | None:
+        """The old six-month total as the array it was saved as, or None."""
+        if self.monthly_income is None:
+            return None
+        return json.loads(self.monthly_income)
 
     def calculate_total_monthly_income(self) -> float | None:
         """The ten monthly amounts added up, Social Security included.
@@ -359,31 +354,31 @@ class ExpenseInfo(models.Model):
     )
 
     # Housing expenses
-    rent_or_mortgage = models.DecimalField(
+    rent_or_mortgage = EncryptedDecimalField(
         max_digits=10,
         decimal_places=2,
         default=0,
         help_text="Monthly housing payment",
     )
-    utilities = models.DecimalField(
+    utilities = EncryptedDecimalField(
         max_digits=10,
         decimal_places=2,
         default=0,
         help_text="Gas, electric, water, etc.",
     )
-    home_maintenance = models.DecimalField(
+    home_maintenance = EncryptedDecimalField(
         max_digits=10, decimal_places=2, default=0, help_text="Repairs and upkeep"
     )
 
     # Transportation
-    vehicle_payment = models.DecimalField(
+    vehicle_payment = EncryptedDecimalField(
         max_digits=10,
         decimal_places=2,
         default=0,
         help_text="Car loan or lease payment",
     )
-    vehicle_insurance = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    vehicle_maintenance = models.DecimalField(
+    vehicle_insurance = EncryptedDecimalField(max_digits=10, decimal_places=2, default=0)
+    vehicle_maintenance = EncryptedDecimalField(
         max_digits=10,
         decimal_places=2,
         default=0,
@@ -391,9 +386,9 @@ class ExpenseInfo(models.Model):
     )
 
     # Living expenses
-    food_and_groceries = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    clothing = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    medical_expenses = models.DecimalField(
+    food_and_groceries = EncryptedDecimalField(max_digits=10, decimal_places=2, default=0)
+    clothing = EncryptedDecimalField(max_digits=10, decimal_places=2, default=0)
+    medical_expenses = EncryptedDecimalField(
         max_digits=10,
         decimal_places=2,
         default=0,
@@ -401,20 +396,20 @@ class ExpenseInfo(models.Model):
     )
 
     # Other recurring expenses
-    childcare = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    child_support_paid = models.DecimalField(
+    childcare = EncryptedDecimalField(max_digits=10, decimal_places=2, default=0)
+    child_support_paid = EncryptedDecimalField(
         max_digits=10,
         decimal_places=2,
         default=0,
         help_text="Court-ordered support payments",
     )
-    insurance_not_deducted = models.DecimalField(
+    insurance_not_deducted = EncryptedDecimalField(
         max_digits=10,
         decimal_places=2,
         default=0,
         help_text="Health, life, or disability insurance not deducted from paycheck",
     )
-    other_expenses = models.DecimalField(
+    other_expenses = EncryptedDecimalField(
         max_digits=10,
         decimal_places=2,
         default=0,

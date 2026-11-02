@@ -1,5 +1,6 @@
 """Round-trip tests for Schedule I schema-driven resolution."""
 
+import json
 from datetime import date
 from decimal import Decimal
 
@@ -196,7 +197,7 @@ class TestScheduleISchema:
         household.save()
         assert income_printed() == ([], None)
         # A total saved before income was stored by source is never split for the filer.
-        IncomeInfo.objects.create(session=session, monthly_income=[3000] * 6)
+        IncomeInfo.objects.create(session=session, monthly_income=json.dumps([3000] * 6))
         assert income_printed() == ([], None)
 
     def test_schedule_i_column_2_prints_the_spouses_income_for_a_spouse_at_home(self, session):

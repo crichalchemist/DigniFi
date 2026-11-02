@@ -1,5 +1,6 @@
 """Tests for factual derivations and section predicates."""
 
+import json
 from datetime import date
 from decimal import Decimal
 
@@ -309,6 +310,6 @@ def test_cmi_refuses_a_session_with_no_income_by_source(session):
 
     with pytest.raises(IncomeNotSplit):
         DERIVATIONS["cmi"](session)
-    IncomeInfo.objects.create(session=session, monthly_income=[2500] * 6)
+    IncomeInfo.objects.create(session=session, monthly_income=json.dumps([2500] * 6))
     with pytest.raises(IncomeNotSplit):
         DERIVATIONS["cmi"](session)

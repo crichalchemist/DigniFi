@@ -7,6 +7,7 @@ The old six-month total is kept, read-only, for one release: it is the only reco
 an earlier filer entered, and the Income step shows it while asking them to split it.
 """
 
+import json
 from datetime import date
 from decimal import Decimal
 
@@ -102,7 +103,9 @@ class TestIncomeBySource:
         self, filer_session
     ):
         client, session = filer_session
-        IncomeInfo.objects.create(session=session, monthly_income=[3100, 3300, 3200] * 2)
+        IncomeInfo.objects.create(
+            session=session, monthly_income=json.dumps([3100, 3300, 3200] * 2)
+        )
 
         income = client.get(_session_url(session)).json()["income_info"]
 
@@ -112,7 +115,7 @@ class TestIncomeBySource:
 
     def test_a_total_sent_by_an_old_page_is_not_stored(self, filer_session):
         client, session = filer_session
-        IncomeInfo.objects.create(session=session, monthly_income=[2500] * 6)
+        IncomeInfo.objects.create(session=session, monthly_income=json.dumps([2500] * 6))
 
         resp = client.patch(
             _session_url(session),
@@ -122,7 +125,7 @@ class TestIncomeBySource:
 
         assert resp.status_code == 200
         income = IncomeInfo.objects.get(session=session)
-        assert income.monthly_income == [2500] * 6
+        assert income.get_monthly_income() == [2500] * 6
         assert income.monthly_gross_wages == Decimal("4000.00")
 
     def test_saving_income_amounts_keeps_household_details(self, filer_session):
@@ -210,7 +213,7 @@ def _complete(session):
 
 def test_legacy_income_total_must_be_split_before_forms_print(filer_session):
     client, session = filer_session
-    IncomeInfo.objects.create(session=session, monthly_income=[3000] * 6)
+    IncomeInfo.objects.create(session=session, monthly_income=json.dumps([3000] * 6))
     answer_household(session)
     _complete(session)
     generate = {"session_id": session.pk, "form_type": "schedule_i"}

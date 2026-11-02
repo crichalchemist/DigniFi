@@ -999,7 +999,7 @@ class TestMeansTestWorkedOutAgain:
         session = session_with_debtor
         session.status = "in_progress"
         session.save()
-        session.income_info.monthly_income = [3000] * 6
+        session.income_info.monthly_income = json.dumps([3000] * 6)
         _set_wages(session, None)
         _stale_means_test(session, "9000.00")
 
@@ -1014,7 +1014,7 @@ class TestMeansTestWorkedOutAgain:
     ):
         session = session_with_debtor
         # A total saved before income was stored by source.
-        session.income_info.monthly_income = [3000] * 6
+        session.income_info.monthly_income = json.dumps([3000] * 6)
         _set_wages(session, None)
         # No fee waiver application, so 103B has left the packet. 106B-Dec reads no income.
         GeneratedForm.objects.create(session=session, form_type="form_103b", generated_by=user)

@@ -93,6 +93,37 @@ class IncomeInfoSerializer(serializers.ModelSerializer):
     marital_status = serializers.ChoiceField(
         choices=IncomeInfo.MARITAL_ANSWERS, allow_null=True, required=False
     )
+    # Explicit field declarations — EncryptedDecimalField confuses DRF's auto-mapper
+    monthly_gross_wages = serializers.DecimalField(
+        max_digits=10, decimal_places=2, min_value=Decimal("0"), allow_null=True, required=False
+    )
+    monthly_overtime = serializers.DecimalField(
+        max_digits=10, decimal_places=2, min_value=Decimal("0"), allow_null=True, required=False
+    )
+    monthly_tips = serializers.DecimalField(
+        max_digits=10, decimal_places=2, min_value=Decimal("0"), allow_null=True, required=False
+    )
+    monthly_rental_income = serializers.DecimalField(
+        max_digits=10, decimal_places=2, min_value=Decimal("0"), allow_null=True, required=False
+    )
+    monthly_pension = serializers.DecimalField(
+        max_digits=10, decimal_places=2, min_value=Decimal("0"), allow_null=True, required=False
+    )
+    monthly_social_security = serializers.DecimalField(
+        max_digits=10, decimal_places=2, min_value=Decimal("0"), allow_null=True, required=False
+    )
+    monthly_unemployment = serializers.DecimalField(
+        max_digits=10, decimal_places=2, min_value=Decimal("0"), allow_null=True, required=False
+    )
+    monthly_child_support = serializers.DecimalField(
+        max_digits=10, decimal_places=2, min_value=Decimal("0"), allow_null=True, required=False
+    )
+    monthly_alimony = serializers.DecimalField(
+        max_digits=10, decimal_places=2, min_value=Decimal("0"), allow_null=True, required=False
+    )
+    monthly_other_income = serializers.DecimalField(
+        max_digits=10, decimal_places=2, min_value=Decimal("0"), allow_null=True, required=False
+    )
 
     class Meta:
         model = IncomeInfo
@@ -108,6 +139,11 @@ class IncomeInfoSerializer(serializers.ModelSerializer):
     def get_total_monthly_income(self, obj):
         """Return the ten amounts added up, or None when the filer gave none of them."""
         return obj.calculate_total_monthly_income()
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        data["monthly_income"] = instance.get_monthly_income()
+        return data
 
 
 class SpouseIncomeSerializer(serializers.ModelSerializer):
@@ -157,6 +193,46 @@ class ExpenseInfoSerializer(serializers.ModelSerializer):
     """Serializer for monthly expense information."""
 
     total_monthly_expenses = serializers.SerializerMethodField()
+    # Explicit field declarations — EncryptedDecimalField confuses DRF's auto-mapper
+    rent_or_mortgage = serializers.DecimalField(
+        max_digits=10, decimal_places=2, min_value=Decimal("0"), required=False, default=0
+    )
+    utilities = serializers.DecimalField(
+        max_digits=10, decimal_places=2, min_value=Decimal("0"), required=False, default=0
+    )
+    home_maintenance = serializers.DecimalField(
+        max_digits=10, decimal_places=2, min_value=Decimal("0"), required=False, default=0
+    )
+    vehicle_payment = serializers.DecimalField(
+        max_digits=10, decimal_places=2, min_value=Decimal("0"), required=False, default=0
+    )
+    vehicle_insurance = serializers.DecimalField(
+        max_digits=10, decimal_places=2, min_value=Decimal("0"), required=False, default=0
+    )
+    vehicle_maintenance = serializers.DecimalField(
+        max_digits=10, decimal_places=2, min_value=Decimal("0"), required=False, default=0
+    )
+    food_and_groceries = serializers.DecimalField(
+        max_digits=10, decimal_places=2, min_value=Decimal("0"), required=False, default=0
+    )
+    clothing = serializers.DecimalField(
+        max_digits=10, decimal_places=2, min_value=Decimal("0"), required=False, default=0
+    )
+    medical_expenses = serializers.DecimalField(
+        max_digits=10, decimal_places=2, min_value=Decimal("0"), required=False, default=0
+    )
+    childcare = serializers.DecimalField(
+        max_digits=10, decimal_places=2, min_value=Decimal("0"), required=False, default=0
+    )
+    child_support_paid = serializers.DecimalField(
+        max_digits=10, decimal_places=2, min_value=Decimal("0"), required=False, default=0
+    )
+    insurance_not_deducted = serializers.DecimalField(
+        max_digits=10, decimal_places=2, min_value=Decimal("0"), required=False, default=0
+    )
+    other_expenses = serializers.DecimalField(
+        max_digits=10, decimal_places=2, min_value=Decimal("0"), required=False, default=0
+    )
 
     class Meta:
         model = ExpenseInfo

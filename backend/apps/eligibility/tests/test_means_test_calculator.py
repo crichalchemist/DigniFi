@@ -15,6 +15,7 @@ Tests cover:
 - Recalculation idempotency (calculate twice, only 1 MeansTest record)
 """
 
+import json
 from datetime import date
 from decimal import Decimal
 
@@ -452,7 +453,7 @@ class TestTotalSavedBeforeIncomeBySource:
         IncomeInfo.objects.create(
             session=session,
             marital_status="not_married",
-            monthly_income=months,
+            monthly_income=months if isinstance(months, str) else json.dumps(months),
         )
 
         calculator = MeansTestCalculator(session)
