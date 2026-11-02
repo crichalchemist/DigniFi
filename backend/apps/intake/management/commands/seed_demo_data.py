@@ -15,6 +15,7 @@ from django.db import transaction
 
 from apps.districts.dated_tables import NoTableInForce, fill_date, in_force
 from apps.districts.models import District
+from apps.eligibility.cmi import income_window
 from apps.eligibility.models import MEDIAN_TABLE
 from apps.eligibility.services.means_test_calculator import MeansTestCalculator
 from apps.forms.registry import build_field_values, packet
@@ -39,10 +40,16 @@ User = get_user_model()
 DEMO_PASSWORD = "DigniFi-Demo-2026!"
 
 
+def _no_business_and_no_assistance() -> dict:
+    """3e2's Income-step answers for a person with no business or rental, no change ahead, no aid."""
+    return {"business_and_rental": [], "income_now_different": "no", "assistance_answer": "no"}
+
+
 def _wages_only(wages: Decimal) -> dict:
     """The Income step's ten amounts for a persona whose only income is wages: the rest $0."""
     amounts = dict.fromkeys(IncomeInfo.SOURCE_FIELDS, Decimal("0.00"))
     amounts["monthly_gross_wages"] = wages
+    amounts.update(_no_business_and_no_assistance())
     return amounts
 
 
@@ -72,6 +79,11 @@ def _maria_torres() -> dict:
         "income": {
             "marital_status": "not_married",
             **_wages_only(Decimal("3200.00")),
+            **dict.fromkeys(IncomeInfo.DEDUCTION_FIELDS, Decimal("0.00")),
+            "payroll_tax": Decimal("400.00"),
+            "assistance_answer": "yes",
+            "noncash_assistance_kind": "SNAP (food stamps)",
+            "noncash_assistance_value": Decimal("350.00"),
         },
         "household": {
             "county": "Cook",
@@ -92,6 +104,7 @@ def _maria_torres() -> dict:
         },
         "spouse_income": None,
         "expenses": {
+            "expenses_include_others": "no",
             "rent_or_mortgage": Decimal("1100.00"),
             "utilities": Decimal("180.00"),
             "home_maintenance": Decimal("0.00"),
@@ -208,10 +221,13 @@ def _james_washington() -> dict:
         "income": {
             "marital_status": "not_married",
             **_wages_only(Decimal("5833.00")),
+            "payroll_tax": Decimal("1288.00"),
+            "payroll_union_dues": Decimal("45.00"),
         },
         "household": {"county": "Cook", "members": []},
         "spouse_income": None,
         "expenses": {
+            "expenses_include_others": "no",
             "rent_or_mortgage": Decimal("1650.00"),
             "utilities": Decimal("120.00"),
             "home_maintenance": Decimal("0.00"),
@@ -289,6 +305,9 @@ def _priya_sharma() -> dict:
             # Her own $12,000/month is $144,000/year, above the $137,902 HH4 median by
             # itself; with her husband's $1,800 (122A-1 Column B) it is $165,600/year.
             **_wages_only(Decimal("12000.00")),
+            "payroll_tax": Decimal("2450.00"),
+            "payroll_voluntary_retirement": Decimal("600.00"),
+            "payroll_insurance": Decimal("620.00"),
         },
         "household": {
             "county": "Cook",
@@ -314,8 +333,9 @@ def _priya_sharma() -> dict:
                 },
             ],
         },
-        "spouse_income": _wages_only(Decimal("1800.00")),
+        "spouse_income": {**_wages_only(Decimal("1800.00")), "payroll_tax": Decimal("250.00")},
         "expenses": {
+            "expenses_include_others": "yes",
             "rent_or_mortgage": Decimal("2800.00"),
             "utilities": Decimal("250.00"),
             "home_maintenance": Decimal("100.00"),
@@ -383,6 +403,7 @@ def _deshawn_mitchell() -> dict:
         "income": {
             "marital_status": "married_together",
             **_wages_only(Decimal("3500.00")),
+            "payroll_tax": Decimal("450.00"),
         },
         "household": {
             "county": "Cook",
@@ -396,8 +417,9 @@ def _deshawn_mitchell() -> dict:
                 },
             ],
         },
-        "spouse_income": _wages_only(Decimal("1000.00")),
+        "spouse_income": {**_wages_only(Decimal("1000.00")), "payroll_tax": Decimal("115.00")},
         "expenses": {
+            "expenses_include_others": "yes",
             "rent_or_mortgage": Decimal("1200.00"),
             "utilities": Decimal("200.00"),
             "home_maintenance": Decimal("100.00"),
@@ -501,6 +523,7 @@ def _sarah_chen() -> dict:
         "income": {
             "marital_status": "not_married",
             **_wages_only(Decimal("2000.00")),
+            "payroll_tax": Decimal("250.00"),
         },
         "household": {
             "county": "Cook",
@@ -515,6 +538,7 @@ def _sarah_chen() -> dict:
         },
         "spouse_income": None,
         "expenses": {
+            "expenses_include_others": "no",
             "rent_or_mortgage": Decimal("850.00"),
             "utilities": Decimal("80.00"),
             "home_maintenance": Decimal("0.00"),
@@ -583,6 +607,7 @@ def _andres_kettleby() -> dict:
             # other income until the Income step asks for business income (3a1.Q1).
             **dict.fromkeys(IncomeInfo.SOURCE_FIELDS, Decimal("0.00")),
             "monthly_other_income": Decimal("3370.00"),
+            **_no_business_and_no_assistance(),
         },
         "household": {
             "county": "Kane",
@@ -597,6 +622,7 @@ def _andres_kettleby() -> dict:
         },
         "spouse_income": None,
         "expenses": {
+            "expenses_include_others": "no",
             "rent_or_mortgage": Decimal("1150.00"),
             "utilities": Decimal("210.00"),
             "home_maintenance": Decimal("0.00"),
@@ -826,12 +852,21 @@ class Command(BaseCommand):
         )
 
         DebtorInfo.objects.create(session=session, **data["debtor"])
-        IncomeInfo.objects.create(session=session, **data["income"])
+        income = dict(data["income"])
+        entries = income.pop("business_and_rental")
+        income_row = IncomeInfo(session=session, **income)
+        income_row.store_entries(entries)
+        income_row.income_period_end = income_window(fill_date())[1]
+        income_row.save()
         household = Household(session=session, county=data["household"]["county"])
         household.store_members(data["household"]["members"])
         household.save()
         if data["spouse_income"] is not None:
-            SpouseIncome.objects.create(session=session, **data["spouse_income"])
+            spouse = dict(data["spouse_income"])
+            spouse_entries = spouse.pop("business_and_rental")
+            spouse_row = SpouseIncome(session=session, **spouse)
+            spouse_row.store_entries(spouse_entries)
+            spouse_row.save()
         ExpenseInfo.objects.create(session=session, **data["expenses"])
 
         for asset in data["assets"]:
