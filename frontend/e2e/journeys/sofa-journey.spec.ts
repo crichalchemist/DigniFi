@@ -63,7 +63,7 @@ test.describe('SOFA — Form 107 Financial History', () => {
     await wizard.nextStep();
 
     // Step 4: Expenses
-    await wizard.fillExpenses(JAMES.expenses);
+    await wizard.fillExpenses(JAMES);
     await wizard.nextStep();
 
     // Means test check

@@ -99,7 +99,7 @@ test.describe('Scanned bill — upload to Amounts Owed', () => {
       await wizard.fillTakeHomePay(FILER.deductions);
       await wizard.nextStep();
       await expect(stepTitle).toHaveText('Expenses');
-      await wizard.fillExpenses(FILER.expenses);
+      await wizard.fillExpenses(FILER);
       await wizard.nextStep();
       await expect(stepTitle).toHaveText('Assets');
       await wizard.nextStep(); // no assets

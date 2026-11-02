@@ -287,48 +287,90 @@ export interface ExpenseInfo {
   session: number;
   data_source: 'manual' | 'bank_import';
 
-  // Housing expenses
+  // The 26 Schedule J amounts, named in EXPENSE_FIELDS
   rent_or_mortgage: number;
-  utilities: number;
+  real_estate_taxes: number;
+  home_insurance: number;
   home_maintenance: number;
-
-  // Transportation
-  vehicle_payment: number;
-  vehicle_insurance: number;
-  vehicle_maintenance: number;
-
-  // Living expenses
+  hoa_dues: number;
+  utilities: number;
   food_and_groceries: number;
-  clothing: number;
   childcare: number;
-  child_support_paid: number;
+  clothing: number;
+  personal_care: number;
   medical_expenses: number;
+  vehicle_maintenance: number;
+  entertainment: number;
+  charitable_contributions: number;
+  vehicle_insurance: number;
   insurance_not_deducted: number;
+  taxes_not_deducted: number;
+  vehicle_payment: number;
+  child_support_paid: number;
+  support_others: number;
+  other_property_mortgages: number;
+  other_property_taxes: number;
+  other_property_insurance: number;
+  other_property_upkeep: number;
+  other_property_hoa_dues: number;
   other_expenses: number;
 
-  // Calculated field
+  // The three "Specify" texts beside lines 16, 19 and 21, up to 100 characters each
+  taxes_specify: string;
+  support_others_specify: string;
+  other_expenses_specify: string;
+
+  // Schedule J line 3; null is unanswered
+  expenses_include_others: YesNo | null;
+
+  // Calculated field, read-only: the server adds the amounts up
   total_monthly_expenses: number;
 }
 
 /**
- * The 13 monthly expense amounts, under the names the backend stores and the court forms
- * read. DRF drops any other name without an error, so the step sums and sends only these.
+ * The 26 monthly expense amounts, in Schedule J's order, under the names the backend stores
+ * and the court forms read. DRF drops any other name without an error, so the step sums and
+ * sends only these.
  */
 export const EXPENSE_FIELDS = [
   'rent_or_mortgage',
-  'utilities',
+  'real_estate_taxes',
+  'home_insurance',
   'home_maintenance',
-  'vehicle_payment',
-  'vehicle_insurance',
-  'vehicle_maintenance',
+  'hoa_dues',
+  'utilities',
   'food_and_groceries',
-  'clothing',
-  'medical_expenses',
   'childcare',
-  'child_support_paid',
+  'clothing',
+  'personal_care',
+  'medical_expenses',
+  'vehicle_maintenance',
+  'entertainment',
+  'charitable_contributions',
+  'vehicle_insurance',
   'insurance_not_deducted',
+  'taxes_not_deducted',
+  'vehicle_payment',
+  'child_support_paid',
+  'support_others',
+  'other_property_mortgages',
+  'other_property_taxes',
+  'other_property_insurance',
+  'other_property_upkeep',
+  'other_property_hoa_dues',
   'other_expenses',
 ] as const;
+
+export type ExpenseField = (typeof EXPENSE_FIELDS)[number];
+
+/** The three "Specify" texts, which sit beside lines 16, 19 and 21 */
+export const EXPENSE_SPECIFY_FIELDS = [
+  'taxes_specify',
+  'support_others_specify',
+  'other_expenses_specify',
+] as const;
+
+export type ExpenseSpecifyField = (typeof EXPENSE_SPECIFY_FIELDS)[number];
 
 export interface AssetInfo {
   id: number;

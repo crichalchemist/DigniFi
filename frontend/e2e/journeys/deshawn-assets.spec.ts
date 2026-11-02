@@ -45,7 +45,7 @@ test.describe('DeShawn Mitchell — Assets', () => {
     await wizard.nextStep();
 
     // Step 4: Expenses
-    await wizard.fillExpenses(DESHAWN.expenses);
+    await wizard.fillExpenses(DESHAWN);
     await wizard.nextStep();
 
     // Should pass means test (below median for HH of 2)

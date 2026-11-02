@@ -42,7 +42,7 @@ test.describe('James Washington — Borderline', () => {
     await wizard.nextStep();
 
     // Step 4: Expenses
-    await wizard.fillExpenses(JAMES.expenses);
+    await wizard.fillExpenses(JAMES);
     await wizard.nextStep();
 
     // Means test should still pass (just under)

@@ -50,6 +50,7 @@ import {
   CURRENT_INCOME_FIELDS,
   DEDUCTION_FIELDS,
   EXPENSE_FIELDS,
+  EXPENSE_SPECIFY_FIELDS,
   INCOME_FIELDS,
 } from '../types/api';
 import { WIZARD_STEPS } from '../constants/wizardSteps';
@@ -367,12 +368,15 @@ export function IntakeWizard() {
       }
 
       case 'expense_info': {
-        // The 13 amounts alone. The total is read-only on the server: the step adds it up in
-        // floating point, so it can differ from the server's decimal sum in the last digit. A
-        // blank box is sent as 0, the column's default; left out, a box the filer cleared would
-        // keep its old amount on the server (DIG-55).
+        // The 26 amounts, the three Specify texts and line 3. The total is read-only on the
+        // server: the step adds it up in floating point, so it can differ from the server's
+        // decimal sum in the last digit. A blank box is sent as 0, the column's default; left
+        // out, a box the filer cleared would keep its old amount on the server (DIG-55). A
+        // blank Specify box is '' and an unanswered line 3 is null.
         const expenses: Partial<ExpenseInfo> = {};
         for (const field of EXPENSE_FIELDS) expenses[field] = expenseData[field] ?? 0;
+        for (const field of EXPENSE_SPECIFY_FIELDS) expenses[field] = expenseData[field] ?? '';
+        expenses.expenses_include_others = expenseData.expenses_include_others ?? null;
         return { expense_info: expenses } as Partial<IntakeSession>;
       }
 

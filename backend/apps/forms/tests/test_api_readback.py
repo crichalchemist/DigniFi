@@ -132,6 +132,8 @@ def _send_through_the_api(persona):
     assert data["spouse_income"] is None or all(
         data["spouse_income"][field] is not None for field in SpouseIncome.SOURCE_FIELDS
     )
+    # Line 3 is sent with the Expenses step, so the readback can't pass by leaving it unsent.
+    assert data["expenses"]["expenses_include_others"] in ("yes", "no")
     client = APIClient()
     client.force_authenticate(User.objects.create_user(username=f"api_{persona}", password="pw"))
 

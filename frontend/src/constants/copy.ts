@@ -290,3 +290,19 @@ export const OTHER_DEDUCTIONS_SPECIFY_LABEL = 'What are the other deductions?';
 export const SPOUSE_OTHER_DEDUCTIONS_SPECIFY_LABEL = "What are your spouse's other deductions?";
 
 export const SPOUSE_DEDUCTION_LABEL_PREFIX = "Spouse's";
+
+// ============================================================================
+// Expenses Step
+// ============================================================================
+
+// DRAFT: counsel C-13
+export const LINE_3_INFO =
+  "Line 3 asks about the expenses of anyone other than you and your dependents. One example is a spouse who isn't your dependent.";
+
+// DRAFT: counsel C-13
+export const DOUBLE_COUNT_EXPENSES_NOTE =
+  'If one cost is both for your home and for a business or rental property, count each dollar once, in one place only: here or as an operating expense on the Income step. How you split it is your choice. Legal aid can help.';
+
+export const EXPENSE_HELP_HOME_MAINTENANCE = 'Repairs and yard work';
+
+export const EXPENSE_HELP_OTHER = 'Costs that fit none of the lines above';

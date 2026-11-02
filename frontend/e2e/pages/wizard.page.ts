@@ -13,6 +13,7 @@ import type {
   PersonaIncome,
   PersonaAsset,
   PersonaDebt,
+  PersonaData,
 } from '../fixtures/personas';
 
 export class WizardPage {
@@ -263,11 +264,20 @@ export class WizardPage {
 
   // ── Step 4: Expenses ────────────────────────────────────────────
 
-  async fillExpenses(expenses: Record<string, number>) {
+  async fillExpenses(
+    persona: Pick<PersonaData, 'expenses' | 'expenses_include_others' | 'expense_texts'>
+  ) {
+    // Line 3 comes first on the page and is never answered for the filer
+    await this.page
+      .locator(`input[name="expenses_include_others"][value="${persona.expenses_include_others}"]`)
+      .check();
     // Persona keys are the backend's ExpenseInfo names, and ExpenseInfoStep names each
     // box the same way, so every amount goes straight into its own box.
-    for (const [field, value] of Object.entries(expenses)) {
+    for (const [field, value] of Object.entries(persona.expenses)) {
       await this.page.locator(`input[name="${field}"]`).fill(String(value));
+    }
+    for (const [field, text] of Object.entries(persona.expense_texts ?? {})) {
+      await this.page.locator(`input[name="${field}"]`).fill(text);
     }
   }
 

@@ -49,7 +49,7 @@ test.describe('Maria Torres — Happy Path', () => {
     await wizard.nextStep();
 
     // Step 4: Expenses
-    await wizard.fillExpenses(MARIA.expenses);
+    await wizard.fillExpenses(MARIA);
     await wizard.nextStep();
 
     // Means test sidebar should indicate eligibility

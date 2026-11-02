@@ -10,8 +10,10 @@ import {
   CURRENT_INCOME_FIELDS,
   DEDUCTION_FIELDS,
   EXPENSE_FIELDS,
+  EXPENSE_SPECIFY_FIELDS,
   INCOME_FIELDS,
 } from '../../types/api';
+import { EXPENSE_LINE_WORDS } from '../../constants/formText';
 
 // DebtorInfoStep reads account email via useAuth; wizard test renders without
 // AuthProvider, so we stub just the user object the step needs.
@@ -2398,30 +2400,46 @@ describe('IntakeWizard county', { timeout: 15_000 }, () => {
 // ===========================================================================
 
 describe('IntakeWizard cleared expense', { timeout: 15_000 }, () => {
-  it('saves a cleared expense box as $0, so the old amount does not stay on the server', async () => {
-    const savedSession = {
-      ...sessionAtStep1,
-      current_step: 4,
-      expense_info: {
-        data_source: 'manual',
-        rent_or_mortgage: '1100.00',
-        utilities: '180.00',
-        home_maintenance: '0.00',
-        vehicle_payment: '0.00',
-        vehicle_insurance: '85.00',
-        vehicle_maintenance: '40.00',
-        food_and_groceries: '450.00',
-        clothing: '60.00',
-        medical_expenses: '75.00',
-        childcare: '400.00',
-        child_support_paid: '0.00',
-        insurance_not_deducted: '120.00',
-        other_expenses: '50.00',
-        total_monthly_expenses: 2560.0,
-        created_at: '2026-10-01T10:00:00Z',
-        updated_at: '2026-10-01T10:00:00Z',
-      },
-    };
+  const savedExpenses = {
+    data_source: 'manual',
+    rent_or_mortgage: '1100.00',
+    real_estate_taxes: '0.00',
+    home_insurance: '0.00',
+    home_maintenance: '0.00',
+    hoa_dues: '0.00',
+    utilities: '180.00',
+    food_and_groceries: '450.00',
+    childcare: '400.00',
+    clothing: '60.00',
+    personal_care: '0.00',
+    medical_expenses: '75.00',
+    vehicle_maintenance: '40.00',
+    entertainment: '0.00',
+    charitable_contributions: '0.00',
+    vehicle_insurance: '85.00',
+    insurance_not_deducted: '120.00',
+    taxes_not_deducted: '0.00',
+    vehicle_payment: '0.00',
+    child_support_paid: '0.00',
+    support_others: '0.00',
+    other_property_mortgages: '0.00',
+    other_property_taxes: '0.00',
+    other_property_insurance: '0.00',
+    other_property_upkeep: '0.00',
+    other_property_hoa_dues: '0.00',
+    other_expenses: '50.00',
+    taxes_specify: '',
+    support_others_specify: '',
+    other_expenses_specify: '',
+    expenses_include_others: 'no',
+    total_monthly_expenses: 2560.0,
+    created_at: '2026-10-01T10:00:00Z',
+    updated_at: '2026-10-01T10:00:00Z',
+  };
+
+  /** Serve a session sitting on the Expenses step (step 4); returns the PATCH bodies. */
+  function serveExpensesSession(expense_info: Record<string, unknown> | null) {
+    const savedSession = { ...sessionAtStep1, current_step: 4, expense_info };
     const patchBodies: Record<string, unknown>[] = [];
     server.use(
       http.get('http://localhost:8000/api/intake/sessions/:id/', () =>
@@ -2442,36 +2460,101 @@ describe('IntakeWizard cleared expense', { timeout: 15_000 }, () => {
         () => new HttpResponse(null, { status: 201 })
       )
     );
+    return patchBodies;
+  }
+
+  it('saves a cleared expense box as $0, so the old amount does not stay on the server', async () => {
+    const patchBodies = serveExpensesSession(savedExpenses);
 
     renderWizard();
     await screen.findByRole('heading', { name: /expenses/i, level: 2 });
-    fireEvent.change(screen.getByRole('spinbutton', { name: /rent or mortgage payment/i }), {
-      target: { value: '' },
-    });
+    fireEvent.change(
+      screen.getByRole('spinbutton', { name: EXPENSE_LINE_WORDS.rent_or_mortgage }),
+      { target: { value: '' } }
+    );
     await userEvent.click(screen.getByRole('button', { name: /continue/i }));
     await screen.findByRole('heading', { name: /assets/i, level: 2 });
 
     const body = patchBodies[patchBodies.length - 1];
     expect(Object.keys(body)).toEqual(['expense_info']);
     const expenseInfo = body.expense_info as Record<string, unknown>;
-    // The 13 names the server stores, in their order, and nothing else (DRF drops any other
-    // name silently). The boxes the filer left alone keep their saved amounts.
-    expect(Object.keys(expenseInfo)).toEqual([...EXPENSE_FIELDS]);
+    // The 26 amounts, the three Specify texts and line 3, in that order, and nothing else (DRF
+    // drops any other name silently). The boxes the filer left alone keep their saved amounts.
+    expect(Object.keys(expenseInfo)).toEqual([
+      ...EXPENSE_FIELDS,
+      ...EXPENSE_SPECIFY_FIELDS,
+      'expenses_include_others',
+    ]);
     expect(expenseInfo).toEqual({
       rent_or_mortgage: 0,
-      utilities: 180,
+      real_estate_taxes: 0,
+      home_insurance: 0,
       home_maintenance: 0,
-      vehicle_payment: 0,
-      vehicle_insurance: 85,
-      vehicle_maintenance: 40,
+      hoa_dues: 0,
+      utilities: 180,
       food_and_groceries: 450,
-      clothing: 60,
-      medical_expenses: 75,
       childcare: 400,
-      child_support_paid: 0,
+      clothing: 60,
+      personal_care: 0,
+      medical_expenses: 75,
+      vehicle_maintenance: 40,
+      entertainment: 0,
+      charitable_contributions: 0,
+      vehicle_insurance: 85,
       insurance_not_deducted: 120,
+      taxes_not_deducted: 0,
+      vehicle_payment: 0,
+      child_support_paid: 0,
+      support_others: 0,
+      other_property_mortgages: 0,
+      other_property_taxes: 0,
+      other_property_insurance: 0,
+      other_property_upkeep: 0,
+      other_property_hoa_dues: 0,
       other_expenses: 50,
+      taxes_specify: '',
+      support_others_specify: '',
+      other_expenses_specify: '',
+      expenses_include_others: 'no',
     });
+  });
+
+  it('sends a blank Specify box as empty and an unanswered line 3 as null', async () => {
+    const patchBodies = serveExpensesSession(null);
+
+    renderWizard();
+    await screen.findByRole('heading', { name: /expenses/i, level: 2 });
+    await userEvent.click(screen.getByRole('button', { name: /continue/i }));
+    await screen.findByRole('heading', { name: /assets/i, level: 2 });
+
+    const body = patchBodies[patchBodies.length - 1];
+    expect(body.expense_info).toEqual({
+      ...Object.fromEntries(EXPENSE_FIELDS.map((field) => [field, 0])),
+      taxes_specify: '',
+      support_others_specify: '',
+      other_expenses_specify: '',
+      expenses_include_others: null,
+    });
+  });
+
+  it('showing the Expenses step again sends nothing', async () => {
+    const patchBodies = serveExpensesSession(savedExpenses);
+
+    renderWizard();
+    await screen.findByRole('heading', { name: /expenses/i, level: 2 });
+
+    // findBy needs real timers, so the clock is faked only after the step has shown. Each
+    // step of the clock is 1 s, since a timer's reply can arm the next one.
+    vi.useFakeTimers();
+    try {
+      for (let second = 0; second < 3; second += 1) {
+        await act(() => vi.advanceTimersByTimeAsync(1000));
+      }
+    } finally {
+      vi.useRealTimers();
+    }
+
+    expect(patchBodies).toEqual([]);
   });
 });
 

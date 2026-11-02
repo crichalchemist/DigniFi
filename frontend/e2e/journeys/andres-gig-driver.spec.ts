@@ -46,7 +46,7 @@ test.describe('Andrés Kettleby — Gig Driver', () => {
     await wizard.nextStep();
 
     // Step 4: Expenses
-    await wizard.fillExpenses(ANDRES.expenses);
+    await wizard.fillExpenses(ANDRES);
     await wizard.nextStep();
 
     // Step 5: Assets (his half of the Honda Fit, household goods, two accounts)

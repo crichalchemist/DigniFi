@@ -45,7 +45,7 @@ test.describe('Sarah Chen — Simplest Case', () => {
     await wizard.nextStep();
 
     // Step 4: Expenses (minimal)
-    await wizard.fillExpenses(SARAH.expenses);
+    await wizard.fillExpenses(SARAH);
     await wizard.nextStep();
 
     // Means test preview — should indicate eligibility + fee waiver

@@ -132,6 +132,12 @@ export interface PersonaData {
   // The spouse's, typed only by a persona living with their spouse
   spouse_deductions?: Partial<Record<DeductionField, number>>;
   expenses: Record<string, number>;
+  // Schedule J line 3, answered on the Expenses step
+  expenses_include_others: 'yes' | 'no';
+  // The Specify boxes beside lines 16, 19 and 21, typed only by a persona who has something to say
+  expense_texts?: Partial<
+    Record<'taxes_specify' | 'support_others_specify' | 'other_expenses_specify', string>
+  >;
   assets: PersonaAsset[];
   debts: PersonaDebt[];
   expected: {
@@ -192,6 +198,7 @@ export const MARIA: WaiverPersonaData = {
     payroll_union_dues: 0,
     payroll_other: 0,
   },
+  expenses_include_others: 'no',
   expenses: {
     rent_or_mortgage: 1100,
     utilities: 180,
@@ -270,6 +277,7 @@ export const JAMES: PersonaData = {
     assistance: { answer: 'no' },
   },
   deductions: { payroll_tax: 1288, payroll_union_dues: 45 },
+  expenses_include_others: 'no',
   expenses: {
     rent_or_mortgage: 1650,
     utilities: 120,
@@ -374,6 +382,7 @@ export const PRIYA: PersonaData = {
   },
   deductions: { payroll_tax: 2450, payroll_voluntary_retirement: 600, payroll_insurance: 620 },
   spouse_deductions: { payroll_tax: 250 },
+  expenses_include_others: 'yes',
   expenses: {
     rent_or_mortgage: 2800,
     utilities: 250,
@@ -467,6 +476,7 @@ export const DESHAWN: WaiverPersonaData = {
   },
   deductions: { payroll_tax: 450 },
   spouse_deductions: { payroll_tax: 115 },
+  expenses_include_others: 'yes',
   expenses: {
     rent_or_mortgage: 1200,
     utilities: 200,
@@ -564,6 +574,7 @@ export const SARAH: WaiverPersonaData = {
     assistance: { answer: 'no' },
   },
   deductions: { payroll_tax: 250 },
+  expenses_include_others: 'no',
   expenses: {
     rent_or_mortgage: 850,
     utilities: 80,
@@ -643,6 +654,7 @@ export const ANDRES: PersonaData = {
     assistance: { answer: 'no' },
   },
   deductions: {},
+  expenses_include_others: 'no',
   expenses: {
     rent_or_mortgage: 1150,
     utilities: 210,

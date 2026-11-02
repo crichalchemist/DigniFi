@@ -41,7 +41,7 @@ test.describe('Priya Sharma — Ineligible', () => {
     await wizard.nextStep();
 
     // Step 4: Expenses
-    await wizard.fillExpenses(PRIYA.expenses);
+    await wizard.fillExpenses(PRIYA);
     await wizard.nextStep();
 
     // Means test preview should show above-median messaging
