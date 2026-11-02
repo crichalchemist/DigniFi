@@ -31,6 +31,8 @@ export interface IntakeSession {
   created_at: string;
   updated_at: string;
   completed_at: string | null;
+  // The six months the Income step's averages cover, worked out by the server (3e2 spec §4.4)
+  income_window: IncomePeriod;
 
   // Related data (nested serializers)
   debtor_info?: DebtorInfo;
@@ -77,7 +79,7 @@ export interface IncomeInfo {
   monthly_gross_wages?: number | null;
   monthly_overtime?: number | null;
   monthly_tips?: number | null;
-  monthly_rental_income?: number | null;
+  monthly_interest_and_dividends?: number | null;
   monthly_pension?: number | null;
   monthly_social_security?: number | null;
   monthly_unemployment?: number | null;
@@ -85,8 +87,17 @@ export interface IncomeInfo {
   monthly_alimony?: number | null;
   monthly_other_income?: number | null;
 
+  // The old rental figure. Read-only and unread by the step: rental income is a list entry now.
+  readonly monthly_rental_income?: number | null;
+
   // The marriage answer, null until the filer gives one
   marital_status?: MaritalStatus | null;
+
+  // The list of businesses and rental properties. null is unanswered; [] is none.
+  business_and_rental?: IncomeEntry[] | null;
+
+  // The last day of the six-month window the filer last confirmed. Read-only.
+  readonly income_period_end?: string | null;
 
   // Calculated field: the ten added up, null when the filer gave none of them
   total_monthly_income: number | null;
@@ -101,7 +112,7 @@ export const INCOME_FIELDS = [
   'monthly_gross_wages',
   'monthly_overtime',
   'monthly_tips',
-  'monthly_rental_income',
+  'monthly_interest_and_dividends',
   'monthly_pension',
   'monthly_social_security',
   'monthly_unemployment',
@@ -109,6 +120,39 @@ export const INCOME_FIELDS = [
   'monthly_alimony',
   'monthly_other_income',
 ] as const;
+
+export type IncomeField = (typeof INCOME_FIELDS)[number];
+
+/** A business or a rental property on the Income step's list */
+export type EntryKind = 'business' | 'rental';
+
+/**
+ * One business or property. A null is an unanswered box. The amounts are monthly averages;
+ * the `current_` pair is asked only when the person's income is now different.
+ */
+export interface IncomeEntry {
+  id?: number;
+  kind: EntryKind | null;
+  description: string | null;
+  gross: number | null;
+  expenses: number | null;
+  current_gross: number | null;
+  current_expenses: number | null;
+}
+
+/** The four amounts of an entry, which the API sends as decimal strings */
+export const ENTRY_AMOUNT_KEYS = [
+  'gross',
+  'expenses',
+  'current_gross',
+  'current_expenses',
+] as const;
+
+/** A span of days, as ISO dates ("2026-04-01") */
+export interface IncomePeriod {
+  start: string;
+  end: string;
+}
 
 /** The four answers to the marriage question on the Income step. */
 export type MaritalStatus =
@@ -155,7 +199,18 @@ export interface Household {
 }
 
 /** A married filer's spouse's ten monthly income amounts, under the same names as the filer's. */
-export type SpouseIncome = Partial<Record<(typeof INCOME_FIELDS)[number], number | null>>;
+export type SpouseIncome = Partial<
+  Omit<
+    IncomeInfo,
+    | 'id'
+    | 'session'
+    | 'data_source'
+    | 'monthly_income'
+    | 'marital_status'
+    | 'income_period_end'
+    | 'total_monthly_income'
+  >
+>;
 
 export interface ExpenseInfo {
   id: number;

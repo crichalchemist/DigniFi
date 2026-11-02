@@ -27,6 +27,7 @@ const sessionAtStep8 = {
   created_at: '2026-01-20T10:00:00Z',
   updated_at: '2026-01-20T10:00:00Z',
   completed_at: null,
+  income_window: { start: '2026-04-01', end: '2026-09-30' },
   debtor_info: { first_name: 'Jane', last_name: 'Doe' },
   income_info: { monthly_gross_wages: '1200.00', total_monthly_income: 1200 },
   expense_info: { rent_or_mortgage: 1000 },
@@ -44,6 +45,7 @@ const sessionAtStep1 = {
   created_at: '2026-01-20T10:00:00Z',
   updated_at: '2026-01-20T10:00:00Z',
   completed_at: null,
+  income_window: { start: '2026-04-01', end: '2026-09-30' },
   debtor_info: null,
   income_info: null,
   expense_info: null,
@@ -451,7 +453,7 @@ const completedSession = {
     monthly_gross_wages: '3100.50',
     monthly_overtime: null,
     monthly_tips: '0.00',
-    monthly_rental_income: null,
+    monthly_interest_and_dividends: null,
     monthly_pension: null,
     monthly_social_security: '99.50',
     monthly_unemployment: null,
@@ -1190,6 +1192,33 @@ function serveSessionSaves(
                 })),
         };
       }
+      // The filer's entries, then the spouse's: the same pattern as the household's members, so
+      // ids come in that order (members first, then entries, then the spouse's entries)
+      for (const section of ['income_info', 'spouse_income']) {
+        const sent = (body[section] as { business_and_rental?: Record<string, unknown>[] | null })
+          ?.business_and_rental;
+        if (sent === undefined) continue;
+        const storedSection = (stored[section] ?? {}) as {
+          business_and_rental?: Record<string, unknown>[] | null;
+        };
+        const heldIds = (storedSection.business_and_rental ?? []).map((row) => row.id);
+        stored[section] = {
+          ...storedSection,
+          business_and_rental:
+            sent === null
+              ? null
+              : sent.map((row) => {
+                  const entry: Record<string, unknown> = {
+                    ...row,
+                    id: heldIds.includes(row.id) ? row.id : nextId++,
+                  };
+                  for (const amount of ['gross', 'expenses', 'current_gross', 'current_expenses']) {
+                    if (typeof entry[amount] === 'number') entry[amount] = entry[amount].toFixed(2);
+                  }
+                  return entry;
+                }),
+        };
+      }
       const reply = HttpResponse.json(stored);
       if (heldReply) {
         const wait = heldReply;
@@ -1572,7 +1601,7 @@ describe('IntakeWizard income save', { timeout: 15_000 }, () => {
       monthly_gross_wages: '3100.50',
       monthly_overtime: null,
       monthly_tips: '0.00',
-      monthly_rental_income: null,
+      monthly_interest_and_dividends: null,
       monthly_pension: null,
       monthly_social_security: '99.50',
       monthly_unemployment: null,
@@ -1588,7 +1617,7 @@ describe('IntakeWizard income save', { timeout: 15_000 }, () => {
     monthly_gross_wages: 3100.5,
     monthly_overtime: null,
     monthly_tips: 0,
-    monthly_rental_income: null,
+    monthly_interest_and_dividends: null,
     monthly_pension: null,
     monthly_social_security: 99.5,
     monthly_unemployment: null,
@@ -1633,7 +1662,7 @@ describe('IntakeWizard income save', { timeout: 15_000 }, () => {
     expect(patchBodies.length).toBeGreaterThan(0);
     for (const body of patchBodies) {
       expect(body).toEqual({
-        income_info: { ...savedAmounts, marital_status: null },
+        income_info: { ...savedAmounts, marital_status: null, business_and_rental: null },
         household: { members: null },
       });
     }
@@ -1647,11 +1676,57 @@ describe('IntakeWizard income save', { timeout: 15_000 }, () => {
     await screen.findByRole('heading', { name: /expenses/i, level: 2 });
 
     expect(patchBodies.at(-1)).toEqual({
-      income_info: { ...savedAmounts, monthly_social_security: null, marital_status: null },
+      income_info: {
+        ...savedAmounts,
+        monthly_social_security: null,
+        marital_status: null,
+        business_and_rental: null,
+      },
       household: { members: null },
     });
   });
 });
+
+// Shared by the Income step's describes below
+const onIncome = { ...sessionAtStep1, current_step: 2 };
+const TEN_ZERO = Object.fromEntries(INCOME_FIELDS.map((field) => [field, '0.00']));
+const TEN_NULL = Object.fromEntries(INCOME_FIELDS.map((field) => [field, null]));
+const priyaAtIncome = {
+  ...onIncome,
+  income_info: {
+    ...TEN_ZERO,
+    monthly_gross_wages: '12000.00',
+    marital_status: 'married_together',
+    total_monthly_income: 12000,
+  },
+  household: {
+    county: 'Cook',
+    members: [
+      {
+        id: 1,
+        relationship: 'spouse',
+        age: 45,
+        lives_with_you: true,
+        claimed_or_supported: true,
+        spouse_is_dependent: false,
+      },
+      {
+        id: 2,
+        relationship: 'daughter',
+        age: 10,
+        lives_with_you: true,
+        claimed_or_supported: true,
+      },
+      { id: 3, relationship: 'son', age: 7, lives_with_you: true, claimed_or_supported: true },
+    ],
+  },
+  spouse_income: { ...TEN_ZERO, monthly_gross_wages: '1800.00' },
+};
+const pick = (name: string, value: string) => {
+  const radio = document.querySelector(`input[name="${name}"][value="${value}"]`);
+  if (!radio) throw new Error(`No answer ${value} to ${name}`);
+  fireEvent.click(radio);
+};
 
 // ===========================================================================
 // Household and spouse on the Income step (3e1 spec §8.2)
@@ -1659,47 +1734,8 @@ describe('IntakeWizard income save', { timeout: 15_000 }, () => {
 
 describe('IntakeWizard household and spouse', { timeout: 30_000 }, () => {
   const NO_ONE_ELSE = 'No one else lives with me or depends on me.';
-  const onIncome = { ...sessionAtStep1, current_step: 2 };
-  const TEN_ZERO = Object.fromEntries(INCOME_FIELDS.map((field) => [field, '0.00']));
-  const TEN_NULL = Object.fromEntries(INCOME_FIELDS.map((field) => [field, null]));
-  const priyaAtIncome = {
-    ...onIncome,
-    income_info: {
-      ...TEN_ZERO,
-      monthly_gross_wages: '12000.00',
-      marital_status: 'married_together',
-      total_monthly_income: 12000,
-    },
-    household: {
-      county: 'Cook',
-      members: [
-        {
-          id: 1,
-          relationship: 'spouse',
-          age: 45,
-          lives_with_you: true,
-          claimed_or_supported: true,
-          spouse_is_dependent: false,
-        },
-        {
-          id: 2,
-          relationship: 'daughter',
-          age: 10,
-          lives_with_you: true,
-          claimed_or_supported: true,
-        },
-        { id: 3, relationship: 'son', age: 7, lives_with_you: true, claimed_or_supported: true },
-      ],
-    },
-    spouse_income: { ...TEN_ZERO, monthly_gross_wages: '1800.00' },
-  };
   const members = (body: Record<string, unknown>) =>
     (body.household as { members: Record<string, unknown>[] | null }).members;
-  const pick = (name: string, value: string) => {
-    const radio = document.querySelector(`input[name="${name}"][value="${value}"]`);
-    if (!radio) throw new Error(`No answer ${value} to ${name}`);
-    fireEvent.click(radio);
-  };
   const openIncome = () => screen.findByRole('heading', { name: /income/i, level: 2 });
 
   beforeEach(() => {
@@ -1888,6 +1924,7 @@ describe('IntakeWizard household and spouse', { timeout: 30_000 }, () => {
       expect((bodies.at(-1) as Record<string, unknown>).spouse_income).toEqual({
         ...TEN_NULL,
         monthly_gross_wages: 1800,
+        business_and_rental: null,
       });
 
       pick('spouse_household', 'married_separately');
@@ -2731,5 +2768,261 @@ describe('IntakeWizard Review household', { timeout: 15_000 }, () => {
       screen.getByText('People in your home, counting you').nextElementSibling
     ).toHaveTextContent(/^2$/);
     expect(screen.getByText('County').nextElementSibling).toHaveTextContent('Kane');
+  });
+});
+
+// ===========================================================================
+// Businesses and rental property on the Income step (3e2 spec §4.2, §7.4)
+// ===========================================================================
+
+describe('IntakeWizard business and rental list', { timeout: 30_000 }, () => {
+  const NO_BUSINESS = 'I have no business or rental income.';
+  const ADD = '+ Add a business or property';
+  const incomeEntries = (body: Record<string, unknown>) =>
+    (body.income_info as { business_and_rental: Record<string, unknown>[] | null })
+      .business_and_rental;
+  const spouseEntries = (body: Record<string, unknown>) =>
+    (body.spouse_income as { business_and_rental: Record<string, unknown>[] | null })
+      .business_and_rental;
+  const members = (body: Record<string, unknown>) =>
+    (body.household as { members: Record<string, unknown>[] | null }).members;
+  const openIncome = () => screen.findByRole('heading', { name: /income/i, level: 2 });
+
+  beforeEach(() => {
+    server.use(
+      http.post(
+        'http://localhost:8000/api/intake/sessions/:id/update_step/',
+        async ({ request }) => {
+          const { current_step } = (await request.json()) as { current_step: number };
+          return HttpResponse.json({
+            session: { ...onIncome, current_step },
+            message: 'Step updated.',
+          });
+        }
+      ),
+      http.post(
+        'http://localhost:8000/api/audit/logs/',
+        () => new HttpResponse(null, { status: 201 })
+      )
+    );
+  });
+
+  // An entry saved without its id is stored again as a new entry
+  it("a new entry's id reaches the entry that sent it, wherever it now sits", async () => {
+    const saves = serveSessionSaves(onIncome);
+    renderWizard();
+    await openIncome();
+    const landSave = saves.holdNextReply();
+
+    vi.useFakeTimers();
+    try {
+      fireEvent.click(screen.getByRole('button', { name: ADD }));
+      fireEvent.change(field('entry_kind_0'), { target: { value: 'business' } });
+      fireEvent.click(screen.getByRole('button', { name: ADD }));
+      fireEvent.change(field('entry_kind_1'), { target: { value: 'rental' } });
+      await waitSeconds(3);
+      expect(saves.bodies).toHaveLength(1);
+
+      fireEvent.click(screen.getByRole('button', { name: 'Remove business or property 1' }));
+      await act(async () => landSave());
+      await waitSeconds(4);
+    } finally {
+      vi.useRealTimers();
+    }
+
+    expect(saves.bodies.map((body) => incomeEntries(body)?.map((row) => row.id))).toEqual([
+      [undefined, undefined],
+      [102],
+    ]);
+    const [rental] = incomeEntries(saves.bodies[1]) ?? [];
+    expect(rental.kind).toBe('rental');
+    expect(rental).not.toHaveProperty('_key');
+  });
+
+  it("an older save's reply writes no ids once a later save of the list has gone out", async () => {
+    const saves = serveSessionSaves(onIncome);
+    renderWizard();
+    await openIncome();
+    const landFirstSave = saves.holdNextReply();
+
+    vi.useFakeTimers();
+    try {
+      fireEvent.click(screen.getByRole('button', { name: ADD }));
+      fireEvent.change(field('entry_kind_0'), { target: { value: 'business' } });
+      await waitSeconds(3);
+      fireEvent.change(field('entry_description_0'), { target: { value: 'Driving' } });
+      await waitSeconds(3);
+      expect(saves.bodies).toHaveLength(2);
+
+      await act(async () => landFirstSave());
+      await waitSeconds(4);
+      // The next edit updates the entry the server holds
+      fireEvent.change(field('entry_description_0'), { target: { value: 'Delivery driving' } });
+      await waitSeconds(3);
+    } finally {
+      vi.useRealTimers();
+    }
+
+    expect(saves.bodies.map((body) => incomeEntries(body)?.map((row) => row.id))).toEqual([
+      [undefined],
+      [undefined],
+      [102],
+    ]);
+  });
+
+  // One reply carries both lists, and the stub numbers members first, then entries
+  it('the household and the entries each keep their ids from one reply', async () => {
+    const saves = serveSessionSaves(onIncome);
+    renderWizard();
+    await openIncome();
+
+    vi.useFakeTimers();
+    try {
+      fireEvent.click(screen.getByRole('button', { name: '+ Add a person' }));
+      fireEvent.change(field('relationship_0'), { target: { value: 'son' } });
+      fireEvent.click(screen.getByRole('button', { name: ADD }));
+      fireEvent.change(field('entry_kind_0'), { target: { value: 'business' } });
+      await waitSeconds(3);
+      expect(saves.bodies).toHaveLength(1);
+      fireEvent.change(field('age_0'), { target: { value: '8' } });
+      await waitSeconds(3);
+    } finally {
+      vi.useRealTimers();
+    }
+
+    expect(saves.bodies).toHaveLength(2);
+    expect(members(saves.bodies[1])?.[0].id).toBe(101);
+    expect(incomeEntries(saves.bodies[1])?.[0].id).toBe(102);
+  });
+
+  // Ids are paired by position, never guessed
+  it("a reply that doesn't list each entry sent fails the save", async () => {
+    serveSessionSaves(onIncome);
+    const unanswered = {
+      description: null,
+      gross: null,
+      expenses: null,
+      current_gross: null,
+      current_expenses: null,
+    };
+    server.use(
+      http.patch('http://localhost:8000/api/intake/sessions/:id/', () =>
+        HttpResponse.json({
+          ...onIncome,
+          income_info: {
+            business_and_rental: [
+              { id: 101, kind: 'business', ...unanswered },
+              { id: 102, kind: 'rental', ...unanswered },
+            ],
+          },
+        })
+      )
+    );
+    const { container } = renderWizard();
+    await openIncome();
+
+    fireEvent.click(screen.getByRole('button', { name: ADD }));
+    fireEvent.change(field('entry_kind_0'), { target: { value: 'business' } });
+    await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
+
+    expect(await screen.findByText(/couldn't save just now/i)).toBeInTheDocument();
+    expect(container.querySelector('.step-title')).toHaveTextContent('Income');
+  });
+
+  it('"No business" pressed sends [], and a list never answered sends null', async () => {
+    const { bodies } = serveSessionSaves(onIncome);
+    renderWizard();
+    await openIncome();
+
+    vi.useFakeTimers();
+    try {
+      fireEvent.change(field('monthly_gross_wages'), { target: { value: '3200' } });
+      await waitSeconds(3);
+      expect(incomeEntries(bodies.at(-1) as Record<string, unknown>)).toBeNull();
+
+      fireEvent.click(screen.getByRole('button', { name: NO_BUSINESS }));
+      await waitSeconds(3);
+    } finally {
+      vi.useRealTimers();
+    }
+
+    expect(incomeEntries(bodies.at(-1) as Record<string, unknown>)).toEqual([]);
+  });
+
+  // Review Focus 1: the API sends amounts as strings, and 4200.00 + 830.00 must not join as text
+  it("a loaded entry's amounts add as numbers and showing the step again sends nothing", async () => {
+    const saves = serveSessionSaves({
+      ...onIncome,
+      status: 'completed',
+      current_step: 3,
+      expense_info: completedSession.expense_info,
+      income_info: {
+        ...TEN_ZERO,
+        marital_status: 'not_married',
+        business_and_rental: [
+          {
+            id: 1,
+            kind: 'business',
+            description: 'Rideshare and delivery driving',
+            gross: '4200.00',
+            expenses: '830.00',
+            current_gross: null,
+            current_expenses: null,
+          },
+        ],
+        total_monthly_income: 3370,
+      },
+      household: { county: 'Cook', members: [] },
+    });
+    const { container } = renderWizard();
+    await screen.findByRole('heading', { name: /expenses/i, level: 2 });
+
+    vi.useFakeTimers();
+    try {
+      fireEvent.click(screen.getByRole('button', { name: 'Go Back' }));
+      await waitSeconds(3);
+    } finally {
+      vi.useRealTimers();
+    }
+
+    expect(container.querySelector('.step-title')).toHaveTextContent('Income');
+    expect(screen.getByText('Net a month').closest('section')).toHaveTextContent('$3,370.00');
+    expect(
+      screen.getByText('Your income', { selector: 'dt' }).nextElementSibling
+    ).toHaveTextContent('$3,370.00');
+    expect(document.body.textContent).not.toMatch(/\$0?4200\.00830/);
+    expect(saves.bodies).toEqual([]);
+    expect(saves.stored().status).toBe('completed');
+  });
+
+  it("a spouse's new entry keeps the id the reply gave it", async () => {
+    const saves = serveSessionSaves({
+      ...priyaAtIncome,
+      spouse_income: { ...priyaAtIncome.spouse_income, business_and_rental: [] },
+    });
+    renderWizard();
+    await openIncome();
+
+    vi.useFakeTimers();
+    try {
+      fireEvent.click(
+        screen.getByRole('button', { name: "+ Add your spouse's business or property" })
+      );
+      fireEvent.change(field('spouse_entry_kind_0'), { target: { value: 'rental' } });
+      await waitSeconds(3);
+      expect(saves.bodies).toHaveLength(1);
+      fireEvent.change(field('spouse_entry_gross_0'), { target: { value: '900' } });
+      await waitSeconds(3);
+    } finally {
+      vi.useRealTimers();
+    }
+
+    expect(saves.bodies).toHaveLength(2);
+    const last = saves.bodies[1];
+    expect(spouseEntries(last)).toHaveLength(1);
+    expect(spouseEntries(last)?.[0].id).toBe(101);
+    expect(spouseEntries(last)?.[0]).not.toHaveProperty('_key');
+    // The filer's own list is unchanged: never answered
+    expect(incomeEntries(last)).toBeNull();
   });
 });

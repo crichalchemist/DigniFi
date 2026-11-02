@@ -168,3 +168,46 @@ export const BOTH_TOTALS_MONTHLY = 'Both totals are monthly, before taxes and de
 
 export const SPOUSE_INCOME_HELP =
   "Enter your spouse's average monthly income before taxes. Leave a box blank if your spouse doesn't get that kind of income. If your spouse has no income at all, enter $0 in any box.";
+
+// DRAFT: counsel C-10
+export const INCOME_WINDOW_LEAD = 'Your average monthly income for';
+
+// DRAFT: counsel C-10
+export const SPOUSE_INCOME_WINDOW_LEAD = "Your spouse's average monthly income for";
+
+export const INCOME_AVERAGE_HEADING = 'Your income: the six-month average';
+
+export const ENTRIES_HEADING = 'Businesses and rental property';
+
+export const ADD_ENTRY = '+ Add a business or property';
+
+export const SPOUSE_ADD_ENTRY = "+ Add your spouse's business or property";
+
+export const NO_ENTRIES = 'I have no business or rental income.';
+
+export const SPOUSE_NO_ENTRIES = 'My spouse has no business or rental income.';
+
+export const ENTRY_DESCRIPTION_HELP =
+  "What it is, such as rideshare driving or the property's address";
+
+export const ENTRY_NET_LABEL = 'Net a month';
+
+// DRAFT: counsel C-12
+export const FLOOR_AVERAGE_BUSINESS =
+  'For your business income, your operating expenses are more than your gross receipts. DigniFi counts this net as $0.00 on Form 122A-1, and on Schedule I unless your income is now different.';
+
+// DRAFT: counsel C-12
+export const FLOOR_AVERAGE_RENTAL =
+  'For your rental income, your operating expenses are more than your gross receipts. DigniFi counts this net as $0.00 on Form 122A-1, and on Schedule I unless your income is now different.';
+
+// DRAFT: counsel C-12
+export const SPOUSE_FLOOR_AVERAGE_BUSINESS =
+  "For your spouse's business income, the operating expenses are more than the gross receipts. DigniFi counts this net as $0.00 on Form 122A-1, and on Schedule I unless your spouse's income is now different.";
+
+// DRAFT: counsel C-12
+export const SPOUSE_FLOOR_AVERAGE_RENTAL =
+  "For your spouse's rental income, the operating expenses are more than the gross receipts. DigniFi counts this net as $0.00 on Form 122A-1, and on Schedule I unless your spouse's income is now different.";
+
+// DRAFT: counsel C-13
+export const DOUBLE_COUNT_INCOME_NOTE =
+  'If one cost is both for this work and for your home, count each dollar once, in one place only: here or on the Expenses step. How you split it is your choice. Legal aid can help.';

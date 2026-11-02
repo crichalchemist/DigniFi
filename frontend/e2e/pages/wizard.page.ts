@@ -163,8 +163,46 @@ export class WizardPage {
     for (const [source, amount] of Object.entries(income.sources)) {
       await this.page.locator(`input[name="${source}"]`).fill(String(amount));
     }
+    // The businesses and rental properties: "none" when the list is empty, else one card each
+    await this.fillEntries(income.business, {
+      none: 'I have no business or rental income.',
+      add: '+ Add a business or property',
+      prefix: '',
+    });
     for (const [source, amount] of Object.entries(income.spouse_sources ?? {})) {
       await this.page.locator(`input[name="spouse_${source}"]`).fill(String(amount));
+    }
+    if (income.spouse_business) {
+      await this.fillEntries(income.spouse_business, {
+        none: 'My spouse has no business or rental income.',
+        add: "+ Add your spouse's business or property",
+        prefix: 'spouse_',
+      });
+    }
+  }
+
+  private async fillEntries(
+    entries: PersonaIncome['business'],
+    { none, add, prefix }: { none: string; add: string; prefix: string }
+  ) {
+    if (entries.length === 0) {
+      await this.page.getByRole('button', { name: none }).click();
+      return;
+    }
+    for (const [index, entry] of entries.entries()) {
+      await this.page.getByRole('button', { name: add }).click();
+      await this.page
+        .locator(`select[name="${prefix}entry_kind_${index}"]`)
+        .selectOption(entry.kind);
+      await this.page
+        .locator(`input[name="${prefix}entry_description_${index}"]`)
+        .fill(entry.description);
+      await this.page
+        .locator(`input[name="${prefix}entry_gross_${index}"]`)
+        .fill(String(entry.gross));
+      await this.page
+        .locator(`input[name="${prefix}entry_expenses_${index}"]`)
+        .fill(String(entry.expenses));
     }
   }
 

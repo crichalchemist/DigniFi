@@ -11,10 +11,16 @@
 import { useState, useEffect, useMemo } from 'react';
 import { FormField } from '../../common';
 import { HouseholdList } from './HouseholdList';
+import { IncomeEntryList } from './IncomeEntryList';
 import { amountError, decimalToNumber, parseAmount } from '../../../utils/parseAmount';
 import { newHouseholdMember } from '../../../utils/householdRows';
+import { flooredNet } from '../../../utils/incomeEntries';
+import type { EntryRow } from '../../../utils/incomeEntries';
+import { formatIsoDate } from '../../../utils/formatIsoDate';
 import { MAX_AGE, MAX_HOUSEHOLD_ROWS } from '../../../constants/household';
 import {
+  AVERAGING_SENTENCE,
+  INTEREST_LABEL,
   LINE_1_QUESTION,
   LIVING_SEPARATELY_DECLARATION,
   MARRIAGE_ANSWER_WORDS,
@@ -23,14 +29,18 @@ import {
 import {
   AGE_OUT_OF_RANGE,
   BOTH_TOTALS_MONTHLY,
+  INCOME_AVERAGE_HEADING,
+  INCOME_WINDOW_LEAD,
   NOT_ANSWERED_YET,
   SPOUSE_FILING_INFO,
   SPOUSE_INCOME_HELP,
+  SPOUSE_INCOME_WINDOW_LEAD,
 } from '../../../constants/copy';
 import { INCOME_FIELDS } from '../../../types/api';
 import type {
   HouseholdMember,
   IncomeInfo,
+  IncomePeriod,
   MaritalStatus,
   SpouseIncome,
   WizardRow,
@@ -48,6 +58,18 @@ interface IncomeInfoStepProps {
   onNoOneElseChange: (pressed: boolean) => void;
   initialSpouseIncome?: SpouseIncome;
   onSpouseIncomeChange: (data: SpouseIncome) => void;
+  /** The six months the averages cover, worked out by the server */
+  incomeWindow: IncomePeriod;
+  /** The wizard's businesses and rental properties, the filer's and the spouse's */
+  entryRows: EntryRow[];
+  onEntryRowsChange: (rows: EntryRow[]) => void;
+  spouseEntryRows: EntryRow[];
+  onSpouseEntryRowsChange: (rows: EntryRow[]) => void;
+  /** The person said they have no business or rental income */
+  noEntries: boolean;
+  onNoEntriesChange: (pressed: boolean) => void;
+  spouseNoEntries: boolean;
+  onSpouseNoEntriesChange: (pressed: boolean) => void;
 }
 
 type IncomeSource = (typeof INCOME_FIELDS)[number];
@@ -87,8 +109,27 @@ const INCOME_SECTIONS: { title: string; description: string; rows: IncomeBox[][]
     ],
   },
   {
+    title: 'Support and Interest',
+    description: 'Include child support and alimony you receive, and interest and dividends.',
+    rows: [
+      [
+        {
+          field: 'monthly_child_support',
+          label: 'Child Support Received',
+          helpText: 'Child support you receive',
+        },
+        {
+          field: 'monthly_alimony',
+          label: 'Alimony Received',
+          helpText: 'Alimony/spousal support you receive',
+        },
+      ],
+      [{ field: 'monthly_interest_and_dividends', label: INTEREST_LABEL }],
+    ],
+  },
+  {
     title: 'Government Benefits',
-    description: 'Include Social Security, unemployment, and other government assistance.',
+    description: 'Include Social Security and unemployment.',
     rows: [
       [
         {
@@ -102,24 +143,9 @@ const INCOME_SECTIONS: { title: string; description: string; rows: IncomeBox[][]
   },
   {
     title: 'Other Income',
-    description: 'Include rental income, pensions, child support, alimony, and other sources.',
+    description: 'Include pensions and any other regular income.',
     rows: [
-      [
-        { field: 'monthly_pension', label: 'Pension/Retirement' },
-        { field: 'monthly_rental_income', label: "Rental income after the property's costs" },
-      ],
-      [
-        {
-          field: 'monthly_child_support',
-          label: 'Child Support Received',
-          helpText: 'Child support you receive',
-        },
-        {
-          field: 'monthly_alimony',
-          label: 'Alimony Received',
-          helpText: 'Alimony/spousal support you receive',
-        },
-      ],
+      [{ field: 'monthly_pension', label: 'Pension/Retirement' }],
       [
         {
           field: 'monthly_other_income',
@@ -157,6 +183,15 @@ export function IncomeInfoStep({
   onNoOneElseChange,
   initialSpouseIncome,
   onSpouseIncomeChange,
+  incomeWindow,
+  entryRows,
+  onEntryRowsChange,
+  spouseEntryRows,
+  onSpouseEntryRowsChange,
+  noEntries,
+  onNoEntriesChange,
+  spouseNoEntries,
+  onSpouseNoEntriesChange,
 }: IncomeInfoStepProps) {
   // Fields start undefined (empty) rather than 0 so an untouched field reads
   // blank, while a deliberately entered 0 is preserved by parseAmount + `?? ''`.
@@ -169,9 +204,15 @@ export function IncomeInfoStep({
 
   const livingTogether = formData.marital_status === 'married_together';
 
-  // Calculate total monthly income
-  const totalMonthlyIncome = INCOME_FIELDS.reduce((sum, field) => sum + (formData[field] || 0), 0);
-  const spouseTotal = INCOME_FIELDS.reduce((sum, field) => sum + (spouseData[field] || 0), 0);
+  // Calculate total monthly income: the ten, and each kind's net, which is $0 below $0
+  const totalMonthlyIncome =
+    INCOME_FIELDS.reduce((sum, field) => sum + (formData[field] || 0), 0) +
+    flooredNet(entryRows, 'business', false) +
+    flooredNet(entryRows, 'rental', false);
+  const spouseTotal =
+    INCOME_FIELDS.reduce((sum, field) => sum + (spouseData[field] || 0), 0) +
+    flooredNet(spouseEntryRows, 'business', false) +
+    flooredNet(spouseEntryRows, 'rental', false);
 
   // A filer who saved income before it was stored by source has only the old six-month total,
   // read-only. It counts toward nothing, so the step asks them to split it until they enter an
@@ -208,18 +249,30 @@ export function IncomeInfoStep({
       if (message) newErrors[field] = message;
     }
 
+    // Each entry's amounts, under the box's name
+    const entryAmountErrors = (rows: EntryRow[], prefix: string) => {
+      rows.forEach((row, index) => {
+        for (const key of ['gross', 'expenses'] as const) {
+          const message = amountError(row[key] ?? undefined, 10);
+          if (message) newErrors[`${prefix}entry_${key}_${index}`] = message;
+        }
+      });
+    };
+    entryAmountErrors(entryRows, '');
+
     // The spouse's boxes only while they show: a hidden section is neither sent nor checked
     if (livingTogether) {
       for (const field of INCOME_FIELDS) {
         const message = amountError(spouseData[field] ?? undefined, 10);
         if (message) newErrors[`spouse_${field}`] = message;
       }
+      entryAmountErrors(spouseEntryRows, 'spouse_');
     }
 
     for (const [index, message] of Object.entries(ageErrors)) newErrors[`age_${index}`] = message;
 
     return newErrors;
-  }, [formData, spouseData, livingTogether, ageErrors]);
+  }, [formData, spouseData, livingTogether, ageErrors, entryRows, spouseEntryRows]);
 
   // Update parent when form data changes
   useEffect(() => {
@@ -309,6 +362,10 @@ export function IncomeInfoStep({
       />
     );
   };
+
+  // The months the averages cover, named in words (3e2 spec §4.4)
+  const windowSentence = (lead: string) =>
+    `${lead} ${formatIsoDate(incomeWindow.start)} through ${formatIsoDate(incomeWindow.end)}`;
 
   // Each row of boxes, a row of two sharing a line
   const amountRows = (rows: IncomeBox[][], spouse: boolean) =>
@@ -449,6 +506,13 @@ export function IncomeInfoStep({
         onFollowedKeyChange={setFollowedKey}
       />
 
+      {/* The six months the boxes below average, in 122A-1's own words */}
+      <section className="form-section">
+        <h3 className="section-title">{INCOME_AVERAGE_HEADING}</h3>
+        <p className="section-description">{windowSentence(INCOME_WINDOW_LEAD)}</p>
+        <p className="section-description">{AVERAGING_SENTENCE}</p>
+      </section>
+
       {INCOME_SECTIONS.map((section) => (
         <section key={section.title} className="form-section">
           <h3 className="section-title">{section.title}</h3>
@@ -457,15 +521,33 @@ export function IncomeInfoStep({
         </section>
       ))}
 
+      <IncomeEntryList
+        rows={entryRows}
+        onRowsChange={onEntryRowsChange}
+        noEntries={noEntries}
+        onNoEntriesChange={onNoEntriesChange}
+        spouse={false}
+        errors={errors}
+      />
+
       {/* The spouse's ten, only for a spouse in the same household (122A-1 Column B) */}
       {livingTogether && (
         <section className="form-section">
           <h3 className="section-title">Your spouse's income</h3>
           <p className="section-description">{SPOUSE_INCOME_HELP}</p>
+          <p className="section-description">{windowSentence(SPOUSE_INCOME_WINDOW_LEAD)}</p>
           {amountRows(
             INCOME_SECTIONS.flatMap((section) => section.rows),
             true
           )}
+          <IncomeEntryList
+            rows={spouseEntryRows}
+            onRowsChange={onSpouseEntryRowsChange}
+            noEntries={spouseNoEntries}
+            onNoEntriesChange={onSpouseNoEntriesChange}
+            spouse
+            errors={errors}
+          />
         </section>
       )}
 

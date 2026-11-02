@@ -30,7 +30,7 @@ export type IncomeSourceKey =
   | 'monthly_gross_wages'
   | 'monthly_overtime'
   | 'monthly_tips'
-  | 'monthly_rental_income'
+  | 'monthly_interest_and_dividends'
   | 'monthly_pension'
   | 'monthly_social_security'
   | 'monthly_unemployment'
@@ -63,6 +63,18 @@ export interface PersonaIncome {
   sources: Partial<Record<IncomeSourceKey, number>>;
   // The spouse's ten, typed only by a persona living with their spouse
   spouse_sources?: Record<IncomeSourceKey, number>;
+  // The persona's businesses and rental properties; [] presses "I have no business or rental income."
+  business: PersonaEntry[];
+  // The spouse's, typed only by a persona living with their spouse
+  spouse_business?: PersonaEntry[];
+}
+
+/** One business or rental property on the Income step's list, in six-month averages */
+export interface PersonaEntry {
+  kind: 'business' | 'rental';
+  description: string;
+  gross: number;
+  expenses: number;
 }
 
 export interface PersonaAsset {
@@ -134,7 +146,8 @@ export const MARIA: WaiverPersonaData = {
       { relationship: 'son', age: 8, lives_with_you: true, claimed_or_supported: true },
       { relationship: 'daughter', age: 5, lives_with_you: true, claimed_or_supported: true },
     ],
-    sources: { monthly_gross_wages: 3200 },
+    sources: { monthly_gross_wages: 3200, monthly_interest_and_dividends: 0 },
+    business: [],
   },
   expenses: {
     rent_or_mortgage: 1100,
@@ -208,7 +221,8 @@ export const JAMES: PersonaData = {
   income: {
     marital_status: 'not_married',
     members: [],
-    sources: { monthly_gross_wages: 5833 },
+    sources: { monthly_gross_wages: 5833, monthly_interest_and_dividends: 0 },
+    business: [],
   },
   expenses: {
     rent_or_mortgage: 1650,
@@ -292,12 +306,13 @@ export const PRIYA: PersonaData = {
     ],
     // $12,000 plus the spouse's $1,800 is $13,800 a month, $165,600 a year — above the
     // $137,902 HH4 median, so the annualized § 707(b) comparison fails as the persona intends.
-    sources: { monthly_gross_wages: 12000 },
+    sources: { monthly_gross_wages: 12000, monthly_interest_and_dividends: 0 },
+    business: [],
     spouse_sources: {
       monthly_gross_wages: 1800,
       monthly_overtime: 0,
       monthly_tips: 0,
-      monthly_rental_income: 0,
+      monthly_interest_and_dividends: 0,
       monthly_pension: 0,
       monthly_social_security: 0,
       monthly_unemployment: 0,
@@ -305,6 +320,7 @@ export const PRIYA: PersonaData = {
       monthly_alimony: 0,
       monthly_other_income: 0,
     },
+    spouse_business: [],
   },
   expenses: {
     rent_or_mortgage: 2800,
@@ -377,12 +393,13 @@ export const DESHAWN: WaiverPersonaData = {
         spouse_is_dependent: false,
       },
     ],
-    sources: { monthly_gross_wages: 3500 },
+    sources: { monthly_gross_wages: 3500, monthly_interest_and_dividends: 0 },
+    business: [],
     spouse_sources: {
       monthly_gross_wages: 1000,
       monthly_overtime: 0,
       monthly_tips: 0,
-      monthly_rental_income: 0,
+      monthly_interest_and_dividends: 0,
       monthly_pension: 0,
       monthly_social_security: 0,
       monthly_unemployment: 0,
@@ -390,6 +407,7 @@ export const DESHAWN: WaiverPersonaData = {
       monthly_alimony: 0,
       monthly_other_income: 0,
     },
+    spouse_business: [],
   },
   expenses: {
     rent_or_mortgage: 1200,
@@ -482,7 +500,8 @@ export const SARAH: WaiverPersonaData = {
     members: [
       { relationship: 'roommate', age: 29, lives_with_you: true, claimed_or_supported: false },
     ],
-    sources: { monthly_gross_wages: 2000 },
+    sources: { monthly_gross_wages: 2000, monthly_interest_and_dividends: 0 },
+    business: [],
   },
   expenses: {
     rent_or_mortgage: 850,
@@ -550,7 +569,7 @@ export const ANDRES: PersonaData = {
       monthly_gross_wages: 0,
       monthly_overtime: 0,
       monthly_tips: 0,
-      monthly_rental_income: 0,
+      monthly_interest_and_dividends: 0,
       monthly_pension: 0,
       monthly_social_security: 0,
       monthly_unemployment: 0,
@@ -558,6 +577,7 @@ export const ANDRES: PersonaData = {
       monthly_alimony: 0,
       monthly_other_income: 3370,
     },
+    business: [],
   },
   expenses: {
     rent_or_mortgage: 1150,
