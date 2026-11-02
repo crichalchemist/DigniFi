@@ -211,3 +211,50 @@ export const SPOUSE_FLOOR_AVERAGE_RENTAL =
 // DRAFT: counsel C-13
 export const DOUBLE_COUNT_INCOME_NOTE =
   'If one cost is both for this work and for your home, count each dollar once, in one place only: here or on the Expenses step. How you split it is your choice. Legal aid can help.';
+
+// DRAFT: counsel C-10
+export const NOW_DIFFERENT_QUESTION = 'Is your income now different from that average?';
+
+// DRAFT: counsel C-10
+export const SPOUSE_NOW_DIFFERENT_QUESTION =
+  "Is your spouse's income now different from that average?";
+
+export const INCOME_NOW_HEADING = 'Your income now (a month)';
+
+export const SPOUSE_INCOME_NOW_HEADING = "Your spouse's income now (a month)";
+
+export const START_FROM_AVERAGES = 'Start from my average figures';
+
+export const SPOUSE_START_FROM_AVERAGES = "Start from my spouse's average figures";
+
+// DRAFT: counsel C-12
+export const FLOOR_CURRENT_BUSINESS =
+  'For your business income now, your operating expenses are more than your gross receipts. DigniFi counts this net as $0.00 on Schedule I.';
+
+// DRAFT: counsel C-12
+export const FLOOR_CURRENT_RENTAL =
+  'For your rental income now, your operating expenses are more than your gross receipts. DigniFi counts this net as $0.00 on Schedule I.';
+
+// DRAFT: counsel C-12
+export const SPOUSE_FLOOR_CURRENT_BUSINESS =
+  "For your spouse's business income now, the operating expenses are more than the gross receipts. DigniFi counts this net as $0.00 on Schedule I.";
+
+// DRAFT: counsel C-12
+export const SPOUSE_FLOOR_CURRENT_RENTAL =
+  "For your spouse's rental income now, the operating expenses are more than the gross receipts. DigniFi counts this net as $0.00 on Schedule I.";
+
+// DRAFT: counsel C-11
+export const ASSISTANCE_OWN_BOXES_NOTE =
+  'Unemployment and Social Security have their own boxes. They are above.';
+
+export const ASSISTANCE_HEADING = 'Government assistance';
+
+export const SPOUSE_ASSISTANCE_HEADING = "Your spouse's government assistance";
+
+export const CASH_KIND_LABEL = 'Cash assistance: what kind?';
+
+export const CASH_AMOUNT_LABEL = 'How much a month?';
+
+export const NONCASH_KIND_LABEL = 'Non-cash assistance: what kind?';
+
+export const NONCASH_VALUE_LABEL = 'Its value a month, if you know it';

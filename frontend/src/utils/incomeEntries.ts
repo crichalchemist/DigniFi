@@ -3,8 +3,8 @@
  * §4.2, §7.4). An entry has the server's shape plus the browser's own `_key`, which never reaches
  * the server.
  */
-import { ENTRY_AMOUNT_KEYS } from '../types/api';
-import type { EntryKind, IncomeEntry, WizardRow } from '../types/api';
+import { ENTRY_AMOUNT_KEYS, INCOME_FIELDS } from '../types/api';
+import type { EntryKind, IncomeEntry, IncomeInfo, WizardRow } from '../types/api';
 import { hydrateAmounts } from './parseAmount';
 
 export type EntryRow = WizardRow<IncomeEntry>;
@@ -88,4 +88,25 @@ export function kindNet(rows: EntryRow[], kind: EntryKind, current: boolean): nu
 /** The net DigniFi counts: a kind's summed net, or $0.00 when it is below $0 */
 export function flooredNet(rows: EntryRow[], kind: EntryKind, current: boolean): number {
   return Math.max(0, kindNet(rows, kind, current));
+}
+
+/**
+ * The person's averages copied into their current figures, once, when they press "Start from my
+ * average figures". A blank average stays blank, never 0, since a 0 would be an answer they never
+ * gave. Nothing else changes.
+ */
+export function startFromAverages<D extends Partial<IncomeInfo>>(
+  data: D,
+  rows: EntryRow[]
+): { data: D; rows: EntryRow[] } {
+  const next: Partial<IncomeInfo> = { ...data };
+  for (const field of INCOME_FIELDS) next[`current_${field}`] = data[field] ?? null;
+  return {
+    data: next as D,
+    rows: rows.map((row) => ({
+      ...row,
+      current_gross: row.gross ?? null,
+      current_expenses: row.expenses ?? null,
+    })),
+  };
 }

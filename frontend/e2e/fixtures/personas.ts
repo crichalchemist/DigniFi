@@ -67,6 +67,22 @@ export interface PersonaIncome {
   business: PersonaEntry[];
   // The spouse's, typed only by a persona living with their spouse
   spouse_business?: PersonaEntry[];
+  // "Is your income now different from that average?" Every persona answers no: none has current
+  // figures to type.
+  now_different: 'yes' | 'no';
+  spouse_now_different?: 'yes' | 'no';
+  // Schedule I line 8f, other government assistance
+  assistance: PersonaAssistance;
+  spouse_assistance?: PersonaAssistance;
+}
+
+/** One person's answer to Schedule I 8f, with cash and non-cash help kept apart */
+export interface PersonaAssistance {
+  answer: 'yes' | 'no';
+  cash_kind?: string;
+  cash_amount?: number;
+  noncash_kind?: string;
+  noncash_value?: number;
 }
 
 /** One business or rental property on the Income step's list, in six-month averages */
@@ -148,6 +164,8 @@ export const MARIA: WaiverPersonaData = {
     ],
     sources: { monthly_gross_wages: 3200, monthly_interest_and_dividends: 0 },
     business: [],
+    now_different: 'no',
+    assistance: { answer: 'yes', noncash_kind: 'SNAP (food stamps)', noncash_value: 350 },
   },
   expenses: {
     rent_or_mortgage: 1100,
@@ -223,6 +241,8 @@ export const JAMES: PersonaData = {
     members: [],
     sources: { monthly_gross_wages: 5833, monthly_interest_and_dividends: 0 },
     business: [],
+    now_different: 'no',
+    assistance: { answer: 'no' },
   },
   expenses: {
     rent_or_mortgage: 1650,
@@ -308,6 +328,8 @@ export const PRIYA: PersonaData = {
     // $137,902 HH4 median, so the annualized § 707(b) comparison fails as the persona intends.
     sources: { monthly_gross_wages: 12000, monthly_interest_and_dividends: 0 },
     business: [],
+    now_different: 'no',
+    assistance: { answer: 'no' },
     spouse_sources: {
       monthly_gross_wages: 1800,
       monthly_overtime: 0,
@@ -321,6 +343,8 @@ export const PRIYA: PersonaData = {
       monthly_other_income: 0,
     },
     spouse_business: [],
+    spouse_now_different: 'no',
+    spouse_assistance: { answer: 'no' },
   },
   expenses: {
     rent_or_mortgage: 2800,
@@ -395,6 +419,8 @@ export const DESHAWN: WaiverPersonaData = {
     ],
     sources: { monthly_gross_wages: 3500, monthly_interest_and_dividends: 0 },
     business: [],
+    now_different: 'no',
+    assistance: { answer: 'no' },
     spouse_sources: {
       monthly_gross_wages: 1000,
       monthly_overtime: 0,
@@ -408,6 +434,8 @@ export const DESHAWN: WaiverPersonaData = {
       monthly_other_income: 0,
     },
     spouse_business: [],
+    spouse_now_different: 'no',
+    spouse_assistance: { answer: 'no' },
   },
   expenses: {
     rent_or_mortgage: 1200,
@@ -502,6 +530,8 @@ export const SARAH: WaiverPersonaData = {
     ],
     sources: { monthly_gross_wages: 2000, monthly_interest_and_dividends: 0 },
     business: [],
+    now_different: 'no',
+    assistance: { answer: 'no' },
   },
   expenses: {
     rent_or_mortgage: 850,
@@ -578,6 +608,8 @@ export const ANDRES: PersonaData = {
       monthly_other_income: 3370,
     },
     business: [],
+    now_different: 'no',
+    assistance: { answer: 'no' },
   },
   expenses: {
     rent_or_mortgage: 1150,

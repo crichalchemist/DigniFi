@@ -58,3 +58,7 @@ export const GROSS_RECEIPTS_LABEL = 'Gross receipts (before all deductions)';
 
 // Lines 5 and 6, box B (b_122a-1.pdf page 1)
 export const OPERATING_EXPENSES_LABEL = 'Ordinary and necessary operating expenses';
+
+// Schedule I line 8f, whole but for its last word, "Specify:" (form_b106i.pdf 8f)
+export const ASSISTANCE_QUESTION =
+  'Other government assistance that you regularly receive. Include cash assistance and the value (if known) of any non-cash assistance that you receive, such as food stamps (benefits under the Supplemental Nutrition Assistance Program) or housing subsidies.';

@@ -4,6 +4,7 @@ import {
   hydrateEntries,
   kindNet,
   newIncomeEntry,
+  startFromAverages,
 } from '../incomeEntries';
 import type { EntryRow } from '../incomeEntries';
 import type { IncomeEntry } from '../../types/api';
@@ -103,5 +104,17 @@ describe('the Income step’s business and rental list', () => {
       'current_gross',
       'current_expenses',
     ]);
+  });
+
+  it('starting from the averages copies a blank as blank, never as 0', () => {
+    const { data, rows } = startFromAverages(
+      { monthly_gross_wages: 3000, monthly_tips: undefined, monthly_overtime: 0 },
+      [{ ...newIncomeEntry('k'), kind: 'business', gross: 4200, expenses: null }]
+    );
+    expect(data.current_monthly_gross_wages).toBe(3000);
+    expect(data.current_monthly_overtime).toBe(0);
+    expect(data.current_monthly_tips).toBeNull();
+    expect(data.current_monthly_other_income).toBeNull();
+    expect(rows[0]).toMatchObject({ current_gross: 4200, current_expenses: null, gross: 4200 });
   });
 });

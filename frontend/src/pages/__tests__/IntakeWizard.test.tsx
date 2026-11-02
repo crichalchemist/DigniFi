@@ -6,7 +6,7 @@ import { http, HttpResponse } from 'msw';
 import { server } from '../../test/mocks/server';
 import { IntakeProvider, useIntake } from '../../context/IntakeContext';
 import IntakeWizard from '../IntakeWizard';
-import { EXPENSE_FIELDS, INCOME_FIELDS } from '../../types/api';
+import { CURRENT_INCOME_FIELDS, EXPENSE_FIELDS, INCOME_FIELDS } from '../../types/api';
 
 // DebtorInfoStep reads account email via useAuth; wizard test renders without
 // AuthProvider, so we stub just the user object the step needs.
@@ -1662,7 +1662,12 @@ describe('IntakeWizard income save', { timeout: 15_000 }, () => {
     expect(patchBodies.length).toBeGreaterThan(0);
     for (const body of patchBodies) {
       expect(body).toEqual({
-        income_info: { ...savedAmounts, marital_status: null, business_and_rental: null },
+        income_info: {
+          ...savedAmounts,
+          marital_status: null,
+          business_and_rental: null,
+          ...NEW_ANSWERS,
+        },
         household: { members: null },
       });
     }
@@ -1681,11 +1686,23 @@ describe('IntakeWizard income save', { timeout: 15_000 }, () => {
         monthly_social_security: null,
         marital_status: null,
         business_and_rental: null,
+        ...NEW_ANSWERS,
       },
       household: { members: null },
     });
   });
 });
+
+// The step 2 body's new answers while the filer has given none (3e2 spec §7.4): the current ten
+// stay out until "yes", and the five assistance fields are always sent
+const NEW_ANSWERS = {
+  income_now_different: null,
+  assistance_answer: null,
+  cash_assistance_kind: '',
+  cash_assistance_amount: null,
+  noncash_assistance_kind: '',
+  noncash_assistance_value: null,
+};
 
 // Shared by the Income step's describes below
 const onIncome = { ...sessionAtStep1, current_step: 2 };
@@ -1925,6 +1942,7 @@ describe('IntakeWizard household and spouse', { timeout: 30_000 }, () => {
         ...TEN_NULL,
         monthly_gross_wages: 1800,
         business_and_rental: null,
+        ...NEW_ANSWERS,
       });
 
       pick('spouse_household', 'married_separately');
@@ -3024,5 +3042,127 @@ describe('IntakeWizard business and rental list', { timeout: 30_000 }, () => {
     expect(spouseEntries(last)?.[0]).not.toHaveProperty('_key');
     // The filer's own list is unchanged: never answered
     expect(incomeEntries(last)).toBeNull();
+  });
+});
+
+// ===========================================================================
+// "Now different" and government assistance on the Income step (3e2 spec §4.4, §4.6, §7.4)
+// ===========================================================================
+
+describe('IntakeWizard now different and assistance', { timeout: 30_000 }, () => {
+  const openIncome = () => screen.findByRole('heading', { name: /income/i, level: 2 });
+  const incomeInfo = (body: Record<string, unknown>) => body.income_info as Record<string, unknown>;
+
+  beforeEach(() => {
+    server.use(
+      http.post(
+        'http://localhost:8000/api/intake/sessions/:id/update_step/',
+        async ({ request }) => {
+          const { current_step } = (await request.json()) as { current_step: number };
+          return HttpResponse.json({
+            session: { ...onIncome, current_step },
+            message: 'Step updated.',
+          });
+        }
+      )
+    );
+  });
+
+  it('answering No after Yes sends no current figure and keeps them in state', async () => {
+    const { bodies } = serveSessionSaves(onIncome);
+    renderWizard();
+    await openIncome();
+
+    vi.useFakeTimers();
+    try {
+      pick('income_now_different', 'yes');
+      fireEvent.change(field('current_monthly_gross_wages'), { target: { value: '2500' } });
+      await waitSeconds(3);
+      expect(incomeInfo(bodies.at(-1) as Record<string, unknown>).current_monthly_gross_wages).toBe(
+        2500
+      );
+
+      pick('income_now_different', 'no');
+      await waitSeconds(3);
+      const sent = incomeInfo(bodies.at(-1) as Record<string, unknown>);
+      expect(sent.income_now_different).toBe('no');
+      for (const name of CURRENT_INCOME_FIELDS) expect(sent).not.toHaveProperty(name);
+
+      pick('income_now_different', 'yes');
+    } finally {
+      vi.useRealTimers();
+    }
+    expect(field('current_monthly_gross_wages')).toHaveValue(2500);
+  });
+
+  it('the five assistance fields are always sent', async () => {
+    const { bodies } = serveSessionSaves(onIncome);
+    renderWizard();
+    await openIncome();
+
+    vi.useFakeTimers();
+    try {
+      fireEvent.change(field('monthly_gross_wages'), { target: { value: '100' } });
+      await waitSeconds(3);
+    } finally {
+      vi.useRealTimers();
+    }
+
+    expect(incomeInfo(bodies.at(-1) as Record<string, unknown>)).toMatchObject({
+      assistance_answer: null,
+      cash_assistance_kind: '',
+      cash_assistance_amount: null,
+      noncash_assistance_kind: '',
+      noncash_assistance_value: null,
+      income_now_different: null,
+    });
+  });
+
+  it('showing the Income step again sends nothing, with every new answer loaded', async () => {
+    const loaded = {
+      ...priyaAtIncome,
+      status: 'completed',
+      current_step: 3,
+      expense_info: completedSession.expense_info,
+      income_info: {
+        ...priyaAtIncome.income_info,
+        business_and_rental: [],
+        income_now_different: 'yes',
+        ...Object.fromEntries(CURRENT_INCOME_FIELDS.map((name) => [name, null])),
+        current_monthly_gross_wages: '11000.00',
+        assistance_answer: 'yes',
+        cash_assistance_kind: '',
+        cash_assistance_amount: null,
+        noncash_assistance_kind: 'SNAP (food stamps)',
+        noncash_assistance_value: '350.00',
+      },
+      spouse_income: {
+        ...priyaAtIncome.spouse_income,
+        business_and_rental: [],
+        income_now_different: 'no',
+        ...Object.fromEntries(CURRENT_INCOME_FIELDS.map((name) => [name, null])),
+        assistance_answer: 'no',
+        cash_assistance_kind: '',
+        cash_assistance_amount: null,
+        noncash_assistance_kind: '',
+        noncash_assistance_value: null,
+      },
+    };
+    const saves = serveSessionSaves(loaded);
+    const { container } = renderWizard();
+    await screen.findByRole('heading', { name: /expenses/i, level: 2 });
+
+    vi.useFakeTimers();
+    try {
+      fireEvent.click(screen.getByRole('button', { name: 'Go Back' }));
+      await waitSeconds(3);
+    } finally {
+      vi.useRealTimers();
+    }
+
+    expect(container.querySelector('.step-title')).toHaveTextContent('Income');
+    expect(field('current_monthly_gross_wages')).toHaveValue(11000);
+    expect(field('noncash_assistance_value')).toHaveValue(350);
+    expect(saves.bodies).toEqual([]);
   });
 });

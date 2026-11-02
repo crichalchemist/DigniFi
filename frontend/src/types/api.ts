@@ -66,6 +66,9 @@ export interface DebtorInfo {
   email: string;
 }
 
+/** A yes or no answer; null (unanswered) is kept apart from both */
+export type YesNo = 'yes' | 'no';
+
 export interface IncomeInfo {
   id: number;
   session: number;
@@ -96,6 +99,28 @@ export interface IncomeInfo {
   // The list of businesses and rental properties. null is unanswered; [] is none.
   business_and_rental?: IncomeEntry[] | null;
 
+  // Whether the income is now different from the six-month average. null is unanswered.
+  income_now_different?: YesNo | null;
+
+  // The ten monthly amounts now, asked only under "yes" (CURRENT_INCOME_FIELDS)
+  current_monthly_gross_wages?: number | null;
+  current_monthly_overtime?: number | null;
+  current_monthly_tips?: number | null;
+  current_monthly_interest_and_dividends?: number | null;
+  current_monthly_pension?: number | null;
+  current_monthly_social_security?: number | null;
+  current_monthly_unemployment?: number | null;
+  current_monthly_child_support?: number | null;
+  current_monthly_alimony?: number | null;
+  current_monthly_other_income?: number | null;
+
+  // Other government assistance (Schedule I line 8f): the answer, then cash and non-cash apart
+  assistance_answer?: YesNo | null;
+  cash_assistance_kind?: string;
+  cash_assistance_amount?: number | null;
+  noncash_assistance_kind?: string;
+  noncash_assistance_value?: number | null;
+
   // The last day of the six-month window the filer last confirmed. Read-only.
   readonly income_period_end?: string | null;
 
@@ -122,6 +147,26 @@ export const INCOME_FIELDS = [
 ] as const;
 
 export type IncomeField = (typeof INCOME_FIELDS)[number];
+
+/** The ten amounts now, asked only when the person's income is now different */
+export const CURRENT_INCOME_FIELDS = [
+  'current_monthly_gross_wages',
+  'current_monthly_overtime',
+  'current_monthly_tips',
+  'current_monthly_interest_and_dividends',
+  'current_monthly_pension',
+  'current_monthly_social_security',
+  'current_monthly_unemployment',
+  'current_monthly_child_support',
+  'current_monthly_alimony',
+  'current_monthly_other_income',
+] as const;
+
+/** The two assistance amounts, which the API sends as decimal strings */
+export const ASSISTANCE_AMOUNT_FIELDS = [
+  'cash_assistance_amount',
+  'noncash_assistance_value',
+] as const;
 
 /** A business or a rental property on the Income step's list */
 export type EntryKind = 'business' | 'rental';

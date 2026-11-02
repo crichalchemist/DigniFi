@@ -304,6 +304,10 @@ describe('IncomeInfoStep, family first', () => {
       ['marital_status', 'not_married'],
       ['marital_status', 'married_spouse_filing'],
       ['marital_status', 'not_filing'],
+      ['income_now_different', 'yes'],
+      ['income_now_different', 'no'],
+      ['assistance_answer', 'yes'],
+      ['assistance_answer', 'no'],
     ]);
     for (const radio of radios) expect(radio).not.toBeChecked();
     expect(
@@ -756,5 +760,165 @@ describe('IncomeInfoStep, averages and the list', () => {
     fireEvent.change(field('entry_kind_0'), { target: { value: '' } });
     fireEvent.change(field('entry_gross_0'), { target: { value: '' } });
     expect(canContinue()).toBe(true);
+  });
+});
+
+describe('IncomeInfoStep, now different and assistance', () => {
+  const NOW_HEADING = 'Your income now (a month)';
+  const START = 'Start from my average figures';
+  const ASSISTANCE_8F =
+    'Other government assistance that you regularly receive. Include cash assistance and the value (if known) of any non-cash assistance that you receive, such as food stamps (benefits under the Supplemental Nutrition Assistance Program) or housing subsidies.';
+  const FLOOR_CURRENT_BUSINESS =
+    'For your business income now, your operating expenses are more than your gross receipts. DigniFi counts this net as $0.00 on Schedule I.';
+  const CURRENT_BOXES = INCOME_FIELDS.map((f) => `current_${f}`);
+  const ASSISTANCE_BOXES = [
+    'cash_assistance_kind',
+    'cash_assistance_amount',
+    'noncash_assistance_kind',
+    'noncash_assistance_value',
+  ];
+
+  it('no new question starts answered', () => {
+    const { lastEmitted } = renderStep({ marital_status: 'married_together' });
+    for (const name of [
+      'income_now_different',
+      'assistance_answer',
+      'spouse_income_now_different',
+      'spouse_assistance_answer',
+    ]) {
+      for (const value of ['yes', 'no']) {
+        const radio = document.querySelector(`input[name="${name}"][value="${value}"]`);
+        expect(radio).not.toBeNull();
+        expect(radio).not.toBeChecked();
+      }
+    }
+    expect(lastEmitted().income_now_different ?? null).toBeNull();
+    expect(lastEmitted().assistance_answer ?? null).toBeNull();
+  });
+
+  it('the current section shows only under Yes, with no pre-fill', () => {
+    renderStep({ monthly_gross_wages: 3000 });
+    expect(document.querySelector('[name="current_monthly_gross_wages"]')).toBeNull();
+
+    pick('income_now_different', 'yes');
+    expect(screen.getByRole('heading', { name: NOW_HEADING })).toBeInTheDocument();
+    for (const name of CURRENT_BOXES) expect(field(name)).toHaveValue(null);
+    expect(field('monthly_gross_wages')).toHaveValue(3000);
+
+    pick('income_now_different', 'no');
+    expect(screen.queryByRole('heading', { name: NOW_HEADING })).toBeNull();
+    expect(document.querySelector('[name="current_monthly_gross_wages"]')).toBeNull();
+  });
+
+  it('Start from my average figures copies the averages, and the filer then edits', () => {
+    const { lastEmitted } = renderStep(
+      { monthly_gross_wages: 3000 },
+      { entries: [loadedEntry(1, { gross: 4200, expenses: 830 })] }
+    );
+    pick('income_now_different', 'yes');
+    fireEvent.click(screen.getByRole('button', { name: START }));
+
+    expect(field('current_monthly_gross_wages')).toHaveValue(3000);
+    expect(field('current_monthly_tips')).toHaveValue(null);
+    expect(field('entry_current_gross_0')).toHaveValue(4200);
+    expect(field('entry_current_expenses_0')).toHaveValue(830);
+
+    fireEvent.change(field('current_monthly_gross_wages'), { target: { value: '2500' } });
+    expect(lastEmitted().current_monthly_gross_wages).toBe(2500);
+    expect(lastEmitted().monthly_gross_wages).toBe(3000);
+  });
+
+  it('the current floor sentence shows only while a kind’s current net is below $0, naming only Schedule I', () => {
+    renderStep(
+      {},
+      {
+        entries: [
+          loadedEntry(1, { gross: 4200, expenses: 830, current_gross: 400, current_expenses: 830 }),
+        ],
+      }
+    );
+    expect(screen.queryByText(FLOOR_CURRENT_BUSINESS)).toBeNull();
+    pick('income_now_different', 'yes');
+
+    const sentence = screen.getByText(FLOOR_CURRENT_BUSINESS);
+    expect(sentence).not.toHaveTextContent(/122A-1/);
+    expect(screen.queryByText(/DigniFi counts this net as \$0.00 on Form 122A-1/)).toBeNull();
+
+    fireEvent.change(field('entry_current_gross_0'), { target: { value: '900' } });
+    expect(screen.queryByText(FLOOR_CURRENT_BUSINESS)).toBeNull();
+  });
+
+  it('the assistance boxes show under Yes, in the form’s words', () => {
+    const { lastEmitted } = renderStep({});
+    expect(screen.getByRole('group', { name: ASSISTANCE_8F })).toBeInTheDocument();
+    expect(
+      screen.getByText('Unemployment and Social Security have their own boxes. They are above.')
+    ).toBeInTheDocument();
+    for (const name of ASSISTANCE_BOXES) {
+      expect(document.querySelector(`[name="${name}"]`)).toBeNull();
+    }
+
+    pick('assistance_answer', 'yes');
+    for (const name of ASSISTANCE_BOXES) expect(field(name)).toBeInTheDocument();
+    expect(field('cash_assistance_kind')).toHaveAttribute('maxlength', '100');
+    expect(field('noncash_assistance_kind')).toHaveAttribute('maxlength', '100');
+    fireEvent.change(field('noncash_assistance_kind'), { target: { value: 'SNAP (food stamps)' } });
+
+    pick('assistance_answer', 'no');
+    for (const name of ASSISTANCE_BOXES) {
+      expect(document.querySelector(`[name="${name}"]`)).toBeNull();
+    }
+    expect(lastEmitted().noncash_assistance_kind).toBe('SNAP (food stamps)');
+  });
+
+  it('the spouse’s questions show only under married_together', () => {
+    renderStep({ marital_status: 'married_together' });
+    for (const name of ['spouse_income_now_different', 'spouse_assistance_answer']) {
+      expect(document.querySelector(`input[name="${name}"][value="yes"]`)).not.toBeNull();
+    }
+    expect(
+      screen.getByRole('heading', { name: "Your spouse's government assistance" })
+    ).toBeInTheDocument();
+    pick('spouse_income_now_different', 'yes');
+    expect(
+      screen.getByRole('heading', { name: "Your spouse's income now (a month)" })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: "Start from my spouse's average figures" })
+    ).toBeInTheDocument();
+    expect(field('spouse_current_monthly_gross_wages')).toHaveValue(null);
+    pick('spouse_assistance_answer', 'yes');
+    expect(field('spouse_cash_assistance_kind')).toBeInTheDocument();
+    expect(field('spouse_noncash_assistance_value')).toBeInTheDocument();
+
+    cleanup();
+    renderStep({ marital_status: 'married_separately' });
+    expect(document.querySelector('[name^="spouse_income_now"]')).toBeNull();
+    expect(document.querySelector('[name^="spouse_assistance"]')).toBeNull();
+  });
+
+  it('an amount the server would refuse stays on screen after the answer moves to No', () => {
+    const { canContinue } = renderStep({});
+    pick('assistance_answer', 'yes');
+    fireEvent.change(field('cash_assistance_amount'), { target: { value: '12.345' } });
+    pick('assistance_answer', 'no');
+
+    expect(field('cash_assistance_amount')).toBeInTheDocument();
+    expect(screen.getByText('Please enter dollars and cents, like 1250.50')).toBeInTheDocument();
+    expect(canContinue()).toBe(false);
+
+    fireEvent.change(field('cash_assistance_amount'), { target: { value: '12.34' } });
+    expect(document.querySelector('[name="cash_assistance_amount"]')).toBeNull();
+    expect(canContinue()).toBe(true);
+  });
+
+  it('an unanswered question says so on its own group, for a screen reader', () => {
+    renderStep({});
+    const group = screen.getByRole('group', {
+      name: 'Is your income now different from that average?',
+    });
+    expect(group).toHaveAccessibleDescription(expect.stringContaining('Not answered yet'));
+    pick('income_now_different', 'no');
+    expect(group).not.toHaveAccessibleDescription(expect.stringContaining('Not answered yet'));
   });
 });

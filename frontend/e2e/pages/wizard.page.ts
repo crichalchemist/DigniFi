@@ -6,7 +6,13 @@
  */
 
 import { expect, type Page } from '@playwright/test';
-import type { PersonaDebtor, PersonaIncome, PersonaAsset, PersonaDebt } from '../fixtures/personas';
+import type {
+  PersonaAssistance,
+  PersonaDebtor,
+  PersonaIncome,
+  PersonaAsset,
+  PersonaDebt,
+} from '../fixtures/personas';
 
 export class WizardPage {
   constructor(private page: Page) {}
@@ -172,12 +178,46 @@ export class WizardPage {
     for (const [source, amount] of Object.entries(income.spouse_sources ?? {})) {
       await this.page.locator(`input[name="spouse_${source}"]`).fill(String(amount));
     }
+    // The persona answers "now different" and assistance after the list. A persona answering
+    // "yes" would need current figures, and none does, so the page object only picks the radio.
+    await this.fillNowAndAssistance('', income.now_different, income.assistance);
     if (income.spouse_business) {
       await this.fillEntries(income.spouse_business, {
         none: 'My spouse has no business or rental income.',
         add: "+ Add your spouse's business or property",
         prefix: 'spouse_',
       });
+    }
+    if (income.spouse_now_different && income.spouse_assistance) {
+      await this.fillNowAndAssistance(
+        'spouse_',
+        income.spouse_now_different,
+        income.spouse_assistance
+      );
+    }
+  }
+
+  private async fillNowAndAssistance(
+    prefix: string,
+    nowDifferent: 'yes' | 'no',
+    assistance: PersonaAssistance
+  ) {
+    await this.page
+      .locator(`input[name="${prefix}income_now_different"][value="${nowDifferent}"]`)
+      .check();
+    await this.page
+      .locator(`input[name="${prefix}assistance_answer"][value="${assistance.answer}"]`)
+      .check();
+    const boxes: [string, string | number | undefined][] = [
+      ['cash_assistance_kind', assistance.cash_kind],
+      ['cash_assistance_amount', assistance.cash_amount],
+      ['noncash_assistance_kind', assistance.noncash_kind],
+      ['noncash_assistance_value', assistance.noncash_value],
+    ];
+    for (const [name, value] of boxes) {
+      if (value !== undefined) {
+        await this.page.locator(`input[name="${prefix}${name}"]`).fill(String(value));
+      }
     }
   }
 

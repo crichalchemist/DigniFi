@@ -44,7 +44,12 @@ import type {
   SpouseIncome,
   WizardRow,
 } from '../types/api';
-import { EXPENSE_FIELDS, INCOME_FIELDS } from '../types/api';
+import {
+  ASSISTANCE_AMOUNT_FIELDS,
+  CURRENT_INCOME_FIELDS,
+  EXPENSE_FIELDS,
+  INCOME_FIELDS,
+} from '../types/api';
 import { WIZARD_STEPS } from '../constants/wizardSteps';
 
 // ============================================================================
@@ -55,6 +60,30 @@ import { WIZARD_STEPS } from '../constants/wizardSteps';
 // so they become numbers as session data enters wizard state.
 const ASSET_AMOUNT_FIELDS = ['current_value', 'amount_owed'] as const;
 const DEBT_AMOUNT_FIELDS = ['amount_owed', 'monthly_payment'] as const;
+// The Income step's amounts, the filer's and the spouse's: the ten, the ten now and the two
+// assistance amounts
+const INCOME_AMOUNT_KEYS = [
+  ...INCOME_FIELDS,
+  ...CURRENT_INCOME_FIELDS,
+  ...ASSISTANCE_AMOUNT_FIELDS,
+] as const;
+
+/**
+ * Adds one person's "now different" answer, the current ten only while it is "yes" (the server
+ * keeps what an earlier "yes" stored), and the five assistance fields, always (3e2 spec §7.4).
+ * The same keys for the filer's body and the spouse's.
+ */
+function addNowAndAssistance(body: Partial<IncomeInfo>, data: Partial<IncomeInfo>) {
+  body.income_now_different = data.income_now_different ?? null;
+  if (data.income_now_different === 'yes') {
+    for (const field of CURRENT_INCOME_FIELDS) body[field] = data[field] ?? null;
+  }
+  body.assistance_answer = data.assistance_answer ?? null;
+  body.cash_assistance_kind = data.cash_assistance_kind ?? '';
+  body.cash_assistance_amount = data.cash_assistance_amount ?? null;
+  body.noncash_assistance_kind = data.noncash_assistance_kind ?? '';
+  body.noncash_assistance_value = data.noncash_assistance_value ?? null;
+}
 
 /** A row as the server takes it, without the browser's own key */
 function withoutKey<Row extends { _key: string }>(row: Row): Partial<Row> {
@@ -223,13 +252,13 @@ export function IntakeWizard() {
           setNoOneElse(members?.length === 0);
         }
         if (fresh.income_info) {
-          setIncomeData(hydrateAmounts(fresh.income_info, INCOME_FIELDS));
+          setIncomeData(hydrateAmounts(fresh.income_info, INCOME_AMOUNT_KEYS));
           // A list loaded as [] is the filer's "I have none"
           setEntryRows(hydrateEntries(fresh.income_info.business_and_rental));
           setNoEntries(fresh.income_info.business_and_rental?.length === 0);
         }
         if (fresh.spouse_income) {
-          setSpouseIncomeData(hydrateAmounts(fresh.spouse_income, INCOME_FIELDS));
+          setSpouseIncomeData(hydrateAmounts(fresh.spouse_income, INCOME_AMOUNT_KEYS));
           setSpouseEntryRows(hydrateEntries(fresh.spouse_income.business_and_rental));
           setSpouseNoEntries(fresh.spouse_income.business_and_rental?.length === 0);
         }
@@ -293,6 +322,7 @@ export function IntakeWizard() {
         for (const field of INCOME_FIELDS) income[field] = incomeData[field] ?? null;
         income.marital_status = incomeData.marital_status ?? null;
         income.business_and_rental = entriesToSend(entryRows, noEntries) as IncomeEntry[] | null;
+        addNowAndAssistance(income, incomeData);
         // Each household row and entry keeps its `_key` here; saveCurrentStepData leaves it out
         // of the request.
         const body: Partial<Record<keyof IntakeSession, unknown>> = {
@@ -307,6 +337,7 @@ export function IntakeWizard() {
           spouse.business_and_rental = entriesToSend(spouseEntryRows, spouseNoEntries) as
             | IncomeEntry[]
             | null;
+          addNowAndAssistance(spouse, spouseIncomeData);
           body.spouse_income = spouse;
         }
         return body as Partial<IntakeSession>;

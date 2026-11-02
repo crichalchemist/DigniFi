@@ -19,11 +19,15 @@ import {
   ENTRY_NET_LABEL,
   FLOOR_AVERAGE_BUSINESS,
   FLOOR_AVERAGE_RENTAL,
+  FLOOR_CURRENT_BUSINESS,
+  FLOOR_CURRENT_RENTAL,
   NOT_ANSWERED_YET,
   NO_ENTRIES,
   SPOUSE_ADD_ENTRY,
   SPOUSE_FLOOR_AVERAGE_BUSINESS,
   SPOUSE_FLOOR_AVERAGE_RENTAL,
+  SPOUSE_FLOOR_CURRENT_BUSINESS,
+  SPOUSE_FLOOR_CURRENT_RENTAL,
   SPOUSE_NO_ENTRIES,
 } from '../../../constants/copy';
 import {
@@ -48,6 +52,13 @@ interface IncomeEntryListProps {
   spouse: boolean;
   /** What is wrong with each amount, by its box's name */
   errors: Record<string, string>;
+  /**
+   * Shows each entry's current pair instead of its averages: only its kind, what it is and the
+   * two current boxes, with no add, remove or "none" control
+   */
+  current?: boolean;
+  /** In `current` mode, the person's answer is Yes. Otherwise only a pair with an error shows. */
+  currentShown?: boolean;
 }
 
 const KIND_OPTIONS = Object.entries(ENTRY_KIND_WORDS).map(([value, label]) => ({ value, label }));
@@ -70,6 +81,11 @@ const FLOOR_SENTENCES: Record<EntryKind, { filer: string; spouse: string }> = {
   rental: { filer: FLOOR_AVERAGE_RENTAL, spouse: SPOUSE_FLOOR_AVERAGE_RENTAL },
 };
 
+const CURRENT_FLOOR_SENTENCES: Record<EntryKind, { filer: string; spouse: string }> = {
+  business: { filer: FLOOR_CURRENT_BUSINESS, spouse: SPOUSE_FLOOR_CURRENT_BUSINESS },
+  rental: { filer: FLOOR_CURRENT_RENTAL, spouse: SPOUSE_FLOOR_CURRENT_RENTAL },
+};
+
 export function IncomeEntryList({
   rows,
   onRowsChange,
@@ -77,6 +93,8 @@ export function IncomeEntryList({
   onNoEntriesChange,
   spouse,
   errors,
+  current = false,
+  currentShown = false,
 }: IncomeEntryListProps) {
   const prefix = spouse ? 'spouse_' : '';
 
@@ -100,6 +118,78 @@ export function IncomeEntryList({
   const helpFor = (help: string | undefined, touched: boolean, value: unknown) =>
     [help, touched && value == null ? NOT_ANSWERED_YET : undefined].filter(Boolean).join(' ') ||
     undefined;
+
+  const answerCurrent = (
+    index: number,
+    key: 'current_gross' | 'current_expenses',
+    value: string
+  ) => {
+    const parsed = value.trim() === '' ? NaN : Number.parseFloat(value);
+    answer(index, { ...rows[index], [key]: Number.isFinite(parsed) ? parsed : null });
+  };
+
+  if (current) {
+    // A pair is never hidden while it holds an amount the server would refuse, so Continue is
+    // never disabled with the reason out of sight
+    const pairHasError = (index: number) =>
+      Boolean(
+        errors[`${prefix}entry_current_gross_${index}`] ||
+          errors[`${prefix}entry_current_expenses_${index}`]
+      );
+    const shownKinds = currentShown
+      ? (['business', 'rental'] as const).filter((kind) => kindNet(rows, kind, true) < 0)
+      : [];
+    return (
+      <>
+        {rows.map((row, index) => {
+          if (!currentShown && !pairHasError(index)) return null;
+          return (
+            <section key={row._key} className="form-section household-card">
+              <h4 className="section-title">
+                {spouse ? "Spouse's business or property" : 'Business or property'} {index + 1}
+                {', now'}
+              </h4>
+              {row.kind && <p className="form-help-text">{ENTRY_KIND_WORDS[row.kind]}</p>}
+              {row.description && <p className="form-help-text">{row.description}</p>}
+              <div className="form-row">
+                <FormField
+                  label={spouse ? `Spouse's ${GROSS_RECEIPTS_LABEL}` : GROSS_RECEIPTS_LABEL}
+                  name={`${prefix}entry_current_gross_${index}`}
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={row.current_gross ?? ''}
+                  onChange={(e) => answerCurrent(index, 'current_gross', e.target.value)}
+                  error={errors[`${prefix}entry_current_gross_${index}`]}
+                  helpText={helpFor(undefined, true, row.current_gross)}
+                  placeholder="0.00"
+                />
+                <FormField
+                  label={spouse ? `Spouse's ${OPERATING_EXPENSES_LABEL}` : OPERATING_EXPENSES_LABEL}
+                  name={`${prefix}entry_current_expenses_${index}`}
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={row.current_expenses ?? ''}
+                  onChange={(e) => answerCurrent(index, 'current_expenses', e.target.value)}
+                  error={errors[`${prefix}entry_current_expenses_${index}`]}
+                  helpText={helpFor(undefined, true, row.current_expenses)}
+                  placeholder="0.00"
+                />
+              </div>
+            </section>
+          );
+        })}
+        {shownKinds.map((kind) => (
+          <div key={kind} className="info-box">
+            <p className="info-message">
+              {CURRENT_FLOOR_SENTENCES[kind][spouse ? 'spouse' : 'filer']}
+            </p>
+          </div>
+        ))}
+      </>
+    );
+  }
 
   const kindsBelowZero = (['business', 'rental'] as const).filter(
     (kind) => kindNet(rows, kind, false) < 0
