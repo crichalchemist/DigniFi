@@ -186,8 +186,10 @@ def test_a_month_that_runs_short_prints_net_income_below_zero(session):
 
 @pytest.mark.parametrize("income_saved", [True, False])
 def test_net_income_stays_blank_until_income_is_given(session, income_saved):
-    # With no income given, 23a is blank and 23c has nothing to subtract from, so it is
-    # blank too, never the expenses as a loss. The expense total still prints.
+    # With no income row, 23a is blank and 23c has nothing to subtract from, so it is blank
+    # too, never the expenses as a loss. The expense total still prints. A row saved with every
+    # source empty prints line 12 as 0.00 (§9.6): the Income step's "income not entered" gap
+    # refuses every form before this prints (§4.7, §8).
     if income_saved:  # the Income step was saved with every source left empty
         IncomeInfo.objects.create(session=session, marital_status="not_married")
     ExpenseInfo.objects.create(session=session, **EXPENSES)
@@ -196,9 +198,9 @@ def test_net_income_stays_blank_until_income_is_given(session, income_saved):
 
     assert {box: printed.get(box) for box in ("22c", "23a", "23b", "23c")} == {
         "22c": EXPENSE_TOTAL,
-        "23a": None,
+        "23a": "0.00" if income_saved else None,
         "23b": EXPENSE_TOTAL,
-        "23c": None,
+        "23c": f"-{EXPENSE_TOTAL}" if income_saved else None,
     }
 
 

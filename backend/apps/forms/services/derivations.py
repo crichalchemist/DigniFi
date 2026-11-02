@@ -25,6 +25,7 @@ from apps.eligibility.cmi import (
     spouse_monthly_income,
 )
 from apps.intake.household import count_family_size, dependents
+from apps.intake.income import floored_net, schedule_i_field, schedule_i_line4, uses_current
 from apps.intake.models import IntakeSession
 
 _ZERO = Decimal("0.00")
@@ -100,6 +101,73 @@ def _given_amounts(row, fields: tuple[str, ...]) -> str:
     if not given:
         return ""
     return _fmt(sum(given, _ZERO))
+
+
+def _asked_amounts(row, fields: tuple[str, ...]) -> str:
+    """A line Schedule I asks: blank with no row, 0.00 when none of these was given (§9.6, Q27)."""
+    if row is None:
+        return ""
+    return _given_amounts(row, fields) or _fmt(_ZERO)
+
+
+def _column(session: IntakeSession, spouse: bool):
+    """The row Schedule I's column reads: the filer's, or the spouse's for a spouse at home."""
+    return counted_spouse_income(session) if spouse else getattr(session, "income_info", None)
+
+
+def _schedule_i_amounts(row, *fields: str) -> str:
+    """_asked_amounts over the figures Schedule I uses: the current ones while "now different"."""
+    if row is None:
+        return ""
+    return _asked_amounts(row, tuple(schedule_i_field(row, f) for f in fields))
+
+
+def _figure(row, *fields: str) -> Decimal:
+    """The sum of Schedule I's figures for these sources, a blank counting as 0."""
+    return sum(
+        (getattr(row, schedule_i_field(row, f)) or _ZERO for f in fields),
+        _ZERO,
+    )
+
+
+def _deductions_total(row) -> Decimal:
+    return sum((getattr(row, f) or _ZERO for f in row.DEDUCTION_FIELDS), _ZERO)
+
+
+def _business_rental_net(row) -> Decimal:
+    """8a: the floored business net plus the floored rental net on Schedule I's figures (C-12)."""
+    entries = row.get_entries()
+    current = uses_current(row)
+    return floored_net(entries, "business", current=current) + floored_net(
+        entries, "rental", current=current
+    )
+
+
+def _assistance(row) -> Decimal | None:
+    """8f: the cash amount plus the known non-cash value under Yes, None when neither is known."""
+    if row.assistance_answer != "yes":
+        return _ZERO
+    given = [v for v in (row.cash_assistance_amount, row.noncash_assistance_value) if v is not None]
+    return sum(given, _ZERO) if given else None
+
+
+def _line9(row) -> Decimal:
+    """Line 9: 8a through 8h as each prints, a blank counting as zero."""
+    return (
+        _business_rental_net(row)
+        + _figure(row, "monthly_interest_and_dividends")
+        + _figure(row, "monthly_child_support", "monthly_alimony")
+        + _figure(row, "monthly_unemployment")
+        + _figure(row, "monthly_social_security")
+        + (_assistance(row) or _ZERO)
+        + _figure(row, "monthly_pension")
+        + _figure(row, "monthly_other_income")
+    )
+
+
+def _line7(row) -> Decimal:
+    """Line 7: line 4 less line 6. Below zero when the deductions are larger."""
+    return schedule_i_line4(row) - _deductions_total(row)
 
 
 def _spouse_rule(*fields: str) -> Callable[[IntakeSession], str]:
@@ -347,7 +415,9 @@ def _line7_other_income(session: IntakeSession) -> str:
 
 
 def _other_income_label(session: IntakeSession) -> str:
-    """What the other income is, on 122A-1 line 10 and Schedule I 8h: named only above $0.
+    """What the other income is, on 122A-1 line 10 (the averages): named only above $0.
+
+    Schedule I 8h uses `schedule_i_other_income_label`.
 
     Either column's other income names it; the spouse's counts only for a spouse at home.
     """
@@ -474,69 +544,50 @@ def _schedule_i_employer_debtor1(session: IntakeSession) -> str:
     return _safe_debtor_attr(session, "employer_name", "")
 
 
-def _schedule_i_net_wages_debtor1(session: IntakeSession) -> str:
-    return _income_amounts(session, "monthly_gross_wages", "monthly_tips")
+def _on_row(session: IntakeSession, spouse: bool, rule: Callable) -> str:
+    """One Schedule I figure for one column: blank with no row, else the row rule's."""
+    row = _column(session, spouse)
+    return "" if row is None else rule(row)
 
 
-def _schedule_i_overtime_debtor1(session: IntakeSession) -> str:
-    return _income_amounts(session, "monthly_overtime")
+def _money(figure: Callable) -> Callable:
+    """A row rule that prints a figure, through _fmt."""
+    return lambda row: _fmt(figure(row))
 
 
-def _schedule_i_gross_income_debtor1(session: IntakeSession) -> str:
-    """Line 4, line 2 + line 3, and line 7 until payroll deductions are asked (step 3)."""
-    return _income_amounts(session, "monthly_gross_wages", "monthly_tips", "monthly_overtime")
+def _line10(row) -> Decimal:
+    """Line 10, one column: line 7 + line 9, Social Security included (C1), unlike CMI."""
+    return _line7(row) + _line9(row)
 
 
-def _schedule_i_unemployment_debtor1(session: IntakeSession) -> str:
-    return _income_amounts(session, "monthly_unemployment")
+def _payroll_other_specify(session: IntakeSession) -> str:
+    """5h's Specify: each counted person's words, kept only while their 5h is above 0."""
+    words = []
+    for spouse in (False, True):
+        row = _column(session, spouse)
+        if row is not None and (row.payroll_other or _ZERO) > 0:
+            words.append((row.payroll_other_specify or "").strip())
+    return "; ".join(w for w in words if w)
 
 
-def _schedule_i_social_security_debtor1(session: IntakeSession) -> str:
-    return _income_amounts(session, "monthly_social_security")
+def _assistance_specify(session: IntakeSession) -> str:
+    """8f's Specify: each counted person's cash then non-cash kind, only while they answered Yes."""
+    words = []
+    for spouse in (False, True):
+        row = _column(session, spouse)
+        if row is not None and row.assistance_answer == "yes":
+            words += [(row.cash_assistance_kind or "").strip()]
+            words += [(row.noncash_assistance_kind or "").strip()]
+    return "; ".join(w for w in words if w)
 
 
-def _schedule_i_pension_debtor1(session: IntakeSession) -> str:
-    return _income_amounts(session, "monthly_pension")
-
-
-def _schedule_i_child_support_debtor1(session: IntakeSession) -> str:
-    return _income_amounts(session, "monthly_child_support", "monthly_alimony")
-
-
-def _schedule_i_rental_debtor1(session: IntakeSession) -> str:
-    return _income_amounts(session, "monthly_rental_income")
-
-
-def _schedule_i_other_income_debtor1(session: IntakeSession) -> str:
-    return _income_amounts(session, "monthly_other_income")
-
-
-def _schedule_i_other_income_total_debtor1(session: IntakeSession) -> str:
-    """Line 9, 8a through 8h: interest (8b) and other assistance (8f) are never asked."""
-    return _income_amounts(
-        session,
-        "monthly_rental_income",
-        "monthly_child_support",
-        "monthly_alimony",
-        "monthly_unemployment",
-        "monthly_social_security",
-        "monthly_pension",
-        "monthly_other_income",
-    )
-
-
-def _schedule_i_income_total_debtor1(session: IntakeSession) -> str:
-    """Line 10, column 1: the filer's ten sources, Social Security included (C1), unlike CMI."""
-    from apps.intake.models import IncomeInfo
-
-    return _income_amounts(session, *IncomeInfo.SOURCE_FIELDS)
-
-
-def _schedule_i_income_total_spouse(session: IntakeSession) -> str:
-    """Line 10, column 2: the spouse's ten sources, Social Security included."""
-    from apps.intake.models import IncomeInfo
-
-    return _spouse_amounts(session, *IncomeInfo.SOURCE_FIELDS)
+def _schedule_i_other_income_label(session: IntakeSession) -> str:
+    """8h's words follow the 8h figure Schedule I uses, named only above $0 (either column)."""
+    for spouse in (False, True):
+        row = _column(session, spouse)
+        if row is not None and _figure(row, "monthly_other_income") > 0:
+            return "Other income"
+    return ""
 
 
 def _schedule_i_income_total(session: IntakeSession) -> str:
@@ -547,15 +598,60 @@ def _schedule_i_income_total(session: IntakeSession) -> str:
     blank column counts as zero, and the total is blank only when both are. Line 11 is never
     asked and counts as zero (step 2 spec §6.1).
     """
-    from apps.intake.models import IncomeInfo
-
     columns = (
-        _schedule_i_income_total_debtor1(session),
-        _spouse_amounts(session, *IncomeInfo.SOURCE_FIELDS),
+        _on_row(session, False, _money(_line10)),
+        _on_row(session, True, _money(_line10)),
     )
     if columns == ("", ""):
         return ""
     return _fmt(sum((Decimal(column or "0") for column in columns), _ZERO))
+
+
+# Each Schedule I line, one column: (rule name, the row's rule). A _debtor1 and a _spouse twin
+# of each go into DERIVATIONS.
+_DEDUCTION_LINES = {
+    "payroll_tax": "payroll_tax",
+    "payroll_mandatory_retirement": "payroll_mandatory_retirement",
+    "payroll_voluntary_retirement": "payroll_voluntary_retirement",
+    "payroll_retirement_loan": "payroll_retirement_loan",
+    "payroll_insurance": "payroll_insurance",
+    "payroll_support": "payroll_support",
+    "payroll_union_dues": "payroll_union_dues",
+    "payroll_other": "payroll_other",
+}
+SCHEDULE_I_LINES: dict[str, Callable] = {
+    "net_wages": lambda row: _schedule_i_amounts(row, "monthly_gross_wages", "monthly_tips"),
+    "overtime": lambda row: _schedule_i_amounts(row, "monthly_overtime"),
+    "gross_income": lambda row: _schedule_i_amounts(
+        row, "monthly_gross_wages", "monthly_tips", "monthly_overtime"
+    ),
+    **{
+        name: (lambda row, field=field: _asked_amounts(row, (field,)))
+        for name, field in _DEDUCTION_LINES.items()
+    },
+    "total_deductions": lambda row: _asked_amounts(row, tuple(row.DEDUCTION_FIELDS)),
+    "take_home_pay": _money(_line7),
+    "business_rental_net": _money(_business_rental_net),
+    "interest": lambda row: _schedule_i_amounts(row, "monthly_interest_and_dividends"),
+    "child_support": lambda row: _schedule_i_amounts(
+        row, "monthly_child_support", "monthly_alimony"
+    ),
+    "unemployment": lambda row: _schedule_i_amounts(row, "monthly_unemployment"),
+    "social_security": lambda row: _schedule_i_amounts(row, "monthly_social_security"),
+    "assistance": lambda row: "" if _assistance(row) is None else _fmt(_assistance(row)),
+    "pension": lambda row: _schedule_i_amounts(row, "monthly_pension"),
+    "other_income": lambda row: _schedule_i_amounts(row, "monthly_other_income"),
+    "other_income_total": _money(_line9),
+    "income_total": _money(_line10),
+}
+
+
+def _schedule_i_twins() -> dict[str, Callable[[IntakeSession], str]]:
+    rules = {}
+    for name, rule in SCHEDULE_I_LINES.items():
+        rules[f"schedule_i_{name}_debtor1"] = lambda s, rule=rule: _on_row(s, False, rule)
+        rules[f"schedule_i_{name}_spouse"] = lambda s, rule=rule: _on_row(s, True, rule)
+    return rules
 
 
 # ---------------------------------------------------------------------------
@@ -727,40 +823,11 @@ DERIVATIONS: dict[str, Callable[[IntakeSession], str]] = {
     "schedule_i_employer_city_debtor1": lambda s: _safe_debtor_attr(s, "employer_city", ""),
     "schedule_i_employer_state_debtor1": lambda s: _safe_debtor_attr(s, "employer_state", ""),
     "schedule_i_employer_zip_debtor1": lambda s: _safe_debtor_attr(s, "employer_zip", ""),
-    "schedule_i_net_wages_debtor1": _schedule_i_net_wages_debtor1,
-    "schedule_i_overtime_debtor1": _schedule_i_overtime_debtor1,
-    "schedule_i_gross_income_debtor1": _schedule_i_gross_income_debtor1,
-    "schedule_i_unemployment_debtor1": _schedule_i_unemployment_debtor1,
-    "schedule_i_social_security_debtor1": _schedule_i_social_security_debtor1,
-    "schedule_i_pension_debtor1": _schedule_i_pension_debtor1,
-    "schedule_i_child_support_debtor1": _schedule_i_child_support_debtor1,
-    "schedule_i_rental_debtor1": _schedule_i_rental_debtor1,
-    "schedule_i_other_income_debtor1": _schedule_i_other_income_debtor1,
-    "schedule_i_other_income_total_debtor1": _schedule_i_other_income_total_debtor1,
-    "schedule_i_income_total_debtor1": _schedule_i_income_total_debtor1,
+    **_schedule_i_twins(),
     "schedule_i_income_total": _schedule_i_income_total,
-    # Schedule I column 2: the spouse at home, source for source as column 1
-    "schedule_i_net_wages_spouse": _spouse_rule("monthly_gross_wages", "monthly_tips"),
-    "schedule_i_overtime_spouse": _spouse_rule("monthly_overtime"),
-    "schedule_i_gross_income_spouse": _spouse_rule(
-        "monthly_gross_wages", "monthly_tips", "monthly_overtime"
-    ),
-    "schedule_i_rental_spouse": _spouse_rule("monthly_rental_income"),
-    "schedule_i_child_support_spouse": _spouse_rule("monthly_child_support", "monthly_alimony"),
-    "schedule_i_unemployment_spouse": _spouse_rule("monthly_unemployment"),
-    "schedule_i_social_security_spouse": _spouse_rule("monthly_social_security"),
-    "schedule_i_pension_spouse": _spouse_rule("monthly_pension"),
-    "schedule_i_other_income_spouse": _spouse_rule("monthly_other_income"),
-    "schedule_i_other_income_total_spouse": _spouse_rule(
-        "monthly_rental_income",
-        "monthly_child_support",
-        "monthly_alimony",
-        "monthly_unemployment",
-        "monthly_social_security",
-        "monthly_pension",
-        "monthly_other_income",
-    ),
-    "schedule_i_income_total_spouse": _schedule_i_income_total_spouse,
+    "schedule_i_payroll_other_specify": _payroll_other_specify,
+    "schedule_i_assistance_specify": _assistance_specify,
+    "schedule_i_other_income_label": _schedule_i_other_income_label,
     # Schedule J expense line item derivations
     "schedule_j_rent_or_mortgage": lambda s: _expense_line(s, "rent_or_mortgage"),
     "schedule_j_utilities": lambda s: _expense_line(s, "utilities"),
@@ -842,7 +909,6 @@ RULE_FIXES: dict[str, dict[str, str]] = {
     "schedule_i_social_security_debtor1": {"step": "income_info"},
     "schedule_i_pension_debtor1": {"step": "income_info"},
     "schedule_i_child_support_debtor1": {"step": "income_info"},
-    "schedule_i_rental_debtor1": {"step": "income_info"},
     "schedule_i_other_income_debtor1": {"step": "income_info"},
     "schedule_i_other_income_total_debtor1": {"step": "income_info"},
     "schedule_i_income_total": {"step": "income_info"},
@@ -850,7 +916,6 @@ RULE_FIXES: dict[str, dict[str, str]] = {
     "schedule_i_net_wages_spouse": {"step": "income_info"},
     "schedule_i_overtime_spouse": {"step": "income_info"},
     "schedule_i_gross_income_spouse": {"step": "income_info"},
-    "schedule_i_rental_spouse": {"step": "income_info"},
     "schedule_i_child_support_spouse": {"step": "income_info"},
     "schedule_i_unemployment_spouse": {"step": "income_info"},
     "schedule_i_social_security_spouse": {"step": "income_info"},
@@ -858,6 +923,24 @@ RULE_FIXES: dict[str, dict[str, str]] = {
     "schedule_i_other_income_spouse": {"step": "income_info"},
     "schedule_i_other_income_total_spouse": {"step": "income_info"},
     "schedule_i_income_total_spouse": {"step": "income_info"},
+    # Lines that read both the Income step and Take-home pay link to the earlier one (§17 Call 33)
+    "schedule_i_take_home_pay_debtor1": {"step": "income_info"},
+    "schedule_i_take_home_pay_spouse": {"step": "income_info"},
+    "schedule_i_business_rental_net_debtor1": {"step": "income_info"},
+    "schedule_i_business_rental_net_spouse": {"step": "income_info"},
+    "schedule_i_interest_debtor1": {"step": "income_info"},
+    "schedule_i_interest_spouse": {"step": "income_info"},
+    "schedule_i_assistance_debtor1": {"step": "income_info"},
+    "schedule_i_assistance_spouse": {"step": "income_info"},
+    "schedule_i_assistance_specify": {"step": "income_info"},
+    "schedule_i_other_income_label": {"step": "income_info"},
+    # Payroll deductions: asked on the Take-home pay step
+    **{
+        f"schedule_i_{name}_{column}": {"step": "take_home_pay"}
+        for name in (*_DEDUCTION_LINES, "total_deductions")
+        for column in ("debtor1", "spouse")
+    },
+    "schedule_i_payroll_other_specify": {"step": "take_home_pay"},
     "schedule_j_total_income": {"step": "income_info"},
     # Income less expenses: the earlier of its two steps
     "schedule_j_monthly_net_income": {"step": "income_info"},

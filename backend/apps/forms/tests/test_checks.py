@@ -231,9 +231,17 @@ def test_a_tag_on_a_print_button_is_reported(schema_copy):
     assert _ids("form_101") == ["forms.E003", "forms.E004"]
 
 
+def _unbind_assistance(d):
+    """Drop Schedule I's own bindings of the twin box and 5h, so a test can bind them itself."""
+    d["fields"] = [
+        f for f in d["fields"] if f["pdf_field"] not in ("Assistance 8f", "Other deductions 5h")
+    ]
+
+
 def test_two_tagged_bindings_on_different_widgets_of_one_name_pass(schema_copy):
     # Schedule I prints "Assistance 8f" twice on page 2; each can take its own value.
     def change(d):
+        _unbind_assistance(d)
         d["fields"] += [_text("Assistance 8f", 2, "T36"), _text("Assistance 8f", 2, "T49")]
 
     _edit(schema_copy, "schedule_i", change)
@@ -268,6 +276,7 @@ def _rows(*rows):
     """Add the rows to the schema, and declare their group, continued on page 2."""
 
     def change(d):
+        _unbind_assistance(d)
         d["fields"].extend(rows)
         d["groups"] = {"cp": {"extra_page": 2}}
 

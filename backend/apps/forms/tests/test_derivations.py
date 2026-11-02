@@ -9,7 +9,7 @@ from django.contrib.auth import get_user_model
 
 from apps.districts.models import District
 from apps.eligibility.cmi import IncomeStepGap
-from apps.forms.services.derivations import DERIVATIONS, PREDICATES
+from apps.forms.services.derivations import DERIVATIONS, PREDICATES, RULE_FIXES
 from apps.intake.models import DebtorInfo, IncomeInfo, IntakeSession
 from apps.intake.tests.builders import answer_household
 
@@ -155,7 +155,8 @@ SWITCHED_RULES = {
     "cmi": [field for field in TEN_SOURCES if field != "monthly_social_security"],
     "filer_cmi": [field for field in TEN_SOURCES if field != "monthly_social_security"],
     "schedule_i_net_wages_debtor1": ["monthly_gross_wages", "monthly_tips"],
-    "schedule_i_rental_debtor1": ["monthly_rental_income"],
+    "schedule_i_interest_debtor1": ["monthly_interest_and_dividends"],
+    "schedule_i_take_home_pay_debtor1": ["monthly_gross_wages", "monthly_tips", "monthly_overtime"],
     "schedule_i_child_support_debtor1": ["monthly_child_support", "monthly_alimony"],
     "schedule_i_unemployment_debtor1": ["monthly_unemployment"],
     "schedule_i_social_security_debtor1": ["monthly_social_security"],
@@ -164,7 +165,7 @@ SWITCHED_RULES = {
     "schedule_i_overtime_debtor1": ["monthly_overtime"],
     "schedule_i_gross_income_debtor1": ["monthly_gross_wages", "monthly_tips", "monthly_overtime"],
     "schedule_i_other_income_total_debtor1": [
-        "monthly_rental_income",
+        "monthly_interest_and_dividends",
         "monthly_child_support",
         "monthly_alimony",
         "monthly_unemployment",
@@ -194,9 +195,28 @@ def test_each_switched_income_rule_returns_its_own_sources_figure(session, rule,
     assert DERIVATIONS[rule](session) == f"{expected:.2f}"
 
 
-@pytest.mark.parametrize(
-    "rule", [rule for rule in SWITCHED_RULES if rule not in ("cmi", "filer_cmi")]
-)
+def _is_schedule_i_amount(rule):
+    return rule.startswith("schedule_i_") or rule == "schedule_j_total_income"
+
+
+SCHEDULE_I_AMOUNT_RULES = [rule for rule in SWITCHED_RULES if _is_schedule_i_amount(rule)]
+OTHER_INCOME_RULES = [
+    rule
+    for rule in SWITCHED_RULES
+    if rule not in ("cmi", "filer_cmi") and rule not in SCHEDULE_I_AMOUNT_RULES
+]
+
+
+@pytest.mark.parametrize("rule", SCHEDULE_I_AMOUNT_RULES)
+def test_an_asked_schedule_i_line_left_blank_prints_0_00(session, rule):
+    # Every other source was given, so the rule must not borrow one of them (§9.6, Q27).
+    given = {f: a for f, a in AMOUNTS.items() if f not in SWITCHED_RULES[rule]}
+    IncomeInfo.objects.create(session=session, **given)
+
+    assert DERIVATIONS[rule](session) == "0.00"
+
+
+@pytest.mark.parametrize("rule", OTHER_INCOME_RULES)
 def test_an_income_rule_prints_blank_when_the_filer_gave_none_of_its_sources(session, rule):
     # Every other source was given, so the rule must not borrow one of them.
     given = {f: a for f, a in AMOUNTS.items() if f not in SWITCHED_RULES[rule]}
@@ -235,7 +255,8 @@ SPOUSE_TWINS = {
             "net_wages",
             "overtime",
             "gross_income",
-            "rental",
+            "interest",
+            "take_home_pay",
             "child_support",
             "unemployment",
             "social_security",
@@ -267,7 +288,20 @@ def test_a_spouse_at_home_prints_their_own_figure_on_each_line_the_filer_does(se
     assert DERIVATIONS[rule](session) == f"{expected:.2f}"
 
 
-@pytest.mark.parametrize("rule", [r for r in SPOUSE_TWINS if r != "spouse_cmi"])
+@pytest.mark.parametrize(
+    "rule", [r for r in SPOUSE_TWINS if r.startswith("schedule_i_") and r != "spouse_cmi"]
+)
+def test_a_spouse_at_home_prints_0_00_on_an_asked_schedule_i_line_left_blank(session, rule):
+    _spouse_at_home(
+        session,
+        **{f: a for f, a in AMOUNTS.items() if f not in SWITCHED_RULES[SPOUSE_TWINS[rule]]},
+    )
+    assert DERIVATIONS[rule](session) == "0.00"
+
+
+@pytest.mark.parametrize(
+    "rule", [r for r in SPOUSE_TWINS if not r.startswith("schedule_i_") and r != "spouse_cmi"]
+)
 def test_a_spouse_line_prints_blank_when_the_spouse_gave_none_of_its_sources(session, rule):
     _spouse_at_home(
         session,
@@ -301,7 +335,8 @@ def test_an_income_sum_counts_an_empty_source_as_zero(session):
     [(Decimal("0.01"), "Other income"), (Decimal("0"), ""), (None, "")],
 )
 def test_other_income_is_named_only_when_the_filer_has_some(session, other_income, named):
-    # 122A-1 line 10 and Schedule I 8h ask what the other income is (Appendix E 5).
+    # 122A-1 line 10 asks what the other income is (Appendix E 5); Schedule I 8h uses
+    # schedule_i_other_income_label.
     IncomeInfo.objects.create(
         session=session, monthly_gross_wages=Decimal("100.00"), monthly_other_income=other_income
     )
@@ -321,3 +356,50 @@ def test_cmi_refuses_a_session_with_no_income_by_source(session):
     IncomeInfo.objects.create(session=session, monthly_income=json.dumps([2500] * 6))
     with pytest.raises(IncomeNotSplit):
         DERIVATIONS["cmi"](session)
+
+
+@pytest.mark.parametrize(
+    "rule",
+    [
+        f"schedule_i_{n}_{c}"
+        for n in (
+            "payroll_tax",
+            "payroll_mandatory_retirement",
+            "payroll_voluntary_retirement",
+            "payroll_retirement_loan",
+            "payroll_insurance",
+            "payroll_support",
+            "payroll_union_dues",
+            "payroll_other",
+            "total_deductions",
+        )
+        for c in ("debtor1", "spouse")
+    ]
+    + ["schedule_i_payroll_other_specify"],
+)
+def test_a_deduction_refusal_links_to_the_take_home_pay_step(rule):
+    assert RULE_FIXES[rule] == {"step": "take_home_pay"}
+
+
+@pytest.mark.parametrize(
+    "rule",
+    [
+        "schedule_i_take_home_pay_debtor1",
+        "schedule_i_take_home_pay_spouse",
+        "schedule_i_income_total",
+        "schedule_j_total_income",
+        "schedule_j_monthly_net_income",
+        "schedule_i_other_income_label",
+        "schedule_i_business_rental_net_debtor1",
+        "schedule_i_interest_spouse",
+        "schedule_i_assistance_debtor1",
+        "schedule_i_assistance_specify",
+    ],
+)
+def test_a_rule_that_reads_income_and_take_home_pay_links_to_the_income_step(rule):
+    assert RULE_FIXES[rule] == {"step": "income_info"}  # the earlier of its two steps (§9)
+
+
+def test_the_rental_rules_are_gone():
+    gone = {"schedule_i_rental_debtor1", "schedule_i_rental_spouse"}
+    assert gone & (DERIVATIONS.keys() | RULE_FIXES.keys()) == set()

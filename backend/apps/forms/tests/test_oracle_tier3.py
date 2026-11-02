@@ -43,20 +43,35 @@ def _common(first, last, street, zip_code):
     }
 
 
-def _spouse_column_2(wages):
-    """Schedule I column 2 for a spouse at home whose one income is wages, the other nine typed $0."""
-    wage_boxes = (
-        "Amount 2 Debtor 2",
-        "Amount 4 Debtor 2",
-        "Amount 4 Debtor 2a",
-        "Amount 7 Debtor 2",
-        "Amount 10 Debtor 2",
+def _spouse_column_2(wages, payroll_tax):
+    """Schedule I column 2 for a spouse at home whose one income is wages and one deduction is
+    payroll tax, every other asked line left blank and so printed 0.00."""
+    wage_boxes = ("Amount 2 Debtor 2", "Amount 4 Debtor 2", "Amount 4 Debtor 2a")
+    take_home = f"{float(wages) - float(payroll_tax):.2f}"
+    zero_boxes = (
+        *(
+            f"Amount {n} Debtor 2"
+            for n in ("3", "8a", "8b", "8c", "8d", "8e", "8f", "8g", "8h", "9")
+        ),
+        *(f"Amount 5{x} Debtor 2" for x in "bcdefgh"),
     )
-    zero_boxes = tuple(f"Amount {n} Debtor 2" for n in ("3", "8c", "8d", "8e", "8g", "8h", "9"))
     return {
         **dict.fromkeys(wage_boxes, wages),
         **dict.fromkeys(zero_boxes, "0.00"),
-        "Amount 8a Debtor 2": "",  # blank until 8a prints the business and rental entries (3e2 §9.1)
+        "Amount 5a Debtor 2": payroll_tax,
+        "Amount 6 Debtor 2": payroll_tax,
+        "Amount 7 Debtor 2": take_home,
+        "Amount 10 Debtor 2": take_home,
+    }
+
+
+def _deductions(**amounts):
+    """Schedule I 5a-5h (`a`..`h`), 6 and 7 for Debtor 1; a letter not named prints 0.00."""
+    boxes = {f"Amount 5{x} Debtor 1": amounts.pop(x, "0.00") for x in "abcdefgh"}
+    return {
+        **boxes,
+        "Amount 6 Debtor 1": amounts.pop("total"),
+        "Amount 7 Debtor 1": amounts.pop("pay"),
     }
 
 
@@ -69,7 +84,7 @@ EXPECTED = {
             "1c": "6840.00",
             "3b": "20500.00",
             "3c": "20500.00",
-            "4": "3200.00",
+            "4": "3150.00",
             "5": "2560.00",
         },
         "form_122a1": {
@@ -85,9 +100,13 @@ EXPECTED = {
             "14a": BELOW_MEDIAN,
         },
         "schedule_i": {
-            "Amount 8b Debtor 1": "",
+            **_deductions(a="400.00", total="400.00", pay="2800.00"),
+            "Amount 8b Debtor 1": "0.00",
             "Amount 8e Debtor 1": "0.00",
-            "Amount 12": "3200.00",
+            "Amount 8f Debtor 1": "350.00",
+            "Amount 10 Debtor 1": "3150.00",
+            "Amount 10": "3150.00",
+            "Amount 12": "3150.00",
         },
         "schedule_j": {
             "check2": "/yes",
@@ -101,9 +120,9 @@ EXPECTED = {
             "18": "",
             "22a": "2560.00",
             "22c": "2560.00",
-            "23a": "3200.00",
+            "23a": "3150.00",
             "23b": "2560.00",
-            "23c": "640.00",
+            "23c": "590.00",
         },
     },
     "james": {
@@ -114,7 +133,7 @@ EXPECTED = {
             "2": "8500.00",
             "3b": "9800.00",
             "3c": "18300.00",
-            "4": "5833.00",
+            "4": "4500.00",
             "5": "3110.00",
         },
         "form_122a1": {
@@ -130,18 +149,22 @@ EXPECTED = {
             "14a": BELOW_MEDIAN,
         },
         "schedule_i": {
-            "Amount 8b Debtor 1": "",
+            **_deductions(a="1288.00", g="45.00", total="1333.00", pay="4500.00"),
+            "Amount 8b Debtor 1": "0.00",
             "Amount 8e Debtor 1": "0.00",
-            "Amount 12": "5833.00",
+            "Amount 8f Debtor 1": "0.00",
+            "Amount 10 Debtor 1": "4500.00",
+            "Amount 10": "4500.00",
+            "Amount 12": "4500.00",
         },
         "schedule_j": {
             "check2": "/no",
             "18": "",
             "22a": "3110.00",
             "22c": "3110.00",
-            "23a": "5833.00",
+            "23a": "4500.00",
             "23b": "3110.00",
-            "23c": "2723.00",
+            "23c": "1390.00",
         },
     },
     "priya": {
@@ -151,7 +174,7 @@ EXPECTED = {
             "1c": "8500.00",
             "3b": "57000.00",
             "3c": "57000.00",
-            "4": "13800.00",
+            "4": "9880.00",
             "5": "6640.00",
             "8": "13800.00",
         },
@@ -171,12 +194,14 @@ EXPECTED = {
         },
         "form_122a2": {"Quest1": "13800.00"},
         "schedule_i": {
-            "Amount 8b Debtor 1": "",
+            **_deductions(a="2450.00", c="600.00", e="620.00", total="3670.00", pay="8330.00"),
+            "Amount 8b Debtor 1": "0.00",
             "Amount 8e Debtor 1": "0.00",
-            "Amount 10 Debtor 1": "12000.00",
-            "Amount 10": "13800.00",
-            "Amount 12": "13800.00",
-            **_spouse_column_2("1800.00"),
+            "Amount 8f Debtor 1": "0.00",
+            "Amount 10 Debtor 1": "8330.00",
+            "Amount 10": "9880.00",
+            "Amount 12": "9880.00",
+            **_spouse_column_2("1800.00", "250.00"),
         },
         "schedule_j": {
             "check2": "/yes",
@@ -189,9 +214,9 @@ EXPECTED = {
             "18": "",
             "22a": "6640.00",
             "22c": "6640.00",
-            "23a": "13800.00",
+            "23a": "9880.00",
             "23b": "6640.00",
-            "23c": "7160.00",
+            "23c": "3240.00",
         },
     },
     "deshawn": {
@@ -203,7 +228,7 @@ EXPECTED = {
             "2": "160000.00",
             "3b": "11700.00",
             "3c": "171700.00",
-            "4": "4500.00",
+            "4": "3935.00",
             "5": "2295.00",
             "8": "4500.00",
         },
@@ -222,21 +247,23 @@ EXPECTED = {
             "14a": BELOW_MEDIAN,
         },
         "schedule_i": {
-            "Amount 8b Debtor 1": "",
+            **_deductions(a="450.00", total="450.00", pay="3050.00"),
+            "Amount 8b Debtor 1": "0.00",
             "Amount 8e Debtor 1": "0.00",
-            "Amount 10 Debtor 1": "3500.00",
-            "Amount 10": "4500.00",
-            "Amount 12": "4500.00",
-            **_spouse_column_2("1000.00"),
+            "Amount 8f Debtor 1": "0.00",
+            "Amount 10 Debtor 1": "3050.00",
+            "Amount 10": "3935.00",
+            "Amount 12": "3935.00",
+            **_spouse_column_2("1000.00", "115.00"),
         },
         "schedule_j": {
             "check2": "/no",
             "18": "",
             "22a": "2295.00",
             "22c": "2295.00",
-            "23a": "4500.00",
+            "23a": "3935.00",
             "23b": "2295.00",
-            "23c": "2205.00",
+            "23c": "1640.00",
         },
     },
     "sarah": {
@@ -244,7 +271,7 @@ EXPECTED = {
         "form_106sum": {
             "3b": "31400.00",
             "3c": "31400.00",
-            "4": "2000.00",
+            "4": "1750.00",
             "5": "1280.00",
         },
         "form_122a1": {
@@ -260,18 +287,22 @@ EXPECTED = {
             "14a": BELOW_MEDIAN,
         },
         "schedule_i": {
-            "Amount 8b Debtor 1": "",
+            **_deductions(a="250.00", total="250.00", pay="1750.00"),
+            "Amount 8b Debtor 1": "0.00",
             "Amount 8e Debtor 1": "0.00",
-            "Amount 12": "2000.00",
+            "Amount 8f Debtor 1": "0.00",
+            "Amount 10 Debtor 1": "1750.00",
+            "Amount 10": "1750.00",
+            "Amount 12": "1750.00",
         },
         "schedule_j": {
             "check2": "/no",
             "18": "",
             "22a": "1280.00",
             "22c": "1280.00",
-            "23a": "2000.00",
+            "23a": "1750.00",
             "23b": "1280.00",
-            "23c": "720.00",
+            "23c": "470.00",
         },
     },
     # His net driving income is other income until step 3e2 (3a1 spec §2, 3a1.Q1).
@@ -303,6 +334,9 @@ EXPECTED = {
             "14a": BELOW_MEDIAN,
         },
         "schedule_i": {
+            **_deductions(total="0.00", pay="0.00"),
+            "Amount 8b Debtor 1": "0.00",
+            "Amount 8f Debtor 1": "0.00",
             "Other income 8h": "Other income",
             "Amount 8h Debtor 1": "3370.00",
             "Amount 10 Debtor 1": "3370.00",
