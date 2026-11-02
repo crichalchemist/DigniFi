@@ -60,3 +60,37 @@ def uses_current(row):
 def schedule_i_field(row, field):
     """The field Schedule I reads: the current one while the filer said income is different now."""
     return "current_" + field if uses_current(row) else field
+
+
+def is_entry_answered(entry, *, current):
+    """Whether an entry has every answer it needs: current amounts too while `current` is true."""
+    needed = [entry.get("kind"), entry.get("gross"), entry.get("expenses")]
+    if current:
+        needed += [entry.get("current_gross"), entry.get("current_expenses")]
+    return (entry.get("description") or "").strip() != "" and all(n is not None for n in needed)
+
+
+def current_given(row):
+    """Whether the row has any current figure, in a box or in an entry."""
+    if any(getattr(row, field) is not None for field in row.CURRENT_FIELDS):
+        return True
+    return any(
+        entry.get("current_gross") is not None or entry.get("current_expenses") is not None
+        for entry in row.get_entries() or []
+    )
+
+
+def schedule_i_line4(row):
+    """Schedule I line 4: wages, overtime and tips as Schedule I reads them, a blank as 0."""
+    return sum(
+        (
+            getattr(row, schedule_i_field(row, field)) or Decimal("0")
+            for field in ("monthly_gross_wages", "monthly_overtime", "monthly_tips")
+        ),
+        Decimal("0"),
+    )
+
+
+def deductions_blank(row):
+    """Whether the filer left all eight deductions empty."""
+    return all(getattr(row, field) is None for field in row.DEDUCTION_FIELDS)

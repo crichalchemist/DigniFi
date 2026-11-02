@@ -1129,7 +1129,9 @@ class TestMeansTestWorkedOutAgain:
 @pytest.mark.django_db
 def test_filed_form_survives_leaving_the_packet(api_client, session_with_debtor):
     session = session_with_debtor
-    ExpenseInfo.objects.create(session=session)  # Complete requires it
+    ExpenseInfo.objects.create(
+        session=session, expenses_include_others="no"
+    )  # Complete requires it
     _set_wages(session, "9000.00")  # above the median: 122A-2 is in the packet
     api_client.post("/api/forms/generate_all/", {"session_id": session.id}, format="json")
     form = GeneratedForm.objects.get(session=session, form_type="form_122a2")

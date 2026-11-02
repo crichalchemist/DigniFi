@@ -1,7 +1,15 @@
 import { render, screen } from '@testing-library/react';
 import { vi } from 'vitest';
 import { ReviewStep } from '../ReviewStep';
-import { REVIEW_HOUSEHOLD_COUNT } from '../../../../constants/copy';
+import {
+  REVIEW_ASSISTANCE,
+  REVIEW_DEDUCTIONS,
+  REVIEW_ENTRIES,
+  REVIEW_HOUSEHOLD_COUNT,
+  REVIEW_LINE_3,
+  REVIEW_NOW_DIFFERENT,
+  REVIEW_SPOUSE_NOW_DIFFERENT,
+} from '../../../../constants/copy';
 import { MARRIAGE_ANSWER_WORDS } from '../../../../constants/formText';
 
 // ReviewStep summarizes whatever the earlier steps captured. Assets and debts
@@ -18,6 +26,9 @@ const baseProps = {
   codebtorsData: [],
   householdCount: null,
   county: null,
+  spouseIncomeData: {},
+  entries: null,
+  spouseEntries: null,
 };
 
 const value = (label: string) => screen.getByText(label).nextElementSibling;
@@ -157,4 +168,102 @@ it('Review shows a household count of 0 as 0, not as not answered yet', () => {
     />
   );
   expect(value(REVIEW_HOUSEHOLD_COUNT)).toHaveTextContent(/^0$/);
+});
+
+it('Review shows each new answer, or not answered yet', () => {
+  const { unmount } = render(
+    <ReviewStep
+      {...baseProps}
+      incomeData={{
+        marital_status: 'not_married',
+        income_now_different: 'no',
+        assistance_answer: 'yes',
+      }}
+      entries={[]}
+      expenseData={{ expenses_include_others: 'yes' }}
+      onValidationChange={vi.fn()}
+    />
+  );
+  expect(value(REVIEW_NOW_DIFFERENT)).toHaveTextContent(/^No$/);
+  expect(value(REVIEW_ASSISTANCE)).toHaveTextContent(/^Yes$/);
+  expect(value(REVIEW_ENTRIES)).toHaveTextContent(/^None$/);
+  expect(value(REVIEW_LINE_3)).toHaveTextContent(/^Yes$/);
+  unmount();
+
+  render(<ReviewStep {...baseProps} onValidationChange={vi.fn()} />);
+  for (const label of [REVIEW_NOW_DIFFERENT, REVIEW_ASSISTANCE, REVIEW_ENTRIES, REVIEW_LINE_3]) {
+    expect(value(label)).toHaveTextContent(/^Not answered yet$/);
+  }
+});
+
+it('Review lists each business or property by its description', () => {
+  render(
+    <ReviewStep
+      {...baseProps}
+      entries={[
+        {
+          kind: 'business',
+          description: 'Rideshare and delivery driving',
+          gross: 1000,
+          expenses: 200,
+          current_gross: null,
+          current_expenses: null,
+        },
+      ]}
+      onValidationChange={vi.fn()}
+    />
+  );
+  expect(value(REVIEW_ENTRIES)).toHaveTextContent('Rideshare and delivery driving');
+});
+
+it("Review shows the spouse's answers only for a spouse at home", () => {
+  const { unmount } = render(
+    <ReviewStep
+      {...baseProps}
+      incomeData={{ marital_status: 'married_together' }}
+      spouseIncomeData={{ income_now_different: 'no' }}
+      onValidationChange={vi.fn()}
+    />
+  );
+  expect(value(REVIEW_SPOUSE_NOW_DIFFERENT)).toHaveTextContent(/^No$/);
+  unmount();
+
+  render(
+    <ReviewStep
+      {...baseProps}
+      incomeData={{ marital_status: 'not_married' }}
+      onValidationChange={vi.fn()}
+    />
+  );
+  expect(screen.queryByText(REVIEW_SPOUSE_NOW_DIFFERENT)).toBeNull();
+});
+
+it('Review shows a Take-home pay section between Income and Monthly Expenses', () => {
+  const first = render(
+    <ReviewStep
+      {...baseProps}
+      incomeData={{ monthly_gross_wages: 3000, payroll_tax: 400 }}
+      onValidationChange={vi.fn()}
+    />
+  );
+  const titles = Array.from(document.querySelectorAll('.review-section-title')).map(
+    (node) => node.textContent ?? ''
+  );
+  const among = titles.filter((t) => ['Income', 'Take-home pay', 'Monthly Expenses'].includes(t));
+  expect(among).toEqual(['Income', 'Take-home pay', 'Monthly Expenses']);
+  expect(value(REVIEW_DEDUCTIONS)).toHaveTextContent('$400.00');
+  first.unmount();
+
+  const second = render(
+    <ReviewStep
+      {...baseProps}
+      incomeData={{ monthly_gross_wages: 3000 }}
+      onValidationChange={vi.fn()}
+    />
+  );
+  expect(value(REVIEW_DEDUCTIONS)).toHaveTextContent(/^Not answered yet$/);
+  second.unmount();
+
+  render(<ReviewStep {...baseProps} onValidationChange={vi.fn()} />);
+  expect(value(REVIEW_DEDUCTIONS)).toHaveTextContent('$0.00');
 });

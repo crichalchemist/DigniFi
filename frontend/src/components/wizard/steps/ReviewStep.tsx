@@ -9,7 +9,23 @@ import { useEffect } from 'react';
 import { Button } from '../../common';
 import { UPLDisclaimer } from '../../compliance';
 import { UPL_REVIEW_DISCLAIMER } from '../../../constants/upl';
-import { NOT_ANSWERED_YET, REVIEW_HOUSEHOLD_COUNT } from '../../../constants/copy';
+import {
+  NOT_ANSWERED_YET,
+  REVIEW_ASSISTANCE,
+  REVIEW_DEDUCTIONS,
+  REVIEW_ENTRIES,
+  REVIEW_HOUSEHOLD_COUNT,
+  REVIEW_LINE_3,
+  REVIEW_NO_ENTRIES,
+  REVIEW_NOW_DIFFERENT,
+  REVIEW_SPOUSE_ASSISTANCE,
+  REVIEW_SPOUSE_DEDUCTIONS,
+  REVIEW_SPOUSE_ENTRIES,
+  REVIEW_SPOUSE_NOW_DIFFERENT,
+  REVIEW_YES_NO,
+} from '../../../constants/copy';
+import { WIZARD_STEPS } from '../../../constants/wizardSteps';
+import { deductionsTotal, takeHomePayNotEntered } from '../../../utils/takeHomePay';
 import { MARRIAGE_ANSWER_WORDS, MARRIED_NOT_FILING } from '../../../constants/formText';
 import type {
   DebtorInfo,
@@ -19,11 +35,19 @@ import type {
   DebtInfo,
   ExecutoryContract,
   Codebtor,
+  IncomeEntry,
+  SpouseIncome,
+  YesNo,
 } from '../../../types/api';
 
 interface ReviewStepProps {
   debtorData: Partial<DebtorInfo>;
   incomeData: Partial<IncomeInfo>;
+  spouseIncomeData: SpouseIncome;
+  /** The business and rental list as the Income step sends it: null while unanswered */
+  entries: IncomeEntry[] | null;
+  /** The spouse's list, the same way */
+  spouseEntries: IncomeEntry[] | null;
   expenseData: Partial<ExpenseInfo>;
   assetsData: Partial<AssetInfo>[];
   debtsData: Partial<DebtInfo>[];
@@ -42,6 +66,9 @@ interface ReviewStepProps {
 export function ReviewStep({
   debtorData,
   incomeData,
+  spouseIncomeData,
+  entries,
+  spouseEntries,
   expenseData,
   assetsData,
   debtsData,
@@ -76,6 +103,21 @@ export function ReviewStep({
       ? MARRIAGE_ANSWER_WORDS[incomeData.marital_status]
       : `${MARRIED_NOT_FILING} ${MARRIAGE_ANSWER_WORDS[incomeData.marital_status]}`
     : NOT_ANSWERED_YET;
+
+  const spouseAtHome = incomeData.marital_status === 'married_together';
+
+  const yesNo = (answer?: YesNo | null) => (answer ? REVIEW_YES_NO[answer] : NOT_ANSWERED_YET);
+
+  const entriesText = (list: IncomeEntry[] | null) => {
+    if (list === null) return NOT_ANSWERED_YET;
+    if (list.length === 0) return REVIEW_NO_ENTRIES;
+    return list.map((entry) => entry.description?.trim() || NOT_ANSWERED_YET).join('; ');
+  };
+
+  const deductionsText = (data: Partial<IncomeInfo> | SpouseIncome) =>
+    takeHomePayNotEntered(data) ? NOT_ANSWERED_YET : formatCurrency(deductionsTotal(data));
+
+  const takeHomePayLabel = WIZARD_STEPS.find((step) => step.key === 'take_home_pay')?.label;
 
   return (
     <div className="review-step">
@@ -153,6 +195,55 @@ export function ReviewStep({
               {formatCurrency(incomeData.total_monthly_income)}
             </span>
           </div>
+          <div className="review-field">
+            <span className="review-field-label">{REVIEW_ENTRIES}</span>
+            <span className="review-field-value">{entriesText(entries)}</span>
+          </div>
+          <div className="review-field">
+            <span className="review-field-label">{REVIEW_NOW_DIFFERENT}</span>
+            <span className="review-field-value">{yesNo(incomeData.income_now_different)}</span>
+          </div>
+          <div className="review-field">
+            <span className="review-field-label">{REVIEW_ASSISTANCE}</span>
+            <span className="review-field-value">{yesNo(incomeData.assistance_answer)}</span>
+          </div>
+          {spouseAtHome && (
+            <>
+              <div className="review-field">
+                <span className="review-field-label">{REVIEW_SPOUSE_ENTRIES}</span>
+                <span className="review-field-value">{entriesText(spouseEntries)}</span>
+              </div>
+              <div className="review-field">
+                <span className="review-field-label">{REVIEW_SPOUSE_NOW_DIFFERENT}</span>
+                <span className="review-field-value">
+                  {yesNo(spouseIncomeData.income_now_different)}
+                </span>
+              </div>
+              <div className="review-field">
+                <span className="review-field-label">{REVIEW_SPOUSE_ASSISTANCE}</span>
+                <span className="review-field-value">
+                  {yesNo(spouseIncomeData.assistance_answer)}
+                </span>
+              </div>
+            </>
+          )}
+        </div>
+      </section>
+
+      {/* Take-home pay Summary */}
+      <section className="review-section">
+        <h4 className="review-section-title">{takeHomePayLabel}</h4>
+        <div className="review-grid">
+          <div className="review-field">
+            <span className="review-field-label">{REVIEW_DEDUCTIONS}</span>
+            <span className="review-field-value">{deductionsText(incomeData)}</span>
+          </div>
+          {spouseAtHome && (
+            <div className="review-field">
+              <span className="review-field-label">{REVIEW_SPOUSE_DEDUCTIONS}</span>
+              <span className="review-field-value">{deductionsText(spouseIncomeData)}</span>
+            </div>
+          )}
         </div>
       </section>
 
@@ -171,6 +262,10 @@ export function ReviewStep({
             <span className="review-field-value">
               {formatCurrency(expenseData.total_monthly_expenses)}
             </span>
+          </div>
+          <div className="review-field">
+            <span className="review-field-label">{REVIEW_LINE_3}</span>
+            <span className="review-field-value">{yesNo(expenseData.expenses_include_others)}</span>
           </div>
         </div>
       </section>

@@ -120,7 +120,7 @@ def ready(transactional_db):
         monthly_gross_wages=Decimal("3000.00"),
     )
     answer_household(session)
-    ExpenseInfo.objects.create(session=session)
+    ExpenseInfo.objects.create(session=session, expenses_include_others="no")
     return user, session
 
 

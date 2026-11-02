@@ -15,7 +15,13 @@ from datetime import date, timedelta
 from decimal import ROUND_HALF_EVEN, Decimal
 
 from apps.intake.household import is_answered
-from apps.intake.income import floored_net, has_entry_figures
+from apps.intake.income import (
+    current_given,
+    floored_net,
+    has_entry_figures,
+    is_entry_answered,
+    uses_current,
+)
 from apps.intake.models import IncomeInfo, SpouseIncome
 
 
@@ -107,6 +113,47 @@ SPOUSE_LEGACY_RENTAL = (
     "Your spouse's rental income was saved as one amount. "
     "Enter each rental property's gross receipts and operating expenses on the Income step."
 )
+ENTRIES_UNANSWERED = (
+    "Tell us about any business or rental property on the Income step, or say you have none."
+)
+ENTRY_UNANSWERED = "Answer every question for each business or rental property on the Income step."
+NOW_DIFFERENT_UNANSWERED = (
+    "Answer whether your income is now different from the six-month average, on the Income step."
+)
+CURRENT_NOT_GIVEN = (
+    "Enter your income now on the Income step, or change your answer about whether it is different."
+)
+ASSISTANCE_UNANSWERED = (
+    "Answer whether you receive other government assistance, on the Income step."
+)
+ASSISTANCE_KIND_MISSING = "Say what government assistance you receive on the Income step."
+CASH_AMOUNT_MISSING = "Enter how much cash assistance you receive a month, on the Income step."
+# Plan drafts for the owner: the spouse's sentences (3e2 spec §8)
+SPOUSE_ENTRIES_UNANSWERED = (
+    "Tell us about any business or rental property your spouse has on the Income step, "
+    "or say your spouse has none."
+)
+SPOUSE_ENTRY_UNANSWERED = (
+    "Answer every question for each of your spouse's businesses or rental properties "
+    "on the Income step."
+)
+SPOUSE_NOW_DIFFERENT_UNANSWERED = (
+    "Answer whether your spouse's income is now different from the six-month average, "
+    "on the Income step."
+)
+SPOUSE_CURRENT_NOT_GIVEN = (
+    "Enter your spouse's income now on the Income step, "
+    "or change your spouse's answer about whether it is different."
+)
+SPOUSE_ASSISTANCE_UNANSWERED = (
+    "Answer whether your spouse receives other government assistance, on the Income step."
+)
+SPOUSE_ASSISTANCE_KIND_MISSING = (
+    "Say what government assistance your spouse receives on the Income step."
+)
+SPOUSE_CASH_AMOUNT_MISSING = (
+    "Enter how much cash assistance your spouse receives a month, on the Income step."
+)
 
 
 def _legacy_rental_open(row) -> bool:
@@ -194,6 +241,65 @@ def _household_mismatch(answer: str, members: list[dict]) -> bool:
     return False
 
 
+def _detail_gaps(row, *, spouse: bool) -> list[IncomeStepGap]:
+    """One person's gaps in the 3e2 answers, in §8's order. A missing row answers nothing."""
+    (
+        entries_unanswered,
+        entry_unanswered,
+        now_different_unanswered,
+        current_not_given,
+        assistance_unanswered,
+        kind_missing,
+        cash_amount_missing,
+    ) = (
+        (
+            SPOUSE_ENTRIES_UNANSWERED,
+            SPOUSE_ENTRY_UNANSWERED,
+            SPOUSE_NOW_DIFFERENT_UNANSWERED,
+            SPOUSE_CURRENT_NOT_GIVEN,
+            SPOUSE_ASSISTANCE_UNANSWERED,
+            SPOUSE_ASSISTANCE_KIND_MISSING,
+            SPOUSE_CASH_AMOUNT_MISSING,
+        )
+        if spouse
+        else (
+            ENTRIES_UNANSWERED,
+            ENTRY_UNANSWERED,
+            NOW_DIFFERENT_UNANSWERED,
+            CURRENT_NOT_GIVEN,
+            ASSISTANCE_UNANSWERED,
+            ASSISTANCE_KIND_MISSING,
+            CASH_AMOUNT_MISSING,
+        )
+    )
+    messages = []
+    entries = row.get_entries() if row is not None else None
+    if entries is None:
+        messages.append(entries_unanswered)
+    elif not all(is_entry_answered(entry, current=uses_current(row)) for entry in entries):
+        messages.append(entry_unanswered)
+    now_different = row.income_now_different if row is not None else None
+    if now_different is None:
+        messages.append(now_different_unanswered)
+    elif now_different == "yes" and not current_given(row):
+        messages.append(current_not_given)
+    assistance = row.assistance_answer if row is not None else None
+    if assistance is None:
+        messages.append(assistance_unanswered)
+    elif assistance == "yes":
+        cash_kind = row.cash_assistance_kind.strip()
+        noncash_kind = row.noncash_assistance_kind.strip()
+        if (
+            (not cash_kind and not noncash_kind)
+            or (row.cash_assistance_amount is not None and not cash_kind)
+            or (row.noncash_assistance_value is not None and not noncash_kind)
+        ):
+            messages.append(kind_missing)
+        if cash_kind and row.cash_assistance_amount is None:
+            messages.append(cash_amount_missing)
+    return [IncomeStepGap(message) for message in messages]
+
+
 def income_step_gaps(session) -> list[IncomeStepGap]:
     """Every gap the Income step leaves, at most one of each, in §9.1's order. Never raises."""
     answer = _marriage_answer(session)
@@ -223,13 +329,17 @@ def income_step_gaps(session) -> list[IncomeStepGap]:
             current_monthly_income(income_info)
         except IncomeNotSplit:
             gaps.append(IncomeStepGap(str(IncomeNotSplit())))
-    if _legacy_rental_open(counted_spouse_income(session)):
-        gaps.append(IncomeStepGap(SPOUSE_LEGACY_RENTAL))
-    else:
-        try:
-            spouse_monthly_income(session)
-        except IncomeStepGap as gap:
-            gaps.append(gap)
+    gaps.extend(_detail_gaps(income_info, spouse=False))
+    if answer == "married_together":
+        spouse_row = counted_spouse_income(session)
+        if _legacy_rental_open(spouse_row):
+            gaps.append(IncomeStepGap(SPOUSE_LEGACY_RENTAL))
+        else:
+            try:
+                spouse_monthly_income(session)
+            except IncomeStepGap as gap:
+                gaps.append(gap)
+        gaps.extend(_detail_gaps(spouse_row, spouse=True))
     return gaps
 
 

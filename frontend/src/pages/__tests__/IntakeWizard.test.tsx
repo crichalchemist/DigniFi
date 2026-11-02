@@ -323,6 +323,25 @@ describe("IntakeWizard Complete's reasons", { timeout: 30_000 }, () => {
     expect(stepUpdates).toEqual([]);
   });
 
+  it('a refused Complete naming take-home pay links to the Take-home pay step', async () => {
+    renderWizard();
+    const completeBtn = await screen.findByRole('button', { name: /complete intake/i });
+    refuseComplete([
+      {
+        step: 'take_home_pay',
+        message:
+          'Enter what is taken out of your pay on the Take-home pay step. If nothing is, enter $0 in one box.',
+      },
+    ]);
+
+    await userEvent.click(completeBtn);
+    await userEvent.click(await screen.findByRole('button', { name: 'Go to Take-home pay' }));
+
+    expect(
+      await screen.findByRole('heading', { name: 'Take-home pay', level: 2 })
+    ).toBeInTheDocument();
+  });
+
   // A live region announces only changes to a region already on the page
   it('reads the reasons out to a screen reader, in a polite region that was on Review before them', async () => {
     const { container } = renderWizard();

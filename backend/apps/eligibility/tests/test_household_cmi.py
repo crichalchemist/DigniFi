@@ -46,6 +46,26 @@ SPOUSE_INCOME = (
     "Enter your spouse's income by source on the Income step. "
     "If your spouse has no income, enter $0 in one box."
 )
+ENTRIES_UNANSWERED = (
+    "Tell us about any business or rental property on the Income step, or say you have none."
+)
+NOW_DIFFERENT_UNANSWERED = (
+    "Answer whether your income is now different from the six-month average, on the Income step."
+)
+ASSISTANCE_UNANSWERED = (
+    "Answer whether you receive other government assistance, on the Income step."
+)
+SPOUSE_ENTRIES_UNANSWERED = (
+    "Tell us about any business or rental property your spouse has on the Income step, "
+    "or say your spouse has none."
+)
+SPOUSE_NOW_DIFFERENT_UNANSWERED = (
+    "Answer whether your spouse's income is now different from the six-month average, "
+    "on the Income step."
+)
+SPOUSE_ASSISTANCE_UNANSWERED = (
+    "Answer whether your spouse receives other government assistance, on the Income step."
+)
 SPOUSE_AT_HOME = {
     "relationship": "spouse",
     "age": 45,
@@ -112,7 +132,12 @@ def test_a_spouse_with_no_amounts_refuses_in_the_spouses_words(session, spouse_i
             work_out(session)
         assert str(refusal.value) == SPOUSE_INCOME
         assert refusal.value.step == "income_info"
-    assert _messages(session) == [SPOUSE_INCOME]
+    # A missing row answers none of the spouse's 3e2 questions; a row from the builder does.
+    assert _messages(session) == [SPOUSE_INCOME] + (
+        [SPOUSE_ENTRIES_UNANSWERED, SPOUSE_NOW_DIFFERENT_UNANSWERED, SPOUSE_ASSISTANCE_UNANSWERED]
+        if spouse_income is None
+        else []
+    )
 
 
 @pytest.mark.parametrize(
@@ -142,7 +167,14 @@ def test_a_bare_session_has_the_marriage_list_and_income_gaps_in_that_order(sess
     if stored == "an_old_tax_status":
         # An old value written straight to the table, past the serializer.
         IncomeInfo.objects.create(session=session, marital_status="single")
-    assert _messages(session) == [MARRIAGE, LIST, INCOME_BY_SOURCE]
+    assert _messages(session) == [
+        MARRIAGE,
+        LIST,
+        INCOME_BY_SOURCE,
+        ENTRIES_UNANSWERED,
+        NOW_DIFFERENT_UNANSWERED,
+        ASSISTANCE_UNANSWERED,
+    ]
 
 
 def test_an_empty_list_counts_only_when_the_filer_said_no_one(session):
@@ -212,7 +244,13 @@ def test_a_row_with_no_relationship_living_elsewhere_cant_be_the_spouse_at_home(
 def test_missing_amounts_for_both_the_filer_and_the_spouse_are_both_named(session):
     IncomeInfo.objects.create(session=session)
     answer_household(session, marital_status="married_together", members=[SPOUSE_AT_HOME])
-    assert _messages(session) == [INCOME_BY_SOURCE, SPOUSE_INCOME]
+    assert _messages(session) == [
+        INCOME_BY_SOURCE,
+        SPOUSE_INCOME,
+        SPOUSE_ENTRIES_UNANSWERED,
+        SPOUSE_NOW_DIFFERENT_UNANSWERED,
+        SPOUSE_ASSISTANCE_UNANSWERED,
+    ]
 
 
 def _nothing_stored(session):
@@ -233,9 +271,31 @@ def _living_together_with_no_one(session):
 @pytest.mark.parametrize(
     "store, messages",
     [
-        (_nothing_stored, [MARRIAGE, LIST, INCOME_BY_SOURCE]),
-        (_spouse_filing_with_a_row_and_no_income, [SPOUSE_FILING, ROW, INCOME_BY_SOURCE]),
-        (_living_together_with_no_one, [MISMATCH, SPOUSE_INCOME]),
+        (
+            _nothing_stored,
+            [
+                MARRIAGE,
+                LIST,
+                INCOME_BY_SOURCE,
+                ENTRIES_UNANSWERED,
+                NOW_DIFFERENT_UNANSWERED,
+                ASSISTANCE_UNANSWERED,
+            ],
+        ),
+        (
+            _spouse_filing_with_a_row_and_no_income,
+            [SPOUSE_FILING, ROW, INCOME_BY_SOURCE],  # the builder answers the 3e2 questions
+        ),
+        (
+            _living_together_with_no_one,
+            [
+                MISMATCH,
+                SPOUSE_INCOME,
+                SPOUSE_ENTRIES_UNANSWERED,
+                SPOUSE_NOW_DIFFERENT_UNANSWERED,
+                SPOUSE_ASSISTANCE_UNANSWERED,
+            ],
+        ),
     ],
     ids=["nothing_stored", "spouse_filing", "living_together"],
 )
@@ -255,6 +315,10 @@ def test_the_shared_builder_makes_a_session_with_no_income_step_gap(session):
     assert fresh.income_info.marital_status == "not_married"
     assert fresh.household.county == "Cook"
     assert fresh.household.get_members() == []
+    assert fresh.income_info.income_now_different == "no"
+    assert fresh.income_info.get_entries() == []
+    assert fresh.income_info.assistance_answer == "no"
+    assert fresh.income_info.payroll_tax == Decimal("0.00")
     assert _messages(fresh) == []
 
 

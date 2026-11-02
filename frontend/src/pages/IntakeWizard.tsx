@@ -748,6 +748,9 @@ export function IntakeWizard() {
           <ReviewStep
             debtorData={debtorData}
             incomeData={incomeData}
+            spouseIncomeData={spouseIncomeData}
+            entries={entriesToSend(entryRows, noEntries) as IncomeEntry[] | null}
+            spouseEntries={entriesToSend(spouseEntryRows, spouseNoEntries) as IncomeEntry[] | null}
             expenseData={expenseData}
             assetsData={assetsData}
             debtsData={debtsData}

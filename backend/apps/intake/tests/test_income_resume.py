@@ -206,7 +206,7 @@ def _complete(session):
         state="IL",
         zip_code="60601",
     )
-    ExpenseInfo.objects.create(session=session)
+    ExpenseInfo.objects.create(session=session, expenses_include_others="no")
     session.status = "completed"
     session.save()
 

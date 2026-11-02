@@ -1,5 +1,5 @@
 import { DEDUCTION_FIELDS } from '../types/api';
-import type { IncomeInfo } from '../types/api';
+import type { IncomeInfo, SpouseIncome } from '../types/api';
 
 /**
  * Schedule I line 4: wages + tips + overtime. It reads the current figures when the person's
@@ -30,4 +30,9 @@ export function takeHomePay(data: Partial<IncomeInfo>): number {
 /** True when the person left all eight deductions blank */
 export function deductionsBlank(data: Partial<IncomeInfo>): boolean {
   return DEDUCTION_FIELDS.every((field) => data[field] == null);
+}
+
+/** True when a person with pay on Schedule I line 4 left all eight deductions blank */
+export function takeHomePayNotEntered(data: Partial<IncomeInfo> | SpouseIncome): boolean {
+  return scheduleILine4(data) > 0 && deductionsBlank(data);
 }

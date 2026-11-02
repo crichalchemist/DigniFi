@@ -9,6 +9,8 @@
  * UPL disclaimers live in ./upl.ts — this file covers non-legal copy.
  */
 
+import type { YesNo } from '../types/api';
+
 // ============================================================================
 // Wizard Copy
 // ============================================================================
@@ -133,6 +135,18 @@ export const AMOUNT_TOO_LARGE = 'This amount is too large. Please check it';
 
 // DRAFT: counsel C-3
 export const REVIEW_HOUSEHOLD_COUNT = 'People in your home, counting you';
+
+export const REVIEW_NOW_DIFFERENT = 'Is your income now different?';
+export const REVIEW_SPOUSE_NOW_DIFFERENT = "Is your spouse's income now different?";
+export const REVIEW_ASSISTANCE = 'Other help from the government';
+export const REVIEW_SPOUSE_ASSISTANCE = "Your spouse's other help from the government";
+export const REVIEW_ENTRIES = 'Your business or rental income';
+export const REVIEW_SPOUSE_ENTRIES = "Your spouse's business or rental income";
+export const REVIEW_LINE_3 = "Your expenses include anyone else's";
+export const REVIEW_DEDUCTIONS = 'Taken out of your pay, a month';
+export const REVIEW_SPOUSE_DEDUCTIONS = "Taken out of your spouse's pay, a month";
+export const REVIEW_NO_ENTRIES = 'None';
+export const REVIEW_YES_NO: Record<YesNo, string> = { yes: 'Yes', no: 'No' };
 
 // ============================================================================
 // Your Information Step

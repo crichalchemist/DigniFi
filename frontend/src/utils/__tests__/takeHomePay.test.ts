@@ -1,5 +1,23 @@
 import { describe, it, expect } from 'vitest';
-import { deductionsBlank, deductionsTotal, scheduleILine4, takeHomePay } from '../takeHomePay';
+import {
+  deductionsBlank,
+  deductionsTotal,
+  scheduleILine4,
+  takeHomePay,
+  takeHomePayNotEntered,
+} from '../takeHomePay';
+
+describe('take-home pay not entered', () => {
+  it('names take-home pay as not entered only for a person with pay who left all eight blank', () => {
+    expect(takeHomePayNotEntered({ monthly_gross_wages: 3000 })).toBe(true);
+    expect(takeHomePayNotEntered({ monthly_gross_wages: 3000, payroll_tax: 0 })).toBe(false);
+    expect(takeHomePayNotEntered({ monthly_gross_wages: 0 })).toBe(false);
+    // Schedule I's figures: under "now different" Yes with no current wage, line 4 is 0
+    expect(takeHomePayNotEntered({ monthly_gross_wages: 3000, income_now_different: 'yes' })).toBe(
+      false
+    );
+  });
+});
 
 describe('take-home pay arithmetic', () => {
   it('line 4 follows the figures Schedule I uses, averages while unanswered', () => {
