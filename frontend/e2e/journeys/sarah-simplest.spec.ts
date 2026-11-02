@@ -77,7 +77,7 @@ test.describe('Sarah Chen — Simplest Case', () => {
 
     // Sarah is fee-waiver eligible → routed to the waiver application first
     await feeWaiver.submit(
-      SARAH.debtor.household_size,
+      SARAH.fee_waiver.household_size,
       SARAH.fee_waiver.take_home_pay,
       SARAH.fee_waiver.noncash_assistance
     );

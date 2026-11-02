@@ -20,6 +20,7 @@ from apps.intake.models import (
     IncomeInfo,
     IntakeSession,
 )
+from apps.intake.tests.builders import answer_household
 
 User = get_user_model()
 
@@ -84,6 +85,7 @@ def populated_session(session):
         is_priority=True,
     )
     IncomeInfo.objects.create(session=session, monthly_gross_wages=Decimal("1200.00"))
+    answer_household(session)
     ExpenseInfo.objects.create(
         session=session,
         rent_or_mortgage=Decimal("1000"),

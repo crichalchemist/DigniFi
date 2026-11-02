@@ -12,9 +12,9 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from apps.districts.dated_tables import NoTableInForce
-from apps.eligibility.cmi import IncomeNotSplit, current_monthly_income
+from apps.eligibility.cmi import IncomeNotSplit, income_step_gaps
 from apps.eligibility.services import MeansTestCalculator
-from apps.forms.registry import PreconditionMissing, _needs_ssn
+from apps.forms.registry import PreconditionMissing, _needs_county, _needs_ssn
 
 from .locking import lock_session
 from .models import (
@@ -115,7 +115,14 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
         """Return only sessions for the authenticated user."""
         return (
             IntakeSession.objects.filter(user=self.request.user)
-            .select_related("district", "debtor_info", "income_info", "expense_info")
+            .select_related(
+                "district",
+                "debtor_info",
+                "income_info",
+                "expense_info",
+                "household",
+                "spouse_income",
+            )
             .prefetch_related("assets", "debts")
         )
 
@@ -242,12 +249,15 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
             errors.append({"step": exc.step, "message": str(exc)})
 
         try:
-            income_info = getattr(session, "income_info", None)
-            if income_info is None:
-                raise IncomeNotSplit()  # no income at all is income not entered by source
-            current_monthly_income(income_info)
-        except IncomeNotSplit as exc:
+            _needs_county(session)
+        except PreconditionMissing as exc:
             errors.append({"step": exc.step, "message": str(exc)})
+
+        # Every gap the Income step leaves, in order: the same check the means test refuses
+        # with (3e1 spec §9.1).
+        errors.extend(
+            [{"step": gap.step, "message": str(gap)} for gap in income_step_gaps(session)]
+        )
 
         if not hasattr(session, "expense_info"):
             errors.append(

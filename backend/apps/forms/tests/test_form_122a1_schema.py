@@ -12,8 +12,9 @@ from apps.eligibility.services.means_test_calculator import MeansTestCalculator
 from apps.forms.registry import packet
 from apps.forms.schema import load_schema
 from apps.forms.services.fill_resolver import resolve
-from apps.forms.tests.test_derivations import TEN_SOURCES
+from apps.forms.tests.test_derivations import SPOUSE_AT_HOME, TEN_SOURCES
 from apps.intake.models import DebtorInfo, IncomeInfo, IntakeSession
+from apps.intake.tests.builders import answer_household
 
 User = get_user_model()
 
@@ -43,6 +44,49 @@ NEVER_ASKED = {
     "Debto1.Quest10C",
 }
 
+# Household rows as stored. Y, Y: lives with the filer, and claimed or supported.
+SON_8 = {"relationship": "son", "age": 8, "lives_with_you": True, "claimed_or_supported": True}
+DAUGHTER_5 = {
+    "relationship": "daughter",
+    "age": 5,
+    "lives_with_you": True,
+    "claimed_or_supported": True,
+}
+DAUGHTER_19_ELSEWHERE = {  # N, Y
+    "relationship": "daughter",
+    "age": 19,
+    "lives_with_you": False,
+    "claimed_or_supported": True,
+}
+ROOMMATE_29 = {  # Y, N
+    "relationship": "roommate",
+    "age": 29,
+    "lives_with_you": True,
+    "claimed_or_supported": False,
+}
+LINE_10_SOURCE = (
+    "terrorism If necessary list other sources on a separate page and put the total below 1"
+)
+# Priya's spouse (3e1 spec §11): wages, the other nine typed $0.
+SPOUSE_WAGES_ONLY = {
+    **dict.fromkeys(IncomeInfo.SOURCE_FIELDS, Decimal("0.00")),
+    "monthly_gross_wages": Decimal("1800.00"),
+}
+
+
+def answer_income_step(session, marital_status, spouse_income=None, **amounts):
+    IncomeInfo.objects.create(session=session, **amounts)
+    members = [] if marital_status == "not_married" else [SPOUSE_AT_HOME]
+    answer_household(
+        session, marital_status=marital_status, members=members, spouse_income=spouse_income
+    )
+
+
+def _household_list(session, rows):
+    """Replace the session's household list with these rows."""
+    session.household.store_members([dict(r) for r in rows])
+    session.household.save()
+
 
 @pytest.fixture
 def session(db):
@@ -62,9 +106,9 @@ def session_with_income(session):
     IncomeInfo.objects.create(
         session=session,
         monthly_gross_wages=Decimal("2000.00"),
-        marital_status="single",
-        number_of_dependents=0,
+        marital_status="not_married",
     )
+    answer_household(session)
     return session
 
 
@@ -116,6 +160,7 @@ class TestForm122A1Schema:
         # A distinct power of two per source, so a box that reads the wrong source, or
         # adds one too many, prints a different figure (step 2 spec §5.5's table).
         IncomeInfo.objects.create(session=session, **TEN_SOURCES)
+        answer_household(session)
 
         field_map = resolve(load_schema("form_122a1"), session)
 
@@ -127,20 +172,16 @@ class TestForm122A1Schema:
         # Business income, interest, rental gross and costs, unemployment claimed as
         # Social Security, a second other-income row: blank, never 0.00 (B2).
         IncomeInfo.objects.create(session=session, **TEN_SOURCES)
+        answer_household(session)
 
         field_map = resolve(load_schema("form_122a1"), session)
 
         assert sorted(NEVER_ASKED & field_map.keys()) == []
 
-    def test_line_13_prints_the_household_size(self, session_with_income):
-        DebtorInfo.objects.create(
-            session=session_with_income,
-            first_name="Maria",
-            last_name="Torres",
-            ssn="900-11-0001",  # IRS-reserved range: synthetic
-            date_of_birth=date(1988, 6, 15),
-            household_size=3,
-        )
+    def test_line_13_counts_the_filer_and_everyone_living_with_them(self, session_with_income):
+        # Two children at home count; a daughter of 19 the filer supports elsewhere doesn't.
+        # There is no Your Information step, so no old household-size box to read.
+        _household_list(session_with_income, [SON_8, DAUGHTER_5, DAUGHTER_19_ELSEWHERE])
 
         field_map = resolve(load_schema("form_122a1"), session_with_income)
 
@@ -150,6 +191,7 @@ class TestForm122A1Schema:
         # Line 11 adds lines 2-10 for the month in Column A and in the total box, whose
         # second widget is line 12a's copy; line 12b is the year (step 2 spec §6.1, C1).
         IncomeInfo.objects.create(session=session, **TEN_SOURCES)
+        answer_household(session)
 
         field_map = resolve(load_schema("form_122a1"), session)
 
@@ -157,11 +199,10 @@ class TestForm122A1Schema:
         printed = (field_map.get("Debto1.Quest11"), field_map.get("Quest11"), field_map.get("12B"))
         assert printed == ("991.00", "991.00", "11892.00")
 
-    def test_line_13_prints_the_state_and_the_median_the_means_test_compared_against(
-        self, session_with_income, median_income
-    ):
-        # DIG-51: the filer counts 3 people in the household, while single with no dependents
-        # would size it at 1. Line 13 must print the median the means test used.
+    def test_13b_and_13c_read_the_same_count(self, session_with_income, median_income):
+        # DIG-51: line 13 must print the median the means test used. The son and the roommate
+        # live with the filer, so line 13 is 3; line 5, the son alone, is 2, whose median
+        # would be 91,526.00.
         DebtorInfo.objects.create(
             session=session_with_income,
             first_name="Maria",
@@ -169,8 +210,8 @@ class TestForm122A1Schema:
             ssn="900-11-0001",  # IRS-reserved range: synthetic
             date_of_birth=date(1988, 6, 15),
             state="IL",
-            household_size=3,
         )
+        _household_list(session_with_income, [SON_8, ROOMMATE_29])
         MeansTestCalculator(session_with_income).calculate()
 
         field_map = resolve(load_schema("form_122a1"), session_with_income)
@@ -203,12 +244,67 @@ class TestForm122A1Schema:
         IncomeInfo.objects.create(
             session=session,
             monthly_gross_wages=Decimal(monthly_wages),
-            marital_status="single",
-            number_of_dependents=0,
+            marital_status="not_married",
         )
+        answer_household(session)
         MeansTestCalculator(session).calculate()
 
         field_map = resolve(load_schema("form_122a1"), session)
 
         assert (field_map.get("14a"), field_map.get("CheckBox1")) == (line_14, page_1)
         assert ("form_122a2" in packet(session)) is form_122a2_applies
+
+    @pytest.mark.parametrize(
+        "answer,line_1,spouse_box",
+        [
+            ("not_married", "/Not married", None),
+            ("married_spouse_filing", "/Maried and filing", None),  # the template's own spelling
+            ("married_together", "/Married but not filing", "/together"),
+            ("married_separately", "/Married but not filing", "/separately"),
+        ],
+    )
+    def test_line_1_ticks_the_box_for_each_marriage_answer(
+        self, session, answer, line_1, spouse_box
+    ):
+        answer_income_step(
+            session,
+            answer,
+            {"monthly_gross_wages": Decimal("100.00")},
+            monthly_gross_wages=Decimal("2000.00"),
+        )
+        field_map = resolve(load_schema("form_122a1"), session)
+        assert (field_map.get("CheckBox3"), field_map.get("CheckBox3A")) == (line_1, spouse_box)
+
+    @pytest.mark.parametrize(
+        "answer,column_b,line_11",
+        [
+            (
+                "married_together",
+                {
+                    "Debto2.Quest2.0": "1800.00",
+                    "Debto2.Quest3": "0.00",
+                    "Debto2.Quest2.2": "0.00",
+                    "Debto2.Quest6C": "0.00",
+                    "Debto2.Quest8.0": "0.00",
+                    "Debto2.Quest9": "0.00",
+                    "Debto2.Quest10A": "0.00",
+                    "Debto2.Quest11": "1800.00",
+                },
+                "13800.00",
+            ),
+            ("married_separately", {}, "12000.00"),
+        ],
+    )
+    def test_column_b_prints_the_spouses_figures_only_for_a_spouse_at_home(
+        self, session, answer, column_b, line_11
+    ):
+        answer_income_step(
+            session, answer, SPOUSE_WAGES_ONLY, monthly_gross_wages=Decimal("12000.00")
+        )
+        field_map = resolve(load_schema("form_122a1"), session)
+        assert {b: v for b, v in field_map.items() if b.startswith("Debto2.")} == column_b
+        assert (field_map["Debto1.Quest11"], field_map["Quest11"], field_map["12B"]) == (
+            "12000.00",
+            line_11,
+            f"{Decimal(line_11) * 12:.2f}",
+        )

@@ -24,6 +24,7 @@ from apps.districts.models import District, MedianIncome
 from apps.eligibility.services.means_test_calculator import MeansTestCalculator
 from apps.forms.constants import _UPL_DISCLAIMER
 from apps.intake.models import DebtorInfo, IncomeInfo, IntakeSession
+from apps.intake.tests.builders import answer_household
 
 User = get_user_model()
 
@@ -61,8 +62,7 @@ def _create_session_with_income(
     user,
     district: District,
     monthly_income: Decimal,
-    marital_status: str = "single",
-    number_of_dependents: int = 0,
+    marital_status: str = "not_married",
 ) -> IntakeSession:
     """Create intake session with income info.
 
@@ -89,9 +89,9 @@ def _create_session_with_income(
     IncomeInfo.objects.create(
         session=session,
         marital_status=marital_status,
-        number_of_dependents=number_of_dependents,
         monthly_gross_wages=monthly_income,
     )
+    answer_household(session, marital_status=marital_status)
 
     return session
 

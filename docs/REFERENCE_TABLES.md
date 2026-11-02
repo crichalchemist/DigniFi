@@ -24,6 +24,7 @@ DigniFi compares each filer's income with this table on Form 122A-1 (line 13), a
 - New Census figures apply to cases filed on or after **April 1** and **November 1** each year.
 - The U.S. Trustee usually posts them a few weeks ahead. The November 2025 table was posted on October 16, 2025, and the April 2026 table on March 18, 2026.
 - Some periods on that page change only the IRS figures. The July 15, 2026 period is one: its Illinois median row matches the April 2026 table, so it needs no new row.
+- The November 2026 update had not been posted on November 1, 2026: the period list still began with "7/15/2026 or After". As with the skipped November 2021 update, the April 2026 row is taken to run to March 31, 2027 (the period is open-ended; move it when the next table is posted). An existing database keeps the old date until you run `python manage.py loaddata ilnd_2025_data` again. If a table effective before then is posted, add its row; DigniFi uses the newest row that has started, so the new row takes over from its `effective_date`.
 - The U.S. Trustee's period list, not the calendar, sets a row's dates (`effective_date` and `valid_through`). Updates sometimes slip: the list has a period of 5/15/2021 to 3/31/2022, so one November update was skipped, and a period that starts on 11/15/2013.
 - When a scheduled update is skipped or late, extend the current row's `valid_through` to the real end of its period, so filers aren't refused while the old figures still apply. Then add the next row with its own `effective_date`, as below.
 
@@ -32,14 +33,14 @@ DigniFi compares each filer's income with this table on Form 122A-1 (line 13), a
 | Effective  | `valid_through` | Illinois, 1–4 people                    | Each person over 4 |
 | ---------- | --------------- | --------------------------------------- | ------------------ |
 | 2025-11-01 | 2026-03-31      | $71,304 / $91,526 / $110,712 / $134,366 | $11,100            |
-| 2026-04-01 | 2026-10-31      | $73,180 / $93,934 / $113,625 / $137,902 | $11,100            |
+| 2026-04-01 | 2027-03-31      | $73,180 / $93,934 / $113,625 / $137,902 | $11,100            |
 
 ### How to add a row
 
 1. Open the new table's page and copy the Illinois figures for 1 to 4 people. For 5 to 8 people, add the posted amount for each person over 4 ("Add $11,100 for each individual in excess of 4") to the 4-person figure, once per person. Store that amount as `family_size_additional` too.
 2. Add a `districts.medianincome` row to `backend/apps/districts/fixtures/ilnd_2025_data.json` with the next `pk`, a `created_at`, and:
    - `effective_date`: the first day the table applies;
-   - `valid_through`: the day before the next scheduled change, which is March 31 for a November table and October 31 for an April table;
+   - `valid_through`: the day before the next scheduled change, which is March 31 for a November table and October 31 for an April table (unless an update was skipped; see above);
    - `source_url`: the table's own page.
 3. Leave the earlier rows as they are. A test fails if any median row in the fixture has no `valid_through`.
 4. Open a pull request to `develop`. Backend tests fill forms on a fixed day, 2026-10-16 (`backend/conftest.py`), so a new row changes no test unless that day moves.

@@ -30,6 +30,7 @@ from rest_framework import status
 from rest_framework.test import APIClient
 
 from apps.districts.models import District, MedianIncome
+from apps.eligibility.cmi import HOUSEHOLD_UNANSWERED
 from apps.eligibility.models import MeansTest
 from apps.forms.models import GeneratedForm
 from apps.forms.registry import build_parts, packet
@@ -48,6 +49,7 @@ from apps.intake.models import (
     IncomeInfo,
     IntakeSession,
 )
+from apps.intake.tests.builders import answer_household
 
 User = get_user_model()
 
@@ -105,10 +107,10 @@ def session(user, district):
     session = IntakeSession.objects.create(user=user, district=district, status="completed")
     IncomeInfo.objects.create(
         session=session,
-        marital_status="single",
-        number_of_dependents=0,
+        marital_status="not_married",
         monthly_gross_wages=Decimal("3000.00"),
     )
+    answer_household(session)
     return session
 
 
@@ -177,6 +179,41 @@ class TestGenerateEndpoint:
         assert GeneratedForm.objects.filter(
             session=session_with_debtor, form_type="form_101"
         ).exists()
+
+    def test_form_101_without_a_county_names_the_your_information_step(
+        self, api_client, session_with_debtor
+    ):
+        # A session saved before 3e1 has no county (3e1 spec §9.2).
+        household = session_with_debtor.household
+        household.county = None
+        household.save()
+        resp = api_client.post(
+            self.URL,
+            {"session_id": session_with_debtor.id, "form_type": "form_101"},
+            format="json",
+        )
+        assert resp.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert resp.data == {
+            "form_type": "form_101",
+            "step": "debtor_info",
+            "error": "Choose your county on the Your Information step.",
+        }
+        assert not GeneratedForm.objects.filter(session=session_with_debtor).exists()
+
+    def test_schedule_j_with_an_unanswered_household_list_names_the_income_step(
+        self, api_client, session_with_debtor
+    ):
+        # A list never answered is refused, not printed as "no dependents" (3e1 spec §9.2).
+        answer_household(session_with_debtor, members=None)
+        resp = api_client.post(
+            self.URL,
+            {"session_id": session_with_debtor.id, "form_type": "schedule_j"},
+            format="json",
+        )
+        assert resp.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert resp.data["step"] == "income_info"
+        assert resp.data["error"] == HOUSEHOLD_UNANSWERED
+        assert not GeneratedForm.objects.filter(session=session_with_debtor).exists()
 
     def test_generate_form_106dec(self, api_client, session_with_debtor):
         resp = api_client.post(
@@ -778,7 +815,7 @@ class TestPacketEndpoint:
             {
                 "name": "Census median income",
                 "effective_date": "2026-04-01",
-                "valid_through": "2026-10-31",
+                "valid_through": "2027-03-31",
                 "source_url": (
                     "https://www.justice.gov/ust/eo/bapcpa/20260401/bci_data/"
                     "median_income_table.htm"
@@ -889,6 +926,7 @@ class TestCompletionCheck:
 # ── The means test is worked out again before the packet is decided (spec §5.6) ──
 
 SPLIT_BY_SOURCE = "Enter your income by source on the Income step."
+MARRIAGE = "Answer the question about marriage on the Income step."
 NO_MEDIAN_TABLE = (
     "DigniFi doesn't have the income figures for today's date yet, so it can't prepare your "
     "forms. Please try again later."
@@ -1017,11 +1055,11 @@ class TestMeansTestWorkedOutAgain:
         # The filed copy prints what was filed, which needs no means test.
         assert filed_download.status_code == status.HTTP_200_OK
 
-    def test_completed_intake_with_no_income_asks_for_income_by_source(
+    def test_completed_intake_with_no_income_asks_the_marriage_question_first(
         self, api_client, session_with_debtor
     ):
-        # No income at all is income not entered by source: the filer can fix it, so it is
-        # the plain-words 422, not a 500.
+        # No income row is first a marriage question never answered (3e1 spec §9.1): the
+        # filer can fix it, so it is still the plain-words 422, not a 500.
         session = session_with_debtor
         session.income_info.delete()
 
@@ -1037,11 +1075,11 @@ class TestMeansTestWorkedOutAgain:
 
         for resp in (generate_all, listed):
             assert resp.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
-            assert resp.data == {"error": SPLIT_BY_SOURCE, "step": "income_info"}
+            assert resp.data == {"error": MARRIAGE, "step": "income_info"}
         assert generate.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
         assert generate.data == {
             "form_type": "form_106dec",
-            "error": SPLIT_BY_SOURCE,
+            "error": MARRIAGE,
             "step": "income_info",
         }
 

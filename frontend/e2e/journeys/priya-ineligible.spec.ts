@@ -1,8 +1,9 @@
 /**
  * Priya Sharma — Ineligible (Above Median)
  *
- * $144k annual income with 4-person household — above the $137,902
- * HH4 median, so the means test fails.
+ * $12,000 a month plus her spouse's $1,800 is $13,800 a month, $165,600 a
+ * year, with a 4-person household — above the $137,902 HH4 median, so the
+ * means test fails.
  * Tests the dignity-preserving ineligibility path.
  */
 
@@ -31,7 +32,7 @@ test.describe('Priya Sharma — Ineligible', () => {
     // Uploads come between basic info and Income; this journey types everything in
     await documents.skip();
 
-    // Step 2: Income ($12,000/mo — above median for HH of 4)
+    // Step 2: Income ($12,000/mo plus her spouse's $1,800 — above median for HH of 4)
     await wizard.fillIncomeInfo(PRIYA.income);
     await wizard.nextStep();
 

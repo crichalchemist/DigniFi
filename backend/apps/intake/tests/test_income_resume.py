@@ -16,6 +16,7 @@ from rest_framework.test import APIClient
 
 from apps.districts.models import District
 from apps.intake.models import DebtorInfo, ExpenseInfo, IncomeInfo, IntakeSession
+from apps.intake.tests.builders import answer_household
 from apps.users.models import User
 
 SPLIT_BY_SOURCE = "Enter your income by source on the Income step."
@@ -128,8 +129,7 @@ class TestIncomeBySource:
         client, session = filer_session
         IncomeInfo.objects.create(
             session=session,
-            marital_status="married_joint",
-            number_of_dependents=2,
+            marital_status="married_together",
             monthly_gross_wages=Decimal("2500.00"),
         )
 
@@ -142,28 +142,22 @@ class TestIncomeBySource:
         assert resp.status_code == 200
         income = IncomeInfo.objects.get(session=session)
         assert income.monthly_gross_wages == Decimal("4000.00")
-        assert income.marital_status == "married_joint"
-        assert income.number_of_dependents == 2
+        assert income.marital_status == "married_together"
 
-    def test_a_wizard_created_row_echoed_back_whole_would_strand_the_filer(self, filer_session):
-        # Why the wizard sends the ten amounts alone: a row the wizard created has a blank
-        # marital_status, and sending the row back as read is a 400 that strands the filer.
+    def test_a_wizard_created_income_row_reads_back_unanswered_and_saves_back_whole(
+        self, filer_session
+    ):
+        # A row the wizard created has no marriage answer yet. It reads back unanswered, and
+        # sending the row back as read saves, so no echoed field can strand the filer.
         client, session = filer_session
         IncomeInfo.objects.create(session=session, monthly_gross_wages=Decimal("3200.00"))
+        read = client.get(_session_url(session)).json()["income_info"]
+        assert read["marital_status"] is None
 
-        resp = client.patch(
-            _session_url(session),
-            {
-                "income_info": {
-                    "marital_status": "",
-                    "number_of_dependents": 0,
-                    "monthly_gross_wages": "3200.00",
-                }
-            },
-            format="json",
-        )
+        resp = client.patch(_session_url(session), {"income_info": read}, format="json")
 
-        assert resp.status_code == 400
+        assert resp.status_code == 200
+        assert IncomeInfo.objects.get(session=session).marital_status is None
 
     @pytest.mark.parametrize(
         "amount",
@@ -217,6 +211,7 @@ def _complete(session):
 def test_legacy_income_total_must_be_split_before_forms_print(filer_session):
     client, session = filer_session
     IncomeInfo.objects.create(session=session, monthly_income=[3000] * 6)
+    answer_household(session)
     _complete(session)
     generate = {"session_id": session.pk, "form_type": "schedule_i"}
 

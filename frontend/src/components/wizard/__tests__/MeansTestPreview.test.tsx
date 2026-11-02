@@ -50,3 +50,30 @@ describe('MeansTestPreview when the means test refuses', () => {
     expect(screen.queryByText(GENERIC)).not.toBeInTheDocument();
   });
 });
+
+describe('MeansTestPreview with an estimate', () => {
+  // The figure includes a spouse's income once the filer lives with them (3e1 spec §8.2)
+  it('the means-test preview calls its figure Monthly income for the means test', async () => {
+    server.use(
+      http.post('http://localhost:8000/api/intake/sessions/:id/calculate_means_test/', () =>
+        HttpResponse.json({
+          means_test_result: {
+            passes_means_test: false,
+            qualifies_for_fee_waiver: false,
+            cmi: 13800,
+            median_income_threshold: 137902,
+            family_size: 4,
+          },
+          session_id: 1,
+        })
+      )
+    );
+    render(<MeansTestPreview sessionId={1} currentStep={3} />);
+    await userEvent.click(screen.getByRole('button', { name: /eligibility estimate/i }));
+    await screen.findByText(/chapter 7 eligibility may need further review/i);
+
+    expect(screen.getByText('Monthly income for the means test')).toBeInTheDocument();
+    expect(screen.getByText('Median for Household of 4')).toBeInTheDocument();
+    expect(screen.queryByText('Your Monthly Income')).not.toBeInTheDocument();
+  });
+});

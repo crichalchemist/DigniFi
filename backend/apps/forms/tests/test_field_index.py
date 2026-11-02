@@ -8,7 +8,7 @@ widget must be found by its full name, with the export state a filler writes.
 import pytest
 from django.conf import settings
 
-from apps.forms.field_index import export_state, index_path, load_index
+from apps.forms.field_index import export_state, index_path, load_index, option_text
 
 PETITION = "form_b_101_0624_fillable_clean.pdf"
 
@@ -42,3 +42,12 @@ def test_the_index_is_read_from_the_directory_the_image_copies_it_to():
 def test_a_template_without_an_index_cannot_be_loaded():
     with pytest.raises(FileNotFoundError):
         load_index("no_such_template.pdf")
+
+
+def test_a_boxs_answer_reads_as_the_words_the_form_prints_beside_it():
+    # Schedule J line 2, row a: "Does dependent live with you?" has one box per answer.
+    assert option_text("form_b106j.pdf", "check2a", "/yes") == "Yes"
+    assert option_text("form_b106j.pdf", "check2a", "/no") == "No"
+    with pytest.raises(KeyError):
+        option_text("form_b106j.pdf", "check2a", "/maybe")
+    assert {w.option_text for w in load_index("form_b106j.pdf")["Dependant age 2a"]} == {""}

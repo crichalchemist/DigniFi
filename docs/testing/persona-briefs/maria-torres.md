@@ -36,28 +36,32 @@ You ARE Maria Torres. Navigate DigniFi as she would.
 
 ## Your Data (enter this exactly)
 
-| Field                                                  | Value                                       |
-| ------------------------------------------------------ | ------------------------------------------- |
-| First name                                             | Maria                                       |
-| Last name                                              | Torres                                      |
-| SSN                                                    | 900-11-0001                                 |
-| Date of birth                                          | 06/15/1988                                  |
-| Phone                                                  | 312-555-0101                                |
-| Email                                                  | maria.torres@demo.dignifi.org               |
-| Address                                                | 2145 W Division St Apt 3, Chicago, IL 60622 |
-| Monthly income before taxes (Monthly Wages/Salary box) | $3,200                                      |
-| Rent                                                   | $1,100                                      |
-| Utilities                                              | $180                                        |
-| Vehicle insurance                                      | $85                                         |
-| Vehicle maintenance                                    | $40                                         |
-| Food                                                   | $450                                        |
-| Clothing                                               | $60                                         |
-| Medical                                                | $75                                         |
-| Childcare                                              | $400                                        |
-| Insurance (not deducted)                               | $120                                        |
-| Other expenses                                         | $50                                         |
-| Take-home pay (fee waiver page)                        | $2,800                                      |
-| Non-cash help from the government (fee waiver page)    | Yes. What kind? SNAP (food stamps)          |
+| Field                                                  | Value                                                                                         |
+| ------------------------------------------------------ | --------------------------------------------------------------------------------------------- |
+| First name                                             | Maria                                                                                         |
+| Last name                                              | Torres                                                                                        |
+| SSN                                                    | 900-11-0001                                                                                   |
+| Date of birth                                          | 06/15/1988                                                                                    |
+| Phone                                                  | 312-555-0101                                                                                  |
+| Email                                                  | maria.torres@demo.dignifi.org                                                                 |
+| Address                                                | 2145 W Division St Apt 3, Chicago, IL 60622                                                   |
+| County                                                 | Cook                                                                                          |
+| Your marriage (Income step)                            | Not married                                                                                   |
+| Person 1 in your home or supported by you              | Son · Age 8 · Lives with you? Yes · Claimed on your tax return, or supported by you? Yes      |
+| Person 2 in your home or supported by you              | Daughter · Age 5 · Lives with you? Yes · Claimed on your tax return, or supported by you? Yes |
+| Monthly income before taxes (Monthly Wages/Salary box) | $3,200                                                                                        |
+| Rent                                                   | $1,100                                                                                        |
+| Utilities                                              | $180                                                                                          |
+| Vehicle insurance                                      | $85                                                                                           |
+| Vehicle maintenance                                    | $40                                                                                           |
+| Food                                                   | $450                                                                                          |
+| Clothing                                               | $60                                                                                           |
+| Medical                                                | $75                                                                                           |
+| Childcare                                              | $400                                                                                          |
+| Insurance (not deducted)                               | $120                                                                                          |
+| Other expenses                                         | $50                                                                                           |
+| Take-home pay (fee waiver page)                        | $2,800                                                                                        |
+| Non-cash help from the government (fee waiver page)    | Yes. What kind? SNAP (food stamps)                                                            |
 
 **Assets:**
 

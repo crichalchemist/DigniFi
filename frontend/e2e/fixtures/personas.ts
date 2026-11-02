@@ -21,10 +21,8 @@ export interface PersonaDebtor {
   city: string;
   state: string;
   zip_code: string;
-  // Household & filing info (required on the DebtorInfo step).
-  // household_size mirrors seed_demo_data: dependents + 1 (+1 if married).
-  household_size: number;
-  filing_type: 'individual' | 'joint';
+  // One of the 18 counties step 1 lists
+  county: string;
 }
 
 /** The Income step's ten boxes, named as the backend stores them (INCOME_FIELDS in types/api.ts) */
@@ -40,11 +38,31 @@ export type IncomeSourceKey =
   | 'monthly_alimony'
   | 'monthly_other_income';
 
+/** The four answers to Form 122A-1 line 1 on the Income step (MaritalStatus in types/api.ts) */
+export type MaritalStatus =
+  | 'not_married'
+  | 'married_spouse_filing'
+  | 'married_together'
+  | 'married_separately';
+
+/** One person on the Income step's household list, every question answered */
+export interface PersonaMember {
+  relationship: string;
+  age: number;
+  lives_with_you: boolean;
+  claimed_or_supported: boolean;
+  // On the spouse's row only
+  spouse_is_dependent?: boolean;
+}
+
 export interface PersonaIncome {
-  marital_status: string;
-  number_of_dependents: number;
+  marital_status: MaritalStatus;
+  // Everyone in the persona's home or supported by them; [] answers "No one else"
+  members: PersonaMember[];
   // Each amount the persona types, in its own box. A source left out stays blank.
   sources: Partial<Record<IncomeSourceKey, number>>;
+  // The spouse's ten, typed only by a persona living with their spouse
+  spouse_sources?: Record<IncomeSourceKey, number>;
 }
 
 export interface PersonaAsset {
@@ -84,6 +102,8 @@ export interface PersonaFeeWaiver {
   take_home_pay: number;
   // The "What kind?" answer, or null for a persona who gets no non-cash help
   noncash_assistance: string | null;
+  // Form 103B line 1's count (§4.4)
+  household_size: number;
 }
 
 /** A persona the means test sends to the fee-waiver page */
@@ -102,16 +122,18 @@ export const MARIA: WaiverPersonaData = {
     date_of_birth: '1988-06-15',
     phone: '312-555-0101',
     email: `maria.e2e+${RUN_ID}@test.dignifi.org`,
-    household_size: 3,
-    filing_type: 'individual',
+    county: 'Cook',
     street_address: '2145 W Division St Apt 3',
     city: 'Chicago',
     state: 'IL',
     zip_code: '60622',
   },
   income: {
-    marital_status: 'single',
-    number_of_dependents: 2,
+    marital_status: 'not_married',
+    members: [
+      { relationship: 'son', age: 8, lives_with_you: true, claimed_or_supported: true },
+      { relationship: 'daughter', age: 5, lives_with_you: true, claimed_or_supported: true },
+    ],
     sources: { monthly_gross_wages: 3200 },
   },
   expenses: {
@@ -162,7 +184,7 @@ export const MARIA: WaiverPersonaData = {
       is_in_collections: false,
     },
   ],
-  fee_waiver: { take_home_pay: 2800, noncash_assistance: 'SNAP (food stamps)' },
+  fee_waiver: { take_home_pay: 2800, noncash_assistance: 'SNAP (food stamps)', household_size: 3 },
   expected: { passes_means_test: true, fee_waiver_eligible: true },
 };
 
@@ -177,16 +199,15 @@ export const JAMES: PersonaData = {
     date_of_birth: '1975-03-22',
     phone: '312-555-0202',
     email: `james.e2e+${RUN_ID}@test.dignifi.org`,
-    household_size: 1,
-    filing_type: 'individual',
+    county: 'Cook',
     street_address: '850 N State St Apt 1204',
     city: 'Chicago',
     state: 'IL',
     zip_code: '60610',
   },
   income: {
-    marital_status: 'single',
-    number_of_dependents: 0,
+    marital_status: 'not_married',
+    members: [],
     sources: { monthly_gross_wages: 5833 },
   },
   expenses: {
@@ -250,19 +271,40 @@ export const PRIYA: PersonaData = {
     date_of_birth: '1982-11-08',
     phone: '312-555-0303',
     email: `priya.e2e+${RUN_ID}@test.dignifi.org`,
-    household_size: 4,
-    filing_type: 'individual',
+    county: 'Cook',
     street_address: '456 W Fullerton Pkwy',
     city: 'Chicago',
     state: 'IL',
     zip_code: '60614',
   },
   income: {
-    marital_status: 'married_joint',
-    number_of_dependents: 2,
-    // $12,000/month = $144,000/year — above the $137,902 HH4 median, so the
-    // annualized § 707(b) comparison fails as the persona intends.
+    marital_status: 'married_together',
+    members: [
+      {
+        relationship: 'spouse',
+        age: 45,
+        lives_with_you: true,
+        claimed_or_supported: true,
+        spouse_is_dependent: false,
+      },
+      { relationship: 'daughter', age: 10, lives_with_you: true, claimed_or_supported: true },
+      { relationship: 'son', age: 7, lives_with_you: true, claimed_or_supported: true },
+    ],
+    // $12,000 plus the spouse's $1,800 is $13,800 a month, $165,600 a year — above the
+    // $137,902 HH4 median, so the annualized § 707(b) comparison fails as the persona intends.
     sources: { monthly_gross_wages: 12000 },
+    spouse_sources: {
+      monthly_gross_wages: 1800,
+      monthly_overtime: 0,
+      monthly_tips: 0,
+      monthly_rental_income: 0,
+      monthly_pension: 0,
+      monthly_social_security: 0,
+      monthly_unemployment: 0,
+      monthly_child_support: 0,
+      monthly_alimony: 0,
+      monthly_other_income: 0,
+    },
   },
   expenses: {
     rent_or_mortgage: 2800,
@@ -318,17 +360,36 @@ export const DESHAWN: WaiverPersonaData = {
     date_of_birth: '1980-09-03',
     phone: '312-555-0404',
     email: `deshawn.e2e+${RUN_ID}@test.dignifi.org`,
-    household_size: 2,
-    filing_type: 'individual',
+    county: 'Cook',
     street_address: '7823 S Sangamon St',
     city: 'Chicago',
     state: 'IL',
     zip_code: '60620',
   },
   income: {
-    marital_status: 'married_joint',
-    number_of_dependents: 0,
+    marital_status: 'married_together',
+    members: [
+      {
+        relationship: 'spouse',
+        age: 44,
+        lives_with_you: true,
+        claimed_or_supported: true,
+        spouse_is_dependent: false,
+      },
+    ],
     sources: { monthly_gross_wages: 3500 },
+    spouse_sources: {
+      monthly_gross_wages: 1000,
+      monthly_overtime: 0,
+      monthly_tips: 0,
+      monthly_rental_income: 0,
+      monthly_pension: 0,
+      monthly_social_security: 0,
+      monthly_unemployment: 0,
+      monthly_child_support: 0,
+      monthly_alimony: 0,
+      monthly_other_income: 0,
+    },
   },
   expenses: {
     rent_or_mortgage: 1200,
@@ -392,9 +453,10 @@ export const DESHAWN: WaiverPersonaData = {
       is_in_collections: true,
     },
   ],
-  fee_waiver: { take_home_pay: 3050, noncash_assistance: null },
-  // $3,500/month = $42,000/year — below 60% of the HH2 median ($56,360.40),
-  // so DeShawn qualifies for the fee waiver as well as Chapter 7.
+  fee_waiver: { take_home_pay: 3050, noncash_assistance: null, household_size: 2 },
+  // Living with his spouse, no dependents: $3,500 plus the spouse's $1,000 is $54,000 a year —
+  // below 60% of the HH2 median ($56,360.40), so DeShawn qualifies for the fee waiver as well
+  // as Chapter 7.
   expected: { passes_means_test: true, fee_waiver_eligible: true },
 };
 
@@ -409,16 +471,17 @@ export const SARAH: WaiverPersonaData = {
     date_of_birth: '1995-01-20',
     phone: '312-555-0505',
     email: `sarah.e2e+${RUN_ID}@test.dignifi.org`,
-    household_size: 1,
-    filing_type: 'individual',
+    county: 'Cook',
     street_address: '1520 N Damen Ave Apt 2F',
     city: 'Chicago',
     state: 'IL',
     zip_code: '60622',
   },
   income: {
-    marital_status: 'single',
-    number_of_dependents: 0,
+    marital_status: 'not_married',
+    members: [
+      { relationship: 'roommate', age: 29, lives_with_you: true, claimed_or_supported: false },
+    ],
     sources: { monthly_gross_wages: 2000 },
   },
   expenses: {
@@ -453,7 +516,7 @@ export const SARAH: WaiverPersonaData = {
       is_in_collections: true,
     },
   ],
-  fee_waiver: { take_home_pay: 1750, noncash_assistance: null },
+  fee_waiver: { take_home_pay: 1750, noncash_assistance: null, household_size: 1 },
   expected: { passes_means_test: true, fee_waiver_eligible: true },
 };
 
@@ -470,16 +533,17 @@ export const ANDRES: PersonaData = {
     date_of_birth: '1988-04-12',
     phone: '630-555-0161',
     email: `andres.e2e+${RUN_ID}@test.dignifi.org`,
-    household_size: 2,
-    filing_type: 'individual',
+    county: 'Kane',
     street_address: '1418 Marquette Ave Apt 2',
     city: 'Aurora',
     state: 'IL',
     zip_code: '60505',
   },
   income: {
-    marital_status: 'single',
-    number_of_dependents: 1,
+    marital_status: 'not_married',
+    members: [
+      { relationship: 'daughter', age: 9, lives_with_you: true, claimed_or_supported: true },
+    ],
     // What he keeps from driving ($4,200 from the apps less $830 of driving costs) is other
     // income until the Income step asks for business income (3a1.Q1). Every other box is $0.
     sources: {

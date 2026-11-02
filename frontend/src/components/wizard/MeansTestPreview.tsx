@@ -10,6 +10,7 @@ import { useState } from 'react';
 import { useDebouncedMeansTest } from '../../hooks/useDebouncedMeansTest';
 import { UPLDisclaimer } from '../compliance';
 import { UPL_MEANS_TEST_DISCLAIMER } from '../../constants/upl';
+import { MEANS_TEST_INCOME_LABEL, MEDIAN_FOR_HOUSEHOLD_OF } from '../../constants/copy';
 
 interface MeansTestPreviewProps {
   sessionId: number | null;
@@ -107,11 +108,13 @@ export function MeansTestPreview({ sessionId, currentStep }: MeansTestPreviewPro
               {/* Key numbers */}
               <dl className="means-test-preview-details">
                 <div className="means-test-preview-detail">
-                  <dt>Your Monthly Income</dt>
+                  <dt>{MEANS_TEST_INCOME_LABEL}</dt>
                   <dd>{formatCurrency(result.cmi)}</dd>
                 </div>
                 <div className="means-test-preview-detail">
-                  <dt>Median for Household of {result.family_size}</dt>
+                  <dt>
+                    {MEDIAN_FOR_HOUSEHOLD_OF} {result.family_size}
+                  </dt>
                   <dd>{formatCurrency(result.median_income_threshold / 12)}</dd>
                 </div>
                 {result.qualifies_for_fee_waiver && (

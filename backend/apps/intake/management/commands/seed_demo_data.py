@@ -18,17 +18,20 @@ from apps.districts.models import District
 from apps.eligibility.models import MEDIAN_TABLE
 from apps.eligibility.services.means_test_calculator import MeansTestCalculator
 from apps.forms.registry import build_field_values, packet
+from apps.intake.household import count_fee_waiver_household
 from apps.intake.models import (
     AssetInfo,
     DebtInfo,
     DebtorInfo,
     ExpenseInfo,
     FeeWaiverApplication,
+    Household,
     IncomeInfo,
     IntakeSession,
     SOFACreditorPayment,
     SOFAPriorIncome,
     SOFAReport,
+    SpouseIncome,
 )
 
 User = get_user_model()
@@ -65,14 +68,29 @@ def _maria_torres() -> dict:
             "city": "Chicago",
             "state": "IL",
             "zip_code": "60622",
-            "household_size": 3,
-            "filing_type": "individual",
         },
         "income": {
-            "marital_status": "single",
-            "number_of_dependents": 2,
+            "marital_status": "not_married",
             **_wages_only(Decimal("3200.00")),
         },
+        "household": {
+            "county": "Cook",
+            "members": [
+                {
+                    "relationship": "son",
+                    "age": 8,
+                    "lives_with_you": True,
+                    "claimed_or_supported": True,
+                },
+                {
+                    "relationship": "daughter",
+                    "age": 5,
+                    "lives_with_you": True,
+                    "claimed_or_supported": True,
+                },
+            ],
+        },
+        "spouse_income": None,
         "expenses": {
             "rent_or_mortgage": Decimal("1100.00"),
             "utilities": Decimal("180.00"),
@@ -186,14 +204,13 @@ def _james_washington() -> dict:
             "city": "Chicago",
             "state": "IL",
             "zip_code": "60610",
-            "household_size": 1,
-            "filing_type": "individual",
         },
         "income": {
-            "marital_status": "single",
-            "number_of_dependents": 0,
+            "marital_status": "not_married",
             **_wages_only(Decimal("5833.00")),
         },
+        "household": {"county": "Cook", "members": []},
+        "spouse_income": None,
         "expenses": {
             "rent_or_mortgage": Decimal("1650.00"),
             "utilities": Decimal("120.00"),
@@ -266,16 +283,38 @@ def _priya_sharma() -> dict:
             "city": "Chicago",
             "state": "IL",
             "zip_code": "60614",
-            "household_size": 4,
-            "filing_type": "individual",
         },
         "income": {
-            "marital_status": "married_joint",
-            "number_of_dependents": 2,
-            # $12,000/month = $144,000/year — above the $137,902 HH4 median,
-            # so the annualized § 707(b) comparison fails as intended.
+            "marital_status": "married_together",
+            # Her own $12,000/month is $144,000/year, above the $137,902 HH4 median by
+            # itself; with her husband's $1,800 (122A-1 Column B) it is $165,600/year.
             **_wages_only(Decimal("12000.00")),
         },
+        "household": {
+            "county": "Cook",
+            "members": [
+                {
+                    "relationship": "spouse",
+                    "age": 45,
+                    "lives_with_you": True,
+                    "claimed_or_supported": True,
+                    "spouse_is_dependent": False,
+                },
+                {
+                    "relationship": "daughter",
+                    "age": 10,
+                    "lives_with_you": True,
+                    "claimed_or_supported": True,
+                },
+                {
+                    "relationship": "son",
+                    "age": 7,
+                    "lives_with_you": True,
+                    "claimed_or_supported": True,
+                },
+            ],
+        },
+        "spouse_income": _wages_only(Decimal("1800.00")),
         "expenses": {
             "rent_or_mortgage": Decimal("2800.00"),
             "utilities": Decimal("250.00"),
@@ -340,14 +379,24 @@ def _deshawn_mitchell() -> dict:
             "city": "Chicago",
             "state": "IL",
             "zip_code": "60620",
-            "household_size": 2,
-            "filing_type": "individual",
         },
         "income": {
-            "marital_status": "married_joint",
-            "number_of_dependents": 0,
+            "marital_status": "married_together",
             **_wages_only(Decimal("3500.00")),
         },
+        "household": {
+            "county": "Cook",
+            "members": [
+                {
+                    "relationship": "spouse",
+                    "age": 44,
+                    "lives_with_you": True,
+                    "claimed_or_supported": True,
+                    "spouse_is_dependent": False,
+                },
+            ],
+        },
+        "spouse_income": _wages_only(Decimal("1000.00")),
         "expenses": {
             "rent_or_mortgage": Decimal("1200.00"),
             "utilities": Decimal("200.00"),
@@ -448,14 +497,23 @@ def _sarah_chen() -> dict:
             "city": "Chicago",
             "state": "IL",
             "zip_code": "60622",
-            "household_size": 1,
-            "filing_type": "individual",
         },
         "income": {
-            "marital_status": "single",
-            "number_of_dependents": 0,
+            "marital_status": "not_married",
             **_wages_only(Decimal("2000.00")),
         },
+        "household": {
+            "county": "Cook",
+            "members": [
+                {
+                    "relationship": "roommate",
+                    "age": 29,
+                    "lives_with_you": True,
+                    "claimed_or_supported": False,
+                },
+            ],
+        },
+        "spouse_income": None,
         "expenses": {
             "rent_or_mortgage": Decimal("850.00"),
             "utilities": Decimal("80.00"),
@@ -518,17 +576,26 @@ def _andres_kettleby() -> dict:
             "city": "Aurora",
             "state": "IL",
             "zip_code": "60505",
-            "household_size": 2,
-            "filing_type": "individual",
         },
         "income": {
-            "marital_status": "single",
-            "number_of_dependents": 1,
+            "marital_status": "not_married",
             # His net driving income ($4,200 from the apps less $830 of driving costs) is
             # other income until the Income step asks for business income (3a1.Q1).
             **dict.fromkeys(IncomeInfo.SOURCE_FIELDS, Decimal("0.00")),
             "monthly_other_income": Decimal("3370.00"),
         },
+        "household": {
+            "county": "Kane",
+            "members": [
+                {
+                    "relationship": "daughter",
+                    "age": 9,
+                    "lives_with_you": True,
+                    "claimed_or_supported": True,
+                },
+            ],
+        },
+        "spouse_income": None,
         "expenses": {
             "rent_or_mortgage": Decimal("1150.00"),
             "utilities": Decimal("210.00"),
@@ -760,6 +827,11 @@ class Command(BaseCommand):
 
         DebtorInfo.objects.create(session=session, **data["debtor"])
         IncomeInfo.objects.create(session=session, **data["income"])
+        household = Household(session=session, county=data["household"]["county"])
+        household.store_members(data["household"]["members"])
+        household.save()
+        if data["spouse_income"] is not None:
+            SpouseIncome.objects.create(session=session, **data["spouse_income"])
         ExpenseInfo.objects.create(session=session, **data["expenses"])
 
         for asset in data["assets"]:
@@ -788,7 +860,9 @@ class Command(BaseCommand):
         if result["qualifies_for_fee_waiver"] and "fee_waiver" in data:
             FeeWaiverApplication.objects.create(
                 session=session,
-                household_size=data["debtor"]["household_size"],
+                household_size=count_fee_waiver_household(
+                    household.get_members(), data["income"]["marital_status"]
+                ),
                 **data["fee_waiver"],
                 cannot_pay_full=True,
                 cannot_pay_installments=True,

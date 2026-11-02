@@ -5,7 +5,7 @@ Tests cover:
 - Below-median income (passes means test)
 - Above-median income (fails means test)
 - At-median income (edge case: counts as below the median, DIG-136), and CMI rounded to the cent
-- All household sizes (1-8+) with dependents + marital status
+- All household sizes (1-8), counted from the household list
 - Fee waiver qualification (CMI < 60% of median)
 - Fee waiver non-qualification (CMI >= 60% of median)
 - Missing income_info raises ValueError
@@ -28,7 +28,16 @@ from apps.eligibility.models import MeansTest
 from apps.eligibility.services.means_test_calculator import MeansTestCalculator
 from apps.forms.registry import build_field_values, packet
 from apps.forms.services.derivations import DERIVATIONS
-from apps.intake.models import DebtInfo, DebtorInfo, ExpenseInfo, IncomeInfo, IntakeSession
+from apps.intake.models import (
+    DebtInfo,
+    DebtorInfo,
+    ExpenseInfo,
+    Household,
+    IncomeInfo,
+    IntakeSession,
+    SpouseIncome,
+)
+from apps.intake.tests.builders import answer_household
 
 User = get_user_model()
 
@@ -83,13 +92,34 @@ def median_income(district):
 
 @pytest.fixture
 def session(user, district):
-    """Create intake session."""
-    return IntakeSession.objects.create(
+    """Create intake session, whose household list answers that no one else lives there."""
+    s = IntakeSession.objects.create(
         user=user,
         district=district,
         status="in_progress",
         current_step=2,
     )
+    household = Household(session=s, county="Cook")
+    household.store_members([])
+    household.save()
+    return s
+
+
+# Household rows as stored: each lives with the filer and is claimed or supported.
+CHILD = {"relationship": "son", "age": 8, "lives_with_you": True, "claimed_or_supported": True}
+SPOUSE = {
+    "relationship": "spouse",
+    "age": 40,
+    "lives_with_you": True,
+    "claimed_or_supported": True,
+    "spouse_is_dependent": False,
+}
+
+
+def _household_list(session, rows):
+    """Replace the session's household list with these rows."""
+    session.household.store_members([dict(r) for r in rows])
+    session.household.save()
 
 
 @pytest.mark.django_db
@@ -113,8 +143,7 @@ class TestMeansTestCalculatorInitialization:
         """Test successful initialization with income_info."""
         IncomeInfo.objects.create(
             session=session,
-            marital_status="single",
-            number_of_dependents=0,
+            marital_status="not_married",
             monthly_gross_wages=Decimal("5000.00"),
         )
 
@@ -133,8 +162,7 @@ class TestBelowMedianIncomePassesMeansTest:
         # Below median: $5,000/month
         IncomeInfo.objects.create(
             session=session,
-            marital_status="single",
-            number_of_dependents=0,
+            marital_status="not_married",
             monthly_gross_wages=Decimal("5000.00"),
         )
 
@@ -146,16 +174,17 @@ class TestBelowMedianIncomePassesMeansTest:
         assert result["median_income_threshold"] == Decimal("71304.00")
         assert result["family_size"] == 1
 
-    def test_below_median_married_joint(self, session, median_income):
-        """Test married filing jointly, below median passes means test."""
+    def test_a_spouse_at_home_counts_in_the_household(self, session, median_income):
+        """A filer living with their spouse is a household of two."""
         # Median for family size 2: $91,526/year = $7,627.17/month
-        # Below median: $7,000/month
+        # Below median: $7,000/month, and the spouse typed $0
         IncomeInfo.objects.create(
             session=session,
-            marital_status="married_joint",
-            number_of_dependents=0,
+            marital_status="married_together",
             monthly_gross_wages=Decimal("7000.00"),
         )
+        SpouseIncome.objects.create(session=session, monthly_gross_wages=Decimal("0.00"))
+        _household_list(session, [SPOUSE])
 
         calculator = MeansTestCalculator(session)
         result = calculator.calculate()
@@ -165,16 +194,16 @@ class TestBelowMedianIncomePassesMeansTest:
         assert result["median_income_threshold"] == Decimal("91526.00")
         assert result["family_size"] == 2  # Filer + spouse
 
-    def test_below_median_single_with_two_dependents(self, session, median_income):
-        """Test single filer with 2 dependents, below median passes."""
+    def test_two_children_at_home_make_a_household_of_three(self, session, median_income):
+        """Two children living with the filer make a household of three."""
         # Median for family size 3: $110,712/year = $9,226/month
         # Below median: $8,500/month
         IncomeInfo.objects.create(
             session=session,
-            marital_status="single",
-            number_of_dependents=2,
+            marital_status="not_married",
             monthly_gross_wages=Decimal("8500.00"),
         )
+        _household_list(session, [CHILD, CHILD])
 
         calculator = MeansTestCalculator(session)
         result = calculator.calculate()
@@ -182,7 +211,7 @@ class TestBelowMedianIncomePassesMeansTest:
         assert result["passes_means_test"] is True
         assert result["cmi"] == Decimal("8500.00")
         assert result["median_income_threshold"] == Decimal("110712.00")
-        assert result["family_size"] == 3  # Filer + 2 dependents
+        assert result["family_size"] == 3  # Filer + 2 children
 
 
 @pytest.mark.django_db
@@ -195,8 +224,7 @@ class TestAboveMedianIncomeFailsMeansTest:
         # Above median: $80,000/month average
         IncomeInfo.objects.create(
             session=session,
-            marital_status="single",
-            number_of_dependents=0,
+            marital_status="not_married",
             monthly_gross_wages=Decimal("80000.00"),
         )
 
@@ -208,24 +236,32 @@ class TestAboveMedianIncomeFailsMeansTest:
         assert result["median_income_threshold"] == Decimal("71304.00")
         assert result["family_size"] == 1
 
-    def test_above_median_married_separate_with_dependents(self, session, median_income):
-        """Test married filing separately with dependents, above median fails."""
-        # Median for family size 4: $134,366/year
-        # Above median: $140,000/year average
+    def test_a_spouse_living_apart_isnt_counted_but_children_at_home_are(
+        self, session, median_income
+    ):
+        """Line 13 counts who lives with the filer: two children at home, not a spouse apart."""
+        # Median for family size 3: $110,712/year
+        # Above median: $140,000/month
         IncomeInfo.objects.create(
             session=session,
-            marital_status="married_separate",
-            number_of_dependents=2,
+            marital_status="married_separately",
             monthly_gross_wages=Decimal("140000.00"),
         )
+        spouse_apart = {
+            **SPOUSE,
+            "lives_with_you": False,
+            "claimed_or_supported": False,
+            "spouse_is_dependent": False,
+        }
+        _household_list(session, [spouse_apart, CHILD, CHILD])
 
         calculator = MeansTestCalculator(session)
         result = calculator.calculate()
 
         assert result["passes_means_test"] is False
         assert result["cmi"] == Decimal("140000.00")
-        assert result["median_income_threshold"] == Decimal("134366.00")
-        assert result["family_size"] == 4  # Filer + spouse + 2 dependents
+        assert result["median_income_threshold"] == Decimal("110712.00")
+        assert result["family_size"] == 3  # Filer + 2 children at home
 
 
 @pytest.mark.django_db
@@ -240,8 +276,7 @@ class TestAtMedianIncomeEdgeCase:
         # At median: $5,942/month annualizes to exactly $71,304/year
         IncomeInfo.objects.create(
             session=session,
-            marital_status="single",
-            number_of_dependents=0,
+            marital_status="not_married",
             monthly_gross_wages=Decimal("5942.00"),
         )
 
@@ -261,8 +296,7 @@ class TestAtMedianIncomeEdgeCase:
         # $5,942.01/month annualizes to $71,304.12/year, over the $71,304 median
         IncomeInfo.objects.create(
             session=session,
-            marital_status="single",
-            number_of_dependents=0,
+            marital_status="not_married",
             monthly_gross_wages=Decimal("5942.01"),
         )
 
@@ -281,8 +315,7 @@ class TestAtMedianIncomeEdgeCase:
         # and the printed CMI must agree on one figure.
         IncomeInfo.objects.create(
             session=session,
-            marital_status="single",
-            number_of_dependents=0,
+            marital_status="not_married",
             monthly_gross_wages=Decimal("5942.005"),
         )
 
@@ -297,127 +330,37 @@ class TestAtMedianIncomeEdgeCase:
 
 @pytest.mark.django_db
 class TestAllHouseholdSizes:
-    """Test all household sizes 1-8+ with varying marital status and dependents."""
+    """The median is looked up by line 13's count: the filer and everyone living with them."""
 
-    def test_household_size_1_single_no_dependents(self, session, median_income):
-        """Test family size 1: single, 0 dependents."""
+    @pytest.mark.parametrize(
+        "size,median",
+        [
+            (1, "71304.00"),
+            (2, "91526.00"),
+            (3, "110712.00"),
+            (4, "134366.00"),
+            (5, "145466.00"),
+            (6, "156566.00"),
+            (7, "167666.00"),
+            (8, "178766.00"),
+        ],
+    )
+    def test_the_median_is_for_the_filer_and_everyone_living_with_them(
+        self, session, median_income, size, median
+    ):
         IncomeInfo.objects.create(
             session=session,
-            marital_status="single",
-            number_of_dependents=0,
+            marital_status="not_married",
             monthly_gross_wages=Decimal("5000.00"),
         )
+        _household_list(session, [CHILD] * (size - 1))
 
-        calculator = MeansTestCalculator(session)
-        result = calculator.calculate()
+        result = MeansTestCalculator(session).calculate()
 
-        assert result["family_size"] == 1
-        assert result["median_income_threshold"] == Decimal("71304.00")
-
-    def test_household_size_2_married_joint_no_dependents(self, session, median_income):
-        """Test family size 2: married joint, 0 dependents."""
-        IncomeInfo.objects.create(
-            session=session,
-            marital_status="married_joint",
-            number_of_dependents=0,
-            monthly_gross_wages=Decimal("7000.00"),
+        assert (result["family_size"], result["median_income_threshold"]) == (
+            size,
+            Decimal(median),
         )
-
-        calculator = MeansTestCalculator(session)
-        result = calculator.calculate()
-
-        assert result["family_size"] == 2
-        assert result["median_income_threshold"] == Decimal("91526.00")
-
-    def test_household_size_3_single_two_dependents(self, session, median_income):
-        """Test family size 3: single, 2 dependents."""
-        IncomeInfo.objects.create(
-            session=session,
-            marital_status="single",
-            number_of_dependents=2,
-            monthly_gross_wages=Decimal("8000.00"),
-        )
-
-        calculator = MeansTestCalculator(session)
-        result = calculator.calculate()
-
-        assert result["family_size"] == 3
-        assert result["median_income_threshold"] == Decimal("110712.00")
-
-    def test_household_size_4_married_separate_two_dependents(self, session, median_income):
-        """Test family size 4: married separate, 2 dependents."""
-        IncomeInfo.objects.create(
-            session=session,
-            marital_status="married_separate",
-            number_of_dependents=2,
-            monthly_gross_wages=Decimal("10000.00"),
-        )
-
-        calculator = MeansTestCalculator(session)
-        result = calculator.calculate()
-
-        assert result["family_size"] == 4
-        assert result["median_income_threshold"] == Decimal("134366.00")
-
-    def test_household_size_5_married_joint_three_dependents(self, session, median_income):
-        """Test family size 5: married joint, 3 dependents."""
-        IncomeInfo.objects.create(
-            session=session,
-            marital_status="married_joint",
-            number_of_dependents=3,
-            monthly_gross_wages=Decimal("11000.00"),
-        )
-
-        calculator = MeansTestCalculator(session)
-        result = calculator.calculate()
-
-        assert result["family_size"] == 5
-        assert result["median_income_threshold"] == Decimal("145466.00")
-
-    def test_household_size_6_married_separate_four_dependents(self, session, median_income):
-        """Test family size 6: married separate, 4 dependents."""
-        IncomeInfo.objects.create(
-            session=session,
-            marital_status="married_separate",
-            number_of_dependents=4,
-            monthly_gross_wages=Decimal("12000.00"),
-        )
-
-        calculator = MeansTestCalculator(session)
-        result = calculator.calculate()
-
-        assert result["family_size"] == 6
-        assert result["median_income_threshold"] == Decimal("156566.00")
-
-    def test_household_size_7_single_six_dependents(self, session, median_income):
-        """Test family size 7: single, 6 dependents."""
-        IncomeInfo.objects.create(
-            session=session,
-            marital_status="single",
-            number_of_dependents=6,
-            monthly_gross_wages=Decimal("13000.00"),
-        )
-
-        calculator = MeansTestCalculator(session)
-        result = calculator.calculate()
-
-        assert result["family_size"] == 7
-        assert result["median_income_threshold"] == Decimal("167666.00")
-
-    def test_household_size_8_married_joint_six_dependents(self, session, median_income):
-        """Test family size 8: married joint, 6 dependents."""
-        IncomeInfo.objects.create(
-            session=session,
-            marital_status="married_joint",
-            number_of_dependents=6,
-            monthly_gross_wages=Decimal("14000.00"),
-        )
-
-        calculator = MeansTestCalculator(session)
-        result = calculator.calculate()
-
-        assert result["family_size"] == 8
-        assert result["median_income_threshold"] == Decimal("178766.00")
 
 
 @pytest.mark.django_db
@@ -431,8 +374,7 @@ class TestFeeWaiverQualification:
         # Income: $3,000/month (below 60%)
         IncomeInfo.objects.create(
             session=session,
-            marital_status="single",
-            number_of_dependents=0,
+            marital_status="not_married",
             monthly_gross_wages=Decimal("3000.00"),
         )
 
@@ -446,8 +388,7 @@ class TestFeeWaiverQualification:
         """Test that zero income qualifies for fee waiver."""
         IncomeInfo.objects.create(
             session=session,
-            marital_status="single",
-            number_of_dependents=0,
+            marital_status="not_married",
             monthly_gross_wages=Decimal("0.00"),
         )
 
@@ -469,8 +410,7 @@ class TestFeeWaiverNonQualification:
         # Income: $3,565.20/month → annualized exactly at the 60% threshold
         IncomeInfo.objects.create(
             session=session,
-            marital_status="single",
-            number_of_dependents=0,
+            marital_status="not_married",
             monthly_gross_wages=Decimal("3565.20"),
         )
 
@@ -488,8 +428,7 @@ class TestFeeWaiverNonQualification:
         # Income: $50,000/year = $4,166.67/month (above 60%, below 100%)
         IncomeInfo.objects.create(
             session=session,
-            marital_status="single",
-            number_of_dependents=0,
+            marital_status="not_married",
             monthly_gross_wages=Decimal("4166.67"),
         )
 
@@ -512,8 +451,7 @@ class TestTotalSavedBeforeIncomeBySource:
     def test_income_not_split_by_source_is_refused(self, session, median_income, months):
         IncomeInfo.objects.create(
             session=session,
-            marital_status="single",
-            number_of_dependents=0,
+            marital_status="not_married",
             monthly_income=months,
         )
 
@@ -533,8 +471,7 @@ class TestUPLProhibitedPhrases:
         """Test that passing means test message contains no UPL prohibited phrases."""
         IncomeInfo.objects.create(
             session=session,
-            marital_status="single",
-            number_of_dependents=0,
+            marital_status="not_married",
             monthly_gross_wages=Decimal("5000.00"),
         )
 
@@ -553,8 +490,7 @@ class TestUPLProhibitedPhrases:
         """Test that failing means test message contains no UPL prohibited phrases."""
         IncomeInfo.objects.create(
             session=session,
-            marital_status="single",
-            number_of_dependents=0,
+            marital_status="not_married",
             monthly_gross_wages=Decimal("80000.00"),
         )
 
@@ -573,8 +509,7 @@ class TestUPLProhibitedPhrases:
         """Test that fee waiver message contains no UPL prohibited phrases."""
         IncomeInfo.objects.create(
             session=session,
-            marital_status="single",
-            number_of_dependents=0,
+            marital_status="not_married",
             monthly_gross_wages=Decimal("3000.00"),
         )
 
@@ -611,8 +546,7 @@ class TestUPLProhibitedPhrases:
         """Test that messages use permitted informational language."""
         IncomeInfo.objects.create(
             session=session,
-            marital_status="single",
-            number_of_dependents=0,
+            marital_status="not_married",
             monthly_gross_wages=Decimal("5000.00"),
         )
 
@@ -635,8 +569,7 @@ class TestRecalculationIdempotency:
         """Test that calling calculate() twice on same session creates only 1 MeansTest."""
         IncomeInfo.objects.create(
             session=session,
-            marital_status="single",
-            number_of_dependents=0,
+            marital_status="not_married",
             monthly_gross_wages=Decimal("5000.00"),
         )
 
@@ -660,8 +593,7 @@ class TestRecalculationIdempotency:
         """Test that recalculation updates existing MeansTest record with new data."""
         income_info = IncomeInfo.objects.create(
             session=session,
-            marital_status="single",
-            number_of_dependents=0,
+            marital_status="not_married",
             monthly_gross_wages=Decimal("5000.00"),
         )
 
@@ -689,8 +621,7 @@ class TestRecalculationIdempotency:
         """Test that recalculation updates district if session district changes."""
         IncomeInfo.objects.create(
             session=session,
-            marital_status="single",
-            number_of_dependents=0,
+            marital_status="not_married",
             monthly_gross_wages=Decimal("5000.00"),
         )
 
@@ -749,8 +680,7 @@ class TestIncomeFromSeveralSources:
         # 3000 + 1000 + 1000 = 5000: below the $5,942/month median for one person
         IncomeInfo.objects.create(
             session=session,
-            marital_status="single",
-            number_of_dependents=0,
+            marital_status="not_married",
             monthly_gross_wages=Decimal("3000.00"),
             monthly_pension=Decimal("1000.00"),
             monthly_child_support=Decimal("1000.00"),
@@ -771,8 +701,7 @@ class TestDetailedBreakdown:
         """Test that get_detailed_breakdown() before calculate() raises ValueError."""
         IncomeInfo.objects.create(
             session=session,
-            marital_status="single",
-            number_of_dependents=0,
+            marital_status="not_married",
             monthly_gross_wages=Decimal("5000.00"),
         )
 
@@ -790,8 +719,7 @@ class TestDetailedBreakdown:
         # above the 60% fee waiver threshold ($42,782.40)
         IncomeInfo.objects.create(
             session=session,
-            marital_status="single",
-            number_of_dependents=0,
+            marital_status="not_married",
             monthly_gross_wages=Decimal("5000.00"),
         )
 
@@ -822,9 +750,10 @@ class TestDetailedBreakdown:
         }
 
         # Verify family composition
-        assert breakdown["family_composition"]["marital_status"] == "single"
-        assert breakdown["family_composition"]["number_of_dependents"] == 0
-        assert breakdown["family_composition"]["total_family_size"] == 1
+        assert breakdown["family_composition"] == {
+            "marital_status": "not_married",
+            "total_family_size": 1,
+        }
 
         # Verify means test threshold: dated by the median table, not by the calculation
         assert breakdown["means_test_threshold"]["median_income"] == 71304.00
@@ -850,8 +779,7 @@ class TestAnnualizedComparison:
         # $10,000/month = $120,000/year > $71,304 median for family of 1
         IncomeInfo.objects.create(
             session=session,
-            marital_status="single",
-            number_of_dependents=0,
+            marital_status="not_married",
             monthly_gross_wages=Decimal("10000.00"),
         )
 
@@ -863,18 +791,18 @@ class TestAnnualizedComparison:
 
 
 @pytest.mark.django_db
-class TestHouseholdSizeFromDebtorInfo:
-    """The wizard collects household_size on the debtor step; the means test
-    must prefer it over the income-derived family size."""
+class TestTheOldHouseholdSizeBox:
+    """Step 1's old household-size box is no longer read: the household list sizes the
+    median (3e1 spec §4.3)."""
 
-    def test_debtor_household_size_overrides_income_derivation(self, session, median_income):
+    def test_a_stored_household_size_of_4_is_no_longer_read(self, session, median_income):
         DebtorInfo.objects.create(
             session=session,
             first_name="Test",
             last_name="User",
             ssn="900112222",
             date_of_birth=date(1990, 1, 1),
-            phone="3125550000",
+            phone="3125550142",
             email="test@example.com",
             street_address="1 Main St",
             city="Chicago",
@@ -882,21 +810,20 @@ class TestHouseholdSizeFromDebtorInfo:
             zip_code="60601",
             household_size=4,
         )
-        # Income-derived family size would be 1 (single, no dependents)
+        # The household list says no one else lives there: the fixture's []
         IncomeInfo.objects.create(
             session=session,
-            marital_status="single",
-            number_of_dependents=0,
+            marital_status="not_married",
             monthly_gross_wages=Decimal("9000.00"),
         )
 
         result = MeansTestCalculator(session).calculate()
 
-        # $108,000/year: above the family-of-1 median ($71,304) but below the
-        # family-of-4 median ($134,366) — passes only because the debtor-step
-        # household size drives the lookup
-        assert result["family_size"] == 4
-        assert result["passes_means_test"] is True
+        # $108,000/year: below the family-of-4 median ($134,366) the old box would have
+        # looked up, but above the family-of-1 median ($71,304) the list gives
+        assert result["family_size"] == 1
+        assert result["median_income_threshold"] == Decimal("71304.00")
+        assert result["passes_means_test"] is False
 
 
 @pytest.fixture
@@ -924,10 +851,10 @@ def session_with_above_median_income(user, district, median_income):
     )
     IncomeInfo.objects.create(
         session=s,
-        marital_status="single",
-        number_of_dependents=0,
+        marital_status="not_married",
         monthly_gross_wages=Decimal("7000.00"),
     )
+    answer_household(s)
     return s
 
 
@@ -956,10 +883,10 @@ def session_with_below_median_income(user, district, median_income):
     )
     IncomeInfo.objects.create(
         session=s,
-        marital_status="single",
-        number_of_dependents=0,
+        marital_status="not_married",
         monthly_gross_wages=Decimal("5000.00"),
     )
+    answer_household(s)
     return s
 
 
@@ -1101,9 +1028,9 @@ class TestAboveMedianEndToEnd:
         IncomeInfo.objects.create(
             session=session,
             monthly_gross_wages=Decimal("6000.00"),
-            marital_status="single",
-            number_of_dependents=0,
+            marital_status="not_married",
         )
+        answer_household(session)
         ExpenseInfo.objects.create(
             session=session,
             rent_or_mortgage=Decimal("1500"),

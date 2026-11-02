@@ -22,10 +22,11 @@ export function FeeWaiverPage() {
   const [savedRead, setSavedRead] = useState<'pending' | 'done' | 'failed'>('pending');
   const [readAttempt, setReadAttempt] = useState(0);
 
-  // Pre-fill the household size the filer already gave during intake — they only need
-  // to confirm it. Take-home pay is never pre-filled: the intake asks income before taxes.
+  // Pre-fill Form 103B line 1's count, which the server works out from the household list.
+  // The filer can change it. Take-home pay is never pre-filled: the intake asks income before
+  // taxes.
   useEffect(() => {
-    const hh = session?.debtor_info?.household_size;
+    const hh = session?.household?.fee_waiver_household_size;
     if (hh != null) setHouseholdSize((cur) => cur || String(hh));
   }, [session]);
 

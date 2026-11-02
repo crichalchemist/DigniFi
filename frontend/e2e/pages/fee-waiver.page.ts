@@ -3,13 +3,14 @@
  * completion for fee-waiver-eligible sessions (continues to /sofa on submit).
  */
 
-import type { Page } from '@playwright/test';
+import { expect, type Page } from '@playwright/test';
 
 export class FeeWaiverPage {
   constructor(private page: Page) {}
 
   /** noncashAssistance is the "What kind?" answer, or null to answer No */
   async submit(householdSize: number, takeHomePay: number, noncashAssistance: string | null) {
+    await expect(this.page.getByLabel(/household size/i)).toHaveValue(String(householdSize));
     await this.page.getByLabel(/household size/i).fill(String(householdSize));
     await this.page.getByLabel(/take-home pay/i).fill(String(takeHomePay));
     const question = this.page.getByRole('group', { name: /non-cash help/i });

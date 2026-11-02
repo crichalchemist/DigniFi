@@ -19,9 +19,11 @@ from apps.intake.models import (
     DebtInfo,
     DebtorInfo,
     ExpenseInfo,
+    Household,
     IncomeInfo,
     IntakeSession,
 )
+from apps.intake.tests.builders import answer_household
 
 User = get_user_model()
 
@@ -395,10 +397,10 @@ class TestIntakeSessionCompletion:
         # Add income info
         IncomeInfo.objects.create(
             session=session,
-            marital_status="single",
-            number_of_dependents=0,
+            marital_status="not_married",
             monthly_gross_wages=Decimal("5000.00"),
         )
+        answer_household(session)
 
         # Add expense info
         ExpenseInfo.objects.create(
@@ -429,10 +431,10 @@ class TestIntakeSessionCompletion:
         # Add income and expense but not debtor
         IncomeInfo.objects.create(
             session=session,
-            marital_status="single",
-            number_of_dependents=0,
+            marital_status="not_married",
             monthly_gross_wages=Decimal("5000.00"),
         )
+        answer_household(session)
 
         ExpenseInfo.objects.create(
             session=session,
@@ -462,6 +464,8 @@ class TestIntakeSessionCompletion:
 
     def test_complete_session_missing_income_info(self, api_client, session):
         """Test completing session without income info returns 400."""
+        # Step 1 was saved, with its county; step 2 never was.
+        Household.objects.create(session=session, county="Cook")
         # Add debtor and expense but not income
         DebtorInfo.objects.create(
             session=session,
@@ -495,7 +499,18 @@ class TestIntakeSessionCompletion:
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert response.data["errors"] == [
-            {"step": "income_info", "message": "Enter your income by source on the Income step."}
+            {
+                "step": "income_info",
+                "message": "Answer the question about marriage on the Income step.",
+            },
+            {
+                "step": "income_info",
+                "message": (
+                    "List the people in your home and the people you support on the "
+                    "Income step, or tell us no one does."
+                ),
+            },
+            {"step": "income_info", "message": "Enter your income by source on the Income step."},
         ]
 
     def test_complete_session_missing_expense_info(self, api_client, session):
@@ -515,10 +530,10 @@ class TestIntakeSessionCompletion:
 
         IncomeInfo.objects.create(
             session=session,
-            marital_status="single",
-            number_of_dependents=0,
+            marital_status="not_married",
             monthly_gross_wages=Decimal("5000.00"),
         )
+        answer_household(session)
 
         url = reverse("intake-session-complete", args=[session.id])
         response = api_client.post(url)
@@ -638,10 +653,10 @@ class TestMeansTestCalculation:
 
         IncomeInfo.objects.create(
             session=session,
-            marital_status="single",
-            number_of_dependents=0,
+            marital_status="not_married",
             monthly_gross_wages=Decimal("5000.00"),
         )
+        answer_household(session)
 
         ExpenseInfo.objects.create(
             session=session,
@@ -767,10 +782,10 @@ class TestSessionSummary:
         # Add income info
         IncomeInfo.objects.create(
             session=session,
-            marital_status="single",
-            number_of_dependents=0,
+            marital_status="not_married",
             monthly_gross_wages=Decimal("5000.00"),
         )
+        answer_household(session)
 
         # Add an asset
         AssetInfo.objects.create(

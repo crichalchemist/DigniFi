@@ -770,6 +770,11 @@ def test_a_group_continued_on_an_attached_sheet_passes(schedule_a_b_with_sheet):
     assert _errors("schedule_a_b") == []
 
 
+def test_a_group_of_the_households_dependents_passes(schedule_j_with_dependents):
+    # Line 2 as 3e1 declares it: a household list, its "lives with you?" column from boxes.
+    assert _errors("schedule_j") == []
+
+
 def test_a_sheet_line_too_wide_for_a_later_row_is_reported(schedule_a_b_with_sheet):
     # "Line 5", the first line, fits the 36 pt line column; "Line 10" doesn't, so every
     # Generate of ten rows or more would fail. Row 9999's line is the widest checked.
@@ -806,7 +811,7 @@ def _makes_asked_on_ask_page(d):
 
 
 def _community_property_boxes(d):
-    # Each vehicle's community-property box, ticked from a list: a sheet has no box to tick.
+    # Each vehicle's community-property box, ticked from a list.
     for row, (page, box) in enumerate([(2, ""), (2, "_2"), (3, "_3"), (3, "_4")], start=1):
         d["fields"].append(
             {
@@ -842,6 +847,13 @@ def _a_column_of_boxes(d):
             "width": 100,
         }
     )
+
+
+def _a_column_of_boxes_sharing_a_state(d):
+    _a_column_of_boxes(d)
+    for f in d["fields"]:
+        if f["repeat"] == "ab_line_3" and f["type"] == "checkbox":
+            f["choices"] = {"yes": "/On", "no": "/On"}
 
 
 def _ab_slot(**binding):
@@ -927,7 +939,7 @@ _AB = "schedule_a_b: group 'ab_line_3'"
             (
                 "forms.E007",
                 f"{_AB}: sheet column 'Make' binds 'answer:schedule_a_b.make', "
-                "not a sofa.<collection>[].<attr> list",
+                "not a sofa.<collection>[].<attr> or household.dependents[].<attr> list",
             ),
         ),
         (
@@ -940,11 +952,21 @@ _AB = "schedule_a_b: group 'ab_line_3'"
             ),
         ),
         (
+            # One box per row: its No would print blank on the sheet, the same as no answer.
             _a_column_of_boxes,
             (
                 "forms.E007",
-                f"{_AB}: sheet column 'Community property' binds a box's answer, "
-                "which a sheet can't tick",
+                f"{_AB}: sheet column 'Community property' binds a box that doesn't give "
+                "every answer its own state",
+            ),
+        ),
+        (
+            # Two answers ticking one box: the sheet couldn't tell them apart.
+            _a_column_of_boxes_sharing_a_state,
+            (
+                "forms.E007",
+                f"{_AB}: sheet column 'Community property' binds a box that doesn't give "
+                "every answer its own state",
             ),
         ),
         (
@@ -957,17 +979,8 @@ _AB = "schedule_a_b: group 'ab_line_3'"
             ),
         ),
         (
-            # Rows 1 to 4 tick their boxes on the form; a fifth row has no box to tick.
-            _community_property_boxes,
-            (
-                "forms.E007",
-                f"{_AB}: a box slot binds 'sofa.creditor_payments[].dates_of_payments', "
-                "and a sheet can't tick a box",
-            ),
-        ),
-        (
-            # A box in the Make column's list, its answer not yet mapped to a state: once
-            # mapped, it would tick a box the sheet doesn't have.
+            # A box in the Make column's list, its answer not yet mapped to a state: the
+            # sheet would have no words to print for it.
             _ab_slot(
                 pdf_field="Check if this is community property see",
                 type="checkbox",
@@ -978,15 +991,8 @@ _AB = "schedule_a_b: group 'ab_line_3'"
             ),
             (
                 "forms.E007",
-                f"{_AB}: sheet column 'Make' binds a box's answer, which a sheet can't tick",
-            ),
-        ),
-        (
-            _unmapped_community_property_boxes,
-            (
-                "forms.E007",
-                f"{_AB}: a box slot binds 'sofa.creditor_payments[].dates_of_payments', "
-                "and a sheet can't tick a box",
+                f"{_AB}: sheet column 'Make' binds a box that doesn't give every answer its "
+                "own state",
             ),
         ),
         (
@@ -1057,10 +1063,9 @@ _AB = "schedule_a_b: group 'ab_line_3'"
         "a column of no list",
         "a column of another list",
         "a column of boxes",
+        "a column of boxes sharing a state",
         "a slot with no column",
-        "a box slot",
         "a box slot not yet mapped, in a column",
-        "a box slot not yet mapped",
         "a constant box slot",
         "a derived slot",
         "a first line wider than the line column",
@@ -1076,6 +1081,23 @@ def test_a_sheet_that_cannot_print_its_rows_whole_is_reported(
 ):
     _edit(schedule_a_b_with_sheet, "schedule_a_b", change)
     assert _errors("schedule_a_b") == [error]
+
+
+@pytest.mark.parametrize(
+    "change",
+    [_community_property_boxes, _unmapped_community_property_boxes],
+    ids=["mapped", "not yet mapped"],
+)
+def test_a_box_slot_no_column_prints_is_refused_as_a_text_slot_is(schedule_a_b_with_sheet, change):
+    # Rows 1 to 4 tick their boxes on the form; a fifth row's answer would have no column.
+    _edit(schedule_a_b_with_sheet, "schedule_a_b", change)
+    assert _errors("schedule_a_b") == [
+        (
+            "forms.E007",
+            f"{_AB}: no sheet column prints 'sofa.creditor_payments[].dates_of_payments', "
+            "which a slot of the group binds",
+        )
+    ]
 
 
 def test_a_template_that_doesnt_match_its_index_is_reported_not_raised(schema_copy, index_copy):

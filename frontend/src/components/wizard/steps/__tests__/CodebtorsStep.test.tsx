@@ -66,4 +66,14 @@ describe('CodebtorsStep', () => {
     expect(nameBox).toBeInvalid();
     expect(nameBox).toHaveAccessibleDescription("Please enter this person's full name");
   });
+
+  it("the codebtors step no longer promises a joint filer's spouse appears", () => {
+    render(
+      <CodebtorsStep initialData={[]} onDataChange={() => {}} onValidationChange={() => {}} />
+    );
+    expect(
+      screen.getByText('List anyone who is jointly liable on any of your debts.')
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/filed jointly/i)).toBeNull();
+  });
 });

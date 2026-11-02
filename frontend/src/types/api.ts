@@ -38,6 +38,8 @@ export interface IntakeSession {
   expense_info?: ExpenseInfo;
   assets?: AssetInfo[];
   debts?: DebtInfo[];
+  household?: Household | null;
+  spouse_income?: SpouseIncome | null;
   form_answers?: Record<string, unknown>;
   sofa_report?: Record<string, unknown>;
 }
@@ -60,17 +62,6 @@ export interface DebtorInfo {
   zip_code: string;
   phone: string;
   email: string;
-
-  // Household information
-  household_size: number;
-  filing_type: 'individual' | 'joint';
-
-  // Co-debtor information (for joint filings)
-  co_debtor_first_name: string;
-  co_debtor_middle_name: string;
-  co_debtor_last_name: string;
-  co_debtor_ssn: string;
-  co_debtor_date_of_birth: string;
 }
 
 export interface IncomeInfo {
@@ -94,6 +85,9 @@ export interface IncomeInfo {
   monthly_alimony?: number | null;
   monthly_other_income?: number | null;
 
+  // The marriage answer, null until the filer gives one
+  marital_status?: MaritalStatus | null;
+
   // Calculated field: the ten added up, null when the filer gave none of them
   total_monthly_income: number | null;
 }
@@ -115,6 +109,53 @@ export const INCOME_FIELDS = [
   'monthly_alimony',
   'monthly_other_income',
 ] as const;
+
+/** The four answers to the marriage question on the Income step. */
+export type MaritalStatus =
+  | 'not_married'
+  | 'married_spouse_filing'
+  | 'married_together'
+  | 'married_separately';
+
+/** How a person on the household list is related to the filer. Never free text. */
+export type Relationship =
+  | 'spouse'
+  | 'son'
+  | 'daughter'
+  | 'stepchild'
+  | 'grandchild'
+  | 'parent'
+  | 'sibling'
+  | 'other_relative'
+  | 'unmarried_partner'
+  | 'roommate'
+  | 'other';
+
+/** One person in the filer's home or supported by the filer. A null is an unanswered box. */
+export interface HouseholdMember {
+  id?: number;
+  relationship: Relationship | null;
+  age: number | null;
+  lives_with_you: boolean | null;
+  claimed_or_supported: boolean | null;
+  // On the spouse's row only
+  spouse_is_dependent?: boolean | null;
+}
+
+/**
+ * The county (step 1) and the household list (Income step). A null `members` means the filer
+ * never answered; an empty list means no one lives with them or depends on them.
+ */
+export interface Household {
+  county: string | null;
+  members: HouseholdMember[] | null;
+  // Counted by the server
+  readonly family_size?: number | null;
+  readonly fee_waiver_household_size?: number | null;
+}
+
+/** A married filer's spouse's ten monthly income amounts, under the same names as the filer's. */
+export type SpouseIncome = Partial<Record<(typeof INCOME_FIELDS)[number], number | null>>;
 
 export interface ExpenseInfo {
   id: number;

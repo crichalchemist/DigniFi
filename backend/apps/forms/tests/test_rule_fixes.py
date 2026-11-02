@@ -161,8 +161,12 @@ def test_a_precondition_is_read_by_its_name_or_as_an_attribute(source, raises):
     "rule,fix",
     [
         ("last_name", {"step": "debtor_info"}),
-        ("family_size", {"step": "debtor_info"}),  # household size is asked with the name
+        ("family_size", {"step": "income_info"}),  # the household list is on the Income step
+        ("county", {"step": "debtor_info"}),  # chosen on Your Information since 3e1
         ("cmi", {"step": "income_info"}),
+        ("filer_cmi", {"step": "income_info"}),
+        ("spouse_cmi", {"step": "income_info"}),
+        ("schedule_i_income_total_spouse", {"step": "income_info"}),
         ("schedule_j_monthly_net_income", {"step": "income_info"}),  # the earlier of two
         ("schedule_j_utilities_label", {"step": "expense_info"}),
         ("fee_waiver_monthly_expenses", {"step": "expense_info"}),  # 103B line 6 is J 22c
@@ -184,12 +188,22 @@ def test_a_rule_links_to_where_its_input_is_entered(rule, fix):
         (_field("derived", rule="last_name"), {"step": "debtor_info"}),
         (_field("asked", binding="answer:form_107.gift_description"), {"page": "/ask/form_107"}),
         (_field("asked", binding="sofa.creditor_payments[].creditor_name"), {"page": "/sofa"}),
+        (_field("asked", binding="household.dependents[].relationship"), {"step": "income_info"}),
         (_field("ingested", ingest_key="paystub.employer_name"), {"page": "/documents"}),
         (_field("db_aggregate", ingest_key="paystub.employer_name"), {"page": "/documents"}),
         (_field("constant", value="Individual"), {}),
         (_field("signature"), {}),
     ],
-    ids=["derived", "answer", "sofa", "ingested", "db_aggregate", "constant", "signature"],
+    ids=[
+        "derived",
+        "answer",
+        "sofa",
+        "household",
+        "ingested",
+        "db_aggregate",
+        "constant",
+        "signature",
+    ],
 )
 def test_a_refusal_sends_the_filer_to_where_the_value_came_from(field, fix):
     assert fix_for(field) == fix

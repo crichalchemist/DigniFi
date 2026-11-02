@@ -33,30 +33,31 @@ You ARE Andrés Kettleby. Navigate DigniFi as he would.
 
 ## Your Data (enter this exactly)
 
-| Field                                                                   | Value                                      |
-| ----------------------------------------------------------------------- | ------------------------------------------ |
-| First name                                                              | Andrés                                     |
-| Middle name                                                             | J                                          |
-| Last name                                                               | Kettleby                                   |
-| SSN                                                                     | 900-66-0006                                |
-| Date of birth                                                           | 04/12/1988                                 |
-| Phone                                                                   | 630-555-0161                               |
-| Email                                                                   | andres.kettleby@demo.dignifi.org           |
-| Address                                                                 | 1418 Marquette Ave Apt 2, Aurora, IL 60505 |
-| Household Size                                                          | 2                                          |
-| Filing Type                                                             | Individual (filing alone)                  |
-| What you keep from driving each month (Other Monthly Income box)        | $3,370                                     |
-| Every other income box                                                  | $0                                         |
-| Rent                                                                    | $1,150                                     |
-| Utilities: electric, gas, internet, your share of the phone             | $210                                       |
-| Vehicle payment (Car Payment box): the Corolla lease                    | $389                                       |
-| Vehicle insurance: your personal policy                                 | $165                                       |
-| Vehicle maintenance (Gas & Transportation box): school runs and errands | $60                                        |
-| Food                                                                    | $520                                       |
-| Clothing                                                                | $60                                        |
-| Medical                                                                 | $45                                        |
-| Childcare: after-school program                                         | $180                                       |
-| Every other expense box                                                 | $0                                         |
+| Field                                                                   | Value                                                                                         |
+| ----------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| First name                                                              | Andrés                                                                                        |
+| Middle name                                                             | J                                                                                             |
+| Last name                                                               | Kettleby                                                                                      |
+| SSN                                                                     | 900-66-0006                                                                                   |
+| Date of birth                                                           | 04/12/1988                                                                                    |
+| Phone                                                                   | 630-555-0161                                                                                  |
+| Email                                                                   | andres.kettleby@demo.dignifi.org                                                              |
+| Address                                                                 | 1418 Marquette Ave Apt 2, Aurora, IL 60505                                                    |
+| County                                                                  | Kane                                                                                          |
+| Your marriage (Income step)                                             | Not married                                                                                   |
+| Person 1 in your home or supported by you                               | Daughter · Age 9 · Lives with you? Yes · Claimed on your tax return, or supported by you? Yes |
+| What you keep from driving each month (Other Monthly Income box)        | $3,370                                                                                        |
+| Every other income box                                                  | $0                                                                                            |
+| Rent                                                                    | $1,150                                                                                        |
+| Utilities: electric, gas, internet, your share of the phone             | $210                                                                                          |
+| Vehicle payment (Car Payment box): the Corolla lease                    | $389                                                                                          |
+| Vehicle insurance: your personal policy                                 | $165                                                                                          |
+| Vehicle maintenance (Gas & Transportation box): school runs and errands | $60                                                                                           |
+| Food                                                                    | $520                                                                                          |
+| Clothing                                                                | $60                                                                                           |
+| Medical                                                                 | $45                                                                                           |
+| Childcare: after-school program                                         | $180                                                                                          |
+| Every other expense box                                                 | $0                                                                                            |
 
 **Assets:**
 

@@ -7,10 +7,24 @@ import pytest
 from django.contrib.auth import get_user_model
 
 from apps.districts.models import District
+from apps.eligibility.cmi import IncomeStepGap
 from apps.forms.services.derivations import DERIVATIONS, PREDICATES
 from apps.intake.models import DebtorInfo, IncomeInfo, IntakeSession
+from apps.intake.tests.builders import answer_household
 
 User = get_user_model()
+
+HOUSEHOLD_LIST = (
+    "List the people in your home and the people you support on the Income step, "
+    "or tell us no one does."
+)
+# Lives with the filer, not claimed or supported.
+ROOMMATE_29 = {
+    "relationship": "roommate",
+    "age": 29,
+    "lives_with_you": True,
+    "claimed_or_supported": False,
+}
 
 
 @pytest.fixture
@@ -52,8 +66,17 @@ def test_full_name_includes_middle(session):
     assert DERIVATIONS["full_name"](session) == "Maria A. Torres"
 
 
-def test_family_size_reads_household_size(session):
-    assert DERIVATIONS["family_size"](session) == "3"
+def test_family_size_counts_the_filer_and_everyone_at_home_not_the_old_box(session):
+    IncomeInfo.objects.create(session=session, monthly_gross_wages=Decimal("100.00"))
+    answer_household(session, members=[ROOMMATE_29])
+    assert DERIVATIONS["family_size"](session) == "2"
+
+
+def test_family_size_refuses_until_the_household_list_is_answered(session):
+    # no Household: the list was never answered
+    with pytest.raises(IncomeStepGap) as refused:
+        DERIVATIONS["family_size"](session)
+    assert (str(refused.value), refused.value.step) == (HOUSEHOLD_LIST, "income_info")
 
 
 def test_chapter_constant(session):
@@ -125,6 +148,7 @@ TEN_SOURCES = {
 # (spec §6.2's "Returns"). Moved rules keep names that describe their old lines (§6.1).
 SWITCHED_RULES = {
     "cmi": [field for field in TEN_SOURCES if field != "monthly_social_security"],
+    "filer_cmi": [field for field in TEN_SOURCES if field != "monthly_social_security"],
     "schedule_i_net_wages_debtor1": ["monthly_gross_wages", "monthly_tips"],
     "schedule_i_rental_debtor1": ["monthly_rental_income"],
     "schedule_i_child_support_debtor1": ["monthly_child_support", "monthly_alimony"],
@@ -152,6 +176,7 @@ SWITCHED_RULES = {
     "line3_alimony": ["monthly_alimony"],
     # Schedule I line 12 and Schedule J 23a, which copies it: Social Security included (C1)
     "schedule_i_income_total": list(TEN_SOURCES),
+    "schedule_i_income_total_debtor1": list(TEN_SOURCES),
     "schedule_j_total_income": list(TEN_SOURCES),
 }
 
@@ -164,7 +189,9 @@ def test_each_switched_income_rule_returns_its_own_sources_figure(session, rule,
     assert DERIVATIONS[rule](session) == f"{expected:.2f}"
 
 
-@pytest.mark.parametrize("rule", [rule for rule in SWITCHED_RULES if rule != "cmi"])
+@pytest.mark.parametrize(
+    "rule", [rule for rule in SWITCHED_RULES if rule not in ("cmi", "filer_cmi")]
+)
 def test_an_income_rule_prints_blank_when_the_filer_gave_none_of_its_sources(session, rule):
     # Every other source was given, so the rule must not borrow one of them.
     given = {f: a for f, a in TEN_SOURCES.items() if f not in SWITCHED_RULES[rule]}
@@ -178,6 +205,79 @@ def test_an_income_source_typed_as_zero_prints_zero(session, rule):
     IncomeInfo.objects.create(session=session, **{field: Decimal("0") for field in TEN_SOURCES})
 
     assert DERIVATIONS[rule](session) == "0.00"
+
+
+SPOUSE_AT_HOME = {
+    "relationship": "spouse",
+    "age": 45,
+    "lives_with_you": True,
+    "claimed_or_supported": True,
+    "spouse_is_dependent": False,
+}
+# Each spouse rule and the filer rule it mirrors: the same sources, the spouse's row.
+SPOUSE_TWINS = {
+    "line1_wages_spouse": "line1_wages",
+    "line3_alimony_spouse": "line3_alimony",
+    "line6b_child_support_alimony_spouse": "line6b_child_support_alimony",
+    "line3_real_property_income_spouse": "line3_real_property_income",
+    "line6a_unemployment_spouse": "line6a_unemployment",
+    "line5a_pension_retirement_spouse": "line5a_pension_retirement",
+    "line7_other_income_spouse": "line7_other_income",
+    "spouse_cmi": "filer_cmi",
+    **{
+        f"schedule_i_{n}_spouse": f"schedule_i_{n}_debtor1"
+        for n in (
+            "net_wages",
+            "overtime",
+            "gross_income",
+            "rental",
+            "child_support",
+            "unemployment",
+            "social_security",
+            "pension",
+            "other_income",
+            "other_income_total",
+            "income_total",
+        )
+    },
+}
+
+
+def _spouse_at_home(session, marital_status="married_together", **spouse):
+    # The filer's ten are typed $0, so a spouse rule reading the filer's row prints 0.00.
+    IncomeInfo.objects.create(session=session, **dict.fromkeys(TEN_SOURCES, Decimal("0")))
+    answer_household(
+        session, marital_status=marital_status, members=[SPOUSE_AT_HOME], spouse_income=spouse
+    )
+
+
+@pytest.mark.parametrize("rule,twin", list(SPOUSE_TWINS.items()))
+def test_a_spouse_at_home_prints_their_own_figure_on_each_line_the_filer_does(session, rule, twin):
+    _spouse_at_home(session, **TEN_SOURCES)
+    expected = sum((TEN_SOURCES[f] for f in SWITCHED_RULES[twin]), Decimal("0"))
+    assert DERIVATIONS[rule](session) == f"{expected:.2f}"
+
+
+@pytest.mark.parametrize("rule", [r for r in SPOUSE_TWINS if r != "spouse_cmi"])
+def test_a_spouse_line_prints_blank_when_the_spouse_gave_none_of_its_sources(session, rule):
+    _spouse_at_home(
+        session,
+        **{f: a for f, a in TEN_SOURCES.items() if f not in SWITCHED_RULES[SPOUSE_TWINS[rule]]},
+    )
+    assert DERIVATIONS[rule](session) == ""
+
+
+@pytest.mark.parametrize("rule", list(SPOUSE_TWINS))
+def test_a_spouse_source_typed_as_zero_prints_zero(session, rule):
+    _spouse_at_home(session, **dict.fromkeys(TEN_SOURCES, Decimal("0")))
+    assert DERIVATIONS[rule](session) == "0.00"
+
+
+@pytest.mark.parametrize("answer", ["married_separately", "not_married"])
+@pytest.mark.parametrize("rule", list(SPOUSE_TWINS))
+def test_a_spouse_not_at_home_prints_nothing_in_their_column(session, rule, answer):
+    _spouse_at_home(session, marital_status=answer, **TEN_SOURCES)  # saved, not counted (§5.1)
+    assert DERIVATIONS[rule](session) == ""
 
 
 def test_an_income_sum_counts_an_empty_source_as_zero(session):

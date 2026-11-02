@@ -24,6 +24,7 @@ from apps.districts.models import District, MedianIncome
 from apps.eligibility.cmi import is_above_median
 from apps.eligibility.services.means_test_calculator import MeansTestCalculator
 from apps.intake.models import IncomeInfo, IntakeSession
+from apps.intake.tests.builders import answer_household
 from apps.users.models import User
 
 MEDIAN = "Census median income"
@@ -51,10 +52,10 @@ def _single_filer(district, monthly_wages):
     session = IntakeSession.objects.create(user=user, district=district)
     IncomeInfo.objects.create(
         session=session,
-        marital_status="single",
-        number_of_dependents=0,
+        marital_status="not_married",
         monthly_gross_wages=Decimal(monthly_wages),
     )
+    answer_household(session)
     return session
 
 
@@ -63,9 +64,15 @@ def _single_filer(district, monthly_wages):
     [
         (date(2026, 3, 31), date(2025, 11, 1)),
         (date(2026, 4, 1), date(2026, 4, 1)),
-        (date(2026, 10, 31), date(2026, 4, 1)),
+        (date(2026, 11, 1), date(2026, 4, 1)),
+        (date(2027, 3, 31), date(2026, 4, 1)),
     ],
-    ids=["last_day_of_november_2025_table", "first_day_of_april_2026_table", "its_last_day"],
+    ids=[
+        "last_day_of_november_2025_table",
+        "first_day_of_april_2026_table",
+        "november_2026_update_not_posted",
+        "its_last_day",
+    ],
 )
 def test_the_newest_table_in_force_on_the_fill_date_is_the_one_used(ilnd, fill_date, effective):
     table = in_force(ilnd.median_incomes.all(), fill_date, MEDIAN, ilnd.code)
@@ -173,7 +180,7 @@ def test_the_means_test_records_the_median_table_it_used(ilnd):
     assert session.means_test.get_calculation_details()["median_table"] == {
         "name": MEDIAN,
         "effective_date": "2026-04-01",
-        "valid_through": "2026-10-31",
+        "valid_through": "2027-03-31",
         "source_url": (
             "https://www.justice.gov/ust/eo/bapcpa/20260401/bci_data/median_income_table.htm"
         ),
