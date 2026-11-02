@@ -381,13 +381,143 @@
   },
   {
     "schema": "form_122a1",
+    "pdf_field": "Debto1.Quest5A",
+    "producer": "derived:line5_business_gross",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Debto1.Quest5A",
+    "evidence": "Field index: Debto1.Quest5A p1 line 5, T20, column 'Debtor 1 (line-5/6 worksheet)', 'Net income from operating a business, profession, or farm - Gross receipts (before all deductions)' (adjudicated). 3e2 spec §9.3, §9.6: the filer's summed business gross receipts (the filer's entries on the six-month averages, never the current figures), 0.00 in a column that applies when the filer asked and left it empty (Q27)."
+  },
+  {
+    "schema": "form_122a1",
+    "pdf_field": "Debto1.Quest5B",
+    "producer": "derived:line5_business_expenses",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Debto1.Quest5B",
+    "evidence": "Field index: Debto1.Quest5B p1 line 5, T22, column 'Debtor 1 (line-5/6 worksheet)', 'Business/profession/farm - Ordinary and necessary operating expenses (subtracted)' (adjudicated). 3e2 spec §9.3, §9.6: the summed business expenses (the filer's entries on the six-month averages, never the current figures), 0.00 in a column that applies when the filer asked and left it empty (Q27)."
+  },
+  {
+    "schema": "form_122a1",
+    "pdf_field": "Debto1.Quest5C",
+    "producer": "derived:line5_business_net",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Debto1.Quest5C",
+    "evidence": "Field index: Debto1.Quest5C p1 line 5, two widgets (adjudicated): T24, column 'Debtor 1 (line-5/6 worksheet)', 'Net monthly income from a business, profession, or farm', and T26, column 'Column A (Debtor 1)', 'Net monthly income from a business, profession, or farm - Copy here'; one untagged binding fills both. 3e2 spec §9.3, §9.6: the summed business net, floored at 0.00 (the filer's entries on the six-month averages, never the current figures), 0.00 in a column that applies when the filer asked and left it empty (Q27)."
+  },
+  {
+    "schema": "form_122a1",
+    "pdf_field": "Debto1.Quest6A",
+    "producer": "derived:line6_rental_gross",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Debto1.Quest6A",
+    "evidence": "Field index: Debto1.Quest6A p1 line 6, T28, column 'Debtor 1 (line-5/6 worksheet)', 'Net income from rental and other real property - Gross receipts (before all deductions)' (adjudicated). 3e2 spec §9.3, §9.6: the summed rental gross receipts (the filer's entries on the six-month averages, never the current figures), 0.00 in a column that applies when the filer asked and left it empty (Q27)."
+  },
+  {
+    "schema": "form_122a1",
+    "pdf_field": "Debto1.Quest6B",
+    "producer": "derived:line6_rental_expenses",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Debto1.Quest6B",
+    "evidence": "Field index: Debto1.Quest6B p1 line 6, T30, column 'Debtor 1 (line-5/6 worksheet)', 'Rental/real property - Ordinary and necessary operating expenses (subtracted)' (adjudicated). 3e2 spec §9.3, §9.6: the summed rental expenses (the filer's entries on the six-month averages, never the current figures), 0.00 in a column that applies when the filer asked and left it empty (Q27)."
+  },
+  {
+    "schema": "form_122a1",
+    "pdf_field": "Debto1.Quest6C",
+    "producer": "derived:line6_rental_net",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Debto1.Quest6C",
+    "evidence": "Field index: Debto1.Quest6C p1 line 6, two widgets (adjudicated): T32, column 'Debtor 1 (line-5/6 worksheet)', 'Net monthly income from rental or other real property', and T34, column 'Column A (Debtor 1)', 'Net monthly income from rental or other real property - Copy here'; one untagged binding fills both. 3e2 spec §9.3, §9.6: the summed rental net, floored at 0.00 (the filer's entries on the six-month averages, never the current figures), 0.00 in a column that applies when the filer asked and left it empty (Q27)."
+  },
+  {
+    "schema": "form_122a1",
+    "pdf_field": "Debto1.Quest7",
+    "producer": "derived:line7_interest_and_dividends",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Debto1.Quest7",
+    "evidence": "Field index: Debto1.Quest7 p1 line 7, T36, column 'Column A (Debtor 1)', 'Interest, dividends, and royalties' (adjudicated). 3e2 spec §9.3, §9.6: the Income step's interest and dividends amount (the filer); 0.00 in a column that applies when left empty (Q27)."
+  },
+  {
+    "schema": "form_122a1",
+    "pdf_field": "Debto2.Quest5A",
+    "producer": "derived:line5_business_gross_spouse",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Debto2.Quest5A",
+    "evidence": "Field index: Debto2.Quest5A p1 line 5, T21, column 'Debtor 2 (line-5/6 worksheet)', 'Net income from operating a business, profession, or farm - Gross receipts (before all deductions)' (adjudicated). 3e2 spec §9.3, §9.6: the filer's summed business gross receipts (the spouse's, for married_together only (blank otherwise), entries on the six-month averages, never the current figures), 0.00 in a column that applies when the filer asked and left it empty (Q27)."
+  },
+  {
+    "schema": "form_122a1",
+    "pdf_field": "Debto2.Quest5B",
+    "producer": "derived:line5_business_expenses_spouse",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Debto2.Quest5B",
+    "evidence": "Field index: Debto2.Quest5B p1 line 5, T23, column 'Debtor 2 (line-5/6 worksheet)', 'Business/profession/farm - Ordinary and necessary operating expenses (subtracted)' (adjudicated). 3e2 spec §9.3, §9.6: the summed business expenses (the spouse's, for married_together only (blank otherwise), entries on the six-month averages, never the current figures), 0.00 in a column that applies when the filer asked and left it empty (Q27)."
+  },
+  {
+    "schema": "form_122a1",
+    "pdf_field": "Debto2.Quest5C",
+    "producer": "derived:line5_business_net_spouse",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Debto2.Quest5C",
+    "evidence": "Field index: Debto2.Quest5C p1 line 5, two widgets (adjudicated): T25, column 'Debtor 2 (line-5/6 worksheet)', 'Net monthly income from a business, profession, or farm', and T27, column 'Column B (Debtor 2 or non-filing spouse)', 'Net monthly income from a business, profession, or farm - Copy here'; one untagged binding fills both. 3e2 spec §9.3, §9.6: the summed business net, floored at 0.00 (the spouse's, for married_together only (blank otherwise), entries on the six-month averages, never the current figures), 0.00 in a column that applies when the filer asked and left it empty (Q27)."
+  },
+  {
+    "schema": "form_122a1",
+    "pdf_field": "Debto2.Quest6A",
+    "producer": "derived:line6_rental_gross_spouse",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Debto2.Quest6A",
+    "evidence": "Field index: Debto2.Quest6A p1 line 6, T29, column 'Debtor 2 (line-5/6 worksheet)', 'Net income from rental and other real property - Gross receipts (before all deductions)' (adjudicated). 3e2 spec §9.3, §9.6: the summed rental gross receipts (the spouse's, for married_together only (blank otherwise), entries on the six-month averages, never the current figures), 0.00 in a column that applies when the filer asked and left it empty (Q27)."
+  },
+  {
+    "schema": "form_122a1",
+    "pdf_field": "Debto2.Quest6B",
+    "producer": "derived:line6_rental_expenses_spouse",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Debto2.Quest6B",
+    "evidence": "Field index: Debto2.Quest6B p1 line 6, T31, column 'Debtor 2 (line-5/6 worksheet)', 'Rental/real property - Ordinary and necessary operating expenses (subtracted)' (adjudicated). 3e2 spec §9.3, §9.6: the summed rental expenses (the spouse's, for married_together only (blank otherwise), entries on the six-month averages, never the current figures), 0.00 in a column that applies when the filer asked and left it empty (Q27)."
+  },
+  {
+    "schema": "form_122a1",
+    "pdf_field": "Debto2.Quest7",
+    "producer": "derived:line7_interest_and_dividends_spouse",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Debto2.Quest7",
+    "evidence": "Field index: Debto2.Quest7 p1 line 7, T37, column 'Column B (Debtor 2 or non-filing spouse)', 'Interest, dividends, and royalties' (adjudicated). 3e2 spec §9.3, §9.6: the Income step's interest and dividends amount (the spouse, for married_together only, blank otherwise); 0.00 in a column that applies when left empty (Q27)."
+  },
+  {
+    "schema": "form_122a1",
     "pdf_field": "Debto2.Quest6C",
-    "producer": "derived:line3_real_property_income_spouse",
+    "producer": "derived:line6_rental_net_spouse",
     "original_verdicts": [],
     "final_verdicts": ["correct"],
     "status": "confirmed",
     "correct_target": "Debto2.Quest6C",
-    "evidence": "Field index: Debto2.Quest6C p1 line 6, two widgets (adjudicated): T33, column 'Debtor 2 (line-5/6 worksheet)', 'Net monthly income from rental or other real property', and T35, column 'Column B (Debtor 2 or non-filing spouse)', 'Net monthly income from rental or other real property - Copy here'. 3e1 spec §10.1 [Q2]: both take the same figure, as Column A's do; for married_together only, the spouse's same source as line3_real_property_income."
+    "evidence": "Field index: Debto2.Quest6C p1 line 6, two widgets (adjudicated): T33, column 'Debtor 2 (line-5/6 worksheet)', 'Net monthly income from rental or other real property', and T35, column 'Column B (Debtor 2 or non-filing spouse)', 'Net monthly income from rental or other real property - Copy here'. 3e1 spec §10.1 [Q2]: both take the same figure, as Column A's do; for married_together only, the spouse's rental entries on the six-month averages, as line6_rental_net prints the filer's (3e2 spec §9.3): the net floored at 0.00 (owner answer 1)."
   },
   {
     "schema": "form_122a1",

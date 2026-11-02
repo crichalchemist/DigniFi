@@ -25,7 +25,13 @@ from apps.eligibility.cmi import (
     spouse_monthly_income,
 )
 from apps.intake.household import count_family_size, dependents
-from apps.intake.income import floored_net, schedule_i_field, schedule_i_line4, uses_current
+from apps.intake.income import (
+    floored_net,
+    kind_sums,
+    schedule_i_field,
+    schedule_i_line4,
+    uses_current,
+)
 from apps.intake.models import IntakeSession
 
 _ZERO = Decimal("0.00")
@@ -82,16 +88,16 @@ def _sum_encrypted(queryset, field_name: str) -> Decimal:
 
 
 def _income_amounts(session: IntakeSession, *fields: str) -> str:
-    """The sum of these Income step amounts, or blank when the filer gave none of them.
+    """122A-1's line: the sum of these Income step amounts, 0.00 when none was given (§9.6, Q27).
 
-    An amount left empty counts as zero once another one was given (step 2 spec §6.1, B2).
+    Blank with no Income step row. An amount left empty counts as zero.
     """
-    return _given_amounts(getattr(session, "income_info", None), fields)
+    return _asked_amounts(_column(session, False), fields)
 
 
 def _spouse_amounts(session: IntakeSession, *fields: str) -> str:
     """_income_amounts over the spouse's row: blank unless a spouse at home counts (3e1 spec §10)."""
-    return _given_amounts(counted_spouse_income(session), fields)
+    return _asked_amounts(_column(session, True), fields)
 
 
 def _given_amounts(row, fields: tuple[str, ...]) -> str:
@@ -394,10 +400,6 @@ def _line3_alimony(session: IntakeSession) -> str:
     return _income_amounts(session, "monthly_alimony")
 
 
-def _line3_real_property_income(session: IntakeSession) -> str:
-    return _income_amounts(session, "monthly_rental_income")
-
-
 def _line5a_pension_retirement(session: IntakeSession) -> str:
     return _income_amounts(session, "monthly_pension")
 
@@ -412,6 +414,36 @@ def _line6b_child_support_alimony(session: IntakeSession) -> str:
 
 def _line7_other_income(session: IntakeSession) -> str:
     return _income_amounts(session, "monthly_other_income")
+
+
+def _line7_interest_and_dividends(session: IntakeSession) -> str:
+    return _income_amounts(session, "monthly_interest_and_dividends")
+
+
+def _kind_line(session: IntakeSession, spouse: bool, kind: str, part: str) -> str:
+    """One of a kind's three 122A-1 figures on the six-month averages, never the current ones.
+
+    `gross` and `expenses` are the summed entries, not floored; `net` is floored at $0.00
+    (owner answer 1, §4.2). Blank with no row, 0.00 for an empty or unanswered list.
+    """
+    row = _column(session, spouse)
+    if row is None:
+        return ""
+    entries = row.get_entries()
+    if part == "net":
+        return _fmt(floored_net(entries, kind))
+    gross, expenses = kind_sums(entries, kind)
+    return _fmt(gross if part == "gross" else expenses)
+
+
+def _kind_rules(kind: str, line: str) -> dict[str, Callable[[IntakeSession], str]]:
+    """The six rules, filer and spouse, for one 122A-1 line of business or rental figures."""
+    rules = {}
+    for part in ("gross", "expenses", "net"):
+        name = f"line{line}_{kind}_{part}"
+        rules[name] = lambda session, p=part: _kind_line(session, False, kind, p)
+        rules[f"{name}_spouse"] = lambda session, p=part: _kind_line(session, True, kind, p)
+    return rules
 
 
 def _other_income_label(session: IntakeSession) -> str:
@@ -789,11 +821,13 @@ DERIVATIONS: dict[str, Callable[[IntakeSession], str]] = {
     # Form 122A-1 means test derivations
     "line1_wages": _line1_wages,
     "line3_alimony": _line3_alimony,
-    "line3_real_property_income": _line3_real_property_income,
     "line5a_pension_retirement": _line5a_pension_retirement,
     "line6a_unemployment": _line6a_unemployment,
     "line6b_child_support_alimony": _line6b_child_support_alimony,
     "line7_other_income": _line7_other_income,
+    "line7_interest_and_dividends": _line7_interest_and_dividends,
+    **_kind_rules("business", "5"),
+    **_kind_rules("rental", "6"),
     "line1_marital_status": _line1_marital_status,
     "line1_spouse_household": _line1_spouse_household,
     "filer_cmi": _filer_cmi,
@@ -801,7 +835,7 @@ DERIVATIONS: dict[str, Callable[[IntakeSession], str]] = {
     "line1_wages_spouse": _spouse_rule("monthly_gross_wages", "monthly_tips", "monthly_overtime"),
     "line3_alimony_spouse": _spouse_rule("monthly_alimony"),
     "line6b_child_support_alimony_spouse": _spouse_rule("monthly_child_support"),
-    "line3_real_property_income_spouse": _spouse_rule("monthly_rental_income"),
+    "line7_interest_and_dividends_spouse": _spouse_rule("monthly_interest_and_dividends"),
     "line6a_unemployment_spouse": _spouse_rule("monthly_unemployment"),
     "line5a_pension_retirement_spouse": _spouse_rule("monthly_pension"),
     "line7_other_income_spouse": _spouse_rule("monthly_other_income"),
@@ -887,7 +921,7 @@ RULE_FIXES: dict[str, dict[str, str]] = {
     "line12b_annualized_cmi": {"step": "income_info"},
     "line1_wages": {"step": "income_info"},
     "line3_alimony": {"step": "income_info"},
-    "line3_real_property_income": {"step": "income_info"},
+    "line7_interest_and_dividends": {"step": "income_info"},
     "line5a_pension_retirement": {"step": "income_info"},
     "line6a_unemployment": {"step": "income_info"},
     "line6b_child_support_alimony": {"step": "income_info"},
@@ -897,7 +931,19 @@ RULE_FIXES: dict[str, dict[str, str]] = {
     "line1_wages_spouse": {"step": "income_info"},
     "line3_alimony_spouse": {"step": "income_info"},
     "line6b_child_support_alimony_spouse": {"step": "income_info"},
-    "line3_real_property_income_spouse": {"step": "income_info"},
+    "line7_interest_and_dividends_spouse": {"step": "income_info"},
+    "line5_business_gross": {"step": "income_info"},
+    "line5_business_gross_spouse": {"step": "income_info"},
+    "line5_business_expenses": {"step": "income_info"},
+    "line5_business_expenses_spouse": {"step": "income_info"},
+    "line5_business_net": {"step": "income_info"},
+    "line5_business_net_spouse": {"step": "income_info"},
+    "line6_rental_gross": {"step": "income_info"},
+    "line6_rental_gross_spouse": {"step": "income_info"},
+    "line6_rental_expenses": {"step": "income_info"},
+    "line6_rental_expenses_spouse": {"step": "income_info"},
+    "line6_rental_net": {"step": "income_info"},
+    "line6_rental_net_spouse": {"step": "income_info"},
     "line6a_unemployment_spouse": {"step": "income_info"},
     "line5a_pension_retirement_spouse": {"step": "income_info"},
     "line7_other_income_spouse": {"step": "income_info"},

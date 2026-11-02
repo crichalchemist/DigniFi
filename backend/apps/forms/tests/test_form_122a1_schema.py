@@ -14,17 +14,24 @@ from apps.forms.schema import load_schema
 from apps.forms.services.fill_resolver import resolve
 from apps.forms.tests.test_derivations import SPOUSE_AT_HOME, TEN_SOURCES
 from apps.intake.models import DebtorInfo, IncomeInfo, IntakeSession
-from apps.intake.tests.builders import answer_household
+from apps.intake.tests.builders import answer_household, answer_income_detail
 
 User = get_user_model()
 
 # Box → what it prints with TEN_SOURCES (wages 1, overtime 2, tips 4, interest 8,
 # pension 16, Social Security 32, unemployment 64, child support 128, alimony 256,
 # other 512).
-LINE_BY_SOURCE = {
+LINE_BY_SOURCE = {  # TEN_SOURCES with interest at 8.00, the list answered []
     "Debto1.Quest2.0": "7.00",  # line 2: wages, overtime and tips
     "Debto1.Quest3": "256.00",  # line 3: alimony
     "Debto1.Quest4": "128.00",  # line 4: child support
+    "Debto1.Quest5A": "0.00",
+    "Debto1.Quest5B": "0.00",
+    "Debto1.Quest5C": "0.00",
+    "Debto1.Quest6A": "0.00",
+    "Debto1.Quest6B": "0.00",
+    "Debto1.Quest6C": "0.00",
+    "Debto1.Quest7": "8.00",  # line 7: interest, dividends, and royalties
     "Debto1.Quest8.0": "64.00",  # line 8: unemployment
     "Debto1.Quest9": "16.00",  # line 9: pension
     "terrorism If necessary list other sources on a separate page and put the total below 1": (
@@ -33,15 +40,10 @@ LINE_BY_SOURCE = {
     "Debto1.Quest10A": "512.00",  # line 10: its amount
 }
 NEVER_ASKED = {
-    "Debto1.Quest6C",  # line 6: blank until it prints the rental entries (3e2)
-    "Debto1.Quest5A",
-    "Debto1.Quest5B",
-    "Debto1.Quest6A",
-    "Debto1.Quest6B",
-    "Debto1.Quest7",
     "Debto1.Quest8A",
     "Debto1.Quest10B",
     "Debto1.Quest10C",
+    "terrorism If necessary list other sources on a separate page and put the total below 2",
 }
 
 # Household rows as stored. Y, Y: lives with the filer, and claimed or supported.
@@ -168,9 +170,8 @@ class TestForm122A1Schema:
         # Social Security is left out of current monthly income, so no line shows it.
         assert "32.00" not in field_map.values()
 
-    def test_lines_the_filer_is_never_asked_about_print_nothing(self, session):
-        # Business income, interest, rental gross and costs, unemployment claimed as
-        # Social Security, a second other-income row: blank, never 0.00 (B2).
+    def test_lines_122a1_never_asks_print_nothing(self, session):
+        # Line 8's second box, line 10's second row and its totals: blank, never 0.00 (B2).
         IncomeInfo.objects.create(session=session, **TEN_SOURCES)
         answer_household(session)
 
@@ -284,6 +285,13 @@ class TestForm122A1Schema:
                     "Debto2.Quest2.0": "1800.00",
                     "Debto2.Quest3": "0.00",
                     "Debto2.Quest2.2": "0.00",
+                    "Debto2.Quest5A": "0.00",
+                    "Debto2.Quest5B": "0.00",
+                    "Debto2.Quest5C": "0.00",
+                    "Debto2.Quest6A": "0.00",
+                    "Debto2.Quest6B": "0.00",
+                    "Debto2.Quest6C": "0.00",
+                    "Debto2.Quest7": "0.00",
                     "Debto2.Quest8.0": "0.00",
                     "Debto2.Quest9": "0.00",
                     "Debto2.Quest10A": "0.00",
@@ -307,3 +315,101 @@ class TestForm122A1Schema:
             line_11,
             f"{Decimal(line_11) * 12:.2f}",
         )
+
+
+def _entry(kind, gross, expenses, current_gross=None, current_expenses=None):
+    return {
+        "kind": kind,
+        "description": kind,
+        "gross": gross,
+        "expenses": expenses,
+        "current_gross": current_gross,
+        "current_expenses": current_expenses,
+    }
+
+
+def _zero_filer(session, **amounts):
+    """A filer whose ten sources are $0 except these."""
+    IncomeInfo.objects.create(
+        session=session, **{**dict.fromkeys(IncomeInfo.SOURCE_FIELDS, Decimal("0.00")), **amounts}
+    )
+
+
+@pytest.mark.django_db
+class TestLines5And6:
+    def test_a_gig_drivers_receipts_and_costs_reach_line_5_and_his_cmi_is_the_net(self, session):
+        _zero_filer(session)
+        answer_household(
+            session,
+            business_and_rental=[_entry("business", "4200.00", "830.00")],
+        )
+        fm = resolve(load_schema("form_122a1"), session)
+        assert (fm["Debto1.Quest5A"], fm["Debto1.Quest5B"], fm["Debto1.Quest5C"]) == (
+            "4200.00",
+            "830.00",
+            "3370.00",
+        )
+        assert fm["Debto1.Quest11"] == "3370.00"
+
+    def test_two_businesses_net_against_each_other_on_line_5(self, session):
+        _zero_filer(session)
+        answer_household(
+            session,
+            business_and_rental=[
+                _entry("business", "1000.00", "0.00"),
+                _entry("business", "600.00", "1100.00"),
+            ],
+        )
+        fm = resolve(load_schema("form_122a1"), session)
+        assert (fm["Debto1.Quest5A"], fm["Debto1.Quest5B"], fm["Debto1.Quest5C"]) == (
+            "1600.00",
+            "1100.00",
+            "500.00",
+        )
+
+    @pytest.mark.parametrize(
+        "kind,boxes", [("business", ("5A", "5B", "5C")), ("rental", ("6A", "6B", "6C"))]
+    )
+    def test_a_net_below_zero_prints_0_00_beside_the_larger_expenses(self, session, kind, boxes):
+        _zero_filer(session, monthly_gross_wages=Decimal("700.00"))
+        answer_household(session, business_and_rental=[_entry(kind, "300.00", "900.00")])
+        fm = resolve(load_schema("form_122a1"), session)
+        assert tuple(fm[f"Debto1.Quest{b}"] for b in boxes) == ("300.00", "900.00", "0.00")
+        assert fm["Debto1.Quest11"] == "700.00"
+
+    def test_122a1_keeps_the_averages_net_when_the_current_figures_show_a_loss(self, session):
+        _zero_filer(session)
+        answer_household(
+            session,
+            income_now_different="yes",
+            business_and_rental=[_entry("business", "1000.00", "400.00", "300.00", "900.00")],
+        )
+        fm = resolve(load_schema("form_122a1"), session)
+        assert fm["Debto1.Quest5C"] == "600.00"
+        assert resolve(load_schema("schedule_i"), session)["Amount 8a Debtor 1"] == "0.00"
+
+    def test_a_business_loss_never_lowers_rental_income_and_one_persons_never_the_others(
+        self, session
+    ):
+        _zero_filer(session, monthly_gross_wages=Decimal("100.00"))
+        answer_household(
+            session,
+            marital_status="married_together",
+            members=[SPOUSE_AT_HOME],
+            spouse_income={"monthly_gross_wages": Decimal("0.00")},
+            business_and_rental=[
+                _entry("business", "600.00", "1100.00"),
+                _entry("rental", "900.00", "200.00"),
+            ],
+        )
+        answer_income_detail(
+            session.spouse_income,
+            business_and_rental=[_entry("business", "2000.00", "500.00")],
+        )
+        fm = resolve(load_schema("form_122a1"), session)
+        assert (fm["Debto1.Quest5C"], fm["Debto1.Quest6C"], fm["Debto2.Quest5C"]) == (
+            "0.00",
+            "700.00",
+            "1500.00",
+        )
+        assert fm["Debto1.Quest11"] == "800.00"

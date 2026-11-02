@@ -75,6 +75,22 @@ def _deductions(**amounts):
     }
 
 
+# Column B lines 3-10 print 0.00 for a spouse at home with those sources typed $0 (§11)
+COLUMN_B_ZEROS = [
+    "Debto2.Quest3",
+    "Debto2.Quest2.2",
+    "Debto2.Quest5A",
+    "Debto2.Quest5B",
+    "Debto2.Quest5C",
+    "Debto2.Quest6A",
+    "Debto2.Quest6B",
+    "Debto2.Quest6C",
+    "Debto2.Quest7",
+    "Debto2.Quest8.0",
+    "Debto2.Quest9",
+    "Debto2.Quest10A",
+]
+
 # persona → form_type → full name → printed value
 EXPECTED = {
     "maria": {
@@ -88,9 +104,16 @@ EXPECTED = {
             "5": "2560.00",
         },
         "form_122a1": {
-            "Debto1.Quest7": "",
+            **dict.fromkeys(
+                ["Debto1.Quest5A", "Debto1.Quest5B", "Debto1.Quest5C"]
+                + ["Debto1.Quest6A", "Debto1.Quest6B", "Debto1.Quest6C", "Debto1.Quest7"],
+                "0.00",
+            ),
+            "Debto1.Quest8A": "",
             "Debto1.Quest9": "0.00",
             "Debto1.Quest11": "3200.00",
+            "Debto2.Quest5C": "",
+            "Debto2.Quest7": "",
             "CheckBox3": "/Not married",
             "CheckBox3A": "",
             "Quest11": "3200.00",
@@ -137,7 +160,12 @@ EXPECTED = {
             "5": "3110.00",
         },
         "form_122a1": {
-            "Debto1.Quest7": "",
+            **dict.fromkeys(
+                ["Debto1.Quest5A", "Debto1.Quest5B", "Debto1.Quest5C"]
+                + ["Debto1.Quest6A", "Debto1.Quest6B", "Debto1.Quest6C", "Debto1.Quest7"],
+                "0.00",
+            ),
+            "Debto1.Quest8A": "",
             "Debto1.Quest9": "0.00",
             "Debto1.Quest11": "5833.00",
             "CheckBox3": "/Not married",
@@ -179,10 +207,16 @@ EXPECTED = {
             "8": "13800.00",
         },
         "form_122a1": {
-            "Debto1.Quest7": "",
+            **dict.fromkeys(
+                ["Debto1.Quest5A", "Debto1.Quest5B", "Debto1.Quest5C"]
+                + ["Debto1.Quest6A", "Debto1.Quest6B", "Debto1.Quest6C", "Debto1.Quest7"],
+                "0.00",
+            ),
+            "Debto1.Quest8A": "",
             "Debto1.Quest9": "0.00",
             "Debto1.Quest11": "12000.00",
             "Debto2.Quest2.0": "1800.00",
+            **dict.fromkeys(COLUMN_B_ZEROS, "0.00"),
             "Debto2.Quest11": "1800.00",
             "CheckBox3": "/Married but not filing",
             "CheckBox3A": "/together",
@@ -233,10 +267,16 @@ EXPECTED = {
             "8": "4500.00",
         },
         "form_122a1": {
-            "Debto1.Quest7": "",
+            **dict.fromkeys(
+                ["Debto1.Quest5A", "Debto1.Quest5B", "Debto1.Quest5C"]
+                + ["Debto1.Quest6A", "Debto1.Quest6B", "Debto1.Quest6C", "Debto1.Quest7"],
+                "0.00",
+            ),
+            "Debto1.Quest8A": "",
             "Debto1.Quest9": "0.00",
             "Debto1.Quest11": "3500.00",
             "Debto2.Quest2.0": "1000.00",
+            **dict.fromkeys(COLUMN_B_ZEROS, "0.00"),
             "Debto2.Quest11": "1000.00",
             "CheckBox3": "/Married but not filing",
             "CheckBox3A": "/together",
@@ -275,7 +315,12 @@ EXPECTED = {
             "5": "1280.00",
         },
         "form_122a1": {
-            "Debto1.Quest7": "",
+            **dict.fromkeys(
+                ["Debto1.Quest5A", "Debto1.Quest5B", "Debto1.Quest5C"]
+                + ["Debto1.Quest6A", "Debto1.Quest6B", "Debto1.Quest6C", "Debto1.Quest7"],
+                "0.00",
+            ),
+            "Debto1.Quest8A": "",
             "Debto1.Quest9": "0.00",
             "Debto1.Quest11": "2000.00",
             "CheckBox3": "/Not married",
@@ -321,6 +366,12 @@ EXPECTED = {
         },
         "form_122a1": {
             "CheckBox1": "/No Abuse",
+            **dict.fromkeys(
+                ["Debto1.Quest5A", "Debto1.Quest5B", "Debto1.Quest5C"]
+                + ["Debto1.Quest6A", "Debto1.Quest6B", "Debto1.Quest6C", "Debto1.Quest7"],
+                "0.00",
+            ),
+            "Debto1.Quest8A": "",
             "terrorism If necessary list other sources on a separate page and put the total below 1": "Other income",
             "Debto1.Quest10A": "3370.00",
             "Debto1.Quest11": "3370.00",

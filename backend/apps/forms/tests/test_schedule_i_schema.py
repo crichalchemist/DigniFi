@@ -241,8 +241,25 @@ class TestScheduleISchema:
         form_122a1 = resolve(load_schema("form_122a1"), session)
         schedule_i = resolve(load_schema("schedule_i"), session)
         assert {b: v for b, v in form_122a1.items() if b.startswith("Debto2.")} == {
-            "Debto2.Quest2.0": "0.00",
-            "Debto2.Quest11": "0.00",
+            **dict.fromkeys(
+                [
+                    "Debto2.Quest2.0",
+                    "Debto2.Quest3",
+                    "Debto2.Quest2.2",
+                    "Debto2.Quest5A",
+                    "Debto2.Quest5B",
+                    "Debto2.Quest5C",
+                    "Debto2.Quest6A",
+                    "Debto2.Quest6B",
+                    "Debto2.Quest6C",
+                    "Debto2.Quest7",
+                    "Debto2.Quest8.0",
+                    "Debto2.Quest9",
+                    "Debto2.Quest10A",
+                    "Debto2.Quest11",
+                ],
+                "0.00",
+            ),
         }
         printed = {b: v for b, v in schedule_i.items() if "Debtor 2" in b}
         assert printed and set(printed.values()) == {"0.00"}

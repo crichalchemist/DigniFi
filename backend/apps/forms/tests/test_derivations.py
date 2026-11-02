@@ -175,10 +175,10 @@ SWITCHED_RULES = {
     ],
     "line1_wages": ["monthly_gross_wages", "monthly_tips", "monthly_overtime"],
     "line6b_child_support_alimony": ["monthly_child_support"],
-    "line3_real_property_income": ["monthly_rental_income"],
     "line6a_unemployment": ["monthly_unemployment"],
     "line5a_pension_retirement": ["monthly_pension"],
     "line7_other_income": ["monthly_other_income"],
+    "line7_interest_and_dividends": ["monthly_interest_and_dividends"],
     "line3_alimony": ["monthly_alimony"],
     # Schedule I line 12 and Schedule J 23a, which copies it: Social Security included (C1)
     "schedule_i_income_total": list(TEN_SOURCES),
@@ -195,34 +195,16 @@ def test_each_switched_income_rule_returns_its_own_sources_figure(session, rule,
     assert DERIVATIONS[rule](session) == f"{expected:.2f}"
 
 
-def _is_schedule_i_amount(rule):
-    return rule.startswith("schedule_i_") or rule == "schedule_j_total_income"
+ASKED_RULES = [rule for rule in SWITCHED_RULES if rule not in ("cmi", "filer_cmi")]
 
 
-SCHEDULE_I_AMOUNT_RULES = [rule for rule in SWITCHED_RULES if _is_schedule_i_amount(rule)]
-OTHER_INCOME_RULES = [
-    rule
-    for rule in SWITCHED_RULES
-    if rule not in ("cmi", "filer_cmi") and rule not in SCHEDULE_I_AMOUNT_RULES
-]
-
-
-@pytest.mark.parametrize("rule", SCHEDULE_I_AMOUNT_RULES)
-def test_an_asked_schedule_i_line_left_blank_prints_0_00(session, rule):
+@pytest.mark.parametrize("rule", ASKED_RULES)
+def test_an_asked_line_left_blank_prints_0_00_on_schedule_i_and_122a1(session, rule):
     # Every other source was given, so the rule must not borrow one of them (§9.6, Q27).
     given = {f: a for f, a in AMOUNTS.items() if f not in SWITCHED_RULES[rule]}
     IncomeInfo.objects.create(session=session, **given)
 
     assert DERIVATIONS[rule](session) == "0.00"
-
-
-@pytest.mark.parametrize("rule", OTHER_INCOME_RULES)
-def test_an_income_rule_prints_blank_when_the_filer_gave_none_of_its_sources(session, rule):
-    # Every other source was given, so the rule must not borrow one of them.
-    given = {f: a for f, a in AMOUNTS.items() if f not in SWITCHED_RULES[rule]}
-    IncomeInfo.objects.create(session=session, **given)
-
-    assert DERIVATIONS[rule](session) == ""
 
 
 @pytest.mark.parametrize("rule", [rule for rule in SWITCHED_RULES if rule != "cmi"])
@@ -244,10 +226,10 @@ SPOUSE_TWINS = {
     "line1_wages_spouse": "line1_wages",
     "line3_alimony_spouse": "line3_alimony",
     "line6b_child_support_alimony_spouse": "line6b_child_support_alimony",
-    "line3_real_property_income_spouse": "line3_real_property_income",
     "line6a_unemployment_spouse": "line6a_unemployment",
     "line5a_pension_retirement_spouse": "line5a_pension_retirement",
     "line7_other_income_spouse": "line7_other_income",
+    "line7_interest_and_dividends_spouse": "line7_interest_and_dividends",
     "spouse_cmi": "filer_cmi",
     **{
         f"schedule_i_{n}_spouse": f"schedule_i_{n}_debtor1"
@@ -288,26 +270,15 @@ def test_a_spouse_at_home_prints_their_own_figure_on_each_line_the_filer_does(se
     assert DERIVATIONS[rule](session) == f"{expected:.2f}"
 
 
-@pytest.mark.parametrize(
-    "rule", [r for r in SPOUSE_TWINS if r.startswith("schedule_i_") and r != "spouse_cmi"]
-)
-def test_a_spouse_at_home_prints_0_00_on_an_asked_schedule_i_line_left_blank(session, rule):
+@pytest.mark.parametrize("rule", [r for r in SPOUSE_TWINS if r != "spouse_cmi"])
+def test_a_spouse_at_home_prints_0_00_on_an_asked_line_left_blank_on_schedule_i_and_122a1(
+    session, rule
+):
     _spouse_at_home(
         session,
         **{f: a for f, a in AMOUNTS.items() if f not in SWITCHED_RULES[SPOUSE_TWINS[rule]]},
     )
     assert DERIVATIONS[rule](session) == "0.00"
-
-
-@pytest.mark.parametrize(
-    "rule", [r for r in SPOUSE_TWINS if not r.startswith("schedule_i_") and r != "spouse_cmi"]
-)
-def test_a_spouse_line_prints_blank_when_the_spouse_gave_none_of_its_sources(session, rule):
-    _spouse_at_home(
-        session,
-        **{f: a for f, a in AMOUNTS.items() if f not in SWITCHED_RULES[SPOUSE_TWINS[rule]]},
-    )
-    assert DERIVATIONS[rule](session) == ""
 
 
 @pytest.mark.parametrize("rule", list(SPOUSE_TWINS))
@@ -401,5 +372,10 @@ def test_a_rule_that_reads_income_and_take_home_pay_links_to_the_income_step(rul
 
 
 def test_the_rental_rules_are_gone():
-    gone = {"schedule_i_rental_debtor1", "schedule_i_rental_spouse"}
+    gone = {
+        "schedule_i_rental_debtor1",
+        "schedule_i_rental_spouse",
+        "line3_real_property_income",
+        "line3_real_property_income_spouse",
+    }
     assert gone & (DERIVATIONS.keys() | RULE_FIXES.keys()) == set()
