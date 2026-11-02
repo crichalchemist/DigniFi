@@ -83,6 +83,19 @@ SPOUSE_INCOME_NOT_SPLIT = (
     "Enter your spouse's income by source on the Income step. "
     "If your spouse has no income, enter $0 in one box."
 )
+LEGACY_RENTAL = (
+    "Rental income was saved as one amount. "
+    "Enter each rental property's gross receipts and operating expenses on the Income step."
+)
+SPOUSE_LEGACY_RENTAL = (
+    "Your spouse's rental income was saved as one amount. "
+    "Enter each rental property's gross receipts and operating expenses on the Income step."
+)
+
+
+def _legacy_rental_open(row) -> bool:
+    """Whether a person's net rental figure is still their only word on rental (3e2 spec §4.7)."""
+    return row is not None and (row.monthly_rental_income or 0) > 0 and row.get_entries() is None
 
 
 def _marriage_answer(session) -> str | None:
@@ -180,16 +193,23 @@ def income_step_gaps(session) -> list[IncomeStepGap]:
         if answer in IncomeInfo.MARITAL_ANSWERS and _household_mismatch(answer, members):
             gaps.append(IncomeStepGap(HOUSEHOLD_MISMATCH))
     income_info = getattr(session, "income_info", None)
-    try:
-        if income_info is None:
-            raise IncomeNotSplit()
-        current_monthly_income(income_info)
-    except IncomeNotSplit:
-        gaps.append(IncomeStepGap(str(IncomeNotSplit())))
-    try:
-        spouse_monthly_income(session)
-    except IncomeStepGap as gap:
-        gaps.append(gap)
+    legacy = _legacy_rental_open(income_info)
+    if legacy:
+        gaps.append(IncomeStepGap(LEGACY_RENTAL))
+    else:
+        try:
+            if income_info is None:
+                raise IncomeNotSplit()
+            current_monthly_income(income_info)
+        except IncomeNotSplit:
+            gaps.append(IncomeStepGap(str(IncomeNotSplit())))
+    if _legacy_rental_open(counted_spouse_income(session)):
+        gaps.append(IncomeStepGap(SPOUSE_LEGACY_RENTAL))
+    else:
+        try:
+            spouse_monthly_income(session)
+        except IncomeStepGap as gap:
+            gaps.append(gap)
     return gaps
 
 

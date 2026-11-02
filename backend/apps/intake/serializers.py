@@ -22,7 +22,9 @@ from .household import (
     count_family_size,
     count_fee_waiver_household,
 )
+from .income import ENTRY_KINDS, MAX_ENTRIES
 from .models import (
+    YES_NO,
     AssetInfo,
     Codebtor,
     DebtInfo,
@@ -31,6 +33,7 @@ from .models import (
     ExpenseInfo,
     FeeWaiverApplication,
     Household,
+    IncomeDetail,
     IncomeInfo,
     IntakeSession,
     SOFACreditorPayment,
@@ -81,7 +84,101 @@ class DebtorInfoSerializer(serializers.ModelSerializer):
         return value.upper()
 
 
-class IncomeInfoSerializer(serializers.ModelSerializer):
+def _amount() -> serializers.DecimalField:
+    """One Income step amount: zero or more, within the column, null while unanswered."""
+    return serializers.DecimalField(
+        max_digits=10, decimal_places=2, min_value=Decimal("0"), allow_null=True, required=False
+    )
+
+
+class IncomeEntrySerializer(serializers.Serializer):
+    """One business or rental entry on the Income step (3e2 spec §4.2).
+
+    Every answer may be missing, for Complete to name; only a value no answer can have is
+    refused.
+    """
+
+    id = serializers.IntegerField(required=False, allow_null=True)
+    kind = serializers.ChoiceField(choices=ENTRY_KINDS, allow_null=True, required=False)
+    description = serializers.CharField(
+        max_length=200, allow_null=True, allow_blank=True, required=False
+    )
+    gross = _amount()
+    expenses = _amount()
+    current_gross = _amount()
+    current_expenses = _amount()
+
+
+# What IncomeInfo and SpouseIncome share beyond the ten (3e2 spec §4), named for both Metas.
+_INCOME_DETAIL_FIELDS = [
+    "monthly_rental_income",
+    "monthly_interest_and_dividends",
+    *IncomeDetail.CURRENT_FIELDS,
+    "business_and_rental",
+    "income_now_different",
+    "assistance_answer",
+    "cash_assistance_kind",
+    "cash_assistance_amount",
+    "noncash_assistance_kind",
+    "noncash_assistance_value",
+    *IncomeDetail.DEDUCTION_FIELDS,
+    "payroll_other_specify",
+]
+
+
+class IncomeDetailSerializer(serializers.ModelSerializer):
+    """The 3e2 answers both income serializers carry (3e2 spec §4).
+
+    monthly_rental_income is the legacy net figure: returned, never written.
+    """
+
+    # Explicit field declarations — EncryptedDecimalField confuses DRF's auto-mapper
+    monthly_rental_income = serializers.DecimalField(
+        max_digits=10, decimal_places=2, read_only=True
+    )
+    monthly_interest_and_dividends = _amount()
+    current_monthly_gross_wages = _amount()
+    current_monthly_overtime = _amount()
+    current_monthly_tips = _amount()
+    current_monthly_interest_and_dividends = _amount()
+    current_monthly_pension = _amount()
+    current_monthly_social_security = _amount()
+    current_monthly_unemployment = _amount()
+    current_monthly_child_support = _amount()
+    current_monthly_alimony = _amount()
+    current_monthly_other_income = _amount()
+    cash_assistance_amount = _amount()
+    noncash_assistance_value = _amount()
+    payroll_tax = _amount()
+    payroll_mandatory_retirement = _amount()
+    payroll_voluntary_retirement = _amount()
+    payroll_retirement_loan = _amount()
+    payroll_insurance = _amount()
+    payroll_support = _amount()
+    payroll_union_dues = _amount()
+    payroll_other = _amount()
+    income_now_different = serializers.ChoiceField(choices=YES_NO, allow_null=True, required=False)
+    assistance_answer = serializers.ChoiceField(choices=YES_NO, allow_null=True, required=False)
+    cash_assistance_kind = serializers.CharField(max_length=100, allow_blank=True, required=False)
+    noncash_assistance_kind = serializers.CharField(
+        max_length=100, allow_blank=True, required=False
+    )
+    payroll_other_specify = serializers.CharField(max_length=100, allow_blank=True, required=False)
+    business_and_rental = serializers.ListField(
+        child=IncomeEntrySerializer(),
+        allow_null=True,
+        required=False,
+        max_length=MAX_ENTRIES,
+        write_only=True,
+    )
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        data["business_and_rental"] = instance.get_entries()
+        return data
+
+
+class IncomeInfoSerializer(IncomeDetailSerializer):
     """Serializer for income information, stored by source (forms step 2 spec §5.5).
 
     monthly_income, the total saved before step 2, is read-only: the Income step shows it
@@ -101,9 +198,6 @@ class IncomeInfoSerializer(serializers.ModelSerializer):
         max_digits=10, decimal_places=2, min_value=Decimal("0"), allow_null=True, required=False
     )
     monthly_tips = serializers.DecimalField(
-        max_digits=10, decimal_places=2, min_value=Decimal("0"), allow_null=True, required=False
-    )
-    monthly_rental_income = serializers.DecimalField(
         max_digits=10, decimal_places=2, min_value=Decimal("0"), allow_null=True, required=False
     )
     monthly_pension = serializers.DecimalField(
@@ -130,11 +224,18 @@ class IncomeInfoSerializer(serializers.ModelSerializer):
         fields = [
             "marital_status",
             *IncomeInfo.SOURCE_FIELDS,
+            *_INCOME_DETAIL_FIELDS,
+            "income_period_end",
             "monthly_income",
             "total_monthly_income",
             "created_at",
         ]
-        read_only_fields = ["created_at", "monthly_income", "total_monthly_income"]
+        read_only_fields = [
+            "created_at",
+            "income_period_end",
+            "monthly_income",
+            "total_monthly_income",
+        ]
 
     def get_total_monthly_income(self, obj):
         """Return the ten amounts added up, or None when the filer gave none of them."""
@@ -146,7 +247,7 @@ class IncomeInfoSerializer(serializers.ModelSerializer):
         return data
 
 
-class SpouseIncomeSerializer(serializers.ModelSerializer):
+class SpouseIncomeSerializer(IncomeDetailSerializer):
     """The spouse's monthly income by the filer's ten sources (3e1 spec §5.2).
 
     A blank box is null, never $0 unless typed.
@@ -160,9 +261,6 @@ class SpouseIncomeSerializer(serializers.ModelSerializer):
         max_digits=10, decimal_places=2, min_value=Decimal("0"), allow_null=True, required=False
     )
     monthly_tips = serializers.DecimalField(
-        max_digits=10, decimal_places=2, min_value=Decimal("0"), allow_null=True, required=False
-    )
-    monthly_rental_income = serializers.DecimalField(
         max_digits=10, decimal_places=2, min_value=Decimal("0"), allow_null=True, required=False
     )
     monthly_pension = serializers.DecimalField(
@@ -186,7 +284,7 @@ class SpouseIncomeSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = SpouseIncome
-        fields = list(IncomeInfo.SOURCE_FIELDS)
+        fields = [*SpouseIncome.SOURCE_FIELDS, *_INCOME_DETAIL_FIELDS]
 
 
 class ExpenseInfoSerializer(serializers.ModelSerializer):
@@ -467,6 +565,35 @@ def _save_household(session: IntakeSession, data: dict) -> Household:
     return household
 
 
+def _save_income_row(model, session: IntakeSession, data: dict):
+    """Save one person's income row, setting only the keys sent (3e2 spec §4.2).
+
+    A list that isn't null replaces the legacy net rental figure, which is then cleared.
+    """
+    row = model.objects.filter(session=session).first() or model(session=session)
+    for key, value in data.items():
+        if key == "business_and_rental":
+            row.store_entries(value)
+            if value is not None:
+                row.monthly_rental_income = None
+        else:
+            setattr(row, key, value)
+    row.save()
+    return row
+
+
+def _save_income(session: IntakeSession, data: dict) -> IncomeInfo:
+    """Save a session's income row; the session's cached relation points at the row saved."""
+    session.income_info = _save_income_row(IncomeInfo, session, data)
+    return session.income_info
+
+
+def _save_spouse_income(session: IntakeSession, data: dict) -> SpouseIncome:
+    """Save a session's spouse income row; the cached relation points at the row saved."""
+    session.spouse_income = _save_income_row(SpouseIncome, session, data)
+    return session.spouse_income
+
+
 # The intake sections a session save can carry (spec §5.3).
 _INTAKE_DATA = {
     "debtor_info",
@@ -549,7 +676,7 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
             DebtorInfo.objects.create(session=session, **debtor_data)
 
         if income_data:
-            IncomeInfo.objects.create(session=session, **income_data)
+            _save_income(session, income_data)
 
         if expense_data:
             ExpenseInfo.objects.create(session=session, **expense_data)
@@ -558,7 +685,7 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
             _save_household(session, household_data)
 
         if spouse_data:
-            SpouseIncome.objects.create(session=session, **spouse_data)
+            _save_spouse_income(session, spouse_data)
 
         # Create assets
         for asset_data in assets_data:
@@ -602,9 +729,7 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
             DebtorInfo.objects.update_or_create(session=instance, defaults=debtor_data)
 
         if income_data:
-            instance.income_info, _ = IncomeInfo.objects.update_or_create(
-                session=instance, defaults=income_data
-            )
+            _save_income(instance, income_data)
 
         # An empty body still creates the record with its $0 defaults, so the filer can
         # complete (DIG-153). The wizard sends all 13 amounts, a blank box as 0.
@@ -615,9 +740,7 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
             _save_household(instance, household_data)
 
         if spouse_data:
-            instance.spouse_income, _ = SpouseIncome.objects.update_or_create(
-                session=instance, defaults=spouse_data
-            )
+            _save_spouse_income(instance, spouse_data)
 
         # The response lists a sent list in sent order, so the wizard can pair each row it
         # sent with its id (DIG-273). Every other read keeps model order.

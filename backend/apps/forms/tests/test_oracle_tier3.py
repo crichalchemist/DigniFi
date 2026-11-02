@@ -52,10 +52,12 @@ def _spouse_column_2(wages):
         "Amount 7 Debtor 2",
         "Amount 10 Debtor 2",
     )
-    zero_boxes = tuple(
-        f"Amount {n} Debtor 2" for n in ("3", "8a", "8c", "8d", "8e", "8g", "8h", "9")
-    )
-    return {**dict.fromkeys(wage_boxes, wages), **dict.fromkeys(zero_boxes, "0.00")}
+    zero_boxes = tuple(f"Amount {n} Debtor 2" for n in ("3", "8c", "8d", "8e", "8g", "8h", "9"))
+    return {
+        **dict.fromkeys(wage_boxes, wages),
+        **dict.fromkeys(zero_boxes, "0.00"),
+        "Amount 8a Debtor 2": "",  # blank until 8a prints the business and rental entries (3e2 §9.1)
+    }
 
 
 # persona → form_type → full name → printed value

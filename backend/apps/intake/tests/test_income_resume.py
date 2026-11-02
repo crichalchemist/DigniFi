@@ -26,7 +26,7 @@ TEN_EMPTY = {
     "monthly_gross_wages": None,
     "monthly_overtime": None,
     "monthly_tips": None,
-    "monthly_rental_income": None,
+    "monthly_interest_and_dividends": None,
     "monthly_pension": None,
     "monthly_social_security": None,
     "monthly_unemployment": None,

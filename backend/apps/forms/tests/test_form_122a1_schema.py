@@ -18,14 +18,13 @@ from apps.intake.tests.builders import answer_household
 
 User = get_user_model()
 
-# Box → what it prints with TEN_SOURCES (wages 1, overtime 2, tips 4, rental 8,
+# Box → what it prints with TEN_SOURCES (wages 1, overtime 2, tips 4, interest 8,
 # pension 16, Social Security 32, unemployment 64, child support 128, alimony 256,
 # other 512).
 LINE_BY_SOURCE = {
     "Debto1.Quest2.0": "7.00",  # line 2: wages, overtime and tips
     "Debto1.Quest3": "256.00",  # line 3: alimony
     "Debto1.Quest4": "128.00",  # line 4: child support
-    "Debto1.Quest6C": "8.00",  # line 6: net rental income
     "Debto1.Quest8.0": "64.00",  # line 8: unemployment
     "Debto1.Quest9": "16.00",  # line 9: pension
     "terrorism If necessary list other sources on a separate page and put the total below 1": (
@@ -34,6 +33,7 @@ LINE_BY_SOURCE = {
     "Debto1.Quest10A": "512.00",  # line 10: its amount
 }
 NEVER_ASKED = {
+    "Debto1.Quest6C",  # line 6: blank until it prints the rental entries (3e2)
     "Debto1.Quest5A",
     "Debto1.Quest5B",
     "Debto1.Quest6A",
@@ -284,7 +284,6 @@ class TestForm122A1Schema:
                     "Debto2.Quest2.0": "1800.00",
                     "Debto2.Quest3": "0.00",
                     "Debto2.Quest2.2": "0.00",
-                    "Debto2.Quest6C": "0.00",
                     "Debto2.Quest8.0": "0.00",
                     "Debto2.Quest9": "0.00",
                     "Debto2.Quest10A": "0.00",

@@ -136,7 +136,7 @@ TEN_SOURCES = {
     "monthly_gross_wages": Decimal("1.00"),
     "monthly_overtime": Decimal("2.00"),
     "monthly_tips": Decimal("4.00"),
-    "monthly_rental_income": Decimal("8.00"),
+    "monthly_interest_and_dividends": Decimal("8.00"),
     "monthly_pension": Decimal("16.00"),
     "monthly_social_security": Decimal("32.00"),
     "monthly_unemployment": Decimal("64.00"),
@@ -144,6 +144,10 @@ TEN_SOURCES = {
     "monthly_alimony": Decimal("256.00"),
     "monthly_other_income": Decimal("512.00"),
 }
+
+# The legacy net rental figure, still read by the rental rules until Tasks 12-13 remove them.
+LEGACY_RENTAL = {"monthly_rental_income": Decimal("1024.00")}
+AMOUNTS = {**TEN_SOURCES, **LEGACY_RENTAL}
 
 # The rules switched in 2a commit 4 or created in 2b, with the sources each one adds up
 # (spec §6.2's "Returns"). Moved rules keep names that describe their old lines (§6.1).
@@ -184,9 +188,9 @@ SWITCHED_RULES = {
 
 @pytest.mark.parametrize("rule,sources", list(SWITCHED_RULES.items()))
 def test_each_switched_income_rule_returns_its_own_sources_figure(session, rule, sources):
-    IncomeInfo.objects.create(session=session, **TEN_SOURCES)
+    IncomeInfo.objects.create(session=session, **AMOUNTS)
 
-    expected = sum((TEN_SOURCES[field] for field in sources), Decimal("0"))
+    expected = sum((AMOUNTS[field] for field in sources), Decimal("0"))
     assert DERIVATIONS[rule](session) == f"{expected:.2f}"
 
 
@@ -195,7 +199,7 @@ def test_each_switched_income_rule_returns_its_own_sources_figure(session, rule,
 )
 def test_an_income_rule_prints_blank_when_the_filer_gave_none_of_its_sources(session, rule):
     # Every other source was given, so the rule must not borrow one of them.
-    given = {f: a for f, a in TEN_SOURCES.items() if f not in SWITCHED_RULES[rule]}
+    given = {f: a for f, a in AMOUNTS.items() if f not in SWITCHED_RULES[rule]}
     IncomeInfo.objects.create(session=session, **given)
 
     assert DERIVATIONS[rule](session) == ""
@@ -203,7 +207,7 @@ def test_an_income_rule_prints_blank_when_the_filer_gave_none_of_its_sources(ses
 
 @pytest.mark.parametrize("rule", [rule for rule in SWITCHED_RULES if rule != "cmi"])
 def test_an_income_source_typed_as_zero_prints_zero(session, rule):
-    IncomeInfo.objects.create(session=session, **{field: Decimal("0") for field in TEN_SOURCES})
+    IncomeInfo.objects.create(session=session, **{field: Decimal("0") for field in AMOUNTS})
 
     assert DERIVATIONS[rule](session) == "0.00"
 
@@ -246,16 +250,20 @@ SPOUSE_TWINS = {
 
 def _spouse_at_home(session, marital_status="married_together", **spouse):
     # The filer's ten are typed $0, so a spouse rule reading the filer's row prints 0.00.
-    IncomeInfo.objects.create(session=session, **dict.fromkeys(TEN_SOURCES, Decimal("0")))
+    IncomeInfo.objects.create(session=session, **dict.fromkeys(AMOUNTS, Decimal("0")))
     answer_household(
         session, marital_status=marital_status, members=[SPOUSE_AT_HOME], spouse_income=spouse
     )
+    # The builder stores the ten only; the legacy rental figure goes on the row after it.
+    row = session.spouse_income
+    row.monthly_rental_income = spouse.get("monthly_rental_income")
+    row.save()
 
 
 @pytest.mark.parametrize("rule,twin", list(SPOUSE_TWINS.items()))
 def test_a_spouse_at_home_prints_their_own_figure_on_each_line_the_filer_does(session, rule, twin):
-    _spouse_at_home(session, **TEN_SOURCES)
-    expected = sum((TEN_SOURCES[f] for f in SWITCHED_RULES[twin]), Decimal("0"))
+    _spouse_at_home(session, **AMOUNTS)
+    expected = sum((AMOUNTS[f] for f in SWITCHED_RULES[twin]), Decimal("0"))
     assert DERIVATIONS[rule](session) == f"{expected:.2f}"
 
 
@@ -263,21 +271,21 @@ def test_a_spouse_at_home_prints_their_own_figure_on_each_line_the_filer_does(se
 def test_a_spouse_line_prints_blank_when_the_spouse_gave_none_of_its_sources(session, rule):
     _spouse_at_home(
         session,
-        **{f: a for f, a in TEN_SOURCES.items() if f not in SWITCHED_RULES[SPOUSE_TWINS[rule]]},
+        **{f: a for f, a in AMOUNTS.items() if f not in SWITCHED_RULES[SPOUSE_TWINS[rule]]},
     )
     assert DERIVATIONS[rule](session) == ""
 
 
 @pytest.mark.parametrize("rule", list(SPOUSE_TWINS))
 def test_a_spouse_source_typed_as_zero_prints_zero(session, rule):
-    _spouse_at_home(session, **dict.fromkeys(TEN_SOURCES, Decimal("0")))
+    _spouse_at_home(session, **dict.fromkeys(AMOUNTS, Decimal("0")))
     assert DERIVATIONS[rule](session) == "0.00"
 
 
 @pytest.mark.parametrize("answer", ["married_separately", "not_married"])
 @pytest.mark.parametrize("rule", list(SPOUSE_TWINS))
 def test_a_spouse_not_at_home_prints_nothing_in_their_column(session, rule, answer):
-    _spouse_at_home(session, marital_status=answer, **TEN_SOURCES)  # saved, not counted (§5.1)
+    _spouse_at_home(session, marital_status=answer, **AMOUNTS)  # saved, not counted (§5.1)
     assert DERIVATIONS[rule](session) == ""
 
 

@@ -741,7 +741,7 @@ class TestDetailedBreakdown:
             "monthly_gross_wages": 5000.0,
             "monthly_overtime": None,
             "monthly_tips": None,
-            "monthly_rental_income": None,
+            "monthly_interest_and_dividends": None,
             "monthly_pension": None,
             "monthly_social_security": None,
             "monthly_unemployment": None,

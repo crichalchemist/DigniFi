@@ -22,13 +22,12 @@ from apps.intake.tests.builders import answer_household
 
 User = get_user_model()
 
-# Box → what it prints with TEN_SOURCES (wages 1, overtime 2, tips 4, rental 8,
+# Box → what it prints with TEN_SOURCES (wages 1, overtime 2, tips 4, interest 8,
 # pension 16, Social Security 32, unemployment 64, child support 128, alimony 256,
 # other 512).
 LINE_BY_SOURCE = {
     "Amount 2 Debtor 1": "5.00",  # line 2: wages and tips
     "Amount 3 Debtor 1": "2.00",  # line 3: overtime
-    "Amount 8a Debtor 1": "8.00",  # 8a: net rental income
     "Amount 8c Debtor 1": "384.00",  # 8c: child support and alimony
     "Amount 8d Debtor 1": "64.00",  # 8d: unemployment
     "Amount 8e Debtor 1": "32.00",  # 8e: Social Security
@@ -40,7 +39,7 @@ LINE_TOTALS = {
     "Amount 4 Debtor 1": "7.00",  # line 4: line 2 + line 3
     "Amount 4 Debtor 1a": "7.00",  # line 4's copy at the top of page 2
     "Amount 7 Debtor 1": "7.00",  # line 7: line 4, as no payroll deduction is asked yet
-    "Amount 9 Debtor 1": "1016.00",  # line 9: 8a + 8c + 8d + 8e + 8g + 8h
+    "Amount 9 Debtor 1": "1008.00",  # line 9: 8c + 8d + 8e + 8g + 8h
 }
 NEVER_ASKED = {
     "Supplemental income date",  # a Chapter 13 supplement's date
@@ -53,6 +52,7 @@ NEVER_ASKED = {
     "Amount 5g Debtor 1",
     "Amount 5h Debtor 1",
     "Amount 6 Debtor 1",
+    "Amount 8a Debtor 1",  # 8a: blank until it prints the business and rental entries (3e2 §9.1)
     "Amount 8b Debtor 1",  # interest and dividends
     "Amount 8f Debtor 1",  # other government assistance
 }
@@ -215,9 +215,7 @@ class TestScheduleISchema:
             "Amount 7 Debtor 2",
             "Amount 10 Debtor 2",
         )
-        zero_boxes = tuple(
-            f"Amount {n} Debtor 2" for n in ("3", "8a", "8c", "8d", "8e", "8g", "8h", "9")
-        )
+        zero_boxes = tuple(f"Amount {n} Debtor 2" for n in ("3", "8c", "8d", "8e", "8g", "8h", "9"))
         assert {b: schedule_i.get(b) for b in wage_boxes} == dict.fromkeys(wage_boxes, "1800.00")
         assert {b: schedule_i.get(b) for b in zero_boxes} == dict.fromkeys(zero_boxes, "0.00")
         assert schedule_i["Amount 10 Debtor 1"] == "12000.00"

@@ -450,3 +450,60 @@ def test_encrypted_income_and_expenses_are_ciphertext_in_the_table_on_postgres(m
 @ON_POSTGRES
 def test_undoing_the_encryption_refuses_a_value_it_cannot_read_on_postgres(migrate):
     _undo_refuses_a_foreign_value(migrate, "income_info", "monthly_gross_wages", BEFORE_ENCRYPTION)
+
+
+INCOME_DETAIL = [("intake", "0026_income_detail")]
+
+
+def _income_detail_round_trip(migrate):
+    apps = migrate(EXPENSES_ENCRYPTED)
+    session = _session(apps)
+    apps.get_model("intake", "IncomeInfo").objects.create(
+        session_id=session.pk,
+        monthly_gross_wages=Decimal("3000.00"),
+        monthly_rental_income=Decimal("900.00"),
+    )
+    apps.get_model("intake", "SpouseIncome").objects.create(
+        session_id=session.pk, monthly_gross_wages=Decimal("1800.00")
+    )
+
+    def amounts(apps):
+        income = apps.get_model("intake", "IncomeInfo").objects.get()
+        spouse = apps.get_model("intake", "SpouseIncome").objects.get()
+        return income, spouse
+
+    apps = migrate(INCOME_DETAIL)
+    income, spouse = amounts(apps)
+    kept = (
+        (income.monthly_gross_wages, income.monthly_rental_income, spouse.monthly_gross_wages),
+        [
+            (row.business_and_rental, row.income_now_different, row.next_entry_id)
+            for row in (income, spouse)
+        ],
+        income.income_period_end,
+    )
+    income, spouse = amounts(migrate(EXPENSES_ENCRYPTED))
+    undone = (
+        income.monthly_gross_wages,
+        income.monthly_rental_income,
+        spouse.monthly_gross_wages,
+    )
+    return kept, undone
+
+
+def test_adding_the_income_detail_columns_keeps_saved_income_and_leaves_them_unanswered(migrate):
+    kept, undone = _income_detail_round_trip(migrate)
+    amounts = (Decimal("3000.00"), Decimal("900.00"), Decimal("1800.00"))
+    assert kept == (amounts, [(None, None, 1), (None, None, 1)], None)
+    assert undone == amounts
+
+
+@pytest.mark.postgres
+@ON_POSTGRES
+def test_adding_the_income_detail_columns_keeps_saved_income_and_leaves_them_unanswered_on_postgres(
+    migrate,
+):
+    kept, undone = _income_detail_round_trip(migrate)
+    amounts = (Decimal("3000.00"), Decimal("900.00"), Decimal("1800.00"))
+    assert kept == (amounts, [(None, None, 1), (None, None, 1)], None)
+    assert undone == amounts

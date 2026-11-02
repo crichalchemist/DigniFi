@@ -15,6 +15,9 @@ from django.core.management import call_command
 from rest_framework.test import APIClient
 
 from apps.districts.models import District
+from apps.eligibility.cmi import LEGACY_RENTAL as LEGACY
+from apps.eligibility.cmi import SPOUSE_LEGACY_RENTAL as SPOUSE_LEGACY
+from apps.eligibility.cmi import income_step_gaps
 from apps.forms.schema import load_schema
 from apps.forms.services.fill_resolver import resolve
 from apps.intake.models import (
@@ -337,6 +340,18 @@ def _spouse_income_not_entered(session):
     SpouseIncome.objects.create(session=session)
 
 
+def _legacy_rental(session):
+    # Wages stay $3,000, so only the legacy gap is open
+    session.income_info.monthly_rental_income = Decimal("900.00")
+    session.income_info.save()
+
+
+def _spouse_legacy_rental(session):
+    _marry(session, "married_together")
+    _household_list(session, [SPOUSE_44])
+    SpouseIncome.objects.create(session=session, monthly_rental_income=Decimal("700.00"))
+
+
 @pytest.mark.parametrize(
     "gap,step,message",
     [
@@ -348,6 +363,8 @@ def _spouse_income_not_entered(session):
         (_a_spouse_row_but_not_married, "income_info", MISMATCH),
         (_living_together_with_twenty_others_and_no_spouse, "income_info", MISMATCH),
         (_spouse_income_not_entered, "income_info", SPOUSE_INCOME),
+        (_legacy_rental, "income_info", LEGACY),
+        (_spouse_legacy_rental, "income_info", SPOUSE_LEGACY),
     ],
     ids=[
         "no_county",
@@ -358,6 +375,8 @@ def _spouse_income_not_entered(session):
         "a_spouse_row_but_not_married",
         "living_together_with_twenty_others_and_no_spouse",
         "spouse_income_not_entered",
+        "legacy_rental",
+        "spouse_legacy_rental",
     ],
 )
 def test_complete_names_every_new_gap_by_its_step(filer, completed, gap, step, message):
@@ -374,6 +393,33 @@ def test_complete_names_every_new_gap_by_its_step(filer, completed, gap, step, m
         "errors": [{"step": step, "message": message}],
     }
     assert _status(completed) == "in_progress"
+
+
+def test_a_rental_figure_saved_as_one_amount_is_the_only_gap_named_for_it(filer, completed):
+    # Its only income was the legacy figure, so "income not entered" stays unnamed (§4.7).
+    IncomeInfo.objects.filter(session=completed).update(monthly_gross_wages=None)
+    completed.income_info.refresh_from_db()
+    _legacy_rental(completed)
+    assert [str(g) for g in income_step_gaps(completed)] == [LEGACY]
+
+
+def test_a_rental_figure_saved_as_one_amount_refuses_the_means_test_and_the_forms(filer, completed):
+    client, _ = filer
+    _legacy_rental(completed)  # status stays "completed"
+    means = client.post(_session_url(completed, "calculate_means_test/"))
+    assert (means.status_code, means.data["error"]) == (400, LEGACY)
+    forms = client.get("/api/forms/packet/", {"session": completed.pk})
+    assert (forms.status_code, forms.data["error"], forms.data["step"]) == (
+        422,
+        LEGACY,
+        "income_info",
+    )
+    client.patch(
+        _session_url(completed), {"income_info": {"business_and_rental": []}}, format="json"
+    )
+    assert LEGACY not in [
+        str(g) for g in income_step_gaps(IntakeSession.objects.get(pk=completed.pk))
+    ]
 
 
 def test_complete_lists_every_gap_in_wizard_order(filer, district):
