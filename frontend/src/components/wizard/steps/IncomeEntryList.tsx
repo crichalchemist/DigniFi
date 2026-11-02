@@ -95,8 +95,11 @@ export function IncomeEntryList({
     onRowsChange(rows.filter((_, i) => i !== index));
   };
 
-  const unanswered = (touched: boolean, value: unknown) =>
-    touched && value == null ? <p className="form-help-text">{NOT_ANSWERED_YET}</p> : null;
+  // A box's own help, with "Not answered yet" joined on while it is blank on a touched entry, so
+  // a screen reader announces it on the box
+  const helpFor = (help: string | undefined, touched: boolean, value: unknown) =>
+    [help, touched && value == null ? NOT_ANSWERED_YET : undefined].filter(Boolean).join(' ') ||
+    undefined;
 
   const kindsBelowZero = (['business', 'rental'] as const).filter(
     (kind) => kindNet(rows, kind, false) < 0
@@ -114,7 +117,9 @@ export function IncomeEntryList({
           // Keyed by the row's own key, so each answer stays with its row when one is removed
           <section key={row._key} className="form-section household-card">
             <div className="household-card-header">
-              <h4 className="section-title">Business or property {index + 1}</h4>
+              <h4 className="section-title">
+                {spouse ? "Spouse's business or property" : 'Business or property'} {index + 1}
+              </h4>
               <button
                 type="button"
                 onClick={() => removeRow(index)}
@@ -152,9 +157,8 @@ export function IncomeEntryList({
                   description: e.target.value === '' ? null : e.target.value,
                 })
               }
-              helpText={ENTRY_DESCRIPTION_HELP}
+              helpText={helpFor(ENTRY_DESCRIPTION_HELP, touched, row.description)}
             />
-            {unanswered(touched, row.description)}
 
             <div className="form-row">
               <FormField
@@ -167,7 +171,7 @@ export function IncomeEntryList({
                 onChange={(e) => answerAmount(index, 'gross', e.target.value)}
                 error={errors[`${prefix}entry_gross_${index}`]}
                 // The help speaks to the filer, so it stays out from under the spouse's box
-                helpText={spouse ? undefined : AVERAGING_SENTENCE}
+                helpText={helpFor(spouse ? undefined : AVERAGING_SENTENCE, touched, row.gross)}
                 placeholder="0.00"
               />
               <FormField
@@ -179,12 +183,14 @@ export function IncomeEntryList({
                 value={row.expenses ?? ''}
                 onChange={(e) => answerAmount(index, 'expenses', e.target.value)}
                 error={errors[`${prefix}entry_expenses_${index}`]}
-                helpText={spouse ? undefined : DOUBLE_COUNT_INCOME_NOTE}
+                helpText={helpFor(
+                  spouse ? undefined : DOUBLE_COUNT_INCOME_NOTE,
+                  touched,
+                  row.expenses
+                )}
                 placeholder="0.00"
               />
             </div>
-            {unanswered(touched, row.gross)}
-            {unanswered(touched, row.expenses)}
 
             <p className="form-help-text">
               <span>{ENTRY_NET_LABEL}</span> <strong>{formatNet(net)}</strong>

@@ -696,8 +696,28 @@ describe('IncomeInfoStep, averages and the list', () => {
   it('the operating expenses box says to count a cost once', () => {
     renderStep({}, { entries: [loadedEntry(1)] });
     expect(field('entry_expenses_0')).toHaveAccessibleDescription(
-      'If one cost is both for this work and for your home, count each dollar once, in one place only: here or on the Expenses step. How you split it is your choice. Legal aid can help.'
+      expect.stringContaining(
+        'If one cost is both for this work and for your home, count each dollar once, in one place only: here or on the Expenses step. How you split it is your choice. Legal aid can help.'
+      )
     );
+  });
+
+  it('a blank amount on a saved entry says so in its own box, for a screen reader', () => {
+    renderStep({}, { entries: [loadedEntry(1)] });
+    for (const name of ['entry_gross_0', 'entry_expenses_0', 'entry_description_0']) {
+      expect(field(name)).toHaveAccessibleDescription(expect.stringContaining('Not answered yet'));
+    }
+    fireEvent.change(field('entry_gross_0'), { target: { value: '5' } });
+    expect(field('entry_gross_0')).not.toHaveAccessibleDescription(
+      expect.stringContaining('Not answered yet')
+    );
+  });
+
+  it("the spouse's cards carry the spouse's name", () => {
+    renderStep({ marital_status: 'married_together' }, { spouseEntries: [loadedEntry(2)] });
+    expect(
+      screen.getByRole('heading', { name: "Spouse's business or property 1" })
+    ).toBeInTheDocument();
   });
 
   it("the spouse's list carries the form's one-column sentence, and its own buttons", () => {
