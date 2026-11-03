@@ -5,7 +5,6 @@ from decimal import Decimal
 from typing import ClassVar
 
 from django.conf import settings
-from django.core.validators import MinValueValidator
 from django.db import models
 from encrypted_model_fields.fields import EncryptedCharField, EncryptedTextField
 
@@ -46,9 +45,8 @@ class IntakeSession(models.Model):
     def reopen(self) -> None:
         """Set a completed intake back to in progress, because its intake data changed.
 
-        The filer then presses Complete again, which re-runs the completion checks and
-        the fee-waiver routing (spec §5.3). Form answers, SOFA and the fee-waiver
-        application are not intake data and never call this.
+        The filer then presses Complete again, which re-runs the completion checks (spec
+        §5.3). Form answers, SOFA and the filing fee are not intake data and never call this.
 
         The database decides, not this copy: an upload loads the session seconds before it
         reopens it, and the filer may have pressed Complete meanwhile. The copy is updated too,
@@ -858,133 +856,6 @@ class DebtInfo(models.Model):
 
     def __str__(self) -> str:
         return f"{self.creditor_name} - {self.get_debt_type_display()} ({self.get_consumer_business_classification_display()}) (Session: {self.session_id})"
-
-
-class FeeWaiverApplication(models.Model):
-    """
-    Chapter 7 fee waiver application (Form 103B).
-
-    Qualifies if:
-    1. Income < 150% federal poverty line ($1,882.50/month for 1 person as of 2024)
-    2. OR receives means-tested public benefits (SSI, SNAP, TANF, etc.)
-    3. AND cannot pay filing fee ($338) in full or installments
-
-    Per 28 U.S.C. § 1930(f)
-    """
-
-    # HHS poverty guidelines constants (2024)
-    POVERTY_BASE_2024: ClassVar[Decimal] = Decimal("15060")  # HHS poverty line base (2024)
-    POVERTY_INCREMENT: ClassVar[Decimal] = Decimal("5380")  # Per-person increment
-    POVERTY_MULTIPLIER: ClassVar[Decimal] = Decimal("1.5")  # 150% per 28 U.S.C. § 1930(f)
-    MONTHS_PER_YEAR: ClassVar[Decimal] = Decimal("12")
-
-    # Relations
-    session = models.OneToOneField(
-        IntakeSession, on_delete=models.CASCADE, related_name="fee_waiver"
-    )
-
-    # Household information
-    household_size = models.IntegerField(
-        default=1,
-        validators=[MinValueValidator(1)],
-        help_text="Number of people in household (must be at least 1)",
-    )
-
-    # Financial information (encrypted). monthly_income, monthly_expenses and
-    # receives_public_benefits are no longer written: the page stopped asking them, and they
-    # stay one release for the rows saved before (forms step 2 spec §5.7).
-    monthly_income = EncryptedDecimalField(
-        max_digits=10,
-        decimal_places=2,
-        null=True,
-        blank=True,
-        help_text="Total monthly income from all sources",
-    )
-
-    monthly_expenses = EncryptedDecimalField(
-        max_digits=10, decimal_places=2, null=True, blank=True, help_text="Total monthly expenses"
-    )
-
-    monthly_take_home_pay = EncryptedDecimalField(
-        max_digits=10,
-        decimal_places=2,
-        null=True,
-        blank=True,
-        help_text="Average monthly take-home pay, after taxes and payroll deductions (103B line 2)",
-    )
-
-    # Public benefits
-    receives_public_benefits = models.BooleanField(
-        default=False, help_text="Receives SSI, SNAP, TANF, or other means-tested benefits"
-    )
-
-    # Empty until the filer answers: a stored False prints a sworn "No" on 103B line 3.
-    receives_noncash_assistance = models.BooleanField(
-        null=True, help_text="Receives non-cash help from the government (103B line 3)"
-    )
-
-    # The "What kind?" answer when receives_noncash_assistance is True
-    benefit_types = models.JSONField(
-        default=list, blank=True, help_text="List of benefit programs (e.g., ['SNAP', 'Medicaid'])"
-    )
-
-    # Inability to pay
-    cannot_pay_full = models.BooleanField(
-        default=True, help_text="Cannot pay $338 filing fee in full"
-    )
-
-    cannot_pay_installments = models.BooleanField(
-        default=True, help_text="Cannot pay in 4 installments over 120 days"
-    )
-
-    # Status tracking
-    STATUS_CHOICES: ClassVar[list[tuple[str, str]]] = [
-        ("pending", "Pending"),
-        ("approved", "Approved"),
-        ("denied", "Denied"),
-    ]
-
-    status = models.CharField(
-        max_length=20, choices=STATUS_CHOICES, default="pending", db_index=True
-    )
-
-    filed_at = models.DateTimeField(null=True, blank=True)
-    decided_at = models.DateTimeField(null=True, blank=True)
-
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        db_table = "fee_waiver_applications"
-
-    def __str__(self):
-        return f"Fee Waiver for {self.session} ({self.status})"
-
-    def qualifies_for_waiver(self) -> bool:
-        """
-        Determine if applicant qualifies for fee waiver.
-
-        Returns:
-            bool: True if qualifies via income test OR public benefits
-        """
-        # Automatic qualification: Receives public benefits
-        # 28 U.S.C. § 1930(f) allows waiver for means-tested benefits
-        if self.receives_public_benefits:
-            return True
-
-        # Income test: < 150% federal poverty line
-        poverty_threshold_150_monthly = self.get_poverty_threshold()
-        if self.monthly_income < poverty_threshold_150_monthly:
-            return True
-
-        return False
-
-    def get_poverty_threshold(self) -> Decimal:
-        """Calculate 150% poverty threshold for household size."""
-        poverty_threshold_annual = self.POVERTY_BASE_2024 + (
-            self.POVERTY_INCREMENT * (self.household_size - 1)
-        )
-        return (poverty_threshold_annual * self.POVERTY_MULTIPLIER) / self.MONTHS_PER_YEAR
 
 
 class FilingFee(models.Model):

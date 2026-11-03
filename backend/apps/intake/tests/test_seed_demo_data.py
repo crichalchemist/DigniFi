@@ -20,9 +20,8 @@ from apps.districts.models import MedianIncome
 from apps.eligibility.cmi import is_above_median
 from apps.eligibility.models import MeansTest
 from apps.forms.registry import packet
-from apps.intake.management.commands.seed_demo_data import PERSONAS, _andres_kettleby
+from apps.intake.management.commands.seed_demo_data import _andres_kettleby
 from apps.intake.models import (
-    FeeWaiverApplication,
     FilingFee,
     IncomeInfo,
     IntakeSession,
@@ -107,26 +106,6 @@ def test_the_seed_gives_each_persona_their_household_spouse_income_and_county(
             **dict.fromkeys(SpouseIncome.SOURCE_FIELDS, Decimal("0.00")),
             "monthly_gross_wages": Decimal(spouse_wages),
         }
-
-
-@pytest.mark.django_db
-def test_the_seed_gives_the_fee_waiver_application_103b_line_1s_count(monkeypatch):
-    call_command("loaddata", "ilnd_2025_data", verbosity=0)
-    for persona in ("maria", "deshawn", "sarah"):
-        # Step 1's old Household Size box says 9, so the seed stores these sizes from the
-        # household list, not from that box. (test_household_counts.py pins the counting rule.)
-        data = PERSONAS[persona]()
-        data["debtor"]["household_size"] = 9
-        monkeypatch.setitem(PERSONAS, persona, lambda data=data: data)
-        call_command("seed_demo_data", persona=persona, stdout=StringIO())
-
-    # DeShawn pays in installments, so he no longer applies (3f spec §10).
-    assert {
-        fw.session.user.username: fw.household_size for fw in FeeWaiverApplication.objects.all()
-    } == {
-        "demo_maria": 3,
-        "demo_sarah": 1,
-    }
 
 
 DEDUCTION_FIELDS = IncomeInfo.DEDUCTION_FIELDS

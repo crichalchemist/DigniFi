@@ -484,11 +484,11 @@ class TestGenerateEndpoint:
                 },
             ),
             (
-                ValueTooLong("form_101", "Type of assistance", {"page": "/fee-waiver"}),
+                ValueTooLong("form_101", "Type of assistance", {"page": "/filing-fee"}),
                 {
                     "error": "“Type of assistance” is too long to fit on the court form, "
                     "even in small print. Shorten it.",
-                    "page": "/fee-waiver",
+                    "page": "/filing-fee",
                 },
             ),
         ],
@@ -616,7 +616,7 @@ class TestGenerateAllEndpoint:
             format="json",
         )
         assert resp.status_code == status.HTTP_200_OK
-        # No fee waiver: no 103B. Income below the median: no 122A-2. Form 121 needs the SSN,
+        # Line 8 is pay in full: no 103B. Income below the median: no 122A-2. Form 121 needs the SSN,
         # which the filer enters on the step the error names.
         assert resp.data["errors"] == [
             {

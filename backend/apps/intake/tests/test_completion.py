@@ -3,8 +3,8 @@
 Business intent: forms are prepared only from an intake the filer completed, because only
 then does an empty list mean "the filer said none". The browser can't claim that state
 (DIG-151). Changing intake data after Complete sets the intake back to in progress, so the
-filer presses Complete again, which re-runs its checks and the fee-waiver routing. Form
-answers, SOFA and the fee-waiver application are not intake data and never reopen it.
+filer presses Complete again, which re-runs its checks. Form answers, SOFA and the filing
+fee are not intake data and never reopen it.
 """
 
 from datetime import date
@@ -997,7 +997,7 @@ def test_a_write_that_loaded_the_intake_before_complete_still_reopens_it(complet
 # ── What is not intake data ───────────────────────────────────────────
 
 
-def test_form_answers_sofa_and_fee_waiver_leave_a_completed_intake_complete(filer, completed):
+def test_form_answers_sofa_and_the_filing_fee_leave_a_completed_intake_complete(filer, completed):
     client, _ = filer
 
     answers = client.post(
@@ -1013,19 +1013,9 @@ def test_form_answers_sofa_and_fee_waiver_leave_a_completed_intake_complete(file
     sofa = client.patch(
         f"/api/intake/sofa-report/{completed.pk}/", {"has_business": False}, format="json"
     )
-    fee_waiver = client.post(
-        "/api/intake/fee-waiver/",
-        {
-            "session": completed.pk,
-            "household_size": 1,
-            "monthly_take_home_pay": "1600.00",
-            "receives_noncash_assistance": False,
-            "benefit_types": [],
-            "cannot_pay_full": True,
-            "cannot_pay_installments": True,
-        },
-        format="json",
+    filing_fee = client.put(
+        _session_url(completed, "filing-fee/"), {"payment_choice": "waiver"}, format="json"
     )
 
-    assert (answers.status_code, sofa.status_code, fee_waiver.status_code) == (200, 200, 201)
+    assert (answers.status_code, sofa.status_code, filing_fee.status_code) == (200, 200, 200)
     assert _status(completed) == "completed"

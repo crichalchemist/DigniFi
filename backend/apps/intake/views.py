@@ -29,7 +29,6 @@ from .models import (
     Codebtor,
     DebtInfo,
     ExecutoryContract,
-    FeeWaiverApplication,
     FilingFee,
     FormAnswer,
     IntakeSession,
@@ -43,7 +42,6 @@ from .serializers import (
     DebtInfoSerializer,
     ExecutoryContractRowSerializer,
     ExecutoryContractSerializer,
-    FeeWaiverApplicationSerializer,
     FilingFeeSerializer,
     IntakeSessionSerializer,
     SOFAReportSerializer,
@@ -73,8 +71,7 @@ def _assert_session_owned(session, user):
     """Reject writes that attach a row to another user's intake session (IDOR guard).
 
     ``get_queryset`` scopes reads, but DRF never consults it on create/update — a
-    client-supplied ``session`` PK must be checked explicitly. Mirrors the guard in
-    ``FeeWaiverViewSet.perform_create``.
+    client-supplied ``session`` PK must be checked explicitly.
     """
     from rest_framework.exceptions import PermissionDenied
 
@@ -700,49 +697,6 @@ class DebtViewSet(viewsets.ModelViewSet):
         lock_session(instance.session_id)
         instance.delete()
         instance.session.reopen()
-
-
-class FeeWaiverViewSet(viewsets.ModelViewSet):
-    """CRUD for fee waiver applications, scoped to authenticated user's sessions.
-
-    GET /api/intake/fee-waiver/?session={id} reads one session's application, so the page
-    opens with the answers already sent (DIG-157). The read never creates one: an
-    application puts Form 103B in the packet.
-    """
-
-    serializer_class = FeeWaiverApplicationSerializer
-    permission_classes = [IsAuthenticated]
-    http_method_names = ["get", "post", "patch", "head", "options"]
-    filterset_fields = ["session"]
-
-    def get_queryset(self):
-        return (
-            FeeWaiverApplication.objects.filter(session__user=self.request.user)
-            .select_related("session")
-            .order_by("id")
-        )
-
-    def perform_update(self, serializer):
-        # A PATCH can't move the application onto another user's session (DIG-178).
-        session = serializer.validated_data.get("session")
-        if session is not None:
-            _assert_session_owned(session, self.request.user)
-        serializer.save()
-
-    def perform_create(self, serializer):
-        # FeeWaiverApplication is OneToOne with IntakeSession — second POST from
-        # the same session would raise IntegrityError. Use update_or_create so
-        # reloading the FeeWaiverPage is safe.
-        from rest_framework.exceptions import PermissionDenied
-
-        session = serializer.validated_data["session"]
-        if session.user != self.request.user:
-            raise PermissionDenied()
-        instance, _ = FeeWaiverApplication.objects.update_or_create(
-            session=session,
-            defaults={k: v for k, v in serializer.validated_data.items() if k != "session"},
-        )
-        serializer.instance = instance
 
 
 class SOFAReportViewSet(viewsets.GenericViewSet):

@@ -32,8 +32,7 @@ from apps.intake.models import IncomeInfo, IntakeSession, SpouseIncome
 
 User = get_user_model()
 
-# These ask for the fee waiver on Form 101 line 8 (3f spec §10), so 103B is in their packets,
-# and the seed gives them a fee-waiver application, which the page still accepts until it goes.
+# These ask for the fee waiver on Form 101 line 8 (3f spec §10), so 103B is in their packets.
 APPLIES = {"maria", "sarah"}
 
 
@@ -74,34 +73,6 @@ def _step_bodies(data):
 def _sent(data):
     """Persona data as JSON carries it from the browser: amounts as decimal strings, dates as ISO."""
     return json.loads(json.dumps(data, cls=DjangoJSONEncoder))
-
-
-def _fee_waiver_application(data, household_size):
-    """
-    The application the seed stores, as the fee-waiver page sends it: the household size is
-    103B line 1's count that Complete's reply carries, which the page fills in (spec §8.4).
-    """
-    return {
-        "household_size": household_size,
-        **data["fee_waiver"],
-        "cannot_pay_full": True,
-        "cannot_pay_installments": True,
-    }
-
-
-def _fee_waiver_answers(session):
-    """What the session's fee-waiver application holds, or None without one."""
-    fw = getattr(session, "fee_waiver", None)
-    if fw is None:
-        return None
-    return {
-        "household_size": fw.household_size,
-        "monthly_take_home_pay": fw.monthly_take_home_pay,
-        "receives_noncash_assistance": fw.receives_noncash_assistance,
-        "benefit_types": fw.benefit_types,
-        "cannot_pay_full": fw.cannot_pay_full,
-        "cannot_pay_installments": fw.cannot_pay_installments,
-    }
 
 
 def _household_answers(session):
@@ -161,13 +132,6 @@ def _send_through_the_api(persona):
     # questions for a waiver filer. It never reopens the intake.
     response = client.put(f"{session_url}filing-fee/", _sent(data["filing_fee"]), format="json")
     assert response.status_code == 200, response.data
-    if persona in APPLIES:
-        response = client.post(
-            "/api/intake/fee-waiver/",
-            {"session": session_id, **_sent(_fee_waiver_application(data, household_size))},
-            format="json",
-        )
-        assert response.status_code == 201, response.data
     if "sofa" in data:
         response = client.patch(
             f"/api/intake/sofa-report/{session_id}/", _sent(data["sofa"]), format="json"
@@ -246,14 +210,10 @@ def test_forms_built_through_the_api_print_what_the_seeded_forms_print(persona):
         form_type: _comparable_document(form_type, build_parts(form_type, seeded))
         for form_type in packet(seeded)
     }
-    # Form 103B prints take-home pay and the non-cash answer, but no form prints the two
-    # "cannot pay" answers, so the stored applications are compared directly.
     built = IntakeSession.objects.get(pk=session_id)
     # No form reads these yet, so compare the stored answers directly: a member the API
     # dropped would otherwise pass.
     assert _household_answers(built) == _household_answers(seeded)
-    assert _fee_waiver_answers(built) == _fee_waiver_answers(seeded)
-    assert (_fee_waiver_answers(built) is None) == (persona not in APPLIES)
     # Only Priya's income is above the median, so only her packet holds 122A-2, and it
     # prints her own figures: her household's monthly income, hers and her husband's, on line 1
     # and her childcare on line 21.

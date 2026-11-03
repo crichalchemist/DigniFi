@@ -24,7 +24,7 @@ from apps.forms.registry import (
     packet,
 )
 from apps.forms.schema import load_schema
-from apps.intake.models import DebtorInfo, FeeWaiverApplication, FilingFee, Household, IntakeSession
+from apps.intake.models import DebtorInfo, FilingFee, Household, IntakeSession
 
 User = get_user_model()
 
@@ -119,18 +119,6 @@ def test_every_registered_form_can_be_stored():
 def test_below_median_filer_without_fee_waiver_gets_fourteen_forms(session):
     _means_test(session, "2000.00", "71304.00")
     assert packet(session) == ALWAYS
-
-
-def test_a_fee_waiver_application_without_the_line_8_answer_adds_no_103b(session):
-    FeeWaiverApplication.objects.create(
-        session=session,
-        household_size=1,
-        monthly_income=Decimal("1500.00"),
-        monthly_expenses=Decimal("1400.00"),
-        cannot_pay_full=True,
-        cannot_pay_installments=True,
-    )
-    assert "form_103b" not in packet(session)
 
 
 @pytest.mark.parametrize(

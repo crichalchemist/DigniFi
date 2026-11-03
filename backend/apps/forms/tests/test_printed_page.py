@@ -224,7 +224,7 @@ def _pixels(document, widget):
 def test_unticked_boxes_keep_their_squares():
     # Form 103B's empty squares are its boxes' own appearances, so an unticked box must
     # bake as the blank form shows it, or the filer has nothing to tick by hand.
-    pdf = _drawn_packet()["form_103b"]  # Maria's fee-waiver application
+    pdf = _drawn_packet()["form_103b"]  # Maria's waiver answer
     ticked = {(w.page, w.tag) for w in read_drawn("form_103b", pdf) if w.state not in ("", "/Off")}
     unticked = [
         w

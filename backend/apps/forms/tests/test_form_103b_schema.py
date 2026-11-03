@@ -12,7 +12,6 @@ from apps.forms.schema import load_schema
 from apps.forms.services.fill_resolver import resolve
 from apps.intake.models import (
     DebtorInfo,
-    FeeWaiverApplication,
     IncomeInfo,
     IntakeSession,
 )
@@ -52,15 +51,6 @@ def session_with_fw(session):
     )
     IncomeInfo.objects.create(session=session, monthly_gross_wages=Decimal("1500.00"))
     answer_household(session)
-    FeeWaiverApplication.objects.create(
-        session=session,
-        household_size=2,
-        monthly_take_home_pay=Decimal("1500.00"),
-        receives_noncash_assistance=True,
-        benefit_types=["SNAP"],
-        cannot_pay_full=True,
-        cannot_pay_installments=True,
-    )
     return session
 
 
@@ -81,8 +71,8 @@ class TestForm103BSchema:
         assert "Debtor 1" in field_map
         assert "Jane Doe" in field_map["Debtor 1"]
 
-    def test_line_1_counts_the_household_list_not_the_applications_size(self, session_with_fw):
-        # The application says 2; the filer listed no one else, so 103B line 1 is 1.
+    def test_line_1_counts_the_household_list(self, session_with_fw):
+        # The filer listed no one else, so 103B line 1 is 1.
         field_map = resolve(load_schema("form_103b"), session_with_fw)
         assert field_map["Total number of people"] == "1"
 

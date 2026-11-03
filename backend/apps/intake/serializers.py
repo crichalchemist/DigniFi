@@ -32,7 +32,6 @@ from .models import (
     DebtorInfo,
     ExecutoryContract,
     ExpenseInfo,
-    FeeWaiverApplication,
     FilingFee,
     Household,
     IncomeDetail,
@@ -813,79 +812,6 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
         for name, rows in getattr(instance, "sent_rows", {}).items():
             data[name] = self.fields[name].to_representation(rows)
         return data
-
-
-class FeeWaiverApplicationSerializer(serializers.ModelSerializer):
-    """The fee-waiver page's answers (forms step 2 spec §5.7).
-
-    The old income, expenses and benefits answers are no longer written, so they are not
-    fields here. Take-home pay and the non-cash answer are required, so a page that sent
-    either under another name gets a 400 instead of losing it.
-    """
-
-    # Explicit field declaration — EncryptedDecimalField confuses DRF's auto-mapper.
-    # Zero or more and within the column, like every amount the filer types.
-    monthly_take_home_pay = serializers.DecimalField(
-        max_digits=10, decimal_places=2, min_value=Decimal("0")
-    )
-    # The model allows empty, for rows saved before the question existed. allow_null makes a
-    # form-encoded request that leaves the answer out read as empty, not as No (DIG-193), and
-    # validate() refuses the empty answer.
-    receives_noncash_assistance = serializers.BooleanField(allow_null=True)
-    # The "What kind?" answer: each kind is a non-blank line of text.
-    benefit_types = serializers.ListField(
-        child=serializers.CharField(max_length=255), required=False
-    )
-    # Remove the auto-generated UniqueValidator on session so that a second POST
-    # from the same session passes validation — perform_create uses update_or_create
-    # to handle the upsert safely.
-    session = serializers.PrimaryKeyRelatedField(
-        queryset=IntakeSession.objects.all(), validators=[]
-    )
-
-    class Meta:
-        model = FeeWaiverApplication
-        fields = [
-            "id",
-            "session",
-            "household_size",
-            "monthly_take_home_pay",
-            "receives_noncash_assistance",
-            "benefit_types",
-            "cannot_pay_full",
-            "cannot_pay_installments",
-            "status",
-            "created_at",
-            "updated_at",
-        ]
-        read_only_fields = ["id", "status", "created_at", "updated_at"]
-
-    def validate(self, attrs):
-        """A Yes to non-cash help needs "What kind?" answered, and a No keeps no kind.
-
-        The answer is required on create and can't be sent empty: Form 103B line 3 prints a
-        stored answer as a sworn Yes or No (DIG-193). A PATCH may send only one of the two, so
-        the other is the stored one, which is empty on a row saved before the question; a kind
-        sent there needs a Yes first.
-        """
-        required = self.fields["receives_noncash_assistance"].error_messages["required"]
-        if attrs.get("receives_noncash_assistance") is None and (
-            self.instance is None or "receives_noncash_assistance" in attrs
-        ):
-            raise serializers.ValidationError({"receives_noncash_assistance": [required]})
-        answer = attrs.get(
-            "receives_noncash_assistance",
-            getattr(self.instance, "receives_noncash_assistance", None),
-        )
-        if answer is None and attrs.get("benefit_types"):
-            raise serializers.ValidationError({"receives_noncash_assistance": [required]})
-        if answer is False:
-            attrs["benefit_types"] = []
-        elif answer and not attrs.get("benefit_types", getattr(self.instance, "benefit_types", [])):
-            raise serializers.ValidationError(
-                {"benefit_types": [self.fields["benefit_types"].error_messages["required"]]}
-            )
-        return attrs
 
 
 class FilingFeeSerializer(serializers.Serializer):

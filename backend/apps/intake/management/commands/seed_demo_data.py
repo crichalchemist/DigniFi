@@ -19,13 +19,11 @@ from apps.eligibility.cmi import income_window
 from apps.eligibility.models import MEDIAN_TABLE
 from apps.eligibility.services.means_test_calculator import MeansTestCalculator
 from apps.forms.registry import build_field_values, packet
-from apps.intake.household import count_fee_waiver_household
 from apps.intake.models import (
     AssetInfo,
     DebtInfo,
     DebtorInfo,
     ExpenseInfo,
-    FeeWaiverApplication,
     FilingFee,
     Household,
     IncomeInfo,
@@ -191,12 +189,6 @@ def _maria_torres() -> dict:
                     "dates_of_payments": "Monthly Jan-Mar 2026",
                 },
             ],
-        },
-        # The fee-waiver page's answers (Form 103B lines 2 and 3)
-        "fee_waiver": {
-            "monthly_take_home_pay": Decimal("2800.00"),
-            "receives_noncash_assistance": True,
-            "benefit_types": ["SNAP (food stamps)"],
         },
         # Form 101 line 8, and for the waiver 103B lines 4, 5, 7 and 9 (3f spec §10)
         "filing_fee": {
@@ -525,7 +517,6 @@ def _deshawn_mitchell() -> dict:
                 "consumer_business_classification": "consumer",
             },
         ],
-        # No "fee_waiver": he pays the fee in installments (3f spec §10).
         # Form 101 line 8, and for the waiver 103B lines 4, 5, 7 and 9 (3f spec §10)
         "filing_fee": {"payment_choice": "installments"},
     }
@@ -605,12 +596,6 @@ def _sarah_chen() -> dict:
                 "consumer_business_classification": "consumer",
             },
         ],
-        # The fee-waiver page's answers (Form 103B lines 2 and 3)
-        "fee_waiver": {
-            "monthly_take_home_pay": Decimal("1750.00"),
-            "receives_noncash_assistance": False,
-            "benefit_types": [],
-        },
         # Form 101 line 8, and for the waiver 103B lines 4, 5, 7 and 9 (3f spec §10)
         "filing_fee": {
             "payment_choice": "waiver",
@@ -808,7 +793,6 @@ def _andres_kettleby() -> dict:
                 "consumer_business_classification": "consumer",
             },
         ],
-        # No "fee_waiver": he means to pay the fee in installments (3a1.Q2).
         # Form 101 line 8, and for the waiver 103B lines 4, 5, 7 and 9 (3f spec §10)
         "filing_fee": {"payment_choice": "installments"},
     }
@@ -950,20 +934,6 @@ class Command(BaseCommand):
         # Run means test calculation
         calculator = MeansTestCalculator(session)
         result = calculator.calculate()
-
-        # Create FeeWaiverApplication for the personas who apply (required by Form 103B
-        # generator); one with no "fee_waiver" answers doesn't
-        if "fee_waiver" in data:
-            FeeWaiverApplication.objects.create(
-                session=session,
-                household_size=count_fee_waiver_household(
-                    household.get_members(), data["income"]["marital_status"]
-                ),
-                **data["fee_waiver"],
-                cannot_pay_full=True,
-                cannot_pay_installments=True,
-                status="pending",
-            )
 
         # Check that every form in an eligible persona's packet resolves (none are stored)
         if result["passes_means_test"]:

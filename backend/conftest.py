@@ -9,7 +9,6 @@ django_settings_module = "config.settings.test"
 
 # Standalone manual test scripts — not pytest tests.
 collect_ignore = [
-    "test_fee_waiver_manual.py",
     "test_debt_classification.py",
     "test_schedule_ab_logic.py",
     # A settings module, not tests: its name matches python_files, and importing it during

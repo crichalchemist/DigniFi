@@ -167,29 +167,6 @@ export const handlers = [
     })
   ),
 
-  // -- Fee Waiver -----------------------------------------------------------
-  // No application saved yet for the session the page reads (paginated, like every DRF list)
-  http.get(`${API}/intake/fee-waiver/`, () =>
-    HttpResponse.json({ count: 0, next: null, previous: null, results: [] })
-  ),
-
-  http.post(`${API}/intake/fee-waiver/`, async ({ request }) => {
-    const body = (await request.json()) as { session: number };
-    return HttpResponse.json({
-      id: 1,
-      session: body.session,
-      household_size: 1,
-      monthly_take_home_pay: '1200.00',
-      receives_noncash_assistance: false,
-      benefit_types: [],
-      cannot_pay_full: true,
-      cannot_pay_installments: true,
-      status: 'pending',
-      created_at: '2026-01-20T10:00:00Z',
-      updated_at: '2026-01-20T10:00:00Z',
-    });
-  }),
-
   // -- Filing fee -----------------------------------------------------------
   // Nothing answered yet; the page shows Sarah's limit and figure beside the question
   http.get(`${API}/intake/sessions/:id/filing-fee/`, () => HttpResponse.json(mockFilingFee)),
