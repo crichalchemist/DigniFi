@@ -54,7 +54,6 @@ class MeansTestCalculator:
             dict: Calculation results with structure:
                 {
                     "passes_means_test": bool,
-                    "qualifies_for_fee_waiver": bool,
                     "cmi": Decimal,
                     "median_income_threshold": Decimal,
                     "family_size": int,
@@ -95,7 +94,6 @@ class MeansTestCalculator:
         # Build UPL-compliant response
         result = {
             "passes_means_test": means_test.passes_means_test,
-            "qualifies_for_fee_waiver": means_test.qualifies_for_fee_waiver,
             "cmi": means_test.calculated_cmi,
             "median_income_threshold": means_test.median_income_threshold,
             "family_size": means_test.get_calculation_details().get("family_size", 0),
@@ -143,13 +141,6 @@ class MeansTestCalculator:
                 "Chapter 7 typically allows debtors with income at or below the median to "
                 "discharge unsecured debts without a repayment plan."
             )
-
-            if means_test.qualifies_for_fee_waiver:
-                message += (
-                    " Additionally, you may qualify for a filing fee waiver under "
-                    "28 U.S.C. § 1930(f), which waives the standard filing fee for "
-                    "filers with very low income."
-                )
         elif means_test.above_median_calculated and means_test.passes_above_median:
             message = (
                 f"Based on the information provided, your income is above the median "
@@ -189,7 +180,6 @@ class MeansTestCalculator:
                 - Family size calculation
                 - Median income threshold
                 - Pass/fail determination
-                - Fee waiver eligibility
         """
         try:
             means_test = self.intake_session.means_test
@@ -218,7 +208,6 @@ class MeansTestCalculator:
             },
             "results": {
                 "passes_means_test": means_test.passes_means_test,
-                "qualifies_for_fee_waiver": means_test.qualifies_for_fee_waiver,
                 "statute_citation": "11 U.S.C. § 707(b)",
             },
         }

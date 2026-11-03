@@ -11,7 +11,7 @@ The code lives in `backend/apps/districts/dated_tables.py`. Each table below has
 
 ## Census median income
 
-DigniFi compares each filer's income with this table on Form 122A-1 (line 13), and it uses the table to decide whether Form 122A-2 is in the packet and whether the filer is offered the fee-waiver application.
+DigniFi compares each filer's income with this table on Form 122A-1 (line 13), and it uses the table to decide whether Form 122A-2 is in the packet.
 
 ### Where it is posted
 

@@ -117,12 +117,6 @@ export function MeansTestPreview({ sessionId, currentStep }: MeansTestPreviewPro
                   </dt>
                   <dd>{formatCurrency(result.median_income_threshold / 12)}</dd>
                 </div>
-                {result.qualifies_for_fee_waiver && (
-                  <div className="means-test-preview-detail means-test-preview-detail--highlight">
-                    <dt>Fee Waiver</dt>
-                    <dd>You may qualify for a filing fee waiver</dd>
-                  </div>
-                )}
               </dl>
             </div>
           )}

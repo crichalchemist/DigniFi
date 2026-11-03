@@ -201,7 +201,7 @@ def test_every_seeded_persona_answers_each_new_income_question(persona):
 
 @pytest.mark.django_db
 @pytest.mark.parametrize("persona", list(CMI))
-def test_the_new_answers_move_no_seeded_personas_means_test_fee_flag_or_packet(persona):
+def test_the_new_answers_move_no_seeded_personas_means_test_or_packet(persona):
     call_command("loaddata", "ilnd_2025_data", verbosity=0)
     call_command("seed_demo_data", persona=persona, stdout=StringIO())
     session = IntakeSession.objects.get(user__username=f"demo_{persona}")
@@ -209,9 +209,6 @@ def test_the_new_answers_move_no_seeded_personas_means_test_fee_flag_or_packet(p
     assert means_test.calculated_cmi == Decimal(CMI[persona])
     assert is_above_median(means_test.calculated_cmi, means_test.median_income_threshold) is (
         persona == "priya"
-    )
-    assert means_test.qualifies_for_fee_waiver is (
-        persona in {"maria", "deshawn", "sarah", "andres"}
     )
     forms = packet(session)
     assert ("form_122a2" in forms) is (persona == "priya")

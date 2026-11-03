@@ -132,7 +132,6 @@ export const createMockMeansTestResult = (
   overrides?: Partial<MeansTestResult>
 ): MeansTestResult => ({
   passes_means_test: true,
-  qualifies_for_fee_waiver: false,
   cmi: 3500,
   median_income_threshold: 71304,
   family_size: 1,

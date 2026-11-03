@@ -58,7 +58,7 @@ def _wages_only(wages: Decimal) -> dict:
 
 
 def _maria_torres() -> dict:
-    """Below-median single parent, fee waiver eligible. PRD primary persona."""
+    """Below-median single parent who asks for the fee to be waived. PRD primary persona."""
     return {
         "username": "demo_maria",
         "email": "maria.torres@demo.dignifi.org",
@@ -532,7 +532,7 @@ def _deshawn_mitchell() -> dict:
 
 
 def _sarah_chen() -> dict:
-    """Simplest case — single, no assets, fee waiver eligible."""
+    """Simplest case — single, no assets, asks for the fee to be waived."""
     return {
         "username": "demo_sarah",
         "email": "sarah.chen@demo.dignifi.org",
@@ -626,7 +626,7 @@ def _sarah_chen() -> dict:
 
 
 def _andres_kettleby() -> dict:
-    """Gig driver, below median. Qualifies for a fee waiver but pays in installments."""
+    """Gig driver, below median. Pays the fee in installments."""
     return {
         "username": "demo_andres",
         "email": "andres.kettleby@demo.dignifi.org",
@@ -951,9 +951,9 @@ class Command(BaseCommand):
         calculator = MeansTestCalculator(session)
         result = calculator.calculate()
 
-        # Create FeeWaiverApplication for fee-waiver-eligible personas who apply
-        # (required by Form 103B generator); one with no "fee_waiver" answers doesn't
-        if result["qualifies_for_fee_waiver"] and "fee_waiver" in data:
+        # Create FeeWaiverApplication for the personas who apply (required by Form 103B
+        # generator); one with no "fee_waiver" answers doesn't
+        if "fee_waiver" in data:
             FeeWaiverApplication.objects.create(
                 session=session,
                 household_size=count_fee_waiver_household(

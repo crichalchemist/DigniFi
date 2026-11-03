@@ -24,7 +24,6 @@ from django.core.serializers.json import DjangoJSONEncoder
 from rest_framework.test import APIClient
 
 from apps.districts.models import District
-from apps.eligibility.models import MeansTest
 from apps.forms.models import GeneratedForm
 from apps.forms.registry import build_parts, packet
 from apps.forms.schema import load_schema
@@ -33,9 +32,6 @@ from apps.intake.models import IncomeInfo, IntakeSession, SpouseIncome
 
 User = get_user_model()
 
-# The means test qualifies these personas for a fee waiver, so after Complete the wizard
-# sends them to the fee-waiver page.
-QUALIFIES = {"maria", "deshawn", "sarah", "andres"}
 # These ask for the fee waiver on Form 101 line 8 (3f spec §10), so 103B is in their packets,
 # and the seed gives them a fee-waiver application, which the page still accepts until it goes.
 APPLIES = {"maria", "sarah"}
@@ -181,10 +177,6 @@ def _send_through_the_api(persona):
     generated = client.post("/api/forms/generate_all/", {"session_id": session_id}, format="json")
     assert generated.status_code == 200, generated.data
     assert generated.data["errors"] == []
-    # Generate All worked the means test out, and it qualifies exactly the filers the wizard
-    # sends to the fee-waiver page.
-    qualifies = MeansTest.objects.get(session_id=session_id).qualifies_for_fee_waiver
-    assert qualifies == (persona in QUALIFIES)
     return session_id, [form["form_type"] for form in generated.data["generated"]]
 
 

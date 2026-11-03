@@ -457,7 +457,6 @@ export interface Codebtor {
 // annual, annualized_cmi (details) is what the § 707(b) comparison uses
 export interface MeansTestResult {
   passes_means_test: boolean;
-  qualifies_for_fee_waiver: boolean;
   cmi: number;
   median_income_threshold: number;
   family_size: number;
@@ -750,7 +749,6 @@ export interface SessionSummaryResponse {
   };
   means_test?: {
     passes: boolean;
-    qualifies_fee_waiver: boolean;
   };
   forms: {
     generated_count: number;

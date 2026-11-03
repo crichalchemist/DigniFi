@@ -349,7 +349,6 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
         Returns:
             {
                 "passes_means_test": bool,
-                "qualifies_for_fee_waiver": bool,
                 "cmi": Decimal,
                 "median_income_threshold": Decimal,
                 "message": str (UPL-compliant),
@@ -418,7 +417,6 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
         if hasattr(session, "means_test"):
             summary_data["means_test"] = {
                 "passes": session.means_test.passes_means_test,
-                "qualifies_fee_waiver": session.means_test.qualifies_for_fee_waiver,
             }
 
         # Add form generation status

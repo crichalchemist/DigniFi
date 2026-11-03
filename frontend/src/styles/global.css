@@ -875,12 +875,6 @@ a {
   text-align: right;
 }
 
-.means-test-preview-detail--highlight {
-  padding: var(--space-2);
-  background-color: var(--color-cream);
-  border-radius: var(--radius);
-}
-
 .means-test-preview-loading,
 .means-test-preview-status {
   font-size: var(--text-caption);
