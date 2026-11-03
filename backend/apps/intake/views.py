@@ -21,6 +21,7 @@ from apps.eligibility.cmi import (
 from apps.eligibility.services import MeansTestCalculator
 from apps.forms.registry import PreconditionMissing, _needs_county, _needs_ssn
 
+from .filing_fee import filing_fee_information
 from .income import deductions_blank, schedule_i_line4
 from .locking import lock_session
 from .models import (
@@ -28,7 +29,7 @@ from .models import (
     Codebtor,
     DebtInfo,
     ExecutoryContract,
-    FeeWaiverApplication,
+    FilingFee,
     FormAnswer,
     IntakeSession,
     SOFAReport,
@@ -41,7 +42,7 @@ from .serializers import (
     DebtInfoSerializer,
     ExecutoryContractRowSerializer,
     ExecutoryContractSerializer,
-    FeeWaiverApplicationSerializer,
+    FilingFeeSerializer,
     IntakeSessionSerializer,
     SOFAReportSerializer,
     _save_rows_by_id,
@@ -70,8 +71,7 @@ def _assert_session_owned(session, user):
     """Reject writes that attach a row to another user's intake session (IDOR guard).
 
     ``get_queryset`` scopes reads, but DRF never consults it on create/update — a
-    client-supplied ``session`` PK must be checked explicitly. Mirrors the guard in
-    ``FeeWaiverViewSet.perform_create``.
+    client-supplied ``session`` PK must be checked explicitly.
     """
     from rest_framework.exceptions import PermissionDenied
 
@@ -346,7 +346,6 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
         Returns:
             {
                 "passes_means_test": bool,
-                "qualifies_for_fee_waiver": bool,
                 "cmi": Decimal,
                 "median_income_threshold": Decimal,
                 "message": str (UPL-compliant),
@@ -415,7 +414,6 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
         if hasattr(session, "means_test"):
             summary_data["means_test"] = {
                 "passes": session.means_test.passes_means_test,
-                "qualifies_fee_waiver": session.means_test.qualifies_for_fee_waiver,
             }
 
         # Add form generation status
@@ -570,6 +568,30 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
         except Codebtor.DoesNotExist:
             return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
 
+    @action(detail=True, methods=["get", "put"], url_path="filing-fee", url_name="filing-fee")
+    def filing_fee(self, request, pk=None):
+        """GET or PUT /api/intake/sessions/{id}/filing-fee/ (3f spec §6.5).
+
+        In any status. A PUT sets only the answers it sends, under the session lock, and never
+        reopens a completed intake: how the fee is paid is not intake data. Both reply with the
+        eight answers, information and information_gap.
+        """
+        session = self.get_object()  # another user's session is a 404
+        if request.method == "PUT":
+            serializer = FilingFeeSerializer(data=request.data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            with transaction.atomic():
+                lock_session(session.pk)
+                row, _ = FilingFee.objects.get_or_create(session=session)
+                for name, value in serializer.validated_data.items():
+                    setattr(row, name, value)
+                row.save()
+        row = FilingFee.objects.filter(session=session).first() or FilingFee(session=session)
+        information, gap = filing_fee_information(session)
+        return Response(
+            {**FilingFeeSerializer(row).data, "information": information, "information_gap": gap}
+        )
+
     @action(detail=True, methods=["post"], url_path="dischargeability", url_name="dischargeability")
     def dischargeability(self, request, pk=None):
         session = self.get_object()
@@ -675,49 +697,6 @@ class DebtViewSet(viewsets.ModelViewSet):
         lock_session(instance.session_id)
         instance.delete()
         instance.session.reopen()
-
-
-class FeeWaiverViewSet(viewsets.ModelViewSet):
-    """CRUD for fee waiver applications, scoped to authenticated user's sessions.
-
-    GET /api/intake/fee-waiver/?session={id} reads one session's application, so the page
-    opens with the answers already sent (DIG-157). The read never creates one: an
-    application puts Form 103B in the packet.
-    """
-
-    serializer_class = FeeWaiverApplicationSerializer
-    permission_classes = [IsAuthenticated]
-    http_method_names = ["get", "post", "patch", "head", "options"]
-    filterset_fields = ["session"]
-
-    def get_queryset(self):
-        return (
-            FeeWaiverApplication.objects.filter(session__user=self.request.user)
-            .select_related("session")
-            .order_by("id")
-        )
-
-    def perform_update(self, serializer):
-        # A PATCH can't move the application onto another user's session (DIG-178).
-        session = serializer.validated_data.get("session")
-        if session is not None:
-            _assert_session_owned(session, self.request.user)
-        serializer.save()
-
-    def perform_create(self, serializer):
-        # FeeWaiverApplication is OneToOne with IntakeSession — second POST from
-        # the same session would raise IntegrityError. Use update_or_create so
-        # reloading the FeeWaiverPage is safe.
-        from rest_framework.exceptions import PermissionDenied
-
-        session = serializer.validated_data["session"]
-        if session.user != self.request.user:
-            raise PermissionDenied()
-        instance, _ = FeeWaiverApplication.objects.update_or_create(
-            session=session,
-            defaults={k: v for k, v in serializer.validated_data.items() if k != "session"},
-        )
-        serializer.instance = instance
 
 
 class SOFAReportViewSet(viewsets.GenericViewSet):

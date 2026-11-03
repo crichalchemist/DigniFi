@@ -57,12 +57,17 @@ def dependents(members: list[dict]) -> list[dict]:
     return found
 
 
+def fee_waiver_spouse_counted(marital_status: str | None) -> bool:
+    """Form 103B line 1 counts the spouse a filer lives or files with."""
+    return marital_status in ("married_spouse_filing", "married_together")
+
+
 def count_fee_waiver_household(members: list[dict], marital_status: str | None) -> int:
     """Form 103B line 1: the filer, a spouse they live or file with, and their dependents.
 
     A spouse already counted as the spouse isn't counted again as a dependent.
     """
-    spouse_counted = marital_status in ("married_spouse_filing", "married_together")
+    spouse_counted = fee_waiver_spouse_counted(marital_status)
     size = 2 if spouse_counted else 1
     for member in dependents(members):
         if not (spouse_counted and member.get("relationship") == "spouse"):

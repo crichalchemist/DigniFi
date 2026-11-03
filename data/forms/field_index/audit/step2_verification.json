@@ -201,43 +201,113 @@
   },
   {
     "schema": "form_103b",
+    "pdf_field": "Your spouse",
+    "producer": "derived:fee_waiver_spouse_counted",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Your spouse",
+    "evidence": "Field index: Your spouse p1 line 1 'Your spouse', option 'Your spouse', state /On (sampled_ok). 3f spec §8.2: ticked when 103B line 1's count includes the spouse (`married_together`)."
+  },
+  {
+    "schema": "form_103b",
+    "pdf_field": "Your dependents",
+    "producer": "derived:fee_waiver_has_dependents",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Your dependents",
+    "evidence": "Field index: Your dependents p1 line 1 'Your dependents', option 'Your dependents', state /On (sampled_ok). 3f spec §8.2: ticked when `dependents()` less a spouse already counted is above 0."
+  },
+  {
+    "schema": "form_103b",
+    "pdf_field": "How many dependents",
+    "producer": "derived:fee_waiver_dependents_count",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "How many dependents",
+    "evidence": "Field index: How many dependents p1 line 1 'How many dependents?' (sampled_ok), a count. 3f spec §8.2: that number, printed only above 0."
+  },
+  {
+    "schema": "form_103b",
+    "pdf_field": "Total number of people",
+    "producer": "derived:fee_waiver_family_size",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Total number of people",
+    "evidence": "Field index: Total number of people p1 line 1 'Total number of people' (sampled_ok), a count. 3f spec §8.2 and DIG-223: `count_fee_waiver_household` over the household list; replaces `derived:fee_waiver_household_size`."
+  },
+  {
+    "schema": "form_103b",
     "pdf_field": "undefined_2",
-    "producer": "derived:fee_waiver_monthly_income",
+    "producer": "derived:fee_waiver_income_you",
     "original_verdicts": [],
     "final_verdicts": ["correct"],
     "status": "confirmed",
     "correct_target": "undefined_2",
-    "evidence": "Field index: undefined_2 p1 line 2 'You', column 'That person’s average monthly net income (take-home pay)' (sampled_ok). Owner's answer Q10 (step 2 spec §3, §6.3, DIG-78): 103B line 2 prints the take-home pay the filer typed on the fee-waiver page, on You, Subtotal and the family's net income; Your spouse and the non-cash subtraction stay blank (Appendix E 6)."
+    "evidence": "Field index: undefined_2 p1 line 2 'You', column 'That person’s average monthly net income (take-home pay)' (sampled_ok). 3f spec §8.2 and owner answer 1 (2026-11-02): Schedule I line 10 column 1, as 103B line 2 says (\"see line 10 of that schedule\"); replaces `derived:fee_waiver_monthly_income`."
+  },
+  {
+    "schema": "form_103b",
+    "pdf_field": "undefined_3",
+    "producer": "derived:fee_waiver_income_spouse",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_3",
+    "evidence": "Field index: undefined_3 p1 line 2 'Your spouse', column 'That person’s average monthly net income (take-home pay)' (sampled_ok). 3f spec §8.2: Schedule I line 10 column 2 for `married_together`, blank otherwise."
   },
   {
     "schema": "form_103b",
     "pdf_field": "undefined_4",
-    "producer": "derived:fee_waiver_monthly_income",
+    "producer": "derived:fee_waiver_income_subtotal",
     "original_verdicts": [],
     "final_verdicts": ["correct"],
     "status": "confirmed",
     "correct_target": "undefined_4",
-    "evidence": "Field index: undefined_4 p1 line 2 'Subtotal', column 'That person’s average monthly net income (take-home pay)' (sampled_ok). Owner's answer Q10 (step 2 spec §3, §6.3, DIG-78): 103B line 2 prints the take-home pay the filer typed on the fee-waiver page, on You, Subtotal and the family's net income; Your spouse and the non-cash subtraction stay blank (Appendix E 6)."
+    "evidence": "Field index: undefined_4 p1 line 2 'Subtotal', column 'That person’s average monthly net income (take-home pay)' (sampled_ok). 3f spec §8.2: the two added; replaces `derived:fee_waiver_monthly_income`."
+  },
+  {
+    "schema": "form_103b",
+    "pdf_field": "undefined_5",
+    "producer": "derived:fee_waiver_income_noncash",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_5",
+    "evidence": "Field index: undefined_5 p1 line 2 'Subtract any non-cash governmental assistance that you included above.', column 'That person’s average monthly net income (take-home pay)' (sampled_ok). 3f spec §8.2 and §16 call 13: the counted people's known 8f non-cash values, only above $0."
+  },
+  {
+    "schema": "form_103b",
+    "pdf_field": "undefined_6",
+    "producer": "derived:fee_waiver_income_total",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_6",
+    "evidence": "Field index: undefined_6 p1 line 2 'Your family’s average monthly net income', column 'Total' (sampled_ok). 3f spec §8.2: the subtotal less `undefined_5`; replaces `derived:fee_waiver_monthly_income`."
   },
   {
     "schema": "form_103b",
     "pdf_field": "check 3",
-    "producer": "derived:fee_waiver_noncash_assistance",
+    "producer": "derived:fee_waiver_noncash_answer",
     "original_verdicts": [],
     "final_verdicts": ["correct"],
     "status": "confirmed",
     "correct_target": "check 3",
-    "evidence": "Field index: check 3 p1 line 3 'Do you receive non-cash governmental assistance?', states /no ('No') and /yes ('Yes. Describe.'), sampled_ok. Owner's answer Q11 (step 2 spec §3, §6.3): line 3 is a Yes/No question in the form's own words with \"What kind?\", answered on the fee-waiver page; blank until answered (DIG-193)."
+    "evidence": "Field index: check 3 p1 line 3 'Do you receive non-cash governmental assistance?', states /no ('No') and /yes ('Yes. Describe.') (sampled_ok). 3f spec §8.2: 8f, Yes when a counted person answered Yes with a non-cash kind, No when none did; replaces `derived:fee_waiver_noncash_assistance`."
   },
   {
     "schema": "form_103b",
     "pdf_field": "3 type",
-    "producer": "derived:fee_waiver_benefit_types",
+    "producer": "derived:fee_waiver_noncash_kinds",
     "original_verdicts": [],
     "final_verdicts": ["correct"],
     "status": "confirmed",
     "correct_target": "3 type",
-    "evidence": "Field index: 3 type p1 line 3 'Type of assistance' (sampled_ok), the box beside 'Yes. Describe.'. Owner's answer Q11 (step 2 spec §3, §6.3): line 3 is a Yes/No question in the form's own words with \"What kind?\", answered on the fee-waiver page; blank until answered (DIG-193). The kinds print only with a Yes."
+    "evidence": "Field index: 3 type p1 line 3 'Type of assistance' (sampled_ok), the box beside 'Yes. Describe.'. 3f spec §8.2 and §16 call 14: the non-cash kinds, the filer's then \"Spouse: \" and the spouse's, joined by \"; \"; replaces `derived:fee_waiver_benefit_types`."
   },
   {
     "schema": "form_103b",
@@ -1778,5 +1848,85 @@
     "status": "confirmed",
     "correct_target": "Other 21",
     "evidence": "Field index: Other 21 p3 T3, 'Other. Specify:' (adjudicated). 3e2 spec §9.4: the filer's own Specify text from the Expenses step, printed only beside a printed amount."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "Check Box7",
+    "producer": "derived:fee_payment_choice",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Check Box7",
+    "evidence": "Field index: Check Box7 p3 line 8 'How you will pay the fee', states /Pay entirely ('I will pay the entire fee when I file my petition.', sampled_ok), /Pay in installments ('I need to pay the fee in installments.', vision_agreed) and /Request fees waived ('I request that my fee be waived', sampled_ok). 3f spec §8.1 and §6.1: line 8 ticks the filer's own answer, FilingFee.payment_choice; blank while unanswered, when Form 101's requires() refuses the form."
+  },
+  {
+    "schema": "form_103b",
+    "pdf_field": "Check 4",
+    "producer": "derived:fee_waiver_income_change",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Check 4",
+    "evidence": "Field index: Check 4 p1 line 4 'Do you expect your family’s average monthly net income to increase or decrease by more than 10% during the next 6 months?', states /no ('No') and /yes ('Yes. Explain.'), sampled_ok. 3f spec §6.4 and §8.2 (owner answer 2): asked on the filing-fee page under the waiver choice, FilingFee.income_change_answer; blank until answered."
+  },
+  {
+    "schema": "form_103b",
+    "pdf_field": "4 type",
+    "producer": "derived:fee_waiver_income_change_explanation",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "4 type",
+    "evidence": "Field index: 4 type p1 line 4 'Line 4 Yes. Explain. (explanation of expected >10% income change)' (adjudicated; its tooltip 'type of assistance' is a template copy-paste error). 3f spec §6.4 and §8.2: line 4's explanation, printed only beside a Yes."
+  },
+  {
+    "schema": "form_103b",
+    "pdf_field": "5 Type",
+    "producer": "derived:fee_waiver_installments_explanation",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "5 Type",
+    "evidence": "Field index: 5 Type p1 line 5 'Line 5: Tell the court why you are unable to pay the filing fee in installments within 120 days (explanation)' (adjudicated; its tooltip 'Type of assistance' is a template copy-paste error). 3f spec §6.4 and §8.2: line 5 in the filer's own words, FilingFee.installments_explanation."
+  },
+  {
+    "schema": "form_103b",
+    "pdf_field": "Check 7",
+    "producer": "derived:fee_waiver_others_covered",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Check 7",
+    "evidence": "Field index: Check 7 p2 line 7 'Do these expenses cover anyone who is not included in your family as reported in line 1?', states /On ('No'; the template's No box exports On, FW:36) and /yes ('Yes. Identify who'), sampled_ok. 3f spec §6.4 and §8.2: FilingFee.others_covered_answer; blank until answered."
+  },
+  {
+    "schema": "form_103b",
+    "pdf_field": "undefined_8",
+    "producer": "derived:fee_waiver_others_covered_who",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_8",
+    "evidence": "Field index: undefined_8 p2 line 7 'Identify who' (sampled_ok). 3f spec §6.4 and §8.2: whom line 7's expenses also cover, printed only beside a Yes."
+  },
+  {
+    "schema": "form_103b",
+    "pdf_field": "Check 9",
+    "producer": "derived:fee_waiver_expense_change",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Check 9",
+    "evidence": "Field index: Check 9 p2 line 9 'Do you expect your average monthly expenses to increase or decrease by more than 10% during the next 6 months?', states /no ('No', sampled_ok) and /yes ('Yes. Explain', adjudicated). 3f spec §6.4 and §8.2: FilingFee.expense_change_answer; blank until answered."
+  },
+  {
+    "schema": "form_103b",
+    "pdf_field": "undefined_10",
+    "producer": "derived:fee_waiver_expense_change_explanation",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_10",
+    "evidence": "Field index: undefined_10 p2 line 9 'Line 9 Yes. Explain (expected >10% expense change)' (adjudicated). 3f spec §6.4 and §8.2: line 9's explanation, printed only beside a Yes."
   }
 ]

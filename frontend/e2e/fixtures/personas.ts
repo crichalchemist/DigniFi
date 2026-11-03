@@ -140,27 +140,28 @@ export interface PersonaData {
   >;
   assets: PersonaAsset[];
   debts: PersonaDebt[];
-  expected: {
-    passes_means_test: boolean;
-    fee_waiver_eligible: boolean;
-  };
+  filing_fee: PersonaFilingFee;
+  expected: { passes_means_test: boolean };
 }
 
-/** What a persona answers on the fee-waiver page (Form 103B lines 2 and 3) */
-export interface PersonaFeeWaiver {
-  take_home_pay: number;
-  // The "What kind?" answer, or null for a persona who gets no non-cash help
-  noncash_assistance: string | null;
-  // Form 103B line 1's count (§4.4)
-  household_size: number;
+/** Form 101 line 8, answered on the filing-fee page */
+export type PaymentChoice = 'pay_in_full' | 'installments' | 'waiver';
+
+/** 103B lines 4, 5, 7 and 9, answered under the waiver. Every persona answers No to 4, 7 and 9. */
+export interface PersonaWaiverAnswers {
+  income_change_answer: 'no';
+  installments_explanation: string;
+  others_covered_answer: 'no';
+  expense_change_answer: 'no';
 }
 
-/** A persona the means test sends to the fee-waiver page */
-export interface WaiverPersonaData extends PersonaData {
-  fee_waiver: PersonaFeeWaiver;
+/** What a persona answers on the filing-fee page (3f spec §10) */
+export interface PersonaFilingFee {
+  payment_choice: PaymentChoice;
+  waiver?: PersonaWaiverAnswers;
 }
 
-export const MARIA: WaiverPersonaData = {
+export const MARIA: PersonaData = {
   username: `e2e_maria_${RUN_ID}`,
   password: 'TestPass-2026!',
   debtor: {
@@ -251,8 +252,17 @@ export const MARIA: WaiverPersonaData = {
       is_in_collections: false,
     },
   ],
-  fee_waiver: { take_home_pay: 2800, noncash_assistance: 'SNAP (food stamps)', household_size: 3 },
-  expected: { passes_means_test: true, fee_waiver_eligible: true },
+  filing_fee: {
+    payment_choice: 'waiver',
+    waiver: {
+      income_change_answer: 'no',
+      installments_explanation:
+        "I support two children on what I earn. After rent, food, the car and the children's costs, there is not enough left each month to pay the fee, even in parts.",
+      others_covered_answer: 'no',
+      expense_change_answer: 'no',
+    },
+  },
+  expected: { passes_means_test: true },
 };
 
 export const JAMES: PersonaData = {
@@ -335,7 +345,8 @@ export const JAMES: PersonaData = {
       collateral_description: '2019 Toyota Camry',
     },
   ],
-  expected: { passes_means_test: true, fee_waiver_eligible: false },
+  filing_fee: { payment_choice: 'pay_in_full' },
+  expected: { passes_means_test: true },
 };
 
 export const PRIYA: PersonaData = {
@@ -442,10 +453,11 @@ export const PRIYA: PersonaData = {
       is_in_collections: true,
     },
   ],
-  expected: { passes_means_test: false, fee_waiver_eligible: false },
+  filing_fee: { payment_choice: 'pay_in_full' },
+  expected: { passes_means_test: false },
 };
 
-export const DESHAWN: WaiverPersonaData = {
+export const DESHAWN: PersonaData = {
   username: `e2e_deshawn_${RUN_ID}`,
   password: 'TestPass-2026!',
   debtor: {
@@ -564,14 +576,11 @@ export const DESHAWN: WaiverPersonaData = {
       is_in_collections: true,
     },
   ],
-  fee_waiver: { take_home_pay: 3050, noncash_assistance: null, household_size: 2 },
-  // Living with his spouse, no dependents: $3,500 plus the spouse's $1,000 is $54,000 a year —
-  // below 60% of the HH2 median ($56,360.40), so DeShawn qualifies for the fee waiver as well
-  // as Chapter 7.
-  expected: { passes_means_test: true, fee_waiver_eligible: true },
+  filing_fee: { payment_choice: 'installments' },
+  expected: { passes_means_test: true },
 };
 
-export const SARAH: WaiverPersonaData = {
+export const SARAH: PersonaData = {
   username: `e2e_sarah_${RUN_ID}`,
   password: 'TestPass-2026!',
   debtor: {
@@ -634,8 +643,17 @@ export const SARAH: WaiverPersonaData = {
       is_in_collections: true,
     },
   ],
-  fee_waiver: { take_home_pay: 1750, noncash_assistance: null, household_size: 1 },
-  expected: { passes_means_test: true, fee_waiver_eligible: true },
+  filing_fee: {
+    payment_choice: 'waiver',
+    waiver: {
+      income_change_answer: 'no',
+      installments_explanation:
+        'I have no savings. My pay covers rent, food and my bus pass, and what is left each month goes to bills I already owe.',
+      others_covered_answer: 'no',
+      expense_change_answer: 'no',
+    },
+  },
+  expected: { passes_means_test: true },
 };
 
 // Data from docs/testing/persona-briefs/andres-kettleby.md, with an SSN of the journey's own:
@@ -816,7 +834,6 @@ export const ANDRES: PersonaData = {
       is_in_collections: false,
     },
   ],
-  // Today's flag (income under 60% of the median) qualifies him for a fee waiver, but he pays
-  // in installments and files no application (3a1.Q2), so he has no fee_waiver answers.
-  expected: { passes_means_test: true, fee_waiver_eligible: true },
+  filing_fee: { payment_choice: 'installments' },
+  expected: { passes_means_test: true },
 };

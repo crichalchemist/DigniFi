@@ -18,15 +18,6 @@
     "pdf_fields": ["Check Box16", "Check Box16A"]
   },
   {
-    "pdf_field": "Check Box7",
-    "page": [3],
-    "line": "8",
-    "label": "How you will pay the fee",
-    "value_needed": "asked: /Pay entirely | /Pay in installments | /Request fees waived",
-    "why": "Every petition must choose a fee method. Choosing waiver must agree with Form 103B being generated (the app knows qualifies_for_fee_waiver, but the choice is the debtor's).",
-    "pdf_fields": ["Check Box7"]
-  },
-  {
     "pdf_field": "Check Box18",
     "page": [7],
     "line": "16a",

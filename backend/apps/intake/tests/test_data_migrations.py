@@ -13,6 +13,8 @@ from django.db import connection
 from django.db.migrations.executor import MigrationExecutor
 
 from apps.districts.models import District
+from apps.forms.registry import packet
+from apps.intake.models import IntakeSession as LiveIntakeSession
 from apps.users.models import User
 
 BEFORE_STEP_2 = [("intake", "0010_add_adversary_proceedings")]
@@ -28,6 +30,9 @@ INCOME_ENCRYPTED = [("intake", "0022_incomeinfo_encrypt_swap")]
 EXPENSES_ENCRYPTED = [("intake", "0025_expenseinfo_encrypt_swap")]
 BEFORE = [("intake", "0027_expenseinfo_schedule_j_lines")]
 SHIFT = [("intake", "0028_shift_current_step")]
+FILING_FEE = [("intake", "0029_filingfee")]
+WAIVER_CARRIED = [("intake", "0030_fee_waiver_applications_to_filing_fee")]
+APPLICATION_DROPPED = [("intake", "0031_delete_feewaiverapplication")]
 INCOME_SOURCES = [
     "monthly_gross_wages",
     "monthly_overtime",
@@ -607,3 +612,129 @@ def test_a_session_saved_before_take_home_pay_reopens_on_the_same_step_on_postgr
     assert after == {1: 1, 2: 2, 3: 4, 8: 9, 0: 0, 12: 12}
     assert undone == {1: 1, 2: 2, 3: 3, 8: 8, 0: 0, 12: 12}
     assert take_home == 3
+
+
+def _filing_fee_round_trip(migrate):
+    apps = migrate(SHIFT)
+    session = _session(apps)
+    apps = migrate(FILING_FEE)
+    FilingFee = apps.get_model("intake", "FilingFee")
+    FilingFee.objects.create(session_id=session.pk)
+    row = FilingFee.objects.get()
+    kept = (row.payment_choice, row.income_change_answer, row.installments_explanation)
+    migrate(SHIFT)
+    return kept, "filing_fees" in connection.introspection.table_names()
+
+
+def test_the_filing_fee_record_starts_unanswered_and_undoing_it_drops_its_table(migrate):
+    kept, table_left = _filing_fee_round_trip(migrate)
+    assert kept == (None, None, "")
+    assert table_left is False
+
+
+@pytest.mark.postgres
+@ON_POSTGRES
+def test_the_filing_fee_record_starts_unanswered_and_undoing_it_drops_its_table_on_postgres(
+    migrate,
+):
+    kept, table_left = _filing_fee_round_trip(migrate)
+    assert kept == (None, None, "")
+    assert table_left is False
+
+
+def _applicants_before_the_drop(migrate):
+    """Three sessions at 0029: one applied for the waiver, one applied and then chose
+    installments on the filing-fee page, and one never applied."""
+    apps = migrate(FILING_FEE)
+    IntakeSession = apps.get_model("intake", "IntakeSession")
+    applied = _session(apps)
+    chose = IntakeSession.objects.create(user_id=applied.user_id, district_id=applied.district_id)
+    never = IntakeSession.objects.create(user_id=applied.user_id, district_id=applied.district_id)
+    FeeWaiverApplication = apps.get_model("intake", "FeeWaiverApplication")
+    for session in (applied, chose):
+        FeeWaiverApplication.objects.create(
+            session_id=session.pk,
+            household_size=3,
+            monthly_take_home_pay=Decimal("2800.00"),
+            receives_noncash_assistance=True,
+            benefit_types=["SNAP (food stamps)"],
+        )
+    apps.get_model("intake", "FilingFee").objects.create(
+        session_id=chose.pk, payment_choice="installments"
+    )
+    return applied.pk, chose.pk, never.pk
+
+
+def _choices(apps):
+    """Each stored line 8 answer by session, decrypted: payment_choice can't be filtered on."""
+    return {
+        f.session_id: f.payment_choice for f in apps.get_model("intake", "FilingFee").objects.all()
+    }
+
+
+def test_every_fee_waiver_applicant_keeps_the_waiver_and_103b_when_the_application_table_goes(
+    migrate,
+):
+    # An applicant asked the court to waive the fee. Dropping the plaintext table must not
+    # take that request out of the packet, and must not overwrite an answer the filer
+    # already gave on the filing-fee page, or invent one for a filer who never applied.
+    applied, chose, never = _applicants_before_the_drop(migrate)
+
+    apps = migrate(APPLICATION_DROPPED)
+
+    assert _choices(apps) == {applied: "waiver", chose: "installments"}
+    assert "fee_waiver_applications" not in connection.introspection.table_names()
+    with pytest.raises(LookupError):
+        apps.get_model("intake", "FeeWaiverApplication")
+    # APPLICATION_DROPPED is the leaf, so the live models read these rows as they are.
+    packets = {pk: packet(LiveIntakeSession.objects.get(pk=pk)) for pk in (applied, chose, never)}
+    assert ["form_103b" in packets[pk] for pk in (applied, chose, never)] == [True, False, False]
+
+
+def test_the_carried_waiver_choice_is_ciphertext_in_the_table(migrate):
+    # The migration writes through the encrypted field, so the answer is never plaintext
+    # at rest (DIG-279), not even for one release.
+    applied, _, _ = _applicants_before_the_drop(migrate)
+
+    migrate(WAIVER_CARRIED)
+
+    with connection.cursor() as cursor:
+        cursor.execute("SELECT payment_choice FROM filing_fees WHERE session_id = %s", [applied])
+        (raw,) = cursor.fetchone()
+    assert raw.startswith("gAAAAA") and "waiver" not in raw
+
+
+def _undo_the_drop(migrate):
+    applied, chose, _ = _applicants_before_the_drop(migrate)
+    migrate(APPLICATION_DROPPED)
+    apps = migrate(FILING_FEE)
+    applications = {
+        fw.session_id: (
+            fw.household_size,
+            fw.monthly_take_home_pay,
+            fw.receives_noncash_assistance,
+            fw.benefit_types,
+        )
+        for fw in apps.get_model("intake", "FeeWaiverApplication").objects.all()
+    }
+    return (applied, chose), applications, _choices(apps)
+
+
+def test_undoing_the_drop_gives_each_waiver_choice_a_bare_application(migrate):
+    # Undone, a waiver filer's packet again holds 103B through an application, but the
+    # typed answers are gone with the table: one person and nothing else, never a guess.
+    # A filer who chose installments gets none, even though they once applied.
+    (applied, chose), applications, choices = _undo_the_drop(migrate)
+    assert applications == {applied: (1, None, None, [])}
+    assert choices == {applied: "waiver", chose: "installments"}
+
+
+@pytest.mark.postgres
+@ON_POSTGRES
+def test_dropping_and_restoring_the_application_table_keeps_each_waiver_choice_on_postgres(
+    migrate,
+):
+    (applied, chose), applications, choices = _undo_the_drop(migrate)
+    assert applications == {applied: (1, None, None, [])}
+    assert choices == {applied: "waiver", chose: "installments"}
+    assert "fee_waiver_applications" in connection.introspection.table_names()

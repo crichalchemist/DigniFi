@@ -1,6 +1,6 @@
 """
 Models for the Bankruptcy Districts app.
-Defines District, MedianIncome, ExemptionSchedule, and LocalRule.
+Defines District, MedianIncome, PovertyGuideline, ExemptionSchedule, and LocalRule.
 """
 
 from decimal import Decimal
@@ -135,6 +135,39 @@ class MedianIncome(DatedTable):
             raise ValueError("This median income table has no amount for each extra person.")
         additional_people = family_size - 8
         return self.family_size_8 + (Decimal(additional_people) * self.family_size_additional)
+
+
+class PovertyGuideline(DatedTable):
+    """
+    The HHS poverty guidelines for the 48 contiguous states and DC, the only ones ILND needs.
+
+    National public data, so it has no district and is not encrypted. Each row is loaded by a
+    data migration (docs/REFERENCE_TABLES.md).
+
+    Fields:
+        first_person (int): Yearly guideline for one person, in whole dollars.
+        each_additional (int): Added for each person after the first, in whole dollars a year.
+    """
+
+    first_person = models.PositiveIntegerField(
+        help_text="Yearly guideline for one person, in whole dollars."
+    )
+    each_additional = models.PositiveIntegerField(
+        help_text="Added for each person after the first, in whole dollars a year."
+    )
+
+    class Meta:
+        verbose_name = "Poverty Guideline"
+        verbose_name_plural = "Poverty Guidelines"
+        ordering = ["-effective_date"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["effective_date"], name="poverty_guideline_unique_effective_date"
+            )
+        ]
+
+    def __str__(self):
+        return f"HHS Poverty Guidelines ({self.effective_date})"
 
 
 class ExemptionSchedule(models.Model):

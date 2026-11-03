@@ -19,13 +19,12 @@ from apps.eligibility.cmi import income_window
 from apps.eligibility.models import MEDIAN_TABLE
 from apps.eligibility.services.means_test_calculator import MeansTestCalculator
 from apps.forms.registry import build_field_values, packet
-from apps.intake.household import count_fee_waiver_household
 from apps.intake.models import (
     AssetInfo,
     DebtInfo,
     DebtorInfo,
     ExpenseInfo,
-    FeeWaiverApplication,
+    FilingFee,
     Household,
     IncomeInfo,
     IntakeSession,
@@ -57,7 +56,7 @@ def _wages_only(wages: Decimal) -> dict:
 
 
 def _maria_torres() -> dict:
-    """Below-median single parent, fee waiver eligible. PRD primary persona."""
+    """Below-median single parent who asks for the fee to be waived. PRD primary persona."""
     return {
         "username": "demo_maria",
         "email": "maria.torres@demo.dignifi.org",
@@ -191,11 +190,17 @@ def _maria_torres() -> dict:
                 },
             ],
         },
-        # The fee-waiver page's answers (Form 103B lines 2 and 3)
-        "fee_waiver": {
-            "monthly_take_home_pay": Decimal("2800.00"),
-            "receives_noncash_assistance": True,
-            "benefit_types": ["SNAP (food stamps)"],
+        # Form 101 line 8, and for the waiver 103B lines 4, 5, 7 and 9 (3f spec §10)
+        "filing_fee": {
+            "payment_choice": "waiver",
+            "income_change_answer": "no",
+            "installments_explanation": (
+                "I support two children on what I earn. After rent, food, the car and the "
+                "children's costs, there is not enough left each month to pay the fee, even in "
+                "parts."
+            ),
+            "others_covered_answer": "no",
+            "expense_change_answer": "no",
         },
     }
 
@@ -283,6 +288,8 @@ def _james_washington() -> dict:
                 "collateral_description": "2019 Toyota Camry",
             },
         ],
+        # Form 101 line 8, and for the waiver 103B lines 4, 5, 7 and 9 (3f spec §10)
+        "filing_fee": {"payment_choice": "pay_in_full"},
     }
 
 
@@ -390,6 +397,8 @@ def _priya_sharma() -> dict:
                 "consumer_business_classification": "consumer",
             },
         ],
+        # Form 101 line 8, and for the waiver 103B lines 4, 5, 7 and 9 (3f spec §10)
+        "filing_fee": {"payment_choice": "pay_in_full"},
     }
 
 
@@ -508,17 +517,13 @@ def _deshawn_mitchell() -> dict:
                 "consumer_business_classification": "consumer",
             },
         ],
-        # The fee-waiver page's answers (Form 103B lines 2 and 3)
-        "fee_waiver": {
-            "monthly_take_home_pay": Decimal("3050.00"),
-            "receives_noncash_assistance": False,
-            "benefit_types": [],
-        },
+        # Form 101 line 8, and for the waiver 103B lines 4, 5, 7 and 9 (3f spec §10)
+        "filing_fee": {"payment_choice": "installments"},
     }
 
 
 def _sarah_chen() -> dict:
-    """Simplest case — single, no assets, fee waiver eligible."""
+    """Simplest case — single, no assets, asks for the fee to be waived."""
     return {
         "username": "demo_sarah",
         "email": "sarah.chen@demo.dignifi.org",
@@ -591,17 +596,22 @@ def _sarah_chen() -> dict:
                 "consumer_business_classification": "consumer",
             },
         ],
-        # The fee-waiver page's answers (Form 103B lines 2 and 3)
-        "fee_waiver": {
-            "monthly_take_home_pay": Decimal("1750.00"),
-            "receives_noncash_assistance": False,
-            "benefit_types": [],
+        # Form 101 line 8, and for the waiver 103B lines 4, 5, 7 and 9 (3f spec §10)
+        "filing_fee": {
+            "payment_choice": "waiver",
+            "income_change_answer": "no",
+            "installments_explanation": (
+                "I have no savings. My pay covers rent, food and my bus pass, and what is left "
+                "each month goes to bills I already owe."
+            ),
+            "others_covered_answer": "no",
+            "expense_change_answer": "no",
         },
     }
 
 
 def _andres_kettleby() -> dict:
-    """Gig driver, below median. Qualifies for a fee waiver but pays in installments."""
+    """Gig driver, below median. Pays the fee in installments."""
     return {
         "username": "demo_andres",
         "email": "andres.kettleby@demo.dignifi.org",
@@ -783,7 +793,8 @@ def _andres_kettleby() -> dict:
                 "consumer_business_classification": "consumer",
             },
         ],
-        # No "fee_waiver": he means to pay the fee in installments (3a1.Q2).
+        # Form 101 line 8, and for the waiver 103B lines 4, 5, 7 and 9 (3f spec §10)
+        "filing_fee": {"payment_choice": "installments"},
     }
 
 
@@ -917,23 +928,12 @@ class Command(BaseCommand):
             for row in creditor_payment_rows:
                 SOFACreditorPayment.objects.create(report=report, **row)
 
+        # The filing-fee page's answers, which every persona gives after Complete
+        FilingFee.objects.create(session=session, **data["filing_fee"])
+
         # Run means test calculation
         calculator = MeansTestCalculator(session)
         result = calculator.calculate()
-
-        # Create FeeWaiverApplication for fee-waiver-eligible personas who apply
-        # (required by Form 103B generator); one with no "fee_waiver" answers doesn't
-        if result["qualifies_for_fee_waiver"] and "fee_waiver" in data:
-            FeeWaiverApplication.objects.create(
-                session=session,
-                household_size=count_fee_waiver_household(
-                    household.get_members(), data["income"]["marital_status"]
-                ),
-                **data["fee_waiver"],
-                cannot_pay_full=True,
-                cannot_pay_installments=True,
-                status="pending",
-            )
 
         # Check that every form in an eligible persona's packet resolves (none are stored)
         if result["passes_means_test"]:

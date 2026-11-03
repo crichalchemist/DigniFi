@@ -9,7 +9,7 @@ export class DashboardPage {
 
   /**
    * @param expectedCount The persona's packet size: 14 forms for a below-median
-   * filer, plus Form 103B for one with a fee waiver application.
+   * filer, plus Form 103B for one who asks for the fee waiver (Form 101 line 8).
    */
   async generateAllForms(expectedCount: number) {
     const btn = this.page.getByRole('button', { name: /generate all/i });

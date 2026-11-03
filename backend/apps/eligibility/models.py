@@ -93,9 +93,6 @@ class MeansTest(models.Model):
             raise TypeError("calculation_details must be a dictionary")
         self.calculation_details = json.dumps(data)
 
-    # Fee waiver eligibility (28 U.S.C. § 1930(f))
-    qualifies_for_fee_waiver = models.BooleanField(default=False)
-
     calculated_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -183,10 +180,6 @@ class MeansTest(models.Model):
             self.passes_above_median = False
             self.above_median_calculated = False
 
-        # Calculate fee waiver eligibility (CMI < 150% of poverty line)
-        # For MVP, simplified: qualifies if income is very low (< 60% of median)
-        qualifies_fee_waiver = annualized_cmi < (median_income_threshold * Decimal("0.60"))
-
         # Store calculation details (encrypted). JSON has no Decimal, and an empty box stays empty.
         income_by_source = {}
         for field in income_info.SOURCE_FIELDS:
@@ -223,7 +216,6 @@ class MeansTest(models.Model):
                 "marital_status": income_info.marital_status,
                 "spouse_cmi": None if spouse_cmi is None else float(spouse_cmi),
                 "passes_test": passes_test,
-                "qualifies_fee_waiver": qualifies_fee_waiver,
                 "calculated_at": timezone.now().isoformat(),
                 "statute_citation": "11 U.S.C. § 707(b)",
             }
@@ -233,7 +225,6 @@ class MeansTest(models.Model):
         self.calculated_cmi = cmi
         self.median_income_threshold = median_income_threshold
         self.passes_means_test = passes_test
-        self.qualifies_for_fee_waiver = qualifies_fee_waiver
         self.set_calculation_details(details)
 
         return passes_test

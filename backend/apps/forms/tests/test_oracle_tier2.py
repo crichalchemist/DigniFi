@@ -34,7 +34,7 @@ from apps.forms.tests.oracle import case_param
 TIER = "2"
 CHECKED_BASES = {"adjudicated", "sampled_ok"}
 LEAVE_BLANK = "leave blank"
-ASSERTED_CASES = 475
+ASSERTED_CASES = 488  # 475 + 103B lines 1-3 (3f Task 2): six re-keyed, eleven new pairs; + 101 line 8 and 103B lines 4, 5, 7 and 9 (3f Task 4): eight new pairs
 
 
 def _audit_dir():

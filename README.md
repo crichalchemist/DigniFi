@@ -165,7 +165,7 @@ dignifi/
 - User authentication with JWT (access in memory, refresh in localStorage)
 - 9-step intake wizard: Your Information → Income → Take-home pay → Expenses → Assets → Amounts Owed → Contracts & Leases → Codebtors → Review & Results
 - Chapter 7 means test calculator (11 U.S.C. § 707(b) — annualized CMI vs. Census median by household size)
-- Fee waiver eligibility assessment (28 U.S.C. § 1930(f))
+- Filing fee (Form 101 line 8): the filer chooses how to pay. A waiver request adds Form 103B, filled from the intake. The court's limit (150% of the HHS poverty guideline) and the filer's own Form 103B figure are shown as information (28 U.S.C. § 1930(f)).
 - 17 court forms (Form 101 through Schedules A/B–J); each filer's packet holds 14–16 of them
 - PDF download — each form's schema fills its official AO court template via pypdf
 - UPL confirmation modal gates all form generation

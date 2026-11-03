@@ -710,7 +710,6 @@ class TestMeansTestCalculation:
 
         result = response.data["means_test_result"]
         assert "passes_means_test" in result
-        assert "qualifies_for_fee_waiver" in result
         assert "cmi" in result
         assert "median_income_threshold" in result
         assert "message" in result
@@ -765,18 +764,21 @@ class TestMeansTestCalculation:
             "message": "Unable to calculate means test. Please ensure all income information is provided."
         }
 
-    def test_fee_waiver_qualification(self, api_client, complete_session, median_income):
-        """Test fee waiver qualification for income < 150% poverty line."""
-        # Set income very low for fee waiver (150% of poverty line ~$22k annual = $1,833/month)
+    def test_a_very_low_income_hears_no_fee_waiver_verdict_from_the_means_test_or_summary(
+        self, api_client, complete_session, median_income
+    ):
+        """The means test answers § 707(b) only; the court decides the fee waiver (3f spec §9)."""
         complete_session.income_info.monthly_gross_wages = Decimal("1500.00")
         complete_session.income_info.save()
 
         url = reverse("intake-session-calculate-means-test", args=[complete_session.id])
-        response = api_client.post(url)
+        result = api_client.post(url).data["means_test_result"]
+        summary = api_client.get(reverse("intake-session-summary", args=[complete_session.id]))
 
-        assert response.status_code == status.HTTP_200_OK
-        result = response.data["means_test_result"]
-        assert result["qualifies_for_fee_waiver"] is True
+        assert "qualifies_for_fee_waiver" not in result
+        assert "fee waiver" not in result["message"].lower()
+        assert summary.status_code == status.HTTP_200_OK
+        assert summary.data["means_test"] == {"passes": True}
 
 
 @pytest.mark.django_db

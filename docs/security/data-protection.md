@@ -42,7 +42,7 @@
 - `DebtorInfo.ssn` - Social Security Number
 - `AssetInfo.current_value`, `amount_owed`, `account_number` - Asset values and account numbers
 - `DebtInfo.amount_owed`, `DebtInfo.account_number` - Debt details
-- `FeeWaiverApplication` `monthly_income`, `monthly_expenses`, `monthly_take_home_pay` - Fee waiver amounts
+- `FilingFee` - every answer: how the filer will pay the fee (Form 101 line 8), and Form 103B lines 4, 5, 7 and 9
 - `SOFAPriorIncome.gross_amount`, `SOFACreditorPayment.total_paid` - Financial affairs amounts
 - `MeansTest.calculation_details` - Means test working
 - `GeneratedForm.field_values` - Resolved form values

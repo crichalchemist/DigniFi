@@ -6,8 +6,7 @@ Tests cover:
 - Above-median income (fails means test)
 - At-median income (edge case: counts as below the median, DIG-136), and CMI rounded to the cent
 - All household sizes (1-8), counted from the household list
-- Fee waiver qualification (CMI < 60% of median)
-- Fee waiver non-qualification (CMI >= 60% of median)
+- No fee-waiver verdict at any income: the result, its details, the breakdown and the message carry none (3f spec §9)
 - Missing income_info raises ValueError
 - None session raises ValueError
 - A total saved before income was stored by source is never read (IncomeNotSplit)
@@ -374,79 +373,34 @@ class TestAllHouseholdSizes:
 
 
 @pytest.mark.django_db
-class TestFeeWaiverQualification:
-    """Tests for fee waiver qualification (CMI < 60% of median)."""
+class TestNoFeeWaiverVerdict:
+    """The means test answers § 707(b) only. Whether the fee is waived is the court's, under
+    § 1930(f), and the filing-fee page shows its 150% figure as information (3f spec §6.2, §9).
+    The old 60%-of-median flag was never that test, so no income gets a fee-waiver verdict."""
 
-    def test_qualifies_for_fee_waiver_very_low_income(self, session, median_income):
-        """Test that very low income (< 60% median) qualifies for fee waiver."""
-        # Median for family size 1: $71,304/year
-        # 60% threshold: $42,782.40/year = $3,565.20/month
-        # Income: $3,000/month (below 60%)
+    @pytest.mark.parametrize("wages", ["0.00", "1500.00", "3000.00", "3565.20", "4166.67"])
+    def test_no_income_gets_a_fee_waiver_verdict_from_the_means_test(
+        self, session, median_income, wages
+    ):
         _income(
             session=session,
             marital_status="not_married",
-            monthly_gross_wages=Decimal("3000.00"),
+            monthly_gross_wages=Decimal(wages),
         )
-
         calculator = MeansTestCalculator(session)
+
         result = calculator.calculate()
 
-        assert result["qualifies_for_fee_waiver"] is True
-        assert result["passes_means_test"] is True  # Also passes means test
+        assert result["cmi"] == Decimal(wages)
+        assert result["passes_means_test"] is True  # every figure is under the $5,942 median
+        assert "qualifies_for_fee_waiver" not in result
+        assert "qualifies_fee_waiver" not in result["details"]
+        assert "qualifies_for_fee_waiver" not in calculator.get_detailed_breakdown()["results"]
+        assert "fee waiver" not in result["message"].lower()
+        assert "1930" not in result["message"]
 
-    def test_qualifies_for_fee_waiver_zero_income(self, session, median_income):
-        """Test that zero income qualifies for fee waiver."""
-        _income(
-            session=session,
-            marital_status="not_married",
-            monthly_gross_wages=Decimal("0.00"),
-        )
-
-        calculator = MeansTestCalculator(session)
-        result = calculator.calculate()
-
-        assert result["qualifies_for_fee_waiver"] is True
-        assert result["cmi"] == Decimal("0.00")
-
-
-@pytest.mark.django_db
-class TestFeeWaiverNonQualification:
-    """Tests for fee waiver non-qualification (CMI >= 60% of median)."""
-
-    def test_does_not_qualify_for_fee_waiver_at_60_percent(self, session, median_income):
-        """Test that income at 60% of median does NOT qualify for fee waiver."""
-        # Median for family size 1: $71,304/year
-        # 60% threshold: $42,782.40/year = $3,565.20/month
-        # Income: $3,565.20/month → annualized exactly at the 60% threshold
-        _income(
-            session=session,
-            marital_status="not_married",
-            monthly_gross_wages=Decimal("3565.20"),
-        )
-
-        calculator = MeansTestCalculator(session)
-        result = calculator.calculate()
-
-        # At 60% does NOT qualify (uses < not <=)
-        assert result["qualifies_for_fee_waiver"] is False
-        assert result["passes_means_test"] is True  # Still passes means test
-
-    def test_does_not_qualify_for_fee_waiver_above_60_percent(self, session, median_income):
-        """Test that income above 60% but below 100% median does not qualify for fee waiver."""
-        # Median for family size 1: $71,304/year
-        # 60% threshold: $42,782.40/year
-        # Income: $50,000/year = $4,166.67/month (above 60%, below 100%)
-        _income(
-            session=session,
-            marital_status="not_married",
-            monthly_gross_wages=Decimal("4166.67"),
-        )
-
-        calculator = MeansTestCalculator(session)
-        result = calculator.calculate()
-
-        assert result["qualifies_for_fee_waiver"] is False
-        assert result["passes_means_test"] is True  # Still passes means test
+    def test_a_means_test_row_stores_no_fee_waiver_verdict(self):
+        assert "qualifies_for_fee_waiver" not in {f.name for f in MeansTest._meta.get_fields()}
 
 
 @pytest.mark.django_db
@@ -515,8 +469,8 @@ class TestUPLProhibitedPhrases:
                 phrase.lower() not in message
             ), f"UPL prohibited phrase '{phrase}' found in message: {message}"
 
-    def test_fee_waiver_message_contains_no_upl_violations(self, session, median_income):
-        """Test that fee waiver message contains no UPL prohibited phrases."""
+    def test_a_very_low_income_message_contains_no_upl_violations(self, session, median_income):
+        """The message a filer far below the median sees contains no UPL prohibited phrase."""
         _income(
             session=session,
             marital_status="not_married",
@@ -532,7 +486,7 @@ class TestUPLProhibitedPhrases:
         for phrase in settings.UPL_PROHIBITED_PHRASES:
             assert (
                 phrase.lower() not in message
-            ), f"UPL prohibited phrase '{phrase}' found in fee waiver message: {message}"
+            ), f"UPL prohibited phrase '{phrase}' found in the message: {message}"
 
     def test_above_median_passing_message_contains_no_upl_violations(
         self, session_with_above_median_income
@@ -725,8 +679,7 @@ class TestDetailedBreakdown:
 
     def test_detailed_breakdown_after_calculation(self, session, median_income):
         """Test that get_detailed_breakdown() returns complete data after calculation."""
-        # $5,000/month = $60,000/year: below the $71,304 median (passes) but
-        # above the 60% fee waiver threshold ($42,782.40)
+        # $5,000/month = $60,000/year: below the $71,304 median (passes)
         _income(
             session=session,
             marital_status="not_married",
@@ -771,9 +724,10 @@ class TestDetailedBreakdown:
         assert breakdown["means_test_threshold"]["district"] == "ILND"
 
         # Verify results
-        assert breakdown["results"]["passes_means_test"] is True
-        assert breakdown["results"]["qualifies_for_fee_waiver"] is False
-        assert breakdown["results"]["statute_citation"] == "11 U.S.C. § 707(b)"
+        assert breakdown["results"] == {
+            "passes_means_test": True,
+            "statute_citation": "11 U.S.C. § 707(b)",
+        }
 
 
 @pytest.mark.django_db
@@ -796,7 +750,6 @@ class TestAnnualizedComparison:
         result = MeansTestCalculator(session).calculate()
 
         assert result["passes_means_test"] is False
-        assert result["qualifies_for_fee_waiver"] is False
         assert result["details"]["annualized_cmi"] == 120000.00
 
 

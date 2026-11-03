@@ -212,7 +212,7 @@ def test_a_form_filed_before_3a2_still_downloads(api_client_authed, generated_fo
     "form_type,key,label",
     [
         ("form_121", "Debtor1.First name", "Debtor 1 first name"),  # fixed on a step
-        ("form_103b", "3 type", "Type of assistance"),  # fixed on a page
+        ("form_103b", "3 type", "Type of assistance"),  # fixed on a step
     ],
 )
 def test_a_filed_form_whose_values_cannot_print_is_refused_without_a_step_or_page(
@@ -302,7 +302,7 @@ def test_a_letter_the_form_cannot_print_refuses_the_download(
 
 def test_form_no_longer_in_the_packet_is_refused(api_client_authed, generated_form_factory):
     form = generated_form_factory(status="generated")
-    form.form_type = "form_103b"  # no fee waiver application for this session
+    form.form_type = "form_103b"  # line 8 is pay in full for this session
     form.save()
 
     response = _download(api_client_authed, form)

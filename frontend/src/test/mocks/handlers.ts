@@ -5,6 +5,7 @@
  */
 
 import { http, HttpResponse } from 'msw';
+import type { FilingFee } from '../../types/api';
 
 const API = 'http://localhost:8000/api';
 
@@ -52,7 +53,7 @@ const mockGeneratedForm = {
   updated_at: '2026-01-20T10:00:00Z',
 };
 
-/** A below-median filer with no fee waiver: the 14 forms every packet holds */
+/** A below-median filer who pays the fee in full: the 14 forms every packet holds */
 const mockPacket = [
   'form_101',
   'form_106dec',
@@ -72,7 +73,6 @@ const mockPacket = [
 
 const mockMeansTestResult = {
   passes_means_test: true,
-  qualifies_for_fee_waiver: false,
   cmi: 3500,
   median_income_threshold: 71304,
   family_size: 1,
@@ -85,6 +85,30 @@ const mockMeansTestResult = {
     family_size: 1,
   },
   means_test_id: 1,
+};
+
+// Nothing answered yet. The information is Sarah's: a family of 1, below the limit.
+const mockFilingFee: FilingFee = {
+  payment_choice: null,
+  income_change_answer: null,
+  income_change_explanation: '',
+  installments_explanation: '',
+  others_covered_answer: null,
+  others_covered_who: '',
+  expense_change_answer: null,
+  expense_change_explanation: '',
+  information: {
+    family_size: 1,
+    limit_monthly: '1995.00',
+    guideline: {
+      year: 2026,
+      effective_date: '2026-01-15',
+      source_url:
+        'https://www.federalregister.gov/documents/2026/01/15/2026-00755/annual-update-of-the-hhs-poverty-guidelines',
+    },
+    family_income_monthly: '1750.00',
+  },
+  information_gap: null,
 };
 
 // ---------------------------------------------------------------------------
@@ -143,27 +167,13 @@ export const handlers = [
     })
   ),
 
-  // -- Fee Waiver -----------------------------------------------------------
-  // No application saved yet for the session the page reads (paginated, like every DRF list)
-  http.get(`${API}/intake/fee-waiver/`, () =>
-    HttpResponse.json({ count: 0, next: null, previous: null, results: [] })
-  ),
+  // -- Filing fee -----------------------------------------------------------
+  // Nothing answered yet; the page shows Sarah's limit and figure beside the question
+  http.get(`${API}/intake/sessions/:id/filing-fee/`, () => HttpResponse.json(mockFilingFee)),
 
-  http.post(`${API}/intake/fee-waiver/`, async ({ request }) => {
-    const body = (await request.json()) as { session: number };
-    return HttpResponse.json({
-      id: 1,
-      session: body.session,
-      household_size: 1,
-      monthly_take_home_pay: '1200.00',
-      receives_noncash_assistance: false,
-      benefit_types: [],
-      cannot_pay_full: true,
-      cannot_pay_installments: true,
-      status: 'pending',
-      created_at: '2026-01-20T10:00:00Z',
-      updated_at: '2026-01-20T10:00:00Z',
-    });
+  http.put(`${API}/intake/sessions/:id/filing-fee/`, async ({ request }) => {
+    const body = (await request.json()) as Partial<FilingFee>;
+    return HttpResponse.json({ ...mockFilingFee, ...body });
   }),
 
   // -- Assets / Debts ------------------------------------------------------
@@ -238,7 +248,12 @@ export const handlers = [
   http.get(`${API}/forms/`, () => HttpResponse.json([mockGeneratedForm])),
 
   http.get(`${API}/forms/packet/`, () =>
-    HttpResponse.json({ session: 1, form_types: mockPacket, tables: [] })
+    HttpResponse.json({
+      session: 1,
+      form_types: mockPacket,
+      tables: [],
+      payment_choice: 'pay_in_full',
+    })
   ),
 
   http.post(`${API}/forms/:id/mark_downloaded/`, () =>

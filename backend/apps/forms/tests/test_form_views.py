@@ -46,6 +46,7 @@ from apps.forms.tests.pdf_readback import read_drawn
 from apps.intake.models import (
     DebtorInfo,
     ExpenseInfo,
+    FilingFee,
     IncomeInfo,
     IntakeSession,
 )
@@ -54,6 +55,21 @@ from apps.intake.tests.builders import answer_household
 User = get_user_model()
 
 FILED = "This form is marked as filed, so it keeps the answers it was filed with."
+
+WAIVER = {
+    "payment_choice": "waiver",
+    "income_change_answer": "no",
+    "installments_explanation": "I have no savings.",
+    "others_covered_answer": "no",
+    "expense_change_answer": "no",
+}
+
+
+def _filing_fee(api_client, session, body):
+    """Save on the filing-fee page, as the filer does after Complete (it never reopens)."""
+    resp = api_client.put(f"/api/intake/sessions/{session.id}/filing-fee/", body, format="json")
+    assert resp.status_code == status.HTTP_200_OK, resp.data
+
 
 # ── Fixtures ──────────────────────────────────────────────────────────
 
@@ -163,6 +179,75 @@ class TestGenerateEndpoint:
     """POST /api/forms/generate/"""
 
     URL = "/api/forms/generate/"
+
+    def test_a_petition_without_the_line_8_answer_links_to_the_filing_fee_page(
+        self, api_client, session_with_debtor
+    ):
+        FilingFee.objects.filter(session=session_with_debtor).delete()
+        resp = api_client.post(
+            self.URL, {"session_id": session_with_debtor.id, "form_type": "form_101"}, format="json"
+        )
+        assert resp.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert resp.data == {
+            "form_type": "form_101",
+            "error": "Choose how you will pay the filing fee.",
+            "page": "/filing-fee",
+        }
+
+    def test_a_waiver_question_left_unanswered_links_103b_to_the_filing_fee_page(
+        self, api_client, session_with_debtor
+    ):
+        _filing_fee(api_client, session_with_debtor, {**WAIVER, "others_covered_answer": None})
+        resp = api_client.post(
+            self.URL,
+            {"session_id": session_with_debtor.id, "form_type": "form_103b"},
+            format="json",
+        )
+        assert resp.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert resp.data == {
+            "form_type": "form_103b",
+            "error": "Answer whether your expenses cover anyone not counted in your family.",
+            "page": "/filing-fee",
+        }
+
+    def test_line_5_typed_as_only_spaces_links_103b_to_the_filing_fee_page(
+        self, api_client, session_with_debtor
+    ):
+        _filing_fee(
+            api_client, session_with_debtor, {**WAIVER, "installments_explanation": "     "}
+        )
+        resp = api_client.post(
+            self.URL,
+            {"session_id": session_with_debtor.id, "form_type": "form_103b"},
+            format="json",
+        )
+        assert resp.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert resp.data == {
+            "form_type": "form_103b",
+            "error": "Tell the court why you can't pay the filing fee in installments.",
+            "page": "/filing-fee",
+        }
+
+    def test_line_4_moved_back_to_no_keeps_its_explanation_off_103b(
+        self, api_client, session_with_debtor
+    ):
+        session = session_with_debtor
+        why = "My hours are being cut in March."
+        _filing_fee(
+            api_client,
+            session,
+            {**WAIVER, "income_change_answer": "yes", "income_change_explanation": why},
+        )
+        _filing_fee(api_client, session, {"income_change_answer": "no"})  # the page sends only No
+        resp = api_client.post(
+            self.URL, {"session_id": session.id, "form_type": "form_103b"}, format="json"
+        )
+        assert resp.status_code == status.HTTP_200_OK, resp.data
+        (part,) = json.loads(
+            GeneratedForm.objects.get(session=session, form_type="form_103b").field_values
+        )["parts"]
+        assert (part["values"]["Check 4"], "4 type" in part["values"]) == ("/no", False)
+        assert FilingFee.objects.get(session=session).income_change_explanation == why
 
     def test_generate_form_101(self, api_client, session_with_debtor):
         resp = api_client.post(
@@ -299,7 +384,7 @@ class TestGenerateEndpoint:
         assert resp.status_code == status.HTTP_401_UNAUTHORIZED
 
     def test_form_outside_the_packet_is_refused(self, api_client, session_with_debtor):
-        # Without a fee waiver application, Form 103B would print a $0 application.
+        # Line 8 is pay in full, so Form 103B is outside the packet.
         resp = api_client.post(
             self.URL,
             {"session_id": session_with_debtor.id, "form_type": "form_103b"},
@@ -399,11 +484,11 @@ class TestGenerateEndpoint:
                 },
             ),
             (
-                ValueTooLong("form_101", "Type of assistance", {"page": "/fee-waiver"}),
+                ValueTooLong("form_101", "Type of assistance", {"page": "/filing-fee"}),
                 {
                     "error": "“Type of assistance” is too long to fit on the court form, "
                     "even in small print. Shorten it.",
-                    "page": "/fee-waiver",
+                    "page": "/filing-fee",
                 },
             ),
         ],
@@ -469,6 +554,57 @@ class TestGenerateAllEndpoint:
 
     URL = "/api/forms/generate_all/"
 
+    def test_a_petition_without_the_line_8_answer_is_named_with_its_page(
+        self, api_client, session_with_debtor
+    ):
+        FilingFee.objects.filter(session=session_with_debtor).delete()
+        resp = api_client.post(self.URL, {"session_id": session_with_debtor.id}, format="json")
+        assert resp.status_code == status.HTTP_200_OK
+        assert resp.data["errors"] == [
+            {
+                "form_type": "form_101",
+                "error": "Choose how you will pay the filing fee.",
+                "page": "/filing-fee",
+            }
+        ]
+        assert resp.data["total_generated"] == 13
+
+    def test_moving_off_the_waiver_withdraws_an_unfiled_103b_and_moving_back_brings_its_answers_back(
+        self, api_client, session_with_debtor
+    ):
+        session = session_with_debtor
+        _filing_fee(api_client, session, WAIVER)
+        first = api_client.post(self.URL, {"session_id": session.id}, format="json")
+        assert first.data["errors"] == []
+        assert "form_103b" in [f["form_type"] for f in first.data["generated"]]
+
+        _filing_fee(api_client, session, {"payment_choice": "installments"})
+        api_client.post(self.URL, {"session_id": session.id}, format="json")
+        assert not GeneratedForm.objects.filter(session=session, form_type="form_103b").exists()
+
+        _filing_fee(api_client, session, {"payment_choice": "waiver"})  # only line 8 sent
+        again = api_client.post(self.URL, {"session_id": session.id}, format="json")
+        assert again.data["errors"] == []
+        application = GeneratedForm.objects.get(session=session, form_type="form_103b")
+        (part,) = json.loads(application.field_values)["parts"]
+        assert (part["values"]["Check 4"], part["values"]["5 Type"]) == (
+            "/no",
+            "I have no savings.",
+        )
+
+    def test_a_filed_103b_stays_when_the_filer_moves_off_the_waiver(
+        self, api_client, session_with_debtor, user
+    ):
+        session = session_with_debtor
+        _filing_fee(api_client, session, WAIVER)
+        listed = api_client.get("/api/forms/packet/", {"session": session.id})
+        assert "form_103b" in listed.data["form_types"]  # the waiver put it in the packet
+        filed = _filed_form(session, user, "form_103b", {"5 Type": "I have no savings."})
+        _filing_fee(api_client, session, {"payment_choice": "pay_in_full"})
+        resp = api_client.post(self.URL, {"session_id": session.id}, format="json")
+        returned = [f for f in resp.data["generated"] if f["form_type"] == "form_103b"]
+        assert [(f["id"], f["status"]) for f in returned] == [(filed.id, "filed")]
+
     def test_generates_every_form_in_the_packet(self, api_client, session_with_debtor):
         """One form's missing data is reported and doesn't undo the others."""
         debtor = session_with_debtor.debtor_info
@@ -480,7 +616,7 @@ class TestGenerateAllEndpoint:
             format="json",
         )
         assert resp.status_code == status.HTTP_200_OK
-        # No fee waiver: no 103B. Income below the median: no 122A-2. Form 121 needs the SSN,
+        # Line 8 is pay in full: no 103B. Income below the median: no 122A-2. Form 121 needs the SSN,
         # which the filer enters on the step the error names.
         assert resp.data["errors"] == [
             {
@@ -806,10 +942,37 @@ class TestPacketEndpoint:
     def test_lists_the_filers_forms_in_filing_order(self, api_client, session_with_debtor):
         resp = api_client.get(self.URL, {"session": session_with_debtor.id})
         assert resp.status_code == status.HTTP_200_OK
-        assert set(resp.data) == {"session", "form_types", "tables", "income_period"}
+        assert set(resp.data) == {
+            "session",
+            "form_types",
+            "tables",
+            "income_period",
+            "payment_choice",
+        }
         assert resp.data["form_types"][:3] == ["form_101", "form_106dec", "form_106sum"]
         assert "form_103b" not in resp.data["form_types"]
         assert len(resp.data["form_types"]) == 14
+
+    @pytest.mark.parametrize("answer", ["pay_in_full", "installments", "waiver", None])
+    def test_the_packet_carries_the_filers_line_8_answer(
+        self, api_client, session_with_debtor, answer
+    ):
+        fee = FilingFee.objects.get(
+            session=session_with_debtor
+        )  # answer_household's pay-in-full row
+        fee.payment_choice = answer
+        fee.save()
+        resp = api_client.get(self.URL, {"session": session_with_debtor.id})
+        assert resp.status_code == status.HTTP_200_OK
+        assert resp.data["payment_choice"] == answer
+        assert ("form_103b" in resp.data["form_types"]) is (answer == "waiver")
+
+    def test_a_filer_with_no_filing_fee_record_is_shown_no_answer(
+        self, api_client, session_with_debtor
+    ):
+        FilingFee.objects.filter(session=session_with_debtor).delete()
+        resp = api_client.get(self.URL, {"session": session_with_debtor.id})
+        assert resp.data["payment_choice"] is None
 
     def test_a_completed_intake_names_the_median_table_its_forms_use(
         self, api_client, session_with_debtor
@@ -915,7 +1078,7 @@ class TestCompletionCheck:
         session = session_with_debtor
         session.status = "in_progress"
         session.save()
-        # No fee waiver application, so 103B has left the packet; 101 is in it, unfiled.
+        # Line 8 is pay in full, so 103B has left the packet; 101 is in it, unfiled.
         GeneratedForm.objects.create(session=session, form_type="form_103b", generated_by=user)
         unfiled = GeneratedForm.objects.create(
             session=session, form_type="form_101", status="generated", generated_by=user
@@ -1065,7 +1228,7 @@ class TestMeansTestWorkedOutAgain:
         # A total saved before income was stored by source.
         session.income_info.monthly_income = json.dumps([3000] * 6)
         _set_wages(session, None)
-        # No fee waiver application, so 103B has left the packet. 106B-Dec reads no income.
+        # Line 8 is pay in full, so 103B has left the packet. 106B-Dec reads no income.
         GeneratedForm.objects.create(session=session, form_type="form_103b", generated_by=user)
         unfiled = GeneratedForm.objects.create(
             session=session, form_type="form_106dec", status="generated", generated_by=user

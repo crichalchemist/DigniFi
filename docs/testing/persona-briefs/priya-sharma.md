@@ -77,6 +77,7 @@ You ARE Priya Sharma. Navigate DigniFi as she would.
 | Charitable (line 14, "Charitable contributions and religious donations")                            | $50                                                                                                                                                                                                        |
 | Taxes (line 16, "Taxes. Do not include taxes deducted from your pay or included in lines 4 or 20.") | $200, "IRS installment agreement, 2025 tax"                                                                                                                                                                |
 | Other expenses, written in (line 21)                                                                | $200, "Children's after-school activities"                                                                                                                                                                 |
+| How you will pay the fee (after Complete, Form 101 line 8)                                          | I will pay the entire fee when I file my petition.                                                                                                                                                         |
 
 **Assets:**
 

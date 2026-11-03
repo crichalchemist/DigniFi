@@ -1,7 +1,7 @@
 # Reference Tables
 
 - **Operator:** the project owner
-- **Last updated:** October 16, 2026
+- **Last updated:** November 3, 2026
 
 DigniFi reads public tables that change on a schedule. Each row of such a table is stored with the first day it applies (`effective_date`), the last day before its next scheduled change (`valid_through`) and the page it comes from (`source_url`). DigniFi uses the newest row that has started by the day the forms are filled, in Chicago time, which stands in for the filing date. If that row's `valid_through` has passed, or no row has started yet, DigniFi refuses to prepare forms. It never falls back to an older row.
 
@@ -11,7 +11,7 @@ The code lives in `backend/apps/districts/dated_tables.py`. Each table below has
 
 ## Census median income
 
-DigniFi compares each filer's income with this table on Form 122A-1 (line 13), and it uses the table to decide whether Form 122A-2 is in the packet and whether the filer is offered the fee-waiver application.
+DigniFi compares each filer's income with this table on Form 122A-1 (line 13), and it uses the table to decide whether Form 122A-2 is in the packet.
 
 ### Where it is posted
 
@@ -55,3 +55,56 @@ From the day after the last row's `valid_through` until the new row is loaded:
 - **`seed_demo_data`** prints a message pointing to this page and changes nothing, even with `--reset`. The E2E journeys fail, in CI too, since they run on the real date.
 
 The fix is to load the new table, as above. If the U.S. Trustee hasn't posted it yet, the refusal is working as designed.
+
+---
+
+## HHS poverty guidelines
+
+A judge may waive the Chapter 7 filing fee only for a family whose income is less than 150% of the poverty guideline for its size (28 U.S.C. § 1930(f)(1)). DigniFi shows that limit, a month, on the "How you will pay the filing fee" page, beside Form 101 line 8, as information. It never compares the filer's income with it. The table is national: DigniFi stores the figures for the 48 contiguous states and the District of Columbia, which cover the Northern District of Illinois.
+
+### Where it is posted
+
+- HHS (ASPE) lists every year's guidelines: https://aspe.hhs.gov/topics/poverty-economic-mobility/poverty-guidelines
+- Each year's figures are published as a notice in the Federal Register. DigniFi stores that notice's page as the row's `source_url`.
+- The courts post the monthly 150% figures as "150% of the HHS Poverty Guidelines" on uscourts.gov. Check DigniFi's limits against that table.
+
+### When it changes
+
+- HHS publishes new guidelines each January. The day isn't fixed: the 2026 notice was published on January 15, 2026, and gave its own effective date as January 13.
+- A row takes effect on the day its notice is **published** in the Federal Register. The AO's instructions for Form 103B compare a family's income with the guideline "last published". The ILNB instruction packet prints its table as "Updated: 1/01/2026". The question of which date counts is open with the clerk, and an answer would change only a row's `effective_date` and this page.
+- A row's `valid_through` is January 31 of the next year, which gives HHS the month to publish.
+- If the next notice is late, extend the current row's `valid_through` with a new data migration, so that its figures stay shown while they are still the last published. Then add the next row as below.
+
+### The rows DigniFi loads
+
+| Effective  | `valid_through` | First person | Each additional person | Court's limit a month, 1–4 people             | Each person after |
+| ---------- | --------------- | ------------ | ---------------------- | --------------------------------------------- | ----------------- |
+| 2026-01-15 | 2027-01-31      | $15,960      | $5,680                 | $1,995.00 / $2,705.00 / $3,415.00 / $4,125.00 | $710.00           |
+
+### How to add a row
+
+1. Open the new Federal Register notice. Copy the figure for one person and the amount for each additional person from its table for the 48 contiguous states and DC.
+2. Run `python manage.py makemigrations districts --empty -n poverty_guideline_<year>`. Write it as `0005_poverty_guideline_2026.py` is written:
+
+   - a `RunPython` that creates one `PovertyGuideline` row, with the figures written into the migration;
+   - its reverse, which deletes that row by its `effective_date`.
+
+   The row's fields are:
+
+   - `effective_date`: the notice's publication date;
+   - `valid_through`: January 31 of the next year;
+   - `source_url`: the notice's page.
+
+3. Leave the earlier rows as they are. A test fails if any stored guideline has no `valid_through`.
+4. In `backend/apps/districts/tests/test_poverty.py`, add a test that pins the new row's monthly limits to the courts' 150% table for that year. Then open a pull request to `develop`.
+5. Nothing to run after the deploy: the Heroku release runs `migrate`, which loads the row. A local database gets it with `python manage.py migrate`.
+
+### What a missed change looks like
+
+From the day after the last row's `valid_through` until the new row's migration is applied:
+
+- **Filers** see, on the "How you will pay the filing fee" page, a sentence saying DigniFi doesn't have the current poverty figures. They see no limit, never an old one. Their answer still saves, and no form is refused.
+- **Logs and Sentry** get one error line per lookup, naming only the table and the date: `No HHS poverty guidelines table in force on 2027-02-01 for district -`.
+- **The E2E journeys** fail where they check the limit, in CI too, since they run on the real date. The 2026 row ends on January 31, 2027, two months before the median table's March 31, 2027.
+
+The fix is to add the new row, as above. If HHS hasn't published the new guidelines yet, extend `valid_through` instead.
