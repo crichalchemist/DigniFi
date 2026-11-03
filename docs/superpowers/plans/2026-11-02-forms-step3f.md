@@ -54,6 +54,8 @@ The plan proceeds on its own reading of each item below. The owner's answer goes
   - Priya's journey ends on `/filing-fee`, checking the limit sentence, without answering (Task 5).
   - The 2026 poverty row expires on 2027-01-31, two months before the median row: from 2027-02-01 the page shows its no-table sentence and the journeys' limit checks fail until the 2027 row is loaded (Task 1).
   - `household.fee_waiver_household_size` loses its last reader with the old page, and stays (Task 5).
+  - Departure from spec §10: `test_api_readback.py` keeps the name `APPLIES` for the line 8 waiver filers rather than §10's `WAIVER_CHOICE` (Task 4).
+  - Departure from spec §10: Task 8 deletes `_fee_waiver_answers` rather than re-pointing it at lines 4-9, which Task 4's tests and the tier 3 cases cover (Task 8).
 - **Logged, not fixed:** `docs/security/data-protection.md:51` (wrong since 3e2 about income encryption), the "you may qualify for a fee waiver" examples in `docs/PLAIN_LANGUAGE_GUIDE.md:254,477,480` and `docs/UPL_COMPLIANCE.md:139,222`, and `form_103b.unbound.json` entries stale since step 2 for boxes 3f doesn't touch. Each is a proposed ticket, filed only with the owner's yes.
 
 ## Before you start (once per worktree)
@@ -185,11 +187,12 @@ Every file a task creates, modifies, deletes or checks, from the tasks' **Files*
 | `docs/REFERENCE_TABLES.md`                                                              | check, modify | 1, 7, 9                   |
 | `CLAUDE.md`                                                                             | check, modify | 1, 2, 3, 4, 5, 6, 7, 8, 9 |
 | `backend/apps/forms/services/fee_waiver.py`                                             | create        | 2                         |
+| `backend/apps/intake/household.py`                                                      | modify        | 2                         |
 | `backend/apps/forms/services/derivations.py`                                            | modify        | 2, 4                      |
 | `data/forms/schemas/form_103b.json`                                                     | modify        | 2, 4                      |
 | `data/forms/field_index/audit/step2_verification.json`                                  | modify        | 2, 4                      |
 | `data/forms/field_index/audit/form_103b.unbound.json`                                   | modify        | 2, 4                      |
-| `backend/apps/forms/tests/test_form_103b_answers.py`                                    | modify, test  | 2, 8                      |
+| `backend/apps/forms/tests/test_form_103b_answers.py`                                    | modify, test  | 2                         |
 | `backend/apps/forms/tests/test_form_103b_schema.py`                                     | modify, test  | 2, 8                      |
 | `backend/apps/forms/tests/test_schedule_j_schema.py`                                    | test          | 2                         |
 | `backend/apps/forms/tests/test_rule_fixes.py`                                           | test          | 2, 4                      |
@@ -311,6 +314,7 @@ Every file a task creates, modifies, deletes or checks, from the tasks' **Files*
     - `poverty_guideline_in_force(on: date | None = None) -> PovertyGuideline`, which returns `in_force(PovertyGuideline.objects.all(), on or fill_date(), POVERTY_TABLE)` and raises `NoTableInForce`.
   - The 2026 row in every migrated database: `first_person=15960`, `each_additional=5680`, `effective_date=2026-01-15`, `valid_through=2027-01-31`, `source_url="https://www.federalregister.gov/documents/2026/01/15/2026-00755/annual-update-of-the-hhs-poverty-guidelines"`.
   - `backend/conftest.py` fixture `poverty_2026(db) -> PovertyGuideline`: `get_or_create`s the 2026 row by `effective_date` with the values above, for any test that needs the row after a transactional test's flush (R4).
+- `ASSERTED_CASES` (`test_oracle_tier2.py`): delta 0.
 - CLAUDE.md: "Dated tables and the fill date" gains the sentences in Step 7. The file map gains one `apps/districts/poverty.py` line.
 
 **Decided here:**
@@ -829,6 +833,7 @@ Line numbers are as of `dc31b7a`.
 **Files:**
 
 - Create: `backend/apps/forms/services/fee_waiver.py`
+- Modify: `backend/apps/intake/household.py`: add `fee_waiver_spouse_counted`; `count_fee_waiver_household` (`:60-70`) calls it in place of its inline test (`:65`)
 - Modify: `backend/apps/forms/services/derivations.py`: the "Form 103B fee waiver derivations" section (`:524-564`, the four rules `_fee_waiver_household_size` … `_fee_waiver_benefit_types`), the `DERIVATIONS` entries (`:859-865`) and `RULE_FIXES` "The fee-waiver application" block (`:1080-1083`)
 - Modify: `data/forms/schemas/form_103b.json:60-165` (`Total number of people` through `3 type`; four new fields go in between)
 - Modify: `data/forms/field_index/audit/step2_verification.json`: delete the four 103B rows after the `You` row (`:202-241`, the old `undefined_2`, `undefined_4`, `check 3`, `3 type` rows) and add eleven rows in their place
@@ -846,6 +851,7 @@ Line numbers are as of `dc31b7a`.
 **Interfaces:**
 
 - Consumes: `income_step_gaps`, `household_members`, `counted_spouse_income`, `IncomeStepGap` (`apps/eligibility/cmi.py:306`, `:214`, `:172`, `:79`); `count_fee_waiver_household` (`apps/intake/household.py:60-70`); `DERIVATIONS["schedule_i_income_total_debtor1"]` and `["schedule_i_income_total_spouse"]` (`derivations.py:681-686`, `_schedule_i_twins()` over `SCHEDULE_I_LINES["income_total"]`). Nothing from Task 1.
+- Produces (`apps/intake/household.py`): `fee_waiver_spouse_counted(marital_status: str | None) -> bool`, True for `married_spouse_filing` and `married_together`, else False. `count_fee_waiver_household` uses it in place of its inline test (`:65`), and so does `fee_waiver_family` for `spouse_counted`, so the two cannot drift.
 - Produces (`apps/forms/services/fee_waiver.py`), exactly as the frame names them:
   - `@dataclass(frozen=True) class FeeWaiverFamily: total: int; spouse_counted: bool; dependents: int` and `fee_waiver_family(session) -> FeeWaiverFamily`.
   - `@dataclass(frozen=True) class FeeWaiverIncome: you: Decimal; spouse: Decimal | None; subtotal: Decimal; noncash: Decimal | None; total: Decimal` and `fee_waiver_income(session) -> FeeWaiverIncome`.
@@ -909,7 +915,7 @@ blank, never 0.00 (103B has no "write $0" instruction).
 """
 ```
 
-Imports gain `from apps.eligibility.cmi import HOUSEHOLD_UNANSWERED, NOW_DIFFERENT_UNANSWERED, IncomeStepGap`, `from apps.forms.services.derivations import DERIVATIONS, RULE_FIXES`, `from apps.forms.services.fee_waiver import FeeWaiverFamily, FeeWaiverIncome, fee_waiver_family, fee_waiver_income, fee_waiver_noncash`, `from apps.intake.models import DebtInfo, DebtorInfo, ExpenseInfo, IncomeInfo, IntakeSession` and `from apps.intake.tests.builders import answer_household`. At the end of the `session` fixture (`:39-73`), before `return session`:
+Imports gain `from apps.eligibility.cmi import HOUSEHOLD_UNANSWERED, NOW_DIFFERENT_UNANSWERED, IncomeStepGap`, `from apps.forms.services.derivations import DERIVATIONS, RULE_FIXES`, `from apps.forms.services.fee_waiver import FeeWaiverFamily, FeeWaiverIncome, fee_waiver_family, fee_waiver_income, fee_waiver_noncash`, `from apps.intake.household import count_fee_waiver_household, fee_waiver_spouse_counted`, `from apps.intake.models import DebtInfo, DebtorInfo, ExpenseInfo, IncomeInfo, IntakeSession` and `from apps.intake.tests.builders import answer_household`. The new `MARITAL_ANSWERS` test imports the constant from wherever the Income step's serializer defines it (`grep -rn "MARITAL_ANSWERS" backend/apps`). At the end of the `session` fixture (`:39-73`), before `return session`:
 
 ```python
     IncomeInfo.objects.create(session=session, monthly_gross_wages=Decimal("3200.00"))
@@ -983,6 +989,11 @@ def test_the_figures_the_filing_fee_page_reads_are_the_ones_103b_prints(with_chi
         noncash=Decimal("350.00"), total=Decimal("2800.00"),
     )
     assert fee_waiver_noncash(with_children_and_snap) == ("yes", "SNAP (food stamps)")
+
+
+def test_the_spouse_is_counted_by_one_rule_in_the_size_and_the_checkbox():
+    for answer in (*MARITAL_ANSWERS, None):
+        assert fee_waiver_spouse_counted(answer) is (count_fee_waiver_household([], answer) == 2)
 
 
 def test_a_filer_alone_with_no_help_prints_blank_spouse_dependents_and_subtract_lines(session):
@@ -1212,7 +1223,7 @@ These reasons were checked at `dc31b7a` with the Step 1 tests in a scratch copy:
 
 - [ ] **Step 3: Write `fee_waiver.py`**
 
-`backend/apps/forms/services/fee_waiver.py`. Its docstring says it works out 103B lines 1–3 from the household list, Schedule I line 10 and 8f (3f spec §8.2), for the form's rules and the filing-fee page alike, so the two never differ. Imports: `dataclass`, `Decimal`; `counted_spouse_income`, `household_members`, `income_step_gaps` from `apps.eligibility.cmi`; `count_fee_waiver_household` from `apps.intake.household`; `DERIVATIONS` from `apps.forms.services.derivations`. Don't import `IncomeStepGap`: the gaps it raises come from `income_step_gaps`, and an unused import fails ruff (F401).
+`backend/apps/forms/services/fee_waiver.py`. Its docstring says it works out 103B lines 1–3 from the household list, Schedule I line 10 and 8f (3f spec §8.2), for the form's rules and the filing-fee page alike, so the two never differ. Imports: `dataclass`, `Decimal`; `counted_spouse_income`, `household_members`, `income_step_gaps` from `apps.eligibility.cmi`; `count_fee_waiver_household` and `fee_waiver_spouse_counted` from `apps.intake.household` (Step 3 first adds the function to `household.py` and makes `count_fee_waiver_household` call it); `DERIVATIONS` from `apps.forms.services.derivations`. Don't import `IncomeStepGap`: the gaps it raises come from `income_step_gaps`, and an unused import fails ruff (F401).
 
 - `_refuse_any_gap(session) -> None`: `gaps = income_step_gaps(session)`; `if gaps: raise gaps[0]`.
 - `_counted_rows(session) -> list`: `getattr(session, "income_info", None)` and `counted_spouse_income(session)`, with the Nones dropped. A session with no filer row has no row to read, and `fee_waiver_noncash` treats that as unanswered, returning `("", "")` and never raising.
@@ -1220,7 +1231,7 @@ These reasons were checked at `dc31b7a` with the Step 1 tests in a scratch copy:
   - `_refuse_any_gap(session)`.
   - `marital_status = session.income_info.marital_status`.
   - `total = count_fee_waiver_household(household_members(session), marital_status)`.
-  - `spouse_counted = marital_status in ("married_spouse_filing", "married_together")`, the same test `count_fee_waiver_household` makes. `married_spouse_filing` is already a gap, so only `married_together` reaches it.
+  - `spouse_counted = fee_waiver_spouse_counted(marital_status)`, the same function `count_fee_waiver_household` calls. `married_spouse_filing` is already a gap, so only `married_together` reaches it.
   - `dependents = total - (2 if spouse_counted else 1)`.
 - `fee_waiver_income(session)`:
   - `_refuse_any_gap(session)`.
@@ -1338,7 +1349,7 @@ the fee-waiver page prints any more.
 - Modify: `backend/apps/intake/tests/builders.py`: the models import (`:12`), and `answer_household` (`:37-81`) with its docstring.
 - Create: `backend/apps/intake/tests/test_filing_fee.py`.
 - Modify: `backend/apps/intake/tests/test_session_lock.py`. `WRITES` (`:485-584`) gains `"filing-fee PUT"` after `"codebtor DELETE"` (`:532-537`).
-- Modify: `backend/apps/intake/tests/test_data_migrations.py`: a `FILING_FEE` constant after `SHIFT` (`:29`), and the 0029 round trip with its Postgres twin appended after `:609`.
+- Modify: `backend/apps/intake/tests/test_data_migrations.py`: a `FILING_FEE` constant after `SHIFT` (`:30`), and the 0029 round trip with its Postgres twin appended after `:609`.
 - Modify: `CLAUDE.md:27`, the gotcha "Saves lock the session".
 
 **Interfaces:**
@@ -1725,7 +1736,7 @@ def test_the_shared_test_household_pays_in_full_so_forms_tests_meet_no_new_refus
     assert FilingFee.objects.get(session=session).payment_choice == "pay_in_full"
 ```
 
-`test_data_migrations.py`: add `FILING_FEE = [("intake", "0029_filingfee")]` after `SHIFT` (`:29`), then append (Task 8 reuses this constant):
+`test_data_migrations.py`: add `FILING_FEE = [("intake", "0029_filingfee")]` after `SHIFT` (`:30`), then append (Task 8 reuses this constant):
 
 ```python
 def _filing_fee_round_trip(migrate):
@@ -1996,7 +2007,7 @@ Line numbers are as of `dc31b7a`. Task 2 rewrites the 103B rules, schema, audit 
 - **`PAGE_LINK_LABELS` gains `/filing-fee` here, not in Task 6.** `test_every_fix_is_a_step_or_page_the_dashboard_links` (`test_rule_fixes.py:117-145`) checks every `RULE_FIXES` page against `PAGE_LINK_LABELS`, which it reads from `FormDashboard.tsx:57-62`. Without the entry, this task's four `{"page": "/filing-fee"}` entries go red. Without it the dashboard would also drop the link from every refusal this task adds. This task adds the one line (ruling R12). Task 6 then deletes the `/fee-waiver` line instead of replacing it, and its own failing tests need another reason to fail first. So the frontend gates run in this task.
 - **The checkbox rules have no `RULE_FIXES` entry.** The map's comment (`derivations.py:932-936`) and its test (`test_rule_fixes.py:104-114`) cover rules bound to a text or choice box only. `creditor_count_range` and `fee_waiver_noncash_assistance` have none today, since a box's refusal (`UnmappedChoice`) carries no fix. The frame's "Their `RULE_FIXES` are `/filing-fee`" therefore holds for the four text rules.
 - **Each `PreconditionMissing` raise names its page as a literal** (`page="/filing-fee"`), never a module constant. `_precondition_steps` (`test_rule_fixes.py:60-82`) reads each call's arguments from the source, and a name it can't read fails its `unread == []`. This task extends it to read `page=` as well, so the dashboard test also checks a precondition's page (Step 1).
-- **103B's refusal sentences.** They are checked in the form's order, and only the first gap is raised. A waiver filer with no `FilingFee` row can't reach this (103B wouldn't apply), but if one did, the first row below would be raised.
+- **103B's refusal sentences.** They are checked in the form's order, and only the first gap is raised. A waiver filer with no `FilingFee` row can't reach this (103B wouldn't apply), but `_needs_fee_waiver_answers` must not 500 if one did: with no `FilingFee` row it treats every answer as unanswered and raises the first row below (the line 4 sentence), never an `AttributeError`.
 
   | Gap                                        | Sentence                                                                                                 |
   | ------------------------------------------ | -------------------------------------------------------------------------------------------------------- |
@@ -2016,7 +2027,7 @@ Line numbers are as of `dc31b7a`. Task 2 rewrites the 103B rules, schema, audit 
 - **`test_printed_page.py`'s `_seeded` builds a form outside a persona's packet only when its `requires()` lets it.** It builds every form for every persona (`:106-112`), and 103B's `requires()` now refuses the four non-waiver personas. `_values()` still finds 122A-1Supp (in no packet, `requires` `_nothing`) on the first persona.
 - **Tier 3:** Task 2 gives only Maria and Sarah a `form_103b` entry in `EXPECTED` (its "Decided here"), because `_printed` (`test_oracle_tier3.py:478`) calls `build_field_values` for every form in `EXPECTED`, and 103B's `requires()` now refuses the other four. This task adds no 103B entry.
 - **The read-back keeps the name `APPLIES`.** §10 renames `QUALIFIES` and `APPLIES` to `WAIVER_CHOICE`. Task 7 deletes `QUALIFIES` and Task 8 reads `APPLIES` by name (rulings R15, R20), so this task changes only its value and comment: `{"maria", "sarah"}`, the line 8 waiver filers.
-- **CLAUDE.md, beyond the frame's two gotchas.** This task changes the packet reply ("GenerateAll vs single", ruling R13), the seed ("Seed order") and two sentences of "The fee-waiver application" that become false: "an application puts 103B in the packet" and "`4 type` and `5 Type` are unbound". It edits only those clauses; Task 6 adds the dashboard's use of `payment_choice` and Task 8 rewrites the fee-waiver gotcha. "Seed order" gains only the `FilingFee` sentence: its fee-waiver clause and the "Personas seeded before 3f …" sentence are Task 8's (ruling R27).
+- **CLAUDE.md, beyond the frame's two gotchas.** This task changes the packet reply ("GenerateAll vs single", ruling R13), the seed ("Seed order") and two sentences of "The fee-waiver application" that become false: "an application puts 103B in the packet" and "`4 type` and `5 Type` are unbound". It edits only those clauses; Task 6 adds the dashboard's use of `payment_choice` and Task 8 rewrites the fee-waiver gotcha. "Seed order" gains only the `FilingFee` sentence: this task leaves its fee-waiver clause and the "Personas seeded before 3f …" sentence to Task 8, which writes the latter as a new sentence (ruling R27).
 - **The never-reopen list keeps the fee-waiver application** beside the filing fee until Task 8 removes the model. The frame's "in place of" lands in Task 8.
 
 - [ ] **Step 1: Write the failing tests**
@@ -2184,6 +2195,13 @@ def test_103b_is_refused_with_a_link_to_the_filing_fee_page_until_each_question_
 def test_103b_names_the_first_unanswered_line_in_the_forms_order(session):
     with pytest.raises(PreconditionMissing) as refused:
         build_field_values("form_103b", _line_8(session, "waiver"))
+    assert str(refused.value).startswith("Answer whether you expect your family's income")
+
+
+def test_103b_with_no_filing_fee_row_is_refused_in_words_never_an_attribute_error(session):
+    assert not FilingFee.objects.filter(session=session).exists()
+    with pytest.raises(PreconditionMissing) as refused:
+        build_field_values("form_103b", session)
     assert str(refused.value).startswith("Answer whether you expect your family's income")
 
 
@@ -2543,7 +2561,7 @@ Every new test fails for a reason above, with two labelled guards that pass befo
 
 - `PreconditionMissing.__init__(self, message: str, step: str | None = None, page: str | None = None)`. The docstring gains: "page is the route (such as /filing-fee) where the filer fixes it, or None. Exactly one of step and page is set."
 - Delete `_has_fee_waiver` and `_needs_debtor_info_and_county`. Add `payment_choice`, `_asks_fee_waiver`, `_needs_fee_choice`, `_needs_debtor_info_county_and_fee_choice` and `_needs_fee_waiver_answers`, as in Interfaces.
-- `_needs_fee_waiver_answers` reads `fee = getattr(session, "filing_fee", None)` and a local `blank(text)` that is `not (text or "").strip()`. It then raises the first row of the "Decided here" table that holds, in that order, each raise written as `raise PreconditionMissing("<sentence>", page="/filing-fee")`.
+- `_needs_fee_waiver_answers` reads `fee = getattr(session, "filing_fee", None)` (with `fee` None, every answer counts as unanswered, so it raises the line 4 sentence and never an `AttributeError`) and a local `blank(text)` that is `not (text or "").strip()`. It then raises the first row of the "Decided here" table that holds, in that order, each raise written as `raise PreconditionMissing("<sentence>", page="/filing-fee")`.
 - `FORM_REGISTRY` lines `:112-113` as in Interfaces.
 - The module docstring's second paragraph gains: "Form 101 and 103B also need the filer's answers on the filing-fee page (forms step 3f spec §7): line 8, and for a waiver 103B lines 4, 5, 7 and 9."
 
@@ -2553,7 +2571,7 @@ Every new test fails for a reason above, with two labelled guards that pass befo
   - `_filing_fee(session)` returning `getattr(session, "filing_fee", None)`;
   - `_fee_answer(name: str) -> Callable[[IntakeSession], str]`, which returns the stored value or `""`;
   - `_fee_text(name: str, under: str | None = None) -> Callable[[IntakeSession], str]`, which returns the text stripped, or `""` when `under` names a yes/no field whose value isn't `"yes"`.
-  - The nine `DERIVATIONS` entries are built from those helpers: `"fee_payment_choice": _fee_answer("payment_choice")`, `"fee_waiver_income_change_explanation": _fee_text("income_change_explanation", under="income_change_answer")`, `"fee_waiver_installments_explanation": _fee_text("installments_explanation")`, and so on, under the comment `# Form 101 line 8 and 103B lines 4, 5, 7 and 9 (3f spec §8)`.
+  - The eight `DERIVATIONS` entries are built from those helpers: `"fee_payment_choice": _fee_answer("payment_choice")`, `"fee_waiver_income_change_explanation": _fee_text("income_change_explanation", under="income_change_answer")`, `"fee_waiver_installments_explanation": _fee_text("installments_explanation")`, and so on, under the comment `# Form 101 line 8 and 103B lines 4, 5, 7 and 9 (3f spec §8)`.
 - `RULE_FIXES` gains a block where Task 2 deleted `# The fee-waiver application` (just before `# No link.`), under `# The filing-fee page (3f spec §7)`: the four text rules, each `{"page": "/filing-fee"}`. The three checkbox rules and `fee_payment_choice` get none (ruling R8).
 - `views.py`: import `payment_choice` from `.registry` and add `"payment_choice": payment_choice(session)` to the reply. The docstring gains: "`payment_choice` is the Form 101 line 8 answer, or null before the filer chooses."
 
@@ -3569,7 +3587,7 @@ answers the page.
 
 **Spec:** §3 ("The way back"), §6.3 (the 103A notice on the dashboard), §7 ("The dashboard"), §12 ("GenerateAll vs single"), §16 calls 12 and 19.
 
-Line numbers are as of `dc31b7a`. Task 4 adds one `PAGE_LINK_LABELS` line (`FormDashboard.tsx`, after `:59`) and Task 5 adds a "Filing fee" section to `types/api.ts` (after `:452-473`) and `filingFee` to `intakeAPI` in `client.ts` (`:342-456`), so in those files find each block by the name given beside its number.
+Line numbers are as of `dc31b7a`. Task 4 adds one `PAGE_LINK_LABELS` line (`FormDashboard.tsx`, after `:59`) and Task 5 adds a "Filing fee" section to `types/api.ts` (after `:452-473`) and `filingFee` to `intakeAPI` in `client.ts` (`:342-456`), and inserts its filing-fee handlers in `frontend/src/test/mocks/handlers.ts` before the packet handler, so in those files find each block by the name given beside its number.
 
 **Files:**
 
@@ -3587,18 +3605,19 @@ Line numbers are as of `dc31b7a`. Task 4 adds one `PAGE_LINK_LABELS` line (`Form
   - Task 4: the packet reply's `payment_choice` (`"pay_in_full" | "installments" | "waiver" | null`), present on every successful reply and absent from a refusal (a refusal is `{error, step?, page?}` as today, ruling R17).
   - Task 4: refusals carrying `page: "/filing-fee"` (`PreconditionMissing.page`, the `FilingFee` text rules' `RULE_FIXES`), and `PAGE_LINK_LABELS['/filing-fee'] = 'Go to How you will pay the filing fee'`, which Task 4 adds beside the `/fee-waiver` line (ruling R12).
   - Task 4: "GenerateAll vs single" already reads "returns `{session, form_types, tables, income_period, payment_choice}` in filing order" and "; `payment_choice` is the Form 101 line 8 answer, or null before the filer chooses" (Task 4 Step 10, ruling R13).
-  - Task 5 (ruling R16): `PaymentChoice` (`types/api.ts`); the route `/filing-fee`; from `constants/formText.ts`, `LINE_8_LABEL = 'How you will pay the fee'` and `PAYMENT_CHOICE_WORDS: Record<PaymentChoice, string>` (the field index's `option_text` for `Check Box7`: "I will pay the entire fee when I file my petition.", "I need to pay the fee in installments.", "I request that my fee be waived", no period); from `constants/copy.ts`, `INSTALLMENTS_NOTICE` (§6.3's three sentences) and `FORM_103A_LINK` (the link's words); `FORM_103A_URL` (`'https://www.uscourts.gov/forms-rules/forms/application-individuals-pay-filing-fee-installments-0'`), which Task 5 puts in `constants/filingFee.ts`.
+  - Task 5 (ruling R16): `PaymentChoice` (`types/api.ts`); the route `/filing-fee`; from `constants/formText.ts`, `LINE_8_LABEL = 'How you will pay the fee'` and `PAYMENT_CHOICE_WORDS: Record<PaymentChoice, string>` (the field index's `option_text` for `Check Box7`: "I will pay the entire fee when I file my petition.", "I need to pay the fee in installments.", "I request that my fee be waived", no period); from `constants/copy.ts`, `INSTALLMENTS_NOTICE` (§6.3's three sentences) and `FORM_103A_LINK` (the link's words) and `FORM_103A_URL` (`'https://www.uscourts.gov/forms-rules/forms/application-individuals-pay-filing-fee-installments-0'`), which Task 5 puts in `constants/copy.ts` beside the notice.
 - Produces:
   - `FormPacketResponse.payment_choice?: PaymentChoice | null` (optional, as `income_period?` beside it is, since a test's packet reply may leave it out).
   - `Packet.payment_choice: PaymentChoice | null`. The mapper sends `response.payment_choice ?? null`.
   - `PAGE_LINK_LABELS` without its `/fee-waiver` entry. This task adds no `/filing-fee` entry (Task 4's is there).
   - `copy.ts`, in "Form Dashboard Copy": `FILING_FEE_CHANGE_LINK = 'Change how you will pay the fee'` and `FILING_FEE_CHOOSE_LINK = 'Choose how you will pay the fee'`.
   - The dashboard's answer block: `<section className="form-dashboard-notice" aria-label={LINE_8_LABEL}>`, its role `region`, named "How you will pay the fee".
+- `ASSERTED_CASES` (`test_oracle_tier2.py`): delta 0.
 - CLAUDE.md: "GenerateAll vs single", two sentences, as they read after this task (Step 7).
 
 **Decided here:**
 
-- **The names this task imports from Task 5 are ruling R16's**, plus `LINE_8_LABEL`, which Task 5 already puts in `formText.ts` for the page's legend. The dashboard uses that constant for its block's name rather than adding a second constant with the same words. If Task 5 landed any of these under another name or in another file, this task imports Task 5's name from Task 5's file and changes nothing in Task 5's files; the ledger says so. In its current draft, Task 5 has no `INSTALLMENTS_NOTICE` string: it ships `Form103ANotice` (`components/forms/Form103ANotice.tsx`, no props, exported from `components/forms`) built from `FORM_103A_LEAD`, `FORM_103A_TITLE` and `FORM_103A_REST`. If Task 5 lands that way, the dashboard renders `<Form103ANotice />` in place of the notice `<p>` in Step 4 and doesn't import `INSTALLMENTS_NOTICE`, `FORM_103A_LINK` or `FORM_103A_URL`. The tests stand as written: `getByText` with a regex matches the notice's `<p>` across its `<em>`, and the link keeps its name and `href`.
+- **The names this task imports from Task 5 are ruling R16's**, plus `LINE_8_LABEL`, which Task 5 already puts in `formText.ts` for the page's legend. The dashboard uses that constant for its block's name rather than adding a second constant with the same words. If Task 5 landed any of these under another name or in another file, this task imports Task 5's name from Task 5's file and changes nothing in Task 5's files; the ledger says so. The dashboard imports `INSTALLMENTS_NOTICE`, `FORM_103A_LINK` and `FORM_103A_URL` from `constants/copy.ts`.
 - **`PAGE_LINK_LABELS`: delete, don't add** (ruling R12). Task 4 adds `/filing-fee`, since `test_every_fix_is_a_step_or_page_the_dashboard_links` (`test_rule_fixes.py:117-145`) reads the map. This task deletes `/fee-waiver`, whose last `RULE_FIXES` pages (`derivations.py:1081-1083`) Task 2 removed. The two existing tests that name `/fee-waiver` are rewritten for `/filing-fee`. They pass before and after this task's change, so they are not this task's failing-first tests. The failing-first tests are the answer block's.
 - **No answer block without a packet reply.** A refused packet carries no `payment_choice` (ruling R17), so the dashboard can't tell "unanswered" from "unknown". The state is `PaymentChoice | null | undefined`: `undefined` until a reply arrives and after a refusal, and then no block shows. Showing "Choose how you will pay the fee" beside a refusal would tell a filer who has answered to answer again. This follows `incomePeriod` (`:148`, `:214`), which a refusal clears for the same reason.
 - **Where it sits.** After the median table notices and the income window notice (`:403-416`), before the cards: it is about the packet, and 103B's card below depends on it.
@@ -3739,7 +3758,7 @@ The file gains, beside its imports (`:1-7`):
 
 ```tsx
 import { FORM_103A_LINK } from '../../constants/copy';
-import { FORM_103A_URL } from '../../constants/filingFee';
+import { FORM_103A_URL } from '../../constants/copy';
 ```
 
 The three option words are typed out, not imported, so a test fails if `PAYMENT_CHOICE_WORDS` drifts from Form 101's words (§6.1). The waiver's words have no period, as the form prints them (ruling R16).
@@ -3773,7 +3792,7 @@ Expected: FAIL, in the new `describe` only.
 - `handlers.ts`:
 
   - `:55` comment: `/** A below-median filer who pays the fee in full: the 14 forms every packet holds */`;
-  - `:241`: `HttpResponse.json({ session: 1, form_types: mockPacket, tables: [], payment_choice: 'pay_in_full' })`.
+  - the packet handler (find it by its content, `http.get('http://localhost:8000/api/forms/packet/'`; Task 5's handlers sit above it, so it is no longer at `:241`): `HttpResponse.json({ session: 1, form_types: mockPacket, tables: [], payment_choice: 'pay_in_full' })`.
 
 - [ ] **Step 4: Implement the dashboard**
 
@@ -3781,7 +3800,7 @@ Expected: FAIL, in the new `describe` only.
 - `copy.ts`, in "Form Dashboard Copy" after `DASHBOARD_EMPTY`: `FILING_FEE_CHANGE_LINK` and `FILING_FEE_CHOOSE_LINK` (Interfaces), each `export const` with a blank line between, as the section's entries are.
 - `FormDashboard.tsx`:
 
-  - Imports: `PaymentChoice` added to the type import from `../types/api` (`:22-28`); `LINE_8_LABEL` and `PAYMENT_CHOICE_WORDS` from `../constants/formText`; `FILING_FEE_CHANGE_LINK`, `FILING_FEE_CHOOSE_LINK`, `INSTALLMENTS_NOTICE` and `FORM_103A_LINK` added to the `../constants/copy` import (`:18`); `FORM_103A_URL` from `../constants/filingFee`.
+  - Imports: `PaymentChoice` added to the type import from `../types/api` (`:22-28`); `LINE_8_LABEL` and `PAYMENT_CHOICE_WORDS` from `../constants/formText`; `FILING_FEE_CHANGE_LINK`, `FILING_FEE_CHOOSE_LINK`, `INSTALLMENTS_NOTICE` and `FORM_103A_LINK` added to the `../constants/copy` import (`:18`); `FORM_103A_URL` from `../constants/copy` (the same import).
   - State after `:119`: `// Form 101 line 8, as the packet reply holds it; undefined while no reply has come (a refusal carries none)` then `const [paymentChoice, setPaymentChoice] = useState<PaymentChoice | null | undefined>(undefined);`.
   - `setPaymentChoice(loadedPacket.payment_choice);` after `:145`, `setPaymentChoice(reloaded.payment_choice);` after `:211`, and `setPaymentChoice(undefined);` after each `setIncomePeriod(null);` (`:148`, `:214`).
   - After the income window notice (`:409-416`):
@@ -3900,7 +3919,7 @@ Line numbers are at `dc31b7a`. Other tasks edit some of the same files: `test_se
   - Task 5:
     - `handleComplete` no longer reads `result.qualifies_for_fee_waiver` (`IntakeWizard.tsx:500-504` at `dc31b7a`), and `FeeWaiverPage.tsx` (`:70`) is deleted. If either still stands, `tsc` fails in Step 9.
     - `FeeWaiverPage.test.tsx` (`:45`) is deleted. Test files are outside `tsconfig.app.json`, so a leftover there shows only in Step 7's grep.
-    - The `IntakeWizard.test.tsx` routing tests become Task 5's `it.each([true, false])` test, whose untyped MSW reply sends `qualifies_for_fee_waiver: flag` on purpose. This task leaves it alone (R22).
+    - The `IntakeWizard.test.tsx` routing tests become Task 5's `it.each([true, false])` test, which sends no `qualifies_for_fee_waiver` key. This task leaves it alone (R22).
     - `personas.ts` has no `fee_waiver_eligible`, the James and SOFA journey comments are rewritten, and the File Map line `CLAUDE.md:130` no longer names the flag (R22).
     - Any of these still standing means Task 5 is unfinished. Task 7 records it in the ledger and does not take over the edit.
   - Task 4: the seed writes each persona's `FilingFee` and has dropped DeShawn's `fee_waiver` dict (R15), so only Maria and Sarah keep one. `test_seed_demo_data.py`'s packet assertion says DeShawn has no 103B, and the seed test still asserts `qualifies_for_fee_waiver` for this task to delete. Task 4 also rewrites `test_api_readback.py`'s `APPLIES`.
@@ -3945,11 +3964,10 @@ Line numbers are at `dc31b7a`. Other tasks edit some of the same files: `test_se
   - `eligibility/migrations/0001_initial.py` and `0003_…`;
   - this task's absence assertions and `test_migrations.py`;
   - the preview test's old-server reply;
-  - Task 5's `IntakeWizard.test.tsx` routing test, whose untyped reply sends the key to prove nothing routes on it;
   - `docs/internal/DigniFi_PRD_v0_3.md:398`, a June history line this plan doesn't edit;
   - `docs/superpowers/`.
 
-  Task 9's final grep needs the same exclusions (R21 lists all but the wizard test's reply).
+  Task 9's final grep needs the same exclusions (R21).
 
 - **The CLAUDE.md sentence names no removed identifier.** It says in words that the means test gives no fee-waiver verdict, so Step 7's grep and Task 9's sweep, which read `CLAUDE.md`, find nothing in it.
 - **No test name says "qualify" or "eligible"** (Global Constraints, "No verdict"). So `TestFeeWaiverQualification`, `TestFeeWaiverNonQualification` and `test_deshawn_still_qualifies_for_the_fee_flag_on_both_incomes` are renamed or replaced. The DeShawn test keeps its CMI assertion, which pins his household's CMI on both incomes; its comment on the 60% line goes.
@@ -4278,8 +4296,7 @@ Expected: only these lines:
 
 - `backend/apps/eligibility/migrations/0001_initial.py:58` and the `RemoveField` in `0003_…`;
 - the absence assertions in `test_means_test_calculator.py`, `test_household_means_test.py` and `test_e2e_intake.py`, and `test_migrations.py` (the field name in `old.objects.create` and the assertions);
-- the old-server reply in `MeansTestPreview.test.tsx`;
-- Task 5's `qualifies_for_fee_waiver: flag` in the `IntakeWizard.test.tsx` routing test, which stays.
+- the old-server reply in `MeansTestPreview.test.tsx`.
 
 Then:
 
@@ -4371,7 +4388,7 @@ Line numbers are as of `dc31b7a`. Tasks 1–7 shift some of them before this tas
 - Modify: `backend/apps/intake/tests/test_models.py:130-215` (delete `class TestFeeWaiverApplication`; the file's imports stay used by `TestDebtInfoClassification`)
 - Modify: `backend/apps/intake/tests/test_completion.py:1-8` (module docstring) and `:1000-1031` (`test_form_answers_sofa_and_fee_waiver_leave_a_completed_intake_complete`)
 - Modify: `backend/apps/intake/tests/test_seed_demo_data.py:24` (the import) and `:106-123` (delete `test_the_seed_gives_the_fee_waiver_application_103b_line_1s_count`, with the comment Task 4 puts above it)
-- Modify: `backend/apps/intake/tests/test_data_migrations.py` (two constants after Task 3's `FILING_FEE`, which follows `SHIFT` at `:29`; three tests and a Postgres twin appended after Task 3's 0029 tests)
+- Modify: `backend/apps/intake/tests/test_data_migrations.py` (two constants after Task 3's `FILING_FEE`, which follows `SHIFT` at `:30`; three tests and a Postgres twin appended after Task 3's 0029 tests)
 - Modify: `backend/apps/forms/tests/test_registry.py:27` (the import) and `:124-133` (delete the test Task 4 renames `test_a_fee_waiver_application_without_the_line_8_answer_adds_no_103b`)
 - Modify: `backend/apps/forms/tests/test_api_readback.py`, as Tasks 4 and 7 leave it (ruling R20): `:39-41` (`APPLIES`' comment only), `:83-93` (`_fee_waiver_application`), `:96-108` (`_fee_waiver_answers`), `:164-170` (the POST), `:252-253` (the comparison's comment) and `:258-259` (the two asserts)
 - Modify: `backend/apps/forms/tests/test_form_views.py:402-406` (`/fee-waiver` → `/filing-fee`) and the comment at `:483`. The comments at `:302`, `:918` and `:1068` are Task 4's.
@@ -4381,7 +4398,7 @@ Line numbers are as of `dc31b7a`. Tasks 1–7 shift some of them before this tas
 - Modify: `frontend/src/api/client.ts:509-561` (the "Fee Waiver API" block: its banner, `FeeWaiverPayload`, `FeeWaiverApplication`, `feeWaiverAPI` and the blank line after it) and `:772` (`feeWaiver: feeWaiverAPI,`). Ruling R25: Task 5 leaves these.
 - Modify: `frontend/src/test/mocks/handlers.ts:146-168` (the "Fee Waiver" GET and POST handlers and the blank line after them). Ruling R25: Task 5 leaves these.
 - Modify: `frontend/src/utils/parseAmount.ts:57-58` (the `amountError` docstring's "Fee waiver take-home pay" bullet, which describes the serializer field this task deletes; no other task names it)
-- Modify: `CLAUDE.md:75` ("The fee-waiver application"), `:29` ("Seed order", one clause and Task 4's "Personas seeded before 3f" sentence, ruling R27), `:33` ("Forms need a completed intake", the never-reopen list) and `:99` (File Map, `apps/intake/models.py`)
+- Modify: `CLAUDE.md:75` ("The fee-waiver application"), `:29` ("Seed order", one clause, and a new "Personas seeded before 3f" sentence that this task writes, ruling R27), `:33` ("Forms need a completed intake", the never-reopen list) and `:99` (File Map, `apps/intake/models.py`)
 
 **Interfaces:**
 
@@ -4399,7 +4416,7 @@ Line numbers are as of `dc31b7a`. Tasks 1–7 shift some of them before this tas
   - `ASSERTED_CASES` is unchanged (delta 0): this task binds nothing.
 - CLAUDE.md:
   - "The fee-waiver application" is replaced whole by "The filing fee" (Step 8 gives the text).
-  - "Seed order" loses its fee-waiver clause, and its "Personas seeded before 3f" sentence names the migrated waiver (ruling R27; Task 9 no longer edits this gotcha).
+  - "Seed order" loses its fee-waiver clause, and it gains a new "Personas seeded before 3f" sentence, which names the migrated waiver (ruling R27; Task 9 no longer edits this gotcha).
   - "Forms need a completed intake": the never-reopen list names the filing fee in place of the fee-waiver application.
   - The File Map's `apps/intake/models.py` entry names `FilingFee` in place of `FeeWaiverApplication`.
 
@@ -4412,7 +4429,7 @@ Line numbers are as of `dc31b7a`. Tasks 1–7 shift some of them before this tas
 - **The frontend fee-waiver client and its MSW handlers go here** (ruling R25). Task 5 deletes the page and its test but leaves `feeWaiverAPI`, its two interfaces (`client.ts:509-561`, `:772`) and the handlers (`handlers.ts:146-168`). The endpoint dies in this task, so its client dies with it (spec §4, "Frontend: `api.feeWaiver` … its MSW handlers and fixtures"). Step 6 first checks that no caller is left, and the frontend gates run in this task (ruling R30).
 - **The seed's leftovers are split by ruling.** Task 4 deletes DeShawn's `"fee_waiver"` dict (R15) and Task 7 changes the branch's condition to `"fee_waiver" in data` (R19). This task deletes Maria's and Sarah's dicts, the branch, and the two `# No "fee_waiver": …` comments (DeShawn's from Task 4, Andrés's at `:786`), which describe a key the seed no longer has.
 - **`test_api_readback.py` keeps `APPLIES`** (ruling R20). Task 4's packet assertion still reads it. Only its comment changes, because its second line names the application.
-- **CLAUDE.md "Seed order" is finished here** (ruling R27). Its fee-waiver clause goes, and Task 4's "Personas seeded before 3f" sentence gains what migration 0030 does to the personas seeded before Task 4 (Maria, DeShawn and Sarah had applications). Task 9 does not edit this gotcha again.
+- **CLAUDE.md "Seed order" is finished here** (ruling R27). Its fee-waiver clause goes, and this task adds the "Personas seeded before 3f" sentence as a new sentence (Task 4 leaves it to this task), including what migration 0030 does to the personas seeded before Task 4 (Maria, DeShawn and Sarah had applications). Task 9 does not edit this gotcha again.
 - **`config/tests/test_urls.py:87`'s `/fee-waiver` becomes `/filing-fee`.** The parametrized test pins React deep links that Django must serve. `/filing-fee` is the page now, and `/fee-waiver` is only a client-side redirect. Both resolve through the same catch-all (`BACKEND_ROUTE_PREFIXES` is `admin, api, health, metrics, static, media`, `config/urls.py:28`), so this edit fails nothing before the change. The test that fails first is the new 404 one.
 - **`test_the_seed_gives_the_fee_waiver_application_103b_line_1s_count` is deleted, not rewritten.** The seed no longer stores a size. 103B line 1's count from the household list is pinned by Task 2's `fee_waiver_family` tests, and by `test_household_counts.py:79-87` for `count_fee_waiver_household`. Likewise `test_registry.py`'s `test_a_fee_waiver_application_without_the_line_8_answer_adds_no_103b`: with no model there is no application to ignore, and Task 4's `test_filing_fee_forms.py` pins 103B to the line 8 answer.
 - **`conftest.py:12` can have no failing test.** `test_fee_waiver_manual.py` exists nowhere in the worktree (`find` returns nothing), so the ignore entry is dead. It goes because spec §4 names it. That is a cleanup with nothing to observe.
@@ -4420,7 +4437,7 @@ Line numbers are as of `dc31b7a`. Tasks 1–7 shift some of them before this tas
 
 - [ ] **Step 1: Write the failing tests**
 
-`backend/apps/intake/tests/test_data_migrations.py`. After Task 3's `FILING_FEE = [("intake", "0029_filingfee")]` (just after `SHIFT`, `:29`), add:
+`backend/apps/intake/tests/test_data_migrations.py`. After Task 3's `FILING_FEE = [("intake", "0029_filingfee")]` (just after `SHIFT`, `:30`), add:
 
 ```python
 WAIVER_CARRIED = [("intake", "0030_fee_waiver_applications_to_filing_fee")]
@@ -4686,7 +4703,7 @@ After this task they read as follows.
 - "The fee-waiver application" (`:75`) is replaced whole by one bullet, written on one line like every other gotcha. After its bold name, **The filing fee**, it reads: "`FilingFee` (`apps/intake/models.py`, one-to-one with the session, `related_name="filing_fee"`, table `filing_fees`) holds Form 101 line 8 and 103B's own questions, every column encrypted, and nothing starts answered: `payment_choice` (`pay_in_full`, `installments` or `waiver`; null unanswered), 103B lines 4, 7 and 9 as `income_change_answer`, `others_covered_answer` and `expense_change_answer` (`yes`, `no` or null) with their texts `income_change_explanation`, `others_covered_who` and `expense_change_explanation`, and line 5's `installments_explanation`; each text is bounded by `FilingFee.TEXT_LIMITS`, which the serializer and the page enforce. `GET` and `PUT /api/intake/sessions/{id}/filing-fee/` read and save it for a session in any status: the PUT locks the session, sets only the keys sent, refuses an unknown key or value with a 400 (`FilingFeeSerializer`), never reopens a completed intake and returns the GET body, which adds `information` (`{family_size, limit_monthly, guideline: {year, effective_date, source_url}, family_income_monthly}`, decimals as strings, from `filing_fee_information` in `apps/intake/filing_fee.py`), or null with `information_gap` `"income"` or `"no_table"`; a missing figure never blocks the answer. `FilingFeePage` (`/filing-fee`) asks every filer after Complete and shows the court's limit beside the filer's own figure as information, never a verdict ("The court decides."); `/fee-waiver` redirects there. 103B is in the packet exactly when `payment_choice` is `waiver`; its `requires` refuses an unanswered line 4, 7 or 9, a Yes without its text, or a blank line 5, with `page: "/filing-fee"`, and Form 101 refuses an unanswered line 8 the same way ("Choose how you will pay the filing fee.") and prints the answer on `Check Box7`. 103B lines 1–3 read the wizard through `apps/forms/services/fee_waiver.py`, and their refusals link to `income_info`: line 1 is `fee_waiver_family` (the filer, a spouse at home and the dependents, `count_fee_waiver_household`; an Income step gap raises `IncomeStepGap`, never a guessed 1), line 2 is `fee_waiver_income` (Schedule I line 10 per person less the counted non-cash value, the figure the page shows), and line 3 is 8f (`fee_waiver_noncash`). Line 6 prints Schedule J line 22c (`undefined_7`). Lines 17–19 are still asked at `/ask/form_103b` and stored as plaintext `FormAnswer` rows until DIG-168. `FeeWaiverApplication`, its `/api/intake/fee-waiver/` API and its plaintext columns were dropped in 3f: `0030_fee_waiver_applications_to_filing_fee` gave each session that had one a `FilingFee` with `waiver`, leaving an existing `FilingFee` as it was, and `0031_delete_feewaiverapplication` dropped the table; undone, each `waiver` choice gets back a bare one-person application, and the typed answers don't come back. A migrated `waiver` session has no answers to lines 4, 5, 7 and 9, so its 103B is refused until the filer answers them, and a session with no `FilingFee` has its Form 101 refused until the filer chooses; re-create the personas with `seed_demo_data --reset`."
 - "Seed order" (`:29`), ruling R27:
   - "The seed writes each persona's `Household` and `SpouseIncome` before it runs the means test, and sizes the fee-waiver application from `count_fee_waiver_household`." becomes "The seed writes each persona's `Household` and `SpouseIncome` before it runs the means test."
-  - Task 4's "Personas seeded before 3f have no `FilingFee`, so their Form 101 is refused with a link to `/filing-fee`. Re-create them with `seed_demo_data --reset`." becomes "Personas seeded before 3f have no `FilingFee`, so their Form 101 is refused with a link to `/filing-fee`. Maria, DeShawn and Sarah are the exception: migration 0030 gives each of them `waiver`, with 103B lines 4, 5, 7 and 9 unanswered, so their 103B is refused instead. Re-create them with `seed_demo_data --reset`."
+  - Add, as a new sentence after Task 4's "The seed also writes each persona's `FilingFee`. …" (Task 4 leaves it to this task; no earlier sentence exists to rewrite): "Personas seeded before 3f have no `FilingFee`, so their Form 101 is refused with a link to `/filing-fee`. Maria, DeShawn and Sarah are the exception: migration 0030 gives each of them `waiver`, with 103B lines 4, 5, 7 and 9 unanswered, so their 103B is refused instead. Re-create them with `seed_demo_data --reset`."
   - Every other sentence of the gotcha, including Task 4's "The seed also writes each persona's `FilingFee`. …", is unchanged.
 - "Forms need a completed intake" (`:33`): Task 4's "Form answers (`answers/bulk`), SOFA, the filing fee (`PUT /api/intake/sessions/{id}/filing-fee/`) and the fee-waiver application never reopen it" becomes "Form answers (`answers/bulk`), SOFA and the filing fee (`PUT /api/intake/sessions/{id}/filing-fee/`) never reopen it". The rest of the gotcha is unchanged.
 - File Map (`:99`): the `apps/intake/models.py` entry ends "…, AssetInfo, DebtInfo, FilingFee, Household, SpouseIncome". The `src/pages/SOFAStep.tsx` / `FeeWaiverPage.tsx` entry (`:130`) is Task 5's (ruling R22), so this task leaves it alone.
@@ -4893,7 +4910,7 @@ In the outcomes table (`docs/testing/persona-briefs/README.md:16-23`), the "Mean
    | "Saves lock the session"                            | 3          | the filing-fee PUT among the writes that lock                                                                                                                                                                                                                                                                                           |
    | "The packet decides which forms"                    | 4          | 103B applies on `FilingFee.payment_choice == "waiver"`; the `requires()` of 101 and 103B with `page="/filing-fee"`; no `FeeWaiverApplication`                                                                                                                                                                                           |
    | "Forms need a completed intake"                     | 4          | the filing fee among the writes that never reopen, in place of the fee-waiver application; `PreconditionMissing.page`                                                                                                                                                                                                                   |
-   | "Means test units"                                  | 7          | `calculation_details` holds no `qualifies_fee_waiver`, and `MeansTest` no `qualifies_for_fee_waiver`                                                                                                                                                                                                                                    |
+   | "Means test units"                                  | 7          | no removed identifier (`qualifies_fee_waiver`, `qualifies_for_fee_waiver`) remains in it                                                                                                                                                                                                                                                |
    | "GenerateAll vs single"                             | 4, 6 (R13) | the packet reply carries `payment_choice` (Task 4); `PAGE_LINK_LABELS` holds `/filing-fee` and the dashboard part is rewritten (Task 6)                                                                                                                                                                                                 |
    | "The filing fee" (was "The fee-waiver application") | 8          | `FilingFee` and its fields, the page and its API, 103B by the line 8 answer, lines 1–3 from the wizard, the waiver questions, the dropped model                                                                                                                                                                                         |
    | File Map                                            | 1, 2, 5, 8 | `poverty.py` (and `PovertyGuideline`) under `apps/districts` (1); `fee_waiver.py` under `apps/forms/services/` (2); `FilingFeePage.tsx` at `/filing-fee`, with `/fee-waiver` redirecting, and `handleComplete` always to `/filing-fee` (5, R22); `FilingFee` in place of `FeeWaiverApplication` in the `apps/intake/models.py` list (8) |
@@ -4913,10 +4930,9 @@ Expected: the second prints nothing. The first prints only these lines (R21):
 - eligibility migrations: `backend/apps/eligibility/migrations/0001_initial.py:58` and Task 7's `0003_remove_meanstest_qualifies_for_fee_waiver.py`;
 - the migration tests: `backend/apps/intake/tests/test_data_migrations.py` (the historical state at `:207-228` today, and Task 8's tests), and Task 7's `backend/apps/eligibility/tests/test_migrations.py`;
 - Task 7's absence assertions in `test_means_test_calculator.py`, `test_household_means_test.py` and `test_e2e_intake.py`, and the old-server reply in `MeansTestPreview.test.tsx`;
-- Task 5's routing test in `frontend/src/pages/__tests__/IntakeWizard.test.tsx`, whose mocked means-test reply keeps `qualifies_for_fee_waiver: flag` on purpose, to prove Complete lands on `/filing-fee` whatever the flag says;
 - the redirect: `frontend/src/App.tsx` (the `/fee-waiver` route) and the test of it (`App.test.tsx`, and any Task 5 test that asserts Complete never lands on `/fee-waiver`);
 - `backend/config/tests/test_urls.py`: Task 8's test that `/api/intake/fee-waiver/` is a 404 (its SPA route list holds `/filing-fee` after Task 8);
-- `CLAUDE.md`: the File Map's mention of the `/fee-waiver` redirect (Task 5), "The filing fee"'s sentences on the redirect and the dropped `FeeWaiverApplication` and its `/api/intake/fee-waiver/` API (Task 8), and "Means test units"' `qualifies_fee_waiver` and `qualifies_for_fee_waiver` (Task 7);
+- `CLAUDE.md`: the File Map's mention of the `/fee-waiver` redirect (Task 5), "The filing fee"'s sentences on the redirect and the dropped `FeeWaiverApplication` and its `/api/intake/fee-waiver/` API (Task 8);
 - the audit evidence, any line of `data/forms/field_index/audit/form_103b.audit.json` (`:45`, `:59`, `:64`, `:65`, `:85` today) and `verification.json` (`:513`, `:2583` today).
 
 No hit may remain in these:
