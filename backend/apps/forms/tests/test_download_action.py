@@ -302,7 +302,7 @@ def test_a_letter_the_form_cannot_print_refuses_the_download(
 
 def test_form_no_longer_in_the_packet_is_refused(api_client_authed, generated_form_factory):
     form = generated_form_factory(status="generated")
-    form.form_type = "form_103b"  # no fee waiver application for this session
+    form.form_type = "form_103b"  # line 8 is pay in full for this session
     form.save()
 
     response = _download(api_client_authed, form)

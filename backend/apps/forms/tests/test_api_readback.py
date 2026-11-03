@@ -36,9 +36,9 @@ User = get_user_model()
 # The means test qualifies these personas for a fee waiver, so after Complete the wizard
 # sends them to the fee-waiver page.
 QUALIFIES = {"maria", "deshawn", "sarah", "andres"}
-# These apply for the waiver there, and the seed gives them an application. Andrés means to
-# pay in installments (3a1 spec §2, 3a1.Q2), so the two sets differ until step 3f.
-APPLIES = {"maria", "deshawn", "sarah"}
+# These ask for the fee waiver on Form 101 line 8 (3f spec §10), so 103B is in their packets,
+# and the seed gives them a fee-waiver application, which the page still accepts until it goes.
+APPLIES = {"maria", "sarah"}
 
 
 def _step_bodies(data):
@@ -161,6 +161,10 @@ def _send_through_the_api(persona):
     assert response.status_code == 200, response.data
     household_size = response.data["session"]["household"]["fee_waiver_household_size"]
     assert household_size is not None
+    # The filing-fee page every filer passes after Complete: Form 101 line 8, and 103B's own
+    # questions for a waiver filer. It never reopens the intake.
+    response = client.put(f"{session_url}filing-fee/", _sent(data["filing_fee"]), format="json")
+    assert response.status_code == 200, response.data
     if persona in APPLIES:
         response = client.post(
             "/api/intake/fee-waiver/",
@@ -238,6 +242,7 @@ def test_forms_built_through_the_api_print_what_the_seeded_forms_print(persona):
     session_id, form_types = _send_through_the_api(persona)
 
     assert form_types == packet(seeded)
+    assert ("form_103b" in form_types) is (persona in APPLIES)
     stored = {
         form.form_type: json.loads(form.field_values)
         for form in GeneratedForm.objects.filter(session_id=session_id)

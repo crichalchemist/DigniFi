@@ -96,7 +96,10 @@ COLUMN_B_ZEROS = [
 # persona → form_type → full name → printed value
 EXPECTED = {
     "maria": {
-        "form_101": _common("Maria", "Torres", "2145 W Division St Apt 3", "60622"),
+        "form_101": {
+            **_common("Maria", "Torres", "2145 W Division St Apt 3", "60622"),
+            "Check Box7": "/Request fees waived",
+        },
         "form_103b": {
             "You": "/On",
             "Your spouse": "",
@@ -173,7 +176,10 @@ EXPECTED = {
         },
     },
     "james": {
-        "form_101": _common("James", "Washington", "850 N State St Apt 1204", "60610"),
+        "form_101": {
+            **_common("James", "Washington", "850 N State St Apt 1204", "60610"),
+            "Check Box7": "/Pay entirely",
+        },
         "form_106sum": {
             "1b": "15200.00",
             "1c": "15200.00",
@@ -228,7 +234,10 @@ EXPECTED = {
         },
     },
     "priya": {
-        "form_101": _common("Priya", "Sharma", "456 W Fullerton Pkwy", "60614"),
+        "form_101": {
+            **_common("Priya", "Sharma", "456 W Fullerton Pkwy", "60614"),
+            "Check Box7": "/Pay entirely",
+        },
         "form_106sum": {
             "1b": "8500.00",
             "1c": "8500.00",
@@ -294,7 +303,10 @@ EXPECTED = {
         },
     },
     "deshawn": {
-        "form_101": _common("DeShawn", "Mitchell", "7823 S Sangamon St", "60620"),
+        "form_101": {
+            **_common("DeShawn", "Mitchell", "7823 S Sangamon St", "60620"),
+            "Check Box7": "/Pay in installments",
+        },
         "form_106sum": {
             "1a": "180000.00",
             "1b": "20000.00",
@@ -355,7 +367,10 @@ EXPECTED = {
         },
     },
     "sarah": {
-        "form_101": _common("Sarah", "Chen", "1520 N Damen Ave Apt 2F", "60622"),
+        "form_101": {
+            **_common("Sarah", "Chen", "1520 N Damen Ave Apt 2F", "60622"),
+            "Check Box7": "/Request fees waived",
+        },
         # Guard: passes before 3f Task 2 (her typed application equals her Income step
         # figures); Maria's entry fails first.
         "form_103b": {
@@ -425,7 +440,7 @@ EXPECTED = {
     },
     # His driving is a business on line 5 and 8a since 3e2 (§11).
     "andres": {
-        "form_101": {"Debtor1.County": "Kane"},
+        "form_101": {"Debtor1.County": "Kane", "Check Box7": "/Pay in installments"},
         "form_106sum": {
             "1a": "0.00",
             "1b": "6697.00",

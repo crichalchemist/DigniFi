@@ -16,38 +16,11 @@
     "why": "The value goes into the line 5 narrative box instead."
   },
   {
-    "full_name": "Check 4",
-    "page": 1,
-    "tag": ["T19", "T21"],
-    "line": "4",
-    "label": "Do you expect your family's average monthly net income to increase or decrease by more than 10% during the next 6 months?",
-    "why": "Required answer; no box is ticked.",
-    "on_states": ["no", "yes"]
-  },
-  {
-    "full_name": "Check 7",
-    "page": 2,
-    "tag": ["T4", "T6"],
-    "line": "7",
-    "label": "Do these expenses cover anyone who is not included in your family as reported in line 1?",
-    "why": "Required answer. The No box's on_state is \"On\", not \"no\".",
-    "on_states": ["On", "yes"]
-  },
-  {
     "full_name": "Check 8",
     "page": 2,
     "tag": ["T7", "T9"],
     "line": "8",
     "label": "Does anyone other than you regularly pay any of these expenses?",
-    "why": "Required answer.",
-    "on_states": ["no", "yes"]
-  },
-  {
-    "full_name": "Check 9",
-    "page": 2,
-    "tag": ["T10", "T12"],
-    "line": "9",
-    "label": "Do you expect your average monthly expenses to increase or decrease by more than 10% during the next 6 months?",
     "why": "Required answer.",
     "on_states": ["no", "yes"]
   },

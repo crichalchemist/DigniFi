@@ -34,6 +34,7 @@ from .registry import (
     build_parts,
     get_all_form_types,
     packet,
+    payment_choice,
 )
 from .schema import load_schema
 from .serializers import GeneratedFormSerializer
@@ -288,6 +289,7 @@ class GeneratedFormViewSet(viewsets.ReadOnlyModelViewSet):
         and is never refused (step 2 spec §5.3, §5.6). `tables` holds the median table the means
         test recorded, and is `[]` when there is no means test or it recorded none. `income_period` says which six
         months the filer last confirmed on the Income step and which are in force now.
+        `payment_choice` is the Form 101 line 8 answer, or null before the filer chooses.
         """
         session, err = _session_or_error(request, request.query_params.get("session"), "session")
         if err:
@@ -304,6 +306,7 @@ class GeneratedFormViewSet(viewsets.ReadOnlyModelViewSet):
                 "form_types": packet(session),
                 "tables": _tables_used(session),
                 "income_period": _income_period(session),
+                "payment_choice": payment_choice(session),
             }
         )
 

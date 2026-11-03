@@ -24,7 +24,7 @@ from apps.forms.registry import (
     packet,
 )
 from apps.forms.schema import load_schema
-from apps.intake.models import DebtorInfo, FeeWaiverApplication, Household, IntakeSession
+from apps.intake.models import DebtorInfo, FeeWaiverApplication, FilingFee, Household, IntakeSession
 
 User = get_user_model()
 
@@ -121,7 +121,7 @@ def test_below_median_filer_without_fee_waiver_gets_fourteen_forms(session):
     assert packet(session) == ALWAYS
 
 
-def test_fee_waiver_application_adds_form_103b(session):
+def test_a_fee_waiver_application_without_the_line_8_answer_adds_no_103b(session):
     FeeWaiverApplication.objects.create(
         session=session,
         household_size=1,
@@ -130,7 +130,7 @@ def test_fee_waiver_application_adds_form_103b(session):
         cannot_pay_full=True,
         cannot_pay_installments=True,
     )
-    assert "form_103b" in packet(session)
+    assert "form_103b" not in packet(session)
 
 
 @pytest.mark.parametrize(
@@ -208,6 +208,7 @@ def test_means_test_form_needs_the_eligibility_check(session):
 def test_field_values_name_index_widgets(session):
     _debtor(session)
     Household.objects.create(session=session, county="Cook")
+    FilingFee.objects.create(session=session, payment_choice="pay_in_full")
     values = build_field_values("form_101", session)
     widgets = load_index(load_schema("form_101").template_filename)
     assert values["Debtor1.First name"] == "Sarah"
@@ -219,6 +220,7 @@ def test_petition_prints_only_the_last_four_ssn_digits(session, ssn):
     # The petition is public; only Form 121, which is not, carries the full number.
     _debtor(session, ssn=ssn)
     Household.objects.create(session=session, county="Cook")
+    FilingFee.objects.create(session=session, payment_choice="pay_in_full")
     values = build_field_values("form_101", session)
     assert values["Debtor1.SSNum"] == "0005"
     leaks = [name for name, value in values.items() if "900550005" in re.sub(r"\D", "", value)]

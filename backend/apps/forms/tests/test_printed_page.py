@@ -26,7 +26,12 @@ from pypdf.generic import DictionaryObject, NameObject, NullObject, TextStringOb
 from pypdf.generic._appearance_stream import TextStreamAppearance
 
 from apps.districts.models import District
-from apps.forms.registry import build_field_values, get_all_form_types, packet
+from apps.forms.registry import (
+    PreconditionMissing,
+    build_field_values,
+    get_all_form_types,
+    packet,
+)
 from apps.forms.schema import SheetColumn, SheetSpec, load_schema
 from apps.forms.services.pdf_filler import PDFFormFiller, UnprintableLetter, ValueTooLong
 from apps.forms.services.sheets import draw_sheet, plan_sheet
@@ -104,13 +109,16 @@ def _seeded():
     for persona in PERSONAS:
         call_command("seed_demo_data", "--reset", persona=persona, verbosity=0)
         session = IntakeSession.objects.filter(user__username=f"demo_{persona}").latest("id")
-        seeded[persona] = (
-            packet(session),
-            {
-                form_type: build_field_values(form_type, session)
-                for form_type in get_all_form_types()
-            },
-        )
+        forms = packet(session)
+        values = {}
+        for form_type in get_all_form_types():
+            try:
+                values[form_type] = build_field_values(form_type, session)
+            except PreconditionMissing:
+                if form_type in forms:
+                    raise
+                # 103B outside the packet: its own questions are asked only of a waiver filer
+        seeded[persona] = (forms, values)
     return seeded
 
 

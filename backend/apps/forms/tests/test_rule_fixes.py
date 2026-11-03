@@ -57,28 +57,29 @@ def _raises_precondition(node):
     )
 
 
-def _precondition_steps():
+def _precondition_fixes():
     """
-    The step each call of PreconditionMissing in the backend's code names, read from its
-    source, so a new place that raises one is checked too. A call by its name or as an
-    attribute (registry.PreconditionMissing(...)) is read; one under an import alias isn't.
+    The step or page each call of PreconditionMissing in the backend's code names, as a fix,
+    read from its source, so a new place that raises one is checked too. A call by its name or
+    as an attribute (registry.PreconditionMissing(...)) is read; one under an import alias isn't.
     """
-    steps, unread = set(), []
+    fixes, unread = [], []
     for path in (settings.BASE_DIR / "apps").rglob("*.py"):
         if {"tests", "migrations"} & set(path.parts):
             continue
         for node in ast.walk(ast.parse(path.read_text())):
             if not _raises_precondition(node):
                 continue
-            step = next((k.value for k in node.keywords if k.arg == "step"), None)
-            if step is None and len(node.args) > 1:
-                step = node.args[1]
-            if isinstance(step, ast.Constant):
-                steps.add(step.value)
-            elif step is not None:
-                unread.append(f"{path.name}:{node.lineno}")
-    assert unread == [], "a step this test can't read"
-    return steps
+            for kind, position in (("step", 1), ("page", 2)):
+                value = next((k.value for k in node.keywords if k.arg == kind), None)
+                if value is None and len(node.args) > position:
+                    value = node.args[position]
+                if isinstance(value, ast.Constant):
+                    fixes.append({kind: value.value})
+                elif value is not None:
+                    unread.append(f"{path.name}:{node.lineno}")
+    assert unread == [], "a step or page this test can't read"
+    return fixes
 
 
 def _field(source, rule=None, binding=None, ingest_key=None, value=None):
@@ -125,8 +126,9 @@ def test_every_fix_is_a_step_or_page_the_dashboard_links():
     # (an answer's questions page, a scan's), a SOFA list's, which no form binds yet, and
     # each one an exception names itself: a missing precondition's, wherever it is raised,
     # income not entered by source and an unfinished intake.
-    preconditions = _precondition_steps()
+    preconditions = _precondition_fixes()
     assert preconditions  # Forms 101 and 121 need a debtor and an SSN
+    assert {"page": "/filing-fee"} in preconditions  # line 8 and 103B's own questions
     fixes = [
         *RULE_FIXES.values(),
         *(
@@ -136,7 +138,7 @@ def test_every_fix_is_a_step_or_page_the_dashboard_links():
             if f.type in ("text", "choice")
         ),
         fix_for(_field("asked", binding="sofa.creditor_payments[].creditor_name")),
-        *({"step": step} for step in preconditions),
+        *preconditions,
         {"step": IncomeNotSplit.step},
         {"page": IntakeNotFinished.page},
     ]
@@ -173,6 +175,8 @@ def test_a_precondition_is_read_by_its_name_or_as_an_attribute(source, raises):
         ("other_asset_descriptions", {"step": "assets"}),
         ("total_debts", {"step": "debts"}),
         ("fee_waiver_noncash_kinds", {"step": "income_info"}),  # 103B line 3 reads 8f
+        ("fee_waiver_installments_explanation", {"page": "/filing-fee"}),
+        ("fee_waiver_others_covered_who", {"page": "/filing-fee"}),
         ("district_name", {}),  # the district list is DigniFi's
         ("line13a_median_income", {}),  # the median table is DigniFi's
         ("schedule_i_occupation_debtor1", {}),  # reads a field no model has: always blank

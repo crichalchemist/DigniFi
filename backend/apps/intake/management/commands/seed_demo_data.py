@@ -26,6 +26,7 @@ from apps.intake.models import (
     DebtorInfo,
     ExpenseInfo,
     FeeWaiverApplication,
+    FilingFee,
     Household,
     IncomeInfo,
     IntakeSession,
@@ -197,6 +198,18 @@ def _maria_torres() -> dict:
             "receives_noncash_assistance": True,
             "benefit_types": ["SNAP (food stamps)"],
         },
+        # Form 101 line 8, and for the waiver 103B lines 4, 5, 7 and 9 (3f spec §10)
+        "filing_fee": {
+            "payment_choice": "waiver",
+            "income_change_answer": "no",
+            "installments_explanation": (
+                "I support two children on what I earn. After rent, food, the car and the "
+                "children's costs, there is not enough left each month to pay the fee, even in "
+                "parts."
+            ),
+            "others_covered_answer": "no",
+            "expense_change_answer": "no",
+        },
     }
 
 
@@ -283,6 +296,8 @@ def _james_washington() -> dict:
                 "collateral_description": "2019 Toyota Camry",
             },
         ],
+        # Form 101 line 8, and for the waiver 103B lines 4, 5, 7 and 9 (3f spec §10)
+        "filing_fee": {"payment_choice": "pay_in_full"},
     }
 
 
@@ -390,6 +405,8 @@ def _priya_sharma() -> dict:
                 "consumer_business_classification": "consumer",
             },
         ],
+        # Form 101 line 8, and for the waiver 103B lines 4, 5, 7 and 9 (3f spec §10)
+        "filing_fee": {"payment_choice": "pay_in_full"},
     }
 
 
@@ -508,12 +525,9 @@ def _deshawn_mitchell() -> dict:
                 "consumer_business_classification": "consumer",
             },
         ],
-        # The fee-waiver page's answers (Form 103B lines 2 and 3)
-        "fee_waiver": {
-            "monthly_take_home_pay": Decimal("3050.00"),
-            "receives_noncash_assistance": False,
-            "benefit_types": [],
-        },
+        # No "fee_waiver": he pays the fee in installments (3f spec §10).
+        # Form 101 line 8, and for the waiver 103B lines 4, 5, 7 and 9 (3f spec §10)
+        "filing_fee": {"payment_choice": "installments"},
     }
 
 
@@ -596,6 +610,17 @@ def _sarah_chen() -> dict:
             "monthly_take_home_pay": Decimal("1750.00"),
             "receives_noncash_assistance": False,
             "benefit_types": [],
+        },
+        # Form 101 line 8, and for the waiver 103B lines 4, 5, 7 and 9 (3f spec §10)
+        "filing_fee": {
+            "payment_choice": "waiver",
+            "income_change_answer": "no",
+            "installments_explanation": (
+                "I have no savings. My pay covers rent, food and my bus pass, and what is left "
+                "each month goes to bills I already owe."
+            ),
+            "others_covered_answer": "no",
+            "expense_change_answer": "no",
         },
     }
 
@@ -784,6 +809,8 @@ def _andres_kettleby() -> dict:
             },
         ],
         # No "fee_waiver": he means to pay the fee in installments (3a1.Q2).
+        # Form 101 line 8, and for the waiver 103B lines 4, 5, 7 and 9 (3f spec §10)
+        "filing_fee": {"payment_choice": "installments"},
     }
 
 
@@ -916,6 +943,9 @@ class Command(BaseCommand):
                 SOFAPriorIncome.objects.create(report=report, **row)
             for row in creditor_payment_rows:
                 SOFACreditorPayment.objects.create(report=report, **row)
+
+        # The filing-fee page's answers, which every persona gives after Complete
+        FilingFee.objects.create(session=session, **data["filing_fee"])
 
         # Run means test calculation
         calculator = MeansTestCalculator(session)

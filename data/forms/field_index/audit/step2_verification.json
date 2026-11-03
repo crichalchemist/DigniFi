@@ -1848,5 +1848,85 @@
     "status": "confirmed",
     "correct_target": "Other 21",
     "evidence": "Field index: Other 21 p3 T3, 'Other. Specify:' (adjudicated). 3e2 spec §9.4: the filer's own Specify text from the Expenses step, printed only beside a printed amount."
+  },
+  {
+    "schema": "form_101",
+    "pdf_field": "Check Box7",
+    "producer": "derived:fee_payment_choice",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Check Box7",
+    "evidence": "Field index: Check Box7 p3 line 8 'How you will pay the fee', states /Pay entirely ('I will pay the entire fee when I file my petition.', sampled_ok), /Pay in installments ('I need to pay the fee in installments.', vision_agreed) and /Request fees waived ('I request that my fee be waived', sampled_ok). 3f spec §8.1 and §6.1: line 8 ticks the filer's own answer, FilingFee.payment_choice; blank while unanswered, when Form 101's requires() refuses the form."
+  },
+  {
+    "schema": "form_103b",
+    "pdf_field": "Check 4",
+    "producer": "derived:fee_waiver_income_change",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Check 4",
+    "evidence": "Field index: Check 4 p1 line 4 'Do you expect your family’s average monthly net income to increase or decrease by more than 10% during the next 6 months?', states /no ('No') and /yes ('Yes. Explain.'), sampled_ok. 3f spec §6.4 and §8.2 (owner answer 2): asked on the filing-fee page under the waiver choice, FilingFee.income_change_answer; blank until answered."
+  },
+  {
+    "schema": "form_103b",
+    "pdf_field": "4 type",
+    "producer": "derived:fee_waiver_income_change_explanation",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "4 type",
+    "evidence": "Field index: 4 type p1 line 4 'Line 4 Yes. Explain. (explanation of expected >10% income change)' (adjudicated; its tooltip 'type of assistance' is a template copy-paste error). 3f spec §6.4 and §8.2: line 4's explanation, printed only beside a Yes."
+  },
+  {
+    "schema": "form_103b",
+    "pdf_field": "5 Type",
+    "producer": "derived:fee_waiver_installments_explanation",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "5 Type",
+    "evidence": "Field index: 5 Type p1 line 5 'Line 5: Tell the court why you are unable to pay the filing fee in installments within 120 days (explanation)' (adjudicated; its tooltip 'Type of assistance' is a template copy-paste error). 3f spec §6.4 and §8.2: line 5 in the filer's own words, FilingFee.installments_explanation."
+  },
+  {
+    "schema": "form_103b",
+    "pdf_field": "Check 7",
+    "producer": "derived:fee_waiver_others_covered",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Check 7",
+    "evidence": "Field index: Check 7 p2 line 7 'Do these expenses cover anyone who is not included in your family as reported in line 1?', states /On ('No'; the template's No box exports On, FW:36) and /yes ('Yes. Identify who'), sampled_ok. 3f spec §6.4 and §8.2: FilingFee.others_covered_answer; blank until answered."
+  },
+  {
+    "schema": "form_103b",
+    "pdf_field": "undefined_8",
+    "producer": "derived:fee_waiver_others_covered_who",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_8",
+    "evidence": "Field index: undefined_8 p2 line 7 'Identify who' (sampled_ok). 3f spec §6.4 and §8.2: whom line 7's expenses also cover, printed only beside a Yes."
+  },
+  {
+    "schema": "form_103b",
+    "pdf_field": "Check 9",
+    "producer": "derived:fee_waiver_expense_change",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Check 9",
+    "evidence": "Field index: Check 9 p2 line 9 'Do you expect your average monthly expenses to increase or decrease by more than 10% during the next 6 months?', states /no ('No', sampled_ok) and /yes ('Yes. Explain', adjudicated). 3f spec §6.4 and §8.2: FilingFee.expense_change_answer; blank until answered."
+  },
+  {
+    "schema": "form_103b",
+    "pdf_field": "undefined_10",
+    "producer": "derived:fee_waiver_expense_change_explanation",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_10",
+    "evidence": "Field index: undefined_10 p2 line 9 'Line 9 Yes. Explain (expected >10% expense change)' (adjudicated). 3f spec §6.4 and §8.2: line 9's explanation, printed only beside a Yes."
   }
 ]

@@ -557,6 +557,40 @@ def _money_or_blank(amount: Decimal | None) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Form 101 line 8 and Form 103B lines 4–9: the filing-fee page's answers
+# ---------------------------------------------------------------------------
+
+
+def _filing_fee(session: IntakeSession):
+    return getattr(session, "filing_fee", None)
+
+
+def _fee_answer(name: str) -> Callable[[IntakeSession], str]:
+    """The stored answer, or "" while it is unanswered or there is no FilingFee row."""
+
+    def rule(session: IntakeSession) -> str:
+        fee = _filing_fee(session)
+        return (getattr(fee, name) or "") if fee is not None else ""
+
+    return rule
+
+
+def _fee_text(name: str, under: str | None = None) -> Callable[[IntakeSession], str]:
+    """
+    The text, stripped. With under, only while that yes/no answer is "yes": a text kept
+    after the answer moved to No stays stored and prints nothing.
+    """
+
+    def rule(session: IntakeSession) -> str:
+        fee = _filing_fee(session)
+        if fee is None or (under is not None and getattr(fee, under) != "yes"):
+            return ""
+        return (getattr(fee, name) or "").strip()
+
+    return rule
+
+
+# ---------------------------------------------------------------------------
 # Schedule I income line item derivations
 # ---------------------------------------------------------------------------
 
@@ -861,6 +895,19 @@ DERIVATIONS: dict[str, Callable[[IntakeSession], str]] = {
     "fee_waiver_income_total": lambda s: _fmt(_fee_waiver_income(s).total),
     "fee_waiver_noncash_answer": lambda s: _fee_waiver_noncash(s)[0],
     "fee_waiver_noncash_kinds": lambda s: _fee_waiver_noncash(s)[1],
+    # Form 101 line 8 and 103B lines 4, 5, 7 and 9 (3f spec §8)
+    "fee_payment_choice": _fee_answer("payment_choice"),
+    "fee_waiver_income_change": _fee_answer("income_change_answer"),
+    "fee_waiver_income_change_explanation": _fee_text(
+        "income_change_explanation", under="income_change_answer"
+    ),
+    "fee_waiver_installments_explanation": _fee_text("installments_explanation"),
+    "fee_waiver_others_covered": _fee_answer("others_covered_answer"),
+    "fee_waiver_others_covered_who": _fee_text("others_covered_who", under="others_covered_answer"),
+    "fee_waiver_expense_change": _fee_answer("expense_change_answer"),
+    "fee_waiver_expense_change_explanation": _fee_text(
+        "expense_change_explanation", under="expense_change_answer"
+    ),
     # Line 6 is Schedule J line 22c: one figure on both forms
     "fee_waiver_monthly_expenses": _total_monthly_expenses,
     # Schedule I income line item derivations
@@ -1086,6 +1133,11 @@ RULE_FIXES: dict[str, dict[str, str]] = {
     "total_nonpriority_unsecured": {"step": "debts"},
     "total_student_loans": {"step": "debts"},
     "total_other_nonpriority": {"step": "debts"},
+    # The filing-fee page (3f spec §7)
+    "fee_waiver_income_change_explanation": {"page": "/filing-fee"},
+    "fee_waiver_installments_explanation": {"page": "/filing-fee"},
+    "fee_waiver_others_covered_who": {"page": "/filing-fee"},
+    "fee_waiver_expense_change_explanation": {"page": "/filing-fee"},
     # No link. The district and its median income table come from DigniFi's own data.
     # The Schedule I occupation and employer address read fields no model has, so they
     # always print blank.

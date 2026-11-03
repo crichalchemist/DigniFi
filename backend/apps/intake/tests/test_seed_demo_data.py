@@ -21,7 +21,13 @@ from apps.eligibility.cmi import is_above_median
 from apps.eligibility.models import MeansTest
 from apps.forms.registry import packet
 from apps.intake.management.commands.seed_demo_data import PERSONAS, _andres_kettleby
-from apps.intake.models import FeeWaiverApplication, IncomeInfo, IntakeSession, SpouseIncome
+from apps.intake.models import (
+    FeeWaiverApplication,
+    FilingFee,
+    IncomeInfo,
+    IntakeSession,
+    SpouseIncome,
+)
 from apps.users.models import User
 
 
@@ -114,11 +120,11 @@ def test_the_seed_gives_the_fee_waiver_application_103b_line_1s_count(monkeypatc
         monkeypatch.setitem(PERSONAS, persona, lambda data=data: data)
         call_command("seed_demo_data", persona=persona, stdout=StringIO())
 
+    # DeShawn pays in installments, so he no longer applies (3f spec §10).
     assert {
         fw.session.user.username: fw.household_size for fw in FeeWaiverApplication.objects.all()
     } == {
         "demo_maria": 3,
-        "demo_deshawn": 2,
         "demo_sarah": 1,
     }
 
@@ -209,7 +215,63 @@ def test_the_new_answers_move_no_seeded_personas_means_test_fee_flag_or_packet(p
     )
     forms = packet(session)
     assert ("form_122a2" in forms) is (persona == "priya")
-    assert ("form_103b" in forms) is (persona in {"maria", "deshawn", "sarah"})
+    assert ("form_103b" in forms) is (persona in {"maria", "sarah"})
+
+
+MARIA_LINE_5 = (
+    "I support two children on what I earn. After rent, food, the car and the children's "
+    "costs, there is not enough left each month to pay the fee, even in parts."
+)
+SARAH_LINE_5 = (
+    "I have no savings. My pay covers rent, food and my bus pass, and what is left each "
+    "month goes to bills I already owe."
+)
+LINE_8 = {
+    "maria": "waiver",
+    "sarah": "waiver",
+    "deshawn": "installments",
+    "andres": "installments",
+    "james": "pay_in_full",
+    "priya": "pay_in_full",
+}
+PACKET_SIZE = {"maria": 15, "sarah": 15, "deshawn": 14, "andres": 14, "james": 14, "priya": 15}
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("persona", list(LINE_8))
+def test_each_persona_is_seeded_with_their_own_answer_to_how_they_will_pay_the_fee(persona):
+    call_command("loaddata", "ilnd_2025_data", verbosity=0)
+    call_command("seed_demo_data", persona=persona, stdout=StringIO())
+    fee = FilingFee.objects.get(session__user__username=f"demo_{persona}")
+    line_5 = {"maria": MARIA_LINE_5, "sarah": SARAH_LINE_5}.get(persona)
+    waiver = ("no", line_5, "no", "no") if line_5 else (None, "", None, None)
+    assert (
+        fee.payment_choice,
+        fee.income_change_answer,
+        fee.installments_explanation,
+        fee.others_covered_answer,
+        fee.expense_change_answer,
+    ) == (LINE_8[persona], *waiver)
+    assert (
+        fee.income_change_explanation,
+        fee.others_covered_who,
+        fee.expense_change_explanation,
+    ) == ("", "", "")
+
+
+@pytest.mark.django_db
+def test_103b_follows_each_personas_line_8_answer_so_only_deshawns_packet_shrinks():
+    # One test over all six, so it fails first on DeShawn's 15 (a test per persona would
+    # pass before the change for the five whose packets don't move).
+    call_command("loaddata", "ilnd_2025_data", verbosity=0)
+    packets = {}
+    for persona in PACKET_SIZE:
+        call_command("seed_demo_data", persona=persona, stdout=StringIO())
+        forms = packet(IntakeSession.objects.get(user__username=f"demo_{persona}"))
+        packets[persona] = (len(forms), "form_103b" in forms)
+    assert packets == {
+        persona: (size, LINE_8[persona] == "waiver") for persona, size in PACKET_SIZE.items()
+    }
 
 
 @pytest.mark.django_db

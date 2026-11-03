@@ -57,6 +57,7 @@ function refusalOf(err: unknown, generic: string): Refusal {
 const PAGE_LINK_LABELS: Record<string, string> = {
   '/intake': 'Finish your intake',
   '/fee-waiver': 'Go to Filing Fee Waiver Application',
+  '/filing-fee': 'Go to How you will pay the filing fee',
   '/sofa': 'Go to Statement of Financial Affairs',
   '/documents': 'Go to Upload your documents',
 };
