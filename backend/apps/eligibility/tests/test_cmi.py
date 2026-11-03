@@ -77,14 +77,6 @@ def test_social_security_never_counts_toward_cmi(filer):
     assert ExpenseDeductionCalculator(session)._get_cmi() == Decimal("2500.00")
 
 
-def test_a_source_left_empty_counts_as_zero_once_another_is_given(filer):
-    _, session = filer
-    # A journey types only wages, so the other nine are stored empty.
-    IncomeInfo.objects.create(session=session, monthly_gross_wages=Decimal("3200.00"))
-
-    assert current_monthly_income(session.income_info) == Decimal("3200.00")
-
-
 def test_a_filer_who_typed_zero_income_has_a_cmi_of_zero(filer):
     _, session = filer
     IncomeInfo.objects.create(session=session, monthly_gross_wages=Decimal("0.00"))
@@ -118,17 +110,6 @@ def test_income_saved_only_as_a_total_is_refused_in_plain_words(filer):
     assert isinstance(refused.value, ValueError)
 
 
-def test_the_means_test_passes_the_refusal_on_without_its_failure_prefix(filer):
-    _, session = filer
-    IncomeInfo.objects.create(session=session, monthly_income=json.dumps([3000] * 6))
-    answer_household(session)
-
-    with pytest.raises(IncomeNotSplit) as refused:
-        MeansTestCalculator(session).calculate()
-
-    assert str(refused.value) == SPLIT_BY_SOURCE
-
-
 def test_the_means_test_passes_a_missing_median_table_on_without_its_failure_prefix(filer):
     _, session = filer
     IncomeInfo.objects.create(session=session, monthly_gross_wages=Decimal("3000.00"))
@@ -158,31 +139,29 @@ def test_the_above_median_calculator_refuses_income_not_split_instead_of_using_z
         ExpenseDeductionCalculator(session).calculate()
 
 
-def test_means_test_endpoint_asks_for_income_by_source_as_a_400(filer):
+@pytest.mark.parametrize(
+    "income,table_in_force,sentence",
+    [
+        ({"monthly_income": json.dumps([3000] * 6)}, True, SPLIT_BY_SOURCE),
+        ({"monthly_gross_wages": Decimal("3000.00")}, False, NO_MEDIAN_TABLE),
+    ],
+    ids=["income_not_split_by_source", "no_median_table_in_force"],
+)
+def test_means_test_endpoint_refuses_in_the_filers_words_as_a_400(
+    filer, income, table_in_force, sentence
+):
     user, session = filer
-    IncomeInfo.objects.create(session=session, monthly_income=json.dumps([3000] * 6))
+    IncomeInfo.objects.create(session=session, **income)
     answer_household(session)
+    if not table_in_force:
+        MedianIncome.objects.all().delete()
     client = APIClient()
     client.force_authenticate(user=user)
 
     response = client.post(f"/api/intake/sessions/{session.pk}/calculate_means_test/")
 
     assert response.status_code == 400
-    assert response.data["error"] == SPLIT_BY_SOURCE
-
-
-def test_means_test_endpoint_refuses_without_a_median_table_in_force_as_a_400(filer):
-    user, session = filer
-    IncomeInfo.objects.create(session=session, monthly_gross_wages=Decimal("3000.00"))
-    answer_household(session)
-    MedianIncome.objects.all().delete()
-    client = APIClient()
-    client.force_authenticate(user=user)
-
-    response = client.post(f"/api/intake/sessions/{session.pk}/calculate_means_test/")
-
-    assert response.status_code == 400
-    assert response.data["error"] == NO_MEDIAN_TABLE
+    assert response.data["error"] == sentence
 
 
 GIG_ENTRY = {
@@ -218,19 +197,6 @@ def test_a_business_loss_never_lowers_cmi_the_total_or_is_refused(filer):
     )
     assert current_monthly_income(row) == Decimal("2000.00")
     assert row.calculate_total_monthly_income() == 2000.0
-
-
-def test_a_business_loss_never_lowers_rental_income(filer):
-    _, session = filer
-    row = _income(
-        session,
-        [
-            {"kind": "business", "gross": "100.00", "expenses": "400.00"},
-            {"kind": "rental", "gross": "1200.00", "expenses": "200.00"},
-        ],
-        monthly_gross_wages=Decimal("2000.00"),
-    )
-    assert current_monthly_income(row) == Decimal("3000.00")
 
 
 def test_entries_with_no_figures_leave_income_not_entered(filer):

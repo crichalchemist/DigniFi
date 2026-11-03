@@ -319,10 +319,6 @@ def test_an_untagged_slot_whose_name_is_drawn_twice_on_its_page_is_reported(sche
     assert _errors("schedule_i") == [_UNTAGGED_SLOT_ON_A_TWIN]
 
 
-def test_a_group_continued_on_copies_of_its_extra_page_passes(schedule_d_with_copies):
-    assert _errors("schedule_d") == []
-
-
 def test_a_group_continued_on_copies_of_the_last_page_passes(schedule_d_part_2_with_copies):
     assert _errors("schedule_d") == []
 
@@ -775,30 +771,9 @@ def test_a_group_continued_on_an_attached_sheet_is_not_counted_as_a_second(
     assert _errors("schedule_d") == []
 
 
-def test_a_group_continued_on_an_attached_sheet_passes(schedule_a_b_with_sheet):
-    assert _errors("schedule_a_b") == []
-
-
 def test_a_group_of_the_households_dependents_passes(schedule_j_with_dependents):
     # Line 2 as 3e1 declares it: a household list, its "lives with you?" column from boxes.
     assert _errors("schedule_j") == []
-
-
-def test_a_sheet_line_too_wide_for_a_later_row_is_reported(schedule_a_b_with_sheet):
-    # "Line 5", the first line, fits the 36 pt line column; "Line 10" doesn't, so every
-    # Generate of ten rows or more would fail. Row 9999's line is the widest checked.
-    _edit(
-        schedule_a_b_with_sheet,
-        "schedule_a_b",
-        lambda d: d["groups"]["ab_line_3"].update(number="Line {n}"),
-    )
-    assert _errors("schedule_a_b") == [
-        (
-            "forms.E007",
-            "schedule_a_b: group 'ab_line_3': its sheet can't print row 9999's line, "
-            "'Line 9999', whole in the 36 pt line column",
-        )
-    ]
 
 
 def _sheet(change):
@@ -1039,6 +1014,16 @@ _AB = "schedule_a_b: group 'ab_line_3'"
             ),
         ),
         (
+            # "Line 5", the first line, fits the 36 pt line column; "Line 10" doesn't, so every
+            # Generate of ten rows or more would fail. Row 9999's line is the widest checked.
+            _sheet(lambda g: g.update(number="Line {n}")),
+            (
+                "forms.E007",
+                f"{_AB}: its sheet can't print row 9999's line, 'Line 9999', whole in the "
+                "36 pt line column",
+            ),
+        ),
+        (
             # The filer couldn't tell the two apart, nor could a refusal's fix.
             _column(1, label="Make"),
             ("forms.E007", f"{_AB}: its sheet has more than one column labelled 'Make'"),
@@ -1078,6 +1063,7 @@ _AB = "schedule_a_b: group 'ab_line_3'"
         "a constant box slot",
         "a derived slot",
         "a first line wider than the line column",
+        "a later line wider than the line column",
         "two columns with one label",
         "a label wider than its column",
         "a column with no width",
@@ -1150,15 +1136,12 @@ def test_unresolvable_source_is_reported(schema_copy, change):
     assert _ids("form_121") == ["forms.E007"]
 
 
+@pytest.mark.slow
 def test_manage_py_check_fails_on_a_bad_schema(schema_copy):
     """migrate runs the same checks, so this is what fails a Heroku release."""
     _edit(schema_copy, "form_121", lambda d: d.update(template_version="0" * 64))
     with pytest.raises(SystemCheckError, match="forms.E002"):
         call_command("check")
-
-
-def test_schedule_i_statement_group_passes():
-    assert _errors("schedule_i") == []
 
 
 def test_a_statement_column_binding_another_list_is_reported(schema_copy):

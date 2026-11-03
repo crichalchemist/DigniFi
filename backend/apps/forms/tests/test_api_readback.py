@@ -188,6 +188,7 @@ def _amount(text):
         return None
 
 
+@pytest.mark.slow
 @pytest.mark.django_db
 @pytest.mark.parametrize("persona", list(PERSONAS))
 def test_forms_built_through_the_api_print_what_the_seeded_forms_print(persona):

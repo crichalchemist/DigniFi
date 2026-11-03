@@ -8,11 +8,8 @@ costs as $0. These tests pin the canonical names the Expenses step now sends.
 from decimal import Decimal
 
 import pytest
-from rest_framework.test import APIClient
 
-from apps.districts.models import District
-from apps.intake.models import ExpenseInfo, IntakeSession
-from apps.users.models import User
+from apps.intake.models import ExpenseInfo
 
 # One distinct amount per canonical ExpenseInfo field, as DRF returns it.
 CANONICAL_EXPENSES = {
@@ -43,22 +40,6 @@ CANONICAL_EXPENSES = {
     "other_property_upkeep": "25.00",
     "other_property_hoa_dues": "20.00",
 }
-
-
-@pytest.fixture
-def filer_session(db):
-    district = District.objects.create(
-        code="ILND",
-        name="Illinois Northern",
-        state="IL",
-        court_name="U.S. Bankruptcy Court ILND",
-        filing_fee_chapter_7=Decimal("338.00"),
-    )
-    filer = User.objects.create_user(username="filer", password="pw")
-    session = IntakeSession.objects.create(user=filer, district=district)
-    client = APIClient()
-    client.force_authenticate(user=filer)
-    return client, session
 
 
 @pytest.mark.django_db

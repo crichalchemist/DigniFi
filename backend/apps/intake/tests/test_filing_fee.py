@@ -290,16 +290,17 @@ def test_another_filers_session_is_not_found(sarah):
     assert not FilingFee.objects.filter(session=session).exists()
 
 
-@pytest.mark.parametrize("field", ANSWER_FIELDS)
-def test_every_filing_fee_answer_is_ciphertext_in_the_table(sarah, field):
+def test_every_filing_fee_answer_is_ciphertext_in_the_table(sarah):
     client, session = sarah
     body = {name: value for name, (value, _) in ANSWERS.items()}
     assert _put(client, session, body).status_code == 200
-    with connection.cursor() as cursor:
-        cursor.execute(f"SELECT {field} FROM filing_fees WHERE session_id = %s", [session.pk])
-        raw = cursor.fetchone()[0]
-    plain = ANSWERS[field][1]
-    assert raw.startswith("gAAAAA") and (plain is None or plain not in raw)  # a Fernet token
+    for field in ANSWER_FIELDS:
+        with connection.cursor() as cursor:
+            cursor.execute(f"SELECT {field} FROM filing_fees WHERE session_id = %s", [session.pk])
+            raw = cursor.fetchone()[0]
+        plain = ANSWERS[field][1]
+        # a Fernet token
+        assert raw.startswith("gAAAAA") and (plain is None or plain not in raw), field
 
 
 def test_the_shared_test_household_pays_in_full_so_forms_tests_meet_no_new_refusal(sarah):

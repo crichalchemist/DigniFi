@@ -143,6 +143,7 @@ def test_line_19_reads_what_the_filer_owns_and_line_20_what_they_owe(session):
     assert petition["Check Box23"] == "/50001-100000"
 
 
+@pytest.mark.slow
 def test_header_name_prints_on_pages_2_to_9(session):
     pdf = PDFFormFiller().fill("form_101", _petition(session))
     # Each page's header widget is drawn on its own page.
