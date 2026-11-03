@@ -30,3 +30,25 @@ def _fill_forms_on_a_fixed_day(monkeypatch):
     # median table would stop being in force on November 1 and every forms test would
     # refuse. Tests of the lookup itself set their own date.
     monkeypatch.setattr("apps.districts.dated_tables._today", lambda: date(2026, 10, 16))
+
+
+@pytest.fixture
+def poverty_2026(db):
+    # The 2026 HHS poverty guideline, which 0005_poverty_guideline_2026 loads. A transactional
+    # test's teardown empties every table, the migrated row included, so a test that needs the
+    # row after one asks for this fixture. Imported here: this module loads before django.setup().
+    from apps.districts.models import PovertyGuideline
+
+    row, _ = PovertyGuideline.objects.get_or_create(
+        effective_date=date(2026, 1, 15),
+        defaults={
+            "first_person": 15960,
+            "each_additional": 5680,
+            "valid_through": date(2027, 1, 31),
+            "source_url": (
+                "https://www.federalregister.gov/documents/2026/01/15/2026-00755/"
+                "annual-update-of-the-hhs-poverty-guidelines"
+            ),
+        },
+    )
+    return row
