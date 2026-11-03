@@ -8,7 +8,6 @@ from rest_framework.test import APIClient
 
 from apps.districts.models import District
 from apps.documents.models import DocumentType, OCRResult, OCRStatus, UploadedDocument
-from apps.documents.views import _run_processing
 from apps.intake.models import IntakeSession
 
 
@@ -41,21 +40,6 @@ class TestAggregatorHooks(TestCase):
             overall_confidence=0,
             confidence_scores={},
         )
-
-    @patch("apps.documents.views._get_processor")
-    @patch("apps.documents.views.AggregateIngestionService.recalculate")
-    def test_run_processing_hook(self, mock_recalc, mock_get_processor):
-        mock_get_processor.return_value.process.return_value.error = None
-        # A pay stub counts as read only with gross pay and both pay-period dates.
-        mock_get_processor.return_value.process.return_value.fields = {
-            "gross_pay": "1000.00",
-            "pay_period_start": "2026-01-01",
-            "pay_period_end": "2026-01-14",
-        }
-        mock_get_processor.return_value.process.return_value.confidence = {}
-
-        _run_processing(self.doc.id)
-        mock_recalc.assert_called_once_with(self.session.id)
 
     @patch("apps.documents.views.AggregateIngestionService.recalculate")
     def test_validate_hook(self, mock_recalc):

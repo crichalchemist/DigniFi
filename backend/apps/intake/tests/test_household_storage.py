@@ -5,37 +5,17 @@ filer gave. A missing answer saves, for Complete to name; only a value no answer
 refused. Ids are never reused, so the wizard can pair each row it sent with its id.
 """
 
-from decimal import Decimal
-
 import pytest
 from django.db import connection
-from rest_framework.test import APIClient
 
 from apps.districts.counties import ILND_COUNTIES
-from apps.districts.models import District
 from apps.intake.models import Household, IntakeSession
-from apps.users.models import User
 
 ROW_KEYS = ["id", "relationship", "age", "lives_with_you", "claimed_or_supported"]
 SON = {"relationship": "son", "age": 8, "lives_with_you": True, "claimed_or_supported": True}
 DAUGHTER = {**SON, "relationship": "daughter", "age": 5}
 ROOMMATE = {**SON, "relationship": "roommate", "age": 29, "claimed_or_supported": False}
 UNANSWERED = dict.fromkeys(["age", "lives_with_you", "claimed_or_supported"])
-
-
-@pytest.fixture
-def filer(db):
-    district = District.objects.create(
-        code="ILND",
-        name="Illinois Northern",
-        state="IL",
-        court_name="U.S. Bankruptcy Court ILND",
-        filing_fee_chapter_7=Decimal("338.00"),
-    )
-    user = User.objects.create_user(username="filer", password="pw")
-    client = APIClient()
-    client.force_authenticate(user=user)
-    return client, IntakeSession.objects.create(user=user, district=district)
 
 
 def _url(session):

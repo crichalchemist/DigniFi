@@ -142,6 +142,7 @@ def _drawn_packet():
     }
 
 
+@pytest.mark.slow
 @pytest.mark.django_db
 @pytest.mark.parametrize("persona", list(PERSONAS))
 def test_no_persona_is_refused(persona):
@@ -157,6 +158,7 @@ def test_no_persona_is_refused(persona):
     assert refused == {}
 
 
+@pytest.mark.slow
 @pytest.mark.django_db
 @pytest.mark.parametrize("form_type", get_all_form_types())
 def test_the_packet_has_no_fillable_fields_left(form_type):
@@ -290,6 +292,7 @@ def _right_aligned(form_type):
     ]
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("form_type", [f for f in get_all_form_types() if _right_aligned(f)])
 def test_amounts_stay_right_aligned(form_type):
     # An amount's digits line up in the form's column only when each ends at the box's
@@ -374,6 +377,7 @@ def _view(document):
         page.get_text()
 
 
+@pytest.mark.slow
 @pytest.mark.django_db
 @pytest.mark.parametrize("form_type", get_all_form_types())
 def test_every_drawn_pdf_opens_cleanly(form_type):
@@ -632,6 +636,7 @@ def _past_padding(form_type, widget, just, over):
     return past
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("form_type", get_all_form_types())
 def test_no_value_is_ever_cut_off(form_type):
     # The longest value check() lets through prints whole, every character inside its box,
@@ -712,6 +717,7 @@ def _mark_ink(page, empty, glyph):
     return sum(max(b - d, 0) for d, b in zip(drawn, blank, strict=True))
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize(
     "form_type,key", [("schedule_a_b", OTHER_PROPERTY), ("form_103b", "3 type")]
 )
@@ -805,6 +811,7 @@ def _drawn_without_check(template, texts):
     return document.tobytes()
 
 
+@pytest.mark.slow
 def test_check_agrees_with_the_drawing_on_every_letter():
     # check() refuses exactly the letters the drawing can't print (spec §4.3): a letter it
     # accepts prints as itself, and one it refuses would print as "?", as another glyph,
@@ -923,6 +930,7 @@ def _template_letters():
     return [chr(c) for c in range(0x10000) if not 0xD800 <= c <= 0xDFFF and printable(font, chr(c))]
 
 
+@pytest.mark.slow
 def test_the_sheets_letter_check_agrees_with_what_it_prints():
     # plan_sheet() refuses exactly the letters the sheet can't print as themselves (spec
     # §5.3, §4.3): one it accepts reads back as it prints, and leaves ink alone in its

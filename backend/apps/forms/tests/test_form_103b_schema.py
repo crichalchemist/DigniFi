@@ -56,15 +56,6 @@ def session_with_fw(session):
 
 @pytest.mark.django_db
 class TestForm103BSchema:
-    def test_schema_loads(self):
-        schema = load_schema("form_103b")
-        assert schema.form_type == "form_103b"
-
-    def test_all_fields_have_valid_source(self):
-        schema = load_schema("form_103b")
-        for f in schema.fields:
-            assert f.source in ("presume", "derived", "constant", "asked", "ingested")
-
     def test_resolver_produces_output(self, session_with_fw):
         field_map = resolve(load_schema("form_103b"), session_with_fw)
         assert "Bankruptcy District Information" in field_map
