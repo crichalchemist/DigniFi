@@ -31,7 +31,7 @@ Nothing in 3f deploys. Production waits for steps 3 to 5 and DIG-146 (U:9).
   - 103B line 3 reads 8f (U:399), and line 1 counts the household its own way (U:400, E1's `count_fee_waiver_household`).
 - **Settled by the sources** (FW:157–188):
   - § 820.20(a)(2) compares Schedule I's total combined monthly income, less non-cash government assistance.
-  - § 820.20(a)(3) counts the debtor, the spouse unless separated, and dependents.
+  - § 820.20(a)(3) counts the debtor, the spouse unless separated, and dependents. DigniFi applies it through 3e1's `count_fee_waiver_household` (`household.py:60-70`), which also leaves out a `married_separately` spouse who lives apart without a legal separation. That reading goes to counsel under C-7 (§17).
   - The test is strictly "less than".
   - The court alone decides "unable to pay in installments" (§ 820.20(a)(4)), and paying a preparer never disqualifies (a)(5).
 - **The persona targets** fix every outcome in §10 (PS:128–146, :380–386, :617–621, :830–842, :1067–1079, :1390).
@@ -45,6 +45,8 @@ Nothing in 3f deploys. Production waits for steps 3 to 5 and DIG-146 (U:9).
 - Complete, then the means test as today, then **always** `/filing-fee` (§6), then `/sofa`. No branch reads a computed result.
 - `/fee-waiver` redirects to `/filing-fee` (a `Navigate` with `replace`), so an old link still lands.
 - The forms dashboard links a refusal whose `page` is `/filing-fee` there (§7).
+- **The way back.** The dashboard always shows the filer's line 8 answer, in the form's words, with a "Change how you will pay the fee" link to `/filing-fee`, or "Choose how you will pay the fee" while it is unanswered (§7). That is how a filer withdraws a waiver, or returns to it. **Call (spec author).**
+- **The journeys' wait.** `e2e/pages/wizard.page.ts:44-46` waits for `/(forms|fee-waiver|sofa)/` after Complete; it becomes `/filing-fee/`.
 
 **Call (spec author):** a page after Complete, not a wizard step. The page needs a finished Income step for its figure, and the means test already runs at that point. A wizard step would renumber `current_step` again, as 3e2 did. Form 101 line 8 lives with the other post-intake answers (SOFA, the 103B questions), which never reopen a completed intake.
 
@@ -80,6 +82,20 @@ A new model in `apps/intake/models.py`, one-to-one with the session (`related_na
   2. A data migration gives every session with a `FeeWaiverApplication` a `FilingFee` with `payment_choice="waiver"`, so its packet keeps 103B.
   3. Delete `FeeWaiverApplication`, so its plaintext columns go with it.
 - **Reverse.** Recreate the table, and for each `waiver` choice create a bare application with `household_size=1` and everything else empty. The typed answers don't come back; the reverse says so in its docstring.
+- **What existing sessions meet after the migration.** **Call (spec author):** this is intended, and the PR's "Before merging" says so, beside re-seeding the personas with `seed_demo_data --reset`.
+  - A session that had an application has `waiver`, but no answers to lines 4, 5, 7 and 9. Its 103B is refused, with a link to `/filing-fee`, until the filer answers them.
+  - Every other session has no `FilingFee`. Its Form 101 is refused, with the same link, until the filer chooses.
+  - Each refusal names the page, and nothing is guessed for the filer.
+
+**The whole fee-waiver API goes with the model.** **Call (spec author).**
+
+- Backend: `FeeWaiverViewSet` and its route (`intake/urls.py:7`, `:16`); `FeeWaiverApplicationSerializer` (`serializers.py:817`); the ignore entry in `backend/conftest.py:12`.
+- Frontend: `api.feeWaiver` (`client.ts:511`), its MSW handlers and fixtures, and `FeeWaiverPage.tsx` with its test.
+- Tests: every test of the model, page or API is deleted or rewritten. That covers `test_fee_waiver_views.py`, `test_models.py:132-215`, `test_completion.py:1000-1017`, `config/tests/test_urls.py`, and the files the plan finds by grepping `fee_waiver`, `FeeWaiver` and `/fee-waiver`.
+- `RULE_FIXES`' `/fee-waiver` pages (`derivations.py:1081-1083`) become `/filing-fee`, with their tests (`test_rule_fixes.py:175`, `test_check.py:257`, `test_form_views.py:402-406`).
+- **CSS.** `global.css`'s `fee-waiver-question` and `fee-waiver-checkbox` classes stay: `IncomeInfoStep`, `ExpenseInfoStep` and `HouseholdList` use them too.
+
+**103B's lines 17–19 stay where they are.** `check_17`–`check_19` are already asked at `/ask/form_103b` and stored as `FormAnswer` rows. They are plaintext until DIG-168 encrypts `FormAnswer`, and they are step 4's to move. Lines 4–9 go on `FilingFee`, not into `FormAnswer`, because U:87 says nothing new goes into `FormAnswer` until DIG-168. So a waiver filer answers on two pages: `/filing-fee`, and `/ask/form_103b` as today. **Call (spec author).**
 
 **Call (spec author):** drop the table in 3f instead of keeping it one release. The usual "one release" keeps a record nothing else holds. Here every value is held elsewhere or printed nowhere, and keeping it would keep the plaintext DIG-279 names. If the owner answers question 1 with a typed take-home figure (§17), `FilingFee` gains an encrypted `monthly_take_home_pay` and the rest stands.
 
@@ -211,7 +227,7 @@ If the owner answers question 2 with "step 4", §6.4 and the six line 4–9 fiel
   - anything else is a 400.
 - **Locking and reopening.** It locks the session (`lock_session`) like every write to it. It never calls `reopen()`: the filing fee, like SOFA and the 103B answers, never reopens a completed intake.
 
-Another user's session is a 404, as every session action is.
+Another user's session is a 404, as every session action is. Both methods take a session in any status, as SOFA does: the page follows Complete, but the dashboard's link can reach it after a reopen. **Call (spec author).**
 
 ## 7. The packet
 
@@ -228,7 +244,7 @@ Another user's session is a 404, as every session action is.
 - **Form 101** `requires` adds: line 8 answered, `PreconditionMissing(page="/filing-fee")`, in the words "Choose how you will pay the filing fee."
 - **The dashboard.**
   - `PAGE_LINK_LABELS` swaps `/fee-waiver` for `/filing-fee`, "Go to How you will pay the filing fee".
-  - The packet reply gains `payment_choice`, so the dashboard can show §6.3's notice for `installments`.
+  - The packet reply gains `payment_choice`. The dashboard shows it with §3's change link, and §6.3's notice for `installments`.
   - Generate All already deletes an unfiled 103B that no longer applies, and keeps a filed one.
 - **Packet counts.** A packet is 14 forms, plus 122A-2 above the median, plus 103B for a waiver: 14–16, as today (CLAUDE.md "The packet decides which forms"). Only which filers get 103B changes.
 
@@ -279,9 +295,13 @@ It goes in `form_101.json`, with its addendum row in `step2_verification.json` (
 `MeansTest.qualifies_for_fee_waiver` goes: the column (a migration), its computation (`eligibility/models.py:186-188`, `:226`, `:236`) and the calculator's key (`means_test_calculator.py:98`, `:221`). Also:
 
 - the message's sentence "you may qualify for a filing fee waiver" (`:147-150`) `[UPL]`;
-- the summary's `qualifies_fee_waiver` (`views.py:418`);
+- the calculator's other read (`means_test_calculator.py:57`);
+- the summary's `qualifies_fee_waiver` and the `calculate_means_test` docstring (`apps/intake/views.py:349`, `:418`);
 - `MeansTestPreview`'s "You may qualify for a filing fee waiver" row (`MeansTestPreview.tsx:120-125`);
-- the two frontend types (`api.ts:460`, `:721`).
+- the two frontend types (`api.ts:460`, `:721`), the MSW handler (`handlers.ts:75`) and the session fixture (`fixtures/session.ts:135`);
+- the tests that pin it: `audit/tests/test_upl_compliance.py:269-315`, `:451`, `test_means_test_calculator.py`, `test_household_means_test.py`, `test_e2e_intake.py:713`, `:768-779`, `MeansTestPreview.test.tsx` and `IntakeWizard.test.tsx:147`, `:174`;
+- `sarah-simplest.spec.ts:57-60`, which asserts the preview mentions "fee waiver" or "filing fee". It moves to the filing-fee page and asserts §6.2's limit and figure, and never a verdict;
+- the James and SOFA journeys' comments on routing.
 
 Nothing replaces it. The only comparison DigniFi shows is §6.2's, as information.
 
@@ -308,8 +328,12 @@ Figures are from the persona targets, rechecked in the plan against the 3e2 seed
   - Every journey passes it: Maria and Sarah choose the waiver; DeShawn and Andrés choose installments and assert the 103A message; James, Priya and the SOFA journey pay in full.
   - The waiver personas' `fee_waiver` fixture becomes `filing_fee`. `expected.fee_waiver_eligible` goes everywhere (`personas.ts`), replaced by the line 8 choice.
   - DeShawn's `generateAllForms(15)` becomes 14.
-  - Andrés's journey stops expecting `/fee-waiver` (`andres-gig-driver.spec.ts:75-76`).
-- **Read-back tests.** `test_api_readback.py`'s `WAIVER_FILERS` becomes the line 8 waiver filers, Maria and Sarah. Its comment and its assertion on `qualifies_for_fee_waiver` (`:36-38`, `:129-130`) go.
+  - Andrés's journey stops expecting `/fee-waiver` (`andres-gig-driver.spec.ts:75-76`), and its title (`:21`) and header comment (`:6`) lose the waiver page.
+  - `wizard.page.ts:44-46`'s wait after Complete becomes `/filing-fee/` (§3).
+- **Read-back tests.** `test_api_readback.py` has `QUALIFIES` (`:38`) and `APPLIES` (`:41`); the umbrella's and the targets' `WAIVER_FILERS` (PS:258) is a stale name for them. Both become `WAIVER_CHOICE`, Maria and Sarah, the line 8 waiver filers.
+  - The assertion on `qualifies_for_fee_waiver` (`:182-183`) goes.
+  - The POSTs to `/api/intake/fee-waiver/` (`:83-93`, `:164-167`) become `PUT`s to the filing-fee action.
+  - `_fee_waiver_answers` (`:96-99`, `:258-259`) compares 103B's lines 4–9 to the `FilingFee` answers.
 - **Briefs** (`docs/testing/persona-briefs/`):
   - The "(fee waiver page)" rows move to the Income step's answers they now are: 5a–5h and 8f (`maria-torres.md:72-73`, `deshawn-mitchell.md:77-78`, `sarah-chen.md:68-69`).
   - Each brief gains a "How you will pay the fee (Form 101 line 8)" row.
@@ -388,7 +412,7 @@ Figures are from the persona targets, rechecked in the plan against the 3e2 seed
 1. **A page after Complete, not a wizard step,** asks line 8 (§3). U:375 names no place.
 2. **The filer's figure is 103B line 2's total,** equal today to U:384's "Schedule I line 12 less the non-cash help", since line 11 is unasked (§6.2).
 3. **103B lines 4, 5, 7 and 9 are asked in 3f** for a waiver filer (§6.4, owner question 2). U:399 lists only lines 1–3, and the scope note leaves them to step 4 (FW:22–27).
-4. **`FeeWaiverApplication` is dropped,** not encrypted (§4). U:393 asks for its answers encrypted. Every one is now asked elsewhere or printed nowhere, so dropping the table meets DIG-279 with nothing left in plaintext.
+4. **`FeeWaiverApplication` is dropped,** not encrypted (§4). U:393 asks for its answers encrypted. Every one is now asked elsewhere or printed nowhere, so dropping the table meets DIG-279 for the application. 103B's lines 17–19 stay in plaintext `FormAnswer` rows until DIG-168, as every `FormAnswer` does (§4).
 5. **103B line 2 reads Schedule I line 10,** neither pre-filled nor typed (§8.2, owner question 1). U:403 puts a choice between pre-fill and step 2's "never pre-filled" to the owner. A third option, the form's own pointer to line 10, is recommended.
 6. **`MeansTest.qualifies_for_fee_waiver` is removed,** not kept as information (§9). U:391 says the 150% test is information. The flag was a 60%-of-median test, never the 150% one, and §6.2 now shows the real one.
 7. **The 103A notice also shows on the dashboard** (§6.3). U:378 names only the message.
@@ -415,7 +439,12 @@ The owner can overturn any of these.
 15. The means-test flag removed outright (§9).
 16. The seed's line 5 drafts for Maria and Sarah (§10, owner question 3).
 17. `answer_household` defaults to `pay_in_full` (§13).
-18. `PreconditionMissing` carries a `page`, so a form's own precondition can link to a page as well as a step (§7).
+18. `PreconditionMissing` carries a `page`, so a form's own precondition can link to a page as well as a step (§7). `views._failure` already copies a `page` (`forms/views.py:107-110`).
+19. The dashboard always shows the line 8 answer with a link to change it (§3, §7).
+20. Existing sessions meet refusals naming `/filing-fee` after the migration, instead of guessed answers (§4).
+21. The whole fee-waiver API, page and tests go; the shared CSS classes stay (§4).
+22. 103B lines 17–19 stay in `FormAnswer` at `/ask/form_103b`; lines 4–9 go on `FilingFee` (§4).
+23. The filing-fee action takes a session in any status (§6.5).
 
 ## 17. For the owner
 
