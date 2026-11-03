@@ -217,7 +217,7 @@ describe('IntakeContext', () => {
             id: 1,
             user: 1,
             district: 1,
-            current_step: 6,
+            current_step: 7,
             status: 'completed',
             created_at: '2026-01-20T10:00:00Z',
             updated_at: '2026-01-20T12:00:00Z',

@@ -26,7 +26,7 @@ const completedSession = {
   id: 1,
   user: 1,
   district: 1,
-  current_step: 8,
+  current_step: 9,
   status: 'completed',
   created_at: '2026-01-20T10:00:00Z',
   updated_at: '2026-01-20T10:00:00Z',
@@ -222,6 +222,80 @@ describe('FormDashboard', () => {
         if (savedTz === undefined) delete process.env.TZ;
         else process.env.TZ = savedTz;
       }
+    });
+  });
+
+  describe('the income window notice', () => {
+    const NOW = { start: '2026-05-01', end: '2026-10-31' };
+    const MOVED =
+      'Your income figures are your monthly average for April 1, 2026 through September 30, 2026. If you file now, the six months are May 1, 2026 through October 31, 2026. Check your income on the Income step.';
+
+    function packetWith(incomePeriod?: unknown) {
+      server.use(
+        http.get('http://localhost:8000/api/forms/packet/', () =>
+          HttpResponse.json({
+            session: 1,
+            form_types: ['form_101', 'form_121'],
+            tables: [],
+            ...(incomePeriod === undefined ? {} : { income_period: incomePeriod }),
+          })
+        )
+      );
+    }
+
+    it('says when the six months have moved, in words, and links to the Income step', async () => {
+      packetWith({ answered_for: { start: '2026-04-01', end: '2026-09-30' }, now: NOW });
+      renderFormDashboard();
+
+      expect(await screen.findByText(MOVED)).toBeInTheDocument();
+      expect(screen.getByRole('link', { name: 'Go to Income' })).toHaveAttribute(
+        'href',
+        '/intake?step=income_info'
+      );
+    });
+
+    it('shows no notice when the window has not moved', async () => {
+      packetWith({ answered_for: NOW, now: NOW });
+      renderFormDashboard();
+
+      await screen.findByText('Form 121 - SSN Statement');
+      expect(screen.queryByText(/monthly average for/)).not.toBeInTheDocument();
+    });
+
+    it('asks the filer to check a window never confirmed', async () => {
+      packetWith({ answered_for: null, now: NOW });
+      renderFormDashboard();
+
+      expect(
+        await screen.findByText(
+          'Check that your income figures are your monthly average for May 1, 2026 through October 31, 2026.'
+        )
+      ).toBeInTheDocument();
+    });
+
+    it('shows no notice for a reply that carries no window', async () => {
+      packetWith();
+      renderFormDashboard();
+
+      await screen.findByText('Form 121 - SSN Statement');
+      expect(screen.queryByText(/monthly average for/)).not.toBeInTheDocument();
+    });
+
+    it('shows the refusal and not the notice when the packet is refused', async () => {
+      server.use(
+        http.get('http://localhost:8000/api/forms/packet/', () =>
+          HttpResponse.json(
+            { error: 'Enter your income by source on the Income step.', step: 'income_info' },
+            { status: 422 }
+          )
+        )
+      );
+      renderFormDashboard();
+
+      expect(
+        await screen.findByText('Enter your income by source on the Income step.')
+      ).toBeInTheDocument();
+      expect(screen.queryByText(/monthly average for/)).not.toBeInTheDocument();
     });
   });
 

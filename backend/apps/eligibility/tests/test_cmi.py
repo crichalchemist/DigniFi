@@ -7,6 +7,7 @@ A total saved before income was stored by source can't be split by anyone but th
 so CMI refuses it in plain words instead of guessing (forms step 2 spec §5.5).
 """
 
+import json
 from datetime import date
 from decimal import Decimal
 from unittest.mock import patch
@@ -108,7 +109,7 @@ def test_a_filer_living_on_social_security_alone_has_a_cmi_of_zero_not_a_refusal
 
 def test_income_saved_only_as_a_total_is_refused_in_plain_words(filer):
     _, session = filer
-    IncomeInfo.objects.create(session=session, monthly_income=[3000] * 6)
+    IncomeInfo.objects.create(session=session, monthly_income=json.dumps([3000] * 6))
 
     with pytest.raises(IncomeNotSplit) as refused:
         current_monthly_income(session.income_info)
@@ -119,7 +120,7 @@ def test_income_saved_only_as_a_total_is_refused_in_plain_words(filer):
 
 def test_the_means_test_passes_the_refusal_on_without_its_failure_prefix(filer):
     _, session = filer
-    IncomeInfo.objects.create(session=session, monthly_income=[3000] * 6)
+    IncomeInfo.objects.create(session=session, monthly_income=json.dumps([3000] * 6))
     answer_household(session)
 
     with pytest.raises(IncomeNotSplit) as refused:
@@ -151,7 +152,7 @@ def test_other_means_test_failures_keep_their_prefix(filer):
 
 def test_the_above_median_calculator_refuses_income_not_split_instead_of_using_zero(filer):
     _, session = filer
-    IncomeInfo.objects.create(session=session, monthly_income=[9000] * 6)
+    IncomeInfo.objects.create(session=session, monthly_income=json.dumps([9000] * 6))
 
     with pytest.raises(IncomeNotSplit):
         ExpenseDeductionCalculator(session).calculate()
@@ -159,7 +160,7 @@ def test_the_above_median_calculator_refuses_income_not_split_instead_of_using_z
 
 def test_means_test_endpoint_asks_for_income_by_source_as_a_400(filer):
     user, session = filer
-    IncomeInfo.objects.create(session=session, monthly_income=[3000] * 6)
+    IncomeInfo.objects.create(session=session, monthly_income=json.dumps([3000] * 6))
     answer_household(session)
     client = APIClient()
     client.force_authenticate(user=user)
@@ -182,3 +183,57 @@ def test_means_test_endpoint_refuses_without_a_median_table_in_force_as_a_400(fi
 
     assert response.status_code == 400
     assert response.data["error"] == NO_MEDIAN_TABLE
+
+
+GIG_ENTRY = {
+    "kind": "business",
+    "description": "Rideshare and delivery driving",
+    "gross": "4200.00",
+    "expenses": "830.00",
+    "current_gross": None,
+    "current_expenses": None,
+}
+
+
+def _income(session, entries, **amounts):
+    row = IncomeInfo(session=session, **amounts)
+    row.store_entries(entries)
+    row.save()
+    return row
+
+
+def test_a_gig_drivers_cmi_is_his_net(filer):
+    _, session = filer
+    row = _income(session, [GIG_ENTRY])  # gross 4200.00, expenses 830.00, nothing else typed
+    # an Andrés with only business income is not refused
+    assert current_monthly_income(row) == Decimal("3370.00")
+
+
+def test_a_business_loss_never_lowers_cmi_the_total_or_is_refused(filer):
+    _, session = filer
+    row = _income(
+        session,
+        [{"kind": "business", "gross": "500.00", "expenses": "900.00"}],
+        monthly_gross_wages=Decimal("2000.00"),
+    )
+    assert current_monthly_income(row) == Decimal("2000.00")
+    assert row.calculate_total_monthly_income() == 2000.0
+
+
+def test_a_business_loss_never_lowers_rental_income(filer):
+    _, session = filer
+    row = _income(
+        session,
+        [
+            {"kind": "business", "gross": "100.00", "expenses": "400.00"},
+            {"kind": "rental", "gross": "1200.00", "expenses": "200.00"},
+        ],
+        monthly_gross_wages=Decimal("2000.00"),
+    )
+    assert current_monthly_income(row) == Decimal("3000.00")
+
+
+def test_entries_with_no_figures_leave_income_not_entered(filer):
+    _, session = filer
+    with pytest.raises(IncomeNotSplit):
+        current_monthly_income(_income(session, [{"kind": "rental"}]))

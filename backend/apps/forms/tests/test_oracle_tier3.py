@@ -17,12 +17,14 @@ import pytest
 from django.core.management import call_command
 
 from apps.districts.models import District
-from apps.forms.registry import build_field_values
+from apps.forms.registry import build_field_values, build_parts
 from apps.forms.schema import load_schema
 from apps.forms.services.pdf_filler import PDFFormFiller
+from apps.forms.services.sheets import sheet_spec
 from apps.forms.services.widgets import template_widgets
 from apps.forms.tests.oracle import case_param
-from apps.forms.tests.pdf_readback import read_drawn
+from apps.forms.tests.pdf_readback import read_drawn, read_sheets
+from apps.forms.tests.test_form_122a1_schema import LINE_10_SOURCE
 from apps.intake.models import IntakeSession
 
 TIER = "3"
@@ -43,20 +45,53 @@ def _common(first, last, street, zip_code):
     }
 
 
-def _spouse_column_2(wages):
-    """Schedule I column 2 for a spouse at home whose one income is wages, the other nine typed $0."""
-    wage_boxes = (
-        "Amount 2 Debtor 2",
-        "Amount 4 Debtor 2",
-        "Amount 4 Debtor 2a",
-        "Amount 7 Debtor 2",
-        "Amount 10 Debtor 2",
+def _spouse_column_2(wages, payroll_tax):
+    """Schedule I column 2 for a spouse at home whose one income is wages and one deduction is
+    payroll tax, every other asked line left blank and so printed 0.00."""
+    wage_boxes = ("Amount 2 Debtor 2", "Amount 4 Debtor 2", "Amount 4 Debtor 2a")
+    take_home = f"{float(wages) - float(payroll_tax):.2f}"
+    zero_boxes = (
+        *(
+            f"Amount {n} Debtor 2"
+            for n in ("3", "8a", "8b", "8c", "8d", "8e", "8f", "8g", "8h", "9")
+        ),
+        *(f"Amount 5{x} Debtor 2" for x in "bcdefgh"),
     )
-    zero_boxes = tuple(
-        f"Amount {n} Debtor 2" for n in ("3", "8a", "8c", "8d", "8e", "8g", "8h", "9")
-    )
-    return {**dict.fromkeys(wage_boxes, wages), **dict.fromkeys(zero_boxes, "0.00")}
+    return {
+        **dict.fromkeys(wage_boxes, wages),
+        **dict.fromkeys(zero_boxes, "0.00"),
+        "Amount 5a Debtor 2": payroll_tax,
+        "Amount 6 Debtor 2": payroll_tax,
+        "Amount 7 Debtor 2": take_home,
+        "Amount 10 Debtor 2": take_home,
+    }
 
+
+def _deductions(**amounts):
+    """Schedule I 5a-5h (`a`..`h`), 6 and 7 for Debtor 1; a letter not named prints 0.00."""
+    boxes = {f"Amount 5{x} Debtor 1": amounts.pop(x, "0.00") for x in "abcdefgh"}
+    return {
+        **boxes,
+        "Amount 6 Debtor 1": amounts.pop("total"),
+        "Amount 7 Debtor 1": amounts.pop("pay"),
+    }
+
+
+# Column B lines 3-10 print 0.00 for a spouse at home with those sources typed $0 (§11)
+COLUMN_B_ZEROS = [
+    "Debto2.Quest3",
+    "Debto2.Quest2.2",
+    "Debto2.Quest5A",
+    "Debto2.Quest5B",
+    "Debto2.Quest5C",
+    "Debto2.Quest6A",
+    "Debto2.Quest6B",
+    "Debto2.Quest6C",
+    "Debto2.Quest7",
+    "Debto2.Quest8.0",
+    "Debto2.Quest9",
+    "Debto2.Quest10A",
+]
 
 # persona → form_type → full name → printed value
 EXPECTED = {
@@ -67,13 +102,20 @@ EXPECTED = {
             "1c": "6840.00",
             "3b": "20500.00",
             "3c": "20500.00",
-            "4": "3200.00",
-            "5": "2560.00",
+            "4": "3150.00",
+            "5": "2600.00",
         },
         "form_122a1": {
-            "Debto1.Quest7": "",
+            **dict.fromkeys(
+                ["Debto1.Quest5A", "Debto1.Quest5B", "Debto1.Quest5C"]
+                + ["Debto1.Quest6A", "Debto1.Quest6B", "Debto1.Quest6C", "Debto1.Quest7"],
+                "0.00",
+            ),
+            "Debto1.Quest8A": "",
             "Debto1.Quest9": "0.00",
             "Debto1.Quest11": "3200.00",
+            "Debto2.Quest5C": "",
+            "Debto2.Quest7": "",
             "CheckBox3": "/Not married",
             "CheckBox3A": "",
             "Quest11": "3200.00",
@@ -83,9 +125,13 @@ EXPECTED = {
             "14a": BELOW_MEDIAN,
         },
         "schedule_i": {
-            "Amount 8b Debtor 1": "",
+            **_deductions(a="400.00", total="400.00", pay="2800.00"),
+            "Amount 8b Debtor 1": "0.00",
             "Amount 8e Debtor 1": "0.00",
-            "Amount 12": "3200.00",
+            "Amount 8f Debtor 1": "350.00",
+            "Amount 10 Debtor 1": "3150.00",
+            "Amount 10": "3150.00",
+            "Amount 12": "3150.00",
         },
         "schedule_j": {
             "check2": "/yes",
@@ -97,11 +143,19 @@ EXPECTED = {
             "check2b": "/yes",
             "Dependant Relation 2c": "",
             "18": "",
-            "22a": "2560.00",
-            "22c": "2560.00",
-            "23a": "3200.00",
-            "23b": "2560.00",
-            "23c": "640.00",
+            "check3": "/no",
+            "4b": "",
+            "10": "40.00",
+            "13": "",
+            "14": "",
+            "16": "",
+            "Other 16": "",
+            "Other 21": "School supplies and fees",
+            "22a": "2600.00",
+            "22c": "2600.00",
+            "23a": "3150.00",
+            "23b": "2600.00",
+            "23c": "550.00",
         },
     },
     "james": {
@@ -112,11 +166,16 @@ EXPECTED = {
             "2": "8500.00",
             "3b": "9800.00",
             "3c": "18300.00",
-            "4": "5833.00",
-            "5": "3110.00",
+            "4": "4500.00",
+            "5": "3210.00",
         },
         "form_122a1": {
-            "Debto1.Quest7": "",
+            **dict.fromkeys(
+                ["Debto1.Quest5A", "Debto1.Quest5B", "Debto1.Quest5C"]
+                + ["Debto1.Quest6A", "Debto1.Quest6B", "Debto1.Quest6C", "Debto1.Quest7"],
+                "0.00",
+            ),
+            "Debto1.Quest8A": "",
             "Debto1.Quest9": "0.00",
             "Debto1.Quest11": "5833.00",
             "CheckBox3": "/Not married",
@@ -128,18 +187,30 @@ EXPECTED = {
             "14a": BELOW_MEDIAN,
         },
         "schedule_i": {
-            "Amount 8b Debtor 1": "",
+            **_deductions(a="1288.00", g="45.00", total="1333.00", pay="4500.00"),
+            "Amount 8b Debtor 1": "0.00",
             "Amount 8e Debtor 1": "0.00",
-            "Amount 12": "5833.00",
+            "Amount 8f Debtor 1": "0.00",
+            "Amount 10 Debtor 1": "4500.00",
+            "Amount 10": "4500.00",
+            "Amount 12": "4500.00",
         },
         "schedule_j": {
             "check2": "/no",
             "18": "",
-            "22a": "3110.00",
-            "22c": "3110.00",
-            "23a": "5833.00",
-            "23b": "3110.00",
-            "23c": "2723.00",
+            "check3": "/no",
+            "4b": "15.00",
+            "10": "40.00",
+            "13": "45.00",
+            "14": "",
+            "16": "",
+            "Other 16": "",
+            "Other 21": "Work boots and small tools for my job",
+            "22a": "3210.00",
+            "22c": "3210.00",
+            "23a": "4500.00",
+            "23b": "3210.00",
+            "23c": "1290.00",
         },
     },
     "priya": {
@@ -149,15 +220,21 @@ EXPECTED = {
             "1c": "8500.00",
             "3b": "57000.00",
             "3c": "57000.00",
-            "4": "13800.00",
-            "5": "6640.00",
+            "4": "9880.00",
+            "5": "7050.00",
             "8": "13800.00",
         },
         "form_122a1": {
-            "Debto1.Quest7": "",
+            **dict.fromkeys(
+                ["Debto1.Quest5A", "Debto1.Quest5B", "Debto1.Quest5C"]
+                + ["Debto1.Quest6A", "Debto1.Quest6B", "Debto1.Quest6C", "Debto1.Quest7"],
+                "0.00",
+            ),
+            "Debto1.Quest8A": "",
             "Debto1.Quest9": "0.00",
             "Debto1.Quest11": "12000.00",
             "Debto2.Quest2.0": "1800.00",
+            **dict.fromkeys(COLUMN_B_ZEROS, "0.00"),
             "Debto2.Quest11": "1800.00",
             "CheckBox3": "/Married but not filing",
             "CheckBox3A": "/together",
@@ -169,12 +246,14 @@ EXPECTED = {
         },
         "form_122a2": {"Quest1": "13800.00"},
         "schedule_i": {
-            "Amount 8b Debtor 1": "",
+            **_deductions(a="2450.00", c="600.00", e="620.00", total="3670.00", pay="8330.00"),
+            "Amount 8b Debtor 1": "0.00",
             "Amount 8e Debtor 1": "0.00",
-            "Amount 10 Debtor 1": "12000.00",
-            "Amount 10": "13800.00",
-            "Amount 12": "13800.00",
-            **_spouse_column_2("1800.00"),
+            "Amount 8f Debtor 1": "0.00",
+            "Amount 10 Debtor 1": "8330.00",
+            "Amount 10": "9880.00",
+            "Amount 12": "9880.00",
+            **_spouse_column_2("1800.00", "250.00"),
         },
         "schedule_j": {
             "check2": "/yes",
@@ -185,11 +264,19 @@ EXPECTED = {
             "Dependant age 2b": "7",
             "check2b": "/yes",
             "18": "",
-            "22a": "6640.00",
-            "22c": "6640.00",
-            "23a": "13800.00",
-            "23b": "6640.00",
-            "23c": "7160.00",
+            "check3": "/yes",
+            "4b": "20.00",
+            "10": "60.00",
+            "13": "80.00",
+            "14": "50.00",
+            "16": "200.00",
+            "Other 16": "IRS installment agreement, 2025 tax",
+            "Other 21": "Children's after-school activities",
+            "22a": "7050.00",
+            "22c": "7050.00",
+            "23a": "9880.00",
+            "23b": "7050.00",
+            "23c": "2830.00",
         },
     },
     "deshawn": {
@@ -201,15 +288,21 @@ EXPECTED = {
             "2": "160000.00",
             "3b": "11700.00",
             "3c": "171700.00",
-            "4": "4500.00",
-            "5": "2295.00",
+            "4": "3935.00",
+            "5": "2410.00",
             "8": "4500.00",
         },
         "form_122a1": {
-            "Debto1.Quest7": "",
+            **dict.fromkeys(
+                ["Debto1.Quest5A", "Debto1.Quest5B", "Debto1.Quest5C"]
+                + ["Debto1.Quest6A", "Debto1.Quest6B", "Debto1.Quest6C", "Debto1.Quest7"],
+                "0.00",
+            ),
+            "Debto1.Quest8A": "",
             "Debto1.Quest9": "0.00",
             "Debto1.Quest11": "3500.00",
             "Debto2.Quest2.0": "1000.00",
+            **dict.fromkeys(COLUMN_B_ZEROS, "0.00"),
             "Debto2.Quest11": "1000.00",
             "CheckBox3": "/Married but not filing",
             "CheckBox3A": "/together",
@@ -220,21 +313,31 @@ EXPECTED = {
             "14a": BELOW_MEDIAN,
         },
         "schedule_i": {
-            "Amount 8b Debtor 1": "",
+            **_deductions(a="450.00", total="450.00", pay="3050.00"),
+            "Amount 8b Debtor 1": "0.00",
             "Amount 8e Debtor 1": "0.00",
-            "Amount 10 Debtor 1": "3500.00",
-            "Amount 10": "4500.00",
-            "Amount 12": "4500.00",
-            **_spouse_column_2("1000.00"),
+            "Amount 8f Debtor 1": "0.00",
+            "Amount 10 Debtor 1": "3050.00",
+            "Amount 10": "3935.00",
+            "Amount 12": "3935.00",
+            **_spouse_column_2("1000.00", "115.00"),
         },
         "schedule_j": {
             "check2": "/no",
             "18": "",
-            "22a": "2295.00",
-            "22c": "2295.00",
-            "23a": "4500.00",
-            "23b": "2295.00",
-            "23c": "2205.00",
+            "check3": "/yes",
+            "4b": "",
+            "10": "40.00",
+            "13": "25.00",
+            "14": "50.00",
+            "16": "",
+            "Other 16": "",
+            "Other 21": "Printer ink, paper and postage",
+            "22a": "2410.00",
+            "22c": "2410.00",
+            "23a": "3935.00",
+            "23b": "2410.00",
+            "23c": "1525.00",
         },
     },
     "sarah": {
@@ -242,11 +345,16 @@ EXPECTED = {
         "form_106sum": {
             "3b": "31400.00",
             "3c": "31400.00",
-            "4": "2000.00",
+            "4": "1750.00",
             "5": "1280.00",
         },
         "form_122a1": {
-            "Debto1.Quest7": "",
+            **dict.fromkeys(
+                ["Debto1.Quest5A", "Debto1.Quest5B", "Debto1.Quest5C"]
+                + ["Debto1.Quest6A", "Debto1.Quest6B", "Debto1.Quest6C", "Debto1.Quest7"],
+                "0.00",
+            ),
+            "Debto1.Quest8A": "",
             "Debto1.Quest9": "0.00",
             "Debto1.Quest11": "2000.00",
             "CheckBox3": "/Not married",
@@ -258,21 +366,34 @@ EXPECTED = {
             "14a": BELOW_MEDIAN,
         },
         "schedule_i": {
-            "Amount 8b Debtor 1": "",
+            **_deductions(a="250.00", total="250.00", pay="1750.00"),
+            "Amount 8b Debtor 1": "0.00",
             "Amount 8e Debtor 1": "0.00",
-            "Amount 12": "2000.00",
+            "Amount 8f Debtor 1": "0.00",
+            "Amount 10 Debtor 1": "1750.00",
+            "Amount 10": "1750.00",
+            "Amount 12": "1750.00",
         },
         "schedule_j": {
             "check2": "/no",
             "18": "",
+            "check3": "/no",
+            "4b": "",
+            "10": "30.00",
+            "13": "20.00",
+            "14": "",
+            "16": "",
+            "Other 16": "",
+            "Other 21": "",
+            "21": "",
             "22a": "1280.00",
             "22c": "1280.00",
-            "23a": "2000.00",
+            "23a": "1750.00",
             "23b": "1280.00",
-            "23c": "720.00",
+            "23c": "470.00",
         },
     },
-    # His net driving income is other income until step 3e2 (3a1 spec §2, 3a1.Q1).
+    # His driving is a business on line 5 and 8a since 3e2 (§11).
     "andres": {
         "form_101": {"Debtor1.County": "Kane"},
         "form_106sum": {
@@ -284,12 +405,20 @@ EXPECTED = {
             "3b": "23160.00",
             "3c": "30960.00",
             "4": "3370.00",
-            "5": "2779.00",
+            "5": "3034.00",
         },
         "form_122a1": {
             "CheckBox1": "/No Abuse",
-            "terrorism If necessary list other sources on a separate page and put the total below 1": "Other income",
-            "Debto1.Quest10A": "3370.00",
+            "Debto1.Quest5A": "4200.00",
+            "Debto1.Quest5B": "830.00",
+            "Debto1.Quest5C": "3370.00",
+            **dict.fromkeys(
+                ["Debto1.Quest6A", "Debto1.Quest6B", "Debto1.Quest6C", "Debto1.Quest7"],
+                "0.00",
+            ),
+            "Debto1.Quest8A": "",
+            LINE_10_SOURCE: "",
+            "Debto1.Quest10A": "0.00",
             "Debto1.Quest11": "3370.00",
             "CheckBox3": "/Not married",
             "CheckBox3A": "",
@@ -301,8 +430,12 @@ EXPECTED = {
             "14a": BELOW_MEDIAN,
         },
         "schedule_i": {
-            "Other income 8h": "Other income",
-            "Amount 8h Debtor 1": "3370.00",
+            **_deductions(total="0.00", pay="0.00"),
+            "Amount 8b Debtor 1": "0.00",
+            "Amount 8a Debtor 1": "3370.00",
+            "Amount 8f Debtor 1": "0.00",
+            "Other income 8h": "",
+            "Amount 8h Debtor 1": "0.00",
             "Amount 10 Debtor 1": "3370.00",
             "Amount 10": "3370.00",
             "Amount 12": "3370.00",
@@ -313,11 +446,19 @@ EXPECTED = {
             "Dependant age 2a": "9",
             "check2a": "/yes",
             "17a": "389.00",
-            "22a": "2779.00",
-            "22c": "2779.00",
+            "check3": "/no",
+            "4b": "15.00",
+            "10": "40.00",
+            "13": "30.00",
+            "14": "20.00",
+            "16": "150.00",
+            "Other 16": "2026 estimated income tax",
+            "Other 21": "",
+            "22a": "3034.00",
+            "22c": "3034.00",
             "23a": "3370.00",
-            "23b": "2779.00",
-            "23c": "591.00",
+            "23b": "3034.00",
+            "23c": "336.00",
         },
     },
 }
@@ -387,3 +528,27 @@ def test_persona_packet_prints_the_right_figure(form_type, pdf_field, case, expe
         }, f"wrong_value: prints {sorted(shown)}, expected {expected}"
     else:  # every widget prints it
         assert shown == {expected}, f"wrong_value: prints {sorted(shown)}, expected {expected}"
+
+
+@pytest.mark.django_db
+def test_andres_statement_prints_his_driving_business():
+    if not District.objects.filter(code="ilnd").exists():
+        call_command("loaddata", "ilnd_2025_data", verbosity=0)
+    call_command("seed_demo_data", "--reset", persona="andres", verbosity=0)
+    session = IntakeSession.objects.filter(user__username="demo_andres").latest("id")
+    parts = build_parts("schedule_i", session)
+
+    (sheet,) = read_sheets(
+        PDFFormFiller().fill("schedule_i", parts), sheet_spec(parts["parts"][-1])
+    )
+
+    assert sheet.rows == (
+        (
+            "1",
+            "Debtor 1",
+            "Business: Rideshare and delivery driving",
+            "4200.00",
+            "830.00",
+            "3370.00",
+        ),
+    )

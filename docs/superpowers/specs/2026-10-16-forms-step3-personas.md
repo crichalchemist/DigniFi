@@ -351,7 +351,7 @@ The family car stayed with James's ex-wife in the fall 2023 divorce, so in Decem
   - "Is your income now different from that average?" No (his answer: steady salary, no overtime that month). Schedule I uses the same set.
 - **Business, rental, interest (Q5):** business or self-employment: No; rental: No; interest and dividends: $0.00. His answer: the checking pays a few cents a year.
 - **Schedule I 8f (Q6):** "Other government assistance that you regularly receive": No, so $0.
-- **Schedule I 5a–5h (Q16): OWNER TO APPROVE.** Q28 fixes take-home pay only for Maria, DeShawn and Sarah, so these figures are my proposal. He types monthly figures, converted from his biweekly stub (×26÷12).
+- **Schedule I 5a–5h (Q16).** Q28 fixes take-home pay only for Maria, DeShawn and Sarah. He types monthly figures, converted from his biweekly stub (×26÷12).
 
   | Line                                  | Amount    | Basis (synthetic)                                                                |
   | ------------------------------------- | --------- | -------------------------------------------------------------------------------- |
@@ -367,7 +367,7 @@ The family car stayed with James's ex-wife in the fall 2023 divorce, so in Decem
   - Line 8a–8h: $0 each. Line 9: $0.00. Line 10: $4,500.00.
   - Lines 11 and 13 are not asked (step 4). Line 12: $4,500.00.
 
-- **Expenses (Q4).** The brief's 13 amounts are unchanged. New lines, each **his answer, OWNER TO APPROVE**:
+- **Expenses (Q4).** The brief's 13 amounts are unchanged. New lines, each **his answer**:
   - **Entered:**
     - J 4b renter's insurance: $15;
     - J 10 personal care: $40 (haircuts, toiletries);
@@ -1371,7 +1371,7 @@ Each PR adds only what its feature asks for; row names point to the brief above.
 **3a1 (data foundations).** Seed `_andres_kettleby` (`demo_andres`), fixture `ANDRES` (`e2e_andres_${RUN_ID}`, SSN 900-66-6006) and journey `andres-gig-driver.spec.ts`, on existing fields only:
 
 - `DebtorInfo`: the identity rows, `household_size` 2, `filing_type` individual.
-- `IncomeInfo`: `marital_status` "single", `number_of_dependents` 1; all ten sources $0 except `monthly_other_income` $3,370, the interim home for his **net**, so CMI, line 11 and the median result are final from day one.
+- `IncomeInfo`: `marital_status` "single", `number_of_dependents` 1; all ten sources $0 except `monthly_other_income` $3,370, so CMI, line 11 and the median result are final from day one.
 - `ExpenseInfo`: rent 1,150, utilities 210, home_maintenance 0, **vehicle_payment 389** (the lease, until 3c), vehicle_insurance 165, vehicle_maintenance 60, food 520, clothing 60, medical 45, childcare 180, child_support_paid 0, insurance_not_deducted 0, other 0 (total $2,779).
 - `AssetInfo`: vehicle "2017 Honda Fit" 4,300 (the portion; `amount_owed` 7,800, read by no form); personal_property "Household goods, electronics and clothing" 1,900; bank_account Harborline checking 412; bank_account Prairie Line share savings 85.
 - `DebtInfo`: D 2.1 `auto_loan`, `is_secured`, `collateral_description` "2017 Honda Fit, co-owned with my brother"; E/F 4.1–4.9 as utility, medical (`is_in_collections`), credit_card, other, personal_loan, credit_card ×2, other, credit_card; every payment 0; `consumer_business_classification` "consumer" except 4.3 "business" (his answer; nothing reads it, step 4 asks Q7).

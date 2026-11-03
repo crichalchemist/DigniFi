@@ -231,9 +231,17 @@ def test_a_tag_on_a_print_button_is_reported(schema_copy):
     assert _ids("form_101") == ["forms.E003", "forms.E004"]
 
 
+def _unbind_assistance(d):
+    """Drop Schedule I's own bindings of the twin box and 5h, so a test can bind them itself."""
+    d["fields"] = [
+        f for f in d["fields"] if f["pdf_field"] not in ("Assistance 8f", "Other deductions 5h")
+    ]
+
+
 def test_two_tagged_bindings_on_different_widgets_of_one_name_pass(schema_copy):
     # Schedule I prints "Assistance 8f" twice on page 2; each can take its own value.
     def change(d):
+        _unbind_assistance(d)
         d["fields"] += [_text("Assistance 8f", 2, "T36"), _text("Assistance 8f", 2, "T49")]
 
     _edit(schema_copy, "schedule_i", change)
@@ -268,6 +276,7 @@ def _rows(*rows):
     """Add the rows to the schema, and declare their group, continued on page 2."""
 
     def change(d):
+        _unbind_assistance(d)
         d["fields"].extend(rows)
         d["groups"] = {"cp": {"extra_page": 2}}
 
@@ -1146,3 +1155,34 @@ def test_manage_py_check_fails_on_a_bad_schema(schema_copy):
     _edit(schema_copy, "form_121", lambda d: d.update(template_version="0" * 64))
     with pytest.raises(SystemCheckError, match="forms.E002"):
         call_command("check")
+
+
+def test_schedule_i_statement_group_passes():
+    assert _errors("schedule_i") == []
+
+
+def test_a_statement_column_binding_another_list_is_reported(schema_copy):
+    def change(d):
+        d["groups"]["i_line_8a"]["sheet"]["columns"][0]["binding"] = "household.dependents[].age"
+
+    _edit(schema_copy, "schedule_i", change)
+
+    assert (
+        "forms.E007",
+        "schedule_i: group 'i_line_8a': statement column 'Income of' binds "
+        "'household.dependents[].age', not an income.statement[].<attr> list",
+    ) in _errors("schedule_i")
+
+
+def test_a_statement_line_too_wide_for_row_9999_is_reported(schema_copy):
+    _edit(
+        schema_copy,
+        "schedule_i",
+        lambda d: d["groups"]["i_line_8a"].update(number="8a.{n}"),
+    )
+
+    assert (
+        "forms.E007",
+        "schedule_i: group 'i_line_8a': its sheet can't print row 9999's line, "
+        "'8a.9999', whole in the 36 pt line column",
+    ) in _errors("schedule_i")

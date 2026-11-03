@@ -52,7 +52,7 @@ export function hydrateAmounts<T extends object>(row: T, keys: readonly string[]
  *
  * Every page sends its amounts to a DRF DecimalField with 2 decimal places and `maxDigits` digits
  * in all, so the largest it stores is 10 ** (maxDigits - 2) less one cent:
- * - Income (the ten INCOME_FIELDS) and Expenses (the thirteen EXPENSE_FIELDS): the IncomeInfo and
+ * - Income (the ten INCOME_FIELDS and their entries) and Expenses (the thirteen EXPENSE_FIELDS): the IncomeInfo and
  *   ExpenseInfo models' DecimalField(max_digits=10, decimal_places=2), 99,999,999.99
  * - Fee waiver take-home pay: the serializer's DecimalField(max_digits=10, decimal_places=2,
  *   min_value=0), 99,999,999.99

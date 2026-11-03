@@ -30,6 +30,7 @@ const mockSession = {
   created_at: '2026-01-20T10:00:00Z',
   updated_at: '2026-01-20T10:00:00Z',
   completed_at: null,
+  income_window: { start: '2026-04-01', end: '2026-09-30' },
   debtor_info: null,
   income_info: null,
   expense_info: null,

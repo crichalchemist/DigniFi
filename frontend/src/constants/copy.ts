@@ -9,6 +9,8 @@
  * UPL disclaimers live in ./upl.ts — this file covers non-legal copy.
  */
 
+import type { YesNo } from '../types/api';
+
 // ============================================================================
 // Wizard Copy
 // ============================================================================
@@ -134,6 +136,18 @@ export const AMOUNT_TOO_LARGE = 'This amount is too large. Please check it';
 // DRAFT: counsel C-3
 export const REVIEW_HOUSEHOLD_COUNT = 'People in your home, counting you';
 
+export const REVIEW_NOW_DIFFERENT = 'Is your income now different?';
+export const REVIEW_SPOUSE_NOW_DIFFERENT = "Is your spouse's income now different?";
+export const REVIEW_ASSISTANCE = 'Other help from the government';
+export const REVIEW_SPOUSE_ASSISTANCE = "Your spouse's other help from the government";
+export const REVIEW_ENTRIES = 'Your business or rental income';
+export const REVIEW_SPOUSE_ENTRIES = "Your spouse's business or rental income";
+export const REVIEW_LINE_3 = "Your expenses include anyone else's";
+export const REVIEW_DEDUCTIONS = 'Taken out of your pay, a month';
+export const REVIEW_SPOUSE_DEDUCTIONS = "Taken out of your spouse's pay, a month";
+export const REVIEW_NO_ENTRIES = 'None';
+export const REVIEW_YES_NO: Record<YesNo, string> = { yes: 'Yes', no: 'No' };
+
 // ============================================================================
 // Your Information Step
 // ============================================================================
@@ -168,3 +182,154 @@ export const BOTH_TOTALS_MONTHLY = 'Both totals are monthly, before taxes and de
 
 export const SPOUSE_INCOME_HELP =
   "Enter your spouse's average monthly income before taxes. Leave a box blank if your spouse doesn't get that kind of income. If your spouse has no income at all, enter $0 in any box.";
+
+// DRAFT: counsel C-10
+export const INCOME_WINDOW_LEAD = 'Your average monthly income for';
+
+// DRAFT: counsel C-10
+export const SPOUSE_INCOME_WINDOW_LEAD = "Your spouse's average monthly income for";
+
+// DRAFT: counsel C-10
+export const WINDOW_NOTICE_ANSWERED_LEAD = 'Your income figures are your monthly average for';
+
+// DRAFT: counsel C-10
+export const WINDOW_NOTICE_NOW_LEAD = 'If you file now, the six months are';
+
+// DRAFT: counsel C-10
+export const WINDOW_NOTICE_CHECK = 'Check your income on the Income step.';
+
+// DRAFT: counsel C-10
+export const WINDOW_NOTICE_UNANSWERED_LEAD =
+  'Check that your income figures are your monthly average for';
+
+export const INCOME_AVERAGE_HEADING = 'Your income: the six-month average';
+
+export const ENTRIES_HEADING = 'Businesses and rental property';
+
+export const ADD_ENTRY = '+ Add a business or property';
+
+export const SPOUSE_ADD_ENTRY = "+ Add your spouse's business or property";
+
+export const NO_ENTRIES = 'I have no business or rental income.';
+
+export const SPOUSE_NO_ENTRIES = 'My spouse has no business or rental income.';
+
+export const ENTRY_DESCRIPTION_HELP =
+  "What it is, such as rideshare driving or the property's address";
+
+export const ENTRY_NET_LABEL = 'Net a month';
+
+// DRAFT: counsel C-12
+export const FLOOR_AVERAGE_BUSINESS =
+  'For your business income, your operating expenses are more than your gross receipts. DigniFi counts this net as $0.00 on Form 122A-1, and on Schedule I unless your income is now different.';
+
+// DRAFT: counsel C-12
+export const FLOOR_AVERAGE_RENTAL =
+  'For your rental income, your operating expenses are more than your gross receipts. DigniFi counts this net as $0.00 on Form 122A-1, and on Schedule I unless your income is now different.';
+
+// DRAFT: counsel C-12
+export const SPOUSE_FLOOR_AVERAGE_BUSINESS =
+  "For your spouse's business income, the operating expenses are more than the gross receipts. DigniFi counts this net as $0.00 on Form 122A-1, and on Schedule I unless your spouse's income is now different.";
+
+// DRAFT: counsel C-12
+export const SPOUSE_FLOOR_AVERAGE_RENTAL =
+  "For your spouse's rental income, the operating expenses are more than the gross receipts. DigniFi counts this net as $0.00 on Form 122A-1, and on Schedule I unless your spouse's income is now different.";
+
+// DRAFT: counsel C-13
+export const DOUBLE_COUNT_INCOME_NOTE =
+  'If one cost is both for this work and for your home, count each dollar once, in one place only: here or on the Expenses step. How you split it is your choice. Legal aid can help.';
+
+// DRAFT: counsel C-10
+export const NOW_DIFFERENT_QUESTION = 'Is your income now different from that average?';
+
+// DRAFT: counsel C-10
+export const SPOUSE_NOW_DIFFERENT_QUESTION =
+  "Is your spouse's income now different from that average?";
+
+export const INCOME_NOW_HEADING = 'Your income now (a month)';
+
+export const SPOUSE_INCOME_NOW_HEADING = "Your spouse's income now (a month)";
+
+export const START_FROM_AVERAGES = 'Start from my average figures';
+
+export const SPOUSE_START_FROM_AVERAGES = "Start from my spouse's average figures";
+
+// DRAFT: counsel C-12
+export const FLOOR_CURRENT_BUSINESS =
+  'For your business income now, your operating expenses are more than your gross receipts. DigniFi counts this net as $0.00 on Schedule I.';
+
+// DRAFT: counsel C-12
+export const FLOOR_CURRENT_RENTAL =
+  'For your rental income now, your operating expenses are more than your gross receipts. DigniFi counts this net as $0.00 on Schedule I.';
+
+// DRAFT: counsel C-12
+export const SPOUSE_FLOOR_CURRENT_BUSINESS =
+  "For your spouse's business income now, the operating expenses are more than the gross receipts. DigniFi counts this net as $0.00 on Schedule I.";
+
+// DRAFT: counsel C-12
+export const SPOUSE_FLOOR_CURRENT_RENTAL =
+  "For your spouse's rental income now, the operating expenses are more than the gross receipts. DigniFi counts this net as $0.00 on Schedule I.";
+
+// DRAFT: counsel C-11
+export const ASSISTANCE_OWN_BOXES_NOTE =
+  'Unemployment and Social Security have their own boxes. They are above.';
+
+export const ASSISTANCE_HEADING = 'Government assistance';
+
+export const SPOUSE_ASSISTANCE_HEADING = "Your spouse's government assistance";
+
+export const CASH_KIND_LABEL = 'Cash assistance: what kind?';
+
+export const CASH_AMOUNT_LABEL = 'How much a month?';
+
+export const NONCASH_KIND_LABEL = 'Non-cash assistance: what kind?';
+
+export const NONCASH_VALUE_LABEL = 'Its value a month, if you know it';
+
+// Plan draft for the owner: 8f's words about the spouse, with no sentence that speaks to the filer
+export const SPOUSE_ASSISTANCE_QUESTION =
+  'Other government assistance that your spouse regularly receives. Include cash assistance. Include the value of non-cash assistance, if known. Food stamps and housing subsidies are examples.';
+
+export const SPOUSE_CASH_KIND_LABEL = "Spouse's cash assistance: what kind?";
+
+export const SPOUSE_CASH_AMOUNT_LABEL = "Spouse's cash assistance a month";
+
+export const SPOUSE_NONCASH_KIND_LABEL = "Spouse's non-cash assistance: what kind?";
+
+export const SPOUSE_NONCASH_VALUE_LABEL = "Spouse's non-cash assistance value a month, if known";
+
+// Schedule I lines 5a-5h, on the Take-home pay step. §4.5's retirement sentence scored 14.93.
+export const PAY_PERIOD_HELP =
+  "Paid every two weeks? Multiply one paycheck's amount by 26, then divide by 12. Paid twice a month? Multiply by 2. Paid every week? Multiply by 52, then divide by 12.";
+
+export const RETIREMENT_HELP =
+  "Your pay stub, or your employer's benefits office, can tell you this. Mandatory means your job requires it. Voluntary means you chose it.";
+
+export const TAKE_HOME_PAY_INTRO =
+  'Enter what is taken out of your pay each month. Leave a box blank if nothing of that kind is taken out. If nothing is taken out at all, enter $0 in one box.';
+
+export const DEDUCTIONS_HEADING = 'Your deductions';
+
+export const SPOUSE_DEDUCTIONS_HEADING = "Your spouse's deductions";
+
+export const OTHER_DEDUCTIONS_SPECIFY_LABEL = 'What are the other deductions?';
+
+export const SPOUSE_OTHER_DEDUCTIONS_SPECIFY_LABEL = "What are your spouse's other deductions?";
+
+export const SPOUSE_DEDUCTION_LABEL_PREFIX = "Spouse's";
+
+// ============================================================================
+// Expenses Step
+// ============================================================================
+
+// DRAFT: counsel C-13
+export const LINE_3_INFO =
+  "Line 3 asks about the expenses of anyone other than you and your dependents. One example is a spouse who isn't your dependent.";
+
+// DRAFT: counsel C-13
+export const DOUBLE_COUNT_EXPENSES_NOTE =
+  'If one cost is both for your home and for a business or rental property, count each dollar once, in one place only: here or as an operating expense on the Income step. How you split it is your choice. Legal aid can help.';
+
+export const EXPENSE_HELP_HOME_MAINTENANCE = 'Repairs and yard work';
+
+export const EXPENSE_HELP_OTHER = 'Costs that fit none of the lines above';

@@ -44,8 +44,12 @@ test.describe('Maria Torres — Happy Path', () => {
     await wizard.fillIncomeInfo(MARIA.income);
     await wizard.nextStep();
 
-    // Step 3: Expenses
-    await wizard.fillExpenses(MARIA.expenses);
+    // Step 3: Take-home pay
+    await wizard.fillTakeHomePay(MARIA.deductions, MARIA.spouse_deductions);
+    await wizard.nextStep();
+
+    // Step 4: Expenses
+    await wizard.fillExpenses(MARIA);
     await wizard.nextStep();
 
     // Means test sidebar should indicate eligibility
@@ -54,25 +58,25 @@ test.describe('Maria Torres — Happy Path', () => {
     const preview = await wizard.getMeansTestPreview();
     expect(preview.toLowerCase()).toContain('may be eligible');
 
-    // Step 4: Assets
+    // Step 5: Assets
     for (const asset of MARIA.assets) {
       await wizard.addAsset(asset);
     }
     await wizard.nextStep();
 
-    // Step 5: Debts (trauma-informed: "Amounts Owed")
+    // Step 6: Debts (trauma-informed: "Amounts Owed")
     for (const debt of MARIA.debts) {
       await wizard.addDebt(debt);
     }
     await wizard.nextStep();
 
-    // Step 6: Contracts & Leases (optional — no entries needed)
+    // Step 7: Contracts & Leases (optional — no entries needed)
     await wizard.nextStep();
 
-    // Step 7: Codebtors (optional — no entries needed)
+    // Step 8: Codebtors (optional — no entries needed)
     await wizard.nextStep();
 
-    // Step 8: Review & Complete
+    // Step 9: Review & Complete
     await wizard.fillReview();
     await wizard.completeIntake();
 

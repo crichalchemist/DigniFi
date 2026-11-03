@@ -381,13 +381,143 @@
   },
   {
     "schema": "form_122a1",
+    "pdf_field": "Debto1.Quest5A",
+    "producer": "derived:line5_business_gross",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Debto1.Quest5A",
+    "evidence": "Field index: Debto1.Quest5A p1 line 5, T20, column 'Debtor 1 (line-5/6 worksheet)', 'Net income from operating a business, profession, or farm - Gross receipts (before all deductions)' (adjudicated). 3e2 spec §9.3, §9.6: the filer's summed business gross receipts (the filer's entries on the six-month averages, never the current figures), 0.00 in a column that applies when the filer asked and left it empty (Q27)."
+  },
+  {
+    "schema": "form_122a1",
+    "pdf_field": "Debto1.Quest5B",
+    "producer": "derived:line5_business_expenses",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Debto1.Quest5B",
+    "evidence": "Field index: Debto1.Quest5B p1 line 5, T22, column 'Debtor 1 (line-5/6 worksheet)', 'Business/profession/farm - Ordinary and necessary operating expenses (subtracted)' (adjudicated). 3e2 spec §9.3, §9.6: the summed business expenses (the filer's entries on the six-month averages, never the current figures), 0.00 in a column that applies when the filer asked and left it empty (Q27)."
+  },
+  {
+    "schema": "form_122a1",
+    "pdf_field": "Debto1.Quest5C",
+    "producer": "derived:line5_business_net",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Debto1.Quest5C",
+    "evidence": "Field index: Debto1.Quest5C p1 line 5, two widgets (adjudicated): T24, column 'Debtor 1 (line-5/6 worksheet)', 'Net monthly income from a business, profession, or farm', and T26, column 'Column A (Debtor 1)', 'Net monthly income from a business, profession, or farm - Copy here'; one untagged binding fills both. 3e2 spec §9.3, §9.6: the summed business net, floored at 0.00 (the filer's entries on the six-month averages, never the current figures), 0.00 in a column that applies when the filer asked and left it empty (Q27)."
+  },
+  {
+    "schema": "form_122a1",
+    "pdf_field": "Debto1.Quest6A",
+    "producer": "derived:line6_rental_gross",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Debto1.Quest6A",
+    "evidence": "Field index: Debto1.Quest6A p1 line 6, T28, column 'Debtor 1 (line-5/6 worksheet)', 'Net income from rental and other real property - Gross receipts (before all deductions)' (adjudicated). 3e2 spec §9.3, §9.6: the summed rental gross receipts (the filer's entries on the six-month averages, never the current figures), 0.00 in a column that applies when the filer asked and left it empty (Q27)."
+  },
+  {
+    "schema": "form_122a1",
+    "pdf_field": "Debto1.Quest6B",
+    "producer": "derived:line6_rental_expenses",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Debto1.Quest6B",
+    "evidence": "Field index: Debto1.Quest6B p1 line 6, T30, column 'Debtor 1 (line-5/6 worksheet)', 'Rental/real property - Ordinary and necessary operating expenses (subtracted)' (adjudicated). 3e2 spec §9.3, §9.6: the summed rental expenses (the filer's entries on the six-month averages, never the current figures), 0.00 in a column that applies when the filer asked and left it empty (Q27)."
+  },
+  {
+    "schema": "form_122a1",
+    "pdf_field": "Debto1.Quest6C",
+    "producer": "derived:line6_rental_net",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Debto1.Quest6C",
+    "evidence": "Field index: Debto1.Quest6C p1 line 6, two widgets (adjudicated): T32, column 'Debtor 1 (line-5/6 worksheet)', 'Net monthly income from rental or other real property', and T34, column 'Column A (Debtor 1)', 'Net monthly income from rental or other real property - Copy here'; one untagged binding fills both. 3e2 spec §9.3, §9.6: the summed rental net, floored at 0.00 (the filer's entries on the six-month averages, never the current figures), 0.00 in a column that applies when the filer asked and left it empty (Q27)."
+  },
+  {
+    "schema": "form_122a1",
+    "pdf_field": "Debto1.Quest7",
+    "producer": "derived:line7_interest_and_dividends",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Debto1.Quest7",
+    "evidence": "Field index: Debto1.Quest7 p1 line 7, T36, column 'Column A (Debtor 1)', 'Interest, dividends, and royalties' (adjudicated). 3e2 spec §9.3, §9.6: the Income step's interest and dividends amount (the filer); 0.00 in a column that applies when left empty (Q27)."
+  },
+  {
+    "schema": "form_122a1",
+    "pdf_field": "Debto2.Quest5A",
+    "producer": "derived:line5_business_gross_spouse",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Debto2.Quest5A",
+    "evidence": "Field index: Debto2.Quest5A p1 line 5, T21, column 'Debtor 2 (line-5/6 worksheet)', 'Net income from operating a business, profession, or farm - Gross receipts (before all deductions)' (adjudicated). 3e2 spec §9.3, §9.6: the spouse's summed business gross receipts, for married_together only (blank otherwise), from the entries on the six-month averages and never the current figures; 0.00 in a column that applies when the filer asked and left it empty (Q27)."
+  },
+  {
+    "schema": "form_122a1",
+    "pdf_field": "Debto2.Quest5B",
+    "producer": "derived:line5_business_expenses_spouse",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Debto2.Quest5B",
+    "evidence": "Field index: Debto2.Quest5B p1 line 5, T23, column 'Debtor 2 (line-5/6 worksheet)', 'Business/profession/farm - Ordinary and necessary operating expenses (subtracted)' (adjudicated). 3e2 spec §9.3, §9.6: the spouse's summed business expenses, for married_together only (blank otherwise), from the entries on the six-month averages and never the current figures; 0.00 in a column that applies when the filer asked and left it empty (Q27)."
+  },
+  {
+    "schema": "form_122a1",
+    "pdf_field": "Debto2.Quest5C",
+    "producer": "derived:line5_business_net_spouse",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Debto2.Quest5C",
+    "evidence": "Field index: Debto2.Quest5C p1 line 5, two widgets (adjudicated): T25, column 'Debtor 2 (line-5/6 worksheet)', 'Net monthly income from a business, profession, or farm', and T27, column 'Column B (Debtor 2 or non-filing spouse)', 'Net monthly income from a business, profession, or farm - Copy here'; one untagged binding fills both. 3e2 spec §9.3, §9.6: the spouse's summed business net, floored at 0.00, for married_together only (blank otherwise), from the entries on the six-month averages and never the current figures; 0.00 in a column that applies when the filer asked and left it empty (Q27)."
+  },
+  {
+    "schema": "form_122a1",
+    "pdf_field": "Debto2.Quest6A",
+    "producer": "derived:line6_rental_gross_spouse",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Debto2.Quest6A",
+    "evidence": "Field index: Debto2.Quest6A p1 line 6, T29, column 'Debtor 2 (line-5/6 worksheet)', 'Net income from rental and other real property - Gross receipts (before all deductions)' (adjudicated). 3e2 spec §9.3, §9.6: the spouse's summed rental gross receipts, for married_together only (blank otherwise), from the entries on the six-month averages and never the current figures; 0.00 in a column that applies when the filer asked and left it empty (Q27)."
+  },
+  {
+    "schema": "form_122a1",
+    "pdf_field": "Debto2.Quest6B",
+    "producer": "derived:line6_rental_expenses_spouse",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Debto2.Quest6B",
+    "evidence": "Field index: Debto2.Quest6B p1 line 6, T31, column 'Debtor 2 (line-5/6 worksheet)', 'Rental/real property - Ordinary and necessary operating expenses (subtracted)' (adjudicated). 3e2 spec §9.3, §9.6: the spouse's summed rental expenses, for married_together only (blank otherwise), from the entries on the six-month averages and never the current figures; 0.00 in a column that applies when the filer asked and left it empty (Q27)."
+  },
+  {
+    "schema": "form_122a1",
+    "pdf_field": "Debto2.Quest7",
+    "producer": "derived:line7_interest_and_dividends_spouse",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Debto2.Quest7",
+    "evidence": "Field index: Debto2.Quest7 p1 line 7, T37, column 'Column B (Debtor 2 or non-filing spouse)', 'Interest, dividends, and royalties' (adjudicated). 3e2 spec §9.3, §9.6: the Income step's interest and dividends amount (the spouse, for married_together only, blank otherwise); 0.00 in a column that applies when left empty (Q27)."
+  },
+  {
+    "schema": "form_122a1",
     "pdf_field": "Debto2.Quest6C",
-    "producer": "derived:line3_real_property_income_spouse",
+    "producer": "derived:line6_rental_net_spouse",
     "original_verdicts": [],
     "final_verdicts": ["correct"],
     "status": "confirmed",
     "correct_target": "Debto2.Quest6C",
-    "evidence": "Field index: Debto2.Quest6C p1 line 6, two widgets (adjudicated): T33, column 'Debtor 2 (line-5/6 worksheet)', 'Net monthly income from rental or other real property', and T35, column 'Column B (Debtor 2 or non-filing spouse)', 'Net monthly income from rental or other real property - Copy here'. 3e1 spec §10.1 [Q2]: both take the same figure, as Column A's do; for married_together only, the spouse's same source as line3_real_property_income."
+    "evidence": "Field index: Debto2.Quest6C p1 line 6, two widgets (adjudicated): T33, column 'Debtor 2 (line-5/6 worksheet)', 'Net monthly income from rental or other real property', and T35, column 'Column B (Debtor 2 or non-filing spouse)', 'Net monthly income from rental or other real property - Copy here'. 3e1 spec §10.1 [Q2]: both take the same figure, as Column A's do; for married_together only, the spouse's rental entries on the six-month averages, as line6_rental_net prints the filer's (3e2 spec §9.3): the net floored at 0.00 (owner answer 1)."
   },
   {
     "schema": "form_122a1",
@@ -462,22 +592,22 @@
   {
     "schema": "schedule_i",
     "pdf_field": "Amount 7 Debtor 1",
-    "producer": "derived:schedule_i_gross_income_debtor1",
+    "producer": "derived:schedule_i_take_home_pay_debtor1",
     "original_verdicts": [],
     "final_verdicts": ["correct"],
     "status": "confirmed",
     "correct_target": "Amount 7 Debtor 1",
-    "evidence": "Field index: Amount 7 Debtor 1 p2 line 7, column 'For Debtor 1', 'Calculate total monthly take-home pay. Subtract line 6 from line 4.' (adjudicated). Payroll deductions (lines 5a-6) are not asked until step 3 (OQ-7), so line 6 counts as zero and line 7 equals line 4: step 2 spec §5.5 ('Schedule I line 7 (take-home) equals gross for now'), §6.1 (totals that count an unasked line as zero; the section 6c decision covers Schedule I line 7) and §6.2."
+    "evidence": "Field index: Amount 7 Debtor 1 p2 line 7, column 'For Debtor 1', 'Calculate total monthly take-home pay. Subtract line 6 from line 4.' (adjudicated). Payroll deductions (lines 5a-6) are asked on the Take-home pay step. 3e2 spec §9.1: line 4 less line 6 on Schedule I's figures, a blank deduction counting as 0.00; below 0 when the deductions are larger."
   },
   {
     "schema": "schedule_i",
     "pdf_field": "Other income 8h",
-    "producer": "derived:other_income_label",
+    "producer": "derived:schedule_i_other_income_label",
     "original_verdicts": [],
     "final_verdicts": ["correct"],
     "status": "confirmed",
     "correct_target": "Other income 8h",
-    "evidence": "Field index: Other income 8h p2 line 8h, 'Other monthly income. Specify:' (adjudicated; tooltip 'Specify'), the text box beside Amount 8h Debtor 1. Step 2 spec §5.5's table (Other -> 8h, 'Other income'), §6.2 (other_income_label, shared with 122A-1 line 10) and Appendix E 5: 'Other income' when other income is above $0. The audit has no row for this box."
+    "evidence": "Field index: Other income 8h p2 line 8h, 'Other monthly income. Specify:' (adjudicated; tooltip 'Specify'), the text box beside Amount 8h Debtor 1. Step 2 spec §5.5's table (Other -> 8h, 'Other income'), Appendix E 5: 'Other income' when other income is above $0. The audit has no row for this box. 3e2 spec §9.1 and §4.4: named 'Other income' while either counted person's 8h figure, on the figures Schedule I uses, is above $0."
   },
   {
     "schema": "schedule_i",
@@ -487,7 +617,7 @@
     "final_verdicts": ["correct"],
     "status": "confirmed",
     "correct_target": "Amount 9 Debtor 1",
-    "evidence": "Field index: Amount 9 Debtor 1 p2 line 9, column 'For Debtor 1', 'Add all other income.' (adjudicated). Step 2 spec §6.2 (schedule_i_other_income_total_debtor1: the sum of 8a-8h; line 9) and §6.1 (8b and 8f are never asked and count as zero). The audit has no row for this box."
+    "evidence": "Field index: Amount 9 Debtor 1 p2 line 9, column 'For Debtor 1', 'Add all other income.' (adjudicated). Line 9 is the sum of 8a through 8h as each prints on the figures Schedule I uses (the current ones while that person's 'now different' is Yes, the averages otherwise), a blank line counting as zero (schedule_i_other_income_total_debtor1). 8a is the floored business and rental net and 8f the assistance the Income step asks about. The audit has no row for this box."
   },
   {
     "schema": "form_106sum",
@@ -507,7 +637,7 @@
     "final_verdicts": ["correct"],
     "status": "confirmed",
     "correct_target": "Amount 10 Debtor 1",
-    "evidence": "Field index: Amount 10 Debtor 1 p2 line 10, column 'For Debtor 1', 'Calculate monthly income. Add line 7 + line 9.' (adjudicated). Column 1's line 10 is the filer's own ten Income step sources, Social Security included: step 2 spec §5.5, §6.1 B1 and C1 and 3e1 spec §10.2 [Q2] (schedule_i_income_total_debtor1, the body schedule_i_income_total had before column 2 was filled). The audit's verified row on this box judged the old cmi binding, which leaves Social Security out."
+    "evidence": "Field index: Amount 10 Debtor 1 p2 line 10, column 'For Debtor 1', 'Calculate monthly income. Add line 7 + line 9.' (adjudicated). Column 1's line 10 is line 7 plus line 9 as they print (schedule_i_income_total_debtor1), on the figures Schedule I uses, Social Security included. The audit's verified row on this box judged the old cmi binding, which leaves Social Security out."
   },
   {
     "schema": "schedule_i",
@@ -572,22 +702,22 @@
   {
     "schema": "schedule_i",
     "pdf_field": "Amount 7 Debtor 2",
-    "producer": "derived:schedule_i_gross_income_spouse",
+    "producer": "derived:schedule_i_take_home_pay_spouse",
     "original_verdicts": [],
     "final_verdicts": ["correct"],
     "status": "confirmed",
     "correct_target": "Amount 7 Debtor 2",
-    "evidence": "Field index: Amount 7 Debtor 2 p2 line 7, column 'For Debtor 2 or non-filing spouse', 'Calculate total monthly take-home pay. Subtract line 6 from line 4.' (adjudicated). 3e1 spec §10.2 [Q2]: for married_together only, the spouse's same source as schedule_i_gross_income_debtor1."
+    "evidence": "Field index: Amount 7 Debtor 2 p2 line 7, column 'For Debtor 2 or non-filing spouse', 'Calculate total monthly take-home pay. Subtract line 6 from line 4.' (adjudicated). 3e1 spec §10.2 [Q2]: for married_together only, the spouse's same source as schedule_i_gross_income_debtor1. 3e2 spec §9.1: the spouse's line 4 less line 6, for married_together only."
   },
   {
     "schema": "schedule_i",
     "pdf_field": "Amount 8a Debtor 2",
-    "producer": "derived:schedule_i_rental_spouse",
+    "producer": "derived:schedule_i_business_rental_net_spouse",
     "original_verdicts": [],
     "final_verdicts": ["correct"],
     "status": "confirmed",
     "correct_target": "Amount 8a Debtor 2",
-    "evidence": "Field index: Amount 8a Debtor 2 p2 line 8a, column 'For Debtor 2 or non-filing spouse', 'Net income from rental property and from operating a business, profession, or farm' (adjudicated). 3e1 spec §10.2 [Q2]: for married_together only, the spouse's same source as schedule_i_rental_debtor1."
+    "evidence": "Field index: Amount 8a Debtor 2 p2 line 8a, column 'For Debtor 2 or non-filing spouse', 'Net income from rental property and from operating a business, profession, or farm' (adjudicated). 3e1 spec §10.2 [Q2]: for married_together only, the spouse's same source as schedule_i_business_rental_net_debtor1. 3e2 spec §9.1: the spouse's floored business net plus floored rental net, for married_together only."
   },
   {
     "schema": "schedule_i",
@@ -1228,5 +1358,425 @@
     "status": "confirmed",
     "correct_target": "Debtor 1",
     "evidence": "Field index: Debtor 1, 'Debtor 1', one field with a text widget in the header of each of pages 1-12 (basis header, so not a checked basis). Step 2 spec §6.4 and Appendix A.11: the header name prints on every page. The audit's 'Debtor 2' row, confirmed in verification.json, found this key on the spouse's box and names 'Debtor 1' as its correct target, so the moved-here join would assert this box too; the row is kept per Ruling T0-b (A.14 counts it ADD). The audit has no row on this box."
+  },
+  {
+    "schema": "schedule_i",
+    "pdf_field": "Amount 8a Debtor 1",
+    "producer": "derived:schedule_i_business_rental_net_debtor1",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Amount 8a Debtor 1",
+    "evidence": "Field index: Amount 8a Debtor 1 p2 line 8a, column 'For Debtor 1', 'Net income from rental property and from operating a business, profession, or farm' (adjudicated). 3e2 spec §9.1: the filer's floored business net plus floored rental net on Schedule I's figures."
+  },
+  {
+    "schema": "schedule_i",
+    "pdf_field": "Amount 5a Debtor 1",
+    "producer": "derived:schedule_i_payroll_tax_debtor1",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Amount 5a Debtor 1",
+    "evidence": "Field index: Amount 5a Debtor 1 p2 line 5a, column 'For Debtor 1', 'Tax, Medicare, and Social Security deductions' (adjudicated). 3e2 spec §9.1: the deduction typed on the Take-home pay step; a blank prints 0.00 and counts as 0."
+  },
+  {
+    "schema": "schedule_i",
+    "pdf_field": "Amount 5a Debtor 2",
+    "producer": "derived:schedule_i_payroll_tax_spouse",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Amount 5a Debtor 2",
+    "evidence": "Field index: Amount 5a Debtor 2 p2 line 5a, column 'For Debtor 2 or non-filing spouse', 'Tax, Medicare, and Social Security deductions' (adjudicated). 3e2 spec §9.1: the deduction typed on the Take-home pay step; a blank prints 0.00 and counts as 0."
+  },
+  {
+    "schema": "schedule_i",
+    "pdf_field": "Amount 5b Debtor 1",
+    "producer": "derived:schedule_i_payroll_mandatory_retirement_debtor1",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Amount 5b Debtor 1",
+    "evidence": "Field index: Amount 5b Debtor 1 p2 line 5b, column 'For Debtor 1', 'Mandatory contributions for retirement plans' (adjudicated). 3e2 spec §9.1: the deduction typed on the Take-home pay step; a blank prints 0.00 and counts as 0."
+  },
+  {
+    "schema": "schedule_i",
+    "pdf_field": "Amount 5b Debtor 2",
+    "producer": "derived:schedule_i_payroll_mandatory_retirement_spouse",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Amount 5b Debtor 2",
+    "evidence": "Field index: Amount 5b Debtor 2 p2 line 5b, column 'For Debtor 2 or non-filing spouse', 'Mandatory contributions for retirement plans' (adjudicated). 3e2 spec §9.1: the deduction typed on the Take-home pay step; a blank prints 0.00 and counts as 0."
+  },
+  {
+    "schema": "schedule_i",
+    "pdf_field": "Amount 5c Debtor 1",
+    "producer": "derived:schedule_i_payroll_voluntary_retirement_debtor1",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Amount 5c Debtor 1",
+    "evidence": "Field index: Amount 5c Debtor 1 p2 line 5c, column 'For Debtor 1', 'Voluntary contributions for retirement plans' (adjudicated). 3e2 spec §9.1: the deduction typed on the Take-home pay step; a blank prints 0.00 and counts as 0."
+  },
+  {
+    "schema": "schedule_i",
+    "pdf_field": "Amount 5c Debtor 2",
+    "producer": "derived:schedule_i_payroll_voluntary_retirement_spouse",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Amount 5c Debtor 2",
+    "evidence": "Field index: Amount 5c Debtor 2 p2 line 5c, column 'For Debtor 2 or non-filing spouse', 'Voluntary contributions for retirement plans' (adjudicated). 3e2 spec §9.1: the deduction typed on the Take-home pay step; a blank prints 0.00 and counts as 0."
+  },
+  {
+    "schema": "schedule_i",
+    "pdf_field": "Amount 5d Debtor 1",
+    "producer": "derived:schedule_i_payroll_retirement_loan_debtor1",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Amount 5d Debtor 1",
+    "evidence": "Field index: Amount 5d Debtor 1 p2 line 5d, column 'For Debtor 1', 'Required repayments of retirement fund loans' (adjudicated). 3e2 spec §9.1: the deduction typed on the Take-home pay step; a blank prints 0.00 and counts as 0."
+  },
+  {
+    "schema": "schedule_i",
+    "pdf_field": "Amount 5d Debtor 2",
+    "producer": "derived:schedule_i_payroll_retirement_loan_spouse",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Amount 5d Debtor 2",
+    "evidence": "Field index: Amount 5d Debtor 2 p2 line 5d, column 'For Debtor 2 or non-filing spouse', 'Required repayments of retirement fund loans' (adjudicated). 3e2 spec §9.1: the deduction typed on the Take-home pay step; a blank prints 0.00 and counts as 0."
+  },
+  {
+    "schema": "schedule_i",
+    "pdf_field": "Amount 5e Debtor 1",
+    "producer": "derived:schedule_i_payroll_insurance_debtor1",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Amount 5e Debtor 1",
+    "evidence": "Field index: Amount 5e Debtor 1 p2 line 5e, column 'For Debtor 1', 'Insurance' (adjudicated). 3e2 spec §9.1: the deduction typed on the Take-home pay step; a blank prints 0.00 and counts as 0."
+  },
+  {
+    "schema": "schedule_i",
+    "pdf_field": "Amount 5e Debtor 2",
+    "producer": "derived:schedule_i_payroll_insurance_spouse",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Amount 5e Debtor 2",
+    "evidence": "Field index: Amount 5e Debtor 2 p2 line 5e, column 'For Debtor 2 or non-filing spouse', 'Insurance' (adjudicated). 3e2 spec §9.1: the deduction typed on the Take-home pay step; a blank prints 0.00 and counts as 0."
+  },
+  {
+    "schema": "schedule_i",
+    "pdf_field": "Amount 5f Debtor 1",
+    "producer": "derived:schedule_i_payroll_support_debtor1",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Amount 5f Debtor 1",
+    "evidence": "Field index: Amount 5f Debtor 1 p2 line 5f, column 'For Debtor 1', 'Domestic support obligations' (adjudicated). 3e2 spec §9.1: the deduction typed on the Take-home pay step; a blank prints 0.00 and counts as 0."
+  },
+  {
+    "schema": "schedule_i",
+    "pdf_field": "Amount 5f Debtor 2",
+    "producer": "derived:schedule_i_payroll_support_spouse",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Amount 5f Debtor 2",
+    "evidence": "Field index: Amount 5f Debtor 2 p2 line 5f, column 'For Debtor 2 or non-filing spouse', 'Domestic support obligations' (adjudicated). 3e2 spec §9.1: the deduction typed on the Take-home pay step; a blank prints 0.00 and counts as 0."
+  },
+  {
+    "schema": "schedule_i",
+    "pdf_field": "Amount 5g Debtor 1",
+    "producer": "derived:schedule_i_payroll_union_dues_debtor1",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Amount 5g Debtor 1",
+    "evidence": "Field index: Amount 5g Debtor 1 p2 line 5g, column 'For Debtor 1', 'Union dues' (adjudicated). 3e2 spec §9.1: the deduction typed on the Take-home pay step; a blank prints 0.00 and counts as 0."
+  },
+  {
+    "schema": "schedule_i",
+    "pdf_field": "Amount 5g Debtor 2",
+    "producer": "derived:schedule_i_payroll_union_dues_spouse",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Amount 5g Debtor 2",
+    "evidence": "Field index: Amount 5g Debtor 2 p2 line 5g, column 'For Debtor 2 or non-filing spouse', 'Union dues' (adjudicated). 3e2 spec §9.1: the deduction typed on the Take-home pay step; a blank prints 0.00 and counts as 0."
+  },
+  {
+    "schema": "schedule_i",
+    "pdf_field": "Amount 5h Debtor 1",
+    "producer": "derived:schedule_i_payroll_other_debtor1",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Amount 5h Debtor 1",
+    "evidence": "Field index: Amount 5h Debtor 1 p2 line 5h, column 'For Debtor 1', 'Other deductions. Specify:' (adjudicated). 3e2 spec §9.1: the deduction typed on the Take-home pay step; a blank prints 0.00 and counts as 0."
+  },
+  {
+    "schema": "schedule_i",
+    "pdf_field": "Amount 5h Debtor 2",
+    "producer": "derived:schedule_i_payroll_other_spouse",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Amount 5h Debtor 2",
+    "evidence": "Field index: Amount 5h Debtor 2 p2 line 5h, column 'For Debtor 2 or non-filing spouse', 'Other deductions. Specify:' (adjudicated). 3e2 spec §9.1: the deduction typed on the Take-home pay step; a blank prints 0.00 and counts as 0."
+  },
+  {
+    "schema": "schedule_i",
+    "pdf_field": "Other deductions 5h",
+    "producer": "derived:schedule_i_payroll_other_specify",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Other deductions 5h",
+    "evidence": "Field index: Other deductions 5h p2 line 5h, 'Other deductions. Specify:' (adjudicated). 3e2 spec §9.1: the stripped 'Specify' words of each counted person, kept only while their 5h is above $0."
+  },
+  {
+    "schema": "schedule_i",
+    "pdf_field": "Amount 6 Debtor 1",
+    "producer": "derived:schedule_i_total_deductions_debtor1",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Amount 6 Debtor 1",
+    "evidence": "Field index: Amount 6 Debtor 1 p2 line 6, column 'For Debtor 1', 'Add the payroll deductions. Add lines 5a + 5b + 5c + 5d + 5e +5f + 5g + 5h.' (adjudicated). 3e2 spec §9.1: lines 5a through 5h added, a blank counting as 0."
+  },
+  {
+    "schema": "schedule_i",
+    "pdf_field": "Amount 6 Debtor 2",
+    "producer": "derived:schedule_i_total_deductions_spouse",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Amount 6 Debtor 2",
+    "evidence": "Field index: Amount 6 Debtor 2 p2 line 6, column 'For Debtor 2 or non-filing spouse', 'Add the payroll deductions. Add lines 5a + 5b + 5c + 5d + 5e +5f + 5g + 5h.' (adjudicated). 3e2 spec §9.1: lines 5a through 5h added, a blank counting as 0."
+  },
+  {
+    "schema": "schedule_i",
+    "pdf_field": "Amount 8b Debtor 1",
+    "producer": "derived:schedule_i_interest_debtor1",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Amount 8b Debtor 1",
+    "evidence": "Field index: Amount 8b Debtor 1 p2 line 8b, column 'For Debtor 1', 'Interest and dividends' (adjudicated). 3e2 spec §9.1: interest and dividends on Schedule I's figures (the current ones while income is now different)."
+  },
+  {
+    "schema": "schedule_i",
+    "pdf_field": "Amount 8b Debtor 2",
+    "producer": "derived:schedule_i_interest_spouse",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Amount 8b Debtor 2",
+    "evidence": "Field index: Amount 8b Debtor 2 p2 line 8b, column 'For Debtor 2 or non-filing spouse', 'Interest and dividends' (adjudicated). 3e2 spec §9.1: interest and dividends on Schedule I's figures (the current ones while income is now different)."
+  },
+  {
+    "schema": "schedule_i",
+    "pdf_field": "Amount 8f Debtor 1",
+    "producer": "derived:schedule_i_assistance_debtor1",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Amount 8f Debtor 1",
+    "evidence": "Field index: Amount 8f Debtor 1 p2 line 8f, column 'For Debtor 1', 'Other government assistance that you regularly receive' (adjudicated). 3e2 spec §9.1: the cash amount plus the known non-cash value under Yes; 0.00 under No; blank only when the non-cash value is unknown."
+  },
+  {
+    "schema": "schedule_i",
+    "pdf_field": "Amount 8f Debtor 2",
+    "producer": "derived:schedule_i_assistance_spouse",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Amount 8f Debtor 2",
+    "evidence": "Field index: Amount 8f Debtor 2 p2 line 8f, column 'For Debtor 2 or non-filing spouse', 'Other government assistance that you regularly receive' (adjudicated). 3e2 spec §9.1: the cash amount plus the known non-cash value under Yes; 0.00 under No; blank only when the non-cash value is unknown."
+  },
+  {
+    "schema": "schedule_i",
+    "pdf_field": "Assistance 8f",
+    "producer": "derived:schedule_i_assistance_specify",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Assistance 8f",
+    "evidence": "Field index: Assistance 8f p2 line 8f, 'Other government assistance that you regularly receive. Specify:' (adjudicated). 3e2 spec §9.1: the cash then non-cash kind, only while the person answered Yes. Tagged T36: the name's other widget is T49, line 11, which stays blank."
+  },
+  {
+    "schema": "schedule_j",
+    "pdf_field": "check3",
+    "producer": "derived:schedule_j_expenses_include_others",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check3",
+    "evidence": "Field index: check3 p1 line 3, 'Do your expenses include expenses of people other than yourself and your dependents?', T34 /no and T35 /yes (adjudicated). 3e2 spec §9.4: ticks the filer's own answer to the Expenses step's line 3 question and stays blank while unanswered."
+  },
+  {
+    "schema": "schedule_j",
+    "pdf_field": "4a",
+    "producer": "derived:schedule_j_real_estate_taxes",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "4a",
+    "evidence": "Field index: 4a p1 T37, 'Real estate taxes' (adjudicated). 3e2 spec §9.4: the amount the filer typed on the Expenses step, printed only above $0."
+  },
+  {
+    "schema": "schedule_j",
+    "pdf_field": "4b",
+    "producer": "derived:schedule_j_home_insurance",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "4b",
+    "evidence": "Field index: 4b p1 T38, 'Property, homeowner’s, or renter’s insurance' (adjudicated). 3e2 spec §9.4: the amount the filer typed on the Expenses step, printed only above $0."
+  },
+  {
+    "schema": "schedule_j",
+    "pdf_field": "4d",
+    "producer": "derived:schedule_j_hoa_dues",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "4d",
+    "evidence": "Field index: 4d p1 T40, 'Homeowner’s association or condominium dues' (adjudicated). 3e2 spec §9.4: the amount the filer typed on the Expenses step, printed only above $0."
+  },
+  {
+    "schema": "schedule_j",
+    "pdf_field": "10",
+    "producer": "derived:schedule_j_personal_care",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "10",
+    "evidence": "Field index: 10 p2 T12, 'Personal care products and services' (adjudicated). 3e2 spec §9.4: the amount the filer typed on the Expenses step, printed only above $0."
+  },
+  {
+    "schema": "schedule_j",
+    "pdf_field": "13",
+    "producer": "derived:schedule_j_entertainment",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "13",
+    "evidence": "Field index: 13 p2 T15, 'Entertainment, clubs, recreation, newspapers, magazines, and books' (adjudicated). 3e2 spec §9.4: the amount the filer typed on the Expenses step, printed only above $0."
+  },
+  {
+    "schema": "schedule_j",
+    "pdf_field": "14",
+    "producer": "derived:schedule_j_charitable_contributions",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "14",
+    "evidence": "Field index: 14 p2 T16, 'Charitable contributions and religious donations' (adjudicated). 3e2 spec §9.4: the amount the filer typed on the Expenses step, printed only above $0."
+  },
+  {
+    "schema": "schedule_j",
+    "pdf_field": "16",
+    "producer": "derived:schedule_j_taxes_not_deducted",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "16",
+    "evidence": "Field index: 16 p2 T22, 'Taxes. Do not include taxes deducted from your pay or included in lines 4 or 20. (amount)' (adjudicated). 3e2 spec §9.4: the amount the filer typed on the Expenses step, printed only above $0."
+  },
+  {
+    "schema": "schedule_j",
+    "pdf_field": "Other 16",
+    "producer": "derived:schedule_j_taxes_label",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Other 16",
+    "evidence": "Field index: Other 16 p2 T23, 'Taxes. Specify:' (adjudicated). 3e2 spec §9.4: the filer's own Specify text from the Expenses step, printed only beside a printed amount."
+  },
+  {
+    "schema": "schedule_j",
+    "pdf_field": "19",
+    "producer": "derived:schedule_j_support_others",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "19",
+    "evidence": "Field index: 19 p2 T32, 'Other payments you make to support others who do not live with you. (amount)' (adjudicated). 3e2 spec §9.4: the amount the filer typed on the Expenses step, printed only above $0."
+  },
+  {
+    "schema": "schedule_j",
+    "pdf_field": "Other 19",
+    "producer": "derived:schedule_j_support_others_label",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Other 19",
+    "evidence": "Field index: Other 19 p2 T31, 'Other payments you make to support others who do not live with you. Specify:' (adjudicated). 3e2 spec §9.4: the filer's own Specify text from the Expenses step, printed only beside a printed amount."
+  },
+  {
+    "schema": "schedule_j",
+    "pdf_field": "20a",
+    "producer": "derived:schedule_j_other_property_mortgages",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "20a",
+    "evidence": "Field index: 20a p2 T33, 'Other real property expenses: Mortgages on other property' (adjudicated). 3e2 spec §9.4: the amount the filer typed on the Expenses step, printed only above $0."
+  },
+  {
+    "schema": "schedule_j",
+    "pdf_field": "20b",
+    "producer": "derived:schedule_j_other_property_taxes",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "20b",
+    "evidence": "Field index: 20b p2 T34, 'Other real property expenses: Real estate taxes' (adjudicated). 3e2 spec §9.4: the amount the filer typed on the Expenses step, printed only above $0."
+  },
+  {
+    "schema": "schedule_j",
+    "pdf_field": "20c",
+    "producer": "derived:schedule_j_other_property_insurance",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "20c",
+    "evidence": "Field index: 20c p2 T35, 'Other real property expenses: Property, homeowner’s, or renter’s insurance' (adjudicated). 3e2 spec §9.4: the amount the filer typed on the Expenses step, printed only above $0."
+  },
+  {
+    "schema": "schedule_j",
+    "pdf_field": "20d",
+    "producer": "derived:schedule_j_other_property_upkeep",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "20d",
+    "evidence": "Field index: 20d p2 T36, 'Other real property expenses: Maintenance, repair, and upkeep expenses' (adjudicated). 3e2 spec §9.4: the amount the filer typed on the Expenses step, printed only above $0."
+  },
+  {
+    "schema": "schedule_j",
+    "pdf_field": "20e",
+    "producer": "derived:schedule_j_other_property_hoa_dues",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "20e",
+    "evidence": "Field index: 20e p2 T37, 'Other real property expenses: Homeowner’s association or condominium dues' (adjudicated). 3e2 spec §9.4: the amount the filer typed on the Expenses step, printed only above $0."
+  },
+  {
+    "schema": "schedule_j",
+    "pdf_field": "Other 21",
+    "producer": "derived:schedule_j_other_expenses_label",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Other 21",
+    "evidence": "Field index: Other 21 p3 T3, 'Other. Specify:' (adjudicated). 3e2 spec §9.4: the filer's own Specify text from the Expenses step, printed only beside a printed amount."
   }
 ]

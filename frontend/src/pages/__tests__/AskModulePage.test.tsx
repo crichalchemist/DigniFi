@@ -9,7 +9,7 @@ vi.mock('../../context/AuthContext', () => ({
 
 vi.mock('../../context/IntakeContext', () => ({
   useIntake: () => ({
-    session: { id: 1, current_step: 6 },
+    session: { id: 1, current_step: 7 },
     createSession: vi.fn(),
     updateCurrentStep: vi.fn(),
   }),

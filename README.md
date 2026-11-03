@@ -125,7 +125,7 @@ dignifi/
 │   │   ├── users/          # Authentication & profiles
 │   │   ├── audit/          # UPL compliance + analytics logging
 │   │   ├── districts/      # District-specific rules & data
-│   │   ├── intake/         # Data collection (8-step wizard)
+│   │   ├── intake/         # Data collection (9-step wizard)
 │   │   ├── eligibility/    # Means test calculator
 │   │   ├── documents/      # Document scanning pipeline (OCR → draft debts)
 │   │   └── forms/          # 17 court forms: registry, fill engine, PDF filler
@@ -163,7 +163,7 @@ dignifi/
 
 - Document scanning (v2): drag-and-drop upload → OCR by the configured provider (OpenAI GPT-4o by default) → credit reports extract tradelines into debt drafts (with "From scan" badge); a pay stub fills the employer's name on Schedule I
 - User authentication with JWT (access in memory, refresh in localStorage)
-- 8-step intake wizard: Your Information → Income → Expenses → Assets → Amounts Owed → Contracts & Leases → Codebtors → Review & Results
+- 9-step intake wizard: Your Information → Income → Take-home pay → Expenses → Assets → Amounts Owed → Contracts & Leases → Codebtors → Review & Results
 - Chapter 7 means test calculator (11 U.S.C. § 707(b) — annualized CMI vs. Census median by household size)
 - Fee waiver eligibility assessment (28 U.S.C. § 1930(f))
 - 17 court forms (Form 101 through Schedules A/B–J); each filer's packet holds 14–16 of them

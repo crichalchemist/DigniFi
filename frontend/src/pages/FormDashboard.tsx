@@ -24,9 +24,12 @@ import type {
   FormType,
   GenerateAllFormsResponse,
   DatedTableUsed,
+  Packet,
 } from '../types/api';
 import { FORM_TYPE_METADATA } from '../types/api';
 import { trackEvent } from '../utils/analytics';
+import { formatIsoDate } from '../utils/formatIsoDate';
+import { windowNotice } from '../utils/windowNotice';
 
 type GenerateAllError = GenerateAllFormsResponse['errors'][number];
 
@@ -100,30 +103,6 @@ function linksInPageOrder(intakeLinked: boolean) {
   };
 }
 
-const MONTHS = [
-  'January',
-  'February',
-  'March',
-  'April',
-  'May',
-  'June',
-  'July',
-  'August',
-  'September',
-  'October',
-  'November',
-  'December',
-];
-
-/**
- * "2026-04-01" as "April 1, 2026", built from the ISO string's parts. Never `new Date(iso)`:
- * that is UTC midnight, which shows the day before in Chicago.
- */
-function formatIsoDate(iso: string): string {
-  const [year, month, day] = iso.split('-').map(Number);
-  return `${MONTHS[month - 1]} ${day}, ${year}`;
-}
-
 /** What the forms say about the dated table they were filled from (step 3a1 spec §3.6) */
 function tableNotice(table: DatedTableUsed): string {
   const first = `These forms use the median income figures the U.S. Trustee applies to cases filed on or after ${formatIsoDate(table.effective_date)}.`;
@@ -137,6 +116,7 @@ export function FormDashboard() {
   // The form types that apply to this filer, in filing order
   const [packet, setPacket] = useState<FormType[]>([]);
   const [tables, setTables] = useState<DatedTableUsed[]>([]);
+  const [incomePeriod, setIncomePeriod] = useState<Packet['income_period']>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Refusal | null>(null);
   const [showSurvey, setShowSurvey] = useState(false);
@@ -162,8 +142,10 @@ export function FormDashboard() {
       setForms(loadedForms);
       setPacket(loadedPacket.form_types);
       setTables(loadedPacket.tables);
+      setIncomePeriod(loadedPacket.income_period);
       setError(null);
     } catch (err) {
+      setIncomePeriod(null);
       setError(refusalOf(err, DASHBOARD_ERROR));
     } finally {
       setIsLoading(false);
@@ -226,8 +208,10 @@ export function FormDashboard() {
       const reloaded = await api.forms.packet(session.id);
       setPacket(reloaded.form_types);
       setTables(reloaded.tables);
+      setIncomePeriod(reloaded.income_period);
       setError(null);
     } catch (err) {
+      setIncomePeriod(null);
       setError(refusalOf(err, DASHBOARD_ERROR));
     }
   };
@@ -280,6 +264,11 @@ export function FormDashboard() {
   // intake, then the packet list's refusal, then Generate All's, then each form Generate All
   // refused, then each card's refusal (ruling R4-a). The context's status and the server's can
   // disagree.
+  // The income window notice comes with the packet, so a refusal (which sets no window) replaces it
+  const incomeWindowNotice = incomePeriod
+    ? windowNotice(incomePeriod.answered_for, incomePeriod.now)
+    : null;
+  const incomeLink = fixLink({ step: 'income_info' });
   const noticeLinksIntake = session.status !== 'completed';
   const linkTo = linksInPageOrder(noticeLinksIntake);
   const errorLink = error ? linkTo(error) : undefined;
@@ -416,6 +405,15 @@ export function FormDashboard() {
           {tableNotice(table)}
         </p>
       ))}
+
+      {incomeWindowNotice && incomeLink && (
+        <div className="form-dashboard-notice">
+          <p>{incomeWindowNotice}</p>
+          <Link to={incomeLink.to} className="button button--primary">
+            {incomeLink.label}
+          </Link>
+        </div>
+      )}
 
       {/* Form cards grid */}
       {isLoading ? (

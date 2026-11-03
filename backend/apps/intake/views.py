@@ -11,11 +11,17 @@ from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from apps.districts.dated_tables import NoTableInForce
-from apps.eligibility.cmi import IncomeNotSplit, income_step_gaps
+from apps.districts.dated_tables import NoTableInForce, fill_date
+from apps.eligibility.cmi import (
+    IncomeNotSplit,
+    counted_spouse_income,
+    income_step_gaps,
+    income_window,
+)
 from apps.eligibility.services import MeansTestCalculator
 from apps.forms.registry import PreconditionMissing, _needs_county, _needs_ssn
 
+from .income import deductions_blank, schedule_i_line4
 from .locking import lock_session
 from .models import (
     AssetInfo,
@@ -94,6 +100,19 @@ def _lock_for_row_update(serializer):
         raise NotFound() from None
     if row.session_id not in locked:
         raise NotFound()  # moved meanwhile: locking its session now would break id order
+
+
+TAKE_HOME_PAY_NOT_ENTERED = (
+    "Enter what is taken out of your pay on the Take-home pay step. "
+    "If nothing is, enter $0 in one box."
+)
+SPOUSE_TAKE_HOME_PAY_NOT_ENTERED = (
+    "Enter what is taken out of your spouse's pay on the Take-home pay step. "
+    "If nothing is, enter $0 in one box."
+)
+EXPENSES_INCLUDE_OTHERS_UNANSWERED = (
+    "Answer whether your expenses include anyone else's, on the Expenses step."
+)
 
 
 class IntakeSessionViewSet(viewsets.ModelViewSet):
@@ -196,21 +215,27 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
         """
         session = lock_session(self.get_object().pk)
 
-        # Only one of the wizard's 8 steps; anything else is a client fault (DIG-151).
+        # Only one of the wizard's 9 steps; anything else is a client fault (DIG-151).
         current_step = request.data.get("current_step")
         if (
             not isinstance(current_step, int)
             or isinstance(current_step, bool)
-            or not 1 <= current_step <= 8
+            or not 1 <= current_step <= 9
         ):
             return Response(
-                {"current_step": ["Must be a whole number from 1 to 8."]},
+                {"current_step": ["Must be a whole number from 1 to 9."]},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
         session.current_step = current_step
         session.status = "in_progress"
         session.save()
+
+        # Continue from the Income step records the window the filer confirmed (3e2 spec §4.4)
+        income_info = getattr(session, "income_info", None)
+        if current_step == 3 and income_info is not None:
+            income_info.income_period_end = income_window(fill_date())[1]
+            income_info.save(update_fields=["income_period_end"])
 
         # Update with any provided data
         if "data" in request.data:
@@ -259,6 +284,15 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
             [{"step": gap.step, "message": str(gap)} for gap in income_step_gaps(session)]
         )
 
+        # Take-home pay and Schedule J line 3 are Complete's alone: the means test and the forms
+        # don't read them (3e2 spec §8).
+        for row, message in (
+            (getattr(session, "income_info", None), TAKE_HOME_PAY_NOT_ENTERED),
+            (counted_spouse_income(session), SPOUSE_TAKE_HOME_PAY_NOT_ENTERED),
+        ):
+            if row is not None and schedule_i_line4(row) > 0 and deductions_blank(row):
+                errors.append({"step": "take_home_pay", "message": message})
+
         if not hasattr(session, "expense_info"):
             errors.append(
                 {
@@ -266,6 +300,8 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
                     "message": "Go through the Expenses step, even if you have no expenses to enter.",
                 }
             )
+        elif session.expense_info.expenses_include_others is None:
+            errors.append({"step": "expense_info", "message": EXPENSES_INCLUDE_OTHERS_UNANSWERED})
 
         # A scanned debt stays off the forms until the filer saves the Amounts Owed step
         # (DIG-163). An upload after Complete reopens the intake, and Review is one press away.

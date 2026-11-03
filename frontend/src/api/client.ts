@@ -594,7 +594,11 @@ export const formsAPI = {
    */
   packet: async (sessionId: number): Promise<Packet> => {
     const response = await apiFetch<FormPacketResponse>(`/forms/packet/?session=${sessionId}`);
-    return { form_types: response.form_types, tables: response.tables ?? [] };
+    return {
+      form_types: response.form_types,
+      tables: response.tables ?? [],
+      income_period: response.income_period ?? null,
+    };
   },
 
   /**

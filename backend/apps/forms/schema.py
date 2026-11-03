@@ -124,6 +124,17 @@ class FormSchema:
     groups: dict[str, GroupSpec] = field(default_factory=dict)
 
 
+def is_statement_group(schema: FormSchema, name: str) -> bool:
+    """A group of a sheet and no slots: its rows come from one list binding (3e2 spec 9.2)."""
+    group = schema.groups.get(name)
+    return (
+        group is not None
+        and group.sheet is not None
+        and group.extra_page is None
+        and not any(f.repeat == name for f in schema.fields)
+    )
+
+
 @lru_cache(maxsize=32)
 def load_schema(form_type: str) -> FormSchema:
     """
@@ -496,6 +507,16 @@ def validate_schema(
     for name, group in schema.groups.items():
         if group.sheet is not None:
             errors += _sheet_errors(name, group, schema.template_filename)
+        if is_statement_group(schema, name):
+            for column in group.sheet.columns:
+                if not _STATEMENT_BINDING.fullmatch(column.binding):
+                    errors.append(
+                        (
+                            "E007",
+                            f"group {name!r}: statement column {column.label!r} binds "
+                            f"{column.binding!r}, not an income.statement[].<attr> list",
+                        )
+                    )
         # A sheet labels each row with the line it continues, its number.
         numbered_rows = group.number is not None or group.number_boxes or group.sheet is not None
         if numbered_rows and "{n}" not in (group.number or ""):
@@ -520,7 +541,12 @@ def validate_schema(
                     from apps.forms.services.sheets import LINE_WIDTH, fits_line_column
 
                     capacities = {f.repeat_capacity for f in slots.get(name, [])}
-                    if len(capacities) == 1 and (capacity := capacities.pop()):
+                    # A statement group has no slots: its rows start at 1.
+                    statement = is_statement_group(schema, name)
+                    capacity = 0 if statement else None
+                    if not statement and len(capacities) == 1:
+                        capacity = capacities.pop()
+                    if statement or capacity:
                         # Its first line, and row 9999's: Helvetica's digits are all one
                         # width, so while the number prints n in decimal no line up to that
                         # row is wider (R65(2)). Another format can be: "{{n}}{n:x}" prints
@@ -574,7 +600,8 @@ def validate_schema(
     return errors
 
 
-_LIST_BINDING = re.compile(r"(?:sofa\.\w+|household\.dependents)\[\]\.\w+")
+_STATEMENT_BINDING = re.compile(r"income\.statement\[\]\.(?:owner|description|gross|expenses|net)")
+_LIST_BINDING = re.compile(r"(?:sofa\.\w+|household\.dependents|income\.statement)\[\]\.\w+")
 
 
 def _sheet_errors(name: str, group: GroupSpec, template: str) -> list[tuple[str, str]]:

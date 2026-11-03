@@ -372,7 +372,7 @@ def generated_form_factory(db, api_client_authed):
             call_command("loaddata", "ilnd_2025_data", verbosity=0)
             district = District.objects.get(code="ilnd")
         session = IntakeSession.objects.create(
-            user=user, district=district, status="completed", current_step=6
+            user=user, district=district, status="completed", current_step=9
         )
         DebtorInfo.objects.create(
             session=session,

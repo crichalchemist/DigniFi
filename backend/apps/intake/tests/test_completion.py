@@ -15,6 +15,10 @@ from django.core.management import call_command
 from rest_framework.test import APIClient
 
 from apps.districts.models import District
+from apps.eligibility.cmi import LEGACY_RENTAL as LEGACY
+from apps.eligibility.cmi import SPOUSE_LEGACY_RENTAL as SPOUSE_LEGACY
+from apps.eligibility.cmi import income_step_gaps
+from apps.eligibility.services import MeansTestCalculator
 from apps.forms.schema import load_schema
 from apps.forms.services.fill_resolver import resolve
 from apps.intake.models import (
@@ -26,7 +30,7 @@ from apps.intake.models import (
     IntakeSession,
     SpouseIncome,
 )
-from apps.intake.tests.builders import answer_household
+from apps.intake.tests.builders import answer_household, answer_income_detail
 from apps.users.models import User
 
 FINISH = "Finish your intake before preparing your forms."
@@ -53,7 +57,7 @@ def completed(filer, district):
     """An intake the filer completed, with the three sections Complete requires."""
     _, user = filer
     session = IntakeSession.objects.create(
-        user=user, district=district, status="completed", current_step=8
+        user=user, district=district, status="completed", current_step=9
     )
     DebtorInfo.objects.create(
         session=session,
@@ -74,7 +78,7 @@ def completed(filer, district):
         monthly_gross_wages=Decimal("3000.00"),
     )
     answer_household(session)
-    ExpenseInfo.objects.create(session=session)
+    ExpenseInfo.objects.create(session=session, expenses_include_others="no")
     return session
 
 
@@ -95,7 +99,7 @@ def _complete_again(session):
 
 def test_browser_cannot_mark_intake_complete(filer, district):
     client, _ = filer
-    claimed = {"status": "completed", "current_step": 8}
+    claimed = {"status": "completed", "current_step": 9}
 
     created = client.post(
         "/api/intake/sessions/", {"district": district.id, **claimed}, format="json"
@@ -125,10 +129,10 @@ _MISSING = object()
 
 @pytest.mark.parametrize(
     "step",
-    [0, 9, -1, "3", 3.0, 2.5, True, None, _MISSING],
-    ids=["0", "9", "-1", "string", "float", "fraction", "bool", "null", "missing"],
+    [0, 10, -1, "3", 3.0, 2.5, True, None, _MISSING],
+    ids=["0", "10", "-1", "string", "float", "fraction", "bool", "null", "missing"],
 )
-def test_wizard_step_must_be_one_of_the_eight_steps(filer, completed, step):
+def test_wizard_step_must_be_one_of_the_wizard_steps(filer, completed, step):
     # A step the wizard doesn't have is a client fault, not something the filer can fix.
     client, _ = filer
     body = {} if step is _MISSING else {"current_step": step}
@@ -138,14 +142,16 @@ def test_wizard_step_must_be_one_of_the_eight_steps(filer, completed, step):
     assert response.status_code == 400
     assert "current_step" in response.data
     completed.refresh_from_db()
-    assert (completed.status, completed.current_step) == ("completed", 8)
+    assert (completed.status, completed.current_step) == ("completed", 9)
 
 
 def test_filer_who_leaves_every_expense_blank_can_complete(filer, district):
     # DIG-153: a body with no amounts still creates the record with its $0 defaults. The server
     # drops the read-only total sent here. The wizard sends all 13 amounts, a blank box as 0.
+    # Line 3 is answered, which Complete asks for (3e2).
+    # Line 3 is answered, which Complete asks for (3e2).
     client, user = filer
-    session = IntakeSession.objects.create(user=user, district=district, current_step=3)
+    session = IntakeSession.objects.create(user=user, district=district, current_step=4)
     DebtorInfo.objects.create(
         session=session,
         first_name="Jane",
@@ -161,7 +167,9 @@ def test_filer_who_leaves_every_expense_blank_can_complete(filer, district):
     answer_household(session)
 
     saved = client.patch(
-        _session_url(session), {"expense_info": {"total_monthly_expenses": 0}}, format="json"
+        _session_url(session),
+        {"expense_info": {"total_monthly_expenses": 0, "expenses_include_others": "no"}},
+        format="json",
     )
 
     assert saved.status_code == 200
@@ -177,6 +185,57 @@ NOT_FINISHED = "Please complete all required sections before finalizing"
 NAME_AND_ADDRESS = "Enter your name and address on the Your Information step."
 NINE_DIGIT_SSN = "Enter your 9-digit Social Security number on the Your Information step."
 INCOME_BY_SOURCE = "Enter your income by source on the Income step."
+ENTRIES_UNANSWERED = (
+    "Tell us about any business or rental property on the Income step, or say you have none."
+)
+ENTRY_UNANSWERED = "Answer every question for each business or rental property on the Income step."
+NOW_DIFFERENT_UNANSWERED = (
+    "Answer whether your income is now different from the six-month average, on the Income step."
+)
+CURRENT_NOT_GIVEN = (
+    "Enter your income now on the Income step, or change your answer about whether it is different."
+)
+ASSISTANCE_UNANSWERED = (
+    "Answer whether you receive other government assistance, on the Income step."
+)
+ASSISTANCE_KIND_MISSING = "Say what government assistance you receive on the Income step."
+CASH_AMOUNT_MISSING = "Enter how much cash assistance you receive a month, on the Income step."
+SPOUSE_ENTRIES_UNANSWERED = (
+    "Tell us about any business or rental property your spouse has on the Income step, "
+    "or say your spouse has none."
+)
+SPOUSE_ENTRY_UNANSWERED = (
+    "Answer every question for each of your spouse's businesses or rental properties "
+    "on the Income step."
+)
+SPOUSE_NOW_DIFFERENT_UNANSWERED = (
+    "Answer whether your spouse's income is now different from the six-month average, "
+    "on the Income step."
+)
+SPOUSE_CURRENT_NOT_GIVEN = (
+    "Enter your spouse's income now on the Income step, "
+    "or change your spouse's answer about whether it is different."
+)
+SPOUSE_ASSISTANCE_UNANSWERED = (
+    "Answer whether your spouse receives other government assistance, on the Income step."
+)
+SPOUSE_ASSISTANCE_KIND_MISSING = (
+    "Say what government assistance your spouse receives on the Income step."
+)
+SPOUSE_CASH_AMOUNT_MISSING = (
+    "Enter how much cash assistance your spouse receives a month, on the Income step."
+)
+TAKE_HOME_PAY_NOT_ENTERED = (
+    "Enter what is taken out of your pay on the Take-home pay step. "
+    "If nothing is, enter $0 in one box."
+)
+SPOUSE_TAKE_HOME_PAY_NOT_ENTERED = (
+    "Enter what is taken out of your spouse's pay on the Take-home pay step. "
+    "If nothing is, enter $0 in one box."
+)
+EXPENSES_INCLUDE_OTHERS_UNANSWERED = (
+    "Answer whether your expenses include anyone else's, on the Expenses step."
+)
 EXPENSES_STEP = "Go through the Expenses step, even if you have no expenses to enter."
 SCANNED_DEBTS = "Check the debts read from your documents on the Amounts Owed step."
 
@@ -289,7 +348,8 @@ def _household_list(session, rows):
 
 
 def _spouse_typed(session):
-    SpouseIncome.objects.create(session=session, monthly_gross_wages=Decimal("0.00"))
+    row = SpouseIncome(session=session, monthly_gross_wages=Decimal("0.00"))
+    answer_income_detail(row)
 
 
 def _no_county(session):
@@ -334,7 +394,21 @@ def _spouse_income_not_entered(session):
     # married_together, [SPOUSE_44], SpouseIncome with no amounts
     _marry(session, "married_together")
     _household_list(session, [SPOUSE_44])
-    SpouseIncome.objects.create(session=session)
+    answer_income_detail(SpouseIncome(session=session))  # the 3e2 answers given: one gap open
+
+
+def _legacy_rental(session):
+    # Wages stay $3,000, so only the legacy gap and the unanswered list are open
+    session.income_info.monthly_rental_income = Decimal("900.00")
+    session.income_info.store_entries(None)
+    session.income_info.save()
+
+
+def _spouse_legacy_rental(session):
+    _marry(session, "married_together")
+    _household_list(session, [SPOUSE_44])
+    row = SpouseIncome(session=session, monthly_rental_income=Decimal("700.00"))
+    answer_income_detail(row, business_and_rental=None)
 
 
 @pytest.mark.parametrize(
@@ -348,6 +422,8 @@ def _spouse_income_not_entered(session):
         (_a_spouse_row_but_not_married, "income_info", MISMATCH),
         (_living_together_with_twenty_others_and_no_spouse, "income_info", MISMATCH),
         (_spouse_income_not_entered, "income_info", SPOUSE_INCOME),
+        (_legacy_rental, "income_info", [LEGACY, ENTRIES_UNANSWERED]),
+        (_spouse_legacy_rental, "income_info", [SPOUSE_LEGACY, SPOUSE_ENTRIES_UNANSWERED]),
     ],
     ids=[
         "no_county",
@@ -358,6 +434,8 @@ def _spouse_income_not_entered(session):
         "a_spouse_row_but_not_married",
         "living_together_with_twenty_others_and_no_spouse",
         "spouse_income_not_entered",
+        "legacy_rental",
+        "spouse_legacy_rental",
     ],
 )
 def test_complete_names_every_new_gap_by_its_step(filer, completed, gap, step, message):
@@ -368,17 +446,50 @@ def test_complete_names_every_new_gap_by_its_step(filer, completed, gap, step, m
 
     response = client.post(_session_url(completed, "complete/"))
 
+    messages = message if isinstance(message, list) else [message]
     assert response.status_code == 400
     assert response.data == {
         "message": NOT_FINISHED,
-        "errors": [{"step": step, "message": message}],
+        "errors": [{"step": step, "message": m} for m in messages],
     }
     assert _status(completed) == "in_progress"
 
 
+def test_a_rental_figure_saved_as_one_amount_names_the_legacy_gap_not_income_not_entered(
+    filer, completed
+):
+    # Its only income was the legacy figure, so "income not entered" stays unnamed (§4.7). The
+    # list is unanswered too, and that is its own gap (3e2 spec §8).
+    IncomeInfo.objects.filter(session=completed).update(monthly_gross_wages=None)
+    completed.income_info.refresh_from_db()
+    _legacy_rental(completed)
+    messages = [str(g) for g in income_step_gaps(completed)]
+    assert messages[0] == LEGACY
+    assert INCOME_BY_SOURCE not in messages
+
+
+def test_a_rental_figure_saved_as_one_amount_refuses_the_means_test_and_the_forms(filer, completed):
+    client, _ = filer
+    _legacy_rental(completed)  # status stays "completed"
+    means = client.post(_session_url(completed, "calculate_means_test/"))
+    assert (means.status_code, means.data["error"]) == (400, LEGACY)
+    forms = client.get("/api/forms/packet/", {"session": completed.pk})
+    assert (forms.status_code, forms.data["error"], forms.data["step"]) == (
+        422,
+        LEGACY,
+        "income_info",
+    )
+    client.patch(
+        _session_url(completed), {"income_info": {"business_and_rental": []}}, format="json"
+    )
+    assert LEGACY not in [
+        str(g) for g in income_step_gaps(IntakeSession.objects.get(pk=completed.pk))
+    ]
+
+
 def test_complete_lists_every_gap_in_wizard_order(filer, district):
     client, user = filer
-    session = IntakeSession.objects.create(user=user, district=district, current_step=8)
+    session = IntakeSession.objects.create(user=user, district=district, current_step=9)
     _scanned_debt(session)
 
     response = client.post(_session_url(session, "complete/"))
@@ -390,10 +501,268 @@ def test_complete_lists_every_gap_in_wizard_order(filer, district):
         {"step": "income_info", "message": MARRIAGE},
         {"step": "income_info", "message": HOUSEHOLD_LIST},
         {"step": "income_info", "message": INCOME_BY_SOURCE},
+        {"step": "income_info", "message": ENTRIES_UNANSWERED},
+        {"step": "income_info", "message": NOW_DIFFERENT_UNANSWERED},
+        {"step": "income_info", "message": ASSISTANCE_UNANSWERED},
         {"step": "expense_info", "message": EXPENSES_STEP},
         {"step": "debts", "message": SCANNED_DEBTS},
     ]
     assert _status(session) == "started"
+
+
+# ── Complete names each 3e2 income, take-home pay and line 3 gap (3e2 spec §8) ──
+
+
+def _entry(**changes):
+    return {
+        "kind": "business",
+        "description": "Rideshare and delivery driving",
+        "gross": "1000.00",
+        "expenses": "200.00",
+        "current_gross": None,
+        "current_expenses": None,
+        **changes,
+    }
+
+
+def _set(row, **fields):
+    for name, value in fields.items():
+        setattr(row, name, value)
+    row.save()
+
+
+def _store(row, entries):
+    row.store_entries(entries)
+    row.save()
+
+
+def _list_unanswered(row):
+    _store(row, None)
+
+
+def _entry_without_gross(row):
+    _store(row, [_entry(gross=None)])
+
+
+def _description_of_only_spaces(row):
+    _store(row, [_entry(description="   ")])
+
+
+def _entry_without_current_amounts_while_now_different(row):
+    _store(row, [_entry()])
+    _set(row, income_now_different="yes", current_monthly_gross_wages=Decimal("3000.00"))
+
+
+def _now_different_unanswered(row):
+    _set(row, income_now_different=None)
+
+
+def _now_different_with_no_current_figure(row):
+    _set(row, income_now_different="yes")
+
+
+def _assistance_unanswered(row):
+    _set(row, assistance_answer=None)
+
+
+def _assistance_with_no_kind(row):
+    _set(row, assistance_answer="yes", cash_assistance_kind="", noncash_assistance_kind="")
+
+
+def _an_amount_beside_an_empty_kind(row):
+    _set(
+        row,
+        assistance_answer="yes",
+        cash_assistance_kind="TANF",
+        cash_assistance_amount=Decimal("100.00"),
+        noncash_assistance_kind="",
+        noncash_assistance_value=Decimal("350.00"),
+    )
+
+
+def _cash_kind_with_no_amount(row):
+    _set(row, assistance_answer="yes", cash_assistance_kind="TANF", cash_assistance_amount=None)
+
+
+def _pay_with_every_deduction_blank(row):
+    _set(row, payroll_tax=None)
+
+
+NEW_INCOME_GAPS = [
+    (_list_unanswered, "ENTRIES_UNANSWERED"),
+    (_entry_without_gross, "ENTRY_UNANSWERED"),
+    (_description_of_only_spaces, "ENTRY_UNANSWERED"),
+    (_entry_without_current_amounts_while_now_different, "ENTRY_UNANSWERED"),
+    (_now_different_unanswered, "NOW_DIFFERENT_UNANSWERED"),
+    (_now_different_with_no_current_figure, "CURRENT_NOT_GIVEN"),
+    (_assistance_unanswered, "ASSISTANCE_UNANSWERED"),
+    (_assistance_with_no_kind, "ASSISTANCE_KIND_MISSING"),
+    (_an_amount_beside_an_empty_kind, "ASSISTANCE_KIND_MISSING"),
+    (_cash_kind_with_no_amount, "CASH_AMOUNT_MISSING"),
+]
+NEW_INCOME_GAP_IDS = [
+    "list_unanswered",
+    "entry_without_gross",
+    "description_of_only_spaces",
+    "entry_without_current_amounts_while_now_different",
+    "now_different_unanswered",
+    "now_different_with_no_current_figure",
+    "assistance_unanswered",
+    "assistance_with_no_kind",
+    "an_amount_beside_an_empty_kind",
+    "cash_kind_with_no_amount",
+]
+
+
+def _complete_refused(client, session):
+    session.status = "in_progress"
+    session.save()
+    response = client.post(_session_url(session, "complete/"))
+    assert response.status_code == 400
+    assert response.data["message"] == NOT_FINISHED
+    return response.data["errors"]
+
+
+@pytest.mark.parametrize("gap,name", NEW_INCOME_GAPS, ids=NEW_INCOME_GAP_IDS)
+def test_complete_names_each_new_income_gap_by_its_step(filer, completed, gap, name):
+    client, _ = filer
+    gap(completed.income_info)
+
+    assert _complete_refused(client, completed) == [
+        {"step": "income_info", "message": globals()[name]}
+    ]
+
+
+@pytest.mark.parametrize("gap,name", NEW_INCOME_GAPS, ids=NEW_INCOME_GAP_IDS)
+def test_complete_names_each_spouse_gap_in_the_spouses_words(filer, completed, gap, name):
+    client, _ = filer
+    _marry(completed, "married_together")
+    _household_list(completed, [SPOUSE_44])
+    spouse = SpouseIncome(session=completed, monthly_gross_wages=Decimal("1000.00"))
+    answer_income_detail(spouse)
+    gap(spouse)
+
+    assert _complete_refused(client, completed) == [
+        {"step": "income_info", "message": globals()["SPOUSE_" + name]}
+    ]
+
+
+def test_complete_names_pay_with_every_deduction_blank_by_the_take_home_pay_step(filer, completed):
+    client, _ = filer
+    _pay_with_every_deduction_blank(completed.income_info)
+
+    assert _complete_refused(client, completed) == [
+        {"step": "take_home_pay", "message": TAKE_HOME_PAY_NOT_ENTERED}
+    ]
+
+
+def test_complete_names_the_spouses_pay_with_every_deduction_blank(filer, completed):
+    client, _ = filer
+    _marry(completed, "married_together")
+    _household_list(completed, [SPOUSE_44])
+    spouse = SpouseIncome(session=completed, monthly_gross_wages=Decimal("1000.00"))
+    answer_income_detail(spouse, payroll_tax=None)
+
+    assert _complete_refused(client, completed) == [
+        {"step": "take_home_pay", "message": SPOUSE_TAKE_HOME_PAY_NOT_ENTERED}
+    ]
+
+
+def test_complete_names_schedule_j_line_3_unanswered_by_the_expenses_step(filer, completed):
+    client, _ = filer
+    _set(completed.expense_info, expenses_include_others=None)
+
+    assert _complete_refused(client, completed) == [
+        {"step": "expense_info", "message": EXPENSES_INCLUDE_OTHERS_UNANSWERED}
+    ]
+
+
+def test_complete_lists_every_new_gap_in_wizard_order(filer, completed):
+    client, _ = filer
+    _marry(completed, "married_together")
+    _household_list(completed, [SPOUSE_44])
+    _list_unanswered(completed.income_info)
+    _now_different_unanswered(completed.income_info)
+    _assistance_unanswered(completed.income_info)
+    _pay_with_every_deduction_blank(completed.income_info)
+    spouse = SpouseIncome(session=completed, monthly_gross_wages=Decimal("1000.00"))
+    answer_income_detail(spouse, payroll_tax=None)
+    _list_unanswered(spouse)
+    _now_different_unanswered(spouse)
+    _assistance_with_no_kind(spouse)
+    _set(completed.expense_info, expenses_include_others=None)
+
+    assert _complete_refused(client, completed) == [
+        {"step": "income_info", "message": ENTRIES_UNANSWERED},
+        {"step": "income_info", "message": NOW_DIFFERENT_UNANSWERED},
+        {"step": "income_info", "message": ASSISTANCE_UNANSWERED},
+        {"step": "income_info", "message": SPOUSE_ENTRIES_UNANSWERED},
+        {"step": "income_info", "message": SPOUSE_NOW_DIFFERENT_UNANSWERED},
+        {"step": "income_info", "message": SPOUSE_ASSISTANCE_KIND_MISSING},
+        {"step": "take_home_pay", "message": TAKE_HOME_PAY_NOT_ENTERED},
+        {"step": "take_home_pay", "message": SPOUSE_TAKE_HOME_PAY_NOT_ENTERED},
+        {"step": "expense_info", "message": EXPENSES_INCLUDE_OTHERS_UNANSWERED},
+    ]
+
+
+def _unknown_noncash_value(session):
+    _set(
+        session.income_info,
+        assistance_answer="yes",
+        noncash_assistance_kind="SNAP (food stamps)",
+        noncash_assistance_value=None,
+    )
+
+
+def _no_pay_and_no_deductions(session):
+    _set(session.income_info, monthly_gross_wages=Decimal("0.00"), payroll_tax=None)
+
+
+def _entry_current_amounts_blank_while_not_different(session):
+    _store(session.income_info, [_entry()])
+
+
+def _spouse_gaps_while_living_apart(session):
+    _marry(session, "married_separately")
+    SpouseIncome.objects.create(session=session)
+
+
+@pytest.mark.parametrize(
+    "answers",
+    [
+        _unknown_noncash_value,
+        _no_pay_and_no_deductions,
+        _entry_current_amounts_blank_while_not_different,
+        _spouse_gaps_while_living_apart,
+    ],
+    ids=[
+        "unknown_noncash_value",
+        "no_pay_and_no_deductions",
+        "entry_current_amounts_blank_while_not_different",
+        "spouse_gaps_while_living_apart",
+    ],
+)
+def test_these_are_not_gaps(filer, completed, answers):
+    client, _ = filer
+    answers(completed)
+    completed.status = "in_progress"
+    completed.save()
+
+    response = client.post(_session_url(completed, "complete/"))
+
+    assert response.status_code == 200
+    assert _status(completed) == "completed"
+
+
+def test_the_take_home_pay_gap_never_stops_the_means_test(filer, completed):
+    # Take-home pay is Complete's alone: the preview and the forms don't read it.
+    client, _ = filer
+    _pay_with_every_deduction_blank(completed.income_info)
+
+    assert income_step_gaps(completed) == []
+    MeansTestCalculator(completed).calculate()
+    response = client.post(_session_url(completed, "calculate_means_test/"))
+    assert response.status_code == 200
 
 
 def test_saving_the_amounts_owed_step_confirms_a_scanned_debt_so_complete_passes(filer, completed):
@@ -494,6 +863,19 @@ def test_a_refused_save_leaves_a_completed_intake_complete(filer, completed):
     assert _status(completed) == "completed"
 
 
+def test_continue_from_codebtors_reaches_review_at_step_nine(filer, completed):
+    # Take-home pay made the wizard nine steps long: Review, the last, is step 9
+    client, _ = filer
+
+    response = client.post(
+        _session_url(completed, "update_step/"), {"current_step": 9}, format="json"
+    )
+
+    assert response.status_code == 200
+    completed.refresh_from_db()
+    assert completed.current_step == 9
+
+
 def test_moving_between_wizard_steps_after_complete_reopens_it(filer, completed):
     client, _ = filer
 
@@ -538,7 +920,7 @@ def test_adding_or_removing_a_contract_or_codebtor_after_complete_reopens_it(
 def test_saving_the_contracts_or_codebtors_list_after_complete_reopens_it(
     filer, completed, endpoint, row
 ):
-    # Continue on steps 6 and 7 saves the whole list (DIG-147).
+    # Continue on steps 7 and 8 saves the whole list (DIG-147).
     client, _ = filer
 
     response = client.put(_session_url(completed, f"{endpoint}/"), [row], format="json")

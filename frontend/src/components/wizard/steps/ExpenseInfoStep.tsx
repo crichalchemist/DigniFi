@@ -1,9 +1,10 @@
 /**
  * Expense Info Step - Monthly expense collection
  *
+ * Asks Schedule J line 3 and every expense line in the form's order and words.
+ *
  * Trauma-informed design:
  * - Non-judgmental language about expenses
- * - Clear explanations of categories
  * - Real-time total calculation
  * - Plain language help text
  */
@@ -11,14 +12,49 @@
 import { useState, useEffect, useMemo } from 'react';
 import { FormField } from '../../common';
 import { amountError, parseAmount } from '../../../utils/parseAmount';
-import type { ExpenseInfo } from '../../../types/api';
+import type { ExpenseField, ExpenseInfo, ExpenseSpecifyField, YesNo } from '../../../types/api';
 import { EXPENSE_FIELDS } from '../../../types/api';
+import {
+  EXPENSES_HEADING,
+  EXPENSE_LINE_WORDS,
+  EXPENSE_SPECIFY_WORDS,
+  LINE_3_QUESTION,
+  LINE_4_GROUP_HEADING,
+  LINE_15_GROUP_HEADING,
+  LINE_20_GROUP_HEADING,
+  NONCASH_EXPENSES_SENTENCE,
+} from '../../../constants/formText';
+import {
+  DOUBLE_COUNT_EXPENSES_NOTE,
+  EXPENSE_HELP_HOME_MAINTENANCE,
+  EXPENSE_HELP_OTHER,
+  LINE_3_INFO,
+  NOT_ANSWERED_YET,
+} from '../../../constants/copy';
 
 interface ExpenseInfoStepProps {
   initialData?: Partial<ExpenseInfo>;
   onDataChange: (data: Partial<ExpenseInfo>) => void;
   onValidationChange: (isValid: boolean) => void;
 }
+
+// The help text under each line, for the lines that have any. The other lines are asked in the
+// form's words alone.
+const EXPENSE_HELP: Partial<Record<ExpenseField, string>> = {
+  rent_or_mortgage: 'Monthly rent or mortgage payment',
+  utilities: 'Electric, gas, water, trash, internet, phone',
+  home_maintenance: EXPENSE_HELP_HOME_MAINTENANCE,
+  vehicle_payment: 'Monthly auto loan or lease payment',
+  vehicle_insurance: 'Monthly auto insurance premium',
+  vehicle_maintenance: 'Gas, public transit, parking, tolls',
+  food_and_groceries: 'Groceries, dining out, household supplies',
+  childcare: 'Daycare, after-school care, babysitting',
+  medical_expenses: 'Doctor visits, prescriptions, co-pays not covered by insurance',
+  insurance_not_deducted: 'Health, life, or disability insurance you pay directly',
+  clothing: 'Clothes, shoes, laundry, and dry cleaning',
+  child_support_paid: 'Court-ordered support you pay to someone else',
+  other_expenses: EXPENSE_HELP_OTHER,
+};
 
 export function ExpenseInfoStep({
   initialData,
@@ -64,9 +100,50 @@ export function ExpenseInfoStep({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [formData, totalMonthlyExpenses, errors]);
 
-  const handleChange = (field: keyof ExpenseInfo, value: string) => {
+  const handleChange = (field: ExpenseField, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: parseAmount(value) }));
   };
+
+  // The Specify texts are kept as typed
+  const handleTextChange = (field: ExpenseSpecifyField, value: string) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleLine3 = (answer: YesNo) => {
+    setFormData((prev) => ({ ...prev, expenses_include_others: answer }));
+  };
+
+  const line3Answer = formData.expenses_include_others;
+  const line3NoteId = 'expenses_include_others-unanswered';
+  const line3InfoId = 'expenses_include_others-info';
+
+  const amountBox = (field: ExpenseField) => (
+    <FormField
+      key={field}
+      label={EXPENSE_LINE_WORDS[field]}
+      name={field}
+      type="number"
+      min="0"
+      step="0.01"
+      value={formData[field] ?? ''}
+      onChange={(e) => handleChange(field, e.target.value)}
+      error={errors[field]}
+      helpText={EXPENSE_HELP[field]}
+      placeholder="0.00"
+    />
+  );
+
+  const specifyBox = (field: ExpenseSpecifyField) => (
+    <FormField
+      key={field}
+      label={EXPENSE_SPECIFY_WORDS[field]}
+      name={field}
+      type="text"
+      maxLength={100}
+      value={formData[field] ?? ''}
+      onChange={(e) => handleTextChange(field, e.target.value)}
+    />
+  );
 
   return (
     <div className="expense-info-step">
@@ -95,207 +172,86 @@ export function ExpenseInfoStep({
         </div>
       )}
 
-      {/* Housing Expenses */}
+      {/* Schedule J line 3, in the form's words. Nothing is checked until the filer answers. */}
       <section className="form-section">
-        <h3 className="section-title">Housing Expenses</h3>
-        <p className="section-description">
-          Include your monthly housing costs (rent or mortgage) and related expenses.
-        </p>
-
-        <FormField
-          label="Rent or Mortgage Payment"
-          name="rent_or_mortgage"
-          type="number"
-          min="0"
-          step="0.01"
-          value={formData.rent_or_mortgage ?? ''}
-          onChange={(e) => handleChange('rent_or_mortgage', e.target.value)}
-          error={errors.rent_or_mortgage}
-          helpText="Monthly rent or mortgage payment"
-          placeholder="0.00"
-        />
-
-        <div className="form-row">
-          <FormField
-            label="Utilities"
-            name="utilities"
-            type="number"
-            min="0"
-            step="0.01"
-            value={formData.utilities ?? ''}
-            onChange={(e) => handleChange('utilities', e.target.value)}
-            error={errors.utilities}
-            helpText="Electric, gas, water, trash, internet, phone"
-            placeholder="0.00"
-          />
-
-          <FormField
-            label="Home Maintenance"
-            name="home_maintenance"
-            type="number"
-            min="0"
-            step="0.01"
-            value={formData.home_maintenance ?? ''}
-            onChange={(e) => handleChange('home_maintenance', e.target.value)}
-            error={errors.home_maintenance}
-            helpText="Repairs, yard work, HOA fees"
-            placeholder="0.00"
-          />
-        </div>
+        <fieldset
+          className="form-field fee-waiver-question"
+          aria-describedby={line3Answer == null ? `${line3InfoId} ${line3NoteId}` : line3InfoId}
+        >
+          <legend className="form-label">{LINE_3_QUESTION}</legend>
+          {(['no', 'yes'] as const).map((value) => (
+            <label key={value} className="fee-waiver-checkbox">
+              <input
+                type="radio"
+                name="expenses_include_others"
+                value={value}
+                checked={line3Answer === value}
+                onChange={() => handleLine3(value)}
+              />{' '}
+              {value === 'yes' ? 'Yes' : 'No'}
+            </label>
+          ))}
+          <p id={line3InfoId} className="form-help-text">
+            {LINE_3_INFO}
+          </p>
+          {line3Answer == null && (
+            <p id={line3NoteId} className="form-help-text">
+              {NOT_ANSWERED_YET}
+            </p>
+          )}
+        </fieldset>
+        <p className="section-description">{DOUBLE_COUNT_EXPENSES_NOTE}</p>
       </section>
 
-      {/* Transportation Expenses */}
+      {/* Lines 4 to 21, in Schedule J's order */}
       <section className="form-section">
-        <h3 className="section-title">Transportation Expenses</h3>
-        <p className="section-description">
-          Include car payments, insurance, gas, and other transportation costs.
-        </p>
+        <h3 className="section-title">{EXPENSES_HEADING}</h3>
+        <p className="section-description">{NONCASH_EXPENSES_SENTENCE}</p>
 
-        <div className="form-row">
-          <FormField
-            label="Car Payment"
-            name="vehicle_payment"
-            type="number"
-            min="0"
-            step="0.01"
-            value={formData.vehicle_payment ?? ''}
-            onChange={(e) => handleChange('vehicle_payment', e.target.value)}
-            error={errors.vehicle_payment}
-            helpText="Monthly auto loan or lease payment"
-            placeholder="0.00"
-          />
+        {amountBox('rent_or_mortgage')}
 
-          <FormField
-            label="Car Insurance"
-            name="vehicle_insurance"
-            type="number"
-            min="0"
-            step="0.01"
-            value={formData.vehicle_insurance ?? ''}
-            onChange={(e) => handleChange('vehicle_insurance', e.target.value)}
-            error={errors.vehicle_insurance}
-            helpText="Monthly auto insurance premium"
-            placeholder="0.00"
-          />
-        </div>
+        <fieldset className="form-field">
+          <legend className="form-label">{LINE_4_GROUP_HEADING}</legend>
+          {amountBox('real_estate_taxes')}
+          {amountBox('home_insurance')}
+          {amountBox('home_maintenance')}
+          {amountBox('hoa_dues')}
+        </fieldset>
 
-        <FormField
-          label="Gas & Transportation"
-          name="vehicle_maintenance"
-          type="number"
-          min="0"
-          step="0.01"
-          value={formData.vehicle_maintenance ?? ''}
-          onChange={(e) => handleChange('vehicle_maintenance', e.target.value)}
-          error={errors.vehicle_maintenance}
-          helpText="Gas, public transit, parking, tolls"
-          placeholder="0.00"
-        />
-      </section>
+        {amountBox('utilities')}
+        {amountBox('food_and_groceries')}
+        {amountBox('childcare')}
+        {amountBox('clothing')}
+        {amountBox('personal_care')}
+        {amountBox('medical_expenses')}
+        {amountBox('vehicle_maintenance')}
+        {amountBox('entertainment')}
+        {amountBox('charitable_contributions')}
 
-      {/* Living Expenses */}
-      <section className="form-section">
-        <h3 className="section-title">Living Expenses</h3>
-        <p className="section-description">
-          Include food, childcare, medical expenses, and other necessary costs.
-        </p>
+        <fieldset className="form-field">
+          <legend className="form-label">{LINE_15_GROUP_HEADING}</legend>
+          {amountBox('vehicle_insurance')}
+          {amountBox('insurance_not_deducted')}
+        </fieldset>
 
-        <div className="form-row">
-          <FormField
-            label="Food & Groceries"
-            name="food_and_groceries"
-            type="number"
-            min="0"
-            step="0.01"
-            value={formData.food_and_groceries ?? ''}
-            onChange={(e) => handleChange('food_and_groceries', e.target.value)}
-            error={errors.food_and_groceries}
-            helpText="Groceries, dining out, household supplies"
-            placeholder="0.00"
-          />
+        {amountBox('taxes_not_deducted')}
+        {specifyBox('taxes_specify')}
+        {amountBox('vehicle_payment')}
+        {amountBox('child_support_paid')}
+        {amountBox('support_others')}
+        {specifyBox('support_others_specify')}
 
-          <FormField
-            label="Childcare"
-            name="childcare"
-            type="number"
-            min="0"
-            step="0.01"
-            value={formData.childcare ?? ''}
-            onChange={(e) => handleChange('childcare', e.target.value)}
-            error={errors.childcare}
-            helpText="Daycare, after-school care, babysitting"
-            placeholder="0.00"
-          />
-        </div>
+        <fieldset className="form-field">
+          <legend className="form-label">{LINE_20_GROUP_HEADING}</legend>
+          {amountBox('other_property_mortgages')}
+          {amountBox('other_property_taxes')}
+          {amountBox('other_property_insurance')}
+          {amountBox('other_property_upkeep')}
+          {amountBox('other_property_hoa_dues')}
+        </fieldset>
 
-        <div className="form-row">
-          <FormField
-            label="Medical Expenses"
-            name="medical_expenses"
-            type="number"
-            min="0"
-            step="0.01"
-            value={formData.medical_expenses ?? ''}
-            onChange={(e) => handleChange('medical_expenses', e.target.value)}
-            error={errors.medical_expenses}
-            helpText="Doctor visits, prescriptions, co-pays not covered by insurance"
-            placeholder="0.00"
-          />
-
-          <FormField
-            label="Insurance (Not Deducted from Pay)"
-            name="insurance_not_deducted"
-            type="number"
-            min="0"
-            step="0.01"
-            value={formData.insurance_not_deducted ?? ''}
-            onChange={(e) => handleChange('insurance_not_deducted', e.target.value)}
-            error={errors.insurance_not_deducted}
-            helpText="Health, life, or disability insurance you pay directly"
-            placeholder="0.00"
-          />
-        </div>
-
-        <div className="form-row">
-          <FormField
-            label="Clothing"
-            name="clothing"
-            type="number"
-            min="0"
-            step="0.01"
-            value={formData.clothing ?? ''}
-            onChange={(e) => handleChange('clothing', e.target.value)}
-            error={errors.clothing}
-            helpText="Clothes, shoes, laundry, and dry cleaning"
-            placeholder="0.00"
-          />
-
-          <FormField
-            label="Child Support Paid"
-            name="child_support_paid"
-            type="number"
-            min="0"
-            step="0.01"
-            value={formData.child_support_paid ?? ''}
-            onChange={(e) => handleChange('child_support_paid', e.target.value)}
-            error={errors.child_support_paid}
-            helpText="Court-ordered support you pay to someone else"
-            placeholder="0.00"
-          />
-        </div>
-
-        <FormField
-          label="Other Necessary Expenses"
-          name="other_expenses"
-          type="number"
-          min="0"
-          step="0.01"
-          value={formData.other_expenses ?? ''}
-          onChange={(e) => handleChange('other_expenses', e.target.value)}
-          error={errors.other_expenses}
-          helpText="Clothing, laundry, personal care, pet care, other essentials"
-          placeholder="0.00"
-        />
+        {amountBox('other_expenses')}
+        {specifyBox('other_expenses_specify')}
       </section>
 
       {/* Total Summary */}

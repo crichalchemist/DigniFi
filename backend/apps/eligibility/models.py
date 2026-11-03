@@ -9,8 +9,10 @@ from encrypted_model_fields.fields import EncryptedTextField
 
 from apps.districts.dated_tables import fill_date, in_force
 from apps.intake.household import count_family_size
+from apps.intake.income import floored_net
 
 from .cmi import (
+    counted_spouse_income,
     household_cmi,
     household_members,
     income_step_gaps,
@@ -190,8 +192,19 @@ class MeansTest(models.Model):
         for field in income_info.SOURCE_FIELDS:
             amount = getattr(income_info, field)
             income_by_source[field] = None if amount is None else float(amount)
+        spouse_row = counted_spouse_income(self.session)
+        spouse_entries = None if spouse_row is None else spouse_row.get_entries()
+        entries = income_info.get_entries()
         details.update(
             {
+                "business_net": f"{floored_net(entries, 'business'):.2f}",
+                "rental_net": f"{floored_net(entries, 'rental'):.2f}",
+                "spouse_business_net": (
+                    None if spouse_row is None else f"{floored_net(spouse_entries, 'business'):.2f}"
+                ),
+                "spouse_rental_net": (
+                    None if spouse_row is None else f"{floored_net(spouse_entries, 'rental'):.2f}"
+                ),
                 "cmi": float(cmi),
                 "annualized_cmi": float(annualized_cmi),
                 "median_income_threshold": float(median_income_threshold),

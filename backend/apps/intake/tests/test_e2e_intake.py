@@ -405,6 +405,7 @@ class TestIntakeSessionCompletion:
         # Add expense info
         ExpenseInfo.objects.create(
             session=session,
+            expenses_include_others="no",
             rent_or_mortgage=Decimal("1500.00"),
             utilities=Decimal("200.00"),
             home_maintenance=Decimal("50.00"),
@@ -438,6 +439,7 @@ class TestIntakeSessionCompletion:
 
         ExpenseInfo.objects.create(
             session=session,
+            expenses_include_others="no",
             rent_or_mortgage=Decimal("1500.00"),
             utilities=Decimal("200.00"),
             home_maintenance=Decimal("50.00"),
@@ -481,6 +483,7 @@ class TestIntakeSessionCompletion:
 
         ExpenseInfo.objects.create(
             session=session,
+            expenses_include_others="no",
             rent_or_mortgage=Decimal("1500.00"),
             utilities=Decimal("200.00"),
             home_maintenance=Decimal("50.00"),
@@ -511,6 +514,26 @@ class TestIntakeSessionCompletion:
                 ),
             },
             {"step": "income_info", "message": "Enter your income by source on the Income step."},
+            {
+                "step": "income_info",
+                "message": (
+                    "Tell us about any business or rental property on the Income step, "
+                    "or say you have none."
+                ),
+            },
+            {
+                "step": "income_info",
+                "message": (
+                    "Answer whether your income is now different from the six-month average, "
+                    "on the Income step."
+                ),
+            },
+            {
+                "step": "income_info",
+                "message": (
+                    "Answer whether you receive other government assistance, on the Income step."
+                ),
+            },
         ]
 
     def test_complete_session_missing_expense_info(self, api_client, session):
@@ -660,6 +683,7 @@ class TestMeansTestCalculation:
 
         ExpenseInfo.objects.create(
             session=session,
+            expenses_include_others="no",
             rent_or_mortgage=Decimal("1500.00"),
             utilities=Decimal("200.00"),
             home_maintenance=Decimal("50.00"),

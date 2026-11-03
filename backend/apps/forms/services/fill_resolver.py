@@ -11,12 +11,19 @@ returns its form part.
 
 from __future__ import annotations
 
-from apps.eligibility.cmi import household_members
+from apps.eligibility.cmi import counted_spouse_income, household_members
 from apps.forms.field_index import option_text
-from apps.forms.schema import FieldSpec, FormSchema, GroupSpec, PageNumberBoxes
+from apps.forms.schema import (
+    FieldSpec,
+    FormSchema,
+    GroupSpec,
+    PageNumberBoxes,
+    is_statement_group,
+)
 from apps.forms.services.derivations import DERIVATIONS, PREDICATES, RULE_FIXES
 from apps.forms.services.widgets import TemplateWidget, page_count, parse_key, template_widgets
 from apps.intake.household import RELATIONSHIP_WORDS, dependents
+from apps.intake.income import statement_rows
 from apps.intake.models import FormAnswer, IntakeSession
 
 
@@ -77,6 +84,15 @@ def resolve_binding(binding: str, session: IntakeSession) -> str | list[str]:
         values = (row.get(attr) for row in dependents(household_members(session)))
         return ["" if value is None else cell(value) for value in values]
 
+    if binding.startswith("income.statement[]."):
+        attr = binding[len("income.statement[].") :]
+        if attr not in ("owner", "description", "gross", "expenses", "net"):
+            raise ValueError(f"unrecognized binding: {binding!r}")
+        filer = getattr(session, "income_info", None)
+        if filer is None:
+            return []
+        return [row[attr] for row in statement_rows(filer, counted_spouse_income(session))]
+
     raise ValueError(f"unrecognized binding: {binding!r}")
 
 
@@ -128,6 +144,22 @@ def _key(field: FieldSpec) -> str:
     return f"{field.pdf_field}@{field.page}:{field.tag}"
 
 
+def binding_fix(binding: str) -> dict[str, str]:
+    """Where the filer changes what a binding reads, from its namespace; {} for no namespace."""
+    binding = binding.strip()
+    if binding.startswith("answer:"):
+        # The form the binding names, which isn't always the one printing it: Form 101's
+        # preparer prints on 106Dec and 107 too.
+        form_type, _, _ = binding[len("answer:") :].partition(".")
+        return {"page": f"/ask/{form_type}"}
+    if binding.startswith("sofa."):
+        return {"page": "/sofa"}
+    if binding.startswith(("household.", "income.")):
+        return {"step": "income_info"}
+    # A constant or a signature: a refusal there is DigniFi's defect, not the filer's.
+    return {}
+
+
 def fix_for(field: FieldSpec) -> dict[str, str]:
     """
     Where the filer changes a binding's value, for a refusal to link to (3a2 spec §4.5):
@@ -137,18 +169,7 @@ def fix_for(field: FieldSpec) -> dict[str, str]:
         return dict(RULE_FIXES[field.rule])  # a copy: the map is shared by every refusal
     if field.source in ("ingested", "db_aggregate"):
         return {"page": "/documents"}
-    binding = (field.binding or "").strip()
-    if binding.startswith("answer:"):
-        # The form the binding names, which isn't always the one printing it: Form 101's
-        # preparer prints on 106Dec and 107 too.
-        form_type, _, _ = binding[len("answer:") :].partition(".")
-        return {"page": f"/ask/{form_type}"}
-    if binding.startswith("sofa."):
-        return {"page": "/sofa"}
-    if binding.startswith("household."):
-        return {"step": "income_info"}
-    # A constant or a signature: a refusal there is DigniFi's defect, not the filer's.
-    return {}
+    return binding_fix(field.binding or "")
 
 
 def _unmapped(field: FieldSpec) -> bool:
@@ -434,4 +455,22 @@ def resolve_parts(schema: FormSchema, session: IntakeSession) -> dict:
             session,
             _ingested_cache,
         )
+    for name, group in schema.groups.items():
+        if not is_statement_group(schema, name):
+            continue
+        columns = [resolve_binding(c.binding, session) for c in group.sheet.columns]
+        if columns and columns[0]:
+            sheets.append(
+                {
+                    "kind": "sheet",
+                    "group": name,
+                    "title": group.sheet.title,
+                    "columns": [{"label": c.label, "width": c.width} for c in group.sheet.columns],
+                    "name": DERIVATIONS["full_name"](session),
+                    "rows": [
+                        {"line": group.number.format(n=i), "cells": [col[i - 1] for col in columns]}
+                        for i in range(1, len(columns[0]) + 1)
+                    ],
+                }
+            )
     return {"version": 2, "parts": [{"kind": "form", "values": out}, *copies, *sheets]}

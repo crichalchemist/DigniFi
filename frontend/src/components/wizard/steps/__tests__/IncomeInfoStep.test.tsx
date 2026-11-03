@@ -1,11 +1,14 @@
 import { useState } from 'react';
-import { render, screen, fireEvent, within } from '@testing-library/react';
+import { render, screen, fireEvent, within, cleanup } from '@testing-library/react';
 import { vi } from 'vitest';
 import { IncomeInfoStep } from '../IncomeInfoStep';
 import { INCOME_FIELDS } from '../../../../types/api';
+import type { EntryRow } from '../../../../utils/incomeEntries';
 import type {
   HouseholdMember,
+  IncomeEntry,
   IncomeInfo,
+  IncomePeriod,
   Relationship,
   SpouseIncome,
   WizardRow,
@@ -19,7 +22,7 @@ const BOXES: [RegExp, (typeof INCOME_FIELDS)[number]][] = [
   [/monthly wages/i, 'monthly_gross_wages'],
   [/monthly overtime/i, 'monthly_overtime'],
   [/monthly tips/i, 'monthly_tips'],
-  [/rental income after the property's costs/i, 'monthly_rental_income'],
+  [/interest, dividends, and royalties/i, 'monthly_interest_and_dividends'],
   [/pension/i, 'monthly_pension'],
   [/social security/i, 'monthly_social_security'],
   [/unemployment/i, 'monthly_unemployment'],
@@ -47,15 +50,34 @@ function renderStep(
     rows = [],
     noOneElse = false,
     spouse,
-  }: { rows?: Row[]; noOneElse?: boolean; spouse?: SpouseIncome } = {}
+    entries = [],
+    spouseEntries = [],
+    incomeWindow = { start: '2026-04-01', end: '2026-09-30' },
+    answeredWindow = null,
+  }: {
+    rows?: Row[];
+    noOneElse?: boolean;
+    spouse?: SpouseIncome;
+    entries?: EntryRow[];
+    spouseEntries?: EntryRow[];
+    incomeWindow?: IncomePeriod;
+    answeredWindow?: IncomePeriod | null;
+  } = {}
 ) {
   const onDataChange = vi.fn();
   const onValidationChange = vi.fn();
   const onRowsChange = vi.fn();
   let heldRows = rows;
+  let heldEntries = entries;
+  let heldSpouseEntries = spouseEntries;
+  const heldNoEntries = { filer: false, spouse: false };
   function Wizard() {
     const [householdRows, setHouseholdRows] = useState(rows);
     const [pressed, setPressed] = useState(noOneElse);
+    const [entryRows, setEntryRows] = useState(entries);
+    const [spouseEntryRows, setSpouseEntryRows] = useState(spouseEntries);
+    const [noEntries, setNoEntries] = useState(false);
+    const [spouseNoEntries, setSpouseNoEntries] = useState(false);
     return (
       <IncomeInfoStep
         initialData={initialData}
@@ -71,6 +93,28 @@ function renderStep(
         onNoOneElseChange={setPressed}
         initialSpouseIncome={spouse}
         onSpouseIncomeChange={() => {}}
+        incomeWindow={incomeWindow}
+        answeredWindow={answeredWindow}
+        entryRows={entryRows}
+        onEntryRowsChange={(next: EntryRow[]) => {
+          heldEntries = next;
+          setEntryRows(next);
+        }}
+        spouseEntryRows={spouseEntryRows}
+        onSpouseEntryRowsChange={(next: EntryRow[]) => {
+          heldSpouseEntries = next;
+          setSpouseEntryRows(next);
+        }}
+        noEntries={noEntries}
+        onNoEntriesChange={(next: boolean) => {
+          heldNoEntries.filer = next;
+          setNoEntries(next);
+        }}
+        spouseNoEntries={spouseNoEntries}
+        onSpouseNoEntriesChange={(next: boolean) => {
+          heldNoEntries.spouse = next;
+          setSpouseNoEntries(next);
+        }}
       />
     );
   }
@@ -82,7 +126,19 @@ function renderStep(
     onValidationChange.mock.calls[onValidationChange.mock.calls.length - 1][0] as boolean;
   // The rows the wizard holds now
   const lastRows = () => heldRows;
-  return { lastEmitted, canContinue, lastRows, onRowsChange };
+  // The entries the wizard holds now, and whether each person pressed "none"
+  const lastEntries = () => heldEntries;
+  const lastSpouseEntries = () => heldSpouseEntries;
+  const noEntriesNow = () => heldNoEntries;
+  return {
+    lastEmitted,
+    canContinue,
+    lastRows,
+    onRowsChange,
+    lastEntries,
+    lastSpouseEntries,
+    noEntriesNow,
+  };
 }
 
 /** A form control by its name, as the journeys find them */
@@ -251,6 +307,10 @@ describe('IncomeInfoStep, family first', () => {
       ['marital_status', 'not_married'],
       ['marital_status', 'married_spouse_filing'],
       ['marital_status', 'not_filing'],
+      ['income_now_different', 'yes'],
+      ['income_now_different', 'no'],
+      ['assistance_answer', 'yes'],
+      ['assistance_answer', 'no'],
     ]);
     for (const radio of radios) expect(radio).not.toBeChecked();
     expect(
@@ -490,5 +550,416 @@ describe('IncomeInfoStep, family first', () => {
       expect(field(name)).toHaveAccessibleDescription(/you receive/i);
       expect(field(`spouse_${name}`)).not.toHaveAccessibleDescription(/you receive/i);
     }
+  });
+});
+
+/** An entry loaded from the server, with its amounts already numbers */
+function loadedEntry(id: number, extra: Partial<IncomeEntry> = {}): EntryRow {
+  return {
+    _key: String(id),
+    id,
+    kind: 'business',
+    description: null,
+    gross: null,
+    expenses: null,
+    current_gross: null,
+    current_expenses: null,
+    ...extra,
+  };
+}
+
+const FLOOR_BUSINESS =
+  'For your business income, your operating expenses are more than your gross receipts. DigniFi counts this net as $0.00 on Form 122A-1, and on Schedule I unless your income is now different.';
+const FLOOR_RENTAL = FLOOR_BUSINESS.replace('business', 'rental');
+
+describe('IncomeInfoStep, averages and the list', () => {
+  const ADD = '+ Add a business or property';
+  const NO_BUSINESS = 'I have no business or rental income.';
+
+  // §4.4: the months in words, from the ISO parts
+  it("the window sentence names the session's months in words", () => {
+    renderStep({});
+    expect(
+      screen.getByText('Your average monthly income for April 1, 2026 through September 30, 2026')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'If the amount of your monthly income varied during the 6 months, add the income for all 6 months and divide the total by 6.'
+      )
+    ).toBeInTheDocument();
+
+    // A window across a year names both years
+    cleanup();
+    renderStep({}, { incomeWindow: { start: '2026-09-01', end: '2027-02-28' } });
+    expect(
+      screen.getByText(
+        'Your average monthly income for September 1, 2026 through February 28, 2027'
+      )
+    ).toBeInTheDocument();
+  });
+
+  it('interest sits after alimony and child support and before unemployment', () => {
+    renderStep({});
+    const order = [
+      'monthly_child_support',
+      'monthly_alimony',
+      'monthly_interest_and_dividends',
+      'monthly_unemployment',
+    ];
+    for (let i = 0; i < order.length - 1; i += 1) {
+      expect(
+        field(order[i]).compareDocumentPosition(field(order[i + 1])) &
+          Node.DOCUMENT_POSITION_FOLLOWING
+      ).toBeTruthy();
+    }
+    expect(screen.getByLabelText('Interest, dividends, and royalties')).toBe(
+      field('monthly_interest_and_dividends')
+    );
+    // Rental income is a list entry now, so the old rental box is gone
+    const oldRentalBox = ['monthly', 'rental', 'income'].join('_');
+    expect(document.querySelector(`[name="${oldRentalBox}"]`)).toBeNull();
+  });
+
+  it('the list starts unanswered until the button or an entry', () => {
+    const { lastEntries, noEntriesNow } = renderStep({});
+    expect(lastEntries()).toEqual([]);
+    const none = screen.getByRole('button', { name: NO_BUSINESS });
+    expect(none).toHaveAttribute('aria-pressed', 'false');
+
+    fireEvent.click(none);
+    expect(screen.getByRole('button', { name: NO_BUSINESS })).toHaveAttribute(
+      'aria-pressed',
+      'true'
+    );
+    expect(noEntriesNow().filer).toBe(true);
+
+    fireEvent.click(screen.getByRole('button', { name: ADD }));
+    fireEvent.change(field('entry_kind_0'), { target: { value: 'business' } });
+    expect(screen.queryByRole('button', { name: NO_BUSINESS })).toBeNull();
+    expect(noEntriesNow().filer).toBe(false);
+  });
+
+  it('+ Add is disabled at 10 entries', () => {
+    const nine = Array.from({ length: 9 }, (_, i) => loadedEntry(i + 1));
+    renderStep({}, { entries: nine });
+    expect(screen.getByRole('button', { name: ADD })).toBeEnabled();
+    fireEvent.click(screen.getByRole('button', { name: ADD }));
+    expect(screen.getByRole('button', { name: ADD })).toBeDisabled();
+  });
+
+  it('each entry shows its own net', () => {
+    renderStep(
+      {},
+      {
+        entries: [
+          loadedEntry(1, { gross: 4200, expenses: 830 }),
+          loadedEntry(2, { gross: 100, expenses: 300 }),
+        ],
+      }
+    );
+    const nets = screen.getAllByText('Net a month').map((label) => label.closest('section'));
+    expect(nets[0]).toHaveTextContent('$3,370.00');
+    expect(nets[1]).toHaveTextContent('-$200.00');
+  });
+
+  // §4.2: information only, on the averages' forms alone
+  it("the averages floor sentence shows only while a kind's summed net is below $0, naming only 122A-1 and Schedule I", () => {
+    renderStep(
+      {},
+      {
+        entries: [
+          loadedEntry(1, { gross: 4200, expenses: 830 }),
+          loadedEntry(2, { gross: 100, expenses: 300 }),
+        ],
+      }
+    );
+    expect(screen.queryByText(FLOOR_BUSINESS)).toBeNull();
+
+    fireEvent.change(field('entry_gross_0'), { target: { value: '500' } });
+    const sentence = screen.getByText(FLOOR_BUSINESS);
+    expect(sentence).toBeInTheDocument();
+    expect(screen.queryByText(FLOOR_RENTAL)).toBeNull();
+    expect(sentence.textContent).toMatch(/Form 122A-1/);
+    expect(sentence.textContent).toMatch(/Schedule I/);
+    expect(sentence.textContent).not.toMatch(/Schedule J|106/);
+  });
+
+  it('the totals line includes the floored nets', () => {
+    renderStep(
+      {},
+      {
+        entries: [
+          loadedEntry(1, { gross: 4200, expenses: 830 }),
+          loadedEntry(2, { kind: 'rental', gross: 100, expenses: 500 }),
+        ],
+      }
+    );
+    fireEvent.change(field('monthly_gross_wages'), { target: { value: '1000' } });
+    expect(
+      screen.getByText('Your income', { selector: 'dt' }).nextElementSibling
+    ).toHaveTextContent('$4,370.00');
+  });
+
+  it('the operating expenses box says to count a cost once', () => {
+    renderStep({}, { entries: [loadedEntry(1)] });
+    expect(field('entry_expenses_0')).toHaveAccessibleDescription(
+      expect.stringContaining(
+        'If one cost is both for this work and for your home, count each dollar once, in one place only: here or on the Expenses step. How you split it is your choice. Legal aid can help.'
+      )
+    );
+  });
+
+  it('a blank amount on a saved entry says so in its own box, for a screen reader', () => {
+    renderStep({}, { entries: [loadedEntry(1)] });
+    for (const name of ['entry_gross_0', 'entry_expenses_0', 'entry_description_0']) {
+      expect(field(name)).toHaveAccessibleDescription(expect.stringContaining('Not answered yet'));
+    }
+    fireEvent.change(field('entry_gross_0'), { target: { value: '5' } });
+    expect(field('entry_gross_0')).not.toHaveAccessibleDescription(
+      expect.stringContaining('Not answered yet')
+    );
+  });
+
+  it("the spouse's cards carry the spouse's name", () => {
+    renderStep({ marital_status: 'married_together' }, { spouseEntries: [loadedEntry(2)] });
+    expect(
+      screen.getByRole('heading', { name: "Spouse's business or property 1" })
+    ).toBeInTheDocument();
+  });
+
+  it("the spouse's list carries the form's one-column sentence, and its own buttons", () => {
+    renderStep({ marital_status: 'married_together' });
+    const section = screen
+      .getByRole('heading', { name: "Your spouse's income" })
+      .closest('section');
+    expect(section).toHaveTextContent(
+      'Do not include any income amount more than once. For example, if both spouses own the same rental property, put the income from that property in one column only.'
+    );
+    expect(
+      screen.getByRole('button', { name: "+ Add your spouse's business or property" })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'My spouse has no business or rental income.' })
+    ).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: ADD })).toHaveLength(1);
+
+    fireEvent.click(
+      screen.getByRole('button', { name: "+ Add your spouse's business or property" })
+    );
+    expect(field('spouse_entry_kind_0')).toBeInTheDocument();
+    pick('marital_status', 'not_filing');
+    pick('spouse_household', 'married_separately');
+    expect(document.querySelector('[name^="spouse_entry_"]')).toBeNull();
+  });
+
+  it('an entry amount the server would refuse blocks Continue', () => {
+    const { canContinue } = renderStep({}, { entries: [loadedEntry(1)] });
+    fireEvent.change(field('entry_gross_0'), { target: { value: '12.345' } });
+    expect(canContinue()).toBe(false);
+    fireEvent.change(field('entry_gross_0'), { target: { value: '12.34' } });
+    expect(canContinue()).toBe(true);
+    // A blank description, kind or amount never blocks
+    fireEvent.change(field('entry_description_0'), { target: { value: '' } });
+    fireEvent.change(field('entry_kind_0'), { target: { value: '' } });
+    fireEvent.change(field('entry_gross_0'), { target: { value: '' } });
+    expect(canContinue()).toBe(true);
+  });
+});
+
+describe('IncomeInfoStep, now different and assistance', () => {
+  const NOW_HEADING = 'Your income now (a month)';
+  const START = 'Start from my average figures';
+  const ASSISTANCE_8F =
+    'Other government assistance that you regularly receive. Include cash assistance and the value (if known) of any non-cash assistance that you receive, such as food stamps (benefits under the Supplemental Nutrition Assistance Program) or housing subsidies.';
+  const FLOOR_CURRENT_BUSINESS =
+    'For your business income now, your operating expenses are more than your gross receipts. DigniFi counts this net as $0.00 on Schedule I.';
+  const CURRENT_BOXES = INCOME_FIELDS.map((f) => `current_${f}`);
+  const ASSISTANCE_BOXES = [
+    'cash_assistance_kind',
+    'cash_assistance_amount',
+    'noncash_assistance_kind',
+    'noncash_assistance_value',
+  ];
+
+  it('no new question starts answered', () => {
+    const { lastEmitted } = renderStep({ marital_status: 'married_together' });
+    for (const name of [
+      'income_now_different',
+      'assistance_answer',
+      'spouse_income_now_different',
+      'spouse_assistance_answer',
+    ]) {
+      for (const value of ['yes', 'no']) {
+        const radio = document.querySelector(`input[name="${name}"][value="${value}"]`);
+        expect(radio).not.toBeNull();
+        expect(radio).not.toBeChecked();
+      }
+    }
+    expect(lastEmitted().income_now_different ?? null).toBeNull();
+    expect(lastEmitted().assistance_answer ?? null).toBeNull();
+  });
+
+  it('the current section shows only under Yes, with no pre-fill', () => {
+    renderStep({ monthly_gross_wages: 3000 });
+    expect(document.querySelector('[name="current_monthly_gross_wages"]')).toBeNull();
+
+    pick('income_now_different', 'yes');
+    expect(screen.getByRole('heading', { name: NOW_HEADING })).toBeInTheDocument();
+    for (const name of CURRENT_BOXES) expect(field(name)).toHaveValue(null);
+    expect(field('monthly_gross_wages')).toHaveValue(3000);
+
+    pick('income_now_different', 'no');
+    expect(screen.queryByRole('heading', { name: NOW_HEADING })).toBeNull();
+    expect(document.querySelector('[name="current_monthly_gross_wages"]')).toBeNull();
+  });
+
+  it('Start from my average figures copies the averages, and the filer then edits', () => {
+    const { lastEmitted } = renderStep(
+      { monthly_gross_wages: 3000 },
+      { entries: [loadedEntry(1, { gross: 4200, expenses: 830 })] }
+    );
+    pick('income_now_different', 'yes');
+    fireEvent.click(screen.getByRole('button', { name: START }));
+
+    expect(field('current_monthly_gross_wages')).toHaveValue(3000);
+    expect(field('current_monthly_tips')).toHaveValue(null);
+    expect(field('entry_current_gross_0')).toHaveValue(4200);
+    expect(field('entry_current_expenses_0')).toHaveValue(830);
+
+    fireEvent.change(field('current_monthly_gross_wages'), { target: { value: '2500' } });
+    expect(lastEmitted().current_monthly_gross_wages).toBe(2500);
+    expect(lastEmitted().monthly_gross_wages).toBe(3000);
+  });
+
+  it('the current floor sentence shows only while a kind’s current net is below $0, naming only Schedule I', () => {
+    renderStep(
+      {},
+      {
+        entries: [
+          loadedEntry(1, { gross: 4200, expenses: 830, current_gross: 400, current_expenses: 830 }),
+        ],
+      }
+    );
+    expect(screen.queryByText(FLOOR_CURRENT_BUSINESS)).toBeNull();
+    pick('income_now_different', 'yes');
+
+    const sentence = screen.getByText(FLOOR_CURRENT_BUSINESS);
+    expect(sentence).not.toHaveTextContent(/122A-1/);
+    expect(screen.queryByText(/DigniFi counts this net as \$0.00 on Form 122A-1/)).toBeNull();
+
+    fireEvent.change(field('entry_current_gross_0'), { target: { value: '900' } });
+    expect(screen.queryByText(FLOOR_CURRENT_BUSINESS)).toBeNull();
+  });
+
+  it('the assistance boxes show under Yes, in the form’s words', () => {
+    const { lastEmitted } = renderStep({});
+    expect(screen.getByRole('group', { name: ASSISTANCE_8F })).toBeInTheDocument();
+    expect(
+      screen.getByText('Unemployment and Social Security have their own boxes. They are above.')
+    ).toBeInTheDocument();
+    for (const name of ASSISTANCE_BOXES) {
+      expect(document.querySelector(`[name="${name}"]`)).toBeNull();
+    }
+
+    pick('assistance_answer', 'yes');
+    for (const name of ASSISTANCE_BOXES) expect(field(name)).toBeInTheDocument();
+    expect(field('cash_assistance_kind')).toHaveAttribute('maxlength', '100');
+    expect(field('noncash_assistance_kind')).toHaveAttribute('maxlength', '100');
+    fireEvent.change(field('noncash_assistance_kind'), { target: { value: 'SNAP (food stamps)' } });
+
+    pick('assistance_answer', 'no');
+    for (const name of ASSISTANCE_BOXES) {
+      expect(document.querySelector(`[name="${name}"]`)).toBeNull();
+    }
+    expect(lastEmitted().noncash_assistance_kind).toBe('SNAP (food stamps)');
+  });
+
+  it('the spouse’s questions show only under married_together', () => {
+    renderStep({ marital_status: 'married_together' });
+    for (const name of ['spouse_income_now_different', 'spouse_assistance_answer']) {
+      expect(document.querySelector(`input[name="${name}"][value="yes"]`)).not.toBeNull();
+    }
+    expect(
+      screen.getByRole('heading', { name: "Your spouse's government assistance" })
+    ).toBeInTheDocument();
+    pick('spouse_income_now_different', 'yes');
+    expect(
+      screen.getByRole('heading', { name: "Your spouse's income now (a month)" })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: "Start from my spouse's average figures" })
+    ).toBeInTheDocument();
+    expect(field('spouse_current_monthly_gross_wages')).toHaveValue(null);
+    pick('spouse_assistance_answer', 'yes');
+    expect(field('spouse_cash_assistance_kind')).toBeInTheDocument();
+    expect(field('spouse_noncash_assistance_value')).toBeInTheDocument();
+
+    cleanup();
+    renderStep({ marital_status: 'married_separately' });
+    expect(document.querySelector('[name^="spouse_income_now"]')).toBeNull();
+    expect(document.querySelector('[name^="spouse_assistance"]')).toBeNull();
+  });
+
+  it('an amount the server would refuse stays on screen after the answer moves to No', () => {
+    const { canContinue } = renderStep({});
+    pick('assistance_answer', 'yes');
+    fireEvent.change(field('cash_assistance_amount'), { target: { value: '12.345' } });
+    pick('assistance_answer', 'no');
+
+    expect(field('cash_assistance_amount')).toBeInTheDocument();
+    expect(screen.getByText('Please enter dollars and cents, like 1250.50')).toBeInTheDocument();
+    expect(canContinue()).toBe(false);
+
+    fireEvent.change(field('cash_assistance_amount'), { target: { value: '12.34' } });
+    expect(document.querySelector('[name="cash_assistance_amount"]')).toBeNull();
+    expect(canContinue()).toBe(true);
+  });
+
+  it('an unanswered question says so on its own group, for a screen reader', () => {
+    renderStep({});
+    const group = screen.getByRole('group', {
+      name: 'Is your income now different from that average?',
+    });
+    expect(group).toHaveAccessibleDescription(expect.stringContaining('Not answered yet'));
+    pick('income_now_different', 'no');
+    expect(group).not.toHaveAccessibleDescription(expect.stringContaining('Not answered yet'));
+  });
+
+  it('the spouse’s assistance question names the spouse, never "you"', () => {
+    renderStep({ marital_status: 'married_together' });
+    const group = screen.getByRole('group', {
+      name: /Your spouse's government assistance.*your spouse regularly receives/,
+    });
+    const legend = group.querySelector('legend');
+    expect(legend).toHaveTextContent(/your spouse regularly receives/);
+    expect(legend).not.toHaveTextContent(/\byou\b/);
+    expect(field('spouse_assistance_answer')).toBeInTheDocument();
+  });
+});
+
+describe('the window notice at the top of the Income step', () => {
+  const WINDOW = { start: '2026-05-01', end: '2026-10-31' };
+  const MOVED =
+    'Your income figures are your monthly average for April 1, 2026 through September 30, 2026. If you file now, the six months are May 1, 2026 through October 31, 2026. Check your income on the Income step.';
+
+  it('shows only for a stamp older than the window, before the first heading', () => {
+    renderStep(
+      {},
+      { incomeWindow: WINDOW, answeredWindow: { start: '2026-04-01', end: '2026-09-30' } }
+    );
+    const notice = screen.getByText(MOVED);
+    const firstHeading = screen.getAllByRole('heading')[0];
+    expect(
+      notice.compareDocumentPosition(firstHeading) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+    cleanup();
+
+    renderStep({}, { incomeWindow: WINDOW, answeredWindow: WINDOW });
+    expect(screen.queryByText(/monthly average for/)).not.toBeInTheDocument();
+    cleanup();
+
+    renderStep({}, { incomeWindow: WINDOW, answeredWindow: null });
+    expect(screen.queryByText(/Your income figures are your monthly average for/)).toBeNull();
+    expect(screen.queryByText(/Check that your income figures/)).toBeNull();
   });
 });

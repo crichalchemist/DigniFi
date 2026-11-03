@@ -99,7 +99,7 @@ def ready(transactional_db):
     )
     user = User.objects.create_user(username="filer", password="pw")
     session = IntakeSession.objects.create(
-        user=user, district=district, status="in_progress", current_step=8
+        user=user, district=district, status="in_progress", current_step=9
     )
     DebtorInfo.objects.create(
         session=session,
@@ -120,7 +120,7 @@ def ready(transactional_db):
         monthly_gross_wages=Decimal("3000.00"),
     )
     answer_household(session)
-    ExpenseInfo.objects.create(session=session)
+    ExpenseInfo.objects.create(session=session, expenses_include_others="no")
     return user, session
 
 
@@ -488,6 +488,12 @@ WRITES = {
         "patch",
         _session_url(s),
         {"household": {"county": "Cook"}},
+        200,
+    ),
+    "income PATCH": lambda s, r: (
+        "patch",
+        _session_url(s),
+        {"income_info": {"business_and_rental": [{"kind": "business"}]}},
         200,
     ),
     "session PUT": lambda s, r: ("put", _session_url(s), {"district": s.district_id}, 200),

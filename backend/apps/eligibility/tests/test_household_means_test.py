@@ -29,7 +29,7 @@ from apps.intake.models import (
     IntakeSession,
     SpouseIncome,
 )
-from apps.intake.tests.builders import answer_household
+from apps.intake.tests.builders import answer_household, answer_income_detail
 from apps.users.models import User
 
 MARRIAGE = "Answer the question about marriage on the Income step."
@@ -114,13 +114,14 @@ def _ten(wages):
     }
 
 
-def _answer(session, marital_status, members, wages, spouse_wages=None):
+def _answer(session, marital_status, members, wages, spouse_wages=None, detail=None):
     IncomeInfo.objects.create(session=session, **_ten(wages))
     answer_household(
         session,
         marital_status=marital_status,
         members=members,
         spouse_income=None if spouse_wages is None else _ten(spouse_wages),
+        **(detail or {}),
     )
 
 
@@ -208,6 +209,9 @@ def _completed_before_3e1(session):
 
 
 REFUSED = {"error": MARRIAGE, "step": "income_info"}
+ENTRIES_UNANSWERED = (
+    "Tell us about any business or rental property on the Income step, or say you have none."
+)
 
 
 def _422(response):
@@ -262,6 +266,49 @@ def test_a_filed_form_with_no_stored_values_refuses_like_an_unfiled_one(filer):
     }
 
 
+def _completed_before_3e2(session):
+    """By hand: 3e1's answers, none of 3e2's (no list, no "now different", no assistance)."""
+    session.status = "completed"
+    session.save()
+    _debtor(session, ssn="900-12-3456")
+    IncomeInfo.objects.create(session=session, monthly_gross_wages=Decimal("3000.00"))
+    ExpenseInfo.objects.create(session=session, expenses_include_others=None)
+    answer_household(
+        session,
+        income_now_different=None,
+        business_and_rental=None,
+        assistance_answer=None,
+        payroll_tax=None,
+    )
+
+
+def test_an_intake_completed_before_3e2_refuses_every_forms_call_with_the_income_step(filer):
+    client, session = filer
+    _completed_before_3e2(session)
+    form = GeneratedForm.objects.create(
+        session=session, form_type="form_106dec", status="generated", generated_by=session.user
+    )
+    refused = {"error": ENTRIES_UNANSWERED, "step": "income_info"}  # the list comes first (§8.1)
+    one = {"form_type": "form_106dec", **refused}
+    assert (
+        _422(client.post("/api/forms/generate_all/", {"session_id": session.pk}, format="json"))
+        == refused
+    )
+    assert _422(client.get("/api/forms/packet/", {"session": session.pk})) == refused
+    assert (
+        _422(
+            client.post(
+                "/api/forms/generate/",
+                {"session_id": session.pk, "form_type": "form_106dec"},
+                format="json",
+            )
+        )
+        == one
+    )
+    assert _422(client.post(f"/api/forms/{form.pk}/regenerate/")) == one
+    assert _422(client.get(f"/api/forms/{form.pk}/download/")) == one
+
+
 # ── The session read returns the two counts (spec §4.4) ─────────────────
 
 
@@ -294,8 +341,9 @@ def test_the_counts_are_null_while_a_gap_remains_and_a_bare_session_reads_withou
     [
         (None, [], "2000.00", None),  # the list says no one, the marriage question unanswered
         ("married_together", [SPOUSE_44], "3500.00", None),  # no spouse's income entered
+        ("not_married", [], "2000.00", None, {"income_now_different": None}),
     ],
-    ids=["marriage_unanswered", "spouse_income_not_entered"],
+    ids=["marriage_unanswered", "spouse_income_not_entered", "now_different_unanswered"],
 )
 def test_the_counts_are_null_while_another_income_step_gap_remains(filer, household):
     # The list is answered, so both counts could be worked out; the means test would still
@@ -313,8 +361,10 @@ def test_a_patch_that_answers_the_income_step_returns_its_counts_in_the_reply(fi
     # Review Focus 1. Stored by hand before this PATCH, as autosave leaves them: the gaps'
     # old answers.
     Household.objects.create(session=session, county="Cook")
-    IncomeInfo.objects.create(session=session, monthly_gross_wages=Decimal("3500.00"))
-    SpouseIncome.objects.create(session=session)
+    answer_income_detail(
+        IncomeInfo.objects.create(session=session, monthly_gross_wages=Decimal("3500.00"))
+    )
+    answer_income_detail(SpouseIncome.objects.create(session=session))
     reply = client.patch(
         url,
         {
