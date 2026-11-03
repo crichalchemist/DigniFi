@@ -987,6 +987,50 @@ class FeeWaiverApplication(models.Model):
         return (poverty_threshold_annual * self.POVERTY_MULTIPLIER) / self.MONTHS_PER_YEAR
 
 
+class FilingFee(models.Model):
+    """
+    How the filer will pay the filing fee (Form 101 line 8), and Form 103B's own
+    questions 4, 5, 7 and 9 for a filer who asks for a waiver (3f spec §4). Every answer
+    is encrypted; null means unanswered. It is not intake data: saving it never reopens
+    a completed intake.
+    """
+
+    session = models.OneToOneField(
+        IntakeSession, on_delete=models.CASCADE, related_name="filing_fee"
+    )
+    payment_choice = EncryptedCharField(max_length=20, null=True, blank=True)
+    income_change_answer = EncryptedCharField(max_length=3, null=True, blank=True)
+    income_change_explanation = EncryptedTextField(blank=True, default="")
+    installments_explanation = EncryptedTextField(blank=True, default="")
+    others_covered_answer = EncryptedCharField(max_length=3, null=True, blank=True)
+    others_covered_who = EncryptedTextField(blank=True, default="")
+    expense_change_answer = EncryptedCharField(max_length=3, null=True, blank=True)
+    expense_change_explanation = EncryptedTextField(blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    PAYMENT_CHOICES: ClassVar[tuple[str, ...]] = ("pay_in_full", "installments", "waiver")
+    YES_NO_FIELDS: ClassVar[tuple[str, ...]] = (
+        "income_change_answer",
+        "others_covered_answer",
+        "expense_change_answer",
+    )
+    # Measured against 103B's `4 type`, `5 Type`, `undefined_8` and `undefined_10`
+    # (PDFFormFiller.check at the smallest font, rounded down to a multiple of 10).
+    TEXT_LIMITS: ClassVar[dict[str, int]] = {
+        "income_change_explanation": 520,
+        "installments_explanation": 520,
+        "others_covered_who": 420,
+        "expense_change_explanation": 420,
+    }
+
+    class Meta:
+        db_table = "filing_fees"
+
+    def __str__(self) -> str:
+        return f"Filing fee (Session: {self.session_id})"
+
+
 class SOFAReport(models.Model):
     """Statement of Financial Affairs (Form 107) structured data, per session.
 

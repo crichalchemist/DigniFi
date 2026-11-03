@@ -21,6 +21,7 @@ from apps.eligibility.cmi import (
 from apps.eligibility.services import MeansTestCalculator
 from apps.forms.registry import PreconditionMissing, _needs_county, _needs_ssn
 
+from .filing_fee import filing_fee_information
 from .income import deductions_blank, schedule_i_line4
 from .locking import lock_session
 from .models import (
@@ -29,6 +30,7 @@ from .models import (
     DebtInfo,
     ExecutoryContract,
     FeeWaiverApplication,
+    FilingFee,
     FormAnswer,
     IntakeSession,
     SOFAReport,
@@ -42,6 +44,7 @@ from .serializers import (
     ExecutoryContractRowSerializer,
     ExecutoryContractSerializer,
     FeeWaiverApplicationSerializer,
+    FilingFeeSerializer,
     IntakeSessionSerializer,
     SOFAReportSerializer,
     _save_rows_by_id,
@@ -569,6 +572,30 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
             return Response(status=status.HTTP_204_NO_CONTENT)
         except Codebtor.DoesNotExist:
             return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
+
+    @action(detail=True, methods=["get", "put"], url_path="filing-fee", url_name="filing-fee")
+    def filing_fee(self, request, pk=None):
+        """GET or PUT /api/intake/sessions/{id}/filing-fee/ (3f spec §6.5).
+
+        In any status. A PUT sets only the answers it sends, under the session lock, and never
+        reopens a completed intake: how the fee is paid is not intake data. Both reply with the
+        eight answers, information and information_gap.
+        """
+        session = self.get_object()  # another user's session is a 404
+        if request.method == "PUT":
+            serializer = FilingFeeSerializer(data=request.data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            with transaction.atomic():
+                lock_session(session.pk)
+                row, _ = FilingFee.objects.get_or_create(session=session)
+                for name, value in serializer.validated_data.items():
+                    setattr(row, name, value)
+                row.save()
+        row = FilingFee.objects.filter(session=session).first() or FilingFee(session=session)
+        information, gap = filing_fee_information(session)
+        return Response(
+            {**FilingFeeSerializer(row).data, "information": information, "information_gap": gap}
+        )
 
     @action(detail=True, methods=["post"], url_path="dischargeability", url_name="dischargeability")
     def dischargeability(self, request, pk=None):

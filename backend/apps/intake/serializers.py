@@ -33,6 +33,7 @@ from .models import (
     ExecutoryContract,
     ExpenseInfo,
     FeeWaiverApplication,
+    FilingFee,
     Household,
     IncomeDetail,
     IncomeInfo,
@@ -883,6 +884,43 @@ class FeeWaiverApplicationSerializer(serializers.ModelSerializer):
         elif answer and not attrs.get("benefit_types", getattr(self.instance, "benefit_types", [])):
             raise serializers.ValidationError(
                 {"benefit_types": [self.fields["benefit_types"].error_messages["required"]]}
+            )
+        return attrs
+
+
+class FilingFeeSerializer(serializers.Serializer):
+    """The filing-fee page's answers (3f spec §6.5). A PUT sets only the keys it sends.
+    DRF drops an unknown key silently, so validate() refuses it by name: a page that sent
+    an answer under the wrong name gets a 400 instead of losing it."""
+
+    payment_choice = serializers.ChoiceField(choices=FilingFee.PAYMENT_CHOICES, required=False)
+    income_change_answer = serializers.ChoiceField(choices=YES_NO, allow_null=True, required=False)
+    others_covered_answer = serializers.ChoiceField(choices=YES_NO, allow_null=True, required=False)
+    expense_change_answer = serializers.ChoiceField(choices=YES_NO, allow_null=True, required=False)
+    income_change_explanation = serializers.CharField(
+        max_length=FilingFee.TEXT_LIMITS["income_change_explanation"],
+        allow_blank=True,
+        required=False,
+    )
+    installments_explanation = serializers.CharField(
+        max_length=FilingFee.TEXT_LIMITS["installments_explanation"],
+        allow_blank=True,
+        required=False,
+    )
+    others_covered_who = serializers.CharField(
+        max_length=FilingFee.TEXT_LIMITS["others_covered_who"], allow_blank=True, required=False
+    )
+    expense_change_explanation = serializers.CharField(
+        max_length=FilingFee.TEXT_LIMITS["expense_change_explanation"],
+        allow_blank=True,
+        required=False,
+    )
+
+    def validate(self, attrs):
+        unknown = sorted(set(self.initial_data) - set(self.fields))
+        if unknown:
+            raise serializers.ValidationError(
+                {name: ["This is not one of the filing-fee answers."] for name in unknown}
             )
         return attrs
 

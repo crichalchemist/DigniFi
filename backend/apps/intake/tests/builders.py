@@ -3,13 +3,15 @@
 Every value here is invented. answer_household's defaults make a session that passes 3e1's new
 checks: not married, no one else in the home or supported ([]), and Cook County. The 3e2
 defaults answer the other four: income not now different, no business or rental ([]), no other
-government assistance, and $0 taken out of pay.
+government assistance, and $0 taken out of pay. answer_household also chooses to pay the filing
+fee in full (Form 101 line 8), so a forms test meets no refusal for a missing answer;
+payment_choice=None leaves the answer as it is.
 """
 
 from collections.abc import Mapping, Sequence
 from decimal import Decimal
 
-from apps.intake.models import Household, SpouseIncome
+from apps.intake.models import FilingFee, Household, SpouseIncome
 
 
 def answer_income_detail(
@@ -45,6 +47,7 @@ def answer_household(
     business_and_rental: Sequence[dict] | None = (),
     assistance_answer: str | None = "no",
     payroll_tax: Decimal | None = Decimal("0"),
+    payment_choice: str | None = "pay_in_full",
 ) -> Household:
     """Store the marriage answer, the county and the household list, and the spouse's amounts
     when given, through the session's own relations, so a test holding the session reads them.
@@ -54,6 +57,9 @@ def answer_household(
 
     The four 3e2 answers (defaults: "no", [], "no", $0) go to the filer's row, and to the
     spouse's row when spouse_income is given.
+
+    payment_choice goes to the session's FilingFee, created if missing; None leaves any stored
+    row alone.
     """
     session.income_info.marital_status = marital_status
     session.income_info.save(update_fields=["marital_status"])
@@ -78,4 +84,8 @@ def answer_household(
         row.save()
         answer_income_detail(row, **detail)
         row.refresh_from_db()  # the Decimals the encrypted column returns
+    if payment_choice is not None:
+        fee = getattr(session, "filing_fee", None) or FilingFee(session=session)
+        fee.payment_choice = payment_choice
+        fee.save()
     return household

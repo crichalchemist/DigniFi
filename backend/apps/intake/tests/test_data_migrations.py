@@ -28,6 +28,7 @@ INCOME_ENCRYPTED = [("intake", "0022_incomeinfo_encrypt_swap")]
 EXPENSES_ENCRYPTED = [("intake", "0025_expenseinfo_encrypt_swap")]
 BEFORE = [("intake", "0027_expenseinfo_schedule_j_lines")]
 SHIFT = [("intake", "0028_shift_current_step")]
+FILING_FEE = [("intake", "0029_filingfee")]
 INCOME_SOURCES = [
     "monthly_gross_wages",
     "monthly_overtime",
@@ -607,3 +608,31 @@ def test_a_session_saved_before_take_home_pay_reopens_on_the_same_step_on_postgr
     assert after == {1: 1, 2: 2, 3: 4, 8: 9, 0: 0, 12: 12}
     assert undone == {1: 1, 2: 2, 3: 3, 8: 8, 0: 0, 12: 12}
     assert take_home == 3
+
+
+def _filing_fee_round_trip(migrate):
+    apps = migrate(SHIFT)
+    session = _session(apps)
+    apps = migrate(FILING_FEE)
+    FilingFee = apps.get_model("intake", "FilingFee")
+    FilingFee.objects.create(session_id=session.pk)
+    row = FilingFee.objects.get()
+    kept = (row.payment_choice, row.income_change_answer, row.installments_explanation)
+    migrate(SHIFT)
+    return kept, "filing_fees" in connection.introspection.table_names()
+
+
+def test_the_filing_fee_record_starts_unanswered_and_undoing_it_drops_its_table(migrate):
+    kept, table_left = _filing_fee_round_trip(migrate)
+    assert kept == (None, None, "")
+    assert table_left is False
+
+
+@pytest.mark.postgres
+@ON_POSTGRES
+def test_the_filing_fee_record_starts_unanswered_and_undoing_it_drops_its_table_on_postgres(
+    migrate,
+):
+    kept, table_left = _filing_fee_round_trip(migrate)
+    assert kept == (None, None, "")
+    assert table_left is False
