@@ -71,6 +71,7 @@ You ARE James Washington. Navigate DigniFi as he would.
 | Entertainment (line 13, "Entertainment, clubs, recreation, newspapers, magazines, and books") | $45                                                 |
 | Every other new Schedule J line (14, 16)                                                      | $0                                                  |
 | Other expenses, written in (line 21)                                                          | $100, "Work boots and small tools for my job"       |
+| How you will pay the fee (after Complete, Form 101 line 8)                                    | I will pay the entire fee when I file my petition.  |
 
 **Assets:**
 

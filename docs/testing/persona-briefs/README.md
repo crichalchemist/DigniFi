@@ -15,12 +15,12 @@ through the ILND means test calculator.
 
 | Brief                 | Archetype                  | Means Test                    | Key Test                                  |
 | --------------------- | -------------------------- | ----------------------------- | ----------------------------------------- |
-| `maria-torres.md`     | Below-median single parent | Passes, fee waiver            | Full happy path                           |
+| `maria-torres.md`     | Below-median single parent | Passes, asks for a fee waiver | Full happy path                           |
 | `james-washington.md` | Borderline single filer    | Passes (barely)               | Near-threshold messaging                  |
 | `priya-sharma.md`     | Above-median family        | Fails                         | Dignity-preserving ineligibility          |
-| `deshawn-mitchell.md` | Asset-heavy homeowner      | Passes, fee waiver            | Multi-asset entry, exemptions             |
-| `sarah-chen.md`       | Simplest case, no assets   | Passes, fee waiver            | Fastest path, empty-state handling        |
-| `andres-kettleby.md`  | Self-employed gig driver   | Passes, no waiver application | Income that isn't wages, ten amounts owed |
+| `deshawn-mitchell.md` | Asset-heavy homeowner      | Passes, pays in installments  | Multi-asset entry, exemptions             |
+| `sarah-chen.md`       | Simplest case, no assets   | Passes, asks for a fee waiver | Fastest path, empty-state handling        |
+| `andres-kettleby.md`  | Self-employed gig driver   | Passes, pays in installments  | Income that isn't wages, ten amounts owed |
 
 ## How to Run
 
