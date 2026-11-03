@@ -32,6 +32,7 @@ import {
   FORM_103A_URL,
   INSTALLMENTS_NOTICE,
 } from '../../constants/copy';
+import { UPL_WIZARD_DISCLAIMER } from '../../constants/upl';
 import type { FilingFee, FilingFeeInformation, PaymentChoice } from '../../types/api';
 
 const URL = 'http://localhost:8000/api/intake/sessions/:id/filing-fee/';
@@ -111,6 +112,13 @@ describe('FilingFeePage', () => {
       expect(await choice(c)).not.toBeChecked();
     }
     expect(screen.getByText(FEE_LAW_SENTENCE)).toBeInTheDocument();
+  });
+
+  it("every filer sees the information-not-advice disclaimer beside the court's limit", async () => {
+    serve(record());
+    renderPage();
+    const note = await screen.findByRole('note');
+    expect(note).toHaveTextContent(UPL_WIZARD_DISCLAIMER);
   });
 
   it("shows the court's limit and the family's own figure, and the court decides", async () => {

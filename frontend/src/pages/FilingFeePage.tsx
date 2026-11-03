@@ -3,6 +3,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useIntake } from '../context/IntakeContext';
 import { api } from '../api/client';
 import { Button, FormTextarea } from '../components/common';
+import { UPLDisclaimer } from '../components/compliance';
+import { UPL_WIZARD_DISCLAIMER } from '../constants/upl';
 import { FILING_FEE_TEXT_LIMITS } from '../constants/filingFee';
 import { WIZARD_STEPS } from '../constants/wizardSteps';
 import {
@@ -190,6 +192,7 @@ export function FilingFeePage() {
     <main className="filing-fee-page">
       <h1>{FILING_FEE_TITLE}</h1>
       <p>{FEE_LAW_SENTENCE}</p>
+      <UPLDisclaimer text={UPL_WIZARD_DISCLAIMER} variant="inline" />
 
       {read === 'failed' && (
         <div className="filing-fee-error">
