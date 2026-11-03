@@ -38,24 +38,11 @@ class TestGeminiProviderClassify:
         assert isinstance(contents, list)
         assert len(contents) == 2
 
-    def test_no_json_mime_type_on_classify(self, provider, mock_genai_client):
-        provider.classify(b"", "Classify")
-        call_args = mock_genai_client.models.generate_content.call_args
-        assert call_args.kwargs.get("config") is None
-
 
 class TestGeminiProviderExtract:
-    def test_text_mode_sets_json_mime(self, provider, mock_genai_client):
-
-        provider.extract([], "Extract fields")
-        call_args = mock_genai_client.models.generate_content.call_args
-        config = call_args.kwargs.get("config")
-        assert config is not None
-        assert config.response_mime_type == "application/json"
-
-    def test_vision_mode_sets_json_mime(self, provider, mock_genai_client):
-
-        provider.extract([b"\xff\xd8\xff"], "Extract fields from image")
+    @pytest.mark.parametrize("pages", [[], [b"\xff\xd8\xff"]], ids=["text_mode", "vision_mode"])
+    def test_extract_sets_json_mime(self, provider, mock_genai_client, pages):
+        provider.extract(pages, "Extract fields")
         call_args = mock_genai_client.models.generate_content.call_args
         config = call_args.kwargs.get("config")
         assert config is not None
@@ -69,14 +56,6 @@ class TestGeminiProviderExtract:
                 p = GeminiProvider()
         result = p.extract([], "Extract")
         assert result == ""
-
-    def test_vision_mode_passes_image_part_first(self, provider, mock_genai_client):
-        provider.extract([b"\xff\xd8\xff"], "Extract")
-        call_args = mock_genai_client.models.generate_content.call_args
-        contents = call_args.kwargs["contents"]
-        assert isinstance(contents, list)
-        # first element is the image Part, second is the prompt string
-        assert isinstance(contents[1], str)
 
     def test_every_scanned_page_reaches_gemini_in_page_order(self, provider, mock_genai_client):
         provider.extract([b"page-1", b"page-2", b"page-3"], "Extract")

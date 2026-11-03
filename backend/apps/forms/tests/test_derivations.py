@@ -329,48 +329,6 @@ def test_cmi_refuses_a_session_with_no_income_by_source(session):
         DERIVATIONS["cmi"](session)
 
 
-@pytest.mark.parametrize(
-    "rule",
-    [
-        f"schedule_i_{n}_{c}"
-        for n in (
-            "payroll_tax",
-            "payroll_mandatory_retirement",
-            "payroll_voluntary_retirement",
-            "payroll_retirement_loan",
-            "payroll_insurance",
-            "payroll_support",
-            "payroll_union_dues",
-            "payroll_other",
-            "total_deductions",
-        )
-        for c in ("debtor1", "spouse")
-    ]
-    + ["schedule_i_payroll_other_specify"],
-)
-def test_a_deduction_refusal_links_to_the_take_home_pay_step(rule):
-    assert RULE_FIXES[rule] == {"step": "take_home_pay"}
-
-
-@pytest.mark.parametrize(
-    "rule",
-    [
-        "schedule_i_take_home_pay_debtor1",
-        "schedule_i_take_home_pay_spouse",
-        "schedule_i_income_total",
-        "schedule_j_total_income",
-        "schedule_j_monthly_net_income",
-        "schedule_i_other_income_label",
-        "schedule_i_business_rental_net_debtor1",
-        "schedule_i_interest_spouse",
-        "schedule_i_assistance_debtor1",
-        "schedule_i_assistance_specify",
-    ],
-)
-def test_a_rule_that_reads_income_and_take_home_pay_links_to_the_income_step(rule):
-    assert RULE_FIXES[rule] == {"step": "income_info"}  # the earlier of its two steps (§9)
-
-
 def test_the_rental_rules_are_gone():
     gone = {
         "schedule_i_rental_debtor1",

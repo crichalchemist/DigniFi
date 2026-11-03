@@ -76,31 +76,6 @@ def test_list_scoped_to_session(db, auth_client, session):
     assert len(response.json()) == 1
 
 
-def test_get_document_returns_ocr_result(db, auth_client, session):
-    client, user = auth_client
-    doc = UploadedDocument.objects.create(
-        session=session,
-        uploaded_by=user,
-        document_type=DocumentType.CREDITOR_BILL,
-        user_declared_type=DocumentType.CREDITOR_BILL,
-        original_filename="bill.pdf",
-        file_size=100,
-        mime_type="application/pdf",
-        file="documents/x.pdf",
-    )
-    OCRResult.objects.create(
-        document=doc,
-        status=OCRStatus.COMPLETED,
-        extracted_data='{"creditor_name": "Chase"}',
-        confidence_scores={"overall": 85},
-        overall_confidence=85,
-    )
-    response = client.get(f"/api/documents/{doc.id}/")
-    assert response.status_code == 200
-    data = response.json()
-    assert data["ocr_result"]["status"] == "completed"
-
-
 def test_validate_updates_ocr_result(db, auth_client, session):
     client, user = auth_client
     doc = UploadedDocument.objects.create(

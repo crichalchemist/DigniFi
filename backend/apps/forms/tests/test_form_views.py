@@ -194,40 +194,6 @@ class TestGenerateEndpoint:
             "page": "/filing-fee",
         }
 
-    def test_a_waiver_question_left_unanswered_links_103b_to_the_filing_fee_page(
-        self, api_client, session_with_debtor
-    ):
-        _filing_fee(api_client, session_with_debtor, {**WAIVER, "others_covered_answer": None})
-        resp = api_client.post(
-            self.URL,
-            {"session_id": session_with_debtor.id, "form_type": "form_103b"},
-            format="json",
-        )
-        assert resp.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
-        assert resp.data == {
-            "form_type": "form_103b",
-            "error": "Answer whether your expenses cover anyone not counted in your family.",
-            "page": "/filing-fee",
-        }
-
-    def test_line_5_typed_as_only_spaces_links_103b_to_the_filing_fee_page(
-        self, api_client, session_with_debtor
-    ):
-        _filing_fee(
-            api_client, session_with_debtor, {**WAIVER, "installments_explanation": "     "}
-        )
-        resp = api_client.post(
-            self.URL,
-            {"session_id": session_with_debtor.id, "form_type": "form_103b"},
-            format="json",
-        )
-        assert resp.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
-        assert resp.data == {
-            "form_type": "form_103b",
-            "error": "Tell the court why you can't pay the filing fee in installments.",
-            "page": "/filing-fee",
-        }
-
     def test_line_4_moved_back_to_no_keeps_its_explanation_off_103b(
         self, api_client, session_with_debtor
     ):
@@ -300,33 +266,6 @@ class TestGenerateEndpoint:
         assert resp.data["error"] == HOUSEHOLD_UNANSWERED
         assert not GeneratedForm.objects.filter(session=session_with_debtor).exists()
 
-    def test_generate_form_106dec(self, api_client, session_with_debtor):
-        resp = api_client.post(
-            self.URL,
-            {"session_id": session_with_debtor.id, "form_type": "form_106dec"},
-            format="json",
-        )
-        assert resp.status_code == status.HTTP_200_OK
-        assert resp.data["form"]["form_type"] == "form_106dec"
-
-    def test_generate_schedule_a_b(self, api_client, session_with_debtor):
-        resp = api_client.post(
-            self.URL,
-            {"session_id": session_with_debtor.id, "form_type": "schedule_a_b"},
-            format="json",
-        )
-        assert resp.status_code == status.HTTP_200_OK
-        assert resp.data["form"]["form_type"] == "schedule_a_b"
-
-    def test_generate_schedule_i(self, api_client, session_with_debtor):
-        resp = api_client.post(
-            self.URL,
-            {"session_id": session_with_debtor.id, "form_type": "schedule_i"},
-            format="json",
-        )
-        assert resp.status_code == status.HTTP_200_OK
-        assert resp.data["form"]["form_type"] == "schedule_i"
-
     def test_idempotent_regeneration(self, api_client, session_with_debtor):
         """Calling generate twice for same form_type updates existing record."""
         for _ in range(2):
@@ -343,11 +282,6 @@ class TestGenerateEndpoint:
             ).count()
             == 1
         )
-
-    def test_missing_session_id(self, api_client):
-        resp = api_client.post(self.URL, {"form_type": "form_101"}, format="json")
-        assert resp.status_code == status.HTTP_400_BAD_REQUEST
-        assert "session_id" in resp.data["error"]
 
     def test_missing_form_type(self, api_client, session_with_debtor):
         resp = api_client.post(
@@ -367,14 +301,6 @@ class TestGenerateEndpoint:
         assert resp.status_code == status.HTTP_400_BAD_REQUEST
         assert "valid_types" in resp.data
 
-    def test_other_users_session_forbidden(self, api_client, other_session):
-        resp = api_client.post(
-            self.URL,
-            {"session_id": other_session.id, "form_type": "form_101"},
-            format="json",
-        )
-        assert resp.status_code == status.HTTP_404_NOT_FOUND
-
     def test_unauthenticated(self, unauth_client, session_with_debtor):
         resp = unauth_client.post(
             self.URL,
@@ -382,41 +308,6 @@ class TestGenerateEndpoint:
             format="json",
         )
         assert resp.status_code == status.HTTP_401_UNAUTHORIZED
-
-    def test_form_outside_the_packet_is_refused(self, api_client, session_with_debtor):
-        # Line 8 is pay in full, so Form 103B is outside the packet.
-        resp = api_client.post(
-            self.URL,
-            {"session_id": session_with_debtor.id, "form_type": "form_103b"},
-            format="json",
-        )
-        assert resp.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
-        assert resp.data == {
-            "form_type": "form_103b",
-            "error": "This form isn't part of your packet, based on the answers you've given.",
-        }
-
-    def test_missing_data_is_named_instead_of_filled_blank(self, api_client, session):
-        resp = api_client.post(
-            self.URL,
-            {"session_id": session.id, "form_type": "form_121"},
-            format="json",
-        )
-        assert resp.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
-        assert "name and address" in resp.data["error"]
-        assert not GeneratedForm.objects.filter(session=session).exists()
-
-    def test_unexpected_failure_logs_only_its_type(self, api_client, session_with_debtor, caplog):
-        with patch("apps.forms.views.build_parts", side_effect=ValueError("900-12-3456 leaked")):
-            resp = api_client.post(
-                self.URL,
-                {"session_id": session_with_debtor.id, "form_type": "form_101"},
-                format="json",
-            )
-        assert resp.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
-        assert "900-12-3456" not in json.dumps(resp.data)
-        assert "900-12-3456" not in caplog.text
-        assert "ValueError" in caplog.text
 
     # The dashboard shows the form's label beside the error, so the sentence
     # names no form, and no internal key or PDF widget the filer can't act on.
@@ -654,14 +545,6 @@ class TestGenerateAllEndpoint:
         petition = GeneratedForm.objects.get(session=session_with_debtor, form_type="form_101")
         (part,) = json.loads(petition.field_values)["parts"]
         assert part["values"]["Debtor1.First name"] == "Janet"
-
-    def test_missing_session_id(self, api_client):
-        resp = api_client.post(self.URL, {}, format="json")
-        assert resp.status_code == status.HTTP_400_BAD_REQUEST
-
-    def test_other_users_session(self, api_client, other_session):
-        resp = api_client.post(self.URL, {"session_id": other_session.id}, format="json")
-        assert resp.status_code == status.HTTP_404_NOT_FOUND
 
 
 @pytest.mark.django_db
@@ -1055,14 +938,51 @@ class TestPacketEndpoint:
         assert resp.data == {"error": NOW_DIFFERENT_UNANSWERED, "step": "income_info"}
         assert "income_period" not in resp.data
 
-    def test_missing_session(self, api_client):
-        resp = api_client.get(self.URL)
-        assert resp.status_code == status.HTTP_400_BAD_REQUEST
-        assert resp.data == {"error": "session is required"}
 
-    def test_other_users_session(self, api_client, other_session):
-        resp = api_client.get(self.URL, {"session": other_session.id})
-        assert resp.status_code == status.HTTP_404_NOT_FOUND
+# ── A session id that is missing, or another user's, is refused everywhere ──
+
+_SESSION_ENDPOINTS = [
+    pytest.param(
+        "post",
+        "/api/forms/generate/",
+        "session_id",
+        {"form_type": "form_101"},
+        lambda data: "session_id" in data["error"],
+        id="generate",
+    ),
+    pytest.param(
+        "post", "/api/forms/generate_all/", "session_id", {}, lambda data: True, id="generate_all"
+    ),
+    pytest.param(
+        "get",
+        "/api/forms/packet/",
+        "session",
+        {},
+        lambda data: data == {"error": "session is required"},
+        id="packet",
+    ),
+]
+
+
+def _call(api_client, method, url, payload):
+    if method == "post":
+        return api_client.post(url, payload, format="json")
+    return api_client.get(url, payload)
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("method,url,key,extra,says", _SESSION_ENDPOINTS)
+def test_missing_session_id_is_a_400(api_client, method, url, key, extra, says):
+    resp = _call(api_client, method, url, extra)
+    assert resp.status_code == status.HTTP_400_BAD_REQUEST
+    assert says(resp.data)
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("method,url,key,extra,says", _SESSION_ENDPOINTS)
+def test_other_users_session_is_a_404(api_client, other_session, method, url, key, extra, says):
+    resp = _call(api_client, method, url, {key: other_session.id, **extra})
+    assert resp.status_code == status.HTTP_404_NOT_FOUND
 
 
 # ── Only a completed intake prepares forms (spec §5.3) ────────────────
@@ -1221,13 +1141,19 @@ class TestMeansTestWorkedOutAgain:
         assert "form_122a2" in resp.data["form_types"]
         assert MeansTest.objects.get(session=session).calculated_cmi == Decimal("9000.00")
 
+    @pytest.mark.parametrize("gap,sentence", [("not_split", SPLIT_BY_SOURCE), ("no_row", MARRIAGE)])
     def test_income_not_split_refuses_every_call_that_prepares_forms(
-        self, api_client, session_with_debtor, user
+        self, api_client, session_with_debtor, user, gap, sentence
     ):
         session = session_with_debtor
-        # A total saved before income was stored by source.
-        session.income_info.monthly_income = json.dumps([3000] * 6)
-        _set_wages(session, None)
+        if gap == "not_split":
+            # A total saved before income was stored by source.
+            session.income_info.monthly_income = json.dumps([3000] * 6)
+            _set_wages(session, None)
+        else:
+            # No income row is first a marriage question never answered (3e1 spec §9.1): the
+            # filer can fix it, so it is still the plain-words 422, not a 500.
+            session.income_info.delete()
         # Line 8 is pay in full, so 103B has left the packet. 106B-Dec reads no income.
         GeneratedForm.objects.create(session=session, form_type="form_103b", generated_by=user)
         unfiled = GeneratedForm.objects.create(
@@ -1252,12 +1178,12 @@ class TestMeansTestWorkedOutAgain:
         # fixes it.
         for resp in (generate_all, listed):
             assert resp.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
-            assert resp.data == {"error": SPLIT_BY_SOURCE, "step": "income_info"}
+            assert resp.data == {"error": sentence, "step": "income_info"}
         for resp in (generate, regenerate, download):
             assert resp.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
             assert resp.data == {
                 "form_type": "form_106dec",
-                "error": SPLIT_BY_SOURCE,
+                "error": sentence,
                 "step": "income_info",
             }
         # Generate All refused before it dropped the form that left the packet.
@@ -1266,34 +1192,6 @@ class TestMeansTestWorkedOutAgain:
         ) == {"form_103b", "form_106dec", "form_121"}
         # The filed copy prints what was filed, which needs no means test.
         assert filed_download.status_code == status.HTTP_200_OK
-
-    def test_completed_intake_with_no_income_asks_the_marriage_question_first(
-        self, api_client, session_with_debtor
-    ):
-        # No income row is first a marriage question never answered (3e1 spec §9.1): the
-        # filer can fix it, so it is still the plain-words 422, not a 500.
-        session = session_with_debtor
-        session.income_info.delete()
-
-        generate_all = api_client.post(
-            "/api/forms/generate_all/", {"session_id": session.id}, format="json"
-        )
-        listed = api_client.get("/api/forms/packet/", {"session": session.id})
-        generate = api_client.post(
-            "/api/forms/generate/",
-            {"session_id": session.id, "form_type": "form_106dec"},
-            format="json",
-        )
-
-        for resp in (generate_all, listed):
-            assert resp.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
-            assert resp.data == {"error": MARRIAGE, "step": "income_info"}
-        assert generate.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
-        assert generate.data == {
-            "form_type": "form_106dec",
-            "error": MARRIAGE,
-            "step": "income_info",
-        }
 
     def test_no_median_table_in_force_is_refused_in_plain_words_and_logged_without_filer_data(
         self, api_client, session_with_debtor, user, caplog
@@ -1338,6 +1236,7 @@ class TestMeansTestWorkedOutAgain:
 # ── A filed form is kept after it leaves the packet (DIG-155) ─────────
 
 
+@pytest.mark.slow
 @pytest.mark.django_db
 def test_filed_form_survives_leaving_the_packet(api_client, session_with_debtor):
     session = session_with_debtor

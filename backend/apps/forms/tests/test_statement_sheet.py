@@ -112,28 +112,53 @@ def test_every_business_and_property_prints_on_the_statement_numbered_across_bot
     assert (fm["Amount 8a Debtor 1"], fm["Amount 8a Debtor 2"]) == ("2200.00", "900.00")
 
 
-def test_a_losing_business_prints_below_zero_and_a_floor_row_brings_the_kind_to_0_00(session):
-    session = _answer(
-        session,
-        [
-            _entry("business", "A", "600", "0"),
-            _entry("business", "B", "0", "1100"),
-            _entry("rental", "Unit 2", "900", "200"),
-        ],
-    )
+@pytest.mark.parametrize(
+    "entries, expected",
+    [
+        (
+            [
+                _entry("business", "A", "600", "0"),
+                _entry("business", "B", "0", "1100"),
+                _entry("rental", "Unit 2", "900", "200"),
+            ],
+            [
+                ["Debtor 1", "Business: A", "600.00", "0.00", "600.00"],
+                ["Debtor 1", "Business: B", "0.00", "1100.00", "-1100.00"],
+                ["Debtor 1", "Rental property: Unit 2", "900.00", "200.00", "700.00"],
+                ["Debtor 1", "Business total below $0, brought up to $0.00", "", "", "500.00"],
+            ],
+        ),
+        (
+            [
+                _entry("business", "Shop", "900", "200"),
+                _entry("rental", "Unit 2", "100", "550"),
+            ],
+            [
+                ["Debtor 1", "Business: Shop", "900.00", "200.00", "700.00"],
+                ["Debtor 1", "Rental property: Unit 2", "100.00", "550.00", "-450.00"],
+                [
+                    "Debtor 1",
+                    "Rental property total below $0, brought up to $0.00",
+                    "",
+                    "",
+                    "450.00",
+                ],
+            ],
+        ),
+    ],
+    ids=["a losing business", "a losing rental beside a profitable business"],
+)
+def test_a_losing_kind_prints_below_zero_and_a_floor_row_brings_the_kind_to_0_00(
+    session, entries, expected
+):
+    session = _answer(session, entries)
 
     part, _ = _statement(session)
 
-    rows = [row["cells"] for row in part["rows"]]
-    assert rows == [
-        ["Debtor 1", "Business: A", "600.00", "0.00", "600.00"],
-        ["Debtor 1", "Business: B", "0.00", "1100.00", "-1100.00"],
-        ["Debtor 1", "Rental property: Unit 2", "900.00", "200.00", "700.00"],
-        ["Debtor 1", "Business total below $0, brought up to $0.00", "", "", "500.00"],
-    ]
+    assert [r["cells"] for r in part["rows"]] == expected
     fm = resolve(load_schema("schedule_i"), session)
     assert fm["Amount 8a Debtor 1"] == "700.00"  # the sum over kinds of max(0, the kind's nets)
-    assert sum(Decimal(r[4]) for r in rows) == Decimal("700.00")
+    assert _nets(part["rows"], "Debtor 1") == Decimal(fm["Amount 8a Debtor 1"])
 
 
 def test_the_statement_uses_the_current_figures_while_income_is_now_different(session):
@@ -250,27 +275,6 @@ def test_a_form_reads_the_income_rows_once(session):
 def _nets(rows, owner):
     """A person's net cells added up."""
     return sum(Decimal(r["cells"][4]) for r in rows if r["cells"][0] == owner)
-
-
-def test_a_rental_floor_row_brings_the_rental_kind_to_0_00_beside_a_profitable_business(session):
-    session = _answer(
-        session,
-        [
-            _entry("business", "Shop", "900", "200"),
-            _entry("rental", "Unit 2", "100", "550"),
-        ],
-    )
-
-    part, _ = _statement(session)
-
-    assert [r["cells"] for r in part["rows"]] == [
-        ["Debtor 1", "Business: Shop", "900.00", "200.00", "700.00"],
-        ["Debtor 1", "Rental property: Unit 2", "100.00", "550.00", "-450.00"],
-        ["Debtor 1", "Rental property total below $0, brought up to $0.00", "", "", "450.00"],
-    ]
-    fm = resolve(load_schema("schedule_i"), session)
-    assert fm["Amount 8a Debtor 1"] == "700.00"
-    assert _nets(part["rows"], "Debtor 1") == Decimal(fm["Amount 8a Debtor 1"])
 
 
 def test_both_floor_rows_of_one_person_print_business_before_rental(session):
