@@ -97,6 +97,20 @@ COLUMN_B_ZEROS = [
 EXPECTED = {
     "maria": {
         "form_101": _common("Maria", "Torres", "2145 W Division St Apt 3", "60622"),
+        "form_103b": {
+            "You": "/On",
+            "Your spouse": "",
+            "Your dependents": "/On",
+            "How many dependents": "2",
+            "Total number of people": "3",
+            "undefined_2": "3150.00",
+            "undefined_3": "",
+            "undefined_4": "3150.00",
+            "undefined_5": "350.00",
+            "undefined_6": "2800.00",
+            "check 3": "/yes",
+            "3 type": "SNAP (food stamps)",
+        },
         "form_106sum": {
             "1b": "6840.00",
             "1c": "6840.00",
@@ -342,6 +356,22 @@ EXPECTED = {
     },
     "sarah": {
         "form_101": _common("Sarah", "Chen", "1520 N Damen Ave Apt 2F", "60622"),
+        # Guard: passes before 3f Task 2 (her typed application equals her Income step
+        # figures); Maria's entry fails first.
+        "form_103b": {
+            "You": "/On",
+            "Your spouse": "",
+            "Your dependents": "",
+            "How many dependents": "",
+            "Total number of people": "1",
+            "undefined_2": "1750.00",
+            "undefined_3": "",
+            "undefined_4": "1750.00",
+            "undefined_5": "",
+            "undefined_6": "1750.00",
+            "check 3": "/no",
+            "3 type": "",
+        },
         "form_106sum": {
             "3b": "31400.00",
             "3c": "31400.00",

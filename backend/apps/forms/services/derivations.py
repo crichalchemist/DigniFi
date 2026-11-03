@@ -527,40 +527,33 @@ def _median_comparison(session: IntakeSession) -> str:
 # ---------------------------------------------------------------------------
 
 
-def _fee_waiver_household_size(session: IntakeSession) -> str:
+def _fee_waiver_family(session: IntakeSession):
+    # fee_waiver reads Schedule I's rules from this module, so it is imported here, not at the top
+    from apps.forms.services.fee_waiver import fee_waiver_family
 
-    try:
-        fw = session.fee_waiver
-        return str(fw.household_size)
-    except Exception:
-        return "1"
+    return fee_waiver_family(session)
 
 
-def _fee_waiver_monthly_income(session: IntakeSession) -> str:
-    """Line 2: the take-home pay the filer typed, blank if they never gave it (B2)."""
-    fw = getattr(session, "fee_waiver", None)
-    if fw is None or fw.monthly_take_home_pay is None:
-        return ""
-    return _fmt(Decimal(str(fw.monthly_take_home_pay)))
+def _fee_waiver_income(session: IntakeSession):
+    # fee_waiver reads Schedule I's rules from this module, so it is imported here, not at the top
+    from apps.forms.services.fee_waiver import fee_waiver_income
+
+    return fee_waiver_income(session)
 
 
-def _fee_waiver_noncash_assistance(session: IntakeSession) -> str:
-    """Line 3: the filer's own yes or no, blank until they answer (DIG-193)."""
-    fw = getattr(session, "fee_waiver", None)
-    answer = None if fw is None else fw.receives_noncash_assistance
-    if answer is True:
-        return "yes"
-    if answer is False:
-        return "no"
-    return ""
+def _fee_waiver_noncash(session: IntakeSession):
+    # fee_waiver reads Schedule I's rules from this module, so it is imported here, not at the top
+    from apps.forms.services.fee_waiver import fee_waiver_noncash
+
+    return fee_waiver_noncash(session)
 
 
-def _fee_waiver_benefit_types(session: IntakeSession) -> str:
-    """Line 3's "Describe": the kinds of help, joined as the fee-waiver page shows them."""
-    fw = getattr(session, "fee_waiver", None)
-    if fw is None or fw.receives_noncash_assistance is not True:
-        return ""
-    return ", ".join(fw.benefit_types)
+def _count_or_blank(n: int) -> str:
+    return str(n) if n > 0 else ""
+
+
+def _money_or_blank(amount: Decimal | None) -> str:
+    return "" if amount is None else _fmt(amount)
 
 
 # ---------------------------------------------------------------------------
@@ -856,13 +849,20 @@ DERIVATIONS: dict[str, Callable[[IntakeSession], str]] = {
     "line12b_annualized_cmi": _line12b_annualized_cmi,
     "line13a_median_income": _line13a_median_income,
     "median_comparison": _median_comparison,
-    # Form 103B fee waiver derivations
-    "fee_waiver_household_size": _fee_waiver_household_size,
-    "fee_waiver_monthly_income": _fee_waiver_monthly_income,
+    # Form 103B lines 1-3: the household list, Schedule I line 10 and 8f (3f spec §8.2)
+    "fee_waiver_family_size": lambda s: str(_fee_waiver_family(s).total),
+    "fee_waiver_spouse_counted": lambda s: "true" if _fee_waiver_family(s).spouse_counted else "",
+    "fee_waiver_has_dependents": lambda s: "true" if _fee_waiver_family(s).dependents > 0 else "",
+    "fee_waiver_dependents_count": lambda s: _count_or_blank(_fee_waiver_family(s).dependents),
+    "fee_waiver_income_you": lambda s: _fmt(_fee_waiver_income(s).you),
+    "fee_waiver_income_spouse": lambda s: _money_or_blank(_fee_waiver_income(s).spouse),
+    "fee_waiver_income_subtotal": lambda s: _fmt(_fee_waiver_income(s).subtotal),
+    "fee_waiver_income_noncash": lambda s: _money_or_blank(_fee_waiver_income(s).noncash),
+    "fee_waiver_income_total": lambda s: _fmt(_fee_waiver_income(s).total),
+    "fee_waiver_noncash_answer": lambda s: _fee_waiver_noncash(s)[0],
+    "fee_waiver_noncash_kinds": lambda s: _fee_waiver_noncash(s)[1],
     # Line 6 is Schedule J line 22c: one figure on both forms
     "fee_waiver_monthly_expenses": _total_monthly_expenses,
-    "fee_waiver_noncash_assistance": _fee_waiver_noncash_assistance,
-    "fee_waiver_benefit_types": _fee_waiver_benefit_types,
     # Schedule I income line item derivations
     "schedule_i_occupation_debtor1": _schedule_i_occupation_debtor1,
     "schedule_i_employer_debtor1": _schedule_i_employer_debtor1,
@@ -1003,6 +1003,15 @@ RULE_FIXES: dict[str, dict[str, str]] = {
     "schedule_i_other_income_spouse": {"step": "income_info"},
     "schedule_i_other_income_total_spouse": {"step": "income_info"},
     "schedule_i_income_total_spouse": {"step": "income_info"},
+    # 103B lines 1-3 read the household list, Schedule I line 10 and 8f
+    "fee_waiver_family_size": {"step": "income_info"},
+    "fee_waiver_dependents_count": {"step": "income_info"},
+    "fee_waiver_income_you": {"step": "income_info"},
+    "fee_waiver_income_spouse": {"step": "income_info"},
+    "fee_waiver_income_subtotal": {"step": "income_info"},
+    "fee_waiver_income_noncash": {"step": "income_info"},
+    "fee_waiver_income_total": {"step": "income_info"},
+    "fee_waiver_noncash_kinds": {"step": "income_info"},
     # Lines that read both the Income step and Take-home pay link to the earlier one (§17 Call 33)
     "schedule_i_take_home_pay_debtor1": {"step": "income_info"},
     "schedule_i_take_home_pay_spouse": {"step": "income_info"},
@@ -1077,10 +1086,6 @@ RULE_FIXES: dict[str, dict[str, str]] = {
     "total_nonpriority_unsecured": {"step": "debts"},
     "total_student_loans": {"step": "debts"},
     "total_other_nonpriority": {"step": "debts"},
-    # The fee-waiver application
-    "fee_waiver_household_size": {"page": "/fee-waiver"},
-    "fee_waiver_monthly_income": {"page": "/fee-waiver"},
-    "fee_waiver_benefit_types": {"page": "/fee-waiver"},
     # No link. The district and its median income table come from DigniFi's own data.
     # The Schedule I occupation and employer address read fields no model has, so they
     # always print blank.

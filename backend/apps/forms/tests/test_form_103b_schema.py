@@ -7,13 +7,16 @@ import pytest
 from django.contrib.auth import get_user_model
 
 from apps.districts.models import District
+from apps.eligibility.cmi import MARRIAGE_UNANSWERED, IncomeStepGap
 from apps.forms.schema import load_schema
 from apps.forms.services.fill_resolver import resolve
 from apps.intake.models import (
     DebtorInfo,
     FeeWaiverApplication,
+    IncomeInfo,
     IntakeSession,
 )
+from apps.intake.tests.builders import answer_household
 
 User = get_user_model()
 
@@ -47,6 +50,8 @@ def session_with_fw(session):
         state="IL",
         zip_code="60601",
     )
+    IncomeInfo.objects.create(session=session, monthly_gross_wages=Decimal("1500.00"))
+    answer_household(session)
     FeeWaiverApplication.objects.create(
         session=session,
         household_size=2,
@@ -76,10 +81,12 @@ class TestForm103BSchema:
         assert "Debtor 1" in field_map
         assert "Jane Doe" in field_map["Debtor 1"]
 
-    def test_fee_waiver_fields(self, session_with_fw):
+    def test_line_1_counts_the_household_list_not_the_applications_size(self, session_with_fw):
+        # The application says 2; the filer listed no one else, so 103B line 1 is 1.
         field_map = resolve(load_schema("form_103b"), session_with_fw)
-        assert field_map["Total number of people"] == "2"
+        assert field_map["Total number of people"] == "1"
 
-    def test_empty_session(self, session):
-        field_map = resolve(load_schema("form_103b"), session)
-        assert "Bankruptcy District Information" in field_map
+    def test_an_empty_session_is_refused_in_the_income_steps_words(self, session):
+        with pytest.raises(IncomeStepGap) as refused:
+            resolve(load_schema("form_103b"), session)
+        assert str(refused.value) == MARRIAGE_UNANSWERED

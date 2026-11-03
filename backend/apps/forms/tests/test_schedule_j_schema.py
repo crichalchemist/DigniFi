@@ -15,6 +15,7 @@ from apps.forms.services.fill_resolver import resolve
 from apps.forms.services.pdf_filler import PDFFormFiller
 from apps.forms.tests.pdf_readback import read_sheets
 from apps.intake.models import DebtorInfo, ExpenseInfo, Household, IncomeInfo, IntakeSession
+from apps.intake.tests.builders import answer_household
 
 User = get_user_model()
 
@@ -358,10 +359,12 @@ def test_a_broken_expense_read_fails_the_form_instead_of_printing_0_00(session):
 
 def test_every_form_that_copies_the_monthly_expense_total_prints_line_22c(session):
     # Schedule J 22a, 22c and 23b, 106Sum line 5 and 103B line 6 are one figure on four forms,
-    # so a filer's sworn expenses can't differ between them.
+    # so a filer's sworn expenses can't differ between them. 103B reads the Income step's
+    # answers, so they are all given.
     IncomeInfo.objects.create(
         session=session, marital_status="not_married", monthly_gross_wages=Decimal("9000.00")
     )
+    answer_household(session)
     ExpenseInfo.objects.create(session=session, **EXPENSES)
 
     schedule_j = resolve(load_schema("schedule_j"), session)

@@ -172,7 +172,7 @@ def test_a_precondition_is_read_by_its_name_or_as_an_attribute(source, raises):
         ("fee_waiver_monthly_expenses", {"step": "expense_info"}),  # 103B line 6 is J 22c
         ("other_asset_descriptions", {"step": "assets"}),
         ("total_debts", {"step": "debts"}),
-        ("fee_waiver_benefit_types", {"page": "/fee-waiver"}),
+        ("fee_waiver_noncash_kinds", {"step": "income_info"}),  # 103B line 3 reads 8f
         ("district_name", {}),  # the district list is DigniFi's
         ("line13a_median_income", {}),  # the median table is DigniFi's
         ("schedule_i_occupation_debtor1", {}),  # reads a field no model has: always blank

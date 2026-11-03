@@ -212,7 +212,7 @@ def test_a_form_filed_before_3a2_still_downloads(api_client_authed, generated_fo
     "form_type,key,label",
     [
         ("form_121", "Debtor1.First name", "Debtor 1 first name"),  # fixed on a step
-        ("form_103b", "3 type", "Type of assistance"),  # fixed on a page
+        ("form_103b", "3 type", "Type of assistance"),  # fixed on a step
     ],
 )
 def test_a_filed_form_whose_values_cannot_print_is_refused_without_a_step_or_page(
