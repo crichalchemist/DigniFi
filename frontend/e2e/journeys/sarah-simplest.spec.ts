@@ -40,8 +40,12 @@ test.describe('Sarah Chen — Simplest Case', () => {
     await wizard.fillIncomeInfo(SARAH.income);
     await wizard.nextStep();
 
-    // Step 3: Expenses (minimal)
-    await wizard.fillExpenses(SARAH.expenses);
+    // Step 3: Take-home pay
+    await wizard.fillTakeHomePay(SARAH.deductions, SARAH.spouse_deductions);
+    await wizard.nextStep();
+
+    // Step 4: Expenses (minimal)
+    await wizard.fillExpenses(SARAH);
     await wizard.nextStep();
 
     // Means test preview — should indicate eligibility + fee waiver
@@ -55,23 +59,23 @@ test.describe('Sarah Chen — Simplest Case', () => {
     const hasFeeWaiver = previewLower.includes('fee waiver') || previewLower.includes('filing fee');
     expect(hasFeeWaiver).toBe(true);
 
-    // Step 4: Assets — none to add, just proceed
+    // Step 5: Assets — none to add, just proceed
     // The step should allow proceeding with zero assets
     await wizard.nextStep();
 
-    // Step 5: Debts (student loan + medical)
+    // Step 6: Debts (student loan + medical)
     for (const debt of SARAH.debts) {
       await wizard.addDebt(debt);
     }
     await wizard.nextStep();
 
-    // Step 6: Contracts & Leases (optional — no entries needed)
+    // Step 7: Contracts & Leases (optional — no entries needed)
     await wizard.nextStep();
 
-    // Step 7: Codebtors (optional — no entries needed)
+    // Step 8: Codebtors (optional — no entries needed)
     await wizard.nextStep();
 
-    // Step 8: Review & Complete
+    // Step 9: Review & Complete
     await wizard.fillReview();
     await wizard.completeIntake();
 

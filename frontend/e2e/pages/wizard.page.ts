@@ -6,7 +6,15 @@
  */
 
 import { expect, type Page } from '@playwright/test';
-import type { PersonaDebtor, PersonaIncome, PersonaAsset, PersonaDebt } from '../fixtures/personas';
+import type {
+  DeductionField,
+  PersonaAssistance,
+  PersonaDebtor,
+  PersonaIncome,
+  PersonaAsset,
+  PersonaDebt,
+  PersonaData,
+} from '../fixtures/personas';
 
 export class WizardPage {
   constructor(private page: Page) {}
@@ -163,22 +171,117 @@ export class WizardPage {
     for (const [source, amount] of Object.entries(income.sources)) {
       await this.page.locator(`input[name="${source}"]`).fill(String(amount));
     }
+    // The businesses and rental properties: "none" when the list is empty, else one card each
+    await this.fillEntries(income.business, {
+      none: 'I have no business or rental income.',
+      add: '+ Add a business or property',
+      prefix: '',
+    });
     for (const [source, amount] of Object.entries(income.spouse_sources ?? {})) {
       await this.page.locator(`input[name="spouse_${source}"]`).fill(String(amount));
     }
-  }
-
-  // ── Step 3: Expenses ────────────────────────────────────────────
-
-  async fillExpenses(expenses: Record<string, number>) {
-    // Persona keys are the backend's ExpenseInfo names, and ExpenseInfoStep names each
-    // box the same way, so every amount goes straight into its own box.
-    for (const [field, value] of Object.entries(expenses)) {
-      await this.page.locator(`input[name="${field}"]`).fill(String(value));
+    // The persona answers "now different" and assistance after the list. A persona answering
+    // "yes" would need current figures, and none does, so the page object only picks the radio.
+    await this.fillNowAndAssistance('', income.now_different, income.assistance);
+    if (income.spouse_business) {
+      await this.fillEntries(income.spouse_business, {
+        none: 'My spouse has no business or rental income.',
+        add: "+ Add your spouse's business or property",
+        prefix: 'spouse_',
+      });
+    }
+    if (income.spouse_now_different && income.spouse_assistance) {
+      await this.fillNowAndAssistance(
+        'spouse_',
+        income.spouse_now_different,
+        income.spouse_assistance
+      );
     }
   }
 
-  // ── Step 4: Assets ──────────────────────────────────────────────
+  private async fillNowAndAssistance(
+    prefix: string,
+    nowDifferent: 'yes' | 'no',
+    assistance: PersonaAssistance
+  ) {
+    await this.page
+      .locator(`input[name="${prefix}income_now_different"][value="${nowDifferent}"]`)
+      .check();
+    await this.page
+      .locator(`input[name="${prefix}assistance_answer"][value="${assistance.answer}"]`)
+      .check();
+    const boxes: [string, string | number | undefined][] = [
+      ['cash_assistance_kind', assistance.cash_kind],
+      ['cash_assistance_amount', assistance.cash_amount],
+      ['noncash_assistance_kind', assistance.noncash_kind],
+      ['noncash_assistance_value', assistance.noncash_value],
+    ];
+    for (const [name, value] of boxes) {
+      if (value !== undefined) {
+        await this.page.locator(`input[name="${prefix}${name}"]`).fill(String(value));
+      }
+    }
+  }
+
+  private async fillEntries(
+    entries: PersonaIncome['business'],
+    { none, add, prefix }: { none: string; add: string; prefix: string }
+  ) {
+    if (entries.length === 0) {
+      await this.page.getByRole('button', { name: none }).click();
+      return;
+    }
+    for (const [index, entry] of entries.entries()) {
+      await this.page.getByRole('button', { name: add }).click();
+      await this.page
+        .locator(`select[name="${prefix}entry_kind_${index}"]`)
+        .selectOption(entry.kind);
+      await this.page
+        .locator(`input[name="${prefix}entry_description_${index}"]`)
+        .fill(entry.description);
+      await this.page
+        .locator(`input[name="${prefix}entry_gross_${index}"]`)
+        .fill(String(entry.gross));
+      await this.page
+        .locator(`input[name="${prefix}entry_expenses_${index}"]`)
+        .fill(String(entry.expenses));
+    }
+  }
+
+  // ── Step 3: Take-home pay ───────────────────────────────────────
+
+  async fillTakeHomePay(
+    deductions: Partial<Record<DeductionField, number>>,
+    spouseDeductions?: Partial<Record<DeductionField, number>>
+  ) {
+    for (const [field, value] of Object.entries(deductions)) {
+      await this.page.locator(`input[name="${field}"]`).fill(String(value));
+    }
+    for (const [field, value] of Object.entries(spouseDeductions ?? {})) {
+      await this.page.locator(`input[name="spouse_${field}"]`).fill(String(value));
+    }
+  }
+
+  // ── Step 4: Expenses ────────────────────────────────────────────
+
+  async fillExpenses(
+    persona: Pick<PersonaData, 'expenses' | 'expenses_include_others' | 'expense_texts'>
+  ) {
+    // Line 3 comes first on the page and is never answered for the filer
+    await this.page
+      .locator(`input[name="expenses_include_others"][value="${persona.expenses_include_others}"]`)
+      .check();
+    // Persona keys are the backend's ExpenseInfo names, and ExpenseInfoStep names each
+    // box the same way, so every amount goes straight into its own box.
+    for (const [field, value] of Object.entries(persona.expenses)) {
+      await this.page.locator(`input[name="${field}"]`).fill(String(value));
+    }
+    for (const [field, text] of Object.entries(persona.expense_texts ?? {})) {
+      await this.page.locator(`input[name="${field}"]`).fill(text);
+    }
+  }
+
+  // ── Step 5: Assets ──────────────────────────────────────────────
 
   // Both steps render one empty row by default and suffix field names with
   // the row index (asset_type_0, creditor_name_1, ...). Track how many rows
@@ -202,7 +305,7 @@ export class WizardPage {
     this.assetCount++;
   }
 
-  // ── Step 5: Debts ───────────────────────────────────────────────
+  // ── Step 6: Debts ───────────────────────────────────────────────
 
   async addDebt(debt: PersonaDebt) {
     const index = this.debtCount;
@@ -228,7 +331,7 @@ export class WizardPage {
     this.debtCount++;
   }
 
-  // ── Step 6: Review ──────────────────────────────────────────────
+  // ── Step 9: Review ──────────────────────────────────────────────
 
   async fillReview() {
     // Review step may just need a confirmation/acknowledgment

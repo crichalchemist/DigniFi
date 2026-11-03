@@ -45,17 +45,30 @@ def _step_bodies(data):
     """
     Each wizard step's session save, as the step's autosave body sends it: one PATCH per
     step. The spouse's income goes only while it is asked (spec §8.2), so a persona
-    without one sends none.
+    without one sends none. The payroll deductions go on the Take-home pay step, and the
+    Income step sends every other key.
     """
+    deduction_keys = (*IncomeInfo.DEDUCTION_FIELDS, "payroll_other_specify")
+
+    def split(income):
+        kept = {key: value for key, value in income.items() if key not in deduction_keys}
+        deductions = {key: income[key] for key in deduction_keys if key in income}
+        return kept, deductions
+
+    income, deductions = split(data["income"])
     income_step = {
-        "income_info": data["income"],
+        "income_info": income,
         "household": {"members": data["household"]["members"]},
     }
+    take_home_pay_step = {"income_info": deductions}
     if data["spouse_income"] is not None:
-        income_step["spouse_income"] = data["spouse_income"]
+        spouse, spouse_deductions = split(data["spouse_income"])
+        income_step["spouse_income"] = spouse
+        take_home_pay_step["spouse_income"] = spouse_deductions
     return [
         {"debtor_info": data["debtor"], "household": {"county": data["household"]["county"]}},
         income_step,
+        take_home_pay_step,
         {"expense_info": data["expenses"]},
         {"assets": data["assets"]},
         {"debts": data["debts"]},
@@ -119,6 +132,8 @@ def _send_through_the_api(persona):
     assert data["spouse_income"] is None or all(
         data["spouse_income"][field] is not None for field in SpouseIncome.SOURCE_FIELDS
     )
+    # Line 3 is sent with the Expenses step, so the readback can't pass by leaving it unsent.
+    assert data["expenses"]["expenses_include_others"] in ("yes", "no")
     client = APIClient()
     client.force_authenticate(User.objects.create_user(username=f"api_{persona}", password="pw"))
 
@@ -135,7 +150,7 @@ def _send_through_the_api(persona):
     for body in _step_bodies(data):
         response = client.patch(session_url, _sent(body), format="json")
         assert response.status_code == 200, (list(body), response.data)
-    # No persona has contracts or codebtors: Continue on steps 6 and 7 saves empty lists.
+    # No persona has contracts or codebtors: Continue on steps 7 and 8 saves empty lists.
     for endpoint in ("contracts", "codebtors"):
         response = client.put(f"{session_url}{endpoint}/", [], format="json")
         assert response.status_code == 200, (endpoint, response.data)

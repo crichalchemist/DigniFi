@@ -40,8 +40,12 @@ test.describe('DeShawn Mitchell — Assets', () => {
     await wizard.fillIncomeInfo(DESHAWN.income);
     await wizard.nextStep();
 
-    // Step 3: Expenses
-    await wizard.fillExpenses(DESHAWN.expenses);
+    // Step 3: Take-home pay
+    await wizard.fillTakeHomePay(DESHAWN.deductions, DESHAWN.spouse_deductions);
+    await wizard.nextStep();
+
+    // Step 4: Expenses
+    await wizard.fillExpenses(DESHAWN);
     await wizard.nextStep();
 
     // Should pass means test (below median for HH of 2)
@@ -50,7 +54,7 @@ test.describe('DeShawn Mitchell — Assets', () => {
     const preview = await wizard.getMeansTestPreview();
     expect(preview.toLowerCase()).toContain('eligible');
 
-    // Step 4: Assets — 3 assets (real property, vehicle, retirement)
+    // Step 5: Assets — 3 assets (real property, vehicle, retirement)
     for (const asset of DESHAWN.assets) {
       await wizard.addAsset(asset);
     }
@@ -59,19 +63,19 @@ test.describe('DeShawn Mitchell — Assets', () => {
     expect(await assetForms.count()).toBeGreaterThanOrEqual(3);
     await wizard.nextStep();
 
-    // Step 5: Debts — 4 debts (mortgage, credit card, utility, medical)
+    // Step 6: Debts — 4 debts (mortgage, credit card, utility, medical)
     for (const debt of DESHAWN.debts) {
       await wizard.addDebt(debt);
     }
     await wizard.nextStep();
 
-    // Step 6: Contracts & Leases (optional — no entries needed)
+    // Step 7: Contracts & Leases (optional — no entries needed)
     await wizard.nextStep();
 
-    // Step 7: Codebtors (optional — no entries needed)
+    // Step 8: Codebtors (optional — no entries needed)
     await wizard.nextStep();
 
-    // Step 8: Review & Complete
+    // Step 9: Review & Complete
     await wizard.fillReview();
     await wizard.completeIntake();
 

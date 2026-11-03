@@ -37,8 +37,12 @@ test.describe('James Washington — Borderline', () => {
     await wizard.fillIncomeInfo(JAMES.income);
     await wizard.nextStep();
 
-    // Step 3: Expenses
-    await wizard.fillExpenses(JAMES.expenses);
+    // Step 3: Take-home pay
+    await wizard.fillTakeHomePay(JAMES.deductions, JAMES.spouse_deductions);
+    await wizard.nextStep();
+
+    // Step 4: Expenses
+    await wizard.fillExpenses(JAMES);
     await wizard.nextStep();
 
     // Means test should still pass (just under)
@@ -47,25 +51,25 @@ test.describe('James Washington — Borderline', () => {
     const preview = await wizard.getMeansTestPreview();
     expect(preview.toLowerCase()).toContain('eligible');
 
-    // Step 4: Assets (vehicle + bank account)
+    // Step 5: Assets (vehicle + bank account)
     for (const asset of JAMES.assets) {
       await wizard.addAsset(asset);
     }
     await wizard.nextStep();
 
-    // Step 5: Debts (includes secured auto loan)
+    // Step 6: Debts (includes secured auto loan)
     for (const debt of JAMES.debts) {
       await wizard.addDebt(debt);
     }
     await wizard.nextStep();
 
-    // Step 6: Contracts & Leases (optional — no entries needed)
+    // Step 7: Contracts & Leases (optional — no entries needed)
     await wizard.nextStep();
 
-    // Step 7: Codebtors (optional — no entries needed)
+    // Step 8: Codebtors (optional — no entries needed)
     await wizard.nextStep();
 
-    // Step 8: Review & Complete
+    // Step 9: Review & Complete
     await wizard.fillReview();
     await wizard.completeIntake();
 

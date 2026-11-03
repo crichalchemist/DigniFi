@@ -21,8 +21,8 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.districts.dated_tables import NoTableInForce
-from apps.eligibility.cmi import IncomeNotSplit, income_step_gaps
+from apps.districts.dated_tables import NoTableInForce, fill_date
+from apps.eligibility.cmi import IncomeNotSplit, answered_window, income_step_gaps, income_window
 from apps.eligibility.models import MeansTest
 from apps.eligibility.services import MeansTestCalculator
 from apps.intake.models import IntakeSession
@@ -180,6 +180,23 @@ def _tables_used(session: IntakeSession) -> list[dict]:
     return [table] if table else []
 
 
+def _income_period(session: IntakeSession) -> dict:
+    """The six months the filer last confirmed on the Income step, and the six months in force.
+
+    `answered_for` is None with no income row or no confirmation yet (3e2 spec §10).
+    """
+    start, end = income_window(fill_date())
+    period_end = getattr(getattr(session, "income_info", None), "income_period_end", None)
+    answered_for = None
+    if period_end is not None:
+        answered_start, answered_end = answered_window(period_end)
+        answered_for = {"start": answered_start.isoformat(), "end": answered_end.isoformat()}
+    return {
+        "answered_for": answered_for,
+        "now": {"start": start.isoformat(), "end": end.isoformat()},
+    }
+
+
 def _prepare(session: IntakeSession) -> None:
     """Refuse an unfinished intake, then work its means test out again. Once per call."""
     _check_finished(session)
@@ -269,7 +286,8 @@ class GeneratedFormViewSet(viewsets.ReadOnlyModelViewSet):
         For a completed intake the means test is worked out again first, and a refusal
         covers the whole list. An unfinished intake gets the packet its stored data gives,
         and is never refused (step 2 spec §5.3, §5.6). `tables` holds the median table the means
-        test recorded, and is `[]` when there is no means test or it recorded none.
+        test recorded, and is `[]` when there is no means test or it recorded none. `income_period` says which six
+        months the filer last confirmed on the Income step and which are in force now.
         """
         session, err = _session_or_error(request, request.query_params.get("session"), "session")
         if err:
@@ -281,7 +299,12 @@ class GeneratedFormViewSet(viewsets.ReadOnlyModelViewSet):
                 body, code = _failure(None, exc)
                 return Response(body, status=code)
         return Response(
-            {"session": session.id, "form_types": packet(session), "tables": _tables_used(session)}
+            {
+                "session": session.id,
+                "form_types": packet(session),
+                "tables": _tables_used(session),
+                "income_period": _income_period(session),
+            }
         )
 
     # ------------------------------------------------------------------

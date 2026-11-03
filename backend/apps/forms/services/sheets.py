@@ -30,9 +30,15 @@ import pymupdf
 from pypdf._font import Font
 from pypdf.generic import ArrayObject, DictionaryObject, NameObject, NumberObject
 
-from apps.forms.schema import FormSchema, SheetColumn, SheetSpec, load_schema
+from apps.forms.schema import (
+    FormSchema,
+    SheetColumn,
+    SheetSpec,
+    is_statement_group,
+    load_schema,
+)
 from apps.forms.services.derivations import RULE_FIXES
-from apps.forms.services.fill_resolver import fix_for
+from apps.forms.services.fill_resolver import binding_fix, fix_for
 from apps.forms.services.pdf_filler import (
     UnprintableLetter,
     ValueTooLong,
@@ -237,9 +243,13 @@ def _fixes(schema: FormSchema, group: str, spec: SheetSpec) -> list[dict[str, st
     declared = schema.groups.get(group)
     sheet = declared.sheet if declared is not None else None
     bindings = {column.label: column.binding for column in sheet.columns} if sheet else {}
+    statement = is_statement_group(schema, group)
     fixes = []
     for column in spec.columns:
         binding = bindings.get(column.label)
+        if statement:
+            fixes.append(binding_fix(binding or ""))
+            continue
         slot = next((f for f in schema.fields if f.repeat == group and f.binding == binding), None)
         fixes.append(fix_for(slot) if binding and slot else {})
     return fixes

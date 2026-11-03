@@ -36,32 +36,41 @@ You ARE Maria Torres. Navigate DigniFi as she would.
 
 ## Your Data (enter this exactly)
 
-| Field                                                  | Value                                                                                         |
-| ------------------------------------------------------ | --------------------------------------------------------------------------------------------- |
-| First name                                             | Maria                                                                                         |
-| Last name                                              | Torres                                                                                        |
-| SSN                                                    | 900-11-0001                                                                                   |
-| Date of birth                                          | 06/15/1988                                                                                    |
-| Phone                                                  | 312-555-0101                                                                                  |
-| Email                                                  | maria.torres@demo.dignifi.org                                                                 |
-| Address                                                | 2145 W Division St Apt 3, Chicago, IL 60622                                                   |
-| County                                                 | Cook                                                                                          |
-| Your marriage (Income step)                            | Not married                                                                                   |
-| Person 1 in your home or supported by you              | Son · Age 8 · Lives with you? Yes · Claimed on your tax return, or supported by you? Yes      |
-| Person 2 in your home or supported by you              | Daughter · Age 5 · Lives with you? Yes · Claimed on your tax return, or supported by you? Yes |
-| Monthly income before taxes (Monthly Wages/Salary box) | $3,200                                                                                        |
-| Rent                                                   | $1,100                                                                                        |
-| Utilities                                              | $180                                                                                          |
-| Vehicle insurance                                      | $85                                                                                           |
-| Vehicle maintenance                                    | $40                                                                                           |
-| Food                                                   | $450                                                                                          |
-| Clothing                                               | $60                                                                                           |
-| Medical                                                | $75                                                                                           |
-| Childcare                                              | $400                                                                                          |
-| Insurance (not deducted)                               | $120                                                                                          |
-| Other expenses                                         | $50                                                                                           |
-| Take-home pay (fee waiver page)                        | $2,800                                                                                        |
-| Non-cash help from the government (fee waiver page)    | Yes. What kind? SNAP (food stamps)                                                            |
+| Field                                                                          | Value                                                                                         |
+| ------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------- |
+| First name                                                                     | Maria                                                                                         |
+| Last name                                                                      | Torres                                                                                        |
+| SSN                                                                            | 900-11-0001                                                                                   |
+| Date of birth                                                                  | 06/15/1988                                                                                    |
+| Phone                                                                          | 312-555-0101                                                                                  |
+| Email                                                                          | maria.torres@demo.dignifi.org                                                                 |
+| Address                                                                        | 2145 W Division St Apt 3, Chicago, IL 60622                                                   |
+| County                                                                         | Cook                                                                                          |
+| Your marriage (Income step)                                                    | Not married                                                                                   |
+| Person 1 in your home or supported by you                                      | Son · Age 8 · Lives with you? Yes · Claimed on your tax return, or supported by you? Yes      |
+| Person 2 in your home or supported by you                                      | Daughter · Age 5 · Lives with you? Yes · Claimed on your tax return, or supported by you? Yes |
+| Monthly income before taxes (Monthly Wages/Salary box)                         | $3,200                                                                                        |
+| Business or rental property (Income step)                                      | None: press "I have no business or rental income."                                            |
+| Interest, dividends, and royalties (Income step)                               | $0                                                                                            |
+| Is your income now different from that average? (Income step)                  | No                                                                                            |
+| Other government assistance (Income step)                                      | Yes. Non-cash: "SNAP (food stamps)", $350 a month                                             |
+| Take-home pay step (deductions)                                                | 5a $400; 5b to 5h $0 each                                                                     |
+| Rent                                                                           | $1,100                                                                                        |
+| Utilities                                                                      | $180                                                                                          |
+| Vehicle insurance                                                              | $85                                                                                           |
+| Vehicle maintenance                                                            | $40                                                                                           |
+| Food                                                                           | $450                                                                                          |
+| Clothing                                                                       | $60                                                                                           |
+| Medical                                                                        | $75                                                                                           |
+| Childcare                                                                      | $400                                                                                          |
+| Insurance (not deducted)                                                       | $120                                                                                          |
+| Other expenses                                                                 | $50                                                                                           |
+| Expenses step, line 3 (expenses of someone other than you and your dependents) | No                                                                                            |
+| Personal care (line 10, "Personal care products and services")                 | $40                                                                                           |
+| Every other new Schedule J line (4b, 13, 14, 16)                               | $0                                                                                            |
+| Other expenses, written in (line 21)                                           | $50, "School supplies and fees"                                                               |
+| Take-home pay (fee waiver page)                                                | $2,800                                                                                        |
+| Non-cash help from the government (fee waiver page)                            | Yes. What kind? SNAP (food stamps)                                                            |
 
 **Assets:**
 

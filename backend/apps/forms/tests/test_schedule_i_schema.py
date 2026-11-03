@@ -8,7 +8,9 @@ from django.contrib.auth import get_user_model
 
 from apps.districts.models import District
 from apps.forms.schema import load_schema
+from apps.forms.services.derivations import DERIVATIONS
 from apps.forms.services.fill_resolver import resolve
+from apps.forms.tests.test_derivations import SPOUSE_AT_HOME as SPOUSE_AT_HOME_ROW
 from apps.forms.tests.test_derivations import TEN_SOURCES
 from apps.forms.tests.test_form_122a1_schema import (
     LINE_10_SOURCE,
@@ -21,16 +23,18 @@ from apps.intake.tests.builders import answer_household
 
 User = get_user_model()
 
-# Box → what it prints with TEN_SOURCES (wages 1, overtime 2, tips 4, rental 8,
+# Box → what it prints with TEN_SOURCES (wages 1, overtime 2, tips 4, interest 8,
 # pension 16, Social Security 32, unemployment 64, child support 128, alimony 256,
 # other 512).
 LINE_BY_SOURCE = {
     "Amount 2 Debtor 1": "5.00",  # line 2: wages and tips
     "Amount 3 Debtor 1": "2.00",  # line 3: overtime
-    "Amount 8a Debtor 1": "8.00",  # 8a: net rental income
+    "Amount 8a Debtor 1": "0.00",  # 8a: no business or rental property listed
+    "Amount 8b Debtor 1": "8.00",  # 8b: interest and dividends
     "Amount 8c Debtor 1": "384.00",  # 8c: child support and alimony
     "Amount 8d Debtor 1": "64.00",  # 8d: unemployment
     "Amount 8e Debtor 1": "32.00",  # 8e: Social Security
+    "Amount 8f Debtor 1": "0.00",  # 8f: assistance answered No
     "Amount 8g Debtor 1": "16.00",  # 8g: pension
     "Other income 8h": "Other income",  # 8h: what the other income is
     "Amount 8h Debtor 1": "512.00",  # 8h: its amount
@@ -38,23 +42,12 @@ LINE_BY_SOURCE = {
 LINE_TOTALS = {
     "Amount 4 Debtor 1": "7.00",  # line 4: line 2 + line 3
     "Amount 4 Debtor 1a": "7.00",  # line 4's copy at the top of page 2
-    "Amount 7 Debtor 1": "7.00",  # line 7: line 4, as no payroll deduction is asked yet
-    "Amount 9 Debtor 1": "1016.00",  # line 9: 8a + 8c + 8d + 8e + 8g + 8h
+    "Amount 6 Debtor 1": "0.00",  # line 6: every deduction blank but 5a, typed $0
+    "Amount 7 Debtor 1": "7.00",  # line 7: line 4 less line 6
+    "Amount 9 Debtor 1": "1016.00",  # line 9: 8a + 8b + ... + 8h
 }
-NEVER_ASKED = {
-    "Supplemental income date",  # a Chapter 13 supplement's date
-    "Amount 5a Debtor 1",  # lines 5a-6: payroll deductions
-    "Amount 5b Debtor 1",
-    "Amount 5c Debtor 1",
-    "Amount 5d Debtor 1",
-    "Amount 5e Debtor 1",
-    "Amount 5f Debtor 1",
-    "Amount 5g Debtor 1",
-    "Amount 5h Debtor 1",
-    "Amount 6 Debtor 1",
-    "Amount 8b Debtor 1",  # interest and dividends
-    "Amount 8f Debtor 1",  # other government assistance
-}
+DEDUCTION_BOXES = tuple(f"Amount 5{x} Debtor 1" for x in "abcdefgh")
+NEVER_ASKED = {"Supplemental income date"}  # lines 11 and 13 and the Debtor 2 header are unbound
 # Schedule I's combined monthly income and every box that copies it: all ten sources,
 # Social Security included (step 2 spec §6.1, C1), 1 + 2 + 4 + ... + 512.
 COMBINED_INCOME = {
@@ -156,15 +149,16 @@ class TestScheduleISchema:
 
     def test_lines_4_7_and_9_add_the_lines_the_form_names(self, session):
         IncomeInfo.objects.create(session=session, **TEN_SOURCES)
+        answer_household(session)
 
         field_map = resolve(load_schema("schedule_i"), session)
 
         assert {box: field_map.get(box) for box in LINE_TOTALS} == LINE_TOTALS
 
     def test_lines_schedule_i_never_asks_about_print_nothing(self, session):
-        # Payroll deductions wait for step 3; interest and other government assistance
-        # are never asked: blank, never 0.00 (B2).
+        # A Chapter 13 supplement's date is the one box left that Schedule I never asks.
         IncomeInfo.objects.create(session=session, **TEN_SOURCES)
+        answer_household(session)
 
         field_map = resolve(load_schema("schedule_i"), session)
 
@@ -183,21 +177,16 @@ class TestScheduleISchema:
             (form_type, box): printed[form_type].get(box) for form_type, box in COMBINED_INCOME
         } == COMBINED_INCOME
 
-    def test_income_lines_print_blank_until_the_filer_gives_income_by_source(self, session):
-        # Forms are refused before they are built (views._prepare, test_income_resume.py);
-        # Schedule I and Schedule J line 23a never print an income the filer didn't give.
-        def income_printed():
-            schedule_i = resolve(load_schema("schedule_i"), session)
-            schedule_j = resolve(load_schema("schedule_j"), session)
-            return sorted(INCOME_LINES & schedule_i.keys()), schedule_j.get("23a")
-
+    def test_income_lines_print_blank_with_no_income_row(self, session):
+        # A row with nothing given prints 0.00 (§9.6); the Income step's gap refuses those forms
+        # before anything prints (CLAUDE.md "Forms need a completed intake").
         household = Household(session=session)
         household.store_members([])
         household.save()
-        assert income_printed() == ([], None)
-        # A total saved before income was stored by source is never split for the filer.
-        IncomeInfo.objects.create(session=session, monthly_income=[3000] * 6)
-        assert income_printed() == ([], None)
+        schedule_i = resolve(load_schema("schedule_i"), session)
+        schedule_j = resolve(load_schema("schedule_j"), session)
+        assert sorted(INCOME_LINES & schedule_i.keys()) == []
+        assert schedule_j.get("23a") is None
 
     def test_schedule_i_column_2_prints_the_spouses_income_for_a_spouse_at_home(self, session):
         answer_income_step(
@@ -214,8 +203,10 @@ class TestScheduleISchema:
             "Amount 7 Debtor 2",
             "Amount 10 Debtor 2",
         )
-        zero_boxes = tuple(
-            f"Amount {n} Debtor 2" for n in ("3", "8a", "8c", "8d", "8e", "8g", "8h", "9")
+        zero_boxes = (
+            *(f"Amount {n} Debtor 2" for n in ("3", "8a", "8b", "8c", "8d", "8e", "8f")),
+            *(f"Amount {n} Debtor 2" for n in ("8g", "8h", "9", "6")),
+            *(f"Amount 5{x} Debtor 2" for x in "abcdefgh"),
         )
         assert {b: schedule_i.get(b) for b in wage_boxes} == dict.fromkeys(wage_boxes, "1800.00")
         assert {b: schedule_i.get(b) for b in zero_boxes} == dict.fromkeys(zero_boxes, "0.00")
@@ -240,7 +231,7 @@ class TestScheduleISchema:
             field_map["Amount 12"],
         ) == ("12000.00",) * 3
 
-    def test_a_spouse_source_typed_as_0_prints_0_00_and_one_left_empty_prints_blank(self, session):
+    def test_a_spouse_at_home_prints_0_00_on_every_asked_line_left_blank(self, session):
         answer_income_step(
             session,
             "married_together",
@@ -250,19 +241,29 @@ class TestScheduleISchema:
         form_122a1 = resolve(load_schema("form_122a1"), session)
         schedule_i = resolve(load_schema("schedule_i"), session)
         assert {b: v for b, v in form_122a1.items() if b.startswith("Debto2.")} == {
-            "Debto2.Quest2.0": "0.00",
-            "Debto2.Quest11": "0.00",
-        }
-        assert {b: v for b, v in schedule_i.items() if "Debtor 2" in b} == dict.fromkeys(
-            (
-                "Amount 2 Debtor 2",
-                "Amount 4 Debtor 2",
-                "Amount 4 Debtor 2a",
-                "Amount 7 Debtor 2",
-                "Amount 10 Debtor 2",
+            **dict.fromkeys(
+                [
+                    "Debto2.Quest2.0",
+                    "Debto2.Quest3",
+                    "Debto2.Quest2.2",
+                    "Debto2.Quest5A",
+                    "Debto2.Quest5B",
+                    "Debto2.Quest5C",
+                    "Debto2.Quest6A",
+                    "Debto2.Quest6B",
+                    "Debto2.Quest6C",
+                    "Debto2.Quest7",
+                    "Debto2.Quest8.0",
+                    "Debto2.Quest9",
+                    "Debto2.Quest10A",
+                    "Debto2.Quest11",
+                ],
+                "0.00",
             ),
-            "0.00",
-        )
+        }
+        printed = {b: v for b, v in schedule_i.items() if "Debtor 2" in b}
+        assert printed and set(printed.values()) == {"0.00"}
+        assert {"Amount 2 Debtor 2", "Amount 7 Debtor 2", "Amount 8b Debtor 2"} <= printed.keys()
 
     @pytest.mark.parametrize(
         "answer,filer_other,spouse_other,named",
@@ -302,9 +303,226 @@ class TestScheduleISchema:
         # A blank column counts as zero in the total, which still prints (step 2 spec §6.1).
         answer_income_step(session, "married_together", {}, monthly_gross_wages=Decimal("12000.00"))
         field_map = resolve(load_schema("schedule_i"), session)
-        assert sorted(b for b in field_map if "Debtor 2" in b) == []
+        printed = {b: v for b, v in field_map.items() if "Debtor 2" in b}
+        assert printed and set(printed.values()) == {"0.00"}
         assert (
             field_map["Amount 10 Debtor 1"],
             field_map["Amount 10"],
             field_map["Amount 12"],
         ) == ("12000.00",) * 3
+
+
+# ---------------------------------------------------------------------------
+# 3e2 Task 12: deductions, take-home pay, 8a, 8b and 8f (spec §4.4-4.6, §9.1, §9.6, §11)
+# ---------------------------------------------------------------------------
+
+
+def _printed(session, form="schedule_i"):
+    return resolve(load_schema(form), session)
+
+
+def _entry(kind, gross, expenses, current_gross=None, current_expenses=None):
+    return {
+        "kind": kind,
+        "description": kind,
+        "gross": gross,
+        "expenses": expenses,
+        "current_gross": current_gross,
+        "current_expenses": current_expenses,
+    }
+
+
+def _filer(session, **amounts):
+    IncomeInfo.objects.create(session=session, **amounts)
+
+
+def _resave(row, **columns):
+    for column, value in columns.items():
+        setattr(row, column, value)
+    row.save()
+
+
+@pytest.mark.django_db
+class TestScheduleIDeductionsAndAssistance:
+    def test_take_home_pay_is_gross_less_the_deductions_on_schedule_i_106sum_and_schedule_j(
+        self, session
+    ):
+        _filer(session, monthly_gross_wages=Decimal("3200.00"))
+        answer_household(session, payroll_tax=Decimal("400.00"))
+        schedule_i = _printed(session)
+        assert {b: schedule_i[b] for b in DEDUCTION_BOXES} == {
+            "Amount 5a Debtor 1": "400.00",
+            **dict.fromkeys(DEDUCTION_BOXES[1:], "0.00"),
+        }
+        assert (
+            schedule_i["Amount 6 Debtor 1"],
+            schedule_i["Amount 7 Debtor 1"],
+            schedule_i["Amount 10 Debtor 1"],
+            schedule_i["Amount 12"],
+            _printed(session, "form_106sum")["4"],
+            _printed(session, "schedule_j")["23a"],
+        ) == ("400.00", "2800.00", "2800.00", "2800.00", "2800.00", "2800.00")
+
+    def test_a_blank_deduction_prints_0_00_and_counts_as_zero(self, session):
+        _filer(session, monthly_gross_wages=Decimal("3200.00"))
+        answer_household(session, payroll_tax=Decimal("400.00"))
+        fm = _printed(session)
+        assert (fm["Amount 5g Debtor 1"], fm["Amount 6 Debtor 1"]) == ("0.00", "400.00")
+
+    def test_deductions_larger_than_pay_print_take_home_pay_below_zero(self, session):
+        _filer(session, monthly_gross_wages=Decimal("100.00"))
+        answer_household(session, payroll_tax=Decimal("150.00"))
+        assert _printed(session)["Amount 7 Debtor 1"] == "-50.00"
+
+    def test_other_deductions_are_named_only_while_5h_is_above_zero(self, session):
+        _filer(session, monthly_gross_wages=Decimal("1000.00"))
+        answer_household(session)
+        row = session.income_info
+        _resave(row, payroll_other=Decimal("25.00"), payroll_other_specify="Parking")
+        assert _printed(session)["Other deductions 5h"] == "Parking"
+        _resave(row, payroll_other=Decimal("0.00"))
+        assert "Other deductions 5h" not in _printed(session)
+
+    def test_schedule_i_prints_income_that_is_now_different_while_122a1_keeps_the_average(
+        self, session
+    ):
+        _filer(session, monthly_gross_wages=Decimal("3000.00"))
+        answer_household(session, income_now_different="yes")
+        _resave(session.income_info, current_monthly_gross_wages=Decimal("3600.00"))
+        schedule_i = _printed(session)
+        assert (
+            schedule_i["Amount 2 Debtor 1"],
+            schedule_i["Amount 3 Debtor 1"],
+            schedule_i["Amount 8b Debtor 1"],
+        ) == ("3600.00", "0.00", "0.00")
+        form_122a1 = _printed(session, "form_122a1")
+        assert (form_122a1["Debto1.Quest2.0"], form_122a1["Debto1.Quest11"]) == (
+            "3000.00",
+            "3000.00",
+        )
+
+    def test_schedule_i_reads_the_averages_when_the_answer_moved_back_to_no(self, session):
+        _filer(session, monthly_gross_wages=Decimal("3000.00"))
+        answer_household(session, income_now_different="yes")
+        _resave(
+            session.income_info,
+            current_monthly_gross_wages=Decimal("3600.00"),
+            income_now_different="no",
+        )
+        assert _printed(session)["Amount 2 Debtor 1"] == "3000.00"
+
+    def test_8f_prints_cash_and_noncash_assistance_and_never_changes_cmi(self, session):
+        _filer(session, monthly_gross_wages=Decimal("3000.00"))
+        answer_household(session, assistance_answer="yes")
+        _resave(
+            session.income_info,
+            cash_assistance_kind="TANF",
+            cash_assistance_amount=Decimal("200.00"),
+            noncash_assistance_kind="SNAP (food stamps)",
+            noncash_assistance_value=Decimal("350.00"),
+        )
+        fm = _printed(session)
+        assert (fm["Amount 8f Debtor 1"], fm["Assistance 8f@2:T36"]) == (
+            "550.00",
+            "TANF; SNAP (food stamps)",
+        )
+        assert DERIVATIONS["filer_cmi"](session) == "3000.00"
+        assert "Assistance 8f" not in fm  # untagged: line 11's widget (T49) is never filled
+
+    def test_an_unknown_noncash_value_prints_blank_with_its_kind(self, session):
+        _filer(session, monthly_gross_wages=Decimal("3000.00"))
+        answer_household(session, assistance_answer="yes")
+        _resave(session.income_info, noncash_assistance_kind="Housing subsidy")
+        fm = _printed(session)
+        assert "Amount 8f Debtor 1" not in fm
+        assert fm["Assistance 8f@2:T36"] == "Housing subsidy"
+
+    def test_a_kind_typed_under_yes_then_answered_no_prints_0_00_and_a_blank_specify(self, session):
+        _filer(session, monthly_gross_wages=Decimal("3000.00"))
+        answer_household(session, assistance_answer="no")
+        _resave(
+            session.income_info,
+            cash_assistance_kind="TANF",
+            cash_assistance_amount=Decimal("200.00"),
+        )
+        fm = _printed(session)
+        assert fm["Amount 8f Debtor 1"] == "0.00"
+        assert "Assistance 8f@2:T36" not in fm
+
+    def test_8a_takes_a_loss_on_the_current_figures_as_0_00_for_that_kind(self, session):
+        _filer(session)
+        answer_household(
+            session,
+            income_now_different="yes",
+            business_and_rental=[_entry("business", "1000.00", "400.00", "300.00", "900.00")],
+        )
+        fm = _printed(session)
+        assert fm["Amount 8a Debtor 1"] == "0.00"
+        assert DERIVATIONS["filer_cmi"](session) == "600.00"  # CMI keeps the averages' net
+
+    def test_a_business_loss_never_lowers_rental_income_on_8a(self, session):
+        _filer(session)
+        answer_household(
+            session,
+            business_and_rental=[
+                _entry("business", "600.00", "1100.00"),
+                _entry("rental", "900.00", "200.00"),
+            ],
+        )
+        assert _printed(session)["Amount 8a Debtor 1"] == "700.00"
+
+    def test_the_8h_words_follow_the_figures_schedule_i_uses(self, session):
+        _filer(session, monthly_other_income=Decimal("0.00"))
+        answer_household(session, income_now_different="yes")
+        row = session.income_info
+        _resave(row, current_monthly_other_income=Decimal("300.00"))
+        fm = _printed(session)
+        assert (fm["Amount 8h Debtor 1"], fm["Other income 8h"]) == ("300.00", "Other income")
+        assert DERIVATIONS["other_income_label"](session) == ""
+        _resave(
+            row,
+            monthly_other_income=Decimal("300.00"),
+            current_monthly_other_income=Decimal("0.00"),
+        )
+        fm = _printed(session)
+        assert fm["Amount 8h Debtor 1"] == "0.00"
+        assert "Other income 8h" not in fm
+        assert DERIVATIONS["other_income_label"](session) == "Other income"
+
+    def test_schedule_i_column_2_prints_the_spouses_deductions_and_take_home_pay(self, session):
+        _filer(session, monthly_gross_wages=Decimal("12000.00"))
+        answer_household(
+            session,
+            marital_status="married_together",
+            members=[SPOUSE_AT_HOME_ROW],
+            spouse_income=SPOUSE_WAGES_ONLY,
+            payroll_tax=Decimal("250.00"),
+        )
+        fm = _printed(session)
+        assert (
+            fm["Amount 5a Debtor 2"],
+            fm["Amount 6 Debtor 2"],
+            fm["Amount 7 Debtor 2"],
+            fm["Amount 10 Debtor 2"],
+        ) == ("250.00", "250.00", "1550.00", "1550.00")
+
+    def test_a_spouse_column_stays_blank_for_a_filer_living_apart(self, session):
+        _filer(session, monthly_gross_wages=Decimal("12000.00"))
+        answer_household(
+            session,
+            marital_status="married_separately",
+            members=[SPOUSE_AT_HOME_ROW],
+            spouse_income=SPOUSE_WAGES_ONLY,
+            payroll_tax=Decimal("250.00"),
+        )
+        _resave(
+            session.spouse_income,
+            assistance_answer="yes",
+            cash_assistance_kind="TANF",
+            cash_assistance_amount=Decimal("100.00"),
+        )
+        fm = _printed(session)
+        assert sorted(b for b in fm if "Debtor 2" in b) == []
+        assert (
+            "Assistance 8f@2:T36" not in fm
+        )  # the filer answered No; the spouse's kind isn't read

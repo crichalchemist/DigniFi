@@ -6,7 +6,14 @@ import { http, HttpResponse } from 'msw';
 import { server } from '../../test/mocks/server';
 import { IntakeProvider, useIntake } from '../../context/IntakeContext';
 import IntakeWizard from '../IntakeWizard';
-import { EXPENSE_FIELDS, INCOME_FIELDS } from '../../types/api';
+import {
+  CURRENT_INCOME_FIELDS,
+  DEDUCTION_FIELDS,
+  EXPENSE_FIELDS,
+  EXPENSE_SPECIFY_FIELDS,
+  INCOME_FIELDS,
+} from '../../types/api';
+import { EXPENSE_LINE_WORDS } from '../../constants/formText';
 
 // DebtorInfoStep reads account email via useAuth; wizard test renders without
 // AuthProvider, so we stub just the user object the step needs.
@@ -18,15 +25,16 @@ vi.mock('../../context/AuthContext', () => ({
 // Shared fixtures
 // ---------------------------------------------------------------------------
 
-const sessionAtStep8 = {
+const sessionAtStep9 = {
   id: 1,
   user: 1,
   district: 1,
-  current_step: 8,
+  current_step: 9,
   status: 'in_progress' as const,
   created_at: '2026-01-20T10:00:00Z',
   updated_at: '2026-01-20T10:00:00Z',
   completed_at: null,
+  income_window: { start: '2026-04-01', end: '2026-09-30' },
   debtor_info: { first_name: 'Jane', last_name: 'Doe' },
   income_info: { monthly_gross_wages: '1200.00', total_monthly_income: 1200 },
   expense_info: { rent_or_mortgage: 1000 },
@@ -44,6 +52,7 @@ const sessionAtStep1 = {
   created_at: '2026-01-20T10:00:00Z',
   updated_at: '2026-01-20T10:00:00Z',
   completed_at: null,
+  income_window: { start: '2026-04-01', end: '2026-09-30' },
   debtor_info: null,
   income_info: null,
   expense_info: null,
@@ -121,16 +130,16 @@ async function fillDebtorInfoFields(county: string | null = 'Cook') {
 
 describe('IntakeWizard handleComplete routing', { timeout: 30_000 }, () => {
   beforeEach(() => {
-    // POST (createSession) return step 8 (Review & Results — the last step)
+    // POST (createSession) return step 9 (Review & Results — the last step)
     server.use(
       http.get('http://localhost:8000/api/intake/sessions/:id/', () =>
-        HttpResponse.json(sessionAtStep8)
+        HttpResponse.json(sessionAtStep9)
       ),
       http.post('http://localhost:8000/api/intake/sessions/', () =>
-        HttpResponse.json({ session: sessionAtStep8, message: 'Session created.' }, { status: 201 })
+        HttpResponse.json({ session: sessionAtStep9, message: 'Session created.' }, { status: 201 })
       ),
       http.patch('http://localhost:8000/api/intake/sessions/:id/', () =>
-        HttpResponse.json(sessionAtStep8)
+        HttpResponse.json(sessionAtStep9)
       )
     );
   });
@@ -139,7 +148,7 @@ describe('IntakeWizard handleComplete routing', { timeout: 30_000 }, () => {
     renderWizard();
     const completeBtn = await screen.findByRole('button', { name: /complete intake/i });
 
-    // Register AFTER the session GET resolves (wizard is at step 8). Registering
+    // Register AFTER the session GET resolves (wizard is at step 9). Registering
     // before renderWizard() races with the GET under system load in the full suite.
     server.use(
       http.post('http://localhost:8000/api/intake/sessions/:id/calculate_means_test/', () =>
@@ -272,7 +281,7 @@ describe("IntakeWizard Complete's reasons", { timeout: 30_000 }, () => {
         'http://localhost:8000/api/intake/sessions/:id/update_step/',
         async ({ request }) => {
           stepUpdates.push(await request.json());
-          return HttpResponse.json({ session: sessionAtStep8, message: 'Step updated.' });
+          return HttpResponse.json({ session: sessionAtStep9, message: 'Step updated.' });
         }
       )
     );
@@ -284,7 +293,7 @@ describe("IntakeWizard Complete's reasons", { timeout: 30_000 }, () => {
     vi.spyOn(console, 'error').mockImplementation(() => {});
     server.use(
       http.get('http://localhost:8000/api/intake/sessions/:id/', () =>
-        HttpResponse.json(sessionAtStep8)
+        HttpResponse.json(sessionAtStep9)
       )
     );
   });
@@ -312,6 +321,25 @@ describe("IntakeWizard Complete's reasons", { timeout: 30_000 }, () => {
     expect(await screen.findByRole('heading', { name: 'Expenses', level: 2 })).toBeInTheDocument();
     // Like Go Back, it moves without telling the server where the filer is
     expect(stepUpdates).toEqual([]);
+  });
+
+  it('a refused Complete naming take-home pay links to the Take-home pay step', async () => {
+    renderWizard();
+    const completeBtn = await screen.findByRole('button', { name: /complete intake/i });
+    refuseComplete([
+      {
+        step: 'take_home_pay',
+        message:
+          'Enter what is taken out of your pay on the Take-home pay step. If nothing is, enter $0 in one box.',
+      },
+    ]);
+
+    await userEvent.click(completeBtn);
+    await userEvent.click(await screen.findByRole('button', { name: 'Go to Take-home pay' }));
+
+    expect(
+      await screen.findByRole('heading', { name: 'Take-home pay', level: 2 })
+    ).toBeInTheDocument();
   });
 
   // A live region announces only changes to a region already on the page
@@ -350,7 +378,7 @@ describe("IntakeWizard Complete's reasons", { timeout: 30_000 }, () => {
       message: 'Check the debts read from your documents on the Amounts Owed step.',
     };
     // Amounts Owed lets the filer continue once it holds a debt
-    const sessionWithDebt = { ...sessionAtStep8, debts: completedSession.debts };
+    const sessionWithDebt = { ...sessionAtStep9, debts: completedSession.debts };
     server.use(
       http.get('http://localhost:8000/api/intake/sessions/:id/', () =>
         HttpResponse.json(sessionWithDebt)
@@ -389,7 +417,7 @@ describe("IntakeWizard Complete's reasons", { timeout: 30_000 }, () => {
     await userEvent.click(continueBtn);
 
     await screen.findByRole('heading', { name: /review & results/i, level: 2 });
-    expect(stepUpdates).toEqual([{ current_step: 8 }]);
+    expect(stepUpdates).toEqual([{ current_step: 9 }]);
     expect(screen.queryByText(NO_EXPENSES.message)).not.toBeInTheDocument();
   });
 
@@ -432,7 +460,7 @@ describe("IntakeWizard Complete's reasons", { timeout: 30_000 }, () => {
  * and the debt amounts arrive as decimal strings.
  */
 const completedSession = {
-  ...sessionAtStep8,
+  ...sessionAtStep9,
   status: 'completed' as const,
   completed_at: '2026-10-12T10:00:00Z',
   debtor_info: {
@@ -451,7 +479,7 @@ const completedSession = {
     monthly_gross_wages: '3100.50',
     monthly_overtime: null,
     monthly_tips: '0.00',
-    monthly_rental_income: null,
+    monthly_interest_and_dividends: null,
     monthly_pension: null,
     monthly_social_security: '99.50',
     monthly_unemployment: null,
@@ -548,6 +576,7 @@ describe('IntakeWizard stepping back', { timeout: 30_000 }, () => {
         'Amounts Owed',
         'Assets',
         'Expenses',
+        'Take-home pay',
         'Income',
         'Your Information',
       ]) {
@@ -720,10 +749,10 @@ describe('IntakeWizard autosave', { timeout: 15_000 }, () => {
 // Re-reading the session on every wizard entry (DIG-1, DIG-30)
 // ===========================================================================
 
-/** Session sitting on step 5 (Amounts Owed) with no debts yet. */
-const sessionAtStep5 = {
+/** Session sitting on step 6 (Amounts Owed) with no debts yet. */
+const sessionAtStep6 = {
   ...sessionAtStep1,
-  current_step: 5,
+  current_step: 6,
   debtor_info: { first_name: 'Jane', last_name: 'Doe' },
 };
 
@@ -761,7 +790,7 @@ describe('IntakeWizard session re-read', { timeout: 15_000 }, () => {
     // The filer reached Amounts Owed, went back to /documents (header link or browser Back)
     // and uploaded a bill. The provider loaded the session before the upload, so the copy
     // in context has no debts; only the server holds the draft.
-    let serverSession: Record<string, unknown> = sessionAtStep5;
+    let serverSession: Record<string, unknown> = sessionAtStep6;
     server.use(
       http.get('http://localhost:8000/api/intake/sessions/:id/', () =>
         HttpResponse.json(serverSession)
@@ -784,7 +813,7 @@ describe('IntakeWizard session re-read', { timeout: 15_000 }, () => {
     const continueButton = await screen.findByRole('button', { name: 'Continue' });
 
     // The bill has been read: the server now holds a draft debt the context never saw.
-    serverSession = { ...sessionAtStep5, debts: [debtFromUploadedBill] };
+    serverSession = { ...sessionAtStep6, debts: [debtFromUploadedBill] };
     await userEvent.click(continueButton);
 
     await screen.findByRole('heading', { name: /amounts owed/i, level: 2 });
@@ -799,7 +828,7 @@ describe('IntakeWizard session re-read', { timeout: 15_000 }, () => {
       http.get('http://localhost:8000/api/intake/sessions/:id/', () =>
         serverBusy
           ? HttpResponse.json({ detail: 'Request was throttled.' }, { status: 429 })
-          : HttpResponse.json({ ...sessionAtStep1, current_step: 3 })
+          : HttpResponse.json({ ...sessionAtStep1, current_step: 4 })
       ),
       http.post('http://localhost:8000/api/intake/sessions/', () => {
         sessionsCreated += 1;
@@ -809,7 +838,7 @@ describe('IntakeWizard session re-read', { timeout: 15_000 }, () => {
         );
       }),
       http.patch('http://localhost:8000/api/intake/sessions/:id/', () =>
-        HttpResponse.json({ ...sessionAtStep1, current_step: 3 })
+        HttpResponse.json({ ...sessionAtStep1, current_step: 4 })
       )
     );
 
@@ -883,7 +912,7 @@ describe('IntakeWizard session re-read', { timeout: 15_000 }, () => {
   // The dashboard links a refusal to the step that fixes it (step 3a2 spec §4.5)
   it('opens at the step a link names, without moving the filer’s saved place', async () => {
     // The intake is complete, so it would open at Review
-    const stepUpdates = savedAs({ ...sessionAtStep8, status: 'completed' });
+    const stepUpdates = savedAs({ ...sessionAtStep9, status: 'completed' });
 
     renderWizard('/intake?step=expense_info');
 
@@ -906,7 +935,7 @@ describe('IntakeWizard session re-read', { timeout: 15_000 }, () => {
   // already loaded when a link opens the wizard, so an update_step sent through the context, as
   // Continue sends it, would reach the server
   it('opens the step a dashboard link names, the session already loaded, without moving the filer’s saved place', async () => {
-    const stepUpdates = savedAs({ ...sessionAtStep8, status: 'completed' });
+    const stepUpdates = savedAs({ ...sessionAtStep9, status: 'completed' });
     localStorage.setItem('current_session_id', '1');
     render(
       <MemoryRouter initialEntries={['/forms']}>
@@ -929,7 +958,7 @@ describe('IntakeWizard session re-read', { timeout: 15_000 }, () => {
 
   // A refresh then opens the saved step, and Back leaves the wizard rather than reopening the link
   it('drops the step from the address once it has opened it, without a new history entry', async () => {
-    const stepUpdates = savedAs({ ...sessionAtStep8, status: 'completed' });
+    const stepUpdates = savedAs({ ...sessionAtStep9, status: 'completed' });
     localStorage.setItem('current_session_id', '1');
     render(
       <MemoryRouter initialEntries={['/forms', '/intake?step=expense_info']} initialIndex={1}>
@@ -960,11 +989,11 @@ describe('IntakeWizard session re-read', { timeout: 15_000 }, () => {
       http.get('http://localhost:8000/api/intake/sessions/:id/', () =>
         serverBusy
           ? HttpResponse.json({ detail: 'Request was throttled.' }, { status: 429 })
-          : HttpResponse.json({ ...sessionAtStep8, status: 'completed' })
+          : HttpResponse.json({ ...sessionAtStep9, status: 'completed' })
       ),
       http.post('http://localhost:8000/api/intake/sessions/:id/update_step/', () => {
         stepUpdates.count += 1;
-        return HttpResponse.json({ session: sessionAtStep8, message: 'Step updated.' });
+        return HttpResponse.json({ session: sessionAtStep9, message: 'Step updated.' });
       })
     );
     localStorage.setItem('current_session_id', '1');
@@ -994,7 +1023,7 @@ describe('IntakeWizard session re-read', { timeout: 15_000 }, () => {
 
   it('opens at the saved step when a link names no step of the wizard', async () => {
     // Saved mid-wizard, so neither the first step nor the last stands in for it
-    const stepUpdates = savedAs({ ...sessionAtStep1, current_step: 5 });
+    const stepUpdates = savedAs({ ...sessionAtStep1, current_step: 6 });
 
     renderWizard('/intake?step=sofa');
 
@@ -1010,9 +1039,9 @@ describe('IntakeWizard session re-read', { timeout: 15_000 }, () => {
 // ===========================================================================
 
 /** A returning filer on Amounts Owed. DRF sends decimal amounts as strings. */
-const sessionAtStep5WithDebts = {
+const sessionAtStep6WithDebts = {
   ...sessionAtStep1,
-  current_step: 5,
+  current_step: 6,
   debts: [
     {
       id: 7,
@@ -1046,9 +1075,9 @@ const sessionAtStep5WithDebts = {
 };
 
 /** A returning filer on Assets. The API never sends an asset's account number. */
-const sessionAtStep4WithAssets = {
+const sessionAtStep5WithAssets = {
   ...sessionAtStep1,
-  current_step: 4,
+  current_step: 5,
   assets: [
     {
       id: 3,
@@ -1071,14 +1100,14 @@ describe('IntakeWizard amounts a returning filer already entered', { timeout: 15
     patchBodies = [];
     server.use(
       http.get('http://localhost:8000/api/intake/sessions/:id/', () =>
-        HttpResponse.json(sessionAtStep5WithDebts)
+        HttpResponse.json(sessionAtStep6WithDebts)
       ),
       // Continue saves the step, even when the filer changed nothing. A saved list comes back
       // in the order sent, each row with its id (DIG-273).
       http.patch('http://localhost:8000/api/intake/sessions/:id/', async ({ request }) => {
         const body = (await request.json()) as Record<string, unknown>;
         patchBodies.push(body);
-        return HttpResponse.json({ ...sessionAtStep5WithDebts, ...body });
+        return HttpResponse.json({ ...sessionAtStep6WithDebts, ...body });
       }),
       http.get('http://localhost:8000/api/intake/sessions/:id/contracts/', () =>
         HttpResponse.json([])
@@ -1116,7 +1145,7 @@ describe('IntakeWizard amounts a returning filer already entered', { timeout: 15
   it('saves each asset back under its own id, with its amounts as numbers', async () => {
     server.use(
       http.get('http://localhost:8000/api/intake/sessions/:id/', () =>
-        HttpResponse.json(sessionAtStep4WithAssets)
+        HttpResponse.json(sessionAtStep5WithAssets)
       )
     );
     renderWizard();
@@ -1190,6 +1219,33 @@ function serveSessionSaves(
                 })),
         };
       }
+      // The filer's entries, then the spouse's: the same pattern as the household's members, so
+      // ids come in that order (members first, then entries, then the spouse's entries)
+      for (const section of ['income_info', 'spouse_income']) {
+        const sent = (body[section] as { business_and_rental?: Record<string, unknown>[] | null })
+          ?.business_and_rental;
+        if (sent === undefined) continue;
+        const storedSection = (stored[section] ?? {}) as {
+          business_and_rental?: Record<string, unknown>[] | null;
+        };
+        const heldIds = (storedSection.business_and_rental ?? []).map((row) => row.id);
+        stored[section] = {
+          ...storedSection,
+          business_and_rental:
+            sent === null
+              ? null
+              : sent.map((row) => {
+                  const entry: Record<string, unknown> = {
+                    ...row,
+                    id: heldIds.includes(row.id) ? row.id : nextId++,
+                  };
+                  for (const amount of ['gross', 'expenses', 'current_gross', 'current_expenses']) {
+                    if (typeof entry[amount] === 'number') entry[amount] = entry[amount].toFixed(2);
+                  }
+                  return entry;
+                }),
+        };
+      }
       const reply = HttpResponse.json(stored);
       if (heldReply) {
         const wait = heldReply;
@@ -1234,7 +1290,7 @@ async function waitSeconds(seconds: number) {
 describe.each([
   {
     list: 'debts',
-    step: 5,
+    step: 6,
     title: /amounts owed/i,
     nameKey: 'creditor_name',
     amountKey: 'amount_owed',
@@ -1264,7 +1320,7 @@ describe.each([
   },
   {
     list: 'assets',
-    step: 4,
+    step: 5,
     title: /assets/i,
     nameKey: 'description',
     amountKey: 'current_value',
@@ -1501,7 +1557,7 @@ describe('IntakeWizard a new debt after Complete', { timeout: 30_000 }, () => {
   // new debt has its id, stepping back over Amounts Owed must not save it again.
   it('keeps a completed intake completed when the filer steps back to the debt they added', async () => {
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
-    const saves = serveSessionSaves({ ...sessionAtStep1, current_step: 5 });
+    const saves = serveSessionSaves({ ...sessionAtStep1, current_step: 6 });
     server.use(
       http.post(
         'http://localhost:8000/api/intake/sessions/:id/update_step/',
@@ -1572,7 +1628,7 @@ describe('IntakeWizard income save', { timeout: 15_000 }, () => {
       monthly_gross_wages: '3100.50',
       monthly_overtime: null,
       monthly_tips: '0.00',
-      monthly_rental_income: null,
+      monthly_interest_and_dividends: null,
       monthly_pension: null,
       monthly_social_security: '99.50',
       monthly_unemployment: null,
@@ -1588,7 +1644,7 @@ describe('IntakeWizard income save', { timeout: 15_000 }, () => {
     monthly_gross_wages: 3100.5,
     monthly_overtime: null,
     monthly_tips: 0,
-    monthly_rental_income: null,
+    monthly_interest_and_dividends: null,
     monthly_pension: null,
     monthly_social_security: 99.5,
     monthly_unemployment: null,
@@ -1628,12 +1684,17 @@ describe('IntakeWizard income save', { timeout: 15_000 }, () => {
     await screen.findByRole('heading', { name: /income/i, level: 2 });
     expect(screen.getByLabelText(/monthly wages/i)).toHaveValue(3100.5);
     await userEvent.click(screen.getByRole('button', { name: /continue/i }));
-    await screen.findByRole('heading', { name: /expenses/i, level: 2 });
+    await screen.findByRole('heading', { name: /take-home pay/i, level: 2 });
 
     expect(patchBodies.length).toBeGreaterThan(0);
     for (const body of patchBodies) {
       expect(body).toEqual({
-        income_info: { ...savedAmounts, marital_status: null },
+        income_info: {
+          ...savedAmounts,
+          marital_status: null,
+          business_and_rental: null,
+          ...NEW_ANSWERS,
+        },
         household: { members: null },
       });
     }
@@ -1644,14 +1705,72 @@ describe('IntakeWizard income save', { timeout: 15_000 }, () => {
     await screen.findByRole('heading', { name: /income/i, level: 2 });
     await userEvent.clear(screen.getByLabelText(/social security/i));
     await userEvent.click(screen.getByRole('button', { name: /continue/i }));
-    await screen.findByRole('heading', { name: /expenses/i, level: 2 });
+    await screen.findByRole('heading', { name: /take-home pay/i, level: 2 });
 
     expect(patchBodies.at(-1)).toEqual({
-      income_info: { ...savedAmounts, monthly_social_security: null, marital_status: null },
+      income_info: {
+        ...savedAmounts,
+        monthly_social_security: null,
+        marital_status: null,
+        business_and_rental: null,
+        ...NEW_ANSWERS,
+      },
       household: { members: null },
     });
   });
 });
+
+// The step 2 body's new answers while the filer has given none (3e2 spec §7.4): the current ten
+// stay out until "yes", and the five assistance fields are always sent
+const NEW_ANSWERS = {
+  income_now_different: null,
+  assistance_answer: null,
+  cash_assistance_kind: '',
+  cash_assistance_amount: null,
+  noncash_assistance_kind: '',
+  noncash_assistance_value: null,
+};
+
+// Shared by the Income step's describes below
+const onIncome = { ...sessionAtStep1, current_step: 2 };
+const TEN_ZERO = Object.fromEntries(INCOME_FIELDS.map((field) => [field, '0.00']));
+const TEN_NULL = Object.fromEntries(INCOME_FIELDS.map((field) => [field, null]));
+const priyaAtIncome = {
+  ...onIncome,
+  income_info: {
+    ...TEN_ZERO,
+    monthly_gross_wages: '12000.00',
+    marital_status: 'married_together',
+    total_monthly_income: 12000,
+  },
+  household: {
+    county: 'Cook',
+    members: [
+      {
+        id: 1,
+        relationship: 'spouse',
+        age: 45,
+        lives_with_you: true,
+        claimed_or_supported: true,
+        spouse_is_dependent: false,
+      },
+      {
+        id: 2,
+        relationship: 'daughter',
+        age: 10,
+        lives_with_you: true,
+        claimed_or_supported: true,
+      },
+      { id: 3, relationship: 'son', age: 7, lives_with_you: true, claimed_or_supported: true },
+    ],
+  },
+  spouse_income: { ...TEN_ZERO, monthly_gross_wages: '1800.00' },
+};
+const pick = (name: string, value: string) => {
+  const radio = document.querySelector(`input[name="${name}"][value="${value}"]`);
+  if (!radio) throw new Error(`No answer ${value} to ${name}`);
+  fireEvent.click(radio);
+};
 
 // ===========================================================================
 // Household and spouse on the Income step (3e1 spec §8.2)
@@ -1659,47 +1778,8 @@ describe('IntakeWizard income save', { timeout: 15_000 }, () => {
 
 describe('IntakeWizard household and spouse', { timeout: 30_000 }, () => {
   const NO_ONE_ELSE = 'No one else lives with me or depends on me.';
-  const onIncome = { ...sessionAtStep1, current_step: 2 };
-  const TEN_ZERO = Object.fromEntries(INCOME_FIELDS.map((field) => [field, '0.00']));
-  const TEN_NULL = Object.fromEntries(INCOME_FIELDS.map((field) => [field, null]));
-  const priyaAtIncome = {
-    ...onIncome,
-    income_info: {
-      ...TEN_ZERO,
-      monthly_gross_wages: '12000.00',
-      marital_status: 'married_together',
-      total_monthly_income: 12000,
-    },
-    household: {
-      county: 'Cook',
-      members: [
-        {
-          id: 1,
-          relationship: 'spouse',
-          age: 45,
-          lives_with_you: true,
-          claimed_or_supported: true,
-          spouse_is_dependent: false,
-        },
-        {
-          id: 2,
-          relationship: 'daughter',
-          age: 10,
-          lives_with_you: true,
-          claimed_or_supported: true,
-        },
-        { id: 3, relationship: 'son', age: 7, lives_with_you: true, claimed_or_supported: true },
-      ],
-    },
-    spouse_income: { ...TEN_ZERO, monthly_gross_wages: '1800.00' },
-  };
   const members = (body: Record<string, unknown>) =>
     (body.household as { members: Record<string, unknown>[] | null }).members;
-  const pick = (name: string, value: string) => {
-    const radio = document.querySelector(`input[name="${name}"][value="${value}"]`);
-    if (!radio) throw new Error(`No answer ${value} to ${name}`);
-    fireEvent.click(radio);
-  };
   const openIncome = () => screen.findByRole('heading', { name: /income/i, level: 2 });
 
   beforeEach(() => {
@@ -1888,6 +1968,8 @@ describe('IntakeWizard household and spouse', { timeout: 30_000 }, () => {
       expect((bodies.at(-1) as Record<string, unknown>).spouse_income).toEqual({
         ...TEN_NULL,
         monthly_gross_wages: 1800,
+        business_and_rental: null,
+        ...NEW_ANSWERS,
       });
 
       pick('spouse_household', 'married_separately');
@@ -1904,7 +1986,7 @@ describe('IntakeWizard household and spouse', { timeout: 30_000 }, () => {
     const saves = serveSessionSaves({
       ...priyaAtIncome,
       status: 'completed',
-      current_step: 3,
+      current_step: 4,
       expense_info: completedSession.expense_info,
     });
     const { container } = renderWizard();
@@ -1912,6 +1994,9 @@ describe('IntakeWizard household and spouse', { timeout: 30_000 }, () => {
 
     vi.useFakeTimers();
     try {
+      fireEvent.click(screen.getByRole('button', { name: 'Go Back' }));
+      await waitSeconds(3);
+      expect(container.querySelector('.step-title')).toHaveTextContent('Take-home pay');
       fireEvent.click(screen.getByRole('button', { name: 'Go Back' }));
       await waitSeconds(3);
     } finally {
@@ -2136,7 +2221,7 @@ describe('IntakeWizard expense hydration', { timeout: 15_000 }, () => {
   it("adds up a returning filer's saved expenses, which the API sends as decimal strings", async () => {
     const savedSession = {
       ...sessionAtStep1,
-      current_step: 3,
+      current_step: 4,
       expense_info: {
         data_source: 'manual',
         rent_or_mortgage: '1100.00',
@@ -2334,30 +2419,46 @@ describe('IntakeWizard county', { timeout: 15_000 }, () => {
 // ===========================================================================
 
 describe('IntakeWizard cleared expense', { timeout: 15_000 }, () => {
-  it('saves a cleared expense box as $0, so the old amount does not stay on the server', async () => {
-    const savedSession = {
-      ...sessionAtStep1,
-      current_step: 3,
-      expense_info: {
-        data_source: 'manual',
-        rent_or_mortgage: '1100.00',
-        utilities: '180.00',
-        home_maintenance: '0.00',
-        vehicle_payment: '0.00',
-        vehicle_insurance: '85.00',
-        vehicle_maintenance: '40.00',
-        food_and_groceries: '450.00',
-        clothing: '60.00',
-        medical_expenses: '75.00',
-        childcare: '400.00',
-        child_support_paid: '0.00',
-        insurance_not_deducted: '120.00',
-        other_expenses: '50.00',
-        total_monthly_expenses: 2560.0,
-        created_at: '2026-10-01T10:00:00Z',
-        updated_at: '2026-10-01T10:00:00Z',
-      },
-    };
+  const savedExpenses = {
+    data_source: 'manual',
+    rent_or_mortgage: '1100.00',
+    real_estate_taxes: '0.00',
+    home_insurance: '0.00',
+    home_maintenance: '0.00',
+    hoa_dues: '0.00',
+    utilities: '180.00',
+    food_and_groceries: '450.00',
+    childcare: '400.00',
+    clothing: '60.00',
+    personal_care: '0.00',
+    medical_expenses: '75.00',
+    vehicle_maintenance: '40.00',
+    entertainment: '0.00',
+    charitable_contributions: '0.00',
+    vehicle_insurance: '85.00',
+    insurance_not_deducted: '120.00',
+    taxes_not_deducted: '0.00',
+    vehicle_payment: '0.00',
+    child_support_paid: '0.00',
+    support_others: '0.00',
+    other_property_mortgages: '0.00',
+    other_property_taxes: '0.00',
+    other_property_insurance: '0.00',
+    other_property_upkeep: '0.00',
+    other_property_hoa_dues: '0.00',
+    other_expenses: '50.00',
+    taxes_specify: '',
+    support_others_specify: '',
+    other_expenses_specify: '',
+    expenses_include_others: 'no',
+    total_monthly_expenses: 2560.0,
+    created_at: '2026-10-01T10:00:00Z',
+    updated_at: '2026-10-01T10:00:00Z',
+  };
+
+  /** Serve a session sitting on the Expenses step (step 4); returns the PATCH bodies. */
+  function serveExpensesSession(expense_info: Record<string, unknown> | null) {
+    const savedSession = { ...sessionAtStep1, current_step: 4, expense_info };
     const patchBodies: Record<string, unknown>[] = [];
     server.use(
       http.get('http://localhost:8000/api/intake/sessions/:id/', () =>
@@ -2369,7 +2470,7 @@ describe('IntakeWizard cleared expense', { timeout: 15_000 }, () => {
       }),
       http.post('http://localhost:8000/api/intake/sessions/:id/update_step/', () =>
         HttpResponse.json({
-          session: { ...savedSession, current_step: 4 },
+          session: { ...savedSession, current_step: 5 },
           message: 'Step updated.',
         })
       ),
@@ -2378,36 +2479,101 @@ describe('IntakeWizard cleared expense', { timeout: 15_000 }, () => {
         () => new HttpResponse(null, { status: 201 })
       )
     );
+    return patchBodies;
+  }
+
+  it('saves a cleared expense box as $0, so the old amount does not stay on the server', async () => {
+    const patchBodies = serveExpensesSession(savedExpenses);
 
     renderWizard();
     await screen.findByRole('heading', { name: /expenses/i, level: 2 });
-    fireEvent.change(screen.getByRole('spinbutton', { name: /rent or mortgage payment/i }), {
-      target: { value: '' },
-    });
+    fireEvent.change(
+      screen.getByRole('spinbutton', { name: EXPENSE_LINE_WORDS.rent_or_mortgage }),
+      { target: { value: '' } }
+    );
     await userEvent.click(screen.getByRole('button', { name: /continue/i }));
     await screen.findByRole('heading', { name: /assets/i, level: 2 });
 
     const body = patchBodies[patchBodies.length - 1];
     expect(Object.keys(body)).toEqual(['expense_info']);
     const expenseInfo = body.expense_info as Record<string, unknown>;
-    // The 13 names the server stores, in their order, and nothing else (DRF drops any other
-    // name silently). The boxes the filer left alone keep their saved amounts.
-    expect(Object.keys(expenseInfo)).toEqual([...EXPENSE_FIELDS]);
+    // The 26 amounts, the three Specify texts and line 3, in that order, and nothing else (DRF
+    // drops any other name silently). The boxes the filer left alone keep their saved amounts.
+    expect(Object.keys(expenseInfo)).toEqual([
+      ...EXPENSE_FIELDS,
+      ...EXPENSE_SPECIFY_FIELDS,
+      'expenses_include_others',
+    ]);
     expect(expenseInfo).toEqual({
       rent_or_mortgage: 0,
-      utilities: 180,
+      real_estate_taxes: 0,
+      home_insurance: 0,
       home_maintenance: 0,
-      vehicle_payment: 0,
-      vehicle_insurance: 85,
-      vehicle_maintenance: 40,
+      hoa_dues: 0,
+      utilities: 180,
       food_and_groceries: 450,
-      clothing: 60,
-      medical_expenses: 75,
       childcare: 400,
-      child_support_paid: 0,
+      clothing: 60,
+      personal_care: 0,
+      medical_expenses: 75,
+      vehicle_maintenance: 40,
+      entertainment: 0,
+      charitable_contributions: 0,
+      vehicle_insurance: 85,
       insurance_not_deducted: 120,
+      taxes_not_deducted: 0,
+      vehicle_payment: 0,
+      child_support_paid: 0,
+      support_others: 0,
+      other_property_mortgages: 0,
+      other_property_taxes: 0,
+      other_property_insurance: 0,
+      other_property_upkeep: 0,
+      other_property_hoa_dues: 0,
       other_expenses: 50,
+      taxes_specify: '',
+      support_others_specify: '',
+      other_expenses_specify: '',
+      expenses_include_others: 'no',
     });
+  });
+
+  it('sends a blank Specify box as empty and an unanswered line 3 as null', async () => {
+    const patchBodies = serveExpensesSession(null);
+
+    renderWizard();
+    await screen.findByRole('heading', { name: /expenses/i, level: 2 });
+    await userEvent.click(screen.getByRole('button', { name: /continue/i }));
+    await screen.findByRole('heading', { name: /assets/i, level: 2 });
+
+    const body = patchBodies[patchBodies.length - 1];
+    expect(body.expense_info).toEqual({
+      ...Object.fromEntries(EXPENSE_FIELDS.map((field) => [field, 0])),
+      taxes_specify: '',
+      support_others_specify: '',
+      other_expenses_specify: '',
+      expenses_include_others: null,
+    });
+  });
+
+  it('showing the Expenses step again sends nothing', async () => {
+    const patchBodies = serveExpensesSession(savedExpenses);
+
+    renderWizard();
+    await screen.findByRole('heading', { name: /expenses/i, level: 2 });
+
+    // findBy needs real timers, so the clock is faked only after the step has shown. Each
+    // step of the clock is 1 s, since a timer's reply can arm the next one.
+    vi.useFakeTimers();
+    try {
+      for (let second = 0; second < 3; second += 1) {
+        await act(() => vi.advanceTimersByTimeAsync(1000));
+      }
+    } finally {
+      vi.useRealTimers();
+    }
+
+    expect(patchBodies).toEqual([]);
   });
 });
 
@@ -2505,8 +2671,8 @@ describe('IntakeWizard contracts and codebtors', { timeout: 15_000 }, () => {
   });
 
   it.each([
-    [6, 'Contracts & Leases'],
-    [7, 'Codebtors'],
+    [7, 'Contracts & Leases'],
+    [8, 'Codebtors'],
   ])('lets a filer who resumes at step %i (%s) continue', async (step, title) => {
     serveFiler(step);
     renderWizard();
@@ -2517,7 +2683,7 @@ describe('IntakeWizard contracts and codebtors', { timeout: 15_000 }, () => {
   });
 
   it('saves the whole contracts list on Continue, and sends the saved ids on the next save instead of adding rows again', async () => {
-    serveFiler(6, [storedLease, storedGym]);
+    serveFiler(7, [storedLease, storedGym]);
     renderWizard();
     await expectStep('Contracts & Leases');
 
@@ -2551,7 +2717,7 @@ describe('IntakeWizard contracts and codebtors', { timeout: 15_000 }, () => {
   // A second press while the first save is on its way would save the list twice, and Schedule G
   // would print each contract twice
   it('saves the contracts list once when the filer double-clicks Continue', async () => {
-    serveFiler(6, [storedLease]);
+    serveFiler(7, [storedLease]);
     renderWizard();
     await expectStep('Contracts & Leases');
     const continueButton = screen.getByRole('button', { name: /continue/i });
@@ -2562,14 +2728,14 @@ describe('IntakeWizard contracts and codebtors', { timeout: 15_000 }, () => {
     await expectStep('Codebtors');
 
     expect(contractSaves).toEqual([[storedLease]]);
-    expect(stepUpdates).toEqual([7]);
+    expect(stepUpdates).toEqual([8]);
   });
 
   // An empty list means the filer has none: a removed last row must not stay stored and
   // print on Schedule G or H
   it.each([
-    [6, 'Contracts & Leases', 'Codebtors', [storedLease], [], () => contractSaves],
-    [7, 'Codebtors', 'Review & Results', [], [storedCodebtor], () => codebtorSaves],
+    [7, 'Contracts & Leases', 'Codebtors', [storedLease], [], () => contractSaves],
+    [8, 'Codebtors', 'Review & Results', [], [storedCodebtor], () => codebtorSaves],
   ])(
     'saves an empty list when the filer removes the last row on step %i (%s)',
     async (step, title, nextTitle, contracts, codebtors, saves) => {
@@ -2586,8 +2752,8 @@ describe('IntakeWizard contracts and codebtors', { timeout: 15_000 }, () => {
   );
 
   it.each([
-    [6, 'Contracts & Leases', 'contracts', [storedLease], [], 'counterparty_name'],
-    [7, 'Codebtors', 'codebtors', [], [storedCodebtor], 'name'],
+    [7, 'Contracts & Leases', 'contracts', [storedLease], [], 'counterparty_name'],
+    [8, 'Codebtors', 'codebtors', [], [storedCodebtor], 'name'],
   ])(
     'keeps the filer on step %i (%s) and says so when the list cannot be saved',
     async (step, title, list, contracts, codebtors, field) => {
@@ -2611,7 +2777,7 @@ describe('IntakeWizard contracts and codebtors', { timeout: 15_000 }, () => {
   );
 
   it("asks for the other party's name before a contract the filer started can be saved", async () => {
-    serveFiler(6);
+    serveFiler(7);
     renderWizard();
     await expectStep('Contracts & Leases');
 
@@ -2626,7 +2792,7 @@ describe('IntakeWizard contracts and codebtors', { timeout: 15_000 }, () => {
   });
 
   it("asks for the person's name before a codebtor the filer started can be saved", async () => {
-    serveFiler(7);
+    serveFiler(8);
     renderWizard();
     await expectStep('Codebtors');
 
@@ -2642,7 +2808,7 @@ describe('IntakeWizard contracts and codebtors', { timeout: 15_000 }, () => {
   });
 
   it('saves the codebtors list on Continue and lists both lists on Review', async () => {
-    serveFiler(7, [storedLease], [storedCodebtor]);
+    serveFiler(8, [storedLease], [storedCodebtor]);
     renderWizard();
     await expectStep('Codebtors');
 
@@ -2674,7 +2840,7 @@ describe('IntakeWizard contracts and codebtors', { timeout: 15_000 }, () => {
   });
 
   it('shows the saved contracts and codebtors on Review to a filer who resumes there', async () => {
-    serveFiler(8, [storedLease], [storedCodebtor]);
+    serveFiler(9, [storedLease], [storedCodebtor]);
     renderWizard();
     await expectStep('Review & Results');
 
@@ -2683,7 +2849,7 @@ describe('IntakeWizard contracts and codebtors', { timeout: 15_000 }, () => {
   });
 
   it('shows no step when the saved contracts cannot be read, so Continue never saves an empty list over them', async () => {
-    serveFiler(6, [storedLease]);
+    serveFiler(7, [storedLease]);
     server.use(
       http.get('http://localhost:8000/api/intake/sessions/:id/contracts/', () =>
         HttpResponse.json({ detail: 'Request was throttled.' }, { status: 429 })
@@ -2699,7 +2865,7 @@ describe('IntakeWizard contracts and codebtors', { timeout: 15_000 }, () => {
   });
 
   it('shows no step when the saved codebtors cannot be read, so Continue never saves an empty list over them', async () => {
-    serveFiler(7, [], [storedCodebtor]);
+    serveFiler(8, [], [storedCodebtor]);
     server.use(
       http.get('http://localhost:8000/api/intake/sessions/:id/codebtors/', () =>
         HttpResponse.json({ detail: 'Request was throttled.' }, { status: 429 })
@@ -2720,7 +2886,7 @@ describe('IntakeWizard Review household', { timeout: 15_000 }, () => {
     server.use(
       http.get('http://localhost:8000/api/intake/sessions/:id/', () =>
         HttpResponse.json({
-          ...sessionAtStep8,
+          ...sessionAtStep9,
           household: { county: 'Kane', members: [], family_size: 2, fee_waiver_household_size: 3 },
         })
       )
@@ -2731,5 +2897,624 @@ describe('IntakeWizard Review household', { timeout: 15_000 }, () => {
       screen.getByText('People in your home, counting you').nextElementSibling
     ).toHaveTextContent(/^2$/);
     expect(screen.getByText('County').nextElementSibling).toHaveTextContent('Kane');
+  });
+});
+
+// ===========================================================================
+// Businesses and rental property on the Income step (3e2 spec §4.2, §7.4)
+// ===========================================================================
+
+describe('IntakeWizard business and rental list', { timeout: 30_000 }, () => {
+  const NO_BUSINESS = 'I have no business or rental income.';
+  const ADD = '+ Add a business or property';
+  const incomeEntries = (body: Record<string, unknown>) =>
+    (body.income_info as { business_and_rental: Record<string, unknown>[] | null })
+      .business_and_rental;
+  const spouseEntries = (body: Record<string, unknown>) =>
+    (body.spouse_income as { business_and_rental: Record<string, unknown>[] | null })
+      .business_and_rental;
+  const members = (body: Record<string, unknown>) =>
+    (body.household as { members: Record<string, unknown>[] | null }).members;
+  const openIncome = () => screen.findByRole('heading', { name: /income/i, level: 2 });
+
+  beforeEach(() => {
+    server.use(
+      http.post(
+        'http://localhost:8000/api/intake/sessions/:id/update_step/',
+        async ({ request }) => {
+          const { current_step } = (await request.json()) as { current_step: number };
+          return HttpResponse.json({
+            session: { ...onIncome, current_step },
+            message: 'Step updated.',
+          });
+        }
+      ),
+      http.post(
+        'http://localhost:8000/api/audit/logs/',
+        () => new HttpResponse(null, { status: 201 })
+      )
+    );
+  });
+
+  // An entry saved without its id is stored again as a new entry
+  it("a new entry's id reaches the entry that sent it, wherever it now sits", async () => {
+    const saves = serveSessionSaves(onIncome);
+    renderWizard();
+    await openIncome();
+    const landSave = saves.holdNextReply();
+
+    vi.useFakeTimers();
+    try {
+      fireEvent.click(screen.getByRole('button', { name: ADD }));
+      fireEvent.change(field('entry_kind_0'), { target: { value: 'business' } });
+      fireEvent.click(screen.getByRole('button', { name: ADD }));
+      fireEvent.change(field('entry_kind_1'), { target: { value: 'rental' } });
+      await waitSeconds(3);
+      expect(saves.bodies).toHaveLength(1);
+
+      fireEvent.click(screen.getByRole('button', { name: 'Remove business or property 1' }));
+      await act(async () => landSave());
+      await waitSeconds(4);
+    } finally {
+      vi.useRealTimers();
+    }
+
+    expect(saves.bodies.map((body) => incomeEntries(body)?.map((row) => row.id))).toEqual([
+      [undefined, undefined],
+      [102],
+    ]);
+    const [rental] = incomeEntries(saves.bodies[1]) ?? [];
+    expect(rental.kind).toBe('rental');
+    expect(rental).not.toHaveProperty('_key');
+  });
+
+  it("an older save's reply writes no ids once a later save of the list has gone out", async () => {
+    const saves = serveSessionSaves(onIncome);
+    renderWizard();
+    await openIncome();
+    const landFirstSave = saves.holdNextReply();
+
+    vi.useFakeTimers();
+    try {
+      fireEvent.click(screen.getByRole('button', { name: ADD }));
+      fireEvent.change(field('entry_kind_0'), { target: { value: 'business' } });
+      await waitSeconds(3);
+      fireEvent.change(field('entry_description_0'), { target: { value: 'Driving' } });
+      await waitSeconds(3);
+      expect(saves.bodies).toHaveLength(2);
+
+      await act(async () => landFirstSave());
+      await waitSeconds(4);
+      // The next edit updates the entry the server holds
+      fireEvent.change(field('entry_description_0'), { target: { value: 'Delivery driving' } });
+      await waitSeconds(3);
+    } finally {
+      vi.useRealTimers();
+    }
+
+    expect(saves.bodies.map((body) => incomeEntries(body)?.map((row) => row.id))).toEqual([
+      [undefined],
+      [undefined],
+      [102],
+    ]);
+  });
+
+  // One reply carries both lists, and the stub numbers members first, then entries
+  it('the household and the entries each keep their ids from one reply', async () => {
+    const saves = serveSessionSaves(onIncome);
+    renderWizard();
+    await openIncome();
+
+    vi.useFakeTimers();
+    try {
+      fireEvent.click(screen.getByRole('button', { name: '+ Add a person' }));
+      fireEvent.change(field('relationship_0'), { target: { value: 'son' } });
+      fireEvent.click(screen.getByRole('button', { name: ADD }));
+      fireEvent.change(field('entry_kind_0'), { target: { value: 'business' } });
+      await waitSeconds(3);
+      expect(saves.bodies).toHaveLength(1);
+      fireEvent.change(field('age_0'), { target: { value: '8' } });
+      await waitSeconds(3);
+    } finally {
+      vi.useRealTimers();
+    }
+
+    expect(saves.bodies).toHaveLength(2);
+    expect(members(saves.bodies[1])?.[0].id).toBe(101);
+    expect(incomeEntries(saves.bodies[1])?.[0].id).toBe(102);
+  });
+
+  // Ids are paired by position, never guessed
+  it("a reply that doesn't list each entry sent fails the save", async () => {
+    serveSessionSaves(onIncome);
+    const unanswered = {
+      description: null,
+      gross: null,
+      expenses: null,
+      current_gross: null,
+      current_expenses: null,
+    };
+    server.use(
+      http.patch('http://localhost:8000/api/intake/sessions/:id/', () =>
+        HttpResponse.json({
+          ...onIncome,
+          income_info: {
+            business_and_rental: [
+              { id: 101, kind: 'business', ...unanswered },
+              { id: 102, kind: 'rental', ...unanswered },
+            ],
+          },
+        })
+      )
+    );
+    const { container } = renderWizard();
+    await openIncome();
+
+    fireEvent.click(screen.getByRole('button', { name: ADD }));
+    fireEvent.change(field('entry_kind_0'), { target: { value: 'business' } });
+    await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
+
+    expect(await screen.findByText(/couldn't save just now/i)).toBeInTheDocument();
+    expect(container.querySelector('.step-title')).toHaveTextContent('Income');
+  });
+
+  it('"No business" pressed sends [], and a list never answered sends null', async () => {
+    const { bodies } = serveSessionSaves(onIncome);
+    renderWizard();
+    await openIncome();
+
+    vi.useFakeTimers();
+    try {
+      fireEvent.change(field('monthly_gross_wages'), { target: { value: '3200' } });
+      await waitSeconds(3);
+      expect(incomeEntries(bodies.at(-1) as Record<string, unknown>)).toBeNull();
+
+      fireEvent.click(screen.getByRole('button', { name: NO_BUSINESS }));
+      await waitSeconds(3);
+    } finally {
+      vi.useRealTimers();
+    }
+
+    expect(incomeEntries(bodies.at(-1) as Record<string, unknown>)).toEqual([]);
+  });
+
+  // Review Focus 1: the API sends amounts as strings, and 4200.00 + 830.00 must not join as text
+  it("a loaded entry's amounts add as numbers and showing the step again sends nothing", async () => {
+    const saves = serveSessionSaves({
+      ...onIncome,
+      status: 'completed',
+      current_step: 4,
+      expense_info: completedSession.expense_info,
+      income_info: {
+        ...TEN_ZERO,
+        marital_status: 'not_married',
+        business_and_rental: [
+          {
+            id: 1,
+            kind: 'business',
+            description: 'Rideshare and delivery driving',
+            gross: '4200.00',
+            expenses: '830.00',
+            current_gross: null,
+            current_expenses: null,
+          },
+        ],
+        total_monthly_income: 3370,
+      },
+      household: { county: 'Cook', members: [] },
+    });
+    const { container } = renderWizard();
+    await screen.findByRole('heading', { name: /expenses/i, level: 2 });
+
+    vi.useFakeTimers();
+    try {
+      fireEvent.click(screen.getByRole('button', { name: 'Go Back' }));
+      await waitSeconds(3);
+      expect(container.querySelector('.step-title')).toHaveTextContent('Take-home pay');
+      fireEvent.click(screen.getByRole('button', { name: 'Go Back' }));
+      await waitSeconds(3);
+    } finally {
+      vi.useRealTimers();
+    }
+
+    expect(container.querySelector('.step-title')).toHaveTextContent('Income');
+    expect(screen.getByText('Net a month').closest('section')).toHaveTextContent('$3,370.00');
+    expect(
+      screen.getByText('Your income', { selector: 'dt' }).nextElementSibling
+    ).toHaveTextContent('$3,370.00');
+    expect(document.body.textContent).not.toMatch(/\$0?4200\.00830/);
+    expect(saves.bodies).toEqual([]);
+    expect(saves.stored().status).toBe('completed');
+  });
+
+  it("a spouse's new entry keeps the id the reply gave it", async () => {
+    const saves = serveSessionSaves({
+      ...priyaAtIncome,
+      spouse_income: { ...priyaAtIncome.spouse_income, business_and_rental: [] },
+    });
+    renderWizard();
+    await openIncome();
+
+    vi.useFakeTimers();
+    try {
+      fireEvent.click(
+        screen.getByRole('button', { name: "+ Add your spouse's business or property" })
+      );
+      fireEvent.change(field('spouse_entry_kind_0'), { target: { value: 'rental' } });
+      await waitSeconds(3);
+      expect(saves.bodies).toHaveLength(1);
+      fireEvent.change(field('spouse_entry_gross_0'), { target: { value: '900' } });
+      await waitSeconds(3);
+    } finally {
+      vi.useRealTimers();
+    }
+
+    expect(saves.bodies).toHaveLength(2);
+    const last = saves.bodies[1];
+    expect(spouseEntries(last)).toHaveLength(1);
+    expect(spouseEntries(last)?.[0].id).toBe(101);
+    expect(spouseEntries(last)?.[0]).not.toHaveProperty('_key');
+    // The filer's own list is unchanged: never answered
+    expect(incomeEntries(last)).toBeNull();
+  });
+});
+
+// ===========================================================================
+// "Now different" and government assistance on the Income step (3e2 spec §4.4, §4.6, §7.4)
+// ===========================================================================
+
+describe('IntakeWizard now different and assistance', { timeout: 30_000 }, () => {
+  const openIncome = () => screen.findByRole('heading', { name: /income/i, level: 2 });
+  const incomeInfo = (body: Record<string, unknown>) => body.income_info as Record<string, unknown>;
+
+  beforeEach(() => {
+    server.use(
+      http.post(
+        'http://localhost:8000/api/intake/sessions/:id/update_step/',
+        async ({ request }) => {
+          const { current_step } = (await request.json()) as { current_step: number };
+          return HttpResponse.json({
+            session: { ...onIncome, current_step },
+            message: 'Step updated.',
+          });
+        }
+      )
+    );
+  });
+
+  it('answering No after Yes sends no current figure and keeps them in state', async () => {
+    const { bodies } = serveSessionSaves(onIncome);
+    renderWizard();
+    await openIncome();
+
+    vi.useFakeTimers();
+    try {
+      pick('income_now_different', 'yes');
+      fireEvent.change(field('current_monthly_gross_wages'), { target: { value: '2500' } });
+      await waitSeconds(3);
+      expect(incomeInfo(bodies.at(-1) as Record<string, unknown>).current_monthly_gross_wages).toBe(
+        2500
+      );
+
+      pick('income_now_different', 'no');
+      await waitSeconds(3);
+      const sent = incomeInfo(bodies.at(-1) as Record<string, unknown>);
+      expect(sent.income_now_different).toBe('no');
+      for (const name of CURRENT_INCOME_FIELDS) expect(sent).not.toHaveProperty(name);
+
+      pick('income_now_different', 'yes');
+    } finally {
+      vi.useRealTimers();
+    }
+    expect(field('current_monthly_gross_wages')).toHaveValue(2500);
+  });
+
+  it('the five assistance fields are always sent', async () => {
+    const { bodies } = serveSessionSaves(onIncome);
+    renderWizard();
+    await openIncome();
+
+    vi.useFakeTimers();
+    try {
+      fireEvent.change(field('monthly_gross_wages'), { target: { value: '100' } });
+      await waitSeconds(3);
+    } finally {
+      vi.useRealTimers();
+    }
+
+    expect(incomeInfo(bodies.at(-1) as Record<string, unknown>)).toMatchObject({
+      assistance_answer: null,
+      cash_assistance_kind: '',
+      cash_assistance_amount: null,
+      noncash_assistance_kind: '',
+      noncash_assistance_value: null,
+      income_now_different: null,
+    });
+  });
+
+  it('showing the Income step again sends nothing, with every new answer loaded', async () => {
+    const loaded = {
+      ...priyaAtIncome,
+      status: 'completed',
+      current_step: 4,
+      expense_info: completedSession.expense_info,
+      income_info: {
+        ...priyaAtIncome.income_info,
+        business_and_rental: [],
+        income_now_different: 'yes',
+        ...Object.fromEntries(CURRENT_INCOME_FIELDS.map((name) => [name, null])),
+        current_monthly_gross_wages: '11000.00',
+        assistance_answer: 'yes',
+        cash_assistance_kind: '',
+        cash_assistance_amount: null,
+        noncash_assistance_kind: 'SNAP (food stamps)',
+        noncash_assistance_value: '350.00',
+      },
+      spouse_income: {
+        ...priyaAtIncome.spouse_income,
+        business_and_rental: [],
+        income_now_different: 'no',
+        ...Object.fromEntries(CURRENT_INCOME_FIELDS.map((name) => [name, null])),
+        assistance_answer: 'no',
+        cash_assistance_kind: '',
+        cash_assistance_amount: null,
+        noncash_assistance_kind: '',
+        noncash_assistance_value: null,
+      },
+    };
+    const saves = serveSessionSaves(loaded);
+    const { container } = renderWizard();
+    await screen.findByRole('heading', { name: /expenses/i, level: 2 });
+
+    vi.useFakeTimers();
+    try {
+      fireEvent.click(screen.getByRole('button', { name: 'Go Back' }));
+      await waitSeconds(3);
+      expect(container.querySelector('.step-title')).toHaveTextContent('Take-home pay');
+      fireEvent.click(screen.getByRole('button', { name: 'Go Back' }));
+      await waitSeconds(3);
+    } finally {
+      vi.useRealTimers();
+    }
+
+    expect(container.querySelector('.step-title')).toHaveTextContent('Income');
+    expect(field('current_monthly_gross_wages')).toHaveValue(11000);
+    expect(field('noncash_assistance_value')).toHaveValue(350);
+    expect(saves.bodies).toEqual([]);
+  });
+});
+
+// ===========================================================================
+// The Take-home pay step, step 3 (3e2 spec §7.2, §7.4)
+// ===========================================================================
+
+describe('IntakeWizard take-home pay', { timeout: 30_000 }, () => {
+  const openTakeHomePay = () => screen.findByRole('heading', { name: /take-home pay/i, level: 2 });
+  const NULL_DEDUCTIONS = Object.fromEntries(DEDUCTION_FIELDS.map((name) => [name, null]));
+  let stepUpdates: number[];
+
+  beforeEach(() => {
+    stepUpdates = [];
+    server.use(
+      http.post(
+        'http://localhost:8000/api/intake/sessions/:id/update_step/',
+        async ({ request }) => {
+          const { current_step } = (await request.json()) as { current_step: number };
+          stepUpdates.push(current_step);
+          return HttpResponse.json({
+            session: { ...onIncome, current_step },
+            message: 'Step updated.',
+          });
+        }
+      ),
+      http.post(
+        'http://localhost:8000/api/audit/logs/',
+        () => new HttpResponse(null, { status: 201 })
+      )
+    );
+  });
+
+  const filerOnIncome = {
+    ...onIncome,
+    income_info: { ...TEN_ZERO, marital_status: 'not_married' },
+    household: { county: 'Cook', members: [] },
+  };
+
+  it('Continue on Income opens Take-home pay, and Continue there sends 4', async () => {
+    serveSessionSaves(filerOnIncome);
+    const { container } = renderWizard();
+    await screen.findByRole('heading', { name: /income/i, level: 2 });
+
+    await userEvent.click(screen.getByRole('button', { name: /continue/i }));
+    await openTakeHomePay();
+    expect(container.querySelector('.step-title')).toHaveTextContent('Take-home pay');
+    expect(stepUpdates).toEqual([3]);
+
+    await userEvent.click(screen.getByRole('button', { name: /continue/i }));
+    await screen.findByRole('heading', { name: /expenses/i, level: 2 });
+    expect(stepUpdates).toEqual([3, 4]);
+  });
+
+  it('the step 3 body carries only the deductions, a blank one as null', async () => {
+    const saves = serveSessionSaves({
+      ...filerOnIncome,
+      current_step: 3,
+      income_info: { ...TEN_ZERO, monthly_gross_wages: '3000.00', marital_status: 'not_married' },
+    });
+    renderWizard();
+    await openTakeHomePay();
+
+    vi.useFakeTimers();
+    try {
+      fireEvent.change(field('payroll_tax'), { target: { value: '400' } });
+      await waitSeconds(3);
+    } finally {
+      vi.useRealTimers();
+    }
+
+    expect(saves.bodies.at(-1)).toEqual({
+      income_info: { ...NULL_DEDUCTIONS, payroll_tax: 400, payroll_other_specify: '' },
+    });
+  });
+
+  it('showing Take-home pay again sends nothing', async () => {
+    const saves = serveSessionSaves({
+      ...filerOnIncome,
+      status: 'completed',
+      current_step: 4,
+      expense_info: completedSession.expense_info,
+      income_info: { ...TEN_ZERO, marital_status: 'not_married', payroll_tax: '400.00' },
+    });
+    const { container } = renderWizard();
+    await screen.findByRole('heading', { name: /expenses/i, level: 2 });
+
+    vi.useFakeTimers();
+    try {
+      fireEvent.click(screen.getByRole('button', { name: 'Go Back' }));
+      await waitSeconds(3);
+    } finally {
+      vi.useRealTimers();
+    }
+
+    expect(container.querySelector('.step-title')).toHaveTextContent('Take-home pay');
+    expect(saves.bodies).toEqual([]);
+    expect(saves.stored().status).toBe('completed');
+  });
+
+  it('line 4 follows the figures Schedule I uses, averages while unanswered', async () => {
+    serveSessionSaves({
+      ...filerOnIncome,
+      current_step: 3,
+      income_info: {
+        ...TEN_ZERO,
+        monthly_gross_wages: '3000.00',
+        marital_status: 'not_married',
+        income_now_different: null,
+      },
+    });
+    renderWizard();
+    await openTakeHomePay();
+    const line4 = () =>
+      screen.getByText('4. Calculate gross income', { selector: 'dt' }).nextElementSibling;
+    expect(line4()).toHaveTextContent('$3,000.00');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Go Back' }));
+    await screen.findByRole('heading', { name: /income/i, level: 2 });
+    pick('income_now_different', 'yes');
+    fireEvent.change(field('current_monthly_gross_wages'), { target: { value: '2500' } });
+    await userEvent.click(screen.getByRole('button', { name: /continue/i }));
+    await openTakeHomePay();
+
+    expect(line4()).toHaveTextContent('$2,500.00');
+  });
+
+  it("the Income step's save never carries a deduction", async () => {
+    const saves = serveSessionSaves(filerOnIncome);
+    renderWizard();
+    await screen.findByRole('heading', { name: /income/i, level: 2 });
+
+    vi.useFakeTimers();
+    try {
+      fireEvent.change(field('monthly_gross_wages'), { target: { value: '3000' } });
+      await waitSeconds(3);
+    } finally {
+      vi.useRealTimers();
+    }
+
+    const sent = (saves.bodies.at(-1) as { income_info: Record<string, unknown> }).income_info;
+    expect(sent.monthly_gross_wages).toBe(3000);
+    for (const name of [...DEDUCTION_FIELDS, 'payroll_other_specify']) {
+      expect(sent).not.toHaveProperty(name);
+    }
+  });
+
+  it("the spouse's deductions join the step 3 body only for a spouse at home", async () => {
+    const saves = serveSessionSaves({ ...priyaAtIncome, current_step: 3 });
+    const { unmount } = renderWizard();
+    await openTakeHomePay();
+
+    vi.useFakeTimers();
+    try {
+      fireEvent.change(field('spouse_payroll_tax'), { target: { value: '250' } });
+      await waitSeconds(3);
+    } finally {
+      vi.useRealTimers();
+    }
+
+    expect((saves.bodies.at(-1) as Record<string, unknown>).spouse_income).toEqual({
+      ...NULL_DEDUCTIONS,
+      payroll_tax: 250,
+      payroll_other_specify: '',
+    });
+    unmount();
+
+    const apart = serveSessionSaves({
+      ...priyaAtIncome,
+      current_step: 3,
+      income_info: { ...priyaAtIncome.income_info, marital_status: 'married_separately' },
+    });
+    renderWizard();
+    await openTakeHomePay();
+
+    vi.useFakeTimers();
+    try {
+      fireEvent.change(field('payroll_tax'), { target: { value: '400' } });
+      await waitSeconds(3);
+    } finally {
+      vi.useRealTimers();
+    }
+
+    expect(apart.bodies.at(-1)).not.toHaveProperty('spouse_income');
+    expect(apart.bodies.at(-1)).toHaveProperty('income_info');
+  });
+});
+
+describe('IntakeWizard window notice', { timeout: 30_000 }, () => {
+  const MOVED = /Your income figures are your monthly average for April 1, 2026/;
+  const income_window = { start: '2026-05-01', end: '2026-10-31' };
+  const onIncome = {
+    ...sessionAtStep1,
+    current_step: 2,
+    income_window,
+    income_info: {
+      marital_status: null,
+      monthly_gross_wages: '3100.50',
+      answered_window: { start: '2026-04-01', end: '2026-09-30' },
+    },
+  };
+
+  it('Continue on the Income step clears its window notice', async () => {
+    server.use(
+      http.get('http://localhost:8000/api/intake/sessions/:id/', () => HttpResponse.json(onIncome)),
+      http.patch('http://localhost:8000/api/intake/sessions/:id/', () =>
+        HttpResponse.json(onIncome)
+      ),
+      // Continue stamps the window, so the reply names the one in force
+      http.post('http://localhost:8000/api/intake/sessions/:id/update_step/', () =>
+        HttpResponse.json({
+          session: {
+            ...onIncome,
+            current_step: 3,
+            income_info: { ...onIncome.income_info, answered_window: income_window },
+          },
+          message: 'Updated to step 3',
+        })
+      ),
+      http.post(
+        'http://localhost:8000/api/audit/logs/',
+        () => new HttpResponse(null, { status: 201 })
+      )
+    );
+
+    renderWizard();
+    await screen.findByRole('heading', { name: /income/i, level: 2 });
+    expect(screen.getByText(MOVED)).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: /continue/i }));
+    await screen.findByRole('heading', { name: /take-home pay/i, level: 2 });
+    await userEvent.click(screen.getByRole('button', { name: 'Go Back' }));
+    await screen.findByRole('heading', { name: /income/i, level: 2 });
+
+    expect(screen.queryByText(/monthly average for/)).not.toBeInTheDocument();
   });
 });

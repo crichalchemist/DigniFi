@@ -34,7 +34,7 @@ from apps.forms.tests.oracle import case_param
 TIER = "2"
 CHECKED_BASES = {"adjudicated", "sampled_ok"}
 LEAVE_BLANK = "leave blank"
-ASSERTED_CASES = 422
+ASSERTED_CASES = 475
 
 
 def _audit_dir():
@@ -184,8 +184,9 @@ def _field(**kw):
 
 
 def test_a_binding_re_ruled_in_place_does_not_inherit_the_old_verdict():
-    # The audit judged rent on Schedule J box 10 (Personal care); another rule there is unjudged.
-    re_ruled = _field(pdf_field="10", rule="schedule_j_personal_care")
+    # The audit judged rent on Schedule J box 10 (Personal care); a rule no audit or addendum
+    # row places there is unjudged.
+    re_ruled = _field(pdf_field="10", rule="schedule_j_unplaced_rule")
     assert _expected_target("schedule_j", re_ruled) == ""
 
 

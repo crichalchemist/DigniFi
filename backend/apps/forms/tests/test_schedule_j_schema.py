@@ -18,7 +18,7 @@ from apps.intake.models import DebtorInfo, ExpenseInfo, Household, IncomeInfo, I
 
 User = get_user_model()
 
-# Each of the Expenses step's 13 amounts gets a distinct power of two, so a line that reads
+# Each of the Expenses step's 26 amounts gets a distinct power of two, so a line that reads
 # the wrong amount, or adds one too many, prints a different figure.
 EXPENSES = {
     "rent_or_mortgage": Decimal("1.00"),
@@ -34,6 +34,25 @@ EXPENSES = {
     "child_support_paid": Decimal("1024.00"),
     "insurance_not_deducted": Decimal("2048.00"),
     "other_expenses": Decimal("4096.00"),
+    "real_estate_taxes": Decimal("8192.00"),
+    "home_insurance": Decimal("16384.00"),
+    "hoa_dues": Decimal("32768.00"),
+    "personal_care": Decimal("65536.00"),
+    "entertainment": Decimal("131072.00"),
+    "charitable_contributions": Decimal("262144.00"),
+    "taxes_not_deducted": Decimal("524288.00"),
+    "support_others": Decimal("1048576.00"),
+    "other_property_mortgages": Decimal("2097152.00"),
+    "other_property_taxes": Decimal("4194304.00"),
+    "other_property_insurance": Decimal("8388608.00"),
+    "other_property_upkeep": Decimal("16777216.00"),
+    "other_property_hoa_dues": Decimal("33554432.00"),
+}
+# The three "Specify" texts, which print beside their amounts.
+TEXTS = {
+    "taxes_specify": "2026 estimated income tax",
+    "support_others_specify": "My mother",
+    "other_expenses_specify": "School supplies and fees",
 }
 # Box → what it prints with EXPENSES (step 2 spec Appendix A.8, owner Q4).
 LINE_BY_EXPENSE = {
@@ -52,11 +71,27 @@ LINE_BY_EXPENSE = {
     "17a": "8.00",  # the one car payment the Expenses step asks
     "18": "1024.00",  # support paid
     "21": "4096.00",  # other expenses only
+    "4a": "8192.00",
+    "4b": "16384.00",
+    "4d": "32768.00",
+    "10": "65536.00",
+    "13": "131072.00",
+    "14": "262144.00",
+    "16": "524288.00",
+    "19": "1048576.00",
+    "20a": "2097152.00",
+    "20b": "4194304.00",
+    "20c": "8388608.00",
+    "20d": "16777216.00",
+    "20e": "33554432.00",
+    "Other 16": "2026 estimated income tax",
+    "Other 19": "My mother",
+    "Other 21": "School supplies and fees",
 }
 # Lines no expense belongs on, which the old bindings filled.
-VACATED = {"10", "14", "15a", "15b", "16", "17b", "17c", "20a"}
-# The 13 amounts above, added: 1 + 2 + 4 + ... + 4096.
-EXPENSE_TOTAL = "8191.00"
+VACATED = {"15a", "15b", "17b", "17c", "22b", "24"}
+# The 26 amounts above, added: 1 + 2 + 4 + ... + 33554432.
+EXPENSE_TOTAL = "67108863.00"
 
 
 def _household(session, members):
@@ -104,7 +139,7 @@ def session(db):
 
 
 def test_each_expense_prints_on_the_line_that_asks_for_it(session):
-    ExpenseInfo.objects.create(session=session, **EXPENSES)
+    ExpenseInfo.objects.create(session=session, **EXPENSES, **TEXTS)
 
     printed = resolve(load_schema("schedule_j"), session)
 
@@ -125,11 +160,17 @@ def test_expense_line_prints_only_above_zero(session, amount, prints):
     # An expense left empty is stored as $0, so $0 can't be told from "left blank": a line
     # prints only above $0, and so do 6d's and 15d's labels (step 2 spec §6.1, Q4).
     if amount is not None:
-        ExpenseInfo.objects.create(session=session, **dict.fromkeys(EXPENSES, amount))
+        ExpenseInfo.objects.create(session=session, **dict.fromkeys(EXPENSES, amount), **TEXTS)
 
     printed = resolve(load_schema("schedule_j"), session)
 
-    labels = {"Other 6d": "Utilities (combined)", "Other 15d": "Insurance (combined)"}
+    labels = {
+        "Other 6d": "Utilities (combined)",
+        "Other 15d": "Insurance (combined)",
+        "Other 16": TEXTS["taxes_specify"],
+        "Other 19": TEXTS["support_others_specify"],
+        "Other 21": TEXTS["other_expenses_specify"],
+    }
     expected = {box: labels.get(box, "0.01") for box in LINE_BY_EXPENSE} if prints else {}
     assert {box: printed[box] for box in LINE_BY_EXPENSE if box in printed} == expected
 
@@ -168,7 +209,7 @@ def test_monthly_net_income_is_income_less_expenses(session):
     assert {box: printed.get(box) for box in ("23a", "23b", "23c")} == {
         "23a": "9200.00",
         "23b": EXPENSE_TOTAL,
-        "23c": "1009.00",
+        "23c": "-67099663.00",
     }
 
 
@@ -186,8 +227,10 @@ def test_a_month_that_runs_short_prints_net_income_below_zero(session):
 
 @pytest.mark.parametrize("income_saved", [True, False])
 def test_net_income_stays_blank_until_income_is_given(session, income_saved):
-    # With no income given, 23a is blank and 23c has nothing to subtract from, so it is
-    # blank too, never the expenses as a loss. The expense total still prints.
+    # With no income row, 23a is blank and 23c has nothing to subtract from, so it is blank
+    # too, never the expenses as a loss. The expense total still prints. A row saved with every
+    # source empty prints line 12 as 0.00 (§9.6): the Income step's "income not entered" gap
+    # refuses every form before this prints (§4.7, §8).
     if income_saved:  # the Income step was saved with every source left empty
         IncomeInfo.objects.create(session=session, marital_status="not_married")
     ExpenseInfo.objects.create(session=session, **EXPENSES)
@@ -196,9 +239,9 @@ def test_net_income_stays_blank_until_income_is_given(session, income_saved):
 
     assert {box: printed.get(box) for box in ("22c", "23a", "23b", "23c")} == {
         "22c": EXPENSE_TOTAL,
-        "23a": None,
+        "23a": "0.00" if income_saved else None,
         "23b": EXPENSE_TOTAL,
-        "23c": None,
+        "23c": f"-{EXPENSE_TOTAL}" if income_saved else None,
     }
 
 
@@ -332,4 +375,67 @@ def test_every_form_that_copies_the_monthly_expense_total_prints_line_22c(sessio
         form_106sum.get("5"),
         form_103b.get("undefined_7"),
     ]
-    assert printed == ["8191.00"] * 5
+    assert printed == [EXPENSE_TOTAL] * 5
+
+
+@pytest.mark.parametrize("answer,ticks", [("yes", "/yes"), ("no", "/no"), (None, None)])
+def test_line_3_prints_the_filers_answer_and_never_answers_for_them(session, answer, ticks):
+    ExpenseInfo.objects.create(session=session, expenses_include_others=answer)
+
+    assert resolve(load_schema("schedule_j"), session).get("check3") == ticks
+
+
+def test_line_3_stays_blank_when_the_expenses_step_was_never_saved(session):
+    assert "check3" not in resolve(load_schema("schedule_j"), session)
+
+
+@pytest.mark.parametrize(
+    "amount_field,text_field,box",
+    [
+        ("taxes_not_deducted", "taxes_specify", "Other 16"),
+        ("support_others", "support_others_specify", "Other 19"),
+        ("other_expenses", "other_expenses_specify", "Other 21"),
+    ],
+)
+def test_a_specify_text_prints_only_with_its_amount(session, amount_field, text_field, box):
+    # A text beside an amount of $0 would describe a line the filer left empty.
+    ExpenseInfo.objects.create(session=session, **{text_field: "X", amount_field: Decimal("0")})
+    assert box not in resolve(load_schema("schedule_j"), session)
+
+    ExpenseInfo.objects.filter(session=session).update(**{amount_field: Decimal("10.00")})
+    session = IntakeSession.objects.get(pk=session.pk)
+    assert resolve(load_schema("schedule_j"), session)[box] == "X"
+
+
+def test_the_new_schedule_j_lines_reach_22a_and_23c(session):
+    IncomeInfo.objects.create(
+        session=session, marital_status="not_married", monthly_gross_wages=Decimal("3000.00")
+    )
+    ExpenseInfo.objects.create(
+        session=session, personal_care=Decimal("40.00"), taxes_not_deducted=Decimal("150.00")
+    )
+
+    printed = resolve(load_schema("schedule_j"), session)
+
+    assert (printed["22a"], printed["22c"], printed["23b"], printed["23c"]) == (
+        "190.00",
+        "190.00",
+        "190.00",
+        "2810.00",
+    )
+
+
+def test_a_specify_text_of_only_spaces_prints_blank_and_padding_is_trimmed(session):
+    # Spaces beside an amount would print as an apparently empty box.
+    ExpenseInfo.objects.create(
+        session=session,
+        taxes_not_deducted=Decimal("10.00"),
+        taxes_specify="   ",
+        support_others=Decimal("10.00"),
+        support_others_specify="  My mother ",
+    )
+
+    printed = resolve(load_schema("schedule_j"), session)
+
+    assert printed.get("Other 16", "") == ""
+    assert printed["Other 19"] == "My mother"

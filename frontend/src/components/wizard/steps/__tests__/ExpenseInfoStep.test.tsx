@@ -1,26 +1,22 @@
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, within } from '@testing-library/react';
 import { vi } from 'vitest';
 import { ExpenseInfoStep } from '../ExpenseInfoStep';
 import type { ExpenseInfo } from '../../../../types/api';
+import { EXPENSE_FIELDS } from '../../../../types/api';
+import {
+  EXPENSE_LINE_WORDS,
+  EXPENSE_SPECIFY_WORDS,
+  LINE_3_QUESTION,
+  LINE_4_GROUP_HEADING,
+  LINE_15_GROUP_HEADING,
+  LINE_20_GROUP_HEADING,
+  NONCASH_EXPENSES_SENTENCE,
+} from '../../../../constants/formText';
+import { DOUBLE_COUNT_EXPENSES_NOTE, LINE_3_INFO } from '../../../../constants/copy';
 
-// The names ExpenseInfo stores and Schedule J, Form 122A-2 and the means test read. DRF
+// Every Schedule J amount ExpenseInfo stores and the forms and the means test read. DRF
 // drops any other name without an error, which is how car, food and other costs once
 // saved as $0 (DIG-45).
-const COURT_FORM_EXPENSE_NAMES = [
-  'rent_or_mortgage',
-  'utilities',
-  'home_maintenance',
-  'vehicle_payment',
-  'vehicle_insurance',
-  'vehicle_maintenance',
-  'food_and_groceries',
-  'clothing',
-  'medical_expenses',
-  'childcare',
-  'child_support_paid',
-  'insurance_not_deducted',
-  'other_expenses',
-];
 
 function renderStep(initialData: Partial<ExpenseInfo> = {}) {
   const onDataChange = vi.fn();
@@ -39,21 +35,21 @@ function renderStep(initialData: Partial<ExpenseInfo> = {}) {
   // Whether the wizard lets the filer press Continue
   const canContinue = () =>
     onValidationChange.mock.calls[onValidationChange.mock.calls.length - 1][0] as boolean;
-  return { inputNamed, lastEmitted, canContinue };
+  return { container, inputNamed, lastEmitted, canContinue };
 }
 
 describe('ExpenseInfoStep', () => {
   it('saves every expense under the name the court forms read', () => {
     const { inputNamed, lastEmitted } = renderStep();
 
-    COURT_FORM_EXPENSE_NAMES.forEach((name, index) => {
+    EXPENSE_FIELDS.forEach((name, index) => {
       const input = inputNamed(name);
       expect(input, `a box named ${name}`).not.toBeNull();
       fireEvent.change(input!, { target: { value: String((index + 1) * 10) } });
     });
 
     const emitted = lastEmitted();
-    COURT_FORM_EXPENSE_NAMES.forEach((name, index) => {
+    EXPENSE_FIELDS.forEach((name, index) => {
       expect(emitted[name], name).toBe((index + 1) * 10);
     });
     for (const unknownName of [
@@ -67,12 +63,89 @@ describe('ExpenseInfoStep', () => {
     }
   });
 
+  it('asks every Schedule J line in its order and in its words', () => {
+    const { container, inputNamed } = renderStep();
+    const amounts = Array.from(
+      container.querySelectorAll<HTMLInputElement>('input[type="number"]')
+    );
+    expect(amounts.map((box) => box.name)).toEqual([...EXPENSE_FIELDS]);
+    for (const field of EXPENSE_FIELDS) {
+      expect(inputNamed(field)).toHaveAccessibleName(EXPENSE_LINE_WORDS[field]);
+    }
+    for (const words of [
+      LINE_4_GROUP_HEADING,
+      LINE_15_GROUP_HEADING,
+      LINE_20_GROUP_HEADING,
+      NONCASH_EXPENSES_SENTENCE,
+      DOUBLE_COUNT_EXPENSES_NOTE,
+      LINE_3_INFO,
+    ]) {
+      expect(screen.getByText(words)).toBeInTheDocument();
+    }
+  });
+
+  it('never answers Schedule J line 3 for the filer, and asks it before every amount', () => {
+    const { inputNamed, lastEmitted } = renderStep();
+    const line3 = screen.getByRole('group', { name: LINE_3_QUESTION });
+    const [no, yes] = within(line3).getAllByRole('radio') as HTMLInputElement[]; // No first, then Yes (§5.2)
+    expect([no.checked, yes.checked]).toEqual([false, false]);
+    expect(lastEmitted().expenses_include_others ?? null).toBeNull();
+    expect(
+      line3.compareDocumentPosition(inputNamed('rent_or_mortgage')!) &
+        Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+    fireEvent.click(yes);
+    expect(lastEmitted().expenses_include_others).toBe('yes');
+  });
+
+  it('reads the sentence that explains line 3 with its question, answered or not', () => {
+    renderStep();
+    const line3 = screen.getByRole('group', { name: LINE_3_QUESTION });
+    expect(line3).toHaveAccessibleDescription(expect.stringContaining(LINE_3_INFO));
+    fireEvent.click(within(line3).getAllByRole('radio')[0]);
+    expect(line3).toHaveAccessibleDescription(LINE_3_INFO);
+  });
+
+  it('adds all 26 amounts into the monthly total', () => {
+    const { inputNamed, lastEmitted } = renderStep();
+    for (const field of EXPENSE_FIELDS) {
+      fireEvent.change(inputNamed(field)!, { target: { value: '1' } });
+    }
+    expect(screen.getByText('$26.00')).toBeInTheDocument();
+    expect(lastEmitted().total_monthly_expenses).toBe(26);
+  });
+
+  it.each([
+    ['taxes_not_deducted', 'taxes_specify'],
+    ['support_others', 'support_others_specify'],
+    ['other_expenses', 'other_expenses_specify'],
+  ] as const)(
+    'puts the Specify box for %s right after its amount, taking 100 characters',
+    (amount, specify) => {
+      const { container, inputNamed, lastEmitted } = renderStep();
+      const names = Array.from(container.querySelectorAll<HTMLInputElement>('input')).map(
+        (i) => i.name
+      );
+      expect(names.indexOf(specify)).toBe(names.indexOf(amount) + 1);
+      expect(inputNamed(specify)).toHaveAccessibleName(EXPENSE_SPECIFY_WORDS[specify]);
+      expect(inputNamed(specify)).toHaveAttribute('maxlength', '100');
+      fireEvent.change(inputNamed(specify)!, {
+        target: { value: 'IRS installment agreement, 2025 tax' },
+      });
+      expect(lastEmitted()[specify]).toBe('IRS installment agreement, 2025 tax');
+    }
+  );
+
   it('counts clothing and child support paid in the monthly total', () => {
     const { inputNamed, lastEmitted } = renderStep();
 
     fireEvent.change(inputNamed('rent_or_mortgage')!, { target: { value: '1000' } });
-    fireEvent.change(screen.getByLabelText('Clothing'), { target: { value: '60' } });
-    fireEvent.change(screen.getByLabelText('Child Support Paid'), { target: { value: '200' } });
+    fireEvent.change(screen.getByLabelText(EXPENSE_LINE_WORDS.clothing), {
+      target: { value: '60' },
+    });
+    fireEvent.change(screen.getByLabelText(EXPENSE_LINE_WORDS.child_support_paid), {
+      target: { value: '200' },
+    });
 
     expect(screen.getByText('$1,260.00')).toBeInTheDocument();
     expect(lastEmitted().total_monthly_expenses).toBe(1260);
@@ -83,9 +156,11 @@ describe('ExpenseInfoStep', () => {
   it('asks for dollars and cents beside a box with a third decimal place, and blocks Continue', () => {
     const { canContinue } = renderStep();
 
-    fireEvent.change(screen.getByLabelText('Clothing'), { target: { value: '12.345' } });
+    fireEvent.change(screen.getByLabelText(EXPENSE_LINE_WORDS.clothing), {
+      target: { value: '12.345' },
+    });
 
-    expect(screen.getByLabelText('Clothing')).toHaveAccessibleDescription(
+    expect(screen.getByLabelText(EXPENSE_LINE_WORDS.clothing)).toHaveAccessibleDescription(
       /^Please enter dollars and cents, like 1250\.50 /
     );
     expect(canContinue()).toBe(false);
@@ -94,9 +169,11 @@ describe('ExpenseInfoStep', () => {
   it('says beside the box that an amount over $99,999,999.99 is too large, and blocks Continue', () => {
     const { canContinue } = renderStep();
 
-    fireEvent.change(screen.getByLabelText('Clothing'), { target: { value: '100000000' } });
+    fireEvent.change(screen.getByLabelText(EXPENSE_LINE_WORDS.clothing), {
+      target: { value: '100000000' },
+    });
 
-    expect(screen.getByLabelText('Clothing')).toHaveAccessibleDescription(
+    expect(screen.getByLabelText(EXPENSE_LINE_WORDS.clothing)).toHaveAccessibleDescription(
       /^This amount is too large\. Please check it /
     );
     expect(canContinue()).toBe(false);
@@ -105,7 +182,9 @@ describe('ExpenseInfoStep', () => {
   it('takes the largest amount the server stores, $99,999,999.99', () => {
     const { lastEmitted, canContinue } = renderStep();
 
-    fireEvent.change(screen.getByLabelText('Clothing'), { target: { value: '99999999.99' } });
+    fireEvent.change(screen.getByLabelText(EXPENSE_LINE_WORDS.clothing), {
+      target: { value: '99999999.99' },
+    });
 
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     expect(canContinue()).toBe(true);

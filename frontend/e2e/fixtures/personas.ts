@@ -30,7 +30,7 @@ export type IncomeSourceKey =
   | 'monthly_gross_wages'
   | 'monthly_overtime'
   | 'monthly_tips'
-  | 'monthly_rental_income'
+  | 'monthly_interest_and_dividends'
   | 'monthly_pension'
   | 'monthly_social_security'
   | 'monthly_unemployment'
@@ -63,6 +63,34 @@ export interface PersonaIncome {
   sources: Partial<Record<IncomeSourceKey, number>>;
   // The spouse's ten, typed only by a persona living with their spouse
   spouse_sources?: Record<IncomeSourceKey, number>;
+  // The persona's businesses and rental properties; [] presses "I have no business or rental income."
+  business: PersonaEntry[];
+  // The spouse's, typed only by a persona living with their spouse
+  spouse_business?: PersonaEntry[];
+  // "Is your income now different from that average?" Every persona answers no: none has current
+  // figures to type.
+  now_different: 'yes' | 'no';
+  spouse_now_different?: 'yes' | 'no';
+  // Schedule I line 8f, other government assistance
+  assistance: PersonaAssistance;
+  spouse_assistance?: PersonaAssistance;
+}
+
+/** One person's answer to Schedule I 8f, with cash and non-cash help kept apart */
+export interface PersonaAssistance {
+  answer: 'yes' | 'no';
+  cash_kind?: string;
+  cash_amount?: number;
+  noncash_kind?: string;
+  noncash_value?: number;
+}
+
+/** One business or rental property on the Income step's list, in six-month averages */
+export interface PersonaEntry {
+  kind: 'business' | 'rental';
+  description: string;
+  gross: number;
+  expenses: number;
 }
 
 export interface PersonaAsset {
@@ -83,12 +111,33 @@ export interface PersonaDebt {
   collateral_description?: string;
 }
 
+/** The eight payroll deductions of Schedule I lines 5a-5h (DEDUCTION_FIELDS in types/api.ts) */
+export type DeductionField =
+  | 'payroll_tax'
+  | 'payroll_mandatory_retirement'
+  | 'payroll_voluntary_retirement'
+  | 'payroll_retirement_loan'
+  | 'payroll_insurance'
+  | 'payroll_support'
+  | 'payroll_union_dues'
+  | 'payroll_other';
+
 export interface PersonaData {
   username: string;
   password: string;
   debtor: PersonaDebtor;
   income: PersonaIncome;
+  // The Take-home pay step: each deduction typed, a box left out stays blank
+  deductions: Partial<Record<DeductionField, number>>;
+  // The spouse's, typed only by a persona living with their spouse
+  spouse_deductions?: Partial<Record<DeductionField, number>>;
   expenses: Record<string, number>;
+  // Schedule J line 3, answered on the Expenses step
+  expenses_include_others: 'yes' | 'no';
+  // The Specify boxes beside lines 16, 19 and 21, typed only by a persona who has something to say
+  expense_texts?: Partial<
+    Record<'taxes_specify' | 'support_others_specify' | 'other_expenses_specify', string>
+  >;
   assets: PersonaAsset[];
   debts: PersonaDebt[];
   expected: {
@@ -134,8 +183,22 @@ export const MARIA: WaiverPersonaData = {
       { relationship: 'son', age: 8, lives_with_you: true, claimed_or_supported: true },
       { relationship: 'daughter', age: 5, lives_with_you: true, claimed_or_supported: true },
     ],
-    sources: { monthly_gross_wages: 3200 },
+    sources: { monthly_gross_wages: 3200, monthly_interest_and_dividends: 0 },
+    business: [],
+    now_different: 'no',
+    assistance: { answer: 'yes', noncash_kind: 'SNAP (food stamps)', noncash_value: 350 },
   },
+  deductions: {
+    payroll_tax: 400,
+    payroll_mandatory_retirement: 0,
+    payroll_voluntary_retirement: 0,
+    payroll_retirement_loan: 0,
+    payroll_insurance: 0,
+    payroll_support: 0,
+    payroll_union_dues: 0,
+    payroll_other: 0,
+  },
+  expenses_include_others: 'no',
   expenses: {
     rent_or_mortgage: 1100,
     utilities: 180,
@@ -150,6 +213,10 @@ export const MARIA: WaiverPersonaData = {
     child_support_paid: 0,
     insurance_not_deducted: 120,
     other_expenses: 50,
+    personal_care: 40,
+  },
+  expense_texts: {
+    other_expenses_specify: 'School supplies and fees',
   },
   assets: [
     { asset_type: 'vehicle', description: '2015 Honda Civic', current_value: 6500, amount_owed: 0 },
@@ -208,8 +275,13 @@ export const JAMES: PersonaData = {
   income: {
     marital_status: 'not_married',
     members: [],
-    sources: { monthly_gross_wages: 5833 },
+    sources: { monthly_gross_wages: 5833, monthly_interest_and_dividends: 0 },
+    business: [],
+    now_different: 'no',
+    assistance: { answer: 'no' },
   },
+  deductions: { payroll_tax: 1288, payroll_union_dues: 45 },
+  expenses_include_others: 'no',
   expenses: {
     rent_or_mortgage: 1650,
     utilities: 120,
@@ -224,6 +296,12 @@ export const JAMES: PersonaData = {
     child_support_paid: 0,
     insurance_not_deducted: 200,
     other_expenses: 100,
+    home_insurance: 15,
+    personal_care: 40,
+    entertainment: 45,
+  },
+  expense_texts: {
+    other_expenses_specify: 'Work boots and small tools for my job',
   },
   assets: [
     {
@@ -292,12 +370,15 @@ export const PRIYA: PersonaData = {
     ],
     // $12,000 plus the spouse's $1,800 is $13,800 a month, $165,600 a year — above the
     // $137,902 HH4 median, so the annualized § 707(b) comparison fails as the persona intends.
-    sources: { monthly_gross_wages: 12000 },
+    sources: { monthly_gross_wages: 12000, monthly_interest_and_dividends: 0 },
+    business: [],
+    now_different: 'no',
+    assistance: { answer: 'no' },
     spouse_sources: {
       monthly_gross_wages: 1800,
       monthly_overtime: 0,
       monthly_tips: 0,
-      monthly_rental_income: 0,
+      monthly_interest_and_dividends: 0,
       monthly_pension: 0,
       monthly_social_security: 0,
       monthly_unemployment: 0,
@@ -305,7 +386,13 @@ export const PRIYA: PersonaData = {
       monthly_alimony: 0,
       monthly_other_income: 0,
     },
+    spouse_business: [],
+    spouse_now_different: 'no',
+    spouse_assistance: { answer: 'no' },
   },
+  deductions: { payroll_tax: 2450, payroll_voluntary_retirement: 600, payroll_insurance: 620 },
+  spouse_deductions: { payroll_tax: 250 },
+  expenses_include_others: 'yes',
   expenses: {
     rent_or_mortgage: 2800,
     utilities: 250,
@@ -320,6 +407,15 @@ export const PRIYA: PersonaData = {
     child_support_paid: 0,
     insurance_not_deducted: 350,
     other_expenses: 200,
+    home_insurance: 20,
+    personal_care: 60,
+    entertainment: 80,
+    charitable_contributions: 50,
+    taxes_not_deducted: 200,
+  },
+  expense_texts: {
+    taxes_specify: 'IRS installment agreement, 2025 tax',
+    other_expenses_specify: "Children's after-school activities",
   },
   assets: [
     {
@@ -377,12 +473,15 @@ export const DESHAWN: WaiverPersonaData = {
         spouse_is_dependent: false,
       },
     ],
-    sources: { monthly_gross_wages: 3500 },
+    sources: { monthly_gross_wages: 3500, monthly_interest_and_dividends: 0 },
+    business: [],
+    now_different: 'no',
+    assistance: { answer: 'no' },
     spouse_sources: {
       monthly_gross_wages: 1000,
       monthly_overtime: 0,
       monthly_tips: 0,
-      monthly_rental_income: 0,
+      monthly_interest_and_dividends: 0,
       monthly_pension: 0,
       monthly_social_security: 0,
       monthly_unemployment: 0,
@@ -390,7 +489,13 @@ export const DESHAWN: WaiverPersonaData = {
       monthly_alimony: 0,
       monthly_other_income: 0,
     },
+    spouse_business: [],
+    spouse_now_different: 'no',
+    spouse_assistance: { answer: 'no' },
   },
+  deductions: { payroll_tax: 450 },
+  spouse_deductions: { payroll_tax: 115 },
+  expenses_include_others: 'yes',
   expenses: {
     rent_or_mortgage: 1200,
     utilities: 200,
@@ -405,6 +510,12 @@ export const DESHAWN: WaiverPersonaData = {
     child_support_paid: 0,
     insurance_not_deducted: 150,
     other_expenses: 40,
+    personal_care: 40,
+    entertainment: 25,
+    charitable_contributions: 50,
+  },
+  expense_texts: {
+    other_expenses_specify: 'Printer ink, paper and postage',
   },
   assets: [
     {
@@ -482,8 +593,13 @@ export const SARAH: WaiverPersonaData = {
     members: [
       { relationship: 'roommate', age: 29, lives_with_you: true, claimed_or_supported: false },
     ],
-    sources: { monthly_gross_wages: 2000 },
+    sources: { monthly_gross_wages: 2000, monthly_interest_and_dividends: 0 },
+    business: [],
+    now_different: 'no',
+    assistance: { answer: 'no' },
   },
+  deductions: { payroll_tax: 250 },
+  expenses_include_others: 'no',
   expenses: {
     rent_or_mortgage: 850,
     utilities: 80,
@@ -497,7 +613,9 @@ export const SARAH: WaiverPersonaData = {
     childcare: 0,
     child_support_paid: 0,
     insurance_not_deducted: 0,
-    other_expenses: 50,
+    other_expenses: 0,
+    personal_care: 30,
+    entertainment: 20,
   },
   assets: [],
   debts: [
@@ -544,21 +662,33 @@ export const ANDRES: PersonaData = {
     members: [
       { relationship: 'daughter', age: 9, lives_with_you: true, claimed_or_supported: true },
     ],
-    // What he keeps from driving ($4,200 from the apps less $830 of driving costs) is other
-    // income until the Income step asks for business income (3a1.Q1). Every other box is $0.
+    // His driving ($4,200 from the apps less $830 of driving costs) is a business entry.
+    // Every box is $0.
     sources: {
       monthly_gross_wages: 0,
       monthly_overtime: 0,
       monthly_tips: 0,
-      monthly_rental_income: 0,
+      monthly_interest_and_dividends: 0,
       monthly_pension: 0,
       monthly_social_security: 0,
       monthly_unemployment: 0,
       monthly_child_support: 0,
       monthly_alimony: 0,
-      monthly_other_income: 3370,
+      monthly_other_income: 0,
     },
+    business: [
+      {
+        kind: 'business',
+        description: 'Rideshare and delivery driving',
+        gross: 4200,
+        expenses: 830,
+      },
+    ],
+    now_different: 'no',
+    assistance: { answer: 'no' },
   },
+  deductions: {},
+  expenses_include_others: 'no',
   expenses: {
     rent_or_mortgage: 1150,
     utilities: 210,
@@ -574,6 +704,14 @@ export const ANDRES: PersonaData = {
     child_support_paid: 0,
     insurance_not_deducted: 0,
     other_expenses: 0,
+    home_insurance: 15,
+    personal_care: 40,
+    entertainment: 30,
+    charitable_contributions: 20,
+    taxes_not_deducted: 150,
+  },
+  expense_texts: {
+    taxes_specify: '2026 estimated income tax',
   },
   assets: [
     // His half of a car titled to him and his brother

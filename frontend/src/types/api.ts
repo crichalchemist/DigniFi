@@ -31,6 +31,8 @@ export interface IntakeSession {
   created_at: string;
   updated_at: string;
   completed_at: string | null;
+  // The six months the Income step's averages cover, worked out by the server (3e2 spec §4.4)
+  income_window: IncomePeriod;
 
   // Related data (nested serializers)
   debtor_info?: DebtorInfo;
@@ -64,9 +66,14 @@ export interface DebtorInfo {
   email: string;
 }
 
+/** A yes or no answer; null (unanswered) is kept apart from both */
+export type YesNo = 'yes' | 'no';
+
 export interface IncomeInfo {
   id: number;
   session: number;
+  /** The six months the filer last confirmed by Continue on the Income step. Read-only. */
+  answered_window?: IncomePeriod | null;
   data_source: 'manual' | 'bank_import' | 'tax_return';
 
   // The six-month total saved before income was stored by source. Read-only: the Income step
@@ -77,7 +84,7 @@ export interface IncomeInfo {
   monthly_gross_wages?: number | null;
   monthly_overtime?: number | null;
   monthly_tips?: number | null;
-  monthly_rental_income?: number | null;
+  monthly_interest_and_dividends?: number | null;
   monthly_pension?: number | null;
   monthly_social_security?: number | null;
   monthly_unemployment?: number | null;
@@ -85,8 +92,50 @@ export interface IncomeInfo {
   monthly_alimony?: number | null;
   monthly_other_income?: number | null;
 
+  // The old rental figure. Read-only and unread by the step: rental income is a list entry now.
+  readonly monthly_rental_income?: number | null;
+
   // The marriage answer, null until the filer gives one
   marital_status?: MaritalStatus | null;
+
+  // The list of businesses and rental properties. null is unanswered; [] is none.
+  business_and_rental?: IncomeEntry[] | null;
+
+  // Whether the income is now different from the six-month average. null is unanswered.
+  income_now_different?: YesNo | null;
+
+  // The ten monthly amounts now, asked only under "yes" (CURRENT_INCOME_FIELDS)
+  current_monthly_gross_wages?: number | null;
+  current_monthly_overtime?: number | null;
+  current_monthly_tips?: number | null;
+  current_monthly_interest_and_dividends?: number | null;
+  current_monthly_pension?: number | null;
+  current_monthly_social_security?: number | null;
+  current_monthly_unemployment?: number | null;
+  current_monthly_child_support?: number | null;
+  current_monthly_alimony?: number | null;
+  current_monthly_other_income?: number | null;
+
+  // Other government assistance (Schedule I line 8f): the answer, then cash and non-cash apart
+  assistance_answer?: YesNo | null;
+  cash_assistance_kind?: string;
+  cash_assistance_amount?: number | null;
+  noncash_assistance_kind?: string;
+  noncash_assistance_value?: number | null;
+
+  // Payroll deductions (Schedule I lines 5a-5h), asked on the Take-home pay step
+  payroll_tax?: number | null;
+  payroll_mandatory_retirement?: number | null;
+  payroll_voluntary_retirement?: number | null;
+  payroll_retirement_loan?: number | null;
+  payroll_insurance?: number | null;
+  payroll_support?: number | null;
+  payroll_union_dues?: number | null;
+  payroll_other?: number | null;
+  payroll_other_specify?: string;
+
+  // The last day of the six-month window the filer last confirmed. Read-only.
+  readonly income_period_end?: string | null;
 
   // Calculated field: the ten added up, null when the filer gave none of them
   total_monthly_income: number | null;
@@ -101,7 +150,7 @@ export const INCOME_FIELDS = [
   'monthly_gross_wages',
   'monthly_overtime',
   'monthly_tips',
-  'monthly_rental_income',
+  'monthly_interest_and_dividends',
   'monthly_pension',
   'monthly_social_security',
   'monthly_unemployment',
@@ -109,6 +158,73 @@ export const INCOME_FIELDS = [
   'monthly_alimony',
   'monthly_other_income',
 ] as const;
+
+export type IncomeField = (typeof INCOME_FIELDS)[number];
+
+/** The ten amounts now, asked only when the person's income is now different */
+export const CURRENT_INCOME_FIELDS = [
+  'current_monthly_gross_wages',
+  'current_monthly_overtime',
+  'current_monthly_tips',
+  'current_monthly_interest_and_dividends',
+  'current_monthly_pension',
+  'current_monthly_social_security',
+  'current_monthly_unemployment',
+  'current_monthly_child_support',
+  'current_monthly_alimony',
+  'current_monthly_other_income',
+] as const;
+
+/** The two assistance amounts, which the API sends as decimal strings */
+export const ASSISTANCE_AMOUNT_FIELDS = [
+  'cash_assistance_amount',
+  'noncash_assistance_value',
+] as const;
+
+/** The eight payroll deductions, Schedule I lines 5a-5h, which the API sends as decimal strings */
+export const DEDUCTION_FIELDS = [
+  'payroll_tax',
+  'payroll_mandatory_retirement',
+  'payroll_voluntary_retirement',
+  'payroll_retirement_loan',
+  'payroll_insurance',
+  'payroll_support',
+  'payroll_union_dues',
+  'payroll_other',
+] as const;
+
+export type DeductionField = (typeof DEDUCTION_FIELDS)[number];
+
+/** A business or a rental property on the Income step's list */
+export type EntryKind = 'business' | 'rental';
+
+/**
+ * One business or property. A null is an unanswered box. The amounts are monthly averages;
+ * the `current_` pair is asked only when the person's income is now different.
+ */
+export interface IncomeEntry {
+  id?: number;
+  kind: EntryKind | null;
+  description: string | null;
+  gross: number | null;
+  expenses: number | null;
+  current_gross: number | null;
+  current_expenses: number | null;
+}
+
+/** The four amounts of an entry, which the API sends as decimal strings */
+export const ENTRY_AMOUNT_KEYS = [
+  'gross',
+  'expenses',
+  'current_gross',
+  'current_expenses',
+] as const;
+
+/** A span of days, as ISO dates ("2026-04-01") */
+export interface IncomePeriod {
+  start: string;
+  end: string;
+}
 
 /** The four answers to the marriage question on the Income step. */
 export type MaritalStatus =
@@ -155,55 +271,108 @@ export interface Household {
 }
 
 /** A married filer's spouse's ten monthly income amounts, under the same names as the filer's. */
-export type SpouseIncome = Partial<Record<(typeof INCOME_FIELDS)[number], number | null>>;
+export type SpouseIncome = Partial<
+  Omit<
+    IncomeInfo,
+    | 'id'
+    | 'session'
+    | 'data_source'
+    | 'monthly_income'
+    | 'marital_status'
+    | 'income_period_end'
+    | 'total_monthly_income'
+  >
+>;
 
 export interface ExpenseInfo {
   id: number;
   session: number;
   data_source: 'manual' | 'bank_import';
 
-  // Housing expenses
+  // The 26 Schedule J amounts, named in EXPENSE_FIELDS
   rent_or_mortgage: number;
-  utilities: number;
+  real_estate_taxes: number;
+  home_insurance: number;
   home_maintenance: number;
-
-  // Transportation
-  vehicle_payment: number;
-  vehicle_insurance: number;
-  vehicle_maintenance: number;
-
-  // Living expenses
+  hoa_dues: number;
+  utilities: number;
   food_and_groceries: number;
-  clothing: number;
   childcare: number;
-  child_support_paid: number;
+  clothing: number;
+  personal_care: number;
   medical_expenses: number;
+  vehicle_maintenance: number;
+  entertainment: number;
+  charitable_contributions: number;
+  vehicle_insurance: number;
   insurance_not_deducted: number;
+  taxes_not_deducted: number;
+  vehicle_payment: number;
+  child_support_paid: number;
+  support_others: number;
+  other_property_mortgages: number;
+  other_property_taxes: number;
+  other_property_insurance: number;
+  other_property_upkeep: number;
+  other_property_hoa_dues: number;
   other_expenses: number;
 
-  // Calculated field
+  // The three "Specify" texts beside lines 16, 19 and 21, up to 100 characters each
+  taxes_specify: string;
+  support_others_specify: string;
+  other_expenses_specify: string;
+
+  // Schedule J line 3; null is unanswered
+  expenses_include_others: YesNo | null;
+
+  // Calculated field, read-only: the server adds the amounts up
   total_monthly_expenses: number;
 }
 
 /**
- * The 13 monthly expense amounts, under the names the backend stores and the court forms
- * read. DRF drops any other name without an error, so the step sums and sends only these.
+ * The 26 monthly expense amounts, in Schedule J's order, under the names the backend stores
+ * and the court forms read. DRF drops any other name without an error, so the step sums and
+ * sends only these.
  */
 export const EXPENSE_FIELDS = [
   'rent_or_mortgage',
-  'utilities',
+  'real_estate_taxes',
+  'home_insurance',
   'home_maintenance',
-  'vehicle_payment',
-  'vehicle_insurance',
-  'vehicle_maintenance',
+  'hoa_dues',
+  'utilities',
   'food_and_groceries',
-  'clothing',
-  'medical_expenses',
   'childcare',
-  'child_support_paid',
+  'clothing',
+  'personal_care',
+  'medical_expenses',
+  'vehicle_maintenance',
+  'entertainment',
+  'charitable_contributions',
+  'vehicle_insurance',
   'insurance_not_deducted',
+  'taxes_not_deducted',
+  'vehicle_payment',
+  'child_support_paid',
+  'support_others',
+  'other_property_mortgages',
+  'other_property_taxes',
+  'other_property_insurance',
+  'other_property_upkeep',
+  'other_property_hoa_dues',
   'other_expenses',
 ] as const;
+
+export type ExpenseField = (typeof EXPENSE_FIELDS)[number];
+
+/** The three "Specify" texts, which sit beside lines 16, 19 and 21 */
+export const EXPENSE_SPECIFY_FIELDS = [
+  'taxes_specify',
+  'support_others_specify',
+  'other_expenses_specify',
+] as const;
+
+export type ExpenseSpecifyField = (typeof EXPENSE_SPECIFY_FIELDS)[number];
 
 export interface AssetInfo {
   id: number;
@@ -519,17 +688,25 @@ export interface DatedTableUsed {
   source_url: string;
 }
 
-/** The forms that apply to this filer, in filing order */
+/** The six months the filer last confirmed, and the six months in force now */
+export interface IncomePeriodNotice {
+  answered_for: IncomePeriod | null;
+  now: IncomePeriod;
+}
+
+/** What GET /api/forms/packet/ returns: the forms that apply to this filer, in filing order */
 export interface FormPacketResponse {
   session: number;
   form_types: FormType[];
   tables: DatedTableUsed[];
+  income_period?: IncomePeriodNotice;
 }
 
 /** What `api.forms.packet` returns */
 export interface Packet {
   form_types: FormType[];
   tables: DatedTableUsed[];
+  income_period: IncomePeriodNotice | null;
 }
 
 export interface SessionSummaryResponse {

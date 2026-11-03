@@ -37,27 +37,36 @@ You ARE Sarah Chen. Navigate DigniFi as she would.
 
 ## Your Data (enter this exactly)
 
-| Field                                                  | Value                                                                                         |
-| ------------------------------------------------------ | --------------------------------------------------------------------------------------------- |
-| First name                                             | Sarah                                                                                         |
-| Last name                                              | Chen                                                                                          |
-| SSN                                                    | 900-55-0005                                                                                   |
-| Date of birth                                          | 01/20/1995                                                                                    |
-| Phone                                                  | 312-555-0505                                                                                  |
-| Email                                                  | sarah.chen@demo.dignifi.org                                                                   |
-| Address                                                | 1520 N Damen Ave Apt 2F, Chicago, IL 60622                                                    |
-| County                                                 | Cook                                                                                          |
-| Your marriage (Income step)                            | Not married                                                                                   |
-| Person 1 in your home or supported by you              | Roommate · Age 29 · Lives with you? Yes · Claimed on your tax return, or supported by you? No |
-| Monthly income before taxes (Monthly Wages/Salary box) | $2,000                                                                                        |
-| Rent                                                   | $850                                                                                          |
-| Utilities                                              | $80                                                                                           |
-| Food                                                   | $250                                                                                          |
-| Clothing                                               | $30                                                                                           |
-| Medical                                                | $20                                                                                           |
-| Other expenses                                         | $50                                                                                           |
-| Take-home pay (fee waiver page)                        | $1,750                                                                                        |
-| Non-cash help from the government (fee waiver page)    | No                                                                                            |
+| Field                                                                                         | Value                                                                                         |
+| --------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| First name                                                                                    | Sarah                                                                                         |
+| Last name                                                                                     | Chen                                                                                          |
+| SSN                                                                                           | 900-55-0005                                                                                   |
+| Date of birth                                                                                 | 01/20/1995                                                                                    |
+| Phone                                                                                         | 312-555-0505                                                                                  |
+| Email                                                                                         | sarah.chen@demo.dignifi.org                                                                   |
+| Address                                                                                       | 1520 N Damen Ave Apt 2F, Chicago, IL 60622                                                    |
+| County                                                                                        | Cook                                                                                          |
+| Your marriage (Income step)                                                                   | Not married                                                                                   |
+| Person 1 in your home or supported by you                                                     | Roommate · Age 29 · Lives with you? Yes · Claimed on your tax return, or supported by you? No |
+| Monthly income before taxes (Monthly Wages/Salary box)                                        | $2,000                                                                                        |
+| Business or rental property (Income step)                                                     | None: press "I have no business or rental income."                                            |
+| Interest, dividends, and royalties (Income step)                                              | $0                                                                                            |
+| Is your income now different from that average? (Income step)                                 | No                                                                                            |
+| Other government assistance (Income step)                                                     | No                                                                                            |
+| Take-home pay step (deductions)                                                               | 5a $250; the rest blank                                                                       |
+| Rent                                                                                          | $850                                                                                          |
+| Utilities                                                                                     | $80                                                                                           |
+| Food                                                                                          | $250                                                                                          |
+| Clothing                                                                                      | $30                                                                                           |
+| Medical                                                                                       | $20                                                                                           |
+| Other expenses, written in (line 21)                                                          | $0                                                                                            |
+| Expenses step, line 3 (expenses of someone other than you and your dependents)                | No                                                                                            |
+| Personal care (line 10, "Personal care products and services")                                | $30                                                                                           |
+| Entertainment (line 13, "Entertainment, clubs, recreation, newspapers, magazines, and books") | $20                                                                                           |
+| Every other new Schedule J line (4b, 14, 16)                                                  | $0                                                                                            |
+| Take-home pay (fee waiver page)                                                               | $1,750                                                                                        |
+| Non-cash help from the government (fee waiver page)                                           | No                                                                                            |
 
 **Assets:**
 

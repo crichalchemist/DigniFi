@@ -2,8 +2,8 @@
  * Andrés Kettleby — Gig Driver
  *
  * Self-employed rideshare and delivery driver, below median, ten amounts owed.
- * What he keeps from driving goes in the other-income box until the Income step
- * asks for business income (3a1.Q1). Today's flag qualifies him for a fee waiver,
+ * His driving is a business he adds on the Income step ($4,200 from the apps less
+ * $830 of driving costs), so it prints on 122A-1 line 5 and Schedule I line 8a. Today's flag qualifies him for a fee waiver,
  * so Complete opens the waiver page, but he pays in installments and files no
  * application (3a1.Q2): his packet has no Form 103B.
  */
@@ -37,33 +37,37 @@ test.describe('Andrés Kettleby — Gig Driver', () => {
     // Uploads come between basic info and Income; this journey types everything in
     await documents.skip();
 
-    // Step 2: Income ($3,370/mo in Other Monthly Income, $0 in every other box)
+    // Step 2: Income (his driving added as a business entry, $0 in every box)
     await wizard.fillIncomeInfo(ANDRES.income);
     await wizard.nextStep();
 
-    // Step 3: Expenses
-    await wizard.fillExpenses(ANDRES.expenses);
+    // Step 3: Take-home pay
+    await wizard.fillTakeHomePay(ANDRES.deductions, ANDRES.spouse_deductions);
     await wizard.nextStep();
 
-    // Step 4: Assets (his half of the Honda Fit, household goods, two accounts)
+    // Step 4: Expenses
+    await wizard.fillExpenses(ANDRES);
+    await wizard.nextStep();
+
+    // Step 5: Assets (his half of the Honda Fit, household goods, two accounts)
     for (const asset of ANDRES.assets) {
       await wizard.addAsset(asset);
     }
     await wizard.nextStep();
 
-    // Step 5: Debts (the co-signed Honda Fit loan and nine unsecured debts)
+    // Step 6: Debts (the co-signed Honda Fit loan and nine unsecured debts)
     for (const debt of ANDRES.debts) {
       await wizard.addDebt(debt);
     }
     await wizard.nextStep();
 
-    // Step 6: Contracts & Leases (left empty)
+    // Step 7: Contracts & Leases (left empty)
     await wizard.nextStep();
 
-    // Step 7: Codebtors (left empty)
+    // Step 8: Codebtors (left empty)
     await wizard.nextStep();
 
-    // Step 8: Review & Complete
+    // Step 9: Review & Complete
     await wizard.fillReview();
     await wizard.completeIntake();
 
