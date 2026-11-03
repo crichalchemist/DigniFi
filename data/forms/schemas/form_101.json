@@ -1146,6 +1146,28 @@
       "legal_review": false
     },
     {
+      "pdf_field": "Check Box7",
+      "type": "checkbox",
+      "source": "derived",
+      "choices": {
+        "pay_in_full": "/Pay entirely",
+        "installments": "/Pay in installments",
+        "waiver": "/Request fees waived"
+      },
+      "page": 3,
+      "label": "How you will pay the fee",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": "fee_payment_choice",
+      "ingest_key": null,
+      "binding": null,
+      "repeat": null,
+      "repeat_capacity": null,
+      "row": null,
+      "legal_review": false
+    },
+    {
       "pdf_field": "Check Box18",
       "type": "checkbox",
       "source": "asked",

@@ -11,7 +11,7 @@ import { LandingPage } from '../pages/landing.page';
 import { RegisterPage } from '../pages/register.page';
 import { WizardPage } from '../pages/wizard.page';
 import { DocumentsPage } from '../pages/documents.page';
-import { FeeWaiverPage } from '../pages/fee-waiver.page';
+import { FilingFeePage } from '../pages/filing-fee.page';
 import { DashboardPage } from '../pages/dashboard.page';
 import { SOFAPage } from '../pages/sofa.page';
 
@@ -21,7 +21,7 @@ test.describe('DeShawn Mitchell — Assets', () => {
     const register = new RegisterPage(page);
     const wizard = new WizardPage(page);
     const documents = new DocumentsPage(page);
-    const feeWaiver = new FeeWaiverPage(page);
+    const filingFee = new FilingFeePage(page);
     const dashboard = new DashboardPage(page);
     const sofa = new SOFAPage(page);
 
@@ -79,23 +79,18 @@ test.describe('DeShawn Mitchell — Assets', () => {
     await wizard.fillReview();
     await wizard.completeIntake();
 
-    // $3,500 plus $1,000 is $54,000 a year, below 60% of the HH2 median ($56,360.40), so
-    // DeShawn is fee-waiver eligible and gets routed to the waiver application first.
-    await feeWaiver.submit(
-      DESHAWN.fee_waiver.household_size,
-      DESHAWN.fee_waiver.take_home_pay,
-      DESHAWN.fee_waiver.noncash_assistance
-    );
+    // DeShawn pays in installments (3f spec §10), so Form 103B leaves his packet
+    await filingFee.answer(DESHAWN.filing_fee.payment_choice);
 
-    // The waiver application continues to the SOFA step (DIG-149). This journey isn't about
+    // The filing-fee page continues to the SOFA step (DIG-149). This journey isn't about
     // financial history, so skip SOFA to reach the forms dashboard. (The SOFA save path
     // itself is covered by sofa-journey.spec.ts.)
     await sofa.waitForLoad();
     await sofa.skipForNow();
 
     // Generate forms (passes means test)
-    await dashboard.generateAllForms(15); // 14 forms + Form 103B (fee waiver)
+    await dashboard.generateAllForms(14); // he pays in installments, so no Form 103B
     const count = await dashboard.getGeneratedCount();
-    expect(count).toBe(15);
+    expect(count).toBe(14);
   });
 });

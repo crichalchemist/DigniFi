@@ -5,6 +5,8 @@ import { http, HttpResponse } from 'msw';
 import { server } from '../../test/mocks/server';
 import { IntakeProvider } from '../../context/IntakeContext';
 import { FormDashboard } from '../FormDashboard';
+import { FORM_103A_LINK } from '../../constants/copy';
+import { FORM_103A_URL } from '../../constants/copy';
 
 /**
  * FormDashboard requires IntakeProvider with an active session.
@@ -299,6 +301,129 @@ describe('FormDashboard', () => {
     });
   });
 
+  describe('how the filer will pay the fee', () => {
+    // Form 101 line 8's words, typed out (the field index's option_text for Check Box7)
+    const PAY_IN_FULL = 'I will pay the entire fee when I file my petition.';
+    const INSTALLMENTS = 'I need to pay the fee in installments.';
+    const WAIVER = 'I request that my fee be waived';
+
+    function packetWith(paymentChoice?: unknown) {
+      server.use(
+        http.get('http://localhost:8000/api/forms/packet/', () =>
+          HttpResponse.json({
+            session: 1,
+            form_types: ['form_101', 'form_121'],
+            tables: [],
+            ...(paymentChoice === undefined ? {} : { payment_choice: paymentChoice }),
+          })
+        )
+      );
+    }
+
+    async function answerBlock() {
+      return screen.findByRole('region', { name: 'How you will pay the fee' });
+    }
+
+    it('shows the filer’s line 8 answer in the form’s words, with a link to change it', async () => {
+      packetWith('pay_in_full');
+      renderFormDashboard();
+
+      const block = await answerBlock();
+      expect(within(block).getByText(PAY_IN_FULL)).toBeInTheDocument();
+      expect(
+        within(block).getByRole('link', { name: 'Change how you will pay the fee' })
+      ).toHaveAttribute('href', '/filing-fee');
+      expect(within(block).queryByRole('link', { name: /^Choose/ })).not.toBeInTheDocument();
+    });
+
+    it('asks a filer who has not answered line 8 to choose, and shows no answer', async () => {
+      packetWith(null);
+      renderFormDashboard();
+
+      const block = await answerBlock();
+      expect(
+        within(block).getByRole('link', { name: 'Choose how you will pay the fee' })
+      ).toHaveAttribute('href', '/filing-fee');
+      expect(within(block).queryByRole('link', { name: /^Change/ })).not.toBeInTheDocument();
+      for (const words of [PAY_IN_FULL, INSTALLMENTS, WAIVER]) {
+        expect(within(block).queryByText(words)).not.toBeInTheDocument();
+      }
+    });
+
+    it('tells a filer paying in installments to get Form 103A from the court', async () => {
+      packetWith('installments');
+      renderFormDashboard();
+
+      const block = await answerBlock();
+      expect(within(block).getByText(INSTALLMENTS)).toBeInTheDocument();
+      expect(
+        within(block).getByText(/DigniFi doesn't prepare Form 103A yet\./)
+      ).toBeInTheDocument();
+      expect(within(block).getByRole('link', { name: FORM_103A_LINK })).toHaveAttribute(
+        'href',
+        FORM_103A_URL
+      );
+    });
+
+    it.each([
+      ['waiver', WAIVER],
+      ['pay_in_full', PAY_IN_FULL],
+    ])('shows no Form 103A notice for the answer %s', async (choice, words) => {
+      packetWith(choice);
+      renderFormDashboard();
+
+      const block = await answerBlock();
+      expect(within(block).getByText(words)).toBeInTheDocument();
+      expect(screen.queryByText(/Form 103A/)).not.toBeInTheDocument();
+    });
+
+    // Guard (ruling R29): passes before the change; it keeps a block from showing beside a refusal
+    it('shows no answer, and no link to choose, when the packet is refused', async () => {
+      server.use(
+        http.get('http://localhost:8000/api/forms/packet/', () =>
+          HttpResponse.json(
+            { error: 'Enter your income by source on the Income step.', step: 'income_info' },
+            { status: 422 }
+          )
+        )
+      );
+      renderFormDashboard();
+
+      await screen.findByText('Enter your income by source on the Income step.');
+      expect(
+        screen.queryByRole('region', { name: 'How you will pay the fee' })
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole('link', { name: /how you will pay the fee/ })
+      ).not.toBeInTheDocument();
+    });
+
+    it('shows the answer the packet holds after Generate All reloads it', async () => {
+      // The filer changed line 8 on /filing-fee in another tab; Generate All reloads the packet
+      let calls = 0;
+      server.use(
+        http.get('http://localhost:8000/api/forms/packet/', () => {
+          calls += 1;
+          return HttpResponse.json({
+            session: 1,
+            form_types: calls === 1 ? ['form_101', 'form_103b'] : ['form_101', 'form_121'],
+            tables: [],
+            payment_choice: calls === 1 ? 'waiver' : 'installments',
+          });
+        })
+      );
+      renderFormDashboard();
+      expect(within(await answerBlock()).getByText(WAIVER)).toBeInTheDocument();
+
+      await userEvent.click(await screen.findByRole('button', { name: /generate all/i }));
+      await userEvent.click(screen.getByRole('checkbox'));
+      await userEvent.click(screen.getByRole('button', { name: /continue/i }));
+
+      expect(await within(await answerBlock()).findByText(INSTALLMENTS)).toBeInTheDocument();
+      expect(screen.queryByText(WAIVER)).not.toBeInTheDocument();
+    });
+  });
+
   it('offers only the forms in the filer’s packet', async () => {
     // A stored form that no longer applies (122A-2 after income dropped) is neither shown nor counted
     server.use(
@@ -582,7 +707,7 @@ describe('FormDashboard', () => {
     });
 
     // The words of each link go to the owner with the plan (ruling R22). Each page is one a
-    // binding of that form can name: the fee-waiver rules, a SOFA list (the synthetic Schedule D
+    // binding of that form can name: the filing-fee answers, a SOFA list (the synthetic Schedule D
     // group's), the pay stub's employer name, and Form 107's asked answers.
     it('names each page that fixes a form Generate All refused', async () => {
       server.use(
@@ -590,7 +715,7 @@ describe('FormDashboard', () => {
           HttpResponse.json({
             generated: [],
             errors: [
-              { form_type: 'form_103b', error: TOO_LONG, page: '/fee-waiver' },
+              { form_type: 'form_103b', error: TOO_LONG, page: '/filing-fee' },
               { form_type: 'schedule_d', error: TOO_LONG, page: '/sofa' },
               { form_type: 'schedule_i', error: TOO_LONG, page: '/documents' },
               { form_type: 'form_107', error: TOO_LONG, page: '/ask/form_107' },
@@ -609,7 +734,7 @@ describe('FormDashboard', () => {
         .getAllByRole('link')
         .map((link) => [link.textContent, link.getAttribute('href')]);
       expect(links).toEqual([
-        ['Go to Filing Fee Waiver Application', '/fee-waiver'],
+        ['Go to How you will pay the filing fee', '/filing-fee'],
         ['Go to Statement of Financial Affairs', '/sofa'],
         ['Go to Upload your documents', '/documents'],
         ['Answer the questions for Form 107 - Financial Affairs', '/ask/form_107'],
@@ -937,16 +1062,16 @@ describe('FormDashboard', () => {
     });
 
     it('links a form whose Generate was refused to the page that fixes it', async () => {
-      // The fee-waiver application feeds Form 103B, which is in the packet only with one
-      const TYPE_TOO_LONG =
-        '“Type of assistance” is too long to fit on the court form, even in small print. Shorten it.';
+      // Line 7's "Identify who" is a filing-fee answer, which feeds Form 103B (Task 4)
+      const WHO_TOO_LONG =
+        '“Identify who” is too long to fit on the court form, even in small print. Shorten it.';
       server.use(
         http.get('http://localhost:8000/api/forms/packet/', () =>
           HttpResponse.json({ session: 1, form_types: ['form_101', 'form_103b'] })
         ),
         http.post('http://localhost:8000/api/forms/generate/', () =>
           HttpResponse.json(
-            { form_type: 'form_103b', error: TYPE_TOO_LONG, page: '/fee-waiver' },
+            { form_type: 'form_103b', error: WHO_TOO_LONG, page: '/filing-fee' },
             { status: 422 }
           )
         )
@@ -956,10 +1081,10 @@ describe('FormDashboard', () => {
       const card = await cardOf('Form 103B - Fee Waiver Application');
       await userEvent.click(within(card).getByRole('button', { name: 'Generate' }));
 
-      expect(await within(card).findByText(TYPE_TOO_LONG)).toBeInTheDocument();
+      expect(await within(card).findByText(WHO_TOO_LONG)).toBeInTheDocument();
       expect(
-        within(card).getByRole('link', { name: 'Go to Filing Fee Waiver Application' })
-      ).toHaveAttribute('href', '/fee-waiver');
+        within(card).getByRole('link', { name: 'Go to How you will pay the filing fee' })
+      ).toHaveAttribute('href', '/filing-fee');
     });
 
     // The context says the intake is complete, so no notice links to it; the server reopened it

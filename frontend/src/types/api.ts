@@ -457,7 +457,6 @@ export interface Codebtor {
 // annual, annualized_cmi (details) is what the § 707(b) comparison uses
 export interface MeansTestResult {
   passes_means_test: boolean;
-  qualifies_for_fee_waiver: boolean;
   cmi: number;
   median_income_threshold: number;
   family_size: number;
@@ -470,6 +469,35 @@ export interface MeansTestResult {
     [key: string]: unknown;
   };
   means_test_id: number;
+}
+
+// ============================================================================
+// Filing fee
+// ============================================================================
+
+// Form 101 line 8, "How you will pay the fee"
+export type PaymentChoice = 'pay_in_full' | 'installments' | 'waiver';
+
+// What the page shows beside the question (3f spec §6.2): amounts as decimal strings
+export interface FilingFeeInformation {
+  family_size: number;
+  limit_monthly: string;
+  guideline: { year: number; effective_date: string; source_url: string };
+  family_income_monthly: string;
+}
+
+// The session's filing-fee record, as GET and PUT .../filing-fee/ return it. Null is unanswered.
+export interface FilingFee {
+  payment_choice: PaymentChoice | null;
+  income_change_answer: YesNo | null;
+  income_change_explanation: string;
+  installments_explanation: string;
+  others_covered_answer: YesNo | null;
+  others_covered_who: string;
+  expense_change_answer: YesNo | null;
+  expense_change_explanation: string;
+  information: FilingFeeInformation | null;
+  information_gap: 'income' | 'no_table' | null;
 }
 
 // ============================================================================
@@ -700,6 +728,8 @@ export interface FormPacketResponse {
   form_types: FormType[];
   tables: DatedTableUsed[];
   income_period?: IncomePeriodNotice;
+  /** Form 101 line 8: the filer's answer, null until they choose (forms step 3f §7) */
+  payment_choice?: PaymentChoice | null;
 }
 
 /** What `api.forms.packet` returns */
@@ -707,6 +737,7 @@ export interface Packet {
   form_types: FormType[];
   tables: DatedTableUsed[];
   income_period: IncomePeriodNotice | null;
+  payment_choice: PaymentChoice | null;
 }
 
 export interface SessionSummaryResponse {
@@ -718,7 +749,6 @@ export interface SessionSummaryResponse {
   };
   means_test?: {
     passes: boolean;
-    qualifies_fee_waiver: boolean;
   };
   forms: {
     generated_count: number;

@@ -68,6 +68,7 @@ You ARE Andrés Kettleby. Navigate DigniFi as he would.
 | Charitable (line 14, "Charitable contributions and religious donations")                            | $20                                                                                            |
 | Taxes (line 16, "Taxes. Do not include taxes deducted from your pay or included in lines 4 or 20.") | $150, "2026 estimated income tax"                                                              |
 | Every other expense box                                                                             | $0                                                                                             |
+| How you will pay the fee (after Complete, Form 101 line 8)                                          | I need to pay the fee in installments.                                                         |
 
 **Assets:**
 
@@ -91,7 +92,7 @@ You ARE Andrés Kettleby. Navigate DigniFi as he would.
 
 **Contracts and codebtors:** leave both steps empty, and go on.
 
-**The fee:** you mean to pay the filing fee in installments. If DigniFi sends you to the fee waiver page, you don't apply for the waiver, and you go on to your forms. If the page gives you no way on without applying, note it, then open your forms page (`/forms`) directly.
+**The fee:** you mean to pay the filing fee in installments. After Complete, DigniFi asks how you will pay the fee: choose "I need to pay the fee in installments." and go on.
 
 **Why these are your answers:**
 
@@ -105,4 +106,4 @@ You ARE Andrés Kettleby. Navigate DigniFi as he would.
 - Can you report what you keep from driving without the app calling it wages?
 - Does anything say what will happen to your lease, or push you on it?
 - Can you enter ten amounts owed on your phone without losing work?
-- Does the fee waiver page let you go on without applying?
+- When you choose installments, does the page say what else you file and where to get it?

@@ -3,9 +3,8 @@
  *
  * Self-employed rideshare and delivery driver, below median, ten amounts owed.
  * His driving is a business he adds on the Income step ($4,200 from the apps less
- * $830 of driving costs), so it prints on 122A-1 line 5 and Schedule I line 8a. Today's flag qualifies him for a fee waiver,
- * so Complete opens the waiver page, but he pays in installments and files no
- * application (3a1.Q2): his packet has no Form 103B.
+ * $830 of driving costs), so it prints on 122A-1 line 5 and Schedule I line 8a. He pays the
+ * fee in installments, so his packet has no Form 103B.
  */
 
 import { test, expect } from '@playwright/test';
@@ -14,15 +13,17 @@ import { LandingPage } from '../pages/landing.page';
 import { RegisterPage } from '../pages/register.page';
 import { WizardPage } from '../pages/wizard.page';
 import { DocumentsPage } from '../pages/documents.page';
+import { FilingFeePage } from '../pages/filing-fee.page';
 import { DashboardPage } from '../pages/dashboard.page';
 import { SOFAPage } from '../pages/sofa.page';
 
 test.describe('Andrés Kettleby — Gig Driver', () => {
-  test('reaches his forms from the fee waiver page without applying', async ({ page }) => {
+  test('reaches his forms after choosing to pay in installments', async ({ page }) => {
     const landing = new LandingPage(page);
     const register = new RegisterPage(page);
     const wizard = new WizardPage(page);
     const documents = new DocumentsPage(page);
+    const filingFee = new FilingFeePage(page);
     const sofa = new SOFAPage(page);
     const dashboard = new DashboardPage(page);
 
@@ -71,19 +72,12 @@ test.describe('Andrés Kettleby — Gig Driver', () => {
     await wizard.fillReview();
     await wizard.completeIntake();
 
-    // He qualifies under today's flag, so Complete opens the waiver application
-    await expect(page).toHaveURL(/\/fee-waiver$/);
-    await expect(page.locator('h1')).toHaveText('Filing Fee Waiver Application');
-
-    // He doesn't apply. The page has no way on without applying, so he opens the SOFA
-    // step by URL (the silent refresh on load restores his login) and skips it.
-    await page.goto('/sofa');
-    // A full reload shows the heading only after the token refresh, the session read and the
-    // SOFA read, so it gets longer than the default 5 s (two loaded runs missed it)
-    await sofa.waitForLoad(30_000);
+    // He pays in installments; the page says where to get Form 103A, then continues to SOFA
+    await filingFee.answer(ANDRES.filing_fee.payment_choice);
+    await sofa.waitForLoad();
     await sofa.skipForNow();
 
-    // No waiver application, so no Form 103B; below median, so no Form 122A-2
+    // He pays in installments, so no Form 103B; below median, so no Form 122A-2
     await dashboard.generateAllForms(14);
     const count = await dashboard.getGeneratedCount();
     expect(count).toBe(14);

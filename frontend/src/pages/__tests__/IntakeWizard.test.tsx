@@ -67,7 +67,7 @@ function renderWizard(entry = '/intake') {
       <IntakeProvider>
         <Routes>
           <Route path="/intake" element={<IntakeWizard />} />
-          <Route path="/fee-waiver" element={<div>FeeWaiverPage</div>} />
+          <Route path="/filing-fee" element={<div>FilingFeePage</div>} />
           <Route path="/forms" element={<div>FormDashboard</div>} />
           <Route path="/sofa" element={<div>Statement of Financial Affairs</div>} />
           <Route path="/documents" element={<div>DocumentUploadPage</div>} />
@@ -144,42 +144,29 @@ describe('IntakeWizard handleComplete routing', { timeout: 30_000 }, () => {
     );
   });
 
-  it('navigates to /fee-waiver when qualifies_for_fee_waiver is true', async () => {
-    renderWizard();
-    const completeBtn = await screen.findByRole('button', { name: /complete intake/i });
-
-    // Register AFTER the session GET resolves (wizard is at step 9). Registering
-    // before renderWizard() races with the GET under system load in the full suite.
-    server.use(
-      http.post('http://localhost:8000/api/intake/sessions/:id/calculate_means_test/', () =>
-        HttpResponse.json({
-          means_test_result: {
-            passes_means_test: true,
-            qualifies_for_fee_waiver: true,
-            cmi: 1000,
-            median_income_threshold: 5000,
-          },
-          session_id: 1,
-        })
-      )
-    );
-
-    await userEvent.click(completeBtn);
-
-    await waitFor(() => {
-      expect(screen.getByText('FeeWaiverPage')).toBeInTheDocument();
-    });
-  });
-
-  it('navigates to /sofa when qualifies_for_fee_waiver is false', async () => {
-    renderWizard();
-    const completeBtn = await screen.findByRole('button', { name: /complete intake/i });
-    await userEvent.click(completeBtn);
-
-    await waitFor(() => {
-      expect(screen.getByText('Statement of Financial Affairs')).toBeInTheDocument();
-    });
-  });
+  it.each([true, false])(
+    'opens the filing-fee page after Complete whatever the means test returns (passes %s)',
+    async (passes) => {
+      renderWizard();
+      const completeBtn = await screen.findByRole('button', { name: /complete intake/i });
+      // Registered after the session GET resolves, as the test it replaces did (load race)
+      server.use(
+        http.post('http://localhost:8000/api/intake/sessions/:id/calculate_means_test/', () =>
+          HttpResponse.json({
+            means_test_result: {
+              passes_means_test: passes,
+              cmi: passes ? 1000 : 9000,
+              median_income_threshold: 5000,
+            },
+            session_id: 1,
+          })
+        )
+      );
+      await userEvent.click(completeBtn);
+      expect(await screen.findByText('FilingFeePage')).toBeInTheDocument();
+      expect(screen.queryByText('Statement of Financial Affairs')).not.toBeInTheDocument();
+    }
+  );
 
   // DIG-150: the dashboard can't prepare forms from an unfinished intake, and it never showed
   // why the filer had landed there. The reason belongs on Review, where they can act on it.
@@ -248,7 +235,7 @@ describe('IntakeWizard handleComplete routing', { timeout: 30_000 }, () => {
       screen.getByRole('heading', { name: /review & results/i, level: 2 })
     ).toBeInTheDocument();
     expect(screen.queryByText('FormDashboard')).not.toBeInTheDocument();
-    expect(screen.queryByText('FeeWaiverPage')).not.toBeInTheDocument();
+    expect(screen.queryByText('FilingFeePage')).not.toBeInTheDocument();
     expect(screen.queryByText('Statement of Financial Affairs')).not.toBeInTheDocument();
     expect(consoleError).toHaveBeenCalledWith('Error completing intake:', expect.anything());
     consoleError.mockRestore();

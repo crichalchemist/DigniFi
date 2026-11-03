@@ -1,7 +1,7 @@
 /**
  * Maria Torres — Happy Path
  *
- * Below-median single parent, fee waiver eligible.
+ * Below-median single parent who asks for a fee waiver.
  * Tests the complete intake → form generation flow.
  */
 
@@ -11,7 +11,7 @@ import { LandingPage } from '../pages/landing.page';
 import { RegisterPage } from '../pages/register.page';
 import { WizardPage } from '../pages/wizard.page';
 import { DocumentsPage } from '../pages/documents.page';
-import { FeeWaiverPage } from '../pages/fee-waiver.page';
+import { FilingFeePage } from '../pages/filing-fee.page';
 import { DashboardPage } from '../pages/dashboard.page';
 import { SOFAPage } from '../pages/sofa.page';
 
@@ -21,7 +21,7 @@ test.describe('Maria Torres — Happy Path', () => {
     const register = new RegisterPage(page);
     const wizard = new WizardPage(page);
     const documents = new DocumentsPage(page);
-    const feeWaiver = new FeeWaiverPage(page);
+    const filingFee = new FilingFeePage(page);
     const dashboard = new DashboardPage(page);
     const sofa = new SOFAPage(page);
 
@@ -80,21 +80,17 @@ test.describe('Maria Torres — Happy Path', () => {
     await wizard.fillReview();
     await wizard.completeIntake();
 
-    // Maria is fee-waiver eligible → routed to the waiver application first
-    await feeWaiver.submit(
-      MARIA.fee_waiver.household_size,
-      MARIA.fee_waiver.take_home_pay,
-      MARIA.fee_waiver.noncash_assistance
-    );
+    // Every filer answers Form 101 line 8 after Complete; Maria asks for the waiver (3f spec §10)
+    await filingFee.answer(MARIA.filing_fee.payment_choice, MARIA.filing_fee.waiver);
 
-    // The waiver application continues to the SOFA step (DIG-149). This journey isn't about
+    // The filing-fee page continues to the SOFA step (DIG-149). This journey isn't about
     // financial history, so skip SOFA to reach the forms dashboard. (The SOFA save path
     // itself is covered by sofa-journey.spec.ts.)
     await sofa.waitForLoad();
     await sofa.skipForNow();
 
     // Dashboard — generate all forms
-    await dashboard.generateAllForms(15); // 14 forms + Form 103B (fee waiver)
+    await dashboard.generateAllForms(15); // 14 forms + Form 103B (she asks for the waiver)
     const count = await dashboard.getGeneratedCount();
     expect(count).toBe(15);
 

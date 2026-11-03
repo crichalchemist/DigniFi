@@ -74,6 +74,11 @@ class TestBackendPathsAreNotSwallowedBySpa:
         response = self.client.get("/api/no-such-endpoint/")
         assert response.status_code == 404
 
+    def test_the_retired_fee_waiver_api_is_gone(self):
+        # The application and its plaintext answers were dropped in 3f; the filing-fee
+        # action on the session replaced the endpoint, and nothing may still write there.
+        assert self.client.get("/api/intake/fee-waiver/").status_code == 404
+
     def test_missing_static_asset_is_not_masked_by_the_spa(self):
         """A missing JS bundle must fail loudly, not return HTML with a 200."""
         assert not _resolves_to_spa("/static/frontend/assets/does-not-exist.js")
@@ -84,7 +89,7 @@ class TestSpaRoutingIsPreserved:
 
     @pytest.mark.parametrize(
         "route",
-        ["/", "/login", "/register", "/terms", "/intake", "/forms", "/documents", "/fee-waiver"],
+        ["/", "/login", "/register", "/terms", "/intake", "/forms", "/documents", "/filing-fee"],
     )
     def test_react_deep_links_still_serve_the_spa(self, route):
         assert _resolves_to_spa(route)

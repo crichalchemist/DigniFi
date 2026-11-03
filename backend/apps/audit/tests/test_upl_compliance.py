@@ -266,13 +266,13 @@ class TestMeansTestCalculatorUPLCompliance:
         assert "should choose" not in message_lower
         assert "should file" not in message_lower
 
-    def test_fee_waiver_message_no_prohibited_phrases(self):
-        """Fee waiver qualification message must not contain advice."""
+    def test_a_very_low_income_message_gives_no_fee_waiver_verdict(self):
+        """A filer far below the median hears nothing about a fee waiver from the means test: the court decides it (28 U.S.C. § 1930(f)), and the filing-fee page shows its figures as information."""
         user = User.objects.create_user(username="test_waiver", password="test")
         district = _create_ilnd_district()
         _create_median_income(district)
 
-        # Very low income (qualifies for fee waiver)
+        # Very low income: under 60% of the median, where the old flag spoke of a fee waiver
         session = _create_session_with_income(user, district, monthly_income=Decimal("1500.00"))
 
         calculator = MeansTestCalculator(session)
@@ -280,9 +280,11 @@ class TestMeansTestCalculatorUPLCompliance:
 
         violations = _check_for_prohibited_phrases(result["message"])
         assert violations == [], (
-            f"Fee waiver message contains prohibited phrases: {violations}\n"
+            f"Very low income message contains prohibited phrases: {violations}\n"
             f"Message: {result['message']}"
         )
+        assert "fee waiver" not in result["message"].lower()
+        assert "1930" not in result["message"]
 
     def test_message_uses_typically_not_always(self):
         """Messages should use 'typically' not absolute statements."""
@@ -312,7 +314,7 @@ class TestMeansTestCalculatorUPLCompliance:
 
         # Test scenarios: very low, below median, at median, above median, high
         test_incomes = [
-            Decimal("1000.00"),  # Very low (fee waiver)
+            Decimal("1000.00"),  # Very low
             Decimal("4000.00"),  # Below median
             Decimal("5942.00"),  # Approximately at median (71304 / 12)
             Decimal("7000.00"),  # Above median
@@ -448,7 +450,7 @@ class TestServiceLayerStringCompliance:
         scenarios = [
             ("passing", Decimal("3000.00")),
             ("failing", Decimal("10000.00")),
-            ("fee_waiver", Decimal("1200.00")),
+            ("very_low", Decimal("1200.00")),
         ]
 
         for scenario_name, income in scenarios:

@@ -4,8 +4,7 @@
  * Tests that a user can complete intake, fill in SOFA data, generate all
  * forms, and download Form 107 as a PDF.
  *
- * Uses James Washington (borderline, no fee waiver, so handleComplete
- * redirects to /sofa instead of /fee-waiver).
+ * Uses James Washington, who pays the fee in full, so the filing-fee page continues to /sofa.
  */
 
 import { test, expect } from '@playwright/test';
@@ -14,6 +13,7 @@ import { LandingPage } from '../pages/landing.page';
 import { RegisterPage } from '../pages/register.page';
 import { WizardPage } from '../pages/wizard.page';
 import { DocumentsPage } from '../pages/documents.page';
+import { FilingFeePage } from '../pages/filing-fee.page';
 import { DashboardPage } from '../pages/dashboard.page';
 import { SOFAPage } from '../pages/sofa.page';
 
@@ -28,6 +28,7 @@ test.describe('SOFA — Form 107 Financial History', () => {
     const register = new RegisterPage(page);
     const wizard = new WizardPage(page);
     const documents = new DocumentsPage(page);
+    const filingFee = new FilingFeePage(page);
     const sofa = new SOFAPage(page);
     const dashboard = new DashboardPage(page);
 
@@ -90,7 +91,8 @@ test.describe('SOFA — Form 107 Financial History', () => {
     // Step 9: Review & Complete
     await wizard.fillReview();
     await wizard.completeIntake();
-    // James is NOT fee-waiver eligible → handleComplete redirects to /sofa
+    // James pays in full; the filing-fee page continues to /sofa
+    await filingFee.answer(JAMES.filing_fee.payment_choice);
 
     // ── SOFA Step ───────────────────────────────────────────
 
@@ -117,7 +119,7 @@ test.describe('SOFA — Form 107 Financial History', () => {
 
     // ── Form Generation ─────────────────────────────────────
 
-    await dashboard.generateAllForms(14); // James is not fee-waiver eligible → 14 forms (no 103B)
+    await dashboard.generateAllForms(14); // James pays in full → 14 forms (no 103B)
     const count = await dashboard.getGeneratedCount();
     expect(count).toBe(14);
 

@@ -1,7 +1,7 @@
 /**
  * Sarah Chen — Simplest Case
  *
- * Single, no assets, no dependents, fee waiver eligible.
+ * Single, no assets, no dependents, asks for a fee waiver.
  * Fastest path through the wizard. Tests minimal-data flow.
  */
 
@@ -11,7 +11,7 @@ import { LandingPage } from '../pages/landing.page';
 import { RegisterPage } from '../pages/register.page';
 import { WizardPage } from '../pages/wizard.page';
 import { DocumentsPage } from '../pages/documents.page';
-import { FeeWaiverPage } from '../pages/fee-waiver.page';
+import { FilingFeePage } from '../pages/filing-fee.page';
 import { DashboardPage } from '../pages/dashboard.page';
 import { SOFAPage } from '../pages/sofa.page';
 
@@ -21,7 +21,7 @@ test.describe('Sarah Chen — Simplest Case', () => {
     const register = new RegisterPage(page);
     const wizard = new WizardPage(page);
     const documents = new DocumentsPage(page);
-    const feeWaiver = new FeeWaiverPage(page);
+    const filingFee = new FilingFeePage(page);
     const dashboard = new DashboardPage(page);
     const sofa = new SOFAPage(page);
 
@@ -36,7 +36,7 @@ test.describe('Sarah Chen — Simplest Case', () => {
     // Uploads come between basic info and Income; this journey types everything in
     await documents.skip();
 
-    // Step 2: Income ($2,000/mo — well below median, fee waiver eligible)
+    // Step 2: Income ($2,000/mo — well below median)
     await wizard.fillIncomeInfo(SARAH.income);
     await wizard.nextStep();
 
@@ -48,16 +48,12 @@ test.describe('Sarah Chen — Simplest Case', () => {
     await wizard.fillExpenses(SARAH);
     await wizard.nextStep();
 
-    // Means test preview — should indicate eligibility + fee waiver
+    // Means test preview — should indicate eligibility
     // (the estimate needs both income and expense data)
     await wizard.waitForMeansTestEstimate();
     const preview = await wizard.getMeansTestPreview();
     const previewLower = preview.toLowerCase();
     expect(previewLower).toContain('eligible');
-
-    // Fee waiver indication
-    const hasFeeWaiver = previewLower.includes('fee waiver') || previewLower.includes('filing fee');
-    expect(hasFeeWaiver).toBe(true);
 
     // Step 5: Assets — none to add, just proceed
     // The step should allow proceeding with zero assets
@@ -79,21 +75,25 @@ test.describe('Sarah Chen — Simplest Case', () => {
     await wizard.fillReview();
     await wizard.completeIntake();
 
-    // Sarah is fee-waiver eligible → routed to the waiver application first
-    await feeWaiver.submit(
-      SARAH.fee_waiver.household_size,
-      SARAH.fee_waiver.take_home_pay,
-      SARAH.fee_waiver.noncash_assistance
-    );
+    // The page shows the court's limit and her own figure as information, never a verdict (§6.2)
+    await filingFee.waitForLoad();
+    await expect(filingFee.limitSentence(1, '$1,995.00')).toBeVisible();
+    await expect(
+      page.getByText(
+        "Your family's income, as Form 103B counts it from your answers: $1,750.00 a month."
+      )
+    ).toBeVisible();
+    await expect(page.locator('main')).not.toContainText(/qualif|eligib/i);
+    await filingFee.answer(SARAH.filing_fee.payment_choice, SARAH.filing_fee.waiver);
 
-    // The waiver application continues to the SOFA step (DIG-149). This journey isn't about
+    // The filing-fee page continues to the SOFA step (DIG-149). This journey isn't about
     // financial history, so skip SOFA to reach the forms dashboard. (The SOFA save path
     // itself is covered by sofa-journey.spec.ts.)
     await sofa.waitForLoad();
     await sofa.skipForNow();
 
     // Generate all forms
-    await dashboard.generateAllForms(15); // 14 forms + Form 103B (fee waiver)
+    await dashboard.generateAllForms(15); // 14 forms + Form 103B (she asks for the waiver)
     const count = await dashboard.getGeneratedCount();
     expect(count).toBe(15);
 

@@ -59,7 +59,6 @@ describe('MeansTestPreview with an estimate', () => {
         HttpResponse.json({
           means_test_result: {
             passes_means_test: false,
-            qualifies_for_fee_waiver: false,
             cmi: 13800,
             median_income_threshold: 137902,
             family_size: 4,
@@ -75,5 +74,30 @@ describe('MeansTestPreview with an estimate', () => {
     expect(screen.getByText('Monthly income for the means test')).toBeInTheDocument();
     expect(screen.getByText('Median for Household of 4')).toBeInTheDocument();
     expect(screen.queryByText('Your Monthly Income')).not.toBeInTheDocument();
+  });
+
+  // The means test answers § 707(b) only; the court decides a fee waiver, and the filing-fee
+  // page shows its figures as information (3f spec §9). An old server's key changes nothing.
+  it('the means-test preview gives no fee-waiver verdict, even for a very low income', async () => {
+    server.use(
+      http.post('http://localhost:8000/api/intake/sessions/:id/calculate_means_test/', () =>
+        HttpResponse.json({
+          means_test_result: {
+            passes_means_test: true,
+            qualifies_for_fee_waiver: true,
+            cmi: 1500,
+            median_income_threshold: 71304,
+            family_size: 1,
+          },
+          session_id: 1,
+        })
+      )
+    );
+    render(<MeansTestPreview sessionId={1} currentStep={3} />);
+    await userEvent.click(screen.getByRole('button', { name: /eligibility estimate/i }));
+    await screen.findByText('Based on your information, you may be eligible for Chapter 7.');
+
+    expect(screen.getByText('Monthly income for the means test')).toBeInTheDocument();
+    expect(screen.queryByText(/fee waiver/i)).not.toBeInTheDocument();
   });
 });

@@ -1,13 +1,15 @@
 """
-Form 103B prints the fee-waiver page's answers on the lines that ask them (step 2 spec §3
-Q10 and Q11, §6.4, Appendix A.2).
+Form 103B lines 1-3 print what the wizard already asked (3f spec §8.2), and line 6 the
+monthly expense total.
 
-Business intent: the fee-waiver application is sworn, and the court decides the waiver from
-it. Line 2 is the filer's take-home pay, which they typed on the fee-waiver page; line 3 is
-their own Yes or No about non-cash help, with what kind; line 6 is the same monthly expense
-total as Schedule J line 22c. A figure or answer the filer never gave prints blank, never
-0.00 or a No, and the boxes the old bindings misused (line 4's and line 5's explanations,
-Part 3's other assets) stay blank.
+Business intent: the court decides a fee waiver from 103B's family size and income, and the
+filer swears to them. Line 1 counts the household list as § 820.20(a)(3) reads it through
+count_fee_waiver_household: the filer, a spouse at home, and the dependents. Line 2 is
+Schedule I line 10 for each person counted, as 103B's own line 2 says, so the two sworn forms
+can't differ; the non-cash help line 10 includes is taken out again on the subtract line.
+Line 3 reads the 8f answer. Nothing is typed twice. A gap on the Income step refuses the form
+rather than print a guessed family of 1 (DIG-223), and a box with nothing to say prints
+blank, never 0.00 (103B has no "write $0" instruction).
 """
 
 from datetime import date
@@ -17,23 +19,41 @@ import pytest
 from django.contrib.auth import get_user_model
 
 from apps.districts.models import District
+from apps.eligibility.cmi import HOUSEHOLD_UNANSWERED, NOW_DIFFERENT_UNANSWERED, IncomeStepGap
 from apps.forms.schema import load_schema
-from apps.forms.services.derivations import DERIVATIONS
+from apps.forms.services.derivations import DERIVATIONS, RULE_FIXES
+from apps.forms.services.fee_waiver import (
+    FeeWaiverFamily,
+    FeeWaiverIncome,
+    fee_waiver_family,
+    fee_waiver_income,
+    fee_waiver_noncash,
+)
 from apps.forms.services.fill_resolver import resolve
 from apps.forms.services.pdf_filler import PDFFormFiller
 from apps.forms.tests.pdf_readback import read_drawn
-from apps.intake.models import (
-    DebtInfo,
-    DebtorInfo,
-    ExpenseInfo,
-    FeeWaiverApplication,
-    IntakeSession,
-)
+from apps.intake.household import count_fee_waiver_household, fee_waiver_spouse_counted
+from apps.intake.models import DebtInfo, DebtorInfo, ExpenseInfo, IncomeInfo, IntakeSession
+from apps.intake.tests.builders import answer_household
 
 User = get_user_model()
 
-# Line 2's boxes the take-home figure prints in: You, Subtotal and the family's net income.
-TAKE_HOME_BOXES = ("undefined_2", "undefined_4", "undefined_6")
+CHILDREN = [
+    {"relationship": "son", "age": 8, "lives_with_you": True, "claimed_or_supported": True},
+    {"relationship": "daughter", "age": 5, "lives_with_you": True, "claimed_or_supported": True},
+]
+SPOUSE_AT_HOME = {
+    "relationship": "spouse",
+    "age": 44,
+    "lives_with_you": True,
+    "claimed_or_supported": True,
+    "spouse_is_dependent": False,
+}
+SPOUSE_AWAY = {**SPOUSE_AT_HOME, "lives_with_you": False, "claimed_or_supported": False}
+SPOUSE_WAGES = {"monthly_gross_wages": Decimal("885.00")}
+LINE_1 = ("You", "Your spouse", "Your dependents", "How many dependents", "Total number of people")
+LINE_2 = ("undefined_2", "undefined_3", "undefined_4", "undefined_5", "undefined_6")
+LINE_3 = ("check 3", "3 type")
 
 
 @pytest.fixture
@@ -70,24 +90,9 @@ def session(db):
         debt_type="credit_card",
         amount_owed=Decimal("5000.00"),
     )
+    IncomeInfo.objects.create(session=session, monthly_gross_wages=Decimal("3200.00"))
+    answer_household(session)  # not married, no one else, every 3e2 answer No or none
     return session
-
-
-def _apply(session, **answers):
-    """The filer's application. The old columns hold figures no box may print any more."""
-    page_answers = {
-        "monthly_take_home_pay": Decimal("2800.00"),
-        "receives_noncash_assistance": False,
-        "benefit_types": [],
-        **answers,
-    }
-    return FeeWaiverApplication.objects.create(
-        session=session,
-        household_size=2,
-        monthly_income=Decimal("3200.00"),
-        monthly_expenses=Decimal("2560.00"),
-        **page_answers,
-    )
 
 
 def _filled(session):
@@ -108,56 +113,223 @@ def _widgets(session):
     return read_drawn("form_103b", PDFFormFiller().fill("form_103b", values))
 
 
-def test_line_2_prints_take_home_pay_for_you_the_subtotal_and_the_family_total(session):
-    _apply(session)
+def _non_cash(row, kind="SNAP (food stamps)", value=Decimal("350.00")):
+    """The 8f answer Yes with non-cash help, on a filer's or a spouse's income row."""
+    row.assistance_answer = "yes"
+    row.noncash_assistance_kind = kind
+    row.noncash_assistance_value = value
+    row.save()
+
+
+def _lines(session, boxes):
     filled = _filled(session)
-
-    assert [filled.get(box) for box in TAKE_HOME_BOXES] == [{"2800.00"}] * 3
-    # Nobody else's income and no non-cash subtraction is asked, and line 4 is an explanation.
-    assert [filled.get(box) for box in ("undefined_3", "undefined_5", "4 type")] == [set()] * 3
+    return [filled.get(box) for box in boxes]
 
 
-def test_take_home_pay_never_given_prints_blank_not_zero(session):
-    # An application saved before the page asked take-home pay.
-    _apply(session, monthly_take_home_pay=None)
-    filled = _filled(session)
+@pytest.fixture
+def with_children_and_snap(session):
+    # $3,200 wages, $400 payroll tax, SNAP worth $350: Schedule I line 10 is 3,150.
+    answer_household(session, members=CHILDREN, payroll_tax=Decimal("400.00"))
+    _non_cash(session.income_info)
+    return session
 
-    assert [filled.get(box) for box in TAKE_HOME_BOXES] == [set()] * 3
+
+def test_line_1_counts_the_filer_and_the_children_they_support(with_children_and_snap):
+    assert _lines(with_children_and_snap, LINE_1) == [{"/On"}, set(), {"/On"}, {"2"}, {"3"}]
 
 
-def test_take_home_pay_typed_as_zero_prints_zero(session):
-    _apply(session, monthly_take_home_pay=Decimal("0.00"))
-    filled = _filled(session)
+def test_line_2_is_schedule_i_line_10_less_the_non_cash_help_it_includes(with_children_and_snap):
+    # 3,150 less the 350 of SNAP line 10 counts: 2,800 (persona targets V8).
+    assert DERIVATIONS["schedule_i_income_total_debtor1"](with_children_and_snap) == "3150.00"
+    assert _lines(with_children_and_snap, LINE_2) == [
+        {"3150.00"},
+        set(),
+        {"3150.00"},
+        {"350.00"},
+        {"2800.00"},
+    ]
 
-    assert [filled.get(box) for box in TAKE_HOME_BOXES] == [{"0.00"}] * 3
+
+def test_line_3_names_the_non_cash_help_from_the_income_step(with_children_and_snap):
+    assert _lines(with_children_and_snap, LINE_3) == [{"/yes"}, {"SNAP (food stamps)"}]
+
+
+def test_the_figures_the_filing_fee_page_reads_are_the_ones_103b_prints(with_children_and_snap):
+    assert fee_waiver_family(with_children_and_snap) == FeeWaiverFamily(
+        total=3, spouse_counted=False, dependents=2
+    )
+    assert fee_waiver_income(with_children_and_snap) == FeeWaiverIncome(
+        you=Decimal("3150.00"),
+        spouse=None,
+        subtotal=Decimal("3150.00"),
+        noncash=Decimal("350.00"),
+        total=Decimal("2800.00"),
+    )
+    assert fee_waiver_noncash(with_children_and_snap) == ("yes", "SNAP (food stamps)")
+
+
+def test_the_spouse_is_counted_by_one_rule_in_the_size_and_the_checkbox():
+    for answer in (*IncomeInfo.MARITAL_ANSWERS, None):
+        assert fee_waiver_spouse_counted(answer) is (count_fee_waiver_household([], answer) == 2)
+
+
+def test_a_filer_alone_with_no_help_prints_blank_spouse_dependents_and_subtract_lines(session):
+    assert _lines(session, LINE_1) == [{"/On"}, set(), set(), set(), {"1"}]
+    assert _lines(session, LINE_2) == [{"3200.00"}, set(), {"3200.00"}, set(), {"3200.00"}]
+    assert _lines(session, LINE_3) == [{"/no"}, set()]
+
+
+def test_a_spouse_at_home_is_counted_once_with_their_own_line_10(session):
+    answer_household(
+        session,
+        marital_status="married_together",
+        members=[SPOUSE_AT_HOME],
+        spouse_income=SPOUSE_WAGES,
+    )
+    assert _lines(session, LINE_1) == [{"/On"}, {"/On"}, set(), set(), {"2"}]
+    assert _lines(session, LINE_2) == [{"3200.00"}, {"885.00"}, {"4085.00"}, set(), {"4085.00"}]
+    assert _lines(session, LINE_3) == [{"/no"}, set()]
+
+
+def test_each_counted_persons_non_cash_help_is_named_and_subtracted(session):
+    answer_household(
+        session,
+        marital_status="married_together",
+        members=[SPOUSE_AT_HOME],
+        spouse_income=SPOUSE_WAGES,
+    )
+    _non_cash(session.income_info)
+    _non_cash(session.spouse_income, kind="LIHEAP energy help", value=Decimal("40.00"))
+    assert _lines(session, LINE_2) == [
+        {"3550.00"},
+        {"925.00"},
+        {"4475.00"},
+        {"390.00"},
+        {"4085.00"},
+    ]
+    assert _lines(session, LINE_3) == [
+        {"/yes"},
+        {"SNAP (food stamps); Spouse: LIHEAP energy help"},
+    ]
+
+
+def test_only_the_spouses_non_cash_help_is_named_as_the_spouses(session):
+    answer_household(
+        session,
+        marital_status="married_together",
+        members=[SPOUSE_AT_HOME],
+        spouse_income=SPOUSE_WAGES,
+    )
+    _non_cash(session.spouse_income, kind="LIHEAP energy help", value=Decimal("40.00"))
+    assert _lines(session, LINE_3) == [{"/yes"}, {"Spouse: LIHEAP energy help"}]
+
+
+def test_a_spouses_non_cash_help_with_no_known_value_is_named_but_subtracts_nothing(session):
+    answer_household(
+        session,
+        marital_status="married_together",
+        members=[SPOUSE_AT_HOME],
+        spouse_income=SPOUSE_WAGES,
+    )
+    _non_cash(session.spouse_income, kind="LIHEAP energy help", value=None)
+    assert _lines(session, LINE_2) == [{"3200.00"}, {"885.00"}, {"4085.00"}, set(), {"4085.00"}]
+    assert _lines(session, LINE_3) == [{"/yes"}, {"Spouse: LIHEAP energy help"}]
+
+
+def test_a_spouse_living_apart_adds_nothing_to_line_1_line_2_or_line_3(session):
+    answer_household(
+        session,
+        marital_status="married_separately",
+        members=[SPOUSE_AWAY],
+        spouse_income=SPOUSE_WAGES,
+    )
+    _non_cash(session.spouse_income)  # stored, but the spouse isn't counted
+    assert _lines(session, LINE_1) == [{"/On"}, set(), set(), set(), {"1"}]
+    assert _lines(session, LINE_2) == [{"3200.00"}, set(), {"3200.00"}, set(), {"3200.00"}]
+    assert _lines(session, LINE_3) == [{"/no"}, set()]
+
+
+def test_a_spouse_living_apart_the_filer_supports_counts_only_as_a_dependent(session):
+    answer_household(
+        session,
+        marital_status="married_separately",
+        members=[{**SPOUSE_AWAY, "spouse_is_dependent": True}],
+    )
+    assert _lines(session, LINE_1) == [{"/On"}, set(), {"/On"}, {"1"}, {"2"}]
+
+
+def test_cash_help_is_not_subtracted_and_is_no_non_cash_help(session):
+    row = session.income_info
+    row.assistance_answer = "yes"
+    row.cash_assistance_kind = "TANF"
+    row.cash_assistance_amount = Decimal("200.00")
+    row.save()
+    assert _lines(session, LINE_2) == [{"3400.00"}, set(), {"3400.00"}, set(), {"3400.00"}]
+    assert _lines(session, LINE_3) == [{"/no"}, set()]
+
+
+def test_non_cash_help_with_no_known_value_is_named_but_subtracts_nothing(session):
+    _non_cash(session.income_info, value=None)
+    assert _lines(session, LINE_2) == [{"3200.00"}, set(), {"3200.00"}, set(), {"3200.00"}]
+    assert _lines(session, LINE_3) == [{"/yes"}, {"SNAP (food stamps)"}]
+
+
+def test_line_1_is_refused_until_the_household_list_is_answered_never_guessed_as_1(session):
+    answer_household(session, members=None)
+    with pytest.raises(IncomeStepGap) as refused:
+        resolve(load_schema("form_103b"), session)
+    assert str(refused.value) == HOUSEHOLD_UNANSWERED
 
 
 @pytest.mark.parametrize(
-    ("answer", "kinds", "ticked", "what_kind"),
+    "rule",
     [
-        (
-            True,
-            ["SNAP (food stamps)", "Housing subsidy"],
-            {"/yes"},
-            {"SNAP (food stamps), Housing subsidy"},
-        ),
-        # A kind stored beside a sworn No never prints under it.
-        (False, ["SNAP (food stamps)"], {"/no"}, set()),
-        # Saved before the page asked: no sworn answer either way, so no kind prints either.
-        (None, ["SNAP (food stamps)"], set(), set()),
+        "fee_waiver_family_size",
+        "fee_waiver_spouse_counted",
+        "fee_waiver_has_dependents",
+        "fee_waiver_dependents_count",
+        "fee_waiver_income_you",
+        "fee_waiver_income_spouse",
+        "fee_waiver_income_subtotal",
+        "fee_waiver_income_noncash",
+        "fee_waiver_income_total",
     ],
 )
-def test_line_3_prints_the_filers_own_answer_about_non_cash_help(
-    session, answer, kinds, ticked, what_kind
-):
-    _apply(session, receives_noncash_assistance=answer, benefit_types=kinds)
-    filled = _filled(session)
+def test_any_income_step_gap_refuses_lines_1_and_2_in_its_own_words(session, rule):
+    answer_household(session, income_now_different=None)
+    with pytest.raises(IncomeStepGap) as refused:
+        DERIVATIONS[rule](session)
+    assert str(refused.value) == NOW_DIFFERENT_UNANSWERED
 
-    assert (filled.get("check 3"), filled.get("3 type")) == (ticked, what_kind)
+
+@pytest.mark.parametrize(
+    "rule",
+    [
+        "fee_waiver_family_size",
+        "fee_waiver_dependents_count",
+        "fee_waiver_income_you",
+        "fee_waiver_income_spouse",
+        "fee_waiver_income_subtotal",
+        "fee_waiver_income_noncash",
+        "fee_waiver_income_total",
+        "fee_waiver_noncash_kinds",
+    ],
+)
+def test_a_refused_line_1_to_3_value_links_to_the_income_step(rule):
+    assert RULE_FIXES[rule] == {"step": "income_info"}
+
+
+def test_no_rule_reads_the_fee_waiver_pages_typed_answers():
+    gone = {
+        "fee_waiver_household_size",
+        "fee_waiver_monthly_income",
+        "fee_waiver_noncash_assistance",
+        "fee_waiver_benefit_types",
+    }
+    assert gone & (DERIVATIONS.keys() | RULE_FIXES.keys()) == set()
 
 
 def test_line_6_is_the_monthly_expense_total_schedule_j_prints(session):
-    _apply(session)
     filled = _filled(session)
 
     # $1,200.00 rent and $400.50 food, the only expenses entered.
@@ -167,15 +339,7 @@ def test_line_6_is_the_monthly_expense_total_schedule_j_prints(session):
     assert filled.get("5 Type") == set()
 
 
-def test_line_1_counts_the_filer(session):
-    _apply(session)
-
-    assert _filled(session).get("You") == {"/On"}
-
-
 def test_pages_2_and_3_are_headed_with_the_filers_name(session):
-    _apply(session)
-
     assert {
         widget.page: widget.value
         for widget in _widgets(session)
@@ -185,6 +349,4 @@ def test_pages_2_and_3_are_headed_with_the_filers_name(session):
 
 def test_part_3_stays_blank_because_schedule_a_b_is_attached(session):
     # The form says to attach Schedule A/B instead, and every packet has it (OQ-17).
-    _apply(session)
-
     assert _filled(session).get("Amount you owe") == set()

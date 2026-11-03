@@ -78,6 +78,10 @@ export const DASHBOARD_ERROR = 'Unable to load your forms. Please try again.';
 
 export const DASHBOARD_EMPTY = 'No active intake session. Please complete the intake wizard first.';
 
+export const FILING_FEE_CHANGE_LINK = 'Change how you will pay the fee';
+
+export const FILING_FEE_CHOOSE_LINK = 'Choose how you will pay the fee';
+
 // ============================================================================
 // Means Test Preview Copy
 // ============================================================================
@@ -333,3 +337,54 @@ export const DOUBLE_COUNT_EXPENSES_NOTE =
 export const EXPENSE_HELP_HOME_MAINTENANCE = 'Repairs and yard work';
 
 export const EXPENSE_HELP_OTHER = 'Costs that fit none of the lines above';
+
+// ============================================================================
+// Filing fee page
+// ============================================================================
+
+export const FILING_FEE_TITLE = 'How you will pay the filing fee';
+
+// DRAFT: counsel C-7
+export const FEE_LIMIT_LEAD = '150% of the official poverty line for a family of';
+
+// DRAFT: counsel C-7
+export const FEE_GUIDELINE_LEAD = 'This comes from the HHS poverty guidelines for';
+
+// DRAFT: counsel C-7
+export const FEE_FIGURE_LEAD = "Your family's income, as Form 103B counts it from your answers:";
+
+// DRAFT: counsel C-7
+export const FEE_COURT_DECIDES =
+  'The court decides. The judge also looks at whether you can pay the fee in installments.';
+
+// DRAFT: counsel C-7
+export const FEE_INCOME_GAP =
+  "Your family size and income can't be shown until your Income step is finished.";
+
+// DRAFT: counsel C-7
+export const FEE_NO_TABLE =
+  "DigniFi doesn't have the current poverty figures, so it can't show the limit right now.";
+
+// DRAFT: counsel C-7
+export const FEE_LINE_5_NOTE =
+  'The court decides whether you can pay in installments, from what you write here and the rest of the form.';
+
+export const FEE_OTHER_LINES_NOTE =
+  'DigniFi leaves line 8 and Part 3 of Form 103B blank for now, and the details of lines 17 to 20. Form 103B also asks for a copy of your Schedule A/B.';
+
+// Form 103A's title is printed plain: one string can't carry italics
+export const INSTALLMENTS_NOTICE =
+  "To pay in installments, you also file Form 103A, Application for Individuals to Pay the Filing Fee in Installments. DigniFi doesn't prepare Form 103A yet. You can get it from the court.";
+
+export const FORM_103A_LINK = 'Get Form 103A from the U.S. Courts website';
+
+// The current Official Form 103A page. The URL without "-0" is the superseded Form 3A.
+export const FORM_103A_URL =
+  'https://www.uscourts.gov/forms-rules/forms/application-individuals-pay-filing-fee-installments-0';
+
+export const FEE_CHOICE_MISSING = 'Choose how you will pay the filing fee.';
+
+export const FEE_READ_FAILED =
+  "We couldn't get your answers just now. Please try again in a moment.";
+
+export const FEE_SAVE_FAILED = "We couldn't save your answer just now. Please try again.";

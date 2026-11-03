@@ -164,13 +164,12 @@ def test_sarahs_roommate_counts_in_her_household_and_her_median_follows(filer):
     assert (result["family_size"], result["median_income_threshold"]) == (2, Decimal("93934.00"))
 
 
-def test_deshawn_still_qualifies_for_the_fee_flag_on_both_incomes(filer):
+def test_deshawns_means_test_counts_his_and_his_wifes_income(filer):
     client, session = filer
     _answer(session, *DESHAWN)
     result = MeansTestCalculator(session).calculate()
-    # 54,000.00 a year is under 60% of 93,934.00 (56,360.40)
     assert (result["cmi"], result["details"]["annualized_cmi"]) == (Decimal("4500.00"), 54000.0)
-    assert result["qualifies_for_fee_waiver"] is True
+    assert "qualifies_for_fee_waiver" not in result
 
 
 @pytest.mark.parametrize("answered,refusal", [(False, MARRIAGE), (True, HOUSEHOLD_LIST)])

@@ -13,6 +13,7 @@ import { LandingPage } from '../pages/landing.page';
 import { RegisterPage } from '../pages/register.page';
 import { WizardPage } from '../pages/wizard.page';
 import { DocumentsPage } from '../pages/documents.page';
+import { FilingFeePage } from '../pages/filing-fee.page';
 
 test.describe('Priya Sharma — Ineligible', () => {
   test('sees dignity-preserving ineligibility message', async ({ page }) => {
@@ -20,6 +21,7 @@ test.describe('Priya Sharma — Ineligible', () => {
     const register = new RegisterPage(page);
     const wizard = new WizardPage(page);
     const documents = new DocumentsPage(page);
+    const filingFee = new FilingFeePage(page);
 
     await landing.goto();
     await landing.clickGetStarted();
@@ -78,8 +80,9 @@ test.describe('Priya Sharma — Ineligible', () => {
     await wizard.fillReview();
     await wizard.completeIntake();
 
-    // Dashboard should NOT allow form generation for ineligible filer
-    // (or should show appropriate messaging)
+    // Every filer reaches the filing-fee page; Priya reads the court's limit and stops here
+    await filingFee.waitForLoad();
+    await expect(filingFee.limitSentence(4, '$4,125.00')).toBeVisible();
     const pageText = await page.textContent('body');
     expect(pageText?.toLowerCase()).not.toContain('error');
   });

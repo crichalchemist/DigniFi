@@ -39,7 +39,7 @@ LAST_NAME = "Debtor1.Last name"  # Form 101 page 1: derived last_name, label "La
 EMAIL = "Debtor1.Email address_2"  # Form 101 page 9: derived email, label "Email address"
 SSN = "Debtor1a.SSNum"  # Form 121: an 11-cell comb box, derived ssn_formatted
 OTHER_PROPERTY = "53 Examples Season tickets country club membership"  # A/B line 53, multi-line
-ASSISTANCE = "3 type"  # Form 103B line 3, multi-line, from the fee-waiver page
+ASSISTANCE = "3 type"  # Form 103B line 3, multi-line, from the Income step's 8f
 DISTRICT = "Bankruptcy District Information"  # a combo box on every form
 
 
@@ -254,7 +254,11 @@ def test_a_word_too_wide_for_a_multi_line_box_is_refused():
     assert _helvetica(word, MIN_SIZE) > _room(box)  # too wide even at 6 pt, on one line
     with pytest.raises(ValueTooLong) as refused:
         PDFFormFiller().check("form_103b", {ASSISTANCE: f"SNAP {word}"})
-    assert (refused.value.label, refused.value.page) == ("Type of assistance", "/fee-waiver")
+    assert (refused.value.label, refused.value.step, refused.value.page) == (
+        "Type of assistance",
+        "income_info",
+        None,
+    )
 
 
 def test_a_comb_value_longer_than_its_cells_is_refused_not_shrunk():

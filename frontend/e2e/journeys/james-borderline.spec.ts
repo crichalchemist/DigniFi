@@ -10,6 +10,7 @@ import { LandingPage } from '../pages/landing.page';
 import { RegisterPage } from '../pages/register.page';
 import { WizardPage } from '../pages/wizard.page';
 import { DocumentsPage } from '../pages/documents.page';
+import { FilingFeePage } from '../pages/filing-fee.page';
 import { DashboardPage } from '../pages/dashboard.page';
 import { SOFAPage } from '../pages/sofa.page';
 
@@ -19,6 +20,7 @@ test.describe('James Washington — Borderline', () => {
     const register = new RegisterPage(page);
     const wizard = new WizardPage(page);
     const documents = new DocumentsPage(page);
+    const filingFee = new FilingFeePage(page);
     const sofa = new SOFAPage(page);
     const dashboard = new DashboardPage(page);
 
@@ -73,15 +75,15 @@ test.describe('James Washington — Borderline', () => {
     await wizard.fillReview();
     await wizard.completeIntake();
 
-    // James is not fee-waiver eligible, so handleComplete routes to the SOFA
-    // step (not /fee-waiver). This journey isn't about financial history, so
-    // skip SOFA to reach the forms dashboard. (The SOFA save path itself is
-    // covered by sofa-journey.spec.ts.)
+    // James pays the fee in full, then the page continues to the SOFA step. This journey
+    // isn't about financial history, so skip SOFA to reach the forms dashboard. (The SOFA
+    // save path itself is covered by sofa-journey.spec.ts.)
+    await filingFee.answer(JAMES.filing_fee.payment_choice);
     await sofa.waitForLoad();
     await sofa.skipForNow();
 
-    // Forms generated (passes means test). James doesn't qualify for the
-    // fee waiver, so Form 103B (the waiver application) is not in his packet.
+    // Forms generated (passes means test). James pays in full, so Form 103B is not in his
+    // packet.
     await dashboard.generateAllForms(14);
     const count = await dashboard.getGeneratedCount();
     expect(count).toBe(14);

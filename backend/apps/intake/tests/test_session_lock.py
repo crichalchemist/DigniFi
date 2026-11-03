@@ -535,6 +535,12 @@ WRITES = {
         None,
         204,
     ),
+    "filing-fee PUT": lambda s, r: (
+        "put",
+        _session_url(s, "filing-fee/"),
+        {"payment_choice": "waiver"},
+        200,
+    ),
     "asset POST": lambda s, r: (
         "post",
         "/api/intake/assets/",

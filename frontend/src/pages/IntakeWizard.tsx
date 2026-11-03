@@ -496,12 +496,10 @@ export function IntakeWizard() {
           total_duration_ms: Date.now() - sessionStartRef.current,
           session_id: session?.id,
         });
-        const result = await calculateMeansTest();
-        if (result.qualifies_for_fee_waiver) {
-          navigate('/fee-waiver');
-        } else {
-          navigate('/sofa');
-        }
+        await calculateMeansTest();
+        // Every filer answers Form 101 line 8 next; nothing routes on the means test's result
+        // (3f spec §3)
+        navigate('/filing-fee');
       } catch (error) {
         // The filer stays on Review, where WizardLayout shows the reason the context recorded
         // (DIG-150), and Review lists each thing Complete found missing. If only the means

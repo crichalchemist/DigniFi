@@ -195,8 +195,9 @@ For legal advice about your specific situation, consult a licensed attorney.
 
 **DigniFi Implementation:**
 
-- Automatic fee waiver calculation based on income
-- Form 103B joins the packet once the filer submits the fee-waiver application
+- The filer chooses how to pay the fee (Form 101 line 8). DigniFi never chooses for them.
+- Form 103B joins the packet when the filer asks for a waiver.
+- The court's limit (150% of the HHS poverty guideline) and the filer's Form 103B income are shown as information, beside "The court decides."
 - Disclaimers that waiver is not guaranteed
 
 ## Data Retention & Destruction

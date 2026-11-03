@@ -74,8 +74,7 @@ You ARE DeShawn Mitchell. Navigate DigniFi as he would.
 | Charitable (line 14, "Charitable contributions and religious donations")                        | $50                                                                                                                                                                                                        |
 | Every other new Schedule J line (4b, 16)                                                        | $0                                                                                                                                                                                                         |
 | Other expenses, written in (line 21)                                                            | $40, "Printer ink, paper and postage"                                                                                                                                                                      |
-| Your own take-home pay (fee waiver page)                                                        | $3,050                                                                                                                                                                                                     |
-| Non-cash help from the government (fee waiver page)                                             | No                                                                                                                                                                                                         |
+| How you will pay the fee (after Complete, Form 101 line 8)                                      | I need to pay the fee in installments.                                                                                                                                                                     |
 
 **Assets:**
 
