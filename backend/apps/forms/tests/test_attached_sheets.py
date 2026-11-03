@@ -78,6 +78,7 @@ def _drawn(session):
     return document["parts"], PDFFormFiller().fill("schedule_a_b", document)
 
 
+@pytest.mark.slow
 def test_extra_rows_print_on_an_attached_sheet(session, creditor_payments):
     creditor_payments(session, 5, MAKES)
 
@@ -163,6 +164,7 @@ def _long_make(n):
     )
 
 
+@pytest.mark.slow
 def test_a_long_sheet_runs_to_a_second_page(session, creditor_payments):
     # Twenty rows on the sheet: three of one line, then three-line rows. Page 1 takes
     # fourteen, and has room left for the first line of the fifteenth but not the whole row.
@@ -186,6 +188,7 @@ def test_a_long_sheet_runs_to_a_second_page(session, creditor_payments):
     assert 792 - 54 - first.ink[3] > 6 + 14  # a row gap and a line: the fifteenth's first line
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize(
     "fixture, form_type, total, printed",
     [
@@ -251,6 +254,7 @@ def test_a_letter_the_sheet_cannot_print_is_refused(session, creditor_payments):
     assert (refused.value.step, refused.value.page) == (None, "/sofa")
 
 
+@pytest.mark.slow
 def test_the_sheet_prints_every_letter_the_form_prints(session, creditor_payments):
     # The sheet prints in the templates' own encoding (R62), so Ł, ł and ı, which WinAnsi
     # lacks, print as themselves in its header and in a cell, as on the form.
@@ -272,6 +276,7 @@ def test_the_sheet_prints_every_letter_the_form_prints(session, creditor_payment
     assert "Łucja Kıłıç" in text and "Łada Niva ł ı" in text
 
 
+@pytest.mark.slow
 def test_letters_typed_with_their_marks_apart_print_whole_on_the_form_and_the_sheet(
     session, creditor_payments
 ):
@@ -335,6 +340,7 @@ def test_a_name_the_sheet_cannot_print_is_refused_where_the_name_is_entered(
     assert (refused.value.step, refused.value.page) == ("debtor_info", None)
 
 
+@pytest.mark.slow
 def test_the_sheet_prints_in_the_templates_own_encoding(schedule_a_b_with_sheet):
     # Every template's /Helv is the base-14 Helvetica with one /Encoding (R62). The sheet
     # encodes each letter by it, as pypdf encodes a form's, and gives every page's font it.
@@ -361,20 +367,7 @@ def test_the_sheet_prints_in_the_templates_own_encoding(schedule_a_b_with_sheet)
         assert re.findall(r"\d+|/[^\s/\[\]]+", differences) == sheets._DIFFERENCES.split()
 
 
-def test_a_word_wider_than_its_cell_is_refused(session, creditor_payments):
-    rows = creditor_payments(session, 5, MAKES)
-    rows[4].creditor_name = "Volvo " + "YV1MS382X42" * 6  # one word, wider than the column
-    rows[4].save()
-
-    with pytest.raises(ValueTooLong) as refused:
-        PDFFormFiller().check("schedule_a_b", build_parts("schedule_a_b", session))
-
-    assert str(refused.value) == (
-        "“Make” is too long to fit on the court form, even in small print. Shorten it."
-    )
-    assert (refused.value.step, refused.value.page) == (None, "/sofa")
-
-
+@pytest.mark.slow
 def test_a_word_as_wide_as_its_cell_prints_and_a_wider_one_is_refused(session, creditor_payments):
     # The Make column is 300 pt, 296 pt inside its padding. Thirty-one W's and an i are
     # 294.86 pt at 10 pt and print whole; with a second i, 297.08 pt, Generate refuses them
@@ -391,6 +384,15 @@ def test_a_word_as_wide_as_its_cell_prints_and_a_wider_one_is_refused(session, c
     with pytest.raises(ValueTooLong) as refused:
         PDFFormFiller().check("schedule_a_b", build_parts("schedule_a_b", session))
     assert refused.value.label == "Make"
+    # An overlong word after another word in the cell is refused too.
+    payments[4].creditor_name = "Volvo " + "YV1MS382X42" * 6
+    payments[4].save()
+    with pytest.raises(ValueTooLong) as refused:
+        PDFFormFiller().check("schedule_a_b", build_parts("schedule_a_b", session))
+    assert str(refused.value) == (
+        "“Make” is too long to fit on the court form, even in small print. Shorten it."
+    )
+    assert (refused.value.step, refused.value.page) == (None, "/sofa")
 
 
 def test_a_row_as_tall_as_a_page_prints_and_a_taller_one_is_refused(schedule_a_b_with_sheet):
@@ -420,6 +422,7 @@ def test_a_row_taller_than_a_page_is_refused_naming_its_tallest_cell(schedule_a_
     assert refused.value.label == "Current value of the portion you own"
 
 
+@pytest.mark.slow
 def test_a_sheet_page_is_never_read_as_a_page_of_the_form(session, creditor_payments):
     creditor_payments(session, 5, MAKES)
     parts, pdf = _drawn(session)
@@ -432,17 +435,21 @@ def test_a_sheet_page_is_never_read_as_a_page_of_the_form(session, creditor_paym
         read_drawn("schedule_a_b", unsheeted, parts)
 
 
+@pytest.mark.parametrize("only_row_1", [False, True], ids=["every slot", "row 1 only"])
 def test_a_guarded_column_prints_blank_on_the_sheet(
-    schedule_a_b_with_sheet, session, creditor_payments, monkeypatch
+    schedule_a_b_with_sheet, session, creditor_payments, monkeypatch, only_row_1
 ):
     # UPL guard: the value slots print only an asked answer, so they print nothing here,
     # on the form's pages or on the sheet. The guard decides which cells print, never
-    # which rows exist: the fifth row and its make still print.
+    # which rows exist: the fifth row and its make still print. One guarded slot is enough
+    # (R59(a)): with only row 1's value slot guarded, the column's sheet cells print
+    # nothing, while rows 2 to 4 print their values.
     path = schedule_a_b_with_sheet / "schedule_a_b.json"
     data = json.loads(path.read_text())
     for f in data["fields"]:
         if f["repeat"] == "ab_line_3" and f["binding"].endswith("total_paid"):
-            f.update(source="derived", rule="full_name", legal_review=True)
+            if not only_row_1 or f["row"] == 1:
+                f.update(source="derived", rule="full_name", legal_review=True)
     path.write_text(json.dumps(data))
     load_schema.cache_clear()
     creditor_payments(session, 5, MAKES)
@@ -455,32 +462,13 @@ def test_a_guarded_column_prints_blank_on_the_sheet(
     (sheet,) = read_sheets(pdf, _spec())
     assert sheet.rows == (("3.5", "Volvo", ""),)
     text = "".join(page.get_text() for page in pymupdf.open("pdf", pdf))
-    assert [amount for amount in ("100.00", "400.00", "500.00") if amount in text] == []
-    # The blank cell draws no line, so PyMuPDF logs no error for an empty one.
-    assert log.getvalue() == ""
-
-
-def test_a_column_with_one_guarded_slot_prints_blank_on_the_sheet(
-    schedule_a_b_with_sheet, session, creditor_payments
-):
-    # One guarded slot is enough (R59(a)): with only row 1's value slot guarded, the
-    # column's sheet cells print nothing, while rows 2 to 4 print their values.
-    path = schedule_a_b_with_sheet / "schedule_a_b.json"
-    data = json.loads(path.read_text())
-    for f in data["fields"]:
-        if f["repeat"] == "ab_line_3" and f["binding"].endswith("total_paid") and f["row"] == 1:
-            f.update(source="derived", rule="full_name", legal_review=True)
-    path.write_text(json.dumps(data))
-    load_schema.cache_clear()
-    creditor_payments(session, 5, MAKES)
-
-    _, pdf = _drawn(session)
-
-    (sheet,) = read_sheets(pdf, _spec())
-    assert sheet.rows == (("3.5", "Volvo", ""),)
-    text = "".join(page.get_text() for page in pymupdf.open("pdf", pdf))
     printed = [a for a in ("100.00", "200.00", "300.00", "400.00", "500.00") if a in text]
-    assert printed == ["200.00", "300.00", "400.00"]
+    if only_row_1:
+        assert printed == ["200.00", "300.00", "400.00"]
+    else:
+        assert [a for a in printed if a in ("100.00", "400.00", "500.00")] == []
+        # The blank cell draws no line, so PyMuPDF logs no error for an empty one.
+        assert log.getvalue() == ""
 
 
 def test_a_refused_sheet_cell_names_where_its_columns_slot_is_fixed(
@@ -522,6 +510,7 @@ def test_a_cell_written_like_a_pdf_operand_prints_as_typed(session, creditor_pay
     assert sheet.rows == (("3.5", "[<4F4B>]", "500.00"),)
 
 
+@pytest.mark.slow
 def test_a_form_with_a_copy_and_a_sheet_prints_the_sheet_last(
     session, schedule_d_with_a_copy_and_a_sheet, creditor_payments
 ):

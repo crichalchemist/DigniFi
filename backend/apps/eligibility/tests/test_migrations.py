@@ -75,6 +75,7 @@ def _drop_and_undo(migrate):
     return after, (undone.calculated_cmi, undone.qualifies_for_fee_waiver)
 
 
+@pytest.mark.slow
 def test_dropping_the_fee_flag_keeps_every_means_test_result(migrate):
     (cmi, median, passes, columns), undone = _drop_and_undo(migrate)
     assert (cmi, median, passes) == (Decimal("2800.00"), Decimal("110712.00"), True)

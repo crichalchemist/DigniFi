@@ -83,6 +83,7 @@ def _boxes_on_lines(*lines):
     return {row["full_name"] for row in rows if row["line"] in lines}
 
 
+@pytest.mark.slow
 def test_the_filers_name_heads_every_page(session):
     printed = read_drawn("form_107", _fill(session))
 
@@ -93,6 +94,7 @@ def test_the_filers_name_heads_every_page(session):
     assert [w.value for w in printed if w.full_name == "Debtor 2"] == [""]
 
 
+@pytest.mark.slow
 def test_saved_sofa_rows_print_nothing_on_lines_4_to_6(session):
     _sofa(session, prior_income=3, creditor_payments=3)
 

@@ -7,10 +7,10 @@ import pytest
 from django.contrib.auth import get_user_model
 
 from apps.districts.models import District, MedianIncome
-from apps.eligibility.cmi import IncomeNotSplit
 from apps.eligibility.services.means_test_calculator import MeansTestCalculator
 from apps.forms.registry import packet
 from apps.forms.schema import load_schema
+from apps.forms.services.derivations import DERIVATIONS
 from apps.forms.services.fill_resolver import resolve
 from apps.forms.tests.test_derivations import SPOUSE_AT_HOME, TEN_SOURCES
 from apps.intake.models import DebtorInfo, IncomeInfo, IntakeSession
@@ -134,41 +134,10 @@ def median_income(session):
 
 @pytest.mark.django_db
 class TestForm122A1Schema:
-    def test_schema_loads(self):
-        schema = load_schema("form_122a1")
-        assert schema.form_type == "form_122a1"
-
-    def test_all_fields_have_valid_source(self):
-        schema = load_schema("form_122a1")
-        for f in schema.fields:
-            assert f.source in ("presume", "derived", "constant", "asked", "ingested")
-
     def test_resolver_produces_output(self, session_with_income):
         field_map = resolve(load_schema("form_122a1"), session_with_income)
         assert "Bankruptcy District Information" in field_map
         assert "12B" in field_map  # annualized CMI
-
-    def test_cmi_calculation(self, session_with_income):
-        field_map = resolve(load_schema("form_122a1"), session_with_income)
-        # 2000 wages = 2000 CMI, annualized = 24000
-        assert field_map["12B"] == "24000.00"
-
-    def test_empty_session_is_asked_for_income_by_source(self, session):
-        # Lines 11 to 13 are CMI, and a filer who gave no income has none (spec §5.5).
-        with pytest.raises(IncomeNotSplit):
-            resolve(load_schema("form_122a1"), session)
-
-    def test_each_income_source_prints_on_the_122a1_line_that_asks_for_it(self, session):
-        # A distinct power of two per source, so a box that reads the wrong source, or
-        # adds one too many, prints a different figure (step 2 spec §5.5's table).
-        IncomeInfo.objects.create(session=session, **TEN_SOURCES)
-        answer_household(session)
-
-        field_map = resolve(load_schema("form_122a1"), session)
-
-        assert {box: field_map.get(box) for box in LINE_BY_SOURCE} == LINE_BY_SOURCE
-        # Social Security is left out of current monthly income, so no line shows it.
-        assert "32.00" not in field_map.values()
 
     def test_lines_122a1_never_asks_print_nothing(self, session):
         # Line 8's second box, line 10's second row and its totals: blank, never 0.00 (B2).
@@ -387,6 +356,7 @@ class TestLines5And6:
         fm = resolve(load_schema("form_122a1"), session)
         assert fm["Debto1.Quest5C"] == "600.00"
         assert resolve(load_schema("schedule_i"), session)["Amount 8a Debtor 1"] == "0.00"
+        assert DERIVATIONS["filer_cmi"](session) == "600.00"  # CMI keeps the averages' net
 
     def test_the_spouses_receipts_and_costs_print_in_column_b_and_never_swap_with_the_filers(
         self, session

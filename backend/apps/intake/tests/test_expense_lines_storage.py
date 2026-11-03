@@ -8,12 +8,9 @@ from decimal import Decimal
 
 import pytest
 from django.db import connection
-from rest_framework.test import APIClient
 
-from apps.districts.models import District
 from apps.forms.services.derivations import DERIVATIONS
-from apps.intake.models import ExpenseInfo, IntakeSession
-from apps.users.models import User
+from apps.intake.models import ExpenseInfo
 
 NEW_LINES = {
     "real_estate_taxes": "210.00",
@@ -30,22 +27,6 @@ NEW_LINES = {
     "other_property_upkeep": "25.00",
     "other_property_hoa_dues": "20.00",
 }  # sums to 1500.00
-
-
-@pytest.fixture
-def filer_session(db):
-    district = District.objects.create(
-        code="ILND",
-        name="Illinois Northern",
-        state="IL",
-        court_name="U.S. Bankruptcy Court ILND",
-        filing_fee_chapter_7=Decimal("338.00"),
-    )
-    filer = User.objects.create_user(username="filer", password="pw")
-    session = IntakeSession.objects.create(user=filer, district=district)
-    client = APIClient()
-    client.force_authenticate(user=filer)
-    return client, session
 
 
 def _url(session):
@@ -66,12 +47,15 @@ def test_an_empty_expenses_body_stores_26_zero_amounts_and_leaves_line_3_unanswe
     filer_session,
 ):
     client, session = filer_session
-    reply = client.patch(_url(session), {"expense_info": {}}, format="json").json()["expense_info"]
+    response = client.patch(_url(session), {"expense_info": {}}, format="json")
+    assert response.status_code == 200
+    reply = response.json()["expense_info"]
     row = ExpenseInfo.objects.get(session=session)
     assert len(ExpenseInfo.AMOUNT_FIELDS) == 26
     assert all(Decimal(getattr(row, f)) == 0 for f in ExpenseInfo.AMOUNT_FIELDS)
     assert row.expenses_include_others is None and reply["expenses_include_others"] is None
     assert all(reply[f] == "" for f in ExpenseInfo.SPECIFY_FIELDS)
+    assert reply["rent_or_mortgage"] == "0.00"
 
 
 def test_line_3_takes_only_yes_no_or_null(filer_session):
@@ -99,6 +83,11 @@ def test_a_specify_text_over_100_characters_is_refused(filer_session, field):
     "field,value,plain",
     [
         *[(name, amount, amount) for name, amount in NEW_LINES.items()],
+        *[
+            (name, "455.00", "455.00")
+            for name in ExpenseInfo.AMOUNT_FIELDS
+            if name not in NEW_LINES
+        ],
         *[
             (name, "IRS installment agreement, 2025 tax", "IRS")
             for name in ExpenseInfo.SPECIFY_FIELDS

@@ -100,6 +100,7 @@ def _filled(session, form_type):
     return shows
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("answer", ["yes", "no"])
 @pytest.mark.parametrize("form_type", CONSUMER_DEBTS)
 def test_the_consumer_debts_answer_ticks_the_same_answer_on_every_form_that_asks(
@@ -120,6 +121,7 @@ def test_only_the_filers_own_answer_can_tick_consumer_debts(form_type):
     assert (field.source, field.legal_review) == ("asked", True)
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("form_type", PAID_HELP)
 def test_a_filer_who_paid_a_non_lawyer_says_so_and_names_them_on_every_form_that_asks(
     session, form_type
@@ -132,6 +134,7 @@ def test_a_filer_who_paid_a_non_lawyer_says_so_and_names_them_on_every_form_that
     assert filled.get(HELPER_NAME[form_type]) == {"Pat Helper"}
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("form_type", PAID_HELP)
 def test_a_filer_who_paid_no_one_says_no_and_names_no_one(session, form_type):
     _answer(session, "paid_non_attorney_preparer", "no")
@@ -141,6 +144,7 @@ def test_a_filer_who_paid_no_one_says_no_and_names_no_one(session, form_type):
     assert filled.get(HELPER_NAME[form_type]) == set()
 
 
+@pytest.mark.slow
 def test_form_107_names_the_helper_the_filer_named_once_for_every_form(session):
     # A separate Form 107 answer could name someone the petition doesn't.
     _answer(session, "Name_of_person_agreed_to_pay", "Someone Else", form_type="form_107")
@@ -159,6 +163,7 @@ def test_each_form_103b_payment_question_prints_its_own_answer(session, yes_line
     }
 
 
+@pytest.mark.slow
 def test_a_question_the_filer_has_not_answered_prints_nothing(session):
     boxes = {
         "form_101": ["Check Box18", "Check Box26", HELPER_NAME["form_101"]],

@@ -43,6 +43,7 @@ def _named(template, full_name):
     return [w for w in template_widgets(template) if w.full_name == full_name]
 
 
+@pytest.mark.slow
 def test_every_template_widget_matches_one_index_row():
     total = 0
     for template in _templates():
@@ -136,6 +137,7 @@ class _Built(Exception):
         self.kwargs = kwargs
 
 
+@pytest.mark.slow
 def test_every_box_is_measured_the_way_pypdf_draws_it(monkeypatch):
     # The stand-in records what pypdf would build each text and combo box from, then stops.
     def built(self, layout=None, *args, **kwargs):

@@ -186,6 +186,7 @@ SPLIT_FORMS = [
 ]
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("form_type,pdf_field,case", TEXT_CASES)
 def test_value_lands_only_in_the_box_it_names(form_type, pdf_field, case):
     sentinels, widgets = _text_fill(form_type)
@@ -201,6 +202,7 @@ def test_value_lands_only_in_the_box_it_names(form_type, pdf_field, case):
     assert missed == [], f"no_widget: the value is missing from widgets {missed}"
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("form_type,pdf_field,case", WIDGET_TEXT_CASES)
 def test_each_widget_of_a_shared_name_prints_its_own_value(form_type, pdf_field, case):
     # Widgets that share a name (page headers, Schedule D's account boxes, A/B's 24.1) can
@@ -217,6 +219,7 @@ def test_each_widget_of_a_shared_name_prints_its_own_value(form_type, pdf_field,
     assert crossed == {}, f"collision: widgets print another widget's value: {crossed}"
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("form_type,pdf_field,case", WIDGET_BOX_CASES)
 def test_each_widget_of_a_shared_box_name_ticks_alone(form_type, pdf_field, case):
     # A box carries no value of its own, so each widget of a shared box name (the options
@@ -236,6 +239,7 @@ def test_each_widget_of_a_shared_box_name_ticks_alone(form_type, pdf_field, case
         assert spilled == [], f"collision: ticking widget {at} also ticks {spilled}"
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("form_type,pdf_field,case", BOX_CASES)
 def test_checkbox_ticks_only_the_widgets_for_its_answer(form_type, pdf_field, case):
     field = next(f for f in load_schema(form_type).fields if f.pdf_field == pdf_field)
@@ -262,6 +266,7 @@ def test_checkbox_ticks_only_the_widgets_for_its_answer(form_type, pdf_field, ca
     assert stray == [], f"spill: a tick also prints in {stray}"
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("form_type", SPLIT_FORMS)
 def test_a_tick_never_spills_into_a_box_the_filer_left_blank(form_type):
     # _box_fill ticks every single box at once, so a tick spilling from one into another

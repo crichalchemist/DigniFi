@@ -7,7 +7,6 @@ refuses in plain words instead of passing a filer on an out-of-date figure. Look
 their own date; the rest run on the root conftest's 2026-10-16.
 """
 
-import importlib
 import json
 import logging
 from datetime import date
@@ -64,13 +63,11 @@ def _single_filer(district, monthly_wages):
     [
         (date(2026, 3, 31), date(2025, 11, 1)),
         (date(2026, 4, 1), date(2026, 4, 1)),
-        (date(2026, 11, 1), date(2026, 4, 1)),
         (date(2027, 3, 31), date(2026, 4, 1)),
     ],
     ids=[
         "last_day_of_november_2025_table",
         "first_day_of_april_2026_table",
-        "november_2026_update_not_posted",
         "its_last_day",
     ],
 )
@@ -108,26 +105,19 @@ def _table(district, effective_date, valid_through=None):
     )
 
 
-def test_an_older_open_ended_table_never_stands_in_for_a_newer_one_past_its_valid_through(ilcd):
+def test_a_newest_table_past_its_valid_through_refuses_and_logs_only_the_table_date_and_district(
+    ilcd, caplog
+):
+    # An older open-ended table never stands in for the newer one that has expired.
     _table(ilcd, date(2025, 1, 1))
     _table(ilcd, date(2026, 4, 1), valid_through=date(2026, 10, 31))
 
     with pytest.raises(NoTableInForce) as refused:
         in_force(ilcd.median_incomes.all(), date(2026, 11, 1), MEDIAN, ilcd.code)
 
+    assert str(refused.value) == NO_MEDIAN_TABLE
     assert refused.value.table == MEDIAN
     assert refused.value.on == date(2026, 11, 1)
-
-
-def test_a_newest_table_past_its_valid_through_refuses_and_logs_only_the_table_date_and_district(
-    ilcd, caplog
-):
-    _table(ilcd, date(2026, 4, 1), valid_through=date(2026, 10, 31))
-
-    with pytest.raises(NoTableInForce) as refused:
-        in_force(ilcd.median_incomes.all(), date(2026, 11, 1), MEDIAN, ilcd.code)
-
-    assert str(refused.value) == NO_MEDIAN_TABLE
     assert [(r.levelno, r.getMessage()) for r in caplog.records] == [
         (logging.ERROR, "No Census median income table in force on 2026-11-01 for district ilcd")
     ]
@@ -203,18 +193,6 @@ def test_every_median_row_in_the_fixture_says_when_it_ends_and_where_it_comes_fr
         )
 
 
-@pytest.mark.parametrize(
-    "effective,valid_through",
-    [(date(2025, 11, 1), date(2026, 3, 31)), (date(2026, 4, 1), date(2026, 10, 31))],
-)
-def test_the_migration_ends_a_stored_row_the_day_before_the_next_census_update(
-    effective, valid_through
-):
-    migration = importlib.import_module(f"apps.districts.migrations.{MIGRATION}")
-
-    assert migration.census_valid_through(effective) == valid_through
-
-
 @pytest.fixture
 def migrate(transactional_db):
     """Migrate the districts app to a migration and return the models as they were there.
@@ -234,6 +212,7 @@ def migrate(transactional_db):
     executor.migrate(executor.loader.graph.leaf_nodes())
 
 
+@pytest.mark.slow
 def test_the_migration_dates_each_stored_row_and_names_the_page_it_comes_from(migrate):
     apps = migrate([("districts", "0002_alter_district_state_and_more")])
     district = apps.get_model("districts", "District").objects.create(

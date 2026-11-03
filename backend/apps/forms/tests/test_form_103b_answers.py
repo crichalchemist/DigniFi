@@ -126,6 +126,12 @@ def _lines(session, boxes):
     return [filled.get(box) for box in boxes]
 
 
+def _all_lines(session, *groups):
+    """Each group of boxes read back from one drawing of the form."""
+    filled = _filled(session)
+    return [[filled.get(box) for box in boxes] for boxes in groups]
+
+
 @pytest.fixture
 def with_children_and_snap(session):
     # $3,200 wages, $400 payroll tax, SNAP worth $350: Schedule I line 10 is 3,150.
@@ -134,24 +140,19 @@ def with_children_and_snap(session):
     return session
 
 
-def test_line_1_counts_the_filer_and_the_children_they_support(with_children_and_snap):
-    assert _lines(with_children_and_snap, LINE_1) == [{"/On"}, set(), {"/On"}, {"2"}, {"3"}]
-
-
-def test_line_2_is_schedule_i_line_10_less_the_non_cash_help_it_includes(with_children_and_snap):
+def test_lines_1_to_3_count_the_children_and_take_the_snap_out_of_line_2(with_children_and_snap):
+    line_1, line_2, line_3 = _all_lines(with_children_and_snap, LINE_1, LINE_2, LINE_3)
+    assert line_1 == [{"/On"}, set(), {"/On"}, {"2"}, {"3"}]
     # 3,150 less the 350 of SNAP line 10 counts: 2,800 (persona targets V8).
     assert DERIVATIONS["schedule_i_income_total_debtor1"](with_children_and_snap) == "3150.00"
-    assert _lines(with_children_and_snap, LINE_2) == [
+    assert line_2 == [
         {"3150.00"},
         set(),
         {"3150.00"},
         {"350.00"},
         {"2800.00"},
     ]
-
-
-def test_line_3_names_the_non_cash_help_from_the_income_step(with_children_and_snap):
-    assert _lines(with_children_and_snap, LINE_3) == [{"/yes"}, {"SNAP (food stamps)"}]
+    assert line_3 == [{"/yes"}, {"SNAP (food stamps)"}]
 
 
 def test_the_figures_the_filing_fee_page_reads_are_the_ones_103b_prints(with_children_and_snap):
@@ -173,12 +174,15 @@ def test_the_spouse_is_counted_by_one_rule_in_the_size_and_the_checkbox():
         assert fee_waiver_spouse_counted(answer) is (count_fee_waiver_household([], answer) == 2)
 
 
+@pytest.mark.slow
 def test_a_filer_alone_with_no_help_prints_blank_spouse_dependents_and_subtract_lines(session):
-    assert _lines(session, LINE_1) == [{"/On"}, set(), set(), set(), {"1"}]
-    assert _lines(session, LINE_2) == [{"3200.00"}, set(), {"3200.00"}, set(), {"3200.00"}]
-    assert _lines(session, LINE_3) == [{"/no"}, set()]
+    line_1, line_2, line_3 = _all_lines(session, LINE_1, LINE_2, LINE_3)
+    assert line_1 == [{"/On"}, set(), set(), set(), {"1"}]
+    assert line_2 == [{"3200.00"}, set(), {"3200.00"}, set(), {"3200.00"}]
+    assert line_3 == [{"/no"}, set()]
 
 
+@pytest.mark.slow
 def test_a_spouse_at_home_is_counted_once_with_their_own_line_10(session):
     answer_household(
         session,
@@ -186,9 +190,10 @@ def test_a_spouse_at_home_is_counted_once_with_their_own_line_10(session):
         members=[SPOUSE_AT_HOME],
         spouse_income=SPOUSE_WAGES,
     )
-    assert _lines(session, LINE_1) == [{"/On"}, {"/On"}, set(), set(), {"2"}]
-    assert _lines(session, LINE_2) == [{"3200.00"}, {"885.00"}, {"4085.00"}, set(), {"4085.00"}]
-    assert _lines(session, LINE_3) == [{"/no"}, set()]
+    line_1, line_2, line_3 = _all_lines(session, LINE_1, LINE_2, LINE_3)
+    assert line_1 == [{"/On"}, {"/On"}, set(), set(), {"2"}]
+    assert line_2 == [{"3200.00"}, {"885.00"}, {"4085.00"}, set(), {"4085.00"}]
+    assert line_3 == [{"/no"}, set()]
 
 
 def test_each_counted_persons_non_cash_help_is_named_and_subtracted(session):
@@ -200,14 +205,15 @@ def test_each_counted_persons_non_cash_help_is_named_and_subtracted(session):
     )
     _non_cash(session.income_info)
     _non_cash(session.spouse_income, kind="LIHEAP energy help", value=Decimal("40.00"))
-    assert _lines(session, LINE_2) == [
+    line_2, line_3 = _all_lines(session, LINE_2, LINE_3)
+    assert line_2 == [
         {"3550.00"},
         {"925.00"},
         {"4475.00"},
         {"390.00"},
         {"4085.00"},
     ]
-    assert _lines(session, LINE_3) == [
+    assert line_3 == [
         {"/yes"},
         {"SNAP (food stamps); Spouse: LIHEAP energy help"},
     ]
@@ -232,10 +238,12 @@ def test_a_spouses_non_cash_help_with_no_known_value_is_named_but_subtracts_noth
         spouse_income=SPOUSE_WAGES,
     )
     _non_cash(session.spouse_income, kind="LIHEAP energy help", value=None)
-    assert _lines(session, LINE_2) == [{"3200.00"}, {"885.00"}, {"4085.00"}, set(), {"4085.00"}]
-    assert _lines(session, LINE_3) == [{"/yes"}, {"Spouse: LIHEAP energy help"}]
+    line_2, line_3 = _all_lines(session, LINE_2, LINE_3)
+    assert line_2 == [{"3200.00"}, {"885.00"}, {"4085.00"}, set(), {"4085.00"}]
+    assert line_3 == [{"/yes"}, {"Spouse: LIHEAP energy help"}]
 
 
+@pytest.mark.slow
 def test_a_spouse_living_apart_adds_nothing_to_line_1_line_2_or_line_3(session):
     answer_household(
         session,
@@ -244,9 +252,10 @@ def test_a_spouse_living_apart_adds_nothing_to_line_1_line_2_or_line_3(session):
         spouse_income=SPOUSE_WAGES,
     )
     _non_cash(session.spouse_income)  # stored, but the spouse isn't counted
-    assert _lines(session, LINE_1) == [{"/On"}, set(), set(), set(), {"1"}]
-    assert _lines(session, LINE_2) == [{"3200.00"}, set(), {"3200.00"}, set(), {"3200.00"}]
-    assert _lines(session, LINE_3) == [{"/no"}, set()]
+    line_1, line_2, line_3 = _all_lines(session, LINE_1, LINE_2, LINE_3)
+    assert line_1 == [{"/On"}, set(), set(), set(), {"1"}]
+    assert line_2 == [{"3200.00"}, set(), {"3200.00"}, set(), {"3200.00"}]
+    assert line_3 == [{"/no"}, set()]
 
 
 def test_a_spouse_living_apart_the_filer_supports_counts_only_as_a_dependent(session):
@@ -264,14 +273,16 @@ def test_cash_help_is_not_subtracted_and_is_no_non_cash_help(session):
     row.cash_assistance_kind = "TANF"
     row.cash_assistance_amount = Decimal("200.00")
     row.save()
-    assert _lines(session, LINE_2) == [{"3400.00"}, set(), {"3400.00"}, set(), {"3400.00"}]
-    assert _lines(session, LINE_3) == [{"/no"}, set()]
+    line_2, line_3 = _all_lines(session, LINE_2, LINE_3)
+    assert line_2 == [{"3400.00"}, set(), {"3400.00"}, set(), {"3400.00"}]
+    assert line_3 == [{"/no"}, set()]
 
 
 def test_non_cash_help_with_no_known_value_is_named_but_subtracts_nothing(session):
     _non_cash(session.income_info, value=None)
-    assert _lines(session, LINE_2) == [{"3200.00"}, set(), {"3200.00"}, set(), {"3200.00"}]
-    assert _lines(session, LINE_3) == [{"/yes"}, {"SNAP (food stamps)"}]
+    line_2, line_3 = _all_lines(session, LINE_2, LINE_3)
+    assert line_2 == [{"3200.00"}, set(), {"3200.00"}, set(), {"3200.00"}]
+    assert line_3 == [{"/yes"}, {"SNAP (food stamps)"}]
 
 
 def test_line_1_is_refused_until_the_household_list_is_answered_never_guessed_as_1(session):

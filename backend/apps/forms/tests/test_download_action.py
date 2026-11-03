@@ -26,6 +26,17 @@ def _printed(response, full_name):
     return {w.value for w in read_drawn("form_121", response.content) if w.full_name == full_name}
 
 
+def _prepare(endpoint, client, form):
+    """The single-form call: Generate or Download of the one form."""
+    if endpoint == "download":
+        return _download(client, form)
+    return client.post(
+        "/api/forms/generate/",
+        {"session_id": form.session.id, "form_type": form.form_type},
+        format="json",
+    )
+
+
 def _rename_filer(form, first_name):
     debtor = form.session.debtor_info
     debtor.first_name = first_name
@@ -39,11 +50,6 @@ def test_download_streams_the_filled_form(api_client_authed, generated_form_fact
     assert response["Content-Type"] == "application/pdf"
     assert response["Content-Disposition"] == 'attachment; filename="form_121.pdf"'
     assert _printed(response, "Debtor1.First name") == {"Maria"}
-
-
-def test_download_marks_a_generated_form_downloaded(api_client_authed, generated_form_factory):
-    form = generated_form_factory(status="generated")
-    _download(api_client_authed, form)
     form.refresh_from_db()
     assert form.status == "downloaded"
 
@@ -68,6 +74,7 @@ _FILED_SHEET = [
 ]
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize(
     "form_type, parts, box, printed, sheets",
     [
@@ -156,6 +163,7 @@ def _relabel(sheet):
     sheet["columns"][0]["label"] = "Model"
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize(
     "edit",
     [
@@ -300,27 +308,34 @@ def test_a_letter_the_form_cannot_print_refuses_the_download(
     assert "Debtor 1 first name" not in caplog.text
 
 
-def test_form_no_longer_in_the_packet_is_refused(api_client_authed, generated_form_factory):
+@pytest.mark.parametrize("endpoint", ["generate", "download"])
+def test_form_no_longer_in_the_packet_is_refused(
+    endpoint, api_client_authed, generated_form_factory
+):
     form = generated_form_factory(status="generated")
     form.form_type = "form_103b"  # line 8 is pay in full for this session
     form.save()
 
-    response = _download(api_client_authed, form)
+    response = _prepare(endpoint, api_client_authed, form)
 
     assert response.status_code == 422
-    assert response.data["error"] == (
-        "This form isn't part of your packet, based on the answers you've given."
-    )
+    assert response.data == {
+        "form_type": "form_103b",
+        "error": "This form isn't part of your packet, based on the answers you've given.",
+    }
 
 
-def test_missing_data_is_a_422_with_its_reason(api_client_authed, generated_form_factory):
+@pytest.mark.parametrize("endpoint", ["generate", "download"])
+def test_missing_data_is_a_422_with_its_reason(endpoint, api_client_authed, generated_form_factory):
     form = generated_form_factory(status="generated")
     form.session.debtor_info.delete()
 
-    response = _download(api_client_authed, form)
+    response = _prepare(endpoint, api_client_authed, form)
 
     assert response.status_code == 422
     assert "name and address" in response.data["error"]
+    form.refresh_from_db()
+    assert not form.field_values  # nothing was filled in blank and stored
 
 
 def test_rows_past_the_slots_download_on_a_copy(
@@ -345,6 +360,7 @@ def test_rows_past_the_slots_download_on_a_copy(
     }
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize(
     "count, entries",
     [
@@ -403,10 +419,14 @@ def test_a_template_with_no_form_is_explained_in_plain_words(
     }
 
 
-def test_unexpected_failure_logs_only_its_type(api_client_authed, generated_form_factory, caplog):
+@pytest.mark.parametrize("endpoint", ["generate", "download"])
+def test_unexpected_failure_logs_only_its_type(
+    endpoint, api_client_authed, generated_form_factory, caplog
+):
     form = generated_form_factory(status="generated")
     with patch("apps.forms.views.build_parts", side_effect=ValueError("900-11-0001")):
-        response = _download(api_client_authed, form)
+        response = _prepare(endpoint, api_client_authed, form)
     assert response.status_code == 500
+    assert "900-11-0001" not in json.dumps(response.data)
     assert "900-11-0001" not in caplog.text
     assert "ValueError" in caplog.text

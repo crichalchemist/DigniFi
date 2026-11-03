@@ -1,3 +1,4 @@
+import pytest
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
@@ -40,6 +41,7 @@ class AuditLogViewSetTests(TestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["action"], "test_action")
 
+    @pytest.mark.slow
     def test_create_audit_log(self):
         """Test that we can create an audit log"""
         count_before = AuditLog.objects.count()

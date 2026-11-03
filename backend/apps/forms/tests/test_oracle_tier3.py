@@ -557,6 +557,7 @@ def _amount(text):
         return None
 
 
+@pytest.mark.slow
 @pytest.mark.django_db
 @pytest.mark.parametrize("form_type,pdf_field,case,expected", CASES)
 def test_persona_packet_prints_the_right_figure(form_type, pdf_field, case, expected):

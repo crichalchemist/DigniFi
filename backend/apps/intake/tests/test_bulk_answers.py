@@ -129,11 +129,20 @@ class TestBulkAnswerView:
         assert not Household.objects.filter(session=session).exists()
         assert not FormAnswer.objects.filter(session=session).exists()
 
-    def test_bulk_upsert_invalid_prefix(self, auth_client_with_session):
+    @pytest.mark.parametrize(
+        "binding,value",
+        [
+            ("invalid:q1", "new"),
+            ("sofa.invalid_field", "true"),
+            ("sofa.has_prior_income", "not a boolean"),
+        ],
+        ids=["invalid_prefix", "unknown_sofa_field", "sofa_coercion_invalid"],
+    )
+    def test_bulk_upsert_invalid_answer(self, auth_client_with_session, binding, value):
         client, session = auth_client_with_session
         payload = {
             "answers": [
-                {"form_type": "form_test", "binding": "invalid:q1", "value": "new"},
+                {"form_type": "form_test", "binding": binding, "value": value},
             ]
         }
         response = client.post(
@@ -144,37 +153,3 @@ class TestBulkAnswerView:
         assert response.status_code == 400
         data = response.json()
         assert "answers" in data
-
-    def test_bulk_upsert_unknown_sofa_field(self, auth_client_with_session):
-        client, session = auth_client_with_session
-        payload = {
-            "answers": [
-                {"form_type": "form_test", "binding": "sofa.invalid_field", "value": "true"},
-            ]
-        }
-        response = client.post(
-            f"/api/intake/sessions/{session.pk}/answers/bulk/",
-            payload,
-            format="json",
-        )
-        assert response.status_code == 400
-        data = response.json()
-        assert "answers" in data
-
-    def test_bulk_upsert_sofa_coercion_invalid(self, auth_client_with_session):
-        client, session = auth_client_with_session
-        payload = {
-            "answers": [
-                {
-                    "form_type": "form_test",
-                    "binding": "sofa.has_prior_income",
-                    "value": "not a boolean",
-                },
-            ]
-        }
-        response = client.post(
-            f"/api/intake/sessions/{session.pk}/answers/bulk/",
-            payload,
-            format="json",
-        )
-        assert response.status_code == 400

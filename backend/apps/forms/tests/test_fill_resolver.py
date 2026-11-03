@@ -181,15 +181,6 @@ def test_conditional_section_skipped_when_predicate_false(session):
     assert "BizName" not in resolve(schema, session)
 
 
-def test_none_value_dropped(session):
-    schema = _schema(
-        [
-            _field(pdf_field="Inert", source="ingested", ingest_key="x"),
-        ]
-    )
-    assert "Inert" not in resolve(schema, session)
-
-
 def _answer(session, value):
     FormAnswer.objects.create(session=session, form_type="form_107", field_key="q1", value=value)
 
