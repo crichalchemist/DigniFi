@@ -14,6 +14,7 @@ import type {
   ExpenseField,
   ExpenseSpecifyField,
   MaritalStatus,
+  PaymentChoice,
 } from '../types/api';
 
 // No cut: the question as printed
@@ -181,3 +182,47 @@ export const EXPENSE_SPECIFY_WORDS: Record<ExpenseSpecifyField, string> = {
     'Other payments you make to support others who do not live with you. Specify:',
   other_expenses_specify: 'Other. Specify:',
 };
+
+// Form 101 line 8 (page 3) and Form 103B, on the filing-fee page
+
+// No cut: the field index's label for `Check Box7`
+export const LINE_8_LABEL = 'How you will pay the fee';
+
+// The field index's option_text for `Check Box7`
+export const PAYMENT_CHOICE_WORDS: Record<PaymentChoice, string> = {
+  // Cut: "Please check with the clerk's office..." to the end
+  pay_in_full: 'I will pay the entire fee when I file my petition.',
+  // Cut: "If you choose this option, sign and attach..."
+  installments: 'I need to pay the fee in installments.',
+  // Cut: the parenthesis and "If you choose this option...". No period, as in the index.
+  waiver: 'I request that my fee be waived',
+};
+
+// Cut: the parenthesis's first sentence and its brackets; a period added
+export const FEE_LAW_SENTENCE =
+  'By law, a judge may, but is not required to, waive your fee, and may do so only if your income is less than 150% of the official poverty line that applies to your family size and you are unable to pay the fee in installments.';
+
+// Form 103B line 4, no cut
+export const WAIVER_LINE_4_QUESTION =
+  "Do you expect your family's average monthly net income to increase or decrease by more than 10% during the next 6 months?";
+
+// Form 103B line 5, no cut
+export const WAIVER_LINE_5_QUESTION =
+  'Tell the court why you are unable to pay the filing fee in installments within 120 days. If you have some additional circumstances that cause you to not be able to pay your filing fee in installments, explain them.';
+
+// Form 103B line 7, no cut
+export const WAIVER_LINE_7_QUESTION =
+  'Do these expenses cover anyone who is not included in your family as reported in line 1?';
+
+// Form 103B line 9, no cut
+export const WAIVER_LINE_9_QUESTION =
+  'Do you expect your average monthly expenses to increase or decrease by more than 10% during the next 6 months?';
+
+// Form 103B line 4, cut: "Yes."
+export const WAIVER_LINE_4_EXPLAIN = 'Explain.';
+
+// Form 103B line 9, cut: "Yes." Page 2 prints "Yes. Explain" with no period, unlike line 4.
+export const WAIVER_LINE_9_EXPLAIN = 'Explain';
+
+// Form 103B line 7, cut: "Yes."
+export const WAIVER_IDENTIFY_WHO = 'Identify who';

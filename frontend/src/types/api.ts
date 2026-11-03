@@ -473,6 +473,35 @@ export interface MeansTestResult {
 }
 
 // ============================================================================
+// Filing fee
+// ============================================================================
+
+// Form 101 line 8, "How you will pay the fee"
+export type PaymentChoice = 'pay_in_full' | 'installments' | 'waiver';
+
+// What the page shows beside the question (3f spec §6.2): amounts as decimal strings
+export interface FilingFeeInformation {
+  family_size: number;
+  limit_monthly: string;
+  guideline: { year: number; effective_date: string; source_url: string };
+  family_income_monthly: string;
+}
+
+// The session's filing-fee record, as GET and PUT .../filing-fee/ return it. Null is unanswered.
+export interface FilingFee {
+  payment_choice: PaymentChoice | null;
+  income_change_answer: YesNo | null;
+  income_change_explanation: string;
+  installments_explanation: string;
+  others_covered_answer: YesNo | null;
+  others_covered_who: string;
+  expense_change_answer: YesNo | null;
+  expense_change_explanation: string;
+  information: FilingFeeInformation | null;
+  information_gap: 'income' | 'no_table' | null;
+}
+
+// ============================================================================
 // Form Generation
 // ============================================================================
 

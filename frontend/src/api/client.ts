@@ -40,6 +40,7 @@ import type {
   SOFAReport,
   FormUISpec,
   AnswerPayload,
+  FilingFee,
 } from '../types/api';
 
 // ============================================================================
@@ -452,6 +453,22 @@ export const intakeAPI = {
     return apiFetch<unknown[]>(`/intake/sessions/${sessionId}/dischargeability/`, {
       method: 'POST',
     });
+  },
+  /**
+   * Form 101 line 8 and 103B's own questions, with what the page shows beside them.
+   * GET and PUT /api/intake/sessions/{id}/filing-fee/ (a PUT sets only the keys sent)
+   */
+  filingFee: {
+    get: async (sessionId: number): Promise<FilingFee> =>
+      apiFetch<FilingFee>(`/intake/sessions/${sessionId}/filing-fee/`),
+    put: async (
+      sessionId: number,
+      body: Partial<Omit<FilingFee, 'information' | 'information_gap'>>
+    ): Promise<FilingFee> =>
+      apiFetch<FilingFee>(`/intake/sessions/${sessionId}/filing-fee/`, {
+        method: 'PUT',
+        body: JSON.stringify(body),
+      }),
   },
 };
 

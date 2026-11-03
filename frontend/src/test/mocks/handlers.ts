@@ -5,6 +5,7 @@
  */
 
 import { http, HttpResponse } from 'msw';
+import type { FilingFee } from '../../types/api';
 
 const API = 'http://localhost:8000/api';
 
@@ -87,6 +88,30 @@ const mockMeansTestResult = {
   means_test_id: 1,
 };
 
+// Nothing answered yet. The information is Sarah's: a family of 1, below the limit.
+const mockFilingFee: FilingFee = {
+  payment_choice: null,
+  income_change_answer: null,
+  income_change_explanation: '',
+  installments_explanation: '',
+  others_covered_answer: null,
+  others_covered_who: '',
+  expense_change_answer: null,
+  expense_change_explanation: '',
+  information: {
+    family_size: 1,
+    limit_monthly: '1995.00',
+    guideline: {
+      year: 2026,
+      effective_date: '2026-01-15',
+      source_url:
+        'https://www.federalregister.gov/documents/2026/01/15/2026-00755/annual-update-of-the-hhs-poverty-guidelines',
+    },
+    family_income_monthly: '1750.00',
+  },
+  information_gap: null,
+};
+
 // ---------------------------------------------------------------------------
 // Handlers
 // ---------------------------------------------------------------------------
@@ -164,6 +189,15 @@ export const handlers = [
       created_at: '2026-01-20T10:00:00Z',
       updated_at: '2026-01-20T10:00:00Z',
     });
+  }),
+
+  // -- Filing fee -----------------------------------------------------------
+  // Nothing answered yet; the page shows Sarah's limit and figure beside the question
+  http.get(`${API}/intake/sessions/:id/filing-fee/`, () => HttpResponse.json(mockFilingFee)),
+
+  http.put(`${API}/intake/sessions/:id/filing-fee/`, async ({ request }) => {
+    const body = (await request.json()) as Partial<FilingFee>;
+    return HttpResponse.json({ ...mockFilingFee, ...body });
   }),
 
   // -- Assets / Debts ------------------------------------------------------

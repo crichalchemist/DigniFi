@@ -6,7 +6,7 @@
  * state persists across the wizard → dashboard navigation.
  */
 
-import { BrowserRouter, Routes, Route, Outlet } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Outlet, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { IntakeProvider } from './context/IntakeContext';
 import { ProtectedRoute } from './components/auth/ProtectedRoute';
@@ -18,7 +18,7 @@ import { TermsPage } from './pages/TermsPage';
 import { IntakeWizard } from './pages/IntakeWizard';
 import { FormDashboard } from './pages/FormDashboard';
 import { DocumentUploadPage } from './pages/DocumentUploadPage';
-import { FeeWaiverPage } from './pages/FeeWaiverPage';
+import { FilingFeePage } from './pages/FilingFeePage';
 import { SOFAStep } from './pages/SOFAStep';
 import { AskModulePage } from './pages/AskModulePage';
 import { Component, type ReactNode, type ErrorInfo } from 'react';
@@ -77,7 +77,8 @@ function App() {
                   <Route path="/intake" element={<IntakeWizard />} />
                   <Route path="/forms" element={<FormDashboard />} />
                   <Route path="/documents" element={<DocumentUploadPage />} />
-                  <Route path="/fee-waiver" element={<FeeWaiverPage />} />
+                  <Route path="/filing-fee" element={<FilingFeePage />} />
+                  <Route path="/fee-waiver" element={<Navigate to="/filing-fee" replace />} />
                   <Route path="/sofa" element={<SOFAStep />} />
                   <Route path="/ask/:formType" element={<AskModulePage />} />
                 </Route>

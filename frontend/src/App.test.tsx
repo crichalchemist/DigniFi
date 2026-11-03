@@ -21,7 +21,7 @@ describe('Source code link', () => {
 
   it('a signed-in filer can reach the source', async () => {
     localStorage.setItem('refresh_token', 'refresh-token');
-    renderAt('/fee-waiver');
+    renderAt('/filing-fee');
     await screen.findByRole('button', { name: 'Sign out' });
     expect(screen.getByRole('link', { name: 'Source code' })).toHaveAttribute('href', SOURCE_URL);
   });
@@ -46,5 +46,17 @@ describe('Source code link', () => {
     const landmarks = screen.getAllByRole('contentinfo');
     expect(landmarks).toHaveLength(1);
     expect(landmarks[0]).toContainElement(screen.getByRole('link', { name: 'Source code' }));
+  });
+});
+
+describe('Old links', () => {
+  // §3: the fee-waiver page is gone, and a link to it (a bookmark, an old email) still lands
+  it('an old link to the fee-waiver page opens the filing-fee page', async () => {
+    localStorage.setItem('refresh_token', 'refresh-token');
+    renderAt('/fee-waiver');
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'How you will pay the filing fee' })
+    ).toBeInTheDocument();
+    expect(window.location.pathname).toBe('/filing-fee');
   });
 });

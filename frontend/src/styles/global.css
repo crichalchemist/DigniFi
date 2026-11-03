@@ -1748,16 +1748,16 @@ a {
 }
 
 /* ============================================================================
-   Fee Waiver
+   Filing fee page (the Yes/No classes below are shared by the wizard's steps)
    ============================================================================ */
 
-.fee-waiver-page {
+.filing-fee-page {
   max-width: 640px;
   margin: 0 auto;
   padding: var(--space-6) var(--space-4);
 }
 
-.fee-waiver-error {
+.filing-fee-error {
   color: var(--color-rust);
   margin-bottom: var(--space-4);
   font-size: var(--text-caption);
