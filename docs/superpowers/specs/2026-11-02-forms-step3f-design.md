@@ -1,6 +1,6 @@
 # Forms step 3f: the filing fee
 
-- **Status:** drafted 2026-11-02. The owner chose to skip the brainstorming questions, so this spec is written straight from the umbrella. It closes with three owner questions (§17). Where it needs an answer before the build, it is written for the recommended one and says what the other would change. It waits for the owner's answers and review.
+- **Status:** drafted 2026-11-02. The owner chose to skip the brainstorming questions, so this spec is written straight from the umbrella. The owner answered its three questions (§17) on 2026-11-02, each with the recommendation the spec was written for; they are listed at the end, under "Owner answers (2026-11-02)". The spec waits for the owner's review.
 - **Drawn from:** the step 3 umbrella spec, `docs/superpowers/specs/2026-10-16-forms-step3-design.md` §5.7 (cited `U:<line>`), its rules U §4.1–§4.7, Appendix A's 3f rows (U:741–742, :766, :773, :780, :787) and Appendix B item 7 (U:801). Persona targets come from `docs/superpowers/specs/2026-10-16-forms-step3-personas.md` (cited `PS:<line>`). The 3e2 spec, `docs/superpowers/specs/2026-11-01-forms-step3e2-design.md`, is cited `E2 §<n>`. The fee-waiver scoping note, `.superpowers/forms-step3/scope/fee-waiver.md` in the `forms-step3` worktree (cited `FW:<line>`), holds the sources: 28 U.S.C. § 1930(f), FRBP 1006, the Guide to Judiciary Policy Vol. 4 Ch. 8 § 820, the AO's instructions, the HHS notice and the courts' 150% table, all fetched 2026-10-15.
 - **Branch:** `feat/forms-step3f`, from develop `2fd7e6e` (3a1, 3a2, 3e1 and 3e2 merged). The PR targets develop.
 - **Section numbers.** A bare `§4` is this spec's own section; the umbrella's are written `U §4`.
@@ -467,3 +467,9 @@ Three questions, most important first. The spec is written for each recommendati
 - which figure the page shows once Schedule I line 11 is asked (§6.2).
 
 Like every counsel item, it blocks production, not merges (U:633).
+
+## Owner answers (2026-11-02)
+
+1. **103B line 2:** print Schedule I line 10, as 103B's line 2 says. Nothing is typed again, so `FilingFee` has no take-home field. Implemented in §1 item 5, §4, §8.2, §15 item 5.
+2. **103B lines 4, 5, 7 and 9:** asked in 3f, on the filing-fee page under the waiver choice. Implemented in §1 item 6, §4, §6.4, §7, §8.2, §15 item 3.
+3. **The line 5 drafts:** approved as written for Maria and Sarah, with lines 4, 7 and 9 No. Stated in §10.
