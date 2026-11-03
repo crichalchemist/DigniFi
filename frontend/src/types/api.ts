@@ -729,6 +729,8 @@ export interface FormPacketResponse {
   form_types: FormType[];
   tables: DatedTableUsed[];
   income_period?: IncomePeriodNotice;
+  /** Form 101 line 8: the filer's answer, null until they choose (forms step 3f §7) */
+  payment_choice?: PaymentChoice | null;
 }
 
 /** What `api.forms.packet` returns */
@@ -736,6 +738,7 @@ export interface Packet {
   form_types: FormType[];
   tables: DatedTableUsed[];
   income_period: IncomePeriodNotice | null;
+  payment_choice: PaymentChoice | null;
 }
 
 export interface SessionSummaryResponse {

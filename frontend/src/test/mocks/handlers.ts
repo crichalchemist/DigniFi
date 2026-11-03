@@ -53,7 +53,7 @@ const mockGeneratedForm = {
   updated_at: '2026-01-20T10:00:00Z',
 };
 
-/** A below-median filer with no fee waiver: the 14 forms every packet holds */
+/** A below-median filer who pays the fee in full: the 14 forms every packet holds */
 const mockPacket = [
   'form_101',
   'form_106dec',
@@ -272,7 +272,12 @@ export const handlers = [
   http.get(`${API}/forms/`, () => HttpResponse.json([mockGeneratedForm])),
 
   http.get(`${API}/forms/packet/`, () =>
-    HttpResponse.json({ session: 1, form_types: mockPacket, tables: [] })
+    HttpResponse.json({
+      session: 1,
+      form_types: mockPacket,
+      tables: [],
+      payment_choice: 'pay_in_full',
+    })
   ),
 
   http.post(`${API}/forms/:id/mark_downloaded/`, () =>

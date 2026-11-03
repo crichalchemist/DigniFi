@@ -15,7 +15,16 @@ import type { DebtClassification } from '../components/forms/DebtExplanationsPan
 import type { FormRefusal } from '../components/forms/FormCard';
 import { UPLDisclaimer } from '../components/compliance';
 import { UPL_FORM_DISCLAIMER } from '../constants/upl';
-import { DASHBOARD_ERROR, ERROR_GENERIC } from '../constants/copy';
+import {
+  DASHBOARD_ERROR,
+  ERROR_GENERIC,
+  FILING_FEE_CHANGE_LINK,
+  FILING_FEE_CHOOSE_LINK,
+  FORM_103A_LINK,
+  FORM_103A_URL,
+  INSTALLMENTS_NOTICE,
+} from '../constants/copy';
+import { LINE_8_LABEL, PAYMENT_CHOICE_WORDS } from '../constants/formText';
 import { WIZARD_STEPS } from '../constants/wizardSteps';
 import { Button } from '../components/common';
 import { PostTaskSurvey } from '../components/survey/PostTaskSurvey';
@@ -25,6 +34,7 @@ import type {
   GenerateAllFormsResponse,
   DatedTableUsed,
   Packet,
+  PaymentChoice,
 } from '../types/api';
 import { FORM_TYPE_METADATA } from '../types/api';
 import { trackEvent } from '../utils/analytics';
@@ -56,7 +66,6 @@ function refusalOf(err: unknown, generic: string): Refusal {
  */
 const PAGE_LINK_LABELS: Record<string, string> = {
   '/intake': 'Finish your intake',
-  '/fee-waiver': 'Go to Filing Fee Waiver Application',
   '/filing-fee': 'Go to How you will pay the filing fee',
   '/sofa': 'Go to Statement of Financial Affairs',
   '/documents': 'Go to Upload your documents',
@@ -118,6 +127,8 @@ export function FormDashboard() {
   const [packet, setPacket] = useState<FormType[]>([]);
   const [tables, setTables] = useState<DatedTableUsed[]>([]);
   const [incomePeriod, setIncomePeriod] = useState<Packet['income_period']>(null);
+  // Form 101 line 8, as the packet reply holds it; undefined while no reply has come (a refusal carries none)
+  const [paymentChoice, setPaymentChoice] = useState<PaymentChoice | null | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Refusal | null>(null);
   const [showSurvey, setShowSurvey] = useState(false);
@@ -144,9 +155,11 @@ export function FormDashboard() {
       setPacket(loadedPacket.form_types);
       setTables(loadedPacket.tables);
       setIncomePeriod(loadedPacket.income_period);
+      setPaymentChoice(loadedPacket.payment_choice);
       setError(null);
     } catch (err) {
       setIncomePeriod(null);
+      setPaymentChoice(undefined);
       setError(refusalOf(err, DASHBOARD_ERROR));
     } finally {
       setIsLoading(false);
@@ -210,9 +223,11 @@ export function FormDashboard() {
       setPacket(reloaded.form_types);
       setTables(reloaded.tables);
       setIncomePeriod(reloaded.income_period);
+      setPaymentChoice(reloaded.payment_choice);
       setError(null);
     } catch (err) {
       setIncomePeriod(null);
+      setPaymentChoice(undefined);
       setError(refusalOf(err, DASHBOARD_ERROR));
     }
   };
@@ -414,6 +429,27 @@ export function FormDashboard() {
             {incomeLink.label}
           </Link>
         </div>
+      )}
+
+      {paymentChoice !== undefined && (
+        <section className="form-dashboard-notice" aria-label={LINE_8_LABEL}>
+          {paymentChoice && (
+            <p>
+              {LINE_8_LABEL}: <span>{PAYMENT_CHOICE_WORDS[paymentChoice]}</span>
+            </p>
+          )}
+          {paymentChoice === 'installments' && (
+            <p>
+              {INSTALLMENTS_NOTICE}{' '}
+              <a href={FORM_103A_URL} target="_blank" rel="noreferrer">
+                {FORM_103A_LINK}
+              </a>
+            </p>
+          )}
+          <Link to="/filing-fee" className="button button--primary">
+            {paymentChoice ? FILING_FEE_CHANGE_LINK : FILING_FEE_CHOOSE_LINK}
+          </Link>
+        </section>
       )}
 
       {/* Form cards grid */}

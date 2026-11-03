@@ -615,6 +615,7 @@ export const formsAPI = {
       form_types: response.form_types,
       tables: response.tables ?? [],
       income_period: response.income_period ?? null,
+      payment_choice: response.payment_choice ?? null,
     };
   },
 
