@@ -48,7 +48,7 @@ from apps.intake.models import (
     IncomeInfo,
     IntakeSession,
 )
-from apps.intake.tests.builders import answer_household
+from apps.intake.tests.builders import answer_asset_lines, answer_household
 from apps.users.models import User
 
 # CI runs these with config.settings.test_postgres. If those settings ever reach anything
@@ -481,6 +481,20 @@ def _rows(session):
         confidence_scores={},
         overall_confidence=80,
     )
+    # The car sits on Schedule A/B line 3, finished, with line 3 answered Yes, so Complete
+    # has no Assets step gap to refuse.
+    car = AssetInfo.objects.create(
+        session=session,
+        asset_type="vehicle",
+        ab_line="3",
+        description="Car",
+        current_value=Decimal("5000.00"),
+        entire_value=Decimal("5000.00"),
+        amount_owed=Decimal("0.00"),
+    )
+    car.set_details({"who": "only_you", "make": "Honda"})
+    car.save()
+    answer_asset_lines(session, ["3"])
     return {
         "contract": ExecutoryContract.objects.create(
             session=session, counterparty_name="Oak Street Apartments", contract_type="lease"
@@ -488,13 +502,7 @@ def _rows(session):
         "codebtor": Codebtor.objects.create(
             session=session, name="Sam Doe", relationship="relative"
         ),
-        "asset": AssetInfo.objects.create(
-            session=session,
-            asset_type="vehicle",
-            description="Car",
-            current_value=Decimal("5000.00"),
-            amount_owed=Decimal("0.00"),
-        ),
+        "asset": car,
         "debt": DebtInfo.objects.create(
             session=session,
             creditor_name="Prairie Card Services",
