@@ -355,7 +355,8 @@ def validate_schema(
     # A repeat group fills its slots, rows 1 to repeat_capacity, and its rows past the last
     # slot continue on copies of its extra page, the page of its last slots (3a2 spec §5.2).
     # Each box that numbers a row or a page prints on that row's or page's page.
-    from apps.forms.services.fill_resolver import _unmapped  # here: it imports this module
+    # Here: fill_resolver imports this module.
+    from apps.forms.services.fill_resolver import ASSET_BOX_CELLS, ASSET_CELLS, _unmapped
 
     slots: dict[str, list[FieldSpec]] = {}
     for f in schema.fields:
@@ -433,9 +434,28 @@ def validate_schema(
             # slot's text, or a box's answer in the words the form prints beside the state it
             # maps to, so a box whose choices are {}, a single box's {"true": …} or two answers
             # on one state is refused (a one-key map of another answer isn't yet).
-            # A column that covers slots prints its own list of words, so neither applies to it.
+            # A column that covers slots prints its own list as it is, by position, and only a
+            # row past the slots reads it: its list must be the one its slots bind, and its
+            # cell words, never a box's answer.
+            slot_lists = {f.binding.partition("[].")[0] for f in rows if f.binding}
             for column in group.sheet.columns:
                 if column.covers is not None:
+                    listed, _, attr = column.binding.partition("[].")
+                    wrong = None
+                    if slot_lists != {listed}:
+                        wrong = "which isn't the one list its slots bind"
+                    elif listed.startswith("assets.") and attr not in ASSET_CELLS:
+                        wrong = "which no Schedule A/B row can print"
+                    elif listed.startswith("assets.") and attr in ASSET_BOX_CELLS:
+                        wrong = "a box's answer, not words"
+                    if wrong:
+                        errors.append(
+                            (
+                                "E007",
+                                f"group {name!r}: sheet column {column.label!r} covers slots "
+                                f"but binds {column.binding!r}, {wrong}",
+                            )
+                        )
                     continue
                 bound = [f for f in rows if f.binding == column.binding]
                 if not bound:

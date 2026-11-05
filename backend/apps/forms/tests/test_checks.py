@@ -18,6 +18,7 @@ from django.core.management.base import SystemCheckError
 from apps.forms.checks import validate_form
 from apps.forms.registry import get_all_form_types
 from apps.forms.schema import load_schema
+from apps.intake.asset_lines import PROPERTY_KINDS
 
 
 @pytest.fixture
@@ -1227,18 +1228,33 @@ def test_columns_too_wide_for_the_wider_line_column_are_refused(schedule_a_b_wit
     ]
 
 
-_COMMUNITY = "sofa.creditor_payments[].dates_of_payments"
+_COMMUNITY = "assets.line_3[].community"
 
 
-def _a_covering_column(covers):
+def _on_asset_rows(d, slots="assets.line_3"):
+    """The synthetic group's slots and columns as Schedule A/B binds them: one line's rows."""
+    attrs = {"creditor_name": "make", "total_paid": "value", "dates_of_payments": "community"}
+
+    def rebound(binding):
+        return f"{slots}[].{attrs[binding.partition('[].')[2]]}"
+
+    for f in d["fields"]:
+        if f["repeat"] == "ab_line_3":
+            f["binding"] = rebound(f["binding"])
+    for column in d["groups"]["ab_line_3"]["sheet"]["columns"]:
+        column["binding"] = rebound(column["binding"])
+
+
+def _a_covering_column(covers, binding="assets.line_3[].interest", slots="assets.line_3"):
     def change(d):
         _community_property_boxes(d)
+        _on_asset_rows(d, slots)
         columns = d["groups"]["ab_line_3"]["sheet"]["columns"]
         columns[0]["width"] = 200
         columns.append(
             {
                 "label": "Who has an interest",
-                "binding": "assets.line_3[].interest",
+                "binding": binding,
                 "covers": covers,
                 "width": 100,
             }
@@ -1284,6 +1300,7 @@ def test_a_covering_column_may_cover_nothing_and_print_a_list_no_slot_binds(
 ):
     # Line 53's text: one box on the form for three rows, its own words on a sheet.
     def change(d):
+        _on_asset_rows(d)
         columns = d["groups"]["ab_line_3"]["sheet"]["columns"]
         columns[0]["width"] = 200
         columns.append(
@@ -1296,6 +1313,111 @@ def test_a_covering_column_may_cover_nothing_and_print_a_list_no_slot_binds(
         )
 
     _edit(schedule_a_b_with_sheet, "schedule_a_b", change)
+    assert _errors("schedule_a_b") == []
+
+
+@pytest.mark.parametrize(
+    "slots, binding",
+    [
+        ("assets.line_3", "assets.line_4[].interest"),  # a boat's words beside a car
+        ("assets.line_17_checking", "assets.line_17[].description"),  # every kind's rows
+        ("assets.line_3", "sofa.creditor_payments[].creditor_name"),
+    ],
+)
+def test_a_sworn_sheet_cannot_print_another_rows_words_beside_a_row(
+    schedule_a_b_with_sheet, slots, binding
+):
+    # A sheet's rows are its slots' rows, and a covering column prints by position: any other
+    # list prints another row's words, or runs out and fails Generate.
+    _edit(
+        schedule_a_b_with_sheet,
+        "schedule_a_b",
+        _a_covering_column([f"{slots}[].community"], binding, slots),
+    )
+    assert _errors("schedule_a_b") == [
+        (
+            "forms.E007",
+            f"{_AB}: sheet column 'Who has an interest' covers slots but binds {binding!r}, "
+            "which isn't the one list its slots bind",
+        )
+    ]
+
+
+def test_a_kinds_sheet_may_print_that_kinds_own_words(schedule_a_b_with_sheet):
+    slots = "assets.line_17_checking"
+    _edit(
+        schedule_a_b_with_sheet,
+        "schedule_a_b",
+        _a_covering_column([f"{slots}[].community"], f"{slots}[].interest", slots),
+    )
+    assert _errors("schedule_a_b") == []
+
+
+def test_a_covering_column_cannot_follow_slots_on_two_lists(schedule_a_b_with_sheet):
+    # Neither list is the group's rows: the row count is the longer one's.
+    def change(d):
+        _a_covering_column([_COMMUNITY])(d)
+        for f in d["fields"]:
+            if f["repeat"] == "ab_line_3" and f["binding"].endswith(".value"):
+                f["binding"] = "assets.line_4[].value"
+        d["groups"]["ab_line_3"]["sheet"]["columns"][1]["binding"] = "assets.line_4[].value"
+
+    _edit(schedule_a_b_with_sheet, "schedule_a_b", change)
+    assert _errors("schedule_a_b") == [
+        (
+            "forms.E007",
+            f"{_AB}: sheet column 'Who has an interest' covers slots but binds "
+            "'assets.line_3[].interest', which isn't the one list its slots bind",
+        )
+    ]
+
+
+def test_a_misspelled_words_column_is_refused_at_startup_not_at_a_fourth_property(
+    schedule_a_b_with_sheet,
+):
+    # No slot resolves this binding, so only a row past the slots would reach it, as a 500.
+    binding = "assets.line_3[].wher"
+    _edit(
+        schedule_a_b_with_sheet,
+        "schedule_a_b",
+        _a_covering_column([_COMMUNITY], binding),
+    )
+    assert _errors("schedule_a_b") == [
+        (
+            "forms.E007",
+            f"{_AB}: sheet column 'Who has an interest' covers slots but binds {binding!r}, "
+            "which no Schedule A/B row can print",
+        )
+    ]
+
+
+@pytest.mark.parametrize(
+    "attr", ["who", "community", "has_personal_info", f"kind_{PROPERTY_KINDS[0]}"]
+)
+def test_a_words_column_cannot_print_a_boxs_raw_answer(schedule_a_b_with_sheet, attr):
+    # A covering cell prints its list as it is, so the court would read "with_someone" or "true".
+    binding = f"assets.line_3[].{attr}"
+    _edit(
+        schedule_a_b_with_sheet,
+        "schedule_a_b",
+        _a_covering_column([_COMMUNITY], binding),
+    )
+    assert _errors("schedule_a_b") == [
+        (
+            "forms.E007",
+            f"{_AB}: sheet column 'Who has an interest' covers slots but binds {binding!r}, "
+            "a box's answer, not words",
+        )
+    ]
+
+
+@pytest.mark.parametrize("attr", ["where", "what", "interest", "description", "value", "make"])
+def test_a_words_column_may_print_words_or_what_the_filer_typed(schedule_a_b_with_sheet, attr):
+    _edit(
+        schedule_a_b_with_sheet,
+        "schedule_a_b",
+        _a_covering_column([_COMMUNITY], f"assets.line_3[].{attr}"),
+    )
     assert _errors("schedule_a_b") == []
 
 

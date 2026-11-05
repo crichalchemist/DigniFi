@@ -10,6 +10,7 @@ page 3.
 import json
 import re
 import unicodedata
+from dataclasses import replace
 from decimal import Decimal
 from io import BytesIO, StringIO
 from pathlib import Path
@@ -23,7 +24,7 @@ from django.test.utils import CaptureQueriesContext
 
 from apps.forms.checks import validate_form
 from apps.forms.registry import build_parts, get_all_form_types
-from apps.forms.schema import load_schema
+from apps.forms.schema import FormSchema, load_schema
 from apps.forms.services import sheets
 from apps.forms.services.derivations import DERIVATIONS
 from apps.forms.services.fill_resolver import resolve_parts
@@ -731,6 +732,43 @@ def _vehicle(session, n, **details):
     )
     row.set_details({"make": MAKES[n - 1], **details})
     row.save()
+
+
+def test_a_forms_asset_bindings_read_the_rows_once(session, line_3_of_asset_rows):
+    # Every slot and words column of a form takes its rows from one read: Schedule A/B has
+    # hundreds of bindings, and a sync worker holds the filer's Generate All through them.
+    # Only the group's slots here: a derived rule (a part total) takes its own read.
+    schema = load_schema("schedule_a_b")
+    slots_only = replace(schema, fields=[f for f in schema.fields if f.repeat == "ab_line_3"])
+    for n in range(1, 7):
+        _vehicle(session, n, who="only_you")
+
+    with CaptureQueriesContext(connection) as queries:
+        (_, sheet) = resolve_parts(slots_only, session)["parts"]
+
+    assert len(sheet["rows"]) == 2
+    assert sum('FROM "asset_info"' in q["sql"] for q in queries.captured_queries) == 1
+
+
+def test_a_row_saved_after_one_generate_prints_on_the_next(session, line_3_of_asset_rows):
+    # The one read belongs to the call: a session held across a save never prints stale rows.
+    for n in range(1, 6):
+        _vehicle(session, n, who="only_you")
+    schema = load_schema("schedule_a_b")
+    (_, first) = resolve_parts(schema, session)["parts"]
+
+    _vehicle(session, 6, who="only_you")
+    (_, second) = resolve_parts(schema, session)["parts"]
+
+    assert [row["line"] for row in first["rows"]] == ["3.5"]
+    assert [row["line"] for row in second["rows"]] == ["3.5", "3.6"]
+
+
+def test_a_form_with_no_asset_bindings_never_reads_the_asset_rows(session):
+    schema = FormSchema("schedule_j", "form_b106j.pdf", "v1", [], {})
+    with CaptureQueriesContext(connection) as queries:
+        resolve_parts(schema, session)
+    assert not any('FROM "asset_info"' in q["sql"] for q in queries.captured_queries)
 
 
 def test_a_covering_column_prints_its_words_on_each_row_past_the_slots(
