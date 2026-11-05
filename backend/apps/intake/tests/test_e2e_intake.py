@@ -201,18 +201,16 @@ class TestAssetCRUD:
         url = reverse("asset-info-list")
         data = {
             "session": session.id,
-            "asset_type": "bank_account",
+            "ab_line": "17",
             "description": "Checking Account",
             "current_value": "1000.00",
             "amount_owed": "0.00",
-            "account_number": "1234567890",
-            "financial_institution": "Test Bank",
         }
 
         response = api_client.post(url, data, format="json")
 
         assert response.status_code == status.HTTP_201_CREATED
-        assert response.data["asset_type"] == "bank_account"
+        assert response.data["ab_line"] == "17"
         assert response.data["description"] == "Checking Account"
         assert AssetInfo.objects.filter(session=session).count() == 1
 
@@ -234,7 +232,7 @@ class TestAssetCRUD:
         assert response.status_code == status.HTTP_200_OK
         assert response.data["asset_type"] == "vehicle"
         assert response.data["description"] == "2015 Honda Civic"
-        assert Decimal(response.data["equity"]) == Decimal("5000.00")
+        assert "equity" not in response.data  # A/B has no equity figure (3b)
 
     def test_update_asset(self, api_client, session):
         """Test updating an asset."""

@@ -624,7 +624,8 @@ class AssetViewSet(viewsets.ModelViewSet):
     """
     ViewSet for managing assets within an intake session.
 
-    Provides CRUD operations for individual assets (property, vehicles, accounts).
+    Provides CRUD operations for individual Schedule A/B rows. A create needs an `ab_line`
+    (the base serializer's rule), so this path can't make an old row.
     """
 
     serializer_class = AssetInfoSerializer

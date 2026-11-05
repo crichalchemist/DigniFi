@@ -496,6 +496,12 @@ WRITES = {
         {"income_info": {"business_and_rental": [{"kind": "business"}]}},
         200,
     ),
+    "asset_lines PATCH": lambda s, r: (
+        "patch",
+        _session_url(s),
+        {"asset_lines": {"6": "no"}},
+        200,
+    ),
     "session PUT": lambda s, r: ("put", _session_url(s), {"district": s.district_id}, 200),
     "Continue": lambda s, r: ("post", _session_url(s, "update_step/"), {"current_step": 3}, 200),
     "Complete": lambda s, r: ("post", _session_url(s, "complete/"), {}, 200),
@@ -546,7 +552,7 @@ WRITES = {
         "/api/intake/assets/",
         {
             "session": s.pk,
-            "asset_type": "vehicle",
+            "ab_line": "3",
             "description": "Second car",
             "current_value": "2000.00",
             "amount_owed": "0",

@@ -44,7 +44,7 @@ class TestCrossSessionWriteIDOR:
             "/api/intake/assets/",
             {
                 "session": victim_session.pk,
-                "asset_type": "vehicle",
+                "ab_line": "3",
                 "description": "Injected car",
                 "current_value": "5000.00",
                 "amount_owed": "0",
@@ -82,7 +82,7 @@ class TestCrossSessionWriteIDOR:
             "/api/intake/assets/",
             {
                 "session": own_session.pk,
-                "asset_type": "vehicle",
+                "ab_line": "3",
                 "description": "My car",
                 "current_value": "5000.00",
                 "amount_owed": "0",

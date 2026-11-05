@@ -815,7 +815,7 @@ def test_editing_a_completed_intake_asks_for_complete_again(filer, completed):
         ("debts", [{"creditor_name": "Chase", "debt_type": "credit_card", "amount_owed": 500}]),
         (
             "assets",
-            [{"asset_type": "bank_account", "description": "Checking", "current_value": 800}],
+            [{"ab_line": "17", "description": "Checking", "current_value": 800}],
         ),
         ("household", {"county": "Cook"}),
         ("spouse_income", {"monthly_gross_wages": "100.00"}),
@@ -907,7 +907,7 @@ def test_saving_the_contracts_or_codebtors_list_after_complete_reopens_it(
         ),
         (
             "assets",
-            {"asset_type": "bank_account", "description": "Checking", "current_value": "800.00"},
+            {"ab_line": "17", "description": "Checking", "current_value": "800.00"},
             {"current_value": "950.00"},
         ),
     ],

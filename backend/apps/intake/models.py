@@ -709,11 +709,6 @@ class AssetInfo(models.Model):
     def __str__(self) -> str:
         return f"{self.get_asset_type_display()}: {self.description} (Session: {self.session_id})"
 
-    @property
-    def equity(self) -> float:
-        """Calculate equity in asset (value - amount owed)."""
-        return float(self.current_value - self.amount_owed)
-
     def get_details(self) -> dict:
         return json.loads(self.details)
 
