@@ -280,3 +280,35 @@ def test_per_item_update_cannot_strip_a_rows_line(filer_session):
     assert response.status_code == 400
     row.refresh_from_db()
     assert row.ab_line == "6"
+
+
+def test_per_item_update_locks_the_session_before_it_reads_the_stored_row(
+    filer_session, monkeypatch
+):
+    """A concurrent save's change to a row's details must not be overwritten by a stale read."""
+    from apps.intake import views as intake_views
+    from apps.intake.serializers import AssetInfoSerializer
+
+    client, session = filer_session
+    row = _stored(session, ab_line="6", details='{"value_unknown": true}')
+    events = []
+    real_lock = intake_views.lock_session
+    real_validate = AssetInfoSerializer.validate
+
+    def recording_lock(session_id):
+        events.append(("lock", session_id))
+        return real_lock(session_id)
+
+    def recording_validate(self, attrs):
+        events.append(("validate", None))
+        return real_validate(self, attrs)
+
+    monkeypatch.setattr(intake_views, "lock_session", recording_lock)
+    monkeypatch.setattr(AssetInfoSerializer, "validate", recording_validate)
+
+    response = client.patch(
+        f"/api/intake/assets/{row.pk}/", {"current_value": "5.00"}, format="json"
+    )
+
+    assert response.status_code == 200
+    assert events[0] == ("lock", session.pk)

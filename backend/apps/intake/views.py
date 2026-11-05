@@ -647,6 +647,28 @@ class AssetViewSet(viewsets.ModelViewSet):
         serializer.instance.session.reopen()
 
     @transaction.atomic
+    def update(self, request, *args, **kwargs):
+        """
+        PUT and PATCH /api/intake/assets/{id}/
+
+        Validation reads the stored row's details, so the sessions are locked before it runs,
+        in id order: the row's, and the one a move names when it is the filer's own (DIG-188).
+        get_object comes first: another user's row is a 404.
+        """
+        row = self.get_object()
+        locked = {row.session_id}
+        target = request.data.get("session")
+        if target is not None and str(target).isdigit():
+            locked |= set(
+                IntakeSession.objects.filter(pk=int(target), user=request.user).values_list(
+                    "pk", flat=True
+                )
+            )
+        for session_id in sorted(locked):
+            lock_session(session_id)
+        return super().update(request, *args, **kwargs)
+
+    @transaction.atomic
     def perform_update(self, serializer):
         session = serializer.validated_data.get("session")
         if session is not None:
