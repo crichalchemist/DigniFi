@@ -22,7 +22,7 @@ from apps.intake.models import (
     IncomeInfo,
     IntakeSession,
 )
-from apps.intake.tests.builders import answer_household
+from apps.intake.tests.builders import answer_asset_lines, answer_household
 
 User = get_user_model()
 
@@ -658,13 +658,16 @@ class TestSessionSummary:
         answer_household(session)
 
         # Add an asset
-        AssetInfo.objects.create(
+        checking = AssetInfo(
             session=session,
-            asset_type="bank_account",
+            ab_line="17",
             description="Checking",
             current_value=Decimal("1000.00"),
             amount_owed=Decimal("0.00"),
         )
+        checking.set_details({"kind": "checking"})
+        checking.save()
+        answer_asset_lines(session, ["17"])
 
         # Add a debt
         DebtInfo.objects.create(

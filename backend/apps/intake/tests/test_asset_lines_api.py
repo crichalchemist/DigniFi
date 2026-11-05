@@ -312,3 +312,28 @@ def test_per_item_update_locks_the_session_before_it_reads_the_stored_row(
 
     assert response.status_code == 200
     assert events[0] == ("lock", session.pk)
+
+
+@pytest.mark.parametrize("figure", ["current_value", "entire_value"])
+def test_a_negative_value_is_a_400(filer_session, figure):
+    client, session = filer_session
+    row = {"ab_line": "3", figure: "-1.00"}
+
+    response = client.patch(_url(session), {"assets": [row]}, format="json")
+
+    assert response.status_code == 400
+    assert AssetInfo.objects.count() == 0
+
+
+def test_an_entire_value_figure_clears_its_unknown_flag(filer_session):
+    client, session = filer_session
+    row = {
+        "ab_line": "3",
+        "entire_value": "9000.00",
+        "details": {"entire_unknown": True},
+    }
+    client.patch(_url(session), {"assets": [row]}, format="json")
+
+    saved = AssetInfo.objects.get()
+    assert saved.entire_value == Decimal("9000.00")
+    assert saved.get_details()["entire_unknown"] is False

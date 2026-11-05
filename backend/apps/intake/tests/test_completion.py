@@ -30,7 +30,11 @@ from apps.intake.models import (
     IntakeSession,
     SpouseIncome,
 )
-from apps.intake.tests.builders import answer_household, answer_income_detail
+from apps.intake.tests.builders import (
+    answer_asset_lines,
+    answer_household,
+    answer_income_detail,
+)
 from apps.users.models import User
 
 FINISH = "Finish your intake before preparing your forms."
@@ -467,6 +471,7 @@ def test_a_rental_figure_saved_as_one_amount_refuses_the_means_test_and_the_form
 def test_complete_lists_every_gap_in_wizard_order(filer, district):
     client, user = filer
     session = IntakeSession.objects.create(user=user, district=district, current_step=9)
+    answer_asset_lines(session)  # the Assets step has its own order test below
     _scanned_debt(session)
 
     response = client.post(_session_url(session, "complete/"))
@@ -987,3 +992,43 @@ def test_form_answers_sofa_and_the_filing_fee_leave_a_completed_intake_complete(
 
     assert (answers.status_code, sofa.status_code, filing_fee.status_code) == (200, 200, 200)
     assert _status(completed) == "completed"
+
+
+# ── Complete names each Schedule A/B gap, after line 3 and before scanned debts (3b spec §7) ──
+
+OLD_ASSET_ROW = 'Pick a line on the Assets step for "Old couch".'
+LINE_7_YES = "Line 7 says Yes. Add what you have, or change it to No."
+
+
+def test_asset_gaps_come_after_schedule_j_line_3_and_before_the_scanned_debt(filer, completed):
+    client, _ = filer
+    completed.status = "in_progress"
+    completed.save()
+    completed.expense_info.expenses_include_others = None
+    completed.expense_info.save()
+    AssetInfo.objects.create(session=completed, description="Old couch")
+    answer_asset_lines(completed, ["7"])
+    _scanned_debt(completed)
+
+    response = client.post(_session_url(completed, "complete/"))
+
+    assert response.status_code == 400
+    assert response.data["errors"] == [
+        {"step": "expense_info", "message": EXPENSES_INCLUDE_OTHERS_UNANSWERED},
+        {"step": "assets", "message": OLD_ASSET_ROW},
+        {"step": "assets", "message": LINE_7_YES},
+        {"step": "debts", "message": SCANNED_DEBTS},
+    ]
+    assert _status(completed) == "in_progress"
+
+
+def test_a_filer_with_no_property_and_every_line_no_has_finished_the_assets_step(filer, completed):
+    # The default answers say No to every shown line and no row exists.
+    client, _ = filer
+    completed.status = "in_progress"
+    completed.save()
+
+    assert client.post(_session_url(completed, "complete/")).status_code == 200
+    summary = client.get(_session_url(completed, "summary/"))
+
+    assert summary.data["progress"]["completion_percentage"] == 80

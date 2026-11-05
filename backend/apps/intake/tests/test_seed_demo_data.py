@@ -298,10 +298,15 @@ def test_every_seeded_persona_has_finished_the_walk(persona):
     answers = session.asset_lines.get_answers()
 
     assert {line.key for line in shown_lines(answers)} == set(answers)
-    assert {key for key, value in answers.items() if value == "yes"} >= {
-        row.ab_line for row in session.assets.all()
-    }
+    yes = {key for key, value in answers.items() if value == "yes"}
+    gates = yes & {"37", "46"}
+    assert yes == {row.ab_line for row in session.assets.all()} | gates
     assert all(row.ab_line in LINE_BY_KEY for row in session.assets.all())
+    # Andres drives for a living (37 Yes, 46 No); Sarah says no to every line.
+    if persona == "andres":
+        assert (answers["37"], answers["46"]) == ("yes", "no")
+    if persona == "sarah":
+        assert yes == set()
 
 
 @pytest.mark.django_db

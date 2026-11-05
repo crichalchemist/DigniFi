@@ -148,3 +148,120 @@ def part_total(rows: list, part: int) -> Decimal:
     """The sum of `current_value` over the rows on the lines of one Part; a null counts as zero."""
     keys = {line.key for line in LINES if line.part == part}
     return sum((row.current_value or Decimal(0) for row in rows if row.ab_line in keys), Decimal(0))
+
+
+class AssetStepGap(Exception):
+    """One thing the Assets step still lacks, in the filer's words (3b spec §7).
+
+    The forms views answer it with a 422 and this `step`, as they answer an IncomeStepGap.
+    """
+
+    step = "assets"
+
+
+def _blank(text) -> bool:
+    return not (text or "").strip()
+
+
+def _value_given(row, figure: str, flag: str) -> bool:
+    """A value counts as given with a figure (a $0 included) or its "I don't know" flag."""
+    return getattr(row, figure) is not None or bool(row.get_details().get(flag))
+
+
+def _row_is_complete(line: Line, row) -> bool:
+    details = row.get_details()
+    has_text = not _blank(row.description)
+    has_value = _value_given(row, "current_value", "value_unknown")
+    shape = line.shape
+    if shape == "cash":
+        return has_value
+    if shape in ("place", "vehicle", "vehicle_no_mileage"):
+        if not (has_value and _value_given(row, "entire_value", "entire_unknown")):
+            return False
+        if not details.get("who"):
+            return False
+        if shape == "place":
+            kinds = details.get("property_kinds") or []
+            return (
+                not _blank(details.get("street"))
+                and bool(kinds)
+                and ("other" not in kinds or not _blank(details.get("other_kind")))
+            )
+        return not _blank(details.get("make"))
+    if shape == "item_question":
+        answer = details.get("has_personal_info")
+        return answer is not None and (answer is False or has_text)
+    if line.kinds and not details.get("kind"):
+        return False
+    if shape == "named_share" and details.get("percent") is None:
+        return False
+    return has_text and has_value
+
+
+def _row_name(row) -> str:
+    return (
+        (row.description or "").strip()
+        or (row.get_details().get("make") or "").strip()
+        or "one item"
+    )
+
+
+def asset_step_gaps(session) -> list[AssetStepGap]:
+    """What Complete and the forms refuse on the Assets step, in the form's order (3b spec §7).
+
+    Reads `session.assets` and `session.asset_lines`; a session with no answers row has every
+    shown line unanswered.
+    """
+    gaps: list[AssetStepGap] = []
+    rows = ordered_assets(session)
+    for row in rows:
+        if row.ab_line not in LINE_BY_KEY:
+            gaps.append(AssetStepGap(f'Pick a line on the Assets step for "{row.description}".'))
+
+    answers_row = getattr(session, "asset_lines", None)
+    answers = answers_row.get_answers() if answers_row is not None else {}
+    shown = {line.key for line in shown_lines(answers)}
+    for line in LINES:
+        key = line.key
+        on_line = rows_on(rows, key)
+        if line.key not in shown:
+            if on_line:
+                gaps.append(
+                    AssetStepGap(
+                        f"Line {key} says No, but it still lists something. Remove it, or change the answer to Yes."
+                    )
+                )
+            continue
+        answer = answers.get(key)
+        if answer not in ("yes", "no"):
+            gaps.append(AssetStepGap(f"Line {key} on the Assets step needs a Yes or No."))
+            continue
+        if line.shape == "gate":
+            if on_line:
+                gaps.append(AssetStepGap(f"Line {key} takes no items. Remove what it lists."))
+            under = [other.key for other in LINES if other.gate == key]
+            if answer == "yes" and all(answers.get(other) == "no" for other in under):
+                gaps.append(
+                    AssetStepGap(
+                        f"Line {key} says Yes, but every line under it says No. Change one of them."
+                    )
+                )
+            continue
+        if answer == "yes" and not on_line:
+            gaps.append(
+                AssetStepGap(f"Line {key} says Yes. Add what you have, or change it to No.")
+            )
+        elif answer == "no" and on_line:
+            gaps.append(
+                AssetStepGap(
+                    f"Line {key} says No, but it still lists something. Remove it, or change the answer to Yes."
+                )
+            )
+        for row in on_line if answer == "yes" else []:
+            if not _row_is_complete(line, row):
+                gaps.append(
+                    AssetStepGap(
+                        f'Line {key} needs more about "{_row_name(row)}" on the Assets step.'
+                    )
+                )
+    return gaps
