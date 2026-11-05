@@ -1169,3 +1169,157 @@ def test_a_statement_line_too_wide_for_row_9999_is_reported(schema_copy):
         "schedule_i: group 'i_line_8a': its sheet can't print row 9999's line, "
         "'8a.9999', whole in the 36 pt line column",
     ) in _errors("schedule_i")
+
+
+def _two_digit_lines(d):
+    d["groups"]["ab_line_3"]["number"] = "17.{n}"
+
+
+def _widened_line_column(d):
+    _two_digit_lines(d)
+    d["groups"]["ab_line_3"]["sheet"]["line_width"] = 48
+    d["groups"]["ab_line_3"]["sheet"]["columns"][0]["width"] = 288  # 48 + 288 + 168 = 504
+
+
+def test_a_two_digit_line_fits_a_sheet_that_widens_its_line_column(schedule_a_b_with_sheet):
+    # "17.9999" is 36.1 pt, wider than the 32 pt inside a 36 pt column's padding.
+    _edit(schedule_a_b_with_sheet, "schedule_a_b", _two_digit_lines)
+    assert _errors("schedule_a_b") == [
+        (
+            "forms.E007",
+            f"{_AB}: its sheet can't print row 9999's line, '17.9999', whole in the "
+            "36 pt line column",
+        )
+    ]
+
+    _edit(schedule_a_b_with_sheet, "schedule_a_b", _widened_line_column)
+    load_schema.cache_clear()
+    assert _errors("schedule_a_b") == []
+
+
+def test_a_line_too_wide_for_the_widened_column_names_that_width(schedule_a_b_with_sheet):
+    def change(d):
+        _widened_line_column(d)
+        d["groups"]["ab_line_3"]["number"] = "Line 17.{n}"
+
+    _edit(schedule_a_b_with_sheet, "schedule_a_b", change)
+    assert _errors("schedule_a_b") == [
+        (
+            "forms.E007",
+            f"{_AB}: its sheet can't print row 9999's line, 'Line 17.9999', whole in the "
+            "48 pt line column",
+        )
+    ]
+
+
+def test_columns_too_wide_for_the_wider_line_column_are_refused(schedule_a_b_with_sheet):
+    # 300 and 168 fit beside 36 pt of line column, not beside 48.
+    def change(d):
+        d["groups"]["ab_line_3"]["sheet"]["line_width"] = 48
+
+    _edit(schedule_a_b_with_sheet, "schedule_a_b", change)
+    assert _errors("schedule_a_b") == [
+        (
+            "forms.E007",
+            f"{_AB}: its sheet's columns and line column are 516 pt wide, "
+            "more than the 504 pt (7 in) between its margins",
+        )
+    ]
+
+
+_COMMUNITY = "sofa.creditor_payments[].dates_of_payments"
+
+
+def _a_covering_column(covers):
+    def change(d):
+        _community_property_boxes(d)
+        columns = d["groups"]["ab_line_3"]["sheet"]["columns"]
+        columns[0]["width"] = 200
+        columns.append(
+            {
+                "label": "Who has an interest",
+                "binding": "assets.line_3[].interest",
+                "covers": covers,
+                "width": 100,
+            }
+        )
+
+    return change
+
+
+def test_a_covering_column_counts_its_boxes_as_printed(schedule_a_b_with_sheet):
+    # A single box can't be a column of its own (its No would print blank), and needs no
+    # column once one column prints it in words.
+    _edit(schedule_a_b_with_sheet, "schedule_a_b", _a_covering_column([_COMMUNITY]))
+    assert _errors("schedule_a_b") == []
+
+
+def test_an_uncovered_single_box_is_still_refused(schedule_a_b_with_sheet):
+    _edit(schedule_a_b_with_sheet, "schedule_a_b", _a_covering_column([]))
+    assert _errors("schedule_a_b") == [
+        (
+            "forms.E007",
+            f"{_AB}: no sheet column prints {_COMMUNITY!r}, which a slot of the group binds",
+        )
+    ]
+
+
+def test_a_covering_column_naming_a_binding_no_slot_has_is_refused(schedule_a_b_with_sheet):
+    _edit(
+        schedule_a_b_with_sheet,
+        "schedule_a_b",
+        _a_covering_column([_COMMUNITY, "assets.line_3[].street"]),
+    )
+    assert _errors("schedule_a_b") == [
+        (
+            "forms.E007",
+            f"{_AB}: sheet column 'Who has an interest' covers 'assets.line_3[].street', "
+            "which no slot of the group binds",
+        )
+    ]
+
+
+def test_a_covering_column_may_cover_nothing_and_print_a_list_no_slot_binds(
+    schedule_a_b_with_sheet,
+):
+    # Line 53's text: one box on the form for three rows, its own words on a sheet.
+    def change(d):
+        columns = d["groups"]["ab_line_3"]["sheet"]["columns"]
+        columns[0]["width"] = 200
+        columns.append(
+            {
+                "label": "What it is",
+                "binding": "assets.line_3[].description",
+                "covers": [],
+                "width": 100,
+            }
+        )
+
+    _edit(schedule_a_b_with_sheet, "schedule_a_b", change)
+    assert _errors("schedule_a_b") == []
+
+
+def test_a_slot_may_bind_an_asset_list(schedule_a_b_with_sheet):
+    def change(d):
+        for f in d["fields"]:
+            if f["repeat"] == "ab_line_3":
+                f["binding"] = f["binding"].replace(
+                    "sofa.creditor_payments[].creditor_name", "assets.line_3[].make"
+                )
+        d["groups"]["ab_line_3"]["sheet"]["columns"][0]["binding"] = "assets.line_3[].make"
+
+    _edit(schedule_a_b_with_sheet, "schedule_a_b", change)
+    assert _errors("schedule_a_b") == []
+
+
+def test_a_statement_column_cannot_cover_a_slot_it_does_not_have(schema_copy):
+    def change(d):
+        column = d["groups"]["i_line_8a"]["sheet"]["columns"][0]
+        column["covers"] = ["income.statement[].net"]
+
+    _edit(schema_copy, "schedule_i", change)
+    assert (
+        "forms.E007",
+        "schedule_i: group 'i_line_8a': sheet column 'Income of' covers "
+        "'income.statement[].net', which no slot of the group binds",
+    ) in _errors("schedule_i")

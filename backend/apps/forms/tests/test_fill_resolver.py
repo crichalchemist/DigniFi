@@ -8,7 +8,7 @@ from django.contrib.auth import get_user_model
 from apps.districts.models import District
 from apps.documents.models import IngestedAggregate
 from apps.eligibility.cmi import HOUSEHOLD_UNANSWERED, IncomeStepGap
-from apps.forms.schema import FieldSpec, FormSchema, GroupSpec
+from apps.forms.schema import FieldSpec, FormSchema, GroupSpec, SheetColumn, SheetSpec
 from apps.forms.services.fill_resolver import (
     UnmappedChoice,
     binding_fix,
@@ -17,6 +17,7 @@ from apps.forms.services.fill_resolver import (
     resolve_parts,
 )
 from apps.intake.models import (
+    AssetInfo,
     DebtorInfo,
     FormAnswer,
     IntakeSession,
@@ -487,8 +488,220 @@ def test_resolve_ingested_source(session):
         ("sofa.prior_income[].year", {"page": "/sofa"}),
         ("household.dependents[].age", {"step": "income_info"}),
         ("income.statement[].net", {"step": "income_info"}),
+        ("assets.line_3[].make", {"step": "assets"}),
         ("", {}),
     ],
 )
 def test_a_bindings_fix_comes_from_its_namespace(binding, fix):
     assert binding_fix(binding) == fix
+
+
+def _asset(session, line, details=None, **values):
+    row = AssetInfo(session=session, ab_line=line, **values)
+    row.set_details(details or {})
+    row.save()
+    return row
+
+
+@pytest.mark.parametrize(
+    "binding",
+    [
+        "assets.line_3[].no_such_cell",
+        "assets.line_3[].ssn",  # never a row's attribute by another name
+        "assets.line_3.make",  # no list
+        "assets.line_99[].make",  # no such line: it would print nothing, silently
+        "assets.line_17_no_such_kind[].description",
+        "assets.line_3_checking[].description",  # line 3 asks no kind
+        "assets.total[].value",
+    ],
+)
+def test_an_unknown_asset_attr_raises(session, binding):
+    with pytest.raises(ValueError, match="unrecognized binding"):
+        resolve_binding(binding, session)
+
+
+def test_a_value_the_filer_does_not_know_is_a_blank_cell_and_a_zero_value_prints(session):
+    _asset(session, "3", {"value_unknown": True}, current_value=None, entire_value=None)
+    _asset(session, "3", current_value=Decimal("0"), entire_value=Decimal("0"))
+    _asset(session, "3", current_value=Decimal("1500"), entire_value=Decimal("3000.5"))
+
+    assert resolve_binding("assets.line_3[].value", session) == ["", "0.00", "1500.00"]
+    assert resolve_binding("assets.line_3[].entire", session) == ["", "0.00", "3000.50"]
+
+
+def test_kinds_read_rows_of_that_kind_in_order(session):
+    _asset(session, "17", {"kind": "savings"}, description="Second Bank")
+    _asset(session, "17", {"kind": "checking"}, description="First Bank")
+    _asset(session, "17", {"kind": "checking"}, description="Third Bank")
+    _asset(session, "22", {"kind": "heating_oil"}, description="Oil Co")
+
+    assert resolve_binding("assets.line_17_checking[].description", session) == [
+        "First Bank",
+        "Third Bank",
+    ]
+    assert resolve_binding("assets.line_17_savings[].description", session) == ["Second Bank"]
+    assert resolve_binding("assets.line_17_cd[].description", session) == []
+    # A kind's own name can hold an underscore.
+    assert resolve_binding("assets.line_22_heating_oil[].description", session) == ["Oil Co"]
+    assert resolve_binding("assets.line_17[].description", session) == [
+        "Second Bank",
+        "First Bank",
+        "Third Bank",
+    ]
+
+
+def test_an_answer_never_given_prints_blank_never_the_word_none(session):
+    _asset(session, "1", {"street": None, "percent": None, "who": None})
+
+    for attr in (
+        "description",
+        "who",
+        "nature",
+        "other_info",
+        "street",
+        "street_2",
+        "city",
+        "state",
+        "zip",
+        "county",
+        "other_kind",
+        "make",
+        "model",
+        "year",
+        "mileage",
+        "percent",
+        "beneficiary",
+        "has_personal_info",
+        "community",
+        "kind_single_family",
+        "kind_duplex",
+        "kind_condo",
+        "kind_manufactured",
+        "kind_land",
+        "kind_investment",
+        "kind_timeshare",
+        "kind_other",
+        "where",
+        "what",
+        "interest",
+    ):
+        assert resolve_binding(f"assets.line_1[].{attr}", session) == [""], attr
+
+
+def test_each_box_reads_as_the_answer_its_slot_ticks(session):
+    _asset(
+        session,
+        "1",
+        {
+            "property_kinds": ["condo", "other"],
+            "who": "with_someone",
+            "community": True,
+            "has_personal_info": False,
+            "percent": "25.00",
+        },
+    )
+    _asset(session, "1", {"community": False, "has_personal_info": True})
+
+    def cells(attr):
+        return resolve_binding(f"assets.line_1[].{attr}", session)
+
+    assert cells("kind_condo") == ["true", ""]
+    assert cells("kind_other") == ["true", ""]
+    assert cells("kind_land") == ["", ""]
+    assert cells("who") == ["with_someone", ""]
+    assert cells("community") == ["true", ""]
+    assert cells("has_personal_info") == ["no", "yes"]
+    assert cells("percent") == ["25.00", ""]
+
+
+def test_a_place_on_a_sheet_reads_as_words_on_one_line(session):
+    _asset(
+        session,
+        "1",
+        {
+            "street": "12 Elm St",
+            "street_2": "Apt 2",
+            "city": "Chicago",
+            "state": "IL",
+            "zip": "60601",
+            "county": "Cook",
+            "property_kinds": ["single_family", "other"],
+            "other_kind": "Boat slip",
+            "who": "with_someone",
+            "nature": "Fee simple",
+            "community": True,
+            "other_info": "Inherited",
+        },
+    )
+    _asset(session, "1", {"city": "Joliet", "property_kinds": ["land"], "who": "only_you"})
+
+    def cells(attr):
+        return resolve_binding(f"assets.line_1[].{attr}", session)
+
+    assert cells("where") == ["12 Elm St, Apt 2, Chicago, IL 60601, Cook", "Joliet"]
+    # In the words the form prints beside each box, not the screen's.
+    assert cells("what") == ["Single-family home; Other: Boat slip", "Land"]
+    assert cells("interest") == [
+        "At least one of the debtors and another; Fee simple; Community property; Inherited",
+        "Debtor 1 only",
+    ]
+
+
+def _covering_schema(column):
+    slots = [
+        _field(
+            pdf_field="Make1",
+            source="asked",
+            repeat="ab",
+            repeat_capacity=1,
+            row=1,
+            binding="assets.line_3[].make",
+        ),
+        _field(
+            pdf_field="Who1",
+            source="derived",
+            legal_review=True,
+            repeat="ab",
+            repeat_capacity=1,
+            row=1,
+            binding="assets.line_3[].who",
+        ),
+    ]
+    sheet = SheetSpec("A title", (SheetColumn("Make", "assets.line_3[].make", 100.0), column))
+    group = GroupSpec("ab", None, "3.{n}", {}, (), sheet)
+    return FormSchema("schedule_a_b", "form_b106ab.pdf", "v1", slots, {"ab": group})
+
+
+def test_a_covering_column_stays_blank_while_the_upl_guard_keeps_a_covered_slot_blank(session):
+    # As a plain column whose slots the guard keeps blank is, on the form and on its sheet.
+    _asset(session, "3", {"make": "Honda", "who": "only_you"})
+    _asset(session, "3", {"make": "Volvo", "who": "only_you"})
+    guarded = SheetColumn("Who", "assets.line_3[].interest", 100.0, ("assets.line_3[].who",))
+
+    (sheet,) = resolve_parts(_covering_schema(guarded), session)["parts"][1:]
+
+    assert sheet["rows"] == [{"line": "3.2", "cells": ["Volvo", ""]}]
+
+
+def test_a_covering_column_with_no_slots_of_its_own_prints_its_list(session):
+    _asset(session, "3", {"make": "Honda", "who": "only_you"})
+    _asset(session, "3", {"make": "Volvo", "who": "only_you"}, description="Blue")
+    own = SheetColumn("What", "assets.line_3[].description", 100.0, ())
+
+    (sheet,) = resolve_parts(_covering_schema(own), session)["parts"][1:]
+
+    assert sheet["rows"] == [{"line": "3.2", "cells": ["Volvo", "Blue"]}]
+
+
+def test_a_statement_sheet_stores_a_wider_line_column_as_a_slot_groups_does(session):
+    # E007 measures its lines at the wider column, so the drawing must use that one too.
+    _asset(session, "16", description="Cash", current_value=Decimal("5"))
+    sheet = SheetSpec(
+        "A title", (SheetColumn("Cash", "assets.line_16[].value", 100.0),), line_width=48.0
+    )
+    group = GroupSpec("cash", None, "16.{n}", {}, (), sheet)
+    schema = FormSchema("schedule_a_b", "form_b106ab.pdf", "v1", [], {"cash": group})
+
+    (part,) = resolve_parts(schema, session)["parts"][1:]
+
+    assert part["line_width"] == 48.0

@@ -19,6 +19,21 @@ PROPERTY_KINDS = (
     "timeshare",
     "other",
 )
+# The words the form prints beside each box, for a row on an attached sheet, which has no box.
+WHO_WORDS = {
+    "only_you": "Debtor 1 only",
+    "with_someone": "At least one of the debtors and another",
+}
+PROPERTY_KIND_WORDS = {
+    "single_family": "Single-family home",
+    "duplex": "Duplex or multi-unit building",
+    "condo": "Condominium or cooperative",
+    "manufactured": "Manufactured or mobile home",
+    "land": "Land",
+    "investment": "Investment property",
+    "timeshare": "Timeshare",
+    "other": "Other",
+}
 
 
 @dataclass(frozen=True)

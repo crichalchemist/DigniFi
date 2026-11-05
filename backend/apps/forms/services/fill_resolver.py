@@ -11,6 +11,9 @@ returns its form part.
 
 from __future__ import annotations
 
+import re
+from collections.abc import Callable
+
 from apps.eligibility.cmi import counted_spouse_income, household_members
 from apps.forms.field_index import option_text
 from apps.forms.schema import (
@@ -18,13 +21,27 @@ from apps.forms.schema import (
     FormSchema,
     GroupSpec,
     PageNumberBoxes,
+    SheetSpec,
     is_statement_group,
 )
-from apps.forms.services.derivations import DERIVATIONS, PREDICATES, RULE_FIXES
+from apps.forms.services.derivations import (
+    DERIVATIONS,
+    PREDICATES,
+    RULE_FIXES,
+    _money_or_blank,
+)
 from apps.forms.services.widgets import TemplateWidget, page_count, parse_key, template_widgets
+from apps.intake.asset_lines import (
+    LINE_BY_KEY,
+    PROPERTY_KIND_WORDS,
+    PROPERTY_KINDS,
+    WHO_WORDS,
+    ordered_assets,
+    rows_on,
+)
 from apps.intake.household import RELATIONSHIP_WORDS, dependents
 from apps.intake.income import statement_rows
-from apps.intake.models import FormAnswer, IntakeSession
+from apps.intake.models import AssetInfo, FormAnswer, IntakeSession
 
 
 class UnmappedChoice(Exception):
@@ -42,6 +59,92 @@ _HOUSEHOLD_CELLS = {
     "lives_with_you": lambda lives: "yes" if lives else "no",
 }
 
+
+def _detail(attr: str) -> Callable[[AssetInfo], str]:
+    """A row's answer as typed, blank while it has none."""
+
+    def cell(row: AssetInfo) -> str:
+        value = row.get_details().get(attr)
+        return "" if value is None else str(value)
+
+    return cell
+
+
+def _kind_ticked(kind: str) -> Callable[[AssetInfo], str]:
+    return lambda row: "true" if kind in (row.get_details().get("property_kinds") or []) else ""
+
+
+def _has_personal_info(row: AssetInfo) -> str:
+    answer = row.get_details().get("has_personal_info")
+    return "" if answer is None else ("yes" if answer else "no")
+
+
+def _where(row: AssetInfo) -> str:
+    """A place's address on one line, leaving out what the filer left blank."""
+    details = row.get_details()
+    state_zip = " ".join(filter(None, (details.get("state"), details.get("zip"))))
+    parts = (details.get("street"), details.get("street_2"), details.get("city"))
+    return ", ".join(filter(None, (*parts, state_zip, details.get("county"))))
+
+
+def _what(row: AssetInfo) -> str:
+    """The boxes a place's row ticks, in the form's words; Other with what the filer typed."""
+    details = row.get_details()
+    words = []
+    for kind in details.get("property_kinds") or []:
+        other = details.get("other_kind") if kind == "other" else None
+        words.append(f"Other: {other}" if other else PROPERTY_KIND_WORDS[kind])
+    return "; ".join(words)
+
+
+def _interest(row: AssetInfo) -> str:
+    """Who has an interest in a row, what kind of interest, and what else the filer said."""
+    details = row.get_details()
+    parts = (
+        WHO_WORDS.get(details.get("who")),
+        details.get("nature"),
+        "Community property" if details.get("community") else None,
+        details.get("other_info"),
+    )
+    return "; ".join(filter(None, parts))
+
+
+# What a Schedule A/B row prints as, by attribute (3b spec §8). A box's cell is the answer its
+# slot's choices take; where, what and interest are the words a sheet prints for several boxes.
+ASSET_CELLS: dict[str, Callable[[AssetInfo], str]] = {
+    "description": lambda row: row.description or "",
+    "value": lambda row: _money_or_blank(row.current_value),
+    "entire": lambda row: _money_or_blank(row.entire_value),
+    **{
+        attr: _detail(attr)
+        for attr in (
+            "who",
+            "nature",
+            "other_info",
+            "street",
+            "street_2",
+            "city",
+            "state",
+            "zip",
+            "county",
+            "other_kind",
+            "make",
+            "model",
+            "year",
+            "mileage",
+            "percent",
+            "beneficiary",
+        )
+    },
+    "has_personal_info": _has_personal_info,
+    "community": lambda row: "true" if row.get_details().get("community") else "",
+    **{f"kind_{kind}": _kind_ticked(kind) for kind in PROPERTY_KINDS},
+    "where": _where,
+    "what": _what,
+    "interest": _interest,
+}
+_ASSET_BINDING = re.compile(r"assets\.line_(\d+)(?:_(\w+))?\[\]\.(\w+)")
+
 # Single-box answers, compared case-insensitively (spec §5.1).
 _TICK = {"yes", "y", "true", "1", "on"}
 _NO_TICK = {"no", "n", "false", "0", "off", ""}
@@ -55,6 +158,8 @@ def resolve_binding(binding: str, session: IntakeSession) -> str | list[str]:
       - "sofa.<collection>[].<attr>" → list of str over the collection
       - "sofa.<attr>" → scalar str on the SOFAReport
       - "household.dependents[].<attr>" → list of str over Schedule J line 2's dependents
+      - "assets.line_<key>[].<attr>" or "assets.line_<key>_<kind>[].<attr>" → list of str over
+        that line's Schedule A/B rows, or those of that kind, in the form's order
     """
     binding = binding.strip()
 
@@ -92,6 +197,18 @@ def resolve_binding(binding: str, session: IntakeSession) -> str | list[str]:
         if filer is None:
             return []
         return [row[attr] for row in statement_rows(filer, counted_spouse_income(session))]
+
+    if binding.startswith("assets."):
+        match = _ASSET_BINDING.fullmatch(binding)
+        key, kind, attr = match.groups() if match else (None, None, None)
+        line = LINE_BY_KEY.get(key)
+        if (
+            line is None
+            or attr not in ASSET_CELLS
+            or (kind is not None and kind not in dict(line.kinds))
+        ):
+            raise ValueError(f"unrecognized binding: {binding!r}")
+        return [ASSET_CELLS[attr](row) for row in rows_on(ordered_assets(session), key, kind)]
 
     raise ValueError(f"unrecognized binding: {binding!r}")
 
@@ -156,6 +273,8 @@ def binding_fix(binding: str) -> dict[str, str]:
         return {"page": "/sofa"}
     if binding.startswith(("household.", "income.")):
         return {"step": "income_info"}
+    if binding.startswith("assets."):
+        return {"step": "assets"}
     # A constant or a signature: a refusal there is DigniFi's defect, not the filer's.
     return {}
 
@@ -297,6 +416,11 @@ def _copies(
     return copies
 
 
+def _line_width(sheet: SheetSpec) -> dict[str, float]:
+    """A sheet part's line_width: only one that isn't 36 pt, so older documents stay as filed."""
+    return {} if sheet.line_width == SheetSpec.line_width else {"line_width": sheet.line_width}
+
+
 def _sheet(
     group: GroupSpec,
     fields: list[FieldSpec],
@@ -313,15 +437,25 @@ def _sheet(
     labelled with its line, the group's number for its position, and a cell per column,
     the column's binding for that row as the group's slot of that binding prints it; a box's
     answer prints as the words the form prints beside the box it ticks (the field index's
-    `option_text`). A column whose slots the UPL guard keeps blank is blank, as on the form
-    and its copies.
-    The sheet carries the filer's name for its header (R23), and its title and its columns'
-    labels and widths (R63), so a filed sheet redraws as it was filed.
+    `option_text`). A column that covers slots prints its own list, already in words. A column
+    whose slots the UPL guard keeps blank is blank, as on the form and its copies.
+    The sheet carries the filer's name for its header (R23), and its title, its columns'
+    labels and widths and any wider line column (R63), so a filed sheet redraws as it was filed.
     """
+    covering = {
+        column.label: resolve_binding(column.binding, session)
+        for column in group.sheet.columns
+        if column.covers is not None
+    }
     rows = []
     for position in range(capacity + 1, actual + 1):
         cells = []
         for column in group.sheet.columns:
+            if column.covers is not None:
+                covered = [f for f in fields if f.binding in column.covers]
+                shown = all(f in printed for f in covered)
+                cells.append(covering[column.label][position - 1] if shown else "")
+                continue
             slots = [f for f in fields if f.binding == column.binding]  # one at least: E007
             emitted = None
             if all(f in printed for f in slots):
@@ -339,6 +473,7 @@ def _sheet(
         "columns": [{"label": c.label, "width": c.width} for c in group.sheet.columns],
         "name": name,
         "rows": rows,
+        **_line_width(group.sheet),
     }
 
 
@@ -358,7 +493,8 @@ def resolve_parts(schema: FormSchema, session: IntakeSession) -> dict:
     or on the attached sheet it declares (3a2 spec §5.3, R23, R63), one part for all of them:
     {"kind": "sheet", "group": <group>, "title": <its title>,
     "columns": [{"label": str, "width": <points>}], "name": <the filer's full name>,
-    "rows": [{"line": "3.5", "cells": [<one per column>]}]}.
+    "rows": [{"line": "3.5", "cells": [<one per column>]}]}, plus "line_width": <points> only
+    when the sheet's isn't 36.
     """
     out: dict[str, str] = {}
 
@@ -471,6 +607,7 @@ def resolve_parts(schema: FormSchema, session: IntakeSession) -> dict:
                         {"line": group.number.format(n=i), "cells": [col[i - 1] for col in columns]}
                         for i in range(1, len(columns[0]) + 1)
                     ],
+                    **_line_width(group.sheet),
                 }
             )
     return {"version": 2, "parts": [{"kind": "form", "values": out}, *copies, *sheets]}

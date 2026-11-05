@@ -10,6 +10,7 @@ page 3.
 import json
 import re
 import unicodedata
+from decimal import Decimal
 from io import BytesIO, StringIO
 from pathlib import Path
 
@@ -20,6 +21,7 @@ from django.conf import settings
 from django.db import connection
 from django.test.utils import CaptureQueriesContext
 
+from apps.forms.checks import validate_form
 from apps.forms.registry import build_parts, get_all_form_types
 from apps.forms.schema import load_schema
 from apps.forms.services import sheets
@@ -29,6 +31,7 @@ from apps.forms.services.pdf_filler import PDFFormFiller, UnprintableLetter, Val
 from apps.forms.services.sheets import draw_sheet, plan_sheet, sheet_spec
 from apps.forms.services.text_fit import font_for
 from apps.forms.tests.pdf_readback import read_drawn, read_sheets
+from apps.intake.models import AssetInfo
 
 MAKES = ["Honda", "Toyota", "Subaru", "Mazda", "Volvo", "Kia", "Saab", "Fiat"]
 SLOTS = {  # line 3's boxes: (make, value), 3.1 to 3.4
@@ -585,3 +588,193 @@ def test_a_form_reads_the_household_once(
     with CaptureQueriesContext(connection) as queries:
         resolve_parts(schema, session)
     assert sum('FROM "household"' in q["sql"] for q in queries.captured_queries) == 1
+
+
+def _spans(part):
+    """Each piece of text a sheet part draws on its first page, and where."""
+    page = pymupdf.open("pdf", draw_sheet(sheet_spec(part), part))[0]
+    return [
+        (span["text"], round(span["origin"][0], 2), round(span["origin"][1], 2))
+        for block in page.get_text("dict")["blocks"]
+        for line in block.get("lines", [])
+        for span in line["spans"]
+    ]
+
+
+# The positions the code printed before a sheet could widen its line column: a document
+# filed then has to redraw exactly so.
+_FILED_BEFORE_LINE_WIDTH = [
+    ("Maria Torres", 54.0, 64.75),
+    ("Official Form 106A/B, Schedule A/B: Property (attached sheet)", 54.0, 78.49),
+    ("Case number (if known)", 54.0, 92.23),
+    ("Make", 92.0, 119.71),
+    ("Current value of the portion you own", 392.0, 119.71),
+    ("3.5", 56.0, 139.45),
+    ("Volvo", 92.0, 139.45),
+    ("500.00", 392.0, 139.45),
+]
+
+
+def test_a_sheet_without_a_line_width_stores_none_and_draws_as_before(session, creditor_payments):
+    creditor_payments(session, 5, MAKES)
+
+    part = build_parts("schedule_a_b", session)["parts"][1]
+
+    assert list(part) == ["kind", "group", "title", "columns", "name", "rows"]
+    assert sheet_spec(part).line_width == 36.0
+    assert _spans(part) == _FILED_BEFORE_LINE_WIDTH
+
+
+def _edit_ab(schemas, change):
+    path = schemas / "schedule_a_b.json"
+    schema = json.loads(path.read_text())
+    change(schema)
+    path.write_text(json.dumps(schema))
+    load_schema.cache_clear()
+
+
+def test_a_sheet_that_widens_its_line_column_stores_its_width_and_prints_its_lines(
+    session, creditor_payments, schedule_a_b_with_sheet
+):
+    def widen(schema):
+        group = schema["groups"]["ab_line_3"]
+        group["number"] = "17.{n}"
+        group["sheet"]["line_width"] = 48
+        group["sheet"]["columns"][0]["width"] = 288
+
+    _edit_ab(schedule_a_b_with_sheet, widen)
+    creditor_payments(session, 5, MAKES)
+
+    document = build_parts("schedule_a_b", session)
+    part = document["parts"][1]
+
+    assert part["line_width"] == 48.0
+    PDFFormFiller().check("schedule_a_b", document)
+    (page,) = read_sheets(draw_sheet(sheet_spec(part), part), sheet_spec(part))
+    assert page.rows == (("17.5", "Volvo", "500.00"),)
+    assert page.crossing == ()
+
+
+def test_a_filed_sheet_redraws_at_its_stored_line_width(schedule_a_b_with_sheet):
+    # This schedule's schema declares no line_width: the part decides (R63).
+    part = {
+        **_sheet_part([{"line": "17.9999", "cells": ["Volvo", "500.00"]}]),
+        "columns": [COLUMNS[0] | {"width": 288.0}, COLUMNS[1]],
+        "line_width": 48.0,
+    }
+
+    plan_sheet("schedule_a_b", sheet_spec(part), part)
+    assert _spans(part)[3:] == [
+        ("Make", 104.0, 119.71),
+        ("Current value of the portion you own", 392.0, 119.71),
+        ("17.9999", 56.0, 139.45),
+        ("Volvo", 104.0, 139.45),
+        ("500.00", 392.0, 139.45),
+    ]
+    # The same line in a part with no width doesn't fit, whatever the schema says later.
+    del part["line_width"]
+    with pytest.raises(ValueError, match="doesn't fit the line column"):
+        plan_sheet("schedule_a_b", sheet_spec(part), part)
+
+
+_MAKE_OF_A_ROW = "assets.line_3[].make"
+_VALUE_OF_A_ROW = "assets.line_3[].value"
+_COMMUNITY_BOXES = [
+    (1, "Check if this is community property see"),
+    (2, "Check if this is community property see_2"),
+    (3, "Check if this is community property see_3"),
+    (4, "Check if this is community property see_4"),
+]
+
+
+@pytest.fixture
+def line_3_of_asset_rows(schedule_a_b_with_sheet):
+    """The synthetic group as Schedule A/B binds it: real rows, a community box, a words column."""
+
+    def bind_to_assets(schema):
+        slots = [f for f in schema["fields"] if f["repeat"] == "ab_line_3"]
+        for slot in slots:
+            slot["binding"] = (
+                _MAKE_OF_A_ROW if slot["binding"].endswith("creditor_name") else _VALUE_OF_A_ROW
+            )
+        for row, box in _COMMUNITY_BOXES:
+            on_row = next(slot for slot in slots if slot["row"] == row)
+            schema["fields"].append(
+                {
+                    **on_row,
+                    "pdf_field": box,
+                    "type": "checkbox",
+                    "choices": {"true": "/On"},
+                    "binding": "assets.line_3[].community",
+                }
+            )
+        group = schema["groups"]["ab_line_3"]
+        group["sheet"]["line_width"] = 48
+        group["sheet"]["columns"] = [
+            {"label": "Make", "binding": _MAKE_OF_A_ROW, "width": 120},
+            {"label": "Portion", "binding": _VALUE_OF_A_ROW, "width": 80},
+            {
+                "label": "Who has an interest",
+                "binding": "assets.line_3[].interest",
+                "covers": ["assets.line_3[].community"],
+                "width": 256,
+            },
+        ]
+
+    _edit_ab(schedule_a_b_with_sheet, bind_to_assets)
+    return schedule_a_b_with_sheet
+
+
+def _vehicle(session, n, **details):
+    row = AssetInfo(
+        session=session, ab_line="3", current_value=Decimal(f"{n}00.00"), entire_value=None
+    )
+    row.set_details({"make": MAKES[n - 1], **details})
+    row.save()
+
+
+def test_a_covering_column_prints_its_words_on_each_row_past_the_slots(
+    session, line_3_of_asset_rows
+):
+    assert validate_form("schedule_a_b") == []
+    for n in range(1, 5):
+        _vehicle(session, n, who="only_you", community=n == 1)
+    _vehicle(session, 5, who="with_someone", community=True, other_info="Leased")
+    _vehicle(session, 6, who="only_you")
+
+    form, part = resolve_parts(load_schema("schedule_a_b"), session)["parts"]
+
+    # The form ticks its own box for a row on a slot, and only there.
+    assert form["values"]["Check if this is community property see"] == "/On"
+    assert "Check if this is community property see_2" not in form["values"]
+    # A row past the slots has no box to tick, so its words say it.
+    assert part["rows"] == [
+        {
+            "line": "3.5",
+            "cells": [
+                "Volvo",
+                "500.00",
+                "At least one of the debtors and another; Community property; Leased",
+            ],
+        },
+        {"line": "3.6", "cells": ["Kia", "600.00", "Debtor 1 only"]},
+    ]
+    plan_sheet("schedule_a_b", sheet_spec(part), part)
+    (page,) = read_sheets(draw_sheet(sheet_spec(part), part), sheet_spec(part))
+    assert page.crossing == ()
+    assert page.rows[1] == ("3.6", "Kia", "600.00", "Debtor 1 only")
+
+
+def test_a_letter_in_a_covering_column_is_refused_with_a_link_to_the_assets_step(
+    session, line_3_of_asset_rows
+):
+    for n in range(1, 5):
+        _vehicle(session, n)
+    _vehicle(session, 5, other_info="Wąs")
+
+    _, part = resolve_parts(load_schema("schedule_a_b"), session)["parts"]
+
+    with pytest.raises(UnprintableLetter) as refused:
+        plan_sheet("schedule_a_b", sheet_spec(part), part)
+    assert "“Who has an interest”" in str(refused.value)
+    assert (refused.value.step, refused.value.page) == ("assets", None)

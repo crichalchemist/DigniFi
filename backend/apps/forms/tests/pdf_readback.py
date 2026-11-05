@@ -21,7 +21,7 @@ from django.conf import settings
 from pypdf.generic import ArrayObject, NameObject
 
 from apps.forms.schema import SheetSpec, load_schema
-from apps.forms.services.sheets import LINE_WIDTH, MARGIN
+from apps.forms.services.sheets import MARGIN
 from apps.forms.services.widgets import TemplateWidget, page_count, template_widgets, widget_for
 
 _BOXES = ("CheckBox", "RadioButton")
@@ -224,14 +224,14 @@ class SheetPage:
 def read_sheets(pdf_bytes: bytes, spec: SheetSpec) -> list[SheetPage]:
     """
     Each attached sheet page of a drawn form, read under the columns of `spec`: the line
-    column's 36 pt from the left margin (0.75 in), then the group's columns, each as wide
+    column's width from the left margin (0.75 in), then the group's columns, each as wide
     as declared. A character belongs to the column its centre lies in, and to the line of
     its baseline. A row starts at each line that prints a line number, and takes every line
     down to the next; a cell's lines, like a label's, are joined with spaces in `rows` and
     kept apart in `lines`. A character's box is MuPDF's, from its font's ascender to its
     descender.
     """
-    edges = [MARGIN, MARGIN + LINE_WIDTH]
+    edges = [MARGIN, MARGIN + spec.line_width]
     for column in spec.columns:
         edges.append(edges[-1] + column.width)
     pages = []
