@@ -498,29 +498,50 @@ class AssetInfoSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["id", "asset_type", "created_at", "updated_at"]
 
+    def _stored_row(self, attrs):
+        """The row this save updates: the instance, or a nested row's stored row by id."""
+        if self.instance is not None:
+            return self.instance
+        row_id = attrs.get("id")
+        session = getattr(getattr(self.parent, "parent", None), "instance", None)
+        if row_id is None or session is None:
+            return None
+        return AssetInfo.objects.filter(pk=row_id, session=session).first()
+
     def validate(self, attrs):
-        line_key = (
-            attrs["ab_line"] if "ab_line" in attrs else getattr(self.instance, "ab_line", None)
-        )
-        if self.line_required and self.instance is None and not attrs.get("ab_line"):
-            raise serializers.ValidationError({"ab_line": "Say which line this is on."})
-        details = attrs.get("details")
-        if details is not None:
-            kind = details.get("kind")
-            if kind:
-                line = LINE_BY_KEY.get(line_key)
-                if line is None or kind not in dict(line.kinds):
-                    raise serializers.ValidationError(
-                        {"details": {"kind": "That kind isn't on this line."}}
-                    )
-            # A figure sent with its "I don't know the value" flag keeps the figure.
-            for flag, figure in (
-                ("value_unknown", "current_value"),
-                ("entire_unknown", "entire_value"),
+        stored = self._stored_row(attrs)
+        if self.line_required:
+            # The per-item path never makes (or turns a row into) an old row with no line.
+            creating = self.instance is None
+            if (creating and not attrs.get("ab_line")) or (
+                "ab_line" in attrs and not attrs["ab_line"]
             ):
-                sent = attrs[figure] if figure in attrs else getattr(self.instance, figure, None)
-                if sent is not None and details.get(flag):
-                    details[flag] = False
+                raise serializers.ValidationError({"ab_line": "Say which line this is on."})
+        line_key = attrs["ab_line"] if "ab_line" in attrs else getattr(stored, "ab_line", None)
+        details_sent = attrs.get("details") is not None
+        if details_sent:
+            details = attrs["details"]
+        else:
+            details = stored.get_details() if stored is not None else {}
+        # A kind must sit on the row's line, whichever of the two a save changes.
+        kind = details.get("kind")
+        if kind and (details_sent or "ab_line" in attrs):
+            line = LINE_BY_KEY.get(line_key)
+            if line is None or kind not in dict(line.kinds):
+                raise serializers.ValidationError(
+                    {"details": {"kind": "That kind isn't on this line."}}
+                )
+        # A figure sent (or already stored) with its "I don't know the value" flag keeps the figure.
+        changed = details_sent
+        for flag, figure in (
+            ("value_unknown", "current_value"),
+            ("entire_unknown", "entire_value"),
+        ):
+            sent = attrs[figure] if figure in attrs else getattr(stored, figure, None)
+            if sent is not None and details.get(flag):
+                details[flag] = False
+                changed = True
+        if changed:
             attrs["details"] = json.dumps(details)
         return attrs
 

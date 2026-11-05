@@ -214,3 +214,69 @@ def test_old_rows_survive_a_save_that_sends_them_back(filer_session):
     assert (old.ab_line, old.asset_type, old.description) == (None, "vehicle", "2015 Civic")
     assert old.current_value == Decimal("4000.00")
     assert AssetInfo.objects.count() == 1
+
+
+def _stored(session, **fields):
+    return AssetInfo.objects.create(session=session, asset_type="other", **fields)
+
+
+def test_moving_a_row_to_a_line_that_lacks_its_kind_is_a_400(filer_session):
+    client, session = filer_session
+    row = _stored(session, ab_line="17", details='{"kind": "checking"}')
+
+    response = client.patch(f"/api/intake/assets/{row.pk}/", {"ab_line": "21"}, format="json")
+
+    assert response.status_code == 400
+    row.refresh_from_db()
+    assert row.ab_line == "17"
+
+
+def test_a_nested_row_sent_with_only_a_new_line_cannot_lose_its_kind_slot(filer_session):
+    client, session = filer_session
+    row = _stored(session, ab_line="17", details='{"kind": "checking"}')
+
+    response = client.patch(
+        _url(session), {"assets": [{"id": row.pk, "ab_line": "21"}]}, format="json"
+    )
+
+    assert response.status_code == 400
+    row.refresh_from_db()
+    assert row.ab_line == "17"
+
+
+def test_a_figure_alone_clears_the_stored_unknown_flag(filer_session):
+    client, session = filer_session
+    row = _stored(session, ab_line="6", details='{"value_unknown": true}')
+
+    response = client.patch(
+        f"/api/intake/assets/{row.pk}/", {"current_value": "5.00"}, format="json"
+    )
+
+    assert response.status_code == 200
+    row.refresh_from_db()
+    assert row.current_value == Decimal("5.00")
+    assert row.get_details()["value_unknown"] is False
+
+
+def test_a_nested_figure_alone_clears_the_stored_unknown_flag(filer_session):
+    client, session = filer_session
+    row = _stored(session, ab_line="6", details='{"value_unknown": true}')
+
+    response = client.patch(
+        _url(session), {"assets": [{"id": row.pk, "current_value": "5.00"}]}, format="json"
+    )
+
+    assert response.status_code == 200
+    row.refresh_from_db()
+    assert row.get_details()["value_unknown"] is False
+
+
+def test_per_item_update_cannot_strip_a_rows_line(filer_session):
+    client, session = filer_session
+    row = _stored(session, ab_line="6")
+
+    response = client.patch(f"/api/intake/assets/{row.pk}/", {"ab_line": None}, format="json")
+
+    assert response.status_code == 400
+    row.refresh_from_db()
+    assert row.ab_line == "6"
