@@ -58,7 +58,13 @@ def copy_back(apps, schema_editor):
             row = AssetInfo.objects.get(pk=pk)
             for name in FIELDS:
                 setattr(row, name, getattr(row, f"{name}_encrypted") or "")
-            row.save(update_fields=FIELDS)
+            # A row saved after 3b has no type and may have no value; the columns return to
+            # NOT NULL when 0032 is undone, so give them the spec's "no type" and a $0 value.
+            if row.asset_type is None:
+                row.asset_type = ""
+            if row.current_value is None:
+                row.current_value = 0
+            row.save(update_fields=[*FIELDS, "asset_type", "current_value"])
 
 
 class Migration(migrations.Migration):

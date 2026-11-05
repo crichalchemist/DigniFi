@@ -809,6 +809,8 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
+        # AssetInfo has no Meta.ordering (the line is ciphertext), so a read is by id.
+        data["assets"] = sorted(data["assets"], key=lambda row: row["id"])
         for name, rows in getattr(instance, "sent_rows", {}).items():
             data[name] = self.fields[name].to_representation(rows)
         return data

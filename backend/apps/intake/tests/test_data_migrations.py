@@ -814,3 +814,31 @@ def test_encrypting_asset_descriptions_keeps_every_saved_asset_both_ways_on_post
     after, undone = _run_and_undo_the_asset_encryption(migrate)
     _check_asset_round_trip(after, undone)
     assert description_type() == "character varying"
+
+
+def _undo_with_a_row_saved_after_3b(migrate):
+    apps = migrate(ASSETS_ENCRYPTED)
+    apps.get_model("intake", "AssetInfo").objects.create(
+        session_id=_session(apps).pk,
+        description="Harborline checking",
+        ab_line="17",
+        asset_type=None,
+        current_value=None,
+    )
+    old = migrate(APPLICATION_DROPPED)
+    return old.get_model("intake", "AssetInfo").objects.get()
+
+
+@pytest.mark.slow
+def test_undoing_the_asset_encryption_keeps_a_row_saved_after_3b_with_no_type_or_value(migrate):
+    row = _undo_with_a_row_saved_after_3b(migrate)
+    assert row.description == "Harborline checking"
+    assert row.asset_type == ""
+    assert row.current_value == Decimal("0")
+
+
+@pytest.mark.postgres
+@ON_POSTGRES
+def test_undoing_the_asset_encryption_keeps_a_row_saved_after_3b_on_postgres(migrate):
+    row = _undo_with_a_row_saved_after_3b(migrate)
+    assert (row.asset_type, row.current_value) == ("", Decimal("0"))

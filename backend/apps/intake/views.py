@@ -632,7 +632,11 @@ class AssetViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         """Return only assets for user's intake sessions."""
-        return AssetInfo.objects.filter(session__user=self.request.user).select_related("session")
+        return (
+            AssetInfo.objects.filter(session__user=self.request.user)
+            .select_related("session")
+            .order_by("pk")
+        )
 
     @transaction.atomic
     def perform_create(self, serializer):
