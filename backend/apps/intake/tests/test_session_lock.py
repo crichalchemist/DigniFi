@@ -438,6 +438,30 @@ def test_a_row_moved_to_another_session_while_its_update_waited_is_not_found(rea
     assert update_waited, "the update ran while the save was in progress"
 
 
+def test_an_asset_moved_to_another_session_while_its_update_waited_is_not_found(ready):
+    # Validation reads the stored row, so it must not run on a row whose new session this
+    # request never locked (and locking that session now would break id order).
+    user, session = ready
+    other = IntakeSession.objects.create(user=user, district=session.district)
+    asset = _rows(session)["asset"]
+
+    with transaction.atomic():
+        lock_session(session.pk)
+        AssetInfo.objects.filter(pk=asset.pk).update(session=other)  # a move by another request
+        updating, outcome = _on_its_own_thread(
+            lambda: _client(user).patch(
+                f"/api/intake/assets/{asset.pk}/", {"current_value": "10.00"}, format="json"
+            )
+        )
+        update_waited = _waits_on_a_lock(updating)
+    response = _finished(updating, outcome)
+
+    assert response.status_code == 404
+    moved = AssetInfo.objects.get(pk=asset.pk)
+    assert (moved.session_id, moved.current_value) == (other.pk, Decimal("5000.00"))
+    assert update_waited, "the update ran while the save was in progress"
+
+
 def _rows(session):
     """One stored row of each kind a write below changes."""
     bill = UploadedDocument.objects.create(

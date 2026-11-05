@@ -655,6 +655,8 @@ class AssetViewSet(viewsets.ModelViewSet):
         in id order: the row's, and the one a move names when it is the filer's own (DIG-188).
         get_object comes first: another user's row is a 404.
         """
+        from rest_framework.exceptions import NotFound
+
         row = self.get_object()
         locked = {row.session_id}
         target = request.data.get("session")
@@ -666,6 +668,9 @@ class AssetViewSet(viewsets.ModelViewSet):
             )
         for session_id in sorted(locked):
             lock_session(session_id)
+        # Moved or deleted while the locks were awaited: its new session is not locked here.
+        if not AssetInfo.objects.filter(pk=row.pk, session_id__in=locked).exists():
+            raise NotFound()
         return super().update(request, *args, **kwargs)
 
     @transaction.atomic
