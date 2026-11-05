@@ -190,7 +190,7 @@ def _row_is_complete(line: Line, row) -> bool:
         return not _blank(details.get("make"))
     if shape == "item_question":
         answer = details.get("has_personal_info")
-        return answer is not None and (answer is False or has_text)
+        return answer is not None and (answer is False or has_text) and has_value
     if line.kinds and not details.get("kind"):
         return False
     if shape == "named_share" and details.get("percent") is None:
@@ -228,7 +228,8 @@ def asset_step_gaps(session) -> list[AssetStepGap]:
             if on_line:
                 gaps.append(
                     AssetStepGap(
-                        f"Line {key} says No, but it still lists something. Remove it, or change the answer to Yes."
+                        f"Line {key} is under line {line.gate}, which isn't answered Yes. "
+                        f"Remove what line {key} lists, or answer line {line.gate} Yes."
                     )
                 )
             continue

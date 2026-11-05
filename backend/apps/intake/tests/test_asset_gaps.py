@@ -99,8 +99,33 @@ def test_a_row_under_a_gate_answered_no_is_refused(session):
     _row(session, "38", "Pallets")
 
     assert _gaps(session) == [
-        "Line 38 says No, but it still lists something. Remove it, or change the answer to Yes."
+        "Line 38 is under line 37, which isn't answered Yes. "
+        "Remove what line 38 lists, or answer line 37 Yes."
     ]
+
+
+def test_a_row_under_an_unanswered_gate_names_the_gate_not_a_no(session):
+    # The filer cannot reach line 38 to change its answer; the sentence points at line 37.
+    AssetLineAnswers.objects.create(session=session, answers="{}")
+    _row(session, "47", "Pallets")
+
+    assert (
+        "Line 47 is under line 46, which isn't answered Yes. "
+        "Remove what line 47 lists, or answer line 46 Yes."
+    ) in _gaps(session)
+
+
+def test_line_43_yes_with_no_value_is_refused_until_the_value_or_its_flag(session):
+    # A sworn Yes must not print with a blank amount nobody marked unknown.
+    _answer(session, "37", "43")
+    row = _row(session, "43", "Names and SSNs", None, has_personal_info=True)
+
+    assert _gaps(session) == ['Line 43 needs more about "Names and SSNs" on the Assets step.']
+
+    row.set_details({"has_personal_info": True, "value_unknown": True})
+    row.save()
+
+    assert _gaps(session) == []
 
 
 def test_yes_to_a_gate_with_every_line_under_it_no_is_refused(session):
@@ -155,6 +180,8 @@ INCOMPLETE = [
     ("31", {}, "", "5.00", None),
     ("43", {}, "", "5.00", None),
     ("43", {"has_personal_info": True}, "", "5.00", None),
+    ("43", {"has_personal_info": False}, "", None, None),
+    ("43", {"has_personal_info": True}, "Names and SSNs", None, None),
 ]
 
 
