@@ -179,6 +179,18 @@ def test_each_property_question_answers_yes_only_for_the_kind_listed(session, as
     }
 
 
+def test_a_boat_on_line_4_does_not_answer_yes_to_the_cars_question_on_line_3(session):
+    # Line 3 asks about cars, vans and motorcycles; a filer whose only vehicle is a
+    # line 4 boat must not swear to owning one.
+    AssetInfo.objects.create(
+        session=session, ab_line="4", description="Fishing boat", current_value=Decimal("1.00")
+    )
+
+    printed = resolve(load_schema("schedule_a_b"), session)
+
+    assert printed["Check 3"] == "/no"
+
+
 def test_other_property_is_described_in_the_order_the_filer_listed_it(session):
     # The values run against the order listed, so an order by value can't pass, and the
     # stored order follows the encrypted value (DIG-164): only the id is the filer's order.

@@ -841,7 +841,7 @@ DERIVATIONS: dict[str, Callable[[IntakeSession], str]] = {
     "total_business_property": _total_business_property,
     "total_farm_property": _total_farm_property,
     "has_real_property": lambda s: _yes_if_on_lines(s, "1"),
-    "has_vehicles": lambda s: _yes_if_on_lines(s, "3", "4"),
+    "has_vehicles": lambda s: _yes_if_on_lines(s, "3"),
     "has_bank_accounts": lambda s: _yes_if_on_lines(s, "17"),
     "has_retirement_accounts": lambda s: _yes_if_on_lines(s, "21"),
     "has_other_assets": lambda s: _yes_if_on_lines(s, "53"),
