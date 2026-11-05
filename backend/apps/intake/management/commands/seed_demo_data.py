@@ -5,6 +5,7 @@ means test calculator and form generation pipeline.  SSNs use the
 IRS-reserved 900-xx range so they can never collide with real data.
 """
 
+import json
 from collections.abc import Callable
 from datetime import date
 from decimal import Decimal
@@ -19,8 +20,10 @@ from apps.eligibility.cmi import income_window
 from apps.eligibility.models import MEDIAN_TABLE
 from apps.eligibility.services.means_test_calculator import MeansTestCalculator
 from apps.forms.registry import build_field_values, packet
+from apps.intake.asset_lines import shown_lines
 from apps.intake.models import (
     AssetInfo,
+    AssetLineAnswers,
     DebtInfo,
     DebtorInfo,
     ExpenseInfo,
@@ -50,6 +53,42 @@ def _wages_only(wages: Decimal) -> dict:
     amounts["monthly_gross_wages"] = wages
     amounts.update(_no_business_and_no_assistance())
     return amounts
+
+
+def _asset(line: str, value, description: str = "", entire=None, owed="0.00", **details) -> dict:
+    """One Schedule A/B row as the Assets step saves it: its line, the filer's text and values."""
+    return {
+        "ab_line": line,
+        "details": details,
+        "description": description,
+        "current_value": None if value is None else Decimal(str(value)),
+        "entire_value": None if entire is None else Decimal(str(entire)),
+        "amount_owed": Decimal(owed),
+    }
+
+
+def _car(value, entire, make, model, year, miles, who="only_you", owed="0.00", **more) -> dict:
+    """A line 3 row: the two values, the make and model, and who has an interest."""
+    return _asset(
+        "3",
+        value,
+        entire=entire,
+        owed=owed,
+        make=make,
+        model=model,
+        year=year,
+        mileage=miles,
+        who=who,
+        **more,
+    )
+
+
+def _asset_lines(assets: list[dict], *yes: str) -> dict:
+    """The Yes and No on every line shown: Yes where a row sits (and on any gate named), else No."""
+    answers = dict.fromkeys({row["ab_line"] for row in assets} | set(yes), "yes")
+    for line in shown_lines(answers):
+        answers.setdefault(line.key, "no")
+    return answers
 
 
 # ── Persona data functions ──────────────────────────────────────────
@@ -121,19 +160,14 @@ def _maria_torres() -> dict:
             "other_expenses_specify": "School supplies and fees",
         },
         "assets": [
-            {
-                "asset_type": "vehicle",
-                "description": "2015 Honda Civic",
-                "current_value": Decimal("6500.00"),
-                "amount_owed": Decimal("0.00"),
-            },
-            {
-                "asset_type": "bank_account",
-                "description": "Chase checking account",
-                "current_value": Decimal("340.00"),
-                "amount_owed": Decimal("0.00"),
-                "financial_institution": "JPMorgan Chase",
-            },
+            _car(6500, 6500, "Honda", "Civic", "2015", "120000"),
+            _asset("6", 600, "Beds, sofa, kitchen table, dishes"),
+            _asset("7", 200, "Old laptop, cell phone, 32-inch TV"),
+            _asset("11", 250, "Everyday clothes and shoes"),
+            _asset("16", 40),
+            _asset("17", 340, "JPMorgan Chase", kind="checking"),
+            # Her insurance policy has no cash value: typed $0, not left blank.
+            _asset("31", 0, "Insurance policy"),
         ],
         "debts": [
             {
@@ -254,19 +288,12 @@ def _james_washington() -> dict:
             "other_expenses_specify": "Work boots and small tools for my job",
         },
         "assets": [
-            {
-                "asset_type": "vehicle",
-                "description": "2019 Toyota Camry",
-                "current_value": Decimal("14000.00"),
-                "amount_owed": Decimal("8500.00"),
-            },
-            {
-                "asset_type": "bank_account",
-                "description": "Bank of America checking",
-                "current_value": Decimal("1200.00"),
-                "amount_owed": Decimal("0.00"),
-                "financial_institution": "Bank of America",
-            },
+            _car(14000, 14000, "Toyota", "Camry", "2019", "78000", owed="8500.00"),
+            _asset("6", 500, "Bed, couch, table, kitchenware (secondhand)"),
+            _asset("7", 400, "TV, laptop, cell phone"),
+            _asset("11", 300, "Everyday clothes and work clothes"),
+            _asset("16", 40),
+            _asset("17", 1200, "Bank of America", kind="checking"),
         ],
         "debts": [
             {
@@ -371,13 +398,17 @@ def _priya_sharma() -> dict:
             "other_expenses_specify": "Children's after-school activities",
         },
         "assets": [
-            {
-                "asset_type": "bank_account",
-                "description": "Joint savings account",
-                "current_value": Decimal("8500.00"),
-                "amount_owed": Decimal("0.00"),
-                "financial_institution": "Chase",
-            },
+            _car(20500, 20500, "Honda", "CR-V EX", "2021", "41000"),
+            _asset("6", 2500, "Household goods and furniture"),
+            _asset("7", 1500, "Family laptop, two phones, TV"),
+            _asset("11", 800, "Clothes"),
+            _asset("12", 1200, "Wedding and engagement rings"),
+            # Both joint accounts: the whole balance is her portion (her answer).
+            _asset("17", 1900, "JPMorgan Chase", kind="checking"),
+            _asset("17", 8500, "JPMorgan Chase", kind="savings"),
+            _asset("21", 31000, "Vanguard", kind="401k"),
+            _asset("31", 0, "Term life insurance", beneficiary="Spouse"),
+            _asset("31", 0, "Long-term disability insurance"),
         ],
         "debts": [
             {
@@ -461,25 +492,29 @@ def _deshawn_mitchell() -> dict:
             "other_expenses_specify": "Printer ink, paper and postage",
         },
         "assets": [
-            {
-                "asset_type": "real_property",
-                "description": "Single-family home, 7823 S Sangamon",
-                "current_value": Decimal("180000.00"),
-                "amount_owed": Decimal("160000.00"),
-            },
-            {
-                "asset_type": "vehicle",
-                "description": "2012 Ford F-150",
-                "current_value": Decimal("8000.00"),
-                "amount_owed": Decimal("0.00"),
-            },
-            {
-                "asset_type": "retirement_account",
-                "description": "401(k) through employer",
-                "current_value": Decimal("12000.00"),
-                "amount_owed": Decimal("0.00"),
-                "financial_institution": "Fidelity",
-            },
+            _asset(
+                "1",
+                180000,
+                entire=180000,
+                owed="160000.00",
+                street="7823 S Sangamon St",
+                city="Chicago",
+                state="IL",
+                zip="60620",
+                county="Cook",
+                property_kinds=["single_family"],
+                who="only_you",
+                community=False,
+                nature="Fee simple",
+            ),
+            _car(8000, 8000, "Ford", "F-150", "2012", "168000"),
+            _asset("6", 1500, "Furniture, appliances and beds"),
+            _asset("7", 400, "TV, laptop and phone"),
+            _asset("11", 300, "Everyday clothes and work boots"),
+            _asset("12", 600, "Wedding band and watch"),
+            _asset("16", 60),
+            _asset("17", 640, "PNC Bank", kind="checking"),
+            _asset("21", 12000, "Fidelity", kind="401k"),
         ],
         "debts": [
             {
@@ -680,33 +715,18 @@ def _andres_kettleby() -> dict:
             "taxes_specify": "2026 estimated income tax",
         },
         "assets": [
-            {
-                "asset_type": "vehicle",
-                "description": "2017 Honda Fit",
-                # His half of a car titled to him and his brother
-                "current_value": Decimal("4300.00"),
-                "amount_owed": Decimal("7800.00"),
-            },
-            {
-                "asset_type": "personal_property",
-                "description": "Household goods, electronics and clothing",
-                "current_value": Decimal("1900.00"),
-                "amount_owed": Decimal("0.00"),
-            },
-            {
-                "asset_type": "bank_account",
-                "description": "Harborline Bank checking",
-                "current_value": Decimal("412.00"),
-                "amount_owed": Decimal("0.00"),
-                "financial_institution": "Harborline Bank",
-            },
-            {
-                "asset_type": "bank_account",
-                "description": "Prairie Line Credit Union share savings",
-                "current_value": Decimal("85.00"),
-                "amount_owed": Decimal("0.00"),
-                "financial_institution": "Prairie Line Credit Union",
-            },
+            # Leased, so $0 and $0 (his answer); the lease is on Schedule G.
+            _car(0, 0, "Toyota", "Corolla Hybrid", "2024", "61000", other_info="Leased"),
+            # His half of a car titled to him and his brother.
+            _car(4300, 8600, "Honda", "Fit", "2017", "96000", who="with_someone", owed="7800.00"),
+            _asset("6", 1200, "Beds, couch, table, kitchen things"),
+            _asset("7", 400, "Phone, TV"),
+            _asset("11", 300, "Clothes"),
+            _asset("16", 60),
+            _asset("17", 412, "Harborline Bank", kind="checking"),
+            _asset("17", 85, "Prairie Line Credit Union", kind="savings"),
+            _asset("38", 310, "Driving payouts already earned, not yet paid by the apps"),
+            _asset("40", 150, "Insulated delivery bags, phone mount, dash camera"),
         ],
         "debts": [
             {
@@ -798,13 +818,25 @@ def _andres_kettleby() -> dict:
     }
 
 
+def _walked(persona: Callable[[], dict], *yes: str) -> Callable[[], dict]:
+    """A persona with its Schedule A/B answers: Yes on each line with a row and on any gate named."""
+
+    def build() -> dict:
+        data = persona()
+        data["asset_lines"] = _asset_lines(data["assets"], *yes)
+        return data
+
+    return build
+
+
 PERSONAS: dict[str, Callable[[], dict]] = {
-    "maria": _maria_torres,
-    "james": _james_washington,
-    "priya": _priya_sharma,
-    "deshawn": _deshawn_mitchell,
-    "sarah": _sarah_chen,
-    "andres": _andres_kettleby,
+    "maria": _walked(_maria_torres),
+    "james": _walked(_james_washington),
+    "priya": _walked(_priya_sharma),
+    "deshawn": _walked(_deshawn_mitchell),
+    "sarah": _walked(_sarah_chen),
+    # Part 5 is his: line 37 is Yes (driving is his business); line 46 stays No.
+    "andres": _walked(_andres_kettleby, "37"),
 }
 
 
@@ -912,7 +944,10 @@ class Command(BaseCommand):
         ExpenseInfo.objects.create(session=session, **data["expenses"])
 
         for asset in data["assets"]:
-            AssetInfo.objects.create(session=session, **asset)
+            row = AssetInfo(session=session, **{k: v for k, v in asset.items() if k != "details"})
+            row.set_details(asset["details"])
+            row.save()
+        AssetLineAnswers.objects.create(session=session, answers=json.dumps(data["asset_lines"]))
 
         for debt in data["debts"]:
             DebtInfo.objects.create(session=session, **debt)

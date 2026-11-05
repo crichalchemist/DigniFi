@@ -20,8 +20,10 @@ from apps.districts.models import MedianIncome
 from apps.eligibility.cmi import is_above_median
 from apps.eligibility.models import MeansTest
 from apps.forms.registry import packet
-from apps.intake.management.commands.seed_demo_data import _andres_kettleby
+from apps.intake.asset_lines import LINE_BY_KEY, shown_lines
+from apps.intake.management.commands.seed_demo_data import PERSONAS, _andres_kettleby
 from apps.intake.models import (
+    AssetInfo,
     FilingFee,
     IncomeInfo,
     IntakeSession,
@@ -282,3 +284,47 @@ def test_a_gig_drivers_business_entry_leaves_his_debts_as_he_classed_them_and_he
     assert classed == [d["consumer_business_classification"] for d in _andres_kettleby()["debts"]]
     assert classed.count("business") == 1
     assert len(packet(session)) == 14
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("persona", list(PERSONAS))
+def test_every_seeded_persona_has_finished_the_walk(persona):
+    # Complete refuses a shown Schedule A/B line with no answer, so a persona must hold one for
+    # every line shown, and a Yes on exactly the lines where it holds a row.
+    call_command("loaddata", "ilnd_2025_data", verbosity=0)
+    call_command("seed_demo_data", persona=persona, stdout=StringIO())
+    session = IntakeSession.objects.get(user__username=f"demo_{persona}")
+
+    answers = session.asset_lines.get_answers()
+
+    assert {line.key for line in shown_lines(answers)} == set(answers)
+    assert {key for key, value in answers.items() if value == "yes"} >= {
+        row.ab_line for row in session.assets.all()
+    }
+    assert all(row.ab_line in LINE_BY_KEY for row in session.assets.all())
+
+
+@pytest.mark.django_db
+def test_a_leased_car_is_seeded_at_zero_not_blank():
+    # Andres typed $0 and $0 for the Corolla he leases; blank would read as "unanswered".
+    call_command("loaddata", "ilnd_2025_data", verbosity=0)
+    call_command("seed_demo_data", persona="andres", stdout=StringIO())
+    session = IntakeSession.objects.get(user__username="demo_andres")
+
+    corolla = next(
+        a for a in session.assets.all() if a.get_details().get("model") == "Corolla Hybrid"
+    )
+
+    assert (corolla.current_value, corolla.entire_value) == (Decimal("0.00"), Decimal("0.00"))
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("persona", list(PERSONAS))
+def test_a_seeded_row_uses_no_old_asset_type(persona):
+    # Old asset_type is read-only and dropped later; a seeded row names its line instead.
+    call_command("loaddata", "ilnd_2025_data", verbosity=0)
+    call_command("seed_demo_data", persona=persona, stdout=StringIO())
+
+    rows = AssetInfo.objects.filter(session__user__username=f"demo_{persona}")
+
+    assert all(row.asset_type is None and row.ab_line for row in rows)

@@ -114,9 +114,18 @@ EXPECTED = {
             "check 3": "/yes",
             "3 type": "SNAP (food stamps)",
         },
+        # Schedule A/B totals, hand-worked: 5 = 6,500 (Civic); 15 = 600+200+250; 36 = 40 cash + 340 checking + 0 insurance; 62 = 63 = 6,500+1,050+380
+        "schedule_a_b": {
+            "undefined_26": "6500.00",
+            "15 amount": "1050.00",
+            "undefined_124": "380.00",
+            "undefined_159": "0.00",
+            "undefined_166": "7930.00",
+            "undefined_167": "7930.00",
+        },
         "form_106sum": {
-            "1b": "6840.00",
-            "1c": "6840.00",
+            "1b": "7930.00",
+            "1c": "7930.00",
             "3b": "20500.00",
             "3c": "20500.00",
             "4": "3150.00",
@@ -180,9 +189,18 @@ EXPECTED = {
             **_common("James", "Washington", "850 N State St Apt 1204", "60610"),
             "Check Box7": "/Pay entirely",
         },
+        # Schedule A/B totals, hand-worked: 5 = 14,000 (Camry); 15 = 500+400+300; 36 = 40 cash + 1,200 checking; 62 = 63 = 14,000+1,200+1,240
+        "schedule_a_b": {
+            "undefined_26": "14000.00",
+            "15 amount": "1200.00",
+            "undefined_124": "1240.00",
+            "undefined_159": "0.00",
+            "undefined_166": "16440.00",
+            "undefined_167": "16440.00",
+        },
         "form_106sum": {
-            "1b": "15200.00",
-            "1c": "15200.00",
+            "1b": "16440.00",
+            "1c": "16440.00",
             "2": "8500.00",
             "3b": "9800.00",
             "3c": "18300.00",
@@ -238,9 +256,18 @@ EXPECTED = {
             **_common("Priya", "Sharma", "456 W Fullerton Pkwy", "60614"),
             "Check Box7": "/Pay entirely",
         },
+        # Schedule A/B totals, hand-worked: 5 = 20,500 (CR-V); 15 = 2,500+1,500+800+1,200; 36 = 1,900+8,500+31,000+0+0; 62 = 63 = 20,500+6,000+41,400
+        "schedule_a_b": {
+            "undefined_26": "20500.00",
+            "15 amount": "6000.00",
+            "undefined_124": "41400.00",
+            "undefined_159": "0.00",
+            "undefined_166": "67900.00",
+            "undefined_167": "67900.00",
+        },
         "form_106sum": {
-            "1b": "8500.00",
-            "1c": "8500.00",
+            "1b": "67900.00",
+            "1c": "67900.00",
             "3b": "57000.00",
             "3c": "57000.00",
             "4": "9880.00",
@@ -307,10 +334,19 @@ EXPECTED = {
             **_common("DeShawn", "Mitchell", "7823 S Sangamon St", "60620"),
             "Check Box7": "/Pay in installments",
         },
+        # Schedule A/B totals, hand-worked: 55 = 180,000 (home); 5 = 8,000 (F-150); 15 = 1,500+400+300+600; 36 = 60+640+12,000; 62 = 8,000+2,800+12,700; 63 = 180,000+23,500
+        "schedule_a_b": {
+            "undefined_26": "8000.00",
+            "15 amount": "2800.00",
+            "undefined_124": "12700.00",
+            "undefined_159": "180000.00",
+            "undefined_166": "23500.00",
+            "undefined_167": "203500.00",
+        },
         "form_106sum": {
             "1a": "180000.00",
-            "1b": "20000.00",
-            "1c": "200000.00",
+            "1b": "23500.00",
+            "1c": "203500.00",
             "2": "160000.00",
             "3b": "11700.00",
             "3c": "171700.00",
@@ -387,6 +423,8 @@ EXPECTED = {
             "check 3": "/no",
             "3 type": "",
         },
+        # She walked every line and answered No to each: nothing owned, every total 0.00.
+        "schedule_a_b": {"undefined_167": "0.00"},
         "form_106sum": {
             "3b": "31400.00",
             "3c": "31400.00",
@@ -441,10 +479,19 @@ EXPECTED = {
     # His driving is a business on line 5 and 8a since 3e2 (§11).
     "andres": {
         "form_101": {"Debtor1.County": "Kane", "Check Box7": "/Pay in installments"},
+        # Schedule A/B totals, hand-worked: 5 = 0 (leased Corolla) + 4,300 (his half of the Fit); 15 = 1,200+400+300; 36 = 60+412+85; 45 = 310+150 = 460; 62 = 63 = 4,300+1,900+557+460
+        "schedule_a_b": {
+            "undefined_26": "4300.00",
+            "15 amount": "1900.00",
+            "undefined_124": "557.00",
+            "undefined_159": "0.00",
+            "undefined_166": "7217.00",
+            "undefined_167": "7217.00",
+        },
         "form_106sum": {
             "1a": "0.00",
-            "1b": "6697.00",
-            "1c": "6697.00",
+            "1b": "7217.00",
+            "1c": "7217.00",
             "2": "7800.00",
             "3a": "",
             "3b": "23160.00",

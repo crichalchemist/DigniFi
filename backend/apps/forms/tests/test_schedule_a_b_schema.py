@@ -91,10 +91,21 @@ def session(db):
     return IntakeSession.objects.create(user=user, district=district)
 
 
+# The A/B line a row of each kind sits on (3b): the kinds name the sections of the old step.
+LINE_OF_KIND = {
+    "real_property": "1",
+    "vehicle": "3",
+    "bank_account": "17",
+    "retirement_account": "21",
+    "personal_property": "6",
+    "other": "53",
+}
+
+
 def _asset(session, asset_type, value, description="Item"):
     AssetInfo.objects.create(
         session=session,
-        asset_type=asset_type,
+        ab_line=LINE_OF_KIND[asset_type],
         description=description,
         current_value=Decimal(value),
     )
@@ -155,7 +166,7 @@ def test_a_filer_with_no_property_gets_zero_totals_and_no_on_every_question(sess
 
 
 @pytest.mark.slow
-@pytest.mark.parametrize("asset_type", [kind for kind, _ in AssetInfo.ASSET_TYPE_CHOICES])
+@pytest.mark.parametrize("asset_type", list(LINE_OF_KIND))
 def test_each_property_question_answers_yes_only_for_the_kind_listed(session, asset_type):
     # Household goods have no question bound yet (lines 6-14 need rows, step 3), so a
     # filer who lists only those answers No to all five.

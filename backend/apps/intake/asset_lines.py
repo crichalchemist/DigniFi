@@ -6,6 +6,7 @@ Lines 37 and 46 are gates: the lines after them are shown only under a Yes.
 """
 
 from dataclasses import dataclass
+from decimal import Decimal
 
 WHO = ("only_you", "with_someone")
 PROPERTY_KINDS = (
@@ -141,3 +142,9 @@ def rows_on(rows: list, key: str, kind: str | None = None) -> list:
     if kind is None:
         return on_line
     return [row for row in on_line if row.get_details().get("kind") == kind]
+
+
+def part_total(rows: list, part: int) -> Decimal:
+    """The sum of `current_value` over the rows on the lines of one Part; a null counts as zero."""
+    keys = {line.key for line in LINES if line.part == part}
+    return sum((row.current_value or Decimal(0) for row in rows if row.ab_line in keys), Decimal(0))

@@ -24,6 +24,7 @@ from apps.eligibility.cmi import (
     is_above_median,
     spouse_monthly_income,
 )
+from apps.intake.asset_lines import ordered_assets, part_total, rows_on
 from apps.intake.household import count_family_size, dependents
 from apps.intake.income import (
     floored_net,
@@ -186,25 +187,22 @@ def _spouse_rule(*fields: str) -> Callable[[IntakeSession], str]:
 # ---------------------------------------------------------------------------
 
 
-def _total_real_property(session: IntakeSession) -> str:
-    from apps.intake.models import AssetInfo
+def _parts_total(session: IntakeSession, first: int, last: int) -> str:
+    """The sum of the portions on Schedule A/B's Parts first to last (a null counts as zero)."""
+    rows = ordered_assets(session)
+    return _fmt(sum((part_total(rows, part) for part in range(first, last + 1)), Decimal(0)))
 
-    qs = AssetInfo.objects.filter(session=session, asset_type="real_property")
-    return _fmt(_sum_encrypted(qs, "current_value"))
+
+def _total_real_property(session: IntakeSession) -> str:
+    return _parts_total(session, 1, 1)
 
 
 def _total_personal_property(session: IntakeSession) -> str:
-    from apps.intake.models import AssetInfo
-
-    qs = AssetInfo.objects.filter(session=session).exclude(asset_type="real_property")
-    return _fmt(_sum_encrypted(qs, "current_value"))
+    return _parts_total(session, 2, 7)
 
 
 def _total_assets(session: IntakeSession) -> str:
-    from apps.intake.models import AssetInfo
-
-    qs = AssetInfo.objects.filter(session=session)
-    return _fmt(_sum_encrypted(qs, "current_value"))
+    return _parts_total(session, 1, 7)
 
 
 def _total_secured_debts(session: IntakeSession) -> str:
@@ -236,10 +234,7 @@ def _total_debts(session: IntakeSession) -> str:
 
 
 def _total_other_assets(session: IntakeSession) -> str:
-    from apps.intake.models import AssetInfo
-
-    qs = AssetInfo.objects.filter(session=session, asset_type="other")
-    return _fmt(_sum_encrypted(qs, "current_value"))
+    return _parts_total(session, 7, 7)
 
 
 def _cmi(session: IntakeSession) -> str:
@@ -264,41 +259,45 @@ def _total_monthly_expenses(session: IntakeSession) -> str:
 
 
 def _total_vehicles(session: IntakeSession) -> str:
-    from apps.intake.models import AssetInfo
-
-    qs = AssetInfo.objects.filter(session=session, asset_type="vehicle")
-    return _fmt(_sum_encrypted(qs, "current_value"))
+    """Line 5, the total of Part 2."""
+    return _parts_total(session, 2, 2)
 
 
 def _total_household_items(session: IntakeSession) -> str:
-    from apps.intake.models import AssetInfo
-
-    qs = AssetInfo.objects.filter(session=session, asset_type="personal_property")
-    return _fmt(_sum_encrypted(qs, "current_value"))
+    """Line 15, the total of Part 3."""
+    return _parts_total(session, 3, 3)
 
 
 def _total_financial_assets(session: IntakeSession) -> str:
-    """Part 4, line 36: deposits (17) and retirement accounts (21), the only lines asked."""
-    from apps.intake.models import AssetInfo
+    """Line 36, the total of Part 4."""
+    return _parts_total(session, 4, 4)
 
-    qs = AssetInfo.objects.filter(
-        session=session, asset_type__in=("bank_account", "retirement_account")
-    )
-    return _fmt(_sum_encrypted(qs, "current_value"))
+
+def _total_business_property(session: IntakeSession) -> str:
+    """Line 45, the total of Part 5."""
+    return _parts_total(session, 5, 5)
+
+
+def _total_farm_property(session: IntakeSession) -> str:
+    """Line 52, the total of Part 6."""
+    return _parts_total(session, 6, 6)
 
 
 def _other_asset_descriptions(session: IntakeSession) -> str:
-    """Line 53: the "Other" assets in the order the filer listed them (DIG-164)."""
-    from apps.intake.models import AssetInfo
-
-    # The model orders by encrypted value, so the filer's order is the id's.
-    qs = AssetInfo.objects.filter(session=session, asset_type="other").order_by("id")
-    return "; ".join(qs.values_list("description", flat=True))
+    """Line 53: the rows' descriptions in the order the filer listed them (DIG-164)."""
+    rows = rows_on(ordered_assets(session), "53")
+    return "; ".join(row.description for row in rows)
 
 
 def _yes_if_any(rows) -> str:
     """A section's Yes/No question (owner Q8): "yes" when the filer listed one, else "no"."""
     return "yes" if rows.exists() else "no"
+
+
+def _yes_if_on_lines(session: IntakeSession, *keys: str) -> str:
+    """A section's Yes/No question: "yes" when a row sits on one of these A/B lines."""
+    rows = ordered_assets(session)
+    return "yes" if any(rows_on(rows, key) for key in keys) else "no"
 
 
 # ---------------------------------------------------------------------------
@@ -839,13 +838,13 @@ DERIVATIONS: dict[str, Callable[[IntakeSession], str]] = {
     "total_household_items": _total_household_items,
     "total_financial_assets": _total_financial_assets,
     "other_asset_descriptions": _other_asset_descriptions,
-    "has_real_property": lambda s: _yes_if_any(s.assets.filter(asset_type="real_property")),
-    "has_vehicles": lambda s: _yes_if_any(s.assets.filter(asset_type="vehicle")),
-    "has_bank_accounts": lambda s: _yes_if_any(s.assets.filter(asset_type="bank_account")),
-    "has_retirement_accounts": lambda s: _yes_if_any(
-        s.assets.filter(asset_type="retirement_account")
-    ),
-    "has_other_assets": lambda s: _yes_if_any(s.assets.filter(asset_type="other")),
+    "total_business_property": _total_business_property,
+    "total_farm_property": _total_farm_property,
+    "has_real_property": lambda s: _yes_if_on_lines(s, "1"),
+    "has_vehicles": lambda s: _yes_if_on_lines(s, "3", "4"),
+    "has_bank_accounts": lambda s: _yes_if_on_lines(s, "17"),
+    "has_retirement_accounts": lambda s: _yes_if_on_lines(s, "21"),
+    "has_other_assets": lambda s: _yes_if_on_lines(s, "53"),
     "has_executory_contracts": lambda s: _yes_if_any(s.executory_contracts.all()),
     "has_codebtors": lambda s: _yes_if_any(s.codebtors.all()),
     # Schedules D and E/F: the section questions and E/F's line 6 totals
