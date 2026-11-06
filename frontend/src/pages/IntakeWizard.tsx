@@ -383,11 +383,9 @@ export function IntakeWizard() {
       }
 
       case 'assets':
-        // Filter out empty/blank asset forms before sending. Each row keeps its `_key` here;
-        // saveCurrentStepData leaves it out of the request.
-        return {
-          assets: assetsData.filter((a) => a.asset_type && a.description?.trim()),
-        } as Partial<IntakeSession>;
+        // Every row, unfiltered: a stored row left out of a save is deleted. Each row keeps its
+        // `_key` here; saveCurrentStepData leaves it out of the request.
+        return { assets: assetsData } as Partial<IntakeSession>;
 
       case 'debts':
         // Filter empty forms — debt_type, is_secured, and priority_classification

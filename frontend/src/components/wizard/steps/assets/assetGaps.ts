@@ -54,17 +54,20 @@ function rowIsComplete(line: AssetLine, row: Row) {
   return hasText && hasValue;
 }
 
+/** A gate answered Yes with every line under it No, which Continue and Complete both refuse */
+export function gateHasOnlyNos(gate: AssetLine, answers: Answers): boolean {
+  if (answers[gate.key] !== 'yes') return false;
+  const under = ASSET_LINES.filter((other) => other.gate === gate.key);
+  return under.every((other) => answers[other.key] === 'no');
+}
+
 function lineIsComplete(line: AssetLine, rows: Row[], answers: Answers) {
   const onLine = rows.filter((row) => row.ab_line === line.key);
   const shown = line.gate === null || answers[line.gate] === 'yes';
   if (!shown) return onLine.length === 0;
   const answer = answers[line.key];
   if (answer !== 'yes' && answer !== 'no') return false;
-  if (line.shape === 'gate') {
-    if (onLine.length > 0) return false;
-    const under = ASSET_LINES.filter((other) => other.gate === line.key);
-    return answer !== 'yes' || !under.every((other) => answers[other.key] === 'no');
-  }
+  if (line.shape === 'gate') return onLine.length === 0 && !gateHasOnlyNos(line, answers);
   if (answer === 'no') return onLine.length === 0;
   return onLine.length > 0 && onLine.every((row) => rowIsComplete(line, row));
 }
@@ -76,7 +79,11 @@ export function partIsComplete(part: number, rows: Row[], answers: Answers): boo
   );
 }
 
-/** The first Part with something left, or Part 1 when nothing is: where the step opens */
+/**
+ * The first Part with something left, or Part 1 when nothing is: where the step opens. An old row
+ * comes first, as in asset_step_gaps: it holds every Part back, and only Part 1 lists it (§9).
+ */
 export function firstIncompletePart(rows: Row[], answers: Answers): number {
+  if (rows.some((row) => row.ab_line === null || row.ab_line === undefined)) return 1;
   return AB_PARTS.find((part) => !partIsComplete(part, rows, answers)) ?? 1;
 }

@@ -13,11 +13,11 @@
 import { useEffect } from 'react';
 import { UPLDisclaimer } from '../../compliance';
 import { AB_OWED_TO_YOU_HEADING, AB_PART_LEADS, AB_PART_TITLES } from '../../../constants/formText';
-import { LEASE_NOTE, NOTHING_TO_LIST_NOTE } from '../../../constants/copy';
+import { GATE_HAS_ONLY_NOS, LEASE_NOTE, NOTHING_TO_LIST_NOTE } from '../../../constants/copy';
 import { UPL_EXEMPTION_DISCLAIMER } from '../../../constants/upl';
 import { AB_PARTS, ASSET_LINES } from '../../../constants/assetLines';
 import { AssetLine } from './assets/AssetLine';
-import { partIsComplete, shownLines } from './assets/assetGaps';
+import { gateHasOnlyNos, partIsComplete, shownLines } from './assets/assetGaps';
 import type { AssetLine as Line } from '../../../constants/assetLines';
 import type { AssetInfo, AssetLineAnswer, WizardRow } from '../../../types/api';
 
@@ -129,6 +129,15 @@ export function AssetsStep({
           />
         </div>
       ))}
+
+      {/* After the lines, not at the gate: the last No is pressed down here, beside Continue */}
+      {lines
+        .filter((line) => line.shape === 'gate' && gateHasOnlyNos(line, answers))
+        .map((gate) => (
+          <div key={gate.key} className="info-box" role="alert">
+            <p className="info-message">{GATE_HAS_ONLY_NOS.replace('{key}', gate.key)}</p>
+          </div>
+        ))}
 
       <UPLDisclaimer text={UPL_EXEMPTION_DISCLAIMER} variant="inline" />
     </div>

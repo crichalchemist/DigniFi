@@ -423,6 +423,11 @@ export const ADD_AN_ITEM = 'Add an item';
 
 export const LINE_NEEDS_AN_ITEM = 'Add what you have, or change it to No.';
 
+// The sentence Complete gives for this in apps/intake/asset_lines.py, shown here because Continue
+// stops first
+export const GATE_HAS_ONLY_NOS =
+  'Line {key} says Yes, but every line under it says No. Change one of them.';
+
 // The screen's words for the form's "Debtor 1 only" and "At least one of the debtors and another"
 export const WHO_ONLY_YOU = 'Only you';
 

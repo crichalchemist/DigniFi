@@ -67,6 +67,13 @@ const DESCRIPTION_MAX_LENGTH = 255;
 // DecimalField(max_digits=12, decimal_places=2) on current_value and entire_value
 const VALUE_MAX_DIGITS = 12;
 
+// FormField's mark, for the questions asked in a fieldset, which has no required prop
+const REQUIRED_MARK = (
+  <span className="required-indicator" aria-label="required">
+    *
+  </span>
+);
+
 interface ValueBoxProps {
   name: string;
   label: string;
@@ -99,6 +106,7 @@ function ValueBox({
         inputMode="decimal"
         min="0"
         step="0.01"
+        required={!unknown}
         value={value ?? ''}
         onChange={(e) => {
           const parsed = parseAmount(e.target.value);
@@ -151,11 +159,12 @@ export function AssetRowFields({
   const setDetails = (changes: AssetDetails) =>
     onRowChange({ ...row, details: { ...details, ...changes } });
 
-  const detailBox = (label: string, field: keyof AssetDetails) => (
+  const detailBox = (label: string, field: keyof AssetDetails, required = false) => (
     <FormField
       label={label}
       name={`${prefix}_${field}`}
       type="text"
+      required={required}
       maxLength={DETAIL_MAX_LENGTH}
       value={(details[field] as string | null | undefined) ?? ''}
       onChange={(e) => setDetails({ [field]: e.target.value })}
@@ -167,6 +176,7 @@ export function AssetRowFields({
       label={words.textLabel ?? AB_TEXT_LABEL}
       name={`${prefix}_description`}
       type="text"
+      required
       maxLength={DESCRIPTION_MAX_LENGTH}
       value={row.description ?? ''}
       onChange={(e) => onRowChange({ ...row, description: e.target.value })}
@@ -231,7 +241,10 @@ export function AssetRowFields({
 
   const whoQuestion = (
     <fieldset className="form-field fee-waiver-question">
-      <legend className="form-label">{AB_WHO_QUESTION}</legend>
+      <legend className="form-label">
+        {AB_WHO_QUESTION}
+        {REQUIRED_MARK}
+      </legend>
       {(
         [
           ['only_you', WHO_ONLY_YOU],
@@ -289,14 +302,17 @@ export function AssetRowFields({
 
       {shape === 'place' && (
         <>
-          {detailBox(AB_STREET_LABEL, 'street')}
+          {detailBox(AB_STREET_LABEL, 'street', true)}
           {detailBox(AB_ADDRESS_LINE_2_LABEL, 'street_2')}
           {detailBox(AB_CITY_LABEL, 'city')}
           {detailBox(AB_STATE_LABEL, 'state')}
           {detailBox(AB_ZIP_LABEL, 'zip')}
           {detailBox(AB_COUNTY_LABEL, 'county')}
           <fieldset className="form-field fee-waiver-question">
-            <legend className="form-label">{AB_PROPERTY_KIND_QUESTION}</legend>
+            <legend className="form-label">
+              {AB_PROPERTY_KIND_QUESTION}
+              {REQUIRED_MARK}
+            </legend>
             {PROPERTY_KINDS.map((kind) => (
               <label key={kind} className="ab-choice">
                 <input
@@ -311,7 +327,7 @@ export function AssetRowFields({
             ))}
           </fieldset>
           {(details.property_kinds ?? []).includes('other') &&
-            detailBox(AB_PROPERTY_KIND_WORDS.other, 'other_kind')}
+            detailBox(AB_PROPERTY_KIND_WORDS.other, 'other_kind', true)}
           {whoQuestion}
           {communityBox}
           {detailBox(AB_NATURE_LABEL, 'nature')}
@@ -321,7 +337,7 @@ export function AssetRowFields({
 
       {(shape === 'vehicle' || shape === 'vehicle_no_mileage') && (
         <>
-          {detailBox(AB_MAKE_LABEL, 'make')}
+          {detailBox(AB_MAKE_LABEL, 'make', true)}
           {detailBox(AB_MODEL_LABEL, 'model')}
           {detailBox(AB_YEAR_LABEL, 'year')}
           {shape === 'vehicle' && detailBox(AB_MILEAGE_LABEL, 'mileage')}
@@ -335,6 +351,7 @@ export function AssetRowFields({
         <FormSelect
           label={key === '21' ? AB_ACCOUNT_TYPE_LABEL : AB_KIND_LABEL}
           name={`${prefix}_kind`}
+          required
           options={line.kinds.map(([kind]) => ({ value: kind, label: AB_KIND_WORDS[key][kind] }))}
           value={details.kind ?? ''}
           onChange={(value) => setDetails({ kind: value === '' ? null : value })}
@@ -343,7 +360,10 @@ export function AssetRowFields({
 
       {shape === 'item_question' && (
         <fieldset className="form-field fee-waiver-question">
-          <legend className="form-label">{AB_PERSONAL_INFO_QUESTION}</legend>
+          <legend className="form-label">
+            {AB_PERSONAL_INFO_QUESTION}
+            {REQUIRED_MARK}
+          </legend>
           <label className="ab-choice">
             <input
               type="radio"
@@ -383,6 +403,7 @@ export function AssetRowFields({
           name={`${prefix}_percent`}
           type="number"
           inputMode="decimal"
+          required
           min="0"
           max="100"
           step="0.01"

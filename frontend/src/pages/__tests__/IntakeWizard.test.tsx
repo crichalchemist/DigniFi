@@ -1539,6 +1539,58 @@ describe.each([
   }
 );
 
+describe('IntakeWizard the rows of the Assets step', { timeout: 30_000 }, () => {
+  // A stored row left out of a save is deleted, and asset_type is read-only, so a new row has none
+  it('keeps every row through Continue, whatever its type, text or Part', async () => {
+    const onStep = {
+      ...sessionAtStep1,
+      current_step: 5,
+      assets: [
+        {
+          id: 3,
+          session: 1,
+          ab_line: '1',
+          asset_type: null,
+          description: '',
+          current_value: '8000.00',
+          entire_value: '8000.00',
+          details: { street: '1 Elm', property_kinds: ['land'], who: 'only_you' },
+        },
+        // Line 16 has no text, and Part 4 isn't the one showing
+        {
+          id: 4,
+          session: 1,
+          ab_line: '16',
+          asset_type: null,
+          description: '',
+          current_value: '20.00',
+          entire_value: null,
+          details: {},
+        },
+      ],
+    };
+    const { bodies } = serveSessionSaves(onStep);
+    server.use(
+      http.post('http://localhost:8000/api/intake/sessions/:id/update_step/', () =>
+        HttpResponse.json({ session: onStep, message: 'Step updated.' })
+      ),
+      http.post(
+        'http://localhost:8000/api/audit/logs/',
+        () => new HttpResponse(null, { status: 201 })
+      )
+    );
+    renderWizard();
+    await screen.findByRole('heading', { name: /assets/i, level: 2 });
+
+    fireEvent.click(document.querySelector('input[name="line_1_answer"][value="yes"]')!);
+    await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
+
+    await waitFor(() => expect(bodies.length).toBeGreaterThan(0));
+    const { assets } = bodies[0] as { assets: Record<string, unknown>[] };
+    expect(assets.map((asset) => asset.id)).toEqual([3, 4]);
+  });
+});
+
 describe('IntakeWizard a new debt after Complete', { timeout: 30_000 }, () => {
   // Any save reopens a completed intake, and the filer would have to press Complete again. Once a
   // new debt has its id, stepping back over Amounts Owed must not save it again.

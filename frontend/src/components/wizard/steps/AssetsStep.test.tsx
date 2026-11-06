@@ -11,7 +11,12 @@ import {
   VALUE_UNKNOWN_HEADING,
   VALUE_UNKNOWN_NOTE,
 } from '../../../constants/copy';
-import { AB_LINE_WORDS } from '../../../constants/formText';
+import {
+  AB_LINE_WORDS,
+  AB_PERSONAL_INFO_QUESTION,
+  AB_PROPERTY_KIND_QUESTION,
+  AB_WHO_QUESTION,
+} from '../../../constants/formText';
 import { hydrateAmounts } from '../../../utils/parseAmount';
 import type { AssetInfo, AssetLineAnswer, WizardRow } from '../../../types/api';
 
@@ -489,8 +494,8 @@ describe('AssetsStep', () => {
   it('asks the insurance company and an optional beneficiary on line 31', () => {
     render(<Walk part={4} answers={{ ...allNo(4), '31': 'yes' }} />);
     fireEvent.click(screen.getByRole('button', { name: 'Add an item' }));
-    expect(screen.getByLabelText('Company name:')).toBe(field('line_31_0_description'));
-    expect(screen.getByLabelText('Surrender or refund value:')).toBe(
+    expect(screen.getByLabelText(/^Company name:/)).toBe(field('line_31_0_description'));
+    expect(screen.getByLabelText(/^Surrender or refund value:/)).toBe(
       field('line_31_0_current_value')
     );
     type('line_31_0_description', 'Millbrook Mutual Life');
@@ -572,6 +577,99 @@ describe('AssetsStep', () => {
   it('keeps Continue invalid while an old row has no line', () => {
     render(<Walk part={3} answers={allNo(3)} rows={[makeRow({ ab_line: null })]} />);
     expect(latest.valid).toBe(false);
+  });
+
+  // Continue only goes grey, so the mark is how a filer tells what still holds it back
+  describe('marks what Continue is waiting for, and only that', () => {
+    const required = (name: string) => expect(field(name)).toHaveAttribute('aria-required', 'true');
+    const optional = (name: string) =>
+      expect(field(name)).toHaveAttribute('aria-required', 'false');
+    const legendIsMarked = (words: string) =>
+      expect(screen.getByText(words).querySelector('.required-indicator')).toBeInTheDocument();
+
+    it('on a place: street, a kind, who and both values, not the rest of the address', () => {
+      render(<Walk part={1} />);
+      say('1', 'yes');
+      required('line_1_0_street');
+      required('line_1_0_entire_value');
+      required('line_1_0_current_value');
+      for (const box of ['street_2', 'city', 'state', 'zip', 'county', 'nature', 'other_info']) {
+        optional(`line_1_0_${box}`);
+      }
+      legendIsMarked(AB_PROPERTY_KIND_QUESTION);
+      legendIsMarked(AB_WHO_QUESTION);
+      fireEvent.click(checkbox('line_1_0_property_kinds', 'other'));
+      required('line_1_0_other_kind');
+    });
+
+    it('on a vehicle: make, who and both values, not model, year or mileage', () => {
+      render(<Walk part={2} />);
+      say('3', 'yes');
+      required('line_3_0_make');
+      required('line_3_0_entire_value');
+      required('line_3_0_current_value');
+      for (const box of ['model', 'year', 'mileage', 'other_info']) optional(`line_3_0_${box}`);
+      legendIsMarked(AB_WHO_QUESTION);
+    });
+
+    it('on a labelled row, a share, insurance and cash', () => {
+      render(<Walk part={4} />);
+      say('16', 'yes');
+      required('line_16_0_current_value');
+      say('17', 'yes');
+      required('line_17_0_kind');
+      required('line_17_0_description');
+      required('line_17_0_current_value');
+      say('19', 'yes');
+      required('line_19_0_percent');
+      say('31', 'yes');
+      required('line_31_0_description');
+      optional('line_31_0_beneficiary');
+    });
+
+    it('on line 43: its question, its value, and Describe under its Yes', () => {
+      render(<Walk part={5} answers={{ '37': 'yes', '43': 'yes' }} />);
+      fireEvent.click(screen.getByRole('button', { name: 'Add an item' }));
+      legendIsMarked(AB_PERSONAL_INFO_QUESTION);
+      required('line_43_0_current_value');
+      fireEvent.click(radioValue('line_43_0_has_personal_info', 'yes'));
+      required('line_43_0_description');
+    });
+
+    it('takes the mark off a value while I do not know is pressed, since that answers it', () => {
+      render(<Walk part={3} answers={{ '6': 'yes' }} rows={[makeRow({ ab_line: '6' })]} />);
+      required('line_6_0_current_value');
+      fireEvent.click(field('line_6_0_value_unknown'));
+      optional('line_6_0_current_value');
+    });
+  });
+
+  // Complete has the server's sentence for this, but the filer can't reach Complete from here
+  it('says why Continue waits on a gate that says Yes with every line under it No', () => {
+    render(<Walk part={5} />);
+    const sentence = 'Line 37 says Yes, but every line under it says No. Change one of them.';
+    say('37', 'yes');
+    const under = ['38', '39', '40', '41', '42', '43', '44'];
+    for (const key of under.slice(0, -1)) say(key, 'no');
+    expect(screen.queryByText(sentence)).toBeNull();
+
+    say('44', 'no');
+    expect(latest.valid).toBe(false);
+    const shown = screen.getByText(sentence);
+    // Where the filer who just pressed the last No is looking, not back up at line 37
+    expect(radio('44', 'no').compareDocumentPosition(shown)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+
+    say('38', 'yes');
+    expect(screen.queryByText(sentence)).toBeNull();
+  });
+
+  it('says the same of line 46, naming that line', () => {
+    const answers: Answers = { '46': 'yes', '47': 'no', '48': 'no', '49': 'no', '50': 'no' };
+    render(<Walk part={6} answers={answers} />);
+    say('51', 'no');
+    expect(
+      screen.getByText('Line 46 says Yes, but every line under it says No. Change one of them.')
+    ).toBeInTheDocument();
   });
 
   it('keeps the Review heading for unknown values in plain words', () => {
@@ -729,5 +827,20 @@ describe('what a Part needs before Continue (the server: asset_step_gaps)', () =
     delete noLine14['14'];
     expect(firstIncompletePart([], noLine14)).toBe(3);
     expect(firstIncompletePart([makeRow({ ab_line: '53' })], everyPart)).toBe(7);
+  });
+
+  // Old rows hold every Part back and are listed only above Part 1, so opening anywhere else would
+  // leave Continue disabled with nothing on screen to explain it
+  it('opens at Part 1 while an old row has no line, even with Part 1 answered and Part 3 not', () => {
+    const everyPart: Answers = {
+      ...allNo(1),
+      ...allNo(2),
+      ...allNo(4),
+      '37': 'no',
+      '46': 'no',
+      '53': 'no',
+    };
+    expect(firstIncompletePart([], everyPart)).toBe(3);
+    expect(firstIncompletePart([makeRow({ ab_line: null })], everyPart)).toBe(1);
   });
 });
