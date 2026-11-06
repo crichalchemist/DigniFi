@@ -54,14 +54,22 @@ def _rects(form_type: str, name: str) -> list[tuple[int, pymupdf.Rect]]:
     ]
 
 
+def _ink(page, clip: pymupdf.Rect) -> int:
+    pixels = page.get_pixmap(dpi=144, clip=clip, colorspace=pymupdf.csGRAY)
+    return sum(1 for value in pixels.samples if value < 200)
+
+
 def _ink_past(document, number: int, rect: pymupdf.Rect, text: str) -> int:
-    """Dark pixels in the box to the right of where its own text ends."""
+    """
+    Dark pixels in the box to the right of where its own text ends, once the text itself
+    is seen in ink: search_for finds text a background painted over it has hidden.
+    """
     page = document[number]
     drawn = page.search_for(text, clip=rect)
     assert drawn, f"{text!r} did not print in the box"
+    assert all(_ink(page, hit) > 0 for hit in drawn), f"{text!r} is hidden"
     clip = pymupdf.Rect(max(hit.x1 for hit in drawn) + 2, rect.y0 + 1, rect.x1 - 1, rect.y1 - 1)
-    pixels = page.get_pixmap(dpi=144, clip=clip, colorspace=pymupdf.csGRAY)
-    return sum(1 for value in pixels.samples if value < 200)
+    return _ink(page, clip)
 
 
 @pytest.mark.parametrize("form_type", FORMS_WITH_WORDS_UNDER_THE_DISTRICT)
