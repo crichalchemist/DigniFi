@@ -1839,6 +1839,32 @@ describe('IntakeWizard the walk through Schedule A/B', { timeout: 30_000 }, () =
     expect(bodies).toEqual([]);
   });
 
+  // The save can land after the filer has moved: Continue must not count from the Part it began on
+  it('stays on the Part the filer went back to when a slow Continue lands', async () => {
+    const answeredToPart3 = Object.fromEntries(
+      ['1', '3', '4', '6', '7', '8', '9', '10', '11', '12', '13', '14'].map((key) => [key, 'no'])
+    );
+    const saves = await open({ ...onAssets, asset_lines: answeredToPart3 });
+    expect(screen.getByText('Part 4 of 7')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Go Back' }));
+    await screen.findByText('Part 3 of 7');
+    await waitFor(() => expect(continueButton()).toBeEnabled());
+
+    const landSave = saves.holdNextReply();
+    fireEvent.click(continueButton());
+    await waitFor(() => expect(saves.bodies).toHaveLength(1));
+    fireEvent.click(screen.getByRole('button', { name: 'Go Back' }));
+    await screen.findByText('Part 2 of 7');
+
+    await act(async () => {
+      landSave();
+      await new Promise((resolve) => setTimeout(resolve, 200));
+    });
+
+    expect(screen.getByText('Part 2 of 7')).toBeInTheDocument();
+    expect(stepUpdates).toEqual([]);
+  });
+
   it('opens at the Part of a row that lacks what its line requires, with every line answered', async () => {
     await open({
       ...onAssets,

@@ -469,8 +469,9 @@ export function IntakeWizard() {
 
       // Below Part 7 Continue stays on the step, with no update_step. canProceed stays as it is:
       // the step is still mounted and reports the next Part's validity only when it differs.
+      // The filer may have gone back while the save was on its way, and stays where they went.
       if (currentStepKey === 'assets' && assetPart < AB_PARTS.length) {
-        setAssetPart(assetPart + 1);
+        setAssetPart((part) => (part === assetPart ? part + 1 : part));
         return;
       }
 
