@@ -592,6 +592,9 @@ YES_READS = {
 }
 ROW_TEST_SHAPES = {"place", "vehicle", "vehicle_no_mileage", "item", "item_question", "cash"}
 SHAPE_BY_KEY = {line.key: line.shape for line in LINES}
+GATE_BY_KEY = {line.key: line.gate for line in LINES}
+GATE_ANSWERS = "test_a_yes_to_a_gate_answers_every_line_under_it_and_prints_its_total"
+NO_READS_UNDER_A_GATE = {"39", "48"}
 
 
 def page_check(rule):
@@ -605,13 +608,21 @@ def page_check(rule):
 
 
 def answer_check(key):
-    """What a line's Yes/No box rests on. Every line's No is read; a Yes only where a test reads it."""
-    no = f"test_printed_page.py's {EVERY_NO} reads this box off the drawn page for a filer with nothing"
+    """What a line's Yes/No box rests on: a test reads each answer only where this says it does."""
+    gate = GATE_BY_KEY[key]
+    if gate is None:
+        no = f"test_printed_page.py's {EVERY_NO} reads its No off the drawn page."
+    else:
+        no = f"test_printed_page.py's {EVERY_NO} reads this box blank under line {gate}'s No. "
+        if key in NO_READS_UNDER_A_GATE:
+            no += f"{GATE_ANSWERS} reads its No."
+        else:
+            no += "No test draws its No: the index's export state above is that box's evidence."
     if SHAPE_BY_KEY[key] in ROW_TEST_SHAPES or SHAPE_BY_KEY[key] == "gate":
-        return f"{no}, and {EVERY_ROW_BOX} reads its Yes."
+        return f"{no} {EVERY_ROW_BOX} reads its Yes."
     if key in YES_READS:
-        return f"{no}, and {YES_READS[key]} reads its Yes."
-    return f"{no}. No test draws its Yes: the index's export state above is that box's evidence."
+        return f"{no} {YES_READS[key]} reads its Yes."
+    return f"{no} No test draws its Yes: the index's export state above is that box's evidence."
 
 
 def slot_check(key):

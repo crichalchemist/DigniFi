@@ -1147,7 +1147,7 @@
     "final_verdicts": ["correct"],
     "status": "confirmed",
     "correct_target": "Check 2",
-    "evidence": "Field index: Check 2 p1 line 1., 'No. Go to Part 2.' (sampled_ok); p1 line 1., 'Yes. Where is the property?' (sampled_ok). ab_has_1 says yes with a row on the line, no with none and the line shown, blank when a gate's No hid it, with the index's export state for each. [Q24], 3b spec §8.1. test_printed_page.py's test_every_line_says_no_for_a_filer_with_nothing_and_totals_print_zero reads this box off the drawn page for a filer with nothing, and test_every_row_box_prints_its_own_answer_on_the_page reads its Yes."
+    "evidence": "Field index: Check 2 p1 line 1., 'No. Go to Part 2.' (sampled_ok); p1 line 1., 'Yes. Where is the property?' (sampled_ok). ab_has_1 says yes with a row on the line, no with none and the line shown, blank when a gate's No hid it, with the index's export state for each. [Q24], 3b spec §8.1. test_printed_page.py's test_every_line_says_no_for_a_filer_with_nothing_and_totals_print_zero reads its No off the drawn page. test_every_row_box_prints_its_own_answer_on_the_page reads its Yes."
   },
   {
     "schema": "schedule_a_b",
@@ -1787,7 +1787,7 @@
     "final_verdicts": ["correct"],
     "status": "confirmed",
     "correct_target": "Check 3",
-    "evidence": "Field index: Check 3 p2 line 3, 'No' (vision_agreed); p2 line 3, 'Yes' (vision_agreed). ab_has_3 says yes with a row on the line, no with none and the line shown, blank when a gate's No hid it, with the index's export state for each. [Q24], 3b spec §8.1. test_printed_page.py's test_every_line_says_no_for_a_filer_with_nothing_and_totals_print_zero reads this box off the drawn page for a filer with nothing, and test_every_row_box_prints_its_own_answer_on_the_page reads its Yes."
+    "evidence": "Field index: Check 3 p2 line 3, 'No' (vision_agreed); p2 line 3, 'Yes' (vision_agreed). ab_has_3 says yes with a row on the line, no with none and the line shown, blank when a gate's No hid it, with the index's export state for each. [Q24], 3b spec §8.1. test_printed_page.py's test_every_line_says_no_for_a_filer_with_nothing_and_totals_print_zero reads its No off the drawn page. test_every_row_box_prints_its_own_answer_on_the_page reads its Yes."
   },
   {
     "schema": "schedule_a_b",
@@ -2157,7 +2157,7 @@
     "final_verdicts": ["correct"],
     "status": "confirmed",
     "correct_target": "Examples Boats trailers motors personal watercraft fishing vessels snowmobiles motorcycle accessories",
-    "evidence": "Field index: Examples Boats trailers motors personal watercraft fishing vessels snowmobiles motorcycle accessories p3 line 4, 'No' (sampled_ok); p3 line 4, 'Yes' (sampled_ok). ab_has_4 says yes with a row on the line, no with none and the line shown, blank when a gate's No hid it, with the index's export state for each. [Q24], 3b spec §8.1. test_printed_page.py's test_every_line_says_no_for_a_filer_with_nothing_and_totals_print_zero reads this box off the drawn page for a filer with nothing, and test_every_row_box_prints_its_own_answer_on_the_page reads its Yes."
+    "evidence": "Field index: Examples Boats trailers motors personal watercraft fishing vessels snowmobiles motorcycle accessories p3 line 4, 'No' (sampled_ok); p3 line 4, 'Yes' (sampled_ok). ab_has_4 says yes with a row on the line, no with none and the line shown, blank when a gate's No hid it, with the index's export state for each. [Q24], 3b spec §8.1. test_printed_page.py's test_every_line_says_no_for_a_filer_with_nothing_and_totals_print_zero reads its No off the drawn page. test_every_row_box_prints_its_own_answer_on_the_page reads its Yes."
   },
   {
     "schema": "schedule_a_b",
@@ -2327,7 +2327,7 @@
     "final_verdicts": ["correct"],
     "status": "confirmed",
     "correct_target": "6 check",
-    "evidence": "Field index: 6 check p4 line 6, 'No' (sampled_ok); p4 line 6, 'Yes. Describe' (sampled_ok). ab_has_6 says yes with a row on the line, no with none and the line shown, blank when a gate's No hid it, with the index's export state for each. [Q24], 3b spec §8.1. test_printed_page.py's test_every_line_says_no_for_a_filer_with_nothing_and_totals_print_zero reads this box off the drawn page for a filer with nothing, and test_every_row_box_prints_its_own_answer_on_the_page reads its Yes."
+    "evidence": "Field index: 6 check p4 line 6, 'No' (sampled_ok); p4 line 6, 'Yes. Describe' (sampled_ok). ab_has_6 says yes with a row on the line, no with none and the line shown, blank when a gate's No hid it, with the index's export state for each. [Q24], 3b spec §8.1. test_printed_page.py's test_every_line_says_no_for_a_filer_with_nothing_and_totals_print_zero reads its No off the drawn page. test_every_row_box_prints_its_own_answer_on_the_page reads its Yes."
   },
   {
     "schema": "schedule_a_b",
@@ -2357,7 +2357,7 @@
     "final_verdicts": ["correct"],
     "status": "confirmed",
     "correct_target": "7 check",
-    "evidence": "Field index: 7 check p4 line 7, 'No' (sampled_ok); p4 line 7, 'Yes. Describe' (sampled_ok). ab_has_7 says yes with a row on the line, no with none and the line shown, blank when a gate's No hid it, with the index's export state for each. [Q24], 3b spec §8.1. test_printed_page.py's test_every_line_says_no_for_a_filer_with_nothing_and_totals_print_zero reads this box off the drawn page for a filer with nothing, and test_every_row_box_prints_its_own_answer_on_the_page reads its Yes."
+    "evidence": "Field index: 7 check p4 line 7, 'No' (sampled_ok); p4 line 7, 'Yes. Describe' (sampled_ok). ab_has_7 says yes with a row on the line, no with none and the line shown, blank when a gate's No hid it, with the index's export state for each. [Q24], 3b spec §8.1. test_printed_page.py's test_every_line_says_no_for_a_filer_with_nothing_and_totals_print_zero reads its No off the drawn page. test_every_row_box_prints_its_own_answer_on_the_page reads its Yes."
   },
   {
     "schema": "schedule_a_b",
@@ -2387,7 +2387,7 @@
     "final_verdicts": ["correct"],
     "status": "confirmed",
     "correct_target": "8 check",
-    "evidence": "Field index: 8 check p4 line 8, 'No' (vision_agreed); p4 line 8, 'Yes. Describe' (vision_agreed). ab_has_8 says yes with a row on the line, no with none and the line shown, blank when a gate's No hid it, with the index's export state for each. [Q24], 3b spec §8.1. test_printed_page.py's test_every_line_says_no_for_a_filer_with_nothing_and_totals_print_zero reads this box off the drawn page for a filer with nothing, and test_every_row_box_prints_its_own_answer_on_the_page reads its Yes."
+    "evidence": "Field index: 8 check p4 line 8, 'No' (vision_agreed); p4 line 8, 'Yes. Describe' (vision_agreed). ab_has_8 says yes with a row on the line, no with none and the line shown, blank when a gate's No hid it, with the index's export state for each. [Q24], 3b spec §8.1. test_printed_page.py's test_every_line_says_no_for_a_filer_with_nothing_and_totals_print_zero reads its No off the drawn page. test_every_row_box_prints_its_own_answer_on_the_page reads its Yes."
   },
   {
     "schema": "schedule_a_b",
@@ -2417,7 +2417,7 @@
     "final_verdicts": ["correct"],
     "status": "confirmed",
     "correct_target": "9 check",
-    "evidence": "Field index: 9 check p4 line 9, 'No' (vision_agreed); p4 line 9, 'Yes. Describe' (vision_agreed). ab_has_9 says yes with a row on the line, no with none and the line shown, blank when a gate's No hid it, with the index's export state for each. [Q24], 3b spec §8.1. test_printed_page.py's test_every_line_says_no_for_a_filer_with_nothing_and_totals_print_zero reads this box off the drawn page for a filer with nothing, and test_every_row_box_prints_its_own_answer_on_the_page reads its Yes."
+    "evidence": "Field index: 9 check p4 line 9, 'No' (vision_agreed); p4 line 9, 'Yes. Describe' (vision_agreed). ab_has_9 says yes with a row on the line, no with none and the line shown, blank when a gate's No hid it, with the index's export state for each. [Q24], 3b spec §8.1. test_printed_page.py's test_every_line_says_no_for_a_filer_with_nothing_and_totals_print_zero reads its No off the drawn page. test_every_row_box_prints_its_own_answer_on_the_page reads its Yes."
   },
   {
     "schema": "schedule_a_b",
@@ -2447,7 +2447,7 @@
     "final_verdicts": ["correct"],
     "status": "confirmed",
     "correct_target": "10 check",
-    "evidence": "Field index: 10 check p4 line 10, 'No' (vision_agreed); p4 line 10, 'Yes. Describe' (vision_agreed). ab_has_10 says yes with a row on the line, no with none and the line shown, blank when a gate's No hid it, with the index's export state for each. [Q24], 3b spec §8.1. test_printed_page.py's test_every_line_says_no_for_a_filer_with_nothing_and_totals_print_zero reads this box off the drawn page for a filer with nothing, and test_every_row_box_prints_its_own_answer_on_the_page reads its Yes."
+    "evidence": "Field index: 10 check p4 line 10, 'No' (vision_agreed); p4 line 10, 'Yes. Describe' (vision_agreed). ab_has_10 says yes with a row on the line, no with none and the line shown, blank when a gate's No hid it, with the index's export state for each. [Q24], 3b spec §8.1. test_printed_page.py's test_every_line_says_no_for_a_filer_with_nothing_and_totals_print_zero reads its No off the drawn page. test_every_row_box_prints_its_own_answer_on_the_page reads its Yes."
   },
   {
     "schema": "schedule_a_b",
@@ -2477,7 +2477,7 @@
     "final_verdicts": ["correct"],
     "status": "confirmed",
     "correct_target": "11 check",
-    "evidence": "Field index: 11 check p4 line 11, 'No' (vision_agreed); p4 line 11, 'Yes. Describe' (vision_agreed). ab_has_11 says yes with a row on the line, no with none and the line shown, blank when a gate's No hid it, with the index's export state for each. [Q24], 3b spec §8.1. test_printed_page.py's test_every_line_says_no_for_a_filer_with_nothing_and_totals_print_zero reads this box off the drawn page for a filer with nothing, and test_every_row_box_prints_its_own_answer_on_the_page reads its Yes."
+    "evidence": "Field index: 11 check p4 line 11, 'No' (vision_agreed); p4 line 11, 'Yes. Describe' (vision_agreed). ab_has_11 says yes with a row on the line, no with none and the line shown, blank when a gate's No hid it, with the index's export state for each. [Q24], 3b spec §8.1. test_printed_page.py's test_every_line_says_no_for_a_filer_with_nothing_and_totals_print_zero reads its No off the drawn page. test_every_row_box_prints_its_own_answer_on_the_page reads its Yes."
   },
   {
     "schema": "schedule_a_b",
@@ -2507,7 +2507,7 @@
     "final_verdicts": ["correct"],
     "status": "confirmed",
     "correct_target": "12 check",
-    "evidence": "Field index: 12 check p4 line 12., 'No' (sampled_ok); p4 line 12., 'Yes. Describe.' (sampled_ok). ab_has_12 says yes with a row on the line, no with none and the line shown, blank when a gate's No hid it, with the index's export state for each. [Q24], 3b spec §8.1. test_printed_page.py's test_every_line_says_no_for_a_filer_with_nothing_and_totals_print_zero reads this box off the drawn page for a filer with nothing, and test_every_row_box_prints_its_own_answer_on_the_page reads its Yes."
+    "evidence": "Field index: 12 check p4 line 12., 'No' (sampled_ok); p4 line 12., 'Yes. Describe.' (sampled_ok). ab_has_12 says yes with a row on the line, no with none and the line shown, blank when a gate's No hid it, with the index's export state for each. [Q24], 3b spec §8.1. test_printed_page.py's test_every_line_says_no_for_a_filer_with_nothing_and_totals_print_zero reads its No off the drawn page. test_every_row_box_prints_its_own_answer_on_the_page reads its Yes."
   },
   {
     "schema": "schedule_a_b",
@@ -2537,7 +2537,7 @@
     "final_verdicts": ["correct"],
     "status": "confirmed",
     "correct_target": "check 13",
-    "evidence": "Field index: check 13 p4 line 13., 'No' (sampled_ok); p4 line 13., 'Yes. Describe.' (sampled_ok). ab_has_13 says yes with a row on the line, no with none and the line shown, blank when a gate's No hid it, with the index's export state for each. [Q24], 3b spec §8.1. test_printed_page.py's test_every_line_says_no_for_a_filer_with_nothing_and_totals_print_zero reads this box off the drawn page for a filer with nothing, and test_every_row_box_prints_its_own_answer_on_the_page reads its Yes."
+    "evidence": "Field index: check 13 p4 line 13., 'No' (sampled_ok); p4 line 13., 'Yes. Describe.' (sampled_ok). ab_has_13 says yes with a row on the line, no with none and the line shown, blank when a gate's No hid it, with the index's export state for each. [Q24], 3b spec §8.1. test_printed_page.py's test_every_line_says_no_for_a_filer_with_nothing_and_totals_print_zero reads its No off the drawn page. test_every_row_box_prints_its_own_answer_on_the_page reads its Yes."
   },
   {
     "schema": "schedule_a_b",
@@ -2567,7 +2567,7 @@
     "final_verdicts": ["correct"],
     "status": "confirmed",
     "correct_target": "check 14",
-    "evidence": "Field index: check 14 p4 line 14., 'No' (sampled_ok); p4 line 14., 'Yes. Give specific information.' (sampled_ok). ab_has_14 says yes with a row on the line, no with none and the line shown, blank when a gate's No hid it, with the index's export state for each. [Q24], 3b spec §8.1. test_printed_page.py's test_every_line_says_no_for_a_filer_with_nothing_and_totals_print_zero reads this box off the drawn page for a filer with nothing, and test_every_row_box_prints_its_own_answer_on_the_page reads its Yes."
+    "evidence": "Field index: check 14 p4 line 14., 'No' (sampled_ok); p4 line 14., 'Yes. Give specific information.' (sampled_ok). ab_has_14 says yes with a row on the line, no with none and the line shown, blank when a gate's No hid it, with the index's export state for each. [Q24], 3b spec §8.1. test_printed_page.py's test_every_line_says_no_for_a_filer_with_nothing_and_totals_print_zero reads its No off the drawn page. test_every_row_box_prints_its_own_answer_on_the_page reads its Yes."
   },
   {
     "schema": "schedule_a_b",
@@ -2597,7 +2597,7 @@
     "final_verdicts": ["correct"],
     "status": "confirmed",
     "correct_target": "Check 16",
-    "evidence": "Field index: Check 16 p5 line 16, 'No' (sampled_ok); p5 line 16, 'Yes' (sampled_ok). ab_has_16 says yes with a row on the line, no with none and the line shown, blank when a gate's No hid it, with the index's export state for each. [Q24], 3b spec §8.1. test_printed_page.py's test_every_line_says_no_for_a_filer_with_nothing_and_totals_print_zero reads this box off the drawn page for a filer with nothing, and test_every_row_box_prints_its_own_answer_on_the_page reads its Yes."
+    "evidence": "Field index: Check 16 p5 line 16, 'No' (sampled_ok); p5 line 16, 'Yes' (sampled_ok). ab_has_16 says yes with a row on the line, no with none and the line shown, blank when a gate's No hid it, with the index's export state for each. [Q24], 3b spec §8.1. test_printed_page.py's test_every_line_says_no_for_a_filer_with_nothing_and_totals_print_zero reads its No off the drawn page. test_every_row_box_prints_its_own_answer_on_the_page reads its Yes."
   },
   {
     "schema": "schedule_a_b",
@@ -2617,7 +2617,7 @@
     "final_verdicts": ["correct"],
     "status": "confirmed",
     "correct_target": "Check 17",
-    "evidence": "Field index: Check 17 p5 line 17, 'No' (sampled_ok); p5 line 17, 'Yes' (sampled_ok). ab_has_17 says yes with a row on the line, no with none and the line shown, blank when a gate's No hid it, with the index's export state for each. [Q24], 3b spec §8.1. test_printed_page.py's test_every_line_says_no_for_a_filer_with_nothing_and_totals_print_zero reads this box off the drawn page for a filer with nothing, and test_a_savings_account_prints_on_17_3_not_17_1 reads its Yes."
+    "evidence": "Field index: Check 17 p5 line 17, 'No' (sampled_ok); p5 line 17, 'Yes' (sampled_ok). ab_has_17 says yes with a row on the line, no with none and the line shown, blank when a gate's No hid it, with the index's export state for each. [Q24], 3b spec §8.1. test_printed_page.py's test_every_line_says_no_for_a_filer_with_nothing_and_totals_print_zero reads its No off the drawn page. test_a_savings_account_prints_on_17_3_not_17_1 reads its Yes."
   },
   {
     "schema": "schedule_a_b",
@@ -2807,7 +2807,7 @@
     "final_verdicts": ["correct"],
     "status": "confirmed",
     "correct_target": "Check 18",
-    "evidence": "Field index: Check 18 p5 line 18, 'No' (sampled_ok); p5 line 18, 'Yes' (sampled_ok). ab_has_18 says yes with a row on the line, no with none and the line shown, blank when a gate's No hid it, with the index's export state for each. [Q24], 3b spec §8.1. test_printed_page.py's test_every_line_says_no_for_a_filer_with_nothing_and_totals_print_zero reads this box off the drawn page for a filer with nothing. No test draws its Yes: the index's export state above is that box's evidence."
+    "evidence": "Field index: Check 18 p5 line 18, 'No' (sampled_ok); p5 line 18, 'Yes' (sampled_ok). ab_has_18 says yes with a row on the line, no with none and the line shown, blank when a gate's No hid it, with the index's export state for each. [Q24], 3b spec §8.1. test_printed_page.py's test_every_line_says_no_for_a_filer_with_nothing_and_totals_print_zero reads its No off the drawn page. No test draws its Yes: the index's export state above is that box's evidence."
   },
   {
     "schema": "schedule_a_b",
@@ -2877,7 +2877,7 @@
     "final_verdicts": ["correct"],
     "status": "confirmed",
     "correct_target": "check 19",
-    "evidence": "Field index: check 19 p5 line 19, 'No' (vision_agreed); p5 line 19, 'Yes. Give specific information about them.' (vision_agreed). ab_has_19 says yes with a row on the line, no with none and the line shown, blank when a gate's No hid it, with the index's export state for each. [Q24], 3b spec §8.1. test_printed_page.py's test_every_line_says_no_for_a_filer_with_nothing_and_totals_print_zero reads this box off the drawn page for a filer with nothing, and test_line_19_prints_entity_share_and_value reads its Yes."
+    "evidence": "Field index: check 19 p5 line 19, 'No' (vision_agreed); p5 line 19, 'Yes. Give specific information about them.' (vision_agreed). ab_has_19 says yes with a row on the line, no with none and the line shown, blank when a gate's No hid it, with the index's export state for each. [Q24], 3b spec §8.1. test_printed_page.py's test_every_line_says_no_for_a_filer_with_nothing_and_totals_print_zero reads its No off the drawn page. test_line_19_prints_entity_share_and_value reads its Yes."
   },
   {
     "schema": "schedule_a_b",
@@ -2977,7 +2977,7 @@
     "final_verdicts": ["correct"],
     "status": "confirmed",
     "correct_target": "check 20",
-    "evidence": "Field index: check 20 p6 line 20, 'No' (sampled_ok); p6 line 20, 'Yes. Give specific information about them.' (sampled_ok). ab_has_20 says yes with a row on the line, no with none and the line shown, blank when a gate's No hid it, with the index's export state for each. [Q24], 3b spec §8.1. test_printed_page.py's test_every_line_says_no_for_a_filer_with_nothing_and_totals_print_zero reads this box off the drawn page for a filer with nothing. No test draws its Yes: the index's export state above is that box's evidence."
+    "evidence": "Field index: check 20 p6 line 20, 'No' (sampled_ok); p6 line 20, 'Yes. Give specific information about them.' (sampled_ok). ab_has_20 says yes with a row on the line, no with none and the line shown, blank when a gate's No hid it, with the index's export state for each. [Q24], 3b spec §8.1. test_printed_page.py's test_every_line_says_no_for_a_filer_with_nothing_and_totals_print_zero reads its No off the drawn page. No test draws its Yes: the index's export state above is that box's evidence."
   },
   {
     "schema": "schedule_a_b",
@@ -3047,7 +3047,7 @@
     "final_verdicts": ["correct"],
     "status": "confirmed",
     "correct_target": "check 21",
-    "evidence": "Field index: check 21 p6 line 21, 'No' (sampled_ok); p6 line 21, 'Yes. List each account separately.' (sampled_ok). ab_has_21 says yes with a row on the line, no with none and the line shown, blank when a gate's No hid it, with the index's export state for each. [Q24], 3b spec §8.1. test_printed_page.py's test_every_line_says_no_for_a_filer_with_nothing_and_totals_print_zero reads this box off the drawn page for a filer with nothing. No test draws its Yes: the index's export state above is that box's evidence."
+    "evidence": "Field index: check 21 p6 line 21, 'No' (sampled_ok); p6 line 21, 'Yes. List each account separately.' (sampled_ok). ab_has_21 says yes with a row on the line, no with none and the line shown, blank when a gate's No hid it, with the index's export state for each. [Q24], 3b spec §8.1. test_printed_page.py's test_every_line_says_no_for_a_filer_with_nothing_and_totals_print_zero reads its No off the drawn page. No test draws its Yes: the index's export state above is that box's evidence."
   },
   {
     "schema": "schedule_a_b",
@@ -3197,7 +3197,7 @@
     "final_verdicts": ["correct"],
     "status": "confirmed",
     "correct_target": "check 22",
-    "evidence": "Field index: check 22 p6 line 22, 'No' (vision_agreed); p6 line 22, 'Yes' (vision_agreed). ab_has_22 says yes with a row on the line, no with none and the line shown, blank when a gate's No hid it, with the index's export state for each. [Q24], 3b spec §8.1. test_printed_page.py's test_every_line_says_no_for_a_filer_with_nothing_and_totals_print_zero reads this box off the drawn page for a filer with nothing. No test draws its Yes: the index's export state above is that box's evidence."
+    "evidence": "Field index: check 22 p6 line 22, 'No' (vision_agreed); p6 line 22, 'Yes' (vision_agreed). ab_has_22 says yes with a row on the line, no with none and the line shown, blank when a gate's No hid it, with the index's export state for each. [Q24], 3b spec §8.1. test_printed_page.py's test_every_line_says_no_for_a_filer_with_nothing_and_totals_print_zero reads its No off the drawn page. No test draws its Yes: the index's export state above is that box's evidence."
   },
   {
     "schema": "schedule_a_b",
@@ -3387,7 +3387,7 @@
     "final_verdicts": ["correct"],
     "status": "confirmed",
     "correct_target": "check 23",
-    "evidence": "Field index: check 23 p6 line 23, 'No' (sampled_ok); p6 line 23, 'Yes' (sampled_ok). ab_has_23 says yes with a row on the line, no with none and the line shown, blank when a gate's No hid it, with the index's export state for each. [Q24], 3b spec §8.1. test_printed_page.py's test_every_line_says_no_for_a_filer_with_nothing_and_totals_print_zero reads this box off the drawn page for a filer with nothing. No test draws its Yes: the index's export state above is that box's evidence."
+    "evidence": "Field index: check 23 p6 line 23, 'No' (sampled_ok); p6 line 23, 'Yes' (sampled_ok). ab_has_23 says yes with a row on the line, no with none and the line shown, blank when a gate's No hid it, with the index's export state for each. [Q24], 3b spec §8.1. test_printed_page.py's test_every_line_says_no_for_a_filer_with_nothing_and_totals_print_zero reads its No off the drawn page. No test draws its Yes: the index's export state above is that box's evidence."
   },
   {
     "schema": "schedule_a_b",
@@ -3457,7 +3457,7 @@
     "final_verdicts": ["correct"],
     "status": "confirmed",
     "correct_target": "check 24",
-    "evidence": "Field index: check 24 p7 line 24, 'No' (adjudicated); p7 line 24, 'Yes' (adjudicated). ab_has_24 says yes with a row on the line, no with none and the line shown, blank when a gate's No hid it, with the index's export state for each. [Q24], 3b spec §8.1. test_printed_page.py's test_every_line_says_no_for_a_filer_with_nothing_and_totals_print_zero reads this box off the drawn page for a filer with nothing. No test draws its Yes: the index's export state above is that box's evidence."
+    "evidence": "Field index: check 24 p7 line 24, 'No' (adjudicated); p7 line 24, 'Yes' (adjudicated). ab_has_24 says yes with a row on the line, no with none and the line shown, blank when a gate's No hid it, with the index's export state for each. [Q24], 3b spec §8.1. test_printed_page.py's test_every_line_says_no_for_a_filer_with_nothing_and_totals_print_zero reads its No off the drawn page. No test draws its Yes: the index's export state above is that box's evidence."
   },
   {
     "schema": "schedule_a_b",
@@ -3527,7 +3527,7 @@
     "final_verdicts": ["correct"],
     "status": "confirmed",
     "correct_target": "check 25",
-    "evidence": "Field index: check 25 p7 line 25, 'No' (sampled_ok); p7 line 25, 'Yes. Give specific information about them....' (sampled_ok). ab_has_25 says yes with a row on the line, no with none and the line shown, blank when a gate's No hid it, with the index's export state for each. [Q24], 3b spec §8.1. test_printed_page.py's test_every_line_says_no_for_a_filer_with_nothing_and_totals_print_zero reads this box off the drawn page for a filer with nothing, and test_every_row_box_prints_its_own_answer_on_the_page reads its Yes."
+    "evidence": "Field index: check 25 p7 line 25, 'No' (sampled_ok); p7 line 25, 'Yes. Give specific information about them....' (sampled_ok). ab_has_25 says yes with a row on the line, no with none and the line shown, blank when a gate's No hid it, with the index's export state for each. [Q24], 3b spec §8.1. test_printed_page.py's test_every_line_says_no_for_a_filer_with_nothing_and_totals_print_zero reads its No off the drawn page. test_every_row_box_prints_its_own_answer_on_the_page reads its Yes."
   },
   {
     "schema": "schedule_a_b",
@@ -3557,7 +3557,7 @@
     "final_verdicts": ["correct"],
     "status": "confirmed",
     "correct_target": "check 26",
-    "evidence": "Field index: check 26 p7 line 26, 'No' (vision_agreed); p7 line 26, 'Yes. Give specific information about them.' (vision_agreed). ab_has_26 says yes with a row on the line, no with none and the line shown, blank when a gate's No hid it, with the index's export state for each. [Q24], 3b spec §8.1. test_printed_page.py's test_every_line_says_no_for_a_filer_with_nothing_and_totals_print_zero reads this box off the drawn page for a filer with nothing, and test_every_row_box_prints_its_own_answer_on_the_page reads its Yes."
+    "evidence": "Field index: check 26 p7 line 26, 'No' (vision_agreed); p7 line 26, 'Yes. Give specific information about them.' (vision_agreed). ab_has_26 says yes with a row on the line, no with none and the line shown, blank when a gate's No hid it, with the index's export state for each. [Q24], 3b spec §8.1. test_printed_page.py's test_every_line_says_no_for_a_filer_with_nothing_and_totals_print_zero reads its No off the drawn page. test_every_row_box_prints_its_own_answer_on_the_page reads its Yes."
   },
   {
     "schema": "schedule_a_b",
@@ -3587,7 +3587,7 @@
     "final_verdicts": ["correct"],
     "status": "confirmed",
     "correct_target": "check 27",
-    "evidence": "Field index: check 27 p7 line 27, 'No' (vision_agreed); p7 line 27, 'Yes. Give specific information about them.' (vision_agreed). ab_has_27 says yes with a row on the line, no with none and the line shown, blank when a gate's No hid it, with the index's export state for each. [Q24], 3b spec §8.1. test_printed_page.py's test_every_line_says_no_for_a_filer_with_nothing_and_totals_print_zero reads this box off the drawn page for a filer with nothing, and test_every_row_box_prints_its_own_answer_on_the_page reads its Yes."
+    "evidence": "Field index: check 27 p7 line 27, 'No' (vision_agreed); p7 line 27, 'Yes. Give specific information about them.' (vision_agreed). ab_has_27 says yes with a row on the line, no with none and the line shown, blank when a gate's No hid it, with the index's export state for each. [Q24], 3b spec §8.1. test_printed_page.py's test_every_line_says_no_for_a_filer_with_nothing_and_totals_print_zero reads its No off the drawn page. test_every_row_box_prints_its_own_answer_on_the_page reads its Yes."
   },
   {
     "schema": "schedule_a_b",
@@ -3617,7 +3617,7 @@
     "final_verdicts": ["correct"],
     "status": "confirmed",
     "correct_target": "check 28",
-    "evidence": "Field index: check 28 p7 line 28, 'No' (vision_agreed); p7 line 28, 'Yes. Give specific information about them, including whether you already filed the returns and the tax years.' (vision_agreed). ab_has_28 says yes with a row on the line, no with none and the line shown, blank when a gate's No hid it, with the index's export state for each. [Q24], 3b spec §8.1. test_printed_page.py's test_every_line_says_no_for_a_filer_with_nothing_and_totals_print_zero reads this box off the drawn page for a filer with nothing, and test_two_federal_refunds_add_up_and_their_texts_join reads its Yes."
+    "evidence": "Field index: check 28 p7 line 28, 'No' (vision_agreed); p7 line 28, 'Yes. Give specific information about them, including whether you already filed the returns and the tax years.' (vision_agreed). ab_has_28 says yes with a row on the line, no with none and the line shown, blank when a gate's No hid it, with the index's export state for each. [Q24], 3b spec §8.1. test_printed_page.py's test_every_line_says_no_for_a_filer_with_nothing_and_totals_print_zero reads its No off the drawn page. test_two_federal_refunds_add_up_and_their_texts_join reads its Yes."
   },
   {
     "schema": "schedule_a_b",
@@ -3667,7 +3667,7 @@
     "final_verdicts": ["correct"],
     "status": "confirmed",
     "correct_target": "check 29",
-    "evidence": "Field index: check 29 p7 line 29, 'No' (vision_agreed); p7 line 29, 'Yes. Give specific information' (vision_agreed). ab_has_29 says yes with a row on the line, no with none and the line shown, blank when a gate's No hid it, with the index's export state for each. [Q24], 3b spec §8.1. test_printed_page.py's test_every_line_says_no_for_a_filer_with_nothing_and_totals_print_zero reads this box off the drawn page for a filer with nothing. No test draws its Yes: the index's export state above is that box's evidence."
+    "evidence": "Field index: check 29 p7 line 29, 'No' (vision_agreed); p7 line 29, 'Yes. Give specific information' (vision_agreed). ab_has_29 says yes with a row on the line, no with none and the line shown, blank when a gate's No hid it, with the index's export state for each. [Q24], 3b spec §8.1. test_printed_page.py's test_every_line_says_no_for_a_filer_with_nothing_and_totals_print_zero reads its No off the drawn page. No test draws its Yes: the index's export state above is that box's evidence."
   },
   {
     "schema": "schedule_a_b",
@@ -3737,7 +3737,7 @@
     "final_verdicts": ["correct"],
     "status": "confirmed",
     "correct_target": "check 30",
-    "evidence": "Field index: check 30 p7 line 30, 'No' (vision_agreed); p7 line 30, 'Yes. Give specific information' (vision_agreed). ab_has_30 says yes with a row on the line, no with none and the line shown, blank when a gate's No hid it, with the index's export state for each. [Q24], 3b spec §8.1. test_printed_page.py's test_every_line_says_no_for_a_filer_with_nothing_and_totals_print_zero reads this box off the drawn page for a filer with nothing, and test_every_row_box_prints_its_own_answer_on_the_page reads its Yes."
+    "evidence": "Field index: check 30 p7 line 30, 'No' (vision_agreed); p7 line 30, 'Yes. Give specific information' (vision_agreed). ab_has_30 says yes with a row on the line, no with none and the line shown, blank when a gate's No hid it, with the index's export state for each. [Q24], 3b spec §8.1. test_printed_page.py's test_every_line_says_no_for_a_filer_with_nothing_and_totals_print_zero reads its No off the drawn page. test_every_row_box_prints_its_own_answer_on_the_page reads its Yes."
   },
   {
     "schema": "schedule_a_b",
@@ -3767,7 +3767,7 @@
     "final_verdicts": ["correct"],
     "status": "confirmed",
     "correct_target": "check 31",
-    "evidence": "Field index: check 31 p8 line 31, 'No' (sampled_ok); p8 line 31, 'Yes. Name the insurance company of each policy and list its value.' (sampled_ok). ab_has_31 says yes with a row on the line, no with none and the line shown, blank when a gate's No hid it, with the index's export state for each. [Q24], 3b spec §8.1. test_printed_page.py's test_every_line_says_no_for_a_filer_with_nothing_and_totals_print_zero reads this box off the drawn page for a filer with nothing, and test_line_31_prints_company_beneficiary_and_a_zero_value reads its Yes."
+    "evidence": "Field index: check 31 p8 line 31, 'No' (sampled_ok); p8 line 31, 'Yes. Name the insurance company of each policy and list its value.' (sampled_ok). ab_has_31 says yes with a row on the line, no with none and the line shown, blank when a gate's No hid it, with the index's export state for each. [Q24], 3b spec §8.1. test_printed_page.py's test_every_line_says_no_for_a_filer_with_nothing_and_totals_print_zero reads its No off the drawn page. test_line_31_prints_company_beneficiary_and_a_zero_value reads its Yes."
   },
   {
     "schema": "schedule_a_b",
@@ -3867,7 +3867,7 @@
     "final_verdicts": ["correct"],
     "status": "confirmed",
     "correct_target": "check 32",
-    "evidence": "Field index: check 32 p8 line 32, 'No' (sampled_ok); p8 line 32, 'Yes. Give specific information' (sampled_ok). ab_has_32 says yes with a row on the line, no with none and the line shown, blank when a gate's No hid it, with the index's export state for each. [Q24], 3b spec §8.1. test_printed_page.py's test_every_line_says_no_for_a_filer_with_nothing_and_totals_print_zero reads this box off the drawn page for a filer with nothing, and test_every_row_box_prints_its_own_answer_on_the_page reads its Yes."
+    "evidence": "Field index: check 32 p8 line 32, 'No' (sampled_ok); p8 line 32, 'Yes. Give specific information' (sampled_ok). ab_has_32 says yes with a row on the line, no with none and the line shown, blank when a gate's No hid it, with the index's export state for each. [Q24], 3b spec §8.1. test_printed_page.py's test_every_line_says_no_for_a_filer_with_nothing_and_totals_print_zero reads its No off the drawn page. test_every_row_box_prints_its_own_answer_on_the_page reads its Yes."
   },
   {
     "schema": "schedule_a_b",
@@ -3897,7 +3897,7 @@
     "final_verdicts": ["correct"],
     "status": "confirmed",
     "correct_target": "check 33",
-    "evidence": "Field index: check 33 p8 line 33, 'No' (vision_agreed); p8 line 33, 'Yes. Describe each claim.' (vision_agreed). ab_has_33 says yes with a row on the line, no with none and the line shown, blank when a gate's No hid it, with the index's export state for each. [Q24], 3b spec §8.1. test_printed_page.py's test_every_line_says_no_for_a_filer_with_nothing_and_totals_print_zero reads this box off the drawn page for a filer with nothing, and test_every_row_box_prints_its_own_answer_on_the_page reads its Yes."
+    "evidence": "Field index: check 33 p8 line 33, 'No' (vision_agreed); p8 line 33, 'Yes. Describe each claim.' (vision_agreed). ab_has_33 says yes with a row on the line, no with none and the line shown, blank when a gate's No hid it, with the index's export state for each. [Q24], 3b spec §8.1. test_printed_page.py's test_every_line_says_no_for_a_filer_with_nothing_and_totals_print_zero reads its No off the drawn page. test_every_row_box_prints_its_own_answer_on_the_page reads its Yes."
   },
   {
     "schema": "schedule_a_b",
@@ -3927,7 +3927,7 @@
     "final_verdicts": ["correct"],
     "status": "confirmed",
     "correct_target": "check 34",
-    "evidence": "Field index: check 34 p8 line 34, 'No' (vision_agreed); p8 line 34, 'Yes. Describe each claim.' (vision_agreed). ab_has_34 says yes with a row on the line, no with none and the line shown, blank when a gate's No hid it, with the index's export state for each. [Q24], 3b spec §8.1. test_printed_page.py's test_every_line_says_no_for_a_filer_with_nothing_and_totals_print_zero reads this box off the drawn page for a filer with nothing, and test_every_row_box_prints_its_own_answer_on_the_page reads its Yes."
+    "evidence": "Field index: check 34 p8 line 34, 'No' (vision_agreed); p8 line 34, 'Yes. Describe each claim.' (vision_agreed). ab_has_34 says yes with a row on the line, no with none and the line shown, blank when a gate's No hid it, with the index's export state for each. [Q24], 3b spec §8.1. test_printed_page.py's test_every_line_says_no_for_a_filer_with_nothing_and_totals_print_zero reads its No off the drawn page. test_every_row_box_prints_its_own_answer_on_the_page reads its Yes."
   },
   {
     "schema": "schedule_a_b",
@@ -3957,7 +3957,7 @@
     "final_verdicts": ["correct"],
     "status": "confirmed",
     "correct_target": "check 35",
-    "evidence": "Field index: check 35 p8 line 35, 'No' (vision_agreed); p8 line 35, 'Yes. Give specific information.' (vision_agreed). ab_has_35 says yes with a row on the line, no with none and the line shown, blank when a gate's No hid it, with the index's export state for each. [Q24], 3b spec §8.1. test_printed_page.py's test_every_line_says_no_for_a_filer_with_nothing_and_totals_print_zero reads this box off the drawn page for a filer with nothing, and test_every_row_box_prints_its_own_answer_on_the_page reads its Yes."
+    "evidence": "Field index: check 35 p8 line 35, 'No' (vision_agreed); p8 line 35, 'Yes. Give specific information.' (vision_agreed). ab_has_35 says yes with a row on the line, no with none and the line shown, blank when a gate's No hid it, with the index's export state for each. [Q24], 3b spec §8.1. test_printed_page.py's test_every_line_says_no_for_a_filer_with_nothing_and_totals_print_zero reads its No off the drawn page. test_every_row_box_prints_its_own_answer_on_the_page reads its Yes."
   },
   {
     "schema": "schedule_a_b",
@@ -3987,7 +3987,7 @@
     "final_verdicts": ["correct"],
     "status": "confirmed",
     "correct_target": "check 37",
-    "evidence": "Field index: check 37 p8 line 37, 'No. Go to Part 6.' (sampled_ok); p8 line 37, 'Yes. Go to line 38.' (sampled_ok). ab_has_37 says yes with a row on the line, no with none and the line shown, blank when a gate's No hid it, with the index's export state for each. [Q24], 3b spec §8.1. test_printed_page.py's test_every_line_says_no_for_a_filer_with_nothing_and_totals_print_zero reads this box off the drawn page for a filer with nothing, and test_every_row_box_prints_its_own_answer_on_the_page reads its Yes."
+    "evidence": "Field index: check 37 p8 line 37, 'No. Go to Part 6.' (sampled_ok); p8 line 37, 'Yes. Go to line 38.' (sampled_ok). ab_has_37 says yes with a row on the line, no with none and the line shown, blank when a gate's No hid it, with the index's export state for each. [Q24], 3b spec §8.1. test_printed_page.py's test_every_line_says_no_for_a_filer_with_nothing_and_totals_print_zero reads its No off the drawn page. test_every_row_box_prints_its_own_answer_on_the_page reads its Yes."
   },
   {
     "schema": "schedule_a_b",
@@ -3997,7 +3997,7 @@
     "final_verdicts": ["correct"],
     "status": "confirmed",
     "correct_target": "check 38",
-    "evidence": "Field index: check 38 p8 line 38, 'No' (sampled_ok); p8 line 38, 'Yes. Describe' (sampled_ok). ab_has_38 says yes with a row on the line, no with none and the line shown, blank when a gate's No hid it, with the index's export state for each. [Q24], 3b spec §8.1. test_printed_page.py's test_every_line_says_no_for_a_filer_with_nothing_and_totals_print_zero reads this box off the drawn page for a filer with nothing, and test_every_row_box_prints_its_own_answer_on_the_page reads its Yes."
+    "evidence": "Field index: check 38 p8 line 38, 'No' (sampled_ok); p8 line 38, 'Yes. Describe' (sampled_ok). ab_has_38 says yes with a row on the line, no with none and the line shown, blank when a gate's No hid it, with the index's export state for each. [Q24], 3b spec §8.1. test_printed_page.py's test_every_line_says_no_for_a_filer_with_nothing_and_totals_print_zero reads this box blank under line 37's No. No test draws its No: the index's export state above is that box's evidence. test_every_row_box_prints_its_own_answer_on_the_page reads its Yes."
   },
   {
     "schema": "schedule_a_b",
@@ -4027,7 +4027,7 @@
     "final_verdicts": ["correct"],
     "status": "confirmed",
     "correct_target": "check 39",
-    "evidence": "Field index: check 39 p8 line 39, 'No' (sampled_ok); p8 line 39, 'Yes. Describe' (sampled_ok). ab_has_39 says yes with a row on the line, no with none and the line shown, blank when a gate's No hid it, with the index's export state for each. [Q24], 3b spec §8.1. test_printed_page.py's test_every_line_says_no_for_a_filer_with_nothing_and_totals_print_zero reads this box off the drawn page for a filer with nothing, and test_every_row_box_prints_its_own_answer_on_the_page reads its Yes."
+    "evidence": "Field index: check 39 p8 line 39, 'No' (sampled_ok); p8 line 39, 'Yes. Describe' (sampled_ok). ab_has_39 says yes with a row on the line, no with none and the line shown, blank when a gate's No hid it, with the index's export state for each. [Q24], 3b spec §8.1. test_printed_page.py's test_every_line_says_no_for_a_filer_with_nothing_and_totals_print_zero reads this box blank under line 37's No. test_a_yes_to_a_gate_answers_every_line_under_it_and_prints_its_total reads its No. test_every_row_box_prints_its_own_answer_on_the_page reads its Yes."
   },
   {
     "schema": "schedule_a_b",
@@ -4057,7 +4057,7 @@
     "final_verdicts": ["correct"],
     "status": "confirmed",
     "correct_target": "check 40",
-    "evidence": "Field index: check 40 p9 line 40, 'No' (sampled_ok); p9 line 40, 'Yes. Describe' (sampled_ok). ab_has_40 says yes with a row on the line, no with none and the line shown, blank when a gate's No hid it, with the index's export state for each. [Q24], 3b spec §8.1. test_printed_page.py's test_every_line_says_no_for_a_filer_with_nothing_and_totals_print_zero reads this box off the drawn page for a filer with nothing, and test_every_row_box_prints_its_own_answer_on_the_page reads its Yes."
+    "evidence": "Field index: check 40 p9 line 40, 'No' (sampled_ok); p9 line 40, 'Yes. Describe' (sampled_ok). ab_has_40 says yes with a row on the line, no with none and the line shown, blank when a gate's No hid it, with the index's export state for each. [Q24], 3b spec §8.1. test_printed_page.py's test_every_line_says_no_for_a_filer_with_nothing_and_totals_print_zero reads this box blank under line 37's No. No test draws its No: the index's export state above is that box's evidence. test_every_row_box_prints_its_own_answer_on_the_page reads its Yes."
   },
   {
     "schema": "schedule_a_b",
@@ -4087,7 +4087,7 @@
     "final_verdicts": ["correct"],
     "status": "confirmed",
     "correct_target": "check 41",
-    "evidence": "Field index: check 41 p9 line 41, 'No' (sampled_ok); p9 line 41, 'Yes. Describe' (sampled_ok). ab_has_41 says yes with a row on the line, no with none and the line shown, blank when a gate's No hid it, with the index's export state for each. [Q24], 3b spec §8.1. test_printed_page.py's test_every_line_says_no_for_a_filer_with_nothing_and_totals_print_zero reads this box off the drawn page for a filer with nothing, and test_every_row_box_prints_its_own_answer_on_the_page reads its Yes."
+    "evidence": "Field index: check 41 p9 line 41, 'No' (sampled_ok); p9 line 41, 'Yes. Describe' (sampled_ok). ab_has_41 says yes with a row on the line, no with none and the line shown, blank when a gate's No hid it, with the index's export state for each. [Q24], 3b spec §8.1. test_printed_page.py's test_every_line_says_no_for_a_filer_with_nothing_and_totals_print_zero reads this box blank under line 37's No. No test draws its No: the index's export state above is that box's evidence. test_every_row_box_prints_its_own_answer_on_the_page reads its Yes."
   },
   {
     "schema": "schedule_a_b",
@@ -4117,7 +4117,7 @@
     "final_verdicts": ["correct"],
     "status": "confirmed",
     "correct_target": "check 42",
-    "evidence": "Field index: check 42 p9 line 42, 'No' (sampled_ok); p9 line 42, 'Yes. Describe' (sampled_ok). ab_has_42 says yes with a row on the line, no with none and the line shown, blank when a gate's No hid it, with the index's export state for each. [Q24], 3b spec §8.1. test_printed_page.py's test_every_line_says_no_for_a_filer_with_nothing_and_totals_print_zero reads this box off the drawn page for a filer with nothing. No test draws its Yes: the index's export state above is that box's evidence."
+    "evidence": "Field index: check 42 p9 line 42, 'No' (sampled_ok); p9 line 42, 'Yes. Describe' (sampled_ok). ab_has_42 says yes with a row on the line, no with none and the line shown, blank when a gate's No hid it, with the index's export state for each. [Q24], 3b spec §8.1. test_printed_page.py's test_every_line_says_no_for_a_filer_with_nothing_and_totals_print_zero reads this box blank under line 37's No. No test draws its No: the index's export state above is that box's evidence. No test draws its Yes: the index's export state above is that box's evidence."
   },
   {
     "schema": "schedule_a_b",
@@ -4217,7 +4217,7 @@
     "final_verdicts": ["correct"],
     "status": "confirmed",
     "correct_target": "check 43",
-    "evidence": "Field index: check 43 p9 line 43, 'No' (vision_agreed); p9 line 43, 'Yes. Do your lists include personally identifiable information (as defined in 11 U.S.C. § 101(41A))?' (vision_agreed). ab_has_43 says yes with a row on the line, no with none and the line shown, blank when a gate's No hid it, with the index's export state for each. [Q24], 3b spec §8.1. test_printed_page.py's test_every_line_says_no_for_a_filer_with_nothing_and_totals_print_zero reads this box off the drawn page for a filer with nothing, and test_every_row_box_prints_its_own_answer_on_the_page reads its Yes."
+    "evidence": "Field index: check 43 p9 line 43, 'No' (vision_agreed); p9 line 43, 'Yes. Do your lists include personally identifiable information (as defined in 11 U.S.C. § 101(41A))?' (vision_agreed). ab_has_43 says yes with a row on the line, no with none and the line shown, blank when a gate's No hid it, with the index's export state for each. [Q24], 3b spec §8.1. test_printed_page.py's test_every_line_says_no_for_a_filer_with_nothing_and_totals_print_zero reads this box blank under line 37's No. No test draws its No: the index's export state above is that box's evidence. test_every_row_box_prints_its_own_answer_on_the_page reads its Yes."
   },
   {
     "schema": "schedule_a_b",
@@ -4257,7 +4257,7 @@
     "final_verdicts": ["correct"],
     "status": "confirmed",
     "correct_target": "check 44",
-    "evidence": "Field index: check 44 p9 line 44, 'No' (vision_agreed); p9 line 44, 'Yes. Give specific information' (vision_agreed). ab_has_44 says yes with a row on the line, no with none and the line shown, blank when a gate's No hid it, with the index's export state for each. [Q24], 3b spec §8.1. test_printed_page.py's test_every_line_says_no_for_a_filer_with_nothing_and_totals_print_zero reads this box off the drawn page for a filer with nothing. No test draws its Yes: the index's export state above is that box's evidence."
+    "evidence": "Field index: check 44 p9 line 44, 'No' (vision_agreed); p9 line 44, 'Yes. Give specific information' (vision_agreed). ab_has_44 says yes with a row on the line, no with none and the line shown, blank when a gate's No hid it, with the index's export state for each. [Q24], 3b spec §8.1. test_printed_page.py's test_every_line_says_no_for_a_filer_with_nothing_and_totals_print_zero reads this box blank under line 37's No. No test draws its No: the index's export state above is that box's evidence. No test draws its Yes: the index's export state above is that box's evidence."
   },
   {
     "schema": "schedule_a_b",
@@ -4387,7 +4387,7 @@
     "final_verdicts": ["correct"],
     "status": "confirmed",
     "correct_target": "check 46",
-    "evidence": "Field index: check 46 p9 line 46, 'No. Go to Part 7.' (vision_agreed); p9 line 46, 'Yes. Go to line 47.' (vision_agreed). ab_has_46 says yes with a row on the line, no with none and the line shown, blank when a gate's No hid it, with the index's export state for each. [Q24], 3b spec §8.1. test_printed_page.py's test_every_line_says_no_for_a_filer_with_nothing_and_totals_print_zero reads this box off the drawn page for a filer with nothing, and test_every_row_box_prints_its_own_answer_on_the_page reads its Yes."
+    "evidence": "Field index: check 46 p9 line 46, 'No. Go to Part 7.' (vision_agreed); p9 line 46, 'Yes. Go to line 47.' (vision_agreed). ab_has_46 says yes with a row on the line, no with none and the line shown, blank when a gate's No hid it, with the index's export state for each. [Q24], 3b spec §8.1. test_printed_page.py's test_every_line_says_no_for_a_filer_with_nothing_and_totals_print_zero reads its No off the drawn page. test_every_row_box_prints_its_own_answer_on_the_page reads its Yes."
   },
   {
     "schema": "schedule_a_b",
@@ -4397,7 +4397,7 @@
     "final_verdicts": ["correct"],
     "status": "confirmed",
     "correct_target": "check 47",
-    "evidence": "Field index: check 47 p9 line 47, 'No' (vision_agreed); p9 line 47, 'Yes' (vision_agreed). ab_has_47 says yes with a row on the line, no with none and the line shown, blank when a gate's No hid it, with the index's export state for each. [Q24], 3b spec §8.1. test_printed_page.py's test_every_line_says_no_for_a_filer_with_nothing_and_totals_print_zero reads this box off the drawn page for a filer with nothing, and test_every_row_box_prints_its_own_answer_on_the_page reads its Yes."
+    "evidence": "Field index: check 47 p9 line 47, 'No' (vision_agreed); p9 line 47, 'Yes' (vision_agreed). ab_has_47 says yes with a row on the line, no with none and the line shown, blank when a gate's No hid it, with the index's export state for each. [Q24], 3b spec §8.1. test_printed_page.py's test_every_line_says_no_for_a_filer_with_nothing_and_totals_print_zero reads this box blank under line 46's No. No test draws its No: the index's export state above is that box's evidence. test_every_row_box_prints_its_own_answer_on_the_page reads its Yes."
   },
   {
     "schema": "schedule_a_b",
@@ -4427,7 +4427,7 @@
     "final_verdicts": ["correct"],
     "status": "confirmed",
     "correct_target": "check 48",
-    "evidence": "Field index: check 48 p10 line 48, 'No' (sampled_ok); p10 line 48, 'Yes. Give specific information.' (sampled_ok). ab_has_48 says yes with a row on the line, no with none and the line shown, blank when a gate's No hid it, with the index's export state for each. [Q24], 3b spec §8.1. test_printed_page.py's test_every_line_says_no_for_a_filer_with_nothing_and_totals_print_zero reads this box off the drawn page for a filer with nothing, and test_every_row_box_prints_its_own_answer_on_the_page reads its Yes."
+    "evidence": "Field index: check 48 p10 line 48, 'No' (sampled_ok); p10 line 48, 'Yes. Give specific information.' (sampled_ok). ab_has_48 says yes with a row on the line, no with none and the line shown, blank when a gate's No hid it, with the index's export state for each. [Q24], 3b spec §8.1. test_printed_page.py's test_every_line_says_no_for_a_filer_with_nothing_and_totals_print_zero reads this box blank under line 46's No. test_a_yes_to_a_gate_answers_every_line_under_it_and_prints_its_total reads its No. test_every_row_box_prints_its_own_answer_on_the_page reads its Yes."
   },
   {
     "schema": "schedule_a_b",
@@ -4457,7 +4457,7 @@
     "final_verdicts": ["correct"],
     "status": "confirmed",
     "correct_target": "check 49",
-    "evidence": "Field index: check 49 p10 line 49, 'No' (sampled_ok); p10 line 49, 'Yes' (sampled_ok). ab_has_49 says yes with a row on the line, no with none and the line shown, blank when a gate's No hid it, with the index's export state for each. [Q24], 3b spec §8.1. test_printed_page.py's test_every_line_says_no_for_a_filer_with_nothing_and_totals_print_zero reads this box off the drawn page for a filer with nothing, and test_every_row_box_prints_its_own_answer_on_the_page reads its Yes."
+    "evidence": "Field index: check 49 p10 line 49, 'No' (sampled_ok); p10 line 49, 'Yes' (sampled_ok). ab_has_49 says yes with a row on the line, no with none and the line shown, blank when a gate's No hid it, with the index's export state for each. [Q24], 3b spec §8.1. test_printed_page.py's test_every_line_says_no_for_a_filer_with_nothing_and_totals_print_zero reads this box blank under line 46's No. No test draws its No: the index's export state above is that box's evidence. test_every_row_box_prints_its_own_answer_on_the_page reads its Yes."
   },
   {
     "schema": "schedule_a_b",
@@ -4487,7 +4487,7 @@
     "final_verdicts": ["correct"],
     "status": "confirmed",
     "correct_target": "check 50",
-    "evidence": "Field index: check 50 p10 line 50, 'No' (sampled_ok); p10 line 50, 'Yes' (sampled_ok). ab_has_50 says yes with a row on the line, no with none and the line shown, blank when a gate's No hid it, with the index's export state for each. [Q24], 3b spec §8.1. test_printed_page.py's test_every_line_says_no_for_a_filer_with_nothing_and_totals_print_zero reads this box off the drawn page for a filer with nothing, and test_every_row_box_prints_its_own_answer_on_the_page reads its Yes."
+    "evidence": "Field index: check 50 p10 line 50, 'No' (sampled_ok); p10 line 50, 'Yes' (sampled_ok). ab_has_50 says yes with a row on the line, no with none and the line shown, blank when a gate's No hid it, with the index's export state for each. [Q24], 3b spec §8.1. test_printed_page.py's test_every_line_says_no_for_a_filer_with_nothing_and_totals_print_zero reads this box blank under line 46's No. No test draws its No: the index's export state above is that box's evidence. test_every_row_box_prints_its_own_answer_on_the_page reads its Yes."
   },
   {
     "schema": "schedule_a_b",
@@ -4517,7 +4517,7 @@
     "final_verdicts": ["correct"],
     "status": "confirmed",
     "correct_target": "check 51",
-    "evidence": "Field index: check 51 p10 line 51, 'No' (sampled_ok); p10 line 51, 'Yes. Give specific information.' (sampled_ok). ab_has_51 says yes with a row on the line, no with none and the line shown, blank when a gate's No hid it, with the index's export state for each. [Q24], 3b spec §8.1. test_printed_page.py's test_every_line_says_no_for_a_filer_with_nothing_and_totals_print_zero reads this box off the drawn page for a filer with nothing, and test_every_row_box_prints_its_own_answer_on_the_page reads its Yes."
+    "evidence": "Field index: check 51 p10 line 51, 'No' (sampled_ok); p10 line 51, 'Yes. Give specific information.' (sampled_ok). ab_has_51 says yes with a row on the line, no with none and the line shown, blank when a gate's No hid it, with the index's export state for each. [Q24], 3b spec §8.1. test_printed_page.py's test_every_line_says_no_for_a_filer_with_nothing_and_totals_print_zero reads this box blank under line 46's No. No test draws its No: the index's export state above is that box's evidence. test_every_row_box_prints_its_own_answer_on_the_page reads its Yes."
   },
   {
     "schema": "schedule_a_b",
@@ -4547,7 +4547,7 @@
     "final_verdicts": ["correct"],
     "status": "confirmed",
     "correct_target": "check 53",
-    "evidence": "Field index: check 53 p10 line 53, 'No' (sampled_ok); p10 line 53, 'Yes. Give specific information.' (sampled_ok). ab_has_53 says yes with a row on the line, no with none and the line shown, blank when a gate's No hid it, with the index's export state for each. [Q24], 3b spec §8.1. test_printed_page.py's test_every_line_says_no_for_a_filer_with_nothing_and_totals_print_zero reads this box off the drawn page for a filer with nothing, and test_line_53_s_fourth_row_goes_on_a_sheet_with_its_text reads its Yes."
+    "evidence": "Field index: check 53 p10 line 53, 'No' (sampled_ok); p10 line 53, 'Yes. Give specific information.' (sampled_ok). ab_has_53 says yes with a row on the line, no with none and the line shown, blank when a gate's No hid it, with the index's export state for each. [Q24], 3b spec §8.1. test_printed_page.py's test_every_line_says_no_for_a_filer_with_nothing_and_totals_print_zero reads its No off the drawn page. test_line_53_s_fourth_row_goes_on_a_sheet_with_its_text reads its Yes."
   },
   {
     "schema": "schedule_a_b",
