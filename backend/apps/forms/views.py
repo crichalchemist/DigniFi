@@ -25,6 +25,7 @@ from apps.districts.dated_tables import NoTableInForce, fill_date
 from apps.eligibility.cmi import IncomeNotSplit, answered_window, income_step_gaps, income_window
 from apps.eligibility.models import MeansTest
 from apps.eligibility.services import MeansTestCalculator
+from apps.intake.asset_lines import AssetStepGap, asset_step_gaps
 from apps.intake.models import IntakeSession
 
 from .models import GeneratedForm
@@ -64,7 +65,7 @@ class IntakeNotFinished(Exception):
 
 
 # Failures a filer can act on: 422 in plain words (spec §5.7). Anything else is a 500.
-# PreconditionMissing, IncomeNotSplit and NoTableInForce carry their own plain reasons
+# PreconditionMissing, IncomeNotSplit, AssetStepGap and NoTableInForce carry their own plain reasons
 # (registry.py, eligibility/cmi.py, districts/dated_tables.py, which logs its own
 # refusal), and so do UnprintableLetter and ValueTooLong (pdf_filler.py), which name the
 # letter and the box. Every other class gets a fixed sentence, because their messages
@@ -91,7 +92,12 @@ def _failure(form_type: str | None, exc: Exception) -> tuple[dict, int]:
     """
     if isinstance(
         exc,
-        PreconditionMissing | IncomeNotSplit | NoTableInForce | UnprintableLetter | ValueTooLong,
+        PreconditionMissing
+        | IncomeNotSplit
+        | AssetStepGap
+        | NoTableInForce
+        | UnprintableLetter
+        | ValueTooLong,
     ):
         error = str(exc)
     else:
@@ -199,8 +205,16 @@ def _income_period(session: IntakeSession) -> dict:
 
 
 def _prepare(session: IntakeSession) -> None:
-    """Refuse an unfinished intake, then work its means test out again. Once per call."""
+    """Refuse an unfinished intake and an unfinished Assets step, then work its means test
+    out again. Once per call.
+
+    The A/B totals feed A/B, 106Sum and Form 101, so a session completed before 3b can't print
+    stale totals: the first Assets gap refuses the whole call (3b spec §7).
+    """
     _check_finished(session)
+    gaps = asset_step_gaps(session)
+    if gaps:
+        raise gaps[0]
     _recalculate_means_test(session)
 
 
@@ -483,9 +497,9 @@ class GeneratedFormViewSet(viewsets.ReadOnlyModelViewSet):
         still the one read before drawing: a form marked filed meanwhile keeps the values
         it was filed with. A filed form draws its stored parts, or its values stored before
         3a2, so it matches what was filed, even after it has left the packet (DIG-155). A
-        filed form with no stored values is drawn as one not yet filed, through the completion
-        and packet checks, from the current intake, and the parts it draws are kept as its
-        filed ones if it is still filed when the draw ends.
+        filed form with no stored values is drawn as one not yet filed, through the completion,
+        Assets step and packet checks, from the current intake, and the parts it draws are kept
+        as its filed ones if it is still filed when the draw ends.
         """
         generated_form = self.get_object()
         form_type = generated_form.form_type

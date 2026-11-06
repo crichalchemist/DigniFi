@@ -85,8 +85,11 @@ class SheetColumn:
     """One column of an attached sheet: its label, the list binding its cells print, its width."""
 
     label: str
-    binding: str  # "sofa.<collection>[].<attr>" or "household.dependents[].<attr>"
+    binding: str  # "sofa.<collection>[].<attr>", "household.dependents[].<attr>" or "assets.…"
     width: float  # points
+    # The slot bindings this column prints in words (3b spec §8.3). Its own binding then needs
+    # no slot, and () prints a list the slots don't bind. None is an ordinary column.
+    covers: tuple[str, ...] | None = None
 
 
 @dataclass(frozen=True)
@@ -95,6 +98,7 @@ class SheetSpec:
 
     title: str
     columns: tuple[SheetColumn, ...]
+    line_width: float = 36.0  # points, the column that labels each row with its line
 
 
 @dataclass(frozen=True)
@@ -190,13 +194,22 @@ def load_schema(form_type: str) -> FormSchema:
 
 
 def _sheet(sheet: dict) -> SheetSpec:
-    """A group's "sheet": {"title": str, "columns": [{"label", "binding", "width"}]}."""
+    """
+    A group's "sheet": {"title": str, "columns": [{"label", "binding", "width"}]}, with an
+    optional "line_width", and an optional "covers" list on a column.
+    """
     return SheetSpec(
         title=sheet["title"],
         columns=tuple(
-            SheetColumn(label=c["label"], binding=c["binding"], width=float(c["width"]))
+            SheetColumn(
+                label=c["label"],
+                binding=c["binding"],
+                width=float(c["width"]),
+                covers=tuple(c["covers"]) if "covers" in c else None,
+            )
             for c in sheet["columns"]
         ),
+        line_width=float(sheet.get("line_width", SheetSpec.line_width)),
     )
 
 
@@ -207,7 +220,7 @@ _WIDGET_TYPES = {
     "checkbox": {"CheckBox", "RadioButton"},
     "radio": {"CheckBox", "RadioButton"},
 }
-_BINDING_NAMESPACES = ("answer:", "sofa.", "household.")
+_BINDING_NAMESPACES = ("answer:", "sofa.", "household.", "assets.")
 
 
 def validate_schema(
@@ -342,7 +355,8 @@ def validate_schema(
     # A repeat group fills its slots, rows 1 to repeat_capacity, and its rows past the last
     # slot continue on copies of its extra page, the page of its last slots (3a2 spec §5.2).
     # Each box that numbers a row or a page prints on that row's or page's page.
-    from apps.forms.services.fill_resolver import _unmapped  # here: it imports this module
+    # Here: fill_resolver imports this module.
+    from apps.forms.services.fill_resolver import ASSET_BOX_CELLS, ASSET_CELLS, _unmapped
 
     slots: dict[str, list[FieldSpec]] = {}
     for f in schema.fields:
@@ -420,7 +434,29 @@ def validate_schema(
             # slot's text, or a box's answer in the words the form prints beside the state it
             # maps to, so a box whose choices are {}, a single box's {"true": …} or two answers
             # on one state is refused (a one-key map of another answer isn't yet).
+            # A column that covers slots prints its own list as it is, by position, and only a
+            # row past the slots reads it: its list must be the one its slots bind, and its
+            # cell words, never a box's answer.
+            slot_lists = {f.binding.partition("[].")[0] for f in rows if f.binding}
             for column in group.sheet.columns:
+                if column.covers is not None:
+                    listed, _, attr = column.binding.partition("[].")
+                    wrong = None
+                    if slot_lists != {listed}:
+                        wrong = "which isn't the one list its slots bind"
+                    elif listed.startswith("assets.") and attr not in ASSET_CELLS:
+                        wrong = "which no Schedule A/B row can print"
+                    elif listed.startswith("assets.") and attr in ASSET_BOX_CELLS:
+                        wrong = "a box's answer, not words"
+                    if wrong:
+                        errors.append(
+                            (
+                                "E007",
+                                f"group {name!r}: sheet column {column.label!r} covers slots "
+                                f"but binds {column.binding!r}, {wrong}",
+                            )
+                        )
+                    continue
                 bound = [f for f in rows if f.binding == column.binding]
                 if not bound:
                     errors.append(
@@ -449,6 +485,8 @@ def validate_schema(
             # no binding (a constant, a derived value, a box ticked for every row) can't
             # continue. (A sheet with no columns is reported as such below.)
             columns = {column.binding for column in group.sheet.columns}
+            for column in group.sheet.columns:
+                columns.update(column.covers or ())
             unprinted = {f.binding for f in rows if f.binding} - columns if columns else set()
             for binding in sorted(unprinted):
                 errors.append(
@@ -507,6 +545,16 @@ def validate_schema(
     for name, group in schema.groups.items():
         if group.sheet is not None:
             errors += _sheet_errors(name, group, schema.template_filename)
+            bound = {f.binding for f in slots.get(name, [])}
+            for column in group.sheet.columns:
+                for binding in sorted(set(column.covers or ()) - bound):
+                    errors.append(
+                        (
+                            "E007",
+                            f"group {name!r}: sheet column {column.label!r} covers {binding!r}, "
+                            "which no slot of the group binds",
+                        )
+                    )
         if is_statement_group(schema, name):
             for column in group.sheet.columns:
                 if not _STATEMENT_BINDING.fullmatch(column.binding):
@@ -538,7 +586,7 @@ def validate_schema(
                 elif group.sheet is not None:
                     # The sheet's rows start past the slots: each row's line must print whole
                     # in the line column, or Generate fails for that row and every later one.
-                    from apps.forms.services.sheets import LINE_WIDTH, fits_line_column
+                    from apps.forms.services.sheets import fits_line_column
 
                     capacities = {f.repeat_capacity for f in slots.get(name, [])}
                     # A statement group has no slots: its rows start at 1.
@@ -556,12 +604,13 @@ def validate_schema(
                             (9999, "row 9999's line"),
                         ):
                             line = group.number.format(n=n)
-                            if not fits_line_column(line, schema.template_filename):
+                            width = group.sheet.line_width
+                            if not fits_line_column(line, schema.template_filename, width):
                                 errors.append(
                                     (
                                         "E007",
                                         f"group {name!r}: its sheet can't print {which}, "
-                                        f"{line!r}, whole in the {LINE_WIDTH:g} pt line column",
+                                        f"{line!r}, whole in the {width:g} pt line column",
                                     )
                                 )
                                 break
@@ -601,7 +650,9 @@ def validate_schema(
 
 
 _STATEMENT_BINDING = re.compile(r"income\.statement\[\]\.(?:owner|description|gross|expenses|net)")
-_LIST_BINDING = re.compile(r"(?:sofa\.\w+|household\.dependents|income\.statement)\[\]\.\w+")
+_LIST_BINDING = re.compile(
+    r"(?:sofa\.\w+|household\.dependents|income\.statement|assets\.line_\w+)\[\]\.\w+"
+)
 
 
 def _sheet_errors(name: str, group: GroupSpec, template: str) -> list[tuple[str, str]]:
@@ -612,7 +663,6 @@ def _sheet_errors(name: str, group: GroupSpec, template: str) -> list[tuple[str,
     letters the form's template prints.
     """
     from apps.forms.services.sheets import (  # here: it imports this module
-        LINE_WIDTH,
         WIDTH,
         inner_width,
         prints_whole,
@@ -627,7 +677,7 @@ def _sheet_errors(name: str, group: GroupSpec, template: str) -> list[tuple[str,
         )
     if not sheet.columns:
         errors.append(("E007", f"group {name!r}: its sheet has no columns for its rows"))
-    total = LINE_WIDTH + sum(c.width for c in sheet.columns)
+    total = sheet.line_width + sum(c.width for c in sheet.columns)
     if total > WIDTH:
         errors.append(
             (
@@ -650,7 +700,8 @@ def _sheet_errors(name: str, group: GroupSpec, template: str) -> list[tuple[str,
                 (
                     "E007",
                     f"group {name!r}: sheet column {column.label!r} binds {column.binding!r}, "
-                    "not a sofa.<collection>[].<attr> or household.dependents[].<attr> list",
+                    "not a sofa.<collection>[].<attr>, household.dependents[].<attr>, "
+                    "income.statement[].<attr> or assets.line_<key>[].<attr> list",
                 )
             )
         width = inner_width(column.width)

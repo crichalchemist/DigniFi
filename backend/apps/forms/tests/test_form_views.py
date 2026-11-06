@@ -44,13 +44,14 @@ from apps.forms.services.pdf_filler import (
 )
 from apps.forms.tests.pdf_readback import read_drawn
 from apps.intake.models import (
+    AssetInfo,
     DebtorInfo,
     ExpenseInfo,
     FilingFee,
     IncomeInfo,
     IntakeSession,
 )
-from apps.intake.tests.builders import answer_household
+from apps.intake.tests.builders import answer_asset_lines, answer_household
 
 User = get_user_model()
 
@@ -1328,3 +1329,101 @@ class TestFieldValuesStayPrivate:
         assert "900-12-3456" not in raw_values
         assert "900123456" not in raw_values
         assert json.loads(raw_form_data) == {}
+
+
+# ── An unfinished Assets step refuses the whole call (3b spec §7) ──
+
+OLD_ROW = 'Pick a line on the Assets step for "Old couch".'
+
+
+@pytest.mark.django_db
+class TestAssetStepCheck:
+    """A session completed before 3b can't print A/B totals from rows no line owns."""
+
+    def test_an_old_row_refuses_generate_generate_all_regenerate_and_download(
+        self, api_client, session_with_debtor, user
+    ):
+        session = session_with_debtor
+        AssetInfo.objects.create(session=session, description="Old couch")
+        GeneratedForm.objects.create(session=session, form_type="form_103b", generated_by=user)
+        unfiled = GeneratedForm.objects.create(
+            session=session, form_type="form_106dec", status="generated", generated_by=user
+        )
+
+        generate_all = api_client.post(
+            "/api/forms/generate_all/", {"session_id": session.id}, format="json"
+        )
+        generate = api_client.post(
+            "/api/forms/generate/",
+            {"session_id": session.id, "form_type": "form_106dec"},
+            format="json",
+        )
+        regenerate = api_client.post(f"/api/forms/{unfiled.id}/regenerate/")
+        download = api_client.get(f"/api/forms/{unfiled.id}/download/")
+
+        assert generate_all.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert generate_all.data == {"error": OLD_ROW, "step": "assets"}
+        for resp in (generate, regenerate, download):
+            assert resp.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+            assert resp.data == {"form_type": "form_106dec", "error": OLD_ROW, "step": "assets"}
+        # Generate All refused before it dropped the form that left the packet.
+        assert GeneratedForm.objects.filter(session=session, form_type="form_103b").exists()
+
+    def test_the_assets_sentence_comes_before_an_income_gap(self, api_client, session_with_debtor):
+        # Personas seeded before 3b have both gaps, and the Assets step is what they are sent to.
+        session = session_with_debtor
+        AssetInfo.objects.create(session=session, description="Old couch")
+        session.income_info.delete()
+
+        response = api_client.post(
+            "/api/forms/generate_all/", {"session_id": session.id}, format="json"
+        )
+
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert response.data == {"error": OLD_ROW, "step": "assets"}
+
+    def test_the_packet_list_and_a_filed_download_are_not_refused(
+        self, api_client, session_with_debtor, user
+    ):
+        session = session_with_debtor
+        AssetInfo.objects.create(session=session, description="Old couch")
+        filed = _filed_form(session, user, "form_121", {"Debtor1.First name": "Jane"})
+
+        listed = api_client.get("/api/forms/packet/", {"session": session.id})
+        filed_download = api_client.get(f"/api/forms/{filed.id}/download/")
+
+        assert listed.status_code == status.HTTP_200_OK
+        assert filed_download.status_code == status.HTTP_200_OK
+
+    @pytest.mark.parametrize(
+        ("rows_before", "box"),
+        [
+            (0, "Line 18.1: Institution or issuer name"),  # in a box on the form
+            (3, "Institution or issuer name"),  # in a column of its attached sheet
+        ],
+        ids=["on_a_slot", "on_a_sheet"],
+    )
+    def test_a_letter_the_form_can_t_print_is_a_422_linking_to_assets(
+        self, api_client, session_with_debtor, rows_before, box
+    ):
+        # The Assets step is finished here, so the refusal is the letter's and not a gap's.
+        session = session_with_debtor
+        answer_asset_lines(session, yes=["18"])
+        for n in range(rows_before):
+            AssetInfo.objects.create(
+                session=session, ab_line="18", description=f"Row {n}", current_value=Decimal(1)
+            )
+        AssetInfo.objects.create(
+            session=session, ab_line="18", description="Bad □ name", current_value=Decimal(1)
+        )
+
+        resp = api_client.post(
+            "/api/forms/generate/",
+            {"session_id": session.id, "form_type": "schedule_a_b"},
+            format="json",
+        )
+
+        assert resp.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert resp.data["step"] == "assets"
+        assert box in resp.data["error"]
+        assert "□" in resp.data["error"]

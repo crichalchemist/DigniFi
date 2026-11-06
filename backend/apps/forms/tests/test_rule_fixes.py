@@ -172,7 +172,16 @@ def test_a_precondition_is_read_by_its_name_or_as_an_attribute(source, raises):
         ("schedule_j_monthly_net_income", {"step": "income_info"}),  # the earlier of two
         ("schedule_j_utilities_label", {"step": "expense_info"}),
         ("fee_waiver_monthly_expenses", {"step": "expense_info"}),  # 103B line 6 is J 22c
-        ("other_asset_descriptions", {"step": "assets"}),
+        ("ab_line_28_text", {"step": "assets"}),
+        ("ab_line_28_federal", {"step": "assets"}),
+        ("ab_line_29_divorce_settlement", {"step": "assets"}),
+        ("ab_line_53_text", {"step": "assets"}),
+        ("total_business_property", {"step": "assets"}),  # lines 59, Part 5
+        ("total_farm_property", {"step": "assets"}),  # line 60, Part 6
+        ("ab_line_2", {"step": "assets"}),
+        ("ab_line_45", {"step": "assets"}),
+        ("ab_line_52", {"step": "assets"}),
+        ("ab_has_4", {"step": "assets"}),
         ("total_debts", {"step": "debts"}),
         ("fee_waiver_noncash_kinds", {"step": "income_info"}),  # 103B line 3 reads 8f
         ("fee_waiver_installments_explanation", {"page": "/filing-fee"}),

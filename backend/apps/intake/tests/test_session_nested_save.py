@@ -196,7 +196,7 @@ def test_saving_assets_keeps_sent_rows_adds_new_ones_and_drops_removed_ones(file
         {
             "assets": [
                 {"id": kept.pk, "description": "Checking"},
-                {"asset_type": "vehicle", "description": "New Car", "current_value": "4500.00"},
+                {"ab_line": "6", "description": "New Car", "current_value": "4500.00"},
             ]
         },
         format="json",
@@ -306,7 +306,7 @@ def test_a_save_hands_back_new_debts_in_the_order_they_were_sent_with_their_ids(
 def test_a_save_hands_back_assets_in_the_order_they_were_sent(filer):
     client, session = filer
     sent = [
-        {"asset_type": "vehicle", "description": name, "current_value": value}
+        {"ab_line": "6", "description": name, "current_value": value}
         for name, value in [("A", "10.00"), ("B", "7000.00"), ("C", "300.00"), ("D", "55.00")]
     ]
 
@@ -363,7 +363,7 @@ def test_a_save_carrying_only_assets_leaves_the_debts_in_model_order(filer):
             amount_owed=Decimal(f"{i * 37}.00"),
         )
     sent = [
-        {"asset_type": "vehicle", "description": name, "current_value": value}
+        {"ab_line": "6", "description": name, "current_value": value}
         for name, value in [("A", "10.00"), ("B", "7000.00"), ("C", "300.00")]
     ]
 

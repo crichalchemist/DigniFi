@@ -55,9 +55,8 @@ test.describe('Sarah Chen — Simplest Case', () => {
     const previewLower = preview.toLowerCase();
     expect(previewLower).toContain('eligible');
 
-    // Step 5: Assets — none to add, just proceed
-    // The step should allow proceeding with zero assets
-    await wizard.nextStep();
+    // Step 5: Assets — none to add: No on every line, Part by Part
+    await wizard.walkAssets(SARAH);
 
     // Step 6: Debts (student loan + medical)
     for (const debt of SARAH.debts) {

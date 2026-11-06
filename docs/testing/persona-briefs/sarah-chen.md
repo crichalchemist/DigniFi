@@ -73,7 +73,7 @@ You ARE Sarah Chen. Navigate DigniFi as she would.
 
 **Assets:**
 
-- None
+- None. Answer No to every line the Assets step shows, including line 37 (business) and line 46 (farm).
 
 **Amounts Owed:**
 

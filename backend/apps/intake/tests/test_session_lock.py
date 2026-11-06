@@ -48,7 +48,7 @@ from apps.intake.models import (
     IncomeInfo,
     IntakeSession,
 )
-from apps.intake.tests.builders import answer_household
+from apps.intake.tests.builders import answer_asset_lines, answer_household
 from apps.users.models import User
 
 # CI runs these with config.settings.test_postgres. If those settings ever reach anything
@@ -438,6 +438,30 @@ def test_a_row_moved_to_another_session_while_its_update_waited_is_not_found(rea
     assert update_waited, "the update ran while the save was in progress"
 
 
+def test_an_asset_moved_to_another_session_while_its_update_waited_is_not_found(ready):
+    # Validation reads the stored row, so it must not run on a row whose new session this
+    # request never locked (and locking that session now would break id order).
+    user, session = ready
+    other = IntakeSession.objects.create(user=user, district=session.district)
+    asset = _rows(session)["asset"]
+
+    with transaction.atomic():
+        lock_session(session.pk)
+        AssetInfo.objects.filter(pk=asset.pk).update(session=other)  # a move by another request
+        updating, outcome = _on_its_own_thread(
+            lambda: _client(user).patch(
+                f"/api/intake/assets/{asset.pk}/", {"current_value": "10.00"}, format="json"
+            )
+        )
+        update_waited = _waits_on_a_lock(updating)
+    response = _finished(updating, outcome)
+
+    assert response.status_code == 404
+    moved = AssetInfo.objects.get(pk=asset.pk)
+    assert (moved.session_id, moved.current_value) == (other.pk, Decimal("5000.00"))
+    assert update_waited, "the update ran while the save was in progress"
+
+
 def _rows(session):
     """One stored row of each kind a write below changes."""
     bill = UploadedDocument.objects.create(
@@ -457,6 +481,20 @@ def _rows(session):
         confidence_scores={},
         overall_confidence=80,
     )
+    # The car sits on Schedule A/B line 3, finished, with line 3 answered Yes, so Complete
+    # has no Assets step gap to refuse.
+    car = AssetInfo.objects.create(
+        session=session,
+        asset_type="vehicle",
+        ab_line="3",
+        description="Car",
+        current_value=Decimal("5000.00"),
+        entire_value=Decimal("5000.00"),
+        amount_owed=Decimal("0.00"),
+    )
+    car.set_details({"who": "only_you", "make": "Honda"})
+    car.save()
+    answer_asset_lines(session, ["3"])
     return {
         "contract": ExecutoryContract.objects.create(
             session=session, counterparty_name="Oak Street Apartments", contract_type="lease"
@@ -464,13 +502,7 @@ def _rows(session):
         "codebtor": Codebtor.objects.create(
             session=session, name="Sam Doe", relationship="relative"
         ),
-        "asset": AssetInfo.objects.create(
-            session=session,
-            asset_type="vehicle",
-            description="Car",
-            current_value=Decimal("5000.00"),
-            amount_owed=Decimal("0.00"),
-        ),
+        "asset": car,
         "debt": DebtInfo.objects.create(
             session=session,
             creditor_name="Prairie Card Services",
@@ -494,6 +526,12 @@ WRITES = {
         "patch",
         _session_url(s),
         {"income_info": {"business_and_rental": [{"kind": "business"}]}},
+        200,
+    ),
+    "asset_lines PATCH": lambda s, r: (
+        "patch",
+        _session_url(s),
+        {"asset_lines": {"6": "no"}},
         200,
     ),
     "session PUT": lambda s, r: ("put", _session_url(s), {"district": s.district_id}, 200),
@@ -546,7 +584,7 @@ WRITES = {
         "/api/intake/assets/",
         {
             "session": s.pk,
-            "asset_type": "vehicle",
+            "ab_line": "3",
             "description": "Second car",
             "current_value": "2000.00",
             "amount_owed": "0",

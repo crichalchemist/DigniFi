@@ -65,7 +65,8 @@ def _step_bodies(data):
         income_step,
         take_home_pay_step,
         {"expense_info": data["expenses"]},
-        {"assets": data["assets"]},
+        # Every row, with its line, details and values, and every line answer, as 3b spec §4 saves.
+        {"assets": data["assets"], "asset_lines": data["asset_lines"]},
         {"debts": data["debts"]},
     ]
 

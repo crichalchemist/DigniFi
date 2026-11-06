@@ -93,12 +93,11 @@ export const createMockExpenseInfo = (overrides?: Partial<ExpenseInfo>): Expense
 export const createMockAsset = (overrides?: Partial<AssetInfo>): AssetInfo => ({
   id: 1,
   session: 1,
-  asset_type: 'vehicle',
-  description: '2018 Honda Civic',
+  ab_line: '3',
+  details: { make: 'Honda', model: 'Civic', year: '2018', who: 'only_you' },
+  description: '',
   current_value: 12000,
-  amount_owed: 5000,
-  account_number: '',
-  equity: 7000,
+  entire_value: 12000,
   ...overrides,
 });
 

@@ -5,6 +5,7 @@ Provides Django REST Framework serializers for API endpoints, including
 validation, nested relationships, and trauma-informed error messages.
 """
 
+import json
 import re
 from decimal import Decimal
 
@@ -16,6 +17,7 @@ from apps.districts.counties import ILND_COUNTIES
 from apps.districts.dated_tables import fill_date
 from apps.eligibility.cmi import answered_window, income_step_gaps, income_window
 
+from .asset_lines import LINE_BY_KEY, PROPERTY_KINDS, WHO
 from .household import (
     MAX_AGE,
     MAX_MEMBERS,
@@ -27,6 +29,7 @@ from .income import ENTRY_KINDS, MAX_ENTRIES
 from .models import (
     YES_NO,
     AssetInfo,
+    AssetLineAnswers,
     Codebtor,
     DebtInfo,
     DebtorInfo,
@@ -406,12 +409,73 @@ class ExpenseInfoSerializer(serializers.ModelSerializer):
         return obj.calculate_total_monthly_expenses()
 
 
-class AssetInfoSerializer(serializers.ModelSerializer):
-    """Serializer for asset information (encrypted values)."""
+_TEXT = {"max_length": 200, "required": False, "allow_blank": True, "allow_null": True}
 
-    equity = serializers.SerializerMethodField()
+
+class AssetDetailsSerializer(serializers.Serializer):
+    """What a line's rows ask beyond a description and a value (3b spec §3.1).
+
+    Every key is optional and nullable. A row's details are replaced whole on a save.
+    """
+
+    kind = serializers.CharField(**_TEXT)
+    street = serializers.CharField(**_TEXT)
+    street_2 = serializers.CharField(**_TEXT)
+    city = serializers.CharField(**_TEXT)
+    state = serializers.CharField(**_TEXT)
+    zip = serializers.CharField(**_TEXT)
+    county = serializers.CharField(**_TEXT)
+    property_kinds = serializers.ListField(
+        child=serializers.ChoiceField(choices=PROPERTY_KINDS), required=False, allow_null=True
+    )
+    other_kind = serializers.CharField(**_TEXT)
+    nature = serializers.CharField(**_TEXT)
+    who = serializers.ChoiceField(choices=WHO, required=False, allow_null=True)
+    community = serializers.BooleanField(required=False, allow_null=True)
+    other_info = serializers.CharField(**_TEXT)
+    make = serializers.CharField(**_TEXT)
+    model = serializers.CharField(**_TEXT)
+    year = serializers.CharField(**_TEXT)
+    mileage = serializers.CharField(**_TEXT)
+    percent = serializers.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        min_value=Decimal(0),
+        max_value=Decimal(100),
+        required=False,
+        allow_null=True,
+    )
+    beneficiary = serializers.CharField(**_TEXT)
+    has_personal_info = serializers.BooleanField(required=False, allow_null=True)
+    value_unknown = serializers.BooleanField(required=False, allow_null=True)
+    entire_unknown = serializers.BooleanField(required=False, allow_null=True)
+
+    def validate(self, attrs):
+        # The column is JSON, which has no decimal: percent is stored as a string.
+        if attrs.get("percent") is not None:
+            attrs["percent"] = str(attrs["percent"])
+        return attrs
+
+
+class AssetInfoSerializer(serializers.ModelSerializer):
+    """Serializer for one Schedule A/B row (encrypted values).
+
+    A per-item create needs a line; a row inside a session save may have none, so an old
+    row round-trips (NestedAssetInfoSerializer).
+    """
+
+    line_required = True
+
     # Explicit field declarations — EncryptedDecimalField confuses DRF's auto-mapper
-    current_value = serializers.DecimalField(max_digits=12, decimal_places=2)
+    ab_line = serializers.ChoiceField(choices=list(LINE_BY_KEY), required=False, allow_null=True)
+    details = AssetDetailsSerializer(required=False)
+    description = serializers.CharField(max_length=255, required=False, allow_blank=True)
+    current_value = serializers.DecimalField(
+        max_digits=12, decimal_places=2, min_value=Decimal(0), required=False, allow_null=True
+    )
+    entire_value = serializers.DecimalField(
+        max_digits=12, decimal_places=2, min_value=Decimal(0), required=False, allow_null=True
+    )
     amount_owed = serializers.DecimalField(
         max_digits=12, decimal_places=2, required=False, default=0
     )
@@ -421,25 +485,70 @@ class AssetInfoSerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "session",
-            "asset_type",
-            "data_source",
+            "ab_line",
+            "details",
             "description",
             "current_value",
+            "entire_value",
+            "asset_type",
+            "data_source",
             "amount_owed",
-            "equity",
-            "account_number",
-            "financial_institution",
             "created_at",
             "updated_at",
         ]
-        read_only_fields = ["id", "created_at", "updated_at", "equity"]
-        extra_kwargs = {
-            "account_number": {"write_only": True},  # Don't expose in responses
-        }
+        read_only_fields = ["id", "asset_type", "created_at", "updated_at"]
 
-    def get_equity(self, obj):
-        """Return calculated equity (current_value - amount_owed)."""
-        return obj.equity
+    def _stored_row(self, attrs):
+        """The row this save updates: the instance, or a nested row's stored row by id."""
+        if self.instance is not None:
+            return self.instance
+        row_id = attrs.get("id")
+        session = getattr(getattr(self.parent, "parent", None), "instance", None)
+        if row_id is None or session is None:
+            return None
+        return AssetInfo.objects.filter(pk=row_id, session=session).first()
+
+    def validate(self, attrs):
+        stored = self._stored_row(attrs)
+        if self.line_required:
+            # The per-item path never makes (or turns a row into) an old row with no line.
+            creating = self.instance is None
+            if (creating and not attrs.get("ab_line")) or (
+                "ab_line" in attrs and not attrs["ab_line"]
+            ):
+                raise serializers.ValidationError({"ab_line": "Say which line this is on."})
+        line_key = attrs["ab_line"] if "ab_line" in attrs else getattr(stored, "ab_line", None)
+        details_sent = attrs.get("details") is not None
+        if details_sent:
+            details = attrs["details"]
+        else:
+            details = stored.get_details() if stored is not None else {}
+        # A kind must sit on the row's line, whichever of the two a save changes.
+        kind = details.get("kind")
+        if kind and (details_sent or "ab_line" in attrs):
+            line = LINE_BY_KEY.get(line_key)
+            if line is None or kind not in dict(line.kinds):
+                raise serializers.ValidationError(
+                    {"details": {"kind": "That kind isn't on this line."}}
+                )
+        # A figure sent (or already stored) with its "I don't know the value" flag keeps the figure.
+        changed = details_sent
+        for flag, figure in (
+            ("value_unknown", "current_value"),
+            ("entire_unknown", "entire_value"),
+        ):
+            sent = attrs[figure] if figure in attrs else getattr(stored, figure, None)
+            if sent is not None and details.get(flag):
+                details[flag] = False
+                changed = True
+        if changed:
+            attrs["details"] = json.dumps(details)
+        return attrs
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        data["details"] = instance.get_details()
+        return data
 
 
 class DebtInfoSerializer(serializers.ModelSerializer):
@@ -489,6 +598,7 @@ class NestedAssetInfoSerializer(AssetInfoSerializer):
     """
 
     id = serializers.IntegerField(required=False)
+    line_required = False
 
 
 class NestedDebtInfoSerializer(DebtInfoSerializer):
@@ -646,10 +756,27 @@ _INTAKE_DATA = {
     "income_info",
     "expense_info",
     "assets",
+    "asset_lines",
     "debts",
     "household",
     "spouse_income",
 }
+
+
+class AssetLinesField(serializers.DictField):
+    """The filer's Yes and No for each Schedule A/B line, read from the session's record."""
+
+    def get_attribute(self, instance):
+        record = getattr(instance, "asset_lines", None)
+        return record.get_answers() if record else {}
+
+
+def _save_asset_lines(session: IntakeSession, data: dict) -> None:
+    """Set each answer sent; a null clears it (3b spec §3.3)."""
+    record, _ = AssetLineAnswers.objects.get_or_create(session=session)
+    record.merge(data)
+    record.save()
+    session.asset_lines = record
 
 
 class IntakeSessionSerializer(serializers.ModelSerializer):
@@ -663,6 +790,9 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
     income_info = IncomeInfoSerializer(required=False, allow_null=True)
     expense_info = ExpenseInfoSerializer(required=False, allow_null=True)
     assets = NestedAssetInfoSerializer(many=True, required=False)
+    asset_lines = AssetLinesField(
+        child=serializers.ChoiceField(choices=["yes", "no"], allow_null=True), required=False
+    )
     debts = NestedDebtInfoSerializer(many=True, required=False)
     household = HouseholdSerializer(required=False, allow_null=True)
     spouse_income = SpouseIncomeSerializer(required=False, allow_null=True)
@@ -683,6 +813,7 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
             "income_info",
             "expense_info",
             "assets",
+            "asset_lines",
             "debts",
             "household",
             "spouse_income",
@@ -701,6 +832,12 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
             "district_name",
             "income_window",
         ]
+
+    def validate_asset_lines(self, answers):
+        unknown = [key for key in answers if key not in LINE_BY_KEY]
+        if unknown:
+            raise serializers.ValidationError(f"Not a line of Schedule A/B: {unknown[0]}.")
+        return answers
 
     def get_income_window(self, obj) -> dict:
         """The six full months before today, which the Income step's figures cover."""
@@ -721,6 +858,7 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
         debts_data = validated_data.pop("debts", [])
         household_data = validated_data.pop("household", None)
         spouse_data = validated_data.pop("spouse_income", None)
+        asset_lines_data = validated_data.pop("asset_lines", None)
 
         # Create session
         session = IntakeSession.objects.create(**validated_data)
@@ -740,6 +878,9 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
 
         if spouse_data:
             _save_spouse_income(session, spouse_data)
+
+        if asset_lines_data is not None:
+            _save_asset_lines(session, asset_lines_data)
 
         # Create assets
         for asset_data in assets_data:
@@ -772,6 +913,7 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
         debts_data = validated_data.pop("debts", None)
         household_data = validated_data.pop("household", None)
         spouse_data = validated_data.pop("spouse_income", None)
+        asset_lines_data = validated_data.pop("asset_lines", None)
 
         # Update session fields
         for attr, value in validated_data.items():
@@ -796,6 +938,9 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
         if spouse_data:
             _save_spouse_income(instance, spouse_data)
 
+        if asset_lines_data is not None:
+            _save_asset_lines(instance, asset_lines_data)
+
         # The response lists a sent list in sent order, so the wizard can pair each row it
         # sent with its id (DIG-273). Every other read keeps model order.
         instance.sent_rows = {}
@@ -809,6 +954,8 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
+        # AssetInfo has no Meta.ordering (the line is ciphertext), so a read is by id.
+        data["assets"] = sorted(data["assets"], key=lambda row: row["id"])
         for name, rows in getattr(instance, "sent_rows", {}).items():
             data[name] = self.fields[name].to_representation(rows)
         return data

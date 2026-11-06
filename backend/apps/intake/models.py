@@ -650,7 +650,11 @@ class AssetInfo(models.Model):
     ]
 
     session = models.ForeignKey(IntakeSession, on_delete=models.CASCADE, related_name="assets")
-    asset_type = models.CharField(max_length=30, choices=ASSET_TYPE_CHOICES)
+    asset_type = models.CharField(max_length=30, choices=ASSET_TYPE_CHOICES, null=True, blank=True)
+    # The Schedule A/B line this row is on (3b spec §3.1). An old row has none.
+    ab_line = EncryptedCharField(max_length=10, null=True, blank=True)
+    # JSON: what the line asks beyond a description and a value (kind, who, percent, ...).
+    details = EncryptedTextField(blank=True, default="{}")
     data_source = models.CharField(
         max_length=30,
         choices=DATA_SOURCE_CHOICES,
@@ -659,14 +663,25 @@ class AssetInfo(models.Model):
     )
 
     # Asset description
-    description = models.CharField(
+    description = EncryptedCharField(
         max_length=255,
+        blank=True,
+        default="",
         help_text="Brief description (e.g., '2015 Honda Civic', '123 Main St')",
     )
     current_value = EncryptedDecimalField(
         max_digits=12,
         decimal_places=2,
+        null=True,
+        blank=True,
         help_text="Current fair market value",
+    )
+    entire_value = EncryptedDecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="Value of the entire property, when the filer owns a share",
     )
     amount_owed = EncryptedDecimalField(
         max_digits=12,
@@ -681,8 +696,8 @@ class AssetInfo(models.Model):
         blank=True,
         help_text="Last 4 digits or full account number (encrypted)",
     )
-    financial_institution = models.CharField(
-        max_length=100, blank=True, help_text="Bank or institution name"
+    financial_institution = EncryptedCharField(
+        max_length=100, blank=True, default="", help_text="Bank or institution name"
     )
 
     created_at = models.DateTimeField(auto_now_add=True)
@@ -690,15 +705,48 @@ class AssetInfo(models.Model):
 
     class Meta:
         db_table = "asset_info"
-        ordering: ClassVar[list[str]] = ["asset_type", "-current_value"]
 
     def __str__(self) -> str:
-        return f"{self.get_asset_type_display()}: {self.description} (Session: {self.session_id})"
+        return f"Asset on line {self.ab_line} (Session: {self.session_id})"
 
-    @property
-    def equity(self) -> float:
-        """Calculate equity in asset (value - amount owed)."""
-        return float(self.current_value - self.amount_owed)
+    def get_details(self) -> dict:
+        return json.loads(self.details)
+
+    def set_details(self, value: dict) -> None:
+        self.details = json.dumps(value)
+
+
+class AssetLineAnswers(models.Model):
+    """The filer's answers to Schedule A/B's Yes and No lines (3b spec §3.2).
+
+    A JSON object of line key to "yes" or "no", encrypted. A key that is absent is unanswered.
+    """
+
+    session = models.OneToOneField(
+        IntakeSession, on_delete=models.CASCADE, related_name="asset_lines"
+    )
+    answers = EncryptedTextField(default="{}")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "asset_line_answers"
+
+    def __str__(self) -> str:
+        return f"AssetLineAnswers (Session: {self.session_id})"
+
+    def get_answers(self) -> dict:
+        return json.loads(self.answers)
+
+    def merge(self, sent: dict) -> None:
+        """Set each sent answer; a null removes the key. Doesn't save."""
+        answers = self.get_answers()
+        for key, value in sent.items():
+            if value is None:
+                answers.pop(key, None)
+            else:
+                answers[key] = value
+        self.answers = json.dumps(answers)
 
 
 class DebtInfoQuerySet(models.QuerySet):

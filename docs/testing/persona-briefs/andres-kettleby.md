@@ -72,10 +72,18 @@ You ARE Andrés Kettleby. Navigate DigniFi as he would.
 
 **Assets:**
 
-- 2017 Honda Fit — titled to you and Mateo, value $4,300 (your half of $8,600), owed $7,800
-- Household goods, electronics and clothing — $1,900
-- Harborline Bank checking — $412
-- Prairie Line Credit Union share savings — $85
+Each item goes on the Schedule A/B line shown. Answer Yes to line 37 (your driving is your business) and No to line 46. Answer No to every other line the Assets step shows.
+
+- Line 3, first car: 2024 Toyota Corolla Hybrid, about 61,000 miles, leased (see Schedule G 2.1), only you — entire value $0, your portion $0
+- Line 3, second car: 2017 Honda Fit, about 96,000 miles, titled to you and Mateo (you and someone else) — entire value $8,600, your portion $4,300, owed $7,800
+- Line 6: beds, couch, table, kitchen things — $1,200
+- Line 7: phone, TV — $400
+- Line 11: clothes — $300
+- Line 16: cash — $60
+- Line 17, checking: Harborline Bank — $412
+- Line 17, savings: Prairie Line Credit Union share savings — $85
+- Line 38: driving payouts already earned, not yet paid by the apps — $310
+- Line 40: insulated delivery bags, phone mount, dash camera — $150
 
 **Amounts Owed.** You pay $0 a month on every one of these.
 

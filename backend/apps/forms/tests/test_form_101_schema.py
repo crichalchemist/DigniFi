@@ -86,7 +86,7 @@ def _assets(session, amounts):
     AssetInfo.objects.bulk_create(
         AssetInfo(
             session=session,
-            asset_type="other",
+            ab_line="53",
             description=f"Asset {i}",
             current_value=Decimal(amount),
         )

@@ -39,6 +39,7 @@ export interface IntakeSession {
   income_info?: IncomeInfo;
   expense_info?: ExpenseInfo;
   assets?: AssetInfo[];
+  asset_lines?: Record<string, AssetLineAnswer>;
   debts?: DebtInfo[];
   household?: Household | null;
   spouse_income?: SpouseIncome | null;
@@ -374,24 +375,80 @@ export const EXPENSE_SPECIFY_FIELDS = [
 
 export type ExpenseSpecifyField = (typeof EXPENSE_SPECIFY_FIELDS)[number];
 
+/** A line's answer on Schedule A/B. A line with no key in the map is unanswered. */
+export type AssetLineAnswer = 'yes' | 'no';
+
+export type AssetWho = 'only_you' | 'with_someone';
+
+export const PROPERTY_KINDS = [
+  'single_family',
+  'duplex',
+  'condo',
+  'manufactured',
+  'land',
+  'investment',
+  'timeshare',
+  'other',
+] as const;
+
+export type PropertyKind = (typeof PROPERTY_KINDS)[number];
+
+/** The `details` keys that hold text. Pinned to AssetDetailsSerializer, which drops any other. */
+export const ASSET_TEXT_DETAILS = [
+  'kind',
+  'street',
+  'street_2',
+  'city',
+  'state',
+  'zip',
+  'county',
+  'other_kind',
+  'nature',
+  'other_info',
+  'make',
+  'model',
+  'year',
+  'mileage',
+  'beneficiary',
+] as const;
+
+/** The `details` keys that hold a true or false, pinned the same way */
+export const ASSET_FLAG_DETAILS = [
+  'community',
+  'has_personal_info',
+  'value_unknown',
+  'entire_unknown',
+] as const;
+
+/** What a line's rows ask beyond a description and a value. Every key may be absent. */
+export type AssetDetails = { [K in (typeof ASSET_TEXT_DETAILS)[number]]?: string | null } & {
+  [K in (typeof ASSET_FLAG_DETAILS)[number]]?: boolean | null;
+} & {
+  who?: AssetWho | null;
+  property_kinds?: PropertyKind[] | null;
+  // The column is JSON, so a stored share comes back as text ("25.00")
+  percent?: number | string | null;
+};
+
 export interface AssetInfo {
   id: number;
   session: number;
-  asset_type:
+  /** The Schedule A/B line. Null only on a row saved before 3b, which has no line yet. */
+  ab_line: string | null;
+  details: AssetDetails;
+  description: string;
+  current_value: number | null; // Encrypted in backend. Null: unanswered, or "I don't know"
+  entire_value: number | null; // Encrypted in backend. Lines 1, 3 and 4 only
+  /** Read-only, on a row saved before 3b */
+  asset_type?:
     | 'real_property'
     | 'vehicle'
     | 'bank_account'
     | 'retirement_account'
     | 'personal_property'
-    | 'other';
-
-  description: string;
-  current_value: number; // Encrypted in backend
-  amount_owed: number; // Encrypted in backend
-  account_number: string; // Encrypted in backend
-
-  // Calculated field
-  equity: number;
+    | 'other'
+    | null;
+  amount_owed?: number; // Encrypted in backend. Off the step: nothing reads it until 3c
 }
 
 export interface DebtInfo {

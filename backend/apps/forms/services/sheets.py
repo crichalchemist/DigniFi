@@ -50,7 +50,7 @@ from apps.forms.services.text_fit import font_for, printable
 PAGE = (612.0, 792.0)  # US Letter
 MARGIN = 54.0  # 0.75 in on every side
 WIDTH = PAGE[0] - 2 * MARGIN  # 504 pt, 7.0 in
-LINE_WIDTH = 36.0  # the line column, "3.5"
+LINE_WIDTH = SheetSpec.line_width  # the line column, "3.5", unless the sheet widens it
 PAD = 2.0  # a cell's text keeps this far from each side of its column
 SIZE = 10.0
 _HELVETICA = pymupdf.Font("helv")  # the font insert_text draws "helv" in: its metrics
@@ -164,21 +164,23 @@ def prints_whole(text: str, width: float, template: str) -> bool:
     return letter is None and _lines(text, width) is not None
 
 
-def fits_line_column(line: str, template: str) -> bool:
+def fits_line_column(line: str, template: str, width: float = LINE_WIDTH) -> bool:
     """Whether a row's line, the group's number for it, prints whole on one line of its column."""
-    width = inner_width(LINE_WIDTH)
+    width = inner_width(width)
     return prints_whole(line, width, template) and len(_lines(line, width)) == 1
 
 
 def sheet_spec(part: dict) -> SheetSpec:
     """
-    The sheet a sheet part prints: the title and the columns' labels and widths it stores
-    (R63), so a filed sheet draws as it was filed, whatever its schema says later. Its
-    columns carry no binding: the part holds their cells.
+    The sheet a sheet part prints: the title, the columns' labels and widths and any wider
+    line column it stores (R63), so a filed sheet draws as it was filed, whatever its schema
+    says later. A part with no line_width draws at 36 pt. Its columns carry no binding: the
+    part holds their cells.
     """
     return SheetSpec(
         part["title"],
         tuple(SheetColumn(column["label"], "", column["width"]) for column in part["columns"]),
+        part.get("line_width", LINE_WIDTH),
     )
 
 
@@ -209,7 +211,7 @@ def _room(spec: SheetSpec, header: list[str]) -> float:
 
 def _cells(spec: SheetSpec, row: dict) -> list[list[str]]:
     """A row's cells as the lines each prints: its line first, in the line column."""
-    widths = [LINE_WIDTH, *(column.width for column in spec.columns)]
+    widths = [spec.line_width, *(column.width for column in spec.columns)]
     return [
         _lines(text, inner_width(width))
         for text, width in zip([row["line"], *row["cells"]], widths, strict=True)
@@ -251,7 +253,8 @@ def _fixes(schema: FormSchema, group: str, spec: SheetSpec) -> list[dict[str, st
             fixes.append(binding_fix(binding or ""))
             continue
         slot = next((f for f in schema.fields if f.repeat == group and f.binding == binding), None)
-        fixes.append(fix_for(slot) if binding and slot else {})
+        # A column that covers slots can print a list no slot binds: its namespace says where.
+        fixes.append(fix_for(slot) if binding and slot else binding_fix(binding or ""))
     return fixes
 
 
@@ -279,7 +282,7 @@ def plan_sheet(form_type: str, spec: SheetSpec, part: dict) -> None:
     header = _header(spec, part["name"])
     fixes = _fixes(schema, part["group"], spec)
     for row in part["rows"]:
-        if not fits_line_column(row["line"], template):
+        if not fits_line_column(row["line"], template, spec.line_width):
             raise ValueError(f"{form_type}: line {row['line']!r} doesn't fit the line column")
         cells = [
             _check(form_type, template, cell, inner_width(column.width), column.label, fix)
@@ -315,7 +318,7 @@ def _new_page(document: pymupdf.Document, spec: SheetSpec, header: list[str]) ->
     start = MARGIN + _HELVETICA.text_length(_CASE_NUMBER, SIZE) + 4
     page.draw_line((start, case_number), (start + _BLANK, case_number), width=0.5)
     top = MARGIN + (len(header) + 1) * LEADING
-    x = MARGIN + LINE_WIDTH
+    x = MARGIN + spec.line_width
     for column, lines in zip(spec.columns, _labels(spec), strict=True):
         _text(page, x + PAD, top, lines)
         x += column.width
@@ -339,7 +342,8 @@ def draw_sheet(spec: SheetSpec, part: dict) -> bytes:
             if _height(cells) > _room(spec, header):
                 raise ValueError("a row taller than a page reached the drawing unchecked")
         x = MARGIN
-        for lines, width in zip(cells, [LINE_WIDTH, *(c.width for c in spec.columns)], strict=True):
+        widths = [spec.line_width, *(c.width for c in spec.columns)]
+        for lines, width in zip(cells, widths, strict=True):
             _text(page, x + PAD, _rows_top(spec, header) + used, lines)
             x += width
         used += _height(cells) + _ROW_GAP
