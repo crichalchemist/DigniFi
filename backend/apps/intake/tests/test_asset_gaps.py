@@ -54,6 +54,17 @@ def _answer(session, *yes):
     answer_asset_lines(session, yes)
 
 
+@pytest.mark.parametrize("line", ["6", None], ids=["on_a_line", "an_old_row"])
+def test_a_row_printed_in_a_log_or_shell_holds_nothing_the_filer_typed(session, line):
+    # repr follows str into shells, pytest output and Sentry's locals.
+    row = _row(session, line, "Grandma's ring", street="12 Elm St")
+
+    assert str(row) == f"Asset on line {line} (Session: {session.pk})"
+    for printed in (str(row), repr(row)):
+        assert "ring" not in printed
+        assert "Elm" not in printed
+
+
 def _copy_sentence(name: str) -> str:
     """A sentence from the wizard's copy.ts: Continue says it while Complete would refuse."""
     frontend = settings.BASE_DIR.parent / "frontend" / "src"

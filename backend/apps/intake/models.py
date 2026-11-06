@@ -707,7 +707,7 @@ class AssetInfo(models.Model):
         db_table = "asset_info"
 
     def __str__(self) -> str:
-        return f"{self.get_asset_type_display()}: {self.description} (Session: {self.session_id})"
+        return f"Asset on line {self.ab_line} (Session: {self.session_id})"
 
     def get_details(self) -> dict:
         return json.loads(self.details)
