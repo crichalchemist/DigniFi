@@ -1344,8 +1344,8 @@ describe.each([
       fireEvent.change(field(`${box}_street`), { target: { value: name } });
       fireEvent.click(document.querySelector(`input[name="${box}_property_kinds"][value="land"]`)!);
       fireEvent.click(document.querySelector(`input[name="${box}_who"][value="only_you"]`)!);
-      fireEvent.change(field(`${box}_entire_value`), { target: { value: amount } });
-      fireEvent.change(field(`${box}_current_value`), { target: { value: amount } });
+      fireEvent.input(field(`${box}_entire_value`), { target: { value: amount } });
+      fireEvent.input(field(`${box}_current_value`), { target: { value: amount } });
     },
     stored: {
       id: 3,
@@ -1937,8 +1937,8 @@ describe('IntakeWizard the walk through Schedule A/B', { timeout: 30_000 }, () =
     fireEvent.change(field('line_1_0_street'), { target: { value: '1 Elm' } });
     fireEvent.click(document.querySelector('input[name="line_1_0_property_kinds"][value="land"]')!);
     fireEvent.click(document.querySelector('input[name="line_1_0_who"][value="only_you"]')!);
-    fireEvent.change(field('line_1_0_entire_value'), { target: { value: '500' } });
-    fireEvent.change(field('line_1_0_current_value'), { target: { value: '500' } });
+    fireEvent.input(field('line_1_0_entire_value'), { target: { value: '500' } });
+    fireEvent.input(field('line_1_0_current_value'), { target: { value: '500' } });
     await waitFor(() => expect(continueButton()).toBeEnabled());
     await userEvent.click(continueButton());
     await screen.findByText('Part 2 of 7');

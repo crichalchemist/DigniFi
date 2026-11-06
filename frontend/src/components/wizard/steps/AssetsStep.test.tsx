@@ -62,7 +62,7 @@ function Walk({
 const field = (name: string) => document.querySelector(`[name="${name}"]`) as HTMLInputElement;
 const radio = (key: string, value: 'yes' | 'no') =>
   document.querySelector(`input[name="line_${key}_answer"][value="${value}"]`) as HTMLInputElement;
-const type = (name: string, value: string) => fireEvent.change(field(name), { target: { value } });
+const type = (name: string, value: string) => fireEvent.input(field(name), { target: { value } });
 const say = (key: string, value: 'yes' | 'no') => fireEvent.click(radio(key, value));
 const linesOf = (part: number) => ASSET_LINES.filter((line) => line.part === part);
 const allNo = (part: number): Answers =>
@@ -292,7 +292,7 @@ describe('AssetsStep', () => {
   function pressPartOfANumber(name: string) {
     const input = field(name);
     Object.defineProperty(input, 'validity', { configurable: true, value: { badInput: true } });
-    fireEvent.change(input, { target: { value: '' } });
+    fireEvent.input(input, { target: { value: '' } });
     delete (input as unknown as { validity?: unknown }).validity;
   }
 
@@ -317,6 +317,92 @@ describe('AssetsStep', () => {
     render(<Walk part={4} answers={{ '19': 'yes' }} rows={[row]} />);
     pressPartOfANumber('line_19_0_percent');
     expect(latest.rows[0].details?.percent).toBe(25);
+  });
+
+  // A browser reads "-" and an empty box alike as "", so the Backspace that empties the box changes
+  // no value. The sworn schedule must not print a figure the filer has just erased.
+  it('forgets the figure when a box holding part of a number is emptied', () => {
+    render(
+      <Walk part={3} answers={{ ...allNo(3), '6': 'yes' }} rows={[makeRow({ ab_line: '6' })]} />
+    );
+    pressPartOfANumber('line_6_0_current_value');
+
+    type('line_6_0_current_value', '');
+
+    expect(latest.rows[0].current_value).toBeNull();
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(latest.valid).toBe(false);
+  });
+
+  it('forgets the share when its box holding part of a number is emptied', () => {
+    const row = makeRow({ ab_line: '19', details: { percent: 25 } });
+    render(<Walk part={4} answers={{ ...allNo(4), '19': 'yes' }} rows={[row]} />);
+    pressPartOfANumber('line_19_0_percent');
+
+    type('line_19_0_percent', '');
+
+    expect(latest.rows[0].details?.percent).toBeNull();
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(latest.valid).toBe(false);
+  });
+
+  it('says so when part of a number is the first thing typed in an empty box', () => {
+    const row = makeRow({ ab_line: '6', current_value: null });
+    render(<Walk part={3} answers={{ ...allNo(3), '6': 'yes' }} rows={[row]} />);
+
+    pressPartOfANumber('line_6_0_current_value');
+
+    expect(screen.getByRole('alert')).toHaveTextContent(AMOUNT_NOT_A_NUMBER);
+  });
+
+  // The figure kept for such a box isn't the one it shows, so the filer can't go on until they agree
+  it('holds Continue while a value box shows only part of a number', () => {
+    render(
+      <Walk part={3} answers={{ ...allNo(3), '6': 'yes' }} rows={[makeRow({ ab_line: '6' })]} />
+    );
+    expect(latest.valid).toBe(true);
+
+    pressPartOfANumber('line_6_0_current_value');
+    expect(latest.valid).toBe(false);
+
+    type('line_6_0_current_value', '75');
+    expect(latest.valid).toBe(true);
+  });
+
+  it('holds Continue while a share box shows only part of a number', () => {
+    const row = makeRow({ ab_line: '19', details: { percent: 25 } });
+    render(<Walk part={4} answers={{ ...allNo(4), '19': 'yes' }} rows={[row]} />);
+    expect(latest.valid).toBe(true);
+
+    pressPartOfANumber('line_19_0_percent');
+    expect(latest.valid).toBe(false);
+
+    type('line_19_0_percent', '30');
+    expect(latest.valid).toBe(true);
+  });
+
+  it('lets Continue go when "I don\'t know" answers a box showing part of a number', () => {
+    render(
+      <Walk part={3} answers={{ ...allNo(3), '6': 'yes' }} rows={[makeRow({ ab_line: '6' })]} />
+    );
+    pressPartOfANumber('line_6_0_current_value');
+
+    fireEvent.click(field('line_6_0_value_unknown'));
+
+    expect(latest.rows[0].current_value).toBeNull();
+    expect(latest.valid).toBe(true);
+  });
+
+  it('lets Continue go when the row with part of a number in a box is removed', () => {
+    const rows = [makeRow({ ab_line: '6' }), makeRow({ ab_line: '6' })];
+    render(<Walk part={3} answers={{ ...allNo(3), '6': 'yes' }} rows={rows} />);
+    pressPartOfANumber('line_6_0_current_value');
+    expect(latest.valid).toBe(false);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remove item 1 on line 6' }));
+
+    expect(latest.rows).toHaveLength(1);
+    expect(latest.valid).toBe(true);
   });
 
   it('keeps a share outside 0 to 100 out of the row', () => {

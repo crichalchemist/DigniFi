@@ -10,7 +10,7 @@
  * there. The step holds no copies.
  */
 
-import { useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { UPLDisclaimer } from '../../compliance';
 import {
   AB_LINE_WORDS,
@@ -90,7 +90,13 @@ export function AssetsStep({
   onValidationChange,
 }: AssetsStepProps) {
   const oldRows = rows.filter((row) => row.ab_line === null || row.ab_line === undefined);
-  const isValid = oldRows.length === 0 && partIsComplete(part, rows, answers);
+  // A box holding only part of a number keeps the row's figure without showing it
+  const [partialBoxes, setPartialBoxes] = useState(0);
+  const countPartialBox = useCallback(
+    (change: 1 | -1) => setPartialBoxes((count) => count + change),
+    []
+  );
+  const isValid = oldRows.length === 0 && partialBoxes === 0 && partIsComplete(part, rows, answers);
   // Continue and Go Back keep this step mounted, so the wizard's own focus move doesn't happen
   const partHeadingRef = useFocusManagement(part);
 
@@ -212,6 +218,7 @@ export function AssetsStep({
               onRowsChange(rows.map((row) => (row._key === changed._key ? changed : row)))
             }
             onRemoveRow={(removed) => onRowsChange(rows.filter((row) => row._key !== removed._key))}
+            onPartialBox={countPartialBox}
           />
         </div>
       ))}

@@ -34,6 +34,7 @@ interface AssetLineProps {
   onAddRow: () => void;
   onRowChange: (row: Row) => void;
   onRemoveRow: (row: Row) => void;
+  onPartialBox: (change: 1 | -1) => void;
 }
 
 export function AssetLine({
@@ -46,6 +47,7 @@ export function AssetLine({
   onAddRow,
   onRowChange,
   onRemoveRow,
+  onPartialBox,
 }: AssetLineProps) {
   const [asking, setAsking] = useState(false);
   const { key, shape } = line;
@@ -135,6 +137,7 @@ export function AssetLine({
           rowIndex={rowIndex}
           onRowChange={onRowChange}
           onRemove={() => onRemoveRow(row)}
+          onPartialBox={onPartialBox}
         />
       ))}
 

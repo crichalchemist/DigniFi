@@ -7,7 +7,7 @@
  * since this step autosaves mid-Part.
  */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button, FormField, FormSelect } from '../../../common';
 import {
   AB_ADDRESS_LINE_2_LABEL,
@@ -81,6 +81,15 @@ const REQUIRED_MARK = (
   </span>
 );
 
+/** Counts this box at the step while it holds only part of a number, until it doesn't or is gone */
+function useReportPartial(partial: boolean, onPartialBox: (change: 1 | -1) => void) {
+  useEffect(() => {
+    if (!partial) return undefined;
+    onPartialBox(1);
+    return () => onPartialBox(-1);
+  }, [partial, onPartialBox]);
+}
+
 interface ValueBoxProps {
   name: string;
   label: string;
@@ -90,6 +99,7 @@ interface ValueBoxProps {
   unknownName: string;
   onValue: (value: number | null) => void;
   onUnknown: (pressed: boolean) => void;
+  onPartialBox: (change: 1 | -1) => void;
 }
 
 /** A value and its "I don't know the value", each of which clears the other */
@@ -102,9 +112,11 @@ function ValueBox({
   unknownName,
   onValue,
   onUnknown,
+  onPartialBox,
 }: ValueBoxProps) {
   const [refused, setRefused] = useState<string>();
   const [partial, setPartial] = useState(false);
+  useReportPartial(partial, onPartialBox);
   return (
     <div className="ab-value">
       <FormField
@@ -117,12 +129,14 @@ function ValueBox({
         required={!unknown}
         // Blank while partial, so React leaves the keys typed so far in the box
         value={partial ? '' : (value ?? '')}
-        onChange={(e) => {
+        // onInput, since onChange skips an event whose value is unchanged: "-" and an emptied box
+        // both read as "", so the Backspace that empties the box would go unheard
+        onInput={(e) => {
           // A browser reports "-" as an empty box, on the way to a figure or a mistake. Neither
           // clears what the filer gave.
-          setPartial(e.target.validity.badInput);
-          if (e.target.validity.badInput) return;
-          const parsed = parseAmount(e.target.value);
+          setPartial(e.currentTarget.validity.badInput);
+          if (e.currentTarget.validity.badInput) return;
+          const parsed = parseAmount(e.currentTarget.value);
           const error = amountError(parsed, VALUE_MAX_DIGITS);
           setRefused(error);
           if (error === undefined) onValue(parsed ?? null);
@@ -155,6 +169,8 @@ interface AssetRowFieldsProps {
   rowIndex: number;
   onRowChange: (row: Row) => void;
   onRemove: () => void;
+  /** Continue waits while a box holds only part of a number: the row's figure isn't what it shows */
+  onPartialBox: (change: 1 | -1) => void;
 }
 
 export function AssetRowFields({
@@ -163,9 +179,11 @@ export function AssetRowFields({
   rowIndex,
   onRowChange,
   onRemove,
+  onPartialBox,
 }: AssetRowFieldsProps) {
   const [percentRefused, setPercentRefused] = useState<string>();
   const [percentPartial, setPercentPartial] = useState(false);
+  useReportPartial(percentPartial, onPartialBox);
   const { shape, key } = line;
   const words = AB_LINE_WORDS[key];
   const details = row.details ?? {};
@@ -229,6 +247,7 @@ export function AssetRowFields({
               details: { ...details, entire_unknown: pressed },
             })
           }
+          onPartialBox={onPartialBox}
         />
       )}
       <ValueBox
@@ -252,6 +271,7 @@ export function AssetRowFields({
             details: { ...details, value_unknown: pressed },
           })
         }
+        onPartialBox={onPartialBox}
       />
     </>
   );
@@ -421,10 +441,10 @@ export function AssetRowFields({
           max="100"
           step="0.01"
           value={percentPartial ? '' : (details.percent ?? '')}
-          onChange={(e) => {
-            setPercentPartial(e.target.validity.badInput);
-            if (e.target.validity.badInput) return;
-            const parsed = parseAmount(e.target.value);
+          onInput={(e) => {
+            setPercentPartial(e.currentTarget.validity.badInput);
+            if (e.currentTarget.validity.badInput) return;
+            const parsed = parseAmount(e.currentTarget.value);
             // DecimalField(max_digits=5, decimal_places=2, min_value=0, max_value=100)
             const refused =
               parsed !== undefined && (parsed > 100 || amountError(parsed, 5) !== undefined);
