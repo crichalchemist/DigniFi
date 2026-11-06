@@ -5,7 +5,7 @@
 
 import { useState } from 'react';
 import { Button } from '../../../common';
-import { AssetRowFields } from './AssetRowFields';
+import { AssetRowFields, REQUIRED_MARK } from './AssetRowFields';
 import {
   ADD_AN_ITEM,
   ADD_ANOTHER_ITEM,
@@ -78,6 +78,7 @@ export function AssetLine({
       <fieldset className="form-field fee-waiver-question">
         <legend className="ab-line-words">
           {key}. {words.words}
+          {REQUIRED_MARK}
         </legend>
         {words.examples && <p className="form-help-text">{words.examples}</p>}
         <div className="ab-yes-no">
@@ -86,6 +87,7 @@ export function AssetLine({
               type="radio"
               name={`line_${key}_answer`}
               value="no"
+              aria-required
               checked={answer === 'no'}
               onChange={pressNo}
             />
@@ -96,6 +98,7 @@ export function AssetLine({
               type="radio"
               name={`line_${key}_answer`}
               value="yes"
+              aria-required
               checked={answer === 'yes'}
               onChange={() => {
                 setAsking(false);

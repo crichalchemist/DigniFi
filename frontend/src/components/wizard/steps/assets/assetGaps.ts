@@ -1,9 +1,20 @@
 /**
- * What the Assets step still lacks, for its Continue button. A copy of asset_step_gaps in the
- * backend's apps/intake/asset_lines.py, line for line, so Continue and Complete agree.
+ * What the Assets step still lacks, for its Continue button and the sentence that says why it
+ * waits. A copy of asset_step_gaps in the backend's apps/intake/asset_lines.py, line for line and
+ * in its words (test_asset_gaps.py pins them), so Continue and Complete agree.
  */
 
 import { AB_PARTS, ASSET_LINES } from '../../../../constants/assetLines';
+import {
+  ASSET_GAP_GATE_TAKES_NO_ITEMS,
+  ASSET_GAP_NEEDS_AN_ANSWER,
+  ASSET_GAP_NO_STILL_LISTS,
+  ASSET_GAP_ROW_NEEDS_MORE,
+  ASSET_GAP_UNDER_GATE,
+  ASSET_GAP_YES_WITH_NO_ITEM,
+  GATE_HAS_ONLY_NOS,
+  ROW_WITH_NO_NAME,
+} from '../../../../constants/copy';
 import type { AssetLine } from '../../../../constants/assetLines';
 import type { AssetInfo, AssetLineAnswer, WizardRow } from '../../../../types/api';
 
@@ -63,28 +74,61 @@ function rowIsComplete(line: AssetLine, row: Row) {
 }
 
 /** A gate answered Yes with every line under it No, which Continue and Complete both refuse */
-export function gateHasOnlyNos(gate: AssetLine, answers: Answers): boolean {
+function gateHasOnlyNos(gate: AssetLine, answers: Answers) {
   if (answers[gate.key] !== 'yes') return false;
   const under = ASSET_LINES.filter((other) => other.gate === gate.key);
   return under.every((other) => answers[other.key] === 'no');
 }
 
-function lineIsComplete(line: AssetLine, rows: Row[], answers: Answers) {
-  const onLine = rows.filter((row) => row.ab_line === line.key);
-  const shown = line.gate === null || answers[line.gate] === 'yes';
-  if (!shown) return onLine.length === 0;
-  const answer = answers[line.key];
-  if (answer !== 'yes' && answer !== 'no') return false;
-  if (line.shape === 'gate') return onLine.length === 0 && !gateHasOnlyNos(line, answers);
-  if (answer === 'no') return onLine.length === 0;
-  return onLine.length > 0 && onLine.every((row) => rowIsComplete(line, row));
+/** What the filer knows a row by, in the order Review names it */
+function rowName(row: Row) {
+  return (
+    row.description?.trim() ||
+    row.details?.street?.trim() ||
+    row.details?.make?.trim() ||
+    ROW_WITH_NO_NAME
+  );
+}
+
+// One pass with a function, so the filer's words are never read as a pattern or a placeholder
+function fill(template: string, values: Record<string, string>) {
+  return template.replace(/\{(\w+)\}/g, (_, name: string) => values[name]);
+}
+
+/** The first thing a line still lacks, in Complete's words, or null */
+function lineGap(line: AssetLine, rows: Row[], answers: Answers): string | null {
+  const { key, gate } = line;
+  const onLine = rows.filter((row) => row.ab_line === key);
+  if (gate !== null && answers[gate] !== 'yes') {
+    return onLine.length > 0 ? fill(ASSET_GAP_UNDER_GATE, { key, gate }) : null;
+  }
+  const answer = answers[key];
+  if (answer !== 'yes' && answer !== 'no') return fill(ASSET_GAP_NEEDS_AN_ANSWER, { key });
+  if (line.shape === 'gate') {
+    if (onLine.length > 0) return fill(ASSET_GAP_GATE_TAKES_NO_ITEMS, { key });
+    return gateHasOnlyNos(line, answers) ? fill(GATE_HAS_ONLY_NOS, { key }) : null;
+  }
+  if (answer === 'no') {
+    return onLine.length > 0 ? fill(ASSET_GAP_NO_STILL_LISTS, { key }) : null;
+  }
+  if (onLine.length === 0) return fill(ASSET_GAP_YES_WITH_NO_ITEM, { key });
+  const lacking = onLine.find((row) => !rowIsComplete(line, row));
+  return lacking ? fill(ASSET_GAP_ROW_NEEDS_MORE, { key, name: rowName(lacking) }) : null;
+}
+
+/** The first thing the Part still lacks, in the form's order, or null when it lacks nothing */
+export function firstGapOnPart(part: number, rows: Row[], answers: Answers): string | null {
+  for (const line of ASSET_LINES) {
+    if (line.part !== part) continue;
+    const gap = lineGap(line, rows, answers);
+    if (gap !== null) return gap;
+  }
+  return null;
 }
 
 /** Whether every line of the Part is answered and every row has what its line requires */
 export function partIsComplete(part: number, rows: Row[], answers: Answers): boolean {
-  return ASSET_LINES.filter((line) => line.part === part).every((line) =>
-    lineIsComplete(line, rows, answers)
-  );
+  return firstGapOnPart(part, rows, answers) === null;
 }
 
 /**

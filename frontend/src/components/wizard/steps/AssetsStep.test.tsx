@@ -3,7 +3,12 @@ import { fireEvent, render, screen, within } from '@testing-library/react';
 import { axe } from 'vitest-axe';
 import { describe, expect, it, vi } from 'vitest';
 import { AssetsStep } from './AssetsStep';
-import { firstIncompletePart, partIsComplete, shownLines } from './assets/assetGaps';
+import {
+  firstGapOnPart,
+  firstIncompletePart,
+  partIsComplete,
+  shownLines,
+} from './assets/assetGaps';
 import { AB_PARTS, ASSET_LINES } from '../../../constants/assetLines';
 import {
   AMOUNT_NOT_A_NUMBER,
@@ -330,7 +335,7 @@ describe('AssetsStep', () => {
     type('line_6_0_current_value', '');
 
     expect(latest.rows[0].current_value).toBeNull();
-    expect(screen.queryByRole('alert')).toBeNull();
+    expect(screen.queryByText(AMOUNT_NOT_A_NUMBER)).toBeNull();
     expect(latest.valid).toBe(false);
   });
 
@@ -342,7 +347,7 @@ describe('AssetsStep', () => {
     type('line_19_0_percent', '');
 
     expect(latest.rows[0].details?.percent).toBeNull();
-    expect(screen.queryByRole('alert')).toBeNull();
+    expect(screen.queryByText(AMOUNT_NOT_A_NUMBER)).toBeNull();
     expect(latest.valid).toBe(false);
   });
 
@@ -352,7 +357,7 @@ describe('AssetsStep', () => {
 
     pressPartOfANumber('line_6_0_current_value');
 
-    expect(screen.getByRole('alert')).toHaveTextContent(AMOUNT_NOT_A_NUMBER);
+    expect(screen.getByText(AMOUNT_NOT_A_NUMBER)).toBeInTheDocument();
   });
 
   // The figure kept for such a box isn't the one it shows, so the filer can't go on until they agree
@@ -810,6 +815,150 @@ describe('AssetsStep', () => {
     expect(
       screen.getByText('Line 46 says Yes, but every line under it says No. Change one of them.')
     ).toBeInTheDocument();
+  });
+
+  // Continue only goes grey, so these sentences are how a filer, or a screen reader, hears why
+  describe('says what Continue is waiting for', () => {
+    const NEEDS_A_YES_OR_NO = (key: string) => `Line ${key} on the Assets step needs a Yes or No.`;
+
+    it('says nothing on a Part with nothing answered yet', () => {
+      render(<Walk part={3} />);
+      expect(latest.valid).toBe(false);
+      expect(screen.queryByText(/^Line \d+/)).toBeNull();
+    });
+
+    it('names the one line left, and goes when that line is answered', () => {
+      render(<Walk part={3} />);
+      for (const line of linesOf(3)) if (line.key !== '9') say(line.key, 'no');
+
+      expect(latest.valid).toBe(false);
+      expect(screen.getByRole('alert')).toHaveTextContent(NEEDS_A_YES_OR_NO('9'));
+
+      say('9', 'no');
+      expect(screen.queryByRole('alert')).toBeNull();
+      expect(latest.valid).toBe(true);
+    });
+
+    it('marks each line as required, gates too, as the row questions are', () => {
+      render(<Walk part={5} />);
+      const words = screen.getByText(/^37\./);
+      expect(words.querySelector('.required-indicator')).toBeInTheDocument();
+      expect(radio('37', 'yes')).toHaveAttribute('aria-required', 'true');
+      expect(radio('37', 'no')).toHaveAttribute('aria-required', 'true');
+    });
+
+    it('says the sentence once for a gate with every line under it No', () => {
+      const answers: Answers = { ...allNo(5), '37': 'yes' };
+      render(<Walk part={5} answers={answers} />);
+      expect(screen.getAllByRole('alert')).toHaveLength(1);
+    });
+
+    it('prints what the filer typed as it is, whatever marks it holds', () => {
+      for (const typed of ['TV $& stand', '$$', "$'", '{key}']) {
+        const row = makeRow({ ab_line: '6', description: typed, current_value: null });
+        const { unmount } = render(<Walk part={3} rows={[row]} answers={{ '6': 'yes' }} />);
+        expect(screen.getByRole('alert')).toHaveTextContent(
+          `Line 6 needs more about "${typed}" on the Assets step.`
+        );
+        unmount();
+      }
+    });
+
+    // Each row: the state, and the sentence asset_step_gaps gives for it. Agreeing with
+    // partIsComplete means Continue is disabled exactly when one of these shows.
+    const cases: [string, number, Row[], Answers, string | null][] = [
+      ['a shown line with no answer', 1, [], {}, NEEDS_A_YES_OR_NO('1')],
+      [
+        'a Yes with no row',
+        3,
+        [],
+        { ...allNo(3), '7': 'yes' },
+        'Line 7 says Yes. Add what you have, or change it to No.',
+      ],
+      [
+        'a row with something missing, by its description',
+        3,
+        [makeRow({ ab_line: '6', description: 'Sofa', current_value: null })],
+        { ...allNo(3), '6': 'yes' },
+        'Line 6 needs more about "Sofa" on the Assets step.',
+      ],
+      [
+        'a row with something missing, by its street',
+        1,
+        [makeRow({ ab_line: '1', description: '', details: { street: '12 Elm St' } })],
+        { '1': 'yes' },
+        'Line 1 needs more about "12 Elm St" on the Assets step.',
+      ],
+      [
+        'a row with something missing, by its make',
+        2,
+        [makeRow({ ab_line: '3', description: '', details: { make: 'Ford' } })],
+        { '3': 'yes', '4': 'no' },
+        'Line 3 needs more about "Ford" on the Assets step.',
+      ],
+      [
+        'a row with nothing to name it by',
+        4,
+        [makeRow({ ab_line: '16', description: '', current_value: null })],
+        { ...allNo(4), '16': 'yes' },
+        'Line 16 needs more about "one item" on the Assets step.',
+      ],
+      [
+        'a No that still lists something',
+        3,
+        [makeRow({ ab_line: '6' })],
+        allNo(3),
+        'Line 6 says No, but it still lists something. Remove it, or change the answer to Yes.',
+      ],
+      [
+        'a gate with a row of its own',
+        5,
+        [makeRow({ ab_line: '37' })],
+        { '37': 'no' },
+        'Line 37 takes no items. Remove what it lists.',
+      ],
+      [
+        'a gate with every line under it No',
+        5,
+        [],
+        { ...allNo(5), '37': 'yes' },
+        'Line 37 says Yes, but every line under it says No. Change one of them.',
+      ],
+      [
+        "a row under a gate that isn't answered Yes",
+        5,
+        [makeRow({ ab_line: '38' })],
+        { '37': 'no' },
+        "Line 38 is under line 37, which isn't answered Yes. Remove what line 38 lists, or answer line 37 Yes.",
+      ],
+      ['every line answered No', 3, [], allNo(3), null],
+      [
+        'a Yes with a whole row',
+        4,
+        [makeRow({ ab_line: '16', description: '' })],
+        { ...allNo(4), '16': 'yes' },
+        null,
+      ],
+    ];
+
+    it.each(cases)('agrees with partIsComplete on %s', (_name, part, rows, answers, sentence) => {
+      expect(firstGapOnPart(part, rows, answers)).toBe(sentence);
+      expect(partIsComplete(part, rows, answers)).toBe(sentence === null);
+    });
+
+    it('takes the first thing in the form order, line by line', () => {
+      const rows = [makeRow({ ab_line: '7', current_value: null })];
+      expect(firstGapOnPart(3, rows, { '6': 'yes', '7': 'yes' })).toBe(
+        'Line 6 says Yes. Add what you have, or change it to No.'
+      );
+    });
+
+    it('has no axe violations with the sentence showing', { timeout: 60_000 }, async () => {
+      const { container } = render(<Walk part={3} />);
+      say('6', 'no');
+      expect(screen.getByRole('alert')).toBeInTheDocument();
+      expect(await axe(container)).toHaveNoViolations();
+    });
   });
 
   it('lists an old row above Part 1 only, and picking a line moves it there and answers Yes', () => {

@@ -6,9 +6,11 @@ no property who answered No to every line has finished the step. A value the fil
 or typed as $0, is an answer; only a blank is not.
 """
 
+import re
 from decimal import Decimal
 
 import pytest
+from django.conf import settings
 
 from apps.districts.models import District
 from apps.intake.asset_lines import LINE_BY_KEY, asset_step_gaps
@@ -50,6 +52,82 @@ def _row(session, line, description="", value="100.00", entire=None, **details):
 def _answer(session, *yes):
     """Yes on the named lines, No on every other line shown."""
     answer_asset_lines(session, yes)
+
+
+def _copy_sentence(name: str) -> str:
+    """A sentence from the wizard's copy.ts: Continue says it while Complete would refuse."""
+    frontend = settings.BASE_DIR.parent / "frontend" / "src"
+    if not frontend.is_dir():
+        pytest.skip("the frontend's source isn't here (compose's backend mounts backend/ only)")
+    source = (frontend / "constants" / "copy.ts").read_text()
+    found = re.search(rf"export const {name} =\s*(['\"])(.*?)\1;", source, re.DOTALL)
+    assert found, name
+    return found.group(2)
+
+
+def _a_row_under_a_no(session):
+    _answer(session)
+    _row(session, "38", "Invoices")
+    return "ASSET_GAP_UNDER_GATE", {"key": "38", "gate": "37"}
+
+
+def _a_line_unanswered(session):
+    AssetLineAnswers.objects.create(session=session, answers='{"1": "no"}')
+    return "ASSET_GAP_NEEDS_AN_ANSWER", {"key": "3"}
+
+
+def _a_row_on_a_gate(session):
+    _answer(session)
+    _row(session, "37", "Invoices")
+    return "ASSET_GAP_GATE_TAKES_NO_ITEMS", {"key": "37"}
+
+
+def _a_gate_with_only_nos(session):
+    _answer(session, "37")
+    return "GATE_HAS_ONLY_NOS", {"key": "37"}
+
+
+def _a_yes_with_no_row(session):
+    _answer(session, "6")
+    return "ASSET_GAP_YES_WITH_NO_ITEM", {"key": "6"}
+
+
+def _a_no_with_a_row(session):
+    _answer(session)
+    _row(session, "6", "Sofa")
+    return "ASSET_GAP_NO_STILL_LISTS", {"key": "6"}
+
+
+def _a_row_lacking_something(session):
+    _answer(session, "6")
+    _row(session, "6", "Sofa", value=None)
+    return "ASSET_GAP_ROW_NEEDS_MORE", {"key": "6", "name": "Sofa"}
+
+
+def _a_row_with_no_words(session):
+    _answer(session, "16")
+    _row(session, "16", value=None)
+    return "ASSET_GAP_ROW_NEEDS_MORE", {"key": "16", "name": _copy_sentence("ROW_WITH_NO_NAME")}
+
+
+@pytest.mark.parametrize(
+    "state",
+    [
+        _a_row_under_a_no,
+        _a_line_unanswered,
+        _a_row_on_a_gate,
+        _a_gate_with_only_nos,
+        _a_yes_with_no_row,
+        _a_no_with_a_row,
+        _a_row_lacking_something,
+        _a_row_with_no_words,
+    ],
+)
+def test_continue_and_complete_give_the_same_sentence(session, state):
+    # The wizard stops at Continue, so the filer reads its copy of the sentence, never Complete's.
+    name, values = state(session)
+
+    assert _copy_sentence(name).format(**values) == _gaps(session)[0]
 
 
 def test_an_old_row_is_refused_by_its_description(session):

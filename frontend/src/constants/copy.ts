@@ -430,10 +430,28 @@ export const ADD_AN_ITEM = 'Add an item';
 
 export const LINE_NEEDS_AN_ITEM = 'Add what you have, or change it to No.';
 
-// The sentence Complete gives for this in apps/intake/asset_lines.py, shown here because Continue
-// stops first
+// The sentences Complete gives in apps/intake/asset_lines.py, shown after a Part's lines because
+// Continue stops first. test_asset_gaps.py pins these to the server's words.
 export const GATE_HAS_ONLY_NOS =
   'Line {key} says Yes, but every line under it says No. Change one of them.';
+
+export const ASSET_GAP_NEEDS_AN_ANSWER = 'Line {key} on the Assets step needs a Yes or No.';
+
+export const ASSET_GAP_YES_WITH_NO_ITEM =
+  'Line {key} says Yes. Add what you have, or change it to No.';
+
+export const ASSET_GAP_NO_STILL_LISTS =
+  'Line {key} says No, but it still lists something. Remove it, or change the answer to Yes.';
+
+export const ASSET_GAP_ROW_NEEDS_MORE = 'Line {key} needs more about "{name}" on the Assets step.';
+
+export const ASSET_GAP_GATE_TAKES_NO_ITEMS = 'Line {key} takes no items. Remove what it lists.';
+
+export const ASSET_GAP_UNDER_GATE =
+  "Line {key} is under line {gate}, which isn't answered Yes. Remove what line {key} lists, or answer line {gate} Yes.";
+
+// A row in those sentences before it has words of its own
+export const ROW_WITH_NO_NAME = 'one item';
 
 // The screen's words for the form's "Debtor 1 only" and "At least one of the debtors and another"
 export const WHO_ONLY_YOU = 'Only you';

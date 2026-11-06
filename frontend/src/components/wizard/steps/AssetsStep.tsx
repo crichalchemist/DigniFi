@@ -19,7 +19,6 @@ import {
   AB_PART_TITLES,
 } from '../../../constants/formText';
 import {
-  GATE_HAS_ONLY_NOS,
   LEASE_NOTE,
   NOT_ANSWERED_YET,
   NOTHING_TO_LIST_NOTE,
@@ -37,7 +36,7 @@ import { AB_PARTS, ASSET_LINES } from '../../../constants/assetLines';
 import { useFocusManagement } from '../../../hooks/useFocusManagement';
 import { Button, FormSelect } from '../../common';
 import { AssetLine } from './assets/AssetLine';
-import { gateHasOnlyNos, NO_TEXT_BOX, partIsComplete, shownLines } from './assets/assetGaps';
+import { firstGapOnPart, NO_TEXT_BOX, partIsComplete, shownLines } from './assets/assetGaps';
 import type { AssetLine as Line } from '../../../constants/assetLines';
 import type { AssetInfo, AssetLineAnswer, WizardRow } from '../../../types/api';
 
@@ -107,6 +106,12 @@ export function AssetsStep({
 
   const lines = shownLines(answers).filter((line) => line.part === part);
   const rowsOn = (key: string) => rows.filter((row) => row.ab_line === key);
+  const gap = firstGapOnPart(part, rows, answers);
+  // Nothing is lacking yet on a Part the filer hasn't begun, so the sentence waits for a first
+  // answer. A row already on the Part has begun it, even on a line that isn't showing.
+  const partIsStarted = ASSET_LINES.some(
+    (line) => line.part === part && (answers[line.key] || rowsOn(line.key).length > 0)
+  );
 
   const answerYes = (line: Line) => {
     onAnswersChange({ ...answers, [line.key]: 'yes' });
@@ -223,14 +228,12 @@ export function AssetsStep({
         </div>
       ))}
 
-      {/* After the lines, not at the gate: the last No is pressed down here, beside Continue */}
-      {lines
-        .filter((line) => line.shape === 'gate' && gateHasOnlyNos(line, answers))
-        .map((gate) => (
-          <div key={gate.key} className="info-box" role="alert">
-            <p className="info-message">{GATE_HAS_ONLY_NOS.replace('{key}', gate.key)}</p>
-          </div>
-        ))}
+      {/* After the lines, not at the line: the last answer is pressed down here, beside Continue */}
+      {gap !== null && partIsStarted && (
+        <div className="info-box" role="alert">
+          <p className="info-message">{gap}</p>
+        </div>
+      )}
 
       <UPLDisclaimer text={UPL_EXEMPTION_DISCLAIMER} variant="inline" />
     </div>

@@ -75,7 +75,7 @@ const DESCRIPTION_MAX_LENGTH = 255;
 const VALUE_MAX_DIGITS = 12;
 
 // FormField's mark, for the questions asked in a fieldset, which has no required prop
-const REQUIRED_MARK = (
+export const REQUIRED_MARK = (
   <span className="required-indicator" aria-label="required">
     *
   </span>
