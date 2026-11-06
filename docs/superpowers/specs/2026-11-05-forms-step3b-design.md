@@ -160,7 +160,7 @@ Review adds a list headed in plain words: "You said you don't know the value of 
 
 `asset_step_gaps(session)` (`apps/intake/asset_lines.py`, which reads rows it is handed so the module stays pure, or a thin reader beside it) returns the gaps in the form's order, one sentence each, all with `step: "assets"`. Complete adds them after Schedule J line 3's gap and before the scanned-debt gap, which is wizard order.
 
-1. An old row with no line (§9), naming its description.
+1. An old row with no line (§9), naming its description, or its street, its make or "one item" when it has none.
 2. An unanswered line that the gates show.
 3. A Yes line with no row: "Line 7 says Yes. Add what you have, or change it to No."
 4. A No line, or a line hidden by a gate's No, that has rows. The UI prevents it; the API doesn't, so Complete names it.
@@ -173,7 +173,7 @@ Review adds a list headed in plain words: "You said you don't know the value of 
    - `labelled`, and `shared box` on 28 and 29: the kind.
    - `named` with share: the name, the value and `percent`. A blank share would print the template's own "0%" (see CLAUDE.md "Known form defects"), which is a false statement on that row.
    - `insurance`: the company and the value. The beneficiary is optional.
-   - line 43: the question, and the description under its Yes.
+   - line 43: the question, the value, and the description under its Yes.
 
    A value counts as given when it has a figure or its "I don't know" flag.
 

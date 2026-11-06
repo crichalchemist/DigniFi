@@ -438,7 +438,7 @@ export function IntakeWizard() {
     dataKey: sessionRead === 'done' ? currentStepKey : undefined,
     onSave: (body) => saveCurrentStepData(body),
     // Only autosave a complete, valid step (see architecture rationale), but for Assets, whose
-    // work mid-Part is kept (3b spec §4). 'review' has nothing to save; disabled until a session
+    // work mid-Part saves too (3b spec §4). 'review' has nothing to save; disabled until a session
     // exists.
     enabled:
       !!session && (canProceed || currentStepKey === 'assets') && currentStepKey !== 'review',

@@ -497,9 +497,9 @@ class GeneratedFormViewSet(viewsets.ReadOnlyModelViewSet):
         still the one read before drawing: a form marked filed meanwhile keeps the values
         it was filed with. A filed form draws its stored parts, or its values stored before
         3a2, so it matches what was filed, even after it has left the packet (DIG-155). A
-        filed form with no stored values is drawn as one not yet filed, through the completion
-        and packet checks, from the current intake, and the parts it draws are kept as its
-        filed ones if it is still filed when the draw ends.
+        filed form with no stored values is drawn as one not yet filed, through the completion,
+        Assets step and packet checks, from the current intake, and the parts it draws are kept
+        as its filed ones if it is still filed when the draw ends.
         """
         generated_form = self.get_object()
         form_type = generated_form.form_type

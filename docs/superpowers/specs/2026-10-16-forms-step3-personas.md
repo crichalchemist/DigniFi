@@ -4,6 +4,8 @@
 
 **What this is:** the target for the six personas once step 3 is done. The briefs in `docs/testing/persona-briefs/`, the seeds and the E2E fixture change only as each PR lands, and each PR applies only its own slice ("Per PR" in each section). A brief never runs ahead of its seed.
 
+**Corrected since:** the 3b spec's §10 (`docs/superpowers/specs/2026-11-05-forms-step3b-design.md`) corrects the Schedule A/B targets below: Priya's savings and Andrés's share savings print on 17.3, not 17.2, and James's "Wallet" isn't stored, since line 16 has no text box.
+
 **How to read a section:**
 
 - **Story delta, Per PR and Outcome changes** are the target.
@@ -1427,7 +1429,7 @@ Each PR adds only what its feature asks for; row names point to the brief above.
 3. **`test_api_readback.py` takes him in automatically** (`:162` parametrizes over `PERSONAS`). `:85` needs all ten sources non-None, so the seed types $0. `:102-106` sends empty contracts and codebtors, so 3c must send his G and H rows; that is why 3a1 seeds neither.
 4. **Gap: one cost counted twice (Q5 × Q13).** No ruling stops a filer putting the lease on 5b/8a and on J 17a (or 122A-2 line 13), gas on 5b and J 12, or insurance on 5b and J 15c. The brief splits them as his answer; the 3e2 and 3c specs may want an information note.
 5. **The co-signed payment (Q13).** He types $0 at "Your regular monthly payment (if any)" (`DebtsStep.tsx:285`), since Mateo pays. Q13 makes the debt's payment the only source, so J 17b is blank, which is right for his budget. Step 4's Form 108, and 122A-2 lines 13 and 33 had he been above median, would also read $0, not the contract's $245.
-6. **The leased car on A/B line 3.** The template says "If you lease a vehicle, also report it on Schedule G" (A/B Part 2 header), and G says to list leases "even if … listed on Schedule A/B". Q24 and Q13 don't say whether 3b keeps a lease row on line 3, or at what values. The brief lists it at $0/$0 as his answer; the 3b spec decides. VERIFY.
+6. **The leased car on A/B line 3.** The template says "If you lease a vehicle, also report it on Schedule G" (A/B Part 2 header), and G says to list leases "even if … listed on Schedule A/B". Q24 and Q13 don't say whether 3b keeps a lease row on line 3, or at what values. The brief lists it at $0/$0 as his answer; the 3b spec decides. Closed by §2 of `docs/superpowers/specs/2026-11-05-forms-step3b-design.md`.
 7. **Form 101 lines 12 and 16 have no step 3 home.** Line 12 ("Are you a sole proprietor…?") is placed in no PR and no step; spec §3.2 lists only Q7 and the paid preparer. It reads `answer:form_101.business_name`, which nothing writes. His answer, for whichever step takes it: Yes, no business name, at his home address. Line 16a (Q7) is step 4 (step 2 spec Q7). His answer: Yes, primarily consumer debts, with $3,320 of $33,100 business by his own count (4.3 and the IRS), so the off-ramp, which only a "No" triggers, keeps him in.
 8. **Form 107 (step 4).** Line 4 (business income) and line 27 (business) will need his driving. Out of step 3, but worth knowing now.
 9. **SSN split.** The briefs say "enter this exactly" with the seed's SSN (`maria-torres.md:43` = `seed_demo_data.py:58`, 900-11-0001), while E2E types another (`personas.ts:87`, 900-11-1001). He follows both conventions.
