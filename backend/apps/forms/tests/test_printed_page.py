@@ -1257,9 +1257,10 @@ def test_a_car_s_year_and_miles_and_its_vin_read_whole_on_the_drawn_sheet(
     ("line", "answer", "label"),
     [
         ("3", {"other_info": "W" * 17}, "Who has an interest"),
+        ("3", {"year": "Approximately"}, "Year and miles"),
         ("4", {"other_info": "W" * 17}, "Who has an interest"),
     ],
-    ids=["line_3_past_its_widest_vin", "line_4_past_its_widest_vin"],
+    ids=["line_3_past_its_widest_vin", "line_3_year_too_wide", "line_4_past_its_widest_vin"],
 )
 def test_a_word_too_wide_for_a_vehicle_s_sheet_is_refused_with_a_link_to_the_assets_step(
     filer, line, answer, label
