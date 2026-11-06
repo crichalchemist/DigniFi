@@ -1145,6 +1145,45 @@ def test_the_largest_amount_a_row_can_hold_prints_whole_on_its_sheet(filer):
     PDFFormFiller().check("schedule_a_b", parts)
 
 
+_PIN = "17-16-123-045-0000"
+_VIN = "1HGCM82633A004352"
+
+
+@pytest.mark.parametrize(
+    ("line", "answer"),
+    [
+        ("1", {"other_info": _PIN}),
+        ("3", {"mileage": "125,000"}),
+        ("3", {"mileage": "Unknown"}),
+        ("3", {"make": "Harley-Davidson"}),
+        ("3", {"model": "Thunderbird"}),
+        ("4", {"other_info": _VIN}),
+        ("4", {"year": "Unknown"}),
+        ("4", {"make": "Harley-Davidson"}),
+        ("4", {"model": "Thunderbird"}),
+    ],
+    ids=lambda case: next(iter(case)) if isinstance(case, dict) else f"line_{case}",
+)
+def test_an_answer_the_form_s_box_takes_prints_whole_on_its_sheet(filer, line, answer):
+    # A word never wraps, so a column narrower than a real answer refuses the whole form, and the
+    # filer could only fix it by mangling a correct number. The row past the slots goes on a sheet.
+    if line == "1":
+        for n in range(1, 4):
+            _ab_place(filer, f"{n} Elm St")
+        _ab_place(filer, "4 Elm St", **answer)
+    else:
+        for make in ("A", "B", "C", "D")[: LINE_BY_KEY[line].capacity]:
+            _ab_car(filer, make, line=line)
+        _ab_car(filer, **{"make": "Spare", **answer}, line=line)
+
+    parts = resolve_parts(load_schema("schedule_a_b"), filer)
+
+    PDFFormFiller().check("schedule_a_b", parts)
+    (part,) = [part for part in parts["parts"] if part["kind"] == "sheet"]
+    (word,) = answer.values()
+    assert word in " ".join(cell for row in part["rows"] for cell in row["cells"])
+
+
 def test_a_leased_car_prints_zero_in_both_value_boxes(filer):
     # The filer typed $0 for each: a zero is an answer, so it prints, unlike an unknown value.
     _ab_car(filer, "Toyota", value="0", entire="0", model="Corolla", other_info="Leased")
@@ -1260,6 +1299,21 @@ def test_line_43_s_describe_stays_blank_under_its_no(filer):
     assert shows["check 43_1"] == {"/no"}
     assert shows["43 Identifiable information"] == set()
     assert shows["undefined_135"] == {"50.00"}
+
+
+def test_other_s_words_stay_blank_once_other_is_unticked(filer):
+    # Words kept from before the filer unticked Other would sit beside an empty box on a sworn
+    # form. A row on a sheet already leaves them out, and a row in a box must read the same.
+    for n in range(1, 5):
+        _ab_place(filer, f"{n} Elm St", other_kind="Garage")
+
+    shows, parts, pdf = _ab_drawn(filer)
+
+    for box in ("undefined_4", "undefined_8", "undefined_12"):
+        assert shows[box] == set()
+    assert shows["Land"] == {"/On"}
+    assert shows["Other"] == set()
+    assert _ab_sheet_rows(parts, pdf)[0][2] == "Land"
 
 
 # The Yes/No boxes this task binds under each gate (3b spec §8.1).

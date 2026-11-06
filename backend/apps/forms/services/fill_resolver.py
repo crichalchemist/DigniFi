@@ -121,6 +121,8 @@ ASSET_CELLS: dict[str, Callable[[AssetInfo], str]] = {
     ),
     "value": lambda row: _money_or_blank(row.current_value),
     "entire": lambda row: _money_or_blank(row.entire_value),
+    # Other's words sit beside its box, so words kept from before it was unticked don't print.
+    "other_kind": lambda row: (_detail("other_kind")(row) if _kind_ticked("other")(row) else ""),
     **{
         attr: _detail(attr)
         for attr in (
@@ -133,7 +135,6 @@ ASSET_CELLS: dict[str, Callable[[AssetInfo], str]] = {
             "state",
             "zip",
             "county",
-            "other_kind",
             "make",
             "model",
             "year",

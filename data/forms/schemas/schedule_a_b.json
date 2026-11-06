@@ -12,7 +12,7 @@
           {
             "label": "Where it is",
             "binding": "assets.line_1[].where",
-            "width": 148,
+            "width": 128,
             "covers": [
               "assets.line_1[].street",
               "assets.line_1[].street_2",
@@ -41,7 +41,7 @@
           {
             "label": "Who has an interest",
             "binding": "assets.line_1[].interest",
-            "width": 80,
+            "width": 100,
             "covers": [
               "assets.line_1[].who",
               "assets.line_1[].nature",
@@ -76,7 +76,7 @@
           {
             "label": "Model",
             "binding": "assets.line_3[].model",
-            "width": 70
+            "width": 64
           },
           {
             "label": "Year",
@@ -86,7 +86,7 @@
           {
             "label": "Miles",
             "binding": "assets.line_3[].mileage",
-            "width": 40
+            "width": 46
           },
           {
             "label": "Who has an interest",
@@ -120,22 +120,22 @@
           {
             "label": "Make",
             "binding": "assets.line_4[].make",
-            "width": 86
+            "width": 78
           },
           {
             "label": "Model",
             "binding": "assets.line_4[].model",
-            "width": 86
+            "width": 76
           },
           {
             "label": "Year",
             "binding": "assets.line_4[].year",
-            "width": 30
+            "width": 46
           },
           {
             "label": "Who has an interest",
             "binding": "assets.line_4[].interest",
-            "width": 106,
+            "width": 108,
             "covers": [
               "assets.line_4[].who",
               "assets.line_4[].community",

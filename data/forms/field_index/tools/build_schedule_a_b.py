@@ -321,36 +321,40 @@ def sheet_columns(line):
 
     money = [column("Entire", "entire", MONEY), column("Portion", "value", MONEY)]
     interest = ["who", "community", "other_info"]
+    # A word never wraps, and one wider than its column less 4 pt refuses the whole form, so each
+    # column holds the widest real word it takes, at 10 pt. Make: "Harley-Davidson", 73.9. Model:
+    # "Thunderbird", 53.9. Miles: "Unknown", 41.7. Line 1's Who: a PIN, 91.2. Line 4's Who: a VIN,
+    # 103.9, which line 3's five other columns leave no room for (reported for a ruling).
     if line.shape == "place":
         kinds = [f"kind_{kind}" for kind in KIND_WORDS.values()]
         return [
             column(
                 "Where it is",
                 "where",
-                148,
+                128,
                 ["street", "street_2", "city", "state", "zip", "county"],
             ),
             column("What it is", "what", 80, [*kinds, "other_kind"]),
             column(
-                "Who has an interest", "interest", 80, ["who", "nature", "community", "other_info"]
+                "Who has an interest", "interest", 100, ["who", "nature", "community", "other_info"]
             ),
             *money,
         ]
     if line.shape == "vehicle":
         return [
-            column("Make", "make", 78),  # "Mercedes-Benz", one word, is 70 pt
-            column("Model", "model", 70),
+            column("Make", "make", 78),
+            column("Model", "model", 64),
             column("Year", "year", 30),
-            column("Miles", "mileage", 40),
+            column("Miles", "mileage", 46),
             column("Who has an interest", "interest", 90, interest),
             *money,
         ]
     if line.shape == "vehicle_no_mileage":
         return [
-            column("Make", "make", 86),
-            column("Model", "model", 86),
-            column("Year", "year", 30),
-            column("Who has an interest", "interest", 106, interest),
+            column("Make", "make", 78),
+            column("Model", "model", 76),
+            column("Year", "year", 46),
+            column("Who has an interest", "interest", 108, interest),
             *money,
         ]
     portion = column("Portion", "value", MONEY)
