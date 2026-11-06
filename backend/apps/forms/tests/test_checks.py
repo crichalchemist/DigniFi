@@ -924,7 +924,8 @@ _AB = "schedule_a_b: group 'ab_line_3'"
             (
                 "forms.E007",
                 f"{_AB}: sheet column 'Make' binds 'answer:schedule_a_b.make', "
-                "not a sofa.<collection>[].<attr> or household.dependents[].<attr> list",
+                "not a sofa.<collection>[].<attr>, household.dependents[].<attr>, "
+                "income.statement[].<attr> or assets.line_<key>[].<attr> list",
             ),
         ),
         (
@@ -1295,7 +1296,7 @@ def test_a_covering_column_naming_a_binding_no_slot_has_is_refused(schedule_a_b_
     ]
 
 
-def test_a_covering_column_may_cover_nothing_and_print_a_list_no_slot_binds(
+def test_a_covering_column_may_cover_nothing_and_print_an_attribute_no_slot_binds(
     schedule_a_b_with_sheet,
 ):
     # Line 53's text: one box on the form for three rows, its own words on a sheet.

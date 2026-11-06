@@ -28,7 +28,7 @@ from apps.forms.services.derivations import (
     DERIVATIONS,
     PREDICATES,
     RULE_FIXES,
-    _money_or_blank,
+    money_or_blank,
 )
 from apps.forms.services.widgets import TemplateWidget, page_count, parse_key, template_widgets
 from apps.intake.asset_lines import (
@@ -126,8 +126,8 @@ ASSET_CELLS: dict[str, Callable[[AssetInfo], str]] = {
     "personal_description": lambda row: (
         (row.description or "") if row.get_details().get("has_personal_info") else ""
     ),
-    "value": lambda row: _money_or_blank(row.current_value),
-    "entire": lambda row: _money_or_blank(row.entire_value),
+    "value": lambda row: money_or_blank(row.current_value),
+    "entire": lambda row: money_or_blank(row.entire_value),
     # Other's words sit beside its box, so words kept from before it was unticked don't print.
     "other_kind": lambda row: (_detail("other_kind")(row) if _kind_ticked("other")(row) else ""),
     **{
@@ -170,9 +170,7 @@ _TICK = {"yes", "y", "true", "1", "on"}
 _NO_TICK = {"no", "n", "false", "0", "off", ""}
 
 
-def resolve_binding(
-    binding: str, session: IntakeSession, asset_rows: list[AssetInfo] | None = None
-) -> str | list[str]:
+def resolve_binding(binding: str, session: IntakeSession) -> str | list[str]:
     """
     Resolve a schema ``binding``:
 
@@ -181,8 +179,7 @@ def resolve_binding(
       - "sofa.<attr>" → scalar str on the SOFAReport
       - "household.dependents[].<attr>" → list of str over Schedule J line 2's dependents
       - "assets.line_<key>[].<attr>" or "assets.line_<key>_<kind>[].<attr>" → list of str over
-        that line's Schedule A/B rows, or those of that kind, in the form's order; from
-        `asset_rows`, the session's `ordered_assets`, when the caller already holds them
+        that line's Schedule A/B rows, or those of that kind, in the form's order
     """
     binding = binding.strip()
 
@@ -231,8 +228,7 @@ def resolve_binding(
             or (kind is not None and kind not in dict(line.kinds))
         ):
             raise ValueError(f"unrecognized binding: {binding!r}")
-        rows = ordered_assets(session) if asset_rows is None else asset_rows
-        return [ASSET_CELLS[attr](row) for row in rows_on(rows, key, kind)]
+        return [ASSET_CELLS[attr](row) for row in rows_on(ordered_assets(session), key, kind)]
 
     raise ValueError(f"unrecognized binding: {binding!r}")
 
@@ -455,7 +451,6 @@ def _sheet(
     session: IntakeSession,
     ingested_cache: dict,
     template_filename: str,
-    asset_rows: list[AssetInfo] | None,
 ) -> dict:
     """
     The attached sheet that prints the group's rows past `capacity` (3a2 spec §5.3): each row
@@ -468,7 +463,7 @@ def _sheet(
     labels and widths and any wider line column (R63), so a filed sheet redraws as it was filed.
     """
     covering = {
-        column.label: resolve_binding(column.binding, session, asset_rows)
+        column.label: resolve_binding(column.binding, session)
         for column in group.sheet.columns
         if column.covers is not None
     }
@@ -521,7 +516,9 @@ def resolve_parts(schema: FormSchema, session: IntakeSession) -> dict:
     "rows": [{"line": "3.5", "cells": [<one per column>]}]}, plus "line_width": <points> only
     when the sheet's isn't 36.
     """
-    # A/B's rules each ask for the rows: measured at 0.62 s more with 20 rows, a read per rule.
+    # A/B's rules and bindings each ask for the rows: measured at 0.62 s more with 20 rows, a read
+    # per rule. The read stays in this call, never on the session, so a session held across a save
+    # prints what the save stored.
     with one_read_of_assets():
         return _resolve_parts(schema, session)
 
@@ -544,14 +541,6 @@ def _resolve_parts(schema: FormSchema, session: IntakeSession) -> dict:
 
     # Batch-fetch all FormAnswer rows for this session once (avoids per-predicate DB hits)
     _form_answers = {(fa.field_key): fa for fa in FormAnswer.objects.filter(session=session)}
-
-    # Read the asset rows once for every assets. binding. They stay in this call, never on the
-    # session, so a session held across a save prints what the save stored.
-    _asset_rows = (
-        ordered_assets(session)
-        if any(f.binding and f.binding.startswith("assets.") for f in schema.fields)
-        else None
-    )
 
     # Non-repeat fields
     for f in schema.fields:
@@ -580,9 +569,7 @@ def _resolve_parts(schema: FormSchema, session: IntakeSession) -> dict:
     overflowing = []
     for group_name, fields in groups.items():
         capacity = fields[0].repeat_capacity or 0
-        resolved_cols = {
-            _key(f): resolve_binding(f.binding, session, _asset_rows) for f in fields if f.binding
-        }
+        resolved_cols = {_key(f): resolve_binding(f.binding, session) for f in fields if f.binding}
         actual = max(
             (len(v) for v in resolved_cols.values() if isinstance(v, list)),
             default=0,
@@ -610,7 +597,6 @@ def _resolve_parts(schema: FormSchema, session: IntakeSession) -> dict:
                     session,
                     _ingested_cache,
                     schema.template_filename,
-                    _asset_rows,
                 )
             )
         elif actual > capacity:
@@ -636,7 +622,7 @@ def _resolve_parts(schema: FormSchema, session: IntakeSession) -> dict:
     for name, group in schema.groups.items():
         if not is_statement_group(schema, name):
             continue
-        columns = [resolve_binding(c.binding, session, _asset_rows) for c in group.sheet.columns]
+        columns = [resolve_binding(c.binding, session) for c in group.sheet.columns]
         if columns and columns[0]:
             sheets.append(
                 {

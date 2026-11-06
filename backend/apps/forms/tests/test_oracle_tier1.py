@@ -17,6 +17,7 @@ from functools import cache
 from itertools import islice, product
 from pathlib import Path
 from string import ascii_uppercase
+from types import SimpleNamespace
 
 import pypdf
 import pytest
@@ -363,7 +364,8 @@ def test_every_schedule_a_b_binding_reads_the_row_it_names(binding):
             }
         ),
     )
-    (cell,) = resolve_binding(binding, None, [row])
+    session = SimpleNamespace(pk=None, assets=SimpleNamespace(all=lambda: [row]))
+    (cell,) = resolve_binding(binding, session)
     assert cell
 
 

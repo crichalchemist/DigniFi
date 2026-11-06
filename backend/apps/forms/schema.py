@@ -700,7 +700,8 @@ def _sheet_errors(name: str, group: GroupSpec, template: str) -> list[tuple[str,
                 (
                     "E007",
                     f"group {name!r}: sheet column {column.label!r} binds {column.binding!r}, "
-                    "not a sofa.<collection>[].<attr> or household.dependents[].<attr> list",
+                    "not a sofa.<collection>[].<attr>, household.dependents[].<attr>, "
+                    "income.statement[].<attr> or assets.line_<key>[].<attr> list",
                 )
             )
         width = inner_width(column.width)

@@ -262,7 +262,7 @@ def _total_monthly_expenses(session: IntakeSession) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Schedule A/B part totals, line 53, and the section questions of A/B, G and H
+# Schedule A/B part totals, line 53 and each line's Yes or No, and the section questions of G and H
 # ---------------------------------------------------------------------------
 
 
@@ -329,7 +329,7 @@ def _ab_kind_total(key: str, kind: str) -> Callable[[IntakeSession], str]:
     def rule(session: IntakeSession) -> str:
         rows = rows_on(ordered_assets(session), key, kind)
         known = [row.current_value for row in rows if row.current_value is not None]
-        return _money_or_blank(sum(known) if known else None)
+        return money_or_blank(sum(known) if known else None)
 
     return rule
 
@@ -590,7 +590,7 @@ def _count_or_blank(n: int) -> str:
     return str(n) if n > 0 else ""
 
 
-def _money_or_blank(amount: Decimal | None) -> str:
+def money_or_blank(amount: Decimal | None) -> str:
     return "" if amount is None else _fmt(amount)
 
 
@@ -872,7 +872,8 @@ DERIVATIONS: dict[str, Callable[[IntakeSession], str]] = {
     "joint_filer_name": _full_name,
     "cmi": _cmi,
     "total_monthly_expenses": _total_monthly_expenses,
-    # Schedule A/B part totals, line 53, and the section questions of A/B, G and H
+    # Schedule A/B part totals, line 53 and each line's Yes or No, and the section questions of G
+    # and H
     "total_vehicles": _total_vehicles,
     "total_household_items": _total_household_items,
     "total_financial_assets": _total_financial_assets,
@@ -933,9 +934,9 @@ DERIVATIONS: dict[str, Callable[[IntakeSession], str]] = {
     "fee_waiver_has_dependents": lambda s: "true" if _fee_waiver_family(s).dependents > 0 else "",
     "fee_waiver_dependents_count": lambda s: _count_or_blank(_fee_waiver_family(s).dependents),
     "fee_waiver_income_you": lambda s: _fmt(_fee_waiver_income(s).you),
-    "fee_waiver_income_spouse": lambda s: _money_or_blank(_fee_waiver_income(s).spouse),
+    "fee_waiver_income_spouse": lambda s: money_or_blank(_fee_waiver_income(s).spouse),
     "fee_waiver_income_subtotal": lambda s: _fmt(_fee_waiver_income(s).subtotal),
-    "fee_waiver_income_noncash": lambda s: _money_or_blank(_fee_waiver_income(s).noncash),
+    "fee_waiver_income_noncash": lambda s: money_or_blank(_fee_waiver_income(s).noncash),
     "fee_waiver_income_total": lambda s: _fmt(_fee_waiver_income(s).total),
     "fee_waiver_noncash_answer": lambda s: _fee_waiver_noncash(s)[0],
     "fee_waiver_noncash_kinds": lambda s: _fee_waiver_noncash(s)[1],

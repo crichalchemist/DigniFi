@@ -1771,8 +1771,7 @@ def test_line_53_s_fourth_row_goes_on_a_sheet_with_its_text(filer):
     ids=lambda case: case if isinstance(case, str) else "",
 )
 def test_a_row_past_a_list_s_boxes_goes_on_a_sheet_with_every_answer(filer, line, details, cells):
-    # The form says to attach a sheet for more, so nothing the filer gave is dropped, and the
-    # Part's total adds the row.
+    # The rows past a line's boxes go on an attached sheet, so nothing the filer gave is dropped.
     capacity = LINE_BY_KEY[line].capacity
     for n in range(1, capacity + 1):
         _ab_row(filer, line, "1.00", f"Row {n}", **details)

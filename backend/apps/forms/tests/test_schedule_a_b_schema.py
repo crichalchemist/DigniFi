@@ -109,10 +109,10 @@ LINE_OF_KIND = {
 }
 
 
-def _asset(session, asset_type, value, description="Item"):
+def _asset(session, listed, value, description="Item"):
     AssetInfo.objects.create(
         session=session,
-        ab_line=LINE_OF_KIND[asset_type],
+        ab_line=LINE_OF_KIND[listed],
         description=description,
         current_value=Decimal(value),
     )
@@ -133,8 +133,8 @@ def _filled(session):
 
 
 def test_each_part_total_prints_on_its_own_line_and_again_on_the_summary(session):
-    for asset_type, value in ASSETS:
-        _asset(session, asset_type, value)
+    for listed, value in ASSETS:
+        _asset(session, listed, value)
 
     printed = resolve(load_schema("schedule_a_b"), session)
 
@@ -144,8 +144,8 @@ def test_each_part_total_prints_on_its_own_line_and_again_on_the_summary(session
 def test_the_summary_form_copies_the_property_totals_schedule_a_b_prints(session):
     # 106Sum lines 1a, 1b and 1c say "Copy line 55", "Copy line 62" and "Copy line 63
     # from Schedule A/B": the two forms must never disagree.
-    for asset_type, value in ASSETS:
-        _asset(session, asset_type, value)
+    for listed, value in ASSETS:
+        _asset(session, listed, value)
     # 106Sum line 8 prints current monthly income, which needs income by source.
     IncomeInfo.objects.create(session=session, monthly_gross_wages=Decimal("1200.00"))
 
@@ -176,16 +176,16 @@ def test_a_filer_with_no_property_gets_zero_totals_and_no_on_every_question(sess
 
 
 @pytest.mark.slow
-@pytest.mark.parametrize("asset_type", list(LINE_OF_KIND))
-def test_each_property_question_answers_yes_only_for_the_kind_listed(session, asset_type):
-    # Household goods have no question bound yet (lines 6-14 need rows, step 3), so a
-    # filer who lists only those answers No to all five.
-    _asset(session, asset_type, "1.00")
+@pytest.mark.parametrize("listed", list(LINE_OF_KIND))
+def test_each_property_question_answers_yes_only_for_the_kind_listed(session, listed):
+    # Household goods sit on line 6, none of these five, so a filer who lists only those answers
+    # No to all five.
+    _asset(session, listed, "1.00")
 
     filled = _filled(session)
 
     assert {kind: filled.get(box) for kind, (box, _, _) in QUESTIONS.items()} == {
-        kind: {yes if kind == asset_type else no} for kind, (_, yes, no) in QUESTIONS.items()
+        kind: {yes if kind == listed else no} for kind, (_, yes, no) in QUESTIONS.items()
     }
 
 
@@ -261,8 +261,8 @@ def test_a_box_no_row_feeds_prints_nothing(session):
     # Every kind of property is listed, so a box still bound to a total, or to an
     # answer about one, would print. The account totals once filled the second
     # property's street address (line 1.2) and the cash line (16).
-    for asset_type, value in ASSETS:
-        _asset(session, asset_type, value)
+    for listed, value in ASSETS:
+        _asset(session, listed, value)
 
     filled = _filled(session)
 
