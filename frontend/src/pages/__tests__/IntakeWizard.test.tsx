@@ -1069,13 +1069,14 @@ const sessionAtStep5WithAssets = {
     {
       id: 3,
       session: 1,
-      asset_type: 'vehicle',
+      ab_line: '1',
+      asset_type: null,
       data_source: 'manual',
-      description: '2015 Honda Civic',
+      description: '',
       current_value: '8000.00',
+      entire_value: '8000.00',
       amount_owed: '3000.00',
-      equity: 5000,
-      financial_institution: '',
+      details: { street: '1 Elm', property_kinds: ['land'], who: 'only_you' },
     },
   ],
 };
@@ -1137,6 +1138,7 @@ describe('IntakeWizard amounts a returning filer already entered', { timeout: 15
     );
     renderWizard();
     await screen.findByRole('heading', { name: /assets/i, level: 2 });
+    fireEvent.click(document.querySelector('input[name="line_1_answer"][value="yes"]')!);
     await userEvent.click(screen.getByRole('button', { name: /continue/i }));
 
     await waitFor(() => expect(patchBodies.length).toBeGreaterThan(0));
@@ -1279,10 +1281,13 @@ describe.each([
     list: 'debts',
     step: 6,
     title: /amounts owed/i,
-    nameKey: 'creditor_name',
+    nameField: (index: number) => `creditor_name_${index}`,
+    nameOf: (row: Record<string, unknown>) => row.creditor_name,
     amountKey: 'amount_owed',
     removeLabel: 'Remove amount owed 1',
     addLabel: /add another amount owed/i,
+    // The first row is open from the start
+    open: () => {},
     fill: (index: number, name: string, amount: string) => {
       fireEvent.change(field(`debt_type_${index}`), { target: { value: 'credit_card' } });
       fireEvent.change(field(`creditor_name_${index}`), { target: { value: name } });
@@ -1309,31 +1314,52 @@ describe.each([
     list: 'assets',
     step: 5,
     title: /assets/i,
-    nameKey: 'description',
+    // Line 1 opens the walk: the street names a row, and every box below completes it
+    nameField: (index: number) => `line_1_${index}_street`,
+    nameOf: (row: Record<string, unknown>) => (row.details as { street?: string }).street,
     amountKey: 'current_value',
-    removeLabel: 'Remove asset 1',
-    addLabel: /add another asset/i,
+    removeLabel: 'Remove item 1 on line 1',
+    addLabel: 'Add another',
+    open: () => {
+      fireEvent.click(document.querySelector('input[name="line_1_answer"][value="yes"]')!);
+    },
     fill: (index: number, name: string, amount: string) => {
-      fireEvent.change(field(`asset_type_${index}`), { target: { value: 'vehicle' } });
-      fireEvent.change(field(`description_${index}`), { target: { value: name } });
-      fireEvent.change(field(`current_value_${index}`), { target: { value: amount } });
+      const box = `line_1_${index}`;
+      fireEvent.change(field(`${box}_street`), { target: { value: name } });
+      fireEvent.click(document.querySelector(`input[name="${box}_property_kinds"][value="land"]`)!);
+      fireEvent.click(document.querySelector(`input[name="${box}_who"][value="only_you"]`)!);
+      fireEvent.change(field(`${box}_entire_value`), { target: { value: amount } });
+      fireEvent.change(field(`${box}_current_value`), { target: { value: amount } });
     },
     stored: {
       id: 3,
       session: 1,
-      asset_type: 'vehicle',
+      ab_line: '1',
+      asset_type: null,
       data_source: 'manual',
-      description: 'Family car',
+      description: '',
       current_value: '8000.00',
+      entire_value: '8000.00',
       amount_owed: '3000.00',
-      equity: 5000,
-      financial_institution: '',
+      details: { street: '1 Elm', property_kinds: ['land'], who: 'only_you' },
     },
   },
 ])(
   'IntakeWizard new $list keep one id',
   { timeout: 30_000 },
-  ({ list, step, title, nameKey, amountKey, removeLabel, addLabel, fill, stored }) => {
+  ({
+    list,
+    step,
+    title,
+    nameField,
+    nameOf,
+    amountKey,
+    removeLabel,
+    addLabel,
+    open,
+    fill,
+    stored,
+  }) => {
     const onStep = { ...sessionAtStep1, current_step: step };
     const rowsSent = (body: Record<string, unknown>) => body[list] as Record<string, unknown>[];
     const idsSent = (bodies: Record<string, unknown>[]) =>
@@ -1367,9 +1393,10 @@ describe.each([
       vi.useFakeTimers();
       try {
         // Each wait outlasts the 2 s autosave delay after the save lands
+        open();
         fill(0, 'Elm Street Clinic', '1200');
         await waitSeconds(5);
-        fireEvent.change(field(`${nameKey}_0`), { target: { value: 'Elm Street Health' } });
+        fireEvent.change(field(nameField(0)), { target: { value: 'Elm Street Health' } });
         await waitSeconds(5);
       } finally {
         vi.useRealTimers();
@@ -1377,7 +1404,7 @@ describe.each([
 
       expect(idsSent(bodies)).toEqual([[undefined], [101]]);
       const [, second] = bodies.map(rowsSent);
-      expect(second[0][nameKey]).toBe('Elm Street Health');
+      expect(nameOf(second[0])).toBe('Elm Street Health');
       // The amount the filer typed, never the reply's decimal string
       expect(second[0][amountKey]).toBe(1200);
       // The browser's own key stays in the browser
@@ -1391,6 +1418,7 @@ describe.each([
 
       vi.useFakeTimers();
       try {
+        open();
         fill(0, 'Elm Street Clinic', '1200');
         fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
         await waitSeconds(1);
@@ -1401,7 +1429,7 @@ describe.each([
         await waitSeconds(3);
         expect(bodies).toHaveLength(1);
 
-        fireEvent.change(field(`${nameKey}_0`), { target: { value: 'Elm Street Health' } });
+        fireEvent.change(field(nameField(0)), { target: { value: 'Elm Street Health' } });
         fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
         await waitSeconds(3);
       } finally {
@@ -1423,9 +1451,10 @@ describe.each([
 
       vi.useFakeTimers();
       try {
-        fireEvent.change(field(`${nameKey}_0`), { target: { value: 'Edited once' } });
+        open();
+        fireEvent.change(field(nameField(0)), { target: { value: 'Edited once' } });
         await waitSeconds(3);
-        fireEvent.change(field(`${nameKey}_0`), { target: { value: 'Edited twice' } });
+        fireEvent.change(field(nameField(0)), { target: { value: 'Edited twice' } });
         await waitSeconds(3);
       } finally {
         vi.useRealTimers();
@@ -1442,6 +1471,7 @@ describe.each([
 
       vi.useFakeTimers();
       try {
+        open();
         fill(0, 'Elm Street Clinic', '1200');
         fireEvent.click(screen.getByRole('button', { name: addLabel }));
         fill(1, 'Harbor Light Dental', '300');
@@ -1456,9 +1486,9 @@ describe.each([
       }
 
       expect(idsSent(saves.bodies)).toEqual([[undefined, undefined], [102]]);
-      expect(rowsSent(saves.bodies[1])[0][nameKey]).toBe('Harbor Light Dental');
-      expect(rowsSent(saves.stored())).toEqual([
-        expect.objectContaining({ id: 102, [nameKey]: 'Harbor Light Dental' }),
+      expect(nameOf(rowsSent(saves.bodies[1])[0])).toBe('Harbor Light Dental');
+      expect(rowsSent(saves.stored()).map((row) => [row.id, nameOf(row)])).toEqual([
+        [102, 'Harbor Light Dental'],
       ]);
     });
 
@@ -1473,12 +1503,13 @@ describe.each([
 
       vi.useFakeTimers();
       try {
+        open();
         fill(0, 'Elm Street Clinic', '1200');
         await waitSeconds(3);
         expect(saves.bodies).toHaveLength(1);
 
         const landSecondSave = saves.holdNextReply();
-        fireEvent.change(field(`${nameKey}_0`), { target: { value: 'Elm Street Health' } });
+        fireEvent.change(field(nameField(0)), { target: { value: 'Elm Street Health' } });
         await waitSeconds(3);
         // The two replies land 2.5 s apart, longer than the autosave delay
         await act(async () => landFirstSave());
@@ -1488,7 +1519,7 @@ describe.each([
         await waitSeconds(15);
 
         // The next edit updates the row the server holds instead of replacing it
-        fireEvent.change(field(`${nameKey}_0`), { target: { value: 'Elm Street Health Center' } });
+        fireEvent.change(field(nameField(0)), { target: { value: 'Elm Street Health Center' } });
         await waitSeconds(5);
       } finally {
         vi.useRealTimers();
@@ -1507,12 +1538,13 @@ describe.each([
 
       vi.useFakeTimers();
       try {
+        open();
         fill(0, 'Elm Street Clinic', '1200');
         await waitSeconds(3);
         expect(saves.bodies).toHaveLength(1);
 
         const landContinue = saves.holdNextReply();
-        fireEvent.change(field(`${nameKey}_0`), { target: { value: 'Elm Street Health' } });
+        fireEvent.change(field(nameField(0)), { target: { value: 'Elm Street Health' } });
         fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
         await waitSeconds(1);
         // The two replies land 2.5 s apart, longer than the autosave delay
@@ -1526,7 +1558,7 @@ describe.each([
         // Back on the step, the next edit updates the row the server holds instead of replacing it
         fireEvent.click(screen.getByRole('button', { name: 'Go Back' }));
         await waitSeconds(3);
-        fireEvent.change(field(`${nameKey}_0`), { target: { value: 'Elm Street Health Center' } });
+        fireEvent.change(field(nameField(0)), { target: { value: 'Elm Street Health Center' } });
         await waitSeconds(5);
       } finally {
         vi.useRealTimers();
