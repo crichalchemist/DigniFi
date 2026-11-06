@@ -704,6 +704,31 @@ describe('AssetsStep', () => {
     expect(screen.queryByText('Blue car')).toBeNull();
   });
 
+  // A sworn schedule must never carry words the filer can't see or correct on the step
+  it.each(['1', '3', '4', '16'])(
+    "doesn't keep an old row's words the filer can't see once it moves to line %s",
+    (key) => {
+      const old = makeRow({ ab_line: null, description: 'Blue car', asset_type: 'vehicle' });
+      render(<Walk part={1} rows={[old]} />);
+      fireEvent.change(field('old_row_0_line'), { target: { value: key } });
+
+      expect(latest.rows[0].ab_line).toBe(key);
+      expect(latest.rows[0].description).toBe('');
+    }
+  );
+
+  it.each(['6', '43'])(
+    "keeps an old row's words on line %s, where the filer can see and change them",
+    (key) => {
+      const old = makeRow({ ab_line: null, description: 'Blue car', asset_type: 'vehicle' });
+      render(<Walk part={1} rows={[old]} />);
+      fireEvent.change(field('old_row_0_line'), { target: { value: key } });
+
+      expect(latest.rows[0].ab_line).toBe(key);
+      expect(latest.rows[0].description).toBe('Blue car');
+    }
+  );
+
   it('has no axe violations on the old rows', { timeout: 60_000 }, async () => {
     const old = makeRow({ ab_line: null, description: 'Blue car', asset_type: 'vehicle' });
     const { container } = render(<Walk part={1} rows={[old]} />);

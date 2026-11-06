@@ -1892,7 +1892,13 @@ describe('IntakeWizard the walk through Schedule A/B', { timeout: 30_000 }, () =
     expect(field('line_3_0_entire_value')).toHaveValue(null);
     await waitFor(() => expect(continueButton()).toBeDisabled());
     const [row] = rowsSent(bodies[0]);
-    expect(row).toMatchObject({ id: 9, ab_line: '3', current_value: 5000, entire_value: null });
+    expect(row).toMatchObject({
+      id: 9,
+      ab_line: '3',
+      description: '',
+      current_value: 5000,
+      entire_value: null,
+    });
     expect(answersSent(bodies[0])['3']).toBe('yes');
   });
 

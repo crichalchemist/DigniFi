@@ -77,6 +77,9 @@ const LINE_CHOICES = ASSET_LINES.filter((line) => line.shape !== 'gate').map((li
   label: `${line.key}. ${AB_LINE_WORDS[line.key].words}`,
 }));
 
+// The shapes AssetRowFields shows no description box for. Line 43's box shows under its Yes.
+const NO_TEXT_BOX = new Set<Line['shape']>(['place', 'vehicle', 'vehicle_no_mileage', 'cash']);
+
 const USD = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
 
 export function AssetsStep({
@@ -125,11 +128,15 @@ export function AssetsStep({
   };
 
   // Picking a line under a gate answers the gate Yes too: the Part with the gate can't be reached
-  // while this row waits here, and Complete refuses a row on a hidden line
+  // while this row waits here, and Complete refuses a row on a hidden line. A line with no text box
+  // can't show the old words, and text a filer can't see isn't kept.
   const pickLine = (old: Row, key: string) => {
-    const gate = ASSET_LINES.find((line) => line.key === key)?.gate;
+    const picked = ASSET_LINES.find((line) => line.key === key);
+    const gate = picked?.gate;
+    const moved: Partial<Row> = { ab_line: key };
+    if (picked && NO_TEXT_BOX.has(picked.shape)) moved.description = '';
     onAnswersChange({ ...answers, [key]: 'yes', ...(gate ? { [gate]: 'yes' as const } : {}) });
-    onRowsChange(rows.map((row) => (row._key === old._key ? { ...row, ab_line: key } : row)));
+    onRowsChange(rows.map((row) => (row._key === old._key ? { ...row, ...moved } : row)));
   };
 
   return (
