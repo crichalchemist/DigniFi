@@ -141,7 +141,8 @@ export function ReviewStep({
       asset.details?.street?.trim() ||
       asset.details?.make?.trim() ||
       AB_LINE_WORDS[key].words;
-    return REVIEW_ASSET_ROW.replace('{key}', key).replace('{name}', name);
+    // A function, since a string replacement would read a $ the filer typed as a pattern
+    return REVIEW_ASSET_ROW.replace('{key}', key).replace('{name}', () => name);
   };
 
   // A value the filer doesn't know is an answer and no $0, and a typed $0 is one too
@@ -381,7 +382,7 @@ export function ReviewStep({
                           aria-label={GO_TO_STEP_FOR_ROW.replace(
                             '{step}',
                             assetsStep.label
-                          ).replace('{row}', assetLabel(asset))}
+                          ).replace('{row}', () => assetLabel(asset))}
                           onClick={() => onGoToStep?.(assetsStep.number)}
                         >
                           Go to {assetsStep.label}

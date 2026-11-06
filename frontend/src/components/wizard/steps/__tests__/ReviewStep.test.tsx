@@ -316,6 +316,23 @@ describe('Review of Schedule A/B', () => {
     ]);
   });
 
+  // A replacement string reads $ as a pattern, so Review would show something the filer never typed
+  it.each(['TV $& stand', '$$', "$'", '$`'])('prints %s as the filer typed it', (typed) => {
+    const row = {
+      id: 1,
+      ab_line: '6',
+      description: typed,
+      current_value: null,
+      details: { value_unknown: true },
+    };
+    render(<ReviewStep {...baseProps} assetsData={[row]} onValidationChange={vi.fn()} />);
+
+    expect(listItems()[0]).toContain(`Line 6: ${typed}`);
+    expect(
+      screen.getByRole('button', { name: `Go to Assets for Line 6: ${typed}` })
+    ).toBeInTheDocument();
+  });
+
   // The form prints a line's rows by id, so a filer checking Review against it finds the same order
   it('lists the rows of one line by id as the form prints them, an unsaved row last', () => {
     const row = (id: number | undefined, description: string) => ({
