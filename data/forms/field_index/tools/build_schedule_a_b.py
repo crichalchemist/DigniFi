@@ -602,7 +602,7 @@ def page_check(rule):
     if rule in RULE_READS:
         return f"test_printed_page.py's {RULE_READS[rule]} off the drawn page."
     return (
-        "No test draws this box with an answer: its evidence is the index's words above, and "
+        "No test reads this box with an answer: its evidence is the index's words above, and "
         "tier 2 checks this row against the binding."
     )
 
@@ -617,12 +617,12 @@ def answer_check(key):
         if key in NO_READS_UNDER_A_GATE:
             no += f"{GATE_ANSWERS} reads its No."
         else:
-            no += "No test draws its No: the index's export state above is that box's evidence."
+            no += "No test reads its No: the index's export state above is that box's evidence."
     if SHAPE_BY_KEY[key] in ROW_TEST_SHAPES or SHAPE_BY_KEY[key] == "gate":
         return f"{no} {EVERY_ROW_BOX} reads its Yes."
     if key in YES_READS:
         return f"{no} {YES_READS[key]} reads its Yes."
-    return f"{no} No test draws its Yes: the index's export state above is that box's evidence."
+    return f"{no} No test reads its Yes: the index's export state above is that box's evidence."
 
 
 def slot_check(key):
