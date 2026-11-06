@@ -61,10 +61,7 @@ test.describe('Priya Sharma — Ineligible', () => {
     // MeansTestPreview's fail verdict is "eligibility may need further review"
     expect(previewLower).toContain('further review');
 
-    for (const asset of PRIYA.assets) {
-      await wizard.addAsset(asset);
-    }
-    await wizard.nextStep();
+    await wizard.walkAssets(PRIYA);
 
     for (const debt of PRIYA.debts) {
       await wizard.addDebt(debt);

@@ -93,12 +93,52 @@ export interface PersonaEntry {
   expenses: number;
 }
 
+/** The boxes a Schedule A/B row can hold, named as the backend's `details` keys */
+export interface PersonaAssetDetails {
+  street?: string;
+  city?: string;
+  state?: string;
+  zip?: string;
+  county?: string;
+  property_kinds?: string[];
+  nature?: string;
+  make?: string;
+  model?: string;
+  year?: string;
+  mileage?: string;
+  other_info?: string;
+  who?: 'only_you' | 'with_someone';
+  kind?: string;
+  beneficiary?: string;
+}
+
+/** One Schedule A/B row, as seed_demo_data writes it: its line, its words and its figures */
 export interface PersonaAsset {
-  asset_type: string;
-  description: string;
+  ab_line: string;
+  /** The line's one text box, where it has one */
+  description?: string;
+  details?: PersonaAssetDetails;
+  /** Typed as given: a $0 is typed as 0, never skipped */
   current_value: number;
-  amount_owed: number;
-  financial_institution?: string;
+  entire_value?: number;
+}
+
+/** A line 3 row, as seed_demo_data's `_car`: the two values, the make and model, and who */
+function car(
+  value: number,
+  entire: number,
+  make: string,
+  model: string,
+  year: string,
+  mileage: string,
+  more: PersonaAssetDetails = {}
+): PersonaAsset {
+  return {
+    ab_line: '3',
+    details: { make, model, year, mileage, who: 'only_you', ...more },
+    current_value: value,
+    entire_value: entire,
+  };
 }
 
 export interface PersonaDebt {
@@ -139,6 +179,8 @@ export interface PersonaData {
     Record<'taxes_specify' | 'support_others_specify' | 'other_expenses_specify', string>
   >;
   assets: PersonaAsset[];
+  /** Gate lines answered Yes: Part 5's lines show only under 37's Yes (Part 6's under 46's) */
+  asset_gates?: string[];
   debts: PersonaDebt[];
   filing_fee: PersonaFilingFee;
   expected: { passes_means_test: boolean };
@@ -220,14 +262,19 @@ export const MARIA: PersonaData = {
     other_expenses_specify: 'School supplies and fees',
   },
   assets: [
-    { asset_type: 'vehicle', description: '2015 Honda Civic', current_value: 6500, amount_owed: 0 },
+    car(6500, 6500, 'Honda', 'Civic', '2015', '120000'),
+    { ab_line: '6', description: 'Beds, sofa, kitchen table, dishes', current_value: 600 },
+    { ab_line: '7', description: 'Old laptop, cell phone, 32-inch TV', current_value: 200 },
+    { ab_line: '11', description: 'Everyday clothes and shoes', current_value: 250 },
+    { ab_line: '16', current_value: 40 },
     {
-      asset_type: 'bank_account',
-      description: 'Chase checking',
+      ab_line: '17',
+      description: 'JPMorgan Chase',
+      details: { kind: 'checking' },
       current_value: 340,
-      amount_owed: 0,
-      financial_institution: 'JPMorgan Chase',
     },
+    // Her insurance policy has no cash value: typed 0, not skipped
+    { ab_line: '31', description: 'Millbrook Mutual Life', current_value: 0 },
   ],
   debts: [
     {
@@ -314,18 +361,20 @@ export const JAMES: PersonaData = {
     other_expenses_specify: 'Work boots and small tools for my job',
   },
   assets: [
+    car(14000, 14000, 'Toyota', 'Camry', '2019', '78000'),
     {
-      asset_type: 'vehicle',
-      description: '2019 Toyota Camry',
-      current_value: 14000,
-      amount_owed: 8500,
+      ab_line: '6',
+      description: 'Bed, couch, table, kitchenware (secondhand)',
+      current_value: 500,
     },
+    { ab_line: '7', description: 'TV, laptop, cell phone', current_value: 400 },
+    { ab_line: '11', description: 'Everyday clothes and work clothes', current_value: 300 },
+    { ab_line: '16', current_value: 40 },
     {
-      asset_type: 'bank_account',
-      description: 'Bank of America checking',
+      ab_line: '17',
+      description: 'Bank of America',
+      details: { kind: 'checking' },
       current_value: 1200,
-      amount_owed: 0,
-      financial_institution: 'Bank of America',
     },
   ],
   debts: [
@@ -429,13 +478,38 @@ export const PRIYA: PersonaData = {
     other_expenses_specify: "Children's after-school activities",
   },
   assets: [
+    car(20500, 20500, 'Honda', 'CR-V EX', '2021', '41000'),
+    { ab_line: '6', description: 'Household goods and furniture', current_value: 2500 },
+    { ab_line: '7', description: 'Family laptop, two phones, TV', current_value: 1500 },
+    { ab_line: '11', description: 'Clothes', current_value: 800 },
+    { ab_line: '12', description: 'Wedding and engagement rings', current_value: 1200 },
+    // Both joint accounts: the whole balance is her portion
     {
-      asset_type: 'bank_account',
-      description: 'Joint savings',
-      current_value: 8500,
-      amount_owed: 0,
-      financial_institution: 'Chase',
+      ab_line: '17',
+      description: 'JPMorgan Chase',
+      details: { kind: 'checking' },
+      current_value: 1900,
     },
+    {
+      ab_line: '17',
+      description: 'JPMorgan Chase',
+      details: { kind: 'savings' },
+      current_value: 8500,
+    },
+    {
+      ab_line: '21',
+      description: 'Vanguard',
+      details: { kind: '401k' },
+      current_value: 31000,
+    },
+    // Line 31's text box is the form's "Company name": two companies, both typed 0
+    {
+      ab_line: '31',
+      description: 'Wrenfield Life',
+      details: { beneficiary: 'Spouse' },
+      current_value: 0,
+    },
+    { ab_line: '31', description: 'Alderbrook Assurance', current_value: 0 },
   ],
   debts: [
     {
@@ -531,18 +605,37 @@ export const DESHAWN: PersonaData = {
   },
   assets: [
     {
-      asset_type: 'real_property',
-      description: 'Single-family home, 7823 S Sangamon',
+      ab_line: '1',
+      details: {
+        street: '7823 S Sangamon St',
+        city: 'Chicago',
+        state: 'IL',
+        zip: '60620',
+        county: 'Cook',
+        property_kinds: ['single_family'],
+        who: 'only_you',
+        nature: 'Fee simple',
+      },
       current_value: 180000,
-      amount_owed: 160000,
+      entire_value: 180000,
     },
-    { asset_type: 'vehicle', description: '2012 Ford F-150', current_value: 8000, amount_owed: 0 },
+    car(8000, 8000, 'Ford', 'F-150', '2012', '168000'),
+    { ab_line: '6', description: 'Furniture, appliances and beds', current_value: 1500 },
+    { ab_line: '7', description: 'TV, laptop and phone', current_value: 400 },
+    { ab_line: '11', description: 'Everyday clothes and work boots', current_value: 300 },
+    { ab_line: '12', description: 'Wedding band and watch', current_value: 600 },
+    { ab_line: '16', current_value: 60 },
     {
-      asset_type: 'retirement_account',
-      description: '401(k) through employer',
+      ab_line: '17',
+      description: 'PNC Bank',
+      details: { kind: 'checking' },
+      current_value: 640,
+    },
+    {
+      ab_line: '21',
+      description: 'Fidelity',
+      details: { kind: '401k' },
       current_value: 12000,
-      amount_owed: 0,
-      financial_institution: 'Fidelity',
     },
   ],
   debts: [
@@ -732,34 +825,39 @@ export const ANDRES: PersonaData = {
     taxes_specify: '2026 estimated income tax',
   },
   assets: [
+    // Leased, so 0 and 0 (the lease is on Schedule G)
+    car(0, 0, 'Toyota', 'Corolla Hybrid', '2024', '61000', { other_info: 'Leased' }),
     // His half of a car titled to him and his brother
+    car(4300, 8600, 'Honda', 'Fit', '2017', '96000', { who: 'with_someone' }),
+    { ab_line: '6', description: 'Beds, couch, table, kitchen things', current_value: 1200 },
+    { ab_line: '7', description: 'Phone, TV', current_value: 400 },
+    { ab_line: '11', description: 'Clothes', current_value: 300 },
+    { ab_line: '16', current_value: 60 },
     {
-      asset_type: 'vehicle',
-      description: '2017 Honda Fit',
-      current_value: 4300,
-      amount_owed: 7800,
-    },
-    {
-      asset_type: 'personal_property',
-      description: 'Household goods, electronics and clothing',
-      current_value: 1900,
-      amount_owed: 0,
-    },
-    {
-      asset_type: 'bank_account',
-      description: 'Harborline Bank checking',
+      ab_line: '17',
+      description: 'Harborline Bank',
+      details: { kind: 'checking' },
       current_value: 412,
-      amount_owed: 0,
-      financial_institution: 'Harborline Bank',
     },
     {
-      asset_type: 'bank_account',
-      description: 'Prairie Line Credit Union share savings',
+      ab_line: '17',
+      description: 'Prairie Line Credit Union',
+      details: { kind: 'savings' },
       current_value: 85,
-      amount_owed: 0,
-      financial_institution: 'Prairie Line Credit Union',
+    },
+    // Part 5: driving is his business, so line 37 is Yes
+    {
+      ab_line: '38',
+      description: 'Driving payouts already earned, not yet paid by the apps',
+      current_value: 310,
+    },
+    {
+      ab_line: '40',
+      description: 'Insulated delivery bags, phone mount, dash camera',
+      current_value: 150,
     },
   ],
+  asset_gates: ['37'],
   debts: [
     {
       creditor_name: 'Copperline Auto Finance',

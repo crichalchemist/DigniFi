@@ -53,11 +53,8 @@ test.describe('James Washington — Borderline', () => {
     const preview = await wizard.getMeansTestPreview();
     expect(preview.toLowerCase()).toContain('eligible');
 
-    // Step 5: Assets (vehicle + bank account)
-    for (const asset of JAMES.assets) {
-      await wizard.addAsset(asset);
-    }
-    await wizard.nextStep();
+    // Step 5: Assets (vehicle, household goods, bank account), Part by Part
+    await wizard.walkAssets(JAMES);
 
     // Step 6: Debts (includes secured auto loan)
     for (const debt of JAMES.debts) {
