@@ -85,7 +85,7 @@ Each item goes on the Schedule A/B line shown. Where the form asks who has an in
 - Line 11: everyday clothes and shoes — $250
 - Line 16: cash on hand — $40
 - Line 17, checking: JPMorgan Chase — $340
-- Line 31: your insurance policy, no cash value — $0
+- Line 31, company name: Millbrook Mutual Life (your insurance policy, no cash value) — $0
 
 **Amounts Owed:**
 

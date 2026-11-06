@@ -9,11 +9,13 @@ section 11), so the demos and the journeys meet no gap, and no figure the means 
 moves.
 """
 
+import re
 from datetime import date
 from decimal import Decimal
 from io import StringIO
 
 import pytest
+from django.conf import settings
 from django.core.management import call_command
 
 from apps.districts.models import MedianIncome
@@ -333,3 +335,30 @@ def test_a_seeded_row_uses_no_old_asset_type(persona):
     rows = AssetInfo.objects.filter(session__user__username=f"demo_{persona}")
 
     assert all(row.asset_type is None and row.ab_line for row in rows)
+
+
+@pytest.mark.parametrize("persona", list(PERSONAS))
+def test_a_persona_brief_gives_line_31_the_company_name_the_seed_prints(persona):
+    # Line 31's text box is the form's "Company name". A persona working from a brief that names
+    # only a type of policy types that into the box, and its form no longer matches the seed's.
+    directory = settings.BASE_DIR.parent / "docs" / "testing" / "persona-briefs"
+    if not directory.is_dir():
+        pytest.skip("the repo's docs aren't here (compose's backend mounts backend/ only)")
+    brief = next(directory.glob(f"{persona}-*.md")).read_text()
+
+    seeded = [
+        (row["description"], row["details"].get("beneficiary"), row["current_value"])
+        for row in PERSONAS[persona]()["assets"]
+        if row["ab_line"] == "31"
+    ]
+
+    told = [
+        (company, beneficiary, Decimal(value))
+        for company, beneficiary, value in re.findall(
+            r"^- Line 31, company name: (.+?) \(.+?\)(?:, beneficiary: (.+?))? — \$(\d+)$",
+            brief,
+            flags=re.MULTILINE,
+        )
+    ]
+    assert told == [(company, who or "", value) for company, who, value in seeded]
+    assert len(told) == len(re.findall(r"^- Line 31\b", brief, flags=re.MULTILINE))

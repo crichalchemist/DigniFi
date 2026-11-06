@@ -91,8 +91,8 @@ Each item goes on the Schedule A/B line shown. You are the only one with an inte
 - Line 17, checking: JPMorgan Chase (joint) — $1,900
 - Line 17, savings: JPMorgan Chase (joint) — $8,500
 - Line 21, 401(k): Vanguard — $31,000
-- Line 31: term life insurance (beneficiary: your spouse) — $0
-- Line 31: long-term disability insurance — $0
+- Line 31, company name: Wrenfield Life (your term life insurance), beneficiary: Spouse — $0
+- Line 31, company name: Alderbrook Assurance (your long-term disability insurance) — $0
 
 **Amounts Owed:**
 
