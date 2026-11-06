@@ -35,6 +35,7 @@ import type {
   IncomeInfo,
   ExpenseInfo,
   AssetInfo,
+  AssetLineAnswer,
   DebtInfo,
   ExecutoryContract,
   Codebtor,
@@ -174,6 +175,7 @@ export function IntakeWizard() {
   const [spouseNoEntries, setSpouseNoEntries] = useState(false);
   const [expenseData, setExpenseData] = useState<Partial<ExpenseInfo>>({});
   const [assetsData, setAssetsData] = useState<WizardRow<AssetInfo>[]>([]);
+  const [assetAnswers, setAssetAnswers] = useState<Record<string, AssetLineAnswer>>({});
   const [debtsData, setDebtsData] = useState<WizardRow<DebtInfo>[]>([]);
   const [contractsData, setContractsData] = useState<ExecutoryContract[]>([]);
   const [codebtorsData, setCodebtorsData] = useState<Codebtor[]>([]);
@@ -711,6 +713,9 @@ export function IntakeWizard() {
           <AssetsStep
             rows={assetsData}
             onRowsChange={setAssetsData}
+            answers={assetAnswers}
+            onAnswersChange={setAssetAnswers}
+            part={1}
             onValidationChange={setCanProceed}
           />
         );

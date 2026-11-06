@@ -388,3 +388,52 @@ export const FEE_READ_FAILED =
   "We couldn't get your answers just now. Please try again in a moment.";
 
 export const FEE_SAVE_FAILED = "We couldn't save your answer just now. Please try again.";
+
+// ============================================================================
+// Assets step (Schedule A/B)
+// ============================================================================
+
+export const NOTHING_TO_LIST_NOTE =
+  "That's okay. Many Americans filing for bankruptcy don't have significant assets. It is not a failure. Answer No to each line that doesn't apply to you.";
+
+// DRAFT: counsel C-14
+export const LEASE_NOTE =
+  'If you lease this vehicle, what it is worth is yours to say. Legal aid can help you decide.';
+
+export const VALUE_UNKNOWN_BUTTON = "I don't know the value";
+
+// DRAFT: counsel C-15
+export const VALUE_UNKNOWN_NOTE =
+  'You can come back and change this. Legal aid can help you find out.';
+
+// The heading of Review's list of these rows
+export const VALUE_UNKNOWN_HEADING = "You said you don't know the value of these";
+
+export const REMOVE_ON_LINE = 'Remove {n} item(s) you listed on this line?';
+
+export const REMOVE_UNDER_LINE = 'Remove {n} item(s) you listed under this line?';
+
+export const REMOVE_THEM = 'Remove';
+
+export const KEEP_THEM = 'Keep them';
+
+export const ADD_ANOTHER_ITEM = 'Add another';
+
+export const ADD_AN_ITEM = 'Add an item';
+
+export const LINE_NEEDS_AN_ITEM = 'Add what you have, or change it to No.';
+
+// The screen's words for the form's "Debtor 1 only" and "At least one of the debtors and another"
+export const WHO_ONLY_YOU = 'Only you';
+
+export const WHO_WITH_SOMEONE = 'You and someone else';
+
+export const AB_ADDRESS_LINE_2_LABEL = 'Address, second line';
+
+// The name of a kind's box on lines 17, 22, 28 and 29, where the form prints none
+export const AB_KIND_LABEL = 'Which one';
+
+// The name of the text box on lines 47, 49 and 50, where the form prints only "Yes"
+export const AB_TEXT_LABEL = 'What you have';
+
+export const OUT_OF_RANGE_PERCENT = 'Please enter a number from 0 to 100, with up to 2 decimals.';

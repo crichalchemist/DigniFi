@@ -1,307 +1,136 @@
 /**
- * Assets Step - Property and accounts collection
+ * Assets Step - Schedule A/B, a Part at a time, in the form's words (3b spec §4)
  *
  * Trauma-informed design:
- * - Non-judgmental language about assets
- * - Clear explanations of what counts as an asset
- * - Multiple asset support (add/remove)
- * - Privacy-conscious (account numbers encrypted)
+ * - Nothing starts answered, and having nothing to list is said to be no failure
+ * - A value the filer doesn't know is an answer: it can be marked, and changed later
+ * - No value is ever suggested, and removing what the filer typed asks first
+ *
+ * The wizard holds the rows, the answers and the Part, so an id a save writes into a row stays
+ * there. The step holds no copies.
  */
 
-import { useState, useEffect, useMemo } from 'react';
-import { FormField, FormSelect, Button } from '../../common';
+import { useEffect } from 'react';
 import { UPLDisclaimer } from '../../compliance';
+import { AB_OWED_TO_YOU_HEADING, AB_PART_LEADS, AB_PART_TITLES } from '../../../constants/formText';
+import { LEASE_NOTE, NOTHING_TO_LIST_NOTE } from '../../../constants/copy';
 import { UPL_EXEMPTION_DISCLAIMER } from '../../../constants/upl';
-import { parseAmount } from '../../../utils/parseAmount';
-import type { AssetInfo, WizardRow } from '../../../types/api';
+import { AB_PARTS, ASSET_LINES } from '../../../constants/assetLines';
+import { AssetLine } from './assets/AssetLine';
+import { partIsComplete, shownLines } from './assets/assetGaps';
+import type { AssetLine as Line } from '../../../constants/assetLines';
+import type { AssetInfo, AssetLineAnswer, WizardRow } from '../../../types/api';
+
+type Row = WizardRow<AssetInfo>;
 
 interface AssetsStepProps {
-  /** The wizard's rows. The step keeps no copy, so an id a save writes into a row stays there. */
-  rows: WizardRow<AssetInfo>[];
-  onRowsChange: (rows: WizardRow<AssetInfo>[]) => void;
+  rows: Row[];
+  onRowsChange: (rows: Row[]) => void;
+  answers: Record<string, AssetLineAnswer>;
+  onAnswersChange: (answers: Record<string, AssetLineAnswer>) => void;
+  /** The Part showing, 1 to 7 */
+  part: number;
   onValidationChange: (isValid: boolean) => void;
 }
 
-const ASSET_TYPES = [
-  { value: 'real_property', label: 'Real Estate (home, land, rental property)' },
-  { value: 'vehicle', label: 'Vehicle (car, truck, motorcycle, RV)' },
-  { value: 'bank_account', label: 'Bank Account (checking, savings)' },
-  { value: 'retirement_account', label: 'Retirement Account (401k, IRA, pension)' },
-  { value: 'personal_property', label: 'Personal Property (furniture, jewelry, collectibles)' },
-  { value: 'other', label: 'Other Asset' },
-];
+// A new row's key, from a count that outlives the step: the step remounts on each visit while
+// unsaved rows stay in the wizard, so a count per mount could repeat a key
+let lastKey = 0;
 
-// The last new row's key: unique while the page is open, and the prefix keeps it apart from a
-// loaded row's key, which is its id
-let nextKey = 0;
+/** A row as a Yes opens it: every value unanswered, in the shape the server takes */
+function newRow(key: string): Row {
+  return {
+    _key: `new-${++lastKey}`,
+    ab_line: key,
+    description: '',
+    current_value: null,
+    entire_value: null,
+    details: {},
+  };
+}
 
-export function AssetsStep({ rows, onRowsChange, onValidationChange }: AssetsStepProps) {
-  // With no rows, the step shows one blank row. It joins the wizard's rows at the filer's first
-  // edit, and a blank row is never saved.
-  const [blankRow] = useState(createEmptyAsset);
-  const assets = useMemo(() => (rows.length > 0 ? rows : [blankRow]), [rows, blankRow]);
+function keysUnder(gate: string) {
+  return new Set(ASSET_LINES.filter((line) => line.gate === gate).map((line) => line.key));
+}
 
-  const { errors, isValid } = useMemo(() => {
-    const newErrors: Record<number, Record<string, string>> = {};
-    let hasValidAsset = false;
+export function AssetsStep({
+  rows,
+  onRowsChange,
+  answers,
+  onAnswersChange,
+  part,
+  onValidationChange,
+}: AssetsStepProps) {
+  const hasOldRow = rows.some((row) => row.ab_line === null || row.ab_line === undefined);
+  const isValid = !hasOldRow && partIsComplete(part, rows, answers);
 
-    assets.forEach((asset, index) => {
-      const assetErrors: Record<string, string> = {};
-
-      // Check if this asset has any data filled in
-      const hasData =
-        asset.asset_type || asset.description || (asset.current_value && asset.current_value > 0);
-
-      if (hasData) {
-        hasValidAsset = true;
-
-        // Validate required fields if asset has data
-        if (!asset.asset_type) {
-          assetErrors.asset_type = 'Please select an asset type';
-        }
-
-        if (!asset.description?.trim()) {
-          assetErrors.description = 'Please describe this asset';
-        }
-
-        if (!asset.current_value || asset.current_value <= 0) {
-          assetErrors.current_value = 'Please enter the current value';
-        }
-
-        // Validate non-negative values
-        if (asset.amount_owed && asset.amount_owed < 0) {
-          assetErrors.amount_owed = 'Amount cannot be negative';
-        }
-      }
-
-      if (Object.keys(assetErrors).length > 0) {
-        newErrors[index] = assetErrors;
-      }
-    });
-
-    // Valid if: no errors AND (has a complete asset OR everything is blank/empty)
-    const allBlank = !hasValidAsset;
-    const valid = Object.keys(newErrors).length === 0 && (hasValidAsset || allBlank);
-    return { errors: newErrors, isValid: valid };
-  }, [assets]);
-
-  // Tell the parent whether the step can be saved
   useEffect(() => {
     onValidationChange(isValid);
     // a useState setter in IntakeWizard — a stable identity
   }, [isValid, onValidationChange]);
 
-  function createEmptyAsset(): WizardRow<AssetInfo> {
-    return {
-      _key: `new-${++nextKey}`,
-      asset_type: undefined,
-      description: '',
-      current_value: undefined,
-      amount_owed: undefined,
-      account_number: '',
-    };
-  }
+  const lines = shownLines(answers).filter((line) => line.part === part);
+  const rowsOn = (key: string) => rows.filter((row) => row.ab_line === key);
 
-  const handleAddAsset = () => {
-    onRowsChange([...assets, createEmptyAsset()]);
-  };
-
-  const handleRemoveAsset = (index: number) => {
-    if (assets.length === 1) {
-      // Keep at least one asset form
-      onRowsChange([createEmptyAsset()]);
-    } else {
-      onRowsChange(assets.filter((_, i) => i !== index));
+  const answerYes = (line: Line) => {
+    onAnswersChange({ ...answers, [line.key]: 'yes' });
+    // A gate takes no rows of its own, and a line that has rows keeps them
+    if (line.shape !== 'gate' && rowsOn(line.key).length === 0) {
+      onRowsChange([...rows, newRow(line.key)]);
     }
   };
 
-  const handleAssetChange = (index: number, field: keyof AssetInfo, value: string | number) => {
-    const updatedAssets = [...assets];
-
-    if (field === 'current_value' || field === 'amount_owed') {
-      updatedAssets[index] = {
-        ...updatedAssets[index],
-        [field]: parseAmount(String(value)),
-      };
-    } else {
-      updatedAssets[index] = {
-        ...updatedAssets[index],
-        [field]: value,
-      };
-    }
-
-    onRowsChange(updatedAssets);
+  const answerNo = (line: Line) => {
+    const next: Record<string, AssetLineAnswer> = { ...answers, [line.key]: 'no' };
+    const removed = line.shape === 'gate' ? keysUnder(line.key) : new Set([line.key]);
+    // A gate's No hides its lines: a later Yes on the gate shows them unanswered
+    if (line.shape === 'gate') for (const key of removed) delete next[key];
+    onAnswersChange(next);
+    const kept = rows.filter((row) => !removed.has(row.ab_line ?? ''));
+    if (kept.length !== rows.length) onRowsChange(kept);
   };
 
-  const calculateEquity = (asset: Partial<AssetInfo>): number => {
-    const value = asset.current_value || 0;
-    const owed = asset.amount_owed || 0;
-    return Math.max(0, value - owed);
+  const removedByNo = (line: Line) => {
+    if (line.shape !== 'gate') return rowsOn(line.key).length;
+    const under = keysUnder(line.key);
+    return rows.filter((row) => under.has(row.ab_line ?? '')).length;
   };
 
   return (
     <div className="assets-step">
-      {/* Explainer */}
-      <div className="info-box">
-        <svg className="info-icon" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-          <path
-            fillRule="evenodd"
-            d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
-            clipRule="evenodd"
-          />
-        </svg>
-        <div>
-          <h3 className="info-title">What are assets?</h3>
-          <p className="info-message">
-            Assets are things you own that have value: your home, car, bank accounts, retirement
-            savings, and personal property. List all assets, even if you owe money on them. If you
-            don't have any assets, you can skip to the next step.
-          </p>
+      {part === 1 && (
+        <div className="info-box">
+          <p className="info-message">{NOTHING_TO_LIST_NOTE}</p>
         </div>
-      </div>
+      )}
 
-      {/* Assets List */}
-      {assets.map((asset, index) => (
-        <section key={index} className="form-section asset-card">
-          <div className="asset-card-header">
-            <h3 className="section-title">
-              Asset {index + 1}
-              {asset.asset_type &&
-                ` - ${ASSET_TYPES.find((t) => t.value === asset.asset_type)?.label}`}
-            </h3>
-            {assets.length > 1 && (
-              <button
-                type="button"
-                onClick={() => handleRemoveAsset(index)}
-                className="remove-asset-button"
-                aria-label={`Remove asset ${index + 1}`}
-              >
-                <svg
-                  viewBox="0 0 20 20"
-                  fill="currentColor"
-                  className="remove-icon"
-                  aria-hidden="true"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-                Remove
-              </button>
-            )}
-          </div>
+      <p className="form-help-text">
+        Part {part} of {AB_PARTS.length}
+      </p>
+      <h3 className="section-title">{AB_PART_TITLES[part]}</h3>
+      {AB_PART_LEADS[part] && <p className="section-description">{AB_PART_LEADS[part]}</p>}
+      {part === 2 && <p className="section-description">{LEASE_NOTE}</p>}
 
-          <FormSelect
-            label="Asset Type"
-            name={`asset_type_${index}`}
-            options={ASSET_TYPES}
-            value={asset.asset_type ?? ''}
-            onChange={(value) => handleAssetChange(index, 'asset_type', value)}
-            error={errors[index]?.asset_type}
-            required
+      {lines.map((line) => (
+        <div key={line.key}>
+          {line.key === '28' && <p className="ab-subheading">{AB_OWED_TO_YOU_HEADING}</p>}
+          <AssetLine
+            line={line}
+            answer={answers[line.key]}
+            rows={rowsOn(line.key)}
+            removedByNo={removedByNo(line)}
+            onYes={() => answerYes(line)}
+            onNo={() => answerNo(line)}
+            onAddRow={() => onRowsChange([...rows, newRow(line.key)])}
+            onRowChange={(changed) =>
+              onRowsChange(rows.map((row) => (row._key === changed._key ? changed : row)))
+            }
+            onRemoveRow={(removed) => onRowsChange(rows.filter((row) => row._key !== removed._key))}
           />
-
-          <FormField
-            label="Description"
-            name={`description_${index}`}
-            type="text"
-            value={asset.description ?? ''}
-            onChange={(e) => handleAssetChange(index, 'description', e.target.value)}
-            error={errors[index]?.description}
-            required
-            helpText="Brief description (e.g., '2015 Honda Civic', 'Family home at 123 Main St')"
-            placeholder="Describe this asset"
-          />
-
-          <div className="form-row">
-            <FormField
-              label="Current Value"
-              name={`current_value_${index}`}
-              type="number"
-              min="0"
-              step="0.01"
-              value={asset.current_value ?? ''}
-              onChange={(e) => handleAssetChange(index, 'current_value', e.target.value)}
-              error={errors[index]?.current_value}
-              required
-              helpText="Estimated current market value"
-              placeholder="0.00"
-            />
-
-            <FormField
-              label="Amount Owed"
-              name={`amount_owed_${index}`}
-              type="number"
-              min="0"
-              step="0.01"
-              value={asset.amount_owed ?? ''}
-              onChange={(e) => handleAssetChange(index, 'amount_owed', e.target.value)}
-              error={errors[index]?.amount_owed}
-              helpText="Loan balance or lien amount (if any)"
-              placeholder="0.00"
-            />
-          </div>
-
-          {/* Account number for bank/retirement accounts */}
-          {(asset.asset_type === 'bank_account' || asset.asset_type === 'retirement_account') && (
-            <FormField
-              label="Account Number (Last 4 Digits)"
-              name={`account_number_${index}`}
-              type="text"
-              value={asset.account_number ?? ''}
-              onChange={(e) => handleAssetChange(index, 'account_number', e.target.value)}
-              helpText="Optional - helps identify the account. Your account number is encrypted."
-              placeholder="XXXX-1234"
-            />
-          )}
-
-          {/* Equity calculation */}
-          {(asset.current_value || 0) > 0 && (
-            <div className="equity-display">
-              <span className="equity-label">Equity (Value - Amount Owed):</span>
-              <span className="equity-value">
-                $
-                {calculateEquity(asset).toLocaleString('en-US', {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-                })}
-              </span>
-            </div>
-          )}
-        </section>
+        </div>
       ))}
 
-      {/* Add Asset Button */}
-      <div className="add-asset-section">
-        <Button
-          variant="outline"
-          onClick={handleAddAsset}
-          icon={
-            <svg viewBox="0 0 20 20" fill="currentColor" className="icon" aria-hidden="true">
-              <path
-                fillRule="evenodd"
-                d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"
-                clipRule="evenodd"
-              />
-            </svg>
-          }
-        >
-          Add Another Asset
-        </Button>
-      </div>
-
       <UPLDisclaimer text={UPL_EXEMPTION_DISCLAIMER} variant="inline" />
-
-      {/* No Assets Option */}
-      <div className="info-box">
-        <p>
-          <strong>Don't have any assets?</strong> That's okay. Many Americans filing for bankruptcy
-          don't have significant assets — it is not a failure. You can leave this section blank and
-          continue to the next step.
-        </p>
-      </div>
     </div>
   );
 }
