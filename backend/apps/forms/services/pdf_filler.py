@@ -64,6 +64,8 @@ _BOXES = ("CheckBox", "RadioButton")
 _COMB_BREAKERS = "()\\"
 # The first text move in pypdf's appearance stream: "<x> <y> Td", before any string.
 _FIRST_MOVE = re.compile(rb"^(\S+) (\S+) Td$", re.MULTILINE)
+# The PDF fill operator for a /BG array of each length: gray, RGB and CMYK.
+_BACKGROUND_OPERATORS = {1: "g", 3: "rg", 4: "k"}
 
 
 class UnknownField(Exception):
@@ -217,6 +219,23 @@ def _lower_first_line(appearance: TextStreamAppearance, by: float) -> None:
     appearance.set_data(data[: move.start(2)] + str(y).encode() + data[move.end(2) :])
 
 
+def _paint_background(appearance: TextStreamAppearance, annotation: DictionaryObject) -> None:
+    """
+    Paint the box's own /MK /BG under its text, as a viewer does: pypdf's appearance has
+    none, and a district box's background is all that hides the page's own "__________
+    District of __________" beneath it. A box with none, as most have, stays see-through.
+    """
+    characteristics = annotation.get("/MK")
+    background = characteristics.get_object().get("/BG") if characteristics else None
+    if not background:
+        return
+    color = " ".join(str(float(part)) for part in background)
+    operator = _BACKGROUND_OPERATORS[len(background)]
+    x0, y0, x1, y1 = (float(side) for side in annotation["/Rect"])
+    fill = f"q {color} {operator} 0 0 {abs(x1 - x0)} {abs(y1 - y0)} re f Q\n"
+    appearance.set_data(fill.encode() + appearance.get_data())
+
+
 def _draw(
     writer: pypdf.PdfWriter,
     page: pypdf.PageObject,
@@ -253,6 +272,7 @@ def _draw(
     )
     if widget.multiline:
         _lower_first_line(appearance, 2 * widget.margin)
+    _paint_background(appearance, annotation)
     annotation[NameObject("/AP")] = DictionaryObject(
         {NameObject("/N"): writer._add_object(appearance)}
     )
