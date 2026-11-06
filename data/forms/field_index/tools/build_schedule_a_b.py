@@ -563,6 +563,66 @@ def build(index):
     return fields, groups, placed
 
 
+# What backend/apps/forms/tests/test_printed_page.py reads off a drawn page, branch by branch.
+# This tool draws nothing, so a row cites the test that does, and only for what that test reads.
+EVERY_NO = "test_every_line_says_no_for_a_filer_with_nothing_and_totals_print_zero"
+EVERY_ROW_BOX = "test_every_row_box_prints_its_own_answer_on_the_page"
+EVERY_LIST_BOX = "test_every_list_box_prints_its_own_answer_on_the_page"
+TWO_REFUNDS = "test_two_federal_refunds_add_up_and_their_texts_join"
+SHARED_AMOUNT = "test_a_shared_amount_adds_what_the_filer_knows"
+LINE_53 = "test_line_53_s_fourth_row_goes_on_a_sheet_with_its_text"
+NOTHING_LISTED_READ = (
+    f"test_printed_page.py's {EVERY_NO} reads this box off the drawn page with nothing listed, "
+    f"as 0.00, or blank on lines 2, 45 and 52."
+)
+RULE_READS = {
+    "ab_line_28_text": f"{TWO_REFUNDS} reads the joined text",
+    "ab_line_53_text": f"{LINE_53} reads the joined text",
+    "ab_line_28_federal": f"{TWO_REFUNDS} reads the sum",
+    "ab_line_28_state": f"{TWO_REFUNDS} reads this box blank",
+    "ab_line_29_support": f"{SHARED_AMOUNT} reads the sum, a $0 and an unknown value",
+    "ab_line_29_alimony": f"{SHARED_AMOUNT} reads this box blank",
+}
+YES_READS = {
+    "17": "test_a_savings_account_prints_on_17_3_not_17_1",
+    "19": "test_line_19_prints_entity_share_and_value",
+    "28": TWO_REFUNDS,
+    "31": "test_line_31_prints_company_beneficiary_and_a_zero_value",
+    "53": LINE_53,
+}
+ROW_TEST_SHAPES = {"place", "vehicle", "vehicle_no_mileage", "item", "item_question", "cash"}
+SHAPE_BY_KEY = {line.key: line.shape for line in LINES}
+
+
+def page_check(rule):
+    """What a line's shared box rests on: the test that reads it, or the index and tier 2."""
+    if rule in RULE_READS:
+        return f"test_printed_page.py's {RULE_READS[rule]} off the drawn page."
+    return (
+        "No test draws this box with an answer: its evidence is the index's words above, and "
+        "tier 2 checks this row against the binding."
+    )
+
+
+def answer_check(key):
+    """What a line's Yes/No box rests on. Every line's No is read; a Yes only where a test reads it."""
+    no = f"test_printed_page.py's {EVERY_NO} reads this box off the drawn page for a filer with nothing"
+    if SHAPE_BY_KEY[key] in ROW_TEST_SHAPES or SHAPE_BY_KEY[key] == "gate":
+        return f"{no}, and {EVERY_ROW_BOX} reads its Yes."
+    if key in YES_READS:
+        return f"{no}, and {YES_READS[key]} reads its Yes."
+    return f"{no}. No test draws its Yes: the index's export state above is that box's evidence."
+
+
+def slot_check(key):
+    """Which test reads a row's box off the drawn page, by the shape of the row's line."""
+    shape = SHAPE_BY_KEY[key]
+    if shape == "shared_box":
+        return f"test_printed_page.py's {LINE_53} reads this box off the drawn page."
+    test = EVERY_ROW_BOX if shape in ROW_TEST_SHAPES else EVERY_LIST_BOX
+    return f"test_printed_page.py's {test} reads this box off the drawn page."
+
+
 def evidence(entry):
     """What a row of the addendum cites: the box's index label, and why the binding belongs there."""
     spec, boxes, *adds = entry
@@ -574,30 +634,30 @@ def evidence(entry):
     if adds:
         return (
             f"{cite} {spec['rule']} adds the portions on {adds[0]}, an unknown value counting as "
-            f"zero, sheets included. {SPEC} §8.2. Filled page rendered and read at build."
+            f"zero, sheets included. {SPEC} §8.2. {NOTHING_LISTED_READ}"
         )
     if spec["rule"] and spec["rule"].endswith("_text"):
         return (
             f"{cite} {spec['rule']} prints the rows' texts in order, joined with a semicolon: the "
-            f"line's one text box. {SPEC} §5. Filled page rendered and read at build."
+            f"line's one text box. {SPEC} §5. {page_check(spec['rule'])}"
         )
     if spec["rule"] and spec["rule"].startswith("ab_line_"):
         return (
             f"{cite} {spec['rule']} adds the known values of the rows of its kind, blank when none "
-            f"is known: the form's one amount for that kind. {SPEC} §5. Filled page rendered and "
-            f"read at build."
+            f"is known: the form's one amount for that kind. {SPEC} §5. "
+            f"{page_check(spec['rule'])}"
         )
     if spec["rule"]:
         return (
             f"{cite} {spec['rule']} says yes with a row on the line, no with none and the line "
             f"shown, blank when a gate's No hid it, with the index's export state for each. "
-            f"[Q24], {SPEC} §8.1. Filled page rendered and read at build."
+            f"[Q24], {SPEC} §8.1. {answer_check(spec['rule'].removeprefix('ab_has_'))}"
         )
     line = spec["binding"].split("[")[0].removeprefix("assets.line_").replace("_", ", ", 1)
     attr = spec["binding"].rpartition(".")[2]
     return (
         f"{cite} Row {spec['row']} of line {line} prints {attr} here: the words beside the box, "
-        f"not its name, decide. {SPEC} §5, §8.1. Filled page rendered and read at build."
+        f"not its name, decide. {SPEC} §5, §8.1. {slot_check(line.split(',')[0])}"
     )
 
 
