@@ -1167,6 +1167,7 @@ _VIN_MINI = "WMWZC3C5XGWA12345"
         ("4", {"year": "Unknown"}),
         ("4", {"make": "Harley-Davidson"}),
         ("4", {"model": "Thunderbird"}),
+        ("4", {"model": "WaveRunner"}),
     ],
     ids=lambda case: next(iter(case)) if isinstance(case, dict) else f"line_{case}",
 )
@@ -1188,6 +1189,28 @@ def test_an_answer_the_form_s_box_takes_prints_whole_on_its_sheet(filer, line, a
     (part,) = [part for part in parts["parts"] if part["kind"] == "sheet"]
     (word,) = answer.values()
     assert word in " ".join(cell for row in part["rows"] for cell in row["cells"])
+
+
+def test_a_boat_s_model_and_vin_read_whole_in_their_own_columns_on_the_drawn_sheet(filer):
+    # Line 4's Model and Who are split to the half point to take both, so read what a court reads.
+    for make in ("A", "B"):
+        _ab_car(filer, make, line="4")
+    _ab_car(filer, "Sea-Doo", line="4", model="WaveRunner", year="Unknown", other_info=_VIN_MINI)
+
+    parts = resolve_parts(load_schema("schedule_a_b"), filer)
+    pdf = PDFFormFiller().fill("schedule_a_b", parts)
+
+    assert _ab_sheet_rows(parts, pdf) == (
+        (
+            "4.3",
+            "Sea-Doo",
+            "WaveRunner",
+            "Unknown",
+            f"Debtor 1 only; {_VIN_MINI}",
+            "2000.00",
+            "1000.00",
+        ),
+    )
 
 
 @pytest.mark.parametrize(
