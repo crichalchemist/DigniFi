@@ -4,8 +4,6 @@
 
 **What this is:** the target for the six personas once step 3 is done. The briefs in `docs/testing/persona-briefs/`, the seeds and the E2E fixture change only as each PR lands, and each PR applies only its own slice ("Per PR" in each section). A brief never runs ahead of its seed.
 
-**Corrected since:** the 3b spec's §10 (`docs/superpowers/specs/2026-11-05-forms-step3b-design.md`) corrects the Schedule A/B targets below: Priya's savings and Andrés's share savings print on 17.3, not 17.2, and James's "Wallet" isn't stored, since line 16 has no text box.
-
 **How to read a section:**
 
 - **Story delta, Per PR and Outcome changes** are the target.
@@ -1439,3 +1437,5 @@ Each PR adds only what its feature asks for; row names point to the brief above.
 13. **Exemption amounts.** The fixture has vehicle $2,400 and tools $1,500 (`ilnd_2025_data.json:52-76`); the scope's 2026 figures are $3,600 and $2,250. Q23 verifies them before loading. His C totals sit beside whichever loads.
 14. **No conflict with existing data.** Nothing exists for him yet in the brief, seed, fixture or tier 3. Tier 3's docstring excuses only Priya (`test_oracle_tier3.py:4-5`), so his rows must match this brief exactly from 3a1.
 15. **No contradiction with `decisions.md`.** Q5's gig worker stays in, and Q14's blank Column B and Q21's installments path are exercised as ruled.
+
+**Corrected since:** the 3b spec's §10 (`docs/superpowers/specs/2026-11-05-forms-step3b-design.md`) corrects the Schedule A/B targets in this file: Priya's savings and Andrés's share savings print on 17.3, not 17.2, and James's "Wallet" isn't stored, since line 16 has no text box.
