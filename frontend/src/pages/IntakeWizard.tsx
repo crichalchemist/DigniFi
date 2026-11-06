@@ -55,6 +55,8 @@ import {
   INCOME_FIELDS,
 } from '../types/api';
 import { WIZARD_STEPS } from '../constants/wizardSteps';
+import { AB_PARTS, ASSET_LINES } from '../constants/assetLines';
+import { firstIncompletePart } from '../components/wizard/steps/assets/assetGaps';
 
 // ============================================================================
 // Wizard Configuration
@@ -62,7 +64,7 @@ import { WIZARD_STEPS } from '../constants/wizardSteps';
 
 // DRF sends these decimals as strings ("2500.00"). The steps add and compare them,
 // so they become numbers as session data enters wizard state.
-const ASSET_AMOUNT_FIELDS = ['current_value', 'amount_owed'] as const;
+const ASSET_AMOUNT_FIELDS = ['current_value', 'entire_value', 'amount_owed'] as const;
 const DEBT_AMOUNT_FIELDS = ['amount_owed', 'monthly_payment'] as const;
 // The income amounts, the filer's and the spouse's: the ten, the ten now, the two assistance
 // amounts and the eight payroll deductions (the Take-home pay step's)
@@ -176,6 +178,8 @@ export function IntakeWizard() {
   const [expenseData, setExpenseData] = useState<Partial<ExpenseInfo>>({});
   const [assetsData, setAssetsData] = useState<WizardRow<AssetInfo>[]>([]);
   const [assetAnswers, setAssetAnswers] = useState<Record<string, AssetLineAnswer>>({});
+  // The Part showing, set each time the Assets step opens and never stored (3b spec §4)
+  const [assetPart, setAssetPart] = useState(1);
   const [debtsData, setDebtsData] = useState<WizardRow<DebtInfo>[]>([]);
   const [contractsData, setContractsData] = useState<ExecutoryContract[]>([]);
   const [codebtorsData, setCodebtorsData] = useState<Codebtor[]>([]);
@@ -276,13 +280,14 @@ export function IntakeWizard() {
         }
         if (fresh.expense_info) setExpenseData(hydrateAmounts(fresh.expense_info, EXPENSE_FIELDS));
         // A loaded row's key is its id
-        if (fresh.assets)
-          setAssetsData(
-            fresh.assets.map((asset) => ({
-              ...hydrateAmounts(asset, ASSET_AMOUNT_FIELDS),
-              _key: String(asset.id),
-            }))
-          );
+        const loadedAssets = (fresh.assets ?? []).map((asset) => ({
+          ...hydrateAmounts(asset, ASSET_AMOUNT_FIELDS),
+          _key: String(asset.id),
+        }));
+        const loadedAnswers = fresh.asset_lines ?? {};
+        setAssetsData(loadedAssets);
+        setAssetAnswers(loadedAnswers);
+        setAssetPart(firstIncompletePart(loadedAssets, loadedAnswers));
         if (fresh.debts)
           setDebtsData(
             fresh.debts.map((debt) => ({
@@ -383,9 +388,20 @@ export function IntakeWizard() {
       }
 
       case 'assets':
-        // Every row, unfiltered: a stored row left out of a save is deleted. Each row keeps its
-        // `_key` here; saveCurrentStepData leaves it out of the request.
-        return { assets: assetsData } as Partial<IntakeSession>;
+        // Every row of every Part, unfiltered: a stored row left out of a save is deleted. Each
+        // row keeps its `_key` here; saveCurrentStepData leaves it out of the request. A value goes
+        // as null, since the server keeps what it holds for a key left out. So does each line
+        // with no answer, since the server merges the answers and only a null clears one.
+        return {
+          assets: assetsData.map((row) => ({
+            ...row,
+            current_value: row.current_value ?? null,
+            entire_value: row.entire_value ?? null,
+          })),
+          asset_lines: Object.fromEntries(
+            ASSET_LINES.map((line) => [line.key, assetAnswers[line.key] ?? null])
+          ),
+        } as Partial<IntakeSession>;
 
       case 'debts':
         // Filter empty forms — debt_type, is_secured, and priority_classification
@@ -411,6 +427,7 @@ export function IntakeWizard() {
     spouseIncomeData,
     expenseData,
     assetsData,
+    assetAnswers,
     debtsData,
   ]);
 
@@ -420,10 +437,21 @@ export function IntakeWizard() {
     // they are kept under no step's name.
     dataKey: sessionRead === 'done' ? currentStepKey : undefined,
     onSave: (body) => saveCurrentStepData(body),
-    // Only autosave a complete, valid step (see architecture rationale). 'review' has nothing
-    // to save; disabled until a session exists.
-    enabled: !!session && canProceed && currentStepKey !== 'review',
+    // Only autosave a complete, valid step (see architecture rationale), but for Assets, whose
+    // work mid-Part is kept (3b spec §4). 'review' has nothing to save; disabled until a session
+    // exists.
+    enabled:
+      !!session && (canProceed || currentStepKey === 'assets') && currentStepKey !== 'review',
   });
+
+  // Every way onto a step but the first read. The Assets step opens at the first Part with
+  // something left, wherever the filer last was on it.
+  const showStep = (stepNumber: number) => {
+    setCurrentStepNumber(stepNumber);
+    if (WIZARD_STEPS[stepNumber - 1]?.key === 'assets') {
+      setAssetPart(firstIncompletePart(assetsData, assetAnswers));
+    }
+  };
 
   // =========================================================================
   // Navigation Handlers
@@ -438,6 +466,13 @@ export function IntakeWizard() {
       // fails, do NOT advance — the WizardLayout indicator shows the error.
       const saved = await saveNow();
       if (!saved) return;
+
+      // Below Part 7 Continue stays on the step, with no update_step. canProceed stays as it is:
+      // the step is still mounted and reports the next Part's validity only when it differs.
+      if (currentStepKey === 'assets' && assetPart < AB_PARTS.length) {
+        setAssetPart(assetPart + 1);
+        return;
+      }
 
       // Advance to next step (updateCurrentStep can rethrow, so keep in try/catch)
       try {
@@ -454,7 +489,7 @@ export function IntakeWizard() {
           return;
         }
 
-        setCurrentStepNumber(nextStep);
+        showStep(nextStep);
         // Each step reports its own validity once it shows (Contracts and Codebtors too, DIG-165)
         setCanProceed(false);
       } catch (error) {
@@ -468,11 +503,15 @@ export function IntakeWizard() {
   // Go Back, and the "Go to" button beside each reason Complete gave, move without update_step:
   // current_step stays where Continue last put it. Leaving Review drops its reasons.
   const moveToStep = (stepNumber: number) => {
-    setCurrentStepNumber(stepNumber);
+    showStep(stepNumber);
     setCompletionErrors([]);
   };
 
   const handlePrevious = () => {
+    if (currentStepKey === 'assets' && assetPart > 1) {
+      setAssetPart(assetPart - 1);
+      return;
+    }
     const prevStep = currentStepNumber - 1;
     if (prevStep >= 1) {
       moveToStep(prevStep);
@@ -713,7 +752,7 @@ export function IntakeWizard() {
             onRowsChange={setAssetsData}
             answers={assetAnswers}
             onAnswersChange={setAssetAnswers}
-            part={1}
+            part={assetPart}
             onValidationChange={setCanProceed}
           />
         );

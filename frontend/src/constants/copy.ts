@@ -442,3 +442,18 @@ export const AB_KIND_LABEL = 'Which one';
 export const AB_TEXT_LABEL = 'What you have';
 
 export const OUT_OF_RANGE_PERCENT = 'Please enter a number from 0 to 100, with up to 2 decimals.';
+
+// Rows from before the step asked the form's lines (3b spec §9). Says why Continue waits.
+export const OLD_ROWS_HEADING = 'Items you listed earlier';
+
+export const OLD_ROWS_NOTE =
+  'We now ask about what you own line by line, in the words of the form. Choose the line each of these goes on, or remove it. You can continue once each one has a line.';
+
+export const OLD_ROW_LINE_LABEL = 'Which line does this go on?';
+
+export const OLD_ROW_LINE_PLACEHOLDER = 'Choose a line';
+
+// The server's own name for a row with nothing to name it by (_row_name in asset_lines.py)
+export const ONE_ITEM = 'One item';
+
+export const REVIEW_VALUE_NOT_KNOWN = "You don't know";

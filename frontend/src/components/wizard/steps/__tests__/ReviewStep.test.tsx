@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { vi } from 'vitest';
 import { ReviewStep } from '../ReviewStep';
 import {
@@ -9,6 +9,7 @@ import {
   REVIEW_LINE_3,
   REVIEW_NOW_DIFFERENT,
   REVIEW_SPOUSE_NOW_DIFFERENT,
+  VALUE_UNKNOWN_HEADING,
 } from '../../../../constants/copy';
 import { MARRIAGE_ANSWER_WORDS } from '../../../../constants/formText';
 
@@ -34,13 +35,19 @@ const baseProps = {
 const value = (label: string) => screen.getByText(label).nextElementSibling;
 
 describe('ReviewStep null-safe rendering', () => {
-  it('falls back to placeholders for assets and debts missing a name or type', () => {
+  it('falls back to placeholders for old assets and debts missing a name or type', () => {
     render(
       <ReviewStep
         {...baseProps}
         assetsData={[
-          { id: 1, description: 'My House', asset_type: 'real_property', current_value: 250000 },
-          { id: 2 }, // bare entry — no description, no type, no value (id only for the React key)
+          {
+            id: 1,
+            ab_line: null,
+            description: 'My House',
+            asset_type: 'real_property',
+            current_value: 250000,
+          },
+          { id: 2 }, // bare entry — no line, description, type or value (id only for the React key)
         ]}
         debtsData={[
           { id: 1, creditor_name: 'Visa', debt_type: 'credit_card', amount_owed: 4200 },
@@ -55,7 +62,7 @@ describe('ReviewStep null-safe rendering', () => {
     expect(screen.getByText(/Visa/)).toHaveTextContent('(credit_card)');
 
     // Bare entries get dignity-preserving placeholders, never blanks.
-    expect(screen.getByText('Unnamed Asset')).toBeInTheDocument();
+    expect(screen.getByText('One item')).toBeInTheDocument();
     expect(screen.getByText('Unnamed Creditor')).toBeInTheDocument();
 
     // The whole point: no `undefined` or `NaN` ever leaks into the summary,
@@ -266,4 +273,88 @@ it('Review shows a Take-home pay section between Income and Monthly Expenses', (
 
   render(<ReviewStep {...baseProps} onValidationChange={vi.fn()} />);
   expect(value(REVIEW_DEDUCTIONS)).toHaveTextContent('$0.00');
+});
+
+describe('Review of Schedule A/B', () => {
+  const street = { id: 1, ab_line: '1', current_value: 8000, details: { street: '1 Elm' } };
+  const cash = { id: 2, ab_line: '16', current_value: 0, description: '', details: {} };
+  const car = { id: 3, ab_line: '3', current_value: 500, details: { make: 'Ford' } };
+  const shares = {
+    id: 4,
+    ab_line: '19',
+    description: 'Oak Bakery',
+    current_value: null,
+    details: { value_unknown: true },
+  };
+
+  const listItems = () =>
+    Array.from(document.querySelectorAll('.review-list-item')).map((item) => item.textContent);
+
+  it('lists the rows by Part with each line number, in the form order, whatever order they came in', () => {
+    render(
+      <ReviewStep
+        {...baseProps}
+        assetsData={[shares, cash, car, street]}
+        onValidationChange={vi.fn()}
+      />
+    );
+
+    const headings = Array.from(document.querySelectorAll('.ab-subheading')).map(
+      (heading) => heading.textContent
+    );
+    expect(headings).toEqual([
+      expect.stringMatching(/^Part 1/),
+      expect.stringMatching(/^Part 2/),
+      expect.stringMatching(/^Part 4/),
+      VALUE_UNKNOWN_HEADING,
+    ]);
+    expect(listItems().slice(0, 4)).toEqual([
+      expect.stringContaining('Line 1: 1 Elm'),
+      expect.stringContaining('Line 3: Ford'),
+      expect.stringContaining('Line 16: Cash'),
+      expect.stringContaining('Line 19: Oak Bakery'),
+    ]);
+  });
+
+  // A typed $0 is an answer, and a value the filer doesn't know is not a $0
+  it('shows a $0 as $0.00 and an unknown value in words, never as $0.00', () => {
+    render(<ReviewStep {...baseProps} assetsData={[cash, shares]} onValidationChange={vi.fn()} />);
+
+    const [cashRow, sharesRow] = listItems();
+    expect(cashRow).toContain('$0.00');
+    expect(sharesRow).not.toContain('$0.00');
+    expect(sharesRow).toContain("You don't know");
+    expect(document.body.textContent).not.toMatch(/undefined|NaN/);
+  });
+
+  it('Review lists values the filer does not know, and omits the list when there are none', () => {
+    const onGoToStep = vi.fn();
+    const entireOnly = {
+      id: 5,
+      ab_line: '3',
+      current_value: 500,
+      details: { make: 'Honda', entire_unknown: true },
+    };
+    const { unmount } = render(
+      <ReviewStep
+        {...baseProps}
+        assetsData={[shares, street, entireOnly]}
+        onValidationChange={vi.fn()}
+        onGoToStep={onGoToStep}
+      />
+    );
+
+    const heading = screen.getByText(VALUE_UNKNOWN_HEADING);
+    const list = within(heading.nextElementSibling as HTMLElement);
+    expect(list.getAllByRole('listitem').map((item) => item.textContent)).toEqual([
+      expect.stringContaining('Line 3: Honda'),
+      expect.stringContaining('Line 19: Oak Bakery'),
+    ]);
+    fireEvent.click(list.getAllByRole('button', { name: 'Go to Assets' })[0]);
+    expect(onGoToStep).toHaveBeenCalledWith(5);
+    unmount();
+
+    render(<ReviewStep {...baseProps} assetsData={[street, cash]} onValidationChange={vi.fn()} />);
+    expect(screen.queryByText(VALUE_UNKNOWN_HEADING)).toBeNull();
+  });
 });

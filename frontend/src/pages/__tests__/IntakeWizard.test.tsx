@@ -13,7 +13,9 @@ import {
   EXPENSE_SPECIFY_FIELDS,
   INCOME_FIELDS,
 } from '../../types/api';
-import { EXPENSE_LINE_WORDS } from '../../constants/formText';
+import { AB_PART_TITLES, EXPENSE_LINE_WORDS } from '../../constants/formText';
+import { ASSET_LINES } from '../../constants/assetLines';
+import { OLD_ROWS_NOTE } from '../../constants/copy';
 
 // DebtorInfoStep reads account email via useAuth; wizard test renders without
 // AuthProvider, so we stub just the user object the step needs.
@@ -1145,6 +1147,7 @@ describe('IntakeWizard amounts a returning filer already entered', { timeout: 15
     const { assets } = patchBodies[0] as { assets: Record<string, unknown>[] };
     expect(assets.map((asset) => asset.id)).toEqual([3]);
     expect(assets[0].current_value).toBe(8000);
+    expect(assets[0].entire_value).toBe(8000);
     expect(assets[0].amount_owed).toBe(3000);
   });
 });
@@ -1288,6 +1291,9 @@ describe.each([
     addLabel: /add another amount owed/i,
     // The first row is open from the start
     open: () => {},
+    // Continue leaves the step
+    expectMovedOn: () =>
+      expect(document.querySelector('.step-title')).not.toHaveTextContent(/amounts owed/i),
     fill: (index: number, name: string, amount: string) => {
       fireEvent.change(field(`debt_type_${index}`), { target: { value: 'credit_card' } });
       fireEvent.change(field(`creditor_name_${index}`), { target: { value: name } });
@@ -1323,6 +1329,11 @@ describe.each([
     open: () => {
       fireEvent.click(document.querySelector('input[name="line_1_answer"][value="yes"]')!);
     },
+    // Continue shows the next Part, on the same step
+    expectMovedOn: () => {
+      expect(screen.getByText('Part 2 of 7')).toBeInTheDocument();
+      expect(document.querySelector('.step-title')).toHaveTextContent(/assets/i);
+    },
     fill: (index: number, name: string, amount: string) => {
       const box = `line_1_${index}`;
       fireEvent.change(field(`${box}_street`), { target: { value: name } });
@@ -1357,6 +1368,7 @@ describe.each([
     removeLabel,
     addLabel,
     open,
+    expectMovedOn,
     fill,
     stored,
   }) => {
@@ -1413,7 +1425,7 @@ describe.each([
 
     it('saves a new row under one id across Continue, Go Back, an edit and Continue', async () => {
       const { bodies } = serveSessionSaves(onStep);
-      const { container } = renderWizard();
+      renderWizard();
       await screen.findByRole('heading', { name: title, level: 2 });
 
       vi.useFakeTimers();
@@ -1422,7 +1434,7 @@ describe.each([
         fill(0, 'Elm Street Clinic', '1200');
         fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
         await waitSeconds(1);
-        expect(container.querySelector('.step-title')).not.toHaveTextContent(title);
+        expectMovedOn();
 
         // Going back sends nothing: the new row's id is already in the saved copy
         fireEvent.click(screen.getByRole('button', { name: 'Go Back' }));
@@ -1532,7 +1544,7 @@ describe.each([
 
     it('keeps the id the server holds when the filer presses Continue while a save is on its way', async () => {
       const saves = serveSessionSaves(onStep);
-      const { container } = renderWizard();
+      renderWizard();
       await screen.findByRole('heading', { name: title, level: 2 });
       const landAutosave = saves.holdNextReply();
 
@@ -1553,7 +1565,7 @@ describe.each([
         await act(() => vi.advanceTimersByTimeAsync(500));
         await act(async () => landContinue());
         await waitSeconds(3);
-        expect(container.querySelector('.step-title')).not.toHaveTextContent(title);
+        expectMovedOn();
 
         // Back on the step, the next edit updates the row the server holds instead of replacing it
         fireEvent.click(screen.getByRole('button', { name: 'Go Back' }));
@@ -1620,6 +1632,374 @@ describe('IntakeWizard the rows of the Assets step', { timeout: 30_000 }, () => 
     await waitFor(() => expect(bodies.length).toBeGreaterThan(0));
     const { assets } = bodies[0] as { assets: Record<string, unknown>[] };
     expect(assets.map((asset) => asset.id)).toEqual([3, 4]);
+  });
+});
+
+describe('IntakeWizard the walk through Schedule A/B', { timeout: 30_000 }, () => {
+  const onAssets = { ...sessionAtStep1, current_step: 5 };
+  // Every line that shows, answered No
+  const everyLineNo = Object.fromEntries(
+    ASSET_LINES.filter((line) => line.gate === null).map((line) => [line.key, 'no'])
+  );
+  const asset = (overrides: Record<string, unknown>) => ({
+    session: 1,
+    asset_type: null,
+    description: '',
+    current_value: null,
+    entire_value: null,
+    details: {},
+    ...overrides,
+  });
+  const oldRow = asset({
+    id: 9,
+    ab_line: null,
+    asset_type: 'vehicle',
+    description: 'Blue car',
+    current_value: '5000.00',
+  });
+  const answerRow = asset({
+    id: 3,
+    ab_line: '1',
+    current_value: '8000.00',
+    entire_value: '8000.00',
+    details: { street: '1 Elm', property_kinds: ['land'], who: 'only_you' },
+  });
+  const rowsSent = (body: Record<string, unknown>) => body.assets as Record<string, unknown>[];
+  const answersSent = (body: Record<string, unknown>) =>
+    body.asset_lines as Record<string, string | null>;
+  const continueButton = () => screen.getByRole('button', { name: 'Continue' });
+  const say = (key: string, value: 'yes' | 'no') =>
+    fireEvent.click(document.querySelector(`input[name="line_${key}_answer"][value="${value}"]`)!);
+
+  let stepUpdates: number[];
+
+  beforeEach(() => {
+    stepUpdates = [];
+    server.use(
+      http.post(
+        'http://localhost:8000/api/intake/sessions/:id/update_step/',
+        async ({ request }) => {
+          const { current_step } = (await request.json()) as { current_step: number };
+          stepUpdates.push(current_step);
+          return HttpResponse.json({
+            session: { ...onAssets, current_step },
+            message: 'Step updated.',
+          });
+        }
+      ),
+      http.post(
+        'http://localhost:8000/api/audit/logs/',
+        () => new HttpResponse(null, { status: 201 })
+      )
+    );
+  });
+
+  async function open(session: Record<string, unknown>) {
+    const saves = serveSessionSaves(session);
+    renderWizard();
+    await screen.findByRole('heading', { name: /assets/i, level: 2 });
+    return saves;
+  }
+
+  // A stored row left out of a save is deleted, so no Part may send only its own
+  it('sends rows of every Part on each save, a half-filled row and an old row included', async () => {
+    const { bodies } = await open({
+      ...onAssets,
+      assets: [
+        oldRow,
+        asset({ id: 4, ab_line: '16', current_value: '20.00' }),
+        asset({ id: 5, ab_line: '3', details: { make: 'Ford' } }),
+      ],
+      asset_lines: { '16': 'yes', '3': 'yes' },
+    });
+
+    say('1', 'no');
+
+    await waitFor(() => expect(bodies).toHaveLength(1), { timeout: 4000 });
+    expect(rowsSent(bodies[0]).map((row) => row.id)).toEqual([9, 4, 5]);
+    expect(rowsSent(bodies[0]).every((row) => !('_key' in row))).toBe(true);
+    expect(answersSent(bodies[0])).toMatchObject({ '1': 'no', '16': 'yes', '3': 'yes' });
+  });
+
+  // Only a real edit is saved, and on the server it reopens a completed intake
+  it('sends nothing when a loaded step is only visited', async () => {
+    const { bodies } = await open({
+      ...onAssets,
+      assets: [answerRow, oldRow],
+      asset_lines: { ...everyLineNo, '1': 'yes' },
+    });
+
+    vi.useFakeTimers();
+    try {
+      await waitSeconds(4);
+    } finally {
+      vi.useRealTimers();
+    }
+
+    expect(bodies).toEqual([]);
+  });
+
+  it('autosaves mid-Part while Continue is disabled', async () => {
+    const { bodies } = await open(onAssets);
+
+    say('1', 'yes');
+
+    expect(continueButton()).toBeDisabled();
+    await waitFor(() => expect(bodies).toHaveLength(1), { timeout: 4000 });
+    expect(rowsSent(bodies[0])).toEqual([
+      expect.objectContaining({ ab_line: '1', current_value: null, entire_value: null }),
+    ]);
+    expect(answersSent(bodies[0])['1']).toBe('yes');
+  });
+
+  // The server merges the answers and only a null clears one: a key left out keeps a hidden
+  // line's old answer, and a later Yes on the gate would show it answered
+  it('sends every line of the form, null for what is unanswered and for the lines a gate hides', async () => {
+    const { bodies } = await open({
+      ...onAssets,
+      asset_lines: { ...everyLineNo, '37': 'yes', '38': 'yes', '39': 'no' },
+      assets: [asset({ id: 6, ab_line: '38', description: 'Tools', current_value: '10.00' })],
+    });
+
+    expect(screen.getByText('Part 5 of 7')).toBeInTheDocument();
+    say('37', 'no');
+    fireEvent.click(screen.getByRole('button', { name: 'Remove' }));
+
+    await waitFor(() => expect(bodies).toHaveLength(1), { timeout: 4000 });
+    const answers = answersSent(bodies[0]);
+    expect(Object.keys(answers).sort()).toEqual(ASSET_LINES.map((line) => line.key).sort());
+    expect(answers['37']).toBe('no');
+    expect(answers['38']).toBeNull();
+    expect(answers['39']).toBeNull();
+    expect(answers['40']).toBeNull();
+    expect(answers['1']).toBe('no');
+  });
+
+  it('moves Part by Part with no update_step until it leaves Part 7', async () => {
+    const { bodies } = await open({ ...onAssets, asset_lines: everyLineNo });
+
+    for (const part of [1, 2, 3, 4, 5, 6]) {
+      expect(screen.getByText(`Part ${part} of 7`)).toBeInTheDocument();
+      await waitFor(() => expect(continueButton()).toBeEnabled());
+      await userEvent.click(continueButton());
+      await screen.findByText(`Part ${part + 1} of 7`);
+    }
+
+    expect(bodies).toHaveLength(6);
+    expect(stepUpdates).toEqual([]);
+    expect(document.querySelector('.step-title')).toHaveTextContent('Assets');
+    // Continue sits at the bottom of a long Part: the filer lands at the top of the next one
+    await waitFor(() => expect(document.activeElement).toHaveTextContent(AB_PART_TITLES[7]));
+  });
+
+  it('sends update_step once on leaving Part 7', async () => {
+    await open({ ...onAssets, asset_lines: everyLineNo });
+    for (const part of [1, 2, 3, 4, 5, 6]) {
+      await waitFor(() => expect(continueButton()).toBeEnabled());
+      await userEvent.click(continueButton());
+      await screen.findByText(`Part ${part + 1} of 7`);
+    }
+
+    await waitFor(() => expect(continueButton()).toBeEnabled());
+    await userEvent.click(continueButton());
+
+    await screen.findByRole('heading', { name: /amounts owed/i, level: 2 });
+    expect(stepUpdates).toEqual([6]);
+  });
+
+  it('Back moves to the previous Part, then the previous step', async () => {
+    const { bodies } = await open({
+      ...onAssets,
+      asset_lines: { '1': 'no', '3': 'no', '4': 'no' },
+    });
+    expect(screen.getByText('Part 3 of 7')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Go Back' }));
+    expect(await screen.findByText('Part 2 of 7')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Go Back' }));
+    expect(await screen.findByText('Part 1 of 7')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Go Back' }));
+
+    await screen.findByRole('heading', { name: /expenses/i, level: 2 });
+    expect(stepUpdates).toEqual([]);
+    expect(bodies).toEqual([]);
+  });
+
+  it('opens at the first Part with an unanswered line or an incomplete row', async () => {
+    const parts1To3 = Object.fromEntries(
+      ASSET_LINES.filter((line) => line.part <= 3).map((line) => [line.key, 'no'])
+    );
+    const { bodies } = await open({ ...onAssets, asset_lines: parts1To3 });
+    expect(screen.getByText('Part 4 of 7')).toBeInTheDocument();
+    expect(bodies).toEqual([]);
+  });
+
+  it('opens at the Part of a row that lacks what its line requires, with every line answered', async () => {
+    await open({
+      ...onAssets,
+      asset_lines: { ...everyLineNo, '3': 'yes' },
+      assets: [asset({ id: 5, ab_line: '3', current_value: '100.00', details: { make: 'Ford' } })],
+    });
+    expect(screen.getByText('Part 2 of 7')).toBeInTheDocument();
+    await waitFor(() => expect(continueButton()).toBeDisabled());
+  });
+
+  it('opens at the first Part with something left when the filer comes back from the next step', async () => {
+    serveSessionSaves({ ...onAssets, current_step: 6, asset_lines: { '1': 'no' } });
+    renderWizard();
+    await screen.findByRole('heading', { name: /amounts owed/i, level: 2 });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Go Back' }));
+
+    expect(await screen.findByText('Part 2 of 7')).toBeInTheDocument();
+  });
+
+  // No line is ever suggested, not even from the old type: which line a row goes on is the filer's
+  // answer, and the list says why Continue waits
+  it('blocks Continue while an old row has no line, and suggests no line', async () => {
+    await open({ ...onAssets, assets: [oldRow], asset_lines: everyLineNo });
+
+    expect(screen.getByText('Part 1 of 7')).toBeInTheDocument();
+    await waitFor(() => expect(continueButton()).toBeDisabled());
+    expect(screen.getByText(OLD_ROWS_NOTE)).toBeInTheDocument();
+    expect(screen.getByText('Blue car')).toBeInTheDocument();
+    expect(screen.getByText('$5,000.00')).toBeInTheDocument();
+    expect(screen.getByText('vehicle')).toBeInTheDocument();
+
+    const picker = field('old_row_0_line') as HTMLSelectElement;
+    expect(picker.value).toBe('');
+    // A gate takes no items of its own
+    const offered = [...picker.options].map((option) => option.value);
+    expect(offered).not.toContain('37');
+    expect(offered).not.toContain('46');
+    expect(offered).toContain('38');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remove Blue car' }));
+    await waitFor(() => expect(continueButton()).toBeEnabled());
+  });
+
+  it('picking a line keeps the old figure as the portion and asks for the entire value on line 3', async () => {
+    const { bodies } = await open({ ...onAssets, assets: [oldRow] });
+
+    fireEvent.change(field('old_row_0_line'), { target: { value: '3' } });
+    expect(screen.queryByText(OLD_ROWS_NOTE)).toBeNull();
+    say('1', 'no');
+    await waitFor(() => expect(continueButton()).toBeEnabled());
+    await userEvent.click(continueButton());
+    await screen.findByText('Part 2 of 7');
+
+    expect(field('line_3_0_current_value')).toHaveValue(5000);
+    expect(field('line_3_0_entire_value')).toHaveValue(null);
+    await waitFor(() => expect(continueButton()).toBeDisabled());
+    const [row] = rowsSent(bodies[0]);
+    expect(row).toMatchObject({ id: 9, ab_line: '3', current_value: 5000, entire_value: null });
+    expect(answersSent(bodies[0])['3']).toBe('yes');
+  });
+
+  // Part 5 can't be reached while an old row waits on Part 1, so a filer with no answers could never
+  // put a row on a line under a gate. A row on a hidden line is refused by Complete.
+  it('picking a line under a gate answers the gate Yes too', async () => {
+    const { bodies } = await open({ ...onAssets, assets: [oldRow] });
+
+    fireEvent.change(field('old_row_0_line'), { target: { value: '38' } });
+
+    await waitFor(() => expect(bodies).toHaveLength(1), { timeout: 4000 });
+    expect(answersSent(bodies[0])).toMatchObject({ '37': 'yes', '38': 'yes' });
+  });
+
+  it('keeps ids across saves when a row is added on one Part and another is removed on the next', async () => {
+    const { bodies, stored } = await open({
+      ...onAssets,
+      asset_lines: { ...everyLineNo, '3': 'yes' },
+      assets: [
+        asset({
+          id: 7,
+          ab_line: '3',
+          current_value: '100.00',
+          entire_value: '100.00',
+          details: { make: 'Ford', who: 'only_you' },
+        }),
+      ],
+    });
+
+    say('1', 'yes');
+    fireEvent.change(field('line_1_0_street'), { target: { value: '1 Elm' } });
+    fireEvent.click(document.querySelector('input[name="line_1_0_property_kinds"][value="land"]')!);
+    fireEvent.click(document.querySelector('input[name="line_1_0_who"][value="only_you"]')!);
+    fireEvent.change(field('line_1_0_entire_value'), { target: { value: '500' } });
+    fireEvent.change(field('line_1_0_current_value'), { target: { value: '500' } });
+    await waitFor(() => expect(continueButton()).toBeEnabled());
+    await userEvent.click(continueButton());
+    await screen.findByText('Part 2 of 7');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remove item 1 on line 3' }));
+    say('3', 'no');
+    await waitFor(() => expect(continueButton()).toBeEnabled());
+    await userEvent.click(continueButton());
+    await screen.findByText('Part 3 of 7');
+
+    expect(bodies.map((body) => rowsSent(body).map((row) => row.id))).toEqual([
+      [7, undefined],
+      [101],
+    ]);
+    expect((stored().assets as { id: number }[]).map((row) => row.id)).toEqual([101]);
+  });
+
+  it('reads back a completed intake with no save and reopens only on an edit', async () => {
+    const { bodies, stored } = await open({
+      ...onAssets,
+      status: 'completed',
+      assets: [answerRow],
+      asset_lines: { ...everyLineNo, '1': 'yes' },
+    });
+
+    vi.useFakeTimers();
+    try {
+      await waitSeconds(4);
+      expect(bodies).toEqual([]);
+      expect(stored().status).toBe('completed');
+
+      fireEvent.change(field('line_1_0_street'), { target: { value: '2 Elm' } });
+      await waitSeconds(4);
+    } finally {
+      vi.useRealTimers();
+    }
+
+    expect(bodies).toHaveLength(1);
+    expect(stored().status).toBe('in_progress');
+  });
+
+  // A $0 is an answer: on a leased car, it must not come back as unanswered
+  it('takes a stored $0 back through the wizard as an answer, not a blank', async () => {
+    const { bodies } = await open({
+      ...onAssets,
+      asset_lines: { ...everyLineNo, '1': 'yes' },
+      assets: [{ ...answerRow, current_value: '0.00', entire_value: '0.00' }],
+    });
+
+    expect(field('line_1_0_current_value')).toHaveValue(0);
+    expect(field('line_1_0_entire_value')).toHaveValue(0);
+    await waitFor(() => expect(continueButton()).toBeEnabled());
+    await userEvent.click(continueButton());
+
+    await screen.findByText('Part 2 of 7');
+    expect(rowsSent(bodies[0])[0]).toMatchObject({ current_value: 0, entire_value: 0 });
+  });
+
+  // An absent key leaves the server's figure in place, so it must go as null
+  it('clears a stored figure when the filer presses I do not know after a reload', async () => {
+    const { bodies } = await open({
+      ...onAssets,
+      asset_lines: { ...everyLineNo, '1': 'yes' },
+      assets: [answerRow],
+    });
+
+    fireEvent.click(field('line_1_0_entire_unknown'));
+
+    await waitFor(() => expect(bodies).toHaveLength(1), { timeout: 4000 });
+    const [row] = rowsSent(bodies[0]);
+    expect(row).toHaveProperty('entire_value', null);
+    expect(row.details).toMatchObject({ entire_unknown: true });
   });
 });
 

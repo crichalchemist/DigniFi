@@ -303,6 +303,17 @@ describe('AssetsStep', () => {
     expect(field('line_3_0_entire_value')).toHaveAttribute('inputmode', 'decimal');
   });
 
+  // The ask counts what a No would remove, which can reach none while it shows
+  it('never asks to remove 0 items', () => {
+    render(<Walk part={1} rows={[makeRow({ ab_line: '1' })]} answers={{ '1': 'yes' }} />);
+    say('1', 'no');
+    expect(screen.getByText(/Remove 1 item/)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remove item 1 on line 1' }));
+
+    expect(screen.queryByText(/Remove \d item/)).toBeNull();
+  });
+
   it('asks in the page before No removes rows, and Keep them leaves rows and the Yes', () => {
     const confirmSpy = vi.spyOn(window, 'confirm');
     const rows = [makeRow({ ab_line: '6' }), makeRow({ ab_line: '6' }), makeRow({ ab_line: '7' })];
@@ -674,6 +685,29 @@ describe('AssetsStep', () => {
 
   it('keeps the Review heading for unknown values in plain words', () => {
     expect(VALUE_UNKNOWN_HEADING).toBe("You said you don't know the value of these");
+  });
+
+  it('lists an old row above Part 1 only, and picking a line moves it there and answers Yes', () => {
+    const old = makeRow({ ab_line: null, description: 'Blue car', asset_type: 'vehicle' });
+    const { unmount } = render(<Walk part={2} rows={[old]} />);
+    expect(screen.queryByText('Blue car')).toBeNull();
+    unmount();
+
+    render(<Walk part={1} rows={[old]} />);
+    expect(screen.getByText('Blue car')).toBeInTheDocument();
+    fireEvent.change(field('old_row_0_line'), { target: { value: '3' } });
+
+    expect(latest.rows[0].ab_line).toBe('3');
+    expect(latest.rows[0].current_value).toBe(100);
+    expect(latest.rows[0].entire_value).toBeNull();
+    expect(latest.answers['3']).toBe('yes');
+    expect(screen.queryByText('Blue car')).toBeNull();
+  });
+
+  it('has no axe violations on the old rows', { timeout: 60_000 }, async () => {
+    const old = makeRow({ ab_line: null, description: 'Blue car', asset_type: 'vehicle' });
+    const { container } = render(<Walk part={1} rows={[old]} />);
+    expect(await axe(container)).toHaveNoViolations();
   });
 
   it('has no axe violations on each Part', { timeout: 60_000 }, async () => {

@@ -12,10 +12,28 @@
 
 import { useEffect } from 'react';
 import { UPLDisclaimer } from '../../compliance';
-import { AB_OWED_TO_YOU_HEADING, AB_PART_LEADS, AB_PART_TITLES } from '../../../constants/formText';
-import { GATE_HAS_ONLY_NOS, LEASE_NOTE, NOTHING_TO_LIST_NOTE } from '../../../constants/copy';
+import {
+  AB_LINE_WORDS,
+  AB_OWED_TO_YOU_HEADING,
+  AB_PART_LEADS,
+  AB_PART_TITLES,
+} from '../../../constants/formText';
+import {
+  GATE_HAS_ONLY_NOS,
+  LEASE_NOTE,
+  NOT_ANSWERED_YET,
+  NOTHING_TO_LIST_NOTE,
+  OLD_ROW_LINE_LABEL,
+  OLD_ROW_LINE_PLACEHOLDER,
+  OLD_ROWS_HEADING,
+  OLD_ROWS_NOTE,
+  ONE_ITEM,
+  REMOVE_THEM,
+} from '../../../constants/copy';
 import { UPL_EXEMPTION_DISCLAIMER } from '../../../constants/upl';
 import { AB_PARTS, ASSET_LINES } from '../../../constants/assetLines';
+import { useFocusManagement } from '../../../hooks/useFocusManagement';
+import { Button, FormSelect } from '../../common';
 import { AssetLine } from './assets/AssetLine';
 import { gateHasOnlyNos, partIsComplete, shownLines } from './assets/assetGaps';
 import type { AssetLine as Line } from '../../../constants/assetLines';
@@ -53,6 +71,14 @@ function keysUnder(gate: string) {
   return new Set(ASSET_LINES.filter((line) => line.gate === gate).map((line) => line.key));
 }
 
+// Every line that takes a row, in the form's words. A gate takes none, and no line is suggested.
+const LINE_CHOICES = ASSET_LINES.filter((line) => line.shape !== 'gate').map((line) => ({
+  value: line.key,
+  label: `${line.key}. ${AB_LINE_WORDS[line.key].words}`,
+}));
+
+const USD = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
+
 export function AssetsStep({
   rows,
   onRowsChange,
@@ -61,8 +87,10 @@ export function AssetsStep({
   part,
   onValidationChange,
 }: AssetsStepProps) {
-  const hasOldRow = rows.some((row) => row.ab_line === null || row.ab_line === undefined);
-  const isValid = !hasOldRow && partIsComplete(part, rows, answers);
+  const oldRows = rows.filter((row) => row.ab_line === null || row.ab_line === undefined);
+  const isValid = oldRows.length === 0 && partIsComplete(part, rows, answers);
+  // Continue and Go Back keep this step mounted, so the wizard's own focus move doesn't happen
+  const partHeadingRef = useFocusManagement(part);
 
   useEffect(() => {
     onValidationChange(isValid);
@@ -96,8 +124,58 @@ export function AssetsStep({
     return rows.filter((row) => under.has(row.ab_line ?? '')).length;
   };
 
+  // Picking a line under a gate answers the gate Yes too: the Part with the gate can't be reached
+  // while this row waits here, and Complete refuses a row on a hidden line
+  const pickLine = (old: Row, key: string) => {
+    const gate = ASSET_LINES.find((line) => line.key === key)?.gate;
+    onAnswersChange({ ...answers, [key]: 'yes', ...(gate ? { [gate]: 'yes' as const } : {}) });
+    onRowsChange(rows.map((row) => (row._key === old._key ? { ...row, ab_line: key } : row)));
+  };
+
   return (
     <div className="assets-step">
+      {part === 1 && oldRows.length > 0 && (
+        <section className="form-section">
+          <h3 className="section-title">{OLD_ROWS_HEADING}</h3>
+          <p className="section-description">{OLD_ROWS_NOTE}</p>
+          {oldRows.map((row, index) => {
+            const name = (row.description ?? '').trim() || ONE_ITEM;
+            const value = row.current_value;
+            return (
+              <div key={row._key} className="ab-row">
+                <div className="ab-row-header">
+                  <h4 className="section-title">{name}</h4>
+                  <Button
+                    variant="text"
+                    aria-label={`${REMOVE_THEM} ${name}`}
+                    onClick={() => onRowsChange(rows.filter((other) => other._key !== row._key))}
+                  >
+                    {REMOVE_THEM}
+                  </Button>
+                </div>
+                <p className="form-help-text">
+                  {value === null || value === undefined ? NOT_ANSWERED_YET : USD.format(value)}
+                </p>
+                {row.asset_type && (
+                  <p className="form-help-text">{row.asset_type.replace(/_/g, ' ')}</p>
+                )}
+                <FormSelect
+                  label={OLD_ROW_LINE_LABEL}
+                  name={`old_row_${index}_line`}
+                  required
+                  options={LINE_CHOICES}
+                  placeholder={OLD_ROW_LINE_PLACEHOLDER}
+                  value=""
+                  onChange={(key) => {
+                    if (key !== '') pickLine(row, key);
+                  }}
+                />
+              </div>
+            );
+          })}
+        </section>
+      )}
+
       {part === 1 && (
         <div className="info-box">
           <p className="info-message">{NOTHING_TO_LIST_NOTE}</p>
@@ -107,7 +185,9 @@ export function AssetsStep({
       <p className="form-help-text">
         Part {part} of {AB_PARTS.length}
       </p>
-      <h3 className="section-title">{AB_PART_TITLES[part]}</h3>
+      <h3 className="section-title" ref={partHeadingRef} tabIndex={-1}>
+        {AB_PART_TITLES[part]}
+      </h3>
       {AB_PART_LEADS[part] && <p className="section-description">{AB_PART_LEADS[part]}</p>}
       {part === 2 && <p className="section-description">{LEASE_NOTE}</p>}
 

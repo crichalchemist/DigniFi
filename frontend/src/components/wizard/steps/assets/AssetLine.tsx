@@ -102,7 +102,7 @@ export function AssetLine({
         </div>
       </fieldset>
 
-      {asking && (
+      {asking && removedByNo > 0 && (
         <div className="info-box ab-ask" role="alert">
           <p className="info-message">{question}</p>
           <div className="ab-ask-buttons">
