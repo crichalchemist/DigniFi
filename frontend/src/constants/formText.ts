@@ -588,3 +588,8 @@ export const AB_BENEFICIARY_LABEL = 'Beneficiary:';
 // Line 43's question, after its "Yes."
 export const AB_PERSONAL_INFO_QUESTION =
   'Do your lists include personally identifiable information (as defined in 11 U.S.C. § 101(41A))?';
+
+// The words beside the form's two boxes, where a line prints nothing longer
+export const AB_NO = 'No';
+
+export const AB_YES = 'Yes';

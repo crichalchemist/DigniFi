@@ -23,11 +23,13 @@ import {
   LEASE_NOTE,
   NOT_ANSWERED_YET,
   NOTHING_TO_LIST_NOTE,
+  OLD_ASSET_TYPE_WORDS,
   OLD_ROW_LINE_LABEL,
   OLD_ROW_LINE_PLACEHOLDER,
   OLD_ROWS_HEADING,
   OLD_ROWS_NOTE,
   ONE_ITEM,
+  PART_OF_PARTS,
   REMOVE_THEM,
 } from '../../../constants/copy';
 import { UPL_EXEMPTION_DISCLAIMER } from '../../../constants/upl';
@@ -35,7 +37,7 @@ import { AB_PARTS, ASSET_LINES } from '../../../constants/assetLines';
 import { useFocusManagement } from '../../../hooks/useFocusManagement';
 import { Button, FormSelect } from '../../common';
 import { AssetLine } from './assets/AssetLine';
-import { gateHasOnlyNos, partIsComplete, shownLines } from './assets/assetGaps';
+import { gateHasOnlyNos, NO_TEXT_BOX, partIsComplete, shownLines } from './assets/assetGaps';
 import type { AssetLine as Line } from '../../../constants/assetLines';
 import type { AssetInfo, AssetLineAnswer, WizardRow } from '../../../types/api';
 
@@ -76,9 +78,6 @@ const LINE_CHOICES = ASSET_LINES.filter((line) => line.shape !== 'gate').map((li
   value: line.key,
   label: `${line.key}. ${AB_LINE_WORDS[line.key].words}`,
 }));
-
-// The shapes AssetRowFields shows no description box for. Line 43's box shows under its Yes.
-const NO_TEXT_BOX = new Set<Line['shape']>(['place', 'vehicle', 'vehicle_no_mileage', 'cash']);
 
 const USD = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
 
@@ -163,8 +162,8 @@ export function AssetsStep({
                 <p className="form-help-text">
                   {value === null || value === undefined ? NOT_ANSWERED_YET : USD.format(value)}
                 </p>
-                {row.asset_type && (
-                  <p className="form-help-text">{row.asset_type.replace(/_/g, ' ')}</p>
+                {row.asset_type && OLD_ASSET_TYPE_WORDS[row.asset_type] && (
+                  <p className="form-help-text">{OLD_ASSET_TYPE_WORDS[row.asset_type]}</p>
                 )}
                 <FormSelect
                   label={OLD_ROW_LINE_LABEL}
@@ -190,7 +189,7 @@ export function AssetsStep({
       )}
 
       <p className="form-help-text">
-        Part {part} of {AB_PARTS.length}
+        {PART_OF_PARTS.replace('{n}', String(part)).replace('{total}', String(AB_PARTS.length))}
       </p>
       <h3 className="section-title" ref={partHeadingRef} tabIndex={-1}>
         {AB_PART_TITLES[part]}

@@ -13,7 +13,11 @@ import {
   AB_ADDRESS_LINE_2_LABEL,
   AB_KIND_LABEL,
   AB_TEXT_LABEL,
+  AMOUNT_NOT_A_NUMBER,
+  ITEM_NUMBER,
   OUT_OF_RANGE_PERCENT,
+  REMOVE_ITEM_ON_LINE,
+  REMOVE_THEM,
   VALUE_UNKNOWN_BUTTON,
   VALUE_UNKNOWN_NOTE,
   WHO_ONLY_YOU,
@@ -34,6 +38,7 @@ import {
   AB_MILEAGE_LABEL,
   AB_MODEL_LABEL,
   AB_NATURE_LABEL,
+  AB_NO,
   AB_PERCENT_LABEL,
   AB_PERSONAL_INFO_QUESTION,
   AB_PLACE_OTHER_INFO_LABEL,
@@ -45,8 +50,10 @@ import {
   AB_VEHICLE_OTHER_INFO_LABEL,
   AB_WHO_QUESTION,
   AB_YEAR_LABEL,
+  AB_YES,
   AB_ZIP_LABEL,
 } from '../../../../constants/formText';
+import { NO_TEXT_BOX } from './assetGaps';
 import { amountError, parseAmount } from '../../../../utils/parseAmount';
 import { PROPERTY_KINDS } from '../../../../types/api';
 import type { AssetLine } from '../../../../constants/assetLines';
@@ -97,6 +104,7 @@ function ValueBox({
   onUnknown,
 }: ValueBoxProps) {
   const [refused, setRefused] = useState<string>();
+  const [partial, setPartial] = useState(false);
   return (
     <div className="ab-value">
       <FormField
@@ -107,14 +115,19 @@ function ValueBox({
         min="0"
         step="0.01"
         required={!unknown}
-        value={value ?? ''}
+        // Blank while partial, so React leaves the keys typed so far in the box
+        value={partial ? '' : (value ?? '')}
         onChange={(e) => {
+          // A browser reports "-" as an empty box, on the way to a figure or a mistake. Neither
+          // clears what the filer gave.
+          setPartial(e.target.validity.badInput);
+          if (e.target.validity.badInput) return;
           const parsed = parseAmount(e.target.value);
           const error = amountError(parsed, VALUE_MAX_DIGITS);
           setRefused(error);
           if (error === undefined) onValue(parsed ?? null);
         }}
-        error={refused}
+        error={partial ? AMOUNT_NOT_A_NUMBER : refused}
         helpText={help}
         placeholder="0.00"
       />
@@ -124,6 +137,7 @@ function ValueBox({
         aria-pressed={unknown}
         onClick={() => {
           setRefused(undefined);
+          setPartial(false);
           onUnknown(!unknown);
         }}
       >
@@ -151,6 +165,7 @@ export function AssetRowFields({
   onRemove,
 }: AssetRowFieldsProps) {
   const [percentRefused, setPercentRefused] = useState<string>();
+  const [percentPartial, setPercentPartial] = useState(false);
   const { shape, key } = line;
   const words = AB_LINE_WORDS[key];
   const details = row.details ?? {};
@@ -184,6 +199,8 @@ export function AssetRowFields({
   );
 
   const hasEntire = shape === 'place' || shape === 'vehicle' || shape === 'vehicle_no_mileage';
+  const numbered = (template: string) =>
+    template.replace('{n}', String(rowIndex + 1)).replace('{key}', key);
   const deductHelp = hasEntire ? AB_DO_NOT_DEDUCT_SCHEDULE_D : AB_DO_NOT_DEDUCT;
 
   // A typed figure takes back "I don't know"; pressing it clears the figure. Only a flag that is
@@ -290,13 +307,9 @@ export function AssetRowFields({
   return (
     <section className="form-section ab-row">
       <div className="ab-row-header">
-        <h4 className="section-title">Item {rowIndex + 1}</h4>
-        <Button
-          variant="text"
-          onClick={onRemove}
-          aria-label={`Remove item ${rowIndex + 1} on line ${key}`}
-        >
-          Remove
+        <h4 className="section-title">{numbered(ITEM_NUMBER)}</h4>
+        <Button variant="text" onClick={onRemove} aria-label={numbered(REMOVE_ITEM_ON_LINE)}>
+          {REMOVE_THEM}
         </Button>
       </div>
 
@@ -379,7 +392,7 @@ export function AssetRowFields({
                 })
               }
             />
-            No
+            {AB_NO}
           </label>
           <label className="ab-choice">
             <input
@@ -389,12 +402,12 @@ export function AssetRowFields({
               checked={details.has_personal_info === true}
               onChange={() => setDetails({ has_personal_info: true })}
             />
-            Yes
+            {AB_YES}
           </label>
         </fieldset>
       )}
 
-      {shape !== 'cash' && !hasEntire && shape !== 'item_question' && textBox}
+      {!NO_TEXT_BOX.has(shape) && shape !== 'item_question' && textBox}
       {shape === 'item_question' && details.has_personal_info === true && textBox}
 
       {shape === 'named_share' && (
@@ -407,8 +420,10 @@ export function AssetRowFields({
           min="0"
           max="100"
           step="0.01"
-          value={details.percent ?? ''}
+          value={percentPartial ? '' : (details.percent ?? '')}
           onChange={(e) => {
+            setPercentPartial(e.target.validity.badInput);
+            if (e.target.validity.badInput) return;
             const parsed = parseAmount(e.target.value);
             // DecimalField(max_digits=5, decimal_places=2, min_value=0, max_value=100)
             const refused =
@@ -416,7 +431,7 @@ export function AssetRowFields({
             setPercentRefused(refused ? OUT_OF_RANGE_PERCENT : undefined);
             if (!refused) setDetails({ percent: parsed ?? null });
           }}
-          error={percentRefused}
+          error={percentPartial ? AMOUNT_NOT_A_NUMBER : percentRefused}
         />
       )}
 

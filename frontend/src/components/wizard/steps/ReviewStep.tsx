@@ -10,9 +10,13 @@ import { Button } from '../../common';
 import { UPLDisclaimer } from '../../compliance';
 import { UPL_REVIEW_DISCLAIMER } from '../../../constants/upl';
 import {
+  GO_TO_STEP_FOR_ROW,
   NOT_ANSWERED_YET,
+  OLD_ASSET_TYPE_WORDS,
   OLD_ROWS_HEADING,
   ONE_ITEM,
+  REVIEW_ASSET_PART,
+  REVIEW_ASSET_ROW,
   REVIEW_ASSISTANCE,
   REVIEW_DEDUCTIONS,
   REVIEW_ENTRIES,
@@ -137,7 +141,7 @@ export function ReviewStep({
       asset.details?.street?.trim() ||
       asset.details?.make?.trim() ||
       AB_LINE_WORDS[key].words;
-    return `Line ${key}: ${name}`;
+    return REVIEW_ASSET_ROW.replace('{key}', key).replace('{name}', name);
   };
 
   // A value the filer doesn't know is an answer and no $0, and a typed $0 is one too
@@ -151,8 +155,12 @@ export function ReviewStep({
   const oldAssets = assetsData.filter(
     (asset) => asset.ab_line === null || asset.ab_line === undefined
   );
+  // ordered_assets's order, as the form prints them: the catalog, then id, with a row not saved yet
+  // last, where the id it gets will put it
   const assetsOnLines = ASSET_LINES.flatMap((line) =>
-    assetsData.filter((asset) => asset.ab_line === line.key)
+    assetsData
+      .filter((asset) => asset.ab_line === line.key)
+      .sort((a, b) => (a.id ?? Infinity) - (b.id ?? Infinity))
   );
   const assetParts = AB_PARTS.map((part) => ({
     part,
@@ -331,7 +339,9 @@ export function ReviewStep({
                     <li key={asset.id ?? index} className="review-list-item">
                       <span>
                         {asset.description?.trim() || ONE_ITEM}
-                        {asset.asset_type ? ` (${asset.asset_type.replace(/_/g, ' ')})` : ''}
+                        {asset.asset_type && OLD_ASSET_TYPE_WORDS[asset.asset_type]
+                          ? ` (${OLD_ASSET_TYPE_WORDS[asset.asset_type]})`
+                          : ''}
                       </span>
                       <span className="review-field-value">{assetValue(asset)}</span>
                     </li>
@@ -342,7 +352,10 @@ export function ReviewStep({
             {assetParts.map(({ part, rows }) => (
               <div key={part}>
                 <h5 className="ab-subheading">
-                  Part {part}: {AB_PART_TITLES[part]}
+                  {REVIEW_ASSET_PART.replace('{n}', String(part)).replace(
+                    '{title}',
+                    AB_PART_TITLES[part]
+                  )}
                 </h5>
                 <ul className="review-list">
                   {rows.map((asset, index) => (
@@ -365,6 +378,10 @@ export function ReviewStep({
                         <Button
                           variant="outline"
                           size="sm"
+                          aria-label={GO_TO_STEP_FOR_ROW.replace(
+                            '{step}',
+                            assetsStep.label
+                          ).replace('{row}', assetLabel(asset))}
                           onClick={() => onGoToStep?.(assetsStep.number)}
                         >
                           Go to {assetsStep.label}

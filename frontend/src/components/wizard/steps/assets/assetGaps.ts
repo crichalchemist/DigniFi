@@ -15,6 +15,14 @@ export function shownLines(answers: Answers): AssetLine[] {
   return ASSET_LINES.filter((line) => line.gate === null || answers[line.gate] === 'yes');
 }
 
+// The shapes whose row shows no description box. Line 43's box shows under its Yes.
+export const NO_TEXT_BOX: ReadonlySet<AssetLine['shape']> = new Set([
+  'place',
+  'vehicle',
+  'vehicle_no_mileage',
+  'cash',
+]);
+
 function blank(text: string | null | undefined) {
   return (text ?? '').trim() === '';
 }

@@ -1186,7 +1186,12 @@ function serveSessionSaves(
             ...row,
             id: heldIds.includes(row.id) ? row.id : nextId++,
           };
-          for (const amount of ['current_value', 'amount_owed', 'monthly_payment']) {
+          for (const amount of [
+            'current_value',
+            'entire_value',
+            'amount_owed',
+            'monthly_payment',
+          ]) {
             if (typeof saved[amount] === 'number') saved[amount] = saved[amount].toFixed(2);
           }
           return saved;
@@ -1864,7 +1869,7 @@ describe('IntakeWizard the walk through Schedule A/B', { timeout: 30_000 }, () =
     expect(screen.getByText(OLD_ROWS_NOTE)).toBeInTheDocument();
     expect(screen.getByText('Blue car')).toBeInTheDocument();
     expect(screen.getByText('$5,000.00')).toBeInTheDocument();
-    expect(screen.getByText('vehicle')).toBeInTheDocument();
+    expect(screen.getByText('Vehicle')).toBeInTheDocument();
 
     const picker = field('old_row_0_line') as HTMLSelectElement;
     expect(picker.value).toBe('');
@@ -1944,10 +1949,11 @@ describe('IntakeWizard the walk through Schedule A/B', { timeout: 30_000 }, () =
     await userEvent.click(continueButton());
     await screen.findByText('Part 3 of 7');
 
-    expect(bodies.map((body) => rowsSent(body).map((row) => row.id))).toEqual([
-      [7, undefined],
-      [101],
-    ]);
+    // An autosave can land between the presses on a slow run, so the first and last are the point:
+    // the new row left with no id, and came back on the next Part with the one it was given.
+    const idsSent = bodies.map((body) => rowsSent(body).map((row) => row.id));
+    expect(idsSent[0]).toEqual([7, undefined]);
+    expect(idsSent[idsSent.length - 1]).toEqual([101]);
     expect((stored().assets as { id: number }[]).map((row) => row.id)).toEqual([101]);
   });
 

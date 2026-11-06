@@ -284,9 +284,11 @@ export class WizardPage {
 
   // The step is Schedule A/B a Part at a time. Each line has a No/Yes radio pair named
   // line_<key>_answer, and each row on it names its boxes line_<key>_<rowIndex>_<field>.
-  // The Assets step keeps one count of rows per line, so a second row on a line is the
-  // line's "Add another" and takes the next index.
+  // A second row on a line comes from the line's "Add another" and takes the next index, so this
+  // counts the rows filled on each line.
   private assetRows = new Map<string, number>();
+  // Amounts Owed suffixes its boxes with the row index too: this counts the debts filled, so its
+  // "Add another" is clicked only from the second on.
   private debtCount = 0;
 
   private lineBlock(key: string) {

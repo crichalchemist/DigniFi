@@ -417,6 +417,13 @@ export const REMOVE_THEM = 'Remove';
 
 export const KEEP_THEM = 'Keep them';
 
+export const ITEM_NUMBER = 'Item {n}';
+
+// The Remove button's name for a screen reader: every row on a Part has one
+export const REMOVE_ITEM_ON_LINE = 'Remove item {n} on line {key}';
+
+export const PART_OF_PARTS = 'Part {n} of {total}';
+
 export const ADD_ANOTHER_ITEM = 'Add another';
 
 export const ADD_AN_ITEM = 'Add an item';
@@ -443,6 +450,9 @@ export const AB_TEXT_LABEL = 'What you have';
 
 export const OUT_OF_RANGE_PERCENT = 'Please enter a number from 0 to 100, with up to 2 decimals.';
 
+// Beside a box holding part of a number ("-"), whose earlier figure stays until a number replaces it
+export const AMOUNT_NOT_A_NUMBER = 'Please enter a number.';
+
 // Rows from before the step asked the form's lines (3b spec §9). Says why Continue waits.
 export const OLD_ROWS_HEADING = 'Items you listed earlier';
 
@@ -453,7 +463,25 @@ export const OLD_ROW_LINE_LABEL = 'Which line does this go on?';
 
 export const OLD_ROW_LINE_PLACEHOLDER = 'Choose a line';
 
+// What the step called a row's type before it asked the form's lines. Not the form's words, and
+// never a suggestion of a line.
+export const OLD_ASSET_TYPE_WORDS: Record<string, string> = {
+  real_property: 'Real estate or home',
+  vehicle: 'Vehicle',
+  bank_account: 'Bank account',
+  retirement_account: 'Retirement account',
+  personal_property: 'Personal property',
+  other: 'Other',
+};
+
 // The server's own name for a row with nothing to name it by (_row_name in asset_lines.py)
 export const ONE_ITEM = 'One item';
 
 export const REVIEW_VALUE_NOT_KNOWN = "You don't know";
+
+export const REVIEW_ASSET_PART = 'Part {n}: {title}';
+
+export const REVIEW_ASSET_ROW = 'Line {key}: {name}';
+
+// A button's name for a screen reader, where the list repeats one button per row
+export const GO_TO_STEP_FOR_ROW = 'Go to {step} for {row}';

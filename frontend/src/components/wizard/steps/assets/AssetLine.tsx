@@ -15,7 +15,7 @@ import {
   REMOVE_UNDER_LINE,
   REMOVE_ON_LINE,
 } from '../../../../constants/copy';
-import { AB_LINE_WORDS } from '../../../../constants/formText';
+import { AB_LINE_WORDS, AB_NO, AB_YES } from '../../../../constants/formText';
 import type { AssetLine as Line } from '../../../../constants/assetLines';
 import type { AssetInfo, AssetLineAnswer, WizardRow } from '../../../../types/api';
 
@@ -55,6 +55,9 @@ export function AssetLine({
   const offersAnother = shape !== 'cash' && rows.length > 0;
   const showsAdd = !isGate && answer === 'yes' && (rows.length === 0 || offersAnother);
 
+  // The ask ends once there is nothing left for it to remove, so a later row doesn't bring it back
+  if (asking && removedByNo === 0) setAsking(false);
+
   const pressNo = () => {
     if (removedByNo > 0) {
       setAsking(true);
@@ -84,7 +87,7 @@ export function AssetLine({
               checked={answer === 'no'}
               onChange={pressNo}
             />
-            {words.no ?? 'No'}
+            {words.no ?? AB_NO}
           </label>
           <label className="ab-choice ab-answer">
             <input
@@ -97,12 +100,12 @@ export function AssetLine({
                 onYes();
               }}
             />
-            {words.yes ?? 'Yes'}
+            {words.yes ?? AB_YES}
           </label>
         </div>
       </fieldset>
 
-      {asking && removedByNo > 0 && (
+      {asking && (
         <div className="info-box ab-ask" role="alert">
           <p className="info-message">{question}</p>
           <div className="ab-ask-buttons">

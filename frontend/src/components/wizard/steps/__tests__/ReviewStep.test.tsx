@@ -58,7 +58,7 @@ describe('ReviewStep null-safe rendering', () => {
     );
 
     // Named entries keep their label and a humanized type suffix.
-    expect(screen.getByText(/My House/)).toHaveTextContent('(real property)');
+    expect(screen.getByText(/My House/)).toHaveTextContent('(Real estate or home)');
     expect(screen.getByText(/Visa/)).toHaveTextContent('(credit_card)');
 
     // Bare entries get dignity-preserving placeholders, never blanks.
@@ -316,6 +316,30 @@ describe('Review of Schedule A/B', () => {
     ]);
   });
 
+  // The form prints a line's rows by id, so a filer checking Review against it finds the same order
+  it('lists the rows of one line by id as the form prints them, an unsaved row last', () => {
+    const row = (id: number | undefined, description: string) => ({
+      id,
+      ab_line: '6',
+      description,
+      current_value: 1,
+      details: {},
+    });
+    render(
+      <ReviewStep
+        {...baseProps}
+        assetsData={[row(undefined, 'Lamp'), row(9, 'Sofa'), row(4, 'Table')]}
+        onValidationChange={vi.fn()}
+      />
+    );
+
+    expect(listItems()).toEqual([
+      expect.stringContaining('Table'),
+      expect.stringContaining('Sofa'),
+      expect.stringContaining('Lamp'),
+    ]);
+  });
+
   // A typed $0 is an answer, and a value the filer doesn't know is not a $0
   it('shows a $0 as $0.00 and an unknown value in words, never as $0.00', () => {
     render(<ReviewStep {...baseProps} assetsData={[cash, shares]} onValidationChange={vi.fn()} />);
@@ -350,8 +374,12 @@ describe('Review of Schedule A/B', () => {
       expect.stringContaining('Line 3: Honda'),
       expect.stringContaining('Line 19: Oak Bakery'),
     ]);
-    fireEvent.click(list.getAllByRole('button', { name: 'Go to Assets' })[0]);
+    // One button a row, and a screen reader's list of buttons tells them apart
+    fireEvent.click(list.getByRole('button', { name: 'Go to Assets for Line 3: Honda' }));
     expect(onGoToStep).toHaveBeenCalledWith(5);
+    expect(
+      list.getByRole('button', { name: 'Go to Assets for Line 19: Oak Bakery' })
+    ).toHaveTextContent(/^Go to Assets$/);
     unmount();
 
     render(<ReviewStep {...baseProps} assetsData={[street, cash]} onValidationChange={vi.fn()} />);

@@ -6,9 +6,9 @@ import { AssetsStep } from './AssetsStep';
 import { firstIncompletePart, partIsComplete, shownLines } from './assets/assetGaps';
 import { AB_PARTS, ASSET_LINES } from '../../../constants/assetLines';
 import {
+  AMOUNT_NOT_A_NUMBER,
   LEASE_NOTE,
   NOTHING_TO_LIST_NOTE,
-  VALUE_UNKNOWN_HEADING,
   VALUE_UNKNOWN_NOTE,
 } from '../../../constants/copy';
 import {
@@ -287,6 +287,38 @@ describe('AssetsStep', () => {
     expect(screen.queryByRole('alert')).toBeNull();
   });
 
+  // A number box reports "-" as an empty value with badInput set, which jsdom can't produce itself.
+  // Treated as a cleared box, the first key of a typed figure would wipe the one the filer had.
+  function pressPartOfANumber(name: string) {
+    const input = field(name);
+    Object.defineProperty(input, 'validity', { configurable: true, value: { badInput: true } });
+    fireEvent.change(input, { target: { value: '' } });
+    delete (input as unknown as { validity?: unknown }).validity;
+  }
+
+  it('keeps the figure while a box holds only part of a number, and clears it when emptied', () => {
+    render(
+      <Walk part={3} answers={{ ...allNo(3), '6': 'yes' }} rows={[makeRow({ ab_line: '6' })]} />
+    );
+    pressPartOfANumber('line_6_0_current_value');
+    expect(latest.rows[0].current_value).toBe(100);
+    expect(screen.getByRole('alert')).toHaveTextContent(AMOUNT_NOT_A_NUMBER);
+
+    type('line_6_0_current_value', '75');
+    expect(latest.rows[0].current_value).toBe(75);
+    expect(screen.queryByRole('alert')).toBeNull();
+
+    type('line_6_0_current_value', '');
+    expect(latest.rows[0].current_value).toBeNull();
+  });
+
+  it('keeps a share while its box holds only part of a number', () => {
+    const row = makeRow({ ab_line: '19', details: { percent: 25 } });
+    render(<Walk part={4} answers={{ '19': 'yes' }} rows={[row]} />);
+    pressPartOfANumber('line_19_0_percent');
+    expect(latest.rows[0].details?.percent).toBe(25);
+  });
+
   it('keeps a share outside 0 to 100 out of the row', () => {
     render(<Walk part={4} />);
     say('19', 'yes');
@@ -311,6 +343,17 @@ describe('AssetsStep', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Remove item 1 on line 1' }));
 
+    expect(screen.queryByText(/Remove \d item/)).toBeNull();
+  });
+
+  it('does not ask again when a row is added after the last one was removed by hand', () => {
+    render(<Walk part={1} rows={[makeRow({ ab_line: '1' })]} answers={{ '1': 'yes' }} />);
+    say('1', 'no');
+    fireEvent.click(screen.getByRole('button', { name: 'Remove item 1 on line 1' }));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add an item' }));
+
+    expect(latest.rows.map((row) => row.ab_line)).toEqual(['1']);
     expect(screen.queryByText(/Remove \d item/)).toBeNull();
   });
 
@@ -683,18 +726,16 @@ describe('AssetsStep', () => {
     ).toBeInTheDocument();
   });
 
-  it('keeps the Review heading for unknown values in plain words', () => {
-    expect(VALUE_UNKNOWN_HEADING).toBe("You said you don't know the value of these");
-  });
-
   it('lists an old row above Part 1 only, and picking a line moves it there and answers Yes', () => {
-    const old = makeRow({ ab_line: null, description: 'Blue car', asset_type: 'vehicle' });
+    const old = makeRow({ ab_line: null, description: 'Blue car', asset_type: 'bank_account' });
     const { unmount } = render(<Walk part={2} rows={[old]} />);
     expect(screen.queryByText('Blue car')).toBeNull();
     unmount();
 
     render(<Walk part={1} rows={[old]} />);
     expect(screen.getByText('Blue car')).toBeInTheDocument();
+    // The old type in words, never the stored value
+    expect(screen.getByText('Bank account')).toBeInTheDocument();
     fireEvent.change(field('old_row_0_line'), { target: { value: '3' } });
 
     expect(latest.rows[0].ab_line).toBe('3');
@@ -718,7 +759,9 @@ describe('AssetsStep', () => {
   );
 
   it.each(['6', '43'])(
-    "keeps an old row's words on line %s, where the filer can see and change them",
+    // Line 43's box shows only under its Yes, but Complete refuses until the question is answered,
+    // and its No clears the words
+    "keeps an old row's words on line %s, whose text box can show them",
     (key) => {
       const old = makeRow({ ab_line: null, description: 'Blue car', asset_type: 'vehicle' });
       render(<Walk part={1} rows={[old]} />);
