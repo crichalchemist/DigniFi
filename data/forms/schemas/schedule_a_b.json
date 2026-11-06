@@ -76,22 +76,18 @@
           {
             "label": "Model",
             "binding": "assets.line_3[].model",
-            "width": 64
+            "width": 62.5
           },
           {
-            "label": "Year",
-            "binding": "assets.line_3[].year",
-            "width": 30
-          },
-          {
-            "label": "Miles",
-            "binding": "assets.line_3[].mileage",
-            "width": 46
+            "label": "Year and miles",
+            "binding": "assets.line_3[].year_and_miles",
+            "width": 46,
+            "covers": ["assets.line_3[].year", "assets.line_3[].mileage"]
           },
           {
             "label": "Who has an interest",
             "binding": "assets.line_3[].interest",
-            "width": 90,
+            "width": 121.5,
             "covers": [
               "assets.line_3[].who",
               "assets.line_3[].community",

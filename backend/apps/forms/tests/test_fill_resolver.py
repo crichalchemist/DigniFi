@@ -569,6 +569,7 @@ def test_an_answer_never_given_prints_blank_never_the_word_none(session):
         "model",
         "year",
         "mileage",
+        "year_and_miles",
         "percent",
         "beneficiary",
         "has_personal_info",

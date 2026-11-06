@@ -323,12 +323,12 @@ def sheet_columns(line):
     interest = ["who", "community", "other_info"]
     # A word never wraps, and one wider than its column less 4 pt refuses the whole form, so each
     # column is sized on words measured at 10 pt, not on every word a filer could type. Make:
-    # "Harley-Davidson", 73.9. Line 3's Model: "Thunderbird", 53.9. Miles: "Unknown", 41.7. Line 1's
-    # Who: a PIN, 91.2. Line 4's Model and Who share 184 pt, split for a watercraft's "WaveRunner"
+    # "Harley-Davidson", 73.9. Year, and Year and miles: "Unknown", 41.68, 0.32 pt to spare. Line 1's
+    # Who: a PIN, 91.2. A vehicle's Model and Who share 184 pt, split for a watercraft's "WaveRunner"
     # (58.35, 0.15 pt to spare) and a MINI-format VIN (117.24, 0.26 pt to spare), the widest format
     # measured, so a wider word on either is refused; no width takes every legal VIN (17 W's is
-    # 160.5). Line 3's five other columns leave Who no room for a VIN or Year for "Unknown", both
-    # refused with a link to the step (reported for a ruling).
+    # 160.5). Line 3 has no room for a VIN beside a Year and a Miles column, so one column prints
+    # both answers, each on its own line.
     if line.shape == "place":
         kinds = [f"kind_{kind}" for kind in KIND_WORDS.values()]
         return [
@@ -347,10 +347,9 @@ def sheet_columns(line):
     if line.shape == "vehicle":
         return [
             column("Make", "make", 78),
-            column("Model", "model", 64),
-            column("Year", "year", 30),
-            column("Miles", "mileage", 46),
-            column("Who has an interest", "interest", 90, interest),
+            column("Model", "model", 62.5),
+            column("Year and miles", "year_and_miles", 46, ["year", "mileage"]),
+            column("Who has an interest", "interest", 121.5, interest),
             *money,
         ]
     if line.shape == "vehicle_no_mileage":

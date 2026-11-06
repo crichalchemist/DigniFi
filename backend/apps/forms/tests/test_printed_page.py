@@ -1161,6 +1161,10 @@ _VIN_MINI = "WMWZC3C5XGWA12345"
         ("3", {"mileage": "Unknown"}),
         ("3", {"make": "Harley-Davidson"}),
         ("3", {"model": "Thunderbird"}),
+        ("3", {"year": "Unknown"}),
+        ("3", {"other_info": _VIN}),
+        ("3", {"other_info": _VIN_MERCEDES}),
+        ("3", {"other_info": _VIN_MINI}),
         ("4", {"other_info": _VIN}),
         ("4", {"other_info": _VIN_MERCEDES}),
         ("4", {"other_info": _VIN_MINI}),
@@ -1214,19 +1218,54 @@ def test_a_boat_s_model_and_vin_read_whole_in_their_own_columns_on_the_drawn_she
 
 
 @pytest.mark.parametrize(
+    ("answers", "year_and_miles"),
+    [
+        ({"year": "Unknown", "mileage": "Unknown"}, "Unknown Unknown"),
+        ({"year": "2015", "mileage": "125,000"}, "2015 125,000"),
+        ({"year": "2015"}, "2015"),
+        ({"mileage": "125,000"}, "125,000"),
+        ({}, ""),
+    ],
+    ids=["both_unknown", "both", "year_only", "miles_only", "neither"],
+)
+def test_a_car_s_year_and_miles_and_its_vin_read_whole_on_the_drawn_sheet(
+    filer, answers, year_and_miles
+):
+    # Line 3's sheet has no room for a VIN beside a Year and a Miles column, so one column holds
+    # both answers, each on its own line: "Unknown" only just fits, and a comma would refuse it.
+    for make in ("A", "B", "C", "D"):
+        _ab_car(filer, make)
+    _ab_car(filer, "Mini", model="Cooper", other_info=_VIN_MINI, **answers)
+
+    parts = resolve_parts(load_schema("schedule_a_b"), filer)
+    pdf = PDFFormFiller().fill("schedule_a_b", parts)
+
+    assert _ab_sheet_rows(parts, pdf) == (
+        (
+            "3.5",
+            "Mini",
+            "Cooper",
+            year_and_miles,
+            f"Debtor 1 only; {_VIN_MINI}",
+            "2000.00",
+            "1000.00",
+        ),
+    )
+
+
+@pytest.mark.parametrize(
     ("line", "answer", "label"),
     [
-        ("3", {"other_info": _VIN}, "Who has an interest"),
-        ("3", {"year": "Unknown"}, "Year"),
+        ("3", {"other_info": "W" * 17}, "Who has an interest"),
         ("4", {"other_info": "W" * 17}, "Who has an interest"),
     ],
-    ids=["line_3_vin", "line_3_year_unknown", "line_4_past_its_widest_vin"],
+    ids=["line_3_past_its_widest_vin", "line_4_past_its_widest_vin"],
 )
 def test_a_word_too_wide_for_a_vehicle_s_sheet_is_refused_with_a_link_to_the_assets_step(
     filer, line, answer, label
 ):
     # The refusal is the filer's only sign that a row won't print, so it names the column and says
-    # where to change it. Provisional: what line 3 does with a VIN awaits a ruling (T6 report).
+    # where to change it.
     for make in ("A", "B", "C", "D")[: LINE_BY_KEY[line].capacity]:
         _ab_car(filer, make, line=line)
     _ab_car(filer, "Spare", line=line, **answer)

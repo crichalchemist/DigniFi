@@ -110,8 +110,15 @@ def _interest(row: AssetInfo) -> str:
     return "; ".join(filter(None, parts))
 
 
+def _year_and_miles(row: AssetInfo) -> str:
+    """A vehicle's year over its mileage. A word never wraps, so a comma could refuse "Unknown,"."""
+    details = row.get_details()
+    return "\n".join(filter(None, (details.get("year"), details.get("mileage"))))
+
+
 # What a Schedule A/B row prints as, by attribute (3b spec §8). A box's cell is the answer its
-# slot's choices take; where, what and interest are the words a sheet prints for several boxes.
+# slot's choices take; where, what, interest and year_and_miles are the words a sheet prints for
+# several boxes.
 ASSET_CELLS: dict[str, Callable[[AssetInfo], str]] = {
     "description": lambda row: row.description or "",
     # Line 43's Describe sits under the Yes of "Do your lists include personally identifiable
@@ -149,6 +156,7 @@ ASSET_CELLS: dict[str, Callable[[AssetInfo], str]] = {
     "where": _where,
     "what": _what,
     "interest": _interest,
+    "year_and_miles": _year_and_miles,
 }
 # The cells that hold a box's answer ("with_someone", "true"): only a slot's choices give them
 # words, so a column of words can't print one (forms.E007).
