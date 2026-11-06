@@ -2,6 +2,692 @@
   "form_type": "schedule_a_b",
   "template_filename": "form_b106ab.pdf",
   "template_version": "be67241975ab52fe8c46495a11e0ad3d565554ad8cc6879283ac17ee38cbe210",
+  "groups": {
+    "ab_1": {
+      "number": "1.{n}",
+      "sheet": {
+        "title": "Official Form 106A/B, Schedule A/B: Property, line 1",
+        "line_width": 48,
+        "columns": [
+          {
+            "label": "Where it is",
+            "binding": "assets.line_1[].where",
+            "width": 148,
+            "covers": [
+              "assets.line_1[].street",
+              "assets.line_1[].street_2",
+              "assets.line_1[].city",
+              "assets.line_1[].state",
+              "assets.line_1[].zip",
+              "assets.line_1[].county"
+            ]
+          },
+          {
+            "label": "What it is",
+            "binding": "assets.line_1[].what",
+            "width": 80,
+            "covers": [
+              "assets.line_1[].kind_single_family",
+              "assets.line_1[].kind_duplex",
+              "assets.line_1[].kind_condo",
+              "assets.line_1[].kind_manufactured",
+              "assets.line_1[].kind_land",
+              "assets.line_1[].kind_investment",
+              "assets.line_1[].kind_timeshare",
+              "assets.line_1[].kind_other",
+              "assets.line_1[].other_kind"
+            ]
+          },
+          {
+            "label": "Who has an interest",
+            "binding": "assets.line_1[].interest",
+            "width": 80,
+            "covers": [
+              "assets.line_1[].who",
+              "assets.line_1[].nature",
+              "assets.line_1[].community",
+              "assets.line_1[].other_info"
+            ]
+          },
+          {
+            "label": "Entire",
+            "binding": "assets.line_1[].entire",
+            "width": 74
+          },
+          {
+            "label": "Portion",
+            "binding": "assets.line_1[].value",
+            "width": 74
+          }
+        ]
+      }
+    },
+    "ab_3": {
+      "number": "3.{n}",
+      "sheet": {
+        "title": "Official Form 106A/B, Schedule A/B: Property, line 3",
+        "line_width": 48,
+        "columns": [
+          {
+            "label": "Make",
+            "binding": "assets.line_3[].make",
+            "width": 78
+          },
+          {
+            "label": "Model",
+            "binding": "assets.line_3[].model",
+            "width": 70
+          },
+          {
+            "label": "Year",
+            "binding": "assets.line_3[].year",
+            "width": 30
+          },
+          {
+            "label": "Miles",
+            "binding": "assets.line_3[].mileage",
+            "width": 40
+          },
+          {
+            "label": "Who has an interest",
+            "binding": "assets.line_3[].interest",
+            "width": 90,
+            "covers": [
+              "assets.line_3[].who",
+              "assets.line_3[].community",
+              "assets.line_3[].other_info"
+            ]
+          },
+          {
+            "label": "Entire",
+            "binding": "assets.line_3[].entire",
+            "width": 74
+          },
+          {
+            "label": "Portion",
+            "binding": "assets.line_3[].value",
+            "width": 74
+          }
+        ]
+      }
+    },
+    "ab_4": {
+      "number": "4.{n}",
+      "sheet": {
+        "title": "Official Form 106A/B, Schedule A/B: Property, line 4",
+        "line_width": 48,
+        "columns": [
+          {
+            "label": "Make",
+            "binding": "assets.line_4[].make",
+            "width": 86
+          },
+          {
+            "label": "Model",
+            "binding": "assets.line_4[].model",
+            "width": 86
+          },
+          {
+            "label": "Year",
+            "binding": "assets.line_4[].year",
+            "width": 30
+          },
+          {
+            "label": "Who has an interest",
+            "binding": "assets.line_4[].interest",
+            "width": 106,
+            "covers": [
+              "assets.line_4[].who",
+              "assets.line_4[].community",
+              "assets.line_4[].other_info"
+            ]
+          },
+          {
+            "label": "Entire",
+            "binding": "assets.line_4[].entire",
+            "width": 74
+          },
+          {
+            "label": "Portion",
+            "binding": "assets.line_4[].value",
+            "width": 74
+          }
+        ]
+      }
+    },
+    "ab_6": {
+      "number": "6.{n}",
+      "sheet": {
+        "title": "Official Form 106A/B, Schedule A/B: Property, line 6",
+        "line_width": 48,
+        "columns": [
+          {
+            "label": "Describe",
+            "binding": "assets.line_6[].description",
+            "width": 382
+          },
+          {
+            "label": "Portion",
+            "binding": "assets.line_6[].value",
+            "width": 74
+          }
+        ]
+      }
+    },
+    "ab_7": {
+      "number": "7.{n}",
+      "sheet": {
+        "title": "Official Form 106A/B, Schedule A/B: Property, line 7",
+        "line_width": 48,
+        "columns": [
+          {
+            "label": "Describe",
+            "binding": "assets.line_7[].description",
+            "width": 382
+          },
+          {
+            "label": "Portion",
+            "binding": "assets.line_7[].value",
+            "width": 74
+          }
+        ]
+      }
+    },
+    "ab_8": {
+      "number": "8.{n}",
+      "sheet": {
+        "title": "Official Form 106A/B, Schedule A/B: Property, line 8",
+        "line_width": 48,
+        "columns": [
+          {
+            "label": "Describe",
+            "binding": "assets.line_8[].description",
+            "width": 382
+          },
+          {
+            "label": "Portion",
+            "binding": "assets.line_8[].value",
+            "width": 74
+          }
+        ]
+      }
+    },
+    "ab_9": {
+      "number": "9.{n}",
+      "sheet": {
+        "title": "Official Form 106A/B, Schedule A/B: Property, line 9",
+        "line_width": 48,
+        "columns": [
+          {
+            "label": "Describe",
+            "binding": "assets.line_9[].description",
+            "width": 382
+          },
+          {
+            "label": "Portion",
+            "binding": "assets.line_9[].value",
+            "width": 74
+          }
+        ]
+      }
+    },
+    "ab_10": {
+      "number": "10.{n}",
+      "sheet": {
+        "title": "Official Form 106A/B, Schedule A/B: Property, line 10",
+        "line_width": 48,
+        "columns": [
+          {
+            "label": "Describe",
+            "binding": "assets.line_10[].description",
+            "width": 382
+          },
+          {
+            "label": "Portion",
+            "binding": "assets.line_10[].value",
+            "width": 74
+          }
+        ]
+      }
+    },
+    "ab_11": {
+      "number": "11.{n}",
+      "sheet": {
+        "title": "Official Form 106A/B, Schedule A/B: Property, line 11",
+        "line_width": 48,
+        "columns": [
+          {
+            "label": "Describe",
+            "binding": "assets.line_11[].description",
+            "width": 382
+          },
+          {
+            "label": "Portion",
+            "binding": "assets.line_11[].value",
+            "width": 74
+          }
+        ]
+      }
+    },
+    "ab_12": {
+      "number": "12.{n}",
+      "sheet": {
+        "title": "Official Form 106A/B, Schedule A/B: Property, line 12",
+        "line_width": 48,
+        "columns": [
+          {
+            "label": "Describe",
+            "binding": "assets.line_12[].description",
+            "width": 382
+          },
+          {
+            "label": "Portion",
+            "binding": "assets.line_12[].value",
+            "width": 74
+          }
+        ]
+      }
+    },
+    "ab_13": {
+      "number": "13.{n}",
+      "sheet": {
+        "title": "Official Form 106A/B, Schedule A/B: Property, line 13",
+        "line_width": 48,
+        "columns": [
+          {
+            "label": "Describe",
+            "binding": "assets.line_13[].description",
+            "width": 382
+          },
+          {
+            "label": "Portion",
+            "binding": "assets.line_13[].value",
+            "width": 74
+          }
+        ]
+      }
+    },
+    "ab_14": {
+      "number": "14.{n}",
+      "sheet": {
+        "title": "Official Form 106A/B, Schedule A/B: Property, line 14",
+        "line_width": 48,
+        "columns": [
+          {
+            "label": "Describe",
+            "binding": "assets.line_14[].description",
+            "width": 382
+          },
+          {
+            "label": "Portion",
+            "binding": "assets.line_14[].value",
+            "width": 74
+          }
+        ]
+      }
+    },
+    "ab_16": {
+      "number": "16.{n}",
+      "sheet": {
+        "title": "Official Form 106A/B, Schedule A/B: Property, line 16",
+        "line_width": 48,
+        "columns": [
+          {
+            "label": "Portion",
+            "binding": "assets.line_16[].value",
+            "width": 74
+          }
+        ]
+      }
+    },
+    "ab_25": {
+      "number": "25.{n}",
+      "sheet": {
+        "title": "Official Form 106A/B, Schedule A/B: Property, line 25",
+        "line_width": 48,
+        "columns": [
+          {
+            "label": "Describe",
+            "binding": "assets.line_25[].description",
+            "width": 382
+          },
+          {
+            "label": "Portion",
+            "binding": "assets.line_25[].value",
+            "width": 74
+          }
+        ]
+      }
+    },
+    "ab_26": {
+      "number": "26.{n}",
+      "sheet": {
+        "title": "Official Form 106A/B, Schedule A/B: Property, line 26",
+        "line_width": 48,
+        "columns": [
+          {
+            "label": "Describe",
+            "binding": "assets.line_26[].description",
+            "width": 382
+          },
+          {
+            "label": "Portion",
+            "binding": "assets.line_26[].value",
+            "width": 74
+          }
+        ]
+      }
+    },
+    "ab_27": {
+      "number": "27.{n}",
+      "sheet": {
+        "title": "Official Form 106A/B, Schedule A/B: Property, line 27",
+        "line_width": 48,
+        "columns": [
+          {
+            "label": "Describe",
+            "binding": "assets.line_27[].description",
+            "width": 382
+          },
+          {
+            "label": "Portion",
+            "binding": "assets.line_27[].value",
+            "width": 74
+          }
+        ]
+      }
+    },
+    "ab_30": {
+      "number": "30.{n}",
+      "sheet": {
+        "title": "Official Form 106A/B, Schedule A/B: Property, line 30",
+        "line_width": 48,
+        "columns": [
+          {
+            "label": "Describe",
+            "binding": "assets.line_30[].description",
+            "width": 382
+          },
+          {
+            "label": "Portion",
+            "binding": "assets.line_30[].value",
+            "width": 74
+          }
+        ]
+      }
+    },
+    "ab_32": {
+      "number": "32.{n}",
+      "sheet": {
+        "title": "Official Form 106A/B, Schedule A/B: Property, line 32",
+        "line_width": 48,
+        "columns": [
+          {
+            "label": "Describe",
+            "binding": "assets.line_32[].description",
+            "width": 382
+          },
+          {
+            "label": "Portion",
+            "binding": "assets.line_32[].value",
+            "width": 74
+          }
+        ]
+      }
+    },
+    "ab_33": {
+      "number": "33.{n}",
+      "sheet": {
+        "title": "Official Form 106A/B, Schedule A/B: Property, line 33",
+        "line_width": 48,
+        "columns": [
+          {
+            "label": "Describe",
+            "binding": "assets.line_33[].description",
+            "width": 382
+          },
+          {
+            "label": "Portion",
+            "binding": "assets.line_33[].value",
+            "width": 74
+          }
+        ]
+      }
+    },
+    "ab_34": {
+      "number": "34.{n}",
+      "sheet": {
+        "title": "Official Form 106A/B, Schedule A/B: Property, line 34",
+        "line_width": 48,
+        "columns": [
+          {
+            "label": "Describe",
+            "binding": "assets.line_34[].description",
+            "width": 382
+          },
+          {
+            "label": "Portion",
+            "binding": "assets.line_34[].value",
+            "width": 74
+          }
+        ]
+      }
+    },
+    "ab_35": {
+      "number": "35.{n}",
+      "sheet": {
+        "title": "Official Form 106A/B, Schedule A/B: Property, line 35",
+        "line_width": 48,
+        "columns": [
+          {
+            "label": "Describe",
+            "binding": "assets.line_35[].description",
+            "width": 382
+          },
+          {
+            "label": "Portion",
+            "binding": "assets.line_35[].value",
+            "width": 74
+          }
+        ]
+      }
+    },
+    "ab_38": {
+      "number": "38.{n}",
+      "sheet": {
+        "title": "Official Form 106A/B, Schedule A/B: Property, line 38",
+        "line_width": 48,
+        "columns": [
+          {
+            "label": "Describe",
+            "binding": "assets.line_38[].description",
+            "width": 382
+          },
+          {
+            "label": "Portion",
+            "binding": "assets.line_38[].value",
+            "width": 74
+          }
+        ]
+      }
+    },
+    "ab_39": {
+      "number": "39.{n}",
+      "sheet": {
+        "title": "Official Form 106A/B, Schedule A/B: Property, line 39",
+        "line_width": 48,
+        "columns": [
+          {
+            "label": "Describe",
+            "binding": "assets.line_39[].description",
+            "width": 382
+          },
+          {
+            "label": "Portion",
+            "binding": "assets.line_39[].value",
+            "width": 74
+          }
+        ]
+      }
+    },
+    "ab_40": {
+      "number": "40.{n}",
+      "sheet": {
+        "title": "Official Form 106A/B, Schedule A/B: Property, line 40",
+        "line_width": 48,
+        "columns": [
+          {
+            "label": "Describe",
+            "binding": "assets.line_40[].description",
+            "width": 382
+          },
+          {
+            "label": "Portion",
+            "binding": "assets.line_40[].value",
+            "width": 74
+          }
+        ]
+      }
+    },
+    "ab_41": {
+      "number": "41.{n}",
+      "sheet": {
+        "title": "Official Form 106A/B, Schedule A/B: Property, line 41",
+        "line_width": 48,
+        "columns": [
+          {
+            "label": "Describe",
+            "binding": "assets.line_41[].description",
+            "width": 382
+          },
+          {
+            "label": "Portion",
+            "binding": "assets.line_41[].value",
+            "width": 74
+          }
+        ]
+      }
+    },
+    "ab_43": {
+      "number": "43.{n}",
+      "sheet": {
+        "title": "Official Form 106A/B, Schedule A/B: Property, line 43",
+        "line_width": 48,
+        "columns": [
+          {
+            "label": "Personal information",
+            "binding": "assets.line_43[].has_personal_info",
+            "width": 100
+          },
+          {
+            "label": "Describe",
+            "binding": "assets.line_43[].personal_description",
+            "width": 282
+          },
+          {
+            "label": "Portion",
+            "binding": "assets.line_43[].value",
+            "width": 74
+          }
+        ]
+      }
+    },
+    "ab_47": {
+      "number": "47.{n}",
+      "sheet": {
+        "title": "Official Form 106A/B, Schedule A/B: Property, line 47",
+        "line_width": 48,
+        "columns": [
+          {
+            "label": "Describe",
+            "binding": "assets.line_47[].description",
+            "width": 382
+          },
+          {
+            "label": "Portion",
+            "binding": "assets.line_47[].value",
+            "width": 74
+          }
+        ]
+      }
+    },
+    "ab_48": {
+      "number": "48.{n}",
+      "sheet": {
+        "title": "Official Form 106A/B, Schedule A/B: Property, line 48",
+        "line_width": 48,
+        "columns": [
+          {
+            "label": "Describe",
+            "binding": "assets.line_48[].description",
+            "width": 382
+          },
+          {
+            "label": "Portion",
+            "binding": "assets.line_48[].value",
+            "width": 74
+          }
+        ]
+      }
+    },
+    "ab_49": {
+      "number": "49.{n}",
+      "sheet": {
+        "title": "Official Form 106A/B, Schedule A/B: Property, line 49",
+        "line_width": 48,
+        "columns": [
+          {
+            "label": "Describe",
+            "binding": "assets.line_49[].description",
+            "width": 382
+          },
+          {
+            "label": "Portion",
+            "binding": "assets.line_49[].value",
+            "width": 74
+          }
+        ]
+      }
+    },
+    "ab_50": {
+      "number": "50.{n}",
+      "sheet": {
+        "title": "Official Form 106A/B, Schedule A/B: Property, line 50",
+        "line_width": 48,
+        "columns": [
+          {
+            "label": "Describe",
+            "binding": "assets.line_50[].description",
+            "width": 382
+          },
+          {
+            "label": "Portion",
+            "binding": "assets.line_50[].value",
+            "width": 74
+          }
+        ]
+      }
+    },
+    "ab_51": {
+      "number": "51.{n}",
+      "sheet": {
+        "title": "Official Form 106A/B, Schedule A/B: Property, line 51",
+        "line_width": 48,
+        "columns": [
+          {
+            "label": "Describe",
+            "binding": "assets.line_51[].description",
+            "width": 382
+          },
+          {
+            "label": "Portion",
+            "binding": "assets.line_51[].value",
+            "width": 74
+          }
+        ]
+      }
+    }
+  },
   "fields": [
     {
       "pdf_field": "Debtor 1",
@@ -46,11 +732,11 @@
         "no": "/On"
       },
       "page": 1,
-      "label": "Do you own or have any legal or equitable interest in any residence, building, land, or similar property?",
+      "label": "Line 1: Yes or No",
       "required": false,
       "conditional_on": null,
       "value": null,
-      "rule": "has_real_property",
+      "rule": "ab_has_1",
       "ingest_key": null,
       "binding": null,
       "repeat": null,
@@ -59,20 +745,1167 @@
       "legal_review": false
     },
     {
-      "pdf_field": "undefined_13",
+      "pdf_field": "1 1",
       "type": "text",
-      "source": "derived",
-      "page": 2,
-      "label": "Part 1 total: real estate",
+      "source": "asked",
+      "page": 1,
+      "label": "Line 1.1: Street address",
       "required": false,
       "conditional_on": null,
       "value": null,
-      "rule": "total_real_property",
+      "rule": null,
       "ingest_key": null,
-      "binding": null,
-      "repeat": null,
-      "repeat_capacity": null,
-      "row": null,
+      "binding": "assets.line_1[].street",
+      "repeat": "ab_1",
+      "repeat_capacity": 3,
+      "row": 1,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "1 1a",
+      "type": "text",
+      "source": "asked",
+      "page": 1,
+      "label": "Line 1.1: Second address line",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_1[].street_2",
+      "repeat": "ab_1",
+      "repeat_capacity": 3,
+      "row": 1,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "undefined_2",
+      "type": "text",
+      "source": "asked",
+      "page": 1,
+      "label": "Line 1.1: Current value of the entire property",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_1[].entire",
+      "repeat": "ab_1",
+      "repeat_capacity": 3,
+      "row": 1,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "undefined_3",
+      "type": "text",
+      "source": "asked",
+      "page": 1,
+      "label": "Line 1.1: Current value of the portion you own",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_1[].value",
+      "repeat": "ab_1",
+      "repeat_capacity": 3,
+      "row": 1,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "City",
+      "type": "text",
+      "source": "asked",
+      "page": 1,
+      "label": "Line 1.1: City",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_1[].city",
+      "repeat": "ab_1",
+      "repeat_capacity": 3,
+      "row": 1,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "State",
+      "type": "text",
+      "source": "asked",
+      "page": 1,
+      "label": "Line 1.1: State",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_1[].state",
+      "repeat": "ab_1",
+      "repeat_capacity": 3,
+      "row": 1,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "ZIP Code",
+      "type": "text",
+      "source": "asked",
+      "page": 1,
+      "label": "Line 1.1: ZIP Code",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_1[].zip",
+      "repeat": "ab_1",
+      "repeat_capacity": 3,
+      "row": 1,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "undefined_4",
+      "type": "text",
+      "source": "asked",
+      "page": 1,
+      "label": "Line 1.1: Other property kind",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_1[].other_kind",
+      "repeat": "ab_1",
+      "repeat_capacity": 3,
+      "row": 1,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "the entireties or a life estate if known",
+      "type": "text",
+      "source": "asked",
+      "page": 1,
+      "label": "Line 1.1: Nature of your ownership interest",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_1[].nature",
+      "repeat": "ab_1",
+      "repeat_capacity": 3,
+      "row": 1,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "County",
+      "type": "text",
+      "source": "asked",
+      "page": 1,
+      "label": "Line 1.1: County",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_1[].county",
+      "repeat": "ab_1",
+      "repeat_capacity": 3,
+      "row": 1,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "Check if this is community property",
+      "type": "checkbox",
+      "source": "asked",
+      "choices": {
+        "true": "/On"
+      },
+      "page": 1,
+      "label": "Line 1.1: Community property",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_1[].community",
+      "repeat": "ab_1",
+      "repeat_capacity": 3,
+      "row": 1,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "property identification number",
+      "type": "text",
+      "source": "asked",
+      "page": 1,
+      "label": "Line 1.1: Other information",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_1[].other_info",
+      "repeat": "ab_1",
+      "repeat_capacity": 3,
+      "row": 1,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "Who has interest in property",
+      "type": "checkbox",
+      "source": "asked",
+      "choices": {
+        "only_you": "/Debtor 1",
+        "with_someone": "/One of debtors and another"
+      },
+      "page": 1,
+      "label": "Line 1.1: Who has an interest",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_1[].who",
+      "repeat": "ab_1",
+      "repeat_capacity": 3,
+      "row": 1,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "Singlefamily home",
+      "type": "checkbox",
+      "source": "asked",
+      "choices": {
+        "true": "/On"
+      },
+      "page": 1,
+      "label": "Line 1.1: Single-family home",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_1[].kind_single_family",
+      "repeat": "ab_1",
+      "repeat_capacity": 3,
+      "row": 1,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "Duplex or multiunit building",
+      "type": "checkbox",
+      "source": "asked",
+      "choices": {
+        "true": "/On"
+      },
+      "page": 1,
+      "label": "Line 1.1: Duplex or multi-unit building",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_1[].kind_duplex",
+      "repeat": "ab_1",
+      "repeat_capacity": 3,
+      "row": 1,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "Condominium or cooperative",
+      "type": "checkbox",
+      "source": "asked",
+      "choices": {
+        "true": "/On"
+      },
+      "page": 1,
+      "label": "Line 1.1: Condominium or cooperative",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_1[].kind_condo",
+      "repeat": "ab_1",
+      "repeat_capacity": 3,
+      "row": 1,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "Manufactured or mobile home",
+      "type": "checkbox",
+      "source": "asked",
+      "choices": {
+        "true": "/On"
+      },
+      "page": 1,
+      "label": "Line 1.1: Manufactured or mobile home",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_1[].kind_manufactured",
+      "repeat": "ab_1",
+      "repeat_capacity": 3,
+      "row": 1,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "Land",
+      "type": "checkbox",
+      "source": "asked",
+      "choices": {
+        "true": "/On"
+      },
+      "page": 1,
+      "label": "Line 1.1: Land",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_1[].kind_land",
+      "repeat": "ab_1",
+      "repeat_capacity": 3,
+      "row": 1,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "Investment property",
+      "type": "checkbox",
+      "source": "asked",
+      "choices": {
+        "true": "/On"
+      },
+      "page": 1,
+      "label": "Line 1.1: Investment property",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_1[].kind_investment",
+      "repeat": "ab_1",
+      "repeat_capacity": 3,
+      "row": 1,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "Timeshare",
+      "type": "checkbox",
+      "source": "asked",
+      "choices": {
+        "true": "/On"
+      },
+      "page": 1,
+      "label": "Line 1.1: Timeshare",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_1[].kind_timeshare",
+      "repeat": "ab_1",
+      "repeat_capacity": 3,
+      "row": 1,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "Other",
+      "type": "checkbox",
+      "source": "asked",
+      "choices": {
+        "true": "/On"
+      },
+      "page": 1,
+      "label": "Line 1.1: Other",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_1[].kind_other",
+      "repeat": "ab_1",
+      "repeat_capacity": 3,
+      "row": 1,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "12",
+      "type": "text",
+      "source": "asked",
+      "page": 1,
+      "label": "Line 1.2: Street address",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_1[].street",
+      "repeat": "ab_1",
+      "repeat_capacity": 3,
+      "row": 2,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "undefined_5",
+      "type": "text",
+      "source": "asked",
+      "page": 1,
+      "label": "Line 1.2: Second address line",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_1[].street_2",
+      "repeat": "ab_1",
+      "repeat_capacity": 3,
+      "row": 2,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "undefined_6",
+      "type": "text",
+      "source": "asked",
+      "page": 1,
+      "label": "Line 1.2: Current value of the entire property",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_1[].entire",
+      "repeat": "ab_1",
+      "repeat_capacity": 3,
+      "row": 2,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "undefined_7",
+      "type": "text",
+      "source": "asked",
+      "page": 1,
+      "label": "Line 1.2: Current value of the portion you own",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_1[].value",
+      "repeat": "ab_1",
+      "repeat_capacity": 3,
+      "row": 2,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "City_2",
+      "type": "text",
+      "source": "asked",
+      "page": 1,
+      "label": "Line 1.2: City",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_1[].city",
+      "repeat": "ab_1",
+      "repeat_capacity": 3,
+      "row": 2,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "State_2",
+      "type": "text",
+      "source": "asked",
+      "page": 1,
+      "label": "Line 1.2: State",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_1[].state",
+      "repeat": "ab_1",
+      "repeat_capacity": 3,
+      "row": 2,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "ZIP Code_2",
+      "type": "text",
+      "source": "asked",
+      "page": 1,
+      "label": "Line 1.2: ZIP Code",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_1[].zip",
+      "repeat": "ab_1",
+      "repeat_capacity": 3,
+      "row": 2,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "undefined_8",
+      "type": "text",
+      "source": "asked",
+      "page": 1,
+      "label": "Line 1.2: Other property kind",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_1[].other_kind",
+      "repeat": "ab_1",
+      "repeat_capacity": 3,
+      "row": 2,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "Who has an interest in the property Check one",
+      "type": "text",
+      "source": "asked",
+      "page": 1,
+      "label": "Line 1.2: Nature of your ownership interest",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_1[].nature",
+      "repeat": "ab_1",
+      "repeat_capacity": 3,
+      "row": 2,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "County_2",
+      "type": "text",
+      "source": "asked",
+      "page": 1,
+      "label": "Line 1.2: County",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_1[].county",
+      "repeat": "ab_1",
+      "repeat_capacity": 3,
+      "row": 2,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "Check if this is community property_2",
+      "type": "checkbox",
+      "source": "asked",
+      "choices": {
+        "true": "/On"
+      },
+      "page": 1,
+      "label": "Line 1.2: Community property",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_1[].community",
+      "repeat": "ab_1",
+      "repeat_capacity": 3,
+      "row": 2,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "property identification number_2",
+      "type": "text",
+      "source": "asked",
+      "page": 1,
+      "label": "Line 1.2: Other information",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_1[].other_info",
+      "repeat": "ab_1",
+      "repeat_capacity": 3,
+      "row": 2,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "Who has interest in property 2",
+      "type": "checkbox",
+      "source": "asked",
+      "choices": {
+        "only_you": "/Debtor 1",
+        "with_someone": "/One of debtors and another"
+      },
+      "page": 1,
+      "label": "Line 1.2: Who has an interest",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_1[].who",
+      "repeat": "ab_1",
+      "repeat_capacity": 3,
+      "row": 2,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "Singlefamily home_2",
+      "type": "checkbox",
+      "source": "asked",
+      "choices": {
+        "true": "/On"
+      },
+      "page": 1,
+      "label": "Line 1.2: Single-family home",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_1[].kind_single_family",
+      "repeat": "ab_1",
+      "repeat_capacity": 3,
+      "row": 2,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "Duplex or multiunit building_2",
+      "type": "checkbox",
+      "source": "asked",
+      "choices": {
+        "true": "/On"
+      },
+      "page": 1,
+      "label": "Line 1.2: Duplex or multi-unit building",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_1[].kind_duplex",
+      "repeat": "ab_1",
+      "repeat_capacity": 3,
+      "row": 2,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "Condominium or cooperative_2",
+      "type": "checkbox",
+      "source": "asked",
+      "choices": {
+        "true": "/On"
+      },
+      "page": 1,
+      "label": "Line 1.2: Condominium or cooperative",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_1[].kind_condo",
+      "repeat": "ab_1",
+      "repeat_capacity": 3,
+      "row": 2,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "Manufactured or mobile home_2",
+      "type": "checkbox",
+      "source": "asked",
+      "choices": {
+        "true": "/On"
+      },
+      "page": 1,
+      "label": "Line 1.2: Manufactured or mobile home",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_1[].kind_manufactured",
+      "repeat": "ab_1",
+      "repeat_capacity": 3,
+      "row": 2,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "Land_2",
+      "type": "checkbox",
+      "source": "asked",
+      "choices": {
+        "true": "/On"
+      },
+      "page": 1,
+      "label": "Line 1.2: Land",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_1[].kind_land",
+      "repeat": "ab_1",
+      "repeat_capacity": 3,
+      "row": 2,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "Investment property_2",
+      "type": "checkbox",
+      "source": "asked",
+      "choices": {
+        "true": "/On"
+      },
+      "page": 1,
+      "label": "Line 1.2: Investment property",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_1[].kind_investment",
+      "repeat": "ab_1",
+      "repeat_capacity": 3,
+      "row": 2,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "Timeshare_2",
+      "type": "checkbox",
+      "source": "asked",
+      "choices": {
+        "true": "/On"
+      },
+      "page": 1,
+      "label": "Line 1.2: Timeshare",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_1[].kind_timeshare",
+      "repeat": "ab_1",
+      "repeat_capacity": 3,
+      "row": 2,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "Other_2",
+      "type": "checkbox",
+      "source": "asked",
+      "choices": {
+        "true": "/On"
+      },
+      "page": 1,
+      "label": "Line 1.2: Other",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_1[].kind_other",
+      "repeat": "ab_1",
+      "repeat_capacity": 3,
+      "row": 2,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "13",
+      "type": "text",
+      "source": "asked",
+      "page": 2,
+      "label": "Line 1.3: Street address",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_1[].street",
+      "repeat": "ab_1",
+      "repeat_capacity": 3,
+      "row": 3,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "undefined_9",
+      "type": "text",
+      "source": "asked",
+      "page": 2,
+      "label": "Line 1.3: Second address line",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_1[].street_2",
+      "repeat": "ab_1",
+      "repeat_capacity": 3,
+      "row": 3,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "undefined_10",
+      "type": "text",
+      "source": "asked",
+      "page": 2,
+      "label": "Line 1.3: Current value of the entire property",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_1[].entire",
+      "repeat": "ab_1",
+      "repeat_capacity": 3,
+      "row": 3,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "undefined_11",
+      "type": "text",
+      "source": "asked",
+      "page": 2,
+      "label": "Line 1.3: Current value of the portion you own",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_1[].value",
+      "repeat": "ab_1",
+      "repeat_capacity": 3,
+      "row": 3,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "City_3",
+      "type": "text",
+      "source": "asked",
+      "page": 2,
+      "label": "Line 1.3: City",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_1[].city",
+      "repeat": "ab_1",
+      "repeat_capacity": 3,
+      "row": 3,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "State_3",
+      "type": "text",
+      "source": "asked",
+      "page": 2,
+      "label": "Line 1.3: State",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_1[].state",
+      "repeat": "ab_1",
+      "repeat_capacity": 3,
+      "row": 3,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "ZIP Code_3",
+      "type": "text",
+      "source": "asked",
+      "page": 2,
+      "label": "Line 1.3: ZIP Code",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_1[].zip",
+      "repeat": "ab_1",
+      "repeat_capacity": 3,
+      "row": 3,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "undefined_12",
+      "type": "text",
+      "source": "asked",
+      "page": 2,
+      "label": "Line 1.3: Other property kind",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_1[].other_kind",
+      "repeat": "ab_1",
+      "repeat_capacity": 3,
+      "row": 3,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "Who has an interest in the property Check one_2",
+      "type": "text",
+      "source": "asked",
+      "page": 2,
+      "label": "Line 1.3: Nature of your ownership interest",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_1[].nature",
+      "repeat": "ab_1",
+      "repeat_capacity": 3,
+      "row": 3,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "County_3",
+      "type": "text",
+      "source": "asked",
+      "page": 2,
+      "label": "Line 1.3: County",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_1[].county",
+      "repeat": "ab_1",
+      "repeat_capacity": 3,
+      "row": 3,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "Check if this is community property_3",
+      "type": "checkbox",
+      "source": "asked",
+      "choices": {
+        "true": "/On"
+      },
+      "page": 2,
+      "label": "Line 1.3: Community property",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_1[].community",
+      "repeat": "ab_1",
+      "repeat_capacity": 3,
+      "row": 3,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "property identification number_3",
+      "type": "text",
+      "source": "asked",
+      "page": 2,
+      "label": "Line 1.3: Other information",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_1[].other_info",
+      "repeat": "ab_1",
+      "repeat_capacity": 3,
+      "row": 3,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "Who has interest in property 3",
+      "type": "checkbox",
+      "source": "asked",
+      "choices": {
+        "only_you": "/Debtor1",
+        "with_someone": "/On"
+      },
+      "page": 2,
+      "label": "Line 1.3: Who has an interest",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_1[].who",
+      "repeat": "ab_1",
+      "repeat_capacity": 3,
+      "row": 3,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "Singlefamily home_3",
+      "type": "checkbox",
+      "source": "asked",
+      "choices": {
+        "true": "/On"
+      },
+      "page": 2,
+      "label": "Line 1.3: Single-family home",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_1[].kind_single_family",
+      "repeat": "ab_1",
+      "repeat_capacity": 3,
+      "row": 3,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "Duplex or multiunit building_3",
+      "type": "checkbox",
+      "source": "asked",
+      "choices": {
+        "true": "/On"
+      },
+      "page": 2,
+      "label": "Line 1.3: Duplex or multi-unit building",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_1[].kind_duplex",
+      "repeat": "ab_1",
+      "repeat_capacity": 3,
+      "row": 3,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "Condominium or cooperative_3",
+      "type": "checkbox",
+      "source": "asked",
+      "choices": {
+        "true": "/On"
+      },
+      "page": 2,
+      "label": "Line 1.3: Condominium or cooperative",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_1[].kind_condo",
+      "repeat": "ab_1",
+      "repeat_capacity": 3,
+      "row": 3,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "Manufactured or mobile home_3",
+      "type": "checkbox",
+      "source": "asked",
+      "choices": {
+        "true": "/On"
+      },
+      "page": 2,
+      "label": "Line 1.3: Manufactured or mobile home",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_1[].kind_manufactured",
+      "repeat": "ab_1",
+      "repeat_capacity": 3,
+      "row": 3,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "Land_3",
+      "type": "checkbox",
+      "source": "asked",
+      "choices": {
+        "true": "/On"
+      },
+      "page": 2,
+      "label": "Line 1.3: Land",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_1[].kind_land",
+      "repeat": "ab_1",
+      "repeat_capacity": 3,
+      "row": 3,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "Investment property_3",
+      "type": "checkbox",
+      "source": "asked",
+      "choices": {
+        "true": "/On"
+      },
+      "page": 2,
+      "label": "Line 1.3: Investment property",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_1[].kind_investment",
+      "repeat": "ab_1",
+      "repeat_capacity": 3,
+      "row": 3,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "Timeshare_3",
+      "type": "checkbox",
+      "source": "asked",
+      "choices": {
+        "true": "/On"
+      },
+      "page": 2,
+      "label": "Line 1.3: Timeshare",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_1[].kind_timeshare",
+      "repeat": "ab_1",
+      "repeat_capacity": 3,
+      "row": 3,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "Other_3",
+      "type": "checkbox",
+      "source": "asked",
+      "choices": {
+        "true": "/On"
+      },
+      "page": 2,
+      "label": "Line 1.3: Other",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_1[].kind_other",
+      "repeat": "ab_1",
+      "repeat_capacity": 3,
+      "row": 3,
       "legal_review": false
     },
     {
@@ -84,11 +1917,2561 @@
         "no": "/no"
       },
       "page": 2,
-      "label": "Cars, vans, trucks, tractors, sport utility vehicles, motorcycles",
+      "label": "Line 3: Yes or No",
       "required": false,
       "conditional_on": null,
       "value": null,
-      "rule": "has_vehicles",
+      "rule": "ab_has_3",
+      "ingest_key": null,
+      "binding": null,
+      "repeat": null,
+      "repeat_capacity": null,
+      "row": null,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "3 1",
+      "type": "text",
+      "source": "asked",
+      "page": 2,
+      "label": "Line 3.1: Make",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_3[].make",
+      "repeat": "ab_3",
+      "repeat_capacity": 4,
+      "row": 1,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "3 2",
+      "type": "text",
+      "source": "asked",
+      "page": 2,
+      "label": "Line 3.1: Model",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_3[].model",
+      "repeat": "ab_3",
+      "repeat_capacity": 4,
+      "row": 1,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "3 3",
+      "type": "text",
+      "source": "asked",
+      "page": 2,
+      "label": "Line 3.1: Year",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_3[].year",
+      "repeat": "ab_3",
+      "repeat_capacity": 4,
+      "row": 1,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "3 4",
+      "type": "text",
+      "source": "asked",
+      "page": 2,
+      "label": "Line 3.1: Approximate mileage",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_3[].mileage",
+      "repeat": "ab_3",
+      "repeat_capacity": 4,
+      "row": 1,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "undefined_14",
+      "type": "text",
+      "source": "asked",
+      "page": 2,
+      "label": "Line 3.1: Current value of the entire property",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_3[].entire",
+      "repeat": "ab_3",
+      "repeat_capacity": 4,
+      "row": 1,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "undefined_15",
+      "type": "text",
+      "source": "asked",
+      "page": 2,
+      "label": "Line 3.1: Current value of the portion you own",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_3[].value",
+      "repeat": "ab_3",
+      "repeat_capacity": 4,
+      "row": 1,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "Check if this is community property see",
+      "type": "checkbox",
+      "source": "asked",
+      "choices": {
+        "true": "/On"
+      },
+      "page": 2,
+      "label": "Line 3.1: Community property",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_3[].community",
+      "repeat": "ab_3",
+      "repeat_capacity": 4,
+      "row": 1,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "Other information",
+      "type": "text",
+      "source": "asked",
+      "page": 2,
+      "label": "Line 3.1: Other information",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_3[].other_info",
+      "repeat": "ab_3",
+      "repeat_capacity": 4,
+      "row": 1,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "Who has interest in property 4",
+      "type": "checkbox",
+      "source": "asked",
+      "choices": {
+        "only_you": "/Debtor 1",
+        "with_someone": "/One of Debtors and another"
+      },
+      "page": 2,
+      "label": "Line 3.1: Who has an interest",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_3[].who",
+      "repeat": "ab_3",
+      "repeat_capacity": 4,
+      "row": 1,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "If you own or have more than one describe here",
+      "type": "text",
+      "source": "asked",
+      "page": 2,
+      "label": "Line 3.2: Make",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_3[].make",
+      "repeat": "ab_3",
+      "repeat_capacity": 4,
+      "row": 2,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "1_2",
+      "type": "text",
+      "source": "asked",
+      "page": 2,
+      "label": "Line 3.2: Model",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_3[].model",
+      "repeat": "ab_3",
+      "repeat_capacity": 4,
+      "row": 2,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "2_2",
+      "type": "text",
+      "source": "asked",
+      "page": 2,
+      "label": "Line 3.2: Year",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_3[].year",
+      "repeat": "ab_3",
+      "repeat_capacity": 4,
+      "row": 2,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "Approximate mileage_2",
+      "type": "text",
+      "source": "asked",
+      "page": 2,
+      "label": "Line 3.2: Approximate mileage",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_3[].mileage",
+      "repeat": "ab_3",
+      "repeat_capacity": 4,
+      "row": 2,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "undefined_16",
+      "type": "text",
+      "source": "asked",
+      "page": 2,
+      "label": "Line 3.2: Current value of the entire property",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_3[].entire",
+      "repeat": "ab_3",
+      "repeat_capacity": 4,
+      "row": 2,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "undefined_17",
+      "type": "text",
+      "source": "asked",
+      "page": 2,
+      "label": "Line 3.2: Current value of the portion you own",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_3[].value",
+      "repeat": "ab_3",
+      "repeat_capacity": 4,
+      "row": 2,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "Check if this is community property see_2",
+      "type": "checkbox",
+      "source": "asked",
+      "choices": {
+        "true": "/On"
+      },
+      "page": 2,
+      "label": "Line 3.2: Community property",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_3[].community",
+      "repeat": "ab_3",
+      "repeat_capacity": 4,
+      "row": 2,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "Other information_2",
+      "type": "text",
+      "source": "asked",
+      "page": 2,
+      "label": "Line 3.2: Other information",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_3[].other_info",
+      "repeat": "ab_3",
+      "repeat_capacity": 4,
+      "row": 2,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "Who has interest in property 5",
+      "type": "checkbox",
+      "source": "asked",
+      "choices": {
+        "only_you": "/Debtor 1",
+        "with_someone": "/One of Debtors and another"
+      },
+      "page": 2,
+      "label": "Line 3.2: Who has an interest",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_3[].who",
+      "repeat": "ab_3",
+      "repeat_capacity": 4,
+      "row": 2,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "1_3",
+      "type": "text",
+      "source": "asked",
+      "page": 3,
+      "label": "Line 3.3: Make",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_3[].make",
+      "repeat": "ab_3",
+      "repeat_capacity": 4,
+      "row": 3,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "2_3",
+      "type": "text",
+      "source": "asked",
+      "page": 3,
+      "label": "Line 3.3: Model",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_3[].model",
+      "repeat": "ab_3",
+      "repeat_capacity": 4,
+      "row": 3,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "3_2",
+      "type": "text",
+      "source": "asked",
+      "page": 3,
+      "label": "Line 3.3: Year",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_3[].year",
+      "repeat": "ab_3",
+      "repeat_capacity": 4,
+      "row": 3,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "Approximate mileage_3",
+      "type": "text",
+      "source": "asked",
+      "page": 3,
+      "label": "Line 3.3: Approximate mileage",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_3[].mileage",
+      "repeat": "ab_3",
+      "repeat_capacity": 4,
+      "row": 3,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "undefined_18",
+      "type": "text",
+      "source": "asked",
+      "page": 3,
+      "label": "Line 3.3: Current value of the entire property",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_3[].entire",
+      "repeat": "ab_3",
+      "repeat_capacity": 4,
+      "row": 3,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "undefined_19",
+      "type": "text",
+      "source": "asked",
+      "page": 3,
+      "label": "Line 3.3: Current value of the portion you own",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_3[].value",
+      "repeat": "ab_3",
+      "repeat_capacity": 4,
+      "row": 3,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "Other information_3",
+      "type": "text",
+      "source": "asked",
+      "page": 3,
+      "label": "Line 3.3: Other information",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_3[].other_info",
+      "repeat": "ab_3",
+      "repeat_capacity": 4,
+      "row": 3,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "Check if this is community property see_3",
+      "type": "checkbox",
+      "source": "asked",
+      "choices": {
+        "true": "/On"
+      },
+      "page": 3,
+      "label": "Line 3.3: Community property",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_3[].community",
+      "repeat": "ab_3",
+      "repeat_capacity": 4,
+      "row": 3,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "Who has interest in property 6",
+      "type": "checkbox",
+      "source": "asked",
+      "choices": {
+        "only_you": "/Debtor 1",
+        "with_someone": "/On"
+      },
+      "page": 3,
+      "label": "Line 3.3: Who has an interest",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_3[].who",
+      "repeat": "ab_3",
+      "repeat_capacity": 4,
+      "row": 3,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "1_4",
+      "type": "text",
+      "source": "asked",
+      "page": 3,
+      "label": "Line 3.4: Make",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_3[].make",
+      "repeat": "ab_3",
+      "repeat_capacity": 4,
+      "row": 4,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "2_4",
+      "type": "text",
+      "source": "asked",
+      "page": 3,
+      "label": "Line 3.4: Model",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_3[].model",
+      "repeat": "ab_3",
+      "repeat_capacity": 4,
+      "row": 4,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "3_3",
+      "type": "text",
+      "source": "asked",
+      "page": 3,
+      "label": "Line 3.4: Year",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_3[].year",
+      "repeat": "ab_3",
+      "repeat_capacity": 4,
+      "row": 4,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "Approximate mileage_4",
+      "type": "text",
+      "source": "asked",
+      "page": 3,
+      "label": "Line 3.4: Approximate mileage",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_3[].mileage",
+      "repeat": "ab_3",
+      "repeat_capacity": 4,
+      "row": 4,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "undefined_20",
+      "type": "text",
+      "source": "asked",
+      "page": 3,
+      "label": "Line 3.4: Current value of the entire property",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_3[].entire",
+      "repeat": "ab_3",
+      "repeat_capacity": 4,
+      "row": 4,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "undefined_21",
+      "type": "text",
+      "source": "asked",
+      "page": 3,
+      "label": "Line 3.4: Current value of the portion you own",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_3[].value",
+      "repeat": "ab_3",
+      "repeat_capacity": 4,
+      "row": 4,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "Check if this is community property see_4",
+      "type": "checkbox",
+      "source": "asked",
+      "choices": {
+        "true": "/On"
+      },
+      "page": 3,
+      "label": "Line 3.4: Community property",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_3[].community",
+      "repeat": "ab_3",
+      "repeat_capacity": 4,
+      "row": 4,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "Other information_4",
+      "type": "text",
+      "source": "asked",
+      "page": 3,
+      "label": "Line 3.4: Other information",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_3[].other_info",
+      "repeat": "ab_3",
+      "repeat_capacity": 4,
+      "row": 4,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "Who has interest in property 7",
+      "type": "checkbox",
+      "source": "asked",
+      "choices": {
+        "only_you": "/Debtor 1",
+        "with_someone": "/On"
+      },
+      "page": 3,
+      "label": "Line 3.4: Who has an interest",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_3[].who",
+      "repeat": "ab_3",
+      "repeat_capacity": 4,
+      "row": 4,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "Examples Boats trailers motors personal watercraft fishing vessels snowmobiles motorcycle accessories",
+      "type": "radio",
+      "source": "derived",
+      "choices": {
+        "yes": "/Yes_2",
+        "no": "/No_2"
+      },
+      "page": 3,
+      "label": "Line 4: Yes or No",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": "ab_has_4",
+      "ingest_key": null,
+      "binding": null,
+      "repeat": null,
+      "repeat_capacity": null,
+      "row": null,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "Make",
+      "type": "text",
+      "source": "asked",
+      "page": 3,
+      "label": "Line 4.1: Make",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_4[].make",
+      "repeat": "ab_4",
+      "repeat_capacity": 2,
+      "row": 1,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "Model",
+      "type": "text",
+      "source": "asked",
+      "page": 3,
+      "label": "Line 4.1: Model",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_4[].model",
+      "repeat": "ab_4",
+      "repeat_capacity": 2,
+      "row": 1,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "Year",
+      "type": "text",
+      "source": "asked",
+      "page": 3,
+      "label": "Line 4.1: Year",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_4[].year",
+      "repeat": "ab_4",
+      "repeat_capacity": 2,
+      "row": 1,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "Other information_5",
+      "type": "text",
+      "source": "asked",
+      "page": 3,
+      "label": "Line 4.1: Other information",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_4[].other_info",
+      "repeat": "ab_4",
+      "repeat_capacity": 2,
+      "row": 1,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "Check if this is community property see_5",
+      "type": "checkbox",
+      "source": "asked",
+      "choices": {
+        "true": "/On"
+      },
+      "page": 3,
+      "label": "Line 4.1: Community property",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_4[].community",
+      "repeat": "ab_4",
+      "repeat_capacity": 2,
+      "row": 1,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "undefined_22",
+      "type": "text",
+      "source": "asked",
+      "page": 3,
+      "label": "Line 4.1: Current value of the entire property",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_4[].entire",
+      "repeat": "ab_4",
+      "repeat_capacity": 2,
+      "row": 1,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "undefined_23",
+      "type": "text",
+      "source": "asked",
+      "page": 3,
+      "label": "Line 4.1: Current value of the portion you own",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_4[].value",
+      "repeat": "ab_4",
+      "repeat_capacity": 2,
+      "row": 1,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "Who has interest in property 8",
+      "type": "checkbox",
+      "source": "asked",
+      "choices": {
+        "only_you": "/Debtor 1",
+        "with_someone": "/One of Debtors and another"
+      },
+      "page": 3,
+      "label": "Line 4.1: Who has an interest",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_4[].who",
+      "repeat": "ab_4",
+      "repeat_capacity": 2,
+      "row": 1,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "Make_2",
+      "type": "text",
+      "source": "asked",
+      "page": 3,
+      "label": "Line 4.2: Make",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_4[].make",
+      "repeat": "ab_4",
+      "repeat_capacity": 2,
+      "row": 2,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "Model_2",
+      "type": "text",
+      "source": "asked",
+      "page": 3,
+      "label": "Line 4.2: Model",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_4[].model",
+      "repeat": "ab_4",
+      "repeat_capacity": 2,
+      "row": 2,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "Year_2",
+      "type": "text",
+      "source": "asked",
+      "page": 3,
+      "label": "Line 4.2: Year",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_4[].year",
+      "repeat": "ab_4",
+      "repeat_capacity": 2,
+      "row": 2,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "Other information_6",
+      "type": "text",
+      "source": "asked",
+      "page": 3,
+      "label": "Line 4.2: Other information",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_4[].other_info",
+      "repeat": "ab_4",
+      "repeat_capacity": 2,
+      "row": 2,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "undefined_24",
+      "type": "text",
+      "source": "asked",
+      "page": 3,
+      "label": "Line 4.2: Current value of the entire property",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_4[].entire",
+      "repeat": "ab_4",
+      "repeat_capacity": 2,
+      "row": 2,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "undefined_25",
+      "type": "text",
+      "source": "asked",
+      "page": 3,
+      "label": "Line 4.2: Current value of the portion you own",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_4[].value",
+      "repeat": "ab_4",
+      "repeat_capacity": 2,
+      "row": 2,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "Check if this is community property see_6",
+      "type": "checkbox",
+      "source": "asked",
+      "choices": {
+        "true": "/On"
+      },
+      "page": 3,
+      "label": "Line 4.2: Community property",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_4[].community",
+      "repeat": "ab_4",
+      "repeat_capacity": 2,
+      "row": 2,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "Who has interest in property 9",
+      "type": "checkbox",
+      "source": "asked",
+      "choices": {
+        "only_you": "/Debtor1",
+        "with_someone": "/On"
+      },
+      "page": 3,
+      "label": "Line 4.2: Who has an interest",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_4[].who",
+      "repeat": "ab_4",
+      "repeat_capacity": 2,
+      "row": 2,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "6 check",
+      "type": "checkbox",
+      "source": "derived",
+      "choices": {
+        "yes": "/yes",
+        "no": "/no"
+      },
+      "page": 4,
+      "label": "Line 6: Yes or No",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": "ab_has_6",
+      "ingest_key": null,
+      "binding": null,
+      "repeat": null,
+      "repeat_capacity": null,
+      "row": null,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "6 description",
+      "type": "text",
+      "source": "asked",
+      "page": 4,
+      "label": "Line 6: Describe",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_6[].description",
+      "repeat": "ab_6",
+      "repeat_capacity": 1,
+      "row": 1,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "6 description amount",
+      "type": "text",
+      "source": "asked",
+      "page": 4,
+      "label": "Line 6: Current value of the portion you own",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_6[].value",
+      "repeat": "ab_6",
+      "repeat_capacity": 1,
+      "row": 1,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "7 check",
+      "type": "checkbox",
+      "source": "derived",
+      "choices": {
+        "yes": "/yes",
+        "no": "/no"
+      },
+      "page": 4,
+      "label": "Line 7: Yes or No",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": "ab_has_7",
+      "ingest_key": null,
+      "binding": null,
+      "repeat": null,
+      "repeat_capacity": null,
+      "row": null,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "7 description",
+      "type": "text",
+      "source": "asked",
+      "page": 4,
+      "label": "Line 7: Describe",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_7[].description",
+      "repeat": "ab_7",
+      "repeat_capacity": 1,
+      "row": 1,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "7 description amount",
+      "type": "text",
+      "source": "asked",
+      "page": 4,
+      "label": "Line 7: Current value of the portion you own",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_7[].value",
+      "repeat": "ab_7",
+      "repeat_capacity": 1,
+      "row": 1,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "8 check",
+      "type": "checkbox",
+      "source": "derived",
+      "choices": {
+        "yes": "/yes",
+        "no": "/no"
+      },
+      "page": 4,
+      "label": "Line 8: Yes or No",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": "ab_has_8",
+      "ingest_key": null,
+      "binding": null,
+      "repeat": null,
+      "repeat_capacity": null,
+      "row": null,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "8 description",
+      "type": "text",
+      "source": "asked",
+      "page": 4,
+      "label": "Line 8: Describe",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_8[].description",
+      "repeat": "ab_8",
+      "repeat_capacity": 1,
+      "row": 1,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "8 description amount",
+      "type": "text",
+      "source": "asked",
+      "page": 4,
+      "label": "Line 8: Current value of the portion you own",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_8[].value",
+      "repeat": "ab_8",
+      "repeat_capacity": 1,
+      "row": 1,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "9 check",
+      "type": "checkbox",
+      "source": "derived",
+      "choices": {
+        "yes": "/On",
+        "no": "/no"
+      },
+      "page": 4,
+      "label": "Line 9: Yes or No",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": "ab_has_9",
+      "ingest_key": null,
+      "binding": null,
+      "repeat": null,
+      "repeat_capacity": null,
+      "row": null,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "9 description",
+      "type": "text",
+      "source": "asked",
+      "page": 4,
+      "label": "Line 9: Describe",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_9[].description",
+      "repeat": "ab_9",
+      "repeat_capacity": 1,
+      "row": 1,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "9 description amount",
+      "type": "text",
+      "source": "asked",
+      "page": 4,
+      "label": "Line 9: Current value of the portion you own",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_9[].value",
+      "repeat": "ab_9",
+      "repeat_capacity": 1,
+      "row": 1,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "10 check",
+      "type": "checkbox",
+      "source": "derived",
+      "choices": {
+        "yes": "/yes",
+        "no": "/no"
+      },
+      "page": 4,
+      "label": "Line 10: Yes or No",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": "ab_has_10",
+      "ingest_key": null,
+      "binding": null,
+      "repeat": null,
+      "repeat_capacity": null,
+      "row": null,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "10 description",
+      "type": "text",
+      "source": "asked",
+      "page": 4,
+      "label": "Line 10: Describe",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_10[].description",
+      "repeat": "ab_10",
+      "repeat_capacity": 1,
+      "row": 1,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "10 description amount",
+      "type": "text",
+      "source": "asked",
+      "page": 4,
+      "label": "Line 10: Current value of the portion you own",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_10[].value",
+      "repeat": "ab_10",
+      "repeat_capacity": 1,
+      "row": 1,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "11 check",
+      "type": "checkbox",
+      "source": "derived",
+      "choices": {
+        "yes": "/yes",
+        "no": "/no"
+      },
+      "page": 4,
+      "label": "Line 11: Yes or No",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": "ab_has_11",
+      "ingest_key": null,
+      "binding": null,
+      "repeat": null,
+      "repeat_capacity": null,
+      "row": null,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "11 description",
+      "type": "text",
+      "source": "asked",
+      "page": 4,
+      "label": "Line 11: Describe",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_11[].description",
+      "repeat": "ab_11",
+      "repeat_capacity": 1,
+      "row": 1,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "11 description amount",
+      "type": "text",
+      "source": "asked",
+      "page": 4,
+      "label": "Line 11: Current value of the portion you own",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_11[].value",
+      "repeat": "ab_11",
+      "repeat_capacity": 1,
+      "row": 1,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "12 check",
+      "type": "checkbox",
+      "source": "derived",
+      "choices": {
+        "yes": "/yes",
+        "no": "/no"
+      },
+      "page": 4,
+      "label": "Line 12: Yes or No",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": "ab_has_12",
+      "ingest_key": null,
+      "binding": null,
+      "repeat": null,
+      "repeat_capacity": null,
+      "row": null,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "12 description",
+      "type": "text",
+      "source": "asked",
+      "page": 4,
+      "label": "Line 12: Describe",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_12[].description",
+      "repeat": "ab_12",
+      "repeat_capacity": 1,
+      "row": 1,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "12 description amount",
+      "type": "text",
+      "source": "asked",
+      "page": 4,
+      "label": "Line 12: Current value of the portion you own",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_12[].value",
+      "repeat": "ab_12",
+      "repeat_capacity": 1,
+      "row": 1,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "check 13",
+      "type": "checkbox",
+      "source": "derived",
+      "choices": {
+        "yes": "/yes",
+        "no": "/no"
+      },
+      "page": 4,
+      "label": "Line 13: Yes or No",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": "ab_has_13",
+      "ingest_key": null,
+      "binding": null,
+      "repeat": null,
+      "repeat_capacity": null,
+      "row": null,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "13 description",
+      "type": "text",
+      "source": "asked",
+      "page": 4,
+      "label": "Line 13: Describe",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_13[].description",
+      "repeat": "ab_13",
+      "repeat_capacity": 1,
+      "row": 1,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "13 description amount",
+      "type": "text",
+      "source": "asked",
+      "page": 4,
+      "label": "Line 13: Current value of the portion you own",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_13[].value",
+      "repeat": "ab_13",
+      "repeat_capacity": 1,
+      "row": 1,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "check 14",
+      "type": "checkbox",
+      "source": "derived",
+      "choices": {
+        "yes": "/yes",
+        "no": "/no"
+      },
+      "page": 4,
+      "label": "Line 14: Yes or No",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": "ab_has_14",
+      "ingest_key": null,
+      "binding": null,
+      "repeat": null,
+      "repeat_capacity": null,
+      "row": null,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "14 description",
+      "type": "text",
+      "source": "asked",
+      "page": 4,
+      "label": "Line 14: Describe",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_14[].description",
+      "repeat": "ab_14",
+      "repeat_capacity": 1,
+      "row": 1,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "14 description amount",
+      "type": "text",
+      "source": "asked",
+      "page": 4,
+      "label": "Line 14: Current value of the portion you own",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_14[].value",
+      "repeat": "ab_14",
+      "repeat_capacity": 1,
+      "row": 1,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "Check 16",
+      "type": "checkbox",
+      "source": "derived",
+      "choices": {
+        "yes": "/yes",
+        "no": "/no"
+      },
+      "page": 5,
+      "label": "Line 16: Yes or No",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": "ab_has_16",
+      "ingest_key": null,
+      "binding": null,
+      "repeat": null,
+      "repeat_capacity": null,
+      "row": null,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "16 Cash amount",
+      "type": "text",
+      "source": "asked",
+      "page": 5,
+      "label": "Line 16: Current value of the portion you own",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_16[].value",
+      "repeat": "ab_16",
+      "repeat_capacity": 1,
+      "row": 1,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "check 25",
+      "type": "checkbox",
+      "source": "derived",
+      "choices": {
+        "yes": "/yes",
+        "no": "/no"
+      },
+      "page": 7,
+      "label": "Line 25: Yes or No",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": "ab_has_25",
+      "ingest_key": null,
+      "binding": null,
+      "repeat": null,
+      "repeat_capacity": null,
+      "row": null,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "25 Trusts, equitable or future interests in property",
+      "type": "text",
+      "source": "asked",
+      "page": 7,
+      "label": "Line 25: Describe",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_25[].description",
+      "repeat": "ab_25",
+      "repeat_capacity": 1,
+      "row": 1,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "25 Trusts, equitable or future interests in property amount",
+      "type": "text",
+      "source": "asked",
+      "page": 7,
+      "label": "Line 25: Current value of the portion you own",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_25[].value",
+      "repeat": "ab_25",
+      "repeat_capacity": 1,
+      "row": 1,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "check 26",
+      "type": "checkbox",
+      "source": "derived",
+      "choices": {
+        "yes": "/yes",
+        "no": "/no"
+      },
+      "page": 7,
+      "label": "Line 26: Yes or No",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": "ab_has_26",
+      "ingest_key": null,
+      "binding": null,
+      "repeat": null,
+      "repeat_capacity": null,
+      "row": null,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "26 Patents, copyrights, trademarks, trade secrets",
+      "type": "text",
+      "source": "asked",
+      "page": 7,
+      "label": "Line 26: Describe",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_26[].description",
+      "repeat": "ab_26",
+      "repeat_capacity": 1,
+      "row": 1,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "26 Patents, copyrights, trademarks, trade secrets amount",
+      "type": "text",
+      "source": "asked",
+      "page": 7,
+      "label": "Line 26: Current value of the portion you own",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_26[].value",
+      "repeat": "ab_26",
+      "repeat_capacity": 1,
+      "row": 1,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "check 27",
+      "type": "checkbox",
+      "source": "derived",
+      "choices": {
+        "yes": "/yes",
+        "no": "/no"
+      },
+      "page": 7,
+      "label": "Line 27: Yes or No",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": "ab_has_27",
+      "ingest_key": null,
+      "binding": null,
+      "repeat": null,
+      "repeat_capacity": null,
+      "row": null,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "27 Liscenses, Franchises",
+      "type": "text",
+      "source": "asked",
+      "page": 7,
+      "label": "Line 27: Describe",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_27[].description",
+      "repeat": "ab_27",
+      "repeat_capacity": 1,
+      "row": 1,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "27 Liscenses, Franchises amount",
+      "type": "text",
+      "source": "asked",
+      "page": 7,
+      "label": "Line 27: Current value of the portion you own",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_27[].value",
+      "repeat": "ab_27",
+      "repeat_capacity": 1,
+      "row": 1,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "check 30",
+      "type": "checkbox",
+      "source": "derived",
+      "choices": {
+        "yes": "/yes",
+        "no": "/no"
+      },
+      "page": 7,
+      "label": "Line 30: Yes or No",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": "ab_has_30",
+      "ingest_key": null,
+      "binding": null,
+      "repeat": null,
+      "repeat_capacity": null,
+      "row": null,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "undefined_107",
+      "type": "text",
+      "source": "asked",
+      "page": 7,
+      "label": "Line 30: Describe",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_30[].description",
+      "repeat": "ab_30",
+      "repeat_capacity": 1,
+      "row": 1,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "undefined_108",
+      "type": "text",
+      "source": "asked",
+      "page": 7,
+      "label": "Line 30: Current value of the portion you own",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_30[].value",
+      "repeat": "ab_30",
+      "repeat_capacity": 1,
+      "row": 1,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "check 32",
+      "type": "checkbox",
+      "source": "derived",
+      "choices": {
+        "yes": "/yes",
+        "no": "/no"
+      },
+      "page": 8,
+      "label": "Line 32: Yes or No",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": "ab_has_32",
+      "ingest_key": null,
+      "binding": null,
+      "repeat": null,
+      "repeat_capacity": null,
+      "row": null,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "32 Interest in property due you from someone who died",
+      "type": "text",
+      "source": "asked",
+      "page": 8,
+      "label": "Line 32: Describe",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_32[].description",
+      "repeat": "ab_32",
+      "repeat_capacity": 1,
+      "row": 1,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "undefined_114",
+      "type": "text",
+      "source": "asked",
+      "page": 8,
+      "label": "Line 32: Current value of the portion you own",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_32[].value",
+      "repeat": "ab_32",
+      "repeat_capacity": 1,
+      "row": 1,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "check 33",
+      "type": "checkbox",
+      "source": "derived",
+      "choices": {
+        "yes": "/yes",
+        "no": "/no"
+      },
+      "page": 8,
+      "label": "Line 33: Yes or No",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": "ab_has_33",
+      "ingest_key": null,
+      "binding": null,
+      "repeat": null,
+      "repeat_capacity": null,
+      "row": null,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "33",
+      "type": "text",
+      "source": "asked",
+      "page": 8,
+      "label": "Line 33: Describe",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_33[].description",
+      "repeat": "ab_33",
+      "repeat_capacity": 1,
+      "row": 1,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "undefined_117",
+      "type": "text",
+      "source": "asked",
+      "page": 8,
+      "label": "Line 33: Current value of the portion you own",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_33[].value",
+      "repeat": "ab_33",
+      "repeat_capacity": 1,
+      "row": 1,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "check 34",
+      "type": "checkbox",
+      "source": "derived",
+      "choices": {
+        "yes": "/On",
+        "no": "/no"
+      },
+      "page": 8,
+      "label": "Line 34: Yes or No",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": "ab_has_34",
+      "ingest_key": null,
+      "binding": null,
+      "repeat": null,
+      "repeat_capacity": null,
+      "row": null,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "34",
+      "type": "text",
+      "source": "asked",
+      "page": 8,
+      "label": "Line 34: Describe",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_34[].description",
+      "repeat": "ab_34",
+      "repeat_capacity": 1,
+      "row": 1,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "undefined_120",
+      "type": "text",
+      "source": "asked",
+      "page": 8,
+      "label": "Line 34: Current value of the portion you own",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_34[].value",
+      "repeat": "ab_34",
+      "repeat_capacity": 1,
+      "row": 1,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "check 35",
+      "type": "checkbox",
+      "source": "derived",
+      "choices": {
+        "yes": "/yes",
+        "no": "/no"
+      },
+      "page": 8,
+      "label": "Line 35: Yes or No",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": "ab_has_35",
+      "ingest_key": null,
+      "binding": null,
+      "repeat": null,
+      "repeat_capacity": null,
+      "row": null,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "35",
+      "type": "text",
+      "source": "asked",
+      "page": 8,
+      "label": "Line 35: Describe",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_35[].description",
+      "repeat": "ab_35",
+      "repeat_capacity": 1,
+      "row": 1,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "undefined_123",
+      "type": "text",
+      "source": "asked",
+      "page": 8,
+      "label": "Line 35: Current value of the portion you own",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_35[].value",
+      "repeat": "ab_35",
+      "repeat_capacity": 1,
+      "row": 1,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "check 37",
+      "type": "checkbox",
+      "source": "derived",
+      "choices": {
+        "yes": "/yes",
+        "no": "/no"
+      },
+      "page": 8,
+      "label": "Line 37: Yes or No",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": "ab_has_37",
+      "ingest_key": null,
+      "binding": null,
+      "repeat": null,
+      "repeat_capacity": null,
+      "row": null,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "check 38",
+      "type": "checkbox",
+      "source": "derived",
+      "choices": {
+        "yes": "/yes",
+        "no": "/no"
+      },
+      "page": 8,
+      "label": "Line 38: Yes or No",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": "ab_has_38",
+      "ingest_key": null,
+      "binding": null,
+      "repeat": null,
+      "repeat_capacity": null,
+      "row": null,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "38 Accounts receivable or commissions already earned",
+      "type": "text",
+      "source": "asked",
+      "page": 8,
+      "label": "Line 38: Describe",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_38[].description",
+      "repeat": "ab_38",
+      "repeat_capacity": 1,
+      "row": 1,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "undefined_125",
+      "type": "text",
+      "source": "asked",
+      "page": 8,
+      "label": "Line 38: Current value of the portion you own",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_38[].value",
+      "repeat": "ab_38",
+      "repeat_capacity": 1,
+      "row": 1,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "check 39",
+      "type": "checkbox",
+      "source": "derived",
+      "choices": {
+        "yes": "/yes",
+        "no": "/no"
+      },
+      "page": 8,
+      "label": "Line 39: Yes or No",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": "ab_has_39",
+      "ingest_key": null,
+      "binding": null,
+      "repeat": null,
+      "repeat_capacity": null,
+      "row": null,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "39 Office equipment furnishings and supplies",
+      "type": "text",
+      "source": "asked",
+      "page": 8,
+      "label": "Line 39: Describe",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_39[].description",
+      "repeat": "ab_39",
+      "repeat_capacity": 1,
+      "row": 1,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "undefined_126",
+      "type": "text",
+      "source": "asked",
+      "page": 8,
+      "label": "Line 39: Current value of the portion you own",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_39[].value",
+      "repeat": "ab_39",
+      "repeat_capacity": 1,
+      "row": 1,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "check 40",
+      "type": "checkbox",
+      "source": "derived",
+      "choices": {
+        "yes": "/yes",
+        "no": "/no"
+      },
+      "page": 9,
+      "label": "Line 40: Yes or No",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": "ab_has_40",
+      "ingest_key": null,
+      "binding": null,
+      "repeat": null,
+      "repeat_capacity": null,
+      "row": null,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "40 Machinery fixtures equipment and tools of your trade",
+      "type": "text",
+      "source": "asked",
+      "page": 9,
+      "label": "Line 40: Describe",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_40[].description",
+      "repeat": "ab_40",
+      "repeat_capacity": 1,
+      "row": 1,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "undefined_127",
+      "type": "text",
+      "source": "asked",
+      "page": 9,
+      "label": "Line 40: Current value of the portion you own",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_40[].value",
+      "repeat": "ab_40",
+      "repeat_capacity": 1,
+      "row": 1,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "check 41",
+      "type": "checkbox",
+      "source": "derived",
+      "choices": {
+        "yes": "/yes",
+        "no": "/no"
+      },
+      "page": 9,
+      "label": "Line 41: Yes or No",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": "ab_has_41",
+      "ingest_key": null,
+      "binding": null,
+      "repeat": null,
+      "repeat_capacity": null,
+      "row": null,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "41 Inventory",
+      "type": "text",
+      "source": "asked",
+      "page": 9,
+      "label": "Line 41: Describe",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_41[].description",
+      "repeat": "ab_41",
+      "repeat_capacity": 1,
+      "row": 1,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "undefined_128",
+      "type": "text",
+      "source": "asked",
+      "page": 9,
+      "label": "Line 41: Current value of the portion you own",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_41[].value",
+      "repeat": "ab_41",
+      "repeat_capacity": 1,
+      "row": 1,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "check 43",
+      "type": "checkbox",
+      "source": "derived",
+      "choices": {
+        "yes": "/yes",
+        "no": "/no"
+      },
+      "page": 9,
+      "label": "Line 43: Yes or No",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": "ab_has_43",
+      "ingest_key": null,
+      "binding": null,
+      "repeat": null,
+      "repeat_capacity": null,
+      "row": null,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "43 Identifiable information",
+      "type": "text",
+      "source": "asked",
+      "page": 9,
+      "label": "Line 43: Describe",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_43[].personal_description",
+      "repeat": "ab_43",
+      "repeat_capacity": 1,
+      "row": 1,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "undefined_135",
+      "type": "text",
+      "source": "asked",
+      "page": 9,
+      "label": "Line 43: Current value of the portion you own",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_43[].value",
+      "repeat": "ab_43",
+      "repeat_capacity": 1,
+      "row": 1,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "check 43_1",
+      "type": "checkbox",
+      "source": "asked",
+      "choices": {
+        "no": "/no",
+        "yes": "/yes"
+      },
+      "page": 9,
+      "label": "Line 43: Do your lists include personally identifiable information",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_43[].has_personal_info",
+      "repeat": "ab_43",
+      "repeat_capacity": 1,
+      "row": 1,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "check 46",
+      "type": "checkbox",
+      "source": "derived",
+      "choices": {
+        "yes": "/yes",
+        "no": "/no"
+      },
+      "page": 9,
+      "label": "Line 46: Yes or No",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": "ab_has_46",
+      "ingest_key": null,
+      "binding": null,
+      "repeat": null,
+      "repeat_capacity": null,
+      "row": null,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "check 47",
+      "type": "checkbox",
+      "source": "derived",
+      "choices": {
+        "yes": "/On",
+        "no": "/no"
+      },
+      "page": 9,
+      "label": "Line 47: Yes or No",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": "ab_has_47",
+      "ingest_key": null,
+      "binding": null,
+      "repeat": null,
+      "repeat_capacity": null,
+      "row": null,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "47 Farm Animals",
+      "type": "text",
+      "source": "asked",
+      "page": 9,
+      "label": "Line 47: Describe",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_47[].description",
+      "repeat": "ab_47",
+      "repeat_capacity": 1,
+      "row": 1,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "undefined_144",
+      "type": "text",
+      "source": "asked",
+      "page": 9,
+      "label": "Line 47: Current value of the portion you own",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_47[].value",
+      "repeat": "ab_47",
+      "repeat_capacity": 1,
+      "row": 1,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "check 48",
+      "type": "checkbox",
+      "source": "derived",
+      "choices": {
+        "yes": "/yes",
+        "no": "/no"
+      },
+      "page": 10,
+      "label": "Line 48: Yes or No",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": "ab_has_48",
+      "ingest_key": null,
+      "binding": null,
+      "repeat": null,
+      "repeat_capacity": null,
+      "row": null,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "48 Cropseither growing or harvested",
+      "type": "text",
+      "source": "asked",
+      "page": 10,
+      "label": "Line 48: Describe",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_48[].description",
+      "repeat": "ab_48",
+      "repeat_capacity": 1,
+      "row": 1,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "undefined_145",
+      "type": "text",
+      "source": "asked",
+      "page": 10,
+      "label": "Line 48: Current value of the portion you own",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_48[].value",
+      "repeat": "ab_48",
+      "repeat_capacity": 1,
+      "row": 1,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "check 49",
+      "type": "checkbox",
+      "source": "derived",
+      "choices": {
+        "yes": "/yes",
+        "no": "/no"
+      },
+      "page": 10,
+      "label": "Line 49: Yes or No",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": "ab_has_49",
+      "ingest_key": null,
+      "binding": null,
+      "repeat": null,
+      "repeat_capacity": null,
+      "row": null,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "49",
+      "type": "text",
+      "source": "asked",
+      "page": 10,
+      "label": "Line 49: Describe",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_49[].description",
+      "repeat": "ab_49",
+      "repeat_capacity": 1,
+      "row": 1,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "undefined_148",
+      "type": "text",
+      "source": "asked",
+      "page": 10,
+      "label": "Line 49: Current value of the portion you own",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_49[].value",
+      "repeat": "ab_49",
+      "repeat_capacity": 1,
+      "row": 1,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "check 50",
+      "type": "checkbox",
+      "source": "derived",
+      "choices": {
+        "yes": "/yes",
+        "no": "/no"
+      },
+      "page": 10,
+      "label": "Line 50: Yes or No",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": "ab_has_50",
+      "ingest_key": null,
+      "binding": null,
+      "repeat": null,
+      "repeat_capacity": null,
+      "row": null,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "50",
+      "type": "text",
+      "source": "asked",
+      "page": 10,
+      "label": "Line 50: Describe",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_50[].description",
+      "repeat": "ab_50",
+      "repeat_capacity": 1,
+      "row": 1,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "undefined_151",
+      "type": "text",
+      "source": "asked",
+      "page": 10,
+      "label": "Line 50: Current value of the portion you own",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_50[].value",
+      "repeat": "ab_50",
+      "repeat_capacity": 1,
+      "row": 1,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "check 51",
+      "type": "checkbox",
+      "source": "derived",
+      "choices": {
+        "yes": "/On",
+        "no": "/no"
+      },
+      "page": 10,
+      "label": "Line 51: Yes or No",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": "ab_has_51",
+      "ingest_key": null,
+      "binding": null,
+      "repeat": null,
+      "repeat_capacity": null,
+      "row": null,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "51",
+      "type": "text",
+      "source": "asked",
+      "page": 10,
+      "label": "Line 51: Describe",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_51[].description",
+      "repeat": "ab_51",
+      "repeat_capacity": 1,
+      "row": 1,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "undefined_153",
+      "type": "text",
+      "source": "asked",
+      "page": 10,
+      "label": "Line 51: Current value of the portion you own",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": null,
+      "ingest_key": null,
+      "binding": "assets.line_51[].value",
+      "repeat": "ab_51",
+      "repeat_capacity": 1,
+      "row": 1,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "undefined_13",
+      "type": "text",
+      "source": "derived",
+      "page": 2,
+      "label": "Part 1 total: real estate",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": "ab_line_2",
       "ingest_key": null,
       "binding": null,
       "repeat": null,
@@ -131,48 +4514,6 @@
       "legal_review": false
     },
     {
-      "pdf_field": "Check 17",
-      "type": "checkbox",
-      "source": "derived",
-      "choices": {
-        "yes": "/yes",
-        "no": "/no"
-      },
-      "page": 5,
-      "label": "Deposits of money",
-      "required": false,
-      "conditional_on": null,
-      "value": null,
-      "rule": "has_bank_accounts",
-      "ingest_key": null,
-      "binding": null,
-      "repeat": null,
-      "repeat_capacity": null,
-      "row": null,
-      "legal_review": false
-    },
-    {
-      "pdf_field": "check 21",
-      "type": "checkbox",
-      "source": "derived",
-      "choices": {
-        "yes": "/yes",
-        "no": "/no"
-      },
-      "page": 6,
-      "label": "Retirement or pension accounts",
-      "required": false,
-      "conditional_on": null,
-      "value": null,
-      "rule": "has_retirement_accounts",
-      "ingest_key": null,
-      "binding": null,
-      "repeat": null,
-      "repeat_capacity": null,
-      "row": null,
-      "legal_review": false
-    },
-    {
       "pdf_field": "undefined_124",
       "type": "text",
       "source": "derived",
@@ -190,19 +4531,15 @@
       "legal_review": false
     },
     {
-      "pdf_field": "check 53",
-      "type": "checkbox",
+      "pdf_field": "undefined_143",
+      "type": "text",
       "source": "derived",
-      "choices": {
-        "yes": "/On",
-        "no": "/no"
-      },
-      "page": 10,
-      "label": "Do you have other property of any kind you did not already list?",
+      "page": 9,
+      "label": "Part 5 total: business-related property",
       "required": false,
       "conditional_on": null,
       "value": null,
-      "rule": "has_other_assets",
+      "rule": "ab_line_45",
       "ingest_key": null,
       "binding": null,
       "repeat": null,
@@ -211,15 +4548,15 @@
       "legal_review": false
     },
     {
-      "pdf_field": "53 Examples Season tickets country club membership",
+      "pdf_field": "undefined_154",
       "type": "text",
       "source": "derived",
       "page": 10,
-      "label": "Line 53 Other property: Give specific information.",
+      "label": "Part 6 total: farm and fishing property",
       "required": false,
       "conditional_on": null,
       "value": null,
-      "rule": "other_asset_descriptions",
+      "rule": "ab_line_52",
       "ingest_key": null,
       "binding": null,
       "repeat": null,
@@ -313,6 +4650,40 @@
       "legal_review": false
     },
     {
+      "pdf_field": "undefined_163",
+      "type": "text",
+      "source": "derived",
+      "page": 10,
+      "label": "Part 5: Total business-related property, line 45",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": "total_business_property",
+      "ingest_key": null,
+      "binding": null,
+      "repeat": null,
+      "repeat_capacity": null,
+      "row": null,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "undefined_164",
+      "type": "text",
+      "source": "derived",
+      "page": 10,
+      "label": "Part 6: Total farm- and fishing-related property, line 52",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": "total_farm_property",
+      "ingest_key": null,
+      "binding": null,
+      "repeat": null,
+      "repeat_capacity": null,
+      "row": null,
+      "legal_review": false
+    },
+    {
       "pdf_field": "undefined_165",
       "type": "text",
       "source": "derived",
@@ -356,6 +4727,86 @@
       "conditional_on": null,
       "value": null,
       "rule": "total_assets",
+      "ingest_key": null,
+      "binding": null,
+      "repeat": null,
+      "repeat_capacity": null,
+      "row": null,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "Check 17",
+      "type": "checkbox",
+      "source": "derived",
+      "choices": {
+        "yes": "/yes",
+        "no": "/no"
+      },
+      "page": 5,
+      "label": "Deposits of money",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": "has_bank_accounts",
+      "ingest_key": null,
+      "binding": null,
+      "repeat": null,
+      "repeat_capacity": null,
+      "row": null,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "check 21",
+      "type": "checkbox",
+      "source": "derived",
+      "choices": {
+        "yes": "/yes",
+        "no": "/no"
+      },
+      "page": 6,
+      "label": "Retirement or pension accounts",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": "has_retirement_accounts",
+      "ingest_key": null,
+      "binding": null,
+      "repeat": null,
+      "repeat_capacity": null,
+      "row": null,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "check 53",
+      "type": "checkbox",
+      "source": "derived",
+      "choices": {
+        "yes": "/On",
+        "no": "/no"
+      },
+      "page": 10,
+      "label": "Do you have other property of any kind you did not already list?",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": "has_other_assets",
+      "ingest_key": null,
+      "binding": null,
+      "repeat": null,
+      "repeat_capacity": null,
+      "row": null,
+      "legal_review": false
+    },
+    {
+      "pdf_field": "53 Examples Season tickets country club membership",
+      "type": "text",
+      "source": "derived",
+      "page": 10,
+      "label": "Line 53 Other property: Give specific information.",
+      "required": false,
+      "conditional_on": null,
+      "value": null,
+      "rule": "other_asset_descriptions",
       "ingest_key": null,
       "binding": null,
       "repeat": null,

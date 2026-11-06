@@ -36,6 +36,7 @@ from apps.intake.asset_lines import (
     PROPERTY_KIND_WORDS,
     PROPERTY_KINDS,
     WHO_WORDS,
+    one_read_of_assets,
     ordered_assets,
     rows_on,
 )
@@ -113,6 +114,11 @@ def _interest(row: AssetInfo) -> str:
 # slot's choices take; where, what and interest are the words a sheet prints for several boxes.
 ASSET_CELLS: dict[str, Callable[[AssetInfo], str]] = {
     "description": lambda row: row.description or "",
+    # Line 43's Describe sits under the Yes of "Do your lists include personally identifiable
+    # information" (3b spec §5), so a description kept from before a No doesn't print.
+    "personal_description": lambda row: (
+        (row.description or "") if row.get_details().get("has_personal_info") else ""
+    ),
     "value": lambda row: _money_or_blank(row.current_value),
     "entire": lambda row: _money_or_blank(row.entire_value),
     **{
@@ -506,6 +512,12 @@ def resolve_parts(schema: FormSchema, session: IntakeSession) -> dict:
     "rows": [{"line": "3.5", "cells": [<one per column>]}]}, plus "line_width": <points> only
     when the sheet's isn't 36.
     """
+    # A/B's rules each ask for the rows: measured at 0.62 s more with 20 rows, a read per rule.
+    with one_read_of_assets():
+        return _resolve_parts(schema, session)
+
+
+def _resolve_parts(schema: FormSchema, session: IntakeSession) -> dict:
     out: dict[str, str] = {}
 
     from apps.documents.models import IngestedAggregate

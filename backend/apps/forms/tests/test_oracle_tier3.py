@@ -484,7 +484,11 @@ EXPECTED = {
             "undefined_26": "4300.00",
             "15 amount": "1900.00",
             "undefined_124": "557.00",
+            "undefined_143": "460.00",  # line 45: he answers line 37 Yes
+            "undefined_154": "",  # line 52: he answers line 46 No, which skips it
             "undefined_159": "0.00",
+            "undefined_163": "460.00",  # line 59 copies line 45
+            "undefined_164": "0.00",  # line 60 prints under line 46's No
             "undefined_166": "7217.00",
             "undefined_167": "7217.00",
         },

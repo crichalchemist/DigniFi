@@ -10,6 +10,9 @@ name a sentinel of its own, through its own key, and reads each back; it ticks e
 widget of a shared box name alone, one round per position. No database is needed.
 """
 
+import json
+import re
+from decimal import Decimal
 from functools import cache
 from itertools import islice, product
 from pathlib import Path
@@ -21,10 +24,13 @@ from django.conf import settings
 
 from apps.forms.registry import get_all_form_types
 from apps.forms.schema import load_schema
+from apps.forms.services.fill_resolver import resolve_binding
 from apps.forms.services.pdf_filler import PDFFormFiller, ValueTooLong
 from apps.forms.services.widgets import template_widgets
 from apps.forms.tests.oracle import case_param
 from apps.forms.tests.pdf_readback import read_drawn
+from apps.intake.asset_lines import PROPERTY_KINDS
+from apps.intake.models import AssetInfo
 
 TIER = "1"
 
@@ -294,6 +300,89 @@ def test_a_tick_never_spills_into_a_box_the_filer_left_blank(form_type):
         "spill: a tick prints in a box left blank, as (position, bit, side, name, page, tag):"
         f" {stray}"
     )
+
+
+_ASSET_BINDING = re.compile(r"assets\.line_(\d+)(?:_(\w+))?\[\]\.(\w+)")
+
+
+def _schedule_a_b_slots():
+    return [
+        f for f in load_schema("schedule_a_b").fields if (f.binding or "").startswith("assets.")
+    ]
+
+
+def _schedule_a_b_bindings():
+    schema = load_schema("schedule_a_b")
+    columns = (
+        binding
+        for group in schema.groups.values()
+        for column in group.sheet.columns
+        for binding in (column.binding, *(column.covers or ()))
+    )
+    return sorted({*(f.binding for f in _schedule_a_b_slots()), *columns})
+
+
+@pytest.mark.parametrize("binding", _schedule_a_b_bindings())
+def test_every_schedule_a_b_binding_reads_the_row_it_names(binding):
+    # The sentinels above reach the filler without resolving a binding, and the startup check
+    # looks only at a binding's namespace, so a binding spelled wrong would first show at
+    # Generate. Each must read a filled-in row of its own line, and print something for it.
+    key, kind, _ = _ASSET_BINDING.fullmatch(binding).groups()
+    row = AssetInfo(
+        ab_line=key,
+        description="Words",
+        current_value=Decimal("1.00"),
+        entire_value=Decimal("2.00"),
+        details=json.dumps(
+            {
+                **dict.fromkeys(
+                    (
+                        "street",
+                        "street_2",
+                        "city",
+                        "state",
+                        "zip",
+                        "county",
+                        "other_kind",
+                        "nature",
+                        "other_info",
+                        "make",
+                        "model",
+                        "year",
+                        "mileage",
+                        "percent",
+                        "beneficiary",
+                    ),
+                    "Words",
+                ),
+                "kind": kind,
+                "who": "only_you",
+                "community": True,
+                "has_personal_info": True,
+                "property_kinds": list(PROPERTY_KINDS),
+            }
+        ),
+    )
+    (cell,) = resolve_binding(binding, None, [row])
+    assert cell
+
+
+def test_every_schedule_a_b_slot_binds_the_line_and_row_its_box_is_on():
+    # The template's names mislead (3.2's Make box is "If you own or have more than one describe
+    # here"), so a box is held to the line and row the index read from the page. A line whose
+    # kind picks the row, or whose rows the index doesn't number, is held to its line alone.
+    index = json.loads((settings.FORM_INDEX_DIRECTORY / "form_b106ab.index.json").read_text())
+    lines = {}
+    for row in index:
+        lines.setdefault(row["full_name"], set()).add(row["line"].rstrip("."))
+    wrong = []
+    for f in _schedule_a_b_slots():
+        key, kind, _ = _ASSET_BINDING.fullmatch(f.binding).groups()
+        for line in lines[f.pdf_field]:
+            on_line, _, row = line.partition(".")
+            if on_line != key or (row and not kind and int(row) != f.row):
+                wrong.append((f.pdf_field, line, f.binding, f.row))
+    assert wrong == []
 
 
 def test_every_checkbox_binding_maps_its_answers_to_a_box():

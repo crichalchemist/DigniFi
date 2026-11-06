@@ -5,6 +5,8 @@ rows its slots hold and, for a line that asks which kind, its kinds and each kin
 Lines 37 and 46 are gates: the lines after them are shown only under a Yes.
 """
 
+from contextlib import contextmanager
+from contextvars import ContextVar
 from dataclasses import dataclass
 from decimal import Decimal
 
@@ -137,6 +139,21 @@ def shown_lines(answers: dict[str, str]) -> list[Line]:
     return [line for line in LINES if line.gate is None or answers.get(line.gate) == "yes"]
 
 
+# Session id → its rows, while one_read_of_assets is open. Kept here and not on the session, so
+# a session held across a save reads what the save stored.
+_ONE_READ: ContextVar[dict | None] = ContextVar("one_read_of_assets", default=None)
+
+
+@contextmanager
+def one_read_of_assets():
+    """Within the block, ordered_assets reads each session's rows once: a form's rules each ask."""
+    token = _ONE_READ.set({})
+    try:
+        yield
+    finally:
+        _ONE_READ.reset(token)
+
+
 def ordered_assets(session) -> list:
     """The session's rows in catalog order, then id; an old row with no line sorts first.
 
@@ -148,7 +165,13 @@ def ordered_assets(session) -> list:
             return -1
         return _POSITION.get(row.ab_line, len(LINES))
 
-    return sorted(session.assets.all(), key=lambda row: (position(row), row.pk))
+    held = _ONE_READ.get()
+    if held is not None and session.pk in held:
+        return held[session.pk]
+    rows = sorted(session.assets.all(), key=lambda row: (position(row), row.pk))
+    if held is not None:
+        held[session.pk] = rows
+    return rows
 
 
 def rows_on(rows: list, key: str, kind: str | None = None) -> list:
@@ -157,6 +180,26 @@ def rows_on(rows: list, key: str, kind: str | None = None) -> list:
     if kind is None:
         return on_line
     return [row for row in on_line if row.get_details().get("kind") == kind]
+
+
+def rows_under_gate(rows: list, gate: str) -> list:
+    """The rows on the lines a gate shows; none is how the form reads the gate's No."""
+    keys = {line.key for line in LINES if line.gate == gate}
+    return [row for row in rows if row.ab_line in keys]
+
+
+def printed_answer(rows: list, key: str) -> str:
+    """The Yes or No a line's box prints, read from the rows (3b spec §8.1); "" when a gate hid it.
+
+    A gate says Yes with a row under it. Complete has refused any row that disagrees with the
+    stored answers by the time a form prints.
+    """
+    line = LINE_BY_KEY[key]
+    if line.shape == "gate":
+        return "yes" if rows_under_gate(rows, key) else "no"
+    if line.gate is not None and not rows_under_gate(rows, line.gate):
+        return ""
+    return "yes" if rows_on(rows, key) else "no"
 
 
 def part_total(rows: list, part: int) -> Decimal:

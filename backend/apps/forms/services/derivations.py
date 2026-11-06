@@ -24,7 +24,14 @@ from apps.eligibility.cmi import (
     is_above_median,
     spouse_monthly_income,
 )
-from apps.intake.asset_lines import ordered_assets, part_total, rows_on
+from apps.intake.asset_lines import (
+    LINES,
+    ordered_assets,
+    part_total,
+    printed_answer,
+    rows_on,
+    rows_under_gate,
+)
 from apps.intake.household import count_family_size, dependents
 from apps.intake.income import (
     floored_net,
@@ -281,6 +288,28 @@ def _total_business_property(session: IntakeSession) -> str:
 def _total_farm_property(session: IntakeSession) -> str:
     """Line 52, the total of Part 6."""
     return _parts_total(session, 6, 6)
+
+
+def _ab_line_2(session: IntakeSession) -> str:
+    """Line 2: blank under line 1's "No. Go to Part 2", though line 55 still prints (§8.1)."""
+    return _total_real_property(session) if rows_on(ordered_assets(session), "1") else ""
+
+
+def _ab_line_45(session: IntakeSession) -> str:
+    """Line 45: blank under line 37's "No. Go to Part 6", though line 59 still prints (§8.1)."""
+    return (
+        _total_business_property(session) if rows_under_gate(ordered_assets(session), "37") else ""
+    )
+
+
+def _ab_line_52(session: IntakeSession) -> str:
+    """Line 52: blank under line 46's "No. Go to Part 7", though line 60 still prints (§8.1)."""
+    return _total_farm_property(session) if rows_under_gate(ordered_assets(session), "46") else ""
+
+
+def _ab_answer(key: str) -> Callable[[IntakeSession], str]:
+    """A line's Yes/No box."""
+    return lambda session: printed_answer(ordered_assets(session), key)
 
 
 def _other_asset_descriptions(session: IntakeSession) -> str:
@@ -840,8 +869,10 @@ DERIVATIONS: dict[str, Callable[[IntakeSession], str]] = {
     "other_asset_descriptions": _other_asset_descriptions,
     "total_business_property": _total_business_property,
     "total_farm_property": _total_farm_property,
-    "has_real_property": lambda s: _yes_if_on_lines(s, "1"),
-    "has_vehicles": lambda s: _yes_if_on_lines(s, "3"),
+    "ab_line_2": _ab_line_2,
+    "ab_line_45": _ab_line_45,
+    "ab_line_52": _ab_line_52,
+    **{f"ab_has_{line.key}": _ab_answer(line.key) for line in LINES},
     "has_bank_accounts": lambda s: _yes_if_on_lines(s, "17"),
     "has_retirement_accounts": lambda s: _yes_if_on_lines(s, "21"),
     "has_other_assets": lambda s: _yes_if_on_lines(s, "53"),
@@ -1124,6 +1155,12 @@ RULE_FIXES: dict[str, dict[str, str]] = {
     "total_vehicles": {"step": "assets"},
     "total_household_items": {"step": "assets"},
     "total_financial_assets": {"step": "assets"},
+    "total_business_property": {"step": "assets"},
+    "total_farm_property": {"step": "assets"},
+    "ab_line_2": {"step": "assets"},
+    "ab_line_45": {"step": "assets"},
+    "ab_line_52": {"step": "assets"},
+    **{f"ab_has_{line.key}": {"step": "assets"} for line in LINES},
     "other_asset_descriptions": {"step": "assets"},
     # Amounts Owed
     "total_secured_debts": {"step": "debts"},

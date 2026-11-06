@@ -3,17 +3,19 @@ Schedule A/B: each part's total prints on its own line and again on the summary,
 property question answers Yes only for the kind of property the filer listed.
 
 Business intent: the totals are what the trustee reads first, and 106Sum copies lines 55,
-62 and 63. Until step 3 asks for each item's row, the boxes that need a row stay blank
-(step 2 spec §6.1 B5, Appendix A.9, owner Q8 and Q9).
+62 and 63 (step 2 spec §6.1 B5, Appendix A.9, owner Q8 and Q9; 3b spec §8).
 """
 
 from decimal import Decimal
 
 import pytest
 from django.contrib.auth import get_user_model
+from django.db import connection
+from django.test.utils import CaptureQueriesContext
 
 from apps.districts.models import District
 from apps.forms.schema import load_schema
+from apps.forms.services.derivations import RULE_FIXES
 from apps.forms.services.fill_resolver import resolve
 from apps.forms.services.pdf_filler import PDFFormFiller
 from apps.forms.tests.pdf_readback import read_drawn
@@ -63,18 +65,20 @@ LINE_4_QUESTION = (
     "Examples Boats trailers motors personal watercraft fishing vessels snowmobiles "
     "motorcycle accessories"
 )
-# Boxes that need a row, or a figure, the intake never asks for (step 3).
+# Boxes no row of ASSETS feeds.
 LEFT_BLANK = {
-    "12",  # line 1.2, a second property's street address
-    "16 Cash amount",  # line 16, cash
-    "Check 16",  # line 16's question
-    LINE_4_QUESTION,  # boats and other recreational vehicles (spec §10)
-    "6 check",  # line 6's question, household goods
+    "12",  # line 1.2: ASSETS holds one property
+    "16 Cash amount",  # line 16: ASSETS holds no cash
     "undefined_155",  # line 53's amounts
     "undefined_156",
     "undefined_157",
-    "undefined_163",  # line 59, Part 5: business property
-    "undefined_164",  # line 60, Part 6: farm and fishing property
+}
+# Lines ASSETS has nothing on, which say so rather than print nothing (3b spec §8.1).
+SAYS_NOTHING_THERE = {
+    "Check 16": {"/no"},  # line 16's question
+    LINE_4_QUESTION: {"/No_2"},  # boats and other recreational vehicles
+    "undefined_163": {"0.00"},  # line 59, Part 5: business property
+    "undefined_164": {"0.00"},  # line 60, Part 6: farm and fishing property
 }
 
 
@@ -155,10 +159,13 @@ def test_the_summary_form_copies_the_property_totals_schedule_a_b_prints(session
 @pytest.mark.slow
 def test_a_filer_with_no_property_gets_zero_totals_and_no_on_every_question(session):
     # The filer finished the intake with an empty list, which is "none" (Ruling T0-e,
-    # owner Q8), so the totals print 0.00 and every question says No.
+    # owner Q8), so the totals print 0.00 and every question says No. Line 1's No skips
+    # line 2, the one total the form tells such a filer to leave (3b spec §8.1).
     filled = _filled(session)
 
-    assert {box: filled.get(box) for box in TOTALS} == {box: {"0.00"} for box in TOTALS}
+    assert {box: filled.get(box) for box in TOTALS} == {
+        box: set() if box == "undefined_13" else {"0.00"} for box in TOTALS
+    }
     assert {box: filled.get(box) for box, _, _ in QUESTIONS.values()} == {
         box: {no} for box, _, no in QUESTIONS.values()
     }
@@ -208,7 +215,7 @@ def test_other_property_is_described_in_the_order_the_filer_listed_it(session):
 
 
 @pytest.mark.slow
-def test_lines_the_intake_never_asks_print_nothing(session):
+def test_a_box_no_row_feeds_prints_nothing(session):
     # Every kind of property is listed, so a box still bound to a total, or to an
     # answer about one, would print. The account totals once filled the second
     # property's street address (line 1.2) and the cash line (16).
@@ -218,3 +225,41 @@ def test_lines_the_intake_never_asks_print_nothing(session):
     filled = _filled(session)
 
     assert {box: filled.get(box) for box in LEFT_BLANK} == {box: set() for box in LEFT_BLANK}
+    assert {box: filled.get(box) for box in SAYS_NOTHING_THERE} == SAYS_NOTHING_THERE
+    assert filled.get("6 check") == {"/yes"}  # household goods, which ASSETS does list
+
+
+def test_a_form_reads_the_asset_rows_once_however_many_rules_ask(session):
+    # Each rule reads through ordered_assets, and each row decrypts on every read: a read per
+    # rule cost 0.62 s more with 20 rows on Generate, which holds a sync worker.
+    _asset(session, "vehicle", "2.00")
+
+    with CaptureQueriesContext(connection) as queries:
+        resolve(load_schema("schedule_a_b"), session)
+
+    assert len([q for q in queries if "asset_info" in q["sql"]]) == 1
+
+
+def test_a_form_drawn_after_a_save_prints_what_the_save_stored(session):
+    # The one read lasts one resolve: nothing outlives it on a session held across a save.
+    _asset(session, "vehicle", "2.00")
+    resolve(load_schema("schedule_a_b"), session)
+
+    _asset(session, "vehicle", "4.00")
+
+    assert resolve(load_schema("schedule_a_b"), session)["undefined_26"] == "6.00"
+
+
+def test_the_business_and_farm_totals_print_on_their_own_lines_and_the_summary(session):
+    # Lines 59 and 60 had no binding before 3b, so a filer's business property reached line 63
+    # with no line of the summary adding up to it. A wrong figure links to the Assets step.
+    AssetInfo.objects.create(session=session, ab_line="38", current_value=Decimal("7.00"))
+    AssetInfo.objects.create(session=session, ab_line="47", current_value=Decimal("11.00"))
+
+    printed = resolve(load_schema("schedule_a_b"), session)
+
+    assert printed["undefined_143"] == printed["undefined_163"] == "7.00"
+    assert printed["undefined_154"] == printed["undefined_164"] == "11.00"
+    assert printed["undefined_166"] == printed["undefined_167"] == "18.00"
+    assert RULE_FIXES["total_business_property"] == {"step": "assets"}
+    assert RULE_FIXES["total_farm_property"] == {"step": "assets"}
