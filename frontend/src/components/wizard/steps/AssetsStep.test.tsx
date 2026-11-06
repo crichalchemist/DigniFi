@@ -832,11 +832,19 @@ describe('AssetsStep', () => {
       for (const line of linesOf(3)) if (line.key !== '9') say(line.key, 'no');
 
       expect(latest.valid).toBe(false);
-      expect(screen.getByRole('alert')).toHaveTextContent(NEEDS_A_YES_OR_NO('9'));
+      expect(screen.getByRole('status')).toHaveTextContent(NEEDS_A_YES_OR_NO('9'));
 
       say('9', 'no');
-      expect(screen.queryByRole('alert')).toBeNull();
+      expect(screen.getByRole('status')).toBeEmptyDOMElement();
       expect(latest.valid).toBe(true);
+    });
+
+    // The sentence can quote a row's name as it's typed, so an alert would talk over every keystroke.
+    it('never interrupts a screen reader with the sentence, which can quote what is being typed', () => {
+      const row = makeRow({ ab_line: '6', description: 'Sof', current_value: null });
+      render(<Walk part={3} rows={[row]} answers={{ '6': 'yes' }} />);
+      expect(screen.getByRole('status')).toHaveTextContent('"Sof"');
+      expect(screen.queryByRole('alert')).toBeNull();
     });
 
     it('marks each line as required, gates too, as the row questions are', () => {
@@ -850,14 +858,16 @@ describe('AssetsStep', () => {
     it('says the sentence once for a gate with every line under it No', () => {
       const answers: Answers = { ...allNo(5), '37': 'yes' };
       render(<Walk part={5} answers={answers} />);
-      expect(screen.getAllByRole('alert')).toHaveLength(1);
+      expect(screen.getAllByRole('status')).toHaveLength(1);
+      expect(screen.getByRole('status').querySelectorAll('.info-message')).toHaveLength(1);
+      expect(screen.queryByRole('alert')).toBeNull();
     });
 
     it('prints what the filer typed as it is, whatever marks it holds', () => {
       for (const typed of ['TV $& stand', '$$', "$'", '{key}']) {
         const row = makeRow({ ab_line: '6', description: typed, current_value: null });
         const { unmount } = render(<Walk part={3} rows={[row]} answers={{ '6': 'yes' }} />);
-        expect(screen.getByRole('alert')).toHaveTextContent(
+        expect(screen.getByRole('status')).toHaveTextContent(
           `Line 6 needs more about "${typed}" on the Assets step.`
         );
         unmount();
@@ -956,7 +966,7 @@ describe('AssetsStep', () => {
     it('has no axe violations with the sentence showing', { timeout: 60_000 }, async () => {
       const { container } = render(<Walk part={3} />);
       say('6', 'no');
-      expect(screen.getByRole('alert')).toBeInTheDocument();
+      expect(screen.getByRole('status')).toBeInTheDocument();
       expect(await axe(container)).toHaveNoViolations();
     });
   });

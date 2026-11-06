@@ -228,12 +228,16 @@ export function AssetsStep({
         </div>
       ))}
 
-      {/* After the lines, not at the line: the last answer is pressed down here, beside Continue */}
-      {gap !== null && partIsStarted && (
-        <div className="info-box" role="alert">
-          <p className="info-message">{gap}</p>
-        </div>
-      )}
+      {/* After the lines, not at the line: the last answer is pressed down here, beside Continue.
+          A status, not an alert: the sentence can quote a row's name while it's typed. It stays
+          mounted because a screen reader may not read a status region that arrives with its text. */}
+      <div role="status">
+        {gap !== null && partIsStarted && (
+          <div className="info-box">
+            <p className="info-message">{gap}</p>
+          </div>
+        )}
+      </div>
 
       <UPLDisclaimer text={UPL_EXEMPTION_DISCLAIMER} variant="inline" />
     </div>
