@@ -167,7 +167,7 @@ def _maria_torres() -> dict:
             _asset("16", 40),
             _asset("17", 340, "JPMorgan Chase", kind="checking"),
             # Her insurance policy has no cash value: typed $0, not left blank.
-            _asset("31", 0, "Insurance policy"),
+            _asset("31", 0, "Millbrook Mutual Life"),
         ],
         "debts": [
             {
@@ -407,8 +407,10 @@ def _priya_sharma() -> dict:
             _asset("17", 1900, "JPMorgan Chase", kind="checking"),
             _asset("17", 8500, "JPMorgan Chase", kind="savings"),
             _asset("21", 31000, "Vanguard", kind="401k"),
-            _asset("31", 0, "Term life insurance", beneficiary="Spouse"),
-            _asset("31", 0, "Long-term disability insurance"),
+            # Line 31's text box is the form's "Company name". Her term life and her disability
+            # policy are with two companies, and the form has no box for the type of policy.
+            _asset("31", 0, "Wrenfield Life", beneficiary="Spouse"),
+            _asset("31", 0, "Alderbrook Assurance"),
         ],
         "debts": [
             {

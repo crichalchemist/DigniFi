@@ -93,6 +93,31 @@ COLUMN_B_ZEROS = [
     "Debto2.Quest10A",
 ]
 
+LINE_4_QUESTION = (
+    "Examples Boats trailers motors personal watercraft fishing vessels snowmobiles "
+    "motorcycle accessories"
+)
+
+
+def _no_lines(*boxes):
+    """Schedule A/B lines the persona answered No: every one of these boxes' No exports /no."""
+    return dict.fromkeys(boxes, "/no")
+
+
+def _own_car(make, model, year, miles, value):
+    """Schedule A/B 3.1 for a car owned outright and alone: the same figure in both value boxes."""
+    return {
+        "Check 3": "/yes",
+        "3 1": make,
+        "3 2": model,
+        "3 3": year,
+        "3 4": miles,
+        "Who has interest in property 4": "/Debtor 1",
+        "undefined_14": value,
+        "undefined_15": value,
+    }
+
+
 # persona → form_type → full name → printed value
 EXPECTED = {
     "maria": {
@@ -122,6 +147,30 @@ EXPECTED = {
             "undefined_159": "0.00",
             "undefined_166": "7930.00",
             "undefined_167": "7930.00",
+            # Her lines, PS:154-171. Line 31 is a typed $0: it prints, and the box is the company's.
+            **_own_car("Honda", "Civic", "2015", "120000", "6500.00"),
+            "Check 2": "/On",
+            LINE_4_QUESTION: "/No_2",
+            "6 check": "/yes",
+            "6 description": "Beds, sofa, kitchen table, dishes",
+            "6 description amount": "600.00",
+            "7 description": "Old laptop, cell phone, 32-inch TV",
+            "7 description amount": "200.00",
+            "11 description": "Everyday clothes and shoes",
+            "11 description amount": "250.00",
+            "Check 16": "/yes",
+            "16 Cash amount": "40.00",
+            "Check 17": "/yes",
+            "17.1 Checking account": "JPMorgan Chase",
+            "17.1 Checking amount": "340.00",
+            "17.2 Checking account": "",
+            "check 31": "/yes",
+            "Company name 1": "Millbrook Mutual Life",
+            "Beneficiary 1": "",
+            "undefined_109": "0.00",
+            "undefined_110": "",
+            **_no_lines("check 21", "check 22", "check 28", "check 29", "check 37", "check 46"),
+            **_no_lines("check 53"),
         },
         "form_106sum": {
             "1b": "7930.00",
@@ -197,6 +246,21 @@ EXPECTED = {
             "undefined_159": "0.00",
             "undefined_166": "16440.00",
             "undefined_167": "16440.00",
+            # His lines, PS:394-399. His "Wallet" under line 16 isn't stored: the line has no text box.
+            **_own_car("Toyota", "Camry", "2019", "78000", "14000.00"),
+            "6 description": "Bed, couch, table, kitchenware (secondhand)",
+            "6 description amount": "500.00",
+            "7 description": "TV, laptop, cell phone",
+            "7 description amount": "400.00",
+            "11 description": "Everyday clothes and work clothes",
+            "11 description amount": "300.00",
+            "Check 16": "/yes",
+            "16 Cash amount": "40.00",
+            "Check 17": "/yes",
+            "17.1 Checking account": "Bank of America",
+            "17.1 Checking amount": "1200.00",
+            **_no_lines("check 21", "check 22", "check 28", "check 29", "check 31"),
+            **_no_lines("check 37", "check 46", "check 53"),
         },
         "form_106sum": {
             "1b": "16440.00",
@@ -264,6 +328,38 @@ EXPECTED = {
             "undefined_159": "0.00",
             "undefined_166": "67900.00",
             "undefined_167": "67900.00",
+            # Her lines, PS:629-637, her savings on 17.3 because the form prints 17.2 as
+            # checking (3b spec §10), and her two policies each at a typed $0.
+            **_own_car("Honda", "CR-V EX", "2021", "41000", "20500.00"),
+            "6 description": "Household goods and furniture",
+            "6 description amount": "2500.00",
+            "7 description": "Family laptop, two phones, TV",
+            "7 description amount": "1500.00",
+            "11 description": "Clothes",
+            "11 description amount": "800.00",
+            "12 description": "Wedding and engagement rings",
+            "12 description amount": "1200.00",
+            "Check 16": "/no",
+            "Check 17": "/yes",
+            "17.1 Checking account": "JPMorgan Chase",
+            "17.1 Checking amount": "1900.00",
+            "17.2 Checking account": "",
+            "17.2 Checking amount": "",
+            "17.3 Checking account": "JPMorgan Chase",
+            "17.3 Checking amount": "8500.00",
+            "check 21": "/yes",
+            "21.1 401k or similar plan": "Vanguard",
+            "21.1 401k or similar plan amount": "31000.00",
+            "check 31": "/yes",
+            "Company name 1": "Wrenfield Life",
+            "Beneficiary 1": "Spouse",
+            "undefined_109": "0.00",
+            "Company name 2": "Alderbrook Assurance",
+            "Beneficiary 2": "",
+            "undefined_110": "0.00",
+            "Company name 3": "",
+            "undefined_111": "",
+            **_no_lines("check 22", "check 28", "check 29", "check 37", "check 46", "check 53"),
         },
         "form_106sum": {
             "1b": "67900.00",
@@ -342,6 +438,36 @@ EXPECTED = {
             "undefined_159": "180000.00",
             "undefined_166": "23500.00",
             "undefined_167": "203500.00",
+            # His lines: the home is the persona with Part 1.
+            "Check 2": "/yes",
+            "1 1": "7823 S Sangamon St",
+            "City": "Chicago",
+            "State": "IL",
+            "ZIP Code": "60620",
+            "County": "Cook",
+            "Singlefamily home": "/On",
+            "the entireties or a life estate if known": "Fee simple",
+            "Who has interest in property": "/Debtor 1",
+            "undefined_2": "180000.00",
+            "undefined_3": "180000.00",
+            "undefined_13": "180000.00",
+            **_own_car("Ford", "F-150", "2012", "168000", "8000.00"),
+            "6 description": "Furniture, appliances and beds",
+            "6 description amount": "1500.00",
+            "7 description": "TV, laptop and phone",
+            "7 description amount": "400.00",
+            "11 description": "Everyday clothes and work boots",
+            "11 description amount": "300.00",
+            "12 description": "Wedding band and watch",
+            "12 description amount": "600.00",
+            "Check 16": "/yes",
+            "16 Cash amount": "60.00",
+            "17.1 Checking account": "PNC Bank",
+            "17.1 Checking amount": "640.00",
+            "21.1 401k or similar plan": "Fidelity",
+            "21.1 401k or similar plan amount": "12000.00",
+            **_no_lines("check 22", "check 28", "check 29", "check 31", "check 37", "check 46"),
+            **_no_lines("check 53"),
         },
         "form_106sum": {
             "1a": "180000.00",
@@ -424,7 +550,22 @@ EXPECTED = {
             "3 type": "",
         },
         # She walked every line and answered No to each: nothing owned, every total 0.00.
-        "schedule_a_b": {"undefined_167": "0.00"},
+        "schedule_a_b": {
+            "undefined_26": "0.00",
+            "15 amount": "0.00",
+            "undefined_124": "0.00",
+            "undefined_158": "0.00",
+            "undefined_159": "0.00",
+            "undefined_166": "0.00",
+            "undefined_167": "0.00",
+            "Check 2": "/On",
+            "undefined_13": "",
+            LINE_4_QUESTION: "/No_2",
+            **_no_lines("Check 3", "6 check", "Check 16", "Check 17", "check 21", "check 22"),
+            **_no_lines("check 28", "check 29", "check 31", "check 37", "check 46", "check 53"),
+            "check 38": "",  # under line 37's No
+            "check 47": "",  # under line 46's No
+        },
         "form_106sum": {
             "3b": "31400.00",
             "3c": "31400.00",
@@ -491,6 +632,45 @@ EXPECTED = {
             "undefined_164": "0.00",  # line 60 prints under line 46's No
             "undefined_166": "7217.00",
             "undefined_167": "7217.00",
+            # His lines, PS:1311-1320: the leased car at a typed $0, the co-owned car with both
+            # values, his share savings on 17.3 (3b spec §10), and Part 5.
+            **_own_car("Toyota", "Corolla Hybrid", "2024", "61000", "0.00"),
+            "Other information": "Leased",
+            "If you own or have more than one describe here": "Honda",
+            "1_2": "Fit",
+            "2_2": "2017",
+            "Approximate mileage_2": "96000",
+            "undefined_16": "8600.00",
+            "undefined_17": "4300.00",
+            "Who has interest in property 5": "/One of Debtors and another",
+            "6 description": "Beds, couch, table, kitchen things",
+            "6 description amount": "1200.00",
+            "7 description": "Phone, TV",
+            "7 description amount": "400.00",
+            "11 description": "Clothes",
+            "11 description amount": "300.00",
+            "Check 16": "/yes",
+            "16 Cash amount": "60.00",
+            "Check 17": "/yes",
+            "17.1 Checking account": "Harborline Bank",
+            "17.1 Checking amount": "412.00",
+            "17.2 Checking account": "",
+            "17.3 Checking account": "Prairie Line Credit Union",
+            "17.3 Checking amount": "85.00",
+            "check 37": "/yes",
+            "check 38": "/yes",
+            "38 Accounts receivable or commissions already earned": (
+                "Driving payouts already earned, not yet paid by the apps"
+            ),
+            "undefined_125": "310.00",
+            "check 40": "/yes",
+            "40 Machinery fixtures equipment and tools of your trade": (
+                "Insulated delivery bags, phone mount, dash camera"
+            ),
+            "undefined_127": "150.00",
+            **_no_lines("check 39", "check 41", "check 42", "check 43", "check 44"),
+            **_no_lines("check 46", "check 53"),
+            "check 47": "",  # under line 46's No
         },
         "form_106sum": {
             "1a": "0.00",

@@ -2,10 +2,9 @@
 
 Each row's boxes come from the field index, found by the index's `line` (1.3 and 1.3. are one
 row) and by the words printed beside each box, never by the box's name, since the template's
-names mislead: 3.2's Make box is "If you own or have more than one describe here". Every
+names mislead: 3.2's Make box is "If you own or have more than one describe here". Where the
+index gives only the line (18, 19, 42…), a column of boxes is read down the page. Every
 export state is the index's. A line the index gets wrong is fixed in this file, never there.
-
-A binding this tool doesn't write yet is listed in LATER, and keeps its addendum row.
 
 usage (from the repo root):
     python data/forms/field_index/tools/build_schedule_a_b.py
@@ -82,10 +81,73 @@ ATTR_WORDS = {
     "description": "Describe",
     "personal_description": "Describe",
     "has_personal_info": "Do your lists include personally identifiable information",
+    "percent": "% of ownership",
+    "beneficiary": "Beneficiary",
 }
-# Lines and shapes this tool writes rows for. The rest of the catalog's shapes come later.
-ROW_SHAPES = {"place", "vehicle", "vehicle_no_mileage", "item", "item_question", "cash"}
-QUESTION_SHAPES = ROW_SHAPES | {"gate"}
+# What a list line's text box asks, in the form's words.
+TEXT_WORDS = {
+    "17": "Institution name",
+    "18": "Institution or issuer name",
+    "19": "Name of entity",
+    "20": "Issuer name",
+    "21": "Institution name",
+    "22": "Institution name or individual",
+    "23": "Issuer name and description",
+    "24": "Institution name and description",
+    "28": "Give specific information",
+    "29": "Give specific information",
+    "31": "Company name",
+    "42": "Name of entity",
+    "44": "Give specific information",
+    "53": "Give specific information",
+}
+# A labelled kind → (the words beside its boxes, its sheet row's letter, its sheet's title words).
+# The letter keeps a sheet's row from reading as the form's own: 17c.3 is no savings account 17.3.
+LABELLED = {
+    "17": {
+        "checking": ("Checking account", "c", "checking accounts"),
+        "savings": ("Savings account", "s", "savings accounts"),
+        "cd": ("Certificates of deposit", "d", "certificates of deposit"),
+        "other": ("Other financial account", "o", "other financial accounts"),
+    },
+    "21": {
+        "401k": ("401(k) or similar plan", "k", "401(k) or similar plans"),
+        "pension": ("Pension plan", "p", "pension plans"),
+        "ira": ("IRA", "i", "IRAs"),
+        "retirement": ("Retirement account", "r", "retirement accounts"),
+        "keogh": ("Keogh", "h", "Keogh accounts"),
+        "additional": ("Additional account", "a", "additional accounts"),
+    },
+    "22": {
+        "electric": ("Electric", "a", "electric"),
+        "gas": ("Gas", "b", "gas"),
+        "heating_oil": ("Heating oil", "c", "heating oil"),
+        "security_deposit": (
+            "Security deposit on rental unit",
+            "d",
+            "security deposits on rental units",
+        ),
+        "prepaid_rent": ("Prepaid rent", "e", "prepaid rent"),
+        "telephone": ("Telephone", "f", "telephone"),
+        "water": ("Water", "g", "water"),
+        "rented_furniture": ("Rented furniture", "h", "rented furniture"),
+        "other": ("Other", "i", "other deposits and prepayments"),
+    },
+}
+# A kind on a line with one text box → the words beside its amount.
+SHARED_AMOUNTS = {
+    "28": {"federal": "Federal", "state": "State", "local": "Local"},
+    "29": {
+        "alimony": "Alimony",
+        "maintenance": "Maintenance",
+        "support": "Support",
+        "divorce_settlement": "Divorce settlement",
+        "property_settlement": "Property settlement",
+    },
+}
+LIST_SHAPES = {"named", "named_share", "insurance"}
+# The template gives line 24's rows 1 and 3 one text name, and row 2's text and amount another.
+TAGGED_LINES = {"24"}
 # Arithmetic: the box's line → (its rule, its label, what the rule adds up).
 TOTALS = {
     "2": ("ab_line_2", "Part 1 total: real estate", "Part 1, blank under line 1's No"),
@@ -137,41 +199,6 @@ TOTALS = {
         "Parts 1 to 7",
     ),
 }
-# Bindings a later task re-keys, written here as they stand, with their addendum rows kept.
-LATER = [
-    (
-        "Check 17",
-        "checkbox",
-        5,
-        "Deposits of money",
-        "has_bank_accounts",
-        {"yes": "/yes", "no": "/no"},
-    ),
-    (
-        "check 21",
-        "checkbox",
-        6,
-        "Retirement or pension accounts",
-        "has_retirement_accounts",
-        {"yes": "/yes", "no": "/no"},
-    ),
-    (
-        "check 53",
-        "checkbox",
-        10,
-        "Do you have other property of any kind you did not already list?",
-        "has_other_assets",
-        {"yes": "/On", "no": "/no"},
-    ),
-    (
-        "53 Examples Season tickets country club membership",
-        "text",
-        10,
-        "Line 53 Other property: Give specific information.",
-        "other_asset_descriptions",
-        None,
-    ),
-]
 
 
 def export_state(on_state):
@@ -185,9 +212,14 @@ def split_line(row):
     return key, int(number) if number else None
 
 
-def field(pdf_field, kind, page, label, *, rule=None, binding=None, choices=None, group=None):
+def field(
+    pdf_field, kind, page, label, *, rule=None, binding=None, choices=None, group=None, tag=None
+):
     """A schema binding, keys in the order every schema writes them."""
-    out = {"pdf_field": pdf_field, "type": kind, "source": "derived" if rule else "asked"}
+    out = {"pdf_field": pdf_field}
+    if tag is not None:
+        out["tag"] = tag
+    out |= {"type": kind, "source": "derived" if rule else "asked"}
     if choices is not None:
         out["choices"] = choices
     out |= {
@@ -241,17 +273,19 @@ def row_boxes(line, widgets):
     return attrs, who, kinds
 
 
-def slot(widget, label, attr, line, group, number, choices=None):
+def slot(widget, label, attr, line, group, number, choices=None, kind=None):
     """One box of a row: (its binding, the index rows its addendum row cites)."""
-    kind = box_type(widget) if choices else "text"
+    box = box_type(widget) if choices else "text"
+    list_name = f"line_{line.key}_{kind}" if kind else f"line_{line.key}"
     spec = field(
         widget["full_name"],
-        kind,
+        box,
         widget["page"],
         label,
-        binding=f"assets.line_{line.key}[].{attr}",
+        binding=f"assets.{list_name}[].{attr}",
         choices=choices,
-        group=(group, line.capacity, number),
+        group=(group, dict(line.kinds)[kind] if kind else line.capacity, number),
+        tag=widget["tag"] if line.key in TAGGED_LINES else None,
     )
     return spec, [widget]
 
@@ -297,6 +331,71 @@ def item_fields(line, widgets, group):
     return entries
 
 
+def down_the_page(widgets):
+    return sorted(widgets, key=lambda w: w["rect"][1])
+
+
+def box_attr(widget):
+    """Which of a list row's answers a box prints. 42's % boxes are "amount"s to the index."""
+    if widget["label"].startswith("% of ownership"):
+        return "percent"
+    if widget["label"].startswith("Beneficiary"):
+        return "beneficiary"
+    return "value" if widget["kind"] == "amount" else "description"
+
+
+def list_fields(line, widgets, group):
+    """The rows of a line the index doesn't number: each column of boxes, read down the page."""
+    columns = {}
+    for widget in down_the_page(w for w in widgets if w["kind"] != "checkbox"):
+        columns.setdefault(box_attr(widget), []).append(widget)
+    words = {**ATTR_WORDS, "description": TEXT_WORDS[line.key]}
+    entries = []
+    for attr, column in columns.items():
+        if len(column) != line.capacity:
+            raise ValueError(f"line {line.key}: {len(column)} {attr} boxes, not {line.capacity}")
+        for number, widget in enumerate(column, start=1):
+            label = f"Line {line.key}.{number}: {words[attr]}"
+            entries.append(slot(widget, label, attr, line, group, number))
+    return entries
+
+
+def labelled_fields(line, kind, widgets, group):
+    """One kind's rows on a line that prints each kind on its own rows, by the words beside them."""
+    words = LABELLED[line.key][kind][0]
+    columns = {}
+    for widget in down_the_page(w for w in widgets if w["label"].rstrip(": ") == words):
+        columns.setdefault(box_attr(widget), []).append(widget)
+    capacity = dict(line.kinds)[kind]
+    box_words = {**ATTR_WORDS, "description": TEXT_WORDS[line.key]}
+    entries = []
+    for attr, column in columns.items():
+        if len(column) != capacity:
+            raise ValueError(f"line {line.key}, {kind}: {len(column)} {attr} boxes, not {capacity}")
+        for number, widget in enumerate(column, start=1):
+            label = f"Line {line.key}, {words} {number}: {box_words[attr]}"
+            entries.append(slot(widget, label, attr, line, group, number, kind=kind))
+    return entries
+
+
+def shared_text_field(line, widgets, rule):
+    """The one text box of a line whose rows share it."""
+    (text,) = [w for w in widgets if w["kind"] == "text"]
+    label = f"Line {line.key}: {TEXT_WORDS[line.key]}"
+    return field(text["full_name"], "text", text["page"], label, rule=rule), [text]
+
+
+def shared_amount_fields(line, widgets):
+    """One amount for each kind of a line whose rows share a text box; the kind's rule adds it up."""
+    entries = []
+    for kind, words in SHARED_AMOUNTS[line.key].items():
+        (box,) = [w for w in widgets if w["kind"] == "amount" and w["label"].rstrip(": ") == words]
+        label = f"Line {line.key}: {words}"
+        rule = f"ab_line_{line.key}_{kind}"
+        entries.append((field(box["full_name"], "text", box["page"], label, rule=rule), [box]))
+    return entries
+
+
 def question_field(line, widgets):
     """A line's own Yes/No box: two widgets of one name, read by the words beside each."""
     no = next(w for w in widgets if w["option_text"].startswith("No"))
@@ -309,9 +408,9 @@ def question_field(line, widgets):
     return spec, [no, yes]
 
 
-def sheet_columns(line):
+def sheet_columns(line, kind=None):
     """A line's sheet: each slot's value in a column; a place's and a vehicle's boxes in words."""
-    list_name = f"assets.line_{line.key}[]"
+    list_name = f"assets.line_{line.key}_{kind}[]" if kind else f"assets.line_{line.key}[]"
 
     def column(label, attr, width, covers=None):
         out = {"label": label, "binding": f"{list_name}.{attr}", "width": width}
@@ -369,7 +468,36 @@ def sheet_columns(line):
             column("Describe", "personal_description", 282),
             portion,
         ]
+    if line.shape == "named_share":
+        return [
+            column(TEXT_WORDS[line.key], "description", 306),
+            column("% of ownership", "percent", 76),
+            portion,
+        ]
+    if line.shape == "insurance":
+        return [
+            column(TEXT_WORDS[line.key], "description", 191),
+            column("Beneficiary", "beneficiary", 191),
+            column("Surrender or refund value", "value", MONEY),
+        ]
+    if line.shape == "shared_box":
+        # The value is the slot. The text box prints the first rows, so a row past them keeps its
+        # own words here, in a column no slot binds.
+        return [column(TEXT_WORDS[line.key], "description", 382, []), portion]
+    if line.shape in LIST_SHAPES or line.shape == "labelled":
+        return [column(TEXT_WORDS[line.key], "description", 382), portion]
     return [column("Describe", "description", 382), portion]
+
+
+def sheet_group(number, title, columns):
+    return {
+        "number": number,
+        "sheet": {
+            "title": f"Official Form 106A/B, Schedule A/B: Property, line {title}",
+            "line_width": LINE_WIDTH,
+            "columns": columns,
+        },
+    }
 
 
 def build(index):
@@ -383,26 +511,40 @@ def build(index):
     for line in LINES:
         widgets = by_key.get(line.key, [])
         rows = [w for number, w in widgets if number is None]
-        if line.shape in QUESTION_SHAPES:
-            own = [w for w in rows if w["kind"] == "checkbox" and w["full_name"] != "check 43_1"]
-            placed.append(question_field(line, own))
-        if line.shape not in ROW_SHAPES:
+        own = [w for w in rows if w["kind"] == "checkbox" and w["full_name"] != "check 43_1"]
+        placed.append(question_field(line, own))
+        if line.shape == "gate":
+            continue
+        if line.shape == "labelled":
+            for kind, (_, letter, words) in LABELLED[line.key].items():
+                group = f"ab_{line.key}_{kind}"
+                placed += labelled_fields(line, kind, [w for _, w in widgets], group)
+                groups[group] = sheet_group(
+                    f"{line.key}{letter}.{{n}}",
+                    f"{line.key}, {words}",
+                    sheet_columns(line, kind),
+                )
+            continue
+        if line.key in SHARED_AMOUNTS:
+            placed.append(shared_text_field(line, rows, f"ab_line_{line.key}_text"))
+            placed += shared_amount_fields(line, rows)
             continue
         group = f"ab_{line.key}"
         if line.shape in ("place", "vehicle", "vehicle_no_mileage"):
             for number in range(1, line.capacity + 1):
                 boxes = [w for n, w in widgets if n == number]
                 placed += row_fields(line, number, boxes, group)
+        elif line.shape == "shared_box":
+            placed.append(shared_text_field(line, rows, f"ab_line_{line.key}_text"))
+            amounts = down_the_page(w for w in rows if w["kind"] == "amount")
+            for number, widget in enumerate(amounts, start=1):
+                label = f"Line {line.key}: {ATTR_WORDS['value']}, row {number}"
+                placed.append(slot(widget, label, "value", line, group, number))
+        elif line.shape in LIST_SHAPES:
+            placed += list_fields(line, rows, group)
         else:
             placed += item_fields(line, rows, group)
-        groups[group] = {
-            "number": f"{line.key}.{{n}}",
-            "sheet": {
-                "title": f"Official Form 106A/B, Schedule A/B: Property, line {line.key}",
-                "line_width": LINE_WIDTH,
-                "columns": sheet_columns(line),
-            },
-        }
+        groups[group] = sheet_group(f"{line.key}.{{n}}", line.key, sheet_columns(line))
     for key, (rule, label, adds) in TOTALS.items():
         boxes = [w for _, w in by_key[key]]
         spec = field(boxes[0]["full_name"], "text", boxes[0]["page"], label, rule=rule)
@@ -417,10 +559,6 @@ def build(index):
             rule="district_name",
         ),
         *(entry[0] for entry in placed),
-        *(
-            field(pdf_field, kind, page, label, rule=rule, choices=choices)
-            for pdf_field, kind, page, label, rule, choices in LATER
-        ),
     ]
     return fields, groups, placed
 
@@ -438,13 +576,24 @@ def evidence(entry):
             f"{cite} {spec['rule']} adds the portions on {adds[0]}, an unknown value counting as "
             f"zero, sheets included. {SPEC} §8.2. Filled page rendered and read at build."
         )
+    if spec["rule"] and spec["rule"].endswith("_text"):
+        return (
+            f"{cite} {spec['rule']} prints the rows' texts in order, joined with a semicolon: the "
+            f"line's one text box. {SPEC} §5. Filled page rendered and read at build."
+        )
+    if spec["rule"] and spec["rule"].startswith("ab_line_"):
+        return (
+            f"{cite} {spec['rule']} adds the known values of the rows of its kind, blank when none "
+            f"is known: the form's one amount for that kind. {SPEC} §5. Filled page rendered and "
+            f"read at build."
+        )
     if spec["rule"]:
         return (
             f"{cite} {spec['rule']} says yes with a row on the line, no with none and the line "
             f"shown, blank when a gate's No hid it, with the index's export state for each. "
             f"[Q24], {SPEC} §8.1. Filled page rendered and read at build."
         )
-    line = spec["binding"].split("[")[0].removeprefix("assets.line_")
+    line = spec["binding"].split("[")[0].removeprefix("assets.line_").replace("_", ", ", 1)
     attr = spec["binding"].rpartition(".")[2]
     return (
         f"{cite} Row {spec['row']} of line {line} prints {attr} here: the words beside the box, "
@@ -501,13 +650,7 @@ def main():
     )
 
     rows = json.loads(ADDENDUM.read_text())
-    later = {(f"derived:{rule}", pdf_field) for pdf_field, _, _, _, rule, _ in LATER}
     ab_rows = [addendum_row(entry) for entry in placed]
-    ab_rows += [
-        r
-        for r in rows
-        if r["schema"] == "schedule_a_b" and (r["producer"], r["pdf_field"]) in later
-    ]
     first = next(i for i, r in enumerate(rows) if r["schema"] == "schedule_a_b")
     rest = [r for r in rows[first:] if r["schema"] != "schedule_a_b"]
     ADDENDUM.write_text(dumps([*rows[:first], *ab_rows, *rest]))

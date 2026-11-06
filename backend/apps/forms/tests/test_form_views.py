@@ -51,7 +51,7 @@ from apps.intake.models import (
     IncomeInfo,
     IntakeSession,
 )
-from apps.intake.tests.builders import answer_household
+from apps.intake.tests.builders import answer_asset_lines, answer_household
 
 User = get_user_model()
 
@@ -1381,3 +1381,36 @@ class TestAssetStepCheck:
 
         assert listed.status_code == status.HTTP_200_OK
         assert filed_download.status_code == status.HTTP_200_OK
+
+    @pytest.mark.parametrize(
+        ("rows_before", "box"),
+        [
+            (0, "Line 18.1: Institution or issuer name"),  # in a box on the form
+            (3, "Institution or issuer name"),  # in a column of its attached sheet
+        ],
+        ids=["on_a_slot", "on_a_sheet"],
+    )
+    def test_a_letter_the_form_can_t_print_is_a_422_linking_to_assets(
+        self, api_client, session_with_debtor, rows_before, box
+    ):
+        # The Assets step is finished here, so the refusal is the letter's and not a gap's.
+        session = session_with_debtor
+        answer_asset_lines(session, yes=["18"])
+        for n in range(rows_before):
+            AssetInfo.objects.create(
+                session=session, ab_line="18", description=f"Row {n}", current_value=Decimal(1)
+            )
+        AssetInfo.objects.create(
+            session=session, ab_line="18", description="Bad □ name", current_value=Decimal(1)
+        )
+
+        resp = api_client.post(
+            "/api/forms/generate/",
+            {"session_id": session.id, "form_type": "schedule_a_b"},
+            format="json",
+        )
+
+        assert resp.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert resp.data["step"] == "assets"
+        assert box in resp.data["error"]
+        assert "□" in resp.data["error"]

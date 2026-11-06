@@ -25,6 +25,7 @@ from apps.eligibility.cmi import (
     spouse_monthly_income,
 )
 from apps.intake.asset_lines import (
+    LINE_BY_KEY,
     LINES,
     ordered_assets,
     part_total,
@@ -312,21 +313,30 @@ def _ab_answer(key: str) -> Callable[[IntakeSession], str]:
     return lambda session: printed_answer(ordered_assets(session), key)
 
 
-def _other_asset_descriptions(session: IntakeSession) -> str:
-    """Line 53: the rows' descriptions in the order the filer listed them (DIG-164)."""
-    rows = rows_on(ordered_assets(session), "53")
-    return "; ".join(row.description for row in rows)
+def _ab_shared_text(key: str, first: int | None = None) -> Callable[[IntakeSession], str]:
+    """A line's one text box: its rows' words in order, or only its first rows' (3b spec §5)."""
+
+    def rule(session: IntakeSession) -> str:
+        rows = rows_on(ordered_assets(session), key)[:first]
+        return "; ".join(row.description for row in rows if row.description)
+
+    return rule
+
+
+def _ab_kind_total(key: str, kind: str) -> Callable[[IntakeSession], str]:
+    """A kind's one amount on 28 or 29: its rows' known values added, blank when none is known."""
+
+    def rule(session: IntakeSession) -> str:
+        rows = rows_on(ordered_assets(session), key, kind)
+        known = [row.current_value for row in rows if row.current_value is not None]
+        return _money_or_blank(sum(known) if known else None)
+
+    return rule
 
 
 def _yes_if_any(rows) -> str:
     """A section's Yes/No question (owner Q8): "yes" when the filer listed one, else "no"."""
     return "yes" if rows.exists() else "no"
-
-
-def _yes_if_on_lines(session: IntakeSession, *keys: str) -> str:
-    """A section's Yes/No question: "yes" when a row sits on one of these A/B lines."""
-    rows = ordered_assets(session)
-    return "yes" if any(rows_on(rows, key) for key in keys) else "no"
 
 
 # ---------------------------------------------------------------------------
@@ -866,16 +876,20 @@ DERIVATIONS: dict[str, Callable[[IntakeSession], str]] = {
     "total_vehicles": _total_vehicles,
     "total_household_items": _total_household_items,
     "total_financial_assets": _total_financial_assets,
-    "other_asset_descriptions": _other_asset_descriptions,
     "total_business_property": _total_business_property,
     "total_farm_property": _total_farm_property,
     "ab_line_2": _ab_line_2,
     "ab_line_45": _ab_line_45,
     "ab_line_52": _ab_line_52,
     **{f"ab_has_{line.key}": _ab_answer(line.key) for line in LINES},
-    "has_bank_accounts": lambda s: _yes_if_on_lines(s, "17"),
-    "has_retirement_accounts": lambda s: _yes_if_on_lines(s, "21"),
-    "has_other_assets": lambda s: _yes_if_on_lines(s, "53"),
+    "ab_line_28_text": _ab_shared_text("28"),
+    "ab_line_29_text": _ab_shared_text("29"),
+    "ab_line_53_text": _ab_shared_text("53", LINE_BY_KEY["53"].capacity),
+    **{
+        f"ab_line_{key}_{kind}": _ab_kind_total(key, kind)
+        for key in ("28", "29")
+        for kind, _ in LINE_BY_KEY[key].kinds
+    },
     "has_executory_contracts": lambda s: _yes_if_any(s.executory_contracts.all()),
     "has_codebtors": lambda s: _yes_if_any(s.codebtors.all()),
     # Schedules D and E/F: the section questions and E/F's line 6 totals
@@ -1161,7 +1175,14 @@ RULE_FIXES: dict[str, dict[str, str]] = {
     "ab_line_45": {"step": "assets"},
     "ab_line_52": {"step": "assets"},
     **{f"ab_has_{line.key}": {"step": "assets"} for line in LINES},
-    "other_asset_descriptions": {"step": "assets"},
+    "ab_line_28_text": {"step": "assets"},
+    "ab_line_29_text": {"step": "assets"},
+    "ab_line_53_text": {"step": "assets"},
+    **{
+        f"ab_line_{key}_{kind}": {"step": "assets"}
+        for key in ("28", "29")
+        for kind, _ in LINE_BY_KEY[key].kinds
+    },
     # Amounts Owed
     "total_secured_debts": {"step": "debts"},
     "total_secured_claims": {"step": "debts"},

@@ -2611,6 +2611,916 @@
   },
   {
     "schema": "schedule_a_b",
+    "pdf_field": "Check 17",
+    "producer": "derived:ab_has_17",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Check 17",
+    "evidence": "Field index: Check 17 p5 line 17, 'No' (sampled_ok); p5 line 17, 'Yes' (sampled_ok). ab_has_17 says yes with a row on the line, no with none and the line shown, blank when a gate's No hid it, with the index's export state for each. [Q24], 3b spec §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "17.1 Checking account",
+    "producer": "asked:assets.line_17_checking[].description",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "17.1 Checking account",
+    "evidence": "Field index: 17.1 Checking account p5 line 17.1, 'Checking account:' (sampled_ok). Row 1 of line 17, checking prints description here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "17.2 Checking account",
+    "producer": "asked:assets.line_17_checking[].description",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "17.2 Checking account",
+    "evidence": "Field index: 17.2 Checking account p5 line 17.2, 'Checking account:' (sampled_ok). Row 2 of line 17, checking prints description here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "17.1 Checking amount",
+    "producer": "asked:assets.line_17_checking[].value",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "17.1 Checking amount",
+    "evidence": "Field index: 17.1 Checking amount p5 line 17.1, 'Checking account:' (sampled_ok). Row 1 of line 17, checking prints value here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "17.2 Checking amount",
+    "producer": "asked:assets.line_17_checking[].value",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "17.2 Checking amount",
+    "evidence": "Field index: 17.2 Checking amount p5 line 17.2, 'Checking account:' (sampled_ok). Row 2 of line 17, checking prints value here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "17.3 Checking account",
+    "producer": "asked:assets.line_17_savings[].description",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "17.3 Checking account",
+    "evidence": "Field index: 17.3 Checking account p5 line 17.3, 'Savings account:' (sampled_ok). Row 1 of line 17, savings prints description here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "17.4 Checking account",
+    "producer": "asked:assets.line_17_savings[].description",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "17.4 Checking account",
+    "evidence": "Field index: 17.4 Checking account p5 line 17.4, 'Savings account:' (sampled_ok). Row 2 of line 17, savings prints description here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "17.3 Checking amount",
+    "producer": "asked:assets.line_17_savings[].value",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "17.3 Checking amount",
+    "evidence": "Field index: 17.3 Checking amount p5 line 17.3, 'Savings account:' (sampled_ok). Row 1 of line 17, savings prints value here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "17.4 Checking amount",
+    "producer": "asked:assets.line_17_savings[].value",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "17.4 Checking amount",
+    "evidence": "Field index: 17.4 Checking amount p5 line 17.4, 'Savings account:' (sampled_ok). Row 2 of line 17, savings prints value here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "17.5 Certificates of deposit account",
+    "producer": "asked:assets.line_17_cd[].description",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "17.5 Certificates of deposit account",
+    "evidence": "Field index: 17.5 Certificates of deposit account p5 line 17.5, 'Certificates of deposit:' (sampled_ok). Row 1 of line 17, cd prints description here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "17.5 Certificates of deposit amount",
+    "producer": "asked:assets.line_17_cd[].value",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "17.5 Certificates of deposit amount",
+    "evidence": "Field index: 17.5 Certificates of deposit amount p5 line 17.5, 'Certificates of deposit:' (sampled_ok). Row 1 of line 17, cd prints value here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "17.6 Other financial account",
+    "producer": "asked:assets.line_17_other[].description",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "17.6 Other financial account",
+    "evidence": "Field index: 17.6 Other financial account p5 line 17.6, 'Other financial account:' (sampled_ok). Row 1 of line 17, other prints description here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "17.7 Other financial account",
+    "producer": "asked:assets.line_17_other[].description",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "17.7 Other financial account",
+    "evidence": "Field index: 17.7 Other financial account p5 line 17.7, 'Other financial account:' (sampled_ok). Row 2 of line 17, other prints description here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "17.8 Other financial account",
+    "producer": "asked:assets.line_17_other[].description",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "17.8 Other financial account",
+    "evidence": "Field index: 17.8 Other financial account p5 line 17.8, 'Other financial account:' (sampled_ok). Row 3 of line 17, other prints description here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "17.9 Other financial account",
+    "producer": "asked:assets.line_17_other[].description",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "17.9 Other financial account",
+    "evidence": "Field index: 17.9 Other financial account p5 line 17.9, 'Other financial account:' (sampled_ok). Row 4 of line 17, other prints description here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "17.6 Other financial amount",
+    "producer": "asked:assets.line_17_other[].value",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "17.6 Other financial amount",
+    "evidence": "Field index: 17.6 Other financial amount p5 line 17.6, 'Other financial account:' (sampled_ok). Row 1 of line 17, other prints value here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "17.7 Other financial amount",
+    "producer": "asked:assets.line_17_other[].value",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "17.7 Other financial amount",
+    "evidence": "Field index: 17.7 Other financial amount p5 line 17.7, 'Other financial account:' (sampled_ok). Row 2 of line 17, other prints value here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "17.8 Other financial amount",
+    "producer": "asked:assets.line_17_other[].value",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "17.8 Other financial amount",
+    "evidence": "Field index: 17.8 Other financial amount p5 line 17.8, 'Other financial account:' (sampled_ok). Row 3 of line 17, other prints value here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "17.9 Other financial amount",
+    "producer": "asked:assets.line_17_other[].value",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "17.9 Other financial amount",
+    "evidence": "Field index: 17.9 Other financial amount p5 line 17.9, 'Other financial account:' (sampled_ok). Row 4 of line 17, other prints value here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "Check 18",
+    "producer": "derived:ab_has_18",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Check 18",
+    "evidence": "Field index: Check 18 p5 line 18, 'No' (sampled_ok); p5 line 18, 'Yes' (sampled_ok). ab_has_18 says yes with a row on the line, no with none and the line shown, blank when a gate's No hid it, with the index's export state for each. [Q24], 3b spec §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "18.1 Institution or issuer name",
+    "producer": "asked:assets.line_18[].description",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "18.1 Institution or issuer name",
+    "evidence": "Field index: 18.1 Institution or issuer name p5 line 18, 'Institution or issuer name:' (vision_agreed). Row 1 of line 18 prints description here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "18.2 Institution or issuer name",
+    "producer": "asked:assets.line_18[].description",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "18.2 Institution or issuer name",
+    "evidence": "Field index: 18.2 Institution or issuer name p5 line 18, 'Institution or issuer name:' (vision_agreed). Row 2 of line 18 prints description here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "18.3 Institution or issuer name",
+    "producer": "asked:assets.line_18[].description",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "18.3 Institution or issuer name",
+    "evidence": "Field index: 18.3 Institution or issuer name p5 line 18, 'Institution or issuer name:' (vision_agreed). Row 3 of line 18 prints description here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "18.1 Institution or issuer name 1 amount",
+    "producer": "asked:assets.line_18[].value",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "18.1 Institution or issuer name 1 amount",
+    "evidence": "Field index: 18.1 Institution or issuer name 1 amount p5 line 18, 'Current value' (vision_agreed). Row 1 of line 18 prints value here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "18.2 Institution or issuer name amount",
+    "producer": "asked:assets.line_18[].value",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "18.2 Institution or issuer name amount",
+    "evidence": "Field index: 18.2 Institution or issuer name amount p5 line 18, 'Current value' (vision_agreed). Row 2 of line 18 prints value here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "18.3 Institution or issuer name amount",
+    "producer": "asked:assets.line_18[].value",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "18.3 Institution or issuer name amount",
+    "evidence": "Field index: 18.3 Institution or issuer name amount p5 line 18, 'Current value' (vision_agreed). Row 3 of line 18 prints value here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "check 19",
+    "producer": "derived:ab_has_19",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check 19",
+    "evidence": "Field index: check 19 p5 line 19, 'No' (vision_agreed); p5 line 19, 'Yes. Give specific information about them.' (vision_agreed). ab_has_19 says yes with a row on the line, no with none and the line shown, blank when a gate's No hid it, with the index's export state for each. [Q24], 3b spec §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "19.1 Name of entity",
+    "producer": "asked:assets.line_19[].description",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "19.1 Name of entity",
+    "evidence": "Field index: 19.1 Name of entity p5 line 19, 'Name of entity:' (vision_agreed). Row 1 of line 19 prints description here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "19.2 Name of entity",
+    "producer": "asked:assets.line_19[].description",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "19.2 Name of entity",
+    "evidence": "Field index: 19.2 Name of entity p5 line 19, 'Name of entity:' (vision_agreed). Row 2 of line 19 prints description here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "19.3 Name of entity",
+    "producer": "asked:assets.line_19[].description",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "19.3 Name of entity",
+    "evidence": "Field index: 19.3 Name of entity p5 line 19, 'Name of entity:' (vision_agreed). Row 3 of line 19 prints description here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "19.1 % of ownership",
+    "producer": "asked:assets.line_19[].percent",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "19.1 % of ownership",
+    "evidence": "Field index: 19.1 % of ownership p5 line 19, '% of ownership:' (vision_agreed). Row 1 of line 19 prints percent here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "19.2 % of ownership",
+    "producer": "asked:assets.line_19[].percent",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "19.2 % of ownership",
+    "evidence": "Field index: 19.2 % of ownership p5 line 19, '% of ownership:' (vision_agreed). Row 2 of line 19 prints percent here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "19.3 % of ownership",
+    "producer": "asked:assets.line_19[].percent",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "19.3 % of ownership",
+    "evidence": "Field index: 19.3 % of ownership p5 line 19, '% of ownership:' (vision_agreed). Row 3 of line 19 prints percent here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "19.1 amount",
+    "producer": "asked:assets.line_19[].value",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "19.1 amount",
+    "evidence": "Field index: 19.1 amount p5 line 19, 'Current value' (vision_agreed). Row 1 of line 19 prints value here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "19.2 amount",
+    "producer": "asked:assets.line_19[].value",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "19.2 amount",
+    "evidence": "Field index: 19.2 amount p5 line 19, 'Current value' (vision_agreed). Row 2 of line 19 prints value here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "19.3 amount",
+    "producer": "asked:assets.line_19[].value",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "19.3 amount",
+    "evidence": "Field index: 19.3 amount p5 line 19, 'Current value' (vision_agreed). Row 3 of line 19 prints value here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "check 20",
+    "producer": "derived:ab_has_20",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check 20",
+    "evidence": "Field index: check 20 p6 line 20, 'No' (sampled_ok); p6 line 20, 'Yes. Give specific information about them.' (sampled_ok). ab_has_20 says yes with a row on the line, no with none and the line shown, blank when a gate's No hid it, with the index's export state for each. [Q24], 3b spec §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "20.1 Issuer name",
+    "producer": "asked:assets.line_20[].description",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "20.1 Issuer name",
+    "evidence": "Field index: 20.1 Issuer name p6 line 20, 'Issuer name:' (sampled_ok). Row 1 of line 20 prints description here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "20.2 Issuer name",
+    "producer": "asked:assets.line_20[].description",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "20.2 Issuer name",
+    "evidence": "Field index: 20.2 Issuer name p6 line 20, 'Issuer name:' (sampled_ok). Row 2 of line 20 prints description here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "20.3 Issuer name",
+    "producer": "asked:assets.line_20[].description",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "20.3 Issuer name",
+    "evidence": "Field index: 20.3 Issuer name p6 line 20, 'Issuer name:' (sampled_ok). Row 3 of line 20 prints description here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "20.1 Issuer name amount",
+    "producer": "asked:assets.line_20[].value",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "20.1 Issuer name amount",
+    "evidence": "Field index: 20.1 Issuer name amount p6 line 20, 'Current value of the portion you own' (sampled_ok). Row 1 of line 20 prints value here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "20.2 Issuer name amount",
+    "producer": "asked:assets.line_20[].value",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "20.2 Issuer name amount",
+    "evidence": "Field index: 20.2 Issuer name amount p6 line 20, 'Current value of the portion you own' (sampled_ok). Row 2 of line 20 prints value here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "20.3 Issuer name amount",
+    "producer": "asked:assets.line_20[].value",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "20.3 Issuer name amount",
+    "evidence": "Field index: 20.3 Issuer name amount p6 line 20, 'Current value of the portion you own' (sampled_ok). Row 3 of line 20 prints value here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "check 21",
+    "producer": "derived:ab_has_21",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check 21",
+    "evidence": "Field index: check 21 p6 line 21, 'No' (sampled_ok); p6 line 21, 'Yes. List each account separately.' (sampled_ok). ab_has_21 says yes with a row on the line, no with none and the line shown, blank when a gate's No hid it, with the index's export state for each. [Q24], 3b spec §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "21.1 401k or similar plan",
+    "producer": "asked:assets.line_21_401k[].description",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "21.1 401k or similar plan",
+    "evidence": "Field index: 21.1 401k or similar plan p6 line 21, '401(k) or similar plan:' (sampled_ok). Row 1 of line 21, 401k prints description here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "21.1 401k or similar plan amount",
+    "producer": "asked:assets.line_21_401k[].value",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "21.1 401k or similar plan amount",
+    "evidence": "Field index: 21.1 401k or similar plan amount p6 line 21, '401(k) or similar plan:' (sampled_ok). Row 1 of line 21, 401k prints value here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "21.2 Pension plan",
+    "producer": "asked:assets.line_21_pension[].description",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "21.2 Pension plan",
+    "evidence": "Field index: 21.2 Pension plan p6 line 21, 'Pension plan:' (vision_agreed). Row 1 of line 21, pension prints description here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "21.2 Pension plan amount",
+    "producer": "asked:assets.line_21_pension[].value",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "21.2 Pension plan amount",
+    "evidence": "Field index: 21.2 Pension plan amount p6 line 21, 'Pension plan:' (vision_agreed). Row 1 of line 21, pension prints value here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "21.3 IRA",
+    "producer": "asked:assets.line_21_ira[].description",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "21.3 IRA",
+    "evidence": "Field index: 21.3 IRA p6 line 21, 'IRA:' (vision_agreed). Row 1 of line 21, ira prints description here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "21.3 IRA amount",
+    "producer": "asked:assets.line_21_ira[].value",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "21.3 IRA amount",
+    "evidence": "Field index: 21.3 IRA amount p6 line 21, 'IRA:' (vision_agreed). Row 1 of line 21, ira prints value here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "21.4 Retirement account",
+    "producer": "asked:assets.line_21_retirement[].description",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "21.4 Retirement account",
+    "evidence": "Field index: 21.4 Retirement account p6 line 21, 'Retirement account:' (vision_agreed). Row 1 of line 21, retirement prints description here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "21.4 Retirement account amount",
+    "producer": "asked:assets.line_21_retirement[].value",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "21.4 Retirement account amount",
+    "evidence": "Field index: 21.4 Retirement account amount p6 line 21, 'Retirement account:' (vision_agreed). Row 1 of line 21, retirement prints value here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "21.5 Keogh",
+    "producer": "asked:assets.line_21_keogh[].description",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "21.5 Keogh",
+    "evidence": "Field index: 21.5 Keogh p6 line 21, 'Keogh:' (vision_agreed). Row 1 of line 21, keogh prints description here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "21.5 Keogh amount",
+    "producer": "asked:assets.line_21_keogh[].value",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "21.5 Keogh amount",
+    "evidence": "Field index: 21.5 Keogh amount p6 line 21, 'Keogh:' (vision_agreed). Row 1 of line 21, keogh prints value here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "21.6 Additional account",
+    "producer": "asked:assets.line_21_additional[].description",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "21.6 Additional account",
+    "evidence": "Field index: 21.6 Additional account p6 line 21, 'Additional account:' (vision_agreed). Row 1 of line 21, additional prints description here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "21.7 Additional account",
+    "producer": "asked:assets.line_21_additional[].description",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "21.7 Additional account",
+    "evidence": "Field index: 21.7 Additional account p6 line 21, 'Additional account:' (vision_agreed). Row 2 of line 21, additional prints description here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "21.6 Additional account amount",
+    "producer": "asked:assets.line_21_additional[].value",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "21.6 Additional account amount",
+    "evidence": "Field index: 21.6 Additional account amount p6 line 21, 'Additional account:' (vision_agreed). Row 1 of line 21, additional prints value here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "21.7 Additional account amount",
+    "producer": "asked:assets.line_21_additional[].value",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "21.7 Additional account amount",
+    "evidence": "Field index: 21.7 Additional account amount p6 line 21, 'Additional account:' (vision_agreed). Row 2 of line 21, additional prints value here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "check 22",
+    "producer": "derived:ab_has_22",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check 22",
+    "evidence": "Field index: check 22 p6 line 22, 'No' (vision_agreed); p6 line 22, 'Yes' (vision_agreed). ab_has_22 says yes with a row on the line, no with none and the line shown, blank when a gate's No hid it, with the index's export state for each. [Q24], 3b spec §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "22.1 Electric amount",
+    "producer": "asked:assets.line_22_electric[].value",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "22.1 Electric amount",
+    "evidence": "Field index: 22.1 Electric amount p6 line 22, 'Electric:' (vision_agreed). Row 1 of line 22, electric prints value here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "22.1 Electric",
+    "producer": "asked:assets.line_22_electric[].description",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "22.1 Electric",
+    "evidence": "Field index: 22.1 Electric p6 line 22, 'Electric:' (vision_agreed). Row 1 of line 22, electric prints description here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "22.2 Gas",
+    "producer": "asked:assets.line_22_gas[].description",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "22.2 Gas",
+    "evidence": "Field index: 22.2 Gas p6 line 22, 'Gas:' (sampled_ok). Row 1 of line 22, gas prints description here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "22.2 Gas amount",
+    "producer": "asked:assets.line_22_gas[].value",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "22.2 Gas amount",
+    "evidence": "Field index: 22.2 Gas amount p6 line 22, 'Gas:' (sampled_ok). Row 1 of line 22, gas prints value here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "22.3 Heating oil",
+    "producer": "asked:assets.line_22_heating_oil[].description",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "22.3 Heating oil",
+    "evidence": "Field index: 22.3 Heating oil p6 line 22, 'Heating oil:' (adjudicated). Row 1 of line 22, heating_oil prints description here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "22.3 Heating oil amount",
+    "producer": "asked:assets.line_22_heating_oil[].value",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "22.3 Heating oil amount",
+    "evidence": "Field index: 22.3 Heating oil amount p6 line 22, 'Heating oil:' (sampled_ok). Row 1 of line 22, heating_oil prints value here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "22.4 Security deposit on rental unit",
+    "producer": "asked:assets.line_22_security_deposit[].description",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "22.4 Security deposit on rental unit",
+    "evidence": "Field index: 22.4 Security deposit on rental unit p6 line 22, 'Security deposit on rental unit:' (adjudicated). Row 1 of line 22, security_deposit prints description here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "22.4 Security deposit on rental unit amount",
+    "producer": "asked:assets.line_22_security_deposit[].value",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "22.4 Security deposit on rental unit amount",
+    "evidence": "Field index: 22.4 Security deposit on rental unit amount p6 line 22, 'Security deposit on rental unit:' (sampled_ok). Row 1 of line 22, security_deposit prints value here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "22.5 Prepaid rent",
+    "producer": "asked:assets.line_22_prepaid_rent[].description",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "22.5 Prepaid rent",
+    "evidence": "Field index: 22.5 Prepaid rent p6 line 22, 'Prepaid rent:' (adjudicated). Row 1 of line 22, prepaid_rent prints description here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "22.5 Prepaid rent amount",
+    "producer": "asked:assets.line_22_prepaid_rent[].value",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "22.5 Prepaid rent amount",
+    "evidence": "Field index: 22.5 Prepaid rent amount p6 line 22, 'Prepaid rent:' (sampled_ok). Row 1 of line 22, prepaid_rent prints value here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "22.6 Telephone",
+    "producer": "asked:assets.line_22_telephone[].description",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "22.6 Telephone",
+    "evidence": "Field index: 22.6 Telephone p6 line 22, 'Telephone:' (adjudicated). Row 1 of line 22, telephone prints description here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "22.6 Telephone amount",
+    "producer": "asked:assets.line_22_telephone[].value",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "22.6 Telephone amount",
+    "evidence": "Field index: 22.6 Telephone amount p6 line 22, 'Telephone:' (sampled_ok). Row 1 of line 22, telephone prints value here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "22.7 Water amount",
+    "producer": "asked:assets.line_22_water[].value",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "22.7 Water amount",
+    "evidence": "Field index: 22.7 Water amount p6 line 22, 'Water:' (sampled_ok). Row 1 of line 22, water prints value here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "22.7 Water",
+    "producer": "asked:assets.line_22_water[].description",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "22.7 Water",
+    "evidence": "Field index: 22.7 Water p6 line 22, 'Water:' (adjudicated). Row 1 of line 22, water prints description here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "22.8 Rented furniture",
+    "producer": "asked:assets.line_22_rented_furniture[].description",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "22.8 Rented furniture",
+    "evidence": "Field index: 22.8 Rented furniture p6 line 22, 'Rented furniture:' (adjudicated). Row 1 of line 22, rented_furniture prints description here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "22.8 Rented furniture amount",
+    "producer": "asked:assets.line_22_rented_furniture[].value",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "22.8 Rented furniture amount",
+    "evidence": "Field index: 22.8 Rented furniture amount p6 line 22, 'Rented furniture:' (sampled_ok). Row 1 of line 22, rented_furniture prints value here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "22.9 Other",
+    "producer": "asked:assets.line_22_other[].description",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "22.9 Other",
+    "evidence": "Field index: 22.9 Other p6 line 22, 'Other:' (adjudicated). Row 1 of line 22, other prints description here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "22.9 Other amount",
+    "producer": "asked:assets.line_22_other[].value",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "22.9 Other amount",
+    "evidence": "Field index: 22.9 Other amount p6 line 22, 'Other:' (sampled_ok). Row 1 of line 22, other prints value here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "check 23",
+    "producer": "derived:ab_has_23",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check 23",
+    "evidence": "Field index: check 23 p6 line 23, 'No' (sampled_ok); p6 line 23, 'Yes' (sampled_ok). ab_has_23 says yes with a row on the line, no with none and the line shown, blank when a gate's No hid it, with the index's export state for each. [Q24], 3b spec §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "23.1 Annuities amount",
+    "producer": "asked:assets.line_23[].value",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "23.1 Annuities amount",
+    "evidence": "Field index: 23.1 Annuities amount p6 line 23, 'Issuer name and description:' (sampled_ok). Row 1 of line 23 prints value here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "23.2 Annuities amount",
+    "producer": "asked:assets.line_23[].value",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "23.2 Annuities amount",
+    "evidence": "Field index: 23.2 Annuities amount p6 line 23, 'Issuer name and description:' (sampled_ok). Row 2 of line 23 prints value here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "23.3 Annuities amount",
+    "producer": "asked:assets.line_23[].value",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "23.3 Annuities amount",
+    "evidence": "Field index: 23.3 Annuities amount p6 line 23, 'Issuer name and description:' (sampled_ok). Row 3 of line 23 prints value here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "23.1 Annuities",
+    "producer": "asked:assets.line_23[].description",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "23.1 Annuities",
+    "evidence": "Field index: 23.1 Annuities p6 line 23, 'Issuer name and description:' (sampled_ok). Row 1 of line 23 prints description here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "23.2 Annuities",
+    "producer": "asked:assets.line_23[].description",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "23.2 Annuities",
+    "evidence": "Field index: 23.2 Annuities p6 line 23, 'Issuer name and description:' (sampled_ok). Row 2 of line 23 prints description here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "23.3 Annuities",
+    "producer": "asked:assets.line_23[].description",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "23.3 Annuities",
+    "evidence": "Field index: 23.3 Annuities p6 line 23, 'Issuer name and description:' (sampled_ok). Row 3 of line 23 prints description here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "check 24",
+    "producer": "derived:ab_has_24",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check 24",
+    "evidence": "Field index: check 24 p7 line 24, 'No' (adjudicated); p7 line 24, 'Yes' (adjudicated). ab_has_24 says yes with a row on the line, no with none and the line shown, blank when a gate's No hid it, with the index's export state for each. [Q24], 3b spec §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "24.1 Interest in an education IRA",
+    "producer": "asked:assets.line_24[].description",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "24.1 Interest in an education IRA",
+    "evidence": "Field index: 24.1 Interest in an education IRA p7 line 24, 'Line 24 row 1: Institution name and description' (adjudicated). Row 1 of line 24 prints description here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "24.2 Interest in an education IRA",
+    "producer": "asked:assets.line_24[].description",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "24.2 Interest in an education IRA",
+    "evidence": "Field index: 24.2 Interest in an education IRA p7 line 24, 'Line 24 row 2: Institution name and description' (adjudicated). Row 2 of line 24 prints description here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "24.1 Interest in an education IRA",
+    "producer": "asked:assets.line_24[].description",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "24.1 Interest in an education IRA",
+    "evidence": "Field index: 24.1 Interest in an education IRA p7 line 24, 'Line 24 row 3: Institution name and description' (adjudicated). Row 3 of line 24 prints description here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "24.1 Interest in an education IRA amount",
+    "producer": "asked:assets.line_24[].value",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "24.1 Interest in an education IRA amount",
+    "evidence": "Field index: 24.1 Interest in an education IRA amount p7 line 24, 'Line 24 row 1: current value' (adjudicated). Row 1 of line 24 prints value here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "24.2 Interest in an education IRA",
+    "producer": "asked:assets.line_24[].value",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "24.2 Interest in an education IRA",
+    "evidence": "Field index: 24.2 Interest in an education IRA p7 line 24, 'Line 24 row 2: current value' (adjudicated). Row 2 of line 24 prints value here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "24.3 Interest in an education IRA",
+    "producer": "asked:assets.line_24[].value",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "24.3 Interest in an education IRA",
+    "evidence": "Field index: 24.3 Interest in an education IRA p7 line 24, 'Line 24 row 3: current value' (adjudicated). Row 3 of line 24 prints value here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
     "pdf_field": "check 25",
     "producer": "derived:ab_has_25",
     "original_verdicts": [],
@@ -2701,6 +3611,126 @@
   },
   {
     "schema": "schedule_a_b",
+    "pdf_field": "check 28",
+    "producer": "derived:ab_has_28",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check 28",
+    "evidence": "Field index: check 28 p7 line 28, 'No' (vision_agreed); p7 line 28, 'Yes. Give specific information about them, including whether you already filed the returns and the tax years.' (vision_agreed). ab_has_28 says yes with a row on the line, no with none and the line shown, blank when a gate's No hid it, with the index's export state for each. [Q24], 3b spec §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "28 Tax refunds owed",
+    "producer": "derived:ab_line_28_text",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "28 Tax refunds owed",
+    "evidence": "Field index: 28 Tax refunds owed p7 line 28, 'Yes. Give specific information about them, including whether you already filed the returns and the tax years.' (vision_agreed). ab_line_28_text prints the rows' texts in order, joined with a semicolon: the line's one text box. 3b spec §5. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "28 Tax refunds owed amout1",
+    "producer": "derived:ab_line_28_federal",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "28 Tax refunds owed amout1",
+    "evidence": "Field index: 28 Tax refunds owed amout1 p7 line 28, 'Federal:' (vision_agreed). ab_line_28_federal adds the known values of the rows of its kind, blank when none is known: the form's one amount for that kind. 3b spec §5. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "28 Tax refunds owed amout2",
+    "producer": "derived:ab_line_28_state",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "28 Tax refunds owed amout2",
+    "evidence": "Field index: 28 Tax refunds owed amout2 p7 line 28, 'State:' (vision_agreed). ab_line_28_state adds the known values of the rows of its kind, blank when none is known: the form's one amount for that kind. 3b spec §5. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "28 Tax refunds owed amout3",
+    "producer": "derived:ab_line_28_local",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "28 Tax refunds owed amout3",
+    "evidence": "Field index: 28 Tax refunds owed amout3 p7 line 28, 'Local:' (vision_agreed). ab_line_28_local adds the known values of the rows of its kind, blank when none is known: the form's one amount for that kind. 3b spec §5. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "check 29",
+    "producer": "derived:ab_has_29",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check 29",
+    "evidence": "Field index: check 29 p7 line 29, 'No' (vision_agreed); p7 line 29, 'Yes. Give specific information' (vision_agreed). ab_has_29 says yes with a row on the line, no with none and the line shown, blank when a gate's No hid it, with the index's export state for each. [Q24], 3b spec §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "29 Family support",
+    "producer": "derived:ab_line_29_text",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "29 Family support",
+    "evidence": "Field index: 29 Family support p7 line 29, 'Yes. Give specific information' (vision_agreed). ab_line_29_text prints the rows' texts in order, joined with a semicolon: the line's one text box. 3b spec §5. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "29 Family support amount1",
+    "producer": "derived:ab_line_29_alimony",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "29 Family support amount1",
+    "evidence": "Field index: 29 Family support amount1 p7 line 29, 'Alimony:' (vision_agreed). ab_line_29_alimony adds the known values of the rows of its kind, blank when none is known: the form's one amount for that kind. 3b spec §5. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "29 Family support amount2",
+    "producer": "derived:ab_line_29_maintenance",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "29 Family support amount2",
+    "evidence": "Field index: 29 Family support amount2 p7 line 29, 'Maintenance:' (vision_agreed). ab_line_29_maintenance adds the known values of the rows of its kind, blank when none is known: the form's one amount for that kind. 3b spec §5. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "29 Family support amount3",
+    "producer": "derived:ab_line_29_support",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "29 Family support amount3",
+    "evidence": "Field index: 29 Family support amount3 p7 line 29, 'Support:' (vision_agreed). ab_line_29_support adds the known values of the rows of its kind, blank when none is known: the form's one amount for that kind. 3b spec §5. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "29 Family support amount4",
+    "producer": "derived:ab_line_29_divorce_settlement",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "29 Family support amount4",
+    "evidence": "Field index: 29 Family support amount4 p7 line 29, 'Divorce settlement:' (vision_agreed). ab_line_29_divorce_settlement adds the known values of the rows of its kind, blank when none is known: the form's one amount for that kind. 3b spec §5. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "29 Family support amount5",
+    "producer": "derived:ab_line_29_property_settlement",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "29 Family support amount5",
+    "evidence": "Field index: 29 Family support amount5 p7 line 29, 'Property settlement:' (vision_agreed). ab_line_29_property_settlement adds the known values of the rows of its kind, blank when none is known: the form's one amount for that kind. 3b spec §5. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
     "pdf_field": "check 30",
     "producer": "derived:ab_has_30",
     "original_verdicts": [],
@@ -2728,6 +3758,106 @@
     "status": "confirmed",
     "correct_target": "undefined_108",
     "evidence": "Field index: undefined_108 p7 line 30, 'Other amounts someone owes you' (vision_agreed). Row 1 of line 30 prints value here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "check 31",
+    "producer": "derived:ab_has_31",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check 31",
+    "evidence": "Field index: check 31 p8 line 31, 'No' (sampled_ok); p8 line 31, 'Yes. Name the insurance company of each policy and list its value.' (sampled_ok). ab_has_31 says yes with a row on the line, no with none and the line shown, blank when a gate's No hid it, with the index's export state for each. [Q24], 3b spec §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "Company name 1",
+    "producer": "asked:assets.line_31[].description",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Company name 1",
+    "evidence": "Field index: Company name 1 p8 line 31, 'Company name:' (sampled_ok). Row 1 of line 31 prints description here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "Company name 2",
+    "producer": "asked:assets.line_31[].description",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Company name 2",
+    "evidence": "Field index: Company name 2 p8 line 31, 'Company name:' (sampled_ok). Row 2 of line 31 prints description here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "Company name 3",
+    "producer": "asked:assets.line_31[].description",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Company name 3",
+    "evidence": "Field index: Company name 3 p8 line 31, 'Company name:' (sampled_ok). Row 3 of line 31 prints description here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "Beneficiary 1",
+    "producer": "asked:assets.line_31[].beneficiary",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Beneficiary 1",
+    "evidence": "Field index: Beneficiary 1 p8 line 31, 'Beneficiary:' (sampled_ok). Row 1 of line 31 prints beneficiary here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "Beneficiary 2",
+    "producer": "asked:assets.line_31[].beneficiary",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Beneficiary 2",
+    "evidence": "Field index: Beneficiary 2 p8 line 31, 'Beneficiary:' (sampled_ok). Row 2 of line 31 prints beneficiary here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "Beneficiary 3",
+    "producer": "asked:assets.line_31[].beneficiary",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Beneficiary 3",
+    "evidence": "Field index: Beneficiary 3 p8 line 31, 'Beneficiary:' (sampled_ok). Row 3 of line 31 prints beneficiary here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "undefined_109",
+    "producer": "asked:assets.line_31[].value",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_109",
+    "evidence": "Field index: undefined_109 p8 line 31, 'Surrender or refund value:' (sampled_ok). Row 1 of line 31 prints value here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "undefined_110",
+    "producer": "asked:assets.line_31[].value",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_110",
+    "evidence": "Field index: undefined_110 p8 line 31, 'Surrender or refund value:' (sampled_ok). Row 2 of line 31 prints value here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "undefined_111",
+    "producer": "asked:assets.line_31[].value",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_111",
+    "evidence": "Field index: undefined_111 p8 line 31, 'Surrender or refund value:' (sampled_ok). Row 3 of line 31 prints value here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
   },
   {
     "schema": "schedule_a_b",
@@ -2981,6 +4111,106 @@
   },
   {
     "schema": "schedule_a_b",
+    "pdf_field": "check 42",
+    "producer": "derived:ab_has_42",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check 42",
+    "evidence": "Field index: check 42 p9 line 42, 'No' (sampled_ok); p9 line 42, 'Yes. Describe' (sampled_ok). ab_has_42 says yes with a row on the line, no with none and the line shown, blank when a gate's No hid it, with the index's export state for each. [Q24], 3b spec §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "42.1 Name of entity",
+    "producer": "asked:assets.line_42[].description",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "42.1 Name of entity",
+    "evidence": "Field index: 42.1 Name of entity p9 line 42, 'Name of entity:' (sampled_ok). Row 1 of line 42 prints description here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "42.2 Name of entity",
+    "producer": "asked:assets.line_42[].description",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "42.2 Name of entity",
+    "evidence": "Field index: 42.2 Name of entity p9 line 42, 'Name of entity:' (sampled_ok). Row 2 of line 42 prints description here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "42.3 Name of entity",
+    "producer": "asked:assets.line_42[].description",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "42.3 Name of entity",
+    "evidence": "Field index: 42.3 Name of entity p9 line 42, 'Name of entity:' (sampled_ok). Row 3 of line 42 prints description here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "undefined_130",
+    "producer": "asked:assets.line_42[].percent",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_130",
+    "evidence": "Field index: undefined_130 p9 line 42, '% of ownership:' (sampled_ok). Row 1 of line 42 prints percent here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "undefined_131",
+    "producer": "asked:assets.line_42[].percent",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_131",
+    "evidence": "Field index: undefined_131 p9 line 42, '% of ownership:' (sampled_ok). Row 2 of line 42 prints percent here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "undefined_133",
+    "producer": "asked:assets.line_42[].percent",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_133",
+    "evidence": "Field index: undefined_133 p9 line 42, '% of ownership:' (sampled_ok). Row 3 of line 42 prints percent here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "undefined_129",
+    "producer": "asked:assets.line_42[].value",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_129",
+    "evidence": "Field index: undefined_129 p9 line 42, 'Current value' (sampled_ok). Row 1 of line 42 prints value here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "undefined_132",
+    "producer": "asked:assets.line_42[].value",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_132",
+    "evidence": "Field index: undefined_132 p9 line 42, 'Current value' (sampled_ok). Row 2 of line 42 prints value here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "undefined_134",
+    "producer": "asked:assets.line_42[].value",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_134",
+    "evidence": "Field index: undefined_134 p9 line 42, 'Current value' (sampled_ok). Row 3 of line 42 prints value here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
     "pdf_field": "check 43",
     "producer": "derived:ab_has_43",
     "original_verdicts": [],
@@ -3018,6 +4248,136 @@
     "status": "confirmed",
     "correct_target": "check 43_1",
     "evidence": "Field index: check 43_1 p9 line 43, 'No' (vision_agreed). Row 1 of line 43 prints has_personal_info here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "check 44",
+    "producer": "derived:ab_has_44",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check 44",
+    "evidence": "Field index: check 44 p9 line 44, 'No' (vision_agreed); p9 line 44, 'Yes. Give specific information' (vision_agreed). ab_has_44 says yes with a row on the line, no with none and the line shown, blank when a gate's No hid it, with the index's export state for each. [Q24], 3b spec §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "undefined_137",
+    "producer": "asked:assets.line_44[].value",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_137",
+    "evidence": "Field index: undefined_137 p9 line 44, 'Current value of the portion you own' (vision_agreed). Row 1 of line 44 prints value here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "undefined_138",
+    "producer": "asked:assets.line_44[].value",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_138",
+    "evidence": "Field index: undefined_138 p9 line 44, 'Current value of the portion you own' (vision_agreed). Row 2 of line 44 prints value here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "undefined_139",
+    "producer": "asked:assets.line_44[].value",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_139",
+    "evidence": "Field index: undefined_139 p9 line 44, 'Current value of the portion you own' (vision_agreed). Row 3 of line 44 prints value here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "undefined_140",
+    "producer": "asked:assets.line_44[].value",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_140",
+    "evidence": "Field index: undefined_140 p9 line 44, 'Current value of the portion you own' (vision_agreed). Row 4 of line 44 prints value here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "undefined_141",
+    "producer": "asked:assets.line_44[].value",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_141",
+    "evidence": "Field index: undefined_141 p9 line 44, 'Current value of the portion you own' (vision_agreed). Row 5 of line 44 prints value here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "undefined_142",
+    "producer": "asked:assets.line_44[].value",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_142",
+    "evidence": "Field index: undefined_142 p9 line 44, 'Current value of the portion you own' (vision_agreed). Row 6 of line 44 prints value here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "44.1",
+    "producer": "asked:assets.line_44[].description",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "44.1",
+    "evidence": "Field index: 44.1 p9 line 44, 'Yes. Give specific information' (vision_agreed). Row 1 of line 44 prints description here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "44.2",
+    "producer": "asked:assets.line_44[].description",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "44.2",
+    "evidence": "Field index: 44.2 p9 line 44, 'Yes. Give specific information' (vision_agreed). Row 2 of line 44 prints description here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "44.3",
+    "producer": "asked:assets.line_44[].description",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "44.3",
+    "evidence": "Field index: 44.3 p9 line 44, 'Yes. Give specific information' (vision_agreed). Row 3 of line 44 prints description here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "44.4",
+    "producer": "asked:assets.line_44[].description",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "44.4",
+    "evidence": "Field index: 44.4 p9 line 44, 'Yes. Give specific information' (vision_agreed). Row 4 of line 44 prints description here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "44.5",
+    "producer": "asked:assets.line_44[].description",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "44.5",
+    "evidence": "Field index: 44.5 p9 line 44, 'Yes. Give specific information' (vision_agreed). Row 5 of line 44 prints description here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "44.6",
+    "producer": "asked:assets.line_44[].description",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "44.6",
+    "evidence": "Field index: 44.6 p9 line 44, 'Yes. Give specific information' (vision_agreed). Row 6 of line 44 prints description here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
   },
   {
     "schema": "schedule_a_b",
@@ -3181,6 +4541,56 @@
   },
   {
     "schema": "schedule_a_b",
+    "pdf_field": "check 53",
+    "producer": "derived:ab_has_53",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check 53",
+    "evidence": "Field index: check 53 p10 line 53, 'No' (sampled_ok); p10 line 53, 'Yes. Give specific information.' (sampled_ok). ab_has_53 says yes with a row on the line, no with none and the line shown, blank when a gate's No hid it, with the index's export state for each. [Q24], 3b spec §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "53 Examples Season tickets country club membership",
+    "producer": "derived:ab_line_53_text",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "53 Examples Season tickets country club membership",
+    "evidence": "Field index: 53 Examples Season tickets country club membership p10 line 53, 'Line 53 Other property: Give specific information.' (adjudicated). ab_line_53_text prints the rows' texts in order, joined with a semicolon: the line's one text box. 3b spec §5. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "undefined_155",
+    "producer": "asked:assets.line_53[].value",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_155",
+    "evidence": "Field index: undefined_155 p10 line 53, 'Do you have other property of any kind you did not already list?' (sampled_ok). Row 1 of line 53 prints value here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "undefined_156",
+    "producer": "asked:assets.line_53[].value",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_156",
+    "evidence": "Field index: undefined_156 p10 line 53, 'Do you have other property of any kind you did not already list?' (sampled_ok). Row 2 of line 53 prints value here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
+    "pdf_field": "undefined_157",
+    "producer": "asked:assets.line_53[].value",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_157",
+    "evidence": "Field index: undefined_157 p10 line 53, 'Do you have other property of any kind you did not already list?' (sampled_ok). Row 3 of line 53 prints value here: the words beside the box, not its name, decide. 3b spec §5, §8.1. Filled page rendered and read at build."
+  },
+  {
+    "schema": "schedule_a_b",
     "pdf_field": "undefined_13",
     "producer": "derived:ab_line_2",
     "original_verdicts": [],
@@ -3338,46 +4748,6 @@
     "status": "confirmed",
     "correct_target": "undefined_167",
     "evidence": "Field index: undefined_167 p10 line 63, 'Total of all property on Schedule A/B. Add line 55 + line 62.' (sampled_ok). total_assets adds the portions on Parts 1 to 7, an unknown value counting as zero, sheets included. 3b spec §8.2. Filled page rendered and read at build."
-  },
-  {
-    "schema": "schedule_a_b",
-    "pdf_field": "Check 17",
-    "producer": "derived:has_bank_accounts",
-    "original_verdicts": [],
-    "final_verdicts": ["correct"],
-    "status": "confirmed",
-    "correct_target": "Check 17",
-    "evidence": "Field index: Check 17 p5 line 17, 'Deposits of money', options No (no) and Yes (yes), sampled_ok. has_bank_accounts is 'yes' when the filer listed a bank_account asset. Owner's answer Q8 (DIG-80, DIG-69; step 2 spec §3, §6.3): the section Yes/No boxes are derived from the lists, Yes with rows and No without. Spec Appendix A.9. The audit has no row on this box."
-  },
-  {
-    "schema": "schedule_a_b",
-    "pdf_field": "check 21",
-    "producer": "derived:has_retirement_accounts",
-    "original_verdicts": [],
-    "final_verdicts": ["correct"],
-    "status": "confirmed",
-    "correct_target": "check 21",
-    "evidence": "Field index: check 21 p6 line 21, 'Retirement or pension accounts', options No (no) and 'Yes. List each account separately.' (yes), sampled_ok. has_retirement_accounts is 'yes' when the filer listed a retirement_account asset. Owner's answer Q8 (DIG-80, DIG-69; step 2 spec §3, §6.3): the section Yes/No boxes are derived from the lists, Yes with rows and No without. Spec Appendix A.9. The audit has no row on this box."
-  },
-  {
-    "schema": "schedule_a_b",
-    "pdf_field": "check 53",
-    "producer": "derived:has_other_assets",
-    "original_verdicts": [],
-    "final_verdicts": ["correct"],
-    "status": "confirmed",
-    "correct_target": "check 53",
-    "evidence": "Field index: check 53 p10 line 53, 'Do you have other property of any kind you did not already list?'. Its No widget exports no and its 'Yes. Give specific information.' widget exports On (both sampled_ok), so the choices are {yes: /On, no: /no}. has_other_assets is 'yes' when the filer listed an 'Other Asset'. Owner's answer Q8 (DIG-80, DIG-69; step 2 spec §3, §6.3): the section Yes/No boxes are derived from the lists, Yes with rows and No without. Owner's answer Q9: 'Other Asset' prints on line 53. Spec Appendix A.9. The audit has no row on this box."
-  },
-  {
-    "schema": "schedule_a_b",
-    "pdf_field": "53 Examples Season tickets country club membership",
-    "producer": "derived:other_asset_descriptions",
-    "original_verdicts": [],
-    "final_verdicts": ["correct"],
-    "status": "confirmed",
-    "correct_target": "53 Examples Season tickets country club membership",
-    "evidence": "Field index: p10 line 53, 'Line 53 Other property: Give specific information.', tooltip 'Examples: Season tickets, country club membership' (adjudicated). other_asset_descriptions joins the 'Other' assets' descriptions with '; ' in id order, the order the filer listed them (DIG-164). Owner's answer Q9 (step 2 spec §3, §6.3, Appendix E 7); spec §6.2 and Appendix A.9. Line 53's amount boxes (undefined_155-157) stay blank until step 3. The audit has no row on this box."
   },
   {
     "schema": "schedule_g",

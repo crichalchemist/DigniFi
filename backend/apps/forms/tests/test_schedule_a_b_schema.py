@@ -6,19 +6,23 @@ Business intent: the totals are what the trustee reads first, and 106Sum copies 
 62 and 63 (step 2 spec §6.1 B5, Appendix A.9, owner Q8 and Q9; 3b spec §8).
 """
 
+import json
 from decimal import Decimal
 
 import pytest
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.db import connection
 from django.test.utils import CaptureQueriesContext
 
 from apps.districts.models import District
+from apps.forms.field_index import export_state
 from apps.forms.schema import load_schema
 from apps.forms.services.derivations import RULE_FIXES
 from apps.forms.services.fill_resolver import resolve
 from apps.forms.services.pdf_filler import PDFFormFiller
 from apps.forms.tests.pdf_readback import read_drawn
+from apps.intake.asset_lines import LINE_BY_KEY
 from apps.intake.models import AssetInfo, IncomeInfo, IntakeSession
 
 User = get_user_model()
@@ -69,8 +73,7 @@ LINE_4_QUESTION = (
 LEFT_BLANK = {
     "12",  # line 1.2: ASSETS holds one property
     "16 Cash amount",  # line 16: ASSETS holds no cash
-    "undefined_155",  # line 53's amounts
-    "undefined_156",
+    "undefined_156",  # line 53's second amount: ASSETS holds one row there
     "undefined_157",
 }
 # Lines ASSETS has nothing on, which say so rather than print nothing (3b spec §8.1).
@@ -209,9 +212,48 @@ def test_other_property_is_described_in_the_order_the_filer_listed_it(session):
 
     printed = resolve(load_schema("schedule_a_b"), session)
 
-    assert printed.get(OTHER_PROPERTY) == (
-        "Season tickets; Club membership; Coin collection; Timeshare points"
-    )
+    # The box holds the three rows beside the form's three amounts; the fourth goes on a sheet.
+    assert printed.get(OTHER_PROPERTY) == "Season tickets; Club membership; Coin collection"
+
+
+def _index():
+    return json.loads((settings.FORM_INDEX_DIRECTORY / "form_b106ab.index.json").read_text())
+
+
+def test_every_catalog_line_has_its_boxes():
+    # A line with a box left unbound prints blank on a sworn form. Only Debtor 2's boxes, which
+    # 3b never ticks, stay out.
+    bound = set()
+    for f in load_schema("schedule_a_b").fields:
+        for row in _index():
+            if row["full_name"] == f.pdf_field and f.tag in (None, row["tag"]):
+                bound.add((row["page"], row["tag"]))
+    unbound = [
+        (row["line"], row["full_name"], row["option_text"])
+        for row in _index()
+        if row["line"].rstrip(".").partition(".")[0] in LINE_BY_KEY
+        and (row["page"], row["tag"]) not in bound
+    ]
+    assert unbound == []
+
+
+def test_no_debtor_2_box_is_bound():
+    # Joint filing isn't in 3b: "only you" and "you and someone else" tick Debtor 1's two boxes,
+    # and a Debtor 2 tick would swear to a co-filer who doesn't exist.
+    never = [
+        row
+        for row in _index()
+        if row["option_text"].startswith(("Debtor 2", "Debtor 1 and Debtor 2"))
+    ]
+    assert never
+    choices = {f.pdf_field: f.choices for f in load_schema("schedule_a_b").fields if f.choices}
+    ticked = [
+        (row["full_name"], row["on_state"])
+        for row in never
+        if export_state(row["on_state"]) in (choices.get(row["full_name"]) or {}).values()
+    ]
+    assert ticked == []
+    assert not {f.pdf_field for f in load_schema("schedule_a_b").fields} & {"Debtor 2"}
 
 
 @pytest.mark.slow
@@ -227,6 +269,7 @@ def test_a_box_no_row_feeds_prints_nothing(session):
     assert {box: filled.get(box) for box in LEFT_BLANK} == {box: set() for box in LEFT_BLANK}
     assert {box: filled.get(box) for box in SAYS_NOTHING_THERE} == SAYS_NOTHING_THERE
     assert filled.get("6 check") == {"/yes"}  # household goods, which ASSETS does list
+    assert filled.get("undefined_155") == {"128.00"}  # line 53's first amount, its one row
 
 
 def test_a_form_reads_the_asset_rows_once_however_many_rules_ask(session):
