@@ -71,10 +71,7 @@ test.describe('SOFA — Form 107 Financial History', () => {
     await wizard.waitForMeansTestEstimate();
 
     // Step 5: Assets
-    for (const asset of JAMES.assets) {
-      await wizard.addAsset(asset);
-    }
-    await wizard.nextStep();
+    await wizard.walkAssets(JAMES);
 
     // Step 6: Debts
     for (const debt of JAMES.debts) {

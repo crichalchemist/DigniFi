@@ -21,6 +21,7 @@ from apps.eligibility.cmi import (
 from apps.eligibility.services import MeansTestCalculator
 from apps.forms.registry import PreconditionMissing, _needs_county, _needs_ssn
 
+from .asset_lines import asset_step_gaps
 from .filing_fee import filing_fee_information
 from .income import deductions_blank, schedule_i_line4
 from .locking import lock_session
@@ -302,6 +303,10 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
             )
         elif session.expense_info.expenses_include_others is None:
             errors.append({"step": "expense_info", "message": EXPENSES_INCLUDE_OTHERS_UNANSWERED})
+
+        # Schedule A/B's walk: every gap, after Schedule J line 3 and before the scanned debts,
+        # which is wizard order (3b spec §7).
+        errors.extend([{"step": gap.step, "message": str(gap)} for gap in asset_step_gaps(session)])
 
         # A scanned debt stays off the forms until the filer saves the Amounts Owed step
         # (DIG-163). An upload after Complete reopens the intake, and Review is one press away.
@@ -612,7 +617,7 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
             completed_sections += 1
         if hasattr(session, "expense_info"):
             completed_sections += 1
-        if session.assets.exists():
+        if not asset_step_gaps(session):
             completed_sections += 1
         if session.debts.exists():
             completed_sections += 1
@@ -624,7 +629,8 @@ class AssetViewSet(viewsets.ModelViewSet):
     """
     ViewSet for managing assets within an intake session.
 
-    Provides CRUD operations for individual assets (property, vehicles, accounts).
+    Provides CRUD operations for individual Schedule A/B rows. A create needs an `ab_line`
+    (the base serializer's rule), so this path can't make an old row.
     """
 
     serializer_class = AssetInfoSerializer
@@ -632,7 +638,11 @@ class AssetViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         """Return only assets for user's intake sessions."""
-        return AssetInfo.objects.filter(session__user=self.request.user).select_related("session")
+        return (
+            AssetInfo.objects.filter(session__user=self.request.user)
+            .select_related("session")
+            .order_by("pk")
+        )
 
     @transaction.atomic
     def perform_create(self, serializer):
@@ -640,6 +650,40 @@ class AssetViewSet(viewsets.ModelViewSet):
         lock_session(serializer.validated_data["session"].pk)
         serializer.save()
         serializer.instance.session.reopen()
+
+    @transaction.atomic
+    def update(self, request, *args, **kwargs):
+        """
+        PUT and PATCH /api/intake/assets/{id}/
+
+        Validation reads the stored row's details, so the sessions are locked before it runs,
+        in id order: the row's, and the one a move names when it is the filer's own (DIG-188).
+        get_object comes first: another user's row is a 404.
+        """
+        from rest_framework.exceptions import NotFound
+
+        row = self.get_object()
+        locked = {row.session_id}
+        # A body that isn't an object, or a session that isn't a number, locks only the row's own
+        # session, and the serializer refuses it.
+        target = request.data.get("session") if isinstance(request.data, dict) else None
+        if target is not None:
+            try:
+                target_id = int(str(target))
+            except ValueError:
+                pass
+            else:
+                locked |= set(
+                    IntakeSession.objects.filter(pk=target_id, user=request.user).values_list(
+                        "pk", flat=True
+                    )
+                )
+        for session_id in sorted(locked):
+            lock_session(session_id)
+        # Moved or deleted while the locks were awaited: its new session is not locked here.
+        if not AssetInfo.objects.filter(pk=row.pk, session_id__in=locked).exists():
+            raise NotFound()
+        return super().update(request, *args, **kwargs)
 
     @transaction.atomic
     def perform_update(self, serializer):

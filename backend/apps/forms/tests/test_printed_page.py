@@ -9,10 +9,12 @@ character sits (its origin and size, and its outline in the Helvetica MuPDF draw
 with), not from text.
 """
 
+import json
 import unicodedata
 from collections import Counter
 from contextlib import contextmanager
 from dataclasses import dataclass
+from decimal import Decimal
 from functools import cache
 from io import BytesIO
 from pathlib import Path
@@ -21,11 +23,13 @@ import pymupdf
 import pypdf
 import pytest
 from django.conf import settings
+from django.contrib.auth import get_user_model
 from django.core.management import call_command
 from pypdf.generic import DictionaryObject, NameObject, NullObject, TextStringObject
 from pypdf.generic._appearance_stream import TextStreamAppearance
 
 from apps.districts.models import District
+from apps.forms.field_index import export_state
 from apps.forms.registry import (
     PreconditionMissing,
     build_field_values,
@@ -33,13 +37,15 @@ from apps.forms.registry import (
     packet,
 )
 from apps.forms.schema import SheetColumn, SheetSpec, load_schema
+from apps.forms.services.fill_resolver import resolve_parts
 from apps.forms.services.pdf_filler import PDFFormFiller, UnprintableLetter, ValueTooLong
-from apps.forms.services.sheets import draw_sheet, plan_sheet
+from apps.forms.services.sheets import draw_sheet, fits_line_column, plan_sheet, sheet_spec
 from apps.forms.services.text_fit import font_for, printable
 from apps.forms.services.widgets import field_of, template_widgets, widget_for
 from apps.forms.tests.pdf_readback import read_drawn, read_sheets
+from apps.intake.asset_lines import LINE_BY_KEY, LINES
 from apps.intake.management.commands.seed_demo_data import PERSONAS
-from apps.intake.models import IntakeSession
+from apps.intake.models import AssetInfo, IntakeSession
 
 # The Helvetica MuPDF draws and reads the baked page with. A glyph's outline, per point of
 # size, is glyph_bbox: of the characters a form prints, Å's ring reaches highest, 0.953
@@ -965,3 +971,987 @@ def test_the_sheets_letter_check_agrees_with_what_it_prints():
     as_itself = [c for c, p in zip(refused, printed, strict=True) if p == f"x{c}x"]
     with _no_anti_aliasing():
         assert [f"U+{ord(c):04X}" for c in as_itself if _cell_ink(c) != empty] == []
+
+
+# ── Schedule A/B's rows (3b spec §8) ──────────────────────────────────
+
+
+@pytest.fixture
+def filer(db):
+    user = get_user_model().objects.create_user(username="abfiler", password="pass")
+    district = District.objects.create(
+        code="abilnd",
+        name="Northern District of Illinois",
+        state="IL",
+        court_name="U.S. Bankruptcy Court",
+        filing_fee_chapter_7=Decimal("338.00"),
+    )
+    return IntakeSession.objects.create(user=user, district=district)
+
+
+def _ab_row(session, line, value=None, description="", entire=None, **details):
+    return AssetInfo.objects.create(
+        session=session,
+        ab_line=line,
+        description=description,
+        current_value=None if value is None else Decimal(value),
+        entire_value=None if entire is None else Decimal(entire),
+        details=json.dumps(details),
+    )
+
+
+def _ab_place(session, street, value="1000.00", entire="2000.00", **details):
+    return _ab_row(
+        session,
+        "1",
+        value,
+        entire=entire,
+        street=street,
+        city="Elgin",
+        state="IL",
+        zip="60120",
+        county="Kane",
+        property_kinds=["land"],
+        who="only_you",
+        **details,
+    )
+
+
+def _ab_car(session, make, line="3", value="1000.00", entire="2000.00", who="only_you", **details):
+    return _ab_row(session, line, value, entire=entire, make=make, who=who, **details)
+
+
+def _ab_drawn(session):
+    """(box → the text or the ticks it prints, the parts, the PDF), read off the baked page."""
+    parts = resolve_parts(load_schema("schedule_a_b"), session)
+    pdf = PDFFormFiller().fill("schedule_a_b", parts)
+    shows = {}
+    for widget in read_drawn("schedule_a_b", pdf, parts["parts"]):
+        seen = shows.setdefault(widget.full_name, set())
+        if widget.state:
+            if widget.state != "/Off":
+                seen.add(widget.state)
+        elif widget.value:
+            seen.add(widget.value)
+    return shows, parts, pdf
+
+
+def _ab_sheet_rows(parts, pdf):
+    """The rows of the form's one attached sheet, as a person reads them."""
+    (part,) = [part for part in parts["parts"] if part["kind"] == "sheet"]
+    (page,) = read_sheets(pdf, sheet_spec(part))
+    return page.rows
+
+
+def test_a_home_prints_on_line_1_1_with_both_values_and_its_kinds(filer):
+    # The first thing a trustee reads: where it is, what it is, who has it and both values.
+    _ab_row(
+        filer,
+        "1",
+        "90000.00",
+        entire="180000.00",
+        street="12 Elm St",
+        street_2="Unit 3",
+        city="Elgin",
+        state="IL",
+        zip="60120",
+        county="Kane",
+        property_kinds=["single_family", "other"],
+        other_kind="Garage",
+        nature="Fee simple",
+        who="only_you",
+        other_info="PIN 900",
+    )
+
+    shows, _, _ = _ab_drawn(filer)
+
+    assert {
+        box: shows[box]
+        for box in (
+            "Check 2",
+            "1 1",
+            "1 1a",
+            "City",
+            "State",
+            "ZIP Code",
+            "County",
+            "Singlefamily home",
+            "Other",
+            "undefined_4",
+            "Land",
+            "the entireties or a life estate if known",
+            "Who has interest in property",
+            "property identification number",
+            "undefined_2",
+            "undefined_3",
+            "undefined_13",
+        )
+    } == {
+        "Check 2": {"/yes"},
+        "1 1": {"12 Elm St"},
+        "1 1a": {"Unit 3"},
+        "City": {"Elgin"},
+        "State": {"IL"},
+        "ZIP Code": {"60120"},
+        "County": {"Kane"},
+        "Singlefamily home": {"/On"},
+        "Other": {"/On"},
+        "undefined_4": {"Garage"},
+        "Land": set(),
+        "the entireties or a life estate if known": {"Fee simple"},
+        "Who has interest in property": {"/Debtor 1"},
+        "property identification number": {"PIN 900"},
+        "undefined_2": {"180000.00"},
+        "undefined_3": {"90000.00"},
+        "undefined_13": {"90000.00"},
+    }
+
+
+def test_a_third_property_prints_on_page_2_and_a_fourth_on_a_sheet_counted_in_line_2(filer):
+    # The form says to attach a sheet for more, and its line 2 adds the attached pages too.
+    for n in range(1, 5):
+        _ab_place(filer, f"{n} Elm St", value=f"{n}000.00", entire="9000.00", nature="Joint")
+
+    shows, parts, pdf = _ab_drawn(filer)
+
+    assert shows["13"] == {"3 Elm St"}
+    assert shows["undefined_11"] == {"3000.00"}
+    assert _ab_sheet_rows(parts, pdf) == (
+        (
+            "1.4",
+            "4 Elm St, Elgin, IL 60120, Kane",
+            "Land",
+            "Debtor 1 only; Joint",
+            "9000.00",
+            "4000.00",
+        ),
+    )
+    assert shows["undefined_13"] == {"10000.00"}
+
+
+def test_the_largest_amount_a_row_can_hold_prints_whole_on_its_sheet(filer):
+    # A word never wraps, so a value column narrower than the widest amount refuses the form.
+    for n in range(1, 5):
+        _ab_place(filer, f"{n} Elm St", value="9999999999.99", entire="9999999999.99")
+    for n in range(1, 6):
+        _ab_car(filer, f"Make{n}", value="9999999999.99", entire="9999999999.99")
+
+    parts = resolve_parts(load_schema("schedule_a_b"), filer)
+
+    assert [part["group"] for part in parts["parts"] if part["kind"] == "sheet"] == [
+        "ab_1",
+        "ab_3",
+    ]
+    PDFFormFiller().check("schedule_a_b", parts)
+
+
+_PIN = "17-16-123-045-0000"
+_VIN = "1HGCM82633A004352"
+# VINs are not one width. These two print wider than _VIN, by their W, M and D: a Mercedes-format
+# VIN such as a Sprinter-based motor home's, and a MINI-format one, the widest format measured.
+_VIN_MERCEDES = "WDBUF56X88B123456"
+_VIN_MINI = "WMWZC3C5XGWA12345"
+
+
+@pytest.mark.parametrize(
+    ("line", "answer"),
+    [
+        ("1", {"other_info": _PIN}),
+        ("3", {"mileage": "125,000"}),
+        ("3", {"mileage": "Unknown"}),
+        ("3", {"make": "Harley-Davidson"}),
+        ("3", {"model": "Thunderbird"}),
+        ("3", {"year": "Unknown"}),
+        ("3", {"other_info": _VIN}),
+        ("3", {"other_info": _VIN_MERCEDES}),
+        ("3", {"other_info": _VIN_MINI}),
+        ("4", {"other_info": _VIN}),
+        ("4", {"other_info": _VIN_MERCEDES}),
+        ("4", {"other_info": _VIN_MINI}),
+        ("4", {"year": "Unknown"}),
+        ("4", {"make": "Harley-Davidson"}),
+        ("4", {"model": "Thunderbird"}),
+        ("4", {"model": "WaveRunner"}),
+    ],
+    ids=lambda case: next(iter(case)) if isinstance(case, dict) else f"line_{case}",
+)
+def test_an_answer_the_form_s_box_takes_prints_whole_on_its_sheet(filer, line, answer):
+    # A word never wraps, so a column narrower than a real answer refuses the whole form, and the
+    # filer could only fix it by mangling a correct number. The row past the slots goes on a sheet.
+    if line == "1":
+        for n in range(1, 4):
+            _ab_place(filer, f"{n} Elm St")
+        _ab_place(filer, "4 Elm St", **answer)
+    else:
+        for make in ("A", "B", "C", "D")[: LINE_BY_KEY[line].capacity]:
+            _ab_car(filer, make, line=line)
+        _ab_car(filer, **{"make": "Spare", **answer}, line=line)
+
+    parts = resolve_parts(load_schema("schedule_a_b"), filer)
+
+    PDFFormFiller().check("schedule_a_b", parts)
+    (part,) = [part for part in parts["parts"] if part["kind"] == "sheet"]
+    (word,) = answer.values()
+    assert word in " ".join(cell for row in part["rows"] for cell in row["cells"])
+
+
+def test_a_boat_s_model_and_vin_read_whole_in_their_own_columns_on_the_drawn_sheet(filer):
+    # Line 4's Model and Who are split to the half point to take both, so read what a court reads.
+    for make in ("A", "B"):
+        _ab_car(filer, make, line="4")
+    _ab_car(filer, "Sea-Doo", line="4", model="WaveRunner", year="Unknown", other_info=_VIN_MINI)
+
+    parts = resolve_parts(load_schema("schedule_a_b"), filer)
+    pdf = PDFFormFiller().fill("schedule_a_b", parts)
+
+    assert _ab_sheet_rows(parts, pdf) == (
+        (
+            "4.3",
+            "Sea-Doo",
+            "WaveRunner",
+            "Unknown",
+            f"Debtor 1 only; {_VIN_MINI}",
+            "2000.00",
+            "1000.00",
+        ),
+    )
+
+
+@pytest.mark.parametrize(
+    ("answers", "year_and_miles"),
+    [
+        ({"year": "Unknown", "mileage": "Unknown"}, "Unknown Unknown"),
+        ({"year": "2015", "mileage": "125,000"}, "2015 125,000"),
+        ({"year": "2015"}, "2015"),
+        ({"mileage": "125,000"}, "125,000"),
+        ({}, ""),
+    ],
+    ids=["both_unknown", "both", "year_only", "miles_only", "neither"],
+)
+def test_a_car_s_year_and_miles_and_its_vin_read_whole_on_the_drawn_sheet(
+    filer, answers, year_and_miles
+):
+    # Line 3's sheet has no room for a VIN beside a Year and a Miles column, so one column holds
+    # both answers, each on its own line: "Unknown" only just fits, and a comma would refuse it.
+    for make in ("A", "B", "C", "D"):
+        _ab_car(filer, make)
+    _ab_car(filer, "Mini", model="Cooper", other_info=_VIN_MINI, **answers)
+
+    parts = resolve_parts(load_schema("schedule_a_b"), filer)
+    pdf = PDFFormFiller().fill("schedule_a_b", parts)
+
+    assert _ab_sheet_rows(parts, pdf) == (
+        (
+            "3.5",
+            "Mini",
+            "Cooper",
+            year_and_miles,
+            f"Debtor 1 only; {_VIN_MINI}",
+            "2000.00",
+            "1000.00",
+        ),
+    )
+
+
+@pytest.mark.parametrize(
+    ("line", "answer", "label"),
+    [
+        ("3", {"other_info": "W" * 17}, "Who has an interest"),
+        ("3", {"year": "Approximately"}, "Year and miles"),
+        ("4", {"other_info": "W" * 17}, "Who has an interest"),
+    ],
+    ids=["line_3_past_its_widest_vin", "line_3_year_too_wide", "line_4_past_its_widest_vin"],
+)
+def test_a_word_too_wide_for_a_vehicle_s_sheet_is_refused_with_a_link_to_the_assets_step(
+    filer, line, answer, label
+):
+    # The refusal is the filer's only sign that a row won't print, so it names the column and says
+    # where to change it.
+    for make in ("A", "B", "C", "D")[: LINE_BY_KEY[line].capacity]:
+        _ab_car(filer, make, line=line)
+    _ab_car(filer, "Spare", line=line, **answer)
+
+    with pytest.raises(ValueTooLong) as refused:
+        PDFFormFiller().check("schedule_a_b", resolve_parts(load_schema("schedule_a_b"), filer))
+
+    assert refused.value.label == label
+    assert refused.value.step == "assets"
+
+
+def test_a_leased_car_prints_zero_in_both_value_boxes(filer):
+    # The filer typed $0 for each: a zero is an answer, so it prints, unlike an unknown value.
+    _ab_car(filer, "Toyota", value="0", entire="0", model="Corolla", other_info="Leased")
+
+    shows, _, _ = _ab_drawn(filer)
+
+    assert shows["3 1"] == {"Toyota"}
+    assert shows["3 2"] == {"Corolla"}
+    assert shows["Other information"] == {"Leased"}
+    assert shows["undefined_14"] == {"0.00"}
+    assert shows["undefined_15"] == {"0.00"}
+
+
+def test_a_car_of_unknown_value_prints_its_make_and_blank_values(filer):
+    # "I don't know the value" keeps the row on the sworn list without inventing a figure.
+    _ab_row(filer, "3", None, make="Honda", who="only_you", value_unknown=True, entire_unknown=True)
+
+    shows, _, _ = _ab_drawn(filer)
+
+    assert shows["3 1"] == {"Honda"}
+    assert shows["undefined_14"] == set()
+    assert shows["undefined_15"] == set()
+    assert shows["undefined_26"] == {"0.00"}
+
+
+def test_a_co_owned_car_ticks_the_another_box_and_no_debtor_2_box(filer):
+    # Each row's "another" box has its own spelling of the state, and rows 3.3 and 3.4 export On.
+    for make in ("A", "B", "C", "D"):
+        _ab_car(filer, make, who="with_someone")
+
+    shows, _, _ = _ab_drawn(filer)
+
+    assert [shows[f"Who has interest in property {n}"] for n in (4, 5, 6, 7)] == [
+        {"/One of Debtors and another"},
+        {"/One of Debtors and another"},
+        {"/On"},
+        {"/On"},
+    ]
+
+
+def test_the_community_box_stays_unticked_unless_the_filer_ticks_it(filer):
+    _ab_car(filer, "Unticked")
+    _ab_car(filer, "Ticked", community=True)
+
+    shows, _, _ = _ab_drawn(filer)
+
+    assert shows["Check if this is community property see"] == set()
+    assert shows["Check if this is community property see_2"] == {"/On"}
+
+
+def test_a_boat_prints_on_line_4_not_line_3(filer):
+    # The RV gap: a filer whose only vehicle is a boat must not swear to owning a car.
+    _ab_car(filer, "Bayliner", line="4", value="700.00", entire="1400.00", model="VR5", year="2010")
+
+    shows, _, _ = _ab_drawn(filer)
+
+    assert shows["Check 3"] == {"/no"}
+    assert shows["3 1"] == set()
+    assert shows[
+        "Examples Boats trailers motors personal watercraft fishing vessels snowmobiles "
+        "motorcycle accessories"
+    ] == {"/Yes_2"}
+    assert shows["Make"] == {"Bayliner"}
+    assert shows["Model"] == {"VR5"}
+    assert shows["Year"] == {"2010"}
+    assert shows["undefined_22"] == {"1400.00"}
+    assert shows["undefined_23"] == {"700.00"}
+    assert shows["undefined_26"] == {"700.00"}
+
+
+def test_a_second_item_on_a_one_box_line_goes_on_a_sheet_numbered_6_2(filer):
+    # A second row is never merged or dropped: it prints under its own number, and line 15 adds it.
+    _ab_row(filer, "6", "100.00", "Sofa")
+    _ab_row(filer, "6", "300.00", "Dining table")
+
+    shows, parts, pdf = _ab_drawn(filer)
+
+    assert shows["6 check"] == {"/yes"}
+    assert shows["6 description"] == {"Sofa"}
+    assert shows["6 description amount"] == {"100.00"}
+    assert _ab_sheet_rows(parts, pdf) == (("6.2", "Dining table", "300.00"),)
+    assert shows["15 amount"] == {"400.00"}
+
+
+def test_cash_prints_its_amount(filer):
+    _ab_row(filer, "16", "60.00")
+
+    shows, _, _ = _ab_drawn(filer)
+
+    assert shows["Check 16"] == {"/yes"}
+    assert shows["16 Cash amount"] == {"60.00"}
+
+
+def test_line_43_s_describe_prints_under_its_yes(filer):
+    # The form's Describe sits under "Yes" to "Do your lists include personally identifiable
+    # information", so it prints there.
+    _ab_row(filer, "43", "50.00", "Customer emails", has_personal_info=True)
+
+    shows, _, _ = _ab_drawn(filer)
+
+    assert shows["check 43"] == {"/yes"}
+    assert shows["check 43_1"] == {"/yes"}
+    assert shows["43 Identifiable information"] == {"Customer emails"}
+    assert shows["undefined_135"] == {"50.00"}
+
+
+def test_line_43_s_describe_stays_blank_under_its_no(filer):
+    # A description kept from before the filer changed the answer would contradict the tick.
+    _ab_row(filer, "43", "50.00", "Customer emails", has_personal_info=False)
+
+    shows, _, _ = _ab_drawn(filer)
+
+    assert shows["check 43_1"] == {"/no"}
+    assert shows["43 Identifiable information"] == set()
+    assert shows["undefined_135"] == {"50.00"}
+
+
+def test_other_s_words_stay_blank_once_other_is_unticked(filer):
+    # Words kept from before the filer unticked Other would sit beside an empty box on a sworn
+    # form. A row on a sheet already leaves them out, and a row in a box must read the same.
+    for n in range(1, 5):
+        _ab_place(filer, f"{n} Elm St", other_kind="Garage")
+
+    shows, parts, pdf = _ab_drawn(filer)
+
+    for box in ("undefined_4", "undefined_8", "undefined_12"):
+        assert shows[box] == set()
+    assert shows["Land"] == {"/On"}
+    assert shows["Other"] == set()
+    assert _ab_sheet_rows(parts, pdf)[0][2] == "Land"
+
+
+# The Yes/No boxes under each gate (3b spec §8.1).
+_UNDER_37 = ("check 38", "check 39", "check 40", "check 41", "check 42", "check 43", "check 44")
+_UNDER_46 = ("check 47", "check 48", "check 49", "check 50", "check 51")
+
+
+def test_a_no_to_line_37_leaves_38_to_45_blank_and_59_at_zero(filer):
+    # The form says "No. Go to Part 6", so those lines were never answered; line 59 still adds up.
+    shows, _, _ = _ab_drawn(filer)
+
+    assert shows["check 37"] == {"/no"}
+    assert {box: shows[box] for box in _UNDER_37} == {box: set() for box in _UNDER_37}
+    assert shows["undefined_143"] == set()
+    assert shows["undefined_163"] == {"0.00"}
+
+
+def test_a_no_to_line_46_leaves_47_to_52_blank_and_60_at_zero(filer):
+    shows, _, _ = _ab_drawn(filer)
+
+    assert shows["check 46"] == {"/no"}
+    assert {box: shows[box] for box in _UNDER_46} == {box: set() for box in _UNDER_46}
+    assert shows["undefined_154"] == set()
+    assert shows["undefined_164"] == {"0.00"}
+
+
+def test_a_yes_to_a_gate_answers_every_line_under_it_and_prints_its_total(filer):
+    # A Yes shows the Part, so a line under it with nothing on it says No rather than nothing.
+    _ab_row(filer, "38", "310.00", "Unpaid invoices")
+    _ab_row(filer, "47", "20.00", "Hens")
+
+    shows, _, _ = _ab_drawn(filer)
+
+    assert shows["check 37"] == {"/yes"}
+    assert shows["check 38"] == {"/yes"}
+    assert shows["check 39"] == {"/no"}
+    assert shows["undefined_143"] == {"310.00"}
+    assert shows["undefined_163"] == {"310.00"}
+    assert shows["check 46"] == {"/yes"}
+    assert shows["check 47"] == {"/On"}
+    assert shows["check 48"] == {"/no"}
+    assert shows["undefined_154"] == {"20.00"}
+    assert shows["undefined_164"] == {"20.00"}
+
+
+def test_a_no_to_line_1_leaves_line_2_blank_and_55_at_zero(filer):
+    # "No. Go to Part 2" skips line 2, but 106Sum copies line 55, which always prints.
+    _ab_row(filer, "6", "100.00", "Sofa")
+
+    shows, _, _ = _ab_drawn(filer)
+
+    assert shows["Check 2"] == {"/On"}
+    assert shows["undefined_13"] == set()
+    assert shows["undefined_159"] == {"0.00"}
+
+
+def test_every_line_says_no_for_a_filer_with_nothing_and_totals_print_zero(filer):
+    # Sarah's form: nothing owned is sworn line by line, and every total says 0.00.
+    shows, _, _ = _ab_drawn(filer)
+
+    questions = [
+        f for f in load_schema("schedule_a_b").fields if f.rule and f.rule.startswith("ab_has_")
+    ]
+    assert {f.rule.removeprefix("ab_has_") for f in questions} == {line.key for line in LINES}
+    under_a_gate = {
+        f.pdf_field for f in questions if LINE_BY_KEY[f.rule.removeprefix("ab_has_")].gate
+    }
+    assert {f.pdf_field: shows[f.pdf_field] for f in questions} == {
+        f.pdf_field: set() if f.pdf_field in under_a_gate else {f.choices["no"]} for f in questions
+    }
+    totals = (
+        "undefined_26",  # 5
+        "15 amount",
+        "undefined_124",  # 36
+        "undefined_158",  # 54
+        "undefined_159",  # 55
+        "undefined_160",
+        "undefined_161",
+        "undefined_162",
+        "undefined_163",  # 59
+        "undefined_164",  # 60
+        "undefined_165",
+        "undefined_166",
+        "undefined_167",  # 63
+    )
+    assert {box: shows[box] for box in totals} == {box: {"0.00"} for box in totals}
+    blank = ("undefined_13", "undefined_143", "undefined_154")  # 2, 45, 52
+    assert {box: shows[box] for box in blank} == {box: set() for box in blank}
+
+
+# The lines whose boxes this checks. They come from the index, not the schema, so a binding
+# spelled wrong, or set on another row's box, prints in the wrong place and fails here.
+_ROW_SHAPES = ("place", "vehicle", "vehicle_no_mileage", "item", "item_question", "cash")
+_ROW_TEXT = {
+    "City": "city",
+    "State": "state",
+    "ZIP Code": "zip",
+    "County": "county",
+    "Other information": "other_info",
+    "Other": "other_kind",
+    "Describe the nature": "nature",
+    "Make": "make",
+    "Model": "model",
+    "Year": "year",
+    "Approximate mileage": "mileage",
+}
+
+
+def _row_answers(key, n):
+    """Every answer a row of line `key` can give, each its own, short enough for any box.
+
+    Rows take turns at each answer to "who has an interest", so each line prints both.
+    """
+    shape = LINE_BY_KEY[key].shape
+    answers = {"value": f"{key}{n}2.00", "description": f"D{key}", "details": {}}
+    if shape in ("item", "item_question", "cash"):
+        if shape == "item_question":
+            answers["details"]["has_personal_info"] = True
+        return answers
+    answers["entire"] = f"{key}{n}1.00"
+    answers["details"] = {attr: f"{attr[:2]}{key}{n}" for attr in _ROW_TEXT.values()}
+    who = "only_you" if n % 2 else "with_someone"
+    answers["details"] |= {"who": who, "community": True}
+    if shape == "place":
+        answers["details"] |= {
+            "street": f"St{key}{n}",
+            "street_2": f"Sd{key}{n}",
+            "property_kinds": [
+                "single_family",
+                "duplex",
+                "condo",
+                "manufactured",
+                "land",
+                "investment",
+                "timeshare",
+                "other",
+            ],
+        }
+    return answers
+
+
+def _printed_for(row, answers, street_field):
+    """What a box should print for these answers, from the index's words for it; None for nothing."""
+    label = row["label"]
+    if row["kind"] == "checkbox":
+        words = row["option_text"]
+        who = answers["details"].get("who")
+        if words == "Debtor 1 only" and who == "only_you":
+            return export_state(row["on_state"])
+        if words.startswith("At least one of the debtors") and who != "with_someone":
+            return None
+        if words.startswith(("No", "Debtor")):
+            return None
+        return export_state(row["on_state"])
+    if row["kind"] == "amount":
+        return answers["entire"] if "entire" in label else answers["value"]
+    if label.startswith("Street address"):
+        return answers["details"][street_field]
+    for words, attr in _ROW_TEXT.items():
+        if label.startswith(words) and attr in answers["details"]:
+            return answers["details"][attr]
+    return answers["description"]
+
+
+def test_every_row_box_prints_its_own_answer_on_the_page(filer):
+    # Every slot, filled at once with an answer of its own: nothing lands on another row or
+    # another line, and each box takes the answer its printed words ask for.
+    lines = [line for line in LINES if line.shape in _ROW_SHAPES]
+    for line in lines:
+        for n in range(1, line.capacity + 1):
+            answers = _row_answers(line.key, n)
+            _ab_row(
+                filer,
+                line.key,
+                answers["value"],
+                "" if line.shape == "cash" else answers["description"],
+                answers.get("entire"),
+                **answers["details"],
+            )
+
+    shows, _, _ = _ab_drawn(filer)
+
+    keys = {line.key for line in lines} | {"37", "46"}
+    index = json.loads((settings.FORM_INDEX_DIRECTORY / "form_b106ab.index.json").read_text())
+    expected, streets = {}, set()
+    for row in sorted(index, key=lambda r: (r["page"], r["rect"][1])):
+        key, _, n = row["line"].rstrip(".").partition(".")
+        if key not in keys:
+            continue
+        # The upper box of a row's two is the first address line.
+        street_field = "street_2" if (key, n) in streets else "street"
+        if row["label"].startswith("Street address"):
+            streets.add((key, n))
+        printed = _printed_for(row, _row_answers(key, int(n or 1)), street_field)
+        box = expected.setdefault(row["full_name"], set())
+        if printed is not None:
+            box.add(printed)
+    assert {name: shows[name] for name in expected} == expected
+
+
+# ── Schedule A/B's lists, labelled lines and shared boxes (3b spec §5, §8.3) ─────
+
+
+def test_a_savings_account_prints_on_17_3_not_17_1(filer):
+    # The form prints 17.1 and 17.2 as checking: filling by position would swear a savings
+    # account is a checking account.
+    _ab_row(filer, "17", "85.00", "Prairie Line Credit Union", kind="savings")
+
+    shows, _, _ = _ab_drawn(filer)
+
+    assert shows["Check 17"] == {"/yes"}
+    assert shows["17.1 Checking account"] == set()
+    assert shows["17.1 Checking amount"] == set()
+    assert shows["17.3 Checking account"] == {"Prairie Line Credit Union"}
+    assert shows["17.3 Checking amount"] == {"85.00"}
+
+
+def test_a_third_checking_account_goes_on_a_sheet_numbered_17c_3_and_counts_in_line_36(filer):
+    # "17c" keeps it from colliding with the form's own 17.3, a savings account.
+    for n in range(1, 4):
+        _ab_row(filer, "17", f"{n}00.00", f"Bank {n}", kind="checking")
+
+    shows, parts, pdf = _ab_drawn(filer)
+
+    assert shows["17.2 Checking account"] == {"Bank 2"}
+    assert shows["17.3 Checking account"] == set()
+    assert _ab_sheet_rows(parts, pdf) == (("17c.3", "Bank 3", "300.00"),)
+    (part,) = [part for part in parts["parts"] if part["kind"] == "sheet"]
+    assert part["title"] == (
+        "Official Form 106A/B, Schedule A/B: Property, line 17, checking accounts"
+    )
+    assert shows["undefined_124"] == {"600.00"}
+
+
+def test_a_second_401k_goes_on_a_sheet_and_additional_stays_the_filer_s_choice(filer):
+    # A row keeps its stated kind, so it never moves into "Additional account" on its own.
+    _ab_row(filer, "21", "100.00", "First Plan", kind="401k")
+    _ab_row(filer, "21", "200.00", "Second Plan", kind="401k")
+
+    shows, parts, pdf = _ab_drawn(filer)
+
+    assert shows["21.1 401k or similar plan"] == {"First Plan"}
+    assert shows["21.6 Additional account"] == set()
+    assert _ab_sheet_rows(parts, pdf) == (("21k.2", "Second Plan", "200.00"),)
+
+    _ab_row(filer, "21", "300.00", "Third Plan", kind="additional")
+
+    shows, _, _ = _ab_drawn(filer)
+
+    assert shows["21.6 Additional account"] == {"Third Plan"}
+    assert shows["21.6 Additional account amount"] == {"300.00"}
+
+
+def test_line_19_prints_entity_share_and_value(filer):
+    # The template prints the "%" itself, so the box takes the number alone.
+    _ab_row(filer, "19", "500.00", "Corner Shop LLC", percent="25")
+
+    shows, _, _ = _ab_drawn(filer)
+
+    assert shows["check 19"] == {"/yes"}
+    assert shows["19.1 Name of entity"] == {"Corner Shop LLC"}
+    assert shows["19.1 % of ownership"] == {"25"}
+    assert shows["19.1 amount"] == {"500.00"}
+
+
+def test_each_of_line_24_s_three_rows_prints_in_its_own_box(filer):
+    # The template gives rows 1 and 3 one name, and row 2's text and amount another: by name
+    # alone, a row's words would print on two rows, or its amount over its words.
+    for n in range(1, 4):
+        _ab_row(filer, "24", f"{n}00.00", f"Plan {n}")
+
+    _, parts, pdf = _ab_drawn(filer)
+
+    printed = {(w.page, w.tag): w.value for w in read_drawn("schedule_a_b", pdf, parts["parts"])}
+    assert {tag: printed[(7, tag)] for tag in ("T5", "T6", "T7", "T8", "T9", "T10")} == {
+        "T5": "Plan 1",
+        "T6": "100.00",
+        "T7": "Plan 2",
+        "T8": "200.00",
+        "T9": "Plan 3",
+        "T10": "300.00",
+    }
+
+
+def test_line_31_prints_company_beneficiary_and_a_zero_value(filer):
+    # A policy with no cash value is typed as $0: an answer, which prints, unlike an unknown value.
+    _ab_row(filer, "31", "0", "Sample Mutual Life", beneficiary="Spouse")
+
+    shows, _, _ = _ab_drawn(filer)
+
+    assert shows["check 31"] == {"/yes"}
+    assert shows["Company name 1"] == {"Sample Mutual Life"}
+    assert shows["Beneficiary 1"] == {"Spouse"}
+    assert shows["undefined_109"] == {"0.00"}
+    assert shows["undefined_110"] == set()
+
+
+def test_two_federal_refunds_add_up_and_their_texts_join(filer):
+    # The form has one amount a kind and one text box, so two rows of a kind print one sum.
+    _ab_row(filer, "28", "100.00", "2024 return filed", kind="federal")
+    _ab_row(filer, "28", "50.00", "2025 return filed", kind="federal")
+
+    shows, parts, _ = _ab_drawn(filer)
+
+    assert shows["check 28"] == {"/On"}
+    assert shows["28 Tax refunds owed"] == {"2024 return filed; 2025 return filed"}
+    assert shows["28 Tax refunds owed amout1"] == {"150.00"}
+    assert shows["28 Tax refunds owed amout2"] == set()
+    assert [part for part in parts["parts"] if part["kind"] == "sheet"] == []
+
+
+@pytest.mark.parametrize(
+    ("values", "prints"),
+    [
+        ((None,), set()),
+        (("0",), {"0.00"}),
+        ((None, "40.00"), {"40.00"}),
+    ],
+    ids=["unknown_prints_blank", "a_typed_zero_prints", "an_unknown_adds_nothing"],
+)
+def test_a_shared_amount_adds_what_the_filer_knows(filer, values, prints):
+    # A value the filer doesn't know prints blank and adds zero, never a figure nobody gave.
+    for value in values:
+        _ab_row(filer, "29", value, "Order of 2020", kind="support", value_unknown=value is None)
+
+    shows, _, _ = _ab_drawn(filer)
+
+    assert shows["29 Family support amount3"] == prints
+    assert shows["29 Family support amount1"] == set()
+
+
+def test_line_53_s_fourth_row_goes_on_a_sheet_with_its_text(filer):
+    # The one text box prints the three rows beside the form's three amounts; a fourth row's
+    # words stay beside its own value, on the sheet.
+    for n in range(1, 5):
+        _ab_row(filer, "53", f"{n}0.00", f"Item {n}")
+
+    shows, parts, pdf = _ab_drawn(filer)
+
+    assert shows["check 53"] == {"/On"}
+    assert shows["53 Examples Season tickets country club membership"] == {"Item 1; Item 2; Item 3"}
+    assert shows["undefined_155"] == {"10.00"}
+    assert shows["undefined_156"] == {"20.00"}
+    assert shows["undefined_157"] == {"30.00"}
+    assert _ab_sheet_rows(parts, pdf) == (("53.4", "Item 4", "40.00"),)
+    assert shows["undefined_158"] == {"100.00"}
+
+
+@pytest.mark.parametrize(
+    ("line", "details", "cells"),
+    [
+        ("18", {}, ("Spare", "5.00")),
+        ("19", {"percent": "25"}, ("Spare", "25", "5.00")),
+        ("20", {}, ("Spare", "5.00")),
+        ("23", {}, ("Spare", "5.00")),
+        ("24", {}, ("Spare", "5.00")),
+        ("31", {"beneficiary": "Spouse"}, ("Spare", "Spouse", "5.00")),
+        ("42", {"percent": "25"}, ("Spare", "25", "5.00")),
+        ("44", {}, ("Spare", "5.00")),
+    ],
+    ids=lambda case: case if isinstance(case, str) else "",
+)
+def test_a_row_past_a_list_s_boxes_goes_on_a_sheet_with_every_answer(filer, line, details, cells):
+    # The rows past a line's boxes go on an attached sheet, so nothing the filer gave is dropped.
+    capacity = LINE_BY_KEY[line].capacity
+    for n in range(1, capacity + 1):
+        _ab_row(filer, line, "1.00", f"Row {n}", **details)
+    _ab_row(filer, line, "5.00", "Spare", **details)
+
+    _, parts, pdf = _ab_drawn(filer)
+
+    assert _ab_sheet_rows(parts, pdf) == ((f"{line}.{capacity + 1}", *cells),)
+
+
+def _sheeted_lists():
+    """(line, kind, its slots) of every list that goes on a sheet past its slots."""
+    for line in LINES:
+        if line.shape == "gate" or line.key in ("28", "29"):
+            continue
+        for kind, capacity in line.kinds or ((None, line.capacity),):
+            yield line.key, kind, capacity
+
+
+@pytest.mark.parametrize(
+    ("line", "kind", "capacity"),
+    list(_sheeted_lists()),
+    ids=lambda case: None if isinstance(case, int) else case,
+)
+def test_the_largest_amount_a_row_can_hold_prints_whole_on_every_sheet(filer, line, kind, capacity):
+    # A word never wraps, so a column narrower than the widest amount refuses the whole form.
+    details = {"kind": kind} if kind else {}
+    for _ in range(capacity + 1):
+        _ab_row(filer, line, "9999999999.99", "Words", "9999999999.99", **details)
+
+    parts = resolve_parts(load_schema("schedule_a_b"), filer)
+
+    (part,) = [part for part in parts["parts"] if part["kind"] == "sheet"]
+    assert "9999999999.99" in part["rows"][0]["cells"]
+    PDFFormFiller().check("schedule_a_b", parts)
+
+
+def test_each_labelled_kind_has_its_own_sheet_number():
+    # A row's number on a sheet names its kind, so it never reads as the form's own 17.3.
+    groups = load_schema("schedule_a_b").groups
+    numbers = {name: group.number for name, group in groups.items() if name.count("_") >= 2}
+    assert numbers == {
+        "ab_17_checking": "17c.{n}",
+        "ab_17_savings": "17s.{n}",
+        "ab_17_cd": "17d.{n}",
+        "ab_17_other": "17o.{n}",
+        "ab_21_401k": "21k.{n}",
+        "ab_21_pension": "21p.{n}",
+        "ab_21_ira": "21i.{n}",
+        "ab_21_retirement": "21r.{n}",
+        "ab_21_keogh": "21h.{n}",
+        "ab_21_additional": "21a.{n}",
+        "ab_22_electric": "22a.{n}",
+        "ab_22_gas": "22b.{n}",
+        "ab_22_heating_oil": "22c.{n}",
+        "ab_22_security_deposit": "22d.{n}",
+        "ab_22_prepaid_rent": "22e.{n}",
+        "ab_22_telephone": "22f.{n}",
+        "ab_22_water": "22g.{n}",
+        "ab_22_rented_furniture": "22h.{n}",
+        "ab_22_other": "22i.{n}",
+    }
+    template = load_schema("schedule_a_b").template_filename
+    for name in numbers:
+        assert fits_line_column(numbers[name].format(n=9999), template, 48), name
+
+
+def test_a_letter_the_form_can_t_print_is_a_422_linking_to_assets(filer):
+    # The refusal is the filer's only sign a row won't print, so it names the box and the step.
+    _ab_row(filer, "18", "5.00", "Bad □ name")
+
+    with pytest.raises(UnprintableLetter) as refused:
+        PDFFormFiller().check("schedule_a_b", resolve_parts(load_schema("schedule_a_b"), filer))
+
+    assert refused.value.label == "Line 18.1: Institution or issuer name"
+    assert refused.value.step == "assets"
+
+
+def test_a_letter_the_form_can_t_print_on_a_sheet_links_to_assets(filer):
+    for n in range(1, 4):
+        _ab_row(filer, "18", "5.00", f"Row {n}")
+    _ab_row(filer, "18", "5.00", "Bad □ name")
+
+    with pytest.raises(UnprintableLetter) as refused:
+        PDFFormFiller().check("schedule_a_b", resolve_parts(load_schema("schedule_a_b"), filer))
+
+    assert refused.value.label == "Institution or issuer name"
+    assert refused.value.step == "assets"
+
+
+@pytest.mark.parametrize(
+    ("line", "kind", "label"),
+    [
+        ("18", None, "Line 18.1: Institution or issuer name"),
+        ("28", "federal", "Line 28: Give specific information"),
+        ("53", None, "Line 53: Give specific information"),
+    ],
+)
+def test_a_description_too_long_for_its_box_is_a_422_linking_to_assets(filer, line, kind, label):
+    # A row's text can be split with "Add another", so the refusal points to where to do that.
+    details = {"kind": kind} if kind else {}
+    _ab_row(filer, line, "5.00", "words " * 800, **details)
+
+    with pytest.raises(ValueTooLong) as refused:
+        PDFFormFiller().check("schedule_a_b", resolve_parts(load_schema("schedule_a_b"), filer))
+
+    assert refused.value.label == label
+    assert refused.value.step == "assets"
+
+
+# The words beside each labelled box → its kind (the form's 17.3 is named "17.3 Checking account").
+_LABELLED_BOXES = {
+    "Checking account": "checking",
+    "Savings account": "savings",
+    "Certificates of deposit": "cd",
+    "Other financial account": "other",
+    "401(k) or similar plan": "401k",
+    "Pension plan": "pension",
+    "IRA": "ira",
+    "Retirement account": "retirement",
+    "Keogh": "keogh",
+    "Additional account": "additional",
+    "Electric": "electric",
+    "Gas": "gas",
+    "Heating oil": "heating_oil",
+    "Security deposit on rental unit": "security_deposit",
+    "Prepaid rent": "prepaid_rent",
+    "Telephone": "telephone",
+    "Water": "water",
+    "Rented furniture": "rented_furniture",
+    "Other": "other",
+}
+
+
+def _box_role(row):
+    """Which of a row's answers a box prints, from the words beside it."""
+    if row["label"].startswith("% of ownership"):
+        return "percent"
+    if row["label"].startswith("Beneficiary"):
+        return "beneficiary"
+    return "value" if row["kind"] == "amount" else "description"
+
+
+def _list_boxes():
+    """{(line, kind, row): {role: (page, tag)}}, each column of boxes read down the page."""
+    index = json.loads((settings.FORM_INDEX_DIRECTORY / "form_b106ab.index.json").read_text())
+    columns = {}
+    shapes = ("named", "named_share", "insurance", "labelled")
+    for row in sorted(index, key=lambda r: (r["page"], r["rect"][1])):
+        key = row["line"].rstrip(".").partition(".")[0]
+        line = LINE_BY_KEY.get(key)
+        if line is None or line.shape not in shapes or row["kind"] == "checkbox":
+            continue
+        kind = _LABELLED_BOXES[row["label"].rstrip(":").strip()] if line.kinds else None
+        columns.setdefault((key, kind, _box_role(row)), []).append((row["page"], row["tag"]))
+    boxes = {}
+    for (key, kind, role), column in columns.items():
+        for n, box in enumerate(column, start=1):
+            boxes.setdefault((key, kind, n), {})[role] = box
+    return boxes
+
+
+def test_every_list_box_prints_its_own_answer_on_the_page(filer):
+    # Every slot of every list, filled at once with answers of its own. The template's names don't
+    # say which row a box is on (42.1's value is undefined_129, its share undefined_130), so the
+    # row comes from where each box sits on the page.
+    expected = {}
+    for i, ((key, kind, _), boxes) in enumerate(_list_boxes().items(), start=1):
+        answers = {"description": f"W{i}", "value": f"{i}.00", "percent": str(i)}
+        answers["beneficiary"] = f"B{i}"
+        expected |= {at: answers[role] for role, at in boxes.items()}
+        details = {
+            **({"kind": kind} if kind else {}),
+            **({"percent": str(i)} if "percent" in boxes else {}),
+            **({"beneficiary": f"B{i}"} if "beneficiary" in boxes else {}),
+        }
+        _ab_row(filer, key, answers["value"], answers["description"], **details)
+
+    _, parts, pdf = _ab_drawn(filer)
+
+    printed = {(w.page, w.tag): w.value for w in read_drawn("schedule_a_b", pdf, parts["parts"])}
+    assert {at: printed[at] for at in expected} == expected
+    assert [part for part in parts["parts"] if part["kind"] == "sheet"] == []

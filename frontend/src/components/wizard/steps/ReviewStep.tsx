@@ -10,7 +10,13 @@ import { Button } from '../../common';
 import { UPLDisclaimer } from '../../compliance';
 import { UPL_REVIEW_DISCLAIMER } from '../../../constants/upl';
 import {
+  GO_TO_STEP_FOR_ROW,
   NOT_ANSWERED_YET,
+  OLD_ASSET_TYPE_WORDS,
+  OLD_ROWS_HEADING,
+  ONE_ITEM,
+  REVIEW_ASSET_PART,
+  REVIEW_ASSET_ROW,
   REVIEW_ASSISTANCE,
   REVIEW_DEDUCTIONS,
   REVIEW_ENTRIES,
@@ -22,11 +28,19 @@ import {
   REVIEW_SPOUSE_DEDUCTIONS,
   REVIEW_SPOUSE_ENTRIES,
   REVIEW_SPOUSE_NOW_DIFFERENT,
+  REVIEW_VALUE_NOT_KNOWN,
   REVIEW_YES_NO,
+  VALUE_UNKNOWN_HEADING,
 } from '../../../constants/copy';
 import { WIZARD_STEPS } from '../../../constants/wizardSteps';
+import { AB_PARTS, ASSET_LINES } from '../../../constants/assetLines';
 import { deductionsTotal, takeHomePayNotEntered } from '../../../utils/takeHomePay';
-import { MARRIAGE_ANSWER_WORDS, MARRIED_NOT_FILING } from '../../../constants/formText';
+import {
+  AB_LINE_WORDS,
+  AB_PART_TITLES,
+  MARRIAGE_ANSWER_WORDS,
+  MARRIED_NOT_FILING,
+} from '../../../constants/formText';
 import type {
   DebtorInfo,
   IncomeInfo,
@@ -118,6 +132,47 @@ export function ReviewStep({
     takeHomePayNotEntered(data) ? NOT_ANSWERED_YET : formatCurrency(deductionsTotal(data));
 
   const takeHomePayLabel = WIZARD_STEPS.find((step) => step.key === 'take_home_pay')?.label;
+
+  // A row by what the filer typed, then its line's words: a line 16 row or a place has no description
+  const assetLabel = (asset: Partial<AssetInfo>) => {
+    const key = asset.ab_line as string;
+    const name =
+      asset.description?.trim() ||
+      asset.details?.street?.trim() ||
+      asset.details?.make?.trim() ||
+      AB_LINE_WORDS[key].words;
+    // A function, since a string replacement would read a $ the filer typed as a pattern
+    return REVIEW_ASSET_ROW.replace('{key}', key).replace('{name}', () => name);
+  };
+
+  // A value the filer doesn't know is an answer and no $0, and a typed $0 is one too
+  const assetValue = (asset: Partial<AssetInfo>) => {
+    if (asset.current_value !== null && asset.current_value !== undefined) {
+      return formatCurrency(asset.current_value);
+    }
+    return asset.details?.value_unknown ? REVIEW_VALUE_NOT_KNOWN : NOT_ANSWERED_YET;
+  };
+
+  const oldAssets = assetsData.filter(
+    (asset) => asset.ab_line === null || asset.ab_line === undefined
+  );
+  // ordered_assets's order, as the form prints them: the catalog, then id, with a row not saved yet
+  // last, where the id it gets will put it
+  const assetsOnLines = ASSET_LINES.flatMap((line) =>
+    assetsData
+      .filter((asset) => asset.ab_line === line.key)
+      .sort((a, b) => (a.id ?? Infinity) - (b.id ?? Infinity))
+  );
+  const assetParts = AB_PARTS.map((part) => ({
+    part,
+    rows: assetsOnLines.filter(
+      (asset) => ASSET_LINES.find((line) => line.key === asset.ab_line)?.part === part
+    ),
+  })).filter(({ rows }) => rows.length > 0);
+  const unknownAssets = assetsOnLines.filter(
+    (asset) => asset.details?.value_unknown || asset.details?.entire_unknown
+  );
+  const assetsStep = WIZARD_STEPS.find((step) => step.key === 'assets');
 
   return (
     <div className="review-step">
@@ -276,17 +331,69 @@ export function ReviewStep({
         {assetsData.length === 0 ? (
           <p className="review-empty">No assets listed.</p>
         ) : (
-          <ul className="review-list">
-            {assetsData.map((asset, index) => (
-              <li key={asset.id || index} className="review-list-item">
-                <span>
-                  {asset.description || 'Unnamed Asset'}
-                  {asset.asset_type ? ` (${asset.asset_type.replace('_', ' ')})` : ''}
-                </span>
-                <span className="review-field-value">{formatCurrency(asset.current_value)}</span>
-              </li>
+          <>
+            {oldAssets.length > 0 && (
+              <>
+                <h5 className="ab-subheading">{OLD_ROWS_HEADING}</h5>
+                <ul className="review-list">
+                  {oldAssets.map((asset, index) => (
+                    <li key={asset.id ?? index} className="review-list-item">
+                      <span>
+                        {asset.description?.trim() || ONE_ITEM}
+                        {asset.asset_type && OLD_ASSET_TYPE_WORDS[asset.asset_type]
+                          ? ` (${OLD_ASSET_TYPE_WORDS[asset.asset_type]})`
+                          : ''}
+                      </span>
+                      <span className="review-field-value">{assetValue(asset)}</span>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+            {assetParts.map(({ part, rows }) => (
+              <div key={part}>
+                <h5 className="ab-subheading">
+                  {REVIEW_ASSET_PART.replace('{n}', String(part)).replace(
+                    '{title}',
+                    AB_PART_TITLES[part]
+                  )}
+                </h5>
+                <ul className="review-list">
+                  {rows.map((asset, index) => (
+                    <li key={asset.id ?? index} className="review-list-item">
+                      <span>{assetLabel(asset)}</span>
+                      <span className="review-field-value">{assetValue(asset)}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
             ))}
-          </ul>
+            {unknownAssets.length > 0 && (
+              <>
+                <h5 className="ab-subheading">{VALUE_UNKNOWN_HEADING}</h5>
+                <ul className="review-list">
+                  {unknownAssets.map((asset, index) => (
+                    <li key={asset.id ?? index} className="review-list-item">
+                      <span>{assetLabel(asset)}</span>
+                      {assetsStep && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          aria-label={GO_TO_STEP_FOR_ROW.replace(
+                            '{step}',
+                            assetsStep.label
+                          ).replace('{row}', () => assetLabel(asset))}
+                          onClick={() => onGoToStep?.(assetsStep.number)}
+                        >
+                          Go to {assetsStep.label}
+                        </Button>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+          </>
         )}
       </section>
 

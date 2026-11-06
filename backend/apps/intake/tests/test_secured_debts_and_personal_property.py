@@ -114,21 +114,18 @@ def test_filer_can_save_personal_property_on_the_assets_step(filer):
         {
             "assets": [
                 {
-                    "asset_type": "personal_property",
+                    "ab_line": "6",
                     "description": "Furniture and household goods",
                     "current_value": 1200,
                 },
-                {"asset_type": "bank_account", "description": "Checking", "current_value": 300},
+                {"ab_line": "17", "description": "Checking", "current_value": 300},
             ]
         },
         format="json",
     )
 
     assert response.status_code == 200
-    saved = {a.description: a.asset_type for a in AssetInfo.objects.filter(session=session)}
-    assert saved == {
-        "Furniture and household goods": "personal_property",
-        "Checking": "bank_account",
-    }
+    saved = {a.description: a.ab_line for a in AssetInfo.objects.filter(session=session)}
+    assert saved == {"Furniture and household goods": "6", "Checking": "17"}
     received = client.get(_session_url(session)).data["assets"]
-    assert {a["asset_type"] for a in received} == {"personal_property", "bank_account"}
+    assert {a["ab_line"] for a in received} == {"6", "17"}

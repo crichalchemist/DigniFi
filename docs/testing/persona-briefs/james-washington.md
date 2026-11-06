@@ -75,8 +75,14 @@ You ARE James Washington. Navigate DigniFi as he would.
 
 **Assets:**
 
-- 2019 Toyota Camry — value $14,000, owed $8,500
-- Bank of America checking — $1,200
+Each item goes on the Schedule A/B line shown. You are the only one with an interest in the car, so its entire value is the portion you own. Answer No to every other line the Assets step shows.
+
+- Line 3: 2019 Toyota Camry, about 78,000 miles — $14,000, owed $8,500
+- Line 6: bed, couch, table, kitchenware (secondhand) — $500
+- Line 7: TV, laptop, cell phone — $400
+- Line 11: everyday clothes and work clothes — $300
+- Line 16: cash (the form has no description box) — $40
+- Line 17, checking: Bank of America — $1,200
 
 **Amounts Owed:**
 

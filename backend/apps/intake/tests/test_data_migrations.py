@@ -733,3 +733,112 @@ def test_dropping_and_restoring_the_application_table_keeps_each_waiver_choice_o
     assert applications == {applied: (1, None, None, [])}
     assert choices == {applied: "waiver", chose: "installments"}
     assert "fee_waiver_applications" in connection.introspection.table_names()
+
+
+ASSETS_ENCRYPTED = [("intake", "0034_assetinfo_encrypt_swap")]
+
+
+def _stored_assets(apps):
+    """The raw description and institution of the one asset row, and the row as the model reads it."""
+    with connection.cursor() as cursor:
+        cursor.execute("SELECT description, financial_institution FROM asset_info")
+        [raw] = cursor.fetchall()
+    row = apps.get_model("intake", "AssetInfo").objects.get()
+    return raw, row
+
+
+def _run_and_undo_the_asset_encryption(migrate):
+    apps = migrate(APPLICATION_DROPPED)
+    apps.get_model("intake", "AssetInfo").objects.create(
+        session_id=_session(apps).pk,
+        asset_type="bank_account",
+        description="Harborline checking",
+        financial_institution="Harborline Bank",
+        current_value=Decimal("412.00"),
+    )
+    return _stored_assets(migrate(ASSETS_ENCRYPTED)), _stored_assets(migrate(APPLICATION_DROPPED))
+
+
+def _check_asset_round_trip(after, undone):
+    raw_after, row = after
+    assert row.description == "Harborline checking"
+    assert row.financial_institution == "Harborline Bank"
+    assert row.ab_line is None  # an old row is on no line, and nothing suggests one
+    assert row.asset_type == "bank_account"
+    assert row.current_value == Decimal("412.00")
+    assert all(value.startswith("gAAAAA") for value in raw_after)
+    assert not any("Harborline" in value for value in raw_after)
+    raw_undone, old = undone
+    assert raw_undone == ("Harborline checking", "Harborline Bank")
+    assert (old.description, old.financial_institution) == raw_undone
+    assert old.current_value == Decimal("412.00")
+
+
+@pytest.mark.slow
+def test_encrypting_asset_descriptions_keeps_every_saved_asset_both_ways(migrate):
+    after, undone = _run_and_undo_the_asset_encryption(migrate)
+    _check_asset_round_trip(after, undone)
+
+
+@pytest.mark.slow
+def test_undoing_the_asset_encryption_refuses_a_value_it_cannot_read_rather_than_lose_it(migrate):
+    apps = migrate(APPLICATION_DROPPED)
+    apps.get_model("intake", "AssetInfo").objects.create(
+        session_id=_session(apps).pk,
+        asset_type="bank_account",
+        description="Harborline checking",
+        current_value=Decimal("412.00"),
+    )
+    migrate(ASSETS_ENCRYPTED)
+    foreign = Fernet(Fernet.generate_key()).encrypt(b"Harborline checking").decode()
+    with connection.cursor() as cursor:
+        cursor.execute("SELECT id FROM asset_info")
+        (row_id,) = cursor.fetchone()
+        cursor.execute("UPDATE asset_info SET description = %s WHERE id = %s", [foreign, row_id])
+    with pytest.raises(RuntimeError, match=rf"^asset_info row {row_id} can't be read") as refused:
+        migrate(APPLICATION_DROPPED)
+    assert "Harborline" not in str(refused.value) and foreign not in str(refused.value)
+
+
+@pytest.mark.postgres
+@ON_POSTGRES
+def test_encrypting_asset_descriptions_keeps_every_saved_asset_both_ways_on_postgres(migrate):
+    def description_type():
+        with connection.cursor() as cursor:
+            cursor.execute(
+                "SELECT data_type FROM information_schema.columns"
+                " WHERE table_name = 'asset_info' AND column_name = 'description'"
+            )
+            return cursor.fetchone()[0]
+
+    after, undone = _run_and_undo_the_asset_encryption(migrate)
+    _check_asset_round_trip(after, undone)
+    assert description_type() == "character varying"
+
+
+def _undo_with_a_row_saved_after_3b(migrate):
+    apps = migrate(ASSETS_ENCRYPTED)
+    apps.get_model("intake", "AssetInfo").objects.create(
+        session_id=_session(apps).pk,
+        description="Harborline checking",
+        ab_line="17",
+        asset_type=None,
+        current_value=None,
+    )
+    old = migrate(APPLICATION_DROPPED)
+    return old.get_model("intake", "AssetInfo").objects.get()
+
+
+@pytest.mark.slow
+def test_undoing_the_asset_encryption_keeps_a_row_saved_after_3b_with_no_type_or_value(migrate):
+    row = _undo_with_a_row_saved_after_3b(migrate)
+    assert row.description == "Harborline checking"
+    assert row.asset_type == ""
+    assert row.current_value == Decimal("0")
+
+
+@pytest.mark.postgres
+@ON_POSTGRES
+def test_undoing_the_asset_encryption_keeps_a_row_saved_after_3b_on_postgres(migrate):
+    row = _undo_with_a_row_saved_after_3b(migrate)
+    assert (row.asset_type, row.current_value) == ("", Decimal("0"))

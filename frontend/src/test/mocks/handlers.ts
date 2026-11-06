@@ -179,7 +179,7 @@ export const handlers = [
   // -- Assets / Debts ------------------------------------------------------
 
   http.post(`${API}/intake/assets/`, () =>
-    HttpResponse.json({ id: 1, session: 1, asset_type: 'vehicle', description: 'Car' })
+    HttpResponse.json({ id: 1, session: 1, ab_line: '6', description: 'Sofa', details: {} })
   ),
 
   http.post(`${API}/intake/debts/`, () =>

@@ -54,14 +54,10 @@ test.describe('DeShawn Mitchell — Assets', () => {
     const preview = await wizard.getMeansTestPreview();
     expect(preview.toLowerCase()).toContain('eligible');
 
-    // Step 5: Assets — 3 assets (real property, vehicle, retirement)
-    for (const asset of DESHAWN.assets) {
-      await wizard.addAsset(asset);
-    }
-    // Verify all 3 assets were entered
-    const assetForms = page.locator('input[name^="description_"]');
-    expect(await assetForms.count()).toBeGreaterThanOrEqual(3);
-    await wizard.nextStep();
+    // Step 5: Assets — his home (line 1), the truck (line 3) and his 401(k) (line 21),
+    // with the household goods and accounts, Part by Part. The walk fails if a row
+    // has no line to sit on.
+    await wizard.walkAssets(DESHAWN);
 
     // Step 6: Debts — 4 debts (mortgage, credit card, utility, medical)
     for (const debt of DESHAWN.debts) {

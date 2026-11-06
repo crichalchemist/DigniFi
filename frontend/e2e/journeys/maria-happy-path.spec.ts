@@ -59,10 +59,7 @@ test.describe('Maria Torres — Happy Path', () => {
     expect(preview.toLowerCase()).toContain('may be eligible');
 
     // Step 5: Assets
-    for (const asset of MARIA.assets) {
-      await wizard.addAsset(asset);
-    }
-    await wizard.nextStep();
+    await wizard.walkAssets(MARIA);
 
     // Step 6: Debts (trauma-informed: "Amounts Owed")
     for (const debt of MARIA.debts) {

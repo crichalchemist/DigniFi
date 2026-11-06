@@ -8,10 +8,12 @@ fee in full (Form 101 line 8), so a forms test meets no refusal for a missing an
 payment_choice=None leaves the answer as it is.
 """
 
-from collections.abc import Mapping, Sequence
+import json
+from collections.abc import Iterable, Mapping, Sequence
 from decimal import Decimal
 
-from apps.intake.models import FilingFee, Household, SpouseIncome
+from apps.intake.asset_lines import shown_lines
+from apps.intake.models import AssetLineAnswers, FilingFee, Household, SpouseIncome
 
 
 def answer_income_detail(
@@ -36,6 +38,20 @@ def answer_income_detail(
     row.save()
 
 
+def answer_asset_lines(session, yes: Iterable[str] = ()) -> None:
+    """Store "yes" for the named Schedule A/B lines and "no" for every other line shown.
+
+    A gate named in yes shows its lines (37 and 46), which then store "no". A line whose
+    gate isn't answered "yes" is hidden and stores nothing, as the wizard stores it.
+    """
+    answers = dict.fromkeys(yes, "yes")
+    for line in shown_lines(answers):
+        answers.setdefault(line.key, "no")
+    row = getattr(session, "asset_lines", None) or AssetLineAnswers(session=session)
+    row.answers = json.dumps(answers)
+    row.save()
+
+
 def answer_household(
     session,
     *,
@@ -48,6 +64,7 @@ def answer_household(
     assistance_answer: str | None = "no",
     payroll_tax: Decimal | None = Decimal("0"),
     payment_choice: str | None = "pay_in_full",
+    asset_lines: Iterable[str] | None = (),
 ) -> Household:
     """Store the marriage answer, the county and the household list, and the spouse's amounts
     when given, through the session's own relations, so a test holding the session reads them.
@@ -60,6 +77,9 @@ def answer_household(
 
     payment_choice goes to the session's FilingFee, created if missing; None leaves any stored
     row alone.
+
+    asset_lines names the Schedule A/B lines answered Yes (default none: every shown line No);
+    None leaves the stored answers alone.
     """
     session.income_info.marital_status = marital_status
     session.income_info.save(update_fields=["marital_status"])
@@ -84,6 +104,8 @@ def answer_household(
         row.save()
         answer_income_detail(row, **detail)
         row.refresh_from_db()  # the Decimals the encrypted column returns
+    if asset_lines is not None:
+        answer_asset_lines(session, asset_lines)
     if payment_choice is not None:
         fee = getattr(session, "filing_fee", None) or FilingFee(session=session)
         fee.payment_choice = payment_choice

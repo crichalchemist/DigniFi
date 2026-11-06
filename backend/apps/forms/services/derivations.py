@@ -24,6 +24,15 @@ from apps.eligibility.cmi import (
     is_above_median,
     spouse_monthly_income,
 )
+from apps.intake.asset_lines import (
+    LINE_BY_KEY,
+    LINES,
+    ordered_assets,
+    part_total,
+    printed_answer,
+    rows_on,
+    rows_under_gate,
+)
 from apps.intake.household import count_family_size, dependents
 from apps.intake.income import (
     floored_net,
@@ -186,25 +195,22 @@ def _spouse_rule(*fields: str) -> Callable[[IntakeSession], str]:
 # ---------------------------------------------------------------------------
 
 
-def _total_real_property(session: IntakeSession) -> str:
-    from apps.intake.models import AssetInfo
+def _parts_total(session: IntakeSession, first: int, last: int) -> str:
+    """The sum of the portions on Schedule A/B's Parts first to last (a null counts as zero)."""
+    rows = ordered_assets(session)
+    return _fmt(sum((part_total(rows, part) for part in range(first, last + 1)), Decimal(0)))
 
-    qs = AssetInfo.objects.filter(session=session, asset_type="real_property")
-    return _fmt(_sum_encrypted(qs, "current_value"))
+
+def _total_real_property(session: IntakeSession) -> str:
+    return _parts_total(session, 1, 1)
 
 
 def _total_personal_property(session: IntakeSession) -> str:
-    from apps.intake.models import AssetInfo
-
-    qs = AssetInfo.objects.filter(session=session).exclude(asset_type="real_property")
-    return _fmt(_sum_encrypted(qs, "current_value"))
+    return _parts_total(session, 2, 7)
 
 
 def _total_assets(session: IntakeSession) -> str:
-    from apps.intake.models import AssetInfo
-
-    qs = AssetInfo.objects.filter(session=session)
-    return _fmt(_sum_encrypted(qs, "current_value"))
+    return _parts_total(session, 1, 7)
 
 
 def _total_secured_debts(session: IntakeSession) -> str:
@@ -236,10 +242,7 @@ def _total_debts(session: IntakeSession) -> str:
 
 
 def _total_other_assets(session: IntakeSession) -> str:
-    from apps.intake.models import AssetInfo
-
-    qs = AssetInfo.objects.filter(session=session, asset_type="other")
-    return _fmt(_sum_encrypted(qs, "current_value"))
+    return _parts_total(session, 7, 7)
 
 
 def _cmi(session: IntakeSession) -> str:
@@ -259,41 +262,76 @@ def _total_monthly_expenses(session: IntakeSession) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Schedule A/B part totals, line 53, and the section questions of A/B, G and H
+# Schedule A/B part totals, line 53 and each line's Yes or No, and the section questions of G and H
 # ---------------------------------------------------------------------------
 
 
 def _total_vehicles(session: IntakeSession) -> str:
-    from apps.intake.models import AssetInfo
-
-    qs = AssetInfo.objects.filter(session=session, asset_type="vehicle")
-    return _fmt(_sum_encrypted(qs, "current_value"))
+    """Line 5, the total of Part 2."""
+    return _parts_total(session, 2, 2)
 
 
 def _total_household_items(session: IntakeSession) -> str:
-    from apps.intake.models import AssetInfo
-
-    qs = AssetInfo.objects.filter(session=session, asset_type="personal_property")
-    return _fmt(_sum_encrypted(qs, "current_value"))
+    """Line 15, the total of Part 3."""
+    return _parts_total(session, 3, 3)
 
 
 def _total_financial_assets(session: IntakeSession) -> str:
-    """Part 4, line 36: deposits (17) and retirement accounts (21), the only lines asked."""
-    from apps.intake.models import AssetInfo
+    """Line 36, the total of Part 4."""
+    return _parts_total(session, 4, 4)
 
-    qs = AssetInfo.objects.filter(
-        session=session, asset_type__in=("bank_account", "retirement_account")
+
+def _total_business_property(session: IntakeSession) -> str:
+    """Line 45, the total of Part 5."""
+    return _parts_total(session, 5, 5)
+
+
+def _total_farm_property(session: IntakeSession) -> str:
+    """Line 52, the total of Part 6."""
+    return _parts_total(session, 6, 6)
+
+
+def _ab_line_2(session: IntakeSession) -> str:
+    """Line 2: blank under line 1's "No. Go to Part 2", though line 55 still prints (§8.1)."""
+    return _total_real_property(session) if rows_on(ordered_assets(session), "1") else ""
+
+
+def _ab_line_45(session: IntakeSession) -> str:
+    """Line 45: blank under line 37's "No. Go to Part 6", though line 59 still prints (§8.1)."""
+    return (
+        _total_business_property(session) if rows_under_gate(ordered_assets(session), "37") else ""
     )
-    return _fmt(_sum_encrypted(qs, "current_value"))
 
 
-def _other_asset_descriptions(session: IntakeSession) -> str:
-    """Line 53: the "Other" assets in the order the filer listed them (DIG-164)."""
-    from apps.intake.models import AssetInfo
+def _ab_line_52(session: IntakeSession) -> str:
+    """Line 52: blank under line 46's "No. Go to Part 7", though line 60 still prints (§8.1)."""
+    return _total_farm_property(session) if rows_under_gate(ordered_assets(session), "46") else ""
 
-    # The model orders by encrypted value, so the filer's order is the id's.
-    qs = AssetInfo.objects.filter(session=session, asset_type="other").order_by("id")
-    return "; ".join(qs.values_list("description", flat=True))
+
+def _ab_answer(key: str) -> Callable[[IntakeSession], str]:
+    """A line's Yes/No box."""
+    return lambda session: printed_answer(ordered_assets(session), key)
+
+
+def _ab_shared_text(key: str, first: int | None = None) -> Callable[[IntakeSession], str]:
+    """A line's one text box: its rows' words in order, or only its first rows' (3b spec §5)."""
+
+    def rule(session: IntakeSession) -> str:
+        rows = rows_on(ordered_assets(session), key)[:first]
+        return "; ".join(row.description for row in rows if row.description)
+
+    return rule
+
+
+def _ab_kind_total(key: str, kind: str) -> Callable[[IntakeSession], str]:
+    """A kind's one amount on 28 or 29: its rows' known values added, blank when none is known."""
+
+    def rule(session: IntakeSession) -> str:
+        rows = rows_on(ordered_assets(session), key, kind)
+        known = [row.current_value for row in rows if row.current_value is not None]
+        return money_or_blank(sum(known) if known else None)
+
+    return rule
 
 
 def _yes_if_any(rows) -> str:
@@ -552,7 +590,7 @@ def _count_or_blank(n: int) -> str:
     return str(n) if n > 0 else ""
 
 
-def _money_or_blank(amount: Decimal | None) -> str:
+def money_or_blank(amount: Decimal | None) -> str:
     return "" if amount is None else _fmt(amount)
 
 
@@ -834,18 +872,25 @@ DERIVATIONS: dict[str, Callable[[IntakeSession], str]] = {
     "joint_filer_name": _full_name,
     "cmi": _cmi,
     "total_monthly_expenses": _total_monthly_expenses,
-    # Schedule A/B part totals, line 53, and the section questions of A/B, G and H
+    # Schedule A/B part totals, line 53 and each line's Yes or No, and the section questions of G
+    # and H
     "total_vehicles": _total_vehicles,
     "total_household_items": _total_household_items,
     "total_financial_assets": _total_financial_assets,
-    "other_asset_descriptions": _other_asset_descriptions,
-    "has_real_property": lambda s: _yes_if_any(s.assets.filter(asset_type="real_property")),
-    "has_vehicles": lambda s: _yes_if_any(s.assets.filter(asset_type="vehicle")),
-    "has_bank_accounts": lambda s: _yes_if_any(s.assets.filter(asset_type="bank_account")),
-    "has_retirement_accounts": lambda s: _yes_if_any(
-        s.assets.filter(asset_type="retirement_account")
-    ),
-    "has_other_assets": lambda s: _yes_if_any(s.assets.filter(asset_type="other")),
+    "total_business_property": _total_business_property,
+    "total_farm_property": _total_farm_property,
+    "ab_line_2": _ab_line_2,
+    "ab_line_45": _ab_line_45,
+    "ab_line_52": _ab_line_52,
+    **{f"ab_has_{line.key}": _ab_answer(line.key) for line in LINES},
+    "ab_line_28_text": _ab_shared_text("28"),
+    "ab_line_29_text": _ab_shared_text("29"),
+    "ab_line_53_text": _ab_shared_text("53", LINE_BY_KEY["53"].capacity),
+    **{
+        f"ab_line_{key}_{kind}": _ab_kind_total(key, kind)
+        for key in ("28", "29")
+        for kind, _ in LINE_BY_KEY[key].kinds
+    },
     "has_executory_contracts": lambda s: _yes_if_any(s.executory_contracts.all()),
     "has_codebtors": lambda s: _yes_if_any(s.codebtors.all()),
     # Schedules D and E/F: the section questions and E/F's line 6 totals
@@ -889,9 +934,9 @@ DERIVATIONS: dict[str, Callable[[IntakeSession], str]] = {
     "fee_waiver_has_dependents": lambda s: "true" if _fee_waiver_family(s).dependents > 0 else "",
     "fee_waiver_dependents_count": lambda s: _count_or_blank(_fee_waiver_family(s).dependents),
     "fee_waiver_income_you": lambda s: _fmt(_fee_waiver_income(s).you),
-    "fee_waiver_income_spouse": lambda s: _money_or_blank(_fee_waiver_income(s).spouse),
+    "fee_waiver_income_spouse": lambda s: money_or_blank(_fee_waiver_income(s).spouse),
     "fee_waiver_income_subtotal": lambda s: _fmt(_fee_waiver_income(s).subtotal),
-    "fee_waiver_income_noncash": lambda s: _money_or_blank(_fee_waiver_income(s).noncash),
+    "fee_waiver_income_noncash": lambda s: money_or_blank(_fee_waiver_income(s).noncash),
     "fee_waiver_income_total": lambda s: _fmt(_fee_waiver_income(s).total),
     "fee_waiver_noncash_answer": lambda s: _fee_waiver_noncash(s)[0],
     "fee_waiver_noncash_kinds": lambda s: _fee_waiver_noncash(s)[1],
@@ -1125,7 +1170,20 @@ RULE_FIXES: dict[str, dict[str, str]] = {
     "total_vehicles": {"step": "assets"},
     "total_household_items": {"step": "assets"},
     "total_financial_assets": {"step": "assets"},
-    "other_asset_descriptions": {"step": "assets"},
+    "total_business_property": {"step": "assets"},
+    "total_farm_property": {"step": "assets"},
+    "ab_line_2": {"step": "assets"},
+    "ab_line_45": {"step": "assets"},
+    "ab_line_52": {"step": "assets"},
+    **{f"ab_has_{line.key}": {"step": "assets"} for line in LINES},
+    "ab_line_28_text": {"step": "assets"},
+    "ab_line_29_text": {"step": "assets"},
+    "ab_line_53_text": {"step": "assets"},
+    **{
+        f"ab_line_{key}_{kind}": {"step": "assets"}
+        for key in ("28", "29")
+        for kind, _ in LINE_BY_KEY[key].kinds
+    },
     # Amounts Owed
     "total_secured_debts": {"step": "debts"},
     "total_secured_claims": {"step": "debts"},

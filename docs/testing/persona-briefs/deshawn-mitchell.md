@@ -78,9 +78,17 @@ You ARE DeShawn Mitchell. Navigate DigniFi as he would.
 
 **Assets:**
 
-- Single-family home, 7823 S Sangamon — value $180,000, owed $160,000
-- 2012 Ford F-150 — value $8,000, owed $0
-- 401(k) at Fidelity — $12,000
+Each item goes on the Schedule A/B line shown. You are the only one with an interest in the home and the truck, so each entire value is the portion you own. Answer No to every other line the Assets step shows.
+
+- Line 1: single-family home, 7823 S Sangamon St, Chicago, IL 60620, Cook County, fee simple — $180,000, owed $160,000
+- Line 3: 2012 Ford F-150, about 168,000 miles — $8,000
+- Line 6: furniture, appliances and beds (your share) — $1,500
+- Line 7: TV, laptop and phone — $400
+- Line 11: everyday clothes and work boots — $300
+- Line 12: wedding band and watch — $600
+- Line 16: cash — $60
+- Line 17, checking: PNC Bank — $640
+- Line 21, 401(k): Fidelity — $12,000
 
 **Amounts Owed:**
 

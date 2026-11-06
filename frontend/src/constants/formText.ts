@@ -15,6 +15,7 @@ import type {
   ExpenseSpecifyField,
   MaritalStatus,
   PaymentChoice,
+  PropertyKind,
 } from '../types/api';
 
 // No cut: the question as printed
@@ -226,3 +227,369 @@ export const WAIVER_LINE_9_EXPLAIN = 'Explain';
 
 // Form 103B line 7, cut: "Yes."
 export const WAIVER_IDENTIFY_WHO = 'Identify who';
+
+// Schedule A/B (form_b106ab.pdf), asked on the Assets step. Never the field index's labels, which
+// read "No" on lines 12-14 and 26-28. Apostrophes are written as ', not the template's typographic
+// one. The dotted leaders after "Yes" and the line number's own period are dropped.
+
+// Each Part's title, cut of its "Part n:" prefix, which the step says as "Part n of 7"
+export const AB_PART_TITLES: Record<number, string> = {
+  1: 'Describe Each Residence, Building, Land, or Other Real Estate You Own or Have an Interest In',
+  2: 'Describe Your Vehicles',
+  3: 'Describe Your Personal and Household Items',
+  4: 'Describe Your Financial Assets',
+  5: 'Describe Any Business-Related Property You Own or Have an Interest In. List any real estate in Part 1.',
+  6: 'Describe Any Farm- and Commercial Fishing-Related Property You Own or Have an Interest In.',
+  7: 'Describe All Property You Own or Have an Interest in That You Did Not List Above',
+};
+
+// The sentence printed under a Part's title, no cut
+export const AB_PART_LEADS: Partial<Record<number, string>> = {
+  2: 'Do you own, lease, or have legal or equitable interest in any vehicles, whether they are registered or not? Include any vehicles you own that someone else drives. If you lease a vehicle, also report it on Schedule G: Executory Contracts and Unexpired Leases.',
+  3: 'Do you own or have any legal or equitable interest in any of the following items?',
+  4: 'Do you own or have any legal or equitable interest in any of the following?',
+  6: 'If you own or have an interest in farmland, list it in Part 1.',
+};
+
+// No cut: the heading printed over lines 28-35 (page 7)
+export const AB_OWED_TO_YOU_HEADING = 'Money or property owed to you?';
+
+export interface AbLineWords {
+  /** The line's words, without its number */
+  words: string;
+  /** What the form prints under the words, examples or a definition */
+  examples?: string;
+  /** The No and Yes answers, where the form says more than the word */
+  no?: string;
+  yes?: string;
+  /** The name of the line's text box */
+  textLabel?: string;
+  /** The name of its value box, where the form doesn't call it the portion */
+  valueLabel?: string;
+}
+
+const GIVE_SPECIFIC_ABOUT_THEM = 'Give specific information about them.';
+const GIVE_SPECIFIC = 'Give specific information.';
+const DESCRIBE = 'Describe.';
+const DESCRIBE_EACH_CLAIM = 'Describe each claim.';
+// The form's "Describe" with no period, on lines 38-41 (pages 8-9)
+const DESCRIBE_NO_PERIOD = 'Describe';
+
+export const AB_LINE_WORDS: Record<string, AbLineWords> = {
+  '1': {
+    words:
+      'Do you own or have any legal or equitable interest in any residence, building, land, or similar property?',
+    no: 'No. Go to Part 2.',
+    yes: 'Yes. Where is the property?',
+  },
+  '3': { words: 'Cars, vans, trucks, tractors, sport utility vehicles, motorcycles' },
+  '4': {
+    words:
+      'Watercraft, aircraft, motor homes, ATVs and other recreational vehicles, other vehicles, and accessories',
+    examples:
+      'Examples: Boats, trailers, motors, personal watercraft, fishing vessels, snowmobiles, motorcycle accessories',
+  },
+  '6': {
+    words: 'Household goods and furnishings',
+    examples: 'Examples: Major appliances, furniture, linens, china, kitchenware',
+    textLabel: DESCRIBE,
+  },
+  '7': {
+    words: 'Electronics',
+    examples:
+      'Examples: Televisions and radios; audio, video, stereo, and digital equipment; computers, printers, scanners; music collections; electronic devices including cell phones, cameras, media players, games',
+    textLabel: DESCRIBE,
+  },
+  '8': {
+    words: 'Collectibles of value',
+    examples:
+      'Examples: Antiques and figurines; paintings, prints, or other artwork; books, pictures, or other art objects; stamp, coin, or baseball card collections; other collections, memorabilia, collectibles',
+    textLabel: DESCRIBE,
+  },
+  '9': {
+    words: 'Equipment for sports and hobbies',
+    examples:
+      'Examples: Sports, photographic, exercise, and other hobby equipment; bicycles, pool tables, golf clubs, skis; canoes and kayaks; carpentry tools; musical instruments',
+    textLabel: DESCRIBE,
+  },
+  '10': {
+    words: 'Firearms',
+    examples: 'Examples: Pistols, rifles, shotguns, ammunition, and related equipment',
+    textLabel: DESCRIBE,
+  },
+  '11': {
+    words: 'Clothes',
+    examples: 'Examples: Everyday clothes, furs, leather coats, designer wear, shoes, accessories',
+    textLabel: DESCRIBE,
+  },
+  '12': {
+    words: 'Jewelry',
+    examples:
+      'Examples: Everyday jewelry, costume jewelry, engagement rings, wedding rings, heirloom jewelry, watches, gems, gold, silver',
+    textLabel: DESCRIBE,
+  },
+  '13': {
+    words: 'Non-farm animals',
+    examples: 'Examples: Dogs, cats, birds, horses',
+    textLabel: DESCRIBE,
+  },
+  '14': {
+    words:
+      'Any other personal and household items you did not already list, including any health aids you did not list',
+    textLabel: GIVE_SPECIFIC,
+  },
+  '16': {
+    words: 'Cash',
+    examples:
+      'Examples: Money you have in your wallet, in your home, in a safe deposit box, and on hand when you file your petition',
+    valueLabel: 'Cash:',
+  },
+  '17': {
+    words: 'Deposits of money',
+    examples:
+      'Examples: Checking, savings, or other financial accounts; certificates of deposit; shares in credit unions, brokerage houses, and other similar institutions. If you have multiple accounts with the same institution, list each.',
+    textLabel: 'Institution name:',
+  },
+  '18': {
+    words: 'Bonds, mutual funds, or publicly traded stocks',
+    examples:
+      'Examples: Bond funds, investment accounts with brokerage firms, money market accounts',
+    textLabel: 'Institution or issuer name:',
+  },
+  '19': {
+    words:
+      'Non-publicly traded stock and interests in incorporated and unincorporated businesses, including an interest in an LLC, partnership, and joint venture',
+    textLabel: 'Name of entity:',
+  },
+  '20': {
+    words: 'Government and corporate bonds and other negotiable and non-negotiable instruments',
+    examples:
+      "Negotiable instruments include personal checks, cashiers' checks, promissory notes, and money orders. Non-negotiable instruments are those you cannot transfer to someone by signing or delivering them.",
+    textLabel: 'Issuer name:',
+  },
+  '21': {
+    words: 'Retirement or pension accounts',
+    examples:
+      'Examples: Interests in IRA, ERISA, Keogh, 401(k), 403(b), thrift savings accounts, or other pension or profit-sharing plans',
+    textLabel: 'Institution name:',
+  },
+  '22': {
+    words: 'Security deposits and prepayments',
+    examples:
+      'Your share of all unused deposits you have made so that you may continue service or use from a company. Examples: Agreements with landlords, prepaid rent, public utilities (electric, gas, water), telecommunications companies, or others',
+    textLabel: 'Institution name or individual:',
+  },
+  '23': {
+    words:
+      'Annuities (A contract for a periodic payment of money to you, either for life or for a number of years)',
+    textLabel: 'Issuer name and description:',
+  },
+  '24': {
+    words:
+      'Interests in an education IRA, in an account in a qualified ABLE program, or under a qualified state tuition program.',
+    examples: '26 U.S.C. §§ 530(b)(1), 529A(b), and 529(b)(1).',
+    textLabel:
+      'Institution name and description. Separately file the records of any interests. 11 U.S.C. § 521(c):',
+  },
+  '25': {
+    words:
+      'Trusts, equitable or future interests in property (other than anything listed in line 1), and rights or powers exercisable for your benefit',
+    textLabel: GIVE_SPECIFIC_ABOUT_THEM,
+  },
+  '26': {
+    words: 'Patents, copyrights, trademarks, trade secrets, and other intellectual property',
+    examples:
+      'Examples: Internet domain names, websites, proceeds from royalties and licensing agreements',
+    textLabel: GIVE_SPECIFIC_ABOUT_THEM,
+  },
+  '27': {
+    words: 'Licenses, franchises, and other general intangibles',
+    examples:
+      'Examples: Building permits, exclusive licenses, cooperative association holdings, liquor licenses, professional licenses',
+    textLabel: GIVE_SPECIFIC_ABOUT_THEM,
+  },
+  '28': {
+    words: 'Tax refunds owed to you',
+    textLabel:
+      'Give specific information about them, including whether you already filed the returns and the tax years.',
+  },
+  '29': {
+    words: 'Family support',
+    examples:
+      'Examples: Past due or lump sum alimony, spousal support, child support, maintenance, divorce settlement, property settlement',
+    textLabel: GIVE_SPECIFIC,
+  },
+  '30': {
+    words: 'Other amounts someone owes you',
+    examples:
+      "Examples: Unpaid wages, disability insurance payments, disability benefits, sick pay, vacation pay, workers' compensation, Social Security benefits; unpaid loans you made to someone else",
+    textLabel: GIVE_SPECIFIC,
+  },
+  '31': {
+    words: 'Interests in insurance policies',
+    examples:
+      "Examples: Health, disability, or life insurance; health savings account (HSA); credit, homeowner's, or renter's insurance",
+    textLabel: 'Company name:',
+    valueLabel: 'Surrender or refund value:',
+  },
+  '32': {
+    words: 'Any interest in property that is due you from someone who has died',
+    examples:
+      'If you are the beneficiary of a living trust, expect proceeds from a life insurance policy, or are currently entitled to receive property because someone has died.',
+    textLabel: GIVE_SPECIFIC,
+  },
+  '33': {
+    words:
+      'Claims against third parties, whether or not you have filed a lawsuit or made a demand for payment',
+    examples: 'Examples: Accidents, employment disputes, insurance claims, or rights to sue',
+    textLabel: DESCRIBE_EACH_CLAIM,
+  },
+  '34': {
+    words:
+      'Other contingent and unliquidated claims of every nature, including counterclaims of the debtor and rights to set off claims',
+    textLabel: DESCRIBE_EACH_CLAIM,
+  },
+  '35': { words: 'Any financial assets you did not already list', textLabel: GIVE_SPECIFIC },
+  '37': {
+    words: 'Do you own or have any legal or equitable interest in any business-related property?',
+    no: 'No. Go to Part 6.',
+    yes: 'Yes. Go to line 38.',
+  },
+  '38': {
+    words: 'Accounts receivable or commissions you already earned',
+    textLabel: DESCRIBE_NO_PERIOD,
+  },
+  '39': {
+    words: 'Office equipment, furnishings, and supplies',
+    examples:
+      'Examples: Business-related computers, software, modems, printers, copiers, fax machines, rugs, telephones, desks, chairs, electronic devices',
+    textLabel: DESCRIBE_NO_PERIOD,
+  },
+  '40': {
+    words: 'Machinery, fixtures, equipment, supplies you use in business, and tools of your trade',
+    textLabel: DESCRIBE_NO_PERIOD,
+  },
+  '41': { words: 'Inventory', textLabel: DESCRIBE_NO_PERIOD },
+  '42': { words: 'Interests in partnerships or joint ventures', textLabel: 'Name of entity:' },
+  '43': { words: 'Customer lists, mailing lists, or other compilations', textLabel: DESCRIBE },
+  '44': {
+    words: 'Any business-related property you did not already list',
+    textLabel: 'Give specific information',
+  },
+  '46': {
+    words:
+      'Do you own or have any legal or equitable interest in any farm- or commercial fishing-related property?',
+    no: 'No. Go to Part 7.',
+    yes: 'Yes. Go to line 47.',
+  },
+  '47': { words: 'Farm animals', examples: 'Examples: Livestock, poultry, farm-raised fish' },
+  '48': { words: 'Crops—either growing or harvested', textLabel: GIVE_SPECIFIC },
+  '49': {
+    words: 'Farm and fishing equipment, implements, machinery, fixtures, and tools of trade',
+  },
+  '50': { words: 'Farm and fishing supplies, chemicals, and feed' },
+  '51': {
+    words: 'Any farm- and commercial fishing-related property you did not already list',
+    textLabel: GIVE_SPECIFIC,
+  },
+  '53': {
+    words: 'Do you have other property of any kind you did not already list?',
+    examples: 'Examples: Season tickets, country club membership',
+    textLabel: GIVE_SPECIFIC,
+  },
+};
+
+// The words the form prints beside each kind's box or amount, cut of their colons
+export const AB_KIND_WORDS: Record<string, Record<string, string>> = {
+  '17': {
+    checking: 'Checking account',
+    savings: 'Savings account',
+    cd: 'Certificates of deposit',
+    other: 'Other financial account',
+  },
+  '21': {
+    '401k': '401(k) or similar plan',
+    pension: 'Pension plan',
+    ira: 'IRA',
+    retirement: 'Retirement account',
+    keogh: 'Keogh',
+    additional: 'Additional account',
+  },
+  '22': {
+    electric: 'Electric',
+    gas: 'Gas',
+    heating_oil: 'Heating oil',
+    security_deposit: 'Security deposit on rental unit',
+    prepaid_rent: 'Prepaid rent',
+    telephone: 'Telephone',
+    water: 'Water',
+    rented_furniture: 'Rented furniture',
+    other: 'Other',
+  },
+  '28': { federal: 'Federal', state: 'State', local: 'Local' },
+  '29': {
+    alimony: 'Alimony',
+    maintenance: 'Maintenance',
+    support: 'Support',
+    divorce_settlement: 'Divorce settlement',
+    property_settlement: 'Property settlement',
+  },
+};
+
+// Line 21's name for its kinds (page 6), no cut
+export const AB_ACCOUNT_TYPE_LABEL = 'Type of account:';
+
+// Lines 1, 3 and 4, no cut
+export const AB_ENTIRE_LABEL = 'Current value of the entire property?';
+export const AB_PORTION_LABEL = 'Current value of the portion you own?';
+export const AB_WHO_QUESTION = 'Who has an interest in the property? Check one.';
+export const AB_COMMUNITY = 'Check if this is community property (see instructions)';
+export const AB_DO_NOT_DEDUCT_SCHEDULE_D =
+  'Do not deduct secured claims or exemptions. Put the amount of any secured claims on Schedule D: Creditors Who Have Claims Secured by Property.';
+
+// The column heading's second sentence on Parts 3 to 6
+export const AB_DO_NOT_DEDUCT = 'Do not deduct secured claims or exemptions.';
+
+// Line 1's boxes
+export const AB_STREET_LABEL = 'Street address, if available, or other description';
+export const AB_CITY_LABEL = 'City';
+export const AB_STATE_LABEL = 'State';
+export const AB_ZIP_LABEL = 'ZIP Code';
+export const AB_COUNTY_LABEL = 'County';
+export const AB_PROPERTY_KIND_QUESTION = 'What is the property? Check all that apply.';
+export const AB_NATURE_LABEL =
+  'Describe the nature of your ownership interest (such as fee simple, tenancy by the entireties, or a life estate), if known.';
+export const AB_PLACE_OTHER_INFO_LABEL =
+  'Other information you wish to add about this item, such as local property identification number:';
+
+// Keyed as the backend's PROPERTY_KIND_WORDS, which a sheet prints; the same words
+export const AB_PROPERTY_KIND_WORDS: Record<PropertyKind, string> = {
+  single_family: 'Single-family home',
+  duplex: 'Duplex or multi-unit building',
+  condo: 'Condominium or cooperative',
+  manufactured: 'Manufactured or mobile home',
+  land: 'Land',
+  investment: 'Investment property',
+  timeshare: 'Timeshare',
+  other: 'Other',
+};
+
+// Lines 3 and 4's boxes
+export const AB_MAKE_LABEL = 'Make:';
+export const AB_MODEL_LABEL = 'Model:';
+export const AB_YEAR_LABEL = 'Year:';
+export const AB_MILEAGE_LABEL = 'Approximate mileage:';
+export const AB_VEHICLE_OTHER_INFO_LABEL = 'Other information:';
+
+// Lines 19 and 42's and line 31's other boxes
+export const AB_PERCENT_LABEL = '% of ownership:';
+export const AB_BENEFICIARY_LABEL = 'Beneficiary:';
+
+// Line 43's question, after its "Yes."
+export const AB_PERSONAL_INFO_QUESTION =
+  'Do your lists include personally identifiable information (as defined in 11 U.S.C. § 101(41A))?';
+
+// The words beside the form's two boxes, where a line prints nothing longer
+export const AB_NO = 'No';
+
+export const AB_YES = 'Yes';

@@ -388,3 +388,118 @@ export const FEE_READ_FAILED =
   "We couldn't get your answers just now. Please try again in a moment.";
 
 export const FEE_SAVE_FAILED = "We couldn't save your answer just now. Please try again.";
+
+// ============================================================================
+// Assets step (Schedule A/B)
+// ============================================================================
+
+export const NOTHING_TO_LIST_NOTE =
+  "That's okay. Many Americans filing for bankruptcy don't have significant assets. It is not a failure. Answer No to each line that doesn't apply to you.";
+
+// DRAFT: counsel C-14
+export const LEASE_NOTE =
+  'If you lease this vehicle, what it is worth is yours to say. Legal aid can help you decide.';
+
+export const VALUE_UNKNOWN_BUTTON = "I don't know the value";
+
+// DRAFT: counsel C-15
+export const VALUE_UNKNOWN_NOTE =
+  'You can come back and change this. Legal aid can help you find out.';
+
+// The heading of Review's list of these rows
+export const VALUE_UNKNOWN_HEADING = "You said you don't know the value of these";
+
+export const REMOVE_ON_LINE = 'Remove {n} item(s) you listed on this line?';
+
+export const REMOVE_UNDER_LINE = 'Remove {n} item(s) you listed under this line?';
+
+export const REMOVE_THEM = 'Remove';
+
+export const KEEP_THEM = 'Keep them';
+
+export const ITEM_NUMBER = 'Item {n}';
+
+// The Remove button's name for a screen reader: every row on a Part has one
+export const REMOVE_ITEM_ON_LINE = 'Remove item {n} on line {key}';
+
+export const PART_OF_PARTS = 'Part {n} of {total}';
+
+export const ADD_ANOTHER_ITEM = 'Add another';
+
+export const ADD_AN_ITEM = 'Add an item';
+
+export const LINE_NEEDS_AN_ITEM = 'Add what you have, or change it to No.';
+
+// The sentences Complete gives in apps/intake/asset_lines.py, shown after a Part's lines because
+// Continue stops first. test_asset_gaps.py pins these to the server's words.
+export const GATE_HAS_ONLY_NOS =
+  'Line {key} says Yes, but every line under it says No. Change one of them.';
+
+export const ASSET_GAP_NEEDS_AN_ANSWER = 'Line {key} on the Assets step needs a Yes or No.';
+
+export const ASSET_GAP_YES_WITH_NO_ITEM =
+  'Line {key} says Yes. Add what you have, or change it to No.';
+
+export const ASSET_GAP_NO_STILL_LISTS =
+  'Line {key} says No, but it still lists something. Remove it, or change the answer to Yes.';
+
+export const ASSET_GAP_ROW_NEEDS_MORE = 'Line {key} needs more about "{name}" on the Assets step.';
+
+export const ASSET_GAP_GATE_TAKES_NO_ITEMS = 'Line {key} takes no items. Remove what it lists.';
+
+export const ASSET_GAP_UNDER_GATE =
+  "Line {key} is under line {gate}, which isn't answered Yes. Remove what line {key} lists, or answer line {gate} Yes.";
+
+// A row in those sentences before it has words of its own
+export const ROW_WITH_NO_NAME = 'one item';
+
+// The screen's words for the form's "Debtor 1 only" and "At least one of the debtors and another"
+export const WHO_ONLY_YOU = 'Only you';
+
+export const WHO_WITH_SOMEONE = 'You and someone else';
+
+export const AB_ADDRESS_LINE_2_LABEL = 'Address, second line';
+
+// The name of a kind's box on lines 17, 22, 28 and 29, where the form prints none
+export const AB_KIND_LABEL = 'Which one';
+
+// The name of the text box on lines 47, 49 and 50, where the form prints only "Yes"
+export const AB_TEXT_LABEL = 'What you have';
+
+export const OUT_OF_RANGE_PERCENT = 'Please enter a number from 0 to 100, with up to 2 decimals.';
+
+// Beside a box holding part of a number ("-"), whose earlier figure stays until a number replaces it
+export const AMOUNT_NOT_A_NUMBER = 'Please enter a number.';
+
+// Rows from before the step asked the form's lines (3b spec §9). Says why Continue waits.
+export const OLD_ROWS_HEADING = 'Items you listed earlier';
+
+export const OLD_ROWS_NOTE =
+  'We now ask about what you own line by line, in the words of the form. Choose the line each of these goes on, or remove it. You can continue once each one has a line.';
+
+export const OLD_ROW_LINE_LABEL = 'Which line does this go on?';
+
+export const OLD_ROW_LINE_PLACEHOLDER = 'Choose a line';
+
+// What the step called a row's type before it asked the form's lines. Not the form's words, and
+// never a suggestion of a line.
+export const OLD_ASSET_TYPE_WORDS: Record<string, string> = {
+  real_property: 'Real estate or home',
+  vehicle: 'Vehicle',
+  bank_account: 'Bank account',
+  retirement_account: 'Retirement account',
+  personal_property: 'Personal property',
+  other: 'Other',
+};
+
+// The server's own name for a row with nothing to name it by (_row_name in asset_lines.py)
+export const ONE_ITEM = 'One item';
+
+export const REVIEW_VALUE_NOT_KNOWN = "You don't know";
+
+export const REVIEW_ASSET_PART = 'Part {n}: {title}';
+
+export const REVIEW_ASSET_ROW = 'Line {key}: {name}';
+
+// A button's name for a screen reader, where the list repeats one button per row
+export const GO_TO_STEP_FOR_ROW = 'Go to {step} for {row}';

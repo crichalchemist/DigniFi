@@ -9,19 +9,23 @@ section 11), so the demos and the journeys meet no gap, and no figure the means 
 moves.
 """
 
+import re
 from datetime import date
 from decimal import Decimal
 from io import StringIO
 
 import pytest
+from django.conf import settings
 from django.core.management import call_command
 
 from apps.districts.models import MedianIncome
 from apps.eligibility.cmi import is_above_median
 from apps.eligibility.models import MeansTest
 from apps.forms.registry import packet
-from apps.intake.management.commands.seed_demo_data import _andres_kettleby
+from apps.intake.asset_lines import LINE_BY_KEY, shown_lines
+from apps.intake.management.commands.seed_demo_data import PERSONAS, _andres_kettleby
 from apps.intake.models import (
+    AssetInfo,
     FilingFee,
     IncomeInfo,
     IntakeSession,
@@ -282,3 +286,79 @@ def test_a_gig_drivers_business_entry_leaves_his_debts_as_he_classed_them_and_he
     assert classed == [d["consumer_business_classification"] for d in _andres_kettleby()["debts"]]
     assert classed.count("business") == 1
     assert len(packet(session)) == 14
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("persona", list(PERSONAS))
+def test_every_seeded_persona_has_finished_the_walk(persona):
+    # Complete refuses a shown Schedule A/B line with no answer, so a persona must hold one for
+    # every line shown, and a Yes on exactly the lines where it holds a row.
+    call_command("loaddata", "ilnd_2025_data", verbosity=0)
+    call_command("seed_demo_data", persona=persona, stdout=StringIO())
+    session = IntakeSession.objects.get(user__username=f"demo_{persona}")
+
+    answers = session.asset_lines.get_answers()
+
+    assert {line.key for line in shown_lines(answers)} == set(answers)
+    yes = {key for key, value in answers.items() if value == "yes"}
+    gates = yes & {"37", "46"}
+    assert yes == {row.ab_line for row in session.assets.all()} | gates
+    assert all(row.ab_line in LINE_BY_KEY for row in session.assets.all())
+    # Andres drives for a living (37 Yes, 46 No); Sarah says no to every line.
+    if persona == "andres":
+        assert (answers["37"], answers["46"]) == ("yes", "no")
+    if persona == "sarah":
+        assert yes == set()
+
+
+@pytest.mark.django_db
+def test_a_leased_car_is_seeded_at_zero_not_blank():
+    # Andres typed $0 and $0 for the Corolla he leases; blank would read as "unanswered".
+    call_command("loaddata", "ilnd_2025_data", verbosity=0)
+    call_command("seed_demo_data", persona="andres", stdout=StringIO())
+    session = IntakeSession.objects.get(user__username="demo_andres")
+
+    corolla = next(
+        a for a in session.assets.all() if a.get_details().get("model") == "Corolla Hybrid"
+    )
+
+    assert (corolla.current_value, corolla.entire_value) == (Decimal("0.00"), Decimal("0.00"))
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("persona", list(PERSONAS))
+def test_a_seeded_row_uses_no_old_asset_type(persona):
+    # Old asset_type is read-only and dropped later; a seeded row names its line instead.
+    call_command("loaddata", "ilnd_2025_data", verbosity=0)
+    call_command("seed_demo_data", persona=persona, stdout=StringIO())
+
+    rows = AssetInfo.objects.filter(session__user__username=f"demo_{persona}")
+
+    assert all(row.asset_type is None and row.ab_line for row in rows)
+
+
+@pytest.mark.parametrize("persona", list(PERSONAS))
+def test_a_persona_brief_gives_line_31_the_company_name_the_seed_prints(persona):
+    # Line 31's text box is the form's "Company name". A persona working from a brief that names
+    # only a type of policy types that into the box, and its form no longer matches the seed's.
+    directory = settings.BASE_DIR.parent / "docs" / "testing" / "persona-briefs"
+    if not directory.is_dir():
+        pytest.skip("the repo's docs aren't here (compose's backend mounts backend/ only)")
+    brief = next(directory.glob(f"{persona}-*.md")).read_text()
+
+    seeded = [
+        (row["description"], row["details"].get("beneficiary"), row["current_value"])
+        for row in PERSONAS[persona]()["assets"]
+        if row["ab_line"] == "31"
+    ]
+
+    told = [
+        (company, beneficiary, Decimal(value))
+        for company, beneficiary, value in re.findall(
+            r"^- Line 31, company name: (.+?) \(.+?\)(?:, beneficiary: (.+?))? — \$(\d+)$",
+            brief,
+            flags=re.MULTILINE,
+        )
+    ]
+    assert told == [(company, who or "", value) for company, who, value in seeded]
+    assert len(told) == len(re.findall(r"^- Line 31\b", brief, flags=re.MULTILINE))

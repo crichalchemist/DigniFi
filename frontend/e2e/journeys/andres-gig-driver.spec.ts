@@ -50,11 +50,9 @@ test.describe('Andrés Kettleby — Gig Driver', () => {
     await wizard.fillExpenses(ANDRES);
     await wizard.nextStep();
 
-    // Step 5: Assets (his half of the Honda Fit, household goods, two accounts)
-    for (const asset of ANDRES.assets) {
-      await wizard.addAsset(asset);
-    }
-    await wizard.nextStep();
+    // Step 5: Assets (the leased Corolla, his half of the Honda Fit, household goods, two
+    // accounts; line 37 is Yes, so Part 5 shows and he fills lines 38 and 40)
+    await wizard.walkAssets(ANDRES);
 
     // Step 6: Debts (the co-signed Honda Fit loan and nine unsecured debts)
     for (const debt of ANDRES.debts) {

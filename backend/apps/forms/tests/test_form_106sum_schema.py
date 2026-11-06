@@ -55,12 +55,12 @@ def populated_session(session):
     )
     AssetInfo.objects.create(
         session=session,
-        asset_type="real_property",
+        ab_line="1",
         description="Home",
         current_value=Decimal("200000"),
     )
     AssetInfo.objects.create(
-        session=session, asset_type="vehicle", description="Car", current_value=Decimal("15000")
+        session=session, ab_line="3", description="Car", current_value=Decimal("15000")
     )
     DebtInfo.objects.create(
         session=session,
@@ -112,6 +112,17 @@ class TestForm106SumSchema:
         assert field_map["1a"] == "200000.00"  # real property
         assert field_map["1b"] == "15000.00"  # personal property
         assert field_map["1c"] == "215000.00"  # total assets
+
+    def test_a_value_the_filer_does_not_know_adds_zero_to_the_totals(self, populated_session):
+        AssetInfo.objects.create(
+            session=populated_session, ab_line="6", description="Dishes", current_value=None
+        )
+        AssetInfo.objects.create(
+            session=populated_session, ab_line="7", description="TV", current_value=Decimal("25")
+        )
+        field_map = resolve(load_schema("form_106sum"), populated_session)
+        assert field_map["1b"] == "15025.00"  # the vehicle and the TV; the dishes add zero
+        assert field_map["1c"] == "215025.00"
 
     def test_debt_totals(self, populated_session):
         field_map = resolve(load_schema("form_106sum"), populated_session)

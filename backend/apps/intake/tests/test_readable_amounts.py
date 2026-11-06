@@ -111,3 +111,36 @@ def test_only_the_owner_can_read_amounts(filer_session):
         assert b"8000.00" not in response.content
 
     assert APIClient().get(f"/api/intake/sessions/{session.pk}/").status_code == 401
+
+
+def test_asset_list_has_a_stable_order_so_paging_never_repeats_or_skips_a_row(filer_session):
+    import warnings
+
+    from django.core.paginator import UnorderedObjectListWarning
+
+    session, _debt, _asset = filer_session
+    client = _client_for(session.user)
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", UnorderedObjectListWarning)
+        response = client.get("/api/intake/assets/")
+    assert response.status_code == 200
+
+
+def test_session_read_lists_assets_by_id_whatever_order_they_were_fetched_in(filer_session):
+    from django.db.models import Prefetch
+
+    from apps.intake.serializers import IntakeSessionSerializer
+
+    session, _debt, _asset = filer_session
+    for name in ("Second", "Third"):
+        AssetInfo.objects.create(
+            session=session,
+            description=name,
+            current_value=Decimal("1.00"),
+            amount_owed=Decimal("0"),
+        )
+    fetched = IntakeSession.objects.prefetch_related(
+        Prefetch("assets", queryset=AssetInfo.objects.order_by("-pk"))
+    ).get(pk=session.pk)
+    ids = [row["id"] for row in IntakeSessionSerializer(fetched).data["assets"]]
+    assert ids == sorted(ids) and len(ids) == 3

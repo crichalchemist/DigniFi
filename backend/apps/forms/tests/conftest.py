@@ -221,9 +221,18 @@ def schedule_a_b_with_sheet(tmp_path, settings):
     """
     A copy of the real schemas whose Schedule A/B has a synthetic repeat group (3a2 spec
     §5.4, R18, R19): line 3's four vehicles, each a make and its value, continued on an
-    attached sheet under those two columns, its rows numbered "3.{n}". Yields the schemas
+    attached sheet under those two columns, its rows numbered "3.{n}". The real schema's
+    repeat groups are dropped first, so this one is the form's only group. Yields the schemas
     directory, cleared from the schema cache before and after, as schedule_d_with_copies.
     """
+    schemas = tmp_path / "schemas"
+    if not schemas.exists():
+        shutil.copytree(django_settings.FORM_SCHEMAS_DIRECTORY, schemas)
+    path = schemas / "schedule_a_b.json"
+    schema = json.loads(path.read_text())
+    schema["fields"] = [f for f in schema["fields"] if f["repeat"] is None]
+    schema["groups"] = {}
+    path.write_text(json.dumps(schema))
     declaration = {"number": "3.{n}", "sheet": _AB_SHEET}
     schemas = _with_group(tmp_path, settings, "schedule_a_b", "ab_line_3", _AB_LINE_3, declaration)
     load_schema.cache_clear()

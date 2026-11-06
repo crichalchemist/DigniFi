@@ -282,26 +282,120 @@ export class WizardPage {
 
   // ── Step 5: Assets ──────────────────────────────────────────────
 
-  // Both steps render one empty row by default and suffix field names with
-  // the row index (asset_type_0, creditor_name_1, ...). Track how many rows
-  // we've filled so we only click "Add Another" from the second entry on.
-  private assetCount = 0;
+  // The step is Schedule A/B a Part at a time. Each line has a No/Yes radio pair named
+  // line_<key>_answer, and each row on it names its boxes line_<key>_<rowIndex>_<field>.
+  // A second row on a line comes from the line's "Add another" and takes the next index, so this
+  // counts the rows filled on each line.
+  private assetRows = new Map<string, number>();
+  // Amounts Owed suffixes its boxes with the row index too: this counts the debts filled, so its
+  // "Add another" is clicked only from the second on.
   private debtCount = 0;
 
+  private lineBlock(key: string) {
+    return this.page
+      .locator('.ab-line')
+      .filter({ has: this.page.locator(`input[name="line_${key}_answer"]`) });
+  }
+
+  /** Answers the line Yes, then fills the next row on it by shape: the boxes the line shows. */
   async addAsset(asset: PersonaAsset) {
-    const index = this.assetCount;
-    if (index > 0) {
-      await this.page.getByRole('button', { name: /add another asset/i }).click();
+    const key = asset.ab_line;
+    const index = this.assetRows.get(key) ?? 0;
+    const line = this.lineBlock(key);
+    if (index === 0) {
+      // Yes opens the line's first row
+      await this.page.locator(`input[name="line_${key}_answer"][value="yes"]`).check();
+    } else {
+      await line.getByRole('button', { name: 'Add another', exact: true }).click();
     }
+    const prefix = `line_${key}_${index}`;
 
-    await this.page.locator(`select[name="asset_type_${index}"]`).selectOption(asset.asset_type);
-    await this.page.locator(`input[name="description_${index}"]`).fill(asset.description);
+    if (asset.description !== undefined) {
+      await this.page.locator(`input[name="${prefix}_description"]`).fill(asset.description);
+    }
+    for (const [field, value] of Object.entries(asset.details ?? {})) {
+      if (field === 'kind') {
+        await this.page.locator(`select[name="${prefix}_kind"]`).selectOption(value as string);
+      } else if (field === 'who') {
+        await this.page.locator(`input[name="${prefix}_who"][value="${value}"]`).check();
+      } else if (field === 'property_kinds') {
+        for (const kind of value as string[]) {
+          await this.page
+            .locator(`input[name="${prefix}_property_kinds"][value="${kind}"]`)
+            .check();
+        }
+      } else {
+        await this.page.locator(`input[name="${prefix}_${field}"]`).fill(value as string);
+      }
+    }
+    // A $0 is typed as 0: an empty box is "not answered"
+    if (asset.entire_value !== undefined) {
+      await this.page
+        .locator(`input[name="${prefix}_entire_value"]`)
+        .fill(String(asset.entire_value));
+    }
     await this.page
-      .locator(`input[name="current_value_${index}"]`)
+      .locator(`input[name="${prefix}_current_value"]`)
       .fill(String(asset.current_value));
-    await this.page.locator(`input[name="amount_owed_${index}"]`).fill(String(asset.amount_owed));
 
-    this.assetCount++;
+    this.assetRows.set(key, index + 1);
+  }
+
+  /** Answers No on every line of the Part showing that has no answer yet. */
+  async answerLinesNo() {
+    // A No on a gate hides the lines under it, and a Yes shows them, so ask the page again
+    // after each press instead of listing the radios once.
+    for (;;) {
+      const names = await this.page
+        .locator('input[type="radio"][name^="line_"][name$="_answer"][value="no"]')
+        .evaluateAll((radios) =>
+          radios
+            .map((radio) => (radio as HTMLInputElement).name)
+            .filter(
+              (name) => document.querySelectorAll(`input[name="${name}"]:checked`).length === 0
+            )
+        );
+      if (names.length === 0) return;
+      await this.page.locator(`input[name="${names[0]}"][value="no"]`).check();
+    }
+  }
+
+  private async assetPart(): Promise<number> {
+    const text = await this.page.getByText(/^Part \d of 7$/).textContent();
+    return Number(/Part (\d)/.exec(text ?? '')?.[1]);
+  }
+
+  /**
+   * The whole Assets step: for each Part, the persona's rows on the lines it shows, a No on
+   * every other line, then Continue. Continue moves a Part until Part 7, then leaves the step.
+   */
+  async walkAssets(persona: Pick<PersonaData, 'assets' | 'asset_gates'>) {
+    this.assetRows = new Map();
+    const unfilled = new Set(persona.assets);
+    for (;;) {
+      const part = await this.assetPart();
+      for (const gate of persona.asset_gates ?? []) {
+        const radio = this.page.locator(`input[name="line_${gate}_answer"][value="yes"]`);
+        if ((await radio.count()) > 0) await radio.check();
+      }
+      for (const asset of persona.assets) {
+        if (!unfilled.has(asset)) continue;
+        const shown = this.page.locator(`input[name="line_${asset.ab_line}_answer"]`);
+        if ((await shown.count()) === 0) continue;
+        await this.addAsset(asset);
+        unfilled.delete(asset);
+      }
+      await this.answerLinesNo();
+      if (part === 7) {
+        expect(unfilled.size, 'every persona asset sits on a line the walk showed').toBe(0);
+        await this.nextStep();
+        return;
+      }
+      await this.page.getByRole('button', { name: /continue/i }).click();
+      await expect(this.page.getByText(`Part ${part + 1} of 7`, { exact: true })).toBeVisible({
+        timeout: 15_000,
+      });
+    }
   }
 
   // ── Step 6: Debts ───────────────────────────────────────────────

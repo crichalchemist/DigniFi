@@ -359,6 +359,89 @@ a {
   margin: var(--space-5) 0;
 }
 
+/* The Assets step (Schedule A/B): one column, with tap targets of at least 44 px */
+.ab-line {
+  border-top: 1px solid var(--color-line);
+  padding-top: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+.ab-line-words {
+  font-family: var(--font-body);
+  font-weight: 600;
+  color: var(--color-pine);
+  margin-bottom: var(--space-2);
+  overflow-wrap: anywhere;
+}
+
+.ab-subheading {
+  font-family: var(--font-display);
+  font-weight: 600;
+  color: var(--color-pine);
+  margin-bottom: var(--space-2);
+}
+
+.ab-yes-no {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.ab-choice {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 44px;
+  color: var(--color-body);
+  cursor: pointer;
+}
+
+.ab-choice input {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  accent-color: var(--color-pine);
+}
+
+.ab-answer {
+  flex: 1 1 8rem;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius);
+}
+
+.ab-row {
+  margin-top: var(--space-3);
+  padding-left: var(--space-3);
+  border-left: 2px solid var(--color-line);
+}
+
+.ab-row-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.ab-row .form-input {
+  min-height: 44px;
+}
+
+.ab-line .button {
+  min-height: 44px;
+}
+
+.ab-value {
+  margin-bottom: var(--space-4);
+}
+
+.ab-ask-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
 /* The Income step's totals: each amount sits under its label, without the browser's dd indent */
 .income-total dd {
   margin: 0;

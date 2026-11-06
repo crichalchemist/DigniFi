@@ -102,7 +102,7 @@ test.describe('Scanned bill — upload to Amounts Owed', () => {
       await wizard.fillExpenses(FILER);
       await wizard.nextStep();
       await expect(stepTitle).toHaveText('Assets');
-      await wizard.nextStep(); // no assets
+      await wizard.walkAssets({ assets: [] }); // No on every line
       await expect(stepTitle).toHaveText('Amounts Owed');
 
       // First visit: the bill is there, marked as coming from the scan

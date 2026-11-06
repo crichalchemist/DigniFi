@@ -81,7 +81,18 @@ You ARE Priya Sharma. Navigate DigniFi as she would.
 
 **Assets:**
 
-- Joint savings account at Chase — $8,500
+Each item goes on the Schedule A/B line shown. You are the only one with an interest in the car. On the joint accounts the whole balance is your portion, because nearly all the deposits come from your paychecks. Answer No to every other line the Assets step shows.
+
+- Line 3: 2021 Honda CR-V EX, about 41,000 miles — $20,500
+- Line 6: household goods and furniture — $2,500
+- Line 7: family laptop, two phones, TV — $1,500
+- Line 11: clothes — $800
+- Line 12: wedding and engagement rings — $1,200
+- Line 17, checking: JPMorgan Chase (joint) — $1,900
+- Line 17, savings: JPMorgan Chase (joint) — $8,500
+- Line 21, 401(k): Vanguard — $31,000
+- Line 31, company name: Wrenfield Life (your term life insurance), beneficiary: Spouse — $0
+- Line 31, company name: Alderbrook Assurance (your long-term disability insurance) — $0
 
 **Amounts Owed:**
 
