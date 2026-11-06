@@ -1032,3 +1032,17 @@ def test_a_filer_with_no_property_and_every_line_no_has_finished_the_assets_step
     summary = client.get(_session_url(completed, "summary/"))
 
     assert summary.data["progress"]["completion_percentage"] == 80
+
+
+def test_an_unfinished_assets_step_does_not_count_toward_the_intake_being_done(filer, completed):
+    # The percentage tells the filer how far they are: a step with lines unanswered isn't done.
+    client, _ = filer
+    finished = client.get(_session_url(completed, "summary/"))
+    completed.asset_lines.delete()
+
+    unfinished = client.get(_session_url(completed, "summary/"))
+
+    assert (
+        unfinished.data["progress"]["completion_percentage"]
+        < finished.data["progress"]["completion_percentage"]
+    )

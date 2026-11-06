@@ -1369,6 +1369,19 @@ class TestAssetStepCheck:
         # Generate All refused before it dropped the form that left the packet.
         assert GeneratedForm.objects.filter(session=session, form_type="form_103b").exists()
 
+    def test_the_assets_sentence_comes_before_an_income_gap(self, api_client, session_with_debtor):
+        # Personas seeded before 3b have both gaps, and the Assets step is what they are sent to.
+        session = session_with_debtor
+        AssetInfo.objects.create(session=session, description="Old couch")
+        session.income_info.delete()
+
+        response = api_client.post(
+            "/api/forms/generate_all/", {"session_id": session.id}, format="json"
+        )
+
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert response.data == {"error": OLD_ROW, "step": "assets"}
+
     def test_the_packet_list_and_a_filed_download_are_not_refused(
         self, api_client, session_with_debtor, user
     ):

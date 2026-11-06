@@ -257,9 +257,12 @@ def _row_is_complete(line: Line, row) -> bool:
 
 
 def _row_name(row) -> str:
+    """What the filer knows a row by, in the order Review names it."""
+    details = row.get_details()
     return (
         (row.description or "").strip()
-        or (row.get_details().get("make") or "").strip()
+        or (details.get("street") or "").strip()
+        or (details.get("make") or "").strip()
         or "one item"
     )
 
@@ -274,7 +277,7 @@ def asset_step_gaps(session) -> list[AssetStepGap]:
     rows = ordered_assets(session)
     for row in rows:
         if row.ab_line not in LINE_BY_KEY:
-            gaps.append(AssetStepGap(f'Pick a line on the Assets step for "{row.description}".'))
+            gaps.append(AssetStepGap(f'Pick a line on the Assets step for "{_row_name(row)}".'))
 
     answers_row = getattr(session, "asset_lines", None)
     answers = answers_row.get_answers() if answers_row is not None else {}
@@ -282,7 +285,7 @@ def asset_step_gaps(session) -> list[AssetStepGap]:
     for line in LINES:
         key = line.key
         on_line = rows_on(rows, key)
-        if line.key not in shown:
+        if key not in shown:
             if on_line:
                 gaps.append(
                     AssetStepGap(
@@ -316,11 +319,12 @@ def asset_step_gaps(session) -> list[AssetStepGap]:
                     f"Line {key} says No, but it still lists something. Remove it, or change the answer to Yes."
                 )
             )
-        for row in on_line if answer == "yes" else []:
-            if not _row_is_complete(line, row):
-                gaps.append(
-                    AssetStepGap(
-                        f'Line {key} needs more about "{_row_name(row)}" on the Assets step.'
+        if answer == "yes":
+            for row in on_line:
+                if not _row_is_complete(line, row):
+                    gaps.append(
+                        AssetStepGap(
+                            f'Line {key} needs more about "{_row_name(row)}" on the Assets step.'
+                        )
                     )
-                )
     return gaps

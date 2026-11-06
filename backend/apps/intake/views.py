@@ -664,13 +664,20 @@ class AssetViewSet(viewsets.ModelViewSet):
 
         row = self.get_object()
         locked = {row.session_id}
-        target = request.data.get("session")
-        if target is not None and str(target).isdigit():
-            locked |= set(
-                IntakeSession.objects.filter(pk=int(target), user=request.user).values_list(
-                    "pk", flat=True
+        # A body that isn't an object, or a session that isn't a number, locks only the row's own
+        # session, and the serializer refuses it.
+        target = request.data.get("session") if isinstance(request.data, dict) else None
+        if target is not None:
+            try:
+                target_id = int(str(target))
+            except ValueError:
+                pass
+            else:
+                locked |= set(
+                    IntakeSession.objects.filter(pk=target_id, user=request.user).values_list(
+                        "pk", flat=True
+                    )
                 )
-            )
         for session_id in sorted(locked):
             lock_session(session_id)
         # Moved or deleted while the locks were awaited: its new session is not locked here.

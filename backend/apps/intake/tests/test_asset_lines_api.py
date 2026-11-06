@@ -220,6 +220,27 @@ def _stored(session, **fields):
     return AssetInfo.objects.create(session=session, asset_type="other", **fields)
 
 
+@pytest.mark.parametrize(
+    "body",
+    [
+        ["not", "an", "object"],
+        {"session": "²"},  # str.isdigit() says yes, int() says no
+        {"session": "9" * 30},  # wider than any id the database can compare
+        {"session": "9" * 5000},  # longer than int() will read
+    ],
+    ids=["a_list", "a_superscript", "thirty_digits", "five_thousand_digits"],
+)
+def test_a_malformed_row_update_is_refused_rather_than_failing_the_server(filer_session, body):
+    client, session = filer_session
+    row = _stored(session, ab_line="6", description="Sofa")
+
+    response = client.patch(f"/api/intake/assets/{row.pk}/", body, format="json")
+
+    assert response.status_code == 400
+    row.refresh_from_db()
+    assert row.session_id == session.pk
+
+
 def test_moving_a_row_to_a_line_that_lacks_its_kind_is_a_400(filer_session):
     client, session = filer_session
     row = _stored(session, ab_line="17", details='{"kind": "checking"}')

@@ -192,9 +192,52 @@ def test_a_row_missing_what_its_shape_requires_is_refused(
     gate = LINE_BY_KEY[line].gate
     _answer(session, line, *([gate] if gate else []))
     _row(session, line, description, value, entire, **details)
-    name = description or details.get("make") or "one item"
+    street = details.get("street", "").strip()
+    name = description or street or details.get("make") or "one item"
 
     assert _gaps(session) == [f'Line {line} needs more about "{name}" on the Assets step.']
+
+
+def test_an_old_row_with_no_description_still_gets_a_name_the_filer_can_read(session):
+    # A sentence ending in for "" tells the filer nothing about which row it means.
+    _answer(session)
+    _row(session, None, "   ")
+
+    assert _gaps(session) == ['Pick a line on the Assets step for "one item".']
+
+
+def test_a_place_with_no_description_is_named_by_its_street(session):
+    # Line 1 has no description box, so the street is the only thing the filer typed to know it by.
+    _answer(session, "1")
+    _row(session, "1", "", "1.00", None, **COMPLETE_PLACE)
+
+    assert _gaps(session) == ['Line 1 needs more about "12 Elm St" on the Assets step.']
+
+
+def test_insurance_needs_no_beneficiary(session):
+    # The step marks the beneficiary optional, so Complete must not hold a filer back over it.
+    _answer(session, "31")
+    _row(session, "31", "Millbrook Mutual Life", "0.00")
+
+    assert _gaps(session) == []
+
+
+def test_a_no_to_line_43_needs_its_value_but_no_describe(session):
+    # The form's Describe box sits under line 43's Yes; its amount is asked either way.
+    _answer(session, "37", "43")
+    _row(session, "43", "", "5.00", None, has_personal_info=False)
+
+    assert _gaps(session) == []
+
+
+def test_a_row_on_a_line_answered_no_is_named_once_not_also_as_unfinished(session):
+    # The fix is to remove it or change the answer, so what the row lacks is no use to the filer.
+    _answer(session)
+    _row(session, "7", "", None)
+
+    assert _gaps(session) == [
+        "Line 7 says No, but it still lists something. Remove it, or change the answer to Yes."
+    ]
 
 
 def test_an_unknown_value_counts_as_given(session):
