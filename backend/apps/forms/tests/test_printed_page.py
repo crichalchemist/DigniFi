@@ -1147,6 +1147,10 @@ def test_the_largest_amount_a_row_can_hold_prints_whole_on_its_sheet(filer):
 
 _PIN = "17-16-123-045-0000"
 _VIN = "1HGCM82633A004352"
+# VINs are not one width. These two print wider than _VIN, by their W, M and D: a Mercedes-format
+# VIN such as a Sprinter-based motor home's, and a MINI-format one, the widest format measured.
+_VIN_MERCEDES = "WDBUF56X88B123456"
+_VIN_MINI = "WMWZC3C5XGWA12345"
 
 
 @pytest.mark.parametrize(
@@ -1158,6 +1162,8 @@ _VIN = "1HGCM82633A004352"
         ("3", {"make": "Harley-Davidson"}),
         ("3", {"model": "Thunderbird"}),
         ("4", {"other_info": _VIN}),
+        ("4", {"other_info": _VIN_MERCEDES}),
+        ("4", {"other_info": _VIN_MINI}),
         ("4", {"year": "Unknown"}),
         ("4", {"make": "Harley-Davidson"}),
         ("4", {"model": "Thunderbird"}),
@@ -1182,6 +1188,31 @@ def test_an_answer_the_form_s_box_takes_prints_whole_on_its_sheet(filer, line, a
     (part,) = [part for part in parts["parts"] if part["kind"] == "sheet"]
     (word,) = answer.values()
     assert word in " ".join(cell for row in part["rows"] for cell in row["cells"])
+
+
+@pytest.mark.parametrize(
+    ("line", "answer", "label"),
+    [
+        ("3", {"other_info": _VIN}, "Who has an interest"),
+        ("3", {"year": "Unknown"}, "Year"),
+        ("4", {"other_info": "W" * 17}, "Who has an interest"),
+    ],
+    ids=["line_3_vin", "line_3_year_unknown", "line_4_past_its_widest_vin"],
+)
+def test_a_word_too_wide_for_a_vehicle_s_sheet_is_refused_with_a_link_to_the_assets_step(
+    filer, line, answer, label
+):
+    # The refusal is the filer's only sign that a row won't print, so it names the column and says
+    # where to change it. Provisional: what line 3 does with a VIN awaits a ruling (T6 report).
+    for make in ("A", "B", "C", "D")[: LINE_BY_KEY[line].capacity]:
+        _ab_car(filer, make, line=line)
+    _ab_car(filer, "Spare", line=line, **answer)
+
+    with pytest.raises(ValueTooLong) as refused:
+        PDFFormFiller().check("schedule_a_b", resolve_parts(load_schema("schedule_a_b"), filer))
+
+    assert refused.value.label == label
+    assert refused.value.step == "assets"
 
 
 def test_a_leased_car_prints_zero_in_both_value_boxes(filer):

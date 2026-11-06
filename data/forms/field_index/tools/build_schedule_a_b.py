@@ -323,8 +323,10 @@ def sheet_columns(line):
     interest = ["who", "community", "other_info"]
     # A word never wraps, and one wider than its column less 4 pt refuses the whole form, so each
     # column holds the widest real word it takes, at 10 pt. Make: "Harley-Davidson", 73.9. Model:
-    # "Thunderbird", 53.9. Miles: "Unknown", 41.7. Line 1's Who: a PIN, 91.2. Line 4's Who: a VIN,
-    # 103.9, which line 3's five other columns leave no room for (reported for a ruling).
+    # "Thunderbird", 53.9. Miles: "Unknown", 41.7. Line 1's Who: a PIN, 91.2. Line 4's Who takes a
+    # word up to 120 pt, past the widest VIN format measured (a MINI's, 117.2); no width takes every
+    # legal VIN (17 W's is 160.5). Line 3's five other columns leave Who no room for a VIN or Year
+    # for "Unknown", both refused with a link to the step (reported for a ruling).
     if line.shape == "place":
         kinds = [f"kind_{kind}" for kind in KIND_WORDS.values()]
         return [
@@ -352,9 +354,9 @@ def sheet_columns(line):
     if line.shape == "vehicle_no_mileage":
         return [
             column("Make", "make", 78),
-            column("Model", "model", 76),
+            column("Model", "model", 60),
             column("Year", "year", 46),
-            column("Who has an interest", "interest", 108, interest),
+            column("Who has an interest", "interest", 124, interest),
             *money,
         ]
     portion = column("Portion", "value", MONEY)

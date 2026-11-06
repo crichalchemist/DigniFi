@@ -125,7 +125,7 @@
           {
             "label": "Model",
             "binding": "assets.line_4[].model",
-            "width": 76
+            "width": 60
           },
           {
             "label": "Year",
@@ -135,7 +135,7 @@
           {
             "label": "Who has an interest",
             "binding": "assets.line_4[].interest",
-            "width": 108,
+            "width": 124,
             "covers": [
               "assets.line_4[].who",
               "assets.line_4[].community",
