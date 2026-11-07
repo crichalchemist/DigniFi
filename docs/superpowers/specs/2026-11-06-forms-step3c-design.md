@@ -1,6 +1,6 @@
 # Forms step 3c: claims
 
-- **Status:** drafted 2026-11-06. The owner answered three questions on 2026-11-06 (§2) and approved the split into six PRs (§4). The spec waits for the owner's review, and O2 (§10.4) waits on the List of Creditors template.
+- **Status:** drafted 2026-11-06. The owner answered three questions on 2026-11-06 (§2) and approved the split into six PRs (§4). The owner approved this spec on 2026-11-06. O2 (§10.4) waits on the List of Creditors template, and only 3c6 depends on it.
 - **Drawn from:** the step 3 umbrella spec, `docs/superpowers/specs/2026-10-16-forms-step3-design.md` §5.9 (cited `U:<line>`), its rules U §4.1–§4.7 and Appendix A's 3c rows. Persona targets come from `docs/superpowers/specs/2026-10-16-forms-step3-personas.md` (cited `PS:<line>`). `3e2:<line>` is `2026-11-01-forms-step3e2-design.md`. The forms' words come from the blank templates `form_b106d.pdf`, `form_b106ef.pdf`, `form_b106g.pdf` and `form_b106h.pdf` in `data/forms/pdfs/`.
 - **Tree:** `feat/forms-step3c`, 478868d. Code citations were opened on this tree on 2026-11-06. No test suite ran for this spec. Engine results marked "run" come from direct calls on schema copies in the scope survey, not from `resolve_parts`, so real filers' output is unverified.
 - **Not read:** the List of Creditors template (§10), the national instruction booklet's text on dates, LR 1007-1's text, and the owner's production session.
