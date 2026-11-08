@@ -67,6 +67,24 @@ export function ProgressIndicator({ steps, currentStep }: ProgressIndicatorProps
         ))}
       </ol>
 
+      {/* Below 1024px the numbered row is hidden and this summary and stripe show instead
+          (global.css): nine labelled steps don't fit a phone at the 16px text floor */}
+      <div className="progress-compact">
+        <p className="progress-compact-text">
+          {`Step ${currentStep} of ${steps.length}: ${steps[currentStep - 1]?.label ?? ''}`}
+        </p>
+        <div className="progress-stripe" aria-hidden="true">
+          {steps.map((step) => (
+            <span
+              key={step.number}
+              className={`progress-stripe-segment ${
+                step.isCompleted || step.isCurrent ? 'filled' : ''
+              }`}
+            />
+          ))}
+        </div>
+      </div>
+
       {/* Progress percentage for screen readers */}
       <div className="sr-only" aria-live="polite" aria-atomic="true">
         You have completed {steps.filter((s) => s.isCompleted).length} of {steps.length} steps. You

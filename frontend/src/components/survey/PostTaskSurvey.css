@@ -19,7 +19,7 @@
 .survey-intro {
   color: var(--color-muted);
   margin-bottom: 1.5rem;
-  font-size: 0.95rem;
+  font-size: var(--text-caption);
 }
 
 .survey-question {
@@ -58,7 +58,7 @@
 }
 
 .survey-scale-label {
-  font-size: 0.875rem;
+  font-size: var(--text-caption);
   color: var(--color-muted);
   margin-top: 0.25rem;
 }
@@ -80,7 +80,7 @@
   border-bottom: 2px solid var(--color-pine);
   border-radius: var(--radius);
   font-family: inherit;
-  font-size: 0.95rem;
+  font-size: 1rem;
   line-height: 1.5;
   resize: vertical;
   transition: border-color var(--transition-fast);
@@ -103,7 +103,7 @@
   background: none;
   border: none;
   color: var(--color-muted);
-  font-size: 0.9rem;
+  font-size: var(--text-caption);
   cursor: pointer;
   text-decoration: underline;
   padding: 0.5rem;

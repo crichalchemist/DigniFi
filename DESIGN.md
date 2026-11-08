@@ -43,12 +43,12 @@ typography:
     lineHeight: 1.6
   label:
     fontFamily: "'Public Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
-    fontSize: '0.875rem'
+    fontSize: '1rem'
     fontWeight: 500
     lineHeight: 1.6
   caption:
     fontFamily: "'Public Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
-    fontSize: '0.875rem'
+    fontSize: '1rem'
     fontWeight: 400
     lineHeight: 1.6
   button:
@@ -184,7 +184,7 @@ Everything is square and flat. There are no rounded corners and no shadows; dept
 - Gold is the action and progress color: primary buttons, the current step, completed progress. It never carries text on a light surface.
 - Rust for errors and sage for success; never alarm red.
 - Jost for headings, buttons and the wordmark; Public Sans for everything read or typed.
-- No text smaller than 14px (0.875rem).
+- No text smaller than 16px (1rem), the trauma-informed guide's minimum.
 - Motion is 150ms color and border feedback plus loading spinners, all collapsed under reduced motion.
 - Light only: there is no dark theme, like the paper forms themselves.
 
@@ -239,13 +239,13 @@ A sturdy civic palette: one structural pine, one action gold, two state colors, 
 - **H2** (Jost 500, 1.1875rem, line-height 1.25): Section headings. The named title classes (section titles, landing card titles, the modal title) set this size at 600.
 - **H3** (Jost 500, 1rem, line-height 1.25): Minor headings. Form card titles set it at 600.
 - **Body** (Public Sans 400, 1rem, line-height 1.6, Courthouse Ink): Everything a filer reads. The landing subtitle steps up to 1.125rem with a 55ch measure.
-- **Label** (Public Sans 500, 0.875rem, Courthouse Pine): Form field labels and the draft badge.
-- **Caption** (Public Sans 400, 0.875rem, Muted Ink): Help text, errors (in rust), save status, disclaimers, card descriptions and metadata. The most used size in the system.
-- **Button** (Jost 600, 1rem): Button faces. Small buttons drop to 0.875rem, large ones rise to 1.125rem.
+- **Label** (Public Sans 500, 1rem, Courthouse Pine): Form field labels and the draft badge. Set apart from input text by weight and color, not size.
+- **Caption** (Public Sans 400, 1rem, Muted Ink): Help text, errors (in rust), save status, disclaimers, card descriptions and metadata. The most used size in the system, now the same size as body copy: color and placement carry the difference.
+- **Button** (Jost 600, 1rem): Button faces. Small buttons keep 1rem with tighter padding; large ones rise to 1.125rem.
 
 ### Named Rules
 
-**The 14px Floor Rule.** Nothing smaller than 0.875rem (`var(--text-caption)`) carries text. A new size below it is a defect, not a choice. `docs/TRAUMA_INFORMED_DESIGN.md` asks for a 16px minimum: body copy here is 16px, but help text, errors, captions and disclaimers are 14px, as `tokens.css` and the approved spec set them. Which rule governs those is open (DIG-182); until it is settled, build to `tokens.css`.
+**The 16px Floor Rule.** Nothing smaller than 1rem (`var(--text-caption)`) carries text, the minimum `docs/TRAUMA_INFORMED_DESIGN.md` sets for a filer under stress. A new size below it is a defect, not a choice; when text doesn't fit, the layout changes, not the size.
 
 **The Jost Builds, Public Sans Speaks Rule.** Jost carries structure: headings, buttons, the wordmark, step numbers, card and section titles. Public Sans carries everything a filer reads or types: body copy, labels, help text, errors, input values, the header's name and sign-out link.
 
@@ -253,15 +253,15 @@ A sturdy civic palette: one structural pine, one action gold, two state colors, 
 
 ## Layout
 
-Desktop-first. Base styles target 1024px and wider, and two breakpoints step down: at 1023px the landing cards stack to one column, the auth page drops its pine panel and the wizard container goes full width with 1.5rem gutters; at 767px the gutters narrow to 1rem and the landing hero tightens.
+Desktop-first. Base styles target 1024px and wider, and two breakpoints step down: at 1023px the landing cards stack to one column, the auth page drops its pine panel, the wizard container goes full width with 1.5rem gutters and the wizard's numbered progress row gives way to a step summary and stripe; at 767px the gutters narrow to 1rem, the landing hero tightens and paired form fields stack into one column.
 
-Work happens in one centered column. The wizard and legal pages run at 720px, the document upload, filing-fee page and dashboard empty states at 640px, and the SOFA page at 800px. Only the landing page and the form dashboard widen, to 1100px. The auth card is 420px (560px for the wide variant) and the UPL modal 560px.
+Work happens in one centered column. The wizard and legal pages run at 720px, the document upload, filing-fee page and dashboard empty states at 640px, and the SOFA page at 800px. Only the landing page, the form dashboard and the wizard header's progress row widen, to 1100px. The auth card is 420px (560px for the wide variant) and the UPL modal 560px.
 
 Spacing follows a 4px-based scale from `space-1` (0.25rem) to `space-8` (3rem). Paragraphs and form fields sit `space-4` apart, form sections `space-6`, and panels pad at `space-4` to `space-6`. Grids are few: the landing's three value cards, the dashboard's auto-fill cards (minimum 300px), and the review step's auto-fit fields (minimum 220px). Tap targets on the Assets step's yes/no choices and buttons are at least 44px, and the app header is 44px tall.
 
 ### Named Rules
 
-**The One Column Rule.** A filer works in a single centered column. Width grows only where cards need a grid (landing, dashboard); a work step never splits into side-by-side panels.
+**The One Column Rule.** A filer works in a single centered column. Width grows only where cards need a grid (landing, dashboard) or the shell needs room (the wizard's progress row); a work step never splits into side-by-side panels, and on phones paired fields stack.
 
 ## Elevation & Depth
 
@@ -275,7 +275,7 @@ Flat by default. There is no `box-shadow` anywhere in the system. Depth comes fr
 
 ## Shapes
 
-Square, without exception: every corner uses `var(--radius)`, which is 0. The only circles are loading spinners. The form language is the printed form: rectangles, rules and frames. A text field is a white box with a quiet Divider Line frame and a solid 2px pine base line, the "fill in this line" nod. Progress is drawn as square 3rem markers joined by 4px bars, and the landing page repeats it as a poster stripe of six alternating gold and pine segments (8px tall, at most 360px wide). The dashboard's progress bar is a 6px sand track with a gold fill, and the drop zone is marked by a 2px dashed pine border.
+Square, without exception: every corner uses `var(--radius)`, which is 0. The only circles are loading spinners. The form language is the printed form: rectangles, rules and frames. A text field is a white box with a quiet Divider Line frame and a solid 2px pine base line, the "fill in this line" nod. Progress is drawn as square 3rem markers joined by 4px bars; below 1024px it becomes a 6px stripe of one segment per step, gold through the current step on a sand track. The landing page repeats the stripe idea as a poster stripe of six alternating gold and pine segments (8px tall, at most 360px wide). The dashboard's progress bar is a 6px sand track with a gold fill, and the drop zone is marked by a 2px dashed pine border.
 
 ## Components
 
@@ -288,13 +288,13 @@ Official and sturdy, like a form's action stamp.
 - **Outline:** Transparent, 2px pine border, pine text. Hover fills it pine with cream text. The workhorse for every other action (Answer Questions, Mark as Filed, Try Again, "+ Add Contract", Remove).
 - **Focus:** The global ring: 2px pine outline, offset 2px.
 - **Disabled:** Sand fill, Muted Ink text, no border, not-allowed cursor. Never opacity.
-- **Sizes:** Small (0.875rem, padding 0.25rem 0.75rem), medium (the default), large (1.125rem, padding 0.75rem 2rem), plus a full-width modifier.
+- **Sizes:** Small (1rem, padding 0.25rem 0.75rem), medium (the default), large (1.125rem, padding 0.75rem 2rem), plus a full-width modifier.
 - **Loading:** The button disables itself, swaps its label for the loading text ("Loading..." by default) and centers a spinner (sand track, pine head) over it. `.button--loading` is meant to hide the label, but `.button:disabled` outranks it, so the label shows in muted text under the spinner and the width follows the loading text. That is drift; don't build on it.
 - **Unstyled variants:** `secondary` and `text` exist in the component's props but have no styles, so they fall back to the browser's default button. Use outline until they are designed.
 
 ### Inputs / Fields
 
-- **Anatomy:** Label above (Public Sans 500, 0.875rem, pine; a rust asterisk marks required), field, then help text (caption, Muted Ink) and the error message (caption, rust). FormField, FormTextarea and FormSelect render this anatomy.
+- **Anatomy:** Label above (Public Sans 500, 1rem, pine; a rust asterisk marks required), field, then help text (caption, Muted Ink) and the error message (caption, rust). FormField, FormTextarea and FormSelect render this anatomy.
 - **Style:** Form White fill, 1px Divider Line frame, 2px pine base line, square, padding 0.625rem 0.75rem, Public Sans 1rem in pine. A leading icon sits inset at 0.75rem and pushes the text to 2.5rem.
 - **Hover:** The whole frame turns pine.
 - **Focus:** 2px pine outline, offset 2px.
@@ -317,7 +317,7 @@ Official and sturdy, like a form's action stamp.
 
 - **App header:** A 44px pine band with a 2px gold underline. The wordmark is Jost 1.125rem in cream with 0.01em tracking and turns gold on hover. The user's name and the sign-out link sit at the right in Public Sans caption, cream, and the link turns gold on hover.
 - **Wizard header:** A pine band holding the cream Jost title, a gold caption subtitle and the progress indicator.
-- **Progress indicator:** An ordered row of 3rem square markers joined by 4px connectors. Pending: white with a 2px sand border and a muted Jost 600 number. Current: gold fill, pine border, pine number. Completed: pine fill, cream border, cream checkmark, with a gold connector behind it. Step names are cream caption, and the current one is gold at 600.
+- **Progress indicator:** An ordered row of 3rem square markers joined by 4px connectors, set in its own container up to 1100px wide (wider than the 720px title column) so nine step names fit at 16px. Pending: white with a 2px sand border and a muted Jost 600 number. Current: gold fill, pine border, pine number. Completed: pine fill, cream border, cream checkmark, with a gold connector behind it. Step names are cream caption, and the current one is gold at 600. Below 1024px the row is hidden and the indicator shows "Step 3 of 9: Expenses" in cream caption over a 6px stripe, one segment per step, gold through the current step on sand. The screen-reader sentence stays the same at every width.
 - **Skip link:** A pine box with cream text that appears top-left on focus, ringed in gold.
 - **Links:** Pine, underlined with a 2px offset. Auth-page links add weight 500 and turn rust on hover.
 - **Footers:** The landing footer is a pine band with the disclaimer in cream caption. The site footer is a caption line carrying the source-code link.
@@ -349,7 +349,7 @@ A two-column page (2fr / 3fr). The pine panel carries the cream brand line and a
 
 ### Small Pieces
 
-- **Draft badge:** A Sand Tint tag with a 1px gold border and pine label text (Public Sans 500, 0.875rem), padding 0 6px. It marks a debt drafted from a scanned document.
+- **Draft badge:** A Sand Tint tag with a 1px gold border and pine label text (Public Sans 500, 1rem), padding 0 6px. It marks a debt drafted from a scanned document.
 - **File drop zone:** Form White with a 2px dashed pine border and padding 2rem. Pine because gold fails non-text contrast for an interactive boundary on a light surface. When disabled it drops to 50% opacity.
 - **Loading overlay:** The pine scrim over the whole screen with a cream spinner.
 
@@ -363,7 +363,7 @@ A two-column page (2fr / 3fr). The pine panel carries the cream brand line and a
 - **Do** use a 2px pine focus ring with a 2px offset on light surfaces, and a gold ring on pine surfaces.
 - **Do** pick surfaces by role: cream for the poster, paper for the page, white for what the filer fills in.
 - **Do** use rust for errors and sage for success, and keep the recorded contrast ratios when touching either.
-- **Do** keep every text size at 0.875rem or larger.
+- **Do** keep every text size at 1rem (16px) or larger; when text doesn't fit, change the layout.
 - **Do** limit transitions to color, background and border at 150ms; the global reduced-motion rule collapses them.
 - **Do** keep tap targets at least 44px on wizard choices and their buttons.
 
