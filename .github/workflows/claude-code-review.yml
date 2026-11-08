@@ -46,6 +46,9 @@ jobs:
             REPO: ${{ github.repository }}
             PR NUMBER: ${{ github.event.pull_request.number }}
 
+            Before you read or run anything, state your plan in one sentence and end that reply
+            without calling any tool.
+
             Review this pull request to DigniFi, a Chapter 7 bankruptcy filing tool for people
             without a lawyer. Read CLAUDE.md first: its gotchas are the mistakes this codebase
             keeps making.
