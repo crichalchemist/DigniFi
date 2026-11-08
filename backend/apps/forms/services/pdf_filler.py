@@ -48,8 +48,14 @@ from pypdf.generic import (
 from pypdf.generic._appearance_stream import TextStreamAppearance
 
 from apps.forms.field_index import load_index
-from apps.forms.schema import FormSchema, load_schema
-from apps.forms.services.fill_resolver import fix_for
+from apps.forms.schema import (
+    FormSchema,
+    load_schema,
+    number_box_keys,
+    page_number_keys,
+    total_box_keys,
+)
+from apps.forms.services.fill_resolver import fix_for, group_fix
 from apps.forms.services.text_fit import fit, font_for, printable
 from apps.forms.services.widgets import (
     TemplateWidget,
@@ -112,13 +118,15 @@ class UnprintableLetter(Exception):
 class ValueTooLong(Exception):
     """A value doesn't fit its box even at the smallest size, 6 pt."""
 
-    def __init__(self, form_type: str, label: str, fix: dict[str, str]):
+    def __init__(
+        self, form_type: str, label: str, fix: dict[str, str], ending: str = "Shorten it."
+    ):
         self.form_type = form_type
         self.label = label
         self.step = fix.get("step")
         self.page = fix.get("page")
         super().__init__(
-            f"“{label}” is too long to fit on the court form, even in small print. Shorten it."
+            f"“{label}” is too long to fit on the court form, even in small print. {ending}"
         )
 
 
@@ -151,12 +159,35 @@ def parts_of(values: dict) -> list[dict]:
     return [{"kind": "form", "values": values}]
 
 
+_TOO_MANY_ROWS = "This form has more entries than its boxes can hold."
+
+
+def _group_box(schema: FormSchema, key: str) -> tuple[str, dict[str, str]] | None:
+    """
+    The words and fix for a key that is a group's entry-number box, total box or a page-number
+    box (3c spec §5.4, R7), or None for any other key. No index label reaches the filer.
+    """
+    for name, group in schema.groups.items():
+        if key in group.number_boxes.values():
+            return "The entry number", group_fix(schema, name)
+        if key in total_box_keys(group):
+            return "The total", group_fix(schema, name)
+    if key in page_number_keys(schema):
+        paged = next((n for n, g in schema.groups.items() if g.extra_page is not None), None)
+        return "The page number", group_fix(schema, paged) if paged else {}
+    return None
+
+
 def _source(schema: FormSchema, key: str, widget: TemplateWidget) -> tuple[str, dict[str, str]]:
     """
     The box's label and where the filer fixes its value, from the binding that produced
     the key. A key no binding produced (a test's, the oracle's) gets the index row's
     label and no fix; a binding with an empty label, the index row's label and its fix.
+    A group's number, total or page-number box gets its own words and its group's fix.
     """
+    group_box = _group_box(schema, key)
+    if group_box is not None:
+        return group_box
     name, page, tag = parse_key(key)
     fix: dict[str, str] = {}
     for field in schema.fields:
@@ -416,6 +447,7 @@ class PDFFormFiller:
             for widget in reached[key]:
                 filled_by[widget] = key
 
+        number_keys = number_box_keys(schema)
         planned = []
         for widget in sorted(filled_by, key=lambda w: (w.page, int(w.tag[1:]))):
             key = filled_by[widget]
@@ -430,9 +462,10 @@ class PDFFormFiller:
             letter = _refused_letter(text, partial(printable, font), widget.comb)
             if letter is not None:
                 raise UnprintableLetter(form_type, letter, *_source(schema, key, widget))
-            fitted = fit(widget, schema.template_filename, text)
+            fitted = fit(widget, schema.template_filename, text, number_box=key in number_keys)
             if fitted is None:
-                raise ValueTooLong(form_type, *_source(schema, key, widget))
+                ending = {"ending": _TOO_MANY_ROWS} if _group_box(schema, key) else {}
+                raise ValueTooLong(form_type, *_source(schema, key, widget), **ending)
             planned.append(Planned(widget, *fitted))
         return tuple(planned)
 

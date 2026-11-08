@@ -12,7 +12,9 @@ returns its form part.
 from __future__ import annotations
 
 import re
+from collections import Counter
 from collections.abc import Callable
+from decimal import Decimal
 
 from apps.eligibility.cmi import counted_spouse_income, household_members
 from apps.forms.field_index import option_text
@@ -311,6 +313,14 @@ def fix_for(field: FieldSpec) -> dict[str, str]:
     return binding_fix(field.binding or "")
 
 
+def group_fix(schema: FormSchema, name: str) -> dict[str, str]:
+    """Where the filer changes a group's rows: the fix of its first slot with a binding."""
+    for field in schema.fields:
+        if field.repeat == name and field.binding:
+            return fix_for(field)
+    return {}
+
+
 def _unmapped(field: FieldSpec) -> bool:
     """A checkbox or radio binding whose choices are not mapped yet emits nothing."""
     return field.type in ("checkbox", "radio") and not field.choices
@@ -364,6 +374,8 @@ def _headers(schema: FormSchema, form: dict[str, str], page: int) -> dict[str, s
     The form's values a copy of `page` repeats: those of a box whose full name prints on
     `page` and on another page too, such as "Debtor 1" and "Case number" (R24). Never a
     box that prints on one page alone, such as a page total, and never a group's own box.
+    A page-number box stays out of a copy only because `_number_pages` runs after every
+    `_copies` has read these headers.
     """
     drawn: dict[str, list[TemplateWidget]] = {}
     for widget in template_widgets(schema.template_filename):
@@ -372,7 +384,6 @@ def _headers(schema: FormSchema, form: dict[str, str], page: int) -> dict[str, s
     own = {_key(f) for f in schema.fields if f.repeat is not None}
     for group in schema.groups.values():
         own |= set(group.number_boxes.values())
-        own |= {key for boxes in group.page_numbers for key in (boxes.this, boxes.of) if key}
     headers = {}
     for key, value in form.items():
         name, at, tag = parse_key(key)
@@ -400,9 +411,8 @@ def _copies(
     """
     The copies of the group's extra page that print its rows past `capacity` (3a2 spec §5.2):
     each holds as many rows as that page has slots, in the slots' order, numbers them as
-    the group does, and repeats the form's page headers. With copies, every page-number
-    box counts them, the form's own (written into `form`) included (R21). The group's
-    `fields` decide its slots and `printed` the cells that print, as on the form's pages.
+    the group does, and repeats the form's page headers. The group's `fields` decide its
+    slots and `printed` the cells that print, as on the form's pages.
     """
     page = group.extra_page
     slots = sorted({f.row for f in fields if f.page == page and f.row})
@@ -421,19 +431,33 @@ def _copies(
                 values[group.number_boxes[row]] = group.number.format(n=position)
         copies.append({"kind": "copy", "page": page, "number": len(copies) + 1, "values": values})
 
-    if group.page_numbers:
-        total = page_count(schema.template_filename) + len(copies)
-        for boxes in group.page_numbers:
-            # Copy n prints right after page `page`, as page `page` + n of the form.
-            position = boxes.page if boxes.page <= page else boxes.page + len(copies)
-            _number_page(form, boxes, position, total)
-            if boxes.page == page:
-                for copy in copies:
-                    _number_page(copy["values"], boxes, page + copy["number"], total)
     headers = _headers(schema, form, page)
     for copy in copies:
         copy["values"] = {**headers, **copy["values"]}
     return copies
+
+
+def _number_pages(schema: FormSchema, form: dict[str, str], copies: list[dict]) -> None:
+    """
+    With copies, every page-number box counts the copies of every group (3c spec §5.2): a page's
+    position is its page number plus the copies of each page before it, and copy n of a page
+    prints n places after that page. E007 keeps one group to each extra page.
+    """
+    if not copies:
+        return
+    copies_of = Counter(copy["page"] for copy in copies)
+    total = page_count(schema.template_filename) + len(copies)
+
+    def position(page: int) -> int:
+        return page + sum(count for extra, count in copies_of.items() if extra < page)
+
+    boxes_of = {boxes.page: boxes for boxes in schema.page_numbers}
+    for boxes in schema.page_numbers:
+        _number_page(form, boxes, position(boxes.page), total)
+    for copy in copies:
+        if copy["page"] in boxes_of:
+            at = position(copy["page"]) + copy["number"]
+            _number_page(copy["values"], boxes_of[copy["page"]], at, total)
 
 
 def _line_width(sheet: SheetSpec) -> dict[str, float]:
@@ -495,6 +519,36 @@ def _sheet(
         "rows": rows,
         **_line_width(group.sheet),
     }
+
+
+def _added(amounts: list[str]) -> str:
+    """The sum of printed amounts, to the cent."""
+    return money_or_blank(sum((Decimal(a) for a in amounts), Decimal(0)))
+
+
+def _write_totals(
+    group: GroupSpec, printed: list[FieldSpec], form: dict[str, str], copies: list[dict]
+) -> None:
+    """
+    A group's total boxes (3c spec §5.3). Each page and each copy prints the sum of its own rows
+    in its own box, and a page with no row leaves its box blank. The last-page box prints every
+    row's sum on the last copy, or the extra page with no copy, even with no row at all.
+    """
+    totals = group.totals
+    column = [f for f in printed if f.binding == totals.column]
+    everything = []
+    for values, pages in (
+        (form, sorted({f.page for f in column})),
+        *((copy["values"], [copy["page"]]) for copy in copies),
+    ):
+        for page in pages:
+            amounts = [values[_key(f)] for f in column if f.page == page and _key(f) in values]
+            everything += amounts
+            if amounts and page in totals.page_boxes:
+                values[totals.page_boxes[page]] = _added(amounts)
+    if totals.last_page_box:
+        last = copies[-1]["values"] if copies else form
+        last[totals.last_page_box] = _added(everything)
 
 
 def resolve(schema: FormSchema, session: IntakeSession) -> dict[str, str]:
@@ -606,8 +660,9 @@ def _resolve_parts(schema: FormSchema, session: IntakeSession) -> dict:
             overflowing.append((group, fields, printed, resolved_cols, capacity, actual))
 
     # Copies once the form's own values are all in: they repeat its page headers.
+    copies_of: dict[str, list[dict]] = {}
     for group, fields, printed, resolved_cols, capacity, actual in overflowing:
-        copies += _copies(
+        copies_of[group.name] = _copies(
             schema,
             group,
             fields,
@@ -619,6 +674,21 @@ def _resolve_parts(schema: FormSchema, session: IntakeSession) -> dict:
             session,
             _ingested_cache,
         )
+        copies += copies_of[group.name]
+    # Printing order, however the schema declares its groups (sorted is stable). Then the pages
+    # are numbered once, counting every group's copies (3c spec §5.2): the order matters, since
+    # numbering runs only after every group's copies, and their headers, exist.
+    copies.sort(key=lambda copy: copy["page"])
+    _number_pages(schema, out, copies)
+    for group_name, group in schema.groups.items():
+        if group.totals is None:
+            continue
+        # Every slot, not `groups`' own: a section that doesn't apply still prints "0.00" (R2).
+        fields = [f for f in schema.fields if f.repeat == group_name and not _unmapped(f)]
+        printed = [f for f in fields if not (f.legal_review and f.source != "asked")]
+        # A column the UPL guard keeps blank on any slot adds up to no total (R3).
+        if all(f in printed for f in fields if f.binding == group.totals.column):
+            _write_totals(group, printed, out, copies_of.get(group_name, []))
     for name, group in schema.groups.items():
         if not is_statement_group(schema, name):
             continue

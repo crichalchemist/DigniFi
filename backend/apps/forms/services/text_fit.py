@@ -26,6 +26,8 @@ from apps.forms.services.widgets import TemplateWidget
 MIN_SIZE = 6.0  # the smallest print a value shrinks to
 STEP = 0.5  # the size steps from a box's own size down to MIN_SIZE
 _MULTILINE_AUTO_SIZE = 12.0  # where pypdf's auto size starts a multi-line box
+# What every Helvetica digit leaves clear at its right, per point of size (its AFM's 4 and 7).
+_DIGIT_RIGHT_BEARING = 0.033
 
 
 @lru_cache(maxsize=64)
@@ -108,11 +110,17 @@ def _sizes(start: float) -> list[float]:
     return [size for size in sizes if size >= MIN_SIZE]
 
 
-def fit(widget: TemplateWidget, template_filename: str, text: str) -> tuple[str, float] | None:
+def fit(
+    widget: TemplateWidget, template_filename: str, text: str, number_box: bool = False
+) -> tuple[str, float] | None:
     """
     The text as the box will draw it and the size to draw it at: the box's own size,
     or the first 0.5 pt step below it at which the text fits, down to 6 pt. The box's
     font is the one its /DA names in the template.
+
+    A group's number box (3c spec §5.4) skips /MaxLen, which only stops typing and nothing
+    can type in a baked page. Only after every size has failed, so a number that fits keeps
+    its size, it also takes the right bearing a last digit leaves clear, at 6 pt.
 
     A line break starts a new line in a multi-line box and is a space in any other
     box. A multi-line box leaves out empty lines at the end, so they take no room.
@@ -123,7 +131,12 @@ def fit(widget: TemplateWidget, template_filename: str, text: str) -> tuple[str,
     field_width = widget.width - 4 * widget.margin
     paragraphs = text.splitlines()
     text = "\n".join(paragraphs) if widget.multiline else " ".join(paragraphs)
-    if widget.max_len is not None and not widget.comb and len(text) > widget.max_len:
+    if (
+        widget.max_len is not None
+        and not widget.comb
+        and not number_box
+        and len(text) > widget.max_len
+    ):
         return None
 
     if widget.size:
@@ -158,4 +171,8 @@ def fit(widget: TemplateWidget, template_filename: str, text: str) -> tuple[str,
         # font's top sits at the clip's top (R35): the last line then stays above its bottom.
         if len(lines) * size * _leading(font) <= widget.height - 2 * widget.margin:
             return "\n".join(lines), size
+    if number_box and not widget.multiline:
+        room = field_width + _DIGIT_RIGHT_BEARING * MIN_SIZE
+        if _width(font, reverse_cmap, text, MIN_SIZE) <= room:
+            return text, MIN_SIZE
     return None
