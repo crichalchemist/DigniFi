@@ -3,11 +3,13 @@
  *
  * Each card represents one of the 13 bankruptcy forms.
  * Renders UPL disclaimer from backend response when available.
+ * Generate asks for the UPL acknowledgment first, as Generate All does.
  */
 
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '../common';
+import { UPLConfirmationModal } from '../compliance';
 import { FormStatusBadge } from './FormStatusBadge';
 import type { GeneratedForm, FormType } from '../../types/api';
 import { FORM_TYPE_METADATA } from '../../types/api';
@@ -39,6 +41,7 @@ export function FormCard({
   onMarkFiled,
 }: FormCardProps) {
   const [isLoading, setIsLoading] = useState(false);
+  const [showConfirmation, setShowConfirmation] = useState(false);
   const navigate = useNavigate();
   const metadata = FORM_TYPE_METADATA[formType];
   const status = generatedForm?.status ?? 'pending';
@@ -79,7 +82,7 @@ export function FormCard({
             <Button
               size="sm"
               variant="primary"
-              onClick={() => handleAction(() => onGenerate(formType))}
+              onClick={() => setShowConfirmation(true)}
               isLoading={isLoading}
               loadingText="Generating..."
             >
@@ -142,6 +145,16 @@ export function FormCard({
           </>
         )}
       </div>
+
+      <UPLConfirmationModal
+        isOpen={showConfirmation}
+        onConfirm={() => {
+          setShowConfirmation(false);
+          void handleAction(() => onGenerate(formType));
+        }}
+        onCancel={() => setShowConfirmation(false)}
+        title="Generate Court Form"
+      />
     </article>
   );
 }
