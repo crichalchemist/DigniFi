@@ -333,7 +333,7 @@ The legal-information notice appears at every decision point as quiet reassuranc
 
 ### UPL Confirmation Modal
 
-The confirmation before Generate All prepares the packet. A pending form card's Generate prepares its one form without it; only the page's UPL banner covers that path. Clean Sheet with a 2px pine border, at most 560px wide and 90% of the viewport tall, over the pine scrim. A 1px sand rule separates its header (a Jost 600 H2-size title and a muted close control) and its footer (actions aligned right). Inside, the acknowledgment checkbox sits in a Sand Tint block with a 1px sand border.
+The gate before any court form is prepared: Generate All and a pending form card's Generate both open it, and nothing is generated until the filer ticks the acknowledgment and presses Continue. Clean Sheet with a 2px pine border, at most 560px wide and 90% of the viewport tall, over the pine scrim. A 1px sand rule separates its header (a Jost 600 H2-size title and a muted close control) and its footer (actions aligned right). Inside, the acknowledgment checkbox sits in a Sand Tint block with a 1px sand border.
 
 ### Means-Test Preview
 
