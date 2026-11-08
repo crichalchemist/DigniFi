@@ -102,6 +102,18 @@ class SheetSpec:
 
 
 @dataclass(frozen=True)
+class GroupTotals:
+    """
+    A group's total boxes (3c spec §5.3): each page prints the sum of its own rows' `column` in
+    the box `page_boxes` names for it, and the last page prints every row's sum in `last_page_box`.
+    """
+
+    column: str  # the slots' list binding, "sofa.<collection>[].<attr>", whose amounts add up
+    page_boxes: dict[int, str]  # template page → the key of the box that page's sum prints in
+    last_page_box: str | None  # the key of the box the last page prints the whole sum in
+
+
+@dataclass(frozen=True)
 class GroupSpec:
     """
     A repeat group's declaration (3a2 spec §5.2, §5.3): the template page whose copies take
@@ -114,6 +126,17 @@ class GroupSpec:
     number: str | None  # the entry number, such as "2.{n}", n the row's position in the group
     number_boxes: dict[int, str]  # slot row → the key of that slot's entry-number box
     sheet: SheetSpec | None = None
+    totals: GroupTotals | None = None
+
+
+def total_box_keys(group: GroupSpec) -> set[str]:
+    """The keys of every box a group's totals print in."""
+    if group.totals is None:
+        return set()
+    keys = set(group.totals.page_boxes.values())
+    if group.totals.last_page_box:
+        keys.add(group.totals.last_page_box)
+    return keys
 
 
 @dataclass(frozen=True)
@@ -176,6 +199,7 @@ def load_schema(form_type: str) -> FormSchema:
             number=group.get("number"),
             number_boxes={int(row): key for row, key in group.get("number_boxes", {}).items()},
             sheet=_sheet(group["sheet"]) if "sheet" in group else None,
+            totals=_totals(group["totals"]) if "totals" in group else None,
         )
         for name, group in raw.get("groups", {}).items()
     }
@@ -190,6 +214,15 @@ def load_schema(form_type: str) -> FormSchema:
             PageNumberBoxes(page=boxes["page"], this=boxes.get("this"), of=boxes.get("of"))
             for boxes in raw.get("page_numbers", [])
         ),
+    )
+
+
+def _totals(totals: dict) -> GroupTotals:
+    """A group's "totals": {"column", "page_boxes": {"<page>": key}, "last_page_box": key}."""
+    return GroupTotals(
+        column=totals["column"],
+        page_boxes={int(page): key for page, key in totals.get("page_boxes", {}).items()},
+        last_page_box=totals.get("last_page_box"),
     )
 
 
@@ -338,6 +371,11 @@ def validate_schema(
     for group_name, group in schema.groups.items():
         for row, key in group.number_boxes.items():
             _add_writer(writers, ("number", group_name, row), key)
+        if group.totals is not None:
+            for page, key in group.totals.page_boxes.items():
+                _add_writer(writers, ("total", group_name, page), key)
+            if group.totals.last_page_box:
+                _add_writer(writers, ("last total", group_name), group.totals.last_page_box)
     for p in schema.page_numbers:
         if p.this:
             _add_writer(writers, ("this", p.page), p.this)
@@ -583,6 +621,8 @@ def validate_schema(
                     )
                 )
     for name, group in schema.groups.items():
+        if group.totals is not None:
+            errors += _totals_errors(name, group, slots.get(name, []))
         if group.sheet is not None:
             errors += _sheet_errors(name, group, schema.template_filename)
             bound = {f.binding for f in slots.get(name, [])}
@@ -667,6 +707,10 @@ def validate_schema(
                 )
             else:
                 boxes.append((key, page))
+        if group.totals is not None and group.extra_page is not None:  # else E007 above
+            boxes += [(key, page) for page, key in group.totals.page_boxes.items()]
+            if group.totals.last_page_box:
+                boxes.append((group.totals.last_page_box, group.extra_page))
         for key, page in boxes:
             if not _drawn_on(key, page, drawn):
                 errors.append(
@@ -674,7 +718,7 @@ def validate_schema(
                 )
         # A row's number prints in one box: an untagged key whose name has more than one
         # drawn widget would print it in each.
-        for key in group.number_boxes.values():
+        for key in [*group.number_boxes.values(), *sorted(total_box_keys(group))]:
             widgets = drawn.get(key, ())  # a tagged key has "@", so it is never a name here
             if len(widgets) > 1:
                 errors.append(
@@ -684,6 +728,14 @@ def validate_schema(
                         f"{_pages_drawn(key, drawn)}, so it needs a tag",
                     )
                 )
+        # A figure can't tick a box or fill a combo: every filer with a row would be refused.
+        for key in sorted(total_box_keys(group)):
+            try:
+                box_name, _, _ = parse_key(key)
+            except ValueError:
+                continue  # _drawn_on has reported it
+            if any(w.kind != "Text" for w in drawn.get(box_name, ())):
+                errors.append(("E003", f"group {name!r}: total box {key!r} isn't a text box"))
     return errors
 
 
@@ -691,6 +743,38 @@ _STATEMENT_BINDING = re.compile(r"income\.statement\[\]\.(?:owner|description|gr
 _LIST_BINDING = re.compile(
     r"(?:sofa\.\w+|household\.dependents|income\.statement|assets\.line_\w+)\[\]\.\w+"
 )
+
+
+def _totals_errors(name: str, group: GroupSpec, rows: list[FieldSpec]) -> list[tuple[str, str]]:
+    """What keeps a group's total boxes from adding up its own rows (3c spec §5.3)."""
+    from apps.forms.services.fill_resolver import _unmapped  # here: it imports this module
+
+    totals = group.totals
+    if group.extra_page is None:
+        return [("E007", f"group {name!r}: only a group continued on copies has total boxes")]
+    errors = []
+    if not totals.page_boxes and not totals.last_page_box:
+        errors.append(("E007", f"group {name!r}: its totals name no box"))
+    column = [f for f in rows if f.binding == totals.column]
+    if not column or any(f.type != "text" for f in column):
+        errors.append(
+            (
+                "E007",
+                f"group {name!r}: its totals add {totals.column!r}, "
+                "which isn't a text slot of the group",
+            )
+        )
+    slot_pages = {f.page for f in rows if not _unmapped(f)}
+    for page, key in sorted(totals.page_boxes.items()):
+        if page not in slot_pages:
+            errors.append(
+                (
+                    "E007",
+                    f"group {name!r}: total box {key!r} is for page {page}, "
+                    "which holds none of its slots",
+                )
+            )
+    return errors
 
 
 def _sheet_errors(name: str, group: GroupSpec, template: str) -> list[tuple[str, str]]:

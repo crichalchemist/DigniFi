@@ -818,6 +818,112 @@ def test_a_group_on_a_sheet_passes_beside_a_group_on_copies(
     assert _errors("schedule_d") == []
 
 
+def test_a_groups_total_boxes_pass(schedule_d_with_totals):
+    assert _errors("schedule_d") == []
+
+
+def _totals(change):
+    """Change the synthetic Schedule D group's total boxes."""
+    return lambda d: change(d["groups"]["d_part_1"]["totals"])
+
+
+@pytest.mark.parametrize(
+    "change, error",
+    [
+        (
+            # Page 3 is Part 2's: no row of the group prints there to add up.
+            _totals(lambda t: t.update(page_boxes={"3": "fill_28.1.1"})),
+            (
+                "forms.E007",
+                "schedule_d: group 'd_part_1': total box 'fill_28.1.1' is for page 3, "
+                "which holds none of its slots",
+            ),
+        ),
+        (
+            _totals(lambda t: t.update(column="sofa.creditor_payments[].nothing")),
+            (
+                "forms.E007",
+                "schedule_d: group 'd_part_1': its totals add "
+                "'sofa.creditor_payments[].nothing', which isn't a text slot of the group",
+            ),
+        ),
+        (
+            _totals(lambda t: t.update(page_boxes={}, last_page_box=None)),
+            ("forms.E007", "schedule_d: group 'd_part_1': its totals name no box"),
+        ),
+        (
+            # Page 1's box, declared as page 2's.
+            _totals(lambda t: t.update(page_boxes={"2": "undefined_9"})),
+            (
+                "forms.E003",
+                "schedule_d: group 'd_part_1': 'undefined_9' is no drawn widget on page 2",
+            ),
+        ),
+        (
+            # The last page's box must print on the extra page and its copies.
+            _totals(lambda t: t.update(last_page_box="fill_27.0")),
+            (
+                "forms.E003",
+                "schedule_d: group 'd_part_1': 'fill_27.0' is no drawn widget on page 2",
+            ),
+        ),
+        (
+            # Page 2's total would print on pages 1 and 3 as well.
+            _totals(lambda t: t.update(page_boxes={"2": "Case number"})),
+            (
+                "forms.E003",
+                "schedule_d: group 'd_part_1': 'Case number' is drawn 3 times, on pages "
+                "[1, 2, 3], so it needs a tag",
+            ),
+        ),
+        (
+            # A figure can't tick a box: every filer with a row would be refused.
+            _totals(lambda t: t.update(page_boxes={"2": "Contingent_3"})),
+            (
+                "forms.E003",
+                "schedule_d: group 'd_part_1': total box 'Contingent_3' isn't a text box",
+            ),
+        ),
+    ],
+    ids=[
+        "a box on no page of the group",
+        "a column no slot binds",
+        "no box",
+        "a box on another page",
+        "a last box off the extra page",
+        "a box drawn on other pages",
+        "a checkbox",
+    ],
+)
+def test_a_total_box_that_cannot_add_its_own_rows_is_reported(
+    schedule_d_with_totals, change, error
+):
+    _edit(schedule_d_with_totals, "schedule_d", change)
+    assert _errors("schedule_d") == [error]
+
+
+def test_a_total_box_another_binding_fills_is_reported(schedule_d_with_totals):
+    # The real binding of undefined_24, put back: the rule's figure and the group's would fight.
+    def add(d):
+        d["fields"].append(_text("undefined_24", 2, None))
+
+    _edit(schedule_d_with_totals, "schedule_d", add)
+    assert _errors("schedule_d") == [
+        ("forms.E006", "schedule_d: 'undefined_24' is bound 2 times on page 2")
+    ]
+
+
+def test_a_group_on_a_sheet_has_no_total_boxes(schedule_a_b_with_sheet):
+    def add(d):
+        d["groups"]["ab_line_3"]["totals"] = {"column": "sofa.creditor_payments[].total_paid"}
+
+    _edit(schedule_a_b_with_sheet, "schedule_a_b", add)
+    assert (
+        "forms.E007",
+        "schedule_a_b: group 'ab_line_3': only a group continued on copies has total boxes",
+    ) in _errors("schedule_a_b")
+
+
 def test_a_group_of_the_households_dependents_passes(schedule_j_with_dependents):
     # Line 2 as 3e1 declares it: a household list, its "lives with you?" column from boxes.
     assert _errors("schedule_j") == []

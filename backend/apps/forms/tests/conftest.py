@@ -244,6 +244,48 @@ def schedule_d_with_two_groups(tmp_path, settings):
 
 
 @pytest.fixture
+def schedule_d_with_totals(tmp_path, settings):
+    """
+    Schedule D's Part 1 with its total boxes (3c spec §5.3): the amounts add up in undefined_9 on
+    page 1, undefined_23 on page 2 and each copy of it, and undefined_24 on the last. The real
+    binding of undefined_24 is dropped first, as a box has one writer (forms.E006).
+    """
+    schemas = tmp_path / "schemas"
+    if not schemas.exists():
+        shutil.copytree(django_settings.FORM_SCHEMAS_DIRECTORY, schemas)
+    path = schemas / "schedule_d.json"
+    schema = json.loads(path.read_text())
+    schema["fields"] = [f for f in schema["fields"] if f["pdf_field"] != "undefined_24"]
+    path.write_text(json.dumps(schema))
+    declaration = {
+        "extra_page": 2,
+        "totals": {
+            "column": "sofa.creditor_payments[].total_paid",
+            "page_boxes": {"1": "undefined_9", "2": "undefined_23"},
+            "last_page_box": "undefined_24",
+        },
+    }
+    schemas = _with_group(tmp_path, settings, "schedule_d", "d_part_1", _D_PART_1, declaration)
+    load_schema.cache_clear()
+    yield schemas
+    load_schema.cache_clear()
+
+
+@pytest.fixture
+def schedule_d_with_totals_and_part_2(tmp_path, settings, schedule_d_with_totals):
+    """
+    Schedule D as 3c5 declares it (3c spec §5.3, §9.1): Part 1's total boxes, Part 2 on copies of
+    page 3, and the form's page-number boxes.
+    """
+    declaration = {"extra_page": 3}
+    schemas = _with_group(
+        tmp_path, settings, "schedule_d", "d_part_2", _D_PART_2, declaration, _D_PAGE_NUMBERS
+    )
+    load_schema.cache_clear()
+    yield schemas
+
+
+@pytest.fixture
 def schedule_e_f_with_copies(tmp_path, settings):
     """
     write(capacities, reverse): Schedule E/F with three groups on the real names of pages 2, 4

@@ -14,6 +14,7 @@ from __future__ import annotations
 import re
 from collections import Counter
 from collections.abc import Callable
+from decimal import Decimal
 
 from apps.eligibility.cmi import counted_spouse_income, household_members
 from apps.forms.field_index import option_text
@@ -510,6 +511,36 @@ def _sheet(
     }
 
 
+def _added(amounts: list[str]) -> str:
+    """The sum of printed amounts, to the cent."""
+    return money_or_blank(sum((Decimal(a) for a in amounts), Decimal(0)))
+
+
+def _write_totals(
+    group: GroupSpec, printed: list[FieldSpec], form: dict[str, str], copies: list[dict]
+) -> None:
+    """
+    A group's total boxes (3c spec §5.3). Each page and each copy prints the sum of its own rows
+    in its own box, and a page with no row leaves its box blank. The last-page box prints every
+    row's sum on the last copy, or the extra page with no copy, even with no row at all.
+    """
+    totals = group.totals
+    column = [f for f in printed if f.binding == totals.column]
+    everything = []
+    for values, pages in (
+        (form, sorted({f.page for f in column})),
+        *((copy["values"], [copy["page"]]) for copy in copies),
+    ):
+        for page in pages:
+            amounts = [values[_key(f)] for f in column if f.page == page and _key(f) in values]
+            everything += amounts
+            if amounts and page in totals.page_boxes:
+                values[totals.page_boxes[page]] = _added(amounts)
+    if totals.last_page_box:
+        last = copies[-1]["values"] if copies else form
+        last[totals.last_page_box] = _added(everything)
+
+
 def resolve(schema: FormSchema, session: IntakeSession) -> dict[str, str]:
     """The values the form's own pages print: resolve_parts()'s form part."""
     return resolve_parts(schema, session)["parts"][0]["values"]
@@ -620,8 +651,9 @@ def _resolve_parts(schema: FormSchema, session: IntakeSession) -> dict:
 
     # Copies once the form's own values are all in: they repeat its page headers. Then the
     # pages are numbered once, counting every group's copies (3c spec §5.2).
+    copies_of: dict[str, list[dict]] = {}
     for group, fields, printed, resolved_cols, capacity, actual in overflowing:
-        copies += _copies(
+        copies_of[group.name] = _copies(
             schema,
             group,
             fields,
@@ -633,9 +665,19 @@ def _resolve_parts(schema: FormSchema, session: IntakeSession) -> dict:
             session,
             _ingested_cache,
         )
+        copies += copies_of[group.name]
     # Printing order, however the schema declares its groups (sorted is stable).
     copies.sort(key=lambda copy: copy["page"])
     _number_pages(schema, out, copies)
+    for group_name, group in schema.groups.items():
+        if group.totals is None:
+            continue
+        # Every slot, not `groups`' own: a section that doesn't apply still prints "0.00" (R2).
+        fields = [f for f in schema.fields if f.repeat == group_name and not _unmapped(f)]
+        printed = [f for f in fields if not (f.legal_review and f.source != "asked")]
+        # A column the UPL guard keeps blank on any slot adds up to no total (R3).
+        if all(f in printed for f in fields if f.binding == group.totals.column):
+            _write_totals(group, printed, out, copies_of.get(group_name, []))
     for name, group in schema.groups.items():
         if not is_statement_group(schema, name):
             continue

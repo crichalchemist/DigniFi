@@ -90,3 +90,9 @@ def test_a_form_filed_before_parts_existed_redraws_as_it_was_filed():
     printed = _printed(flat)
     assert printed[(2, None, "undefined_24")] == "1500.00"
     assert printed[(2, None, "undefined_23")] == ""
+
+
+@pytest.mark.slow
+def test_a_filed_form_ignores_totals_the_schema_declares_later(schedule_d_with_totals):
+    # undefined_24 still prints the stored 0.00 on page 2, and no total appears anywhere else.
+    assert _printed(FILED) == PRINTED
