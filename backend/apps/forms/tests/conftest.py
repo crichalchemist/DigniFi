@@ -272,6 +272,25 @@ def schedule_d_with_totals(tmp_path, settings):
 
 
 @pytest.fixture
+def schedule_g_numbered(tmp_path, settings):
+    """
+    Schedule G's rows as 3c5 declares them (3c spec §9.1): five on page 1, whose numbers the
+    form prints, and eight on page 2, each a SOFA creditor payment's name with its number in
+    the box after the printed "2.", continued on copies of page 2.
+    """
+    rows = [(1 if n <= 5 else 2, [(f"Company Name 2.{n}", *_NAME)]) for n in range(1, 14)]
+    declaration = {
+        "extra_page": 2,
+        "number": "{n}",
+        "number_boxes": {str(n): f"fill 2.{n}" for n in range(6, 14)},
+    }
+    schemas = _with_group(tmp_path, settings, "schedule_g", "g", rows, declaration)
+    load_schema.cache_clear()
+    yield schemas
+    load_schema.cache_clear()
+
+
+@pytest.fixture
 def schedule_d_with_totals_and_part_2(tmp_path, settings, schedule_d_with_totals):
     """
     Schedule D as 3c5 declares it (3c spec §5.3, §9.1): Part 1's total boxes, Part 2 on copies of

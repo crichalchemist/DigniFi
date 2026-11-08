@@ -162,6 +162,16 @@ def is_statement_group(schema: FormSchema, name: str) -> bool:
     )
 
 
+def number_box_keys(schema: FormSchema) -> set[str]:
+    """The keys of every box that holds a group's entry number (3c spec §5.4)."""
+    return {key for group in schema.groups.values() for key in group.number_boxes.values()}
+
+
+def page_number_keys(schema: FormSchema) -> set[str]:
+    """The keys of every page-number box the form declares."""
+    return {key for boxes in schema.page_numbers for key in (boxes.this, boxes.of) if key}
+
+
 @lru_cache(maxsize=32)
 def load_schema(form_type: str) -> FormSchema:
     """

@@ -313,6 +313,14 @@ def fix_for(field: FieldSpec) -> dict[str, str]:
     return binding_fix(field.binding or "")
 
 
+def group_fix(schema: FormSchema, name: str) -> dict[str, str]:
+    """Where the filer changes a group's rows: the fix of its first slot with a binding."""
+    for field in schema.fields:
+        if field.repeat == name and field.binding:
+            return fix_for(field)
+    return {}
+
+
 def _unmapped(field: FieldSpec) -> bool:
     """A checkbox or radio binding whose choices are not mapped yet emits nothing."""
     return field.type in ("checkbox", "radio") and not field.choices
