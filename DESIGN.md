@@ -245,7 +245,7 @@ A sturdy civic palette: one structural pine, one action gold, two state colors, 
 
 ### Named Rules
 
-**The 14px Floor Rule.** Nothing smaller than 0.875rem (`var(--text-caption)`) carries text. A new size below it is a defect, not a choice.
+**The 14px Floor Rule.** Nothing smaller than 0.875rem (`var(--text-caption)`) carries text. A new size below it is a defect, not a choice. `docs/TRAUMA_INFORMED_DESIGN.md` asks for a 16px minimum: body copy here is 16px, but help text, errors, captions and disclaimers are 14px, as `tokens.css` and the approved spec set them. Which rule governs those is open (DIG-182); until it is settled, build to `tokens.css`.
 
 **The Jost Builds, Public Sans Speaks Rule.** Jost carries structure: headings, buttons, the wordmark, step numbers, card and section titles. Public Sans carries everything a filer reads or types: body copy, labels, help text, errors, input values, the header's name and sign-out link.
 
@@ -289,7 +289,7 @@ Official and sturdy, like a form's action stamp.
 - **Focus:** The global ring: 2px pine outline, offset 2px.
 - **Disabled:** Sand fill, Muted Ink text, no border, not-allowed cursor. Never opacity.
 - **Sizes:** Small (0.875rem, padding 0.25rem 0.75rem), medium (the default), large (1.125rem, padding 0.75rem 2rem), plus a full-width modifier.
-- **Loading:** The label turns transparent and a centered spinner (sand track, pine head) takes its place; the button keeps its size.
+- **Loading:** The button disables itself, swaps its label for the loading text ("Loading..." by default) and centers a spinner (sand track, pine head) over it. `.button--loading` is meant to hide the label, but `.button:disabled` outranks it, so the label shows in muted text under the spinner and the width follows the loading text. That is drift; don't build on it.
 - **Unstyled variants:** `secondary` and `text` exist in the component's props but have no styles, so they fall back to the browser's default button. Use outline until they are designed.
 
 ### Inputs / Fields
@@ -321,7 +321,7 @@ Official and sturdy, like a form's action stamp.
 - **Skip link:** A pine box with cream text that appears top-left on focus, ringed in gold.
 - **Links:** Pine, underlined with a 2px offset. Auth-page links add weight 500 and turn rust on hover.
 - **Footers:** The landing footer is a pine band with the disclaimer in cream caption. The site footer is a caption line carrying the source-code link.
-- **Focus on pine:** Inside the wizard header, the auth panel and the landing footer, focus rings switch to gold.
+- **Focus on pine:** Inside the wizard header, the auth panel and the landing footer, focus rings switch to gold. The app header is missing from that list, so its wordmark and sign-out link get a pine ring on pine, which can't be seen. That is an accessibility defect, not the pattern: a new pine surface joins the gold-ring list.
 
 ### UPL Disclaimer
 
@@ -333,7 +333,7 @@ The legal-information notice appears at every decision point as quiet reassuranc
 
 ### UPL Confirmation Modal
 
-The gate before any court form is prepared. Clean Sheet with a 2px pine border, at most 560px wide and 90% of the viewport tall, over the pine scrim. A 1px sand rule separates its header (a Jost 600 H2-size title and a muted close control) and its footer (actions aligned right). Inside, the acknowledgment checkbox sits in a Sand Tint block with a 1px sand border.
+The confirmation before Generate All prepares the packet. A pending form card's Generate prepares its one form without it; only the page's UPL banner covers that path. Clean Sheet with a 2px pine border, at most 560px wide and 90% of the viewport tall, over the pine scrim. A 1px sand rule separates its header (a Jost 600 H2-size title and a muted close control) and its footer (actions aligned right). Inside, the acknowledgment checkbox sits in a Sand Tint block with a 1px sand border.
 
 ### Means-Test Preview
 
