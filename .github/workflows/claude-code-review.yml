@@ -89,11 +89,19 @@ jobs:
 
           # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
           # or https://code.claude.com/docs/en/cli-reference for available options
-          # Every review that stopped short had calls refused by a narrow tool list (saving a
-          # diff to a file, a python3 one-liner, a pipe), so the review gets the ordinary tools.
+          # Every review that stopped short before #33 had calls refused by a narrow tool list
+          # (saving a diff to a file, a python3 one-liner, a pipe), so the review gets the
+          # ordinary tools.
           # The job's token can read the code and comment on PRs, nothing more, and a fork's PR
           # gets no secrets.
           claude_args: '--allowed-tools "Bash,Read,Grep,Glob,Write,Edit,WebFetch,WebSearch,mcp__github_inline_comment__create_inline_comment"'
+          # A reply with no tool call ends a headless run, and reviews have ended partway that
+          # way, posting nothing. This hook sends the review back to work, at most three times,
+          # until its summary is posted (.github/scripts/review-stop-hook.sh). The action writes
+          # these settings to the runner's user settings, which the run loads.
+          settings: |
+            {"hooks": {"Stop": [{"hooks": [{"type": "command",
+              "command": "bash \"$GITHUB_WORKSPACE/.github/scripts/review-stop-hook.sh\""}]}]}}
 
       - name: Show how the review ran and why it stopped
         # The reviews of #34 (71 files) and #35 (85 files) ended on their own, with no refused
@@ -103,11 +111,14 @@ jobs:
         # compactions, the largest context, the failed tool results, the last calls and the
         # final message itself. A call's input or a tool result is cut to 200 characters, and
         # every line of free text starts with "- ", so none can pass as a workflow command.
+        # It also prints how many times the Stop hook ran (0 means it never loaded) and how many
+        # times it sent the review back to work.
         # The summary run below writes its execution file to the same path, so this runs first.
         if: ${{ !cancelled() }}
         env:
           EXECUTION_FILE: ${{ steps.claude-review.outputs.execution_file }}
         run: |
+          echo "Stop hook ran $(cat "$RUNNER_TEMP/review-stop-checks" 2>/dev/null || echo 0) time(s), sent the review back $(cat "$RUNNER_TEMP/review-stop-blocks" 2>/dev/null || echo 0) time(s)"
           if [ ! -f "$EXECUTION_FILE" ]; then
             echo "The review left no execution file."
             exit 0
@@ -178,6 +189,9 @@ jobs:
           # comments, and that step leaves the buffer file in place, so this run must not post
           # them again.
           classify_inline_comments: "false"
+          # The action merges these into the settings file the review's run left, so this clears
+          # the review's Stop hook, whose words tell a run to keep reviewing.
+          settings: '{"hooks": {}}'
           prompt: |
             REPO: ${{ github.repository }}
             PR NUMBER: ${{ github.event.pull_request.number }}
