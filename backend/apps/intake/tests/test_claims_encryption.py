@@ -181,3 +181,26 @@ def test_a_contract_or_codebtor_value_wider_than_its_old_column_is_refused(filer
     assert response.status_code == 400
     assert not ExecutoryContract.objects.filter(session=session).exists()
     assert not Codebtor.objects.filter(session=session).exists()
+
+
+@pytest.mark.parametrize("path", ["session_patch", "debt_viewset"])
+@pytest.mark.parametrize(
+    "wide",
+    [{"creditor_name": "P" * 256}, {"monthly_payment": "12345678901"}],
+)
+def test_a_debt_wider_than_its_old_column_is_refused_on_every_debt_write_path(filer, path, wide):
+    # Undoing the migration must never meet a value wider than the old column.
+    client, session = filer
+    row = {
+        "creditor_name": "Prairie Card Services",
+        "debt_type": "credit_card",
+        "amount_owed": "1200.00",
+    } | wide
+    if path == "session_patch":
+        response = client.patch(
+            f"/api/intake/sessions/{session.pk}/", {"debts": [row]}, format="json"
+        )
+    else:
+        response = client.post("/api/intake/debts/", {**row, "session": session.pk}, format="json")
+    assert response.status_code == 400
+    assert not DebtInfo.objects.filter(session=session).exists()

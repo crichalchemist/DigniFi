@@ -50,7 +50,7 @@
 - `GeneratedForm.field_values` - Resolved form values
 - `OCRResult.extracted_data` - Fields read from uploaded documents
 
-**Not encrypted (among others):** `IncomeInfo` and `ExpenseInfo` amounts, `MeansTest` amounts (`calculated_cmi`, `disposable_income` and the rest), `IngestedAggregate.value` (pay-stub gross pay), `SOFACreditorPayment.creditor_name`, `SOFAPriorIncome.source`, `AssetInfo.description`
+**Not encrypted (among others):** `IncomeInfo` and `ExpenseInfo` amounts, `MeansTest` amounts (`calculated_cmi`, `disposable_income` and the rest), `IngestedAggregate.value` (pay-stub gross pay), `SOFACreditorPayment.creditor_name`, `AdversaryProceeding.lender_name` (a plaintext copy of a student-loan creditor's name, until step 5), `SOFAPriorIncome.source`, `AssetInfo.description`
 
 ### Database Security
 

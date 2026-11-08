@@ -114,13 +114,13 @@ function withoutKey<Row extends { _key: string }>(row: Row): Partial<Row> {
 }
 
 /**
- * The id each sent row came back with, by the row's key. A session save returns a list it was
- * sent in the order sent (DIG-273), so the row sent at each position takes the id at that
+ * The id each sent row came back with, by the row's key. A session save, or a contracts or codebtors
+ * list save, returns a list it was sent in the order sent (DIG-273), so the row sent at each position takes the id at that
  * position, a row sent with a stale or foreign id included.
  */
 function savedIds(sent: { _key: string }[], saved: { id: number }[] | undefined) {
   if (saved?.length !== sent.length) {
-    throw new Error('The session save did not return each row it was sent');
+    throw new Error('The save did not return each row it was sent');
   }
   return new Map(sent.map((row, index) => [row._key, saved[index].id]));
 }
