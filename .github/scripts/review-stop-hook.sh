@@ -6,8 +6,19 @@
 # review started, this sends the review back to work, at most three times; the workflow's
 # fallback step still covers a review that stops a fourth time.
 set -u
+# Every run counts itself, so the workflow can show the hook was loaded even when it never blocks.
+checks_file="${RUNNER_TEMP:?}/review-stop-checks"
+echo $(($(cat "$checks_file" 2>/dev/null || echo 0) + 1)) > "$checks_file"
 blocks_file="${RUNNER_TEMP:?}/review-stop-blocks"
 blocks=$(cat "$blocks_file" 2>/dev/null || echo 0)
+# TEMPORARY, test branch only: block the first stop whatever was posted, to prove in CI that a
+# block from this hook keeps the run going.
+if [ ! -f "$RUNNER_TEMP/review-forced-block" ]; then
+  touch "$RUNNER_TEMP/review-forced-block"
+  echo $((blocks + 1)) > "$blocks_file"
+  jq -n '{decision: "block", reason: "This is a test of the review workflow. Before you stop, run `git diff --stat HEAD^1 HEAD` once more, then end your reply."}'
+  exit 0
+fi
 if [ "$blocks" -ge 3 ]; then
   exit 0
 fi
