@@ -899,7 +899,6 @@ class DebtInfo(models.Model):
 
     class Meta:
         db_table = "debt_info"
-        ordering: ClassVar[list[str]] = ["priority_classification", "-amount_owed"]
 
     def __str__(self) -> str:
         return f"DebtInfo {self.pk} ({self.get_debt_type_display()}, {self.get_consumer_business_classification_display()})"

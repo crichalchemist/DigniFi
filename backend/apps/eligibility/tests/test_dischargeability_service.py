@@ -100,3 +100,39 @@ class TestDischargeabilityEndToEnd:
         ap = AdversaryProceeding.objects.get(session=session)
         assert ap.proceeding_type == "student_loan"
         assert ap.status == "identified"
+
+
+@pytest.mark.django_db
+def test_the_dischargeability_list_follows_the_creditor_order():
+    # DebtExplanationsPanel shows this list; the creditor's name is ciphertext in the
+    # table, so only a sort in Python can put it in the order the forms use (DIG-164).
+    user = User.objects.create_user(username="dsvcorder", password="pass")
+    district = District.objects.create(
+        code="ILND",
+        name="Northern District of Illinois",
+        state="IL",
+        court_name="U.S. Bankruptcy Court",
+        filing_fee_chapter_7=Decimal("338"),
+    )
+    session = IntakeSession.objects.create(user=user, district=district)
+    for name, debt_type in [
+        ("Zephyr Student Loans", "student_loan"),
+        ("alder Medical", "medical"),
+        ("Birch Card", "credit_card"),
+    ]:
+        DebtInfo.objects.create(
+            session=session,
+            creditor_name=name,
+            amount_owed=Decimal("1000"),
+            is_secured=False,
+            is_priority=False,
+            debt_type=debt_type,
+        )
+
+    results = DischargeabilityService(session).evaluate()
+
+    assert [r["creditor"] for r in results] == [
+        "alder Medical",
+        "Birch Card",
+        "Zephyr Student Loans",
+    ]

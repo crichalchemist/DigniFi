@@ -13,6 +13,7 @@ from rest_framework.test import APIClient
 
 from apps.districts.models import District
 from apps.documents.models import DocumentType, UploadedDocument
+from apps.intake.claims import ordered_debts
 from apps.intake.models import AssetInfo, DebtInfo, IntakeSession
 from apps.users.models import User
 
@@ -341,24 +342,32 @@ def test_a_row_sent_with_another_filers_id_comes_back_at_its_place_with_a_new_id
     assert len({row["id"] for row in response.data["debts"]}) == 3
 
 
-def test_a_later_read_keeps_model_order_after_a_save_in_sent_order(filer):
+def test_a_later_read_lists_debts_by_creditor_after_a_save_in_sent_order(filer):
     client, session = filer
-    sent = [_new_debt(f"Debt {i}", f"{i * 37}.00") for i in range(1, 6)]
-    client.patch(_session_url(session), {"debts": sent}, format="json")
+    names = ["Zephyr Card", "alder Medical", "Émile Dental", "Birch Loans"]
+    sent = [_new_debt(name, f"{i * 37}.00") for i, name in enumerate(names, start=1)]
+    reply = client.patch(_session_url(session), {"debts": sent}, format="json")
+    assert [row["creditor_name"] for row in reply.data["debts"]] == names
 
     read = client.get(_session_url(session))
 
+    assert [row["creditor_name"] for row in read.data["debts"]] == [
+        "alder Medical",
+        "Birch Loans",
+        "Émile Dental",
+        "Zephyr Card",
+    ]
     assert [row["id"] for row in read.data["debts"]] == [
-        debt.pk for debt in DebtInfo.objects.filter(session=session)
+        d.pk for d in ordered_debts(DebtInfo.objects.filter(session=session))
     ]
 
 
-def test_a_save_carrying_only_assets_leaves_the_debts_in_model_order(filer):
+def test_a_save_carrying_only_assets_lists_the_debts_by_creditor(filer):
     client, session = filer
     for i in range(1, 6):
         DebtInfo.objects.create(
             session=session,
-            creditor_name=f"Debt {i}",
+            creditor_name=f"Debt {chr(ord('F') - i)}",
             debt_type="credit_card",
             amount_owed=Decimal(f"{i * 37}.00"),
         )
@@ -370,8 +379,8 @@ def test_a_save_carrying_only_assets_leaves_the_debts_in_model_order(filer):
     response = client.patch(_session_url(session), {"assets": sent}, format="json")
 
     assert [row["description"] for row in response.data["assets"]] == ["A", "B", "C"]
-    assert [row["id"] for row in response.data["debts"]] == [
-        debt.pk for debt in DebtInfo.objects.filter(session=session)
+    assert [row["creditor_name"] for row in response.data["debts"]] == [
+        f"Debt {letter}" for letter in "ABCDE"
     ]
 
 

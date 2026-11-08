@@ -716,7 +716,11 @@ class DebtViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         """Return only debts for user's intake sessions."""
-        return DebtInfo.objects.filter(session__user=self.request.user).select_related("session")
+        return (
+            DebtInfo.objects.filter(session__user=self.request.user)
+            .select_related("session")
+            .order_by("pk")
+        )
 
     @transaction.atomic
     def perform_create(self, serializer):

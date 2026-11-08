@@ -18,6 +18,7 @@ from apps.districts.dated_tables import fill_date
 from apps.eligibility.cmi import answered_window, income_step_gaps, income_window
 
 from .asset_lines import LINE_BY_KEY, PROPERTY_KINDS, WHO
+from .claims import ordered_debts
 from .household import (
     MAX_AGE,
     MAX_MEMBERS,
@@ -948,7 +949,7 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
             _save_asset_lines(instance, asset_lines_data)
 
         # The response lists a sent list in sent order, so the wizard can pair each row it
-        # sent with its id (DIG-273). Every other read keeps model order.
+        # sent with its id (DIG-273). Every other read sorts as to_representation says.
         instance.sent_rows = {}
         if assets_data is not None:
             instance.sent_rows["assets"] = _save_rows_by_id(instance, AssetInfo, assets_data)
@@ -960,8 +961,10 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
-        # AssetInfo has no Meta.ordering (the line is ciphertext), so a read is by id.
+        # Neither table has a Meta.ordering (each sort key is ciphertext): assets read by id, and
+        # debts by creditor name, then id, as Schedules D and E/F list them (3c spec §6.2).
         data["assets"] = sorted(data["assets"], key=lambda row: row["id"])
+        data["debts"] = self.fields["debts"].to_representation(ordered_debts(instance.debts.all()))
         for name, rows in getattr(instance, "sent_rows", {}).items():
             data[name] = self.fields[name].to_representation(rows)
         return data
