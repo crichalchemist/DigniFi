@@ -1025,6 +1025,13 @@ describe('FormDashboard', () => {
       await userEvent.click(screen.getByRole('button', { name: /continue/i }));
     }
 
+    /** Press one card's Generate and confirm it through the same UPL notice */
+    async function generateOne(card: HTMLElement) {
+      await userEvent.click(within(card).getByRole('button', { name: 'Generate' }));
+      await userEvent.click(screen.getByRole('checkbox'));
+      await userEvent.click(screen.getByRole('button', { name: /continue/i }));
+    }
+
     it('links a form whose Generate was refused to the step that fixes it', async () => {
       server.use(
         http.post('http://localhost:8000/api/forms/generate/', () =>
@@ -1037,7 +1044,7 @@ describe('FormDashboard', () => {
 
       renderFormDashboard();
       const card = await cardOf(PENDING);
-      await userEvent.click(within(card).getByRole('button', { name: 'Generate' }));
+      await generateOne(card);
 
       expect(await within(card).findByText(LETTER)).toBeInTheDocument();
       expect(within(card).getByRole('link', { name: 'Go to Your Information' })).toHaveAttribute(
@@ -1079,7 +1086,7 @@ describe('FormDashboard', () => {
 
       renderFormDashboard();
       const card = await cardOf('Form 103B - Fee Waiver Application');
-      await userEvent.click(within(card).getByRole('button', { name: 'Generate' }));
+      await generateOne(card);
 
       expect(await within(card).findByText(WHO_TOO_LONG)).toBeInTheDocument();
       expect(
@@ -1148,10 +1155,10 @@ describe('FormDashboard', () => {
 
       renderFormDashboard();
       const card = await cardOf(PENDING);
-      await userEvent.click(within(card).getByRole('button', { name: 'Generate' }));
+      await generateOne(card);
       await within(card).findByText(LETTER);
 
-      await userEvent.click(within(card).getByRole('button', { name: 'Generate' }));
+      await generateOne(card);
 
       expect(await within(card).findByRole('button', { name: 'Download' })).toBeInTheDocument();
       expect(within(card).queryByText(LETTER)).not.toBeInTheDocument();

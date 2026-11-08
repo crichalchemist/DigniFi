@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { FormCard } from '../FormCard';
@@ -49,7 +49,9 @@ describe('FormCard', () => {
     expect(screen.getByRole('button', { name: /generate/i })).toBeInTheDocument();
   });
 
-  it('calls onGenerate with form type', async () => {
+  // A court form is prepared only after the filer acknowledges that DigniFi gives legal
+  // information, not advice: the same confirmation Generate All asks for.
+  it('asks the filer to acknowledge the legal-information notice before preparing a form', async () => {
     const user = userEvent.setup();
     const onGenerate = vi.fn().mockResolvedValue(undefined);
     render(
@@ -60,7 +62,45 @@ describe('FormCard', () => {
 
     await user.click(screen.getByRole('button', { name: /generate/i }));
 
+    expect(
+      screen.getByRole('dialog', { name: 'Legal acknowledgment required' })
+    ).toBeInTheDocument();
+    expect(onGenerate).not.toHaveBeenCalled();
+  });
+
+  it('prepares the form only after the filer acknowledges and continues', async () => {
+    const user = userEvent.setup();
+    const onGenerate = vi.fn().mockResolvedValue(undefined);
+    render(
+      <MemoryRouter>
+        <FormCard {...defaultProps} onGenerate={onGenerate} />
+      </MemoryRouter>
+    );
+
+    await user.click(screen.getByRole('button', { name: /generate/i }));
+    const dialog = screen.getByRole('dialog', { name: 'Legal acknowledgment required' });
+    await user.click(within(dialog).getByRole('checkbox'));
+    await user.click(within(dialog).getByRole('button', { name: 'Continue' }));
+
     expect(onGenerate).toHaveBeenCalledWith('form_101');
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  it('prepares nothing when the filer cancels the acknowledgment', async () => {
+    const user = userEvent.setup();
+    const onGenerate = vi.fn().mockResolvedValue(undefined);
+    render(
+      <MemoryRouter>
+        <FormCard {...defaultProps} onGenerate={onGenerate} />
+      </MemoryRouter>
+    );
+
+    await user.click(screen.getByRole('button', { name: /generate/i }));
+    const dialog = screen.getByRole('dialog', { name: 'Legal acknowledgment required' });
+    await user.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+
+    expect(onGenerate).not.toHaveBeenCalled();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
   // ---------------------------------------------------------------------------
