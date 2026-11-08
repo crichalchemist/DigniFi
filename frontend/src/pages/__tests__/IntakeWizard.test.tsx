@@ -1284,6 +1284,24 @@ async function waitSeconds(seconds: number) {
   }
 }
 
+/** A debt the server holds, as the amounts owed step and the list steps' Continue see it */
+const storedDebt = {
+  id: 7,
+  session: 1,
+  data_source: 'manual',
+  creditor_name: 'Northwind Card Services',
+  debt_type: 'credit_card',
+  priority_classification: 'unsecured',
+  amount_owed: '2500.00',
+  monthly_payment: '75.00',
+  is_in_collections: false,
+  is_secured: false,
+  collateral_description: '',
+  notes: '',
+  is_draft: false,
+  source_document_name: null,
+};
+
 describe.each([
   {
     list: 'debts',
@@ -1304,22 +1322,7 @@ describe.each([
       fireEvent.change(field(`creditor_name_${index}`), { target: { value: name } });
       fireEvent.change(field(`amount_owed_${index}`), { target: { value: amount } });
     },
-    stored: {
-      id: 7,
-      session: 1,
-      data_source: 'manual',
-      creditor_name: 'Northwind Card Services',
-      debt_type: 'credit_card',
-      priority_classification: 'unsecured',
-      amount_owed: '2500.00',
-      monthly_payment: '75.00',
-      is_in_collections: false,
-      is_secured: false,
-      collateral_description: '',
-      notes: '',
-      is_draft: false,
-      source_document_name: null,
-    },
+    stored: storedDebt,
   },
   {
     list: 'assets',
@@ -1587,6 +1590,33 @@ describe.each([
     });
   }
 );
+
+describe('IntakeWizard the monthly payment on the Amounts Owed step', () => {
+  // The server keeps what it holds for a key left out, so a cleared box must go as null
+  async function continueWithPayment(value: string) {
+    const { bodies } = serveSessionSaves({
+      ...sessionAtStep1,
+      current_step: 6,
+      debts: [storedDebt],
+    });
+    renderWizard();
+    await screen.findByRole('heading', { name: /amounts owed/i, level: 2 });
+    fireEvent.change(field('monthly_payment_0'), { target: { value } });
+    await userEvent.click(screen.getByRole('button', { name: /continue/i }));
+    await waitFor(() => expect(bodies.length).toBeGreaterThan(0));
+    return (bodies[0] as { debts: Record<string, unknown>[] }).debts[0];
+  }
+
+  it('empties a monthly payment the filer cleared, instead of keeping the old figure', async () => {
+    const debt = await continueWithPayment('');
+    expect(debt.monthly_payment).toBeNull();
+  });
+
+  it('saves a monthly payment typed as $0 as 0, not as empty', async () => {
+    const debt = await continueWithPayment('0');
+    expect(debt.monthly_payment).toBe(0);
+  });
+});
 
 describe('IntakeWizard the rows of the Assets step', { timeout: 30_000 }, () => {
   // A stored row left out of a save is deleted, and asset_type is read-only, so a new row has none
@@ -3070,6 +3100,14 @@ describe('IntakeWizard cleared expense', { timeout: 15_000 }, () => {
 // Contracts and codebtors (DIG-147, DIG-165, DIG-166)
 // ===========================================================================
 
+/**
+ * The wizard's own step title. Each list step repeats it in an h2 of its own, so a heading query
+ * finds two: wait on this before `vi.useFakeTimers()`.
+ */
+async function expectStep(title: string) {
+  await waitFor(() => expect(document.querySelector('.step-title')).toHaveTextContent(title));
+}
+
 const storedLease = {
   id: 4,
   counterparty_name: 'Oak Street Apartments',
@@ -3091,6 +3129,297 @@ const storedCodebtor = {
   zip_code: '',
   relationship: 'relative',
 };
+
+/**
+ * A filer at `step` of a list step, whose `list` holds `loaded`. The list's PUT stores each row
+ * as sent, a held id kept and any other row given the next id (from 10), and replies with the
+ * stored list in the order sent. A session PATCH echoes the debts it was sent, so Continue from
+ * step 6 works.
+ */
+function serveListSaves(
+  list: 'contracts' | 'codebtors',
+  step: number,
+  loaded: Record<string, unknown>[]
+) {
+  const session = {
+    ...sessionAtStep1,
+    current_step: step,
+    debtor_info: { first_name: 'Jane', last_name: 'Doe' },
+    debts: [storedDebt],
+  };
+  const otherList = list === 'contracts' ? 'codebtors' : 'contracts';
+  let held = loaded;
+  let nextId = 10;
+  let heldReply: Promise<void> | null = null;
+  const bodies: Record<string, unknown>[][] = [];
+  server.use(
+    http.get('http://localhost:8000/api/intake/sessions/:id/', () => HttpResponse.json(session)),
+    http.patch('http://localhost:8000/api/intake/sessions/:id/', async ({ request }) => {
+      const body = (await request.json()) as Record<string, unknown>;
+      return HttpResponse.json({ ...session, debts: body.debts });
+    }),
+    http.get(`http://localhost:8000/api/intake/sessions/:id/${list}/`, () =>
+      HttpResponse.json(held)
+    ),
+    http.get(`http://localhost:8000/api/intake/sessions/:id/${otherList}/`, () =>
+      HttpResponse.json([])
+    ),
+    http.put(`http://localhost:8000/api/intake/sessions/:id/${list}/`, async ({ request }) => {
+      const rows = (await request.json()) as Record<string, unknown>[];
+      bodies.push(rows);
+      const heldIds = held.map((row) => row.id);
+      held = rows.map((row) => ({
+        ...row,
+        id: heldIds.includes(row.id) ? row.id : nextId++,
+      }));
+      const reply = HttpResponse.json(held);
+      if (heldReply) {
+        const wait = heldReply;
+        heldReply = null;
+        await wait;
+      }
+      return reply;
+    }),
+    http.put(`http://localhost:8000/api/intake/sessions/:id/${otherList}/`, async ({ request }) => {
+      const rows = (await request.json()) as Record<string, unknown>[];
+      return HttpResponse.json(rows.map((row, index) => ({ ...row, id: row.id ?? 500 + index })));
+    })
+  );
+  return {
+    bodies,
+    stored: () => held,
+    /** Keeps the next save's reply on its way until the returned function is called */
+    holdNextReply: () => {
+      let release = () => {};
+      heldReply = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      return release;
+    },
+  };
+}
+
+describe.each([
+  {
+    list: 'contracts' as const,
+    step: 7,
+    title: 'Contracts & Leases',
+    nameKey: 'counterparty_name',
+    nameLabel: 'Counterparty Name',
+    addLabel: /add contract/i,
+    stored: storedLease as Record<string, unknown>,
+  },
+  {
+    list: 'codebtors' as const,
+    step: 8,
+    title: 'Codebtors',
+    nameKey: 'name',
+    nameLabel: 'Full Name',
+    addLabel: /add codebtor/i,
+    stored: storedCodebtor as Record<string, unknown>,
+  },
+])(
+  'IntakeWizard $list autosave and keep one id',
+  { timeout: 30_000 },
+  ({ list, step, title, nameKey, nameLabel, addLabel, stored }) => {
+    const nameBox = (index: number) => screen.getAllByRole('textbox', { name: nameLabel })[index];
+    const idsSent = (bodies: Record<string, unknown>[][]) =>
+      bodies.map((rows) => rows.map((row) => row.id));
+    /** Adds a row and types its name, as the filer does */
+    const addRow = (index: number, name: string) => {
+      fireEvent.click(screen.getByRole('button', { name: addLabel }));
+      fireEvent.change(nameBox(index), { target: { value: name } });
+    };
+
+    beforeEach(() => {
+      server.use(
+        http.post(
+          'http://localhost:8000/api/intake/sessions/:id/update_step/',
+          async ({ request }) => {
+            const { current_step } = (await request.json()) as { current_step: number };
+            return HttpResponse.json({
+              session: { ...sessionAtStep1, current_step },
+              message: 'Step updated.',
+            });
+          }
+        ),
+        http.post(
+          'http://localhost:8000/api/audit/logs/',
+          () => new HttpResponse(null, { status: 201 })
+        )
+      );
+    });
+
+    it('autosaves a new row two seconds after the filer stops typing, then saves an edit under the id it got', async () => {
+      const { bodies } = serveListSaves(list, step, []);
+      renderWizard();
+      await expectStep(title);
+
+      vi.useFakeTimers();
+      try {
+        addRow(0, 'Lakeview Storage');
+        await waitSeconds(3);
+        fireEvent.change(nameBox(0), { target: { value: 'Lakeview Storage Co' } });
+        await waitSeconds(3);
+      } finally {
+        vi.useRealTimers();
+      }
+
+      expect(idsSent(bodies)).toEqual([[undefined], [10]]);
+      // The browser's own key never reaches the server
+      for (const rows of bodies) expect(rows[0]).not.toHaveProperty('_key');
+    });
+
+    it('shows the autosaved row after a refresh', async () => {
+      const saves = serveListSaves(list, step, []);
+      const { unmount } = renderWizard();
+      await expectStep(title);
+
+      vi.useFakeTimers();
+      try {
+        addRow(0, 'Lakeview Storage');
+        await waitSeconds(3);
+      } finally {
+        vi.useRealTimers();
+      }
+      expect(saves.bodies).toHaveLength(1);
+
+      unmount();
+      renderWizard();
+      await expectStep(title);
+
+      await waitFor(() => expect(nameBox(0)).toHaveValue('Lakeview Storage'));
+    });
+
+    it("sends nothing while a stored row's name is cleared, and keeps its id when the name is typed again", async () => {
+      const { bodies } = serveListSaves(list, step, [stored]);
+      renderWizard();
+      await expectStep(title);
+      await waitFor(() => expect(nameBox(0)).toHaveValue(String(stored[nameKey])));
+
+      vi.useFakeTimers();
+      try {
+        fireEvent.change(nameBox(0), { target: { value: '' } });
+        await waitSeconds(5);
+        expect(bodies).toEqual([]);
+        expect(screen.getByRole('button', { name: /continue/i })).toBeDisabled();
+
+        fireEvent.change(nameBox(0), { target: { value: 'Lakeview Storage' } });
+        await waitSeconds(3);
+      } finally {
+        vi.useRealTimers();
+      }
+
+      expect(idsSent(bodies)).toEqual([[stored.id]]);
+    });
+
+    // On a slow link the filer's next edit can be saved before the first save's reply brings the
+    // new row's id. The wizard must settle on the id the server holds: a save carrying an id the
+    // server has already replaced creates the row again, and each such save can start another.
+    it('keeps the id the server holds when the filer edits while a save is on its way, without a save loop', async () => {
+      const saves = serveListSaves(list, step, []);
+      renderWizard();
+      await expectStep(title);
+      const landFirstSave = saves.holdNextReply();
+
+      vi.useFakeTimers();
+      try {
+        addRow(0, 'Lakeview Storage');
+        await waitSeconds(3);
+        expect(saves.bodies).toHaveLength(1);
+
+        const landSecondSave = saves.holdNextReply();
+        fireEvent.change(nameBox(0), { target: { value: 'Lakeview Storage Co' } });
+        await waitSeconds(3);
+        // The two replies land 2.5 s apart, longer than the autosave delay
+        await act(async () => landFirstSave());
+        await waitSeconds(2);
+        await act(() => vi.advanceTimersByTimeAsync(500));
+        await act(async () => landSecondSave());
+        await waitSeconds(15);
+
+        // The next edit updates the row the server holds instead of replacing it
+        fireEvent.change(nameBox(0), { target: { value: 'Lakeview Storage Center' } });
+        await waitSeconds(5);
+      } finally {
+        vi.useRealTimers();
+      }
+
+      expect(saves.bodies.length).toBeLessThanOrEqual(3);
+      const [lastSent] = saves.bodies[saves.bodies.length - 1];
+      expect(lastSent.id).toBe(saves.stored()[0].id);
+    });
+
+    it('drops a row the filer removed while its save was on its way', async () => {
+      const saves = serveListSaves(list, step, []);
+      renderWizard();
+      await expectStep(title);
+      const landSave = saves.holdNextReply();
+
+      vi.useFakeTimers();
+      try {
+        addRow(0, 'Lakeview Storage');
+        addRow(1, 'Harbor Light Storage');
+        await waitSeconds(3);
+        expect(saves.bodies).toHaveLength(1);
+
+        fireEvent.click(screen.getAllByRole('button', { name: 'Remove' })[0]);
+        await act(async () => landSave());
+        await waitSeconds(4);
+      } finally {
+        vi.useRealTimers();
+      }
+
+      expect(idsSent(saves.bodies)).toEqual([[undefined, undefined], [11]]);
+      expect(saves.stored().map((row) => [row.id, row[nameKey]])).toEqual([
+        [11, 'Harbor Light Storage'],
+      ]);
+    });
+
+    it("fails the save, and says so, when the reply doesn't list each row sent", async () => {
+      serveListSaves(list, step, [stored]);
+      server.use(
+        http.put(`http://localhost:8000/api/intake/sessions/:id/${list}/`, () =>
+          HttpResponse.json([])
+        )
+      );
+      renderWizard();
+      await expectStep(title);
+      await waitFor(() => expect(screen.getByRole('button', { name: /continue/i })).toBeEnabled());
+
+      await userEvent.click(screen.getByRole('button', { name: /continue/i }));
+
+      expect(await screen.findByText(/couldn't save just now/i)).toBeInTheDocument();
+      expect(document.querySelector('.step-title')).toHaveTextContent(title);
+    });
+
+    it('keeps an edit made just before Go Back, and saves it when the step shows again', async () => {
+      const { bodies } = serveListSaves(list, step, [stored]);
+      renderWizard();
+      await expectStep(title);
+      await waitFor(() => expect(nameBox(0)).toHaveValue(String(stored[nameKey])));
+
+      vi.useFakeTimers();
+      try {
+        fireEvent.change(nameBox(0), { target: { value: 'Renamed' } });
+        await waitSeconds(1);
+        fireEvent.click(screen.getByRole('button', { name: 'Go Back' }));
+        await waitSeconds(1);
+        expect(bodies).toEqual([]);
+
+        // Continue saves the step before this one: step 6's debt, or step 7's empty list
+        fireEvent.click(screen.getByRole('button', { name: /continue/i }));
+        await waitSeconds(4);
+      } finally {
+        vi.useRealTimers();
+      }
+
+      await expectStep(title);
+      expect(nameBox(0)).toHaveValue('Renamed');
+      expect(bodies[bodies.length - 1]).toEqual([{ ...stored, [nameKey]: 'Renamed' }]);
+    });
+  }
+);
 
 describe('IntakeWizard contracts and codebtors', { timeout: 15_000 }, () => {
   let contractSaves: unknown[];
@@ -3129,11 +3458,6 @@ describe('IntakeWizard contracts and codebtors', { timeout: 15_000 }, () => {
       http.put('http://localhost:8000/api/intake/sessions/:id/contracts/', saveList(contractSaves)),
       http.put('http://localhost:8000/api/intake/sessions/:id/codebtors/', saveList(codebtorSaves))
     );
-  }
-
-  /** The wizard's own step title (each list step repeats it in a heading of its own). */
-  async function expectStep(title: string) {
-    await waitFor(() => expect(document.querySelector('.step-title')).toHaveTextContent(title));
   }
 
   beforeEach(() => {
@@ -3176,15 +3500,21 @@ describe('IntakeWizard contracts and codebtors', { timeout: 15_000 }, () => {
     renderWizard();
     await expectStep('Contracts & Leases');
 
-    // Remove the gym, add a storage unit, and add a row the filer leaves blank
-    await userEvent.click(screen.getAllByRole('button', { name: 'Remove' })[1]);
-    await userEvent.click(screen.getByRole('button', { name: /add contract/i }));
-    await userEvent.type(
-      screen.getAllByPlaceholderText('e.g., Landlord Inc.')[1],
-      'Lakeview Storage'
-    );
-    await userEvent.click(screen.getByRole('button', { name: /add contract/i }));
-    await userEvent.click(screen.getByRole('button', { name: /continue/i }));
+    // Remove the gym, add a storage unit, and add a row the filer leaves blank. The edits and
+    // Continue come on one fake clock, so no autosave fires before Continue (R14).
+    vi.useFakeTimers();
+    try {
+      fireEvent.click(screen.getAllByRole('button', { name: 'Remove' })[1]);
+      fireEvent.click(screen.getByRole('button', { name: /add contract/i }));
+      fireEvent.change(screen.getAllByPlaceholderText('e.g., Landlord Inc.')[1], {
+        target: { value: 'Lakeview Storage' },
+      });
+      fireEvent.click(screen.getByRole('button', { name: /add contract/i }));
+      fireEvent.click(screen.getByRole('button', { name: /continue/i }));
+      await waitSeconds(1);
+    } finally {
+      vi.useRealTimers();
+    }
     await expectStep('Codebtors');
 
     const lakeview = {
@@ -3232,8 +3562,14 @@ describe('IntakeWizard contracts and codebtors', { timeout: 15_000 }, () => {
       renderWizard();
       await expectStep(title);
 
-      await userEvent.click(screen.getByRole('button', { name: 'Remove' }));
-      await userEvent.click(screen.getByRole('button', { name: /continue/i }));
+      vi.useFakeTimers();
+      try {
+        fireEvent.click(screen.getByRole('button', { name: 'Remove' }));
+        fireEvent.click(screen.getByRole('button', { name: /continue/i }));
+        await waitSeconds(1);
+      } finally {
+        vi.useRealTimers();
+      }
       await expectStep(nextTitle);
 
       expect(saves()).toEqual([[]]);
@@ -3271,7 +3607,7 @@ describe('IntakeWizard contracts and codebtors', { timeout: 15_000 }, () => {
     await expectStep('Contracts & Leases');
 
     await userEvent.click(screen.getByRole('button', { name: /add contract/i }));
-    await userEvent.type(screen.getByPlaceholderText('e.g., Apartment lease, car loan'), 'Lease');
+    await userEvent.type(screen.getByPlaceholderText('e.g., Apartment lease, car lease'), 'Lease');
 
     expect(screen.getByRole('alert')).toHaveTextContent('Please enter the name of the other party');
     expect(screen.getByRole('button', { name: /continue/i })).toBeDisabled();
@@ -3286,8 +3622,7 @@ describe('IntakeWizard contracts and codebtors', { timeout: 15_000 }, () => {
     await expectStep('Codebtors');
 
     await userEvent.click(screen.getByRole('button', { name: /add codebtor/i }));
-    // The City label has no htmlFor yet, so the box is the element after it
-    await userEvent.type(screen.getByText('City').nextElementSibling as HTMLElement, 'Chicago');
+    await userEvent.type(screen.getByLabelText('City'), 'Chicago');
 
     expect(screen.getByRole('alert')).toHaveTextContent("Please enter this person's full name");
     expect(screen.getByRole('button', { name: /continue/i })).toBeDisabled();
@@ -3302,10 +3637,18 @@ describe('IntakeWizard contracts and codebtors', { timeout: 15_000 }, () => {
     await expectStep('Codebtors');
 
     // Add Ana, and add a row the filer leaves blank
-    await userEvent.click(screen.getByRole('button', { name: /add codebtor/i }));
-    await userEvent.type(screen.getAllByPlaceholderText('e.g., Jane Smith')[1], 'Ana Ruiz');
-    await userEvent.click(screen.getByRole('button', { name: /add codebtor/i }));
-    await userEvent.click(screen.getByRole('button', { name: /continue/i }));
+    vi.useFakeTimers();
+    try {
+      fireEvent.click(screen.getByRole('button', { name: /add codebtor/i }));
+      fireEvent.change(screen.getAllByPlaceholderText('e.g., Jane Smith')[1], {
+        target: { value: 'Ana Ruiz' },
+      });
+      fireEvent.click(screen.getByRole('button', { name: /add codebtor/i }));
+      fireEvent.click(screen.getByRole('button', { name: /continue/i }));
+      await waitSeconds(1);
+    } finally {
+      vi.useRealTimers();
+    }
     await expectStep('Review & Results');
 
     expect(codebtorSaves).toEqual([
@@ -3321,7 +3664,7 @@ describe('IntakeWizard contracts and codebtors', { timeout: 15_000 }, () => {
         },
       ],
     ]);
-    // Review lists the rows the save returned, not the step's copy with the blank row in it
+    // Review lists the rows the server holds, not the blank row the step still shows
     expect(screen.getByText('Codebtors (2)')).toBeInTheDocument();
     expect(screen.getByText(/Oak Street Apartments/)).toBeInTheDocument();
     expect(screen.getByText(/Sam Doe/)).toBeInTheDocument();

@@ -506,6 +506,10 @@ export interface Codebtor {
   relationship: 'spouse' | 'former_spouse' | 'relative' | 'friend' | 'business_partner' | 'other';
 }
 
+/** A contract or codebtor the wizard holds: every field, and the browser's own key (3c2) */
+export type ContractRow = ExecutoryContract & { _key: string };
+export type CodebtorRow = Codebtor & { _key: string };
+
 // ============================================================================
 // Means Test
 // ============================================================================

@@ -9,13 +9,14 @@ def _claude_md_text():
     return path.read_text()
 
 
-def test_claude_md_tells_agents_that_assets_read_by_id_and_debts_in_model_order():
+def test_claude_md_tells_agents_that_assets_read_by_id_and_debts_by_creditor():
     # An agent trusting a stale "every other read keeps model order" would expect assets
     # in a model order that AssetInfo no longer has (3b removed Meta.ordering).
     text = _claude_md_text()
     assert "every other read keeps model order" not in text
     assert "every other read of assets goes by id" in text
-    assert "debts keep model order" in text
+    assert "debts keep model order" not in text
+    assert "a session read lists debts by creditor name" in text
 
 
 def test_claude_md_says_pre_3f_refusals_come_after_the_assets_check():

@@ -53,18 +53,18 @@ from .serializers import (
 def _save_list(session, model, row_serializer, rows):
     """Save the whole list the Contracts or Codebtors step shows (DIG-147).
 
+    The session is locked first, so a check that reads the stored rows sees the last save's.
     Every row is checked before anything is written, so one bad row saves nothing. Then a
     row carrying one of this session's ids updates in place, any other row is created, and
-    a stored row the list left out is deleted (see _save_rows_by_id). Returns the saved
-    rows in id order, so the wizard keeps their ids for the next save.
+    a stored row the list left out is deleted (see _save_rows_by_id). Returns the saved rows
+    in the order sent, each with its id, so the wizard pairs them by position (3c spec §6.3).
     """
-    serializer = row_serializer(data=rows, many=True)
-    serializer.is_valid(raise_exception=True)
     with transaction.atomic():
         lock_session(session.pk)
-        _save_rows_by_id(session, model, serializer.validated_data)
+        serializer = row_serializer(data=rows, many=True)
+        serializer.is_valid(raise_exception=True)
+        saved = _save_rows_by_id(session, model, serializer.validated_data)
         session.reopen()
-    saved = model.objects.filter(session=session).order_by("id")
     return Response(row_serializer(saved, many=True).data)
 
 
@@ -716,7 +716,11 @@ class DebtViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         """Return only debts for user's intake sessions."""
-        return DebtInfo.objects.filter(session__user=self.request.user).select_related("session")
+        return (
+            DebtInfo.objects.filter(session__user=self.request.user)
+            .select_related("session")
+            .order_by("pk")
+        )
 
     @transaction.atomic
     def perform_create(self, serializer):

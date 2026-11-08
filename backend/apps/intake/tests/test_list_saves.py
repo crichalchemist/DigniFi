@@ -8,9 +8,13 @@ removed row never lingers, one bad row saves nothing, and a row can only ever ch
 filer's own session.
 """
 
+from unittest.mock import patch
+
 import pytest
 
+from apps.intake import views as intake_views
 from apps.intake.models import Codebtor, ExecutoryContract, IntakeSession
+from apps.intake.serializers import CodebtorRowSerializer, ExecutoryContractRowSerializer
 
 # Each list's model, its name field and three rows a filer might enter.
 LISTS = {
@@ -162,3 +166,52 @@ def test_filer_cannot_save_a_list_onto_another_users_intake(filer, other_session
 
     assert response.status_code == 404
     assert not LISTS[endpoint][0].objects.filter(session=other_session).exists()
+
+
+@pytest.mark.parametrize("endpoint", ["contracts", "codebtors"])
+def test_a_list_save_replies_in_the_order_sent_whatever_the_ids(filer, endpoint):
+    # The wizard pairs each row it sent with the reply's row at the same place (3c spec §6.3)
+    client, session = filer
+    model, name, rows = LISTS[endpoint]
+    first = model.objects.create(session=session, **rows[0])
+    second = model.objects.create(session=session, **rows[1])
+
+    response = client.put(
+        _list_url(session, endpoint),
+        [{"id": second.pk, **rows[1]}, rows[2], {"id": first.pk, **rows[0]}],
+        format="json",
+    )
+
+    assert response.status_code == 200
+    assert [row[name] for row in response.data] == [rows[1][name], rows[2][name], rows[0][name]]
+    assert [response.data[0]["id"], response.data[2]["id"]] == [second.pk, first.pk]
+
+
+@pytest.mark.parametrize(
+    "endpoint,row_serializer",
+    [("contracts", ExecutoryContractRowSerializer), ("codebtors", CodebtorRowSerializer)],
+)
+def test_a_list_save_checks_its_rows_only_once_it_holds_the_lock(filer, endpoint, row_serializer):
+    # 3c3's row checks read the stored rows, so they must run inside the lock.
+    client, session = filer
+    _, _, rows = LISTS[endpoint]
+    calls = []
+    real_lock = intake_views.lock_session
+
+    def locking(pk):
+        calls.append("lock")
+        return real_lock(pk)
+
+    def checks(self, attrs):
+        calls.append("check")
+        return attrs
+
+    with (
+        patch.object(intake_views, "lock_session", locking),
+        patch.object(row_serializer, "validate", checks),
+    ):
+        response = client.put(_list_url(session, endpoint), rows[:1], format="json")
+
+    assert response.status_code == 200
+    assert calls[0] == "lock"
+    assert "check" in calls

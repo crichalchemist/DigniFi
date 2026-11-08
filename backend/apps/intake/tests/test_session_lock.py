@@ -36,6 +36,7 @@ from apps.documents.models import (
     UploadedDocument,
 )
 from apps.documents.services.processor import ExtractionResult
+from apps.intake import serializers as intake_serializers
 from apps.intake import views as intake_views
 from apps.intake.locking import lock_session
 from apps.intake.models import (
@@ -645,3 +646,37 @@ def test_every_intake_write_waits_for_a_save_in_progress(ready, write):
 
     assert waited, f"{write} wrote without waiting for the save in progress"
     assert response.status_code == expected, response.content
+
+
+@pytest.mark.parametrize(
+    "write,row_serializer",
+    [
+        ("contracts PUT", intake_serializers.ExecutoryContractRowSerializer),
+        ("codebtors PUT", intake_serializers.CodebtorRowSerializer),
+    ],
+)
+def test_a_list_save_checks_its_rows_while_it_holds_the_lock(ready, write, row_serializer):
+    # A row check that reads the stored rows must see the last save's, so it runs inside the lock.
+    user, session = ready
+    method, url, body, expected = WRITES[write](session, _rows(session))
+    checked = threading.Event()
+
+    def checks(self, attrs):
+        checked.set()
+        return attrs
+
+    def send():
+        return getattr(_client(user), method)(url, body, format="json")
+
+    with patch.object(row_serializer, "validate", checks):
+        with transaction.atomic():
+            lock_session(session.pk)  # a save in progress
+            sending, outcome = _on_its_own_thread(send)
+            waited = _waits_on_a_lock(sending)
+            checked_while_locked = checked.is_set()
+        response = _finished(sending, outcome)
+
+    assert response.status_code == expected, response.content
+    assert waited, f"{write} wrote without waiting for the save in progress"
+    assert not checked_while_locked, "the save checked its rows before it held the lock"
+    assert checked.is_set()

@@ -85,21 +85,20 @@ class TestDebtInfoClassification:
         assert debt.is_unliquidated is True
         assert debt.is_disputed is True
 
-    def test_date_incurred_tracking(self, session):
-        """Test that date_incurred can be set."""
-        from datetime import date
-
+    def test_a_debt_incurred_over_time_keeps_its_range_of_dates(self, session):
+        """The national instructions ask for the range of dates (3c2 R4)."""
         debt = DebtInfo.objects.create(
             session=session,
             creditor_name="Old Creditor",
             amount_owed=3000.00,
             debt_type="credit_card",
-            date_incurred=date(2023, 6, 15),
+            date_incurred="2019–2025",
         )
+        debt.refresh_from_db()
 
-        assert debt.date_incurred == date(2023, 6, 15)
+        assert debt.date_incurred == "2019–2025"
 
-    def test_str_method_includes_classification(self, session):
+    def test_a_debt_shows_its_id_type_and_classification_but_never_the_creditor(self, session):
         """Test that __str__ method includes consumer/business classification."""
         debt = DebtInfo.objects.create(
             session=session,
@@ -110,5 +109,6 @@ class TestDebtInfoClassification:
         )
 
         str_repr = str(debt)
-        assert "Business Supplier" in str_repr
+        assert "Business Supplier" not in str_repr
+        assert str(debt.pk) in str_repr
         assert "Business" in str_repr  # Should show "Business Debt"

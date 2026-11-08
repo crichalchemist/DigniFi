@@ -236,6 +236,15 @@ class DocumentViewSet(ViewSet):
             except serializers.ValidationError as exc:
                 return Response({"amount_owed": exc.detail}, status=status.HTTP_400_BAD_REQUEST)
 
+        if "creditor_name" in draft_fields:
+            # The column is ciphertext now, so the width that bounds a rollback lives here.
+            try:
+                draft_fields["creditor_name"] = serializers.CharField(
+                    max_length=255
+                ).run_validation(draft_fields["creditor_name"])
+            except serializers.ValidationError as exc:
+                return Response({"creditor_name": exc.detail}, status=status.HTTP_400_BAD_REQUEST)
+
         # A correction changes the draft debt and the pay-stub figures (DIG-188).
         lock_session(doc.session_id)
         ocr = doc.ocr_result

@@ -39,6 +39,8 @@ import type {
   DebtInfo,
   ExecutoryContract,
   Codebtor,
+  ContractRow,
+  CodebtorRow,
   CompletionError,
   HouseholdMember,
   IncomeEntry,
@@ -98,6 +100,12 @@ function addNowAndAssistance(body: Partial<IncomeInfo>, data: Partial<IncomeInfo
   body.noncash_assistance_value = data.noncash_assistance_value ?? null;
 }
 
+/** What saving the step on screen sends: a session PATCH body, or a contracts or codebtors list */
+type StepBody =
+  | Partial<IntakeSession>
+  | { contracts: ContractRow[] }
+  | { codebtors: CodebtorRow[] };
+
 /** A row as the server takes it, without the browser's own key */
 function withoutKey<Row extends { _key: string }>(row: Row): Partial<Row> {
   const sent: Partial<Row> = { ...row };
@@ -106,13 +114,13 @@ function withoutKey<Row extends { _key: string }>(row: Row): Partial<Row> {
 }
 
 /**
- * The id each sent row came back with, by the row's key. A session save returns a list it was
- * sent in the order sent (DIG-273), so the row sent at each position takes the id at that
+ * The id each sent row came back with, by the row's key. A session save, or a contracts or codebtors
+ * list save, returns a list it was sent in the order sent (DIG-273), so the row sent at each position takes the id at that
  * position, a row sent with a stale or foreign id included.
  */
 function savedIds(sent: { _key: string }[], saved: { id: number }[] | undefined) {
   if (saved?.length !== sent.length) {
-    throw new Error('The session save did not return each row it was sent');
+    throw new Error('The save did not return each row it was sent');
   }
   return new Map(sent.map((row, index) => [row._key, saved[index].id]));
 }
@@ -152,7 +160,15 @@ export function IntakeWizard() {
   // How many saves of each list have gone out. A reply writes its ids only if no later save of
   // the list has gone out since: that save left before these ids arrived, so the server has
   // already replaced any row this one created, and the later save's reply brings the ids that hold
-  const listSavesRef = useRef({ assets: 0, debts: 0, members: 0, entries: 0, spouseEntries: 0 });
+  const listSavesRef = useRef({
+    assets: 0,
+    debts: 0,
+    members: 0,
+    entries: 0,
+    spouseEntries: 0,
+    contracts: 0,
+    codebtors: 0,
+  });
 
   // Initialize session start time after first render
   useLayoutEffect(() => {
@@ -181,8 +197,8 @@ export function IntakeWizard() {
   // The Part showing, set each time the Assets step opens and never stored (3b spec §4)
   const [assetPart, setAssetPart] = useState(1);
   const [debtsData, setDebtsData] = useState<WizardRow<DebtInfo>[]>([]);
-  const [contractsData, setContractsData] = useState<ExecutoryContract[]>([]);
-  const [codebtorsData, setCodebtorsData] = useState<Codebtor[]>([]);
+  const [contractsData, setContractsData] = useState<ContractRow[]>([]);
+  const [codebtorsData, setCodebtorsData] = useState<CodebtorRow[]>([]);
   // What Complete last said is missing, listed on Review until the step changes
   const [completionErrors, setCompletionErrors] = useState<CompletionError[]>([]);
 
@@ -213,8 +229,9 @@ export function IntakeWizard() {
     let cancelled = false;
 
     // Contracts and codebtors have their own endpoints, and a new session has none yet. Both
-    // lists load before any step shows: Review lists them (DIG-166), and Continue on steps 7
-    // and 8 saves the whole list, so a list that failed to load is never saved as empty.
+    // lists load before any step shows: Review lists them (DIG-166), and steps 7 and 8 save the
+    // whole list, by autosave and on Continue, so a list that failed to load is never saved as
+    // empty.
     const openSession = async (): Promise<{
       fresh: IntakeSession;
       contracts: ExecutoryContract[];
@@ -295,8 +312,8 @@ export function IntakeWizard() {
               _key: String(debt.id),
             }))
           );
-        setContractsData(contracts);
-        setCodebtorsData(codebtors);
+        setContractsData(contracts.map((row) => ({ ...row, _key: String(row.id) })));
+        setCodebtorsData(codebtors.map((row) => ({ ...row, _key: String(row.id) })));
         setSessionRead('done');
       })
       .catch(() => {
@@ -321,12 +338,12 @@ export function IntakeWizard() {
   // =========================================================================
 
   // What saving the step on screen sends: PATCH /api/intake/sessions/{id}/, whose nested
-  // serializer creates and updates each section. null for Review, and for Contracts and
-  // Codebtors, whose lists save through their own endpoints (saveCurrentStepData).
+  // serializer creates and updates each section. Contracts and Codebtors send their bare list
+  // to their own endpoint instead (saveCurrentStepData). null for Review.
   // useAutoSave compares it with the step's last saved or loaded copy, so a step that only
   // shows what the server holds (a blank row, a recomputed total) sends nothing.
   const currentStepKey = WIZARD_STEPS[currentStepNumber - 1]?.key;
-  const currentStepBody = useMemo((): Partial<IntakeSession> | null => {
+  const currentStepBody = useMemo((): StepBody | null => {
     switch (currentStepKey) {
       case 'debtor_info':
         return { debtor_info: debtorData, household: { county } } as Partial<IntakeSession>;
@@ -405,10 +422,28 @@ export function IntakeWizard() {
 
       case 'debts':
         // Filter empty forms — debt_type, is_secured, and priority_classification
-        // are already set by DebtsStep via DEBT_CATEGORY_META lookup
+        // are already set by DebtsStep via DEBT_CATEGORY_META lookup. A payment goes as null,
+        // since the server keeps what it holds for a key left out.
         return {
-          debts: debtsData.filter((d) => d.creditor_name?.trim()),
+          debts: debtsData
+            .filter((d) => d.creditor_name?.trim())
+            .map((row) => ({ ...row, monthly_payment: row.monthly_payment ?? null })),
         } as Partial<IntakeSession>;
+
+      case 'contracts':
+        // A new row with no name stays in the browser. A stored row always goes, since the list
+        // save deletes a stored row it leaves out (3c spec §6.3). While the step's rule holds, a
+        // stored row without its name blocks the step, so it never gets here (R17).
+        return {
+          contracts: contractsData.filter(
+            (row) => row.id !== undefined || row.counterparty_name.trim()
+          ),
+        };
+
+      case 'codebtors':
+        return {
+          codebtors: codebtorsData.filter((row) => row.id !== undefined || row.name.trim()),
+        };
 
       default:
         return null;
@@ -429,6 +464,8 @@ export function IntakeWizard() {
     assetsData,
     assetAnswers,
     debtsData,
+    contractsData,
+    codebtorsData,
   ]);
 
   const { saveStatus, saveNow, lastSavedAt } = useAutoSave({
@@ -557,28 +594,35 @@ export function IntakeWizard() {
   // Data Persistence
   // =========================================================================
 
-  const saveCurrentStepData = async (
-    body: Partial<IntakeSession> | null
-  ): Promise<Partial<IntakeSession> | void> => {
+  const saveCurrentStepData = async (body: StepBody | null): Promise<StepBody | void> => {
     if (!session) return;
-
-    // Contracts and codebtors save as whole lists, only from Continue: their step body is null,
-    // so autosave never sends them. Blank rows are left out. The saved rows come back with
-    // their ids, so the next save updates them instead of adding them again (DIG-147).
-    if (currentStepKey === 'contracts') {
-      const named = contractsData.filter((contract) => contract.counterparty_name.trim());
-      setContractsData(await api.intake.saveContracts(session.id, named));
-      return;
-    }
-    if (currentStepKey === 'codebtors') {
-      const named = codebtorsData.filter((codebtor) => codebtor.name.trim());
-      setCodebtorsData(await api.intake.saveCodebtors(session.id, named));
-      return;
-    }
 
     if (body === null) {
       console.log(`Saving data for ${currentStepKey} not yet implemented`);
       return;
+    }
+
+    // Each list saves through its own PUT, which takes the bare list and replies in the order sent
+    if ('contracts' in body) {
+      const rows = body.contracts;
+      const save = ++listSavesRef.current.contracts;
+      const saved = await api.intake.saveContracts(
+        session.id,
+        rows.map(withoutKey) as ExecutoryContract[]
+      );
+      if (save !== listSavesRef.current.contracts) return;
+      const ids = savedIds(rows, saved as { id: number }[]);
+      setContractsData((current) => withSavedIds(current, ids));
+      return { contracts: withSavedIds(rows, ids) };
+    }
+    if ('codebtors' in body) {
+      const rows = body.codebtors;
+      const save = ++listSavesRef.current.codebtors;
+      const saved = await api.intake.saveCodebtors(session.id, rows.map(withoutKey) as Codebtor[]);
+      if (save !== listSavesRef.current.codebtors) return;
+      const ids = savedIds(rows, saved as { id: number }[]);
+      setCodebtorsData((current) => withSavedIds(current, ids));
+      return { codebtors: withSavedIds(rows, ids) };
     }
 
     // Assets, debts, household members and the Income step's entries carry the browser's own key,
@@ -770,8 +814,8 @@ export function IntakeWizard() {
       case 'contracts':
         return (
           <ContractsStep
-            initialData={contractsData}
-            onDataChange={setContractsData}
+            rows={contractsData}
+            onRowsChange={setContractsData}
             onValidationChange={setCanProceed}
           />
         );
@@ -779,8 +823,8 @@ export function IntakeWizard() {
       case 'codebtors':
         return (
           <CodebtorsStep
-            initialData={codebtorsData}
-            onDataChange={setCodebtorsData}
+            rows={codebtorsData}
+            onRowsChange={setCodebtorsData}
             onValidationChange={setCanProceed}
           />
         );
@@ -796,8 +840,8 @@ export function IntakeWizard() {
             expenseData={expenseData}
             assetsData={assetsData}
             debtsData={debtsData}
-            contractsData={contractsData}
-            codebtorsData={codebtorsData}
+            contractsData={contractsData.filter((row) => row.id !== undefined)}
+            codebtorsData={codebtorsData.filter((row) => row.id !== undefined)}
             householdCount={session?.household?.family_size ?? null}
             county={county}
             onValidationChange={setCanProceed}

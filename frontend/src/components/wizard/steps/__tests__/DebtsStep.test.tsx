@@ -155,4 +155,10 @@ describe('DebtsStep secured amounts owed', () => {
       }),
     ]);
   });
+
+  // Draft until counsel rules on C-17 (DIG-280)
+  it("gives a creditor, not a collector, as the name's example", () => {
+    render(<StepWithRows onRowsChange={noop} />);
+    expect(screen.getByPlaceholderText('e.g., Capital One, Dr. Smith')).toBeInTheDocument();
+  });
 });

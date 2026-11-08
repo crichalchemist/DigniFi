@@ -211,3 +211,65 @@ def test_correcting_a_scanned_bill_or_pay_stub_reopens_a_completed_intake(
     assert response.status_code == 200
     session.refresh_from_db()
     assert session.status == "in_progress"
+
+
+def _raw_creditor_name(debt_id):
+    from django.db import connection
+
+    with connection.cursor() as cursor:
+        cursor.execute("SELECT creditor_name FROM debt_info WHERE id = %s", [debt_id])
+        return cursor.fetchone()[0]
+
+
+def test_a_corrected_creditor_name_is_stored_encrypted(db, auth_client, session):
+    client, user = auth_client
+    doc, _, draft = _scanned_bill_with_draft(session, user)
+
+    response = client.post(
+        f"/api/documents/{doc.id}/validate/",
+        {"fields": {"creditor_name": "Lakeshore Medical Billing"}},
+        format="json",
+    )
+
+    assert response.status_code == 200
+    raw = _raw_creditor_name(draft.pk)
+    assert raw.startswith("gAAAAA")
+    assert "Lakeshore" not in raw
+    draft.refresh_from_db()
+    assert draft.creditor_name == "Lakeshore Medical Billing"
+
+
+@pytest.mark.parametrize("bad_name", ["N" * 256, "", None])
+def test_a_corrected_creditor_name_too_long_blank_or_missing_is_refused(
+    db, auth_client, session, bad_name
+):
+    client, user = auth_client
+    doc, ocr, draft = _scanned_bill_with_draft(session, user)
+
+    response = client.post(
+        f"/api/documents/{doc.id}/validate/",
+        {"fields": {"creditor_name": bad_name}},
+        format="json",
+    )
+
+    assert response.status_code == 400
+    assert "creditor_name" in response.json()
+    draft.refresh_from_db()
+    assert draft.creditor_name == "Chase"
+    ocr.refresh_from_db()
+    assert ocr.user_validated is False
+
+
+def test_a_corrected_creditor_name_of_exactly_255_letters_is_kept(db, auth_client, session):
+    client, user = auth_client
+    doc, _, draft = _scanned_bill_with_draft(session, user)
+
+    response = client.post(
+        f"/api/documents/{doc.id}/validate/",
+        {"fields": {"creditor_name": "N" * 255}},
+        format="json",
+    )
+
+    assert response.status_code == 200
+    draft.refresh_from_db()
+    assert len(draft.creditor_name) == 255
