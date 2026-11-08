@@ -2,17 +2,17 @@
  * ContractsStep - Executory contracts and unexpired leases (Schedule G)
  *
  * Lists contracts/leases the debtor is party to. Each entry needs
- * counterparty name, type, and description. The wizard saves the whole
- * list when the filer presses Continue (DIG-147).
+ * counterparty name, type, and description. The wizard holds the list, autosaves
+ * it while the step can continue, and saves it on Continue (DIG-147).
  */
 
-import { useState, useEffect, useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { Button } from '../../common';
-import type { ExecutoryContract } from '../../../types/api';
+import type { ContractRow, ExecutoryContract } from '../../../types/api';
 
 interface ContractsStepProps {
-  initialData?: ExecutoryContract[];
-  onDataChange: (data: ExecutoryContract[]) => void;
+  rows: ContractRow[];
+  onRowsChange: (rows: ContractRow[]) => void;
   onValidationChange: (isValid: boolean) => void;
 }
 
@@ -28,44 +28,38 @@ const EMPTY_CONTRACT: ExecutoryContract = {
   description: '',
 };
 
-export function ContractsStep({
-  initialData,
-  onDataChange,
-  onValidationChange,
-}: ContractsStepProps) {
-  const [contracts, setContracts] = useState<ExecutoryContract[]>(initialData ?? []);
+// The last new row's key: unique while the page is open, and the prefix keeps it apart from a
+// loaded row's key, which is its id
+let nextKey = 0;
 
-  // A row left blank is not saved; a row the filer started needs the other party's name
+export function ContractsStep({ rows, onRowsChange, onValidationChange }: ContractsStepProps) {
+  // A row left blank is not saved; a row the filer started needs the other party's name. A
+  // stored row can't lose its name: the list save deletes a stored row it leaves out
   const errors = useMemo(
     () =>
-      contracts.map((contract) =>
-        !contract.counterparty_name.trim() && contract.description.trim()
+      rows.map((row) =>
+        !row.counterparty_name.trim() && (row.id !== undefined || row.description.trim())
           ? 'Please enter the name of the other party'
           : undefined
       ),
-    [contracts]
+    [rows]
   );
   const isValid = errors.every((error) => !error);
 
-  // Update parent when contracts change
-  useEffect(() => {
-    onDataChange(contracts);
-    onValidationChange(isValid);
-    // both callbacks are useState setters in IntakeWizard — stable identities
-  }, [contracts, isValid, onDataChange, onValidationChange]);
+  useEffect(() => onValidationChange(isValid), [isValid, onValidationChange]);
 
   const addContract = () => {
-    setContracts([...contracts, { ...EMPTY_CONTRACT }]);
+    onRowsChange([...rows, { _key: `new-${++nextKey}`, ...EMPTY_CONTRACT }]);
   };
 
   const updateContract = (index: number, field: keyof ExecutoryContract, value: string) => {
-    const updated = [...contracts];
+    const updated = [...rows];
     updated[index] = { ...updated[index], [field]: value };
-    setContracts(updated);
+    onRowsChange(updated);
   };
 
   const removeContract = (index: number) => {
-    setContracts(contracts.filter((_, i) => i !== index));
+    onRowsChange(rows.filter((_, i) => i !== index));
   };
 
   return (
@@ -76,14 +70,14 @@ export function ContractsStep({
         where both sides still have obligations to perform.
       </p>
 
-      {contracts.length === 0 && (
+      {rows.length === 0 && (
         <p className="text-gray-500 italic mb-4">
           No contracts or leases added yet. Click &quot;Add Contract&quot; to begin.
         </p>
       )}
 
-      {contracts.map((contract, index) => (
-        <div key={index} className="border rounded p-4 mb-4">
+      {rows.map((contract, index) => (
+        <div key={contract._key} className="border rounded p-4 mb-4">
           <div className="grid grid-cols-2 gap-4 mb-3">
             <div>
               <label
@@ -117,8 +111,14 @@ export function ContractsStep({
               )}
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Type</label>
+              <label
+                htmlFor={`field-contract_type_${index}`}
+                className="block text-sm font-medium mb-1"
+              >
+                Type
+              </label>
               <select
+                id={`field-contract_type_${index}`}
                 className="w-full border rounded px-3 py-2"
                 value={contract.contract_type}
                 onChange={(e) => updateContract(index, 'contract_type', e.target.value)}
@@ -132,13 +132,20 @@ export function ContractsStep({
             </div>
           </div>
           <div className="mb-3">
-            <label className="block text-sm font-medium mb-1">Description</label>
+            <label
+              htmlFor={`field-description_${index}`}
+              className="block text-sm font-medium mb-1"
+            >
+              Description
+            </label>
+            {/* Draft until counsel rules on C-17 (DIG-280) */}
             <input
+              id={`field-description_${index}`}
               type="text"
               className="w-full border rounded px-3 py-2"
               value={contract.description}
               onChange={(e) => updateContract(index, 'description', e.target.value)}
-              placeholder="e.g., Apartment lease, car loan"
+              placeholder="e.g., Apartment lease, car lease"
             />
           </div>
           <Button variant="outline" size="sm" onClick={() => removeContract(index)}>

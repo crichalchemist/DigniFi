@@ -41,14 +41,16 @@
 
 - `DebtorInfo.ssn` - Social Security Number
 - `AssetInfo.current_value`, `amount_owed`, `account_number` - Asset values and account numbers
-- `DebtInfo.amount_owed`, `DebtInfo.account_number` - Debt details
+- `DebtInfo.amount_owed`, `account_number`, `creditor_name`, `monthly_payment`, `notes`, `collateral_description`, `date_incurred` - Debt details
+- `ExecutoryContract.counterparty_name`, `description` - Contracts and leases (Schedule G)
+- `Codebtor` - every answer: name, address and relationship (Schedule H)
 - `FilingFee` - every answer: how the filer will pay the fee (Form 101 line 8), and Form 103B lines 4, 5, 7 and 9
 - `SOFAPriorIncome.gross_amount`, `SOFACreditorPayment.total_paid` - Financial affairs amounts
 - `MeansTest.calculation_details` - Means test working
 - `GeneratedForm.field_values` - Resolved form values
 - `OCRResult.extracted_data` - Fields read from uploaded documents
 
-**Not encrypted (among others):** `IncomeInfo` and `ExpenseInfo` amounts, `MeansTest` amounts (`calculated_cmi`, `disposable_income` and the rest), `IngestedAggregate.value` (pay-stub gross pay), `DebtInfo.creditor_name` and `monthly_payment`, `SOFACreditorPayment.creditor_name`, `SOFAPriorIncome.source`, `AssetInfo.description`
+**Not encrypted (among others):** `MeansTest` amounts (`calculated_cmi`, `disposable_income` and the rest), `IngestedAggregate.value` (pay-stub gross pay), `SOFACreditorPayment.creditor_name`, `AdversaryProceeding.lender_name` and `loan_amount` (a plaintext copy of a student-loan debt's creditor name and balance, until step 5), `SOFAPriorIncome.source`
 
 ### Database Security
 

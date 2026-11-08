@@ -193,7 +193,7 @@ export function DebtsStep({ rows, onRowsChange, onValidationChange }: DebtsStepP
 
       {/* Debts List */}
       {debts.map((debt, index) => (
-        <section key={index} className="form-section debt-card">
+        <section key={debt._key} className="form-section debt-card">
           <div className="debt-card-header">
             <h3 className="section-title">
               Amount Owed {index + 1}
@@ -241,6 +241,7 @@ export function DebtsStep({ rows, onRowsChange, onValidationChange }: DebtsStepP
           />
 
           <div className="form-row">
+            {/* Draft until counsel rules on C-17 (DIG-280) */}
             <FormField
               label="Creditor Name"
               name={`creditor_name_${index}`}
@@ -250,7 +251,7 @@ export function DebtsStep({ rows, onRowsChange, onValidationChange }: DebtsStepP
               error={errors[index]?.creditor_name}
               required
               helpText="Company or person you owe money to"
-              placeholder="e.g., Capital One, Dr. Smith, ABC Collections"
+              placeholder="e.g., Capital One, Dr. Smith"
             />
 
             <FormField

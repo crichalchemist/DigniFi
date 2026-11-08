@@ -1,6 +1,7 @@
 """Evaluate dischargeability and create adversary proceedings."""
 
 from apps.eligibility.services.dischargeability_classifier import classify_debt
+from apps.intake.claims import ordered_debts
 from apps.intake.models import AdversaryProceeding, IntakeSession
 
 
@@ -11,7 +12,7 @@ class DischargeabilityService:
     def evaluate(self) -> list[dict]:
         results = []
         debts_to_update = []
-        for debt in self.session.debts.all():
+        for debt in ordered_debts(self.session.debts.all()):
             classification = classify_debt(debt)
 
             # Update fields but don't save immediately
