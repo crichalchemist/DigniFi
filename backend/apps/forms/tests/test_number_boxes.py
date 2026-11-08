@@ -88,7 +88,6 @@ def test_the_clip_check_sees_a_clipped_number(schedule_d_with_copies):
         *(("schedule_h", f"fill 3.{n}", None, "999") for n in range(4, 12)),
         *(("schedule_h", f"fill 3.{n}", None, "1000") for n in range(4, 12)),
         ("schedule_g", "fill 2.10", None, "10"),
-        ("schedule_d", "fill_27.1.0", None, "100"),
     ],
 )
 def test_a_number_that_fits_is_not_clipped(form_type, name, tag, number):
@@ -96,6 +95,16 @@ def test_a_number_that_fits_is_not_clipped(form_type, name, tag, number):
     template = load_schema(form_type).template_filename
     value, size = fit(widget, template, number, number_box=True)
     page, empty = _drawn_alone(form_type, widget, value, size)
+    assert _clear_of_the_clip(page, empty, widget) > 0
+
+
+@pytest.mark.slow
+def test_a_page_number_that_fits_is_not_clipped():
+    # A page-number box is planned without number_box (the engine's own path), so fit gets no flag.
+    widget = _widget("schedule_d", "fill_27.1.0", None)
+    template = load_schema("schedule_d").template_filename
+    value, size = fit(widget, template, "100")
+    page, empty = _drawn_alone("schedule_d", widget, value, size)
     assert _clear_of_the_clip(page, empty, widget) > 0
 
 

@@ -262,6 +262,31 @@ def test_a_groups_totals_land_on_its_own_copies_beside_another_groups(
     ]
 
 
+@pytest.mark.slow
+def test_the_last_page_total_lands_on_its_groups_copy_when_only_that_group_overflows(
+    schedule_d_with_totals_and_part_2, generated_form_factory, creditor_payments
+):
+    # Part 1 overflows by one row; Part 2 doesn't, so its page 3 is the last page and has no copy.
+    session = generated_form_factory().session
+    creditor_payments(session, 6)
+
+    _, _, drawn = _drawn("schedule_d", session)
+
+    assert _printed(drawn, ["undefined_9", "undefined_23", "undefined_24"]) == {
+        (1, None, "undefined_9"): "300.00",
+        (2, None, "undefined_23"): "1200.00",
+        (2, None, "undefined_24"): "",
+        (2, 1, "undefined_23"): "600.00",
+        (2, 1, "undefined_24"): "2100.00",
+    }
+    assert _page_numbers(drawn, D_THIS, D_OF) == [
+        (1, None, "", "4"),
+        (2, None, "2", "4"),
+        (2, 1, "3", "4"),
+        (3, None, "4", "4"),
+    ]
+
+
 def test_a_total_keeps_every_cent(
     schedule_d_with_totals, generated_form_factory, creditor_payments
 ):

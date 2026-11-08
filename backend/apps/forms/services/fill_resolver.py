@@ -374,6 +374,8 @@ def _headers(schema: FormSchema, form: dict[str, str], page: int) -> dict[str, s
     The form's values a copy of `page` repeats: those of a box whose full name prints on
     `page` and on another page too, such as "Debtor 1" and "Case number" (R24). Never a
     box that prints on one page alone, such as a page total, and never a group's own box.
+    A page-number box stays out of a copy only because `_number_pages` runs after every
+    `_copies` has read these headers.
     """
     drawn: dict[str, list[TemplateWidget]] = {}
     for widget in template_widgets(schema.template_filename):
@@ -657,8 +659,7 @@ def _resolve_parts(schema: FormSchema, session: IntakeSession) -> dict:
                 raise ValueError(f"{schema.form_type}: group {group_name!r} names no extra page")
             overflowing.append((group, fields, printed, resolved_cols, capacity, actual))
 
-    # Copies once the form's own values are all in: they repeat its page headers. Then the
-    # pages are numbered once, counting every group's copies (3c spec §5.2).
+    # Copies once the form's own values are all in: they repeat its page headers.
     copies_of: dict[str, list[dict]] = {}
     for group, fields, printed, resolved_cols, capacity, actual in overflowing:
         copies_of[group.name] = _copies(
@@ -674,7 +675,9 @@ def _resolve_parts(schema: FormSchema, session: IntakeSession) -> dict:
             _ingested_cache,
         )
         copies += copies_of[group.name]
-    # Printing order, however the schema declares its groups (sorted is stable).
+    # Printing order, however the schema declares its groups (sorted is stable). Then the pages
+    # are numbered once, counting every group's copies (3c spec §5.2): the order matters, since
+    # numbering runs only after every group's copies, and their headers, exist.
     copies.sort(key=lambda copy: copy["page"])
     _number_pages(schema, out, copies)
     for group_name, group in schema.groups.items():

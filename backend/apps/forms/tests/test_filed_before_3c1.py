@@ -5,6 +5,8 @@ now. The document below is what the engine stored before 3c1, written out by han
 move with the engine.
 """
 
+import copy
+
 import pytest
 
 from apps.forms.services.pdf_filler import PDFFormFiller
@@ -96,3 +98,22 @@ def test_a_form_filed_before_parts_existed_redraws_as_it_was_filed():
 def test_a_filed_form_ignores_totals_the_schema_declares_later(schedule_d_with_totals):
     # undefined_24 still prints the stored 0.00 on page 2, and no total appears anywhere else.
     assert _printed(FILED) == PRINTED
+
+
+@pytest.mark.slow
+def test_a_filed_form_prints_its_stored_page_numbers_whatever_the_schema_counts(
+    schedule_d_with_two_groups,
+):
+    # The schema declares the form's page_numbers, and a recompute would print "4" in each box.
+    filed = copy.deepcopy(FILED)
+    form, page_copy = filed["parts"]
+    for name in ("fill_27.0", "fill_27.1.1", "fill_28.1.2"):
+        form["values"][name] = "9"
+    page_copy["values"]["fill_27.1.1"] = "9"
+
+    printed = _printed(filed)
+
+    assert printed[(1, None, "fill_27.0")] == "9"
+    assert printed[(2, None, "fill_27.1.1")] == "9"
+    assert printed[(2, 1, "fill_27.1.1")] == "9"
+    assert printed[(3, None, "fill_28.1.2")] == "9"
