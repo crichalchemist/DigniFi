@@ -36,7 +36,7 @@
   --text-h1: 1.5rem;
   --text-h2: 1.1875rem;
   --text-h3: 1rem;
-  --text-caption: 0.875rem; /* floor — nothing smaller carries text */
+  --text-caption: 1rem; /* floor — nothing smaller carries text (16px: TRAUMA_INFORMED_DESIGN.md) */
 
   /* Spacing (4px scale) */
   --space-1: 0.25rem;

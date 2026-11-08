@@ -99,6 +99,22 @@ describe('ProgressIndicator', () => {
     expect(liveRegion).toHaveAttribute('aria-live', 'polite');
   });
 
+  // Below 1024px the numbered row is hidden (global.css), so the step must be said in words
+  it('tells a filer on a narrow screen which step they are on, in words', () => {
+    const steps = makeSteps(3);
+    render(<ProgressIndicator steps={steps} currentStep={3} />);
+
+    expect(screen.getByText('Step 3 of 6: Expenses')).toBeInTheDocument();
+  });
+
+  it('fills the narrow-screen stripe through the current step', () => {
+    const steps = makeSteps(3);
+    const { container } = render(<ProgressIndicator steps={steps} currentStep={3} />);
+
+    expect(container.querySelectorAll('.progress-stripe-segment')).toHaveLength(6);
+    expect(container.querySelectorAll('.progress-stripe-segment.filled')).toHaveLength(3);
+  });
+
   it('applies CSS classes based on step state', () => {
     const steps = makeSteps(3);
     render(<ProgressIndicator steps={steps} currentStep={3} />);
