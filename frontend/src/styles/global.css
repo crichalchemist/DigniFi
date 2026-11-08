@@ -170,6 +170,18 @@ a {
   border-radius: var(--radius);
 }
 
+/* The title keeps the content column; the progress row below it is wider, so nine step
+   names fit at the 16px text floor. The row takes over the column's bottom padding. */
+.wizard-header .wizard-container {
+  padding-bottom: 0;
+}
+
+.wizard-progress {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 var(--space-4) var(--space-6);
+}
+
 .wizard-title {
   font-family: var(--font-display);
   color: var(--color-cream);
@@ -342,6 +354,52 @@ a {
 
 .step-connector.completed {
   background: var(--color-gold);
+}
+
+/* Narrow screens: a step summary and the poster stripe take the numbered row's place */
+.progress-compact {
+  display: none;
+}
+
+.progress-compact-text {
+  color: var(--color-cream);
+  font-size: var(--text-caption);
+  margin-bottom: var(--space-2);
+}
+
+.progress-stripe {
+  display: flex;
+  gap: 2px;
+  height: 6px;
+}
+
+.progress-stripe-segment {
+  flex: 1;
+  background-color: var(--color-sand);
+}
+
+.progress-stripe-segment.filled {
+  background-color: var(--color-gold);
+}
+
+@media (max-width: 1023px) {
+  .wizard-progress {
+    padding: 0 1.5rem;
+  }
+
+  .progress-steps {
+    display: none;
+  }
+
+  .progress-compact {
+    display: block;
+  }
+}
+
+@media (max-width: 767px) {
+  .wizard-progress {
+    padding: 0 1rem;
+  }
 }
 
 /* ============================================================================
@@ -592,6 +650,15 @@ a {
 
 .form-row > * {
   flex: 1;
+}
+
+/* On phones paired fields stack: three across left 16px labels on two lines and
+   clipped the State choice */
+@media (max-width: 767px) {
+  .form-row {
+    flex-direction: column;
+    gap: 0;
+  }
 }
 
 .form-field {

@@ -121,6 +121,9 @@ export function WizardLayout({
           <p className="wizard-subtitle">
             We'll guide you through the information needed to understand your options.
           </p>
+        </div>
+        {/* Wider than the content column, so nine step names fit at the 16px text floor */}
+        <div className="wizard-progress">
           <ProgressIndicator steps={progressSteps} currentStep={currentStepNumber} />
         </div>
       </header>
