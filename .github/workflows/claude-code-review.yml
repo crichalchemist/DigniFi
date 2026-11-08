@@ -95,12 +95,14 @@ jobs:
           # gets no secrets.
           claude_args: '--allowed-tools "Bash,Read,Grep,Glob,Write,Edit,WebFetch,WebSearch,mcp__github_inline_comment__create_inline_comment"'
 
-      - name: Show the review's turns, cost and refused calls
-        # The execution file holds every message the model wrote, so print only the turn count,
-        # the cost, the final message's length and whether it starts with the summary's heading
-        # (a run that posts nothing may have written its summary there instead), and each call
-        # the allowed tools refused, its input cut to 200 characters.
-        # Each refused call's line starts with "- ", so no input can pass as a workflow command.
+      - name: Show how the review ran and why it stopped
+        # The reviews of #34 (71 files) and #35 (85 files) ended on their own, with no refused
+        # call, no error and no turn limit, and posted nothing. The logs show only the final
+        # message's length, so this prints what decides why a review stopped: how it ended, the
+        # calls refused, how many calls it made (inline comments and summary posts among them),
+        # compactions, the largest context, the failed tool results, the last calls and the
+        # final message itself. A call's input or a tool result is cut to 200 characters, and
+        # every line of free text starts with "- ", so none can pass as a workflow command.
         # The summary run below writes its execution file to the same path, so this runs first.
         if: ${{ !cancelled() }}
         env:
@@ -111,16 +113,31 @@ jobs:
             exit 0
           fi
           jq -r '
-            [.[] | select(.type == "result")] | last
-            | if . == null then "The review ended without a result."
+            def calls: [.[] | select(.type == "assistant") | .message.content[]? | select(.type == "tool_use")];
+            def ctx: (.input_tokens // 0) + (.cache_read_input_tokens // 0) + (.cache_creation_input_tokens // 0);
+            def lines: gsub("\r"; "") | split("\n")[] | "- " + .;
+            def failed: [.[] | select(.type == "user") | .message.content[]? | select(.type? == "tool_result" and .is_error == true)
+              | .content | if type == "string" then . else ([.[]? | .text? // ""] | join(" ")) end];
+            (calls) as $calls
+            | (failed) as $failed
+            | ([.[] | select(.type == "result")] | last) as $r
+            | if $r == null then "The review ended without a result."
               else
-                "Turns: \(.num_turns)",
-                "Cost (USD): \(.total_cost_usd)",
-                (if (.result | type) == "string"
-                 then "Final message: \(.result | length) characters, starts with \"## Claude review\": \(.result | startswith("## Claude review"))"
-                 else "Final message: none" end),
-                "Refused calls: \((.permission_denials // []) | length)",
-                ((.permission_denials // [])[] | "- \(.tool_name): \(.tool_input | tojson | .[0:200])")
+                "Turns: \($r.num_turns)",
+                "Cost (USD): \($r.total_cost_usd)",
+                "Stop: subtype \($r.subtype), is_error \($r.is_error)",
+                "Refused calls: \(($r.permission_denials // []) | length)",
+                (($r.permission_denials // [])[] | "- \(.tool_name): \(.tool_input | tojson | .[0:200])"),
+                "Tool calls: \($calls | length) (inline comments \([$calls[] | select(.name | endswith("create_inline_comment"))] | length), summary posts \([$calls[] | select(.name == "Bash" and (.input.command // "" | test("gh pr comment")))] | length))",
+                "Compactions: \([.[] | select(.type == "system" and .subtype == "compact_boundary")] | length)",
+                "Peak context (tokens): \([.[] | select(.type == "assistant") | .message.usage // {} | ctx] | max // 0)",
+                "Failed tool results: \($failed | length)",
+                ($failed[-3:][] | "- \(tojson | .[0:200])"),
+                "Last tool calls:",
+                ($calls[-8:][] | "- \(.name): \(.input | tojson | .[0:200])"),
+                (if ($r.result | type) == "string"
+                 then "Final message (\($r.result | length) characters):", ($r.result | .[0:3000] | lines)
+                 else "Final message: none" end)
               end
           ' "$EXECUTION_FILE"
 
