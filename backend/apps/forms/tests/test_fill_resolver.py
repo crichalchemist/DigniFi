@@ -371,7 +371,7 @@ def test_rows_past_the_slots_go_to_copies_of_the_extra_page(session):
         "b_107_0425-form.pdf",
         "v1",
         _slots(),
-        groups={"cp": GroupSpec("cp", extra_page=2, number=None, number_boxes={}, page_numbers=())},
+        groups={"cp": GroupSpec("cp", extra_page=2, number=None, number_boxes={})},
     )
 
     # Page 2's two slots take rows 5 and 6 on its first copy, and row 7 on its second.
@@ -400,7 +400,7 @@ def test_a_legal_review_row_prints_neither_in_the_slots_nor_on_a_copy(session):
         )
         for row in range(1, 5)
     ]
-    group = GroupSpec("cp", extra_page=2, number=None, number_boxes={}, page_numbers=())
+    group = GroupSpec("cp", extra_page=2, number=None, number_boxes={})
     schema = FormSchema("form_107", "b_107_0425-form.pdf", "v1", _slots() + reviewed, {"cp": group})
 
     parts = resolve_parts(schema, session)["parts"]
@@ -437,7 +437,7 @@ def test_a_copy_never_repeats_a_row_from_the_form(session):
         )
         for row, box in enumerate(boxes, start=1)
     ]
-    group = GroupSpec("notified", extra_page=3, number=None, number_boxes={}, page_numbers=())
+    group = GroupSpec("notified", extra_page=3, number=None, number_boxes={})
     schema = FormSchema("schedule_d", "form_b106d.pdf", "v1", fields, {"notified": group})
 
     form, copy = resolve_parts(schema, session)["parts"]
@@ -669,7 +669,7 @@ def _covering_schema(column):
         ),
     ]
     sheet = SheetSpec("A title", (SheetColumn("Make", "assets.line_3[].make", 100.0), column))
-    group = GroupSpec("ab", None, "3.{n}", {}, (), sheet)
+    group = GroupSpec("ab", None, "3.{n}", {}, sheet)
     return FormSchema("schedule_a_b", "form_b106ab.pdf", "v1", slots, {"ab": group})
 
 
@@ -700,7 +700,7 @@ def test_a_statement_sheet_stores_a_wider_line_column_as_a_slot_groups_does(sess
     sheet = SheetSpec(
         "A title", (SheetColumn("Cash", "assets.line_16[].value", 100.0),), line_width=48.0
     )
-    group = GroupSpec("cash", None, "16.{n}", {}, (), sheet)
+    group = GroupSpec("cash", None, "16.{n}", {}, sheet)
     schema = FormSchema("schedule_a_b", "form_b106ab.pdf", "v1", [], {"cash": group})
 
     (part,) = resolve_parts(schema, session)["parts"][1:]

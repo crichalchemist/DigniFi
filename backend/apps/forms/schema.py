@@ -113,7 +113,6 @@ class GroupSpec:
     extra_page: int | None
     number: str | None  # the entry number, such as "2.{n}", n the row's position in the group
     number_boxes: dict[int, str]  # slot row → the key of that slot's entry-number box
-    page_numbers: tuple[PageNumberBoxes, ...]
     sheet: SheetSpec | None = None
 
 
@@ -126,6 +125,7 @@ class FormSchema:
     template_version: str
     fields: list[FieldSpec]
     groups: dict[str, GroupSpec] = field(default_factory=dict)
+    page_numbers: tuple[PageNumberBoxes, ...] = ()
 
 
 def is_statement_group(schema: FormSchema, name: str) -> bool:
@@ -175,10 +175,6 @@ def load_schema(form_type: str) -> FormSchema:
             extra_page=group.get("extra_page"),
             number=group.get("number"),
             number_boxes={int(row): key for row, key in group.get("number_boxes", {}).items()},
-            page_numbers=tuple(
-                PageNumberBoxes(page=boxes["page"], this=boxes.get("this"), of=boxes.get("of"))
-                for boxes in group.get("page_numbers", [])
-            ),
             sheet=_sheet(group["sheet"]) if "sheet" in group else None,
         )
         for name, group in raw.get("groups", {}).items()
@@ -190,6 +186,10 @@ def load_schema(form_type: str) -> FormSchema:
         template_version=raw["template_version"],
         fields=fields,
         groups=groups,
+        page_numbers=tuple(
+            PageNumberBoxes(page=boxes["page"], this=boxes.get("this"), of=boxes.get("of"))
+            for boxes in raw.get("page_numbers", [])
+        ),
     )
 
 
@@ -211,6 +211,15 @@ def _sheet(sheet: dict) -> SheetSpec:
         ),
         line_width=float(sheet.get("line_width", SheetSpec.line_width)),
     )
+
+
+def _add_writer(writers: dict, writer: tuple, key: str) -> None:
+    """Record `writer` as filling the widget(s) a values key names, if the key parses."""
+    try:
+        name, at, tag = parse_key(key)
+    except ValueError:
+        return  # E003 reports a key that names no widget
+    writers.setdefault(name, []).append((writer, at, tag))
 
 
 # Index widget types each binding type may target (spec §5.4 check 4).
@@ -327,18 +336,13 @@ def validate_schema(
         if f.pdf_field in index:  # any other name is reported above (E003)
             writers.setdefault(f.pdf_field, []).append((("binding", i), f.page, f.tag))
     for group_name, group in schema.groups.items():
-        boxes = [(("number", group_name, row), key) for row, key in group.number_boxes.items()]
-        for p in group.page_numbers:
-            if p.this:
-                boxes.append((("this", group_name, p.page), p.this))
-            if p.of:
-                boxes.append((("of", p.of), p.of))
-        for writer, key in boxes:
-            try:
-                name, at, tag = parse_key(key)
-            except ValueError:
-                continue  # E003 below reports a key that names no widget
-            writers.setdefault(name, []).append((writer, at, tag))
+        for row, key in group.number_boxes.items():
+            _add_writer(writers, ("number", group_name, row), key)
+    for p in schema.page_numbers:
+        if p.this:
+            _add_writer(writers, ("this", p.page), p.this)
+        if p.of:
+            _add_writer(writers, ("of", p.of), p.of)
     for name, entries in writers.items():
         for widget in drawn.get(name, ()):
             fills = {
@@ -529,19 +533,55 @@ def validate_schema(
                     f"last slots, {max(pages)}",
                 )
             )
-    # 3a2 numbers a form's pages counting one group's copies only (R21, R56).
-    continued = [
-        repr(name) for name, group in schema.groups.items() if group.extra_page is not None
-    ]
-    if len(continued) > 1:
-        errors.append(
-            (
-                "E007",
-                f"groups {', '.join(continued[:-1])} and {continued[-1]} "
-                f"{'both' if len(continued) == 2 else 'all'} declare extra_page; "
-                "3a2 continues one group per form on copies",
-            )
-        )
+    # A copy's place in the form comes from its page and its number (3c spec §5.1): one group
+    # to each extra page. The form's page-number boxes count every group's copies (§5.2).
+    continued = {
+        name: group.extra_page
+        for name, group in schema.groups.items()
+        if group.extra_page is not None
+    }
+    names = list(continued)
+    for i, first in enumerate(names):
+        for second in names[i + 1 :]:
+            if continued[first] == continued[second]:
+                errors.append(
+                    (
+                        "E007",
+                        f"groups {first!r} and {second!r} both continue on copies of "
+                        f"page {continued[first]}",
+                    )
+                )
+    if schema.page_numbers and not continued:
+        errors.append(("E007", "no group continues on copies, so the form numbers no pages"))
+    numbered_pages = {p.page for p in schema.page_numbers}
+    if schema.page_numbers:
+        for name, page in continued.items():
+            if page not in numbered_pages:
+                errors.append(
+                    (
+                        "E007",
+                        f"group {name!r} continues on copies of page {page}, "
+                        "which has no page-number boxes",
+                    )
+                )
+    if widget_map is not None:
+        for p in schema.page_numbers:
+            for key in (p.this, p.of):
+                if key and not _drawn_on(key, p.page, drawn):
+                    errors.append(
+                        ("E003", f"page numbers: {key!r} is no drawn widget on page {p.page}")
+                    )
+            # A page's position prints in one box: an untagged key whose name has more than
+            # one drawn widget would print it in each. A page count is the same in all.
+            widgets = drawn.get(p.this, ()) if p.this else ()  # a tagged key has "@"
+            if len(widgets) > 1:
+                errors.append(
+                    (
+                        "E003",
+                        f"page numbers: {p.this!r} is drawn {len(widgets)} times, on pages "
+                        f"{_pages_drawn(p.this, drawn)}, so it needs a tag",
+                    )
+                )
     for name, group in schema.groups.items():
         if group.sheet is not None:
             errors += _sheet_errors(name, group, schema.template_filename)
@@ -627,16 +667,14 @@ def validate_schema(
                 )
             else:
                 boxes.append((key, page))
-        boxes += [(key, p.page) for p in group.page_numbers for key in (p.this, p.of) if key]
         for key, page in boxes:
             if not _drawn_on(key, page, drawn):
                 errors.append(
                     ("E003", f"group {name!r}: {key!r} is no drawn widget on page {page}")
                 )
-        # A row's or a page's number prints in one box: an untagged key whose name has more
-        # than one drawn widget would print it in each. A page count is the same in all.
-        numbered = [*group.number_boxes.values(), *(p.this for p in group.page_numbers if p.this)]
-        for key in numbered:
+        # A row's number prints in one box: an untagged key whose name has more than one
+        # drawn widget would print it in each.
+        for key in group.number_boxes.values():
             widgets = drawn.get(key, ())  # a tagged key has "@", so it is never a name here
             if len(widgets) > 1:
                 errors.append(
@@ -670,11 +708,6 @@ def _sheet_errors(name: str, group: GroupSpec, template: str) -> list[tuple[str,
 
     sheet = group.sheet
     errors = []
-    # Page numbers are filled when a group has copies (R21), and a sheet group has none.
-    if group.page_numbers:
-        errors.append(
-            ("E007", f"group {name!r}: a sheet group has no copies, so it numbers no pages")
-        )
     if not sheet.columns:
         errors.append(("E007", f"group {name!r}: its sheet has no columns for its rows"))
     total = sheet.line_width + sum(c.width for c in sheet.columns)

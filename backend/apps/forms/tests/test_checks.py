@@ -343,11 +343,11 @@ def _row_3_numbered_on_the_page_of_its_unmapped_box(d):
     "change, error",
     [
         (
-            lambda d: d.pop("groups"),
+            lambda d: (d.pop("groups"), d.pop("page_numbers")),
             ("forms.E007", "schedule_d: repeat group 'd_part_1' isn't declared in groups"),
         ),
         (
-            _group(lambda g: g.pop("extra_page")),
+            lambda d: (d["groups"]["d_part_1"].pop("extra_page"), d.pop("page_numbers")),
             ("forms.E007", "schedule_d: group 'd_part_1' names neither an extra_page nor a sheet"),
         ),
         (
@@ -421,10 +421,10 @@ def _row_3_numbered_on_the_page_of_its_unmapped_box(d):
         ),
         (
             # Page 2's own "of" box, declared as page 1's.
-            _group(lambda g: g["page_numbers"][0].update({"of": "fill_27.1.1"})),
+            lambda d: d["page_numbers"][0].update({"of": "fill_27.1.1"}),
             (
                 "forms.E003",
-                "schedule_d: group 'd_part_1': 'fill_27.1.1' is no drawn widget on page 1",
+                "schedule_d: page numbers: 'fill_27.1.1' is no drawn widget on page 1",
             ),
         ),
     ],
@@ -605,9 +605,9 @@ def test_a_repeat_group_whose_rows_sit_on_the_wrong_pages_is_reported(
         # Rows 4 and 5 both number themselves in row 5's box.
         (_group(lambda g: g["number_boxes"].update({"4": "undefined_19@2:T63"})), "undefined_19"),
         # Page 2's position written into row 5's amount box.
-        (_group(lambda g: g["page_numbers"][1].update({"this": "undefined_20"})), "undefined_20"),
+        (lambda d: d["page_numbers"][1].update({"this": "undefined_20"}), "undefined_20"),
         # Page 2's page count written into row 5's amount box.
-        (_group(lambda g: g["page_numbers"][1].update({"of": "undefined_20"})), "undefined_20"),
+        (lambda d: d["page_numbers"][1].update({"of": "undefined_20"}), "undefined_20"),
     ],
     ids=[
         "a number box on a slot's own box",
@@ -629,15 +629,8 @@ def test_a_page_count_box_drawn_on_two_pages_is_one_writer(schema_copy):
     # Schedule E/F draws one "of" box, fill_27.1.7, on pages 5 and 6. Every page prints the
     # same count, so declaring it for both pages can't conflict.
     def declare(d):
-        d["groups"] = {
-            "e_f": {
-                "extra_page": 6,
-                "page_numbers": [
-                    {"page": 5, "of": "fill_27.1.7"},
-                    {"page": 6, "of": "fill_27.1.7"},
-                ],
-            }
-        }
+        d["groups"] = {"e_f": {"extra_page": 6}}
+        d["page_numbers"] = [{"page": 5, "of": "fill_27.1.7"}, {"page": 6, "of": "fill_27.1.7"}]
 
     _edit(schema_copy, "schedule_e_f", declare)
     assert _errors("schedule_e_f") == []
@@ -673,8 +666,22 @@ def test_a_page_count_box_drawn_on_two_pages_is_one_writer(schema_copy):
                 "so it needs a tag",
             ),
         ),
+        (
+            # Page 2's position would print on pages 1 and 3 as well.
+            lambda d: d["page_numbers"][1].update({"this": "Case number"}),
+            (
+                "forms.E003",
+                "schedule_d: page numbers: 'Case number' is drawn 3 times, on pages "
+                "[1, 2, 3], so it needs a tag",
+            ),
+        ),
     ],
-    ids=["a slot", "a number box", "a number box with a twin on its page"],
+    ids=[
+        "a slot",
+        "a number box",
+        "a number box with a twin on its page",
+        "a page number's this box",
+    ],
 )
 def test_an_untagged_group_key_drawn_on_other_pages_is_reported(
     schedule_d_with_copies, change, error
@@ -738,19 +745,58 @@ def _part_2(declaration):
     return add
 
 
-def test_a_second_group_continued_on_copies_is_reported(schedule_d_with_copies):
-    # 3a2 numbers a form's pages counting one group's copies only (R21, R56).
+def test_a_form_takes_several_groups_continued_on_copies(schedule_d_with_copies):
+    # D's Parts 1 and 2 (3c spec §5.1): E/F needs three.
     _edit(schedule_d_with_copies, "schedule_d", _part_2({"extra_page": 3}))
+    assert _errors("schedule_d") == []
+
+
+def test_two_groups_cannot_continue_on_copies_of_one_page(schedule_d_with_copies):
+    # A copy's place in the form comes from its page and its number, so two groups' copies of
+    # one page would print under one number.
+    def add(d):
+        d["fields"] = [
+            f
+            for f in d["fields"]
+            if not (f["pdf_field"] == "Creditors Name_2" and f["repeat"] == "d_part_1")
+        ]
+        d["fields"].append(
+            {
+                **_text("Creditors Name_2", 1, None),
+                "source": "asked",
+                "value": None,
+                "binding": "sofa.creditor_payments[].creditor_name",
+                "repeat": "other",
+                "repeat_capacity": 1,
+                "row": 1,
+            }
+        )
+        d["groups"]["other"] = {"extra_page": 2}
+
+    _edit(schedule_d_with_copies, "schedule_d", add)
+    assert (
+        "forms.E007",
+        "schedule_d: groups 'd_part_1' and 'other' both continue on copies of page 2",
+    ) in _errors("schedule_d")
+
+
+def test_page_numbers_on_a_form_with_copies_pass(schedule_d_with_two_groups):
+    assert _errors("schedule_d") == []
+
+
+def test_page_numbers_that_leave_out_a_continued_page_are_reported(schedule_d_with_copies):
+    # Page 2's copies would count in "of N" and print no number of their own.
+    _edit(schedule_d_with_copies, "schedule_d", lambda d: d["page_numbers"].pop(1))
     assert _errors("schedule_d") == [
         (
             "forms.E007",
-            "schedule_d: groups 'd_part_1' and 'd_part_2' both declare extra_page; "
-            "3a2 continues one group per form on copies",
+            "schedule_d: group 'd_part_1' continues on copies of page 2, "
+            "which has no page-number boxes",
         )
     ]
 
 
-def test_a_group_with_no_extra_page_is_not_counted_as_a_second(schedule_d_with_copies):
+def test_a_second_group_with_no_extra_page_is_reported(schedule_d_with_copies):
     # Such a group is refused for its own reason.
     _edit(schedule_d_with_copies, "schedule_d", _part_2({}))
     assert _errors("schedule_d") == [
@@ -758,7 +804,7 @@ def test_a_group_with_no_extra_page_is_not_counted_as_a_second(schedule_d_with_c
     ]
 
 
-def test_a_group_continued_on_an_attached_sheet_is_not_counted_as_a_second(
+def test_a_group_on_a_sheet_passes_beside_a_group_on_copies(
     schedule_d_with_copies,
 ):
     # A sheet's pages aren't copies of the form's, so they number none of its pages (R56).
@@ -902,8 +948,11 @@ _AB = "schedule_a_b: group 'ab_line_3'"
             ("forms.E007", f"{_AB}: number must contain {{n}}"),
         ),
         (
-            _sheet(lambda g: g.update(page_numbers=[{"page": 2}])),
-            ("forms.E007", f"{_AB}: a sheet group has no copies, so it numbers no pages"),
+            lambda d: d.update(page_numbers=[{"page": 2}]),
+            (
+                "forms.E007",
+                "schedule_a_b: no group continues on copies, so the form numbers no pages",
+            ),
         ),
         (
             # A row of line numbers alone.

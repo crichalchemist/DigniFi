@@ -12,6 +12,7 @@ returns its form part.
 from __future__ import annotations
 
 import re
+from collections import Counter
 from collections.abc import Callable
 
 from apps.eligibility.cmi import counted_spouse_income, household_members
@@ -372,7 +373,6 @@ def _headers(schema: FormSchema, form: dict[str, str], page: int) -> dict[str, s
     own = {_key(f) for f in schema.fields if f.repeat is not None}
     for group in schema.groups.values():
         own |= set(group.number_boxes.values())
-        own |= {key for boxes in group.page_numbers for key in (boxes.this, boxes.of) if key}
     headers = {}
     for key, value in form.items():
         name, at, tag = parse_key(key)
@@ -400,9 +400,8 @@ def _copies(
     """
     The copies of the group's extra page that print its rows past `capacity` (3a2 spec §5.2):
     each holds as many rows as that page has slots, in the slots' order, numbers them as
-    the group does, and repeats the form's page headers. With copies, every page-number
-    box counts them, the form's own (written into `form`) included (R21). The group's
-    `fields` decide its slots and `printed` the cells that print, as on the form's pages.
+    the group does, and repeats the form's page headers. The group's `fields` decide its
+    slots and `printed` the cells that print, as on the form's pages.
     """
     page = group.extra_page
     slots = sorted({f.row for f in fields if f.page == page and f.row})
@@ -421,19 +420,33 @@ def _copies(
                 values[group.number_boxes[row]] = group.number.format(n=position)
         copies.append({"kind": "copy", "page": page, "number": len(copies) + 1, "values": values})
 
-    if group.page_numbers:
-        total = page_count(schema.template_filename) + len(copies)
-        for boxes in group.page_numbers:
-            # Copy n prints right after page `page`, as page `page` + n of the form.
-            position = boxes.page if boxes.page <= page else boxes.page + len(copies)
-            _number_page(form, boxes, position, total)
-            if boxes.page == page:
-                for copy in copies:
-                    _number_page(copy["values"], boxes, page + copy["number"], total)
     headers = _headers(schema, form, page)
     for copy in copies:
         copy["values"] = {**headers, **copy["values"]}
     return copies
+
+
+def _number_pages(schema: FormSchema, form: dict[str, str], copies: list[dict]) -> None:
+    """
+    With copies, every page-number box counts the copies of every group (3c spec §5.2): a page's
+    position is its page number plus the copies of each page before it, and copy n of a page
+    prints n places after that page. E007 keeps one group to each extra page.
+    """
+    if not copies:
+        return
+    copies_of = Counter(copy["page"] for copy in copies)
+    total = page_count(schema.template_filename) + len(copies)
+
+    def position(page: int) -> int:
+        return page + sum(count for extra, count in copies_of.items() if extra < page)
+
+    boxes_of = {boxes.page: boxes for boxes in schema.page_numbers}
+    for boxes in schema.page_numbers:
+        _number_page(form, boxes, position(boxes.page), total)
+    for copy in copies:
+        if copy["page"] in boxes_of:
+            at = position(copy["page"]) + copy["number"]
+            _number_page(copy["values"], boxes_of[copy["page"]], at, total)
 
 
 def _line_width(sheet: SheetSpec) -> dict[str, float]:
@@ -605,7 +618,8 @@ def _resolve_parts(schema: FormSchema, session: IntakeSession) -> dict:
                 raise ValueError(f"{schema.form_type}: group {group_name!r} names no extra page")
             overflowing.append((group, fields, printed, resolved_cols, capacity, actual))
 
-    # Copies once the form's own values are all in: they repeat its page headers.
+    # Copies once the form's own values are all in: they repeat its page headers. Then the
+    # pages are numbered once, counting every group's copies (3c spec §5.2).
     for group, fields, printed, resolved_cols, capacity, actual in overflowing:
         copies += _copies(
             schema,
@@ -619,6 +633,9 @@ def _resolve_parts(schema: FormSchema, session: IntakeSession) -> dict:
             session,
             _ingested_cache,
         )
+    # Printing order, however the schema declares its groups (sorted is stable).
+    copies.sort(key=lambda copy: copy["page"])
+    _number_pages(schema, out, copies)
     for name, group in schema.groups.items():
         if not is_statement_group(schema, name):
             continue
