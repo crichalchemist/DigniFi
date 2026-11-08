@@ -202,7 +202,7 @@ A sturdy civic palette: one structural pine, one action gold, two state colors, 
 
 ### Tertiary
 
-- **Honest Alert** (#9c4a2e): Errors. Field borders and base lines in error, error messages, the error box border and icon, the required-field asterisk, and row-removal actions. Warm, not alarm red: a correction, not a siren. 5.96:1 on paper. The one non-error use is the hover color of auth-page links.
+- **Honest Alert** (#9c4a2e): Errors. Field borders and base lines in error, error messages, the error box border and icon, the required-field asterisk, and row-removal actions. Warm, not alarm red: a correction, not a siren. 5.96:1 on paper. Beyond errors, rust marks required fields and removal actions, and auth-page links turn rust on hover.
 - **Fresh Start** (#5b7c52): Success. The filed check and the filed form card's left edge, success text, and the survey's thank-you. 4.60:1 on paper, which passes AA by 0.10, so neither color may be lightened.
 
 ### Neutral
