@@ -9,17 +9,20 @@ tests read the printed page (pdf_readback.read_drawn), not the fields' /V.
 
 import json
 import logging
+from io import BytesIO
 
 import pymupdf
 import pypdf
 import pytest
 from pypdf._codecs import adobe_glyphs
 from pypdf._font import Font
+from pypdf.generic import NullObject
 from pypdf.generic._appearance_stream import TextStreamAppearance
 
 from apps.forms.registry import get_all_form_types
 from apps.forms.schema import load_schema
 from apps.forms.services.pdf_filler import (
+    InvalidFieldValue,
     PDFFormFiller,
     TemplateHasNoForm,
     UnknownField,
@@ -60,6 +63,17 @@ def _helvetica_in(pdf_bytes, widget):
     ]
 
 
+def test_filled_form_is_a_pdf():
+    result = PDFFormFiller().fill("form_121", {"Debtor1.First name": "Maria"})
+    assert result[:4] == b"%PDF"
+
+
+def test_debtor_1_name_never_lands_in_debtor_2_box():
+    pdf = PDFFormFiller().fill("form_122a1", {"Debtor1.Name": "Maria Torres"})
+    assert set(_values("form_122a1", pdf, "Debtor1.Name")) == {"Maria Torres"}
+    assert _values("form_122a1", pdf, "Debtor2.Name") == [""]
+
+
 def test_the_drawn_form_has_no_fillable_field_left():
     """
     pypdf 6.13.1 builds each widget's appearance and adds it to the PDF (the internals
@@ -71,6 +85,17 @@ def test_the_drawn_form_has_no_fillable_field_left():
     assert callable(TextStreamAppearance.from_text_annotation)
     assert callable(pypdf.PdfWriter._add_object)
     assert pymupdf.__version__ == "1.27.2.3"
+    pdf = PDFFormFiller().fill("form_121", {"Debtor1.First name": "Maria"})
+    reader = pypdf.PdfReader(BytesIO(pdf))
+    # pypdf's own get_fields() can't read a null /AcroForm, so the root is read directly.
+    assert isinstance(reader.trailer["/Root"]["/AcroForm"], NullObject)
+    assert [
+        a
+        for page in reader.pages
+        for a in page.get("/Annots") or []
+        if a.get_object().get("/Subtype") == "/Widget"
+    ] == []
+    assert "Maria" in pymupdf.open("pdf", pdf)[0].get_text()
 
 
 def test_text_is_measured_with_pinned_pypdf_font_internals():
@@ -86,6 +111,27 @@ def test_text_is_measured_with_pinned_pypdf_font_internals():
     assert adobe_glyphs["/.notdef"] == "□"  # what printable() leaves out
     bbox = font.font_descriptor.bbox
     assert (bbox[1], bbox[3]) == (-225, 931)  # its line spacing
+
+
+def test_checkbox_ticks_only_the_widgets_for_its_state():
+    pdf = PDFFormFiller().fill("form_101", {"Check Box1": "/Chapter 7"})
+    states = [w.state for w in read_drawn("form_101", pdf) if w.full_name == "Check Box1"]
+    # Chapter 7 is printed on pages 1 and 3; the other six options stay off.
+    assert states.count("/Chapter 7") == 2
+    assert states.count("/Off") == len(states) - 2
+
+
+def test_state_the_template_lacks_raises_instead_of_printing_nothing():
+    with pytest.raises(InvalidFieldValue):
+        PDFFormFiller().fill("form_101", {"Check Box1": "/Chapter 9"})
+
+
+def test_district_must_be_one_of_the_templates_options():
+    district = "Bankruptcy District Information"
+    pdf = PDFFormFiller().fill("form_121", {district: "Northern District of Illinois"})
+    assert _values("form_121", pdf, district) == ["Northern District of Illinois"]
+    with pytest.raises(InvalidFieldValue):
+        PDFFormFiller().fill("form_121", {district: "District of Nowhere"})
 
 
 def test_short_name_no_longer_fills_anything():
@@ -118,7 +164,6 @@ def test_template_without_a_form_raises(tmp_path, settings):
 _NAME = "Łukasz O’Brien"
 
 
-@pytest.mark.slow
 def test_a_letter_outside_latin_1_prints_on_every_box():
     # A/B's page-1 header and these three bound boxes carry a /DR of their own whose font
     # lacks the template's encoding, so pypdf used to print "?" in them (R32).
@@ -137,7 +182,22 @@ def test_a_letter_outside_latin_1_prints_on_every_box():
         assert _values(form_type, pdf, full_name) == [value], form_type
 
 
-@pytest.mark.slow
+@pytest.mark.parametrize(
+    "form_type,full_name",
+    [
+        ("schedule_i", "Assistance 8f"),
+        ("schedule_a_b", "24.1 Interest in an education IRA"),
+    ],
+)
+def test_shared_name_boxes_print_their_own_values(form_type, full_name):
+    template = load_schema(form_type).template_filename
+    first, second = [w for w in template_widgets(template) if w.full_name == full_name]
+    pdf = PDFFormFiller().fill(form_type, {first.key: "Nadrova 1", second.key: "Nadrova 2"})
+    printed = {(w.page, w.tag): w.value for w in read_drawn(form_type, pdf)}
+    assert printed[(first.page, first.tag)] == "Nadrova 1"
+    assert printed[(second.page, second.tag)] == "Nadrova 2"
+
+
 @pytest.mark.parametrize(
     "form_type,key,value",
     [
@@ -156,7 +216,26 @@ def test_a_tagged_value_prints_only_in_its_own_box(form_type, key, value):
     assert printed and set(printed.values()) == {""}
 
 
-@pytest.mark.slow
+@pytest.mark.parametrize(
+    "form_type,full_name,ticked,neighbour",
+    [
+        # Each pair's rects overlap by about 2 pt: a tick in either box must not read as
+        # a tick in the other.
+        ("form_101", "Check Box1", (1, "T7"), (1, "T6")),  # Chapter 13, Chapter 12
+        ("form_101", "Check Box1", (1, "T6"), (1, "T7")),
+        ("schedule_d", "check 4", (2, "T28"), (2, "T27")),  # with another; Debtor 1 and 2
+        ("schedule_d", "check 4", (2, "T27"), (2, "T28")),
+    ],
+)
+def test_a_tick_reads_back_only_in_its_own_box(form_type, full_name, ticked, neighbour):
+    template = load_schema(form_type).template_filename
+    (widget,) = [w for w in template_widgets(template) if (w.page, w.tag) == ticked]
+    pdf = PDFFormFiller().fill(form_type, {widget.key: widget.states[0]})
+    printed = {(w.page, w.tag): w.state for w in read_drawn(form_type, pdf)}
+    assert printed[ticked] == widget.states[0]
+    assert printed[neighbour] == "/Off"
+
+
 @pytest.mark.parametrize("form_type", get_all_form_types())
 def test_nothing_the_blank_template_prints_reads_as_a_value(form_type):
     # A blank form still prints the template's own defaults: a district combo's
@@ -179,7 +258,6 @@ def test_a_shrunk_value_prints_at_its_planned_size():
     assert all(abs(size - planned.size) <= 0.05 for _, _, size in drawn)
 
 
-@pytest.mark.slow
 def test_a_multi_line_boxs_first_line_keeps_its_capitals_marks():
     # pypdf hangs line 1 from the font's top at the box's height plus its margin, so the
     # box cut Å's ring off; the drawing lowers that line by 2 × margin (R35). MuPDF reads a
@@ -196,7 +274,6 @@ def test_a_multi_line_boxs_first_line_keeps_its_capitals_marks():
     assert top == pytest.approx(box.rect[1] + box.margin, abs=0.06)
 
 
-@pytest.mark.slow
 def test_an_empty_multi_line_box_prints_nothing():
     # pypdf's appearance for an empty value has no line, so there is none to lower.
     pdf = PDFFormFiller().fill("schedule_a_b", {OTHER_PROPERTY: ""})

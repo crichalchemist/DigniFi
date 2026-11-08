@@ -249,22 +249,22 @@ class TestCreditorBillExtraction:
 class TestSchemaRegistry:
     """Tests for schema registry."""
 
-    @pytest.mark.parametrize(
-        "document_type,schema_name",
-        [
-            (DocumentType.PAY_STUB, "PayStubExtraction"),
-            (DocumentType.BALANCE_SHEET, "BalanceSheetExtraction"),
-            (DocumentType.CREDITOR_BILL, "CreditorBillExtraction"),
-        ],
-    )
-    def test_get_schema_for_type(self, document_type, schema_name):
-        """Test retrieving the schema of each supported document type."""
-        schema = get_schema_for_type(document_type)
-        assert schema.__name__ == schema_name
-        assert SCHEMA_MAP[document_type] is schema
+    def test_get_schema_for_paystub(self):
+        """Test retrieving pay stub schema."""
+        schema = get_schema_for_type(DocumentType.PAY_STUB)
+        assert schema == PayStubExtraction
 
-    def test_schema_map_contains_profit_loss(self):
-        assert DocumentType.PROFIT_LOSS in SCHEMA_MAP
+    def test_get_schema_for_balance_sheet(self):
+        """Test retrieving balance sheet schema."""
+        schema = get_schema_for_type(DocumentType.BALANCE_SHEET)
+        assert schema == BalanceSheetExtraction
+
+    def test_get_schema_for_creditor_bill(self):
+        """Test retrieving creditor bill schema."""
+        from apps.documents.schemas.creditor_bill import CreditorBillExtraction
+
+        schema = get_schema_for_type(DocumentType.CREDITOR_BILL)
+        assert schema == CreditorBillExtraction
 
     def test_get_schema_raises_for_unsupported_type(self):
         """Test error for unsupported document type."""
@@ -272,3 +272,10 @@ class TestSchemaRegistry:
             get_schema_for_type(DocumentType.BANK_STATEMENT)
 
         assert "No extraction schema defined" in str(exc_info.value)
+
+    def test_schema_map_contains_expected_types(self):
+        """Test schema map has expected document types."""
+        assert DocumentType.PAY_STUB in SCHEMA_MAP
+        assert DocumentType.BALANCE_SHEET in SCHEMA_MAP
+        assert DocumentType.PROFIT_LOSS in SCHEMA_MAP
+        assert DocumentType.CREDITOR_BILL in SCHEMA_MAP

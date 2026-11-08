@@ -4,7 +4,6 @@ import json
 
 import pytest
 
-from apps.forms.registry import get_all_form_types
 from apps.forms.schema import FieldSpec, FormSchema, load_schema
 
 SAMPLE = {
@@ -95,20 +94,3 @@ def test_load_schema_with_ui_metadata(tmp_path, settings):
     assert field.ui.prompt == "What is your street address?"
     assert field.ui.widget == "text"
     assert field.ui.help_text == "No PO Boxes"
-
-
-@pytest.mark.parametrize("form_type", get_all_form_types())
-def test_a_forms_schema_loads_and_each_field_names_a_known_source(form_type):
-    schema = load_schema(form_type)
-
-    assert schema.form_type == form_type
-    for f in schema.fields:
-        assert f.source in (
-            "presume",
-            "derived",
-            "constant",
-            "asked",
-            "ingested",
-            "db_aggregate",
-            "signature",
-        )

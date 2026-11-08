@@ -105,16 +105,10 @@ def _pypdf_stream(form_type, widget, value, size=-1):
         ("Nowak□", "□"),
     ],
 )
-@pytest.mark.parametrize("decompose", [False, True])
-def test_a_letter_the_form_cannot_print_is_refused(last_name, letter, decompose):
-    # Text pasted from a file name or some PDFs, or typed with combining marks, holds é as
-    # e and U+0301: it is judged as the one letter, and ễ is refused as the whole letter.
-    printed_as = last_name
-    if decompose:
-        last_name = unicodedata.normalize("NFD", last_name)
+def test_a_letter_the_form_cannot_print_is_refused(last_name, letter):
     if letter is None:
         (planned,) = _plan("form_101", {LAST_NAME: last_name})
-        assert (planned.value, planned.size) == (printed_as, 10.0)
+        assert (planned.value, planned.size) == (last_name, 10.0)
         return
     with pytest.raises(UnprintableLetter) as refused:
         PDFFormFiller().check("form_101", {LAST_NAME: last_name})
@@ -130,12 +124,49 @@ def test_a_letter_the_form_cannot_print_is_refused(last_name, letter, decompose)
     )
 
 
+@pytest.mark.parametrize("last_name", ["Varée", "Peñalta", "Grünholt"])
+def test_a_letter_typed_as_a_letter_and_its_mark_prints_as_the_one_letter(last_name):
+    # Text pasted from a file name or some PDFs, or typed with combining marks, holds é as
+    # e and U+0301: the form prints it as é, the one letter its font has.
+    decomposed = unicodedata.normalize("NFD", last_name)
+    assert len(decomposed) == len(last_name) + 1
+    (planned,) = _plan("form_101", {LAST_NAME: decomposed})
+    assert (planned.value, planned.size) == (last_name, 10.0)
+
+
+def test_a_letter_typed_with_its_marks_apart_is_refused_as_the_whole_letter():
+    # ễ is e with two marks: the form can't print ễ, so the refusal names ễ, not a mark.
+    with pytest.raises(UnprintableLetter) as refused:
+        PDFFormFiller().check("form_101", {LAST_NAME: unicodedata.normalize("NFD", "Nguyễn")})
+    assert refused.value.letter == "ễ"
+    assert str(refused.value) == (
+        "The court form can't print the letter “ễ” in “Last name”. "
+        "Change it to a letter without the mark."
+    )
+
+
 def test_a_mark_no_letter_takes_is_refused_at_the_mark():
     # No single letter is n with a diaeresis, so the mark stays apart and is refused itself
     # (the sentence for it is the owner's, W-1).
     with pytest.raises(UnprintableLetter) as refused:
         PDFFormFiller().check("form_101", {LAST_NAME: "Mun\N{COMBINING DIAERESIS}oz"})
     assert refused.value.letter == "\N{COMBINING DIAERESIS}"
+
+
+@pytest.mark.parametrize(
+    "space", ["\t", "\N{NO-BREAK SPACE}", "\N{THIN SPACE}", "\N{NARROW NO-BREAK SPACE}"]
+)
+def test_a_tab_or_any_other_space_prints_as_a_space(space):
+    # The template's font draws U+00A0 as "€" (R34) and has no glyph for the rest (R36).
+    (planned,) = _plan("form_101", {LAST_NAME: f"Varée{space}Peñalta"})
+    assert planned.value == "Varée Peñalta"
+
+
+@pytest.mark.parametrize("invisible", ["\N{SOFT HYPHEN}", "\N{ZERO WIDTH SPACE}"])
+def test_a_character_that_prints_nothing_is_left_out(invisible):
+    # Format characters, pasted along with text, print nothing anyway (R36).
+    (planned,) = _plan("form_101", {LAST_NAME: f"Varée{invisible}Peñalta"})
+    assert planned.value == "VaréePeñalta"
 
 
 def test_a_control_character_is_refused():
@@ -276,7 +307,6 @@ def test_a_multi_line_value_wraps_at_spaces_into_lines_that_fit():
     assert all(_helvetica(line, planned.size) <= _room(box) for line in lines)
 
 
-@pytest.mark.slow
 def test_a_multi_line_value_shrinks_to_the_largest_size_its_lines_fit():
     (box,) = _widgets("schedule_a_b", OTHER_PROPERTY)
     items = ["A canoe", "A bicycle", "A tent", "A saddle", "A kiln"]

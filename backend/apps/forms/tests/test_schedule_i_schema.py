@@ -106,12 +106,27 @@ def session_with_income(session):
 
 @pytest.mark.django_db
 class TestScheduleISchema:
+    def test_schema_loads(self):
+        schema = load_schema("schedule_i")
+        assert schema.form_type == "schedule_i"
+
+    def test_all_fields_have_valid_source(self):
+        schema = load_schema("schedule_i")
+        for f in schema.fields:
+            assert f.source in ("presume", "derived", "constant", "asked", "ingested")
+
     def test_resolver_produces_output(self, session_with_income):
         field_map = resolve(load_schema("schedule_i"), session_with_income)
         assert "Bankruptcy District Information" in field_map
         assert "Debtor 1" in field_map
         assert "Jane Doe" in field_map["Debtor 1"]
         assert "Amount 12" in field_map
+
+    def test_lines_10_and_12_print_the_income_total(self, session_with_income):
+        field_map = resolve(load_schema("schedule_i"), session_with_income)
+        # The wages are the only source given, so the Schedule I income total is the wages
+        assert field_map["Amount 12"] == "2000.00"
+        assert field_map["Amount 10 Debtor 1"] == "2000.00"
 
     def test_each_income_source_prints_on_its_own_line(self, session):
         # A distinct power of two per source, so a box that reads the wrong source, or
@@ -162,27 +177,16 @@ class TestScheduleISchema:
             (form_type, box): printed[form_type].get(box) for form_type, box in COMBINED_INCOME
         } == COMBINED_INCOME
 
-    @pytest.mark.parametrize("stray_spouse_row", [False, True])
-    def test_income_lines_print_blank_with_no_income_row(self, session, stray_spouse_row):
+    def test_income_lines_print_blank_with_no_income_row(self, session):
         # A row with nothing given prints 0.00 (§9.6); the Income step's gap refuses those forms
         # before anything prints (CLAUDE.md "Forms need a completed intake").
-        if stray_spouse_row:
-            SpouseIncome.objects.create(session=session, monthly_gross_wages=Decimal("1800.00"))
-        else:
-            household = Household(session=session)
-            household.store_members([])
-            household.save()
+        household = Household(session=session)
+        household.store_members([])
+        household.save()
         schedule_i = resolve(load_schema("schedule_i"), session)
+        schedule_j = resolve(load_schema("schedule_j"), session)
         assert sorted(INCOME_LINES & schedule_i.keys()) == []
-        if not stray_spouse_row:
-            # Schedule J needs the household list, which only this variant answered.
-            assert resolve(load_schema("schedule_j"), session).get("23a") is None
-        if stray_spouse_row:
-            assert schedule_i["Bankruptcy District Information"] == "Northern District of Illinois"
-            assert (
-                sorted(b for b in schedule_i if b.startswith("Amount") or b == "Other income 8h")
-                == []
-            )
+        assert schedule_j.get("23a") is None
 
     def test_schedule_i_column_2_prints_the_spouses_income_for_a_spouse_at_home(self, session):
         answer_income_step(
@@ -227,29 +231,15 @@ class TestScheduleISchema:
             field_map["Amount 12"],
         ) == ("12000.00",) * 3
 
-    @pytest.mark.parametrize("spouse_income", [{"monthly_gross_wages": Decimal("0.00")}, {}])
-    def test_a_spouse_at_home_prints_0_00_on_every_asked_line_left_blank(
-        self, session, spouse_income
-    ):
-        # A blank column counts as zero in the total, which still prints (step 2 spec §6.1).
+    def test_a_spouse_at_home_prints_0_00_on_every_asked_line_left_blank(self, session):
         answer_income_step(
             session,
             "married_together",
-            spouse_income,
+            {"monthly_gross_wages": Decimal("0.00")},
             monthly_gross_wages=Decimal("12000.00"),
         )
-        schedule_i = resolve(load_schema("schedule_i"), session)
-        printed = {b: v for b, v in schedule_i.items() if "Debtor 2" in b}
-        assert printed and set(printed.values()) == {"0.00"}
-        assert (
-            schedule_i["Amount 10 Debtor 1"],
-            schedule_i["Amount 10"],
-            schedule_i["Amount 12"],
-        ) == ("12000.00",) * 3
-        if not spouse_income:
-            return  # a spouse with nothing given has no CMI, so 122A-1 refuses
-        assert {"Amount 2 Debtor 2", "Amount 7 Debtor 2", "Amount 8b Debtor 2"} <= printed.keys()
         form_122a1 = resolve(load_schema("form_122a1"), session)
+        schedule_i = resolve(load_schema("schedule_i"), session)
         assert {b: v for b, v in form_122a1.items() if b.startswith("Debto2.")} == {
             **dict.fromkeys(
                 [
@@ -271,6 +261,9 @@ class TestScheduleISchema:
                 "0.00",
             ),
         }
+        printed = {b: v for b, v in schedule_i.items() if "Debtor 2" in b}
+        assert printed and set(printed.values()) == {"0.00"}
+        assert {"Amount 2 Debtor 2", "Amount 7 Debtor 2", "Amount 8b Debtor 2"} <= printed.keys()
 
     @pytest.mark.parametrize(
         "answer,filer_other,spouse_other,named",
@@ -297,6 +290,26 @@ class TestScheduleISchema:
         form_122a1 = resolve(load_schema("form_122a1"), session)
         schedule_i = resolve(load_schema("schedule_i"), session)
         assert (form_122a1.get(LINE_10_SOURCE), schedule_i.get("Other income 8h")) == (named, named)
+
+    def test_a_session_with_no_income_row_still_fills_the_other_boxes(self, session):
+        SpouseIncome.objects.create(session=session, monthly_gross_wages=Decimal("1800.00"))
+        field_map = resolve(load_schema("schedule_i"), session)
+        assert field_map["Bankruptcy District Information"] == "Northern District of Illinois"
+        assert (
+            sorted(b for b in field_map if b.startswith("Amount") or b == "Other income 8h") == []
+        )
+
+    def test_a_spouse_with_no_income_given_adds_nothing_to_lines_10_and_12(self, session):
+        # A blank column counts as zero in the total, which still prints (step 2 spec §6.1).
+        answer_income_step(session, "married_together", {}, monthly_gross_wages=Decimal("12000.00"))
+        field_map = resolve(load_schema("schedule_i"), session)
+        printed = {b: v for b, v in field_map.items() if "Debtor 2" in b}
+        assert printed and set(printed.values()) == {"0.00"}
+        assert (
+            field_map["Amount 10 Debtor 1"],
+            field_map["Amount 10"],
+            field_map["Amount 12"],
+        ) == ("12000.00",) * 3
 
 
 # ---------------------------------------------------------------------------
@@ -349,6 +362,12 @@ class TestScheduleIDeductionsAndAssistance:
             _printed(session, "form_106sum")["4"],
             _printed(session, "schedule_j")["23a"],
         ) == ("400.00", "2800.00", "2800.00", "2800.00", "2800.00", "2800.00")
+
+    def test_a_blank_deduction_prints_0_00_and_counts_as_zero(self, session):
+        _filer(session, monthly_gross_wages=Decimal("3200.00"))
+        answer_household(session, payroll_tax=Decimal("400.00"))
+        fm = _printed(session)
+        assert (fm["Amount 5g Debtor 1"], fm["Amount 6 Debtor 1"]) == ("0.00", "400.00")
 
     def test_deductions_larger_than_pay_print_take_home_pay_below_zero(self, session):
         _filer(session, monthly_gross_wages=Decimal("100.00"))
@@ -429,6 +448,17 @@ class TestScheduleIDeductionsAndAssistance:
         fm = _printed(session)
         assert fm["Amount 8f Debtor 1"] == "0.00"
         assert "Assistance 8f@2:T36" not in fm
+
+    def test_8a_takes_a_loss_on_the_current_figures_as_0_00_for_that_kind(self, session):
+        _filer(session)
+        answer_household(
+            session,
+            income_now_different="yes",
+            business_and_rental=[_entry("business", "1000.00", "400.00", "300.00", "900.00")],
+        )
+        fm = _printed(session)
+        assert fm["Amount 8a Debtor 1"] == "0.00"
+        assert DERIVATIONS["filer_cmi"](session) == "600.00"  # CMI keeps the averages' net
 
     def test_a_business_loss_never_lowers_rental_income_on_8a(self, session):
         _filer(session)

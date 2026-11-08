@@ -223,7 +223,6 @@ def _round_trip(migrate):
     ) == [(15960, 5680, date(2026, 1, 15), date(2027, 1, 31), SOURCE_2026)]
 
 
-@pytest.mark.slow
 def test_undoing_the_2026_guideline_removes_its_row_and_redoing_it_loads_it_once(migrate):
     _round_trip(migrate)
 

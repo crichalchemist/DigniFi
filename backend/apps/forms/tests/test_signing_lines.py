@@ -69,7 +69,6 @@ def _printed():
     return printed
 
 
-@pytest.mark.slow
 @pytest.mark.django_db
 @pytest.mark.parametrize(
     "form_type,box",

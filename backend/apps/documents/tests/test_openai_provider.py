@@ -35,25 +35,36 @@ class TestTextVersusVisionRouting:
     """Text-extracted PDFs must not be re-sent as images, and scanned pages must not
     be silently dropped — either mistake loses the debtor's document contents."""
 
-    @pytest.mark.parametrize(
-        "pages",
-        [
-            [b"\xff\xd8\xff"],
-            [b"\xff\xd8\xff\x00binary"],
-            [b"page-1", b"page-2", b"page-3"],
-        ],
-        ids=["one_page", "binary_page", "three_pages"],
-    )
-    def test_every_scanned_page_is_sent_in_page_order(self, provider, mock_openai_client, pages):
+    def test_markdown_only_document_is_sent_as_text(self, provider, mock_openai_client):
+        provider.extract([], "Return ONLY a valid JSON object for this pay stub.")
+        content = _sent_content(mock_openai_client)
+        assert [part["type"] for part in content] == ["text"]
+
+    def test_scanned_page_is_sent_as_an_inline_image(self, provider, mock_openai_client):
+        provider.extract([b"\xff\xd8\xff"], "Return ONLY a valid JSON object.")
+        content = _sent_content(mock_openai_client)
+        assert [part["type"] for part in content] == ["image_url", "text"]
+        assert content[0]["image_url"]["url"].startswith("data:image/jpeg;base64,")
+
+    def test_image_bytes_survive_the_round_trip_intact(self, provider, mock_openai_client):
         import base64
 
-        provider.extract(pages, "Return ONLY a valid JSON object.")
+        provider.extract([b"\xff\xd8\xff\x00binary"], "Return ONLY a valid JSON object.")
+        url = _sent_content(mock_openai_client)[0]["image_url"]["url"]
+        encoded = url.removeprefix("data:image/jpeg;base64,")
+        assert base64.b64decode(encoded) == b"\xff\xd8\xff\x00binary"
+
+    def test_every_scanned_page_is_sent_in_page_order(self, provider, mock_openai_client):
+        import base64
+
+        provider.extract([b"page-1", b"page-2", b"page-3"], "Return ONLY a valid JSON object.")
         content = _sent_content(mock_openai_client)
-        assert [part["type"] for part in content] == ["image_url"] * len(pages) + ["text"]
-        prefix = "data:image/jpeg;base64,"
-        urls = [part["image_url"]["url"] for part in content[: len(pages)]]
-        assert all(url.startswith(prefix) for url in urls)
-        assert [base64.b64decode(url.removeprefix(prefix)) for url in urls] == pages
+        assert [part["type"] for part in content] == ["image_url", "image_url", "image_url", "text"]
+        sent = [
+            base64.b64decode(part["image_url"]["url"].removeprefix("data:image/jpeg;base64,"))
+            for part in content[:3]
+        ]
+        assert sent == [b"page-1", b"page-2", b"page-3"]
 
 
 class TestStructuredOutputGuarantee:
@@ -69,6 +80,23 @@ class TestStructuredOutputGuarantee:
         provider.classify(b"", "Is this a pay stub?")
         kwargs = mock_openai_client.chat.completions.create.call_args.kwargs
         assert "response_format" not in kwargs
+
+
+class TestProviderContract:
+    """BaseOCRProvider promises a str. A None completion must not leak downstream as a
+    TypeError inside json.loads; it raises EmptyModelReply instead."""
+
+    def test_empty_completion_raises_instead_of_reaching_the_parser(
+        self, provider, mock_openai_client
+    ):
+        mock_openai_client.chat.completions.create.return_value = chat_completion(None)
+        with pytest.raises(EmptyModelReply):
+            provider.extract([], "Return ONLY a valid JSON object.")
+
+    def test_configured_model_is_the_one_requested(self, mock_openai_client):
+        OpenAIProvider(model="gpt-4o-mini").extract([], "Return ONLY a valid JSON object.")
+        kwargs = mock_openai_client.chat.completions.create.call_args.kwargs
+        assert kwargs["model"] == "gpt-4o-mini"
 
 
 class TestEmptyReplies:

@@ -71,24 +71,13 @@ def test_an_old_tax_filing_status_is_refused(filer, answer):
 @pytest.mark.parametrize("field", IncomeInfo.SOURCE_FIELDS)
 @pytest.mark.parametrize(
     "amount",
-    ["-1.00", "100000000.00", "12.345"],
-    ids=["negative", "too_wide", "fraction_of_a_cent"],
+    ["-1.00", "100000000.00", "NaN", "Infinity", "12.345"],
+    ids=["negative", "too_wide", "nan", "infinite", "fraction_of_a_cent"],
 )
 def test_a_spouse_amount_is_bounded_as_the_filers(filer, field, amount):
     # Each of the ten is bounded by its own declaration, so each one is checked.
     client, session = filer
     assert _save(client, session, {"spouse_income": {field: amount}}).status_code == 400
-    assert not SpouseIncome.objects.filter(session=session).exists()
-
-
-@pytest.mark.parametrize("amount", ["NaN", "Infinity"], ids=["nan", "infinite"])
-def test_a_spouse_amount_that_is_not_a_number_is_refused(filer, amount):
-    # DRF's DecimalField refuses these whatever a field's kwargs, so one field stands for all ten.
-    client, session = filer
-    assert (
-        _save(client, session, {"spouse_income": {"monthly_gross_wages": amount}}).status_code
-        == 400
-    )
     assert not SpouseIncome.objects.filter(session=session).exists()
 
 

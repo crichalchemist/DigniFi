@@ -123,6 +123,23 @@ def test_each_part_total_prints_on_its_own_line_and_again_on_the_summary(session
     assert {box: printed.get(box) for box in TOTALS} == TOTALS
 
 
+def test_the_summary_adds_up_the_way_the_form_says(session):
+    # Line 62 adds lines 56 through 61, and line 63 adds line 55 and line 62. Lines 59
+    # and 60 (business and farm property) are never asked, so they count as zero.
+    for asset_type, value in ASSETS:
+        _asset(session, asset_type, value)
+
+    printed = resolve(load_schema("schedule_a_b"), session)
+
+    def line(box):
+        return Decimal(printed[box])
+
+    assert "undefined_163" not in printed and "undefined_164" not in printed
+    lines_56_to_61 = ("undefined_160", "undefined_161", "undefined_162", "undefined_165")
+    assert line("undefined_166") == sum(line(box) for box in lines_56_to_61)
+    assert line("undefined_167") == line("undefined_159") + line("undefined_166")
+
+
 def test_the_summary_form_copies_the_property_totals_schedule_a_b_prints(session):
     # 106Sum lines 1a, 1b and 1c say "Copy line 55", "Copy line 62" and "Copy line 63
     # from Schedule A/B": the two forms must never disagree.
@@ -141,7 +158,6 @@ def test_the_summary_form_copies_the_property_totals_schedule_a_b_prints(session
     }
 
 
-@pytest.mark.slow
 def test_a_filer_with_no_property_gets_zero_totals_and_no_on_every_question(session):
     # The filer finished the intake with an empty list, which is "none" (Ruling T0-e,
     # owner Q8), so the totals print 0.00 and every question says No.
@@ -154,7 +170,6 @@ def test_a_filer_with_no_property_gets_zero_totals_and_no_on_every_question(sess
     assert filled.get(OTHER_PROPERTY) == set()
 
 
-@pytest.mark.slow
 @pytest.mark.parametrize("asset_type", [kind for kind, _ in AssetInfo.ASSET_TYPE_CHOICES])
 def test_each_property_question_answers_yes_only_for_the_kind_listed(session, asset_type):
     # Household goods have no question bound yet (lines 6-14 need rows, step 3), so a
@@ -184,7 +199,6 @@ def test_other_property_is_described_in_the_order_the_filer_listed_it(session):
     )
 
 
-@pytest.mark.slow
 def test_lines_the_intake_never_asks_print_nothing(session):
     # Every kind of property is listed, so a box still bound to a total, or to an
     # answer about one, would print. The account totals once filled the second

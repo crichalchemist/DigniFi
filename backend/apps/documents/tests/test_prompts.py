@@ -6,10 +6,14 @@ from apps.documents.services.providers.prompts.image_extraction import build_ima
 from apps.documents.services.providers.prompts.text_extraction import build_text_extraction_prompt
 
 
-def test_image_prompt_contains_schema_fields():
+def test_image_prompt_contains_doc_type():
     prompt = build_image_extraction_prompt(DocumentType.CREDITOR_BILL)
     assert "creditor" in prompt.lower()
     assert "JSON" in prompt
+
+
+def test_image_prompt_contains_schema_fields():
+    prompt = build_image_extraction_prompt(DocumentType.CREDITOR_BILL)
     assert "creditor_name" in prompt
     assert "amount_owed" in prompt
 

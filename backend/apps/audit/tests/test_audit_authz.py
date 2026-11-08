@@ -42,13 +42,14 @@ class AuditLogCrossTenantTests(TestCase):
         resp = self.client.get(url)
         self.assertEqual(resp.status_code, status.HTTP_404_NOT_FOUND)
 
-    def test_cannot_edit_or_delete_audit_log(self):
+    def test_cannot_delete_audit_log(self):
         self.client.force_authenticate(user=self.bob)
         url = reverse("auditlog-detail", args=[self.bob_log.id])
-        for verb, kwargs in (
-            ("delete", {}),
-            ("patch", {"data": {"action": "tampered"}, "format": "json"}),
-        ):
-            with self.subTest(verb=verb):
-                resp = getattr(self.client, verb)(url, **kwargs)
-                self.assertEqual(resp.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+        resp = self.client.delete(url)
+        self.assertEqual(resp.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+
+    def test_cannot_patch_audit_log(self):
+        self.client.force_authenticate(user=self.bob)
+        url = reverse("auditlog-detail", args=[self.bob_log.id])
+        resp = self.client.patch(url, {"action": "tampered"}, format="json")
+        self.assertEqual(resp.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)

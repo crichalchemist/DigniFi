@@ -91,7 +91,6 @@ def _debt(apps, session, creditor_name, debt_type, **fields):
     )
 
 
-@pytest.mark.slow
 def test_stored_car_loans_and_mortgages_become_secured_and_no_other_debt_changes(migrate):
     apps = migrate(BEFORE_BACKFILL)
     session = _session(apps)
@@ -120,13 +119,18 @@ def test_stored_car_loans_and_mortgages_become_secured_and_no_other_debt_changes
         "Couch Store": (True, "Living room set"),
     }
 
+
+def test_undoing_the_secured_backfill_leaves_debts_as_they_are(migrate):
+    apps = migrate(BEFORE_BACKFILL)
+    _debt(apps, _session(apps), "Ally Auto", "auto_loan")
+    migrate(BACKFILL)
+
     apps = migrate(BEFORE_BACKFILL)
 
     DebtInfo = apps.get_model("intake", "DebtInfo")
     assert DebtInfo.objects.get(creditor_name="Ally Auto").is_secured is True
 
 
-@pytest.mark.slow
 def test_stored_other_assets_stay_other_once_personal_property_exists(migrate):
     apps = migrate(BEFORE_STEP_2)
     AssetInfo = apps.get_model("intake", "AssetInfo")
@@ -185,7 +189,6 @@ AFTER_THE_SPLIT = {
 }
 
 
-@pytest.mark.slow
 def test_a_saved_total_above_zero_waits_for_the_filer_and_zero_becomes_ten_zeros(migrate):
     # Nothing recorded the amount from each source, so only a $0 total can be split without
     # the filer: every source was $0. Any other total is kept for the Income step to show.
@@ -196,12 +199,17 @@ def test_a_saved_total_above_zero_waits_for_the_filer_and_zero_becomes_ten_zeros
 
     assert _stored_income(apps) == AFTER_THE_SPLIT
 
+
+def test_undoing_the_income_split_leaves_income_as_it_is(migrate):
+    apps = migrate(BACKFILL)
+    _income_rows(apps, SAVED_TOTALS)
+    migrate(INCOME_SPLIT)
+
     apps = migrate(INCOME_COLUMNS)
 
     assert _stored_income(apps) == AFTER_THE_SPLIT
 
 
-@pytest.mark.slow
 def test_saved_fee_waiver_applications_leave_the_new_questions_unanswered(migrate):
     # A stored False would print a sworn "No" on Form 103B line 3, and a stored amount a
     # take-home figure nobody gave, so rows saved before the questions existed stay empty.
@@ -249,7 +257,6 @@ def _run_and_undo_the_marriage_migration(migrate):
     return _stored_marriage(migrate(MARRIAGE_ENCRYPTED)), _stored_marriage(migrate(HOUSEHOLD))
 
 
-@pytest.mark.slow
 def test_undoing_the_marriage_migration_restores_an_empty_column(migrate):
     # No tax status is a line 1 answer, so none carries over. Undone, the old column comes
     # back on a table with rows, empty in each, and the amounts are untouched both ways.
@@ -352,7 +359,23 @@ def _check_round_trip(before, after, undone):
         assert cursor.fetchone()[0] == 2  # "none" and "zero"
 
 
-def _assert_ciphertext():
+def _round_trip(migrate):
+    apps = migrate(BEFORE_ENCRYPTION)
+    _plaintext_rows(apps)
+    before = _values(apps)
+    after = _values(migrate(EXPENSES_ENCRYPTED))
+    undone = _values(migrate(BEFORE_ENCRYPTION))
+    return before, after, undone
+
+
+def test_encrypting_income_and_expenses_keeps_every_saved_value_both_ways(migrate):
+    _check_round_trip(*_round_trip(migrate))
+
+
+def _check_ciphertext(migrate):
+    apps = migrate(BEFORE_ENCRYPTION)
+    _plaintext_rows(apps)
+    migrate(EXPENSES_ENCRYPTED)
     with connection.cursor() as cursor:
         cursor.execute(
             "SELECT monthly_gross_wages, monthly_income FROM income_info"
@@ -365,23 +388,8 @@ def _assert_ciphertext():
     assert "3000.00" not in wages and "[3100, 3300" not in months and "1100.00" not in rent
 
 
-def _check_ciphertext(migrate):
-    apps = migrate(BEFORE_ENCRYPTION)
-    _plaintext_rows(apps)
-    migrate(EXPENSES_ENCRYPTED)
-    _assert_ciphertext()
-
-
-@pytest.mark.slow
-def test_encrypting_income_and_expenses_keeps_every_saved_value_both_ways(migrate):
-    # The stored columns are also Fernet ciphertext once encrypted, never the plaintext.
-    apps = migrate(BEFORE_ENCRYPTION)
-    _plaintext_rows(apps)
-    before = _values(apps)
-    after = _values(migrate(EXPENSES_ENCRYPTED))
-    _assert_ciphertext()
-    undone = _values(migrate(BEFORE_ENCRYPTION))
-    _check_round_trip(before, after, undone)
+def test_encrypted_income_and_expenses_are_ciphertext_in_the_table(migrate):
+    _check_ciphertext(migrate)
 
 
 def _undo_refuses_a_foreign_value(migrate, table, column, target):
@@ -398,7 +406,6 @@ def _undo_refuses_a_foreign_value(migrate, table, column, target):
     assert "3000" not in str(refused.value) and foreign not in str(refused.value)
 
 
-@pytest.mark.slow
 @pytest.mark.parametrize(
     "table,column,target",
     [
@@ -491,7 +498,6 @@ def _income_detail_round_trip(migrate):
     return kept, undone
 
 
-@pytest.mark.slow
 def test_adding_the_income_detail_columns_keeps_saved_income_and_leaves_them_unanswered(migrate):
     kept, undone = _income_detail_round_trip(migrate)
     amounts = (Decimal("3000.00"), Decimal("900.00"), Decimal("1800.00"))
@@ -546,7 +552,6 @@ def _schedule_j_lines_round_trip(migrate):
     return kept, undone.rent_or_mortgage
 
 
-@pytest.mark.slow
 def test_adding_the_schedule_j_lines_keeps_saved_expenses_and_leaves_line_3_unanswered(migrate):
     kept, undone = _schedule_j_lines_round_trip(migrate)
     assert kept == (Decimal("1100.00"), [0] * 13, None, ["", "", ""])

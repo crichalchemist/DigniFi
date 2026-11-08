@@ -108,7 +108,6 @@ def test_schedule_d_prints_its_secured_total_in_the_grand_total_box(debts):
     assert [w.value for w in widgets if w.full_name == "undefined_27"] == [""]
 
 
-@pytest.mark.slow
 def test_line_6j_totals_every_unsecured_debt_and_6f_the_unsecured_student_loans(debts):
     shown = _printed(debts, "schedule_e_f")
 
@@ -117,7 +116,13 @@ def test_line_6j_totals_every_unsecured_debt_and_6f_the_unsecured_student_loans(
     assert shown["Total_6j"] == "28000.00"
 
 
-@pytest.mark.slow
+def test_line_6j_adds_lines_6f_through_6i(debts):
+    shown = _printed(debts, "schedule_e_f")
+
+    # 6g and 6h are never asked and count as zero (step 2 spec §6.1).
+    assert Decimal(shown["Total_6f"]) + Decimal(shown["Total_6i"]) == Decimal(shown["Total_6j"])
+
+
 def test_a_secured_student_loan_never_turns_line_6i_negative(session):
     # Ruling T16-a: a student loan the filer saved as secured is on Schedule D, not 6f.
     _debt(session, "student_loan", "5000", secured=True)
@@ -132,7 +137,6 @@ def test_a_secured_student_loan_never_turns_line_6i_negative(session):
     )
 
 
-@pytest.mark.slow
 def test_the_summary_copies_the_totals_schedules_d_and_e_f_print(debts):
     d, ef = _printed(debts, "schedule_d"), _printed(debts, "schedule_e_f")
     summary = resolve(load_schema("form_106sum"), debts)
@@ -144,7 +148,6 @@ def test_the_summary_copies_the_totals_schedules_d_and_e_f_print(debts):
     assert Decimal(summary["3c"]) == Decimal(summary["2"]) + Decimal(summary["3b"])
 
 
-@pytest.mark.slow
 @pytest.mark.parametrize(
     "secured,d_ticks,ef_ticks",
     [
@@ -161,7 +164,6 @@ def test_each_debt_question_answers_yes_only_for_the_debts_its_schedule_lists(
     assert _printed(session, "schedule_e_f").get("check7", set()) == ef_ticks
 
 
-@pytest.mark.slow
 def test_a_filer_with_no_debts_gets_zero_totals_and_no_on_both_questions(session):
     d, ef = _printed(session, "schedule_d"), _printed(session, "schedule_e_f")
 

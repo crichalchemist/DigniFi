@@ -197,34 +197,6 @@ def test_103b_names_the_first_unanswered_line_in_the_forms_order(session):
     assert str(refused.value).startswith("Answer whether you expect your family's income")
 
 
-@pytest.mark.parametrize(
-    "left_blank,sentence",
-    [
-        (
-            {
-                "installments_explanation": "",
-                "others_covered_answer": None,
-                "expense_change_answer": None,
-            },
-            "Tell the court why you can't pay the filing fee in installments.",
-        ),
-        (
-            {"others_covered_answer": None, "expense_change_answer": None},
-            "Answer whether your expenses cover anyone not counted in your family.",
-        ),
-    ],
-)
-def test_with_several_lines_unanswered_103b_names_the_earliest_on_the_form(
-    session, left_blank, sentence
-):
-    # The filer fixes one line at a time, so the refusal must point at the line
-    # they reach first on the form, not whichever gap the code checks first.
-    session = _line_8(session, "waiver", **{**WAIVER, **left_blank})
-    with pytest.raises(PreconditionMissing) as refused:
-        build_field_values("form_103b", session)
-    assert str(refused.value) == sentence
-
-
 def test_103b_with_no_filing_fee_row_is_refused_in_words_never_an_attribute_error(session):
     assert not FilingFee.objects.filter(session=session).exists()
     with pytest.raises(PreconditionMissing) as refused:

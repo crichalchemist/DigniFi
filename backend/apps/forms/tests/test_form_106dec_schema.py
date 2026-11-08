@@ -48,6 +48,15 @@ def session_with_debtor(session):
 
 @pytest.mark.django_db
 class TestForm106DecSchema:
+    def test_schema_loads(self):
+        schema = load_schema("form_106dec")
+        assert schema.form_type == "form_106dec"
+
+    def test_all_fields_have_source(self):
+        schema = load_schema("form_106dec")
+        for f in schema.fields:
+            assert f.source in ("presume", "derived", "constant", "asked", "ingested")
+
     def test_required_fields_marked(self):
         schema = load_schema("form_106dec")
         required = [f for f in schema.fields if f.required]

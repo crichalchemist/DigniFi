@@ -48,6 +48,15 @@ def session_with_ssn(session):
 
 @pytest.mark.django_db
 class TestForm121Schema:
+    def test_schema_loads(self):
+        schema = load_schema("form_121")
+        assert schema.form_type == "form_121"
+
+    def test_all_fields_have_valid_source(self):
+        schema = load_schema("form_121")
+        for f in schema.fields:
+            assert f.source in ("presume", "derived", "constant", "asked", "ingested")
+
     def test_resolver_produces_output(self, session_with_ssn):
         field_map = resolve(load_schema("form_121"), session_with_ssn)
         assert "Debtor1.First name" in field_map

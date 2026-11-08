@@ -62,7 +62,6 @@ def _page_numbers(drawn):
     return list(pages.values())
 
 
-@pytest.mark.slow
 def test_extra_rows_print_on_copies_of_the_extra_page(session, creditor_payments):
     rows = creditor_payments(session, 6)
 
@@ -93,7 +92,14 @@ def test_extra_rows_print_on_copies_of_the_extra_page(session, creditor_payments
         ("undefined_14", 1): "",
         ("undefined_20", 1): "",
     }
+
+
+def test_a_copy_repeats_the_page_header_but_not_the_page_total(session, creditor_payments):
     # The filer's name heads every page; page 2's total prints once (R24).
+    creditor_payments(session, 6)
+
+    _, _, drawn = _drawn(session)
+
     assert {(w.page, w.copy, w.value) for w in drawn if w.full_name == "Debtor 1"} == {
         (1, None, "Maria Torres"),
         (2, None, "Maria Torres"),
@@ -104,36 +110,14 @@ def test_extra_rows_print_on_copies_of_the_extra_page(session, creditor_payments
         ("undefined_24", None): "0.00",
         ("undefined_24", 1): "",
     }
-    # Read without its parts, the copy would pass for page 3, and page 3 would go unread.
-    with pytest.raises(ValueError, match="4 pages, but its parts print 3"):
-        read_drawn("schedule_d", pdf)
 
 
-@pytest.mark.slow
 @pytest.mark.parametrize(
-    "count, kinds, copies, pages, entries, page_numbers",
+    "count, copies, entries, page_numbers",
     [
         (
-            3,
-            ["form"],
-            [],
-            3,
-            ["2.3", "", ""],  # only a slot that holds a row is numbered
-            [{"of": ""}, {"this": "", "of": ""}, {"this": "", "of": ""}],
-        ),
-        (
-            5,
-            ["form"],
-            [],
-            3,
-            ["2.3", "2.4", "2.5"],
-            [{"of": ""}, {"this": "", "of": ""}, {"this": "", "of": ""}],
-        ),
-        (
             6,
-            ["form", "copy"],
             [1],
-            4,
             ["2.3", "2.4", "2.5", "2.6", "", ""],
             [
                 {"of": "4"},
@@ -144,9 +128,7 @@ def test_extra_rows_print_on_copies_of_the_extra_page(session, creditor_payments
         ),
         (
             9,
-            ["form", "copy", "copy"],
             [1, 2],
-            5,
             ["2.3", "2.4", "2.5", "2.6", "2.7", "2.8", "2.9", "", ""],
             [
                 {"of": "5"},
@@ -157,24 +139,46 @@ def test_extra_rows_print_on_copies_of_the_extra_page(session, creditor_payments
             ],
         ),
     ],
-    ids=["a row on page 2", "every slot", "one copy", "two copies"],
+    ids=["one copy", "two copies"],
 )
 def test_entry_and_page_numbers_continue_on_each_copy(
-    session, creditor_payments, count, kinds, copies, pages, entries, page_numbers
+    session, creditor_payments, count, copies, entries, page_numbers
 ):
-    # Rows that fit the slots print no copy and no page number.
     creditor_payments(session, count)
 
-    parts, pdf, drawn = _drawn(session)
+    parts, _, drawn = _drawn(session)
 
-    assert [part["kind"] for part in parts] == kinds
     assert [part["number"] for part in parts if part["kind"] == "copy"] == copies
-    assert len(pymupdf.open("pdf", pdf)) == pages
     assert _entries(drawn) == entries
     assert _page_numbers(drawn) == page_numbers
 
 
-@pytest.mark.slow
+@pytest.mark.parametrize(
+    "count, entries",
+    [(3, ["2.3", "", ""]), (5, ["2.3", "2.4", "2.5"])],
+    ids=["a row on page 2", "every slot"],
+)
+def test_rows_that_fit_the_slots_print_no_copy_and_no_page_number(
+    session, creditor_payments, count, entries
+):
+    creditor_payments(session, count)
+
+    parts, pdf, drawn = _drawn(session)
+
+    assert [part["kind"] for part in parts] == ["form"]
+    assert len(pymupdf.open("pdf", pdf)) == 3
+    assert _entries(drawn) == entries  # only a slot that holds a row is numbered
+    assert _page_numbers(drawn) == [{"of": ""}, {"this": "", "of": ""}, {"this": "", "of": ""}]
+
+
+def test_a_copy_is_never_read_as_another_page(session, creditor_payments):
+    # Read without its parts, the copy would pass for page 3, and page 3 would go unread.
+    creditor_payments(session, 6)
+    _, pdf, _ = _drawn(session)
+    with pytest.raises(ValueError, match="4 pages, but its parts print 3"):
+        read_drawn("schedule_d", pdf)
+
+
 def test_a_copy_of_the_last_page_goes_after_it(
     schedule_d_part_2_with_copies, generated_form_factory, creditor_payments
 ):

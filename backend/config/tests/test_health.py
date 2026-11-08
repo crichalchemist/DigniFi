@@ -25,6 +25,12 @@ def _parse(response) -> dict:
 # --- Pure function unit tests ---
 
 
+@pytest.mark.django_db
+def test_check_database_ok():
+    result = _check_database()
+    assert result["status"] == "ok"
+
+
 @patch("config.views.connection")
 def test_check_database_error(mock_conn):
     mock_conn.cursor.side_effect = Exception("connection refused")
@@ -78,9 +84,22 @@ class TestHealthCheckEndpoint:
         assert "database" in data["checks"]
         assert "disk_media" in data["checks"]
         assert "uptime" in data["checks"]
-        # PDF_OUTPUT_DIRECTORY has no writer (downloads stream from memory): checking it made
-        # the endpoint report status:error in production for a directory the app never uses.
-        assert "disk_generated_forms" not in data["checks"]
+
+    def test_health_check_detailed_omits_unwritten_pdf_directory(self):
+        """PDF_OUTPUT_DIRECTORY has no writer — downloads stream from memory.
+
+        Checking it made the endpoint report status:error in production for a
+        directory the app never creates or uses. Readiness must only reflect
+        resources we actually depend on.
+        """
+        request = self.factory.get("/health/detailed/")
+        response = health_check_detailed(request)
+        assert "disk_generated_forms" not in _parse(response)["checks"]
+
+    def test_health_check_detailed_overall_status(self):
+        request = self.factory.get("/health/detailed/")
+        response = health_check_detailed(request)
+        data = _parse(response)
         assert data["status"] in ("ok", "warning", "error")
 
     @patch("config.views._check_database")

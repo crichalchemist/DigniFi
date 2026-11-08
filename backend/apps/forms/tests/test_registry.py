@@ -177,6 +177,12 @@ def test_ssn_statement_accepts_either_ssn_format(session, ssn):
     assert build_field_values("form_121", session)
 
 
+def test_ssn_statement_without_a_debtor_fails_instead_of_ticking_no_ssn(session):
+    # Before step 1, Form 121's "no SSN" box resolved from missing data.
+    with pytest.raises(PreconditionMissing):
+        build_field_values("form_121", session)
+
+
 def test_means_test_form_needs_the_eligibility_check(session):
     _debtor(session)
     with pytest.raises(PreconditionMissing) as refused:

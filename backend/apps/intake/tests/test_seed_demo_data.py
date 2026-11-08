@@ -55,6 +55,59 @@ def _row(id, relationship, age, lives_with_you, claimed_or_supported, **spouse):
     }
 
 
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "persona, marital_status, members, spouse_wages, county",
+    [
+        (
+            "maria",
+            "not_married",
+            [_row(1, "son", 8, True, True), _row(2, "daughter", 5, True, True)],
+            None,
+            "Cook",
+        ),
+        ("james", "not_married", [], None, "Cook"),
+        (
+            "priya",
+            "married_together",
+            [
+                _row(1, "spouse", 45, True, True, spouse_is_dependent=False),
+                _row(2, "daughter", 10, True, True),
+                _row(3, "son", 7, True, True),
+            ],
+            "1800.00",
+            "Cook",
+        ),
+        (
+            "deshawn",
+            "married_together",
+            [_row(1, "spouse", 44, True, True, spouse_is_dependent=False)],
+            "1000.00",
+            "Cook",
+        ),
+        ("sarah", "not_married", [_row(1, "roommate", 29, True, False)], None, "Cook"),
+        ("andres", "not_married", [_row(1, "daughter", 9, True, True)], None, "Kane"),
+    ],
+)
+def test_the_seed_gives_each_persona_their_household_spouse_income_and_county(
+    persona, marital_status, members, spouse_wages, county
+):
+    call_command("loaddata", "ilnd_2025_data", verbosity=0)
+    call_command("seed_demo_data", persona=persona, stdout=StringIO())
+    session = IntakeSession.objects.get(user__username=f"demo_{persona}")
+
+    assert session.income_info.marital_status == marital_status
+    assert session.household.county == county
+    assert session.household.get_members() == members
+    if spouse_wages is None:
+        assert not SpouseIncome.objects.filter(session=session).exists()
+    else:  # the spouse's wages, and $0.00 typed in the other nine boxes (§11)
+        assert {f: getattr(session.spouse_income, f) for f in SpouseIncome.SOURCE_FIELDS} == {
+            **dict.fromkeys(SpouseIncome.SOURCE_FIELDS, Decimal("0.00")),
+            "monthly_gross_wages": Decimal(spouse_wages),
+        }
+
+
 DEDUCTION_FIELDS = IncomeInfo.DEDUCTION_FIELDS
 DEDUCTIONS = {
     "maria": ({"payroll_tax": "400.00", **dict.fromkeys(DEDUCTION_FIELDS[1:], "0.00")}, None),
@@ -93,6 +146,54 @@ def _deductions(row):
     return {f: getattr(row, f) for f in DEDUCTION_FIELDS if getattr(row, f) is not None}
 
 
+@pytest.mark.django_db
+@pytest.mark.parametrize("persona", list(DEDUCTIONS))
+def test_every_seeded_persona_answers_each_new_income_question(persona):
+    call_command("loaddata", "ilnd_2025_data", verbosity=0)
+    call_command("seed_demo_data", persona=persona, stdout=StringIO())
+    session = IntakeSession.objects.get(user__username=f"demo_{persona}")
+    filer_deductions, spouse_deductions = DEDUCTIONS[persona]
+    filer_row = session.income_info
+    rows = [(filer_row, filer_deductions)]
+    if spouse_deductions is not None:
+        rows.append((session.spouse_income, spouse_deductions))
+    for row, deductions in rows:
+        assert len(row.get_entries()) == (1 if persona == "andres" and row is filer_row else 0)
+        assert row.income_now_different == "no"
+        assert row.monthly_interest_and_dividends == Decimal("0.00")
+        assert row.monthly_rental_income is None
+        assert _deductions(row) == {k: Decimal(v) for k, v in deductions.items()}
+    filer = session.income_info
+    if persona == "maria":
+        assert (
+            filer.assistance_answer,
+            filer.noncash_assistance_kind,
+            filer.noncash_assistance_value,
+            filer.cash_assistance_kind,
+            filer.cash_assistance_amount,
+        ) == ("yes", "SNAP (food stamps)", Decimal("350.00"), "", None)
+    else:
+        assert all(r.assistance_answer == "no" for r, _ in rows)
+    assert session.expense_info.expenses_include_others == LINE_3[persona]
+    assert filer.income_period_end == date(2026, 9, 30)
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("persona", list(CMI))
+def test_the_new_answers_move_no_seeded_personas_means_test_or_packet(persona):
+    call_command("loaddata", "ilnd_2025_data", verbosity=0)
+    call_command("seed_demo_data", persona=persona, stdout=StringIO())
+    session = IntakeSession.objects.get(user__username=f"demo_{persona}")
+    means_test = MeansTest.objects.get(session=session)
+    assert means_test.calculated_cmi == Decimal(CMI[persona])
+    assert is_above_median(means_test.calculated_cmi, means_test.median_income_threshold) is (
+        persona == "priya"
+    )
+    forms = packet(session)
+    assert ("form_122a2" in forms) is (persona == "priya")
+    assert ("form_103b" in forms) is (persona in {"maria", "sarah"})
+
+
 MARIA_LINE_5 = (
     "I support two children on what I earn. After rent, food, the car and the children's "
     "costs, there is not enough left each month to pay the fee, even in parts."
@@ -112,106 +213,12 @@ LINE_8 = {
 PACKET_SIZE = {"maria": 15, "sarah": 15, "deshawn": 14, "andres": 14, "james": 14, "priya": 15}
 
 
-EXPENSE_TOTAL = {
-    "maria": "2600.00",
-    "james": "3210.00",
-    "priya": "7050.00",
-    "deshawn": "2410.00",
-    "sarah": "1280.00",
-    "andres": "3034.00",
-}
-
-
 @pytest.mark.django_db
-@pytest.mark.parametrize(
-    "persona, marital_status, members, spouse_wages, county",
-    [
-        (
-            "maria",
-            "not_married",
-            [_row(1, "son", 8, True, True), _row(2, "daughter", 5, True, True)],
-            None,
-            "Cook",
-        ),
-        ("james", "not_married", [], None, "Cook"),
-        (
-            "priya",
-            "married_together",
-            [
-                _row(1, "spouse", 45, True, True, spouse_is_dependent=False),
-                _row(2, "daughter", 10, True, True),
-                _row(3, "son", 7, True, True),
-            ],
-            "1800.00",
-            "Cook",
-        ),
-        (
-            "deshawn",
-            "married_together",
-            [_row(1, "spouse", 44, True, True, spouse_is_dependent=False)],
-            "1000.00",
-            "Cook",
-        ),
-        ("sarah", "not_married", [_row(1, "roommate", 29, True, False)], None, "Cook"),
-        ("andres", "not_married", [_row(1, "daughter", 9, True, True)], None, "Kane"),
-    ],
-)
-def test_the_seed_gives_each_persona_their_stored_answers(
-    persona, marital_status, members, spouse_wages, county
-):
+@pytest.mark.parametrize("persona", list(LINE_8))
+def test_each_persona_is_seeded_with_their_own_answer_to_how_they_will_pay_the_fee(persona):
     call_command("loaddata", "ilnd_2025_data", verbosity=0)
     call_command("seed_demo_data", persona=persona, stdout=StringIO())
-    session = IntakeSession.objects.get(user__username=f"demo_{persona}")
-
-    # household, spouse income and county
-    assert session.income_info.marital_status == marital_status
-    assert session.household.county == county
-    assert session.household.get_members() == members
-    if spouse_wages is None:
-        assert not SpouseIncome.objects.filter(session=session).exists()
-    else:  # the spouse's wages, and $0.00 typed in the other nine boxes (§11)
-        assert {f: getattr(session.spouse_income, f) for f in SpouseIncome.SOURCE_FIELDS} == {
-            **dict.fromkeys(SpouseIncome.SOURCE_FIELDS, Decimal("0.00")),
-            "monthly_gross_wages": Decimal(spouse_wages),
-        }
-
-    # each new income question
-    filer_deductions, spouse_deductions = DEDUCTIONS[persona]
-    filer = session.income_info
-    rows = [(filer, filer_deductions)]
-    if spouse_deductions is not None:
-        rows.append((session.spouse_income, spouse_deductions))
-    for row, deductions in rows:
-        assert len(row.get_entries()) == (1 if persona == "andres" and row is filer else 0)
-        assert row.income_now_different == "no"
-        assert row.monthly_interest_and_dividends == Decimal("0.00")
-        assert row.monthly_rental_income is None
-        assert _deductions(row) == {k: Decimal(v) for k, v in deductions.items()}
-    if persona == "maria":
-        assert (
-            filer.assistance_answer,
-            filer.noncash_assistance_kind,
-            filer.noncash_assistance_value,
-            filer.cash_assistance_kind,
-            filer.cash_assistance_amount,
-        ) == ("yes", "SNAP (food stamps)", Decimal("350.00"), "", None)
-    else:
-        assert all(r.assistance_answer == "no" for r, _ in rows)
-    assert session.expense_info.expenses_include_others == LINE_3[persona]
-    assert filer.income_period_end == date(2026, 9, 30)
-
-    # the new answers move no means test or packet
-    means_test = MeansTest.objects.get(session=session)
-    assert means_test.calculated_cmi == Decimal(CMI[persona])
-    assert is_above_median(means_test.calculated_cmi, means_test.median_income_threshold) is (
-        persona == "priya"
-    )
-    forms = packet(session)
-    assert ("form_122a2" in forms) is (persona == "priya")
-    assert ("form_103b" in forms) is (persona in {"maria", "sarah"})
-
-    # their own answer to how they will pay the fee
-    fee = FilingFee.objects.get(session=session)
+    fee = FilingFee.objects.get(session__user__username=f"demo_{persona}")
     line_5 = {"maria": MARIA_LINE_5, "sarah": SARAH_LINE_5}.get(persona)
     waiver = ("no", line_5, "no", "no") if line_5 else (None, "", None, None)
     assert (
@@ -226,11 +233,6 @@ def test_the_seed_gives_each_persona_their_stored_answers(
         fee.others_covered_who,
         fee.expense_change_explanation,
     ) == ("", "", "")
-
-    # the sworn monthly total takes the 26 Schedule J lines
-    assert Decimal(str(session.expense_info.calculate_total_monthly_expenses())) == Decimal(
-        EXPENSE_TOTAL[persona]
-    )
 
 
 @pytest.mark.django_db
@@ -282,3 +284,24 @@ def test_a_gig_drivers_business_entry_leaves_his_debts_as_he_classed_them_and_he
     assert classed == [d["consumer_business_classification"] for d in _andres_kettleby()["debts"]]
     assert classed.count("business") == 1
     assert len(packet(session)) == 14
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "persona,total",
+    [
+        ("maria", "2600.00"),
+        ("james", "3210.00"),
+        ("priya", "7050.00"),
+        ("deshawn", "2410.00"),
+        ("sarah", "1280.00"),
+        ("andres", "3034.00"),
+    ],
+)
+def test_each_personas_expense_total_takes_the_new_schedule_j_lines(persona, total):
+    # The Expenses step asks 26 lines now; a persona's sworn monthly expenses are the sum.
+    call_command("loaddata", "ilnd_2025_data", verbosity=0)
+    call_command("seed_demo_data", persona=persona, stdout=StringIO())
+    session = IntakeSession.objects.get(user__username=f"demo_{persona}")
+
+    assert Decimal(str(session.expense_info.calculate_total_monthly_expenses())) == Decimal(total)

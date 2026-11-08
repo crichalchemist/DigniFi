@@ -102,8 +102,8 @@ def _messages(session):
 
 @pytest.mark.parametrize(
     "wages, spouse, cmi",
-    [("12000.00", "1800.00", "13800.00")],
-    ids=["priya"],
+    [("12000.00", "1800.00", "13800.00"), ("3500.00", "1000.00", "4500.00")],
+    ids=["priya", "deshawn"],
 )
 def test_a_filer_living_with_their_spouse_is_compared_on_both_incomes(session, wages, spouse, cmi):
     _answered(
@@ -175,10 +175,6 @@ def test_a_bare_session_has_the_marriage_list_and_income_gaps_in_that_order(sess
         NOW_DIFFERENT_UNANSWERED,
         ASSISTANCE_UNANSWERED,
     ]
-    for gap in income_step_gaps(session):
-        assert isinstance(gap, IncomeStepGap)
-        assert isinstance(gap, IncomeNotSplit)
-        assert gap.step == "income_info"
 
 
 def test_an_empty_list_counts_only_when_the_filer_said_no_one(session):
@@ -257,6 +253,10 @@ def test_missing_amounts_for_both_the_filer_and_the_spouse_are_both_named(sessio
     ]
 
 
+def _nothing_stored(session):
+    pass
+
+
 def _spouse_filing_with_a_row_and_no_income(session):
     IncomeInfo.objects.create(session=session)
     answer_household(
@@ -272,6 +272,17 @@ def _living_together_with_no_one(session):
     "store, messages",
     [
         (
+            _nothing_stored,
+            [
+                MARRIAGE,
+                LIST,
+                INCOME_BY_SOURCE,
+                ENTRIES_UNANSWERED,
+                NOW_DIFFERENT_UNANSWERED,
+                ASSISTANCE_UNANSWERED,
+            ],
+        ),
+        (
             _spouse_filing_with_a_row_and_no_income,
             [SPOUSE_FILING, ROW, INCOME_BY_SOURCE],  # the builder answers the 3e2 questions
         ),
@@ -286,7 +297,7 @@ def _living_together_with_no_one(session):
             ],
         ),
     ],
-    ids=["spouse_filing", "living_together"],
+    ids=["nothing_stored", "spouse_filing", "living_together"],
 )
 def test_every_income_step_gap_is_an_income_not_split(session, store, messages):
     store(session)

@@ -57,6 +57,20 @@ class TestDebtInfoClassification:
 
         assert debt.consumer_business_classification == "business"
 
+    def test_can_mark_debt_as_secured(self, session):
+        """Test that debt can be marked as secured with collateral."""
+        debt = DebtInfo.objects.create(
+            session=session,
+            creditor_name="Auto Lender",
+            amount_owed=15000.00,
+            debt_type="auto_loan",
+            is_secured=True,
+            collateral_description="2020 Honda Civic VIN: 1HGBH41JXMN109186",
+        )
+
+        assert debt.is_secured is True
+        assert debt.collateral_description == "2020 Honda Civic VIN: 1HGBH41JXMN109186"
+
     def test_can_mark_debt_as_priority(self, session):
         """Test that debt can be marked as priority unsecured."""
         debt = DebtInfo.objects.create(

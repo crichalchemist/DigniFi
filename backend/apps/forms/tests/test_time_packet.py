@@ -59,6 +59,28 @@ def session(db):
     return session
 
 
+def test_time_packet_writes_nothing(session):
+    out = StringIO()
+
+    call_command(
+        "time_packet", session=session.id, budget_generate=600, budget_download=600, stdout=out
+    )
+
+    assert (GeneratedForm.objects.count(), MeansTest.objects.count()) == (0, 0)
+    # It timed every form of the packet, which the means test it worked out decided: one
+    # row each of form, check s, download s, PDF KB and template KB.
+    printed = out.getvalue()
+    assert "Generate All: " in printed
+    form_types = packet(session)
+    rows = [line.split() for line in printed.splitlines()]
+    timed = {row[0]: row[1:] for row in rows if row and row[0] in form_types}
+    assert set(timed) == set(form_types)
+    # Each download drew its form: a check alone makes no PDF, which prints as 0 KB.
+    assert all(
+        float(pdf_kb) > 0 and float(template_kb) > 0 for _, _, pdf_kb, template_kb in timed.values()
+    )
+
+
 def test_time_packet_refuses_an_unfinished_intake_and_writes_nothing(session):
     session.status = "in_progress"
     session.save()
@@ -119,7 +141,6 @@ def _timed(session, out):
     return timed
 
 
-@pytest.mark.slow
 def test_time_packet_times_a_session_with_a_filed_form_and_draws_what_was_filed(session):
     # Generate All returns a filed form untouched, and its download draws what was filed.
     filed = _file(session, "form_101", build_parts("form_101", session))
@@ -143,14 +164,9 @@ def test_time_packet_times_a_session_with_a_filed_form_and_draws_what_was_filed(
     )
 
     timed = _timed(session, out)
-    assert "Generate All: " in out.getvalue()
     check, _, pdf_kb, _ = timed["form_101"]
     assert (check, float(pdf_kb) > 0) == ("filed", True)
     assert float(timed["form_121"][0]) >= 0  # a time, not "filed"
-    # Each download drew its form: a check alone makes no PDF, which prints as 0 KB.
-    assert all(
-        float(pdf_kb) > 0 and float(template_kb) > 0 for _, _, pdf_kb, template_kb in timed.values()
-    )
     assert sorted(GeneratedForm.objects.values_list("id", "status", "field_values")) == sorted(
         [
             (filed.id, "filed", filed.field_values),
@@ -160,7 +176,30 @@ def test_time_packet_times_a_session_with_a_filed_form_and_draws_what_was_filed(
     assert MeansTest.objects.count() == 0
 
 
-@pytest.mark.slow
+def test_time_packet_draws_a_filed_form_stored_without_values_from_the_intake(session):
+    # As the download view does: a filed form whose values were never stored is resolved
+    # from the intake and drawn.
+    filed = GeneratedForm.objects.create(
+        session=session,
+        form_type="form_101",
+        status="filed",
+        generated_by=session.user,
+        field_values="",
+    )
+    out = StringIO()
+
+    call_command(
+        "time_packet", session=session.id, budget_generate=600, budget_download=600, stdout=out
+    )
+
+    check, _, pdf_kb, _ = _timed(session, out)["form_101"]
+    assert (check, float(pdf_kb) > 0) == ("filed", True)
+    assert list(GeneratedForm.objects.values_list("id", "status", "field_values")) == [
+        (filed.id, "filed", "")
+    ]
+    assert MeansTest.objects.count() == 0
+
+
 def test_generate_all_times_every_forms_check(session, monkeypatch):
     # Each check sleeps 0.2 s first, so a Generate All that runs every check it should
     # reports at least 0.2 s for each.
@@ -188,11 +227,10 @@ def test_generate_all_times_every_forms_check(session, monkeypatch):
     assert generate_all >= delay * len(checked)
 
 
-@pytest.mark.slow
 def test_each_timed_download_draws_the_filers_intake(session, monkeypatch):
     # A filed form whose values were never stored is drawn from the intake, as the download
     # view draws it, and so is every form not filed.
-    filed = GeneratedForm.objects.create(
+    GeneratedForm.objects.create(
         session=session,
         form_type="form_101",
         status="filed",
@@ -211,21 +249,18 @@ def test_each_timed_download_draws_the_filers_intake(session, monkeypatch):
         return real_fill(self, form_type, values)
 
     monkeypatch.setattr(PDFFormFiller, "fill", recording_fill)
-    out = StringIO()
 
     call_command(
-        "time_packet", session=session.id, budget_generate=600, budget_download=600, stdout=out
+        "time_packet",
+        session=session.id,
+        budget_generate=600,
+        budget_download=600,
+        stdout=StringIO(),
     )
 
     assert [form_type for form_type, _ in drawn] == packet(session)
     assert drawn == intake
     assert dict(drawn)["form_101"] != {}  # the filed form's intake, not a blank form
-    assert _timed(session, out)["form_101"][0] == "filed"
-    # The download view would store what it drew; the command leaves the row as it found it.
-    assert list(GeneratedForm.objects.values_list("id", "status", "field_values")) == [
-        (filed.id, "filed", "")
-    ]
-    assert MeansTest.objects.count() == 0
 
 
 def test_time_packet_keeps_the_filers_letter_out_of_a_filed_forms_refusal(session):
@@ -241,7 +276,6 @@ def test_time_packet_keeps_the_filers_letter_out_of_a_filed_forms_refusal(sessio
     assert MeansTest.objects.count() == 0
 
 
-@pytest.mark.slow
 def test_time_packet_names_the_budget_it_missed(session):
     with pytest.raises(CommandError) as missed:
         call_command(

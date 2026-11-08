@@ -176,6 +176,25 @@ def test_expense_line_prints_only_above_zero(session, amount, prints):
     assert {box: printed[box] for box in LINE_BY_EXPENSE if box in printed} == expected
 
 
+def test_support_paid_prints_on_line_18_and_never_on_line_21(session):
+    # Line 21 is "Other": court-ordered support has its own line, 18.
+    ExpenseInfo.objects.create(session=session, child_support_paid=Decimal("450.00"))
+
+    printed = resolve(load_schema("schedule_j"), session)
+
+    assert (printed.get("18"), printed.get("21")) == ("450.00", None)
+
+
+def test_monthly_expenses_print_on_22c_and_again_on_23b(session):
+    # 22c adds 22a and 22b (Debtor 2's separate household, never asked); 23b copies 22c.
+    ExpenseInfo.objects.create(session=session, **EXPENSES)
+
+    printed = resolve(load_schema("schedule_j"), session)
+
+    totals = ("22a", "22c", "23b")
+    assert {box: printed.get(box) for box in totals} == dict.fromkeys(totals, EXPENSE_TOTAL)
+
+
 def test_monthly_net_income_is_income_less_expenses(session):
     # 23a copies Schedule I line 12, Social Security included (C1); 23c is 23a - 23b.
     IncomeInfo.objects.create(
@@ -193,6 +212,18 @@ def test_monthly_net_income_is_income_less_expenses(session):
         "23b": EXPENSE_TOTAL,
         "23c": "-67099663.00",
     }
+
+
+def test_a_month_that_runs_short_prints_net_income_below_zero(session):
+    # The form's own arithmetic: expenses above income leave a negative net income.
+    IncomeInfo.objects.create(
+        session=session, marital_status="not_married", monthly_gross_wages=Decimal("100.00")
+    )
+    ExpenseInfo.objects.create(session=session, rent_or_mortgage=Decimal("250.00"))
+
+    printed = resolve(load_schema("schedule_j"), session)
+
+    assert printed.get("23c") == "-150.00"
 
 
 @pytest.mark.parametrize("income_saved", [True, False])
@@ -350,15 +381,15 @@ def test_every_form_that_copies_the_monthly_expense_total_prints_line_22c(sessio
     assert printed == [EXPENSE_TOTAL] * 5
 
 
-@pytest.mark.parametrize(
-    "answer,ticks", [("yes", "/yes"), ("no", "/no"), (None, None), ("never_saved", None)]
-)
+@pytest.mark.parametrize("answer,ticks", [("yes", "/yes"), ("no", "/no"), (None, None)])
 def test_line_3_prints_the_filers_answer_and_never_answers_for_them(session, answer, ticks):
-    # "never_saved" is a session whose Expenses step has no ExpenseInfo row at all.
-    if answer != "never_saved":
-        ExpenseInfo.objects.create(session=session, expenses_include_others=answer)
+    ExpenseInfo.objects.create(session=session, expenses_include_others=answer)
 
     assert resolve(load_schema("schedule_j"), session).get("check3") == ticks
+
+
+def test_line_3_stays_blank_when_the_expenses_step_was_never_saved(session):
+    assert "check3" not in resolve(load_schema("schedule_j"), session)
 
 
 @pytest.mark.parametrize(
@@ -377,6 +408,24 @@ def test_a_specify_text_prints_only_with_its_amount(session, amount_field, text_
     ExpenseInfo.objects.filter(session=session).update(**{amount_field: Decimal("10.00")})
     session = IntakeSession.objects.get(pk=session.pk)
     assert resolve(load_schema("schedule_j"), session)[box] == "X"
+
+
+def test_the_new_schedule_j_lines_reach_22a_and_23c(session):
+    IncomeInfo.objects.create(
+        session=session, marital_status="not_married", monthly_gross_wages=Decimal("3000.00")
+    )
+    ExpenseInfo.objects.create(
+        session=session, personal_care=Decimal("40.00"), taxes_not_deducted=Decimal("150.00")
+    )
+
+    printed = resolve(load_schema("schedule_j"), session)
+
+    assert (printed["22a"], printed["22c"], printed["23b"], printed["23c"]) == (
+        "190.00",
+        "190.00",
+        "190.00",
+        "2810.00",
+    )
 
 
 def test_a_specify_text_of_only_spaces_prints_blank_and_padding_is_trimmed(session):

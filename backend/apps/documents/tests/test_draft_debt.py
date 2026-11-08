@@ -188,27 +188,7 @@ class TestDraftDebtCreatorCreditReport:
         assert debts[0].source_document == uploaded_doc
         assert debts[0].session == session
 
-    def test_empty_tradelines_returns_empty_list(self, db, session, uploaded_doc):
-        from apps.documents.schemas.credit_report import CreditReportExtraction
-
-        result = CreditReportExtraction(tradelines=[])
-        debts = DraftDebtCreator().create_from_credit_report(result, session, uploaded_doc)
-        assert debts == []
-
-    @pytest.mark.parametrize(
-        "account_type,account_status,account_number,expected",
-        [
-            ("auto_loan", "open", None, {"debt_type": "auto_loan", "is_secured": True}),
-            ("credit_card", "open", "****9999", {"account_number": "****9999"}),
-            ("credit_card", "in_collections", None, {"is_in_collections": True}),
-            ("credit_card", "charged_off", None, {"is_in_collections": True}),
-            ("credit_card", "open", None, {"is_in_collections": False}),
-        ],
-        ids=["account_type", "masked_account_number", "in_collections", "charged_off", "open"],
-    )
-    def test_maps_a_tradeline_to_the_debt_it_creates(
-        self, db, session, uploaded_doc, account_type, account_status, account_number, expected
-    ):
+    def test_skips_zero_balance_tradelines(self, db, session, uploaded_doc):
         from decimal import Decimal
 
         from apps.documents.schemas.credit_report import CreditReportExtraction, TradelineItem
@@ -216,14 +196,116 @@ class TestDraftDebtCreatorCreditReport:
         result = CreditReportExtraction(
             tradelines=[
                 TradelineItem(
-                    creditor_name="Some Creditor",
-                    account_number=account_number,
-                    amount_owed=Decimal("2000.00"),
-                    account_type=account_type,
-                    account_status=account_status,
+                    creditor_name="Zero Balance",
+                    account_number=None,
+                    amount_owed=Decimal("0"),
+                    account_type="credit_card",
+                    account_status="closed",
                 )
             ]
         )
         debts = DraftDebtCreator().create_from_credit_report(result, session, uploaded_doc)
-        for attribute, value in expected.items():
-            assert getattr(debts[0], attribute) == value
+        assert debts == []
+
+    def test_empty_tradelines_returns_empty_list(self, db, session, uploaded_doc):
+        from apps.documents.schemas.credit_report import CreditReportExtraction
+
+        result = CreditReportExtraction(tradelines=[])
+        debts = DraftDebtCreator().create_from_credit_report(result, session, uploaded_doc)
+        assert debts == []
+
+    def test_maps_account_type_to_debt_type(self, db, session, uploaded_doc):
+        from decimal import Decimal
+
+        from apps.documents.schemas.credit_report import CreditReportExtraction, TradelineItem
+
+        result = CreditReportExtraction(
+            tradelines=[
+                TradelineItem(
+                    creditor_name="Auto Dealer",
+                    account_number=None,
+                    amount_owed=Decimal("12000.00"),
+                    account_type="auto_loan",
+                    account_status="open",
+                )
+            ]
+        )
+        debts = DraftDebtCreator().create_from_credit_report(result, session, uploaded_doc)
+        assert debts[0].debt_type == "auto_loan"
+        assert debts[0].is_secured is True
+
+    def test_accepts_masked_account_numbers(self, db, session, uploaded_doc):
+        from decimal import Decimal
+
+        from apps.documents.schemas.credit_report import CreditReportExtraction, TradelineItem
+
+        result = CreditReportExtraction(
+            tradelines=[
+                TradelineItem(
+                    creditor_name="Citi",
+                    account_number="****9999",
+                    amount_owed=Decimal("3500.00"),
+                    account_type="credit_card",
+                    account_status="open",
+                )
+            ]
+        )
+        debts = DraftDebtCreator().create_from_credit_report(result, session, uploaded_doc)
+        assert debts[0].account_number == "****9999"
+
+    def test_maps_in_collections_status(self, db, session, uploaded_doc):
+        from decimal import Decimal
+
+        from apps.documents.schemas.credit_report import CreditReportExtraction, TradelineItem
+
+        result = CreditReportExtraction(
+            tradelines=[
+                TradelineItem(
+                    creditor_name="Collections Agency",
+                    account_number=None,
+                    amount_owed=Decimal("2000.00"),
+                    account_type="credit_card",
+                    account_status="in_collections",
+                )
+            ]
+        )
+        debts = DraftDebtCreator().create_from_credit_report(result, session, uploaded_doc)
+        assert debts[0].is_in_collections is True
+
+    def test_maps_charged_off_status(self, db, session, uploaded_doc):
+        from decimal import Decimal
+
+        from apps.documents.schemas.credit_report import CreditReportExtraction, TradelineItem
+
+        result = CreditReportExtraction(
+            tradelines=[
+                TradelineItem(
+                    creditor_name="Charged Off Creditor",
+                    account_number=None,
+                    amount_owed=Decimal("1500.00"),
+                    account_type="credit_card",
+                    account_status="charged_off",
+                )
+            ]
+        )
+        debts = DraftDebtCreator().create_from_credit_report(result, session, uploaded_doc)
+        assert debts[0].is_in_collections is True
+
+    def test_normal_status_not_in_collections(self, db, session, uploaded_doc):
+        from decimal import Decimal
+
+        from apps.documents.schemas.credit_report import CreditReportExtraction, TradelineItem
+
+        result = CreditReportExtraction(
+            tradelines=[
+                TradelineItem(
+                    creditor_name="Regular Creditor",
+                    account_number=None,
+                    amount_owed=Decimal("1000.00"),
+                    account_type="credit_card",
+                    account_status="open",
+                )
+            ]
+        )
+        debts = DraftDebtCreator().create_from_credit_report(result, session, uploaded_doc)
+        assert debts[0].is_in_collections is False

@@ -44,11 +44,22 @@ def session_with_expenses(db):
 
 @pytest.mark.django_db
 class TestExpenseDeductionCalculator:
+    def test_calculator_returns_allowable_expenses(self, session_with_expenses):
+        calc = ExpenseDeductionCalculator(session_with_expenses)
+        result = calc.calculate()
+        assert result.allowable_expenses > Decimal("0")
+        assert result.disposable_income is not None
+
     def test_calculator_uses_lesser_of_actual_vs_standard(self, session_with_expenses):
         calc = ExpenseDeductionCalculator(session_with_expenses)
         result = calc.calculate()
         # Food actual ($500) vs national standard for size 1 ($713)
         assert result.national_food_allowance == Decimal("500.00")
+
+    def test_calculator_includes_priority_debts(self, session_with_expenses):
+        calc = ExpenseDeductionCalculator(session_with_expenses)
+        result = calc.calculate()
+        assert result.priority_debts_monthly > Decimal("0")
 
     def test_a_scanned_priority_debt_the_filer_has_not_confirmed_is_not_deducted(
         self, session_with_expenses

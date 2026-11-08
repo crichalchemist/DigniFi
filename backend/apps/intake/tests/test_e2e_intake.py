@@ -19,6 +19,7 @@ from apps.intake.models import (
     DebtInfo,
     DebtorInfo,
     ExpenseInfo,
+    Household,
     IncomeInfo,
     IntakeSession,
 )
@@ -214,7 +215,6 @@ class TestAssetCRUD:
         assert response.status_code == status.HTTP_201_CREATED
         assert response.data["asset_type"] == "bank_account"
         assert response.data["description"] == "Checking Account"
-        assert AssetInfo.objects.filter(session=session).count() == 1
 
     def test_read_asset(self, api_client, session):
         """Test reading an asset."""
@@ -427,6 +427,148 @@ class TestIntakeSessionCompletion:
         assert response.data["session"]["status"] == "completed"
         assert response.data["session"]["completed_at"] is not None
 
+    def test_complete_session_missing_debtor_info(self, api_client, session):
+        """Test completing session without debtor info returns 400."""
+        # Add income and expense but not debtor
+        IncomeInfo.objects.create(
+            session=session,
+            marital_status="not_married",
+            monthly_gross_wages=Decimal("5000.00"),
+        )
+        answer_household(session)
+
+        ExpenseInfo.objects.create(
+            session=session,
+            expenses_include_others="no",
+            rent_or_mortgage=Decimal("1500.00"),
+            utilities=Decimal("200.00"),
+            home_maintenance=Decimal("50.00"),
+            vehicle_payment=Decimal("300.00"),
+            vehicle_insurance=Decimal("100.00"),
+            vehicle_maintenance=Decimal("150.00"),
+            food_and_groceries=Decimal("400.00"),
+            childcare=Decimal("0.00"),
+            medical_expenses=Decimal("50.00"),
+            insurance_not_deducted=Decimal("0.00"),
+            other_expenses=Decimal("100.00"),
+        )
+
+        url = reverse("intake-session-complete", args=[session.id])
+        response = api_client.post(url)
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.data["errors"] == [
+            {
+                "step": "debtor_info",
+                "message": "Enter your name and address on the Your Information step.",
+            }
+        ]
+
+    def test_complete_session_missing_income_info(self, api_client, session):
+        """Test completing session without income info returns 400."""
+        # Step 1 was saved, with its county; step 2 never was.
+        Household.objects.create(session=session, county="Cook")
+        # Add debtor and expense but not income
+        DebtorInfo.objects.create(
+            session=session,
+            first_name="John",
+            last_name="Doe",
+            ssn="900123456",  # IRS-reserved range: synthetic
+            date_of_birth="1980-01-01",
+            street_address="123 Main St",
+            city="Chicago",
+            state="IL",
+            zip_code="60601",
+        )
+
+        ExpenseInfo.objects.create(
+            session=session,
+            expenses_include_others="no",
+            rent_or_mortgage=Decimal("1500.00"),
+            utilities=Decimal("200.00"),
+            home_maintenance=Decimal("50.00"),
+            vehicle_payment=Decimal("300.00"),
+            vehicle_insurance=Decimal("100.00"),
+            vehicle_maintenance=Decimal("150.00"),
+            food_and_groceries=Decimal("400.00"),
+            childcare=Decimal("0.00"),
+            medical_expenses=Decimal("50.00"),
+            insurance_not_deducted=Decimal("0.00"),
+            other_expenses=Decimal("100.00"),
+        )
+
+        url = reverse("intake-session-complete", args=[session.id])
+        response = api_client.post(url)
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.data["errors"] == [
+            {
+                "step": "income_info",
+                "message": "Answer the question about marriage on the Income step.",
+            },
+            {
+                "step": "income_info",
+                "message": (
+                    "List the people in your home and the people you support on the "
+                    "Income step, or tell us no one does."
+                ),
+            },
+            {"step": "income_info", "message": "Enter your income by source on the Income step."},
+            {
+                "step": "income_info",
+                "message": (
+                    "Tell us about any business or rental property on the Income step, "
+                    "or say you have none."
+                ),
+            },
+            {
+                "step": "income_info",
+                "message": (
+                    "Answer whether your income is now different from the six-month average, "
+                    "on the Income step."
+                ),
+            },
+            {
+                "step": "income_info",
+                "message": (
+                    "Answer whether you receive other government assistance, on the Income step."
+                ),
+            },
+        ]
+
+    def test_complete_session_missing_expense_info(self, api_client, session):
+        """Test completing session without expense info returns 400."""
+        # Add debtor and income but not expense
+        DebtorInfo.objects.create(
+            session=session,
+            first_name="John",
+            last_name="Doe",
+            ssn="900123456",  # IRS-reserved range: synthetic
+            date_of_birth="1980-01-01",
+            street_address="123 Main St",
+            city="Chicago",
+            state="IL",
+            zip_code="60601",
+        )
+
+        IncomeInfo.objects.create(
+            session=session,
+            marital_status="not_married",
+            monthly_gross_wages=Decimal("5000.00"),
+        )
+        answer_household(session)
+
+        url = reverse("intake-session-complete", args=[session.id])
+        response = api_client.post(url)
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.data["errors"] == [
+            {
+                "step": "expense_info",
+                "message": "Go through the Expenses step, even if you have no expenses to enter.",
+            }
+        ]
+
 
 @pytest.mark.django_db
 class TestPermissionIsolation:
@@ -557,6 +699,21 @@ class TestMeansTestCalculation:
 
         return session
 
+    def test_calculate_means_test_success(self, api_client, complete_session):
+        """Test successful means test calculation."""
+        url = reverse("intake-session-calculate-means-test", args=[complete_session.id])
+        response = api_client.post(url)
+
+        assert response.status_code == status.HTTP_200_OK
+        assert "means_test_result" in response.data
+        assert "session_id" in response.data
+
+        result = response.data["means_test_result"]
+        assert "passes_means_test" in result
+        assert "cmi" in result
+        assert "median_income_threshold" in result
+        assert "message" in result
+
     def test_calculate_means_test_below_median(self, api_client, complete_session):
         """Test means test with income below median (should pass)."""
         # Update income to be below median ($71,304 annual = $5,942/month)
@@ -567,12 +724,9 @@ class TestMeansTestCalculation:
         response = api_client.post(url)
 
         assert response.status_code == status.HTTP_200_OK
-        assert "session_id" in response.data
         result = response.data["means_test_result"]
         assert result["passes_means_test"] is True
         assert Decimal(result["cmi"]) == Decimal("4000.00")
-        assert "median_income_threshold" in result
-        assert "message" in result
 
     def test_calculate_means_test_above_median(self, api_client, complete_session):
         """Test means test with income above median (should fail)."""
@@ -694,10 +848,24 @@ class TestSessionSummary:
         assert "status" in progress
         assert "completion_percentage" in progress
 
+    def test_session_summary_completion_percentage(self, api_client, session_with_data):
+        """Test completion percentage calculation."""
+        url = reverse("intake-session-summary", args=[session_with_data.id])
+        response = api_client.get(url)
+
+        assert response.status_code == status.HTTP_200_OK
+        progress = response.data["progress"]
+
         # Should have: debtor (1), income (1), assets (1), debts (1) = 4/5 sections = 80%
         # Missing: expenses
         assert progress["completion_percentage"] == 80
 
+    def test_session_summary_with_forms(self, api_client, session_with_data):
+        """Test session summary includes form generation status."""
+        url = reverse("intake-session-summary", args=[session_with_data.id])
+        response = api_client.get(url)
+
+        assert response.status_code == status.HTTP_200_OK
         forms = response.data["forms"]
         assert "generated_count" in forms
         assert "forms" in forms

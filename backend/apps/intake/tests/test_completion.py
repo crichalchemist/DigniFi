@@ -270,6 +270,40 @@ def _scanned_debt(session):
     )
 
 
+@pytest.mark.parametrize(
+    "gap,step,message",
+    [
+        (_no_debtor, "debtor_info", NAME_AND_ADDRESS),
+        (_eight_digit_ssn, "debtor_info", NINE_DIGIT_SSN),
+        (_income_boxes_all_empty, "income_info", INCOME_BY_SOURCE),
+        (_expenses_step_never_saved, "expense_info", EXPENSES_STEP),
+        (_scanned_debt, "debts", SCANNED_DEBTS),
+    ],
+    ids=[
+        "no_name_and_address",
+        "eight_digit_ssn",
+        "no_income_by_source",
+        "no_expenses_step",
+        "unconfirmed_scanned_debt",
+    ],
+)
+def test_complete_names_the_step_that_fixes_each_gap(filer, completed, gap, step, message):
+    # The filer reads why on Review, with a way to the step that fixes it (DIG-181).
+    client, _ = filer
+    completed.status = "in_progress"
+    completed.save()
+    gap(completed)
+
+    response = client.post(_session_url(completed, "complete/"))
+
+    assert response.status_code == 400
+    assert response.data == {
+        "message": NOT_FINISHED,
+        "errors": [{"step": step, "message": message}],
+    }
+    assert _status(completed) == "in_progress"
+
+
 # ── Complete names each county, household and spouse gap (3e1 spec §9.1) ──
 
 COUNTY = "Choose your county on the Your Information step."
@@ -380,11 +414,6 @@ def _spouse_legacy_rental(session):
 @pytest.mark.parametrize(
     "gap,step,message",
     [
-        (_no_debtor, "debtor_info", NAME_AND_ADDRESS),
-        (_eight_digit_ssn, "debtor_info", NINE_DIGIT_SSN),
-        (_income_boxes_all_empty, "income_info", INCOME_BY_SOURCE),
-        (_expenses_step_never_saved, "expense_info", EXPENSES_STEP),
-        (_scanned_debt, "debts", SCANNED_DEBTS),
         (_no_county, "debtor_info", COUNTY),
         (_marriage_unanswered, "income_info", MARRIAGE),
         (_spouse_filing_with_you, "income_info", SPOUSE_FILING),
@@ -397,11 +426,6 @@ def _spouse_legacy_rental(session):
         (_spouse_legacy_rental, "income_info", [SPOUSE_LEGACY, SPOUSE_ENTRIES_UNANSWERED]),
     ],
     ids=[
-        "no_name_and_address",
-        "eight_digit_ssn",
-        "no_income_by_source",
-        "no_expenses_step",
-        "unconfirmed_scanned_debt",
         "no_county",
         "marriage_unanswered",
         "spouse_filing_with_you",
@@ -415,7 +439,6 @@ def _spouse_legacy_rental(session):
     ],
 )
 def test_complete_names_every_new_gap_by_its_step(filer, completed, gap, step, message):
-    # The filer reads why on Review, with a way to the step that fixes it (DIG-181).
     client, _ = filer
     completed.status = "in_progress"
     completed.save()
@@ -840,18 +863,27 @@ def test_a_refused_save_leaves_a_completed_intake_complete(filer, completed):
     assert _status(completed) == "completed"
 
 
-@pytest.mark.parametrize("step", [5, 9])
-def test_moving_between_wizard_steps_after_complete_reopens_it(filer, completed, step):
+def test_continue_from_codebtors_reaches_review_at_step_nine(filer, completed):
     # Take-home pay made the wizard nine steps long: Review, the last, is step 9
     client, _ = filer
 
     response = client.post(
-        _session_url(completed, "update_step/"), {"current_step": step}, format="json"
+        _session_url(completed, "update_step/"), {"current_step": 9}, format="json"
     )
 
     assert response.status_code == 200
     completed.refresh_from_db()
-    assert completed.current_step == step
+    assert completed.current_step == 9
+
+
+def test_moving_between_wizard_steps_after_complete_reopens_it(filer, completed):
+    client, _ = filer
+
+    response = client.post(
+        _session_url(completed, "update_step/"), {"current_step": 5}, format="json"
+    )
+
+    assert response.status_code == 200
     assert _status(completed) == "in_progress"
 
 

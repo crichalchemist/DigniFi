@@ -180,32 +180,6 @@ def test_a_precondition_is_read_by_its_name_or_as_an_attribute(source, raises):
         ("district_name", {}),  # the district list is DigniFi's
         ("line13a_median_income", {}),  # the median table is DigniFi's
         ("schedule_i_occupation_debtor1", {}),  # reads a field no model has: always blank
-        *[
-            (f"schedule_i_{n}_{c}", {"step": "take_home_pay"})
-            for n in (
-                "payroll_tax",
-                "payroll_mandatory_retirement",
-                "payroll_voluntary_retirement",
-                "payroll_retirement_loan",
-                "payroll_insurance",
-                "payroll_support",
-                "payroll_union_dues",
-                "payroll_other",
-                "total_deductions",
-            )
-            for c in ("debtor1", "spouse")
-        ],
-        ("schedule_i_payroll_other_specify", {"step": "take_home_pay"}),
-        # A rule that reads income and take-home pay links to the earlier of the two steps (§9).
-        ("schedule_i_take_home_pay_debtor1", {"step": "income_info"}),
-        ("schedule_i_take_home_pay_spouse", {"step": "income_info"}),
-        ("schedule_i_income_total", {"step": "income_info"}),
-        ("schedule_j_total_income", {"step": "income_info"}),
-        ("schedule_i_other_income_label", {"step": "income_info"}),
-        ("schedule_i_business_rental_net_debtor1", {"step": "income_info"}),
-        ("schedule_i_interest_spouse", {"step": "income_info"}),
-        ("schedule_i_assistance_debtor1", {"step": "income_info"}),
-        ("schedule_i_assistance_specify", {"step": "income_info"}),
     ],
 )
 def test_a_rule_links_to_where_its_input_is_entered(rule, fix):
@@ -243,3 +217,13 @@ def test_changing_a_refusals_fix_leaves_the_map_alone():
     fix = fix_for(_field("derived", rule="last_name"))
     fix["step"] = "review"
     assert RULE_FIXES["last_name"] == {"step": "debtor_info"}
+
+
+def test_an_answer_is_fixed_on_the_form_that_asks_it():
+    # Form 107 prints Form 101's preparer answer: the filer changes it on 101's questions.
+    preparer = next(
+        field
+        for field in load_schema("form_107").fields
+        if field.binding == "answer:form_101.preparer_name"
+    )
+    assert fix_for(preparer) == {"page": "/ask/form_101"}

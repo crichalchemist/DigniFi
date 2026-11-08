@@ -8,9 +8,14 @@ removed row never lingers, one bad row saves nothing, and a row can only ever ch
 filer's own session.
 """
 
-import pytest
+from decimal import Decimal
 
+import pytest
+from rest_framework.test import APIClient
+
+from apps.districts.models import District
 from apps.intake.models import Codebtor, ExecutoryContract, IntakeSession
+from apps.users.models import User
 
 # Each list's model, its name field and three rows a filer might enter.
 LISTS = {
@@ -39,6 +44,32 @@ LISTS = {
 }
 
 
+@pytest.fixture
+def district(db):
+    return District.objects.create(
+        code="ILND",
+        name="Illinois Northern",
+        state="IL",
+        court_name="U.S. Bankruptcy Court ILND",
+        filing_fee_chapter_7=Decimal("338.00"),
+    )
+
+
+@pytest.fixture
+def filer(district):
+    user = User.objects.create_user(username="filer", password="pw")
+    session = IntakeSession.objects.create(user=user, district=district)
+    client = APIClient()
+    client.force_authenticate(user=user)
+    return client, session
+
+
+@pytest.fixture
+def other_session(district):
+    other = User.objects.create_user(username="other", password="pw")
+    return IntakeSession.objects.create(user=other, district=district)
+
+
 def _list_url(session, endpoint):
     return f"/api/intake/sessions/{session.pk}/{endpoint}/"
 
@@ -63,10 +94,14 @@ def _save_twice_as_the_wizard_does(client, session, endpoint):
     assert [getattr(row, name) for row in stored] == ["Renamed Party", rows[1][name]]
 
 
-@pytest.mark.parametrize("endpoint", ["contracts", "codebtors"])
-def test_second_save_does_not_duplicate_rows(filer, endpoint):
+def test_second_save_does_not_duplicate_codebtors(filer):
     client, session = filer
-    _save_twice_as_the_wizard_does(client, session, endpoint)
+    _save_twice_as_the_wizard_does(client, session, "codebtors")
+
+
+def test_second_save_does_not_duplicate_contracts(filer):
+    client, session = filer
+    _save_twice_as_the_wizard_does(client, session, "contracts")
 
 
 @pytest.mark.parametrize("endpoint", ["contracts", "codebtors"])

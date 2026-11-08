@@ -203,32 +203,36 @@ def scan_photo(filer, openai_client, document_type, reply=None, error=None) -> d
     return response.json()
 
 
-@pytest.mark.parametrize(
-    "bill",
-    [
-        {
-            "creditor_name": creditor_name,
-            "amount_owed": "125.00",
-            "creditor_type": "medical",
-            "confidence_score": 40,
-        }
-        for creditor_name in [None, "", "   "]
-    ]
-    + [
-        {
-            "creditor_name": None,
-            "account_number": None,
-            "amount_owed": None,
-            "minimum_payment": None,
-            "due_date": None,
-            "creditor_type": None,
-            "confidence_score": None,
-        }
-    ],
-    ids=["none", "empty", "blank", "cover-page"],
-)
-def test_bill_without_a_creditor_creates_no_debt_and_does_not_crash(filer, openai_client, bill):
+def test_cover_page_with_no_account_details_is_reported_as_nothing_found(filer, openai_client):
     _, session = filer
+    cover_page = {
+        "creditor_name": None,
+        "account_number": None,
+        "amount_owed": None,
+        "minimum_payment": None,
+        "due_date": None,
+        "creditor_type": None,
+        "confidence_score": None,
+    }
+
+    doc = scan_photo(filer, openai_client, DocumentType.CREDITOR_BILL, reply=cover_page)
+
+    assert doc["ocr_result"]["status"] == "failed"
+    assert doc["ocr_result"]["failure_reason"] == "nothing_found"
+    assert not DebtInfo.objects.filter(session=session).exists()
+
+
+@pytest.mark.parametrize("creditor_name", [None, "", "   "])
+def test_bill_without_a_creditor_creates_no_debt_and_does_not_crash(
+    filer, openai_client, creditor_name
+):
+    _, session = filer
+    bill = {
+        "creditor_name": creditor_name,
+        "amount_owed": "125.00",
+        "creditor_type": "medical",
+        "confidence_score": 40,
+    }
 
     doc = scan_photo(filer, openai_client, DocumentType.CREDITOR_BILL, reply=bill)
 
@@ -430,20 +434,13 @@ def test_reading_failure_shows_the_filer_a_reason_code_never_provider_text(filer
     assert OCRResult.objects.get(document_id=doc["id"]).error_message == "RuntimeError"
 
 
-def test_a_crash_while_saving_what_was_read_is_reported_as_a_processing_error(
-    filer, openai_client, caplog
-):
+def test_a_crash_while_saving_what_was_read_is_reported_as_a_processing_error(filer, openai_client):
     # Sanctioned internal patch: no OpenAI reply reaches _run_processing's outer handler
     # deterministically (an overflow reply can reach it on Postgres, DIG-106).
-    # Logs reach Sentry, and a database error's DETAIL can quote the filer's values (DIG-105).
-    leaked = "DETAIL: Key (account_number)=(900-12-3456) already exists."
     with patch(
-        "apps.documents.views._record_findings", side_effect=RuntimeError(leaked)
+        "apps.documents.views._record_findings", side_effect=RuntimeError("synthetic")
     ) as record_findings:
-        with caplog.at_level(logging.WARNING, logger="apps.documents"):
-            ocr = upload(
-                filer, b"\xff\xd8\xff", "bill.jpg", "image/jpeg", DocumentType.CREDITOR_BILL
-            )
+        ocr = upload(filer, b"\xff\xd8\xff", "bill.jpg", "image/jpeg", DocumentType.CREDITOR_BILL)
 
     # The read itself succeeded (BILL_REPLY); the failure came while recording it.
     record_findings.assert_called_once()
@@ -452,6 +449,20 @@ def test_a_crash_while_saving_what_was_read_is_reported_as_a_processing_error(
     assert doc["ocr_result"]["status"] == "failed"
     assert doc["ocr_result"]["failure_reason"] == "processing_error"
     assert ocr.error_message == "RuntimeError"
+
+
+def test_a_failed_upload_is_logged_by_error_type_never_by_what_the_file_said(
+    filer, openai_client, caplog
+):
+    # Logs reach Sentry, and a database error's DETAIL can quote the filer's values (DIG-105).
+    # Same sanctioned internal patch as above: it is the only deterministic way in.
+    leaked = "DETAIL: Key (account_number)=(900-12-3456) already exists."
+    with patch("apps.documents.views._record_findings", side_effect=RuntimeError(leaked)):
+        with caplog.at_level(logging.WARNING, logger="apps.documents"):
+            ocr = upload(
+                filer, b"\xff\xd8\xff", "bill.jpg", "image/jpeg", DocumentType.CREDITOR_BILL
+            )
+
     failures = [r for r in caplog.records if "RuntimeError" in r.getMessage()]
     assert failures, "the failure must still be logged, by its type"
     assert str(ocr.document_id) in failures[0].getMessage()
@@ -474,6 +485,13 @@ def test_document_api_never_returns_what_was_read_from_the_file(filer, openai_cl
     assert doc["ocr_result"]["status"] == "completed"
     assert "extracted_data" not in doc["ocr_result"]
     assert "5521-0098-7713" not in json.dumps(doc)
+
+
+def test_scan_records_the_provider_that_read_it(filer, openai_client):
+    bill = {"creditor_name": "ComEd", "amount_owed": "96.12", "creditor_type": "utility"}
+
+    doc = scan_photo(filer, openai_client, DocumentType.CREDITOR_BILL, reply=bill)
+
     assert OCRResult.objects.get(document_id=doc["id"]).ocr_provider == "openai"
 
 
