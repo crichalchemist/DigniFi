@@ -46,6 +46,25 @@ _D_PART_1 = [
 _D_PART_2 = [
     (3, [(box, *_NAME)]) for box in ["Name", "Name_2", "Name_3", "Name_4", "Name_5", "Name_6"]
 ]
+_D_PAGE_NUMBERS = [
+    {"page": 1, "this": None, "of": "fill_27.0"},
+    {"page": 2, "this": "fill_27.1.0", "of": "fill_27.1.1"},
+    {"page": 3, "this": "fill_28.1.1", "of": "fill_28.1.2"},
+]
+# Schedule E/F's continued pages: Part 1 on page 2, Part 2 on page 4, Part 3 on page 5.
+_EF_PAGE_NUMBERS = [
+    {"page": 1, "this": None, "of": "fill_27.0"},
+    {"page": 2, "this": "fill_27.1.0", "of": "fill_27.1.1"},
+    {"page": 3, "this": "fill_27.1.2", "of": "fill_27.1.3"},
+    {"page": 4, "this": "fill_27.1.4", "of": "fill_27.1.5"},
+    {"page": 5, "this": "fill_27.1.6", "of": "fill_27.1.7"},
+    {"page": 6, "this": "fill_27.1.8", "of": "fill_27.1.7"},
+]
+_EF_GROUPS = {
+    "ef_part_1": (2, ["Creditors Name_3", "Creditors Name_4", "Creditors Name_5"]),
+    "ef_part_2": (4, ["Creditors Name_9", "Creditors Name_10", "Creditors Name_11"]),
+    "ef_part_3": (5, ["Creditors Name_12", "Creditors Name_13", "Creditors Name_14"]),
+}
 # Schedule A/B line 3's four vehicles, 3.1 and 3.2 on page 2, 3.3 and 3.4 on page 3: each a
 # make and the current value of the portion the filer owns, kept as a SOFA creditor payment's
 # name and amount (R19: no new list source in 3a2).
@@ -120,7 +139,7 @@ def index_copy(tmp_path, settings):
     template_widgets.cache_clear()
 
 
-def _with_group(tmp_path, settings, form_type, group, rows, declaration):
+def _with_group(tmp_path, settings, form_type, group, rows, declaration, page_numbers=None):
     """
     Copy the real schemas into tmp_path, unless an earlier fixture of the test has, and point
     FORM_SCHEMAS_DIRECTORY there, with a synthetic repeat group on form_type: row n's slot is
@@ -155,6 +174,8 @@ def _with_group(tmp_path, settings, form_type, group, rows, declaration):
                 }
             )
     schema.setdefault("groups", {})[group] = declaration
+    if page_numbers is not None:
+        schema["page_numbers"] = page_numbers
     path.write_text(json.dumps(schema))
     settings.FORM_SCHEMAS_DIRECTORY = schemas
     return schemas
@@ -177,13 +198,10 @@ def schedule_d_with_copies(tmp_path, settings):
             "4": "undefined_19@2:T37",
             "5": "undefined_19@2:T63",
         },
-        "page_numbers": [
-            {"page": 1, "this": None, "of": "fill_27.0"},
-            {"page": 2, "this": "fill_27.1.0", "of": "fill_27.1.1"},
-            {"page": 3, "this": "fill_28.1.1", "of": "fill_28.1.2"},
-        ],
     }
-    schemas = _with_group(tmp_path, settings, "schedule_d", "d_part_1", _D_PART_1, declaration)
+    schemas = _with_group(
+        tmp_path, settings, "schedule_d", "d_part_1", _D_PART_1, declaration, _D_PAGE_NUMBERS
+    )
     load_schema.cache_clear()
     yield schemas
     load_schema.cache_clear()
@@ -202,17 +220,117 @@ def schedule_d_part_2_with_copies(tmp_path, settings):
         "schedule_d",
         "d_part_2",
         _D_PART_2,
-        {
-            "extra_page": 3,
-            "page_numbers": [
-                {"page": 1, "this": None, "of": "fill_27.0"},
-                {"page": 2, "this": "fill_27.1.0", "of": "fill_27.1.1"},
-                {"page": 3, "this": "fill_28.1.1", "of": "fill_28.1.2"},
-            ],
-        },
+        {"extra_page": 3},
+        _D_PAGE_NUMBERS,
     )
     load_schema.cache_clear()
     yield schemas
+    load_schema.cache_clear()
+
+
+@pytest.fixture
+def schedule_d_with_two_groups(tmp_path, settings):
+    """
+    Schedule D with both Parts continued on copies, as 3c5 declares them (3c spec §9.1): Part 1
+    on copies of page 2, Part 2 on copies of page 3, with the form's page-number boxes.
+    """
+    _with_group(tmp_path, settings, "schedule_d", "d_part_2", _D_PART_2, {"extra_page": 3})
+    schemas = _with_group(
+        tmp_path, settings, "schedule_d", "d_part_1", _D_PART_1, {"extra_page": 2}, _D_PAGE_NUMBERS
+    )
+    load_schema.cache_clear()
+    yield schemas
+    load_schema.cache_clear()
+
+
+@pytest.fixture
+def schedule_d_with_totals(tmp_path, settings):
+    """
+    Schedule D's Part 1 with its total boxes (3c spec §5.3): the amounts add up in undefined_9 on
+    page 1, undefined_23 on page 2 and each copy of it, and undefined_24 on the last. The real
+    binding of undefined_24 is dropped first, as a box has one writer (forms.E006).
+    """
+    schemas = tmp_path / "schemas"
+    if not schemas.exists():
+        shutil.copytree(django_settings.FORM_SCHEMAS_DIRECTORY, schemas)
+    path = schemas / "schedule_d.json"
+    schema = json.loads(path.read_text())
+    schema["fields"] = [f for f in schema["fields"] if f["pdf_field"] != "undefined_24"]
+    path.write_text(json.dumps(schema))
+    declaration = {
+        "extra_page": 2,
+        "totals": {
+            "column": "sofa.creditor_payments[].total_paid",
+            "page_boxes": {"1": "undefined_9", "2": "undefined_23"},
+            "last_page_box": "undefined_24",
+        },
+    }
+    schemas = _with_group(tmp_path, settings, "schedule_d", "d_part_1", _D_PART_1, declaration)
+    load_schema.cache_clear()
+    yield schemas
+    load_schema.cache_clear()
+
+
+@pytest.fixture
+def schedule_g_numbered(tmp_path, settings):
+    """
+    Schedule G's rows as 3c5 declares them (3c spec §9.1): five on page 1, whose numbers the
+    form prints, and eight on page 2, each a SOFA creditor payment's name with its number in
+    the box after the printed "2.", continued on copies of page 2.
+    """
+    rows = [(1 if n <= 5 else 2, [(f"Company Name 2.{n}", *_NAME)]) for n in range(1, 14)]
+    declaration = {
+        "extra_page": 2,
+        "number": "{n}",
+        "number_boxes": {str(n): f"fill 2.{n}" for n in range(6, 14)},
+    }
+    schemas = _with_group(tmp_path, settings, "schedule_g", "g", rows, declaration)
+    load_schema.cache_clear()
+    yield schemas
+    load_schema.cache_clear()
+
+
+@pytest.fixture
+def schedule_d_with_totals_and_part_2(tmp_path, settings, schedule_d_with_totals):
+    """
+    Schedule D as 3c5 declares it (3c spec §5.3, §9.1): Part 1's total boxes, Part 2 on copies of
+    page 3, and the form's page-number boxes.
+    """
+    declaration = {"extra_page": 3}
+    schemas = _with_group(
+        tmp_path, settings, "schedule_d", "d_part_2", _D_PART_2, declaration, _D_PAGE_NUMBERS
+    )
+    load_schema.cache_clear()
+    yield schemas
+
+
+@pytest.fixture
+def schedule_e_f_with_copies(tmp_path, settings):
+    """
+    write(capacities, reverse): Schedule E/F with three groups on the real names of pages 2, 4
+    and 5, the nth holding capacities[n] rows of that page's three, every row a SOFA creditor
+    payment's name, continued on copies of its page, with the form's page-number boxes. With
+    reverse, the schema declares the groups last page first.
+    """
+
+    def write(capacities=(3, 3, 3), reverse=False):
+        schemas = None
+        declared = list(zip(_EF_GROUPS.items(), capacities, strict=True))
+        for (group, (page, names)), capacity in reversed(declared) if reverse else declared:
+            rows = [(page, [(box, *_NAME)]) for box in names[:capacity]]
+            schemas = _with_group(
+                tmp_path,
+                settings,
+                "schedule_e_f",
+                group,
+                rows,
+                {"extra_page": page},
+                _EF_PAGE_NUMBERS,
+            )
+        load_schema.cache_clear()
+        return schemas
+
+    yield write
     load_schema.cache_clear()
 
 

@@ -343,11 +343,11 @@ def _row_3_numbered_on_the_page_of_its_unmapped_box(d):
     "change, error",
     [
         (
-            lambda d: d.pop("groups"),
+            lambda d: (d.pop("groups"), d.pop("page_numbers")),
             ("forms.E007", "schedule_d: repeat group 'd_part_1' isn't declared in groups"),
         ),
         (
-            _group(lambda g: g.pop("extra_page")),
+            lambda d: (d["groups"]["d_part_1"].pop("extra_page"), d.pop("page_numbers")),
             ("forms.E007", "schedule_d: group 'd_part_1' names neither an extra_page nor a sheet"),
         ),
         (
@@ -421,10 +421,10 @@ def _row_3_numbered_on_the_page_of_its_unmapped_box(d):
         ),
         (
             # Page 2's own "of" box, declared as page 1's.
-            _group(lambda g: g["page_numbers"][0].update({"of": "fill_27.1.1"})),
+            lambda d: d["page_numbers"][0].update({"of": "fill_27.1.1"}),
             (
                 "forms.E003",
-                "schedule_d: group 'd_part_1': 'fill_27.1.1' is no drawn widget on page 1",
+                "schedule_d: page numbers: 'fill_27.1.1' is no drawn widget on page 1",
             ),
         ),
     ],
@@ -605,9 +605,9 @@ def test_a_repeat_group_whose_rows_sit_on_the_wrong_pages_is_reported(
         # Rows 4 and 5 both number themselves in row 5's box.
         (_group(lambda g: g["number_boxes"].update({"4": "undefined_19@2:T63"})), "undefined_19"),
         # Page 2's position written into row 5's amount box.
-        (_group(lambda g: g["page_numbers"][1].update({"this": "undefined_20"})), "undefined_20"),
+        (lambda d: d["page_numbers"][1].update({"this": "undefined_20"}), "undefined_20"),
         # Page 2's page count written into row 5's amount box.
-        (_group(lambda g: g["page_numbers"][1].update({"of": "undefined_20"})), "undefined_20"),
+        (lambda d: d["page_numbers"][1].update({"of": "undefined_20"}), "undefined_20"),
     ],
     ids=[
         "a number box on a slot's own box",
@@ -629,15 +629,8 @@ def test_a_page_count_box_drawn_on_two_pages_is_one_writer(schema_copy):
     # Schedule E/F draws one "of" box, fill_27.1.7, on pages 5 and 6. Every page prints the
     # same count, so declaring it for both pages can't conflict.
     def declare(d):
-        d["groups"] = {
-            "e_f": {
-                "extra_page": 6,
-                "page_numbers": [
-                    {"page": 5, "of": "fill_27.1.7"},
-                    {"page": 6, "of": "fill_27.1.7"},
-                ],
-            }
-        }
+        d["groups"] = {"e_f": {"extra_page": 6}}
+        d["page_numbers"] = [{"page": 5, "of": "fill_27.1.7"}, {"page": 6, "of": "fill_27.1.7"}]
 
     _edit(schema_copy, "schedule_e_f", declare)
     assert _errors("schedule_e_f") == []
@@ -673,8 +666,22 @@ def test_a_page_count_box_drawn_on_two_pages_is_one_writer(schema_copy):
                 "so it needs a tag",
             ),
         ),
+        (
+            # Page 2's position would print on pages 1 and 3 as well.
+            lambda d: d["page_numbers"][1].update({"this": "Case number"}),
+            (
+                "forms.E003",
+                "schedule_d: page numbers: 'Case number' is drawn 3 times, on pages "
+                "[1, 2, 3], so it needs a tag",
+            ),
+        ),
     ],
-    ids=["a slot", "a number box", "a number box with a twin on its page"],
+    ids=[
+        "a slot",
+        "a number box",
+        "a number box with a twin on its page",
+        "a page number's this box",
+    ],
 )
 def test_an_untagged_group_key_drawn_on_other_pages_is_reported(
     schedule_d_with_copies, change, error
@@ -738,19 +745,58 @@ def _part_2(declaration):
     return add
 
 
-def test_a_second_group_continued_on_copies_is_reported(schedule_d_with_copies):
-    # 3a2 numbers a form's pages counting one group's copies only (R21, R56).
+def test_a_form_takes_several_groups_continued_on_copies(schedule_d_with_copies):
+    # D's Parts 1 and 2 (3c spec §5.1): E/F needs three.
     _edit(schedule_d_with_copies, "schedule_d", _part_2({"extra_page": 3}))
+    assert _errors("schedule_d") == []
+
+
+def test_two_groups_cannot_continue_on_copies_of_one_page(schedule_d_with_copies):
+    # A copy's place in the form comes from its page and its number, so two groups' copies of
+    # one page would print under one number.
+    def add(d):
+        d["fields"] = [
+            f
+            for f in d["fields"]
+            if not (f["pdf_field"] == "Creditors Name_2" and f["repeat"] == "d_part_1")
+        ]
+        d["fields"].append(
+            {
+                **_text("Creditors Name_2", 1, None),
+                "source": "asked",
+                "value": None,
+                "binding": "sofa.creditor_payments[].creditor_name",
+                "repeat": "other",
+                "repeat_capacity": 1,
+                "row": 1,
+            }
+        )
+        d["groups"]["other"] = {"extra_page": 2}
+
+    _edit(schedule_d_with_copies, "schedule_d", add)
+    assert (
+        "forms.E007",
+        "schedule_d: groups 'd_part_1' and 'other' both continue on copies of page 2",
+    ) in _errors("schedule_d")
+
+
+def test_page_numbers_on_a_form_with_copies_pass(schedule_d_with_two_groups):
+    assert _errors("schedule_d") == []
+
+
+def test_page_numbers_that_leave_out_a_continued_page_are_reported(schedule_d_with_copies):
+    # Page 2's copies would count in "of N" and print no number of their own.
+    _edit(schedule_d_with_copies, "schedule_d", lambda d: d["page_numbers"].pop(1))
     assert _errors("schedule_d") == [
         (
             "forms.E007",
-            "schedule_d: groups 'd_part_1' and 'd_part_2' both declare extra_page; "
-            "3a2 continues one group per form on copies",
+            "schedule_d: group 'd_part_1' continues on copies of page 2, "
+            "which has no page-number boxes",
         )
     ]
 
 
-def test_a_group_with_no_extra_page_is_not_counted_as_a_second(schedule_d_with_copies):
+def test_a_second_group_with_no_extra_page_is_reported(schedule_d_with_copies):
     # Such a group is refused for its own reason.
     _edit(schedule_d_with_copies, "schedule_d", _part_2({}))
     assert _errors("schedule_d") == [
@@ -758,7 +804,7 @@ def test_a_group_with_no_extra_page_is_not_counted_as_a_second(schedule_d_with_c
     ]
 
 
-def test_a_group_continued_on_an_attached_sheet_is_not_counted_as_a_second(
+def test_a_group_on_a_sheet_passes_beside_a_group_on_copies(
     schedule_d_with_copies,
 ):
     # A sheet's pages aren't copies of the form's, so they number none of its pages (R56).
@@ -770,6 +816,112 @@ def test_a_group_continued_on_an_attached_sheet_is_not_counted_as_a_second(
     }
     _edit(schedule_d_with_copies, "schedule_d", _part_2({"number": "3.{n}", "sheet": sheet}))
     assert _errors("schedule_d") == []
+
+
+def test_a_groups_total_boxes_pass(schedule_d_with_totals):
+    assert _errors("schedule_d") == []
+
+
+def _totals(change):
+    """Change the synthetic Schedule D group's total boxes."""
+    return lambda d: change(d["groups"]["d_part_1"]["totals"])
+
+
+@pytest.mark.parametrize(
+    "change, error",
+    [
+        (
+            # Page 3 is Part 2's: no row of the group prints there to add up.
+            _totals(lambda t: t.update(page_boxes={"3": "fill_28.1.1"})),
+            (
+                "forms.E007",
+                "schedule_d: group 'd_part_1': total box 'fill_28.1.1' is for page 3, "
+                "which holds none of its slots",
+            ),
+        ),
+        (
+            _totals(lambda t: t.update(column="sofa.creditor_payments[].nothing")),
+            (
+                "forms.E007",
+                "schedule_d: group 'd_part_1': its totals add "
+                "'sofa.creditor_payments[].nothing', which isn't a text slot of the group",
+            ),
+        ),
+        (
+            _totals(lambda t: t.update(page_boxes={}, last_page_box=None)),
+            ("forms.E007", "schedule_d: group 'd_part_1': its totals name no box"),
+        ),
+        (
+            # Page 1's box, declared as page 2's.
+            _totals(lambda t: t.update(page_boxes={"2": "undefined_9"})),
+            (
+                "forms.E003",
+                "schedule_d: group 'd_part_1': 'undefined_9' is no drawn widget on page 2",
+            ),
+        ),
+        (
+            # The last page's box must print on the extra page and its copies.
+            _totals(lambda t: t.update(last_page_box="fill_27.0")),
+            (
+                "forms.E003",
+                "schedule_d: group 'd_part_1': 'fill_27.0' is no drawn widget on page 2",
+            ),
+        ),
+        (
+            # Page 2's total would print on pages 1 and 3 as well.
+            _totals(lambda t: t.update(page_boxes={"2": "Case number"})),
+            (
+                "forms.E003",
+                "schedule_d: group 'd_part_1': 'Case number' is drawn 3 times, on pages "
+                "[1, 2, 3], so it needs a tag",
+            ),
+        ),
+        (
+            # A figure can't tick a box: every filer with a row would be refused.
+            _totals(lambda t: t.update(page_boxes={"2": "Contingent_3"})),
+            (
+                "forms.E003",
+                "schedule_d: group 'd_part_1': total box 'Contingent_3' isn't a text box",
+            ),
+        ),
+    ],
+    ids=[
+        "a box on no page of the group",
+        "a column no slot binds",
+        "no box",
+        "a box on another page",
+        "a last box off the extra page",
+        "a box drawn on other pages",
+        "a checkbox",
+    ],
+)
+def test_a_total_box_that_cannot_add_its_own_rows_is_reported(
+    schedule_d_with_totals, change, error
+):
+    _edit(schedule_d_with_totals, "schedule_d", change)
+    assert _errors("schedule_d") == [error]
+
+
+def test_a_total_box_another_binding_fills_is_reported(schedule_d_with_totals):
+    # The real binding of undefined_24, put back: the rule's figure and the group's would fight.
+    def add(d):
+        d["fields"].append(_text("undefined_24", 2, None))
+
+    _edit(schedule_d_with_totals, "schedule_d", add)
+    assert _errors("schedule_d") == [
+        ("forms.E006", "schedule_d: 'undefined_24' is bound 2 times on page 2")
+    ]
+
+
+def test_a_group_on_a_sheet_has_no_total_boxes(schedule_a_b_with_sheet):
+    def add(d):
+        d["groups"]["ab_line_3"]["totals"] = {"column": "sofa.creditor_payments[].total_paid"}
+
+    _edit(schedule_a_b_with_sheet, "schedule_a_b", add)
+    assert (
+        "forms.E007",
+        "schedule_a_b: group 'ab_line_3': only a group continued on copies has total boxes",
+    ) in _errors("schedule_a_b")
 
 
 def test_a_group_of_the_households_dependents_passes(schedule_j_with_dependents):
@@ -902,8 +1054,11 @@ _AB = "schedule_a_b: group 'ab_line_3'"
             ("forms.E007", f"{_AB}: number must contain {{n}}"),
         ),
         (
-            _sheet(lambda g: g.update(page_numbers=[{"page": 2}])),
-            ("forms.E007", f"{_AB}: a sheet group has no copies, so it numbers no pages"),
+            lambda d: d.update(page_numbers=[{"page": 2}]),
+            (
+                "forms.E007",
+                "schedule_a_b: no group continues on copies, so the form numbers no pages",
+            ),
         ),
         (
             # A row of line numbers alone.
