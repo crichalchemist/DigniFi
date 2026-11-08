@@ -422,9 +422,12 @@ export function IntakeWizard() {
 
       case 'debts':
         // Filter empty forms — debt_type, is_secured, and priority_classification
-        // are already set by DebtsStep via DEBT_CATEGORY_META lookup
+        // are already set by DebtsStep via DEBT_CATEGORY_META lookup. A payment goes as null,
+        // since the server keeps what it holds for a key left out.
         return {
-          debts: debtsData.filter((d) => d.creditor_name?.trim()),
+          debts: debtsData
+            .filter((d) => d.creditor_name?.trim())
+            .map((row) => ({ ...row, monthly_payment: row.monthly_payment ?? null })),
         } as Partial<IntakeSession>;
 
       case 'contracts':

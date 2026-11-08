@@ -1591,6 +1591,33 @@ describe.each([
   }
 );
 
+describe('IntakeWizard the monthly payment on the Amounts Owed step', () => {
+  // The server keeps what it holds for a key left out, so a cleared box must go as null
+  async function continueWithPayment(value: string) {
+    const { bodies } = serveSessionSaves({
+      ...sessionAtStep1,
+      current_step: 6,
+      debts: [storedDebt],
+    });
+    renderWizard();
+    await screen.findByRole('heading', { name: /amounts owed/i, level: 2 });
+    fireEvent.change(field('monthly_payment_0'), { target: { value } });
+    await userEvent.click(screen.getByRole('button', { name: /continue/i }));
+    await waitFor(() => expect(bodies.length).toBeGreaterThan(0));
+    return (bodies[0] as { debts: Record<string, unknown>[] }).debts[0];
+  }
+
+  it('empties a monthly payment the filer cleared, instead of keeping the old figure', async () => {
+    const debt = await continueWithPayment('');
+    expect(debt.monthly_payment).toBeNull();
+  });
+
+  it('saves a monthly payment typed as $0 as 0, not as empty', async () => {
+    const debt = await continueWithPayment('0');
+    expect(debt.monthly_payment).toBe(0);
+  });
+});
+
 describe('IntakeWizard the rows of the Assets step', { timeout: 30_000 }, () => {
   // A stored row left out of a save is deleted, and asset_type is read-only, so a new row has none
   it('keeps every row through Continue, whatever its type, text or Part', async () => {
