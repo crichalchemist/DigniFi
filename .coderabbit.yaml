@@ -1,0 +1,10 @@
+# Feature PRs target develop, and CodeRabbit auto-reviews only the default
+# branch (main) unless told otherwise. inheritance keeps the organization's
+# CodeRabbit settings (review profile and the rest) and adds develop to them.
+# On a public repository CodeRabbit reads this file from the PR's base branch,
+# so it applies to PRs into develop once it is on develop.
+inheritance: true
+reviews:
+  auto_review:
+    base_branches:
+      - "^develop$"
