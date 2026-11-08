@@ -794,9 +794,8 @@ class DebtInfo(models.Model):
     )
 
     # Creditor information
-    creditor_name = models.CharField(
-        max_length=255, help_text="Name of creditor or collection agency"
-    )
+    # Draft until counsel rules on C-17 (DIG-280).
+    creditor_name = EncryptedCharField(max_length=255, help_text="Name of creditor")
     debt_type = models.CharField(max_length=30, choices=DEBT_TYPE_CHOICES)
     priority_classification = models.CharField(
         max_length=30,
@@ -818,7 +817,7 @@ class DebtInfo(models.Model):
     )
 
     # Additional details
-    monthly_payment = models.DecimalField(
+    monthly_payment = EncryptedDecimalField(
         max_digits=10,
         decimal_places=2,
         null=True,
@@ -828,7 +827,7 @@ class DebtInfo(models.Model):
     is_in_collections = models.BooleanField(
         default=False, help_text="Has this account been sent to collections?"
     )
-    notes = models.TextField(blank=True, help_text="Additional context about this amount owed")
+    notes = EncryptedTextField(blank=True, help_text="Additional context about this amount owed")
 
     # Chapter 7 classification fields
     consumer_business_classification = models.CharField(
@@ -846,7 +845,7 @@ class DebtInfo(models.Model):
         help_text="Secured debts go on Schedule D; unsecured on Schedule E/F",
     )
 
-    collateral_description = models.TextField(
+    collateral_description = EncryptedTextField(
         blank=True,
         help_text="Description of collateral if secured debt (e.g., '2020 Honda Civic VIN: 12345')",
     )
@@ -871,7 +870,7 @@ class DebtInfo(models.Model):
         help_text="Debtor disputes validity or amount",
     )
 
-    date_incurred = models.DateField(
+    date_incurred = EncryptedTextField(
         null=True,
         blank=True,
         help_text="When debt was incurred",
@@ -903,7 +902,7 @@ class DebtInfo(models.Model):
         ordering: ClassVar[list[str]] = ["priority_classification", "-amount_owed"]
 
     def __str__(self) -> str:
-        return f"{self.creditor_name} - {self.get_debt_type_display()} ({self.get_consumer_business_classification_display()}) (Session: {self.session_id})"
+        return f"DebtInfo {self.pk} ({self.get_debt_type_display()}, {self.get_consumer_business_classification_display()})"
 
 
 class FilingFee(models.Model):
@@ -1023,13 +1022,13 @@ class ExecutoryContract(models.Model):
     session = models.ForeignKey(
         IntakeSession, on_delete=models.CASCADE, related_name="executory_contracts"
     )
-    counterparty_name = models.CharField(
+    counterparty_name = EncryptedCharField(
         max_length=255, help_text="Name of other party to the contract or lease"
     )
     contract_type = models.CharField(
         max_length=20, choices=CONTRACT_TYPE_CHOICES, default="contract"
     )
-    description = models.TextField(
+    description = EncryptedTextField(
         blank=True, help_text="Brief description of the contract or lease"
     )
 
@@ -1050,12 +1049,12 @@ class Codebtor(models.Model):
     ]
 
     session = models.ForeignKey(IntakeSession, on_delete=models.CASCADE, related_name="codebtors")
-    name = models.CharField(max_length=255, help_text="Full name of codebtor")
-    street_address = models.CharField(max_length=255, blank=True)
-    city = models.CharField(max_length=100, blank=True)
-    state = models.CharField(max_length=2, blank=True)
-    zip_code = models.CharField(max_length=10, blank=True)
-    relationship = models.CharField(max_length=20, choices=RELATIONSHIP_CHOICES, default="other")
+    name = EncryptedCharField(max_length=255, help_text="Full name of codebtor")
+    street_address = EncryptedCharField(max_length=255, blank=True)
+    city = EncryptedCharField(max_length=100, blank=True)
+    state = EncryptedCharField(max_length=2, blank=True)
+    zip_code = EncryptedCharField(max_length=10, blank=True)
+    relationship = EncryptedCharField(max_length=20, choices=RELATIONSHIP_CHOICES, default="other")
 
     class Meta:
         db_table = "codebtors"

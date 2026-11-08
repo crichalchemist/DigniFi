@@ -556,6 +556,12 @@ class DebtInfoSerializer(serializers.ModelSerializer):
 
     # Explicit field declaration — EncryptedDecimalField confuses DRF's auto-mapper
     amount_owed = serializers.DecimalField(max_digits=12, decimal_places=2)
+    creditor_name = serializers.CharField(max_length=255)
+    monthly_payment = serializers.DecimalField(
+        max_digits=10, decimal_places=2, min_value=Decimal(0), required=False, allow_null=True
+    )
+    notes = serializers.CharField(required=False, allow_blank=True)
+    collateral_description = serializers.CharField(required=False, allow_blank=True)
     source_document_name = serializers.SerializerMethodField()
 
     class Meta:
@@ -1140,12 +1146,24 @@ class BulkAnswerPayloadSerializer(serializers.Serializer):
 
 
 class ExecutoryContractSerializer(serializers.ModelSerializer):
+    # The old columns' auto-mapped kwargs, declared because the columns are encrypted now; the
+    # width that bounds an undone migration lives here.
+    counterparty_name = serializers.CharField(max_length=255)
+    description = serializers.CharField(required=False, allow_blank=True)
+
     class Meta:
         model = ExecutoryContract
         fields = ["id", "counterparty_name", "contract_type", "description"]
 
 
 class CodebtorSerializer(serializers.ModelSerializer):
+    name = serializers.CharField(max_length=255)
+    street_address = serializers.CharField(max_length=255, required=False, allow_blank=True)
+    city = serializers.CharField(max_length=100, required=False, allow_blank=True)
+    state = serializers.CharField(max_length=2, required=False, allow_blank=True)
+    zip_code = serializers.CharField(max_length=10, required=False, allow_blank=True)
+    relationship = serializers.ChoiceField(choices=Codebtor.RELATIONSHIP_CHOICES, required=False)
+
     class Meta:
         model = Codebtor
         fields = [

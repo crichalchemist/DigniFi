@@ -4,6 +4,7 @@ Business intent: a data migration rewrites what filers already saved. It must ch
 the rows it names and nothing else, and undoing it must leave saved data as it is (spec §7.8).
 """
 
+import datetime
 import json
 from decimal import Decimal
 
@@ -842,3 +843,188 @@ def test_undoing_the_asset_encryption_keeps_a_row_saved_after_3b_with_no_type_or
 def test_undoing_the_asset_encryption_keeps_a_row_saved_after_3b_on_postgres(migrate):
     row = _undo_with_a_row_saved_after_3b(migrate)
     assert (row.asset_type, row.current_value) == ("", Decimal("0"))
+
+
+BEFORE_CLAIMS = [("intake", "0035_assetlineanswers")]
+CLAIMS_ENCRYPTED = [("intake", "0038_claims_encrypt_swap")]
+CLAIMS_COLUMNS = {
+    "debt_info": [
+        "creditor_name",
+        "monthly_payment",
+        "notes",
+        "collateral_description",
+        "date_incurred",
+    ],
+    "executory_contracts": ["counterparty_name", "description"],
+    "codebtors": ["name", "street_address", "city", "state", "zip_code", "relationship"],
+}
+CLAIMS_PLAINTEXTS = [
+    "Prairie Card Services",
+    "Opened in 2019",
+    "2015 Honda Civic",
+    "Lakeshore Medical",
+    "Oak Street Apartments",
+    "Apartment lease",
+    "Sam Doe",
+    "12 Elm St",
+    "Chicago",
+]
+
+
+def _one_row_in_each_claims_table(apps):
+    session_id = _session(apps).pk
+    DebtInfo = apps.get_model("intake", "DebtInfo")
+    first = DebtInfo.objects.create(
+        session_id=session_id,
+        creditor_name="Prairie Card Services",
+        debt_type="credit_card",
+        amount_owed=Decimal("1200.00"),
+        monthly_payment=Decimal("75.00"),
+        notes="Opened in 2019",
+        collateral_description="2015 Honda Civic",
+        date_incurred=datetime.date(2019, 5, 1),
+    )
+    second = DebtInfo.objects.create(
+        session_id=session_id,
+        creditor_name="Lakeshore Medical",
+        debt_type="medical",
+        amount_owed=Decimal("300.00"),
+    )
+    apps.get_model("intake", "ExecutoryContract").objects.create(
+        session_id=session_id,
+        counterparty_name="Oak Street Apartments",
+        contract_type="lease",
+        description="Apartment lease",
+    )
+    apps.get_model("intake", "Codebtor").objects.create(
+        session_id=session_id,
+        name="Sam Doe",
+        street_address="12 Elm St",
+        city="Chicago",
+        state="IL",
+        zip_code="60601",
+        relationship="relative",
+    )
+    return first.pk, second.pk
+
+
+def _raw_claims():
+    raw = {}
+    with connection.cursor() as cursor:
+        for table, columns in CLAIMS_COLUMNS.items():
+            cursor.execute(f"SELECT {', '.join(columns)} FROM {table} ORDER BY id")
+            raw[table] = cursor.fetchall()
+    return raw
+
+
+def _check_claims_ciphertext(raw):
+    for rows in raw.values():
+        for row in rows:
+            for value in row:
+                if value is None:
+                    continue
+                assert str(value).startswith("gAAAAA")
+                assert not any(text in str(value) for text in CLAIMS_PLAINTEXTS)
+
+
+def _check_claims_undone(apps, first_pk, second_pk):
+    raw = _raw_claims()
+    first, second = raw["debt_info"]
+    assert first[0] == "Prairie Card Services"
+    assert tuple(first[2:4]) == ("Opened in 2019", "2015 Honda Civic")
+    assert second[0] == "Lakeshore Medical"
+    assert tuple(second[2:4]) == ("", "")
+    assert [tuple(r) for r in raw["executory_contracts"]] == [
+        ("Oak Street Apartments", "Apartment lease")
+    ]
+    assert [tuple(r) for r in raw["codebtors"]] == [
+        ("Sam Doe", "12 Elm St", "Chicago", "IL", "60601", "relative")
+    ]
+    DebtInfo = apps.get_model("intake", "DebtInfo")
+    one, two = DebtInfo.objects.get(pk=first_pk), DebtInfo.objects.get(pk=second_pk)
+    assert (one.date_incurred, two.date_incurred) == (datetime.date(2019, 5, 1), None)
+    assert (one.monthly_payment, two.monthly_payment) == (Decimal("75.00"), None)
+
+
+def _run_the_claims_round_trip(migrate):
+    apps = migrate(BEFORE_CLAIMS)
+    first_pk, second_pk = _one_row_in_each_claims_table(apps)
+    after = migrate(CLAIMS_ENCRYPTED)
+    raw_after = _raw_claims()
+    live = after.get_model("intake", "DebtInfo")
+    assert live.objects.get(pk=first_pk).date_incurred == "2019-05-01"
+    assert live.objects.get(pk=second_pk).date_incurred is None
+    undone = migrate(BEFORE_CLAIMS)
+    return raw_after, undone, first_pk, second_pk
+
+
+@pytest.mark.slow
+def test_encrypting_the_claims_columns_keeps_every_row_both_ways(migrate):
+    raw_after, undone, first_pk, second_pk = _run_the_claims_round_trip(migrate)
+    _check_claims_ciphertext(raw_after)
+    _check_claims_undone(undone, first_pk, second_pk)
+
+
+@pytest.mark.slow
+def test_undoing_the_claims_encryption_returns_a_date_range_as_no_date(migrate):
+    apps = migrate(BEFORE_CLAIMS)
+    _session(apps)
+    apps = migrate(CLAIMS_ENCRYPTED)
+    session_id = apps.get_model("intake", "IntakeSession").objects.get().pk
+    DebtInfo = apps.get_model("intake", "DebtInfo")
+    ranged = DebtInfo.objects.create(
+        session_id=session_id,
+        creditor_name="A",
+        debt_type="credit_card",
+        amount_owed=Decimal("1.00"),
+        date_incurred="Various 2019-2024",
+    )
+    single = DebtInfo.objects.create(
+        session_id=session_id,
+        creditor_name="B",
+        debt_type="credit_card",
+        amount_owed=Decimal("1.00"),
+        date_incurred="2019-05-01",
+    )
+    old = migrate(BEFORE_CLAIMS).get_model("intake", "DebtInfo")
+    assert old.objects.get(pk=ranged.pk).date_incurred is None
+    assert old.objects.get(pk=single.pk).date_incurred == datetime.date(2019, 5, 1)
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize(
+    ("table", "column"),
+    [
+        ("debt_info", "creditor_name"),
+        ("executory_contracts", "counterparty_name"),
+        ("codebtors", "name"),
+    ],
+)
+def test_undoing_the_claims_encryption_refuses_a_value_it_cannot_read_rather_than_lose_it(
+    migrate, table, column
+):
+    apps = migrate(BEFORE_CLAIMS)
+    _one_row_in_each_claims_table(apps)
+    migrate(CLAIMS_ENCRYPTED)
+    foreign = Fernet(Fernet.generate_key()).encrypt(b"Prairie Card Services").decode()
+    with connection.cursor() as cursor:
+        cursor.execute(f"SELECT id FROM {table} ORDER BY id")
+        (row_id,) = cursor.fetchone()
+        cursor.execute(f"UPDATE {table} SET {column} = %s WHERE id = %s", [foreign, row_id])
+    with pytest.raises(RuntimeError, match=rf"^{table} row {row_id} can't be read") as refused:
+        migrate(BEFORE_CLAIMS)
+    assert "Prairie" not in str(refused.value) and foreign not in str(refused.value)
+
+
+@pytest.mark.postgres
+@ON_POSTGRES
+def test_encrypting_the_claims_columns_keeps_every_row_both_ways_on_postgres(migrate):
+    raw_after, undone, first_pk, second_pk = _run_the_claims_round_trip(migrate)
+    _check_claims_ciphertext(raw_after)
+    _check_claims_undone(undone, first_pk, second_pk)
+    with connection.cursor() as cursor:
+        cursor.execute(
+            "SELECT data_type FROM information_schema.columns"
+            " WHERE table_name = 'debt_info' AND column_name = 'creditor_name'"
+        )
+        assert cursor.fetchone()[0] == "character varying"

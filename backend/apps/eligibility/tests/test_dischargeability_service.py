@@ -47,7 +47,7 @@ class TestDischargeabilityService:
     def test_flags_student_loan(self, session_with_student_loan):
         svc = DischargeabilityService(session_with_student_loan)
         svc.evaluate()
-        debt = DebtInfo.objects.get(creditor_name="Navient")
+        [debt] = [d for d in DebtInfo.objects.all() if d.creditor_name == "Navient"]
         assert debt.is_dischargeable is False
         assert debt.adversary_proceeding_needed is True
 
@@ -93,7 +93,7 @@ class TestDischargeabilityEndToEnd:
         assert len(results) == 1
         assert results[0]["dischargeable"] is False
 
-        debt = DebtInfo.objects.get(creditor_name="Sallie Mae")
+        [debt] = [d for d in DebtInfo.objects.all() if d.creditor_name == "Sallie Mae"]
         assert debt.is_dischargeable is False
         assert debt.adversary_proceeding_needed is True
 
