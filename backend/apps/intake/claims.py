@@ -67,6 +67,7 @@ CONTRACT_GAP_PURPOSE = "Enter what the contract or lease is for, for {name}."
 CONTRACT_GAP_LEASE_KIND = "Choose the kind of lease for {name}."
 CONTRACT_GAP_VEHICLE = "Choose the vehicle you lease from {name}."
 CONTRACT_GAP_PAYMENT = "Enter the monthly lease payment for {name}."
+# DRAFT: counsel C-9
 CONTRACT_GAP_OWES_NOW = "Answer “Do you owe money on this now?” for {name}."
 CONTRACT_GAP_OWED_DEBT = (
     "Choose the amount owed that goes with {name}, or add it on the Amounts Owed step."

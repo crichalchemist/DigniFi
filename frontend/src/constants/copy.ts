@@ -534,6 +534,7 @@ export const CONTRACT_GAP_VEHICLE = 'Choose the vehicle you lease from {name}.';
 
 export const CONTRACT_GAP_PAYMENT = 'Enter the monthly lease payment for {name}.';
 
+// DRAFT: counsel C-9
 export const CONTRACT_GAP_OWES_NOW = 'Answer “Do you owe money on this now?” for {name}.';
 
 export const CONTRACT_GAP_OWED_DEBT =

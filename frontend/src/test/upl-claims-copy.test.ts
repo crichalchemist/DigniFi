@@ -21,7 +21,7 @@ const ADVICE: RegExp[] = [
   /\bwill be discharged\b/i,
   /\byou will keep\b/i,
   /\byou qualify\b/i,
-  /\$\s?(?!0\b)\d/, // "$0" is the form's floor, never a value to enter (R13)
+  /\$\s?(?!0(?!\d|[.,]\d))\d/, // "$0" is the form's floor, never a value to enter (R13)
   // PROHIBITED_PHRASES that the words above don't already catch
   /\byou will qualify\b/i,
   /\byou will probably\b/i,
@@ -117,6 +117,8 @@ describe('the claim steps give information, never advice', () => {
     'You qualify for this exemption.',
     'Put $500 here.',
     'Enter $5.',
+    'Enter $0.50.',
+    'Enter $0,500.',
     'You are eligible for this.',
   ])('finds the advice in "%s"', (sentence) => {
     expect(adviceIn(sentence)).not.toEqual([]);
@@ -128,5 +130,7 @@ describe('the claim steps give information, never advice', () => {
 
   it('allows "$0", the form\'s floor', () => {
     expect(adviceIn('It must be above $0.')).toEqual([]);
+    expect(adviceIn('Enter $0 on the other line.')).toEqual([]);
+    expect(adviceIn('Enter $0')).toEqual([]);
   });
 });

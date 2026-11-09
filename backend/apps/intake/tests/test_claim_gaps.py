@@ -14,6 +14,9 @@ from django.conf import settings
 
 from apps.districts.models import District
 from apps.intake.claims import (
+    NAMELESS_CODEBTOR,
+    NAMELESS_CONTRACT,
+    NAMELESS_DEBT,
     address_missing,
     claim_row_name,
     claim_step_gaps,
@@ -279,13 +282,53 @@ def test_every_gap_sentence_in_copy_is_pinned():
 
 
 def test_a_nameless_row_is_called_by_its_kind_in_copy():
-    assert _copy_sentence("NAMELESS_DEBT") == claim_row_name("  ", "one amount owed")
-    assert _copy_sentence("NAMELESS_CONTRACT") == "one contract"
-    assert _copy_sentence("NAMELESS_CODEBTOR") == "one codebtor"
+    assert _copy_sentence("NAMELESS_DEBT") == claim_row_name("  ", NAMELESS_DEBT)
+    assert _copy_sentence("NAMELESS_CONTRACT") == NAMELESS_CONTRACT
+    assert _copy_sentence("NAMELESS_CODEBTOR") == NAMELESS_CODEBTOR
+
+
+def test_a_nameless_contract_and_codebtor_are_named_by_the_servers_kind(session):
+    # The server's own sentence for a nameless row quotes the same words copy.ts holds
+    complete_debt(session)
+    complete_codebtor(session, name="", links=[])
+    complete_contract(session, counterparty_name="", description="")
+    gaps = _gaps(session)
+
+    assert any(_copy_sentence("NAMELESS_CODEBTOR") in gap for gap in gaps)
+    assert any(_copy_sentence("NAMELESS_CONTRACT") in gap for gap in gaps)
 
 
 def test_a_complete_debt_has_no_gap(session):
     complete_debt(session)
+    answer_claims(session)
+
+    assert _gaps(session) == []
+
+
+def test_a_residential_lease_has_no_gap(session):
+    complete_contract(session)
+    answer_claims(session, no_debts=True, contracts_answer="yes")
+
+    assert _gaps(session) == []
+
+
+def test_a_vehicle_lease_has_no_gap(session):
+    _vehicle_lease_with()(session)
+    answer_claims(session, no_debts=True, contracts_answer="yes")
+
+    assert _gaps(session) == []
+
+
+def test_a_codebtor_on_a_live_debt_has_no_gap(session):
+    complete_debt(session)
+    complete_codebtor(session)
+    answer_claims(session, codebtors_answer="yes")
+
+    assert _gaps(session) == []
+
+
+def test_a_secured_car_debt_has_no_gap(session):
+    _secured(session)
     answer_claims(session)
 
     assert _gaps(session) == []
