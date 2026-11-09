@@ -14,12 +14,17 @@ import { FormField, FormSelect, FormTextarea, Button } from '../../common';
 import { UPLDisclaimer } from '../../compliance';
 import { UPL_EXEMPTION_DISCLAIMER } from '../../../constants/upl';
 import { parseAmount } from '../../../utils/parseAmount';
-import type { DebtInfo, WizardRow } from '../../../types/api';
+import type { AssetInfo, DebtInfo, DebtRow, WizardRow } from '../../../types/api';
 
 interface DebtsStepProps {
   /** The wizard's rows. The step keeps no copy, so an id a save writes into a row stays there. */
-  rows: WizardRow<DebtInfo>[];
-  onRowsChange: (rows: WizardRow<DebtInfo>[]) => void;
+  rows: DebtRow[];
+  onRowsChange: (rows: DebtRow[]) => void;
+  /** "I have no amounts owed" is pressed (3c3 R18) */
+  noDebts: boolean;
+  onNoDebtsChange: (pressed: boolean) => void;
+  /** The Assets step's rows, for the property a debt is secured by */
+  assets: WizardRow<AssetInfo>[];
   onValidationChange: (isValid: boolean) => void;
 }
 
@@ -116,7 +121,7 @@ export function DebtsStep({ rows, onRowsChange, onValidationChange }: DebtsStepP
   }, [isValid]);
   /* eslint-enable react-hooks/exhaustive-deps */
 
-  function createEmptyDebt(): WizardRow<DebtInfo> {
+  function createEmptyDebt(): DebtRow {
     return {
       _key: `new-${++nextKey}`,
       debt_type: undefined,

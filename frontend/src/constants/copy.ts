@@ -591,6 +591,9 @@ export const OLD_ROW_LINE_LABEL = 'Which line does this go on?';
 
 export const OLD_ROW_LINE_PLACEHOLDER = 'Choose a line';
 
+// The blank first option of a select with no answer yet
+export const CHOOSE_ONE = 'Choose one';
+
 // What the step called a row's type before it asked the form's lines. Not the form's words, and
 // never a suggestion of a line.
 export const OLD_ASSET_TYPE_WORDS: Record<string, string> = {

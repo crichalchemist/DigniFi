@@ -396,6 +396,12 @@ describe("IntakeWizard Complete's reasons", { timeout: 30_000 }, () => {
     renderWizard();
     const completeBtn = await screen.findByRole('button', { name: /complete intake/i });
     const stepUpdates = refuseComplete([NO_EXPENSES]);
+    // Continue from Codebtors saves its claim answers with a session PATCH too
+    server.use(
+      http.patch('http://localhost:8000/api/intake/sessions/:id/', () =>
+        HttpResponse.json(sessionAtStep9)
+      )
+    );
     await userEvent.click(completeBtn);
     await screen.findByText(NO_EXPENSES.message);
 
@@ -1300,6 +1306,22 @@ const storedDebt = {
   notes: '',
   is_draft: false,
   source_document_name: null,
+  street_address: '1 Demo Street',
+  street_2: '',
+  city: 'Demo City',
+  state: 'IL',
+  zip_code: '60601',
+  outside_us: false,
+  secured_by: null,
+  home_payment_line: null,
+  collateral_who: null,
+  lien: null,
+  claim_status: [],
+  offset_answer: 'no',
+  notice_parties: [],
+  community_debt: '',
+  date_incurred: '',
+  account_last_4: '',
 };
 
 describe.each([
@@ -2113,6 +2135,8 @@ describe('IntakeWizard a new debt after Complete', { timeout: 30_000 }, () => {
     await userEvent.click(screen.getByRole('button', { name: /complete intake/i }));
     await screen.findByRole('alert');
     expect(saves.stored().status).toBe('completed');
+    // Steps 7 and 8 each send a PATCH of their claim answers too, so the count is taken here
+    const savesBefore = saves.bodies.length;
 
     vi.useFakeTimers();
     try {
@@ -2125,7 +2149,7 @@ describe('IntakeWizard a new debt after Complete', { timeout: 30_000 }, () => {
       vi.useRealTimers();
     }
 
-    expect(saves.bodies).toHaveLength(1);
+    expect(saves.bodies).toHaveLength(savesBefore);
     expect(saves.stored().status).toBe('completed');
     consoleError.mockRestore();
   });
@@ -3113,6 +3137,17 @@ const storedLease = {
   counterparty_name: 'Oak Street Apartments',
   contract_type: 'lease',
   description: 'Apartment lease',
+  street_address: '1 Demo Street',
+  street_2: '',
+  city: 'Demo City',
+  state: 'IL',
+  zip_code: '60601',
+  outside_us: false,
+  lease_kind: 'residential',
+  monthly_payment: null,
+  vehicle_asset: null,
+  owes_now: 'no',
+  owed_debt: null,
 };
 const storedGym = {
   id: 5,
@@ -3123,11 +3158,14 @@ const storedGym = {
 const storedCodebtor = {
   id: 3,
   name: 'Sam Doe',
-  street_address: '',
+  street_address: '2 Demo Avenue',
+  street_2: '',
   city: 'Chicago',
   state: 'IL',
-  zip_code: '',
+  zip_code: '60601',
+  outside_us: false,
   relationship: 'relative',
+  links: [{ kind: 'debt', id: 7 }],
 };
 
 /**
@@ -3139,24 +3177,36 @@ const storedCodebtor = {
 function serveListSaves(
   list: 'contracts' | 'codebtors',
   step: number,
-  loaded: Record<string, unknown>[]
+  loaded: Record<string, unknown>[],
+  claimAnswers: Record<string, unknown> = {}
 ) {
   const session = {
     ...sessionAtStep1,
     current_step: step,
     debtor_info: { first_name: 'Jane', last_name: 'Doe' },
     debts: [storedDebt],
+    // Every question answered, the list under test Yes: a test that adds a row needs its list's
+    // answer to be Yes
+    claim_answers: {
+      no_debts: null,
+      contracts_answer: list === 'contracts' ? 'yes' : 'no',
+      codebtors_answer: list === 'codebtors' ? 'yes' : 'no',
+      community_lived: 'no',
+      ...claimAnswers,
+    },
   };
   const otherList = list === 'contracts' ? 'codebtors' : 'contracts';
   let held = loaded;
   let nextId = 10;
   let heldReply: Promise<void> | null = null;
   const bodies: Record<string, unknown>[][] = [];
+  const patches: Record<string, unknown>[] = [];
   server.use(
     http.get('http://localhost:8000/api/intake/sessions/:id/', () => HttpResponse.json(session)),
     http.patch('http://localhost:8000/api/intake/sessions/:id/', async ({ request }) => {
       const body = (await request.json()) as Record<string, unknown>;
-      return HttpResponse.json({ ...session, debts: body.debts });
+      patches.push(body);
+      return HttpResponse.json({ ...session, debts: body.debts ?? session.debts });
     }),
     http.get(`http://localhost:8000/api/intake/sessions/:id/${list}/`, () =>
       HttpResponse.json(held)
@@ -3187,6 +3237,7 @@ function serveListSaves(
   );
   return {
     bodies,
+    patches,
     stored: () => held,
     /** Keeps the next save's reply on its way until the returned function is called */
     holdNextReply: () => {
@@ -3291,7 +3342,7 @@ describe.each([
       await waitFor(() => expect(nameBox(0)).toHaveValue('Lakeview Storage'));
     });
 
-    it("sends nothing while a stored row's name is cleared, and keeps its id when the name is typed again", async () => {
+    it('sends a stored row whose name was cleared, nameless and under its id (R17)', async () => {
       const { bodies } = serveListSaves(list, step, [stored]);
       renderWizard();
       await expectStep(title);
@@ -3301,16 +3352,13 @@ describe.each([
       try {
         fireEvent.change(nameBox(0), { target: { value: '' } });
         await waitSeconds(5);
-        expect(bodies).toEqual([]);
         expect(screen.getByRole('button', { name: /continue/i })).toBeDisabled();
-
-        fireEvent.change(nameBox(0), { target: { value: 'Lakeview Storage' } });
-        await waitSeconds(3);
       } finally {
         vi.useRealTimers();
       }
 
       expect(idsSent(bodies)).toEqual([[stored.id]]);
+      expect(bodies[0][0][nameKey]).toBe('');
     });
 
     // On a slow link the filer's next edit can be saved before the first save's reply brings the
@@ -3425,13 +3473,31 @@ describe('IntakeWizard contracts and codebtors', { timeout: 15_000 }, () => {
   let contractSaves: unknown[];
   let codebtorSaves: unknown[];
   let stepUpdates: unknown[];
+  let sessionPatches: Record<string, unknown>[];
 
-  /** A filer who stopped at `step`, with these lists saved earlier. */
+  /**
+   * A filer who stopped at `step`, with these lists saved earlier, one stored debt and every claim
+   * question answered (a Yes for each list that has rows). `claimAnswers` is laid over those.
+   */
   function serveFiler(
     step: number,
     contracts: Record<string, unknown>[] = [],
-    codebtors: Record<string, unknown>[] = []
+    codebtors: Record<string, unknown>[] = [],
+    claimAnswers: Record<string, unknown> = {}
   ) {
+    const session = {
+      ...sessionAtStep1,
+      current_step: step,
+      debtor_info: { first_name: 'Jane', last_name: 'Doe' },
+      debts: [storedDebt],
+      claim_answers: {
+        no_debts: null,
+        contracts_answer: contracts.length > 0 ? 'yes' : 'no',
+        codebtors_answer: codebtors.length > 0 ? 'yes' : 'no',
+        community_lived: 'no',
+        ...claimAnswers,
+      },
+    };
     // The server gives each new row the next id, as the list save does
     let nextId = 10;
     const saveList =
@@ -3442,13 +3508,11 @@ describe('IntakeWizard contracts and codebtors', { timeout: 15_000 }, () => {
         return HttpResponse.json(rows.map((row) => ({ ...row, id: row.id ?? nextId++ })));
       };
     server.use(
-      http.get('http://localhost:8000/api/intake/sessions/:id/', () =>
-        HttpResponse.json({
-          ...sessionAtStep1,
-          current_step: step,
-          debtor_info: { first_name: 'Jane', last_name: 'Doe' },
-        })
-      ),
+      http.get('http://localhost:8000/api/intake/sessions/:id/', () => HttpResponse.json(session)),
+      http.patch('http://localhost:8000/api/intake/sessions/:id/', async ({ request }) => {
+        sessionPatches.push((await request.json()) as Record<string, unknown>);
+        return HttpResponse.json(session);
+      }),
       http.get('http://localhost:8000/api/intake/sessions/:id/contracts/', () =>
         HttpResponse.json(contracts)
       ),
@@ -3464,6 +3528,7 @@ describe('IntakeWizard contracts and codebtors', { timeout: 15_000 }, () => {
     contractSaves = [];
     codebtorSaves = [];
     stepUpdates = [];
+    sessionPatches = [];
     server.use(
       http.post(
         'http://localhost:8000/api/intake/sessions/:id/update_step/',
@@ -3519,7 +3584,7 @@ describe('IntakeWizard contracts and codebtors', { timeout: 15_000 }, () => {
 
     const lakeview = {
       counterparty_name: 'Lakeview Storage',
-      contract_type: 'contract',
+      contract_type: '',
       description: '',
     };
     expect(contractSaves).toEqual([[storedLease, lakeview]]);
@@ -3660,7 +3725,7 @@ describe('IntakeWizard contracts and codebtors', { timeout: 15_000 }, () => {
           city: '',
           state: '',
           zip_code: '',
-          relationship: 'other',
+          relationship: '',
         },
       ],
     ]);
@@ -3710,6 +3775,329 @@ describe('IntakeWizard contracts and codebtors', { timeout: 15_000 }, () => {
     );
     expect(screen.queryByRole('button', { name: /continue/i })).not.toBeInTheDocument();
     expect(codebtorSaves).toEqual([]);
+  });
+
+  // =========================================================================
+  // What steps 6, 7 and 8 save (3c3 Task 7)
+  // =========================================================================
+
+  const onStep6 = { ...sessionAtStep1, current_step: 6, debts: [storedDebt] };
+  const sentDebts = (body: unknown) => (body as { debts: Record<string, unknown>[] }).debts;
+  /** True when any key, at any depth, starts with an underscore */
+  const hasBrowserKey = (value: unknown): boolean =>
+    typeof value === 'object' && value !== null
+      ? Object.entries(value).some(([key, inner]) => key.startsWith('_') || hasBrowserKey(inner))
+      : false;
+
+  it('saves a half-filled debt two seconds after typing stops, with its amount as 0', async () => {
+    const { bodies } = serveSessionSaves({ ...sessionAtStep1, current_step: 6 });
+    renderWizard();
+    await screen.findByRole('heading', { name: /amounts owed/i, level: 2 });
+
+    vi.useFakeTimers();
+    try {
+      fireEvent.change(field('creditor_name_0'), { target: { value: 'Demo Card Services' } });
+      await waitSeconds(3);
+    } finally {
+      vi.useRealTimers();
+    }
+
+    expect(bodies).toHaveLength(1);
+    expect(sentDebts(bodies[0])).toHaveLength(1);
+    expect(sentDebts(bodies[0])[0]).toMatchObject({
+      creditor_name: 'Demo Card Services',
+      amount_owed: 0,
+      monthly_payment: null,
+    });
+    expect((bodies[0] as { claim_answers: unknown }).claim_answers).toEqual({ no_debts: null });
+  });
+
+  it('sends a stored debt whose name was cleared, under its id', async () => {
+    const { bodies } = serveSessionSaves(onStep6);
+    renderWizard();
+    await screen.findByRole('heading', { name: /amounts owed/i, level: 2 });
+
+    vi.useFakeTimers();
+    try {
+      fireEvent.change(field('creditor_name_0'), { target: { value: '' } });
+      await waitSeconds(3);
+    } finally {
+      vi.useRealTimers();
+    }
+
+    expect(bodies).toHaveLength(1);
+    expect(sentDebts(bodies[0])[0]).toMatchObject({ id: 7, creditor_name: '' });
+  });
+
+  it('leaves out only a new row with nothing in it', async () => {
+    const { bodies } = serveSessionSaves(onStep6);
+    renderWizard();
+    await screen.findByRole('heading', { name: /amounts owed/i, level: 2 });
+
+    vi.useFakeTimers();
+    try {
+      fireEvent.click(screen.getByRole('button', { name: /add another amount owed/i }));
+      fireEvent.change(field('creditor_name_0'), {
+        target: { value: 'Northwind Card Services Co' },
+      });
+      await waitSeconds(3);
+      expect(sentDebts(bodies[bodies.length - 1]).map((row) => row.id)).toEqual([7]);
+
+      fireEvent.change(field('creditor_name_1'), { target: { value: 'Demo Clinic' } });
+      await waitSeconds(3);
+    } finally {
+      vi.useRealTimers();
+    }
+
+    expect(sentDebts(bodies[bodies.length - 1]).map((row) => row.id)).toEqual([7, undefined]);
+  });
+
+  it('fails the contracts save when its answer does not save, and sends both again next time', async () => {
+    serveFiler(7, [storedLease], [], { contracts_answer: 'yes' });
+    let patchCalls = 0;
+    server.use(
+      http.patch('http://localhost:8000/api/intake/sessions/:id/', async ({ request }) => {
+        sessionPatches.push((await request.json()) as Record<string, unknown>);
+        patchCalls += 1;
+        // A 400, not a 5xx: withRetry retries a 5xx on a backoff that tangles with the fake clock
+        if (patchCalls === 1) {
+          return HttpResponse.json(
+            { claim_answers: { contracts_answer: ['Check the answer for contracts_answer.'] } },
+            { status: 400 }
+          );
+        }
+        return HttpResponse.json({ ...sessionAtStep1, current_step: 7 });
+      })
+    );
+    renderWizard();
+    await expectStep('Contracts & Leases');
+
+    vi.useFakeTimers();
+    try {
+      fireEvent.change(screen.getByPlaceholderText('e.g., Landlord Inc.'), {
+        target: { value: 'Oak Street Apartments LLC' },
+      });
+      fireEvent.click(screen.getByRole('button', { name: /continue/i }));
+      await waitSeconds(1);
+
+      expect(screen.getByText(/couldn't save just now/i)).toBeInTheDocument();
+      expect(document.querySelector('.step-title')).toHaveTextContent('Contracts & Leases');
+      expect(stepUpdates).toEqual([]);
+      expect(contractSaves).toHaveLength(1);
+      expect(sessionPatches).toHaveLength(1);
+
+      fireEvent.click(screen.getByRole('button', { name: /continue/i }));
+      await waitSeconds(1);
+    } finally {
+      vi.useRealTimers();
+    }
+    await expectStep('Codebtors');
+
+    // The ids written into the rows after the first PUT change the body, which can start one more
+    // autosave, so the counts are not exact
+    expect(contractSaves.length).toBeGreaterThanOrEqual(2);
+    expect((contractSaves[1] as Record<string, unknown>[])[0].id).toBe(4);
+    expect(sessionPatches.length).toBeGreaterThanOrEqual(2);
+    for (const patch of sessionPatches) {
+      expect(patch).toEqual({ claim_answers: { contracts_answer: 'yes' } });
+    }
+  });
+
+  it.each([6, 7, 8])('never sends a browser-only key, on step %i', async (step) => {
+    if (step === 6) {
+      const { bodies } = serveSessionSaves(onStep6);
+      renderWizard();
+      await screen.findByRole('heading', { name: /amounts owed/i, level: 2 });
+      vi.useFakeTimers();
+      try {
+        fireEvent.change(field('creditor_name_0'), { target: { value: 'Northwind Card Co' } });
+        await waitSeconds(3);
+      } finally {
+        vi.useRealTimers();
+      }
+      expect(bodies.length).toBeGreaterThan(0);
+      expect(hasBrowserKey(bodies)).toBe(false);
+      return;
+    }
+    serveFiler(step, [storedLease], [storedCodebtor]);
+    renderWizard();
+    await expectStep(step === 7 ? 'Contracts & Leases' : 'Codebtors');
+    await waitFor(() => expect(screen.getByRole('button', { name: /continue/i })).toBeEnabled());
+    await userEvent.click(screen.getByRole('button', { name: /continue/i }));
+    await waitFor(() => expect(stepUpdates).toEqual([step + 1]));
+
+    expect(contractSaves.length + codebtorSaves.length).toBeGreaterThan(0);
+    expect(hasBrowserKey([contractSaves, codebtorSaves, sessionPatches])).toBe(false);
+  });
+
+  // The stored rows here are the objects written before 3c3, none of the new keys: a row built
+  // from an old row must build the same body each time, or every visit would save
+  it.each([
+    [6, 'Amounts Owed'],
+    [7, 'Contracts & Leases'],
+    [8, 'Codebtors'],
+  ])('sends nothing on a visit alone to step %i (%s)', async (step, title) => {
+    serveFiler(step);
+    server.use(
+      http.get('http://localhost:8000/api/intake/sessions/:id/', () =>
+        HttpResponse.json({
+          ...sessionAtStep1,
+          current_step: step,
+          debtor_info: { first_name: 'Jane', last_name: 'Doe' },
+          debts: [
+            {
+              id: 7,
+              session: 1,
+              data_source: 'manual',
+              creditor_name: 'Northwind Card Services',
+              debt_type: 'credit_card',
+              priority_classification: 'unsecured',
+              amount_owed: '2500.00',
+              monthly_payment: '75.00',
+              is_in_collections: false,
+              is_secured: false,
+              collateral_description: '',
+              notes: '',
+              is_draft: false,
+              source_document_name: null,
+            },
+          ],
+          claim_answers: { no_debts: null, contracts_answer: 'yes', codebtors_answer: 'yes' },
+        })
+      ),
+      http.get('http://localhost:8000/api/intake/sessions/:id/contracts/', () =>
+        HttpResponse.json([
+          {
+            id: 4,
+            counterparty_name: 'Oak Street Apartments',
+            contract_type: 'lease',
+            description: 'Apartment lease',
+          },
+        ])
+      ),
+      http.get('http://localhost:8000/api/intake/sessions/:id/codebtors/', () =>
+        HttpResponse.json([
+          {
+            id: 3,
+            name: 'Sam Doe',
+            street_address: '',
+            city: 'Chicago',
+            state: 'IL',
+            zip_code: '',
+            relationship: 'relative',
+          },
+        ])
+      )
+    );
+    renderWizard();
+    await expectStep(title);
+
+    vi.useFakeTimers();
+    try {
+      await waitSeconds(6);
+    } finally {
+      vi.useRealTimers();
+    }
+
+    expect(contractSaves).toEqual([]);
+    expect(codebtorSaves).toEqual([]);
+    expect(sessionPatches).toEqual([]);
+  });
+
+  it.each([
+    [
+      7,
+      'Contracts & Leases',
+      { contracts_answer: 'yes' },
+      () => {
+        fireEvent.click(screen.getByRole('button', { name: /add contract/i }));
+        fireEvent.change(screen.getByPlaceholderText('e.g., Apartment lease, car lease'), {
+          target: { value: 'Lease' },
+        });
+      },
+      () => contractSaves,
+      'description',
+      'Lease',
+    ],
+    [
+      8,
+      'Codebtors',
+      { codebtors_answer: 'yes' },
+      () => {
+        fireEvent.click(screen.getByRole('button', { name: /add codebtor/i }));
+        fireEvent.change(screen.getByLabelText(/^City/), { target: { value: 'Chicago' } });
+      },
+      () => codebtorSaves,
+      'city',
+      'Chicago',
+    ],
+  ])(
+    'autosaves step %i (%s) while the step still has a gap',
+    async (step, title, answers, typeIntoNewRow, saves, typedKey, typedValue) => {
+      serveFiler(step, [], [], answers);
+      renderWizard();
+      await expectStep(title);
+
+      vi.useFakeTimers();
+      try {
+        typeIntoNewRow();
+        await waitSeconds(3);
+      } finally {
+        vi.useRealTimers();
+      }
+
+      expect(saves()).toHaveLength(1);
+      const rows = saves()[0] as Record<string, unknown>[];
+      expect(rows).toHaveLength(1);
+      expect(rows[0][step === 7 ? 'counterparty_name' : 'name']).toBe('');
+      expect(rows[0][typedKey]).toBe(typedValue);
+      expect(screen.getByRole('button', { name: /continue/i })).toBeDisabled();
+    }
+  );
+
+  it("sends the loaded claim answers back with each step's list, and carries no other step's", async () => {
+    serveFiler(7, [storedLease], [], {
+      contracts_answer: 'yes',
+      codebtors_answer: 'no',
+      community_lived: 'yes',
+    });
+    renderWizard();
+    await expectStep('Contracts & Leases');
+    await waitFor(() => expect(screen.getByRole('button', { name: /continue/i })).toBeEnabled());
+    await userEvent.click(screen.getByRole('button', { name: /continue/i }));
+    await waitFor(() => expect(stepUpdates).toEqual([8]));
+
+    expect(sessionPatches).toEqual([{ claim_answers: { contracts_answer: 'yes' } }]);
+  });
+
+  it("sends every line 2 answer of Schedule H with step 8's list", async () => {
+    const community = {
+      codebtors_answer: 'yes',
+      community_lived: 'yes',
+      community_spouse_lived_with: 'yes',
+      community_state: 'Demo State',
+      community_spouse_name: 'Demo Spouse',
+      community_spouse_street_address: '12 Demo Street',
+      community_spouse_city: 'Demo City',
+      community_spouse_state: 'IL',
+      community_spouse_zip_code: '60601',
+    };
+    serveFiler(8, [storedLease], [storedCodebtor], community);
+    renderWizard();
+    await expectStep('Codebtors');
+    await waitFor(() => expect(screen.getByRole('button', { name: /continue/i })).toBeEnabled());
+    await userEvent.click(screen.getByRole('button', { name: /continue/i }));
+    await waitFor(() => expect(stepUpdates).toEqual([9]));
+
+    expect(sessionPatches).toEqual([
+      {
+        claim_answers: {
+          ...community,
+          community_spouse_street_2: null,
+          community_spouse_outside_us: null,
+        },
+      },
+    ]);
   });
 });
 

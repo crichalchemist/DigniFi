@@ -8,11 +8,19 @@
 
 import { useEffect, useMemo } from 'react';
 import { Button } from '../../common';
-import type { Codebtor, CodebtorRow } from '../../../types/api';
+import { CHOOSE_ONE } from '../../../constants/copy';
+import type { ClaimAnswers, Codebtor, CodebtorRow, ContractRow, DebtRow } from '../../../types/api';
 
 interface CodebtorsStepProps {
   rows: CodebtorRow[];
   onRowsChange: (rows: CodebtorRow[]) => void;
+  /** The claim answers: Schedule H's first question and its line 2 */
+  answers: ClaimAnswers;
+  /** Takes the whole object, merged */
+  onAnswersChange: (answers: ClaimAnswers) => void;
+  /** The wizard's amounts owed and contracts, for the links a codebtor can name */
+  debts: DebtRow[];
+  contracts: ContractRow[];
   onValidationChange: (isValid: boolean) => void;
 }
 
@@ -31,7 +39,7 @@ const EMPTY_CODEBTOR: Codebtor = {
   city: '',
   state: '',
   zip_code: '',
-  relationship: 'other',
+  relationship: '',
 };
 
 // The last new row's key: unique while the page is open, and the prefix keeps it apart from a
@@ -126,6 +134,7 @@ export function CodebtorsStep({ rows, onRowsChange, onValidationChange }: Codebt
                 value={codebtor.relationship}
                 onChange={(e) => updateCodebtor(index, 'relationship', e.target.value)}
               >
+                <option value="">{CHOOSE_ONE}</option>
                 {RELATIONSHIPS.map((r) => (
                   <option key={r.value} value={r.value}>
                     {r.label}

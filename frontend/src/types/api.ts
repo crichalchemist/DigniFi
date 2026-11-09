@@ -41,6 +41,8 @@ export interface IntakeSession {
   assets?: AssetInfo[];
   asset_lines?: Record<string, AssetLineAnswer>;
   debts?: DebtInfo[];
+  /** The Schedule D, E/F, G and H questions that aren't on a row (3c3 spec §7.3) */
+  claim_answers?: ClaimAnswers;
   household?: Household | null;
   spouse_income?: SpouseIncome | null;
   form_answers?: Record<string, unknown>;
@@ -475,6 +477,31 @@ export interface DebtInfo {
   priority_classification?: 'unsecured' | 'secured' | 'priority';
   collateral_description: string;
 
+  // The creditor's address (3c3). A blank state or ZIP is a gap unless outside_us is ticked.
+  street_address?: string;
+  street_2?: string;
+  city?: string;
+  state?: string;
+  zip_code?: string;
+  outside_us?: boolean;
+
+  // Schedule D and E/F answers (3c3). null is unanswered.
+  /** The id of the Assets row this debt is secured by, or null: a removed row reads as null */
+  secured_by?: number | null;
+  home_payment_line?: HomePaymentLine | null;
+  collateral_who?: AssetWho | null;
+  lien?: DebtLien | null;
+  /** [] is "None of these" */
+  claim_status?: ClaimStatus[] | null;
+  offset_answer?: YesNo | null;
+  /** [] is No */
+  notice_parties?: NoticeParty[] | null;
+  /** "yes" or "" (a tick has no unanswered state) */
+  community_debt?: 'yes' | '';
+  date_incurred?: string | null;
+  /** Read-only: the last four digits of the account number */
+  account_last_4?: string;
+
   // Document scanning
   is_draft?: boolean;
   source_document?: number | null;
@@ -488,12 +515,66 @@ export interface DebtInfo {
  */
 export type WizardRow<T> = Partial<T> & { _key: string };
 
+/** The four ticks of Schedule D's "Type of lien" (3c3 R5), in the form's order */
+export type LienKind = 'agreement' | 'statutory' | 'judgment' | 'other';
+export interface DebtLien {
+  kinds: LienKind[];
+  other: string;
+}
+/** Schedule D's and E/F's "Is the claim" ticks, in the form's order */
+export type ClaimStatus = 'contingent' | 'unliquidated' | 'disputed';
+/** A person or company to notify about a debt (Schedule D Part 2, E/F's notice list) */
+export interface NoticeParty {
+  id?: number;
+  name: string;
+  street_address: string;
+  street_2: string;
+  city: string;
+  state: string;
+  zip_code: string;
+  outside_us: boolean;
+  last_4: string;
+}
+export type HomePaymentLine = 'first' | 'additional';
+
+/** A debt the wizard holds: the browser-only `_securedPressed` mark says the filer pressed the secured question */
+export type DebtRow = WizardRow<DebtInfo> & { _securedPressed?: boolean };
+
 /** A contract or lease (Schedule G), as the contracts list endpoint sends and saves it */
+export type ContractType = 'lease' | 'contract' | 'other';
+export type LeaseKind = 'residential' | 'vehicle' | 'other_personal_property' | 'other';
 export interface ExecutoryContract {
   id?: number;
   counterparty_name: string;
-  contract_type: 'lease' | 'contract' | 'other';
+  /** '' on a row with no kind picked yet (B34) */
+  contract_type: ContractType | '';
   description: string;
+  // 3c3: the other party's address and Schedule G's questions. Optional so an old row still
+  // compiles; every row a step builds has them all.
+  street_address?: string;
+  street_2?: string;
+  city?: string;
+  state?: string;
+  zip_code?: string;
+  outside_us?: boolean;
+  lease_kind?: LeaseKind | null;
+  monthly_payment?: number | null;
+  vehicle_asset?: number | null;
+  owes_now?: YesNo | null;
+  owed_debt?: number | null;
+}
+
+export type CodebtorRelationship =
+  | 'spouse'
+  | 'former_spouse'
+  | 'relative'
+  | 'friend'
+  | 'business_partner'
+  | 'other';
+/** A codebtor's link to the debt or contract they share (Schedule H) */
+export interface CodebtorLink {
+  kind: 'debt' | 'contract';
+  id: number;
 }
 
 /** A codebtor (Schedule H), as the codebtors list endpoint sends and saves it */
@@ -504,7 +585,32 @@ export interface Codebtor {
   city: string;
   state: string;
   zip_code: string;
-  relationship: 'spouse' | 'former_spouse' | 'relative' | 'friend' | 'business_partner' | 'other';
+  /** '' on a row with no relationship picked yet (B34) */
+  relationship: CodebtorRelationship | '';
+  street_2?: string;
+  outside_us?: boolean;
+  links?: CodebtorLink[];
+}
+
+/**
+ * The claim questions that aren't on a row, saved under `claim_answers` on a session PATCH (3c3
+ * spec §7.3). Every key is optional: a save sends only the keys it names, and null clears one.
+ */
+export interface ClaimAnswers {
+  /** true or null, never false */
+  no_debts?: true | null;
+  contracts_answer?: YesNo | null;
+  codebtors_answer?: YesNo | null;
+  community_lived?: YesNo | null;
+  community_spouse_lived_with?: YesNo | null;
+  community_state?: string | null;
+  community_spouse_name?: string | null;
+  community_spouse_street_address?: string | null;
+  community_spouse_street_2?: string | null;
+  community_spouse_city?: string | null;
+  community_spouse_state?: string | null;
+  community_spouse_zip_code?: string | null;
+  community_spouse_outside_us?: boolean | null;
 }
 
 /** A contract or codebtor the wizard holds: every field, and the browser's own key (3c2) */

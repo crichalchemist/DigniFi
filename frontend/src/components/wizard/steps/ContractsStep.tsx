@@ -8,11 +8,25 @@
 
 import { useEffect, useMemo } from 'react';
 import { Button } from '../../common';
-import type { ContractRow, ExecutoryContract } from '../../../types/api';
+import { CHOOSE_ONE } from '../../../constants/copy';
+import type {
+  AssetInfo,
+  ContractRow,
+  DebtRow,
+  ExecutoryContract,
+  WizardRow,
+  YesNo,
+} from '../../../types/api';
 
 interface ContractsStepProps {
   rows: ContractRow[];
   onRowsChange: (rows: ContractRow[]) => void;
+  /** Schedule G's first question: null while unanswered */
+  answer: YesNo | null;
+  onAnswerChange: (answer: YesNo) => void;
+  /** The wizard's amounts owed and assets, for the links a contract can name */
+  debts: DebtRow[];
+  assets: WizardRow<AssetInfo>[];
   onValidationChange: (isValid: boolean) => void;
 }
 
@@ -24,7 +38,7 @@ const CONTRACT_TYPES = [
 
 const EMPTY_CONTRACT: ExecutoryContract = {
   counterparty_name: '',
-  contract_type: 'contract',
+  contract_type: '',
   description: '',
 };
 
@@ -123,6 +137,7 @@ export function ContractsStep({ rows, onRowsChange, onValidationChange }: Contra
                 value={contract.contract_type}
                 onChange={(e) => updateContract(index, 'contract_type', e.target.value)}
               >
+                <option value="">{CHOOSE_ONE}</option>
                 {CONTRACT_TYPES.map((t) => (
                   <option key={t.value} value={t.value}>
                     {t.label}
