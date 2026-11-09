@@ -5227,7 +5227,67 @@
     "final_verdicts": ["correct"],
     "status": "confirmed",
     "correct_target": "20a",
-    "evidence": "Field index: 20a p2 T33, 'Other real property expenses: Mortgages on other property' (adjudicated). 3e2 spec §9.4: the amount the filer typed on the Expenses step, printed only above $0."
+    "evidence": "Field index: 20a p2 T33, 'Other real property expenses: Mortgages on other property' (adjudicated). 3c spec §8.1 [CORR.J45]: payments linked to a line 1 row not answered 'I live here', printed only above $0."
+  },
+  {
+    "schema": "schedule_j",
+    "pdf_field": "5",
+    "producer": "derived:schedule_j_additional_mortgage",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "5",
+    "evidence": "Field index: 5 p2 T3, 'Additional mortgage payments for your residence, such as home equity loans'. 3c spec §8.1 [Q13.link]: a payment linked to a row answered 'I live here' as an additional mortgage."
+  },
+  {
+    "schema": "schedule_j",
+    "pdf_field": "17b",
+    "producer": "derived:schedule_j_vehicle_2_payment",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "17b",
+    "evidence": "Field index: 17b p2 T25, 'Car payments for Vehicle 2'. 3c spec §8.1 [Q13.link], B19: payments on the second A/B vehicle row."
+  },
+  {
+    "schema": "schedule_j",
+    "pdf_field": "17c",
+    "producer": "derived:schedule_j_installment_c",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "17c",
+    "evidence": "Field index: 17c p2 T27, 'Installment or lease payments: Other. Specify: (amount)'. 3c spec §8.1 [Q13.link], B45: vehicle 3, or the first other-property payment."
+  },
+  {
+    "schema": "schedule_j",
+    "pdf_field": "17d",
+    "producer": "derived:schedule_j_installment_d",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "17d",
+    "evidence": "Field index: 17d p2 T28, 'Installment or lease payments: Other. Specify: (amount)'. 3c spec §8.1 [Q13.link], B45: vehicle 4, the next entry, and every payment past it."
+  },
+  {
+    "schema": "schedule_j",
+    "pdf_field": "Other 17c",
+    "producer": "derived:schedule_j_installment_c_words",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Other 17c",
+    "evidence": "Field index: Other 17c p2 T26, 'Installment or lease payments: Other. Specify:'. 3c spec §8.1 [Q13.link], B45: fixed words, printed only beside 17c's amount."
+  },
+  {
+    "schema": "schedule_j",
+    "pdf_field": "Other 17d",
+    "producer": "derived:schedule_j_installment_d_words",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Other 17d",
+    "evidence": "Field index: Other 17d p2 T29, 'Installment or lease payments: Other. Specify:'. 3c spec §8.1 [Q13.link], B45: fixed words, printed only beside 17d's amount."
   },
   {
     "schema": "schedule_j",

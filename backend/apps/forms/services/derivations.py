@@ -33,6 +33,7 @@ from apps.intake.asset_lines import (
     rows_on,
     rows_under_gate,
 )
+from apps.intake.claims import linked_payments
 from apps.intake.household import count_family_size, dependents
 from apps.intake.income import (
     floored_net,
@@ -772,6 +773,25 @@ def _expense_line(session: IntakeSession, field: str) -> str:
     return _fmt(amount) if amount > 0 else ""
 
 
+def _linked_amount(amount: Decimal) -> str:
+    """A linked payment prints only above $0, as every Schedule J line does (3c4 §8.1)."""
+    return _fmt(amount) if amount > 0 else ""
+
+
+def _schedule_j_rent_or_mortgage(session: IntakeSession) -> str:
+    """J 4: the typed rent, a first mortgage and a vehicle lease on the home (3c4 R3)."""
+    linked = linked_payments(session)
+    return _linked_amount(
+        _expense_amount(session, "rent_or_mortgage") + linked.first_mortgage + linked.home_lease
+    )
+
+
+def _schedule_j_installment_words(session: IntakeSession, line: str) -> str:
+    """17c's and 17d's fixed words, printed only beside the line's amount (B45)."""
+    linked = linked_payments(session)
+    return linked.j17_words[line] if linked.j17[line] > 0 else ""
+
+
 def _expense_label(session: IntakeSession, field: str, label: str) -> str:
     """An "Other. Specify:" line's text, printed only when its amount prints (Q4)."""
     return label if _expense_amount(session, field) > 0 else ""
@@ -968,7 +988,10 @@ DERIVATIONS: dict[str, Callable[[IntakeSession], str]] = {
     "schedule_i_assistance_specify": _assistance_specify,
     "schedule_i_other_income_label": _schedule_i_other_income_label,
     # Schedule J expense line item derivations
-    "schedule_j_rent_or_mortgage": lambda s: _expense_line(s, "rent_or_mortgage"),
+    "schedule_j_rent_or_mortgage": _schedule_j_rent_or_mortgage,
+    "schedule_j_additional_mortgage": lambda s: _linked_amount(
+        linked_payments(s).additional_mortgage
+    ),
     "schedule_j_utilities": lambda s: _expense_line(s, "utilities"),
     "schedule_j_utilities_label": lambda s: _expense_label(s, "utilities", "Utilities (combined)"),
     "schedule_j_home_maintenance": lambda s: _expense_line(s, "home_maintenance"),
@@ -977,7 +1000,12 @@ DERIVATIONS: dict[str, Callable[[IntakeSession], str]] = {
     "schedule_j_clothing": lambda s: _expense_line(s, "clothing"),
     "schedule_j_medical_expenses": lambda s: _expense_line(s, "medical_expenses"),
     "schedule_j_vehicle_maintenance": lambda s: _expense_line(s, "vehicle_maintenance"),
-    "schedule_j_vehicle_payment": lambda s: _expense_line(s, "vehicle_payment"),
+    "schedule_j_vehicle_payment": lambda s: _linked_amount(linked_payments(s).j17["17a"]),
+    "schedule_j_vehicle_2_payment": lambda s: _linked_amount(linked_payments(s).j17["17b"]),
+    "schedule_j_installment_c": lambda s: _linked_amount(linked_payments(s).j17["17c"]),
+    "schedule_j_installment_d": lambda s: _linked_amount(linked_payments(s).j17["17d"]),
+    "schedule_j_installment_c_words": lambda s: _schedule_j_installment_words(s, "17c"),
+    "schedule_j_installment_d_words": lambda s: _schedule_j_installment_words(s, "17d"),
     "schedule_j_vehicle_insurance": lambda s: _expense_line(s, "vehicle_insurance"),
     "schedule_j_insurance_not_deducted": lambda s: _expense_line(s, "insurance_not_deducted"),
     "schedule_j_insurance_label": lambda s: _expense_label(
@@ -998,7 +1026,9 @@ DERIVATIONS: dict[str, Callable[[IntakeSession], str]] = {
     "schedule_j_support_others_label": lambda s: _expense_text(
         s, "support_others", "support_others_specify"
     ),
-    "schedule_j_other_property_mortgages": lambda s: _expense_line(s, "other_property_mortgages"),
+    "schedule_j_other_property_mortgages": lambda s: _linked_amount(
+        linked_payments(s).other_real_property
+    ),
     "schedule_j_other_property_taxes": lambda s: _expense_line(s, "other_property_taxes"),
     "schedule_j_other_property_insurance": lambda s: _expense_line(s, "other_property_insurance"),
     "schedule_j_other_property_upkeep": lambda s: _expense_line(s, "other_property_upkeep"),
@@ -1126,7 +1156,8 @@ RULE_FIXES: dict[str, dict[str, str]] = {
     # Income less expenses: the earlier of its two steps
     "schedule_j_monthly_net_income": {"step": "income_info"},
     # Expenses
-    "schedule_j_rent_or_mortgage": {"step": "expense_info"},
+    "schedule_j_rent_or_mortgage": {"step": "debts"},
+    "schedule_j_additional_mortgage": {"step": "debts"},
     "schedule_j_utilities": {"step": "expense_info"},
     "schedule_j_utilities_label": {"step": "expense_info"},
     "schedule_j_home_maintenance": {"step": "expense_info"},
@@ -1135,7 +1166,12 @@ RULE_FIXES: dict[str, dict[str, str]] = {
     "schedule_j_clothing": {"step": "expense_info"},
     "schedule_j_medical_expenses": {"step": "expense_info"},
     "schedule_j_vehicle_maintenance": {"step": "expense_info"},
-    "schedule_j_vehicle_payment": {"step": "expense_info"},
+    "schedule_j_vehicle_payment": {"step": "debts"},
+    "schedule_j_vehicle_2_payment": {"step": "debts"},
+    "schedule_j_installment_c": {"step": "debts"},
+    "schedule_j_installment_d": {"step": "debts"},
+    "schedule_j_installment_c_words": {"step": "debts"},
+    "schedule_j_installment_d_words": {"step": "debts"},
     "schedule_j_vehicle_insurance": {"step": "expense_info"},
     "schedule_j_insurance_not_deducted": {"step": "expense_info"},
     "schedule_j_insurance_label": {"step": "expense_info"},
@@ -1150,7 +1186,7 @@ RULE_FIXES: dict[str, dict[str, str]] = {
     "schedule_j_charitable_contributions": {"step": "expense_info"},
     "schedule_j_taxes_not_deducted": {"step": "expense_info"},
     "schedule_j_support_others": {"step": "expense_info"},
-    "schedule_j_other_property_mortgages": {"step": "expense_info"},
+    "schedule_j_other_property_mortgages": {"step": "debts"},
     "schedule_j_other_property_taxes": {"step": "expense_info"},
     "schedule_j_other_property_insurance": {"step": "expense_info"},
     "schedule_j_other_property_upkeep": {"step": "expense_info"},

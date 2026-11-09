@@ -69,7 +69,6 @@ LINE_BY_EXPENSE = {
     "15c": "16.00",  # vehicle insurance
     "15d": "2048.00",  # insurance not deducted from pay, combined on "Other"
     "Other 15d": "Insurance (combined)",
-    "17a": "8.00",  # the one car payment the Expenses step asks
     "18": "1024.00",  # support paid
     "21": "4096.00",  # other expenses only
     "4a": "8192.00",
@@ -80,7 +79,6 @@ LINE_BY_EXPENSE = {
     "14": "262144.00",
     "16": "524288.00",
     "19": "1048576.00",
-    "20a": "2097152.00",
     "20b": "4194304.00",
     "20c": "8388608.00",
     "20d": "16777216.00",
@@ -90,7 +88,7 @@ LINE_BY_EXPENSE = {
     "Other 21": "School supplies and fees",
 }
 # Lines no expense belongs on, which the old bindings filled.
-VACATED = {"15a", "15b", "17b", "17c", "22b", "24"}
+VACATED = {"15a", "15b", "22b", "24"}
 # The 26 amounts above, added: 1 + 2 + 4 + ... + 33554432.
 EXPENSE_TOTAL = "67108863.00"
 
