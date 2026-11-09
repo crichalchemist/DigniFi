@@ -169,10 +169,15 @@ function withSavedIds<Row extends { _key: string; id?: number }>(
   rows: Row[],
   ids: Map<string, number>
 ): Row[] {
-  return rows.map((row) => {
+  let changed = false;
+  const next = rows.map((row) => {
     const id = ids.get(row._key);
-    return id === undefined ? row : { ...row, id };
+    if (id === undefined || row.id === id) return row;
+    changed = true;
+    return { ...row, id };
   });
+  // The same array when every id already matches, so a repeat write is no change to React
+  return changed ? next : rows;
 }
 
 export function IntakeWizard() {

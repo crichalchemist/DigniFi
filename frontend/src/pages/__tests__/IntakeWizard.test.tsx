@@ -4018,6 +4018,49 @@ describe('IntakeWizard contracts and codebtors', { timeout: 15_000 }, () => {
     }
   );
 
+  // A claim-answers PATCH that keeps failing must not resend the list on its own: writing the
+  // same ids again changes no state, so no new body and no new timer
+  it.each([
+    [
+      7,
+      'Contracts & Leases',
+      'contracts_answer',
+      'e.g., Landlord Inc.',
+      /add contract/i,
+      () => contractSaves,
+    ],
+    [8, 'Codebtors', 'codebtors_answer', 'e.g., Jane Smith', /add codebtor/i, () => codebtorSaves],
+  ] as const)(
+    'stops after one retry while the answers save keeps failing, on step %i (%s)',
+    async (step, title, answerKey, placeholder, addButton, saves) => {
+      serveFiler(step, [], [], { [answerKey]: 'yes' });
+      server.use(
+        http.patch('http://localhost:8000/api/intake/sessions/:id/', async ({ request }) => {
+          sessionPatches.push((await request.json()) as Record<string, unknown>);
+          return HttpResponse.json(
+            { claim_answers: { [answerKey]: ['Check the answer.'] } },
+            { status: 400 }
+          );
+        })
+      );
+      renderWizard();
+      await expectStep(title);
+
+      vi.useFakeTimers();
+      try {
+        fireEvent.click(screen.getByRole('button', { name: addButton }));
+        const boxes = screen.getAllByPlaceholderText(placeholder);
+        fireEvent.change(boxes[boxes.length - 1], { target: { value: 'Lakeview Storage' } });
+        await waitSeconds(12);
+      } finally {
+        vi.useRealTimers();
+      }
+
+      // One save after the edit, and at most one more from the body the ids changed
+      expect(saves().length).toBeLessThanOrEqual(2);
+    }
+  );
+
   it.each([6, 7, 8])('never sends a browser-only key, on step %i', async (step) => {
     if (step === 6) {
       const { bodies } = serveSessionSaves(onStep6);
