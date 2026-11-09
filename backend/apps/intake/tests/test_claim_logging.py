@@ -21,11 +21,13 @@ from apps.users.models import User
 CREDITOR = "Zephyrine Credit Union"
 CREDITOR_STREET = "9 Demo Quillfeather Lane"
 CREDITOR_CITY = "Demo Wrenfield"
+CREDITOR_ZIP = "60697"
 ACCOUNT_NUMBER = "900123456789"
 LAST_4 = "6789"
 PARTY = "Hollis Brandt Collections"
 PARTY_STREET = "44 Demo Marlowe Court"
 PARTY_CITY = "Demo Hollowbrook"
+PARTY_ZIP = "60698"
 HOME_STREET = "7823 S Sangamon St"
 
 
@@ -144,7 +146,7 @@ def test_no_log_line_carries_a_creditors_name_address_or_last_four(filer, caplog
                     "street_address": CREDITOR_STREET,
                     "city": CREDITOR_CITY,
                     "state": "IL",
-                    "zip_code": "60601",
+                    "zip_code": CREDITOR_ZIP,
                     "account_number": ACCOUNT_NUMBER,
                     "is_secured": True,
                     "secured_by": car.pk,
@@ -154,7 +156,7 @@ def test_no_log_line_carries_a_creditors_name_address_or_last_four(filer, caplog
                             "street_address": PARTY_STREET,
                             "city": PARTY_CITY,
                             "state": "IL",
-                            "zip_code": "60602",
+                            "zip_code": PARTY_ZIP,
                         }
                     ],
                 }
@@ -175,11 +177,13 @@ def test_no_log_line_carries_a_creditors_name_address_or_last_four(filer, caplog
         CREDITOR,
         CREDITOR_STREET,
         CREDITOR_CITY,
+        CREDITOR_ZIP,
         ACCOUNT_NUMBER,
         LAST_4,
         PARTY,
         PARTY_STREET,
         PARTY_CITY,
+        PARTY_ZIP,
     ]
     assert len(_refusals_logged(caplog)) == 2
     assert _leaks(caplog, secrets) == set()
