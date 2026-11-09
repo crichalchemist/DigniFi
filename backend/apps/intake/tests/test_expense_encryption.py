@@ -45,7 +45,6 @@ EXPENSE_AMOUNTS = [
     "rent_or_mortgage",
     "utilities",
     "home_maintenance",
-    "vehicle_payment",
     "vehicle_insurance",
     "vehicle_maintenance",
     "food_and_groceries",
@@ -62,6 +61,15 @@ EXPENSE_AMOUNTS = [
 def test_each_expense_amount_is_stored_as_ciphertext(filer, field):
     client, session = filer
     _save(client, session, {"expense_info": {field: "455.00"}})
+    raw = _raw(f"SELECT {field} FROM expense_info WHERE session_id = %s", session)
+    assert raw.startswith("gAAAAA") and "455.00" not in raw
+
+
+@pytest.mark.parametrize("field", ExpenseInfo.LEGACY_FIELDS)
+def test_each_retired_expense_column_is_still_ciphertext(filer, field):
+    # The two columns stay in the table, so what an earlier release stored must stay encrypted.
+    client, session = filer
+    ExpenseInfo.objects.create(session=session, **{field: Decimal("455.00")})
     raw = _raw(f"SELECT {field} FROM expense_info WHERE session_id = %s", session)
     assert raw.startswith("gAAAAA") and "455.00" not in raw
 

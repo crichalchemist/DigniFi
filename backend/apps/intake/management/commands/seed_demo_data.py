@@ -58,7 +58,7 @@ def _wages_only(wages: Decimal) -> dict:
     return amounts
 
 
-def _asset(line: str, value, description: str = "", entire=None, owed="0.00", **details) -> dict:
+def _asset(line: str, value, description: str = "", entire=None, **details) -> dict:
     """One Schedule A/B row as the Assets step saves it: its line, the filer's text and values."""
     return {
         "ab_line": line,
@@ -66,17 +66,15 @@ def _asset(line: str, value, description: str = "", entire=None, owed="0.00", **
         "description": description,
         "current_value": None if value is None else Decimal(str(value)),
         "entire_value": None if entire is None else Decimal(str(entire)),
-        "amount_owed": Decimal(owed),
     }
 
 
-def _car(value, entire, make, model, year, miles, who="only_you", owed="0.00", **more) -> dict:
+def _car(value, entire, make, model, year, miles, who="only_you", **more) -> dict:
     """A line 3 row: the two values, the make and model, and who has an interest."""
     return _asset(
         "3",
         value,
         entire=entire,
-        owed=owed,
         make=make,
         model=model,
         year=year,
@@ -230,7 +228,6 @@ def _maria_torres() -> dict:
             "rent_or_mortgage": Decimal("1100.00"),
             "utilities": Decimal("180.00"),
             "home_maintenance": Decimal("0.00"),
-            "vehicle_payment": Decimal("0.00"),
             "vehicle_insurance": Decimal("85.00"),
             "vehicle_maintenance": Decimal("40.00"),
             "food_and_groceries": Decimal("450.00"),
@@ -409,7 +406,6 @@ def _james_washington() -> dict:
             "rent_or_mortgage": Decimal("1650.00"),
             "utilities": Decimal("120.00"),
             "home_maintenance": Decimal("0.00"),
-            "vehicle_payment": Decimal("350.00"),
             "vehicle_insurance": Decimal("110.00"),
             "vehicle_maintenance": Decimal("50.00"),
             "food_and_groceries": Decimal("400.00"),
@@ -425,7 +421,7 @@ def _james_washington() -> dict:
             "other_expenses_specify": "Work boots and small tools for my job",
         },
         "assets": [
-            _car(14000, 14000, "Toyota", "Camry", "2019", "78000", owed="8500.00"),
+            _car(14000, 14000, "Toyota", "Camry", "2019", "78000"),
             _asset("6", 500, "Bed, couch, table, kitchenware (secondhand)"),
             _asset("7", 400, "TV, laptop, cell phone"),
             _asset("11", 300, "Everyday clothes and work clothes"),
@@ -546,7 +542,6 @@ def _priya_sharma() -> dict:
             "rent_or_mortgage": Decimal("2800.00"),
             "utilities": Decimal("250.00"),
             "home_maintenance": Decimal("100.00"),
-            "vehicle_payment": Decimal("450.00"),
             "vehicle_insurance": Decimal("180.00"),
             "vehicle_maintenance": Decimal("60.00"),
             "food_and_groceries": Decimal("800.00"),
@@ -710,10 +705,9 @@ def _deshawn_mitchell() -> dict:
         "spouse_income": {**_wages_only(Decimal("1000.00")), "payroll_tax": Decimal("115.00")},
         "expenses": {
             "expenses_include_others": "yes",
-            "rent_or_mortgage": Decimal("1200.00"),
+            "rent_or_mortgage": Decimal("0.00"),
             "utilities": Decimal("200.00"),
             "home_maintenance": Decimal("100.00"),
-            "vehicle_payment": Decimal("0.00"),
             "vehicle_insurance": Decimal("95.00"),
             "vehicle_maintenance": Decimal("50.00"),
             "food_and_groceries": Decimal("350.00"),
@@ -733,7 +727,6 @@ def _deshawn_mitchell() -> dict:
                 "1",
                 180000,
                 entire=180000,
-                owed="160000.00",
                 street="7823 S Sangamon St",
                 city="Chicago",
                 state="IL",
@@ -889,7 +882,6 @@ def _sarah_chen() -> dict:
             "rent_or_mortgage": Decimal("850.00"),
             "utilities": Decimal("80.00"),
             "home_maintenance": Decimal("0.00"),
-            "vehicle_payment": Decimal("0.00"),
             "vehicle_insurance": Decimal("0.00"),
             "vehicle_maintenance": Decimal("0.00"),
             "food_and_groceries": Decimal("250.00"),
@@ -1024,8 +1016,6 @@ def _andres_kettleby() -> dict:
             "rent_or_mortgage": Decimal("1150.00"),
             "utilities": Decimal("210.00"),
             "home_maintenance": Decimal("0.00"),
-            # The Corolla lease, his only car
-            "vehicle_payment": Decimal("389.00"),
             "vehicle_insurance": Decimal("165.00"),
             "vehicle_maintenance": Decimal("60.00"),
             "food_and_groceries": Decimal("520.00"),
@@ -1046,7 +1036,7 @@ def _andres_kettleby() -> dict:
             # Leased, so $0 and $0 (his answer); the lease is on Schedule G.
             _car(0, 0, "Toyota", "Corolla Hybrid", "2024", "61000", other_info="Leased"),
             # His half of a car titled to him and his brother.
-            _car(4300, 8600, "Honda", "Fit", "2017", "96000", who="with_someone", owed="7800.00"),
+            _car(4300, 8600, "Honda", "Fit", "2017", "96000", who="with_someone"),
             _asset("6", 1200, "Beds, couch, table, kitchen things"),
             _asset("7", 400, "Phone, TV"),
             _asset("11", 300, "Clothes"),

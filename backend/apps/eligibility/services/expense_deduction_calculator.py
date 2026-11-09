@@ -5,6 +5,7 @@ from decimal import Decimal
 
 from apps.eligibility.cmi import household_cmi, household_members
 from apps.eligibility.services.irs_standards import get_local_standard, get_national_standard
+from apps.intake.claims import linked_payments, total_monthly_expenses
 from apps.intake.household import count_exemptions
 from apps.intake.models import IntakeSession
 
@@ -88,12 +89,19 @@ class ExpenseDeductionCalculator:
         zero = Decimal("0")
         try:
             ei = self.session.expense_info
+            linked = linked_payments(self.session)
+            housing = (
+                Decimal(str(ei.rent_or_mortgage or zero))
+                + linked.first_mortgage
+                + linked.home_lease
+                + linked.additional_mortgage
+            )
             return {
                 "food": Decimal(str(ei.food_and_groceries or zero)),
                 "health": Decimal(str(ei.medical_expenses or zero)),
-                "housing": Decimal(str(ei.rent_or_mortgage or zero)),
-                "transport": Decimal(str(ei.vehicle_payment or zero)),
-                "total": Decimal(str(ei.calculate_total_monthly_expenses())),
+                "housing": housing,
+                "transport": sum(linked.j17.values(), zero),
+                "total": total_monthly_expenses(self.session),
             }
         except Exception:
             return {"food": zero, "health": zero, "housing": zero, "transport": zero, "total": zero}

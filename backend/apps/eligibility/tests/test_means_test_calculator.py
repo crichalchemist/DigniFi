@@ -29,6 +29,7 @@ from apps.eligibility.services.means_test_calculator import MeansTestCalculator
 from apps.forms.registry import build_field_values, packet
 from apps.forms.services.derivations import DERIVATIONS
 from apps.intake.models import (
+    AssetInfo,
     DebtInfo,
     DebtorInfo,
     ExpenseInfo,
@@ -883,14 +884,26 @@ class TestAboveMedianCalculation:
 
 
 def _expenses_and_priority_debt(session):
-    """Expenses at the IRS caps ($2,799 allowed for one person) and $3,500 a month of priority
-    debt: $7,000 of CMI leaves $701 of disposable income, under the $756.25 threshold."""
+    """Expenses at the IRS caps ($2,799 allowed for one person, the car's $283 a linked loan)
+    and $3,500 a month of priority debt: $7,000 of CMI leaves $701 of disposable income, under
+    the $756.25 threshold."""
     ExpenseInfo.objects.create(
         session=session,
         rent_or_mortgage=Decimal("1730.00"),
         food_and_groceries=Decimal("713.00"),
         medical_expenses=Decimal("73.00"),
-        vehicle_payment=Decimal("283.00"),
+    )
+    car = AssetInfo(session=session, ab_line="3", description="Demo car")
+    car.set_details({})
+    car.save()
+    DebtInfo.objects.create(
+        session=session,
+        creditor_name="Demo Auto Lender",
+        debt_type="other",
+        amount_owed=Decimal("9000.00"),
+        monthly_payment=Decimal("283.00"),
+        is_secured=True,
+        secured_by=car,
     )
     DebtInfo.objects.create(
         session=session,
@@ -999,7 +1012,6 @@ class TestAboveMedianEndToEnd:
             rent_or_mortgage=Decimal("1500"),
             utilities=Decimal("200"),
             food_and_groceries=Decimal("400"),
-            vehicle_payment=Decimal("500"),
         )
 
         result = MeansTestCalculator(session).calculate()

@@ -19,13 +19,12 @@ from apps.intake.tests.builders import answer_household
 
 User = get_user_model()
 
-# Each of the Expenses step's 26 amounts gets a distinct power of two, so a line that reads
+# Each of the Expenses step's 24 amounts gets a distinct power of two, so a line that reads
 # the wrong amount, or adds one too many, prints a different figure.
 EXPENSES = {
     "rent_or_mortgage": Decimal("1.00"),
     "utilities": Decimal("2.00"),
     "home_maintenance": Decimal("4.00"),
-    "vehicle_payment": Decimal("8.00"),
     "vehicle_insurance": Decimal("16.00"),
     "vehicle_maintenance": Decimal("32.00"),
     "food_and_groceries": Decimal("64.00"),
@@ -43,7 +42,6 @@ EXPENSES = {
     "charitable_contributions": Decimal("262144.00"),
     "taxes_not_deducted": Decimal("524288.00"),
     "support_others": Decimal("1048576.00"),
-    "other_property_mortgages": Decimal("2097152.00"),
     "other_property_taxes": Decimal("4194304.00"),
     "other_property_insurance": Decimal("8388608.00"),
     "other_property_upkeep": Decimal("16777216.00"),
@@ -89,8 +87,8 @@ LINE_BY_EXPENSE = {
 }
 # Lines no expense belongs on, which the old bindings filled.
 VACATED = {"15a", "15b", "22b", "24"}
-# The 26 amounts above, added: 1 + 2 + 4 + ... + 33554432.
-EXPENSE_TOTAL = "67108863.00"
+# The 24 amounts above, added.
+EXPENSE_TOTAL = "65011703.00"
 
 
 def _household(session, members):
@@ -189,7 +187,7 @@ def test_monthly_net_income_is_income_less_expenses(session):
     assert {box: printed.get(box) for box in ("23a", "23b", "23c")} == {
         "23a": "9200.00",
         "23b": EXPENSE_TOTAL,
-        "23c": "-67099663.00",
+        "23c": "-65002503.00",
     }
 
 

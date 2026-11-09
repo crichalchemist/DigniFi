@@ -318,9 +318,6 @@ class ExpenseInfoSerializer(serializers.ModelSerializer):
     home_maintenance = serializers.DecimalField(
         max_digits=10, decimal_places=2, min_value=Decimal("0"), required=False, default=0
     )
-    vehicle_payment = serializers.DecimalField(
-        max_digits=10, decimal_places=2, min_value=Decimal("0"), required=False, default=0
-    )
     vehicle_insurance = serializers.DecimalField(
         max_digits=10, decimal_places=2, min_value=Decimal("0"), required=False, default=0
     )
@@ -370,9 +367,6 @@ class ExpenseInfoSerializer(serializers.ModelSerializer):
         max_digits=10, decimal_places=2, min_value=Decimal("0"), required=False, default=0
     )
     support_others = serializers.DecimalField(
-        max_digits=10, decimal_places=2, min_value=Decimal("0"), required=False, default=0
-    )
-    other_property_mortgages = serializers.DecimalField(
         max_digits=10, decimal_places=2, min_value=Decimal("0"), required=False, default=0
     )
     other_property_taxes = serializers.DecimalField(
@@ -480,9 +474,6 @@ class AssetInfoSerializer(serializers.ModelSerializer):
     entire_value = serializers.DecimalField(
         max_digits=12, decimal_places=2, min_value=Decimal(0), required=False, allow_null=True
     )
-    amount_owed = serializers.DecimalField(
-        max_digits=12, decimal_places=2, required=False, default=0
-    )
 
     class Meta:
         model = AssetInfo
@@ -496,7 +487,6 @@ class AssetInfoSerializer(serializers.ModelSerializer):
             "entire_value",
             "asset_type",
             "data_source",
-            "amount_owed",
             "created_at",
             "updated_at",
         ]

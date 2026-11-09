@@ -24,7 +24,7 @@ from apps.eligibility.models import MeansTest
 from apps.forms.registry import packet
 from apps.forms.services.pdf_filler import PDFFormFiller
 from apps.intake.asset_lines import LINE_BY_KEY, ordered_assets, rows_on, shown_lines
-from apps.intake.claims import claim_step_gaps
+from apps.intake.claims import claim_step_gaps, total_monthly_expenses
 from apps.intake.management.commands.seed_demo_data import (
     PERSONAS,
     _andres_kettleby,
@@ -217,6 +217,12 @@ def test_the_seed_gives_each_persona_their_stored_answers(
     assert is_above_median(means_test.calculated_cmi, means_test.median_income_threshold) is (
         persona == "priya"
     )
+    # the move of the car and property payments to their links changes no verdict (3c4 R5)
+    assert means_test.passes_means_test is (persona != "priya")
+    if persona == "priya":
+        assert means_test.passes_above_median is False
+        assert means_test.total_allowable_expenses == Decimal("3464.00")
+        assert means_test.disposable_income == Decimal("10336.00")
     forms = packet(session)
     assert ("form_122a2" in forms) is (persona == "priya")
     assert ("form_103b" in forms) is (persona in {"maria", "sarah"})
@@ -238,10 +244,9 @@ def test_the_seed_gives_each_persona_their_stored_answers(
         fee.expense_change_explanation,
     ) == ("", "", "")
 
-    # the sworn monthly total takes the 26 Schedule J lines
-    assert Decimal(str(session.expense_info.calculate_total_monthly_expenses())) == Decimal(
-        EXPENSE_TOTAL[persona]
-    )
+    # the sworn monthly total adds the 24 typed lines and the payments linked on Amounts Owed
+    # and Contracts & Leases
+    assert total_monthly_expenses(session) == Decimal(EXPENSE_TOTAL[persona])
 
 
 @pytest.mark.django_db

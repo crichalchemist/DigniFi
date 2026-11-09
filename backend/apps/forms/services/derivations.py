@@ -33,7 +33,7 @@ from apps.intake.asset_lines import (
     rows_on,
     rows_under_gate,
 )
-from apps.intake.claims import linked_payments
+from apps.intake.claims import linked_payments, total_monthly_expenses
 from apps.intake.household import count_family_size, dependents
 from apps.intake.income import (
     floored_net,
@@ -256,10 +256,9 @@ def _total_monthly_expenses(session: IntakeSession) -> str:
     from apps.intake.models import ExpenseInfo
 
     try:
-        expense_info = session.expense_info
+        return _fmt(total_monthly_expenses(session))
     except ExpenseInfo.DoesNotExist:
         return "0.00"
-    return _fmt(Decimal(str(expense_info.calculate_total_monthly_expenses())))
 
 
 # ---------------------------------------------------------------------------

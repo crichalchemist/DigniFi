@@ -79,7 +79,6 @@ def test_amounts_are_readable_while_ssn_and_account_numbers_stay_private(filer_s
     [asset_row] = response.data["assets"]
     assert debt_row["amount_owed"] == "1234.56"
     assert asset_row["current_value"] == "8000.00"
-    assert asset_row["amount_owed"] == "3000.00"
     assert "ssn" not in response.data["debtor_info"]
     assert "account_number" not in debt_row
     assert "account_number" not in asset_row

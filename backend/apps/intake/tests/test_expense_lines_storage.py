@@ -21,12 +21,11 @@ NEW_LINES = {
     "charitable_contributions": "50.00",
     "taxes_not_deducted": "200.00",
     "support_others": "100.00",
-    "other_property_mortgages": "600.00",
     "other_property_taxes": "90.00",
     "other_property_insurance": "30.00",
     "other_property_upkeep": "25.00",
     "other_property_hoa_dues": "20.00",
-}  # sums to 1500.00
+}  # sums to 900.00
 
 
 def _url(session):
@@ -38,12 +37,12 @@ def test_the_new_schedule_j_lines_reach_the_total_every_form_prints(filer_sessio
     client.patch(
         _url(session), {"expense_info": {"rent_or_mortgage": "1000.00", **NEW_LINES}}, format="json"
     )
-    assert client.get(_url(session)).json()["expense_info"]["total_monthly_expenses"] == 2500.0
+    assert client.get(_url(session)).json()["expense_info"]["total_monthly_expenses"] == 1900.0
     # the one function behind J 22a/22c/23b, 106Sum 5, 103B 6
-    assert DERIVATIONS["fee_waiver_monthly_expenses"](session) == "2500.00"
+    assert DERIVATIONS["fee_waiver_monthly_expenses"](session) == "1900.00"
 
 
-def test_an_empty_expenses_body_stores_26_zero_amounts_and_leaves_line_3_unanswered(
+def test_an_empty_expenses_body_stores_24_zero_amounts_and_leaves_line_3_unanswered(
     filer_session,
 ):
     client, session = filer_session
@@ -51,7 +50,7 @@ def test_an_empty_expenses_body_stores_26_zero_amounts_and_leaves_line_3_unanswe
     assert response.status_code == 200
     reply = response.json()["expense_info"]
     row = ExpenseInfo.objects.get(session=session)
-    assert len(ExpenseInfo.AMOUNT_FIELDS) == 26
+    assert len(ExpenseInfo.AMOUNT_FIELDS) == 24
     assert all(Decimal(getattr(row, f)) == 0 for f in ExpenseInfo.AMOUNT_FIELDS)
     assert row.expenses_include_others is None and reply["expenses_include_others"] is None
     assert all(reply[f] == "" for f in ExpenseInfo.SPECIFY_FIELDS)
