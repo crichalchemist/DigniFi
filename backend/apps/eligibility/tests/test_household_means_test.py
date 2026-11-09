@@ -31,6 +31,7 @@ from apps.intake.models import (
 )
 from apps.intake.tests.builders import (
     answer_asset_lines,
+    answer_claims,
     answer_household,
     answer_income_detail,
 )
@@ -210,6 +211,7 @@ def _completed_before_3e1(session):
     IncomeInfo.objects.create(session=session, monthly_gross_wages=Decimal("3000.00"))
     ExpenseInfo.objects.create(session=session)
     answer_asset_lines(session)  # the Assets step is finished, so the Income step's gap speaks
+    answer_claims(session, no_debts=True)  # so is the claims step
 
 
 REFUSED = {"error": MARRIAGE, "step": "income_info"}

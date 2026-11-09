@@ -41,7 +41,6 @@ from apps.intake import views as intake_views
 from apps.intake.locking import lock_session
 from apps.intake.models import (
     AssetInfo,
-    Codebtor,
     DebtInfo,
     DebtorInfo,
     ExecutoryContract,
@@ -49,7 +48,13 @@ from apps.intake.models import (
     IncomeInfo,
     IntakeSession,
 )
-from apps.intake.tests.builders import answer_asset_lines, answer_household
+from apps.intake.tests.builders import (
+    answer_asset_lines,
+    answer_household,
+    complete_codebtor,
+    complete_contract,
+    complete_debt,
+)
 from apps.users.models import User
 
 # CI runs these with config.settings.test_postgres. If those settings ever reach anything
@@ -496,20 +501,17 @@ def _rows(session):
     car.set_details({"who": "only_you", "make": "Honda"})
     car.save()
     answer_asset_lines(session, ["3"])
+    # Every claims answer is given, so Complete has no claim gap to refuse either.
+    debt = complete_debt(
+        session, creditor_name="Prairie Card Services", amount_owed=Decimal("1000.00")
+    )
     return {
-        "contract": ExecutoryContract.objects.create(
-            session=session, counterparty_name="Oak Street Apartments", contract_type="lease"
+        "contract": complete_contract(
+            session, counterparty_name="Oak Street Apartments", contract_type="lease"
         ),
-        "codebtor": Codebtor.objects.create(
-            session=session, name="Sam Doe", relationship="relative"
-        ),
+        "codebtor": complete_codebtor(session, name="Sam Doe", relationship="relative"),
         "asset": car,
-        "debt": DebtInfo.objects.create(
-            session=session,
-            creditor_name="Prairie Card Services",
-            debt_type="credit_card",
-            amount_owed=Decimal("1000.00"),
-        ),
+        "debt": debt,
         "bill": bill,
     }
 

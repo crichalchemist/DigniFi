@@ -51,7 +51,7 @@ from apps.intake.models import (
     IncomeInfo,
     IntakeSession,
 )
-from apps.intake.tests.builders import answer_asset_lines, answer_household
+from apps.intake.tests.builders import answer_asset_lines, answer_household, complete_debt
 
 User = get_user_model()
 
@@ -693,7 +693,6 @@ def test_a_name_saved_with_its_marks_apart_generates_form_101(api_client, sessio
 
 @pytest.mark.django_db
 class TestStatusTransitions:
-
     def test_mark_downloaded(self, api_client, session_with_debtor, user):
         form = GeneratedForm.objects.create(
             session=session_with_debtor,
@@ -736,7 +735,6 @@ class TestStatusTransitions:
 
 @pytest.mark.django_db
 class TestListRetrieve:
-
     def test_list_only_own_forms(
         self, api_client, session_with_debtor, user, other_session, other_user
     ):
@@ -1300,7 +1298,6 @@ def test_filed_form_survives_leaving_the_packet(api_client, session_with_debtor)
 
 @pytest.mark.django_db
 class TestFieldValuesStayPrivate:
-
     def _generate_121(self, api_client, session):
         return api_client.post(
             "/api/forms/generate/",
@@ -1427,3 +1424,132 @@ class TestAssetStepCheck:
         assert resp.data["step"] == "assets"
         assert box in resp.data["error"]
         assert "□" in resp.data["error"]
+
+
+CLAIM_GAP = "Enter the street, city, two-letter state and ZIP for Demo Card Services."
+
+
+def _debt_without_an_address(session):
+    # complete_debt clears the "no amounts owed" answer answer_household set, so the address
+    # gap is the first.
+    return complete_debt(session, creditor_name="Demo Card Services", street_address="")
+
+
+@pytest.mark.django_db
+class TestClaimStepCheck:
+    """A filer who left a claims answer out can't have forms printed from the gap."""
+
+    def test_a_claim_gap_refuses_generate_generate_all_regenerate_and_download(
+        self, api_client, session_with_debtor, user
+    ):
+        session = session_with_debtor
+        _debt_without_an_address(session)
+        GeneratedForm.objects.create(session=session, form_type="form_103b", generated_by=user)
+        unfiled = GeneratedForm.objects.create(
+            session=session, form_type="form_106dec", status="generated", generated_by=user
+        )
+
+        generate_all = api_client.post(
+            "/api/forms/generate_all/", {"session_id": session.id}, format="json"
+        )
+        generate = api_client.post(
+            "/api/forms/generate/",
+            {"session_id": session.id, "form_type": "form_106dec"},
+            format="json",
+        )
+        regenerate = api_client.post(f"/api/forms/{unfiled.id}/regenerate/")
+        download = api_client.get(f"/api/forms/{unfiled.id}/download/")
+
+        assert generate_all.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert generate_all.data == {"error": CLAIM_GAP, "step": "debts"}
+        for resp in (generate, regenerate, download):
+            assert resp.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+            assert resp.data == {
+                "form_type": "form_106dec",
+                "error": CLAIM_GAP,
+                "step": "debts",
+            }
+        # Generate All refused before it dropped the form that left the packet.
+        assert GeneratedForm.objects.filter(session=session, form_type="form_103b").exists()
+
+    def test_the_assets_sentence_comes_before_a_claim_gap(self, api_client, session_with_debtor):
+        session = session_with_debtor
+        AssetInfo.objects.create(session=session, description="Old couch")
+        _debt_without_an_address(session)
+
+        response = api_client.post(
+            "/api/forms/generate_all/", {"session_id": session.id}, format="json"
+        )
+
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert response.data == {"error": OLD_ROW, "step": "assets"}
+
+    def test_a_claim_gap_is_refused_before_the_means_test_is_worked_out(
+        self, api_client, session_with_debtor
+    ):
+        session = session_with_debtor
+        _debt_without_an_address(session)
+        session.income_info.delete()
+
+        response = api_client.post(
+            "/api/forms/generate_all/", {"session_id": session.id}, format="json"
+        )
+
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert response.data == {"error": CLAIM_GAP, "step": "debts"}
+
+    def test_the_packet_list_never_refuses_a_claim_gap(self, api_client, session_with_debtor):
+        session = session_with_debtor
+        _debt_without_an_address(session)
+
+        listed = api_client.get("/api/forms/packet/", {"session": session.id})
+
+        assert listed.status_code == status.HTTP_200_OK
+
+    def test_a_filed_download_is_not_refused_for_a_claim_gap(
+        self, api_client, session_with_debtor, user
+    ):
+        session = session_with_debtor
+        _debt_without_an_address(session)
+        filed = _filed_form(session, user, "form_121", {"Debtor1.First name": "Jane"})
+
+        download = api_client.get(f"/api/forms/{filed.id}/download/")
+
+        assert download.status_code == status.HTTP_200_OK
+
+    def test_a_linked_row_with_no_lives_here_answer_names_the_assets_step(
+        self, api_client, session_with_debtor
+    ):
+        # The Assets step is finished (line 1 answered Yes, its row whole), so the gap that
+        # speaks is the one about the row a debt links to.
+        session = session_with_debtor
+        answer_asset_lines(session, ["1"])
+        home = AssetInfo(
+            session=session,
+            ab_line="1",
+            current_value=Decimal("100000.00"),
+            entire_value=Decimal("100000.00"),
+        )
+        home.set_details(
+            {"street": "7823 S Sangamon St", "property_kinds": ["single_family"], "who": "only_you"}
+        )
+        home.save()
+        complete_debt(
+            session,
+            creditor_name="Demo Mortgage Services",
+            debt_type="mortgage",
+            is_secured=True,
+            secured_by=home,
+        )
+
+        response = api_client.post(
+            "/api/forms/generate_all/", {"session_id": session.id}, format="json"
+        )
+
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert response.data == {
+            "error": (
+                "Answer “Do you live here?” for 7823 S Sangamon St on line 1 of the Assets step."
+            ),
+            "step": "assets",
+        }

@@ -22,6 +22,7 @@ from apps.eligibility.services import MeansTestCalculator
 from apps.forms.registry import PreconditionMissing, _needs_county, _needs_ssn
 
 from .asset_lines import asset_step_gaps
+from .claims import claim_step_gaps
 from .filing_fee import filing_fee_information
 from .income import deductions_blank, schedule_i_line4
 from .locking import lock_session
@@ -299,15 +300,9 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
         # which is wizard order (3b spec §7).
         errors.extend([{"step": gap.step, "message": str(gap)} for gap in asset_step_gaps(session)])
 
-        # A scanned debt stays off the forms until the filer saves the Amounts Owed step
-        # (DIG-163). An upload after Complete reopens the intake, and Review is one press away.
-        if session.debts.filter(is_draft=True).exists():
-            errors.append(
-                {
-                    "step": "debts",
-                    "message": "Check the debts read from your documents on the Amounts Owed step.",
-                }
-            )
+        # The claims steps' walk (3c3): Assets' "Do you live here?" first, then the Debts block
+        # (a scanned debt the filer hasn't confirmed first, DIG-163), Contracts and Codebtors.
+        errors.extend({"step": gap.step, "message": str(gap)} for gap in claim_step_gaps(session))
 
         if errors:
             return Response(
@@ -614,7 +609,7 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
             completed_sections += 1
         if not asset_step_gaps(session):
             completed_sections += 1
-        if session.debts.exists():
+        if not any(gap.step == "debts" for gap in claim_step_gaps(session)):
             completed_sections += 1
 
         return int((completed_sections / total_sections) * 100)

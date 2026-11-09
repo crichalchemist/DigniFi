@@ -32,8 +32,10 @@ from apps.intake.models import (
 )
 from apps.intake.tests.builders import (
     answer_asset_lines,
+    answer_claims,
     answer_household,
     answer_income_detail,
+    complete_debt,
 )
 from apps.users.models import User
 
@@ -242,6 +244,12 @@ EXPENSES_INCLUDE_OTHERS_UNANSWERED = (
 )
 EXPENSES_STEP = "Go through the Expenses step, even if you have no expenses to enter."
 SCANNED_DEBTS = "Check the debts read from your documents on the Amounts Owed step."
+CONTRACT_GAP_NO_ANSWER = "Answer whether you have any contracts or leases."
+CODEBTOR_GAP_NO_ANSWER = "Answer whether you have any codebtors."
+CODEBTOR_GAP_COMMUNITY = (
+    "Did you live in a community property state or territory in the last 8 years? "
+    "Answer Yes or No."
+)
 
 
 def _no_debtor(session):
@@ -264,13 +272,14 @@ def _expenses_step_never_saved(session):
 
 def _scanned_debt(session):
     # What an upload creates: a draft the filer hasn't checked on the Amounts Owed step yet.
-    return DebtInfo.objects.create(
-        session=session,
+    # Every other answer is given, so the draft sentence is its only gap.
+    return complete_debt(
+        session,
+        is_draft=True,
         creditor_name="Larkfield General Hospital",
         debt_type="medical",
         amount_owed=Decimal("2000.00"),
         data_source="uploaded_document",
-        is_draft=True,
     )
 
 
@@ -488,6 +497,9 @@ def test_complete_lists_every_gap_in_wizard_order(filer, district):
         {"step": "income_info", "message": ASSISTANCE_UNANSWERED},
         {"step": "expense_info", "message": EXPENSES_STEP},
         {"step": "debts", "message": SCANNED_DEBTS},
+        {"step": "contracts", "message": CONTRACT_GAP_NO_ANSWER},
+        {"step": "codebtors", "message": CODEBTOR_GAP_NO_ANSWER},
+        {"step": "codebtors", "message": CODEBTOR_GAP_COMMUNITY},
     ]
     assert _status(session) == "started"
 
@@ -750,15 +762,14 @@ def test_the_take_home_pay_gap_never_stops_the_means_test(filer, completed):
 def test_pressing_continue_on_the_amounts_owed_step_confirms_a_scanned_debt_so_complete_passes(
     filer, completed
 ):
-    # An upload after Complete reopens the intake (DIG-163). Until the filer saves the Amounts
-    # Owed step, the scanned debt is on no form, so Complete sends them there first.
+    # An upload after Complete reopens the intake (DIG-163). Until the filer presses Continue on
+    # the Amounts Owed step, the scanned debt is on no form, so Complete sends them there first.
     client, _ = filer
     completed.status = "in_progress"
     completed.save()
-    typed = DebtInfo.objects.create(
-        session=completed,
+    typed = complete_debt(
+        completed,
         creditor_name="Brightwater Card Services",
-        debt_type="credit_card",
         amount_owed=Decimal("1000.00"),
     )
     scanned = _scanned_debt(completed)
@@ -1039,7 +1050,71 @@ def test_a_filer_with_no_property_and_every_line_no_has_finished_the_assets_step
     assert client.post(_session_url(completed, "complete/")).status_code == 200
     summary = client.get(_session_url(completed, "summary/"))
 
-    assert summary.data["progress"]["completion_percentage"] == 80
+    assert summary.data["progress"]["completion_percentage"] == 100
+
+
+def test_complete_lists_claim_gaps_after_the_assets_gaps(filer, completed):
+    # Wizard order: Assets first, then each debt's gaps. The listed row meets D2 first because
+    # the intake still says "no amounts owed".
+    client, _ = filer
+    completed.status = "in_progress"
+    completed.save()
+    AssetInfo.objects.create(session=completed, description="Old couch")
+    DebtInfo.objects.create(
+        session=completed,
+        creditor_name="Demo Card Services",
+        debt_type="credit_card",
+        amount_owed=Decimal("500.00"),
+    )
+
+    response = client.post(_session_url(completed, "complete/"))
+
+    assert response.status_code == 400
+    assert response.data["errors"] == [
+        {"step": "assets", "message": OLD_ASSET_ROW},
+        {
+            "step": "debts",
+            "message": "You said you have no amounts owed, but some are listed. "
+            "Remove them, or change that answer.",
+        },
+        {
+            "step": "debts",
+            "message": "Enter the street, city, two-letter state and ZIP for Demo Card Services.",
+        },
+        {
+            "step": "debts",
+            "message": "Check any that fit Demo Card Services: contingent, unliquidated or "
+            "disputed. Or choose None of these.",
+        },
+        {"step": "debts", "message": "Answer whether Demo Card Services is subject to offset."},
+        {
+            "step": "debts",
+            "message": "Answer whether anyone else is contacting you about Demo Card Services.",
+        },
+    ]
+    assert _status(completed) == "in_progress"
+
+
+def _percentage(client, session):
+    summary = client.get(_session_url(session, "summary/"))
+    return summary.data["progress"]["completion_percentage"]
+
+
+def test_a_filer_with_no_debts_has_finished_the_amounts_owed_section(filer, completed):
+    client, _ = filer
+
+    assert _percentage(client, completed) == 100
+
+    answer_claims(completed, no_debts=None)
+
+    assert _percentage(client, completed) == 80
+
+
+def test_a_filer_with_one_answered_debt_has_finished_the_amounts_owed_section(filer, completed):
+    client, _ = filer
+    complete_debt(completed)
+
+    assert _percentage(client, completed) == 100
 
 
 def test_an_unfinished_assets_step_does_not_count_toward_the_intake_being_done(filer, completed):
