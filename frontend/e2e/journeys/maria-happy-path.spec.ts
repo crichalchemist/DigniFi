@@ -62,16 +62,13 @@ test.describe('Maria Torres — Happy Path', () => {
     await wizard.walkAssets(MARIA);
 
     // Step 6: Debts (trauma-informed: "Amounts Owed")
-    for (const debt of MARIA.debts) {
-      await wizard.addDebt(debt);
-    }
-    await wizard.nextStep();
+    await wizard.walkDebts(MARIA);
 
-    // Step 7: Contracts & Leases (optional — no entries needed)
-    await wizard.nextStep();
+    // Step 7: Contracts & Leases (answered from the persona)
+    await wizard.walkContracts(MARIA);
 
-    // Step 8: Codebtors (optional — no entries needed)
-    await wizard.nextStep();
+    // Step 8: Codebtors (answered from the persona)
+    await wizard.walkCodebtors(MARIA);
 
     // Step 9: Review & Complete
     await wizard.fillReview();

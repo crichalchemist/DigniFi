@@ -22,8 +22,15 @@ from apps.districts.models import MedianIncome
 from apps.eligibility.cmi import is_above_median
 from apps.eligibility.models import MeansTest
 from apps.forms.registry import packet
-from apps.intake.asset_lines import LINE_BY_KEY, shown_lines
-from apps.intake.management.commands.seed_demo_data import PERSONAS, _andres_kettleby
+from apps.forms.services.pdf_filler import PDFFormFiller
+from apps.intake.asset_lines import LINE_BY_KEY, ordered_assets, rows_on, shown_lines
+from apps.intake.claims import claim_step_gaps
+from apps.intake.management.commands.seed_demo_data import (
+    PERSONAS,
+    _andres_kettleby,
+    asset_at,
+    claim_links,
+)
 from apps.intake.models import (
     AssetInfo,
     FilingFee,
@@ -362,3 +369,91 @@ def test_a_persona_brief_gives_line_31_the_company_name_the_seed_prints(persona)
     ]
     assert told == [(company, who or "", value) for company, who, value in seeded]
     assert len(told) == len(re.findall(r"^- Line 31\b", brief, flags=re.MULTILINE))
+
+
+# ── 3c3: every persona answers the questions Schedules D, E/F, G and H ask ──────────────────
+
+
+def _seed(persona):
+    call_command("loaddata", "ilnd_2025_data", verbosity=0)
+    call_command("seed_demo_data", persona=persona, stdout=StringIO())
+    return IntakeSession.objects.get(user__username=f"demo_{persona}")
+
+
+def _debt(session, name):
+    return next(d for d in session.debts.all() if d.creditor_name == name)
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("persona", list(PERSONAS))
+def test_every_persona_answers_every_claim_question(persona):
+    # Seeded before 3c3, a persona is refused until it is re-seeded; seeded now, none is.
+    session = _seed(persona)
+    assert [str(gap) for gap in claim_step_gaps(session)] == []
+
+
+@pytest.mark.django_db
+def test_priyas_car_loan_links_to_her_car():
+    session = _seed("priya")
+    kestrel = _debt(session, "Kestrel Auto Finance")
+    car = rows_on(ordered_assets(session), "3")[0]
+    assert kestrel.secured_by_id == car.pk
+    assert (kestrel.amount_owed, kestrel.monthly_payment) == (
+        Decimal("14900.00"),
+        Decimal("450.00"),
+    )
+    assert car.get_details()["model"] == "CR-V EX"
+    assert session.debts.count() == 3
+
+
+@pytest.mark.django_db
+def test_deshawns_mortgage_links_to_the_home_he_lives_in_as_its_first_mortgage():
+    session = _seed("deshawn")
+    home = rows_on(ordered_assets(session), "1")[0]
+    mortgage = _debt(session, "Harrowgate Home Loans")
+    assert mortgage.secured_by_id == home.pk
+    assert home.get_details()["lives_here"] == "yes"
+    assert mortgage.home_payment_line == "first"
+
+
+@pytest.mark.django_db
+def test_andres_lease_picks_the_corolla_and_copperline_picks_the_fit():
+    session = _seed("andres")
+    cars = rows_on(ordered_assets(session), "3")
+    lease = next(c for c in session.executory_contracts.all() if c.lease_kind == "vehicle")
+    copperline = _debt(session, "Copperline Auto Finance")
+    assert lease.vehicle_asset_id == cars[0].pk
+    assert lease.monthly_payment == Decimal("389.00")
+    assert cars[0].get_details()["model"] == "Corolla Hybrid"
+    assert copperline.secured_by_id == cars[1].pk
+    assert copperline.monthly_payment == Decimal("0.00")
+    mateo = next(c for c in session.codebtors.all() if c.name == "Mateo Kettleby")
+    assert mateo.get_links() == [{"kind": "debt", "id": copperline.pk}]
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("persona", list(PERSONAS))
+def test_each_personas_dates_fit_their_boxes(persona):
+    # A date too long for its box is ValueTooLong on the form it prints on (S16). D prints only
+    # a secured debt's date, in its 50 pt box; E/F prints the rest, in the narrowest of its boxes.
+    for debt in PERSONAS[persona]()["debts"]:
+        form, key = (
+            ("schedule_d", "Date debt was incurred@1:T31")
+            if debt.get("is_secured")
+            else ("schedule_e_f", "Date debt was incurred@1:T14")
+        )
+        PDFFormFiller().check(form, {key: debt["date_incurred"]})  # raises ValueTooLong
+
+
+@pytest.mark.django_db
+def test_asset_at_and_claim_links_name_rows_by_position_and_by_name():
+    session = _seed("andres")
+    assert asset_at(session, "3.2").get_details()["model"] == "Fit"
+    with pytest.raises(LookupError):
+        asset_at(session, "3.9")
+    copperline = _debt(session, "Copperline Auto Finance")
+    assert claim_links(session, [("debt", "Copperline Auto Finance")]) == [
+        {"kind": "debt", "id": copperline.pk}
+    ]
+    with pytest.raises(LookupError):
+        claim_links(session, [("debt", "No Such Creditor")])

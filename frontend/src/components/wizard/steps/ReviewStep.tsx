@@ -22,16 +22,26 @@ import {
   REVIEW_ENTRIES,
   REVIEW_HOUSEHOLD_COUNT,
   REVIEW_LINE_3,
+  REVIEW_NO_CODEBTORS,
+  REVIEW_NO_CONTRACTS,
+  REVIEW_NO_DEBTS,
   REVIEW_NO_ENTRIES,
   REVIEW_NOW_DIFFERENT,
   REVIEW_SPOUSE_ASSISTANCE,
   REVIEW_SPOUSE_DEDUCTIONS,
   REVIEW_SPOUSE_ENTRIES,
   REVIEW_SPOUSE_NOW_DIFFERENT,
+  REVIEW_UNNAMED_CODEBTOR,
+  REVIEW_UNNAMED_CONTRACT,
   REVIEW_VALUE_NOT_KNOWN,
   REVIEW_YES_NO,
   VALUE_UNKNOWN_HEADING,
 } from '../../../constants/copy';
+import {
+  CODEBTOR_RELATIONSHIP_WORDS,
+  CONTRACT_TYPE_WORDS,
+  DEBT_TYPE_WORDS,
+} from '../../../constants/claims';
 import { WIZARD_STEPS } from '../../../constants/wizardSteps';
 import { AB_PARTS, ASSET_LINES } from '../../../constants/assetLines';
 import { deductionsTotal, takeHomePayNotEntered } from '../../../utils/takeHomePay';
@@ -48,6 +58,7 @@ import type {
   AssetInfo,
   DebtInfo,
   ExecutoryContract,
+  ClaimAnswers,
   Codebtor,
   IncomeEntry,
   SpouseIncome,
@@ -67,6 +78,8 @@ interface ReviewStepProps {
   debtsData: Partial<DebtInfo>[];
   contractsData: ExecutoryContract[];
   codebtorsData: Codebtor[];
+  /** What the filer pressed on the claim steps, so an empty list says so */
+  claimAnswers?: ClaimAnswers;
   /** Form 122A-1 line 13's count, or null while the server can't work it out */
   householdCount: number | null;
   county: string | null;
@@ -88,6 +101,7 @@ export function ReviewStep({
   debtsData,
   contractsData,
   codebtorsData,
+  claimAnswers = {},
   householdCount,
   county,
   onValidationChange,
@@ -401,14 +415,18 @@ export function ReviewStep({
       <section className="review-section">
         <h4 className="review-section-title">Amounts Owed ({debtsData.length})</h4>
         {debtsData.length === 0 ? (
-          <p className="review-empty">No amounts owed listed.</p>
+          <p className="review-empty">
+            {claimAnswers.no_debts === true ? REVIEW_NO_DEBTS : 'No amounts owed listed.'}
+          </p>
         ) : (
           <ul className="review-list">
             {debtsData.map((debt, index) => (
               <li key={debt.id || index} className="review-list-item">
                 <span>
                   {debt.creditor_name || 'Unnamed Creditor'}
-                  {debt.debt_type ? ` (${debt.debt_type})` : ''}
+                  {debt.debt_type && DEBT_TYPE_WORDS[debt.debt_type]
+                    ? ` (${DEBT_TYPE_WORDS[debt.debt_type]})`
+                    : ''}
                 </span>
                 <span className="review-field-value">{formatCurrency(debt.amount_owed)}</span>
               </li>
@@ -421,13 +439,20 @@ export function ReviewStep({
       <section className="review-section">
         <h4 className="review-section-title">Contracts & Leases ({contractsData.length})</h4>
         {contractsData.length === 0 ? (
-          <p className="review-empty">No contracts or leases listed.</p>
+          <p className="review-empty">
+            {claimAnswers.contracts_answer === 'no'
+              ? REVIEW_NO_CONTRACTS
+              : 'No contracts or leases listed.'}
+          </p>
         ) : (
           <ul className="review-list">
             {contractsData.map((contract, index) => (
               <li key={contract.id || index} className="review-list-item">
                 <span>
-                  {contract.counterparty_name} ({contract.contract_type})
+                  {contract.counterparty_name || REVIEW_UNNAMED_CONTRACT}
+                  {contract.contract_type && CONTRACT_TYPE_WORDS[contract.contract_type]
+                    ? ` (${CONTRACT_TYPE_WORDS[contract.contract_type]})`
+                    : ''}
                 </span>
               </li>
             ))}
@@ -439,13 +464,18 @@ export function ReviewStep({
       <section className="review-section">
         <h4 className="review-section-title">Codebtors ({codebtorsData.length})</h4>
         {codebtorsData.length === 0 ? (
-          <p className="review-empty">No codebtors listed.</p>
+          <p className="review-empty">
+            {claimAnswers.codebtors_answer === 'no' ? REVIEW_NO_CODEBTORS : 'No codebtors listed.'}
+          </p>
         ) : (
           <ul className="review-list">
             {codebtorsData.map((codebtor, index) => (
               <li key={codebtor.id || index} className="review-list-item">
                 <span>
-                  {codebtor.name} ({codebtor.relationship.replace('_', ' ')})
+                  {codebtor.name || REVIEW_UNNAMED_CODEBTOR}
+                  {codebtor.relationship && CODEBTOR_RELATIONSHIP_WORDS[codebtor.relationship]
+                    ? ` (${CODEBTOR_RELATIONSHIP_WORDS[codebtor.relationship]})`
+                    : ''}
                 </span>
               </li>
             ))}

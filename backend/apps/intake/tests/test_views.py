@@ -30,26 +30,37 @@ def auth_client_with_session(db):
     return client, session
 
 
-def test_debts_patch_clears_is_draft(auth_client_with_session):
-    """Saving the Debts step sets is_draft=False on all session debts."""
+def test_a_scanned_debt_leaves_draft_state_only_when_the_filer_presses_continue(
+    auth_client_with_session,
+):
+    """Continue on Amounts Owed (update_step 7) confirms scanned debts; an autosave doesn't."""
     client, session = auth_client_with_session
-    DebtInfo.objects.create(
+    draft = DebtInfo.objects.create(
         session=session,
         creditor_name="Draft Bank",
         debt_type="credit_card",
         amount_owed="500.00",
         is_draft=True,
     )
-    response = client.patch(
-        f"/api/intake/sessions/{session.id}/",
+    url = f"/api/intake/sessions/{session.id}/"
+    saved = client.patch(
+        url,
         {
             "debts": [
-                {"creditor_name": "Draft Bank", "debt_type": "credit_card", "amount_owed": "500.00"}
+                {
+                    "id": draft.pk,
+                    "creditor_name": "Draft Bank",
+                    "debt_type": "credit_card",
+                    "amount_owed": "500.00",
+                }
             ]
         },
         format="json",
     )
-    assert response.status_code in (200, 201)
+    assert saved.status_code in (200, 201)
+    assert DebtInfo.objects.filter(session=session, is_draft=True).exists()
+    confirmed = client.post(f"{url}update_step/", {"current_step": 7}, format="json")
+    assert confirmed.status_code == 200
     assert not DebtInfo.objects.filter(session=session, is_draft=True).exists()
 
 

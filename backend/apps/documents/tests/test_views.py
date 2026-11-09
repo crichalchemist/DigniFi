@@ -159,6 +159,21 @@ def test_a_correction_too_large_or_unreadable_is_refused_and_the_session_still_o
     assert client.get(f"/api/intake/sessions/{session.id}/").status_code == 200
 
 
+def test_a_negative_scanned_bill_correction_is_refused(db, auth_client, session):
+    client, user = auth_client
+    doc, _, draft = _scanned_bill_with_draft(session, user)
+
+    response = client.post(
+        f"/api/documents/{doc.id}/validate/",
+        {"fields": {"amount_owed": "-5"}},
+        format="json",
+    )
+
+    assert response.status_code == 400
+    draft.refresh_from_db()
+    assert draft.amount_owed == Decimal("500.00")
+
+
 def test_a_corrected_amount_reaches_the_draft_debt(db, auth_client, session):
     client, user = auth_client
     doc, _, draft = _scanned_bill_with_draft(session, user)

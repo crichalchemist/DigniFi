@@ -5,12 +5,13 @@
  * from the actual components (DebtorInfoStep, IncomeInfoStep, etc.).
  */
 
-import { expect, type Page } from '@playwright/test';
+import { expect, type Locator, type Page } from '@playwright/test';
 import type {
   DeductionField,
   PersonaAssistance,
   PersonaDebtor,
   PersonaIncome,
+  PersonaAddress,
   PersonaAsset,
   PersonaDebt,
   PersonaData,
@@ -316,8 +317,8 @@ export class WizardPage {
     for (const [field, value] of Object.entries(asset.details ?? {})) {
       if (field === 'kind') {
         await this.page.locator(`select[name="${prefix}_kind"]`).selectOption(value as string);
-      } else if (field === 'who') {
-        await this.page.locator(`input[name="${prefix}_who"][value="${value}"]`).check();
+      } else if (field === 'who' || field === 'lives_here') {
+        await this.page.locator(`input[name="${prefix}_${field}"][value="${value}"]`).check();
       } else if (field === 'property_kinds') {
         for (const kind of value as string[]) {
           await this.page
@@ -400,6 +401,31 @@ export class WizardPage {
 
   // ── Step 6: Debts ───────────────────────────────────────────────
 
+  /** Types each address box of one address; an address outside the US stops before state and ZIP. */
+  private async fillAddress(
+    prefix: '' | 'codebtor_' | 'community_spouse_',
+    suffix: string,
+    address: PersonaAddress
+  ) {
+    const box = (field: string) => this.page.locator(`input[name="${prefix}${field}${suffix}"]`);
+    await box('street_address').fill(address.street_address);
+    if (address.street_2) await box('street_2').fill(address.street_2);
+    await box('city').fill(address.city);
+    if (address.outside_us) {
+      await box('outside_us').check();
+      return;
+    }
+    await box('state').fill(address.state);
+    await box('zip_code').fill(address.zip_code);
+  }
+
+  /** Picks the option whose words contain `text`; fails the journey when none does. */
+  private async pick(select: Locator, text: string) {
+    const value = await select.locator('option', { hasText: text }).first().getAttribute('value');
+    expect(value, `an option containing "${text}"`).not.toBeNull();
+    await select.selectOption(value as string);
+  }
+
   async addDebt(debt: PersonaDebt) {
     const index = this.debtCount;
     if (index > 0) {
@@ -409,19 +435,159 @@ export class WizardPage {
     await this.page.locator(`select[name="debt_type_${index}"]`).selectOption(debt.debt_type);
     await this.page.locator(`input[name="creditor_name_${index}"]`).fill(debt.creditor_name);
     await this.page.locator(`input[name="amount_owed_${index}"]`).fill(String(debt.amount_owed));
-    await this.page
-      .locator(`input[name="monthly_payment_${index}"]`)
-      .fill(String(debt.monthly_payment));
-
-    // Secured debt types reveal a required collateral textarea; the step
-    // blocks Continue until it's filled.
-    if (debt.collateral_description) {
-      await this.page
-        .locator(`textarea[name="collateral_description_${index}"]`)
-        .fill(debt.collateral_description);
-    }
+    await this.fillDebtAnswers(index, debt);
 
     this.debtCount++;
+  }
+
+  /**
+   * Everything a row asks after its kind, name and amount, which a scanned draft already holds.
+   * The order is the step's own.
+   */
+  async fillDebtAnswers(index: number, debt: PersonaDebt) {
+    const page = this.page;
+    await this.fillAddress('', `_${index}`, debt.address);
+    if (debt.account_last_4) {
+      await page.locator(`input[name="account_number_${index}"]`).fill(debt.account_last_4);
+    }
+    if (debt.date_incurred) {
+      await page.locator(`input[name="date_incurred_${index}"]`).fill(debt.date_incurred);
+    }
+
+    // The kind starts this answer for the filer; a press on the chosen radio changes nothing
+    const secured = debt.secured;
+    await page
+      .locator(`input[name="is_secured_${index}"][value="${secured ? 'yes' : 'no'}"]`)
+      .check();
+    if (secured) {
+      await this.pick(page.locator(`select[name="secured_by_${index}"]`), secured.pick);
+      for (const lien of secured.lien) {
+        await page.locator(`input[name="lien_${index}"][value="${lien}"]`).check();
+      }
+      if (debt.collateral_description) {
+        await page
+          .locator(`textarea[name="collateral_description_${index}"]`)
+          .fill(debt.collateral_description);
+      }
+      if (secured.home_payment_line) {
+        await page
+          .locator(`input[name="home_payment_line_${index}"][value="${secured.home_payment_line}"]`)
+          .check();
+      }
+      if (secured.collateral_who) {
+        await page
+          .locator(`input[name="collateral_who_${index}"][value="${secured.collateral_who}"]`)
+          .check();
+      }
+    }
+    await page.locator(`input[name="monthly_payment_${index}"]`).fill(String(debt.monthly_payment));
+
+    if (debt.claim_status.length === 0) {
+      await page.locator(`input[name="claim_status_${index}"][value="none"]`).check();
+    }
+    for (const status of debt.claim_status) {
+      await page.locator(`input[name="claim_status_${index}"][value="${status}"]`).check();
+    }
+    if (!secured) {
+      await page
+        .locator(`input[name="offset_answer_${index}"][value="${debt.offset_answer ?? 'no'}"]`)
+        .check();
+    }
+
+    const parties = debt.notice_parties;
+    await page
+      .locator(`input[name="notice_${index}"][value="${parties.length > 0 ? 'yes' : 'no'}"]`)
+      .check();
+    for (const [j, party] of parties.entries()) {
+      const box = (field: string) => page.locator(`input[name="notice_${index}_${j}_${field}"]`);
+      await box('name').fill(party.name);
+      await box('street_address').fill(party.street_address);
+      if (party.street_2) await box('street_2').fill(party.street_2);
+      await box('city').fill(party.city);
+      if (party.outside_us) {
+        await box('outside_us').check();
+      } else {
+        await box('state').fill(party.state);
+        await box('zip_code').fill(party.zip_code);
+      }
+      await box('last_4').fill(party.last_4);
+    }
+  }
+
+  async answerNoDebts() {
+    await this.page.getByRole('button', { name: 'I have no amounts owed', exact: true }).click();
+  }
+
+  /** The whole Amounts Owed step: "I have no amounts owed", or each row, then Continue. */
+  async walkDebts(persona: Pick<PersonaData, 'debts'>) {
+    if (persona.debts.length === 0) {
+      await this.answerNoDebts();
+    }
+    for (const debt of persona.debts) {
+      await this.addDebt(debt);
+    }
+    await this.nextStep();
+  }
+
+  // ── Step 7: Contracts & Leases ──────────────────────────────────
+
+  async walkContracts(persona: Pick<PersonaData, 'contracts' | 'claim_answers'>) {
+    const page = this.page;
+    await page
+      .locator(`input[name="contracts_answer"][value="${persona.claim_answers.contracts_answer}"]`)
+      .check();
+    for (const [i, contract] of persona.contracts.entries()) {
+      // No blank row shows, so the button makes the first row too
+      await page.getByRole('button', { name: /add contract/i }).click();
+      await page.locator(`select[name="contract_type_${i}"]`).selectOption(contract.contract_type);
+      await page.locator(`input[name="counterparty_name_${i}"]`).fill(contract.counterparty_name);
+      await page.locator(`input[name="description_${i}"]`).fill(contract.description);
+      await this.fillAddress('', `_${i}`, contract.address);
+      if (contract.lease_kind) {
+        await page.locator(`select[name="lease_kind_${i}"]`).selectOption(contract.lease_kind);
+      }
+      if (contract.vehicle) {
+        await this.pick(page.locator(`select[name="vehicle_asset_${i}"]`), contract.vehicle.pick);
+      }
+      if (contract.monthly_payment !== undefined) {
+        await page
+          .locator(`input[name="monthly_payment_${i}"]`)
+          .fill(String(contract.monthly_payment));
+      }
+      await page.locator(`input[name="owes_now_${i}"][value="${contract.owes_now}"]`).check();
+    }
+    await this.nextStep();
+  }
+
+  // ── Step 8: Codebtors ───────────────────────────────────────────
+
+  async walkCodebtors(persona: Pick<PersonaData, 'codebtors' | 'claim_answers'>) {
+    const page = this.page;
+    const answers = persona.claim_answers;
+    if (answers.community_lived !== 'no') {
+      throw new Error('No persona has data for a community-property answer of yes');
+    }
+    await page
+      .locator(`input[name="codebtors_answer"][value="${answers.codebtors_answer}"]`)
+      .check();
+    await page.locator(`input[name="community_lived"][value="${answers.community_lived}"]`).check();
+    for (const [i, codebtor] of persona.codebtors.entries()) {
+      await page.getByRole('button', { name: /add codebtor/i }).click();
+      await page.locator(`input[name="codebtor_name_${i}"]`).fill(codebtor.name);
+      if (codebtor.relationship) {
+        await page
+          .locator(`select[name="codebtor_relationship_${i}"]`)
+          .selectOption(codebtor.relationship);
+      }
+      await this.fillAddress('codebtor_', `_${i}`, codebtor.address);
+      for (const name of codebtor.links) {
+        await page
+          .getByLabel(name, { exact: true })
+          .and(page.locator(`input[name="codebtor_links_${i}"]`))
+          .check();
+      }
+    }
+    await this.nextStep();
   }
 
   // ── Step 9: Review ──────────────────────────────────────────────

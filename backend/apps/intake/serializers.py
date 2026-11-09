@@ -18,7 +18,7 @@ from apps.districts.dated_tables import fill_date
 from apps.eligibility.cmi import answered_window, income_step_gaps, income_window
 
 from .asset_lines import LINE_BY_KEY, PROPERTY_KINDS, WHO
-from .claims import ordered_debts
+from .claims import account_last_4, ordered_debts
 from .household import (
     MAX_AGE,
     MAX_MEMBERS,
@@ -28,9 +28,11 @@ from .household import (
 )
 from .income import ENTRY_KINDS, MAX_ENTRIES
 from .models import (
+    HOME_PAYMENT_LINES,
     YES_NO,
     AssetInfo,
     AssetLineAnswers,
+    ClaimAnswers,
     Codebtor,
     DebtInfo,
     DebtorInfo,
@@ -432,6 +434,7 @@ class AssetDetailsSerializer(serializers.Serializer):
     other_kind = serializers.CharField(**_TEXT)
     nature = serializers.CharField(**_TEXT)
     who = serializers.ChoiceField(choices=WHO, required=False, allow_null=True)
+    lives_here = serializers.ChoiceField(choices=YES_NO, required=False, allow_null=True)
     community = serializers.BooleanField(required=False, allow_null=True)
     other_info = serializers.CharField(**_TEXT)
     make = serializers.CharField(**_TEXT)
@@ -552,11 +555,97 @@ class AssetInfoSerializer(serializers.ModelSerializer):
         return data
 
 
-class DebtInfoSerializer(serializers.ModelSerializer):
-    """Serializer for debt/creditor information (trauma-informed language)."""
+class AddressAnswersMixin(serializers.Serializer):
+    """The address a debt, contract or codebtor row carries: declared once, here (3c3).
+
+    A state saves as typed, upper-cased, up to two characters (R7): Complete judges whether it
+    is two letters, so one half-typed row never refuses the whole list.
+    """
+
+    street_address = serializers.CharField(max_length=255, allow_blank=True, required=False)
+    street_2 = serializers.CharField(max_length=255, allow_blank=True, required=False)
+    city = serializers.CharField(max_length=100, allow_blank=True, required=False)
+    state = serializers.CharField(max_length=2, allow_blank=True, required=False)
+    zip_code = serializers.CharField(max_length=10, allow_blank=True, required=False)
+    outside_us = serializers.BooleanField(required=False)
+
+    def validate_state(self, value):
+        return value.strip().upper()
+
+
+class _StoredJSONField(serializers.Field):
+    """A column the model keeps as JSON text. The reply shows the parsed value.
+
+    get_attribute reads the model's get_<name>(); to_representation returns that as it is.
+    """
+
+    def get_attribute(self, instance):
+        return getattr(instance, f"get_{self.field_name}")()
+
+    def to_representation(self, value):
+        return value
+
+
+class LienField(_StoredJSONField):
+    """null, or {"kinds": [...], "other": str}: kinds in DebtInfo.LIEN_KINDS' order."""
+
+    def to_internal_value(self, data):
+        if not isinstance(data, dict):
+            raise serializers.ValidationError("Expected an object.")
+        kinds = serializers.ListField(
+            child=serializers.ChoiceField(choices=list(DebtInfo.LIEN_KINDS))
+        ).run_validation(data.get("kinds", []))
+        other = serializers.CharField(max_length=255, allow_blank=True).run_validation(
+            data.get("other", "")
+        )
+        return {"kinds": [k for k in DebtInfo.LIEN_KINDS if k in kinds], "other": other}
+
+
+class ClaimStatusField(_StoredJSONField):
+    """null, or a list of DebtInfo.CLAIM_STATUSES in that order. [] is "None of these"."""
+
+    def to_internal_value(self, data):
+        statuses = serializers.ListField(
+            child=serializers.ChoiceField(choices=list(DebtInfo.CLAIM_STATUSES))
+        ).run_validation(data)
+        return [s for s in DebtInfo.CLAIM_STATUSES if s in statuses]
+
+
+class NoticePartySerializer(serializers.Serializer):
+    """One person or office to notify about a debt (Schedules D and E/F Part 2)."""
+
+    id = serializers.IntegerField(required=False, allow_null=True)
+    name = serializers.CharField(max_length=255, allow_blank=True, required=False)
+    street_address = serializers.CharField(max_length=255, allow_blank=True, required=False)
+    street_2 = serializers.CharField(max_length=255, allow_blank=True, required=False)
+    city = serializers.CharField(max_length=100, allow_blank=True, required=False)
+    state = serializers.CharField(max_length=2, allow_blank=True, required=False)
+    zip_code = serializers.CharField(max_length=10, allow_blank=True, required=False)
+    last_4 = serializers.CharField(max_length=4, allow_blank=True, required=False)
+    outside_us = serializers.BooleanField(required=False)
+
+    def validate_state(self, value):
+        return value.strip().upper()
+
+
+class NoticePartiesField(_StoredJSONField):
+    """null, or at most DebtInfo.MAX_NOTICE_PARTIES rows. Ids are given on save."""
+
+    def to_internal_value(self, data):
+        return serializers.ListField(
+            child=NoticePartySerializer(), max_length=DebtInfo.MAX_NOTICE_PARTIES
+        ).run_validation(data)
+
+
+class DebtInfoSerializer(AddressAnswersMixin, serializers.ModelSerializer):
+    """Serializer for debt/creditor information (trauma-informed language).
+
+    This is the per-item path (POST/PATCH /debts/): it never sets a link or a JSON answer
+    (R6). NestedDebtInfoSerializer is their only writer.
+    """
 
     # Explicit field declaration — EncryptedDecimalField confuses DRF's auto-mapper
-    amount_owed = serializers.DecimalField(max_digits=12, decimal_places=2)
+    amount_owed = serializers.DecimalField(max_digits=12, decimal_places=2, min_value=Decimal("0"))
     creditor_name = serializers.CharField(max_length=255)
     monthly_payment = serializers.DecimalField(
         max_digits=10, decimal_places=2, min_value=Decimal(0), required=False, allow_null=True
@@ -564,6 +653,23 @@ class DebtInfoSerializer(serializers.ModelSerializer):
     notes = serializers.CharField(required=False, allow_blank=True)
     collateral_description = serializers.CharField(required=False, allow_blank=True)
     source_document_name = serializers.SerializerMethodField()
+    account_last_4 = serializers.SerializerMethodField()
+    secured_by = serializers.IntegerField(source="secured_by_id", read_only=True)
+    home_payment_line = serializers.ChoiceField(
+        choices=list(HOME_PAYMENT_LINES), allow_null=True, required=False
+    )
+    collateral_who = serializers.ChoiceField(choices=list(WHO), allow_null=True, required=False)
+    offset_answer = serializers.ChoiceField(choices=list(YES_NO), allow_null=True, required=False)
+    community_debt = serializers.ChoiceField(choices=["yes"], allow_blank=True, required=False)
+    date_incurred = serializers.CharField(
+        max_length=DebtInfo.DATE_INCURRED_MAX_LENGTH,
+        allow_blank=True,
+        allow_null=True,
+        required=False,
+    )
+    lien = LienField(read_only=True)
+    claim_status = ClaimStatusField(read_only=True)
+    notice_parties = NoticePartiesField(read_only=True)
 
     class Meta:
         model = DebtInfo
@@ -575,6 +681,7 @@ class DebtInfoSerializer(serializers.ModelSerializer):
             "debt_type",
             "priority_classification",
             "account_number",
+            "account_last_4",
             "amount_owed",
             "monthly_payment",
             "is_in_collections",
@@ -585,6 +692,21 @@ class DebtInfoSerializer(serializers.ModelSerializer):
             "updated_at",
             "is_draft",
             "source_document_name",
+            "street_address",
+            "street_2",
+            "city",
+            "state",
+            "zip_code",
+            "outside_us",
+            "secured_by",
+            "home_payment_line",
+            "collateral_who",
+            "offset_answer",
+            "community_debt",
+            "date_incurred",
+            "lien",
+            "claim_status",
+            "notice_parties",
         ]
         read_only_fields = ["id", "created_at", "updated_at", "is_draft", "source_document_name"]
         extra_kwargs = {
@@ -595,6 +717,17 @@ class DebtInfoSerializer(serializers.ModelSerializer):
         if obj.source_document:
             return obj.source_document.original_filename
         return None
+
+    def get_account_last_4(self, obj) -> str:
+        return account_last_4(obj.account_number)
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        # A link to a row now on another session is dead: AssetViewSet can move a row after
+        # the link was made (R6).
+        if instance.secured_by_id and instance.secured_by.session_id != instance.session_id:
+            data["secured_by"] = None
+        return data
 
 
 class NestedAssetInfoSerializer(AssetInfoSerializer):
@@ -609,12 +742,40 @@ class NestedAssetInfoSerializer(AssetInfoSerializer):
 
 
 class NestedDebtInfoSerializer(DebtInfoSerializer):
-    """A debt row inside a session save. See NestedAssetInfoSerializer."""
+    """A debt row inside a session save. See NestedAssetInfoSerializer.
+
+    The only writer of a link and of the JSON answers. A half-filled row saves: the name and
+    type may be blank (the wizard sends a blank amount as 0).
+    """
 
     id = serializers.IntegerField(required=False)
+    creditor_name = serializers.CharField(max_length=255, required=False, allow_blank=True)
+    debt_type = serializers.ChoiceField(
+        choices=DebtInfo.DEBT_TYPE_CHOICES, required=False, allow_blank=True
+    )
+    secured_by = serializers.IntegerField(source="secured_by_id", required=False, allow_null=True)
+    lien = LienField(required=False, allow_null=True)
+    claim_status = ClaimStatusField(required=False, allow_null=True)
+    notice_parties = NoticePartiesField(required=False, allow_null=True)
 
 
-def _save_rows_by_id(session, model, rows) -> list:
+def _assign(row, data) -> None:
+    """Set a row's answers. The one place a JSON column is encoded.
+
+    Each key of the model's JSON_ANSWERS is stored with json.dumps (a None stays None), a
+    notice_parties key goes through store_notice_parties, and any other key is set as it is.
+    """
+    json_answers = getattr(type(row), "JSON_ANSWERS", ())
+    for attr, value in data.items():
+        if attr == "notice_parties":
+            row.store_notice_parties(value)
+        elif attr in json_answers:
+            setattr(row, attr, None if value is None else json.dumps(value))
+        else:
+            setattr(row, attr, value)
+
+
+def _save_rows_by_id(session, model, rows, scoped=None) -> list:
     """Save a session's nested assets or debts, or its contracts or codebtors list, by id.
 
     A row whose id is one of this session's rows updates only the fields it sent, so
@@ -622,18 +783,32 @@ def _save_rows_by_id(session, model, rows) -> list:
     survives. Any other row is created on this session, so a client-sent
     ``session`` or another user's id never touches another session. Stored rows the
     payload left out are deleted. Returns the saved rows in payload order, each with its id.
+
+    ``scoped`` maps a foreign-key attname to its model, such as ``{"secured_by_id":
+    AssetInfo}``. A row that sends one of those keys with an id no row of that model has on
+    this session stores None, so a foreign id is never kept or echoed; a key the row didn't
+    send is left alone. The answers a model keeps as JSON go through ``_assign``.
     """
     existing = {row.pk: row for row in model.objects.filter(session=session)}
+    live = {
+        attname: set(related.objects.filter(session=session).values_list("pk", flat=True))
+        for attname, related in (scoped or {}).items()
+    }
     kept = set()
     saved = []
     for data in rows:
         data.pop("session", None)
+        for attname, ids in live.items():
+            if data.get(attname) is not None and data[attname] not in ids:
+                data[attname] = None
         row = existing.get(data.pop("id", None))
         if row is None:
-            saved.append(model.objects.create(session=session, **data))
+            row = model(session=session)
+            _assign(row, data)
+            row.save()
+            saved.append(row)
             continue
-        for attr, value in data.items():
-            setattr(row, attr, value)
+        _assign(row, data)
         row.save()
         kept.add(row.pk)
         saved.append(row)
@@ -764,6 +939,7 @@ _INTAKE_DATA = {
     "expense_info",
     "assets",
     "asset_lines",
+    "claim_answers",
     "debts",
     "household",
     "spouse_income",
@@ -786,6 +962,30 @@ def _save_asset_lines(session: IntakeSession, data: dict) -> None:
     session.asset_lines = record
 
 
+class ClaimAnswersField(serializers.DictField):
+    """The filer's own answers to Schedules D, E/F, G and H, read from the session's record."""
+
+    def get_attribute(self, instance):
+        record = getattr(instance, "claim_answers", None)
+        return record.get_answers() if record else {}
+
+
+def _save_claim_answers(session: IntakeSession, data: dict) -> None:
+    """Set each answer sent; a null clears it (3c3 spec §7.1)."""
+    record, _ = ClaimAnswers.objects.get_or_create(session=session)
+    record.merge(data)
+    record.save()
+    session.claim_answers = record
+
+
+_CLAIM_YES_NO = (
+    "contracts_answer",
+    "codebtors_answer",
+    "community_lived",
+    "community_spouse_lived_with",
+)
+
+
 class IntakeSessionSerializer(serializers.ModelSerializer):
     """
     Serializer for intake session with nested related data.
@@ -800,6 +1000,7 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
     asset_lines = AssetLinesField(
         child=serializers.ChoiceField(choices=["yes", "no"], allow_null=True), required=False
     )
+    claim_answers = ClaimAnswersField(required=False)
     debts = NestedDebtInfoSerializer(many=True, required=False)
     household = HouseholdSerializer(required=False, allow_null=True)
     spouse_income = SpouseIncomeSerializer(required=False, allow_null=True)
@@ -821,6 +1022,7 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
             "expense_info",
             "assets",
             "asset_lines",
+            "claim_answers",
             "debts",
             "household",
             "spouse_income",
@@ -846,6 +1048,28 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(f"Not a line of Schedule A/B: {unknown[0]}.")
         return answers
 
+    def validate_claim_answers(self, sent):
+        """Check each key and its shape; a message names the key, never the value."""
+        answers = {}
+        for key, value in sent.items():
+            if key not in ClaimAnswers.KEYS:
+                raise serializers.ValidationError(f"Not a claim answer: {key}.")
+            if value is not None:
+                if key == "community_spouse_state" and isinstance(value, str):
+                    value = value.strip().upper()
+                if key == "no_debts":
+                    ok = value is True
+                elif key in _CLAIM_YES_NO:
+                    ok = isinstance(value, str) and value in ("yes", "no")
+                elif key == "community_spouse_outside_us":
+                    ok = isinstance(value, bool)
+                else:
+                    ok = isinstance(value, str) and len(value) <= ClaimAnswers.TEXT_LIMITS[key]
+                if not ok:
+                    raise serializers.ValidationError(f"Check the answer for {key}.")
+            answers[key] = value
+        return answers
+
     def get_income_window(self, obj) -> dict:
         """The six full months before today, which the Income step's figures cover."""
         start, end = income_window(fill_date())
@@ -866,6 +1090,7 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
         household_data = validated_data.pop("household", None)
         spouse_data = validated_data.pop("spouse_income", None)
         asset_lines_data = validated_data.pop("asset_lines", None)
+        claim_answers_data = validated_data.pop("claim_answers", None)
 
         # Create session
         session = IntakeSession.objects.create(**validated_data)
@@ -889,13 +1114,15 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
         if asset_lines_data is not None:
             _save_asset_lines(session, asset_lines_data)
 
+        if claim_answers_data is not None:
+            _save_claim_answers(session, claim_answers_data)
+
         # Create assets
         for asset_data in assets_data:
             AssetInfo.objects.create(session=session, **asset_data)
 
-        # Create debts
-        for debt_data in debts_data:
-            DebtInfo.objects.create(session=session, **debt_data)
+        # Create debts, after the assets so a link is checked against them
+        _save_rows_by_id(session, DebtInfo, debts_data, scoped={"secured_by_id": AssetInfo})
 
         return session
 
@@ -921,6 +1148,7 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
         household_data = validated_data.pop("household", None)
         spouse_data = validated_data.pop("spouse_income", None)
         asset_lines_data = validated_data.pop("asset_lines", None)
+        claim_answers_data = validated_data.pop("claim_answers", None)
 
         # Update session fields
         for attr, value in validated_data.items():
@@ -948,6 +1176,9 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
         if asset_lines_data is not None:
             _save_asset_lines(instance, asset_lines_data)
 
+        if claim_answers_data is not None:
+            _save_claim_answers(instance, claim_answers_data)
+
         # The response lists a sent list in sent order, so the wizard can pair each row it
         # sent with its id (DIG-273). Every other read sorts as to_representation says.
         instance.sent_rows = {}
@@ -955,7 +1186,9 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
             instance.sent_rows["assets"] = _save_rows_by_id(instance, AssetInfo, assets_data)
 
         if debts_data is not None:
-            instance.sent_rows["debts"] = _save_rows_by_id(instance, DebtInfo, debts_data)
+            instance.sent_rows["debts"] = _save_rows_by_id(
+                instance, DebtInfo, debts_data, scoped={"secured_by_id": AssetInfo}
+            )
 
         return instance
 
@@ -964,7 +1197,9 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
         # Neither table has a Meta.ordering (each sort key is ciphertext): assets read by id, and
         # debts by creditor name, then id, as Schedules D and E/F list them (3c spec §6.2).
         data["assets"] = sorted(data["assets"], key=lambda row: row["id"])
-        data["debts"] = self.fields["debts"].to_representation(ordered_debts(instance.debts.all()))
+        data["debts"] = self.fields["debts"].to_representation(
+            ordered_debts(instance.debts.select_related("secured_by"))
+        )
         for name, rows in getattr(instance, "sent_rows", {}).items():
             data[name] = self.fields[name].to_representation(rows)
         return data
@@ -1148,24 +1383,89 @@ class BulkAnswerPayloadSerializer(serializers.Serializer):
     answers = BulkAnswerItemSerializer(many=True)
 
 
-class ExecutoryContractSerializer(serializers.ModelSerializer):
+def _live_foreign_key(instance, name, model):
+    """The row a contract's link names, or None when it is dead (R6).
+
+    Dead means null, or a row now on another session (AssetViewSet and DebtViewSet can move a
+    row after the link was made). The stored column is not rewritten.
+    """
+    pk = getattr(instance, f"{name}_id")
+    if pk is not None and model.objects.filter(pk=pk, session_id=instance.session_id).exists():
+        return pk
+    return None
+
+
+class CodebtorLinksField(_StoredJSONField):
+    """A list of {kind, id}, kind in Codebtor.LINK_KINDS. Live entries are kept on save."""
+
+    def to_internal_value(self, data):
+        entries = serializers.ListField(child=serializers.DictField()).run_validation(data)
+        links = []
+        for entry in entries:
+            if set(entry) != {"kind", "id"}:
+                raise serializers.ValidationError("Each link has a kind and an id.")
+            kind = serializers.ChoiceField(choices=list(Codebtor.LINK_KINDS)).run_validation(
+                entry["kind"]
+            )
+            link_id = serializers.IntegerField().run_validation(entry["id"])
+            links.append({"kind": kind, "id": link_id})
+        return links
+
+
+class ExecutoryContractSerializer(AddressAnswersMixin, serializers.ModelSerializer):
+    """The single-contract POST and the GET the wizard reads.
+
+    The links are read-only here (R6): ExecutoryContractRowSerializer is their only writer.
+    """
+
     # The old columns' auto-mapped kwargs, declared because the columns are encrypted now; the
     # width that bounds an undone migration lives here.
     counterparty_name = serializers.CharField(max_length=255)
+    contract_type = serializers.ChoiceField(choices=ExecutoryContract.CONTRACT_TYPE_CHOICES)
     description = serializers.CharField(required=False, allow_blank=True)
+    lease_kind = serializers.ChoiceField(
+        choices=list(ExecutoryContract.LEASE_KINDS), allow_null=True, required=False
+    )
+    monthly_payment = serializers.DecimalField(
+        max_digits=10, decimal_places=2, min_value=Decimal(0), required=False, allow_null=True
+    )
+    owes_now = serializers.ChoiceField(choices=list(YES_NO), allow_null=True, required=False)
+    vehicle_asset = serializers.IntegerField(source="vehicle_asset_id", read_only=True)
+    owed_debt = serializers.IntegerField(source="owed_debt_id", read_only=True)
 
     class Meta:
         model = ExecutoryContract
-        fields = ["id", "counterparty_name", "contract_type", "description"]
+        fields = [
+            "id",
+            "counterparty_name",
+            "contract_type",
+            "description",
+            "street_address",
+            "street_2",
+            "city",
+            "state",
+            "zip_code",
+            "outside_us",
+            "lease_kind",
+            "monthly_payment",
+            "owes_now",
+            "vehicle_asset",
+            "owed_debt",
+        ]
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        data["vehicle_asset"] = _live_foreign_key(instance, "vehicle_asset", AssetInfo)
+        data["owed_debt"] = _live_foreign_key(instance, "owed_debt", DebtInfo)
+        return data
 
 
-class CodebtorSerializer(serializers.ModelSerializer):
+class CodebtorSerializer(AddressAnswersMixin, serializers.ModelSerializer):
+    """The single-codebtor POST and the GET the wizard reads. Its links are read-only (R6)."""
+
     name = serializers.CharField(max_length=255)
-    street_address = serializers.CharField(max_length=255, required=False, allow_blank=True)
-    city = serializers.CharField(max_length=100, required=False, allow_blank=True)
-    state = serializers.CharField(max_length=2, required=False, allow_blank=True)
-    zip_code = serializers.CharField(max_length=10, required=False, allow_blank=True)
     relationship = serializers.ChoiceField(choices=Codebtor.RELATIONSHIP_CHOICES, required=False)
+    links = CodebtorLinksField(read_only=True)
 
     class Meta:
         model = Codebtor
@@ -1173,24 +1473,72 @@ class CodebtorSerializer(serializers.ModelSerializer):
             "id",
             "name",
             "street_address",
+            "street_2",
             "city",
             "state",
             "zip_code",
+            "outside_us",
             "relationship",
+            "links",
         ]
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        # A link to a debt or contract that is gone, or now on another session, is dropped.
+        debts = set(
+            DebtInfo.objects.filter(session_id=instance.session_id).values_list("pk", flat=True)
+        )
+        contracts = set(
+            ExecutoryContract.objects.filter(session_id=instance.session_id).values_list(
+                "pk", flat=True
+            )
+        )
+        live = {"debt": debts, "contract": contracts}
+        data["links"] = [link for link in data["links"] if link["id"] in live.get(link["kind"], ())]
+        return data
 
 
 class ExecutoryContractRowSerializer(ExecutoryContractSerializer):
     """A contract row in the Contracts step's list save.
 
     The id is writable so a row the wizard loaded updates in place. The single-contract
-    POST keeps the base serializer, so it never accepts a client id.
+    POST keeps the base serializer, so it never accepts a client id. A half-filled row
+    saves: the name and type may be blank, and the two links are writable.
     """
 
     id = serializers.IntegerField(required=False)
+    counterparty_name = serializers.CharField(max_length=255, required=False, allow_blank=True)
+    contract_type = serializers.ChoiceField(
+        choices=ExecutoryContract.CONTRACT_TYPE_CHOICES, required=False, allow_blank=True
+    )
+    vehicle_asset = serializers.IntegerField(
+        source="vehicle_asset_id", required=False, allow_null=True
+    )
+    owed_debt = serializers.IntegerField(source="owed_debt_id", required=False, allow_null=True)
 
 
 class CodebtorRowSerializer(CodebtorSerializer):
     """A codebtor row in the Codebtors step's list save. See ExecutoryContractRowSerializer."""
 
     id = serializers.IntegerField(required=False)
+    name = serializers.CharField(max_length=255, required=False, allow_blank=True)
+    relationship = serializers.ChoiceField(
+        choices=Codebtor.RELATIONSHIP_CHOICES, required=False, allow_blank=True
+    )
+    links = CodebtorLinksField(required=False)
+
+    def validate(self, attrs):
+        """Keep the links that name one of this session's debts or contracts, once each."""
+        if "links" not in attrs:
+            return attrs
+        session = self.context["session"]
+        live = {
+            "debt": set(session.debts.values_list("pk", flat=True)),
+            "contract": set(session.executory_contracts.values_list("pk", flat=True)),
+        }
+        kept = []
+        for link in attrs["links"]:
+            if link["id"] in live[link["kind"]] and link not in kept:
+                kept.append(link)
+        attrs["links"] = kept
+        return attrs

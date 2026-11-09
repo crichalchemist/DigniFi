@@ -22,7 +22,7 @@ from apps.intake.models import (
     IncomeInfo,
     IntakeSession,
 )
-from apps.intake.tests.builders import answer_asset_lines, answer_household
+from apps.intake.tests.builders import answer_asset_lines, answer_household, complete_debt
 
 User = get_user_model()
 
@@ -670,8 +670,8 @@ class TestSessionSummary:
         answer_asset_lines(session, ["17"])
 
         # Add a debt
-        DebtInfo.objects.create(
-            session=session,
+        complete_debt(
+            session,
             creditor_name="Credit Card Co",
             debt_type="credit_card",
             amount_owed=Decimal("5000.00"),

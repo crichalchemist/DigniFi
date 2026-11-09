@@ -27,7 +27,11 @@ from apps.districts.models import District
 from apps.forms.models import GeneratedForm
 from apps.forms.registry import build_parts, packet
 from apps.forms.schema import load_schema
-from apps.intake.management.commands.seed_demo_data import PERSONAS
+from apps.intake.management.commands.seed_demo_data import (
+    PERSONAS,
+    asset_at,
+    claim_links,
+)
 from apps.intake.models import IncomeInfo, IntakeSession, SpouseIncome
 
 User = get_user_model()
@@ -67,7 +71,6 @@ def _step_bodies(data):
         {"expense_info": data["expenses"]},
         # Every row, with its line, details and values, and every line answer, as 3b spec §4 saves.
         {"assets": data["assets"], "asset_lines": data["asset_lines"]},
-        {"debts": data["debts"]},
     ]
 
 
@@ -89,6 +92,28 @@ def _household_answers(session):
             else {field: getattr(spouse, field) for field in SpouseIncome.SOURCE_FIELDS}
         ),
     }
+
+
+def _api_debt(row, session):
+    """A debt as the Amounts Owed step sends it: the seed's `link` becomes `secured_by`, the id
+    of the row at that A/B position, resolved once the assets are stored."""
+    sent = {key: value for key, value in row.items() if key != "link"}
+    if row.get("link") is not None:
+        sent["secured_by"] = asset_at(session, row["link"]).pk
+    return sent
+
+
+def _api_contract(row, session):
+    sent = {key: value for key, value in row.items() if key != "vehicle_link"}
+    if row.get("vehicle_link") is not None:
+        sent["vehicle_asset"] = asset_at(session, row["vehicle_link"]).pk
+    return sent
+
+
+def _api_codebtor(row, session):
+    sent = {key: value for key, value in row.items() if key != "links"}
+    sent["links"] = claim_links(session, row["links"])
+    return sent
 
 
 def _send_through_the_api(persona):
@@ -118,10 +143,38 @@ def _send_through_the_api(persona):
     for body in _step_bodies(data):
         response = client.patch(session_url, _sent(body), format="json")
         assert response.status_code == 200, (list(body), response.data)
-    # No persona has contracts or codebtors: Continue on steps 7 and 8 saves empty lists.
-    for endpoint in ("contracts", "codebtors"):
-        response = client.put(f"{session_url}{endpoint}/", [], format="json")
-        assert response.status_code == 200, (endpoint, response.data)
+    # A persona's lists go as the steps send them: its rows, then its answers (R16).
+    session = IntakeSession.objects.get(pk=session_id)
+    response = client.patch(
+        session_url,
+        _sent({"debts": [_api_debt(row, session) for row in data["debts"]]}),
+        format="json",
+    )
+    assert response.status_code == 200, response.data
+    # Continue on step 6 confirms scanned drafts (the personas have none).
+    response = client.post(f"{session_url}update_step/", {"current_step": 7}, format="json")
+    assert response.status_code == 200, response.data
+
+    response = client.put(
+        f"{session_url}contracts/",
+        _sent([_api_contract(row, session) for row in data["contracts"]]),
+        format="json",
+    )
+    assert response.status_code == 200, response.data
+    answers = {"contracts_answer": data["claims"]["contracts_answer"]}
+    response = client.patch(session_url, {"claim_answers": answers}, format="json")
+    assert response.status_code == 200, response.data
+
+    # Links are read after the contracts and debts are stored.
+    response = client.put(
+        f"{session_url}codebtors/",
+        _sent([_api_codebtor(row, session) for row in data["codebtors"]]),
+        format="json",
+    )
+    assert response.status_code == 200, response.data
+    answers = {k: v for k, v in data["claims"].items() if k != "contracts_answer"}
+    response = client.patch(session_url, {"claim_answers": answers}, format="json")
+    assert response.status_code == 200, response.data
 
     # Complete Intake, then the pages that follow it. Their saves keep the intake complete.
     # No means-test call: Generate All works it out from the stored intake (spec §5.6).

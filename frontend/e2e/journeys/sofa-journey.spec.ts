@@ -74,16 +74,13 @@ test.describe('SOFA — Form 107 Financial History', () => {
     await wizard.walkAssets(JAMES);
 
     // Step 6: Debts
-    for (const debt of JAMES.debts) {
-      await wizard.addDebt(debt);
-    }
-    await wizard.nextStep();
+    await wizard.walkDebts(JAMES);
 
-    // Step 7: Contracts & Leases (optional — no entries needed)
-    await wizard.nextStep();
+    // Step 7: Contracts & Leases (answered from the persona)
+    await wizard.walkContracts(JAMES);
 
-    // Step 8: Codebtors (optional — no entries needed)
-    await wizard.nextStep();
+    // Step 8: Codebtors (answered from the persona)
+    await wizard.walkCodebtors(JAMES);
 
     // Step 9: Review & Complete
     await wizard.fillReview();

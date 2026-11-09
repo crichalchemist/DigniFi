@@ -63,16 +63,13 @@ test.describe('Priya Sharma — Ineligible', () => {
 
     await wizard.walkAssets(PRIYA);
 
-    for (const debt of PRIYA.debts) {
-      await wizard.addDebt(debt);
-    }
-    await wizard.nextStep();
+    await wizard.walkDebts(PRIYA);
 
-    // Step 7: Contracts & Leases (optional — no entries needed)
-    await wizard.nextStep();
+    // Step 7: Contracts & Leases (answered from the persona)
+    await wizard.walkContracts(PRIYA);
 
-    // Step 8: Codebtors (optional — no entries needed)
-    await wizard.nextStep();
+    // Step 8: Codebtors (answered from the persona)
+    await wizard.walkCodebtors(PRIYA);
 
     await wizard.fillReview();
     await wizard.completeIntake();

@@ -14,7 +14,12 @@ import pytest
 
 from apps.intake import views as intake_views
 from apps.intake.models import Codebtor, ExecutoryContract, IntakeSession
-from apps.intake.serializers import CodebtorRowSerializer, ExecutoryContractRowSerializer
+from apps.intake.serializers import (
+    CodebtorRowSerializer,
+    CodebtorSerializer,
+    ExecutoryContractRowSerializer,
+    ExecutoryContractSerializer,
+)
 
 # Each list's model, its name field and three rows a filer might enter.
 LISTS = {
@@ -113,7 +118,7 @@ def test_removing_every_row_leaves_none_stored_and_reopens_the_intake(filer, end
 @pytest.mark.parametrize(
     "endpoint,bad_row",
     [
-        ("contracts", {"counterparty_name": "", "contract_type": "lease"}),
+        ("contracts", {"counterparty_name": "Metro Gym", "contract_type": "boat"}),
         ("codebtors", {"name": "Lee Park", "zip_code": "60601-1234-99"}),
     ],
 )
@@ -188,10 +193,17 @@ def test_a_list_save_replies_in_the_order_sent_whatever_the_ids(filer, endpoint)
 
 
 @pytest.mark.parametrize(
-    "endpoint,row_serializer",
-    [("contracts", ExecutoryContractRowSerializer), ("codebtors", CodebtorRowSerializer)],
+    "endpoint,row_serializer,method,expected",
+    [
+        ("contracts", ExecutoryContractRowSerializer, "put", 200),
+        ("codebtors", CodebtorRowSerializer, "put", 200),
+        ("contracts", ExecutoryContractSerializer, "post", 201),
+        ("codebtors", CodebtorSerializer, "post", 201),
+    ],
 )
-def test_a_list_save_checks_its_rows_only_once_it_holds_the_lock(filer, endpoint, row_serializer):
+def test_a_list_save_checks_its_rows_only_once_it_holds_the_lock(
+    filer, endpoint, row_serializer, method, expected
+):
     # 3c3's row checks read the stored rows, so they must run inside the lock.
     client, session = filer
     _, _, rows = LISTS[endpoint]
@@ -202,16 +214,19 @@ def test_a_list_save_checks_its_rows_only_once_it_holds_the_lock(filer, endpoint
         calls.append("lock")
         return real_lock(pk)
 
+    real_validate = row_serializer.validate
+
     def checks(self, attrs):
         calls.append("check")
-        return attrs
+        return real_validate(self, attrs)
 
     with (
         patch.object(intake_views, "lock_session", locking),
         patch.object(row_serializer, "validate", checks),
     ):
-        response = client.put(_list_url(session, endpoint), rows[:1], format="json")
+        body = rows[:1] if method == "put" else rows[0]
+        response = getattr(client, method)(_list_url(session, endpoint), body, format="json")
 
-    assert response.status_code == 200
+    assert response.status_code == expected
     assert calls[0] == "lock"
     assert "check" in calls
