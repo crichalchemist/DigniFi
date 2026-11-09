@@ -639,3 +639,19 @@ export const SCHEDULE_G_LINE_1_QUESTION =
   'Do you have any executory contracts or unexpired leases?';
 export const SCHEDULE_G_NAME_LABEL = 'Person or company with whom you have the contract or lease';
 export const SCHEDULE_G_PURPOSE_LABEL = 'State what the contract or lease is for';
+
+// Schedule H. The answers are asked as "No" and "Yes", and the line numbers "1.", "2." and "3."
+// are dropped. Line 2's "No. Go to line 3." and "Yes." lose their instructions ("Go to line 3."
+// and the question that follows each), which the step asks as its own question.
+export const SCHEDULE_H_LINE_1_QUESTION =
+  'Do you have any codebtors? (If you are filing a joint case, do not list either spouse as a codebtor.)';
+export const SCHEDULE_H_LINE_2_QUESTION =
+  'Within the last 8 years, have you lived in a community property state or territory? (Community property states and territories include Arizona, California, Idaho, Louisiana, Nevada, New Mexico, Puerto Rico, Texas, Washington, and Wisconsin.)';
+export const SCHEDULE_H_LINE_2_SPOUSE_QUESTION =
+  'Did your spouse, former spouse, or legal equivalent live with you at the time?';
+export const SCHEDULE_H_LINE_2_STATE_LABEL = 'In which community state or territory did you live?';
+export const SCHEDULE_H_LINE_2_PERSON_LEAD = 'Fill in the name and current address of that person.';
+export const SCHEDULE_H_LINE_2_NAME_LABEL =
+  'Name of your spouse, former spouse, or legal equivalent';
+// Cut: the "Column 2: " that leads it. It is the legend of a row's links.
+export const SCHEDULE_H_COLUMN_2 = 'The creditor to whom you owe the debt';

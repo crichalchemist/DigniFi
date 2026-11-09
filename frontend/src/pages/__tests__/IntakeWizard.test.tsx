@@ -19,7 +19,7 @@ import {
   SCHEDULE_G_NAME_LABEL,
 } from '../../constants/formText';
 import { ASSET_LINES } from '../../constants/assetLines';
-import { CONTRACT_GAP_NO_NAME, OLD_ROWS_NOTE } from '../../constants/copy';
+import { CODEBTOR_GAP_NO_NAME, CONTRACT_GAP_NO_NAME, OLD_ROWS_NOTE } from '../../constants/copy';
 
 // DebtorInfoStep reads account email via useAuth; wizard test renders without
 // AuthProvider, so we stub just the user object the step needs.
@@ -402,15 +402,21 @@ describe("IntakeWizard Complete's reasons", { timeout: 30_000 }, () => {
   });
 
   it('shows none of the old reasons once the filer leaves Review and comes back', async () => {
+    // Continue from Codebtors waits until Schedule H's two questions are answered (No to both,
+    // with no one listed), and saves its claim answers with a session PATCH too
+    const answered = {
+      ...sessionAtStep9,
+      claim_answers: { codebtors_answer: 'no', community_lived: 'no' },
+    };
+    server.use(
+      http.get('http://localhost:8000/api/intake/sessions/:id/', () => HttpResponse.json(answered)),
+      http.patch('http://localhost:8000/api/intake/sessions/:id/', () =>
+        HttpResponse.json(answered)
+      )
+    );
     renderWizard();
     const completeBtn = await screen.findByRole('button', { name: /complete intake/i });
     const stepUpdates = refuseComplete([NO_EXPENSES]);
-    // Continue from Codebtors saves its claim answers with a session PATCH too
-    server.use(
-      http.patch('http://localhost:8000/api/intake/sessions/:id/', () =>
-        HttpResponse.json(sessionAtStep9)
-      )
-    );
     await userEvent.click(completeBtn);
     await screen.findByText(NO_EXPENSES.message);
 
@@ -3323,7 +3329,8 @@ describe.each([
     step: 8,
     title: 'Codebtors',
     nameKey: 'name',
-    nameLabel: 'Full Name' as string | RegExp,
+    // The name box carries the required mark too
+    nameLabel: /^Full Name/ as string | RegExp,
     addLabel: /add codebtor/i,
     stored: storedCodebtor as Record<string, unknown>,
   },
@@ -3595,6 +3602,17 @@ describe('IntakeWizard contracts and codebtors', { timeout: 15_000 }, () => {
     fireEvent.click(document.querySelector(`[name="owes_now_${index}"][value="no"]`)!);
   };
 
+  /** Answers every question of the codebtor at `index` and links the stored debt (fireEvent: fake timers) */
+  const completeCodebtor = (index: number) => {
+    const set = (name: string, value: string) =>
+      fireEvent.change(document.querySelector(`[name="${name}"]`)!, { target: { value } });
+    set(`codebtor_street_address_${index}`, '2 Demo Avenue');
+    set(`codebtor_city_${index}`, 'Demo City');
+    set(`codebtor_state_${index}`, 'IL');
+    set(`codebtor_zip_code_${index}`, '60601');
+    fireEvent.click(document.querySelector(`[name="codebtor_links_${index}"][value="debt-7"]`)!);
+  };
+
   beforeEach(() => {
     contractSaves = [];
     codebtorSaves = [];
@@ -3702,11 +3720,19 @@ describe('IntakeWizard contracts and codebtors', { timeout: 15_000 }, () => {
   // print on Schedule G or H
   it.each([
     [7, 'Contracts & Leases', 'Codebtors', [storedLease], [], () => contractSaves, {}],
-    [8, 'Codebtors', 'Review & Results', [], [storedCodebtor], () => codebtorSaves, {}],
+    [
+      8,
+      'Codebtors',
+      'Review & Results',
+      [],
+      [storedCodebtor],
+      () => codebtorSaves,
+      { codebtors_answer: 'no' },
+    ],
   ])(
     'saves an empty list when the filer removes the last row on step %i (%s)',
     async (step, title, nextTitle, contracts, codebtors, saves, claimAnswers) => {
-      // Step 7's list answer is No, so the empty list is no gap (the answer shows at load)
+      // The list's answer is No, so the empty list is no gap (the answer shows at load)
       serveFiler(
         step,
         contracts,
@@ -3770,18 +3796,17 @@ describe('IntakeWizard contracts and codebtors', { timeout: 15_000 }, () => {
   });
 
   it("asks for the person's name before a codebtor the filer started can be saved", async () => {
-    serveFiler(8);
+    serveFiler(8, [], [], { codebtors_answer: 'yes', community_lived: 'no' });
     renderWizard();
     await expectStep('Codebtors');
 
     await userEvent.click(screen.getByRole('button', { name: /add codebtor/i }));
-    await userEvent.type(screen.getByLabelText('City'), 'Chicago');
+    await userEvent.type(field('codebtor_city_0'), 'Chicago');
 
-    expect(screen.getByRole('alert')).toHaveTextContent("Please enter this person's full name");
+    // The wizard has a status region of its own, so the step's is found inside the step
+    const step = document.querySelector('.codebtors-step') as HTMLElement;
+    expect(within(step).getByRole('status')).toHaveTextContent(CODEBTOR_GAP_NO_NAME);
     expect(screen.getByRole('button', { name: /continue/i })).toBeDisabled();
-
-    await userEvent.type(screen.getByPlaceholderText('e.g., Jane Smith'), 'Ana Ruiz');
-    expect(screen.getByRole('button', { name: /continue/i })).toBeEnabled();
   });
 
   it('saves the codebtors list on Continue and lists both lists on Review', async () => {
@@ -3796,6 +3821,7 @@ describe('IntakeWizard contracts and codebtors', { timeout: 15_000 }, () => {
       fireEvent.change(screen.getAllByPlaceholderText('e.g., Jane Smith')[1], {
         target: { value: 'Ana Ruiz' },
       });
+      completeCodebtor(1);
       fireEvent.click(screen.getByRole('button', { name: /add codebtor/i }));
       fireEvent.click(screen.getByRole('button', { name: /continue/i }));
       await waitSeconds(1);
@@ -3809,11 +3835,14 @@ describe('IntakeWizard contracts and codebtors', { timeout: 15_000 }, () => {
         storedCodebtor,
         {
           name: 'Ana Ruiz',
-          street_address: '',
-          city: '',
-          state: '',
-          zip_code: '',
+          street_address: '2 Demo Avenue',
+          street_2: '',
+          city: 'Demo City',
+          state: 'IL',
+          zip_code: '60601',
+          outside_us: false,
           relationship: '',
+          links: [{ kind: 'debt', id: 7 }],
         },
       ],
     ]);
@@ -4345,7 +4374,7 @@ describe('IntakeWizard contracts and codebtors', { timeout: 15_000 }, () => {
       { codebtors_answer: 'yes' },
       () => {
         fireEvent.click(screen.getByRole('button', { name: /add codebtor/i }));
-        fireEvent.change(screen.getByLabelText(/^City/), { target: { value: 'Chicago' } });
+        fireEvent.change(field('codebtor_city_0'), { target: { value: 'Chicago' } });
       },
       () => codebtorSaves,
       'city',

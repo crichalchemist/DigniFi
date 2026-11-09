@@ -723,3 +723,20 @@ export const CONTRACTS_STEP_WHY =
 // DRAFT: counsel C-9
 export const CONTRACT_ADDRESS_HELP =
   'The court uses this address to send the other party notice of your case.';
+
+export const CODEBTOR_LINKS_HELP =
+  'Check each amount owed or contract this person is also responsible for.';
+
+export const CODEBTOR_LINKS_DEBTS = 'Amounts owed';
+
+export const CODEBTOR_LINKS_CONTRACTS = 'Contracts and leases';
+
+export const CODEBTOR_LINKS_NONE =
+  'You have not added any amounts owed or contracts yet. Add them on their steps, then come back.';
+
+export const CODEBTORS_STEP_WHY =
+  'Your answers here fill in Schedule H, the court form that lists people who owe a debt with you.';
+
+// DRAFT: counsel C-9
+export const CODEBTOR_ADDRESS_HELP =
+  'The court uses this address to send this person notice of your case.';
