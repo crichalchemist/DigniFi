@@ -50,7 +50,7 @@ from .serializers import (
 )
 
 
-def _save_list(session, model, row_serializer, rows):
+def _save_list(session, model, row_serializer, rows, scoped=None):
     """Save the whole list the Contracts or Codebtors step shows (DIG-147).
 
     The session is locked first, so a check that reads the stored rows sees the last save's.
@@ -58,12 +58,13 @@ def _save_list(session, model, row_serializer, rows):
     row carrying one of this session's ids updates in place, any other row is created, and
     a stored row the list left out is deleted (see _save_rows_by_id). Returns the saved rows
     in the order sent, each with its id, so the wizard pairs them by position (3c spec §6.3).
+    ``scoped`` names the foreign keys a row may carry, as _save_rows_by_id takes it.
     """
     with transaction.atomic():
         lock_session(session.pk)
-        serializer = row_serializer(data=rows, many=True)
+        serializer = row_serializer(data=rows, many=True, context={"session": session})
         serializer.is_valid(raise_exception=True)
-        saved = _save_rows_by_id(session, model, serializer.validated_data)
+        saved = _save_rows_by_id(session, model, serializer.validated_data, scoped)
         session.reopen()
     return Response(row_serializer(saved, many=True).data)
 
@@ -512,12 +513,16 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
             return Response(serializer.data)
         if request.method == "PUT":
             return _save_list(
-                session, ExecutoryContract, ExecutoryContractRowSerializer, request.data
+                session,
+                ExecutoryContract,
+                ExecutoryContractRowSerializer,
+                request.data,
+                scoped={"vehicle_asset_id": AssetInfo, "owed_debt_id": DebtInfo},
             )
-        serializer = ExecutoryContractSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
         with transaction.atomic():
             lock_session(session.pk)
+            serializer = ExecutoryContractSerializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
             serializer.save(session=session)
             session.reopen()
         return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -548,10 +553,10 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
             return Response(serializer.data)
         if request.method == "PUT":
             return _save_list(session, Codebtor, CodebtorRowSerializer, request.data)
-        serializer = CodebtorSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
         with transaction.atomic():
             lock_session(session.pk)
+            serializer = CodebtorSerializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
             serializer.save(session=session)
             session.reopen()
         return Response(serializer.data, status=status.HTTP_201_CREATED)

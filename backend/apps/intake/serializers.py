@@ -1324,24 +1324,89 @@ class BulkAnswerPayloadSerializer(serializers.Serializer):
     answers = BulkAnswerItemSerializer(many=True)
 
 
-class ExecutoryContractSerializer(serializers.ModelSerializer):
+def _live_foreign_key(instance, name, model):
+    """The row a contract's link names, or None when it is dead (R6).
+
+    Dead means null, or a row now on another session (AssetViewSet and DebtViewSet can move a
+    row after the link was made). The stored column is not rewritten.
+    """
+    pk = getattr(instance, f"{name}_id")
+    if pk is not None and model.objects.filter(pk=pk, session_id=instance.session_id).exists():
+        return pk
+    return None
+
+
+class CodebtorLinksField(_StoredJSONField):
+    """A list of {kind, id}, kind in Codebtor.LINK_KINDS. Live entries are kept on save."""
+
+    def to_internal_value(self, data):
+        entries = serializers.ListField(child=serializers.DictField()).run_validation(data)
+        links = []
+        for entry in entries:
+            if set(entry) != {"kind", "id"}:
+                raise serializers.ValidationError("Each link has a kind and an id.")
+            kind = serializers.ChoiceField(choices=list(Codebtor.LINK_KINDS)).run_validation(
+                entry["kind"]
+            )
+            link_id = serializers.IntegerField().run_validation(entry["id"])
+            links.append({"kind": kind, "id": link_id})
+        return links
+
+
+class ExecutoryContractSerializer(AddressAnswersMixin, serializers.ModelSerializer):
+    """The single-contract POST and the GET the wizard reads.
+
+    The links are read-only here (R6): ExecutoryContractRowSerializer is their only writer.
+    """
+
     # The old columns' auto-mapped kwargs, declared because the columns are encrypted now; the
     # width that bounds an undone migration lives here.
     counterparty_name = serializers.CharField(max_length=255)
+    contract_type = serializers.ChoiceField(choices=ExecutoryContract.CONTRACT_TYPE_CHOICES)
     description = serializers.CharField(required=False, allow_blank=True)
+    lease_kind = serializers.ChoiceField(
+        choices=list(ExecutoryContract.LEASE_KINDS), allow_null=True, required=False
+    )
+    monthly_payment = serializers.DecimalField(
+        max_digits=10, decimal_places=2, min_value=Decimal(0), required=False, allow_null=True
+    )
+    owes_now = serializers.ChoiceField(choices=list(YES_NO), allow_null=True, required=False)
+    vehicle_asset = serializers.IntegerField(source="vehicle_asset_id", read_only=True)
+    owed_debt = serializers.IntegerField(source="owed_debt_id", read_only=True)
 
     class Meta:
         model = ExecutoryContract
-        fields = ["id", "counterparty_name", "contract_type", "description"]
+        fields = [
+            "id",
+            "counterparty_name",
+            "contract_type",
+            "description",
+            "street_address",
+            "street_2",
+            "city",
+            "state",
+            "zip_code",
+            "outside_us",
+            "lease_kind",
+            "monthly_payment",
+            "owes_now",
+            "vehicle_asset",
+            "owed_debt",
+        ]
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        data["vehicle_asset"] = _live_foreign_key(instance, "vehicle_asset", AssetInfo)
+        data["owed_debt"] = _live_foreign_key(instance, "owed_debt", DebtInfo)
+        return data
 
 
-class CodebtorSerializer(serializers.ModelSerializer):
+class CodebtorSerializer(AddressAnswersMixin, serializers.ModelSerializer):
+    """The single-codebtor POST and the GET the wizard reads. Its links are read-only (R6)."""
+
     name = serializers.CharField(max_length=255)
-    street_address = serializers.CharField(max_length=255, required=False, allow_blank=True)
-    city = serializers.CharField(max_length=100, required=False, allow_blank=True)
-    state = serializers.CharField(max_length=2, required=False, allow_blank=True)
-    zip_code = serializers.CharField(max_length=10, required=False, allow_blank=True)
     relationship = serializers.ChoiceField(choices=Codebtor.RELATIONSHIP_CHOICES, required=False)
+    links = CodebtorLinksField(read_only=True)
 
     class Meta:
         model = Codebtor
@@ -1349,24 +1414,72 @@ class CodebtorSerializer(serializers.ModelSerializer):
             "id",
             "name",
             "street_address",
+            "street_2",
             "city",
             "state",
             "zip_code",
+            "outside_us",
             "relationship",
+            "links",
         ]
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        # A link to a debt or contract that is gone, or now on another session, is dropped.
+        debts = set(
+            DebtInfo.objects.filter(session_id=instance.session_id).values_list("pk", flat=True)
+        )
+        contracts = set(
+            ExecutoryContract.objects.filter(session_id=instance.session_id).values_list(
+                "pk", flat=True
+            )
+        )
+        live = {"debt": debts, "contract": contracts}
+        data["links"] = [link for link in data["links"] if link["id"] in live[link["kind"]]]
+        return data
 
 
 class ExecutoryContractRowSerializer(ExecutoryContractSerializer):
     """A contract row in the Contracts step's list save.
 
     The id is writable so a row the wizard loaded updates in place. The single-contract
-    POST keeps the base serializer, so it never accepts a client id.
+    POST keeps the base serializer, so it never accepts a client id. A half-filled row
+    saves: the name and type may be blank, and the two links are writable.
     """
 
     id = serializers.IntegerField(required=False)
+    counterparty_name = serializers.CharField(max_length=255, required=False, allow_blank=True)
+    contract_type = serializers.ChoiceField(
+        choices=ExecutoryContract.CONTRACT_TYPE_CHOICES, required=False, allow_blank=True
+    )
+    vehicle_asset = serializers.IntegerField(
+        source="vehicle_asset_id", required=False, allow_null=True
+    )
+    owed_debt = serializers.IntegerField(source="owed_debt_id", required=False, allow_null=True)
 
 
 class CodebtorRowSerializer(CodebtorSerializer):
     """A codebtor row in the Codebtors step's list save. See ExecutoryContractRowSerializer."""
 
     id = serializers.IntegerField(required=False)
+    name = serializers.CharField(max_length=255, required=False, allow_blank=True)
+    relationship = serializers.ChoiceField(
+        choices=Codebtor.RELATIONSHIP_CHOICES, required=False, allow_blank=True
+    )
+    links = CodebtorLinksField(required=False)
+
+    def validate(self, attrs):
+        """Keep the links that name one of this session's debts or contracts, once each."""
+        if "links" not in attrs:
+            return attrs
+        session = self.context["session"]
+        live = {
+            "debt": set(session.debts.values_list("pk", flat=True)),
+            "contract": set(session.executory_contracts.values_list("pk", flat=True)),
+        }
+        kept = []
+        for link in attrs["links"]:
+            if link["id"] in live[link["kind"]] and link not in kept:
+                kept.append(link)
+        attrs["links"] = kept
+        return attrs

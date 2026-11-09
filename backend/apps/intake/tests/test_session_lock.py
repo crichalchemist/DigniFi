@@ -659,6 +659,8 @@ def test_every_intake_write_waits_for_a_save_in_progress(ready, write):
     [
         ("contracts PUT", intake_serializers.ExecutoryContractRowSerializer),
         ("codebtors PUT", intake_serializers.CodebtorRowSerializer),
+        ("contract POST", intake_serializers.ExecutoryContractSerializer),
+        ("codebtor POST", intake_serializers.CodebtorSerializer),
     ],
 )
 def test_a_list_save_checks_its_rows_while_it_holds_the_lock(ready, write, row_serializer):
@@ -667,9 +669,11 @@ def test_a_list_save_checks_its_rows_while_it_holds_the_lock(ready, write, row_s
     method, url, body, expected = WRITES[write](session, _rows(session))
     checked = threading.Event()
 
+    real_validate = row_serializer.validate
+
     def checks(self, attrs):
         checked.set()
-        return attrs
+        return real_validate(self, attrs)
 
     def send():
         return getattr(_client(user), method)(url, body, format="json")
