@@ -540,9 +540,9 @@ export type HomePaymentLine = 'first' | 'additional';
 /** A debt the wizard holds: the browser-only `_securedPressed` mark says the filer pressed the secured question */
 export type DebtRow = WizardRow<DebtInfo> & { _securedPressed?: boolean };
 
-/** A contract or lease (Schedule G), as the contracts list endpoint sends and saves it */
 export type ContractType = 'lease' | 'contract' | 'other';
 export type LeaseKind = 'residential' | 'vehicle' | 'other_personal_property' | 'other';
+/** A contract or lease (Schedule G), as the contracts list endpoint sends and saves it */
 export interface ExecutoryContract {
   id?: number;
   counterparty_name: string;

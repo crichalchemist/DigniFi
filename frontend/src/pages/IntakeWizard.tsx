@@ -667,9 +667,11 @@ export function IntakeWizard() {
 
     // Each list saves through its own PUT, which takes the bare list and replies in the order
     // sent, and then the step's claim answers go in a session PATCH of their own (R16). Either
-    // failing fails the save, so the next save sends both again. The ids go into the rows before
-    // the PATCH is sent: a PATCH that fails leaves the rows holding the ids the server gave them,
-    // so the next save updates those rows and never creates them again. A save a later save of the
+    // failing fails the save, so the next save sends both again. The ids go into the rows after
+    // the PATCH, even when it fails: a PATCH that fails leaves the rows holding the ids the server
+    // gave them, so the next save updates those rows and never creates them again. Writing them
+    // after it, not before, keeps the render from seeing a body that differs from the copy on its
+    // way and starting one more identical save. A save a later save of the
     // list has overtaken sends no PATCH: the later one carries the same answers.
     if ('contracts' in body) {
       const { contracts: rows, claim_answers } = body;
@@ -680,8 +682,12 @@ export function IntakeWizard() {
       );
       if (save !== listSavesRef.current.contracts) return;
       const ids = savedIds(rows, saved as { id: number }[]);
-      setContractsData((current) => withSavedIds(current, ids));
-      await api.intake.updateSession(session.id, { claim_answers });
+      try {
+        await api.intake.updateSession(session.id, { claim_answers });
+      } finally {
+        if (save === listSavesRef.current.contracts)
+          setContractsData((current) => withSavedIds(current, ids));
+      }
       return { contracts: withSavedIds(rows, ids), claim_answers };
     }
     if ('codebtors' in body) {
@@ -690,8 +696,12 @@ export function IntakeWizard() {
       const saved = await api.intake.saveCodebtors(session.id, rows.map(withoutKey) as Codebtor[]);
       if (save !== listSavesRef.current.codebtors) return;
       const ids = savedIds(rows, saved as { id: number }[]);
-      setCodebtorsData((current) => withSavedIds(current, ids));
-      await api.intake.updateSession(session.id, { claim_answers });
+      try {
+        await api.intake.updateSession(session.id, { claim_answers });
+      } finally {
+        if (save === listSavesRef.current.codebtors)
+          setCodebtorsData((current) => withSavedIds(current, ids));
+      }
       return { codebtors: withSavedIds(rows, ids), claim_answers };
     }
 

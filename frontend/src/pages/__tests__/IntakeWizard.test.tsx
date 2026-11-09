@@ -2,7 +2,7 @@ import { render, screen, waitFor, act, fireEvent } from '@testing-library/react'
 import { vi } from 'vitest';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
-import { http, HttpResponse } from 'msw';
+import { http, HttpResponse, delay } from 'msw';
 import { server } from '../../test/mocks/server';
 import { IntakeProvider, useIntake } from '../../context/IntakeContext';
 import IntakeWizard from '../IntakeWizard';
@@ -3852,6 +3852,23 @@ describe('IntakeWizard contracts and codebtors', { timeout: 15_000 }, () => {
     expect(sentDebts(bodies[bodies.length - 1]).map((row) => row.id)).toEqual([7, undefined]);
   });
 
+  it('sends a new debt that has a number but no name', async () => {
+    const { bodies } = serveSessionSaves(onStep6);
+    renderWizard();
+    await screen.findByRole('heading', { name: /amounts owed/i, level: 2 });
+
+    vi.useFakeTimers();
+    try {
+      fireEvent.click(screen.getByRole('button', { name: /add another amount owed/i }));
+      fireEvent.change(field('account_number_1'), { target: { value: '1234' } });
+      await waitSeconds(3);
+    } finally {
+      vi.useRealTimers();
+    }
+
+    expect(sentDebts(bodies[bodies.length - 1]).map((row) => row.id)).toEqual([7, undefined]);
+  });
+
   it('fails the contracts save when its answer does not save, and sends both again next time', async () => {
     serveFiler(7, [storedLease], [], { contracts_answer: 'yes' });
     let patchCalls = 0;
@@ -3902,6 +3919,104 @@ describe('IntakeWizard contracts and codebtors', { timeout: 15_000 }, () => {
       expect(patch).toEqual({ claim_answers: { contracts_answer: 'yes' } });
     }
   });
+
+  // The PUT creates the new row, the claim-answers PATCH then fails: the row must hold the id the
+  // server gave it, or the next save creates it a second time and a codebtor's link to the old
+  // contract id reads as dead (B9)
+  it.each([
+    [
+      7,
+      'Contracts & Leases',
+      'contracts_answer',
+      'e.g., Landlord Inc.',
+      /add contract/i,
+      () => contractSaves,
+    ],
+    [8, 'Codebtors', 'codebtors_answer', 'e.g., Jane Smith', /add codebtor/i, () => codebtorSaves],
+  ] as const)(
+    'keeps the id the list save gave a new row when the answers save after it fails, on step %i (%s)',
+    async (step, title, answerKey, placeholder, addButton, saves) => {
+      serveFiler(step, [], [], { [answerKey]: 'yes' });
+      let patchCalls = 0;
+      server.use(
+        http.patch('http://localhost:8000/api/intake/sessions/:id/', async ({ request }) => {
+          sessionPatches.push((await request.json()) as Record<string, unknown>);
+          patchCalls += 1;
+          if (patchCalls === 1) {
+            return HttpResponse.json(
+              { claim_answers: { [answerKey]: ['Check the answer.'] } },
+              { status: 400 }
+            );
+          }
+          return HttpResponse.json({ ...sessionAtStep1, current_step: step });
+        })
+      );
+      renderWizard();
+      await expectStep(title);
+
+      vi.useFakeTimers();
+      try {
+        fireEvent.click(screen.getByRole('button', { name: addButton }));
+        const boxes = screen.getAllByPlaceholderText(placeholder);
+        fireEvent.change(boxes[boxes.length - 1], { target: { value: 'Lakeview Storage' } });
+        await waitSeconds(3);
+        // Autosave sent the new row, the server gave it id 10 and the PATCH failed
+        expect(saves()).toHaveLength(1);
+        expect(patchCalls).toBeGreaterThanOrEqual(1);
+
+        fireEvent.click(screen.getByRole('button', { name: /continue/i }));
+        await waitSeconds(1);
+      } finally {
+        vi.useRealTimers();
+      }
+
+      const sent = saves() as Record<string, unknown>[][];
+      expect(sent.length).toBeGreaterThanOrEqual(2);
+      const next = sent[sent.length - 1];
+      expect(next.map((row) => row.id)).toEqual([10]);
+    }
+  );
+
+  // The ids go into the rows after the answers save. Written before it, the render that follows
+  // sees a body unlike the copy still on its way and starts a timer that sends the same list again.
+  it.each([
+    [
+      7,
+      'Contracts & Leases',
+      'contracts_answer',
+      'e.g., Landlord Inc.',
+      /add contract/i,
+      () => contractSaves,
+    ],
+    [8, 'Codebtors', 'codebtors_answer', 'e.g., Jane Smith', /add codebtor/i, () => codebtorSaves],
+  ] as const)(
+    'sends a new row once, not again after the answers save lands, on step %i (%s)',
+    async (step, title, answerKey, placeholder, addButton, saves) => {
+      serveFiler(step, [], [], { [answerKey]: 'yes' });
+      let patchLanded = false;
+      server.use(
+        http.patch('http://localhost:8000/api/intake/sessions/:id/', async ({ request }) => {
+          sessionPatches.push((await request.json()) as Record<string, unknown>);
+          await delay(600);
+          patchLanded = true;
+          return HttpResponse.json({ ...sessionAtStep1, current_step: step });
+        })
+      );
+      renderWizard();
+      await expectStep(title);
+
+      fireEvent.click(screen.getByRole('button', { name: addButton }));
+      const boxes = screen.getAllByPlaceholderText(placeholder);
+      fireEvent.change(boxes[boxes.length - 1], { target: { value: 'Lakeview Storage' } });
+
+      await waitFor(() => expect(patchLanded).toBe(true), { timeout: 6000 });
+      // Longer than the autosave delay (2 s)
+      await new Promise((resolve) => setTimeout(resolve, 3000));
+
+      expect(saves()).toHaveLength(1);
+      expect(sessionPatches).toHaveLength(1);
+    }
+  );
 
   it.each([6, 7, 8])('never sends a browser-only key, on step %i', async (step) => {
     if (step === 6) {
