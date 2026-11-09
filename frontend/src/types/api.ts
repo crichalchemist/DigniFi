@@ -428,6 +428,7 @@ export type AssetDetails = { [K in (typeof ASSET_TEXT_DETAILS)[number]]?: string
   property_kinds?: PropertyKind[] | null;
   // The column is JSON, so a stored share comes back as text ("25.00")
   percent?: number | string | null;
+  lives_here?: YesNo | null;
 };
 
 export interface AssetInfo {

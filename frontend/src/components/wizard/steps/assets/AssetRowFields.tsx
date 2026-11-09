@@ -15,6 +15,7 @@ import {
   AB_TEXT_LABEL,
   AMOUNT_NOT_A_NUMBER,
   ITEM_NUMBER,
+  LIVES_HERE_QUESTION,
   OUT_OF_RANGE_PERCENT,
   REMOVE_ITEM_ON_LINE,
   REMOVE_THEM,
@@ -53,6 +54,7 @@ import {
   AB_YES,
   AB_ZIP_LABEL,
 } from '../../../../constants/formText';
+import { YesNoField } from '../YesNoQuestion';
 import { NO_TEXT_BOX } from './assetGaps';
 import { amountError, parseAmount } from '../../../../utils/parseAmount';
 import { PROPERTY_KINDS } from '../../../../types/api';
@@ -314,6 +316,15 @@ export function AssetRowFields({
     </label>
   );
 
+  const livesHereQuestion = (
+    <YesNoField
+      legend={LIVES_HERE_QUESTION}
+      name={`${prefix}_lives_here`}
+      answer={details.lives_here}
+      onAnswer={(answer) => setDetails({ lives_here: answer })}
+    />
+  );
+
   const toggleKind = (kind: PropertyKind, ticked: boolean) => {
     const kinds = details.property_kinds ?? [];
     const changes: AssetDetails = {
@@ -363,6 +374,7 @@ export function AssetRowFields({
             detailBox(AB_PROPERTY_KIND_WORDS.other, 'other_kind', true)}
           {whoQuestion}
           {communityBox}
+          {livesHereQuestion}
           {detailBox(AB_NATURE_LABEL, 'nature')}
           {detailBox(AB_PLACE_OTHER_INFO_LABEL, 'other_info')}
         </>
@@ -377,6 +389,7 @@ export function AssetRowFields({
           {detailBox(AB_VEHICLE_OTHER_INFO_LABEL, 'other_info')}
           {whoQuestion}
           {communityBox}
+          {shape === 'vehicle_no_mileage' && livesHereQuestion}
         </>
       )}
 

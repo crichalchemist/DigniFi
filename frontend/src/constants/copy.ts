@@ -458,6 +458,9 @@ export const WHO_ONLY_YOU = 'Only you';
 
 export const WHO_WITH_SOMEONE = 'You and someone else';
 
+// Asked on a line 1 or line 4 row, since Schedule J lines 4, 5 and 20a read it (3c3 spec §8)
+export const LIVES_HERE_QUESTION = 'Do you live here?';
+
 export const AB_ADDRESS_LINE_2_LABEL = 'Address, second line';
 
 // The name of a kind's box on lines 17, 22, 28 and 29, where the form prints none

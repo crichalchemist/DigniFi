@@ -434,6 +434,7 @@ class AssetDetailsSerializer(serializers.Serializer):
     other_kind = serializers.CharField(**_TEXT)
     nature = serializers.CharField(**_TEXT)
     who = serializers.ChoiceField(choices=WHO, required=False, allow_null=True)
+    lives_here = serializers.ChoiceField(choices=YES_NO, required=False, allow_null=True)
     community = serializers.BooleanField(required=False, allow_null=True)
     other_info = serializers.CharField(**_TEXT)
     make = serializers.CharField(**_TEXT)

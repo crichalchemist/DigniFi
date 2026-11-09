@@ -69,9 +69,16 @@ def test_the_wizard_sends_only_detail_keys_the_server_keeps():
     assert all(isinstance(fields[key], serializers.CharField) for key in text_keys)
     assert all(isinstance(fields[key], serializers.BooleanField) for key in flag_keys)
     # The three that are neither have their own lines in the AssetDetails type
-    for key in ("who", "property_kinds", "percent"):
+    for key in ("who", "property_kinds", "percent", "lives_here"):
         assert re.search(rf"^  {key}\?:", text, re.M), f"AssetDetails has no {key}"
-    assert {*text_keys, *flag_keys, "who", "property_kinds", "percent"} == set(fields)
+    assert {*text_keys, *flag_keys, "who", "property_kinds", "percent", "lives_here"} == set(fields)
+
+
+def test_the_wizard_types_lives_here_as_the_server_takes_it():
+    text = _source("types", "api.ts")
+    assert re.search(r"^  lives_here\?: YesNo \| null;", text, re.M)
+    assert isinstance(AssetDetailsSerializer().fields["lives_here"], serializers.ChoiceField)
+    assert list(AssetDetailsSerializer().fields["lives_here"].choices) == ["yes", "no"]
 
 
 def test_the_wizard_offers_the_choices_the_server_takes():

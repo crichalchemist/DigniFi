@@ -18,6 +18,7 @@ import {
   NOT_ANSWERED_YET,
   SPOUSE_DEPENDENT_QUESTION,
 } from '../../../constants/copy';
+import { YesNoQuestion } from './YesNoQuestion';
 import { isTouched, newHouseholdMember } from '../../../utils/householdRows';
 import type { HouseholdMember, Relationship, WizardRow } from '../../../types/api';
 
@@ -41,44 +42,6 @@ const RELATIONSHIP_OPTIONS = Object.entries(RELATIONSHIP_WORDS).map(([value, lab
   value,
   label,
 }));
-
-interface YesNoQuestionProps {
-  legend: string;
-  name: string;
-  answer: boolean | null | undefined;
-  unanswered: boolean;
-  onAnswer: (answer: boolean) => void;
-}
-
-/** A yes/no question, nothing checked until the filer answers */
-function YesNoQuestion({ legend, name, answer, unanswered, onAnswer }: YesNoQuestionProps) {
-  return (
-    <fieldset className="form-field fee-waiver-question">
-      <legend className="form-label">{legend}</legend>
-      <label className="fee-waiver-checkbox">
-        <input
-          type="radio"
-          name={name}
-          value="yes"
-          checked={answer === true}
-          onChange={() => onAnswer(true)}
-        />{' '}
-        Yes
-      </label>
-      <label className="fee-waiver-checkbox">
-        <input
-          type="radio"
-          name={name}
-          value="no"
-          checked={answer === false}
-          onChange={() => onAnswer(false)}
-        />{' '}
-        No
-      </label>
-      {unanswered && <p className="form-help-text">{NOT_ANSWERED_YET}</p>}
-    </fieldset>
-  );
-}
 
 export function HouseholdList({
   rows,
