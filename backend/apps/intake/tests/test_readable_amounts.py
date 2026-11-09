@@ -94,6 +94,21 @@ def test_amounts_are_readable_while_ssn_and_account_numbers_stay_private(filer_s
     assert LOAN_NUMBER.encode() not in asset_response.content
 
 
+def test_a_debts_new_answers_are_readable_and_its_account_number_still_is_not(filer_session):
+    session, debt, _ = filer_session
+    debt.street_address = "9 Demo Road"
+    debt.save()
+    client = _client_for(session.user)
+
+    response = client.get(f"/api/intake/sessions/{session.pk}/")
+
+    [row] = response.data["debts"]
+    assert row["account_last_4"] == CARD_NUMBER[-4:]
+    assert row["street_address"] == "9 Demo Road"
+    assert "account_number" not in row
+    assert CARD_NUMBER.encode() not in response.content
+
+
 def test_only_the_owner_can_read_amounts(filer_session):
     session, debt, asset = filer_session
     stranger = _client_for(User.objects.create_user(username="stranger", password="pw"))

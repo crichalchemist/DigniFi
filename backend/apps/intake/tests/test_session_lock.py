@@ -517,6 +517,12 @@ def _rows(session):
 # Every intake-data write: (method, path, body, expected status).
 WRITES = {
     "session PATCH": lambda s, r: ("patch", _session_url(s), {"debts": [NEW_DEBT]}, 200),
+    "debts PATCH with links": lambda s, r: (
+        "patch",
+        _session_url(s),
+        {"debts": [{**NEW_DEBT, "secured_by": r["asset"].pk}]},
+        200,
+    ),
     "household PATCH": lambda s, r: (
         "patch",
         _session_url(s),
