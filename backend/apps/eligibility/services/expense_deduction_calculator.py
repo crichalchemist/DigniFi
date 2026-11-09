@@ -100,7 +100,7 @@ class ExpenseDeductionCalculator:
                 "food": Decimal(str(ei.food_and_groceries or zero)),
                 "health": Decimal(str(ei.medical_expenses or zero)),
                 "housing": housing,
-                "transport": sum(linked.j17.values(), zero),
+                "transport": linked.vehicle_total,
                 "total": total_monthly_expenses(self.session),
             }
         except Exception:
