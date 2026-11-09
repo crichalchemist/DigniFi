@@ -200,6 +200,49 @@ describe('useAutoSave', () => {
     expect(onSave.mock.calls).toEqual([[{ rent: 950 }], [{ rent: 1000 }], [{ rent: 950 }]]);
   });
 
+  // The server holds the newer save's copy, so an older reply that lands last must not make the
+  // older copy the saved one: the step showing the same values again would send one more save.
+  it('keeps the newer save as the saved copy when an older save lands after it', async () => {
+    const landSaves: Array<() => void> = [];
+    const onSave = vi.fn().mockImplementation(
+      () =>
+        new Promise<void>((resolve) => {
+          landSaves.push(resolve);
+        })
+    );
+    const { rerender } = renderHook(({ data }) => useAutoSave({ data, onSave, debounceMs: 2000 }), {
+      initialProps: { data: { rent: 900 } },
+    });
+
+    rerender({ data: { rent: 950 } });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2000);
+    });
+    rerender({ data: { rent: 1000 } });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2000);
+    });
+    expect(onSave).toHaveBeenCalledTimes(2);
+
+    // The 1000 save lands first, then the 950 one.
+    await act(async () => {
+      landSaves[1]();
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    await act(async () => {
+      landSaves[0]();
+      await vi.advanceTimersByTimeAsync(0);
+    });
+
+    // The step hands the same values back as a new object.
+    rerender({ data: { rent: 1000 } });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(10000);
+    });
+
+    expect(onSave.mock.calls).toEqual([[{ rent: 950 }], [{ rent: 1000 }]]);
+  });
+
   // A failed save leaves the server holding the earlier copy, so the same change is sent again
   // when the filer next edits the box, even if the edit ends on the value that failed.
   it('sends a change again after its save failed', async () => {

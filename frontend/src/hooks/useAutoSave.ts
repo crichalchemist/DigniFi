@@ -58,6 +58,9 @@ export function useAutoSave<T>({
   const savedCopiesRef = useRef(new Map<string | undefined, string>());
   // The copy of a save still on its way, by name: once it lands, the server holds it
   const sendingCopiesRef = useRef(new Map<string | undefined, string>());
+  // How many saves of each name have gone out, and which of them wrote the last saved copy
+  const sentSavesRef = useRef(new Map<string | undefined, number>());
+  const storedSavesRef = useRef(new Map<string | undefined, number>());
 
   // Keep refs current to avoid stale closures
   useEffect(() => {
@@ -70,11 +73,17 @@ export function useAutoSave<T>({
     // Taken before the save, so a later edit is never recorded as saved
     const key = dataKeyRef.current;
     const copy = JSON.stringify(dataRef.current);
+    const save = (sentSavesRef.current.get(key) ?? 0) + 1;
+    sentSavesRef.current.set(key, save);
     sendingCopiesRef.current.set(key, copy);
     setSaveStatus('saving');
     try {
       const savedCopy = await onSaveRef.current(dataRef.current);
-      savedCopiesRef.current.set(key, savedCopy === undefined ? copy : JSON.stringify(savedCopy));
+      // An older save landing after a newer one leaves the newer one's copy, which the server holds
+      if (save > (storedSavesRef.current.get(key) ?? 0)) {
+        storedSavesRef.current.set(key, save);
+        savedCopiesRef.current.set(key, savedCopy === undefined ? copy : JSON.stringify(savedCopy));
+      }
       setSaveStatus('saved');
       setLastSavedAt(new Date());
 

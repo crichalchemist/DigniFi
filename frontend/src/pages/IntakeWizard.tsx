@@ -693,6 +693,7 @@ export function IntakeWizard() {
         if (save === listSavesRef.current.contracts)
           setContractsData((current) => withSavedIds(current, ids));
       }
+      if (save !== listSavesRef.current.contracts) return;
       return { contracts: withSavedIds(rows, ids), claim_answers };
     }
     if ('codebtors' in body) {
@@ -707,6 +708,7 @@ export function IntakeWizard() {
         if (save === listSavesRef.current.codebtors)
           setCodebtorsData((current) => withSavedIds(current, ids));
       }
+      if (save !== listSavesRef.current.codebtors) return;
       return { codebtors: withSavedIds(rows, ids), claim_answers };
     }
 
