@@ -16,6 +16,7 @@ from types import MappingProxyType
 
 from apps.intake.asset_lines import shown_lines
 from apps.intake.models import (
+    AssetInfo,
     AssetLineAnswers,
     ClaimAnswers,
     Codebtor,
@@ -238,3 +239,41 @@ def complete_codebtor(session, links=None, **over) -> Codebtor:
     codebtor = Codebtor.objects.create(session=session, links=json.dumps(links), **fields)
     _merge_claim_answers(session, codebtors_answer="yes")
     return codebtor
+
+
+def linked_row(session, line, lives_here=None, description="Demo item") -> AssetInfo:
+    """An A/B row on a line with its "Do you live here?" answer (3c4's payment mapping)."""
+    row = AssetInfo(
+        session=session, ab_line=line, description=description, current_value=Decimal("100.00")
+    )
+    row.set_details({"lives_here": lives_here})
+    row.save()
+    return row
+
+
+def linked_loan(session, row, payment, **over) -> DebtInfo:
+    """A secured debt on a row, paying the given monthly figure."""
+    return complete_debt(
+        session,
+        **(
+            {
+                "is_secured": True,
+                "secured_by": row,
+                "monthly_payment": Decimal(payment),
+                "collateral_description": "Demo",
+                "lien": {"kinds": ["agreement"], "other": ""},
+            }
+            | over
+        ),
+    )
+
+
+def linked_lease(session, row, payment, **over) -> ExecutoryContract:
+    """A vehicle lease on a row, paying the given monthly figure."""
+    return complete_contract(
+        session,
+        **(
+            {"lease_kind": "vehicle", "vehicle_asset": row, "monthly_payment": Decimal(payment)}
+            | over
+        ),
+    )

@@ -1,0 +1,478 @@
+[
+  {
+    "name": "James's car loan",
+    "assets": [
+      {
+        "line": "3",
+        "lives_here": null
+      }
+    ],
+    "debts": [
+      {
+        "secured": true,
+        "asset": 0,
+        "payment": "350.00",
+        "home_payment_line": null
+      }
+    ],
+    "contracts": [],
+    "expect": {
+      "allLinked": "350.00",
+      "vehicleTotal": "350.00",
+      "otherRealProperty": "0.00",
+      "firstMortgage": "0.00"
+    }
+  },
+  {
+    "name": "Andres's leased car and co-signed loan at 0",
+    "assets": [
+      {
+        "line": "3",
+        "lives_here": null
+      },
+      {
+        "line": "3",
+        "lives_here": null
+      }
+    ],
+    "debts": [
+      {
+        "secured": true,
+        "asset": 1,
+        "payment": "0.00",
+        "home_payment_line": null
+      }
+    ],
+    "contracts": [
+      {
+        "contract_type": "lease",
+        "lease_kind": "vehicle",
+        "asset": 0,
+        "payment": "389.00"
+      }
+    ],
+    "expect": {
+      "allLinked": "389.00",
+      "vehicleTotal": "389.00",
+      "otherRealProperty": "0.00",
+      "firstMortgage": "0.00"
+    }
+  },
+  {
+    "name": "DeShawn's first mortgage and a car with no loan",
+    "assets": [
+      {
+        "line": "1",
+        "lives_here": "yes"
+      },
+      {
+        "line": "3",
+        "lives_here": null
+      }
+    ],
+    "debts": [
+      {
+        "secured": true,
+        "asset": 0,
+        "payment": "1200.00",
+        "home_payment_line": "first"
+      }
+    ],
+    "contracts": [],
+    "expect": {
+      "allLinked": "1,200.00",
+      "vehicleTotal": "0.00",
+      "otherRealProperty": "0.00",
+      "firstMortgage": "1,200.00"
+    }
+  },
+  {
+    "name": "a lived-in motor home counted once, not as a vehicle",
+    "assets": [
+      {
+        "line": "4",
+        "lives_here": null
+      },
+      {
+        "line": "4",
+        "lives_here": "yes"
+      },
+      {
+        "line": "3",
+        "lives_here": null
+      }
+    ],
+    "debts": [
+      {
+        "secured": true,
+        "asset": 0,
+        "payment": "50.00",
+        "home_payment_line": null
+      },
+      {
+        "secured": true,
+        "asset": 1,
+        "payment": "900.00",
+        "home_payment_line": "first"
+      },
+      {
+        "secured": true,
+        "asset": 2,
+        "payment": "300.00",
+        "home_payment_line": null
+      }
+    ],
+    "contracts": [],
+    "expect": {
+      "allLinked": "1,250.00",
+      "vehicleTotal": "350.00",
+      "otherRealProperty": "0.00",
+      "firstMortgage": "900.00"
+    }
+  },
+  {
+    "name": "a debt no longer secured keeps its link and prints nowhere",
+    "assets": [
+      {
+        "line": "3",
+        "lives_here": null
+      }
+    ],
+    "debts": [
+      {
+        "secured": false,
+        "asset": 0,
+        "payment": "350.00",
+        "home_payment_line": null
+      }
+    ],
+    "contracts": [],
+    "expect": {
+      "allLinked": "0.00",
+      "vehicleTotal": "0.00",
+      "otherRealProperty": "0.00",
+      "firstMortgage": "0.00"
+    }
+  },
+  {
+    "name": "a residential lease with a vehicle prints nowhere",
+    "assets": [
+      {
+        "line": "3",
+        "lives_here": null
+      }
+    ],
+    "debts": [],
+    "contracts": [
+      {
+        "contract_type": "lease",
+        "lease_kind": "residential",
+        "asset": 0,
+        "payment": "389.00"
+      }
+    ],
+    "expect": {
+      "allLinked": "0.00",
+      "vehicleTotal": "0.00",
+      "otherRealProperty": "0.00",
+      "firstMortgage": "0.00"
+    }
+  },
+  {
+    "name": "an unsecured debt prints nowhere",
+    "assets": [],
+    "debts": [
+      {
+        "secured": false,
+        "asset": null,
+        "payment": "200.00",
+        "home_payment_line": null
+      }
+    ],
+    "contracts": [],
+    "expect": {
+      "allLinked": "0.00",
+      "vehicleTotal": "0.00",
+      "otherRealProperty": "0.00",
+      "firstMortgage": "0.00"
+    }
+  },
+  {
+    "name": "a mortgage on a home the filer does not live in",
+    "assets": [
+      {
+        "line": "1",
+        "lives_here": "no"
+      }
+    ],
+    "debts": [
+      {
+        "secured": true,
+        "asset": 0,
+        "payment": "800.00",
+        "home_payment_line": null
+      }
+    ],
+    "contracts": [],
+    "expect": {
+      "allLinked": "800.00",
+      "vehicleTotal": "0.00",
+      "otherRealProperty": "800.00",
+      "firstMortgage": "0.00"
+    }
+  },
+  {
+    "name": "two loans on one car add",
+    "assets": [
+      {
+        "line": "3",
+        "lives_here": null
+      }
+    ],
+    "debts": [
+      {
+        "secured": true,
+        "asset": 0,
+        "payment": "200.00",
+        "home_payment_line": null
+      },
+      {
+        "secured": true,
+        "asset": 0,
+        "payment": "75.00",
+        "home_payment_line": null
+      }
+    ],
+    "contracts": [],
+    "expect": {
+      "allLinked": "275.00",
+      "vehicleTotal": "275.00",
+      "otherRealProperty": "0.00",
+      "firstMortgage": "0.00"
+    }
+  },
+  {
+    "name": "five cars and another property spill into 17d",
+    "assets": [
+      {
+        "line": "3",
+        "lives_here": null
+      },
+      {
+        "line": "3",
+        "lives_here": null
+      },
+      {
+        "line": "3",
+        "lives_here": null
+      },
+      {
+        "line": "3",
+        "lives_here": null
+      },
+      {
+        "line": "3",
+        "lives_here": null
+      },
+      {
+        "line": "6",
+        "lives_here": null
+      }
+    ],
+    "debts": [
+      {
+        "secured": true,
+        "asset": 0,
+        "payment": "10.00",
+        "home_payment_line": null
+      },
+      {
+        "secured": true,
+        "asset": 1,
+        "payment": "20.00",
+        "home_payment_line": null
+      },
+      {
+        "secured": true,
+        "asset": 2,
+        "payment": "30.00",
+        "home_payment_line": null
+      },
+      {
+        "secured": true,
+        "asset": 3,
+        "payment": "40.00",
+        "home_payment_line": null
+      },
+      {
+        "secured": true,
+        "asset": 4,
+        "payment": "50.00",
+        "home_payment_line": null
+      },
+      {
+        "secured": true,
+        "asset": 5,
+        "payment": "5.00",
+        "home_payment_line": null
+      }
+    ],
+    "contracts": [],
+    "expect": {
+      "allLinked": "155.00",
+      "vehicleTotal": "150.00",
+      "otherRealProperty": "0.00",
+      "firstMortgage": "0.00"
+    }
+  },
+  {
+    "name": "a first and an additional mortgage on the home",
+    "assets": [
+      {
+        "line": "1",
+        "lives_here": "yes"
+      }
+    ],
+    "debts": [
+      {
+        "secured": true,
+        "asset": 0,
+        "payment": "1200.00",
+        "home_payment_line": "first"
+      },
+      {
+        "secured": true,
+        "asset": 0,
+        "payment": "250.00",
+        "home_payment_line": "additional"
+      }
+    ],
+    "contracts": [],
+    "expect": {
+      "allLinked": "1,450.00",
+      "vehicleTotal": "0.00",
+      "otherRealProperty": "0.00",
+      "firstMortgage": "1,200.00"
+    }
+  },
+  {
+    "name": "a vehicle lease on a lived-in home on wheels",
+    "assets": [
+      {
+        "line": "4",
+        "lives_here": "yes"
+      }
+    ],
+    "debts": [],
+    "contracts": [
+      {
+        "contract_type": "lease",
+        "lease_kind": "vehicle",
+        "asset": 0,
+        "payment": "700.00"
+      }
+    ],
+    "expect": {
+      "allLinked": "700.00",
+      "vehicleTotal": "0.00",
+      "otherRealProperty": "0.00",
+      "firstMortgage": "0.00"
+    }
+  },
+  {
+    "name": "a line 1 home with no answer counts as not lived in",
+    "assets": [
+      {
+        "line": "1",
+        "lives_here": null
+      }
+    ],
+    "debts": [
+      {
+        "secured": true,
+        "asset": 0,
+        "payment": "100.00",
+        "home_payment_line": null
+      }
+    ],
+    "contracts": [],
+    "expect": {
+      "allLinked": "100.00",
+      "vehicleTotal": "0.00",
+      "otherRealProperty": "100.00",
+      "firstMortgage": "0.00"
+    }
+  },
+  {
+    "name": "a contract that is not a lease on a car prints nowhere",
+    "assets": [
+      {
+        "line": "3",
+        "lives_here": null
+      }
+    ],
+    "debts": [],
+    "contracts": [
+      {
+        "contract_type": "contract",
+        "lease_kind": "vehicle",
+        "asset": 0,
+        "payment": "300.00"
+      }
+    ],
+    "expect": {
+      "allLinked": "0.00",
+      "vehicleTotal": "0.00",
+      "otherRealProperty": "0.00",
+      "firstMortgage": "0.00"
+    }
+  },
+  {
+    "name": "home payment line counts only on a home row",
+    "assets": [
+      {
+        "line": "3",
+        "lives_here": null
+      }
+    ],
+    "debts": [
+      {
+        "secured": true,
+        "asset": 0,
+        "payment": "120.00",
+        "home_payment_line": "additional"
+      }
+    ],
+    "contracts": [],
+    "expect": {
+      "allLinked": "120.00",
+      "vehicleTotal": "120.00",
+      "otherRealProperty": "0.00",
+      "firstMortgage": "0.00"
+    }
+  },
+  {
+    "name": "a vehicle lease on a line 1 home answered No is other property",
+    "assets": [
+      {
+        "line": "1",
+        "lives_here": "no"
+      }
+    ],
+    "debts": [],
+    "contracts": [
+      {
+        "contract_type": "lease",
+        "lease_kind": "vehicle",
+        "asset": 0,
+        "payment": "500.00"
+      }
+    ],
+    "expect": {
+      "allLinked": "500.00",
+      "vehicleTotal": "0.00",
+      "otherRealProperty": "0.00",
+      "firstMortgage": "0.00"
+    }
+  }
+]
