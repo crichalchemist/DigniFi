@@ -693,6 +693,7 @@ def test_a_name_saved_with_its_marks_apart_generates_form_101(api_client, sessio
 
 @pytest.mark.django_db
 class TestStatusTransitions:
+
     def test_mark_downloaded(self, api_client, session_with_debtor, user):
         form = GeneratedForm.objects.create(
             session=session_with_debtor,
@@ -735,6 +736,7 @@ class TestStatusTransitions:
 
 @pytest.mark.django_db
 class TestListRetrieve:
+
     def test_list_only_own_forms(
         self, api_client, session_with_debtor, user, other_session, other_user
     ):
@@ -1298,6 +1300,7 @@ def test_filed_form_survives_leaving_the_packet(api_client, session_with_debtor)
 
 @pytest.mark.django_db
 class TestFieldValuesStayPrivate:
+
     def _generate_121(self, api_client, session):
         return api_client.post(
             "/api/forms/generate/",

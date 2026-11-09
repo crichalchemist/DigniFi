@@ -379,21 +379,37 @@ def test_a_draft_remains_is_the_first_debts_gap(session):
     ] == "debts"
 
 
-def test_a_home_mortgage_never_reaches_line_20a_unasked(session):
-    home = _asset(session, "1", street="1 Demo Street", who="only_you")
+@pytest.mark.parametrize(
+    ("line", "details", "name"),
+    [
+        ("1", {"street": "1 Demo Street", "who": "only_you"}, "1 Demo Street"),
+        ("4", {"make": "Demo Motor Home", "who": "only_you"}, "Demo Motor Home"),
+    ],
+    ids=["line_1", "line_4"],
+)
+def test_a_home_mortgage_never_reaches_line_20a_unasked(session, line, details, name):
+    home = _asset(session, line, **details)
     _secured(session, home, debt_type="mortgage")
     answer_claims(session)
-    sentence = "Answer “Do you live here?” for 1 Demo Street on line 1 of the Assets step."
+    sentence = f"Answer “Do you live here?” for {name} on line {line} of the Assets step."
 
     gaps = claim_step_gaps(IntakeSession.objects.get(pk=session.pk))
 
     assert [str(gap) for gap in gaps][0] == sentence
     assert gaps[0].step == "assets"
 
-    home.set_details({"street": "1 Demo Street", "who": "only_you", "lives_here": "no"})
+    home.set_details({**details, "lives_here": "no"})
     home.save()
 
     assert sentence not in _gaps(session)
+
+
+def test_a_secured_debt_on_a_line_4_row_the_filer_does_not_live_in_asks_no_home_question(session):
+    home = _asset(session, "4", make="Demo Motor Home", who="only_you", lives_here="no")
+    _secured(session, home, collateral_who=None, home_payment_line=None)
+    answer_claims(session)
+
+    assert _gaps(session) == []
 
 
 def test_a_ticked_outside_us_address_needs_no_state_or_zip_but_needs_a_city(session):
@@ -604,3 +620,33 @@ def test_a_link_is_live_only_on_the_same_intake(session):
     assert link_is_live(mine, session)
     assert not link_is_live(theirs, session)
     assert not link_is_live(None, session)
+
+
+def test_a_non_lease_contract_asks_no_lease_kind(session):
+    complete_contract(
+        session, contract_type="contract", lease_kind=None, description="Gym membership"
+    )
+    answer_claims(session, no_debts=True, contracts_answer="yes")
+
+    assert _gaps(session) == []
+
+
+def test_a_spouse_who_did_not_share_the_community_state_asks_no_spouse_details(session):
+    answer_claims(session, no_debts=True, community_lived="yes", community_spouse_lived_with="no")
+
+    assert _gaps(session) == []
+
+
+def test_a_debt_on_a_home_the_filer_does_not_live_in_asks_no_payment_line(session):
+    home = _asset(session, "1", street="1 Demo Street", who="only_you", lives_here="no")
+    _secured(session, home, home_payment_line=None)
+    answer_claims(session)
+
+    assert _gaps(session) == []
+
+
+def test_a_lien_of_kind_other_with_its_text_is_no_gap(session):
+    _secured(session, lien={"kinds": ["other"], "other": "Demo mechanic's lien"})
+    answer_claims(session)
+
+    assert _gaps(session) == []

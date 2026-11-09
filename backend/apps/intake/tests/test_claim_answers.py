@@ -111,6 +111,26 @@ def test_a_spouse_state_is_stored_in_capitals(filer):
     assert ClaimAnswers.objects.get(session=session).get_answers()["community_spouse_state"] == "IL"
 
 
+@pytest.mark.parametrize("typed", [" il", "IL ", " il "])
+def test_a_spouse_state_typed_with_spaces_saves_as_two_capitals(filer, typed):
+    client, session = filer
+    response = client.patch(
+        _url(session), {"claim_answers": {"community_spouse_state": typed}}, format="json"
+    )
+    assert response.status_code == 200, response.content
+    assert response.data["claim_answers"]["community_spouse_state"] == "IL"
+
+
+def test_a_three_letter_spouse_state_is_refused_naming_the_key_not_the_value(filer):
+    client, session = filer
+    response = client.patch(
+        _url(session), {"claim_answers": {"community_spouse_state": "ILL"}}, format="json"
+    )
+    assert response.status_code == 400
+    assert "community_spouse_state" in response.content.decode()
+    assert "ILL" not in response.content.decode()
+
+
 def test_saving_claim_answers_reopens_a_completed_intake(filer):
     client, session = filer
     IntakeSession.objects.filter(pk=session.pk).update(status="completed")
@@ -202,5 +222,35 @@ def test_an_autosaved_debts_patch_leaves_a_draft_a_draft(filer):
     )
     assert response.status_code == 200
     assert response.data["debts"][0]["is_draft"] is True
+    draft.refresh_from_db()
+    assert draft.is_draft is True
+
+
+def test_continue_to_step_7_confirms_only_the_filers_own_drafts(filer, other_session):
+    client, session = filer
+    first, second = _draft(session), _draft(session)
+    theirs = _draft(other_session)
+
+    response = client.post(_url(session, "update_step/"), {"current_step": 7}, format="json")
+
+    assert response.status_code == 200
+    assert [debt["is_draft"] for debt in response.data["session"]["debts"]] == [False, False]
+    for row in (first, second, theirs):
+        row.refresh_from_db()
+    assert (first.is_draft, second.is_draft) == (False, False)
+    assert theirs.is_draft is True
+
+
+def test_a_refused_step_7_save_leaves_the_draft_a_draft(filer):
+    client, session = filer
+    draft = _draft(session)
+
+    response = client.post(
+        _url(session, "update_step/"),
+        {"current_step": 7, "data": {"claim_answers": {"nope": "yes"}}},
+        format="json",
+    )
+
+    assert response.status_code == 400
     draft.refresh_from_db()
     assert draft.is_draft is True

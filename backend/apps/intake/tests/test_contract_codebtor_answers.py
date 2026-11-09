@@ -5,6 +5,7 @@ Business intent: Schedules G and H print what the filer typed, so a half-filled 
 link to another filer's property, debt or contract is never kept or echoed.
 """
 
+import json
 from decimal import Decimal
 
 import pytest
@@ -302,6 +303,21 @@ def test_a_codebtor_link_to_another_filers_debt_is_dropped_on_save(filer, other_
     assert asset_kind.status_code == 400
 
 
+def test_a_stored_codebtor_link_of_an_unknown_kind_is_dropped_on_read(filer):
+    client, session = filer
+    mine = _debt(session)
+    Codebtor.objects.create(
+        session=session,
+        name="Demo Person",
+        links=json.dumps([{"kind": "other", "id": 1}, {"kind": "debt", "id": mine.pk}]),
+    )
+
+    response = client.get(_url(session, "codebtors"))
+
+    assert response.status_code == 200
+    assert response.data[0]["links"] == [{"kind": "debt", "id": mine.pk}]
+
+
 def test_a_codebtor_link_to_another_filers_contract_is_dropped_on_save(filer, other_session):
     client, session = filer
     theirs = ExecutoryContract.objects.create(
@@ -364,6 +380,30 @@ def test_the_per_item_paths_ignore_a_link(filer):
 
     assert response.status_code == 201
     assert _only(Codebtor, session).get_links() == []
+
+
+def test_the_single_contract_post_ignores_its_links(filer, other_session):
+    client, session = filer
+    own_car, own_debt = _car(session), _debt(session)
+    theirs_car, theirs_debt = _car(other_session), _debt(other_session)
+
+    for car, debt in [(theirs_car, theirs_debt), (own_car, own_debt)]:
+        response = client.post(
+            _url(session, "contracts"),
+            {
+                "counterparty_name": "Demo Motors",
+                "contract_type": "lease",
+                "vehicle_asset": car.pk,
+                "owed_debt": debt.pk,
+            },
+            format="json",
+        )
+
+        assert response.status_code == 201, response.content
+        assert response.data["vehicle_asset"] is None
+        assert response.data["owed_debt"] is None
+        stored = _only(ExecutoryContract, session)
+        assert (stored.vehicle_asset_id, stored.owed_debt_id) == (None, None)
 
 
 @pytest.mark.parametrize(

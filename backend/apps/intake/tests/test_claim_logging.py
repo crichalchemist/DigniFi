@@ -19,12 +19,13 @@ from apps.intake.tests.builders import answer_asset_lines, answer_household
 from apps.users.models import User
 
 CREDITOR = "Zephyrine Credit Union"
-CREDITOR_STREET = "9 Quillfeather Lane"
-CREDITOR_CITY = "Wrenfield"
+CREDITOR_STREET = "9 Demo Quillfeather Lane"
+CREDITOR_CITY = "Demo Wrenfield"
 ACCOUNT_NUMBER = "900123456789"
 LAST_4 = "6789"
 PARTY = "Hollis Brandt Collections"
-PARTY_STREET = "44 Marlowe Court"
+PARTY_STREET = "44 Demo Marlowe Court"
+PARTY_CITY = "Demo Hollowbrook"
 HOME_STREET = "7823 S Sangamon St"
 
 
@@ -106,6 +107,15 @@ def _leaks(caplog, secrets):
     return found
 
 
+def _refusals_logged(caplog):
+    """The django.request 4xx records: proof the log capture was listening for the refusals."""
+    return [
+        record
+        for record in caplog.records
+        if record.name == "django.request" and record.levelno == logging.WARNING
+    ]
+
+
 def _complete_then_generate(client, session):
     """Press Complete with a gap, then ask for a form as a filer who completed earlier."""
     complete = client.post(_session_url(session, "complete/"))
@@ -142,7 +152,7 @@ def test_no_log_line_carries_a_creditors_name_address_or_last_four(filer, caplog
                         {
                             "name": PARTY,
                             "street_address": PARTY_STREET,
-                            "city": "Marlowe",
+                            "city": PARTY_CITY,
                             "state": "IL",
                             "zip_code": "60602",
                         }
@@ -169,7 +179,9 @@ def test_no_log_line_carries_a_creditors_name_address_or_last_four(filer, caplog
         LAST_4,
         PARTY,
         PARTY_STREET,
+        PARTY_CITY,
     ]
+    assert len(_refusals_logged(caplog)) == 2
     assert _leaks(caplog, secrets) == set()
 
 
@@ -203,4 +215,5 @@ def test_no_log_line_carries_the_street_a_do_you_live_here_gap_names(filer, capl
     assert generate.status_code == 422
     assert generate.data["step"] == "assets"
     assert HOME_STREET in generate.data["error"]
+    assert len(_refusals_logged(caplog)) == 2
     assert _leaks(caplog, [HOME_STREET, CREDITOR, ACCOUNT_NUMBER, LAST_4]) == set()

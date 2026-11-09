@@ -818,7 +818,8 @@ class DebtInfoQuerySet(models.QuerySet):
     def confirmed(self):
         """The debts the filer has confirmed, without the drafts read from scanned documents.
 
-        A scanned debt stays a draft until the filer saves the Amounts Owed step (DIG-163).
+        A scanned debt stays a draft until the filer presses Continue on the Amounts Owed step
+        (`update_step` 7) (DIG-163).
         Every reader that feeds a form or the means test reads through this.
         """
         return self.filter(is_draft=False)

@@ -1055,6 +1055,8 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
             if key not in ClaimAnswers.KEYS:
                 raise serializers.ValidationError(f"Not a claim answer: {key}.")
             if value is not None:
+                if key == "community_spouse_state" and isinstance(value, str):
+                    value = value.strip().upper()
                 if key == "no_debts":
                     ok = value is True
                 elif key in _CLAIM_YES_NO:
@@ -1065,10 +1067,6 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
                     ok = isinstance(value, str) and len(value) <= ClaimAnswers.TEXT_LIMITS[key]
                 if not ok:
                     raise serializers.ValidationError(f"Check the answer for {key}.")
-                if key == "community_spouse_state":
-                    value = value.strip().upper()
-                    if len(value) > ClaimAnswers.TEXT_LIMITS[key]:
-                        raise serializers.ValidationError(f"Check the answer for {key}.")
             answers[key] = value
         return answers
 
@@ -1496,7 +1494,7 @@ class CodebtorSerializer(AddressAnswersMixin, serializers.ModelSerializer):
             )
         )
         live = {"debt": debts, "contract": contracts}
-        data["links"] = [link for link in data["links"] if link["id"] in live[link["kind"]]]
+        data["links"] = [link for link in data["links"] if link["id"] in live.get(link["kind"], ())]
         return data
 
 
