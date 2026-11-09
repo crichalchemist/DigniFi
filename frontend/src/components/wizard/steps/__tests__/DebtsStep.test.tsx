@@ -572,6 +572,65 @@ describe('DebtsStep asks every question', () => {
     expect(screen.queryByRole('button', { name: copy.NO_DEBTS_BUTTON })).not.toBeInTheDocument();
   });
 
+  it('brings back an empty blank row after the last typed row is removed', async () => {
+    const user = userEvent.setup();
+    render(<Harness />);
+
+    await user.type(field('amount_owed_0'), '500');
+    await user.type(field('monthly_payment_0'), '40');
+    expect(field('amount_owed_0').value).toBe('500');
+
+    await user.click(screen.getByRole('button', { name: 'Remove amount owed 1' }));
+    expect(field('amount_owed_0').value).toBe('');
+    expect(field('monthly_payment_0').value).toBe('');
+  });
+
+  it('clears the property link and its answers when the filer answers No to secured', async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    render(
+      <Harness
+        initial={[{ ...secured, home_payment_line: 'first', collateral_who: 'with_someone' }]}
+        assets={[car]}
+        onChange={onChange}
+      />
+    );
+    await user.click(box('is_secured_0', 'no'));
+    expect(lastRows(onChange)[0]).toMatchObject({
+      is_secured: false,
+      secured_by: null,
+      home_payment_line: null,
+      collateral_who: null,
+    });
+  });
+
+  it('clears the offset answer when the filer answers Yes to secured', async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    render(<Harness initial={[{ ...complete, offset_answer: 'no' }]} onChange={onChange} />);
+    await user.click(box('is_secured_0', 'yes'));
+    expect(lastRows(onChange)[0]).toMatchObject({ is_secured: true, offset_answer: null });
+  });
+
+  it('drops who answers for the old property when another property is picked', async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    const piano: WizardRow<AssetInfo> = { _key: '39', id: 4, ab_line: '39', details: {} };
+    render(
+      <Harness
+        initial={[{ ...secured, secured_by: 4, collateral_who: 'with_someone' }]}
+        assets={[car, piano]}
+        onChange={onChange}
+      />
+    );
+    await user.selectOptions(field('secured_by_0'), '3');
+    expect(lastRows(onChange)[0]).toMatchObject({
+      secured_by: 3,
+      home_payment_line: null,
+      collateral_who: null,
+    });
+  });
+
   it('asks the notice question with nothing checked, opens a party under Yes, and shuts at 10', async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();

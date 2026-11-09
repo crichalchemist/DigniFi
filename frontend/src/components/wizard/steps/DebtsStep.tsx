@@ -267,7 +267,7 @@ export function DebtsStep({
 }: DebtsStepProps) {
   // With no rows, the step shows one blank row. It joins the wizard's rows at the filer's first
   // edit, and a blank row is never saved.
-  const [blankRow] = useState(createEmptyDebt);
+  const [blankRow, setBlankRow] = useState(createEmptyDebt);
   const debts = useMemo(() => (rows.length > 0 ? rows : [blankRow]), [rows, blankRow]);
   // A box holding only part of a number keeps the row's figure without showing it
   const [partialBoxes, setPartialBoxes] = useState(0);
@@ -296,7 +296,12 @@ export function DebtsStep({
 
   const handleAddDebt = () => changeRows([...debts, createEmptyDebt()]);
 
-  const handleRemoveDebt = (index: number) => changeRows(rows.filter((_, i) => i !== index));
+  // Removing the last row brings the blank row back under a new key, so no box keeps the old typing
+  const handleRemoveDebt = (index: number) => {
+    const next = rows.filter((_, i) => i !== index);
+    if (next.length === 0) setBlankRow(createEmptyDebt());
+    changeRows(next);
+  };
 
   // The one read of the pressed mark: the kind sets the secured answer only until the filer has
   // pressed it. The classification follows the kind either way.
