@@ -1066,9 +1066,8 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
         for asset_data in assets_data:
             AssetInfo.objects.create(session=session, **asset_data)
 
-        # Create debts
-        for debt_data in debts_data:
-            DebtInfo.objects.create(session=session, **debt_data)
+        # Create debts, after the assets so a link is checked against them
+        _save_rows_by_id(session, DebtInfo, debts_data, scoped={"secured_by_id": AssetInfo})
 
         return session
 

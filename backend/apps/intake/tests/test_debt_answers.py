@@ -10,7 +10,7 @@ from decimal import Decimal
 import pytest
 
 from apps.intake.claims import account_last_4
-from apps.intake.models import AssetInfo, DebtInfo
+from apps.intake.models import AssetInfo, DebtInfo, IntakeSession
 
 ROW = {"creditor_name": "Demo Bank", "debt_type": "auto_loan", "amount_owed": "4000.00"}
 
@@ -250,3 +250,29 @@ def test_the_per_item_debt_save_still_requires_a_name_and_a_type(filer, missing)
     body = {**ROW, "session": session.pk}
     del body[missing]
     assert client.post("/api/intake/debts/", body, format="json").status_code == 400
+
+
+def test_a_session_created_with_a_debt_stores_its_answers_readably(filer):
+    client, session = filer
+    elsewhere = IntakeSession.objects.create(user=session.user, district=session.district)
+    foreign = _car(elsewhere)
+    debt = {
+        **ROW,
+        "session": session.pk,  # the nested serializer requires it on create; it is ignored
+        "lien": {"kinds": ["agreement"], "other": ""},
+        "claim_status": ["disputed"],
+        "notice_parties": [{"name": "Demo Collections"}],
+        "secured_by": foreign.pk,
+    }
+    body = {"district": session.district_id, "current_step": 1, "debts": [debt]}
+    created = client.post("/api/intake/sessions/", body, format="json")
+    assert created.status_code == 201, created.content
+    new_id = created.data["session"]["id"]
+    got = client.get(f"/api/intake/sessions/{new_id}/")
+    assert got.status_code == 200
+    row = got.json()["debts"][0]
+    assert row["lien"] == {"kinds": ["agreement"], "other": ""}
+    assert row["claim_status"] == ["disputed"]
+    assert isinstance(row["notice_parties"][0]["id"], int)
+    assert row["notice_parties"][0]["name"] == "Demo Collections"
+    assert row["secured_by"] is None
