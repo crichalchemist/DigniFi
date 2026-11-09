@@ -83,11 +83,11 @@ def test_a_co_signed_loan_at_zero_leaves_its_line_blank(session):
 
 
 def test_a_lived_in_motor_home_is_counted_once_and_takes_no_vehicle_line(session):
-    other_home = linked_row(session, "4")
     lived_in = linked_row(session, "4", "yes")
+    other_home = linked_row(session, "4")
     car = linked_row(session, "3")
-    linked_loan(session, other_home, "50")
     linked_loan(session, lived_in, "900", home_payment_line="first")
+    linked_loan(session, other_home, "50")
     linked_loan(session, car, "300")
     L = _linked(session)
     assert L.first_mortgage == 900
@@ -95,6 +95,34 @@ def test_a_lived_in_motor_home_is_counted_once_and_takes_no_vehicle_line(session
     assert L.j17["17b"] == 50
     assert L.vehicle_total == 350
     assert L.total == 1250
+
+
+def test_an_unanswered_first_or_additional_counts_as_a_first_mortgage(session):
+    home = linked_row(session, "1", "yes")
+    linked_loan(session, home, "600", home_payment_line=None)
+    L = _linked(session)
+    assert L.first_mortgage == 600
+    assert L.additional_mortgage == 0
+    assert all(value == 0 for value in L.j17.values())
+    assert L.other_real_property == 0
+    assert L.total == 600
+
+
+def test_reading_the_links_costs_no_query_per_linked_loan(session):
+    from django.db import connection
+    from django.test.utils import CaptureQueriesContext
+
+    def count():
+        fresh = IntakeSession.objects.get(pk=session.pk)
+        with CaptureQueriesContext(connection) as ctx:
+            linked_payments(fresh)
+        return len(ctx)
+
+    linked_loan(session, linked_row(session, "3"), "10")
+    one = count()
+    linked_loan(session, linked_row(session, "3"), "20")
+    linked_loan(session, linked_row(session, "3"), "30")
+    assert count() == one
 
 
 def test_a_first_mortgage_goes_to_line_4_and_an_additional_one_to_line_5(session):

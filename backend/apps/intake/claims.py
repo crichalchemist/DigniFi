@@ -474,11 +474,9 @@ def linked_payments(session) -> LinkedPayments:
     first_mortgage = home_lease = additional = other_real = _ZERO
     on_row: dict[int, Decimal] = {}
     for debt in session.debts.confirmed():
-        if not debt.is_secured or not link_is_live(debt.secured_by, session):
+        if not debt.is_secured or not link_is_live(by_id.get(debt.secured_by_id), session):
             continue
         pk, amount = debt.secured_by_id, _payment(debt)
-        if pk not in by_id:
-            continue
         if pk in home_ids:
             if debt.home_payment_line == "additional":
                 additional += amount
@@ -492,12 +490,10 @@ def linked_payments(session) -> LinkedPayments:
         if (
             contract.contract_type != "lease"
             or contract.lease_kind != "vehicle"
-            or not link_is_live(contract.vehicle_asset, session)
+            or not link_is_live(by_id.get(contract.vehicle_asset_id), session)
         ):
             continue
         pk, amount = contract.vehicle_asset_id, _payment(contract)
-        if pk not in by_id:
-            continue
         if pk in home_ids:
             home_lease += amount
         else:
