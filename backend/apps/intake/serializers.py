@@ -32,6 +32,7 @@ from .models import (
     YES_NO,
     AssetInfo,
     AssetLineAnswers,
+    ClaimAnswers,
     Codebtor,
     DebtInfo,
     DebtorInfo,
@@ -937,6 +938,7 @@ _INTAKE_DATA = {
     "expense_info",
     "assets",
     "asset_lines",
+    "claim_answers",
     "debts",
     "household",
     "spouse_income",
@@ -959,6 +961,30 @@ def _save_asset_lines(session: IntakeSession, data: dict) -> None:
     session.asset_lines = record
 
 
+class ClaimAnswersField(serializers.DictField):
+    """The filer's own answers to Schedules D, E/F, G and H, read from the session's record."""
+
+    def get_attribute(self, instance):
+        record = getattr(instance, "claim_answers", None)
+        return record.get_answers() if record else {}
+
+
+def _save_claim_answers(session: IntakeSession, data: dict) -> None:
+    """Set each answer sent; a null clears it (3c3 spec §7.1)."""
+    record, _ = ClaimAnswers.objects.get_or_create(session=session)
+    record.merge(data)
+    record.save()
+    session.claim_answers = record
+
+
+_CLAIM_YES_NO = (
+    "contracts_answer",
+    "codebtors_answer",
+    "community_lived",
+    "community_spouse_lived_with",
+)
+
+
 class IntakeSessionSerializer(serializers.ModelSerializer):
     """
     Serializer for intake session with nested related data.
@@ -973,6 +999,7 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
     asset_lines = AssetLinesField(
         child=serializers.ChoiceField(choices=["yes", "no"], allow_null=True), required=False
     )
+    claim_answers = ClaimAnswersField(required=False)
     debts = NestedDebtInfoSerializer(many=True, required=False)
     household = HouseholdSerializer(required=False, allow_null=True)
     spouse_income = SpouseIncomeSerializer(required=False, allow_null=True)
@@ -994,6 +1021,7 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
             "expense_info",
             "assets",
             "asset_lines",
+            "claim_answers",
             "debts",
             "household",
             "spouse_income",
@@ -1019,6 +1047,30 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(f"Not a line of Schedule A/B: {unknown[0]}.")
         return answers
 
+    def validate_claim_answers(self, sent):
+        """Check each key and its shape; a message names the key, never the value."""
+        answers = {}
+        for key, value in sent.items():
+            if key not in ClaimAnswers.KEYS:
+                raise serializers.ValidationError(f"Not a claim answer: {key}.")
+            if value is not None:
+                if key == "no_debts":
+                    ok = value is True
+                elif key in _CLAIM_YES_NO:
+                    ok = isinstance(value, str) and value in ("yes", "no")
+                elif key == "community_spouse_outside_us":
+                    ok = isinstance(value, bool)
+                else:
+                    ok = isinstance(value, str) and len(value) <= ClaimAnswers.TEXT_LIMITS[key]
+                if not ok:
+                    raise serializers.ValidationError(f"Check the answer for {key}.")
+                if key == "community_spouse_state":
+                    value = value.strip().upper()
+                    if len(value) > ClaimAnswers.TEXT_LIMITS[key]:
+                        raise serializers.ValidationError(f"Check the answer for {key}.")
+            answers[key] = value
+        return answers
+
     def get_income_window(self, obj) -> dict:
         """The six full months before today, which the Income step's figures cover."""
         start, end = income_window(fill_date())
@@ -1039,6 +1091,7 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
         household_data = validated_data.pop("household", None)
         spouse_data = validated_data.pop("spouse_income", None)
         asset_lines_data = validated_data.pop("asset_lines", None)
+        claim_answers_data = validated_data.pop("claim_answers", None)
 
         # Create session
         session = IntakeSession.objects.create(**validated_data)
@@ -1061,6 +1114,9 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
 
         if asset_lines_data is not None:
             _save_asset_lines(session, asset_lines_data)
+
+        if claim_answers_data is not None:
+            _save_claim_answers(session, claim_answers_data)
 
         # Create assets
         for asset_data in assets_data:
@@ -1093,6 +1149,7 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
         household_data = validated_data.pop("household", None)
         spouse_data = validated_data.pop("spouse_income", None)
         asset_lines_data = validated_data.pop("asset_lines", None)
+        claim_answers_data = validated_data.pop("claim_answers", None)
 
         # Update session fields
         for attr, value in validated_data.items():
@@ -1119,6 +1176,9 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
 
         if asset_lines_data is not None:
             _save_asset_lines(instance, asset_lines_data)
+
+        if claim_answers_data is not None:
+            _save_claim_answers(instance, claim_answers_data)
 
         # The response lists a sent list in sent order, so the wizard can pair each row it
         # sent with its id (DIG-273). Every other read sorts as to_representation says.

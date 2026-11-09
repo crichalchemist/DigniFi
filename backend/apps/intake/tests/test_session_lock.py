@@ -544,6 +544,18 @@ WRITES = {
     "session PUT": lambda s, r: ("put", _session_url(s), {"district": s.district_id}, 200),
     "Continue": lambda s, r: ("post", _session_url(s, "update_step/"), {"current_step": 3}, 200),
     "Complete": lambda s, r: ("post", _session_url(s, "complete/"), {}, 200),
+    "claim_answers PATCH": lambda s, r: (
+        "patch",
+        _session_url(s),
+        {"claim_answers": {"contracts_answer": "no"}},
+        200,
+    ),
+    "Continue to step 7": lambda s, r: (
+        "post",
+        _session_url(s, "update_step/"),
+        {"current_step": 7},
+        200,
+    ),
     "contracts PUT": lambda s, r: (
         "put",
         _session_url(s, "contracts/"),

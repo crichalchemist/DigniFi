@@ -747,7 +747,9 @@ def test_the_take_home_pay_gap_never_stops_the_means_test(filer, completed):
     assert response.status_code == 200
 
 
-def test_saving_the_amounts_owed_step_confirms_a_scanned_debt_so_complete_passes(filer, completed):
+def test_pressing_continue_on_the_amounts_owed_step_confirms_a_scanned_debt_so_complete_passes(
+    filer, completed
+):
     # An upload after Complete reopens the intake (DIG-163). Until the filer saves the Amounts
     # Owed step, the scanned debt is on no form, so Complete sends them there first.
     client, _ = filer
@@ -765,7 +767,7 @@ def test_saving_the_amounts_owed_step_confirms_a_scanned_debt_so_complete_passes
     assert refused.status_code == 400
     assert refused.data["errors"] == [{"step": "debts", "message": SCANNED_DEBTS}]
 
-    # Continue on Amounts Owed sends every row the step shows, each with its id.
+    # Continue on Amounts Owed saves every row the step shows, then posts update_step 7.
     saved = client.patch(
         _session_url(completed),
         {
@@ -783,6 +785,12 @@ def test_saving_the_amounts_owed_step_confirms_a_scanned_debt_so_complete_passes
     )
     assert saved.status_code == 200
 
+    scanned.refresh_from_db()
+    assert scanned.is_draft is True  # a save alone doesn't confirm
+    still_refused = client.post(_session_url(completed, "complete/"))
+    assert still_refused.data["errors"] == [{"step": "debts", "message": SCANNED_DEBTS}]
+
+    client.post(_session_url(completed, "update_step/"), {"current_step": 7}, format="json")
     scanned.refresh_from_db()  # the same row, now confirmed
     assert scanned.is_draft is False
     assert client.post(_session_url(completed, "complete/")).status_code == 200

@@ -143,6 +143,7 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
                 "expense_info",
                 "household",
                 "spouse_income",
+                "claim_answers",
             )
             .prefetch_related("assets", "debts")
         )
@@ -181,22 +182,6 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
         lock_session(self.get_object().pk)  # get_object first: another user's session is a 404
         return super().update(request, *args, **kwargs)
 
-    @transaction.atomic
-    def partial_update(self, request, *args, **kwargs):
-        """
-        PATCH /api/intake/sessions/{id}/
-
-        After saving, bulk-clear is_draft on all DebtInfo rows for this session
-        when the 'debts' key is present in the request payload.
-        """
-        instance = self.get_object()
-        response = super().partial_update(request, *args, **kwargs)
-        if "debts" in request.data:
-            DebtInfo.objects.filter(session=instance, is_draft=True).update(is_draft=False)
-            for debt in response.data["debts"]:
-                debt["is_draft"] = False
-        return response
-
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
 
@@ -232,6 +217,11 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
         session.current_step = current_step
         session.status = "in_progress"
         session.save()
+
+        # Continue from Amounts Owed confirms every scanned debt, before any data this request
+        # carries is saved, so the rows that save loads (and the reply) read confirmed.
+        if current_step == 7:
+            DebtInfo.objects.filter(session=session, is_draft=True).update(is_draft=False)
 
         # Continue from the Income step records the window the filer confirmed (3e2 spec §4.4)
         income_info = getattr(session, "income_info", None)

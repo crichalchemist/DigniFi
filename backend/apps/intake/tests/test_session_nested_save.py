@@ -304,6 +304,31 @@ def test_a_save_hands_back_new_debts_in_the_order_they_were_sent_with_their_ids(
     assert all(row["is_draft"] is False for row in response.data["debts"])
 
 
+def test_a_save_hands_back_a_scanned_draft_still_a_draft_with_its_id(filer):
+    client, session = filer
+    debt = _scanned_car_loan(session)
+
+    response = client.patch(
+        _session_url(session),
+        {
+            "debts": [
+                {
+                    "id": debt.pk,
+                    "creditor_name": "Ally Auto",
+                    "debt_type": "auto_loan",
+                    "amount_owed": "500.00",
+                }
+            ]
+        },
+        format="json",
+    )
+
+    assert response.data["debts"][0]["id"] == debt.pk
+    assert response.data["debts"][0]["is_draft"] is True
+    debt.refresh_from_db()
+    assert debt.is_draft is True
+
+
 def test_a_save_hands_back_assets_in_the_order_they_were_sent(filer):
     client, session = filer
     sent = [
