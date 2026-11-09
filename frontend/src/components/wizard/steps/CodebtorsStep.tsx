@@ -22,6 +22,7 @@ import {
   NAMELESS_CONTRACT,
   NAMELESS_DEBT,
 } from '../../../constants/copy';
+import { CODEBTOR_RELATIONSHIP_WORDS } from '../../../constants/claims';
 import {
   SCHEDULE_H_COLUMN_2,
   SCHEDULE_H_LINE_1_QUESTION,
@@ -57,14 +58,10 @@ interface CodebtorsStepProps {
   onValidationChange: (isValid: boolean) => void;
 }
 
-const RELATIONSHIPS = [
-  { value: 'spouse', label: 'Spouse' },
-  { value: 'former_spouse', label: 'Former Spouse' },
-  { value: 'relative', label: 'Relative' },
-  { value: 'friend', label: 'Friend' },
-  { value: 'business_partner', label: 'Business Partner' },
-  { value: 'other', label: 'Other' },
-];
+const RELATIONSHIPS = Object.entries(CODEBTOR_RELATIONSHIP_WORDS).map(([value, label]) => ({
+  value,
+  label,
+}));
 
 // The last new row's key: unique while the page is open, and the prefix keeps it apart from a
 // loaded row's key, which is its id

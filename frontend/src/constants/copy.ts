@@ -740,3 +740,13 @@ export const CODEBTORS_STEP_WHY =
 // DRAFT: counsel C-9
 export const CODEBTOR_ADDRESS_HELP =
   'The court uses this address to send this person notice of your case.';
+
+export const REVIEW_NO_DEBTS = 'You said you have no amounts owed.';
+
+export const REVIEW_NO_CONTRACTS = 'You said you have no contracts or leases.';
+
+export const REVIEW_NO_CODEBTORS = 'You said you have no codebtors.';
+
+export const REVIEW_UNNAMED_CONTRACT = 'Unnamed contract';
+
+export const REVIEW_UNNAMED_CODEBTOR = 'Unnamed codebtor';

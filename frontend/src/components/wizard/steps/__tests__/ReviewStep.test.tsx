@@ -51,6 +51,7 @@ describe('ReviewStep null-safe rendering', () => {
         ]}
         debtsData={[
           { id: 1, creditor_name: 'Visa', debt_type: 'credit_card', amount_owed: 4200 },
+          { id: 3, creditor_name: 'Demo Clinic', debt_type: 'medical', amount_owed: 80 },
           { id: 2 }, // bare entry
         ]}
         onValidationChange={vi.fn()}
@@ -59,7 +60,8 @@ describe('ReviewStep null-safe rendering', () => {
 
     // Named entries keep their label and a humanized type suffix.
     expect(screen.getByText(/My House/)).toHaveTextContent('(Real estate or home)');
-    expect(screen.getByText(/Visa/)).toHaveTextContent('(credit_card)');
+    expect(screen.getByText(/Visa/)).toHaveTextContent('(Credit card)');
+    expect(screen.getByText(/Demo Clinic/)).toHaveTextContent('(Medical bill)');
 
     // Bare entries get dignity-preserving placeholders, never blanks.
     expect(screen.getByText('One item')).toBeInTheDocument();
@@ -83,6 +85,12 @@ describe('ReviewStep null-safe rendering', () => {
             contract_type: 'lease',
             description: 'Apartment lease',
           },
+          {
+            id: 5,
+            counterparty_name: 'Demo Gym',
+            contract_type: 'contract',
+            description: 'Membership',
+          },
         ]}
         codebtorsData={[
           {
@@ -94,18 +102,101 @@ describe('ReviewStep null-safe rendering', () => {
             zip_code: '',
             relationship: 'former_spouse',
           },
+          {
+            id: 4,
+            name: 'Demo Cosigner',
+            street_address: '',
+            city: '',
+            state: '',
+            zip_code: '',
+            relationship: '',
+          },
         ]}
         onValidationChange={vi.fn()}
       />
     );
 
-    expect(screen.getByText('Contracts & Leases (1)')).toBeInTheDocument();
-    expect(screen.getByText(/Oak Street Apartments/)).toHaveTextContent('(lease)');
-    expect(screen.getByText('Codebtors (1)')).toBeInTheDocument();
-    expect(screen.getByText(/Sam Doe/)).toHaveTextContent('(former spouse)');
+    expect(screen.getByText('Contracts & Leases (2)')).toBeInTheDocument();
+    expect(screen.getByText(/Oak Street Apartments/)).toHaveTextContent('(Lease)');
+    expect(screen.getByText(/Demo Gym/)).toHaveTextContent('(Executory Contract)');
+    expect(screen.getByText('Codebtors (2)')).toBeInTheDocument();
+    expect(screen.getByText(/Sam Doe/)).toHaveTextContent('(Former Spouse)');
+    expect(screen.getByText(/Demo Cosigner/)).toHaveTextContent(/^Demo Cosigner$/);
+    expect(document.body.textContent).not.toMatch(
+      /auto_loan|credit_card|former_spouse|undefined|NaN/
+    );
 
     rerender(<ReviewStep {...baseProps} onValidationChange={vi.fn()} />);
 
+    expect(screen.getByText('No contracts or leases listed.')).toBeInTheDocument();
+    expect(screen.getByText('No codebtors listed.')).toBeInTheDocument();
+  });
+
+  it('names a row with no name in words', () => {
+    render(
+      <ReviewStep
+        {...baseProps}
+        contractsData={[{ id: 6, counterparty_name: '', contract_type: 'lease', description: '' }]}
+        codebtorsData={[
+          {
+            id: 7,
+            name: '',
+            street_address: '',
+            city: '',
+            state: '',
+            zip_code: '',
+            relationship: '',
+          },
+        ]}
+        onValidationChange={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText(/Unnamed contract/)).toHaveTextContent('Unnamed contract (Lease)');
+    expect(screen.getByText('Unnamed codebtor')).toBeInTheDocument();
+  });
+
+  it('says the filer has no amounts owed when they pressed it', () => {
+    const { rerender } = render(
+      <ReviewStep
+        {...baseProps}
+        claimAnswers={{ no_debts: true }}
+        debtsData={[]}
+        onValidationChange={vi.fn()}
+      />
+    );
+    expect(screen.getByText('You said you have no amounts owed.')).toBeInTheDocument();
+    expect(screen.queryByText('No amounts owed listed.')).not.toBeInTheDocument();
+
+    rerender(<ReviewStep {...baseProps} debtsData={[]} onValidationChange={vi.fn()} />);
+    expect(screen.getByText('No amounts owed listed.')).toBeInTheDocument();
+
+    rerender(
+      <ReviewStep
+        {...baseProps}
+        claimAnswers={{ no_debts: true }}
+        debtsData={[{ id: 1, creditor_name: 'Demo Bank', debt_type: 'credit_card' }]}
+        onValidationChange={vi.fn()}
+      />
+    );
+    expect(screen.queryByText('You said you have no amounts owed.')).not.toBeInTheDocument();
+    expect(screen.getByText(/Demo Bank/)).toBeInTheDocument();
+  });
+
+  it('says the filer has no contracts or codebtors when they answered No', () => {
+    const { rerender } = render(
+      <ReviewStep
+        {...baseProps}
+        claimAnswers={{ contracts_answer: 'no', codebtors_answer: 'no' }}
+        onValidationChange={vi.fn()}
+      />
+    );
+    expect(screen.getByText('You said you have no contracts or leases.')).toBeInTheDocument();
+    expect(screen.getByText('You said you have no codebtors.')).toBeInTheDocument();
+    expect(screen.queryByText('No contracts or leases listed.')).not.toBeInTheDocument();
+    expect(screen.queryByText('No codebtors listed.')).not.toBeInTheDocument();
+
+    rerender(<ReviewStep {...baseProps} onValidationChange={vi.fn()} />);
     expect(screen.getByText('No contracts or leases listed.')).toBeInTheDocument();
     expect(screen.getByText('No codebtors listed.')).toBeInTheDocument();
   });

@@ -29,6 +29,7 @@ import {
   SCHEDULE_G_NAME_LABEL,
   SCHEDULE_G_PURPOSE_LABEL,
 } from '../../../constants/formText';
+import { CONTRACT_TYPE_WORDS, LEASE_KIND_WORDS } from '../../../constants/claims';
 import { WIZARD_STEPS } from '../../../constants/wizardSteps';
 import { isBlankContract, keptRows } from '../../../utils/claimRows';
 import { YesNoField } from './YesNoQuestion';
@@ -52,18 +53,15 @@ interface ContractsStepProps {
   onGoToStep: (stepNumber: number) => void;
 }
 
-const CONTRACT_TYPES = [
-  { value: 'lease', label: 'Lease' },
-  { value: 'contract', label: 'Executory Contract' },
-  { value: 'other', label: 'Other' },
-];
+const CONTRACT_TYPES = Object.entries(CONTRACT_TYPE_WORDS).map(([value, label]) => ({
+  value,
+  label,
+}));
 
-const LEASE_KIND_OPTIONS = [
-  { value: 'residential', label: 'Residential' },
-  { value: 'vehicle', label: 'Vehicle' },
-  { value: 'other_personal_property', label: 'Other personal property' },
-  { value: 'other', label: 'Other' },
-];
+const LEASE_KIND_OPTIONS = Object.entries(LEASE_KIND_WORDS).map(([value, label]) => ({
+  value,
+  label,
+}));
 
 const DEBTS_STEP_NUMBER = WIZARD_STEPS.find((step) => step.key === 'debts')!.number;
 

@@ -18,6 +18,7 @@ import { FormField, FormSelect, FormTextarea, Button } from '../../common';
 import { UPLDisclaimer } from '../../compliance';
 import { UPL_EXEMPTION_DISCLAIMER } from '../../../constants/upl';
 import { ASSET_LINES } from '../../../constants/assetLines';
+import { DEBT_TYPE_WORDS } from '../../../constants/claims';
 import {
   ACCOUNT_SAVED,
   ADDRESS_HELP,
@@ -107,22 +108,42 @@ export const DEBT_CATEGORY_META: Record<
   DebtInfo['debt_type'],
   { label: string; is_secured: boolean; priority_classification: string }
 > = {
-  credit_card: { label: 'Credit card', is_secured: false, priority_classification: 'unsecured' },
-  medical: { label: 'Medical bill', is_secured: false, priority_classification: 'unsecured' },
-  personal_loan: {
-    label: 'Personal loan',
+  credit_card: {
+    label: DEBT_TYPE_WORDS.credit_card,
     is_secured: false,
     priority_classification: 'unsecured',
   },
-  student_loan: { label: 'Student loan', is_secured: false, priority_classification: 'priority' },
-  auto_loan: { label: 'Car or vehicle loan', is_secured: true, priority_classification: 'secured' },
-  mortgage: {
-    label: 'Mortgage or home loan',
+  medical: {
+    label: DEBT_TYPE_WORDS.medical,
+    is_secured: false,
+    priority_classification: 'unsecured',
+  },
+  personal_loan: {
+    label: DEBT_TYPE_WORDS.personal_loan,
+    is_secured: false,
+    priority_classification: 'unsecured',
+  },
+  student_loan: {
+    label: DEBT_TYPE_WORDS.student_loan,
+    is_secured: false,
+    priority_classification: 'priority',
+  },
+  auto_loan: {
+    label: DEBT_TYPE_WORDS.auto_loan,
     is_secured: true,
     priority_classification: 'secured',
   },
-  utility: { label: 'Utility bill', is_secured: false, priority_classification: 'unsecured' },
-  other: { label: 'Other amount owed', is_secured: false, priority_classification: 'unsecured' },
+  mortgage: {
+    label: DEBT_TYPE_WORDS.mortgage,
+    is_secured: true,
+    priority_classification: 'secured',
+  },
+  utility: {
+    label: DEBT_TYPE_WORDS.utility,
+    is_secured: false,
+    priority_classification: 'unsecured',
+  },
+  other: { label: DEBT_TYPE_WORDS.other, is_secured: false, priority_classification: 'unsecured' },
 };
 
 const DEBT_CATEGORY_OPTIONS = Object.entries(DEBT_CATEGORY_META).map(([value, { label }]) => ({

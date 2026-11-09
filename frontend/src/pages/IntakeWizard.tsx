@@ -943,6 +943,7 @@ export function IntakeWizard() {
             debtsData={debtsData}
             contractsData={contractsData.filter((row) => row.id !== undefined)}
             codebtorsData={codebtorsData.filter((row) => row.id !== undefined)}
+            claimAnswers={claimAnswers}
             householdCount={session?.household?.family_size ?? null}
             county={county}
             onValidationChange={setCanProceed}
