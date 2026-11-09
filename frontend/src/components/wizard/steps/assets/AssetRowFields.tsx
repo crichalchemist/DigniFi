@@ -7,7 +7,7 @@
  * since this step autosaves mid-Part.
  */
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Button, FormField, FormSelect } from '../../../common';
 import {
   AB_ADDRESS_LINE_2_LABEL,
@@ -56,6 +56,7 @@ import {
 } from '../../../../constants/formText';
 import { YesNoField } from '../YesNoQuestion';
 import { NO_TEXT_BOX } from './assetGaps';
+import { useReportPartial } from './useReportPartial';
 import { amountError, parseAmount } from '../../../../utils/parseAmount';
 import { PROPERTY_KINDS } from '../../../../types/api';
 import type { AssetLine } from '../../../../constants/assetLines';
@@ -82,15 +83,6 @@ export const REQUIRED_MARK = (
     *
   </span>
 );
-
-/** Counts this box at the step while it holds only part of a number, until it doesn't or is gone */
-function useReportPartial(partial: boolean, onPartialBox: (change: 1 | -1) => void) {
-  useEffect(() => {
-    if (!partial) return undefined;
-    onPartialBox(1);
-    return () => onPartialBox(-1);
-  }, [partial, onPartialBox]);
-}
 
 interface ValueBoxProps {
   name: string;

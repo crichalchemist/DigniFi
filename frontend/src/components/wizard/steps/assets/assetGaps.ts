@@ -81,7 +81,7 @@ function gateHasOnlyNos(gate: AssetLine, answers: Answers) {
 }
 
 /** What the filer knows a row by, in the order Review names it */
-function rowName(row: Row) {
+export function rowName(row: Row) {
   return (
     row.description?.trim() ||
     row.details?.street?.trim() ||
@@ -91,7 +91,7 @@ function rowName(row: Row) {
 }
 
 // One pass with a function, so the filer's words are never read as a pattern or a placeholder
-function fill(template: string, values: Record<string, string>) {
+export function fill(template: string, values: Record<string, string>) {
   return template.replace(/\{(\w+)\}/g, (_, name: string) => values[name]);
 }
 

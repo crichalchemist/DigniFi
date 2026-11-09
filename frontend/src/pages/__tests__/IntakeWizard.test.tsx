@@ -367,7 +367,7 @@ describe("IntakeWizard Complete's reasons", { timeout: 30_000 }, () => {
       message: 'Check the debts read from your documents on the Amounts Owed step.',
     };
     // Amounts Owed lets the filer continue once it holds a debt
-    const sessionWithDebt = { ...sessionAtStep9, debts: completedSession.debts };
+    const sessionWithDebt = { ...sessionAtStep9, debts: [storedDebt] };
     server.use(
       http.get('http://localhost:8000/api/intake/sessions/:id/', () =>
         HttpResponse.json(sessionWithDebt)
@@ -1033,6 +1033,19 @@ describe('IntakeWizard session re-read', { timeout: 15_000 }, () => {
 // Amounts loaded from the server (DIG-2)
 // ===========================================================================
 
+/** What Continue on Amounts Owed waits on besides a name and an amount (3c3): a Demo address and the three answers */
+const CLAIM_ANSWERS_DONE = {
+  street_address: '1 Demo Street',
+  street_2: '',
+  city: 'Demo City',
+  state: 'IL',
+  zip_code: '60601',
+  outside_us: false,
+  claim_status: [],
+  offset_answer: 'no',
+  notice_parties: [],
+};
+
 /** A returning filer on Amounts Owed. DRF sends decimal amounts as strings. */
 const sessionAtStep6WithDebts = {
   ...sessionAtStep1,
@@ -1051,6 +1064,7 @@ const sessionAtStep6WithDebts = {
       notes: '',
       is_draft: false,
       source_document_name: null,
+      ...CLAIM_ANSWERS_DONE,
     },
     {
       id: 8,
@@ -1065,6 +1079,7 @@ const sessionAtStep6WithDebts = {
       notes: '',
       is_draft: false,
       source_document_name: null,
+      ...CLAIM_ANSWERS_DONE,
     },
   ],
 };
@@ -1342,7 +1357,19 @@ describe.each([
     fill: (index: number, name: string, amount: string) => {
       fireEvent.change(field(`debt_type_${index}`), { target: { value: 'credit_card' } });
       fireEvent.change(field(`creditor_name_${index}`), { target: { value: name } });
-      fireEvent.change(field(`amount_owed_${index}`), { target: { value: amount } });
+      fireEvent.input(field(`amount_owed_${index}`), { target: { value: amount } });
+      // The rest of what Continue now waits on (3c3): the address, and the three answers
+      fireEvent.change(field(`street_address_${index}`), { target: { value: '1 Demo Street' } });
+      fireEvent.change(field(`city_${index}`), { target: { value: 'Demo City' } });
+      fireEvent.change(field(`state_${index}`), { target: { value: 'IL' } });
+      fireEvent.change(field(`zip_code_${index}`), { target: { value: '60601' } });
+      for (const [control, value] of [
+        [`claim_status_${index}`, 'none'],
+        [`offset_answer_${index}`, 'no'],
+        [`notice_${index}`, 'no'],
+      ]) {
+        fireEvent.click(document.querySelector(`input[name="${control}"][value="${value}"]`)!);
+      }
     },
     stored: storedDebt,
   },
@@ -1623,7 +1650,7 @@ describe('IntakeWizard the monthly payment on the Amounts Owed step', () => {
     });
     renderWizard();
     await screen.findByRole('heading', { name: /amounts owed/i, level: 2 });
-    fireEvent.change(field('monthly_payment_0'), { target: { value } });
+    fireEvent.input(field('monthly_payment_0'), { target: { value } });
     await userEvent.click(screen.getByRole('button', { name: /continue/i }));
     await waitFor(() => expect(bodies.length).toBeGreaterThan(0));
     return (bodies[0] as { debts: Record<string, unknown>[] }).debts[0];
@@ -2098,7 +2125,17 @@ describe('IntakeWizard a new debt after Complete', { timeout: 30_000 }, () => {
   // new debt has its id, stepping back over Amounts Owed must not save it again.
   it('keeps a completed intake completed when the filer steps back to the debt they added', async () => {
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
-    const saves = serveSessionSaves({ ...sessionAtStep1, current_step: 6 });
+    // The answers Contracts and Codebtors will wait on, so Continue is enabled at both
+    const saves = serveSessionSaves({
+      ...sessionAtStep1,
+      current_step: 6,
+      claim_answers: {
+        no_debts: null,
+        contracts_answer: 'no',
+        codebtors_answer: 'no',
+        community_lived: 'no',
+      },
+    });
     server.use(
       http.post(
         'http://localhost:8000/api/intake/sessions/:id/update_step/',
@@ -2125,7 +2162,18 @@ describe('IntakeWizard a new debt after Complete', { timeout: 30_000 }, () => {
 
     fireEvent.change(field('debt_type_0'), { target: { value: 'credit_card' } });
     fireEvent.change(field('creditor_name_0'), { target: { value: 'Elm Street Clinic' } });
-    fireEvent.change(field('amount_owed_0'), { target: { value: '1200' } });
+    fireEvent.input(field('amount_owed_0'), { target: { value: '1200' } });
+    fireEvent.change(field('street_address_0'), { target: { value: '1 Demo Street' } });
+    fireEvent.change(field('city_0'), { target: { value: 'Demo City' } });
+    fireEvent.change(field('state_0'), { target: { value: 'IL' } });
+    fireEvent.change(field('zip_code_0'), { target: { value: '60601' } });
+    for (const [control, value] of [
+      ['claim_status_0', 'none'],
+      ['offset_answer_0', 'no'],
+      ['notice_0', 'no'],
+    ]) {
+      fireEvent.click(document.querySelector(`input[name="${control}"][value="${value}"]`)!);
+    }
     for (const next of ['Contracts & Leases', 'Codebtors', 'Review & Results']) {
       const continueBtn = screen.getByRole('button', { name: 'Continue' });
       await waitFor(() => expect(continueBtn).toBeEnabled());
@@ -3850,6 +3898,80 @@ describe('IntakeWizard contracts and codebtors', { timeout: 15_000 }, () => {
     }
 
     expect(sentDebts(bodies[bodies.length - 1]).map((row) => row.id)).toEqual([7, undefined]);
+  });
+
+  it('sends no_debts only while "I have no amounts owed" is pressed and no row is touched', async () => {
+    const { bodies } = serveSessionSaves({ ...sessionAtStep1, current_step: 6 });
+    renderWizard();
+    await screen.findByRole('heading', { name: /amounts owed/i, level: 2 });
+
+    vi.useFakeTimers();
+    try {
+      fireEvent.click(screen.getByRole('button', { name: 'I have no amounts owed' }));
+      await waitSeconds(3);
+      expect(bodies).toHaveLength(1);
+      expect(bodies[0]).toEqual({ debts: [], claim_answers: { no_debts: true } });
+
+      fireEvent.change(field('creditor_name_0'), { target: { value: 'Demo Clinic' } });
+      await waitSeconds(3);
+    } finally {
+      vi.useRealTimers();
+    }
+
+    const last = bodies[bodies.length - 1] as { debts: unknown[]; claim_answers: unknown };
+    expect(last.debts).toHaveLength(1);
+    expect(last.claim_answers).toEqual({ no_debts: null });
+    expect(
+      screen.queryByRole('button', { name: 'I have no amounts owed' })
+    ).not.toBeInTheDocument();
+  });
+
+  it('treats a loaded row as pressed and a loaded scanned draft as unpressed', async () => {
+    const draft = {
+      ...storedDebt,
+      id: 8,
+      creditor_name: 'Demo Scan',
+      debt_type: 'other',
+      is_draft: true,
+    };
+    const { bodies } = serveSessionSaves({
+      ...sessionAtStep1,
+      current_step: 6,
+      debts: [storedDebt, draft],
+    });
+    renderWizard();
+    await screen.findByRole('heading', { name: /amounts owed/i, level: 2 });
+
+    vi.useFakeTimers();
+    try {
+      fireEvent.change(field('debt_type_0'), { target: { value: 'auto_loan' } });
+      await waitSeconds(3);
+      expect(sentDebts(bodies[bodies.length - 1])[0].is_secured).toBe(false);
+
+      fireEvent.change(field('debt_type_1'), { target: { value: 'auto_loan' } });
+      await waitSeconds(3);
+      expect(sentDebts(bodies[bodies.length - 1])[1].is_secured).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('shows a stored no_debts answer beside a stored row as not pressed', async () => {
+    serveSessionSaves({
+      ...sessionAtStep1,
+      current_step: 6,
+      debts: [storedDebt],
+      claim_answers: { no_debts: true },
+    });
+    renderWizard();
+    await screen.findByRole('heading', { name: /amounts owed/i, level: 2 });
+
+    expect((field('creditor_name_0') as HTMLInputElement).value).toBe('Northwind Card Services');
+    expect(
+      screen.queryByRole('button', { name: 'I have no amounts owed', pressed: true })
+    ).not.toBeInTheDocument();
+    // The answer is not read as a contradiction the filer can't undo
+    expect(document.querySelector('.debts-step [role="status"]')).toBeEmptyDOMElement();
   });
 
   it('sends a new debt that has a number but no name', async () => {

@@ -616,3 +616,79 @@ export const REVIEW_ASSET_ROW = 'Line {key}: {name}';
 
 // A button's name for a screen reader, where the list repeats one button per row
 export const GO_TO_STEP_FOR_ROW = 'Go to {step} for {row}';
+
+// The Amounts Owed step (3c3 Task 8)
+
+// DRAFT: counsel C-9
+export const ADDRESS_HELP =
+  'The court uses this address to send the creditor notice of your case. A bill, a letter from the creditor or a credit report may show it. Legal aid can help you find it.';
+
+// DRAFT: counsel C-9
+export const AMOUNT_HELP =
+  'A recent bill, a letter from the creditor or a credit report may show the amount. Legal aid can help you find it.';
+
+// DRAFT: counsel C-9
+// Counsel's caution (spec §11 C2): keep "unliquidated" from implying the amount can be left
+// blank, since the amount box above it is required above $0.
+export const CLAIM_STATUS_HELP =
+  'Contingent means it depends on something that has not happened yet. Unliquidated means the amount has not been set. Disputed means you or the creditor disagree about whether you owe it, or how much.';
+
+// DRAFT: counsel C-9
+export const OFFSET_HELP =
+  'Offset means the creditor may take money it owes you, such as money in your account with it. It uses that money to pay part of this debt.';
+
+// DRAFT: counsel C-18
+export const SECURED_QUESTION = 'Can the lender take back property if you do not pay?';
+
+// DRAFT: counsel C-18
+export const LIEN_HELP = 'A lien is a legal claim on property that backs up what you owe.';
+
+// DRAFT: counsel C-1
+export const CO_OWNED_NOTE = 'Which value applies is something legal aid can help you decide.';
+
+// DRAFT: counsel C-17
+export const NOTICE_QUESTION = 'Is anyone else contacting you about this amount owed?';
+
+// DRAFT: counsel C-17
+export const NOTICE_HELP =
+  'List the creditor above. Here, list anyone else who contacts you about this amount, such as a collection agency or a law firm.';
+
+export const NO_DEBTS_BUTTON = 'I have no amounts owed';
+
+export const CLAIM_STATUS_NONE = 'None of these';
+
+export const OUTSIDE_US_LABEL = 'This address is outside the United States';
+
+export const OUTSIDE_US_HELP =
+  'Type the whole address in the street and city boxes, with the country. Leave the state and ZIP boxes empty.';
+
+export const SECURING_PROPERTY_LABEL = 'The property for this amount owed';
+
+export const LIEN_OTHER_LABEL = 'What kind of lien is it?';
+
+export const HOME_LINE_QUESTION = 'Which kind of mortgage is this?';
+
+export const PAYMENT_SECURED_HELP = 'Enter 0 if you pay nothing on it.';
+
+export const DATE_INCURRED_HELP = 'Month and year, if you know them. You can leave this empty.';
+
+export const ACCOUNT_SAVED = 'Saved. It ends in {last4}.';
+
+export const NOTICE_PARTY_HEADING = 'Person or company {n}';
+
+export const ADD_ANOTHER_PARTY = 'Add one more person or company';
+
+export const REMOVE_PARTY = 'Remove person or company {n} on amount owed {debt}';
+
+// DigniFi's words, not printed text: cut from Schedule J lines 4 and 5, which print "first
+// mortgage payments" and "Additional mortgage payments for your residence, such as home equity
+// loans", cut to the loan since the filer answers about the loan
+export const HOME_LINE_FIRST = 'First mortgage';
+
+export const HOME_LINE_ADDITIONAL = 'Additional mortgage, such as a home equity loan';
+
+export const SECURED_PREFILLED_NOTE =
+  'We filled this in from the kind of amount owed. Change it if it is wrong.';
+
+export const DEBTS_STEP_WHY =
+  'Your answers here fill in Schedules D and E/F, the court forms that list who you owe.';

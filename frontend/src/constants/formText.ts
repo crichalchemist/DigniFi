@@ -9,10 +9,12 @@
  * P2).
  */
 import type {
+  ClaimStatus,
   DeductionField,
   EntryKind,
   ExpenseField,
   ExpenseSpecifyField,
+  LienKind,
   MaritalStatus,
   PaymentChoice,
   PropertyKind,
@@ -593,3 +595,37 @@ export const AB_PERSONAL_INFO_QUESTION =
 export const AB_NO = 'No';
 
 export const AB_YES = 'Yes';
+
+// Schedule D and E/F, the claim rows (form_b106d.pdf pages 1 and 3, form_b106ef.pdf pages 1 and 3)
+
+// D prints "Number" and "Street" as two captions under one line
+export const CLAIM_STREET_LABEL = 'Number Street';
+export const D_DESCRIBE_PROPERTY_LABEL = 'Describe the property that secures the claim:';
+export const CLAIM_STATUS_QUESTION = 'As of the date you file, the claim is: Check all that apply.';
+
+export const CLAIM_STATUS_WORDS: Record<ClaimStatus, string> = {
+  contingent: 'Contingent',
+  unliquidated: 'Unliquidated',
+  disputed: 'Disputed',
+};
+
+export const LIEN_QUESTION = 'Nature of lien. Check all that apply.';
+
+// Cut: the printed blank after "Other (including a right to offset)", and the first answer's
+// second line is joined to its first
+export const LIEN_KIND_WORDS: Record<LienKind, string> = {
+  agreement: 'An agreement you made (such as mortgage or secured car loan)',
+  statutory: 'Statutory lien (such as tax lien, mechanic’s lien)',
+  judgment: 'Judgment lien from a lawsuit',
+  other: 'Other (including a right to offset)',
+};
+
+export const D_COMMUNITY_LABEL = 'Check if this claim relates to a community debt';
+export const EF_COMMUNITY_LABEL = 'Check if this claim is for a community debt';
+export const D_DATE_LABEL = 'Date debt was incurred';
+export const EF_DATE_LABEL = 'When was the debt incurred?';
+export const CLAIM_OFFSET_QUESTION = 'Is the claim subject to offset?';
+export const CLAIM_LAST_4_LABEL = 'Last 4 digits of account number';
+
+// Schedule D Part 2
+export const CLAIM_NOTICE_NAME_LABEL = 'Name';
