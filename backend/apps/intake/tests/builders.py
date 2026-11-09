@@ -243,9 +243,7 @@ def complete_codebtor(session, links=None, **over) -> Codebtor:
 
 def linked_row(session, line, lives_here=None, description="Demo item") -> AssetInfo:
     """An A/B row on a line with its "Do you live here?" answer (3c4's payment mapping)."""
-    row = AssetInfo(
-        session=session, ab_line=line, description=description, current_value=Decimal("100.00")
-    )
+    row = AssetInfo(session=session, ab_line=line, description=description)
     row.set_details({"lives_here": lives_here})
     row.save()
     return row

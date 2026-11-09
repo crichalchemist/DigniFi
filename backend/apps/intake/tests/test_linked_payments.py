@@ -24,6 +24,7 @@ from apps.intake.tests.builders import (
 )
 from apps.users.models import User
 
+FRONTEND_SRC = settings.BASE_DIR.parent / "frontend" / "src"
 CASES = (
     settings.BASE_DIR.parent
     / "frontend"
@@ -264,8 +265,14 @@ def test_a_figure_prints_with_cents_and_commas():
     assert format_figure(Decimal("1234567.89")) == "1,234,567.89"
 
 
+def test_a_missing_shared_cases_file_fails_instead_of_skipping_where_the_frontend_is():
+    if not FRONTEND_SRC.is_dir():
+        pytest.skip("the frontend's source isn't here (compose's backend mounts backend/ only)")
+    assert CASES.is_file(), "the one pin between the server's sums and the browser's is gone"
+
+
 def test_the_shared_cases_match_the_server(filer):
-    if not CASES.is_file():
+    if not FRONTEND_SRC.is_dir():
         pytest.skip("the frontend's source isn't here (compose's backend mounts backend/ only)")
     cases = json.loads(CASES.read_text())
     assert len(cases) >= 16
