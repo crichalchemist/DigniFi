@@ -177,12 +177,13 @@ Ownership is "Debtor 1 only" on every item, so entire value = portion. Nature of
 
 The names are fictional for every new party; see section 4 for the three existing creditors. The last-4 digits are synthetic.
 
-| Debt                                   | Address (synthetic)             | Last 4 | Incurred  | "Can the lender take back property?"                                                                              | Status flags |
-| -------------------------------------- | ------------------------------- | ------ | --------- | ----------------------------------------------------------------------------------------------------------------- | ------------ |
-| Brightwater Card Services card, $4,200 | 1 Demo Way, Richmond, VA 23238  | 1001   | 2019–2025 | No                                                                                                                | none         |
-| Larkfield General Hospital, $12,800    | 2 Demo Plaza, Chicago, IL 60611 | 2002   | 11/2025   | No. The date box takes about 15 characters; the longer wording ("son's ER visit") was measured and refused (S16). | none         |
-| Ironbridge personal loan, $3,500       | 3 Demo Rd, Riverwoods, IL 60015 | 3003   | 05/2024   | No                                                                                                                | none         |
+| Debt                                   | Address (synthetic)             | Last 4 | Incurred  | "Can the lender take back property?" | Status flags |
+| -------------------------------------- | ------------------------------- | ------ | --------- | ------------------------------------ | ------------ |
+| Brightwater Card Services card, $4,200 | 1 Demo Way, Richmond, VA 23238  | 1001   | 2019–2025 | No                                   | none         |
+| Larkfield General Hospital, $12,800    | 2 Demo Plaza, Chicago, IL 60611 | 2002   | 11/2025   | No                                   | none         |
+| Ironbridge personal loan, $3,500       | 3 Demo Rd, Riverwoods, IL 60015 | 3003   | 05/2024   | No                                   | none         |
 
+- **Larkfield's date:** the date box takes about 15 characters; the longer wording ("son's ER visit") was measured and refused (S16).
 - **Secured:** her answer is No for all three, because she pledged nothing. The Civic's title is clear (paid off). There is no collateral link, and Schedule D stays empty.
 - **Status flags:** contingent, unliquidated, disputed and offset are all No, by her answers. Nothing is pre-ticked.
 - **Timeline:** the hospital bill and the card went to collections about February 2026, matching the brief's "8 months" of dodging calls at the fill date.
