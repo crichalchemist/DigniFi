@@ -1,4 +1,4 @@
-import { render, screen, waitFor, act, fireEvent } from '@testing-library/react';
+import { render, screen, waitFor, act, fireEvent, within } from '@testing-library/react';
 import { vi } from 'vitest';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
@@ -13,9 +13,13 @@ import {
   EXPENSE_SPECIFY_FIELDS,
   INCOME_FIELDS,
 } from '../../types/api';
-import { AB_PART_TITLES, EXPENSE_LINE_WORDS } from '../../constants/formText';
+import {
+  AB_PART_TITLES,
+  EXPENSE_LINE_WORDS,
+  SCHEDULE_G_NAME_LABEL,
+} from '../../constants/formText';
 import { ASSET_LINES } from '../../constants/assetLines';
-import { OLD_ROWS_NOTE } from '../../constants/copy';
+import { CONTRACT_GAP_NO_NAME, OLD_ROWS_NOTE } from '../../constants/copy';
 
 // DebtorInfoStep reads account email via useAuth; wizard test renders without
 // AuthProvider, so we stub just the user object the step needs.
@@ -367,7 +371,12 @@ describe("IntakeWizard Complete's reasons", { timeout: 30_000 }, () => {
       message: 'Check the debts read from your documents on the Amounts Owed step.',
     };
     // Amounts Owed lets the filer continue once it holds a debt
-    const sessionWithDebt = { ...sessionAtStep9, debts: [storedDebt] };
+    // and every claim question is answered, set here so the shared sessions keep theirs
+    const sessionWithDebt = {
+      ...sessionAtStep9,
+      debts: [storedDebt],
+      claim_answers: { contracts_answer: 'no', codebtors_answer: 'no', community_lived: 'no' },
+    };
     server.use(
       http.get('http://localhost:8000/api/intake/sessions/:id/', () =>
         HttpResponse.json(sessionWithDebt)
@@ -3304,7 +3313,8 @@ describe.each([
     step: 7,
     title: 'Contracts & Leases',
     nameKey: 'counterparty_name',
-    nameLabel: 'Counterparty Name',
+    // The name box carries the required mark, so its accessible name has more than the label
+    nameLabel: new RegExp(`^${SCHEDULE_G_NAME_LABEL}`),
     addLabel: /add contract/i,
     stored: storedLease as Record<string, unknown>,
   },
@@ -3313,7 +3323,7 @@ describe.each([
     step: 8,
     title: 'Codebtors',
     nameKey: 'name',
-    nameLabel: 'Full Name',
+    nameLabel: 'Full Name' as string | RegExp,
     addLabel: /add codebtor/i,
     stored: storedCodebtor as Record<string, unknown>,
   },
@@ -3572,6 +3582,19 @@ describe('IntakeWizard contracts and codebtors', { timeout: 15_000 }, () => {
     );
   }
 
+  /** Answers every question of the contract at `index`, as the filer does (fireEvent: fake timers) */
+  const completeContract = (index: number) => {
+    const set = (name: string, value: string) =>
+      fireEvent.change(document.querySelector(`[name="${name}"]`)!, { target: { value } });
+    set(`street_address_${index}`, '1 Demo Street');
+    set(`city_${index}`, 'Demo City');
+    set(`state_${index}`, 'IL');
+    set(`zip_code_${index}`, '60601');
+    set(`contract_type_${index}`, 'contract');
+    set(`description_${index}`, 'Storage unit');
+    fireEvent.click(document.querySelector(`[name="owes_now_${index}"][value="no"]`)!);
+  };
+
   beforeEach(() => {
     contractSaves = [];
     codebtorSaves = [];
@@ -3622,6 +3645,7 @@ describe('IntakeWizard contracts and codebtors', { timeout: 15_000 }, () => {
       fireEvent.change(screen.getAllByPlaceholderText('e.g., Landlord Inc.')[1], {
         target: { value: 'Lakeview Storage' },
       });
+      completeContract(1);
       fireEvent.click(screen.getByRole('button', { name: /add contract/i }));
       fireEvent.click(screen.getByRole('button', { name: /continue/i }));
       await waitSeconds(1);
@@ -3632,8 +3656,19 @@ describe('IntakeWizard contracts and codebtors', { timeout: 15_000 }, () => {
 
     const lakeview = {
       counterparty_name: 'Lakeview Storage',
-      contract_type: '',
-      description: '',
+      contract_type: 'contract',
+      description: 'Storage unit',
+      street_address: '1 Demo Street',
+      street_2: '',
+      city: 'Demo City',
+      state: 'IL',
+      zip_code: '60601',
+      outside_us: false,
+      lease_kind: null,
+      monthly_payment: null,
+      vehicle_asset: null,
+      owes_now: 'no',
+      owed_debt: null,
     };
     expect(contractSaves).toEqual([[storedLease, lakeview]]);
 
@@ -3666,12 +3701,18 @@ describe('IntakeWizard contracts and codebtors', { timeout: 15_000 }, () => {
   // An empty list means the filer has none: a removed last row must not stay stored and
   // print on Schedule G or H
   it.each([
-    [7, 'Contracts & Leases', 'Codebtors', [storedLease], [], () => contractSaves],
-    [8, 'Codebtors', 'Review & Results', [], [storedCodebtor], () => codebtorSaves],
+    [7, 'Contracts & Leases', 'Codebtors', [storedLease], [], () => contractSaves, {}],
+    [8, 'Codebtors', 'Review & Results', [], [storedCodebtor], () => codebtorSaves, {}],
   ])(
     'saves an empty list when the filer removes the last row on step %i (%s)',
-    async (step, title, nextTitle, contracts, codebtors, saves) => {
-      serveFiler(step, contracts, codebtors);
+    async (step, title, nextTitle, contracts, codebtors, saves, claimAnswers) => {
+      // Step 7's list answer is No, so the empty list is no gap (the answer shows at load)
+      serveFiler(
+        step,
+        contracts,
+        codebtors,
+        step === 7 ? { contracts_answer: 'no' } : claimAnswers
+      );
       renderWizard();
       await expectStep(title);
 
@@ -3715,18 +3756,17 @@ describe('IntakeWizard contracts and codebtors', { timeout: 15_000 }, () => {
   );
 
   it("asks for the other party's name before a contract the filer started can be saved", async () => {
-    serveFiler(7);
+    serveFiler(7, [], [], { contracts_answer: 'yes' });
     renderWizard();
     await expectStep('Contracts & Leases');
 
     await userEvent.click(screen.getByRole('button', { name: /add contract/i }));
     await userEvent.type(screen.getByPlaceholderText('e.g., Apartment lease, car lease'), 'Lease');
 
-    expect(screen.getByRole('alert')).toHaveTextContent('Please enter the name of the other party');
+    // The wizard has a status region of its own, so the step's is found inside the step
+    const step = document.querySelector('.contracts-step') as HTMLElement;
+    expect(within(step).getByRole('status')).toHaveTextContent(CONTRACT_GAP_NO_NAME);
     expect(screen.getByRole('button', { name: /continue/i })).toBeDisabled();
-
-    await userEvent.type(screen.getByPlaceholderText('e.g., Landlord Inc.'), 'Oak Street');
-    expect(screen.getByRole('button', { name: /continue/i })).toBeEnabled();
   });
 
   it("asks for the person's name before a codebtor the filer started can be saved", async () => {

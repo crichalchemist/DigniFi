@@ -4,6 +4,7 @@ import {
   assetLabel,
   asksWho,
   claimRowName,
+  inIdOrder,
   linkIsLive,
   type AddressValue,
 } from '../claimNames';
@@ -42,6 +43,13 @@ describe('an address the court can use', () => {
     const outside = { ...complete, outside_us: true, state: '', zip_code: '' };
     expect(addressMissing(outside)).toBe(false);
     expect(addressMissing({ ...outside, city: '' })).toBe(true);
+  });
+});
+
+describe('the order the server checks rows in', () => {
+  it('puts new rows after stored ones in inIdOrder', () => {
+    const rows = [{ k: 'new' }, { id: 9, k: 'nine' }, { id: 4, k: 'four' }, { k: 'new2' }];
+    expect(inIdOrder(rows).map((row) => row.k)).toEqual(['four', 'nine', 'new', 'new2']);
   });
 });
 

@@ -52,6 +52,13 @@ export function asksWho(shape: AssetLineShape | undefined): boolean {
   return shape === 'place' || shape === 'vehicle' || shape === 'vehicle_no_mileage';
 }
 
+/** Rows in the server's id order: ids ascending, rows with no id after them as held (B37) */
+export function inIdOrder<T extends { id?: number }>(rows: T[]): T[] {
+  const stored = rows.filter((row) => row.id !== undefined);
+  const added = rows.filter((row) => row.id === undefined);
+  return [...stored.sort((a, b) => (a.id as number) - (b.id as number)), ...added];
+}
+
 /** The picker's words for an Assets row: its line, then what tells it from the others */
 export function assetLabel(row: WizardRow<AssetInfo>): string {
   const shape = ASSET_LINES.find((line) => line.key === row.ab_line)?.shape;

@@ -695,3 +695,31 @@ export const SECURED_PREFILLED_NOTE =
 
 export const DEBTS_STEP_WHY =
   'Your answers here fill in Schedules D and E/F, the court forms that list who you owe.';
+
+export const LEASE_KIND_LABEL = 'Kind of lease';
+
+export const VEHICLE_LEASE_LABEL = 'Vehicle you lease';
+
+export const VEHICLE_LEASE_HELP =
+  'The vehicles you listed on the Assets step are here. To add one, go back to that step.';
+
+export const LEASE_PAYMENT_LABEL = 'Monthly lease payment';
+
+// DRAFT: counsel C-9
+export const OWES_NOW_QUESTION = 'Do you owe money on this now?';
+
+// DRAFT: counsel C-9
+export const OWES_NOW_PICK_LABEL = 'Which amount owed goes with this?';
+
+// DRAFT: counsel C-9
+export const OWES_NOW_ADD_HELP =
+  'If it is not in this list, add it on the Amounts Owed step. Then come back and pick it.';
+
+export const GO_TO_AMOUNTS_OWED = 'Go to Amounts Owed';
+
+export const CONTRACTS_STEP_WHY =
+  'Your answers here fill in Schedule G, the court form that lists your contracts and leases.';
+
+// DRAFT: counsel C-9
+export const CONTRACT_ADDRESS_HELP =
+  'The court uses this address to send the other party notice of your case.';

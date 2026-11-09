@@ -913,6 +913,7 @@ export function IntakeWizard() {
             debts={debtsData}
             assets={assetsData}
             onValidationChange={setCanProceed}
+            onGoToStep={moveToStep}
           />
         );
 

@@ -629,3 +629,13 @@ export const CLAIM_LAST_4_LABEL = 'Last 4 digits of account number';
 
 // Schedule D Part 2
 export const CLAIM_NOTICE_NAME_LABEL = 'Name';
+
+// Schedule G line 1. The answers are asked as "No" and "Yes". Cut from No: ". Check this box and
+// file this form with the court with your other schedules. You have nothing else to report on
+// this form." Cut from Yes: ". Fill in all of the information below even if the contracts or
+// leases are listed on Schedule A/B: Property (Official Form 106A/B)." Both are instructions to a
+// person holding the paper form.
+export const SCHEDULE_G_LINE_1_QUESTION =
+  'Do you have any executory contracts or unexpired leases?';
+export const SCHEDULE_G_NAME_LABEL = 'Person or company with whom you have the contract or lease';
+export const SCHEDULE_G_PURPOSE_LABEL = 'State what the contract or lease is for';
