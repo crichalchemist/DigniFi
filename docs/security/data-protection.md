@@ -42,8 +42,10 @@
 - `DebtorInfo.ssn` - Social Security Number
 - `AssetInfo.current_value`, `amount_owed`, `account_number` - Asset values and account numbers
 - `DebtInfo.amount_owed`, `account_number`, `creditor_name`, `monthly_payment`, `notes`, `collateral_description`, `date_incurred` - Debt details
-- `ExecutoryContract.counterparty_name`, `description` - Contracts and leases (Schedule G)
-- `Codebtor` - every answer: name, address and relationship (Schedule H)
+- `DebtInfo.street_address`, `street_2`, `city`, `state`, `zip_code`, `outside_us`, `home_payment_line`, `collateral_who`, `offset_answer`, `community_debt`, `lien`, `claim_status`, `notice_parties` - The creditor's address and the filer's answers on Schedules D and E/F (forms 3c3). The foreign key `secured_by` and the counter `next_notice_party_id` are plaintext. The status flags `is_contingent`, `is_unliquidated` and `is_disputed` are dropped (migration 0040)
+- `ExecutoryContract.counterparty_name`, `description`, `street_address`, `street_2`, `city`, `state`, `zip_code`, `outside_us`, `lease_kind`, `monthly_payment`, `owes_now` - Contracts and leases (Schedule G). The foreign keys `vehicle_asset` and `owed_debt` are plaintext
+- `Codebtor` - every answer: name, address (with `street_2` and `outside_us`), relationship and `links` (Schedule H)
+- `ClaimAnswers.answers` - The filer's own answers on Schedules D, E/F, G and H beyond any one row (forms 3c3)
 - `FilingFee` - every answer: how the filer will pay the fee (Form 101 line 8), and Form 103B lines 4, 5, 7 and 9
 - `SOFAPriorIncome.gross_amount`, `SOFACreditorPayment.total_paid` - Financial affairs amounts
 - `MeansTest.calculation_details` - Means test working

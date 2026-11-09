@@ -69,22 +69,6 @@ class TestDebtInfoClassification:
 
         assert debt.is_priority is True
 
-    def test_debt_status_flags(self, session):
-        """Test contingent, unliquidated, and disputed flags."""
-        debt = DebtInfo.objects.create(
-            session=session,
-            creditor_name="Lawsuit Plaintiff",
-            amount_owed=25000.00,
-            debt_type="other",
-            is_contingent=False,
-            is_unliquidated=True,
-            is_disputed=True,
-        )
-
-        assert debt.is_contingent is False
-        assert debt.is_unliquidated is True
-        assert debt.is_disputed is True
-
     def test_a_debt_incurred_over_time_keeps_its_range_of_dates(self, session):
         """The national instructions ask for the range of dates (3c2 R4)."""
         debt = DebtInfo.objects.create(

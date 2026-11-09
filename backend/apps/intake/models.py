@@ -6,13 +6,20 @@ from typing import ClassVar
 
 from django.conf import settings
 from django.db import models
-from encrypted_model_fields.fields import EncryptedCharField, EncryptedTextField
+from encrypted_model_fields.fields import (
+    EncryptedBooleanField,
+    EncryptedCharField,
+    EncryptedTextField,
+)
 
+from .asset_lines import WHO
 from .fields import EncryptedDecimalField
 from .household import ANSWER_KEYS, SPOUSE_KEY
 from .income import ENTRY_AMOUNT_KEYS, ENTRY_KEYS, floored_net, has_entry_figures
 
 YES_NO = ("yes", "no")
+HOME_PAYMENT_LINES = ("first", "additional")
+LEASE_KINDS = ("residential", "vehicle", "other_personal_property", "other")
 
 
 class IntakeSession(models.Model):
@@ -749,6 +756,64 @@ class AssetLineAnswers(models.Model):
         self.answers = json.dumps(answers)
 
 
+class ClaimAnswers(models.Model):
+    """The filer's own answers to Schedules D, E/F, G and H beyond any one row (3c3 spec §7.1).
+
+    A JSON object of key to answer, encrypted. A key that is absent is unanswered.
+    """
+
+    KEYS: ClassVar[tuple[str, ...]] = (
+        "no_debts",
+        "contracts_answer",
+        "codebtors_answer",
+        "community_lived",
+        "community_spouse_lived_with",
+        "community_state",
+        "community_spouse_name",
+        "community_spouse_street_address",
+        "community_spouse_street_2",
+        "community_spouse_city",
+        "community_spouse_state",
+        "community_spouse_zip_code",
+        "community_spouse_outside_us",
+    )
+    TEXT_LIMITS: ClassVar[dict[str, int]] = {
+        "community_state": 100,
+        "community_spouse_name": 255,
+        "community_spouse_street_address": 255,
+        "community_spouse_street_2": 255,
+        "community_spouse_city": 100,
+        "community_spouse_state": 2,
+        "community_spouse_zip_code": 10,
+    }
+
+    session = models.OneToOneField(
+        IntakeSession, on_delete=models.CASCADE, related_name="claim_answers"
+    )
+    answers = EncryptedTextField(default="{}")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "claim_answers"
+
+    def __str__(self) -> str:
+        return f"ClaimAnswers (Session: {self.session_id})"
+
+    def get_answers(self) -> dict:
+        return json.loads(self.answers)
+
+    def merge(self, sent: dict) -> None:
+        """Set each sent answer; a null removes the key. Doesn't save."""
+        answers = self.get_answers()
+        for key, value in sent.items():
+            if value is None:
+                answers.pop(key, None)
+            else:
+                answers[key] = value
+        self.answers = json.dumps(answers)
+
+
 class DebtInfoQuerySet(models.QuerySet):
     def confirmed(self):
         """The debts the filer has confirmed, without the drafts read from scanned documents.
@@ -855,21 +920,6 @@ class DebtInfo(models.Model):
         help_text="Priority unsecured debts (e.g., taxes, child support) on Schedule E/F Part 1",
     )
 
-    is_contingent = models.BooleanField(
-        default=False,
-        help_text="Debt depends on future event",
-    )
-
-    is_unliquidated = models.BooleanField(
-        default=False,
-        help_text="Amount not yet determined",
-    )
-
-    is_disputed = models.BooleanField(
-        default=False,
-        help_text="Debtor disputes validity or amount",
-    )
-
     date_incurred = EncryptedTextField(
         null=True,
         blank=True,
@@ -895,13 +945,105 @@ class DebtInfo(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    # The creditor's address (Schedules D and E/F), 3c3.
+    street_address = EncryptedCharField(max_length=255, blank=True, default="")
+    street_2 = EncryptedCharField(max_length=255, blank=True, default="")
+    city = EncryptedCharField(max_length=100, blank=True, default="")
+    state = EncryptedCharField(max_length=2, blank=True, default="")
+    zip_code = EncryptedCharField(max_length=10, blank=True, default="")
+    outside_us = EncryptedBooleanField(default=False)
+
+    secured_by = models.ForeignKey(
+        AssetInfo,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="secured_debts",
+    )
+    home_payment_line = EncryptedCharField(
+        max_length=10,
+        choices=[(v, v) for v in HOME_PAYMENT_LINES],
+        null=True,
+        blank=True,
+    )
+    collateral_who = EncryptedCharField(
+        max_length=20, choices=[(v, v) for v in WHO], null=True, blank=True
+    )
+    offset_answer = EncryptedCharField(
+        max_length=3, choices=[(v, v) for v in YES_NO], null=True, blank=True
+    )
+    community_debt = EncryptedCharField(
+        max_length=3, choices=[("yes", "yes")], blank=True, default=""
+    )
+    lien = EncryptedTextField(null=True, blank=True)
+    claim_status = EncryptedTextField(null=True, blank=True)
+    notice_parties = EncryptedTextField(null=True, blank=True)
+    next_notice_party_id = models.PositiveIntegerField(default=1)
+
     objects = DebtInfoQuerySet.as_manager()
+
+    LIEN_KINDS: ClassVar[tuple[str, ...]] = ("agreement", "statutory", "judgment", "other")
+    CLAIM_STATUSES: ClassVar[tuple[str, ...]] = ("contingent", "unliquidated", "disputed")
+    MAX_NOTICE_PARTIES = 10
+    NOTICE_PARTY_KEYS: ClassVar[tuple[str, ...]] = (
+        "name",
+        "street_address",
+        "street_2",
+        "city",
+        "state",
+        "zip_code",
+        "outside_us",
+        "last_4",
+    )
+    # The JSON columns _save_rows_by_id stores with json.dumps.
+    JSON_ANSWERS: ClassVar[tuple[str, ...]] = ("lien", "claim_status")
+    # The longest range of dates the narrowest date box, Schedule D's, prints whole at 6 pt,
+    # typed with a hyphen (3c3 R21).
+    DATE_INCURRED_MAX_LENGTH = 15
 
     class Meta:
         db_table = "debt_info"
 
     def __str__(self) -> str:
         return f"DebtInfo {self.pk} ({self.get_debt_type_display()}, {self.get_consumer_business_classification_display()})"
+
+    def get_lien(self) -> dict | None:
+        return None if self.lien is None else json.loads(self.lien)
+
+    def get_claim_status(self) -> list[str] | None:
+        return None if self.claim_status is None else json.loads(self.claim_status)
+
+    def get_notice_parties(self) -> list[dict] | None:
+        return None if self.notice_parties is None else json.loads(self.notice_parties)
+
+    def store_notice_parties(self, rows: list[dict] | None) -> list[dict] | None:
+        """Store the list in the order sent and return it as stored. Doesn't save.
+
+        A row keeps its id when the stored list holds it and no earlier row in this list
+        kept it; every other row gets next_notice_party_id, which then goes up by one.
+        Storing None resets nothing.
+        """
+        if rows is None:
+            self.notice_parties = None
+            return None
+        stored_ids = {row["id"] for row in self.get_notice_parties() or []}
+        kept = set()
+        saved = []
+        for row in rows:
+            party_id = row.get("id")
+            if party_id in stored_ids and party_id not in kept:
+                kept.add(party_id)
+            else:
+                party_id = self.next_notice_party_id
+                self.next_notice_party_id += 1
+            party = {"id": party_id}
+            for key in self.NOTICE_PARTY_KEYS:
+                missing = False if key == "outside_us" else ""
+                value = row.get(key)
+                party[key] = missing if value is None else value
+            saved.append(party)
+        self.notice_parties = json.dumps(saved)
+        return saved
 
 
 class FilingFee(models.Model):
@@ -1024,12 +1166,39 @@ class ExecutoryContract(models.Model):
     counterparty_name = EncryptedCharField(
         max_length=255, help_text="Name of other party to the contract or lease"
     )
-    contract_type = models.CharField(
-        max_length=20, choices=CONTRACT_TYPE_CHOICES, default="contract"
-    )
+    contract_type = models.CharField(max_length=20, choices=CONTRACT_TYPE_CHOICES, blank=True)
     description = EncryptedTextField(
         blank=True, help_text="Brief description of the contract or lease"
     )
+    street_address = EncryptedCharField(max_length=255, blank=True, default="")
+    street_2 = EncryptedCharField(max_length=255, blank=True, default="")
+    city = EncryptedCharField(max_length=100, blank=True, default="")
+    state = EncryptedCharField(max_length=2, blank=True, default="")
+    zip_code = EncryptedCharField(max_length=10, blank=True, default="")
+    outside_us = EncryptedBooleanField(default=False)
+    lease_kind = EncryptedCharField(
+        max_length=25, choices=[(v, v) for v in LEASE_KINDS], null=True, blank=True
+    )
+    monthly_payment = EncryptedDecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    vehicle_asset = models.ForeignKey(
+        AssetInfo,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="vehicle_leases",
+    )
+    owed_debt = models.ForeignKey(
+        DebtInfo,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="owing_contracts",
+    )
+    owes_now = EncryptedCharField(
+        max_length=3, choices=[(v, v) for v in YES_NO], null=True, blank=True
+    )
+
+    LEASE_KINDS: ClassVar[tuple[str, ...]] = LEASE_KINDS
 
     class Meta:
         db_table = "executory_contracts"
@@ -1050,13 +1219,22 @@ class Codebtor(models.Model):
     session = models.ForeignKey(IntakeSession, on_delete=models.CASCADE, related_name="codebtors")
     name = EncryptedCharField(max_length=255, help_text="Full name of codebtor")
     street_address = EncryptedCharField(max_length=255, blank=True)
+    street_2 = EncryptedCharField(max_length=255, blank=True, default="")
     city = EncryptedCharField(max_length=100, blank=True)
     state = EncryptedCharField(max_length=2, blank=True)
     zip_code = EncryptedCharField(max_length=10, blank=True)
-    relationship = EncryptedCharField(max_length=20, choices=RELATIONSHIP_CHOICES, default="other")
+    outside_us = EncryptedBooleanField(default=False)
+    relationship = EncryptedCharField(max_length=20, choices=RELATIONSHIP_CHOICES, blank=True)
+    links = EncryptedTextField(default="[]")
+
+    LINK_KINDS: ClassVar[tuple[str, ...]] = ("debt", "contract")
+    JSON_ANSWERS: ClassVar[tuple[str, ...]] = ("links",)
 
     class Meta:
         db_table = "codebtors"
+
+    def get_links(self) -> list[dict]:
+        return json.loads(self.links)
 
 
 class AdversaryProceeding(models.Model):
