@@ -77,8 +77,12 @@ You ARE Sarah Chen. Navigate DigniFi as she would.
 
 **Amounts Owed:**
 
-- Keelson Loan Servicing student loan — $28,000, paying $0
-- Lakemont University Hospital medical — $3,400, paying $0 (in collections)
+- Keelson Loan Servicing student loan — $28,000, paying $0. Address: Keelson Loan Servicing, 60 Demo Way, Wilkes-Barre, PA 18773. Account ends 6006. Since 2016–2020. No one else is contacting you. Not subject to offset.
+- Lakemont University Hospital medical — $3,400, paying $0 (in collections). Address: Lakemont Health Patient Accounts, 70 Demo Plaza, Chicago, IL 60612. Account ends 7007. Since 02/2026. Someone else is contacting you: Wicker Demo Recovery LLC, 80 Demo Ct, Oak Brook, IL 60523, account ends 8008.
+
+**Contracts and leases:** Yes. Damen Demo Flats LLC, 90 Demo St, Chicago, IL 60622. Kind: lease, residential. For: Residential lease, one bedroom at 1520 N Damen Ave Apt 2F, 07/01/2026–06/30/2027, $850 a month. You do not owe money on it now.
+
+**Codebtors:** No.
 
 ## What to Watch For
 

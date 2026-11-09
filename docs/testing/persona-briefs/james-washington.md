@@ -86,8 +86,12 @@ Each item goes on the Schedule A/B line shown. You are the only one with an inte
 
 **Amounts Owed:**
 
-- Meridale National Bank credit card — $9,800, paying $200/mo
-- Crestway Auto Credit auto loan — $8,500, paying $350/mo (secured by vehicle)
+- Meridale National Bank credit card — $9,800, paying $200/mo. Address: PO Box 90222, Sioux Falls, SD 57117. Account ends 4402. Since 06/2015–2026. No one else is contacting you. None of the status choices applies; not subject to offset.
+- Crestway Auto Credit auto loan — $8,500, paying $350/mo (secured by vehicle: your Toyota Camry on Part 1 of the Assets step, line 3). Address: PO Box 90122, Plano, TX 75025. Account ends 7702. Since 12/2023. Lien: an agreement you made. The lender can take back property: Yes. None of the status choices applies. No one else is contacting you.
+
+**Contracts and leases:** Yes. Gold Coast Example Residential LLC, c/o Management Office, 850 N State St, Chicago, IL 60610. Kind: lease, residential. For: Residential lease, Apt 1204, 06/01/2026–05/31/2027, $1,650 a month. You do not owe money on it now.
+
+**Codebtors:** No. Not in a community property state in the last 8 years.
 
 ## What to Watch For
 

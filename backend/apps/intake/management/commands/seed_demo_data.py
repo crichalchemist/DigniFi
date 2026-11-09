@@ -20,12 +20,15 @@ from apps.eligibility.cmi import income_window
 from apps.eligibility.models import MEDIAN_TABLE
 from apps.eligibility.services.means_test_calculator import MeansTestCalculator
 from apps.forms.registry import build_field_values, packet
-from apps.intake.asset_lines import shown_lines
+from apps.intake.asset_lines import ordered_assets, rows_on, shown_lines
 from apps.intake.models import (
     AssetInfo,
     AssetLineAnswers,
+    ClaimAnswers,
+    Codebtor,
     DebtInfo,
     DebtorInfo,
+    ExecutoryContract,
     ExpenseInfo,
     FilingFee,
     Household,
@@ -89,6 +92,87 @@ def _asset_lines(assets: list[dict], *yes: str) -> dict:
     for line in shown_lines(answers):
         answers.setdefault(line.key, "no")
     return answers
+
+
+def _claim(
+    street,
+    city,
+    state,
+    zip_code,
+    *,
+    last_4="",
+    date="",
+    street_2="",
+    status=(),
+    offset="no",
+    notice=(),
+    link=None,
+    lien=None,
+    **more,
+) -> dict:
+    """The keys 3c3 adds to one amount owed: its address, date, answers and notice parties.
+
+    link is an A/B position such as "3.1" (the seed resolves it with asset_at); it is no column.
+    """
+    row = {
+        "street_address": street,
+        "street_2": street_2,
+        "city": city,
+        "state": state,
+        "zip_code": zip_code,
+        "account_number": last_4,
+        "date_incurred": date,
+        "claim_status": list(status),
+        "offset_answer": offset,
+        "notice_parties": list(notice),
+        **more,
+    }
+    if link is not None:
+        row["link"] = link
+    if lien is not None:
+        row["lien"] = lien
+    return row
+
+
+def _party(name, street, city, state, zip_code, last_4) -> dict:
+    """One notice party (someone else contacting the filer about a debt), with no id."""
+    return {
+        "name": name,
+        "street_address": street,
+        "city": city,
+        "state": state,
+        "zip_code": zip_code,
+        "last_4": last_4,
+    }
+
+
+def asset_at(session, position: str) -> AssetInfo:
+    """The row at an A/B position: "3.2" is the second row on line 3 in ordered_assets order.
+
+    Rows are compared in Python, never filtered: the line is ciphertext in the table.
+    """
+    line, _, number = position.partition(".")
+    rows = rows_on(ordered_assets(session), line)
+    if not number.isdigit() or not 1 <= int(number) <= len(rows):
+        raise LookupError(f"no row at A/B position {position}")
+    return rows[int(number) - 1]
+
+
+def claim_links(session, pairs) -> list[dict]:
+    """Each ("debt", creditor name) or ("contract", counterparty name) as {"kind", "id"}.
+
+    Names are decrypted and compared in Python, never filtered: they are ciphertext in the
+    table. An unknown name raises LookupError (without the name, which is the filer's).
+    """
+    found = []
+    for kind, name in pairs:
+        rows = session.debts.all() if kind == "debt" else session.executory_contracts.all()
+        attr = "creditor_name" if kind == "debt" else "counterparty_name"
+        match = next((row for row in rows if getattr(row, attr) == name), None)
+        if match is None:
+            raise LookupError(f"no {kind} with that name on the session")
+        found.append({"kind": kind, "id": match.pk})
+    return found
 
 
 # ── Persona data functions ──────────────────────────────────────────
@@ -171,6 +255,24 @@ def _maria_torres() -> dict:
         ],
         "debts": [
             {
+                **_claim(
+                    "1 Demo Way",
+                    "Richmond",
+                    "VA",
+                    "23238",
+                    last_4="1001",
+                    date="2019–2025",
+                    notice=[
+                        _party(
+                            "Lakefront Demo Recovery LLC",
+                            "10 Demo Ct",
+                            "Chicago",
+                            "IL",
+                            "60604",
+                            "4004",
+                        )
+                    ],
+                ),
                 "creditor_name": "Brightwater Card Services",
                 "debt_type": "credit_card",
                 "amount_owed": Decimal("4200.00"),
@@ -179,6 +281,24 @@ def _maria_torres() -> dict:
                 "consumer_business_classification": "consumer",
             },
             {
+                **_claim(
+                    "2 Demo Plaza",
+                    "Chicago",
+                    "IL",
+                    "60611",
+                    last_4="2002",
+                    date="11/2025",
+                    notice=[
+                        _party(
+                            "Prairie Demo Collections Inc.",
+                            "20 Demo Ave",
+                            "Oak Brook",
+                            "IL",
+                            "60523",
+                            "5005",
+                        )
+                    ],
+                ),
                 "creditor_name": "Larkfield General Hospital",
                 "debt_type": "medical",
                 "amount_owed": Decimal("12800.00"),
@@ -187,6 +307,7 @@ def _maria_torres() -> dict:
                 "consumer_business_classification": "consumer",
             },
             {
+                **_claim("3 Demo Rd", "Riverwoods", "IL", "60015", last_4="3003", date="05/2024"),
                 "creditor_name": "Ironbridge Card Company",
                 "debt_type": "personal_loan",
                 "amount_owed": Decimal("3500.00"),
@@ -195,6 +316,22 @@ def _maria_torres() -> dict:
                 "consumer_business_classification": "consumer",
             },
         ],
+        "contracts": [
+            {
+                "counterparty_name": "Division Demo Properties LLC",
+                "street_address": "30 Demo St",
+                "street_2": "",
+                "city": "Chicago",
+                "state": "IL",
+                "zip_code": "60622",
+                "contract_type": "lease",
+                "lease_kind": "residential",
+                "description": "Residential lease for 2145 W Division St Apt 3, 07/01/2026–06/30/2027, $1,100 a month",
+                "owes_now": "no",
+            },
+        ],
+        "codebtors": [],
+        "claims": {"contracts_answer": "yes", "codebtors_answer": "no", "community_lived": "no"},
         "sofa": {
             "has_prior_income": True,
             "has_creditor_payments": True,
@@ -297,6 +434,9 @@ def _james_washington() -> dict:
         ],
         "debts": [
             {
+                **_claim(
+                    "PO Box 90222", "Sioux Falls", "SD", "57117", last_4="4402", date="06/2015–2026"
+                ),
                 "creditor_name": "Meridale National Bank",
                 "debt_type": "credit_card",
                 "amount_owed": Decimal("9800.00"),
@@ -305,6 +445,17 @@ def _james_washington() -> dict:
                 "consumer_business_classification": "consumer",
             },
             {
+                **_claim(
+                    "PO Box 90122",
+                    "Plano",
+                    "TX",
+                    "75025",
+                    last_4="7702",
+                    date="12/2023",
+                    offset=None,
+                    link="3.1",
+                    lien={"kinds": ["agreement"], "other": ""},
+                ),
                 "creditor_name": "Crestway Auto Credit",
                 "debt_type": "auto_loan",
                 "amount_owed": Decimal("8500.00"),
@@ -315,6 +466,22 @@ def _james_washington() -> dict:
                 "collateral_description": "2019 Toyota Camry",
             },
         ],
+        "contracts": [
+            {
+                "counterparty_name": "Gold Coast Example Residential LLC",
+                "street_address": "850 N State St",
+                "street_2": "c/o Management Office",
+                "city": "Chicago",
+                "state": "IL",
+                "zip_code": "60610",
+                "contract_type": "lease",
+                "lease_kind": "residential",
+                "description": "Residential lease, Apt 1204, 06/01/2026–05/31/2027, $1,650 a month",
+                "owes_now": "no",
+            },
+        ],
+        "codebtors": [],
+        "claims": {"contracts_answer": "yes", "codebtors_answer": "no", "community_lived": "no"},
         # Form 101 line 8, and for the waiver 103B lines 4, 5, 7 and 9 (3f spec §10)
         "filing_fee": {"payment_choice": "pay_in_full"},
     }
@@ -414,6 +581,9 @@ def _priya_sharma() -> dict:
         ],
         "debts": [
             {
+                **_claim(
+                    "P.O. Box 9313", "El Paso", "TX", "79998", last_4="3313", date="2024–2025"
+                ),
                 "creditor_name": "Silverpine Card Services",
                 "debt_type": "credit_card",
                 "amount_owed": Decimal("22000.00"),
@@ -422,6 +592,24 @@ def _priya_sharma() -> dict:
                 "consumer_business_classification": "consumer",
             },
             {
+                **_claim(
+                    "1653 W Congress Pkwy",
+                    "Chicago",
+                    "IL",
+                    "60612",
+                    last_4="3323",
+                    date="02/2025",
+                    notice=[
+                        _party(
+                            "Lakeshore Medical Recovery LLC",
+                            "P.O. Box 9333",
+                            "Chicago",
+                            "IL",
+                            "60690",
+                            "7310",
+                        )
+                    ],
+                ),
                 "creditor_name": "Westhaven University Medical Center",
                 "debt_type": "medical",
                 "amount_owed": Decimal("35000.00"),
@@ -429,7 +617,54 @@ def _priya_sharma() -> dict:
                 "is_in_collections": True,
                 "consumer_business_classification": "consumer",
             },
+            {
+                "creditor_name": "Kestrel Auto Finance",
+                "debt_type": "auto_loan",
+                "amount_owed": Decimal("14900.00"),
+                "monthly_payment": Decimal("450.00"),
+                "is_in_collections": False,
+                "consumer_business_classification": "consumer",
+                "is_secured": True,
+                "collateral_description": "2021 Honda CR-V EX",
+                **_claim(
+                    "P.O. Box 9303",
+                    "Torrance",
+                    "CA",
+                    "90503",
+                    last_4="3303",
+                    date="11/2023",
+                    offset=None,
+                    link="3.1",
+                    lien={"kinds": ["agreement"], "other": ""},
+                ),
+            },
         ],
+        "contracts": [
+            {
+                "counterparty_name": "Fullerton Parkway Apartments LLC",
+                "street_address": "456 W Fullerton Pkwy",
+                "street_2": "Management Office",
+                "city": "Chicago",
+                "state": "IL",
+                "zip_code": "60614",
+                "contract_type": "lease",
+                "lease_kind": "residential",
+                "description": "Residential lease, 456 W Fullerton Pkwy, to 07/31/2027, $2,800 a month",
+                "owes_now": "no",
+            },
+        ],
+        "codebtors": [
+            {
+                "name": "Rohan Sharma",
+                "street_address": "456 W Fullerton Pkwy",
+                "city": "Chicago",
+                "state": "IL",
+                "zip_code": "60614",
+                "relationship": "spouse",
+                "links": [("debt", "Westhaven University Medical Center")],
+            },
+        ],
+        "claims": {"contracts_answer": "yes", "codebtors_answer": "yes", "community_lived": "no"},
         # Form 101 line 8, and for the waiver 103B lines 4, 5, 7 and 9 (3f spec §10)
         "filing_fee": {"payment_choice": "pay_in_full"},
     }
@@ -508,6 +743,7 @@ def _deshawn_mitchell() -> dict:
                 who="only_you",
                 community=False,
                 nature="Fee simple",
+                lives_here="yes",
             ),
             _car(8000, 8000, "Ford", "F-150", "2012", "168000"),
             _asset("6", 1500, "Furniture, appliances and beds"),
@@ -520,6 +756,17 @@ def _deshawn_mitchell() -> dict:
         ],
         "debts": [
             {
+                **_claim(
+                    "PO Box 4401",
+                    "Chicago",
+                    "IL",
+                    "60680",
+                    last_4="0441",
+                    date="2019",
+                    offset=None,
+                    link="1.1",
+                    lien={"kinds": ["agreement"], "other": ""},
+                ),
                 "creditor_name": "Harrowgate Home Loans",
                 "debt_type": "mortgage",
                 "amount_owed": Decimal("160000.00"),
@@ -528,8 +775,10 @@ def _deshawn_mitchell() -> dict:
                 "consumer_business_classification": "consumer",
                 "is_secured": True,
                 "collateral_description": "Single-family home, 7823 S Sangamon St",
+                "home_payment_line": "first",
             },
             {
+                **_claim("PO Box 4402", "Chicago", "IL", "60680", last_4="0442", date="2017–2025"),
                 "creditor_name": "Tallgrass Credit Management",
                 "debt_type": "credit_card",
                 "amount_owed": Decimal("6700.00"),
@@ -538,6 +787,24 @@ def _deshawn_mitchell() -> dict:
                 "consumer_business_classification": "consumer",
             },
             {
+                **_claim(
+                    "PO Box 4403",
+                    "Chicago",
+                    "IL",
+                    "60680",
+                    last_4="0443",
+                    date="2025",
+                    notice=[
+                        _party(
+                            "Demo Recovery Services",
+                            "PO Box 4405",
+                            "Chicago",
+                            "IL",
+                            "60680",
+                            "7443",
+                        )
+                    ],
+                ),
                 "creditor_name": "Lakeline Electric",
                 "debt_type": "utility",
                 "amount_owed": Decimal("800.00"),
@@ -546,6 +813,24 @@ def _deshawn_mitchell() -> dict:
                 "consumer_business_classification": "consumer",
             },
             {
+                **_claim(
+                    "PO Box 4404",
+                    "Chicago",
+                    "IL",
+                    "60680",
+                    last_4="0444",
+                    date="2025",
+                    notice=[
+                        _party(
+                            "Demo Medical Collections",
+                            "PO Box 4406",
+                            "Chicago",
+                            "IL",
+                            "60680",
+                            "7444",
+                        )
+                    ],
+                ),
                 "creditor_name": "Southmoor Health",
                 "debt_type": "medical",
                 "amount_owed": Decimal("4200.00"),
@@ -554,6 +839,9 @@ def _deshawn_mitchell() -> dict:
                 "consumer_business_classification": "consumer",
             },
         ],
+        "contracts": [],
+        "codebtors": [],
+        "claims": {"contracts_answer": "no", "codebtors_answer": "no", "community_lived": "no"},
         # Form 101 line 8, and for the waiver 103B lines 4, 5, 7 and 9 (3f spec §10)
         "filing_fee": {"payment_choice": "installments"},
     }
@@ -617,6 +905,9 @@ def _sarah_chen() -> dict:
         "assets": [],
         "debts": [
             {
+                **_claim(
+                    "60 Demo Way", "Wilkes-Barre", "PA", "18773", last_4="6006", date="2016–2020"
+                ),
                 "creditor_name": "Keelson Loan Servicing",
                 "debt_type": "student_loan",
                 "amount_owed": Decimal("28000.00"),
@@ -625,6 +916,25 @@ def _sarah_chen() -> dict:
                 "consumer_business_classification": "consumer",
             },
             {
+                **_claim(
+                    "70 Demo Plaza",
+                    "Chicago",
+                    "IL",
+                    "60612",
+                    last_4="7007",
+                    date="02/2026",
+                    street_2="Lakemont Health Patient Accounts",
+                    notice=[
+                        _party(
+                            "Wicker Demo Recovery LLC",
+                            "80 Demo Ct",
+                            "Oak Brook",
+                            "IL",
+                            "60523",
+                            "8008",
+                        )
+                    ],
+                ),
                 "creditor_name": "Lakemont University Hospital",
                 "debt_type": "medical",
                 "amount_owed": Decimal("3400.00"),
@@ -633,6 +943,22 @@ def _sarah_chen() -> dict:
                 "consumer_business_classification": "consumer",
             },
         ],
+        "contracts": [
+            {
+                "counterparty_name": "Damen Demo Flats LLC",
+                "street_address": "90 Demo St",
+                "street_2": "",
+                "city": "Chicago",
+                "state": "IL",
+                "zip_code": "60622",
+                "contract_type": "lease",
+                "lease_kind": "residential",
+                "description": "Residential lease, one bedroom at 1520 N Damen Ave Apt 2F, 07/01/2026–06/30/2027, $850 a month",
+                "owes_now": "no",
+            },
+        ],
+        "codebtors": [],
+        "claims": {"contracts_answer": "yes", "codebtors_answer": "no", "community_lived": "no"},
         # Form 101 line 8, and for the waiver 103B lines 4, 5, 7 and 9 (3f spec §10)
         "filing_fee": {
             "payment_choice": "waiver",
@@ -732,6 +1058,16 @@ def _andres_kettleby() -> dict:
         ],
         "debts": [
             {
+                **_claim(
+                    "PO Box 48210",
+                    "Schaumburg",
+                    "IL",
+                    "60168",
+                    date="08/15/2022",
+                    offset=None,
+                    link="3.2",
+                    lien={"kinds": ["agreement"], "other": ""},
+                ),
                 "creditor_name": "Copperline Auto Finance",
                 "debt_type": "auto_loan",
                 "amount_owed": Decimal("7800.00"),
@@ -743,6 +1079,7 @@ def _andres_kettleby() -> dict:
                 "collateral_description": "2017 Honda Fit, co-owned with my brother",
             },
             {
+                **_claim("PO Box 77031", "Dallas", "TX", "75377", date="07/20/2025"),
                 "creditor_name": "Bright Signal Wireless",
                 "debt_type": "utility",
                 "amount_owed": Decimal("640.00"),
@@ -751,6 +1088,23 @@ def _andres_kettleby() -> dict:
                 "consumer_business_classification": "consumer",
             },
             {
+                **_claim(
+                    "2500 Ridge Crest Pkwy",
+                    "Aurora",
+                    "IL",
+                    "60504",
+                    date="02/08/2025",
+                    notice=[
+                        _party(
+                            "Ashgrove Recovery Group",
+                            "900 Commerce Dr Ste 210",
+                            "Oak Brook",
+                            "IL",
+                            "60523",
+                            "4417",
+                        )
+                    ],
+                ),
                 "creditor_name": "Calumet Ridge Medical Center",
                 "debt_type": "medical",
                 "amount_owed": Decimal("3850.00"),
@@ -759,6 +1113,7 @@ def _andres_kettleby() -> dict:
                 "consumer_business_classification": "consumer",
             },
             {
+                **_claim("1650 N Farnsworth Ave", "Aurora", "IL", "60505", date="10/03/2025"),
                 "creditor_name": "Driveline Tire & Auto",
                 "debt_type": "credit_card",
                 "amount_owed": Decimal("1180.00"),
@@ -767,6 +1122,7 @@ def _andres_kettleby() -> dict:
                 "consumer_business_classification": "business",
             },
             {
+                **_claim("2700 Ogden Ave", "Downers Grove", "IL", "60515", date="01/14/2026"),
                 "creditor_name": "Illinois State Toll Highway Authority",
                 "debt_type": "other",
                 "amount_owed": Decimal("380.00"),
@@ -775,6 +1131,7 @@ def _andres_kettleby() -> dict:
                 "consumer_business_classification": "consumer",
             },
             {
+                **_claim("PO Box 31544", "Wilmington", "DE", "19850", date="09/05/2025"),
                 "creditor_name": "Tallowfield Lending Co.",
                 "debt_type": "personal_loan",
                 "amount_owed": Decimal("4100.00"),
@@ -783,6 +1140,7 @@ def _andres_kettleby() -> dict:
                 "consumer_business_classification": "consumer",
             },
             {
+                **_claim("PO Box 60917", "Phoenix", "AZ", "85082", date="05/10/2019"),
                 "creditor_name": "Northgate Card Services",
                 "debt_type": "credit_card",
                 "amount_owed": Decimal("6420.00"),
@@ -791,6 +1149,9 @@ def _andres_kettleby() -> dict:
                 "consumer_business_classification": "consumer",
             },
             {
+                **_claim(
+                    "310 E Galena Blvd", "Aurora", "IL", "60505", date="03/02/2020", offset="yes"
+                ),
                 "creditor_name": "Prairie Line Credit Union",
                 "debt_type": "credit_card",
                 "amount_owed": Decimal("1760.00"),
@@ -799,6 +1160,14 @@ def _andres_kettleby() -> dict:
                 "consumer_business_classification": "consumer",
             },
             {
+                **_claim(
+                    "88 Ridgeway Ct",
+                    "Naperville",
+                    "IL",
+                    "60540",
+                    date="12/31/2024",
+                    status=("disputed",),
+                ),
                 "creditor_name": "Hollowmere Residential LLC",
                 "debt_type": "other",
                 "amount_owed": Decimal("1850.00"),
@@ -807,6 +1176,7 @@ def _andres_kettleby() -> dict:
                 "consumer_business_classification": "consumer",
             },
             {
+                **_claim("PO Box 15022", "Columbus", "OH", "43218", date="10/18/2021"),
                 "creditor_name": "Sablewood Bank",
                 "debt_type": "credit_card",
                 "amount_owed": Decimal("2980.00"),
@@ -815,6 +1185,46 @@ def _andres_kettleby() -> dict:
                 "consumer_business_classification": "consumer",
             },
         ],
+        "contracts": [
+            {
+                "counterparty_name": "Northlight Auto Leasing",
+                "street_address": "PO Box 92650",
+                "street_2": "",
+                "city": "Itasca",
+                "state": "IL",
+                "zip_code": "60143",
+                "contract_type": "lease",
+                "lease_kind": "vehicle",
+                "description": "Lease of a 2024 Toyota Corolla Hybrid, 36 months, 03/01/2025–02/29/2028",
+                "monthly_payment": Decimal("389.00"),
+                "vehicle_link": "3.1",
+                "owes_now": "no",
+            },
+            {
+                "counterparty_name": "Fox Run Property Management",
+                "street_address": "2200 W Indian Trail",
+                "street_2": "",
+                "city": "Aurora",
+                "state": "IL",
+                "zip_code": "60506",
+                "contract_type": "lease",
+                "lease_kind": "residential",
+                "description": "Apartment lease, 06/01/2026–05/31/2027",
+                "owes_now": "no",
+            },
+        ],
+        "codebtors": [
+            {
+                "name": "Mateo Kettleby",
+                "street_address": "377 Douglas Ave",
+                "city": "Elgin",
+                "state": "IL",
+                "zip_code": "60120",
+                "relationship": "relative",
+                "links": [("debt", "Copperline Auto Finance")],
+            },
+        ],
+        "claims": {"contracts_answer": "yes", "codebtors_answer": "yes", "community_lived": "no"},
         # Form 101 line 8, and for the waiver 103B lines 4, 5, 7 and 9 (3f spec §10)
         "filing_fee": {"payment_choice": "installments"},
     }
@@ -952,7 +1362,34 @@ class Command(BaseCommand):
         AssetLineAnswers.objects.create(session=session, answers=json.dumps(data["asset_lines"]))
 
         for debt in data["debts"]:
-            DebtInfo.objects.create(session=session, **debt)
+            row = dict(debt)
+            link = row.pop("link", None)
+            claim_status = row.pop("claim_status")
+            lien = row.pop("lien", None)
+            parties = row.pop("notice_parties")
+            debt_row = DebtInfo(session=session, **row)
+            if link is not None:
+                debt_row.secured_by = asset_at(session, link)
+            debt_row.claim_status = json.dumps(claim_status)
+            debt_row.lien = None if lien is None else json.dumps(lien)
+            debt_row.store_notice_parties(parties)
+            debt_row.save()
+
+        for contract in data["contracts"]:
+            row = dict(contract)
+            vehicle_link = row.pop("vehicle_link", None)
+            if vehicle_link is not None:
+                row["vehicle_asset"] = asset_at(session, vehicle_link)
+            ExecutoryContract.objects.create(session=session, **row)
+
+        for codebtor in data["codebtors"]:
+            row = dict(codebtor)
+            pairs = row.pop("links")
+            Codebtor.objects.create(
+                session=session, links=json.dumps(claim_links(session, pairs)), **row
+            )
+
+        ClaimAnswers.objects.create(session=session, answers=json.dumps(data["claims"]))
 
         # Create SOFA report and related data (Form 107)
         sofa_data = dict(data.get("sofa", {}))

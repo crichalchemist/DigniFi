@@ -5,12 +5,14 @@ checks: not married, no one else in the home or supported ([]), and Cook County.
 defaults answer the other four: income not now different, no business or rental ([]), no other
 government assistance, and $0 taken out of pay. answer_household also chooses to pay the filing
 fee in full (Form 101 line 8), so a forms test meets no refusal for a missing answer;
-payment_choice=None leaves the answer as it is.
+payment_choice=None leaves the answer as it is. The claim answers default to no debts, and No on
+contracts, codebtors and H line 2.
 """
 
 import json
 from collections.abc import Iterable, Mapping, Sequence
 from decimal import Decimal
+from types import MappingProxyType
 
 from apps.intake.asset_lines import shown_lines
 from apps.intake.models import (
@@ -74,6 +76,7 @@ def answer_household(
     payroll_tax: Decimal | None = Decimal("0"),
     payment_choice: str | None = "pay_in_full",
     asset_lines: Iterable[str] | None = (),
+    claims: Mapping[str, object] | None = MappingProxyType({}),
 ) -> Household:
     """Store the marriage answer, the county and the household list, and the spouse's amounts
     when given, through the session's own relations, so a test holding the session reads them.
@@ -89,6 +92,10 @@ def answer_household(
 
     asset_lines names the Schedule A/B lines answered Yes (default none: every shown line No);
     None leaves the stored answers alone.
+
+    claims overrides the claim answers answer_claims stores (3c3), which default to no_debts true
+    while the session has no debt rows, and No on contracts, codebtors and H line 2; claims=None
+    leaves them alone.
     """
     session.income_info.marital_status = marital_status
     session.income_info.save(update_fields=["marital_status"])
@@ -119,6 +126,10 @@ def answer_household(
         fee = getattr(session, "filing_fee", None) or FilingFee(session=session)
         fee.payment_choice = payment_choice
         fee.save()
+    if claims is not None:
+        answer_claims(
+            session, **{"no_debts": True if not session.debts.exists() else None, **claims}
+        )
     return household
 
 

@@ -89,9 +89,15 @@ Each item goes on the Schedule A/B line shown. Where the form asks who has an in
 
 **Amounts Owed:**
 
-- Brightwater Card Services credit card — $4,200, paying $85/mo (in collections)
-- Larkfield General Hospital — $12,800, paying $0 (in collections)
-- Ironbridge Card Company personal loan — $3,500, paying $120/mo
+- Brightwater Card Services credit card — $4,200, paying $85/mo (in collections). Address: 1 Demo Way, Richmond, VA 23238. Account ends 1001. Since 2019–2025. Someone else is contacting you: Lakefront Demo Recovery LLC, 10 Demo Ct, Chicago, IL 60604, account ends 4004.
+- Larkfield General Hospital — $12,800, paying $0 (in collections). Address: 2 Demo Plaza, Chicago, IL 60611. Account ends 2002. Since 11/2025. Someone else is contacting you: Prairie Demo Collections Inc., 20 Demo Ave, Oak Brook, IL 60523, account ends 5005.
+- Ironbridge Card Company personal loan — $3,500, paying $120/mo. Address: 3 Demo Rd, Riverwoods, IL 60015. Account ends 3003. Since 05/2024. No one else is contacting you.
+
+**For every amount owed:** none is secured; none is contingent, unliquidated or disputed; none is subject to offset.
+
+**Contracts and leases:** Yes. Division Demo Properties LLC, 30 Demo St, Chicago, IL 60622. Kind: lease, residential. For: Residential lease for 2145 W Division St Apt 3, 07/01/2026–06/30/2027, $1,100 a month. You do not owe money on it now.
+
+**Codebtors:** No. You did not live in a community property state in the last 8 years.
 
 ## What to Watch For
 
