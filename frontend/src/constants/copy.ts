@@ -458,6 +458,112 @@ export const WHO_ONLY_YOU = 'Only you';
 
 export const WHO_WITH_SOMEONE = 'You and someone else';
 
+// Claim gaps (3c3 spec §7.5): the server's sentences, pinned by test_claim_gaps.py
+
+export const NAMELESS_DEBT = 'one amount owed';
+
+export const NAMELESS_CONTRACT = 'one contract';
+
+export const NAMELESS_CODEBTOR = 'one codebtor';
+
+export const CLAIM_GAP_KIND = 'Choose a kind for {name}.';
+
+export const CLAIM_GAP_ADDRESS = 'Enter the street, city, two-letter state and ZIP for {name}.';
+
+export const CLAIM_GAP_STREET_CITY = 'Enter the street and city for {name}.';
+
+export const DEBT_GAP_NO_ANSWER = 'List each amount you owe, or press “I have no amounts owed.”';
+
+export const DEBT_GAP_NONE_BUT_LISTED =
+  'You said you have no amounts owed, but some are listed. Remove them, or change that answer.';
+
+export const DEBT_GAP_NO_NAME = 'One amount owed has no creditor name. Enter who you owe.';
+
+export const DEBT_GAP_AMOUNT = 'Enter the amount you owe {name}. It must be above $0.';
+
+export const DEBT_GAP_AMOUNT_NO_NAME =
+  'Enter the amount you owe on the row with no creditor name. It must be above $0.';
+
+export const DEBT_GAP_ADDRESS_NO_NAME =
+  'Enter the street, city, two-letter state and ZIP on the row with no creditor name.';
+
+export const DEBT_GAP_STREET_CITY_NO_NAME =
+  'Enter the street and city on the row with no creditor name.';
+
+export const DEBT_GAP_PROPERTY = 'Choose the property that secures {name}.';
+
+export const DEBT_GAP_DESCRIBE = 'Describe the property that secures {name}.';
+
+export const DEBT_GAP_LIEN = 'Check at least one kind of lien for {name}.';
+
+export const DEBT_GAP_LIEN_OTHER = 'Say what the other kind of lien is, for {name}.';
+
+export const DEBT_GAP_PAYMENT =
+  'Enter the monthly payment for {name}. Enter 0 if you pay nothing on it.';
+
+export const DEBT_GAP_HOME_LINE =
+  'Say whether {name} is a first mortgage or an additional one, such as home equity.';
+
+export const DEBT_GAP_WHO = 'Answer who owns the property that secures {name}.';
+
+export const DEBT_GAP_STATUS =
+  'Check any that fit {name}: contingent, unliquidated or disputed. Or choose None of these.';
+
+export const DEBT_GAP_OFFSET = 'Answer whether {name} is subject to offset.';
+
+export const DEBT_GAP_NOTICE = 'Answer whether anyone else is contacting you about {name}.';
+
+export const DEBT_GAP_NOTICE_PARTY =
+  'Enter the name and full address of each person contacting you about {name}.';
+
+export const CONTRACT_GAP_NO_ANSWER = 'Answer whether you have any contracts or leases.';
+
+export const CONTRACT_GAP_YES_BUT_NONE =
+  'You answered Yes. Add each contract or lease, or change the answer to No.';
+
+export const CONTRACT_GAP_NO_BUT_LISTED =
+  'You answered No, but contracts or leases are listed. Remove them, or change the answer to Yes.';
+
+export const CONTRACT_GAP_NO_NAME = "One contract has no name. Enter the other party's name.";
+
+export const CONTRACT_GAP_PURPOSE = 'Enter what the contract or lease is for, for {name}.';
+
+export const CONTRACT_GAP_LEASE_KIND = 'Choose the kind of lease for {name}.';
+
+export const CONTRACT_GAP_VEHICLE = 'Choose the vehicle you lease from {name}.';
+
+export const CONTRACT_GAP_PAYMENT = 'Enter the monthly lease payment for {name}.';
+
+export const CONTRACT_GAP_OWES_NOW = 'Answer “Do you owe money on this now?” for {name}.';
+
+export const CONTRACT_GAP_OWED_DEBT =
+  'Choose the amount owed that goes with {name}, or add it on the Amounts Owed step.';
+
+export const CONTRACT_GAP_SAME_VEHICLE =
+  'Your lease with {name} and your debt to {debt} are on the same vehicle, and each has a monthly payment above $0. Enter the monthly payment once, on either row, and $0 on the other.';
+
+export const CODEBTOR_GAP_NO_ANSWER = 'Answer whether you have any codebtors.';
+
+export const CODEBTOR_GAP_YES_BUT_NONE =
+  'You answered Yes. Add each codebtor, or change the answer to No.';
+
+export const CODEBTOR_GAP_NO_BUT_LISTED =
+  'You answered No, but codebtors are listed. Remove them, or change the answer to Yes.';
+
+export const CODEBTOR_GAP_COMMUNITY =
+  'Did you live in a community property state or territory in the last 8 years? Answer Yes or No.';
+
+export const CODEBTOR_GAP_SPOUSE_LIVED =
+  'Answer whether your spouse, former spouse or legal equivalent lived with you then.';
+
+export const CODEBTOR_GAP_SPOUSE_DETAILS =
+  'Enter the community property state, and that person’s name and full address.';
+
+export const CODEBTOR_GAP_NO_NAME = "One codebtor has no name. Enter the person's name.";
+
+export const CODEBTOR_GAP_NO_LINK =
+  'Choose which amounts owed or contracts {name} shares with you.';
+
 // Asked on a line 1 or line 4 row, since Schedule J lines 4, 5 and 20a read it (3c3 spec §8)
 export const LIVES_HERE_QUESTION = 'Do you live here?';
 
