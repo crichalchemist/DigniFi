@@ -110,6 +110,8 @@ export interface PersonaAssetDetails {
   who?: 'only_you' | 'with_someone';
   kind?: string;
   beneficiary?: string;
+  // Line 1 and line 4 rows: "Do you live here?"
+  lives_here?: 'yes' | 'no';
 }
 
 /** One Schedule A/B row, as seed_demo_data writes it: its line, its words and its figures */
@@ -141,6 +143,75 @@ function car(
   };
 }
 
+/** A synthetic address as the claims steps ask it; `outside_us` is ticked, never assumed */
+export interface PersonaAddress {
+  street_address: string;
+  street_2?: string;
+  city: string;
+  state: string;
+  zip_code: string;
+  outside_us?: boolean;
+}
+
+export interface PersonaNoticeParty extends PersonaAddress {
+  name: string;
+  last_4: string;
+}
+
+export type ClaimStatusTick = 'contingent' | 'unliquidated' | 'disputed';
+export type LienKind = 'agreement' | 'statutory' | 'judgment' | 'other';
+
+/** What a secured debt asks: its property, by A/B position and by the picker's words, and its lien */
+export interface PersonaSecured {
+  /** The A/B row's place in the walk, as seed_demo_data's `link`: line "3", second row is "3.2" */
+  position: string;
+  /** A substring of the picker's option text for that row (its make and model, or its street) */
+  pick: string;
+  lien: LienKind[];
+  home_payment_line?: 'first' | 'additional';
+  collateral_who?: 'only_you' | 'with_someone';
+}
+
+export interface PersonaContract {
+  counterparty_name: string;
+  contract_type: 'lease' | 'contract' | 'other';
+  description: string;
+  address: PersonaAddress;
+  lease_kind?: 'residential' | 'vehicle' | 'other_personal_property' | 'other';
+  /** A vehicle lease's A/B row: its position and a substring of the picker's option text */
+  vehicle?: { position: string; pick: string };
+  monthly_payment?: number;
+  owes_now: 'yes' | 'no';
+}
+
+export interface PersonaCodebtor {
+  name: string;
+  relationship?: string;
+  address: PersonaAddress;
+  /** The names the row shares: the creditor of a debt or the other party of a contract */
+  links: string[];
+}
+
+/** The answers asked on steps 6-8 beside the rows (R16), as the seed's `claims` */
+export interface PersonaClaimAnswers {
+  contracts_answer: 'yes' | 'no';
+  codebtors_answer: 'yes' | 'no';
+  community_lived: 'yes' | 'no';
+}
+
+/** A synthetic address, one short call per debt */
+export function addr(
+  street_address: string,
+  city: string,
+  state: string,
+  zip_code: string,
+  street_2?: string
+): PersonaAddress {
+  return street_2 === undefined
+    ? { street_address, city, state, zip_code }
+    : { street_address, street_2, city, state, zip_code };
+}
+
 export interface PersonaDebt {
   creditor_name: string;
   debt_type: string;
@@ -149,6 +220,15 @@ export interface PersonaDebt {
   is_in_collections: boolean;
   // Required by the Debts step when debt_type is secured (auto_loan, mortgage)
   collateral_description?: string;
+  address: PersonaAddress;
+  account_last_4?: string;
+  date_incurred?: string;
+  // [] ticks "None of these"
+  claim_status: ClaimStatusTick[];
+  // Unsecured rows only
+  offset_answer?: 'yes' | 'no';
+  notice_parties: PersonaNoticeParty[];
+  secured?: PersonaSecured;
 }
 
 /** The eight payroll deductions of Schedule I lines 5a-5h (DEDUCTION_FIELDS in types/api.ts) */
@@ -182,6 +262,9 @@ export interface PersonaData {
   /** Gate lines answered Yes: Part 5's lines show only under 37's Yes (Part 6's under 46's) */
   asset_gates?: string[];
   debts: PersonaDebt[];
+  contracts: PersonaContract[];
+  codebtors: PersonaCodebtor[];
+  claim_answers: PersonaClaimAnswers;
   filing_fee: PersonaFilingFee;
   expected: { passes_means_test: boolean };
 }
@@ -283,6 +366,18 @@ export const MARIA: PersonaData = {
       amount_owed: 4200,
       monthly_payment: 85,
       is_in_collections: true,
+      address: addr('1 Demo Way', 'Richmond', 'VA', '23238'),
+      account_last_4: '1001',
+      date_incurred: '2019–2025',
+      claim_status: [],
+      offset_answer: 'no',
+      notice_parties: [
+        {
+          name: 'Lakefront Demo Recovery LLC',
+          ...addr('10 Demo Ct', 'Chicago', 'IL', '60604'),
+          last_4: '4004',
+        },
+      ],
     },
     {
       creditor_name: 'Larkfield General Hospital',
@@ -290,6 +385,18 @@ export const MARIA: PersonaData = {
       amount_owed: 12800,
       monthly_payment: 0,
       is_in_collections: true,
+      address: addr('2 Demo Plaza', 'Chicago', 'IL', '60611'),
+      account_last_4: '2002',
+      date_incurred: '11/2025',
+      claim_status: [],
+      offset_answer: 'no',
+      notice_parties: [
+        {
+          name: 'Prairie Demo Collections Inc.',
+          ...addr('20 Demo Ave', 'Oak Brook', 'IL', '60523'),
+          last_4: '5005',
+        },
+      ],
     },
     {
       creditor_name: 'Ironbridge Card Company',
@@ -297,8 +404,27 @@ export const MARIA: PersonaData = {
       amount_owed: 3500,
       monthly_payment: 120,
       is_in_collections: false,
+      address: addr('3 Demo Rd', 'Riverwoods', 'IL', '60015'),
+      account_last_4: '3003',
+      date_incurred: '05/2024',
+      claim_status: [],
+      offset_answer: 'no',
+      notice_parties: [],
     },
   ],
+  contracts: [
+    {
+      counterparty_name: 'Division Demo Properties LLC',
+      contract_type: 'lease',
+      description:
+        'Residential lease for 2145 W Division St Apt 3, 07/01/2026–06/30/2027, $1,100 a month',
+      address: addr('30 Demo St', 'Chicago', 'IL', '60622'),
+      lease_kind: 'residential',
+      owes_now: 'no',
+    },
+  ],
+  codebtors: [],
+  claim_answers: { contracts_answer: 'yes', codebtors_answer: 'no', community_lived: 'no' },
   filing_fee: {
     payment_choice: 'waiver',
     waiver: {
@@ -384,6 +510,12 @@ export const JAMES: PersonaData = {
       amount_owed: 9800,
       monthly_payment: 200,
       is_in_collections: false,
+      address: addr('PO Box 90222', 'Sioux Falls', 'SD', '57117'),
+      account_last_4: '4402',
+      date_incurred: '06/2015–2026',
+      claim_status: [],
+      offset_answer: 'no',
+      notice_parties: [],
     },
     {
       creditor_name: 'Crestway Auto Credit',
@@ -391,9 +523,27 @@ export const JAMES: PersonaData = {
       amount_owed: 8500,
       monthly_payment: 350,
       is_in_collections: false,
+      address: addr('PO Box 90122', 'Plano', 'TX', '75025'),
+      account_last_4: '7702',
+      date_incurred: '12/2023',
+      claim_status: [],
+      secured: { position: '3.1', pick: 'Camry', lien: ['agreement'] },
+      notice_parties: [],
       collateral_description: '2019 Toyota Camry',
     },
   ],
+  contracts: [
+    {
+      counterparty_name: 'Gold Coast Example Residential LLC',
+      contract_type: 'lease',
+      description: 'Residential lease, Apt 1204, 06/01/2026–05/31/2027, $1,650 a month',
+      address: addr('850 N State St', 'Chicago', 'IL', '60610', 'c/o Management Office'),
+      lease_kind: 'residential',
+      owes_now: 'no',
+    },
+  ],
+  codebtors: [],
+  claim_answers: { contracts_answer: 'yes', codebtors_answer: 'no', community_lived: 'no' },
   filing_fee: { payment_choice: 'pay_in_full' },
   expected: { passes_means_test: true },
 };
@@ -518,6 +668,12 @@ export const PRIYA: PersonaData = {
       amount_owed: 22000,
       monthly_payment: 500,
       is_in_collections: false,
+      address: addr('P.O. Box 9313', 'El Paso', 'TX', '79998'),
+      account_last_4: '3313',
+      date_incurred: '2024–2025',
+      claim_status: [],
+      offset_answer: 'no',
+      notice_parties: [],
     },
     {
       creditor_name: 'Westhaven University Medical Center',
@@ -525,8 +681,53 @@ export const PRIYA: PersonaData = {
       amount_owed: 35000,
       monthly_payment: 0,
       is_in_collections: true,
+      address: addr('1653 W Congress Pkwy', 'Chicago', 'IL', '60612'),
+      account_last_4: '3323',
+      date_incurred: '02/2025',
+      claim_status: [],
+      offset_answer: 'no',
+      notice_parties: [
+        {
+          name: 'Lakeshore Medical Recovery LLC',
+          ...addr('P.O. Box 9333', 'Chicago', 'IL', '60690'),
+          last_4: '7310',
+        },
+      ],
+    },
+    {
+      creditor_name: 'Kestrel Auto Finance',
+      debt_type: 'auto_loan',
+      amount_owed: 14900,
+      monthly_payment: 450,
+      is_in_collections: false,
+      collateral_description: '2021 Honda CR-V EX',
+      address: addr('P.O. Box 9303', 'Torrance', 'CA', '90503'),
+      account_last_4: '3303',
+      date_incurred: '11/2023',
+      claim_status: [],
+      secured: { position: '3.1', pick: 'CR-V', lien: ['agreement'] },
+      notice_parties: [],
     },
   ],
+  contracts: [
+    {
+      counterparty_name: 'Fullerton Parkway Apartments LLC',
+      contract_type: 'lease',
+      description: 'Residential lease, 456 W Fullerton Pkwy, to 07/31/2027, $2,800 a month',
+      address: addr('456 W Fullerton Pkwy', 'Chicago', 'IL', '60614', 'Management Office'),
+      lease_kind: 'residential',
+      owes_now: 'no',
+    },
+  ],
+  codebtors: [
+    {
+      name: 'Rohan Sharma',
+      relationship: 'spouse',
+      address: addr('456 W Fullerton Pkwy', 'Chicago', 'IL', '60614'),
+      links: ['Westhaven University Medical Center'],
+    },
+  ],
+  claim_answers: { contracts_answer: 'yes', codebtors_answer: 'yes', community_lived: 'no' },
   filing_fee: { payment_choice: 'pay_in_full' },
   expected: { passes_means_test: false },
 };
@@ -615,6 +816,7 @@ export const DESHAWN: PersonaData = {
         property_kinds: ['single_family'],
         who: 'only_you',
         nature: 'Fee simple',
+        lives_here: 'yes',
       },
       current_value: 180000,
       entire_value: 180000,
@@ -645,6 +847,17 @@ export const DESHAWN: PersonaData = {
       amount_owed: 160000,
       monthly_payment: 1200,
       is_in_collections: false,
+      address: addr('PO Box 4401', 'Chicago', 'IL', '60680'),
+      account_last_4: '0441',
+      date_incurred: '2019',
+      claim_status: [],
+      secured: {
+        position: '1.1',
+        pick: 'Sangamon',
+        lien: ['agreement'],
+        home_payment_line: 'first',
+      },
+      notice_parties: [],
       collateral_description: 'Single-family home, 7823 S Sangamon St',
     },
     {
@@ -653,6 +866,12 @@ export const DESHAWN: PersonaData = {
       amount_owed: 6700,
       monthly_payment: 0,
       is_in_collections: true,
+      address: addr('PO Box 4402', 'Chicago', 'IL', '60680'),
+      account_last_4: '0442',
+      date_incurred: '2017–2025',
+      claim_status: [],
+      offset_answer: 'no',
+      notice_parties: [],
     },
     {
       creditor_name: 'Lakeline Electric',
@@ -660,6 +879,18 @@ export const DESHAWN: PersonaData = {
       amount_owed: 800,
       monthly_payment: 0,
       is_in_collections: true,
+      address: addr('PO Box 4403', 'Chicago', 'IL', '60680'),
+      account_last_4: '0443',
+      date_incurred: '2025',
+      claim_status: [],
+      offset_answer: 'no',
+      notice_parties: [
+        {
+          name: 'Demo Recovery Services',
+          ...addr('PO Box 4405', 'Chicago', 'IL', '60680'),
+          last_4: '7443',
+        },
+      ],
     },
     {
       creditor_name: 'Southmoor Health',
@@ -667,8 +898,23 @@ export const DESHAWN: PersonaData = {
       amount_owed: 4200,
       monthly_payment: 0,
       is_in_collections: true,
+      address: addr('PO Box 4404', 'Chicago', 'IL', '60680'),
+      account_last_4: '0444',
+      date_incurred: '2025',
+      claim_status: [],
+      offset_answer: 'no',
+      notice_parties: [
+        {
+          name: 'Demo Medical Collections',
+          ...addr('PO Box 4406', 'Chicago', 'IL', '60680'),
+          last_4: '7444',
+        },
+      ],
     },
   ],
+  contracts: [],
+  codebtors: [],
+  claim_answers: { contracts_answer: 'no', codebtors_answer: 'no', community_lived: 'no' },
   filing_fee: { payment_choice: 'installments' },
   expected: { passes_means_test: true },
 };
@@ -727,6 +973,12 @@ export const SARAH: PersonaData = {
       amount_owed: 28000,
       monthly_payment: 0,
       is_in_collections: false,
+      address: addr('60 Demo Way', 'Wilkes-Barre', 'PA', '18773'),
+      account_last_4: '6006',
+      date_incurred: '2016–2020',
+      claim_status: [],
+      offset_answer: 'no',
+      notice_parties: [],
     },
     {
       creditor_name: 'Lakemont University Hospital',
@@ -734,8 +986,33 @@ export const SARAH: PersonaData = {
       amount_owed: 3400,
       monthly_payment: 0,
       is_in_collections: true,
+      address: addr('70 Demo Plaza', 'Chicago', 'IL', '60612', 'Lakemont Health Patient Accounts'),
+      account_last_4: '7007',
+      date_incurred: '02/2026',
+      claim_status: [],
+      offset_answer: 'no',
+      notice_parties: [
+        {
+          name: 'Wicker Demo Recovery LLC',
+          ...addr('80 Demo Ct', 'Oak Brook', 'IL', '60523'),
+          last_4: '8008',
+        },
+      ],
     },
   ],
+  contracts: [
+    {
+      counterparty_name: 'Damen Demo Flats LLC',
+      contract_type: 'lease',
+      description:
+        'Residential lease, one bedroom at 1520 N Damen Ave Apt 2F, 07/01/2026–06/30/2027, $850 a month',
+      address: addr('90 Demo St', 'Chicago', 'IL', '60622'),
+      lease_kind: 'residential',
+      owes_now: 'no',
+    },
+  ],
+  codebtors: [],
+  claim_answers: { contracts_answer: 'yes', codebtors_answer: 'no', community_lived: 'no' },
   filing_fee: {
     payment_choice: 'waiver',
     waiver: {
@@ -866,6 +1143,11 @@ export const ANDRES: PersonaData = {
       // His brother drives the car and pays the loan he co-signed
       monthly_payment: 0,
       is_in_collections: false,
+      address: addr('PO Box 48210', 'Schaumburg', 'IL', '60168'),
+      date_incurred: '08/15/2022',
+      claim_status: [],
+      secured: { position: '3.2', pick: 'Fit', lien: ['agreement'] },
+      notice_parties: [],
       collateral_description: '2017 Honda Fit, co-owned with my brother',
     },
     {
@@ -874,6 +1156,11 @@ export const ANDRES: PersonaData = {
       amount_owed: 640,
       monthly_payment: 0,
       is_in_collections: false,
+      address: addr('PO Box 77031', 'Dallas', 'TX', '75377'),
+      date_incurred: '07/20/2025',
+      claim_status: [],
+      offset_answer: 'no',
+      notice_parties: [],
     },
     {
       creditor_name: 'Calumet Ridge Medical Center',
@@ -881,6 +1168,17 @@ export const ANDRES: PersonaData = {
       amount_owed: 3850,
       monthly_payment: 0,
       is_in_collections: true,
+      address: addr('2500 Ridge Crest Pkwy', 'Aurora', 'IL', '60504'),
+      date_incurred: '02/08/2025',
+      claim_status: [],
+      offset_answer: 'no',
+      notice_parties: [
+        {
+          name: 'Ashgrove Recovery Group',
+          ...addr('900 Commerce Dr Ste 210', 'Oak Brook', 'IL', '60523'),
+          last_4: '4417',
+        },
+      ],
     },
     {
       creditor_name: 'Driveline Tire & Auto',
@@ -888,6 +1186,11 @@ export const ANDRES: PersonaData = {
       amount_owed: 1180,
       monthly_payment: 0,
       is_in_collections: false,
+      address: addr('1650 N Farnsworth Ave', 'Aurora', 'IL', '60505'),
+      date_incurred: '10/03/2025',
+      claim_status: [],
+      offset_answer: 'no',
+      notice_parties: [],
     },
     {
       creditor_name: 'Illinois State Toll Highway Authority',
@@ -895,6 +1198,11 @@ export const ANDRES: PersonaData = {
       amount_owed: 380,
       monthly_payment: 0,
       is_in_collections: false,
+      address: addr('2700 Ogden Ave', 'Downers Grove', 'IL', '60515'),
+      date_incurred: '01/14/2026',
+      claim_status: [],
+      offset_answer: 'no',
+      notice_parties: [],
     },
     {
       creditor_name: 'Tallowfield Lending Co.',
@@ -902,6 +1210,11 @@ export const ANDRES: PersonaData = {
       amount_owed: 4100,
       monthly_payment: 0,
       is_in_collections: false,
+      address: addr('PO Box 31544', 'Wilmington', 'DE', '19850'),
+      date_incurred: '09/05/2025',
+      claim_status: [],
+      offset_answer: 'no',
+      notice_parties: [],
     },
     {
       creditor_name: 'Northgate Card Services',
@@ -909,6 +1222,11 @@ export const ANDRES: PersonaData = {
       amount_owed: 6420,
       monthly_payment: 0,
       is_in_collections: false,
+      address: addr('PO Box 60917', 'Phoenix', 'AZ', '85082'),
+      date_incurred: '05/10/2019',
+      claim_status: [],
+      offset_answer: 'no',
+      notice_parties: [],
     },
     {
       creditor_name: 'Prairie Line Credit Union',
@@ -916,6 +1234,11 @@ export const ANDRES: PersonaData = {
       amount_owed: 1760,
       monthly_payment: 0,
       is_in_collections: false,
+      address: addr('310 E Galena Blvd', 'Aurora', 'IL', '60505'),
+      date_incurred: '03/02/2020',
+      claim_status: [],
+      offset_answer: 'yes',
+      notice_parties: [],
     },
     {
       creditor_name: 'Hollowmere Residential LLC',
@@ -923,6 +1246,11 @@ export const ANDRES: PersonaData = {
       amount_owed: 1850,
       monthly_payment: 0,
       is_in_collections: false,
+      address: addr('88 Ridgeway Ct', 'Naperville', 'IL', '60540'),
+      date_incurred: '12/31/2024',
+      claim_status: ['disputed'],
+      offset_answer: 'no',
+      notice_parties: [],
     },
     {
       creditor_name: 'Sablewood Bank',
@@ -930,8 +1258,42 @@ export const ANDRES: PersonaData = {
       amount_owed: 2980,
       monthly_payment: 0,
       is_in_collections: false,
+      address: addr('PO Box 15022', 'Columbus', 'OH', '43218'),
+      date_incurred: '10/18/2021',
+      claim_status: [],
+      offset_answer: 'no',
+      notice_parties: [],
     },
   ],
+  contracts: [
+    {
+      counterparty_name: 'Northlight Auto Leasing',
+      contract_type: 'lease',
+      description: 'Lease of a 2024 Toyota Corolla Hybrid, 36 months, 03/01/2025–02/29/2028',
+      address: addr('PO Box 92650', 'Itasca', 'IL', '60143'),
+      lease_kind: 'vehicle',
+      vehicle: { position: '3.1', pick: 'Corolla' },
+      monthly_payment: 389,
+      owes_now: 'no',
+    },
+    {
+      counterparty_name: 'Fox Run Property Management',
+      contract_type: 'lease',
+      description: 'Apartment lease, 06/01/2026–05/31/2027',
+      address: addr('2200 W Indian Trail', 'Aurora', 'IL', '60506'),
+      lease_kind: 'residential',
+      owes_now: 'no',
+    },
+  ],
+  codebtors: [
+    {
+      name: 'Mateo Kettleby',
+      relationship: 'relative',
+      address: addr('377 Douglas Ave', 'Elgin', 'IL', '60120'),
+      links: ['Copperline Auto Finance'],
+    },
+  ],
+  claim_answers: { contracts_answer: 'yes', codebtors_answer: 'yes', community_lived: 'no' },
   filing_fee: { payment_choice: 'installments' },
   expected: { passes_means_test: true },
 };

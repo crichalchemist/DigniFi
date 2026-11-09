@@ -41,7 +41,6 @@ from apps.intake import views as intake_views
 from apps.intake.locking import lock_session
 from apps.intake.models import (
     AssetInfo,
-    Codebtor,
     DebtInfo,
     DebtorInfo,
     ExecutoryContract,
@@ -49,7 +48,13 @@ from apps.intake.models import (
     IncomeInfo,
     IntakeSession,
 )
-from apps.intake.tests.builders import answer_asset_lines, answer_household
+from apps.intake.tests.builders import (
+    answer_asset_lines,
+    answer_household,
+    complete_codebtor,
+    complete_contract,
+    complete_debt,
+)
 from apps.users.models import User
 
 # CI runs these with config.settings.test_postgres. If those settings ever reach anything
@@ -496,20 +501,17 @@ def _rows(session):
     car.set_details({"who": "only_you", "make": "Honda"})
     car.save()
     answer_asset_lines(session, ["3"])
+    # Every claims answer is given, so Complete has no claim gap to refuse either.
+    debt = complete_debt(
+        session, creditor_name="Prairie Card Services", amount_owed=Decimal("1000.00")
+    )
     return {
-        "contract": ExecutoryContract.objects.create(
-            session=session, counterparty_name="Oak Street Apartments", contract_type="lease"
+        "contract": complete_contract(
+            session, counterparty_name="Oak Street Apartments", contract_type="lease"
         ),
-        "codebtor": Codebtor.objects.create(
-            session=session, name="Sam Doe", relationship="relative"
-        ),
+        "codebtor": complete_codebtor(session, name="Sam Doe", relationship="relative"),
         "asset": car,
-        "debt": DebtInfo.objects.create(
-            session=session,
-            creditor_name="Prairie Card Services",
-            debt_type="credit_card",
-            amount_owed=Decimal("1000.00"),
-        ),
+        "debt": debt,
         "bill": bill,
     }
 
@@ -517,6 +519,12 @@ def _rows(session):
 # Every intake-data write: (method, path, body, expected status).
 WRITES = {
     "session PATCH": lambda s, r: ("patch", _session_url(s), {"debts": [NEW_DEBT]}, 200),
+    "debts PATCH with links": lambda s, r: (
+        "patch",
+        _session_url(s),
+        {"debts": [{**NEW_DEBT, "secured_by": r["asset"].pk}]},
+        200,
+    ),
     "household PATCH": lambda s, r: (
         "patch",
         _session_url(s),
@@ -538,6 +546,18 @@ WRITES = {
     "session PUT": lambda s, r: ("put", _session_url(s), {"district": s.district_id}, 200),
     "Continue": lambda s, r: ("post", _session_url(s, "update_step/"), {"current_step": 3}, 200),
     "Complete": lambda s, r: ("post", _session_url(s, "complete/"), {}, 200),
+    "claim_answers PATCH": lambda s, r: (
+        "patch",
+        _session_url(s),
+        {"claim_answers": {"contracts_answer": "no"}},
+        200,
+    ),
+    "Continue to step 7": lambda s, r: (
+        "post",
+        _session_url(s, "update_step/"),
+        {"current_step": 7},
+        200,
+    ),
     "contracts PUT": lambda s, r: (
         "put",
         _session_url(s, "contracts/"),
@@ -653,6 +673,8 @@ def test_every_intake_write_waits_for_a_save_in_progress(ready, write):
     [
         ("contracts PUT", intake_serializers.ExecutoryContractRowSerializer),
         ("codebtors PUT", intake_serializers.CodebtorRowSerializer),
+        ("contract POST", intake_serializers.ExecutoryContractSerializer),
+        ("codebtor POST", intake_serializers.CodebtorSerializer),
     ],
 )
 def test_a_list_save_checks_its_rows_while_it_holds_the_lock(ready, write, row_serializer):
@@ -661,9 +683,11 @@ def test_a_list_save_checks_its_rows_while_it_holds_the_lock(ready, write, row_s
     method, url, body, expected = WRITES[write](session, _rows(session))
     checked = threading.Event()
 
+    real_validate = row_serializer.validate
+
     def checks(self, attrs):
         checked.set()
-        return attrs
+        return real_validate(self, attrs)
 
     def send():
         return getattr(_client(user), method)(url, body, format="json")

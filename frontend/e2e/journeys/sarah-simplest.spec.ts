@@ -59,16 +59,13 @@ test.describe('Sarah Chen — Simplest Case', () => {
     await wizard.walkAssets(SARAH);
 
     // Step 6: Debts (student loan + medical)
-    for (const debt of SARAH.debts) {
-      await wizard.addDebt(debt);
-    }
-    await wizard.nextStep();
+    await wizard.walkDebts(SARAH);
 
-    // Step 7: Contracts & Leases (optional — no entries needed)
-    await wizard.nextStep();
+    // Step 7: Contracts & Leases (answered from the persona)
+    await wizard.walkContracts(SARAH);
 
-    // Step 8: Codebtors (optional — no entries needed)
-    await wizard.nextStep();
+    // Step 8: Codebtors (answered from the persona)
+    await wizard.walkCodebtors(SARAH);
 
     // Step 9: Review & Complete
     await wizard.fillReview();

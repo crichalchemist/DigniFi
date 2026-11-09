@@ -22,6 +22,7 @@ from apps.eligibility.services import MeansTestCalculator
 from apps.forms.registry import PreconditionMissing, _needs_county, _needs_ssn
 
 from .asset_lines import asset_step_gaps
+from .claims import claim_step_gaps
 from .filing_fee import filing_fee_information
 from .income import deductions_blank, schedule_i_line4
 from .locking import lock_session
@@ -50,7 +51,7 @@ from .serializers import (
 )
 
 
-def _save_list(session, model, row_serializer, rows):
+def _save_list(session, model, row_serializer, rows, scoped=None):
     """Save the whole list the Contracts or Codebtors step shows (DIG-147).
 
     The session is locked first, so a check that reads the stored rows sees the last save's.
@@ -58,12 +59,13 @@ def _save_list(session, model, row_serializer, rows):
     row carrying one of this session's ids updates in place, any other row is created, and
     a stored row the list left out is deleted (see _save_rows_by_id). Returns the saved rows
     in the order sent, each with its id, so the wizard pairs them by position (3c spec §6.3).
+    ``scoped`` names the foreign keys a row may carry, as _save_rows_by_id takes it.
     """
     with transaction.atomic():
         lock_session(session.pk)
-        serializer = row_serializer(data=rows, many=True)
+        serializer = row_serializer(data=rows, many=True, context={"session": session})
         serializer.is_valid(raise_exception=True)
-        saved = _save_rows_by_id(session, model, serializer.validated_data)
+        saved = _save_rows_by_id(session, model, serializer.validated_data, scoped)
         session.reopen()
     return Response(row_serializer(saved, many=True).data)
 
@@ -142,6 +144,7 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
                 "expense_info",
                 "household",
                 "spouse_income",
+                "claim_answers",
             )
             .prefetch_related("assets", "debts")
         )
@@ -180,22 +183,6 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
         lock_session(self.get_object().pk)  # get_object first: another user's session is a 404
         return super().update(request, *args, **kwargs)
 
-    @transaction.atomic
-    def partial_update(self, request, *args, **kwargs):
-        """
-        PATCH /api/intake/sessions/{id}/
-
-        After saving, bulk-clear is_draft on all DebtInfo rows for this session
-        when the 'debts' key is present in the request payload.
-        """
-        instance = self.get_object()
-        response = super().partial_update(request, *args, **kwargs)
-        if "debts" in request.data:
-            DebtInfo.objects.filter(session=instance, is_draft=True).update(is_draft=False)
-            for debt in response.data["debts"]:
-                debt["is_draft"] = False
-        return response
-
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
 
@@ -231,6 +218,11 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
         session.current_step = current_step
         session.status = "in_progress"
         session.save()
+
+        # Continue from Amounts Owed confirms every scanned debt, before any data this request
+        # carries is saved, so the rows that save loads (and the reply) read confirmed.
+        if current_step == 7:
+            DebtInfo.objects.filter(session=session, is_draft=True).update(is_draft=False)
 
         # Continue from the Income step records the window the filer confirmed (3e2 spec §4.4)
         income_info = getattr(session, "income_info", None)
@@ -308,15 +300,9 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
         # which is wizard order (3b spec §7).
         errors.extend([{"step": gap.step, "message": str(gap)} for gap in asset_step_gaps(session)])
 
-        # A scanned debt stays off the forms until the filer saves the Amounts Owed step
-        # (DIG-163). An upload after Complete reopens the intake, and Review is one press away.
-        if session.debts.filter(is_draft=True).exists():
-            errors.append(
-                {
-                    "step": "debts",
-                    "message": "Check the debts read from your documents on the Amounts Owed step.",
-                }
-            )
+        # The claims steps' walk (3c3): Assets' "Do you live here?" first, then the Debts block
+        # (a scanned debt the filer hasn't confirmed first, DIG-163), Contracts and Codebtors.
+        errors.extend({"step": gap.step, "message": str(gap)} for gap in claim_step_gaps(session))
 
         if errors:
             return Response(
@@ -512,12 +498,16 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
             return Response(serializer.data)
         if request.method == "PUT":
             return _save_list(
-                session, ExecutoryContract, ExecutoryContractRowSerializer, request.data
+                session,
+                ExecutoryContract,
+                ExecutoryContractRowSerializer,
+                request.data,
+                scoped={"vehicle_asset_id": AssetInfo, "owed_debt_id": DebtInfo},
             )
-        serializer = ExecutoryContractSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
         with transaction.atomic():
             lock_session(session.pk)
+            serializer = ExecutoryContractSerializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
             serializer.save(session=session)
             session.reopen()
         return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -548,10 +538,10 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
             return Response(serializer.data)
         if request.method == "PUT":
             return _save_list(session, Codebtor, CodebtorRowSerializer, request.data)
-        serializer = CodebtorSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
         with transaction.atomic():
             lock_session(session.pk)
+            serializer = CodebtorSerializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
             serializer.save(session=session)
             session.reopen()
         return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -619,7 +609,7 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
             completed_sections += 1
         if not asset_step_gaps(session):
             completed_sections += 1
-        if session.debts.exists():
+        if not any(gap.step == "debts" for gap in claim_step_gaps(session)):
             completed_sections += 1
 
         return int((completed_sections / total_sections) * 100)

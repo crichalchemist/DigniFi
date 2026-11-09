@@ -11,7 +11,16 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useIntake } from '../context/IntakeContext';
 import { api, APIClientError } from '../api/client';
 import { trackEvent } from '../utils/analytics';
-import { hydrateAmounts } from '../utils/parseAmount';
+import { decimalToNumber, hydrateAmounts } from '../utils/parseAmount';
+import {
+  isBlankCodebtor,
+  isBlankContract,
+  isBlankDebt,
+  keptRows,
+  noDebtsToSend,
+  sentDebt,
+} from '../utils/claimRows';
+import type { SentDebt } from '../utils/claimRows';
 import { membersToSend, sentMember } from '../utils/householdRows';
 import { entriesToSend, hydrateEntries, sentEntry } from '../utils/incomeEntries';
 import type { EntryRow } from '../utils/incomeEntries';
@@ -36,12 +45,13 @@ import type {
   ExpenseInfo,
   AssetInfo,
   AssetLineAnswer,
-  DebtInfo,
   ExecutoryContract,
   Codebtor,
   ContractRow,
   CodebtorRow,
+  ClaimAnswers,
   CompletionError,
+  DebtRow,
   HouseholdMember,
   IncomeEntry,
   IncomePeriod,
@@ -68,6 +78,26 @@ import { firstIncompletePart } from '../components/wizard/steps/assets/assetGaps
 // so they become numbers as session data enters wizard state.
 const ASSET_AMOUNT_FIELDS = ['current_value', 'entire_value', 'amount_owed'] as const;
 const DEBT_AMOUNT_FIELDS = ['amount_owed', 'monthly_payment'] as const;
+// Step 8's claim answers, in the order the body names them (3c3 R16)
+const CODEBTOR_ANSWER_KEYS = [
+  'codebtors_answer',
+  'community_lived',
+  'community_spouse_lived_with',
+  'community_state',
+  'community_spouse_name',
+  'community_spouse_street_address',
+  'community_spouse_street_2',
+  'community_spouse_city',
+  'community_spouse_state',
+  'community_spouse_zip_code',
+  'community_spouse_outside_us',
+] as const;
+
+/** A stored contract's payment as a number, null kept as null, only on a row that has the key */
+function hydrateContract(row: ExecutoryContract): ExecutoryContract {
+  if (!('monthly_payment' in row)) return row;
+  return { ...row, monthly_payment: decimalToNumber(row.monthly_payment) ?? null };
+}
 // The income amounts, the filer's and the spouse's: the ten, the ten now, the two assistance
 // amounts and the eight payroll deductions (the Take-home pay step's)
 const INCOME_AMOUNT_KEYS = [
@@ -100,17 +130,22 @@ function addNowAndAssistance(body: Partial<IncomeInfo>, data: Partial<IncomeInfo
   body.noncash_assistance_value = data.noncash_assistance_value ?? null;
 }
 
-/** What saving the step on screen sends: a session PATCH body, or a contracts or codebtors list */
+/**
+ * What saving the step on screen sends: a session PATCH body, or a contracts or codebtors list
+ * with the step's claim answers (saved by a second request, R16)
+ */
 type StepBody =
   | Partial<IntakeSession>
-  | { contracts: ContractRow[] }
-  | { codebtors: CodebtorRow[] };
+  | { contracts: ContractRow[]; claim_answers: ClaimAnswers }
+  | { codebtors: CodebtorRow[]; claim_answers: ClaimAnswers };
 
-/** A row as the server takes it, without the browser's own key */
-function withoutKey<Row extends { _key: string }>(row: Row): Partial<Row> {
-  const sent: Partial<Row> = { ...row };
-  delete sent._key;
-  return sent;
+/** A row as the server takes it, without the browser's own keys (every key starting with `_`) */
+function withoutKey<Row extends object>(row: Row): Partial<Row> {
+  const sent: Record<string, unknown> = { ...(row as Record<string, unknown>) };
+  for (const key of Object.keys(sent)) {
+    if (key.startsWith('_')) delete sent[key];
+  }
+  return sent as Partial<Row>;
 }
 
 /**
@@ -134,10 +169,15 @@ function withSavedIds<Row extends { _key: string; id?: number }>(
   rows: Row[],
   ids: Map<string, number>
 ): Row[] {
-  return rows.map((row) => {
+  let changed = false;
+  const next = rows.map((row) => {
     const id = ids.get(row._key);
-    return id === undefined ? row : { ...row, id };
+    if (id === undefined || row.id === id) return row;
+    changed = true;
+    return { ...row, id };
   });
+  // The same array when every id already matches, so a repeat write is no change to React
+  return changed ? next : rows;
 }
 
 export function IntakeWizard() {
@@ -196,7 +236,10 @@ export function IntakeWizard() {
   const [assetAnswers, setAssetAnswers] = useState<Record<string, AssetLineAnswer>>({});
   // The Part showing, set each time the Assets step opens and never stored (3b spec §4)
   const [assetPart, setAssetPart] = useState(1);
-  const [debtsData, setDebtsData] = useState<WizardRow<DebtInfo>[]>([]);
+  const [debtsData, setDebtsData] = useState<DebtRow[]>([]);
+  // The Schedule D, E/F, G and H questions that aren't on a row (3c3 §7.3)
+  const [claimAnswers, setClaimAnswers] = useState<ClaimAnswers>({});
+  const noDebts = claimAnswers.no_debts === true;
   const [contractsData, setContractsData] = useState<ContractRow[]>([]);
   const [codebtorsData, setCodebtorsData] = useState<CodebtorRow[]>([]);
   // What Complete last said is missing, listed on Review until the step changes
@@ -305,14 +348,27 @@ export function IntakeWizard() {
         setAssetsData(loadedAssets);
         setAssetAnswers(loadedAnswers);
         setAssetPart(firstIncompletePart(loadedAssets, loadedAnswers));
+        // A loaded debt counts as pressed on the secured question, unless it is a scanned draft
+        // (R15, B43). A blank debt type reads as none.
         if (fresh.debts)
           setDebtsData(
             fresh.debts.map((debt) => ({
               ...hydrateAmounts(debt, DEBT_AMOUNT_FIELDS),
+              debt_type: debt.debt_type || undefined,
               _key: String(debt.id),
+              _securedPressed: !debt.is_draft,
             }))
           );
-        setContractsData(contracts.map((row) => ({ ...row, _key: String(row.id) })));
+        // "I have no amounts owed" shows pressed only while the read holds no debt row, so a stored
+        // true beside rows never shows a button the filer can't unpress
+        const loadedClaims = fresh.claim_answers ?? {};
+        setClaimAnswers({
+          ...loadedClaims,
+          no_debts: loadedClaims.no_debts === true && !fresh.debts?.length ? true : null,
+        });
+        setContractsData(
+          contracts.map((row) => ({ ...hydrateContract(row), _key: String(row.id) }))
+        );
         setCodebtorsData(codebtors.map((row) => ({ ...row, _key: String(row.id) })));
         setSessionRead('done');
       })
@@ -420,30 +476,36 @@ export function IntakeWizard() {
           ),
         } as Partial<IntakeSession>;
 
-      case 'debts':
-        // Filter empty forms — debt_type, is_secured, and priority_classification
-        // are already set by DebtsStep via DEBT_CATEGORY_META lookup. A payment goes as null,
-        // since the server keeps what it holds for a key left out.
+      case 'debts': {
+        // A half-filled row saves too (R17): only a new row with nothing on it stays in the
+        // browser, and a stored row always goes, since the server deletes a stored row a save
+        // leaves out. A blank amount goes as 0 and a blank payment as null, since the server keeps
+        // what it holds for a key left out. `no_debts` is true only while it is pressed and no row
+        // is kept (R18).
+        const kept = keptRows(debtsData, isBlankDebt).map(sentDebt);
         return {
-          debts: debtsData
-            .filter((d) => d.creditor_name?.trim())
-            .map((row) => ({ ...row, monthly_payment: row.monthly_payment ?? null })),
-        } as Partial<IntakeSession>;
+          debts: kept,
+          claim_answers: { no_debts: noDebtsToSend(kept, noDebts) },
+        } as unknown as Partial<IntakeSession>;
+      }
 
       case 'contracts':
-        // A new row with no name stays in the browser. A stored row always goes, since the list
-        // save deletes a stored row it leaves out (3c spec §6.3). While the step's rule holds, a
-        // stored row without its name blocks the step, so it never gets here (R17).
+        // Only a new row with nothing on it stays in the browser. A stored row always goes, since
+        // the list save deletes a stored row it leaves out, so one whose name was cleared goes
+        // nameless under its id (R17).
         return {
-          contracts: contractsData.filter(
-            (row) => row.id !== undefined || row.counterparty_name.trim()
-          ),
+          contracts: keptRows(contractsData, isBlankContract),
+          claim_answers: { contracts_answer: claimAnswers.contracts_answer ?? null },
         };
 
-      case 'codebtors':
+      case 'codebtors': {
+        const answers: Record<string, unknown> = {};
+        for (const key of CODEBTOR_ANSWER_KEYS) answers[key] = claimAnswers[key] ?? null;
         return {
-          codebtors: codebtorsData.filter((row) => row.id !== undefined || row.name.trim()),
+          codebtors: keptRows(codebtorsData, isBlankCodebtor),
+          claim_answers: answers as ClaimAnswers,
         };
+      }
 
       default:
         return null;
@@ -466,6 +528,8 @@ export function IntakeWizard() {
     debtsData,
     contractsData,
     codebtorsData,
+    claimAnswers,
+    noDebts,
   ]);
 
   const { saveStatus, saveNow, lastSavedAt } = useAutoSave({
@@ -474,11 +538,15 @@ export function IntakeWizard() {
     // they are kept under no step's name.
     dataKey: sessionRead === 'done' ? currentStepKey : undefined,
     onSave: (body) => saveCurrentStepData(body),
-    // Only autosave a complete, valid step (see architecture rationale), but for Assets, whose
-    // work mid-Part saves too (3b spec §4). 'review' has nothing to save; disabled until a session
-    // exists.
+    // Only autosave a complete, valid step (see architecture rationale), but for Assets, Amounts
+    // Owed, Contracts and Codebtors, whose half-filled rows save too: a row is kept by what is on
+    // it, never by the step being valid (3b spec §4, 3c3 B4 and B47). 'review' has nothing to
+    // save; disabled until a session exists.
     enabled:
-      !!session && (canProceed || currentStepKey === 'assets') && currentStepKey !== 'review',
+      !!session &&
+      (canProceed ||
+        ['assets', 'debts', 'contracts', 'codebtors'].includes(currentStepKey ?? '')) &&
+      currentStepKey !== 'review',
   });
 
   // Every way onto a step but the first read. The Assets step opens at the first Part with
@@ -602,9 +670,16 @@ export function IntakeWizard() {
       return;
     }
 
-    // Each list saves through its own PUT, which takes the bare list and replies in the order sent
+    // Each list saves through its own PUT, which takes the bare list and replies in the order
+    // sent, and then the step's claim answers go in a session PATCH of their own (R16). Either
+    // failing fails the save, so the next save sends both again. The ids go into the rows after
+    // the PATCH, even when it fails: a PATCH that fails leaves the rows holding the ids the server
+    // gave them, so the next save updates those rows and never creates them again. Writing them
+    // after it, not before, keeps the render from seeing a body that differs from the copy on its
+    // way and starting one more identical save. A save a later save of the
+    // list has overtaken sends no PATCH: the later one carries the same answers.
     if ('contracts' in body) {
-      const rows = body.contracts;
+      const { contracts: rows, claim_answers } = body;
       const save = ++listSavesRef.current.contracts;
       const saved = await api.intake.saveContracts(
         session.id,
@@ -612,17 +687,27 @@ export function IntakeWizard() {
       );
       if (save !== listSavesRef.current.contracts) return;
       const ids = savedIds(rows, saved as { id: number }[]);
-      setContractsData((current) => withSavedIds(current, ids));
-      return { contracts: withSavedIds(rows, ids) };
+      try {
+        await api.intake.updateSession(session.id, { claim_answers });
+      } finally {
+        if (save === listSavesRef.current.contracts)
+          setContractsData((current) => withSavedIds(current, ids));
+      }
+      return { contracts: withSavedIds(rows, ids), claim_answers };
     }
     if ('codebtors' in body) {
-      const rows = body.codebtors;
+      const { codebtors: rows, claim_answers } = body;
       const save = ++listSavesRef.current.codebtors;
       const saved = await api.intake.saveCodebtors(session.id, rows.map(withoutKey) as Codebtor[]);
       if (save !== listSavesRef.current.codebtors) return;
       const ids = savedIds(rows, saved as { id: number }[]);
-      setCodebtorsData((current) => withSavedIds(current, ids));
-      return { codebtors: withSavedIds(rows, ids) };
+      try {
+        await api.intake.updateSession(session.id, { claim_answers });
+      } finally {
+        if (save === listSavesRef.current.codebtors)
+          setCodebtorsData((current) => withSavedIds(current, ids));
+      }
+      return { codebtors: withSavedIds(rows, ids), claim_answers };
     }
 
     // Assets, debts, household members and the Income step's entries carry the browser's own key,
@@ -631,7 +716,7 @@ export function IntakeWizard() {
     // of the list created.
     const { assets, debts, household, income_info, spouse_income } = body as {
       assets?: WizardRow<AssetInfo>[];
-      debts?: WizardRow<DebtInfo>[];
+      debts?: SentDebt[];
       household?: { members?: WizardRow<HouseholdMember>[] | null };
       income_info?: { business_and_rental?: EntryRow[] | null };
       spouse_income?: { business_and_rental?: EntryRow[] | null };
@@ -807,6 +892,11 @@ export function IntakeWizard() {
           <DebtsStep
             rows={debtsData}
             onRowsChange={setDebtsData}
+            noDebts={noDebts}
+            onNoDebtsChange={(pressed) =>
+              setClaimAnswers((answers) => ({ ...answers, no_debts: pressed ? true : null }))
+            }
+            assets={assetsData}
             onValidationChange={setCanProceed}
           />
         );
@@ -816,7 +906,14 @@ export function IntakeWizard() {
           <ContractsStep
             rows={contractsData}
             onRowsChange={setContractsData}
+            answer={claimAnswers.contracts_answer ?? null}
+            onAnswerChange={(answer) =>
+              setClaimAnswers((answers) => ({ ...answers, contracts_answer: answer }))
+            }
+            debts={debtsData}
+            assets={assetsData}
             onValidationChange={setCanProceed}
+            onGoToStep={moveToStep}
           />
         );
 
@@ -825,6 +922,10 @@ export function IntakeWizard() {
           <CodebtorsStep
             rows={codebtorsData}
             onRowsChange={setCodebtorsData}
+            answers={claimAnswers}
+            onAnswersChange={setClaimAnswers}
+            debts={debtsData}
+            contracts={contractsData}
             onValidationChange={setCanProceed}
           />
         );
@@ -839,9 +940,10 @@ export function IntakeWizard() {
             spouseEntries={entriesToSend(spouseEntryRows, spouseNoEntries) as IncomeEntry[] | null}
             expenseData={expenseData}
             assetsData={assetsData}
-            debtsData={debtsData}
+            debtsData={keptRows(debtsData, isBlankDebt)}
             contractsData={contractsData.filter((row) => row.id !== undefined)}
             codebtorsData={codebtorsData.filter((row) => row.id !== undefined)}
+            claimAnswers={claimAnswers}
             householdCount={session?.household?.family_size ?? null}
             county={county}
             onValidationChange={setCanProceed}

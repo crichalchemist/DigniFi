@@ -1,6 +1,7 @@
 import json
 import logging
 from concurrent.futures import ThreadPoolExecutor
+from decimal import Decimal
 
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
@@ -231,7 +232,7 @@ class DocumentViewSet(ViewSet):
             # represent a wider value, so refuse it here before anything is written.
             try:
                 draft_fields["amount_owed"] = serializers.DecimalField(
-                    max_digits=12, decimal_places=2
+                    max_digits=12, decimal_places=2, min_value=Decimal("0")
                 ).run_validation(draft_fields["amount_owed"])
             except serializers.ValidationError as exc:
                 return Response({"amount_owed": exc.detail}, status=status.HTTP_400_BAD_REQUEST)

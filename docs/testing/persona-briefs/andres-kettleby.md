@@ -87,18 +87,20 @@ Each item goes on the Schedule A/B line shown. Answer Yes to line 37 (your drivi
 
 **Amounts Owed.** You pay $0 a month on every one of these.
 
-- Copperline Auto Finance car loan — $7,800, paying $0 (Mateo's Fit loan you co-signed; what secures it: "2017 Honda Fit, co-owned with my brother")
-- Bright Signal Wireless utility bill — $640, paying $0 (final phone bill and early termination)
-- Calumet Ridge Medical Center medical bill — $3,850, paying $0 (your daughter's ER visit, in collections)
-- Driveline Tire & Auto credit card — $1,180, paying $0 (store card: tires and brakes)
-- Illinois State Toll Highway Authority other amount owed — $380, paying $0 (unpaid tolls and violation fines)
-- Tallowfield Lending Co. personal loan — $4,100, paying $0 (online loan for rent)
-- Northgate Card Services credit card — $6,420, paying $0
-- Prairie Line Credit Union credit card — $1,760, paying $0
-- Hollowmere Residential LLC other amount owed — $1,850, paying $0 (old landlord's move-out damage claim)
-- Sablewood Bank credit card — $2,980, paying $0
+- Copperline Auto Finance car loan — $7,800, paying $0 (Mateo's Fit loan you co-signed; what secures it: "2017 Honda Fit, co-owned with my brother"). Address: PO Box 48210, Schaumburg, IL 60168. Since 08/15/2022. Secured by the Honda Fit on line 3. Lien: an agreement you made. The lender can take back property: Yes.
+- Bright Signal Wireless utility bill — $640, paying $0 (final phone bill and early termination). Address: PO Box 77031, Dallas, TX 75377. Since 07/20/2025.
+- Calumet Ridge Medical Center medical bill — $3,850, paying $0 (your daughter's ER visit, in collections). Address: 2500 Ridge Crest Pkwy, Aurora, IL 60504. Since 02/08/2025. Someone else is contacting you: Ashgrove Recovery Group, 900 Commerce Dr Ste 210, Oak Brook, IL 60523, account ends 4417.
+- Driveline Tire & Auto credit card — $1,180, paying $0 (store card: tires and brakes). Address: 1650 N Farnsworth Ave, Aurora, IL 60505. Since 10/03/2025.
+- Illinois State Toll Highway Authority other amount owed — $380, paying $0 (unpaid tolls and violation fines). Address: 2700 Ogden Ave, Downers Grove, IL 60515. Since 01/14/2026.
+- Tallowfield Lending Co. personal loan — $4,100, paying $0 (online loan for rent). Address: PO Box 31544, Wilmington, DE 19850. Since 09/05/2025.
+- Northgate Card Services credit card — $6,420, paying $0. Address: PO Box 60917, Phoenix, AZ 85082. Since 05/10/2019.
+- Prairie Line Credit Union credit card — $1,760, paying $0. Address: 310 E Galena Blvd, Aurora, IL 60505. Since 03/02/2020. Subject to offset: Yes.
+- Hollowmere Residential LLC other amount owed — $1,850, paying $0 (old landlord's move-out damage claim). Address: 88 Ridgeway Ct, Naperville, IL 60540. Since 12/31/2024. Disputed: Yes.
+- Sablewood Bank credit card — $2,980, paying $0. Address: PO Box 15022, Columbus, OH 43218. Since 10/18/2021.
 
-**Contracts and codebtors:** leave both steps empty, and go on.
+Every other amount owed: not contingent, unliquidated or disputed, and not subject to offset, and no one else is contacting you about it.
+
+**Contracts and codebtors:** Contracts and leases: Yes. Northlight Auto Leasing, PO Box 92650, Itasca, IL 60143: lease of a 2024 Toyota Corolla Hybrid, 36 months, 03/01/2025–02/29/2028, kind vehicle, the Corolla on line 3, $389 a month; you do not owe money on it now. Fox Run Property Management, 2200 W Indian Trail, Aurora, IL 60506: apartment lease, 06/01/2026–05/31/2027, kind residential; you do not owe money on it now. Codebtors: Yes. Mateo Kettleby (your brother), 377 Douglas Ave, Elgin, IL 60120, shares the Copperline Auto Finance amount. Not in a community property state in the last 8 years.
 
 **The fee:** you mean to pay the filing fee in installments. After Complete, DigniFi asks how you will pay the fee: choose "I need to pay the fee in installments." and go on.
 

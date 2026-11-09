@@ -96,8 +96,13 @@ Each item goes on the Schedule A/B line shown. You are the only one with an inte
 
 **Amounts Owed:**
 
-- Silverpine Card Services credit card — $22,000, paying $500/mo
-- Westhaven University Medical Center — $35,000, paying $0 (in collections)
+- Kestrel Auto Finance car loan — $14,900, paying $450/mo (secured by vehicle: your Honda CR-V, line 3). Address: P.O. Box 9303, Torrance, CA 90503. Account ends 3303. Since 11/2023. Lien: an agreement you made. The lender can take back property: Yes. None of the status choices applies. No one else is contacting you.
+- Silverpine Card Services credit card — $22,000, paying $500/mo. Address: P.O. Box 9313, El Paso, TX 79998. Account ends 3313. Since 2024–2025. No one else is contacting you. None of the status choices applies; not subject to offset.
+- Westhaven University Medical Center — $35,000, paying $0 (in collections). Address: 1653 W Congress Pkwy, Chicago, IL 60612. Account ends 3323. Since 02/2025. Someone else is contacting you: Lakeshore Medical Recovery LLC, P.O. Box 9333, Chicago, IL 60690, account ends 7310. None of the status choices applies; not subject to offset.
+
+**Contracts and leases:** Yes. Fullerton Parkway Apartments LLC, 456 W Fullerton Pkwy, Management Office, Chicago, IL 60614. Kind: lease, residential. For: Residential lease, 456 W Fullerton Pkwy, to 07/31/2027, $2,800 a month. You do not owe money on it now.
+
+**Codebtors:** Yes. Rohan Sharma (your spouse), 456 W Fullerton Pkwy, Chicago, IL 60614, shares the Westhaven University Medical Center amount. Not in a community property state in the last 8 years.
 
 ## What to Watch For
 

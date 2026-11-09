@@ -177,12 +177,13 @@ Ownership is "Debtor 1 only" on every item, so entire value = portion. Nature of
 
 The names are fictional for every new party; see section 4 for the three existing creditors. The last-4 digits are synthetic.
 
-| Debt                                   | Address (synthetic)             | Last 4 | Incurred                 | "Can the lender take back property?" | Status flags |
-| -------------------------------------- | ------------------------------- | ------ | ------------------------ | ------------------------------------ | ------------ |
-| Brightwater Card Services card, $4,200 | 1 Demo Way, Richmond, VA 23238  | 1001   | 2019–2025                | No                                   | none         |
-| Larkfield General Hospital, $12,800    | 2 Demo Plaza, Chicago, IL 60611 | 2002   | 11/2025 (son's ER visit) | No                                   | none         |
-| Ironbridge personal loan, $3,500       | 3 Demo Rd, Riverwoods, IL 60015 | 3003   | 05/2024                  | No                                   | none         |
+| Debt                                   | Address (synthetic)             | Last 4 | Incurred  | "Can the lender take back property?" | Status flags |
+| -------------------------------------- | ------------------------------- | ------ | --------- | ------------------------------------ | ------------ |
+| Brightwater Card Services card, $4,200 | 1 Demo Way, Richmond, VA 23238  | 1001   | 2019–2025 | No                                   | none         |
+| Larkfield General Hospital, $12,800    | 2 Demo Plaza, Chicago, IL 60611 | 2002   | 11/2025   | No                                   | none         |
+| Ironbridge personal loan, $3,500       | 3 Demo Rd, Riverwoods, IL 60015 | 3003   | 05/2024   | No                                   | none         |
 
+- **Larkfield's date:** the date box takes about 15 characters; the longer wording ("son's ER visit") was measured and refused (S16).
 - **Secured:** her answer is No for all three, because she pledged nothing. The Civic's title is clear (paid off). There is no collateral link, and Schedule D stays empty.
 - **Status flags:** contingent, unliquidated, disputed and offset are all No, by her answers. Nothing is pre-ticked.
 - **Timeline:** the hospital bill and the card went to collections about February 2026, matching the brief's "8 months" of dodging calls at the fill date.
@@ -413,13 +414,13 @@ Every one of the ~45 lines is walked (AB-GATES). His answer is **No to every lin
   - Debtor 1 only.
   - **Nature of lien: "An agreement you made (such as mortgage or secured car loan)".** His answer: he signed the dealer's finance contract.
   - **"Can the lender take back property…": Yes,** pre-selected from auto_loan and kept by him.
-  - Contingent, unliquidated, disputed, offset: none (his answers). Notice party: No.
+  - Contingent, unliquidated and disputed: none (his answers). Offset is asked of an unsecured row only, so Crestway has none (S12). Notice party: No.
   - **Columns:** A $8,500.00. B $14,000.00 (sole owner, so entire equals portion; Q14). C = max(0, 8,500 − 14,000) = 0 (V8).
   - **Schedule J 17a:** "Car payments for Vehicle 1" is $350.00, from the debt's `monthly_payment`. `ExpenseInfo.vehicle_payment` is retired: the seed drops the 350 in the same commit that adds the link, so 22a neither double-counts nor loses it.
 - **Meridale National Bank (E/F Part 2):**
   - address: PO Box 90222, Sioux Falls, SD 57117 (synthetic);
   - last 4: 4402;
-  - date incurred: opened 06/2015, balance built 2023–2026;
+  - date incurred: 06/2015–2026 (the date box takes about 15 characters; "opened 06/2015, balance built 2023–2026" was measured and refused, S16);
   - Debtor 1 only;
   - type: "Other. Specify: Credit card";
   - $9,800.00;
@@ -643,11 +644,11 @@ Every line walked; "No" on every line not listed.
 
 Addresses marked (synthetic) are placeholders the owner confirms or replaces; every last 4 is synthetic.
 
-| Row                                     | Address                                                                              | Last 4 | Incurred                                     | Her answers and links                                                                                                                                                                                                       |
-| --------------------------------------- | ------------------------------------------------------------------------------------ | ------ | -------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Kestrel Auto Finance (new, `auto_loan`) | P.O. Box 9303, Torrance, CA 90503 (synthetic)                                        | 3303   | 11/2023                                      | "Can the lender take back property?" Yes (pre-selected; she keeps it). Linked to A/B 3.1. Balance $14,900, payment $450. Lien: "An agreement you made (such as mortgage or secured car loan)". No status flags; not behind. |
-| Silverpine Card Services                | P.O. Box 9313, El Paso, TX 79998 (synthetic)                                         | 3313   | 2024–2025 (most charged during the recovery) | No status flags. Payment $500 unchanged (not a J line).                                                                                                                                                                     |
-| Westhaven University Medical Center     | 1653 W Congress Pkwy, Chicago, IL 60612 (public hospital address; VERIFY or replace) | 3323   | 02/2025                                      | No status flags. Codebtor: spouse, so E/F ticks "At least one of the debtors and another". Notice party: Lakeshore Medical Recovery LLC (fictional), P.O. Box 9333, Chicago, IL 60690 (synthetic), last 4 7310.             |
+| Row                                     | Address                                                                              | Last 4 | Incurred  | Her answers and links                                                                                                                                                                                                       |
+| --------------------------------------- | ------------------------------------------------------------------------------------ | ------ | --------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Kestrel Auto Finance (new, `auto_loan`) | P.O. Box 9303, Torrance, CA 90503 (synthetic)                                        | 3303   | 11/2023   | "Can the lender take back property?" Yes (pre-selected; she keeps it). Linked to A/B 3.1. Balance $14,900, payment $450. Lien: "An agreement you made (such as mortgage or secured car loan)". No status flags; not behind. |
+| Silverpine Card Services                | P.O. Box 9313, El Paso, TX 79998 (synthetic)                                         | 3313   | 2024–2025 | No status flags. Payment $500 unchanged (not a J line). The date box takes about 15 characters; the longer wording ("most charged during the recovery") was measured and refused (S16).                                     |
+| Westhaven University Medical Center     | 1653 W Congress Pkwy, Chicago, IL 60612 (public hospital address; VERIFY or replace) | 3323   | 02/2025   | No status flags. Codebtor: spouse, so E/F ticks "At least one of the debtors and another". Notice party: Lakeshore Medical Recovery LLC (fictional), P.O. Box 9333, Chicago, IL 60690 (synthetic), last 4 7310.             |
 
 - **Schedule D:** A 14,900, B 20,500, C 0 (sole-owned, Q14). **J 17a** = 450 from the link; `ExpenseInfo.vehicle_payment` retired, and the seed and fixture drop the 450 (DIG-282).
 - **Codebtor (H):** spouse "Rohan Sharma" (fictional; H line 3 needs a name, and Q17's "no names" covers only the household list), 456 W Fullerton Pkwy, Chicago, IL 60614, on the Westhaven row. H line 2, community property state in the last 8 years: No.
@@ -1394,12 +1395,12 @@ Each PR adds only what its feature asks for; row names point to the brief above.
 **3c (claims, link, creditor list).**
 
 - Addresses on every D, E/F, G and H row. D 2.1 linked to A/B 3.2; lien "An agreement you made (such as mortgage or secured car loan)"; "take back" Yes; Columns B and C blank with the legal-aid note (Q14).
-- Notice 5.1 Ashgrove → line 4.2, last 4 digits 4417. Status: dates as in the brief; 4.8 disputed; 4.7 offset; nothing contingent or unliquidated.
+- Notice 5.1 Ashgrove → line 4.2, last 4 digits 4417. Status: dates as in the brief; 4.4 disputed; 4.7 offset; nothing contingent or unliquidated.
 - Codebtor Mateo linked to D 2.1, which ticks "At least one of the debtors and another".
 - G 2.1 kind "vehicle", $389 a month, personal-property-lease flag Yes, "owe now?" No, so `vehicle_payment` 389 → 0. G 2.2 not a vehicle, "owe now?" No. `AssetInfo.amount_owed` on the Fit retired.
 - List of Creditors: 14 entities (D 2.1, E/F 4.1–4.9, Ashgrove, Northlight, Fox Run, Mateo).
 
-**3d (priority).** "Is this one of these?": No for 4.1–4.9, except 4.4 **Not sure**, which stays in Part 2 with the legal-aid note. New row E/F 2.1, the IRS: `debt_type` other, $2,140, address as in the brief, `consumer_business_classification` "business" (his answer), type "Taxes…", split blank, past due $2,140 (stored; he has no 122A-2). List of Creditors: 15 entities.
+**3d (priority).** "Is this one of these?": No for 4.1–4.9, except 4.5 **Not sure**, which stays in Part 2 with the legal-aid note. New row E/F 2.1, the IRS: `debt_type` other, $2,140, address as in the brief, `consumer_business_classification` "business" (his answer), type "Taxes…", split blank, past due $2,140 (stored; he has no 122A-2). List of Creditors: 15 entities.
 
 **3g (Schedule C).** The brief's exemption picks, one row for each item and law.
 

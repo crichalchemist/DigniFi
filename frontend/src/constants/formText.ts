@@ -9,10 +9,12 @@
  * P2).
  */
 import type {
+  ClaimStatus,
   DeductionField,
   EntryKind,
   ExpenseField,
   ExpenseSpecifyField,
+  LienKind,
   MaritalStatus,
   PaymentChoice,
   PropertyKind,
@@ -593,3 +595,63 @@ export const AB_PERSONAL_INFO_QUESTION =
 export const AB_NO = 'No';
 
 export const AB_YES = 'Yes';
+
+// Schedule D and E/F, the claim rows (form_b106d.pdf pages 1 and 3, form_b106ef.pdf pages 1 and 3)
+
+// D prints "Number" and "Street" as two captions under one line
+export const CLAIM_STREET_LABEL = 'Number Street';
+export const D_DESCRIBE_PROPERTY_LABEL = 'Describe the property that secures the claim:';
+export const CLAIM_STATUS_QUESTION = 'As of the date you file, the claim is: Check all that apply.';
+
+export const CLAIM_STATUS_WORDS: Record<ClaimStatus, string> = {
+  contingent: 'Contingent',
+  unliquidated: 'Unliquidated',
+  disputed: 'Disputed',
+};
+
+export const LIEN_QUESTION = 'Nature of lien. Check all that apply.';
+
+// Cut: the printed blank after "Other (including a right to offset)", and the first answer's
+// second line is joined to its first
+export const LIEN_KIND_WORDS: Record<LienKind, string> = {
+  agreement: 'An agreement you made (such as mortgage or secured car loan)',
+  statutory: 'Statutory lien (such as tax lien, mechanic’s lien)',
+  judgment: 'Judgment lien from a lawsuit',
+  other: 'Other (including a right to offset)',
+};
+
+export const D_COMMUNITY_LABEL = 'Check if this claim relates to a community debt';
+export const EF_COMMUNITY_LABEL = 'Check if this claim is for a community debt';
+export const D_DATE_LABEL = 'Date debt was incurred';
+export const EF_DATE_LABEL = 'When was the debt incurred?';
+export const CLAIM_OFFSET_QUESTION = 'Is the claim subject to offset?';
+export const CLAIM_LAST_4_LABEL = 'Last 4 digits of account number';
+
+// Schedule D Part 2
+export const CLAIM_NOTICE_NAME_LABEL = 'Name';
+
+// Schedule G line 1. The answers are asked as "No" and "Yes". Cut from No: ". Check this box and
+// file this form with the court with your other schedules. You have nothing else to report on
+// this form." Cut from Yes: ". Fill in all of the information below even if the contracts or
+// leases are listed on Schedule A/B: Property (Official Form 106A/B)." Both are instructions to a
+// person holding the paper form.
+export const SCHEDULE_G_LINE_1_QUESTION =
+  'Do you have any executory contracts or unexpired leases?';
+export const SCHEDULE_G_NAME_LABEL = 'Person or company with whom you have the contract or lease';
+export const SCHEDULE_G_PURPOSE_LABEL = 'State what the contract or lease is for';
+
+// Schedule H. The answers are asked as "No" and "Yes", and the line numbers "1.", "2." and "3."
+// are dropped. Line 2's "No. Go to line 3." and "Yes." lose their instructions ("Go to line 3."
+// and the question that follows each), which the step asks as its own question.
+export const SCHEDULE_H_LINE_1_QUESTION =
+  'Do you have any codebtors? (If you are filing a joint case, do not list either spouse as a codebtor.)';
+export const SCHEDULE_H_LINE_2_QUESTION =
+  'Within the last 8 years, have you lived in a community property state or territory? (Community property states and territories include Arizona, California, Idaho, Louisiana, Nevada, New Mexico, Puerto Rico, Texas, Washington, and Wisconsin.)';
+export const SCHEDULE_H_LINE_2_SPOUSE_QUESTION =
+  'Did your spouse, former spouse, or legal equivalent live with you at the time?';
+export const SCHEDULE_H_LINE_2_STATE_LABEL = 'In which community state or territory did you live?';
+export const SCHEDULE_H_LINE_2_PERSON_LEAD = 'Fill in the name and current address of that person.';
+export const SCHEDULE_H_LINE_2_NAME_LABEL =
+  'Name of your spouse, former spouse, or legal equivalent';
+// Cut: the "Column 2: " that leads it. It is the legend of a row's links.
+export const SCHEDULE_H_COLUMN_2 = 'The creditor to whom you owe the debt';

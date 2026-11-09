@@ -111,6 +111,33 @@ def test_percent_is_kept_as_a_string_in_the_details(filer_session):
     assert client.get(_url(session)).data["assets"][0]["details"] == {"percent": "12.50"}
 
 
+def test_a_homes_row_keeps_its_do_you_live_here_answer(filer_session):
+    # J 4/5 and 20a depend on this answer (§8), so a save must neither lose nor invent it.
+    client, session = filer_session
+    row = {"ab_line": "1", "details": {"street": "12 Demo Street", "lives_here": "yes"}}
+    assert client.patch(_url(session), {"assets": [row]}, format="json").status_code == 200
+
+    saved = client.get(_url(session)).data["assets"][0]
+    assert saved["details"]["lives_here"] == "yes"
+
+    # A row saved again without the key has no answer: details are replaced whole.
+    client.patch(
+        _url(session),
+        {"assets": [{"id": saved["id"], "ab_line": "1", "details": {"street": "12 Demo Street"}}]},
+        format="json",
+    )
+    assert "lives_here" not in client.get(_url(session)).data["assets"][0]["details"]
+
+
+@pytest.mark.parametrize("answer", ["maybe", "Yes", True])
+def test_a_do_you_live_here_answer_other_than_yes_or_no_is_a_400(filer_session, answer):
+    client, session = filer_session
+    row = {"ab_line": "1", "details": {"lives_here": answer}}
+
+    assert client.patch(_url(session), {"assets": [row]}, format="json").status_code == 400
+    assert AssetInfo.objects.count() == 0
+
+
 def test_a_percent_over_100_is_a_400(filer_session):
     client, session = filer_session
     row = {"ab_line": "19", "details": {"percent": "100.01"}}

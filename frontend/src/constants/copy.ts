@@ -458,6 +458,116 @@ export const WHO_ONLY_YOU = 'Only you';
 
 export const WHO_WITH_SOMEONE = 'You and someone else';
 
+// Claim gaps (3c3 spec §7.5): the server's sentences, pinned by test_claim_gaps.py
+
+export const NAMELESS_DEBT = 'one amount owed';
+
+export const NAMELESS_CONTRACT = 'one contract';
+
+export const NAMELESS_CODEBTOR = 'one codebtor';
+
+export const CLAIM_GAP_KIND = 'Choose a kind for {name}.';
+
+export const CLAIM_GAP_ADDRESS = 'Enter the street, city, two-letter state and ZIP for {name}.';
+
+export const CLAIM_GAP_STREET_CITY = 'Enter the street and city for {name}.';
+
+export const DEBT_GAP_NO_ANSWER = 'List each amount you owe, or press “I have no amounts owed.”';
+
+export const DEBT_GAP_NONE_BUT_LISTED =
+  'You said you have no amounts owed, but some are listed. Remove them, or change that answer.';
+
+export const DEBT_GAP_NO_NAME = 'One amount owed has no creditor name. Enter who you owe.';
+
+export const DEBT_GAP_AMOUNT = 'Enter the amount you owe {name}. It must be above $0.';
+
+export const DEBT_GAP_AMOUNT_NO_NAME =
+  'Enter the amount you owe on the row with no creditor name. It must be above $0.';
+
+export const DEBT_GAP_ADDRESS_NO_NAME =
+  'Enter the street, city, two-letter state and ZIP on the row with no creditor name.';
+
+export const DEBT_GAP_STREET_CITY_NO_NAME =
+  'Enter the street and city on the row with no creditor name.';
+
+export const DEBT_GAP_PROPERTY = 'Choose the property that secures {name}.';
+
+export const DEBT_GAP_DESCRIBE = 'Describe the property that secures {name}.';
+
+export const DEBT_GAP_LIEN = 'Check at least one kind of lien for {name}.';
+
+export const DEBT_GAP_LIEN_OTHER = 'Say what the other kind of lien is, for {name}.';
+
+export const DEBT_GAP_PAYMENT =
+  'Enter the monthly payment for {name}. Enter 0 if you pay nothing on it.';
+
+export const DEBT_GAP_HOME_LINE =
+  'Say whether {name} is a first mortgage or an additional one, such as home equity.';
+
+export const DEBT_GAP_WHO = 'Answer who owns the property that secures {name}.';
+
+export const DEBT_GAP_STATUS =
+  'Check any that fit {name}: contingent, unliquidated or disputed. Or choose None of these.';
+
+export const DEBT_GAP_OFFSET = 'Answer whether {name} is subject to offset.';
+
+export const DEBT_GAP_NOTICE = 'Answer whether anyone else is contacting you about {name}.';
+
+export const DEBT_GAP_NOTICE_PARTY =
+  'Enter the name and full address of each person contacting you about {name}.';
+
+export const CONTRACT_GAP_NO_ANSWER = 'Answer whether you have any contracts or leases.';
+
+export const CONTRACT_GAP_YES_BUT_NONE =
+  'You answered Yes. Add each contract or lease, or change the answer to No.';
+
+export const CONTRACT_GAP_NO_BUT_LISTED =
+  'You answered No, but contracts or leases are listed. Remove them, or change the answer to Yes.';
+
+export const CONTRACT_GAP_NO_NAME = "One contract has no name. Enter the other party's name.";
+
+export const CONTRACT_GAP_PURPOSE = 'Enter what the contract or lease is for, for {name}.';
+
+export const CONTRACT_GAP_LEASE_KIND = 'Choose the kind of lease for {name}.';
+
+export const CONTRACT_GAP_VEHICLE = 'Choose the vehicle you lease from {name}.';
+
+export const CONTRACT_GAP_PAYMENT = 'Enter the monthly lease payment for {name}.';
+
+// DRAFT: counsel C-9
+export const CONTRACT_GAP_OWES_NOW = 'Answer “Do you owe money on this now?” for {name}.';
+
+export const CONTRACT_GAP_OWED_DEBT =
+  'Choose the amount owed that goes with {name}, or add it on the Amounts Owed step.';
+
+export const CONTRACT_GAP_SAME_VEHICLE =
+  'Your lease with {name} and your debt to {debt} are on the same vehicle, and each has a monthly payment above $0. Enter the monthly payment once, on either row, and $0 on the other.';
+
+export const CODEBTOR_GAP_NO_ANSWER = 'Answer whether you have any codebtors.';
+
+export const CODEBTOR_GAP_YES_BUT_NONE =
+  'You answered Yes. Add each codebtor, or change the answer to No.';
+
+export const CODEBTOR_GAP_NO_BUT_LISTED =
+  'You answered No, but codebtors are listed. Remove them, or change the answer to Yes.';
+
+export const CODEBTOR_GAP_COMMUNITY =
+  'Did you live in a community property state or territory in the last 8 years? Answer Yes or No.';
+
+export const CODEBTOR_GAP_SPOUSE_LIVED =
+  'Answer whether your spouse, former spouse or legal equivalent lived with you then.';
+
+export const CODEBTOR_GAP_SPOUSE_DETAILS =
+  'Enter the community property state, and that person’s name and full address.';
+
+export const CODEBTOR_GAP_NO_NAME = "One codebtor has no name. Enter the person's name.";
+
+export const CODEBTOR_GAP_NO_LINK =
+  'Choose which amounts owed or contracts {name} shares with you.';
+
+// Asked on a line 1 or line 4 row, since Schedule J lines 4, 5 and 20a read it (3c3 spec §8)
+export const LIVES_HERE_QUESTION = 'Do you live here?';
+
 export const AB_ADDRESS_LINE_2_LABEL = 'Address, second line';
 
 // The name of a kind's box on lines 17, 22, 28 and 29, where the form prints none
@@ -481,6 +591,9 @@ export const OLD_ROW_LINE_LABEL = 'Which line does this go on?';
 
 export const OLD_ROW_LINE_PLACEHOLDER = 'Choose a line';
 
+// The blank first option of a select with no answer yet
+export const CHOOSE_ONE = 'Choose one';
+
 // What the step called a row's type before it asked the form's lines. Not the form's words, and
 // never a suggestion of a line.
 export const OLD_ASSET_TYPE_WORDS: Record<string, string> = {
@@ -503,3 +616,137 @@ export const REVIEW_ASSET_ROW = 'Line {key}: {name}';
 
 // A button's name for a screen reader, where the list repeats one button per row
 export const GO_TO_STEP_FOR_ROW = 'Go to {step} for {row}';
+
+// The Amounts Owed step (3c3 Task 8)
+
+// DRAFT: counsel C-9
+export const ADDRESS_HELP =
+  'The court uses this address to send the creditor notice of your case. A bill, a letter from the creditor or a credit report may show it. Legal aid can help you find it.';
+
+// DRAFT: counsel C-9
+export const AMOUNT_HELP =
+  'A recent bill, a letter from the creditor or a credit report may show the amount. Legal aid can help you find it.';
+
+// Counsel's caution (spec §11 C2): keep "unliquidated" from implying the amount can be left
+// blank, since the amount box above it is required above $0.
+// DRAFT: counsel C-9
+export const CLAIM_STATUS_HELP =
+  'Contingent means it depends on something that has not happened yet. Unliquidated means the amount has not been set. Disputed means you or the creditor disagree about whether you owe it, or how much.';
+
+// DRAFT: counsel C-9
+export const OFFSET_HELP =
+  'Offset means the creditor may take money it owes you, such as money in your account with it. It uses that money to pay part of this debt.';
+
+// DRAFT: counsel C-18
+export const SECURED_QUESTION = 'Can the lender take back property if you do not pay?';
+
+// DRAFT: counsel C-18
+export const LIEN_HELP = 'A lien is a legal claim on property that backs up what you owe.';
+
+// DRAFT: counsel C-1
+export const CO_OWNED_NOTE = 'Which value applies is something legal aid can help you decide.';
+
+// DRAFT: counsel C-17
+export const NOTICE_QUESTION = 'Is anyone else contacting you about this amount owed?';
+
+// DRAFT: counsel C-17
+export const NOTICE_HELP =
+  'List the creditor above. Here, list anyone else who contacts you about this amount, such as a collection agency or a law firm.';
+
+export const NO_DEBTS_BUTTON = 'I have no amounts owed';
+
+export const CLAIM_STATUS_NONE = 'None of these';
+
+export const OUTSIDE_US_LABEL = 'This address is outside the United States';
+
+export const OUTSIDE_US_HELP =
+  'Type the whole address in the street and city boxes, with the country. Leave the state and ZIP boxes empty.';
+
+export const SECURING_PROPERTY_LABEL = 'The property for this amount owed';
+
+export const SECURING_PROPERTY_NONE =
+  'Only property listed on the Assets step shows here. To choose other property, list it on the Assets step.';
+
+export const LIEN_OTHER_LABEL = 'What kind of lien is it?';
+
+export const HOME_LINE_QUESTION = 'Which kind of mortgage is this?';
+
+export const PAYMENT_SECURED_HELP = 'Enter 0 if you pay nothing on it.';
+
+export const DATE_INCURRED_HELP = 'Month and year, if you know them. You can leave this empty.';
+
+export const ACCOUNT_SAVED = 'Saved. It ends in {last4}.';
+
+export const NOTICE_PARTY_HEADING = 'Person or company {n}';
+
+export const ADD_ANOTHER_PARTY = 'Add one more person or company';
+
+export const REMOVE_PARTY = 'Remove person or company {n} on amount owed {debt}';
+
+// DigniFi's words, not printed text: cut from Schedule J lines 4 and 5, which print "first
+// mortgage payments" and "Additional mortgage payments for your residence, such as home equity
+// loans", cut to the loan since the filer answers about the loan
+export const HOME_LINE_FIRST = 'First mortgage';
+
+export const HOME_LINE_ADDITIONAL = 'Additional mortgage, such as a home equity loan';
+
+export const SECURED_PREFILLED_NOTE =
+  'We filled this in from the kind of amount owed. Change it if it is wrong.';
+
+export const DEBTS_STEP_WHY =
+  'Your answers here fill in Schedules D and E/F, the court forms that list who you owe.';
+
+export const LEASE_KIND_LABEL = 'Kind of lease';
+
+export const VEHICLE_LEASE_LABEL = 'Vehicle you lease';
+
+export const VEHICLE_LEASE_HELP =
+  'The vehicles you listed on the Assets step are here. To add one, go back to that step.';
+
+export const LEASE_PAYMENT_LABEL = 'Monthly lease payment';
+
+// DRAFT: counsel C-9
+export const OWES_NOW_QUESTION = 'Do you owe money on this now?';
+
+// DRAFT: counsel C-9
+export const OWES_NOW_PICK_LABEL = 'Which amount owed goes with this?';
+
+// DRAFT: counsel C-9
+export const OWES_NOW_ADD_HELP =
+  'If it is not in this list, add it on the Amounts Owed step. Then come back and pick it.';
+
+export const GO_TO_AMOUNTS_OWED = 'Go to Amounts Owed';
+
+export const CONTRACTS_STEP_WHY =
+  'Your answers here fill in Schedule G, the court form that lists your contracts and leases.';
+
+// DRAFT: counsel C-9
+export const CONTRACT_ADDRESS_HELP =
+  'The court uses this address to send the other party notice of your case.';
+
+export const CODEBTOR_LINKS_HELP =
+  'Check each amount owed or contract this person is also responsible for.';
+
+export const CODEBTOR_LINKS_DEBTS = 'Amounts owed';
+
+export const CODEBTOR_LINKS_CONTRACTS = 'Contracts and leases';
+
+export const CODEBTOR_LINKS_NONE =
+  'You have not added any amounts owed or contracts yet. Add them on their steps, then come back.';
+
+export const CODEBTORS_STEP_WHY =
+  'Your answers here fill in Schedule H, the court form that lists people who owe a debt with you.';
+
+// DRAFT: counsel C-9
+export const CODEBTOR_ADDRESS_HELP =
+  'The court uses this address to send this person notice of your case.';
+
+export const REVIEW_NO_DEBTS = 'You said you have no amounts owed.';
+
+export const REVIEW_NO_CONTRACTS = 'You said you have no contracts or leases.';
+
+export const REVIEW_NO_CODEBTORS = 'You said you have no codebtors.';
+
+export const REVIEW_UNNAMED_CONTRACT = 'Unnamed contract';
+
+export const REVIEW_UNNAMED_CODEBTOR = 'Unnamed codebtor';

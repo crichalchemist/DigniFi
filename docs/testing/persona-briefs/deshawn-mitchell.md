@@ -81,6 +81,7 @@ You ARE DeShawn Mitchell. Navigate DigniFi as he would.
 Each item goes on the Schedule A/B line shown. You are the only one with an interest in the home and the truck, so each entire value is the portion you own. Answer No to every other line the Assets step shows.
 
 - Line 1: single-family home, 7823 S Sangamon St, Chicago, IL 60620, Cook County, fee simple — $180,000, owed $160,000
+  - "Do you live here?": Yes.
 - Line 3: 2012 Ford F-150, about 168,000 miles — $8,000
 - Line 6: furniture, appliances and beds (your share) — $1,500
 - Line 7: TV, laptop and phone — $400
@@ -92,10 +93,12 @@ Each item goes on the Schedule A/B line shown. You are the only one with an inte
 
 **Amounts Owed:**
 
-- Harrowgate Home Loans — $160,000, paying $1,200/mo (secured by home)
-- Tallgrass Credit Management credit card — $6,700, paying $0 (in collections)
-- Lakeline Electric utility — $800, paying $0 (in collections)
-- Southmoor Health medical — $4,200, paying $0 (in collections)
+- Harrowgate Home Loans — $160,000, paying $1,200/mo (secured by home: your house on line 1; you live there). Address: PO Box 4401, Chicago, IL 60680. Account ends 0441. Since 2019. Lien: an agreement you made. The lender can take back property: Yes. First mortgage. None of the status choices applies. No one else is contacting you.
+- Tallgrass Credit Management credit card — $6,700, paying $0 (in collections). Address: PO Box 4402, Chicago, IL 60680. Account ends 0442. Since 2017–2025. No one else is contacting you. None of the status choices applies; not subject to offset.
+- Lakeline Electric utility — $800, paying $0 (in collections). Address: PO Box 4403, Chicago, IL 60680. Account ends 0443. Since 2025. Someone else is contacting you: Demo Recovery Services, PO Box 4405, Chicago, IL 60680, account ends 7443. None of the status choices applies; not subject to offset.
+- Southmoor Health medical — $4,200, paying $0 (in collections). Address: PO Box 4404, Chicago, IL 60680. Account ends 0444. Since 2025. Someone else is contacting you: Demo Medical Collections, PO Box 4406, Chicago, IL 60680, account ends 7444. None of the status choices applies; not subject to offset.
+
+**Contracts and leases:** No. **Codebtors:** No. Not in a community property state in the last 8 years.
 
 ## What to Watch For
 

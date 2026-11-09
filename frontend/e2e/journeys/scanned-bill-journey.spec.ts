@@ -16,14 +16,14 @@
  * The fake never looks at it; CANNED_BILL is what a model would read from it.
  *
  * Not asserted:
- * - The "From scan" badge after the reload. Saving debts clears is_draft
- *   (intake/views.py), so the badge is gone once step 6 has saved (DIG-14).
+ * - The "From scan" badge after the reload. Continue on Amounts Owed (`update_step` 7)
+ *   confirms a draft, so the badge is gone once Continue has been pressed (DIG-14).
  * - The account number. It is write-only; backend tests prove saving keeps it.
  */
 
 import { fileURLToPath } from 'node:url';
 import { test, expect, type Page } from '@playwright/test';
-import { SARAH, type PersonaData } from '../fixtures/personas';
+import { SARAH, addr, type PersonaData, type PersonaDebt } from '../fixtures/personas';
 import { CANNED_BILL, startFakeOpenAI } from '../fixtures/fake-openai';
 import { RegisterPage } from '../pages/register.page';
 import { DocumentsPage } from '../pages/documents.page';
@@ -44,6 +44,20 @@ const FILER: PersonaData = {
   ...SARAH,
   username: `e2e_scan_${RUN_ID}`,
   debtor: { ...SARAH.debtor, email: `scan.e2e+${RUN_ID}@test.dignifi.org` },
+};
+
+// What the filer adds to the scanned draft: the canned bill's own three values, and the answers
+// the scan can't give (the address and the questions after it).
+const SCANNED_BILL_ANSWERS: PersonaDebt = {
+  creditor_name: CANNED_BILL.creditor_name,
+  debt_type: CANNED_BILL.creditor_type,
+  amount_owed: Number(CANNED_BILL.amount_owed),
+  monthly_payment: 0,
+  is_in_collections: false,
+  address: addr('11 Demo Plaza', 'Chicago', 'IL', '60611'),
+  claim_status: [],
+  offset_answer: 'no',
+  notice_parties: [],
 };
 
 /** The scanned bill is the only row at Amounts Owed, with what the model read. */
@@ -109,6 +123,9 @@ test.describe('Scanned bill — upload to Amounts Owed', () => {
       await expectScannedBill(page);
       await expect(page.getByText('From scan', { exact: true })).toBeVisible();
 
+      // The scan can't give the address or the answers after it
+      await wizard.fillDebtAnswers(0, SCANNED_BILL_ANSWERS);
+
       // Continue saves step 6 and stores step 7 as the place to resume
       await wizard.nextStep();
       await expect(stepTitle).toHaveText('Contracts & Leases');
@@ -119,6 +136,8 @@ test.describe('Scanned bill — upload to Amounts Owed', () => {
       await page.getByRole('button', { name: 'Go Back' }).click();
       await expect(stepTitle).toHaveText('Amounts Owed');
       await expectScannedBill(page);
+      // The draft's answers saved with Continue
+      await expect(page.locator('input[name="street_address_0"]')).toHaveValue('11 Demo Plaza');
     } finally {
       await fake.close();
     }

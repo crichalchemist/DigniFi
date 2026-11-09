@@ -13,6 +13,7 @@ import { AB_PARTS, ASSET_LINES } from '../../../constants/assetLines';
 import {
   AMOUNT_NOT_A_NUMBER,
   LEASE_NOTE,
+  LIVES_HERE_QUESTION,
   NOTHING_TO_LIST_NOTE,
   VALUE_UNKNOWN_NOTE,
 } from '../../../constants/copy';
@@ -559,6 +560,64 @@ describe('AssetsStep', () => {
     expect(field('line_17_0_kind').value).toBe('');
     say('28', 'yes');
     expect(field('line_28_0_kind').value).toBe('');
+  });
+
+  const livesHere = (key: string, i = 0) => [
+    ...document.querySelectorAll<HTMLInputElement>(`input[name="line_${key}_${i}_lives_here"]`),
+  ];
+  const placeRow = (overrides: Partial<Row> = {}) =>
+    makeRow({
+      ab_line: '1',
+      current_value: 1,
+      entire_value: 1,
+      details: { street: '1 Demo Street', property_kinds: ['condo'], who: 'only_you' },
+      ...overrides,
+    });
+
+  it('asks "Do you live here?" on a home\'s row and a home on wheels, with nothing checked', () => {
+    const home = render(<Walk part={1} rows={[placeRow()]} answers={{ '1': 'yes' }} />);
+    const group = screen.getByRole('group', { name: LIVES_HERE_QUESTION });
+    expect(within(group).getAllByRole('radio')).toHaveLength(2);
+    expect(livesHere('1').map((button) => button.value)).toEqual(['yes', 'no']);
+    expect(livesHere('1').filter((button) => button.checked)).toEqual([]);
+    home.unmount();
+
+    render(
+      <Walk part={2} rows={[makeRow({ ab_line: '4' })]} answers={{ ...allNo(2), '4': 'yes' }} />
+    );
+    expect(livesHere('4')).toHaveLength(2);
+    expect(livesHere('4').filter((button) => button.checked)).toEqual([]);
+  });
+
+  it("does not ask it on a car's row", () => {
+    render(
+      <Walk part={2} rows={[makeRow({ ab_line: '3' })]} answers={{ ...allNo(2), '3': 'yes' }} />
+    );
+    expect(livesHere('3')).toEqual([]);
+    expect(screen.queryByText(LIVES_HERE_QUESTION)).toBeNull();
+  });
+
+  it('keeps the answer in the row, and shows it again after a reload', () => {
+    const first = render(<Walk part={1} rows={[placeRow()]} answers={{ '1': 'yes' }} />);
+    fireEvent.click(livesHere('1')[0]);
+    expect(latest.rows[0].details.lives_here).toBe('yes');
+    first.unmount();
+
+    render(
+      <Walk
+        part={1}
+        rows={[placeRow({ details: { ...placeRow().details, lives_here: 'no' } })]}
+        answers={{ '1': 'yes' }}
+      />
+    );
+    expect(livesHere('1').find((button) => button.checked)?.value).toBe('no');
+  });
+
+  it('leaves Continue on Part 1 as it was', () => {
+    // lives_here is no Assets gap (R24): Task 6 defines it, Task 14 wires it once a debt links to the row.
+    render(<Walk part={1} rows={[placeRow()]} answers={{ '1': 'yes' }} />);
+    expect(latest.valid).toBe(true);
+    expect(partIsComplete(1, [placeRow()], { '1': 'yes' })).toBe(true);
   });
 
   it('asks a kind on lines 17, 21, 22, 28 and 29 in the form words', () => {
