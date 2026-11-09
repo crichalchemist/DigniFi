@@ -42,7 +42,13 @@ def _printed(session):
 
 
 def test_each_linked_payment_prints_on_its_line(session):
-    ExpenseInfo.objects.create(session=session, rent_or_mortgage=Decimal("1000.00"))
+    # The retired columns hold typed figures too: they must never be added again.
+    ExpenseInfo.objects.create(
+        session=session,
+        rent_or_mortgage=Decimal("1000.00"),
+        vehicle_payment=Decimal("7.00"),
+        other_property_mortgages=Decimal("9.00"),
+    )
     home = linked_row(session, "1", lives_here="yes")
     linked_loan(session, home, 1200, home_payment_line="first")
     linked_loan(session, home, 250, home_payment_line="additional")
