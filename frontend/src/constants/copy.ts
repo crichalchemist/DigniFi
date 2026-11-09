@@ -627,9 +627,9 @@ export const ADDRESS_HELP =
 export const AMOUNT_HELP =
   'A recent bill, a letter from the creditor or a credit report may show the amount. Legal aid can help you find it.';
 
-// DRAFT: counsel C-9
 // Counsel's caution (spec §11 C2): keep "unliquidated" from implying the amount can be left
 // blank, since the amount box above it is required above $0.
+// DRAFT: counsel C-9
 export const CLAIM_STATUS_HELP =
   'Contingent means it depends on something that has not happened yet. Unliquidated means the amount has not been set. Disputed means you or the creditor disagree about whether you owe it, or how much.';
 
@@ -663,6 +663,9 @@ export const OUTSIDE_US_HELP =
   'Type the whole address in the street and city boxes, with the country. Leave the state and ZIP boxes empty.';
 
 export const SECURING_PROPERTY_LABEL = 'The property for this amount owed';
+
+export const SECURING_PROPERTY_NONE =
+  'Only property listed on the Assets step shows here. To choose other property, list it on the Assets step.';
 
 export const LIEN_OTHER_LABEL = 'What kind of lien is it?';
 

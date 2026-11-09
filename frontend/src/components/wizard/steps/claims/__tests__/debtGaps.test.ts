@@ -126,6 +126,11 @@ describe('what the Amounts Owed step still lacks', () => {
       fill(copy.DEBT_GAP_PAYMENT, NAME),
     ],
     [
+      'D11 on an emptied payment box',
+      () => firstDebtGap([{ ...secured, monthly_payment: undefined }], false, [car]),
+      fill(copy.DEBT_GAP_PAYMENT, NAME),
+    ],
+    [
       'D12',
       () => firstDebtGap([secured], false, [{ ...car, details: { lives_here: 'yes' } }]),
       fill(copy.DEBT_GAP_HOME_LINE, NAME),

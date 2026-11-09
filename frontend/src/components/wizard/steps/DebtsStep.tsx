@@ -44,6 +44,7 @@ import {
   SECURED_PREFILLED_NOTE,
   SECURED_QUESTION,
   SECURING_PROPERTY_LABEL,
+  SECURING_PROPERTY_NONE,
   WHO_ONLY_YOU,
   WHO_WITH_SOMEONE,
 } from '../../../constants/copy';
@@ -559,6 +560,7 @@ export function DebtsStep({
                   value={linked ? String(debt.secured_by) : ''}
                   onChange={(value) => pickProperty(index, value)}
                   required
+                  helpText={propertyChoices.length === 0 ? SECURING_PROPERTY_NONE : undefined}
                 />
                 {coOwned && <p className="form-help-text">{CO_OWNED_NOTE}</p>}
 

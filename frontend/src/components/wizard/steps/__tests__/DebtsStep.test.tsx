@@ -5,7 +5,6 @@ import { axe } from 'vitest-axe';
 import { DebtsStep } from '../DebtsStep';
 import { fill } from '../claims/claimNames';
 import * as copy from '../../../../constants/copy';
-import { D_DESCRIBE_PROPERTY_LABEL } from '../../../../constants/formText';
 import type { AssetInfo, DebtInfo, DebtRow, WizardRow } from '../../../../types/api';
 
 // DebtsStep shows and edits the wizard's debt rows, asks every question Schedules D and E/F
@@ -236,10 +235,7 @@ describe('DebtsStep secured amounts owed', () => {
 
     await user.selectOptions(field('debt_type_0'), 'Car or vehicle loan');
     expect(box('is_secured_0', 'yes')).toBeChecked();
-    await user.type(
-      screen.getByLabelText(new RegExp(D_DESCRIBE_PROPERTY_LABEL.slice(0, 20))),
-      '2015 Honda Civic'
-    );
+    await user.type(field('collateral_description_0'), '2015 Honda Civic');
 
     expect(onChange).toHaveBeenLastCalledWith([
       expect.objectContaining({
@@ -308,6 +304,50 @@ describe('DebtsStep asks every question', () => {
     fireEvent.input(field('amount_owed_0'), { target: { value: '-5' } });
     expect(screen.getByText(copy.AMOUNT_NEGATIVE)).toBeInTheDocument();
     expect(lastRows(onChange)[0].amount_owed).toBe(0);
+  });
+
+  it('holds Continue while a box shows a figure the row does not hold, and frees it once corrected', () => {
+    const cases: [string, string, string, number | undefined, string][] = [
+      ['amount_owed_0', '12345678901', copy.AMOUNT_TOO_LARGE, 500, '1234'],
+      ['monthly_payment_0', '75.555', copy.AMOUNT_DECIMALS, undefined, '75.5'],
+      ['amount_owed_0', '-2500', copy.AMOUNT_NEGATIVE, 500, '2500'],
+    ];
+    for (const [name, refused, sentence, lastGood, good] of cases) {
+      const onChange = vi.fn();
+      const onValidity = vi.fn();
+      const { unmount } = render(
+        <Harness initial={[complete]} onChange={onChange} onValidity={onValidity} />
+      );
+      expect(lastValidity(onValidity)).toBe(true);
+
+      fireEvent.input(field(name), { target: { value: refused } });
+      expect(screen.getByText(sentence)).toBeInTheDocument();
+      expect(field(name).value).toBe(refused);
+      expect(lastValidity(onValidity)).toBe(false);
+      if (onChange.mock.calls.length > 0) {
+        const key = name.startsWith('amount') ? 'amount_owed' : 'monthly_payment';
+        expect(lastRows(onChange)[0][key]).toBe(lastGood);
+      }
+
+      fireEvent.input(field(name), { target: { value: good } });
+      expect(screen.queryByText(sentence)).not.toBeInTheDocument();
+      expect(lastValidity(onValidity)).toBe(true);
+      const key = name.startsWith('amount') ? 'amount_owed' : 'monthly_payment';
+      expect(lastRows(onChange)[0][key]).toBe(Number(good));
+      unmount();
+    }
+  });
+
+  it('holds Continue while an amount box holds only part of a number', () => {
+    const onValidity = vi.fn();
+    render(<Harness initial={[complete]} onValidity={onValidity} />);
+    expect(lastValidity(onValidity)).toBe(true);
+
+    // jsdom reports badInput for a number box whose text is not a number
+    const input = field('amount_owed_0');
+    Object.defineProperty(input, 'validity', { value: { badInput: true }, configurable: true });
+    fireEvent.input(input);
+    expect(lastValidity(onValidity)).toBe(false);
   });
 
   describe('the secured answer and the kind', () => {
@@ -604,6 +644,47 @@ describe('DebtsStep asks every question', () => {
     });
   });
 
+  it('clears the secured side when an unpressed secured row changes to an unsecured kind', async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    render(
+      <Harness
+        initial={[
+          {
+            ...secured,
+            _securedPressed: false,
+            home_payment_line: 'first',
+            collateral_who: 'with_someone',
+          },
+        ]}
+        assets={[car]}
+        onChange={onChange}
+      />
+    );
+    await user.selectOptions(field('debt_type_0'), 'credit_card');
+    expect(lastRows(onChange)[0]).toMatchObject({
+      debt_type: 'credit_card',
+      is_secured: false,
+      secured_by: null,
+      home_payment_line: null,
+      collateral_who: null,
+    });
+  });
+
+  it('says where other property is listed when the Assets step holds none, and only then', () => {
+    const none = render(<Harness initial={[secured]} assets={[]} />);
+    expect(screen.getByText(copy.SECURING_PROPERTY_NONE)).toBeInTheDocument();
+    expect(field('secured_by_0').getAttribute('aria-describedby')).toContain('secured_by_0-help');
+    none.unmount();
+
+    const held = render(<Harness initial={[secured]} assets={[car]} />);
+    expect(screen.queryByText(copy.SECURING_PROPERTY_NONE)).not.toBeInTheDocument();
+    held.unmount();
+
+    render(<Harness initial={[{ ...secured, is_secured: false }]} assets={[]} />);
+    expect(screen.queryByText(copy.SECURING_PROPERTY_NONE)).not.toBeInTheDocument();
+  });
+
   it('clears the offset answer when the filer answers Yes to secured', async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();
@@ -618,7 +699,14 @@ describe('DebtsStep asks every question', () => {
     const piano: WizardRow<AssetInfo> = { _key: '39', id: 4, ab_line: '39', details: {} };
     render(
       <Harness
-        initial={[{ ...secured, secured_by: 4, collateral_who: 'with_someone' }]}
+        initial={[
+          {
+            ...secured,
+            secured_by: 4,
+            home_payment_line: 'first',
+            collateral_who: 'with_someone',
+          },
+        ]}
         assets={[car, piano]}
         onChange={onChange}
       />

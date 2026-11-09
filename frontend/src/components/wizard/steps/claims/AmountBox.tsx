@@ -4,7 +4,8 @@
  * The row holds a number, and a number can't tell "0" from "0.0" or an emptied box from "-", so
  * a box that showed the row's figure would rewrite the filer's keys as they type. This one shows
  * the text typed, and falls back to the row's figure until a key is pressed. A box holding only
- * part of a number ("-") keeps the row's figure and holds Continue back.
+ * part of a number ("-"), or a figure the server would refuse, keeps the row's last good figure
+ * and holds Continue back.
  */
 import { useState } from 'react';
 import { FormField } from '../../../common';
@@ -42,7 +43,8 @@ export function AmountBox({
   const [typed, setTyped] = useState<string | null>(null);
   const [partial, setPartial] = useState(false);
   const [refused, setRefused] = useState<string>();
-  useReportPartial(partial, onPartialBox);
+  // A refused figure shows in the box but never reaches the row, so Continue waits on it too
+  useReportPartial(partial || refused !== undefined, onPartialBox);
 
   const stored =
     value === null || value === undefined || (zeroIsBlank && value === 0) ? '' : String(value);
