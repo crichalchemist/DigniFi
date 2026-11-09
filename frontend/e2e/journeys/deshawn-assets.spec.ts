@@ -60,16 +60,13 @@ test.describe('DeShawn Mitchell — Assets', () => {
     await wizard.walkAssets(DESHAWN);
 
     // Step 6: Debts — 4 debts (mortgage, credit card, utility, medical)
-    for (const debt of DESHAWN.debts) {
-      await wizard.addDebt(debt);
-    }
-    await wizard.nextStep();
+    await wizard.walkDebts(DESHAWN);
 
-    // Step 7: Contracts & Leases (optional — no entries needed)
-    await wizard.nextStep();
+    // Step 7: Contracts & Leases (answered from the persona)
+    await wizard.walkContracts(DESHAWN);
 
-    // Step 8: Codebtors (optional — no entries needed)
-    await wizard.nextStep();
+    // Step 8: Codebtors (answered from the persona)
+    await wizard.walkCodebtors(DESHAWN);
 
     // Step 9: Review & Complete
     await wizard.fillReview();

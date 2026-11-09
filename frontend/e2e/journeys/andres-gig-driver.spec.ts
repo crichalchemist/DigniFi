@@ -55,16 +55,13 @@ test.describe('Andrés Kettleby — Gig Driver', () => {
     await wizard.walkAssets(ANDRES);
 
     // Step 6: Debts (the co-signed Honda Fit loan and nine unsecured debts)
-    for (const debt of ANDRES.debts) {
-      await wizard.addDebt(debt);
-    }
-    await wizard.nextStep();
+    await wizard.walkDebts(ANDRES);
 
-    // Step 7: Contracts & Leases (left empty)
-    await wizard.nextStep();
+    // Step 7: Contracts & Leases (answered from the persona)
+    await wizard.walkContracts(ANDRES);
 
-    // Step 8: Codebtors (left empty)
-    await wizard.nextStep();
+    // Step 8: Codebtors (answered from the persona)
+    await wizard.walkCodebtors(ANDRES);
 
     // Step 9: Review & Complete
     await wizard.fillReview();
