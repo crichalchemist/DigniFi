@@ -19,7 +19,13 @@ import {
   SCHEDULE_G_NAME_LABEL,
 } from '../../constants/formText';
 import { ASSET_LINES } from '../../constants/assetLines';
-import { CODEBTOR_GAP_NO_NAME, CONTRACT_GAP_NO_NAME, OLD_ROWS_NOTE } from '../../constants/copy';
+import {
+  CODEBTOR_GAP_NO_NAME,
+  CONTRACT_GAP_NO_NAME,
+  NO_DEBTS_BUTTON,
+  OLD_ROWS_NOTE,
+  REVIEW_NO_DEBTS,
+} from '../../constants/copy';
 
 // DebtorInfoStep reads account email via useAuth; wizard test renders without
 // AuthProvider, so we stub just the user object the step needs.
@@ -3929,6 +3935,44 @@ describe('IntakeWizard contracts and codebtors', { timeout: 15_000 }, () => {
     expect((bodies[0] as { claim_answers: unknown }).claim_answers).toEqual({ no_debts: null });
   });
 
+  it('shows "no amounts owed" on Review when the filer pressed it and left a blank added row', async () => {
+    serveSessionSaves({
+      ...sessionAtStep1,
+      current_step: 6,
+      claim_answers: { contracts_answer: 'no', codebtors_answer: 'no', community_lived: 'no' },
+    });
+    renderWizard();
+    await screen.findByRole('heading', { name: /amounts owed/i, level: 2 });
+
+    await userEvent.click(screen.getByRole('button', { name: /add another amount owed/i }));
+    await userEvent.click(screen.getByRole('button', { name: NO_DEBTS_BUTTON }));
+    for (const title of ['Contracts & Leases', 'Codebtors', 'Review & Results']) {
+      const next = await screen.findByRole('button', { name: 'Continue' });
+      await waitFor(() => expect(next).toBeEnabled());
+      await userEvent.click(next);
+      await expectStep(title);
+    }
+
+    expect(screen.getByText(REVIEW_NO_DEBTS)).toBeInTheDocument();
+    expect(screen.getByText('Amounts Owed (0)')).toBeInTheDocument();
+  });
+
+  it('sends a blank type for a stored debt whose type was cleared, so the server drops the old one', async () => {
+    const { bodies } = serveSessionSaves(onStep6);
+    renderWizard();
+    await screen.findByRole('heading', { name: /amounts owed/i, level: 2 });
+
+    vi.useFakeTimers();
+    try {
+      fireEvent.change(field('debt_type_0'), { target: { value: '' } });
+      await waitSeconds(3);
+    } finally {
+      vi.useRealTimers();
+    }
+
+    expect(sentDebts(bodies[bodies.length - 1])[0]).toMatchObject({ id: 7, debt_type: '' });
+  });
+
   it('sends a stored debt whose name was cleared, under its id', async () => {
     const { bodies } = serveSessionSaves(onStep6);
     renderWizard();
@@ -4247,8 +4291,9 @@ describe('IntakeWizard contracts and codebtors', { timeout: 15_000 }, () => {
         vi.useRealTimers();
       }
 
-      // One save after the edit, and at most one more from the body the ids changed
-      expect(saves().length).toBeLessThanOrEqual(2);
+      // One save after the edit, and one more from the body the ids changed, then no more
+      expect(saves()).toHaveLength(2);
+      expect(sessionPatches).toHaveLength(2);
     }
   );
 

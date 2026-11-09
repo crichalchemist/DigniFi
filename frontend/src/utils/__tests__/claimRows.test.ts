@@ -79,8 +79,19 @@ describe('which claim rows a save carries', () => {
       monthly_payment: undefined,
       _securedPressed: true,
     });
-    expect(sent).toEqual({ _key: '7', id: 7, amount_owed: 0, monthly_payment: null });
+    expect(sent).toEqual({
+      _key: '7',
+      id: 7,
+      amount_owed: 0,
+      monthly_payment: null,
+      debt_type: '',
+    });
     expect(sent).not.toHaveProperty('_securedPressed');
+  });
+
+  it('sends a blank type as an empty string, which JSON keeps and the server stores', () => {
+    expect(sentDebt({ _key: '7', id: 7, debt_type: undefined }).debt_type).toBe('');
+    expect(sentDebt({ _key: '7', id: 7, debt_type: 'medical' }).debt_type).toBe('medical');
   });
 
   it('says no amounts owed only while it is pressed and no row is kept', () => {

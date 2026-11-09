@@ -940,7 +940,7 @@ export function IntakeWizard() {
             spouseEntries={entriesToSend(spouseEntryRows, spouseNoEntries) as IncomeEntry[] | null}
             expenseData={expenseData}
             assetsData={assetsData}
-            debtsData={debtsData}
+            debtsData={keptRows(debtsData, isBlankDebt)}
             contractsData={contractsData.filter((row) => row.id !== undefined)}
             codebtorsData={codebtorsData.filter((row) => row.id !== undefined)}
             claimAnswers={claimAnswers}

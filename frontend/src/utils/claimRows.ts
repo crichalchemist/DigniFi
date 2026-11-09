@@ -100,11 +100,15 @@ export function keptRows<T extends { id?: number }>(rows: T[], isBlank: (row: T)
 }
 
 /** A debt as the server takes it: a blank payment is null, since a key left out keeps the old figure */
-export type SentDebt = Omit<DebtRow, 'monthly_payment'> & { monthly_payment: number | null };
+export type SentDebt = Omit<DebtRow, 'monthly_payment' | 'debt_type'> & {
+  monthly_payment: number | null;
+  debt_type: DebtRow['debt_type'] | '';
+};
 
 /**
- * The debt a save carries: the browser-only mark gone, a blank amount as 0 (B29) and a blank
- * payment as null. Deleted by key, as `withoutKey` does, not destructured away.
+ * The debt a save carries: the browser-only mark gone, a blank amount as 0 (B29), a blank
+ * payment as null and a blank type as '' (undefined would drop out of the JSON and the server
+ * would keep the old type). Deleted by key, as `withoutKey` does, not destructured away.
  */
 export function sentDebt(row: DebtRow): SentDebt {
   const sent: Partial<DebtRow> = { ...row };
@@ -113,6 +117,7 @@ export function sentDebt(row: DebtRow): SentDebt {
     ...(sent as DebtRow),
     amount_owed: row.amount_owed ?? 0,
     monthly_payment: row.monthly_payment ?? null,
+    debt_type: row.debt_type ?? '',
   };
 }
 

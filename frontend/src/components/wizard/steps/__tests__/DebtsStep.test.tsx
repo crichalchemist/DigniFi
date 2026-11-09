@@ -343,7 +343,8 @@ describe('DebtsStep asks every question', () => {
     render(<Harness initial={[complete]} onValidity={onValidity} />);
     expect(lastValidity(onValidity)).toBe(true);
 
-    // jsdom reports badInput for a number box whose text is not a number
+    // jsdom does not report badInput for a number box holding text that is not a number, so
+    // the test forces it with Object.defineProperty
     const input = field('amount_owed_0');
     Object.defineProperty(input, 'validity', { value: { badInput: true }, configurable: true });
     fireEvent.input(input);
