@@ -186,11 +186,13 @@ def test_a_codebtor_prints_the_lines_it_shares(session):
         lien={"kinds": ["agreement"], "other": ""},
     )
     complete_debt(session, creditor_name="Demo Card Services")
-    contract = complete_contract(session)
+    complete_contract(session, counterparty_name="Demo Lessor One")
+    second = complete_contract(session, counterparty_name="Demo Lessor Two")
+    # D, E/F and G each get a different line, so a swap of any two cells shows.
     links = [
         {"kind": "debt", "id": secured.pk},
         {"kind": "debt", "id": session.debts.order_by("pk").last().pk},
-        {"kind": "contract", "id": contract.pk},
+        {"kind": "contract", "id": second.pk},
     ]
     complete_codebtor(session, links=links)
 
@@ -201,8 +203,22 @@ def test_a_codebtor_prints_the_lines_it_shares(session):
     assert _tick(drawn, "check schedule line G 3.1") == "/yes"
     assert _at(drawn, "Schedule line D 3.1") == "2.1"
     assert _at(drawn, "Schedule line E/F 3.1") == "4.1"
-    assert _at(drawn, "Schedule line G 3.1") == "2.1"
+    assert _at(drawn, "Schedule line G 3.1") == "2.2"
     assert _at(drawn, "Codebtor Name 3.1") == "Demo Codebtor"
+
+
+def test_a_codebtor_on_a_contract_alone_ticks_only_g(session):
+    contract = complete_contract(session)
+    complete_codebtor(session, links=[{"kind": "contract", "id": contract.pk}])
+
+    _, drawn = _parts_drawn(session, "schedule_h")
+
+    assert _tick(drawn, "check schedule line G 3.1") == "/yes"
+    assert _at(drawn, "Schedule line G 3.1") == "2.1"
+    assert _tick(drawn, "check schedule line D 3.1") == "/Off"
+    assert _tick(drawn, "check schedule line E/F 3.1") == "/Off"
+    assert _at(drawn, "Schedule line D 3.1") == ""
+    assert _at(drawn, "Schedule line E/F 3.1") == ""
 
 
 def test_a_codebtor_with_more_lines_than_a_box_holds_takes_a_further_row(session):

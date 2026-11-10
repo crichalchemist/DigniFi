@@ -240,6 +240,27 @@ TESTS = {
 }
 
 
+# The spec section and rulings that place each cell (T4-2). Tasks 5 and 6 add their cells here;
+# a cell not listed is placed by §9.3 and R2.
+CELL_RULINGS = {
+    **dict.fromkeys(
+        ("on_d", "d_lines", "on_ef", "ef_lines", "on_g", "g_lines"), "3c spec §9.3, R6, B40"
+    ),
+    "who_owes": "3c spec §9.3, R3",
+    "value": "3c spec §9.4, R5",
+    "unsecured": "3c spec §9.4, R5",
+    **dict.fromkeys(("student_loans", "other_type", "other_type_words"), "3c spec §9.3, R10, B14"),
+    **dict.fromkeys(("state", "zip"), "3c spec §9.3, R4, B49"),
+    "community": "3c spec §9.3, R4, B33",
+    **dict.fromkeys(("date", "last_4"), "3c spec §9.3, R4, B32"),
+}
+
+
+def cell_ruling(spec):
+    attr = spec["binding"].rsplit(".", 1)[-1]
+    return CELL_RULINGS.get(attr, "3c spec §9.3, R2")
+
+
 def evidence(form_type, spec, widgets):
     """The box's index label and basis, the spec section and ruling that place it, and the
     tests that read it."""
@@ -257,7 +278,7 @@ def evidence(form_type, spec, widgets):
     else:
         basis = (
             f"Row {spec['row']} of group {spec['repeat']} prints {spec['binding']} here "
-            "(3c spec §9.3, R8)."
+            f"({cell_ruling(spec)})."
         )
     return f"{cite} {basis} Read by {TESTS[form_type]} and tier 1."
 
@@ -344,12 +365,16 @@ def merged(existing, ours):
     return out
 
 
+def merged_text(existing_text, rows):
+    """The addendum file's text once our rows are merged into it."""
+    return dumps(merged(json.loads(existing_text), rows))
+
+
 def main():
     schemas, rows = build()
     for form_type, schema in schemas.items():
         (SCHEMAS_DIR / f"{form_type}.json").write_text(dumps(schema))
-    existing = json.loads(ADDENDUM.read_text())
-    ADDENDUM.write_text(dumps(merged(existing, rows)))
+    ADDENDUM.write_text(merged_text(ADDENDUM.read_text(), rows))
     counts = {f: sum(1 for r in rows if r["schema"] == f) for f in schemas}
     print(f"addendum rows by schema: {counts}; total {len(rows)}")
 

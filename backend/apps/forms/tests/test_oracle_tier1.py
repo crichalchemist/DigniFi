@@ -7,7 +7,8 @@ sentinel prints in every widget of its name and in no other. A tick is the templ
 (DIG-68). Only the widgets the engine draws are read: a print button and the second
 widget of a stacked pair never print. The engine check gives each widget of a shared
 name a sentinel of its own, through its own key, and reads each back; it ticks each
-widget of a shared box name alone, one round per position. No database is needed.
+widget of a shared box name alone, one round per position. Only test_every_claims_binding_reads_the_row_it_names uses a
+database, because it resolves claims. bindings on a session.
 """
 
 import json
