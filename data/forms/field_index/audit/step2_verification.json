@@ -8510,6 +8510,1656 @@
     "evidence": "Field index: Total_6j p6 line 6j, 'Total. Add lines 6f through 6i.', column 'Total claims from Part 2 (Total claim)', adjudicated. total_nonpriority_unsecured sums every unsecured debt (spec §6.2: its is_priority filter is dropped). Until priority is asked (OQ-3), every unsecured debt counts as nonpriority and the priority lines stay blank (step 2 spec §6.1 B5). 106Sum line 3b copies it. Step 2 spec §6.1 (totals before item rows, B5): the total prints once its inputs follow B2; the rows behind it arrive in step 3. An empty list prints 0.00 (Ruling T0-e). Spec Appendix A.10. The audit has no row on this box."
   },
   {
+    "schema": "schedule_e_f",
+    "pdf_field": "Creditors Name_6",
+    "producer": "asked:claims.unsecured[].name",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Creditors Name_6",
+    "evidence": "Field index: Creditors Name_6 p3 T5 line 4.1, \"Nonpriority Creditor's Name\" (adjudicated). Row 1 of group ef_part_2 prints claims.unsecured[].name here (3c spec §9.3, R2). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "account number 6",
+    "producer": "asked:claims.unsecured[].last_4",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "account number 6",
+    "evidence": "Field index: account number 6 p3 T6 line 4.1, 'Last 4 digits of account number' (adjudicated). Row 1 of group ef_part_2 prints claims.unsecured[].last_4 here (3c spec §9.3, R4, B32). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "Total_26",
+    "producer": "asked:claims.unsecured[].amount",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Total_26",
+    "evidence": "Field index: Total_26 p3 T7 line 4.1, 'Total claim' (adjudicated). Row 1 of group ef_part_2 prints claims.unsecured[].amount here (3c spec §9.3, R2). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "Date debt was incurred_6",
+    "producer": "asked:claims.unsecured[].date",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Date debt was incurred_6",
+    "evidence": "Field index: Date debt was incurred_6 p3 T8 line 4.1, 'When was the debt incurred?' (adjudicated). Row 1 of group ef_part_2 prints claims.unsecured[].date here (3c spec §9.3, R4, B32). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "Street_6",
+    "producer": "asked:claims.unsecured[].street_joined",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Street_6",
+    "evidence": "Field index: Street_6 p3 T9 line 4.1, 'Number Street' (adjudicated). Row 1 of group ef_part_2 prints claims.unsecured[].street_joined here (3c spec §9.3, R2). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "City 4.1",
+    "producer": "asked:claims.unsecured[].city",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "City 4.1",
+    "evidence": "Field index: City 4.1 p3 T10 line 4.1, 'City' (adjudicated). Row 1 of group ef_part_2 prints claims.unsecured[].city here (3c spec §9.3, R2). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "State 4.1",
+    "producer": "asked:claims.unsecured[].state",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "State 4.1",
+    "evidence": "Field index: State 4.1 p3 T11 line 4.1, 'State' (adjudicated). Row 1 of group ef_part_2 prints claims.unsecured[].state here (3c spec §9.3, R4, B49). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "Zip 4.1",
+    "producer": "asked:claims.unsecured[].zip",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Zip 4.1",
+    "evidence": "Field index: Zip 4.1 p3 T12 line 4.1, 'ZIP Code' (adjudicated). Row 1 of group ef_part_2 prints claims.unsecured[].zip here (3c spec §9.3, R4, B49). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "Contingent_6",
+    "producer": "asked:claims.unsecured[].contingent",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Contingent_6",
+    "evidence": "Field index: Contingent_6 p3 T13 line 4.1, 'Contingent' (adjudicated). Row 1 of group ef_part_2 prints claims.unsecured[].contingent here (3c spec §9.3, R2). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "Unliquidated_6",
+    "producer": "asked:claims.unsecured[].unliquidated",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Unliquidated_6",
+    "evidence": "Field index: Unliquidated_6 p3 T14 line 4.1, 'Unliquidated' (adjudicated). Row 1 of group ef_part_2 prints claims.unsecured[].unliquidated here (3c spec §9.3, R2). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "Disputed_6",
+    "producer": "asked:claims.unsecured[].disputed",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Disputed_6",
+    "evidence": "Field index: Disputed_6 p3 T16 line 4.1, 'Disputed' (adjudicated). Row 1 of group ef_part_2 prints claims.unsecured[].disputed here (3c spec §9.3, R2). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "check 6",
+    "producer": "asked:claims.unsecured[].who",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check 6",
+    "evidence": "Field index: check 6 p3 T15 line 4.1, 'Debtor 1 only' (adjudicated); p3 T17 line 4.1, 'Debtor 2 only' (adjudicated); p3 T18 line 4.1, 'Debtor 1 and Debtor 2 only' (adjudicated); p3 T19 line 4.1, 'At least one of the debtors and another' (adjudicated). Row 1 of group ef_part_2 prints claims.unsecured[].who here (3c spec §9.3, R3). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "Student loans_6",
+    "producer": "asked:claims.unsecured[].student_loans",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Student loans_6",
+    "evidence": "Field index: Student loans_6 p3 T20 line 4.1, 'Student loans' (adjudicated). Row 1 of group ef_part_2 prints claims.unsecured[].student_loans here (3c spec §9.3, R10, B14). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "Other_6",
+    "producer": "asked:claims.unsecured[].other_type",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Other_6",
+    "evidence": "Field index: Other_6 p3 T25 line 4.1, 'Other. Specify' (adjudicated). Row 1 of group ef_part_2 prints claims.unsecured[].other_type here (3c spec §9.3, R10, B14). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "Other unsecurecured claim 4.1",
+    "producer": "asked:claims.unsecured[].other_type_words",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Other unsecurecured claim 4.1",
+    "evidence": "Field index: Other unsecurecured claim 4.1 p3 T26 line 4.1, 'Other. Specify ____ (nonpriority claim type)' (adjudicated). Row 1 of group ef_part_2 prints claims.unsecured[].other_type_words here (3c spec §9.3, R10, B14). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "Check if this claim relates to a_6",
+    "producer": "asked:claims.unsecured[].community",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Check if this claim relates to a_6",
+    "evidence": "Field index: Check if this claim relates to a_6 p3 T21 line 4.1, 'Check if this claim is for a community debt' (adjudicated). Row 1 of group ef_part_2 prints claims.unsecured[].community here (3c spec §9.3, R4, B33). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "check8",
+    "producer": "asked:claims.unsecured[].offset",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check8",
+    "evidence": "Field index: check8 p3 T24 line 4.1, 'No' (adjudicated); p3 T27 line 4.1, 'Yes' (adjudicated). Row 1 of group ef_part_2 prints claims.unsecured[].offset here (3c spec §9.3, R2). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "Creditors Name_7",
+    "producer": "asked:claims.unsecured[].name",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Creditors Name_7",
+    "evidence": "Field index: Creditors Name_7 p3 T29 line 4.2, \"Nonpriority Creditor's Name\" (pattern). Row 2 of group ef_part_2 prints claims.unsecured[].name here (3c spec §9.3, R2). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "account number 7",
+    "producer": "asked:claims.unsecured[].last_4",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "account number 7",
+    "evidence": "Field index: account number 7 p3 T30 line 4.2, 'Last 4 digits of account number' (pattern). Row 2 of group ef_part_2 prints claims.unsecured[].last_4 here (3c spec §9.3, R4, B32). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "Total_27",
+    "producer": "asked:claims.unsecured[].amount",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Total_27",
+    "evidence": "Field index: Total_27 p3 T28 line 4.2, 'Total claim' (pattern). Row 2 of group ef_part_2 prints claims.unsecured[].amount here (3c spec §9.3, R2). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "Date debt was incurred_7",
+    "producer": "asked:claims.unsecured[].date",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Date debt was incurred_7",
+    "evidence": "Field index: Date debt was incurred_7 p3 T31 line 4.2, 'When was the debt incurred?' (pattern). Row 2 of group ef_part_2 prints claims.unsecured[].date here (3c spec §9.3, R4, B32). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "Street_7",
+    "producer": "asked:claims.unsecured[].street_joined",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Street_7",
+    "evidence": "Field index: Street_7 p3 T32 line 4.2, 'Number Street' (pattern). Row 2 of group ef_part_2 prints claims.unsecured[].street_joined here (3c spec §9.3, R2). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "City 4.2",
+    "producer": "asked:claims.unsecured[].city",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "City 4.2",
+    "evidence": "Field index: City 4.2 p3 T33 line 4.2, 'City' (pattern). Row 2 of group ef_part_2 prints claims.unsecured[].city here (3c spec §9.3, R2). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "State 4.2",
+    "producer": "asked:claims.unsecured[].state",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "State 4.2",
+    "evidence": "Field index: State 4.2 p3 T34 line 4.2, 'State' (pattern). Row 2 of group ef_part_2 prints claims.unsecured[].state here (3c spec §9.3, R4, B49). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "Zip 4.2",
+    "producer": "asked:claims.unsecured[].zip",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Zip 4.2",
+    "evidence": "Field index: Zip 4.2 p3 T35 line 4.2, 'ZIP Code' (pattern). Row 2 of group ef_part_2 prints claims.unsecured[].zip here (3c spec §9.3, R4, B49). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "Contingent_7",
+    "producer": "asked:claims.unsecured[].contingent",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Contingent_7",
+    "evidence": "Field index: Contingent_7 p3 T36 line 4.2, 'Contingent' (pattern). Row 2 of group ef_part_2 prints claims.unsecured[].contingent here (3c spec §9.3, R2). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "Unliquidated_7",
+    "producer": "asked:claims.unsecured[].unliquidated",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Unliquidated_7",
+    "evidence": "Field index: Unliquidated_7 p3 T37 line 4.2, 'Unliquidated' (pattern). Row 2 of group ef_part_2 prints claims.unsecured[].unliquidated here (3c spec §9.3, R2). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "Disputed_7",
+    "producer": "asked:claims.unsecured[].disputed",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Disputed_7",
+    "evidence": "Field index: Disputed_7 p3 T39 line 4.2, 'Disputed' (pattern). Row 2 of group ef_part_2 prints claims.unsecured[].disputed here (3c spec §9.3, R2). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "check 7",
+    "producer": "asked:claims.unsecured[].who",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check 7",
+    "evidence": "Field index: check 7 p3 T38 line 4.2, 'Debtor 1 only' (pattern); p3 T40 line 4.2, 'Debtor 2 only' (pattern); p3 T41 line 4.2, 'Debtor 1 and Debtor 2 only' (pattern); p3 T43 line 4.2, 'At least one of the debtors and another' (pattern). Row 2 of group ef_part_2 prints claims.unsecured[].who here (3c spec §9.3, R3). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "Student loans_7",
+    "producer": "asked:claims.unsecured[].student_loans",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Student loans_7",
+    "evidence": "Field index: Student loans_7 p3 T42 line 4.2, 'Student loans' (pattern). Row 2 of group ef_part_2 prints claims.unsecured[].student_loans here (3c spec §9.3, R10, B14). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "Other_7",
+    "producer": "asked:claims.unsecured[].other_type",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Other_7",
+    "evidence": "Field index: Other_7 p3 T47 line 4.2, 'Other. Specify' (pattern). Row 2 of group ef_part_2 prints claims.unsecured[].other_type here (3c spec §9.3, R10, B14). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "Other unsecurecured claim 4.2",
+    "producer": "asked:claims.unsecured[].other_type_words",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Other unsecurecured claim 4.2",
+    "evidence": "Field index: Other unsecurecured claim 4.2 p3 T48 line 4.2, 'Other. Specify ____ (nonpriority claim type)' (pattern). Row 2 of group ef_part_2 prints claims.unsecured[].other_type_words here (3c spec §9.3, R10, B14). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "Check if this claim relates to a_7",
+    "producer": "asked:claims.unsecured[].community",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Check if this claim relates to a_7",
+    "evidence": "Field index: Check if this claim relates to a_7 p3 T45 line 4.2, 'Check if this claim is for a community debt' (pattern). Row 2 of group ef_part_2 prints claims.unsecured[].community here (3c spec §9.3, R4, B33). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "check9",
+    "producer": "asked:claims.unsecured[].offset",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check9",
+    "evidence": "Field index: check9 p3 T49 line 4.2, 'No' (pattern); p3 T50 line 4.2, 'Yes' (pattern). Row 2 of group ef_part_2 prints claims.unsecured[].offset here (3c spec §9.3, R2). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "Creditors Name_8",
+    "producer": "asked:claims.unsecured[].name",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Creditors Name_8",
+    "evidence": "Field index: Creditors Name_8 p3 T51 line 4.3, \"Nonpriority Creditor's Name\" (pattern). Row 3 of group ef_part_2 prints claims.unsecured[].name here (3c spec §9.3, R2). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "account number 8",
+    "producer": "asked:claims.unsecured[].last_4",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "account number 8",
+    "evidence": "Field index: account number 8 p3 T52 line 4.3, 'Last 4 digits of account number' (pattern). Row 3 of group ef_part_2 prints claims.unsecured[].last_4 here (3c spec §9.3, R4, B32). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "Total_28",
+    "producer": "asked:claims.unsecured[].amount",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Total_28",
+    "evidence": "Field index: Total_28 p3 T53 line 4.3, 'Total claim' (pattern). Row 3 of group ef_part_2 prints claims.unsecured[].amount here (3c spec §9.3, R2). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "Date debt was incurred_8",
+    "producer": "asked:claims.unsecured[].date",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Date debt was incurred_8",
+    "evidence": "Field index: Date debt was incurred_8 p3 T54 line 4.3, 'When was the debt incurred?' (pattern). Row 3 of group ef_part_2 prints claims.unsecured[].date here (3c spec §9.3, R4, B32). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "Street_8",
+    "producer": "asked:claims.unsecured[].street_joined",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Street_8",
+    "evidence": "Field index: Street_8 p3 T55 line 4.3, 'Number Street' (pattern). Row 3 of group ef_part_2 prints claims.unsecured[].street_joined here (3c spec §9.3, R2). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "City 4.3",
+    "producer": "asked:claims.unsecured[].city",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "City 4.3",
+    "evidence": "Field index: City 4.3 p3 T56 line 4.3, 'City' (pattern). Row 3 of group ef_part_2 prints claims.unsecured[].city here (3c spec §9.3, R2). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "State 4.3",
+    "producer": "asked:claims.unsecured[].state",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "State 4.3",
+    "evidence": "Field index: State 4.3 p3 T57 line 4.3, 'State' (pattern). Row 3 of group ef_part_2 prints claims.unsecured[].state here (3c spec §9.3, R4, B49). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "Zip 4.3",
+    "producer": "asked:claims.unsecured[].zip",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Zip 4.3",
+    "evidence": "Field index: Zip 4.3 p3 T58 line 4.3, 'ZIP Code' (pattern). Row 3 of group ef_part_2 prints claims.unsecured[].zip here (3c spec §9.3, R4, B49). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "Contingent_8",
+    "producer": "asked:claims.unsecured[].contingent",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Contingent_8",
+    "evidence": "Field index: Contingent_8 p3 T59 line 4.3, 'Contingent' (pattern). Row 3 of group ef_part_2 prints claims.unsecured[].contingent here (3c spec §9.3, R2). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "Unliquidated_8",
+    "producer": "asked:claims.unsecured[].unliquidated",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Unliquidated_8",
+    "evidence": "Field index: Unliquidated_8 p3 T60 line 4.3, 'Unliquidated' (pattern). Row 3 of group ef_part_2 prints claims.unsecured[].unliquidated here (3c spec §9.3, R2). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "Disputed_8",
+    "producer": "asked:claims.unsecured[].disputed",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Disputed_8",
+    "evidence": "Field index: Disputed_8 p3 T62 line 4.3, 'Disputed' (pattern). Row 3 of group ef_part_2 prints claims.unsecured[].disputed here (3c spec §9.3, R2). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "check 8",
+    "producer": "asked:claims.unsecured[].who",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check 8",
+    "evidence": "Field index: check 8 p3 T61 line 4.3, 'Debtor 1 only' (pattern); p3 T63 line 4.3, 'Debtor 2 only' (pattern); p3 T64 line 4.3, 'Debtor 1 and Debtor 2 only' (pattern); p3 T65 line 4.3, 'At least one of the debtors and another' (pattern). Row 3 of group ef_part_2 prints claims.unsecured[].who here (3c spec §9.3, R3). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "Student loans_8",
+    "producer": "asked:claims.unsecured[].student_loans",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Student loans_8",
+    "evidence": "Field index: Student loans_8 p3 T66 line 4.3, 'Student loans' (pattern). Row 3 of group ef_part_2 prints claims.unsecured[].student_loans here (3c spec §9.3, R10, B14). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "Other_8",
+    "producer": "asked:claims.unsecured[].other_type",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Other_8",
+    "evidence": "Field index: Other_8 p3 T71 line 4.3, 'Other. Specify' (pattern). Row 3 of group ef_part_2 prints claims.unsecured[].other_type here (3c spec §9.3, R10, B14). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "Other unsecurecured claim 4.3",
+    "producer": "asked:claims.unsecured[].other_type_words",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Other unsecurecured claim 4.3",
+    "evidence": "Field index: Other unsecurecured claim 4.3 p3 T72 line 4.3, 'Other. Specify ____ (nonpriority claim type)' (pattern). Row 3 of group ef_part_2 prints claims.unsecured[].other_type_words here (3c spec §9.3, R10, B14). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "Check if this claim relates to a_8",
+    "producer": "asked:claims.unsecured[].community",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Check if this claim relates to a_8",
+    "evidence": "Field index: Check if this claim relates to a_8 p3 T67 line 4.3, 'Check if this claim is for a community debt' (pattern). Row 3 of group ef_part_2 prints claims.unsecured[].community here (3c spec §9.3, R4, B33). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "check10",
+    "producer": "asked:claims.unsecured[].offset",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check10",
+    "evidence": "Field index: check10 p3 T70 line 4.3, 'No' (pattern); p3 T73 line 4.3, 'Yes' (pattern). Row 3 of group ef_part_2 prints claims.unsecured[].offset here (3c spec §9.3, R2). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "Creditors Name_9",
+    "producer": "asked:claims.unsecured[].name",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Creditors Name_9",
+    "evidence": "Field index: Creditors Name_9 p4 T5 line 4, \"Nonpriority Creditor's Name (Part 2 Continuation Page row 1; filer numbers it 4.4, 4.5, ...)\" (adjudicated). Row 4 of group ef_part_2 prints claims.unsecured[].name here (3c spec §9.3, R2). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "account number 9",
+    "producer": "asked:claims.unsecured[].last_4",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "account number 9",
+    "evidence": "Field index: account number 9 p4 T4 line 4, 'Last 4 digits of account number (Part 2 Continuation Page row 1; filer numbers it 4.4, 4.5, ...)' (adjudicated). Row 4 of group ef_part_2 prints claims.unsecured[].last_4 here (3c spec §9.3, R4, B32). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "Total_29",
+    "producer": "asked:claims.unsecured[].amount",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Total_29",
+    "evidence": "Field index: Total_29 p4 T6 line 4, 'Total claim (Part 2 Continuation Page row 1; filer numbers it 4.4, 4.5, ...)' (adjudicated). Row 4 of group ef_part_2 prints claims.unsecured[].amount here (3c spec §9.3, R2). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "Date debt was incurred_9",
+    "producer": "asked:claims.unsecured[].date",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Date debt was incurred_9",
+    "evidence": "Field index: Date debt was incurred_9 p4 T7 line 4, 'When was the debt incurred? (Part 2 Continuation Page row 1; filer numbers it 4.4, 4.5, ...)' (adjudicated). Row 4 of group ef_part_2 prints claims.unsecured[].date here (3c spec §9.3, R4, B32). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "Street_9",
+    "producer": "asked:claims.unsecured[].street_joined",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Street_9",
+    "evidence": "Field index: Street_9 p4 T8 line 4, 'Number Street (Part 2 Continuation Page row 1; filer numbers it 4.4, 4.5, ...)' (adjudicated). Row 4 of group ef_part_2 prints claims.unsecured[].street_joined here (3c spec §9.3, R2). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "City 4.4",
+    "producer": "asked:claims.unsecured[].city",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "City 4.4",
+    "evidence": "Field index: City 4.4 p4 T9 line 4, 'City (Part 2 Continuation Page row 1; filer numbers it 4.4, 4.5, ...)' (adjudicated). Row 4 of group ef_part_2 prints claims.unsecured[].city here (3c spec §9.3, R2). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "State 4.4",
+    "producer": "asked:claims.unsecured[].state",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "State 4.4",
+    "evidence": "Field index: State 4.4 p4 T10 line 4, 'State (Part 2 Continuation Page row 1; filer numbers it 4.4, 4.5, ...)' (adjudicated). Row 4 of group ef_part_2 prints claims.unsecured[].state here (3c spec §9.3, R4, B49). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "Zip 4.4",
+    "producer": "asked:claims.unsecured[].zip",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Zip 4.4",
+    "evidence": "Field index: Zip 4.4 p4 T11 line 4, 'ZIP Code (Part 2 Continuation Page row 1; filer numbers it 4.4, 4.5, ...)' (adjudicated). Row 4 of group ef_part_2 prints claims.unsecured[].zip here (3c spec §9.3, R4, B49). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "Contingent_9",
+    "producer": "asked:claims.unsecured[].contingent",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Contingent_9",
+    "evidence": "Field index: Contingent_9 p4 T12 line 4, 'Contingent' (adjudicated). Row 4 of group ef_part_2 prints claims.unsecured[].contingent here (3c spec §9.3, R2). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "Unliquidated_9",
+    "producer": "asked:claims.unsecured[].unliquidated",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Unliquidated_9",
+    "evidence": "Field index: Unliquidated_9 p4 T13 line 4, 'Unliquidated' (adjudicated). Row 4 of group ef_part_2 prints claims.unsecured[].unliquidated here (3c spec §9.3, R2). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "Disputed_9",
+    "producer": "asked:claims.unsecured[].disputed",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Disputed_9",
+    "evidence": "Field index: Disputed_9 p4 T14 line 4, 'Disputed' (adjudicated). Row 4 of group ef_part_2 prints claims.unsecured[].disputed here (3c spec §9.3, R2). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "check 9",
+    "producer": "asked:claims.unsecured[].who",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check 9",
+    "evidence": "Field index: check 9 p4 T15 line 4, 'Debtor 1 only' (adjudicated); p4 T16 line 4, 'Debtor 2 only' (adjudicated); p4 T17 line 4, 'Debtor 1 and Debtor 2 only' (adjudicated); p4 T19 line 4, 'At least one of the debtors and another' (adjudicated). Row 4 of group ef_part_2 prints claims.unsecured[].who here (3c spec §9.3, R3). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "Student loans_9",
+    "producer": "asked:claims.unsecured[].student_loans",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Student loans_9",
+    "evidence": "Field index: Student loans_9 p4 T18 line 4, 'Student loans' (adjudicated). Row 4 of group ef_part_2 prints claims.unsecured[].student_loans here (3c spec §9.3, R10, B14). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "Other_9",
+    "producer": "asked:claims.unsecured[].other_type",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Other_9",
+    "evidence": "Field index: Other_9 p4 T23 line 4, 'Other. Specify' (adjudicated). Row 4 of group ef_part_2 prints claims.unsecured[].other_type here (3c spec §9.3, R10, B14). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "Other unsecurecured claim 4.4",
+    "producer": "asked:claims.unsecured[].other_type_words",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Other unsecurecured claim 4.4",
+    "evidence": "Field index: Other unsecurecured claim 4.4 p4 T24 line 4, 'Other. Specify ____ (nonpriority claim type) (Part 2 Continuation Page row 1; filer numbers it 4.4, 4.5, ...)' (adjudicated). Row 4 of group ef_part_2 prints claims.unsecured[].other_type_words here (3c spec §9.3, R10, B14). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "Check if this claim relates to a_9",
+    "producer": "asked:claims.unsecured[].community",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Check if this claim relates to a_9",
+    "evidence": "Field index: Check if this claim relates to a_9 p4 T21 line 4, 'Check if this claim is for a community debt' (adjudicated). Row 4 of group ef_part_2 prints claims.unsecured[].community here (3c spec §9.3, R4, B33). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "check11",
+    "producer": "asked:claims.unsecured[].offset",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check11",
+    "evidence": "Field index: check11 p4 T25 line 4, 'No' (adjudicated); p4 T26 line 4, 'Yes' (adjudicated). Row 4 of group ef_part_2 prints claims.unsecured[].offset here (3c spec §9.3, R2). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "Creditors Name_10",
+    "producer": "asked:claims.unsecured[].name",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Creditors Name_10",
+    "evidence": "Field index: Creditors Name_10 p4 T30 line 4, \"Nonpriority Creditor's Name (Part 2 Continuation Page row 2; filer numbers it 4.4, 4.5, ...)\" (pattern). Row 5 of group ef_part_2 prints claims.unsecured[].name here (3c spec §9.3, R2). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "account number 10",
+    "producer": "asked:claims.unsecured[].last_4",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "account number 10",
+    "evidence": "Field index: account number 10 p4 T28 line 4, 'Last 4 digits of account number (Part 2 Continuation Page row 2; filer numbers it 4.4, 4.5, ...)' (pattern). Row 5 of group ef_part_2 prints claims.unsecured[].last_4 here (3c spec §9.3, R4, B32). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "Total_30",
+    "producer": "asked:claims.unsecured[].amount",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Total_30",
+    "evidence": "Field index: Total_30 p4 T29 line 4, 'Total claim (Part 2 Continuation Page row 2; filer numbers it 4.4, 4.5, ...)' (pattern). Row 5 of group ef_part_2 prints claims.unsecured[].amount here (3c spec §9.3, R2). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "Date debt was incurred_10",
+    "producer": "asked:claims.unsecured[].date",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Date debt was incurred_10",
+    "evidence": "Field index: Date debt was incurred_10 p4 T31 line 4, 'When was the debt incurred? (Part 2 Continuation Page row 2; filer numbers it 4.4, 4.5, ...)' (pattern). Row 5 of group ef_part_2 prints claims.unsecured[].date here (3c spec §9.3, R4, B32). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "Street_10",
+    "producer": "asked:claims.unsecured[].street_joined",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Street_10",
+    "evidence": "Field index: Street_10 p4 T32 line 4, 'Number Street (Part 2 Continuation Page row 2; filer numbers it 4.4, 4.5, ...)' (pattern). Row 5 of group ef_part_2 prints claims.unsecured[].street_joined here (3c spec §9.3, R2). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "City 4.5",
+    "producer": "asked:claims.unsecured[].city",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "City 4.5",
+    "evidence": "Field index: City 4.5 p4 T33 line 4, 'City (Part 2 Continuation Page row 2; filer numbers it 4.4, 4.5, ...)' (pattern). Row 5 of group ef_part_2 prints claims.unsecured[].city here (3c spec §9.3, R2). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "State 4.5",
+    "producer": "asked:claims.unsecured[].state",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "State 4.5",
+    "evidence": "Field index: State 4.5 p4 T34 line 4, 'State (Part 2 Continuation Page row 2; filer numbers it 4.4, 4.5, ...)' (pattern). Row 5 of group ef_part_2 prints claims.unsecured[].state here (3c spec §9.3, R4, B49). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "Zip 4.5",
+    "producer": "asked:claims.unsecured[].zip",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Zip 4.5",
+    "evidence": "Field index: Zip 4.5 p4 T35 line 4, 'ZIP Code (Part 2 Continuation Page row 2; filer numbers it 4.4, 4.5, ...)' (pattern). Row 5 of group ef_part_2 prints claims.unsecured[].zip here (3c spec §9.3, R4, B49). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "Contingent_10",
+    "producer": "asked:claims.unsecured[].contingent",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Contingent_10",
+    "evidence": "Field index: Contingent_10 p4 T36 line 4, 'Contingent' (pattern). Row 5 of group ef_part_2 prints claims.unsecured[].contingent here (3c spec §9.3, R2). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "Unliquidated_10",
+    "producer": "asked:claims.unsecured[].unliquidated",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Unliquidated_10",
+    "evidence": "Field index: Unliquidated_10 p4 T37 line 4, 'Unliquidated' (pattern). Row 5 of group ef_part_2 prints claims.unsecured[].unliquidated here (3c spec §9.3, R2). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "Disputed_10",
+    "producer": "asked:claims.unsecured[].disputed",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Disputed_10",
+    "evidence": "Field index: Disputed_10 p4 T38 line 4, 'Disputed' (pattern). Row 5 of group ef_part_2 prints claims.unsecured[].disputed here (3c spec §9.3, R2). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "check 10",
+    "producer": "asked:claims.unsecured[].who",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check 10",
+    "evidence": "Field index: check 10 p4 T39 line 4, 'Debtor 1 only' (pattern); p4 T40 line 4, 'Debtor 2 only' (pattern); p4 T41 line 4, 'Debtor 1 and Debtor 2 only' (pattern); p4 T43 line 4, 'At least one of the debtors and another' (pattern). Row 5 of group ef_part_2 prints claims.unsecured[].who here (3c spec §9.3, R3). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "Student loans_10",
+    "producer": "asked:claims.unsecured[].student_loans",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Student loans_10",
+    "evidence": "Field index: Student loans_10 p4 T42 line 4, 'Student loans' (pattern). Row 5 of group ef_part_2 prints claims.unsecured[].student_loans here (3c spec §9.3, R10, B14). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "Other_10",
+    "producer": "asked:claims.unsecured[].other_type",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Other_10",
+    "evidence": "Field index: Other_10 p4 T47 line 4, 'Other. Specify' (pattern). Row 5 of group ef_part_2 prints claims.unsecured[].other_type here (3c spec §9.3, R10, B14). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "Other unsecurecured claim 4.5",
+    "producer": "asked:claims.unsecured[].other_type_words",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Other unsecurecured claim 4.5",
+    "evidence": "Field index: Other unsecurecured claim 4.5 p4 T48 line 4, 'Other. Specify ____ (nonpriority claim type) (Part 2 Continuation Page row 2; filer numbers it 4.4, 4.5, ...)' (pattern). Row 5 of group ef_part_2 prints claims.unsecured[].other_type_words here (3c spec §9.3, R10, B14). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "Check if this claim relates to a_10",
+    "producer": "asked:claims.unsecured[].community",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Check if this claim relates to a_10",
+    "evidence": "Field index: Check if this claim relates to a_10 p4 T45 line 4, 'Check if this claim is for a community debt' (pattern). Row 5 of group ef_part_2 prints claims.unsecured[].community here (3c spec §9.3, R4, B33). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "check12",
+    "producer": "asked:claims.unsecured[].offset",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check12",
+    "evidence": "Field index: check12 p4 T49 line 4, 'No' (pattern); p4 T50 line 4, 'Yes' (pattern). Row 5 of group ef_part_2 prints claims.unsecured[].offset here (3c spec §9.3, R2). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "Creditors Name_11",
+    "producer": "asked:claims.unsecured[].name",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Creditors Name_11",
+    "evidence": "Field index: Creditors Name_11 p4 T54 line 4, \"Nonpriority Creditor's Name (Part 2 Continuation Page row 3; filer numbers it 4.4, 4.5, ...)\" (pattern). Row 6 of group ef_part_2 prints claims.unsecured[].name here (3c spec §9.3, R2). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "account number 11",
+    "producer": "asked:claims.unsecured[].last_4",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "account number 11",
+    "evidence": "Field index: account number 11 p4 T53 line 4, 'Last 4 digits of account number (Part 2 Continuation Page row 3; filer numbers it 4.4, 4.5, ...)' (pattern). Row 6 of group ef_part_2 prints claims.unsecured[].last_4 here (3c spec §9.3, R4, B32). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "Total_31",
+    "producer": "asked:claims.unsecured[].amount",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Total_31",
+    "evidence": "Field index: Total_31 p4 T52 line 4, 'Total claim (Part 2 Continuation Page row 3; filer numbers it 4.4, 4.5, ...)' (pattern). Row 6 of group ef_part_2 prints claims.unsecured[].amount here (3c spec §9.3, R2). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "Date debt was incurred_11",
+    "producer": "asked:claims.unsecured[].date",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Date debt was incurred_11",
+    "evidence": "Field index: Date debt was incurred_11 p4 T55 line 4, 'When was the debt incurred? (Part 2 Continuation Page row 3; filer numbers it 4.4, 4.5, ...)' (pattern). Row 6 of group ef_part_2 prints claims.unsecured[].date here (3c spec §9.3, R4, B32). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "Street_11",
+    "producer": "asked:claims.unsecured[].street_joined",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Street_11",
+    "evidence": "Field index: Street_11 p4 T56 line 4, 'Number Street (Part 2 Continuation Page row 3; filer numbers it 4.4, 4.5, ...)' (pattern). Row 6 of group ef_part_2 prints claims.unsecured[].street_joined here (3c spec §9.3, R2). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "City 4.6",
+    "producer": "asked:claims.unsecured[].city",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "City 4.6",
+    "evidence": "Field index: City 4.6 p4 T57 line 4, 'City (Part 2 Continuation Page row 3; filer numbers it 4.4, 4.5, ...)' (pattern). Row 6 of group ef_part_2 prints claims.unsecured[].city here (3c spec §9.3, R2). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "State 4.6",
+    "producer": "asked:claims.unsecured[].state",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "State 4.6",
+    "evidence": "Field index: State 4.6 p4 T58 line 4, 'State (Part 2 Continuation Page row 3; filer numbers it 4.4, 4.5, ...)' (pattern). Row 6 of group ef_part_2 prints claims.unsecured[].state here (3c spec §9.3, R4, B49). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "Zip 4.6",
+    "producer": "asked:claims.unsecured[].zip",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Zip 4.6",
+    "evidence": "Field index: Zip 4.6 p4 T59 line 4, 'ZIP Code (Part 2 Continuation Page row 3; filer numbers it 4.4, 4.5, ...)' (pattern). Row 6 of group ef_part_2 prints claims.unsecured[].zip here (3c spec §9.3, R4, B49). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "Contingent_11",
+    "producer": "asked:claims.unsecured[].contingent",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Contingent_11",
+    "evidence": "Field index: Contingent_11 p4 T60 line 4, 'Contingent' (pattern). Row 6 of group ef_part_2 prints claims.unsecured[].contingent here (3c spec §9.3, R2). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "Unliquidated_11",
+    "producer": "asked:claims.unsecured[].unliquidated",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Unliquidated_11",
+    "evidence": "Field index: Unliquidated_11 p4 T61 line 4, 'Unliquidated' (pattern). Row 6 of group ef_part_2 prints claims.unsecured[].unliquidated here (3c spec §9.3, R2). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "Disputed_11",
+    "producer": "asked:claims.unsecured[].disputed",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Disputed_11",
+    "evidence": "Field index: Disputed_11 p4 T62 line 4, 'Disputed' (pattern). Row 6 of group ef_part_2 prints claims.unsecured[].disputed here (3c spec §9.3, R2). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "check 11",
+    "producer": "asked:claims.unsecured[].who",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check 11",
+    "evidence": "Field index: check 11 p4 T63 line 4, 'Debtor 1 only' (pattern); p4 T64 line 4, 'Debtor 2 only' (pattern); p4 T65 line 4, 'Debtor 1 and Debtor 2 only' (pattern); p4 T67 line 4, 'At least one of the debtors and another' (pattern). Row 6 of group ef_part_2 prints claims.unsecured[].who here (3c spec §9.3, R3). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "Student loans_11",
+    "producer": "asked:claims.unsecured[].student_loans",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Student loans_11",
+    "evidence": "Field index: Student loans_11 p4 T66 line 4, 'Student loans' (pattern). Row 6 of group ef_part_2 prints claims.unsecured[].student_loans here (3c spec §9.3, R10, B14). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "Other_11",
+    "producer": "asked:claims.unsecured[].other_type",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Other_11",
+    "evidence": "Field index: Other_11 p4 T71 line 4, 'Other. Specify' (pattern). Row 6 of group ef_part_2 prints claims.unsecured[].other_type here (3c spec §9.3, R10, B14). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "Other unsecurecured claim 4.6",
+    "producer": "asked:claims.unsecured[].other_type_words",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Other unsecurecured claim 4.6",
+    "evidence": "Field index: Other unsecurecured claim 4.6 p4 T72 line 4, 'Other. Specify ____ (nonpriority claim type) (Part 2 Continuation Page row 3; filer numbers it 4.4, 4.5, ...)' (pattern). Row 6 of group ef_part_2 prints claims.unsecured[].other_type_words here (3c spec §9.3, R10, B14). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "Check if this claim relates to a_11",
+    "producer": "asked:claims.unsecured[].community",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Check if this claim relates to a_11",
+    "evidence": "Field index: Check if this claim relates to a_11 p4 T69 line 4, 'Check if this claim is for a community debt' (pattern). Row 6 of group ef_part_2 prints claims.unsecured[].community here (3c spec §9.3, R4, B33). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "check13",
+    "producer": "asked:claims.unsecured[].offset",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check13",
+    "evidence": "Field index: check13 p4 T73 line 4, 'No' (pattern); p4 T74 line 4, 'Yes' (pattern). Row 6 of group ef_part_2 prints claims.unsecured[].offset here (3c spec §9.3, R2). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "Creditors Name_12",
+    "producer": "asked:claims.unsecured_notices[].name",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Creditors Name_12",
+    "evidence": "Field index: Creditors Name_12 p5 T3 line 5, 'Name (Part 3 entry 1)' (adjudicated). Row 1 of group ef_part_3 prints claims.unsecured_notices[].name here (3c spec §9.3, R2). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "Street_12",
+    "producer": "asked:claims.unsecured_notices[].street",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Street_12",
+    "evidence": "Field index: Street_12 p5 T5 line 5, 'Number Street (Part 3 entry 1)' (adjudicated). Row 1 of group ef_part_3 prints claims.unsecured_notices[].street here (3c spec §9.3, R2). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "Street2_12",
+    "producer": "asked:claims.unsecured_notices[].street_2",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Street2_12",
+    "evidence": "Field index: Street2_12 p5 T8 line 5, 'Address, second line (unlabeled) (Part 3 entry 1)' (adjudicated). Row 1 of group ef_part_3 prints claims.unsecured_notices[].street_2 here (3c spec §9.3, R2). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "City 5.1",
+    "producer": "asked:claims.unsecured_notices[].city",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "City 5.1",
+    "evidence": "Field index: City 5.1 p5 T10 line 5, 'City (Part 3 entry 1)' (adjudicated). Row 1 of group ef_part_3 prints claims.unsecured_notices[].city here (3c spec §9.3, R2). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "State 5.1",
+    "producer": "asked:claims.unsecured_notices[].state",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "State 5.1",
+    "evidence": "Field index: State 5.1 p5 T11 line 5, 'State (Part 3 entry 1)' (adjudicated). Row 1 of group ef_part_3 prints claims.unsecured_notices[].state here (3c spec §9.3, R4, B49). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "Zip 5.1",
+    "producer": "asked:claims.unsecured_notices[].zip",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Zip 5.1",
+    "evidence": "Field index: Zip 5.1 p5 T12 line 5, 'ZIP Code (Part 3 entry 1)' (adjudicated). Row 1 of group ef_part_3 prints claims.unsecured_notices[].zip here (3c spec §9.3, R4, B49). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "Referenced line 5.1",
+    "producer": "asked:claims.unsecured_notices[].line",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Referenced line 5.1",
+    "evidence": "Field index: Referenced line 5.1 p5 T4 line 5, 'On which entry in Part 1 or Part 2 did you list the original creditor? Line ____ (Part 3 entry 1)' (adjudicated). Row 1 of group ef_part_3 prints claims.unsecured_notices[].line here (3c spec §9.3, R2). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "check14",
+    "producer": "asked:claims.unsecured_notices[].part",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check14",
+    "evidence": "Field index: check14 p5 T6 line 5, 'Part 1: Creditors with Priority Unsecured Claims' (adjudicated); p5 T7 line 5, 'Part 2: Creditors with Nonpriority Unsecured Claims' (adjudicated). Row 1 of group ef_part_3 prints claims.unsecured_notices[].part here (3c spec §9.3, R2). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "account number 12",
+    "producer": "asked:claims.unsecured_notices[].last_4",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "account number 12",
+    "evidence": "Field index: account number 12 p5 T9 line 5, 'Last 4 digits of account number (Part 3 entry 1)' (adjudicated). Row 1 of group ef_part_3 prints claims.unsecured_notices[].last_4 here (3c spec §9.3, R4, B32). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "Creditors Name_13",
+    "producer": "asked:claims.unsecured_notices[].name",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Creditors Name_13",
+    "evidence": "Field index: Creditors Name_13 p5 T13 line 5, 'Name (Part 3 entry 2)' (pattern). Row 2 of group ef_part_3 prints claims.unsecured_notices[].name here (3c spec §9.3, R2). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "Street_13",
+    "producer": "asked:claims.unsecured_notices[].street",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Street_13",
+    "evidence": "Field index: Street_13 p5 T15 line 5, 'Number Street (Part 3 entry 2)' (pattern). Row 2 of group ef_part_3 prints claims.unsecured_notices[].street here (3c spec §9.3, R2). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "Street2_13",
+    "producer": "asked:claims.unsecured_notices[].street_2",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Street2_13",
+    "evidence": "Field index: Street2_13 p5 T18 line 5, 'Address, second line (unlabeled) (Part 3 entry 2)' (pattern). Row 2 of group ef_part_3 prints claims.unsecured_notices[].street_2 here (3c spec §9.3, R2). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "City 5.2",
+    "producer": "asked:claims.unsecured_notices[].city",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "City 5.2",
+    "evidence": "Field index: City 5.2 p5 T19 line 5, 'City (Part 3 entry 2)' (pattern). Row 2 of group ef_part_3 prints claims.unsecured_notices[].city here (3c spec §9.3, R2). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "State 5.2",
+    "producer": "asked:claims.unsecured_notices[].state",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "State 5.2",
+    "evidence": "Field index: State 5.2 p5 T20 line 5, 'State (Part 3 entry 2)' (pattern). Row 2 of group ef_part_3 prints claims.unsecured_notices[].state here (3c spec §9.3, R4, B49). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "Zip 5.2",
+    "producer": "asked:claims.unsecured_notices[].zip",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Zip 5.2",
+    "evidence": "Field index: Zip 5.2 p5 T21 line 5, 'ZIP Code (Part 3 entry 2)' (pattern). Row 2 of group ef_part_3 prints claims.unsecured_notices[].zip here (3c spec §9.3, R4, B49). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "Referenced line 5.2",
+    "producer": "asked:claims.unsecured_notices[].line",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Referenced line 5.2",
+    "evidence": "Field index: Referenced line 5.2 p5 T14 line 5, 'On which entry in Part 1 or Part 2 did you list the original creditor? Line ____ (Part 3 entry 2)' (pattern). Row 2 of group ef_part_3 prints claims.unsecured_notices[].line here (3c spec §9.3, R2). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "check15",
+    "producer": "asked:claims.unsecured_notices[].part",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check15",
+    "evidence": "Field index: check15 p5 T16 line 5, 'Part 1: Creditors with Priority Unsecured Claims' (pattern); p5 T17 line 5, 'Part 2: Creditors with Nonpriority Unsecured Claims' (pattern). Row 2 of group ef_part_3 prints claims.unsecured_notices[].part here (3c spec §9.3, R2). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "account number 13",
+    "producer": "asked:claims.unsecured_notices[].last_4",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "account number 13",
+    "evidence": "Field index: account number 13 p5 T22 line 5, 'Last 4 digits of account number (Part 3 entry 2)' (pattern). Row 2 of group ef_part_3 prints claims.unsecured_notices[].last_4 here (3c spec §9.3, R4, B32). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "Creditors Name_14",
+    "producer": "asked:claims.unsecured_notices[].name",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Creditors Name_14",
+    "evidence": "Field index: Creditors Name_14 p5 T23 line 5, 'Name (Part 3 entry 3)' (pattern). Row 3 of group ef_part_3 prints claims.unsecured_notices[].name here (3c spec §9.3, R2). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "Street_14",
+    "producer": "asked:claims.unsecured_notices[].street",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Street_14",
+    "evidence": "Field index: Street_14 p5 T24 line 5, 'Number Street (Part 3 entry 3)' (pattern). Row 3 of group ef_part_3 prints claims.unsecured_notices[].street here (3c spec §9.3, R2). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "Street2_14",
+    "producer": "asked:claims.unsecured_notices[].street_2",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Street2_14",
+    "evidence": "Field index: Street2_14 p5 T28 line 5, 'Address, second line (unlabeled) (Part 3 entry 3)' (pattern). Row 3 of group ef_part_3 prints claims.unsecured_notices[].street_2 here (3c spec §9.3, R2). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "City 5.3",
+    "producer": "asked:claims.unsecured_notices[].city",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "City 5.3",
+    "evidence": "Field index: City 5.3 p5 T29 line 5, 'City (Part 3 entry 3)' (pattern). Row 3 of group ef_part_3 prints claims.unsecured_notices[].city here (3c spec §9.3, R2). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "State 5.3",
+    "producer": "asked:claims.unsecured_notices[].state",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "State 5.3",
+    "evidence": "Field index: State 5.3 p5 T30 line 5, 'State (Part 3 entry 3)' (pattern). Row 3 of group ef_part_3 prints claims.unsecured_notices[].state here (3c spec §9.3, R4, B49). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "Zip 5.3",
+    "producer": "asked:claims.unsecured_notices[].zip",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Zip 5.3",
+    "evidence": "Field index: Zip 5.3 p5 T31 line 5, 'ZIP Code (Part 3 entry 3)' (pattern). Row 3 of group ef_part_3 prints claims.unsecured_notices[].zip here (3c spec §9.3, R4, B49). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "Referenced line 5.3",
+    "producer": "asked:claims.unsecured_notices[].line",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Referenced line 5.3",
+    "evidence": "Field index: Referenced line 5.3 p5 T25 line 5, 'On which entry in Part 1 or Part 2 did you list the original creditor? Line ____ (Part 3 entry 3)' (pattern). Row 3 of group ef_part_3 prints claims.unsecured_notices[].line here (3c spec §9.3, R2). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "check16",
+    "producer": "asked:claims.unsecured_notices[].part",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check16",
+    "evidence": "Field index: check16 p5 T26 line 5, 'Part 1: Creditors with Priority Unsecured Claims' (pattern); p5 T27 line 5, 'Part 2: Creditors with Nonpriority Unsecured Claims' (pattern). Row 3 of group ef_part_3 prints claims.unsecured_notices[].part here (3c spec §9.3, R2). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "account number 14",
+    "producer": "asked:claims.unsecured_notices[].last_4",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "account number 14",
+    "evidence": "Field index: account number 14 p5 T32 line 5, 'Last 4 digits of account number (Part 3 entry 3)' (pattern). Row 3 of group ef_part_3 prints claims.unsecured_notices[].last_4 here (3c spec §9.3, R4, B32). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "Creditors Name_15",
+    "producer": "asked:claims.unsecured_notices[].name",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Creditors Name_15",
+    "evidence": "Field index: Creditors Name_15 p5 T33 line 5, 'Name (Part 3 entry 4)' (pattern). Row 4 of group ef_part_3 prints claims.unsecured_notices[].name here (3c spec §9.3, R2). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "Street_15",
+    "producer": "asked:claims.unsecured_notices[].street",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Street_15",
+    "evidence": "Field index: Street_15 p5 T35 line 5, 'Number Street (Part 3 entry 4)' (pattern). Row 4 of group ef_part_3 prints claims.unsecured_notices[].street here (3c spec §9.3, R2). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "Street2_15",
+    "producer": "asked:claims.unsecured_notices[].street_2",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Street2_15",
+    "evidence": "Field index: Street2_15 p5 T38 line 5, 'Address, second line (unlabeled) (Part 3 entry 4)' (pattern). Row 4 of group ef_part_3 prints claims.unsecured_notices[].street_2 here (3c spec §9.3, R2). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "City 5.4",
+    "producer": "asked:claims.unsecured_notices[].city",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "City 5.4",
+    "evidence": "Field index: City 5.4 p5 T39 line 5, 'City (Part 3 entry 4)' (pattern). Row 4 of group ef_part_3 prints claims.unsecured_notices[].city here (3c spec §9.3, R2). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "State 5.4",
+    "producer": "asked:claims.unsecured_notices[].state",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "State 5.4",
+    "evidence": "Field index: State 5.4 p5 T40 line 5, 'State (Part 3 entry 4)' (pattern). Row 4 of group ef_part_3 prints claims.unsecured_notices[].state here (3c spec §9.3, R4, B49). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "Zip 5.4",
+    "producer": "asked:claims.unsecured_notices[].zip",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Zip 5.4",
+    "evidence": "Field index: Zip 5.4 p5 T41 line 5, 'ZIP Code (Part 3 entry 4)' (pattern). Row 4 of group ef_part_3 prints claims.unsecured_notices[].zip here (3c spec §9.3, R4, B49). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "Referenced line 5.4",
+    "producer": "asked:claims.unsecured_notices[].line",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Referenced line 5.4",
+    "evidence": "Field index: Referenced line 5.4 p5 T34 line 5, 'On which entry in Part 1 or Part 2 did you list the original creditor? Line ____ (Part 3 entry 4)' (pattern). Row 4 of group ef_part_3 prints claims.unsecured_notices[].line here (3c spec §9.3, R2). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "check17",
+    "producer": "asked:claims.unsecured_notices[].part",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check17",
+    "evidence": "Field index: check17 p5 T36 line 5, 'Part 1: Creditors with Priority Unsecured Claims' (pattern); p5 T37 line 5, 'Part 2: Creditors with Nonpriority Unsecured Claims' (pattern). Row 4 of group ef_part_3 prints claims.unsecured_notices[].part here (3c spec §9.3, R2). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "account number 15",
+    "producer": "asked:claims.unsecured_notices[].last_4",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "account number 15",
+    "evidence": "Field index: account number 15 p5 T42 line 5, 'Last 4 digits of account number (Part 3 entry 4)' (pattern). Row 4 of group ef_part_3 prints claims.unsecured_notices[].last_4 here (3c spec §9.3, R4, B32). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "Creditors Name_16",
+    "producer": "asked:claims.unsecured_notices[].name",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Creditors Name_16",
+    "evidence": "Field index: Creditors Name_16 p5 T43 line 5, 'Name (Part 3 entry 5)' (pattern). Row 5 of group ef_part_3 prints claims.unsecured_notices[].name here (3c spec §9.3, R2). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "Street_16",
+    "producer": "asked:claims.unsecured_notices[].street",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Street_16",
+    "evidence": "Field index: Street_16 p5 T45 line 5, 'Number Street (Part 3 entry 5)' (pattern). Row 5 of group ef_part_3 prints claims.unsecured_notices[].street here (3c spec §9.3, R2). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "Street2_16",
+    "producer": "asked:claims.unsecured_notices[].street_2",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Street2_16",
+    "evidence": "Field index: Street2_16 p5 T48 line 5, 'Address, second line (unlabeled) (Part 3 entry 5)' (pattern). Row 5 of group ef_part_3 prints claims.unsecured_notices[].street_2 here (3c spec §9.3, R2). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "City 5.5",
+    "producer": "asked:claims.unsecured_notices[].city",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "City 5.5",
+    "evidence": "Field index: City 5.5 p5 T49 line 5, 'City (Part 3 entry 5)' (pattern). Row 5 of group ef_part_3 prints claims.unsecured_notices[].city here (3c spec §9.3, R2). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "State 5.5",
+    "producer": "asked:claims.unsecured_notices[].state",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "State 5.5",
+    "evidence": "Field index: State 5.5 p5 T50 line 5, 'State (Part 3 entry 5)' (pattern). Row 5 of group ef_part_3 prints claims.unsecured_notices[].state here (3c spec §9.3, R4, B49). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "Zip 5.5",
+    "producer": "asked:claims.unsecured_notices[].zip",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Zip 5.5",
+    "evidence": "Field index: Zip 5.5 p5 T51 line 5, 'ZIP Code (Part 3 entry 5)' (pattern). Row 5 of group ef_part_3 prints claims.unsecured_notices[].zip here (3c spec §9.3, R4, B49). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "Referenced line 5.5",
+    "producer": "asked:claims.unsecured_notices[].line",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Referenced line 5.5",
+    "evidence": "Field index: Referenced line 5.5 p5 T44 line 5, 'On which entry in Part 1 or Part 2 did you list the original creditor? Line ____ (Part 3 entry 5)' (pattern). Row 5 of group ef_part_3 prints claims.unsecured_notices[].line here (3c spec §9.3, R2). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "check18",
+    "producer": "asked:claims.unsecured_notices[].part",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check18",
+    "evidence": "Field index: check18 p5 T46 line 5, 'Part 1: Creditors with Priority Unsecured Claims' (pattern); p5 T47 line 5, 'Part 2: Creditors with Nonpriority Unsecured Claims' (pattern). Row 5 of group ef_part_3 prints claims.unsecured_notices[].part here (3c spec §9.3, R2). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "account number 16",
+    "producer": "asked:claims.unsecured_notices[].last_4",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "account number 16",
+    "evidence": "Field index: account number 16 p5 T52 line 5, 'Last 4 digits of account number (Part 3 entry 5)' (pattern). Row 5 of group ef_part_3 prints claims.unsecured_notices[].last_4 here (3c spec §9.3, R4, B32). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "Creditors Name_17",
+    "producer": "asked:claims.unsecured_notices[].name",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Creditors Name_17",
+    "evidence": "Field index: Creditors Name_17 p5 T53 line 5, 'Name (Part 3 entry 6)' (pattern). Row 6 of group ef_part_3 prints claims.unsecured_notices[].name here (3c spec §9.3, R2). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "Street_17",
+    "producer": "asked:claims.unsecured_notices[].street",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Street_17",
+    "evidence": "Field index: Street_17 p5 T55 line 5, 'Number Street (Part 3 entry 6)' (pattern). Row 6 of group ef_part_3 prints claims.unsecured_notices[].street here (3c spec §9.3, R2). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "Street2_17",
+    "producer": "asked:claims.unsecured_notices[].street_2",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Street2_17",
+    "evidence": "Field index: Street2_17 p5 T58 line 5, 'Address, second line (unlabeled) (Part 3 entry 6)' (pattern). Row 6 of group ef_part_3 prints claims.unsecured_notices[].street_2 here (3c spec §9.3, R2). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "City 5.6",
+    "producer": "asked:claims.unsecured_notices[].city",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "City 5.6",
+    "evidence": "Field index: City 5.6 p5 T59 line 5, 'City (Part 3 entry 6)' (pattern). Row 6 of group ef_part_3 prints claims.unsecured_notices[].city here (3c spec §9.3, R2). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "State 5.6",
+    "producer": "asked:claims.unsecured_notices[].state",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "State 5.6",
+    "evidence": "Field index: State 5.6 p5 T60 line 5, 'State (Part 3 entry 6)' (pattern). Row 6 of group ef_part_3 prints claims.unsecured_notices[].state here (3c spec §9.3, R4, B49). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "Zip 5.6",
+    "producer": "asked:claims.unsecured_notices[].zip",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Zip 5.6",
+    "evidence": "Field index: Zip 5.6 p5 T61 line 5, 'ZIP Code (Part 3 entry 6)' (pattern). Row 6 of group ef_part_3 prints claims.unsecured_notices[].zip here (3c spec §9.3, R4, B49). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "Referenced line 5.6",
+    "producer": "asked:claims.unsecured_notices[].line",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Referenced line 5.6",
+    "evidence": "Field index: Referenced line 5.6 p5 T54 line 5, 'On which entry in Part 1 or Part 2 did you list the original creditor? Line ____ (Part 3 entry 6)' (pattern). Row 6 of group ef_part_3 prints claims.unsecured_notices[].line here (3c spec §9.3, R2). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "check19",
+    "producer": "asked:claims.unsecured_notices[].part",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check19",
+    "evidence": "Field index: check19 p5 T56 line 5, 'Part 1: Creditors with Priority Unsecured Claims' (pattern); p5 T57 line 5, 'Part 2: Creditors with Nonpriority Unsecured Claims' (pattern). Row 6 of group ef_part_3 prints claims.unsecured_notices[].part here (3c spec §9.3, R2). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "account number 17",
+    "producer": "asked:claims.unsecured_notices[].last_4",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "account number 17",
+    "evidence": "Field index: account number 17 p5 T62 line 5, 'Last 4 digits of account number (Part 3 entry 6)' (pattern). Row 6 of group ef_part_3 prints claims.unsecured_notices[].last_4 here (3c spec §9.3, R4, B32). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "Creditors Name_18",
+    "producer": "asked:claims.unsecured_notices[].name",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Creditors Name_18",
+    "evidence": "Field index: Creditors Name_18 p5 T63 line 5, 'Name (Part 3 entry 7)' (pattern). Row 7 of group ef_part_3 prints claims.unsecured_notices[].name here (3c spec §9.3, R2). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "Street_18",
+    "producer": "asked:claims.unsecured_notices[].street",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Street_18",
+    "evidence": "Field index: Street_18 p5 T64 line 5, 'Number Street (Part 3 entry 7)' (pattern). Row 7 of group ef_part_3 prints claims.unsecured_notices[].street here (3c spec §9.3, R2). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "Street2_18",
+    "producer": "asked:claims.unsecured_notices[].street_2",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Street2_18",
+    "evidence": "Field index: Street2_18 p5 T68 line 5, 'Address, second line (unlabeled) (Part 3 entry 7)' (pattern). Row 7 of group ef_part_3 prints claims.unsecured_notices[].street_2 here (3c spec §9.3, R2). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "City 5.7",
+    "producer": "asked:claims.unsecured_notices[].city",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "City 5.7",
+    "evidence": "Field index: City 5.7 p5 T69 line 5, 'City (Part 3 entry 7)' (pattern). Row 7 of group ef_part_3 prints claims.unsecured_notices[].city here (3c spec §9.3, R2). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "State 5.7",
+    "producer": "asked:claims.unsecured_notices[].state",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "State 5.7",
+    "evidence": "Field index: State 5.7 p5 T70 line 5, 'State (Part 3 entry 7)' (pattern). Row 7 of group ef_part_3 prints claims.unsecured_notices[].state here (3c spec §9.3, R4, B49). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "Zip 5.7",
+    "producer": "asked:claims.unsecured_notices[].zip",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Zip 5.7",
+    "evidence": "Field index: Zip 5.7 p5 T71 line 5, 'ZIP Code (Part 3 entry 7)' (pattern). Row 7 of group ef_part_3 prints claims.unsecured_notices[].zip here (3c spec §9.3, R4, B49). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "Referenced line 5.7",
+    "producer": "asked:claims.unsecured_notices[].line",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Referenced line 5.7",
+    "evidence": "Field index: Referenced line 5.7 p5 T65 line 5, 'On which entry in Part 1 or Part 2 did you list the original creditor? Line ____ (Part 3 entry 7)' (pattern). Row 7 of group ef_part_3 prints claims.unsecured_notices[].line here (3c spec §9.3, R2). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "check20",
+    "producer": "asked:claims.unsecured_notices[].part",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check20",
+    "evidence": "Field index: check20 p5 T66 line 5, 'Part 1: Creditors with Priority Unsecured Claims' (pattern); p5 T67 line 5, 'Part 2: Creditors with Nonpriority Unsecured Claims' (pattern). Row 7 of group ef_part_3 prints claims.unsecured_notices[].part here (3c spec §9.3, R2). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_e_f",
+    "pdf_field": "account number 18",
+    "producer": "asked:claims.unsecured_notices[].last_4",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "account number 18",
+    "evidence": "Field index: account number 18 p5 T72 line 5, 'Last 4 digits of account number (Part 3 entry 7)' (pattern). Row 7 of group ef_part_3 prints claims.unsecured_notices[].last_4 here (3c spec §9.3, R4, B32). Read by test_schedules_d_e_f_schema.py and tier 1."
+  },
+  {
     "schema": "form_106sum",
     "pdf_field": "9d",
     "producer": "derived:total_student_loans",

@@ -24,7 +24,7 @@ from apps.forms.registry import build_parts
 from apps.forms.schema import load_schema
 from apps.forms.services.derivations import DERIVATIONS
 from apps.forms.services.fill_resolver import resolve
-from apps.forms.services.pdf_filler import PDFFormFiller
+from apps.forms.services.pdf_filler import PDFFormFiller, ValueTooLong
 from apps.forms.tests.pdf_readback import read_drawn
 from apps.intake.models import DebtInfo, DebtorInfo, IncomeInfo, IntakeSession
 from apps.intake.tests.builders import (
@@ -518,3 +518,156 @@ def test_lines_the_intake_never_asks_print_nothing(debts):
     assert "check1" not in shown
     for box in ("Total_6a", "Total_6b", "Total_6c", "Total_6d", "Total_6e", "Total_6g", "Total_6h"):
         assert shown[box] == "", box
+
+
+# Schedule E/F Parts 2 and 3 (3c5 Task 6).
+
+
+def _unsecured(session, n=1, **over):
+    # Zero-padded: the rows run by name (ordered_debts).
+    return complete_debt(session, **({"creditor_name": f"Demo Card {n:02d}"} | over))
+
+
+def test_an_unsecured_debt_prints_its_row(session):
+    _unsecured(
+        session,
+        amount_owed=Decimal("4200"),
+        account_number="1001",
+        date_incurred="2019–2025",
+        street_2="Unit 3",
+        offset_answer="no",
+        claim_status=[],
+    )
+
+    _, drawn = _parts_drawn(session, "schedule_e_f")
+
+    assert _at(drawn, "Creditors Name_6") == "Demo Card 01"
+    assert _at(drawn, "account number 6") == "1001"
+    assert _at(drawn, "Total_26") == "4200.00"
+    assert _at(drawn, "Date debt was incurred_6") == "2019–2025"
+    assert _at(drawn, "Street_6") == "1 Demo Street, Unit 3"
+    assert (_at(drawn, "City 4.1"), _at(drawn, "State 4.1"), _at(drawn, "Zip 4.1")) == (
+        "Demoville",
+        "IL",
+        "60601",
+    )
+    assert _ticked(drawn, "check 6") == {"/debtor 1"}
+    assert _ticked(drawn, "Other_6")
+    assert _ticked(drawn, "check8") == {"/no"}
+    assert _at(drawn, "Other unsecurecured claim 4.1") == "Credit card"
+    for status in ("Contingent_6", "Unliquidated_6", "Disputed_6"):
+        assert _ticked(drawn, status) == set(), status
+
+
+def test_a_student_loan_ticks_student_loans(session):
+    _unsecured(session, debt_type="student_loan")
+
+    _, drawn = _parts_drawn(session, "schedule_e_f")
+
+    assert _ticked(drawn, "Student loans_6")
+    assert _ticked(drawn, "Other_6") == set()
+    assert _at(drawn, "Other unsecurecured claim 4.1") == ""
+
+
+def test_a_disputed_debt_with_offset_ticks_both(session):
+    _unsecured(session, claim_status=["disputed"], offset_answer="yes")
+
+    _, drawn = _parts_drawn(session, "schedule_e_f")
+
+    assert _ticked(drawn, "Disputed_6")
+    assert _ticked(drawn, "check8") == {"/yes"}
+
+
+def test_a_seventh_unsecured_debt_continues_on_a_copy_of_page_4_numbered_4_7(session):
+    for n in range(1, 10):
+        _unsecured(session, n)
+
+    parts, drawn = _parts_drawn(session, "schedule_e_f")
+
+    assert [(p["kind"], p.get("page")) for p in parts] == [("form", None), ("copy", 4)]
+    assert [_at(drawn, f"Creditors Name_{n}", copy=1) for n in (9, 10, 11)] == [
+        "Demo Card 07",
+        "Demo Card 08",
+        "Demo Card 09",
+    ]
+    assert [_at(drawn, f"undefined_4.{k}", copy=1) for k in (4, 5, 6)] == ["4.7", "4.8", "4.9"]
+    assert _at(drawn, "fill_27.1.8") == "7"
+    assert _at(drawn, "fill_27.1.7", page=6) == "7"
+
+
+def test_part_3_cites_the_line_and_ticks_part_2(session):
+    _unsecured(session, 1)
+    _unsecured(
+        session,
+        2,
+        notice_parties=[_party("Demo Collections", street_2="Floor 2", last_4="4004")],
+    )
+
+    _, drawn = _parts_drawn(session, "schedule_e_f")
+
+    assert _at(drawn, "Creditors Name_12") == "Demo Collections"
+    assert _at(drawn, "Street_12") == "9 Demo Road"
+    assert _at(drawn, "Street2_12") == "Floor 2"
+    assert (_at(drawn, "City 5.1"), _at(drawn, "State 5.1"), _at(drawn, "Zip 5.1")) == (
+        "Demoville",
+        "IL",
+        "60601",
+    )
+    assert _at(drawn, "Referenced line 5.1") == "4.2"
+    assert _at(drawn, "account number 12") == "4004"
+    assert _ticked(drawn, "check14") == {"/yes"}
+
+
+def test_both_groups_overflowing_number_every_page_across_both(session):
+    for n in range(1, 8):
+        parties = [_party(f"Demo Collections {n}")]
+        if n == 1:
+            parties.append(_party("Demo Collections 1b"))
+        _unsecured(session, n, notice_parties=parties)
+
+    parts, drawn = _parts_drawn(session, "schedule_e_f")
+
+    assert [(p["kind"], p.get("page")) for p in parts] == [
+        ("form", None),
+        ("copy", 4),
+        ("copy", 5),
+    ]
+    assert _at(drawn, "fill_27.0") == "8"
+    assert _at(drawn, "fill_27.1.4") == "4"
+    assert _at(drawn, "fill_27.1.4", copy=1) == "5"
+    assert (_at(drawn, "fill_27.1.6"), _at(drawn, "fill_27.1.7", page=5)) == ("6", "8")
+    # A copy is numbered within its own page's copies, so each page's first copy is copy 1.
+    assert _at(drawn, "fill_27.1.6", copy=1) == "7"
+    assert (_at(drawn, "fill_27.1.8"), _at(drawn, "fill_27.1.7", page=6)) == ("8", "8")
+
+
+TOTAL_CLAIM_BOXES = [f"Total_{n}" for n in range(26, 32)]
+
+
+def test_line_6j_and_6f_add_the_printed_rows(session):
+    # 9.5: the totals read the rows the page prints, the copy's included.
+    for n in range(1, 9):
+        _unsecured(
+            session,
+            n,
+            amount_owed=Decimal(100 * 2**n),
+            debt_type="student_loan" if n in (2, 5) else "credit_card",
+        )
+
+    _, drawn = _parts_drawn(session, "schedule_e_f")
+
+    printed = [Decimal(w.value) for w in drawn if w.full_name in TOTAL_CLAIM_BOXES and w.value]
+    assert len(printed) == 8
+    assert sum(printed) == Decimal(_at(drawn, "Total_6j"))
+    assert Decimal(_at(drawn, "Total_6f")) == Decimal(100 * 2**2 + 100 * 2**5)
+
+
+def test_a_creditor_name_too_long_for_its_box_is_refused_with_its_step(session):
+    _unsecured(session, creditor_name="W" * 120)
+
+    with pytest.raises(ValueTooLong) as refused:
+        PDFFormFiller().check("schedule_e_f", build_parts("schedule_e_f", session))
+
+    assert refused.value.step == "debts"
+    assert refused.value.label == "Part 2: Creditor's name"
+    assert "W" not in str(refused.value)

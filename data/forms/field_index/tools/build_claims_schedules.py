@@ -6,7 +6,7 @@ writes (`asked:claims.…` and `derived:schedule_h_…`) (3c5 R7). Run it from a
 
 Never hand-edit a schema it owns or its addendum rows: change this tool and run it again.
 `test_the_claims_schedules_are_what_the_generator_writes` fails on any difference. It owns
-Schedules D, G and H; Schedule E/F joins in Task 6.
+Schedules D, E/F, G and H.
 
 Like `build_schedule_a_b.py`, it reads only the repo (the field index and the templates) and
 copies `field()`, `dumps()`, `addendum_row()` and `export_state` rather than importing them: the
@@ -24,16 +24,29 @@ SCHEMAS_DIR = ROOT / "data" / "forms" / "schemas"
 PDFS = ROOT / "data" / "forms" / "pdfs"
 ADDENDUM = INDEX_DIR / "audit" / "step2_verification.json"
 
-SCHEDULES = ("schedule_d", "schedule_g", "schedule_h")
+SCHEDULES = ("schedule_d", "schedule_e_f", "schedule_g", "schedule_h")
 TEMPLATES = {
     "schedule_d": "form_b106d.pdf",
+    "schedule_e_f": "form_b106ef.pdf",
     "schedule_g": "form_b106g.pdf",
     "schedule_h": "form_b106h.pdf",
 }
 
 # R9: a slot's label is the part and the cell in words, with no line.
-PART_WORDS = {"d_part_1": "Part 1", "d_part_2": "Part 2", "g": "Contract or lease", "h": "Codebtor"}
+PART_WORDS = {
+    "d_part_1": "Part 1",
+    "d_part_2": "Part 2",
+    "ef_part_2": "Part 2",
+    "ef_part_3": "Part 3",
+    "g": "Contract or lease",
+    "h": "Codebtor",
+}
 CELL_WORDS = {
+    "student_loans": "Type of claim",
+    "other_type": "Type of claim",
+    "other_type_words": "Type of claim",
+    "offset": "Subject to offset",
+    "part": "Part of the original creditor",
     "name": "Name",
     "street": "Street",
     "street_joined": "Street",
@@ -70,11 +83,11 @@ CELL_WORDS = {
 
 def label(group, attr):
     if attr == "name":
-        words = "Creditor's name" if group == "d_part_1" else CELL_WORDS[attr]
+        words = "Creditor's name" if group in ("d_part_1", "ef_part_2") else CELL_WORDS[attr]
     elif attr == "amount":
-        words = "Column A: Amount of claim"
+        words = "Column A: Amount of claim" if group == "d_part_1" else "Total claim"
     elif attr == "line":
-        words = "Line in Part 1"
+        words = "Line in Part 1" if group == "d_part_2" else "Line of the original creditor"
     else:
         words = CELL_WORDS[attr]
     return f"{PART_WORDS[group]}: {words}"
@@ -147,6 +160,15 @@ def choices_for(widgets, attr):
     if attr == "who":
         by_words = {w["option_text"]: export_state(w["on_state"]) for w in widgets}
         return {answer: by_words[words] for answer, words in WHO_WORDS.items()}
+    if attr == "offset":
+        states = {export_state(w["on_state"]) for w in widgets}
+        assert states == {"/yes", "/no"}, states
+        return {"no": "/no", "yes": "/yes"}
+    if attr == "part":
+        # The Part 1 box (first widget) stays unbound; DigniFi's parties are Part 2's.
+        states = {export_state(w["on_state"]) for w in widgets}
+        assert "/yes" in states, states
+        return {"2": "/yes"}
     (state,) = {export_state(w["on_state"]) for w in widgets}
     return {"true": state}
 
@@ -176,6 +198,52 @@ def rule_field(index, name, rule, words, choices=None):
     kind = KIND[widgets[0]["type"]]
     spec = field(name, kind, widgets[0]["page"], words, rule=rule, choices=choices)
     return spec, widgets
+
+
+# Schedule E/F Part 2: page 3 slots 1-3 (n = 6-8), page 4 slots 4-6 (n = 9-11).
+def ef_part_2_slots():
+    out = {}
+    for k in range(1, 7):
+        n = k + 5
+        out[k] = [
+            ("name", f"Creditors Name_{n}", None),
+            ("last_4", f"account number {n}", None),
+            ("amount", f"Total_{25 + k}", None),
+            ("date", f"Date debt was incurred_{n}", None),
+            ("street_joined", f"Street_{n}", None),
+            ("city", f"City 4.{k}", None),
+            ("state", f"State 4.{k}", None),
+            ("zip", f"Zip 4.{k}", None),
+            ("contingent", f"Contingent_{n}", None),
+            ("unliquidated", f"Unliquidated_{n}", None),
+            ("disputed", f"Disputed_{n}", None),
+            ("who", f"check {n}", None),
+            ("student_loans", f"Student loans_{n}", None),
+            ("other_type", f"Other_{n}", None),
+            ("other_type_words", f"Other unsecurecured claim 4.{k}", None),
+            ("community", f"Check if this claim relates to a_{n}", None),
+            ("offset", f"check{n + 2}", None),
+        ]
+    return out
+
+
+# Part 3 (page 5): seven entries, n = k + 11. check(13 + k) is the Part tick.
+def ef_part_3_slots():
+    out = {}
+    for k in range(1, 8):
+        n = k + 11
+        out[k] = [
+            ("name", f"Creditors Name_{n}", None),
+            ("street", f"Street_{n}", None),
+            ("street_2", f"Street2_{n}", None),
+            ("city", f"City 5.{k}", None),
+            ("state", f"State 5.{k}", None),
+            ("zip", f"Zip 5.{k}", None),
+            ("line", f"Referenced line 5.{k}", None),
+            ("part", f"check{13 + k}", None),
+            ("last_4", f"account number {n}", None),
+        ]
+    return out
 
 
 # Schedule G: page 1 rows 1-5, page 2 rows 6-13 (appendix: row maps).
@@ -304,11 +372,21 @@ GROUPS = {
         ("d_part_1", "secured", d_part_1_slots),
         ("d_part_2", "secured_notices", d_part_2_slots),
     ],
+    "schedule_e_f": [
+        ("ef_part_2", "unsecured", ef_part_2_slots),
+        ("ef_part_3", "unsecured_notices", ef_part_3_slots),
+    ],
     "schedule_g": [("g", "contracts", g_slots)],
     "schedule_h": [("h", "codebtors", h_slots)],
 }
 
 DECLARATIONS = {
+    "ef_part_2": {
+        "extra_page": 4,
+        "number": "4.{n}",
+        "number_boxes": {"4": "undefined_4.4", "5": "undefined_4.5", "6": "undefined_4.6"},
+    },
+    "ef_part_3": {"extra_page": 5},
     "d_part_1": {
         "extra_page": 2,
         "number": "2.{n}",
@@ -342,6 +420,14 @@ PAGE_NUMBERS = {
         {"page": 2, "this": "fill_27.1.0", "of": "fill_27.1.1"},
         {"page": 3, "this": "fill_28.1.1", "of": "fill_28.1.2"},
     ],
+    "schedule_e_f": [
+        {"page": 1, "this": None, "of": "fill_27.0"},
+        {"page": 2, "this": "fill_27.1.0", "of": "fill_27.1.1"},
+        {"page": 3, "this": "fill_27.1.2", "of": "fill_27.1.3"},
+        {"page": 4, "this": "fill_27.1.4", "of": "fill_27.1.5"},
+        {"page": 5, "this": "fill_27.1.6", "of": "fill_27.1.7"},
+        {"page": 6, "this": "fill_27.1.8", "of": "fill_27.1.7"},
+    ],
     "schedule_g": TWO_PAGE_NUMBERS,
     "schedule_h": TWO_PAGE_NUMBERS,
 }
@@ -362,6 +448,34 @@ def header(form_type):
                 "Do any creditors have claims secured by your property?",
                 rule="has_secured_debts",
                 choices=YES_NO,
+            ),
+            district,
+        ]
+    if form_type == "schedule_e_f":
+        return [
+            name,
+            field(
+                "check7",
+                "checkbox",
+                3,
+                "Do any creditors have nonpriority unsecured claims against you?",
+                rule="has_nonpriority_debts",
+                choices=YES_NO,
+            ),
+            field("Total_6f", "text", 6, "Line 6f: Student loans", rule="total_student_loans"),
+            field(
+                "Total_6i",
+                "text",
+                6,
+                "Line 6i: Other nonpriority unsecured claims",
+                rule="total_other_nonpriority",
+            ),
+            field(
+                "Total_6j",
+                "text",
+                6,
+                "Line 6j: Total nonpriority unsecured claims (6f through 6i)",
+                rule="total_nonpriority_unsecured",
             ),
             district,
         ]
@@ -394,13 +508,15 @@ H_LINE_2 = [
 
 TESTS = {
     "schedule_d": "test_schedules_d_e_f_schema.py",
+    "schedule_e_f": "test_schedules_d_e_f_schema.py",
     "schedule_g": "test_schedules_g_h_schema.py",
     "schedule_h": "test_schedules_g_h_schema.py",
 }
 
 
 # The spec section and rulings that place each cell (T4-2, T4-5). Task 6 adds E/F's cells here;
-# a cell not listed raises, so none falls through to a default unnoticed.
+# a cell not listed raises, so none falls through to a default unnoticed. (E/F's cells are
+# listed.)
 CELL_RULINGS = {
     **dict.fromkeys(
         (
@@ -421,6 +537,8 @@ CELL_RULINGS = {
             "lien_other",
             "lien_other_text",
             "line",
+            "offset",
+            "part",
         ),
         "3c spec §9.3, R2",
     ),

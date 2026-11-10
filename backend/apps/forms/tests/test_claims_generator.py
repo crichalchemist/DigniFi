@@ -91,6 +91,83 @@ def test_each_who_owes_cell_cites_its_ruling():
     assert who == {"3c spec §9.3, R3"}
 
 
+# The label table of 3c5 R9, written out here on purpose: a word the tool gets wrong fails.
+PART = {
+    "d_part_1": "Part 1",
+    "d_part_2": "Part 2",
+    "ef_part_2": "Part 2",
+    "ef_part_3": "Part 3",
+    "g": "Contract or lease",
+    "h": "Codebtor",
+}
+CELL = {
+    "name": "Name",
+    "street": "Street",
+    "street_joined": "Street",
+    "street_2": "Second street line",
+    "city": "City",
+    "state": "State",
+    "zip": "ZIP code",
+    "who": "Who owes the debt",
+    "who_debtor_1": "Who owes the debt",
+    "who_another": "Who owes the debt",
+    "community": "Community debt",
+    "date": "Date debt was incurred",
+    "property": "Describe the property",
+    "contingent": "Contingent",
+    "unliquidated": "Unliquidated",
+    "disputed": "Disputed",
+    "lien_agreement": "An agreement you made",
+    "lien_statutory": "Statutory lien",
+    "lien_judgment": "Judgment lien",
+    "lien_other": "Other lien",
+    "lien_other_text": "Other lien",
+    "last_4": "Last 4 digits of account number",
+    "amount": "Column A: Amount of claim",
+    "value": "Column B: Value of collateral",
+    "unsecured": "Column C: Unsecured portion",
+    "student_loans": "Type of claim",
+    "other_type": "Type of claim",
+    "other_type_words": "Type of claim",
+    "offset": "Subject to offset",
+    "line": "Line in Part 1",
+    "part": "Part of the original creditor",
+    "purpose": "What the contract or lease is for",
+    "on_d": "Schedule D, line",
+    "d_lines": "Schedule D, line",
+    "on_ef": "Schedule E/F, line",
+    "ef_lines": "Schedule E/F, line",
+    "on_g": "Schedule G, line",
+    "g_lines": "Schedule G, line",
+}
+
+
+def _expected_label(group, attr):
+    if attr == "name" and group in ("d_part_1", "ef_part_2"):
+        words = "Creditor's name"
+    elif attr == "amount" and group.startswith("ef_"):
+        words = "Total claim"
+    elif attr == "line" and group.startswith("ef_"):
+        words = "Line of the original creditor"
+    else:
+        words = CELL[attr]
+    return f"{PART[group]}: {words}"
+
+
+def test_every_claims_slot_is_labelled_from_the_table():
+    schema_texts, _ = _committed_texts()
+    checked = 0
+
+    for text in schema_texts.values():
+        for spec in json.loads(text)["fields"]:
+            if (spec["binding"] or "").startswith("claims."):
+                attr = spec["binding"].rsplit(".", 1)[-1]
+                assert spec["label"] == _expected_label(spec["repeat"], attr), spec["pdf_field"]
+                checked += 1
+
+    assert checked == 112 + 48 + 165 + 78 + 121  # D, E/F, G, H (line 2's 8 are rules)
+
+
 def test_a_reformatted_or_moved_generated_file_is_caught_by_its_bytes():
     tool = _tool()
     schemas, rows = tool.build()

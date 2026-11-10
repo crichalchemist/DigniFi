@@ -626,14 +626,15 @@ def test_a_group_box_that_another_writer_fills_is_reported(schedule_d_with_copie
     ]
 
 
-def test_a_page_count_box_drawn_on_two_pages_is_one_writer(schema_copy):
+def test_a_page_count_box_drawn_on_two_pages_is_one_writer():
     # Schedule E/F draws one "of" box, fill_27.1.7, on pages 5 and 6. Every page prints the
-    # same count, so declaring it for both pages can't conflict.
-    def declare(d):
-        d["groups"] = {"e_f": {"extra_page": 6}}
-        d["page_numbers"] = [{"page": 5, "of": "fill_27.1.7"}, {"page": 6, "of": "fill_27.1.7"}]
+    # same count, so production declares it for both pages without a conflict.
+    schema = load_schema("schedule_e_f")
 
-    _edit(schema_copy, "schedule_e_f", declare)
+    assert {p.page: p.of for p in schema.page_numbers if p.page in (5, 6)} == {
+        5: "fill_27.1.7",
+        6: "fill_27.1.7",
+    }
     assert _errors("schedule_e_f") == []
 
 
