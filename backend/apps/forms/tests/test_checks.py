@@ -1605,13 +1605,27 @@ def test_a_statement_column_cannot_cover_a_slot_it_does_not_have(schema_copy):
 
 def test_a_number_box_that_isnt_a_text_box_is_reported(schedule_g_numbered):
     def change(d):
-        d["groups"]["g"]["number_boxes"]["6"] = "check1"
+        d["groups"]["g"]["number_boxes"]["1"] = "check1"
 
     _edit(schedule_g_numbered, "schedule_g", change)
     assert (
         "forms.E003",
         "schedule_g: group 'g': number box 'check1' isn't a text box",
     ) in _errors("schedule_g")
+
+
+def test_a_number_box_drawn_on_another_page_is_refused_once(schedule_g_numbered):
+    def change(d):
+        d["groups"]["g"]["number_boxes"]["6"] = "check1"  # drawn on page 1, row 6 is on page 2
+
+    _edit(schedule_g_numbered, "schedule_g", change)
+    mentions = [
+        m
+        for _, m in _errors("schedule_g")
+        if "group 'g': 'check1'" in m or "number box 'check1'" in m
+    ]
+    assert "schedule_g: group 'g': 'check1' is no drawn widget on page 2" in mentions
+    assert not [m for m in mentions if "isn't a text box" in m]
 
 
 def test_a_page_number_box_that_isnt_a_text_box_is_reported(schedule_g_numbered):

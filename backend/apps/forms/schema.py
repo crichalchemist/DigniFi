@@ -729,8 +729,10 @@ def validate_schema(
             boxes += [(key, page) for page, key in group.totals.page_boxes.items()]
             if group.totals.last_page_box:
                 boxes.append((group.totals.last_page_box, group.extra_page))
+        undrawn = set()
         for key, page in boxes:
             if not _drawn_on(key, page, drawn):
+                undrawn.add(key)
                 errors.append(
                     ("E003", f"group {name!r}: {key!r} is no drawn widget on page {page}")
                 )
@@ -750,8 +752,9 @@ def validate_schema(
         for key in sorted(total_box_keys(group)):
             if _isnt_text_box(key, drawn):
                 errors.append(("E003", f"group {name!r}: total box {key!r} isn't a text box"))
-        # An entry number is text too (R13). A name drawn nowhere has no widget to be a non-text one.
-        for key in sorted(set(group.number_boxes.values())):
+        # An entry number is text too (R13). A box already refused as no drawn widget on its
+        # page is reported once.
+        for key in sorted(set(group.number_boxes.values()) - undrawn):
             if _isnt_text_box(key, drawn):
                 errors.append(("E003", f"group {name!r}: number box {key!r} isn't a text box"))
     return errors
