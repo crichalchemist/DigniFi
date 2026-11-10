@@ -570,6 +570,24 @@ describe('DebtsStep asks every question', () => {
     expect(screen.queryByText(copy.CO_OWNED_NOTE)).not.toBeInTheDocument();
   });
 
+  it('shows the co-owned note when another debt is secured by the same property', () => {
+    const mine = { ...car, details: { make: 'Demo', who: 'only_you' as const } };
+    const second = { ...secured, _key: 's2', id: 4 };
+    const both = render(<Harness initial={[secured, second]} assets={[mine]} />);
+    expect(screen.getAllByText(copy.CO_OWNED_NOTE)).toHaveLength(2);
+    both.unmount();
+
+    const answeredNo = { ...second, is_secured: false, _securedPressed: true };
+    render(<Harness initial={[secured, answeredNo]} assets={[mine]} />);
+    expect(screen.queryByText(copy.CO_OWNED_NOTE)).not.toBeInTheDocument();
+  });
+
+  it('hides the co-owned note for a who the filer was not asked on this property', () => {
+    const mine = { ...car, details: { make: 'Demo', who: 'only_you' as const } };
+    render(<Harness initial={[{ ...secured, collateral_who: 'with_someone' }]} assets={[mine]} />);
+    expect(screen.queryByText(copy.CO_OWNED_NOTE)).not.toBeInTheDocument();
+  });
+
   it('shows no property picked once the linked row is removed on Assets', () => {
     const view = render(
       <Harness initial={[{ ...secured, creditor_name: 'Demo Card Services' }]} assets={[]} />
