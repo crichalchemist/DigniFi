@@ -178,6 +178,19 @@ def test_a_mortgage_on_other_property_never_covers_a_car_figure(filer):
     assert _errors(client, session)[-1] == _vehicle("350.00", "0.00")
 
 
+def test_a_loan_on_household_goods_never_covers_a_car_figure(filer):
+    """A line 6 loan lands on J 17c ("Payment on other property") but is no payment on a car."""
+    client, session = filer
+    _store(session, vehicle_payment="350")
+    linked_loan(session, _car(session), 200)
+    linked_loan(session, _property(session, "6", description="Demo sofa"), 150)
+    _lines(session, "3", "6")
+
+    assert _errors(client, session)[-1] == _vehicle("350.00", "200.00")
+    fresh = IntakeSession.objects.get(pk=session.pk)
+    assert legacy_payments(fresh)["vehicle_payment"] == "350.00"
+
+
 def test_the_legacy_gap_comes_last(filer):
     client, session = filer
     _store(session, vehicle_payment="350", other_property_mortgages="600")
