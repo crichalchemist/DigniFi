@@ -61,7 +61,6 @@ You ARE Priya Sharma. Navigate DigniFi as she would.
 | Rent/mortgage                                                                                       | $2,800                                                                                                                                                                                                     |
 | Utilities                                                                                           | $250                                                                                                                                                                                                       |
 | Home maintenance                                                                                    | $100                                                                                                                                                                                                       |
-| Vehicle payment                                                                                     | $450                                                                                                                                                                                                       |
 | Vehicle insurance                                                                                   | $180                                                                                                                                                                                                       |
 | Vehicle maintenance                                                                                 | $60                                                                                                                                                                                                        |
 | Food                                                                                                | $800                                                                                                                                                                                                       |
@@ -78,6 +77,8 @@ You ARE Priya Sharma. Navigate DigniFi as she would.
 | Taxes (line 16, "Taxes. Do not include taxes deducted from your pay or included in lines 4 or 20.") | $200, "IRS installment agreement, 2025 tax"                                                                                                                                                                |
 | Other expenses, written in (line 21)                                                                | $200, "Children's after-school activities"                                                                                                                                                                 |
 | How you will pay the fee (after Complete, Form 101 line 8)                                          | I will pay the entire fee when I file my petition.                                                                                                                                                         |
+
+Your car payment ($450) comes from the Kestrel Auto Finance loan on Amounts Owed. The Expenses step doesn't ask it.
 
 **Assets:**
 

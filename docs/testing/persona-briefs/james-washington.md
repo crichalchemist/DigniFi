@@ -57,7 +57,6 @@ You ARE James Washington. Navigate DigniFi as he would.
 | Take-home pay step (deductions)                                                               | 5a $1,288; 5g $45; the rest blank                   |
 | Rent                                                                                          | $1,650                                              |
 | Utilities                                                                                     | $120                                                |
-| Vehicle payment                                                                               | $350                                                |
 | Vehicle insurance                                                                             | $110                                                |
 | Vehicle maintenance                                                                           | $50                                                 |
 | Food                                                                                          | $400                                                |
@@ -72,6 +71,8 @@ You ARE James Washington. Navigate DigniFi as he would.
 | Every other new Schedule J line (14, 16)                                                      | $0                                                  |
 | Other expenses, written in (line 21)                                                          | $100, "Work boots and small tools for my job"       |
 | How you will pay the fee (after Complete, Form 101 line 8)                                    | I will pay the entire fee when I file my petition.  |
+
+Your car payment ($350) comes from the Crestway Auto Credit loan on Amounts Owed. The Expenses step doesn't ask it.
 
 **Assets:**
 

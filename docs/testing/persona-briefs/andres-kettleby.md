@@ -54,7 +54,6 @@ You ARE Andrés Kettleby. Navigate DigniFi as he would.
 | Take-home pay step (deductions)                                                                     | All blank (no paycheck): press Continue                                                        |
 | Rent                                                                                                | $1,150                                                                                         |
 | Utilities: electric, gas, internet, your share of the phone                                         | $210                                                                                           |
-| Vehicle payment (line 17a, "Car payments for Vehicle 1"): the Corolla lease                         | $389                                                                                           |
 | Vehicle insurance: your personal policy                                                             | $165                                                                                           |
 | Vehicle maintenance (line 12, "Transportation"): school runs and errands                            | $60                                                                                            |
 | Food                                                                                                | $520                                                                                           |
@@ -69,6 +68,8 @@ You ARE Andrés Kettleby. Navigate DigniFi as he would.
 | Taxes (line 16, "Taxes. Do not include taxes deducted from your pay or included in lines 4 or 20.") | $150, "2026 estimated income tax"                                                              |
 | Every other expense box                                                                             | $0                                                                                             |
 | How you will pay the fee (after Complete, Form 101 line 8)                                          | I need to pay the fee in installments.                                                         |
+
+Your Corolla lease ($389) comes from the Northlight lease on Contracts & Leases.
 
 **Assets:**
 

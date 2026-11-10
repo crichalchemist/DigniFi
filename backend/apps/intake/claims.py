@@ -427,7 +427,12 @@ def _codebtor_gaps(session, rows, debts, contracts, answers):
 
 
 def claim_step_gaps(session) -> list[ClaimStepGap]:
-    """Everything Schedules D, E/F, G and H still lack, in wizard order, row by row (R8).
+    """Everything the claims steps and the payments on property still lack, row by row (R8).
+
+    The first four blocks (Assets' "Do you live here?", Amounts Owed, Contracts, Codebtors) are in
+    wizard order. The tail comes after Codebtors, out of wizard order on purpose: the legacy gaps
+    (step `debts`) and then the line 4 question (step `expense_info`), since both read the links
+    the earlier steps made.
 
     Reads the session's debts (drafts included, so a draft's gaps show), contracts and
     codebtors, and its ClaimAnswers: no row means every answer is null. Contracts and
@@ -449,7 +454,8 @@ def claim_step_gaps(session) -> list[ClaimStepGap]:
 
 
 def _legacy_figure(session, field) -> Decimal:
-    """A retired Expenses figure, $0 with no Expenses row. Reads the row by attribute, as
+    """One Expenses figure (a retired one, or rent_or_mortgage), $0 with no Expenses row or a
+    null. Reads the row by attribute, as
     claim_step_gaps reads claim_answers, since this module imports no model."""
     row = getattr(session, "expense_info", None)
     return (getattr(row, field, None) or _ZERO) if row is not None else _ZERO
