@@ -69,7 +69,7 @@ function sumsOf(c: Case) {
 
 describe('the browser adds linked payments as the server does', () => {
   it('reads the whole shared case table', () => {
-    expect(cases.length).toBeGreaterThanOrEqual(16);
+    expect(cases.length).toBeGreaterThanOrEqual(17);
   });
 
   it.each(cases)('$name matches the server', (c) => {

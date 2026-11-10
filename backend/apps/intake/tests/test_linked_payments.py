@@ -314,7 +314,7 @@ def test_the_shared_cases_match_the_server(filer):
     if not FRONTEND_SRC.is_dir():
         pytest.skip("the frontend's source isn't here (compose's backend mounts backend/ only)")
     cases = json.loads(CASES.read_text())
-    assert len(cases) >= 16
+    assert len(cases) >= 17
     district = District.objects.get(code="ILND")
     for case in cases:
         session = IntakeSession.objects.create(user=filer, district=district)

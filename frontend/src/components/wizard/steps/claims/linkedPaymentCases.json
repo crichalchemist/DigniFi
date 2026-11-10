@@ -474,5 +474,29 @@
       "otherRealProperty": "0.00",
       "firstMortgage": "0.00"
     }
+  },
+  {
+    "name": "a mortgage on a lived-in home with no first or additional answer counts as first",
+    "assets": [
+      {
+        "line": "1",
+        "lives_here": "yes"
+      }
+    ],
+    "debts": [
+      {
+        "secured": true,
+        "asset": 0,
+        "payment": "600.00",
+        "home_payment_line": null
+      }
+    ],
+    "contracts": [],
+    "expect": {
+      "allLinked": "600.00",
+      "vehicleTotal": "0.00",
+      "otherRealProperty": "0.00",
+      "firstMortgage": "600.00"
+    }
   }
 ]
