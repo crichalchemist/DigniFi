@@ -26,6 +26,7 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 
 from apps.districts.models import District
+from apps.forms.field_index import export_state, index_path
 from apps.forms.registry import get_all_form_types
 from apps.forms.schema import load_schema
 from apps.forms.services.fill_resolver import _key, resolve_binding
@@ -406,7 +407,7 @@ def _claims_bindings():
     return sorted(
         {
             f.binding
-            for form_type in ("schedule_d", "schedule_e_f", "schedule_g", "schedule_h")
+            for form_type in get_all_form_types()
             for f in load_schema(form_type).fields
             if f.binding and f.binding.startswith("claims.")
         }
@@ -476,6 +477,164 @@ def test_every_schedule_a_b_slot_binds_the_line_and_row_its_box_is_on():
             on_line, _, row = line.partition(".")
             if on_line != key or (row and not kind and int(row) != f.row):
                 wrong.append((f.pdf_field, line, f.binding, f.row))
+    assert wrong == []
+
+
+_DEBT_STATUS = "As of the date you file, the claim is: Check all that apply."
+_LIEN = "Nature of lien. Check all that apply."
+_WHO = {"debtor_1": "Debtor 1 only", "another": "At least one of the debtors and another"}
+_D_COMMUNITY = "Check if this claim relates to a community debt"
+_EF_COMMUNITY = "Check if this claim is for a community debt"
+_ADDRESS = {"city": ("City", None), "state": ("State", None), "zip": ("ZIP Code", None)}
+_H_COLUMN_2 = "Check all schedules that apply: Schedule "
+# Each claims cell's column as the index read it from the page: the box's label, less its
+# parentheticals and the index's notes, and for a tick the words beside each box an answer ticks.
+_CLAIMS_COLUMNS = {
+    "d_part_1": {
+        "amount": ("Amount of claim", None),
+        "value": ("Value of collateral that supports this claim", None),
+        "unsecured": ("Unsecured portion", None),
+        "name": ("Creditor's Name", None),
+        "street": ("Number Street", None),
+        "street_2": ("Creditor address, second line", None),
+        **_ADDRESS,
+        "property": ("Describe the property that secures the claim:", None),
+        "contingent": (_DEBT_STATUS, {"true": "Contingent"}),
+        "unliquidated": (_DEBT_STATUS, {"true": "Unliquidated"}),
+        "disputed": (_DEBT_STATUS, {"true": "Disputed"}),
+        "lien_agreement": (
+            _LIEN,
+            {"true": "An agreement you made (such as mortgage or secured car loan)"},
+        ),
+        "lien_statutory": (_LIEN, {"true": "Statutory lien (such as tax lien, mechanic's lien)"}),
+        "lien_judgment": (_LIEN, {"true": "Judgment lien from a lawsuit"}),
+        "lien_other": (_LIEN, {"true": "Other (including a right to offset)"}),
+        "lien_other_text": ("Other: specify", None),
+        "community": (_D_COMMUNITY, {"true": _D_COMMUNITY}),
+        "date": ("Date debt was incurred", None),
+        "last_4": ("Last 4 digits of account number", None),
+        "who": ("Who owes the debt? Check one.", _WHO),
+        "who_debtor_1": ("Who owes the debt? Check one.", {"true": _WHO["debtor_1"]}),
+        "who_another": ("Who owes the debt? Check one.", {"true": _WHO["another"]}),
+    },
+    "d_part_2": {
+        "name": ("Name", None),
+        "street": ("Number Street", None),
+        "street_2": ("Address, second line", None),
+        **_ADDRESS,
+        "line": ("On which line in Part 1 did you enter the creditor?", None),
+        "last_4": ("Last 4 digits of account number.", None),
+    },
+    "ef_part_2": {
+        "name": ("Nonpriority Creditor's Name", None),
+        "last_4": ("Last 4 digits of account number", None),
+        "amount": ("Total claim", None),
+        "date": ("When was the debt incurred?", None),
+        "street_joined": ("Number Street", None),
+        **_ADDRESS,
+        "contingent": (_DEBT_STATUS, {"true": "Contingent"}),
+        "unliquidated": (_DEBT_STATUS, {"true": "Unliquidated"}),
+        "disputed": (_DEBT_STATUS, {"true": "Disputed"}),
+        "who": ("Who incurred the debt? Check one.", _WHO),
+        "student_loans": ("Type of NONPRIORITY unsecured claim:", {"true": "Student loans"}),
+        "other_type": ("Type of NONPRIORITY unsecured claim:", {"true": "Other. Specify"}),
+        "other_type_words": ("Other. Specify ____", None),
+        "community": (_EF_COMMUNITY, {"true": _EF_COMMUNITY}),
+        "offset": ("Is the claim subject to offset?", {"no": "No", "yes": "Yes"}),
+    },
+    "ef_part_3": {
+        "name": ("Name", None),
+        "street": ("Number Street", None),
+        "street_2": ("Address, second line", None),
+        **_ADDRESS,
+        "line": (
+            "On which entry in Part 1 or Part 2 did you list the original creditor? Line ____",
+            None,
+        ),
+        "part": ("Line ____ of:", {"2": "Part 2: Creditors with Nonpriority Unsecured Claims"}),
+        "last_4": ("Last 4 digits of account number", None),
+    },
+    "g": {
+        "name": ("Name", None),
+        # page 1 and page 2 word the column differently
+        "purpose": (
+            ("State what the contract or lease is for", "What the contract or lease is for"),
+            None,
+        ),
+        "street_joined": ("Number Street", None),
+        **_ADDRESS,
+    },
+    "h": {
+        "name": ("Name", None),
+        "street_joined": ("Number Street", None),
+        **_ADDRESS,
+        "on_d": (_H_COLUMN_2 + "D", {"true": "Schedule D, line"}),
+        "d_lines": ("Schedule D, line ____", None),
+        "on_ef": (_H_COLUMN_2 + "E/F", {"true": "Schedule E/F, line"}),
+        "ef_lines": ("Schedule E/F, line ____", None),
+        "on_g": (_H_COLUMN_2 + "G", {"true": "Schedule G, line"}),
+        "g_lines": ("Schedule G, line ____", None),
+    },
+}
+# The rows each group's first page numbers before its additional page, whose rows the index
+# counts from 1 ("Additional Page row 1" is D's 2.3).
+_ROWS_BEFORE_THE_ADDITIONAL_PAGE = {"d_part_1": 2, "ef_part_2": 3, "g": 5, "h": 3}
+_ROW_IN_LABEL = re.compile(r"\([^()]*\b(Page row|entry) (\d+)\b")
+
+
+def _column_words(label):
+    words = re.sub(r"\s*\([^)]*\)", "", label)
+    return re.split(r" (?:Template defect|Field name)\b", words)[0].strip()
+
+
+def _row_on_template(group, widget):
+    """The row the index read from the page: its numbered line, or the row its label names."""
+    row = widget["line"].partition(".")[2]
+    if row:
+        return int(row)
+    match = _ROW_IN_LABEL.search(widget["label"])
+    if match is None:
+        return None
+    kind, n = match.groups()
+    return int(n) + (_ROWS_BEFORE_THE_ADDITIONAL_PAGE[group] if kind == "Page row" else 0)
+
+
+def test_every_claims_slot_binds_the_row_and_column_its_box_is_on():
+    # The generator's tables place each cell by name, and every other test reads those same
+    # tables, so a swapped pair of boxes (row 2.4's Columns B and C, or two Part 2 line boxes)
+    # would print one row's figure in another's box. Each slot is held to the index instead.
+    wrong = []
+    for form_type in ("schedule_d", "schedule_e_f", "schedule_g", "schedule_h"):
+        schema = load_schema(form_type)
+        index = json.loads(index_path(schema.template_filename).read_text())
+        for f in schema.fields:
+            if not (f.binding or "").startswith("claims."):
+                continue
+            attr = f.binding.rpartition(".")[2]
+            words, options = _CLAIMS_COLUMNS[f.repeat][attr]
+            accepted = words if isinstance(words, tuple) else (words,)
+            widgets = [
+                w
+                for w in index
+                if w["full_name"] == f.pdf_field
+                and w["page"] == f.page
+                and f.tag in (None, w["tag"])
+            ]
+            if not widgets:
+                wrong.append((f.pdf_field, f.tag, f.binding, "no widget"))
+            for w in widgets:
+                if _column_words(w["label"]) not in accepted:
+                    wrong.append((f.pdf_field, w["tag"], f.binding, w["label"]))
+                if _row_on_template(f.repeat, w) != f.row:
+                    wrong.append((f.pdf_field, w["tag"], f.binding, f.row, w["line"], w["label"]))
+            for answer, state in (f.choices or {}).items():
+                beside = {
+                    w["option_text"]
+                    for w in widgets
+                    if w["on_state"] and export_state(w["on_state"]) == state
+                }
+                if beside != {options[answer]}:
+                    wrong.append((f.pdf_field, f.binding, answer, beside))
     assert wrong == []
 
 
