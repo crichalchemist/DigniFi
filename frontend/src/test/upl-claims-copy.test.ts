@@ -87,6 +87,7 @@ const CLAIM_SENTENCES: Record<string, string> = Object.fromEntries(
 // `NAME: copy.NAME,`
 export const OTHER_CLAIM_SENTENCES: Record<string, string> = {
   ADDRESS_HELP: copy.ADDRESS_HELP,
+  LEGACY_REMOVE: copy.LEGACY_REMOVE,
   AMOUNT_HELP: copy.AMOUNT_HELP,
   CLAIM_STATUS_HELP: copy.CLAIM_STATUS_HELP,
   OFFSET_HELP: copy.OFFSET_HELP,

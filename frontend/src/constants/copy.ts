@@ -771,3 +771,5 @@ export const LINE_4_PAY_BOTH = 'Yes, I pay both';
 export const LINE_4_CLEAR = 'No, clear the ${typed}';
 
 export const NOT_SAVED_TRY_AGAIN = 'That was not saved. Try again.';
+
+export const LEGACY_REMOVE = 'Remove this figure';

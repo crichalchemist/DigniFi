@@ -22,8 +22,10 @@ import { ASSET_LINES } from '../../constants/assetLines';
 import { fill } from '../../components/wizard/steps/claims/claimNames';
 import {
   CLAIM_GAP_LINE_4,
+  CLAIM_GAP_LEGACY_VEHICLE,
   CODEBTOR_GAP_NO_NAME,
   CONTRACT_GAP_NO_NAME,
+  LEGACY_REMOVE,
   LINE_4_PAY_BOTH,
   NOT_SAVED_TRY_AGAIN,
   NO_DEBTS_BUTTON,
@@ -5289,5 +5291,94 @@ describe('IntakeWizard window notice', { timeout: 30_000 }, () => {
     await screen.findByRole('heading', { name: /income/i, level: 2 });
 
     expect(screen.queryByText(/monthly average for/)).not.toBeInTheDocument();
+  });
+});
+
+// ===========================================================================
+// A stored payment the links don't cover (3c4 R10, B39)
+// ===========================================================================
+
+describe('IntakeWizard legacy payment on Amounts Owed', { timeout: 15_000 }, () => {
+  const car = {
+    id: 3,
+    session: 1,
+    ab_line: '3',
+    asset_type: null,
+    data_source: 'manual',
+    description: '',
+    current_value: '8000.00',
+    entire_value: '8000.00',
+    details: { make: 'Demo', model: 'Sedan', who: 'only_you' },
+  };
+  const carLoan = {
+    ...storedDebt,
+    id: 12,
+    creditor_name: 'Demo Auto Finance',
+    debt_type: 'car_loan',
+    priority_classification: 'secured',
+    amount_owed: '8000.00',
+    monthly_payment: '350.00',
+    is_secured: true,
+    secured_by: 3,
+    home_payment_line: null,
+  };
+  const legacySession = {
+    ...sessionAtStep1,
+    current_step: 6,
+    assets: [car],
+    debts: [{ ...storedDebt }],
+    legacy_payments: { vehicle_payment: '350.00', other_property_mortgages: null },
+  };
+  const sentence = fill(CLAIM_GAP_LEGACY_VEHICLE, { typed: '350.00', linked: '0.00' });
+
+  function serve(session: Record<string, unknown>, patchStatus = 200) {
+    const patchBodies: Record<string, unknown>[] = [];
+    server.use(
+      http.get('http://localhost:8000/api/intake/sessions/:id/', () => HttpResponse.json(session)),
+      http.patch('http://localhost:8000/api/intake/sessions/:id/', async ({ request }) => {
+        patchBodies.push((await request.json()) as Record<string, unknown>);
+        return patchStatus === 200
+          ? HttpResponse.json(session)
+          : HttpResponse.json({ detail: 'no' }, { status: patchStatus });
+      }),
+      http.post(
+        'http://localhost:8000/api/audit/logs/',
+        () => new HttpResponse(null, { status: 201 })
+      )
+    );
+    return patchBodies;
+  }
+
+  it('Remove sends the figure as 0 and the sentence goes', async () => {
+    const patchBodies = serve(legacySession);
+    renderWizard();
+    await screen.findByRole('heading', { name: /amounts owed/i, level: 2 });
+    expect(screen.getByText(sentence)).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: LEGACY_REMOVE }));
+
+    await waitFor(() => expect(screen.queryByText(sentence)).toBeNull());
+    expect(patchBodies).toEqual([{ expense_info: { vehicle_payment: 0 } }]);
+  });
+
+  it('a failed Remove keeps the sentence and says so', async () => {
+    serve(legacySession, 400);
+    renderWizard();
+    await screen.findByRole('heading', { name: /amounts owed/i, level: 2 });
+
+    await userEvent.click(screen.getByRole('button', { name: LEGACY_REMOVE }));
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent(NOT_SAVED_TRY_AGAIN);
+    expect(screen.getByText(sentence)).toBeInTheDocument();
+  });
+
+  it('a stored figure the links cover shows no sentence', async () => {
+    serve({ ...legacySession, debts: [carLoan] });
+    renderWizard();
+    await screen.findByRole('heading', { name: /amounts owed/i, level: 2 });
+
+    expect(screen.queryByRole('button', { name: LEGACY_REMOVE })).toBeNull();
+    expect(screen.queryByText(/a month for a car/)).toBeNull();
   });
 });

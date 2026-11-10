@@ -1,11 +1,11 @@
 import { useState } from 'react';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { axe } from 'vitest-axe';
 import { DebtsStep } from '../DebtsStep';
 import { fill } from '../claims/claimNames';
 import * as copy from '../../../../constants/copy';
-import type { AssetInfo, DebtInfo, DebtRow, WizardRow } from '../../../../types/api';
+import type { AssetInfo, DebtInfo, DebtRow, LegacyField, WizardRow } from '../../../../types/api';
 
 // DebtsStep shows and edits the wizard's debt rows, asks every question Schedules D and E/F
 // ask of one, and reports whether the step can continue.
@@ -80,11 +80,15 @@ function Harness({
   assets = [],
   onChange = noop,
   onValidity = noop,
+  legacyGaps,
+  onRemoveLegacy,
 }: {
   initial?: DebtRow[];
   assets?: WizardRow<AssetInfo>[];
   onChange?: (rows: DebtRow[]) => void;
   onValidity?: (valid: boolean) => void;
+  legacyGaps?: { field: LegacyField; sentence: string }[];
+  onRemoveLegacy?: (field: LegacyField) => Promise<void>;
 }) {
   const [rows, setRows] = useState<DebtRow[]>(initial);
   const [noDebts, setNoDebts] = useState(false);
@@ -99,6 +103,8 @@ function Harness({
       onNoDebtsChange={setNoDebts}
       assets={assets}
       onValidationChange={onValidity}
+      legacyGaps={legacyGaps}
+      onRemoveLegacy={onRemoveLegacy}
     />
   );
 }
@@ -762,5 +768,74 @@ describe('DebtsStep asks every question', () => {
     };
     const { container } = render(<Harness initial={[row]} assets={[car]} />);
     expect(await axe(container)).toHaveNoViolations();
+  });
+});
+
+describe('DebtsStep legacy payments', () => {
+  const vehicleGap = { field: 'vehicle_payment' as const, sentence: 'You pay $350 for a car.' };
+  const otherGap = {
+    field: 'other_property_mortgages' as const,
+    sentence: 'You pay $600 on other property.',
+  };
+
+  it('shows a legacy sentence with Remove, and Continue stays as the rows decide', () => {
+    const complete_ = vi.fn();
+    const { unmount } = render(
+      <Harness initial={[complete]} legacyGaps={[vehicleGap]} onValidity={complete_} />
+    );
+
+    const sentence = screen.getByText(vehicleGap.sentence);
+    expect(screen.getByRole('button', { name: copy.LEGACY_REMOVE })).toBeInTheDocument();
+    expect(lastValidity(complete_)).toBe(true);
+    expect(status()).not.toContainElement(sentence);
+    unmount();
+
+    const incomplete = vi.fn();
+    render(
+      <Harness
+        initial={[{ ...complete, street_address: '' }]}
+        legacyGaps={[vehicleGap]}
+        onValidity={incomplete}
+      />
+    );
+
+    expect(screen.getByText(vehicleGap.sentence)).toBeInTheDocument();
+    expect(lastValidity(incomplete)).toBe(false);
+    expect(status()).not.toContainElement(screen.getByText(vehicleGap.sentence));
+  });
+
+  it('each Remove calls back with its own field', async () => {
+    const onRemoveLegacy = vi.fn().mockResolvedValue(undefined);
+    render(
+      <Harness
+        initial={[complete]}
+        legacyGaps={[vehicleGap, otherGap]}
+        onRemoveLegacy={onRemoveLegacy}
+      />
+    );
+
+    const buttons = screen.getAllByRole('button', { name: copy.LEGACY_REMOVE });
+    expect(buttons).toHaveLength(2);
+    await userEvent.click(
+      within(screen.getByText(otherGap.sentence).parentElement!).getByRole('button')
+    );
+
+    expect(onRemoveLegacy).toHaveBeenCalledTimes(1);
+    expect(onRemoveLegacy).toHaveBeenCalledWith('other_property_mortgages');
+    expect(buttons[0]).toHaveAttribute('aria-describedby', 'legacy-vehicle_payment');
+    expect(buttons[1]).toHaveAttribute('aria-describedby', 'legacy-other_property_mortgages');
+    expect(screen.getByText(vehicleGap.sentence)).toHaveAttribute('id', 'legacy-vehicle_payment');
+  });
+
+  it('says a Remove that failed was not saved, and keeps the sentence', async () => {
+    const onRemoveLegacy = vi.fn().mockRejectedValue(new Error('no'));
+    render(
+      <Harness initial={[complete]} legacyGaps={[vehicleGap]} onRemoveLegacy={onRemoveLegacy} />
+    );
+
+    await userEvent.click(screen.getByRole('button', { name: copy.LEGACY_REMOVE }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(copy.NOT_SAVED_TRY_AGAIN);
+    expect(screen.getByText(vehicleGap.sentence)).toBeInTheDocument();
   });
 });
