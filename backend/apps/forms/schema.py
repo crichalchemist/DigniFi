@@ -619,6 +619,19 @@ def validate_schema(
                     errors.append(
                         ("E003", f"page numbers: {key!r} is no drawn widget on page {p.page}")
                     )
+                    continue
+                if key:
+                    try:
+                        box_name, _, _ = parse_key(key)
+                    except ValueError:
+                        continue
+                    if any(w.kind != "Text" for w in drawn.get(box_name, ())):
+                        errors.append(
+                            (
+                                "E003",
+                                f"page numbers: box {key!r} on page {p.page} isn't a text box",
+                            )
+                        )
             # A page's position prints in one box: an untagged key whose name has more than
             # one drawn widget would print it in each. A page count is the same in all.
             widgets = drawn.get(p.this, ()) if p.this else ()  # a tagged key has "@"
@@ -746,6 +759,14 @@ def validate_schema(
                 continue  # _drawn_on has reported it
             if any(w.kind != "Text" for w in drawn.get(box_name, ())):
                 errors.append(("E003", f"group {name!r}: total box {key!r} isn't a text box"))
+        # An entry number is text too (R13).
+        for key in sorted(set(group.number_boxes.values())):
+            try:
+                box_name, _, _ = parse_key(key)
+            except ValueError:
+                continue  # _drawn_on has reported it
+            if any(w.kind != "Text" for w in drawn.get(box_name, ())):
+                errors.append(("E003", f"group {name!r}: number box {key!r} isn't a text box"))
     return errors
 
 

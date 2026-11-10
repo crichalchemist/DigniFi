@@ -171,7 +171,7 @@ def fit(
         # font's top sits at the clip's top (R35): the last line then stays above its bottom.
         if len(lines) * size * _leading(font) <= widget.height - 2 * widget.margin:
             return "\n".join(lines), size
-    if number_box and not widget.multiline:
+    if number_box and not widget.multiline and widget.size:
         room = field_width + _DIGIT_RIGHT_BEARING * MIN_SIZE
         if _width(font, reverse_cmap, text, MIN_SIZE) <= room:
             return text, MIN_SIZE

@@ -25,6 +25,7 @@ from apps.forms.schema import (
     PageNumberBoxes,
     SheetSpec,
     is_statement_group,
+    number_box_keys,
 )
 from apps.forms.services.derivations import (
     DERIVATIONS,
@@ -708,4 +709,11 @@ def _resolve_parts(schema: FormSchema, session: IntakeSession) -> dict:
                     **_line_width(group.sheet),
                 }
             )
-    return {"version": 2, "parts": [{"kind": "form", "values": out}, *copies, *sheets]}
+    form_part = {"kind": "form", "values": out}
+    # The boxes that take more room than /MaxLen are stored with each part, so a filed document
+    # keeps them whatever its schema declares later (R11): none declared, no key.
+    number_keys = sorted(number_box_keys(schema))
+    if number_keys:
+        for part in (form_part, *copies):
+            part["number_boxes"] = number_keys
+    return {"version": 2, "parts": [form_part, *copies, *sheets]}

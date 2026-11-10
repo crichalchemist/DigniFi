@@ -51,7 +51,6 @@ from apps.forms.field_index import load_index
 from apps.forms.schema import (
     FormSchema,
     load_schema,
-    number_box_keys,
     page_number_keys,
     total_box_keys,
 )
@@ -160,6 +159,7 @@ def parts_of(values: dict) -> list[dict]:
 
 
 _TOO_MANY_ROWS = "This form has more entries than its boxes can hold."
+_TOTAL_TOO_WIDE = "Check the amounts you entered."
 
 
 def _group_box(schema: FormSchema, key: str) -> tuple[str, dict[str, str]] | None:
@@ -397,9 +397,16 @@ class PDFFormFiller:
         planned = []
         for part in parts_of(values):
             if part["kind"] == "form":
-                widgets = self._plan(form_type, part["values"])
+                widgets = self._plan(
+                    form_type, part["values"], number_keys=frozenset(part.get("number_boxes", ()))
+                )
             elif part["kind"] == "copy":
-                widgets = self._plan(form_type, part["values"], page=part["page"])
+                widgets = self._plan(
+                    form_type,
+                    part["values"],
+                    page=part["page"],
+                    number_keys=frozenset(part.get("number_boxes", ())),
+                )
             elif part["kind"] == "sheet":
                 plan_sheet(form_type, sheet_spec(part), part)
                 widgets = ()
@@ -408,10 +415,17 @@ class PDFFormFiller:
             planned.append(PlannedPart(part, widgets))
         return tuple(planned)
 
-    def _plan(self, form_type: str, values: dict, page: int | None = None) -> tuple[Planned, ...]:
+    def _plan(
+        self,
+        form_type: str,
+        values: dict,
+        page: int | None = None,
+        number_keys: frozenset[str] = frozenset(),
+    ) -> tuple[Planned, ...]:
         """
         What each widget one part's {key: value} fills prints, as check() describes: on
-        any page of the form, or with `page`, on that page alone.
+        any page of the form, or with `page`, on that page alone. `number_keys` are the
+        part's stored number boxes, the only boxes that take more room than /MaxLen.
         """
         schema = load_schema(form_type)
         by_name: dict[str, list[TemplateWidget]] = {}
@@ -447,7 +461,6 @@ class PDFFormFiller:
             for widget in reached[key]:
                 filled_by[widget] = key
 
-        number_keys = number_box_keys(schema)
         planned = []
         for widget in sorted(filled_by, key=lambda w: (w.page, int(w.tag[1:]))):
             key = filled_by[widget]
@@ -464,7 +477,11 @@ class PDFFormFiller:
                 raise UnprintableLetter(form_type, letter, *_source(schema, key, widget))
             fitted = fit(widget, schema.template_filename, text, number_box=key in number_keys)
             if fitted is None:
-                ending = {"ending": _TOO_MANY_ROWS} if _group_box(schema, key) else {}
+                ending = {}
+                if any(key in total_box_keys(g) for g in schema.groups.values()):
+                    ending = {"ending": _TOTAL_TOO_WIDE}
+                elif _group_box(schema, key):
+                    ending = {"ending": _TOO_MANY_ROWS}
                 raise ValueTooLong(form_type, *_source(schema, key, widget), **ending)
             planned.append(Planned(widget, *fitted))
         return tuple(planned)

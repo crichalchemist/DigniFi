@@ -1601,3 +1601,28 @@ def test_a_statement_column_cannot_cover_a_slot_it_does_not_have(schema_copy):
         "schedule_i: group 'i_line_8a': sheet column 'Income of' covers "
         "'income.statement[].net', which no slot of the group binds",
     ) in _errors("schedule_i")
+
+
+def test_a_number_box_that_isnt_a_text_box_is_reported(schedule_g_numbered):
+    def change(d):
+        d["groups"]["g"]["number_boxes"]["6"] = "check1"
+
+    _edit(schedule_g_numbered, "schedule_g", change)
+    assert (
+        "forms.E003",
+        "schedule_g: group 'g': number box 'check1' isn't a text box",
+    ) in _errors("schedule_g")
+
+
+def test_a_page_number_box_that_isnt_a_text_box_is_reported(schedule_g_numbered):
+    def change(d):
+        d["page_numbers"] = [
+            {"page": 1, "this": None, "of": "check1"},
+            {"page": 2, "this": "fill_27.1.0", "of": "fill_27.1.1"},
+        ]
+
+    _edit(schedule_g_numbered, "schedule_g", change)
+    assert (
+        "forms.E003",
+        "schedule_g: page numbers: box 'check1' on page 1 isn't a text box",
+    ) in _errors("schedule_g")

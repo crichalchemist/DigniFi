@@ -6,10 +6,14 @@ move with the engine.
 """
 
 import copy
+import json
+import shutil
 
 import pytest
+from django.conf import settings as django_settings
 
-from apps.forms.services.pdf_filler import PDFFormFiller
+from apps.forms.schema import load_schema
+from apps.forms.services.pdf_filler import PDFFormFiller, ValueTooLong
 from apps.forms.tests.pdf_readback import read_drawn
 
 FILED = {
@@ -117,3 +121,45 @@ def test_a_filed_form_prints_its_stored_page_numbers_whatever_the_schema_counts(
     assert printed[(2, None, "fill_27.1.1")] == "9"
     assert printed[(2, 1, "fill_27.1.1")] == "9"
     assert printed[(3, None, "fill_28.1.2")] == "9"
+
+
+@pytest.fixture
+def schedule_g_without_number_boxes(tmp_path, settings):
+    """A copy of the real schemas whose Schedule G declares no number box in any group."""
+    shutil.copytree(django_settings.FORM_SCHEMAS_DIRECTORY, tmp_path / "schemas")
+    path = tmp_path / "schemas" / "schedule_g.json"
+    data = json.loads(path.read_text())
+    for group in data.get("groups", {}).values():
+        group.pop("number_boxes", None)
+    path.write_text(json.dumps(data))
+    settings.FORM_SCHEMAS_DIRECTORY = tmp_path / "schemas"
+    load_schema.cache_clear()
+    yield
+    load_schema.cache_clear()
+
+
+def _g_filed(number_boxes=None):
+    part = {"kind": "form", "values": {"fill 2.10": "10"}}
+    if number_boxes is not None:
+        part["number_boxes"] = number_boxes
+    return {"version": 2, "parts": [part]}
+
+
+def test_a_filed_number_keeps_its_room_after_the_schema_drops_its_box(
+    schedule_g_without_number_boxes,
+):
+    # The part stored the box that took room, so a later schema can't take the room back.
+    filed = _g_filed(["fill 2.10"])
+
+    (part,) = PDFFormFiller().check("schedule_g", filed)
+    assert [(p.value, p.size) for p in part.widgets] == [("10", 10.0)]
+
+    pdf = PDFFormFiller().fill("schedule_g", filed)
+    drawn = {w.full_name: w.value for w in read_drawn("schedule_g", pdf, filed["parts"])}
+    assert drawn["fill 2.10"] == "10"
+
+
+def test_a_part_with_no_stored_number_boxes_gets_no_room():
+    # A part, not the schema, decides: "fill 2.10" holds one letter (/MaxLen 1).
+    with pytest.raises(ValueTooLong):
+        PDFFormFiller().check("schedule_g", _g_filed())

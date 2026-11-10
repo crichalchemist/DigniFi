@@ -4,6 +4,8 @@ nothing can type in a baked page; and a number that still can't fit is refused i
 text read-back can't see a clipped digit (3a2's lesson), so these tests also judge pixels.
 """
 
+import dataclasses
+
 import pymupdf
 import pytest
 
@@ -155,14 +157,31 @@ def test_schedule_g_prints_its_tenth_contract(
 
 @pytest.mark.parametrize("number, size", [("10", 10.0), ("100", 7.0), ("999", 7.0)])
 def test_a_number_box_takes_more_than_its_max_length(schedule_g_numbered, number, size):
-    (part,) = PDFFormFiller().check("schedule_g", {"fill 2.10": number})
+    document = {
+        "version": 2,
+        "parts": [{"kind": "form", "values": {"fill 2.10": number}, "number_boxes": ["fill 2.10"]}],
+    }
+    (part,) = PDFFormFiller().check("schedule_g", document)
     assert [(p.value, p.size) for p in part.widgets] == [(number, size)]
+
+
+def test_an_auto_size_number_box_gets_no_room():
+    # An auto-size box has no 6 pt floor to slacken: only a fixed-size box takes the bearing.
+    widget = dataclasses.replace(_widget("schedule_d", "undefined_12"), size=0)
+    template = load_schema("schedule_d").template_filename
+    assert fit(widget, template, "2.12", number_box=True) is None
 
 
 @pytest.mark.parametrize("position, size", [("9", 10.0), ("10", 10.0), ("100", 7.0)])
 def test_a_page_number_prints_whole_in_its_small_box(schedule_d_with_copies, position, size):
     # The page-number boxes are 16.3 pt wide: a long form reaches two and three digits.
-    (part,) = PDFFormFiller().check("schedule_d", {"fill_27.1.0": position})
+    document = {
+        "version": 2,
+        "parts": [
+            {"kind": "form", "values": {"fill_27.1.0": position}, "number_boxes": ["fill_27.1.0"]}
+        ],
+    }
+    (part,) = PDFFormFiller().check("schedule_d", document)
     assert [(p.value, p.size) for p in part.widgets] == [(position, size)]
 
 
@@ -211,6 +230,7 @@ def test_a_total_too_wide_for_its_box_is_refused_in_plain_words(schedule_d_with_
 
     assert refused.label == "The total"
     assert (refused.step, refused.page) == (None, "/sofa")
+    assert str(refused).endswith("Check the amounts you entered.")
 
 
 def test_the_dashboard_gets_a_number_refusals_sentence_and_its_fix(schedule_d_with_copies):
