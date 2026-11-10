@@ -1,7 +1,8 @@
 """The car and other-property payments come from their links, and every total adds them once.
 
 3c4 R2, R4, R5: moving a payment from a typed Expenses amount to the debt or lease that pays it
-changes no total, and the calculator reads the same lines Schedule J prints.
+changes no total. The calculator's housing takes J 4 and J 5, and its transport takes every vehicle
+payment, never a payment on other property.
 """
 
 from decimal import Decimal
@@ -102,7 +103,7 @@ def test_food_and_health_survive_the_payment_move(filer_session):
 
 
 @pytest.mark.django_db
-def test_housing_and_transport_come_from_the_lines_that_print_them(filer_session):
+def test_housing_takes_the_home_payments_and_transport_only_the_vehicle_payments(filer_session):
     _, session = filer_session
     _household(session)
     _income(session)
