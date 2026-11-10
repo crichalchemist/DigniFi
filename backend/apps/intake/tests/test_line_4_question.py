@@ -157,6 +157,15 @@ def test_a_typed_line_4_beside_a_first_mortgage_refuses_until_answered(filer):
     assert response.data["error"] == _sentence()["message"]
 
 
+def test_the_question_names_the_first_mortgage_alone_not_an_additional_loan(filer):
+    client, session = filer
+    home = _deshawn(session)
+    linked_loan(session, home, 250, home_payment_line="additional")
+    _stored(session, rent_or_mortgage="900")
+
+    assert _errors(client, session)[-1] == _sentence(typed="900.00", linked="1,200.00")
+
+
 def test_confirming_both_prints_both_and_a_changed_figure_asks_again(filer):
     client, session = filer
     _deshawn(session)
