@@ -152,6 +152,14 @@ def _with_group(tmp_path, settings, form_type, group, rows, declaration, page_nu
         shutil.copytree(django_settings.FORM_SCHEMAS_DIRECTORY, schemas)
     path = schemas / f"{form_type}.json"
     schema = json.loads(path.read_text())
+    # A production claims group would collide with the synthetic one: start from the bare form.
+    claims = [f for f in schema["fields"] if (f.get("binding") or "").startswith("claims.")]
+    if claims:
+        named = {f["repeat"] for f in claims if f.get("repeat")}
+        schema["fields"] = [f for f in schema["fields"] if f not in claims]
+        for name in named:
+            schema.get("groups", {}).pop(name, None)
+        schema.pop("page_numbers", None)
     for row, (page, boxes) in enumerate(rows, start=1):
         for pdf_field, label, attr in boxes:
             schema["fields"].append(

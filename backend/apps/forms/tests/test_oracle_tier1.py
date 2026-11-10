@@ -22,7 +22,9 @@ from types import SimpleNamespace
 import pypdf
 import pytest
 from django.conf import settings
+from django.contrib.auth import get_user_model
 
+from apps.districts.models import District
 from apps.forms.registry import get_all_form_types
 from apps.forms.schema import load_schema
 from apps.forms.services.fill_resolver import resolve_binding
@@ -31,7 +33,14 @@ from apps.forms.services.widgets import template_widgets
 from apps.forms.tests.oracle import case_param
 from apps.forms.tests.pdf_readback import read_drawn
 from apps.intake.asset_lines import PROPERTY_KINDS
-from apps.intake.models import AssetInfo
+from apps.intake.models import AssetInfo, IntakeSession
+from apps.intake.tests.builders import (
+    complete_codebtor,
+    complete_contract,
+    complete_debt,
+    linked_loan,
+    linked_row,
+)
 
 TIER = "1"
 
@@ -367,6 +376,65 @@ def test_every_schedule_a_b_binding_reads_the_row_it_names(binding):
     session = SimpleNamespace(pk=None, assets=SimpleNamespace(all=lambda: [row]))
     (cell,) = resolve_binding(binding, session)
     assert cell
+
+
+def _claims_bindings():
+    return sorted(
+        {
+            f.binding
+            for form_type in ("schedule_d", "schedule_e_f", "schedule_g", "schedule_h")
+            for f in load_schema(form_type).fields
+            if f.binding and f.binding.startswith("claims.")
+        }
+    )
+
+
+@pytest.fixture
+def claims_session(db):
+    user = get_user_model().objects.create_user(username="tier1claims", password="pass")
+    district = District.objects.create(
+        code="ilnd",
+        name="Northern District of Illinois",
+        state="IL",
+        court_name="U.S. Bankruptcy Court",
+        filing_fee_chapter_7=Decimal("338.00"),
+    )
+    session = IntakeSession.objects.create(user=user, district=district)
+    party = {
+        "name": "Demo Notice Party",
+        "street_address": "9 Demo Street",
+        "street_2": "",
+        "city": "Demoville",
+        "state": "IL",
+        "zip_code": "60601",
+        "outside_us": False,
+        "last_4": "",
+    }
+    row = linked_row(session, "3", lives_here=None)
+    secured = linked_loan(session, row, "100", notice_parties=[party])
+    unsecured = complete_debt(session, notice_parties=[party])
+    contract = complete_contract(session)
+    complete_codebtor(
+        session,
+        links=[
+            {"kind": "debt", "id": secured.pk},
+            {"kind": "debt", "id": unsecured.pk},
+            {"kind": "contract", "id": contract.pk},
+        ],
+    )
+    return session
+
+
+@pytest.mark.parametrize("binding", _claims_bindings())
+def test_every_claims_binding_reads_the_row_it_names(binding, claims_session):
+    # A binding spelled wrong passes the startup check, which reads only its namespace, and
+    # would first fail at Generate. Each must read a complete row of its own list. A box cell
+    # may be blank on a complete row (who_debtor_1 under a codebtor link, other_type on a
+    # student loan), so only the name, the city and a claim's amount must print something.
+    (cell,) = resolve_binding(binding, claims_session)
+    attr = binding.rpartition(".")[2]
+    if attr in ("name", "city", "amount"):
+        assert cell
 
 
 def test_every_schedule_a_b_slot_binds_the_line_and_row_its_box_is_on():

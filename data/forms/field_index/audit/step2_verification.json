@@ -4770,6 +4770,786 @@
     "evidence": "Field index: check1 p1 line 1, 'Do you have any executory contracts or unexpired leases?' (its tooltip was copied from Schedule D). Options 'No. Check this box and file this form with the court...' (no) and 'Yes. Fill in all of the information below even if the contracts or leases are listed on Schedule A/B' (yes), sampled_ok. has_executory_contracts is 'yes' when the filer saved a contract or lease. Owner's answer Q8 (DIG-80, DIG-69; step 2 spec §3, §6.3): the section Yes/No boxes are derived from the lists, Yes with rows and No without. Spec Appendix A.10. The audit has no row on this box."
   },
   {
+    "schema": "schedule_g",
+    "pdf_field": "Company Name 2.1",
+    "producer": "asked:claims.contracts[].name",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Company Name 2.1",
+    "evidence": "Field index: Company Name 2.1 p1 T8 line 2.1, 'Name' (adjudicated). Row 1 of group g prints claims.contracts[].name here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_g",
+    "pdf_field": "Contact Info 2.1",
+    "producer": "asked:claims.contracts[].purpose",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Contact Info 2.1",
+    "evidence": "Field index: Contact Info 2.1 p1 T9 line 2.1, 'State what the contract or lease is for' (adjudicated). Row 1 of group g prints claims.contracts[].purpose here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_g",
+    "pdf_field": "Street 2.1",
+    "producer": "asked:claims.contracts[].street_joined",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Street 2.1",
+    "evidence": "Field index: Street 2.1 p1 T10 line 2.1, 'Number Street' (adjudicated). Row 1 of group g prints claims.contracts[].street_joined here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_g",
+    "pdf_field": "City 2.1",
+    "producer": "asked:claims.contracts[].city",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "City 2.1",
+    "evidence": "Field index: City 2.1 p1 T11 line 2.1, 'City' (adjudicated). Row 1 of group g prints claims.contracts[].city here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_g",
+    "pdf_field": "State 2.1",
+    "producer": "asked:claims.contracts[].state",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "State 2.1",
+    "evidence": "Field index: State 2.1 p1 T12 line 2.1, 'State' (adjudicated). Row 1 of group g prints claims.contracts[].state here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_g",
+    "pdf_field": "Zip 2.1",
+    "producer": "asked:claims.contracts[].zip",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Zip 2.1",
+    "evidence": "Field index: Zip 2.1 p1 T13 line 2.1, 'ZIP Code' (adjudicated). Row 1 of group g prints claims.contracts[].zip here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_g",
+    "pdf_field": "Company Name 2.2",
+    "producer": "asked:claims.contracts[].name",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Company Name 2.2",
+    "evidence": "Field index: Company Name 2.2 p1 T14 line 2.2, 'Name' (pattern). Row 2 of group g prints claims.contracts[].name here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_g",
+    "pdf_field": "Contact Info 2.2",
+    "producer": "asked:claims.contracts[].purpose",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Contact Info 2.2",
+    "evidence": "Field index: Contact Info 2.2 p1 T15 line 2.2, 'State what the contract or lease is for' (pattern). Row 2 of group g prints claims.contracts[].purpose here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_g",
+    "pdf_field": "Street 2.2",
+    "producer": "asked:claims.contracts[].street_joined",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Street 2.2",
+    "evidence": "Field index: Street 2.2 p1 T16 line 2.2, 'Number Street' (pattern). Row 2 of group g prints claims.contracts[].street_joined here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_g",
+    "pdf_field": "City 2.2",
+    "producer": "asked:claims.contracts[].city",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "City 2.2",
+    "evidence": "Field index: City 2.2 p1 T17 line 2.2, 'City' (pattern). Row 2 of group g prints claims.contracts[].city here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_g",
+    "pdf_field": "State 2.2",
+    "producer": "asked:claims.contracts[].state",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "State 2.2",
+    "evidence": "Field index: State 2.2 p1 T18 line 2.2, 'State' (pattern). Row 2 of group g prints claims.contracts[].state here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_g",
+    "pdf_field": "Zip 2.2",
+    "producer": "asked:claims.contracts[].zip",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Zip 2.2",
+    "evidence": "Field index: Zip 2.2 p1 T19 line 2.2, 'ZIP Code' (pattern). Row 2 of group g prints claims.contracts[].zip here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_g",
+    "pdf_field": "Company Name 2.3",
+    "producer": "asked:claims.contracts[].name",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Company Name 2.3",
+    "evidence": "Field index: Company Name 2.3 p1 T20 line 2.3, 'Name' (pattern). Row 3 of group g prints claims.contracts[].name here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_g",
+    "pdf_field": "Contact Info 2.3",
+    "producer": "asked:claims.contracts[].purpose",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Contact Info 2.3",
+    "evidence": "Field index: Contact Info 2.3 p1 T21 line 2.3, 'State what the contract or lease is for' (pattern). Row 3 of group g prints claims.contracts[].purpose here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_g",
+    "pdf_field": "Street 2.3",
+    "producer": "asked:claims.contracts[].street_joined",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Street 2.3",
+    "evidence": "Field index: Street 2.3 p1 T22 line 2.3, 'Number Street' (pattern). Row 3 of group g prints claims.contracts[].street_joined here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_g",
+    "pdf_field": "City 2.3",
+    "producer": "asked:claims.contracts[].city",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "City 2.3",
+    "evidence": "Field index: City 2.3 p1 T23 line 2.3, 'City' (pattern). Row 3 of group g prints claims.contracts[].city here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_g",
+    "pdf_field": "State 2.3",
+    "producer": "asked:claims.contracts[].state",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "State 2.3",
+    "evidence": "Field index: State 2.3 p1 T24 line 2.3, 'State' (pattern). Row 3 of group g prints claims.contracts[].state here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_g",
+    "pdf_field": "Zip 2.3",
+    "producer": "asked:claims.contracts[].zip",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Zip 2.3",
+    "evidence": "Field index: Zip 2.3 p1 T25 line 2.3, 'ZIP Code' (pattern). Row 3 of group g prints claims.contracts[].zip here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_g",
+    "pdf_field": "Company Name 2.4",
+    "producer": "asked:claims.contracts[].name",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Company Name 2.4",
+    "evidence": "Field index: Company Name 2.4 p1 T27 line 2.4, 'Name' (pattern). Row 4 of group g prints claims.contracts[].name here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_g",
+    "pdf_field": "Contact Info 2.4",
+    "producer": "asked:claims.contracts[].purpose",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Contact Info 2.4",
+    "evidence": "Field index: Contact Info 2.4 p1 T26 line 2.4, 'State what the contract or lease is for' (pattern). Row 4 of group g prints claims.contracts[].purpose here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_g",
+    "pdf_field": "Street 2.4",
+    "producer": "asked:claims.contracts[].street_joined",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Street 2.4",
+    "evidence": "Field index: Street 2.4 p1 T28 line 2.4, 'Number Street' (pattern). Row 4 of group g prints claims.contracts[].street_joined here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_g",
+    "pdf_field": "City 2.4",
+    "producer": "asked:claims.contracts[].city",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "City 2.4",
+    "evidence": "Field index: City 2.4 p1 T29 line 2.4, 'City' (pattern). Row 4 of group g prints claims.contracts[].city here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_g",
+    "pdf_field": "State 2.4",
+    "producer": "asked:claims.contracts[].state",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "State 2.4",
+    "evidence": "Field index: State 2.4 p1 T30 line 2.4, 'State' (pattern). Row 4 of group g prints claims.contracts[].state here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_g",
+    "pdf_field": "Zip 2.4",
+    "producer": "asked:claims.contracts[].zip",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Zip 2.4",
+    "evidence": "Field index: Zip 2.4 p1 T31 line 2.4, 'ZIP Code' (pattern). Row 4 of group g prints claims.contracts[].zip here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_g",
+    "pdf_field": "Company Name 2.5",
+    "producer": "asked:claims.contracts[].name",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Company Name 2.5",
+    "evidence": "Field index: Company Name 2.5 p1 T32 line 2.5, 'Name' (pattern). Row 5 of group g prints claims.contracts[].name here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_g",
+    "pdf_field": "Contact Info 2.5",
+    "producer": "asked:claims.contracts[].purpose",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Contact Info 2.5",
+    "evidence": "Field index: Contact Info 2.5 p1 T33 line 2.5, 'State what the contract or lease is for' (pattern). Row 5 of group g prints claims.contracts[].purpose here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_g",
+    "pdf_field": "Street 2.5",
+    "producer": "asked:claims.contracts[].street_joined",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Street 2.5",
+    "evidence": "Field index: Street 2.5 p1 T34 line 2.5, 'Number Street' (pattern). Row 5 of group g prints claims.contracts[].street_joined here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_g",
+    "pdf_field": "City 2.5",
+    "producer": "asked:claims.contracts[].city",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "City 2.5",
+    "evidence": "Field index: City 2.5 p1 T35 line 2.5, 'City' (pattern). Row 5 of group g prints claims.contracts[].city here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_g",
+    "pdf_field": "State 2.5",
+    "producer": "asked:claims.contracts[].state",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "State 2.5",
+    "evidence": "Field index: State 2.5 p1 T36 line 2.5, 'State' (pattern). Row 5 of group g prints claims.contracts[].state here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_g",
+    "pdf_field": "Zip 2.5",
+    "producer": "asked:claims.contracts[].zip",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Zip 2.5",
+    "evidence": "Field index: Zip 2.5 p1 T37 line 2.5, 'ZIP Code' (pattern). Row 5 of group g prints claims.contracts[].zip here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_g",
+    "pdf_field": "Company Name 2.6",
+    "producer": "asked:claims.contracts[].name",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Company Name 2.6",
+    "evidence": "Field index: Company Name 2.6 p2 T4 line 2, 'Name (Additional Page row 1; filer numbers it 2.__)' (adjudicated). Row 6 of group g prints claims.contracts[].name here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_g",
+    "pdf_field": "Contact Info 2.6",
+    "producer": "asked:claims.contracts[].purpose",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Contact Info 2.6",
+    "evidence": "Field index: Contact Info 2.6 p2 T5 line 2, 'What the contract or lease is for (Additional Page row 1; filer numbers it 2.__)' (adjudicated). Row 6 of group g prints claims.contracts[].purpose here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_g",
+    "pdf_field": "Street 2.6",
+    "producer": "asked:claims.contracts[].street_joined",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Street 2.6",
+    "evidence": "Field index: Street 2.6 p2 T6 line 2, 'Number Street (Additional Page row 1; filer numbers it 2.__)' (adjudicated). Row 6 of group g prints claims.contracts[].street_joined here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_g",
+    "pdf_field": "City 2.6",
+    "producer": "asked:claims.contracts[].city",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "City 2.6",
+    "evidence": "Field index: City 2.6 p2 T7 line 2, 'City (Additional Page row 1; filer numbers it 2.__)' (adjudicated). Row 6 of group g prints claims.contracts[].city here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_g",
+    "pdf_field": "State 2.6",
+    "producer": "asked:claims.contracts[].state",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "State 2.6",
+    "evidence": "Field index: State 2.6 p2 T8 line 2, 'State (Additional Page row 1; filer numbers it 2.__)' (adjudicated). Row 6 of group g prints claims.contracts[].state here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_g",
+    "pdf_field": "Zip 2.6",
+    "producer": "asked:claims.contracts[].zip",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Zip 2.6",
+    "evidence": "Field index: Zip 2.6 p2 T9 line 2, 'ZIP Code (Additional Page row 1; filer numbers it 2.__)' (adjudicated). Row 6 of group g prints claims.contracts[].zip here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_g",
+    "pdf_field": "Company Name 2.7",
+    "producer": "asked:claims.contracts[].name",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Company Name 2.7",
+    "evidence": "Field index: Company Name 2.7 p2 T11 line 2, 'Name (Additional Page row 2; filer numbers it 2.__)' (pattern). Row 7 of group g prints claims.contracts[].name here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_g",
+    "pdf_field": "Contact Info 2.7",
+    "producer": "asked:claims.contracts[].purpose",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Contact Info 2.7",
+    "evidence": "Field index: Contact Info 2.7 p2 T12 line 2, 'What the contract or lease is for (Additional Page row 2; filer numbers it 2.__)' (pattern). Row 7 of group g prints claims.contracts[].purpose here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_g",
+    "pdf_field": "Street 2.7",
+    "producer": "asked:claims.contracts[].street_joined",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Street 2.7",
+    "evidence": "Field index: Street 2.7 p2 T13 line 2, 'Number Street (Additional Page row 2; filer numbers it 2.__)' (pattern). Row 7 of group g prints claims.contracts[].street_joined here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_g",
+    "pdf_field": "City 2.7",
+    "producer": "asked:claims.contracts[].city",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "City 2.7",
+    "evidence": "Field index: City 2.7 p2 T14 line 2, 'City (Additional Page row 2; filer numbers it 2.__)' (pattern). Row 7 of group g prints claims.contracts[].city here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_g",
+    "pdf_field": "State 2.7",
+    "producer": "asked:claims.contracts[].state",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "State 2.7",
+    "evidence": "Field index: State 2.7 p2 T15 line 2, 'State (Additional Page row 2; filer numbers it 2.__)' (pattern). Row 7 of group g prints claims.contracts[].state here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_g",
+    "pdf_field": "Zip 2.7",
+    "producer": "asked:claims.contracts[].zip",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Zip 2.7",
+    "evidence": "Field index: Zip 2.7 p2 T16 line 2, 'ZIP Code (Additional Page row 2; filer numbers it 2.__)' (pattern). Row 7 of group g prints claims.contracts[].zip here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_g",
+    "pdf_field": "Company Name 2.8",
+    "producer": "asked:claims.contracts[].name",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Company Name 2.8",
+    "evidence": "Field index: Company Name 2.8 p2 T19 line 2, 'Name (Additional Page row 3; filer numbers it 2.__)' (pattern). Row 8 of group g prints claims.contracts[].name here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_g",
+    "pdf_field": "Contact Info 2.8",
+    "producer": "asked:claims.contracts[].purpose",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Contact Info 2.8",
+    "evidence": "Field index: Contact Info 2.8 p2 T18 line 2, 'What the contract or lease is for (Additional Page row 3; filer numbers it 2.__)' (pattern). Row 8 of group g prints claims.contracts[].purpose here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_g",
+    "pdf_field": "Street 2.8",
+    "producer": "asked:claims.contracts[].street_joined",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Street 2.8",
+    "evidence": "Field index: Street 2.8 p2 T20 line 2, 'Number Street (Additional Page row 3; filer numbers it 2.__)' (pattern). Row 8 of group g prints claims.contracts[].street_joined here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_g",
+    "pdf_field": "City 2.8",
+    "producer": "asked:claims.contracts[].city",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "City 2.8",
+    "evidence": "Field index: City 2.8 p2 T21 line 2, 'City (Additional Page row 3; filer numbers it 2.__)' (pattern). Row 8 of group g prints claims.contracts[].city here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_g",
+    "pdf_field": "State 2.8",
+    "producer": "asked:claims.contracts[].state",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "State 2.8",
+    "evidence": "Field index: State 2.8 p2 T22 line 2, 'State (Additional Page row 3; filer numbers it 2.__)' (pattern). Row 8 of group g prints claims.contracts[].state here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_g",
+    "pdf_field": "Zip 2.8",
+    "producer": "asked:claims.contracts[].zip",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Zip 2.8",
+    "evidence": "Field index: Zip 2.8 p2 T23 line 2, 'ZIP Code (Additional Page row 3; filer numbers it 2.__)' (pattern). Row 8 of group g prints claims.contracts[].zip here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_g",
+    "pdf_field": "Company Name 2.9",
+    "producer": "asked:claims.contracts[].name",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Company Name 2.9",
+    "evidence": "Field index: Company Name 2.9 p2 T26 line 2, 'Name (Additional Page row 4; filer numbers it 2.__)' (pattern). Row 9 of group g prints claims.contracts[].name here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_g",
+    "pdf_field": "Contact Info 2.9",
+    "producer": "asked:claims.contracts[].purpose",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Contact Info 2.9",
+    "evidence": "Field index: Contact Info 2.9 p2 T25 line 2, 'What the contract or lease is for (Additional Page row 4; filer numbers it 2.__)' (pattern). Row 9 of group g prints claims.contracts[].purpose here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_g",
+    "pdf_field": "Street 2.9",
+    "producer": "asked:claims.contracts[].street_joined",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Street 2.9",
+    "evidence": "Field index: Street 2.9 p2 T27 line 2, 'Number Street (Additional Page row 4; filer numbers it 2.__)' (pattern). Row 9 of group g prints claims.contracts[].street_joined here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_g",
+    "pdf_field": "City 2.9",
+    "producer": "asked:claims.contracts[].city",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "City 2.9",
+    "evidence": "Field index: City 2.9 p2 T28 line 2, 'City (Additional Page row 4; filer numbers it 2.__)' (pattern). Row 9 of group g prints claims.contracts[].city here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_g",
+    "pdf_field": "State 2.9",
+    "producer": "asked:claims.contracts[].state",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "State 2.9",
+    "evidence": "Field index: State 2.9 p2 T29 line 2, 'State (Additional Page row 4; filer numbers it 2.__)' (pattern). Row 9 of group g prints claims.contracts[].state here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_g",
+    "pdf_field": "Zip 2.9",
+    "producer": "asked:claims.contracts[].zip",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Zip 2.9",
+    "evidence": "Field index: Zip 2.9 p2 T30 line 2, 'ZIP Code (Additional Page row 4; filer numbers it 2.__)' (pattern). Row 9 of group g prints claims.contracts[].zip here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_g",
+    "pdf_field": "Company Name 2.10",
+    "producer": "asked:claims.contracts[].name",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Company Name 2.10",
+    "evidence": "Field index: Company Name 2.10 p2 T32 line 2, 'Name (Additional Page row 5; filer numbers it 2.__)' (pattern). Row 10 of group g prints claims.contracts[].name here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_g",
+    "pdf_field": "Contact Info 2.10",
+    "producer": "asked:claims.contracts[].purpose",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Contact Info 2.10",
+    "evidence": "Field index: Contact Info 2.10 p2 T33 line 2, 'What the contract or lease is for (Additional Page row 5; filer numbers it 2.__)' (pattern). Row 10 of group g prints claims.contracts[].purpose here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_g",
+    "pdf_field": "Street 2.10",
+    "producer": "asked:claims.contracts[].street_joined",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Street 2.10",
+    "evidence": "Field index: Street 2.10 p2 T34 line 2, 'Number Street (Additional Page row 5; filer numbers it 2.__)' (pattern). Row 10 of group g prints claims.contracts[].street_joined here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_g",
+    "pdf_field": "City 2.10",
+    "producer": "asked:claims.contracts[].city",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "City 2.10",
+    "evidence": "Field index: City 2.10 p2 T35 line 2, 'City (Additional Page row 5; filer numbers it 2.__)' (pattern). Row 10 of group g prints claims.contracts[].city here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_g",
+    "pdf_field": "State 2.10",
+    "producer": "asked:claims.contracts[].state",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "State 2.10",
+    "evidence": "Field index: State 2.10 p2 T36 line 2, 'State (Additional Page row 5; filer numbers it 2.__)' (pattern). Row 10 of group g prints claims.contracts[].state here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_g",
+    "pdf_field": "Zip 2.10",
+    "producer": "asked:claims.contracts[].zip",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Zip 2.10",
+    "evidence": "Field index: Zip 2.10 p2 T37 line 2, 'ZIP Code (Additional Page row 5; filer numbers it 2.__)' (pattern). Row 10 of group g prints claims.contracts[].zip here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_g",
+    "pdf_field": "Company Name 2.11",
+    "producer": "asked:claims.contracts[].name",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Company Name 2.11",
+    "evidence": "Field index: Company Name 2.11 p2 T39 line 2, 'Name (Additional Page row 6; filer numbers it 2.__)' (pattern). Row 11 of group g prints claims.contracts[].name here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_g",
+    "pdf_field": "Contact Info 2.11",
+    "producer": "asked:claims.contracts[].purpose",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Contact Info 2.11",
+    "evidence": "Field index: Contact Info 2.11 p2 T40 line 2, 'What the contract or lease is for (Additional Page row 6; filer numbers it 2.__)' (pattern). Row 11 of group g prints claims.contracts[].purpose here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_g",
+    "pdf_field": "Street 2.11",
+    "producer": "asked:claims.contracts[].street_joined",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Street 2.11",
+    "evidence": "Field index: Street 2.11 p2 T41 line 2, 'Number Street (Additional Page row 6; filer numbers it 2.__)' (pattern). Row 11 of group g prints claims.contracts[].street_joined here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_g",
+    "pdf_field": "City 2.11",
+    "producer": "asked:claims.contracts[].city",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "City 2.11",
+    "evidence": "Field index: City 2.11 p2 T42 line 2, 'City (Additional Page row 6; filer numbers it 2.__)' (pattern). Row 11 of group g prints claims.contracts[].city here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_g",
+    "pdf_field": "State 2.11",
+    "producer": "asked:claims.contracts[].state",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "State 2.11",
+    "evidence": "Field index: State 2.11 p2 T43 line 2, 'State (Additional Page row 6; filer numbers it 2.__)' (pattern). Row 11 of group g prints claims.contracts[].state here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_g",
+    "pdf_field": "Zip 2.11",
+    "producer": "asked:claims.contracts[].zip",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Zip 2.11",
+    "evidence": "Field index: Zip 2.11 p2 T44 line 2, 'ZIP Code (Additional Page row 6; filer numbers it 2.__)' (pattern). Row 11 of group g prints claims.contracts[].zip here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_g",
+    "pdf_field": "Company Name 2.12",
+    "producer": "asked:claims.contracts[].name",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Company Name 2.12",
+    "evidence": "Field index: Company Name 2.12 p2 T46 line 2, 'Name (Additional Page row 7; filer numbers it 2.__)' (pattern). Row 12 of group g prints claims.contracts[].name here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_g",
+    "pdf_field": "Contact Info 2.12",
+    "producer": "asked:claims.contracts[].purpose",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Contact Info 2.12",
+    "evidence": "Field index: Contact Info 2.12 p2 T47 line 2, 'What the contract or lease is for (Additional Page row 7; filer numbers it 2.__)' (pattern). Row 12 of group g prints claims.contracts[].purpose here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_g",
+    "pdf_field": "Street 2.12",
+    "producer": "asked:claims.contracts[].street_joined",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Street 2.12",
+    "evidence": "Field index: Street 2.12 p2 T48 line 2, 'Number Street (Additional Page row 7; filer numbers it 2.__)' (pattern). Row 12 of group g prints claims.contracts[].street_joined here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_g",
+    "pdf_field": "City 2.12",
+    "producer": "asked:claims.contracts[].city",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "City 2.12",
+    "evidence": "Field index: City 2.12 p2 T49 line 2, 'City (Additional Page row 7; filer numbers it 2.__)' (pattern). Row 12 of group g prints claims.contracts[].city here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_g",
+    "pdf_field": "State 2.12",
+    "producer": "asked:claims.contracts[].state",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "State 2.12",
+    "evidence": "Field index: State 2.12 p2 T50 line 2, 'State (Additional Page row 7; filer numbers it 2.__)' (pattern). Row 12 of group g prints claims.contracts[].state here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_g",
+    "pdf_field": "Zip 2.12",
+    "producer": "asked:claims.contracts[].zip",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Zip 2.12",
+    "evidence": "Field index: Zip 2.12 p2 T51 line 2, 'ZIP Code (Additional Page row 7; filer numbers it 2.__)' (pattern). Row 12 of group g prints claims.contracts[].zip here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_g",
+    "pdf_field": "Company Name 2.13",
+    "producer": "asked:claims.contracts[].name",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Company Name 2.13",
+    "evidence": "Field index: Company Name 2.13 p2 T53 line 2, 'Name (Additional Page row 8; filer numbers it 2.__)' (pattern). Row 13 of group g prints claims.contracts[].name here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_g",
+    "pdf_field": "Contact Info 2.13",
+    "producer": "asked:claims.contracts[].purpose",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Contact Info 2.13",
+    "evidence": "Field index: Contact Info 2.13 p2 T54 line 2, 'What the contract or lease is for (Additional Page row 8; filer numbers it 2.__)' (pattern). Row 13 of group g prints claims.contracts[].purpose here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_g",
+    "pdf_field": "Street 2.13",
+    "producer": "asked:claims.contracts[].street_joined",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Street 2.13",
+    "evidence": "Field index: Street 2.13 p2 T55 line 2, 'Number Street (Additional Page row 8; filer numbers it 2.__)' (pattern). Row 13 of group g prints claims.contracts[].street_joined here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_g",
+    "pdf_field": "City 2.13",
+    "producer": "asked:claims.contracts[].city",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "City 2.13",
+    "evidence": "Field index: City 2.13 p2 T56 line 2, 'City (Additional Page row 8; filer numbers it 2.__)' (pattern). Row 13 of group g prints claims.contracts[].city here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_g",
+    "pdf_field": "State 2.13",
+    "producer": "asked:claims.contracts[].state",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "State 2.13",
+    "evidence": "Field index: State 2.13 p2 T57 line 2, 'State (Additional Page row 8; filer numbers it 2.__)' (pattern). Row 13 of group g prints claims.contracts[].state here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_g",
+    "pdf_field": "Zip 2.13",
+    "producer": "asked:claims.contracts[].zip",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Zip 2.13",
+    "evidence": "Field index: Zip 2.13 p2 T58 line 2, 'ZIP Code (Additional Page row 8; filer numbers it 2.__)' (pattern). Row 13 of group g prints claims.contracts[].zip here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
     "schema": "schedule_h",
     "pdf_field": "Debtor 1",
     "producer": "derived:full_name",
@@ -4788,6 +5568,1296 @@
     "status": "confirmed",
     "correct_target": "check1",
     "evidence": "Field index: check1 p1 line 1, 'Do you have any codebtors? (If you are filing a joint case, do not list either spouse as a codebtor.)', options No (no) and Yes (yes), adjudicated. has_codebtors is 'yes' when the filer saved a codebtor. Owner's answer Q8 (DIG-80, DIG-69; step 2 spec §3, §6.3): the section Yes/No boxes are derived from the lists, Yes with rows and No without. Spec Appendix A.10. The audit has no row on this box."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "check2",
+    "producer": "derived:schedule_h_community_lived",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check2",
+    "evidence": "Field index: check2 p1 T8 line 2, 'No. Go to line 3.' (adjudicated); p1 T9 line 2, 'Yes. Did your spouse, former spouse, or legal equivalent live with you at the time?' (sampled_ok). schedule_h_community_lived prints H line 2 as the filer answered it, only where the gap table asks it (3c spec §9.3, R4). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "check3",
+    "producer": "derived:schedule_h_spouse_lived_with",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check3",
+    "evidence": "Field index: check3 p1 T10 line 2, 'No' (adjudicated); p1 T11 line 2, 'Yes. In which community state or territory did you live?' (sampled_ok). schedule_h_spouse_lived_with prints H line 2 as the filer answered it, only where the gap table asks it (3c spec §9.3, R4). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "Community state",
+    "producer": "derived:schedule_h_community_state",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Community state",
+    "evidence": "Field index: Community state p1 T12 line 2, 'In which community state or territory did you live? ____' (sampled_ok). schedule_h_community_state prints H line 2 as the filer answered it, only where the gap table asks it (3c spec §9.3, R4). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "Spouse Name",
+    "producer": "derived:schedule_h_spouse_name",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Spouse Name",
+    "evidence": "Field index: Spouse Name p1 T13 line 2, 'Name of your spouse, former spouse, or legal equivalent' (sampled_ok). schedule_h_spouse_name prints H line 2 as the filer answered it, only where the gap table asks it (3c spec §9.3, R4). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "Spouse Street",
+    "producer": "derived:schedule_h_spouse_street",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Spouse Street",
+    "evidence": "Field index: Spouse Street p1 T14 line 2, 'Number Street (spouse address)' (sampled_ok). schedule_h_spouse_street prints H line 2 as the filer answered it, only where the gap table asks it (3c spec §9.3, R4). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "Spouse City",
+    "producer": "derived:schedule_h_spouse_city",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Spouse City",
+    "evidence": "Field index: Spouse City p1 T15 line 2, 'City (spouse address)' (sampled_ok). schedule_h_spouse_city prints H line 2 as the filer answered it, only where the gap table asks it (3c spec §9.3, R4). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "Spouse State",
+    "producer": "derived:schedule_h_spouse_state",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Spouse State",
+    "evidence": "Field index: Spouse State p1 T16 line 2, 'State (spouse address)' (sampled_ok). schedule_h_spouse_state prints H line 2 as the filer answered it, only where the gap table asks it (3c spec §9.3, R4). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "Spouse Zip",
+    "producer": "derived:schedule_h_spouse_zip",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Spouse Zip",
+    "evidence": "Field index: Spouse Zip p1 T17 line 2, 'ZIP Code (spouse address)' (sampled_ok). schedule_h_spouse_zip prints H line 2 as the filer answered it, only where the gap table asks it (3c spec §9.3, R4). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "Codebtor Name 3.1",
+    "producer": "asked:claims.codebtors[].name",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Codebtor Name 3.1",
+    "evidence": "Field index: Codebtor Name 3.1 p1 T18 line 3.1, 'Name' (adjudicated). Row 1 of group h prints claims.codebtors[].name here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "Codebtor Street 3.1",
+    "producer": "asked:claims.codebtors[].street_joined",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Codebtor Street 3.1",
+    "evidence": "Field index: Codebtor Street 3.1 p1 T21 line 3.1, 'Number Street' (adjudicated). Row 1 of group h prints claims.codebtors[].street_joined here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "Codebtor City 3.1",
+    "producer": "asked:claims.codebtors[].city",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Codebtor City 3.1",
+    "evidence": "Field index: Codebtor City 3.1 p1 T26 line 3.1, 'City' (adjudicated). Row 1 of group h prints claims.codebtors[].city here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "Codebtor State 3.1",
+    "producer": "asked:claims.codebtors[].state",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Codebtor State 3.1",
+    "evidence": "Field index: Codebtor State 3.1 p1 T27 line 3.1, 'State' (adjudicated). Row 1 of group h prints claims.codebtors[].state here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "Codebtor Zip 3.1",
+    "producer": "asked:claims.codebtors[].zip",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Codebtor Zip 3.1",
+    "evidence": "Field index: Codebtor Zip 3.1 p1 T28 line 3.1, 'ZIP Code' (adjudicated). Row 1 of group h prints claims.codebtors[].zip here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "check schedule line D 3.1",
+    "producer": "asked:claims.codebtors[].on_d",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check schedule line D 3.1",
+    "evidence": "Field index: check schedule line D 3.1 p1 T19 line 3.1, 'Schedule D, line' (adjudicated). Row 1 of group h prints claims.codebtors[].on_d here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "Schedule line D 3.1",
+    "producer": "asked:claims.codebtors[].d_lines",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Schedule line D 3.1",
+    "evidence": "Field index: Schedule line D 3.1 p1 T20 line 3.1, 'Schedule D, line ____ (line number of that creditor on Schedule D)' (adjudicated). Row 1 of group h prints claims.codebtors[].d_lines here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "check schedule line E/F 3.1",
+    "producer": "asked:claims.codebtors[].on_ef",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check schedule line E/F 3.1",
+    "evidence": "Field index: check schedule line E/F 3.1 p1 T22 line 3.1, 'Schedule E/F, line' (adjudicated). Row 1 of group h prints claims.codebtors[].on_ef here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "Schedule line E/F 3.1",
+    "producer": "asked:claims.codebtors[].ef_lines",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Schedule line E/F 3.1",
+    "evidence": "Field index: Schedule line E/F 3.1 p1 T23 line 3.1, 'Schedule E/F, line ____ (line number of that creditor on Schedule E/F)' (adjudicated). Row 1 of group h prints claims.codebtors[].ef_lines here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "check schedule line G 3.1",
+    "producer": "asked:claims.codebtors[].on_g",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check schedule line G 3.1",
+    "evidence": "Field index: check schedule line G 3.1 p1 T24 line 3.1, 'Schedule G, line' (adjudicated). Row 1 of group h prints claims.codebtors[].on_g here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "Schedule line G 3.1",
+    "producer": "asked:claims.codebtors[].g_lines",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Schedule line G 3.1",
+    "evidence": "Field index: Schedule line G 3.1 p1 T25 line 3.1, 'Schedule G, line ____ (line number of that creditor on Schedule G)' (adjudicated). Row 1 of group h prints claims.codebtors[].g_lines here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "Codebtor Name 3.2",
+    "producer": "asked:claims.codebtors[].name",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Codebtor Name 3.2",
+    "evidence": "Field index: Codebtor Name 3.2 p1 T29 line 3.2, 'Name' (pattern). Row 2 of group h prints claims.codebtors[].name here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "Codebtor Street 3.2",
+    "producer": "asked:claims.codebtors[].street_joined",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Codebtor Street 3.2",
+    "evidence": "Field index: Codebtor Street 3.2 p1 T34 line 3.2, 'Number Street' (pattern). Row 2 of group h prints claims.codebtors[].street_joined here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "Codebtor City 3.2",
+    "producer": "asked:claims.codebtors[].city",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Codebtor City 3.2",
+    "evidence": "Field index: Codebtor City 3.2 p1 T37 line 3.2, 'City' (pattern). Row 2 of group h prints claims.codebtors[].city here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "Codebtor State 3.2",
+    "producer": "asked:claims.codebtors[].state",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Codebtor State 3.2",
+    "evidence": "Field index: Codebtor State 3.2 p1 T38 line 3.2, 'State' (pattern). Row 2 of group h prints claims.codebtors[].state here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "Codebtor Zip 3.2",
+    "producer": "asked:claims.codebtors[].zip",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Codebtor Zip 3.2",
+    "evidence": "Field index: Codebtor Zip 3.2 p1 T39 line 3.2, 'ZIP Code' (pattern). Row 2 of group h prints claims.codebtors[].zip here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "check schedule line D 3.2",
+    "producer": "asked:claims.codebtors[].on_d",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check schedule line D 3.2",
+    "evidence": "Field index: check schedule line D 3.2 p1 T30 line 3.2, 'Schedule D, line' (pattern). Row 2 of group h prints claims.codebtors[].on_d here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "Schedule line D 3.2",
+    "producer": "asked:claims.codebtors[].d_lines",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Schedule line D 3.2",
+    "evidence": "Field index: Schedule line D 3.2 p1 T31 line 3.2, 'Schedule D, line ____ (line number of that creditor on Schedule D)' (pattern). Row 2 of group h prints claims.codebtors[].d_lines here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "check schedule line E/F 3.2",
+    "producer": "asked:claims.codebtors[].on_ef",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check schedule line E/F 3.2",
+    "evidence": "Field index: check schedule line E/F 3.2 p1 T32 line 3.2, 'Schedule E/F, line' (pattern). Row 2 of group h prints claims.codebtors[].on_ef here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "Schedule line E/F 3.2",
+    "producer": "asked:claims.codebtors[].ef_lines",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Schedule line E/F 3.2",
+    "evidence": "Field index: Schedule line E/F 3.2 p1 T33 line 3.2, 'Schedule E/F, line ____ (line number of that creditor on Schedule E/F)' (pattern). Row 2 of group h prints claims.codebtors[].ef_lines here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "check schedule line G 3.2",
+    "producer": "asked:claims.codebtors[].on_g",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check schedule line G 3.2",
+    "evidence": "Field index: check schedule line G 3.2 p1 T35 line 3.2, 'Schedule G, line' (pattern). Row 2 of group h prints claims.codebtors[].on_g here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "Schedule line G 3.2",
+    "producer": "asked:claims.codebtors[].g_lines",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Schedule line G 3.2",
+    "evidence": "Field index: Schedule line G 3.2 p1 T36 line 3.2, 'Schedule G, line ____ (line number of that creditor on Schedule G)' (pattern). Row 2 of group h prints claims.codebtors[].g_lines here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "Codebtor Name 3.3",
+    "producer": "asked:claims.codebtors[].name",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Codebtor Name 3.3",
+    "evidence": "Field index: Codebtor Name 3.3 p1 T40 line 3.3, 'Name' (pattern). Row 3 of group h prints claims.codebtors[].name here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "Codebtor Street 3.3",
+    "producer": "asked:claims.codebtors[].street_joined",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Codebtor Street 3.3",
+    "evidence": "Field index: Codebtor Street 3.3 p1 T45 line 3.3, 'Number Street' (pattern). Row 3 of group h prints claims.codebtors[].street_joined here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "Codebtor City 3.3",
+    "producer": "asked:claims.codebtors[].city",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Codebtor City 3.3",
+    "evidence": "Field index: Codebtor City 3.3 p1 T48 line 3.3, 'City' (pattern). Row 3 of group h prints claims.codebtors[].city here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "Codebtor State 3.3",
+    "producer": "asked:claims.codebtors[].state",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Codebtor State 3.3",
+    "evidence": "Field index: Codebtor State 3.3 p1 T49 line 3.3, 'State' (pattern). Row 3 of group h prints claims.codebtors[].state here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "Codebtor Zip 3.3",
+    "producer": "asked:claims.codebtors[].zip",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Codebtor Zip 3.3",
+    "evidence": "Field index: Codebtor Zip 3.3 p1 T50 line 3.3, 'ZIP Code' (pattern). Row 3 of group h prints claims.codebtors[].zip here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "check schedule line D 3.3",
+    "producer": "asked:claims.codebtors[].on_d",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check schedule line D 3.3",
+    "evidence": "Field index: check schedule line D 3.3 p1 T41 line 3.3, 'Schedule D, line' (pattern). Row 3 of group h prints claims.codebtors[].on_d here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "Schedule line D 3.3",
+    "producer": "asked:claims.codebtors[].d_lines",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Schedule line D 3.3",
+    "evidence": "Field index: Schedule line D 3.3 p1 T42 line 3.3, 'Schedule D, line ____ (line number of that creditor on Schedule D)' (pattern). Row 3 of group h prints claims.codebtors[].d_lines here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "check schedule line E/F 3.3",
+    "producer": "asked:claims.codebtors[].on_ef",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check schedule line E/F 3.3",
+    "evidence": "Field index: check schedule line E/F 3.3 p1 T43 line 3.3, 'Schedule E/F, line' (pattern). Row 3 of group h prints claims.codebtors[].on_ef here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "Schedule line E/F 3.3",
+    "producer": "asked:claims.codebtors[].ef_lines",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Schedule line E/F 3.3",
+    "evidence": "Field index: Schedule line E/F 3.3 p1 T44 line 3.3, 'Schedule E/F, line ____ (line number of that creditor on Schedule E/F)' (pattern). Row 3 of group h prints claims.codebtors[].ef_lines here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "check schedule line G 3.3",
+    "producer": "asked:claims.codebtors[].on_g",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check schedule line G 3.3",
+    "evidence": "Field index: check schedule line G 3.3 p1 T46 line 3.3, 'Schedule G, line' (pattern). Row 3 of group h prints claims.codebtors[].on_g here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "Schedule line G 3.3",
+    "producer": "asked:claims.codebtors[].g_lines",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Schedule line G 3.3",
+    "evidence": "Field index: Schedule line G 3.3 p1 T47 line 3.3, 'Schedule G, line ____ (line number of that creditor on Schedule G)' (pattern). Row 3 of group h prints claims.codebtors[].g_lines here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "Codebtor Name 3.4",
+    "producer": "asked:claims.codebtors[].name",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Codebtor Name 3.4",
+    "evidence": "Field index: Codebtor Name 3.4 p2 T4 line 3, 'Name (Additional Page row 1; filer numbers it 3.__)' (adjudicated). Row 4 of group h prints claims.codebtors[].name here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "Codebtor Street 3.4",
+    "producer": "asked:claims.codebtors[].street_joined",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Codebtor Street 3.4",
+    "evidence": "Field index: Codebtor Street 3.4 p2 T9 line 3, 'Number Street (Additional Page row 1; filer numbers it 3.__)' (adjudicated). Row 4 of group h prints claims.codebtors[].street_joined here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "Codebtor City 3.4",
+    "producer": "asked:claims.codebtors[].city",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Codebtor City 3.4",
+    "evidence": "Field index: Codebtor City 3.4 p2 T12 line 3, 'City (Additional Page row 1; filer numbers it 3.__)' (adjudicated). Row 4 of group h prints claims.codebtors[].city here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "Codebtor State 3.4",
+    "producer": "asked:claims.codebtors[].state",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Codebtor State 3.4",
+    "evidence": "Field index: Codebtor State 3.4 p2 T13 line 3, 'State (Additional Page row 1; filer numbers it 3.__)' (adjudicated). Row 4 of group h prints claims.codebtors[].state here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "Codebtor Zip 3.4",
+    "producer": "asked:claims.codebtors[].zip",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Codebtor Zip 3.4",
+    "evidence": "Field index: Codebtor Zip 3.4 p2 T14 line 3, 'ZIP Code (Additional Page row 1; filer numbers it 3.__)' (adjudicated). Row 4 of group h prints claims.codebtors[].zip here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "check schedule line D 3.4",
+    "producer": "asked:claims.codebtors[].on_d",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check schedule line D 3.4",
+    "evidence": "Field index: check schedule line D 3.4 p2 T5 line 3, 'Schedule D, line' (adjudicated). Row 4 of group h prints claims.codebtors[].on_d here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "Schedule line D 3.4",
+    "producer": "asked:claims.codebtors[].d_lines",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Schedule line D 3.4",
+    "evidence": "Field index: Schedule line D 3.4 p2 T6 line 3, 'Schedule D, line ____ (line number of that creditor on Schedule D) (Additional Page row 1; filer numbers it 3.__)' (adjudicated). Row 4 of group h prints claims.codebtors[].d_lines here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "check schedule line E/F 3.4",
+    "producer": "asked:claims.codebtors[].on_ef",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check schedule line E/F 3.4",
+    "evidence": "Field index: check schedule line E/F 3.4 p2 T8 line 3, 'Schedule E/F, line' (adjudicated). Row 4 of group h prints claims.codebtors[].on_ef here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "Schedule line E/F 3.4",
+    "producer": "asked:claims.codebtors[].ef_lines",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Schedule line E/F 3.4",
+    "evidence": "Field index: Schedule line E/F 3.4 p2 T7 line 3, 'Schedule E/F, line ____ (line number of that creditor on Schedule E/F) (Additional Page row 1; filer numbers it 3.__)' (adjudicated). Row 4 of group h prints claims.codebtors[].ef_lines here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "check schedule line G 3.4",
+    "producer": "asked:claims.codebtors[].on_g",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check schedule line G 3.4",
+    "evidence": "Field index: check schedule line G 3.4 p2 T10 line 3, 'Schedule G, line' (adjudicated). Row 4 of group h prints claims.codebtors[].on_g here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "Schedule line G 3.4",
+    "producer": "asked:claims.codebtors[].g_lines",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Schedule line G 3.4",
+    "evidence": "Field index: Schedule line G 3.4 p2 T11 line 3, 'Schedule G, line ____ (line number of that creditor on Schedule G) (Additional Page row 1; filer numbers it 3.__)' (adjudicated). Row 4 of group h prints claims.codebtors[].g_lines here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "Codebtor Name 3.5",
+    "producer": "asked:claims.codebtors[].name",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Codebtor Name 3.5",
+    "evidence": "Field index: Codebtor Name 3.5 p2 T16 line 3, 'Name (Additional Page row 2; filer numbers it 3.__)' (pattern). Row 5 of group h prints claims.codebtors[].name here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "Codebtor Street 3.5",
+    "producer": "asked:claims.codebtors[].street_joined",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Codebtor Street 3.5",
+    "evidence": "Field index: Codebtor Street 3.5 p2 T21 line 3, 'Number Street (Additional Page row 2; filer numbers it 3.__)' (pattern). Row 5 of group h prints claims.codebtors[].street_joined here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "Codebtor City 3.5",
+    "producer": "asked:claims.codebtors[].city",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Codebtor City 3.5",
+    "evidence": "Field index: Codebtor City 3.5 p2 T24 line 3, 'City (Additional Page row 2; filer numbers it 3.__)' (pattern). Row 5 of group h prints claims.codebtors[].city here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "Codebtor State 3.5",
+    "producer": "asked:claims.codebtors[].state",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Codebtor State 3.5",
+    "evidence": "Field index: Codebtor State 3.5 p2 T25 line 3, 'State (Additional Page row 2; filer numbers it 3.__)' (pattern). Row 5 of group h prints claims.codebtors[].state here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "Codebtor Zip 3.5",
+    "producer": "asked:claims.codebtors[].zip",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Codebtor Zip 3.5",
+    "evidence": "Field index: Codebtor Zip 3.5 p2 T26 line 3, 'ZIP Code (Additional Page row 2; filer numbers it 3.__)' (pattern). Row 5 of group h prints claims.codebtors[].zip here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "check schedule line D 3.5",
+    "producer": "asked:claims.codebtors[].on_d",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check schedule line D 3.5",
+    "evidence": "Field index: check schedule line D 3.5 p2 T18 line 3, 'Schedule D, line' (pattern). Row 5 of group h prints claims.codebtors[].on_d here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "Schedule line D 3.5",
+    "producer": "asked:claims.codebtors[].d_lines",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Schedule line D 3.5",
+    "evidence": "Field index: Schedule line D 3.5 p2 T17 line 3, 'Schedule D, line ____ (line number of that creditor on Schedule D) (Additional Page row 2; filer numbers it 3.__)' (pattern). Row 5 of group h prints claims.codebtors[].d_lines here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "check schedule line E/F 3.5",
+    "producer": "asked:claims.codebtors[].on_ef",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check schedule line E/F 3.5",
+    "evidence": "Field index: check schedule line E/F 3.5 p2 T19 line 3, 'Schedule E/F, line' (pattern). Row 5 of group h prints claims.codebtors[].on_ef here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "Schedule line E/F 3.5",
+    "producer": "asked:claims.codebtors[].ef_lines",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Schedule line E/F 3.5",
+    "evidence": "Field index: Schedule line E/F 3.5 p2 T20 line 3, 'Schedule E/F, line ____ (line number of that creditor on Schedule E/F) (Additional Page row 2; filer numbers it 3.__)' (pattern). Row 5 of group h prints claims.codebtors[].ef_lines here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "check schedule line G 3.5",
+    "producer": "asked:claims.codebtors[].on_g",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check schedule line G 3.5",
+    "evidence": "Field index: check schedule line G 3.5 p2 T22 line 3, 'Schedule G, line' (pattern). Row 5 of group h prints claims.codebtors[].on_g here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "Schedule line G 3.5",
+    "producer": "asked:claims.codebtors[].g_lines",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Schedule line G 3.5",
+    "evidence": "Field index: Schedule line G 3.5 p2 T23 line 3, 'Schedule G, line ____ (line number of that creditor on Schedule G) (Additional Page row 2; filer numbers it 3.__)' (pattern). Row 5 of group h prints claims.codebtors[].g_lines here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "Codebtor Name 3.6",
+    "producer": "asked:claims.codebtors[].name",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Codebtor Name 3.6",
+    "evidence": "Field index: Codebtor Name 3.6 p2 T28 line 3, 'Name (Additional Page row 3; filer numbers it 3.__)' (pattern). Row 6 of group h prints claims.codebtors[].name here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "Codebtor Street 3.6",
+    "producer": "asked:claims.codebtors[].street_joined",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Codebtor Street 3.6",
+    "evidence": "Field index: Codebtor Street 3.6 p2 T33 line 3, 'Number Street (Additional Page row 3; filer numbers it 3.__)' (pattern). Row 6 of group h prints claims.codebtors[].street_joined here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "Codebtor City 3.6",
+    "producer": "asked:claims.codebtors[].city",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Codebtor City 3.6",
+    "evidence": "Field index: Codebtor City 3.6 p2 T36 line 3, 'City (Additional Page row 3; filer numbers it 3.__)' (pattern). Row 6 of group h prints claims.codebtors[].city here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "Codebtor State 3.6",
+    "producer": "asked:claims.codebtors[].state",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Codebtor State 3.6",
+    "evidence": "Field index: Codebtor State 3.6 p2 T37 line 3, 'State (Additional Page row 3; filer numbers it 3.__)' (pattern). Row 6 of group h prints claims.codebtors[].state here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "Codebtor Zip 3.6",
+    "producer": "asked:claims.codebtors[].zip",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Codebtor Zip 3.6",
+    "evidence": "Field index: Codebtor Zip 3.6 p2 T38 line 3, 'ZIP Code (Additional Page row 3; filer numbers it 3.__)' (pattern). Row 6 of group h prints claims.codebtors[].zip here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "check schedule line D 3.6",
+    "producer": "asked:claims.codebtors[].on_d",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check schedule line D 3.6",
+    "evidence": "Field index: check schedule line D 3.6 p2 T29 line 3, 'Schedule D, line' (pattern). Row 6 of group h prints claims.codebtors[].on_d here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "Schedule line D 3.6",
+    "producer": "asked:claims.codebtors[].d_lines",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Schedule line D 3.6",
+    "evidence": "Field index: Schedule line D 3.6 p2 T30 line 3, 'Schedule D, line ____ (line number of that creditor on Schedule D) (Additional Page row 3; filer numbers it 3.__)' (pattern). Row 6 of group h prints claims.codebtors[].d_lines here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "check schedule line E/F 3.6",
+    "producer": "asked:claims.codebtors[].on_ef",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check schedule line E/F 3.6",
+    "evidence": "Field index: check schedule line E/F 3.6 p2 T31 line 3, 'Schedule E/F, line' (pattern). Row 6 of group h prints claims.codebtors[].on_ef here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "Schedule line E/F 3.6",
+    "producer": "asked:claims.codebtors[].ef_lines",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Schedule line E/F 3.6",
+    "evidence": "Field index: Schedule line E/F 3.6 p2 T32 line 3, 'Schedule E/F, line ____ (line number of that creditor on Schedule E/F) (Additional Page row 3; filer numbers it 3.__)' (pattern). Row 6 of group h prints claims.codebtors[].ef_lines here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "check schedule line G 3.6",
+    "producer": "asked:claims.codebtors[].on_g",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check schedule line G 3.6",
+    "evidence": "Field index: check schedule line G 3.6 p2 T34 line 3, 'Schedule G, line' (pattern). Row 6 of group h prints claims.codebtors[].on_g here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "Schedule line G 3.6",
+    "producer": "asked:claims.codebtors[].g_lines",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Schedule line G 3.6",
+    "evidence": "Field index: Schedule line G 3.6 p2 T35 line 3, 'Schedule G, line ____ (line number of that creditor on Schedule G) (Additional Page row 3; filer numbers it 3.__)' (pattern). Row 6 of group h prints claims.codebtors[].g_lines here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "Codebtor Name 3.7",
+    "producer": "asked:claims.codebtors[].name",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Codebtor Name 3.7",
+    "evidence": "Field index: Codebtor Name 3.7 p2 T40 line 3, 'Name (Additional Page row 4; filer numbers it 3.__)' (pattern). Row 7 of group h prints claims.codebtors[].name here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "Codebtor Street 3.7",
+    "producer": "asked:claims.codebtors[].street_joined",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Codebtor Street 3.7",
+    "evidence": "Field index: Codebtor Street 3.7 p2 T45 line 3, 'Number Street (Additional Page row 4; filer numbers it 3.__)' (pattern). Row 7 of group h prints claims.codebtors[].street_joined here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "Codebtor City 3.7",
+    "producer": "asked:claims.codebtors[].city",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Codebtor City 3.7",
+    "evidence": "Field index: Codebtor City 3.7 p2 T48 line 3, 'City (Additional Page row 4; filer numbers it 3.__)' (pattern). Row 7 of group h prints claims.codebtors[].city here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "Codebtor State 3.7",
+    "producer": "asked:claims.codebtors[].state",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Codebtor State 3.7",
+    "evidence": "Field index: Codebtor State 3.7 p2 T49 line 3, 'State (Additional Page row 4; filer numbers it 3.__)' (pattern). Row 7 of group h prints claims.codebtors[].state here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "Codebtor Zip 3.7",
+    "producer": "asked:claims.codebtors[].zip",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Codebtor Zip 3.7",
+    "evidence": "Field index: Codebtor Zip 3.7 p2 T50 line 3, 'ZIP Code (Additional Page row 4; filer numbers it 3.__)' (pattern). Row 7 of group h prints claims.codebtors[].zip here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "check schedule line D 3.7",
+    "producer": "asked:claims.codebtors[].on_d",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check schedule line D 3.7",
+    "evidence": "Field index: check schedule line D 3.7 p2 T41 line 3, 'Schedule D, line' (pattern). Row 7 of group h prints claims.codebtors[].on_d here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "Schedule line D 3.7",
+    "producer": "asked:claims.codebtors[].d_lines",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Schedule line D 3.7",
+    "evidence": "Field index: Schedule line D 3.7 p2 T42 line 3, 'Schedule D, line ____ (line number of that creditor on Schedule D) (Additional Page row 4; filer numbers it 3.__)' (pattern). Row 7 of group h prints claims.codebtors[].d_lines here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "check schedule line E/F 3.7",
+    "producer": "asked:claims.codebtors[].on_ef",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check schedule line E/F 3.7",
+    "evidence": "Field index: check schedule line E/F 3.7 p2 T43 line 3, 'Schedule E/F, line' (pattern). Row 7 of group h prints claims.codebtors[].on_ef here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "Schedule line E/F 3.7",
+    "producer": "asked:claims.codebtors[].ef_lines",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Schedule line E/F 3.7",
+    "evidence": "Field index: Schedule line E/F 3.7 p2 T44 line 3, 'Schedule E/F, line ____ (line number of that creditor on Schedule E/F) (Additional Page row 4; filer numbers it 3.__)' (pattern). Row 7 of group h prints claims.codebtors[].ef_lines here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "check schedule line G 3.7",
+    "producer": "asked:claims.codebtors[].on_g",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check schedule line G 3.7",
+    "evidence": "Field index: check schedule line G 3.7 p2 T46 line 3, 'Schedule G, line' (pattern). Row 7 of group h prints claims.codebtors[].on_g here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "Schedule line G 3.7",
+    "producer": "asked:claims.codebtors[].g_lines",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Schedule line G 3.7",
+    "evidence": "Field index: Schedule line G 3.7 p2 T47 line 3, 'Schedule G, line ____ (line number of that creditor on Schedule G) (Additional Page row 4; filer numbers it 3.__)' (pattern). Row 7 of group h prints claims.codebtors[].g_lines here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "Codebtor Name 3.8",
+    "producer": "asked:claims.codebtors[].name",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Codebtor Name 3.8",
+    "evidence": "Field index: Codebtor Name 3.8 p2 T52 line 3, 'Name (Additional Page row 5; filer numbers it 3.__)' (pattern). Row 8 of group h prints claims.codebtors[].name here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "Codebtor Street 3.8",
+    "producer": "asked:claims.codebtors[].street_joined",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Codebtor Street 3.8",
+    "evidence": "Field index: Codebtor Street 3.8 p2 T57 line 3, 'Number Street (Additional Page row 5; filer numbers it 3.__)' (pattern). Row 8 of group h prints claims.codebtors[].street_joined here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "Codebtor City 3.8",
+    "producer": "asked:claims.codebtors[].city",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Codebtor City 3.8",
+    "evidence": "Field index: Codebtor City 3.8 p2 T60 line 3, 'City (Additional Page row 5; filer numbers it 3.__)' (pattern). Row 8 of group h prints claims.codebtors[].city here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "Codebtor State 3.8",
+    "producer": "asked:claims.codebtors[].state",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Codebtor State 3.8",
+    "evidence": "Field index: Codebtor State 3.8 p2 T61 line 3, 'State (Additional Page row 5; filer numbers it 3.__)' (pattern). Row 8 of group h prints claims.codebtors[].state here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "Codebtor Zip 3.8",
+    "producer": "asked:claims.codebtors[].zip",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Codebtor Zip 3.8",
+    "evidence": "Field index: Codebtor Zip 3.8 p2 T62 line 3, 'ZIP Code (Additional Page row 5; filer numbers it 3.__)' (pattern). Row 8 of group h prints claims.codebtors[].zip here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "check schedule line D 3.8",
+    "producer": "asked:claims.codebtors[].on_d",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check schedule line D 3.8",
+    "evidence": "Field index: check schedule line D 3.8 p2 T53 line 3, 'Schedule D, line' (pattern). Row 8 of group h prints claims.codebtors[].on_d here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "Schedule line D 3.8",
+    "producer": "asked:claims.codebtors[].d_lines",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Schedule line D 3.8",
+    "evidence": "Field index: Schedule line D 3.8 p2 T54 line 3, 'Schedule D, line ____ (line number of that creditor on Schedule D) (Additional Page row 5; filer numbers it 3.__)' (pattern). Row 8 of group h prints claims.codebtors[].d_lines here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "check schedule line E/F 3.8",
+    "producer": "asked:claims.codebtors[].on_ef",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check schedule line E/F 3.8",
+    "evidence": "Field index: check schedule line E/F 3.8 p2 T55 line 3, 'Schedule E/F, line' (pattern). Row 8 of group h prints claims.codebtors[].on_ef here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "Schedule line E/F 3.8",
+    "producer": "asked:claims.codebtors[].ef_lines",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Schedule line E/F 3.8",
+    "evidence": "Field index: Schedule line E/F 3.8 p2 T56 line 3, 'Schedule E/F, line ____ (line number of that creditor on Schedule E/F) (Additional Page row 5; filer numbers it 3.__)' (pattern). Row 8 of group h prints claims.codebtors[].ef_lines here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "check schedule line G 3.8",
+    "producer": "asked:claims.codebtors[].on_g",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check schedule line G 3.8",
+    "evidence": "Field index: check schedule line G 3.8 p2 T58 line 3, 'Schedule G, line' (pattern). Row 8 of group h prints claims.codebtors[].on_g here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "Schedule line G 3.8",
+    "producer": "asked:claims.codebtors[].g_lines",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Schedule line G 3.8",
+    "evidence": "Field index: Schedule line G 3.8 p2 T59 line 3, 'Schedule G, line ____ (line number of that creditor on Schedule G) (Additional Page row 5; filer numbers it 3.__)' (pattern). Row 8 of group h prints claims.codebtors[].g_lines here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "Codebtor Name 3.9",
+    "producer": "asked:claims.codebtors[].name",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Codebtor Name 3.9",
+    "evidence": "Field index: Codebtor Name 3.9 p2 T64 line 3, 'Name (Additional Page row 6; filer numbers it 3.__)' (pattern). Row 9 of group h prints claims.codebtors[].name here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "Codebtor Street 3.9",
+    "producer": "asked:claims.codebtors[].street_joined",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Codebtor Street 3.9",
+    "evidence": "Field index: Codebtor Street 3.9 p2 T69 line 3, 'Number Street (Additional Page row 6; filer numbers it 3.__)' (pattern). Row 9 of group h prints claims.codebtors[].street_joined here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "Codebtor City 3.9",
+    "producer": "asked:claims.codebtors[].city",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Codebtor City 3.9",
+    "evidence": "Field index: Codebtor City 3.9 p2 T72 line 3, 'City (Additional Page row 6; filer numbers it 3.__)' (pattern). Row 9 of group h prints claims.codebtors[].city here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "Codebtor State 3.9",
+    "producer": "asked:claims.codebtors[].state",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Codebtor State 3.9",
+    "evidence": "Field index: Codebtor State 3.9 p2 T73 line 3, 'State (Additional Page row 6; filer numbers it 3.__)' (pattern). Row 9 of group h prints claims.codebtors[].state here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "Codebtor Zip 3.9",
+    "producer": "asked:claims.codebtors[].zip",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Codebtor Zip 3.9",
+    "evidence": "Field index: Codebtor Zip 3.9 p2 T74 line 3, 'ZIP Code (Additional Page row 6; filer numbers it 3.__)' (pattern). Row 9 of group h prints claims.codebtors[].zip here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "check schedule line D 3.9",
+    "producer": "asked:claims.codebtors[].on_d",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check schedule line D 3.9",
+    "evidence": "Field index: check schedule line D 3.9 p2 T65 line 3, 'Schedule D, line' (pattern). Row 9 of group h prints claims.codebtors[].on_d here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "Schedule line D 3.9",
+    "producer": "asked:claims.codebtors[].d_lines",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Schedule line D 3.9",
+    "evidence": "Field index: Schedule line D 3.9 p2 T66 line 3, 'Schedule D, line ____ (line number of that creditor on Schedule D) (Additional Page row 6; filer numbers it 3.__)' (pattern). Row 9 of group h prints claims.codebtors[].d_lines here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "check schedule line E/F 3.9",
+    "producer": "asked:claims.codebtors[].on_ef",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check schedule line E/F 3.9",
+    "evidence": "Field index: check schedule line E/F 3.9 p2 T67 line 3, 'Schedule E/F, line' (pattern). Row 9 of group h prints claims.codebtors[].on_ef here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "Schedule line E/F 3.9",
+    "producer": "asked:claims.codebtors[].ef_lines",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Schedule line E/F 3.9",
+    "evidence": "Field index: Schedule line E/F 3.9 p2 T68 line 3, 'Schedule E/F, line ____ (line number of that creditor on Schedule E/F) (Additional Page row 6; filer numbers it 3.__)' (pattern). Row 9 of group h prints claims.codebtors[].ef_lines here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "check schedule line G 3.9",
+    "producer": "asked:claims.codebtors[].on_g",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check schedule line G 3.9",
+    "evidence": "Field index: check schedule line G 3.9 p2 T70 line 3, 'Schedule G, line' (pattern). Row 9 of group h prints claims.codebtors[].on_g here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "Schedule line G 3.9",
+    "producer": "asked:claims.codebtors[].g_lines",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Schedule line G 3.9",
+    "evidence": "Field index: Schedule line G 3.9 p2 T71 line 3, 'Schedule G, line ____ (line number of that creditor on Schedule G) (Additional Page row 6; filer numbers it 3.__)' (pattern). Row 9 of group h prints claims.codebtors[].g_lines here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "Codebtor Name 3.10",
+    "producer": "asked:claims.codebtors[].name",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Codebtor Name 3.10",
+    "evidence": "Field index: Codebtor Name 3.10 p2 T76 line 3, 'Name (Additional Page row 7; filer numbers it 3.__)' (pattern). Row 10 of group h prints claims.codebtors[].name here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "Codebtor Street 3.10",
+    "producer": "asked:claims.codebtors[].street_joined",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Codebtor Street 3.10",
+    "evidence": "Field index: Codebtor Street 3.10 p2 T81 line 3, 'Number Street (Additional Page row 7; filer numbers it 3.__)' (pattern). Row 10 of group h prints claims.codebtors[].street_joined here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "Codebtor City 3.10",
+    "producer": "asked:claims.codebtors[].city",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Codebtor City 3.10",
+    "evidence": "Field index: Codebtor City 3.10 p2 T84 line 3, 'City (Additional Page row 7; filer numbers it 3.__)' (pattern). Row 10 of group h prints claims.codebtors[].city here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "Codebtor State 3.10",
+    "producer": "asked:claims.codebtors[].state",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Codebtor State 3.10",
+    "evidence": "Field index: Codebtor State 3.10 p2 T85 line 3, 'State (Additional Page row 7; filer numbers it 3.__)' (pattern). Row 10 of group h prints claims.codebtors[].state here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "Codebtor Zip 3.10",
+    "producer": "asked:claims.codebtors[].zip",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Codebtor Zip 3.10",
+    "evidence": "Field index: Codebtor Zip 3.10 p2 T86 line 3, 'ZIP Code (Additional Page row 7; filer numbers it 3.__)' (pattern). Row 10 of group h prints claims.codebtors[].zip here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "check schedule line D 3.10",
+    "producer": "asked:claims.codebtors[].on_d",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check schedule line D 3.10",
+    "evidence": "Field index: check schedule line D 3.10 p2 T77 line 3, 'Schedule D, line' (pattern). Row 10 of group h prints claims.codebtors[].on_d here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "Schedule line D 3.10",
+    "producer": "asked:claims.codebtors[].d_lines",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Schedule line D 3.10",
+    "evidence": "Field index: Schedule line D 3.10 p2 T78 line 3, 'Schedule D, line ____ (line number of that creditor on Schedule D) (Additional Page row 7; filer numbers it 3.__)' (pattern). Row 10 of group h prints claims.codebtors[].d_lines here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "check schedule line E/F 3.10",
+    "producer": "asked:claims.codebtors[].on_ef",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check schedule line E/F 3.10",
+    "evidence": "Field index: check schedule line E/F 3.10 p2 T80 line 3, 'Schedule E/F, line' (pattern). Row 10 of group h prints claims.codebtors[].on_ef here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "Schedule line E/F 3.10",
+    "producer": "asked:claims.codebtors[].ef_lines",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Schedule line E/F 3.10",
+    "evidence": "Field index: Schedule line E/F 3.10 p2 T79 line 3, 'Schedule E/F, line ____ (line number of that creditor on Schedule E/F) (Additional Page row 7; filer numbers it 3.__)' (pattern). Row 10 of group h prints claims.codebtors[].ef_lines here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "check schedule line G 3.10",
+    "producer": "asked:claims.codebtors[].on_g",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check schedule line G 3.10",
+    "evidence": "Field index: check schedule line G 3.10 p2 T82 line 3, 'Schedule G, line' (pattern). Row 10 of group h prints claims.codebtors[].on_g here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "Schedule line G 3.10",
+    "producer": "asked:claims.codebtors[].g_lines",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Schedule line G 3.10",
+    "evidence": "Field index: Schedule line G 3.10 p2 T83 line 3, 'Schedule G, line ____ (line number of that creditor on Schedule G) (Additional Page row 7; filer numbers it 3.__)' (pattern). Row 10 of group h prints claims.codebtors[].g_lines here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "Codebtor Name 3.11",
+    "producer": "asked:claims.codebtors[].name",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Codebtor Name 3.11",
+    "evidence": "Field index: Codebtor Name 3.11 p2 T88 line 3, 'Name (Additional Page row 8; filer numbers it 3.__)' (pattern). Row 11 of group h prints claims.codebtors[].name here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "Codebtor Street 3.11",
+    "producer": "asked:claims.codebtors[].street_joined",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Codebtor Street 3.11",
+    "evidence": "Field index: Codebtor Street 3.11 p2 T93 line 3, 'Number Street (Additional Page row 8; filer numbers it 3.__)' (pattern). Row 11 of group h prints claims.codebtors[].street_joined here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "Codebtor City 3.11",
+    "producer": "asked:claims.codebtors[].city",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Codebtor City 3.11",
+    "evidence": "Field index: Codebtor City 3.11 p2 T96 line 3, 'City (Additional Page row 8; filer numbers it 3.__)' (pattern). Row 11 of group h prints claims.codebtors[].city here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "Codebtor State 3.11",
+    "producer": "asked:claims.codebtors[].state",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Codebtor State 3.11",
+    "evidence": "Field index: Codebtor State 3.11 p2 T97 line 3, 'State (Additional Page row 8; filer numbers it 3.__)' (pattern). Row 11 of group h prints claims.codebtors[].state here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "Codebtor Zip 3.11",
+    "producer": "asked:claims.codebtors[].zip",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Codebtor Zip 3.11",
+    "evidence": "Field index: Codebtor Zip 3.11 p2 T98 line 3, 'ZIP Code (Additional Page row 8; filer numbers it 3.__)' (pattern). Row 11 of group h prints claims.codebtors[].zip here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "check schedule line D 3.11",
+    "producer": "asked:claims.codebtors[].on_d",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check schedule line D 3.11",
+    "evidence": "Field index: check schedule line D 3.11 p2 T89 line 3, 'Schedule D, line' (pattern). Row 11 of group h prints claims.codebtors[].on_d here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "Schedule line D 3.11",
+    "producer": "asked:claims.codebtors[].d_lines",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Schedule line D 3.11",
+    "evidence": "Field index: Schedule line D 3.11 p2 T90 line 3, 'Schedule D, line ____ (line number of that creditor on Schedule D) (Additional Page row 8; filer numbers it 3.__)' (pattern). Row 11 of group h prints claims.codebtors[].d_lines here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "check schedule line E/F 3.11",
+    "producer": "asked:claims.codebtors[].on_ef",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check schedule line E/F 3.11",
+    "evidence": "Field index: check schedule line E/F 3.11 p2 T91 line 3, 'Schedule E/F, line' (pattern). Row 11 of group h prints claims.codebtors[].on_ef here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "Schedule line E/F 3.11",
+    "producer": "asked:claims.codebtors[].ef_lines",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Schedule line E/F 3.11",
+    "evidence": "Field index: Schedule line E/F 3.11 p2 T92 line 3, 'Schedule E/F, line ____ (line number of that creditor on Schedule E/F) (Additional Page row 8; filer numbers it 3.__)' (pattern). Row 11 of group h prints claims.codebtors[].ef_lines here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "check schedule line G 3.11",
+    "producer": "asked:claims.codebtors[].on_g",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check schedule line G 3.11",
+    "evidence": "Field index: check schedule line G 3.11 p2 T94 line 3, 'Schedule G, line' (pattern). Row 11 of group h prints claims.codebtors[].on_g here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
+  },
+  {
+    "schema": "schedule_h",
+    "pdf_field": "Schedule line G 3.11",
+    "producer": "asked:claims.codebtors[].g_lines",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Schedule line G 3.11",
+    "evidence": "Field index: Schedule line G 3.11 p2 T95 line 3, 'Schedule G, line ____ (line number of that creditor on Schedule G) (Additional Page row 8; filer numbers it 3.__)' (pattern). Row 11 of group h prints claims.codebtors[].g_lines here (3c spec §9.3, R8). Read by test_schedules_g_h_schema.py and tier 1."
   },
   {
     "schema": "schedule_d",

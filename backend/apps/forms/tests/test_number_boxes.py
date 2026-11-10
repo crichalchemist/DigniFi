@@ -10,7 +10,7 @@ import pymupdf
 import pytest
 
 from apps.forms.field_index import load_index
-from apps.forms.registry import build_parts
+from apps.forms.registry import build_parts, get_all_form_types
 from apps.forms.schema import FieldSpec, FormSchema, load_schema
 from apps.forms.services.pdf_filler import (
     PDFFormFiller,
@@ -72,26 +72,27 @@ def test_the_clip_check_sees_a_clipped_number(schedule_d_with_copies):
     assert _clear_of_the_clip(page, empty, widget) < 0
 
 
+# Every number box a production schema declares, with the number that leaves the least clear.
+FITTING_NUMBERS = [
+    # R4's slack, for the font that actually draws: every last digit in the narrowest box.
+    *(("schedule_d", "undefined_12", None, f"2.1{digit}") for digit in range(10)),
+    ("schedule_d", "undefined_12", None, "2.99"),
+    ("schedule_d", "undefined_12", None, "2.9"),
+    # Every other number box (3c spec §5.4), each with a last digit that leaves the least clear
+    # at the widest number it takes. H's "999" draws larger than "1000", so it takes both.
+    *(("schedule_d", "undefined_19", tag, "2.17") for tag in ("T37", "T63")),
+    ("schedule_e_f", "undefined_12", None, "2.17"),
+    *(("schedule_e_f", "undefined_19", tag, "2.17") for tag in ("T30", "T57")),
+    *(("schedule_e_f", f"undefined_4.{n}", None, "4.17") for n in (4, 5, 6)),
+    *(("schedule_g", f"fill 2.{n}", None, "999") for n in range(6, 14)),
+    *(("schedule_h", f"fill 3.{n}", None, "999") for n in range(4, 12)),
+    *(("schedule_h", f"fill 3.{n}", None, "1000") for n in range(4, 12)),
+    ("schedule_g", "fill 2.10", None, "10"),
+]
+
+
 @pytest.mark.slow
-@pytest.mark.parametrize(
-    "form_type, name, tag, number",
-    [
-        # R4's slack, for the font that actually draws: every last digit in the narrowest box.
-        *(("schedule_d", "undefined_12", None, f"2.1{digit}") for digit in range(10)),
-        ("schedule_d", "undefined_12", None, "2.99"),
-        ("schedule_d", "undefined_12", None, "2.9"),
-        # Every other number box (3c spec §5.4), each with a last digit that leaves the least clear
-        # at the widest number it takes. H's "999" draws larger than "1000", so it takes both.
-        *(("schedule_d", "undefined_19", tag, "2.17") for tag in ("T37", "T63")),
-        ("schedule_e_f", "undefined_12", None, "2.17"),
-        *(("schedule_e_f", "undefined_19", tag, "2.17") for tag in ("T30", "T57")),
-        *(("schedule_e_f", f"undefined_4.{n}", None, "4.17") for n in (4, 5, 6)),
-        *(("schedule_g", f"fill 2.{n}", None, "999") for n in range(6, 14)),
-        *(("schedule_h", f"fill 3.{n}", None, "999") for n in range(4, 12)),
-        *(("schedule_h", f"fill 3.{n}", None, "1000") for n in range(4, 12)),
-        ("schedule_g", "fill 2.10", None, "10"),
-    ],
-)
+@pytest.mark.parametrize("form_type, name, tag, number", FITTING_NUMBERS)
 def test_a_number_that_fits_is_not_clipped(form_type, name, tag, number):
     widget = _widget(form_type, name, tag)
     template = load_schema(form_type).template_filename
@@ -264,3 +265,16 @@ def test_a_groups_fix_is_where_its_rows_are_answered():
 
     assert group_fix(schema, "g") == {"step": "income_info"}
     assert group_fix(schema, "another") == {}
+
+
+def test_every_declared_number_box_is_judged_by_pixels():
+    # R16: a schema that declares a number box this file's pixel list lacks would print a number
+    # nobody has looked at. The list may hold more (3d's boxes), never fewer.
+    judged = {(form_type, name, tag) for form_type, name, tag, _ in FITTING_NUMBERS}
+    declared = set()
+    for form_type in get_all_form_types():
+        for group in load_schema(form_type).groups.values():
+            for key in group.number_boxes.values():
+                name, _, rest = key.partition("@")
+                declared.add((form_type, name, rest.partition(":")[2] or None))
+    assert declared - judged == set()
