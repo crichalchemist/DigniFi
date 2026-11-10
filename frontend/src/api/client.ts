@@ -416,6 +416,14 @@ export const intakeAPI = {
     });
   },
 
+  // The filer's answer to the line 4 question (3c4 R9): its own session PATCH
+  confirmLine4: async (sessionId: number, figure: string): Promise<void> => {
+    await apiFetch<IntakeSession>(`/intake/sessions/${sessionId}/`, {
+      method: 'PATCH',
+      body: JSON.stringify({ claim_answers: { line_4_both_confirmed: figure } }),
+    });
+  },
+
   // Contracts (Schedule G)
   contracts: async (sessionId: number): Promise<ExecutoryContract[]> => {
     return apiFetch<ExecutoryContract[]>(`/intake/sessions/${sessionId}/contracts/`);

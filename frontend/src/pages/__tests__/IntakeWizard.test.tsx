@@ -19,9 +19,13 @@ import {
   SCHEDULE_G_NAME_LABEL,
 } from '../../constants/formText';
 import { ASSET_LINES } from '../../constants/assetLines';
+import { fill } from '../../components/wizard/steps/claims/claimNames';
 import {
+  CLAIM_GAP_LINE_4,
   CODEBTOR_GAP_NO_NAME,
   CONTRACT_GAP_NO_NAME,
+  LINE_4_PAY_BOTH,
+  NOT_SAVED_TRY_AGAIN,
   NO_DEBTS_BUTTON,
   OLD_ROWS_NOTE,
   REVIEW_NO_DEBTS,
@@ -511,7 +515,6 @@ const completedSession = {
     rent_or_mortgage: '1100.00',
     utilities: '180.10',
     home_maintenance: '0.00',
-    vehicle_payment: '0.00',
     vehicle_insurance: '85.00',
     vehicle_maintenance: '40.00',
     food_and_groceries: '450.20',
@@ -1119,7 +1122,6 @@ const sessionAtStep5WithAssets = {
       description: '',
       current_value: '8000.00',
       entire_value: '8000.00',
-      amount_owed: '3000.00',
       details: { street: '1 Elm', property_kinds: ['land'], who: 'only_you' },
     },
   ],
@@ -1190,7 +1192,6 @@ describe('IntakeWizard amounts a returning filer already entered', { timeout: 15
     expect(assets.map((asset) => asset.id)).toEqual([3]);
     expect(assets[0].current_value).toBe(8000);
     expect(assets[0].entire_value).toBe(8000);
-    expect(assets[0].amount_owed).toBe(3000);
   });
 });
 
@@ -1429,7 +1430,6 @@ describe.each([
       description: '',
       current_value: '8000.00',
       entire_value: '8000.00',
-      amount_owed: '3000.00',
       details: { street: '1 Elm', property_kinds: ['land'], who: 'only_you' },
     },
   },
@@ -2839,7 +2839,6 @@ describe('IntakeWizard expense hydration', { timeout: 15_000 }, () => {
         rent_or_mortgage: '1100.00',
         utilities: '180.00',
         home_maintenance: '0.00',
-        vehicle_payment: '0.00',
         vehicle_insurance: '85.00',
         vehicle_maintenance: '40.00',
         food_and_groceries: '450.00',
@@ -3050,10 +3049,8 @@ describe('IntakeWizard cleared expense', { timeout: 15_000 }, () => {
     vehicle_insurance: '85.00',
     insurance_not_deducted: '120.00',
     taxes_not_deducted: '0.00',
-    vehicle_payment: '0.00',
     child_support_paid: '0.00',
     support_others: '0.00',
-    other_property_mortgages: '0.00',
     other_property_taxes: '0.00',
     other_property_insurance: '0.00',
     other_property_upkeep: '0.00',
@@ -3109,13 +3106,16 @@ describe('IntakeWizard cleared expense', { timeout: 15_000 }, () => {
     const body = patchBodies[patchBodies.length - 1];
     expect(Object.keys(body)).toEqual(['expense_info']);
     const expenseInfo = body.expense_info as Record<string, unknown>;
-    // The 26 amounts, the three Specify texts and line 3, in that order, and nothing else (DRF
+    // The 24 amounts, the three Specify texts and line 3, in that order, and nothing else (DRF
     // drops any other name silently). The boxes the filer left alone keep their saved amounts.
     expect(Object.keys(expenseInfo)).toEqual([
       ...EXPENSE_FIELDS,
       ...EXPENSE_SPECIFY_FIELDS,
       'expenses_include_others',
     ]);
+    // The server treats a 0 in either retired field as Remove, so the body never carries them
+    expect(expenseInfo).not.toHaveProperty('vehicle_payment');
+    expect(expenseInfo).not.toHaveProperty('other_property_mortgages');
     expect(expenseInfo).toEqual({
       rent_or_mortgage: 0,
       real_estate_taxes: 0,
@@ -3134,10 +3134,8 @@ describe('IntakeWizard cleared expense', { timeout: 15_000 }, () => {
       vehicle_insurance: 85,
       insurance_not_deducted: 120,
       taxes_not_deducted: 0,
-      vehicle_payment: 0,
       child_support_paid: 0,
       support_others: 0,
-      other_property_mortgages: 0,
       other_property_taxes: 0,
       other_property_insurance: 0,
       other_property_upkeep: 0,
@@ -3186,6 +3184,112 @@ describe('IntakeWizard cleared expense', { timeout: 15_000 }, () => {
     }
 
     expect(patchBodies).toEqual([]);
+  });
+});
+
+// ===========================================================================
+// The line 4 question (3c4 B48)
+// ===========================================================================
+
+describe('IntakeWizard line 4 question', { timeout: 15_000 }, () => {
+  const homeRow = {
+    id: 7,
+    session: 1,
+    ab_line: '1',
+    asset_type: null,
+    data_source: 'manual',
+    description: '',
+    current_value: '90000.00',
+    entire_value: '90000.00',
+    details: {
+      street: '1 Demo Street',
+      property_kinds: ['single_family'],
+      who: 'only_you',
+      lives_here: 'yes',
+    },
+  };
+  const mortgage = {
+    ...storedDebt,
+    id: 11,
+    creditor_name: 'Demo Mortgage Co',
+    debt_type: 'mortgage',
+    priority_classification: 'secured',
+    amount_owed: '90000.00',
+    monthly_payment: '1200.00',
+    is_secured: true,
+    secured_by: 7,
+    home_payment_line: 'first',
+  };
+  const savedSession = {
+    ...sessionAtStep1,
+    current_step: 4,
+    assets: [homeRow],
+    debts: [mortgage],
+    expense_info: { data_source: 'manual', rent_or_mortgage: '1200.00' },
+  };
+  const sentence = fill(CLAIM_GAP_LINE_4, { typed: '1,200.00', linked: '1,200.00' });
+
+  function serve(patchStatus = 200) {
+    const patchBodies: Record<string, unknown>[] = [];
+    server.use(
+      http.get('http://localhost:8000/api/intake/sessions/:id/', () =>
+        HttpResponse.json(savedSession)
+      ),
+      http.patch('http://localhost:8000/api/intake/sessions/:id/', async ({ request }) => {
+        patchBodies.push((await request.json()) as Record<string, unknown>);
+        return patchStatus === 200
+          ? HttpResponse.json(savedSession)
+          : HttpResponse.json({ detail: 'no' }, { status: patchStatus });
+      }),
+      http.post(
+        'http://localhost:8000/api/audit/logs/',
+        () => new HttpResponse(null, { status: 201 })
+      )
+    );
+    return patchBodies;
+  }
+
+  it('"Yes, I pay both" saves the typed figure and the question goes', async () => {
+    const patchBodies = serve();
+    renderWizard();
+    await screen.findByRole('heading', { name: /expenses/i, level: 2 });
+    expect(screen.getByText(sentence)).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: LINE_4_PAY_BOTH }));
+
+    await waitFor(() => expect(screen.queryByText(sentence)).toBeNull());
+    expect(patchBodies).toEqual([{ claim_answers: { line_4_both_confirmed: '1200.00' } }]);
+  });
+
+  it('a failed line 4 answer keeps the question and says so', async () => {
+    serve(400);
+    renderWizard();
+    await screen.findByRole('heading', { name: /expenses/i, level: 2 });
+
+    await userEvent.click(screen.getByRole('button', { name: LINE_4_PAY_BOTH }));
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent(NOT_SAVED_TRY_AGAIN);
+    expect(screen.getByText(sentence)).toBeInTheDocument();
+  });
+
+  it('step 4 sends the same keys after the answer as before it', async () => {
+    const patchBodies = serve();
+    renderWizard();
+    await screen.findByRole('heading', { name: /expenses/i, level: 2 });
+    await userEvent.click(screen.getByRole('button', { name: LINE_4_PAY_BOTH }));
+    await waitFor(() => expect(screen.queryByText(sentence)).toBeNull());
+    patchBodies.length = 0;
+
+    await userEvent.click(screen.getByRole('button', { name: /continue/i }));
+    await waitFor(() => expect(patchBodies.length).toBeGreaterThan(0));
+    const body = patchBodies[patchBodies.length - 1];
+    expect(Object.keys(body)).toEqual(['expense_info']);
+    expect(Object.keys(body.expense_info as object)).toEqual([
+      ...EXPENSE_FIELDS,
+      ...EXPENSE_SPECIFY_FIELDS,
+      'expenses_include_others',
+    ]);
   });
 });
 

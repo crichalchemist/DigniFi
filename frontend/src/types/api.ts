@@ -297,7 +297,7 @@ export interface ExpenseInfo {
   session: number;
   data_source: 'manual' | 'bank_import';
 
-  // The 26 Schedule J amounts, named in EXPENSE_FIELDS
+  // The 24 Schedule J amounts, named in EXPENSE_FIELDS
   rent_or_mortgage: number;
   real_estate_taxes: number;
   home_insurance: number;
@@ -315,10 +315,8 @@ export interface ExpenseInfo {
   vehicle_insurance: number;
   insurance_not_deducted: number;
   taxes_not_deducted: number;
-  vehicle_payment: number;
   child_support_paid: number;
   support_others: number;
-  other_property_mortgages: number;
   other_property_taxes: number;
   other_property_insurance: number;
   other_property_upkeep: number;
@@ -338,7 +336,7 @@ export interface ExpenseInfo {
 }
 
 /**
- * The 26 monthly expense amounts, in Schedule J's order, under the names the backend stores
+ * The 24 monthly expense amounts, in Schedule J's order, under the names the backend stores
  * and the court forms read. DRF drops any other name without an error, so the step sums and
  * sends only these.
  */
@@ -360,10 +358,8 @@ export const EXPENSE_FIELDS = [
   'vehicle_insurance',
   'insurance_not_deducted',
   'taxes_not_deducted',
-  'vehicle_payment',
   'child_support_paid',
   'support_others',
-  'other_property_mortgages',
   'other_property_taxes',
   'other_property_insurance',
   'other_property_upkeep',
@@ -456,7 +452,6 @@ export interface AssetInfo {
     | 'personal_property'
     | 'other'
     | null;
-  amount_owed?: number; // Encrypted in backend. Off the step: nothing reads it until 3c
 }
 
 export interface DebtInfo {

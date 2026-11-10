@@ -759,3 +759,15 @@ export const CLAIM_GAP_LEGACY_OTHER =
 
 export const CLAIM_GAP_LINE_4 =
   'You entered ${typed} for rent or lot rent, and your first mortgage on Amounts Owed is ${linked} a month. Line 4 adds them. Do you pay both?';
+
+export const LINE_4_HELP =
+  'Rent, or rent for the lot your home sits on. A first mortgage you list on Amounts Owed is added to this line for you.';
+
+export const EXPENSES_LINKED_NOTE =
+  'Car and mortgage payments come from Amounts Owed and Contracts & Leases, so they are not in this total.';
+
+export const LINE_4_PAY_BOTH = 'Yes, I pay both';
+
+export const LINE_4_CLEAR = 'No, clear the ${typed}';
+
+export const NOT_SAVED_TRY_AGAIN = 'That was not saved. Try again.';
