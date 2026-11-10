@@ -175,13 +175,8 @@ def test_an_auto_size_number_box_gets_no_room():
 @pytest.mark.parametrize("position, size", [("9", 10.0), ("10", 10.0), ("100", 7.0)])
 def test_a_page_number_prints_whole_in_its_small_box(schedule_d_with_copies, position, size):
     # The page-number boxes are 16.3 pt wide: a long form reaches two and three digits.
-    document = {
-        "version": 2,
-        "parts": [
-            {"kind": "form", "values": {"fill_27.1.0": position}, "number_boxes": ["fill_27.1.0"]}
-        ],
-    }
-    (part,) = PDFFormFiller().check("schedule_d", document)
+    # A page-number box is no number box: the resolver stores none, so the flat values plan it.
+    (part,) = PDFFormFiller().check("schedule_d", {"fill_27.1.0": position})
     assert [(p.value, p.size) for p in part.widgets] == [(position, size)]
 
 
@@ -193,7 +188,8 @@ def test_a_box_no_group_numbers_keeps_its_max_length():
 
 
 def _refused_copy(form_type, key, value, page=2, number_box=False):
-    # A number box carries its room in the part, as _resolve_parts stores it (R11).
+    # A group's number box carries its room in the part, as _resolve_parts stores it (R11); a
+    # page-number or total box is no number box and carries none.
     part = {"kind": "copy", "page": page, "number": 1, "values": {key: value}}
     if number_box:
         part["number_boxes"] = [key]
@@ -204,16 +200,16 @@ def _refused_copy(form_type, key, value, page=2, number_box=False):
 
 
 @pytest.mark.parametrize(
-    "key, value, words",
+    "key, value, words, number_box",
     [
-        ("undefined_19@2:T37", "2.100", "The entry number"),
-        ("fill_27.1.0", "1000", "The page number"),
+        ("undefined_19@2:T37", "2.100", "The entry number", True),
+        ("fill_27.1.0", "1000", "The page number", False),
     ],
 )
 def test_a_number_that_cant_fit_is_refused_in_plain_words(
-    schedule_d_with_copies, key, value, words
+    schedule_d_with_copies, key, value, words, number_box
 ):
-    refused = _refused_copy("schedule_d", key, value, number_box=True)
+    refused = _refused_copy("schedule_d", key, value, number_box=number_box)
 
     assert str(refused) == (
         f"“{words}” is too long to fit on the court form, even in small print. "

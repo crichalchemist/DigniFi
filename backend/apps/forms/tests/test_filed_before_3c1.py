@@ -159,6 +159,22 @@ def test_a_filed_number_keeps_its_room_after_the_schema_drops_its_box(
     assert drawn["fill 2.10"] == "10"
 
 
+def test_a_copy_gets_the_room_its_own_part_stored(schedule_g_without_number_boxes):
+    # Each part's own number_boxes decide: the form part's room is not the copy's.
+    def document(copy_boxes):
+        copy_part = {"kind": "copy", "page": 2, "number": 1, "values": {"fill 2.6": "14"}}
+        if copy_boxes is not None:
+            copy_part["number_boxes"] = copy_boxes
+        form_part = {"kind": "form", "values": {"fill 2.10": "10"}, "number_boxes": ["fill 2.10"]}
+        return {"version": 2, "parts": [form_part, copy_part]}
+
+    with pytest.raises(ValueTooLong):
+        PDFFormFiller().check("schedule_g", document(None))
+
+    _, copy_plan = PDFFormFiller().check("schedule_g", document(["fill 2.6"]))
+    assert [p.value for p in copy_plan.widgets] == ["14"]
+
+
 def test_a_part_with_no_stored_number_boxes_gets_no_room():
     # A part, not the schema, decides: "fill 2.10" holds one letter (/MaxLen 1).
     with pytest.raises(ValueTooLong):

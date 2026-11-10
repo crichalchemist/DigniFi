@@ -375,7 +375,10 @@ class PDFFormFiller:
                 the full name there. A value is text, a combo's option, or a box's
                 export state such as "/Chapter 7". A sheet part's rows print on an
                 attached sheet under the title and columns the part stores, never the
-                schema's (R63; sheets.plan_sheet checks them).
+                schema's (R63; sheets.plan_sheet checks them). A form or copy part's own
+                stored "number_boxes" are the only boxes that skip /MaxLen and take the
+                right bearing at 6 pt; a flat {key: value} (parts_of) stores none, so it
+                gets no such room, and one part's list never reaches another part.
 
         Returns:
             One planned part per part, each holding every widget a key fills in page

@@ -564,8 +564,11 @@ def resolve_parts(schema: FormSchema, session: IntakeSession) -> dict:
 
     A repeat group fills its slots in row order. Rows past its last slot continue on
     copies of the extra page its declaration names (3a2 spec §5.2), each
-    {"kind": "copy", "page": <extra page>, "number": <from 1>, "values": {key: value}},
-    or on the attached sheet it declares (3a2 spec §5.3, R23, R63), one part for all of them:
+    {"kind": "copy", "page": <extra page>, "number": <from 1>, "values": {key: value}}.
+    A form or copy part also carries "number_boxes": [key, ...], the group number boxes among
+    its values (page-number and total boxes are not listed), and only those boxes skip /MaxLen
+    and take the right bearing when the part is checked or drawn (R11, R15). A group may
+    instead continue on the attached sheet it declares (3a2 spec §5.3, R23, R63), one part for all of them:
     {"kind": "sheet", "group": <group>, "title": <its title>,
     "columns": [{"label": str, "width": <points>}], "name": <the filer's full name>,
     "rows": [{"line": "3.5", "cells": [<one per column>]}]}, plus "line_width": <points> only

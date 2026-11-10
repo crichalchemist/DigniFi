@@ -620,18 +620,13 @@ def validate_schema(
                         ("E003", f"page numbers: {key!r} is no drawn widget on page {p.page}")
                     )
                     continue
-                if key:
-                    try:
-                        box_name, _, _ = parse_key(key)
-                    except ValueError:
-                        continue
-                    if any(w.kind != "Text" for w in drawn.get(box_name, ())):
-                        errors.append(
-                            (
-                                "E003",
-                                f"page numbers: box {key!r} on page {p.page} isn't a text box",
-                            )
+                if key and _isnt_text_box(key, drawn):
+                    errors.append(
+                        (
+                            "E003",
+                            f"page numbers: box {key!r} on page {p.page} isn't a text box",
                         )
+                    )
             # A page's position prints in one box: an untagged key whose name has more than
             # one drawn widget would print it in each. A page count is the same in all.
             widgets = drawn.get(p.this, ()) if p.this else ()  # a tagged key has "@"
@@ -753,21 +748,22 @@ def validate_schema(
                 )
         # A figure can't tick a box or fill a combo: every filer with a row would be refused.
         for key in sorted(total_box_keys(group)):
-            try:
-                box_name, _, _ = parse_key(key)
-            except ValueError:
-                continue  # _drawn_on has reported it
-            if any(w.kind != "Text" for w in drawn.get(box_name, ())):
+            if _isnt_text_box(key, drawn):
                 errors.append(("E003", f"group {name!r}: total box {key!r} isn't a text box"))
-        # An entry number is text too (R13).
+        # An entry number is text too (R13). A name drawn nowhere has no widget to be a non-text one.
         for key in sorted(set(group.number_boxes.values())):
-            try:
-                box_name, _, _ = parse_key(key)
-            except ValueError:
-                continue  # _drawn_on has reported it
-            if any(w.kind != "Text" for w in drawn.get(box_name, ())):
+            if _isnt_text_box(key, drawn):
                 errors.append(("E003", f"group {name!r}: number box {key!r} isn't a text box"))
     return errors
+
+
+def _isnt_text_box(key: str, drawn) -> bool:
+    """True when a box key names a drawn widget that is not a text box; a bad key is no."""
+    try:
+        box_name, _, _ = parse_key(key)
+    except ValueError:
+        return False  # _drawn_on has reported it
+    return any(w.kind != "Text" for w in drawn.get(box_name, ()))
 
 
 _STATEMENT_BINDING = re.compile(r"income\.statement\[\]\.(?:owner|description|gross|expenses|net)")

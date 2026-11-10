@@ -120,7 +120,8 @@ def fit(
 
     A group's number box (3c spec §5.4) skips /MaxLen, which only stops typing and nothing
     can type in a baked page. Only after every size has failed, so a number that fits keeps
-    its size, it also takes the right bearing a last digit leaves clear, at 6 pt.
+    its size, it also takes the right bearing a last digit leaves clear, at 6 pt, and only in a
+    fixed-size box (/DA size not 0): an auto-size box has no 6 pt floor to slacken (R15).
 
     A line break starts a new line in a multi-line box and is a space in any other
     box. A multi-line box leaves out empty lines at the end, so they take no room.
