@@ -190,6 +190,14 @@ def test_column_b_is_blank_for_property_owned_with_someone(session):
     assert (D.value, D.unsecured) == (None, None)
 
 
+def test_a_property_worth_nothing_still_prints_column_b_and_the_whole_debt_in_c(session):
+    row = _property(session, "3", who="only_you", entire=Decimal("0"))
+    linked_loan(session, row, "100", amount_owed=Decimal("8500"))
+    D = _rows(session).secured[0]
+    assert D.value == Decimal("0.00")
+    assert D.unsecured == Decimal("8500.00")
+
+
 def test_column_b_reads_the_debts_who_on_an_item(session):
     row = _property(session, "6", current=Decimal("1200"))
     linked_loan(session, row, "100", collateral_who="only_you")
@@ -258,6 +266,10 @@ def test_h_line_2_prints_the_spouse_only_under_both_yes(session):
     assert community_answers(fresh()) == stored | {"spouse_state": "", "spouse_zip": ""}
 
     blank = dict.fromkeys(stored, "")
+    # lived turns No while the spouse's Yes and details stay stored: none of it prints
+    answer_claims(session, community_lived="no")
+    assert community_answers(fresh()) == blank | {"lived": "no"}
+
     answer_claims(session, community_lived="yes", community_spouse_lived_with="no")
     assert community_answers(fresh()) == blank | {"lived": "yes", "spouse_lived_with": "no"}
 
@@ -266,7 +278,19 @@ def test_h_line_2_prints_the_spouse_only_under_both_yes(session):
 
 
 def test_h_line_2_is_blank_with_no_answers_row(session):
-    assert set(community_answers(IntakeSession.objects.get(pk=session.pk)).values()) == {""}
+    keys = (
+        "lived",
+        "spouse_lived_with",
+        "state",
+        "spouse_name",
+        "spouse_street",
+        "spouse_street_2",
+        "spouse_city",
+        "spouse_state",
+        "spouse_zip",
+    )
+    answers = community_answers(IntakeSession.objects.get(pk=session.pk))
+    assert answers == dict.fromkeys(keys, "")
 
 
 def test_resolving_the_rows_twice_in_one_read_reads_once(session):
@@ -274,7 +298,8 @@ def test_resolving_the_rows_twice_in_one_read_reads_once(session):
     linked_loan(session, row, "100", creditor_name="S Auto", notice_parties=[_party("One")])
     for n in range(4):
         complete_debt(session, creditor_name=f"Card {n}", notice_parties=[_party("Two")])
-    contract = complete_contract(session)
+    complete_contract(session, counterparty_name="First Leasing")
+    contract = complete_contract(session, counterparty_name="Second Leasing")
     complete_codebtor(session, links=[{"kind": "contract", "id": contract.pk}])
     fresh = IntakeSession.objects.get(pk=session.pk)
     with one_read_of_claims():
@@ -283,7 +308,23 @@ def test_resolving_the_rows_twice_in_one_read_reads_once(session):
             second = claim_rows(fresh)
         assert second is first
         assert len(again) == 0
-    with CaptureQueriesContext(connection) as outside:
+    # a cache that outlived the block would make either of these read nothing
+    with CaptureQueriesContext(connection) as outside_one:
         claim_rows(fresh)
+    with CaptureQueriesContext(connection) as outside_two:
         claim_rows(fresh)
-    assert len(outside) >= 2
+    assert len(outside_one) >= 1
+    assert len(outside_two) >= 1
+
+
+def test_a_codebtors_contract_link_never_reads_as_a_debt_with_the_same_id(session):
+    complete_debt(session, creditor_name="A Card")
+    debt = complete_debt(session, creditor_name="B Card")
+    # contracts and debts are different tables: give the contract the debt's id on purpose
+    contract = complete_contract(session, pk=debt.pk)
+    assert contract.pk == debt.pk
+    complete_codebtor(session, links=[{"kind": "contract", "id": contract.pk}])
+    R = _rows(session)
+    assert [r.with_another for r in R.unsecured] == [False, False]
+    only = R.codebtors[0]
+    assert (only.d_lines, only.ef_lines, only.g_lines) == ((), (), ("2.1",))
