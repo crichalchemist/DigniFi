@@ -595,11 +595,6 @@ def money_or_blank(amount: Decimal | None) -> str:
     return "" if amount is None else _fmt(amount)
 
 
-def _yes_tick(answer: str) -> str:
-    """A single box's answer: "true" for Yes, blank for No or unanswered."""
-    return "true" if answer == "yes" else ""
-
-
 def _spouse_street(answers: dict) -> str:
     return ", ".join(filter(None, (answers["spouse_street"], answers["spouse_street_2"])))
 
@@ -1054,8 +1049,8 @@ DERIVATIONS: dict[str, Callable[[IntakeSession], str]] = {
     # Form 122A-2 means test expense deduction derivations
     "means_test_disposable_income": _means_test_disposable_income,
     # Schedule H line 2 (3c5): the community property answers, as the claims step asks them
-    "schedule_h_community_lived": lambda s: _yes_tick(community_answers(s)["lived"]),
-    "schedule_h_spouse_lived_with": lambda s: _yes_tick(community_answers(s)["spouse_lived_with"]),
+    "schedule_h_community_lived": lambda s: community_answers(s)["lived"],
+    "schedule_h_spouse_lived_with": lambda s: community_answers(s)["spouse_lived_with"],
     "schedule_h_community_state": lambda s: community_answers(s)["state"],
     "schedule_h_spouse_name": lambda s: community_answers(s)["spouse_name"],
     "schedule_h_spouse_street": lambda s: _spouse_street(community_answers(s)),

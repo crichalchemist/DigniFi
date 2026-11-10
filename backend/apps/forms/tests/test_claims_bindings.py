@@ -251,19 +251,23 @@ SPOUSE = {
 
 
 def test_schedule_h_line_2_prints_only_what_the_filer_was_asked(session):
-    # No: nothing else was asked, so a stale answer prints nowhere.
+    # No: check2 prints "no" (two-state box); nothing else was asked, so a stale answer prints nowhere.
     answer_claims(session, community_lived="no", community_spouse_lived_with="yes", **SPOUSE)
-    assert _h(session) == dict.fromkeys(HOUSE_RULES, "")
+    assert _h(session) == {**dict.fromkeys(HOUSE_RULES, ""), "schedule_h_community_lived": "no"}
 
-    # Yes, spouse did not live with the filer: line 2's box 3 stays blank, no name or address.
+    # Yes, spouse did not live with the filer: check3 prints "no", no name or address.
     answer_claims(session, community_lived="yes", community_spouse_lived_with="no", **SPOUSE)
-    assert _h(session) == {**dict.fromkeys(HOUSE_RULES, ""), "schedule_h_community_lived": "true"}
+    assert _h(session) == {
+        **dict.fromkeys(HOUSE_RULES, ""),
+        "schedule_h_community_lived": "yes",
+        "schedule_h_spouse_lived_with": "no",
+    }
 
     # Yes and Yes: the state, the name and the address, the street joined with its second line.
     answer_claims(session, community_lived="yes", community_spouse_lived_with="yes", **SPOUSE)
     assert _h(session) == {
-        "schedule_h_community_lived": "true",
-        "schedule_h_spouse_lived_with": "true",
+        "schedule_h_community_lived": "yes",
+        "schedule_h_spouse_lived_with": "yes",
         "schedule_h_community_state": "Wisconsin",
         "schedule_h_spouse_name": "Demo Spouse",
         "schedule_h_spouse_street": "2 Demo Street, Apt 5",
