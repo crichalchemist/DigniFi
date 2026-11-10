@@ -43,11 +43,16 @@ export interface IntakeSession {
   debts?: DebtInfo[];
   /** The Schedule D, E/F, G and H questions that aren't on a row (3c3 spec §7.3) */
   claim_answers?: ClaimAnswers;
+  /** The retired Expenses figures the server still holds, a two-place decimal string or null (3c4) */
+  legacy_payments?: LegacyPayments;
   household?: Household | null;
   spouse_income?: SpouseIncome | null;
   form_answers?: Record<string, unknown>;
   sofa_report?: Record<string, unknown>;
 }
+
+export type LegacyField = 'vehicle_payment' | 'other_property_mortgages';
+export type LegacyPayments = Record<LegacyField, string | null>;
 
 export interface DebtorInfo {
   id: number;
@@ -611,6 +616,8 @@ export interface ClaimAnswers {
   community_spouse_state?: string | null;
   community_spouse_zip_code?: string | null;
   community_spouse_outside_us?: boolean | null;
+  /** The typed rent or mortgage the filer confirmed beside a linked first mortgage (3c4 R7) */
+  line_4_both_confirmed?: string | null;
 }
 
 /** A contract or codebtor the wizard holds: every field, and the browser's own key (3c2) */
