@@ -25,6 +25,16 @@ DEBT_GAP_DRAFT = "Check the debts read from your documents on the Amounts Owed s
 CLAIM_GAP_KIND = "Choose a kind for {name}."
 CLAIM_GAP_ADDRESS = "Enter the street, city, two-letter state and ZIP for {name}."
 CLAIM_GAP_STREET_CITY = "Enter the street and city for {name}."
+CLAIM_GAP_LEGACY_VEHICLE = (
+    "You told us you pay ${typed} a month for a car, and the payments you linked add up to "
+    "${linked}. Add the rest to the loan on Amounts Owed or the lease on Contracts & Leases, "
+    "or remove this figure."
+)
+CLAIM_GAP_LEGACY_OTHER = (
+    "You told us you pay ${typed} a month in mortgages on other property, and the payments "
+    "you linked add up to ${linked}. Add the rest to the mortgage on Amounts Owed, "
+    "or remove this figure."
+)
 
 DEBT_GAP_NO_ANSWER = "List each amount you owe, or press “I have no amounts owed.”"
 DEBT_GAP_NONE_BUT_LISTED = (
@@ -413,12 +423,47 @@ def claim_step_gaps(session) -> list[ClaimStepGap]:
     debts = list(session.debts.all())
     contracts = sorted(session.executory_contracts.all(), key=lambda row: row.pk)
     codebtors = sorted(session.codebtors.all(), key=lambda row: row.pk)
-    return [
+    gaps = [
         *_asset_gaps(session, debts),
         *_debt_gaps(session, debts, answers),
         *_contract_gaps(session, contracts, answers),
         *_codebtor_gaps(session, codebtors, debts, contracts, answers),
     ]
+    linked = linked_payments(session)
+    return [*gaps, *_legacy_gaps(session, linked)]
+
+
+def _legacy_figure(session, field) -> Decimal:
+    """A retired Expenses figure, $0 with no Expenses row. Reads the row by attribute, as
+    claim_step_gaps reads claim_answers, since this module imports no model."""
+    row = getattr(session, "expense_info", None)
+    return (getattr(row, field, None) or _ZERO) if row is not None else _ZERO
+
+
+def _legacy_gaps(session, linked) -> list[ClaimStepGap]:
+    """A stored car or other-property payment above what the links add up to (R6).
+
+    Each figure compares with its own sum: a mortgage on other property never covers a car.
+    """
+    gaps = []
+    for field, covered, sentence in (
+        ("vehicle_payment", linked.vehicle_total, CLAIM_GAP_LEGACY_VEHICLE),
+        ("other_property_mortgages", linked.other_real_property, CLAIM_GAP_LEGACY_OTHER),
+    ):
+        typed = _legacy_figure(session, field)
+        if typed > covered:
+            message = sentence.format(typed=format_figure(typed), linked=format_figure(covered))
+            gaps.append(ClaimStepGap(message, "debts"))
+    return gaps
+
+
+def legacy_payments(session) -> dict:
+    """The session read's retired figures: a decimal string while above $0, else None."""
+    out = {}
+    for field in ("vehicle_payment", "other_property_mortgages"):
+        value = _legacy_figure(session, field)
+        out[field] = f"{value:.2f}" if value > _ZERO else None
+    return out
 
 
 VEHICLE_WORDS = ("Vehicle 3", "Vehicle 4")

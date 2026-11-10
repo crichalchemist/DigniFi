@@ -18,7 +18,7 @@ from apps.districts.dated_tables import fill_date
 from apps.eligibility.cmi import answered_window, income_step_gaps, income_window
 
 from .asset_lines import LINE_BY_KEY, PROPERTY_KINDS, WHO
-from .claims import account_last_4, ordered_debts
+from .claims import account_last_4, legacy_payments, ordered_debts
 from .household import (
     MAX_AGE,
     MAX_MEMBERS,
@@ -381,6 +381,13 @@ class ExpenseInfoSerializer(serializers.ModelSerializer):
     other_property_hoa_dues = serializers.DecimalField(
         max_digits=10, decimal_places=2, min_value=Decimal("0"), required=False, default=0
     )
+    # Retired (3c4): a figure of 0 is Remove, and any other figure is dropped in validate.
+    vehicle_payment = serializers.DecimalField(
+        max_digits=10, decimal_places=2, min_value=Decimal("0"), write_only=True, required=False
+    )
+    other_property_mortgages = serializers.DecimalField(
+        max_digits=10, decimal_places=2, min_value=Decimal("0"), write_only=True, required=False
+    )
     taxes_specify = serializers.CharField(max_length=100, allow_blank=True, required=False)
     support_others_specify = serializers.CharField(max_length=100, allow_blank=True, required=False)
     other_expenses_specify = serializers.CharField(max_length=100, allow_blank=True, required=False)
@@ -393,6 +400,7 @@ class ExpenseInfoSerializer(serializers.ModelSerializer):
         fields = [
             "data_source",
             *ExpenseInfo.AMOUNT_FIELDS,
+            *ExpenseInfo.LEGACY_FIELDS,
             *ExpenseInfo.SPECIFY_FIELDS,
             "expenses_include_others",
             "total_monthly_expenses",
@@ -400,6 +408,13 @@ class ExpenseInfoSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
         read_only_fields = ["created_at", "updated_at", "total_monthly_expenses"]
+
+    def validate(self, attrs):
+        """Keep a retired figure only when it is 0 (Remove); any other figure is never stored."""
+        for field in ExpenseInfo.LEGACY_FIELDS:
+            if field in attrs and attrs[field] != 0:
+                del attrs[field]
+        return attrs
 
     def get_total_monthly_expenses(self, obj):
         """Calculate and return total monthly expenses."""
@@ -997,6 +1012,7 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
 
     district_name = serializers.CharField(source="district.name", read_only=True)
     income_window = serializers.SerializerMethodField()
+    legacy_payments = serializers.SerializerMethodField()
 
     class Meta:
         model = IntakeSession
@@ -1017,6 +1033,7 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
             "household",
             "spouse_income",
             "income_window",
+            "legacy_payments",
             "created_at",
             "completed_at",
         ]
@@ -1030,6 +1047,7 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
             "completed_at",
             "district_name",
             "income_window",
+            "legacy_payments",
         ]
 
     def validate_asset_lines(self, answers):
@@ -1064,6 +1082,10 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
         """The six full months before today, which the Income step's figures cover."""
         start, end = income_window(fill_date())
         return {"start": start.isoformat(), "end": end.isoformat()}
+
+    def get_legacy_payments(self, obj) -> dict:
+        """The car and other-property payments typed before they moved to the links (3c4 R6)."""
+        return legacy_payments(obj)
 
     def create(self, validated_data):
         """
@@ -1155,7 +1177,9 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
         # An empty body still creates the record with its $0 defaults, so the filer can
         # complete (DIG-153). The wizard sends all 13 amounts, a blank box as 0.
         if expense_data is not None:
-            ExpenseInfo.objects.update_or_create(session=instance, defaults=expense_data)
+            instance.expense_info, _ = ExpenseInfo.objects.update_or_create(
+                session=instance, defaults=expense_data
+            )
 
         if household_data:
             _save_household(instance, household_data)

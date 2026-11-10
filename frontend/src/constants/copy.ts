@@ -750,3 +750,9 @@ export const REVIEW_NO_CODEBTORS = 'You said you have no codebtors.';
 export const REVIEW_UNNAMED_CONTRACT = 'Unnamed contract';
 
 export const REVIEW_UNNAMED_CODEBTOR = 'Unnamed codebtor';
+
+export const CLAIM_GAP_LEGACY_VEHICLE =
+  'You told us you pay ${typed} a month for a car, and the payments you linked add up to ${linked}. Add the rest to the loan on Amounts Owed or the lease on Contracts & Leases, or remove this figure.';
+
+export const CLAIM_GAP_LEGACY_OTHER =
+  'You told us you pay ${typed} a month in mortgages on other property, and the payments you linked add up to ${linked}. Add the rest to the mortgage on Amounts Owed, or remove this figure.';

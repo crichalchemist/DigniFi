@@ -22,7 +22,7 @@ from apps.intake.claims import (
     claim_step_gaps,
     link_is_live,
 )
-from apps.intake.models import AssetInfo, DebtInfo, IntakeSession
+from apps.intake.models import AssetInfo, DebtInfo, ExpenseInfo, IntakeSession
 from apps.intake.tests.builders import (
     answer_claims,
     complete_codebtor,
@@ -92,6 +92,18 @@ def _secured(session, asset=None, **over) -> DebtInfo:
 
 def _other_session(session) -> IntakeSession:
     return IntakeSession.objects.create(user=session.user, district=session.district)
+
+
+def _legacy(values, linked_loan_payment=None, **figures):
+    def build(session):
+        if linked_loan_payment is not None:
+            _secured(session, monthly_payment=Decimal(linked_loan_payment))
+        ExpenseInfo.objects.create(
+            session=session, **{key: Decimal(value) for key, value in figures.items()}
+        )
+        return values
+
+    return build
 
 
 # Each state is the one in which its constant's gap fires. It returns the values the sentence
@@ -261,6 +273,12 @@ STATES = {
     ),
     "CODEBTOR_GAP_NO_NAME": _nameless_codebtor,
     "CODEBTOR_GAP_NO_LINK": _codebtor_with(links=[]),
+    "CLAIM_GAP_LEGACY_VEHICLE": _legacy(
+        {"typed": "350.00", "linked": "200.00"}, 200, vehicle_payment="350"
+    ),
+    "CLAIM_GAP_LEGACY_OTHER": _legacy(
+        {"typed": "1,200.00", "linked": "0.00"}, other_property_mortgages="1200"
+    ),
 }
 
 
