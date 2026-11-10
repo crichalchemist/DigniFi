@@ -119,6 +119,7 @@ export function ExpenseInfoStep({
   }, [formData, totalMonthlyExpenses, errors]);
 
   const handleChange = (field: ExpenseField, value: string) => {
+    if (field === 'rent_or_mortgage') setLine4Failed(false);
     setFormData((prev) => ({ ...prev, [field]: parseAmount(value) }));
   };
 

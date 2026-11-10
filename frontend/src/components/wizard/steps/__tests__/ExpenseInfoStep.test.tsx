@@ -215,6 +215,20 @@ describe('ExpenseInfoStep', () => {
       expect(alert).toHaveTextContent(NOT_SAVED_TRY_AGAIN);
       expect(screen.getByText(sentence)).toBeInTheDocument();
     });
+
+    it('drops the not-saved alert once the rent changes to another figure that still asks', async () => {
+      const onLine4Confirm = vi.fn().mockRejectedValue(new Error('no'));
+      const { inputNamed } = renderStep(rent1200, { linkedFirstMortgage: 1200, onLine4Confirm });
+      fireEvent.click(screen.getByRole('button', { name: LINE_4_PAY_BOTH }));
+      await screen.findByRole('alert');
+
+      fireEvent.change(inputNamed('rent_or_mortgage')!, { target: { value: '1100' } });
+
+      expect(screen.queryByRole('alert')).toBeNull();
+      expect(
+        screen.getByText(fill(CLAIM_GAP_LINE_4, { typed: '1,100.00', linked: '1,200.00' }))
+      ).toBeInTheDocument();
+    });
   });
 
   it.each([

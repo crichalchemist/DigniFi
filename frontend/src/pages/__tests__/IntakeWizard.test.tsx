@@ -3273,6 +3273,61 @@ describe('IntakeWizard line 4 question', { timeout: 15_000 }, () => {
     expect(screen.getByText(sentence)).toBeInTheDocument();
   });
 
+  function serveSession(session: Record<string, unknown>) {
+    server.use(
+      http.get('http://localhost:8000/api/intake/sessions/:id/', () => HttpResponse.json(session)),
+      http.post(
+        'http://localhost:8000/api/audit/logs/',
+        () => new HttpResponse(null, { status: 201 })
+      )
+    );
+  }
+
+  it('a returning filer whose confirmation is stored is not asked again', async () => {
+    serveSession({ ...savedSession, claim_answers: { line_4_both_confirmed: '1200.00' } });
+    renderWizard();
+    await screen.findByRole('heading', { name: /expenses/i, level: 2 });
+
+    expect(screen.queryByText(sentence)).toBeNull();
+    expect(screen.queryByRole('button', { name: LINE_4_PAY_BOTH })).toBeNull();
+  });
+
+  it('names the first mortgage alone, not a linked car loan beside it', async () => {
+    serveSession({
+      ...savedSession,
+      assets: [
+        homeRow,
+        {
+          ...homeRow,
+          id: 8,
+          ab_line: '3',
+          current_value: '8000.00',
+          entire_value: '8000.00',
+          details: { make: 'Demo', who: 'only_you' },
+        },
+      ],
+      debts: [
+        mortgage,
+        {
+          ...storedDebt,
+          id: 12,
+          creditor_name: 'Demo Auto Finance',
+          debt_type: 'car_loan',
+          priority_classification: 'secured',
+          amount_owed: '8000.00',
+          monthly_payment: '300.00',
+          is_secured: true,
+          secured_by: 8,
+          home_payment_line: null,
+        },
+      ],
+    });
+    renderWizard();
+    await screen.findByRole('heading', { name: /expenses/i, level: 2 });
+
+    expect(screen.getByText(sentence)).toBeInTheDocument();
+  });
+
   it('step 4 sends the same keys after the answer as before it', async () => {
     const patchBodies = serve();
     renderWizard();
