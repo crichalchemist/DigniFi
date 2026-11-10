@@ -33,6 +33,7 @@ from apps.intake.asset_lines import (
     rows_on,
     rows_under_gate,
 )
+from apps.intake.claim_rows import community_answers
 from apps.intake.claims import linked_payments, total_monthly_expenses
 from apps.intake.household import count_family_size, dependents
 from apps.intake.income import (
@@ -594,6 +595,15 @@ def money_or_blank(amount: Decimal | None) -> str:
     return "" if amount is None else _fmt(amount)
 
 
+def _yes_tick(answer: str) -> str:
+    """A single box's answer: "true" for Yes, blank for No or unanswered."""
+    return "true" if answer == "yes" else ""
+
+
+def _spouse_street(answers: dict) -> str:
+    return ", ".join(filter(None, (answers["spouse_street"], answers["spouse_street_2"])))
+
+
 # ---------------------------------------------------------------------------
 # Form 101 line 8 and Form 103B lines 4–9: the filing-fee page's answers
 # ---------------------------------------------------------------------------
@@ -1043,6 +1053,15 @@ DERIVATIONS: dict[str, Callable[[IntakeSession], str]] = {
     "schedule_j_has_dependents": _schedule_j_has_dependents,
     # Form 122A-2 means test expense deduction derivations
     "means_test_disposable_income": _means_test_disposable_income,
+    # Schedule H line 2 (3c5): the community property answers, as the claims step asks them
+    "schedule_h_community_lived": lambda s: _yes_tick(community_answers(s)["lived"]),
+    "schedule_h_spouse_lived_with": lambda s: _yes_tick(community_answers(s)["spouse_lived_with"]),
+    "schedule_h_community_state": lambda s: community_answers(s)["state"],
+    "schedule_h_spouse_name": lambda s: community_answers(s)["spouse_name"],
+    "schedule_h_spouse_street": lambda s: _spouse_street(community_answers(s)),
+    "schedule_h_spouse_city": lambda s: community_answers(s)["spouse_city"],
+    "schedule_h_spouse_state": lambda s: community_answers(s)["spouse_state"],
+    "schedule_h_spouse_zip": lambda s: community_answers(s)["spouse_zip"],
 }
 
 
@@ -1241,6 +1260,13 @@ RULE_FIXES: dict[str, dict[str, str]] = {
     "schedule_i_employer_city_debtor1": {},
     "schedule_i_employer_state_debtor1": {},
     "schedule_i_employer_zip_debtor1": {},
+    # Schedule H line 2: the spouse's name and address are entered on the Codebtors step
+    "schedule_h_community_state": {"step": "codebtors"},
+    "schedule_h_spouse_name": {"step": "codebtors"},
+    "schedule_h_spouse_street": {"step": "codebtors"},
+    "schedule_h_spouse_city": {"step": "codebtors"},
+    "schedule_h_spouse_state": {"step": "codebtors"},
+    "schedule_h_spouse_zip": {"step": "codebtors"},
 }
 
 

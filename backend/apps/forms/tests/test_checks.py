@@ -902,6 +902,32 @@ def test_a_total_box_that_cannot_add_its_own_rows_is_reported(
     assert _errors("schedule_d") == [error]
 
 
+def test_a_total_over_a_column_that_holds_no_amount_is_refused(schedule_d_with_totals):
+    # A name can't be added: the total box would print a sum of words, or raise on a filer's row.
+    _edit(
+        schedule_d_with_totals,
+        "schedule_d",
+        _totals(lambda t: t.update(column="sofa.creditor_payments[].creditor_name")),
+    )
+    assert _errors("schedule_d") == [
+        (
+            "forms.E007",
+            "schedule_d: group 'd_part_1': its total adds "
+            "'sofa.creditor_payments[].creditor_name', which holds no amount",
+        )
+    ]
+
+
+def test_a_claims_binding_passes_the_namespace_check(schedule_d_with_totals):
+    def rebind(d):
+        for f in d["fields"]:
+            if f["binding"] == "sofa.creditor_payments[].creditor_name":
+                f["binding"] = "claims.secured[].name"
+
+    _edit(schedule_d_with_totals, "schedule_d", rebind)
+    assert not [e for e in _errors("schedule_d") if "unknown binding namespace" in e[1]]
+
+
 def test_a_total_box_another_binding_fills_is_reported(schedule_d_with_totals):
     # The real binding of undefined_24, put back: the rule's figure and the group's would fight.
     def add(d):

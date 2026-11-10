@@ -272,7 +272,7 @@ _WIDGET_TYPES = {
     "checkbox": {"CheckBox", "RadioButton"},
     "radio": {"CheckBox", "RadioButton"},
 }
-_BINDING_NAMESPACES = ("answer:", "sofa.", "household.", "assets.")
+_BINDING_NAMESPACES = ("answer:", "sofa.", "household.", "assets.", "claims.")
 
 
 def validate_schema(
@@ -777,7 +777,10 @@ _LIST_BINDING = re.compile(
 
 def _totals_errors(name: str, group: GroupSpec, rows: list[FieldSpec]) -> list[tuple[str, str]]:
     """What keeps a group's total boxes from adding up its own rows (3c spec §5.3)."""
-    from apps.forms.services.fill_resolver import _unmapped  # here: it imports this module
+    from apps.forms.services.fill_resolver import (  # here: it imports this module
+        _unmapped,
+        is_money_binding,
+    )
 
     totals = group.totals
     if group.extra_page is None:
@@ -792,6 +795,13 @@ def _totals_errors(name: str, group: GroupSpec, rows: list[FieldSpec]) -> list[t
                 "E007",
                 f"group {name!r}: its totals add {totals.column!r}, "
                 "which isn't a text slot of the group",
+            )
+        )
+    elif not is_money_binding(totals.column):
+        errors.append(
+            (
+                "E007",
+                f"group {name!r}: its total adds {totals.column!r}, which holds no amount",
             )
         )
     slot_pages = {f.page for f in rows if not _unmapped(f)}

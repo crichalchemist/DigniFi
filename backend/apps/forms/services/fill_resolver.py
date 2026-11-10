@@ -15,6 +15,7 @@ import re
 from collections import Counter
 from collections.abc import Callable
 from decimal import Decimal
+from typing import Any
 
 from apps.eligibility.cmi import counted_spouse_income, household_members
 from apps.forms.field_index import option_text
@@ -43,6 +44,15 @@ from apps.intake.asset_lines import (
     ordered_assets,
     rows_on,
 )
+from apps.intake.claim_rows import (
+    DEBT_TYPE_WORDS,
+    ContractRow,
+    DebtRow,
+    NoticeRow,
+    claim_rows,
+    one_read_of_claims,
+)
+from apps.intake.claims import account_last_4
 from apps.intake.household import RELATIONSHIP_WORDS, dependents
 from apps.intake.income import statement_rows
 from apps.intake.models import AssetInfo, FormAnswer, IntakeSession
@@ -168,6 +178,164 @@ ASSET_BOX_CELLS = frozenset(
 )
 _ASSET_BINDING = re.compile(r"assets\.line_(\d+)(?:_(\w+))?\[\]\.(\w+)")
 
+
+# --- claims.<list>[].<attr>: the rows Schedules D, E/F, G and H print (3c5 spec §9) ---
+# CLAIM_CELLS formats the row objects apps.intake.claim_rows reads once; it never reads a model.
+
+
+def _address_of(row) -> dict:
+    """A row's name and address, whichever of the four row shapes it is."""
+    if isinstance(row, DebtRow):
+        d = row.debt
+        return {
+            "name": d.creditor_name,
+            "street": d.street_address,
+            "street_2": d.street_2,
+            "city": d.city,
+            "state": d.state,
+            "zip": d.zip_code,
+            "outside_us": d.outside_us,
+        }
+    if isinstance(row, NoticeRow):
+        p = row.party
+        return {
+            "name": p.get("name"),
+            "street": p.get("street_address"),
+            "street_2": p.get("street_2"),
+            "city": p.get("city"),
+            "state": p.get("state"),
+            "zip": p.get("zip_code"),
+            "outside_us": p.get("outside_us"),
+        }
+    other = row.contract if isinstance(row, ContractRow) else row.codebtor
+    return {
+        "name": other.counterparty_name if isinstance(row, ContractRow) else other.name,
+        "street": other.street_address,
+        "street_2": other.street_2,
+        "city": other.city,
+        "state": other.state,
+        "zip": other.zip_code,
+        "outside_us": other.outside_us,
+    }
+
+
+def _address_cell(part: str) -> Callable[[Any], str]:
+    def cell(row) -> str:
+        address = _address_of(row)
+        if part in ("state", "zip") and address["outside_us"]:
+            return ""  # B49: an address outside the US prints no state or ZIP, whatever is stored
+        if part == "street_joined":
+            return ", ".join(filter(None, (address["street"], address["street_2"])))
+        return address[part] or ""
+
+    return cell
+
+
+def _tick(on: bool) -> str:
+    return "true" if on else ""
+
+
+def _status(kind: str) -> Callable[[DebtRow], str]:
+    return lambda row: _tick(kind in (row.debt.get_claim_status() or []))
+
+
+def _lien_kind(kind: str) -> Callable[[DebtRow], str]:
+    return lambda row: _tick(kind in ((row.debt.get_lien() or {}).get("kinds") or []))
+
+
+def _lien_other_text(row: DebtRow) -> str:
+    lien = row.debt.get_lien() or {}
+    return (lien.get("other") or "") if "other" in (lien.get("kinds") or []) else ""
+
+
+def _other_type_words(row: DebtRow) -> str:
+    debt_type = row.debt.debt_type
+    return "" if debt_type == "student_loan" else DEBT_TYPE_WORDS.get(debt_type, "")
+
+
+def _lines(lines: tuple[str, ...]) -> str:
+    return ", ".join(lines)
+
+
+_ADDRESS_PARTS = ("name", "city", "state", "zip")
+
+
+def _addressed(*extra: str) -> dict[str, Callable[[Any], str]]:
+    return {part: _address_cell(part) for part in (*_ADDRESS_PARTS, *extra)}
+
+
+_DEBT_COMMON = {
+    "who": lambda row: "another" if row.with_another else "debtor_1",
+    "who_debtor_1": lambda row: _tick(not row.with_another),
+    "who_another": lambda row: _tick(row.with_another),
+    "community": lambda row: _tick(row.debt.community_debt == "yes"),
+    "date": lambda row: row.debt.date_incurred or "",
+    "contingent": _status("contingent"),
+    "unliquidated": _status("unliquidated"),
+    "disputed": _status("disputed"),
+    "last_4": lambda row: account_last_4(row.debt.account_number),
+    "amount": lambda row: money_or_blank(row.debt.amount_owed),
+}
+
+CLAIM_CELLS: dict[str, dict[str, Callable[[Any], str]]] = {
+    "secured": {
+        **_addressed("street", "street_2"),
+        **_DEBT_COMMON,
+        "property": lambda row: row.debt.collateral_description or "",
+        **{f"lien_{kind}": _lien_kind(kind) for kind in ("agreement", "statutory", "judgment")},
+        "lien_other": _lien_kind("other"),
+        "lien_other_text": _lien_other_text,
+        "value": lambda row: money_or_blank(row.value),
+        "unsecured": lambda row: money_or_blank(row.unsecured),
+    },
+    "unsecured": {
+        **_addressed("street_joined"),
+        **_DEBT_COMMON,
+        "student_loans": lambda row: _tick(row.debt.debt_type == "student_loan"),
+        "other_type": lambda row: _tick(
+            bool(row.debt.debt_type) and row.debt.debt_type != "student_loan"
+        ),
+        "other_type_words": _other_type_words,
+        "offset": lambda row: row.debt.offset_answer or "",
+    },
+    "secured_notices": {
+        **_addressed("street", "street_2"),
+        "line": lambda row: row.line,
+        "last_4": lambda row: row.party.get("last_4") or "",
+    },
+    "unsecured_notices": {
+        **_addressed("street", "street_2"),
+        "line": lambda row: row.line,
+        "last_4": lambda row: row.party.get("last_4") or "",
+        "part": lambda row: "2",
+    },
+    "contracts": {
+        **_addressed("street_joined"),
+        "purpose": lambda row: row.contract.description or "",
+    },
+    "codebtors": {
+        **_addressed("street_joined"),
+        "on_d": lambda row: _tick(bool(row.d_lines)),
+        "d_lines": lambda row: _lines(row.d_lines),
+        "on_ef": lambda row: _tick(bool(row.ef_lines)),
+        "ef_lines": lambda row: _lines(row.ef_lines),
+        "on_g": lambda row: _tick(bool(row.g_lines)),
+        "g_lines": lambda row: _lines(row.g_lines),
+    },
+}
+# The cells that print a dollar amount: the only columns a group's total box may add (R14).
+CLAIM_MONEY_CELLS = frozenset({"amount", "value", "unsecured"})
+_CLAIM_BINDING = re.compile(r"claims\.(\w+)\[\]\.(\w+)")
+
+
+def is_money_binding(binding: str) -> bool:
+    """Whether a binding's cells are dollar amounts, so a total box can add them (R14)."""
+    match = _CLAIM_BINDING.fullmatch(binding.strip())
+    if match:
+        return match[2] in CLAIM_MONEY_CELLS
+    return binding.strip() == "sofa.creditor_payments[].total_paid"
+
+
 # Single-box answers, compared case-insensitively (spec §5.1).
 _TICK = {"yes", "y", "true", "1", "on"}
 _NO_TICK = {"no", "n", "false", "0", "off", ""}
@@ -232,6 +400,13 @@ def resolve_binding(binding: str, session: IntakeSession) -> str | list[str]:
         ):
             raise ValueError(f"unrecognized binding: {binding!r}")
         return [ASSET_CELLS[attr](row) for row in rows_on(ordered_assets(session), key, kind)]
+
+    if binding.startswith("claims."):
+        match = _CLAIM_BINDING.fullmatch(binding)
+        cell = CLAIM_CELLS.get(match[1], {}).get(match[2]) if match else None
+        if cell is None:
+            raise ValueError(f"unrecognized binding: {binding!r}")
+        return [cell(row) for row in getattr(claim_rows(session), match[1])]
 
     raise ValueError(f"unrecognized binding: {binding!r}")
 
@@ -298,6 +473,14 @@ def binding_fix(binding: str) -> dict[str, str]:
         return {"step": "income_info"}
     if binding.startswith("assets."):
         return {"step": "assets"}
+    if binding.startswith("claims."):
+        match = _CLAIM_BINDING.match(binding)
+        if match:
+            if match[1] == "contracts":
+                return {"step": "contracts"}
+            if match[1] == "codebtors":
+                return {"step": "codebtors"}
+        return {"step": "debts"}
     # A constant or a signature: a refusal there is DigniFi's defect, not the filer's.
     return {}
 
@@ -577,7 +760,7 @@ def resolve_parts(schema: FormSchema, session: IntakeSession) -> dict:
     # A/B's rules and bindings each ask for the rows: measured at 0.62 s more with 20 rows, a read
     # per rule. The read stays in this call, never on the session, so a session held across a save
     # prints what the save stored.
-    with one_read_of_assets():
+    with one_read_of_assets(), one_read_of_claims():
         return _resolve_parts(schema, session)
 
 
