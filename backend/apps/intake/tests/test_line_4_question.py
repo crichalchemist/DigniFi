@@ -227,11 +227,21 @@ def test_no_question_without_both_figures(filer, case):
     assert _complete(client, session).status_code == 200
 
 
-@pytest.mark.parametrize("value", ["abc", "-1", "1.234", "1234567890123", "NaN", "Infinity", 1200])
+@pytest.mark.parametrize(
+    "value",
+    ["abc", "-1", "1.234", "1234567890123", "NaN", "Infinity", 1200, "1_200", "１２００", "1E+3"],
+)
 def test_line_4_confirmed_takes_only_a_figure(filer, value):
     client, session = filer
 
     assert _confirm(client, session, value).status_code == 400
+
+
+@pytest.mark.parametrize("value", ["1200.00", "1200"])
+def test_line_4_confirmed_takes_a_plain_figure(filer, value):
+    client, session = filer
+
+    assert _confirm(client, session, value).status_code == 200
 
 
 def test_line_4_confirmed_none_clears_the_stored_value(filer):

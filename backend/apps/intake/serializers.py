@@ -986,15 +986,13 @@ def _save_claim_answers(session: IntakeSession, data: dict) -> None:
     session.claim_answers = record
 
 
+_LINE_4_FIGURE = re.compile(r"[0-9]{1,9}(\.[0-9]{1,2})?")
+
+
 def _is_line_4_figure(value) -> bool:
-    """A string of at most 12 characters holding a finite number at or above 0, to the cent."""
-    if not isinstance(value, str) or len(value) > 12:
-        return False
-    try:
-        number = Decimal(value)
-    except ArithmeticError:
-        return False
-    return number.is_finite() and number >= 0 and number.as_tuple().exponent >= -2
+    """A plain figure: ASCII digits with at most two places, 12 characters at most. Decimal would
+    also read "1_000" and full-width digits, which the browser's Number reads as NaN."""
+    return isinstance(value, str) and _LINE_4_FIGURE.fullmatch(value) is not None
 
 
 _CLAIM_YES_NO = (
