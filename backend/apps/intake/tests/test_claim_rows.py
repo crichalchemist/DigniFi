@@ -13,6 +13,7 @@ from django.test.utils import CaptureQueriesContext
 
 from apps.districts.models import District
 from apps.intake.claim_rows import claim_rows, community_answers, one_read_of_claims
+from apps.intake.claims import CODEBTOR_GAP_SPOUSE_DETAILS, _community_gaps
 from apps.intake.models import AssetInfo, IntakeSession
 from apps.intake.tests.builders import (
     answer_claims,
@@ -204,6 +205,16 @@ def test_column_b_reads_the_debts_who_on_an_item(session):
     assert _rows(session).secured[0].value == Decimal("1200.00")
 
 
+@pytest.mark.parametrize("who", ["with_someone", None])
+def test_column_b_is_blank_for_an_item_owned_with_someone(session, who):
+    # R5: an item owned with someone leaves B and C blank until counsel rules on C-1, and an
+    # unanswered owner is no "only you"
+    row = _property(session, "6", current=Decimal("1200"))
+    linked_loan(session, row, "100", collateral_who=who)
+    D = _rows(session).secured[0]
+    assert (D.value, D.unsecured) == (None, None)
+
+
 def test_column_b_ignores_a_collateral_who_the_filer_was_not_asked(session):
     row = _property(session, "3", who="with_someone", entire=Decimal("14000"))
     linked_loan(session, row, "100", collateral_who="only_you")
@@ -291,6 +302,36 @@ def test_h_line_2_is_blank_with_no_answers_row(session):
     )
     answers = community_answers(IntakeSession.objects.get(pk=session.pk))
     assert answers == dict.fromkeys(keys, "")
+
+
+_SPOUSE_DETAILS = {
+    "community_state": "Arizona",
+    "community_spouse_name": "Demo Spouse",
+    "community_spouse_street_address": "2 Demo Street",
+    "community_spouse_city": "Demoville",
+    "community_spouse_state": "AZ",
+    "community_spouse_zip_code": "85001",
+    "community_spouse_outside_us": False,
+}
+
+
+@pytest.mark.parametrize("lived", ["yes", "no", None])
+@pytest.mark.parametrize("with_spouse", ["yes", "no", None])
+def test_h_line_2_prints_the_spouse_exactly_where_the_codebtors_step_asks_for_them(
+    session, lived, with_spouse
+):
+    # community_answers copies _community_gaps' gate (R4): H must print the spouse's details
+    # where the step asks for them and nowhere else, whatever is still stored.
+    answer_claims(
+        session,
+        community_lived=lived,
+        community_spouse_lived_with=with_spouse,
+        **_SPOUSE_DETAILS,
+    )
+    stored = IntakeSession.objects.get(pk=session.pk).claim_answers.get_answers()
+    asked = CODEBTOR_GAP_SPOUSE_DETAILS in _community_gaps(stored | dict.fromkeys(_SPOUSE_DETAILS))
+    printed = community_answers(IntakeSession.objects.get(pk=session.pk))["spouse_name"]
+    assert printed == ("Demo Spouse" if asked else "")
 
 
 def test_resolving_the_rows_twice_in_one_read_reads_once(session):

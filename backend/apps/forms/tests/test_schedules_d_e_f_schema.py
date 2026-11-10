@@ -322,6 +322,7 @@ def test_a_secured_debt_prints_its_row_with_columns_a_b_and_c(session):
     assert _ticked(drawn, "An agreement you made such as mortgage or secured") == {"/On"}
     assert _ticked(drawn, "Disputed") == {"/On"}
     assert _ticked(drawn, "Contingent") == set()
+    assert _ticked(drawn, "Check if this claim relates to a") == set()
     assert _at(drawn, "undefined_9") == "8500.00"
     assert _at(drawn, "undefined_24") == "8500.00"
     assert _at(drawn, "undefined_23") == ""
@@ -491,7 +492,7 @@ def _query_count(session):
     return len(queries)
 
 
-def test_resolving_schedule_d_reads_the_rows_once(session):
+def test_resolving_schedule_d_reads_no_query_per_row(session):
     for n in range(3):
         _secured_on_a_car(session, n)
     _query_count(session)  # the first build also fills per-process caches
@@ -557,6 +558,7 @@ def test_an_unsecured_debt_prints_its_row(session):
     assert _at(drawn, "Other unsecurecured claim 4.1") == "Credit card"
     for status in ("Contingent_6", "Unliquidated_6", "Disputed_6"):
         assert _ticked(drawn, status) == set(), status
+    assert _ticked(drawn, "Check if this claim relates to a_6") == set()
 
 
 def test_a_student_loan_ticks_student_loans(session):

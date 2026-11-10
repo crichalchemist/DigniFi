@@ -132,21 +132,35 @@ def test_a_claims_binding_sends_the_filer_to_its_step(binding, fix):
     assert binding_fix(binding) == fix
 
 
-def test_an_address_outside_the_us_prints_no_state_or_zip(session):
-    complete_debt(
-        session,
-        is_secured=True,
-        outside_us=True,
-        state="ON",
-        zip_code="M5V 2T6",
-        city="Toronto",
-        notice_parties=[_party(outside_us=True, state="ON", zip_code="M5V 2T6", city="Toronto")],
-    )
-    for name in ("secured", "secured_notices"):
-        assert _cell(session, f"claims.{name}[].state") == [""]
-        assert _cell(session, f"claims.{name}[].zip") == [""]
-        assert _cell(session, f"claims.{name}[].city") == ["Toronto"]
-        assert _cell(session, f"claims.{name}[].street") == ["1 Demo Street"]
+_TORONTO = {"outside_us": True, "state": "ON", "zip_code": "M5V 2T6", "city": "Toronto"}
+
+
+@pytest.mark.parametrize(
+    "name,street,build",
+    [
+        ("secured", "street", lambda s: complete_debt(s, is_secured=True, **_TORONTO)),
+        (
+            "secured_notices",
+            "street",
+            lambda s: complete_debt(s, is_secured=True, notice_parties=[_party(**_TORONTO)]),
+        ),
+        ("unsecured", "street_joined", lambda s: complete_debt(s, **_TORONTO)),
+        (
+            "unsecured_notices",
+            "street",
+            lambda s: complete_debt(s, notice_parties=[_party(**_TORONTO)]),
+        ),
+        ("contracts", "street_joined", lambda s: complete_contract(s, **_TORONTO)),
+        ("codebtors", "street_joined", lambda s: complete_codebtor(s, links=[], **_TORONTO)),
+    ],
+)
+def test_an_address_outside_the_us_prints_no_state_or_zip(session, name, street, build):
+    # Every row shape keeps its own address, so each list is held to B49 apart.
+    build(session)
+    assert _cell(session, f"claims.{name}[].state") == [""]
+    assert _cell(session, f"claims.{name}[].zip") == [""]
+    assert _cell(session, f"claims.{name}[].city") == ["Toronto"]
+    assert _cell(session, f"claims.{name}[].{street}") == ["1 Demo Street"]
 
 
 @pytest.mark.parametrize(
@@ -186,6 +200,14 @@ def test_a_secured_row_prints_the_filers_answers(session):
     assert one("last_4") == ["5678"]
     assert one("property") == ["Demo car"]
     assert one("who") == ["debtor_1"]
+
+
+def test_a_debt_not_marked_community_ticks_no_community_box(session):
+    # community_debt is "" unless the filer said yes (B33): "" must not read as an answer
+    complete_debt(session, is_secured=True)
+    complete_debt(session)
+    assert _cell(session, "claims.secured[].community") == [""]
+    assert _cell(session, "claims.unsecured[].community") == [""]
 
 
 def test_an_unticked_other_lien_prints_no_words(session):
