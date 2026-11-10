@@ -201,6 +201,13 @@ describe('ExpenseInfoStep', () => {
       expect(screen.getByText(sentence).closest('[role="status"], [role="alert"]')).toBeNull();
     });
 
+    it("reads as the buttons' description, so each is pressed knowing what it answers", () => {
+      renderStep(rent1200, { linkedFirstMortgage: 1200 });
+      for (const name of [LINE_4_PAY_BOTH, fill(LINE_4_CLEAR, { typed: '1,200.00' })]) {
+        expect(screen.getByRole('button', { name })).toHaveAccessibleDescription(sentence);
+      }
+    });
+
     it('never holds Continue', () => {
       const { canContinue } = renderStep(rent1200, { linkedFirstMortgage: 1200 });
       expect(screen.getByText(sentence)).toBeInTheDocument();

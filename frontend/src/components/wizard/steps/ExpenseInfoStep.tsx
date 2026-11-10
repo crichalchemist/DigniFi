@@ -251,24 +251,36 @@ export function ExpenseInfoStep({
         {amountBox('rent_or_mortgage')}
 
         {asksLine4 && (
-          <div className="form-field">
-            <p className="form-help-text">
-              {fill(CLAIM_GAP_LINE_4, {
-                typed: formatFigure(rent),
-                linked: formatFigure(linkedFirstMortgage),
-              })}
-            </p>
-            <Button type="button" variant="outline" onClick={payBoth}>
-              {LINE_4_PAY_BOTH}
-            </Button>{' '}
-            <Button type="button" variant="outline" onClick={clearRent}>
-              {fill(LINE_4_CLEAR, { typed: formatFigure(rent) })}
-            </Button>
-            {line4Failed && (
-              <p className="form-error" role="alert">
-                {NOT_SAVED_TRY_AGAIN}
+          <div className="info-box">
+            <div>
+              <p className="info-message" id="line-4-question">
+                {fill(CLAIM_GAP_LINE_4, {
+                  typed: formatFigure(rent),
+                  linked: formatFigure(linkedFirstMortgage),
+                })}
               </p>
-            )}
+              <Button
+                type="button"
+                variant="outline"
+                aria-describedby="line-4-question"
+                onClick={payBoth}
+              >
+                {LINE_4_PAY_BOTH}
+              </Button>{' '}
+              <Button
+                type="button"
+                variant="outline"
+                aria-describedby="line-4-question"
+                onClick={clearRent}
+              >
+                {fill(LINE_4_CLEAR, { typed: formatFigure(rent) })}
+              </Button>
+              {line4Failed && (
+                <p className="form-error" role="alert">
+                  {NOT_SAVED_TRY_AGAIN}
+                </p>
+              )}
+            </div>
           </div>
         )}
 
