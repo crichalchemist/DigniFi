@@ -166,8 +166,10 @@ def test_a_fourteenth_contract_continues_on_a_copy_numbered_14(session):
     assert (_at(drawn, "fill_27.1.0", copy=1), _at(drawn, "fill_27.1.1", copy=1)) == ("3", "3")
 
 
-def test_a_blank_sixth_row_shows_the_courts_own_number(session):
-    # B41: a row with no contract leaves its number box alone, and the form's own "6" shows.
+def test_a_blank_sixth_row_gets_no_number_from_dignifi(session):
+    # B41: a row with no contract leaves its number box alone, so the template's own "2" shows
+    # after the printed "2." and the row reads "2.2". read_drawn reads that default as blank, so
+    # the drawn check sees only a number DigniFi would print other than "2"; the parts say none.
     for n in range(1, 6):
         complete_contract(session, counterparty_name=f"Demo Lessor {n}")
 

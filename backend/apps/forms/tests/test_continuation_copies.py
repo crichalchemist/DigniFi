@@ -100,9 +100,9 @@ def test_extra_rows_print_on_copies_of_the_extra_page(session, creditor_payments
         (2, 1, "Maria Torres"),
         (3, None, "Maria Torres"),
     }
-    # Schedule D's group now binds undefined_24 as a total box, not a rule (3c5 R8), and this
+    # Schedule D's group binds undefined_24 as a total box, not a rule (3c5 R8), and this
     # fixture declares no totals, so the box prints blank here. That the last-page total prints "0.00"
-    # with no row is proved by test_the_last_page_total_prints_when_the_groups_section_doesnt_apply.
+    # with no row is proved by test_a_filer_with_no_debts_gets_zero_totals_and_no_on_both_questions.
     assert _printed(drawn, ["undefined_24"]) == {
         ("undefined_24", None): "",
         ("undefined_24", 1): "",

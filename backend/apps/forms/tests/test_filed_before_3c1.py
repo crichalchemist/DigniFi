@@ -160,16 +160,26 @@ def test_a_filed_number_keeps_its_room_after_the_schema_drops_its_box(
 
 
 def test_a_copy_gets_the_room_its_own_part_stored(schedule_g_without_number_boxes):
-    # Each part's own number_boxes decide: the form part's room is not the copy's.
+    # Each part's own number_boxes decide: the form part's room is not the copy's. The form part
+    # lists "fill 2.6" too, so a list that reached the copy would give it room.
     def document(copy_boxes):
         copy_part = {"kind": "copy", "page": 2, "number": 1, "values": {"fill 2.6": "14"}}
         if copy_boxes is not None:
             copy_part["number_boxes"] = copy_boxes
-        form_part = {"kind": "form", "values": {"fill 2.10": "10"}, "number_boxes": ["fill 2.10"]}
+        form_part = {
+            "kind": "form",
+            "values": {"fill 2.10": "10"},
+            "number_boxes": ["fill 2.10", "fill 2.6"],
+        }
         return {"version": 2, "parts": [form_part, copy_part]}
 
-    with pytest.raises(ValueTooLong):
+    with pytest.raises(ValueTooLong) as refused:
         PDFFormFiller().check("schedule_g", document(None))
+    # the copy's fill 2.6, which no binding feeds, so the refusal names its index label
+    assert refused.value.label == (
+        "Entry number box after '2.' (filer writes the entry number)"
+        " (Additional Page row 1; filer numbers it 2.__)"
+    )
 
     _, copy_plan = PDFFormFiller().check("schedule_g", document(["fill 2.6"]))
     assert [p.value for p in copy_plan.widgets] == ["14"]
