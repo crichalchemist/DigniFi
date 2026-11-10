@@ -93,6 +93,12 @@ CONTRACT_GAP_SAME_VEHICLE = (
     "monthly payment above $0. Enter the monthly payment once, on either row, and $0 on the "
     "other."
 )
+CONTRACT_GAP_VEHICLE_NO_NAME = "Choose the vehicle you lease on the row with no name."
+CONTRACT_GAP_SAME_VEHICLE_NO_NAME = (
+    "Your lease on the row with no name and your debt to {debt} are on the same vehicle, and "
+    "each has a monthly payment above $0. Enter the monthly payment once, on either row, and "
+    "$0 on the other."
+)
 
 CODEBTOR_GAP_NO_ANSWER = "Answer whether you have any codebtors."
 CODEBTOR_GAP_YES_BUT_NONE = "You answered Yes. Add each codebtor, or change the answer to No."
@@ -316,6 +322,8 @@ def _same_vehicle_gap(contract, name, session):
     zero = Decimal("0")
     if (contract.monthly_payment or zero) > zero and (debt.monthly_payment or zero) > zero:
         debt_name = claim_row_name(debt.creditor_name, NAMELESS_DEBT)
+        if _blank(contract.counterparty_name):
+            return CONTRACT_GAP_SAME_VEHICLE_NO_NAME.format(debt=debt_name)
         return CONTRACT_GAP_SAME_VEHICLE.format(name=name, debt=debt_name)
     return None
 
@@ -334,8 +342,11 @@ def _contract_row_gaps(contract, session):
     if is_lease and contract.lease_kind is None:
         messages.append(CONTRACT_GAP_LEASE_KIND.format(name=name))
     is_vehicle = is_lease and contract.lease_kind == "vehicle"
+    named = not _blank(contract.counterparty_name)
     if is_vehicle and _live(contract.vehicle_asset, session) is None:
-        messages.append(CONTRACT_GAP_VEHICLE.format(name=name))
+        messages.append(
+            CONTRACT_GAP_VEHICLE.format(name=name) if named else CONTRACT_GAP_VEHICLE_NO_NAME
+        )
     if is_vehicle and contract.monthly_payment is None:
         messages.append(CONTRACT_GAP_PAYMENT.format(name=name))
     if contract.owes_now is None:

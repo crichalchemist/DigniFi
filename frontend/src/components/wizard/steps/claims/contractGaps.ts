@@ -15,7 +15,9 @@ import {
   CONTRACT_GAP_PAYMENT,
   CONTRACT_GAP_PURPOSE,
   CONTRACT_GAP_SAME_VEHICLE,
+  CONTRACT_GAP_SAME_VEHICLE_NO_NAME,
   CONTRACT_GAP_VEHICLE,
+  CONTRACT_GAP_VEHICLE_NO_NAME,
   CONTRACT_GAP_YES_BUT_NONE,
   NAMELESS_CONTRACT,
   NAMELESS_DEBT,
@@ -34,6 +36,8 @@ export function contractRowGaps(
 ): string[] {
   const gaps: string[] = [];
   const words = { name: claimRowName(row.counterparty_name, NAMELESS_CONTRACT) };
+  // A row with no name is never called "one contract" in a vehicle sentence
+  const named = !blank(row.counterparty_name);
 
   if (blank(row.counterparty_name)) gaps.push(CONTRACT_GAP_NO_NAME);
   if (addressMissing(row)) {
@@ -48,7 +52,9 @@ export function contractRowGaps(
   }
   const isVehicle = isLease && row.lease_kind === 'vehicle';
   const vehicleLive = linkIsLive(row.vehicle_asset, assets);
-  if (isVehicle && !vehicleLive) gaps.push(fill(CONTRACT_GAP_VEHICLE, words));
+  if (isVehicle && !vehicleLive) {
+    gaps.push(named ? fill(CONTRACT_GAP_VEHICLE, words) : CONTRACT_GAP_VEHICLE_NO_NAME);
+  }
   if (isVehicle && (row.monthly_payment === null || row.monthly_payment === undefined)) {
     gaps.push(fill(CONTRACT_GAP_PAYMENT, words));
   }
@@ -66,11 +72,11 @@ export function contractRowGaps(
       (row.monthly_payment ?? 0) > 0 &&
       (debt.monthly_payment ?? 0) > 0
     ) {
+      const debtName = claimRowName(debt.creditor_name, NAMELESS_DEBT);
       gaps.push(
-        fill(CONTRACT_GAP_SAME_VEHICLE, {
-          ...words,
-          debt: claimRowName(debt.creditor_name, NAMELESS_DEBT),
-        })
+        named
+          ? fill(CONTRACT_GAP_SAME_VEHICLE, { ...words, debt: debtName })
+          : fill(CONTRACT_GAP_SAME_VEHICLE_NO_NAME, { debt: debtName })
       );
     }
   }

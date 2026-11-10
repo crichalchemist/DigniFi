@@ -543,6 +543,11 @@ export const CONTRACT_GAP_OWED_DEBT =
 export const CONTRACT_GAP_SAME_VEHICLE =
   'Your lease with {name} and your debt to {debt} are on the same vehicle, and each has a monthly payment above $0. Enter the monthly payment once, on either row, and $0 on the other.';
 
+export const CONTRACT_GAP_VEHICLE_NO_NAME = 'Choose the vehicle you lease on the row with no name.';
+
+export const CONTRACT_GAP_SAME_VEHICLE_NO_NAME =
+  'Your lease on the row with no name and your debt to {debt} are on the same vehicle, and each has a monthly payment above $0. Enter the monthly payment once, on either row, and $0 on the other.';
+
 export const CODEBTOR_GAP_NO_ANSWER = 'Answer whether you have any codebtors.';
 
 export const CODEBTOR_GAP_YES_BUT_NONE =
