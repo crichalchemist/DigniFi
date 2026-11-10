@@ -76,7 +76,7 @@ Your Corolla lease ($389) comes from the Northlight lease on Contracts & Leases.
 Each item goes on the Schedule A/B line shown. Answer Yes to line 37 (your driving is your business) and No to line 46. Answer No to every other line the Assets step shows.
 
 - Line 3, first car: 2024 Toyota Corolla Hybrid, about 61,000 miles, leased (see Schedule G 2.1), only you — entire value $0, your portion $0
-- Line 3, second car: 2017 Honda Fit, about 96,000 miles, titled to you and Mateo (you and someone else) — entire value $8,600, your portion $4,300, owed $7,800
+- Line 3, second car: 2017 Honda Fit, about 96,000 miles, titled to you and Mateo (you and someone else) — entire value $8,600, your portion $4,300
 - Line 6: beds, couch, table, kitchen things — $1,200
 - Line 7: phone, TV — $400
 - Line 11: clothes — $300

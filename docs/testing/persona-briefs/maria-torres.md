@@ -79,7 +79,7 @@ You ARE Maria Torres. Navigate DigniFi as she would.
 
 Each item goes on the Schedule A/B line shown. Where the form asks who has an interest, you are the only one, and the entire value is the portion you own. Answer No to every other line the Assets step shows.
 
-- Line 3: 2015 Honda Civic, about 120,000 miles — $6,500, owed $0
+- Line 3: 2015 Honda Civic, about 120,000 miles — $6,500
 - Line 6: beds, sofa, kitchen table, dishes — $600
 - Line 7: old laptop, cell phone, 32-inch TV — $200
 - Line 11: everyday clothes and shoes — $250

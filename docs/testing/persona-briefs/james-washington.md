@@ -78,7 +78,7 @@ Your car payment ($350) comes from the Crestway Auto Credit loan on Amounts Owed
 
 Each item goes on the Schedule A/B line shown. You are the only one with an interest in the car, so its entire value is the portion you own. Answer No to every other line the Assets step shows.
 
-- Line 3: 2019 Toyota Camry, about 78,000 miles — $14,000, owed $8,500
+- Line 3: 2019 Toyota Camry, about 78,000 miles — $14,000
 - Line 6: bed, couch, table, kitchenware (secondhand) — $500
 - Line 7: TV, laptop, cell phone — $400
 - Line 11: everyday clothes and work clothes — $300
