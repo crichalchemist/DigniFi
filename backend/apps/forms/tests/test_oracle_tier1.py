@@ -28,7 +28,7 @@ from django.contrib.auth import get_user_model
 from apps.districts.models import District
 from apps.forms.registry import get_all_form_types
 from apps.forms.schema import load_schema
-from apps.forms.services.fill_resolver import resolve_binding
+from apps.forms.services.fill_resolver import _key, resolve_binding
 from apps.forms.services.pdf_filler import PDFFormFiller, ValueTooLong
 from apps.forms.services.widgets import template_widgets
 from apps.forms.tests.oracle import case_param
@@ -81,17 +81,35 @@ _SHORT = ["".join(pair) for pair in product(ascii_uppercase, repeat=2)] + list(a
 
 
 def _sentinels(form_type):
-    """pdf_field → its sentinel: unique on the form, and as short as its box needs."""
+    """A binding's values key → its sentinel: unique on the form, and as short as its box needs."""
     sentinels = {}
     short = iter(_SHORT)
     for i, f in enumerate(_fields(form_type, ("text", "choice"))):
+        key = _key(f)
         if f.type == "choice":
-            sentinels[f.pdf_field] = _option(form_type, f.pdf_field)
-        elif _fits(form_type, f.pdf_field, f"Q{i:03d}"):
-            sentinels[f.pdf_field] = f"Q{i:03d}"
+            sentinels[key] = _option(form_type, f.pdf_field)
+        elif _fits(form_type, key, f"Q{i:03d}"):
+            sentinels[key] = f"Q{i:03d}"
         else:
-            sentinels[f.pdf_field] = next(s for s in short if _fits(form_type, f.pdf_field, s))
+            sentinels[key] = next(s for s in short if _fits(form_type, key, s))
     return sentinels
+
+
+def _target(form_type, key):
+    """The binding a values key names: its schema field (R17: a tagged binding is its own case)."""
+    return next(f for f in load_schema(form_type).fields if _key(f) == key)
+
+
+def _widgets_of(form_type, key):
+    """(name, page, tag) of each drawn widget a key fills: one for a tagged key, else all."""
+    f = _target(form_type, key)
+    return {
+        (w.full_name, w.page, w.tag)
+        for w in template_widgets(load_schema(form_type).template_filename)
+        if w.drawn
+        and w.full_name == f.pdf_field
+        and (f.tag is None or (w.page, w.tag) == (f.page, f.tag))
+    }
 
 
 def _drawn(form_type, values):
@@ -122,8 +140,18 @@ def _box_fill(form_type, position):
     for f in _fields(form_type, ("checkbox", "radio")):
         keys = sorted(f.choices or {})
         if position < len(keys):
-            values[f.pdf_field] = f.choices[keys[position]]
+            values[_key(f)] = f.choices[keys[position]]
     return values, _drawn(form_type, values)
+
+
+def _stray(form_type, drawn, values):
+    """(name, page, tag) of each box that prints a tick no key in values asked for."""
+    asked = {at: state for key, state in values.items() for at in _widgets_of(form_type, key)}
+    return sorted(
+        (w.full_name, w.page, w.tag)
+        for w in drawn
+        if w.state not in ("", "/Off") and asked.get((w.full_name, w.page, w.tag)) != w.state
+    )
 
 
 _TEXT_KINDS = ("Text", "ComboBox")
@@ -175,7 +203,7 @@ def _widget_box_fill(form_type, k):
 def _text_cases():
     for form_type in get_all_form_types():
         for f in _fields(form_type, ("text", "choice")):
-            yield case_param(form_type, f.pdf_field, TIER, "")
+            yield case_param(form_type, _key(f), TIER, "")
 
 
 def _widget_cases(kinds):
@@ -188,7 +216,7 @@ def _box_cases():
     for form_type in get_all_form_types():
         for f in _fields(form_type, ("checkbox", "radio")):
             for key in sorted(f.choices or {}):
-                yield case_param(form_type, f.pdf_field, TIER, key)
+                yield case_param(form_type, _key(f), TIER, key)
 
 
 TEXT_CASES = list(_text_cases())
@@ -206,17 +234,16 @@ SPLIT_FORMS = [
 @pytest.mark.slow
 @pytest.mark.parametrize("form_type,pdf_field,case", TEXT_CASES)
 def test_value_lands_only_in_the_box_it_names(form_type, pdf_field, case):
+    # pdf_field is the binding's values key: its name, or name@page:tag for one widget (R17).
     sentinels, widgets = _text_fill(form_type)
-    landed = {w.full_name for w in widgets if w.value == sentinels[pdf_field]}
+    wanted = _widgets_of(form_type, pdf_field)
+    landed = {(w.full_name, w.page, w.tag) for w in widgets if w.value == sentinels[pdf_field]}
     assert landed, "no_widget: the value landed nowhere"
-    assert landed == {pdf_field}, f"spill: the value also landed in {sorted(landed - {pdf_field})}"
-    # The value prints in every widget its name has, one page header on each page.
-    missed = [
-        (w.page, w.tag)
-        for w in widgets
-        if w.full_name == pdf_field and w.value != sentinels[pdf_field]
-    ]
-    assert missed == [], f"no_widget: the value is missing from widgets {missed}"
+    assert landed <= wanted, f"spill: the value also landed in {sorted(landed - wanted)}"
+    # The value prints in every widget the key fills, one page header on each page.
+    assert (
+        landed == wanted
+    ), f"no_widget: the value is missing from widgets {sorted(wanted - landed)}"
 
 
 @pytest.mark.slow
@@ -259,27 +286,25 @@ def test_each_widget_of_a_shared_box_name_ticks_alone(form_type, pdf_field, case
 @pytest.mark.slow
 @pytest.mark.parametrize("form_type,pdf_field,case", BOX_CASES)
 def test_checkbox_ticks_only_the_widgets_for_its_answer(form_type, pdf_field, case):
-    field = next(f for f in load_schema(form_type).fields if f.pdf_field == pdf_field)
+    # pdf_field is the binding's values key (R17): a tagged binding reads its own widget alone.
+    field = _target(form_type, pdf_field)
     state = field.choices[case]
     template = load_schema(form_type).template_filename
+    mine = _widgets_of(form_type, pdf_field)
     expected = sum(
         1
         for w in template_widgets(template)
-        if w.full_name == pdf_field and w.drawn and state in w.states
+        if (w.full_name, w.page, w.tag) in mine and state in w.states
     )
     values, drawn = _box_fill(form_type, sorted(field.choices).index(case))
-    own = [w for w in drawn if w.full_name == pdf_field]
+    own = [w for w in drawn if (w.full_name, w.page, w.tag) in mine]
     ticked = [w for w in own if w.state == state]
     assert len(ticked) == expected, f"no_widget: {len(ticked)} of {expected} widgets show {state}"
     assert all(w.state == "/Off" for w in own if w.state != state), "spill: another option is on"
     # The check mark appears only in the widgets of the choices drawn (spec §8);
     # test_a_tick_never_spills_into_a_box_the_filer_left_blank separates the boxes drawn
     # together here.
-    stray = sorted(
-        (w.full_name, w.page, w.tag)
-        for w in drawn
-        if w.state not in ("", "/Off") and values.get(w.full_name) != w.state
-    )
+    stray = _stray(form_type, drawn, values)
     assert stray == [], f"spill: a tick also prints in {stray}"
 
 
@@ -289,7 +314,7 @@ def test_a_tick_never_spills_into_a_box_the_filer_left_blank(form_type):
     # _box_fill ticks every single box at once, so a tick spilling from one into another
     # reads as the other's own answer. Split the boxes by each bit of their index: every
     # pair is then drawn once with one ticked and the other left blank (spec §8).
-    fields = sorted(_fields(form_type, ("checkbox", "radio")), key=lambda f: f.pdf_field)
+    fields = sorted(_fields(form_type, ("checkbox", "radio")), key=_key)
     stray = []
     for p in range(max(len(f.choices or {}) for f in fields)):
         boxes = [f for f in fields if len(f.choices or {}) > p]
@@ -298,14 +323,12 @@ def test_a_tick_never_spills_into_a_box_the_filer_left_blank(form_type):
         for k in range((len(boxes) - 1).bit_length()):
             for side in (1, 0):
                 values = {
-                    f.pdf_field: f.choices[sorted(f.choices)[p]]
+                    _key(f): f.choices[sorted(f.choices)[p]]
                     for i, f in enumerate(boxes)
                     if (i >> k) & 1 == side
                 }
                 stray += [
-                    (p, k, side, w.full_name, w.page, w.tag)
-                    for w in _drawn(form_type, values)
-                    if w.state not in ("", "/Off") and values.get(w.full_name) != w.state
+                    (p, k, side, *at) for at in _stray(form_type, _drawn(form_type, values), values)
                 ]
     assert stray == [], (
         "spill: a tick prints in a box left blank, as (position, bit, side, name, page, tag):"

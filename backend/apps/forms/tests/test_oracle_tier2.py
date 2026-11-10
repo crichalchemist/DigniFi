@@ -34,7 +34,7 @@ from apps.forms.tests.oracle import case_param
 TIER = "2"
 CHECKED_BASES = {"adjudicated", "sampled_ok"}
 LEAVE_BLANK = "leave blank"
-ASSERTED_CASES = 1044  # 475 + 103B lines 1-3 (3f Task 2): six re-keyed, eleven new pairs; + 101 line 8 and 103B lines 4, 5, 7 and 9 (3f Task 4): eight new pairs; + 206 (3b Task 6): A/B's 20 bindings become 226, line by line on the places, vehicles, items and cash, all asserted through their addendum rows; + 137 (3b Task 7): 226 become 363, the lists, labelled lines and shared boxes, the four old re-keyed + 6 (3c4 Task 2); + 207 (3c5 Task 4): G's 78 (13 slots x 6 cells) and H's 129 (11 slots x 11 cells, and line 2's 8), 837 + 207 = 1044
+ASSERTED_CASES = 1203  # 475 + 103B lines 1-3 (3f Task 2): six re-keyed, eleven new pairs; + 101 line 8 and 103B lines 4, 5, 7 and 9 (3f Task 4): eight new pairs; + 206 (3b Task 6): A/B's 20 bindings become 226, line by line on the places, vehicles, items and cash, all asserted through their addendum rows; + 137 (3b Task 7): 226 become 363, the lists, labelled lines and shared boxes, the four old re-keyed + 6 (3c4 Task 2); + 207 (3c5 Task 4): G's 78 (13 slots x 6 cells) and H's 129 (11 slots x 11 cells, and line 2's 8), 837 + 207 = 1044; + 159 (3c5 Task 5): D's Part 1 112 (slots 1-3 of 22 cells, slots 4 and 5 of 23, the two who-owes bindings) and Part 2's 48 (6 slots x 8), less the one case lost with undefined_24's derived:total_secured_claims binding (a moved-here case: the audit's row on undefined_27 names undefined_24), 1044 + 160 - 1 = 1203
 
 
 def _audit_dir():

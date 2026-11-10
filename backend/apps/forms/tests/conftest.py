@@ -255,16 +255,9 @@ def schedule_d_with_two_groups(tmp_path, settings):
 def schedule_d_with_totals(tmp_path, settings):
     """
     Schedule D's Part 1 with its total boxes (3c spec §5.3): the amounts add up in undefined_9 on
-    page 1, undefined_23 on page 2 and each copy of it, and undefined_24 on the last. The real
-    binding of undefined_24 is dropped first, as a box has one writer (forms.E006).
+    page 1, undefined_23 on page 2 and each copy of it, and undefined_24 on the last. Production
+    Schedule D's group is stripped by _with_group, so these totals are the box's only writer.
     """
-    schemas = tmp_path / "schemas"
-    if not schemas.exists():
-        shutil.copytree(django_settings.FORM_SCHEMAS_DIRECTORY, schemas)
-    path = schemas / "schedule_d.json"
-    schema = json.loads(path.read_text())
-    schema["fields"] = [f for f in schema["fields"] if f["pdf_field"] != "undefined_24"]
-    path.write_text(json.dumps(schema))
     declaration = {
         "extra_page": 2,
         "totals": {

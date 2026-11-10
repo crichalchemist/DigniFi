@@ -892,7 +892,6 @@ DERIVATIONS: dict[str, Callable[[IntakeSession], str]] = {
     "total_nonpriority_unsecured": _total_nonpriority_unsecured,
     "total_debts": _total_debts,
     "total_other_assets": _total_other_assets,
-    "total_secured_claims": _total_secured_debts,
     "joint_filer_name": _full_name,
     "cmi": _cmi,
     "total_monthly_expenses": _total_monthly_expenses,
@@ -1235,7 +1234,6 @@ RULE_FIXES: dict[str, dict[str, str]] = {
     },
     # Amounts Owed
     "total_secured_debts": {"step": "debts"},
-    "total_secured_claims": {"step": "debts"},
     "total_debts": {"step": "debts"},
     "total_nonpriority_unsecured": {"step": "debts"},
     "total_student_loans": {"step": "debts"},

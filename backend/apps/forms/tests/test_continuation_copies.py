@@ -100,8 +100,11 @@ def test_extra_rows_print_on_copies_of_the_extra_page(session, creditor_payments
         (2, 1, "Maria Torres"),
         (3, None, "Maria Torres"),
     }
+    # The rule that bound undefined_24 went with Task 5's group (3c5 R8), and this fixture
+    # declares no totals, so the box prints blank here. That the last-page total prints "0.00"
+    # with no row is proved by test_the_last_page_total_prints_when_the_groups_section_doesnt_apply.
     assert _printed(drawn, ["undefined_24"]) == {
-        ("undefined_24", None): "0.00",
+        ("undefined_24", None): "",
         ("undefined_24", 1): "",
     }
     # Read without its parts, the copy would pass for page 3, and page 3 would go unread.

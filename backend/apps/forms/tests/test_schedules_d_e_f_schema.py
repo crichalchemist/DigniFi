@@ -16,14 +16,24 @@ from decimal import Decimal
 
 import pytest
 from django.contrib.auth import get_user_model
+from django.db import connection
+from django.test.utils import CaptureQueriesContext
 
 from apps.districts.models import District
+from apps.forms.registry import build_parts
 from apps.forms.schema import load_schema
+from apps.forms.services.derivations import DERIVATIONS
 from apps.forms.services.fill_resolver import resolve
 from apps.forms.services.pdf_filler import PDFFormFiller
 from apps.forms.tests.pdf_readback import read_drawn
 from apps.intake.models import DebtInfo, DebtorInfo, IncomeInfo, IntakeSession
-from apps.intake.tests.builders import answer_household
+from apps.intake.tests.builders import (
+    answer_household,
+    complete_codebtor,
+    complete_debt,
+    linked_loan,
+    linked_row,
+)
 
 User = get_user_model()
 
@@ -171,6 +181,287 @@ def test_a_filer_with_no_debts_gets_zero_totals_and_no_on_both_questions(session
     assert d["undefined_24"] == "0.00"
     assert (ef["Total_6f"], ef["Total_6i"], ef["Total_6j"]) == ("0.00", "0.00", "0.00")
     assert resolve(load_schema("form_106sum"), session).get("9d") == "0.00"
+
+
+def _parts_drawn(session, form_type):
+    """(the parts, what the drawn form and its copies print), the copies read as their pages."""
+    document = build_parts(form_type, session)
+    pdf = PDFFormFiller().fill(form_type, document)
+    return document["parts"], read_drawn(form_type, pdf, document["parts"])
+
+
+def _at(drawn, name, copy=None, page=None, tag=None):
+    """What one box prints, on the form's own page (copy None) or on a copy."""
+    values = [
+        w.value
+        for w in drawn
+        if w.full_name == name
+        and w.copy == copy
+        and (page is None or w.page == page)
+        and (tag is None or w.tag == tag)
+    ]
+    assert len(values) == 1, (name, copy, values)
+    return values[0]
+
+
+def _ticked(drawn, name, tag=None, copy=None):
+    """The states of the boxes of this name (and tag) that print a check mark."""
+    return {
+        w.state
+        for w in drawn
+        if w.full_name == name
+        and w.copy == copy
+        and (tag is None or w.tag == tag)
+        and w.state != "/Off"
+    }
+
+
+def _secured(session, **over):
+    return complete_debt(
+        session,
+        **(
+            {
+                "is_secured": True,
+                "creditor_name": "Demo Lender",
+                "collateral_description": "Demo property",
+                "lien": {"kinds": ["agreement"], "other": ""},
+            }
+            | over
+        ),
+    )
+
+
+def _party(name, **over):
+    return {
+        "name": name,
+        "street_address": "9 Demo Road",
+        "street_2": "",
+        "city": "Demoville",
+        "state": "IL",
+        "zip_code": "60601",
+        "last_4": "",
+    } | over
+
+
+# Part 1's who-owes widgets by (name, tag), row by row (appendix: row maps).
+WHO_DEBTOR_1 = [
+    ("check 2", "T21"),
+    ("check 3", "T46"),
+    ("check 4", "T21"),
+    ("check 5", "T51"),
+    ("Debtor 1 only_5", "T77"),
+]
+WHO_ANOTHER = [
+    ("check 2", "T26"),
+    ("check 3", "T51"),
+    ("check 4", "T28"),
+    ("check 5", "T56"),
+    ("At least one of the debtors and another_5", "T83"),
+]
+
+
+def _who_ticks(drawn, copy=None):
+    every = {*WHO_DEBTOR_1, *WHO_ANOTHER}
+    return {
+        (w.full_name, w.tag)
+        for w in drawn
+        if (w.full_name, w.tag) in every and w.copy == copy and w.state != "/Off"
+    }
+
+
+def test_a_secured_debt_prints_its_row_with_columns_a_b_and_c(session):
+    car = linked_row(session, "3")
+    car.set_details({"who": "only_you"})
+    car.entire_value = Decimal("14000")
+    car.save()
+    linked_loan(
+        session,
+        car,
+        Decimal("200"),
+        creditor_name="Demo Auto Credit",
+        amount_owed=Decimal("8500"),
+        street_2="Suite 1",
+        collateral_description="2019 Demo sedan",
+        claim_status=["disputed"],
+        date_incurred="12/2023",
+        account_number="55557702",
+    )
+
+    _, drawn = _parts_drawn(session, "schedule_d")
+
+    assert _at(drawn, "Creditors Name") == "Demo Auto Credit"
+    assert _at(drawn, "Street") == "1 Demo Street"
+    assert _at(drawn, "1") == "Suite 1"
+    assert (_at(drawn, "2"), _at(drawn, "3"), _at(drawn, "4")) == ("Demoville", "IL", "60601")
+    assert (
+        _at(drawn, "As of the date you file the claim is Check all that apply") == "2019 Demo sedan"
+    )
+    assert _at(drawn, "undefined") == "8500.00"
+    assert _at(drawn, "undefined_2") == "14000.00"
+    assert _at(drawn, "undefined_3") == "0.00"
+    assert _at(drawn, "Date debt was incurred") == "12/2023"
+    assert _at(drawn, "account number", tag="T32") == "7702"
+    assert _ticked(drawn, "An agreement you made such as mortgage or secured") == {"/On"}
+    assert _ticked(drawn, "Disputed") == {"/On"}
+    assert _ticked(drawn, "Contingent") == set()
+    assert _at(drawn, "undefined_9") == "8500.00"
+    assert _at(drawn, "undefined_24") == "8500.00"
+    assert _at(drawn, "undefined_23") == ""
+
+
+def test_each_rows_who_owes_box_ticks_alone(session):
+    debts = [_secured(session, creditor_name=f"Demo Lender {n}") for n in range(1, 6)]
+    _, alone = _parts_drawn(session, "schedule_d")
+
+    assert _who_ticks(alone) == set(WHO_DEBTOR_1)
+
+    complete_codebtor(session, links=[{"kind": "debt", "id": d.pk} for d in debts])
+    _, shared = _parts_drawn(session, "schedule_d")
+
+    assert _who_ticks(shared) == set(WHO_ANOTHER)
+
+
+def test_a_codebtor_on_one_debt_ticks_only_that_rows_another_box(session):
+    debts = [_secured(session, creditor_name=f"Demo Lender {n}") for n in range(1, 6)]
+    complete_codebtor(session, links=[{"kind": "debt", "id": debts[2].pk}])
+
+    _, drawn = _parts_drawn(session, "schedule_d")
+
+    assert _who_ticks(drawn) == {*WHO_DEBTOR_1[:2], WHO_ANOTHER[2], *WHO_DEBTOR_1[3:]}
+
+
+def test_a_sixth_secured_debt_continues_on_a_copy_of_page_2(session):
+    for n in range(1, 7):
+        _secured(session, creditor_name=f"Demo Lender {n}", amount_owed=Decimal("100"))
+
+    parts, drawn = _parts_drawn(session, "schedule_d")
+
+    assert [p["kind"] for p in parts] == ["form", "copy"]
+    assert _at(drawn, "Creditors Name_3", copy=1) == "Demo Lender 6"
+    assert _at(drawn, "undefined_12", copy=1) == "2.6"
+    assert _at(drawn, "undefined_9") == "200.00"
+    assert _at(drawn, "undefined_23") == "300.00"
+    assert _at(drawn, "undefined_23", copy=1) == "100.00"
+    assert _at(drawn, "undefined_24", copy=1) == "600.00"
+    assert _at(drawn, "undefined_24") == ""
+    assert _at(drawn, "fill_27.0") == "4"
+    assert (_at(drawn, "fill_27.1.0"), _at(drawn, "fill_27.1.1")) == ("2", "4")
+    assert (_at(drawn, "fill_27.1.0", copy=1), _at(drawn, "fill_27.1.1", copy=1)) == ("3", "4")
+    assert (_at(drawn, "fill_28.1.1"), _at(drawn, "fill_28.1.2")) == ("4", "4")
+
+
+def test_a_notice_party_prints_on_part_2_with_its_line(session):
+    _secured(session, creditor_name="Demo Lender 1")
+    _secured(
+        session,
+        creditor_name="Demo Lender 2",
+        notice_parties=[_party("Demo Collections", street_2="Floor 2", last_4="4004")],
+    )
+
+    _, drawn = _parts_drawn(session, "schedule_d")
+
+    assert _at(drawn, "Name") == "Demo Collections"
+    assert _at(drawn, "Number_6") == "9 Demo Road"
+    assert _at(drawn, "Street 1") == "Floor 2"
+    assert (_at(drawn, "Street 2"), _at(drawn, "Street 3"), _at(drawn, "Street 4")) == (
+        "Demoville",
+        "IL",
+        "60601",
+    )
+    assert _at(drawn, "On which line in Part 1 did you enter the creditor") == "2.2"
+    assert _at(drawn, "account number 6") == "4004"
+
+
+def test_a_seventh_notice_party_continues_on_a_copy_of_page_3(session):
+    _secured(
+        session,
+        notice_parties=[_party(f"Demo Collections {n}") for n in range(1, 8)],
+    )
+
+    parts, drawn = _parts_drawn(session, "schedule_d")
+
+    assert [(p["kind"], p.get("page")) for p in parts] == [("form", None), ("copy", 3)]
+    assert _at(drawn, "Name", copy=1) == "Demo Collections 7"
+    assert _at(drawn, "On which line in Part 1 did you enter the creditor", copy=1) == "2.1"
+
+
+def test_a_household_item_as_collateral_prints_its_value(session):
+    # §9.6 synthetic: a line 6 row is no shape that asks who, so the debt's own answer decides.
+    item = linked_row(session, "6")
+    item.current_value = Decimal("1200")
+    item.save()
+    linked_loan(
+        session, item, Decimal("50"), amount_owed=Decimal("2000"), collateral_who="only_you"
+    )
+
+    _, drawn = _parts_drawn(session, "schedule_d")
+
+    assert _at(drawn, "undefined_2") == "1200.00"
+    assert _at(drawn, "undefined_3") == "800.00"
+
+
+def test_two_debts_on_one_property_print_columns_b_and_c_blank(session):
+    # C6: the value of a shared property can't be split between its lenders.
+    car = linked_row(session, "3")
+    car.set_details({"who": "only_you"})
+    car.entire_value = Decimal("14000")
+    car.save()
+    linked_loan(session, car, Decimal("100"), amount_owed=Decimal("5000"))
+    linked_loan(session, car, Decimal("100"), amount_owed=Decimal("3000"))
+
+    _, drawn = _parts_drawn(session, "schedule_d")
+
+    assert (_at(drawn, "undefined"), _at(drawn, "undefined_5")) == ("5000.00", "3000.00")
+    for box in ("undefined_2", "undefined_3", "undefined_6", "undefined_7"):
+        assert _at(drawn, box) == "", box
+
+
+def test_the_last_page_total_is_the_secured_total(session):
+    for amount in ("100.50", "200.25", "300.00"):
+        _secured(session, amount_owed=Decimal(amount))
+
+    _, drawn = _parts_drawn(session, "schedule_d")
+
+    assert _at(drawn, "undefined_24") == DERIVATIONS["total_secured_debts"](session)
+    assert _at(drawn, "undefined_24") == "600.75"
+
+
+def test_a_twelfth_secured_debt_prints_2_12_on_the_third_copy(session):
+    for n in range(1, 13):
+        # Zero-padded: the rows run by name (ordered_debts), so "10" would sort before "2".
+        _secured(session, creditor_name=f"Demo Lender {n:02d}")
+
+    parts, drawn = _parts_drawn(session, "schedule_d")
+
+    assert [p["kind"] for p in parts] == ["form", "copy", "copy", "copy"]
+    assert _at(drawn, "Creditors Name_3", copy=3) == "Demo Lender 12"
+    assert _at(drawn, "Creditors Name_5", copy=3) == ""
+    assert _at(drawn, "undefined_12", copy=3) == "2.12"
+
+
+def _query_count(session):
+    with CaptureQueriesContext(connection) as queries:
+        build_parts("schedule_d", session)
+    return len(queries)
+
+
+def test_resolving_schedule_d_reads_the_rows_once(session):
+    for n in range(3):
+        _secured_on_a_car(session, n)
+    _query_count(session)  # the first build also fills per-process caches
+    few = _query_count(session)
+    for n in range(3, 9):
+        _secured_on_a_car(session, n)
+
+    assert _query_count(session) == few
+
+
+def _secured_on_a_car(session, n):
+    car = linked_row(session, "3", description=f"Demo car {n}")
+    car.set_details({"who": "only_you"})
+    car.entire_value = Decimal("9000")
+    car.save()
+    linked_loan(session, car, Decimal("100"), creditor_name=f"Demo Lender {n}")
 
 
 def test_lines_the_intake_never_asks_print_nothing(debts):

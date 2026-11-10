@@ -219,8 +219,9 @@ def test_an_untagged_binding_on_a_page_without_its_widget_is_reported(schema_cop
 
 
 def test_a_tag_on_the_second_of_a_stacked_pair_is_reported(schema_copy):
-    # Schedule D page 2 lays 4_3's T14 over T13; only T13 prints a value.
-    _edit(schema_copy, "schedule_d", lambda d: d["fields"].append(_text("4_3", 2, "T14")))
+    # Schedule D page 2 lays 4_3's T14 over T13; only T13 prints a value. Production D binds
+    # 4_3 itself (Part 1's slot 3, ZIP), so the test retags that binding.
+    _edit(schema_copy, "schedule_d", lambda d: _field(d, "4_3").update(tag="T14"))
     assert _ids("schedule_d") == ["forms.E003"]
     _edit(schema_copy, "schedule_d", lambda d: _field(d, "4_3").update(tag="T13"))
     load_schema.cache_clear()
@@ -929,7 +930,8 @@ def test_a_claims_binding_passes_the_namespace_check(schedule_d_with_totals):
 
 
 def test_a_total_box_another_binding_fills_is_reported(schedule_d_with_totals):
-    # The real binding of undefined_24, put back: the rule's figure and the group's would fight.
+    # A binding of undefined_24 put back (the rule that once bound it is gone, 3c5 R8): its figure
+    # and the group's would fight.
     def add(d):
         d["fields"].append(_text("undefined_24", 2, None))
 
