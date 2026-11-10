@@ -434,9 +434,11 @@ def claim_step_gaps(session) -> list[ClaimStepGap]:
     (step `debts`) and then the line 4 question (step `expense_info`), since both read the links
     the earlier steps made.
 
-    Reads the session's debts (drafts included, so a draft's gaps show), contracts and
-    codebtors, and its ClaimAnswers: no row means every answer is null. Contracts and
-    codebtors go in id order, debts in ordered_debts' order.
+    The four blocks read the session's debts (drafts included, so a draft's gaps show),
+    contracts and codebtors, and its ClaimAnswers: no row means every answer is null. Contracts
+    and codebtors go in id order, debts in ordered_debts' order. The tail also reads the Expenses
+    row (_legacy_figure) and, through linked_payments, the session's assets and only its
+    confirmed debts, so a draft never counts there.
     """
     row = getattr(session, "claim_answers", None)
     answers = row.get_answers() if row is not None else {}
@@ -455,8 +457,8 @@ def claim_step_gaps(session) -> list[ClaimStepGap]:
 
 def _legacy_figure(session, field) -> Decimal:
     """One Expenses figure (a retired one, or rent_or_mortgage), $0 with no Expenses row or a
-    null. Reads the row by attribute, as
-    claim_step_gaps reads claim_answers, since this module imports no model."""
+    null. Reads the row by attribute, as claim_step_gaps reads claim_answers, since this module
+    imports no model."""
     row = getattr(session, "expense_info", None)
     return (getattr(row, field, None) or _ZERO) if row is not None else _ZERO
 

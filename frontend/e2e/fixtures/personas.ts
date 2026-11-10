@@ -1076,7 +1076,6 @@ export const ANDRES: PersonaData = {
     rent_or_mortgage: 1150,
     utilities: 210,
     home_maintenance: 0,
-    // The Corolla lease, his only car
     vehicle_insurance: 165,
     vehicle_maintenance: 60,
     food_and_groceries: 520,
