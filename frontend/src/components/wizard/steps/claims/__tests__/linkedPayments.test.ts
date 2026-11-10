@@ -9,14 +9,14 @@ interface CaseAsset {
 }
 interface CaseDebt {
   secured: boolean;
-  asset: number;
+  asset: number | null;
   payment: string | null;
   home_payment_line: 'first' | 'additional' | null;
 }
 interface CaseContract {
   contract_type: string;
   lease_kind: string | null;
-  asset: number;
+  asset: number | null;
   payment: string | null;
 }
 interface Case {
@@ -50,7 +50,7 @@ function sumsOf(c: Case) {
     (d) =>
       ({
         is_secured: d.secured,
-        secured_by: d.asset + 1,
+        secured_by: d.asset === null ? null : d.asset + 1,
         monthly_payment: payment(d.payment),
         home_payment_line: d.home_payment_line,
       }) as unknown as Partial<DebtInfo>
@@ -60,7 +60,7 @@ function sumsOf(c: Case) {
       ({
         contract_type: k.contract_type,
         lease_kind: k.lease_kind,
-        vehicle_asset: k.asset + 1,
+        vehicle_asset: k.asset === null ? null : k.asset + 1,
         monthly_payment: payment(k.payment),
       }) as unknown as Partial<ExecutoryContract>
   );
@@ -96,6 +96,38 @@ describe('the browser adds linked payments as the server does', () => {
       [{ id: 1, ab_line: '3' }]
     );
     expect(sums.allLinked).toBe(0);
+  });
+
+  it('counts a vehicle lease whose car was removed as no link', () => {
+    const sums = linkedSums(
+      [],
+      [{ contract_type: 'lease', lease_kind: 'vehicle', vehicle_asset: 99, monthly_payment: 250 }],
+      [{ id: 1, ab_line: '3' }]
+    );
+    expect(sums.allLinked).toBe(0);
+    expect(sums.vehicleTotal).toBe(0);
+  });
+
+  it('counts a blank payment as 0', () => {
+    const debt = (monthly_payment?: number): Partial<DebtInfo> => ({
+      is_secured: true,
+      secured_by: 1,
+      monthly_payment,
+    });
+    const sums = linkedSums(
+      [debt(undefined), debt(100)],
+      [
+        {
+          contract_type: 'lease',
+          lease_kind: 'vehicle',
+          vehicle_asset: 1,
+          monthly_payment: null,
+        } as unknown as Partial<ExecutoryContract>,
+      ],
+      [{ id: 1, ab_line: '3' }]
+    );
+    expect(sums.allLinked).toBe(100);
+    expect(sums.vehicleTotal).toBe(100);
   });
 
   it('adds cents without drift', () => {

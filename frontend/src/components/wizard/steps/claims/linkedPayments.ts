@@ -2,7 +2,8 @@ import type { AssetInfo, DebtInfo, ExecutoryContract } from '../../../../types/a
 
 /**
  * The browser's copy of the server's `linked_payments` sums (3c4 R1, narrowed by R8): the sums
- * only, never Schedule J's slots. A scanned draft's payment counts here, as it does on the server.
+ * only, never Schedule J's slots. The browser counts a scanned draft's payment, as Review shows it
+ * (R8); the server counts confirmed debts only.
  */
 export interface LinkedSums {
   allLinked: number;
