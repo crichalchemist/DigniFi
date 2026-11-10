@@ -175,6 +175,7 @@ EXPECTED = {
         "form_106sum": {
             "1b": "7930.00",
             "1c": "7930.00",
+            "2": "0.00",
             "3b": "20500.00",
             "3c": "20500.00",
             "4": "3150.00",
@@ -233,6 +234,18 @@ EXPECTED = {
             "23b": "2600.00",
             "23c": "550.00",
         },
+        # Her rows (3c5 spec §9.6). No secured debt: D's last-page total prints 0.00, as 106Sum 2.
+        "schedule_d": {"undefined_24": "0.00"},
+        # E/F in creditor order; her two collectors cite the card (4.1) and the hospital (4.3).
+        "schedule_e_f": {
+            "Creditors Name_6": "Brightwater Card Services",
+            "Creditors Name_7": "Ironbridge Card Company",
+            "Creditors Name_8": "Larkfield General Hospital",
+            "Referenced line 5.1": "4.1",
+            "Referenced line 5.2": "4.3",
+        },
+        "schedule_g": {"Company Name 2.1": "Division Demo Properties LLC"},
+        "schedule_h": {"check1": "/no"},
     },
     "james": {
         "form_101": {
@@ -317,6 +330,25 @@ EXPECTED = {
             "23b": "3210.00",
             "23c": "1290.00",
         },
+        # His rows (§9.6). The Camry is his alone: B = its 14,000, C = 8,500 less 14,000, floored
+        # at 0.00. D's last-page total equals 106Sum 2.
+        "schedule_d": {
+            "Creditors Name": "Crestway Auto Credit",
+            "undefined": "8500.00",
+            "undefined_2": "14000.00",
+            "undefined_3": "0.00",
+            "undefined_24": "8500.00",
+        },
+        "schedule_e_f": {
+            "Creditors Name_6": "Meridale National Bank",
+            "Total_26": "9800.00",
+            "Other unsecurecured claim 4.1": "Credit card",
+        },
+        "schedule_g": {
+            "Company Name 2.1": "Gold Coast Example Residential LLC",
+            "Street 2.1": "850 N State St, c/o Management Office",
+        },
+        "schedule_h": {"check1": "/no"},
     },
     "priya": {
         "form_101": {
@@ -430,6 +462,27 @@ EXPECTED = {
             "23b": "7050.00",
             "23c": "2830.00",
         },
+        # Her rows (§9.6). The CR-V is hers alone: B = its 20,500, C = 14,900 less 20,500,
+        # floored at 0.00. Rohan co-signed Westhaven, so 4.2 owes with another and H cites it.
+        "schedule_d": {
+            "Creditors Name": "Kestrel Auto Finance",
+            "undefined": "14900.00",
+            "undefined_2": "20500.00",
+            "undefined_3": "0.00",
+            "undefined_24": "14900.00",
+        },
+        "schedule_e_f": {
+            "Creditors Name_6": "Silverpine Card Services",
+            "Creditors Name_7": "Westhaven University Medical Center",
+            "check 7": "/On",
+            "Creditors Name_12": "Lakeshore Medical Recovery LLC",
+            "Referenced line 5.1": "4.2",
+        },
+        "schedule_g": {"Company Name 2.1": "Fullerton Parkway Apartments LLC"},
+        "schedule_h": {
+            "Codebtor Name 3.1": "Rohan Sharma",
+            "Schedule line E/F 3.1": "4.2",
+        },
     },
     "deshawn": {
         "form_101": {
@@ -536,6 +589,24 @@ EXPECTED = {
             "23b": "2410.00",
             "23c": "1525.00",
         },
+        # His rows (§9.6). The home is his alone: B = its 180,000, C = 160,000 less 180,000,
+        # floored at 0.00. His collectors cite the electric bill (4.1) and the clinic (4.2).
+        "schedule_d": {
+            "Creditors Name": "Harrowgate Home Loans",
+            "undefined": "160000.00",
+            "undefined_2": "180000.00",
+            "undefined_3": "0.00",
+            "undefined_24": "160000.00",
+        },
+        "schedule_e_f": {
+            "Creditors Name_6": "Lakeline Electric",
+            "Creditors Name_7": "Southmoor Health",
+            "Creditors Name_8": "Tallgrass Credit Management",
+            "Referenced line 5.1": "4.1",
+            "Referenced line 5.2": "4.2",
+        },
+        "schedule_g": {"check1": "/no", "Company Name 2.1": ""},
+        "schedule_h": {"check1": "/no", "Codebtor Name 3.1": ""},
     },
     "sarah": {
         "form_101": {
@@ -576,6 +647,7 @@ EXPECTED = {
             "check 47": "",  # under line 46's No
         },
         "form_106sum": {
+            "2": "0.00",
             "3b": "31400.00",
             "3c": "31400.00",
             "4": "1750.00",
@@ -626,6 +698,19 @@ EXPECTED = {
             "23b": "1280.00",
             "23c": "470.00",
         },
+        # Her rows (§9.6). No secured debt: D's last-page total prints 0.00, as 106Sum 2. The
+        # hospital's two address lines print joined on E/F's one street line.
+        "schedule_d": {"undefined_24": "0.00"},
+        "schedule_e_f": {
+            "Creditors Name_6": "Keelson Loan Servicing",
+            "Student loans_6": "/On",
+            "Creditors Name_7": "Lakemont University Hospital",
+            "Street_7": "70 Demo Plaza, Lakemont Health Patient Accounts",
+            "Creditors Name_12": "Wicker Demo Recovery LLC",
+            "Referenced line 5.1": "4.2",
+        },
+        "schedule_g": {"Company Name 2.1": "Damen Demo Flats LLC"},
+        "schedule_h": {"check1": "/no"},
     },
     # His driving is a business on line 5 and 8a since 3e2 (§11).
     "andres": {
@@ -748,6 +833,35 @@ EXPECTED = {
             "23b": "3034.00",
             "23c": "336.00",
         },
+        # His rows (§9.6). The Fit is co-owned with his brother, so Columns B and C stay blank.
+        # E/F's own pages hold his first six unsecured debts in creditor order (S20); 4.7-4.9
+        # print on a copy of page 4 (test_andres_e_f_continues_on_a_copy_of_page_4).
+        "schedule_d": {
+            "Creditors Name": "Copperline Auto Finance",
+            "undefined": "7800.00",
+            "undefined_2": "",
+            "undefined_3": "",
+            "undefined_24": "7800.00",
+        },
+        "schedule_e_f": {
+            "Creditors Name_6": "Bright Signal Wireless",
+            "Creditors Name_7": "Calumet Ridge Medical Center",
+            "Creditors Name_8": "Driveline Tire & Auto",
+            "Creditors Name_9": "Hollowmere Residential LLC",
+            "Disputed_9": "/On",
+            "Creditors Name_10": "Illinois State Toll Highway Authority",
+            "Creditors Name_11": "Northgate Card Services",
+            "Creditors Name_12": "Ashgrove Recovery Group",
+            "Referenced line 5.1": "4.2",
+        },
+        "schedule_g": {
+            "Company Name 2.1": "Northlight Auto Leasing",
+            "Company Name 2.2": "Fox Run Property Management",
+        },
+        "schedule_h": {
+            "Codebtor Name 3.1": "Mateo Kettleby",
+            "Schedule line D 3.1": "2.1",
+        },
     },
 }
 
@@ -841,3 +955,36 @@ def test_andres_statement_prints_his_driving_business():
             "3370.00",
         ),
     )
+
+
+@pytest.mark.slow
+@pytest.mark.django_db
+def test_andres_e_f_continues_on_a_copy_of_page_4():
+    # His nine unsecured debts outrun E/F Part 2's six rows: 4.7-4.9 print on a copy of page 4,
+    # each numbered in its entry box, and page 6 becomes the seventh page of seven (R18).
+    if not District.objects.filter(code="ilnd").exists():
+        call_command("loaddata", "ilnd_2025_data", verbosity=0)
+    call_command("seed_demo_data", "--reset", persona="andres", verbosity=0)
+    session = IntakeSession.objects.filter(user__username="demo_andres").latest("id")
+    document = build_parts("schedule_e_f", session)
+
+    drawn = read_drawn(
+        "schedule_e_f", PDFFormFiller().fill("schedule_e_f", document), document["parts"]
+    )
+
+    on_copy = {w.full_name: w.value for w in drawn if w.copy == 1 and not w.state}
+    rows = {
+        "undefined_4.4": "4.7",
+        "Creditors Name_9": "Prairie Line Credit Union",
+        "undefined_4.5": "4.8",
+        "Creditors Name_10": "Sablewood Bank",
+        "undefined_4.6": "4.9",
+        "Creditors Name_11": "Tallowfield Lending Co.",
+    }
+    assert {name: on_copy[name] for name in rows} == rows
+    # He answered Yes to offset on Prairie Line, where his savings are: the copy ticks it Yes
+    assert {w.state for w in drawn if w.copy == 1 and w.full_name == "check11"} - {"/Off"} == {
+        "/yes"
+    }
+    page_6 = {w.full_name: w.value for w in drawn if w.page == 6 and w.copy is None}
+    assert (page_6["fill_27.1.8"], page_6["fill_27.1.7"]) == ("7", "7")

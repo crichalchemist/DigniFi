@@ -440,12 +440,14 @@ def test_andres_lease_picks_the_corolla_and_copperline_picks_the_fit():
 @pytest.mark.parametrize("persona", list(PERSONAS))
 def test_each_personas_dates_fit_their_boxes(persona):
     # A date too long for its box is ValueTooLong on the form it prints on (S16). D prints only
-    # a secured debt's date, in its 50 pt box; E/F prints the rest, in the narrowest of its boxes.
+    # a secured debt's date, in its 50 pt box; E/F prints the rest in Part 2's six date boxes
+    # (Part 1 is priority claims, which no persona has), and a row on a copy reuses page 4's
+    # three. Row 4's `Date debt was incurred_9` (page 4, 64.1 pt) is the narrowest of the six.
     for debt in PERSONAS[persona]()["debts"]:
         form, key = (
             ("schedule_d", "Date debt was incurred@1:T31")
             if debt.get("is_secured")
-            else ("schedule_e_f", "Date debt was incurred@1:T14")
+            else ("schedule_e_f", "Date debt was incurred_9@4:T7")
         )
         PDFFormFiller().check(form, {key: debt["date_incurred"]})  # raises ValueTooLong
 
