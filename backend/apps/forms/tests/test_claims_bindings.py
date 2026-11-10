@@ -293,3 +293,124 @@ def test_schedule_h_text_rules_send_the_filer_to_the_codebtors_step():
     for rule in HOUSE_RULES[2:]:
         assert RULE_FIXES[rule] == {"step": "codebtors"}
     assert not {"schedule_h_community_lived", "schedule_h_spouse_lived_with"} & RULE_FIXES.keys()
+
+
+def test_a_notice_party_prints_its_own_line_address_and_account(session):
+    # Notices copy the creditor's line, so the court sees which claim each notice belongs to.
+    complete_debt(
+        session,
+        is_secured=True,
+        creditor_name="Secured",
+        notice_parties=[_party("Sec Notice", street_2="Suite 9", last_4="1111")],
+    )
+    complete_debt(
+        session,
+        creditor_name="Unsecured",
+        notice_parties=[_party("Unsec Notice", street_2="Floor 3", last_4="2222")],
+    )
+    for name, line, street_2, last_4 in (
+        ("secured_notices", "2.1", "Suite 9", "1111"),
+        ("unsecured_notices", "4.1", "Floor 3", "2222"),
+    ):
+        assert _cell(session, f"claims.{name}[].line") == [line]
+        assert _cell(session, f"claims.{name}[].street") == ["1 Demo Street"]
+        assert _cell(session, f"claims.{name}[].street_2") == [street_2]
+        assert _cell(session, f"claims.{name}[].last_4") == [last_4]
+    assert _cell(session, "claims.unsecured_notices[].part") == ["2"]
+
+
+def test_a_contract_and_a_codebtor_print_their_own_name_and_address(session):
+    complete_debt(session)
+    complete_contract(
+        session,
+        counterparty_name="Demo Lessor",
+        city="Chicago",
+        zip_code="60610",
+        description="Equipment lease",
+    )
+    complete_codebtor(session, name="Demo Cosigner", city="Evanston", zip_code="60611")
+    assert _cell(session, "claims.contracts[].name") == ["Demo Lessor"]
+    assert _cell(session, "claims.contracts[].city") == ["Chicago"]
+    assert _cell(session, "claims.contracts[].zip") == ["60610"]
+    assert _cell(session, "claims.contracts[].purpose") == ["Equipment lease"]
+    assert _cell(session, "claims.codebtors[].name") == ["Demo Cosigner"]
+    assert _cell(session, "claims.codebtors[].city") == ["Evanston"]
+    assert _cell(session, "claims.codebtors[].zip") == ["60611"]
+
+
+def test_each_status_and_lien_kind_ticks_only_its_own_box(session):
+    complete_debt(
+        session,
+        is_secured=True,
+        creditor_name="A only other",
+        lien={"kinds": ["other"], "other": "Demo words"},
+        claim_status=["unliquidated"],
+    )
+    complete_debt(
+        session,
+        is_secured=True,
+        creditor_name="B only contingent",
+        lien={"kinds": ["judgment"], "other": ""},
+        claim_status=["contingent"],
+    )
+    one = lambda attr: _cell(session, f"claims.secured[].{attr}")  # noqa: E731
+    assert one("lien_other") == ["true", ""]
+    assert one("lien_judgment") == ["", "true"]
+    assert one("lien_agreement") == ["", ""]
+    assert one("lien_statutory") == ["", ""]
+    assert one("unliquidated") == ["true", ""]
+    assert one("contingent") == ["", "true"]
+    assert one("disputed") == ["", ""]
+
+
+def test_a_secured_debt_fully_covered_by_its_property_prints_zero_unsecured(session):
+    row = linked_row(session, "3")
+    row.set_details({"who": "only_you"})
+    row.entire_value = Decimal("0")
+    row.save()
+    linked_loan(session, row, Decimal("100"), amount_owed=Decimal("0"))
+    assert _cell(session, "claims.secured[].unsecured") == ["0.00"]
+
+
+def test_a_debt_with_no_type_ticks_neither_type_box(session):
+    complete_debt(session, debt_type="", creditor_name="No type")
+    assert _cell(session, "claims.unsecured[].student_loans") == [""]
+    assert _cell(session, "claims.unsecured[].other_type") == [""]
+    assert _cell(session, "claims.unsecured[].other_type_words") == [""]
+
+
+def test_an_unsecured_debt_prints_the_offset_answer_it_was_given(session):
+    complete_debt(session, offset_answer="no")
+    assert _cell(session, "claims.unsecured[].offset") == ["no"]
+
+
+def test_a_codebtor_names_each_schedule_line_it_is_on(session):
+    secured = complete_debt(session, is_secured=True, creditor_name="Sec")
+    contract = complete_contract(session)
+    complete_codebtor(
+        session,
+        links=[{"kind": "debt", "id": secured.pk}, {"kind": "contract", "id": contract.pk}],
+    )
+    complete_codebtor(session, name="Lease only", links=[{"kind": "contract", "id": contract.pk}])
+    one = lambda attr: _cell(session, f"claims.codebtors[].{attr}")  # noqa: E731
+    assert one("on_d") == ["true", ""]
+    assert one("d_lines") == ["2.1", ""]
+    assert one("on_g") == ["true", "true"]
+    assert one("g_lines") == ["2.1", "2.1"]
+    assert one("on_ef") == ["", ""]
+    assert one("ef_lines") == ["", ""]
+
+
+def test_resolve_parts_reads_the_claims_once_for_the_whole_form(session, monkeypatch):
+    # Every rule and binding of a form asks for the rows; one read per call, never per cell.
+    from apps.forms.services import fill_resolver
+    from apps.intake import claim_rows as claim_rows_module
+
+    held = []
+    monkeypatch.setattr(
+        fill_resolver,
+        "_resolve_parts",
+        lambda schema, s: held.append(claim_rows_module._ONE_READ.get()) or {},
+    )
+    fill_resolver.resolve_parts(None, session)
+    assert held[0] is not None
