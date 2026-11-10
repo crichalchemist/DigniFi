@@ -260,8 +260,26 @@ WHO_ANOTHER = [
 ]
 
 
+# The other two who-owes widgets of each row: never ticked, whatever the row's answer.
+WHO_DEBTOR_2 = [
+    ("check 2", "T23"),
+    ("check 3", "T48"),
+    ("check 4", "T24"),
+    ("check 5", "T53"),
+    ("Debtor 2 only_5", "T79"),
+]
+WHO_BOTH = [
+    ("check 2", "T24"),
+    ("check 3", "T49"),
+    ("check 4", "T27"),
+    ("check 5", "T54"),
+    ("Debtor 1 and Debtor 2 only_5", "T80"),
+]
+
+
 def _who_ticks(drawn, copy=None):
-    every = {*WHO_DEBTOR_1, *WHO_ANOTHER}
+    """Every who-owes widget of every row that prints a check mark, not only DigniFi's two."""
+    every = {*WHO_DEBTOR_1, *WHO_ANOTHER, *WHO_DEBTOR_2, *WHO_BOTH}
     return {
         (w.full_name, w.tag)
         for w in drawn
@@ -348,6 +366,34 @@ def test_a_sixth_secured_debt_continues_on_a_copy_of_page_2(session):
     assert (_at(drawn, "fill_27.1.0"), _at(drawn, "fill_27.1.1")) == ("2", "4")
     assert (_at(drawn, "fill_27.1.0", copy=1), _at(drawn, "fill_27.1.1", copy=1)) == ("3", "4")
     assert (_at(drawn, "fill_28.1.1"), _at(drawn, "fill_28.1.2")) == ("4", "4")
+
+
+def test_a_fourth_notice_partys_last_4_prints_only_in_its_own_box(session):
+    # Part 2 slot 4's last-4 box (`account number@3:T33`) shares its name with Part 1 row 1's
+    # (`@1:T32`): the index says it "always mirrors that value", so an untagged binding would
+    # print one debt's last 4 in both.
+    _secured(session, creditor_name="Demo Lender 1")
+    _secured(
+        session,
+        creditor_name="Demo Lender 2",
+        notice_parties=[_party(f"Demo Collections {n}") for n in range(1, 4)]
+        + [_party("Demo Collections 4", last_4="4004")],
+    )
+    _, drawn = _parts_drawn(session, "schedule_d")
+    assert _at(drawn, "account number", page=3, tag="T33") == "4004"
+    assert _at(drawn, "account number", page=1, tag="T32") == ""
+
+
+def test_a_first_debts_last_4_stays_out_of_a_fourth_notice_partys_box(session):
+    _secured(
+        session,
+        creditor_name="Demo Lender 1",
+        account_number="55557702",
+        notice_parties=[_party(f"Demo Collections {n}") for n in range(1, 5)],
+    )
+    _, drawn = _parts_drawn(session, "schedule_d")
+    assert _at(drawn, "account number", page=1, tag="T32") == "7702"
+    assert _at(drawn, "account number", page=3, tag="T33") == ""
 
 
 def test_a_notice_party_prints_on_part_2_with_its_line(session):
