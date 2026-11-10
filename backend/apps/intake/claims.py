@@ -121,12 +121,14 @@ CODEBTOR_GAP_NO_LINK = "Choose which amounts owed or contracts {name} shares wit
 # The shapes of a row whose own answers say who owns it (asset_lines.py)
 _SHAPES_THAT_ASK_WHO = ("place", "vehicle", "vehicle_no_mileage")
 _HOME_LINES = ("1", "4")
+_ZERO = Decimal("0")
 
 
 class ClaimStepGap(Exception):
-    """One thing Schedules D, E/F, G or H still lack, in the filer's words.
+    """One thing Schedules D, E/F, G or H, or Schedule J line 4, still lack, in the filer's words.
 
-    Claim gaps fix on four steps, so each carries its own `step` (a WIZARD_STEPS key).
+    Claim gaps fix on five steps (assets, debts, contracts, codebtors and expense_info), so each
+    carries its own `step` (a WIZARD_STEPS key).
     str(gap) is the sentence.
     """
 
@@ -201,9 +203,17 @@ def _live(link, session):
     return link if link_is_live(link, session) else None
 
 
-def _asset_gaps(session, debts):
-    """Each line 1 or line 4 row a debt links to whose "Do you live here?" is unanswered."""
+def _asset_gaps(session, debts, contracts):
+    """Each line 1 or line 4 row a debt or a vehicle lease links to whose "Do you live here?" is
+    unanswered: the answer decides which Schedule J line the payment prints on."""
     linked = {live.pk for debt in debts if (live := _live(debt.secured_by, session))}
+    linked |= {
+        live.pk
+        for contract in contracts
+        if contract.contract_type == "lease"
+        and contract.lease_kind == "vehicle"
+        and (live := _live(contract.vehicle_asset, session))
+    }
     gaps = []
     for row in ordered_assets(session):
         if row.pk in linked and row.ab_line in _HOME_LINES:
@@ -435,10 +445,11 @@ def claim_step_gaps(session) -> list[ClaimStepGap]:
     the earlier steps made.
 
     The four blocks read the session's debts (drafts included, so a draft's gaps show),
-    contracts and codebtors, and its ClaimAnswers: no row means every answer is null. Contracts
-    and codebtors go in id order, debts in ordered_debts' order. The tail also reads the Expenses
-    row (_legacy_figure) and, through linked_payments, the session's assets and only its
-    confirmed debts, so a draft never counts there.
+    contracts and codebtors, and its ClaimAnswers: no row means every answer is null. The Assets
+    block asks "Do you live here?" of a line 1 or line 4 row that a debt or a vehicle lease links
+    to. Contracts and codebtors go in id order, debts in ordered_debts' order. The tail also reads
+    the Expenses row (_legacy_figure) and, through linked_payments, the session's assets, its
+    vehicle leases and only its confirmed debts, so a draft never counts there.
     """
     row = getattr(session, "claim_answers", None)
     answers = row.get_answers() if row is not None else {}
@@ -446,7 +457,7 @@ def claim_step_gaps(session) -> list[ClaimStepGap]:
     contracts = sorted(session.executory_contracts.all(), key=lambda row: row.pk)
     codebtors = sorted(session.codebtors.all(), key=lambda row: row.pk)
     gaps = [
-        *_asset_gaps(session, debts),
+        *_asset_gaps(session, debts, contracts),
         *_debt_gaps(session, debts, answers),
         *_contract_gaps(session, contracts, answers),
         *_codebtor_gaps(session, codebtors, debts, contracts, answers),
@@ -509,9 +520,6 @@ def legacy_payments(session) -> dict:
 VEHICLE_WORDS = ("Vehicle 3", "Vehicle 4")
 OTHER_PROPERTY_WORDS = "Payment on other property"
 SPILL_WORDS = "Other secured payments"
-
-_HOME_LINES = ("1", "4")
-_ZERO = Decimal("0")
 
 
 @dataclass(frozen=True)
@@ -585,7 +593,11 @@ def linked_payments(session) -> LinkedPayments:
             on_row[pk] = on_row.get(pk, _ZERO) + amount
 
     vehicle_pays = [on_row.get(row.pk, _ZERO) for row in vehicles]
-    others = [on_row[row.pk] for row in rows if row.pk in on_row and row.pk not in vehicle_ids]
+    others = [
+        on_row[row.pk]
+        for row in rows
+        if row.pk in on_row and row.pk not in vehicle_ids and on_row[row.pk] > 0
+    ]
     j17 = {"17a": _ZERO, "17b": _ZERO, "17c": _ZERO, "17d": _ZERO}
     for key, amount in zip(("17a", "17b"), vehicle_pays, strict=False):
         j17[key] = amount

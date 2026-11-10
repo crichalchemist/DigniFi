@@ -222,6 +222,17 @@ def test_a_vehicle_with_no_payment_leaves_its_line_blank(session):
     assert L.j17_words["17d"] == "Payment on other property"
 
 
+def test_a_loan_at_zero_on_other_property_leaves_17c_to_the_one_that_pays(session):
+    linked_loan(session, linked_row(session, "3"), "10")
+    linked_loan(session, linked_row(session, "3"), "20")
+    linked_loan(session, linked_row(session, "6"), "0")
+    linked_loan(session, linked_row(session, "7"), "60")
+    L = _linked(session)
+    assert L.j17 == {"17a": 10, "17b": 20, "17c": 60, "17d": 0}
+    assert L.j17_words == {"17c": "Payment on other property", "17d": ""}
+    assert L.total == 90
+
+
 def test_two_loans_on_one_car_add_on_its_line(session):
     car = linked_row(session, "3")
     linked_loan(session, car, "200")

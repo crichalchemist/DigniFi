@@ -713,3 +713,47 @@ def test_a_lien_of_kind_other_with_its_text_is_no_gap(session):
     answer_claims(session)
 
     assert _gaps(session) == []
+
+
+def _motor_home(session, **details):
+    return _asset(session, "4", make="Demo Motor Home", who="only_you", **details)
+
+
+def test_a_lease_on_a_motor_home_waits_for_do_you_live_here(session):
+    home = _motor_home(session)
+    _vehicle_lease_with(vehicle_asset=home)(session)
+    answer_claims(session, no_debts=True, contracts_answer="yes")
+    sentence = "Answer “Do you live here?” for Demo Motor Home on line 4 of the Assets step."
+
+    gaps = claim_step_gaps(IntakeSession.objects.get(pk=session.pk))
+
+    assert [str(gap) for gap in gaps] == [sentence]
+    assert gaps[0].step == "assets"
+
+
+@pytest.mark.parametrize("answer", ["yes", "no"])
+def test_a_lease_on_a_motor_home_the_filer_answered_asks_nothing(session, answer):
+    home = _motor_home(session, lives_here=answer)
+    _vehicle_lease_with(vehicle_asset=home)(session)
+    answer_claims(session, no_debts=True, contracts_answer="yes")
+
+    assert _gaps(session) == []
+
+
+def test_a_residential_lease_asks_no_home_question_of_a_motor_home(session):
+    _motor_home(session)
+    complete_contract(session, counterparty_name=CTR)
+    answer_claims(session, no_debts=True, contracts_answer="yes")
+
+    assert _gaps(session) == []
+
+
+def test_a_debt_and_a_lease_on_one_motor_home_ask_once(session):
+    home = _motor_home(session)
+    _secured(session, home, debt_type="mortgage")
+    _vehicle_lease_with(vehicle_asset=home)(session)
+    answer_claims(session, contracts_answer="yes")
+
+    asked = [gap for gap in _gaps(session) if "Do you live here" in gap]
+
+    assert len(asked) == 1
