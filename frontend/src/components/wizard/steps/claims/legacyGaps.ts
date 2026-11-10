@@ -12,7 +12,7 @@ export interface LegacyGap {
 const toCents = (dollars: number) => Math.round(dollars * 100);
 
 /**
- * The stored figures the links don't cover (3c4 R10), the car payment first: the server's
+ * The stored figures the links don't cover (3c4 R6, R15), the car payment first: the server's
  * legacy gap, in the server's words. Each is shown with Remove and is no gap on Continue (B46).
  */
 export function legacyGaps(legacy: LegacyPayments | undefined, sums: LinkedSums): LegacyGap[] {

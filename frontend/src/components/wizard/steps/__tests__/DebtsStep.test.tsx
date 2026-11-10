@@ -838,6 +838,49 @@ describe('DebtsStep legacy payments', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(copy.NOT_SAVED_TRY_AGAIN);
     expect(screen.getByText(vehicleGap.sentence)).toBeInTheDocument();
   });
+
+  it("keeps a failed Remove per box: another box's Remove leaves it in place", async () => {
+    const onRemoveLegacy = vi.fn((field: LegacyField) =>
+      field === 'vehicle_payment' ? Promise.reject(new Error('no')) : Promise.resolve()
+    );
+    render(
+      <Harness
+        initial={[complete]}
+        legacyGaps={[vehicleGap, otherGap]}
+        onRemoveLegacy={onRemoveLegacy}
+      />
+    );
+    const boxOf = (gap: { sentence: string }) => screen.getByText(gap.sentence).parentElement!;
+
+    await userEvent.click(within(boxOf(vehicleGap)).getByRole('button'));
+    expect(await within(boxOf(vehicleGap)).findByRole('alert')).toHaveTextContent(
+      copy.NOT_SAVED_TRY_AGAIN
+    );
+    expect(within(boxOf(otherGap)).queryByRole('alert')).toBeNull();
+
+    await userEvent.click(within(boxOf(otherGap)).getByRole('button'));
+    expect(onRemoveLegacy).toHaveBeenCalledWith('other_property_mortgages');
+    expect(within(boxOf(vehicleGap)).getByRole('alert')).toHaveTextContent(
+      copy.NOT_SAVED_TRY_AGAIN
+    );
+  });
+
+  it("drops a failed Remove's alert when the sentence changes", async () => {
+    const onRemoveLegacy = vi.fn().mockRejectedValue(new Error('no'));
+    const { rerender } = render(
+      <Harness initial={[complete]} legacyGaps={[vehicleGap]} onRemoveLegacy={onRemoveLegacy} />
+    );
+    await userEvent.click(screen.getByRole('button', { name: copy.LEGACY_REMOVE }));
+    expect(await screen.findByRole('alert')).toBeInTheDocument();
+
+    const changed = { ...vehicleGap, sentence: 'You pay $200 for a car.' };
+    rerender(
+      <Harness initial={[complete]} legacyGaps={[changed]} onRemoveLegacy={onRemoveLegacy} />
+    );
+
+    expect(screen.getByText(changed.sentence)).toBeInTheDocument();
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
 });
 
 describe('DebtsStep intro', () => {

@@ -104,7 +104,7 @@ interface DebtsStepProps {
   /** The Assets step's rows, for the property a debt is secured by */
   assets: WizardRow<AssetInfo>[];
   onValidationChange: (isValid: boolean) => void;
-  /** Stored payments the links don't cover (3c4 R10): shown with Remove, never a gap (B46) */
+  /** Stored payments the links don't cover (3c4 R6, R15): shown with Remove, never a gap (B46) */
   legacyGaps?: LegacyGap[];
   onRemoveLegacy?: (field: LegacyField) => Promise<void>;
 }
@@ -296,16 +296,23 @@ export function DebtsStep({
   legacyGaps = [],
   onRemoveLegacy,
 }: DebtsStepProps) {
-  // The field whose Remove failed; the figure stays and the step says it was not saved
-  const [removeFailed, setRemoveFailed] = useState<LegacyField | null>(null);
-  const removeLegacy = async (field: LegacyField) => {
-    setRemoveFailed(null);
+  // Each field whose Remove failed, with the sentence it failed under; the figure stays and that
+  // box says it was not saved. A changed sentence or a gone gap ends the entry (see below).
+  const [removeFailed, setRemoveFailed] = useState<Partial<Record<LegacyField, string>>>({});
+  const removeLegacy = async (field: LegacyField, sentence: string) => {
+    setRemoveFailed((failed) => ({ ...failed, [field]: undefined }));
     try {
       await onRemoveLegacy?.(field);
     } catch {
-      setRemoveFailed(field);
+      setRemoveFailed((failed) => ({ ...failed, [field]: sentence }));
     }
   };
+  const stillFailed = Object.entries(removeFailed).filter(([field, sentence]) =>
+    legacyGaps.some((gap) => gap.field === field && gap.sentence === sentence)
+  );
+  if (stillFailed.length !== Object.keys(removeFailed).length) {
+    setRemoveFailed(Object.fromEntries(stillFailed));
+  }
   // With no rows, the step shows one blank row. It joins the wizard's rows at the filer's first
   // edit, and a blank row is never saved.
   const [blankRow, setBlankRow] = useState(createEmptyDebt);
@@ -845,11 +852,11 @@ export function DebtsStep({
               type="button"
               variant="outline"
               aria-describedby={`legacy-${field}`}
-              onClick={() => removeLegacy(field)}
+              onClick={() => removeLegacy(field, sentence)}
             >
               {LEGACY_REMOVE}
             </Button>
-            {removeFailed === field && (
+            {removeFailed[field] === sentence && (
               <p className="form-error" role="alert">
                 {NOT_SAVED_TRY_AGAIN}
               </p>

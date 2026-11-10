@@ -5295,7 +5295,7 @@ describe('IntakeWizard window notice', { timeout: 30_000 }, () => {
 });
 
 // ===========================================================================
-// A stored payment the links don't cover (3c4 R10, B39)
+// A stored payment the links don't cover (3c4 R9, B39)
 // ===========================================================================
 
 describe('IntakeWizard legacy payment on Amounts Owed', { timeout: 15_000 }, () => {
@@ -5375,6 +5375,32 @@ describe('IntakeWizard legacy payment on Amounts Owed', { timeout: 15_000 }, () 
 
   it('a stored figure the links cover shows no sentence', async () => {
     serve({ ...legacySession, debts: [carLoan] });
+    renderWizard();
+    await screen.findByRole('heading', { name: /amounts owed/i, level: 2 });
+
+    expect(screen.queryByRole('button', { name: LEGACY_REMOVE })).toBeNull();
+    expect(screen.queryByText(/a month for a car/)).toBeNull();
+  });
+
+  it('a stored car figure a vehicle lease covers shows no sentence', async () => {
+    const carLease = {
+      ...storedLease,
+      id: 6,
+      counterparty_name: 'Demo Auto Lease',
+      lease_kind: 'vehicle',
+      monthly_payment: '389.00',
+      vehicle_asset: 3,
+    };
+    serve({
+      ...legacySession,
+      debts: [],
+      legacy_payments: { vehicle_payment: '389.00', other_property_mortgages: null },
+    });
+    server.use(
+      http.get('http://localhost:8000/api/intake/sessions/:id/contracts/', () =>
+        HttpResponse.json([carLease])
+      )
+    );
     renderWizard();
     await screen.findByRole('heading', { name: /amounts owed/i, level: 2 });
 

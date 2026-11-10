@@ -425,7 +425,7 @@ export const intakeAPI = {
     });
   },
 
-  // Remove on Amounts Owed (3c4 R10, B39): a retired Expenses figure goes to 0 in its own session
+  // Remove on Amounts Owed (3c4 R9, B39): a retired Expenses figure goes to 0 in its own session
   // PATCH, the only value the server takes for it
   removeLegacyPayment: async (sessionId: number, field: LegacyField): Promise<void> => {
     await apiFetch<IntakeSession>(`/intake/sessions/${sessionId}/`, {
