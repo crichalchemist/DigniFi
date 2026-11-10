@@ -756,3 +756,6 @@ export const CLAIM_GAP_LEGACY_VEHICLE =
 
 export const CLAIM_GAP_LEGACY_OTHER =
   'You told us you pay ${typed} a month in mortgages on other property, and the payments you linked add up to ${linked}. Add the rest to the mortgage on Amounts Owed, or remove this figure.';
+
+export const CLAIM_GAP_LINE_4 =
+  'You entered ${typed} for rent or lot rent, and your first mortgage on Amounts Owed is ${linked} a month. Line 4 adds them. Do you pay both?';

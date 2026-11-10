@@ -777,6 +777,7 @@ class ClaimAnswers(models.Model):
         "community_spouse_state",
         "community_spouse_zip_code",
         "community_spouse_outside_us",
+        "line_4_both_confirmed",
     )
     TEXT_LIMITS: ClassVar[dict[str, int]] = {
         "community_state": 100,

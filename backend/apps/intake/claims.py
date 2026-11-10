@@ -35,6 +35,10 @@ CLAIM_GAP_LEGACY_OTHER = (
     "you linked add up to ${linked}. Add the rest to the mortgage on Amounts Owed, "
     "or remove this figure."
 )
+CLAIM_GAP_LINE_4 = (
+    "You entered ${typed} for rent or lot rent, and your first mortgage on Amounts Owed is "
+    "${linked} a month. Line 4 adds them. Do you pay both?"
+)
 
 DEBT_GAP_NO_ANSWER = "List each amount you owe, or press “I have no amounts owed.”"
 DEBT_GAP_NONE_BUT_LISTED = (
@@ -430,7 +434,7 @@ def claim_step_gaps(session) -> list[ClaimStepGap]:
         *_codebtor_gaps(session, codebtors, debts, contracts, answers),
     ]
     linked = linked_payments(session)
-    return [*gaps, *_legacy_gaps(session, linked)]
+    return [*gaps, *_legacy_gaps(session, linked), *_line_4_gap(session, linked, answers)]
 
 
 def _legacy_figure(session, field) -> Decimal:
@@ -455,6 +459,23 @@ def _legacy_gaps(session, linked) -> list[ClaimStepGap]:
             message = sentence.format(typed=format_figure(typed), linked=format_figure(covered))
             gaps.append(ClaimStepGap(message, "debts"))
     return gaps
+
+
+def _line_4_gap(session, linked, answers) -> list[ClaimStepGap]:
+    """A typed rent beside a linked first mortgage, until the filer confirms the typed figure (R7).
+
+    Counts first-mortgage debts only: a vehicle lease on a home row adds to J 4 without asking.
+    """
+    typed = _legacy_figure(session, "rent_or_mortgage")
+    if typed <= _ZERO or linked.first_mortgage <= _ZERO:
+        return []
+    stored = answers.get("line_4_both_confirmed")
+    if stored is not None and Decimal(stored) == typed:
+        return []
+    message = CLAIM_GAP_LINE_4.format(
+        typed=format_figure(typed), linked=format_figure(linked.first_mortgage)
+    )
+    return [ClaimStepGap(message, "expense_info")]
 
 
 def legacy_payments(session) -> dict:

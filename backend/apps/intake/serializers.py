@@ -983,6 +983,17 @@ def _save_claim_answers(session: IntakeSession, data: dict) -> None:
     session.claim_answers = record
 
 
+def _is_line_4_figure(value) -> bool:
+    """A string of at most 12 characters holding a finite number at or above 0, to the cent."""
+    if not isinstance(value, str) or len(value) > 12:
+        return False
+    try:
+        number = Decimal(value)
+    except ArithmeticError:
+        return False
+    return number.is_finite() and number >= 0 and number.as_tuple().exponent >= -2
+
+
 _CLAIM_YES_NO = (
     "contracts_answer",
     "codebtors_answer",
@@ -1067,6 +1078,8 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
                     value = value.strip().upper()
                 if key == "no_debts":
                     ok = value is True
+                elif key == "line_4_both_confirmed":
+                    ok = _is_line_4_figure(value)
                 elif key in _CLAIM_YES_NO:
                     ok = isinstance(value, str) and value in ("yes", "no")
                 elif key == "community_spouse_outside_us":

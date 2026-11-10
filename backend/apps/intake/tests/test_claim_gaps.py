@@ -106,6 +106,20 @@ def _legacy(values, linked_loan_payment=None, **figures):
     return build
 
 
+def _line_4(session):
+    home = _asset(
+        session,
+        "1",
+        street="1 Demo Street",
+        who="only_you",
+        lives_here="yes",
+        property_kinds=["single_family"],
+    )
+    _secured(session, home, monthly_payment=Decimal("1200"), home_payment_line="first")
+    ExpenseInfo.objects.create(session=session, rent_or_mortgage=Decimal("1200"))
+    return {"typed": "1,200.00", "linked": "1,200.00"}
+
+
 # Each state is the one in which its constant's gap fires. It returns the values the sentence
 # is filled with.
 
@@ -279,6 +293,7 @@ STATES = {
     "CLAIM_GAP_LEGACY_OTHER": _legacy(
         {"typed": "1,200.00", "linked": "0.00"}, other_property_mortgages="1200"
     ),
+    "CLAIM_GAP_LINE_4": _line_4,
 }
 
 
