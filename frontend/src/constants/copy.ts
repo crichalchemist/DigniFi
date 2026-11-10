@@ -748,6 +748,14 @@ export const CODEBTOR_ADDRESS_HELP =
 
 export const REVIEW_NO_DEBTS = 'You said you have no amounts owed.';
 
+export const REVIEW_RENT_OR_LOT_RENT = 'Rent or lot rent';
+
+export const REVIEW_TYPED_TOTAL = 'Expenses you entered';
+
+export const REVIEW_LINKED_PAYMENTS = 'Payments you linked on Amounts Owed and Contracts & Leases';
+
+export const REVIEW_MONTHLY_TOTAL = 'Total monthly expenses';
+
 export const REVIEW_NO_CONTRACTS = 'You said you have no contracts or leases.';
 
 export const REVIEW_NO_CODEBTORS = 'You said you have no codebtors.';
