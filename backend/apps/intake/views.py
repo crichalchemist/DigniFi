@@ -251,8 +251,9 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
 
         POST /api/intake/sessions/{id}/complete/
 
-        Refuses with a 400 naming, in wizard order, the step that fixes each gap
-        (forms step 3a1 spec §4.2). The session stays locked from the checks to the status
+        Refuses with a 400 naming the step that fixes each gap (forms step 3a1 spec §4.2), in
+        wizard order except the claims tail: the legacy gaps, then the line 4 question, come after
+        Codebtors' gaps, out of wizard order on purpose. The session stays locked from the checks to the status
         write, so a save can't land between them, and a save that waited reopens it.
         """
         session = lock_session(self.get_object().pk)
@@ -301,7 +302,8 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
         errors.extend([{"step": gap.step, "message": str(gap)} for gap in asset_step_gaps(session)])
 
         # The claims steps' walk (3c3): Assets' "Do you live here?" first, then the Debts block
-        # (a scanned debt the filer hasn't confirmed first, DIG-163), Contracts and Codebtors.
+        # (a scanned debt the filer hasn't confirmed first, DIG-163), Contracts and Codebtors; then,
+        # out of wizard order on purpose (3c4), the legacy gaps and the line 4 question.
         errors.extend({"step": gap.step, "message": str(gap)} for gap in claim_step_gaps(session))
 
         if errors:

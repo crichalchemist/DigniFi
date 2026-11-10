@@ -20,7 +20,6 @@ EXPENSES = {
     "rent_or_mortgage": Decimal("1.00"),
     "utilities": Decimal("2.00"),
     "home_maintenance": Decimal("4.00"),
-    "vehicle_payment": Decimal("8.00"),
     "vehicle_insurance": Decimal("16.00"),
     "vehicle_maintenance": Decimal("32.00"),
     "food_and_groceries": Decimal("64.00"),

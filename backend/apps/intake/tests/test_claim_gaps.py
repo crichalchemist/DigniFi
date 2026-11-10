@@ -22,7 +22,7 @@ from apps.intake.claims import (
     claim_step_gaps,
     link_is_live,
 )
-from apps.intake.models import AssetInfo, DebtInfo, IntakeSession
+from apps.intake.models import AssetInfo, DebtInfo, ExpenseInfo, IntakeSession
 from apps.intake.tests.builders import (
     answer_claims,
     complete_codebtor,
@@ -92,6 +92,32 @@ def _secured(session, asset=None, **over) -> DebtInfo:
 
 def _other_session(session) -> IntakeSession:
     return IntakeSession.objects.create(user=session.user, district=session.district)
+
+
+def _legacy(values, linked_loan_payment=None, **figures):
+    def build(session):
+        if linked_loan_payment is not None:
+            _secured(session, monthly_payment=Decimal(linked_loan_payment))
+        ExpenseInfo.objects.create(
+            session=session, **{key: Decimal(value) for key, value in figures.items()}
+        )
+        return values
+
+    return build
+
+
+def _line_4(session):
+    home = _asset(
+        session,
+        "1",
+        street="1 Demo Street",
+        who="only_you",
+        lives_here="yes",
+        property_kinds=["single_family"],
+    )
+    _secured(session, home, monthly_payment=Decimal("1200"), home_payment_line="first")
+    ExpenseInfo.objects.create(session=session, rent_or_mortgage=Decimal("1200"))
+    return {"typed": "1,200.00", "linked": "1,200.00"}
 
 
 # Each state is the one in which its constant's gap fires. It returns the values the sentence
@@ -181,19 +207,35 @@ def _no_but_contract(session):
     return {}
 
 
-def _same_vehicle(session):
-    car = _car(session)
-    debt = _secured(session, car)
+def _nameless_vehicle_lease(session):
     complete_contract(
         session,
-        counterparty_name=CTR,
+        counterparty_name="",
         lease_kind="vehicle",
-        vehicle_asset=car,
+        vehicle_asset=None,
         monthly_payment=Decimal("100.00"),
-        owes_now="yes",
-        owed_debt=debt,
     )
-    return {"name": CTR, "debt": ND}
+    return {}
+
+
+def _same_vehicle_lease(counterparty_name):
+    def build(session):
+        car = _car(session)
+        debt = _secured(session, car)
+        complete_contract(
+            session,
+            counterparty_name=counterparty_name,
+            lease_kind="vehicle",
+            vehicle_asset=car,
+            monthly_payment=Decimal("100.00"),
+            owes_now="yes",
+            owed_debt=debt,
+        )
+        if counterparty_name:
+            return {"name": counterparty_name, "debt": ND}
+        return {"debt": ND}
+
+    return build
 
 
 def _no_but_codebtor(session):
@@ -250,7 +292,9 @@ STATES = {
     "CONTRACT_GAP_PAYMENT": _vehicle_lease_with(monthly_payment=None),
     "CONTRACT_GAP_OWES_NOW": _contract_with(owes_now=None),
     "CONTRACT_GAP_OWED_DEBT": _contract_with(owes_now="yes", owed_debt=None),
-    "CONTRACT_GAP_SAME_VEHICLE": _same_vehicle,
+    "CONTRACT_GAP_SAME_VEHICLE": _same_vehicle_lease(CTR),
+    "CONTRACT_GAP_VEHICLE_NO_NAME": _nameless_vehicle_lease,
+    "CONTRACT_GAP_SAME_VEHICLE_NO_NAME": _same_vehicle_lease(""),
     "CODEBTOR_GAP_NO_ANSWER": _no_row(),
     "CODEBTOR_GAP_YES_BUT_NONE": _no_row(codebtors_answer="yes"),
     "CODEBTOR_GAP_NO_BUT_LISTED": _no_but_codebtor,
@@ -261,6 +305,13 @@ STATES = {
     ),
     "CODEBTOR_GAP_NO_NAME": _nameless_codebtor,
     "CODEBTOR_GAP_NO_LINK": _codebtor_with(links=[]),
+    "CLAIM_GAP_LEGACY_VEHICLE": _legacy(
+        {"typed": "350.00", "linked": "200.00"}, 200, vehicle_payment="350"
+    ),
+    "CLAIM_GAP_LEGACY_OTHER": _legacy(
+        {"typed": "1,200.00", "linked": "0.00"}, other_property_mortgages="1200"
+    ),
+    "CLAIM_GAP_LINE_4": _line_4,
 }
 
 
@@ -296,6 +347,18 @@ def test_a_nameless_contract_and_codebtor_are_named_by_the_servers_kind(session)
 
     assert any(_copy_sentence("NAMELESS_CODEBTOR") in gap for gap in gaps)
     assert any(_copy_sentence("NAMELESS_CONTRACT") in gap for gap in gaps)
+
+
+@pytest.mark.parametrize("build", [_nameless_vehicle_lease, _same_vehicle_lease("")])
+def test_a_lease_with_no_name_is_never_called_one_contract(session, build):
+    build(session)
+    gaps = _gaps(session)
+
+    assert _copy_sentence("CONTRACT_GAP_VEHICLE").format(name=NAMELESS_CONTRACT) not in gaps
+    assert (
+        _copy_sentence("CONTRACT_GAP_SAME_VEHICLE").format(name=NAMELESS_CONTRACT, debt=ND)
+        not in gaps
+    )
 
 
 def test_a_complete_debt_has_no_gap(session):
@@ -650,3 +713,47 @@ def test_a_lien_of_kind_other_with_its_text_is_no_gap(session):
     answer_claims(session)
 
     assert _gaps(session) == []
+
+
+def _motor_home(session, **details):
+    return _asset(session, "4", make="Demo Motor Home", who="only_you", **details)
+
+
+def test_a_lease_on_a_motor_home_waits_for_do_you_live_here(session):
+    home = _motor_home(session)
+    _vehicle_lease_with(vehicle_asset=home)(session)
+    answer_claims(session, no_debts=True, contracts_answer="yes")
+    sentence = "Answer “Do you live here?” for Demo Motor Home on line 4 of the Assets step."
+
+    gaps = claim_step_gaps(IntakeSession.objects.get(pk=session.pk))
+
+    assert [str(gap) for gap in gaps] == [sentence]
+    assert gaps[0].step == "assets"
+
+
+@pytest.mark.parametrize("answer", ["yes", "no"])
+def test_a_lease_on_a_motor_home_the_filer_answered_asks_nothing(session, answer):
+    home = _motor_home(session, lives_here=answer)
+    _vehicle_lease_with(vehicle_asset=home)(session)
+    answer_claims(session, no_debts=True, contracts_answer="yes")
+
+    assert _gaps(session) == []
+
+
+def test_a_residential_lease_asks_no_home_question_of_a_motor_home(session):
+    _motor_home(session)
+    complete_contract(session, counterparty_name=CTR)
+    answer_claims(session, no_debts=True, contracts_answer="yes")
+
+    assert _gaps(session) == []
+
+
+def test_a_debt_and_a_lease_on_one_motor_home_ask_once(session):
+    home = _motor_home(session)
+    _secured(session, home, debt_type="mortgage")
+    _vehicle_lease_with(vehicle_asset=home)(session)
+    answer_claims(session, contracts_answer="yes")
+
+    asked = [gap for gap in _gaps(session) if "Do you live here" in gap]
+
+    assert len(asked) == 1

@@ -58,7 +58,7 @@ You ARE DeShawn Mitchell. Navigate DigniFi as he would.
 | Is your income now different from that average? (Income step)                                   | No, both                                                                                                                                                                                                   |
 | Other government assistance (Income step)                                                       | No, both                                                                                                                                                                                                   |
 | Take-home pay step (deductions)                                                                 | Yours: 5a $450. Your wife's: 5a $115                                                                                                                                                                       |
-| Mortgage                                                                                        | $1,200                                                                                                                                                                                                     |
+| Rent or lot rent                                                                                | $0                                                                                                                                                                                                         |
 | Utilities                                                                                       | $200                                                                                                                                                                                                       |
 | Home maintenance                                                                                | $100                                                                                                                                                                                                       |
 | Vehicle insurance                                                                               | $95                                                                                                                                                                                                        |
@@ -76,11 +76,13 @@ You ARE DeShawn Mitchell. Navigate DigniFi as he would.
 | Other expenses, written in (line 21)                                                            | $40, "Printer ink, paper and postage"                                                                                                                                                                      |
 | How you will pay the fee (after Complete, Form 101 line 8)                                      | I need to pay the fee in installments.                                                                                                                                                                     |
 
+Your mortgage ($1,200) comes from the Harrowgate loan on Amounts Owed, and line 4 adds it.
+
 **Assets:**
 
 Each item goes on the Schedule A/B line shown. You are the only one with an interest in the home and the truck, so each entire value is the portion you own. Answer No to every other line the Assets step shows.
 
-- Line 1: single-family home, 7823 S Sangamon St, Chicago, IL 60620, Cook County, fee simple — $180,000, owed $160,000
+- Line 1: single-family home, 7823 S Sangamon St, Chicago, IL 60620, Cook County, fee simple — $180,000
   - "Do you live here?": Yes.
 - Line 3: 2012 Ford F-150, about 168,000 miles — $8,000
 - Line 6: furniture, appliances and beds (your share) — $1,500

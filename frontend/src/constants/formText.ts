@@ -157,15 +157,11 @@ export const EXPENSE_LINE_WORDS: Record<ExpenseField, string> = {
   // Line 16, cut: the "Specify:" that follows, which EXPENSE_SPECIFY_WORDS carries
   taxes_not_deducted:
     'Taxes. Do not include taxes deducted from your pay or included in lines 4 or 20.',
-  // Line 17a, no cut
-  vehicle_payment: 'Car payments for Vehicle 1',
   // Line 18, no cut
   child_support_paid:
     'Your payments of alimony, maintenance, and support that you did not report as deducted from your pay on line 5, Schedule I, Your Income (Official Form 106I).',
   // Line 19, cut: "Specify:"
   support_others: 'Other payments you make to support others who do not live with you.',
-  // Line 20a, no cut
-  other_property_mortgages: 'Mortgages on other property',
   // Line 20b, no cut
   other_property_taxes: 'Real estate taxes',
   // Line 20c, no cut

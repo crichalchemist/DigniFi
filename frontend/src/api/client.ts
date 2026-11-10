@@ -10,6 +10,7 @@
 
 import type {
   IntakeSession,
+  LegacyField,
   CreateSessionRequest,
   CreateSessionResponse,
   UpdateStepRequest,
@@ -413,6 +414,23 @@ export const intakeAPI = {
     return apiFetch<IntakeSession>(`/intake/sessions/${sessionId}/`, {
       method: 'PATCH',
       body: JSON.stringify(data),
+    });
+  },
+
+  // The filer's answer to the line 4 question (3c4 R9): its own session PATCH
+  confirmLine4: async (sessionId: number, figure: string): Promise<void> => {
+    await apiFetch<IntakeSession>(`/intake/sessions/${sessionId}/`, {
+      method: 'PATCH',
+      body: JSON.stringify({ claim_answers: { line_4_both_confirmed: figure } }),
+    });
+  },
+
+  // Remove on Amounts Owed (3c4 R9, B39): a retired Expenses figure goes to 0 in its own session
+  // PATCH, the only value the server takes for it
+  removeLegacyPayment: async (sessionId: number, field: LegacyField): Promise<void> => {
+    await apiFetch<IntakeSession>(`/intake/sessions/${sessionId}/`, {
+      method: 'PATCH',
+      body: JSON.stringify({ expense_info: { [field]: 0 } }),
     });
   },
 

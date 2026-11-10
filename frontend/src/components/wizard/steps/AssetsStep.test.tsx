@@ -730,7 +730,7 @@ describe('AssetsStep', () => {
       ASSET_LINES.map((line) => [line.key, 'yes' as const])
     );
     const everyRow = ASSET_LINES.filter((line) => line.shape !== 'gate').map((line) =>
-      makeRow({ ab_line: line.key, amount_owed: 500 })
+      makeRow({ ab_line: line.key })
     );
     for (const part of AB_PARTS) {
       const { container, unmount } = render(

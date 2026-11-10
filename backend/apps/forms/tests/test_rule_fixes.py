@@ -183,6 +183,21 @@ def test_a_precondition_is_read_by_its_name_or_as_an_attribute(source, raises):
         ("ab_line_52", {"step": "assets"}),
         ("ab_has_4", {"step": "assets"}),
         ("total_debts", {"step": "debts"}),
+        # 3c4: a payment's amount is entered on its debt or lease (§8.1)
+        *[
+            (rule, {"step": "debts"})
+            for rule in (
+                "schedule_j_rent_or_mortgage",
+                "schedule_j_additional_mortgage",
+                "schedule_j_vehicle_payment",
+                "schedule_j_vehicle_2_payment",
+                "schedule_j_installment_c",
+                "schedule_j_installment_d",
+                "schedule_j_installment_c_words",
+                "schedule_j_installment_d_words",
+                "schedule_j_other_property_mortgages",
+            )
+        ],
         ("fee_waiver_noncash_kinds", {"step": "income_info"}),  # 103B line 3 reads 8f
         ("fee_waiver_installments_explanation", {"page": "/filing-fee"}),
         ("fee_waiver_others_covered_who", {"page": "/filing-fee"}),

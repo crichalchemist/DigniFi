@@ -43,11 +43,16 @@ export interface IntakeSession {
   debts?: DebtInfo[];
   /** The Schedule D, E/F, G and H questions that aren't on a row (3c3 spec §7.3) */
   claim_answers?: ClaimAnswers;
+  /** The retired Expenses figures the server still holds, a two-place decimal string or null (3c4) */
+  legacy_payments?: LegacyPayments;
   household?: Household | null;
   spouse_income?: SpouseIncome | null;
   form_answers?: Record<string, unknown>;
   sofa_report?: Record<string, unknown>;
 }
+
+export type LegacyField = 'vehicle_payment' | 'other_property_mortgages';
+export type LegacyPayments = Record<LegacyField, string | null>;
 
 export interface DebtorInfo {
   id: number;
@@ -292,7 +297,7 @@ export interface ExpenseInfo {
   session: number;
   data_source: 'manual' | 'bank_import';
 
-  // The 26 Schedule J amounts, named in EXPENSE_FIELDS
+  // The 24 Schedule J amounts, named in EXPENSE_FIELDS
   rent_or_mortgage: number;
   real_estate_taxes: number;
   home_insurance: number;
@@ -310,10 +315,8 @@ export interface ExpenseInfo {
   vehicle_insurance: number;
   insurance_not_deducted: number;
   taxes_not_deducted: number;
-  vehicle_payment: number;
   child_support_paid: number;
   support_others: number;
-  other_property_mortgages: number;
   other_property_taxes: number;
   other_property_insurance: number;
   other_property_upkeep: number;
@@ -333,7 +336,7 @@ export interface ExpenseInfo {
 }
 
 /**
- * The 26 monthly expense amounts, in Schedule J's order, under the names the backend stores
+ * The 24 monthly expense amounts, in Schedule J's order, under the names the backend stores
  * and the court forms read. DRF drops any other name without an error, so the step sums and
  * sends only these.
  */
@@ -355,10 +358,8 @@ export const EXPENSE_FIELDS = [
   'vehicle_insurance',
   'insurance_not_deducted',
   'taxes_not_deducted',
-  'vehicle_payment',
   'child_support_paid',
   'support_others',
-  'other_property_mortgages',
   'other_property_taxes',
   'other_property_insurance',
   'other_property_upkeep',
@@ -451,7 +452,6 @@ export interface AssetInfo {
     | 'personal_property'
     | 'other'
     | null;
-  amount_owed?: number; // Encrypted in backend. Off the step: nothing reads it until 3c
 }
 
 export interface DebtInfo {
@@ -611,6 +611,8 @@ export interface ClaimAnswers {
   community_spouse_state?: string | null;
   community_spouse_zip_code?: string | null;
   community_spouse_outside_us?: boolean | null;
+  /** The typed rent or mortgage the filer confirmed beside a linked first mortgage (3c4 R7) */
+  line_4_both_confirmed?: string | null;
 }
 
 /** A contract or codebtor the wizard holds: every field, and the browser's own key (3c2) */

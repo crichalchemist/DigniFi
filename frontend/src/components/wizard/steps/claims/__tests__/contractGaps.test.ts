@@ -1,4 +1,4 @@
-import { firstContractGap } from '../contractGaps';
+import { contractRowGaps, firstContractGap } from '../contractGaps';
 import { fill } from '../claimNames';
 import * as copy from '../../../../../constants/copy';
 import type { AssetInfo, ContractRow, DebtRow, WizardRow } from '../../../../../types/api';
@@ -187,5 +187,24 @@ describe('firstContractGap', () => {
     const cleared = { _key: '4', id: 4 } as ContractRow;
     expect(gap([cleared], 'no')).toBe(copy.CONTRACT_GAP_NO_BUT_LISTED);
     expect(gap([cleared], 'yes')).toBe(copy.CONTRACT_GAP_NO_NAME);
+  });
+
+  it('words the vehicle sentences for a lease with no name', () => {
+    const nameless = { ...lease, counterparty_name: '' };
+    const noVehicle = contractRowGaps({ ...nameless, vehicle_asset: null }, debts, assets);
+    const sameVehicle = contractRowGaps(
+      { ...nameless, owes_now: 'yes' as const, owed_debt: 30 },
+      debts,
+      assets
+    );
+    const debt = 'Demo Auto Credit';
+    expect(noVehicle).toContain(copy.CONTRACT_GAP_VEHICLE_NO_NAME);
+    expect(sameVehicle).toContain(fill(copy.CONTRACT_GAP_SAME_VEHICLE_NO_NAME, { debt }));
+    expect(noVehicle).not.toContain(
+      fill(copy.CONTRACT_GAP_VEHICLE, { name: copy.NAMELESS_CONTRACT })
+    );
+    expect(sameVehicle).not.toContain(
+      fill(copy.CONTRACT_GAP_SAME_VEHICLE, { name: copy.NAMELESS_CONTRACT, debt })
+    );
   });
 });

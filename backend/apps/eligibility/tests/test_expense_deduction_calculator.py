@@ -28,7 +28,6 @@ def session_with_expenses(db):
         rent_or_mortgage=Decimal("1200"),
         utilities=Decimal("200"),
         food_and_groceries=Decimal("500"),
-        vehicle_payment=Decimal("400"),
     )
     DebtInfo.objects.create(
         session=session,
