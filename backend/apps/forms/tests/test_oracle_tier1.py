@@ -602,11 +602,14 @@ def _row_on_template(group, widget):
 def test_every_claims_slot_binds_the_row_and_column_its_box_is_on():
     # The generator's tables place each cell by name, and every other test reads those same
     # tables, so a swapped pair of boxes (row 2.4's Columns B and C, or two Part 2 line boxes)
-    # would print one row's figure in another's box. Each slot is held to the index instead.
+    # would print one row's figure in another's box. Each slot is held to the index instead: its
+    # column, the row the index numbers, and, since many of those labels were read by pattern, its
+    # boxes' place on the page, every row of a page wholly below the row before.
     wrong = []
     for form_type in ("schedule_d", "schedule_e_f", "schedule_g", "schedule_h"):
         schema = load_schema(form_type)
         index = json.loads(index_path(schema.template_filename).read_text())
+        rects = {}  # (group, page) -> {row: [rect, ...]}, rects from the page's top left
         for f in schema.fields:
             if not (f.binding or "").startswith("claims."):
                 continue
@@ -627,6 +630,7 @@ def test_every_claims_slot_binds_the_row_and_column_its_box_is_on():
                     wrong.append((f.pdf_field, w["tag"], f.binding, w["label"]))
                 if _row_on_template(f.repeat, w) != f.row:
                     wrong.append((f.pdf_field, w["tag"], f.binding, f.row, w["line"], w["label"]))
+                rects.setdefault((f.repeat, w["page"]), {}).setdefault(f.row, []).append(w["rect"])
             for answer, state in (f.choices or {}).items():
                 beside = {
                     w["option_text"]
@@ -635,6 +639,12 @@ def test_every_claims_slot_binds_the_row_and_column_its_box_is_on():
                 }
                 if beside != {options[answer]}:
                     wrong.append((f.pdf_field, f.binding, answer, beside))
+        for (group, page), rows in rects.items():
+            bottom = None
+            for row in sorted(rows):
+                if bottom is not None and min(r[1] for r in rows[row]) <= bottom:
+                    wrong.append(("band", form_type, group, page, row))
+                bottom = max(r[3] for r in rows[row])
     assert wrong == []
 
 
