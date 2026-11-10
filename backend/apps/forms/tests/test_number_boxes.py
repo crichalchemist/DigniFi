@@ -192,11 +192,12 @@ def test_a_box_no_group_numbers_keeps_its_max_length():
     assert str(refused.value).endswith("Shorten it.")
 
 
-def _refused_copy(form_type, key, value, page=2):
-    document = {
-        "version": 2,
-        "parts": [{"kind": "copy", "page": page, "number": 1, "values": {key: value}}],
-    }
+def _refused_copy(form_type, key, value, page=2, number_box=False):
+    # A number box carries its room in the part, as _resolve_parts stores it (R11).
+    part = {"kind": "copy", "page": page, "number": 1, "values": {key: value}}
+    if number_box:
+        part["number_boxes"] = [key]
+    document = {"version": 2, "parts": [part]}
     with pytest.raises(ValueTooLong) as refused:
         PDFFormFiller().check(form_type, document)
     return refused.value
@@ -212,7 +213,7 @@ def _refused_copy(form_type, key, value, page=2):
 def test_a_number_that_cant_fit_is_refused_in_plain_words(
     schedule_d_with_copies, key, value, words
 ):
-    refused = _refused_copy("schedule_d", key, value)
+    refused = _refused_copy("schedule_d", key, value, number_box=True)
 
     assert str(refused) == (
         f"“{words}” is too long to fit on the court form, even in small print. "
@@ -234,7 +235,7 @@ def test_a_total_too_wide_for_its_box_is_refused_in_plain_words(schedule_d_with_
 
 
 def test_the_dashboard_gets_a_number_refusals_sentence_and_its_fix(schedule_d_with_copies):
-    refused = _refused_copy("schedule_d", "undefined_19@2:T37", "2.100")
+    refused = _refused_copy("schedule_d", "undefined_19@2:T37", "2.100", number_box=True)
 
     body, code = _failure("schedule_d", refused)
 
