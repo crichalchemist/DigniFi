@@ -839,3 +839,14 @@ describe('DebtsStep legacy payments', () => {
     expect(screen.getByText(vehicleGap.sentence)).toBeInTheDocument();
   });
 });
+
+describe('DebtsStep intro', () => {
+  it('the intro says what to list and nothing about which bankruptcy fits', () => {
+    render(<Harness />);
+
+    expect(
+      screen.getByText(/List all creditors \(companies or people you owe money to\)/)
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/which type of bankruptcy/i)).toBeNull();
+  });
+});

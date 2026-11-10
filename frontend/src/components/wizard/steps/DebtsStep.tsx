@@ -437,8 +437,7 @@ export function DebtsStep({
           <h3 className="info-title">About amounts you owe</h3>
           <p className="info-message">
             List all creditors (companies or people you owe money to). Include credit cards, medical
-            bills, loans, and any other amounts owed. This helps determine which type of bankruptcy
-            may work for your situation.
+            bills, loans, and any other amounts owed.
           </p>
           <p className="info-message">{DEBTS_STEP_WHY}</p>
         </div>
