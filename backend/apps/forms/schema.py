@@ -108,7 +108,9 @@ class GroupTotals:
     the box `page_boxes` names for it, and the last page prints every row's sum in `last_page_box`.
     """
 
-    column: str  # the slots' list binding, "sofa.<collection>[].<attr>", whose amounts add up
+    # the slots' list binding whose cells are amounts (is_money_binding), which add up:
+    # "claims.<list>[].amount|value|unsecured" or "sofa.creditor_payments[].total_paid"
+    column: str
     page_boxes: dict[int, str]  # template page → the key of the box that page's sum prints in
     last_page_box: str | None  # the key of the box the last page prints the whole sum in
 

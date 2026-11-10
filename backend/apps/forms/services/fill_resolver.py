@@ -351,6 +351,9 @@ def resolve_binding(binding: str, session: IntakeSession) -> str | list[str]:
       - "household.dependents[].<attr>" → list of str over Schedule J line 2's dependents
       - "assets.line_<key>[].<attr>" or "assets.line_<key>_<kind>[].<attr>" → list of str over
         that line's Schedule A/B rows, or those of that kind, in the form's order
+      - "claims.<list>[].<attr>" → list of str over one of claim_rows' six lists (secured,
+        unsecured, secured_notices, unsecured_notices, contracts, codebtors), each cell from
+        CLAIM_CELLS
     """
     binding = binding.strip()
 
@@ -748,10 +751,13 @@ def resolve_parts(schema: FormSchema, session: IntakeSession) -> dict:
     A repeat group fills its slots in row order. Rows past its last slot continue on
     copies of the extra page its declaration names (3a2 spec §5.2), each
     {"kind": "copy", "page": <extra page>, "number": <from 1>, "values": {key: value}}.
-    A form or copy part also carries "number_boxes": [key, ...], the group number boxes among
-    its values (page-number and total boxes are not listed), and only those boxes skip /MaxLen
-    and take the right bearing when the part is checked or drawn (R11, R15). A group may
-    instead continue on the attached sheet it declares (3a2 spec §5.3, R23, R63), one part for all of them:
+    A form or copy part of a form whose schema declares number boxes also carries
+    "number_boxes": [key, ...], every number-box key of that schema, sorted, whether or not the
+    part prints that box (none declared, no key; page-number and total boxes are not listed)
+    (R11). Those keys skip /MaxLen when the part is checked or drawn, and only a single-line,
+    fixed-size box among them takes the right bearing at 6 pt (R15). A group may instead
+    continue on the attached sheet it declares (3a2 spec §5.3, R23, R63), one part for all of
+    them:
     {"kind": "sheet", "group": <group>, "title": <its title>,
     "columns": [{"label": str, "width": <points>}], "name": <the filer's full name>,
     "rows": [{"line": "3.5", "cells": [<one per column>]}]}, plus "line_width": <points> only

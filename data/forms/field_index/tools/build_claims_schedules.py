@@ -9,8 +9,8 @@ Never hand-edit a schema it owns or its addendum rows: change this tool and run 
 Schedules D, E/F, G and H.
 
 Like `build_schedule_a_b.py`, it reads only the repo (the field index and the templates) and
-copies `field()`, `dumps()`, `addendum_row()` and `export_state` rather than importing them: the
-tools folder isn't a package.
+copies `field()`, `dumps()` and `export_state` rather than importing them: the tools folder
+isn't a package. It writes its own `addendum_row()`, which takes the schedule's form type.
 """
 
 import hashlib
@@ -125,8 +125,9 @@ def field(
 
 
 class Index:
-    """One template's field index, by full name. Names are found by name, never by tag: G's
-    and H's tags run in a different order from row to row."""
+    """One template's field index, by full name. Names are found by name, since G's and H's
+    tags run in a different order from row to row, and by tag only where one name has several
+    widgets (D's T32, T33, T51 and T56)."""
 
     def __init__(self, template):
         self.rows = json.loads((INDEX_DIR / f"{Path(template).stem}.index.json").read_text())
@@ -514,9 +515,8 @@ TESTS = {
 }
 
 
-# The spec section and rulings that place each cell (T4-2, T4-5). Task 6 adds E/F's cells here;
-# a cell not listed raises, so none falls through to a default unnoticed. (E/F's cells are
-# listed.)
+# The spec section and rulings that place each cell; a cell not listed raises, so none falls
+# through to a default unnoticed.
 CELL_RULINGS = {
     **dict.fromkeys(
         (
