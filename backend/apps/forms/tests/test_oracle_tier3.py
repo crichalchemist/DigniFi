@@ -4,12 +4,15 @@ Oracle tier 3: each seeded persona's packet prints the figures a correct filing 
 Expected values are worked out by hand from each persona's data (the seed, which
 matches docs/testing/persona-briefs/ except Priya's stale income line), never
 from the app's derivations. Boxes are named from the verified field index, not
-from the schema, so a value bound to the wrong line fails here. Money compares
-as a number, so "3,200.00" equals "3200.00". An expected "" means the box shows
+from the schema, so a value bound to the wrong line fails here. Money (an expected
+value with two decimals) compares as a number, so "3,200.00" equals "3200.00";
+anything else compares as written, so a cited line "4.2" never passes for "4.20".
+An expected "" means the box shows
 nothing (step 2 spec §7.5): a line DigniFi never asks prints blank, and so does
 an expense at $0, but an income source typed as $0 prints 0.00.
 """
 
+import re
 from decimal import Decimal, InvalidOperation
 from functools import cache
 
@@ -241,7 +244,9 @@ EXPECTED = {
             "Creditors Name_6": "Brightwater Card Services",
             "Creditors Name_7": "Ironbridge Card Company",
             "Creditors Name_8": "Larkfield General Hospital",
+            "Creditors Name_12": "Lakefront Demo Recovery LLC",
             "Referenced line 5.1": "4.1",
+            "Creditors Name_13": "Prairie Demo Collections Inc.",
             "Referenced line 5.2": "4.3",
         },
         "schedule_g": {"Company Name 2.1": "Division Demo Properties LLC"},
@@ -473,6 +478,7 @@ EXPECTED = {
         },
         "schedule_e_f": {
             "Creditors Name_6": "Silverpine Card Services",
+            "check 6": "/debtor 1",
             "Creditors Name_7": "Westhaven University Medical Center",
             "check 7": "/On",
             "Creditors Name_12": "Lakeshore Medical Recovery LLC",
@@ -481,7 +487,10 @@ EXPECTED = {
         "schedule_g": {"Company Name 2.1": "Fullerton Parkway Apartments LLC"},
         "schedule_h": {
             "Codebtor Name 3.1": "Rohan Sharma",
+            "check schedule line D 3.1": "",
+            "check schedule line E/F 3.1": "/yes",
             "Schedule line E/F 3.1": "4.2",
+            "check schedule line G 3.1": "",
         },
     },
     "deshawn": {
@@ -602,7 +611,9 @@ EXPECTED = {
             "Creditors Name_6": "Lakeline Electric",
             "Creditors Name_7": "Southmoor Health",
             "Creditors Name_8": "Tallgrass Credit Management",
+            "Creditors Name_12": "Demo Recovery Services",
             "Referenced line 5.1": "4.1",
+            "Creditors Name_13": "Demo Medical Collections",
             "Referenced line 5.2": "4.2",
         },
         "schedule_g": {"check1": "/no", "Company Name 2.1": ""},
@@ -838,12 +849,16 @@ EXPECTED = {
         # print on a copy of page 4 (test_andres_e_f_continues_on_a_copy_of_page_4).
         "schedule_d": {
             "Creditors Name": "Copperline Auto Finance",
+            "check 2": "/One of debtors and another",
             "undefined": "7800.00",
             "undefined_2": "",
             "undefined_3": "",
             "undefined_24": "7800.00",
         },
         "schedule_e_f": {
+            "undefined_4.4": "4.4",
+            "undefined_4.5": "4.5",
+            "undefined_4.6": "4.6",
             "Creditors Name_6": "Bright Signal Wireless",
             "Creditors Name_7": "Calumet Ridge Medical Center",
             "Creditors Name_8": "Driveline Tire & Auto",
@@ -860,7 +875,10 @@ EXPECTED = {
         },
         "schedule_h": {
             "Codebtor Name 3.1": "Mateo Kettleby",
+            "check schedule line D 3.1": "/yes",
             "Schedule line D 3.1": "2.1",
+            "check schedule line E/F 3.1": "",
+            "check schedule line G 3.1": "",
         },
     },
 }
@@ -925,7 +943,7 @@ def test_persona_packet_prints_the_right_figure(form_type, pdf_field, case, expe
         assert shown <= {""}, f"wrong_value: prints {sorted(shown - {''})}, expected blank"
     elif expected.startswith("/"):  # a box: this tick and no other
         assert shown == {expected}, f"wrong_value: ticks {sorted(shown)}, expected {expected}"
-    elif _amount(expected) is not None:  # every widget prints it; a blank one is no amount
+    elif re.fullmatch(r"\d+\.\d\d", expected):  # every widget prints it; a blank one is no amount
         assert {_amount(s) for s in shown} == {
             _amount(expected)
         }, f"wrong_value: prints {sorted(shown)}, expected {expected}"
@@ -986,5 +1004,9 @@ def test_andres_e_f_continues_on_a_copy_of_page_4():
     assert {w.state for w in drawn if w.copy == 1 and w.full_name == "check11"} - {"/Off"} == {
         "/yes"
     }
+    # The copy is the fifth page, so page 5 becomes the sixth.
+    assert on_copy["fill_27.1.4"] == "5"
+    page_5 = {w.full_name: w.value for w in drawn if w.page == 5 and w.copy is None}
+    assert page_5["fill_27.1.6"] == "6"
     page_6 = {w.full_name: w.value for w in drawn if w.page == 6 and w.copy is None}
     assert (page_6["fill_27.1.8"], page_6["fill_27.1.7"]) == ("7", "7")
