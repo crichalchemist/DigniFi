@@ -381,7 +381,7 @@ class ExpenseInfoSerializer(serializers.ModelSerializer):
     other_property_hoa_dues = serializers.DecimalField(
         max_digits=10, decimal_places=2, min_value=Decimal("0"), required=False, default=0
     )
-    # Retired (3c4): a figure of 0 is Remove, and any other figure is dropped in validate.
+    # Retired (3c4): a 0 sent on its own is Remove, and any other figure is dropped in validate.
     vehicle_payment = serializers.DecimalField(
         max_digits=10, decimal_places=2, min_value=Decimal("0"), write_only=True, required=False
     )
@@ -410,9 +410,12 @@ class ExpenseInfoSerializer(serializers.ModelSerializer):
         read_only_fields = ["created_at", "updated_at", "total_monthly_expenses"]
 
     def validate(self, attrs):
-        """Keep a retired figure only when it is 0 (Remove); any other figure is never stored."""
+        """Keep a retired figure only when it is 0 and the body holds nothing else (Remove sends
+        exactly {field: 0}). Sent beside any other key, as an older wizard's step 4 save does
+        with every amount, it is dropped whatever its value, so a stored figure survives."""
+        only_retired = all(key in ExpenseInfo.LEGACY_FIELDS for key in attrs)
         for field in ExpenseInfo.LEGACY_FIELDS:
-            if field in attrs and attrs[field] != 0:
+            if field in attrs and (attrs[field] != 0 or not only_retired):
                 del attrs[field]
         return attrs
 

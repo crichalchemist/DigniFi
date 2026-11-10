@@ -219,17 +219,19 @@ def test_the_forms_refuse_a_legacy_figure_with_the_step_that_fixes_it(filer):
     assert response.data["error"] == _vehicle("350.00", "0.00")["message"]
 
 
-def test_remove_clears_the_figure_and_the_gap(filer):
+@pytest.mark.parametrize("field", ExpenseInfo.LEGACY_FIELDS)
+def test_remove_clears_the_figure_and_the_gap(filer, field):
     client, session = filer
-    _store(session, vehicle_payment="350", rent_or_mortgage="900")
+    _store(session, **{field: "350"}, rent_or_mortgage="900")
+    assert legacy_payments(IntakeSession.objects.get(pk=session.pk))[field] == "350.00"
 
-    response = _patch(client, session, {"vehicle_payment": 0})
+    response = _patch(client, session, {field: 0})
 
     assert response.status_code == 200, response.data
     stored = ExpenseInfo.objects.get(session=session)
-    assert stored.vehicle_payment == 0
+    assert getattr(stored, field) == 0
     assert stored.rent_or_mortgage == Decimal("900")
-    assert response.data["legacy_payments"]["vehicle_payment"] is None
+    assert response.data["legacy_payments"][field] is None
     assert _complete(client, session).status_code == 200
 
 
@@ -246,20 +248,40 @@ def test_remove_replies_with_the_figure_cleared(filer):
     }
 
 
-def test_a_legacy_figure_takes_only_zero(filer):
+@pytest.mark.parametrize("field", ExpenseInfo.LEGACY_FIELDS)
+def test_a_legacy_figure_takes_only_zero(filer, field):
     client, session = filer
-    _store(session, vehicle_payment="350")
+    _store(session, **{field: "350"})
 
-    response = _patch(client, session, {"vehicle_payment": "200.00"})
+    response = _patch(client, session, {field: "200.00"})
 
     assert response.status_code == 200, response.data
-    assert ExpenseInfo.objects.get(session=session).vehicle_payment == Decimal("350")
-    assert response.data["legacy_payments"]["vehicle_payment"] == "350.00"
+    assert getattr(ExpenseInfo.objects.get(session=session), field) == Decimal("350")
+    assert response.data["legacy_payments"][field] == "350.00"
 
-    response = _patch(client, session, {"vehicle_payment": "-1.00"})
+    response = _patch(client, session, {field: "-1.00"})
 
     assert response.status_code == 400
-    assert ExpenseInfo.objects.get(session=session).vehicle_payment == Decimal("350")
+    assert getattr(ExpenseInfo.objects.get(session=session), field) == Decimal("350")
+
+
+@pytest.mark.parametrize("field", ExpenseInfo.LEGACY_FIELDS)
+def test_an_older_wizards_step_4_save_keeps_a_stored_retired_figure(filer, field):
+    """The pre-3c4 wizard sends every amount, both retired ones as 0, on each Continue: only
+    Remove, a body of its own, may clear a figure the filer never chose to remove."""
+    client, session = filer
+    _store(session, **{field: "350"})
+    body = {name: "10.00" for name in ExpenseInfo.AMOUNT_FIELDS}
+    body |= {name: 0 for name in ExpenseInfo.LEGACY_FIELDS}
+
+    response = _patch(client, session, body)
+
+    assert response.status_code == 200, response.data
+    stored = ExpenseInfo.objects.get(session=session)
+    assert getattr(stored, field) == Decimal("350")
+    assert stored.rent_or_mortgage == Decimal("10.00")
+    assert response.data["legacy_payments"][field] == "350.00"
+    assert legacy_payments(IntakeSession.objects.get(pk=session.pk))[field] == "350.00"
 
 
 def test_a_save_without_the_retired_figures_leaves_them_alone(filer):
