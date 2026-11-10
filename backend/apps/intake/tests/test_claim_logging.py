@@ -15,7 +15,12 @@ from rest_framework.test import APIClient
 
 from apps.districts.models import District
 from apps.intake.models import AssetInfo, DebtorInfo, ExpenseInfo, IncomeInfo, IntakeSession
-from apps.intake.tests.builders import answer_asset_lines, answer_household
+from apps.intake.tests.builders import (
+    answer_asset_lines,
+    answer_claims,
+    answer_household,
+    linked_loan,
+)
 from apps.users.models import User
 
 CREDITOR = "Zephyrine Credit Union"
@@ -221,3 +226,30 @@ def test_no_log_line_carries_the_street_a_do_you_live_here_gap_names(filer, capl
     assert HOME_STREET in generate.data["error"]
     assert len(_refusals_logged(caplog)) == 2
     assert _leaks(caplog, [HOME_STREET, CREDITOR, ACCOUNT_NUMBER, LAST_4]) == set()
+
+
+def test_no_log_line_carries_a_figure_a_payment_gap_quotes(filer, caplog):
+    client, session = filer
+    home = _home(session)
+    home.set_details({**home.get_details(), "lives_here": "yes"})
+    home.save()
+    linked_loan(session, home, "900", home_payment_line="first")
+    answer_asset_lines(session, ["1"])
+    answer_claims(session)
+    expenses = ExpenseInfo.objects.get(session=session)
+    expenses.vehicle_payment = Decimal("4321.09")
+    expenses.rent_or_mortgage = Decimal("1234.56")
+    expenses.save()
+    caplog.set_level(logging.DEBUG)
+
+    complete, generate = _complete_then_generate(client, session)
+
+    # The filer reads each figure in the reply body, as the sentences print it.
+    assert complete.status_code == 400
+    messages = " ".join(error["message"] for error in complete.data["errors"])
+    assert "4,321.09" in messages
+    assert "1,234.56" in messages
+    assert generate.status_code == 422
+    assert "4,321.09" in generate.data["error"]
+    assert len(_refusals_logged(caplog)) == 2
+    assert _leaks(caplog, ["4,321.09", "4321.09", "1,234.56", "1234.56"]) == set()

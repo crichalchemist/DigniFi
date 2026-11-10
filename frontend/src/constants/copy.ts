@@ -543,6 +543,11 @@ export const CONTRACT_GAP_OWED_DEBT =
 export const CONTRACT_GAP_SAME_VEHICLE =
   'Your lease with {name} and your debt to {debt} are on the same vehicle, and each has a monthly payment above $0. Enter the monthly payment once, on either row, and $0 on the other.';
 
+export const CONTRACT_GAP_VEHICLE_NO_NAME = 'Choose the vehicle you lease on the row with no name.';
+
+export const CONTRACT_GAP_SAME_VEHICLE_NO_NAME =
+  'Your lease on the row with no name and your debt to {debt} are on the same vehicle, and each has a monthly payment above $0. Enter the monthly payment once, on either row, and $0 on the other.';
+
 export const CODEBTOR_GAP_NO_ANSWER = 'Answer whether you have any codebtors.';
 
 export const CODEBTOR_GAP_YES_BUT_NONE =
@@ -743,6 +748,14 @@ export const CODEBTOR_ADDRESS_HELP =
 
 export const REVIEW_NO_DEBTS = 'You said you have no amounts owed.';
 
+export const REVIEW_RENT_OR_LOT_RENT = 'Rent or lot rent';
+
+export const REVIEW_TYPED_TOTAL = 'Expenses you entered';
+
+export const REVIEW_LINKED_PAYMENTS = 'Payments you linked on Amounts Owed and Contracts & Leases';
+
+export const REVIEW_MONTHLY_TOTAL = 'Total monthly expenses';
+
 export const REVIEW_NO_CONTRACTS = 'You said you have no contracts or leases.';
 
 export const REVIEW_NO_CODEBTORS = 'You said you have no codebtors.';
@@ -750,3 +763,26 @@ export const REVIEW_NO_CODEBTORS = 'You said you have no codebtors.';
 export const REVIEW_UNNAMED_CONTRACT = 'Unnamed contract';
 
 export const REVIEW_UNNAMED_CODEBTOR = 'Unnamed codebtor';
+
+export const CLAIM_GAP_LEGACY_VEHICLE =
+  'You told us you pay ${typed} a month for a car, and the payments you linked add up to ${linked}. Add the rest to the loan on Amounts Owed or the lease on Contracts & Leases, or remove this figure.';
+
+export const CLAIM_GAP_LEGACY_OTHER =
+  'You told us you pay ${typed} a month in mortgages on other property, and the payments you linked add up to ${linked}. Add the rest to the mortgage on Amounts Owed, or remove this figure.';
+
+export const CLAIM_GAP_LINE_4 =
+  'You entered ${typed} for rent or lot rent, and your first mortgage on Amounts Owed is ${linked} a month. Line 4 adds them. Do you pay both?';
+
+export const LINE_4_HELP =
+  'Rent, or rent for the lot your home sits on. A first mortgage you list on Amounts Owed is added to this line for you.';
+
+export const EXPENSES_LINKED_NOTE =
+  'Car and mortgage payments come from Amounts Owed and Contracts & Leases, so they are not in this total.';
+
+export const LINE_4_PAY_BOTH = 'Yes, I pay both';
+
+export const LINE_4_CLEAR = 'No, clear the ${typed}';
+
+export const NOT_SAVED_TRY_AGAIN = 'That was not saved. Try again.';
+
+export const LEGACY_REMOVE = 'Remove this figure';

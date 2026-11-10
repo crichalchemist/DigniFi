@@ -22,15 +22,19 @@ import {
   REVIEW_ENTRIES,
   REVIEW_HOUSEHOLD_COUNT,
   REVIEW_LINE_3,
+  REVIEW_LINKED_PAYMENTS,
+  REVIEW_MONTHLY_TOTAL,
   REVIEW_NO_CODEBTORS,
   REVIEW_NO_CONTRACTS,
   REVIEW_NO_DEBTS,
   REVIEW_NO_ENTRIES,
   REVIEW_NOW_DIFFERENT,
+  REVIEW_RENT_OR_LOT_RENT,
   REVIEW_SPOUSE_ASSISTANCE,
   REVIEW_SPOUSE_DEDUCTIONS,
   REVIEW_SPOUSE_ENTRIES,
   REVIEW_SPOUSE_NOW_DIFFERENT,
+  REVIEW_TYPED_TOTAL,
   REVIEW_UNNAMED_CODEBTOR,
   REVIEW_UNNAMED_CONTRACT,
   REVIEW_VALUE_NOT_KNOWN,
@@ -42,6 +46,7 @@ import {
   CONTRACT_TYPE_WORDS,
   DEBT_TYPE_WORDS,
 } from '../../../constants/claims';
+import { linkedSums } from './claims/linkedPayments';
 import { WIZARD_STEPS } from '../../../constants/wizardSteps';
 import { AB_PARTS, ASSET_LINES } from '../../../constants/assetLines';
 import { deductionsTotal, takeHomePayNotEntered } from '../../../utils/takeHomePay';
@@ -119,6 +124,12 @@ export function ReviewStep({
       currency: 'USD',
     }).format(amount || 0);
   };
+
+  // The typed total never holds a linked payment; Review adds them in cents (3c4 R8)
+  const linkedTotal = linkedSums(debtsData, contractsData, assetsData).allLinked;
+  const monthlyTotal =
+    (Math.round((expenseData.total_monthly_expenses || 0) * 100) + Math.round(linkedTotal * 100)) /
+    100;
 
   const fullName =
     [debtorData.first_name, debtorData.middle_name, debtorData.last_name]
@@ -321,16 +332,24 @@ export function ReviewStep({
         <h4 className="review-section-title">Monthly Expenses</h4>
         <div className="review-grid">
           <div className="review-field">
-            <span className="review-field-label">Rent / Mortgage</span>
+            <span className="review-field-label">{REVIEW_RENT_OR_LOT_RENT}</span>
             <span className="review-field-value">
               {formatCurrency(expenseData.rent_or_mortgage)}
             </span>
           </div>
           <div className="review-field">
-            <span className="review-field-label">Total Expenses</span>
+            <span className="review-field-label">{REVIEW_TYPED_TOTAL}</span>
             <span className="review-field-value">
               {formatCurrency(expenseData.total_monthly_expenses)}
             </span>
+          </div>
+          <div className="review-field">
+            <span className="review-field-label">{REVIEW_LINKED_PAYMENTS}</span>
+            <span className="review-field-value">{formatCurrency(linkedTotal)}</span>
+          </div>
+          <div className="review-field">
+            <span className="review-field-label">{REVIEW_MONTHLY_TOTAL}</span>
+            <span className="review-field-value">{formatCurrency(monthlyTotal)}</span>
           </div>
           <div className="review-field">
             <span className="review-field-label">{REVIEW_LINE_3}</span>

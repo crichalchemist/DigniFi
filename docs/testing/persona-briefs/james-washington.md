@@ -57,7 +57,6 @@ You ARE James Washington. Navigate DigniFi as he would.
 | Take-home pay step (deductions)                                                               | 5a $1,288; 5g $45; the rest blank                   |
 | Rent                                                                                          | $1,650                                              |
 | Utilities                                                                                     | $120                                                |
-| Vehicle payment                                                                               | $350                                                |
 | Vehicle insurance                                                                             | $110                                                |
 | Vehicle maintenance                                                                           | $50                                                 |
 | Food                                                                                          | $400                                                |
@@ -73,11 +72,13 @@ You ARE James Washington. Navigate DigniFi as he would.
 | Other expenses, written in (line 21)                                                          | $100, "Work boots and small tools for my job"       |
 | How you will pay the fee (after Complete, Form 101 line 8)                                    | I will pay the entire fee when I file my petition.  |
 
+Your car payment ($350) comes from the Crestway Auto Credit loan on Amounts Owed. The Expenses step doesn't ask it.
+
 **Assets:**
 
 Each item goes on the Schedule A/B line shown. You are the only one with an interest in the car, so its entire value is the portion you own. Answer No to every other line the Assets step shows.
 
-- Line 3: 2019 Toyota Camry, about 78,000 miles — $14,000, owed $8,500
+- Line 3: 2019 Toyota Camry, about 78,000 miles — $14,000
 - Line 6: bed, couch, table, kitchenware (secondhand) — $500
 - Line 7: TV, laptop, cell phone — $400
 - Line 11: everyday clothes and work clothes — $300

@@ -12,22 +12,40 @@ import {
   LINE_20_GROUP_HEADING,
   NONCASH_EXPENSES_SENTENCE,
 } from '../../../../constants/formText';
-import { DOUBLE_COUNT_EXPENSES_NOTE, LINE_3_INFO } from '../../../../constants/copy';
+import {
+  CLAIM_GAP_LINE_4,
+  DOUBLE_COUNT_EXPENSES_NOTE,
+  EXPENSES_LINKED_NOTE,
+  LINE_3_INFO,
+  LINE_4_CLEAR,
+  LINE_4_HELP,
+  LINE_4_PAY_BOTH,
+  NOT_SAVED_TRY_AGAIN,
+} from '../../../../constants/copy';
+import { fill } from '../claims/claimNames';
 
 // Every Schedule J amount ExpenseInfo stores and the forms and the means test read. DRF
 // drops any other name without an error, which is how car, food and other costs once
 // saved as $0 (DIG-45).
 
-function renderStep(initialData: Partial<ExpenseInfo> = {}) {
+interface StepProps {
+  linkedFirstMortgage?: number;
+  line4Confirmed?: string | null;
+  onLine4Confirm?: (figure: string) => Promise<void>;
+}
+
+function renderStep(initialData: Partial<ExpenseInfo> = {}, props: StepProps = {}) {
   const onDataChange = vi.fn();
   const onValidationChange = vi.fn();
-  const { container } = render(
+  const element = (next: StepProps) => (
     <ExpenseInfoStep
       initialData={initialData}
       onDataChange={onDataChange}
       onValidationChange={onValidationChange}
+      {...next}
     />
   );
+  const { container, rerender } = render(element(props));
   const inputNamed = (name: string) =>
     container.querySelector(`input[name="${name}"]`) as HTMLInputElement | null;
   const lastEmitted = () =>
@@ -35,7 +53,8 @@ function renderStep(initialData: Partial<ExpenseInfo> = {}) {
   // Whether the wizard lets the filer press Continue
   const canContinue = () =>
     onValidationChange.mock.calls[onValidationChange.mock.calls.length - 1][0] as boolean;
-  return { container, inputNamed, lastEmitted, canContinue };
+  const withProps = (next: StepProps) => rerender(element(next));
+  return { container, inputNamed, lastEmitted, canContinue, withProps };
 }
 
 describe('ExpenseInfoStep', () => {
@@ -106,13 +125,117 @@ describe('ExpenseInfoStep', () => {
     expect(line3).toHaveAccessibleDescription(LINE_3_INFO);
   });
 
-  it('adds all 26 amounts into the monthly total', () => {
+  it('asks 24 amounts and adds them into the monthly total', () => {
     const { inputNamed, lastEmitted } = renderStep();
+    expect(EXPENSE_FIELDS).toHaveLength(24);
     for (const field of EXPENSE_FIELDS) {
       fireEvent.change(inputNamed(field)!, { target: { value: '1' } });
     }
-    expect(screen.getByText('$26.00')).toBeInTheDocument();
-    expect(lastEmitted().total_monthly_expenses).toBe(26);
+    expect(screen.getByText('$24.00')).toBeInTheDocument();
+    expect(lastEmitted().total_monthly_expenses).toBe(24);
+  });
+
+  it('has no box for a car payment or a mortgage on other property', () => {
+    const { container } = renderStep();
+    expect(container.querySelector('input[name="vehicle_payment"]')).toBeNull();
+    expect(container.querySelector('input[name="other_property_mortgages"]')).toBeNull();
+  });
+
+  it('says car and mortgage payments come from the claims steps', () => {
+    renderStep();
+    expect(screen.getByText(EXPENSES_LINKED_NOTE)).toBeInTheDocument();
+    expect(screen.getByText(LINE_4_HELP)).toBeInTheDocument();
+    expect(
+      screen.queryByText('This is your total monthly expenses across all categories.')
+    ).toBeNull();
+  });
+
+  describe('the line 4 question', () => {
+    const sentence = fill(CLAIM_GAP_LINE_4, { typed: '1,200.00', linked: '1,200.00' });
+    const rent1200 = { rent_or_mortgage: 1200 };
+
+    it('shows only while a typed rent sits beside a linked first mortgage', () => {
+      const { withProps } = renderStep(rent1200, { linkedFirstMortgage: 1200 });
+      expect(screen.getByText(sentence)).toBeInTheDocument();
+      // The total stays typed-only beside a linked figure
+      expect(screen.getByText('$1,200.00')).toBeInTheDocument();
+
+      withProps({ linkedFirstMortgage: 1200, line4Confirmed: '1200.00' });
+      expect(screen.queryByText(sentence)).toBeNull();
+      withProps({ linkedFirstMortgage: 1200, line4Confirmed: '1200' });
+      expect(screen.queryByText(sentence)).toBeNull();
+      withProps({ linkedFirstMortgage: 0, line4Confirmed: null });
+      expect(screen.queryByText(sentence)).toBeNull();
+      // A confirmed figure that is not the one in the box asks again
+      withProps({ linkedFirstMortgage: 1200, line4Confirmed: '1100.00' });
+      expect(screen.getByText(sentence)).toBeInTheDocument();
+    });
+
+    it('stays away while the rent is 0', () => {
+      renderStep({ rent_or_mortgage: 0 }, { linkedFirstMortgage: 1200 });
+      expect(screen.queryByText(/Do you pay both/)).toBeNull();
+    });
+
+    it('sends the typed figure when the filer says they pay both', () => {
+      const onLine4Confirm = vi.fn().mockResolvedValue(undefined);
+      renderStep(rent1200, { linkedFirstMortgage: 1200, onLine4Confirm });
+      fireEvent.click(screen.getByRole('button', { name: LINE_4_PAY_BOTH }));
+      expect(onLine4Confirm).toHaveBeenCalledTimes(1);
+      expect(onLine4Confirm).toHaveBeenCalledWith('1200.00');
+    });
+
+    it('sets the rent to 0 when the filer says no', () => {
+      const { lastEmitted } = renderStep(rent1200, { linkedFirstMortgage: 1200 });
+      fireEvent.click(
+        screen.getByRole('button', { name: fill(LINE_4_CLEAR, { typed: '1,200.00' }) })
+      );
+      expect(lastEmitted().rent_or_mortgage).toBe(0);
+      expect(screen.queryByText(sentence)).toBeNull();
+    });
+
+    it('starts with neither button pressed and holds no status or alert region', () => {
+      renderStep(rent1200, { linkedFirstMortgage: 1200 });
+      for (const button of screen.getAllByRole('button')) {
+        expect(button).not.toHaveAttribute('aria-pressed', 'true');
+      }
+      expect(screen.getByText(sentence).closest('[role="status"], [role="alert"]')).toBeNull();
+    });
+
+    it("reads as the buttons' description, so each is pressed knowing what it answers", () => {
+      renderStep(rent1200, { linkedFirstMortgage: 1200 });
+      for (const name of [LINE_4_PAY_BOTH, fill(LINE_4_CLEAR, { typed: '1,200.00' })]) {
+        expect(screen.getByRole('button', { name })).toHaveAccessibleDescription(sentence);
+      }
+    });
+
+    it('never holds Continue', () => {
+      const { canContinue } = renderStep(rent1200, { linkedFirstMortgage: 1200 });
+      expect(screen.getByText(sentence)).toBeInTheDocument();
+      expect(canContinue()).toBe(true);
+    });
+
+    it('keeps the question and says so when the answer was not saved', async () => {
+      const onLine4Confirm = vi.fn().mockRejectedValue(new Error('no'));
+      renderStep(rent1200, { linkedFirstMortgage: 1200, onLine4Confirm });
+      fireEvent.click(screen.getByRole('button', { name: LINE_4_PAY_BOTH }));
+      const alert = await screen.findByRole('alert');
+      expect(alert).toHaveTextContent(NOT_SAVED_TRY_AGAIN);
+      expect(screen.getByText(sentence)).toBeInTheDocument();
+    });
+
+    it('drops the not-saved alert once the rent changes to another figure that still asks', async () => {
+      const onLine4Confirm = vi.fn().mockRejectedValue(new Error('no'));
+      const { inputNamed } = renderStep(rent1200, { linkedFirstMortgage: 1200, onLine4Confirm });
+      fireEvent.click(screen.getByRole('button', { name: LINE_4_PAY_BOTH }));
+      await screen.findByRole('alert');
+
+      fireEvent.change(inputNamed('rent_or_mortgage')!, { target: { value: '1100' } });
+
+      expect(screen.queryByRole('alert')).toBeNull();
+      expect(
+        screen.getByText(fill(CLAIM_GAP_LINE_4, { typed: '1,100.00', linked: '1,200.00' }))
+      ).toBeInTheDocument();
+    });
   });
 
   it.each([

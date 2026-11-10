@@ -513,16 +513,17 @@ class ExpenseInfo(models.Model):
         "vehicle_insurance",
         "insurance_not_deducted",
         "taxes_not_deducted",
-        "vehicle_payment",
         "child_support_paid",
         "support_others",
-        "other_property_mortgages",
         "other_property_taxes",
         "other_property_insurance",
         "other_property_upkeep",
         "other_property_hoa_dues",
         "other_expenses",
     )
+    # Retired columns: the payments come from the debts and leases that pay them (3c4). They
+    # stay in the table, encrypted, and no total reads them.
+    LEGACY_FIELDS: ClassVar[tuple[str, ...]] = ("vehicle_payment", "other_property_mortgages")
     SPECIFY_FIELDS: ClassVar[tuple[str, ...]] = (
         "taxes_specify",
         "support_others_specify",
@@ -776,6 +777,7 @@ class ClaimAnswers(models.Model):
         "community_spouse_state",
         "community_spouse_zip_code",
         "community_spouse_outside_us",
+        "line_4_both_confirmed",
     )
     TEXT_LIMITS: ClassVar[dict[str, int]] = {
         "community_state": 100,

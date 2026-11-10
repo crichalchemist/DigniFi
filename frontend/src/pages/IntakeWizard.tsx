@@ -24,6 +24,8 @@ import type { SentDebt } from '../utils/claimRows';
 import { membersToSend, sentMember } from '../utils/householdRows';
 import { entriesToSend, hydrateEntries, sentEntry } from '../utils/incomeEntries';
 import type { EntryRow } from '../utils/incomeEntries';
+import { linkedSums } from '../components/wizard/steps/claims/linkedPayments';
+import { legacyGaps } from '../components/wizard/steps/claims/legacyGaps';
 import { Button } from '../components/common';
 import { WizardLayout } from '../components/wizard/WizardLayout';
 import { MeansTestPreview } from '../components/wizard/MeansTestPreview';
@@ -55,6 +57,8 @@ import type {
   HouseholdMember,
   IncomeEntry,
   IncomePeriod,
+  LegacyField,
+  LegacyPayments,
   SpouseIncome,
   WizardRow,
 } from '../types/api';
@@ -76,7 +80,7 @@ import { firstIncompletePart } from '../components/wizard/steps/assets/assetGaps
 
 // DRF sends these decimals as strings ("2500.00"). The steps add and compare them,
 // so they become numbers as session data enters wizard state.
-const ASSET_AMOUNT_FIELDS = ['current_value', 'entire_value', 'amount_owed'] as const;
+const ASSET_AMOUNT_FIELDS = ['current_value', 'entire_value'] as const;
 const DEBT_AMOUNT_FIELDS = ['amount_owed', 'monthly_payment'] as const;
 // Step 8's claim answers, in the order the body names them (3c3 R16)
 const CODEBTOR_ANSWER_KEYS = [
@@ -239,6 +243,8 @@ export function IntakeWizard() {
   const [debtsData, setDebtsData] = useState<DebtRow[]>([]);
   // The Schedule D, E/F, G and H questions that aren't on a row (3c3 §7.3)
   const [claimAnswers, setClaimAnswers] = useState<ClaimAnswers>({});
+  // The retired Expenses figures the server still holds (3c4), shown on Amounts Owed with Remove
+  const [legacyPayments, setLegacyPayments] = useState<LegacyPayments | undefined>(undefined);
   const noDebts = claimAnswers.no_debts === true;
   const [contractsData, setContractsData] = useState<ContractRow[]>([]);
   const [codebtorsData, setCodebtorsData] = useState<CodebtorRow[]>([]);
@@ -366,6 +372,7 @@ export function IntakeWizard() {
           ...loadedClaims,
           no_debts: loadedClaims.no_debts === true && !fresh.debts?.length ? true : null,
         });
+        setLegacyPayments(fresh.legacy_payments);
         setContractsData(
           contracts.map((row) => ({ ...hydrateContract(row), _key: String(row.id) }))
         );
@@ -448,7 +455,7 @@ export function IntakeWizard() {
       }
 
       case 'expense_info': {
-        // The 26 amounts, the three Specify texts and line 3. The total is read-only on the
+        // The 24 amounts, the three Specify texts and line 3. The total is read-only on the
         // server: the step adds it up in floating point, so it can differ from the server's
         // decimal sum in the last digit. A blank box is sent as 0, the column's default; left
         // out, a box the filer cleared would keep its old amount on the server (DIG-55). A
@@ -817,6 +824,21 @@ export function IntakeWizard() {
   // Render Step Content
   // =========================================================================
 
+  // "Yes, I pay both" on the Expenses step (3c4 R9): its own session PATCH, and the step shows
+  // the failure
+  const confirmLine4 = async (figure: string) => {
+    if (!session) throw new Error('no session');
+    await api.intake.confirmLine4(session.id, figure);
+    setClaimAnswers((answers) => ({ ...answers, line_4_both_confirmed: figure }));
+  };
+
+  // Remove on Amounts Owed (3c4 B39): its own session PATCH, and the step shows the failure
+  const removeLegacy = async (field: LegacyField) => {
+    if (!session) throw new Error('no session');
+    await api.intake.removeLegacyPayment(session.id, field);
+    setLegacyPayments((held) => (held ? { ...held, [field]: null } : held));
+  };
+
   const renderStepContent = (key: string) => {
     switch (key) {
       case 'debtor_info':
@@ -874,6 +896,9 @@ export function IntakeWizard() {
             initialData={expenseData}
             onDataChange={setExpenseData}
             onValidationChange={setCanProceed}
+            linkedFirstMortgage={linkedSums(debtsData, contractsData, assetsData).firstMortgage}
+            line4Confirmed={claimAnswers.line_4_both_confirmed ?? null}
+            onLine4Confirm={confirmLine4}
           />
         );
 
@@ -900,6 +925,11 @@ export function IntakeWizard() {
             }
             assets={assetsData}
             onValidationChange={setCanProceed}
+            legacyGaps={legacyGaps(
+              legacyPayments,
+              linkedSums(debtsData, contractsData, assetsData)
+            )}
+            onRemoveLegacy={removeLegacy}
           />
         );
 

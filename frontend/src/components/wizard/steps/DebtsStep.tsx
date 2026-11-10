@@ -34,10 +34,12 @@ import {
   HOME_LINE_FIRST,
   HOME_LINE_QUESTION,
   LIEN_HELP,
+  LEGACY_REMOVE,
   LIEN_OTHER_LABEL,
   NOTICE_HELP,
   NOTICE_PARTY_HEADING,
   NOTICE_QUESTION,
+  NOT_SAVED_TRY_AGAIN,
   NO_DEBTS_BUTTON,
   OFFSET_HELP,
   PAYMENT_SECURED_HELP,
@@ -77,6 +79,7 @@ import {
   linkIsLive,
 } from './claims/claimNames';
 import { firstDebtGap } from './claims/debtGaps';
+import type { LegacyGap } from './claims/legacyGaps';
 import type {
   AssetInfo,
   AssetWho,
@@ -84,6 +87,7 @@ import type {
   DebtInfo,
   DebtRow,
   HomePaymentLine,
+  LegacyField,
   LienKind,
   NoticeParty,
   WizardRow,
@@ -100,6 +104,9 @@ interface DebtsStepProps {
   /** The Assets step's rows, for the property a debt is secured by */
   assets: WizardRow<AssetInfo>[];
   onValidationChange: (isValid: boolean) => void;
+  /** Stored payments the links don't cover (3c4 R6, R15): shown with Remove, never a gap (B46) */
+  legacyGaps?: LegacyGap[];
+  onRemoveLegacy?: (field: LegacyField) => Promise<void>;
 }
 
 // Debt categories matching backend DEBT_TYPE_CHOICES with derived classification
@@ -286,7 +293,26 @@ export function DebtsStep({
   onNoDebtsChange,
   assets,
   onValidationChange,
+  legacyGaps = [],
+  onRemoveLegacy,
 }: DebtsStepProps) {
+  // Each field whose Remove failed, with the sentence it failed under; the figure stays and that
+  // box says it was not saved. A changed sentence or a gone gap ends the entry (see below).
+  const [removeFailed, setRemoveFailed] = useState<Partial<Record<LegacyField, string>>>({});
+  const removeLegacy = async (field: LegacyField, sentence: string) => {
+    setRemoveFailed((failed) => ({ ...failed, [field]: undefined }));
+    try {
+      await onRemoveLegacy?.(field);
+    } catch {
+      setRemoveFailed((failed) => ({ ...failed, [field]: sentence }));
+    }
+  };
+  const stillFailed = Object.entries(removeFailed).filter(([field, sentence]) =>
+    legacyGaps.some((gap) => gap.field === field && gap.sentence === sentence)
+  );
+  if (stillFailed.length !== Object.keys(removeFailed).length) {
+    setRemoveFailed(Object.fromEntries(stillFailed));
+  }
   // With no rows, the step shows one blank row. It joins the wizard's rows at the filer's first
   // edit, and a blank row is never saved.
   const [blankRow, setBlankRow] = useState(createEmptyDebt);
@@ -418,8 +444,7 @@ export function DebtsStep({
           <h3 className="info-title">About amounts you owe</h3>
           <p className="info-message">
             List all creditors (companies or people you owe money to). Include credit cards, medical
-            bills, loans, and any other amounts owed. This helps determine which type of bankruptcy
-            may work for your situation.
+            bills, loans, and any other amounts owed.
           </p>
           <p className="info-message">{DEBTS_STEP_WHY}</p>
         </div>
@@ -816,6 +841,29 @@ export function DebtsStep({
           </div>
         )}
       </div>
+
+      {legacyGaps.map(({ field, sentence }) => (
+        <div className="info-box" key={field}>
+          <div>
+            <p className="info-message" id={`legacy-${field}`}>
+              {sentence}
+            </p>
+            <Button
+              type="button"
+              variant="outline"
+              aria-describedby={`legacy-${field}`}
+              onClick={() => removeLegacy(field, sentence)}
+            >
+              {LEGACY_REMOVE}
+            </Button>
+            {removeFailed[field] === sentence && (
+              <p className="form-error" role="alert">
+                {NOT_SAVED_TRY_AGAIN}
+              </p>
+            )}
+          </div>
+        </div>
+      ))}
 
       <UPLDisclaimer text={UPL_EXEMPTION_DISCLAIMER} variant="inline" />
 

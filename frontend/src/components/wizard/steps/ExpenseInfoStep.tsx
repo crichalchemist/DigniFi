@@ -10,8 +10,10 @@
  */
 
 import { useState, useEffect, useMemo } from 'react';
-import { FormField } from '../../common';
+import { Button, FormField } from '../../common';
 import { amountError, parseAmount } from '../../../utils/parseAmount';
+import { fill } from './claims/claimNames';
+import { formatFigure } from './claims/linkedPayments';
 import type { ExpenseField, ExpenseInfo, ExpenseSpecifyField, YesNo } from '../../../types/api';
 import { EXPENSE_FIELDS } from '../../../types/api';
 import {
@@ -25,26 +27,39 @@ import {
   NONCASH_EXPENSES_SENTENCE,
 } from '../../../constants/formText';
 import {
+  CLAIM_GAP_LINE_4,
   DOUBLE_COUNT_EXPENSES_NOTE,
+  EXPENSES_LINKED_NOTE,
   EXPENSE_HELP_HOME_MAINTENANCE,
   EXPENSE_HELP_OTHER,
   LINE_3_INFO,
+  LINE_4_CLEAR,
+  LINE_4_HELP,
+  LINE_4_PAY_BOTH,
   NOT_ANSWERED_YET,
+  NOT_SAVED_TRY_AGAIN,
 } from '../../../constants/copy';
 
 interface ExpenseInfoStepProps {
   initialData?: Partial<ExpenseInfo>;
   onDataChange: (data: Partial<ExpenseInfo>) => void;
   onValidationChange: (isValid: boolean) => void;
+  /** What Amounts Owed and Contracts & Leases link to a first mortgage a month (3c4) */
+  linkedFirstMortgage?: number;
+  /** The rent the filer confirmed beside that mortgage, as the server holds it; null if none */
+  line4Confirmed?: string | null;
+  /** Saves "I pay both"; rejects when the save fails */
+  onLine4Confirm?: (figure: string) => Promise<void>;
 }
+
+const toCents = (amount: number) => Math.round(amount * 100);
 
 // The help text under each line, for the lines that have any. The other lines are asked in the
 // form's words alone.
 const EXPENSE_HELP: Partial<Record<ExpenseField, string>> = {
-  rent_or_mortgage: 'Monthly rent or mortgage payment',
+  rent_or_mortgage: LINE_4_HELP,
   utilities: 'Electric, gas, water, trash, internet, phone',
   home_maintenance: EXPENSE_HELP_HOME_MAINTENANCE,
-  vehicle_payment: 'Monthly auto loan or lease payment',
   vehicle_insurance: 'Monthly auto insurance premium',
   vehicle_maintenance: 'Gas, public transit, parking, tolls',
   food_and_groceries: 'Groceries, dining out, household supplies',
@@ -60,6 +75,9 @@ export function ExpenseInfoStep({
   initialData,
   onDataChange,
   onValidationChange,
+  linkedFirstMortgage = 0,
+  line4Confirmed = null,
+  onLine4Confirm,
 }: ExpenseInfoStepProps) {
   // Fields start undefined (empty) rather than 0 so an untouched field reads
   // blank, while a deliberately entered 0 is preserved by parseAmount + `?? ''`.
@@ -101,6 +119,7 @@ export function ExpenseInfoStep({
   }, [formData, totalMonthlyExpenses, errors]);
 
   const handleChange = (field: ExpenseField, value: string) => {
+    if (field === 'rent_or_mortgage') setLine4Failed(false);
     setFormData((prev) => ({ ...prev, [field]: parseAmount(value) }));
   };
 
@@ -111,6 +130,27 @@ export function ExpenseInfoStep({
 
   const handleLine3 = (answer: YesNo) => {
     setFormData((prev) => ({ ...prev, expenses_include_others: answer }));
+  };
+
+  // The line 4 question (R7): a typed rent beside a linked first mortgage, not yet confirmed as
+  // the figure in the box. It is no gap: it never touches onValidationChange.
+  const [line4Failed, setLine4Failed] = useState(false);
+  const rent = formData.rent_or_mortgage ?? 0;
+  const confirmedCents = line4Confirmed == null ? null : toCents(Number(line4Confirmed));
+  const asksLine4 = rent > 0 && linkedFirstMortgage > 0 && confirmedCents !== toCents(rent);
+
+  const payBoth = async () => {
+    setLine4Failed(false);
+    try {
+      await onLine4Confirm?.(rent.toFixed(2));
+    } catch {
+      setLine4Failed(true);
+    }
+  };
+
+  const clearRent = () => {
+    setLine4Failed(false);
+    setFormData((prev) => ({ ...prev, rent_or_mortgage: 0 }));
   };
 
   const line3Answer = formData.expenses_include_others;
@@ -210,6 +250,40 @@ export function ExpenseInfoStep({
 
         {amountBox('rent_or_mortgage')}
 
+        {asksLine4 && (
+          <div className="info-box">
+            <div>
+              <p className="info-message" id="line-4-question">
+                {fill(CLAIM_GAP_LINE_4, {
+                  typed: formatFigure(rent),
+                  linked: formatFigure(linkedFirstMortgage),
+                })}
+              </p>
+              <Button
+                type="button"
+                variant="outline"
+                aria-describedby="line-4-question"
+                onClick={payBoth}
+              >
+                {LINE_4_PAY_BOTH}
+              </Button>{' '}
+              <Button
+                type="button"
+                variant="outline"
+                aria-describedby="line-4-question"
+                onClick={clearRent}
+              >
+                {fill(LINE_4_CLEAR, { typed: formatFigure(rent) })}
+              </Button>
+              {line4Failed && (
+                <p className="form-error" role="alert">
+                  {NOT_SAVED_TRY_AGAIN}
+                </p>
+              )}
+            </div>
+          </div>
+        )}
+
         <fieldset className="form-field">
           <legend className="form-label">{LINE_4_GROUP_HEADING}</legend>
           {amountBox('real_estate_taxes')}
@@ -236,14 +310,12 @@ export function ExpenseInfoStep({
 
         {amountBox('taxes_not_deducted')}
         {specifyBox('taxes_specify')}
-        {amountBox('vehicle_payment')}
         {amountBox('child_support_paid')}
         {amountBox('support_others')}
         {specifyBox('support_others_specify')}
 
         <fieldset className="form-field">
           <legend className="form-label">{LINE_20_GROUP_HEADING}</legend>
-          {amountBox('other_property_mortgages')}
           {amountBox('other_property_taxes')}
           {amountBox('other_property_insurance')}
           {amountBox('other_property_upkeep')}
@@ -265,9 +337,7 @@ export function ExpenseInfoStep({
               maximumFractionDigits: 2,
             })}
           </p>
-          <p className="total-help-text">
-            This is your total monthly expenses across all categories.
-          </p>
+          <p className="total-help-text">{EXPENSES_LINKED_NOTE}</p>
         </div>
       </section>
     </div>

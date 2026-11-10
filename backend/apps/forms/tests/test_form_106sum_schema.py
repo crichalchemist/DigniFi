@@ -90,7 +90,6 @@ def populated_session(session):
         rent_or_mortgage=Decimal("1000"),
         utilities=Decimal("200"),
         food_and_groceries=Decimal("400"),
-        vehicle_payment=Decimal("300"),
     )
     return session
 
@@ -158,7 +157,7 @@ class TestForm106SumSchema:
         # Line 5 copies Schedule J line 22c. Line 9a asks for domestic support
         # obligations, which DigniFi never asks (step 2 spec §6.4).
         field_map = resolve(load_schema("form_106sum"), populated_session)
-        assert field_map.get("5") == "1900.00"  # 1000 + 200 + 400 + 300
+        assert field_map.get("5") == "1600.00"  # 1000 + 200 + 400
         assert "9a" not in field_map
 
     def test_line_6_says_the_filer_is_filing_under_chapter_7_11_or_13(self, populated_session):

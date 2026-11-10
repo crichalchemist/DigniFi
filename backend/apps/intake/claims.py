@@ -1,5 +1,6 @@
 """The order Schedules D and E/F list claims in (3c spec §6.2), and what Schedules D, E/F, G and H
-still lack (3c3 spec §7.5).
+still lack (3c3 spec §7.5), and which monthly payments on property reach Schedule J and its
+totals (3c4 spec §8: linked_payments, total_monthly_expenses, format_figure).
 
 The module imports no models: it reads a session's relations by attribute, as asset_step_gaps
 does. The gap sentences are spelled as copy.ts spells them, filled with .format(name=...), and
@@ -7,6 +8,7 @@ test_claim_gaps.py pins each pair, so the filer reads the same words at Continue
 """
 
 import unicodedata
+from dataclasses import dataclass
 from decimal import Decimal
 
 from apps.intake.asset_lines import LINE_BY_KEY, _row_name, ordered_assets
@@ -23,6 +25,20 @@ DEBT_GAP_DRAFT = "Check the debts read from your documents on the Amounts Owed s
 CLAIM_GAP_KIND = "Choose a kind for {name}."
 CLAIM_GAP_ADDRESS = "Enter the street, city, two-letter state and ZIP for {name}."
 CLAIM_GAP_STREET_CITY = "Enter the street and city for {name}."
+CLAIM_GAP_LEGACY_VEHICLE = (
+    "You told us you pay ${typed} a month for a car, and the payments you linked add up to "
+    "${linked}. Add the rest to the loan on Amounts Owed or the lease on Contracts & Leases, "
+    "or remove this figure."
+)
+CLAIM_GAP_LEGACY_OTHER = (
+    "You told us you pay ${typed} a month in mortgages on other property, and the payments "
+    "you linked add up to ${linked}. Add the rest to the mortgage on Amounts Owed, "
+    "or remove this figure."
+)
+CLAIM_GAP_LINE_4 = (
+    "You entered ${typed} for rent or lot rent, and your first mortgage on Amounts Owed is "
+    "${linked} a month. Line 4 adds them. Do you pay both?"
+)
 
 DEBT_GAP_NO_ANSWER = "List each amount you owe, or press “I have no amounts owed.”"
 DEBT_GAP_NONE_BUT_LISTED = (
@@ -77,6 +93,12 @@ CONTRACT_GAP_SAME_VEHICLE = (
     "monthly payment above $0. Enter the monthly payment once, on either row, and $0 on the "
     "other."
 )
+CONTRACT_GAP_VEHICLE_NO_NAME = "Choose the vehicle you lease on the row with no name."
+CONTRACT_GAP_SAME_VEHICLE_NO_NAME = (
+    "Your lease on the row with no name and your debt to {debt} are on the same vehicle, and "
+    "each has a monthly payment above $0. Enter the monthly payment once, on either row, and "
+    "$0 on the other."
+)
 
 CODEBTOR_GAP_NO_ANSWER = "Answer whether you have any codebtors."
 CODEBTOR_GAP_YES_BUT_NONE = "You answered Yes. Add each codebtor, or change the answer to No."
@@ -99,12 +121,14 @@ CODEBTOR_GAP_NO_LINK = "Choose which amounts owed or contracts {name} shares wit
 # The shapes of a row whose own answers say who owns it (asset_lines.py)
 _SHAPES_THAT_ASK_WHO = ("place", "vehicle", "vehicle_no_mileage")
 _HOME_LINES = ("1", "4")
+_ZERO = Decimal("0")
 
 
 class ClaimStepGap(Exception):
-    """One thing Schedules D, E/F, G or H still lack, in the filer's words.
+    """One thing Schedules D, E/F, G or H, or Schedule J line 4, still lack, in the filer's words.
 
-    Claim gaps fix on four steps, so each carries its own `step` (a WIZARD_STEPS key).
+    Claim gaps fix on five steps (assets, debts, contracts, codebtors and expense_info), so each
+    carries its own `step` (a WIZARD_STEPS key).
     str(gap) is the sentence.
     """
 
@@ -179,9 +203,17 @@ def _live(link, session):
     return link if link_is_live(link, session) else None
 
 
-def _asset_gaps(session, debts):
-    """Each line 1 or line 4 row a debt links to whose "Do you live here?" is unanswered."""
+def _asset_gaps(session, debts, contracts):
+    """Each line 1 or line 4 row a debt or a vehicle lease links to whose "Do you live here?" is
+    unanswered: the answer decides which Schedule J line the payment prints on."""
     linked = {live.pk for debt in debts if (live := _live(debt.secured_by, session))}
+    linked |= {
+        live.pk
+        for contract in contracts
+        if contract.contract_type == "lease"
+        and contract.lease_kind == "vehicle"
+        and (live := _live(contract.vehicle_asset, session))
+    }
     gaps = []
     for row in ordered_assets(session):
         if row.pk in linked and row.ab_line in _HOME_LINES:
@@ -300,6 +332,8 @@ def _same_vehicle_gap(contract, name, session):
     zero = Decimal("0")
     if (contract.monthly_payment or zero) > zero and (debt.monthly_payment or zero) > zero:
         debt_name = claim_row_name(debt.creditor_name, NAMELESS_DEBT)
+        if _blank(contract.counterparty_name):
+            return CONTRACT_GAP_SAME_VEHICLE_NO_NAME.format(debt=debt_name)
         return CONTRACT_GAP_SAME_VEHICLE.format(name=name, debt=debt_name)
     return None
 
@@ -318,8 +352,11 @@ def _contract_row_gaps(contract, session):
     if is_lease and contract.lease_kind is None:
         messages.append(CONTRACT_GAP_LEASE_KIND.format(name=name))
     is_vehicle = is_lease and contract.lease_kind == "vehicle"
+    named = not _blank(contract.counterparty_name)
     if is_vehicle and _live(contract.vehicle_asset, session) is None:
-        messages.append(CONTRACT_GAP_VEHICLE.format(name=name))
+        messages.append(
+            CONTRACT_GAP_VEHICLE.format(name=name) if named else CONTRACT_GAP_VEHICLE_NO_NAME
+        )
     if is_vehicle and contract.monthly_payment is None:
         messages.append(CONTRACT_GAP_PAYMENT.format(name=name))
     if contract.owes_now is None:
@@ -400,20 +437,208 @@ def _codebtor_gaps(session, rows, debts, contracts, answers):
 
 
 def claim_step_gaps(session) -> list[ClaimStepGap]:
-    """Everything Schedules D, E/F, G and H still lack, in wizard order, row by row (R8).
+    """Everything the claims steps and the payments on property still lack, row by row (R8).
 
-    Reads the session's debts (drafts included, so a draft's gaps show), contracts and
-    codebtors, and its ClaimAnswers: no row means every answer is null. Contracts and
-    codebtors go in id order, debts in ordered_debts' order.
+    The first four blocks (Assets' "Do you live here?", Amounts Owed, Contracts, Codebtors) are in
+    wizard order. The tail comes after Codebtors, out of wizard order on purpose: the legacy gaps
+    (step `debts`) and then the line 4 question (step `expense_info`), since both read the links
+    the earlier steps made.
+
+    The four blocks read the session's debts (drafts included, so a draft's gaps show),
+    contracts and codebtors, and its ClaimAnswers: no row means every answer is null. The Assets
+    block asks "Do you live here?" of a line 1 or line 4 row that a debt or a vehicle lease links
+    to. Contracts and codebtors go in id order, debts in ordered_debts' order. The tail also reads
+    the Expenses row (_legacy_figure) and, through linked_payments, the session's assets, its
+    vehicle leases and only its confirmed debts, so a draft never counts there.
     """
     row = getattr(session, "claim_answers", None)
     answers = row.get_answers() if row is not None else {}
     debts = list(session.debts.all())
     contracts = sorted(session.executory_contracts.all(), key=lambda row: row.pk)
     codebtors = sorted(session.codebtors.all(), key=lambda row: row.pk)
-    return [
-        *_asset_gaps(session, debts),
+    gaps = [
+        *_asset_gaps(session, debts, contracts),
         *_debt_gaps(session, debts, answers),
         *_contract_gaps(session, contracts, answers),
         *_codebtor_gaps(session, codebtors, debts, contracts, answers),
     ]
+    linked = linked_payments(session)
+    return [*gaps, *_legacy_gaps(session, linked), *_line_4_gap(session, linked, answers)]
+
+
+def _legacy_figure(session, field) -> Decimal:
+    """One Expenses figure (a retired one, or rent_or_mortgage), $0 with no Expenses row or a
+    null. Reads the row by attribute, as claim_step_gaps reads claim_answers, since this module
+    imports no model."""
+    row = getattr(session, "expense_info", None)
+    return (getattr(row, field, None) or _ZERO) if row is not None else _ZERO
+
+
+def _legacy_gaps(session, linked) -> list[ClaimStepGap]:
+    """A stored car or other-property payment above what the links add up to (R6).
+
+    Each figure compares with its own sum: a mortgage on other property never covers a car.
+    """
+    gaps = []
+    for field, covered, sentence in (
+        ("vehicle_payment", linked.vehicle_total, CLAIM_GAP_LEGACY_VEHICLE),
+        ("other_property_mortgages", linked.other_real_property, CLAIM_GAP_LEGACY_OTHER),
+    ):
+        typed = _legacy_figure(session, field)
+        if typed > covered:
+            message = sentence.format(typed=format_figure(typed), linked=format_figure(covered))
+            gaps.append(ClaimStepGap(message, "debts"))
+    return gaps
+
+
+def _line_4_gap(session, linked, answers) -> list[ClaimStepGap]:
+    """A typed rent beside a linked first mortgage, until the filer confirms the typed figure (R7).
+
+    Counts first-mortgage debts only: a vehicle lease on a home row adds to J 4 without asking.
+    """
+    typed = _legacy_figure(session, "rent_or_mortgage")
+    if typed <= _ZERO or linked.first_mortgage <= _ZERO:
+        return []
+    stored = answers.get("line_4_both_confirmed")
+    if stored is not None and Decimal(stored) == typed:
+        return []
+    message = CLAIM_GAP_LINE_4.format(
+        typed=format_figure(typed), linked=format_figure(linked.first_mortgage)
+    )
+    return [ClaimStepGap(message, "expense_info")]
+
+
+def legacy_payments(session) -> dict:
+    """The session read's retired figures: a decimal string while above $0, else None."""
+    out = {}
+    for field in ("vehicle_payment", "other_property_mortgages"):
+        value = _legacy_figure(session, field)
+        out[field] = f"{value:.2f}" if value > _ZERO else None
+    return out
+
+
+VEHICLE_WORDS = ("Vehicle 3", "Vehicle 4")
+OTHER_PROPERTY_WORDS = "Payment on other property"
+SPILL_WORDS = "Other secured payments"
+
+
+@dataclass(frozen=True)
+class LinkedPayments:
+    first_mortgage: Decimal  # J 4's debt part
+    home_lease: Decimal  # J 4's lease part (a vehicle lease on a home row)
+    additional_mortgage: Decimal  # J 5
+    other_real_property: Decimal  # J 20a
+    j17: dict[str, Decimal]  # keys "17a", "17b", "17c", "17d"
+    j17_words: dict[str, str]  # keys "17c", "17d": one of the four words, or ""
+    vehicle_total: Decimal  # every payment on a vehicle row, spill included (R6)
+    total: Decimal  # every counted payment
+
+
+def format_figure(value: Decimal) -> str:
+    """A figure as the filer reads it: 1200 is "1,200.00"."""
+    return f"{value:,.2f}"
+
+
+def _payment(row) -> Decimal:
+    return row.monthly_payment or _ZERO
+
+
+def linked_payments(session) -> LinkedPayments:
+    """Every monthly payment on property that Schedule J prints, by line (3c4 R1).
+
+    A debt counts when it is confirmed, secured and linked to a row of this session; a lease when
+    it is a vehicle lease linked the same way. A stale link (a debt answered No, a lease changed
+    to another kind) is kept on the row but never counted. Payments on one row add.
+    """
+    rows = ordered_assets(session)
+    by_id = {row.pk: row for row in rows}
+    home_ids = {
+        row.pk
+        for row in rows
+        if row.ab_line in _HOME_LINES and row.get_details().get("lives_here") == "yes"
+    }
+    # A null "Do you live here?" on line 1 reads as No: a claim gap refuses it first (R1).
+    line_1_away = {row.pk for row in rows if row.ab_line == "1" and row.pk not in home_ids}
+    vehicles = [row for row in rows if row.ab_line == "3"] + [
+        row for row in rows if row.ab_line == "4" and row.pk not in home_ids
+    ]
+    vehicle_ids = {row.pk for row in vehicles}
+
+    first_mortgage = home_lease = additional = other_real = _ZERO
+    on_row: dict[int, Decimal] = {}
+    for debt in session.debts.confirmed():
+        if not debt.is_secured or not link_is_live(by_id.get(debt.secured_by_id), session):
+            continue
+        pk, amount = debt.secured_by_id, _payment(debt)
+        if pk in home_ids:
+            if debt.home_payment_line == "additional":
+                additional += amount
+            else:
+                first_mortgage += amount
+        elif pk in line_1_away:
+            other_real += amount
+        else:
+            on_row[pk] = on_row.get(pk, _ZERO) + amount
+    for contract in session.executory_contracts.all():
+        if (
+            contract.contract_type != "lease"
+            or contract.lease_kind != "vehicle"
+            or not link_is_live(by_id.get(contract.vehicle_asset_id), session)
+        ):
+            continue
+        pk, amount = contract.vehicle_asset_id, _payment(contract)
+        if pk in home_ids:
+            home_lease += amount
+        else:
+            on_row[pk] = on_row.get(pk, _ZERO) + amount
+
+    vehicle_pays = [on_row.get(row.pk, _ZERO) for row in vehicles]
+    others = [
+        on_row[row.pk]
+        for row in rows
+        if row.pk in on_row and row.pk not in vehicle_ids and on_row[row.pk] > 0
+    ]
+    j17 = {"17a": _ZERO, "17b": _ZERO, "17c": _ZERO, "17d": _ZERO}
+    for key, amount in zip(("17a", "17b"), vehicle_pays, strict=False):
+        j17[key] = amount
+    entries = [
+        (amount, VEHICLE_WORDS[i - 2] if i < 4 else "")
+        for i, amount in enumerate(vehicle_pays)
+        if i >= 2
+    ] + [(amount, OTHER_PROPERTY_WORDS) for amount in others]
+    words = {"17c": "", "17d": ""}
+    if entries:
+        j17["17c"] = entries[0][0]
+        words["17c"] = entries[0][1] if j17["17c"] > 0 else ""
+    if len(entries) > 1:
+        rest = sum((amount for amount, _ in entries[2:]), _ZERO)
+        j17["17d"] = entries[1][0] + rest
+        if rest > 0:
+            words["17d"] = SPILL_WORDS
+        elif j17["17d"] > 0:
+            words["17d"] = entries[1][1]
+
+    vehicle_total = sum(vehicle_pays, _ZERO)
+    total = (
+        first_mortgage + home_lease + additional + other_real + vehicle_total + sum(others, _ZERO)
+    )
+    return LinkedPayments(
+        first_mortgage=first_mortgage,
+        home_lease=home_lease,
+        additional_mortgage=additional,
+        other_real_property=other_real,
+        j17=j17,
+        j17_words=words,
+        vehicle_total=vehicle_total,
+        total=total,
+    )
+
+
+def total_monthly_expenses(session) -> Decimal:
+    """The typed expense amounts plus every counted payment (3c4 R2).
+
+    Reads the typed sum through the model, as the schema tests patch it. A session with no
+    Expenses row raises ExpenseInfo.DoesNotExist, which the form's total rule turns into 0.00.
+    """
+    typed = Decimal(str(session.expense_info.calculate_total_monthly_expenses()))
+    return typed.quantize(Decimal("0.01")) + linked_payments(session).total

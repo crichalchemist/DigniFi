@@ -7,7 +7,11 @@ import {
   REVIEW_ENTRIES,
   REVIEW_HOUSEHOLD_COUNT,
   REVIEW_LINE_3,
+  REVIEW_LINKED_PAYMENTS,
+  REVIEW_MONTHLY_TOTAL,
   REVIEW_NOW_DIFFERENT,
+  REVIEW_RENT_OR_LOT_RENT,
+  REVIEW_TYPED_TOTAL,
   REVIEW_SPOUSE_NOW_DIFFERENT,
   VALUE_UNKNOWN_HEADING,
 } from '../../../../constants/copy';
@@ -492,5 +496,72 @@ describe('Review of Schedule A/B', () => {
 
     render(<ReviewStep {...baseProps} assetsData={[street, cash]} onValidationChange={vi.fn()} />);
     expect(screen.queryByText(VALUE_UNKNOWN_HEADING)).toBeNull();
+  });
+});
+
+// 3c4 §8.2: Review shows what the filer typed, the payments linked on Amounts Owed and
+// Contracts & Leases, and the sum the forms print, so a payment is never counted twice or lost.
+describe('ReviewStep expense lines', () => {
+  const james = {
+    expenseData: { total_monthly_expenses: 2860, rent_or_mortgage: 1650 },
+    assetsData: [{ id: 1, ab_line: '3' as const }],
+    debtsData: [{ is_secured: true, secured_by: 1, monthly_payment: 350 }],
+    contractsData: [
+      {
+        contract_type: 'lease',
+        lease_kind: 'residential',
+        vehicle_asset: 1,
+        monthly_payment: 700,
+      },
+    ],
+  };
+
+  it("James's Review adds his linked car payment to what he typed", () => {
+    render(
+      <ReviewStep
+        {...baseProps}
+        {...(james as unknown as Partial<React.ComponentProps<typeof ReviewStep>>)}
+        onValidationChange={vi.fn()}
+      />
+    );
+    expect(value(REVIEW_TYPED_TOTAL)).toHaveTextContent('$2,860.00');
+    // The residential lease kept its car link and must not count.
+    expect(value(REVIEW_LINKED_PAYMENTS)).toHaveTextContent('$350.00');
+    expect(value(REVIEW_MONTHLY_TOTAL)).toHaveTextContent('$3,210.00');
+  });
+
+  it("DeShawn's Review shows his rent or lot rent at $0 and his mortgage once", () => {
+    render(
+      <ReviewStep
+        {...baseProps}
+        expenseData={{ total_monthly_expenses: 1210, rent_or_mortgage: 0 }}
+        assetsData={[{ id: 2, ab_line: '1', details: { lives_here: 'yes' } }]}
+        debtsData={[
+          {
+            is_secured: true,
+            secured_by: 2,
+            home_payment_line: 'first',
+            monthly_payment: 1200,
+          },
+        ]}
+        onValidationChange={vi.fn()}
+      />
+    );
+    expect(value(REVIEW_RENT_OR_LOT_RENT)).toHaveTextContent('$0.00');
+    expect(value(REVIEW_TYPED_TOTAL)).toHaveTextContent('$1,210.00');
+    expect(value(REVIEW_LINKED_PAYMENTS)).toHaveTextContent('$1,200.00');
+    expect(value(REVIEW_MONTHLY_TOTAL)).toHaveTextContent('$2,410.00');
+  });
+
+  it("a scanned draft's payment counts on Review", () => {
+    render(
+      <ReviewStep
+        {...baseProps}
+        {...(james as unknown as Partial<React.ComponentProps<typeof ReviewStep>>)}
+        debtsData={[{ is_secured: true, secured_by: 1, monthly_payment: 350, is_draft: true }]}
+        onValidationChange={vi.fn()}
+      />
+    );
+    expect(value(REVIEW_LINKED_PAYMENTS)).toHaveTextContent('$350.00');
   });
 });
