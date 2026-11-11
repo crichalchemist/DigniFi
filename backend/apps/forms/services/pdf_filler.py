@@ -275,10 +275,12 @@ def _paint_background(appearance: TextStreamAppearance, annotation: DictionaryOb
 
 def _paint_border(appearance: TextStreamAppearance, annotation: DictionaryObject) -> None:
     """
-    Stroke the box's own /MK /BC over its text, as a viewer does and as the template's own
-    appearance does ("0 G 0.5 0.5 w h re s"): pypdf's appearance has none, so a filled
-    List of Creditors entry would lose the court's black box. A box with no border colour
-    gains none.
+    Stroke the box's own /MK /BC under its text, as the template's own appearances draw it
+    ("0 G 0.5 0.5 w h re s" before "/Tx BMC"): pypdf's appearance has none, so a filled
+    List of Creditors entry would lose the court's black box. It is prepended, never
+    appended: pypdf's stream ends with an open clip path ("re W" with no "n"), which a
+    stroke after it would stroke too, a second rule inside the box. A box with no border
+    colour gains none. Call it before `_paint_background`, so a fill sits under it.
     """
     characteristics = annotation.get("/MK")
     border = characteristics.get_object().get("/BC") if characteristics else None
@@ -291,10 +293,10 @@ def _paint_border(appearance: TextStreamAppearance, annotation: DictionaryObject
     x0, y0, x1, y1 = (float(side) for side in annotation["/Rect"])
     inset = width / 2
     stroke = (
-        f"\nq {color} {operator} {width} w {inset} {inset} "
+        f"q {color} {operator} {width} w {inset} {inset} "
         f"{abs(x1 - x0) - width} {abs(y1 - y0) - width} re s Q\n"
     )
-    appearance.set_data(appearance.get_data() + stroke.encode())
+    appearance.set_data(stroke.encode() + appearance.get_data())
 
 
 def _draw(
@@ -333,8 +335,9 @@ def _draw(
     )
     if widget.multiline:
         _lower_first_line(appearance, 2 * widget.margin)
-    _paint_background(appearance, annotation)
+    # Both prepend: the border first, then the fill under it, then pypdf's text.
     _paint_border(appearance, annotation)
+    _paint_background(appearance, annotation)
     annotation[NameObject("/AP")] = DictionaryObject(
         {NameObject("/N"): writer._add_object(appearance)}
     )

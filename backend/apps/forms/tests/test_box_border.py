@@ -77,3 +77,26 @@ def test_a_box_with_no_border_colour_gains_none():
     blank = _page(_fill("form_101", {}))
     for edge in _edges(widget.rect):
         assert _ink(filled, edge) == _ink(blank, edge)
+
+
+def _bands(rect: pymupdf.Rect) -> list[pymupdf.Rect]:
+    """A strip 1.1 to 2.6 pt inside the right and the bottom edge, past the border's width."""
+    return [
+        pymupdf.Rect(rect.x1 - 2.6, rect.y0, rect.x1 - 1.1, rect.y1),
+        pymupdf.Rect(rect.x0, rect.y1 - 2.6, rect.x1, rect.y1 - 1.1),
+    ]
+
+
+def _fine_ink(page: pymupdf.Page, clip: pymupdf.Rect) -> int:
+    pixels = page.get_pixmap(dpi=288, clip=clip, colorspace=pymupdf.csGRAY)
+    return sum(1 for value in pixels.samples if value < 200)
+
+
+def test_a_filled_creditor_box_draws_no_second_rule_inside_its_border():
+    # pypdf's stream ends with an open clip path (`re W`, no `n`); a stroke appended after
+    # it also strokes that clip rectangle, a second rule inside the court's box.
+    rect = _widget("list_of_creditors", "creditor1.0.0").rect
+    filled = _page(_fill("list_of_creditors", {"creditor1.0.0": "Demo Co\n1 Way\nChicago"}))
+    blank = _page(_fill("list_of_creditors", {}))
+    for band in _bands(rect):
+        assert _fine_ink(filled, band) == _fine_ink(blank, band)
