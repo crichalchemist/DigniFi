@@ -51,6 +51,9 @@ from apps.intake.models import AssetInfo, IntakeSession
 # size, is glyph_bbox: of the characters a form prints, Å's ring reaches highest, 0.953
 # above the baseline, and µ's tail lowest, 0.220 below (g, j, p, q and y 0.218).
 _HELV = pymupdf.Font("helv")
+# A drawn glyph's outline, by the name MuPDF gives its font: the List of Creditors' boxes
+# draw Times-Roman (R9).
+_OUTLINES = {"Helvetica": _HELV, "Times-Roman": pymupdf.Font("tiro")}
 _TALLEST, _DEEPEST = "Å", "µ"
 _BOXES = ("CheckBox", "RadioButton")
 
@@ -195,7 +198,8 @@ def test_print_buttons_never_print(form_type):
         w.key: "".join(g.text for g in _glyphs(as_it_stands[w.page - 1]) if g.inside(w.rect))
         for w in buttons
     }
-    assert buttons and all(label.strip() for label in labels.values()), labels
+    # The List of Creditors' template has no button, so it passes with none to judge.
+    assert all(label.strip() for label in labels.values()), labels
     drawn = _printed(_drawn_packet()[form_type])
     printed = {
         w.key: "".join(g.text for g in _glyphs(drawn[w.page - 1]) if g.inside(w.rect))
@@ -510,6 +514,14 @@ _R38_HAIRLINES = [
     ("form_103b", "undefined_29@3:T10", "top"),
     ("form_121", "Case number1@1:T2", "bottom"),
     ("form_121", "Case number1@1:T2", "top"),
+    ("list_of_creditors", "Case number1@1:T3", "bottom"),
+    ("list_of_creditors", "Case number1@1:T3", "top"),
+    ("list_of_creditors", "Debtor1.Name@1:T1", "bottom"),
+    ("list_of_creditors", "Debtor1.Name@1:T1", "top"),
+    ("list_of_creditors", "Debtor1.Name@2:T2", "bottom"),
+    ("list_of_creditors", "Debtor1.Name@2:T2", "top"),
+    ("list_of_creditors", "Debtor2.Name@1:T2", "bottom"),
+    ("list_of_creditors", "Debtor2.Name@1:T2", "top"),
     ("schedule_a_b", "23.3 Annuities amount@6:T54", "top"),
     ("schedule_a_b", "undefined_12@2:T17", "top"),
     ("schedule_a_b", "undefined_4@1:T23", "top"),
@@ -587,9 +599,9 @@ def _cut_off(form_type, values):
             pages[widget.page] = _glyphs(document[widget.page - 1])
         for g in pages[widget.page]:
             # A space prints nothing; MuPDF also adds one where a line's text breaks off.
-            if g.font != "Helvetica" or not g.text.strip() or not g.inside(rect):
+            if g.font not in _OUTLINES or not g.text.strip() or not g.inside(rect):
                 continue
-            outline = _HELV.glyph_bbox(ord(g.text))
+            outline = _OUTLINES[g.font].glyph_bbox(ord(g.text))
             past = {
                 "top": rect[1] - (g.origin[1] - outline.y1 * g.size),
                 "bottom": g.origin[1] - outline.y0 * g.size - rect[3],
@@ -632,8 +644,9 @@ def _past_padding(form_type, widget, just, over):
     # On every value this test measures, its width is text_fit's to within 0.00001 pt.
     # 0.01 pt: one letter more in Schedule J's Other 15d box is as wide as the clip to
     # within 0.0001 pt.
-    fits = _HELV.text_length(just, _planned_size(form_type, widget.key, just)) - room
-    refused = _HELV.text_length(over, 6.0) - room
+    font = {"/Helv": _HELV, "/TiRo": pymupdf.Font("tiro")}[widget.font]
+    fits = font.text_length(just, _planned_size(form_type, widget.key, just)) - room
+    refused = font.text_length(over, 6.0) - room
     past = []
     if fits > 0.01:
         past.append((widget.key, "just", round(fits, 3)))
@@ -672,7 +685,8 @@ def test_no_value_is_ever_cut_off(form_type):
     ] == []
     assert _cut_off(form_type, just) == []
     assert _cut_off(form_type, short) == []
-    # Every form has its district box, which lists every district.
+    # Every form but the List of Creditors has its district box, which lists every district
+    # (the list's one combo box is its chapter).
     widest = {
         w.key: max(
             (o for o in w.options if o.strip()),
@@ -817,32 +831,18 @@ def _drawn_without_check(template, texts):
     return document.tobytes()
 
 
-@pytest.mark.slow
-def test_check_agrees_with_the_drawing_on_every_letter():
-    # check() refuses exactly the letters the drawing can't print (spec §4.3): a letter it
-    # accepts prints as itself, and one it refuses would print as "?", as another glyph,
-    # or as nothing. MuPDF reads back a character's code even where the font draws
-    # nothing for it, so whether a letter prints is judged by its ink too. Every
-    # template's text font has the same encoding, so one form's boxes stand for all 17
-    # here. Form 107's boxes carry no /DR of their own. Some boxes on five other templates
-    # do, and the drawing deletes it (R32): undoing that deletion fails test_pdf_filler.py's
-    # test_a_letter_outside_latin_1_prints_on_every_box.
-    assert len({_encoding(_template(form_type)) for form_type in get_all_form_types()}) == 1
-    template = _template("form_107")
-    names = Counter(w.full_name for w in template_widgets(template) if w.drawn)
-    boxes = [
-        w
-        for w in template_widgets(template)
-        if w.drawn
-        and w.kind == "Text"
-        and not (w.multiline or w.comb)
-        and w.max_len is None
-        and names[w.full_name] == 1  # its value can't reach a sibling
-    ]
+def _letters_print_as_check_says(form_type, boxes, control_inks=False):
+    """
+    check() refuses exactly the letters the drawing can't print (spec §4.3), judged through
+    these boxes of one form. control_inks leaves control characters (Cc) out of the refused-ink
+    judgement: Times-Roman inks its .notdef for U+007F and U+009F, which check() refuses anyway
+    as control characters, so no filer's list can print them (R9).
+    """
+    template = _template(form_type)
     accepted, refused = [], []
     for letter in _LETTERS:
         try:
-            PDFFormFiller().check("form_107", {boxes[0].key: f"x{letter}x"})
+            PDFFormFiller().check(form_type, {boxes[0].key: f"x{letter}x"})
             accepted.append(letter)
         except UnprintableLetter:
             refused.append(letter)
@@ -859,19 +859,19 @@ def test_check_agrees_with_the_drawing_on_every_letter():
 
     # Accepted: "x<letter>x" reads back as it prints, and a letter that prints a glyph
     # leaves ink, alone in its box.
-    empty = _printed(PDFFormFiller().fill("form_107", {}))
+    empty = _printed(PDFFormFiller().fill(form_type, {}))
     misprinted, no_ink = {}, []
     for pairs in in_boxes(accepted):
-        pdf = PDFFormFiller().fill("form_107", {w.key: f"x{c}x" for w, c in pairs})
+        pdf = PDFFormFiller().fill(form_type, {w.key: f"x{c}x" for w, c in pairs})
         _printed(pdf)
-        printed = {(w.page, w.tag): w.value for w in read_drawn("form_107", pdf)}
+        printed = {(w.page, w.tag): w.value for w in read_drawn(form_type, pdf)}
         misprinted |= {
             f"U+{ord(c):04X}": printed[(w.page, w.tag)]
             for w, c in pairs
             if printed[(w.page, w.tag)] != _as_printed(c)
         }
         glyphs = [(w, c) for w, c in pairs if _as_printed(c) == f"x{c}x" and not c.isspace()]
-        alone = _printed(PDFFormFiller().fill("form_107", {w.key: c for w, c in glyphs}))
+        alone = _printed(PDFFormFiller().fill(form_type, {w.key: c for w, c in glyphs}))
         with _no_anti_aliasing():
             no_ink += [
                 f"U+{ord(c):04X}" for w, c in glyphs if _pixels(alone, w) == _pixels(empty, w)
@@ -885,16 +885,54 @@ def test_check_agrees_with_the_drawing_on_every_letter():
     inked = []
     for pairs in in_boxes(refused):
         pdf = _drawn_without_check(template, {(w.page, w.tag): f"x{c}x" for w, c in pairs})
-        printed = {(w.page, w.tag): w.value for w in read_drawn("form_107", pdf)}
+        printed = {(w.page, w.tag): w.value for w in read_drawn(form_type, pdf)}
         as_itself = [(w, c) for w, c in pairs if printed[(w.page, w.tag)] == f"x{c}x"]
         alone = pymupdf.open(
             "pdf", _drawn_without_check(template, {(w.page, w.tag): c for w, c in as_itself})
         )
         with _no_anti_aliasing():
             inked += [
-                f"U+{ord(c):04X}" for w, c in as_itself if _pixels(alone, w) != _pixels(empty, w)
+                f"U+{ord(c):04X}"
+                for w, c in as_itself
+                if _pixels(alone, w) != _pixels(empty, w)
+                and not (control_inks and unicodedata.category(c) == "Cc")
             ]
     assert inked == []
+
+
+@pytest.mark.slow
+def test_check_agrees_with_the_drawing_on_every_letter():
+    # check() refuses exactly the letters the drawing can't print (spec §4.3): a letter it
+    # accepts prints as itself, and one it refuses would print as "?", as another glyph,
+    # or as nothing. MuPDF reads back a character's code even where the font draws
+    # nothing for it, so whether a letter prints is judged by its ink too. Every
+    # template's text font has the same encoding, so one form's boxes stand for all 18
+    # here. Form 107's boxes carry no /DR of their own. Some boxes on five other templates
+    # do, and the drawing deletes it (R32): undoing that deletion fails test_pdf_filler.py's
+    # test_a_letter_outside_latin_1_prints_on_every_box.
+    assert len({_encoding(_template(form_type)) for form_type in get_all_form_types()}) == 1
+    template = _template("form_107")
+    names = Counter(w.full_name for w in template_widgets(template) if w.drawn)
+    boxes = [
+        w
+        for w in template_widgets(template)
+        if w.drawn
+        and w.kind == "Text"
+        and not (w.multiline or w.comb)
+        and w.max_len is None
+        and names[w.full_name] == 1  # its value can't reach a sibling
+    ]
+    _letters_print_as_check_says("form_107", boxes)
+
+    # The second call exists because the List of Creditors' 30 entry boxes are multiline
+    # Times-Roman, which Form 107's single-line Helvetica boxes can't stand for. All 30 boxes,
+    # not one: one box would take about 400 rounds of fill and read-back.
+    list_template = _template("list_of_creditors")
+    creditors = [
+        w for w in template_widgets(list_template) if w.drawn and w.full_name.startswith("creditor")
+    ]
+    assert len(creditors) == 30
+    _letters_print_as_check_says("list_of_creditors", creditors, control_inks=True)
 
 
 # ── An attached sheet's letter check agrees with what it prints ───────

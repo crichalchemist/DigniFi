@@ -34,6 +34,7 @@ ALWAYS = [
     "form_106sum",
     "form_107",
     "form_121",
+    "list_of_creditors",
     "form_122a1",
     "schedule_a_b",
     "schedule_c",
@@ -92,6 +93,7 @@ def test_registry_is_the_chapter_7_forms_in_filing_order():
         "form_106sum",
         "form_107",
         "form_121",
+        "list_of_creditors",
         "form_122a1",
         "form_122a1_supp",
         "form_122a2",
@@ -116,7 +118,7 @@ def test_every_registered_form_can_be_stored():
     assert set(get_all_form_types()) <= set(dict(GeneratedForm.FORM_TYPE_CHOICES))
 
 
-def test_below_median_filer_without_fee_waiver_gets_fourteen_forms(session):
+def test_below_median_filer_without_fee_waiver_gets_fifteen_forms(session):
     _means_test(session, "2000.00", "71304.00")
     assert packet(session) == ALWAYS
 

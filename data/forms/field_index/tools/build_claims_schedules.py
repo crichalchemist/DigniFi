@@ -599,7 +599,9 @@ def addendum_row(form_type, spec, widgets):
 
 
 def owned(row):
-    return row["producer"].startswith(("asked:claims.", "derived:schedule_h_"))
+    return row["schema"] in SCHEDULES and row["producer"].startswith(
+        ("asked:claims.", "derived:schedule_h_")
+    )
 
 
 def build():

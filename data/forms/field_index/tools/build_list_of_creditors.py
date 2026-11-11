@@ -4,6 +4,7 @@ Run it from the repo root:
 
     python -I data/forms/field_index/tools/build_list_of_creditors.py extract <bundle.pdf>
     python -I data/forms/field_index/tools/build_list_of_creditors.py index
+    python -I data/forms/field_index/tools/build_list_of_creditors.py schema
 
 The template is pages 12-13 of the Northern District of Illinois's pro se bundle, "Required
 Documents for a Chapter 7 filing" (page 1: "Last Updated: January 3, 2025"), whose source URL is
@@ -174,8 +175,141 @@ def dumps(data):
     )
 
 
+SCHEMA_NAME = "list_of_creditors"
+ENTRY_BINDING = "claims.creditor_list[].entry"
+# R7: the 30 slots, column by column: rows 1-5 left then 6-10 right on page 1, then 11-20 left
+# and 21-30 right on page 2.
+SLOT_NAMES = (
+    [f"creditor1.0.{i}" for i in range(5)]
+    + [f"creditor2.0.{i}" for i in range(5)]
+    + [f"creditor1.0.5.{i}" for i in range(10)]
+    + [f"creditor2.0.5.{i}" for i in range(10)]
+)
+SLOT_LABEL = "Name and address"
+ADDENDUM = INDEX_DIR / "audit" / "step2_verification.json"
+SCHEMAS_DIR = ROOT / "data" / "forms" / "schemas"
+
+
+def _field(pdf_field, kind, source, page, label, **over):
+    """A schema field with every key Schedule G's fields have, in their order."""
+    field = {
+        "pdf_field": pdf_field,
+        "type": kind,
+        "source": source,
+        "page": page,
+        "label": label,
+        "required": False,
+        "conditional_on": None,
+        "value": None,
+        "rule": None,
+        "ingest_key": None,
+        "binding": None,
+        "repeat": None,
+        "repeat_capacity": None,
+        "row": None,
+        "legal_review": False,
+    }
+    return field | over
+
+
+def schema(rows, template_sha256):
+    """The List of Creditors' schema (R4, R7), keys in schedule_g.json's order."""
+    page_of = {r["full_name"]: r["page"] for r in rows}
+    fields = [
+        _field(
+            "Debtor1.Name", "text", "derived", 1, "Debtor 1's name", rule="full_name"
+        ),
+        _field("chapter", "choice", "constant", 1, "Chapter", value="7"),
+    ]
+    for row, name in enumerate(SLOT_NAMES, start=1):
+        fields.append(
+            _field(
+                name,
+                "text",
+                "asked",
+                page_of[name],
+                SLOT_LABEL,
+                binding=ENTRY_BINDING,
+                repeat="creditors",
+                repeat_capacity=len(SLOT_NAMES),
+                row=row,
+            )
+        )
+    return {
+        "form_type": SCHEMA_NAME,
+        "template_filename": TEMPLATE,
+        "template_version": template_sha256,
+        "groups": {"creditors": {"extra_page": 2}},
+        "fields": fields,
+    }
+
+
+def addendum_rows():
+    """The 32 audit rows that place the form's bindings (R4, R7), shaped as 3c5's rows."""
+    rows = [
+        {
+            "schema": SCHEMA_NAME,
+            "pdf_field": "Debtor1.Name",
+            "producer": "derived:full_name",
+            "original_verdicts": [],
+            "final_verdicts": ["correct"],
+            "status": "confirmed",
+            "correct_target": "Debtor1.Name",
+            "evidence": (
+                'Field index: Debtor1.Name p1 T1 and p2 T2, "Debtor 1\'s name" (adjudicated): one '
+                "untagged binding prints both pages' boxes. R4: the list's header prints the "
+                "filer's full name, as Schedules G and H do."
+            ),
+        },
+        {
+            "schema": SCHEMA_NAME,
+            "pdf_field": "chapter",
+            "producer": "constant:7",
+            "original_verdicts": [],
+            "final_verdicts": ["correct"],
+            "status": "confirmed",
+            "correct_target": "chapter",
+            "evidence": (
+                'Field index: chapter p1 T4, "Chapter" (adjudicated), a combo box whose options '
+                "are ' ', '7', '13' and '11'. R4: every DigniFi filer files under chapter 7."
+            ),
+        },
+    ]
+    for row, name in enumerate(SLOT_NAMES, start=1):
+        rows.append(
+            {
+                "schema": SCHEMA_NAME,
+                "pdf_field": name,
+                "producer": f"asked:{ENTRY_BINDING}",
+                "original_verdicts": [],
+                "final_verdicts": ["correct"],
+                "status": "confirmed",
+                "correct_target": name,
+                "evidence": (
+                    f'Field index: {name} "{CREDITOR_LABEL}" (adjudicated). R7: row {row} of '
+                    f"group creditors prints entry {row} of {ENTRY_BINDING} here, in the "
+                    "court's column-by-column order."
+                ),
+            }
+        )
+    return rows
+
+
+def write_schema():
+    template = PDFS / TEMPLATE
+    index_path = INDEX_DIR / f"{Path(TEMPLATE).stem}.index.json"
+    rows = json.loads(index_path.read_text())
+    digest = hashlib.sha256(template.read_bytes()).hexdigest()
+    path = SCHEMAS_DIR / f"{SCHEMA_NAME}.json"
+    path.write_text(dumps(schema(rows, digest)))
+    existing = json.loads(ADDENDUM.read_text())
+    kept = [r for r in existing if r["schema"] != SCHEMA_NAME]
+    ADDENDUM.write_text(dumps(kept + addendum_rows()))
+    print(f"wrote {path} and {len(addendum_rows())} rows of {ADDENDUM}")
+
+
 def main(argv):
-    usage = "usage: build_list_of_creditors.py extract <bundle.pdf> | index"
+    usage = "usage: build_list_of_creditors.py extract <bundle.pdf> | index | schema"
     if argv[:1] == ["extract"] and len(argv) == 2:
         out = PDFS / TEMPLATE
         extract(Path(argv[1]), out)
@@ -185,6 +319,8 @@ def main(argv):
         path = INDEX_DIR / f"{Path(TEMPLATE).stem}.index.json"
         path.write_text(dumps(rows))
         print(f"wrote {path}: {len(rows)} rows")
+    elif argv == ["schema"]:
+        write_schema()
     else:
         raise SystemExit(usage)
 

@@ -6,7 +6,9 @@ court's bytes and every box is indexed under the court's own name, by a tool tha
 again, never by hand.
 """
 
+import hashlib
 import importlib.util
+import json
 
 from django.conf import settings
 
@@ -51,3 +53,15 @@ def test_the_list_prints_its_letters_in_the_forms_own_encoding():
     # The creditor boxes draw Times-Roman; both fonts must carry the shared /Differences.
     for font in ("/Helv", "/TiRo"):
         assert font_for(TEMPLATE, font).encoding == sheets._font().encoding
+
+
+def test_the_schema_and_its_rows_are_what_the_tool_writes():
+    # The schema and the tool's own audit rows are never hand-edited either.
+    rows = json.loads((INDEX_DIR / "ilnb_list_of_creditors.index.json").read_text())
+    digest = hashlib.sha256((PDF_DIR / TEMPLATE).read_bytes()).hexdigest()
+    committed = (ROOT / "data/forms/schemas/list_of_creditors.json").read_text()
+    assert committed == tool.dumps(tool.schema(rows, digest))
+
+    audit = json.loads((INDEX_DIR / "audit/step2_verification.json").read_text())
+    assert [r for r in audit if r["schema"] == "list_of_creditors"] == tool.addendum_rows()
+    assert len(tool.addendum_rows()) == 32
