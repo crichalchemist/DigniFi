@@ -193,7 +193,7 @@ def _address_gap(row, name, sentence, street_city_sentence):
     return (street_city_sentence if row.outside_us else sentence).format(name=name)
 
 
-def _asks_who(linked) -> bool:
+def asks_who(linked) -> bool:
     """Whether the linked row's own answers say who owns it. An old row, with no line, doesn't."""
     line = LINE_BY_KEY.get(linked.ab_line)
     return line is not None and line.shape in _SHAPES_THAT_ASK_WHO
@@ -281,7 +281,7 @@ def _debt_secured_gaps(debt, name, session):
     if linked is not None:
         if linked.get_details().get("lives_here") == "yes" and debt.home_payment_line is None:
             messages.append(DEBT_GAP_HOME_LINE)
-        if not _asks_who(linked) and debt.collateral_who is None:
+        if not asks_who(linked) and debt.collateral_who is None:
             messages.append(DEBT_GAP_WHO)
     return [message.format(name=name) for message in messages]
 

@@ -8,6 +8,7 @@ from django.contrib.auth import get_user_model
 from apps.districts.models import District
 from apps.documents.models import IngestedAggregate
 from apps.eligibility.cmi import HOUSEHOLD_UNANSWERED, IncomeStepGap
+from apps.forms.registry import build_parts
 from apps.forms.schema import FieldSpec, FormSchema, GroupSpec, SheetColumn, SheetSpec
 from apps.forms.services.fill_resolver import (
     UnmappedChoice,
@@ -706,3 +707,29 @@ def test_a_statement_sheet_stores_a_wider_line_column_as_a_slot_groups_does(sess
     (part,) = resolve_parts(schema, session)["parts"][1:]
 
     assert part["line_width"] == 48.0
+
+
+def test_a_part_stores_the_number_boxes_it_was_planned_with(
+    schedule_g_numbered, generated_form_factory, creditor_payments
+):
+    session = generated_form_factory().session
+    creditor_payments(session, 14)
+
+    document = build_parts("schedule_g", session)
+
+    form, page_copy = document["parts"]
+    boxes = sorted(f"fill 2.{n}" for n in range(6, 14))
+    assert form["number_boxes"] == boxes
+    assert page_copy["number_boxes"] == boxes
+
+
+def test_a_form_with_no_number_boxes_stores_none(
+    schedule_d_part_2_with_copies, generated_form_factory, creditor_payments
+):
+    session = generated_form_factory().session
+    creditor_payments(session, 8)
+
+    document = build_parts("schedule_d", session)
+
+    assert len(document["parts"]) > 1
+    assert not any("number_boxes" in part for part in document["parts"])

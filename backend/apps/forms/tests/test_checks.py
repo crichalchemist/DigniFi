@@ -219,8 +219,9 @@ def test_an_untagged_binding_on_a_page_without_its_widget_is_reported(schema_cop
 
 
 def test_a_tag_on_the_second_of_a_stacked_pair_is_reported(schema_copy):
-    # Schedule D page 2 lays 4_3's T14 over T13; only T13 prints a value.
-    _edit(schema_copy, "schedule_d", lambda d: d["fields"].append(_text("4_3", 2, "T14")))
+    # Schedule D page 2 lays 4_3's T14 over T13; only T13 prints a value. Production D binds
+    # 4_3 itself (Part 1's slot 3, ZIP), so the test retags that binding.
+    _edit(schema_copy, "schedule_d", lambda d: _field(d, "4_3").update(tag="T14"))
     assert _ids("schedule_d") == ["forms.E003"]
     _edit(schema_copy, "schedule_d", lambda d: _field(d, "4_3").update(tag="T13"))
     load_schema.cache_clear()
@@ -625,14 +626,15 @@ def test_a_group_box_that_another_writer_fills_is_reported(schedule_d_with_copie
     ]
 
 
-def test_a_page_count_box_drawn_on_two_pages_is_one_writer(schema_copy):
+def test_a_page_count_box_drawn_on_two_pages_is_one_writer():
     # Schedule E/F draws one "of" box, fill_27.1.7, on pages 5 and 6. Every page prints the
-    # same count, so declaring it for both pages can't conflict.
-    def declare(d):
-        d["groups"] = {"e_f": {"extra_page": 6}}
-        d["page_numbers"] = [{"page": 5, "of": "fill_27.1.7"}, {"page": 6, "of": "fill_27.1.7"}]
+    # same count, so production declares it for both pages without a conflict.
+    schema = load_schema("schedule_e_f")
 
-    _edit(schema_copy, "schedule_e_f", declare)
+    assert {p.page: p.of for p in schema.page_numbers if p.page in (5, 6)} == {
+        5: "fill_27.1.7",
+        6: "fill_27.1.7",
+    }
     assert _errors("schedule_e_f") == []
 
 
@@ -902,8 +904,35 @@ def test_a_total_box_that_cannot_add_its_own_rows_is_reported(
     assert _errors("schedule_d") == [error]
 
 
+def test_a_total_over_a_column_that_holds_no_amount_is_refused(schedule_d_with_totals):
+    # A name can't be added: the total box would print a sum of words, or raise on a filer's row.
+    _edit(
+        schedule_d_with_totals,
+        "schedule_d",
+        _totals(lambda t: t.update(column="sofa.creditor_payments[].creditor_name")),
+    )
+    assert _errors("schedule_d") == [
+        (
+            "forms.E007",
+            "schedule_d: group 'd_part_1': its total adds "
+            "'sofa.creditor_payments[].creditor_name', which holds no amount",
+        )
+    ]
+
+
+def test_a_claims_binding_passes_the_namespace_check(schedule_d_with_totals):
+    def rebind(d):
+        for f in d["fields"]:
+            if f["binding"] == "sofa.creditor_payments[].creditor_name":
+                f["binding"] = "claims.secured[].name"
+
+    _edit(schedule_d_with_totals, "schedule_d", rebind)
+    assert not [e for e in _errors("schedule_d") if "unknown binding namespace" in e[1]]
+
+
 def test_a_total_box_another_binding_fills_is_reported(schedule_d_with_totals):
-    # The real binding of undefined_24, put back: the rule's figure and the group's would fight.
+    # A binding of undefined_24 put back (the rule that once bound it is gone, 3c5 R8): its figure
+    # and the group's would fight.
     def add(d):
         d["fields"].append(_text("undefined_24", 2, None))
 
@@ -1601,3 +1630,42 @@ def test_a_statement_column_cannot_cover_a_slot_it_does_not_have(schema_copy):
         "schedule_i: group 'i_line_8a': sheet column 'Income of' covers "
         "'income.statement[].net', which no slot of the group binds",
     ) in _errors("schedule_i")
+
+
+def test_a_number_box_that_isnt_a_text_box_is_reported(schedule_g_numbered):
+    def change(d):
+        d["groups"]["g"]["number_boxes"]["1"] = "check1"
+
+    _edit(schedule_g_numbered, "schedule_g", change)
+    assert (
+        "forms.E003",
+        "schedule_g: group 'g': number box 'check1' isn't a text box",
+    ) in _errors("schedule_g")
+
+
+def test_a_number_box_drawn_on_another_page_is_refused_once(schedule_g_numbered):
+    def change(d):
+        d["groups"]["g"]["number_boxes"]["6"] = "check1"  # drawn on page 1, row 6 is on page 2
+
+    _edit(schedule_g_numbered, "schedule_g", change)
+    mentions = [
+        m
+        for _, m in _errors("schedule_g")
+        if "group 'g': 'check1'" in m or "number box 'check1'" in m
+    ]
+    assert "schedule_g: group 'g': 'check1' is no drawn widget on page 2" in mentions
+    assert not [m for m in mentions if "isn't a text box" in m]
+
+
+def test_a_page_number_box_that_isnt_a_text_box_is_reported(schedule_g_numbered):
+    def change(d):
+        d["page_numbers"] = [
+            {"page": 1, "this": None, "of": "check1"},
+            {"page": 2, "this": "fill_27.1.0", "of": "fill_27.1.1"},
+        ]
+
+    _edit(schedule_g_numbered, "schedule_g", change)
+    assert (
+        "forms.E003",
+        "schedule_g: page numbers: box 'check1' on page 1 isn't a text box",
+    ) in _errors("schedule_g")

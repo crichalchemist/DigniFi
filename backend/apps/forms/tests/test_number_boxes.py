@@ -4,11 +4,13 @@ nothing can type in a baked page; and a number that still can't fit is refused i
 text read-back can't see a clipped digit (3a2's lesson), so these tests also judge pixels.
 """
 
+import dataclasses
+
 import pymupdf
 import pytest
 
 from apps.forms.field_index import load_index
-from apps.forms.registry import build_parts
+from apps.forms.registry import build_parts, get_all_form_types
 from apps.forms.schema import FieldSpec, FormSchema, load_schema
 from apps.forms.services.pdf_filler import (
     PDFFormFiller,
@@ -70,26 +72,27 @@ def test_the_clip_check_sees_a_clipped_number(schedule_d_with_copies):
     assert _clear_of_the_clip(page, empty, widget) < 0
 
 
+# Every number box a production schema declares, with the number that leaves the least clear.
+FITTING_NUMBERS = [
+    # R4's slack, for the font that actually draws: every last digit in the narrowest box.
+    *(("schedule_d", "undefined_12", None, f"2.1{digit}") for digit in range(10)),
+    ("schedule_d", "undefined_12", None, "2.99"),
+    ("schedule_d", "undefined_12", None, "2.9"),
+    # Every other number box (3c spec §5.4), each with a last digit that leaves the least clear
+    # at the widest number it takes. H's "999" draws larger than "1000", so it takes both.
+    *(("schedule_d", "undefined_19", tag, "2.17") for tag in ("T37", "T63")),
+    ("schedule_e_f", "undefined_12", None, "2.17"),
+    *(("schedule_e_f", "undefined_19", tag, "2.17") for tag in ("T30", "T57")),
+    *(("schedule_e_f", f"undefined_4.{n}", None, "4.17") for n in (4, 5, 6)),
+    *(("schedule_g", f"fill 2.{n}", None, "999") for n in range(6, 14)),
+    *(("schedule_h", f"fill 3.{n}", None, "999") for n in range(4, 12)),
+    *(("schedule_h", f"fill 3.{n}", None, "1000") for n in range(4, 12)),
+    ("schedule_g", "fill 2.10", None, "10"),
+]
+
+
 @pytest.mark.slow
-@pytest.mark.parametrize(
-    "form_type, name, tag, number",
-    [
-        # R4's slack, for the font that actually draws: every last digit in the narrowest box.
-        *(("schedule_d", "undefined_12", None, f"2.1{digit}") for digit in range(10)),
-        ("schedule_d", "undefined_12", None, "2.99"),
-        ("schedule_d", "undefined_12", None, "2.9"),
-        # Every other number box (3c spec §5.4), each with a last digit that leaves the least clear
-        # at the widest number it takes. H's "999" draws larger than "1000", so it takes both.
-        *(("schedule_d", "undefined_19", tag, "2.17") for tag in ("T37", "T63")),
-        ("schedule_e_f", "undefined_12", None, "2.17"),
-        *(("schedule_e_f", "undefined_19", tag, "2.17") for tag in ("T30", "T57")),
-        *(("schedule_e_f", f"undefined_4.{n}", None, "4.17") for n in (4, 5, 6)),
-        *(("schedule_g", f"fill 2.{n}", None, "999") for n in range(6, 14)),
-        *(("schedule_h", f"fill 3.{n}", None, "999") for n in range(4, 12)),
-        *(("schedule_h", f"fill 3.{n}", None, "1000") for n in range(4, 12)),
-        ("schedule_g", "fill 2.10", None, "10"),
-    ],
-)
+@pytest.mark.parametrize("form_type, name, tag, number", FITTING_NUMBERS)
 def test_a_number_that_fits_is_not_clipped(form_type, name, tag, number):
     widget = _widget(form_type, name, tag)
     template = load_schema(form_type).template_filename
@@ -155,13 +158,25 @@ def test_schedule_g_prints_its_tenth_contract(
 
 @pytest.mark.parametrize("number, size", [("10", 10.0), ("100", 7.0), ("999", 7.0)])
 def test_a_number_box_takes_more_than_its_max_length(schedule_g_numbered, number, size):
-    (part,) = PDFFormFiller().check("schedule_g", {"fill 2.10": number})
+    document = {
+        "version": 2,
+        "parts": [{"kind": "form", "values": {"fill 2.10": number}, "number_boxes": ["fill 2.10"]}],
+    }
+    (part,) = PDFFormFiller().check("schedule_g", document)
     assert [(p.value, p.size) for p in part.widgets] == [(number, size)]
+
+
+def test_an_auto_size_number_box_gets_no_room():
+    # An auto-size box has no 6 pt floor to slacken: only a fixed-size box takes the bearing.
+    widget = dataclasses.replace(_widget("schedule_d", "undefined_12"), size=0)
+    template = load_schema("schedule_d").template_filename
+    assert fit(widget, template, "2.12", number_box=True) is None
 
 
 @pytest.mark.parametrize("position, size", [("9", 10.0), ("10", 10.0), ("100", 7.0)])
 def test_a_page_number_prints_whole_in_its_small_box(schedule_d_with_copies, position, size):
     # The page-number boxes are 16.3 pt wide: a long form reaches two and three digits.
+    # A page-number box is no number box: the resolver stores none, so the flat values plan it.
     (part,) = PDFFormFiller().check("schedule_d", {"fill_27.1.0": position})
     assert [(p.value, p.size) for p in part.widgets] == [(position, size)]
 
@@ -173,27 +188,29 @@ def test_a_box_no_group_numbers_keeps_its_max_length():
     assert str(refused.value).endswith("Shorten it.")
 
 
-def _refused_copy(form_type, key, value, page=2):
-    document = {
-        "version": 2,
-        "parts": [{"kind": "copy", "page": page, "number": 1, "values": {key: value}}],
-    }
+def _refused_copy(form_type, key, value, page=2, number_box=False):
+    # A group's number box carries its room in the part, as _resolve_parts stores it (R11); a
+    # page-number or total box is no number box and carries none.
+    part = {"kind": "copy", "page": page, "number": 1, "values": {key: value}}
+    if number_box:
+        part["number_boxes"] = [key]
+    document = {"version": 2, "parts": [part]}
     with pytest.raises(ValueTooLong) as refused:
         PDFFormFiller().check(form_type, document)
     return refused.value
 
 
 @pytest.mark.parametrize(
-    "key, value, words",
+    "key, value, words, number_box",
     [
-        ("undefined_19@2:T37", "2.100", "The entry number"),
-        ("fill_27.1.0", "1000", "The page number"),
+        ("undefined_19@2:T37", "2.100", "The entry number", True),
+        ("fill_27.1.0", "1000", "The page number", False),
     ],
 )
 def test_a_number_that_cant_fit_is_refused_in_plain_words(
-    schedule_d_with_copies, key, value, words
+    schedule_d_with_copies, key, value, words, number_box
 ):
-    refused = _refused_copy("schedule_d", key, value)
+    refused = _refused_copy("schedule_d", key, value, number_box=number_box)
 
     assert str(refused) == (
         f"“{words}” is too long to fit on the court form, even in small print. "
@@ -211,10 +228,11 @@ def test_a_total_too_wide_for_its_box_is_refused_in_plain_words(schedule_d_with_
 
     assert refused.label == "The total"
     assert (refused.step, refused.page) == (None, "/sofa")
+    assert str(refused).endswith("Check the amounts you entered.")
 
 
 def test_the_dashboard_gets_a_number_refusals_sentence_and_its_fix(schedule_d_with_copies):
-    refused = _refused_copy("schedule_d", "undefined_19@2:T37", "2.100")
+    refused = _refused_copy("schedule_d", "undefined_19@2:T37", "2.100", number_box=True)
 
     body, code = _failure("schedule_d", refused)
 
@@ -247,3 +265,16 @@ def test_a_groups_fix_is_where_its_rows_are_answered():
 
     assert group_fix(schema, "g") == {"step": "income_info"}
     assert group_fix(schema, "another") == {}
+
+
+def test_every_declared_number_box_is_judged_by_pixels():
+    # R16: a schema that declares a number box this file's pixel list lacks would print a number
+    # nobody has looked at. The list may hold more (3d's boxes), never fewer.
+    judged = {(form_type, name, tag) for form_type, name, tag, _ in FITTING_NUMBERS}
+    declared = set()
+    for form_type in get_all_form_types():
+        for group in load_schema(form_type).groups.values():
+            for key in group.number_boxes.values():
+                name, _, rest = key.partition("@")
+                declared.add((form_type, name, rest.partition(":")[2] or None))
+    assert declared - judged == set()

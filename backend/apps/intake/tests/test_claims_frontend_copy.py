@@ -11,6 +11,7 @@ import re
 import pytest
 from django.conf import settings
 
+from apps.intake import claim_rows
 from apps.intake.models import Codebtor, DebtInfo, ExecutoryContract
 
 FRONTEND = settings.BASE_DIR.parent / "frontend" / "src"
@@ -32,6 +33,14 @@ def _keys(name: str) -> list[str]:
 
 def test_the_debt_kinds_the_wizard_offers_are_the_servers():
     assert _keys("DEBT_TYPE_WORDS") == [key for key, _ in DebtInfo.DEBT_TYPE_CHOICES]
+
+
+def test_the_debt_type_words_the_forms_print_are_the_wizards():
+    text = (FRONTEND / "constants" / "claims.ts").read_text()
+    match = re.search(r"^export const DEBT_TYPE_WORDS\b[^\n]*= \{\n(.*?)^\};", text, re.M | re.S)
+    assert match, "claims.ts has no DEBT_TYPE_WORDS"
+    words = dict(re.findall(r"^  (\w+): '([^'\n]+)',$", match.group(1), re.M))
+    assert words == claim_rows.DEBT_TYPE_WORDS
 
 
 def test_the_contract_kinds_the_wizard_offers_are_the_servers():

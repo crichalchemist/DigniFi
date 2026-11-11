@@ -198,6 +198,18 @@ def test_a_precondition_is_read_by_its_name_or_as_an_attribute(source, raises):
                 "schedule_j_other_property_mortgages",
             )
         ],
+        # 3c5: Schedule H line 2's text boxes read the Codebtors step's community answers
+        *[
+            (rule, {"step": "codebtors"})
+            for rule in (
+                "schedule_h_community_state",
+                "schedule_h_spouse_name",
+                "schedule_h_spouse_street",
+                "schedule_h_spouse_city",
+                "schedule_h_spouse_state",
+                "schedule_h_spouse_zip",
+            )
+        ],
         ("fee_waiver_noncash_kinds", {"step": "income_info"}),  # 103B line 3 reads 8f
         ("fee_waiver_installments_explanation", {"page": "/filing-fee"}),
         ("fee_waiver_others_covered_who", {"page": "/filing-fee"}),

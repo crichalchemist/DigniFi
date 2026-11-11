@@ -108,7 +108,9 @@ class GroupTotals:
     the box `page_boxes` names for it, and the last page prints every row's sum in `last_page_box`.
     """
 
-    column: str  # the slots' list binding, "sofa.<collection>[].<attr>", whose amounts add up
+    # the slots' list binding whose cells are amounts (is_money_binding), which add up:
+    # "claims.<list>[].amount|value|unsecured" or "sofa.creditor_payments[].total_paid"
+    column: str
     page_boxes: dict[int, str]  # template page → the key of the box that page's sum prints in
     last_page_box: str | None  # the key of the box the last page prints the whole sum in
 
@@ -272,7 +274,7 @@ _WIDGET_TYPES = {
     "checkbox": {"CheckBox", "RadioButton"},
     "radio": {"CheckBox", "RadioButton"},
 }
-_BINDING_NAMESPACES = ("answer:", "sofa.", "household.", "assets.")
+_BINDING_NAMESPACES = ("answer:", "sofa.", "household.", "assets.", "claims.")
 
 
 def validate_schema(
@@ -619,6 +621,14 @@ def validate_schema(
                     errors.append(
                         ("E003", f"page numbers: {key!r} is no drawn widget on page {p.page}")
                     )
+                    continue
+                if key and _isnt_text_box(key, drawn):
+                    errors.append(
+                        (
+                            "E003",
+                            f"page numbers: box {key!r} on page {p.page} isn't a text box",
+                        )
+                    )
             # A page's position prints in one box: an untagged key whose name has more than
             # one drawn widget would print it in each. A page count is the same in all.
             widgets = drawn.get(p.this, ()) if p.this else ()  # a tagged key has "@"
@@ -721,8 +731,10 @@ def validate_schema(
             boxes += [(key, page) for page, key in group.totals.page_boxes.items()]
             if group.totals.last_page_box:
                 boxes.append((group.totals.last_page_box, group.extra_page))
+        undrawn = set()
         for key, page in boxes:
             if not _drawn_on(key, page, drawn):
+                undrawn.add(key)
                 errors.append(
                     ("E003", f"group {name!r}: {key!r} is no drawn widget on page {page}")
                 )
@@ -740,13 +752,23 @@ def validate_schema(
                 )
         # A figure can't tick a box or fill a combo: every filer with a row would be refused.
         for key in sorted(total_box_keys(group)):
-            try:
-                box_name, _, _ = parse_key(key)
-            except ValueError:
-                continue  # _drawn_on has reported it
-            if any(w.kind != "Text" for w in drawn.get(box_name, ())):
+            if _isnt_text_box(key, drawn):
                 errors.append(("E003", f"group {name!r}: total box {key!r} isn't a text box"))
+        # An entry number is text too (R13). A box already refused as no drawn widget on its
+        # page is reported once.
+        for key in sorted(set(group.number_boxes.values()) - undrawn):
+            if _isnt_text_box(key, drawn):
+                errors.append(("E003", f"group {name!r}: number box {key!r} isn't a text box"))
     return errors
+
+
+def _isnt_text_box(key: str, drawn) -> bool:
+    """True when a box key names a drawn widget that is not a text box; a bad key is no."""
+    try:
+        box_name, _, _ = parse_key(key)
+    except ValueError:
+        return False  # _drawn_on has reported it
+    return any(w.kind != "Text" for w in drawn.get(box_name, ()))
 
 
 _STATEMENT_BINDING = re.compile(r"income\.statement\[\]\.(?:owner|description|gross|expenses|net)")
@@ -757,7 +779,10 @@ _LIST_BINDING = re.compile(
 
 def _totals_errors(name: str, group: GroupSpec, rows: list[FieldSpec]) -> list[tuple[str, str]]:
     """What keeps a group's total boxes from adding up its own rows (3c spec §5.3)."""
-    from apps.forms.services.fill_resolver import _unmapped  # here: it imports this module
+    from apps.forms.services.fill_resolver import (  # here: it imports this module
+        _unmapped,
+        is_money_binding,
+    )
 
     totals = group.totals
     if group.extra_page is None:
@@ -772,6 +797,13 @@ def _totals_errors(name: str, group: GroupSpec, rows: list[FieldSpec]) -> list[t
                 "E007",
                 f"group {name!r}: its totals add {totals.column!r}, "
                 "which isn't a text slot of the group",
+            )
+        )
+    elif not is_money_binding(totals.column):
+        errors.append(
+            (
+                "E007",
+                f"group {name!r}: its total adds {totals.column!r}, which holds no amount",
             )
         )
     slot_pages = {f.page for f in rows if not _unmapped(f)}
