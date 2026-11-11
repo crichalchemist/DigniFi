@@ -50,6 +50,7 @@ import {
   DEBT_TYPE_WORDS,
 } from '../../../constants/claims';
 import { linkedSums } from './claims/linkedPayments';
+import { isPriorityType } from './claims/claimNames';
 import { WIZARD_STEPS } from '../../../constants/wizardSteps';
 import { AB_PARTS, ASSET_LINES } from '../../../constants/assetLines';
 import { deductionsTotal, takeHomePayNotEntered } from '../../../utils/takeHomePay';
@@ -452,7 +453,7 @@ export function ReviewStep({
                   {debt.debt_type && DEBT_TYPE_WORDS[debt.debt_type]
                     ? ` (${DEBT_TYPE_WORDS[debt.debt_type]})`
                     : ''}
-                  {debt.priority_answer && (
+                  {!debt.is_secured && debt.priority_answer && (
                     <span style={{ display: 'block' }}>
                       {debt.priority_answer === 'no'
                         ? PRIORITY_NO
@@ -468,7 +469,10 @@ export function ReviewStep({
                       [REVIEW_PAST_DUE, debt.past_due_amount],
                     ] as const
                   ).map(([label, figure]) =>
-                    figure === null || figure === undefined ? null : (
+                    debt.is_secured ||
+                    !isPriorityType(debt.priority_answer) ||
+                    figure === null ||
+                    figure === undefined ? null : (
                       <span key={label} style={{ display: 'block' }}>
                         {label}: {formatCurrency(figure)}
                       </span>

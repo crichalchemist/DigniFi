@@ -619,4 +619,56 @@ describe('ReviewStep expense lines', () => {
     expect(screen.getByText(PRIORITY_NO)).toBeInTheDocument();
     expect(document.body.textContent).not.toMatch(/undefined|NaN|null/);
   });
+
+  it('adds nothing for a secured debt, whatever answer and figures a row carries', () => {
+    render(
+      <ReviewStep
+        {...baseProps}
+        debtsData={[
+          {
+            id: 1,
+            creditor_name: 'Demo Auto Lender',
+            debt_type: 'car_loan',
+            amount_owed: 3000,
+            is_secured: true,
+            priority_answer: 'taxes',
+            priority_amount: 1234,
+            nonpriority_amount: 567,
+            past_due_amount: 89,
+          },
+        ]}
+        onValidationChange={vi.fn()}
+      />
+    );
+    expect(screen.queryByText(PRIORITY_TYPE_WORDS.taxes)).not.toBeInTheDocument();
+    expect(screen.queryByText(new RegExp(PRIORITY_AMOUNT_LABEL))).not.toBeInTheDocument();
+    expect(screen.queryByText(new RegExp(NONPRIORITY_AMOUNT_LABEL))).not.toBeInTheDocument();
+    expect(screen.queryByText(new RegExp(REVIEW_PAST_DUE))).not.toBeInTheDocument();
+  });
+
+  it('shows no figure under No, even when a row still carries stored figures', () => {
+    render(
+      <ReviewStep
+        {...baseProps}
+        debtsData={[
+          {
+            id: 1,
+            creditor_name: 'Demo Card Services',
+            debt_type: 'credit_card',
+            amount_owed: 500,
+            is_secured: false,
+            priority_answer: 'no',
+            priority_amount: 1234,
+            nonpriority_amount: 567,
+            past_due_amount: 89,
+          },
+        ]}
+        onValidationChange={vi.fn()}
+      />
+    );
+    expect(screen.getByText(PRIORITY_NO)).toBeInTheDocument();
+    expect(screen.queryByText(new RegExp(PRIORITY_AMOUNT_LABEL))).not.toBeInTheDocument();
+    expect(screen.queryByText(new RegExp(NONPRIORITY_AMOUNT_LABEL))).not.toBeInTheDocument();
+    expect(screen.queryByText(new RegExp(REVIEW_PAST_DUE))).not.toBeInTheDocument();
+  });
 });
