@@ -459,9 +459,23 @@ export function DebtsStep({
         const linkedShape = ASSET_LINES.find((line) => line.key === linked?.ab_line)?.shape;
         const asksHome = secured && linked?.details?.lives_here === 'yes';
         const asksOwner = secured && linked !== undefined && !asksWho(linkedShape);
+        // Where Schedule D leaves Columns B and C blank (claim_rows._column_b, R19)
+        const sharedProperty =
+          linked !== undefined &&
+          kept.some(
+            (other) =>
+              other !== debt &&
+              other.is_secured === true &&
+              linkIsLive(other.secured_by, assets) &&
+              other.secured_by === debt.secured_by
+          );
         const coOwned =
           secured &&
-          (linked?.details?.who === 'with_someone' || debt.collateral_who === 'with_someone');
+          linked !== undefined &&
+          (sharedProperty ||
+            (asksWho(linkedShape)
+              ? linked.details?.who === 'with_someone'
+              : debt.collateral_who === 'with_someone'));
         const securedAnswer: YesNo | null = secured
           ? 'yes'
           : debt._securedPressed === true || debt.debt_type

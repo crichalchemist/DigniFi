@@ -217,7 +217,26 @@ def test_totals_count_rows_printed_on_copies_and_sheets(
     schemas = request.getfixturevalue(fixture)
     path = schemas / f"{form_type}.json"
     data = json.loads(path.read_text())
-    box = next(f for f in data["fields"] if f["pdf_field"] == total)
+    box = next((f for f in data["fields"] if f["pdf_field"] == total), None)
+    if box is None:
+        # Schedule D's total box has no binding of its own once its group declares the total
+        # (3c5 R8): bind it to the test's rule here.
+        box = {
+            "pdf_field": total,
+            "type": "text",
+            "page": 2,
+            "label": total,
+            "required": False,
+            "conditional_on": None,
+            "value": None,
+            "ingest_key": None,
+            "binding": None,
+            "repeat": None,
+            "repeat_capacity": None,
+            "row": None,
+            "legal_review": False,
+        }
+        data["fields"].append(box)
     box.update(source="derived", rule="every_row_total")
     path.write_text(json.dumps(data))
     load_schema.cache_clear()
