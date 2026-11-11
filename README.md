@@ -128,7 +128,7 @@ dignifi/
 │   │   ├── intake/         # Data collection (9-step wizard)
 │   │   ├── eligibility/    # Means test calculator
 │   │   ├── documents/      # Document scanning pipeline (OCR → draft debts)
-│   │   └── forms/          # 17 court forms: registry, fill engine, PDF filler
+│   │   └── forms/          # 18 court forms: registry, fill engine, PDF filler
 │   ├── config/             # Django settings (base, dev, prod)
 │   └── requirements/       # Python dependencies
 ├── frontend/               # React 19 + TypeScript SPA
@@ -139,7 +139,7 @@ dignifi/
 │   │   ├── api/            # Typed API client
 │   │   └── utils/          # Analytics, helpers
 │   └── e2e/                # Playwright page objects & journey specs
-├── data/forms/pdfs/        # 67 official AO court PDF templates
+├── data/forms/pdfs/        # 68 official AO court PDF templates
 └── docs/                   # Reference documentation
     ├── internal/           # PRD, briefs, architecture analysis
     ├── testing/            # Persona briefs, test scripts, run protocol
@@ -151,7 +151,7 @@ dignifi/
 
 - **Backend**: Python 3.11, Django 5.0, Django REST Framework, PostgreSQL 15
 - **Frontend**: React 19, Vite 7, TypeScript (Context API for state management)
-- **PDF Generation**: pypdf 6.x — 17 form schemas fill official AO court templates
+- **PDF Generation**: pypdf 6.x — 18 form schemas fill official AO court templates
 - **Authentication**: JWT (djangorestframework-simplejwt) with silent refresh
 - **Encryption**: django-encrypted-model-fields (Fernet) for PII
 - **Testing**: pytest, vitest, Playwright, vitest-axe (accessibility)
@@ -166,7 +166,7 @@ dignifi/
 - 9-step intake wizard: Your Information → Income → Take-home pay → Expenses → Assets → Amounts Owed → Contracts & Leases → Codebtors → Review & Results
 - Chapter 7 means test calculator (11 U.S.C. § 707(b) — annualized CMI vs. Census median by household size)
 - Filing fee (Form 101 line 8): the filer chooses how to pay. A waiver request adds Form 103B, filled from the intake. The court's limit (150% of the HHS poverty guideline) and the filer's own Form 103B figure are shown as information (28 U.S.C. § 1930(f)).
-- 17 court forms (Form 101 through Schedules A/B–J); each filer's packet holds 14–16 of them
+- 18 court forms (Form 101 through Schedules A/B–J, and the court's List of Creditors); each filer's packet holds 15–17 of them
 - PDF download — each form's schema fills its official AO court template via pypdf
 - UPL confirmation modal gates all form generation
 - Post-task usability survey (3 Likert + 2 open text)

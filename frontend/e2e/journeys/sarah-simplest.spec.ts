@@ -89,7 +89,7 @@ test.describe('Sarah Chen — Simplest Case', () => {
     await sofa.skipForNow();
 
     // Generate all forms
-    await dashboard.generateAllForms(15); // 14 forms + Form 103B (she asks for the waiver)
+    await dashboard.generateAllForms(16); // 15 forms + Form 103B (she asks for the waiver)
     const count = await dashboard.getGeneratedCount();
     expect(count).toBe(15);
 

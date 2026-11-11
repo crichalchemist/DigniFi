@@ -8,7 +8,7 @@ export class DashboardPage {
   constructor(private page: Page) {}
 
   /**
-   * @param expectedCount The persona's packet size: 14 forms for a below-median
+   * @param expectedCount The persona's packet size: 15 forms for a below-median
    * filer, plus Form 103B for one who asks for the fee waiver (Form 101 line 8).
    */
   async generateAllForms(expectedCount: number) {

@@ -1,6 +1,6 @@
 # Court-form field index
 
-Ground truth for every fillable box on the 17 AO templates in `../pdfs/` that the app fills. Form 122B has no fillable fields. Built 2026-10-09.
+Ground truth for every fillable box on the 18 templates in `../pdfs/` that the app fills. Form 122B has no fillable fields. Built 2026-10-09.
 
 ## Files
 
@@ -18,7 +18,7 @@ Ground truth for every fillable box on the 17 AO templates in `../pdfs/` that th
 
 | basis           | meaning                                                                             | rows |
 | --------------- | ----------------------------------------------------------------------------------- | ---- |
-| `adjudicated`   | a reviewer looked at the tagged page image and decided                              | 1118 |
+| `adjudicated`   | a reviewer looked at the tagged page image and decided                              | 1154 |
 | `sampled_ok`    | vision agreed with the text layer, and a reviewer spot-checked it against the image | 551  |
 | `vision_agreed` | vision agreed with the text layer; not looked at                                    | 486  |
 | `pattern`       | a table row extrapolated from one row checked in the image                          | 626  |

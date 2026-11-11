@@ -674,7 +674,7 @@ export interface FilingFee {
 // Form Generation
 // ============================================================================
 
-/** All 17 form types registered in the backend form registry */
+/** All 18 form types registered in the backend form registry */
 export type FormType =
   | 'form_101' // Voluntary Petition
   | 'form_103b' // Fee Waiver Application
@@ -682,6 +682,7 @@ export type FormType =
   | 'form_106sum' // Summary of Assets/Liabilities
   | 'form_107' // Statement of Financial Affairs
   | 'form_121' // SSN Statement
+  | 'list_of_creditors' // List of Creditors
   | 'form_122a1' // Means Test
   | 'form_122a1_supp' // Means Test Supplement
   | 'form_122a2' // Means Test Expense Calculation
@@ -759,6 +760,12 @@ export const FORM_TYPE_METADATA: Record<
     label: 'Form 122A-2 - Means Test Expenses',
     description: 'Chapter 7 means test expense calculation',
     order: 9,
+  },
+  list_of_creditors: {
+    label: 'List of Creditors',
+    description:
+      "The court's list of the name and address of everyone you owe money to, or who must be told about your case.",
+    order: 10,
   },
   schedule_a_b: {
     label: 'Schedule A/B - Property',
