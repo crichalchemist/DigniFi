@@ -71,6 +71,8 @@ _COMB_BREAKERS = "()\\"
 _FIRST_MOVE = re.compile(rb"^(\S+) (\S+) Td$", re.MULTILINE)
 # The PDF fill operator for a /BG array of each length: gray, RGB and CMYK.
 _BACKGROUND_OPERATORS = {1: "g", 3: "rg", 4: "k"}
+# The PDF stroke operator for a /BC array of each length.
+_BORDER_OPERATORS = {1: "G", 3: "RG", 4: "K"}
 
 
 class UnknownField(Exception):
@@ -271,6 +273,30 @@ def _paint_background(appearance: TextStreamAppearance, annotation: DictionaryOb
     appearance.set_data(fill.encode() + appearance.get_data())
 
 
+def _paint_border(appearance: TextStreamAppearance, annotation: DictionaryObject) -> None:
+    """
+    Stroke the box's own /MK /BC over its text, as a viewer does and as the template's own
+    appearance does ("0 G 0.5 0.5 w h re s"): pypdf's appearance has none, so a filled
+    List of Creditors entry would lose the court's black box. A box with no border colour
+    gains none.
+    """
+    characteristics = annotation.get("/MK")
+    border = characteristics.get_object().get("/BC") if characteristics else None
+    if not border:
+        return
+    color = " ".join(str(float(part)) for part in border)
+    operator = _BORDER_OPERATORS[len(border)]
+    style = annotation.get("/BS")
+    width = float(style.get_object().get("/W", 1)) if style else 1.0
+    x0, y0, x1, y1 = (float(side) for side in annotation["/Rect"])
+    inset = width / 2
+    stroke = (
+        f"\nq {color} {operator} {width} w {inset} {inset} "
+        f"{abs(x1 - x0) - width} {abs(y1 - y0) - width} re s Q\n"
+    )
+    appearance.set_data(appearance.get_data() + stroke.encode())
+
+
 def _draw(
     writer: pypdf.PdfWriter,
     page: pypdf.PageObject,
@@ -308,6 +334,7 @@ def _draw(
     if widget.multiline:
         _lower_first_line(appearance, 2 * widget.margin)
     _paint_background(appearance, annotation)
+    _paint_border(appearance, annotation)
     annotation[NameObject("/AP")] = DictionaryObject(
         {NameObject("/N"): writer._add_object(appearance)}
     )
