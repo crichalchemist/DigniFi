@@ -178,12 +178,16 @@ def _group_box(schema: FormSchema, key: str) -> tuple[str, dict[str, str]] | Non
     return None
 
 
-def _source(schema: FormSchema, key: str, widget: TemplateWidget) -> tuple[str, dict[str, str]]:
+def _source(
+    schema: FormSchema, key: str, widget: TemplateWidget, fixes: dict[str, dict[str, str]]
+) -> tuple[str, dict[str, str]]:
     """
     The box's label and where the filer fixes its value, from the binding that produced
     the key. A key no binding produced (a test's, the oracle's) gets the index row's
     label and no fix; a binding with an empty label, the index row's label and its fix.
     A group's number, total or page-number box gets its own words and its group's fix.
+    A key the part's own "fixes" name (the step of the row the box prints, R8) keeps the
+    binding's label and takes that fix instead of the binding's.
     """
     group_box = _group_box(schema, key)
     if group_box is not None:
@@ -192,9 +196,9 @@ def _source(schema: FormSchema, key: str, widget: TemplateWidget) -> tuple[str, 
     fix: dict[str, str] = {}
     for field in schema.fields:
         if field.pdf_field == name and field.tag == tag and (tag is None or field.page == page):
+            fix = dict(fixes[key]) if key in fixes else fix_for(field)
             if field.label:
-                return field.label, fix_for(field)
-            fix = fix_for(field)
+                return field.label, fix
             break
     row = next(
         row
@@ -378,7 +382,10 @@ class PDFFormFiller:
                 schema's (R63; sheets.plan_sheet checks them). A form or copy part's own
                 stored "number_boxes" are the only boxes that skip /MaxLen and take the
                 right bearing at 6 pt; a flat {key: value} (parts_of) stores none, so it
-                gets no such room, and one part's list never reaches another part.
+                gets no such room, and one part's list never reaches another part. A form
+                or copy part's own optional "fixes", {key: {"step": ...}}, name the step of
+                the row each box prints and replace the binding's fix in that part's
+                refusals (R8); no other part's "fixes" reach it.
 
         Returns:
             One planned part per part, each holding every widget a key fills in page
@@ -401,7 +408,10 @@ class PDFFormFiller:
         for part in parts_of(values):
             if part["kind"] == "form":
                 widgets = self._plan(
-                    form_type, part["values"], number_keys=frozenset(part.get("number_boxes", ()))
+                    form_type,
+                    part["values"],
+                    number_keys=frozenset(part.get("number_boxes", ())),
+                    fixes=part.get("fixes", {}),
                 )
             elif part["kind"] == "copy":
                 widgets = self._plan(
@@ -409,6 +419,7 @@ class PDFFormFiller:
                     part["values"],
                     page=part["page"],
                     number_keys=frozenset(part.get("number_boxes", ())),
+                    fixes=part.get("fixes", {}),
                 )
             elif part["kind"] == "sheet":
                 plan_sheet(form_type, sheet_spec(part), part)
@@ -424,12 +435,15 @@ class PDFFormFiller:
         values: dict,
         page: int | None = None,
         number_keys: frozenset[str] = frozenset(),
+        fixes: dict[str, dict[str, str]] | None = None,
     ) -> tuple[Planned, ...]:
         """
         What each widget one part's {key: value} fills prints, as check() describes: on
         any page of the form, or with `page`, on that page alone. `number_keys` are the
         part's stored number boxes, the only boxes that take more room than /MaxLen.
+        `fixes` are the part's own {key: fix}, the step of the row each box prints.
         """
+        fixes = fixes or {}
         schema = load_schema(form_type)
         by_name: dict[str, list[TemplateWidget]] = {}
         for widget in template_widgets(schema.template_filename):
@@ -477,7 +491,7 @@ class PDFFormFiller:
             text = _as_printed(value)
             letter = _refused_letter(text, partial(printable, font), widget.comb)
             if letter is not None:
-                raise UnprintableLetter(form_type, letter, *_source(schema, key, widget))
+                raise UnprintableLetter(form_type, letter, *_source(schema, key, widget, fixes))
             fitted = fit(widget, schema.template_filename, text, number_box=key in number_keys)
             if fitted is None:
                 ending = {}
@@ -485,7 +499,7 @@ class PDFFormFiller:
                     ending = {"ending": _TOTAL_TOO_WIDE}
                 elif _group_box(schema, key):
                     ending = {"ending": _TOO_MANY_ROWS}
-                raise ValueTooLong(form_type, *_source(schema, key, widget), **ending)
+                raise ValueTooLong(form_type, *_source(schema, key, widget, fixes), **ending)
             planned.append(Planned(widget, *fitted))
         return tuple(planned)
 

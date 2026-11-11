@@ -246,6 +246,29 @@ def test_a_filed_form_whose_values_cannot_print_is_refused_without_a_step_or_pag
     }
 
 
+def test_a_filed_forms_stored_fixes_reach_no_refusal(api_client_authed, generated_form_factory):
+    # A part's stored "fixes" name a step for a box (R8), but no step changes what was filed,
+    # so the refusal still carries neither a step nor a page (R46).
+    box = "Company Name 2.6"
+    form = generated_form_factory(status="filed")
+    form.form_type = "schedule_g"
+    form.field_values = json.dumps(
+        {
+            "version": 2,
+            "parts": [
+                {"kind": "form", "values": {box: "W" * 200}, "fixes": {box: {"step": "codebtors"}}}
+            ],
+        }
+    )
+    form.save()
+
+    response = _download(api_client_authed, form)
+
+    assert response.status_code == 422
+    assert "step" not in response.data
+    assert "page" not in response.data
+
+
 def test_filed_form_without_a_snapshot_is_resolved_once_and_kept(
     api_client_authed, generated_form_factory
 ):

@@ -488,6 +488,14 @@ def binding_fix(binding: str) -> dict[str, str]:
     return {}
 
 
+def row_fixes(binding: str, session: IntakeSession) -> list[dict[str, str]] | None:
+    """
+    One fix per entry for a list binding whose rows come from different steps, in the order
+    the binding lists them; None for every other binding (R8). No binding has per-row fixes yet.
+    """
+    return None
+
+
 def fix_for(field: FieldSpec) -> dict[str, str]:
     """
     Where the filer changes a binding's value, for a refusal to link to (3a2 spec §4.5):
@@ -605,8 +613,10 @@ def _copies(
     slots = sorted({f.row for f in fields if f.page == page and f.row})
     positions = list(range(capacity + 1, actual + 1))
     copies = []
+    row_fix_lists = {_key(f): row_fixes(f.binding, session) for f in printed if f.binding}
     for start in range(0, len(positions), len(slots)):
         values: dict[str, str] = {}
+        fixes: dict[str, dict[str, str]] = {}
         # The last copy may hold fewer rows than the page has slots.
         for row, position in zip(slots, positions[start : start + len(slots)], strict=False):
             for f in printed:
@@ -614,9 +624,16 @@ def _copies(
                     emitted = _cell(f, position, columns, session, ingested_cache)
                     if emitted is not None:
                         values[_key(f)] = emitted
+                        # The entry's own step, by its position in the list, never the slot's row.
+                        listed = row_fix_lists.get(_key(f))
+                        if listed is not None and position <= len(listed):
+                            fixes[_key(f)] = dict(listed[position - 1])
             if row in group.number_boxes:
                 values[group.number_boxes[row]] = group.number.format(n=position)
-        copies.append({"kind": "copy", "page": page, "number": len(copies) + 1, "values": values})
+        copy = {"kind": "copy", "page": page, "number": len(copies) + 1, "values": values}
+        if fixes:
+            copy["fixes"] = dict(sorted(fixes.items()))
+        copies.append(copy)
 
     headers = _headers(schema, form, page)
     for copy in copies:
@@ -755,7 +772,9 @@ def resolve_parts(schema: FormSchema, session: IntakeSession) -> dict:
     "number_boxes": [key, ...], every number-box key of that schema, sorted, whether or not the
     part prints that box (none declared, no key; page-number and total boxes are not listed)
     (R11). Those keys skip /MaxLen when the part is checked or drawn, and only a single-line,
-    fixed-size box among them takes the right bearing at 6 pt (R15). A group may instead
+    fixed-size box among them takes the right bearing at 6 pt (R15). A form or copy part also
+    carries "fixes": {key: fix}, keys sorted, the step of the entry each box prints, only when
+    a slot it fills has per-row fixes (`row_fixes`, R8; no binding has them yet). A group may instead
     continue on the attached sheet it declares (3a2 spec §5.3, R23, R63), one part for all of
     them:
     {"kind": "sheet", "group": <group>, "title": <its title>,
@@ -813,6 +832,7 @@ def _resolve_parts(schema: FormSchema, session: IntakeSession) -> dict:
 
     copies: list[dict] = []
     sheets: list[dict] = []
+    form_fixes: dict[str, dict[str, str]] = {}
     overflowing = []
     for group_name, fields in groups.items():
         capacity = fields[0].repeat_capacity or 0
@@ -827,6 +847,9 @@ def _resolve_parts(schema: FormSchema, session: IntakeSession) -> dict:
             emitted = _cell(f, f.row, resolved_cols, session, _ingested_cache)
             if emitted is not None:
                 out[_key(f)] = emitted
+                listed = row_fixes(f.binding, session) if f.binding else None
+                if listed is not None and f.row and f.row <= len(listed):
+                    form_fixes[_key(f)] = dict(listed[f.row - 1])
         group = schema.groups.get(group_name)
         if group is not None:
             for row, key in group.number_boxes.items():
@@ -902,6 +925,8 @@ def _resolve_parts(schema: FormSchema, session: IntakeSession) -> dict:
                 }
             )
     form_part = {"kind": "form", "values": out}
+    if form_fixes:
+        form_part["fixes"] = dict(sorted(form_fixes.items()))
     # The boxes that take more room than /MaxLen are stored with each part, so a filed document
     # keeps them whatever its schema declares later (R11): none declared, no key.
     number_keys = sorted(number_box_keys(schema))
