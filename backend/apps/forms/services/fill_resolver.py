@@ -12,8 +12,10 @@ returns its form part.
 from __future__ import annotations
 
 import re
+import unicodedata
 from collections import Counter
 from collections.abc import Callable
+from dataclasses import dataclass
 from decimal import Decimal
 from typing import Any
 
@@ -46,6 +48,7 @@ from apps.intake.asset_lines import (
 )
 from apps.intake.claim_rows import (
     DEBT_TYPE_WORDS,
+    ClaimRows,
     ContractRow,
     DebtRow,
     NoticeRow,
@@ -231,6 +234,59 @@ def _address_cell(part: str) -> Callable[[Any], str]:
     return cell
 
 
+@dataclass(frozen=True)
+class CreditorEntry:
+    """One name and address on the court's List of Creditors, with the step of its first row."""
+
+    text: str
+    step: str
+
+
+def _entry_key(parts: list[str]) -> tuple[str, ...]:
+    """A name and address as one person: NFC, case-folded, whitespace runs collapsed (R5)."""
+    return tuple(" ".join(unicodedata.normalize("NFC", p).casefold().split()) for p in parts)
+
+
+def _entry_text(parts: dict[str, str]) -> str:
+    """The lines of one entry (R6): name, street, street 2, then the city line; blanks left out."""
+    city_line = ", ".join(filter(None, (parts["city"], parts["state"])))
+    city_line = " ".join(filter(None, (city_line, parts["zip"])))
+    lines = (parts["name"], parts["street"], parts["street_2"], city_line)
+    return "\n".join(line for line in lines if line)
+
+
+def creditor_entries(rows: ClaimRows) -> list[CreditorEntry]:
+    """
+    The List of Creditors' entries, one per name and address, from the rows Schedules D, E/F,
+    G and H print (3c6 R5). The first row with a name and address makes the entry and gives
+    its step; later rows with the same one add nothing.
+    """
+    # DRAFT: counsel C-4 (the six lists in print order; H line 2's spouse is not on the list)
+    # DRAFT: counsel C-5 (no entry is added for the filer, and no name is matched against theirs)
+    sources = (
+        (rows.secured, "debts"),
+        (rows.secured_notices, "debts"),
+        (rows.unsecured, "debts"),
+        (rows.unsecured_notices, "debts"),
+        (rows.contracts, "contracts"),
+        (rows.codebtors, "codebtors"),
+    )
+    seen: set[tuple[str, ...]] = set()
+    entries = []
+    for listed, step in sources:
+        for row in listed:
+            parts = {
+                part: _address_cell(part)(row)
+                for part in ("name", "street", "street_2", "city", "state", "zip")
+            }
+            key = _entry_key(list(parts.values()))
+            if key in seen:
+                continue
+            seen.add(key)
+            entries.append(CreditorEntry(text=_entry_text(parts), step=step))
+    return entries
+
+
 def _tick(on: bool) -> str:
     return "true" if on else ""
 
@@ -322,6 +378,8 @@ CLAIM_CELLS: dict[str, dict[str, Callable[[Any], str]]] = {
         "on_g": lambda row: _tick(bool(row.g_lines)),
         "g_lines": lambda row: _lines(row.g_lines),
     },
+    # The List of Creditors' rows are CreditorEntry objects, not a ClaimRows list (3c6 R5).
+    "creditor_list": {"entry": lambda entry: entry.text},
 }
 # The cells that print a dollar amount: the only columns a group's total box may add (R14).
 CLAIM_MONEY_CELLS = frozenset({"amount", "value", "unsecured"})
@@ -409,6 +467,8 @@ def resolve_binding(binding: str, session: IntakeSession) -> str | list[str]:
         cell = CLAIM_CELLS.get(match[1], {}).get(match[2]) if match else None
         if cell is None:
             raise ValueError(f"unrecognized binding: {binding!r}")
+        if match[1] == "creditor_list":
+            return [cell(entry) for entry in creditor_entries(claim_rows(session))]
         return [cell(row) for row in getattr(claim_rows(session), match[1])]
 
     raise ValueError(f"unrecognized binding: {binding!r}")
@@ -491,8 +551,11 @@ def binding_fix(binding: str) -> dict[str, str]:
 def row_fixes(binding: str, session: IntakeSession) -> list[dict[str, str]] | None:
     """
     One fix per entry for a list binding whose rows come from different steps, in the order
-    the binding lists them; None for every other binding (R8). No binding has per-row fixes yet.
+    the binding lists them; None for every other binding (R8). Only the List of Creditors'
+    entries have them: each entry's fix is the step of its first row.
     """
+    if binding.strip() == "claims.creditor_list[].entry":
+        return [{"step": e.step} for e in creditor_entries(claim_rows(session))]
     return None
 
 
@@ -613,7 +676,7 @@ def _copies(
     slots = sorted({f.row for f in fields if f.page == page and f.row})
     positions = list(range(capacity + 1, actual + 1))
     copies = []
-    row_fix_lists = {_key(f): row_fixes(f.binding, session) for f in printed if f.binding}
+    by_binding = {b: row_fixes(b, session) for b in {f.binding for f in printed if f.binding}}
     for start in range(0, len(positions), len(slots)):
         values: dict[str, str] = {}
         fixes: dict[str, dict[str, str]] = {}
@@ -625,7 +688,7 @@ def _copies(
                     if emitted is not None:
                         values[_key(f)] = emitted
                         # The entry's own step, by its position in the list, never the slot's row.
-                        listed = row_fix_lists.get(_key(f))
+                        listed = by_binding.get(f.binding)
                         if listed is not None and position <= len(listed):
                             fixes[_key(f)] = dict(listed[position - 1])
             if row in group.number_boxes:
@@ -843,11 +906,12 @@ def _resolve_parts(schema: FormSchema, session: IntakeSession) -> dict:
         )
         # UPL guard, as above
         printed = [f for f in fields if not (f.legal_review and f.source != "asked")]
+        by_binding = {b: row_fixes(b, session) for b in {f.binding for f in printed if f.binding}}
         for f in printed:
             emitted = _cell(f, f.row, resolved_cols, session, _ingested_cache)
             if emitted is not None:
                 out[_key(f)] = emitted
-                listed = row_fixes(f.binding, session) if f.binding else None
+                listed = by_binding.get(f.binding)
                 if listed is not None and f.row and f.row <= len(listed):
                     form_fixes[_key(f)] = dict(listed[f.row - 1])
         group = schema.groups.get(group_name)
