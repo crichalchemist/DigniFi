@@ -398,6 +398,19 @@ def test_every_persona_answers_every_claim_question(persona):
 
 
 @pytest.mark.django_db
+@pytest.mark.parametrize("persona", list(PERSONAS))
+def test_every_unsecured_seeded_debt_answers_the_priority_question(persona):
+    session = _seed(persona)
+    for debt in session.debts.all():
+        if debt.is_secured:
+            assert debt.priority_answer is None
+        elif debt.creditor_name == "Illinois State Toll Highway Authority":
+            assert debt.priority_answer == "not_sure"
+        else:
+            assert debt.priority_answer == "no"
+
+
+@pytest.mark.django_db
 def test_priyas_car_loan_links_to_her_car():
     session = _seed("priya")
     kestrel = _debt(session, "Kestrel Auto Finance")

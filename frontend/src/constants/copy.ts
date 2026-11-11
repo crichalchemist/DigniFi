@@ -510,6 +510,10 @@ export const DEBT_GAP_STATUS =
   'Check any that fit {name}: contingent, unliquidated or disputed. Or choose None of these.';
 
 export const DEBT_GAP_OFFSET = 'Answer whether {name} is subject to offset.';
+export const DEBT_GAP_PRIORITY = 'Answer “Is this amount owed one of these kinds?” for {name}.';
+export const DEBT_GAP_PRIORITY_OTHER = 'Fill in “Other. Specify” for {name}.';
+export const DEBT_GAP_PAST_DUE =
+  'Enter how much of what you owe {name} is past due. Enter 0 if none of it is.';
 
 export const DEBT_GAP_NOTICE = 'Answer whether anyone else is contacting you about {name}.';
 
