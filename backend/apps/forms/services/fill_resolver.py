@@ -234,12 +234,16 @@ def _address_cell(part: str) -> Callable[[Any], str]:
     return cell
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, repr=False)
 class CreditorEntry:
     """One name and address on the court's List of Creditors, with the step of its first row."""
 
     text: str
     step: str
+
+    def __repr__(self) -> str:
+        # A creditor's name and address never reach a log line or a traceback.
+        return f"CreditorEntry(step={self.step!r}, text=<{len(self.text)} characters>)"
 
 
 def _entry_key(parts: list[str]) -> tuple[str, ...]:
@@ -261,8 +265,8 @@ def creditor_entries(rows: ClaimRows) -> list[CreditorEntry]:
     G and H print (3c6 R5). The first row with a name and address makes the entry and gives
     its step; later rows with the same one add nothing.
     """
-    # DRAFT: counsel C-4 (the six lists in print order; H line 2's spouse is not on the list)
-    # DRAFT: counsel C-5 (no entry is added for the filer, and no name is matched against theirs)
+    # DRAFT: counsel C-9 (C4: the six lists in print order; H line 2's spouse is not on the list)
+    # DRAFT: counsel C-9 (C5: no entry for the filer, and no name is matched against theirs)
     sources = (
         (rows.secured, "debts"),
         (rows.secured_notices, "debts"),
@@ -411,7 +415,8 @@ def resolve_binding(binding: str, session: IntakeSession) -> str | list[str]:
         that line's Schedule A/B rows, or those of that kind, in the form's order
       - "claims.<list>[].<attr>" → list of str over one of claim_rows' six lists (secured,
         unsecured, secured_notices, unsecured_notices, contracts, codebtors), each cell from
-        CLAIM_CELLS
+        CLAIM_CELLS; or over `creditor_list`, the List of Creditors' entries (`creditor_entries`:
+        a CreditorEntry, its `entry` cell the entry's text)
     """
     binding = binding.strip()
 
@@ -837,7 +842,8 @@ def resolve_parts(schema: FormSchema, session: IntakeSession) -> dict:
     (R11). Those keys skip /MaxLen when the part is checked or drawn, and only a single-line,
     fixed-size box among them takes the right bearing at 6 pt (R15). A form or copy part also
     carries "fixes": {key: fix}, keys sorted, the step of the entry each box prints, only when
-    a slot it fills has per-row fixes (`row_fixes`, R8; no binding has them yet). A group may instead
+    a slot it fills has per-row fixes (`row_fixes`, R8; only the List of Creditors'
+    `claims.creditor_list[].entry` has them). A group may instead
     continue on the attached sheet it declares (3a2 spec §5.3, R23, R63), one part for all of
     them:
     {"kind": "sheet", "group": <group>, "title": <its title>,

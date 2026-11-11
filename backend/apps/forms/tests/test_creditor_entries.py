@@ -154,6 +154,34 @@ def test_a_different_address_is_a_different_entry(session):
     assert len(_entries(session)) == 2
 
 
+@pytest.mark.parametrize(
+    ("part", "other"),
+    [
+        ("street_2", "Suite 9"),
+        ("city", "Otherville"),
+        ("state", "WI"),
+        ("zip_code", "53201"),
+    ],
+)
+def test_the_same_name_and_street_elsewhere_is_a_different_entry(session, part, other):
+    # A creditor with one name and street in two cities, or two suites, is two mailings.
+    complete_debt(session, creditor_name="Demo Card Services", street_address="1 Demo Way")
+    complete_debt(
+        session, creditor_name="Demo Card Services", street_address="1 Demo Way", **{part: other}
+    )
+    assert len(_entries(session)) == 2
+
+
+def test_an_entry_never_shows_a_creditors_name_in_its_repr(session):
+    # Global Constraint: no logger call or __str__ may carry a creditor's name or address.
+    complete_debt(session, creditor_name="Distinctive Creditor", street_address="77 Secret Way")
+    (entry,) = _entries(session)
+    for shown in (repr(entry), str(entry)):
+        assert "Distinctive" not in shown
+        assert "Secret" not in shown
+        assert "debts" in shown
+
+
 def test_an_entry_prints_name_street_and_city_state_zip_on_their_own_lines(session):
     complete_debt(session, street_2="Suite 4", city="Chicago")
     complete_debt(session, creditor_name="Plain Bank", street_address="2 Demo Way", city="Chicago")

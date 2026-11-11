@@ -63,7 +63,7 @@ _BLANK = 180.0  # the line to write the case number on, 2.5 in
 _CASE_NUMBER = "Case number (if known)"
 _TEXT_FONT = "/Helv"  # the templates' text font, in their /AcroForm /DR
 
-# The /Differences of every template's /Helv /Encoding, which all 17 share
+# The /Differences of every template's /Helv /Encoding, which all 18 share
 # (test_attached_sheets.py pins it): Helvetica's own encoding, with PDFDocEncoding's
 # letters from 128 up, Ł, ł and ı among them, and nothing at 173 (/.notdef).
 _DIFFERENCES = (
