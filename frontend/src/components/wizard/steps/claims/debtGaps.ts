@@ -21,7 +21,10 @@ import {
   DEBT_GAP_NO_ANSWER,
   DEBT_GAP_NO_NAME,
   DEBT_GAP_OFFSET,
+  DEBT_GAP_PAST_DUE,
   DEBT_GAP_PAYMENT,
+  DEBT_GAP_PRIORITY,
+  DEBT_GAP_PRIORITY_OTHER,
   DEBT_GAP_PROPERTY,
   DEBT_GAP_STATUS,
   DEBT_GAP_STREET_CITY_NO_NAME,
@@ -29,7 +32,14 @@ import {
   NAMELESS_DEBT,
 } from '../../../../constants/copy';
 import { isBlankDebt, keptRows } from '../../../../utils/claimRows';
-import { addressMissing, asksWho, claimRowName, fill, linkIsLive } from './claimNames';
+import {
+  addressMissing,
+  asksWho,
+  claimRowName,
+  fill,
+  isPriorityType,
+  linkIsLive,
+} from './claimNames';
 import type { AssetInfo, DebtRow, WizardRow } from '../../../../types/api';
 
 const blank = (value: string | undefined | null) => (value ?? '').trim() === '';
@@ -83,6 +93,17 @@ export function debtRowGaps(row: DebtRow, assets: WizardRow<AssetInfo>[]): strin
     gaps.push(fill(DEBT_GAP_STATUS, words));
   }
   if (!row.is_secured && !row.offset_answer) gaps.push(fill(DEBT_GAP_OFFSET, words));
+  if (!row.is_secured) {
+    if (!row.priority_answer) gaps.push(fill(DEBT_GAP_PRIORITY, words));
+    else if (isPriorityType(row.priority_answer)) {
+      if (row.priority_answer === 'other' && blank(row.priority_other)) {
+        gaps.push(fill(DEBT_GAP_PRIORITY_OTHER, words));
+      }
+      if (row.past_due_amount === null || row.past_due_amount === undefined) {
+        gaps.push(fill(DEBT_GAP_PAST_DUE, words));
+      }
+    }
+  }
   if (row.notice_parties === null || row.notice_parties === undefined) {
     gaps.push(fill(DEBT_GAP_NOTICE, words));
   } else if (row.notice_parties.some((party) => blank(party.name) || addressMissing(party))) {

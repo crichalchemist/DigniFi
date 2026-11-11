@@ -1067,6 +1067,7 @@ const CLAIM_ANSWERS_DONE = {
   outside_us: false,
   claim_status: [],
   offset_answer: 'no',
+  priority_answer: 'no',
   notice_parties: [],
 };
 
@@ -1355,6 +1356,7 @@ const storedDebt = {
   lien: null,
   claim_status: [],
   offset_answer: 'no',
+  priority_answer: 'no',
   notice_parties: [],
   community_debt: '',
   date_incurred: '',
@@ -1388,6 +1390,7 @@ describe.each([
       for (const [control, value] of [
         [`claim_status_${index}`, 'none'],
         [`offset_answer_${index}`, 'no'],
+        [`priority_answer_${index}`, 'no'],
         [`notice_${index}`, 'no'],
       ]) {
         fireEvent.click(document.querySelector(`input[name="${control}"][value="${value}"]`)!);
@@ -2217,6 +2220,7 @@ describe('IntakeWizard a new debt after Complete', { timeout: 30_000 }, () => {
     for (const [control, value] of [
       ['claim_status_0', 'none'],
       ['offset_answer_0', 'no'],
+      ['priority_answer_0', 'no'],
       ['notice_0', 'no'],
     ]) {
       fireEvent.click(document.querySelector(`input[name="${control}"][value="${value}"]`)!);

@@ -49,6 +49,7 @@ const complete: DebtRow = {
   lien: null,
   claim_status: [],
   offset_answer: 'no',
+  priority_answer: 'no',
   notice_parties: [],
   community_debt: '',
   date_incurred: '',
@@ -920,4 +921,161 @@ describe('DebtsStep intro', () => {
     ).toBeInTheDocument();
     expect(screen.queryByText(/which type of bankruptcy/i)).toBeNull();
   });
+});
+
+describe('the priority question', () => {
+  const answered: DebtRow = {
+    ...complete,
+    priority_answer: 'other',
+    priority_other: 'Demo deposit',
+    priority_amount: 10,
+    nonpriority_amount: 5,
+    past_due_amount: 0,
+  };
+
+  it('asks it on an unsecured row only, with nothing chosen', () => {
+    const first = render(<Harness initial={[{ ...complete, priority_answer: null }]} />);
+    const radios = [...all('[name="priority_answer_0"]')] as HTMLInputElement[];
+    expect(radios.map((radio) => radio.value)).toEqual([
+      'domestic_support',
+      'taxes',
+      'intoxicated',
+      'other',
+      'no',
+      'not_sure',
+    ]);
+    expect(radios.some((radio) => radio.checked)).toBe(false);
+    first.unmount();
+    render(<Harness initial={[secured]} assets={[car]} />);
+    expect(all('[name="priority_answer_0"]')).toHaveLength(0);
+  });
+
+  it('describes each kind under its option', () => {
+    render(<Harness initial={[complete]} />);
+    expect(box('priority_answer_0', 'domestic_support')).toHaveAccessibleDescription(
+      copy.PRIORITY_DOMESTIC_SUPPORT_HELP
+    );
+    expect(box('priority_answer_0', 'taxes')).toHaveAccessibleDescription(copy.PRIORITY_TAXES_HELP);
+    expect(box('priority_answer_0', 'intoxicated')).toHaveAccessibleDescription(
+      copy.PRIORITY_INTOXICATED_HELP
+    );
+    expect(box('priority_answer_0', 'other')).toHaveAccessibleDescription(copy.PRIORITY_OTHER_HELP);
+  });
+
+  it('asks the split and the past-due amount under a kind, and the words under Other', async () => {
+    const user = userEvent.setup();
+    render(<Harness initial={[complete]} />);
+    await user.click(box('priority_answer_0', 'taxes'));
+    for (const name of ['priority_amount_0', 'nonpriority_amount_0', 'past_due_amount_0']) {
+      expect(field(name)).toBeInTheDocument();
+    }
+    expect(field('priority_other_0')).toBeNull();
+    await user.click(box('priority_answer_0', 'other'));
+    expect(field('priority_other_0')).toHaveAttribute('maxlength', '100');
+  });
+
+  it('shows the legal-aid note under Not sure', async () => {
+    const user = userEvent.setup();
+    render(<Harness initial={[complete]} />);
+    await user.click(box('priority_answer_0', 'not_sure'));
+    expect(screen.getByText(copy.PRIORITY_NOT_SURE_NOTE)).toBeInTheDocument();
+    expect(field('past_due_amount_0')).toBeNull();
+  });
+
+  it('clears the figures and the words when the answer leaves a kind', async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    render(<Harness initial={[answered]} onChange={onChange} />);
+    await user.click(box('priority_answer_0', 'no'));
+    expect(lastRows(onChange)[0]).toMatchObject({
+      priority_answer: 'no',
+      priority_other: null,
+      priority_amount: null,
+      nonpriority_amount: null,
+      past_due_amount: null,
+    });
+  });
+
+  it('keeps the figures but drops the Other words when moving between kinds', async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    render(<Harness initial={[answered]} onChange={onChange} />);
+    await user.click(box('priority_answer_0', 'taxes'));
+    expect(lastRows(onChange)[0]).toMatchObject({
+      priority_answer: 'taxes',
+      priority_other: null,
+      priority_amount: 10,
+      nonpriority_amount: 5,
+      past_due_amount: 0,
+    });
+  });
+
+  it('clears every priority answer when the filer answers Yes to secured', async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    render(<Harness initial={[answered]} onChange={onChange} />);
+    await user.click(box('is_secured_0', 'yes'));
+    expect(lastRows(onChange)[0]).toMatchObject({
+      is_secured: true,
+      offset_answer: null,
+      priority_answer: null,
+      priority_other: null,
+      priority_amount: null,
+      nonpriority_amount: null,
+      past_due_amount: null,
+    });
+  });
+
+  it('starts a scanned draft with the priority question unanswered', () => {
+    render(
+      <Harness
+        initial={[{ ...complete, is_draft: true, _securedPressed: false, priority_answer: null }]}
+      />
+    );
+    expect(
+      ([...all('[name="priority_answer_0"]')] as HTMLInputElement[]).some((radio) => radio.checked)
+    ).toBe(false);
+  });
+
+  it('holds Continue while a priority figure box holds part of a number', () => {
+    const onValidity = vi.fn();
+    render(
+      <Harness
+        initial={[{ ...complete, priority_answer: 'taxes', past_due_amount: 0 }]}
+        onValidity={onValidity}
+      />
+    );
+    expect(lastValidity(onValidity)).toBe(true);
+    // jsdom reports no badInput by itself, so the test forces it, as the amount box's test does
+    const input = field('past_due_amount_0');
+    Object.defineProperty(input, 'validity', { value: { badInput: true }, configurable: true });
+    fireEvent.input(input);
+    expect(lastValidity(onValidity)).toBe(false);
+  });
+
+  it('says the first priority gap and holds Continue until it is answered', async () => {
+    const user = userEvent.setup();
+    const onValidity = vi.fn();
+    render(<Harness initial={[{ ...complete, priority_answer: null }]} onValidity={onValidity} />);
+    expect(status()).toHaveTextContent(
+      fill(copy.DEBT_GAP_PRIORITY, { name: 'Demo Card Services' })
+    );
+    expect(lastValidity(onValidity)).toBe(false);
+    await user.click(box('priority_answer_0', 'taxes'));
+    expect(status()).toHaveTextContent(
+      fill(copy.DEBT_GAP_PAST_DUE, { name: 'Demo Card Services' })
+    );
+    fireEvent.input(field('past_due_amount_0'), { target: { value: '0' } });
+    expect(status()).toBeEmptyDOMElement();
+    expect(lastValidity(onValidity)).toBe(true);
+  });
+
+  it(
+    'has no axe violations on an unsecured row with Other chosen',
+    { timeout: 60_000 },
+    async () => {
+      const { container } = render(<Harness initial={[answered]} />);
+      expect(await axe(container)).toHaveNoViolations();
+    }
+  );
 });

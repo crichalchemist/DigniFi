@@ -15,6 +15,8 @@ import {
   OLD_ASSET_TYPE_WORDS,
   OLD_ROWS_HEADING,
   ONE_ITEM,
+  PRIORITY_NO,
+  PRIORITY_NOT_SURE,
   REVIEW_ASSET_PART,
   REVIEW_ASSET_ROW,
   REVIEW_ASSISTANCE,
@@ -29,6 +31,7 @@ import {
   REVIEW_NO_DEBTS,
   REVIEW_NO_ENTRIES,
   REVIEW_NOW_DIFFERENT,
+  REVIEW_PAST_DUE,
   REVIEW_RENT_OR_LOT_RENT,
   REVIEW_SPOUSE_ASSISTANCE,
   REVIEW_SPOUSE_DEDUCTIONS,
@@ -55,6 +58,9 @@ import {
   AB_PART_TITLES,
   MARRIAGE_ANSWER_WORDS,
   MARRIED_NOT_FILING,
+  NONPRIORITY_AMOUNT_LABEL,
+  PRIORITY_AMOUNT_LABEL,
+  PRIORITY_TYPE_WORDS,
 } from '../../../constants/formText';
 import type {
   DebtorInfo,
@@ -446,6 +452,28 @@ export function ReviewStep({
                   {debt.debt_type && DEBT_TYPE_WORDS[debt.debt_type]
                     ? ` (${DEBT_TYPE_WORDS[debt.debt_type]})`
                     : ''}
+                  {debt.priority_answer && (
+                    <span style={{ display: 'block' }}>
+                      {debt.priority_answer === 'no'
+                        ? PRIORITY_NO
+                        : debt.priority_answer === 'not_sure'
+                          ? PRIORITY_NOT_SURE
+                          : PRIORITY_TYPE_WORDS[debt.priority_answer]}
+                    </span>
+                  )}
+                  {(
+                    [
+                      [PRIORITY_AMOUNT_LABEL, debt.priority_amount],
+                      [NONPRIORITY_AMOUNT_LABEL, debt.nonpriority_amount],
+                      [REVIEW_PAST_DUE, debt.past_due_amount],
+                    ] as const
+                  ).map(([label, figure]) =>
+                    figure === null || figure === undefined ? null : (
+                      <span key={label} style={{ display: 'block' }}>
+                        {label}: {formatCurrency(figure)}
+                      </span>
+                    )
+                  )}
                 </span>
                 <span className="review-field-value">{formatCurrency(debt.amount_owed)}</span>
               </li>

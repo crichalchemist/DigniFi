@@ -13,7 +13,7 @@
  * region, so a disabled Continue never says nothing.
  */
 
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { FormField, FormSelect, FormTextarea, Button } from '../../common';
 import { UPLDisclaimer } from '../../compliance';
 import { UPL_EXEMPTION_DISCLAIMER } from '../../../constants/upl';
@@ -42,7 +42,18 @@ import {
   NOT_SAVED_TRY_AGAIN,
   NO_DEBTS_BUTTON,
   OFFSET_HELP,
+  PAST_DUE_HELP,
+  PAST_DUE_LABEL,
   PAYMENT_SECURED_HELP,
+  PRIORITY_DOMESTIC_SUPPORT_HELP,
+  PRIORITY_INTOXICATED_HELP,
+  PRIORITY_NO,
+  PRIORITY_NOT_SURE,
+  PRIORITY_NOT_SURE_NOTE,
+  PRIORITY_OTHER_HELP,
+  PRIORITY_QUESTION,
+  PRIORITY_SPLIT_HELP,
+  PRIORITY_TAXES_HELP,
   REMOVE_PARTY,
   SECURED_PREFILLED_NOTE,
   SECURED_QUESTION,
@@ -65,6 +76,11 @@ import {
   EF_DATE_LABEL,
   LIEN_KIND_WORDS,
   LIEN_QUESTION,
+  NONPRIORITY_AMOUNT_LABEL,
+  PAST_DUE_NOTE,
+  PRIORITY_AMOUNT_LABEL,
+  PRIORITY_OTHER_LABEL,
+  PRIORITY_TYPE_WORDS,
 } from '../../../constants/formText';
 import { isBlankDebt, keptRows } from '../../../utils/claimRows';
 import { YesNoField } from './YesNoQuestion';
@@ -73,9 +89,11 @@ import { AmountBox } from './claims/AmountBox';
 import {
   DATE_INCURRED_MAX_LENGTH,
   MAX_NOTICE_PARTIES,
+  PRIORITY_OTHER_MAX_LENGTH,
   assetLabel,
   asksWho,
   fill,
+  isPriorityType,
   linkIsLive,
 } from './claims/claimNames';
 import { firstDebtGap } from './claims/debtGaps';
@@ -90,6 +108,8 @@ import type {
   LegacyField,
   LienKind,
   NoticeParty,
+  PriorityAnswer,
+  PriorityType,
   WizardRow,
   YesNo,
 } from '../../../types/api';
@@ -210,14 +230,44 @@ function emptyParty(): NoticeParty {
 /** What a secured answer takes away from the side it hides (the filer's words stay) */
 function securedChanges(isSecured: boolean): Partial<DebtRow> {
   return isSecured
-    ? { is_secured: true, offset_answer: null }
+    ? {
+        is_secured: true,
+        offset_answer: null,
+        priority_answer: null,
+        priority_other: null,
+        priority_amount: null,
+        nonpriority_amount: null,
+        past_due_amount: null,
+      }
     : { is_secured: false, secured_by: null, home_payment_line: null, collateral_who: null };
 }
+
+/**
+ * What a priority answer takes away: the words go unless the answer is Other, and the figures go
+ * unless it is one of the four kinds (the filer's figures stay while moving between kinds)
+ */
+function priorityAnswerChanges(answer: PriorityAnswer): Partial<DebtRow> {
+  const changes: Partial<DebtRow> = { priority_answer: answer };
+  if (answer !== 'other') changes.priority_other = null;
+  if (!isPriorityType(answer)) {
+    changes.priority_amount = null;
+    changes.nonpriority_amount = null;
+    changes.past_due_amount = null;
+  }
+  return changes;
+}
+
+const PRIORITY_HELP: Record<PriorityType, string> = {
+  domestic_support: PRIORITY_DOMESTIC_SUPPORT_HELP,
+  taxes: PRIORITY_TAXES_HELP,
+  intoxicated: PRIORITY_INTOXICATED_HELP,
+  other: PRIORITY_OTHER_HELP,
+};
 
 interface ChoiceGroupProps<V extends string> {
   legend: string;
   name: string;
-  options: { value: V; label: string }[];
+  options: { value: V; label: string; description?: string }[];
   selected: V | null | undefined;
   onSelect: (value: V) => void;
   required?: boolean;
@@ -246,17 +296,25 @@ function ChoiceGroup<V extends string>({
         )}
       </legend>
       {options.map((option) => (
-        <label key={option.value} className="fee-waiver-checkbox">
-          <input
-            type="radio"
-            name={name}
-            value={option.value}
-            aria-required={required || undefined}
-            checked={selected === option.value}
-            onChange={() => onSelect(option.value)}
-          />{' '}
-          {option.label}
-        </label>
+        <Fragment key={option.value}>
+          <label className="fee-waiver-checkbox">
+            <input
+              type="radio"
+              name={name}
+              value={option.value}
+              aria-required={required || undefined}
+              aria-describedby={option.description ? `${name}_${option.value}_help` : undefined}
+              checked={selected === option.value}
+              onChange={() => onSelect(option.value)}
+            />{' '}
+            {option.label}
+          </label>
+          {option.description && (
+            <p className="form-help-text" id={`${name}_${option.value}_help`}>
+              {option.description}
+            </p>
+          )}
+        </Fragment>
       ))}
     </fieldset>
   );
@@ -726,6 +784,69 @@ export function DebtsStep({
                   required
                 />
                 <p className="form-help-text">{OFFSET_HELP}</p>
+                <ChoiceGroup<PriorityAnswer>
+                  legend={PRIORITY_QUESTION}
+                  name={`priority_answer_${index}`}
+                  options={[
+                    ...(Object.keys(PRIORITY_TYPE_WORDS) as PriorityType[]).map((kind) => ({
+                      value: kind,
+                      label: PRIORITY_TYPE_WORDS[kind],
+                      description: PRIORITY_HELP[kind],
+                    })),
+                    { value: 'no' as const, label: PRIORITY_NO },
+                    { value: 'not_sure' as const, label: PRIORITY_NOT_SURE },
+                  ]}
+                  selected={debt.priority_answer}
+                  onSelect={(answer) => update(index, priorityAnswerChanges(answer))}
+                  required
+                />
+                {debt.priority_answer === 'not_sure' && (
+                  <p className="form-help-text">{PRIORITY_NOT_SURE_NOTE}</p>
+                )}
+                {isPriorityType(debt.priority_answer) && (
+                  <>
+                    {debt.priority_answer === 'other' && (
+                      <FormField
+                        label={PRIORITY_OTHER_LABEL}
+                        name={`priority_other_${index}`}
+                        type="text"
+                        required
+                        maxLength={PRIORITY_OTHER_MAX_LENGTH}
+                        value={debt.priority_other ?? ''}
+                        onChange={(e) => update(index, { priority_other: e.target.value })}
+                      />
+                    )}
+                    <div className="form-row">
+                      <AmountBox
+                        label={PRIORITY_AMOUNT_LABEL}
+                        name={`priority_amount_${index}`}
+                        value={debt.priority_amount}
+                        maxDigits={12}
+                        help={PRIORITY_SPLIT_HELP}
+                        onValue={(value) => update(index, { priority_amount: value })}
+                        onPartialBox={countPartialBox}
+                      />
+                      <AmountBox
+                        label={NONPRIORITY_AMOUNT_LABEL}
+                        name={`nonpriority_amount_${index}`}
+                        value={debt.nonpriority_amount}
+                        maxDigits={12}
+                        onValue={(value) => update(index, { nonpriority_amount: value })}
+                        onPartialBox={countPartialBox}
+                      />
+                    </div>
+                    <AmountBox
+                      label={PAST_DUE_LABEL}
+                      name={`past_due_amount_${index}`}
+                      value={debt.past_due_amount}
+                      required
+                      maxDigits={12}
+                      help={`${PAST_DUE_NOTE} ${PAST_DUE_HELP}`}
+                      onValue={(value) => update(index, { past_due_amount: value })}
+                      onPartialBox={countPartialBox}
+                    />
+                  </>
+                )}
               </>
             )}
 
