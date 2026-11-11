@@ -134,6 +134,20 @@ def test_case_and_spacing_do_not_make_a_new_entry(session):
     assert entries[0].text.startswith("Demo  Card  Services\n1 Demo Way\n")
 
 
+def test_accents_make_a_different_entry_but_how_a_letter_was_typed_does_not(session):
+    complete_debt(session, creditor_name="José Demo", street_address="1 Demo Way")
+    complete_debt(session, creditor_name="Jose Demo", street_address="1 Demo Way")
+    assert len(_entries(session)) == 2
+
+    composed = "José Other"
+    decomposed = "José Other"
+    complete_debt(session, creditor_name=composed, street_address="2 Demo Way")
+    complete_debt(session, creditor_name=decomposed, street_address="2 Demo Way")
+    others = [e for e in _entries(session) if "Other" in e.text]
+    assert len(others) == 1
+    assert others[0].text.startswith(composed + "\n")
+
+
 def test_a_different_address_is_a_different_entry(session):
     complete_debt(session, creditor_name="Demo Card Services", street_address="1 Demo Way")
     complete_debt(session, creditor_name="Demo Card Services", street_address="2 Demo Way")
@@ -176,7 +190,8 @@ def test_an_address_outside_the_us_prints_the_city_alone(session):
 
 def test_a_draft_debt_is_not_on_the_list(session):
     complete_debt(session, creditor_name="Draft Card", is_draft=True, notice_parties=[_party("DN")])
-    assert _entries(session) == []
+    complete_debt(session, creditor_name="Confirmed Card", street_address="7 Demo Way")
+    assert _names(_entries(session)) == ["Confirmed Card"]
 
 
 def test_h_line_2_spouse_is_not_on_the_list(session):
@@ -191,7 +206,8 @@ def test_h_line_2_spouse_is_not_on_the_list(session):
         community_spouse_state="IL",
         community_spouse_zip_code="60601",
     )
-    assert _entries(session) == []
+    complete_debt(session, creditor_name="Only Creditor", street_address="8 Demo Way")
+    assert _names(_entries(session)) == ["Only Creditor"]
 
 
 def test_the_filer_is_never_added_and_a_namesake_creditor_stays(session):
