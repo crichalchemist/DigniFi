@@ -227,6 +227,8 @@ export interface PersonaDebt {
   claim_status: ClaimStatusTick[];
   // Unsecured rows only
   offset_answer?: 'yes' | 'no';
+  // Unsecured rows only; "no" when absent
+  priority_answer?: 'domestic_support' | 'taxes' | 'intoxicated' | 'other' | 'no' | 'not_sure';
   notice_parties: PersonaNoticeParty[];
   secured?: PersonaSecured;
 }
@@ -1195,6 +1197,7 @@ export const ANDRES: PersonaData = {
       date_incurred: '01/14/2026',
       claim_status: [],
       offset_answer: 'no',
+      priority_answer: 'not_sure',
       notice_parties: [],
     },
     {
