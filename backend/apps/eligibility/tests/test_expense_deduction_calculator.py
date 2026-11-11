@@ -49,24 +49,23 @@ class TestExpenseDeductionCalculator:
         # Food actual ($500) vs national standard for size 1 ($713)
         assert result.national_food_allowance == Decimal("500.00")
 
-    def test_a_scanned_priority_debt_the_filer_has_not_confirmed_is_not_deducted(
+    def test_a_priority_debt_takes_nothing_off_disposable_income_until_3h(
         self, session_with_expenses
     ):
-        # A draft read from a document is only what a model read until the filer saves the
-        # Amounts Owed step (DIG-163), so it never lowers the means test's disposable income.
+        before = ExpenseDeductionCalculator(session_with_expenses).calculate()
         DebtInfo.objects.create(
             session=session_with_expenses,
-            creditor_name="Illinois Department of Revenue",
-            amount_owed=Decimal("3000"),
-            is_priority=True,
+            creditor_name="Demo Tax Office",
             debt_type="other",
-            monthly_payment=Decimal("400"),
-            is_draft=True,
+            amount_owed=Decimal("3000.00"),
+            monthly_payment=Decimal("200.00"),
+            priority_answer="taxes",
+            past_due_amount=Decimal("3000.00"),
+            is_priority=True,
         )
-
-        result = ExpenseDeductionCalculator(session_with_expenses).calculate()
-
-        assert result.priority_debts_monthly == Decimal("200")
+        after = ExpenseDeductionCalculator(session_with_expenses).calculate()
+        assert after.priority_debts_monthly == Decimal("0")
+        assert after.disposable_income == before.disposable_income
 
     def test_empty_session(self, db):
         user = User.objects.create_user(username="emptycalc", password="pass")

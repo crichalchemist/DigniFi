@@ -107,11 +107,9 @@ class ExpenseDeductionCalculator:
             return {"food": zero, "health": zero, "housing": zero, "transport": zero, "total": zero}
 
     def _get_priority_debts_monthly(self) -> Decimal:
-        from apps.intake.models import DebtInfo
-
-        zero = Decimal("0")
-        priority = DebtInfo.objects.confirmed().filter(session=self.session, is_priority=True)
-        return sum((d.monthly_payment or zero for d in priority), zero)
+        # The owner switched the deduction off on 2026-11-11 until 3h, whose 122A-2 line 35 takes
+        # the past-due priority claims divided by 60 (DIG-275). No debt is read.
+        return Decimal("0")
 
     def _get_cmi(self) -> Decimal:
         # The means test's own CMI, the household's (3e1 spec §5.3). Income not split by
