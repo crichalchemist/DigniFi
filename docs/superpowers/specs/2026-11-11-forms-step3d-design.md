@@ -1,6 +1,6 @@
 # Forms step 3d: priority claims
 
-- **Status:** drafted 2026-11-11. The owner answered two questions on 2026-11-11 (§2). A builder check, a fact-check of 118 claims against the tree, and a UPL and reading-level review of the draft copy ran on 2026-11-11; their findings are folded in, and none needed the owner. Not yet approved.
+- **Status:** drafted 2026-11-11. The owner answered two questions on 2026-11-11 (§2). A builder check, a fact-check of 118 claims against the tree, and a UPL and reading-level review of the draft copy ran on 2026-11-11; their findings are folded in, and none needed the owner. **The owner approved this spec on 2026-11-11.**
 - **Drawn from:** the step 3 umbrella spec, `docs/superpowers/specs/2026-10-16-forms-step3-design.md` §5.10 (cited `U:<line>`), its rules U §4.1–§4.7 and Appendix A's 3d rows. Persona targets come from `docs/superpowers/specs/2026-10-16-forms-step3-personas.md` (cited `PS:<line>`). `C:<line>` is the 3c spec, `2026-11-06-forms-step3c-design.md`. The forms' words come from the blank templates `form_b106ef.pdf`, `form_b106sum.pdf` and `b_122a-2_0425-form.pdf` in `data/forms/pdfs/`, read as printed text with PyMuPDF on 2026-11-11.
 - **Tree:** `feat/forms-step3d`, 7de0b96 (develop after 3c6). Code citations come from a survey of the same tree (40924c7, whose tree 7de0b96 merged unchanged). No test suite ran for this spec.
 - **Not read:** the national instruction booklet's explanation of each priority type, the DIG-119 ticket text, and `docs/testing/persona-briefs/` beyond the lines the personas spec quotes.
