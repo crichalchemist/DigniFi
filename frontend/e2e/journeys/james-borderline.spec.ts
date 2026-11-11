@@ -80,6 +80,6 @@ test.describe('James Washington — Borderline', () => {
     // packet.
     await dashboard.generateAllForms(15);
     const count = await dashboard.getGeneratedCount();
-    expect(count).toBe(14);
+    expect(count).toBe(15);
   });
 });

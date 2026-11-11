@@ -91,7 +91,7 @@ test.describe('Sarah Chen — Simplest Case', () => {
     // Generate all forms
     await dashboard.generateAllForms(16); // 15 forms + Form 103B (she asks for the waiver)
     const count = await dashboard.getGeneratedCount();
-    expect(count).toBe(15);
+    expect(count).toBe(16);
 
     // Survey appears and can be completed
     expect(await dashboard.isSurveyVisible()).toBe(true);
