@@ -107,9 +107,9 @@
     "fields": {
       "district": 1,
       "rule_number": "LBR-1007-1",
-      "title": "Mailing Matrix Requirements",
-      "description": "Debtors must file a mailing matrix (list of creditors) in addition to the creditor matrix included with schedules. The matrix must be uploaded separately in the prescribed format for the Northern District of Illinois.",
-      "effective_date": "2020-12-01",
+      "title": "Computer Readable Lists of Creditors",
+      "description": "A filer with a lawyer files the list of creditors in a computer-readable form. A filer without a lawyer (pro se) files the court's paper List of Creditors with the petition (Fed. R. Bankr. P. 1007(a)(1)).",
+      "effective_date": "2024-09-01",
       "created_at": "2025-01-01T00:00:00Z"
     }
   },

@@ -1,13 +1,13 @@
 """
 Read a drawn PDF back box by box, the way a person reads the printed page (spec §8).
 
-Every value prints in Helvetica and every tick is the template's ZapfDingbats check
-mark, while the templates print their own words in Arial, Wingdings and Times. A
-character belongs to a widget when its centre lies inside the widget's rect from the
-field index: two pairs of boxes overlap by about 2 pt, and a glyph merely touching a
-rect would put a neighbour's tick in it. A copy of an extra page is read as the template
-page it copies, found through the form's parts. An attached sheet has no widget: its
-pages are read line by line under its columns (read_sheets).
+Every value prints in Helvetica (on the List of Creditors, Times-Roman) and every tick is
+the template's ZapfDingbats check mark, while the templates print their own words in Arial,
+Wingdings and Times. A character belongs to a widget when its centre lies inside the
+widget's rect from the field index: two pairs of boxes overlap by about 2 pt, and a glyph
+merely touching a rect would put a neighbour's tick in it. A copy of an extra page is read
+as the template page it copies, found through the form's parts. An attached sheet has no
+widget: its pages are read line by line under its columns (read_sheets).
 """
 
 from dataclasses import dataclass, replace
@@ -25,7 +25,7 @@ from apps.forms.services.sheets import MARGIN
 from apps.forms.services.widgets import TemplateWidget, page_count, template_widgets, widget_for
 
 _BOXES = ("CheckBox", "RadioButton")
-_TEXT_FONT = "Helvetica"
+_TEXT_FONT = ("Helvetica", "Times-Roman")
 _TICK_FONT = "ZapfDingbats"
 
 
@@ -34,7 +34,7 @@ class DrawnWidget:
     full_name: str
     page: int
     tag: str
-    value: str  # the Helvetica text inside the widget's rect; "" when none
+    value: str  # the Helvetica (List of Creditors: Times-Roman) text inside the widget's rect; "" when none
     state: str  # a box: its on-state when a check mark is inside, else "/Off"; "" for text
     copy: int | None = None  # on a copy of an extra page, its number; None on the form's own
 
@@ -50,12 +50,12 @@ class _Character:
 
 
 def _characters(page: pymupdf.Page) -> list[_Character]:
-    """Every Helvetica or ZapfDingbats character on the page, with its position."""
+    """Every Helvetica, Times-Roman or ZapfDingbats character on the page, with its position."""
     characters = []
     for b, block in enumerate(page.get_text("rawdict")["blocks"]):
         for n, line in enumerate(block.get("lines", [])):
             for span in line["spans"]:
-                if span["font"] not in (_TEXT_FONT, _TICK_FONT):
+                if span["font"] not in (*_TEXT_FONT, _TICK_FONT):
                     continue
                 for char in span["chars"]:
                     x0, y0, x1, y1 = char["bbox"]
@@ -78,10 +78,10 @@ def _inside(character: _Character, rect: tuple[float, ...]) -> bool:
 
 
 def _text(widget: TemplateWidget, characters: list[_Character]) -> str:
-    """The Helvetica characters inside the widget, line by line from the top."""
+    """The Helvetica (List of Creditors: Times-Roman) characters inside the widget, line by line from the top."""
     lines: dict[tuple[int, int], list[_Character]] = {}
     for character in characters:
-        if character.font == _TEXT_FONT and _inside(character, widget.rect):
+        if character.font in _TEXT_FONT and _inside(character, widget.rect):
             lines.setdefault(character.line, []).append(character)
     ordered = sorted(lines.values(), key=lambda line: (round(line[0].baseline, 1), line[0].centre))
     text = " ".join(joined for line in ordered if (joined := "".join(c.text for c in line).strip()))
@@ -238,7 +238,7 @@ def read_sheets(pdf_bytes: bytes, spec: SheetSpec) -> list[SheetPage]:
     for page in pymupdf.open("pdf", pdf_bytes):
         if not _is_sheet(page):
             continue
-        characters = [c for c in _characters(page) if c.font == _TEXT_FONT]
+        characters = [c for c in _characters(page) if c.font == "Helvetica"]
         baselines: dict[float, list[_Character]] = {}
         for character in characters:
             baselines.setdefault(round(character.baseline, 1), []).append(character)

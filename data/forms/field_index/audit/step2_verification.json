@@ -10738,5 +10738,325 @@
     "status": "confirmed",
     "correct_target": "undefined_10",
     "evidence": "Field index: undefined_10 p2 line 9 'Line 9 Yes. Explain (expected >10% expense change)' (adjudicated). 3f spec §6.4 and §8.2: line 9's explanation, printed only beside a Yes."
+  },
+  {
+    "schema": "list_of_creditors",
+    "pdf_field": "Debtor1.Name",
+    "producer": "derived:full_name",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Debtor1.Name",
+    "evidence": "Field index: Debtor1.Name p1 T1 and p2 T2, \"Debtor 1's name\" (adjudicated): one untagged binding prints both pages' boxes. R4: the list's header prints the filer's full name, as Schedules G and H do."
+  },
+  {
+    "schema": "list_of_creditors",
+    "pdf_field": "chapter",
+    "producer": "constant:7",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "chapter",
+    "evidence": "Field index: chapter p1 T4, \"Chapter\" (adjudicated), a combo box whose options are ' ', '7', '13' and '11'. R4: every DigniFi filer files under chapter 7."
+  },
+  {
+    "schema": "list_of_creditors",
+    "pdf_field": "creditor1.0.0",
+    "producer": "asked:claims.creditor_list[].entry",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "creditor1.0.0",
+    "evidence": "Field index: creditor1.0.0 p1 T5, \"Creditor's name and address\" (adjudicated). R7: row 1 of group creditors prints entry 1 of claims.creditor_list[].entry here, in the court's column-by-column order."
+  },
+  {
+    "schema": "list_of_creditors",
+    "pdf_field": "creditor1.0.1",
+    "producer": "asked:claims.creditor_list[].entry",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "creditor1.0.1",
+    "evidence": "Field index: creditor1.0.1 p1 T7, \"Creditor's name and address\" (adjudicated). R7: row 2 of group creditors prints entry 2 of claims.creditor_list[].entry here, in the court's column-by-column order."
+  },
+  {
+    "schema": "list_of_creditors",
+    "pdf_field": "creditor1.0.2",
+    "producer": "asked:claims.creditor_list[].entry",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "creditor1.0.2",
+    "evidence": "Field index: creditor1.0.2 p1 T9, \"Creditor's name and address\" (adjudicated). R7: row 3 of group creditors prints entry 3 of claims.creditor_list[].entry here, in the court's column-by-column order."
+  },
+  {
+    "schema": "list_of_creditors",
+    "pdf_field": "creditor1.0.3",
+    "producer": "asked:claims.creditor_list[].entry",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "creditor1.0.3",
+    "evidence": "Field index: creditor1.0.3 p1 T11, \"Creditor's name and address\" (adjudicated). R7: row 4 of group creditors prints entry 4 of claims.creditor_list[].entry here, in the court's column-by-column order."
+  },
+  {
+    "schema": "list_of_creditors",
+    "pdf_field": "creditor1.0.4",
+    "producer": "asked:claims.creditor_list[].entry",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "creditor1.0.4",
+    "evidence": "Field index: creditor1.0.4 p1 T13, \"Creditor's name and address\" (adjudicated). R7: row 5 of group creditors prints entry 5 of claims.creditor_list[].entry here, in the court's column-by-column order."
+  },
+  {
+    "schema": "list_of_creditors",
+    "pdf_field": "creditor2.0.0",
+    "producer": "asked:claims.creditor_list[].entry",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "creditor2.0.0",
+    "evidence": "Field index: creditor2.0.0 p1 T6, \"Creditor's name and address\" (adjudicated). R7: row 6 of group creditors prints entry 6 of claims.creditor_list[].entry here, in the court's column-by-column order."
+  },
+  {
+    "schema": "list_of_creditors",
+    "pdf_field": "creditor2.0.1",
+    "producer": "asked:claims.creditor_list[].entry",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "creditor2.0.1",
+    "evidence": "Field index: creditor2.0.1 p1 T8, \"Creditor's name and address\" (adjudicated). R7: row 7 of group creditors prints entry 7 of claims.creditor_list[].entry here, in the court's column-by-column order."
+  },
+  {
+    "schema": "list_of_creditors",
+    "pdf_field": "creditor2.0.2",
+    "producer": "asked:claims.creditor_list[].entry",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "creditor2.0.2",
+    "evidence": "Field index: creditor2.0.2 p1 T10, \"Creditor's name and address\" (adjudicated). R7: row 8 of group creditors prints entry 8 of claims.creditor_list[].entry here, in the court's column-by-column order."
+  },
+  {
+    "schema": "list_of_creditors",
+    "pdf_field": "creditor2.0.3",
+    "producer": "asked:claims.creditor_list[].entry",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "creditor2.0.3",
+    "evidence": "Field index: creditor2.0.3 p1 T12, \"Creditor's name and address\" (adjudicated). R7: row 9 of group creditors prints entry 9 of claims.creditor_list[].entry here, in the court's column-by-column order."
+  },
+  {
+    "schema": "list_of_creditors",
+    "pdf_field": "creditor2.0.4",
+    "producer": "asked:claims.creditor_list[].entry",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "creditor2.0.4",
+    "evidence": "Field index: creditor2.0.4 p1 T14, \"Creditor's name and address\" (adjudicated). R7: row 10 of group creditors prints entry 10 of claims.creditor_list[].entry here, in the court's column-by-column order."
+  },
+  {
+    "schema": "list_of_creditors",
+    "pdf_field": "creditor1.0.5.0",
+    "producer": "asked:claims.creditor_list[].entry",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "creditor1.0.5.0",
+    "evidence": "Field index: creditor1.0.5.0 p2 T3, \"Creditor's name and address\" (adjudicated). R7: row 11 of group creditors prints entry 11 of claims.creditor_list[].entry here, in the court's column-by-column order."
+  },
+  {
+    "schema": "list_of_creditors",
+    "pdf_field": "creditor1.0.5.1",
+    "producer": "asked:claims.creditor_list[].entry",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "creditor1.0.5.1",
+    "evidence": "Field index: creditor1.0.5.1 p2 T5, \"Creditor's name and address\" (adjudicated). R7: row 12 of group creditors prints entry 12 of claims.creditor_list[].entry here, in the court's column-by-column order."
+  },
+  {
+    "schema": "list_of_creditors",
+    "pdf_field": "creditor1.0.5.2",
+    "producer": "asked:claims.creditor_list[].entry",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "creditor1.0.5.2",
+    "evidence": "Field index: creditor1.0.5.2 p2 T7, \"Creditor's name and address\" (adjudicated). R7: row 13 of group creditors prints entry 13 of claims.creditor_list[].entry here, in the court's column-by-column order."
+  },
+  {
+    "schema": "list_of_creditors",
+    "pdf_field": "creditor1.0.5.3",
+    "producer": "asked:claims.creditor_list[].entry",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "creditor1.0.5.3",
+    "evidence": "Field index: creditor1.0.5.3 p2 T9, \"Creditor's name and address\" (adjudicated). R7: row 14 of group creditors prints entry 14 of claims.creditor_list[].entry here, in the court's column-by-column order."
+  },
+  {
+    "schema": "list_of_creditors",
+    "pdf_field": "creditor1.0.5.4",
+    "producer": "asked:claims.creditor_list[].entry",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "creditor1.0.5.4",
+    "evidence": "Field index: creditor1.0.5.4 p2 T11, \"Creditor's name and address\" (adjudicated). R7: row 15 of group creditors prints entry 15 of claims.creditor_list[].entry here, in the court's column-by-column order."
+  },
+  {
+    "schema": "list_of_creditors",
+    "pdf_field": "creditor1.0.5.5",
+    "producer": "asked:claims.creditor_list[].entry",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "creditor1.0.5.5",
+    "evidence": "Field index: creditor1.0.5.5 p2 T13, \"Creditor's name and address\" (adjudicated). R7: row 16 of group creditors prints entry 16 of claims.creditor_list[].entry here, in the court's column-by-column order."
+  },
+  {
+    "schema": "list_of_creditors",
+    "pdf_field": "creditor1.0.5.6",
+    "producer": "asked:claims.creditor_list[].entry",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "creditor1.0.5.6",
+    "evidence": "Field index: creditor1.0.5.6 p2 T15, \"Creditor's name and address\" (adjudicated). R7: row 17 of group creditors prints entry 17 of claims.creditor_list[].entry here, in the court's column-by-column order."
+  },
+  {
+    "schema": "list_of_creditors",
+    "pdf_field": "creditor1.0.5.7",
+    "producer": "asked:claims.creditor_list[].entry",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "creditor1.0.5.7",
+    "evidence": "Field index: creditor1.0.5.7 p2 T17, \"Creditor's name and address\" (adjudicated). R7: row 18 of group creditors prints entry 18 of claims.creditor_list[].entry here, in the court's column-by-column order."
+  },
+  {
+    "schema": "list_of_creditors",
+    "pdf_field": "creditor1.0.5.8",
+    "producer": "asked:claims.creditor_list[].entry",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "creditor1.0.5.8",
+    "evidence": "Field index: creditor1.0.5.8 p2 T19, \"Creditor's name and address\" (adjudicated). R7: row 19 of group creditors prints entry 19 of claims.creditor_list[].entry here, in the court's column-by-column order."
+  },
+  {
+    "schema": "list_of_creditors",
+    "pdf_field": "creditor1.0.5.9",
+    "producer": "asked:claims.creditor_list[].entry",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "creditor1.0.5.9",
+    "evidence": "Field index: creditor1.0.5.9 p2 T21, \"Creditor's name and address\" (adjudicated). R7: row 20 of group creditors prints entry 20 of claims.creditor_list[].entry here, in the court's column-by-column order."
+  },
+  {
+    "schema": "list_of_creditors",
+    "pdf_field": "creditor2.0.5.0",
+    "producer": "asked:claims.creditor_list[].entry",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "creditor2.0.5.0",
+    "evidence": "Field index: creditor2.0.5.0 p2 T4, \"Creditor's name and address\" (adjudicated). R7: row 21 of group creditors prints entry 21 of claims.creditor_list[].entry here, in the court's column-by-column order."
+  },
+  {
+    "schema": "list_of_creditors",
+    "pdf_field": "creditor2.0.5.1",
+    "producer": "asked:claims.creditor_list[].entry",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "creditor2.0.5.1",
+    "evidence": "Field index: creditor2.0.5.1 p2 T6, \"Creditor's name and address\" (adjudicated). R7: row 22 of group creditors prints entry 22 of claims.creditor_list[].entry here, in the court's column-by-column order."
+  },
+  {
+    "schema": "list_of_creditors",
+    "pdf_field": "creditor2.0.5.2",
+    "producer": "asked:claims.creditor_list[].entry",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "creditor2.0.5.2",
+    "evidence": "Field index: creditor2.0.5.2 p2 T8, \"Creditor's name and address\" (adjudicated). R7: row 23 of group creditors prints entry 23 of claims.creditor_list[].entry here, in the court's column-by-column order."
+  },
+  {
+    "schema": "list_of_creditors",
+    "pdf_field": "creditor2.0.5.3",
+    "producer": "asked:claims.creditor_list[].entry",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "creditor2.0.5.3",
+    "evidence": "Field index: creditor2.0.5.3 p2 T10, \"Creditor's name and address\" (adjudicated). R7: row 24 of group creditors prints entry 24 of claims.creditor_list[].entry here, in the court's column-by-column order."
+  },
+  {
+    "schema": "list_of_creditors",
+    "pdf_field": "creditor2.0.5.4",
+    "producer": "asked:claims.creditor_list[].entry",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "creditor2.0.5.4",
+    "evidence": "Field index: creditor2.0.5.4 p2 T12, \"Creditor's name and address\" (adjudicated). R7: row 25 of group creditors prints entry 25 of claims.creditor_list[].entry here, in the court's column-by-column order."
+  },
+  {
+    "schema": "list_of_creditors",
+    "pdf_field": "creditor2.0.5.5",
+    "producer": "asked:claims.creditor_list[].entry",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "creditor2.0.5.5",
+    "evidence": "Field index: creditor2.0.5.5 p2 T14, \"Creditor's name and address\" (adjudicated). R7: row 26 of group creditors prints entry 26 of claims.creditor_list[].entry here, in the court's column-by-column order."
+  },
+  {
+    "schema": "list_of_creditors",
+    "pdf_field": "creditor2.0.5.6",
+    "producer": "asked:claims.creditor_list[].entry",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "creditor2.0.5.6",
+    "evidence": "Field index: creditor2.0.5.6 p2 T16, \"Creditor's name and address\" (adjudicated). R7: row 27 of group creditors prints entry 27 of claims.creditor_list[].entry here, in the court's column-by-column order."
+  },
+  {
+    "schema": "list_of_creditors",
+    "pdf_field": "creditor2.0.5.7",
+    "producer": "asked:claims.creditor_list[].entry",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "creditor2.0.5.7",
+    "evidence": "Field index: creditor2.0.5.7 p2 T18, \"Creditor's name and address\" (adjudicated). R7: row 28 of group creditors prints entry 28 of claims.creditor_list[].entry here, in the court's column-by-column order."
+  },
+  {
+    "schema": "list_of_creditors",
+    "pdf_field": "creditor2.0.5.8",
+    "producer": "asked:claims.creditor_list[].entry",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "creditor2.0.5.8",
+    "evidence": "Field index: creditor2.0.5.8 p2 T20, \"Creditor's name and address\" (adjudicated). R7: row 29 of group creditors prints entry 29 of claims.creditor_list[].entry here, in the court's column-by-column order."
+  },
+  {
+    "schema": "list_of_creditors",
+    "pdf_field": "creditor2.0.5.9",
+    "producer": "asked:claims.creditor_list[].entry",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "creditor2.0.5.9",
+    "evidence": "Field index: creditor2.0.5.9 p2 T22, \"Creditor's name and address\" (adjudicated). R7: row 30 of group creditors prints entry 30 of claims.creditor_list[].entry here, in the court's column-by-column order."
   }
 ]

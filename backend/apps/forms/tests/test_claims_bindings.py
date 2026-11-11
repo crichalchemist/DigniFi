@@ -110,7 +110,12 @@ def test_every_claims_cell_resolves_one_value_a_row(session):
 
 @pytest.mark.parametrize(
     "binding",
-    ["claims.secured[].offset", "claims.priority[].name", "claims.secured.name"],
+    [
+        "claims.secured[].offset",
+        "claims.priority[].name",
+        "claims.secured.name",
+        "claims.creditor_list[].name",
+    ],
 )
 def test_an_unknown_claims_list_or_cell_is_refused(session, binding):
     with pytest.raises(ValueError, match="unrecognized binding"):

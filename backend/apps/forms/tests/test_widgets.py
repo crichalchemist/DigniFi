@@ -65,7 +65,7 @@ def test_every_template_widget_matches_one_index_row():
                 found.append(widget.key)
         assert sorted(found) == sorted(w.key for w in widgets)
         total += len(widgets)
-    assert total == 3003
+    assert total == 3039
 
 
 def test_only_the_print_buttons_are_left_unprinted():
@@ -187,7 +187,7 @@ def test_every_box_is_measured_the_way_pypdf_draws_it(monkeypatch):
                 }
                 differences |= {(widget.key, k) for k in ours if ours[k] != pypdf_reads[k]}
                 compared += 1
-    assert compared == 2053 + 18
+    assert compared == 2053 + 18 + 36
     # Only what pypdf doesn't read from where the template puts it, and the drawing hands
     # over: MaxLen on the parent field (R4), /Q on the kid widget alone (R26).
     assert differences == {
@@ -204,10 +204,12 @@ def test_text_boxes_start_at_the_templates_font_and_size():
     assert Counter((w.font, w.size) for w in text) == {
         ("/Helv", 10.0): 1959,
         ("/Helv", 9.0): 65,
-        ("/Helv", 12.0): 19,
+        ("/Helv", 12.0): 23,
         ("/Helv", 0.0): 10,  # auto size
+        ("/TiRo", 11.0): 30,  # the List of Creditors' entry boxes
+        ("/TiRo", 12.0): 1,  # its read-only "Debtor 1" label box
     }
-    assert (sum(w.comb for w in text), sum(w.multiline for w in text)) == (51, 94)
+    assert (sum(w.comb for w in text), sum(w.multiline for w in text)) == (51, 124)
 
 
 def test_a_box_lists_its_on_states_and_a_combo_its_options():

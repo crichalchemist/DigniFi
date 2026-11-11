@@ -78,8 +78,8 @@ test.describe('James Washington — Borderline', () => {
 
     // Forms generated (passes means test). James pays in full, so Form 103B is not in his
     // packet.
-    await dashboard.generateAllForms(14);
+    await dashboard.generateAllForms(15);
     const count = await dashboard.getGeneratedCount();
-    expect(count).toBe(14);
+    expect(count).toBe(15);
   });
 });

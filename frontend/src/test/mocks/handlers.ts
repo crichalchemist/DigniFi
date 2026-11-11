@@ -53,13 +53,14 @@ const mockGeneratedForm = {
   updated_at: '2026-01-20T10:00:00Z',
 };
 
-/** A below-median filer who pays the fee in full: the 14 forms every packet holds */
+/** A below-median filer who pays the fee in full: the 15 forms every packet holds */
 const mockPacket = [
   'form_101',
   'form_106dec',
   'form_106sum',
   'form_107',
   'form_121',
+  'list_of_creditors',
   'form_122a1',
   'schedule_a_b',
   'schedule_c',

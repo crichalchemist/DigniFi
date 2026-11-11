@@ -29,7 +29,7 @@ from apps.districts.models import District
 from apps.forms.field_index import export_state, index_path
 from apps.forms.registry import get_all_form_types
 from apps.forms.schema import load_schema
-from apps.forms.services.fill_resolver import _key, resolve_binding
+from apps.forms.services.fill_resolver import _key, resolve_binding, row_fixes
 from apps.forms.services.pdf_filler import PDFFormFiller, ValueTooLong
 from apps.forms.services.widgets import template_widgets
 from apps.forms.tests.oracle import case_param
@@ -456,6 +456,20 @@ def test_every_claims_binding_reads_the_row_it_names(binding, claims_session):
     # would first fail at Generate. Each must read a complete row of its own list. A box cell
     # may be blank on a complete row (who_debtor_1 under a codebtor link, other_type on a
     # student loan), so only the name, the city and a claim's amount must print something.
+    if binding == "claims.creditor_list[].entry":
+        # The List of Creditors' binding gives one cell per entry: on this session the secured
+        # and unsecured debts share a name and address and collapse, and one notice party
+        # sits on two debts, so four entries remain.
+        entries = resolve_binding(binding, claims_session)
+        assert len(entries) == 4
+        assert all(entry.strip() for entry in entries)
+        assert row_fixes(binding, claims_session) == [
+            {"step": "debts"},
+            {"step": "debts"},
+            {"step": "contracts"},
+            {"step": "codebtors"},
+        ]
+        return
     (cell,) = resolve_binding(binding, claims_session)
     attr = binding.rpartition(".")[2]
     if attr in ("name", "city", "amount"):
