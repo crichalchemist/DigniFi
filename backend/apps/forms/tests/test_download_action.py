@@ -265,6 +265,8 @@ def test_a_filed_forms_stored_fixes_reach_no_refusal(api_client_authed, generate
     response = _download(api_client_authed, form)
 
     assert response.status_code == 422
+    # The refusal is the too-long box's own, so another 422 can't stand in for it.
+    assert "is too long to fit on the court form" in response.data["error"]
     assert "step" not in response.data
     assert "page" not in response.data
 

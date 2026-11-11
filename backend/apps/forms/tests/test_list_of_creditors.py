@@ -7,9 +7,11 @@ an entry the form can't print sends the filer to the step that holds it.
 
 from datetime import date
 from decimal import Decimal
+from pathlib import Path
 
 import pymupdf
 import pytest
+from django.conf import settings
 from django.core.management import call_command
 from rest_framework import status
 from rest_framework.test import APIClient
@@ -18,7 +20,7 @@ from apps.districts.models import District
 from apps.forms.registry import build_parts, packet
 from apps.forms.schema import load_schema
 from apps.forms.services import text_fit
-from apps.forms.services.pdf_filler import PDFFormFiller, ValueTooLong
+from apps.forms.services.pdf_filler import PDFFormFiller, UnprintableLetter, ValueTooLong
 from apps.forms.services.widgets import template_widgets
 from apps.forms.tests.pdf_readback import read_drawn
 from apps.intake.models import DebtorInfo, IncomeInfo, IntakeSession
@@ -160,18 +162,29 @@ def test_entries_past_thirty_continue_on_a_copy_of_page_2(session):
     ]
 
 
+HEADING = pymupdf.Rect(0, 60, 612, 130)  # the court's name block, above the filer's boxes
+
+
 def _heading(session):
     pdf = PDFFormFiller().fill(FORM, build_parts(FORM, session))
     page = pymupdf.open("pdf", pdf)[0]
-    clip = pymupdf.Rect(0, 60, page.rect.width, 130)
-    return page.get_pixmap(dpi=144, clip=clip).samples
+    return page.get_pixmap(dpi=144, clip=HEADING).samples
+
+
+def _published_heading():
+    path = Path(settings.PDF_FORMS_DIRECTORY) / load_schema(FORM).template_filename
+    return pymupdf.open(path)[0].get_pixmap(dpi=144, clip=HEADING).samples
 
 
 def test_a_western_filer_gets_the_courts_page_as_published(user, district):
     western = _session(user, district, county="Winnebago")
     eastern = _session(user, district, county="Cook")
     assert _heading(western) == _heading(eastern)
+    # Equal to each other is not enough: a division drawn for every filer alike, or the
+    # court's white cover lost, would still match. Both match the template's own render.
+    published = _published_heading()
     for session in (western, eastern):
+        assert _heading(session) == published
         _, _, drawn = _drawn(session)
         assert all("DIVISION" not in w.value.upper() for w in drawn)
 
@@ -223,3 +236,10 @@ def test_a_creditor_box_is_measured_in_the_courts_times_roman(session):
     complete_debt(session, creditor_name=word)
     with pytest.raises(ValueTooLong):
         PDFFormFiller().check(FORM, build_parts(FORM, session))
+
+
+def test_a_letter_the_lists_times_roman_cannot_print_names_the_step_it_came_from(session):
+    complete_contract(session, counterparty_name="\u4e2d\u6587 Demo Lease")
+    with pytest.raises(UnprintableLetter) as refused:
+        PDFFormFiller().check(FORM, build_parts(FORM, session))
+    assert refused.value.step == "contracts"

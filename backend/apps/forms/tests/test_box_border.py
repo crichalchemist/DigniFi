@@ -36,7 +36,7 @@ def _page(pdf: bytes) -> pymupdf.Page:
 
 
 def _edges(rect: pymupdf.Rect) -> list[pymupdf.Rect]:
-    """A 1 pt strip inside each of the box's four sides (the border is 0.5 pt wide)."""
+    """A 1 pt strip inside each of the box's four sides (the border is 1 pt wide)."""
     return [
         pymupdf.Rect(rect.x0, rect.y0, rect.x1, rect.y0 + 1),
         pymupdf.Rect(rect.x0, rect.y1 - 1, rect.x1, rect.y1),

@@ -475,8 +475,8 @@ def _overshoot(template, widget):
 
 
 # (form type, box, side) where _overshoot finds a letter past the rect: the only boxes the
-# cut-off test lets a letter cross, by that much. Å rises up to 0.228 pt above 45 boxes and
-# µ hangs up to 0.048 pt below 16 of them (g and q 0.024 pt); Ç stays inside. Whether
+# cut-off test lets a letter cross, by that much. Å rises up to 0.228 pt above 49 boxes and
+# µ hangs up to 0.048 pt below 20 of them (g and q 0.024 pt); Ç stays inside. Whether
 # filers' forms may print this hairline is the owner's R38 question.
 _R38_HAIRLINES = [
     ("form_101", "Attorney.Sig@8:T3", "bottom"),
@@ -834,12 +834,16 @@ def _drawn_without_check(template, texts):
     return document.tobytes()
 
 
-def _letters_print_as_check_says(form_type, boxes, control_inks=False):
+def _inside(document, widget):
+    """The widget's rect on its page, less 2 pt on each side (inside its border), rendered."""
+    clip = pymupdf.Rect(widget.rect) + (2, 2, -2, -2)
+    return document[widget.page - 1].get_pixmap(dpi=288, clip=clip).samples
+
+
+def _letters_print_as_check_says(form_type, boxes):
     """
     check() refuses exactly the letters the drawing can't print (spec §4.3), judged through
-    these boxes of one form. control_inks leaves control characters (Cc) out of the refused-ink
-    judgement: Times-Roman inks its .notdef for U+007F and U+009F, which check() refuses anyway
-    as control characters, so no filer's list can print them (R9).
+    these boxes of one form.
     """
     template = _template(form_type)
     accepted, refused = [], []
@@ -862,7 +866,23 @@ def _letters_print_as_check_says(form_type, boxes, control_inks=False):
 
     # Accepted: "x<letter>x" reads back as it prints, and a letter that prints a glyph
     # leaves ink, alone in its box.
-    empty = _printed(PDFFormFiller().fill(form_type, {}))
+    # The baseline is a box holding a lone space, drawn as a letter's box is, border and all.
+    # It matches the pristine empty form inside the border: a lone space and a zero-width
+    # space (a format character, R36) leave no ink. The border itself is not compared with
+    # the pristine form's: two of the list's boxes have a rect 0.25 pt shorter than their
+    # appearance's BBox, which scales the template's own stroke by 0.9964, a sub-pixel move.
+    pristine = _printed(PDFFormFiller().fill(form_type, {}))
+    empty = _printed(PDFFormFiller().fill(form_type, {w.key: " " for w in boxes}))
+    with _no_anti_aliasing():
+        for nothing in (" ", "\u200b"):
+            blank = _printed(PDFFormFiller().fill(form_type, {w.key: nothing for w in boxes}))
+            differing = [
+                w.key
+                for w in boxes
+                if _inside(blank, w) != _inside(pristine, w)
+                or _pixels(blank, w) != _pixels(empty, w)
+            ]
+            assert differing == []
     misprinted, no_ink = {}, []
     for pairs in in_boxes(accepted):
         pdf = PDFFormFiller().fill(form_type, {w.key: f"x{c}x" for w, c in pairs})
@@ -883,8 +903,12 @@ def _letters_print_as_check_says(form_type, boxes, control_inks=False):
     assert no_ink == []
 
     # Refused: "x<letter>x" drawn without check() reads back as something else, or the
-    # letter leaves no ink, alone in its box.
-    empty = pymupdf.open("pdf", _drawn_without_check(template, {}))
+    # letter leaves ink, alone in its box. The baseline is drawn the same way (a lone space
+    # in each box), since a box drawn without check() has no border to compare with the
+    # template's own.
+    empty = pymupdf.open(
+        "pdf", _drawn_without_check(template, {(w.page, w.tag): " " for w in boxes})
+    )
     inked = []
     for pairs in in_boxes(refused):
         pdf = _drawn_without_check(template, {(w.page, w.tag): f"x{c}x" for w, c in pairs})
@@ -895,10 +919,7 @@ def _letters_print_as_check_says(form_type, boxes, control_inks=False):
         )
         with _no_anti_aliasing():
             inked += [
-                f"U+{ord(c):04X}"
-                for w, c in as_itself
-                if _pixels(alone, w) != _pixels(empty, w)
-                and not (control_inks and unicodedata.category(c) == "Cc")
+                f"U+{ord(c):04X}" for w, c in as_itself if _pixels(alone, w) != _pixels(empty, w)
             ]
     assert inked == []
 
@@ -935,7 +956,7 @@ def test_check_agrees_with_the_drawing_on_every_letter():
         w for w in template_widgets(list_template) if w.drawn and w.full_name.startswith("creditor")
     ]
     assert len(creditors) == 30
-    _letters_print_as_check_says("list_of_creditors", creditors, control_inks=True)
+    _letters_print_as_check_says("list_of_creditors", creditors)
 
 
 # ── An attached sheet's letter check agrees with what it prints ───────
