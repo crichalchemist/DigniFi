@@ -18,7 +18,7 @@ from apps.districts.dated_tables import fill_date
 from apps.eligibility.cmi import answered_window, income_step_gaps, income_window
 
 from .asset_lines import LINE_BY_KEY, PROPERTY_KINDS, WHO
-from .claims import account_last_4, legacy_payments, ordered_debts
+from .claims import PRIORITY_ANSWERS, account_last_4, legacy_payments, ordered_debts
 from .household import (
     MAX_AGE,
     MAX_MEMBERS,
@@ -668,6 +668,36 @@ class DebtInfoSerializer(AddressAnswersMixin, serializers.ModelSerializer):
     )
     collateral_who = serializers.ChoiceField(choices=list(WHO), allow_null=True, required=False)
     offset_answer = serializers.ChoiceField(choices=list(YES_NO), allow_null=True, required=False)
+    priority_answer = serializers.ChoiceField(
+        choices=list(PRIORITY_ANSWERS), allow_null=True, required=False
+    )
+    priority_other = serializers.CharField(
+        max_length=DebtInfo.PRIORITY_OTHER_MAX_LENGTH,
+        allow_blank=True,
+        allow_null=True,
+        required=False,
+    )
+    priority_amount = serializers.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        min_value=Decimal("0"),
+        allow_null=True,
+        required=False,
+    )
+    nonpriority_amount = serializers.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        min_value=Decimal("0"),
+        allow_null=True,
+        required=False,
+    )
+    past_due_amount = serializers.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        min_value=Decimal("0"),
+        allow_null=True,
+        required=False,
+    )
     community_debt = serializers.ChoiceField(choices=["yes"], allow_blank=True, required=False)
     date_incurred = serializers.CharField(
         max_length=DebtInfo.DATE_INCURRED_MAX_LENGTH,
@@ -710,6 +740,11 @@ class DebtInfoSerializer(AddressAnswersMixin, serializers.ModelSerializer):
             "home_payment_line",
             "collateral_who",
             "offset_answer",
+            "priority_answer",
+            "priority_other",
+            "priority_amount",
+            "nonpriority_amount",
+            "past_due_amount",
             "community_debt",
             "date_incurred",
             "lien",

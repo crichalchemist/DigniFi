@@ -17,6 +17,11 @@ NAMELESS_DEBT = "one amount owed"
 NAMELESS_CONTRACT = "one contract"
 NAMELESS_CODEBTOR = "one codebtor"
 
+# E/F Part 1's question (3d1 B17): the four kinds, then "No" and "Not sure". The wizard's copy of the
+# kinds is PRIORITY_TYPE_WORDS in formText.ts, pinned by test_claims_frontend_copy.py.
+PRIORITY_TYPES = ("domestic_support", "taxes", "intoxicated", "other")
+PRIORITY_ANSWERS = (*PRIORITY_TYPES, "no", "not_sure")
+
 # Server only: the wizard's steps never say these two (Continue on Assets doesn't ask
 # "Do you live here?", and the draft check is not on the Amounts Owed step's copy).
 ASSET_GAP_LIVES_HERE = "Answer “Do you live here?” for {row} on line {line} of the Assets step."
