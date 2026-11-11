@@ -175,6 +175,7 @@ FORM_REGISTRY: dict[str, PacketForm] = {
     "form_106sum": PacketForm(_always, _nothing),
     "form_107": PacketForm(_always, _nothing),
     "form_121": PacketForm(_always, _needs_ssn),
+    "list_of_creditors": PacketForm(_always, _nothing),
     "form_122a1": PacketForm(_always, _needs_means_test),
     "form_122a1_supp": PacketForm(_never, _nothing),
     "form_122a2": PacketForm(_above_median, _nothing),

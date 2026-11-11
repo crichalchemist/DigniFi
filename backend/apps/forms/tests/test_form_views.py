@@ -459,7 +459,7 @@ class TestGenerateAllEndpoint:
                 "page": "/filing-fee",
             }
         ]
-        assert resp.data["total_generated"] == 13
+        assert resp.data["total_generated"] == 14
 
     def test_moving_off_the_waiver_withdraws_an_unfiled_103b_and_moving_back_brings_its_answers_back(
         self, api_client, session_with_debtor
@@ -517,8 +517,8 @@ class TestGenerateAllEndpoint:
                 "step": "debtor_info",
             }
         ]
-        assert resp.data["total_generated"] == 13
-        assert GeneratedForm.objects.filter(session=session_with_debtor).count() == 13
+        assert resp.data["total_generated"] == 14
+        assert GeneratedForm.objects.filter(session=session_with_debtor).count() == 14
 
     def test_drops_forms_that_no_longer_apply(self, api_client, session_with_debtor, user):
         GeneratedForm.objects.create(
@@ -835,7 +835,7 @@ class TestPacketEndpoint:
         }
         assert resp.data["form_types"][:3] == ["form_101", "form_106dec", "form_106sum"]
         assert "form_103b" not in resp.data["form_types"]
-        assert len(resp.data["form_types"]) == 14
+        assert len(resp.data["form_types"]) == 15
 
     @pytest.mark.parametrize("answer", ["pay_in_full", "installments", "waiver", None])
     def test_the_packet_carries_the_filers_line_8_answer(
@@ -1040,7 +1040,7 @@ class TestCompletionCheck:
         resp = api_client.get("/api/forms/packet/", {"session": session_with_debtor.id})
 
         assert resp.status_code == status.HTTP_200_OK
-        assert len(resp.data["form_types"]) == 14
+        assert len(resp.data["form_types"]) == 15
 
     def test_filed_form_still_downloads_while_the_intake_is_reopened(
         self, api_client, session_with_debtor, user

@@ -20,6 +20,7 @@ class GeneratedForm(models.Model):
         ("form_106sum", "Form 106Sum - Summary of Assets/Liabilities"),
         ("form_107", "Form 107 - Statement of Financial Affairs"),
         ("form_121", "Form 121 - SSN Statement"),
+        ("list_of_creditors", "List of Creditors"),
         ("form_122a1", "Form 122A-1 - Means Test"),
         ("form_122a1_supp", "Form 122A-1 Supplement"),
         ("form_122a2", "Form 122A-2 - Means Test Calculation"),

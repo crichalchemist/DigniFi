@@ -120,7 +120,7 @@ LINE_8 = {
     "james": "pay_in_full",
     "priya": "pay_in_full",
 }
-PACKET_SIZE = {"maria": 15, "sarah": 15, "deshawn": 14, "andres": 14, "james": 14, "priya": 15}
+PACKET_SIZE = {"maria": 16, "sarah": 16, "deshawn": 15, "andres": 15, "james": 15, "priya": 16}
 
 
 EXPENSE_TOTAL = {
@@ -297,7 +297,7 @@ def test_a_gig_drivers_business_entry_leaves_his_debts_as_he_classed_them_and_he
 
     assert classed == [d["consumer_business_classification"] for d in _andres_kettleby()["debts"]]
     assert classed.count("business") == 1
-    assert len(packet(session)) == 14
+    assert len(packet(session)) == 15
 
 
 @pytest.mark.django_db

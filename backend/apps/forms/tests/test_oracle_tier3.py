@@ -251,6 +251,15 @@ EXPECTED = {
         },
         "schedule_g": {"Company Name 2.1": "Division Demo Properties LLC"},
         "schedule_h": {"check1": "/no"},
+        "list_of_creditors": {
+            "creditor1.0.0": "Brightwater Card Services 1 Demo Way Richmond, VA 23238",
+            "creditor1.0.1": "Ironbridge Card Company 3 Demo Rd Riverwoods, IL 60015",
+            "creditor1.0.2": "Larkfield General Hospital 2 Demo Plaza Chicago, IL 60611",
+            "creditor1.0.3": "Lakefront Demo Recovery LLC 10 Demo Ct Chicago, IL 60604",
+            "creditor1.0.4": "Prairie Demo Collections Inc. 20 Demo Ave Oak Brook, IL 60523",
+            "creditor2.0.0": "Division Demo Properties LLC 30 Demo St Chicago, IL 60622",
+            "creditor2.0.1": "",
+        },
     },
     "james": {
         "form_101": {
@@ -354,6 +363,12 @@ EXPECTED = {
             "Street 2.1": "850 N State St, c/o Management Office",
         },
         "schedule_h": {"check1": "/no"},
+        "list_of_creditors": {
+            "creditor1.0.0": "Crestway Auto Credit PO Box 90122 Plano, TX 75025",
+            "creditor1.0.1": "Meridale National Bank PO Box 90222 Sioux Falls, SD 57117",
+            "creditor1.0.2": "Gold Coast Example Residential LLC 850 N State St c/o Management Office Chicago, IL 60610",
+            "creditor1.0.3": "",
+        },
     },
     "priya": {
         "form_101": {
@@ -492,6 +507,15 @@ EXPECTED = {
             "Schedule line E/F 3.1": "4.2",
             "check schedule line G 3.1": "",
         },
+        "list_of_creditors": {
+            "creditor1.0.0": "Kestrel Auto Finance P.O. Box 9303 Torrance, CA 90503",
+            "creditor1.0.1": "Silverpine Card Services P.O. Box 9313 El Paso, TX 79998",
+            "creditor1.0.2": "Westhaven University Medical Center 1653 W Congress Pkwy Chicago, IL 60612",
+            "creditor1.0.3": "Lakeshore Medical Recovery LLC P.O. Box 9333 Chicago, IL 60690",
+            "creditor1.0.4": "Fullerton Parkway Apartments LLC 456 W Fullerton Pkwy Management Office Chicago, IL 60614",
+            "creditor2.0.0": "Rohan Sharma 456 W Fullerton Pkwy Chicago, IL 60614",
+            "creditor2.0.1": "",
+        },
     },
     "deshawn": {
         "form_101": {
@@ -618,6 +642,15 @@ EXPECTED = {
         },
         "schedule_g": {"check1": "/no", "Company Name 2.1": ""},
         "schedule_h": {"check1": "/no", "Codebtor Name 3.1": ""},
+        "list_of_creditors": {
+            "creditor1.0.0": "Harrowgate Home Loans PO Box 4401 Chicago, IL 60680",
+            "creditor1.0.1": "Lakeline Electric PO Box 4403 Chicago, IL 60680",
+            "creditor1.0.2": "Southmoor Health PO Box 4404 Chicago, IL 60680",
+            "creditor1.0.3": "Tallgrass Credit Management PO Box 4402 Chicago, IL 60680",
+            "creditor1.0.4": "Demo Recovery Services PO Box 4405 Chicago, IL 60680",
+            "creditor2.0.0": "Demo Medical Collections PO Box 4406 Chicago, IL 60680",
+            "creditor2.0.1": "",
+        },
     },
     "sarah": {
         "form_101": {
@@ -722,6 +755,13 @@ EXPECTED = {
         },
         "schedule_g": {"Company Name 2.1": "Damen Demo Flats LLC"},
         "schedule_h": {"check1": "/no"},
+        "list_of_creditors": {
+            "creditor1.0.0": "Keelson Loan Servicing 60 Demo Way Wilkes-Barre, PA 18773",
+            "creditor1.0.1": "Lakemont University Hospital 70 Demo Plaza Lakemont Health Patient Accounts Chicago, IL 60612",
+            "creditor1.0.2": "Wicker Demo Recovery LLC 80 Demo Ct Oak Brook, IL 60523",
+            "creditor1.0.3": "Damen Demo Flats LLC 90 Demo St Chicago, IL 60622",
+            "creditor1.0.4": "",
+        },
     },
     # His driving is a business on line 5 and 8a since 3e2 (§11).
     "andres": {
@@ -879,6 +919,23 @@ EXPECTED = {
             "Schedule line D 3.1": "2.1",
             "check schedule line E/F 3.1": "",
             "check schedule line G 3.1": "",
+        },
+        "list_of_creditors": {
+            "creditor1.0.0": "Copperline Auto Finance PO Box 48210 Schaumburg, IL 60168",
+            "creditor1.0.1": "Bright Signal Wireless PO Box 77031 Dallas, TX 75377",
+            "creditor1.0.2": "Calumet Ridge Medical Center 2500 Ridge Crest Pkwy Aurora, IL 60504",
+            "creditor1.0.3": "Driveline Tire & Auto 1650 N Farnsworth Ave Aurora, IL 60505",
+            "creditor1.0.4": "Hollowmere Residential LLC 88 Ridgeway Ct Naperville, IL 60540",
+            "creditor2.0.0": "Illinois State Toll Highway Authority 2700 Ogden Ave Downers Grove, IL 60515",
+            "creditor2.0.1": "Northgate Card Services PO Box 60917 Phoenix, AZ 85082",
+            "creditor2.0.2": "Prairie Line Credit Union 310 E Galena Blvd Aurora, IL 60505",
+            "creditor2.0.3": "Sablewood Bank PO Box 15022 Columbus, OH 43218",
+            "creditor2.0.4": "Tallowfield Lending Co. PO Box 31544 Wilmington, DE 19850",
+            "creditor1.0.5.0": "Ashgrove Recovery Group 900 Commerce Dr Ste 210 Oak Brook, IL 60523",
+            "creditor1.0.5.1": "Northlight Auto Leasing PO Box 92650 Itasca, IL 60143",
+            "creditor1.0.5.2": "Fox Run Property Management 2200 W Indian Trail Aurora, IL 60506",
+            "creditor1.0.5.3": "Mateo Kettleby 377 Douglas Ave Elgin, IL 60120",
+            "creditor1.0.5.4": "",
         },
     },
 }

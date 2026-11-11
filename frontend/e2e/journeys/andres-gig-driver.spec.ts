@@ -73,8 +73,8 @@ test.describe('Andrés Kettleby — Gig Driver', () => {
     await sofa.skipForNow();
 
     // He pays in installments, so no Form 103B; below median, so no Form 122A-2
-    await dashboard.generateAllForms(14);
+    await dashboard.generateAllForms(15);
     const count = await dashboard.getGeneratedCount();
-    expect(count).toBe(14);
+    expect(count).toBe(15);
   });
 });
