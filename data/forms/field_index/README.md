@@ -12,7 +12,7 @@ Ground truth for every fillable box on the 18 templates in `../pdfs/` that the a
 - `audit/step2_verification.json`: forms step 2's own placements, the bindings the audit never judged. Each row has `verification.json`'s shape plus `producer`, the whole binding key (`derived:phone`), and cites the box's label in the index. Tier 2 (`backend/apps/forms/tests/test_oracle_tier2.py`) reads these rows before the audit's, matching on box and binding key, and fails on a row that no binding matches.
 - The audit, unbound and verification files are the 2026-10-09 audit's record. Later steps don't edit them, so some boxes listed as unbound are bound now.
 - `audit/ocr_cross.json`: where the vision reading and the text-layer reading disagreed.
-- `tools/`: the scripts that built the index (`form_ocr.py`, `ocr_crosscheck.py`, `field_index.py`), the one-off conversion of the schemas to full-name bindings (`convert_schemas.py`), the recorder of failing oracle cases in `known_defects.json` (`record_known_defects.py`), and `build_list_of_creditors.py`, which extracts the List of Creditors template from the bundle and writes its index.
+- `tools/`: the scripts that built the index (`form_ocr.py`, `ocr_crosscheck.py`, `field_index.py`), the one-off conversion of the schemas to full-name bindings (`convert_schemas.py`), the recorder of failing oracle cases in `known_defects.json` (`record_known_defects.py`), and `build_list_of_creditors.py`, which extracts the List of Creditors template from the bundle and writes its index, its schema and its 32 audit rows in `audit/step2_verification.json`.
 
 ## How each row was established (`basis`)
 

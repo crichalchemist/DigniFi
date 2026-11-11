@@ -1,5 +1,6 @@
 """
-Writes the court's List of Creditors template and its field index (forms step 3c6, R1 and R2).
+Writes the court's List of Creditors template, its field index, its schema and its 32 audit rows
+(forms step 3c6, R1 and R2).
 Run it from the repo root:
 
     python -I data/forms/field_index/tools/build_list_of_creditors.py extract <bundle.pdf>
@@ -91,7 +92,7 @@ def extract(bundle, out):
 
     acro = writer._root_object["/AcroForm"].get_object()
     acro[NameObject("/Fields")] = ArrayObject(f for f in acro["/Fields"] if keep(f))
-    writer.compress_identical_objects(remove_identicals=False, remove_orphans=True)
+    writer.compress_identical_objects(remove_duplicates=False, remove_unreferenced=True)
 
     with tempfile.TemporaryDirectory() as scratch:
         pruned = Path(scratch) / "pruned.pdf"
