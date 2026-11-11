@@ -16,7 +16,10 @@ from rest_framework.test import APIClient
 
 from apps.districts.models import District
 from apps.forms.registry import build_parts, packet
-from apps.forms.services.pdf_filler import PDFFormFiller
+from apps.forms.schema import load_schema
+from apps.forms.services import text_fit
+from apps.forms.services.pdf_filler import PDFFormFiller, ValueTooLong
+from apps.forms.services.widgets import template_widgets
 from apps.forms.tests.pdf_readback import read_drawn
 from apps.intake.models import DebtorInfo, IncomeInfo, IntakeSession
 from apps.intake.tests.builders import (
@@ -38,7 +41,7 @@ def user(db):
 
 
 @pytest.fixture
-def client(user):
+def api_client(user):
     api = APIClient()
     api.force_authenticate(user=user)
     return api
@@ -105,6 +108,11 @@ def test_a_filer_with_no_creditors_gets_a_list_with_their_name_and_chapter_7(ses
     assert values[("Debtor1.Name", 1, None)] == "Jane Doe"
     assert values[("Debtor1.Name", 2, None)] == "Jane Doe"
     assert values[("chapter", 1, None)] == "7"
+    # Debtor 2's name, the case number and the read-only "Debtor 1 and Debtor 2" label are
+    # never bound: binding one prints a value here and fails this.
+    for name in ("Debtor2.Name", "Case number1", "Debtor1andDebtor2"):
+        boxes = [v for (full_name, _, _), v in values.items() if full_name == name]
+        assert boxes and set(boxes) == {""}, name
     assert [w.value for w in drawn if w.full_name.startswith("creditor")] == [""] * 30
 
 
@@ -189,11 +197,29 @@ def _long_codebtor(session):
         (_long_codebtor, "codebtors"),
     ],
 )
-def test_an_entry_too_long_names_the_step_it_came_from(client, session, make, step):
+def test_an_entry_too_long_names_the_step_it_came_from(api_client, session, make, step):
     make(session)
-    response = client.post(
+    response = api_client.post(
         "/api/forms/generate/", {"session_id": session.id, "form_type": FORM}, format="json"
     )
     assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY, response.data
     assert response.data["step"] == step
     assert "Name and address" in response.data["error"]
+
+
+def test_a_creditor_box_is_measured_in_the_courts_times_roman(session):
+    # W is 944 units in Times-Roman and Helvetica alike, so a run of W can't tell the two
+    # apart. A run of i is 278 units in Times and 222 in Helvetica: it fits the box at 6 pt
+    # in Helvetica and not in Times, so only a check measuring in the box's own font refuses it.
+    template = load_schema(FORM).template_filename
+    box = next(w for w in template_widgets(template) if w.full_name == "creditor1.0.0")
+    room = box.width - 4 * box.margin
+    count = int(room * 1000 / (222 * text_fit.MIN_SIZE))
+    assert count * 222 * text_fit.MIN_SIZE / 1000 <= room < count * 278 * text_fit.MIN_SIZE / 1000
+    font = text_fit.font_for(template, box.font)
+    reverse_cmap = text_fit.reverse_cmap_for(template, box.font)
+    word = "i" * count
+    assert text_fit._width(font, reverse_cmap, word, text_fit.MIN_SIZE) > room
+    complete_debt(session, creditor_name=word)
+    with pytest.raises(ValueTooLong):
+        PDFFormFiller().check(FORM, build_parts(FORM, session))

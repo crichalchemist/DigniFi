@@ -244,8 +244,9 @@ def schema(rows, template_sha256):
     }
 
 
-def addendum_rows():
+def addendum_rows(index):
     """The 32 audit rows that place the form's bindings (R4, R7), shaped as 3c5's rows."""
+    where = {r["full_name"]: (r["page"], r["tag"]) for r in index}
     rows = [
         {
             "schema": SCHEMA_NAME,
@@ -276,6 +277,7 @@ def addendum_rows():
         },
     ]
     for row, name in enumerate(SLOT_NAMES, start=1):
+        page, tag = where[name]
         rows.append(
             {
                 "schema": SCHEMA_NAME,
@@ -286,8 +288,8 @@ def addendum_rows():
                 "status": "confirmed",
                 "correct_target": name,
                 "evidence": (
-                    f'Field index: {name} "{CREDITOR_LABEL}" (adjudicated). R7: row {row} of '
-                    f"group creditors prints entry {row} of {ENTRY_BINDING} here, in the "
+                    f'Field index: {name} p{page} {tag}, "{CREDITOR_LABEL}" (adjudicated). '
+                    f"R7: row {row} of group creditors prints entry {row} of {ENTRY_BINDING} here, in the "
                     "court's column-by-column order."
                 ),
             }
@@ -304,8 +306,9 @@ def write_schema():
     path.write_text(dumps(schema(rows, digest)))
     existing = json.loads(ADDENDUM.read_text())
     kept = [r for r in existing if r["schema"] != SCHEMA_NAME]
-    ADDENDUM.write_text(dumps(kept + addendum_rows()))
-    print(f"wrote {path} and {len(addendum_rows())} rows of {ADDENDUM}")
+    new = addendum_rows(rows)
+    ADDENDUM.write_text(dumps(kept + new))
+    print(f"wrote {path} and {len(new)} rows of {ADDENDUM}")
 
 
 def main(argv):

@@ -63,5 +63,5 @@ def test_the_schema_and_its_rows_are_what_the_tool_writes():
     assert committed == tool.dumps(tool.schema(rows, digest))
 
     audit = json.loads((INDEX_DIR / "audit/step2_verification.json").read_text())
-    assert [r for r in audit if r["schema"] == "list_of_creditors"] == tool.addendum_rows()
-    assert len(tool.addendum_rows()) == 32
+    assert [r for r in audit if r["schema"] == "list_of_creditors"] == tool.addendum_rows(rows)
+    assert len(tool.addendum_rows(rows)) == 32

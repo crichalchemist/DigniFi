@@ -198,7 +198,10 @@ def test_print_buttons_never_print(form_type):
         w.key: "".join(g.text for g in _glyphs(as_it_stands[w.page - 1]) if g.inside(w.rect))
         for w in buttons
     }
-    # The List of Creditors' template has no button, so it passes with none to judge.
+    # The court's List of Creditors has no buttons; every other template does, so button
+    # discovery breaking would show here instead of passing with nothing to judge.
+    if form_type != "list_of_creditors":
+        assert buttons
     assert all(label.strip() for label in labels.values()), labels
     drawn = _printed(_drawn_packet()[form_type])
     printed = {

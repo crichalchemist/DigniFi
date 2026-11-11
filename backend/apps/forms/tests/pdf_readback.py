@@ -3,12 +3,11 @@ Read a drawn PDF back box by box, the way a person reads the printed page (spec 
 
 Every value prints in Helvetica (on the List of Creditors, Times-Roman) and every tick is
 the template's ZapfDingbats check mark, while the templates print their own words in Arial,
-Wingdings and Times. A
-character belongs to a widget when its centre lies inside the widget's rect from the
-field index: two pairs of boxes overlap by about 2 pt, and a glyph merely touching a
-rect would put a neighbour's tick in it. A copy of an extra page is read as the template
-page it copies, found through the form's parts. An attached sheet has no widget: its
-pages are read line by line under its columns (read_sheets).
+Wingdings and Times. A character belongs to a widget when its centre lies inside the
+widget's rect from the field index: two pairs of boxes overlap by about 2 pt, and a glyph
+merely touching a rect would put a neighbour's tick in it. A copy of an extra page is read
+as the template page it copies, found through the form's parts. An attached sheet has no
+widget: its pages are read line by line under its columns (read_sheets).
 """
 
 from dataclasses import dataclass, replace
@@ -35,7 +34,7 @@ class DrawnWidget:
     full_name: str
     page: int
     tag: str
-    value: str  # the Helvetica text inside the widget's rect; "" when none
+    value: str  # the Helvetica (List of Creditors: Times-Roman) text inside the widget's rect; "" when none
     state: str  # a box: its on-state when a check mark is inside, else "/Off"; "" for text
     copy: int | None = None  # on a copy of an extra page, its number; None on the form's own
 
@@ -51,7 +50,7 @@ class _Character:
 
 
 def _characters(page: pymupdf.Page) -> list[_Character]:
-    """Every Helvetica or ZapfDingbats character on the page, with its position."""
+    """Every Helvetica, Times-Roman or ZapfDingbats character on the page, with its position."""
     characters = []
     for b, block in enumerate(page.get_text("rawdict")["blocks"]):
         for n, line in enumerate(block.get("lines", [])):
@@ -79,7 +78,7 @@ def _inside(character: _Character, rect: tuple[float, ...]) -> bool:
 
 
 def _text(widget: TemplateWidget, characters: list[_Character]) -> str:
-    """The Helvetica characters inside the widget, line by line from the top."""
+    """The Helvetica (List of Creditors: Times-Roman) characters inside the widget, line by line from the top."""
     lines: dict[tuple[int, int], list[_Character]] = {}
     for character in characters:
         if character.font in _TEXT_FONT and _inside(character, widget.rect):
