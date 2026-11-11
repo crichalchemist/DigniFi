@@ -454,6 +454,9 @@ export interface AssetInfo {
     | null;
 }
 
+export type PriorityType = 'domestic_support' | 'taxes' | 'intoxicated' | 'other';
+export type PriorityAnswer = PriorityType | 'no' | 'not_sure';
+
 export interface DebtInfo {
   id: number;
   session: number;
@@ -493,6 +496,14 @@ export interface DebtInfo {
   /** [] is "None of these" */
   claim_status?: ClaimStatus[] | null;
   offset_answer?: YesNo | null;
+  /** Schedule E/F Part 1's question (3d1): a kind, "no" or "not_sure"; null is unanswered */
+  priority_answer?: PriorityAnswer | null;
+  /** The words of "Other. Specify", kept only under the kind `other` */
+  priority_other?: string | null;
+  /** Under a kind only; null is not given */
+  priority_amount?: number | null;
+  nonpriority_amount?: number | null;
+  past_due_amount?: number | null;
   /** [] is No */
   notice_parties?: NoticeParty[] | null;
   /** "yes" or "" (a tick has no unanswered state) */

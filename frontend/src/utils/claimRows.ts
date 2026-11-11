@@ -37,6 +37,7 @@ export function isBlankDebt(row: DebtRow): boolean {
       row.state,
       row.zip_code,
       row.date_incurred,
+      row.priority_other,
     ].some(hasText) ||
     [
       row.debt_type,
@@ -45,9 +46,12 @@ export function isBlankDebt(row: DebtRow): boolean {
       row.collateral_who,
       row.offset_answer,
       row.community_debt,
+      row.priority_answer,
     ].some(isPicked) ||
     (row.amount_owed !== undefined && row.amount_owed !== 0) ||
-    typeof row.monthly_payment === 'number' ||
+    [row.monthly_payment, row.priority_amount, row.nonpriority_amount, row.past_due_amount].some(
+      (amount) => typeof amount === 'number'
+    ) ||
     isAnsweredList(row.claim_status) ||
     isAnsweredList(row.notice_parties) ||
     (row.lien?.kinds.length ?? 0) > 0 ||
@@ -100,8 +104,14 @@ export function keptRows<T extends { id?: number }>(rows: T[], isBlank: (row: T)
 }
 
 /** A debt as the server takes it: a blank payment is null, since a key left out keeps the old figure */
-export type SentDebt = Omit<DebtRow, 'monthly_payment' | 'debt_type'> & {
+export type SentDebt = Omit<
+  DebtRow,
+  'monthly_payment' | 'priority_amount' | 'nonpriority_amount' | 'past_due_amount' | 'debt_type'
+> & {
   monthly_payment: number | null;
+  priority_amount: number | null;
+  nonpriority_amount: number | null;
+  past_due_amount: number | null;
   debt_type: DebtRow['debt_type'] | '';
 };
 
@@ -117,6 +127,9 @@ export function sentDebt(row: DebtRow): SentDebt {
     ...(sent as DebtRow),
     amount_owed: row.amount_owed ?? 0,
     monthly_payment: row.monthly_payment ?? null,
+    priority_amount: row.priority_amount ?? null,
+    nonpriority_amount: row.nonpriority_amount ?? null,
+    past_due_amount: row.past_due_amount ?? null,
     debt_type: row.debt_type ?? '',
   };
 }

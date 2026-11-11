@@ -1232,6 +1232,9 @@ function serveSessionSaves(
             'entire_value',
             'amount_owed',
             'monthly_payment',
+            'priority_amount',
+            'nonpriority_amount',
+            'past_due_amount',
           ]) {
             if (typeof saved[amount] === 'number') saved[amount] = saved[amount].toFixed(2);
           }
@@ -1682,6 +1685,32 @@ describe('IntakeWizard the monthly payment on the Amounts Owed step', () => {
   it('saves a monthly payment typed as $0 as 0, not as empty', async () => {
     const debt = await continueWithPayment('0');
     expect(debt.monthly_payment).toBe(0);
+  });
+});
+
+describe('IntakeWizard the priority answers on the Amounts Owed step', () => {
+  const heldDebt = {
+    ...storedDebt,
+    priority_answer: 'taxes',
+    priority_other: null,
+    priority_amount: '3000.00',
+    nonpriority_amount: null,
+    past_due_amount: '0.00',
+  };
+
+  it('saves each priority figure back as a number, and a blank one as null', async () => {
+    const { bodies } = serveSessionSaves({ ...sessionAtStep1, current_step: 6, debts: [heldDebt] });
+    renderWizard();
+    await screen.findByRole('heading', { name: /amounts owed/i, level: 2 });
+    await userEvent.click(screen.getByRole('button', { name: /continue/i }));
+    await waitFor(() => expect(bodies.length).toBeGreaterThan(0));
+    const { debts } = bodies[0] as { debts: Record<string, unknown>[] };
+    expect(debts[0]).toMatchObject({
+      priority_answer: 'taxes',
+      priority_amount: 3000,
+      nonpriority_amount: null,
+      past_due_amount: 0,
+    });
   });
 });
 
@@ -4548,6 +4577,39 @@ describe('IntakeWizard contracts and codebtors', { timeout: 15_000 }, () => {
 
     expect(contractSaves).toEqual([]);
     expect(codebtorSaves).toEqual([]);
+    expect(sessionPatches).toEqual([]);
+  });
+
+  it('sends nothing on a visit alone to step 6 with every priority answer given', async () => {
+    serveFiler(6);
+    server.use(
+      http.get('http://localhost:8000/api/intake/sessions/:id/', () =>
+        HttpResponse.json({
+          ...sessionAtStep1,
+          current_step: 6,
+          debtor_info: { first_name: 'Jane', last_name: 'Doe' },
+          debts: [
+            {
+              ...storedDebt,
+              priority_answer: 'other',
+              priority_other: 'Demo deposit',
+              priority_amount: '10.00',
+              nonpriority_amount: null,
+              past_due_amount: '0.00',
+            },
+          ],
+          claim_answers: { no_debts: null, contracts_answer: 'yes', codebtors_answer: 'yes' },
+        })
+      )
+    );
+    renderWizard();
+    await expectStep('Amounts Owed');
+    vi.useFakeTimers();
+    try {
+      await waitSeconds(6);
+    } finally {
+      vi.useRealTimers();
+    }
     expect(sessionPatches).toEqual([]);
   });
 
