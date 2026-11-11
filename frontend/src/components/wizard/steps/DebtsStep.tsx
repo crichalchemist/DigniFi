@@ -109,48 +109,41 @@ interface DebtsStepProps {
   onRemoveLegacy?: (field: LegacyField) => Promise<void>;
 }
 
-// Debt categories matching backend DEBT_TYPE_CHOICES with derived classification
+// Debt categories matching backend DEBT_TYPE_CHOICES
 // eslint-disable-next-line react-refresh/only-export-components
 export const DEBT_CATEGORY_META: Record<
   DebtInfo['debt_type'],
-  { label: string; is_secured: boolean; priority_classification: string }
+  { label: string; is_secured: boolean }
 > = {
   credit_card: {
     label: DEBT_TYPE_WORDS.credit_card,
     is_secured: false,
-    priority_classification: 'unsecured',
   },
   medical: {
     label: DEBT_TYPE_WORDS.medical,
     is_secured: false,
-    priority_classification: 'unsecured',
   },
   personal_loan: {
     label: DEBT_TYPE_WORDS.personal_loan,
     is_secured: false,
-    priority_classification: 'unsecured',
   },
   student_loan: {
     label: DEBT_TYPE_WORDS.student_loan,
     is_secured: false,
-    priority_classification: 'priority',
   },
   auto_loan: {
     label: DEBT_TYPE_WORDS.auto_loan,
     is_secured: true,
-    priority_classification: 'secured',
   },
   mortgage: {
     label: DEBT_TYPE_WORDS.mortgage,
     is_secured: true,
-    priority_classification: 'secured',
   },
   utility: {
     label: DEBT_TYPE_WORDS.utility,
     is_secured: false,
-    priority_classification: 'unsecured',
   },
-  other: { label: DEBT_TYPE_WORDS.other, is_secured: false, priority_classification: 'unsecured' },
+  other: { label: DEBT_TYPE_WORDS.other, is_secured: false },
 };
 
 const DEBT_CATEGORY_OPTIONS = Object.entries(DEBT_CATEGORY_META).map(([value, { label }]) => ({
@@ -352,12 +345,11 @@ export function DebtsStep({
   };
 
   // The one read of the pressed mark: the kind sets the secured answer only until the filer has
-  // pressed it. The classification follows the kind either way.
+  // pressed it.
   const changeType = (index: number, value: string) => {
     const meta = DEBT_CATEGORY_META[value as DebtInfo['debt_type']];
     const changes: Partial<DebtRow> = {
       debt_type: (value || undefined) as DebtInfo['debt_type'] | undefined,
-      priority_classification: meta?.priority_classification as DebtInfo['priority_classification'],
     };
     if (meta && debts[index]._securedPressed !== true) {
       Object.assign(changes, securedChanges(meta.is_secured));

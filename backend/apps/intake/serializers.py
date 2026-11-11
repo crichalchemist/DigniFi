@@ -717,7 +717,6 @@ class DebtInfoSerializer(AddressAnswersMixin, serializers.ModelSerializer):
             "data_source",
             "creditor_name",
             "debt_type",
-            "priority_classification",
             "account_number",
             "account_last_4",
             "amount_owed",

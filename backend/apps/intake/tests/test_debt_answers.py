@@ -31,6 +31,18 @@ def _car(session):
     )
 
 
+def test_the_api_no_longer_carries_a_priority_label(filer):
+    client, session = filer
+    response = _patch(
+        client,
+        session,
+        [{**ROW, "debt_type": "student_loan", "priority_classification": "priority"}],
+    )
+    assert response.status_code == 200
+    assert "priority_classification" not in response.data["debts"][0]
+    assert session.debts.get().priority_classification == "unsecured"
+
+
 def test_a_half_filled_debt_saves_with_no_name_and_amount_zero(filer):
     client, session = filer
     response = _patch(client, session, [{"amount_owed": "0", "street_address": "9 Demo Road"}])

@@ -474,7 +474,6 @@ export interface DebtInfo {
 
   // Classification
   is_secured: boolean;
-  priority_classification?: 'unsecured' | 'secured' | 'priority';
   collateral_description: string;
 
   // The creditor's address (3c3). A blank state or ZIP is a gap unless outside_us is ticked.

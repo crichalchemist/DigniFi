@@ -253,6 +253,16 @@ describe('DebtsStep secured amounts owed', () => {
   });
 
   // Draft until counsel rules on C-17 (DIG-280)
+  it('picking Student loan answers nothing for the filer', async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    render(<Harness onChange={onChange} />);
+    await user.selectOptions(field('debt_type_0'), 'Student loan');
+    const row = lastRows(onChange)[0] as Record<string, unknown>;
+    expect(row).not.toHaveProperty('priority_classification');
+    expect(row.priority_answer ?? null).toBeNull();
+  });
+
   it("gives a creditor, not a collector, as the name's example", () => {
     render(<Harness />);
     expect(screen.getByPlaceholderText('e.g., Capital One, Dr. Smith')).toBeInTheDocument();
