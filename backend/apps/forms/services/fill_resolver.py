@@ -433,8 +433,8 @@ def resolve_binding(binding: str, session: IntakeSession) -> str | list[str]:
         that line's Schedule A/B rows, or those of that kind, in the form's order
       - "claims.<list>[].<attr>" → list of str over one of claim_rows' seven lists (secured,
         secured_notices, priority, unsecured, unsecured_notices, contracts, codebtors), each cell
-        from CLAIM_CELLS; or over `creditor_list`, the List of Creditors' entries (`creditor_entries`:
-        a CreditorEntry, its `entry` cell the entry's text)
+        from CLAIM_CELLS; or over `creditor_list`, the List of Creditors' entries
+        (`creditor_entries`: a CreditorEntry, its `entry` cell the entry's text)
     """
     binding = binding.strip()
 
