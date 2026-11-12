@@ -1,7 +1,7 @@
 # Reference Tables
 
 - **Operator:** the project owner
-- **Last updated:** November 3, 2026
+- **Last updated:** November 12, 2026
 
 DigniFi reads public tables that change on a schedule. Each row of such a table is stored with the first day it applies (`effective_date`), the last day before its next scheduled change (`valid_through`) and the page it comes from (`source_url`). DigniFi uses the newest row that has started by the day the forms are filled, in Chicago time, which stands in for the filing date. If that row's `valid_through` has passed, or no row has started yet, DigniFi refuses to prepare forms. It never falls back to an older row.
 
@@ -108,3 +108,38 @@ From the day after the last row's `valid_through` until the new row's migration 
 - **The E2E journeys** fail where they check the limit, in CI too, since they run on the real date. The 2026 row ends on January 31, 2027, two months before the median table's March 31, 2027.
 
 The fix is to add the new row, as above. If HHS hasn't published the new guidelines yet, extend `valid_through` instead.
+
+---
+
+## Illinois and federal exemption laws
+
+The exemptions page (`/exemptions`, after the filing-fee page) lists the Illinois and federal laws a filer may cite for the property they claim as exempt on Schedule C, each with its citation and the law's own limit sentence. DigniFi never chooses a law or an amount for the filer. The list is national public law, so it has no district. It holds 25 laws.
+
+### Where it is posted
+
+- The Illinois statutes and Public Acts: https://www.ilga.gov/ (735 ILCS 5/12-901 and 5/12-1001 are the main ones). DigniFi stores the Public Act that last changed the list as the row's `source_url`.
+- The U.S. Code, as Cornell's Legal Information Institute posts it: https://www.law.cornell.edu/uscode/text/
+
+### When it changes
+
+- Only by a Public Act of Illinois or an Act of Congress. There is no schedule, so the row's `valid_through` stays empty: DigniFi never stops showing the list on a date.
+- The owner, the named operator, watches for such Acts. Nothing in DigniFi watches for them (U:107-108).
+
+### The rows DigniFi loads
+
+| Effective  | `valid_through` | Laws | Source       |
+| ---------- | --------------- | ---- | ------------ |
+| 2026-01-01 | empty           | 25   | P.A. 104-120 |
+
+### How to add a version
+
+1. Run `python manage.py makemigrations districts --empty -n exemption_catalog_<year>`. Write it as `0007_exemption_catalog_2026.py` is written: a `RunPython` that creates one `ExemptionCatalog` row and its `ExemptionLaw` rows, with the values written into the migration, and a reverse that deletes that row by its `effective_date`.
+2. Rewrite each law's limit sentence in plain words, with its units. Mark the sentences `# DRAFT: counsel C-8`. A test scores each one with `flesch_kincaid_grade` against the cases in `frontend/src/test/readingLevelCases.json`.
+3. Leave the earlier versions as they are.
+4. Update `EXPECTED` in `backend/apps/districts/tests/test_exemption_catalog.py`, and keep the law summaries in `frontend/src/constants/copy.ts` in step with the list.
+5. Open a pull request to `develop`. Nothing to run after the deploy: the Heroku release runs `migrate`.
+
+### What a missed change looks like
+
+- The old figures stay shown. Nothing refuses, which is why the owner watches for Acts.
+- Before the first version is loaded, the exemptions page shows `EXEMPTIONS_NO_TABLE`: "DigniFi doesn't have the exemption laws for today's date yet, so it can't prepare Schedule C." Schedule C is refused in the same words (`NO_EXEMPTION_CATALOG`), but only for a filer whose claims name a law from the list: a filer who claims nothing, or only types their own law, is not refused.

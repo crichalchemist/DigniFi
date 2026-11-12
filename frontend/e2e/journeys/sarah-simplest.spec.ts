@@ -12,6 +12,7 @@ import { RegisterPage } from '../pages/register.page';
 import { WizardPage } from '../pages/wizard.page';
 import { DocumentsPage } from '../pages/documents.page';
 import { FilingFeePage } from '../pages/filing-fee.page';
+import { ExemptionsPage } from '../pages/exemptions.page';
 import { DashboardPage } from '../pages/dashboard.page';
 import { SOFAPage } from '../pages/sofa.page';
 
@@ -22,6 +23,7 @@ test.describe('Sarah Chen — Simplest Case', () => {
     const wizard = new WizardPage(page);
     const documents = new DocumentsPage(page);
     const filingFee = new FilingFeePage(page);
+    const exemptions = new ExemptionsPage(page);
     const dashboard = new DashboardPage(page);
     const sofa = new SOFAPage(page);
 
@@ -81,8 +83,9 @@ test.describe('Sarah Chen — Simplest Case', () => {
     ).toBeVisible();
     await expect(page.locator('main')).not.toContainText(/qualif|eligib/i);
     await filingFee.answer(SARAH.filing_fee.payment_choice, SARAH.filing_fee.waiver);
+    await exemptions.answer(SARAH.exemptions);
 
-    // The filing-fee page continues to the SOFA step (DIG-149). This journey isn't about
+    // The filing-fee page continues to the exemptions page (DIG-149). This journey isn't about
     // financial history, so skip SOFA to reach the forms dashboard. (The SOFA save path
     // itself is covered by sofa-journey.spec.ts.)
     await sofa.waitForLoad();

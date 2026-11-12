@@ -4,7 +4,7 @@
  * Tests that a user can complete intake, fill in SOFA data, generate all
  * forms, and download Form 107 as a PDF.
  *
- * Uses James Washington, who pays the fee in full, so the filing-fee page continues to /sofa.
+ * Uses James Washington, who pays the fee in full, so the filing-fee page continues to the exemptions page.
  */
 
 import { test, expect } from '@playwright/test';
@@ -14,6 +14,7 @@ import { RegisterPage } from '../pages/register.page';
 import { WizardPage } from '../pages/wizard.page';
 import { DocumentsPage } from '../pages/documents.page';
 import { FilingFeePage } from '../pages/filing-fee.page';
+import { ExemptionsPage } from '../pages/exemptions.page';
 import { DashboardPage } from '../pages/dashboard.page';
 import { SOFAPage } from '../pages/sofa.page';
 
@@ -29,6 +30,7 @@ test.describe('SOFA — Form 107 Financial History', () => {
     const wizard = new WizardPage(page);
     const documents = new DocumentsPage(page);
     const filingFee = new FilingFeePage(page);
+    const exemptions = new ExemptionsPage(page);
     const sofa = new SOFAPage(page);
     const dashboard = new DashboardPage(page);
 
@@ -85,8 +87,9 @@ test.describe('SOFA — Form 107 Financial History', () => {
     // Step 9: Review & Complete
     await wizard.fillReview();
     await wizard.completeIntake();
-    // James pays in full; the filing-fee page continues to /sofa
+    // James pays in full; the filing-fee page continues to the exemptions page
     await filingFee.answer(JAMES.filing_fee.payment_choice);
+    await exemptions.answer(JAMES.exemptions);
 
     // ── SOFA Step ───────────────────────────────────────────
 

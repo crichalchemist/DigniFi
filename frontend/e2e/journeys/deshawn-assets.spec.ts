@@ -12,6 +12,7 @@ import { RegisterPage } from '../pages/register.page';
 import { WizardPage } from '../pages/wizard.page';
 import { DocumentsPage } from '../pages/documents.page';
 import { FilingFeePage } from '../pages/filing-fee.page';
+import { ExemptionsPage } from '../pages/exemptions.page';
 import { DashboardPage } from '../pages/dashboard.page';
 import { SOFAPage } from '../pages/sofa.page';
 
@@ -22,6 +23,7 @@ test.describe('DeShawn Mitchell — Assets', () => {
     const wizard = new WizardPage(page);
     const documents = new DocumentsPage(page);
     const filingFee = new FilingFeePage(page);
+    const exemptions = new ExemptionsPage(page);
     const dashboard = new DashboardPage(page);
     const sofa = new SOFAPage(page);
 
@@ -74,8 +76,9 @@ test.describe('DeShawn Mitchell — Assets', () => {
 
     // DeShawn pays in installments (3f spec §10), so Form 103B leaves his packet
     await filingFee.answer(DESHAWN.filing_fee.payment_choice);
+    await exemptions.answer(DESHAWN.exemptions);
 
-    // The filing-fee page continues to the SOFA step (DIG-149). This journey isn't about
+    // The filing-fee page continues to the exemptions page (DIG-149). This journey isn't about
     // financial history, so skip SOFA to reach the forms dashboard. (The SOFA save path
     // itself is covered by sofa-journey.spec.ts.)
     await sofa.waitForLoad();

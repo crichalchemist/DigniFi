@@ -273,6 +273,7 @@ export interface PersonaData {
   codebtors: PersonaCodebtor[];
   claim_answers: PersonaClaimAnswers;
   filing_fee: PersonaFilingFee;
+  exemptions: PersonaExemptions;
   expected: { passes_means_test: boolean };
 }
 
@@ -291,6 +292,24 @@ export interface PersonaWaiverAnswers {
 export interface PersonaFilingFee {
   payment_choice: PaymentChoice;
   waiver?: PersonaWaiverAnswers;
+}
+
+/** One Schedule C claim, as the exemptions page shows it: an option's text, never a key */
+export interface PersonaExemptionClaim {
+  /** The property option, `<name> (line <label>)` */
+  property: string;
+  /** The law option: its citation */
+  law: string;
+  amount: number | 'fair_market_value';
+  /** The shorter description, typed only for a name that doesn't fit Schedule C's box */
+  short?: string;
+}
+
+/** What a persona answers on the exemptions page (3g1 spec §5.4) */
+export interface PersonaExemptions {
+  line_1: 'state_and_federal';
+  line_3: 'no';
+  claims: PersonaExemptionClaim[];
 }
 
 export const MARIA: PersonaData = {
@@ -441,6 +460,31 @@ export const MARIA: PersonaData = {
       expense_change_answer: 'no',
     },
   },
+  exemptions: {
+    line_1: 'state_and_federal',
+    line_3: 'no',
+    claims: [
+      { property: 'Honda Civic 2015 (line 3.1)', law: '735 ILCS 5/12-1001(c)', amount: 3600 },
+      { property: 'Honda Civic 2015 (line 3.1)', law: '735 ILCS 5/12-1001(b)', amount: 2900 },
+      {
+        property: 'Beds, sofa, kitchen table, dishes (line 6)',
+        law: '735 ILCS 5/12-1001(b)',
+        amount: 520,
+      },
+      {
+        property: 'Old laptop, cell phone, 32-inch TV (line 7)',
+        law: '735 ILCS 5/12-1001(b)',
+        amount: 200,
+      },
+      {
+        property: 'Everyday clothes and shoes (line 11)',
+        law: '735 ILCS 5/12-1001(a)',
+        amount: 'fair_market_value',
+      },
+      { property: 'Cash (line 16)', law: '735 ILCS 5/12-1001(b)', amount: 40 },
+      { property: 'JPMorgan Chase (line 17.1)', law: '735 ILCS 5/12-1001(b)', amount: 340 },
+    ],
+  },
   expected: { passes_means_test: true },
 };
 
@@ -550,6 +594,32 @@ export const JAMES: PersonaData = {
   codebtors: [],
   claim_answers: { contracts_answer: 'yes', codebtors_answer: 'no', community_lived: 'no' },
   filing_fee: { payment_choice: 'pay_in_full' },
+  exemptions: {
+    line_1: 'state_and_federal',
+    line_3: 'no',
+    claims: [
+      { property: 'Toyota Camry 2019 (line 3.1)', law: '735 ILCS 5/12-1001(c)', amount: 3600 },
+      { property: 'Toyota Camry 2019 (line 3.1)', law: '735 ILCS 5/12-1001(b)', amount: 1900 },
+      {
+        property: 'Bed, couch, table, kitchenware (secondhand) (line 6)',
+        law: '735 ILCS 5/12-1001(a)',
+        amount: 'fair_market_value',
+        short: 'Bed, couch, table, kitchenware',
+      },
+      {
+        property: 'TV, laptop, cell phone (line 7)',
+        law: '735 ILCS 5/12-1001(a)',
+        amount: 'fair_market_value',
+      },
+      {
+        property: 'Everyday clothes and work clothes (line 11)',
+        law: '735 ILCS 5/12-1001(a)',
+        amount: 'fair_market_value',
+      },
+      { property: 'Cash (line 16)', law: '735 ILCS 5/12-1001(b)', amount: 40 },
+      { property: 'Bank of America (line 17.1)', law: '735 ILCS 5/12-1001(b)', amount: 1200 },
+    ],
+  },
   expected: { passes_means_test: true },
 };
 
@@ -755,6 +825,21 @@ export const PRIYA: PersonaData = {
   ],
   claim_answers: { contracts_answer: 'yes', codebtors_answer: 'yes', community_lived: 'no' },
   filing_fee: { payment_choice: 'pay_in_full' },
+  exemptions: {
+    line_1: 'state_and_federal',
+    line_3: 'no',
+    claims: [
+      {
+        property: 'Honda CR-V EX 2021 (line 3.1)',
+        law: '735 ILCS 5/12-1001(c)',
+        amount: 'fair_market_value',
+      },
+      { property: 'Clothes (line 11)', law: '735 ILCS 5/12-1001(a)', amount: 'fair_market_value' },
+      { property: 'JPMorgan Chase (line 17.1)', law: '735 ILCS 5/12-1001(b)', amount: 1900 },
+      { property: 'JPMorgan Chase (line 17.3)', law: '735 ILCS 5/12-1001(b)', amount: 2100 },
+      { property: 'Vanguard (line 21)', law: '735 ILCS 5/12-1006', amount: 'fair_market_value' },
+    ],
+  },
   expected: { passes_means_test: false },
 };
 
@@ -941,6 +1026,21 @@ export const DESHAWN: PersonaData = {
   codebtors: [],
   claim_answers: { contracts_answer: 'no', codebtors_answer: 'no', community_lived: 'no' },
   filing_fee: { payment_choice: 'installments' },
+  exemptions: {
+    line_1: 'state_and_federal',
+    line_3: 'no',
+    claims: [
+      { property: '7823 S Sangamon St (line 1.1)', law: '735 ILCS 5/12-901', amount: 20000 },
+      { property: 'Ford F-150 2012 (line 3.1)', law: '735 ILCS 5/12-1001(c)', amount: 3600 },
+      { property: 'Ford F-150 2012 (line 3.1)', law: '735 ILCS 5/12-1001(b)', amount: 4000 },
+      {
+        property: 'Everyday clothes and work boots (line 11)',
+        law: '735 ILCS 5/12-1001(a)',
+        amount: 'fair_market_value',
+      },
+      { property: 'Fidelity (line 21)', law: '735 ILCS 5/12-1006', amount: 'fair_market_value' },
+    ],
+  },
   expected: { passes_means_test: true },
 };
 
@@ -1046,6 +1146,11 @@ export const SARAH: PersonaData = {
       others_covered_answer: 'no',
       expense_change_answer: 'no',
     },
+  },
+  exemptions: {
+    line_1: 'state_and_federal',
+    line_3: 'no',
+    claims: [],
   },
   expected: { passes_means_test: true },
 };
@@ -1338,5 +1443,42 @@ export const ANDRES: PersonaData = {
   ],
   claim_answers: { contracts_answer: 'yes', codebtors_answer: 'yes', community_lived: 'no' },
   filing_fee: { payment_choice: 'installments' },
+  exemptions: {
+    line_1: 'state_and_federal',
+    line_3: 'no',
+    claims: [
+      {
+        property: 'Honda Fit 2017 (line 3.2)',
+        law: '735 ILCS 5/12-1001(c)',
+        amount: 'fair_market_value',
+      },
+      {
+        property: 'Beds, couch, table, kitchen things (line 6)',
+        law: '735 ILCS 5/12-1001(a)',
+        amount: 1200,
+      },
+      { property: 'Phone, TV (line 7)', law: '735 ILCS 5/12-1001(a)', amount: 400 },
+      { property: 'Clothes (line 11)', law: '735 ILCS 5/12-1001(a)', amount: 300 },
+      { property: 'Cash (line 16)', law: '735 ILCS 5/12-1001(b)', amount: 60 },
+      { property: 'Harborline Bank (line 17.1)', law: '735 ILCS 5/12-1001(b)', amount: 412 },
+      {
+        property: 'Prairie Line Credit Union (line 17.3)',
+        law: '735 ILCS 5/12-1001(b)',
+        amount: 85,
+      },
+      {
+        property: 'Driving payouts already earned, not yet paid by the apps (line 38)',
+        law: '735 ILCS 5/12-1001(b)',
+        amount: 310,
+        short: 'Driving payouts earned',
+      },
+      {
+        property: 'Insulated delivery bags, phone mount, dash camera (line 40)',
+        law: '735 ILCS 5/12-1001(d)',
+        amount: 150,
+        short: 'Delivery bags, mount, dash cam',
+      },
+    ],
+  },
   expected: { passes_means_test: true },
 };
