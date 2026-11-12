@@ -634,6 +634,34 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
                         },
                         status=status.HTTP_400_BAD_REQUEST,
                     )
+                if claims:
+                    # A row sent by id with some keys only sets those keys on the stored row,
+                    # so the per-row checks can't see the merged claim: check it here, before
+                    # anything is written (spec 5.2: a law or another law, never both; a dollar
+                    # amount only under dollars).
+                    stored_rows = {c.pk: c for c in ExemptionClaim.objects.filter(session=session)}
+                    merged_errors = {}
+                    for index, claim in enumerate(claims):
+                        old = stored_rows.get(claim.get("id"))
+                        if old is None:
+                            continue
+                        law = claim["law"] if "law" in claim else old.law
+                        other_law = claim.get("other_law", old.other_law) or ""
+                        kind = claim["amount_kind"] if "amount_kind" in claim else old.amount_kind
+                        amount = claim["amount"] if "amount" in claim else old.amount
+                        problems = {}
+                        if law is not None and other_law.strip():
+                            problems["other_law"] = ["Choose a law or type another law, not both."]
+                        if kind == "fair_market_value" and amount is not None:
+                            problems["amount"] = [
+                                "A claim of the full fair market value takes no dollar amount."
+                            ]
+                        if problems:
+                            merged_errors[str(index)] = problems
+                    if merged_errors:
+                        return Response(
+                            {"claims": merged_errors}, status=status.HTTP_400_BAD_REQUEST
+                        )
                 answers, _ = ExemptionAnswers.objects.get_or_create(session=session)
                 for name in ("line_1", "line_3", "line_3_1", "no_claims"):
                     if name in data:

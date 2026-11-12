@@ -199,6 +199,46 @@ def test_each_refused_answer_is_a_400(filer, make):
     assert _stored(session) == before
 
 
+def _stored_claim(session, **fields):
+    return ExemptionClaim.objects.create(session=session, **fields)
+
+
+PARTIAL_ROWS = {
+    "amount_added_to_full_value_claim": (
+        {"law": LAW, "amount_kind": "fair_market_value", "amount": None},
+        {"amount": "5.00"},
+    ),
+    "full_value_set_over_a_dollar_amount": (
+        {"law": LAW, "amount_kind": "dollars", "amount": Decimal("100.00")},
+        {"amount_kind": "fair_market_value"},
+    ),
+    "typed_law_added_beside_a_chosen_law": (
+        {"law": LAW, "amount_kind": "dollars", "amount": Decimal("100.00")},
+        {"other_law": "Demo Act"},
+    ),
+}
+
+
+@pytest.mark.parametrize("stored,sent", PARTIAL_ROWS.values(), ids=PARTIAL_ROWS.keys())
+def test_a_partial_row_cannot_make_a_claim_the_page_could_never_save(filer, stored, sent):
+    client, session, car, _checking = filer
+    claim = _stored_claim(session, asset_id=car.pk, **stored)
+    before = _stored(session)
+    response = _put(client, session, {"claims": [{"id": claim.pk, **sent}]})
+    assert response.status_code == 400, response.content
+    assert _stored(session) == before
+
+
+def test_a_partial_row_that_keeps_the_claim_whole_still_saves(filer):
+    client, session, car, _checking = filer
+    claim = _stored_claim(
+        session, asset_id=car.pk, law=LAW, amount_kind="dollars", amount=Decimal("100.00")
+    )
+    response = _put(client, session, {"claims": [{"id": claim.pk, "amount": "7.00"}]})
+    assert response.status_code == 200, response.content
+    assert response.json()["claims"][0]["amount"] == "7.00"
+
+
 def test_not_claiming_beside_stored_claims_is_refused(filer):
     client, session, car, _checking = filer
     _put(client, session, {"claims": [_claim(car)]})
