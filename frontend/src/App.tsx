@@ -19,6 +19,7 @@ import { IntakeWizard } from './pages/IntakeWizard';
 import { FormDashboard } from './pages/FormDashboard';
 import { DocumentUploadPage } from './pages/DocumentUploadPage';
 import { FilingFeePage } from './pages/FilingFeePage';
+import { ExemptionsPage } from './pages/ExemptionsPage';
 import { SOFAStep } from './pages/SOFAStep';
 import { AskModulePage } from './pages/AskModulePage';
 import { Component, type ReactNode, type ErrorInfo } from 'react';
@@ -78,6 +79,7 @@ function App() {
                   <Route path="/forms" element={<FormDashboard />} />
                   <Route path="/documents" element={<DocumentUploadPage />} />
                   <Route path="/filing-fee" element={<FilingFeePage />} />
+                  <Route path="/exemptions" element={<ExemptionsPage />} />
                   <Route path="/fee-waiver" element={<Navigate to="/filing-fee" replace />} />
                   <Route path="/sofa" element={<SOFAStep />} />
                   <Route path="/ask/:formType" element={<AskModulePage />} />

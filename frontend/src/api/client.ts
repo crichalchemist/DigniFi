@@ -42,6 +42,8 @@ import type {
   FormUISpec,
   AnswerPayload,
   FilingFee,
+  Exemptions,
+  ExemptionsUpdate,
 } from '../types/api';
 
 // ============================================================================
@@ -484,6 +486,19 @@ export const intakeAPI = {
       body: Partial<Omit<FilingFee, 'information' | 'information_gap'>>
     ): Promise<FilingFee> =>
       apiFetch<FilingFee>(`/intake/sessions/${sessionId}/filing-fee/`, {
+        method: 'PUT',
+        body: JSON.stringify(body),
+      }),
+  },
+
+  /**
+   * GET and PUT /api/intake/sessions/{id}/exemptions/ (a PUT sets only the keys sent)
+   */
+  exemptions: {
+    get: async (sessionId: number): Promise<Exemptions> =>
+      apiFetch<Exemptions>(`/intake/sessions/${sessionId}/exemptions/`),
+    put: async (sessionId: number, body: ExemptionsUpdate): Promise<Exemptions> =>
+      apiFetch<Exemptions>(`/intake/sessions/${sessionId}/exemptions/`, {
         method: 'PUT',
         body: JSON.stringify(body),
       }),

@@ -10,11 +10,16 @@ import re
 import pytest
 from django.conf import settings
 
-from apps.districts.exemptions import exemption_catalog_in_force
+from apps.districts.exemptions import NO_EXEMPTION_CATALOG, exemption_catalog_in_force
 
 FRONTEND = settings.BASE_DIR.parent / "frontend" / "src"
 # Later tasks extend this with each marked sentence they add.
-DRAFT_NAMES = ["EXEMPTION_LAW_SUMMARIES"]
+DRAFT_NAMES = [
+    "EXEMPTION_LAW_SUMMARIES",
+    "EXEMPTIONS_INTRO",
+    "EXEMPTIONS_NOTE_12_1201",
+    "EXEMPTIONS_NOTE_DOMICILE",
+]
 
 
 def _copy_source() -> str:
@@ -91,3 +96,7 @@ def test_the_page_and_the_server_word_each_gap_alike(name):
     from apps.intake import exemptions
 
     assert _copy_sentence(name) == getattr(exemptions, name)
+
+
+def test_the_page_names_a_missing_list_of_laws_in_the_servers_words():
+    assert _copy_sentence("EXEMPTIONS_NO_TABLE") == NO_EXEMPTION_CATALOG

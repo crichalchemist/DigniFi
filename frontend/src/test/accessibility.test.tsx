@@ -14,6 +14,7 @@ import { LoginPage } from '../pages/LoginPage';
 import { RegisterPage } from '../pages/RegisterPage';
 import { LandingPage } from '../pages/LandingPage';
 import { FormDashboard } from '../pages/FormDashboard';
+import { ExemptionsPage } from '../pages/ExemptionsPage';
 import { FormCard } from '../components/forms/FormCard';
 import { FormStatusBadge } from '../components/forms/FormStatusBadge';
 import { UPLDisclaimer } from '../components/compliance/UPLDisclaimer';
@@ -227,6 +228,18 @@ describe('Accessibility: Pages', () => {
     // Wait for data to load
     await waitFor(() => {
       expect(container.querySelector('.form-dashboard-title')).not.toBeNull();
+    });
+
+    const results = await axe(container, axeOptions);
+    expect(results).toHaveNoViolations();
+  });
+
+  it('ExemptionsPage has no violations after loading', async () => {
+    const { container } = withIntakeProvider(<ExemptionsPage />);
+
+    // The h1 shows before the read returns
+    await waitFor(() => {
+      expect(container.querySelector('input[name="exemptions_line_1"]')).not.toBeNull();
     });
 
     const results = await axe(container, axeOptions);

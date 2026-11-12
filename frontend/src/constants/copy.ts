@@ -893,3 +893,22 @@ export const EXEMPTION_GAP_AMOUNT = 'Enter the dollar amount you claim for {name
 export const EXEMPTION_GAP_DESCRIPTION = 'Type a shorter description of {name} for Schedule C.';
 export const EXEMPTION_GAP_LINE_3 = 'Answer line 3, the homestead question.';
 export const EXEMPTION_GAP_LINE_3_1 = 'Answer the second part of line 3.';
+
+export const EXEMPTIONS_TITLE = 'The property you claim as exempt';
+// DRAFT: counsel C-8
+export const EXEMPTIONS_INTRO =
+  'On Schedule C, you list the property you claim as exempt. For each claim, you choose the law and the amount. The limits shown here come from the laws themselves.';
+// DRAFT: counsel C-8
+export const EXEMPTIONS_NOTE_12_1201 =
+  'The Illinois law 735 ILCS 5/12-1201 says residents of Illinois are prohibited from using the federal exemptions in 11 U.S.C. § 522(d), except as Illinois law otherwise permits.';
+// DRAFT: counsel C-8
+export const EXEMPTIONS_NOTE_DOMICILE =
+  "Which state's laws apply depends on where you have lived. The rule, in 11 U.S.C. § 522(b)(3)(A), looks at where your legal home was for the 730 days before you file. If it was not in one state that whole time, the rule looks at where it was for most of the 180 days before that. If that rule leaves a person with no exemptions at all, the person may use the list in 11 U.S.C. § 522(d) instead. Legal aid can help you find out which set is yours.";
+// Page only: a new claim row with no property yet (P20). The server never sees one.
+export const EXEMPTION_GAP_CHOOSE_ITEM = 'Choose the property for each new claim.';
+export const EXEMPTIONS_NOT_CLAIMING_BUTTON = "I'm not claiming any property as exempt";
+export const EXEMPTIONS_NO_TABLE =
+  "DigniFi doesn't have the exemption laws for today's date yet, so it can't prepare Schedule C.";
+export const EXEMPTIONS_READ_FAILED =
+  "We couldn't get your answers just now. Please try again in a moment.";
+export const EXEMPTIONS_SAVE_FAILED = "We couldn't save your answers just now. Please try again.";
