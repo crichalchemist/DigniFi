@@ -495,6 +495,24 @@ export class WizardPage {
       await page
         .locator(`input[name="priority_answer_${index}"][value="${debt.priority_answer ?? 'no'}"]`)
         .check();
+      if (debt.priority_other !== undefined) {
+        await page.locator(`input[name="priority_other_${index}"]`).fill(debt.priority_other);
+      }
+      if (debt.priority_amount !== undefined) {
+        await page
+          .locator(`input[name="priority_amount_${index}"]`)
+          .fill(String(debt.priority_amount));
+      }
+      if (debt.nonpriority_amount !== undefined) {
+        await page
+          .locator(`input[name="nonpriority_amount_${index}"]`)
+          .fill(String(debt.nonpriority_amount));
+      }
+      if (debt.past_due_amount !== undefined) {
+        await page
+          .locator(`input[name="past_due_amount_${index}"]`)
+          .fill(String(debt.past_due_amount));
+      }
     }
 
     const parties = debt.notice_parties;

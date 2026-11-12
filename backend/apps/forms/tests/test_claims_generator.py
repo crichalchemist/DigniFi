@@ -95,6 +95,7 @@ def test_each_who_owes_cell_cites_its_ruling():
 PART = {
     "d_part_1": "Part 1",
     "d_part_2": "Part 2",
+    "ef_part_1": "Part 1",
     "ef_part_2": "Part 2",
     "ef_part_3": "Part 3",
     "g": "Contract or lease",
@@ -130,6 +131,13 @@ CELL = {
     "other_type": "Type of claim",
     "other_type_words": "Type of claim",
     "offset": "Subject to offset",
+    "priority_amount": "Priority amount",
+    "nonpriority_amount": "Nonpriority amount",
+    "type_domestic_support": "Domestic support obligations",
+    "type_taxes": "Taxes and certain other debts you owe the government",
+    "type_intoxicated": "Claims for death or personal injury while you were intoxicated",
+    "type_other": "Other. Specify",
+    "other_specify": "Other. Specify",
     "line": "Line in Part 1",
     "part": "Part of the original creditor",
     "purpose": "What the contract or lease is for",
@@ -143,7 +151,7 @@ CELL = {
 
 
 def _expected_label(group, attr):
-    if attr == "name" and group in ("d_part_1", "ef_part_2"):
+    if attr == "name" and group in ("d_part_1", "ef_part_1", "ef_part_2"):
         words = "Creditor's name"
     elif attr == "amount" and group.startswith("ef_"):
         words = "Total claim"
@@ -165,7 +173,8 @@ def test_every_claims_slot_is_labelled_from_the_table():
                 assert spec["label"] == _expected_label(spec["repeat"], attr), spec["pdf_field"]
                 checked += 1
 
-    assert checked == 112 + 48 + 165 + 78 + 121  # D, E/F, G, H (line 2's 8 are rules)
+    # E/F's 275 is Part 1's 110 (3d2) + Part 2's 102 + Part 3's 63.
+    assert checked == 112 + 48 + 275 + 78 + 121  # D, E/F, G, H (line 2's 8 are rules)
 
 
 def test_a_reformatted_or_moved_generated_file_is_caught_by_its_bytes():

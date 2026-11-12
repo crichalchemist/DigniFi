@@ -296,7 +296,7 @@ def test_a_gig_drivers_business_entry_leaves_his_debts_as_he_classed_them_and_he
     )
 
     assert classed == [d["consumer_business_classification"] for d in _andres_kettleby()["debts"]]
-    assert classed.count("business") == 1
+    assert classed.count("business") == 2
     assert len(packet(session)) == 15
 
 
@@ -401,9 +401,15 @@ def test_every_persona_answers_every_claim_question(persona):
 @pytest.mark.parametrize("persona", list(PERSONAS))
 def test_every_unsecured_seeded_debt_answers_the_priority_question(persona):
     session = _seed(persona)
+    assert session.debts.filter(is_secured=False).exists()
     for debt in session.debts.all():
         if debt.is_secured:
             assert debt.priority_answer is None
+        elif debt.creditor_name == "Internal Revenue Service":
+            assert debt.priority_answer == "taxes"
+            assert debt.past_due_amount == debt.amount_owed
+            assert debt.nonpriority_amount is None
+            assert debt.priority_amount == (Decimal("3000.00") if persona == "priya" else None)
         elif debt.creditor_name == "Illinois State Toll Highway Authority":
             assert debt.priority_answer == "not_sure"
         else:
@@ -421,7 +427,7 @@ def test_priyas_car_loan_links_to_her_car():
         Decimal("450.00"),
     )
     assert car.get_details()["model"] == "CR-V EX"
-    assert session.debts.count() == 3
+    assert session.debts.count() == 4
 
 
 @pytest.mark.django_db
@@ -453,15 +459,17 @@ def test_andres_lease_picks_the_corolla_and_copperline_picks_the_fit():
 @pytest.mark.parametrize("persona", list(PERSONAS))
 def test_each_personas_dates_fit_their_boxes(persona):
     # A date too long for its box is ValueTooLong on the form it prints on (S16). D prints only
-    # a secured debt's date, in its 50 pt box; E/F prints the rest in Part 2's six date boxes
-    # (Part 1 is priority claims, which no persona has), and a row on a copy reuses page 4's
-    # three. Row 4's `Date debt was incurred_9` (page 4, 64.1 pt) is the narrowest of the six.
+    # a secured debt's date, in its 50 pt box; E/F prints a debt answered with a kind in Part 1's
+    # date box (row 2.1's `Date debt was incurred`) and the rest in Part 2's six date boxes, and a
+    # row on a copy reuses page 4's three. Row 4's `Date debt was incurred_9` (page 4, 64.1 pt) is
+    # the narrowest of the six.
     for debt in PERSONAS[persona]()["debts"]:
-        form, key = (
-            ("schedule_d", "Date debt was incurred@1:T31")
-            if debt.get("is_secured")
-            else ("schedule_e_f", "Date debt was incurred_9@4:T7")
-        )
+        if debt.get("is_secured"):
+            form, key = "schedule_d", "Date debt was incurred@1:T31"
+        elif debt["priority_answer"] in ("domestic_support", "taxes", "intoxicated", "other"):
+            form, key = "schedule_e_f", "Date debt was incurred"
+        else:
+            form, key = "schedule_e_f", "Date debt was incurred_9@4:T7"
         PDFFormFiller().check(form, {key: debt["date_incurred"]})  # raises ValueTooLong
 
 

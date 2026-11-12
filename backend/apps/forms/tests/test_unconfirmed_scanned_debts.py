@@ -51,7 +51,7 @@ def session(db):
     return session
 
 
-def _debt(session, debt_type, amount, secured=False, draft=False):
+def _debt(session, debt_type, amount, secured=False, draft=False, answer=None):
     DebtInfo.objects.create(
         session=session,
         creditor_name=f"{debt_type} creditor",
@@ -59,6 +59,8 @@ def _debt(session, debt_type, amount, secured=False, draft=False):
         amount_owed=Decimal(amount),
         is_secured=secured,
         is_draft=draft,
+        priority_answer=answer,
+        past_due_amount=Decimal("0") if answer else None,
     )
 
 
@@ -74,6 +76,8 @@ def test_a_scanned_debt_the_filer_has_not_confirmed_counts_in_no_total(session):
     _debt(session, "auto_loan", "8000", secured=True, draft=True)
     _debt(session, "student_loan", "16000", draft=True)
     _debt(session, "credit_card", "32000", draft=True)
+    _debt(session, "other", "64000", answer="taxes")
+    _debt(session, "other", "128000", draft=True, answer="taxes")
 
     d = _resolved(session, "schedule_d")
     ef = _resolved(session, "schedule_e_f")
@@ -81,10 +85,13 @@ def test_a_scanned_debt_the_filer_has_not_confirmed_counts_in_no_total(session):
 
     assert d["undefined_24"] == "1000.00"
     assert (ef["Total_6f"], ef["Total_6i"], ef["Total_6j"]) == ("2000.00", "4000.00", "6000.00")
-    assert (summary["2"], summary["3b"], summary["3c"], summary["9d"]) == (
+    # The confirmed debt answered taxes is Part 1's whole total; its draft counts nowhere.
+    assert (ef["Total_6b"], ef["Total_6e"]) == ("64000.00", "64000.00")
+    assert (summary["2"], summary["3a"], summary["3b"], summary["3c"], summary["9d"]) == (
         "1000.00",
+        "64000.00",
         "6000.00",
-        "7000.00",
+        "71000.00",
         "2000.00",
     )
 
@@ -100,8 +107,10 @@ def test_the_petition_estimates_liabilities_from_confirmed_debts_only(session):
 def test_a_filer_whose_only_debts_are_unconfirmed_lists_no_creditors(session):
     _debt(session, "auto_loan", "1000", secured=True, draft=True)
     _debt(session, "credit_card", "2000", draft=True)
+    _debt(session, "other", "4000", draft=True, answer="taxes")
 
     assert _resolved(session, "schedule_d")["check1"] == "/no"
+    assert _resolved(session, "schedule_e_f")["check1"] == "/no"
     assert _resolved(session, "schedule_e_f")["check7"] == "/no"
     # Line 18 asks how many creditors; with none confirmed it stays blank.
     assert "Check Box21" not in _resolved(session, "form_101")

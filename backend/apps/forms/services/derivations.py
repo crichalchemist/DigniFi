@@ -33,7 +33,7 @@ from apps.intake.asset_lines import (
     rows_on,
     rows_under_gate,
 )
-from apps.intake.claim_rows import community_answers
+from apps.intake.claim_rows import claim_rows, community_answers
 from apps.intake.claims import linked_payments, total_monthly_expenses
 from apps.intake.household import count_family_size, dependents
 from apps.intake.income import (
@@ -224,16 +224,13 @@ def _total_secured_debts(session: IntakeSession) -> str:
 
 def _total_nonpriority_unsecured(session: IntakeSession) -> str:
     """
-    E/F line 6j and 106Sum 3b: every unsecured debt.
+    E/F line 6j and 106Sum 3b: the debts in Part 2.
 
-    Which debts have priority is asked since 3d1 and printed from 3d2, and a rule may not
-    decide it, so until 3d2 every unsecured debt counts as nonpriority and the priority
-    lines stay blank (step 2 spec §6.1 B5).
+    Part 2 holds the confirmed unsecured debts the filer answered "No" or "Not sure" to, or
+    has not answered; the filer's own answer moves a debt to Part 1, and no rule decides it
+    (3d spec §6).
     """
-    from apps.intake.models import DebtInfo
-
-    qs = DebtInfo.objects.confirmed().filter(session=session, is_secured=False)
-    return _fmt(_sum_encrypted(qs, "amount_owed"))
+    return _fmt(sum((row.debt.amount_owed for row in claim_rows(session).unsecured), Decimal("0")))
 
 
 def _total_debts(session: IntakeSession) -> str:
@@ -347,22 +344,71 @@ def _yes_if_any(rows) -> str:
 
 def _total_student_loans(session: IntakeSession) -> str:
     """
-    E/F line 6f and 106Sum 9d: the unsecured student loans.
+    E/F line 6f and 106Sum 9d: the student loans in Part 2.
 
-    A student loan saved as secured is on Schedule D, not E/F (Ruling T16-a).
+    A student loan saved as secured is on Schedule D, not E/F (Ruling T16-a), and one the
+    filer answered with a kind is in Part 1, so it leaves 6f.
     """
-    from apps.intake.models import DebtInfo
-
-    qs = DebtInfo.objects.confirmed().filter(
-        session=session, is_secured=False, debt_type="student_loan"
+    return _fmt(
+        sum(
+            (
+                row.debt.amount_owed
+                for row in claim_rows(session).unsecured
+                if row.debt.debt_type == "student_loan"
+            ),
+            Decimal("0"),
+        )
     )
-    return _fmt(_sum_encrypted(qs, "amount_owed"))
 
 
 def _total_other_nonpriority(session: IntakeSession) -> str:
-    """E/F line 6i, 6j - 6f: lines 6g and 6h are never asked, so 6i holds the rest."""
+    """E/F line 6i, 6j - 6f: lines 6g and 6h are never asked, so 6i holds the rest of Part 2."""
     return _fmt(
         Decimal(_total_nonpriority_unsecured(session)) - Decimal(_total_student_loans(session))
+    )
+
+
+def _total_priority(kind: str | None) -> Callable[[IntakeSession], str]:
+    """
+    A line's sum of Part 1's Total claim (B13) over the debts answered `kind`, all of them
+    for None, "0.00" with none: E/F 6a-6e and 106Sum 3a and 9a-9c.
+    """
+
+    def rule(session: IntakeSession) -> str:
+        return _fmt(
+            sum(
+                (
+                    row.debt.amount_owed
+                    for row in claim_rows(session).priority
+                    if kind is None or row.debt.priority_answer == kind
+                ),
+                Decimal("0"),
+            )
+        )
+
+    return rule
+
+
+def _has_priority_debts(session: IntakeSession) -> str:
+    """E/F line 1: Yes when Part 1 holds a debt, as check7 follows Part 2 (R2)."""
+    return "yes" if claim_rows(session).priority else "no"
+
+
+def _total_summary_line_9(session: IntakeSession) -> str:
+    """
+    106Sum 9g: 9a + 9b + 9c + 9d, which is E/F 6a + 6b + 6c + 6f (B14).
+
+    Line 9 copies 6a, 6b, 6c and 6f; 9e and 9f are never asked and count as zero, and 6d is
+    not on the line.
+    """
+    return _fmt(
+        sum(
+            (
+                Decimal(_total_priority(kind)(session))
+                for kind in ("domestic_support", "taxes", "intoxicated")
+            ),
+            Decimal(_total_student_loans(session)),
+        )
     )
 
 
@@ -918,10 +964,18 @@ DERIVATIONS: dict[str, Callable[[IntakeSession], str]] = {
     "has_codebtors": lambda s: _yes_if_any(s.codebtors.all()),
     # Schedules D and E/F: the section questions and E/F's line 6 totals
     "has_secured_debts": lambda s: _yes_if_any(s.debts.confirmed().filter(is_secured=True)),
-    # Every unsecured debt is nonpriority until 3d2 prints the priority answer, as on line 6j.
-    "has_nonpriority_debts": lambda s: _yes_if_any(s.debts.confirmed().filter(is_secured=False)),
+    # Part 2 holds the unsecured debts answered "No", "Not sure" or not yet answered (R2).
+    "has_nonpriority_debts": lambda s: "yes" if claim_rows(s).unsecured else "no",
     "total_student_loans": _total_student_loans,
     "total_other_nonpriority": _total_other_nonpriority,
+    # Part 1: E/F line 1 and 6a-6e, 106Sum 3a and 9a-9c and 9g (R6)
+    "has_priority_debts": _has_priority_debts,
+    "total_priority_domestic_support": _total_priority("domestic_support"),
+    "total_priority_taxes": _total_priority("taxes"),
+    "total_priority_intoxicated": _total_priority("intoxicated"),
+    "total_priority_other": _total_priority("other"),
+    "total_priority_unsecured": _total_priority(None),
+    "total_summary_line_9": _total_summary_line_9,
     # Form 101 lines 18-20
     "creditor_count_range": _creditor_count_range,
     "total_assets_range": _total_assets_range,
@@ -1238,6 +1292,13 @@ RULE_FIXES: dict[str, dict[str, str]] = {
     "total_nonpriority_unsecured": {"step": "debts"},
     "total_student_loans": {"step": "debts"},
     "total_other_nonpriority": {"step": "debts"},
+    "has_priority_debts": {"step": "debts"},
+    "total_priority_domestic_support": {"step": "debts"},
+    "total_priority_taxes": {"step": "debts"},
+    "total_priority_intoxicated": {"step": "debts"},
+    "total_priority_other": {"step": "debts"},
+    "total_priority_unsecured": {"step": "debts"},
+    "total_summary_line_9": {"step": "debts"},
     # The filing-fee page (3f spec §7)
     "fee_waiver_income_change_explanation": {"page": "/filing-fee"},
     "fee_waiver_installments_explanation": {"page": "/filing-fee"},

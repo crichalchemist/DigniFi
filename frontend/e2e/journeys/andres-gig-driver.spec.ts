@@ -1,7 +1,7 @@
 /**
  * Andrés Kettleby — Gig Driver
  *
- * Self-employed rideshare and delivery driver, below median, ten amounts owed.
+ * Self-employed rideshare and delivery driver, below median, eleven amounts owed.
  * His driving is a business he adds on the Income step ($4,200 from the apps less
  * $830 of driving costs), so it prints on 122A-1 line 5 and Schedule I line 8a. He pays the
  * fee in installments, so his packet has no Form 103B.
@@ -54,7 +54,7 @@ test.describe('Andrés Kettleby — Gig Driver', () => {
     // accounts; line 37 is Yes, so Part 5 shows and he fills lines 38 and 40)
     await wizard.walkAssets(ANDRES);
 
-    // Step 6: Debts (the co-signed Honda Fit loan and nine unsecured debts)
+    // Step 6: Debts (the co-signed Honda Fit loan and ten unsecured debts)
     await wizard.walkDebts(ANDRES);
 
     // Step 7: Contracts & Leases (answered from the persona)

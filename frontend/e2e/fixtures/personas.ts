@@ -229,6 +229,11 @@ export interface PersonaDebt {
   offset_answer?: 'yes' | 'no';
   // Unsecured rows only; "no" when absent
   priority_answer?: 'domestic_support' | 'taxes' | 'intoxicated' | 'other' | 'no' | 'not_sure';
+  // Under one of the four kinds only: the Other words and the three figures
+  priority_other?: string;
+  priority_amount?: number;
+  nonpriority_amount?: number;
+  past_due_amount?: number;
   notice_parties: PersonaNoticeParty[];
   secured?: PersonaSecured;
 }
@@ -705,6 +710,28 @@ export const PRIYA: PersonaData = {
       date_incurred: '11/2023',
       claim_status: [],
       secured: { position: '3.1', pick: 'CR-V', lien: ['agreement'] },
+      notice_parties: [],
+    },
+    {
+      creditor_name: 'Internal Revenue Service',
+      debt_type: 'other',
+      amount_owed: 3000,
+      monthly_payment: 200,
+      is_in_collections: false,
+      address: addr(
+        'Centralized Insolvency Operation',
+        'Philadelphia',
+        'PA',
+        '19101-7346',
+        'P.O. Box 7346'
+      ),
+      account_last_4: '0003',
+      date_incurred: 'tax year 2025',
+      claim_status: [],
+      offset_answer: 'no',
+      priority_answer: 'taxes',
+      priority_amount: 3000,
+      past_due_amount: 3000,
       notice_parties: [],
     },
   ],
@@ -1258,6 +1285,26 @@ export const ANDRES: PersonaData = {
       date_incurred: '10/18/2021',
       claim_status: [],
       offset_answer: 'no',
+      notice_parties: [],
+    },
+    {
+      creditor_name: 'Internal Revenue Service',
+      debt_type: 'other',
+      amount_owed: 2140,
+      monthly_payment: 0,
+      is_in_collections: false,
+      address: addr(
+        'Centralized Insolvency Operation',
+        'Philadelphia',
+        'PA',
+        '19101-7346',
+        'P.O. Box 7346'
+      ),
+      date_incurred: 'tax year 2025',
+      claim_status: [],
+      offset_answer: 'no',
+      priority_answer: 'taxes',
+      past_due_amount: 2140,
       notice_parties: [],
     },
   ],
