@@ -36,6 +36,7 @@ TEMPLATES = {
 PART_WORDS = {
     "d_part_1": "Part 1",
     "d_part_2": "Part 2",
+    "ef_part_1": "Part 1",
     "ef_part_2": "Part 2",
     "ef_part_3": "Part 3",
     "g": "Contract or lease",
@@ -46,6 +47,13 @@ CELL_WORDS = {
     "other_type": "Type of claim",
     "other_type_words": "Type of claim",
     "offset": "Subject to offset",
+    "priority_amount": "Priority amount",
+    "nonpriority_amount": "Nonpriority amount",
+    "type_domestic_support": "Domestic support obligations",
+    "type_taxes": "Taxes and certain other debts you owe the government",
+    "type_intoxicated": "Claims for death or personal injury while you were intoxicated",
+    "type_other": "Other. Specify",
+    "other_specify": "Other. Specify",
     "part": "Part of the original creditor",
     "name": "Name",
     "street": "Street",
@@ -83,7 +91,11 @@ CELL_WORDS = {
 
 def label(group, attr):
     if attr == "name":
-        words = "Creditor's name" if group in ("d_part_1", "ef_part_2") else CELL_WORDS[attr]
+        words = (
+            "Creditor's name"
+            if group in ("d_part_1", "ef_part_1", "ef_part_2")
+            else CELL_WORDS[attr]
+        )
     elif attr == "amount":
         words = "Column A: Amount of claim" if group == "d_part_1" else "Total claim"
     elif attr == "line":
@@ -166,10 +178,10 @@ def choices_for(widgets, attr):
         assert states == {"/yes", "/no"}, states
         return {"no": "/no", "yes": "/yes"}
     if attr == "part":
-        # The Part 1 box (first widget) stays unbound; DigniFi's parties are Part 2's.
+        # B10: a Part 1 debt's parties tick the first box (/Part 1), a Part 2 debt's the second.
         states = {export_state(w["on_state"]) for w in widgets}
-        assert "/yes" in states, states
-        return {"2": "/yes"}
+        assert {"/Part 1", "/yes"} <= states, states
+        return {"1": "/Part 1", "2": "/yes"}
     (state,) = {export_state(w["on_state"]) for w in widgets}
     return {"true": state}
 
@@ -199,6 +211,50 @@ def rule_field(index, name, rule, words, choices=None):
     kind = KIND[widgets[0]["type"]]
     spec = field(name, kind, widgets[0]["page"], words, rule=rule, choices=choices)
     return spec, widgets
+
+
+# Schedule E/F Part 1: page 1 slots 1-2 (n = 1-2), page 2 slots 3-5 (n = 3-5).
+def ef_part_1_slots():
+    amounts = {
+        1: ("undefined", "undefined_2", "undefined_3"),
+        2: ("undefined_5", "undefined_6", "undefined_7"),
+        3: ("undefined_10", "undefined_13", "undefined_15"),
+        4: ("undefined_14", "undefined_17", "undefined_18"),
+        5: ("undefined_20", "undefined_22", "undefined_25"),
+    }
+    out = {}
+    for k in range(1, 6):
+        sfx = "" if k == 1 else f"_{k}"
+        total, priority, nonpriority = amounts[k]
+        out[k] = [
+            ("name", f"Creditors Name{sfx}", None),
+            ("last_4", "account number" if k == 1 else f"account number {k}", None),
+            ("amount", total, None),
+            ("priority_amount", priority, None),
+            ("nonpriority_amount", nonpriority, None),
+            ("street", f"Street{sfx}", None),
+            ("street_2", f"1{sfx}", None),
+            ("city", f"2{sfx}", None),
+            ("state", f"3{sfx}", None),
+            ("zip", f"4{sfx}", None),
+            ("date", f"Date debt was incurred{sfx}", None),
+            ("contingent", f"Contingent{sfx}", None),
+            ("unliquidated", f"Unliquidated{sfx}", None),
+            ("disputed", f"Disputed{sfx}", None),
+            ("who", f"check {k}", None),
+            ("type_domestic_support", f"Domestic support obligations{sfx}", None),
+            ("type_taxes", f"Taxes and ceratin other debts you owe the government{sfx}", None),
+            (
+                "type_intoxicated",
+                f"Claims for death or personal injury while intoxicated{sfx}",
+                None,
+            ),
+            ("type_other", f"Other{sfx}", None),
+            ("other_specify", f"Other unsecurecured claim 2.{k}", None),
+            ("community", f"Check if this claim relates to a{sfx}", None),
+            ("offset", f"check{k + 1}", None),
+        ]
+    return out
 
 
 # Schedule E/F Part 2: page 3 slots 1-3 (n = 6-8), page 4 slots 4-6 (n = 9-11).
@@ -374,6 +430,7 @@ GROUPS = {
         ("d_part_2", "secured_notices", d_part_2_slots),
     ],
     "schedule_e_f": [
+        ("ef_part_1", "priority", ef_part_1_slots),
         ("ef_part_2", "unsecured", ef_part_2_slots),
         ("ef_part_3", "unsecured_notices", ef_part_3_slots),
     ],
@@ -382,6 +439,11 @@ GROUPS = {
 }
 
 DECLARATIONS = {
+    "ef_part_1": {
+        "extra_page": 2,
+        "number": "2.{n}",
+        "number_boxes": {"3": "undefined_12", "4": "undefined_19@2:T30", "5": "undefined_19@2:T57"},
+    },
     "ef_part_2": {
         "extra_page": 4,
         "number": "4.{n}",
@@ -456,12 +518,55 @@ def header(form_type):
         return [
             name,
             field(
+                "check1",
+                "checkbox",
+                1,
+                "Do any creditors have priority unsecured claims against you?",
+                rule="has_priority_debts",
+                choices=YES_NO,
+            ),
+            field(
                 "check7",
                 "checkbox",
                 3,
                 "Do any creditors have nonpriority unsecured claims against you?",
                 rule="has_nonpriority_debts",
                 choices=YES_NO,
+            ),
+            field(
+                "Total_6a",
+                "text",
+                6,
+                "Line 6a: Domestic support obligations",
+                rule="total_priority_domestic_support",
+            ),
+            field(
+                "Total_6b",
+                "text",
+                6,
+                "Line 6b: Taxes and certain other debts you owe the government",
+                rule="total_priority_taxes",
+            ),
+            field(
+                "Total_6c",
+                "text",
+                6,
+                "Line 6c: Claims for death or personal injury while you were intoxicated",
+                rule="total_priority_intoxicated",
+            ),
+            field(
+                "Total_6d",
+                "text",
+                6,
+                "Line 6d: Other priority unsecured claims",
+                rule="total_priority_other",
+            ),
+            field(
+                "Total_6e",
+                "text",
+                6,
+                "Line 6e: Total priority unsecured claims (6a through 6d)",
+                rule="total_priority_unsecured",
             ),
             field("Total_6f", "text", 6, "Line 6f: Student loans", rule="total_student_loans"),
             field(
@@ -538,12 +643,24 @@ CELL_RULINGS = {
             "lien_other_text",
             "line",
             "offset",
-            "part",
         ),
         "3c spec §9.3, R2",
     ),
+    "part": "3c spec §9.3, R2; 3d spec §6.1, B10",
     **dict.fromkeys(
         ("on_d", "d_lines", "on_ef", "ef_lines", "on_g", "g_lines"), "3c spec §9.3, R6, B40"
+    ),
+    **dict.fromkeys(
+        (
+            "priority_amount",
+            "nonpriority_amount",
+            "type_domestic_support",
+            "type_taxes",
+            "type_intoxicated",
+            "type_other",
+            "other_specify",
+        ),
+        "3d spec §6.2, B11",
     ),
     **dict.fromkeys(("who", "who_debtor_1", "who_another"), "3c spec §9.3, R3"),
     "value": "3c spec §9.4, R5",

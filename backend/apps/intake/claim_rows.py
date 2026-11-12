@@ -16,11 +16,12 @@ from dataclasses import dataclass
 from decimal import Decimal
 from typing import Any
 
-from apps.intake.claims import asks_who, link_is_live, ordered_debts
+from apps.intake.claims import PRIORITY_TYPES, asks_who, link_is_live, ordered_debts
 
 CLAIM_LISTS = (
     "secured",
     "secured_notices",
+    "priority",
     "unsecured",
     "unsecured_notices",
     "contracts",
@@ -56,6 +57,7 @@ class DebtRow:
 class NoticeRow:
     line: str
     party: dict
+    part: str = ""
 
 
 @dataclass(frozen=True)
@@ -76,6 +78,7 @@ class CodebtorRow:
 class ClaimRows:
     secured: tuple[DebtRow, ...]
     secured_notices: tuple[NoticeRow, ...]
+    priority: tuple[DebtRow, ...]
     unsecured: tuple[DebtRow, ...]
     unsecured_notices: tuple[NoticeRow, ...]
     contracts: tuple[ContractRow, ...]
@@ -129,9 +132,9 @@ def _debt_rows(debts, prefix: str, with_another: set, session, secured: bool) ->
     return tuple(rows)
 
 
-def _notice_rows(rows) -> tuple:
+def _notice_rows(rows, part: str = "") -> tuple:
     return tuple(
-        NoticeRow(row.line, party)
+        NoticeRow(row.line, party, part)
         for row in rows
         for party in (row.debt.get_notice_parties() or [])
     )
@@ -141,9 +144,10 @@ def _chunks(lines: list[str]) -> list[tuple[str, ...]]:
     return [tuple(lines[i : i + _PER_BOX]) for i in range(0, len(lines), _PER_BOX)]
 
 
-def _codebtor_rows(codebtors, secured, unsecured, contracts) -> tuple:
+def _codebtor_rows(codebtors, secured, priority, unsecured, contracts) -> tuple:
     d_line = {("debt", row.debt.pk): row.line for row in secured}
-    ef_line = {("debt", row.debt.pk): row.line for row in unsecured}
+    # Part 1's lines come before Part 2's (B12)
+    ef_line = {("debt", row.debt.pk): row.line for row in (*priority, *unsecured)}
     g_line = {("contract", row.contract.pk): row.line for row in contracts}
     rows = []
     for codebtor in codebtors:
@@ -174,19 +178,24 @@ def _read(session) -> ClaimRows:
         if link.get("kind") == "debt" and link.get("id") in debt_ids
     }
     secured = _debt_rows(secured_debts, "2", with_another, session, True)
-    unsecured = _debt_rows(unsecured_debts, "4", with_another, session, False)
+    # the filer's answer alone moves a debt into E/F Part 1 (B15)
+    priority_debts = [d for d in unsecured_debts if d.priority_answer in PRIORITY_TYPES]
+    part_2_debts = [d for d in unsecured_debts if d.priority_answer not in PRIORITY_TYPES]
+    priority = _debt_rows(priority_debts, "2", with_another, session, False)
+    unsecured = _debt_rows(part_2_debts, "4", with_another, session, False)
     return ClaimRows(
         secured=secured,
         secured_notices=_notice_rows(secured),
+        priority=priority,
         unsecured=unsecured,
-        unsecured_notices=_notice_rows(unsecured),
+        unsecured_notices=_notice_rows(priority, "1") + _notice_rows(unsecured, "2"),
         contracts=contract_rows,
-        codebtors=_codebtor_rows(codebtors, secured, unsecured, contract_rows),
+        codebtors=_codebtor_rows(codebtors, secured, priority, unsecured, contract_rows),
     )
 
 
 def claim_rows(session) -> ClaimRows:
-    """The six lists (R2), read once within one_read_of_claims."""
+    """The seven lists (R2), read once within one_read_of_claims."""
     held = _ONE_READ.get()
     if held is not None and session.pk in held:
         return held[session.pk]
