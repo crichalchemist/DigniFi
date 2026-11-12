@@ -29,6 +29,7 @@ describe('which claim rows a save carries', () => {
     ['the Other words', { priority_other: 'Demo deposit' }, false],
     ['a past-due amount of 0', { past_due_amount: 0 }, false],
     ['a priority amount', { priority_amount: 25 }, false],
+    ['a nonpriority amount of 0', { nonpriority_amount: 0 }, false],
     ['Other words of only spaces', { priority_other: '  ' }, true],
   ])('treats a new debt row with %s as expected', (_name, change, blank) => {
     expect(isBlankDebt({ _key: 'new-1', ...change })).toBe(blank);

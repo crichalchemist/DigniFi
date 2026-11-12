@@ -44,7 +44,7 @@ import type { AssetInfo, DebtRow, WizardRow } from '../../../../types/api';
 
 const blank = (value: string | undefined | null) => (value ?? '').trim() === '';
 
-/** Every gap of one debt, in the table's order D3 to D17, each in the row's own name */
+/** Every gap of one debt, in the table's order, each in the row's own name */
 export function debtRowGaps(row: DebtRow, assets: WizardRow<AssetInfo>[]): string[] {
   const gaps: string[] = [];
   const nameless = blank(row.creditor_name);

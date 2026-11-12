@@ -348,6 +348,16 @@ def test_other_words_longer_than_the_box_takes_are_refused(filer):
     assert _patch(client, session, [fits]).status_code == 200
 
 
+def test_other_words_longer_than_the_box_takes_are_refused_on_the_per_item_path(filer):
+    client, session = filer
+    per_item = {**ROW, "session": session.pk, "priority_answer": "other"}
+    too_long = {**per_item, "priority_other": "x" * 101}
+    assert client.post("/api/intake/debts/", too_long, format="json").status_code == 400
+    assert not session.debts.exists()
+    fits = {**per_item, "priority_other": "x" * 100}
+    assert client.post("/api/intake/debts/", fits, format="json").status_code == 201
+
+
 def test_a_debt_saved_without_the_priority_answers_reads_them_as_unanswered(filer):
     client, session = filer
     assert _patch(client, session, [ROW]).status_code == 200

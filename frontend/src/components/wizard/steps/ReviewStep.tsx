@@ -459,7 +459,9 @@ export function ReviewStep({
                         ? PRIORITY_NO
                         : debt.priority_answer === 'not_sure'
                           ? PRIORITY_NOT_SURE
-                          : PRIORITY_TYPE_WORDS[debt.priority_answer]}
+                          : debt.priority_answer === 'other' && debt.priority_other?.trim()
+                            ? `${PRIORITY_TYPE_WORDS.other}: ${debt.priority_other.trim()}`
+                            : PRIORITY_TYPE_WORDS[debt.priority_answer]}
                     </span>
                   )}
                   {(

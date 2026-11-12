@@ -28,7 +28,7 @@ def _keys(name: str, file: str = "claims.ts") -> list[str]:
     """The keys of one `export const NAME … = {` record in constants/<file>, in order."""
     text = (FRONTEND / "constants" / file).read_text()
     match = re.search(rf"^export const {name}\b[^\n]*= \{{\n(.*?)^\}};", text, re.M | re.S)
-    assert match, f"claims.ts has no {name}"
+    assert match, f"{file} has no {name}"
     return re.findall(r"^  (\w+): '[^'\n]+',$", match.group(1), re.M)
 
 

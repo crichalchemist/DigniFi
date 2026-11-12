@@ -646,29 +646,56 @@ describe('ReviewStep expense lines', () => {
     expect(screen.queryByText(new RegExp(REVIEW_PAST_DUE))).not.toBeInTheDocument();
   });
 
-  it('shows no figure under No, even when a row still carries stored figures', () => {
+  it.each([
+    ['no', PRIORITY_NO],
+    ['not_sure', PRIORITY_NOT_SURE],
+  ] as const)(
+    'shows no figure under %s, even when a row still carries stored figures',
+    (answer, words) => {
+      render(
+        <ReviewStep
+          {...baseProps}
+          debtsData={[
+            {
+              id: 1,
+              creditor_name: 'Demo Card Services',
+              debt_type: 'credit_card',
+              amount_owed: 500,
+              is_secured: false,
+              priority_answer: answer,
+              priority_amount: 1234,
+              nonpriority_amount: 567,
+              past_due_amount: 89,
+            },
+          ]}
+          onValidationChange={vi.fn()}
+        />
+      );
+      expect(screen.getByText(words)).toBeInTheDocument();
+      expect(screen.queryByText(new RegExp(PRIORITY_AMOUNT_LABEL))).not.toBeInTheDocument();
+      expect(screen.queryByText(new RegExp(NONPRIORITY_AMOUNT_LABEL))).not.toBeInTheDocument();
+      expect(screen.queryByText(new RegExp(REVIEW_PAST_DUE))).not.toBeInTheDocument();
+    }
+  );
+
+  it("shows the filer's own Other words beside the option's words", () => {
     render(
       <ReviewStep
         {...baseProps}
         debtsData={[
           {
             id: 1,
-            creditor_name: 'Demo Card Services',
-            debt_type: 'credit_card',
-            amount_owed: 500,
+            creditor_name: 'Demo Deposit Office',
+            debt_type: 'other',
+            amount_owed: 200,
             is_secured: false,
-            priority_answer: 'no',
-            priority_amount: 1234,
-            nonpriority_amount: 567,
-            past_due_amount: 89,
+            priority_answer: 'other',
+            priority_other: '  Demo deposit  ',
           },
         ]}
         onValidationChange={vi.fn()}
       />
     );
-    expect(screen.getByText(PRIORITY_NO)).toBeInTheDocument();
-    expect(screen.queryByText(new RegExp(PRIORITY_AMOUNT_LABEL))).not.toBeInTheDocument();
-    expect(screen.queryByText(new RegExp(NONPRIORITY_AMOUNT_LABEL))).not.toBeInTheDocument();
-    expect(screen.queryByText(new RegExp(REVIEW_PAST_DUE))).not.toBeInTheDocument();
+    expect(screen.getByText(`${PRIORITY_TYPE_WORDS.other}: Demo deposit`)).toBeInTheDocument();
   });
 });

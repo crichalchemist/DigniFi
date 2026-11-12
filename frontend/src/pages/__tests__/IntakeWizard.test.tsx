@@ -1697,22 +1697,31 @@ describe('IntakeWizard the priority answers on the Amounts Owed step', () => {
     priority_answer: 'taxes',
     priority_other: null,
     priority_amount: '3000.00',
-    nonpriority_amount: null,
+    nonpriority_amount: '25.00',
     past_due_amount: '0.00',
   };
 
-  it('saves each priority figure back as a number, and a blank one as null', async () => {
-    const { bodies } = serveSessionSaves({ ...sessionAtStep1, current_step: 6, debts: [heldDebt] });
+  async function continueWith(debt: Record<string, unknown>) {
+    const { bodies } = serveSessionSaves({ ...sessionAtStep1, current_step: 6, debts: [debt] });
     renderWizard();
     await screen.findByRole('heading', { name: /amounts owed/i, level: 2 });
     await userEvent.click(screen.getByRole('button', { name: /continue/i }));
     await waitFor(() => expect(bodies.length).toBeGreaterThan(0));
-    const { debts } = bodies[0] as { debts: Record<string, unknown>[] };
-    expect(debts[0]).toMatchObject({
+    return (bodies[0] as { debts: Record<string, unknown>[] }).debts[0];
+  }
+
+  it('saves each priority figure back as a number', async () => {
+    expect(await continueWith(heldDebt)).toMatchObject({
       priority_answer: 'taxes',
       priority_amount: 3000,
-      nonpriority_amount: null,
+      nonpriority_amount: 25,
       past_due_amount: 0,
+    });
+  });
+
+  it('saves a blank priority figure as null', async () => {
+    expect(await continueWith({ ...heldDebt, nonpriority_amount: null })).toMatchObject({
+      nonpriority_amount: null,
     });
   });
 });

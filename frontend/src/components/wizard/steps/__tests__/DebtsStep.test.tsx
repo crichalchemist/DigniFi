@@ -5,6 +5,7 @@ import { axe } from 'vitest-axe';
 import { DebtsStep } from '../DebtsStep';
 import { fill } from '../claims/claimNames';
 import * as copy from '../../../../constants/copy';
+import { DEBT_TYPE_WORDS } from '../../../../constants/claims';
 import type { AssetInfo, DebtInfo, DebtRow, LegacyField, WizardRow } from '../../../../types/api';
 
 // DebtsStep shows and edits the wizard's debt rows, asks every question Schedules D and E/F
@@ -253,17 +254,25 @@ describe('DebtsStep secured amounts owed', () => {
     ]);
   });
 
-  // Draft until counsel rules on C-17 (DIG-280)
-  it('picking Student loan answers nothing for the filer', async () => {
-    const user = userEvent.setup();
-    const onChange = vi.fn();
-    render(<Harness onChange={onChange} />);
-    await user.selectOptions(field('debt_type_0'), 'Student loan');
-    const row = lastRows(onChange)[0] as Record<string, unknown>;
-    expect(row).not.toHaveProperty('priority_classification');
-    expect(row.priority_answer ?? null).toBeNull();
-  });
+  it.each(Object.keys(DEBT_TYPE_WORDS))(
+    'picking the kind of debt %s answers nothing for the filer',
+    async (kind) => {
+      const user = userEvent.setup();
+      const onChange = vi.fn();
+      render(<Harness onChange={onChange} />);
+      await user.selectOptions(field('debt_type_0'), kind);
+      const row = lastRows(onChange)[0] as Record<string, unknown>;
+      expect(row).not.toHaveProperty('priority_classification');
+      expect(row.priority_answer ?? null).toBeNull();
+      expect(
+        ([...all('[name="priority_answer_0"]')] as HTMLInputElement[]).some(
+          (radio) => radio.checked
+        )
+      ).toBe(false);
+    }
+  );
 
+  // Draft until counsel rules on C-17 (DIG-280)
   it("gives a creditor, not a collector, as the name's example", () => {
     render(<Harness />);
     expect(screen.getByPlaceholderText('e.g., Capital One, Dr. Smith')).toBeInTheDocument();
@@ -982,17 +991,39 @@ describe('the priority question', () => {
     expect(field('past_due_amount_0')).toBeNull();
   });
 
-  it('clears the figures and the words when the answer leaves a kind', async () => {
+  it.each(['no', 'not_sure'])(
+    'clears the figures and the words when the answer leaves a kind for %s',
+    async (answer) => {
+      const user = userEvent.setup();
+      const onChange = vi.fn();
+      render(<Harness initial={[answered]} onChange={onChange} />);
+      await user.click(box('priority_answer_0', answer));
+      expect(lastRows(onChange)[0]).toMatchObject({
+        priority_answer: answer,
+        priority_other: null,
+        priority_amount: null,
+        nonpriority_amount: null,
+        past_due_amount: null,
+      });
+    }
+  );
+
+  it('keeps the split when the filer moves from a kind to Other', async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();
-    render(<Harness initial={[answered]} onChange={onChange} />);
-    await user.click(box('priority_answer_0', 'no'));
+    render(
+      <Harness
+        initial={[{ ...answered, priority_answer: 'taxes', priority_other: null }]}
+        onChange={onChange}
+      />
+    );
+    await user.click(box('priority_answer_0', 'other'));
     expect(lastRows(onChange)[0]).toMatchObject({
-      priority_answer: 'no',
+      priority_answer: 'other',
       priority_other: null,
-      priority_amount: null,
-      nonpriority_amount: null,
-      past_due_amount: null,
+      priority_amount: 10,
+      nonpriority_amount: 5,
+      past_due_amount: 0,
     });
   });
 
@@ -1037,21 +1068,44 @@ describe('the priority question', () => {
     ).toBe(false);
   });
 
-  it('holds Continue while a priority figure box holds part of a number', () => {
-    const onValidity = vi.fn();
-    render(
-      <Harness
-        initial={[{ ...complete, priority_answer: 'taxes', past_due_amount: 0 }]}
-        onValidity={onValidity}
-      />
-    );
-    expect(lastValidity(onValidity)).toBe(true);
-    // jsdom reports no badInput by itself, so the test forces it, as the amount box's test does
-    const input = field('past_due_amount_0');
-    Object.defineProperty(input, 'validity', { value: { badInput: true }, configurable: true });
-    fireEvent.input(input);
-    expect(lastValidity(onValidity)).toBe(false);
-  });
+  it.each(['priority_amount_0', 'nonpriority_amount_0', 'past_due_amount_0'])(
+    'holds Continue while the priority figure box %s holds part of a number',
+    (name) => {
+      const onValidity = vi.fn();
+      render(
+        <Harness
+          initial={[{ ...complete, priority_answer: 'taxes', past_due_amount: 0 }]}
+          onValidity={onValidity}
+        />
+      );
+      expect(lastValidity(onValidity)).toBe(true);
+      // jsdom reports no badInput by itself, so the test forces it, as the amount box's test does
+      const input = field(name);
+      Object.defineProperty(input, 'validity', { value: { badInput: true }, configurable: true });
+      fireEvent.input(input);
+      expect(lastValidity(onValidity)).toBe(false);
+    }
+  );
+
+  it.each(['priority_amount_0', 'nonpriority_amount_0', 'past_due_amount_0'])(
+    'holds Continue while the priority figure box %s shows a figure too wide to save',
+    (name) => {
+      const onValidity = vi.fn();
+      render(
+        <Harness
+          initial={[{ ...complete, priority_answer: 'taxes', past_due_amount: 0 }]}
+          onValidity={onValidity}
+        />
+      );
+      expect(lastValidity(onValidity)).toBe(true);
+      fireEvent.input(field(name), { target: { value: '12345678901' } });
+      expect(screen.getByText(copy.AMOUNT_TOO_LARGE)).toBeInTheDocument();
+      expect(field(name).value).toBe('12345678901');
+      expect(lastValidity(onValidity)).toBe(false);
+      fireEvent.input(field(name), { target: { value: '1234' } });
+      expect(screen.queryByText(copy.AMOUNT_TOO_LARGE)).not.toBeInTheDocument();
+    }
+  );
 
   it('says the first priority gap and holds Continue until it is answered', async () => {
     const user = userEvent.setup();

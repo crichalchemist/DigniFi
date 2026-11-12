@@ -28,6 +28,10 @@ const ADVICE: RegExp[] = [
   /\byou are eligible\b/i,
   /\bthis is the best option\b/i,
   /\byou need to file\b/i,
+  // The spec's anti-goal wording (3d spec §1, §7): never call a debt priority or say it is paid first
+  /\bpaid first\b/i,
+  /\bis (a )?priority\b/i,
+  /\bpriority claim/i,
 ];
 
 const CLAIM_NAMES = [
@@ -199,6 +203,9 @@ describe('the claim steps give information, never advice', () => {
     'Enter $0.50.',
     'Enter $0,500.',
     'You are eligible for this.',
+    'This amount is paid first.',
+    'This debt is priority.',
+    'List it as a priority claim.',
   ])('finds the advice in "%s"', (sentence) => {
     expect(adviceIn(sentence)).not.toEqual([]);
   });

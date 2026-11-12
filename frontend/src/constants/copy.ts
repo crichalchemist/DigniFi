@@ -659,7 +659,7 @@ export const PRIORITY_TAXES_HELP =
 
 // DRAFT: counsel C-2
 export const PRIORITY_INTOXICATED_HELP =
-  'Money owed for a death or injury caused by a car, boat or plane. It applies only if the person at the controls was intoxicated.';
+  'Money owed for a death or injury caused by a car or other motor vehicle, or by a boat. It applies only if the person at the controls was intoxicated.';
 
 // DRAFT: counsel C-2
 export const PRIORITY_OTHER_HELP =
