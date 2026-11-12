@@ -23,6 +23,7 @@ import {
   EXEMPTIONS_ANOTHER_LAW,
   EXEMPTIONS_AMOUNT_LABEL,
   EXEMPTIONS_CHOOSE_ONE,
+  EXEMPTIONS_CLAIM_NUMBER,
   EXEMPTIONS_CLAIMS_HEADING,
   EXEMPTIONS_DESCRIPTION_DOESNT_FIT,
   EXEMPTIONS_DOLLAR_AMOUNT,
@@ -292,6 +293,7 @@ const answerLines = async () => {
 };
 const optionTexts = (select: HTMLElement) =>
   Array.from((select as HTMLSelectElement).options).map((option) => option.text);
+const numbered = (template: string, n: number) => template.replace('{n}', String(n));
 
 describe('ExemptionsPage claims', () => {
   it('lists every law once, Illinois then federal, with its summary and limit', async () => {
@@ -376,7 +378,9 @@ describe('ExemptionsPage claims', () => {
     expect(
       screen.queryByRole('button', { name: EXEMPTIONS_NOT_CLAIMING_BUTTON })
     ).not.toBeInTheDocument();
-    await userEvent.click(screen.getByRole('button', { name: EXEMPTIONS_REMOVE_CLAIM }));
+    await userEvent.click(
+      screen.getByRole('button', { name: numbered(EXEMPTIONS_REMOVE_CLAIM, 1) })
+    );
     expect(screen.getByRole('button', { name: EXEMPTIONS_NOT_CLAIMING_BUTTON })).toHaveAttribute(
       'aria-pressed',
       'false'
@@ -432,6 +436,31 @@ describe('ExemptionsPage claims', () => {
     const options = optionTexts(screen.getByLabelText(EXEMPTIONS_PROPERTY_LABEL));
     expect(options).toContain('JPMorgan Chase (line 17.1)');
     expect(options).toContain('JPMorgan Chase (line 17.3)');
+  });
+
+  it('names each claim and its Remove by number, and Remove takes away only that claim', async () => {
+    // Nine identical "Remove" buttons would let a screen-reader filer delete the wrong sworn claim
+    const sent = serve(
+      fullRecord({ claims: [claimOf({ id: 1, asset: 11 }), claimOf({ id: 2, asset: 12 })] })
+    );
+    renderPage();
+    await ready();
+    await answerLines();
+    const first = screen.getByRole('group', { name: numbered(EXEMPTIONS_CLAIM_NUMBER, 1) });
+    const second = screen.getByRole('group', { name: numbered(EXEMPTIONS_CLAIM_NUMBER, 2) });
+    expect(
+      within(first).getByRole('button', { name: numbered(EXEMPTIONS_REMOVE_CLAIM, 1) })
+    ).toBeInTheDocument();
+    await userEvent.click(
+      within(second).getByRole('button', { name: numbered(EXEMPTIONS_REMOVE_CLAIM, 2) })
+    );
+    expect(
+      screen.queryByRole('group', { name: numbered(EXEMPTIONS_CLAIM_NUMBER, 2) })
+    ).not.toBeInTheDocument();
+    expect(screen.getByLabelText(EXEMPTIONS_PROPERTY_LABEL)).toHaveValue('11');
+    await pressContinue();
+    await screen.findByText('Statement of Financial Affairs');
+    expect((sent[0].claims as ExemptionClaim[]).map((claim) => claim.id)).toEqual([1]);
   });
 
   it('shows totals that look the same over and under a limit', async () => {

@@ -915,7 +915,7 @@ export const EXEMPTIONS_SAVE_FAILED = "We couldn't save your answers just now. P
 export const EXEMPTIONS_DESCRIPTION_DOESNT_FIT =
   "This description doesn't fit in its box on Schedule C. Type a shorter one. The form can't print some letters and symbols, such as emoji.";
 export const EXEMPTIONS_OTHER_LAW_DOESNT_FIT =
-  "This law doesn't fit in its box on Schedule C. Type a shorter one. The form can't print some letters and symbols, such as emoji.";
+  "The law you typed doesn't fit in its box on Schedule C. Type it with fewer letters. The form can't print some letters and symbols, such as emoji.";
 // DRAFT: counsel C-8
 export const EXEMPTION_NO_LIMIT = 'This law names no dollar limit.';
 // DRAFT: counsel C-8
@@ -941,5 +941,6 @@ export const EXEMPTIONS_CHOOSE_ONE = 'Choose one';
 export const EXEMPTIONS_AMOUNT_LABEL = 'Amount you claim';
 export const EXEMPTIONS_DOLLAR_AMOUNT = 'A dollar amount';
 export const EXEMPTIONS_SHORT_LABEL = 'A shorter description for Schedule C';
-export const EXEMPTIONS_REMOVE_CLAIM = 'Remove this claim';
+export const EXEMPTIONS_CLAIM_NUMBER = 'Claim {n}';
+export const EXEMPTIONS_REMOVE_CLAIM = 'Remove claim {n}';
 export const EXEMPTIONS_TOTALS_HEADING = 'Totals by law';

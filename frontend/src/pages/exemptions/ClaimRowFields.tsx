@@ -7,6 +7,7 @@ import {
   EXEMPTIONS_AMOUNT_LABEL,
   EXEMPTIONS_ANOTHER_LAW,
   EXEMPTIONS_CHOOSE_ONE,
+  EXEMPTIONS_CLAIM_NUMBER,
   EXEMPTIONS_DOLLAR_AMOUNT,
   EXEMPTIONS_LAW_LABEL,
   EXEMPTIONS_PROPERTY_LABEL,
@@ -58,8 +59,12 @@ export function ClaimRowFields({
     else onChange({ ...row, law: value === '' ? null : value, otherLawChosen: false });
   };
 
+  // Each row's group and Remove carry its number, so a screen reader tells nine claims apart
+  const numbered = (template: string) => template.replace('{n}', String(index + 1));
+
   return (
-    <div className="exemption-claim">
+    <fieldset className="exemption-claim fee-waiver-question">
+      <legend className="form-label">{numbered(EXEMPTIONS_CLAIM_NUMBER)}</legend>
       <FormSelect
         label={EXEMPTIONS_PROPERTY_LABEL}
         name={`claim_${index}_asset`}
@@ -150,8 +155,8 @@ export function ClaimRowFields({
       )}
 
       <Button type="button" variant="outline" onClick={onRemove}>
-        {EXEMPTIONS_REMOVE_CLAIM}
+        {numbered(EXEMPTIONS_REMOVE_CLAIM)}
       </Button>
-    </div>
+    </fieldset>
   );
 }

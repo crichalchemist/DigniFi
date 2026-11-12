@@ -18,6 +18,7 @@ import {
   EXEMPTION_GAP_LINE_3_1,
   EXEMPTION_GAP_NO_CLAIMS,
   EXEMPTION_GAP_NO_ITEMS,
+  EXEMPTIONS_NOT_CLAIMING_BUTTON,
 } from '../../../constants/copy';
 import type { ExemptionItem } from '../../../types/api';
 
@@ -146,6 +147,13 @@ describe('firstExemptionGap', () => {
     expect(gap(DONE, [second, first])).toBe(
       EXEMPTION_GAP_LAW.replace('{name}', 'Honda Civic 2015')
     );
+  });
+
+  it('quotes the not-claiming button in the words the button shows', () => {
+    // A filer told to press a button must find a button with those words
+    const quoted = `“${EXEMPTIONS_NOT_CLAIMING_BUTTON}.”`;
+    expect(EXEMPTION_GAP_NO_CLAIMS).toContain(quoted);
+    expect(EXEMPTION_GAP_NO_ITEMS).toContain(quoted);
   });
 
   it('is null for a finished page', () => {

@@ -133,6 +133,23 @@ describe('Reading Level Validation', () => {
   });
 });
 
+describe('Exemptions page gap sentences', () => {
+  // 3g1 spec 5.5: a gap sentence scores grade 8.4 or below, under the page's general 9
+  const GAP_MAX_GRADE = 8.4;
+  const gaps = Object.entries(copy).filter(
+    (entry): entry is [string, string] =>
+      entry[0].startsWith('EXEMPTION_GAP_') && typeof entry[1] === 'string'
+  );
+
+  it('finds every gap sentence', () => {
+    expect(gaps).toHaveLength(12);
+  });
+
+  it.each(gaps)(`%s is at or below grade ${GAP_MAX_GRADE}`, (_name, text) => {
+    expect(fleschKincaidGrade(text)).toBeLessThanOrEqual(GAP_MAX_GRADE);
+  });
+});
+
 describe('Shared cases with the backend scorer', () => {
   // test_exemption_catalog.py scores the same file with the backend's formula (P9).
   const cases = JSON.parse(rawCases) as { text: string; grade: number }[];
