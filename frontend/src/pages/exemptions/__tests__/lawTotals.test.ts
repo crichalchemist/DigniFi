@@ -49,6 +49,16 @@ describe('lawTotals', () => {
     ]);
   });
 
+  it('leaves a refused amount out, so it can never lower or raise a total', () => {
+    const totals = lawTotals(
+      [claim({ law: 'a', amount: '7' }), claim({ law: 'a', amount: '-5' })],
+      LAWS
+    );
+    expect(totals).toEqual([
+      { label: '1 ILCS 1/a', dollars: 7, fairMarketCount: 0, limitText: 'Up to $4,000.' },
+    ]);
+  });
+
   it('counts a blank dollar box as nothing', () => {
     const totals = lawTotals(
       [claim({ law: 'b', amount: '' }), claim({ law: 'b', amount: '7' })],

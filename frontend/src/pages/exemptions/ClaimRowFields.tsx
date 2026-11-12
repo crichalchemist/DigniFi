@@ -27,6 +27,9 @@ interface Props {
   laws: ExemptionLaw[];
   onChange: (row: ClaimRow) => void;
   onRemove: () => void;
+  /** The server's refusal of this row's short description or typed law, as a sentence */
+  descriptionError?: string;
+  otherLawError?: string;
 }
 
 const AMOUNT_KINDS: { value: ExemptionAmountKind; label: string }[] = [
@@ -35,7 +38,16 @@ const AMOUNT_KINDS: { value: ExemptionAmountKind; label: string }[] = [
 ];
 
 /** One claim: a property, a law, an amount. Nothing is chosen for the filer. */
-export function ClaimRowFields({ index, row, items, laws, onChange, onRemove }: Props) {
+export function ClaimRowFields({
+  index,
+  row,
+  items,
+  laws,
+  onChange,
+  onRemove,
+  descriptionError,
+  otherLawError,
+}: Props) {
   const item = items.find((candidate) => candidate.id === row.asset);
   // A box holding part of a number ('-') reads as empty, so the row can't show why Continue waits
   const [partialAmount, setPartialAmount] = useState(false);
@@ -78,6 +90,7 @@ export function ClaimRowFields({ index, row, items, laws, onChange, onRemove }: 
           name={`claim_${index}_other_law`}
           maxLength={300}
           value={row.other_law}
+          error={otherLawError}
           onChange={(event) => onChange({ ...row, other_law: event.target.value })}
         />
       )}
@@ -96,7 +109,11 @@ export function ClaimRowFields({ index, row, items, laws, onChange, onRemove }: 
                 value={kind.value}
                 aria-required
                 checked={row.amount_kind === kind.value}
-                onChange={() => onChange({ ...row, amount_kind: kind.value })}
+                onChange={() => {
+                  // The part-typed message belongs to the box, which a switch of kind unmounts
+                  setPartialAmount(false);
+                  onChange({ ...row, amount_kind: kind.value });
+                }}
               />
               {kind.label}
             </label>
@@ -126,6 +143,7 @@ export function ClaimRowFields({ index, row, items, laws, onChange, onRemove }: 
             name={`claim_${index}_short_description`}
             maxLength={60}
             value={row.short_description}
+            error={descriptionError}
             onChange={(event) => onChange({ ...row, short_description: event.target.value })}
           />
         </>

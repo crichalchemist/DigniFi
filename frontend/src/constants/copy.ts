@@ -912,6 +912,10 @@ export const EXEMPTIONS_NO_TABLE =
 export const EXEMPTIONS_READ_FAILED =
   "We couldn't get your answers just now. Please try again in a moment.";
 export const EXEMPTIONS_SAVE_FAILED = "We couldn't save your answers just now. Please try again.";
+export const EXEMPTIONS_DESCRIPTION_DOESNT_FIT =
+  "This description doesn't fit in its box on Schedule C. Type a shorter one. The form can't print some letters and symbols, such as emoji.";
+export const EXEMPTIONS_OTHER_LAW_DOESNT_FIT =
+  "This law doesn't fit in its box on Schedule C. Type a shorter one. The form can't print some letters and symbols, such as emoji.";
 // DRAFT: counsel C-8
 export const EXEMPTION_NO_LIMIT = 'This law names no dollar limit.';
 // DRAFT: counsel C-8

@@ -98,13 +98,20 @@ export class APIClientError extends Error {
   step?: string;
   /** The page (a route) that fixes a refusal, when the server names one */
   page?: string;
+  /** The response's whole JSON body, for a refusal that names fields (a DRF 400) */
+  body?: Record<string, unknown>;
 
   constructor(
     message: string,
     statusCode: number,
     details?: Record<string, unknown>,
     serverError?: string,
-    pointers: { errors?: CompletionError[]; step?: string; page?: string } = {}
+    pointers: {
+      errors?: CompletionError[];
+      step?: string;
+      page?: string;
+      body?: Record<string, unknown>;
+    } = {}
   ) {
     super(message);
     this.name = 'APIClientError';
@@ -114,6 +121,7 @@ export class APIClientError extends Error {
     this.errors = pointers.errors;
     this.step = pointers.step;
     this.page = pointers.page;
+    this.body = pointers.body;
   }
 }
 
@@ -150,6 +158,10 @@ async function handleAPIError(response: Response): Promise<never> {
       errors: Array.isArray(errors) ? errors.filter(isCompletionError) : undefined,
       step: typeof errorData.step === 'string' ? errorData.step : undefined,
       page: typeof errorData.page === 'string' ? errorData.page : undefined,
+      body:
+        typeof errorData === 'object' && errorData !== null && !Array.isArray(errorData)
+          ? (errorData as unknown as Record<string, unknown>)
+          : undefined,
     }
   );
 }

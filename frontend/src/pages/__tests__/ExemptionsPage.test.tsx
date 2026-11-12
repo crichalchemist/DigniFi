@@ -16,13 +16,16 @@ import {
   EXEMPTIONS_LINE_3_QUESTION,
   EXEMPTIONS_LINE_3_1_QUESTION,
 } from '../../constants/formText';
-import { AMOUNT_NEGATIVE, AMOUNT_TOO_LARGE } from '../../constants/copy';
+import { AMOUNT_NEGATIVE, AMOUNT_NOT_A_NUMBER, AMOUNT_TOO_LARGE } from '../../constants/copy';
+import { EXEMPTIONS_FAIR_MARKET_WORDS } from '../../constants/formText';
 import {
   EXEMPTIONS_ADD_CLAIM,
   EXEMPTIONS_ANOTHER_LAW,
   EXEMPTIONS_AMOUNT_LABEL,
   EXEMPTIONS_CHOOSE_ONE,
   EXEMPTIONS_CLAIMS_HEADING,
+  EXEMPTIONS_DESCRIPTION_DOESNT_FIT,
+  EXEMPTIONS_DOLLAR_AMOUNT,
   EXEMPTIONS_LAWS_HEADING,
   EXEMPTIONS_LAW_LABEL,
   EXEMPTIONS_NO_ITEMS,
@@ -30,6 +33,7 @@ import {
   EXEMPTIONS_NOTE_12_1201,
   EXEMPTIONS_NOTE_DOMICILE,
   EXEMPTIONS_NOT_CLAIMING_BUTTON,
+  EXEMPTIONS_OTHER_LAW_DOESNT_FIT,
   EXEMPTIONS_PROPERTY_LABEL,
   EXEMPTIONS_READ_FAILED,
   EXEMPTIONS_REMOVE_CLAIM,
@@ -298,9 +302,20 @@ describe('ExemptionsPage claims', () => {
     const rows = laws.getAllByRole('listitem');
     expect(rows).toHaveLength(25);
     LAWS.forEach((law, index) => expect(rows[index]).toHaveTextContent(law.citation));
-    expect(rows.slice(0, 22).every((_, i) => LAWS[i].jurisdiction === 'illinois')).toBe(true);
-    expect(laws.getByRole('heading', { name: 'Illinois laws' })).toBeInTheDocument();
-    expect(laws.getByRole('heading', { name: 'Federal laws' })).toBeInTheDocument();
+    // Each heading's own list holds its jurisdiction's laws and no others, in the catalog's order
+    const citationsUnder = (heading: string) => {
+      const list = laws.getByRole('heading', { name: heading }).nextElementSibling as HTMLElement;
+      expect(list.tagName).toBe('UL');
+      return within(list)
+        .getAllByRole('listitem')
+        .map((item) => item.querySelector('strong')?.textContent);
+    };
+    expect(citationsUnder('Illinois laws')).toEqual(
+      LAWS.filter((law) => law.jurisdiction === 'illinois').map((law) => law.citation)
+    );
+    expect(citationsUnder('Federal laws')).toEqual(
+      LAWS.filter((law) => law.jurisdiction === 'federal').map((law) => law.citation)
+    );
 
     const vehicle = rows[LAWS.findIndex((law) => law.key === C)];
     expect(vehicle).toHaveTextContent(EXEMPTION_LAW_SUMMARIES[C]);
@@ -540,6 +555,152 @@ describe('ExemptionsPage claims', () => {
         short_description: null,
       },
     ]);
+  });
+});
+
+describe('ExemptionsPage new claims, from the controls to the request', () => {
+  const claimBox = (name: string) =>
+    document.querySelector(`[name="${name}"]`) as HTMLInputElement | HTMLSelectElement;
+
+  it('sends a new claim with a listed law and a dollar amount as the filer entered it', async () => {
+    const sent = serve(fullRecord());
+    renderPage();
+    await ready();
+    await answerLines();
+    await userEvent.click(screen.getByRole('button', { name: EXEMPTIONS_ADD_CLAIM }));
+    await userEvent.selectOptions(claimBox('claim_0_asset'), '11');
+    await userEvent.selectOptions(claimBox('claim_0_law'), C);
+    await userEvent.click(screen.getByRole('radio', { name: EXEMPTIONS_DOLLAR_AMOUNT }));
+    await userEvent.type(claimBox('claim_0_amount'), '2500.5');
+    await pressContinue();
+    await screen.findByText('Statement of Financial Affairs');
+    expect(sent[0].claims).toEqual([
+      {
+        id: null,
+        asset: 11,
+        law: C,
+        other_law: '',
+        amount_kind: 'dollars',
+        amount: '2500.5',
+        short_description: null,
+      },
+    ]);
+  });
+
+  it('drops the part-typed-number message when the amount box goes away and comes back', async () => {
+    serve(fullRecord({ claims: [claimOf({ id: 1, asset: 11, amount: null })] }));
+    renderPage();
+    await ready();
+    // jsdom never sets badInput, so the box reports it the way a browser does for a lone '-'
+    const box = claimBox('claim_0_amount');
+    Object.defineProperty(box, 'validity', { value: { badInput: true }, configurable: true });
+    fireEvent.input(box);
+    expect(screen.getByText(AMOUNT_NOT_A_NUMBER)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('radio', { name: EXEMPTIONS_FAIR_MARKET_WORDS }));
+    await userEvent.click(screen.getByRole('radio', { name: EXEMPTIONS_DOLLAR_AMOUNT }));
+    expect(screen.queryByText(AMOUNT_NOT_A_NUMBER)).not.toBeInTheDocument();
+  });
+
+  it('sends a typed law with no catalog law, and no amount under 100%', async () => {
+    const sent = serve(fullRecord());
+    renderPage();
+    await ready();
+    await answerLines();
+    await userEvent.click(screen.getByRole('button', { name: EXEMPTIONS_ADD_CLAIM }));
+    await userEvent.selectOptions(claimBox('claim_0_asset'), '14');
+    await userEvent.selectOptions(claimBox('claim_0_law'), '__other__');
+    await userEvent.type(claimBox('claim_0_other_law'), '  Demo Law 5 ');
+    await userEvent.click(screen.getByRole('radio', { name: EXEMPTIONS_FAIR_MARKET_WORDS }));
+    await pressContinue();
+    await screen.findByText('Statement of Financial Affairs');
+    expect(sent[0].claims).toEqual([
+      {
+        id: null,
+        asset: 14,
+        law: null,
+        other_law: 'Demo Law 5',
+        amount_kind: 'fair_market_value',
+        amount: null,
+        short_description: null,
+      },
+    ]);
+  });
+});
+
+describe('ExemptionsPage refusals of a text Schedule C cannot hold', () => {
+  function serveRefusal(saved: Exemptions, body: Record<string, unknown>) {
+    server.use(
+      http.get(URL, () => HttpResponse.json(saved)),
+      http.put(URL, () => HttpResponse.json(body, { status: 400 }))
+    );
+  }
+  const longItem: ExemptionItem = {
+    ...ITEMS[3],
+    name: 'Bed, couch, table, kitchenware (secondhand)',
+    description_fits: false,
+  };
+
+  it('shows the description sentence beside that row’s box, and not the save-failed one', async () => {
+    serveRefusal(
+      fullRecord({
+        items: [ITEMS[0], longItem],
+        claims: [
+          claimOf({ id: 1, asset: 11 }),
+          claimOf({ id: 2, asset: 14, short_description: 'Bed, couch' }),
+        ],
+      }),
+      { claims: { '1': { short_description: ["This description doesn't fit in its box."] } } }
+    );
+    renderPage();
+    await ready();
+    await answerLines();
+    await pressContinue();
+    const box = document.querySelector('input[name="claim_1_short_description"]') as HTMLElement;
+    expect(await screen.findByText(EXEMPTIONS_DESCRIPTION_DOESNT_FIT)).toBeInTheDocument();
+    expect(box).toHaveAccessibleDescription(EXEMPTIONS_DESCRIPTION_DOESNT_FIT);
+    expect(screen.queryByText(EXEMPTIONS_SAVE_FAILED)).not.toBeInTheDocument();
+    expect(screen.queryByText('Statement of Financial Affairs')).not.toBeInTheDocument();
+
+    // Changing that box takes the sentence away
+    await userEvent.type(box, 's');
+    expect(screen.queryByText(EXEMPTIONS_DESCRIPTION_DOESNT_FIT)).not.toBeInTheDocument();
+  });
+
+  it('shows the law sentence beside the typed law of that row only', async () => {
+    serveRefusal(
+      fullRecord({
+        claims: [
+          claimOf({ id: 1, asset: 11, law: null, other_law: 'Demo Law 5' }),
+          claimOf({ id: 2, asset: 14, law: null, other_law: 'Demo Law 6' }),
+        ],
+      }),
+      { claims: { '0': { other_law: ["This law doesn't fit in its box on Schedule C."] } } }
+    );
+    renderPage();
+    await ready();
+    await answerLines();
+    await pressContinue();
+    expect(await screen.findAllByText(EXEMPTIONS_OTHER_LAW_DOESNT_FIT)).toHaveLength(1);
+    expect(document.querySelector('input[name="claim_0_other_law"]')).toHaveAccessibleDescription(
+      EXEMPTIONS_OTHER_LAW_DOESNT_FIT
+    );
+    expect(
+      document.querySelector('input[name="claim_1_other_law"]')
+    ).not.toHaveAccessibleDescription(EXEMPTIONS_OTHER_LAW_DOESNT_FIT);
+    expect(screen.queryByText(EXEMPTIONS_SAVE_FAILED)).not.toBeInTheDocument();
+  });
+
+  it('keeps the save-failed sentence for any other 400', async () => {
+    serveRefusal(fullRecord({ claims: [claimOf({ id: 1, asset: 11 })] }), {
+      claims: { '0': { amount: ['A valid number is required.'] } },
+    });
+    renderPage();
+    await ready();
+    await answerLines();
+    await pressContinue();
+    expect(await screen.findByRole('alert')).toHaveTextContent(EXEMPTIONS_SAVE_FAILED);
+    expect(screen.queryByText(EXEMPTIONS_DESCRIPTION_DOESNT_FIT)).not.toBeInTheDocument();
+    expect(screen.queryByText(EXEMPTIONS_OTHER_LAW_DOESNT_FIT)).not.toBeInTheDocument();
   });
 });
 

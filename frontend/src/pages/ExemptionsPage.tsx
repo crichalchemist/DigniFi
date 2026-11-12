@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useIntake } from '../context/IntakeContext';
-import { api } from '../api/client';
+import { api, APIClientError } from '../api/client';
 import { Button } from '../components/common';
 import { UPLDisclaimer } from '../components/compliance';
 import { REQUIRED_MARK } from '../components/wizard/steps/assets/AssetRowFields';
@@ -16,6 +16,8 @@ import {
 import { formatFigure } from '../components/wizard/steps/claims/linkedPayments';
 import {
   EXEMPTIONS_ADD_CLAIM,
+  EXEMPTIONS_DESCRIPTION_DOESNT_FIT,
+  EXEMPTIONS_OTHER_LAW_DOESNT_FIT,
   EXEMPTIONS_CLAIMS_HEADING,
   EXEMPTIONS_FEDERAL_LAWS,
   EXEMPTIONS_ILLINOIS_LAWS,
@@ -85,6 +87,36 @@ const blankClaim = (key: string): ClaimRow => ({
   short_description: '',
 });
 
+type FitErrors = Record<string, { description?: true; otherLaw?: true }>;
+
+const withoutFit = (current: FitErrors, key: string, field: 'description' | 'otherLaw') => {
+  if (!current[key]?.[field]) return current;
+  const row = { ...current[key] };
+  delete row[field];
+  const next = { ...current };
+  if (Object.keys(row).length === 0) delete next[key];
+  else next[key] = row;
+  return next;
+};
+
+// The rows a 400 names for a short description or a typed law Schedule C can't hold: the body is
+// {claims: {"<index>": {short_description: [...], other_law: [...]}}}, the index being the row's
+// place in the list sent. Any other refusal gives {}.
+function fitRefusals(caught: unknown, sentKeys: string[]): FitErrors {
+  if (!(caught instanceof APIClientError) || caught.statusCode !== 400) return {};
+  const claims = caught.body?.claims;
+  if (typeof claims !== 'object' || claims === null || Array.isArray(claims)) return {};
+  const refused: FitErrors = {};
+  for (const [index, errors] of Object.entries(claims as Record<string, unknown>)) {
+    const key = sentKeys[Number(index)];
+    if (key === undefined || typeof errors !== 'object' || errors === null) continue;
+    const fields = errors as Record<string, unknown>;
+    if (fields.short_description) refused[key] = { ...refused[key], description: true };
+    if (fields.other_law) refused[key] = { ...refused[key], otherLaw: true };
+  }
+  return refused;
+}
+
 function LawList({ title, laws }: { title: string; laws: ExemptionLaw[] }) {
   return (
     <>
@@ -119,6 +151,10 @@ export function ExemptionsPage() {
   const [readAttempt, setReadAttempt] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  // The server's refusals of a short description or a typed law, by row and then by field
+  const [fitErrors, setFitErrors] = useState<
+    Record<string, { description?: true; otherLaw?: true }>
+  >({});
 
   // The questions wait for the saved answers: a blank page sent over them would undo them
   useEffect(() => {
@@ -177,6 +213,8 @@ export function ExemptionsPage() {
     if (sessionId == null || !answers || gap !== null || amountRefused) return;
     setIsSaving(true);
     setError(null);
+    setFitErrors({});
+    const sentKeys = claims.map((row) => row._key);
     try {
       // Every claim goes: the server deletes a stored claim that is missing from the list
       await api.intake.exemptions.put(sessionId, {
@@ -187,8 +225,10 @@ export function ExemptionsPage() {
         claims: claims.map((row) => claimRequestOf(row, saved?.items ?? [])),
       });
       navigate('/sofa');
-    } catch {
-      setError(EXEMPTIONS_SAVE_FAILED);
+    } catch (caught) {
+      const refused = fitRefusals(caught, sentKeys);
+      if (Object.keys(refused).length > 0) setFitErrors(refused);
+      else setError(EXEMPTIONS_SAVE_FAILED);
     } finally {
       setIsSaving(false);
     }
@@ -293,9 +333,22 @@ export function ExemptionsPage() {
                 row={row}
                 items={saved.items}
                 laws={laws}
-                onChange={(next) =>
-                  setClaims((current) => current.map((r) => (r._key === row._key ? next : r)))
+                descriptionError={
+                  fitErrors[row._key]?.description ? EXEMPTIONS_DESCRIPTION_DOESNT_FIT : undefined
                 }
+                otherLawError={
+                  fitErrors[row._key]?.otherLaw ? EXEMPTIONS_OTHER_LAW_DOESNT_FIT : undefined
+                }
+                onChange={(next) => {
+                  // A sentence about a box goes once that box changes
+                  if (next.short_description !== row.short_description) {
+                    setFitErrors((current) => withoutFit(current, row._key, 'description'));
+                  }
+                  if (next.other_law !== row.other_law) {
+                    setFitErrors((current) => withoutFit(current, row._key, 'otherLaw'));
+                  }
+                  setClaims((current) => current.map((r) => (r._key === row._key ? next : r)));
+                }}
                 onRemove={() => setClaims((current) => current.filter((r) => r._key !== row._key))}
               />
             ))}
