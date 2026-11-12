@@ -6,6 +6,7 @@ Schedule C still needs from them. No answer is guessed for them.
 """
 
 from decimal import Decimal
+from types import SimpleNamespace
 
 import pytest
 from django.contrib.auth import get_user_model
@@ -133,6 +134,16 @@ def test_ordered_claims_puts_a_claim_with_no_live_item_last(session):
     ordered = ordered_claims(session.exemption_claims.all(), exemption_items(session))
 
     assert [c.pk for c in ordered] == [first.pk, second.pk, gone.pk]
+
+
+def test_two_claims_on_one_item_keep_the_order_they_were_first_saved_whatever_order_they_come():
+    # P14: claim id breaks the tie, so the order never depends on how the rows were read.
+    item = SimpleNamespace(id=1)
+    later = SimpleNamespace(asset_id=1, pk=8)
+    earlier = SimpleNamespace(asset_id=1, pk=3)
+    gone = SimpleNamespace(asset_id=None, pk=1)
+
+    assert ordered_claims([later, gone, earlier], [item]) == [earlier, later, gone]
 
 
 def test_a_claim_whose_property_left_ab_is_named_without_a_name(session):

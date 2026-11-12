@@ -605,8 +605,8 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
     def exemptions(self, request, pk=None):
         """GET or PUT /api/intake/sessions/{id}/exemptions/ (3g1 spec §5).
 
-        In any status. A PUT sets only the answers it sends and saves the whole claim list when
-        it sends one, under the session lock, and never reopens a completed intake: Schedule C's
+        In any status. A PUT sets only the answers it sends (and clears 3-1 once line 3 is No)
+        and saves the whole claim list when it sends one, under the session lock, and never reopens a completed intake: Schedule C's
         answers are not intake data. Both reply with the answers, the claims, the property list
         and the list of laws in force (or why there is none).
         """
@@ -674,6 +674,9 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
                         setattr(answers, name, data[name])
                 if claims:
                     answers.no_claims = False
+                if answers.line_3 == "no":
+                    # Line 3-1 is asked only under line 3's Yes, so it never stands under a No.
+                    answers.line_3_1 = None
                 answers.save()
                 if claims is not None:
                     rows = []

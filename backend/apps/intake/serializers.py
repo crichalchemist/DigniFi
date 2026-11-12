@@ -1359,6 +1359,9 @@ class ExemptionClaimSerializer(serializers.Serializer):
         if "short_description" in attrs and not short.strip():
             # Spec 5.2 / P8: null unless the item's name doesn't fit.
             attrs["short_description"] = None
+        if attrs.get("amount") is not None and attrs["amount"] == 0:
+            # "-0" passes min_value=0: store the zero without its sign, so no form prints -0.00.
+            attrs["amount"] = Decimal("0.00")
         if errors:
             raise serializers.ValidationError(errors)
         return attrs

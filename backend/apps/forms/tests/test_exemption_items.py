@@ -82,6 +82,12 @@ def test_customer_lists_with_no_description_are_named_in_the_forms_words(session
     assert exemption_item_name(row) == "Customer lists"
 
 
+def test_a_row_with_nothing_to_name_it_by_is_named_by_its_line_and_never_one_item(session):
+    row = _row(session, "7", description="  ")
+
+    assert exemption_item_name(row) == "Property on line 7"
+
+
 def test_each_row_gets_the_line_schedule_ab_prints_for_it(session):
     car = _row(session, "3", make="Honda", year="2015", value="4000")
     clothes = _row(session, "11", description="Clothes", value="300")

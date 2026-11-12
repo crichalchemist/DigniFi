@@ -101,7 +101,8 @@ def answer_household(
     leaves them alone.
 
     exemptions overrides the Schedule C answers answer_exemptions stores (3g1), which default to
-    line 1 answered, "not claiming" and line 3 No; exemptions=None leaves them alone.
+    line 1 answered, line 3 No and "not claiming" while the session has no stored claim (False
+    once it has one); exemptions=None leaves them alone.
     """
     session.income_info.marital_status = marital_status
     session.income_info.save(update_fields=["marital_status"])

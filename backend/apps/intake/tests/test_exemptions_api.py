@@ -136,6 +136,35 @@ def test_a_put_sets_only_the_answers_it_sends(filer):
     assert client.get(_url(session)).json()["line_1"] == "federal"
 
 
+def test_a_first_save_of_line_1_leaves_every_other_answer_unanswered(filer):
+    # The server never fills in an answer the filer didn't give.
+    client, session, *_ = filer
+    assert _put(client, session, {"line_1": "federal"}).status_code == 200
+    body = client.get(_url(session)).json()
+    assert (body["line_3"], body["line_3_1"], body["no_claims"]) == (None, None, False)
+    stored = ExemptionAnswers.objects.get(session=session)
+    assert (stored.line_3, stored.line_3_1, stored.no_claims) == (None, None, False)
+
+
+def test_line_3_no_never_keeps_an_answer_to_line_3_1(filer):
+    # Line 3-1 is asked only under line 3's Yes, so a No leaves it unanswered.
+    client, session, *_ = filer
+    assert _put(client, session, {"line_3": "yes", "line_3_1": "yes"}).json()["line_3_1"] == "yes"
+    assert _put(client, session, {"line_3": "no"}).json()["line_3_1"] is None
+    assert ExemptionAnswers.objects.get(session=session).line_3_1 is None
+    assert _put(client, session, {"line_3": "no", "line_3_1": "yes"}).json()["line_3_1"] is None
+    assert ExemptionAnswers.objects.get(session=session).line_3_1 is None
+
+
+def test_a_typed_minus_zero_is_stored_and_read_as_zero(filer):
+    # "-0" passes min_value=0; a sworn schedule must never print -0.00.
+    client, session, car, _checking = filer
+    body = _put(client, session, {"claims": [_claim(car, amount="-0")]}).json()
+    assert body["claims"][0]["amount"] == "0.00"
+    assert str(ExemptionClaim.objects.get(session=session).amount) == "0.00"
+    assert client.get(_url(session)).json()["claims"][0]["amount"] == "0.00"
+
+
 def test_a_put_saves_the_whole_claim_list_and_replies_in_the_order_sent(filer):
     client, session, car, checking = filer
     body = _put(client, session, {"claims": [_claim(checking), _claim(car)]}).json()
@@ -200,6 +229,25 @@ def test_each_refused_answer_is_a_400(filer, make):
     response = _put(client, session, make(car))
     assert response.status_code == 400, response.content
     assert _stored(session) == before
+
+
+@pytest.mark.parametrize(
+    "case, box",
+    [
+        ("other_law_too_long_for_its_box", "other_law"),
+        ("other_law_unprintable", "other_law"),
+        ("short_description_too_long", "short_description"),
+        ("short_description_unprintable", "short_description"),
+    ],
+)
+def test_a_text_schedule_c_cannot_hold_is_refused_under_its_own_box(filer, case, box):
+    # The page puts its sentence beside the box only when the 400 names that box; any other
+    # shape leaves the filer retrying the same words.
+    client, session, car, _checking = filer
+    body = _put(client, session, REFUSED[case](car)).json()
+    assert set(body) == {"claims"}
+    assert set(body["claims"]) == {"0"}
+    assert set(body["claims"]["0"]) == {box}
 
 
 def _stored_claim(session, **fields):
@@ -362,6 +410,38 @@ def test_a_claim_for_a_removed_property_reads_with_no_property(filer):
     assert claim["asset"] is None
     assert claim["law"] == LAW
     assert claim["amount"] == "100.00"
+
+
+def test_a_claim_on_a_row_with_no_line_or_on_another_intake_reads_with_no_property(filer):
+    # P15: only a row of this session with a line is the filer's property here, so the page
+    # shows the removed-property note instead of an id it can't list.
+    client, session, _car, _checking = filer
+    old = AssetInfo.objects.create(
+        session=session, ab_line=None, description="Old row", current_value=Decimal("5")
+    )
+    moved = _row(session, "3", make="Ford", model="Focus", year="2012")
+    for asset in (old, moved):
+        _stored_claim(session, asset=asset, law=LAW, amount_kind="dollars", amount=Decimal("1.00"))
+    other = IntakeSession.objects.create(user=session.user, district=session.district)
+    AssetInfo.objects.filter(pk=moved.pk).update(session=other)
+    claims = client.get(_url(session)).json()["claims"]
+    assert [claim["asset"] for claim in claims] == [None, None]
+
+
+def test_two_claims_on_one_item_read_in_the_order_they_were_first_saved(filer):
+    # P14: claim id breaks the tie on one item, so the GET doesn't follow the last list sent.
+    client, session, car, _checking = filer
+    first, second = _put(
+        client, session, {"claims": [_claim(car, amount="1.00"), _claim(car, amount="2.00")]}
+    ).json()["claims"]
+    reversed_reply = _put(
+        client,
+        session,
+        {"claims": [_claim(car, id=second["id"]), _claim(car, id=first["id"])]},
+    ).json()["claims"]
+    assert [c["id"] for c in reversed_reply] == [second["id"], first["id"]]
+    listed = client.get(_url(session)).json()["claims"]
+    assert [c["id"] for c in listed] == [first["id"], second["id"]]
 
 
 def test_a_claim_follows_its_property_to_another_line(filer):

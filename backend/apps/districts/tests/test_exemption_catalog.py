@@ -151,6 +151,7 @@ ADVICE = [
     r"\byou keep\b",
     r"\bbest set\b",
     r"\bqualif",
+    r"\beligible\b",
 ]
 
 WITHOUT_2026 = [("districts", "0006_exemption_catalog")]
