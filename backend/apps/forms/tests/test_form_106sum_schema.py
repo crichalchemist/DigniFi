@@ -82,6 +82,8 @@ def populated_session(session):
         amount_owed=Decimal("5000"),
         is_secured=False,
         is_priority=True,
+        priority_answer="taxes",
+        past_due_amount=Decimal("5000"),
     )
     IncomeInfo.objects.create(session=session, monthly_gross_wages=Decimal("1200.00"))
     answer_household(session)
@@ -126,8 +128,8 @@ class TestForm106SumSchema:
     def test_debt_totals(self, populated_session):
         field_map = resolve(load_schema("form_106sum"), populated_session)
         assert field_map["2"] == "50000.00"  # secured
-        # Every unsecured debt, the IRS debt marked priority too: priority isn't asked (OQ-3).
-        assert field_map["3b"] == "15000.00"
+        # The IRS debt is in Part 1 (the filer answered taxes), so 3b holds the card alone.
+        assert field_map["3b"] == "10000.00"
 
     def test_total_liabilities_print_on_3c_and_combined_monthly_income_on_line_4(
         self, populated_session
@@ -142,23 +144,30 @@ class TestForm106SumSchema:
         assert field_map["4"] == "2000.00"  # 1200 wages + 800 Social Security
         assert field_map["8"] == "1200.00"
 
-    def test_line_3a_stays_blank_until_the_filer_is_asked_which_debts_have_priority(
-        self, populated_session
-    ):
-        # The fixture's IRS debt is marked priority, but DigniFi never asks which debts
-        # have priority (OQ-3), and deciding it is a legal judgment: line 3a stays blank,
-        # and 3b counts the debt with the other unsecured ones (step 2 spec §6.1 B5).
+    def test_line_3a_copies_the_part_1_total(self, populated_session):
+        # The fixture's IRS debt is the one the filer answered taxes: it is E/F Part 1's
+        # whole total (line 6e), and 3b counts the card alone.
         field_map = resolve(load_schema("form_106sum"), populated_session)
-        assert "3a" not in field_map
+        assert field_map["3a"] == "5000.00"
+
+    def test_line_9_copies_6a_to_6c_and_9g_adds_9a_to_9d(self, populated_session):
+        field_map = resolve(load_schema("form_106sum"), populated_session)
+        assert (field_map["9a"], field_map["9b"], field_map["9c"]) == (
+            "0.00",
+            "5000.00",
+            "0.00",
+        )
+        printed = [Decimal(field_map[k]) for k in ("9a", "9b", "9c", "9d")]
+        assert Decimal(field_map["9g"]) == sum(printed)
+        assert field_map["9g"] == "5000.00"
 
     def test_monthly_expenses_print_on_line_5_not_on_the_support_obligations_line(
         self, populated_session
     ):
-        # Line 5 copies Schedule J line 22c. Line 9a asks for domestic support
-        # obligations, which DigniFi never asks (step 2 spec §6.4).
+        # Line 5 copies Schedule J line 22c. Line 9a prints 6a's total, never the expenses.
         field_map = resolve(load_schema("form_106sum"), populated_session)
         assert field_map.get("5") == "1600.00"  # 1000 + 200 + 400
-        assert "9a" not in field_map
+        assert field_map["9a"] == "0.00"
 
     def test_line_6_says_the_filer_is_filing_under_chapter_7_11_or_13(self, populated_session):
         # Every DigniFi filing is Chapter 7, so line 6's Yes ticks and its No stays off.

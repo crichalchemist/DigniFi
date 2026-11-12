@@ -3,12 +3,11 @@ Schedules D and E/F: each schedule's question answers from the debts the filer l
 its totals print on the lines that ask for them, which 106Sum copies.
 
 Business intent: a trustee reads Schedule D's grand total and E/F's line 6 totals against
-the summary (106Sum 2, 3b and 9d copy them), and each schedule's question says whether a
-list follows. DigniFi doesn't ask which debts have priority (OQ-3), and deciding it is a
-legal judgment, so every unsecured debt counts as nonpriority, and E/F's priority question
-and priority totals stay blank (step 2 spec §6.1 B5, Appendix A.10). Line 6f counts only
-the unsecured student loans: E/F is the unsecured schedule, and 6i (6j - 6f) must never go
-below zero (Ruling T16-a).
+the summary (106Sum 2, 3a, 3b, 9a-9c and 9d copy them), and each schedule's question says
+whether a list follows. The filer's own answer decides the Part: Part 1 holds the debts the
+filer answered with a kind and Part 2 the rest, and a rule never decides it (3d spec §6).
+Line 6f counts only the unsecured student loans left in Part 2: E/F is the unsecured
+schedule, and 6i (6j - 6f) must never go below zero (Ruling T16-a).
 """
 
 from datetime import date
@@ -69,14 +68,15 @@ def session(db):
     return session
 
 
-def _debt(session, debt_type, amount, secured=False, priority=False):
+def _debt(session, debt_type, amount, secured=False, answer=None):
     DebtInfo.objects.create(
         session=session,
         creditor_name=f"{debt_type} creditor",
         debt_type=debt_type,
         amount_owed=Decimal(amount),
         is_secured=secured,
-        is_priority=priority,
+        priority_answer=answer,
+        past_due_amount=Decimal("0") if answer else None,
     )
 
 
@@ -87,8 +87,8 @@ def debts(session):
     _debt(session, "student_loan", "2000", secured=True)
     _debt(session, "student_loan", "4000")
     _debt(session, "credit_card", "8000")
-    # Marked priority, but nobody asked the filer (OQ-3): it counts as nonpriority.
-    _debt(session, "other", "16000", priority=True)
+    # The filer put it in Part 1.
+    _debt(session, "other", "16000", answer="taxes")
     return session
 
 
@@ -119,12 +119,15 @@ def test_schedule_d_prints_its_secured_total_in_the_grand_total_box(debts):
 
 
 @pytest.mark.slow
-def test_line_6j_totals_every_unsecured_debt_and_6f_the_unsecured_student_loans(debts):
+def test_part_2_totals_leave_out_the_debt_answered_taxes(debts):
     shown = _printed(debts, "schedule_e_f")
 
     assert shown["Total_6f"] == "4000.00"  # the secured student loan is on Schedule D
-    assert shown["Total_6i"] == "24000.00"  # the credit card and the debt marked priority
-    assert shown["Total_6j"] == "28000.00"
+    assert shown["Total_6i"] == "8000.00"  # the credit card alone
+    assert shown["Total_6j"] == "12000.00"
+    # The debt answered taxes is Part 1's: 6b and 6e hold it, 6a, 6c and 6d nothing.
+    assert (shown["Total_6b"], shown["Total_6e"]) == ("16000.00", "16000.00")
+    assert (shown["Total_6a"], shown["Total_6c"], shown["Total_6d"]) == ("0.00", "0.00", "0.00")
 
 
 @pytest.mark.slow
@@ -148,10 +151,21 @@ def test_the_summary_copies_the_totals_schedules_d_and_e_f_print(debts):
     summary = resolve(load_schema("form_106sum"), debts)
 
     assert summary["2"] == d["undefined_24"]
+    assert summary["3a"] == ef["Total_6e"]
     assert summary["3b"] == ef["Total_6j"]
+    assert (summary["9a"], summary["9b"], summary["9c"]) == (
+        ef["Total_6a"],
+        ef["Total_6b"],
+        ef["Total_6c"],
+    )
     assert summary["9d"] == ef["Total_6f"]
-    # Total liabilities are 2 + 3a + 3b, and 3a stays blank until priority is asked.
-    assert Decimal(summary["3c"]) == Decimal(summary["2"]) + Decimal(summary["3b"])
+    assert Decimal(summary["9g"]) == sum(
+        Decimal(ef[box]) for box in ("Total_6a", "Total_6b", "Total_6c", "Total_6f")
+    )
+    # Total liabilities are 2 + 3a + 3b.
+    assert Decimal(summary["3c"]) == (
+        Decimal(summary["2"]) + Decimal(summary["3a"]) + Decimal(summary["3b"])
+    )
 
 
 @pytest.mark.slow
@@ -176,11 +190,15 @@ def test_a_filer_with_no_debts_gets_zero_totals_and_no_on_both_questions(session
     d, ef = _printed(session, "schedule_d"), _printed(session, "schedule_e_f")
 
     assert d.get("check1", set()) == {"/no"}
+    assert ef.get("check1", set()) == {"/no"}
     assert ef.get("check7", set()) == {"/no"}
     # Ruling T0-e: the filer finished the intake with no debts listed, so the totals are 0.00.
     assert d["undefined_24"] == "0.00"
+    for box in ("Total_6a", "Total_6b", "Total_6c", "Total_6d", "Total_6e"):
+        assert ef[box] == "0.00", box
     assert (ef["Total_6f"], ef["Total_6i"], ef["Total_6j"]) == ("0.00", "0.00", "0.00")
-    assert resolve(load_schema("form_106sum"), session).get("9d") == "0.00"
+    summary = resolve(load_schema("form_106sum"), session)
+    assert (summary.get("3a"), summary.get("9d"), summary.get("9g")) == ("0.00", "0.00", "0.00")
 
 
 def _parts_drawn(session, form_type):
@@ -511,13 +529,12 @@ def _secured_on_a_car(session, n):
     linked_loan(session, car, Decimal("100"), creditor_name=f"Demo Lender {n}")
 
 
-def test_lines_the_intake_never_asks_print_nothing(debts):
-    # A debt marked priority still leaves E/F's priority question (line 1) and its
-    # priority totals (6a-6e) blank (OQ-3); 6g and 6h are never asked.
+def test_6g_and_6h_stay_blank_and_line_1_answers_from_part_1(debts):
+    # 6g and 6h are never asked. Line 1 follows Part 1: the debt answered taxes ticks Yes.
     shown = _printed(debts, "schedule_e_f")
 
-    assert "check1" not in shown
-    for box in ("Total_6a", "Total_6b", "Total_6c", "Total_6d", "Total_6e", "Total_6g", "Total_6h"):
+    assert shown["check1"] == {"/yes"}
+    for box in ("Total_6g", "Total_6h"):
         assert shown[box] == "", box
 
 
@@ -741,6 +758,86 @@ def test_part_3_ticks_part_1_for_a_part_1_debts_party(session):
     assert _at(drawn, "Creditors Name_12") == "Demo Tax Agent"
     assert _at(drawn, "Referenced line 5.1") == "2.1"
     assert _ticked(drawn, "check14") == {"/Part 1"}
+
+
+# Schedule E/F's totals (3d2 Task 3).
+
+
+@pytest.mark.slow
+def test_6a_to_6d_add_each_kinds_total_claim_and_6e_their_sum(session):
+    _priority(session, 1, priority_answer="domestic_support", amount_owed=Decimal("1000"))
+    _priority(
+        session,
+        2,
+        amount_owed=Decimal("2000"),
+        priority_amount=Decimal("500"),
+        nonpriority_amount=Decimal("1500"),
+    )
+    _priority(session, 3, priority_answer="intoxicated", amount_owed=Decimal("4000"))
+    _priority(
+        session,
+        4,
+        priority_answer="other",
+        priority_other="Demo restitution",
+        amount_owed=Decimal("8000"),
+    )
+    _unsecured(session, 1, amount_owed=Decimal("16000"))
+
+    shown = _printed(session, "schedule_e_f")
+
+    assert [shown[f"Total_6{k}"] for k in "abcde"] == [
+        "1000.00",
+        "2000.00",
+        "4000.00",
+        "8000.00",
+        "15000.00",
+    ]
+    assert shown["Total_6j"] == "16000.00"
+
+
+@pytest.mark.slow
+def test_a_filer_whose_every_unsecured_debt_is_in_part_1_answers_no_on_line_3(session):
+    _priority(session, 1, amount_owed=Decimal("3000"))
+
+    shown = _printed(session, "schedule_e_f")
+
+    assert shown["check1"] == {"/yes"}
+    assert shown["check7"] == {"/no"}
+    assert shown["Total_6j"] == "0.00"
+    assert shown["Total_6e"] == "3000.00"
+
+
+@pytest.mark.slow
+def test_a_student_loan_answered_with_a_kind_leaves_6f(session):
+    _priority(
+        session,
+        1,
+        debt_type="student_loan",
+        priority_answer="other",
+        priority_other="Demo words",
+        amount_owed=Decimal("4000"),
+    )
+    _unsecured(session, 1, debt_type="student_loan", amount_owed=Decimal("2000"))
+
+    shown = _printed(session, "schedule_e_f")
+
+    assert (shown["Total_6f"], shown["Total_6i"], shown["Total_6j"]) == (
+        "2000.00",
+        "0.00",
+        "2000.00",
+    )
+    assert shown["Total_6d"] == "4000.00"
+
+
+@pytest.mark.slow
+def test_a_secured_debt_stored_with_a_kind_counts_on_no_priority_line(session):
+    _secured(session, priority_answer="taxes")
+
+    shown = _printed(session, "schedule_e_f")
+
+    assert (shown["Total_6b"], shown["Total_6e"]) == ("0.00", "0.00")
+    assert shown.get("check1", set()) == {"/no"}
+    assert resolve(load_schema("form_106sum"), session)["3a"] == "0.00"
 
 
 def test_both_groups_overflowing_number_every_page_across_both(session):
