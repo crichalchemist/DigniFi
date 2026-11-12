@@ -620,6 +620,129 @@ def test_part_3_cites_the_line_and_ticks_part_2(session):
     assert _ticked(drawn, "check14") == {"/yes"}
 
 
+# Schedule E/F Part 1 (3d2 Task 2).
+
+_PRIORITY_KIND_BOXES = {
+    "domestic_support": "Domestic support obligations",
+    "taxes": "Taxes and ceratin other debts you owe the government",
+    "intoxicated": "Claims for death or personal injury while intoxicated",
+    "other": "Other",
+}
+
+
+def _priority(session, n=1, **over):
+    return complete_debt(
+        session,
+        **(
+            {
+                "creditor_name": f"Demo Tax {n:02d}",
+                "priority_answer": "taxes",
+                "past_due_amount": Decimal("0.00"),
+            }
+            | over
+        ),
+    )
+
+
+def test_a_debt_answered_taxes_prints_in_part_1_and_not_in_part_2(session):
+    _priority(
+        session,
+        amount_owed=Decimal("3000"),
+        priority_amount=Decimal("3000"),
+        account_number="0003",
+        street_2="P.O. Box 7346",
+    )
+    _unsecured(session, 1)
+
+    _, drawn = _parts_drawn(session, "schedule_e_f")
+
+    assert _at(drawn, "Creditors Name") == "Demo Tax 01"
+    assert _at(drawn, "undefined") == "3000.00"
+    assert _at(drawn, "undefined_2") == "3000.00"
+    assert _at(drawn, "undefined_3") == ""
+    assert _at(drawn, "account number") == "0003"
+    assert _at(drawn, "1") == "P.O. Box 7346"
+    assert _ticked(drawn, _PRIORITY_KIND_BOXES["taxes"]) == {"/On"}
+    for kind in ("domestic_support", "intoxicated", "other"):
+        assert _ticked(drawn, _PRIORITY_KIND_BOXES[kind]) == set(), kind
+    assert _at(drawn, "Other unsecurecured claim 2.1") == ""
+    assert _at(drawn, "Creditors Name_6") == "Demo Card 01"
+    assert _at(drawn, "Creditors Name_7") == ""
+
+
+def test_a_claim_with_both_amounts_prints_once_in_part_1_with_both(session):
+    _priority(
+        session,
+        amount_owed=Decimal("5000"),
+        priority_amount=Decimal("1200"),
+        nonpriority_amount=Decimal("3800"),
+    )
+
+    _, drawn = _parts_drawn(session, "schedule_e_f")
+
+    assert (_at(drawn, "undefined"), _at(drawn, "undefined_2"), _at(drawn, "undefined_3")) == (
+        "5000.00",
+        "1200.00",
+        "3800.00",
+    )
+    assert _at(drawn, "Creditors Name_6") == ""
+
+
+def test_other_specify_prints_beside_the_other_tick_only(session):
+    _priority(session, 1, priority_answer="other", priority_other="Demo restitution")
+    _priority(session, 2, priority_other="Stale words")
+
+    _, drawn = _parts_drawn(session, "schedule_e_f")
+
+    assert _at(drawn, "Other unsecurecured claim 2.1") == "Demo restitution"
+    assert _ticked(drawn, "Other") == {"/On"}
+    assert _at(drawn, "Other unsecurecured claim 2.2") == ""
+    assert _ticked(drawn, "Other_2") == set()
+
+
+def test_figures_stored_under_no_print_nowhere(session):
+    _unsecured(
+        session,
+        1,
+        priority_amount=Decimal("100"),
+        nonpriority_amount=Decimal("200"),
+        past_due_amount=Decimal("100"),
+    )
+
+    _, drawn = _parts_drawn(session, "schedule_e_f")
+
+    for box in ("Creditors Name", "undefined", "undefined_2", "undefined_3"):
+        assert _at(drawn, box) == "", box
+    assert _at(drawn, "Creditors Name_6") == "Demo Card 01"
+
+
+def test_a_sixth_part_1_debt_continues_on_a_copy_of_page_2_numbered_2_6(session):
+    for n in range(1, 7):
+        _priority(session, n)
+    _unsecured(session, 1)
+
+    parts, drawn = _parts_drawn(session, "schedule_e_f")
+
+    assert [(p["kind"], p.get("page")) for p in parts] == [("form", None), ("copy", 2)]
+    assert _at(drawn, "Creditors Name_3", copy=1) == "Demo Tax 06"
+    assert _at(drawn, "undefined_12", copy=1) == "2.6"
+    assert _at(drawn, "undefined_12") == "2.3"
+    assert _at(drawn, "Creditors Name_6") == "Demo Card 01"
+    assert _at(drawn, "fill_27.0") == "7"
+    assert _at(drawn, "fill_27.1.0", copy=1) == "3"
+    assert _at(drawn, "fill_27.1.2") == "4"
+
+
+def test_part_3_ticks_part_1_for_a_part_1_debts_party(session):
+    _priority(session, 1, notice_parties=[_party("Demo Tax Agent")])
+
+    _, drawn = _parts_drawn(session, "schedule_e_f")
+
+    assert _at(drawn, "Creditors Name_12") == "Demo Tax Agent"
+    assert _at(drawn, "Referenced line 5.1") == "2.1"
+    assert _ticked(drawn, "check14") == {"/Part 1"}
+
+
 def test_both_groups_overflowing_number_every_page_across_both(session):
     for n in range(1, 8):
         parties = [_party(f"Demo Collections {n}")]

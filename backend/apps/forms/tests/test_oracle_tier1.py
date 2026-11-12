@@ -438,6 +438,8 @@ def claims_session(db):
     row = linked_row(session, "3", lives_here=None)
     secured = linked_loan(session, row, "100", notice_parties=[party])
     unsecured = complete_debt(session, notice_parties=[party])
+    # Part 1's debt shares the others' name and address, so the List of Creditors keeps 4 entries.
+    complete_debt(session, priority_answer="taxes", past_due_amount=Decimal("0.00"))
     contract = complete_contract(session)
     complete_codebtor(
         session,
@@ -499,6 +501,7 @@ _LIEN = "Nature of lien. Check all that apply."
 _WHO = {"debtor_1": "Debtor 1 only", "another": "At least one of the debtors and another"}
 _D_COMMUNITY = "Check if this claim relates to a community debt"
 _EF_COMMUNITY = "Check if this claim is for a community debt"
+_PRIORITY_TYPE = "Type of PRIORITY unsecured claim:"
 _ADDRESS = {"city": ("City", None), "state": ("State", None), "zip": ("ZIP Code", None)}
 _H_COLUMN_2 = "Check all schedules that apply: Schedule "
 # Each claims cell's column as the index read it from the page: the box's label, less its
@@ -539,6 +542,34 @@ _CLAIMS_COLUMNS = {
         "line": ("On which line in Part 1 did you enter the creditor?", None),
         "last_4": ("Last 4 digits of account number.", None),
     },
+    "ef_part_1": {
+        "name": ("Priority Creditor's Name", None),
+        "last_4": ("Last 4 digits of account number", None),
+        "amount": ("Total claim", None),
+        "priority_amount": ("Priority amount", None),
+        "nonpriority_amount": ("Nonpriority amount", None),
+        "street": ("Number Street", None),
+        "street_2": ("Creditor address, second line", None),
+        **_ADDRESS,
+        "date": ("When was the debt incurred?", None),
+        "contingent": (_DEBT_STATUS, {"true": "Contingent"}),
+        "unliquidated": (_DEBT_STATUS, {"true": "Unliquidated"}),
+        "disputed": (_DEBT_STATUS, {"true": "Disputed"}),
+        "who": ("Who incurred the debt? Check one.", _WHO),
+        "type_domestic_support": (_PRIORITY_TYPE, {"true": "Domestic support obligations"}),
+        "type_taxes": (
+            _PRIORITY_TYPE,
+            {"true": "Taxes and certain other debts you owe the government"},
+        ),
+        "type_intoxicated": (
+            _PRIORITY_TYPE,
+            {"true": "Claims for death or personal injury while you were intoxicated"},
+        ),
+        "type_other": (_PRIORITY_TYPE, {"true": "Other. Specify"}),
+        "other_specify": ("Other. Specify ____", None),
+        "community": (_EF_COMMUNITY, {"true": _EF_COMMUNITY}),
+        "offset": ("Is the claim subject to offset?", {"no": "No", "yes": "Yes"}),
+    },
     "ef_part_2": {
         "name": ("Nonpriority Creditor's Name", None),
         "last_4": ("Last 4 digits of account number", None),
@@ -565,7 +596,13 @@ _CLAIMS_COLUMNS = {
             "On which entry in Part 1 or Part 2 did you list the original creditor? Line ____",
             None,
         ),
-        "part": ("Line ____ of:", {"2": "Part 2: Creditors with Nonpriority Unsecured Claims"}),
+        "part": (
+            "Line ____ of:",
+            {
+                "1": "Part 1: Creditors with Priority Unsecured Claims",
+                "2": "Part 2: Creditors with Nonpriority Unsecured Claims",
+            },
+        ),
         "last_4": ("Last 4 digits of account number", None),
     },
     "g": {
@@ -592,7 +629,7 @@ _CLAIMS_COLUMNS = {
 }
 # The rows each group's first page numbers before its additional page, whose rows the index
 # counts from 1 ("Additional Page row 1" is D's 2.3).
-_ROWS_BEFORE_THE_ADDITIONAL_PAGE = {"d_part_1": 2, "ef_part_2": 3, "g": 5, "h": 3}
+_ROWS_BEFORE_THE_ADDITIONAL_PAGE = {"d_part_1": 2, "ef_part_1": 2, "ef_part_2": 3, "g": 5, "h": 3}
 _ROW_IN_LABEL = re.compile(r"\([^()]*\b(Page row|entry) (\d+)\b")
 
 

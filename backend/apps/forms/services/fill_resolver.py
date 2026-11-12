@@ -383,7 +383,7 @@ CLAIM_CELLS: dict[str, dict[str, Callable[[Any], str]]] = {
         **_addressed("street", "street_2"),
         "line": lambda row: row.line,
         "last_4": lambda row: row.party.get("last_4") or "",
-        "part": lambda row: "2",
+        "part": lambda row: row.part,
     },
     "contracts": {
         **_addressed("street_joined"),
