@@ -36,7 +36,7 @@ import {
   EXEMPTION_TOTAL_FAIR_MARKET,
 } from '../constants/copy';
 import { ClaimRowFields } from './exemptions/ClaimRowFields';
-import { firstExemptionGap, type ClaimRow } from './exemptions/exemptionGaps';
+import { claimAmountError, firstExemptionGap, type ClaimRow } from './exemptions/exemptionGaps';
 import { lawTotals } from './exemptions/lawTotals';
 import type { ExemptionClaim, ExemptionLaw, ExemptionLine1, Exemptions, YesNo } from '../types/api';
 
@@ -166,13 +166,15 @@ export function ExemptionsPage() {
   };
 
   const gap = saved && answers ? firstExemptionGap(answers, claims, saved.items, lawKeys) : null;
+  // An amount the server would refuse holds Continue too, though it is no gap in the server's list
+  const amountRefused = claims.some((row) => claimAmountError(row) !== undefined);
   // A page nobody has touched says nothing yet
   const isStarted =
     answers !== null &&
     (answers.line_1 !== null || answers.line_3 !== null || answers.no_claims || claims.length > 0);
 
   const handleContinue = async () => {
-    if (sessionId == null || !answers || gap !== null) return;
+    if (sessionId == null || !answers || gap !== null || amountRefused) return;
     setIsSaving(true);
     setError(null);
     try {
@@ -381,7 +383,11 @@ export function ExemptionsPage() {
             </div>
           )}
 
-          <Button type="button" onClick={handleContinue} disabled={isSaving || gap !== null}>
+          <Button
+            type="button"
+            onClick={handleContinue}
+            disabled={isSaving || gap !== null || amountRefused}
+          >
             Continue
           </Button>
         </>

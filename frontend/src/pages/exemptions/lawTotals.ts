@@ -4,7 +4,7 @@
  */
 import { parseAmount } from '../../utils/parseAmount';
 import type { ExemptionLaw } from '../../types/api';
-import type { ClaimRow } from './exemptionGaps';
+import { claimAmountError, type ClaimRow } from './exemptionGaps';
 
 export type LawTotal = {
   label: string;
@@ -20,7 +20,9 @@ export function lawTotals(claims: ClaimRow[], laws: ExemptionLaw[]): LawTotal[] 
   const typed = new Map<string, LawTotal>();
 
   const add = (total: LawTotal, row: ClaimRow) => {
-    if (row.amount_kind === 'dollars') total.dollars += parseAmount(row.amount) ?? 0;
+    if (row.amount_kind === 'dollars' && claimAmountError(row) === undefined) {
+      total.dollars += parseAmount(row.amount) ?? 0;
+    }
     if (row.amount_kind === 'fair_market_value') total.fairMarketCount += 1;
   };
 

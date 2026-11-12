@@ -3,7 +3,7 @@
  * line 3 and "not claiming" in the form's words, nothing is chosen for them, Continue waits on the
  * first gap, and a save that fails never sends them on.
  */
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { http, HttpResponse } from 'msw';
@@ -16,6 +16,7 @@ import {
   EXEMPTIONS_LINE_3_QUESTION,
   EXEMPTIONS_LINE_3_1_QUESTION,
 } from '../../constants/formText';
+import { AMOUNT_NEGATIVE, AMOUNT_TOO_LARGE } from '../../constants/copy';
 import {
   EXEMPTIONS_ADD_CLAIM,
   EXEMPTIONS_ANOTHER_LAW,
@@ -455,6 +456,29 @@ describe('ExemptionsPage claims', () => {
     expect(typed).not.toHaveTextContent(EXEMPTION_NO_LIMIT);
     // The same box also shows the law's own limit for the catalog law
     expect(totals.getByText('Up to $4,000.')).toBeInTheDocument();
+  });
+
+  it('says what is wrong with an amount the server would refuse, holds Continue and leaves it out of the total', async () => {
+    serve(fullRecord({ claims: [claimOf({ id: 1, asset: 11, law: C, amount: '3600.00' })] }));
+    renderPage();
+    await ready();
+    await answerLines();
+    const box = screen.getByRole('spinbutton');
+    const continueButton = screen.getByRole('button', { name: 'Continue' });
+    expect(continueButton).toBeEnabled();
+
+    fireEvent.change(box, { target: { value: '-5' } });
+    expect(screen.getByText(AMOUNT_NEGATIVE)).toBeInTheDocument();
+    expect(continueButton).toBeDisabled();
+    expect(screen.queryByText(/\$-5/)).not.toBeInTheDocument();
+
+    fireEvent.change(box, { target: { value: '10000000000' } });
+    expect(screen.getByText(AMOUNT_TOO_LARGE)).toBeInTheDocument();
+    expect(continueButton).toBeDisabled();
+
+    fireEvent.change(box, { target: { value: '100.50' } });
+    expect(screen.queryByText(AMOUNT_TOO_LARGE)).not.toBeInTheDocument();
+    expect(continueButton).toBeEnabled();
   });
 
   it('sends every claim with its id, its property, and no amount under 100%', async () => {

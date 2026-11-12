@@ -17,6 +17,7 @@ import {
   EXEMPTION_GAP_NO_CLAIMS,
   EXEMPTION_GAP_NO_ITEMS,
 } from '../../constants/copy';
+import { amountError, parseAmount } from '../../utils/parseAmount';
 import type { ExemptionAmountKind, ExemptionItem, Exemptions } from '../../types/api';
 
 /** A claim as the page holds it: `_key` stays in the browser, amounts are what was typed */
@@ -31,6 +32,15 @@ export type ClaimRow = {
   amount: string;
   short_description: string;
 };
+
+/** The server's bound on a claim's amount: DecimalField(12, 2), at or above 0 */
+export const CLAIM_AMOUNT_MAX_DIGITS = 12;
+
+/** What is wrong with a dollar amount the server would refuse, or undefined (blank is a gap, not this) */
+export function claimAmountError(row: ClaimRow): string | undefined {
+  if (row.amount_kind !== 'dollars') return undefined;
+  return amountError(parseAmount(row.amount), CLAIM_AMOUNT_MAX_DIGITS);
+}
 
 type Answers = Pick<Exemptions, 'line_1' | 'line_3' | 'line_3_1' | 'no_claims'>;
 

@@ -1,7 +1,9 @@
+import { useState } from 'react';
 import { Button, FormField, FormSelect } from '../../components/common';
 import { REQUIRED_MARK } from '../../components/wizard/steps/assets/AssetRowFields';
 import { EXEMPTIONS_FAIR_MARKET_WORDS } from '../../constants/formText';
 import {
+  AMOUNT_NOT_A_NUMBER,
   EXEMPTIONS_AMOUNT_LABEL,
   EXEMPTIONS_ANOTHER_LAW,
   EXEMPTIONS_CHOOSE_ONE,
@@ -14,7 +16,7 @@ import {
   EXEMPTION_ITEM_GONE,
 } from '../../constants/copy';
 import type { ExemptionAmountKind, ExemptionItem, ExemptionLaw } from '../../types/api';
-import type { ClaimRow } from './exemptionGaps';
+import { claimAmountError, type ClaimRow } from './exemptionGaps';
 
 const OTHER_LAW = '__other__';
 
@@ -35,6 +37,8 @@ const AMOUNT_KINDS: { value: ExemptionAmountKind; label: string }[] = [
 /** One claim: a property, a law, an amount. Nothing is chosen for the filer. */
 export function ClaimRowFields({ index, row, items, laws, onChange, onRemove }: Props) {
   const item = items.find((candidate) => candidate.id === row.asset);
+  // A box holding part of a number ('-') reads as empty, so the row can't show why Continue waits
+  const [partialAmount, setPartialAmount] = useState(false);
   const lawValue = row.otherLawChosen ? OTHER_LAW : (row.law ?? '');
 
   const changeLaw = (value: string) => {
@@ -104,7 +108,10 @@ export function ClaimRowFields({ index, row, items, laws, onChange, onRemove }: 
                 min="0"
                 step="0.01"
                 value={row.amount}
+                // onInput too: onChange skips a '' to '' change, such as the first '-'
+                onInput={(event) => setPartialAmount(event.currentTarget.validity.badInput)}
                 onChange={(event) => onChange({ ...row, amount: event.target.value })}
+                error={partialAmount ? AMOUNT_NOT_A_NUMBER : claimAmountError(row)}
               />
             )}
           </div>
