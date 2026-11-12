@@ -510,6 +510,10 @@ export const DEBT_GAP_STATUS =
   'Check any that fit {name}: contingent, unliquidated or disputed. Or choose None of these.';
 
 export const DEBT_GAP_OFFSET = 'Answer whether {name} is subject to offset.';
+export const DEBT_GAP_PRIORITY = 'Answer “Is this amount owed one of these kinds?” for {name}.';
+export const DEBT_GAP_PRIORITY_OTHER = 'Fill in “Other. Specify” for {name}.';
+export const DEBT_GAP_PAST_DUE =
+  'Enter how much of what you owe {name} is past due. Enter 0 if none of it is.';
 
 export const DEBT_GAP_NOTICE = 'Answer whether anyone else is contacting you about {name}.';
 
@@ -641,6 +645,48 @@ export const CLAIM_STATUS_HELP =
 // DRAFT: counsel C-9
 export const OFFSET_HELP =
   'Offset means the creditor may take money it owes you, such as money in your account with it. It uses that money to pay part of this debt.';
+
+// DRAFT: counsel C-2
+export const PRIORITY_QUESTION = 'Is this amount owed one of these kinds?';
+
+// DRAFT: counsel C-2
+export const PRIORITY_DOMESTIC_SUPPORT_HELP =
+  'Child support, or support for a spouse or former spouse. A court order, a divorce or separation agreement, or a government agency sets it.';
+
+// DRAFT: counsel C-2
+export const PRIORITY_TAXES_HELP =
+  'Certain taxes, such as some income taxes, and certain other debts owed to the government. Not every debt owed to the government is one.';
+
+// DRAFT: counsel C-2
+export const PRIORITY_INTOXICATED_HELP =
+  'Money owed for a death or injury caused by a car or other motor vehicle, or by a boat. It applies only if the person at the controls was intoxicated.';
+
+// DRAFT: counsel C-2
+export const PRIORITY_OTHER_HELP =
+  'A few other kinds the law lists, such as wages owed to a worker. Legal aid can tell you whether yours is one.';
+
+// DRAFT: counsel C-2
+export const PRIORITY_NO = 'No, none of these';
+
+// DRAFT: counsel C-2
+export const PRIORITY_NOT_SURE = 'Not sure';
+
+// DRAFT: counsel C-2
+export const PRIORITY_NOT_SURE_NOTE =
+  'If you are not sure, this amount goes in Part 2 of Schedule E/F, with your other amounts owed. You can change your answer later. Legal aid can help you find out which part fits.';
+
+// DRAFT: counsel C-2
+export const PRIORITY_SPLIT_HELP =
+  "If the bill or notice shows a priority amount and a nonpriority amount, copy them here. Leave a box blank if it doesn't show them.";
+
+// DRAFT: counsel C-2
+export const PAST_DUE_LABEL = 'How much of this is past due as of the day you file?';
+
+// DRAFT: counsel C-2
+export const PAST_DUE_HELP =
+  'Leave out amounts that are not due yet. Enter 0 if none of it is past due.';
+
+export const REVIEW_PAST_DUE = 'Past due';
 
 // DRAFT: counsel C-18
 export const SECURED_QUESTION = 'Can the lender take back property if you do not pay?';

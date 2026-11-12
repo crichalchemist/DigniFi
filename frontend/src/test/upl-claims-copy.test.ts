@@ -28,6 +28,10 @@ const ADVICE: RegExp[] = [
   /\byou are eligible\b/i,
   /\bthis is the best option\b/i,
   /\byou need to file\b/i,
+  // The spec's anti-goal wording (3d spec §1, §7): never call a debt priority or say it is paid first
+  /\bpaid first\b/i,
+  /\bis (a )?priority\b/i,
+  /\bpriority claim/i,
 ];
 
 const CLAIM_NAMES = [
@@ -56,6 +60,9 @@ const CLAIM_NAMES = [
   'DEBT_GAP_WHO',
   'DEBT_GAP_STATUS',
   'DEBT_GAP_OFFSET',
+  'DEBT_GAP_PRIORITY',
+  'DEBT_GAP_PRIORITY_OTHER',
+  'DEBT_GAP_PAST_DUE',
   'DEBT_GAP_NOTICE',
   'DEBT_GAP_NOTICE_PARTY',
   'CONTRACT_GAP_NO_ANSWER',
@@ -146,6 +153,18 @@ export const OTHER_CLAIM_SENTENCES: Record<string, string> = {
   LINE_4_PAY_BOTH: copy.LINE_4_PAY_BOTH,
   LINE_4_CLEAR: copy.LINE_4_CLEAR,
   NOT_SAVED_TRY_AGAIN: copy.NOT_SAVED_TRY_AGAIN,
+  PRIORITY_QUESTION: copy.PRIORITY_QUESTION,
+  PRIORITY_DOMESTIC_SUPPORT_HELP: copy.PRIORITY_DOMESTIC_SUPPORT_HELP,
+  PRIORITY_TAXES_HELP: copy.PRIORITY_TAXES_HELP,
+  PRIORITY_INTOXICATED_HELP: copy.PRIORITY_INTOXICATED_HELP,
+  PRIORITY_OTHER_HELP: copy.PRIORITY_OTHER_HELP,
+  PRIORITY_NO: copy.PRIORITY_NO,
+  PRIORITY_NOT_SURE: copy.PRIORITY_NOT_SURE,
+  PRIORITY_NOT_SURE_NOTE: copy.PRIORITY_NOT_SURE_NOTE,
+  PRIORITY_SPLIT_HELP: copy.PRIORITY_SPLIT_HELP,
+  PAST_DUE_LABEL: copy.PAST_DUE_LABEL,
+  PAST_DUE_HELP: copy.PAST_DUE_HELP,
+  REVIEW_PAST_DUE: copy.REVIEW_PAST_DUE,
 };
 
 function adviceIn(sentence: string) {
@@ -184,6 +203,9 @@ describe('the claim steps give information, never advice', () => {
     'Enter $0.50.',
     'Enter $0,500.',
     'You are eligible for this.',
+    'This amount is paid first.',
+    'This debt is priority.',
+    'List it as a priority claim.',
   ])('finds the advice in "%s"', (sentence) => {
     expect(adviceIn(sentence)).not.toEqual([]);
   });

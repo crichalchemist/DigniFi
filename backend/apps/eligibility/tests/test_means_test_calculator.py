@@ -492,14 +492,17 @@ class TestUPLProhibitedPhrases:
     def test_above_median_passing_message_contains_no_upl_violations(
         self, session_with_above_median_income
     ):
-        """The message an above-median filer who passes the expense test sees (DIG-128)."""
+        """The message an above-median filer who passes the expense test sees (DIG-128). The
+        stored MeansTest row is marked passing because the calculator can't pass an above-median
+        filer until 3h restores the priority deduction."""
         session = session_with_above_median_income
-        _expenses_and_priority_debt(session)
-
-        result = MeansTestCalculator(session).calculate()
-        assert result["passes_above_median"] is True
-
-        message = result["message"].lower()
+        _expenses_at_the_caps(session)
+        calculator = MeansTestCalculator(session)
+        calculator.calculate()
+        # No real input reaches the passing branch while the deduction is $0 (rulings R5)
+        means_test = MeansTest.objects.get(session=session)
+        means_test.passes_above_median = True
+        message = calculator._generate_upl_compliant_message(means_test).lower()
 
         # Check all prohibited phrases from settings
         for phrase in settings.UPL_PROHIBITED_PHRASES:
@@ -883,10 +886,9 @@ class TestAboveMedianCalculation:
         assert result["above_median_calculated"] is False
 
 
-def _expenses_and_priority_debt(session):
-    """Expenses at the IRS caps ($2,799 allowed for one person, the car's $283 a linked loan)
-    and $3,500 a month of priority debt: $7,000 of CMI leaves $701 of disposable income, under
-    the $756.25 threshold."""
+def _expenses_at_the_caps(session):
+    """Expenses at the IRS caps ($2,799 allowed for one person, the car's $283 a linked loan):
+    $7,000 of CMI less $2,799 leaves $4,201 of disposable income."""
     ExpenseInfo.objects.create(
         session=session,
         rent_or_mortgage=Decimal("1730.00"),
@@ -905,14 +907,6 @@ def _expenses_and_priority_debt(session):
         is_secured=True,
         secured_by=car,
     )
-    DebtInfo.objects.create(
-        session=session,
-        creditor_name="Illinois Department of Revenue",
-        debt_type="other",
-        amount_owed=Decimal("42000.00"),
-        monthly_payment=Decimal("3500.00"),
-        is_priority=True,
-    )
 
 
 @pytest.mark.django_db
@@ -924,28 +918,32 @@ class TestAboveMedianResultAndMessage:
     def test_above_median_filer_who_passes_is_not_told_below_median(
         self, session_with_above_median_income
     ):
+        """The stored MeansTest row is marked passing because the calculator can't pass an
+        above-median filer until 3h restores the priority deduction (R5)."""
         session = session_with_above_median_income
-        _expenses_and_priority_debt(session)
+        _expenses_at_the_caps(session)
+        calculator = MeansTestCalculator(session)
+        calculator.calculate()
+        # No real input reaches the passing branch while the deduction is $0 (rulings R5)
+        means_test = MeansTest.objects.get(session=session)
+        means_test.passes_above_median = True
+        message = calculator._generate_upl_compliant_message(means_test)
 
-        result = MeansTestCalculator(session).calculate()
-
-        assert result["passes_means_test"] is True
-        assert result["passes_above_median"] is True
-        assert "below the median" not in result["message"]
-        assert "your income is above the median" in result["message"]
-        assert "may still be eligible" in result["message"]
+        assert "below the median" not in message
+        assert "your income is above the median" in message
+        assert "may still be eligible" in message
 
     def test_recalculating_below_the_median_clears_the_above_median_results(
         self, session_with_above_median_income
     ):
         session = session_with_above_median_income
-        _expenses_and_priority_debt(session)
+        _expenses_at_the_caps(session)
         first = MeansTestCalculator(session).calculate()
         assert first["above_median_calculated"] is True
-        assert first["passes_above_median"] is True
+        assert first["passes_above_median"] is False
         assert first["total_allowable_expenses"] == Decimal("2799.00")
-        assert first["priority_debts_monthly"] == Decimal("3500.00")
-        assert first["disposable_income"] == Decimal("701.00")
+        assert first["priority_debts_monthly"] == Decimal("0")
+        assert first["disposable_income"] == Decimal("4201.00")
 
         session.income_info.monthly_gross_wages = Decimal("5000.00")
         session.income_info.save()

@@ -626,7 +626,6 @@ WRITES = {
             "session": s.pk,
             "creditor_name": "Lakeshore Medical Billing",
             "debt_type": "medical",
-            "priority_classification": "unsecured",
             "amount_owed": "120.00",
             "monthly_payment": "0.00",
         },

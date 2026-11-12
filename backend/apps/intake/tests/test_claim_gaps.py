@@ -14,6 +14,11 @@ from django.conf import settings
 
 from apps.districts.models import District
 from apps.intake.claims import (
+    DEBT_GAP_NOTICE,
+    DEBT_GAP_OFFSET,
+    DEBT_GAP_PAST_DUE,
+    DEBT_GAP_PRIORITY,
+    DEBT_GAP_PRIORITY_OTHER,
     NAMELESS_CODEBTOR,
     NAMELESS_CONTRACT,
     NAMELESS_DEBT,
@@ -280,6 +285,11 @@ STATES = {
     "DEBT_GAP_WHO": _who,
     "DEBT_GAP_STATUS": _debt_with(claim_status=None),
     "DEBT_GAP_OFFSET": _debt_with(offset_answer=None),
+    "DEBT_GAP_PRIORITY": _debt_with(priority_answer=None),
+    "DEBT_GAP_PRIORITY_OTHER": _debt_with(
+        priority_answer="other", priority_other="  ", past_due_amount=Decimal("0.00")
+    ),
+    "DEBT_GAP_PAST_DUE": _debt_with(priority_answer="taxes", past_due_amount=None),
     "DEBT_GAP_NOTICE": _debt_with(notice_parties=None),
     "DEBT_GAP_NOTICE_PARTY": _notice_party,
     "CONTRACT_GAP_NO_ANSWER": _no_row(),
@@ -757,3 +767,64 @@ def test_a_debt_and_a_lease_on_one_motor_home_ask_once(session):
     asked = [gap for gap in _gaps(session) if "Do you live here" in gap]
 
     assert len(asked) == 1
+
+
+def _sentence(constant):
+    return constant.format(name=ND)
+
+
+def test_the_priority_gaps_follow_offset_and_come_before_notice(session):
+    complete_debt(
+        session,
+        offset_answer=None,
+        priority_answer="other",
+        priority_other="",
+        past_due_amount=None,
+        notice_parties=None,
+    )
+    answer_claims(session)
+    assert _gaps(session) == [
+        _sentence(DEBT_GAP_OFFSET),
+        _sentence(DEBT_GAP_PRIORITY_OTHER),
+        _sentence(DEBT_GAP_PAST_DUE),
+        _sentence(DEBT_GAP_NOTICE),
+    ]
+
+
+def test_a_secured_debt_is_never_asked_the_priority_question(session):
+    _secured_with(priority_answer=None, priority_other="", past_due_amount=None)(session)
+    answer_claims(session)
+    asked = {
+        _sentence(DEBT_GAP_PRIORITY),
+        _sentence(DEBT_GAP_PRIORITY_OTHER),
+        _sentence(DEBT_GAP_PAST_DUE),
+    }
+    assert asked.isdisjoint(_gaps(session))
+
+
+@pytest.mark.parametrize("answer", ["no", "not_sure"])
+def test_no_and_not_sure_are_answers_and_ask_nothing_more(session, answer):
+    complete_debt(session, priority_answer=answer, priority_other=" ", past_due_amount=None)
+    answer_claims(session)
+    assert _gaps(session) == []
+
+
+@pytest.mark.parametrize("kind", ["domestic_support", "taxes", "intoxicated"])
+def test_a_kind_with_a_blank_split_and_nothing_past_due_is_complete(session, kind):
+    complete_debt(
+        session,
+        priority_answer=kind,
+        priority_amount=None,
+        nonpriority_amount=None,
+        past_due_amount=Decimal("0.00"),
+    )
+    answer_claims(session)
+    assert _gaps(session) == []
+
+
+def test_a_scanned_draft_shows_the_priority_gap_beside_the_draft_sentence(session):
+    complete_debt(session, is_draft=True, priority_answer=None)
+    answer_claims(session)
+    gaps = _gaps(session)
+    assert DRAFT_SENTENCE in gaps
+    assert _sentence(DEBT_GAP_PRIORITY) in gaps

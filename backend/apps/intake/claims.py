@@ -17,6 +17,11 @@ NAMELESS_DEBT = "one amount owed"
 NAMELESS_CONTRACT = "one contract"
 NAMELESS_CODEBTOR = "one codebtor"
 
+# E/F Part 1's question (3d1 B17): the four kinds, then "No" and "Not sure". The wizard's copy of the
+# kinds is PRIORITY_TYPE_WORDS in formText.ts, pinned by test_claims_frontend_copy.py.
+PRIORITY_TYPES = ("domestic_support", "taxes", "intoxicated", "other")
+PRIORITY_ANSWERS = (*PRIORITY_TYPES, "no", "not_sure")
+
 # Server only: the wizard's steps never say these two (Continue on Assets doesn't ask
 # "Do you live here?", and the draft check is not on the Amounts Owed step's copy).
 ASSET_GAP_LIVES_HERE = "Answer “Do you live here?” for {row} on line {line} of the Assets step."
@@ -66,6 +71,9 @@ DEBT_GAP_STATUS = (
     "Check any that fit {name}: contingent, unliquidated or disputed. Or choose None of these."
 )
 DEBT_GAP_OFFSET = "Answer whether {name} is subject to offset."
+DEBT_GAP_PRIORITY = "Answer “Is this amount owed one of these kinds?” for {name}."
+DEBT_GAP_PRIORITY_OTHER = "Fill in “Other. Specify” for {name}."
+DEBT_GAP_PAST_DUE = "Enter how much of what you owe {name} is past due. Enter 0 if none of it is."
 DEBT_GAP_NOTICE = "Answer whether anyone else is contacting you about {name}."
 DEBT_GAP_NOTICE_PARTY = (
     "Enter the name and full address of each person contacting you about {name}."
@@ -292,6 +300,14 @@ def _debt_answer_gaps(debt, name):
         messages.append(DEBT_GAP_STATUS)
     if not debt.is_secured and debt.offset_answer is None:
         messages.append(DEBT_GAP_OFFSET)
+    if not debt.is_secured:
+        if not debt.priority_answer:
+            messages.append(DEBT_GAP_PRIORITY)
+        elif debt.priority_answer in PRIORITY_TYPES:
+            if debt.priority_answer == "other" and _blank(debt.priority_other):
+                messages.append(DEBT_GAP_PRIORITY_OTHER)
+            if debt.past_due_amount is None:
+                messages.append(DEBT_GAP_PAST_DUE)
     parties = debt.get_notice_parties()
     if parties is None:
         messages.append(DEBT_GAP_NOTICE)

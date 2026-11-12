@@ -23,6 +23,11 @@ DEBT_COLUMNS = [
     "lien",
     "claim_status",
     "notice_parties",
+    "priority_answer",
+    "priority_other",
+    "priority_amount",
+    "nonpriority_amount",
+    "past_due_amount",
 ]
 CONTRACT_COLUMNS = [*ADDRESS, "lease_kind", "monthly_payment", "owes_now"]
 CODEBTOR_COLUMNS = ["street_2", "outside_us", "links"]
@@ -61,9 +66,14 @@ def test_every_new_claim_answer_is_stored_as_ciphertext(filer):
         lien=json.dumps({"kinds": ["agreement"], "other": ""}),
         claim_status=json.dumps(["disputed"]),
         notice_parties=json.dumps([]),
+        priority_answer="taxes",
+        priority_other="Demo words",
+        priority_amount=Decimal("3000.00"),
+        nonpriority_amount=Decimal("10.00"),
+        past_due_amount=Decimal("0.00"),
     )
     row = _raw("debt_info", DEBT_COLUMNS, debt.pk)
-    assert len(row) == 13
+    assert len(row) == 18
     assert all(str(v).startswith(CIPHERTEXT) for v in row)
 
     contract = ExecutoryContract.objects.create(

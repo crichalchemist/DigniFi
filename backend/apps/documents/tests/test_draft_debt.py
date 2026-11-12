@@ -151,7 +151,59 @@ def test_a_scanned_car_loan_or_mortgage_bill_is_secured(
 
     debt.refresh_from_db()
     assert debt.is_secured is secured
-    assert debt.priority_classification == ("secured" if secured else "unsecured")
+
+
+PRIORITY_FIELDS = (
+    "priority_answer",
+    "priority_other",
+    "priority_amount",
+    "nonpriority_amount",
+    "past_due_amount",
+)
+
+
+def _bill(creditor_name, creditor_type, amount):
+    return ExtractionResult(
+        fields={
+            "creditor_name": creditor_name,
+            "amount_owed": amount,
+            "creditor_type": creditor_type,
+        },
+        confidence={"overall": 88},
+        detected_type=DocumentType.CREDITOR_BILL,
+    )
+
+
+def test_a_scanned_debt_leaves_the_priority_question_unanswered(db, session, uploaded_doc):
+    from apps.documents.schemas.credit_report import CreditReportExtraction, TradelineItem
+
+    creator = DraftDebtCreator()
+    report = CreditReportExtraction(
+        tradelines=[
+            TradelineItem(
+                creditor_name="Demo Loan Servicing",
+                account_number=None,
+                amount_owed=Decimal("12000.00"),
+                account_type="student_loan",
+                account_status="open",
+            )
+        ]
+    )
+    debts = [
+        # An IRS bill, a car loan bill and a student loan read from a credit report:
+        # none is answered or labelled for the filer
+        creator.create_from_result(
+            _bill("Internal Revenue Service", "other", "3000.00"), session, uploaded_doc
+        ),
+        creator.create_from_result(
+            _bill("Demo Auto Lender", "auto_loan", "9000.00"), session, uploaded_doc
+        ),
+        *creator.create_from_credit_report(report, session, uploaded_doc),
+    ]
+    for debt in debts:
+        debt.refresh_from_db()
+        assert [getattr(debt, field) for field in PRIORITY_FIELDS] == [None] * 5
+        assert debt.priority_classification == "unsecured"  # the column's default, set by nothing
 
 
 class TestDraftDebtCreatorCreditReport:

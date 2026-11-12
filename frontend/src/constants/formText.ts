@@ -17,6 +17,7 @@ import type {
   LienKind,
   MaritalStatus,
   PaymentChoice,
+  PriorityType,
   PropertyKind,
 } from '../types/api';
 
@@ -621,6 +622,20 @@ export const EF_COMMUNITY_LABEL = 'Check if this claim is for a community debt';
 export const D_DATE_LABEL = 'Date debt was incurred';
 export const EF_DATE_LABEL = 'When was the debt incurred?';
 export const CLAIM_OFFSET_QUESTION = 'Is the claim subject to offset?';
+
+// Schedule E/F Part 1, row 2.1 (form_b106ef.pdf page 1), and 122A-2 line 35 (b_122a-2_0425-form.pdf
+// page 7). Cut: line 35's ", such as those you listed in line 19".
+export const PRIORITY_TYPE_WORDS: Record<PriorityType, string> = {
+  domestic_support: 'Domestic support obligations',
+  taxes: 'Taxes and certain other debts you owe the government',
+  intoxicated: 'Claims for death or personal injury while you were intoxicated',
+  other: 'Other. Specify',
+};
+export const PRIORITY_AMOUNT_LABEL = 'Priority amount';
+export const NONPRIORITY_AMOUNT_LABEL = 'Nonpriority amount';
+export const PRIORITY_OTHER_LABEL = 'Other. Specify';
+export const PAST_DUE_NOTE = 'Do not include current or ongoing priority claims.';
+
 export const CLAIM_LAST_4_LABEL = 'Last 4 digits of account number';
 
 // Schedule D Part 2
