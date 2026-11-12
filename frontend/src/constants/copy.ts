@@ -877,3 +877,19 @@ export const EXEMPTION_LAW_SUMMARIES: Record<string, string> = {
   us_38_5301: "Veterans' benefits.",
   us_42_407: 'Social Security benefits.',
 };
+
+export const EXEMPTION_GAP_LINE_1 = 'Choose which set of exemptions you are claiming.';
+export const EXEMPTION_GAP_NO_CLAIMS =
+  "Add the property you claim as exempt, or press “I'm not claiming any property as exempt.”";
+export const EXEMPTION_GAP_NO_ITEMS = "Press “I'm not claiming any property as exempt.”";
+export const EXEMPTION_GAP_ITEM_GONE =
+  'One claim is for property that is no longer on your property list. Remove it or choose the property again.';
+export const EXEMPTION_GAP_LAW = 'Choose the law for {name}.';
+export const EXEMPTION_GAP_LAW_CHANGED =
+  'The list of laws has changed since you chose a law for {name}. Choose a law again.';
+export const EXEMPTION_GAP_AMOUNT_KIND =
+  'Choose a dollar amount or 100% of fair market value for {name}.';
+export const EXEMPTION_GAP_AMOUNT = 'Enter the dollar amount you claim for {name}.';
+export const EXEMPTION_GAP_DESCRIPTION = 'Type a shorter description of {name} for Schedule C.';
+export const EXEMPTION_GAP_LINE_3 = 'Answer line 3, the homestead question.';
+export const EXEMPTION_GAP_LINE_3_1 = 'Answer the second part of line 3.';

@@ -32,7 +32,13 @@ from apps.intake.management.commands.seed_demo_data import (
     asset_at,
     claim_links,
 )
-from apps.intake.models import IncomeInfo, IntakeSession, SpouseIncome
+from apps.intake.models import (
+    ExemptionAnswers,
+    ExemptionClaim,
+    IncomeInfo,
+    IntakeSession,
+    SpouseIncome,
+)
 
 User = get_user_model()
 
@@ -186,6 +192,24 @@ def _send_through_the_api(persona):
     # questions for a waiver filer. It never reopens the intake.
     response = client.put(f"{session_url}filing-fee/", _sent(data["filing_fee"]), format="json")
     assert response.status_code == 200, response.data
+    # Schedule C's page, written as the seed writes it until the page's own PUT replaces this.
+    exemptions = data["exemptions"]
+    ExemptionAnswers.objects.create(
+        session=session,
+        line_1=exemptions["line_1"],
+        line_3=exemptions["line_3"],
+        no_claims=exemptions["no_claims"],
+    )
+    for claim in exemptions["claims"]:
+        amount = claim["amount"]
+        ExemptionClaim.objects.create(
+            session=session,
+            asset=asset_at(session, claim["position"]),
+            law=claim["law"],
+            amount_kind="fair_market_value" if amount is None else "dollars",
+            amount=None if amount is None else Decimal(str(amount)),
+            short_description=claim["short"],
+        )
     if "sofa" in data:
         response = client.patch(
             f"/api/intake/sofa-report/{session_id}/", _sent(data["sofa"]), format="json"

@@ -593,3 +593,12 @@ def test_every_persona_answers_line_1_and_line_3(persona):
     answers = session.exemption_answers
     assert (answers.line_1, answers.line_3, answers.line_3_1) == ("state_and_federal", "no", None)
     assert answers.no_claims is (persona == "sarah")
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("persona", list(PERSONAS))
+def test_every_seeded_persona_passes_schedule_cs_gate(persona):
+    from apps.forms.registry import FORM_REGISTRY
+
+    session = _seed(persona)
+    FORM_REGISTRY["schedule_c"].requires(session)

@@ -69,3 +69,25 @@ def test_every_exemption_law_sentence_is_marked_draft_for_counsel():
     for name in DRAFT_NAMES:
         index = next(i for i, line in enumerate(lines) if line.startswith(f"export const {name}"))
         assert lines[index - 1] == "// DRAFT: counsel C-8", name
+
+
+@pytest.mark.parametrize(
+    "name",
+    [
+        "EXEMPTION_GAP_LINE_1",
+        "EXEMPTION_GAP_NO_CLAIMS",
+        "EXEMPTION_GAP_NO_ITEMS",
+        "EXEMPTION_GAP_ITEM_GONE",
+        "EXEMPTION_GAP_LAW",
+        "EXEMPTION_GAP_LAW_CHANGED",
+        "EXEMPTION_GAP_AMOUNT_KIND",
+        "EXEMPTION_GAP_AMOUNT",
+        "EXEMPTION_GAP_DESCRIPTION",
+        "EXEMPTION_GAP_LINE_3",
+        "EXEMPTION_GAP_LINE_3_1",
+    ],
+)
+def test_the_page_and_the_server_word_each_gap_alike(name):
+    from apps.intake import exemptions
+
+    assert _copy_sentence(name) == getattr(exemptions, name)
