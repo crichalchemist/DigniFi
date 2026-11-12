@@ -45,6 +45,9 @@ from .models import (
     SOFAReport,
 )
 from .serializers import (
+    FAIR_MARKET_VALUE_AMOUNT_REFUSAL,
+    LAW_AND_OTHER_LAW_REFUSAL,
+    NO_CLAIMS_AND_CLAIMS_REFUSAL,
     AssetInfoSerializer,
     BulkAnswerPayloadSerializer,
     CodebtorRowSerializer,
@@ -627,11 +630,7 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
                     and ExemptionClaim.objects.filter(session=session).exists()
                 ):
                     return Response(
-                        {
-                            "no_claims": [
-                                "You can't be claiming no property and also claim property."
-                            ]
-                        },
+                        {"no_claims": [NO_CLAIMS_AND_CLAIMS_REFUSAL]},
                         status=status.HTTP_400_BAD_REQUEST,
                     )
                 if claims:
@@ -660,11 +659,9 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
                         amount = claim["amount"] if "amount" in claim else old.amount
                         problems = {}
                         if law is not None and other_law.strip():
-                            problems["other_law"] = ["Choose a law or type another law, not both."]
+                            problems["other_law"] = [LAW_AND_OTHER_LAW_REFUSAL]
                         if kind == "fair_market_value" and amount is not None:
-                            problems["amount"] = [
-                                "A claim of the full fair market value takes no dollar amount."
-                            ]
+                            problems["amount"] = [FAIR_MARKET_VALUE_AMOUNT_REFUSAL]
                         if problems:
                             merged_errors[str(index)] = problems
                     if merged_errors:

@@ -184,6 +184,9 @@ REFUSED = {
     },
     "short_description_unprintable": lambda a: {"claims": [_claim(a, short_description="Demo ☃")]},
     "not_claiming_with_claims": lambda a: {"no_claims": True, "claims": [_claim(a)]},
+    "law_blank": lambda a: {"claims": [_claim(a, law="")]},
+    "law_spaces": lambda a: {"claims": [_claim(a, law="  ")]},
+    "line_1_blank": lambda a: {"line_1": ""},
     "unknown_claim_key": lambda a: {"claims": [_claim(a, colour="red")]},
     "a_101st_claim": lambda a: {"claims": [_claim(a) for _ in range(101)]},
 }
@@ -227,6 +230,48 @@ def test_a_partial_row_cannot_make_a_claim_the_page_could_never_save(filer, stor
     response = _put(client, session, {"claims": [{"id": claim.pk, **sent}]})
     assert response.status_code == 400, response.content
     assert _stored(session) == before
+
+
+def test_a_put_without_claims_keeps_the_stored_claims(filer):
+    client, session, car, checking = filer
+    _put(client, session, {"claims": [_claim(car, short_description="Demo car"), _claim(checking)]})
+    before = _stored(session)
+    assert len(before[1]) == 2
+    response = _put(client, session, {"line_3": "no"})
+    assert response.status_code == 200
+    assert response.json()["line_3"] == "no"
+    assert _stored(session)[1] == before[1]
+    assert sorted(c["asset"] for c in response.json()["claims"]) == [car.pk, checking.pk]
+
+
+def test_a_typed_law_saves_and_reads_back_with_or_without_a_list_in_force(filer):
+    client, session, car, _checking = filer
+    typed = _claim(car, law=None, other_law="Demo Statute 1")
+    body = _put(client, session, {"claims": [typed]}).json()
+    assert body["claims"][0]["law"] is None
+    assert body["claims"][0]["other_law"] == "Demo Statute 1"
+    assert body["claims"][0]["amount"] == "100.00"
+    assert body["catalog"] is not None
+    ExemptionCatalog.objects.all().delete()
+    again = _put(client, session, {"claims": [{**typed, "id": body["claims"][0]["id"]}]})
+    assert again.status_code == 200, again.content
+    reply = again.json()
+    assert reply["catalog"] is None
+    assert reply["catalog_gap"] == "no_table"
+    assert reply["claims"][0]["law"] is None
+    assert reply["claims"][0]["other_law"] == "Demo Statute 1"
+    stored = ExemptionClaim.objects.get(session=session)
+    assert (stored.law, stored.other_law) == (None, "Demo Statute 1")
+
+
+@pytest.mark.parametrize("blank", ["", "   "])
+def test_a_blank_short_description_is_stored_as_null(filer, blank):
+    client, session, car, _checking = filer
+    body = _put(client, session, {"claims": [_claim(car, short_description=blank)]}).json()
+    assert body["claims"][0]["short_description"] is None
+    assert ExemptionClaim.objects.get(session=session).short_description is None
+    listed = client.get(_url(session)).json()["claims"]
+    assert listed[0]["short_description"] is None
 
 
 @pytest.mark.parametrize(

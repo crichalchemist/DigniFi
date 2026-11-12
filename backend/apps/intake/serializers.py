@@ -1307,6 +1307,11 @@ class FilingFeeSerializer(serializers.Serializer):
         return attrs
 
 
+LAW_AND_OTHER_LAW_REFUSAL = "Choose a law or type another law, not both."
+FAIR_MARKET_VALUE_AMOUNT_REFUSAL = "A claim of the full fair market value takes no dollar amount."
+NO_CLAIMS_AND_CLAIMS_REFUSAL = "You can't be claiming no property and also claim property."
+
+
 class ExemptionClaimSerializer(serializers.Serializer):
     """One claim on Schedule C's page (3g1 spec §5.3). Every answer may be missing, for the
     page's gaps to name; only a value no answer can have is refused. The catalog's law keys
@@ -1341,16 +1346,19 @@ class ExemptionClaimSerializer(serializers.Serializer):
         other_law = attrs.get("other_law") or ""
         errors = {}
         if law is not None and other_law.strip():
-            errors["other_law"] = ["Choose a law or type another law, not both."]
+            errors["other_law"] = [LAW_AND_OTHER_LAW_REFUSAL]
         if law is not None and law not in self.context.get("law_keys", ()):
             errors["law"] = ["This law is not on the list of laws."]
         if attrs.get("amount_kind") == "fair_market_value" and attrs.get("amount") is not None:
-            errors["amount"] = ["A claim of the full fair market value takes no dollar amount."]
+            errors["amount"] = [FAIR_MARKET_VALUE_AMOUNT_REFUSAL]
         if other_law.strip() and not fits_law(other_law):
             errors["other_law"] = ["This law doesn't fit in its box on Schedule C."]
         short = attrs.get("short_description") or ""
         if short.strip() and not fits_description(short):
             errors["short_description"] = ["This description doesn't fit in its box on Schedule C."]
+        if "short_description" in attrs and not short.strip():
+            # Spec 5.2 / P8: null unless the item's name doesn't fit.
+            attrs["short_description"] = None
         if errors:
             raise serializers.ValidationError(errors)
         return attrs
@@ -1375,9 +1383,7 @@ class ExemptionsSerializer(serializers.Serializer):
                 {name: ["This is not one of the exemptions answers."] for name in unknown}
             )
         if attrs.get("no_claims") and attrs.get("claims"):
-            raise serializers.ValidationError(
-                {"no_claims": ["You can't be claiming no property and also claim property."]}
-            )
+            raise serializers.ValidationError({"no_claims": [NO_CLAIMS_AND_CLAIMS_REFUSAL]})
         return attrs
 
 
