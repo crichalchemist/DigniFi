@@ -16,6 +16,7 @@ from rest_framework import serializers
 from apps.districts.counties import ILND_COUNTIES
 from apps.districts.dated_tables import fill_date
 from apps.eligibility.cmi import answered_window, income_step_gaps, income_window
+from apps.forms.services.exemption_items import fits_description, fits_law
 
 from .asset_lines import LINE_BY_KEY, PROPERTY_KINDS, WHO
 from .claims import PRIORITY_ANSWERS, account_last_4, legacy_payments, ordered_debts
@@ -37,6 +38,8 @@ from .models import (
     DebtInfo,
     DebtorInfo,
     ExecutoryContract,
+    ExemptionAnswers,
+    ExemptionClaim,
     ExpenseInfo,
     FilingFee,
     Household,
@@ -1300,6 +1303,80 @@ class FilingFeeSerializer(serializers.Serializer):
         if unknown:
             raise serializers.ValidationError(
                 {name: ["This is not one of the filing-fee answers."] for name in unknown}
+            )
+        return attrs
+
+
+class ExemptionClaimSerializer(serializers.Serializer):
+    """One claim on Schedule C's page (3g1 spec §5.3). Every answer may be missing, for the
+    page's gaps to name; only a value no answer can have is refused. The catalog's law keys
+    come in through the context (`law_keys`), so a law not on the list in force is a 400."""
+
+    id = serializers.IntegerField(required=False, allow_null=True)
+    asset = serializers.IntegerField(required=False, allow_null=True)
+    law = serializers.CharField(max_length=40, required=False, allow_null=True)
+    other_law = serializers.CharField(max_length=300, required=False, allow_blank=True, default="")
+    amount_kind = serializers.ChoiceField(
+        choices=ExemptionClaim.AMOUNT_KINDS, required=False, allow_null=True
+    )
+    amount = serializers.DecimalField(
+        max_digits=12, decimal_places=2, min_value=Decimal("0"), required=False, allow_null=True
+    )
+    short_description = serializers.CharField(
+        max_length=60, required=False, allow_null=True, allow_blank=True
+    )
+
+    def to_internal_value(self, data):
+        # A ListField child has no initial_data, so validate() can't see an unknown key.
+        if isinstance(data, dict):
+            unknown = sorted(set(data) - set(self.fields))
+            if unknown:
+                raise serializers.ValidationError(
+                    {name: ["This is not one of a claim's answers."] for name in unknown}
+                )
+        return super().to_internal_value(data)
+
+    def validate(self, attrs):
+        law = attrs.get("law")
+        other_law = attrs.get("other_law") or ""
+        errors = {}
+        if law is not None and other_law.strip():
+            errors["other_law"] = ["Choose a law or type another law, not both."]
+        if law is not None and law not in self.context.get("law_keys", ()):
+            errors["law"] = ["This law is not on the list of laws."]
+        if attrs.get("amount_kind") == "fair_market_value" and attrs.get("amount") is not None:
+            errors["amount"] = ["A claim of the full fair market value takes no dollar amount."]
+        if other_law.strip() and not fits_law(other_law):
+            errors["other_law"] = ["This law doesn't fit in its box on Schedule C."]
+        short = attrs.get("short_description") or ""
+        if short.strip() and not fits_description(short):
+            errors["short_description"] = ["This description doesn't fit in its box on Schedule C."]
+        if errors:
+            raise serializers.ValidationError(errors)
+        return attrs
+
+
+class ExemptionsSerializer(serializers.Serializer):
+    """Schedule C's page answers (3g1 spec §5.3). A PUT sets only the keys it sends; DRF drops
+    an unknown key silently, so validate() refuses it by name."""
+
+    line_1 = serializers.ChoiceField(
+        choices=ExemptionAnswers.LINE_1_ANSWERS, required=False, allow_null=True
+    )
+    line_3 = serializers.ChoiceField(choices=["yes", "no"], required=False, allow_null=True)
+    line_3_1 = serializers.ChoiceField(choices=["yes", "no"], required=False, allow_null=True)
+    no_claims = serializers.BooleanField(required=False)
+    claims = serializers.ListField(child=ExemptionClaimSerializer(), required=False, max_length=100)
+
+    def validate(self, attrs):
+        unknown = sorted(set(self.initial_data) - set(self.fields))
+        if unknown:
+            raise serializers.ValidationError(
+                {name: ["This is not one of the exemptions answers."] for name in unknown}
+            )
+        if attrs.get("no_claims") and attrs.get("claims"):
+            raise serializers.ValidationError(
+                {"no_claims": ["You can't be claiming no property and also claim property."]}
             )
         return attrs
 

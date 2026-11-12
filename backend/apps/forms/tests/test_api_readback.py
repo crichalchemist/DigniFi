@@ -32,13 +32,7 @@ from apps.intake.management.commands.seed_demo_data import (
     asset_at,
     claim_links,
 )
-from apps.intake.models import (
-    ExemptionAnswers,
-    ExemptionClaim,
-    IncomeInfo,
-    IntakeSession,
-    SpouseIncome,
-)
+from apps.intake.models import IncomeInfo, IntakeSession, SpouseIncome
 
 User = get_user_model()
 
@@ -192,24 +186,31 @@ def _send_through_the_api(persona):
     # questions for a waiver filer. It never reopens the intake.
     response = client.put(f"{session_url}filing-fee/", _sent(data["filing_fee"]), format="json")
     assert response.status_code == 200, response.data
-    # Schedule C's page, written as the seed writes it until the page's own PUT replaces this.
+    # Schedule C's page: its answers and claims in one PUT, as the page sends them. It never
+    # reopens the intake.
     exemptions = data["exemptions"]
-    ExemptionAnswers.objects.create(
-        session=session,
-        line_1=exemptions["line_1"],
-        line_3=exemptions["line_3"],
-        no_claims=exemptions["no_claims"],
+    response = client.put(
+        f"{session_url}exemptions/",
+        {
+            "line_1": exemptions["line_1"],
+            "line_3": exemptions["line_3"],
+            "no_claims": exemptions["no_claims"],
+            "claims": [
+                {
+                    "asset": asset_at(session, claim["position"]).pk,
+                    "law": claim["law"],
+                    "amount_kind": (
+                        "dollars" if claim["amount"] is not None else "fair_market_value"
+                    ),
+                    "amount": None if claim["amount"] is None else str(claim["amount"]),
+                    "short_description": claim["short"],
+                }
+                for claim in exemptions["claims"]
+            ],
+        },
+        format="json",
     )
-    for claim in exemptions["claims"]:
-        amount = claim["amount"]
-        ExemptionClaim.objects.create(
-            session=session,
-            asset=asset_at(session, claim["position"]),
-            law=claim["law"],
-            amount_kind="fair_market_value" if amount is None else "dollars",
-            amount=None if amount is None else Decimal(str(amount)),
-            short_description=claim["short"],
-        )
+    assert response.status_code == 200, response.data
     if "sofa" in data:
         response = client.patch(
             f"/api/intake/sofa-report/{session_id}/", _sent(data["sofa"]), format="json"
