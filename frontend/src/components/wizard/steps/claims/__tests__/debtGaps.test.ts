@@ -22,6 +22,7 @@ const complete: DebtRow = {
   outside_us: false,
   claim_status: [],
   offset_answer: 'no',
+  priority_answer: 'no',
   notice_parties: [],
   secured_by: null,
   lien: null,
@@ -159,6 +160,31 @@ describe('what the Amounts Owed step still lacks', () => {
       fill(copy.DEBT_GAP_OFFSET, NAME),
     ],
     [
+      'priority unanswered',
+      () => firstDebtGap([{ ...complete, priority_answer: null }], false, []),
+      fill(copy.DEBT_GAP_PRIORITY, NAME),
+    ],
+    [
+      'priority Other with no words',
+      () =>
+        firstDebtGap(
+          [{ ...complete, priority_answer: 'other', priority_other: ' ', past_due_amount: 0 }],
+          false,
+          []
+        ),
+      fill(copy.DEBT_GAP_PRIORITY_OTHER, NAME),
+    ],
+    [
+      'priority kind with no past-due amount',
+      () =>
+        firstDebtGap(
+          [{ ...complete, priority_answer: 'taxes', past_due_amount: undefined }],
+          false,
+          []
+        ),
+      fill(copy.DEBT_GAP_PAST_DUE, NAME),
+    ],
+    [
       'D16',
       () => firstDebtGap([{ ...complete, notice_parties: null }], false, []),
       fill(copy.DEBT_GAP_NOTICE, NAME),
@@ -183,6 +209,42 @@ describe('what the Amounts Owed step still lacks', () => {
 
   it('does not ask offset of a secured row', () => {
     expect(debtRowGaps({ ...secured, offset_answer: null }, [car])).toEqual([]);
+  });
+
+  it.each<[string, Partial<DebtRow>]>([
+    ['No', { priority_answer: 'no' }],
+    ['Not sure', { priority_answer: 'not_sure', priority_other: ' ' }],
+    [
+      'a kind with a blank split and 0 past due',
+      { priority_answer: 'domestic_support', past_due_amount: 0 },
+    ],
+  ])('asks nothing more after %s', (_name, change) => {
+    expect(debtRowGaps({ ...complete, ...change }, [])).toEqual([]);
+  });
+
+  it('does not ask the priority question of a secured row', () => {
+    expect(debtRowGaps({ ...secured, priority_answer: null }, [car])).toEqual([]);
+  });
+
+  it('says the priority gaps after offset and before the notice answer', () => {
+    expect(
+      debtRowGaps(
+        {
+          ...complete,
+          offset_answer: null,
+          priority_answer: 'other',
+          priority_other: '',
+          past_due_amount: undefined,
+          notice_parties: null,
+        },
+        []
+      )
+    ).toEqual([
+      fill(copy.DEBT_GAP_OFFSET, NAME),
+      fill(copy.DEBT_GAP_PRIORITY_OTHER, NAME),
+      fill(copy.DEBT_GAP_PAST_DUE, NAME),
+      fill(copy.DEBT_GAP_NOTICE, NAME),
+    ]);
   });
 
   it('lists a nameless row’s gaps in its own words', () => {

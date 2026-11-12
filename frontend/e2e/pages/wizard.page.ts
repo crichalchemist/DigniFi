@@ -492,6 +492,9 @@ export class WizardPage {
       await page
         .locator(`input[name="offset_answer_${index}"][value="${debt.offset_answer ?? 'no'}"]`)
         .check();
+      await page
+        .locator(`input[name="priority_answer_${index}"][value="${debt.priority_answer ?? 'no'}"]`)
+        .check();
     }
 
     const parties = debt.notice_parties;

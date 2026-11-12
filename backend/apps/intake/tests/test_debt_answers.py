@@ -31,6 +31,18 @@ def _car(session):
     )
 
 
+def test_the_api_no_longer_carries_a_priority_label(filer):
+    client, session = filer
+    response = _patch(
+        client,
+        session,
+        [{**ROW, "debt_type": "student_loan", "priority_classification": "priority"}],
+    )
+    assert response.status_code == 200
+    assert "priority_classification" not in response.data["debts"][0]
+    assert session.debts.get().priority_classification == "unsecured"
+
+
 def test_a_half_filled_debt_saves_with_no_name_and_amount_zero(filer):
     client, session = filer
     response = _patch(client, session, [{"amount_owed": "0", "street_address": "9 Demo Road"}])
@@ -276,3 +288,78 @@ def test_a_session_created_with_a_debt_stores_its_answers_readably(filer):
     assert isinstance(row["notice_parties"][0]["id"], int)
     assert row["notice_parties"][0]["name"] == "Demo Collections"
     assert row["secured_by"] is None
+
+
+PRIORITY = {
+    "priority_answer": "taxes",
+    "priority_other": "",
+    "priority_amount": "3000.00",
+    "nonpriority_amount": None,
+    "past_due_amount": "0.00",
+}
+
+
+def test_the_priority_answers_save_and_come_back_on_the_session_save(filer):
+    client, session = filer
+    response = _patch(client, session, [{**ROW, "debt_type": "other", **PRIORITY}])
+    assert response.status_code == 200
+    sent = response.data["debts"][0]
+    assert {key: sent[key] for key in PRIORITY} == PRIORITY
+    debt = session.debts.get()
+    assert debt.priority_answer == "taxes"
+    assert debt.past_due_amount == Decimal("0.00")
+    assert debt.nonpriority_amount is None
+
+
+def test_the_per_item_save_takes_the_priority_answers(filer):
+    client, session = filer
+    response = client.post(
+        "/api/intake/debts/",
+        {**ROW, "session": session.pk, "priority_answer": "not_sure"},
+        format="json",
+    )
+    assert response.status_code == 201
+    assert response.data["priority_answer"] == "not_sure"
+
+
+@pytest.mark.parametrize("answer", ["", "priority", "yes"])
+def test_an_unknown_priority_answer_is_refused(filer, answer):
+    client, session = filer
+    assert _patch(client, session, [{**ROW, "priority_answer": answer}]).status_code == 400
+    per_item = {**ROW, "session": session.pk, "priority_answer": answer}
+    assert client.post("/api/intake/debts/", per_item, format="json").status_code == 400
+
+
+@pytest.mark.parametrize("field", ["priority_amount", "nonpriority_amount", "past_due_amount"])
+@pytest.mark.parametrize("value", ["-1", "12345678901.00"])
+def test_a_negative_or_too_wide_priority_figure_is_refused(filer, field, value):
+    client, session = filer
+    assert _patch(client, session, [{**ROW, field: value}]).status_code == 400
+    per_item = {**ROW, "session": session.pk, field: value}
+    assert client.post("/api/intake/debts/", per_item, format="json").status_code == 400
+    assert not session.debts.exists()
+
+
+def test_other_words_longer_than_the_box_takes_are_refused(filer):
+    client, session = filer
+    too_long = {**ROW, "priority_answer": "other", "priority_other": "x" * 101}
+    assert _patch(client, session, [too_long]).status_code == 400
+    fits = {**too_long, "priority_other": "x" * 100}
+    assert _patch(client, session, [fits]).status_code == 200
+
+
+def test_other_words_longer_than_the_box_takes_are_refused_on_the_per_item_path(filer):
+    client, session = filer
+    per_item = {**ROW, "session": session.pk, "priority_answer": "other"}
+    too_long = {**per_item, "priority_other": "x" * 101}
+    assert client.post("/api/intake/debts/", too_long, format="json").status_code == 400
+    assert not session.debts.exists()
+    fits = {**per_item, "priority_other": "x" * 100}
+    assert client.post("/api/intake/debts/", fits, format="json").status_code == 201
+
+
+def test_a_debt_saved_without_the_priority_answers_reads_them_as_unanswered(filer):
+    client, session = filer
+    assert _patch(client, session, [ROW]).status_code == 200
+    debt = client.get(f"/api/intake/sessions/{session.pk}/").data["debts"][0]
+    assert [debt[key] for key in PRIORITY] == [None] * 5

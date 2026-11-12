@@ -57,6 +57,7 @@ const SCANNED_BILL_ANSWERS: PersonaDebt = {
   address: addr('11 Demo Plaza', 'Chicago', 'IL', '60611'),
   claim_status: [],
   offset_answer: 'no',
+  priority_answer: 'no',
   notice_parties: [],
 };
 

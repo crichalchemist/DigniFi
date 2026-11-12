@@ -197,6 +197,7 @@ def complete_debt(session, **over) -> DebtInfo:
         **DEMO_ADDRESS,
         "claim_status": [],
         "offset_answer": "no",
+        "priority_answer": "no",
         "notice_parties": [],
         "is_draft": False,
         "is_secured": False,

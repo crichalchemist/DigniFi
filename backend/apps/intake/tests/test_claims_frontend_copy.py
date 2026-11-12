@@ -12,6 +12,7 @@ import pytest
 from django.conf import settings
 
 from apps.intake import claim_rows
+from apps.intake.claims import PRIORITY_ANSWERS, PRIORITY_TYPES
 from apps.intake.models import Codebtor, DebtInfo, ExecutoryContract
 
 FRONTEND = settings.BASE_DIR.parent / "frontend" / "src"
@@ -23,11 +24,11 @@ def _frontend_is_here():
         pytest.skip("the frontend's source isn't here (compose's backend mounts backend/ only)")
 
 
-def _keys(name: str) -> list[str]:
-    """The keys of one `export const NAME … = {` record in constants/claims.ts, in order."""
-    text = (FRONTEND / "constants" / "claims.ts").read_text()
+def _keys(name: str, file: str = "claims.ts") -> list[str]:
+    """The keys of one `export const NAME … = {` record in constants/<file>, in order."""
+    text = (FRONTEND / "constants" / file).read_text()
     match = re.search(rf"^export const {name}\b[^\n]*= \{{\n(.*?)^\}};", text, re.M | re.S)
-    assert match, f"claims.ts has no {name}"
+    assert match, f"{file} has no {name}"
     return re.findall(r"^  (\w+): '[^'\n]+',$", match.group(1), re.M)
 
 
@@ -69,3 +70,13 @@ def test_the_wizard_stops_a_date_or_a_party_list_where_the_server_does():
     # A box that lets a filer type past the server's bound, or add one party too many, gets a 400
     assert _declared_integer("DATE_INCURRED_MAX_LENGTH") == DebtInfo.DATE_INCURRED_MAX_LENGTH
     assert _declared_integer("MAX_NOTICE_PARTIES") == DebtInfo.MAX_NOTICE_PARTIES
+
+
+def test_the_priority_kinds_the_wizard_offers_are_the_servers():
+    kinds = _keys("PRIORITY_TYPE_WORDS", "formText.ts")
+    assert kinds == list(PRIORITY_TYPES)
+    assert list(PRIORITY_ANSWERS) == [*kinds, "no", "not_sure"]
+
+
+def test_the_other_words_box_holds_what_the_server_takes():
+    assert _declared_integer("PRIORITY_OTHER_MAX_LENGTH") == DebtInfo.PRIORITY_OTHER_MAX_LENGTH

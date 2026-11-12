@@ -226,9 +226,9 @@ def _total_nonpriority_unsecured(session: IntakeSession) -> str:
     """
     E/F line 6j and 106Sum 3b: every unsecured debt.
 
-    Which debts have priority is never asked (OQ-3), and a rule may not decide it, so
-    every unsecured debt counts as nonpriority and the priority lines stay blank
-    (step 2 spec §6.1 B5).
+    Which debts have priority is asked since 3d1 and printed from 3d2, and a rule may not
+    decide it, so until 3d2 every unsecured debt counts as nonpriority and the priority
+    lines stay blank (step 2 spec §6.1 B5).
     """
     from apps.intake.models import DebtInfo
 
@@ -918,7 +918,7 @@ DERIVATIONS: dict[str, Callable[[IntakeSession], str]] = {
     "has_codebtors": lambda s: _yes_if_any(s.codebtors.all()),
     # Schedules D and E/F: the section questions and E/F's line 6 totals
     "has_secured_debts": lambda s: _yes_if_any(s.debts.confirmed().filter(is_secured=True)),
-    # Every unsecured debt is nonpriority until priority is asked (OQ-3), as on line 6j.
+    # Every unsecured debt is nonpriority until 3d2 prints the priority answer, as on line 6j.
     "has_nonpriority_debts": lambda s: _yes_if_any(s.debts.confirmed().filter(is_secured=False)),
     "total_student_loans": _total_student_loans,
     "total_other_nonpriority": _total_other_nonpriority,

@@ -7,7 +7,8 @@
 import { ASSET_LINES, type AssetLineShape } from '../../../../constants/assetLines';
 import { REVIEW_ASSET_ROW } from '../../../../constants/copy';
 import { fill, rowName } from '../assets/assetGaps';
-import type { AssetInfo, WizardRow } from '../../../../types/api';
+import { PRIORITY_TYPE_WORDS } from '../../../../constants/formText';
+import type { AssetInfo, PriorityAnswer, PriorityType, WizardRow } from '../../../../types/api';
 
 export { fill };
 
@@ -15,6 +16,13 @@ export { fill };
 export const DATE_INCURRED_MAX_LENGTH = 15;
 // The most people or companies one debt can list (MAX_NOTICE_PARTIES, R5)
 export const MAX_NOTICE_PARTIES = 10;
+// The most characters of "Other. Specify" the server stores (DebtInfo.PRIORITY_OTHER_MAX_LENGTH)
+export const PRIORITY_OTHER_MAX_LENGTH = 100;
+
+/** Whether the answer is one of the four kinds (a key of PRIORITY_TYPE_WORDS), not No or Not sure */
+export function isPriorityType(answer: PriorityAnswer | null | undefined): answer is PriorityType {
+  return answer !== null && answer !== undefined && answer in PRIORITY_TYPE_WORDS;
+}
 
 export interface AddressValue {
   street_address: string;

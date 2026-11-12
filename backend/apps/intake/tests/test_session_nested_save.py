@@ -58,7 +58,6 @@ def _scanned_car_loan(session):
         session=session,
         creditor_name="Ally Auto",
         debt_type="auto_loan",
-        priority_classification="secured",
         account_number="4111222233334444",
         amount_owed=Decimal("500.00"),
         is_secured=True,

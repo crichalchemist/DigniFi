@@ -25,6 +25,12 @@ describe('which claim rows a save carries', () => {
     ['the outside-the-US tick', { outside_us: true }, false],
     ['a linked property', { secured_by: 3 }, false],
     ['a debt type', { debt_type: 'medical' }, false],
+    ['a priority answer of No', { priority_answer: 'no' }, false],
+    ['the Other words', { priority_other: 'Demo deposit' }, false],
+    ['a past-due amount of 0', { past_due_amount: 0 }, false],
+    ['a priority amount', { priority_amount: 25 }, false],
+    ['a nonpriority amount of 0', { nonpriority_amount: 0 }, false],
+    ['Other words of only spaces', { priority_other: '  ' }, true],
   ])('treats a new debt row with %s as expected', (_name, change, blank) => {
     expect(isBlankDebt({ _key: 'new-1', ...change })).toBe(blank);
   });
@@ -84,9 +90,28 @@ describe('which claim rows a save carries', () => {
       id: 7,
       amount_owed: 0,
       monthly_payment: null,
+      priority_amount: null,
+      nonpriority_amount: null,
+      past_due_amount: null,
       debt_type: '',
     });
     expect(sent).not.toHaveProperty('_securedPressed');
+  });
+
+  it('sends a past-due amount typed as 0 as 0, and a cleared priority figure as null', () => {
+    const sent = sentDebt({
+      _key: '7',
+      id: 7,
+      priority_answer: 'taxes',
+      past_due_amount: 0,
+      priority_amount: undefined,
+    });
+    expect(sent).toMatchObject({
+      priority_answer: 'taxes',
+      past_due_amount: 0,
+      priority_amount: null,
+      nonpriority_amount: null,
+    });
   });
 
   it('sends a blank type as an empty string, which JSON keeps and the server stores', () => {

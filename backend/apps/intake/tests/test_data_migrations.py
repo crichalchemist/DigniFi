@@ -1028,3 +1028,28 @@ def test_encrypting_the_claims_columns_keeps_every_row_both_ways_on_postgres(mig
             " WHERE table_name = 'debt_info' AND column_name = 'creditor_name'"
         )
         assert cursor.fetchone()[0] == "character varying"
+
+
+BEFORE_PRIORITY = [("intake", "0040_claims_questions")]
+PRIORITY_ANSWERS_ADDED = [("intake", "0041_debt_priority_answers")]
+
+
+@pytest.mark.slow
+def test_debts_saved_before_3d_start_with_the_priority_question_unanswered(migrate):
+    apps = migrate(BEFORE_PRIORITY)
+    session = _session(apps)
+    flagged = _debt(apps, session, "Demo Tax Office", "other", is_priority=True)
+    labelled = _debt(
+        apps, session, "Demo Loan Servicing", "student_loan", priority_classification="priority"
+    )
+    apps = migrate(PRIORITY_ANSWERS_ADDED)
+    DebtInfo = apps.get_model("intake", "DebtInfo")
+    for pk in (flagged.pk, labelled.pk):
+        debt = DebtInfo.objects.get(pk=pk)
+        assert debt.priority_answer is None
+        assert debt.priority_other is None
+        assert (debt.priority_amount, debt.nonpriority_amount, debt.past_due_amount) == (
+            None,
+            None,
+            None,
+        )

@@ -50,7 +50,6 @@ def test_car_loan_from_the_debts_step_saves_as_secured_with_its_collateral(filer
                     "amount_owed": 8500,
                     "monthly_payment": 350,
                     "is_secured": True,
-                    "priority_classification": "secured",
                     "collateral_description": "2019 Toyota Camry",
                 }
             ]
@@ -90,7 +89,6 @@ def test_debt_the_filer_changes_to_unsecured_saves_as_unsecured(filer):
                     "debt_type": "credit_card",
                     "amount_owed": 8500,
                     "is_secured": False,
-                    "priority_classification": "unsecured",
                     "collateral_description": "",
                 }
             ]

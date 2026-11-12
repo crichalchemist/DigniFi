@@ -9,13 +9,21 @@ import {
   REVIEW_LINE_3,
   REVIEW_LINKED_PAYMENTS,
   REVIEW_MONTHLY_TOTAL,
+  PRIORITY_NO,
+  PRIORITY_NOT_SURE,
   REVIEW_NOW_DIFFERENT,
+  REVIEW_PAST_DUE,
   REVIEW_RENT_OR_LOT_RENT,
   REVIEW_TYPED_TOTAL,
   REVIEW_SPOUSE_NOW_DIFFERENT,
   VALUE_UNKNOWN_HEADING,
 } from '../../../../constants/copy';
-import { MARRIAGE_ANSWER_WORDS } from '../../../../constants/formText';
+import {
+  MARRIAGE_ANSWER_WORDS,
+  NONPRIORITY_AMOUNT_LABEL,
+  PRIORITY_AMOUNT_LABEL,
+  PRIORITY_TYPE_WORDS,
+} from '../../../../constants/formText';
 
 // ReviewStep summarizes whatever the earlier steps captured. Assets and debts
 // can arrive partially filled (a row the user started but never named), so the
@@ -563,5 +571,131 @@ describe('ReviewStep expense lines', () => {
       />
     );
     expect(value(REVIEW_LINKED_PAYMENTS)).toHaveTextContent('$350.00');
+  });
+
+  it("lists each unsecured debt's priority answer and the figures given under a kind", () => {
+    render(
+      <ReviewStep
+        {...baseProps}
+        debtsData={[
+          {
+            id: 1,
+            creditor_name: 'Demo Tax Office',
+            debt_type: 'other',
+            amount_owed: 3000,
+            is_secured: false,
+            priority_answer: 'taxes',
+            priority_amount: 3000,
+            nonpriority_amount: null,
+            past_due_amount: 0,
+          },
+          {
+            id: 2,
+            creditor_name: 'Demo Tollway',
+            debt_type: 'other',
+            amount_owed: 380,
+            is_secured: false,
+            priority_answer: 'not_sure',
+          },
+          {
+            id: 3,
+            creditor_name: 'Demo Card Services',
+            debt_type: 'credit_card',
+            amount_owed: 500,
+            is_secured: false,
+            priority_answer: 'no',
+          },
+        ]}
+        onValidationChange={vi.fn()}
+      />
+    );
+    expect(screen.getByText(PRIORITY_TYPE_WORDS.taxes)).toBeInTheDocument();
+    expect(
+      screen.getByText(new RegExp(`${PRIORITY_AMOUNT_LABEL}.*\\$3,000\\.00`))
+    ).toBeInTheDocument();
+    expect(screen.getByText(new RegExp(`${REVIEW_PAST_DUE}.*\\$0\\.00`))).toBeInTheDocument();
+    expect(screen.queryByText(new RegExp(NONPRIORITY_AMOUNT_LABEL))).not.toBeInTheDocument();
+    expect(screen.getByText(PRIORITY_NOT_SURE)).toBeInTheDocument();
+    expect(screen.getByText(PRIORITY_NO)).toBeInTheDocument();
+    expect(document.body.textContent).not.toMatch(/undefined|NaN|null/);
+  });
+
+  it('adds nothing for a secured debt, whatever answer and figures a row carries', () => {
+    render(
+      <ReviewStep
+        {...baseProps}
+        debtsData={[
+          {
+            id: 1,
+            creditor_name: 'Demo Auto Lender',
+            debt_type: 'car_loan',
+            amount_owed: 3000,
+            is_secured: true,
+            priority_answer: 'taxes',
+            priority_amount: 1234,
+            nonpriority_amount: 567,
+            past_due_amount: 89,
+          },
+        ]}
+        onValidationChange={vi.fn()}
+      />
+    );
+    expect(screen.queryByText(PRIORITY_TYPE_WORDS.taxes)).not.toBeInTheDocument();
+    expect(screen.queryByText(new RegExp(PRIORITY_AMOUNT_LABEL))).not.toBeInTheDocument();
+    expect(screen.queryByText(new RegExp(NONPRIORITY_AMOUNT_LABEL))).not.toBeInTheDocument();
+    expect(screen.queryByText(new RegExp(REVIEW_PAST_DUE))).not.toBeInTheDocument();
+  });
+
+  it.each([
+    ['no', PRIORITY_NO],
+    ['not_sure', PRIORITY_NOT_SURE],
+  ] as const)(
+    'shows no figure under %s, even when a row still carries stored figures',
+    (answer, words) => {
+      render(
+        <ReviewStep
+          {...baseProps}
+          debtsData={[
+            {
+              id: 1,
+              creditor_name: 'Demo Card Services',
+              debt_type: 'credit_card',
+              amount_owed: 500,
+              is_secured: false,
+              priority_answer: answer,
+              priority_amount: 1234,
+              nonpriority_amount: 567,
+              past_due_amount: 89,
+            },
+          ]}
+          onValidationChange={vi.fn()}
+        />
+      );
+      expect(screen.getByText(words)).toBeInTheDocument();
+      expect(screen.queryByText(new RegExp(PRIORITY_AMOUNT_LABEL))).not.toBeInTheDocument();
+      expect(screen.queryByText(new RegExp(NONPRIORITY_AMOUNT_LABEL))).not.toBeInTheDocument();
+      expect(screen.queryByText(new RegExp(REVIEW_PAST_DUE))).not.toBeInTheDocument();
+    }
+  );
+
+  it("shows the filer's own Other words beside the option's words", () => {
+    render(
+      <ReviewStep
+        {...baseProps}
+        debtsData={[
+          {
+            id: 1,
+            creditor_name: 'Demo Deposit Office',
+            debt_type: 'other',
+            amount_owed: 200,
+            is_secured: false,
+            priority_answer: 'other',
+            priority_other: '  Demo deposit  ',
+          },
+        ]}
+        onValidationChange={vi.fn()}
+      />
+    );
+    expect(screen.getByText(`${PRIORITY_TYPE_WORDS.other}: Demo deposit`)).toBeInTheDocument();
   });
 });

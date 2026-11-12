@@ -13,6 +13,7 @@ from encrypted_model_fields.fields import (
 )
 
 from .asset_lines import WHO
+from .claims import PRIORITY_ANSWERS
 from .fields import EncryptedDecimalField
 from .household import ANSWER_KEYS, SPOUSE_KEY
 from .income import ENTRY_AMOUNT_KEYS, ENTRY_KEYS, floored_net, has_entry_figures
@@ -978,6 +979,15 @@ class DebtInfo(models.Model):
     community_debt = EncryptedCharField(
         max_length=3, choices=[("yes", "yes")], blank=True, default=""
     )
+    priority_answer = EncryptedCharField(
+        max_length=20, choices=[(v, v) for v in PRIORITY_ANSWERS], null=True, blank=True
+    )
+    priority_other = EncryptedTextField(null=True, blank=True)
+    priority_amount = EncryptedDecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    nonpriority_amount = EncryptedDecimalField(
+        max_digits=12, decimal_places=2, null=True, blank=True
+    )
+    past_due_amount = EncryptedDecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
     lien = EncryptedTextField(null=True, blank=True)
     claim_status = EncryptedTextField(null=True, blank=True)
     notice_parties = EncryptedTextField(null=True, blank=True)
@@ -1003,6 +1013,8 @@ class DebtInfo(models.Model):
     # The longest range of dates the narrowest date box, Schedule D's, prints whole at 6 pt,
     # typed with a hyphen (3c3 R21).
     DATE_INCURRED_MAX_LENGTH = 15
+    # The "Other. Specify" words of E/F Part 1's question (3d1 R2).
+    PRIORITY_OTHER_MAX_LENGTH = 100
 
     class Meta:
         db_table = "debt_info"

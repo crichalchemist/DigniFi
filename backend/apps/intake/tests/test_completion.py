@@ -1065,6 +1065,7 @@ def test_complete_lists_claim_gaps_after_the_assets_gaps(filer, completed):
         creditor_name="Demo Card Services",
         debt_type="credit_card",
         amount_owed=Decimal("500.00"),
+        priority_answer="no",
     )
 
     response = client.post(_session_url(completed, "complete/"))

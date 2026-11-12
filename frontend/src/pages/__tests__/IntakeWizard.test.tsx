@@ -539,7 +539,6 @@ const completedSession = {
       data_source: 'manual',
       creditor_name: 'Chase',
       debt_type: 'credit_card',
-      priority_classification: 'unsecured',
       amount_owed: '2500.00',
       monthly_payment: '75.00',
       is_in_collections: false,
@@ -784,7 +783,6 @@ const debtFromUploadedBill = {
   data_source: 'uploaded_document',
   creditor_name: 'Lakeshore Medical Group',
   debt_type: 'medical',
-  priority_classification: 'unsecured',
   monthly_payment: '0.00',
   is_in_collections: false,
   notes: '',
@@ -1069,6 +1067,7 @@ const CLAIM_ANSWERS_DONE = {
   outside_us: false,
   claim_status: [],
   offset_answer: 'no',
+  priority_answer: 'no',
   notice_parties: [],
 };
 
@@ -1083,7 +1082,6 @@ const sessionAtStep6WithDebts = {
       data_source: 'uploaded_document',
       creditor_name: 'Chase',
       debt_type: 'credit_card',
-      priority_classification: 'unsecured',
       amount_owed: '2500.00',
       monthly_payment: '75.00',
       is_in_collections: false,
@@ -1098,7 +1096,6 @@ const sessionAtStep6WithDebts = {
       data_source: 'manual',
       creditor_name: 'Mercy Hospital',
       debt_type: 'medical',
-      priority_classification: 'unsecured',
       amount_owed: '100.50',
       monthly_payment: null,
       is_in_collections: false,
@@ -1236,6 +1233,9 @@ function serveSessionSaves(
             'entire_value',
             'amount_owed',
             'monthly_payment',
+            'priority_amount',
+            'nonpriority_amount',
+            'past_due_amount',
           ]) {
             if (typeof saved[amount] === 'number') saved[amount] = saved[amount].toFixed(2);
           }
@@ -1336,7 +1336,6 @@ const storedDebt = {
   data_source: 'manual',
   creditor_name: 'Northwind Card Services',
   debt_type: 'credit_card',
-  priority_classification: 'unsecured',
   amount_owed: '2500.00',
   monthly_payment: '75.00',
   is_in_collections: false,
@@ -1357,6 +1356,7 @@ const storedDebt = {
   lien: null,
   claim_status: [],
   offset_answer: 'no',
+  priority_answer: 'no',
   notice_parties: [],
   community_debt: '',
   date_incurred: '',
@@ -1390,6 +1390,7 @@ describe.each([
       for (const [control, value] of [
         [`claim_status_${index}`, 'none'],
         [`offset_answer_${index}`, 'no'],
+        [`priority_answer_${index}`, 'no'],
         [`notice_${index}`, 'no'],
       ]) {
         fireEvent.click(document.querySelector(`input[name="${control}"][value="${value}"]`)!);
@@ -1687,6 +1688,41 @@ describe('IntakeWizard the monthly payment on the Amounts Owed step', () => {
   it('saves a monthly payment typed as $0 as 0, not as empty', async () => {
     const debt = await continueWithPayment('0');
     expect(debt.monthly_payment).toBe(0);
+  });
+});
+
+describe('IntakeWizard the priority answers on the Amounts Owed step', () => {
+  const heldDebt = {
+    ...storedDebt,
+    priority_answer: 'taxes',
+    priority_other: null,
+    priority_amount: '3000.00',
+    nonpriority_amount: '25.00',
+    past_due_amount: '0.00',
+  };
+
+  async function continueWith(debt: Record<string, unknown>) {
+    const { bodies } = serveSessionSaves({ ...sessionAtStep1, current_step: 6, debts: [debt] });
+    renderWizard();
+    await screen.findByRole('heading', { name: /amounts owed/i, level: 2 });
+    await userEvent.click(screen.getByRole('button', { name: /continue/i }));
+    await waitFor(() => expect(bodies.length).toBeGreaterThan(0));
+    return (bodies[0] as { debts: Record<string, unknown>[] }).debts[0];
+  }
+
+  it('saves each priority figure back as a number', async () => {
+    expect(await continueWith(heldDebt)).toMatchObject({
+      priority_answer: 'taxes',
+      priority_amount: 3000,
+      nonpriority_amount: 25,
+      past_due_amount: 0,
+    });
+  });
+
+  it('saves a blank priority figure as null', async () => {
+    expect(await continueWith({ ...heldDebt, nonpriority_amount: null })).toMatchObject({
+      nonpriority_amount: null,
+    });
   });
 });
 
@@ -2193,6 +2229,7 @@ describe('IntakeWizard a new debt after Complete', { timeout: 30_000 }, () => {
     for (const [control, value] of [
       ['claim_status_0', 'none'],
       ['offset_answer_0', 'no'],
+      ['priority_answer_0', 'no'],
       ['notice_0', 'no'],
     ]) {
       fireEvent.click(document.querySelector(`input[name="${control}"][value="${value}"]`)!);
@@ -3215,7 +3252,6 @@ describe('IntakeWizard line 4 question', { timeout: 15_000 }, () => {
     id: 11,
     creditor_name: 'Demo Mortgage Co',
     debt_type: 'mortgage',
-    priority_classification: 'secured',
     amount_owed: '90000.00',
     monthly_payment: '1200.00',
     is_secured: true,
@@ -3315,7 +3351,6 @@ describe('IntakeWizard line 4 question', { timeout: 15_000 }, () => {
           id: 12,
           creditor_name: 'Demo Auto Finance',
           debt_type: 'car_loan',
-          priority_classification: 'secured',
           amount_owed: '8000.00',
           monthly_payment: '300.00',
           is_secured: true,
@@ -4506,7 +4541,6 @@ describe('IntakeWizard contracts and codebtors', { timeout: 15_000 }, () => {
               data_source: 'manual',
               creditor_name: 'Northwind Card Services',
               debt_type: 'credit_card',
-              priority_classification: 'unsecured',
               amount_owed: '2500.00',
               monthly_payment: '75.00',
               is_in_collections: false,
@@ -4556,6 +4590,39 @@ describe('IntakeWizard contracts and codebtors', { timeout: 15_000 }, () => {
 
     expect(contractSaves).toEqual([]);
     expect(codebtorSaves).toEqual([]);
+    expect(sessionPatches).toEqual([]);
+  });
+
+  it('sends nothing on a visit alone to step 6 with every priority answer given', async () => {
+    serveFiler(6);
+    server.use(
+      http.get('http://localhost:8000/api/intake/sessions/:id/', () =>
+        HttpResponse.json({
+          ...sessionAtStep1,
+          current_step: 6,
+          debtor_info: { first_name: 'Jane', last_name: 'Doe' },
+          debts: [
+            {
+              ...storedDebt,
+              priority_answer: 'other',
+              priority_other: 'Demo deposit',
+              priority_amount: '10.00',
+              nonpriority_amount: null,
+              past_due_amount: '0.00',
+            },
+          ],
+          claim_answers: { no_debts: null, contracts_answer: 'yes', codebtors_answer: 'yes' },
+        })
+      )
+    );
+    renderWizard();
+    await expectStep('Amounts Owed');
+    vi.useFakeTimers();
+    try {
+      await waitSeconds(6);
+    } finally {
+      vi.useRealTimers();
+    }
     expect(sessionPatches).toEqual([]);
   });
 
@@ -5315,7 +5382,6 @@ describe('IntakeWizard legacy payment on Amounts Owed', { timeout: 15_000 }, () 
     id: 12,
     creditor_name: 'Demo Auto Finance',
     debt_type: 'car_loan',
-    priority_classification: 'secured',
     amount_owed: '8000.00',
     monthly_payment: '350.00',
     is_secured: true,

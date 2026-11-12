@@ -81,7 +81,13 @@ import { firstIncompletePart } from '../components/wizard/steps/assets/assetGaps
 // DRF sends these decimals as strings ("2500.00"). The steps add and compare them,
 // so they become numbers as session data enters wizard state.
 const ASSET_AMOUNT_FIELDS = ['current_value', 'entire_value'] as const;
-const DEBT_AMOUNT_FIELDS = ['amount_owed', 'monthly_payment'] as const;
+const DEBT_AMOUNT_FIELDS = [
+  'amount_owed',
+  'monthly_payment',
+  'priority_amount',
+  'nonpriority_amount',
+  'past_due_amount',
+] as const;
 // Step 8's claim answers, in the order the body names them (3c3 R16)
 const CODEBTOR_ANSWER_KEYS = [
   'codebtors_answer',
