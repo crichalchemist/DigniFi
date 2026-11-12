@@ -75,7 +75,11 @@ def test_every_exemption_answer_and_claim_column_is_ciphertext_in_the_table(sess
         for column, plain in columns.items():
             raw = _raw(table, column, session)
             assert raw.startswith("gAAAAA"), (table, column)
-            assert plain not in raw, (table, column)
+            if len(plain) >= 6:
+                assert plain not in raw, (table, column)
+            else:
+                # "no" or "yes" can sit inside a random token by chance
+                assert raw != plain, (table, column)
 
 
 def test_a_claim_stays_when_its_property_is_removed(session, asset):
