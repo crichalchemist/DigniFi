@@ -641,10 +641,19 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
                     # amount only under dollars).
                     stored_rows = {c.pk: c for c in ExemptionClaim.objects.filter(session=session)}
                     merged_errors = {}
+                    seen_ids = set()
                     for index, claim in enumerate(claims):
                         old = stored_rows.get(claim.get("id"))
                         if old is None:
                             continue
+                        if old.pk in seen_ids:
+                            # Two rows with one id would be applied in turn to one stored row,
+                            # each passing this check alone: refuse the repeat.
+                            merged_errors[str(index)] = {
+                                "id": ["Each claim can be sent only once in a save."]
+                            }
+                            continue
+                        seen_ids.add(old.pk)
                         law = claim["law"] if "law" in claim else old.law
                         other_law = claim.get("other_law", old.other_law) or ""
                         kind = claim["amount_kind"] if "amount_kind" in claim else old.amount_kind

@@ -229,6 +229,34 @@ def test_a_partial_row_cannot_make_a_claim_the_page_could_never_save(filer, stor
     assert _stored(session) == before
 
 
+@pytest.mark.parametrize(
+    ("stored", "sent"),
+    [
+        (
+            {"law": LAW, "amount_kind": "fair_market_value", "amount": None},
+            [
+                {"amount_kind": "dollars", "amount": "5.00"},
+                {"amount_kind": "fair_market_value"},
+            ],
+        ),
+        (
+            {"law": None, "other_law": "", "amount_kind": "dollars", "amount": Decimal("100.00")},
+            [{"law": LAW}, {"other_law": "Demo Act"}],
+        ),
+    ],
+)
+def test_a_claim_sent_twice_by_id_cannot_combine_into_a_claim_the_page_could_never_save(
+    filer, stored, sent
+):
+    client, session, car, _checking = filer
+    claim = _stored_claim(session, asset_id=car.pk, **stored)
+    before = _stored(session)
+    rows = [{"id": claim.pk, **row} for row in sent]
+    response = _put(client, session, {"claims": rows})
+    assert response.status_code == 400, response.content
+    assert _stored(session) == before
+
+
 def test_a_partial_row_that_keeps_the_claim_whole_still_saves(filer):
     client, session, car, _checking = filer
     claim = _stored_claim(
