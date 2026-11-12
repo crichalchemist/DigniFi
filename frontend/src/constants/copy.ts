@@ -832,3 +832,48 @@ export const LINE_4_CLEAR = 'No, clear the ${typed}';
 export const NOT_SAVED_TRY_AGAIN = 'That was not saved. Try again.';
 
 export const LEGACY_REMOVE = 'Remove this figure';
+
+// ============================================================================
+// Exemptions page
+// ============================================================================
+
+// DRAFT: counsel C-8
+export const EXEMPTION_LAW_SUMMARIES: Record<string, string> = {
+  il_40_5_4_135: "A firefighter's pension, and the fund that pays it.",
+  il_215_5_238:
+    'Money from life insurance and annuities. It covers money paid to a spouse, child, parent or other dependent of the insured.',
+  il_305_5_11_3: 'Public aid, and certain child care payments, under the Illinois Public Aid Code.',
+  il_735_5_12_901:
+    'A home that a person owns or holds by lease and lives in, such as a house, a condo or a co-op, up to the limit.',
+  il_735_5_12_1001_a:
+    'Things in a home and things a person owns, such as furniture, clothes, pets, phones and computers.',
+  il_735_5_12_1001_b:
+    'The equity in any other property, up to the limit. Equity is what the property is worth, less what is owed on it.',
+  il_735_5_12_1001_c: 'One motor vehicle, up to the limit.',
+  il_735_5_12_1001_d: "Tools, books and equipment for a person's trade or profession.",
+  il_735_5_12_1001_e: 'Health aids that a professional prescribed for a person or a dependent.',
+  il_735_5_12_1001_f:
+    'Life insurance money and cash value. It covers money paid to a spouse, child, parent or other dependent of the insured.',
+  il_735_5_12_1001_g1:
+    'The right to get certain benefits. These are social security, unemployment pay and public aid.',
+  il_735_5_12_1001_g2: "The right to get a veteran's benefit.",
+  il_735_5_12_1001_g3:
+    'The right to get a benefit for a disability or an illness, or for being out of work.',
+  il_735_5_12_1001_g4: 'The right to get alimony or support. It also covers separate maintenance.',
+  il_735_5_12_1001_h1:
+    'An award under a law for crime victims. This covers the right to get it and property that came from it.',
+  il_735_5_12_1001_h2:
+    'A wrongful death payment for someone the person depended on. This covers the right to get it and property that came from it.',
+  il_735_5_12_1001_h3:
+    'A life insurance payment on someone the person depended on. This covers the right to get it and property that came from it.',
+  il_735_5_12_1001_h4:
+    'A payment for a bodily injury. This covers the right to get it and property that came from it.',
+  il_735_5_12_1001_h5:
+    'Restitution under the federal Civil Liberties Act of 1988. This covers the right to get it and property that came from it.',
+  il_735_5_12_1001_i: "The right to get a crime victims' award under Illinois law.",
+  il_735_5_12_1006: 'Retirement plans, such as a pension plan or an IRA.',
+  il_820_305_21: "Money from workers' compensation, and claims and awards for it.",
+  us_11_522_b3c: 'Retirement funds in an account that is exempt from federal income tax.',
+  us_38_5301: "Veterans' benefits.",
+  us_42_407: 'Social Security benefits.',
+};

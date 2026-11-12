@@ -8,6 +8,7 @@
 
 import * as copy from '../constants/copy';
 import * as upl from '../constants/upl';
+import rawCases from './readingLevelCases.json?raw';
 
 // ============================================================================
 // Flesch-Kincaid Grade Level implementation (mirrors backend)
@@ -129,5 +130,14 @@ describe('Reading Level Validation', () => {
           failures.map((f) => `  - ${f}`).join('\n')
       );
     }
+  });
+});
+
+describe('Shared cases with the backend scorer', () => {
+  // test_exemption_catalog.py scores the same file with the backend's formula (P9).
+  const cases = JSON.parse(rawCases) as { text: string; grade: number }[];
+
+  it.each(cases)('scores "$text" as the backend does', ({ text, grade }) => {
+    expect(Number(fleschKincaidGrade(text).toFixed(1))).toBe(grade);
   });
 });

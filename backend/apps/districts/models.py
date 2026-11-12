@@ -1,6 +1,6 @@
 """
 Models for the Bankruptcy Districts app.
-Defines District, MedianIncome, PovertyGuideline, ExemptionSchedule, and LocalRule.
+Defines District, MedianIncome, PovertyGuideline, ExemptionCatalog, ExemptionLaw, and LocalRule.
 """
 
 from decimal import Decimal
@@ -170,57 +170,67 @@ class PovertyGuideline(DatedTable):
         return f"HHS Poverty Guidelines ({self.effective_date})"
 
 
-class ExemptionSchedule(models.Model):
+class ExemptionCatalog(DatedTable):
     """
-    Exemption amounts for key asset categories, by district and exemption type.
+    One dated list of the Illinois and federal exemption laws a filer can pick for Schedule C.
 
-    Fields:
-        district (District): Reference to the relevant district.
-        exemption_type (str): Exemption type (homestead, vehicle, tools_of_trade, wildcard).
-        amount (Decimal): Exemption amount in dollars.
-        statute_citation (str): Legal citation for the exemption.
-        description (str): Plain-language description of the exemption.
-        created_at (datetime): Timestamp of record creation.
+    National public data, not encrypted, loaded by data migrations (docs/REFERENCE_TABLES.md).
+    A new public act is a new catalog starting on its effective date.
     """
-
-    HOMESTEAD = "homestead"
-    VEHICLE = "vehicle"
-    TOOLS_OF_TRADE = "tools_of_trade"
-    WILDCARD = "wildcard"
-
-    EXEMPTION_TYPE_CHOICES = [
-        (HOMESTEAD, "Homestead"),
-        (VEHICLE, "Vehicle"),
-        (TOOLS_OF_TRADE, "Tools of Trade"),
-        (WILDCARD, "Wildcard"),
-    ]
-
-    district = models.ForeignKey(
-        District, on_delete=models.CASCADE, related_name="exemption_schedules"
-    )
-    exemption_type = models.CharField(
-        max_length=16, choices=EXEMPTION_TYPE_CHOICES, help_text="Type of exemption."
-    )
-    amount = models.DecimalField(
-        max_digits=12, decimal_places=2, help_text="Maximum exemption amount (USD)."
-    )
-    statute_citation = models.CharField(
-        max_length=64, help_text="Legal citation for this exemption."
-    )
-    description = models.TextField(help_text="Plain language description of the exemption.")
-    created_at = models.DateTimeField(auto_now_add=True, help_text="Record creation time.")
 
     class Meta:
-        verbose_name = "Exemption Schedule"
-        verbose_name_plural = "Exemption Schedules"
-        ordering = ["district", "exemption_type"]
-        unique_together = [["district", "exemption_type", "statute_citation"]]
+        verbose_name = "Exemption Catalog"
+        verbose_name_plural = "Exemption Catalogs"
+        ordering = ["-effective_date"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["effective_date"], name="exemption_catalog_unique_effective_date"
+            )
+        ]
 
     def __str__(self):
-        return (
-            f"{self.district.code.upper()} {self.get_exemption_type_display()} - "
-            f"{self.amount} ({self.statute_citation})"
-        )
+        return f"Exemption laws ({self.effective_date})"
+
+
+class ExemptionLaw(models.Model):
+    """
+    One law of an exemption catalog, in the order the page lists it.
+
+    National public data, not encrypted, loaded by data migrations (docs/REFERENCE_TABLES.md).
+
+    Fields:
+        catalog (ExemptionCatalog): The list this law belongs to.
+        key (str): Stable name the page and a filer's claim use for the law.
+        position (int): Place in the list, from 1: Illinois laws first, then federal.
+        jurisdiction (str): "illinois" or "federal".
+        citation (str): The statute as it is cited.
+        limit_text (str): The law's own limit in words, or empty when it names none.
+        source_url (str): Where the statute is published.
+    """
+
+    catalog = models.ForeignKey(ExemptionCatalog, on_delete=models.CASCADE, related_name="laws")
+    key = models.CharField(max_length=40)
+    position = models.PositiveSmallIntegerField()
+    jurisdiction = models.CharField(
+        max_length=8, choices=(("illinois", "Illinois"), ("federal", "Federal"))
+    )
+    citation = models.CharField(max_length=60)
+    limit_text = models.TextField(blank=True, default="")
+    source_url = models.URLField(max_length=300)
+
+    class Meta:
+        verbose_name = "Exemption Law"
+        verbose_name_plural = "Exemption Laws"
+        ordering = ["catalog", "position"]
+        constraints = [
+            models.UniqueConstraint(fields=["catalog", "key"], name="exemption_law_unique_key"),
+            models.UniqueConstraint(
+                fields=["catalog", "position"], name="exemption_law_unique_position"
+            ),
+        ]
+
+    def __str__(self):
+        return self.citation
 
 
 class LocalRule(models.Model):
