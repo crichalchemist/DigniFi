@@ -53,7 +53,7 @@ CELL_WORDS = {
     "type_taxes": "Taxes and certain other debts you owe the government",
     "type_intoxicated": "Claims for death or personal injury while you were intoxicated",
     "type_other": "Other. Specify",
-    "other_specify": "Other. Specify words",
+    "other_specify": "Other. Specify",
     "part": "Part of the original creditor",
     "name": "Name",
     "street": "Street",
@@ -643,10 +643,10 @@ CELL_RULINGS = {
             "lien_other_text",
             "line",
             "offset",
-            "part",
         ),
         "3c spec §9.3, R2",
     ),
+    "part": "3c spec §9.3, R2; 3d spec §6.1, B10",
     **dict.fromkeys(
         ("on_d", "d_lines", "on_ef", "ef_lines", "on_g", "g_lines"), "3c spec §9.3, R6, B40"
     ),

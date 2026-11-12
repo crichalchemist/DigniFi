@@ -687,6 +687,25 @@ def test_a_debt_answered_taxes_prints_in_part_1_and_not_in_part_2(session):
     assert _at(drawn, "Creditors Name_7") == ""
 
 
+@pytest.mark.parametrize("kind", list(_PRIORITY_KIND_BOXES))
+def test_each_kind_ticks_only_its_own_box(session, kind):
+    _priority(session, priority_answer=kind, priority_other="Demo restitution")
+
+    _, drawn = _parts_drawn(session, "schedule_e_f")
+
+    for other, box in _PRIORITY_KIND_BOXES.items():
+        assert _ticked(drawn, box) == ({"/On"} if other == kind else set()), (kind, other)
+
+
+@pytest.mark.parametrize("answer, state", [("yes", "/yes"), ("no", "/no")])
+def test_a_part_1_rows_offset_answer_ticks_its_box(session, answer, state):
+    _priority(session, offset_answer=answer)
+
+    _, drawn = _parts_drawn(session, "schedule_e_f")
+
+    assert _ticked(drawn, "check2") == {state}
+
+
 def test_a_claim_with_both_amounts_prints_once_in_part_1_with_both(session):
     _priority(
         session,
@@ -748,6 +767,15 @@ def test_a_sixth_part_1_debt_continues_on_a_copy_of_page_2_numbered_2_6(session)
     assert _at(drawn, "fill_27.0") == "7"
     assert _at(drawn, "fill_27.1.0", copy=1) == "3"
     assert _at(drawn, "fill_27.1.2") == "4"
+    # Rows 4 and 5 print their own numbers, in the boxes the index puts beside them.
+    assert (_at(drawn, "undefined_19", tag="T30"), _at(drawn, "undefined_19", tag="T57")) == (
+        "2.4",
+        "2.5",
+    )
+    assert (
+        _at(drawn, "undefined_19", tag="T30", copy=1),
+        _at(drawn, "undefined_19", tag="T57", copy=1),
+    ) == ("", "")
 
 
 def test_part_3_ticks_part_1_for_a_part_1_debts_party(session):
@@ -784,6 +812,15 @@ def test_6a_to_6d_add_each_kinds_total_claim_and_6e_their_sum(session):
     _unsecured(session, 1, amount_owed=Decimal("16000"))
 
     shown = _printed(session, "schedule_e_f")
+    summary = resolve(load_schema("form_106sum"), session)
+    # Line 9 copies 6a, 6b, 6c and 6f; 6d (Other) is not on it (R7), and 6f is 0.00 here.
+    assert [summary[k] for k in ("3a", "9a", "9b", "9c", "9g")] == [
+        "15000.00",
+        "1000.00",
+        "2000.00",
+        "4000.00",
+        "7000.00",
+    ]
 
     assert [shown[f"Total_6{k}"] for k in "abcde"] == [
         "1000.00",
@@ -893,3 +930,16 @@ def test_a_creditor_name_too_long_for_its_box_is_refused_with_its_step(session):
     assert refused.value.step == "debts"
     assert refused.value.label == "Part 2: Creditor's name"
     assert "W" not in str(refused.value)
+
+
+def test_other_words_too_long_for_their_box_are_refused_with_their_step(session):
+    words = "Demo restitution owed under a court order for harm " * 2
+    _priority(session, priority_answer="other", priority_other=words[:90])
+
+    with pytest.raises(ValueTooLong) as refused:
+        PDFFormFiller().check("schedule_e_f", build_parts("schedule_e_f", session))
+
+    assert refused.value.step == "debts"
+    assert refused.value.label == "Part 1: Other. Specify"
+    assert "Part 1: Other. Specify" in str(refused.value)
+    assert "Demo restitution" not in str(refused.value)

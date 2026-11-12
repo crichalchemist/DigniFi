@@ -137,7 +137,7 @@ CELL = {
     "type_taxes": "Taxes and certain other debts you owe the government",
     "type_intoxicated": "Claims for death or personal injury while you were intoxicated",
     "type_other": "Other. Specify",
-    "other_specify": "Other. Specify words",
+    "other_specify": "Other. Specify",
     "line": "Line in Part 1",
     "part": "Part of the original creditor",
     "purpose": "What the contract or lease is for",
@@ -173,6 +173,7 @@ def test_every_claims_slot_is_labelled_from_the_table():
                 assert spec["label"] == _expected_label(spec["repeat"], attr), spec["pdf_field"]
                 checked += 1
 
+    # E/F's 275 is Part 1's 110 (3d2) + Part 2's 102 + Part 3's 63.
     assert checked == 112 + 48 + 275 + 78 + 121  # D, E/F, G, H (line 2's 8 are rules)
 
 

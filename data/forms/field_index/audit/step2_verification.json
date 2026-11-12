@@ -8487,7 +8487,7 @@
     "final_verdicts": ["correct"],
     "status": "confirmed",
     "correct_target": "Total_6f",
-    "evidence": "Field index: Total_6f p6 line 6f, 'Student loans', column 'Total claims from Part 2 (Total claim)', sampled_ok. total_student_loans sums the student loans in Part 2, the unsecured debts of type student_loan the filer did not answer with a kind (3d spec §6.3); a student loan saved as secured is on Schedule D (Ruling T16-a: E/F is the unsecured schedule, and 6i, 6j - 6f, never goes below zero). 106Sum line 9d copies it. Step 2 spec §6.1 (totals before item rows, B5): the total prints once its inputs follow B2; the rows behind it arrive in step 3. An empty list prints 0.00 (Ruling T0-e). Spec §6.2 and Appendix A.10. The audit has no row on this box."
+    "evidence": "Field index: Total_6f p6 line 6f, 'Student loans', column 'Total claims from Part 2 (Total claim)', sampled_ok. total_student_loans sums the student loans in Part 2, the unsecured debts of type student_loan the filer did not answer with a kind (3d spec §6.2, B16); a student loan saved as secured is on Schedule D (Ruling T16-a: E/F is the unsecured schedule, and 6i, 6j - 6f, never goes below zero). 106Sum line 9d copies it. Step 2 spec §6.1 (totals before item rows, B5): the total prints once its inputs follow B2; the rows behind it arrive in step 3. An empty list prints 0.00 (Ruling T0-e). Spec §6.2 and Appendix A.10. The audit has no row on this box."
   },
   {
     "schema": "schedule_e_f",
@@ -8507,7 +8507,7 @@
     "final_verdicts": ["correct"],
     "status": "confirmed",
     "correct_target": "Total_6j",
-    "evidence": "Field index: Total_6j p6 line 6j, 'Total. Add lines 6f through 6i.', column 'Total claims from Part 2 (Total claim)', adjudicated. total_nonpriority_unsecured sums Part 2's debts, the confirmed unsecured debts the filer answered No or Not sure to or has not answered (3d spec §6.3, B13). 106Sum line 3b copies it. Step 2 spec §6.1 (totals before item rows, B5): the total prints once its inputs follow B2; the rows behind it arrive in step 3. An empty list prints 0.00 (Ruling T0-e). Spec Appendix A.10. The audit has no row on this box."
+    "evidence": "Field index: Total_6j p6 line 6j, 'Total. Add lines 6f through 6i.', column 'Total claims from Part 2 (Total claim)', adjudicated. total_nonpriority_unsecured sums Part 2's debts, the confirmed unsecured debts the filer answered No or Not sure to or has not answered (3d spec §6.2, B13). 106Sum line 3b copies it. Step 2 spec §6.1 (totals before item rows, B5): the total prints once its inputs follow B2; the rows behind it arrive in step 3. An empty list prints 0.00 (Ruling T0-e). Spec Appendix A.10. The audit has no row on this box."
   },
   {
     "schema": "schedule_e_f",
@@ -10767,7 +10767,7 @@
     "final_verdicts": ["correct"],
     "status": "confirmed",
     "correct_target": "check14",
-    "evidence": "Field index: check14 p5 T6 line 5, 'Part 1: Creditors with Priority Unsecured Claims' (adjudicated); p5 T7 line 5, 'Part 2: Creditors with Nonpriority Unsecured Claims' (adjudicated). Row 1 of group ef_part_3 prints claims.unsecured_notices[].part here (3c spec §9.3, R2). Read by test_schedules_d_e_f_schema.py and tier 1."
+    "evidence": "Field index: check14 p5 T6 line 5, 'Part 1: Creditors with Priority Unsecured Claims' (adjudicated); p5 T7 line 5, 'Part 2: Creditors with Nonpriority Unsecured Claims' (adjudicated). Row 1 of group ef_part_3 prints claims.unsecured_notices[].part here (3c spec §9.3, R2; 3d spec §6.1, B10). Read by test_schedules_d_e_f_schema.py and tier 1."
   },
   {
     "schema": "schedule_e_f",
@@ -10857,7 +10857,7 @@
     "final_verdicts": ["correct"],
     "status": "confirmed",
     "correct_target": "check15",
-    "evidence": "Field index: check15 p5 T16 line 5, 'Part 1: Creditors with Priority Unsecured Claims' (pattern); p5 T17 line 5, 'Part 2: Creditors with Nonpriority Unsecured Claims' (pattern). Row 2 of group ef_part_3 prints claims.unsecured_notices[].part here (3c spec §9.3, R2). Read by test_schedules_d_e_f_schema.py and tier 1."
+    "evidence": "Field index: check15 p5 T16 line 5, 'Part 1: Creditors with Priority Unsecured Claims' (pattern); p5 T17 line 5, 'Part 2: Creditors with Nonpriority Unsecured Claims' (pattern). Row 2 of group ef_part_3 prints claims.unsecured_notices[].part here (3c spec §9.3, R2; 3d spec §6.1, B10). Read by test_schedules_d_e_f_schema.py and tier 1."
   },
   {
     "schema": "schedule_e_f",
@@ -10947,7 +10947,7 @@
     "final_verdicts": ["correct"],
     "status": "confirmed",
     "correct_target": "check16",
-    "evidence": "Field index: check16 p5 T26 line 5, 'Part 1: Creditors with Priority Unsecured Claims' (pattern); p5 T27 line 5, 'Part 2: Creditors with Nonpriority Unsecured Claims' (pattern). Row 3 of group ef_part_3 prints claims.unsecured_notices[].part here (3c spec §9.3, R2). Read by test_schedules_d_e_f_schema.py and tier 1."
+    "evidence": "Field index: check16 p5 T26 line 5, 'Part 1: Creditors with Priority Unsecured Claims' (pattern); p5 T27 line 5, 'Part 2: Creditors with Nonpriority Unsecured Claims' (pattern). Row 3 of group ef_part_3 prints claims.unsecured_notices[].part here (3c spec §9.3, R2; 3d spec §6.1, B10). Read by test_schedules_d_e_f_schema.py and tier 1."
   },
   {
     "schema": "schedule_e_f",
@@ -11037,7 +11037,7 @@
     "final_verdicts": ["correct"],
     "status": "confirmed",
     "correct_target": "check17",
-    "evidence": "Field index: check17 p5 T36 line 5, 'Part 1: Creditors with Priority Unsecured Claims' (pattern); p5 T37 line 5, 'Part 2: Creditors with Nonpriority Unsecured Claims' (pattern). Row 4 of group ef_part_3 prints claims.unsecured_notices[].part here (3c spec §9.3, R2). Read by test_schedules_d_e_f_schema.py and tier 1."
+    "evidence": "Field index: check17 p5 T36 line 5, 'Part 1: Creditors with Priority Unsecured Claims' (pattern); p5 T37 line 5, 'Part 2: Creditors with Nonpriority Unsecured Claims' (pattern). Row 4 of group ef_part_3 prints claims.unsecured_notices[].part here (3c spec §9.3, R2; 3d spec §6.1, B10). Read by test_schedules_d_e_f_schema.py and tier 1."
   },
   {
     "schema": "schedule_e_f",
@@ -11127,7 +11127,7 @@
     "final_verdicts": ["correct"],
     "status": "confirmed",
     "correct_target": "check18",
-    "evidence": "Field index: check18 p5 T46 line 5, 'Part 1: Creditors with Priority Unsecured Claims' (pattern); p5 T47 line 5, 'Part 2: Creditors with Nonpriority Unsecured Claims' (pattern). Row 5 of group ef_part_3 prints claims.unsecured_notices[].part here (3c spec §9.3, R2). Read by test_schedules_d_e_f_schema.py and tier 1."
+    "evidence": "Field index: check18 p5 T46 line 5, 'Part 1: Creditors with Priority Unsecured Claims' (pattern); p5 T47 line 5, 'Part 2: Creditors with Nonpriority Unsecured Claims' (pattern). Row 5 of group ef_part_3 prints claims.unsecured_notices[].part here (3c spec §9.3, R2; 3d spec §6.1, B10). Read by test_schedules_d_e_f_schema.py and tier 1."
   },
   {
     "schema": "schedule_e_f",
@@ -11217,7 +11217,7 @@
     "final_verdicts": ["correct"],
     "status": "confirmed",
     "correct_target": "check19",
-    "evidence": "Field index: check19 p5 T56 line 5, 'Part 1: Creditors with Priority Unsecured Claims' (pattern); p5 T57 line 5, 'Part 2: Creditors with Nonpriority Unsecured Claims' (pattern). Row 6 of group ef_part_3 prints claims.unsecured_notices[].part here (3c spec §9.3, R2). Read by test_schedules_d_e_f_schema.py and tier 1."
+    "evidence": "Field index: check19 p5 T56 line 5, 'Part 1: Creditors with Priority Unsecured Claims' (pattern); p5 T57 line 5, 'Part 2: Creditors with Nonpriority Unsecured Claims' (pattern). Row 6 of group ef_part_3 prints claims.unsecured_notices[].part here (3c spec §9.3, R2; 3d spec §6.1, B10). Read by test_schedules_d_e_f_schema.py and tier 1."
   },
   {
     "schema": "schedule_e_f",
@@ -11307,7 +11307,7 @@
     "final_verdicts": ["correct"],
     "status": "confirmed",
     "correct_target": "check20",
-    "evidence": "Field index: check20 p5 T66 line 5, 'Part 1: Creditors with Priority Unsecured Claims' (pattern); p5 T67 line 5, 'Part 2: Creditors with Nonpriority Unsecured Claims' (pattern). Row 7 of group ef_part_3 prints claims.unsecured_notices[].part here (3c spec §9.3, R2). Read by test_schedules_d_e_f_schema.py and tier 1."
+    "evidence": "Field index: check20 p5 T66 line 5, 'Part 1: Creditors with Priority Unsecured Claims' (pattern); p5 T67 line 5, 'Part 2: Creditors with Nonpriority Unsecured Claims' (pattern). Row 7 of group ef_part_3 prints claims.unsecured_notices[].part here (3c spec §9.3, R2; 3d spec §6.1, B10). Read by test_schedules_d_e_f_schema.py and tier 1."
   },
   {
     "schema": "schedule_e_f",
@@ -11327,7 +11327,7 @@
     "final_verdicts": ["correct"],
     "status": "confirmed",
     "correct_target": "9d",
-    "evidence": "Field index: 9d p2 line 9d, 'Student loans. (Copy line 6f.)', column 'Total claim', sampled_ok. The rule is Schedule E/F line 6f's, so both forms print one figure. total_student_loans sums the unsecured debts of type student_loan; a student loan saved as secured is on Schedule D (Ruling T16-a: E/F is the unsecured schedule, and 6i, 6j - 6f, never goes below zero). Step 2 spec §6.1 (totals before item rows, B5): the total prints once its inputs follow B2; the rows behind it arrive in step 3. An empty list prints 0.00 (Ruling T0-e). Spec §6.4 and Appendix A.4. The audit has no row on this box."
+    "evidence": "Field index: 9d p2 line 9d, 'Student loans. (Copy line 6f.)', column 'Total claim', sampled_ok. The rule is Schedule E/F line 6f's, so both forms print one figure. total_student_loans sums the student loans in Part 2, the unsecured debts of type student_loan the filer did not answer with a kind (3d spec §6.2, B16); a student loan saved as secured is on Schedule D (Ruling T16-a: E/F is the unsecured schedule, and 6i, 6j - 6f, never goes below zero). Step 2 spec §6.1 (totals before item rows, B5): the total prints once its inputs follow B2; the rows behind it arrive in step 3. An empty list prints 0.00 (Ruling T0-e). Spec §6.4 and Appendix A.4. The audit has no row on this box."
   },
   {
     "schema": "form_106sum",
