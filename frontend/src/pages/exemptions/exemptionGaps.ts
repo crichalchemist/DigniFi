@@ -1,7 +1,8 @@
 /**
  * The exemptions page's copy of the server's `exemption_gaps` (apps/intake/exemptions.py), for
  * Continue. Same order, same sentences (pinned by test_exemption_copy.py), plus one page-only
- * case: a claim row just added, with no property yet (P20).
+ * case: a claim row with no property chosen, just added or cleared by the filer (P20). A stored
+ * claim whose property was gone when the page opened is gone, as the server says.
  */
 import {
   EXEMPTION_GAP_AMOUNT,
@@ -31,6 +32,12 @@ export type ClaimRow = {
   amount_kind: ExemptionAmountKind | null;
   amount: string;
   short_description: string;
+  /**
+   * The stored property was gone when the page opened (the claim came back with no property,
+   * or one not on the list). Cleared once the filer picks or clears the property, so a property
+   * the filer cleared is asked for like a new row's, never called gone.
+   */
+  itemGone: boolean;
 };
 
 /** The server's bound on a claim's amount: DecimalField(12, 2), at or above 0 */
@@ -44,14 +51,15 @@ export function claimAmountError(row: ClaimRow): string | undefined {
 
 type Answers = Pick<Exemptions, 'line_1' | 'line_3' | 'line_3_1' | 'no_claims'>;
 
-const fillName = (template: string, name: string) => template.replace('{name}', name);
+// split/join, not replace: replace reads $&, $' and $` in the filer's own words as patterns
+const fillName = (template: string, name: string) => template.split('{name}').join(name);
 
 function claimGap(
   row: ClaimRow,
   item: ExemptionItem | undefined,
   lawKeys: ReadonlySet<string>
 ): string | null {
-  if (!item) return row.id === null ? EXEMPTION_GAP_CHOOSE_ITEM : EXEMPTION_GAP_ITEM_GONE;
+  if (!item) return row.itemGone ? EXEMPTION_GAP_ITEM_GONE : EXEMPTION_GAP_CHOOSE_ITEM;
   const { name } = item;
   const typedLaw = row.otherLawChosen && row.other_law.trim() !== '';
   if (row.law === null && !typedLaw) return fillName(EXEMPTION_GAP_LAW, name);

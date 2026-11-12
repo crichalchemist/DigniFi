@@ -194,7 +194,7 @@ describe('FilingFeePage', () => {
     expect(screen.queryByText('The property you claim as exempt')).not.toBeInTheDocument();
   });
 
-  it('saves the choice and goes on to the financial history questions', async () => {
+  it('saves the choice and goes on to the exemptions page', async () => {
     const sent = serve(record());
     renderPage();
     await userEvent.click(await choice('installments'));

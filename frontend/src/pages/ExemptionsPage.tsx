@@ -40,14 +40,22 @@ import {
 import { ClaimRowFields } from './exemptions/ClaimRowFields';
 import { claimAmountError, firstExemptionGap, type ClaimRow } from './exemptions/exemptionGaps';
 import { lawTotals } from './exemptions/lawTotals';
-import type { ExemptionClaim, ExemptionLaw, ExemptionLine1, Exemptions, YesNo } from '../types/api';
+import { parseAmount } from '../utils/parseAmount';
+import type {
+  ExemptionClaim,
+  ExemptionItem,
+  ExemptionLaw,
+  ExemptionLine1,
+  Exemptions,
+  YesNo,
+} from '../types/api';
 
 type Answers = Pick<Exemptions, 'line_1' | 'line_3' | 'line_3_1' | 'no_claims'>;
 
 const LINE_1_CHOICES: ExemptionLine1[] = ['state_and_federal', 'federal'];
 const YES_NO: YesNo[] = ['no', 'yes'];
 
-const claimRowOf = (claim: ExemptionClaim): ClaimRow => ({
+const claimRowOf = (claim: ExemptionClaim, items: ExemptionItem[]): ClaimRow => ({
   _key: `claim-${claim.id}`,
   id: claim.id,
   asset: claim.asset,
@@ -57,20 +65,24 @@ const claimRowOf = (claim: ExemptionClaim): ClaimRow => ({
   amount_kind: claim.amount_kind,
   amount: claim.amount ?? '',
   short_description: claim.short_description ?? '',
+  itemGone: !items.some((item) => item.id === claim.asset),
 });
 
 // A claim as the PUT takes it: the typed law only while "Another law" is chosen, an amount only
 // under a dollar claim, a shorter description only when the property's name doesn't fit
-const claimRequestOf = (row: ClaimRow, items: Exemptions['items']): ExemptionClaim => {
+const claimRequestOf = (row: ClaimRow, items: ExemptionItem[]): ExemptionClaim => {
   const item = items.find((candidate) => candidate.id === row.asset);
   const short = row.short_description.trim();
+  // To the cent, as the server takes it: "100.000" goes as "100.00" and "-0" as "0.00". Continue
+  // waits while claimAmountError refuses the figure, so it has two places at most here.
+  const amount = row.amount_kind === 'dollars' ? parseAmount(row.amount) : undefined;
   return {
     id: row.id,
     asset: row.asset,
     law: row.otherLawChosen ? null : row.law,
     other_law: row.otherLawChosen ? row.other_law.trim() : '',
     amount_kind: row.amount_kind,
-    amount: row.amount_kind === 'dollars' && row.amount.trim() !== '' ? row.amount.trim() : null,
+    amount: amount === undefined ? null : amount.toFixed(2),
     short_description: item && !item.description_fits && short !== '' ? short : null,
   };
 };
@@ -85,6 +97,7 @@ const blankClaim = (key: string): ClaimRow => ({
   amount_kind: null,
   amount: '',
   short_description: '',
+  itemGone: false,
 });
 
 type FitErrors = Record<string, { description?: true; otherLaw?: true }>;
@@ -99,22 +112,48 @@ const withoutFit = (current: FitErrors, key: string, field: 'description' | 'oth
   return next;
 };
 
-// The rows a 400 names for a short description or a typed law Schedule C can't hold: the body is
-// {claims: {"<index>": {short_description: [...], other_law: [...]}}}, the index being the row's
-// place in the list sent. Any other refusal gives {}.
-function fitRefusals(caught: unknown, sentKeys: string[]): FitErrors {
-  if (!(caught instanceof APIClientError) || caught.statusCode !== 400) return {};
-  const claims = caught.body?.claims;
-  if (typeof claims !== 'object' || claims === null || Array.isArray(claims)) return {};
-  const refused: FitErrors = {};
-  for (const [index, errors] of Object.entries(claims as Record<string, unknown>)) {
-    const key = sentKeys[Number(index)];
-    if (key === undefined || typeof errors !== 'object' || errors === null) continue;
-    const fields = errors as Record<string, unknown>;
-    if (fields.short_description) refused[key] = { ...refused[key], description: true };
-    if (fields.other_law) refused[key] = { ...refused[key], otherLaw: true };
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+// What a failed save says about the claims sent. `fit` holds the boxes a 400 refuses for a short
+// description or a typed law Schedule C can't hold, by row: the body is {claims: {"<index>":
+// {short_description: [...], other_law: [...]}}}, the index being the row's place in the list
+// sent. `other` is true when the failure says anything else, or names a box the row doesn't
+// show: only the save-failed sentence can tell the filer about those.
+function readRefusal(
+  caught: unknown,
+  sent: ClaimRow[],
+  items: ExemptionItem[]
+): { fit: FitErrors; other: boolean } {
+  if (!(caught instanceof APIClientError) || caught.statusCode !== 400 || !caught.body) {
+    return { fit: {}, other: true };
   }
-  return refused;
+  const fit: FitErrors = {};
+  let other = false;
+  for (const [name, value] of Object.entries(caught.body)) {
+    if (name !== 'claims' || !isRecord(value)) {
+      other = true;
+      continue;
+    }
+    for (const [index, errors] of Object.entries(value)) {
+      const row = sent[Number(index)];
+      if (row === undefined || !isRecord(errors)) {
+        other = true;
+        continue;
+      }
+      const item = items.find((candidate) => candidate.id === row.asset);
+      for (const field of Object.keys(errors)) {
+        if (field === 'short_description' && item && !item.description_fits) {
+          fit[row._key] = { ...fit[row._key], description: true };
+        } else if (field === 'other_law' && row.otherLawChosen) {
+          fit[row._key] = { ...fit[row._key], otherLaw: true };
+        } else {
+          other = true;
+        }
+      }
+    }
+  }
+  return { fit, other };
 }
 
 function LawList({ title, laws }: { title: string; laws: ExemptionLaw[] }) {
@@ -165,7 +204,7 @@ export function ExemptionsPage() {
       .then((loaded) => {
         if (cancelled) return;
         setSaved(loaded);
-        setClaims(loaded.claims.map(claimRowOf));
+        setClaims(loaded.claims.map((claim) => claimRowOf(claim, loaded.items)));
         setAnswers({
           line_1: loaded.line_1,
           line_3: loaded.line_3,
@@ -214,7 +253,8 @@ export function ExemptionsPage() {
     setIsSaving(true);
     setError(null);
     setFitErrors({});
-    const sentKeys = claims.map((row) => row._key);
+    // The controls hold still while the save is on its way, so these are the rows on screen
+    const sent = claims;
     try {
       // Every claim goes: the server deletes a stored claim that is missing from the list
       await api.intake.exemptions.put(sessionId, {
@@ -222,13 +262,13 @@ export function ExemptionsPage() {
         line_3: answers.line_3,
         line_3_1: answers.line_3 === 'yes' ? answers.line_3_1 : null,
         no_claims: answers.no_claims,
-        claims: claims.map((row) => claimRequestOf(row, saved?.items ?? [])),
+        claims: sent.map((row) => claimRequestOf(row, saved?.items ?? [])),
       });
       navigate('/sofa');
     } catch (caught) {
-      const refused = fitRefusals(caught, sentKeys);
-      if (Object.keys(refused).length > 0) setFitErrors(refused);
-      else setError(EXEMPTIONS_SAVE_FAILED);
+      const { fit, other } = readRefusal(caught, sent, saved?.items ?? []);
+      setFitErrors(fit);
+      if (other || Object.keys(fit).length === 0) setError(EXEMPTIONS_SAVE_FAILED);
     } finally {
       setIsSaving(false);
     }
@@ -282,143 +322,152 @@ export function ExemptionsPage() {
 
       {read === 'done' && saved && answers && (
         <>
-          <fieldset className="form-field fee-waiver-question">
-            <legend className="form-label">
-              {EXEMPTIONS_LINE_1_QUESTION}
-              {REQUIRED_MARK}
-            </legend>
-            <div className="ab-yes-no">
-              {LINE_1_CHOICES.map((choice) => (
-                <label key={choice} className="ab-choice ab-answer">
-                  <input
-                    type="radio"
-                    name="exemptions_line_1"
-                    value={choice}
-                    aria-required
-                    checked={answers.line_1 === choice}
-                    onChange={() => set('line_1', choice)}
-                  />
-                  {EXEMPTIONS_LINE_1_WORDS[choice]}
-                </label>
+          {/* Every answer holds still while the save is on its way: an edit made meanwhile would
+              be lost when the page moves on, and a refusal could name a row no longer shown */}
+          <fieldset className="fee-waiver-question" disabled={isSaving}>
+            <fieldset className="form-field fee-waiver-question">
+              <legend className="form-label">
+                {EXEMPTIONS_LINE_1_QUESTION}
+                {REQUIRED_MARK}
+              </legend>
+              <div className="ab-yes-no">
+                {LINE_1_CHOICES.map((choice) => (
+                  <label key={choice} className="ab-choice ab-answer">
+                    <input
+                      type="radio"
+                      name="exemptions_line_1"
+                      value={choice}
+                      aria-required
+                      checked={answers.line_1 === choice}
+                      onChange={() => set('line_1', choice)}
+                    />
+                    {EXEMPTIONS_LINE_1_WORDS[choice]}
+                  </label>
+                ))}
+              </div>
+              <div className="form-help-text">
+                <p>{EXEMPTIONS_NOTE_12_1201}</p>
+                <p>{EXEMPTIONS_NOTE_DOMICILE}</p>
+              </div>
+            </fieldset>
+
+            {saved.catalog_gap === 'no_table' && <p>{EXEMPTIONS_NO_TABLE}</p>}
+
+            {saved.catalog && (
+              <section aria-labelledby="exemptions-laws-heading">
+                <h2 id="exemptions-laws-heading">{EXEMPTIONS_LAWS_HEADING}</h2>
+                <LawList
+                  title={EXEMPTIONS_ILLINOIS_LAWS}
+                  laws={saved.catalog.laws.filter((law) => law.jurisdiction === 'illinois')}
+                />
+                <LawList
+                  title={EXEMPTIONS_FEDERAL_LAWS}
+                  laws={saved.catalog.laws.filter((law) => law.jurisdiction === 'federal')}
+                />
+              </section>
+            )}
+
+            <section aria-labelledby="exemptions-claims-heading">
+              <h2 id="exemptions-claims-heading">{EXEMPTIONS_CLAIMS_HEADING}</h2>
+              {claims.map((row, index) => (
+                <ClaimRowFields
+                  key={row._key}
+                  index={index}
+                  row={row}
+                  items={saved.items}
+                  laws={laws}
+                  descriptionError={
+                    fitErrors[row._key]?.description ? EXEMPTIONS_DESCRIPTION_DOESNT_FIT : undefined
+                  }
+                  otherLawError={
+                    fitErrors[row._key]?.otherLaw ? EXEMPTIONS_OTHER_LAW_DOESNT_FIT : undefined
+                  }
+                  onChange={(next) => {
+                    // A sentence about a box goes once that box changes
+                    if (next.short_description !== row.short_description) {
+                      setFitErrors((current) => withoutFit(current, row._key, 'description'));
+                    }
+                    if (next.other_law !== row.other_law) {
+                      setFitErrors((current) => withoutFit(current, row._key, 'otherLaw'));
+                    }
+                    setClaims((current) => current.map((r) => (r._key === row._key ? next : r)));
+                  }}
+                  onRemove={() =>
+                    setClaims((current) => current.filter((r) => r._key !== row._key))
+                  }
+                />
               ))}
-            </div>
-            <div className="form-help-text">
-              <p>{EXEMPTIONS_NOTE_12_1201}</p>
-              <p>{EXEMPTIONS_NOTE_DOMICILE}</p>
-            </div>
-          </fieldset>
-
-          {saved.catalog_gap === 'no_table' && <p>{EXEMPTIONS_NO_TABLE}</p>}
-
-          {saved.catalog && (
-            <section aria-labelledby="exemptions-laws-heading">
-              <h2 id="exemptions-laws-heading">{EXEMPTIONS_LAWS_HEADING}</h2>
-              <LawList
-                title={EXEMPTIONS_ILLINOIS_LAWS}
-                laws={saved.catalog.laws.filter((law) => law.jurisdiction === 'illinois')}
-              />
-              <LawList
-                title={EXEMPTIONS_FEDERAL_LAWS}
-                laws={saved.catalog.laws.filter((law) => law.jurisdiction === 'federal')}
-              />
+              {saved.items.length === 0 ? (
+                <p>{EXEMPTIONS_NO_ITEMS}</p>
+              ) : (
+                <Button type="button" variant="outline" onClick={addClaim}>
+                  {EXEMPTIONS_ADD_CLAIM}
+                </Button>
+              )}
             </section>
-          )}
 
-          <section aria-labelledby="exemptions-claims-heading">
-            <h2 id="exemptions-claims-heading">{EXEMPTIONS_CLAIMS_HEADING}</h2>
-            {claims.map((row, index) => (
-              <ClaimRowFields
-                key={row._key}
-                index={index}
-                row={row}
-                items={saved.items}
-                laws={laws}
-                descriptionError={
-                  fitErrors[row._key]?.description ? EXEMPTIONS_DESCRIPTION_DOESNT_FIT : undefined
-                }
-                otherLawError={
-                  fitErrors[row._key]?.otherLaw ? EXEMPTIONS_OTHER_LAW_DOESNT_FIT : undefined
-                }
-                onChange={(next) => {
-                  // A sentence about a box goes once that box changes
-                  if (next.short_description !== row.short_description) {
-                    setFitErrors((current) => withoutFit(current, row._key, 'description'));
-                  }
-                  if (next.other_law !== row.other_law) {
-                    setFitErrors((current) => withoutFit(current, row._key, 'otherLaw'));
-                  }
-                  setClaims((current) => current.map((r) => (r._key === row._key ? next : r)));
-                }}
-                onRemove={() => setClaims((current) => current.filter((r) => r._key !== row._key))}
-              />
-            ))}
-            {saved.items.length === 0 ? (
-              <p>{EXEMPTIONS_NO_ITEMS}</p>
-            ) : (
-              <Button type="button" variant="outline" onClick={addClaim}>
-                {EXEMPTIONS_ADD_CLAIM}
+            {totals.length > 0 && (
+              <section aria-labelledby="exemptions-totals-heading">
+                <h2 id="exemptions-totals-heading">{EXEMPTIONS_TOTALS_HEADING}</h2>
+                <ul>
+                  {totals.map((total) => (
+                    <li key={`${total.limitText === null ? 'typed' : 'law'}:${total.label}`}>
+                      <strong>{total.label}</strong>
+                      <p className="exemption-total">
+                        {EXEMPTION_TOTAL_DOLLARS.replace(
+                          '{amount}',
+                          `$${formatFigure(total.dollars)}`
+                        )}
+                      </p>
+                      {total.fairMarketCount > 0 && (
+                        <p className="exemption-total">
+                          {EXEMPTION_TOTAL_FAIR_MARKET.replace(
+                            '{n}',
+                            String(total.fairMarketCount)
+                          )}
+                        </p>
+                      )}
+                      {total.limitText !== null && (
+                        <p className="exemption-total">{total.limitText || EXEMPTION_NO_LIMIT}</p>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
+
+            {claims.length === 0 && (
+              <Button
+                variant="outline"
+                name="no_exemptions"
+                aria-pressed={answers.no_claims}
+                onClick={() => set('no_claims', !answers.no_claims)}
+              >
+                {EXEMPTIONS_NOT_CLAIMING_BUTTON}
               </Button>
             )}
-          </section>
 
-          {totals.length > 0 && (
-            <section aria-labelledby="exemptions-totals-heading">
-              <h2 id="exemptions-totals-heading">{EXEMPTIONS_TOTALS_HEADING}</h2>
-              <ul>
-                {totals.map((total) => (
-                  <li key={`${total.limitText === null ? 'typed' : 'law'}:${total.label}`}>
-                    <strong>{total.label}</strong>
-                    <p className="exemption-total">
-                      {EXEMPTION_TOTAL_DOLLARS.replace(
-                        '{amount}',
-                        `$${formatFigure(total.dollars)}`
-                      )}
-                    </p>
-                    {total.fairMarketCount > 0 && (
-                      <p className="exemption-total">
-                        {EXEMPTION_TOTAL_FAIR_MARKET.replace('{n}', String(total.fairMarketCount))}
-                      </p>
-                    )}
-                    {total.limitText !== null && (
-                      <p className="exemption-total">{total.limitText || EXEMPTION_NO_LIMIT}</p>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            </section>
-          )}
-
-          {claims.length === 0 && (
-            <Button
-              variant="outline"
-              name="no_exemptions"
-              aria-pressed={answers.no_claims}
-              onClick={() => set('no_claims', !answers.no_claims)}
-            >
-              {EXEMPTIONS_NOT_CLAIMING_BUTTON}
-            </Button>
-          )}
-
-          {yesNo(
-            EXEMPTIONS_LINE_3_QUESTION,
-            'exemptions_line_3',
-            answers.line_3,
-            (next) =>
-              setAnswers((current) =>
-                current
-                  ? {
-                      ...current,
-                      line_3: next,
-                      line_3_1: next === 'no' ? null : current.line_3_1,
-                    }
-                  : current
-              ),
-            EXEMPTIONS_LINE_3_NOTE
-          )}
-          {answers.line_3 === 'yes' &&
-            yesNo(EXEMPTIONS_LINE_3_1_QUESTION, 'exemptions_line_3_1', answers.line_3_1, (next) =>
-              set('line_3_1', next)
+            {yesNo(
+              EXEMPTIONS_LINE_3_QUESTION,
+              'exemptions_line_3',
+              answers.line_3,
+              (next) =>
+                setAnswers((current) =>
+                  current
+                    ? {
+                        ...current,
+                        line_3: next,
+                        line_3_1: next === 'no' ? null : current.line_3_1,
+                      }
+                    : current
+                ),
+              EXEMPTIONS_LINE_3_NOTE
             )}
+            {answers.line_3 === 'yes' &&
+              yesNo(EXEMPTIONS_LINE_3_1_QUESTION, 'exemptions_line_3_1', answers.line_3_1, (next) =>
+                set('line_3_1', next)
+              )}
+          </fieldset>
 
           {/* A status, not an alert. It stays mounted because a screen reader may not read a
               status region that arrives with its text. */}

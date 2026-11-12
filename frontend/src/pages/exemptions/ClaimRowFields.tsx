@@ -74,9 +74,12 @@ export function ClaimRowFields({
           value: String(candidate.id),
           label: `${candidate.name} (line ${candidate.line_label})`,
         }))}
-        onChange={(value) => onChange({ ...row, asset: value === '' ? null : Number(value) })}
+        // A property picked or cleared by the filer is no longer the one that was gone
+        onChange={(value) =>
+          onChange({ ...row, asset: value === '' ? null : Number(value), itemGone: false })
+        }
       />
-      {row.id !== null && !item && <p className="form-help-text">{EXEMPTION_ITEM_GONE}</p>}
+      {row.itemGone && <p className="form-help-text">{EXEMPTION_ITEM_GONE}</p>}
 
       <FormSelect
         label={EXEMPTIONS_LAW_LABEL}

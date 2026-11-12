@@ -24,6 +24,7 @@ const claim = (overrides: Partial<ClaimRow>): ClaimRow => ({
   amount_kind: 'dollars',
   amount: '',
   short_description: '',
+  itemGone: false,
   ...overrides,
 });
 
@@ -56,6 +57,16 @@ describe('lawTotals', () => {
     );
     expect(totals).toEqual([
       { label: '1 ILCS 1/a', dollars: 7, fairMarketCount: 0, limitText: 'Up to $4,000.' },
+    ]);
+  });
+
+  it('adds no dollars for a 100% claim, even one still holding a figure from before', () => {
+    const totals = lawTotals(
+      [claim({ law: 'a', amount_kind: 'fair_market_value', amount: '3600' })],
+      LAWS
+    );
+    expect(totals).toEqual([
+      { label: '1 ILCS 1/a', dollars: 0, fairMarketCount: 1, limitText: 'Up to $4,000.' },
     ]);
   });
 

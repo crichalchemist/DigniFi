@@ -43,6 +43,7 @@ import {
   EXEMPTIONS_TOTALS_HEADING,
   EXEMPTION_DESCRIPTION_TOO_LONG,
   EXEMPTION_GAP_CHOOSE_ITEM,
+  EXEMPTION_GAP_ITEM_GONE,
   EXEMPTION_GAP_LINE_1,
   EXEMPTION_GAP_NO_ITEMS,
   EXEMPTION_ITEM_GONE,
@@ -94,6 +95,22 @@ function serve(saved: Exemptions, putStatus = 200) {
     })
   );
   return sent;
+}
+
+/** Serve `saved`, holding each PUT until the returned function is called */
+function serveHeld(saved: Exemptions) {
+  let release = () => {};
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  server.use(
+    http.get(URL, () => HttpResponse.json(saved)),
+    http.put(URL, async () => {
+      await held;
+      return HttpResponse.json(saved);
+    })
+  );
+  return () => release();
 }
 
 function renderPage() {
@@ -194,6 +211,19 @@ describe('ExemptionsPage', () => {
     expect(sent[0].line_3_1).toBeNull();
   });
 
+  it('asks line 3 with neither choice selected, and line 3-1 the same under Yes', async () => {
+    serve(record());
+    renderPage();
+    await ready();
+    const line3 = within(group(EXEMPTIONS_LINE_3_QUESTION)).getAllByRole('radio');
+    expect(line3).toHaveLength(2);
+    for (const r of line3) expect(r).not.toBeChecked();
+    await userEvent.click(radio(EXEMPTIONS_LINE_3_QUESTION, 'Yes'));
+    const line31 = within(group(EXEMPTIONS_LINE_3_1_QUESTION)).getAllByRole('radio');
+    expect(line31).toHaveLength(2);
+    for (const r of line31) expect(r).not.toBeChecked();
+  });
+
   it('holds Continue while a gap stands and names the first gap in a status region, never an alert', async () => {
     serve(record());
     renderPage();
@@ -239,6 +269,28 @@ describe('ExemptionsPage', () => {
     await pressContinue();
     expect(await screen.findByRole('alert')).toHaveTextContent(EXEMPTIONS_SAVE_FAILED);
     expect(screen.queryByText('Statement of Financial Affairs')).not.toBeInTheDocument();
+  });
+
+  it('holds "not claiming" and the line answers still while the save is on its way', async () => {
+    // An answer changed after Continue would be lost when the page moves on
+    const release = serveHeld(record());
+    renderPage();
+    await ready();
+    await userEvent.click(radio(EXEMPTIONS_LINE_1_QUESTION, EXEMPTIONS_LINE_1_WORDS.federal));
+    await userEvent.click(screen.getByRole('button', { name: EXEMPTIONS_NOT_CLAIMING_BUTTON }));
+    await userEvent.click(radio(EXEMPTIONS_LINE_3_QUESTION, 'Yes'));
+    await userEvent.click(radio(EXEMPTIONS_LINE_3_1_QUESTION, 'No'));
+    await pressContinue();
+    for (const control of [
+      radio(EXEMPTIONS_LINE_1_QUESTION, EXEMPTIONS_LINE_1_WORDS.state_and_federal),
+      screen.getByRole('button', { name: EXEMPTIONS_NOT_CLAIMING_BUTTON }),
+      radio(EXEMPTIONS_LINE_3_QUESTION, 'No'),
+      radio(EXEMPTIONS_LINE_3_1_QUESTION, 'Yes'),
+    ]) {
+      expect(control).toBeDisabled();
+    }
+    release();
+    await screen.findByText('Statement of Financial Affairs');
   });
 
   it('says so in place of the laws when no list of laws is in force', async () => {
@@ -474,11 +526,16 @@ describe('ExemptionsPage claims', () => {
     );
     renderPage();
     await ready();
-    const over = screen.getByText('Amounts entered under this law: $5,180.00');
-    const under = screen.getByText('Amounts entered under this law: $3,600.00');
-    expect(over.tagName).toBe(under.tagName);
-    expect(over.className).toBe(under.className);
-    expect(over.parentElement?.className).toBe(under.parentElement?.className);
+    const over = screen.getByText('Amounts entered under this law: $5,180.00').closest('li');
+    const under = screen.getByText('Amounts entered under this law: $3,600.00').closest('li');
+    // Every element, attribute and style alike once the words and figures are taken out
+    const markup = (element: Element | null) => {
+      const copy = element!.cloneNode(true) as Element;
+      const walker = document.createTreeWalker(copy, NodeFilter.SHOW_TEXT);
+      for (let node = walker.nextNode(); node; node = walker.nextNode()) node.textContent = '';
+      return copy.outerHTML;
+    };
+    expect(markup(over)).toBe(markup(under));
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 
@@ -585,13 +642,76 @@ describe('ExemptionsPage claims', () => {
       },
     ]);
   });
+
+  it('sends no amount and adds no dollars once a dollar claim is switched to 100%', async () => {
+    // A 100% claim is never given a figure, even one typed before the switch
+    const sent = serve(
+      fullRecord({ claims: [claimOf({ id: 3, asset: 11, law: C, amount: '3600.00' })] })
+    );
+    renderPage();
+    await ready();
+    await answerLines();
+    await userEvent.click(screen.getByRole('radio', { name: EXEMPTIONS_FAIR_MARKET_WORDS }));
+    const totals = within(screen.getByRole('region', { name: EXEMPTIONS_TOTALS_HEADING }));
+    expect(totals.getByText('Amounts entered under this law: $0.00')).toBeInTheDocument();
+    expect(totals.getByText(EXEMPTION_TOTAL_FAIR_MARKET.replace('{n}', '1'))).toBeInTheDocument();
+    await pressContinue();
+    await screen.findByText('Statement of Financial Affairs');
+    expect((sent[0].claims as ExemptionClaim[])[0]).toMatchObject({
+      amount_kind: 'fair_market_value',
+      amount: null,
+    });
+  });
+
+  it('calls a stored claim gone only when its property was gone as the page opened', async () => {
+    serve(fullRecord({ claims: [claimOf({ id: 5, asset: null })] }));
+    renderPage();
+    await ready();
+    await userEvent.click(radio(EXEMPTIONS_LINE_1_QUESTION, EXEMPTIONS_LINE_1_WORDS.federal));
+    expect(screen.getByText(EXEMPTION_ITEM_GONE)).toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent(EXEMPTION_GAP_ITEM_GONE);
+  });
+
+  it('asks for the property, never calling it gone, when the filer clears a listed one', async () => {
+    serve(fullRecord({ claims: [claimOf({ id: 6, asset: 11 })] }));
+    renderPage();
+    await ready();
+    await userEvent.click(radio(EXEMPTIONS_LINE_1_QUESTION, EXEMPTIONS_LINE_1_WORDS.federal));
+    await userEvent.selectOptions(screen.getByLabelText(EXEMPTIONS_PROPERTY_LABEL), '');
+    expect(screen.queryByText(EXEMPTION_ITEM_GONE)).not.toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent(EXEMPTION_GAP_CHOOSE_ITEM);
+  });
+
+  it('holds every claim control still while the save is on its way', async () => {
+    // An edit made after Continue would be dropped when the page moves on, and a refusal could
+    // land on a row the filer had removed
+    const release = serveHeld(
+      fullRecord({ claims: [claimOf({ id: 1, asset: 11, law: C, amount: '3600.00' })] })
+    );
+    renderPage();
+    await ready();
+    await answerLines();
+    await pressContinue();
+    for (const control of [
+      screen.getByLabelText(EXEMPTIONS_PROPERTY_LABEL),
+      screen.getByLabelText(EXEMPTIONS_LAW_LABEL),
+      screen.getByRole('radio', { name: EXEMPTIONS_FAIR_MARKET_WORDS }),
+      screen.getByRole('spinbutton'),
+      screen.getByRole('button', { name: numbered(EXEMPTIONS_REMOVE_CLAIM, 1) }),
+      screen.getByRole('button', { name: EXEMPTIONS_ADD_CLAIM }),
+    ]) {
+      expect(control).toBeDisabled();
+    }
+    release();
+    await screen.findByText('Statement of Financial Affairs');
+  });
 });
 
 describe('ExemptionsPage new claims, from the controls to the request', () => {
   const claimBox = (name: string) =>
     document.querySelector(`[name="${name}"]`) as HTMLInputElement | HTMLSelectElement;
 
-  it('sends a new claim with a listed law and a dollar amount as the filer entered it', async () => {
+  it('sends a new claim with a listed law and its dollar amount to the cent', async () => {
     const sent = serve(fullRecord());
     renderPage();
     await ready();
@@ -610,7 +730,7 @@ describe('ExemptionsPage new claims, from the controls to the request', () => {
         law: C,
         other_law: '',
         amount_kind: 'dollars',
-        amount: '2500.5',
+        amount: '2500.50',
         short_description: null,
       },
     ]);
@@ -653,6 +773,66 @@ describe('ExemptionsPage new claims, from the controls to the request', () => {
         short_description: null,
       },
     ]);
+  });
+
+  it('sends a typed amount to the cent, so extra zeros and a minus zero are never refused', async () => {
+    // The server takes two places at most, and a sworn schedule must never print -0.00
+    const sent = serve(
+      fullRecord({
+        claims: [
+          claimOf({ id: 1, asset: 11, law: C, amount: '3600.00' }),
+          claimOf({ id: 2, asset: 12, law: B, amount: '5.00' }),
+        ],
+      })
+    );
+    renderPage();
+    await ready();
+    await answerLines();
+    const [first, second] = screen.getAllByRole('spinbutton') as HTMLInputElement[];
+    fireEvent.change(first, { target: { value: '100.000' } });
+    fireEvent.change(second, { target: { value: '-0' } });
+    // jsdom keeps both as typed, as a browser's number box does
+    expect([first.value, second.value]).toEqual(['100.000', '-0']);
+    await pressContinue();
+    await screen.findByText('Statement of Financial Affairs');
+    const amounts = (sent[0].claims as ExemptionClaim[]).map((claim) => claim.amount);
+    expect(amounts).toEqual(['100.00', '0.00']);
+  });
+
+  it('drops a shorter description typed for another property', async () => {
+    const long = { ...ITEMS[3], name: 'Bed, couch, table, kitchenware (secondhand)' };
+    const sent = serve(
+      fullRecord({
+        items: [ITEMS[0], { ...long, description_fits: false }],
+        claims: [claimOf({ id: 4, asset: 14, short_description: 'Bed, couch' })],
+      })
+    );
+    renderPage();
+    await ready();
+    await answerLines();
+    await userEvent.selectOptions(claimBox('claim_0_asset'), '11');
+    await pressContinue();
+    await screen.findByText('Statement of Financial Affairs');
+    expect((sent[0].claims as ExemptionClaim[])[0]).toMatchObject({
+      asset: 11,
+      short_description: null,
+    });
+  });
+
+  it('drops a typed law once a listed law is chosen instead', async () => {
+    const sent = serve(fullRecord());
+    renderPage();
+    await ready();
+    await answerLines();
+    await userEvent.click(screen.getByRole('button', { name: EXEMPTIONS_ADD_CLAIM }));
+    await userEvent.selectOptions(claimBox('claim_0_asset'), '11');
+    await userEvent.selectOptions(claimBox('claim_0_law'), '__other__');
+    await userEvent.type(claimBox('claim_0_other_law'), 'Demo Law 5');
+    await userEvent.selectOptions(claimBox('claim_0_law'), C);
+    await userEvent.click(screen.getByRole('radio', { name: EXEMPTIONS_FAIR_MARKET_WORDS }));
+    await pressContinue();
+    await screen.findByText('Statement of Financial Affairs');
+    expect((sent[0].claims as ExemptionClaim[])[0]).toMatchObject({ law: C, other_law: '' });
   });
 });
 
@@ -717,6 +897,55 @@ describe('ExemptionsPage refusals of a text Schedule C cannot hold', () => {
       document.querySelector('input[name="claim_1_other_law"]')
     ).not.toHaveAccessibleDescription(EXEMPTIONS_OTHER_LAW_DOESNT_FIT);
     expect(screen.queryByText(EXEMPTIONS_SAVE_FAILED)).not.toBeInTheDocument();
+
+    // Changing that box takes the sentence away
+    await userEvent.type(document.querySelector('input[name="claim_0_other_law"]')!, 's');
+    expect(screen.queryByText(EXEMPTIONS_OTHER_LAW_DOESNT_FIT)).not.toBeInTheDocument();
+  });
+
+  // Row 0's short description box shows (its name doesn't fit); row 1 has a listed law, so no
+  // typed-law box
+  it.each([
+    {
+      title: 'a refusal of another row',
+      body: { claims: { '0': { short_description: ['x'] }, '1': { amount: ['x'] } } },
+      fit: true,
+    },
+    {
+      title: 'a refusal of another box on the same row',
+      body: { claims: { '0': { short_description: ['x'], amount: ['x'] } } },
+      fit: true,
+    },
+    {
+      title: 'a refusal beside the claims',
+      body: { non_field_errors: ['x'], claims: { '0': { short_description: ['x'] } } },
+      fit: true,
+    },
+    {
+      title: 'a typed-law refusal of a row showing no typed-law box',
+      body: { claims: { '1': { other_law: ['x'] } } },
+      fit: false,
+    },
+  ])('shows the save-failed sentence too for $title', async ({ body, fit }) => {
+    serveRefusal(
+      fullRecord({
+        items: [longItem, ITEMS[0]],
+        claims: [
+          claimOf({ id: 1, asset: 14, short_description: 'Bed, couch' }),
+          claimOf({ id: 2, asset: 11 }),
+        ],
+      }),
+      body
+    );
+    renderPage();
+    await ready();
+    await answerLines();
+    await pressContinue();
+    // The box's own sentence is an alert too, so find the save-failed one by its words
+    const failed = await screen.findByText(EXEMPTIONS_SAVE_FAILED);
+    expect(failed.closest('[role="alert"]')).not.toBeNull();
+    expect(screen.queryAllByText(EXEMPTIONS_DESCRIPTION_DOESNT_FIT)).toHaveLength(fit ? 1 : 0);
+    expect(screen.queryByText(EXEMPTIONS_OTHER_LAW_DOESNT_FIT)).not.toBeInTheDocument();
   });
 
   it('keeps the save-failed sentence for any other 400', async () => {

@@ -51,6 +51,7 @@ function row(overrides: Partial<ClaimRow> = {}): ClaimRow {
     amount_kind: 'dollars',
     amount: '3600',
     short_description: '',
+    itemGone: false,
     ...overrides,
   };
 }
@@ -79,7 +80,12 @@ describe('firstExemptionGap', () => {
   });
 
   it('says a saved claim whose property left the list is gone', () => {
-    expect(gap(DONE, [row({ asset: 99 })])).toBe(EXEMPTION_GAP_ITEM_GONE);
+    expect(gap(DONE, [row({ asset: 99, itemGone: true })])).toBe(EXEMPTION_GAP_ITEM_GONE);
+    expect(gap(DONE, [row({ asset: null, itemGone: true })])).toBe(EXEMPTION_GAP_ITEM_GONE);
+  });
+
+  it('asks a saved claim whose property the filer cleared to choose one, never calling it gone', () => {
+    expect(gap(DONE, [row({ asset: null })])).toBe(EXEMPTION_GAP_CHOOSE_ITEM);
   });
 
   it('asks a new row to choose its property, never calling it gone', () => {
@@ -146,6 +152,21 @@ describe('firstExemptionGap', () => {
     const first = row({ _key: 'b', id: 12, asset: 1, law: null });
     expect(gap(DONE, [second, first])).toBe(
       EXEMPTION_GAP_LAW.replace('{name}', 'Honda Civic 2015')
+    );
+  });
+
+  it('names two claims on one property in the order they are listed', () => {
+    const lawMissing = row({ _key: 'a', id: 11, law: null });
+    const kindMissing = row({ _key: 'b', id: 12, amount_kind: null });
+    expect(gap(DONE, [lawMissing, kindMissing])).toBe(
+      EXEMPTION_GAP_LAW.replace('{name}', 'Honda Civic 2015')
+    );
+  });
+
+  it('puts an item name in its sentence as typed, symbols and all', () => {
+    const odd = { ...CIVIC, name: "Tools $& $' $` more" };
+    expect(gap(DONE, [row({ law: null })], [odd, CHASE])).toBe(
+      "Choose the law for Tools $& $' $` more."
     );
   });
 
