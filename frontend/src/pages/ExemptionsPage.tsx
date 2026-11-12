@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useIntake } from '../context/IntakeContext';
 import { api } from '../api/client';
@@ -13,8 +13,15 @@ import {
   EXEMPTIONS_LINE_3_NOTE,
   EXEMPTIONS_LINE_3_QUESTION,
 } from '../constants/formText';
+import { formatFigure } from '../components/wizard/steps/claims/linkedPayments';
 import {
+  EXEMPTIONS_ADD_CLAIM,
+  EXEMPTIONS_CLAIMS_HEADING,
+  EXEMPTIONS_FEDERAL_LAWS,
+  EXEMPTIONS_ILLINOIS_LAWS,
   EXEMPTIONS_INTRO,
+  EXEMPTIONS_LAWS_HEADING,
+  EXEMPTIONS_NO_ITEMS,
   EXEMPTIONS_NO_TABLE,
   EXEMPTIONS_NOTE_12_1201,
   EXEMPTIONS_NOTE_DOMICILE,
@@ -22,18 +29,24 @@ import {
   EXEMPTIONS_READ_FAILED,
   EXEMPTIONS_SAVE_FAILED,
   EXEMPTIONS_TITLE,
+  EXEMPTIONS_TOTALS_HEADING,
+  EXEMPTION_LAW_SUMMARIES,
+  EXEMPTION_NO_LIMIT,
+  EXEMPTION_TOTAL_DOLLARS,
+  EXEMPTION_TOTAL_FAIR_MARKET,
 } from '../constants/copy';
+import { ClaimRowFields } from './exemptions/ClaimRowFields';
 import { firstExemptionGap, type ClaimRow } from './exemptions/exemptionGaps';
-import type { ExemptionLine1, Exemptions, YesNo } from '../types/api';
+import { lawTotals } from './exemptions/lawTotals';
+import type { ExemptionClaim, ExemptionLaw, ExemptionLine1, Exemptions, YesNo } from '../types/api';
 
 type Answers = Pick<Exemptions, 'line_1' | 'line_3' | 'line_3_1' | 'no_claims'>;
 
 const LINE_1_CHOICES: ExemptionLine1[] = ['state_and_federal', 'federal'];
 const YES_NO: YesNo[] = ['no', 'yes'];
 
-// Claims are shown to the gap check only; this page sends none (Task 8 holds and sends them)
-const claimRowOf = (claim: Exemptions['claims'][number]): ClaimRow => ({
-  _key: String(claim.id),
+const claimRowOf = (claim: ExemptionClaim): ClaimRow => ({
+  _key: `claim-${claim.id}`,
   id: claim.id,
   asset: claim.asset,
   law: claim.law,
@@ -43,6 +56,51 @@ const claimRowOf = (claim: Exemptions['claims'][number]): ClaimRow => ({
   amount: claim.amount ?? '',
   short_description: claim.short_description ?? '',
 });
+
+// A claim as the PUT takes it: the typed law only while "Another law" is chosen, an amount only
+// under a dollar claim, a shorter description only when the property's name doesn't fit
+const claimRequestOf = (row: ClaimRow, items: Exemptions['items']): ExemptionClaim => {
+  const item = items.find((candidate) => candidate.id === row.asset);
+  const short = row.short_description.trim();
+  return {
+    id: row.id,
+    asset: row.asset,
+    law: row.otherLawChosen ? null : row.law,
+    other_law: row.otherLawChosen ? row.other_law.trim() : '',
+    amount_kind: row.amount_kind,
+    amount: row.amount_kind === 'dollars' && row.amount.trim() !== '' ? row.amount.trim() : null,
+    short_description: item && !item.description_fits && short !== '' ? short : null,
+  };
+};
+
+const blankClaim = (key: string): ClaimRow => ({
+  _key: key,
+  id: null,
+  asset: null,
+  law: null,
+  otherLawChosen: false,
+  other_law: '',
+  amount_kind: null,
+  amount: '',
+  short_description: '',
+});
+
+function LawList({ title, laws }: { title: string; laws: ExemptionLaw[] }) {
+  return (
+    <>
+      <h3>{title}</h3>
+      <ul>
+        {laws.map((law) => (
+          <li key={law.key}>
+            <strong>{law.citation}</strong>
+            {EXEMPTION_LAW_SUMMARIES[law.key] && <p>{EXEMPTION_LAW_SUMMARIES[law.key]}</p>}
+            <p>{law.limit_text || EXEMPTION_NO_LIMIT}</p>
+          </li>
+        ))}
+      </ul>
+    </>
+  );
+}
 
 /**
  * Schedule C's line 1, "not claiming" and line 3 (3g1 spec §5.4). The filer answers every
@@ -55,6 +113,8 @@ export function ExemptionsPage() {
 
   const [saved, setSaved] = useState<Exemptions | null>(null);
   const [answers, setAnswers] = useState<Answers | null>(null);
+  const [claims, setClaims] = useState<ClaimRow[]>([]);
+  const newClaims = useRef(0);
   const [read, setRead] = useState<'pending' | 'done' | 'failed'>('pending');
   const [readAttempt, setReadAttempt] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -69,6 +129,7 @@ export function ExemptionsPage() {
       .then((loaded) => {
         if (cancelled) return;
         setSaved(loaded);
+        setClaims(loaded.claims.map(claimRowOf));
         setAnswers({
           line_1: loaded.line_1,
           line_3: loaded.line_3,
@@ -86,7 +147,8 @@ export function ExemptionsPage() {
     };
   }, [sessionId, readAttempt]);
 
-  const claims = useMemo(() => (saved ? saved.claims.map(claimRowOf) : []), [saved]);
+  const laws = useMemo(() => saved?.catalog?.laws ?? [], [saved]);
+  const totals = useMemo(() => lawTotals(claims, laws), [claims, laws]);
   const lawKeys = useMemo(() => new Set(saved?.catalog?.laws.map((law) => law.key) ?? []), [saved]);
 
   const handleRetry = () => {
@@ -96,6 +158,12 @@ export function ExemptionsPage() {
 
   const set = <K extends keyof Answers>(key: K, value: Answers[K]) =>
     setAnswers((current) => (current ? { ...current, [key]: value } : current));
+
+  const addClaim = () => {
+    newClaims.current += 1;
+    setClaims((current) => [...current, blankClaim(`new-${newClaims.current}`)]);
+    set('no_claims', false);
+  };
 
   const gap = saved && answers ? firstExemptionGap(answers, claims, saved.items, lawKeys) : null;
   // A page nobody has touched says nothing yet
@@ -108,12 +176,13 @@ export function ExemptionsPage() {
     setIsSaving(true);
     setError(null);
     try {
-      // No `claims` key: this page holds none, and `claims: []` would delete the stored ones
+      // Every claim goes: the server deletes a stored claim that is missing from the list
       await api.intake.exemptions.put(sessionId, {
         line_1: answers.line_1,
         line_3: answers.line_3,
         line_3_1: answers.line_3 === 'yes' ? answers.line_3_1 : null,
         no_claims: answers.no_claims,
+        claims: claims.map((row) => claimRequestOf(row, saved?.items ?? [])),
       });
       navigate('/sofa');
     } catch {
@@ -198,6 +267,71 @@ export function ExemptionsPage() {
           </fieldset>
 
           {saved.catalog_gap === 'no_table' && <p>{EXEMPTIONS_NO_TABLE}</p>}
+
+          {saved.catalog && (
+            <section aria-labelledby="exemptions-laws-heading">
+              <h2 id="exemptions-laws-heading">{EXEMPTIONS_LAWS_HEADING}</h2>
+              <LawList
+                title={EXEMPTIONS_ILLINOIS_LAWS}
+                laws={saved.catalog.laws.filter((law) => law.jurisdiction === 'illinois')}
+              />
+              <LawList
+                title={EXEMPTIONS_FEDERAL_LAWS}
+                laws={saved.catalog.laws.filter((law) => law.jurisdiction === 'federal')}
+              />
+            </section>
+          )}
+
+          <section aria-labelledby="exemptions-claims-heading">
+            <h2 id="exemptions-claims-heading">{EXEMPTIONS_CLAIMS_HEADING}</h2>
+            {claims.map((row, index) => (
+              <ClaimRowFields
+                key={row._key}
+                index={index}
+                row={row}
+                items={saved.items}
+                laws={laws}
+                onChange={(next) =>
+                  setClaims((current) => current.map((r) => (r._key === row._key ? next : r)))
+                }
+                onRemove={() => setClaims((current) => current.filter((r) => r._key !== row._key))}
+              />
+            ))}
+            {saved.items.length === 0 ? (
+              <p>{EXEMPTIONS_NO_ITEMS}</p>
+            ) : (
+              <Button type="button" variant="outline" onClick={addClaim}>
+                {EXEMPTIONS_ADD_CLAIM}
+              </Button>
+            )}
+          </section>
+
+          {totals.length > 0 && (
+            <section aria-labelledby="exemptions-totals-heading">
+              <h2 id="exemptions-totals-heading">{EXEMPTIONS_TOTALS_HEADING}</h2>
+              <ul>
+                {totals.map((total) => (
+                  <li key={`${total.limitText === null ? 'typed' : 'law'}:${total.label}`}>
+                    <strong>{total.label}</strong>
+                    <p className="exemption-total">
+                      {EXEMPTION_TOTAL_DOLLARS.replace(
+                        '{amount}',
+                        `$${formatFigure(total.dollars)}`
+                      )}
+                    </p>
+                    {total.fairMarketCount > 0 && (
+                      <p className="exemption-total">
+                        {EXEMPTION_TOTAL_FAIR_MARKET.replace('{n}', String(total.fairMarketCount))}
+                      </p>
+                    )}
+                    {total.limitText !== null && (
+                      <p className="exemption-total">{total.limitText || EXEMPTION_NO_LIMIT}</p>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
 
           {claims.length === 0 && (
             <Button

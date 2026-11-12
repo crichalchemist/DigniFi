@@ -912,3 +912,30 @@ export const EXEMPTIONS_NO_TABLE =
 export const EXEMPTIONS_READ_FAILED =
   "We couldn't get your answers just now. Please try again in a moment.";
 export const EXEMPTIONS_SAVE_FAILED = "We couldn't save your answers just now. Please try again.";
+// DRAFT: counsel C-8
+export const EXEMPTION_NO_LIMIT = 'This law names no dollar limit.';
+// DRAFT: counsel C-8
+export const EXEMPTION_TOTAL_DOLLARS = 'Amounts entered under this law: {amount}';
+// DRAFT: counsel C-8
+export const EXEMPTION_TOTAL_FAIR_MARKET =
+  '{n} more claimed at 100% of fair market value, up to any limit the law sets.';
+export const EXEMPTION_DESCRIPTION_TOO_LONG =
+  'This description is too long for the box on Schedule C. Type a shorter one for this form.';
+export const EXEMPTION_ITEM_GONE =
+  'This claim was for property that is no longer on your property list. Its law and amount are still here. Remove the claim, or choose the property again.';
+export const EXEMPTIONS_NO_ITEMS =
+  'No property is listed on the Assets step yet, so there is nothing to claim here.';
+export const EXEMPTIONS_LAWS_HEADING = 'The list of laws';
+export const EXEMPTIONS_ILLINOIS_LAWS = 'Illinois laws';
+export const EXEMPTIONS_FEDERAL_LAWS = 'Federal laws';
+export const EXEMPTIONS_CLAIMS_HEADING = 'Your claims';
+export const EXEMPTIONS_ADD_CLAIM = 'Add a claim';
+export const EXEMPTIONS_PROPERTY_LABEL = 'Property';
+export const EXEMPTIONS_LAW_LABEL = 'Law';
+export const EXEMPTIONS_ANOTHER_LAW = 'Another law';
+export const EXEMPTIONS_CHOOSE_ONE = 'Choose one';
+export const EXEMPTIONS_AMOUNT_LABEL = 'Amount you claim';
+export const EXEMPTIONS_DOLLAR_AMOUNT = 'A dollar amount';
+export const EXEMPTIONS_SHORT_LABEL = 'A shorter description for Schedule C';
+export const EXEMPTIONS_REMOVE_CLAIM = 'Remove this claim';
+export const EXEMPTIONS_TOTALS_HEADING = 'Totals by law';

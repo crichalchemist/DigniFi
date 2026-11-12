@@ -16,6 +16,9 @@ FRONTEND = settings.BASE_DIR.parent / "frontend" / "src"
 # Later tasks extend this with each marked sentence they add.
 DRAFT_NAMES = [
     "EXEMPTION_LAW_SUMMARIES",
+    "EXEMPTION_NO_LIMIT",
+    "EXEMPTION_TOTAL_DOLLARS",
+    "EXEMPTION_TOTAL_FAIR_MARKET",
     "EXEMPTIONS_INTRO",
     "EXEMPTIONS_NOTE_12_1201",
     "EXEMPTIONS_NOTE_DOMICILE",

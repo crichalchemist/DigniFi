@@ -7,6 +7,8 @@
 
 import { render, waitFor } from '@testing-library/react';
 import { axe } from 'vitest-axe';
+import { http, HttpResponse } from 'msw';
+import { server } from './mocks/server';
 import { BrowserRouter } from 'react-router-dom';
 import { AuthProvider } from '../context/AuthContext';
 import { IntakeProvider } from '../context/IntakeContext';
@@ -240,6 +242,73 @@ describe('Accessibility: Pages', () => {
     // The h1 shows before the read returns
     await waitFor(() => {
       expect(container.querySelector('input[name="exemptions_line_1"]')).not.toBeNull();
+    });
+
+    const results = await axe(container, axeOptions);
+    expect(results).toHaveNoViolations();
+  });
+
+  it('ExemptionsPage with claims has no violations', async () => {
+    // 25 synthetic laws, two items and two claims: one whole, one whose property is gone
+    const laws = Array.from({ length: 25 }, (_, i) => ({
+      key: `demo_law_${i + 1}`,
+      citation: `Demo Law ${i + 1}`,
+      jurisdiction: i < 22 ? ('illinois' as const) : ('federal' as const),
+      limit_text: i % 2 ? 'Up to $4,000.' : '',
+    }));
+    server.use(
+      http.get('http://localhost:8000/api/intake/sessions/:id/exemptions/', () =>
+        HttpResponse.json({
+          line_1: 'federal',
+          line_3: 'no',
+          line_3_1: null,
+          no_claims: false,
+          claims: [
+            {
+              id: 1,
+              asset: 11,
+              law: 'demo_law_2',
+              other_law: '',
+              amount_kind: 'dollars',
+              amount: '100.00',
+              short_description: null,
+            },
+            {
+              id: 2,
+              asset: null,
+              law: 'demo_law_1',
+              other_law: '',
+              amount_kind: 'fair_market_value',
+              amount: null,
+              short_description: null,
+            },
+          ],
+          items: [
+            {
+              id: 11,
+              name: 'Demo car',
+              line_label: '3.1',
+              value: '4500.00',
+              description_fits: true,
+            },
+            {
+              id: 12,
+              name: 'Demo laptop',
+              line_label: '7.1',
+              value: '300.00',
+              description_fits: true,
+            },
+          ],
+          catalog: { effective_date: '2026-01-01', source_url: 'https://www.ilga.gov/', laws },
+          catalog_gap: null,
+        })
+      )
+    );
+    const { container } = withIntakeProvider(<ExemptionsPage />);
+
+    // Wait for the second claim's law select
+    await waitFor(() => {
+      expect(container.querySelector('select[name="claim_1_law"]')).not.toBeNull();
     });
 
     const results = await axe(container, axeOptions);
