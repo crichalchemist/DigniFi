@@ -369,3 +369,150 @@ def test_a_codebtors_contract_link_never_reads_as_a_debt_with_the_same_id(sessio
     assert [r.with_another for r in R.unsecured] == [False, False]
     only = R.codebtors[0]
     assert (only.d_lines, only.ef_lines, only.g_lines) == ((), (), ("2.1",))
+
+
+def test_a_debt_answered_with_a_kind_is_numbered_in_part_1_and_leaves_part_2(session):
+    complete_debt(
+        session,
+        creditor_name="Alpha Tax Office",
+        priority_answer="taxes",
+        past_due_amount=Decimal("0.00"),
+    )
+    complete_debt(session, creditor_name="Beta Card")
+    complete_debt(
+        session,
+        creditor_name="Delta Support",
+        priority_answer="domestic_support",
+        past_due_amount=Decimal("0.00"),
+    )
+    complete_debt(session, creditor_name="Gamma Care", priority_answer="not_sure")
+    R = _rows(session)
+    assert [(r.line, r.debt.creditor_name) for r in R.priority] == [
+        ("2.1", "Alpha Tax Office"),
+        ("2.2", "Delta Support"),
+    ]
+    assert [(r.line, r.debt.creditor_name) for r in R.unsecured] == [
+        ("4.1", "Beta Card"),
+        ("4.2", "Gamma Care"),
+    ]
+
+
+def test_no_not_sure_and_an_unanswered_debt_print_in_part_2(session):
+    complete_debt(session, creditor_name="A Card", priority_answer="no")
+    complete_debt(session, creditor_name="B Card", priority_answer="not_sure")
+    complete_debt(session, creditor_name="C Card", priority_answer=None)
+    R = _rows(session)
+    assert R.priority == ()
+    assert [r.debt.creditor_name for r in R.unsecured] == ["A Card", "B Card", "C Card"]
+
+
+def test_adding_a_part_1_debt_leaves_part_2_numbers_as_they_were(session):
+    complete_debt(session, creditor_name="Beta Card")
+    complete_debt(session, creditor_name="Gamma Card")
+    before = [(r.line, r.debt.creditor_name) for r in _rows(session).unsecured]
+    assert before == [("4.1", "Beta Card"), ("4.2", "Gamma Card")]
+    complete_debt(
+        session,
+        creditor_name="Alpha Tax Office",
+        priority_answer="taxes",
+        past_due_amount=Decimal("0.00"),
+    )
+    after = [(r.line, r.debt.creditor_name) for r in _rows(session).unsecured]
+    assert after == before
+
+
+def test_moving_a_debt_to_part_1_renumbers_only_the_part_2_rows_after_it(session):
+    complete_debt(session, creditor_name="A Card")
+    b = complete_debt(session, creditor_name="B Card", priority_answer="no")
+    c = complete_debt(
+        session,
+        creditor_name="C Card",
+        priority_answer="no",
+        notice_parties=[_party("C Agent")],
+    )
+    complete_codebtor(session, links=[{"kind": "debt", "id": c.pk}])
+    R = _rows(session)
+    assert [(r.part, r.line) for r in R.unsecured_notices] == [("2", "4.3")]
+    assert R.codebtors[0].ef_lines == ("4.3",)
+    b.priority_answer = "taxes"
+    b.past_due_amount = Decimal("0.00")
+    b.save()
+    R = _rows(session)
+    assert [(r.line, r.debt.creditor_name) for r in R.unsecured] == [
+        ("4.1", "A Card"),
+        ("4.2", "C Card"),
+    ]
+    assert [(r.line, r.debt.creditor_name) for r in R.priority] == [("2.1", "B Card")]
+    assert [(r.part, r.line) for r in R.unsecured_notices] == [("2", "4.2")]
+    assert R.codebtors[0].ef_lines == ("4.2",)
+
+
+def test_a_secured_debt_stored_with_a_kind_stays_on_schedule_d(session):
+    linked_loan(
+        session,
+        linked_row(session, "3"),
+        "100",
+        creditor_name="S Auto",
+        priority_answer="taxes",
+    )
+    R = _rows(session)
+    assert [r.debt.creditor_name for r in R.secured] == ["S Auto"]
+    assert R.priority == ()
+
+
+def test_a_draft_answered_with_a_kind_never_takes_a_line(session):
+    complete_debt(
+        session,
+        creditor_name="Aardvark Tax",
+        priority_answer="taxes",
+        is_draft=True,
+    )
+    complete_debt(session, creditor_name="Zed Card")
+    R = _rows(session)
+    assert R.priority == ()
+    assert [(r.line, r.debt.creditor_name) for r in R.unsecured] == [("4.1", "Zed Card")]
+
+
+def test_part_3_lists_part_1_parties_first_with_their_part_and_line(session):
+    complete_debt(
+        session,
+        creditor_name="Alpha Card",
+        priority_answer="no",
+        notice_parties=[_party("Card Agent")],
+    )
+    complete_debt(
+        session,
+        creditor_name="Zeta Tax",
+        priority_answer="taxes",
+        past_due_amount=Decimal("0.00"),
+        notice_parties=[_party("Tax Agent")],
+    )
+    linked_loan(
+        session,
+        linked_row(session, "3"),
+        "100",
+        creditor_name="Auto Loan",
+        notice_parties=[_party("Auto Agent")],
+    )
+    R = _rows(session)
+    assert [(r.part, r.line, r.party["name"]) for r in R.unsecured_notices] == [
+        ("1", "2.1", "Tax Agent"),
+        ("2", "4.1", "Card Agent"),
+    ]
+    assert R.secured_notices[0].part == ""
+
+
+def test_a_codebtor_cites_part_1_lines_before_part_2_lines(session):
+    u1 = complete_debt(session, creditor_name="U1")
+    u2 = complete_debt(session, creditor_name="U2")
+    p1 = complete_debt(
+        session,
+        creditor_name="P1",
+        priority_answer="taxes",
+        past_due_amount=Decimal("0.00"),
+    )
+    complete_codebtor(
+        session,
+        links=[{"kind": "debt", "id": pk} for pk in (u2.pk, p1.pk, u1.pk)],
+    )
+    assert [r.ef_lines for r in _rows(session).codebtors] == [("2.1", "4.1"), ("4.2",)]

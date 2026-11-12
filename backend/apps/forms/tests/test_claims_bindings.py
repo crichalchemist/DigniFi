@@ -80,6 +80,19 @@ def test_every_claims_cell_resolves_one_value_a_row(session):
     )
     complete_debt(session, creditor_name="Unsecured A", notice_parties=[_party(), _party("Two")])
     complete_debt(session, creditor_name="Unsecured B")
+    complete_debt(
+        session,
+        creditor_name="Part 1 Tax",
+        priority_answer="taxes",
+        past_due_amount=Decimal("0.00"),
+    )
+    complete_debt(
+        session,
+        creditor_name="Part 1 Fine",
+        priority_answer="other",
+        priority_other="Demo fine",
+        past_due_amount=Decimal("0.00"),
+    )
     # bare: no lien, status, date, notice parties or offset answer
     bare = complete_debt(
         session,
@@ -95,6 +108,7 @@ def test_every_claims_cell_resolves_one_value_a_row(session):
     expected = {
         "secured": 2,
         "secured_notices": 1,
+        "priority": 2,
         "unsecured": 3,
         "unsecured_notices": 2,
         "contracts": 2,
@@ -112,7 +126,7 @@ def test_every_claims_cell_resolves_one_value_a_row(session):
     "binding",
     [
         "claims.secured[].offset",
-        "claims.priority[].name",
+        "claims.nonpriority[].name",
         "claims.secured.name",
         "claims.creditor_list[].name",
     ],
@@ -127,6 +141,7 @@ def test_an_unknown_claims_list_or_cell_is_refused(session, binding):
     [
         ("claims.secured[].name", {"step": "debts"}),
         ("claims.secured_notices[].name", {"step": "debts"}),
+        ("claims.priority[].name", {"step": "debts"}),
         ("claims.unsecured[].name", {"step": "debts"}),
         ("claims.unsecured_notices[].name", {"step": "debts"}),
         ("claims.contracts[].name", {"step": "contracts"}),
@@ -257,9 +272,56 @@ def test_money_bindings_are_the_amount_columns():
     assert is_money_binding("claims.secured[].amount")
     assert is_money_binding("claims.secured[].value")
     assert is_money_binding("claims.secured[].unsecured")
+    assert is_money_binding("claims.priority[].priority_amount")
+    assert is_money_binding("claims.priority[].nonpriority_amount")
+    assert not is_money_binding("claims.priority[].other_specify")
     assert is_money_binding("sofa.creditor_payments[].total_paid")
     assert not is_money_binding("claims.secured[].name")
     assert not is_money_binding("sofa.creditor_payments[].creditor_name")
+
+
+def test_a_part_1_row_prints_its_kind_and_its_own_figures(session):
+    complete_debt(
+        session,
+        creditor_name="Demo Revenue",
+        priority_answer="taxes",
+        amount_owed=Decimal("5000.00"),
+        priority_amount=Decimal("1200.00"),
+        nonpriority_amount=None,
+        past_due_amount=Decimal("1200.00"),
+        street_2="Suite 2",
+    )
+    expected = {
+        "amount": "5000.00",
+        "priority_amount": "1200.00",
+        "nonpriority_amount": "",
+        "type_taxes": "true",
+        "type_domestic_support": "",
+        "type_intoxicated": "",
+        "type_other": "",
+        "street_2": "Suite 2",
+    }
+    for attr, value in expected.items():
+        assert _cell(session, f"claims.priority[].{attr}") == [value], attr
+
+
+def test_a_part_1_row_prints_other_words_only_under_other(session):
+    complete_debt(
+        session,
+        creditor_name="A Restitution",
+        priority_answer="other",
+        priority_other="Demo restitution",
+        past_due_amount=Decimal("0.00"),
+    )
+    complete_debt(
+        session,
+        creditor_name="B Tax",
+        priority_answer="taxes",
+        priority_other="Stale words",
+        past_due_amount=Decimal("0.00"),
+    )
+    assert _cell(session, "claims.priority[].other_specify") == ["Demo restitution", ""]
+    assert _cell(session, "claims.priority[].type_other") == ["true", ""]
 
 
 def _h(session):

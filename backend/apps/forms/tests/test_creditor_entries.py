@@ -82,17 +82,43 @@ def test_entries_follow_the_schedules_in_print_order(session):
         creditor_name="Secured Auto",
         notice_parties=[_party("Sec Notice")],
     )
+    complete_debt(
+        session,
+        creditor_name="Zeta Tax",
+        priority_answer="taxes",
+        past_due_amount=Decimal("0.00"),
+        notice_parties=[_party("Tax Notice", street="7 Demo Street")],
+    )
     complete_contract(session, counterparty_name="Lease Co")
     complete_codebtor(session, links=[], name="Co Signer")
     entries = _entries(session)
     assert [(n, e.step) for n, e in zip(_names(entries), entries, strict=True)] == [
         ("Secured Auto", "debts"),
         ("Sec Notice", "debts"),
+        ("Zeta Tax", "debts"),
         ("Unsecured Card", "debts"),
+        ("Tax Notice", "debts"),
         ("Unsec Notice", "debts"),
         ("Lease Co", "contracts"),
         ("Co Signer", "codebtors"),
     ]
+
+
+def test_a_creditor_in_both_parts_prints_once_at_its_part_1_row(session):
+    complete_debt(
+        session,
+        creditor_name="Demo Revenue",
+        priority_answer="taxes",
+        past_due_amount=Decimal("0.00"),
+    )
+    complete_debt(session, creditor_name="Demo Revenue", priority_answer="no")
+    complete_debt(
+        session,
+        creditor_name="Aaron Card",
+        priority_answer="no",
+        street_address="3 Other Way",
+    )
+    assert _names(_entries(session)) == ["Demo Revenue", "Aaron Card"]
 
 
 def test_a_name_and_address_entered_twice_prints_once(session):

@@ -55,7 +55,7 @@ from apps.intake.claim_rows import (
     claim_rows,
     one_read_of_claims,
 )
-from apps.intake.claims import account_last_4
+from apps.intake.claims import PRIORITY_TYPES, account_last_4
 from apps.intake.household import RELATIONSHIP_WORDS, dependents
 from apps.intake.income import statement_rows
 from apps.intake.models import AssetInfo, FormAnswer, IntakeSession
@@ -265,11 +265,12 @@ def creditor_entries(rows: ClaimRows) -> list[CreditorEntry]:
     G and H print (3c6 R5). The first row with a name and address makes the entry and gives
     its step; later rows with the same one add nothing.
     """
-    # DRAFT: counsel C-9 (C4: the six lists in print order; H line 2's spouse is not on the list)
+    # DRAFT: counsel C-9 (C4: the seven lists in print order; H line 2's spouse is not on the list)
     # DRAFT: counsel C-9 (C5: no entry for the filer, and no name is matched against theirs)
     sources = (
         (rows.secured, "debts"),
         (rows.secured_notices, "debts"),
+        (rows.priority, "debts"),
         (rows.unsecured, "debts"),
         (rows.unsecured_notices, "debts"),
         (rows.contracts, "contracts"),
@@ -297,6 +298,10 @@ def _tick(on: bool) -> str:
 
 def _status(kind: str) -> Callable[[DebtRow], str]:
     return lambda row: _tick(kind in (row.debt.get_claim_status() or []))
+
+
+def _priority_type(kind: str) -> Callable[[DebtRow], str]:
+    return lambda row: _tick(row.debt.priority_answer == kind)
 
 
 def _lien_kind(kind: str) -> Callable[[DebtRow], str]:
@@ -348,6 +353,17 @@ CLAIM_CELLS: dict[str, dict[str, Callable[[Any], str]]] = {
         "value": lambda row: money_or_blank(row.value),
         "unsecured": lambda row: money_or_blank(row.unsecured),
     },
+    "priority": {
+        **_addressed("street", "street_2"),
+        **_DEBT_COMMON,
+        "offset": lambda row: row.debt.offset_answer or "",
+        "priority_amount": lambda row: money_or_blank(row.debt.priority_amount),
+        "nonpriority_amount": lambda row: money_or_blank(row.debt.nonpriority_amount),
+        **{f"type_{kind}": _priority_type(kind) for kind in PRIORITY_TYPES},
+        "other_specify": lambda row: (
+            (row.debt.priority_other or "") if row.debt.priority_answer == "other" else ""
+        ),
+    },
     "unsecured": {
         **_addressed("street_joined"),
         **_DEBT_COMMON,
@@ -386,7 +402,9 @@ CLAIM_CELLS: dict[str, dict[str, Callable[[Any], str]]] = {
     "creditor_list": {"entry": lambda entry: entry.text},
 }
 # The cells that print a dollar amount: the only columns a group's total box may add (R14).
-CLAIM_MONEY_CELLS = frozenset({"amount", "value", "unsecured"})
+CLAIM_MONEY_CELLS = frozenset(
+    {"amount", "value", "unsecured", "priority_amount", "nonpriority_amount"}
+)
 _CLAIM_BINDING = re.compile(r"claims\.(\w+)\[\]\.(\w+)")
 
 
@@ -413,8 +431,8 @@ def resolve_binding(binding: str, session: IntakeSession) -> str | list[str]:
       - "household.dependents[].<attr>" → list of str over Schedule J line 2's dependents
       - "assets.line_<key>[].<attr>" or "assets.line_<key>_<kind>[].<attr>" → list of str over
         that line's Schedule A/B rows, or those of that kind, in the form's order
-      - "claims.<list>[].<attr>" → list of str over one of claim_rows' six lists (secured,
-        unsecured, secured_notices, unsecured_notices, contracts, codebtors), each cell from
+      - "claims.<list>[].<attr>" → list of str over one of claim_rows' seven lists (secured,
+        secured_notices, priority, unsecured, unsecured_notices, contracts, codebtors), each cell from
         CLAIM_CELLS; or over `creditor_list`, the List of Creditors' entries (`creditor_entries`:
         a CreditorEntry, its `entry` cell the entry's text)
     """
