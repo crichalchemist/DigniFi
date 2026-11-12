@@ -873,7 +873,8 @@ export const EXEMPTION_LAW_SUMMARIES: Record<string, string> = {
   il_735_5_12_1001_i: "The right to get a crime victims' award under Illinois law.",
   il_735_5_12_1006: 'Retirement plans, such as a pension plan or an IRA.',
   il_820_305_21: "Money from workers' compensation, and claims and awards for it.",
-  us_11_522_b3c: 'Retirement funds in an account that is exempt from federal income tax.',
+  us_11_522_b3c:
+    'Retirement funds in a tax-exempt account. The account is tax-exempt under one of the federal tax code sections this law names.',
   us_38_5301: "Veterans' benefits.",
   us_42_407: 'Social Security benefits.',
 };
