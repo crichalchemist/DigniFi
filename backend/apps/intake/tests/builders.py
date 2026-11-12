@@ -147,11 +147,15 @@ def answer_exemptions(
     line_1: str | None = "state_and_federal",
     line_3: str | None = "no",
     line_3_1: str | None = None,
-    no_claims: bool = True,
+    no_claims: bool | None = None,
 ) -> ExemptionAnswers:
     """Store Schedule C's page answers (3g1), through the session's own relation. The defaults
-    finish the page: line 1 answered, line 3 No, and "I'm not claiming any property as exempt"."""
+    finish the page: line 1 answered, line 3 No, and "I'm not claiming any property as exempt"
+    only while the session has no claim (the API refuses both together); with claims it is
+    False, the column's unanswered. An explicit no_claims wins."""
     row = getattr(session, "exemption_answers", None) or ExemptionAnswers(session=session)
+    if no_claims is None:
+        no_claims = not session.exemption_claims.exists()
     row.line_1 = line_1
     row.line_3 = line_3
     row.line_3_1 = line_3_1

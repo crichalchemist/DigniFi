@@ -82,6 +82,17 @@ def test_an_unanswered_page_asks_line_1_first(session):
     assert gaps[-1] == words.EXEMPTION_GAP_LINE_3
 
 
+def test_the_gaps_come_line_1_then_each_claims_first_gap_then_line_3(session):
+    car = _car(session)
+    _claim(session, car)
+
+    assert _gaps(session) == [
+        words.EXEMPTION_GAP_LINE_1,
+        words.EXEMPTION_GAP_LAW.format(name="Honda Civic 2015"),
+        words.EXEMPTION_GAP_LINE_3,
+    ]
+
+
 def test_with_no_property_only_the_not_claiming_button_is_named(session):
     _answer(session)
 

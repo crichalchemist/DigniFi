@@ -133,6 +133,22 @@ def test_a_chosen_law_on_a_day_with_no_list_refuses_in_the_exemption_sentence(se
     assert "page" not in response.data
 
 
+def test_a_typed_law_passes_on_a_day_with_no_list_of_laws(session):
+    row = _laptop(session)
+    answer_exemptions(session, no_claims=False)
+    ExemptionClaim.objects.create(
+        session=session,
+        asset=row,
+        law=None,
+        other_law="Demo Statute 1",
+        amount_kind="dollars",
+        amount=Decimal("100.00"),
+    )
+    ExemptionCatalog.objects.all().delete()
+
+    assert build_field_values("schedule_c", _fresh(session)) is not None
+
+
 def test_a_name_changed_after_the_claim_no_longer_fitting_raises_the_description_gap(session):
     row = _laptop(session)
     answer_exemptions(session, no_claims=False)
