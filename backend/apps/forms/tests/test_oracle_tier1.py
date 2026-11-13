@@ -35,8 +35,10 @@ from apps.forms.services.widgets import template_widgets
 from apps.forms.tests.oracle import case_param
 from apps.forms.tests.pdf_readback import read_drawn
 from apps.intake.asset_lines import PROPERTY_KINDS
-from apps.intake.models import AssetInfo, IntakeSession
+from apps.intake.models import AssetInfo, ExemptionClaim, IntakeSession
 from apps.intake.tests.builders import (
+    answer_asset_lines,
+    answer_exemptions,
     complete_codebtor,
     complete_contract,
     complete_debt,
@@ -476,6 +478,60 @@ def test_every_claims_binding_reads_the_row_it_names(binding, claims_session):
     attr = binding.rpartition(".")[2]
     if attr in ("name", "city", "amount"):
         assert cell
+
+
+def _exemptions_bindings():
+    return sorted(
+        {
+            f.binding
+            for form_type in get_all_form_types()
+            for f in load_schema(form_type).fields
+            if f.binding and f.binding.startswith("exemptions.")
+        }
+    )
+
+
+@pytest.fixture
+def exemptions_session(db, exemption_catalog_2026):
+    user = get_user_model().objects.create_user(username="tier1exemptions", password="pass")
+    district = District.objects.create(
+        code="ilnd",
+        name="Northern District of Illinois",
+        state="IL",
+        court_name="U.S. Bankruptcy Court",
+        filing_fee_chapter_7=Decimal("338.00"),
+    )
+    session = IntakeSession.objects.create(user=user, district=district)
+    row = AssetInfo(
+        session=session, ab_line="7", description="Laptop", current_value=Decimal("300.00")
+    )
+    row.set_details({})
+    row.save()
+    answer_asset_lines(session, ["7"])
+    ExemptionClaim.objects.create(
+        session=session,
+        asset=row,
+        law="il_735_5_12_1001_b",
+        amount_kind="dollars",
+        amount=Decimal("100.00"),
+    )
+    answer_exemptions(session, line_3="yes", line_3_1="no", no_claims=False)
+    # A reverse one-to-one caches a missing row: read the session fresh.
+    return IntakeSession.objects.get(pk=session.pk)
+
+
+@pytest.mark.parametrize("binding", _exemptions_bindings())
+def test_every_exemptions_binding_reads_the_row_it_names(binding, exemptions_session):
+    # A binding spelled wrong passes the startup check, which reads only its namespace, and
+    # would first fail at Generate. A row binding must give one non-empty cell for the one claim
+    # this filer made; a scalar binding, the filer's answer as a non-empty string.
+    result = resolve_binding(binding, exemptions_session)
+    if "[]" in binding:
+        (cell,) = result
+        assert cell
+    else:
+        assert isinstance(result, str)
+        assert result
 
 
 def test_every_schedule_a_b_slot_binds_the_line_and_row_its_box_is_on():

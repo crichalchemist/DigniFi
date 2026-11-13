@@ -250,7 +250,7 @@ Inputs are named for the journeys: `exemptions_line_1`, `exemptions_line_3`, `ex
 | Box | Prints |
 | --- | --- |
 | Line 1 (`check 1`) | `state_and_federal` → `/state and federal`; `federal` → `/federal`; unanswered → nothing (the gate refuses first) |
-| Brief description (`description`, `description_2` … `description_15`) | the claim's `short_description` when set, else the item's name (B12) |
+| Brief description (`description`, `description_2` … `description_15`) | the claim's `short_description` while the item's name doesn't fit (`description_fits` false) and it isn't blank, else the item's name (B12; owner, 2026-11-13: short words left from before a rename to a name that fits never print) |
 | Line from Schedule A/B (`Schedule AB`, `Line from`, …) | the item's A/B label (B13), without a trailing dot: "3.1", "6", "17.1", "17.3", "21", or a sheet number such as "3.5" or "17c.3" |
 | Current value of the portion you own (`undefined`, `undefined_6`, …) | exactly what A/B prints in the item's "portion you own" box (B16); blank when A/B's is blank (U §4.5) |
 | Amount checkbox pair (`check 2.1` … `check 15`) | `dollars` → `/On`; `fair_market_value` → `/fair market` |

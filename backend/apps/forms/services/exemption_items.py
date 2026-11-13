@@ -4,21 +4,30 @@ B13, B16).
 
 Worked out from A/B's own schema and index, so the line a filer sees on the exemptions page is
 the one printed on A/B, a sheet's number included.
+
+It also says what Schedule C prints (3g2): `exemption_rows` turns the filer's claims into the rows
+of its slots, each cell a string, and `exemption_answer` reads lines 1, 3 and 3-1. Nothing there
+chooses a law, an amount or an answer: each is the filer's own, and the rest is copied from A/B.
 """
 
 import json
 import re
-from collections.abc import Sequence
+from collections.abc import Iterator, Sequence
+from contextlib import contextmanager
+from contextvars import ContextVar
 from dataclasses import dataclass
 from functools import cache, partial
 
+from apps.districts.exemptions import exemption_catalog_in_force
 from apps.forms.field_index import index_path
 from apps.forms.schema import load_schema
+from apps.forms.services.derivations import money_or_blank
 from apps.forms.services.fill_resolver import ASSET_CELLS
 from apps.forms.services.pdf_filler import _as_printed, _refused_letter
 from apps.forms.services.text_fit import fit, font_for, printable
 from apps.forms.services.widgets import template_widgets
 from apps.intake.asset_lines import LINE_BY_KEY, exemption_item_name, ordered_assets, rows_on
+from apps.intake.exemptions import ordered_claims
 from apps.intake.models import AssetInfo
 
 SCHEDULE_C = "b_106c_0425-form.pdf"
@@ -152,3 +161,85 @@ def exemption_items(session) -> list[ExemptionItem]:
             )
         )
     return items
+
+
+@dataclass(frozen=True, repr=False)
+class ExemptionRow:
+    """One claim as Schedule C prints it: every cell a string, "" when blank (3g2 R3-R8)."""
+
+    description: str
+    line: str
+    value: str
+    amount_kind: str
+    amount: str
+    law: str
+
+
+# Session id -> its rows, while one_read_of_exemptions is open (as claim_rows.one_read_of_claims).
+_ONE_READ: ContextVar[dict | None] = ContextVar("one_read_of_exemptions", default=None)
+
+
+@contextmanager
+def one_read_of_exemptions() -> Iterator[None]:
+    """Within the block, exemption_rows reads each session's rows once: every box asks (R2)."""
+    token = _ONE_READ.set({})
+    try:
+        yield
+    finally:
+        _ONE_READ.reset(token)
+
+
+def _read_rows(session) -> list[ExemptionRow]:
+    items = exemption_items(session)
+    by_id = {item.id: item for item in items}
+    # A claim with no live item never prints: the gate refuses it, but a resolve can run ungated.
+    claims = ordered_claims(
+        [c for c in session.exemption_claims.all() if c.asset_id in by_id], items
+    )
+    citations: dict[str, str] = {}
+    if any(c.law is not None for c in claims):
+        # Read only when a printed claim names a law; no list in force propagates, as the gate's does.
+        laws = exemption_catalog_in_force().laws.all()
+        citations = {law.key: law.citation for law in laws}
+    rows = []
+    for claim in claims:
+        item = by_id[claim.asset_id]
+        short = (claim.short_description or "").strip()
+        # R4: the short words print only while the item's name doesn't fit.
+        description = short if short and not item.description_fits else item.name
+        if claim.law is not None:
+            law = citations.get(claim.law, "")
+        else:
+            law = (claim.other_law or "").strip()
+        rows.append(
+            ExemptionRow(
+                description=description,
+                line=item.line_label,
+                value=item.value or "",
+                amount_kind=claim.amount_kind or "",
+                amount=money_or_blank(claim.amount) if claim.amount_kind == "dollars" else "",
+                law=law,
+            )
+        )
+    return rows
+
+
+def exemption_rows(session) -> list[ExemptionRow]:
+    """The rows Schedule C prints, in print order; held once under one_read_of_exemptions."""
+    held = _ONE_READ.get()
+    if held is not None and session.pk in held:
+        return held[session.pk]
+    rows = _read_rows(session)
+    if held is not None:
+        held[session.pk] = rows
+    return rows
+
+
+def exemption_answer(session, key: str) -> str:
+    """Line 1, line 3 or line 3-1 as the filer answered; "" when unanswered (R7)."""
+    answers = getattr(session, "exemption_answers", None)
+    if answers is None:
+        return ""
+    if key == "line_3_1" and answers.line_3 != "yes":
+        return ""
+    return getattr(answers, key) or ""

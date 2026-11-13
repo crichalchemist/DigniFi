@@ -274,7 +274,7 @@ _WIDGET_TYPES = {
     "checkbox": {"CheckBox", "RadioButton"},
     "radio": {"CheckBox", "RadioButton"},
 }
-_BINDING_NAMESPACES = ("answer:", "sofa.", "household.", "assets.", "claims.")
+_BINDING_NAMESPACES = ("answer:", "sofa.", "household.", "assets.", "claims.", "exemptions.")
 
 
 def validate_schema(
