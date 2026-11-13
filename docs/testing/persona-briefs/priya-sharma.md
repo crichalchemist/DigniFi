@@ -105,6 +105,8 @@ Each item goes on the Schedule A/B line shown. You are the only one with an inte
 
 **Codebtors:** Yes. Rohan Sharma (your spouse), 456 W Fullerton Pkwy, Chicago, IL 60614, shares the Westhaven University Medical Center amount. Not in a community property state in the last 8 years.
 
+**Exemptions (Schedule C, on the page after the filing-fee page):** Line 1: You are claiming state and federal nonbankruptcy exemptions. You claim: Honda CR-V EX 2021 (line 3.1): 735 ILCS 5/12-1001(c), 100% of fair market value, up to any applicable statutory limit; Clothes (line 11): 735 ILCS 5/12-1001(a), 100% of fair market value, up to any applicable statutory limit; JPMorgan Chase (line 17.1): 735 ILCS 5/12-1001(b), $1,900; JPMorgan Chase (line 17.3): 735 ILCS 5/12-1001(b), $2,100; Vanguard (line 21): 735 ILCS 5/12-1006, 100% of fair market value, up to any applicable statutory limit. Line 3: No.
+
 ## What to Watch For
 
 - When the app says you're NOT eligible for Chapter 7, is the message respectful?

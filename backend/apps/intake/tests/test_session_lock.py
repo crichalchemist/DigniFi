@@ -44,6 +44,8 @@ from apps.intake.models import (
     DebtInfo,
     DebtorInfo,
     ExecutoryContract,
+    ExemptionAnswers,
+    ExemptionClaim,
     ExpenseInfo,
     IncomeInfo,
     IntakeSession,
@@ -393,6 +395,31 @@ def test_a_save_keeps_the_step_a_continue_stored_while_it_waited(ready):
     assert save_waited, "the save ran while the Continue was in progress"
 
 
+def test_not_claiming_sent_while_a_claim_is_being_saved_is_refused(ready):
+    # P12: "not claiming" is refused beside a stored claim. The PUT reads the stored claims
+    # only once it holds the lock; read before it, it would miss the claim the save in
+    # progress is writing and store "not claiming" beside it.
+    user, session = ready
+
+    with transaction.atomic():
+        lock_session(session.pk)  # a save of the claim list in progress, as the PUT writes it
+        ExemptionClaim.objects.create(session=session)
+        answers = ExemptionAnswers.objects.get(session=session)  # ready's "not claiming"
+        answers.no_claims = False  # P21: saving a claim clears it
+        answers.save()
+        sending, outcome = _on_its_own_thread(
+            lambda: _client(user).put(
+                _session_url(session, "exemptions/"), {"no_claims": True}, format="json"
+            )
+        )
+        waited = _waits_on_a_lock(sending)
+    response = _finished(sending, outcome)
+
+    assert waited, "the exemptions PUT ran while the claims save was in progress"
+    assert response.status_code == 400, response.content
+    assert ExemptionAnswers.objects.get(session=session).no_claims is False
+
+
 @pytest.mark.parametrize(
     "endpoint, kind, model", [("assets", "asset", AssetInfo), ("debts", "debt", DebtInfo)]
 )
@@ -598,6 +625,12 @@ WRITES = {
         "put",
         _session_url(s, "filing-fee/"),
         {"payment_choice": "waiver"},
+        200,
+    ),
+    "exemptions PUT": lambda s, r: (
+        "put",
+        _session_url(s, "exemptions/"),
+        {"line_1": "federal"},
         200,
     ),
     "asset POST": lambda s, r: (

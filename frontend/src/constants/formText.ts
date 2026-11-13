@@ -12,6 +12,7 @@ import type {
   ClaimStatus,
   DeductionField,
   EntryKind,
+  ExemptionLine1,
   ExpenseField,
   ExpenseSpecifyField,
   LienKind,
@@ -666,3 +667,24 @@ export const SCHEDULE_H_LINE_2_NAME_LABEL =
   'Name of your spouse, former spouse, or legal equivalent';
 // Cut: the "Column 2: " that leads it. It is the legend of a row's links.
 export const SCHEDULE_H_COLUMN_2 = 'The creditor to whom you owe the debt';
+
+// Schedule C (b_106c.pdf) page 1, line 1: the question as printed
+export const EXEMPTIONS_LINE_1_QUESTION =
+  'Which set of exemptions are you claiming? Check one only, even if your spouse is filing with you.';
+// Schedule C line 1's two choices as printed, each with its statute
+export const EXEMPTIONS_LINE_1_WORDS: Record<ExemptionLine1, string> = {
+  state_and_federal:
+    'You are claiming state and federal nonbankruptcy exemptions. 11 U.S.C. § 522(b)(3)',
+  federal: 'You are claiming federal exemptions. 11 U.S.C. § 522(b)(2)',
+};
+// Schedule C's "Amount of the exemption you claim" column, the box for the full value
+export const EXEMPTIONS_FAIR_MARKET_WORDS =
+  '100% of fair market value, up to any applicable statutory limit';
+// Schedule C line 3: the question as printed, and the note under it
+export const EXEMPTIONS_LINE_3_QUESTION =
+  'Are you claiming a homestead exemption of more than $214,000?';
+export const EXEMPTIONS_LINE_3_NOTE =
+  '(Subject to adjustment on 4/01/28 and every 3 years after that for cases filed on or after the date of adjustment.)';
+// Schedule C line 3-1 as printed
+export const EXEMPTIONS_LINE_3_1_QUESTION =
+  'Did you acquire the property covered by the exemption within 1,215 days before you filed this case?';

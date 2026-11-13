@@ -54,54 +54,6 @@
     }
   },
   {
-    "model": "districts.exemptionschedule",
-    "pk": 1,
-    "fields": {
-      "district": 1,
-      "exemption_type": "homestead",
-      "amount": "15000.00",
-      "statute_citation": "735 ILCS 5/12-901",
-      "description": "Protects up to $15,000 in equity in your primary residence. Married couples filing jointly can double this to $30,000 if they jointly own the home.",
-      "created_at": "2025-01-01T00:00:00Z"
-    }
-  },
-  {
-    "model": "districts.exemptionschedule",
-    "pk": 2,
-    "fields": {
-      "district": 1,
-      "exemption_type": "vehicle",
-      "amount": "2400.00",
-      "statute_citation": "735 ILCS 5/12-1001(c)",
-      "description": "Protects up to $2,400 in equity in one motor vehicle. Joint filers can double this amount if both names are on the title.",
-      "created_at": "2025-01-01T00:00:00Z"
-    }
-  },
-  {
-    "model": "districts.exemptionschedule",
-    "pk": 3,
-    "fields": {
-      "district": 1,
-      "exemption_type": "wildcard",
-      "amount": "4000.00",
-      "statute_citation": "735 ILCS 5/12-1001(b)",
-      "description": "Protects up to $4,000 in value of any personal property other than real estate. Married couples filing jointly can protect up to $8,000 in additional assets.",
-      "created_at": "2025-01-01T00:00:00Z"
-    }
-  },
-  {
-    "model": "districts.exemptionschedule",
-    "pk": 4,
-    "fields": {
-      "district": 1,
-      "exemption_type": "tools_of_trade",
-      "amount": "1500.00",
-      "statute_citation": "735 ILCS 5/12-1001",
-      "description": "Protects up to $1,500 in tools, equipment, or professional books you use to earn a living. This helps tradespeople, contractors, and professionals keep the items they need to work.",
-      "created_at": "2025-01-01T00:00:00Z"
-    }
-  },
-  {
     "model": "districts.localrule",
     "pk": 1,
     "fields": {

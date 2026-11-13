@@ -12,8 +12,8 @@ from django.conf import settings
 
 from apps.districts.models import District
 from apps.intake.claims import claim_step_gaps
-from apps.intake.models import IncomeInfo, IntakeSession
-from apps.intake.tests.builders import answer_household, complete_debt
+from apps.intake.models import AssetInfo, ExemptionClaim, IncomeInfo, IntakeSession
+from apps.intake.tests.builders import answer_exemptions, answer_household, complete_debt
 from apps.users.models import User
 
 FRONTEND = settings.BASE_DIR.parent / "frontend" / "src"
@@ -63,6 +63,21 @@ def test_a_debt_added_after_answer_household_stays_answerable(session):
     complete_debt(session)
     assert _gaps(session) == []
     assert session.claim_answers.get_answers().get("no_debts") is None
+
+
+def test_default_exemption_answers_never_say_not_claiming_beside_a_claim(session):
+    asset = AssetInfo.objects.create(session=session, ab_line="7", description="Laptop")
+    ExemptionClaim.objects.create(session=session, asset=asset)
+    answer_household(session)
+    assert IntakeSession.objects.get(pk=session.pk).exemption_answers.no_claims is False
+
+    answer_exemptions(session, no_claims=True)
+    assert IntakeSession.objects.get(pk=session.pk).exemption_answers.no_claims is True
+
+
+def test_default_exemption_answers_say_not_claiming_when_there_is_no_claim(session):
+    answer_household(session)
+    assert IntakeSession.objects.get(pk=session.pk).exemption_answers.no_claims is True
 
 
 def test_claims_override_the_default_answers(session):

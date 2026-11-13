@@ -22,6 +22,7 @@ from apps.intake.models import (
     Codebtor,
     DebtInfo,
     ExecutoryContract,
+    ExemptionAnswers,
     FilingFee,
     Household,
     SpouseIncome,
@@ -78,6 +79,7 @@ def answer_household(
     payment_choice: str | None = "pay_in_full",
     asset_lines: Iterable[str] | None = (),
     claims: Mapping[str, object] | None = MappingProxyType({}),
+    exemptions: Mapping[str, object] | None = MappingProxyType({}),
 ) -> Household:
     """Store the marriage answer, the county and the household list, and the spouse's amounts
     when given, through the session's own relations, so a test holding the session reads them.
@@ -97,6 +99,10 @@ def answer_household(
     claims overrides the claim answers answer_claims stores (3c3), which default to no_debts true
     while the session has no debt rows, and No on contracts, codebtors and H line 2; claims=None
     leaves them alone.
+
+    exemptions overrides the Schedule C answers answer_exemptions stores (3g1), which default to
+    line 1 answered, line 3 No and "not claiming" while the session has no stored claim (False
+    once it has one); exemptions=None leaves them alone.
     """
     session.income_info.marital_status = marital_status
     session.income_info.save(update_fields=["marital_status"])
@@ -131,7 +137,32 @@ def answer_household(
         answer_claims(
             session, **{"no_debts": True if not session.debts.exists() else None, **claims}
         )
+    if exemptions is not None:
+        answer_exemptions(session, **exemptions)
     return household
+
+
+def answer_exemptions(
+    session,
+    *,
+    line_1: str | None = "state_and_federal",
+    line_3: str | None = "no",
+    line_3_1: str | None = None,
+    no_claims: bool | None = None,
+) -> ExemptionAnswers:
+    """Store Schedule C's page answers (3g1), through the session's own relation. The defaults
+    finish the page: line 1 answered, line 3 No, and "I'm not claiming any property as exempt"
+    only while the session has no claim (the API refuses both together); with claims it is
+    False, the column's unanswered. An explicit no_claims wins."""
+    row = getattr(session, "exemption_answers", None) or ExemptionAnswers(session=session)
+    if no_claims is None:
+        no_claims = not session.exemption_claims.exists()
+    row.line_1 = line_1
+    row.line_3 = line_3
+    row.line_3_1 = line_3_1
+    row.no_claims = no_claims
+    row.save()
+    return row
 
 
 DEMO_ADDRESS = {

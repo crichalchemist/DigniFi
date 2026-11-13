@@ -14,6 +14,7 @@ import { RegisterPage } from '../pages/register.page';
 import { WizardPage } from '../pages/wizard.page';
 import { DocumentsPage } from '../pages/documents.page';
 import { FilingFeePage } from '../pages/filing-fee.page';
+import { ExemptionsPage } from '../pages/exemptions.page';
 import { DashboardPage } from '../pages/dashboard.page';
 import { SOFAPage } from '../pages/sofa.page';
 
@@ -24,6 +25,7 @@ test.describe('Andrés Kettleby — Gig Driver', () => {
     const wizard = new WizardPage(page);
     const documents = new DocumentsPage(page);
     const filingFee = new FilingFeePage(page);
+    const exemptions = new ExemptionsPage(page);
     const sofa = new SOFAPage(page);
     const dashboard = new DashboardPage(page);
 
@@ -67,8 +69,9 @@ test.describe('Andrés Kettleby — Gig Driver', () => {
     await wizard.fillReview();
     await wizard.completeIntake();
 
-    // He pays in installments; the page says where to get Form 103A, then continues to SOFA
+    // He pays in installments; the page says where to get Form 103A, then continues to the exemptions page
     await filingFee.answer(ANDRES.filing_fee.payment_choice);
+    await exemptions.answer(ANDRES.exemptions);
     await sofa.waitForLoad();
     await sofa.skipForNow();
 
