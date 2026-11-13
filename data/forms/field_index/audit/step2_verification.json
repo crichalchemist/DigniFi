@@ -11950,6 +11950,956 @@
     "evidence": "Field index: undefined_10 p2 line 9 'Line 9 Yes. Explain (expected >10% expense change)' (adjudicated). 3f spec §6.4 and §8.2: line 9's explanation, printed only beside a Yes."
   },
   {
+    "schema": "schedule_c",
+    "pdf_field": "Debtor 1",
+    "producer": "derived:full_name",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Debtor 1",
+    "evidence": "Field index: Debtor 1 p1 T1 line , 'Debtor 1 (First Name, Middle Name, Last Name)' (header); p2 T1 line , 'Debtor 1 (First Name, Middle Name, Last Name)' (header). full_name prints the filer's name as on every schedule (3g spec §6.1). Read by test_schedule_c_rows.py and tier 1."
+  },
+  {
+    "schema": "schedule_c",
+    "pdf_field": "Bankruptcy District Information",
+    "producer": "derived:district_name",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Bankruptcy District Information",
+    "evidence": "Field index: Bankruptcy District Information p1 T3 line , 'United States Bankruptcy Court for the: ____ District of ____' (header). district_name prints the district as on every schedule (3g spec §6.1). Read by test_schedule_c_rows.py and tier 1."
+  },
+  {
+    "schema": "schedule_c",
+    "pdf_field": "check 1",
+    "producer": "asked:exemptions.line_1",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check 1",
+    "evidence": "Field index: check 1 p1 T6 line 1, 'You are claiming state and federal nonbankruptcy exemptions. 11 U.S.C. § 522(b)(3)' (sampled_ok); p1 T7 line 1, 'You are claiming federal exemptions. 11 U.S.C. § 522(b)(2)' (sampled_ok). exemptions.line_1 prints the filer's answer (3g spec §6.2). Read by test_schedule_c_rows.py and tier 1."
+  },
+  {
+    "schema": "schedule_c",
+    "pdf_field": "check 3",
+    "producer": "asked:exemptions.line_3",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check 3",
+    "evidence": "Field index: check 3 p1 T29 line 3, 'No' (sampled_ok); p1 T30 line 3, 'Yes. Did you acquire the property covered by the exemption within 1,215 days before you filed this case?' (sampled_ok). exemptions.line_3 prints the filer's answer (3g spec §6.2). Read by test_schedule_c_rows.py and tier 1."
+  },
+  {
+    "schema": "schedule_c",
+    "pdf_field": "check 3-1",
+    "producer": "asked:exemptions.line_3_1",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check 3-1",
+    "evidence": "Field index: check 3-1 p1 T31 line 3, 'No' (sampled_ok); p1 T32 line 3, 'Yes' (sampled_ok). exemptions.line_3_1 prints the filer's answer (3g spec §6.2). Read by test_schedule_c_rows.py and tier 1."
+  },
+  {
+    "schema": "schedule_c",
+    "pdf_field": "description",
+    "producer": "asked:exemptions.claims[].description",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "description",
+    "evidence": "Field index: description p1 T9 line 2, 'Brief description: (row 1)' (adjudicated). Row 1 of group c_part_2 prints exemptions.claims[].description here (3g spec §6.2). Read by test_schedule_c_rows.py and tier 1."
+  },
+  {
+    "schema": "schedule_c",
+    "pdf_field": "Schedule AB",
+    "producer": "asked:exemptions.claims[].line",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Schedule AB",
+    "evidence": "Field index: Schedule AB p1 T14 line 2, 'Line from Schedule A/B: (row 1)' (adjudicated). Row 1 of group c_part_2 prints exemptions.claims[].line here (3g spec §6.2). Read by test_schedule_c_rows.py and tier 1."
+  },
+  {
+    "schema": "schedule_c",
+    "pdf_field": "undefined",
+    "producer": "asked:exemptions.claims[].value",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined",
+    "evidence": "Field index: undefined p1 T10 line 2, 'Current value of the portion you own, $ (row 1)' (adjudicated). Row 1 of group c_part_2 prints exemptions.claims[].value here (3g spec §6.2). Read by test_schedule_c_rows.py and tier 1."
+  },
+  {
+    "schema": "schedule_c",
+    "pdf_field": "check 2.1",
+    "producer": "asked:exemptions.claims[].amount_kind",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check 2.1",
+    "evidence": "Field index: check 2.1 p1 T11 line 2, '$ (state a specific dollar amount; amount goes in the box to its right)' (adjudicated); p1 T13 line 2, '100% of fair market value, up to any applicable statutory limit' (adjudicated). Row 1 of group c_part_2 prints exemptions.claims[].amount_kind here (3g spec §6.2). Read by test_schedule_c_rows.py and tier 1."
+  },
+  {
+    "schema": "schedule_c",
+    "pdf_field": "undefined_2",
+    "producer": "asked:exemptions.claims[].amount",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_2",
+    "evidence": "Field index: undefined_2 p1 T12 line 2, 'Amount of the exemption you claim: $ specific dollar amount (row 1)' (adjudicated). Row 1 of group c_part_2 prints exemptions.claims[].amount here (3g spec §6.2). Read by test_schedule_c_rows.py and tier 1."
+  },
+  {
+    "schema": "schedule_c",
+    "pdf_field": "2.1",
+    "producer": "asked:exemptions.claims[].law",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "2.1",
+    "evidence": "Field index: 2.1 p1 T8 line 2, 'Specific laws that allow exemption (row 1)' (adjudicated). Row 1 of group c_part_2 prints exemptions.claims[].law here (3g spec §6.2). Read by test_schedule_c_rows.py and tier 1."
+  },
+  {
+    "schema": "schedule_c",
+    "pdf_field": "description_2",
+    "producer": "asked:exemptions.claims[].description",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "description_2",
+    "evidence": "Field index: description_2 p1 T16 line 2, 'Brief description: (row 2)' (pattern). Row 2 of group c_part_2 prints exemptions.claims[].description here (3g spec §6.2). Read by test_schedule_c_rows.py and tier 1."
+  },
+  {
+    "schema": "schedule_c",
+    "pdf_field": "Schedule AB_2",
+    "producer": "asked:exemptions.claims[].line",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Schedule AB_2",
+    "evidence": "Field index: Schedule AB_2 p1 T21 line 2, 'Line from Schedule A/B: (row 2)' (pattern). Row 2 of group c_part_2 prints exemptions.claims[].line here (3g spec §6.2). Read by test_schedule_c_rows.py and tier 1."
+  },
+  {
+    "schema": "schedule_c",
+    "pdf_field": "undefined_6",
+    "producer": "asked:exemptions.claims[].value",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_6",
+    "evidence": "Field index: undefined_6 p1 T17 line 2, 'Current value of the portion you own, $ (row 2)' (pattern). Row 2 of group c_part_2 prints exemptions.claims[].value here (3g spec §6.2). Read by test_schedule_c_rows.py and tier 1."
+  },
+  {
+    "schema": "schedule_c",
+    "pdf_field": "check 2.2",
+    "producer": "asked:exemptions.claims[].amount_kind",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check 2.2",
+    "evidence": "Field index: check 2.2 p1 T18 line 2, '$ (state a specific dollar amount; amount goes in the box to its right)' (pattern); p1 T20 line 2, '100% of fair market value, up to any applicable statutory limit' (pattern). Row 2 of group c_part_2 prints exemptions.claims[].amount_kind here (3g spec §6.2). Read by test_schedule_c_rows.py and tier 1."
+  },
+  {
+    "schema": "schedule_c",
+    "pdf_field": "undefined_7",
+    "producer": "asked:exemptions.claims[].amount",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_7",
+    "evidence": "Field index: undefined_7 p1 T19 line 2, 'Amount of the exemption you claim: $ specific dollar amount (row 2)' (pattern). Row 2 of group c_part_2 prints exemptions.claims[].amount here (3g spec §6.2). Read by test_schedule_c_rows.py and tier 1."
+  },
+  {
+    "schema": "schedule_c",
+    "pdf_field": "2.2",
+    "producer": "asked:exemptions.claims[].law",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "2.2",
+    "evidence": "Field index: 2.2 p1 T15 line 2, 'Specific laws that allow exemption (row 2)' (pattern). Row 2 of group c_part_2 prints exemptions.claims[].law here (3g spec §6.2). Read by test_schedule_c_rows.py and tier 1."
+  },
+  {
+    "schema": "schedule_c",
+    "pdf_field": "description_3",
+    "producer": "asked:exemptions.claims[].description",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "description_3",
+    "evidence": "Field index: description_3 p1 T23 line 2, 'Brief description: (row 3)' (pattern). Row 3 of group c_part_2 prints exemptions.claims[].description here (3g spec §6.2). Read by test_schedule_c_rows.py and tier 1."
+  },
+  {
+    "schema": "schedule_c",
+    "pdf_field": "Schedule AB_3",
+    "producer": "asked:exemptions.claims[].line",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Schedule AB_3",
+    "evidence": "Field index: Schedule AB_3 p1 T28 line 2, 'Line from Schedule A/B: (row 3)' (pattern). Row 3 of group c_part_2 prints exemptions.claims[].line here (3g spec §6.2). Read by test_schedule_c_rows.py and tier 1."
+  },
+  {
+    "schema": "schedule_c",
+    "pdf_field": "undefined_8",
+    "producer": "asked:exemptions.claims[].value",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_8",
+    "evidence": "Field index: undefined_8 p1 T24 line 2, 'Current value of the portion you own, $ (row 3)' (pattern). Row 3 of group c_part_2 prints exemptions.claims[].value here (3g spec §6.2). Read by test_schedule_c_rows.py and tier 1."
+  },
+  {
+    "schema": "schedule_c",
+    "pdf_field": "check 2.3",
+    "producer": "asked:exemptions.claims[].amount_kind",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check 2.3",
+    "evidence": "Field index: check 2.3 p1 T25 line 2, '$ (state a specific dollar amount; amount goes in the box to its right)' (pattern); p1 T27 line 2, '100% of fair market value, up to any applicable statutory limit' (pattern). Row 3 of group c_part_2 prints exemptions.claims[].amount_kind here (3g spec §6.2). Read by test_schedule_c_rows.py and tier 1."
+  },
+  {
+    "schema": "schedule_c",
+    "pdf_field": "undefined_9",
+    "producer": "asked:exemptions.claims[].amount",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_9",
+    "evidence": "Field index: undefined_9 p1 T26 line 2, 'Amount of the exemption you claim: $ specific dollar amount (row 3)' (pattern). Row 3 of group c_part_2 prints exemptions.claims[].amount here (3g spec §6.2). Read by test_schedule_c_rows.py and tier 1."
+  },
+  {
+    "schema": "schedule_c",
+    "pdf_field": "2.3",
+    "producer": "asked:exemptions.claims[].law",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "2.3",
+    "evidence": "Field index: 2.3 p1 T22 line 2, 'Specific laws that allow exemption (row 3)' (pattern). Row 3 of group c_part_2 prints exemptions.claims[].law here (3g spec §6.2). Read by test_schedule_c_rows.py and tier 1."
+  },
+  {
+    "schema": "schedule_c",
+    "pdf_field": "description_4",
+    "producer": "asked:exemptions.claims[].description",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "description_4",
+    "evidence": "Field index: description_4 p2 T4 line 2, 'Brief description: (Part 2 Additional Page row 1)' (adjudicated). Row 4 of group c_part_2 prints exemptions.claims[].description here (3g spec §6.2). Read by test_schedule_c_rows.py and tier 1."
+  },
+  {
+    "schema": "schedule_c",
+    "pdf_field": "Line from",
+    "producer": "asked:exemptions.claims[].line",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Line from",
+    "evidence": "Field index: Line from p2 T9 line 2, 'Line from Schedule A/B: (Part 2 Additional Page row 1)' (adjudicated). Row 4 of group c_part_2 prints exemptions.claims[].line here (3g spec §6.2). Read by test_schedule_c_rows.py and tier 1."
+  },
+  {
+    "schema": "schedule_c",
+    "pdf_field": "undefined_11",
+    "producer": "asked:exemptions.claims[].value",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_11",
+    "evidence": "Field index: undefined_11 p2 T5 line 2, 'Current value of the portion you own, $ (Part 2 Additional Page row 1)' (adjudicated). Row 4 of group c_part_2 prints exemptions.claims[].value here (3g spec §6.2). Read by test_schedule_c_rows.py and tier 1."
+  },
+  {
+    "schema": "schedule_c",
+    "pdf_field": "check 4",
+    "producer": "asked:exemptions.claims[].amount_kind",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check 4",
+    "evidence": "Field index: check 4 p2 T7 line 2, '$ (state a specific dollar amount; amount goes in the box to its right)' (adjudicated); p2 T8 line 2, '100% of fair market value, up to any applicable statutory limit' (adjudicated). Row 4 of group c_part_2 prints exemptions.claims[].amount_kind here (3g spec §6.2). Read by test_schedule_c_rows.py and tier 1."
+  },
+  {
+    "schema": "schedule_c",
+    "pdf_field": "undefined_12",
+    "producer": "asked:exemptions.claims[].amount",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_12",
+    "evidence": "Field index: undefined_12 p2 T6 line 2, 'Amount of the exemption you claim: $ specific dollar amount (Part 2 Additional Page row 1)' (adjudicated). Row 4 of group c_part_2 prints exemptions.claims[].amount here (3g spec §6.2). Read by test_schedule_c_rows.py and tier 1."
+  },
+  {
+    "schema": "schedule_c",
+    "pdf_field": "3",
+    "producer": "asked:exemptions.claims[].law",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "3",
+    "evidence": "Field index: 3 p2 T3 line 2, 'Specific laws that allow exemption (Part 2 Additional Page row 1)' (adjudicated). Row 4 of group c_part_2 prints exemptions.claims[].law here (3g spec §6.2). Read by test_schedule_c_rows.py and tier 1."
+  },
+  {
+    "schema": "schedule_c",
+    "pdf_field": "description_5",
+    "producer": "asked:exemptions.claims[].description",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "description_5",
+    "evidence": "Field index: description_5 p2 T11 line 2, 'Brief description: (Part 2 Additional Page row 2)' (pattern). Row 5 of group c_part_2 prints exemptions.claims[].description here (3g spec §6.2). Read by test_schedule_c_rows.py and tier 1."
+  },
+  {
+    "schema": "schedule_c",
+    "pdf_field": "Schedule AB_4",
+    "producer": "asked:exemptions.claims[].line",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Schedule AB_4",
+    "evidence": "Field index: Schedule AB_4 p2 T16 line 2, 'Line from Schedule A/B: (Part 2 Additional Page row 2)' (pattern). Row 5 of group c_part_2 prints exemptions.claims[].line here (3g spec §6.2). Read by test_schedule_c_rows.py and tier 1."
+  },
+  {
+    "schema": "schedule_c",
+    "pdf_field": "undefined_13",
+    "producer": "asked:exemptions.claims[].value",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_13",
+    "evidence": "Field index: undefined_13 p2 T12 line 2, 'Current value of the portion you own, $ (Part 2 Additional Page row 2)' (pattern). Row 5 of group c_part_2 prints exemptions.claims[].value here (3g spec §6.2). Read by test_schedule_c_rows.py and tier 1."
+  },
+  {
+    "schema": "schedule_c",
+    "pdf_field": "check 5",
+    "producer": "asked:exemptions.claims[].amount_kind",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check 5",
+    "evidence": "Field index: check 5 p2 T14 line 2, '$ (state a specific dollar amount; amount goes in the box to its right)' (pattern); p2 T15 line 2, '100% of fair market value, up to any applicable statutory limit' (pattern). Row 5 of group c_part_2 prints exemptions.claims[].amount_kind here (3g spec §6.2). Read by test_schedule_c_rows.py and tier 1."
+  },
+  {
+    "schema": "schedule_c",
+    "pdf_field": "undefined_26",
+    "producer": "asked:exemptions.claims[].amount",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_26",
+    "evidence": "Field index: undefined_26 p2 T13 line 2, 'Amount of the exemption you claim: $ specific dollar amount (Part 2 Additional Page row 2)' (pattern). Row 5 of group c_part_2 prints exemptions.claims[].amount here (3g spec §6.2). Read by test_schedule_c_rows.py and tier 1."
+  },
+  {
+    "schema": "schedule_c",
+    "pdf_field": "4",
+    "producer": "asked:exemptions.claims[].law",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "4",
+    "evidence": "Field index: 4 p2 T10 line 2, 'Specific laws that allow exemption (Part 2 Additional Page row 2)' (pattern). Row 5 of group c_part_2 prints exemptions.claims[].law here (3g spec §6.2). Read by test_schedule_c_rows.py and tier 1."
+  },
+  {
+    "schema": "schedule_c",
+    "pdf_field": "description_6",
+    "producer": "asked:exemptions.claims[].description",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "description_6",
+    "evidence": "Field index: description_6 p2 T18 line 2, 'Brief description: (Part 2 Additional Page row 3)' (pattern). Row 6 of group c_part_2 prints exemptions.claims[].description here (3g spec §6.2). Read by test_schedule_c_rows.py and tier 1."
+  },
+  {
+    "schema": "schedule_c",
+    "pdf_field": "Schedule AB_5",
+    "producer": "asked:exemptions.claims[].line",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Schedule AB_5",
+    "evidence": "Field index: Schedule AB_5 p2 T23 line 2, 'Line from Schedule A/B: (Part 2 Additional Page row 3)' (pattern). Row 6 of group c_part_2 prints exemptions.claims[].line here (3g spec §6.2). Read by test_schedule_c_rows.py and tier 1."
+  },
+  {
+    "schema": "schedule_c",
+    "pdf_field": "undefined_27",
+    "producer": "asked:exemptions.claims[].value",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_27",
+    "evidence": "Field index: undefined_27 p2 T19 line 2, 'Current value of the portion you own, $ (Part 2 Additional Page row 3)' (pattern). Row 6 of group c_part_2 prints exemptions.claims[].value here (3g spec §6.2). Read by test_schedule_c_rows.py and tier 1."
+  },
+  {
+    "schema": "schedule_c",
+    "pdf_field": "check 6",
+    "producer": "asked:exemptions.claims[].amount_kind",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check 6",
+    "evidence": "Field index: check 6 p2 T20 line 2, '$ (state a specific dollar amount; amount goes in the box to its right)' (pattern); p2 T22 line 2, '100% of fair market value, up to any applicable statutory limit' (pattern). Row 6 of group c_part_2 prints exemptions.claims[].amount_kind here (3g spec §6.2). Read by test_schedule_c_rows.py and tier 1."
+  },
+  {
+    "schema": "schedule_c",
+    "pdf_field": "undefined_28",
+    "producer": "asked:exemptions.claims[].amount",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_28",
+    "evidence": "Field index: undefined_28 p2 T21 line 2, 'Amount of the exemption you claim: $ specific dollar amount (Part 2 Additional Page row 3)' (pattern). Row 6 of group c_part_2 prints exemptions.claims[].amount here (3g spec §6.2). Read by test_schedule_c_rows.py and tier 1."
+  },
+  {
+    "schema": "schedule_c",
+    "pdf_field": "5",
+    "producer": "asked:exemptions.claims[].law",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "5",
+    "evidence": "Field index: 5 p2 T17 line 2, 'Specific laws that allow exemption (Part 2 Additional Page row 3)' (pattern). Row 6 of group c_part_2 prints exemptions.claims[].law here (3g spec §6.2). Read by test_schedule_c_rows.py and tier 1."
+  },
+  {
+    "schema": "schedule_c",
+    "pdf_field": "description_7",
+    "producer": "asked:exemptions.claims[].description",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "description_7",
+    "evidence": "Field index: description_7 p2 T25 line 2, 'Brief description: (Part 2 Additional Page row 4)' (pattern). Row 7 of group c_part_2 prints exemptions.claims[].description here (3g spec §6.2). Read by test_schedule_c_rows.py and tier 1."
+  },
+  {
+    "schema": "schedule_c",
+    "pdf_field": "Line from_2",
+    "producer": "asked:exemptions.claims[].line",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Line from_2",
+    "evidence": "Field index: Line from_2 p2 T30 line 2, 'Line from Schedule A/B: (Part 2 Additional Page row 4)' (pattern). Row 7 of group c_part_2 prints exemptions.claims[].line here (3g spec §6.2). Read by test_schedule_c_rows.py and tier 1."
+  },
+  {
+    "schema": "schedule_c",
+    "pdf_field": "undefined_29",
+    "producer": "asked:exemptions.claims[].value",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_29",
+    "evidence": "Field index: undefined_29 p2 T26 line 2, 'Current value of the portion you own, $ (Part 2 Additional Page row 4)' (pattern). Row 7 of group c_part_2 prints exemptions.claims[].value here (3g spec §6.2). Read by test_schedule_c_rows.py and tier 1."
+  },
+  {
+    "schema": "schedule_c",
+    "pdf_field": "check 7",
+    "producer": "asked:exemptions.claims[].amount_kind",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check 7",
+    "evidence": "Field index: check 7 p2 T28 line 2, '$ (state a specific dollar amount; amount goes in the box to its right)' (pattern); p2 T29 line 2, '100% of fair market value, up to any applicable statutory limit' (pattern). Row 7 of group c_part_2 prints exemptions.claims[].amount_kind here (3g spec §6.2). Read by test_schedule_c_rows.py and tier 1."
+  },
+  {
+    "schema": "schedule_c",
+    "pdf_field": "undefined_30",
+    "producer": "asked:exemptions.claims[].amount",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_30",
+    "evidence": "Field index: undefined_30 p2 T27 line 2, 'Amount of the exemption you claim: $ specific dollar amount (Part 2 Additional Page row 4)' (pattern). Row 7 of group c_part_2 prints exemptions.claims[].amount here (3g spec §6.2). Read by test_schedule_c_rows.py and tier 1."
+  },
+  {
+    "schema": "schedule_c",
+    "pdf_field": "6",
+    "producer": "asked:exemptions.claims[].law",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "6",
+    "evidence": "Field index: 6 p2 T24 line 2, 'Specific laws that allow exemption (Part 2 Additional Page row 4)' (pattern). Row 7 of group c_part_2 prints exemptions.claims[].law here (3g spec §6.2). Read by test_schedule_c_rows.py and tier 1."
+  },
+  {
+    "schema": "schedule_c",
+    "pdf_field": "description_8",
+    "producer": "asked:exemptions.claims[].description",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "description_8",
+    "evidence": "Field index: description_8 p2 T32 line 2, 'Brief description: (Part 2 Additional Page row 5)' (pattern). Row 8 of group c_part_2 prints exemptions.claims[].description here (3g spec §6.2). Read by test_schedule_c_rows.py and tier 1."
+  },
+  {
+    "schema": "schedule_c",
+    "pdf_field": "Schedule AB_6",
+    "producer": "asked:exemptions.claims[].line",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Schedule AB_6",
+    "evidence": "Field index: Schedule AB_6 p2 T37 line 2, 'Line from Schedule A/B: (Part 2 Additional Page row 5)' (pattern). Row 8 of group c_part_2 prints exemptions.claims[].line here (3g spec §6.2). Read by test_schedule_c_rows.py and tier 1."
+  },
+  {
+    "schema": "schedule_c",
+    "pdf_field": "undefined_31",
+    "producer": "asked:exemptions.claims[].value",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_31",
+    "evidence": "Field index: undefined_31 p2 T33 line 2, 'Current value of the portion you own, $ (Part 2 Additional Page row 5)' (pattern). Row 8 of group c_part_2 prints exemptions.claims[].value here (3g spec §6.2). Read by test_schedule_c_rows.py and tier 1."
+  },
+  {
+    "schema": "schedule_c",
+    "pdf_field": "check 8",
+    "producer": "asked:exemptions.claims[].amount_kind",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check 8",
+    "evidence": "Field index: check 8 p2 T34 line 2, '$ (state a specific dollar amount; amount goes in the box to its right)' (pattern); p2 T36 line 2, '100% of fair market value, up to any applicable statutory limit' (pattern). Row 8 of group c_part_2 prints exemptions.claims[].amount_kind here (3g spec §6.2). Read by test_schedule_c_rows.py and tier 1."
+  },
+  {
+    "schema": "schedule_c",
+    "pdf_field": "undefined_32",
+    "producer": "asked:exemptions.claims[].amount",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_32",
+    "evidence": "Field index: undefined_32 p2 T35 line 2, 'Amount of the exemption you claim: $ specific dollar amount (Part 2 Additional Page row 5)' (pattern). Row 8 of group c_part_2 prints exemptions.claims[].amount here (3g spec §6.2). Read by test_schedule_c_rows.py and tier 1."
+  },
+  {
+    "schema": "schedule_c",
+    "pdf_field": "7",
+    "producer": "asked:exemptions.claims[].law",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "7",
+    "evidence": "Field index: 7 p2 T31 line 2, 'Specific laws that allow exemption (Part 2 Additional Page row 5)' (pattern). Row 8 of group c_part_2 prints exemptions.claims[].law here (3g spec §6.2). Read by test_schedule_c_rows.py and tier 1."
+  },
+  {
+    "schema": "schedule_c",
+    "pdf_field": "description_9",
+    "producer": "asked:exemptions.claims[].description",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "description_9",
+    "evidence": "Field index: description_9 p2 T39 line 2, 'Brief description: (Part 2 Additional Page row 6)' (pattern). Row 9 of group c_part_2 prints exemptions.claims[].description here (3g spec §6.2). Read by test_schedule_c_rows.py and tier 1."
+  },
+  {
+    "schema": "schedule_c",
+    "pdf_field": "Schedule AB_7",
+    "producer": "asked:exemptions.claims[].line",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Schedule AB_7",
+    "evidence": "Field index: Schedule AB_7 p2 T44 line 2, 'Line from Schedule A/B: (Part 2 Additional Page row 6)' (pattern). Row 9 of group c_part_2 prints exemptions.claims[].line here (3g spec §6.2). Read by test_schedule_c_rows.py and tier 1."
+  },
+  {
+    "schema": "schedule_c",
+    "pdf_field": "undefined_34",
+    "producer": "asked:exemptions.claims[].value",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_34",
+    "evidence": "Field index: undefined_34 p2 T40 line 2, 'Current value of the portion you own, $ (Part 2 Additional Page row 6)' (pattern). Row 9 of group c_part_2 prints exemptions.claims[].value here (3g spec §6.2). Read by test_schedule_c_rows.py and tier 1."
+  },
+  {
+    "schema": "schedule_c",
+    "pdf_field": "check 9",
+    "producer": "asked:exemptions.claims[].amount_kind",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check 9",
+    "evidence": "Field index: check 9 p2 T41 line 2, '$ (state a specific dollar amount; amount goes in the box to its right)' (pattern); p2 T43 line 2, '100% of fair market value, up to any applicable statutory limit' (pattern). Row 9 of group c_part_2 prints exemptions.claims[].amount_kind here (3g spec §6.2). Read by test_schedule_c_rows.py and tier 1."
+  },
+  {
+    "schema": "schedule_c",
+    "pdf_field": "undefined_35",
+    "producer": "asked:exemptions.claims[].amount",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_35",
+    "evidence": "Field index: undefined_35 p2 T42 line 2, 'Amount of the exemption you claim: $ specific dollar amount (Part 2 Additional Page row 6)' (pattern). Row 9 of group c_part_2 prints exemptions.claims[].amount here (3g spec §6.2). Read by test_schedule_c_rows.py and tier 1."
+  },
+  {
+    "schema": "schedule_c",
+    "pdf_field": "8",
+    "producer": "asked:exemptions.claims[].law",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "8",
+    "evidence": "Field index: 8 p2 T38 line 2, 'Specific laws that allow exemption (Part 2 Additional Page row 6)' (pattern). Row 9 of group c_part_2 prints exemptions.claims[].law here (3g spec §6.2). Read by test_schedule_c_rows.py and tier 1."
+  },
+  {
+    "schema": "schedule_c",
+    "pdf_field": "description_10",
+    "producer": "asked:exemptions.claims[].description",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "description_10",
+    "evidence": "Field index: description_10 p2 T46 line 2, 'Brief description: (Part 2 Additional Page row 7)' (pattern). Row 10 of group c_part_2 prints exemptions.claims[].description here (3g spec §6.2). Read by test_schedule_c_rows.py and tier 1."
+  },
+  {
+    "schema": "schedule_c",
+    "pdf_field": "Line from_3",
+    "producer": "asked:exemptions.claims[].line",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Line from_3",
+    "evidence": "Field index: Line from_3 p2 T51 line 2, 'Line from Schedule A/B: (Part 2 Additional Page row 7)' (pattern). Row 10 of group c_part_2 prints exemptions.claims[].line here (3g spec §6.2). Read by test_schedule_c_rows.py and tier 1."
+  },
+  {
+    "schema": "schedule_c",
+    "pdf_field": "undefined_36",
+    "producer": "asked:exemptions.claims[].value",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_36",
+    "evidence": "Field index: undefined_36 p2 T47 line 2, 'Current value of the portion you own, $ (Part 2 Additional Page row 7)' (pattern). Row 10 of group c_part_2 prints exemptions.claims[].value here (3g spec §6.2). Read by test_schedule_c_rows.py and tier 1."
+  },
+  {
+    "schema": "schedule_c",
+    "pdf_field": "check 10",
+    "producer": "asked:exemptions.claims[].amount_kind",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check 10",
+    "evidence": "Field index: check 10 p2 T48 line 2, '$ (state a specific dollar amount; amount goes in the box to its right)' (pattern); p2 T50 line 2, '100% of fair market value, up to any applicable statutory limit' (pattern). Row 10 of group c_part_2 prints exemptions.claims[].amount_kind here (3g spec §6.2). Read by test_schedule_c_rows.py and tier 1."
+  },
+  {
+    "schema": "schedule_c",
+    "pdf_field": "undefined_37",
+    "producer": "asked:exemptions.claims[].amount",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_37",
+    "evidence": "Field index: undefined_37 p2 T49 line 2, 'Amount of the exemption you claim: $ specific dollar amount (Part 2 Additional Page row 7)' (pattern). Row 10 of group c_part_2 prints exemptions.claims[].amount here (3g spec §6.2). Read by test_schedule_c_rows.py and tier 1."
+  },
+  {
+    "schema": "schedule_c",
+    "pdf_field": "9",
+    "producer": "asked:exemptions.claims[].law",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "9",
+    "evidence": "Field index: 9 p2 T45 line 2, 'Specific laws that allow exemption (Part 2 Additional Page row 7)' (pattern). Row 10 of group c_part_2 prints exemptions.claims[].law here (3g spec §6.2). Read by test_schedule_c_rows.py and tier 1."
+  },
+  {
+    "schema": "schedule_c",
+    "pdf_field": "description_11",
+    "producer": "asked:exemptions.claims[].description",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "description_11",
+    "evidence": "Field index: description_11 p2 T53 line 2, 'Brief description: (Part 2 Additional Page row 8)' (pattern). Row 11 of group c_part_2 prints exemptions.claims[].description here (3g spec §6.2). Read by test_schedule_c_rows.py and tier 1."
+  },
+  {
+    "schema": "schedule_c",
+    "pdf_field": "Schedule AB_8",
+    "producer": "asked:exemptions.claims[].line",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Schedule AB_8",
+    "evidence": "Field index: Schedule AB_8 p2 T58 line 2, 'Line from Schedule A/B: (Part 2 Additional Page row 8)' (pattern). Row 11 of group c_part_2 prints exemptions.claims[].line here (3g spec §6.2). Read by test_schedule_c_rows.py and tier 1."
+  },
+  {
+    "schema": "schedule_c",
+    "pdf_field": "undefined_38",
+    "producer": "asked:exemptions.claims[].value",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_38",
+    "evidence": "Field index: undefined_38 p2 T54 line 2, 'Current value of the portion you own, $ (Part 2 Additional Page row 8)' (pattern). Row 11 of group c_part_2 prints exemptions.claims[].value here (3g spec §6.2). Read by test_schedule_c_rows.py and tier 1."
+  },
+  {
+    "schema": "schedule_c",
+    "pdf_field": "check 11",
+    "producer": "asked:exemptions.claims[].amount_kind",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check 11",
+    "evidence": "Field index: check 11 p2 T56 line 2, '$ (state a specific dollar amount; amount goes in the box to its right)' (pattern); p2 T57 line 2, '100% of fair market value, up to any applicable statutory limit' (pattern). Row 11 of group c_part_2 prints exemptions.claims[].amount_kind here (3g spec §6.2). Read by test_schedule_c_rows.py and tier 1."
+  },
+  {
+    "schema": "schedule_c",
+    "pdf_field": "undefined_39",
+    "producer": "asked:exemptions.claims[].amount",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_39",
+    "evidence": "Field index: undefined_39 p2 T55 line 2, 'Amount of the exemption you claim: $ specific dollar amount (Part 2 Additional Page row 8)' (pattern). Row 11 of group c_part_2 prints exemptions.claims[].amount here (3g spec §6.2). Read by test_schedule_c_rows.py and tier 1."
+  },
+  {
+    "schema": "schedule_c",
+    "pdf_field": "10",
+    "producer": "asked:exemptions.claims[].law",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "10",
+    "evidence": "Field index: 10 p2 T52 line 2, 'Specific laws that allow exemption (Part 2 Additional Page row 8)' (pattern). Row 11 of group c_part_2 prints exemptions.claims[].law here (3g spec §6.2). Read by test_schedule_c_rows.py and tier 1."
+  },
+  {
+    "schema": "schedule_c",
+    "pdf_field": "description_12",
+    "producer": "asked:exemptions.claims[].description",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "description_12",
+    "evidence": "Field index: description_12 p2 T60 line 2, 'Brief description: (Part 2 Additional Page row 9)' (pattern). Row 12 of group c_part_2 prints exemptions.claims[].description here (3g spec §6.2). Read by test_schedule_c_rows.py and tier 1."
+  },
+  {
+    "schema": "schedule_c",
+    "pdf_field": "Schedule AB_9",
+    "producer": "asked:exemptions.claims[].line",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Schedule AB_9",
+    "evidence": "Field index: Schedule AB_9 p2 T65 line 2, 'Line from Schedule A/B: (Part 2 Additional Page row 9)' (pattern). Row 12 of group c_part_2 prints exemptions.claims[].line here (3g spec §6.2). Read by test_schedule_c_rows.py and tier 1."
+  },
+  {
+    "schema": "schedule_c",
+    "pdf_field": "undefined_40",
+    "producer": "asked:exemptions.claims[].value",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_40",
+    "evidence": "Field index: undefined_40 p2 T61 line 2, 'Current value of the portion you own, $ (Part 2 Additional Page row 9)' (pattern). Row 12 of group c_part_2 prints exemptions.claims[].value here (3g spec §6.2). Read by test_schedule_c_rows.py and tier 1."
+  },
+  {
+    "schema": "schedule_c",
+    "pdf_field": "check 12",
+    "producer": "asked:exemptions.claims[].amount_kind",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check 12",
+    "evidence": "Field index: check 12 p2 T62 line 2, '$ (state a specific dollar amount; amount goes in the box to its right)' (pattern); p2 T64 line 2, '100% of fair market value, up to any applicable statutory limit' (pattern). Row 12 of group c_part_2 prints exemptions.claims[].amount_kind here (3g spec §6.2). Read by test_schedule_c_rows.py and tier 1."
+  },
+  {
+    "schema": "schedule_c",
+    "pdf_field": "undefined_41",
+    "producer": "asked:exemptions.claims[].amount",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_41",
+    "evidence": "Field index: undefined_41 p2 T63 line 2, 'Amount of the exemption you claim: $ specific dollar amount (Part 2 Additional Page row 9)' (pattern). Row 12 of group c_part_2 prints exemptions.claims[].amount here (3g spec §6.2). Read by test_schedule_c_rows.py and tier 1."
+  },
+  {
+    "schema": "schedule_c",
+    "pdf_field": "11",
+    "producer": "asked:exemptions.claims[].law",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "11",
+    "evidence": "Field index: 11 p2 T59 line 2, 'Specific laws that allow exemption (Part 2 Additional Page row 9)' (pattern). Row 12 of group c_part_2 prints exemptions.claims[].law here (3g spec §6.2). Read by test_schedule_c_rows.py and tier 1."
+  },
+  {
+    "schema": "schedule_c",
+    "pdf_field": "description_13",
+    "producer": "asked:exemptions.claims[].description",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "description_13",
+    "evidence": "Field index: description_13 p2 T67 line 2, 'Brief description: (Part 2 Additional Page row 10)' (pattern). Row 13 of group c_part_2 prints exemptions.claims[].description here (3g spec §6.2). Read by test_schedule_c_rows.py and tier 1."
+  },
+  {
+    "schema": "schedule_c",
+    "pdf_field": "Line from_4",
+    "producer": "asked:exemptions.claims[].line",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Line from_4",
+    "evidence": "Field index: Line from_4 p2 T72 line 2, 'Line from Schedule A/B: (Part 2 Additional Page row 10)' (pattern). Row 13 of group c_part_2 prints exemptions.claims[].line here (3g spec §6.2). Read by test_schedule_c_rows.py and tier 1."
+  },
+  {
+    "schema": "schedule_c",
+    "pdf_field": "undefined_42",
+    "producer": "asked:exemptions.claims[].value",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_42",
+    "evidence": "Field index: undefined_42 p2 T68 line 2, 'Current value of the portion you own, $ (Part 2 Additional Page row 10)' (pattern). Row 13 of group c_part_2 prints exemptions.claims[].value here (3g spec §6.2). Read by test_schedule_c_rows.py and tier 1."
+  },
+  {
+    "schema": "schedule_c",
+    "pdf_field": "check 13",
+    "producer": "asked:exemptions.claims[].amount_kind",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check 13",
+    "evidence": "Field index: check 13 p2 T69 line 2, '$ (state a specific dollar amount; amount goes in the box to its right)' (pattern); p2 T71 line 2, '100% of fair market value, up to any applicable statutory limit' (pattern). Row 13 of group c_part_2 prints exemptions.claims[].amount_kind here (3g spec §6.2). Read by test_schedule_c_rows.py and tier 1."
+  },
+  {
+    "schema": "schedule_c",
+    "pdf_field": "undefined_43",
+    "producer": "asked:exemptions.claims[].amount",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_43",
+    "evidence": "Field index: undefined_43 p2 T70 line 2, 'Amount of the exemption you claim: $ specific dollar amount (Part 2 Additional Page row 10)' (pattern). Row 13 of group c_part_2 prints exemptions.claims[].amount here (3g spec §6.2). Read by test_schedule_c_rows.py and tier 1."
+  },
+  {
+    "schema": "schedule_c",
+    "pdf_field": "12",
+    "producer": "asked:exemptions.claims[].law",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "12",
+    "evidence": "Field index: 12 p2 T66 line 2, 'Specific laws that allow exemption (Part 2 Additional Page row 10)' (pattern). Row 13 of group c_part_2 prints exemptions.claims[].law here (3g spec §6.2). Read by test_schedule_c_rows.py and tier 1."
+  },
+  {
+    "schema": "schedule_c",
+    "pdf_field": "description_14",
+    "producer": "asked:exemptions.claims[].description",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "description_14",
+    "evidence": "Field index: description_14 p2 T74 line 2, 'Brief description: (Part 2 Additional Page row 11)' (pattern). Row 14 of group c_part_2 prints exemptions.claims[].description here (3g spec §6.2). Read by test_schedule_c_rows.py and tier 1."
+  },
+  {
+    "schema": "schedule_c",
+    "pdf_field": "Schedule AB_10",
+    "producer": "asked:exemptions.claims[].line",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Schedule AB_10",
+    "evidence": "Field index: Schedule AB_10 p2 T79 line 2, 'Line from Schedule A/B: (Part 2 Additional Page row 11)' (pattern). Row 14 of group c_part_2 prints exemptions.claims[].line here (3g spec §6.2). Read by test_schedule_c_rows.py and tier 1."
+  },
+  {
+    "schema": "schedule_c",
+    "pdf_field": "undefined_44",
+    "producer": "asked:exemptions.claims[].value",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_44",
+    "evidence": "Field index: undefined_44 p2 T75 line 2, 'Current value of the portion you own, $ (Part 2 Additional Page row 11)' (pattern). Row 14 of group c_part_2 prints exemptions.claims[].value here (3g spec §6.2). Read by test_schedule_c_rows.py and tier 1."
+  },
+  {
+    "schema": "schedule_c",
+    "pdf_field": "check 14",
+    "producer": "asked:exemptions.claims[].amount_kind",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check 14",
+    "evidence": "Field index: check 14 p2 T76 line 2, '$ (state a specific dollar amount; amount goes in the box to its right)' (pattern); p2 T78 line 2, '100% of fair market value, up to any applicable statutory limit' (pattern). Row 14 of group c_part_2 prints exemptions.claims[].amount_kind here (3g spec §6.2). Read by test_schedule_c_rows.py and tier 1."
+  },
+  {
+    "schema": "schedule_c",
+    "pdf_field": "undefined_45",
+    "producer": "asked:exemptions.claims[].amount",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_45",
+    "evidence": "Field index: undefined_45 p2 T77 line 2, 'Amount of the exemption you claim: $ specific dollar amount (Part 2 Additional Page row 11)' (pattern). Row 14 of group c_part_2 prints exemptions.claims[].amount here (3g spec §6.2). Read by test_schedule_c_rows.py and tier 1."
+  },
+  {
+    "schema": "schedule_c",
+    "pdf_field": "13",
+    "producer": "asked:exemptions.claims[].law",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "13",
+    "evidence": "Field index: 13 p2 T73 line 2, 'Specific laws that allow exemption (Part 2 Additional Page row 11)' (pattern). Row 14 of group c_part_2 prints exemptions.claims[].law here (3g spec §6.2). Read by test_schedule_c_rows.py and tier 1."
+  },
+  {
+    "schema": "schedule_c",
+    "pdf_field": "description_15",
+    "producer": "asked:exemptions.claims[].description",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "description_15",
+    "evidence": "Field index: description_15 p2 T81 line 2, 'Brief description: (Part 2 Additional Page row 12)' (pattern). Row 15 of group c_part_2 prints exemptions.claims[].description here (3g spec §6.2). Read by test_schedule_c_rows.py and tier 1."
+  },
+  {
+    "schema": "schedule_c",
+    "pdf_field": "Schedule AB_11",
+    "producer": "asked:exemptions.claims[].line",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Schedule AB_11",
+    "evidence": "Field index: Schedule AB_11 p2 T86 line 2, 'Line from Schedule A/B: (Part 2 Additional Page row 12)' (pattern). Row 15 of group c_part_2 prints exemptions.claims[].line here (3g spec §6.2). Read by test_schedule_c_rows.py and tier 1."
+  },
+  {
+    "schema": "schedule_c",
+    "pdf_field": "undefined_47",
+    "producer": "asked:exemptions.claims[].value",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_47",
+    "evidence": "Field index: undefined_47 p2 T82 line 2, 'Current value of the portion you own, $ (Part 2 Additional Page row 12)' (pattern). Row 15 of group c_part_2 prints exemptions.claims[].value here (3g spec §6.2). Read by test_schedule_c_rows.py and tier 1."
+  },
+  {
+    "schema": "schedule_c",
+    "pdf_field": "check 15",
+    "producer": "asked:exemptions.claims[].amount_kind",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "check 15",
+    "evidence": "Field index: check 15 p2 T84 line 2, '$ (state a specific dollar amount; amount goes in the box to its right)' (pattern); p2 T85 line 2, '100% of fair market value, up to any applicable statutory limit' (pattern). Row 15 of group c_part_2 prints exemptions.claims[].amount_kind here (3g spec §6.2). Read by test_schedule_c_rows.py and tier 1."
+  },
+  {
+    "schema": "schedule_c",
+    "pdf_field": "undefined_48",
+    "producer": "asked:exemptions.claims[].amount",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_48",
+    "evidence": "Field index: undefined_48 p2 T83 line 2, 'Amount of the exemption you claim: $ specific dollar amount (Part 2 Additional Page row 12)' (pattern). Row 15 of group c_part_2 prints exemptions.claims[].amount here (3g spec §6.2). Read by test_schedule_c_rows.py and tier 1."
+  },
+  {
+    "schema": "schedule_c",
+    "pdf_field": "14",
+    "producer": "asked:exemptions.claims[].law",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "14",
+    "evidence": "Field index: 14 p2 T80 line 2, 'Specific laws that allow exemption (Part 2 Additional Page row 12)' (pattern). Row 15 of group c_part_2 prints exemptions.claims[].law here (3g spec §6.2). Read by test_schedule_c_rows.py and tier 1."
+  },
+  {
     "schema": "list_of_creditors",
     "pdf_field": "Debtor1.Name",
     "producer": "derived:full_name",

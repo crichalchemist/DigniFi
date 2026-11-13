@@ -1,56 +1,107 @@
 """
-Schedule C: an answer prints only on the box that asks for it.
+Schedule C's boxes print the filer's exemption answers in the rows and columns the form labels.
 
-Business intent: Schedule C claims exemptions, a legal choice the filer makes. Six answer
-boxes printed descriptions and amounts in the "Specific laws that allow exemption" column,
-which would claim an exemption under a law nobody chose. They stay blank until step 3
-asks for each row; the law the filer gave for row 2.2 stays on its own line (step 2 spec
-Appendix A.13, Appendix E 4).
+Business intent: Schedule C is signed under oath, so a claim's law, amount or description must
+land on its own row and in its own column, and nothing prints that the filer didn't answer. The
+old law answer, one `answer:` binding on row 2's law box, is gone: every claim box now reads
+the exemptions page (3g2 spec §6).
 """
 
-from decimal import Decimal
+import json
+import re
 
-import pytest
-from django.contrib.auth import get_user_model
+from django.conf import settings
 
-from apps.districts.models import District
-from apps.forms.schema import load_schema
-from apps.forms.services.fill_resolver import resolve
-from apps.intake.models import FormAnswer, IntakeSession
+from apps.forms.schema import load_schema, page_number_keys
+from apps.forms.services.widgets import template_widgets
 
-User = get_user_model()
-
-# Answer key → the box that printed it, though that box asks for a law.
-MISPLACED = {
-    "desc_2.1": "2.1",
-    "amount_2.3": "2.3",
-    "desc_3": "3",
-    "desc_4": "4",
-    "desc_5": "5",
-    "desc_6": "6",
+COLUMN_BY_WORDS = {
+    "Brief description:": "description",
+    "Line from Schedule A/B:": "line",
+    "Current value of the portion you own, $": "value",
+    "Amount of the exemption you claim: check only one box": "amount_kind",
+    "Amount of the exemption you claim: $ specific dollar amount": "amount",
+    "Specific laws that allow exemption": "law",
 }
+LABEL = re.compile(r"^(?P<words>.*?) \((?P<page_2>Part 2 Additional Page )?row (?P<n>\d+)\)$")
 
 
-@pytest.fixture
-def session(db):
-    user = User.objects.create_user(username="schemac", password="pass")
-    district = District.objects.create(
-        code="ilnd",
-        name="Northern District of Illinois",
-        state="IL",
-        court_name="U.S. Bankruptcy Court",
-        filing_fee_chapter_7=Decimal("338.00"),
-    )
-    return IntakeSession.objects.create(user=user, district=district)
+def _index():
+    path = settings.FORM_INDEX_DIRECTORY / "b_106c_0425-form.index.json"
+    return json.loads(path.read_text())
 
 
-def test_no_description_or_amount_prints_where_the_form_asks_for_a_law(session):
-    for key in [*MISPLACED, "statute_2.2"]:
-        FormAnswer.objects.create(
-            session=session, form_type="schedule_c", field_key=key, value=f"answer {key}"
-        )
+def _labelled_boxes():
+    """(row, column) of every index row the form labels with a row, read from its own words.
+    Page 2's rows continue page 1's three."""
+    boxes = {}
+    for row in _index():
+        match = LABEL.match(row["label"])
+        if match:
+            number = int(match["n"]) + (3 if match["page_2"] else 0)
+            boxes.setdefault(row["full_name"], set()).add((number, COLUMN_BY_WORDS[match["words"]]))
+    return boxes
 
-    printed = resolve(load_schema("schedule_c"), session)
 
-    assert sorted(set(MISPLACED.values()) & printed.keys()) == []
-    assert printed.get("2.2") == "answer statute_2.2"
+def test_every_box_a_claim_prints_is_on_the_row_and_column_its_label_names():
+    labelled = _labelled_boxes()
+    bound = set()
+
+    for f in load_schema("schedule_c").fields:
+        if not f.binding or not f.binding.startswith("exemptions.claims[]."):
+            continue
+        # One name may be several widgets (the two amount boxes of a row): each must be its row's.
+        assert labelled[f.pdf_field] == {(f.row, f.binding.rsplit(".", 1)[-1])}, f.pdf_field
+        bound.add((f.row, f.binding.rsplit(".", 1)[-1]))
+
+    all_labelled = {pair for pairs in labelled.values() for pair in pairs}
+    assert len(bound) == 90
+    assert all_labelled == bound
+
+
+def test_every_exemptions_binding_is_the_filers_own_answer():
+    # Nothing prints on Schedule C that the filer didn't give: no `answer:` binding, no rule but
+    # the name and the district, and every exemptions box is asked and held for legal review.
+    for f in load_schema("schedule_c").fields:
+        if f.binding and f.binding.startswith("exemptions."):
+            assert f.source == "asked", f.pdf_field
+            assert f.legal_review is True, f.pdf_field
+        else:
+            assert f.binding is None, f.pdf_field
+            assert f.rule in ("full_name", "district_name"), f.pdf_field
+
+
+def test_every_box_schedule_c_draws_is_bound():
+    # A box left unbound prints blank on a sworn form. Only Debtor 2's name, the case number
+    # (both pages) and the amended-filing box stay out.
+    schema = load_schema("schedule_c")
+    names = {f.pdf_field for f in schema.fields if f.tag is None}
+    tagged = {(f.pdf_field, f.tag) for f in schema.fields if f.tag is not None}
+    page_boxes = page_number_keys(schema)
+    assert page_boxes == {"page@1:T33", "page 2", "page@2:T88"}
+
+    unbound = set()
+    for w in template_widgets(schema.template_filename):
+        if not w.drawn:
+            continue
+        if w.full_name in names or (w.full_name, w.tag) in tagged:
+            continue
+        if w.full_name in page_boxes or f"{w.full_name}@{w.page}:{w.tag}" in page_boxes:
+            continue
+        unbound.add((w.page, w.tag))
+
+    assert unbound == {(1, "T2"), (1, "T4"), (2, "T2"), (1, "T5")}
+
+
+def test_line_1_3_and_3_1_tick_the_box_the_filers_answer_names():
+    by_name = {f.pdf_field: f for f in load_schema("schedule_c").fields}
+
+    assert by_name["check 1"].binding == "exemptions.line_1"
+    assert by_name["check 1"].choices == {
+        "state_and_federal": "/state and federal",
+        "federal": "/federal",
+    }
+    assert by_name["check 3"].binding == "exemptions.line_3"
+    assert by_name["check 3"].choices == {"no": "/no", "yes": "/yes"}
+    assert by_name["check 3-1"].binding == "exemptions.line_3_1"
+    assert by_name["check 3-1"].choices == {"no": "/no", "yes": "/yes"}
