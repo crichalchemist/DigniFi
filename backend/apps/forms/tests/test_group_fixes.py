@@ -3,7 +3,8 @@ R12: a refusal for a page number too wide names the fix of the first group on co
 
 Business intent: when a page number can't fit, the filer is sent to the step that changes the
 rows. That is only honest if every group on copies of one form is changed on the same step
-(D: debts, E/F: debts, G: contracts, H: codebtors), so "the first" is as good as any.
+(D: debts, E/F: debts, G: contracts, H: codebtors, and Schedule C's c_part_2: the page
+/exemptions), so "the first" is as good as any.
 """
 
 import pytest

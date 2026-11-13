@@ -105,3 +105,30 @@ def test_line_1_3_and_3_1_tick_the_box_the_filers_answer_names():
     assert by_name["check 3"].choices == {"no": "/no", "yes": "/yes"}
     assert by_name["check 3-1"].binding == "exemptions.line_3_1"
     assert by_name["check 3-1"].choices == {"no": "/no", "yes": "/yes"}
+
+
+def test_a_refusal_quotes_the_forms_own_words_for_the_box():
+    # R13: a filer told a value is too long to fit must be told which box, in the form's words.
+    fields = load_schema("schedule_c").fields
+    words = {
+        "description": "Brief description",
+        "line": "Line from Schedule A/B",
+        "value": "Current value of the portion you own",
+        "amount_kind": "Amount of the exemption you claim",
+        "amount": "Amount of the exemption you claim",
+        "law": "Specific laws that allow exemption",
+    }
+    slots = [f for f in fields if f.repeat == "c_part_2"]
+
+    assert len(slots) == 90
+    for f in slots:
+        assert f.label == "Exemption claim: " + words[f.binding.rsplit(".", 1)[-1]], f.pdf_field
+    by_name = {f.pdf_field: f for f in fields}
+    assert by_name["check 1"].label == "Which set of exemptions are you claiming?"
+    assert by_name["check 3"].label == (
+        "Are you claiming a homestead exemption of more than $214,000?"
+    )
+    assert by_name["check 3-1"].label == (
+        "Did you acquire the property covered by the exemption within 1,215 days before you "
+        "filed this case?"
+    )

@@ -29,9 +29,9 @@ FORM_TYPE = "schedule_c"
 TEMPLATE = "b_106c_0425-form.pdf"
 GROUP = "c_part_2"
 
-# Row → column → full name. Rows 1-3 sit on page 1, rows 4-15 on page 2 (R13's labels: page 2's
-# row N is "Part 2 Additional Page row N - 3"; page 2's law boxes are named one less than their
-# row's checkbox). Read from the field index's own labels, 2026-11-12.
+# Row → column → full name. Rows 1-3 sit on page 1, rows 4-15 on page 2 (the index's row labels:
+# page 2's row N is "Part 2 Additional Page row N - 3"; page 2's law boxes are named one less than
+# their row's checkbox). Read from the field index's own labels, 2026-11-12.
 COLUMNS = ("description", "line", "value", "amount_kind", "amount", "law")
 _ROWS = [
     ("description", "Schedule AB", "undefined", "check 2.1", "undefined_2", "2.1"),
@@ -202,18 +202,25 @@ def rule_field(index, name, kind, page, words, rule):
     return field(name, kind, page, words, rule=rule), widgets
 
 
+def _line_words(widget):
+    return f" line {widget['line']}" if widget["line"] else ""
+
+
 def evidence(spec, widgets):
     """The box's index label and basis, what prints there, and the tests that read it."""
     words = "; ".join(
-        f"p{w['page']} {w['tag']} line {w['line']}, {w['option_text'] or w['label']!r} "
-        f"({w['basis']})"
+        f"p{w['page']} {w['tag']}{_line_words(w)}, "
+        f"{w['option_text'] or w['label']!r} ({w['basis']})"
         for w in widgets
     )
     cite = f"Field index: {spec['pdf_field']} {words}."
+    readers = "test_schedule_c_rows.py and tier 1"
     if spec["rule"] == "full_name":
-        basis = "full_name prints the filer's name as on every schedule (3g spec §6.1)."
+        basis = "full_name prints the filer's name as on every schedule (3g2 plan R9)."
+        readers = "test_schedule_c_rows.py (on a copy) and tier 1"
     elif spec["rule"] == "district_name":
-        basis = "district_name prints the district as on every schedule (3g spec §6.1)."
+        basis = "district_name prints the district as on every schedule (3g2 plan R9)."
+        readers = "tier 1"
     elif spec["repeat"]:
         basis = (
             f"Row {spec['row']} of group {spec['repeat']} prints {spec['binding']} here "
@@ -221,7 +228,7 @@ def evidence(spec, widgets):
         )
     else:
         basis = f"{spec['binding']} prints the filer's answer (3g spec §6.2)."
-    return f"{cite} {basis} Read by test_schedule_c_rows.py and tier 1."
+    return f"{cite} {basis} Read by {readers}."
 
 
 def addendum_row(spec, widgets):

@@ -18,7 +18,7 @@ from django.core.management import call_command
 from apps.districts.models import District
 from apps.forms.registry import build_parts
 from apps.forms.schema import load_schema
-from apps.forms.services.fill_resolver import resolve_parts
+from apps.forms.services.fill_resolver import UnmappedChoice, resolve_parts
 from apps.forms.services.pdf_filler import PDFFormFiller
 from apps.forms.tests.pdf_readback import read_drawn
 from apps.intake.models import (
@@ -32,7 +32,8 @@ from apps.intake.tests.builders import answer_asset_lines, answer_exemptions, an
 
 User = get_user_model()
 
-# Task 2's table: row -> the boxes that print that row's six cells.
+# ROWS: each claim row's six boxes, read from the template's row labels and written out here
+# rather than imported from build_schedule_c.py.
 _TABLE = [
     (1, "description", "Schedule AB", "undefined", "check 2.1", "undefined_2", "2.1"),
     (2, "description_2", "Schedule AB_2", "undefined_6", "check 2.2", "undefined_7", "2.2"),
@@ -216,6 +217,8 @@ def test_twenty_eight_claims_print_two_copies(session):
     assert _at(drawn, "description_15", copy=1) == "Demo item 27"
     assert _at(drawn, "description_4", copy=2) == "Demo item 28"
     assert (_at(drawn, "page 2", copy=2), _at(drawn, "page", copy=2)) == ("4", "4")
+    form = parts[0]["values"]
+    assert (form["page@1:T33"], form["page@2:T88"]) == ("4", "4")
 
 
 def test_a_claim_with_no_answers_prints_no_law_no_tick_and_no_amount(session):
@@ -226,12 +229,30 @@ def test_a_claim_with_no_answers_prints_no_law_no_tick_and_no_amount(session):
     item.set_details({})
     item.save()
     ExemptionClaim.objects.create(
-        session=session, asset=item, law=None, other_law="", amount_kind=None, amount=None
+        session=session, asset=item, law=None, other_law="  ", amount_kind=None, amount=None
     )
     answer_asset_lines(session, ["6"])
-    answer_exemptions(session, line_1=None, line_3=None, no_claims=False)
+    # 3-1 stored as Yes beside an unanswered line 3 prints nothing: it prints only under line 3 Yes
+    answer_exemptions(session, line_1=None, line_3=None, line_3_1="yes", no_claims=False)
 
     values = resolve_parts(load_schema("schedule_c"), _fresh(session))["parts"][0]["values"]
 
     assert {"2.1", "check 2.1", "undefined_2", "check 1", "check 3", "check 3-1"}.isdisjoint(values)
     assert values["description"] == "Demo item 1"
+
+
+def test_an_amount_kind_no_answer_can_have_is_refused_not_printed_blank(session):
+    # Stored directly, past the PUT's validation: a sworn form never guesses what was meant.
+    item = AssetInfo(
+        session=session, ab_line="6", description="Demo item 1", current_value=Decimal("10")
+    )
+    item.set_details({})
+    item.save()
+    ExemptionClaim.objects.create(
+        session=session, asset=item, other_law="Demo Law", amount_kind="demo", amount=None
+    )
+    answer_asset_lines(session, ["6"])
+    answer_exemptions(session, no_claims=False)
+
+    with pytest.raises(UnmappedChoice):
+        resolve_parts(load_schema("schedule_c"), _fresh(session))

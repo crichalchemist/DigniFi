@@ -11957,7 +11957,7 @@
     "final_verdicts": ["correct"],
     "status": "confirmed",
     "correct_target": "Debtor 1",
-    "evidence": "Field index: Debtor 1 p1 T1 line , 'Debtor 1 (First Name, Middle Name, Last Name)' (header); p2 T1 line , 'Debtor 1 (First Name, Middle Name, Last Name)' (header). full_name prints the filer's name as on every schedule (3g spec §6.1). Read by test_schedule_c_rows.py and tier 1."
+    "evidence": "Field index: Debtor 1 p1 T1, 'Debtor 1 (First Name, Middle Name, Last Name)' (header); p2 T1, 'Debtor 1 (First Name, Middle Name, Last Name)' (header). full_name prints the filer's name as on every schedule (3g2 plan R9). Read by test_schedule_c_rows.py (on a copy) and tier 1."
   },
   {
     "schema": "schedule_c",
@@ -11967,7 +11967,7 @@
     "final_verdicts": ["correct"],
     "status": "confirmed",
     "correct_target": "Bankruptcy District Information",
-    "evidence": "Field index: Bankruptcy District Information p1 T3 line , 'United States Bankruptcy Court for the: ____ District of ____' (header). district_name prints the district as on every schedule (3g spec §6.1). Read by test_schedule_c_rows.py and tier 1."
+    "evidence": "Field index: Bankruptcy District Information p1 T3, 'United States Bankruptcy Court for the: ____ District of ____' (header). district_name prints the district as on every schedule (3g2 plan R9). Read by tier 1."
   },
   {
     "schema": "schedule_c",

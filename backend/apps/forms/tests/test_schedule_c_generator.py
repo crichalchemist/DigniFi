@@ -55,7 +55,7 @@ def test_a_reformatted_or_moved_schedule_c_file_is_caught_by_its_bytes():
     moved.append(moved.pop(first))
 
     assert reformatted != tool.dumps(schema)
-    assert tool.dumps(moved) != tool.merged_text(addendum_text, rows)
+    assert tool.merged_text(tool.dumps(moved), rows) != tool.dumps(moved)
 
 
 def test_each_addendum_writer_leaves_the_others_rows_where_they_are():
