@@ -832,3 +832,116 @@ export const LINE_4_CLEAR = 'No, clear the ${typed}';
 export const NOT_SAVED_TRY_AGAIN = 'That was not saved. Try again.';
 
 export const LEGACY_REMOVE = 'Remove this figure';
+
+// ============================================================================
+// Exemptions page
+// ============================================================================
+
+// DRAFT: counsel C-8
+export const EXEMPTION_LAW_SUMMARIES: Record<string, string> = {
+  il_40_5_4_135: "A firefighter's pension, and the fund that pays it.",
+  il_215_5_238:
+    'Money from life insurance and annuities. It covers money paid to a spouse, child, parent or other dependent of the insured.',
+  il_305_5_11_3: 'Public aid, and certain child care payments, under the Illinois Public Aid Code.',
+  il_735_5_12_901:
+    'A home that a person owns or holds by lease and lives in, such as a house, a condo or a co-op, up to the limit.',
+  il_735_5_12_1001_a:
+    'Things in a home and things a person owns, such as furniture, clothes, pets, phones and computers.',
+  il_735_5_12_1001_b:
+    'The equity in any other property, up to the limit. Equity is what the property is worth, less what is owed on it.',
+  il_735_5_12_1001_c: 'One motor vehicle, up to the limit.',
+  il_735_5_12_1001_d: "Tools, books and equipment for a person's trade or profession.",
+  il_735_5_12_1001_e: 'Health aids that a professional prescribed for a person or a dependent.',
+  il_735_5_12_1001_f:
+    'Life insurance money and cash value. It covers money paid to a spouse, child, parent or other dependent of the insured.',
+  il_735_5_12_1001_g1:
+    'The right to get certain benefits. These are social security, unemployment pay and public aid.',
+  il_735_5_12_1001_g2: "The right to get a veteran's benefit.",
+  il_735_5_12_1001_g3:
+    'The right to get a benefit for a disability or an illness, or for being out of work.',
+  il_735_5_12_1001_g4: 'The right to get alimony or support. It also covers separate maintenance.',
+  il_735_5_12_1001_h1:
+    'An award under a law for crime victims. This covers the right to get it and property that came from it.',
+  il_735_5_12_1001_h2:
+    'A wrongful death payment for someone the person depended on. This covers the right to get it and property that came from it.',
+  il_735_5_12_1001_h3:
+    'A life insurance payment on someone the person depended on. This covers the right to get it and property that came from it.',
+  il_735_5_12_1001_h4:
+    'A payment for a bodily injury. This covers the right to get it and property that came from it.',
+  il_735_5_12_1001_h5:
+    'Restitution under the federal Civil Liberties Act of 1988. This covers the right to get it and property that came from it.',
+  il_735_5_12_1001_i: "The right to get a crime victims' award under Illinois law.",
+  il_735_5_12_1006: 'Retirement plans, such as a pension plan or an IRA.',
+  il_820_305_21: "Money from workers' compensation, and claims and awards for it.",
+  us_11_522_b3c:
+    'Retirement funds in a tax-exempt account. The account is tax-exempt under one of the federal tax code sections this law names.',
+  us_38_5301: "Veterans' benefits.",
+  us_42_407: 'Social Security benefits.',
+};
+
+export const EXEMPTION_GAP_LINE_1 = 'Choose which set of exemptions you are claiming.';
+export const EXEMPTION_GAP_NO_CLAIMS =
+  "Add the property you claim as exempt, or press “I'm not claiming any property as exempt.”";
+export const EXEMPTION_GAP_NO_ITEMS = "Press “I'm not claiming any property as exempt.”";
+export const EXEMPTION_GAP_ITEM_GONE =
+  'One claim is for property that is no longer on your property list. Remove it or choose the property again.';
+export const EXEMPTION_GAP_LAW = 'Choose the law for {name}.';
+export const EXEMPTION_GAP_LAW_CHANGED =
+  'The list of laws has changed since you chose a law for {name}. Choose a law again.';
+export const EXEMPTION_GAP_AMOUNT_KIND =
+  'Choose a dollar amount or 100% of fair market value for {name}.';
+export const EXEMPTION_GAP_AMOUNT = 'Enter the dollar amount you claim for {name}.';
+export const EXEMPTION_GAP_DESCRIPTION = 'Type a shorter description of {name} for Schedule C.';
+export const EXEMPTION_GAP_LINE_3 = 'Answer line 3, the homestead question.';
+export const EXEMPTION_GAP_LINE_3_1 = 'Answer the second part of line 3.';
+
+export const EXEMPTIONS_TITLE = 'The property you claim as exempt';
+// DRAFT: counsel C-8
+export const EXEMPTIONS_INTRO =
+  'On Schedule C, you list the property you claim as exempt. For each claim, you choose the law and the amount. The limits shown here come from the laws themselves.';
+// DRAFT: counsel C-8
+export const EXEMPTIONS_NOTE_12_1201 =
+  'The Illinois law 735 ILCS 5/12-1201 says residents of Illinois are prohibited from using the federal exemptions in 11 U.S.C. § 522(d), except as Illinois law otherwise permits.';
+// DRAFT: counsel C-8
+export const EXEMPTIONS_NOTE_DOMICILE =
+  "Which state's laws apply depends on where you have lived. The rule, in 11 U.S.C. § 522(b)(3)(A), looks at where your legal home was for the 730 days before you file. If it was not in one state that whole time, the rule looks at where it was for most of the 180 days before that. If that rule leaves a person with no exemptions at all, the person may use the list in 11 U.S.C. § 522(d) instead. Legal aid can help you find out which set is yours.";
+// Page only: a new claim row with no property yet (P20). The server never sees one.
+export const EXEMPTION_GAP_CHOOSE_ITEM = 'Choose the property for each new claim.';
+export const EXEMPTIONS_NOT_CLAIMING_BUTTON = "I'm not claiming any property as exempt";
+export const EXEMPTIONS_NO_TABLE =
+  "DigniFi doesn't have the exemption laws for today's date yet, so it can't prepare Schedule C.";
+export const EXEMPTIONS_READ_FAILED =
+  "We couldn't get your answers just now. Please try again in a moment.";
+export const EXEMPTIONS_SAVE_FAILED = "We couldn't save your answers just now. Please try again.";
+export const EXEMPTIONS_DESCRIPTION_DOESNT_FIT =
+  "This description doesn't fit in its box on Schedule C. Type a shorter one. The form can't print some letters and symbols, such as emoji.";
+export const EXEMPTIONS_OTHER_LAW_DOESNT_FIT =
+  "The law you typed doesn't fit in its box on Schedule C. Type it with fewer letters. The form can't print some letters and symbols, such as emoji.";
+// DRAFT: counsel C-8
+export const EXEMPTION_NO_LIMIT = 'This law names no dollar limit.';
+// DRAFT: counsel C-8
+export const EXEMPTION_TOTAL_DOLLARS = 'Amounts entered under this law: {amount}';
+// DRAFT: counsel C-8
+export const EXEMPTION_TOTAL_FAIR_MARKET =
+  '{n} more claimed at 100% of fair market value, up to any limit the law sets.';
+export const EXEMPTION_DESCRIPTION_TOO_LONG =
+  'This description is too long for the box on Schedule C. Type a shorter one for this form.';
+export const EXEMPTION_ITEM_GONE =
+  'This claim was for property that is no longer on your property list. Its law and amount are still here. Remove the claim, or choose the property again.';
+export const EXEMPTIONS_NO_ITEMS =
+  'No property is listed on the Assets step yet, so there is nothing to claim here.';
+export const EXEMPTIONS_LAWS_HEADING = 'The list of laws';
+export const EXEMPTIONS_ILLINOIS_LAWS = 'Illinois laws';
+export const EXEMPTIONS_FEDERAL_LAWS = 'Federal laws';
+export const EXEMPTIONS_CLAIMS_HEADING = 'Your claims';
+export const EXEMPTIONS_ADD_CLAIM = 'Add a claim';
+export const EXEMPTIONS_PROPERTY_LABEL = 'Property';
+export const EXEMPTIONS_LAW_LABEL = 'Law';
+export const EXEMPTIONS_ANOTHER_LAW = 'Another law';
+export const EXEMPTIONS_CHOOSE_ONE = 'Choose one';
+export const EXEMPTIONS_AMOUNT_LABEL = 'Amount you claim';
+export const EXEMPTIONS_DOLLAR_AMOUNT = 'A dollar amount';
+export const EXEMPTIONS_SHORT_LABEL = 'A shorter description for Schedule C';
+export const EXEMPTIONS_CLAIM_NUMBER = 'Claim {n}';
+export const EXEMPTIONS_REMOVE_CLAIM = 'Remove claim {n}';
+export const EXEMPTIONS_TOTALS_HEADING = 'Totals by law';

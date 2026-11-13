@@ -1,6 +1,6 @@
 /**
  * Filing Fee Page Object — Form 101 line 8, "How you will pay the fee", which every filer
- * answers after Complete, with 103B lines 4, 5, 7 and 9 under the waiver. Continues to /sofa.
+ * answers after Complete, with 103B lines 4, 5, 7 and 9 under the waiver. Continues to /exemptions.
  */
 
 import { expect, type Page } from '@playwright/test';
@@ -23,7 +23,7 @@ export class FilingFeePage {
     );
   }
 
-  /** Choose, answer 103B's questions under the waiver, and continue to the SOFA step */
+  /** Choose, answer 103B's questions under the waiver, and continue to the exemptions page */
   async answer(choice: PaymentChoice, waiver?: PersonaWaiverAnswers) {
     await this.waitForLoad();
     await this.page.locator(`input[name="payment_choice"][value="${choice}"]`).check();
@@ -43,6 +43,6 @@ export class FilingFeePage {
         .fill(waiver.installments_explanation);
     }
     await this.page.getByRole('button', { name: 'Continue', exact: true }).click();
-    await this.page.waitForURL('**/sofa');
+    await this.page.waitForURL('**/exemptions');
   }
 }

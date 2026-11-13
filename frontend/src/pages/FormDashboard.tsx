@@ -69,6 +69,7 @@ const PAGE_LINK_LABELS: Record<string, string> = {
   '/filing-fee': 'Go to How you will pay the filing fee',
   '/sofa': 'Go to Statement of Financial Affairs',
   '/documents': 'Go to Upload your documents',
+  '/exemptions': 'Go to The property you claim as exempt',
 };
 
 /**

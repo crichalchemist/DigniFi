@@ -11,6 +11,7 @@ import { RegisterPage } from '../pages/register.page';
 import { WizardPage } from '../pages/wizard.page';
 import { DocumentsPage } from '../pages/documents.page';
 import { FilingFeePage } from '../pages/filing-fee.page';
+import { ExemptionsPage } from '../pages/exemptions.page';
 import { DashboardPage } from '../pages/dashboard.page';
 import { SOFAPage } from '../pages/sofa.page';
 
@@ -21,6 +22,7 @@ test.describe('James Washington — Borderline', () => {
     const wizard = new WizardPage(page);
     const documents = new DocumentsPage(page);
     const filingFee = new FilingFeePage(page);
+    const exemptions = new ExemptionsPage(page);
     const sofa = new SOFAPage(page);
     const dashboard = new DashboardPage(page);
 
@@ -69,10 +71,11 @@ test.describe('James Washington — Borderline', () => {
     await wizard.fillReview();
     await wizard.completeIntake();
 
-    // James pays the fee in full, then the page continues to the SOFA step. This journey
+    // James pays the fee in full, then the page continues to the exemptions page. This journey
     // isn't about financial history, so skip SOFA to reach the forms dashboard. (The SOFA
     // save path itself is covered by sofa-journey.spec.ts.)
     await filingFee.answer(JAMES.filing_fee.payment_choice);
+    await exemptions.answer(JAMES.exemptions);
     await sofa.waitForLoad();
     await sofa.skipForNow();
 

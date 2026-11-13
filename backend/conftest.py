@@ -51,3 +51,20 @@ def poverty_2026(db):
         },
     )
     return row
+
+
+@pytest.fixture
+def exemption_catalog_2026(db):
+    # The 2026 exemption laws, which 0007_exemption_catalog_2026 loads. A transactional test's
+    # teardown empties every table, the migrated rows included, so a test that needs the list
+    # after one asks for this fixture. Imported here: this module loads before django.setup().
+    import importlib
+
+    from django.apps import apps
+
+    from apps.districts.models import ExemptionCatalog
+
+    if not ExemptionCatalog.objects.filter(effective_date=date(2026, 1, 1)).exists():
+        migration = importlib.import_module("apps.districts.migrations.0007_exemption_catalog_2026")
+        migration.load_2026(apps, None)
+    return ExemptionCatalog.objects.get(effective_date=date(2026, 1, 1))

@@ -89,7 +89,7 @@ function renderPage() {
       <IntakeProvider>
         <Routes>
           <Route path="/filing-fee" element={<FilingFeePage />} />
-          <Route path="/sofa" element={<div>Statement of Financial Affairs</div>} />
+          <Route path="/exemptions" element={<div>The property you claim as exempt</div>} />
           <Route path="/intake" element={<div>IntakeWizard</div>} />
         </Routes>
       </IntakeProvider>
@@ -169,7 +169,7 @@ describe('FilingFeePage', () => {
     expect(screen.getByRole('main').textContent).not.toMatch(/\$/);
     await userEvent.click(await choice('pay_in_full'));
     await pressContinue();
-    await screen.findByText('Statement of Financial Affairs');
+    await screen.findByText('The property you claim as exempt');
     expect(sent).toEqual([{ payment_choice: 'pay_in_full' }]);
   });
 
@@ -180,7 +180,7 @@ describe('FilingFeePage', () => {
     expect(screen.queryByText(/poverty line for a family of/)).not.toBeInTheDocument();
     await userEvent.click(await choice('waiver'));
     await pressContinue();
-    await screen.findByText('Statement of Financial Affairs');
+    await screen.findByText('The property you claim as exempt');
     expect(sent).toHaveLength(1);
   });
 
@@ -191,15 +191,15 @@ describe('FilingFeePage', () => {
     await pressContinue();
     expect(await screen.findByRole('alert')).toHaveTextContent(FEE_CHOICE_MISSING);
     expect(sent).toHaveLength(0);
-    expect(screen.queryByText('Statement of Financial Affairs')).not.toBeInTheDocument();
+    expect(screen.queryByText('The property you claim as exempt')).not.toBeInTheDocument();
   });
 
-  it('saves the choice and goes on to the financial history questions', async () => {
+  it('saves the choice and goes on to the exemptions page', async () => {
     const sent = serve(record());
     renderPage();
     await userEvent.click(await choice('installments'));
     await pressContinue();
-    await screen.findByText('Statement of Financial Affairs');
+    await screen.findByText('The property you claim as exempt');
     expect(sent).toEqual([{ payment_choice: 'installments' }]);
   });
 
@@ -246,7 +246,7 @@ describe('FilingFeePage', () => {
     await userEvent.click(within(group(WAIVER_LINE_7_QUESTION)).getByRole('radio', { name: 'No' }));
     await userEvent.click(within(group(WAIVER_LINE_9_QUESTION)).getByRole('radio', { name: 'No' }));
     await pressContinue();
-    await screen.findByText('Statement of Financial Affairs');
+    await screen.findByText('The property you claim as exempt');
     expect(sent).toEqual([
       {
         payment_choice: 'waiver',
@@ -264,7 +264,7 @@ describe('FilingFeePage', () => {
     renderPage();
     await userEvent.click(await choice('waiver'));
     await pressContinue();
-    await screen.findByText('Statement of Financial Affairs');
+    await screen.findByText('The property you claim as exempt');
     expect(sent).toEqual([
       {
         payment_choice: 'waiver',
@@ -294,7 +294,7 @@ describe('FilingFeePage', () => {
     );
     await userEvent.click(await choice('installments'));
     await pressContinue();
-    await screen.findByText('Statement of Financial Affairs');
+    await screen.findByText('The property you claim as exempt');
     expect(sent).toEqual([{ payment_choice: 'installments' }]);
   });
 
@@ -321,7 +321,7 @@ describe('FilingFeePage', () => {
     expect(screen.getByLabelText(WAIVER_LINE_5_QUESTION)).toHaveValue('I have no savings.');
     await userEvent.click(await choice('installments'));
     await pressContinue();
-    await screen.findByText('Statement of Financial Affairs');
+    await screen.findByText('The property you claim as exempt');
     expect(sent).toEqual([{ payment_choice: 'installments' }]);
   });
 
@@ -389,6 +389,6 @@ describe('FilingFeePage', () => {
     await userEvent.click(await choice('pay_in_full'));
     await pressContinue();
     expect(await screen.findByRole('alert')).toHaveTextContent(FEE_SAVE_FAILED);
-    expect(screen.queryByText('Statement of Financial Affairs')).not.toBeInTheDocument();
+    expect(screen.queryByText('The property you claim as exempt')).not.toBeInTheDocument();
   });
 });

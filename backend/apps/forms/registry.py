@@ -16,9 +16,12 @@ import re
 from collections.abc import Callable
 from dataclasses import dataclass
 
+from apps.districts.exemptions import exemption_catalog_in_force
 from apps.eligibility.cmi import is_above_median
 from apps.forms.schema import load_schema
+from apps.forms.services.exemption_items import exemption_items
 from apps.forms.services.fill_resolver import resolve, resolve_parts
+from apps.intake.exemptions import exemption_gaps
 from apps.intake.models import IntakeSession
 
 _SSN = re.compile(r"\d{3}-\d{2}-\d{4}|\d{9}")
@@ -159,6 +162,21 @@ def _needs_fee_waiver_answers(session: IntakeSession) -> None:
         )
 
 
+def _needs_exemption_answers(session: IntakeSession) -> None:
+    """Schedule C's page: line 1, the claims, line 3 and 3-1; the first gap is refused.
+
+    The list of laws is read only when a claim names one, so a filer who claims nothing is
+    never stopped by a missing list (P5).
+    """
+    claims = list(session.exemption_claims.all())
+    law_keys = set()
+    if any(claim.law is not None for claim in claims):
+        law_keys = {law.key for law in exemption_catalog_in_force().laws.all()}
+    gaps = exemption_gaps(session, exemption_items(session), law_keys)
+    if gaps:
+        raise PreconditionMissing(gaps[0], page="/exemptions")
+
+
 def _needs_means_test(session: IntakeSession) -> None:
     if not hasattr(session, "means_test"):
         raise PreconditionMissing(
@@ -180,7 +198,7 @@ FORM_REGISTRY: dict[str, PacketForm] = {
     "form_122a1_supp": PacketForm(_never, _nothing),
     "form_122a2": PacketForm(_above_median, _nothing),
     "schedule_a_b": PacketForm(_always, _nothing),
-    "schedule_c": PacketForm(_always, _nothing),
+    "schedule_c": PacketForm(_always, _needs_exemption_answers),
     "schedule_d": PacketForm(_always, _nothing),
     "schedule_e_f": PacketForm(_always, _nothing),
     "schedule_g": PacketForm(_always, _nothing),

@@ -267,6 +267,32 @@ def _row_name(row) -> str:
     )
 
 
+# The start of each line's words in formText.ts, for the two shapes whose complete row can lack
+# a description and a street or make.
+SHORT_NAMES: dict[str, str] = {"16": "Cash", "43": "Customer lists"}
+
+
+def exemption_item_name(row) -> str:
+    """What Schedule C's page calls a row: never "one item" (3g1 B12)."""
+    details = row.get_details()
+    description = (row.description or "").strip()
+    if description:
+        return description
+    line = LINE_BY_KEY.get(row.ab_line)
+    if line is not None and line.shape in ("vehicle", "vehicle_no_mileage"):
+        parts = [(details.get(key) or "").strip() for key in ("make", "model", "year")]
+        name = " ".join(part for part in parts if part)
+        if name:
+            return name
+    if line is not None and line.shape == "place":
+        street = (details.get("street") or "").strip()
+        if street:
+            return street
+    if row.ab_line in SHORT_NAMES:
+        return SHORT_NAMES[row.ab_line]
+    return f"Property on line {row.ab_line}"
+
+
 def asset_step_gaps(session) -> list[AssetStepGap]:
     """What Complete and the forms refuse on the Assets step, in the form's order (3b spec §7).
 

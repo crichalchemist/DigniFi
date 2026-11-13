@@ -152,8 +152,9 @@ export function FilingFeePage() {
     setError(null);
     try {
       await api.intake.filingFee.put(sessionId, requestBody(answers));
-      // Form 107 is in every packet, so its questions come before the forms (DIG-149)
-      navigate('/sofa');
+      // The exemptions page comes next, then the SOFA step: Form 107 is in every packet, so its
+      // questions come before the forms (DIG-149)
+      navigate('/exemptions');
     } catch {
       setError(FEE_SAVE_FAILED);
     } finally {

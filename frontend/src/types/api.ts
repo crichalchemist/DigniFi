@@ -681,6 +681,63 @@ export interface FilingFee {
 }
 
 // ============================================================================
+// Exemptions (Schedule C)
+// ============================================================================
+
+// Schedule C line 1: which set of exemptions the filer claims
+export type ExemptionLine1 = 'state_and_federal' | 'federal';
+export type ExemptionAmountKind = 'dollars' | 'fair_market_value';
+
+// One claim: an item from the filer's Schedule A/B, a law and an amount. Null is unanswered.
+export interface ExemptionClaim {
+  id: number | null;
+  asset: number | null;
+  law: string | null;
+  other_law: string;
+  amount_kind: ExemptionAmountKind | null;
+  amount: string | null;
+  short_description: string | null;
+}
+
+// A property the filer may claim, as the page shows it
+export interface ExemptionItem {
+  id: number;
+  name: string;
+  line_label: string;
+  value: string | null;
+  description_fits: boolean;
+}
+
+export interface ExemptionLaw {
+  key: string;
+  citation: string;
+  jurisdiction: 'illinois' | 'federal';
+  limit_text: string;
+}
+
+export interface ExemptionCatalog {
+  effective_date: string;
+  source_url: string;
+  laws: ExemptionLaw[];
+}
+
+// GET and PUT .../exemptions/
+export interface Exemptions {
+  line_1: ExemptionLine1 | null;
+  line_3: YesNo | null;
+  line_3_1: YesNo | null;
+  no_claims: boolean;
+  claims: ExemptionClaim[];
+  items: ExemptionItem[];
+  catalog: ExemptionCatalog | null;
+  catalog_gap: 'no_table' | null;
+}
+
+export type ExemptionsUpdate = Partial<
+  Pick<Exemptions, 'line_1' | 'line_3' | 'line_3_1' | 'no_claims'>
+> & { claims?: ExemptionClaim[] };
+
+// ============================================================================
 // Form Generation
 // ============================================================================
 

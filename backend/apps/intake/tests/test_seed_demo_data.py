@@ -22,6 +22,7 @@ from apps.districts.models import MedianIncome
 from apps.eligibility.cmi import is_above_median
 from apps.eligibility.models import MeansTest
 from apps.forms.registry import packet
+from apps.forms.services.exemption_items import exemption_items
 from apps.forms.services.pdf_filler import PDFFormFiller
 from apps.intake.asset_lines import LINE_BY_KEY, ordered_assets, rows_on, shown_lines
 from apps.intake.claims import claim_step_gaps, total_monthly_expenses
@@ -485,3 +486,119 @@ def test_asset_at_and_claim_links_name_rows_by_position_and_by_name():
     ]
     with pytest.raises(LookupError):
         claim_links(session, [("debt", "No Such Creditor")])
+
+
+def _a(letter):
+    return f"il_735_5_12_1001_{letter}"
+
+
+FMV = ("fair_market_value", None)
+
+
+def _d(amount):
+    return ("dollars", Decimal(amount))
+
+
+# Spec section 6.4 and P2: what each persona claims, in claim order.
+# (item name, A/B label, law, (amount kind, amount), short description)
+EXPECTED_CLAIMS = {
+    "maria": [
+        ("Honda Civic 2015", "3.1", _a("c"), _d("3600.00"), None),
+        ("Honda Civic 2015", "3.1", _a("b"), _d("2900.00"), None),
+        ("Beds, sofa, kitchen table, dishes", "6", _a("b"), _d("520.00"), None),
+        ("Old laptop, cell phone, 32-inch TV", "7", _a("b"), _d("200.00"), None),
+        ("Everyday clothes and shoes", "11", _a("a"), FMV, None),
+        ("Cash", "16", _a("b"), _d("40.00"), None),
+        ("JPMorgan Chase", "17.1", _a("b"), _d("340.00"), None),
+    ],
+    "james": [
+        ("Toyota Camry 2019", "3.1", _a("c"), _d("3600.00"), None),
+        ("Toyota Camry 2019", "3.1", _a("b"), _d("1900.00"), None),
+        (
+            "Bed, couch, table, kitchenware (secondhand)",
+            "6",
+            _a("a"),
+            FMV,
+            "Bed, couch, table, kitchenware",
+        ),
+        ("TV, laptop, cell phone", "7", _a("a"), FMV, None),
+        ("Everyday clothes and work clothes", "11", _a("a"), FMV, None),
+        ("Cash", "16", _a("b"), _d("40.00"), None),
+        ("Bank of America", "17.1", _a("b"), _d("1200.00"), None),
+    ],
+    "priya": [
+        ("Honda CR-V EX 2021", "3.1", _a("c"), FMV, None),
+        ("Clothes", "11", _a("a"), FMV, None),
+        ("JPMorgan Chase", "17.1", _a("b"), _d("1900.00"), None),
+        ("JPMorgan Chase", "17.3", _a("b"), _d("2100.00"), None),
+        ("Vanguard", "21", "il_735_5_12_1006", FMV, None),
+    ],
+    "deshawn": [
+        ("7823 S Sangamon St", "1.1", "il_735_5_12_901", _d("20000.00"), None),
+        ("Ford F-150 2012", "3.1", _a("c"), _d("3600.00"), None),
+        ("Ford F-150 2012", "3.1", _a("b"), _d("4000.00"), None),
+        ("Everyday clothes and work boots", "11", _a("a"), FMV, None),
+        ("Fidelity", "21", "il_735_5_12_1006", FMV, None),
+    ],
+    "sarah": [],
+    "andres": [
+        ("Honda Fit 2017", "3.2", _a("c"), FMV, None),
+        ("Beds, couch, table, kitchen things", "6", _a("a"), _d("1200.00"), None),
+        ("Phone, TV", "7", _a("a"), _d("400.00"), None),
+        ("Clothes", "11", _a("a"), _d("300.00"), None),
+        ("Cash", "16", _a("b"), _d("60.00"), None),
+        ("Harborline Bank", "17.1", _a("b"), _d("412.00"), None),
+        ("Prairie Line Credit Union", "17.3", _a("b"), _d("85.00"), None),
+        (
+            "Driving payouts already earned, not yet paid by the apps",
+            "38",
+            _a("b"),
+            _d("310.00"),
+            "Driving payouts earned",
+        ),
+        (
+            "Insulated delivery bags, phone mount, dash camera",
+            "40",
+            _a("d"),
+            _d("150.00"),
+            "Delivery bags, mount, dash cam",
+        ),
+    ],
+}
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("persona", list(PERSONAS))
+def test_each_persona_claims_the_property_the_spec_lists(persona):
+    session = _seed(persona)
+    items = {item.id: item for item in exemption_items(session)}
+    claims = sorted(session.exemption_claims.all(), key=lambda claim: claim.pk)
+    got = [
+        (
+            items[claim.asset_id].name,
+            items[claim.asset_id].line_label,
+            claim.law,
+            (claim.amount_kind, claim.amount),
+            claim.short_description,
+        )
+        for claim in claims
+    ]
+    assert got == EXPECTED_CLAIMS[persona]
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("persona", list(PERSONAS))
+def test_every_persona_answers_line_1_and_line_3(persona):
+    session = _seed(persona)
+    answers = session.exemption_answers
+    assert (answers.line_1, answers.line_3, answers.line_3_1) == ("state_and_federal", "no", None)
+    assert answers.no_claims is (persona == "sarah")
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("persona", list(PERSONAS))
+def test_every_seeded_persona_passes_schedule_cs_gate(persona):
+    from apps.forms.registry import FORM_REGISTRY
+
+    session = _seed(persona)
+    FORM_REGISTRY["schedule_c"].requires(session)

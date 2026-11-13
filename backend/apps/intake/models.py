@@ -1105,6 +1105,68 @@ class FilingFee(models.Model):
         return f"Filing fee (Session: {self.session_id})"
 
 
+class ExemptionAnswers(models.Model):
+    """
+    The filer's own answers to Schedule C's line 1 (which exemptions they choose), line 3
+    and line 3-1, and whether they claim none. Asked after Complete; not intake data, so a
+    save never reopens a completed intake (3g spec §5.2). Every answer is encrypted; null
+    means unanswered.
+    """
+
+    session = models.OneToOneField(
+        IntakeSession, on_delete=models.CASCADE, related_name="exemption_answers"
+    )
+    line_1 = EncryptedCharField(max_length=20, null=True, blank=True)
+    line_3 = EncryptedCharField(max_length=3, null=True, blank=True)
+    line_3_1 = EncryptedCharField(max_length=3, null=True, blank=True)
+    no_claims = EncryptedBooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    LINE_1_ANSWERS: ClassVar[tuple[str, ...]] = ("state_and_federal", "federal")
+
+    class Meta:
+        db_table = "exemption_answers"
+
+    def __str__(self) -> str:
+        return f"Exemption answers (Session: {self.session_id})"
+
+
+class ExemptionClaim(models.Model):
+    """
+    One exemption the filer claims on Schedule C: an item from their Schedule A/B, a law,
+    and an amount. Asked after Complete; not intake data, so a save never reopens a
+    completed intake (3g spec §5.2). Every answer is encrypted; null means unanswered.
+    A claim stays when its property is removed. Rows are ordered in Python.
+    """
+
+    session = models.ForeignKey(
+        IntakeSession, on_delete=models.CASCADE, related_name="exemption_claims"
+    )
+    asset = models.ForeignKey(
+        AssetInfo,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="exemption_claims",
+    )
+    law = EncryptedCharField(max_length=40, null=True, blank=True)
+    other_law = EncryptedTextField(blank=True, default="")
+    amount_kind = EncryptedCharField(max_length=20, null=True, blank=True)
+    amount = EncryptedDecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    short_description = EncryptedTextField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    AMOUNT_KINDS: ClassVar[tuple[str, ...]] = ("dollars", "fair_market_value")
+
+    class Meta:
+        db_table = "exemption_claims"
+
+    def __str__(self) -> str:
+        return f"Exemption claim {self.pk} (Session: {self.session_id})"
+
+
 class SOFAReport(models.Model):
     """Statement of Financial Affairs (Form 107) structured data, per session.
 

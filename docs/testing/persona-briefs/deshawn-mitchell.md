@@ -102,10 +102,12 @@ Each item goes on the Schedule A/B line shown. You are the only one with an inte
 
 **Contracts and leases:** No. **Codebtors:** No. Not in a community property state in the last 8 years.
 
+**Exemptions (Schedule C, on the page after the filing-fee page):** Line 1: You are claiming state and federal nonbankruptcy exemptions. You claim: 7823 S Sangamon St (line 1.1): 735 ILCS 5/12-901, $20,000; Ford F-150 2012 (line 3.1): 735 ILCS 5/12-1001(c), $3,600; Ford F-150 2012 (line 3.1): 735 ILCS 5/12-1001(b), $4,000; Everyday clothes and work boots (line 11): 735 ILCS 5/12-1001(a), 100% of fair market value, up to any applicable statutory limit; Fidelity (line 21): 735 ILCS 5/12-1006, 100% of fair market value, up to any applicable statutory limit. Line 3: No.
+
 ## What to Watch For
 
 - Does the app clearly explain what happens to your HOME in bankruptcy?
-- Is the Illinois homestead exemption ($15,000) mentioned or explained?
+- Does the page show the Illinois homestead law's limit ($50,000 for each person) beside the law, as information, without saying what the trustee will do?
 - Does it feel safe to enter information about your property?
 - Is the difference between secured (mortgage) and unsecured debt clear?
 - Would you feel confident that filing won't take your house?

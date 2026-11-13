@@ -5,7 +5,7 @@
  */
 
 import { http, HttpResponse } from 'msw';
-import type { FilingFee } from '../../types/api';
+import type { Exemptions, FilingFee } from '../../types/api';
 
 const API = 'http://localhost:8000/api';
 
@@ -86,6 +86,35 @@ const mockMeansTestResult = {
     family_size: 1,
   },
   means_test_id: 1,
+};
+
+// Nothing answered, no property and two laws in force
+const mockExemptions: Exemptions = {
+  line_1: null,
+  line_3: null,
+  line_3_1: null,
+  no_claims: false,
+  claims: [],
+  items: [],
+  catalog: {
+    effective_date: '2026-01-01',
+    source_url: 'https://www.ilga.gov/legislation/ilcs/ilcs4.asp?DocName=073500050HArt%2E+XII',
+    laws: [
+      {
+        key: 'il_735_5_12_1001_b',
+        citation: '735 ILCS 5/12-1001(b)',
+        jurisdiction: 'illinois',
+        limit_text: 'Up to $4,000.',
+      },
+      {
+        key: 'il_735_5_12_1001_c',
+        citation: '735 ILCS 5/12-1001(c)',
+        jurisdiction: 'illinois',
+        limit_text: 'Up to $3,600 in one motor vehicle.',
+      },
+    ],
+  },
+  catalog_gap: null,
 };
 
 // Nothing answered yet. The information is Sarah's: a family of 1, below the limit.
@@ -175,6 +204,14 @@ export const handlers = [
   http.put(`${API}/intake/sessions/:id/filing-fee/`, async ({ request }) => {
     const body = (await request.json()) as Partial<FilingFee>;
     return HttpResponse.json({ ...mockFilingFee, ...body });
+  }),
+
+  // -- Exemptions -----------------------------------------------------------
+  http.get(`${API}/intake/sessions/:id/exemptions/`, () => HttpResponse.json(mockExemptions)),
+
+  http.put(`${API}/intake/sessions/:id/exemptions/`, async ({ request }) => {
+    const body = (await request.json()) as Partial<Exemptions>;
+    return HttpResponse.json({ ...mockExemptions, ...body });
   }),
 
   // -- Assets / Debts ------------------------------------------------------

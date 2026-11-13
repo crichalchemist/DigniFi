@@ -29,6 +29,8 @@ from apps.intake.models import (
     DebtInfo,
     DebtorInfo,
     ExecutoryContract,
+    ExemptionAnswers,
+    ExemptionClaim,
     ExpenseInfo,
     FilingFee,
     Household,
@@ -156,6 +158,15 @@ def asset_at(session, position: str) -> AssetInfo:
     if not number.isdigit() or not 1 <= int(number) <= len(rows):
         raise LookupError(f"no row at A/B position {position}")
     return rows[int(number) - 1]
+
+
+def _exempt(position: str, law: str, amount=None, short: str | None = None) -> dict:
+    """One Schedule C claim: the A/B position of the item, its law, and an amount.
+
+    An amount of None means "100% of fair market value"; the seed resolves the position with
+    asset_at and writes one ExemptionClaim.
+    """
+    return {"position": position, "law": law, "amount": amount, "short": short}
 
 
 def claim_links(session, pairs) -> list[dict]:
@@ -331,6 +342,21 @@ def _maria_torres() -> dict:
         ],
         "codebtors": [],
         "claims": {"contracts_answer": "yes", "codebtors_answer": "no", "community_lived": "no"},
+        # Schedule C, asked on the page after the filing-fee page (3g1)
+        "exemptions": {
+            "line_1": "state_and_federal",
+            "line_3": "no",
+            "no_claims": False,
+            "claims": [
+                _exempt("3.1", "il_735_5_12_1001_c", amount=3600),
+                _exempt("3.1", "il_735_5_12_1001_b", amount=2900),
+                _exempt("6.1", "il_735_5_12_1001_b", amount=520),
+                _exempt("7.1", "il_735_5_12_1001_b", amount=200),
+                _exempt("11.1", "il_735_5_12_1001_a"),
+                _exempt("16.1", "il_735_5_12_1001_b", amount=40),
+                _exempt("17.1", "il_735_5_12_1001_b", amount=340),
+            ],
+        },
         "sofa": {
             "has_prior_income": True,
             "has_creditor_payments": True,
@@ -481,6 +507,21 @@ def _james_washington() -> dict:
         ],
         "codebtors": [],
         "claims": {"contracts_answer": "yes", "codebtors_answer": "no", "community_lived": "no"},
+        # Schedule C, asked on the page after the filing-fee page (3g1)
+        "exemptions": {
+            "line_1": "state_and_federal",
+            "line_3": "no",
+            "no_claims": False,
+            "claims": [
+                _exempt("3.1", "il_735_5_12_1001_c", amount=3600),
+                _exempt("3.1", "il_735_5_12_1001_b", amount=1900),
+                _exempt("6.1", "il_735_5_12_1001_a", short="Bed, couch, table, kitchenware"),
+                _exempt("7.1", "il_735_5_12_1001_a"),
+                _exempt("11.1", "il_735_5_12_1001_a"),
+                _exempt("16.1", "il_735_5_12_1001_b", amount=40),
+                _exempt("17.1", "il_735_5_12_1001_b", amount=1200),
+            ],
+        },
         # Form 101 line 8, and for the waiver 103B lines 4, 5, 7 and 9 (3f spec §10)
         "filing_fee": {"payment_choice": "pay_in_full"},
     }
@@ -685,6 +726,19 @@ def _priya_sharma() -> dict:
             },
         ],
         "claims": {"contracts_answer": "yes", "codebtors_answer": "yes", "community_lived": "no"},
+        # Schedule C, asked on the page after the filing-fee page (3g1)
+        "exemptions": {
+            "line_1": "state_and_federal",
+            "line_3": "no",
+            "no_claims": False,
+            "claims": [
+                _exempt("3.1", "il_735_5_12_1001_c"),
+                _exempt("11.1", "il_735_5_12_1001_a"),
+                _exempt("17.1", "il_735_5_12_1001_b", amount=1900),
+                _exempt("17.2", "il_735_5_12_1001_b", amount=2100),
+                _exempt("21.1", "il_735_5_12_1006"),
+            ],
+        },
         # Form 101 line 8, and for the waiver 103B lines 4, 5, 7 and 9 (3f spec §10)
         "filing_fee": {"payment_choice": "pay_in_full"},
     }
@@ -861,6 +915,19 @@ def _deshawn_mitchell() -> dict:
         "contracts": [],
         "codebtors": [],
         "claims": {"contracts_answer": "no", "codebtors_answer": "no", "community_lived": "no"},
+        # Schedule C, asked on the page after the filing-fee page (3g1)
+        "exemptions": {
+            "line_1": "state_and_federal",
+            "line_3": "no",
+            "no_claims": False,
+            "claims": [
+                _exempt("1.1", "il_735_5_12_901", amount=20000),
+                _exempt("3.1", "il_735_5_12_1001_c", amount=3600),
+                _exempt("3.1", "il_735_5_12_1001_b", amount=4000),
+                _exempt("11.1", "il_735_5_12_1001_a"),
+                _exempt("21.1", "il_735_5_12_1006"),
+            ],
+        },
         # Form 101 line 8, and for the waiver 103B lines 4, 5, 7 and 9 (3f spec §10)
         "filing_fee": {"payment_choice": "installments"},
     }
@@ -977,6 +1044,13 @@ def _sarah_chen() -> dict:
         ],
         "codebtors": [],
         "claims": {"contracts_answer": "yes", "codebtors_answer": "no", "community_lived": "no"},
+        # Schedule C, asked on the page after the filing-fee page (3g1)
+        "exemptions": {
+            "line_1": "state_and_federal",
+            "line_3": "no",
+            "no_claims": True,
+            "claims": [],
+        },
         # Form 101 line 8, and for the waiver 103B lines 4, 5, 7 and 9 (3f spec §10)
         "filing_fee": {
             "payment_choice": "waiver",
@@ -1268,6 +1342,25 @@ def _andres_kettleby() -> dict:
             },
         ],
         "claims": {"contracts_answer": "yes", "codebtors_answer": "yes", "community_lived": "no"},
+        # Schedule C, asked on the page after the filing-fee page (3g1)
+        "exemptions": {
+            "line_1": "state_and_federal",
+            "line_3": "no",
+            "no_claims": False,
+            "claims": [
+                _exempt("3.2", "il_735_5_12_1001_c"),
+                _exempt("6.1", "il_735_5_12_1001_a", amount=1200),
+                _exempt("7.1", "il_735_5_12_1001_a", amount=400),
+                _exempt("11.1", "il_735_5_12_1001_a", amount=300),
+                _exempt("16.1", "il_735_5_12_1001_b", amount=60),
+                _exempt("17.1", "il_735_5_12_1001_b", amount=412),
+                _exempt("17.2", "il_735_5_12_1001_b", amount=85),
+                _exempt("38.1", "il_735_5_12_1001_b", amount=310, short="Driving payouts earned"),
+                _exempt(
+                    "40.1", "il_735_5_12_1001_d", amount=150, short="Delivery bags, mount, dash cam"
+                ),
+            ],
+        },
         # Form 101 line 8, and for the waiver 103B lines 4, 5, 7 and 9 (3f spec §10)
         "filing_fee": {"payment_choice": "installments"},
     }
@@ -1447,6 +1540,26 @@ class Command(BaseCommand):
 
         # The filing-fee page's answers, which every persona gives after Complete
         FilingFee.objects.create(session=session, **data["filing_fee"])
+
+        # Schedule C's answers and claims. They come before the means test and the packet
+        # loop below, which builds every form.
+        exemptions = data["exemptions"]
+        ExemptionAnswers.objects.create(
+            session=session,
+            line_1=exemptions["line_1"],
+            line_3=exemptions["line_3"],
+            no_claims=exemptions["no_claims"],
+        )
+        for claim in exemptions["claims"]:
+            amount = claim["amount"]
+            ExemptionClaim.objects.create(
+                session=session,
+                asset=asset_at(session, claim["position"]),
+                law=claim["law"],
+                amount_kind="fair_market_value" if amount is None else "dollars",
+                amount=None if amount is None else Decimal(str(amount)),
+                short_description=claim["short"],
+            )
 
         # Run means test calculation
         calculator = MeansTestCalculator(session)

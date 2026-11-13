@@ -247,20 +247,20 @@ To file for bankruptcy, gather:
 
 ### E-M
 
-| Legal Term        | Plain Definition                             | Example in Sentence                                                    |
-| ----------------- | -------------------------------------------- | ---------------------------------------------------------------------- |
-| **Equity**        | Value of property minus what you owe on it   | "If your car is worth $10K and you owe $8K, you have $2K equity."      |
-| **Exemption**     | Property protected from creditors            | "Illinois law protects up to $15K in home equity."                     |
-| **Filing fee**    | Cost to file bankruptcy ($338 for Chapter 7) | "The filing fee is $338. You may qualify for a fee waiver."            |
-| **341 Meeting**   | Meeting with trustee (required)              | "You'll meet with the trustee about 30 days after filing."             |
-| **Means test**    | Income test to qualify for Chapter 7         | "The means test compares your income to the state average."            |
-| **Median income** | Middle income for your household size        | "If your income is below median, you typically qualify for Chapter 7." |
+| Legal Term        | Plain Definition                             | Example in Sentence                                                           |
+| ----------------- | -------------------------------------------- | ----------------------------------------------------------------------------- |
+| **Equity**        | Value of property minus what you owe on it   | "If your car is worth $10K and you owe $8K, you have $2K equity."             |
+| **Exemption**     | Property protected from creditors            | "Illinois law exempts up to $50,000 of each person's interest in their home." |
+| **Filing fee**    | Cost to file bankruptcy ($338 for Chapter 7) | "The filing fee is $338. You may qualify for a fee waiver."                   |
+| **341 Meeting**   | Meeting with trustee (required)              | "You'll meet with the trustee about 30 days after filing."                    |
+| **Means test**    | Income test to qualify for Chapter 7         | "The means test compares your income to the state average."                   |
+| **Median income** | Middle income for your household size        | "If your income is below median, you typically qualify for Chapter 7."        |
 
 ### N-Z
 
 | Legal Term              | Plain Definition                                       | Example in Sentence                                                 |
 | ----------------------- | ------------------------------------------------------ | ------------------------------------------------------------------- |
-| **Non-exempt property** | Property not protected; creditors could take it        | "Non-exempt property is rare. Most filers keep everything."         |
+| **Non-exempt property** | Property not protected; creditors could take it        | "The trustee may sell property that is not exempt."                 |
 | **Petition**            | The main bankruptcy form (Form 101)                    | "Form 101 is your bankruptcy petition. It lists basic information." |
 | **Reaffirmation**       | Agreement to keep paying a debt (usually car)          | "You can reaffirm your car loan to keep the car."                   |
 | **Schedule**            | A bankruptcy form (e.g., Schedule A/B = property list) | "Schedule A/B lists your property: home, car, belongings."          |

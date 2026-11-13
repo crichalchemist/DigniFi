@@ -99,6 +99,8 @@ Each item goes on the Schedule A/B line shown. Where the form asks who has an in
 
 **Codebtors:** No. You did not live in a community property state in the last 8 years.
 
+**Exemptions (Schedule C, on the page after the filing-fee page):** Line 1: You are claiming state and federal nonbankruptcy exemptions. You claim: Honda Civic 2015 (line 3.1): 735 ILCS 5/12-1001(c), $3,600; Honda Civic 2015 (line 3.1): 735 ILCS 5/12-1001(b), $2,900; Beds, sofa, kitchen table, dishes (line 6): 735 ILCS 5/12-1001(b), $520; Old laptop, cell phone, 32-inch TV (line 7): 735 ILCS 5/12-1001(b), $200; Everyday clothes and shoes (line 11): 735 ILCS 5/12-1001(a), 100% of fair market value, up to any applicable statutory limit; Cash (line 16): 735 ILCS 5/12-1001(b), $40; JPMorgan Chase (line 17.1): 735 ILCS 5/12-1001(b), $340. Line 3: No.
+
 ## What to Watch For
 
 - Did you feel judged at any point?

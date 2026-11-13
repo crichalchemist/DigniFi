@@ -186,6 +186,31 @@ def _send_through_the_api(persona):
     # questions for a waiver filer. It never reopens the intake.
     response = client.put(f"{session_url}filing-fee/", _sent(data["filing_fee"]), format="json")
     assert response.status_code == 200, response.data
+    # Schedule C's page: its answers and claims in one PUT, as the page sends them. It never
+    # reopens the intake.
+    exemptions = data["exemptions"]
+    response = client.put(
+        f"{session_url}exemptions/",
+        {
+            "line_1": exemptions["line_1"],
+            "line_3": exemptions["line_3"],
+            "no_claims": exemptions["no_claims"],
+            "claims": [
+                {
+                    "asset": asset_at(session, claim["position"]).pk,
+                    "law": claim["law"],
+                    "amount_kind": (
+                        "dollars" if claim["amount"] is not None else "fair_market_value"
+                    ),
+                    "amount": None if claim["amount"] is None else str(claim["amount"]),
+                    "short_description": claim["short"],
+                }
+                for claim in exemptions["claims"]
+            ],
+        },
+        format="json",
+    )
+    assert response.status_code == 200, response.data
     if "sofa" in data:
         response = client.patch(
             f"/api/intake/sofa-report/{session_id}/", _sent(data["sofa"]), format="json"

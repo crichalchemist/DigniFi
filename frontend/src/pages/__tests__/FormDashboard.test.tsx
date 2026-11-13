@@ -742,6 +742,33 @@ describe('FormDashboard', () => {
       expect(screen.queryByText(/try generating them individually/i)).not.toBeInTheDocument();
     });
 
+    it('links a Schedule C refusal to the exemptions page', async () => {
+      server.use(
+        http.post('http://localhost:8000/api/forms/generate_all/', () =>
+          HttpResponse.json({
+            generated: [],
+            errors: [
+              {
+                form_type: 'schedule_c',
+                error: 'Choose which set of exemptions you are claiming.',
+                page: '/exemptions',
+              },
+            ],
+            total_generated: 0,
+            total_errors: 1,
+          })
+        )
+      );
+
+      renderFormDashboard();
+      await userEvent.click(await openGenerateAll());
+
+      const alert = await screen.findByRole('alert');
+      expect(
+        within(alert).getByRole('link', { name: 'Go to The property you claim as exempt' })
+      ).toHaveAttribute('href', '/exemptions');
+    });
+
     // A page is linked only by words this page has for it, never by a built-in property's name
     it('offers no link for a page it has no words for, such as /ask/constructor', async () => {
       server.use(

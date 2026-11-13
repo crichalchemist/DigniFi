@@ -5,6 +5,9 @@ Provides REST API endpoints for multi-step bankruptcy intake process,
 including session management and means test calculation.
 """
 
+from dataclasses import asdict
+from decimal import Decimal
+
 from django.db import transaction
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
@@ -12,6 +15,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from apps.districts.dated_tables import NoTableInForce, fill_date
+from apps.districts.exemptions import NoExemptionCatalog, exemption_catalog_in_force
 from apps.eligibility.cmi import (
     IncomeNotSplit,
     counted_spouse_income,
@@ -20,9 +24,11 @@ from apps.eligibility.cmi import (
 )
 from apps.eligibility.services import MeansTestCalculator
 from apps.forms.registry import PreconditionMissing, _needs_county, _needs_ssn
+from apps.forms.services.exemption_items import exemption_items
 
 from .asset_lines import asset_step_gaps
 from .claims import claim_step_gaps
+from .exemptions import ordered_claims
 from .filing_fee import filing_fee_information
 from .income import deductions_blank, schedule_i_line4
 from .locking import lock_session
@@ -31,12 +37,17 @@ from .models import (
     Codebtor,
     DebtInfo,
     ExecutoryContract,
+    ExemptionAnswers,
+    ExemptionClaim,
     FilingFee,
     FormAnswer,
     IntakeSession,
     SOFAReport,
 )
 from .serializers import (
+    FAIR_MARKET_VALUE_AMOUNT_REFUSAL,
+    LAW_AND_OTHER_LAW_REFUSAL,
+    NO_CLAIMS_AND_CLAIMS_REFUSAL,
     AssetInfoSerializer,
     BulkAnswerPayloadSerializer,
     CodebtorRowSerializer,
@@ -44,6 +55,7 @@ from .serializers import (
     DebtInfoSerializer,
     ExecutoryContractRowSerializer,
     ExecutoryContractSerializer,
+    ExemptionsSerializer,
     FilingFeeSerializer,
     IntakeSessionSerializer,
     SOFAReportSerializer,
@@ -587,6 +599,144 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
         information, gap = filing_fee_information(session)
         return Response(
             {**FilingFeeSerializer(row).data, "information": information, "information_gap": gap}
+        )
+
+    @action(detail=True, methods=["get", "put"], url_path="exemptions", url_name="exemptions")
+    def exemptions(self, request, pk=None):
+        """GET or PUT /api/intake/sessions/{id}/exemptions/ (3g1 spec §5).
+
+        In any status. A PUT sets only the answers it sends (and clears 3-1 once line 3 is No)
+        and saves the whole claim list when it sends one, under the session lock, and never reopens a completed intake: Schedule C's
+        answers are not intake data. Both reply with the answers, the claims, the property list
+        and the list of laws in force (or why there is none).
+        """
+        session = self.get_object()  # another user's session is a 404
+        try:
+            catalog = exemption_catalog_in_force()
+        except NoExemptionCatalog:
+            catalog = None
+        sent_claims = None
+        if request.method == "PUT":
+            law_keys = set(catalog.laws.values_list("key", flat=True)) if catalog else set()
+            serializer = ExemptionsSerializer(data=request.data, context={"law_keys": law_keys})
+            serializer.is_valid(raise_exception=True)
+            data = serializer.validated_data
+            with transaction.atomic():
+                lock_session(session.pk)
+                claims = data.get("claims")
+                if (
+                    data.get("no_claims")
+                    and claims is None
+                    and ExemptionClaim.objects.filter(session=session).exists()
+                ):
+                    return Response(
+                        {"no_claims": [NO_CLAIMS_AND_CLAIMS_REFUSAL]},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+                if claims:
+                    # A row sent by id with some keys only sets those keys on the stored row,
+                    # so the per-row checks can't see the merged claim: check it here, before
+                    # anything is written (spec 5.2: a law or another law, never both; a dollar
+                    # amount only under dollars).
+                    stored_rows = {c.pk: c for c in ExemptionClaim.objects.filter(session=session)}
+                    merged_errors = {}
+                    seen_ids = set()
+                    for index, claim in enumerate(claims):
+                        old = stored_rows.get(claim.get("id"))
+                        if old is None:
+                            continue
+                        if old.pk in seen_ids:
+                            # Two rows with one id would be applied in turn to one stored row,
+                            # each passing this check alone: refuse the repeat.
+                            merged_errors[str(index)] = {
+                                "id": ["Each claim can be sent only once in a save."]
+                            }
+                            continue
+                        seen_ids.add(old.pk)
+                        law = claim["law"] if "law" in claim else old.law
+                        other_law = claim.get("other_law", old.other_law) or ""
+                        kind = claim["amount_kind"] if "amount_kind" in claim else old.amount_kind
+                        amount = claim["amount"] if "amount" in claim else old.amount
+                        problems = {}
+                        if law is not None and other_law.strip():
+                            problems["other_law"] = [LAW_AND_OTHER_LAW_REFUSAL]
+                        if kind == "fair_market_value" and amount is not None:
+                            problems["amount"] = [FAIR_MARKET_VALUE_AMOUNT_REFUSAL]
+                        if problems:
+                            merged_errors[str(index)] = problems
+                    if merged_errors:
+                        return Response(
+                            {"claims": merged_errors}, status=status.HTTP_400_BAD_REQUEST
+                        )
+                answers, _ = ExemptionAnswers.objects.get_or_create(session=session)
+                for name in ("line_1", "line_3", "line_3_1", "no_claims"):
+                    if name in data:
+                        setattr(answers, name, data[name])
+                if claims:
+                    answers.no_claims = False
+                if answers.line_3 == "no":
+                    # Line 3-1 is asked only under line 3's Yes, so it never stands under a No.
+                    answers.line_3_1 = None
+                answers.save()
+                if claims is not None:
+                    rows = []
+                    for claim in claims:
+                        row = dict(claim)
+                        if "asset" in row:
+                            row["asset_id"] = row.pop("asset")
+                        rows.append(row)
+                    sent_claims = _save_rows_by_id(
+                        session, ExemptionClaim, rows, scoped={"asset_id": AssetInfo}
+                    )
+        session = IntakeSession.objects.get(pk=session.pk)
+        answers = ExemptionAnswers.objects.filter(session=session).first()
+        items = exemption_items(session)
+        item_ids = {item.id for item in items}
+        stored = sent_claims
+        if stored is None:
+            stored = ordered_claims(ExemptionClaim.objects.filter(session=session), items)
+        return Response(
+            {
+                "line_1": answers.line_1 if answers else None,
+                "line_3": answers.line_3 if answers else None,
+                "line_3_1": answers.line_3_1 if answers else None,
+                "no_claims": bool(answers.no_claims) if answers else False,
+                "claims": [
+                    {
+                        "id": claim.pk,
+                        "asset": claim.asset_id if claim.asset_id in item_ids else None,
+                        "law": claim.law,
+                        "other_law": claim.other_law or "",
+                        "amount_kind": claim.amount_kind,
+                        "amount": (
+                            None
+                            if claim.amount is None
+                            else str(Decimal(str(claim.amount)).quantize(Decimal("0.01")))
+                        ),
+                        "short_description": claim.short_description,
+                    }
+                    for claim in stored
+                ],
+                "items": [asdict(item) for item in items],
+                "catalog": (
+                    None
+                    if catalog is None
+                    else {
+                        "effective_date": catalog.effective_date.isoformat(),
+                        "source_url": catalog.source_url,
+                        "laws": [
+                            {
+                                "key": law.key,
+                                "citation": law.citation,
+                                "jurisdiction": law.jurisdiction,
+                                "limit_text": law.limit_text,
+                            }
+                            for law in catalog.laws.order_by("position")
+                        ],
+                    }
+                ),
+                "catalog_gap": None if catalog is not None else "no_table",
+            }
         )
 
     @action(detail=True, methods=["post"], url_path="dischargeability", url_name="dischargeability")
