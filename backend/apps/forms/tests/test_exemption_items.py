@@ -5,7 +5,7 @@ from decimal import Decimal
 import pytest
 from django.contrib.auth import get_user_model
 
-from apps.districts.models import District
+from apps.districts.models import District, ExemptionLaw
 from apps.forms.schema import load_schema
 from apps.forms.services.exemption_items import (
     _groups,
@@ -194,3 +194,9 @@ def test_the_items_are_the_rows_with_a_line_in_ab_order(session):
         (car.pk, "Honda Civic 2015", "3.1", "4000.00", True),
         (long.pk, "Bed, couch, table, kitchenware (secondhand)", "6", "500.00", False),
     ]
+
+
+def test_every_listed_law_fits_schedule_cs_law_box(db):
+    # A citation Schedule C can't print would refuse a filer who picked it, with no fix on the page.
+    for law in ExemptionLaw.objects.all():
+        assert fits_law(law.citation), law.key

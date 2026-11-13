@@ -17,7 +17,7 @@ from collections import Counter
 from collections.abc import Callable
 from dataclasses import dataclass
 from decimal import Decimal
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from apps.eligibility.cmi import counted_spouse_income, household_members
 from apps.forms.field_index import option_text
@@ -59,6 +59,10 @@ from apps.intake.claims import PRIORITY_TYPES, account_last_4
 from apps.intake.household import RELATIONSHIP_WORDS, dependents
 from apps.intake.income import statement_rows
 from apps.intake.models import AssetInfo, FormAnswer, IntakeSession
+
+if TYPE_CHECKING:
+    # Not imported at run time: exemption_items imports this module (the cycle R2 names).
+    from apps.forms.services.exemption_items import ExemptionRow
 
 
 class UnmappedChoice(Exception):
@@ -406,6 +410,17 @@ CLAIM_MONEY_CELLS = frozenset(
     {"amount", "value", "unsecured", "priority_amount", "nonpriority_amount"}
 )
 _CLAIM_BINDING = re.compile(r"claims\.(\w+)\[\]\.(\w+)")
+# Schedule C's slot columns, one getter per ExemptionRow field (3g2 R1).
+EXEMPTION_CELLS: dict[str, Callable[[ExemptionRow], str]] = {
+    "description": lambda row: row.description,
+    "line": lambda row: row.line,
+    "value": lambda row: row.value,
+    "amount_kind": lambda row: row.amount_kind,
+    "amount": lambda row: row.amount,
+    "law": lambda row: row.law,
+}
+_EXEMPTION_ROWS_BINDING = re.compile(r"exemptions\.claims\[\]\.(\w+)")
+_EXEMPTION_ANSWER_BINDING = re.compile(r"exemptions\.(line_1|line_3|line_3_1)")
 
 
 def is_money_binding(binding: str) -> bool:
@@ -435,6 +450,10 @@ def resolve_binding(binding: str, session: IntakeSession) -> str | list[str]:
         secured_notices, priority, unsecured, unsecured_notices, contracts, codebtors), each cell
         from CLAIM_CELLS; or over `creditor_list`, the List of Creditors' entries
         (`creditor_entries`: a CreditorEntry, its `entry` cell the entry's text)
+      - "exemptions.claims[].<attr>" → list of str over Schedule C's printed claims, each cell
+        from EXEMPTION_CELLS
+      - "exemptions.line_1" | "exemptions.line_3" | "exemptions.line_3_1" → the filer's answer
+        as a str, "" when unanswered
     """
     binding = binding.strip()
 
@@ -493,6 +512,19 @@ def resolve_binding(binding: str, session: IntakeSession) -> str | list[str]:
         if match[1] == "creditor_list":
             return [cell(entry) for entry in creditor_entries(claim_rows(session))]
         return [cell(row) for row in getattr(claim_rows(session), match[1])]
+
+    if binding.startswith("exemptions."):
+        # exemption_items imports this module, so it is imported here (R2).
+        from apps.forms.services.exemption_items import exemption_answer, exemption_rows
+
+        rows_match = _EXEMPTION_ROWS_BINDING.fullmatch(binding)
+        if rows_match and rows_match[1] in EXEMPTION_CELLS:
+            cell = EXEMPTION_CELLS[rows_match[1]]
+            return [cell(row) for row in exemption_rows(session)]
+        answer_match = _EXEMPTION_ANSWER_BINDING.fullmatch(binding)
+        if answer_match:
+            return exemption_answer(session, answer_match[1])
+        raise ValueError(f"unrecognized binding: {binding!r}")
 
     raise ValueError(f"unrecognized binding: {binding!r}")
 
@@ -567,6 +599,8 @@ def binding_fix(binding: str) -> dict[str, str]:
             if match[1] == "codebtors":
                 return {"step": "codebtors"}
         return {"step": "debts"}
+    if binding.startswith("exemptions."):
+        return {"page": "/exemptions"}
     # A constant or a signature: a refusal there is DigniFi's defect, not the filer's.
     return {}
 
@@ -871,8 +905,10 @@ def resolve_parts(schema: FormSchema, session: IntakeSession) -> dict:
     """
     # A/B's rules and bindings each ask for the rows: measured at 0.62 s more with 20 rows, a read
     # per rule. The read stays in this call, never on the session, so a session held across a save
-    # prints what the save stored.
-    with one_read_of_assets(), one_read_of_claims():
+    # prints what the save stored. Schedule C's claim rows are a third read, for all 90 slots.
+    from apps.forms.services.exemption_items import one_read_of_exemptions  # cycle, as above (R2)
+
+    with one_read_of_assets(), one_read_of_claims(), one_read_of_exemptions():
         return _resolve_parts(schema, session)
 
 

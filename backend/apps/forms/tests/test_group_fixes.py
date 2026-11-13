@@ -3,7 +3,8 @@ R12: a refusal for a page number too wide names the fix of the first group on co
 
 Business intent: when a page number can't fit, the filer is sent to the step that changes the
 rows. That is only honest if every group on copies of one form is changed on the same step
-(D: debts, E/F: debts, G: contracts, H: codebtors), so "the first" is as good as any.
+(D: debts, E/F: debts, G: contracts, H: codebtors, and Schedule C's c_part_2: the page
+/exemptions), so "the first" is as good as any.
 """
 
 import pytest
@@ -46,3 +47,14 @@ def test_every_group_box_of_a_claims_schedule_sends_the_filer_to_its_rows_step(f
 
     assert keys
     assert fixes == dict.fromkeys(keys, {"step": step})
+
+
+def test_schedule_cs_page_numbers_send_the_filer_to_the_exemptions_page():
+    # Schedule C's copies hold the filer's claims, which they change on the exemptions page.
+    schema = load_schema("schedule_c")
+    keys = page_number_keys(schema)
+
+    fixes = {key: _group_box(schema, key)[1] for key in keys}
+
+    assert keys
+    assert fixes == dict.fromkeys(keys, {"page": "/exemptions"})

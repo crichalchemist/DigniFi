@@ -490,6 +490,8 @@ def test_resolve_ingested_source(session):
         ("household.dependents[].age", {"step": "income_info"}),
         ("income.statement[].net", {"step": "income_info"}),
         ("assets.line_3[].make", {"step": "assets"}),
+        ("exemptions.claims[].law", {"page": "/exemptions"}),
+        ("exemptions.line_1", {"page": "/exemptions"}),
         ("", {}),
     ],
 )
@@ -517,6 +519,20 @@ def _asset(session, line, details=None, **values):
     ],
 )
 def test_an_unknown_asset_attr_raises(session, binding):
+    with pytest.raises(ValueError, match="unrecognized binding"):
+        resolve_binding(binding, session)
+
+
+@pytest.mark.parametrize(
+    "binding",
+    [
+        "exemptions.claims[].no_such_cell",
+        "exemptions.claims.law",  # no list
+        "exemptions.line_2",  # no such line
+        "exemptions.no_claims",  # an answer that prints in no box
+    ],
+)
+def test_an_unknown_exemptions_binding_raises(session, binding):
     with pytest.raises(ValueError, match="unrecognized binding"):
         resolve_binding(binding, session)
 

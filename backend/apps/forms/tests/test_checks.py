@@ -930,6 +930,16 @@ def test_a_claims_binding_passes_the_namespace_check(schedule_d_with_totals):
     assert not [e for e in _errors("schedule_d") if "unknown binding namespace" in e[1]]
 
 
+def test_an_exemptions_binding_passes_the_namespace_check(schedule_d_with_totals):
+    def rebind(d):
+        for f in d["fields"]:
+            if f["binding"] == "sofa.creditor_payments[].creditor_name":
+                f["binding"] = "exemptions.claims[].description"
+
+    _edit(schedule_d_with_totals, "schedule_d", rebind)
+    assert not [e for e in _errors("schedule_d") if "unknown binding namespace" in e[1]]
+
+
 def test_a_total_box_another_binding_fills_is_reported(schedule_d_with_totals):
     # A binding of undefined_24 put back (the rule that once bound it is gone, 3c5 R8): its figure
     # and the group's would fight.
