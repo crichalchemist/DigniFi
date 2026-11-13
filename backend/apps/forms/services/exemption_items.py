@@ -163,7 +163,7 @@ def exemption_items(session) -> list[ExemptionItem]:
     return items
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, repr=False)
 class ExemptionRow:
     """One claim as Schedule C prints it: every cell a string, "" when blank (3g2 R3-R8)."""
 
@@ -197,7 +197,7 @@ def _read_rows(session) -> list[ExemptionRow]:
         [c for c in session.exemption_claims.all() if c.asset_id in by_id], items
     )
     citations: dict[str, str] = {}
-    if any(c.law for c in claims):
+    if any(c.law is not None for c in claims):
         # Read only when a printed claim names a law; no list in force propagates, as the gate's does.
         laws = exemption_catalog_in_force().laws.all()
         citations = {law.key: law.citation for law in laws}
@@ -207,7 +207,7 @@ def _read_rows(session) -> list[ExemptionRow]:
         short = (claim.short_description or "").strip()
         # R4: the short words print only while the item's name doesn't fit.
         description = short if short and not item.description_fits else item.name
-        if claim.law:
+        if claim.law is not None:
             law = citations.get(claim.law, "")
         else:
             law = (claim.other_law or "").strip()

@@ -5,12 +5,13 @@ Business intent: a sworn form must never show a law, an amount or an answer the 
 and its property, line and value must be the ones Schedule A/B prints, so the two forms agree.
 """
 
+from datetime import date
 from decimal import Decimal
 
 import pytest
 from django.contrib.auth import get_user_model
 
-from apps.districts.models import District, ExemptionCatalog
+from apps.districts.models import District, ExemptionCatalog, ExemptionLaw
 from apps.forms.schema import FieldSpec, FormSchema, GroupSpec
 from apps.forms.services import exemption_items
 from apps.forms.services.exemption_items import (
@@ -305,3 +306,116 @@ def test_a_resolve_reads_the_rows_once_for_every_box_that_asks(session, monkeypa
 
     assert parts[0]["values"]["description1"] == "Laptop"
     assert len(reads) == 1
+
+
+def test_a_printed_row_never_shows_its_cells_in_a_log_line():
+    row = ExemptionRow("Demo Heirloom", "7", "300.00", "dollars", "123456.78", "Demo Statute Words")
+
+    for text in (repr(row), str(row)):
+        for secret in ("Demo Heirloom", "123456.78", "Demo Statute Words"):
+            assert secret not in text
+
+
+def test_a_citation_comes_from_the_list_in_force_not_a_newer_loaded_list(session, monkeypatch):
+    item = _row(session, "7", "Laptop", Decimal("300"))
+    _claim(session, item, law="il_735_5_12_1001_b", amount_kind="fair_market_value")
+    newer = ExemptionCatalog.objects.create(effective_date=date(2027, 1, 1))
+    ExemptionLaw.objects.create(
+        catalog=newer,
+        key="il_735_5_12_1001_b",
+        position=1,
+        jurisdiction="illinois",
+        citation="Demo citation 2027 (b)",
+        source_url="https://example.com/demo",
+    )
+
+    assert exemption_rows(_fresh(session))[0].law == "735 ILCS 5/12-1001(b)"
+
+    monkeypatch.setattr("apps.districts.dated_tables._today", lambda: date(2027, 1, 2))
+
+    assert exemption_rows(_fresh(session))[0].law == "Demo citation 2027 (b)"
+
+
+def test_a_law_key_that_is_blank_not_missing_prints_no_typed_law(session):
+    item = _row(session, "7", "Laptop", Decimal("300"))
+    _claim(session, item, law="", other_law="Demo Statute", amount_kind="fair_market_value")
+
+    assert exemption_rows(_fresh(session))[0].law == ""
+
+
+def test_a_claim_on_a_deleted_item_needs_no_list_of_laws_beside_a_typed_law(session):
+    ExemptionCatalog.objects.all().delete()
+    live = _row(session, "7", "Laptop", Decimal("300"))
+    gone = _row(session, "6", "Demo Gone", Decimal("10"))
+    _claim(session, live, law=None, other_law="Demo Statute", amount_kind="fair_market_value")
+    _claim(session, gone, law="il_735_5_12_1001_b", amount_kind="fair_market_value")
+    gone.delete()
+
+    rows = exemption_rows(_fresh(session))
+
+    assert [(r.description, r.law) for r in rows] == [("Laptop", "Demo Statute")]
+
+
+@pytest.mark.parametrize("line", ["28", "29"])
+def test_a_tax_refund_claim_prints_its_line_and_no_value_on_either_refund_line(session, line):
+    refund = _row(session, line, "Demo refund", Decimal("400"), kind="federal")
+    _claim(session, refund, law="il_735_5_12_1001_b", amount_kind="fair_market_value")
+
+    rows = exemption_rows(_fresh(session))
+
+    assert (rows[0].line, rows[0].value) == (line, "")
+
+
+@pytest.mark.parametrize("short", [None, "   "])
+def test_a_blank_short_description_never_replaces_an_items_name(session, short):
+    long_name = "Bed, couch, table, kitchenware (secondhand)"  # fits no size (3g1 P2)
+    item = _row(session, "6", long_name, Decimal("500"))
+    _claim(
+        session,
+        item,
+        law="il_735_5_12_1001_b",
+        amount_kind="fair_market_value",
+        short_description=short,
+    )
+
+    assert exemption_rows(_fresh(session))[0].description == long_name
+
+
+def test_a_second_resolve_shows_a_claim_saved_after_the_first(session):
+    schema = FormSchema(
+        "form_107",
+        "b_107_0425-form.pdf",
+        "v1",
+        [
+            FieldSpec(
+                pdf_field=f"amount{row}",
+                type="text",
+                source="asked",
+                page=1,
+                label="amount",
+                required=False,
+                conditional_on=None,
+                value=None,
+                rule=None,
+                ingest_key=None,
+                binding="exemptions.claims[].amount",
+                repeat="c",
+                repeat_capacity=2,
+                row=row,
+                legal_review=False,
+            )
+            for row in (1, 2)
+        ],
+        groups={"c": GroupSpec("c", extra_page=1, number=None, number_boxes={})},
+    )
+    item = _row(session, "7", "Laptop", Decimal("300"))
+    claim = _claim(
+        session, item, law="il_735_5_12_1001_b", amount_kind="dollars", amount=Decimal("1")
+    )
+
+    first = resolve_parts(schema, _fresh(session))["parts"][0]["values"]["amount1"]
+    claim.amount = Decimal("2")
+    claim.save()
+    second = resolve_parts(schema, _fresh(session))["parts"][0]["values"]["amount1"]
+
+    assert (first, second) == ("1.00", "2.00")

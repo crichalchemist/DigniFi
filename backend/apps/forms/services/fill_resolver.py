@@ -17,7 +17,7 @@ from collections import Counter
 from collections.abc import Callable
 from dataclasses import dataclass
 from decimal import Decimal
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from apps.eligibility.cmi import counted_spouse_income, household_members
 from apps.forms.field_index import option_text
@@ -59,6 +59,10 @@ from apps.intake.claims import PRIORITY_TYPES, account_last_4
 from apps.intake.household import RELATIONSHIP_WORDS, dependents
 from apps.intake.income import statement_rows
 from apps.intake.models import AssetInfo, FormAnswer, IntakeSession
+
+if TYPE_CHECKING:
+    # Not imported at run time: exemption_items imports this module (the cycle R2 names).
+    from apps.forms.services.exemption_items import ExemptionRow
 
 
 class UnmappedChoice(Exception):
@@ -407,7 +411,7 @@ CLAIM_MONEY_CELLS = frozenset(
 )
 _CLAIM_BINDING = re.compile(r"claims\.(\w+)\[\]\.(\w+)")
 # Schedule C's slot columns, one getter per ExemptionRow field (3g2 R1).
-EXEMPTION_CELLS: dict[str, Callable[[Any], str]] = {
+EXEMPTION_CELLS: dict[str, Callable[[ExemptionRow], str]] = {
     "description": lambda row: row.description,
     "line": lambda row: row.line,
     "value": lambda row: row.value,
