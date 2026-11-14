@@ -126,8 +126,10 @@ def _seeded():
         for form_type in get_all_form_types():
             try:
                 values[form_type] = build_field_values(form_type, session)
-            except PreconditionMissing:
+            except PreconditionMissing as exc:
                 if form_type in HELD:
+                    if str(exc) != FORM_122A2_NOT_ASKED:
+                        raise
                     # The hold refuses 122A-2 for everyone, and 122A-1 above the median (R6):
                     # these tests judge printing, so the form resolves below the gate.
                     values[form_type] = resolve(load_schema(form_type), session)

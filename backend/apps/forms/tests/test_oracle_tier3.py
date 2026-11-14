@@ -1310,8 +1310,8 @@ def _printed(persona):
     for form_type in EXPECTED[persona]:
         try:
             values = build_field_values(form_type, session)
-        except PreconditionMissing:
-            if form_type not in HELD:
+        except PreconditionMissing as exc:
+            if form_type not in HELD or str(exc) != FORM_122A2_NOT_ASKED:
                 raise
             # The hold refuses 122A-2, and Priya's 122A-1 (R6): this tier judges printing, so
             # the form resolves below the gate.

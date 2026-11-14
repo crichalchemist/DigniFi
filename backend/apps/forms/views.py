@@ -184,8 +184,9 @@ def _means_reply(session: IntakeSession) -> dict:
     """What the packet list says of the stored means test, from one read (3h1 R14).
 
     `tables` is the median table the means test recorded, then every table it read for Form
-    122A-2; `outcome`, `family_size` and `tables_gap` are None when there is no means test or
-    one stored before 3h1 recorded them.
+    122A-2; `outcome`, `family_size` and `tables_gap` are None when there is no means test. A
+    row saved before 3h1 replies with `outcome` and `tables_gap` None and its stored
+    `family_size` (calculation_details has held it since 3e1).
     """
     means_test = MeansTest.objects.filter(session=session).first()
     details = means_test.get_calculation_details() if means_test else {}

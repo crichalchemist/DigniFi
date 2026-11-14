@@ -11,7 +11,14 @@ from io import StringIO
 import pytest
 from django.core.management import call_command
 
-from apps.forms.registry import PreconditionMissing, build_parts, get_all_form_types, packet
+from apps.forms.registry import (
+    FORM_122A2_NOT_ASKED,
+    PreconditionMissing,
+    build_field_values,
+    build_parts,
+    get_all_form_types,
+    packet,
+)
 from apps.forms.schema import load_schema
 from apps.forms.services import fill_resolver
 from apps.forms.services.fill_resolver import resolve_parts
@@ -74,9 +81,11 @@ def test_only_the_list_of_creditors_stores_fixes():
         for form_type in {*packet(session), *get_all_form_types()} - {"list_of_creditors"}:
             try:
                 parts = build_parts(form_type, session)["parts"]
-            except PreconditionMissing:
-                if form_type not in HELD:
-                    continue  # such as 103B for a persona who pays the fee
+            except PreconditionMissing as exc:
+                if form_type not in HELD and form_type in {"form_103b"}:
+                    continue  # 103B for a persona who pays the fee
+                if form_type not in HELD or str(exc) != FORM_122A2_NOT_ASKED:
+                    raise
                 # The hold refuses 122A-2, and Priya's 122A-1 (R6): resolve it below the gate.
                 parts = resolve_parts(load_schema(form_type), session)["parts"]
             covered.add(form_type)
@@ -84,6 +93,17 @@ def test_only_the_list_of_creditors_stores_fixes():
                 assert "fixes" not in part, (persona, form_type)
 
     assert covered >= set(get_all_form_types()) - {"list_of_creditors"}
+
+
+@pytest.mark.django_db
+def test_the_hold_refuses_both_held_forms_for_an_above_median_persona():
+    call_command("loaddata", "ilnd_2025_data", verbosity=0)
+    call_command("seed_demo_data", stdout=StringIO())
+    session = IntakeSession.objects.get(user__username="demo_priya")
+    for form_type in HELD:
+        with pytest.raises(PreconditionMissing) as refused:
+            build_field_values(form_type, session)
+        assert str(refused.value) == FORM_122A2_NOT_ASKED, form_type
 
 
 @pytest.mark.django_db

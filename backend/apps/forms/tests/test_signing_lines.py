@@ -12,7 +12,7 @@ from functools import cache
 import pytest
 from django.core.management import call_command
 
-from apps.forms.registry import PreconditionMissing, build_field_values
+from apps.forms.registry import FORM_122A2_NOT_ASKED, PreconditionMissing, build_field_values
 from apps.forms.schema import load_schema
 from apps.forms.services.fill_resolver import resolve
 from apps.forms.services.pdf_filler import PDFFormFiller
@@ -65,8 +65,8 @@ def _printed():
     for form_type in SIGNING_LINES:
         try:
             values = build_field_values(form_type, session)
-        except PreconditionMissing:
-            if form_type not in HELD:
+        except PreconditionMissing as exc:
+            if form_type not in HELD or str(exc) != FORM_122A2_NOT_ASKED:
                 raise
             # The hold refuses both forms for Priya (R6): this test judges the printed page,
             # so they resolve below the gate.
@@ -77,6 +77,16 @@ def _printed():
             if (widget.page, widget.tag) in drawn:
                 printed.setdefault((form_type, widget.full_name), set()).add(widget.value)
     return printed
+
+
+@pytest.mark.django_db
+def test_the_hold_refuses_priyas_two_held_forms_in_its_own_words():
+    _printed()
+    session = IntakeSession.objects.get(user__username="demo_priya")
+    for form_type in HELD:
+        with pytest.raises(PreconditionMissing) as refused:
+            build_field_values(form_type, session)
+        assert str(refused.value) == FORM_122A2_NOT_ASKED, form_type
 
 
 @pytest.mark.slow

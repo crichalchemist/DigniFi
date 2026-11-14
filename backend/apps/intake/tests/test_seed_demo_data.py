@@ -599,3 +599,20 @@ def test_every_seeded_persona_passes_schedule_cs_gate(persona):
 
     session = _seed(persona)
     FORM_REGISTRY["schedule_c"].requires(session)
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("persona", ["maria", "james", "sarah", "deshawn", "priya", "andres"])
+def test_the_seed_reports_only_priyas_122a1_and_122a2_as_skipped_because_the_hold_refuses_them(
+    persona,
+):
+    call_command("loaddata", "ilnd_2025_data", verbosity=0)
+    err = StringIO()
+    call_command("seed_demo_data", persona=persona, stdout=StringIO(), stderr=err)
+
+    skipped = sorted(
+        line.split("Skipped ")[1].split(":")[0]
+        for line in err.getvalue().splitlines()
+        if "Skipped" in line
+    )
+    assert skipped == (["form_122a1", "form_122a2"] if persona == "priya" else [])

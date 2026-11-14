@@ -13,7 +13,7 @@ from django.core.management import call_command
 from rest_framework.test import APIClient
 
 from apps.districts.means_standards import NO_MEANS_TEST_TABLE
-from apps.districts.models import District
+from apps.districts.models import District, Section104Amounts
 from apps.eligibility.cmi import MEMBER_UNANSWERED
 from apps.eligibility.models import MeansTest
 from apps.eligibility.services import MeansTestCalculator
@@ -142,6 +142,22 @@ def test_a_rise_above_the_median_refuses_both_forms_though_the_old_122a1_row_sta
         )
 
 
+@pytest.mark.django_db
+def test_an_above_median_filers_unfiled_122a2_row_refuses_on_regenerate_and_download(
+    api_client, above
+):
+    row = GeneratedForm.objects.create(session=above, form_type="form_122a2", status="generated")
+
+    for resp in (
+        api_client.post(f"/api/forms/{row.pk}/regenerate/"),
+        api_client.get(f"/api/forms/{row.pk}/download/"),
+    ):
+        assert (resp.status_code, resp.data) == (
+            422,
+            {"form_type": "form_122a2", "error": FORM_122A2_NOT_ASKED},
+        )
+
+
 def test_the_hold_names_no_presumption_and_links_nowhere():
     assert "presumption" not in FORM_122A2_NOT_ASKED.lower()
     assert "abuse" not in FORM_122A2_NOT_ASKED.lower()
@@ -231,19 +247,20 @@ def test_an_unfinished_intakes_packet_with_a_row_saved_before_3h1_shows_no_resul
     session.status = "in_progress"
     session.save()
     median = {"name": "Census median income", "effective_date": "2025-04-01"}
+    # A row saved under 3e1 holds family_size and the median table, and no 3h1 keys.
     old = MeansTest(
         session=session,
         district=session.district,
         calculated_cmi=Decimal("3000.00"),
         median_income_threshold=Decimal("73180.00"),
     )
-    old.set_calculation_details({"median_table": median})
+    old.set_calculation_details({"median_table": median, "family_size": 1})
     old.save()
 
     reply = api_client.get("/api/forms/packet/", {"session": session.pk}).data
 
     assert reply["outcome"] is None
-    assert reply["family_size"] is None
+    assert reply["family_size"] == 1
     assert reply["tables_gap"] is None
     assert reply["tables"] == [median]
 
@@ -293,3 +310,30 @@ def test_an_unanswered_household_row_is_refused_in_the_income_steps_words_before
     assert (generated.status_code, generated.data["error"]) == (422, MEMBER_UNANSWERED)
     assert reached == []
     assert not MeansTest.objects.filter(session=above).exists()
+
+
+@pytest.mark.django_db
+def test_a_missing_section_104_set_refuses_the_pair_in_the_tables_sentence_not_the_holds(
+    api_client, above, caplog
+):
+    # Both tables are in force on the pinned day; end the § 104 set the day before it.
+    Section104Amounts.objects.update(valid_through=date(2026, 10, 15))
+    with caplog.at_level(logging.ERROR):
+        reply = _generate_all(api_client, above)
+    assert {e["form_type"]: e for e in reply["errors"]} == {
+        t: {"form_type": t, "error": NO_MEANS_TEST_TABLE} for t in PAIR
+    }
+    messages = [r.getMessage() for r in caplog.records]
+    assert messages
+    assert all("Bankruptcy Code dollar amounts" in m for m in messages)
+
+
+@pytest.mark.django_db
+def test_a_below_median_filer_is_never_refused_for_a_missing_122a2_table(
+    api_client, session_with_debtor, monkeypatch, caplog
+):
+    monkeypatch.setattr("apps.districts.dated_tables._today", lambda: date(2026, 7, 14))
+    with caplog.at_level(logging.ERROR):
+        reply = _generate_all(api_client, session_with_debtor)
+    assert reply["errors"] == []
+    assert not [r for r in caplog.records if r.levelno >= logging.ERROR]
