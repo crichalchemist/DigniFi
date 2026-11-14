@@ -219,7 +219,7 @@ class TestMeansTestCalculatorUPLCompliance:
         session = _create_session_with_income(user, district, monthly_income=income)
         return MeansTestCalculator(session).calculate()
 
-    def test_passing_means_test_reply_no_prohibited_phrases(self):
+    def test_an_at_or_below_median_reply_has_no_prohibited_phrases(self):
         result = self._reply("test_pass", Decimal("4000.00"))
 
         assert "message" not in result
@@ -233,7 +233,7 @@ class TestMeansTestCalculatorUPLCompliance:
             for word in ("eligible", "qualif", "chapter 13", "should choose"):
                 assert word not in text.lower()
 
-    def test_failing_means_test_reply_no_prohibited_phrases(self):
+    def test_an_above_median_reply_has_no_prohibited_phrases(self):
         result = self._reply("test_fail", Decimal("10000.00"))
 
         assert "message" not in result
@@ -258,12 +258,24 @@ class TestMeansTestCalculatorUPLCompliance:
             assert "fee waiver" not in text.lower()
             assert "1930" not in text
 
-    def test_the_reply_states_nothing_absolute(self):
-        result = self._reply("test_typ", Decimal("4000.00"))
+    @pytest.mark.parametrize(
+        "income, outcome",
+        [(Decimal("4000.00"), "at_or_below_median"), (Decimal("10000.00"), "cannot_work_out")],
+    )
+    def test_the_reply_states_nothing_absolute(self, income, outcome):
+        result = self._reply("test_typ", income)
 
-        assert result["outcome"] == "at_or_below_median"
+        assert result["outcome"] == outcome
+        absolute = (
+            "eligible",
+            "qualif",
+            "chapter 13",
+            "should choose",
+            "guarantee",
+            "will be approved",
+        )
         for text in _every_string(result):
-            for word in ("eligible", "qualif", "chapter 13", "should choose"):
+            for word in absolute:
                 assert word not in text.lower()
 
     def test_all_calculation_paths_upl_compliant(self):

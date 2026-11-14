@@ -208,6 +208,10 @@ export const AMOUNT_TOO_LARGE = 'This amount is too large. Please check it';
 // Review Step
 // ============================================================================
 
+// DRAFT: counsel C-24
+export const REVIEW_INTRO =
+  'Please review the information below carefully. DigniFi uses it to fill in your court forms.';
+
 // DRAFT: counsel C-3
 export const REVIEW_HOUSEHOLD_COUNT = 'People in your home, counting you';
 

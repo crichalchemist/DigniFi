@@ -182,7 +182,8 @@ def _needs_exemption_answers(session: IntakeSession) -> None:
 def _needs_means_test(session: IntakeSession) -> None:
     if not hasattr(session, "means_test"):
         raise PreconditionMissing(
-            "Press Complete on the Review & Results step to run the eligibility check.",
+            # DRAFT: counsel C-24
+            "Press Complete on the Review & Results step to work out your income test.",
             step="review",
         )
 
