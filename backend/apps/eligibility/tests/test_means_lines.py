@@ -674,3 +674,19 @@ def test_the_middle_band_is_decided_once_for_line_40_and_lines_41a_and_41b():
         lines = work_out(replace(PRIYA, line_1=line_1), TABLES).lines
         assert (lines["40"] == "On") is in_band
         assert (lines["41b"] is not SKIPPED) is in_band
+
+
+@pytest.mark.parametrize(
+    ("field", "line", "amount"),
+    [
+        ("line_17", "17", D("11.11")),
+        ("line_19", "19", D("22.22")),
+        ("line_20", "20", D("33.33")),
+        ("line_23", "23", D("44.44")),
+    ],
+)
+def test_each_of_lines_17_19_20_and_23_adds_its_own_amount_to_line_24(field, line, amount):
+    base = figures(PRIYA)["24"]
+    lines = figures(replace(PRIYA, **{field: amount}))
+    assert lines[line] == amount
+    assert lines["24"] == base + amount
