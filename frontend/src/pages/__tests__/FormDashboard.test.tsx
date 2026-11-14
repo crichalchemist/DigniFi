@@ -7,6 +7,15 @@ import { IntakeProvider } from '../../context/IntakeContext';
 import { FormDashboard } from '../FormDashboard';
 import { FORM_103A_LINK } from '../../constants/copy';
 import { FORM_103A_URL } from '../../constants/copy';
+import {
+  MEANS_FILED_BEFORE_122A1,
+  MEANS_FILED_BEFORE_122A2,
+  MEANS_FILED_MISMATCH,
+  MEANS_HOLD_REFUSAL,
+  MEANS_OUTCOME_PRESUMPTION,
+  MEANS_PAIR_NOTICE,
+} from '../../constants/copy';
+import { PRESUMPTION_INSTRUCTIONS } from '../../constants/formText';
 
 /**
  * FormDashboard requires IntakeProvider with an active session.
@@ -1356,6 +1365,311 @@ describe('FormDashboard', () => {
         expect(screen.queryByText('Loading your forms...')).not.toBeInTheDocument();
         expect(screen.getByRole('article', { name: GENERATED })).toBeInTheDocument();
         expect(screen.queryByText(LETTER)).not.toBeInTheDocument();
+      });
+    });
+  });
+
+  describe('the income test on the dashboard', { timeout: 15_000 }, () => {
+    const CLOSING = 'A court makes the final decision.';
+    const PAIR = ['form_101', 'form_121', 'form_122a1', 'form_122a2'];
+    const RESULT = 'Income test';
+    const medianTable = {
+      name: 'Census median income',
+      effective_date: '2026-04-01',
+      valid_through: '2027-03-31',
+      source_url: 'https://www.justice.gov/ust/eo/bapcpa/20260401/bci_data/median_income_table.htm',
+    };
+    const standardsTable = {
+      name: 'IRS expense standards',
+      effective_date: '2026-07-15',
+      valid_through: null,
+      source_url: 'https://www.justice.gov/ust/means-testing/20260715',
+    };
+    const section104Table = {
+      name: 'Bankruptcy Code dollar amounts',
+      effective_date: '2025-04-01',
+      valid_through: '2028-03-31',
+      source_url: 'https://www.govinfo.gov/example',
+    };
+
+    /** The packet reply: the pair by default, with whatever the test adds */
+    function packetWith(extra: Record<string, unknown>, formTypes: string[] = PAIR) {
+      server.use(
+        http.get('http://localhost:8000/api/forms/packet/', () =>
+          HttpResponse.json({ session: 1, form_types: formTypes, tables: [], ...extra })
+        )
+      );
+    }
+
+    function storedForm(formType: string, id: number, extra: Record<string, unknown> = {}) {
+      return {
+        id,
+        session: 1,
+        form_type: formType,
+        form_type_display: formType,
+        status: 'generated',
+        status_display: 'Generated',
+        pdf_file_path: null,
+        generated_by: 1,
+        generated_at: '2026-01-20T10:00:00Z',
+        updated_at: '2026-01-20T10:00:00Z',
+        ...extra,
+      };
+    }
+
+    function formsWith(...forms: unknown[]) {
+      server.use(http.get('http://localhost:8000/api/forms/', () => HttpResponse.json(forms)));
+    }
+
+    /** The income test's notice, once the packet has loaded */
+    function resultRegion() {
+      return screen.queryByRole('status', { name: RESULT });
+    }
+
+    async function generateAll() {
+      await userEvent.click(await screen.findByRole('button', { name: /generate all/i }));
+      await userEvent.click(screen.getByRole('checkbox'));
+      await userEvent.click(screen.getByRole('button', { name: /continue/i }));
+    }
+
+    it('names each table set in its own words', async () => {
+      packetWith({ tables: [medianTable, standardsTable, section104Table] });
+      renderFormDashboard();
+
+      expect(
+        await screen.findByText(
+          'These forms use the median income figures the U.S. Trustee applies to cases filed on or after April 1, 2026. New figures are expected after March 31, 2027. If you file after that date, download your forms again.'
+        )
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          'These forms use the IRS expense standards the U.S. Trustee applies to cases filed on or after July 15, 2026.'
+        )
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          "These forms use the Bankruptcy Code's dollar amounts for cases filed on or after April 1, 2025. New figures are expected after March 31, 2028. If you file after that date, download your forms again."
+        )
+      ).toBeInTheDocument();
+    });
+
+    it('shows no sentence for a table it doesn’t know', async () => {
+      packetWith({ tables: [{ ...medianTable, name: 'Some other table' }] });
+      renderFormDashboard();
+
+      await screen.findByText('Form 121 - SSN Statement');
+      // UPL_FORM_DISCLAIMER also starts "These forms use", so only this notice's own words count
+      expect(
+        screen.queryByText(/the U\.S\. Trustee applies|dollar amounts for cases/)
+      ).not.toBeInTheDocument();
+    });
+
+    it('shows the result and the pair notice when the packet holds Form 122A-2', async () => {
+      packetWith({ outcome: 'presumption', family_size: 4, tables_gap: null });
+      renderFormDashboard();
+
+      await screen.findByText('Form 121 - SSN Statement');
+      const region = await screen.findByRole('status', { name: RESULT });
+      expect(within(region).getByText(MEANS_OUTCOME_PRESUMPTION)).toBeInTheDocument();
+      expect(within(region).getByText(PRESUMPTION_INSTRUCTIONS)).toBeInTheDocument();
+      expect(within(region).getAllByText(CLOSING)).toHaveLength(1);
+      expect(within(region).getByText(MEANS_PAIR_NOTICE)).toBeInTheDocument();
+      // The closing sentence follows the result's sentences and comes before the pair notice
+      const text = region.textContent!;
+      expect(text.indexOf(CLOSING)).toBeGreaterThan(text.indexOf(PRESUMPTION_INSTRUCTIONS));
+      expect(text.indexOf(MEANS_PAIR_NOTICE)).toBeGreaterThan(text.indexOf(CLOSING));
+    });
+
+    it('says the household size in the result for a result that can’t be worked out yet', async () => {
+      packetWith({ outcome: 'cannot_work_out', family_size: 3, tables_gap: null });
+      renderFormDashboard();
+
+      const region = await screen.findByRole('status', { name: RESULT });
+      expect(
+        within(region).getByText(
+          'Your income is above the median for a household of 3, so Form 122A-2 applies.'
+        )
+      ).toBeInTheDocument();
+      expect(within(region).getByText("Its result can't be worked out yet.")).toBeInTheDocument();
+    });
+
+    it('shows no result for a null outcome, and still shows the pair notice', async () => {
+      packetWith({ outcome: null, family_size: null, tables_gap: null });
+      renderFormDashboard();
+
+      const region = await screen.findByRole('status', { name: RESULT });
+      expect(within(region).getByText(MEANS_PAIR_NOTICE)).toBeInTheDocument();
+      expect(within(region).queryByText(CLOSING)).not.toBeInTheDocument();
+      expect(region.textContent).not.toMatch(/median|presumption/i);
+    });
+
+    // C8.2: a row saved before 3h1 has a family size but no outcome
+    it('decides whether to show a result from the outcome alone, never from the family size', async () => {
+      packetWith({ outcome: null, family_size: 4 });
+      renderFormDashboard();
+
+      const region = await screen.findByRole('status', { name: RESULT });
+      expect(within(region).queryByText(CLOSING)).not.toBeInTheDocument();
+      expect(region.textContent).not.toMatch(/household of 4/);
+    });
+
+    it('shows neither the result nor the pair notice without Form 122A-2', async () => {
+      packetWith({ outcome: 'at_or_below_median', family_size: 1 }, ['form_101', 'form_121']);
+      renderFormDashboard();
+
+      await screen.findByText('Form 121 - SSN Statement');
+      expect(resultRegion()).toBeNull();
+      expect(screen.queryByText(MEANS_PAIR_NOTICE)).not.toBeInTheDocument();
+      expect(screen.queryByText(CLOSING)).not.toBeInTheDocument();
+    });
+
+    it('lists the pair’s Generate All refusals apart from the others, as information', async () => {
+      const LETTER = 'The court form can’t print the letter “ą”. Change it.';
+      packetWith({ outcome: 'cannot_work_out', family_size: 4 });
+      server.use(
+        http.post('http://localhost:8000/api/forms/generate_all/', () =>
+          HttpResponse.json({
+            generated: [],
+            errors: [
+              { form_type: 'form_122a1', error: MEANS_HOLD_REFUSAL },
+              { form_type: 'form_121', error: LETTER, step: 'debtor_info' },
+              { form_type: 'form_122a2', error: MEANS_HOLD_REFUSAL },
+            ],
+            total_generated: 0,
+            total_errors: 3,
+          })
+        )
+      );
+      renderFormDashboard();
+      await generateAll();
+
+      const alert = await screen.findByRole('alert');
+      expect(alert).toHaveTextContent(/^1 form could not be generated\./);
+      expect(alert).toHaveTextContent(LETTER);
+      expect(alert).not.toHaveTextContent(/Form 122A/);
+
+      const pair = screen.getAllByText(MEANS_HOLD_REFUSAL, { exact: false });
+      expect(pair).toHaveLength(2);
+      const block = pair[0].closest('[role="status"]')!;
+      expect(block).toBe(pair[1].closest('[role="status"]'));
+      expect(block).toHaveTextContent('Form 122A-1 - Means Test');
+      expect(block).toHaveTextContent('Form 122A-2 - Means Test Expenses');
+      expect(block).not.toHaveTextContent(LETTER);
+    });
+
+    it('shows no alert at all when only the pair was refused', async () => {
+      packetWith({ outcome: 'cannot_work_out', family_size: 4 });
+      server.use(
+        http.post('http://localhost:8000/api/forms/generate_all/', () =>
+          HttpResponse.json({
+            generated: [],
+            errors: [{ form_type: 'form_122a2', error: MEANS_HOLD_REFUSAL }],
+            total_generated: 0,
+            total_errors: 1,
+          })
+        )
+      );
+      renderFormDashboard();
+      await generateAll();
+
+      await screen.findByText(MEANS_HOLD_REFUSAL, { exact: false });
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    });
+
+    it('a refused Mark as Filed shows on its card', async () => {
+      packetWith({ outcome: 'cannot_work_out', family_size: 4 });
+      formsWith(storedForm('form_122a1', 7));
+      server.use(
+        http.post('http://localhost:8000/api/forms/:id/mark_filed/', () =>
+          HttpResponse.json(
+            { form_type: 'form_122a1', error: MEANS_HOLD_REFUSAL, page: '/exemptions' },
+            { status: 422 }
+          )
+        )
+      );
+      renderFormDashboard();
+
+      const card = await screen.findByRole('article', { name: 'Form 122A-1 - Means Test' });
+      await userEvent.click(within(card).getByRole('button', { name: 'Mark as Filed' }));
+
+      expect(await within(card).findByText(MEANS_HOLD_REFUSAL)).toBeInTheDocument();
+      expect(
+        within(card).getByRole('link', { name: 'Go to The property you claim as exempt' })
+      ).toHaveAttribute('href', '/exemptions');
+      // Still unfiled
+      expect(within(card).getByRole('button', { name: 'Mark as Filed' })).toBeInTheDocument();
+      expect(within(card).queryByLabelText('Filed with court')).not.toBeInTheDocument();
+    });
+
+    it.each([
+      ['form_122a2', 'Form 122A-2 - Means Test Expenses', MEANS_FILED_BEFORE_122A2],
+      ['form_122a1', 'Form 122A-1 - Means Test', MEANS_FILED_BEFORE_122A1],
+    ])('shows a card notice for %s filed before 3h', async (formType, label, sentence) => {
+      packetWith({ outcome: 'cannot_work_out', family_size: 4 });
+      formsWith(storedForm(formType, 7, { status: 'filed', filed_before_means_test: true }));
+      renderFormDashboard();
+
+      const card = await screen.findByRole('article', { name: label });
+      const notice = within(card).getByText(sentence);
+      expect(notice).toHaveAttribute('role', 'status');
+    });
+
+    describe('the mismatch notice', () => {
+      const filed122a1 = (stored_box_2: boolean | null) =>
+        storedForm('form_122a1', 7, {
+          status: 'filed',
+          filed_before_means_test: false,
+          stored_box_2,
+        });
+
+      it('shows on a filed 122A-1 that stored box 1 while Form 122A-2 applies', async () => {
+        packetWith({ outcome: 'cannot_work_out', family_size: 4 });
+        formsWith(filed122a1(false));
+        renderFormDashboard();
+
+        const card = await screen.findByRole('article', { name: 'Form 122A-1 - Means Test' });
+        expect(within(card).getByText(MEANS_FILED_MISMATCH)).toBeInTheDocument();
+      });
+
+      it.each([
+        ['stored box 2', true],
+        ['stored nothing', null],
+      ])('does not show for a filed 122A-1 that %s', async (_, stored) => {
+        packetWith({ outcome: 'cannot_work_out', family_size: 4 });
+        formsWith(filed122a1(stored));
+        renderFormDashboard();
+
+        await screen.findByRole('article', { name: 'Form 122A-1 - Means Test' });
+        expect(screen.queryByText(MEANS_FILED_MISMATCH)).not.toBeInTheDocument();
+      });
+
+      it('does not show when Form 122A-2 is not in the packet', async () => {
+        packetWith({ outcome: 'at_or_below_median', family_size: 1 }, [
+          'form_101',
+          'form_121',
+          'form_122a1',
+        ]);
+        formsWith(filed122a1(false));
+        renderFormDashboard();
+
+        await screen.findByRole('article', { name: 'Form 122A-1 - Means Test' });
+        expect(screen.queryByText(MEANS_FILED_MISMATCH)).not.toBeInTheDocument();
+      });
+
+      it('does not show on a form filed before 3h, which has its own notice', async () => {
+        packetWith({ outcome: 'cannot_work_out', family_size: 4 });
+        formsWith(
+          storedForm('form_122a1', 7, {
+            status: 'filed',
+            filed_before_means_test: true,
+            stored_box_2: false,
+          })
+        );
+        renderFormDashboard();
+
+        const card = await screen.findByRole('article', { name: 'Form 122A-1 - Means Test' });
+        expect(within(card).getByText(MEANS_FILED_BEFORE_122A1)).toBeInTheDocument();
+        expect(within(card).queryByText(MEANS_FILED_MISMATCH)).not.toBeInTheDocument();
       });
     });
   });

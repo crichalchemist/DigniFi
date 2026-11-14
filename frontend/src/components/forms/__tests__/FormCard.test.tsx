@@ -16,6 +16,8 @@ const mockForm: GeneratedForm = {
   generated_by: 1,
   generated_at: '2026-01-20T10:00:00Z',
   updated_at: '2026-01-20T10:00:00Z',
+  filed_before_means_test: false,
+  stored_box_2: null,
 };
 
 describe('FormCard', () => {
@@ -188,6 +190,40 @@ describe('FormCard', () => {
     await user.click(screen.getByRole('button', { name: /download/i }));
 
     expect(onDownload).toHaveBeenCalledWith(1);
+  });
+
+  // ---------------------------------------------------------------------------
+  // Notice
+  // ---------------------------------------------------------------------------
+
+  it('shows a notice as information when given one', () => {
+    const { container } = render(
+      <MemoryRouter>
+        <FormCard
+          {...defaultProps}
+          generatedForm={{ ...mockForm, status: 'filed' as const }}
+          notice="This copy shows what was stored then."
+          refusal={{ message: 'A refusal.' }}
+        />
+      </MemoryRouter>
+    );
+
+    const notice = screen.getByText('This copy shows what was stored then.');
+    expect(notice).toHaveAttribute('role', 'status');
+    expect(notice).toHaveClass('form-card-notice');
+    // It comes before the refusal region
+    const refusal = container.querySelector('.form-card-refusal')!;
+    expect(notice.compareDocumentPosition(refusal) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('shows no notice without one', () => {
+    const { container } = render(
+      <MemoryRouter>
+        <FormCard {...defaultProps} generatedForm={mockForm} />
+      </MemoryRouter>
+    );
+
+    expect(container.querySelector('.form-card-notice')).toBeNull();
   });
 
   // ---------------------------------------------------------------------------

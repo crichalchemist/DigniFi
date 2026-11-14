@@ -58,8 +58,9 @@ test.describe('Priya Sharma — Ineligible', () => {
     expect(previewLower).not.toContain('rejected');
 
     // Should contain dignity-preserving alternative language —
-    // MeansTestPreview's fail verdict is "eligibility may need further review"
-    expect(previewLower).toContain('further review');
+    // Above the median, 3h1 can't work Form 122A-2 out yet: MeansTestPreview says so, and
+    // that being above the median doesn't mean a presumption of abuse applies
+    expect(previewLower).toContain("can't be worked out yet");
 
     await wizard.walkAssets(PRIYA);
 

@@ -688,3 +688,6 @@ export const EXEMPTIONS_LINE_3_NOTE =
 // Schedule C line 3-1 as printed
 export const EXEMPTIONS_LINE_3_1_QUESTION =
   'Did you acquire the property covered by the exemption within 1,215 days before you filed this case?';
+// Form 122A-2's instructions (PDF p. 35), as printed: shown with a presumption of abuse
+export const PRESUMPTION_INSTRUCTIONS =
+  'A presumption of abuse does not mean you are actually trying to abuse the bankruptcy system. Rather, the presumption simply means that you are presumed to have enough income that you should not be granted relief under chapter 7. You may overcome the presumption by showing special circumstances that reduce your income or increase your expenses.';

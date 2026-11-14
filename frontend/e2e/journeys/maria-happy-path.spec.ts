@@ -54,11 +54,11 @@ test.describe('Maria Torres — Happy Path', () => {
     await wizard.fillExpenses(MARIA);
     await wizard.nextStep();
 
-    // Means test sidebar should indicate eligibility
-    // (the estimate needs both income and expense data)
+    // Means test sidebar should say her income is at or below the median
+    // (the result needs both income and expense data)
     await wizard.waitForMeansTestEstimate();
     const preview = await wizard.getMeansTestPreview();
-    expect(preview.toLowerCase()).toContain('may be eligible');
+    expect(preview.toLowerCase()).toContain('at or below the median');
 
     // Step 5: Assets
     await wizard.walkAssets(MARIA);

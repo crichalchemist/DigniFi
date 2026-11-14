@@ -53,7 +53,7 @@ test.describe('James Washington — Borderline', () => {
     // (the estimate needs both income and expense data)
     await wizard.waitForMeansTestEstimate();
     const preview = await wizard.getMeansTestPreview();
-    expect(preview.toLowerCase()).toContain('eligible');
+    expect(preview.toLowerCase()).toContain('at or below the median');
 
     // Step 5: Assets (vehicle, household goods, bank account), Part by Part
     await wizard.walkAssets(JAMES);

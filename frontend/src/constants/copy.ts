@@ -86,14 +86,85 @@ export const FILING_FEE_CHOOSE_LINK = 'Choose how you will pay the fee';
 // Means Test Preview Copy
 // ============================================================================
 
-export const MEANS_TEST_PREVIEW_TITLE = 'Eligibility Estimate';
+// DRAFT: counsel C-24
+export const MEANS_TEST_PREVIEW_TITLE = 'Income test';
 
-export const MEANS_TEST_INCOMPLETE =
-  'We need your income details first. Then we can show an estimate.';
+// DRAFT: counsel C-24
+export const MEANS_TEST_UPDATING = 'Updating your result...';
+
+// DRAFT: counsel C-24
+export const MEANS_TEST_WAITING = "We'll show your result once you enter your income.";
+
+// DRAFT: counsel C-24
+export const MEANS_TEST_UNAVAILABLE =
+  "DigniFi can't show your result right now. This is not an error with your information.";
 
 export const MEANS_TEST_CALCULATING = 'Calculating...';
 
 export const MEANS_TEST_INCOME_LABEL = 'Monthly income for the means test';
+
+// DRAFT: counsel C-24
+export const MEANS_OUTCOME_BELOW =
+  "Your income is at or below the median for a household of {n} in Illinois. Form 122A-2 doesn't apply to you.";
+
+// DRAFT: counsel C-24
+export const MEANS_OUTCOME_ABOVE =
+  'Your income is above the median for a household of {n}, so Form 122A-2 applies.';
+
+// DRAFT: counsel C-24
+export const MEANS_OUTCOME_NOT_YET = "Its result can't be worked out yet.";
+
+// DRAFT: counsel C-24
+export const MEANS_OUTCOME_REASSURANCE =
+  "Being above the median doesn't mean a presumption of abuse applies.";
+
+// DRAFT: counsel C-24
+export const MEANS_OUTCOME_NO_PRESUMPTION =
+  "The form's arithmetic gives: There is no presumption of abuse.";
+
+// DRAFT: counsel C-24
+export const MEANS_OUTCOME_PRESUMPTION =
+  "The form's arithmetic gives: There is a presumption of abuse.";
+
+// DRAFT: counsel C-24
+export const MEANS_TABLE_MISSING =
+  "DigniFi doesn't have the means test figures for today's date yet, so it can't work out Form 122A-2.";
+
+// DRAFT: counsel C-24
+export const MEANS_HOLD_REFUSAL =
+  "DigniFi can't prepare Form 122A-2 yet, because it doesn't ask all of that form's questions yet. Form 122A-1 waits for it. File the two forms together.";
+
+// DRAFT: counsel C-24
+export const MEANS_PAIR_NOTICE =
+  'Form 122A-1 says your result is worked out on Form 122A-2. File them together.';
+
+// DRAFT: counsel C-24
+export const MEANS_FILED_BEFORE_122A2 =
+  'This copy was marked filed before DigniFi could fill in all of Form 122A-2. It shows what was stored then.';
+
+// DRAFT: counsel C-24
+export const MEANS_FILED_BEFORE_122A1 =
+  'This copy was marked filed before DigniFi could fill in Form 122A-2, which this form points to. It shows what was stored then.';
+
+// DRAFT: counsel C-24
+export const MEANS_FILED_MISMATCH =
+  "This copy doesn't say its result is worked out on Form 122A-2. Form 122A-2 now applies to you.";
+
+// DRAFT: counsel C-24
+export const TABLE_NOTICE_MEDIAN =
+  'These forms use the median income figures the U.S. Trustee applies to cases filed on or after {date}.';
+
+// DRAFT: counsel C-24
+export const TABLE_NOTICE_STANDARDS =
+  'These forms use the IRS expense standards the U.S. Trustee applies to cases filed on or after {date}.';
+
+// DRAFT: counsel C-24
+export const TABLE_NOTICE_SECTION_104 =
+  "These forms use the Bankruptcy Code's dollar amounts for cases filed on or after {date}.";
+
+// DRAFT: counsel C-24
+export const TABLE_NOTICE_NEW_FIGURES =
+  'New figures are expected after {date}. If you file after that date, download your forms again.';
 
 // DRAFT: counsel C-3
 export const MEDIAN_FOR_HOUSEHOLD_OF = 'Median for Household of';

@@ -3,12 +3,14 @@
  *
  * Calls the backend means test endpoint with a 500ms debounce.
  * Gracefully handles incomplete data by showing a friendly message
- * instead of propagating API errors.
+ * instead of propagating API errors. The words for a result come from its outcome
+ * (utils/meansOutcome.ts), never from this hook.
  */
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import type { MeansTestResult } from '../types/api';
 import { api, APIClientError } from '../api/client';
+import { MEANS_TEST_UNAVAILABLE, MEANS_TEST_WAITING } from '../constants/copy';
 
 interface UseDebouncedMeansTestOptions {
   /** Session ID to calculate means test for */
@@ -28,9 +30,6 @@ interface UseDebouncedMeansTestReturn {
   recalculate: () => void;
 }
 
-const INCOMPLETE_DATA_MESSAGE =
-  "We'll estimate your eligibility once you provide income and expense information.";
-
 export function useDebouncedMeansTest({
   sessionId,
   currentStep,
@@ -38,13 +37,13 @@ export function useDebouncedMeansTest({
 }: UseDebouncedMeansTestOptions): UseDebouncedMeansTestReturn {
   const [result, setResult] = useState<MeansTestResult | null>(null);
   const [isCalculating, setIsCalculating] = useState(false);
-  const [statusMessage, setStatusMessage] = useState<string | null>(INCOMPLETE_DATA_MESSAGE);
+  const [statusMessage, setStatusMessage] = useState<string | null>(MEANS_TEST_WAITING);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
   const calculate = useCallback(async () => {
     if (!sessionId || currentStep < 2) {
-      setStatusMessage(INCOMPLETE_DATA_MESSAGE);
+      setStatusMessage(MEANS_TEST_WAITING);
       return;
     }
 
@@ -68,11 +67,9 @@ export function useDebouncedMeansTest({
       // (no median table in force, income not entered by source), which says what stands in
       // the way better than asking for income they may already have given.
       if (err instanceof APIClientError && err.statusCode === 400) {
-        setStatusMessage(err.serverError || INCOMPLETE_DATA_MESSAGE);
+        setStatusMessage(err.serverError || MEANS_TEST_WAITING);
       } else {
-        setStatusMessage(
-          'Unable to estimate eligibility right now. This is not an error with your information.'
-        );
+        setStatusMessage(MEANS_TEST_UNAVAILABLE);
       }
     } finally {
       if (!abortRef.current?.signal.aborted) {

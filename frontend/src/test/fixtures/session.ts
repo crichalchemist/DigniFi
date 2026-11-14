@@ -132,8 +132,8 @@ export const createMockMeansTestResult = (
   cmi: 3500,
   median_income_threshold: 71304,
   family_size: 1,
-  message:
-    'Based on the information you provided, your income is at or below the median income threshold for your household size in your district.',
+  outcome: 'at_or_below_median',
+  tables_gap: null,
   details: {
     cmi: 3500,
     annualized_cmi: 42000,

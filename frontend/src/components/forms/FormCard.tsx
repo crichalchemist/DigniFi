@@ -25,6 +25,8 @@ interface FormCardProps {
   generatedForm?: GeneratedForm;
   /** A filed form whose type is no longer in the filer's packet */
   leftPacket?: boolean;
+  /** Information about this form, shown before any refusal (never a refusal itself) */
+  notice?: string;
   refusal?: FormRefusal;
   onGenerate: (formType: FormType) => Promise<void>;
   onDownload: (formId: number) => Promise<void>;
@@ -35,6 +37,7 @@ export function FormCard({
   formType,
   generatedForm,
   leftPacket = false,
+  notice,
   refusal,
   onGenerate,
   onDownload,
@@ -130,6 +133,12 @@ export function FormCard({
           </span>
         )}
       </div>
+
+      {notice && (
+        <p className="form-card-notice" role="status">
+          {notice}
+        </p>
+      )}
 
       {/* A polite live region from the start, so a screen reader reads out a refusal that
           Generate or Download adds to it (step 3a2 spec §4.5) */}

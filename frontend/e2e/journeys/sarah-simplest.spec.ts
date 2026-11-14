@@ -55,7 +55,7 @@ test.describe('Sarah Chen — Simplest Case', () => {
     await wizard.waitForMeansTestEstimate();
     const preview = await wizard.getMeansTestPreview();
     const previewLower = preview.toLowerCase();
-    expect(previewLower).toContain('eligible');
+    expect(previewLower).toContain('at or below the median');
 
     // Step 5: Assets — none to add: No on every line, Part by Part
     await wizard.walkAssets(SARAH);
