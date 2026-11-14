@@ -12,8 +12,10 @@ import {
   MEANS_FILED_BEFORE_122A2,
   MEANS_FILED_MISMATCH,
   MEANS_HOLD_REFUSAL,
+  MEANS_OUTCOME_NOT_YET,
   MEANS_OUTCOME_PRESUMPTION,
   MEANS_PAIR_NOTICE,
+  MEANS_TABLE_MISSING,
 } from '../../constants/copy';
 import { PRESUMPTION_INSTRUCTIONS } from '../../constants/formText';
 
@@ -1575,6 +1577,68 @@ describe('FormDashboard', () => {
       expect(screen.queryByText(CLOSING)).not.toBeInTheDocument();
       expect(screen.queryByText(PRESUMPTION_INSTRUCTIONS)).not.toBeInTheDocument();
       expect(screen.getByText(MEANS_PAIR_NOTICE)).toBeInTheDocument();
+    });
+
+    it('says a table is missing when Generate All’s reload finds one lapsed since the first read', async () => {
+      packetThen({ outcome: 'cannot_work_out', family_size: 3, tables_gap: null }, () =>
+        HttpResponse.json({
+          session: 1,
+          form_types: PAIR,
+          tables: [],
+          outcome: 'cannot_work_out',
+          family_size: 3,
+          tables_gap: 'IRS expense standards',
+        })
+      );
+      renderFormDashboard();
+      const region = await screen.findByRole('status', { name: RESULT });
+      expect(within(region).getByText(MEANS_OUTCOME_NOT_YET)).toBeInTheDocument();
+
+      await generateAll();
+
+      await waitFor(() => {
+        expect(
+          within(screen.getByRole('status', { name: RESULT })).getByText(MEANS_TABLE_MISSING)
+        ).toBeInTheDocument();
+      });
+      expect(screen.queryByText(MEANS_OUTCOME_NOT_YET)).not.toBeInTheDocument();
+    });
+
+    it('drops the result, and its closing sentence, when a reload after Mark as Filed fails', async () => {
+      let reads = 0;
+      formsWith(storedForm('form_101', 7));
+      server.use(
+        http.get('http://localhost:8000/api/forms/packet/', () => {
+          reads += 1;
+          if (reads === 1) {
+            return HttpResponse.json({
+              session: 1,
+              form_types: PAIR,
+              tables: [],
+              outcome: 'presumption',
+              family_size: 4,
+              tables_gap: null,
+            });
+          }
+          return HttpResponse.json({ detail: 'no' }, { status: 400 });
+        }),
+        http.post('http://localhost:8000/api/forms/:id/mark_filed/', () =>
+          HttpResponse.json({ message: 'Marked as filed' })
+        )
+      );
+      renderFormDashboard();
+      const region = await screen.findByRole('status', { name: RESULT });
+      expect(within(region).getByText(MEANS_OUTCOME_PRESUMPTION)).toBeInTheDocument();
+      const card = await screen.findByRole('article', { name: /Form 101/ });
+
+      await userEvent.click(within(card).getByRole('button', { name: 'Mark as Filed' }));
+
+      await waitFor(() => {
+        expect(reads).toBeGreaterThan(1);
+        expect(screen.queryByText(MEANS_OUTCOME_PRESUMPTION)).not.toBeInTheDocument();
+      });
+      expect(screen.queryByText(CLOSING)).not.toBeInTheDocument();
+      expect(screen.queryByText(PRESUMPTION_INSTRUCTIONS)).not.toBeInTheDocument();
     });
 
     it('shows neither the result nor the pair notice without Form 122A-2', async () => {
