@@ -196,6 +196,10 @@ def test_a_missing_122a2_table_refuses_only_the_pair_in_its_own_sentence(
     assert {r.getMessage() for r in caplog.records} == {
         "No IRS expense standards table in force on 2026-07-14 for district -"
     }
+    packet_reply = api_client.get("/api/forms/packet/", {"session": above.pk}).data
+    assert packet_reply["tables_gap"] == "IRS expense standards"
+    assert packet_reply["outcome"] == "cannot_work_out"
+    assert [t["name"] for t in packet_reply["tables"]] == ["Census median income"]
 
 
 @pytest.mark.django_db
