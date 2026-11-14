@@ -78,6 +78,14 @@ class GeneratedForm(models.Model):
         help_text="Schema/template version hash this form was filled against (reproducibility)",
     )
 
+    filed_before_means_test = models.BooleanField(
+        default=False,
+        help_text=(
+            "Set once by migration 0009 on a 122A-2, or a 122A-1 with box 2, filed before "
+            "Form 122A-2 printed every line (spec O11)."
+        ),
+    )
+
     # PDF storage (for MVP, store path; later could use S3)
     pdf_file_path = models.CharField(
         max_length=255,

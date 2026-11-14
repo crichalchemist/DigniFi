@@ -337,3 +337,63 @@ def test_a_below_median_filer_is_never_refused_for_a_missing_122a2_table(
         reply = _generate_all(api_client, session_with_debtor)
     assert reply["errors"] == []
     assert not [r for r in caplog.records if r.levelno >= logging.ERROR]
+
+
+@pytest.mark.django_db
+def test_marking_a_stale_122a1_filed_above_the_median_is_refused_and_leaves_it_unfiled(
+    api_client, session_with_debtor
+):
+    session = session_with_debtor
+    old = api_client.post(
+        "/api/forms/generate/", {"session_id": session.pk, "form_type": "form_122a1"}, format="json"
+    )
+    assert old.status_code == 200, old.data
+    row = GeneratedForm.objects.get(session=session, form_type="form_122a1")
+    _set_wages(session, "9000.00")
+
+    resp = api_client.post(f"/api/forms/{row.pk}/mark_filed/")
+
+    assert (resp.status_code, resp.data) == (
+        422,
+        {"form_type": "form_122a1", "error": FORM_122A2_NOT_ASKED},
+    )
+    row.refresh_from_db()
+    assert row.status == "generated"
+
+
+@pytest.mark.django_db
+def test_a_122a1_filed_with_box_1_below_the_median_downloads_as_stored_above_it(
+    api_client, session_with_debtor
+):
+    session = session_with_debtor
+    api_client.post(
+        "/api/forms/generate/", {"session_id": session.pk, "form_type": "form_122a1"}, format="json"
+    )
+    row = GeneratedForm.objects.get(session=session, form_type="form_122a1")
+    assert api_client.post(f"/api/forms/{row.pk}/mark_filed/").status_code == 200
+    row.refresh_from_db()
+    stored = row.field_values
+    _set_wages(session, "9000.00")
+
+    download = api_client.get(f"/api/forms/{row.pk}/download/")
+    listed = api_client.get("/api/forms/", {"session": session.pk}).data["results"]
+
+    assert download.status_code == 200
+    row.refresh_from_db()
+    assert row.field_values == stored
+    assert [r["stored_box_2"] for r in listed if r["form_type"] == "form_122a1"] == [False]
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("form_type", PAIR)
+def test_a_filed_pair_row_with_nothing_stored_is_refused_by_the_hold_above_the_median(
+    api_client, above, form_type
+):
+    row = GeneratedForm.objects.create(session=above, form_type=form_type, status="filed")
+
+    resp = api_client.get(f"/api/forms/{row.pk}/download/")
+
+    assert (resp.status_code, resp.data) == (
+        422,
+        {"form_type": form_type, "error": FORM_122A2_NOT_ASKED},
+    )

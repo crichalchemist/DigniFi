@@ -50,6 +50,9 @@ from .services.pdf_filler import (
 
 logger = logging.getLogger(__name__)
 
+# The two forms that say the means test's result is worked out on Form 122A-2.
+MEANS_PAIR = ("form_122a1", "form_122a2")
+
 
 class NotInPacket(Exception):
     """The form isn't part of this filer's packet (registry applies() is false)."""
@@ -492,11 +495,35 @@ class GeneratedFormViewSet(viewsets.ReadOnlyModelViewSet):
 
     @action(detail=True, methods=["post"])
     def mark_filed(self, request, pk=None):
-        """Mark form as filed with the court."""
+        """Mark form as filed with the court.
+
+        A 122A-1 or 122A-2 not yet filed is worked out again first, as its unfiled download is,
+        so the hold can't be gone around with a copy made before it (3h1 R7). The document it
+        was checked with is the one filed, and the one conditional update is the only write.
+        Any other row, or one already filed, is marked as before.
+        """
         generated_form = self.get_object()
 
-        generated_form.status = "filed"
-        generated_form.save(update_fields=["status", "updated_at"])
+        if generated_form.form_type in MEANS_PAIR and generated_form.status != "filed":
+            status_read = generated_form.status
+            try:
+                _prepare(generated_form.session)
+                document = _resolve(generated_form.form_type, generated_form.session)
+                PDFFormFiller().check(generated_form.form_type, document)
+                _store(generated_form, document)
+            except Exception as exc:
+                body, code = _failure(generated_form.form_type, exc)
+                return Response(body, status=code)
+            GeneratedForm.objects.filter(pk=generated_form.pk, status=status_read).update(
+                field_values=generated_form.field_values,
+                template_version=generated_form.template_version,
+                status="filed",
+                updated_at=timezone.now(),
+            )
+            generated_form.refresh_from_db(fields=["status"])
+        else:
+            generated_form.status = "filed"
+            generated_form.save(update_fields=["status", "updated_at"])
 
         return Response(
             {
