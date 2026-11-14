@@ -207,10 +207,17 @@ def _minus_floored(first: Value, second: Value) -> Decimal | _Sentinel:
     return difference if difference is MISSING else max(difference, ZERO)
 
 
-def _opt_in(opt_in: OptIn | None) -> Decimal | _Sentinel:
+def _yes_no(answer: str | None, field: str) -> str | None:
+    """The answer when it is yes, no or None; anything else raises, naming the field only."""
+    if answer is not None and answer not in ("yes", "no"):
+        raise ValueError(f"{field} must be yes or no.")
+    return answer
+
+
+def _opt_in(opt_in: OptIn | None, field: str) -> Decimal | _Sentinel:
     if opt_in is None:
         return MISSING
-    if opt_in.answer == "yes":
+    if _yes_no(opt_in.answer, f"{field}'s answer") == "yes":
         return _given(opt_in.amount)
     return SKIPPED
 
@@ -256,7 +263,7 @@ def _lines_1_to_4(inputs: MeansInputs) -> tuple[dict[str, Value], tuple[MeansRow
         two = two_filing = three_answer = three = MISSING
     elif marital == "married_together":
         two, two_filing = "yes", "no"
-        three_answer = MISSING if inputs.line_3_answer is None else inputs.line_3_answer
+        three_answer = _yes_no(inputs.line_3_answer, "line 3's answer") or MISSING
         if three_answer == "yes":
             rows = tuple(
                 MeansRow(purpose, _money(amount)) for purpose, amount in inputs.line_3_rows
@@ -392,7 +399,7 @@ def _vehicle_lines(
     elif count == 0:
         line_15 = SKIPPED
     else:
-        line_15 = _opt_in(inputs.line_15)
+        line_15 = _opt_in(inputs.line_15, "line 15")
     values: dict[str, Value] = {"11": count, "12": line_12, "14": line_14, "15": line_15}
     for number, (name_key, standard_key, debts_key, net_key) in enumerate(
         (("13_vehicle_1", "13a", "13b", "13c"), ("13_vehicle_2", "13d", "13e", "13f"))
@@ -415,15 +422,16 @@ def _line_25(health: HealthInsurance | None) -> dict[str, Value]:
     keys = ("25_answer", "25_health", "25_disability", "25_hsa", "25", "25_spends", "25_actual")
     if health is None:
         return dict.fromkeys(keys, MISSING)
-    if health.answer != "yes":
+    if _yes_no(health.answer, "line 25's answer") != "yes":
         return dict.fromkeys(keys, SKIPPED)
     amounts = (_given(health.health), _given(health.disability), _given(health.hsa))
-    if health.actually_spends is None:
+    spends_answer = _yes_no(health.actually_spends, "line 25's actually-spends answer")
+    if spends_answer is None:
         spends = actual = MISSING
-    elif health.actually_spends == "no":
+    elif spends_answer == "no":
         spends, actual = "no", _given(health.actual)
     else:
-        spends, actual = health.actually_spends, SKIPPED
+        spends, actual = "yes", SKIPPED
     return {
         "25_answer": "yes",
         "25_health": amounts[0],
@@ -438,7 +446,7 @@ def _line_25(health: HealthInsurance | None) -> dict[str, Value]:
 def _line_34(
     inputs: MeansInputs, groups: dict[str, list[SecuredDebt]], waiting: bool
 ) -> tuple[dict[str, Value], tuple[MeansRow, ...]]:
-    answer = inputs.line_34_answer
+    answer = _yes_no(inputs.line_34_answer, "line 34's answer")
     if answer is None:
         return {"34_answer": MISSING, "34": MISSING}, ()
     if answer != "yes":
@@ -447,9 +455,10 @@ def _line_34(
     unanswered = waiting
     for key in ("9b", "13b", "13e", "33d"):
         for debt in groups[key]:
-            if debt.necessary_for_support is None:
+            necessary = _yes_no(debt.necessary_for_support, "necessary_for_support")
+            if necessary is None:
                 unanswered = True
-            elif debt.necessary_for_support == "yes":
+            elif necessary == "yes":
                 if debt.cure is None:
                     unanswered = True
                 elif debt.cure > ZERO:
@@ -475,7 +484,7 @@ def _lines_35_and_36(inputs: MeansInputs, tables: MeansTables) -> dict[str, Valu
         thirty_five = {"35_answer": "yes", "35_total": total, "35": _money(total / MONTHS)}
     else:
         thirty_five = {"35_answer": "no", "35_total": SKIPPED, "35": SKIPPED}
-    answer = inputs.line_36_answer
+    answer = _yes_no(inputs.line_36_answer, "line 36's answer")
     if answer is None:
         thirty_six = dict.fromkeys(("36_answer", "36_payment", "36_multiplier", "36"), MISSING)
     elif answer == "yes":
@@ -499,11 +508,16 @@ def _lines_35_and_36(inputs: MeansInputs, tables: MeansTables) -> dict[str, Valu
     return {**thirty_five, **thirty_six}
 
 
+def _in_band(line_39d: Decimal, low: Decimal, high: Decimal) -> bool:
+    """Whether line 39d sits in the middle band; both edges are in it."""
+    return low <= line_39d <= high
+
+
 def compare(line_39d: Decimal, line_41b: Decimal | None, low: Decimal, high: Decimal) -> Comparison:
     """Line 40's three boxes and, in the middle band, line 42; both edges are in the band."""
-    if line_39d < low:
-        return Comparison("1", None, NO_PRESUMPTION)
-    if line_39d > high:
+    if not _in_band(line_39d, low, high):
+        if line_39d < low:
+            return Comparison("1", None, NO_PRESUMPTION)
         return Comparison("2", None, PRESUMPTION)
     if line_41b is None:
         raise ValueError("Line 41b is needed to compare line 39d in the middle band.")
@@ -528,7 +542,7 @@ def work_out(inputs: MeansInputs, tables: MeansTables) -> MeansLines:
 
     for key in ("16", "17", "18", "19", "20", "21", "23"):
         values[key] = _given(getattr(inputs, f"line_{key}"))
-    values["22"] = _opt_in(inputs.line_22)
+    values["22"] = _opt_in(inputs.line_22, "line 22")
     values["24"] = _add(
         *(values[key] for key in ("6", "7g", "8", "9c", "12", "13c", "13f", "14", "15")),
         *(values[key] for key in ("16", "17", "18", "19", "20", "21", "22", "23")),
@@ -536,7 +550,7 @@ def work_out(inputs: MeansInputs, tables: MeansTables) -> MeansLines:
 
     values.update(_line_25(inputs.line_25))
     for key in ("26", "27", "28", "29", "30", "31"):
-        values[key] = _opt_in(getattr(inputs, f"line_{key}"))
+        values[key] = _opt_in(getattr(inputs, f"line_{key}"), f"line {key}")
     values["32"] = _add(
         values["25"], *(values[key] for key in ("26", "27", "28", "29", "30", "31"))
     )
@@ -561,7 +575,7 @@ def work_out(inputs: MeansInputs, tables: MeansTables) -> MeansLines:
         outcome = CANNOT_WORK_OUT
         reaches_43 = None
     else:
-        in_band = tables.presumption_low <= values["39d"] <= tables.presumption_high
+        in_band = _in_band(values["39d"], tables.presumption_low, tables.presumption_high)
         line_41a = _money(inputs.line_41a) if in_band else SKIPPED
         line_41b = _money(line_41a * QUARTER) if in_band else SKIPPED
         comparison = compare(

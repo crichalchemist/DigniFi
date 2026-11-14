@@ -310,6 +310,7 @@ def test_each_line_rounds_half_even_and_later_lines_add_the_printed_figures():
             {"13b", "13c", "33b", "33e", "37"},
         ),
         ({"line_35_past_due": None}, {"35_answer", "35_total", "35", "37"}),
+        ({"line_3_answer": None}, {"3_answer", "3", "4", "39a", "39c", "39d"}),
     ],
 )
 def test_a_missing_input_leaves_its_line_and_the_result_blank(change, missing):
@@ -346,6 +347,7 @@ def test_a_mortgage_above_the_housing_standard_floors_9c_at_zero():
     assert lines.lines["9b"] == D("3000.00") and lines.lines["9c"] == D("0.00")
     assert lines.rows["9b"] == (MeansRow("Demo Mortgage Co", D("3000.00"), property="Demo house"),)
     assert lines.lines["33a"] == D("3000.00")
+    assert lines.lines["24"] == D("7868.50") and lines.lines["33e"] == D("3277.50")
 
 
 def test_a_renter_has_no_9b_rows_and_9c_is_the_standard():
@@ -359,6 +361,7 @@ def test_with_no_vehicle_line_14_takes_public_transportation_and_12_to_13f_are_s
     assert lines["11"] == 0 and lines["14"] == D("220.00") and lines["15"] is SKIPPED
     skipped = ("12", "13_vehicle_1", "13_vehicle_2", "13a", "13b", "13c", "13d", "13e", "13f")
     assert all(lines[key] is SKIPPED for key in skipped)
+    assert lines["24"] == D("9548.00")
 
 
 def test_a_vehicle_owned_outright_and_claimed_takes_line_12_and_no_slot():
@@ -400,6 +403,9 @@ def test_a_third_claimed_vehicle_with_a_loan_goes_to_33d_and_line_12_takes_two_c
     assert [row.label for row in lines.rows["33d"]] == ["Demo lender 3"]
     assert [row.label for row in lines.rows["13e"]] == ["Demo lender 2"]
     assert lines.lines["33d"] == D("277.50")
+    assert lines.lines["13d"] == D("703.00") and lines.lines["13f"] == D("425.50")
+    assert lines.lines["33c"] == D("277.50")
+    assert lines.lines["24"] == D("10847.00") and lines.lines["33e"] == D("832.50")
 
 
 def test_three_financed_vehicles_with_no_choice_leave_the_slots_missing():
@@ -574,7 +580,7 @@ def test_a_33d_row_keeps_the_filers_taxes_or_insurance_answer_and_no_answer_stay
     unanswered = replace(KESTREL, debt_id=2, asset_id=None)
     lines = work_out(replace(PRIYA, secured_debts=(other, unanswered)), TABLES)
     assert [row.flag for row in lines.rows["33d"]] == ["yes", None]
-    assert lines.lines["33d"] == D("555.00")
+    assert lines.lines["33d"] == D("555.00") and lines.lines["33e"] == D("555.00")
 
 
 def test_line_43_never_changes_a_box_or_the_outcome():
@@ -615,3 +621,56 @@ def test_a_district_with_no_multiplier_raises_only_when_line_36_asks_for_it():
     with pytest.raises(MeansTableKeyMissing) as refused:
         work_out(replace(PRIYA, district="ilcd"), TABLES)
     assert "ilcd" not in str(refused.value)
+
+
+def test_an_opt_in_yes_on_line_15_or_22_raises_line_24_by_its_amount():
+    base = figures(PRIYA)["24"]
+    assert figures(replace(PRIYA, line_15=OptIn("yes", D("40.00"))))["24"] == base + D("40.00")
+    assert figures(replace(PRIYA, line_22=OptIn("yes", D("15.00"))))["24"] == base + D("15.00")
+
+
+def test_every_amount_prints_to_the_cent_and_every_count_is_a_whole_number():
+    lines = work_out(PRIYA, TABLES).lines
+    for key, value in lines.items():
+        if isinstance(value, Decimal) and key != "36_multiplier":
+            assert value.as_tuple().exponent == -2, key
+    for key in ("5", "7b", "7e", "11"):
+        assert type(lines[key]) is int, key
+
+
+def _health(**changes):
+    return replace(PRIYA, line_25=replace(PRIYA.line_25, **changes))
+
+
+def _with_debt(answer):
+    debt = replace(KESTREL, necessary_for_support=answer, cure=D("60.00"))
+    return replace(PRIYA, line_34_answer="yes", secured_debts=(debt,))
+
+
+@pytest.mark.parametrize(
+    "build, field",
+    [
+        (lambda a: replace(PRIYA, line_3_answer=a), "line 3's answer"),
+        (lambda a: replace(PRIYA, line_15=OptIn(a)), "line 15's answer"),
+        (lambda a: replace(PRIYA, line_22=OptIn(a)), "line 22's answer"),
+        (lambda a: replace(PRIYA, line_27=OptIn(a)), "line 27's answer"),
+        (lambda a: _health(answer=a), "line 25's answer"),
+        (lambda a: _health(actually_spends=a), "line 25's actually-spends answer"),
+        (lambda a: replace(PRIYA, line_34_answer=a), "line 34's answer"),
+        (lambda a: replace(PRIYA, line_36_answer=a), "line 36's answer"),
+        (_with_debt, "necessary_for_support"),
+    ],
+)
+@pytest.mark.parametrize("answer", ["Yes", ""])
+def test_a_yes_no_answer_that_is_neither_raises_instead_of_reading_as_no(build, field, answer):
+    with pytest.raises(ValueError) as refused:
+        work_out(build(answer), TABLES)
+    assert str(refused.value) == f"{field} must be yes or no."
+    assert "Yes" not in str(refused.value)
+
+
+def test_the_middle_band_is_decided_once_for_line_40_and_lines_41a_and_41b():
+    for line_1, in_band in ((D("11782.84"), False), (D("11782.85"), True)):
+        lines = work_out(replace(PRIYA, line_1=line_1), TABLES).lines
+        assert (lines["40"] == "On") is in_band
+        assert (lines["41b"] is not SKIPPED) is in_band
