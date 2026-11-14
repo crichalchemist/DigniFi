@@ -6,15 +6,16 @@ Tests cover:
 - Above-median income (fails means test)
 - At-median income (edge case: counts as below the median, DIG-136), and CMI rounded to the cent
 - All household sizes (1-8), counted from the household list
-- No fee-waiver verdict at any income: the result, its details, the breakdown and the message carry none (3f spec §9)
+- No fee-waiver verdict at any income: the result and its details carry none (3f spec §9)
 - Missing income_info raises ValueError
 - None session raises ValueError
 - A total saved before income was stored by source is never read (IncomeNotSplit)
-- UPL prohibited phrase scanning in all messages
+- No sentence in the reply: no message key, and every string is a code, a name or a figure
 - Recalculation idempotency (calculate twice, only 1 MeansTest record)
 """
 
 import json
+import re
 from datetime import date
 from decimal import Decimal
 
@@ -29,8 +30,6 @@ from apps.eligibility.services.means_test_calculator import MeansTestCalculator
 from apps.forms.registry import build_field_values, packet
 from apps.forms.services.derivations import DERIVATIONS
 from apps.intake.models import (
-    AssetInfo,
-    DebtInfo,
     DebtorInfo,
     ExpenseInfo,
     Household,
@@ -241,7 +240,8 @@ class TestAboveMedianIncomeFailsMeansTest:
         calculator = MeansTestCalculator(session)
         result = calculator.calculate()
 
-        assert result["passes_means_test"] is False
+        assert result["outcome"] == "cannot_work_out"
+        assert result["passes_means_test"] is None
         assert result["cmi"] == Decimal("80000.00")
         assert result["median_income_threshold"] == Decimal("71304.00")
         assert result["family_size"] == 1
@@ -268,7 +268,8 @@ class TestAboveMedianIncomeFailsMeansTest:
         calculator = MeansTestCalculator(session)
         result = calculator.calculate()
 
-        assert result["passes_means_test"] is False
+        assert result["outcome"] == "cannot_work_out"
+        assert result["passes_means_test"] is None
         assert result["cmi"] == Decimal("140000.00")
         assert result["median_income_threshold"] == Decimal("110712.00")
         assert result["family_size"] == 3  # Filer + 2 children at home
@@ -294,10 +295,8 @@ class TestAtMedianIncomeEdgeCase:
         result = calculator.calculate()
 
         assert result["passes_means_test"] is True
-        assert result["above_median_calculated"] is False
-        # § 707(b)(7) reads "equal to or less than": "below" alone is untrue for this filer (W-1)
-        assert "your income is at or below the median" in result["message"]
-        assert "debtors with income at or below the median" in result["message"]
+        # § 707(b)(7) reads "equal to or less than": at the median is not above it (W-1)
+        assert result["outcome"] == "at_or_below_median"
         assert result["cmi"] == Decimal("5942.00")
         assert result["median_income_threshold"] == Decimal("71304.00")
         assert "form_122a2" not in packet(session)
@@ -312,9 +311,8 @@ class TestAtMedianIncomeEdgeCase:
 
         result = MeansTestCalculator(session).calculate()
 
-        assert result["passes_means_test"] is False
-        assert result["above_median_calculated"] is True
-        assert "your income is above the median" in result["message"]
+        assert result["outcome"] == "cannot_work_out"
+        assert result["passes_means_test"] is None
         assert "form_122a2" in packet(session)
 
     def test_fractional_cent_cmi_rounds_before_the_median_comparison(self, session, median_income):
@@ -396,9 +394,8 @@ class TestNoFeeWaiverVerdict:
         assert result["passes_means_test"] is True  # every figure is under the $5,942 median
         assert "qualifies_for_fee_waiver" not in result
         assert "qualifies_fee_waiver" not in result["details"]
-        assert "qualifies_for_fee_waiver" not in calculator.get_detailed_breakdown()["results"]
-        assert "fee waiver" not in result["message"].lower()
-        assert "1930" not in result["message"]
+        assert result["outcome"] == "at_or_below_median"
+        assert "message" not in result
 
     def test_a_means_test_row_stores_no_fee_waiver_verdict(self):
         assert "qualifies_for_fee_waiver" not in {f.name for f in MeansTest._meta.get_fields()}
@@ -428,105 +425,52 @@ class TestTotalSavedBeforeIncomeBySource:
             calculator.calculate()
 
 
+def _every_string(value):
+    """Every string in a reply, keys included, through nested dicts and lists."""
+    if isinstance(value, str):
+        yield value
+    elif isinstance(value, dict):
+        for key, item in value.items():
+            yield key
+            yield from _every_string(item)
+    elif isinstance(value, list | tuple):
+        for item in value:
+            yield from _every_string(item)
+
+
+# What a string in the reply may be: a key, a code, a table name, a date, a URL, an amount
+# as a string, the statute citation, or empty.
+_ALLOWED_STRINGS = re.compile(
+    r"^$|^[a-z0-9_]+$|^-?\d+(\.\d+)?$|^\d{4}-\d{2}-\d{2}([T ][0-9:.+\-Z]+)?$|^https?://\S+$"
+)
+_TABLE_NAMES_AND_CITATION = {
+    "Census median income",
+    "IRS expense standards",
+    "Bankruptcy Code dollar amounts",
+    "11 U.S.C. § 707(b)",
+}
+
+
 @pytest.mark.django_db
-class TestUPLProhibitedPhrases:
-    """Tests scanning messages for UPL prohibited phrases."""
+class TestTheReplyCarriesNoSentence:
+    """No sentence leaves the server (R12): the browser composes the outcome's words, so the
+    UPL scan of those words is the frontend's. What the reply holds is codes and figures."""
 
-    def test_passing_message_contains_no_upl_violations(self, session, median_income):
-        """Test that passing means test message contains no UPL prohibited phrases."""
+    @pytest.mark.parametrize("wages", ["5000.00", "80000.00"])
+    def test_the_reply_holds_no_message_and_no_sentence(self, session, median_income, wages):
         _income(
             session=session,
             marital_status="not_married",
-            monthly_gross_wages=Decimal("5000.00"),
+            monthly_gross_wages=Decimal(wages),
         )
 
-        calculator = MeansTestCalculator(session)
-        result = calculator.calculate()
+        result = MeansTestCalculator(session).calculate()
 
-        message = result["message"].lower()
-
-        # Check all prohibited phrases from settings
-        for phrase in settings.UPL_PROHIBITED_PHRASES:
-            assert (
-                phrase.lower() not in message
-            ), f"UPL prohibited phrase '{phrase}' found in message: {message}"
-
-    def test_failing_message_contains_no_upl_violations(self, session, median_income):
-        """Test that failing means test message contains no UPL prohibited phrases."""
-        _income(
-            session=session,
-            marital_status="not_married",
-            monthly_gross_wages=Decimal("80000.00"),
-        )
-
-        calculator = MeansTestCalculator(session)
-        result = calculator.calculate()
-
-        message = result["message"].lower()
-
-        # Check all prohibited phrases from settings
-        for phrase in settings.UPL_PROHIBITED_PHRASES:
-            assert (
-                phrase.lower() not in message
-            ), f"UPL prohibited phrase '{phrase}' found in message: {message}"
-
-    def test_a_very_low_income_message_contains_no_upl_violations(self, session, median_income):
-        """The message a filer far below the median sees contains no UPL prohibited phrase."""
-        _income(
-            session=session,
-            marital_status="not_married",
-            monthly_gross_wages=Decimal("3000.00"),
-        )
-
-        calculator = MeansTestCalculator(session)
-        result = calculator.calculate()
-
-        message = result["message"].lower()
-
-        # Check all prohibited phrases from settings
-        for phrase in settings.UPL_PROHIBITED_PHRASES:
-            assert (
-                phrase.lower() not in message
-            ), f"UPL prohibited phrase '{phrase}' found in the message: {message}"
-
-    def test_above_median_passing_message_contains_no_upl_violations(
-        self, session_with_above_median_income
-    ):
-        """The message an above-median filer who passes the expense test sees (DIG-128). The
-        stored MeansTest row is marked passing because the calculator can't pass an above-median
-        filer until 3h restores the priority deduction."""
-        session = session_with_above_median_income
-        _expenses_at_the_caps(session)
-        calculator = MeansTestCalculator(session)
-        calculator.calculate()
-        # No real input reaches the passing branch while the deduction is $0 (rulings R5)
-        means_test = MeansTest.objects.get(session=session)
-        means_test.passes_above_median = True
-        message = calculator._generate_upl_compliant_message(means_test).lower()
-
-        # Check all prohibited phrases from settings
-        for phrase in settings.UPL_PROHIBITED_PHRASES:
-            assert (
-                phrase.lower() not in message
-            ), f"UPL prohibited phrase '{phrase}' found in above-median message: {message}"
-
-    def test_message_contains_permitted_informational_language(self, session, median_income):
-        """Test that messages use permitted informational language."""
-        _income(
-            session=session,
-            marital_status="not_married",
-            monthly_gross_wages=Decimal("5000.00"),
-        )
-
-        calculator = MeansTestCalculator(session)
-        result = calculator.calculate()
-
-        message = result["message"].lower()
-
-        # Check for permitted informational phrases
-        assert (
-            "may be eligible" in message or "typically" in message
-        ), "Message should use informational language like 'may be eligible' or 'typically'"
+        assert "message" not in result
+        for text in _every_string(result):
+            assert text in _TABLE_NAMES_AND_CITATION or _ALLOWED_STRINGS.match(text), text
+            for phrase in settings.UPL_PROHIBITED_PHRASES:
+                assert phrase.lower() not in text.lower()
 
 
 @pytest.mark.django_db
@@ -579,7 +523,8 @@ class TestRecalculationIdempotency:
         result2 = calculator.calculate()
 
         # Should now fail means test
-        assert result2["passes_means_test"] is False
+        assert result2["outcome"] == "cannot_work_out"
+        assert result2["passes_means_test"] is None
         assert result2["cmi"] == Decimal("80000.00")
 
         # Still only 1 MeansTest record
@@ -662,79 +607,6 @@ class TestIncomeFromSeveralSources:
 
 
 @pytest.mark.django_db
-class TestDetailedBreakdown:
-    """Tests for get_detailed_breakdown() method."""
-
-    def test_detailed_breakdown_before_calculation_raises_error(self, session, median_income):
-        """Test that get_detailed_breakdown() before calculate() raises ValueError."""
-        _income(
-            session=session,
-            marital_status="not_married",
-            monthly_gross_wages=Decimal("5000.00"),
-        )
-
-        calculator = MeansTestCalculator(session)
-
-        with pytest.raises(
-            ValueError,
-            match="Means test has not been calculated yet. Call calculate\\(\\) first.",
-        ):
-            calculator.get_detailed_breakdown()
-
-    def test_detailed_breakdown_after_calculation(self, session, median_income):
-        """Test that get_detailed_breakdown() returns complete data after calculation."""
-        # $5,000/month = $60,000/year: below the $71,304 median (passes)
-        _income(
-            session=session,
-            marital_status="not_married",
-            monthly_gross_wages=Decimal("5000.00"),
-        )
-
-        calculator = MeansTestCalculator(session)
-        calculator.calculate()
-
-        breakdown = calculator.get_detailed_breakdown()
-
-        # Verify structure
-        assert "income_history" in breakdown
-        assert "family_composition" in breakdown
-        assert "means_test_threshold" in breakdown
-        assert "results" in breakdown
-
-        # Verify income history
-        assert breakdown["income_history"]["average_cmi"] == 5000.00
-        assert breakdown["income_history"]["by_source"] == {
-            "monthly_gross_wages": 5000.0,
-            "monthly_overtime": None,
-            "monthly_tips": None,
-            "monthly_interest_and_dividends": None,
-            "monthly_pension": None,
-            "monthly_social_security": None,
-            "monthly_unemployment": None,
-            "monthly_child_support": None,
-            "monthly_alimony": None,
-            "monthly_other_income": None,
-        }
-
-        # Verify family composition
-        assert breakdown["family_composition"] == {
-            "marital_status": "not_married",
-            "total_family_size": 1,
-        }
-
-        # Verify means test threshold: dated by the median table, not by the calculation
-        assert breakdown["means_test_threshold"]["median_income"] == 71304.00
-        assert breakdown["means_test_threshold"]["effective_date"] == "2025-11-01"
-        assert breakdown["means_test_threshold"]["district"] == "ILND"
-
-        # Verify results
-        assert breakdown["results"] == {
-            "passes_means_test": True,
-            "statute_citation": "11 U.S.C. § 707(b)",
-        }
-
-
-@pytest.mark.django_db
 class TestAnnualizedComparison:
     """CMI is monthly; the Census median is annual (11 U.S.C. § 707(b)(7)).
 
@@ -753,7 +625,8 @@ class TestAnnualizedComparison:
 
         result = MeansTestCalculator(session).calculate()
 
-        assert result["passes_means_test"] is False
+        assert result["outcome"] == "cannot_work_out"
+        assert result["passes_means_test"] is None
         assert result["details"]["annualized_cmi"] == 120000.00
 
 
@@ -790,7 +663,8 @@ class TestTheOldHouseholdSizeBox:
         # looked up, but above the family-of-1 median ($71,304) the list gives
         assert result["family_size"] == 1
         assert result["median_income_threshold"] == Decimal("71304.00")
-        assert result["passes_means_test"] is False
+        assert result["outcome"] == "cannot_work_out"
+        assert result["passes_means_test"] is None
 
 
 @pytest.fixture
@@ -825,137 +699,24 @@ def session_with_above_median_income(user, district, median_income):
     return s
 
 
-@pytest.fixture
-def session_with_below_median_income(user, district, median_income):
-    """Create session with below-median income."""
-    s = IntakeSession.objects.create(
-        user=user,
-        district=district,
-        status="in_progress",
-        current_step=2,
-    )
-    DebtorInfo.objects.create(
-        session=s,
-        first_name="Below",
-        last_name="Median",
-        ssn="987654321",
-        date_of_birth=date(1990, 1, 1),
-        phone="3125550002",
-        email="below@example.com",
-        street_address="2 Main St",
-        city="Chicago",
-        state="IL",
-        zip_code="60601",
-        household_size=1,
-    )
-    _income(
-        session=s,
-        marital_status="not_married",
-        monthly_gross_wages=Decimal("5000.00"),
-    )
-    answer_household(s)
-    return s
-
-
 @pytest.mark.django_db
-class TestAboveMedianCalculation:
-    """Tests for above-median means test pathway."""
+class TestRecalculatingAcrossTheMedian:
+    """DIG-128: a recalculation at or below the median leaves no above-median result behind."""
 
-    def test_above_median_sets_calculated_flag(self, session_with_above_median_income):
-        """Above-median filer should have above_median_calculated=True."""
-        calculator = MeansTestCalculator(session_with_above_median_income)
-        result = calculator.calculate()
-        assert result["above_median_calculated"] is True
-
-    def test_above_median_calculates_disposable_income(self, session_with_above_median_income):
-        """Above-median filer should have disposable_income populated."""
-        calculator = MeansTestCalculator(session_with_above_median_income)
-        result = calculator.calculate()
-        assert result["disposable_income"] is not None
-
-    def test_above_median_result_has_allowable_expenses(self, session_with_above_median_income):
-        """Result should include total_allowable_expenses."""
-        calculator = MeansTestCalculator(session_with_above_median_income)
-        result = calculator.calculate()
-        assert result["total_allowable_expenses"] >= Decimal("0")
-
-    def test_below_median_does_not_calculate_above_median(self, session_with_below_median_income):
-        """Below-median filer should NOT have above_median_calculated=True."""
-        calculator = MeansTestCalculator(session_with_below_median_income)
-        result = calculator.calculate()
-        assert result["above_median_calculated"] is False
-
-
-def _expenses_at_the_caps(session):
-    """Expenses at the IRS caps ($2,799 allowed for one person, the car's $283 a linked loan):
-    $7,000 of CMI less $2,799 leaves $4,201 of disposable income."""
-    ExpenseInfo.objects.create(
-        session=session,
-        rent_or_mortgage=Decimal("1730.00"),
-        food_and_groceries=Decimal("713.00"),
-        medical_expenses=Decimal("73.00"),
-    )
-    car = AssetInfo(session=session, ab_line="3", description="Demo car")
-    car.set_details({})
-    car.save()
-    DebtInfo.objects.create(
-        session=session,
-        creditor_name="Demo Auto Lender",
-        debt_type="other",
-        amount_owed=Decimal("9000.00"),
-        monthly_payment=Decimal("283.00"),
-        is_secured=True,
-        secured_by=car,
-    )
-
-
-@pytest.mark.django_db
-class TestAboveMedianResultAndMessage:
-    """DIG-128: the message says which side of the median the filer is on before it says
-    anything about the expense test, and a recalculation at or below the median leaves no
-    above-median result behind."""
-
-    def test_above_median_filer_who_passes_is_not_told_below_median(
-        self, session_with_above_median_income
-    ):
-        """The stored MeansTest row is marked passing because the calculator can't pass an
-        above-median filer until 3h restores the priority deduction (R5)."""
-        session = session_with_above_median_income
-        _expenses_at_the_caps(session)
-        calculator = MeansTestCalculator(session)
-        calculator.calculate()
-        # No real input reaches the passing branch while the deduction is $0 (rulings R5)
-        means_test = MeansTest.objects.get(session=session)
-        means_test.passes_above_median = True
-        message = calculator._generate_upl_compliant_message(means_test)
-
-        assert "below the median" not in message
-        assert "your income is above the median" in message
-        assert "may still be eligible" in message
-
-    def test_recalculating_below_the_median_clears_the_above_median_results(
+    def test_recalculating_below_the_median_gives_at_or_below_median(
         self, session_with_above_median_income
     ):
         session = session_with_above_median_income
-        _expenses_at_the_caps(session)
         first = MeansTestCalculator(session).calculate()
-        assert first["above_median_calculated"] is True
-        assert first["passes_above_median"] is False
-        assert first["total_allowable_expenses"] == Decimal("2799.00")
-        assert first["priority_debts_monthly"] == Decimal("0")
-        assert first["disposable_income"] == Decimal("4201.00")
+        assert (first["outcome"], first["passes_means_test"]) == ("cannot_work_out", None)
 
         session.income_info.monthly_gross_wages = Decimal("5000.00")
         session.income_info.save()
-        MeansTestCalculator(session).calculate()
+        second = MeansTestCalculator(session).calculate()
 
         stored = MeansTest.objects.get(session=session)
-        assert stored.passes_means_test is True
-        assert stored.above_median_calculated is False
-        assert stored.passes_above_median is False
-        assert stored.total_allowable_expenses == Decimal("0")
-        assert stored.disposable_income == Decimal("0")
-        assert stored.priority_debts_monthly == Decimal("0")
+        assert (second["outcome"], second["details"]["tables"]) == ("at_or_below_median", [])
+        assert (stored.outcome, stored.passes_means_test) == ("at_or_below_median", True)
 
 
 @pytest.mark.django_db
@@ -1013,9 +774,8 @@ class TestAboveMedianEndToEnd:
         )
 
         result = MeansTestCalculator(session).calculate()
-        assert result["passes_means_test"] is False  # Above median
-        assert session.means_test.above_median_calculated is True
-        assert session.means_test.disposable_income is not None
+        assert result["outcome"] == "cannot_work_out"
+        assert result["passes_means_test"] is None
 
         values = build_field_values("form_122a2", session)
         assert "Bankruptcy District Information" in values

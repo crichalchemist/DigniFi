@@ -1562,13 +1562,11 @@ class Command(BaseCommand):
             )
 
         # Run means test calculation
-        calculator = MeansTestCalculator(session)
-        result = calculator.calculate()
+        MeansTestCalculator(session).calculate()
 
-        # Check that every form in an eligible persona's packet resolves (none are stored)
-        if result["passes_means_test"]:
-            for form_type in packet(session):
-                try:
-                    build_field_values(form_type, session)
-                except Exception as exc:
-                    self.stderr.write(self.style.WARNING(f"    Skipped {form_type}: {exc}"))
+        # Check that every form in the persona's packet resolves (none are stored)
+        for form_type in packet(session):
+            try:
+                build_field_values(form_type, session)
+            except Exception as exc:
+                self.stderr.write(self.style.WARNING(f"    Skipped {form_type}: {exc}"))

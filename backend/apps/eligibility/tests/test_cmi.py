@@ -17,9 +17,9 @@ from rest_framework.test import APIClient
 
 from apps.districts.dated_tables import NoTableInForce
 from apps.districts.models import District, MedianIncome
-from apps.eligibility.cmi import IncomeNotSplit, current_monthly_income
+from apps.eligibility.cmi import IncomeNotSplit, current_monthly_income, household_cmi
+from apps.eligibility.means_inputs import read_inputs
 from apps.eligibility.models import MeansTest
-from apps.eligibility.services.expense_deduction_calculator import ExpenseDeductionCalculator
 from apps.eligibility.services.means_test_calculator import MeansTestCalculator
 from apps.forms.services.derivations import DERIVATIONS
 from apps.intake.models import IncomeInfo, IntakeSession
@@ -74,7 +74,7 @@ def test_social_security_never_counts_toward_cmi(filer):
     assert current_monthly_income(session.income_info) == Decimal("2500.00")
     assert MeansTestCalculator(session).calculate()["cmi"] == Decimal("2500.00")
     assert DERIVATIONS["cmi"](session) == "2500.00"
-    assert ExpenseDeductionCalculator(session)._get_cmi() == Decimal("2500.00")
+    assert household_cmi(session) == Decimal("2500.00")
 
 
 def test_a_filer_who_typed_zero_income_has_a_cmi_of_zero(filer):
@@ -96,7 +96,7 @@ def test_a_filer_living_on_social_security_alone_has_a_cmi_of_zero_not_a_refusal
     assert current_monthly_income(session.income_info) == Decimal("0.00")
     assert MeansTestCalculator(session).calculate()["passes_means_test"] is True
     assert DERIVATIONS["cmi"](session) == "0.00"
-    assert ExpenseDeductionCalculator(session)._get_cmi() == Decimal("0.00")
+    assert household_cmi(session) == Decimal("0.00")
 
 
 def test_income_saved_only_as_a_total_is_refused_in_plain_words(filer):
@@ -131,12 +131,12 @@ def test_other_means_test_failures_keep_their_prefix(filer):
             MeansTestCalculator(session).calculate()
 
 
-def test_the_above_median_calculator_refuses_income_not_split_instead_of_using_zero(filer):
+def test_the_session_reader_refuses_income_not_split_instead_of_using_zero(filer):
     _, session = filer
     IncomeInfo.objects.create(session=session, monthly_income=json.dumps([9000] * 6))
 
     with pytest.raises(IncomeNotSplit):
-        ExpenseDeductionCalculator(session).calculate()
+        read_inputs(session)
 
 
 @pytest.mark.parametrize(

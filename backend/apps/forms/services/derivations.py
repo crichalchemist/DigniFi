@@ -897,14 +897,6 @@ def _county(session: IntakeSession) -> str:
     return (household.county if household else "") or ""
 
 
-def _means_test_disposable_income(session: IntakeSession) -> str:
-    try:
-        mt = session.means_test
-        return _fmt(mt.disposable_income)
-    except Exception:
-        return "0.00"
-
-
 # ---------------------------------------------------------------------------
 # DERIVATIONS dict (all referenced functions must be defined above)
 # ---------------------------------------------------------------------------
@@ -1099,8 +1091,6 @@ DERIVATIONS: dict[str, Callable[[IntakeSession], str]] = {
     "schedule_j_monthly_net_income": _schedule_j_monthly_net_income,
     "schedule_j_joint_case": _schedule_j_joint_case,
     "schedule_j_has_dependents": _schedule_j_has_dependents,
-    # Form 122A-2 means test expense deduction derivations
-    "means_test_disposable_income": _means_test_disposable_income,
     # Schedule H line 2 (3c5): the community property answers, as the claims step asks them
     "schedule_h_community_lived": lambda s: community_answers(s)["lived"],
     "schedule_h_spouse_lived_with": lambda s: community_answers(s)["spouse_lived_with"],

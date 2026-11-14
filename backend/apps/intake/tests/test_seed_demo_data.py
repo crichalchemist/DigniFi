@@ -218,12 +218,9 @@ def test_the_seed_gives_each_persona_their_stored_answers(
     assert is_above_median(means_test.calculated_cmi, means_test.median_income_threshold) is (
         persona == "priya"
     )
-    # the move of the car and property payments to their links changes no verdict (3c4 R5)
-    assert means_test.passes_means_test is (persona != "priya")
-    if persona == "priya":
-        assert means_test.passes_above_median is False
-        assert means_test.total_allowable_expenses == Decimal("3464.00")
-        assert means_test.disposable_income == Decimal("10336.00")
+    # Priya is above the median and her 122A-2 can't be worked out yet (3h1)
+    assert means_test.outcome == ("cannot_work_out" if persona == "priya" else "at_or_below_median")
+    assert means_test.passes_means_test is (None if persona == "priya" else True)
     forms = packet(session)
     assert ("form_122a2" in forms) is (persona == "priya")
     assert ("form_103b" in forms) is (persona in {"maria", "sarah"})

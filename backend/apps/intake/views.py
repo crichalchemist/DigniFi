@@ -350,11 +350,15 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
 
         Returns:
             {
-                "passes_means_test": bool,
+                "passes_means_test": bool or None,
                 "cmi": Decimal,
                 "median_income_threshold": Decimal,
-                "message": str (UPL-compliant),
-                "details": {...}
+                "family_size": int,
+                "details": {...},
+                "means_test_id": int,
+                "outcome": "at_or_below_median" | "cannot_work_out" | "no_presumption"
+                    | "presumption",
+                "tables_gap": str or None (the 122A-2 table that isn't in force)
             }
         """
         session = self.get_object()
@@ -419,6 +423,7 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
         if hasattr(session, "means_test"):
             summary_data["means_test"] = {
                 "passes": session.means_test.passes_means_test,
+                "outcome": session.means_test.outcome,
             }
 
         # Add form generation status

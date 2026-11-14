@@ -11,7 +11,7 @@ from typing import Any
 from django.db import transaction
 
 from apps.districts.dated_tables import NoTableInForce
-from apps.eligibility.cmi import IncomeNotSplit, is_above_median
+from apps.eligibility.cmi import IncomeNotSplit
 from apps.eligibility.models import MeansTest
 from apps.intake.models import IntakeSession
 
@@ -21,7 +21,7 @@ class MeansTestCalculator:
     Service class for calculating Chapter 7 bankruptcy means test.
 
     This service encapsulates the business logic for means test calculations,
-    including UPL-compliant result messaging and audit logging.
+    including its four outcomes.
     """
 
     def __init__(self, intake_session: IntakeSession):
@@ -48,7 +48,7 @@ class MeansTestCalculator:
         """
         Calculate or recalculate means test for the intake session.
 
-        Creates or updates MeansTest record and returns UPL-compliant results.
+        Creates or updates MeansTest record and returns its outcome.
 
         Returns:
             dict: Calculation results with structure:
@@ -57,8 +57,10 @@ class MeansTestCalculator:
                     "cmi": Decimal,
                     "median_income_threshold": Decimal,
                     "family_size": int,
-                    "message": str (UPL-compliant),
-                    "details": dict
+                    "details": dict,
+                    "means_test_id": int,
+                    "outcome": str,
+                    "tables_gap": str | None
                 }
 
         Raises:
@@ -71,7 +73,7 @@ class MeansTestCalculator:
                 "district": self.district,
                 "median_income_threshold": Decimal("0"),
                 "calculated_cmi": Decimal("0"),
-                "passes_means_test": False,
+                "passes_means_test": None,
             },
         )
 
@@ -91,123 +93,16 @@ class MeansTestCalculator:
         # Save updated means test
         means_test.save()
 
-        # Build UPL-compliant response
-        result = {
+        # The result is Form 122A-2's arithmetic in one of four outcomes; no sentence leaves
+        # the server (the browser composes the words).
+        details = means_test.get_calculation_details()
+        return {
             "passes_means_test": means_test.passes_means_test,
             "cmi": means_test.calculated_cmi,
             "median_income_threshold": means_test.median_income_threshold,
-            "family_size": means_test.get_calculation_details().get("family_size", 0),
-            "message": self._generate_upl_compliant_message(means_test),
-            "details": means_test.get_calculation_details(),
+            "family_size": details.get("family_size", 0),
+            "details": details,
             "means_test_id": means_test.id,
-            "above_median_calculated": means_test.above_median_calculated,
-            "disposable_income": means_test.disposable_income,
-            "total_allowable_expenses": means_test.total_allowable_expenses,
-            "priority_debts_monthly": means_test.priority_debts_monthly,
-            "passes_above_median": means_test.passes_above_median,
-        }
-
-        return result
-
-    def _generate_upl_compliant_message(self, means_test: MeansTest) -> str:
-        """
-        Generate UPL-compliant message about means test results.
-
-        CRITICAL: This must provide legal INFORMATION, never legal ADVICE.
-
-        Prohibited phrases:
-        - "you should file"
-        - "I recommend"
-        - "you should choose"
-
-        Permitted phrases:
-        - "you may be eligible"
-        - "Chapter 7 typically requires"
-        - "many filers in this situation"
-
-        Args:
-            means_test: Calculated MeansTest instance
-
-        Returns:
-            str: UPL-compliant informational message
-        """
-        # Which side of the median first, then the expense test: an above-median filer who
-        # passes it must not be told their income is below the median (DIG-128).
-        if not is_above_median(means_test.calculated_cmi, means_test.median_income_threshold):
-            message = (
-                "Based on the information provided, your income is at or below the median "
-                f"income for a household of this size in {self.district.state}. "
-                "This means you may be eligible to file Chapter 7 bankruptcy. "
-                "Chapter 7 typically allows debtors with income at or below the median to "
-                "discharge unsecured debts without a repayment plan."
-            )
-        elif means_test.above_median_calculated and means_test.passes_above_median:
-            message = (
-                f"Based on the information provided, your income is above the median "
-                f"income for a household of this size in {self.district.state}. "
-                f"After accounting for allowable expenses and priority debts, your "
-                f"disposable income is below the statutory threshold. This means you "
-                f"may still be eligible for Chapter 7 bankruptcy."
-            )
-        elif means_test.above_median_calculated and not means_test.passes_above_median:
-            message = (
-                f"Based on the information provided, your income is above the median "
-                f"income for a household of this size in {self.district.state}. "
-                f"After accounting for allowable expenses and priority debts, your "
-                f"disposable income exceeds the statutory threshold. You may want to "
-                f"consult with a legal aid organization about Chapter 13 options."
-            )
-        else:
-            message = (
-                "Based on the information provided, your income is above the median "
-                f"income for a household of this size in {self.district.state}. "
-                "This means additional calculations may be needed to determine "
-                "Chapter 7 eligibility. Many filers with above-median income still "
-                "qualify for Chapter 7 if their allowable expenses are high enough. "
-                "You may also be eligible for Chapter 13 bankruptcy, which involves "
-                "a repayment plan."
-            )
-
-        return message
-
-    def get_detailed_breakdown(self) -> dict[str, Any]:
-        """
-        Get detailed calculation breakdown for transparency.
-
-        Returns:
-            dict: Detailed breakdown including:
-                - Monthly income by source
-                - Family size calculation
-                - Median income threshold
-                - Pass/fail determination
-        """
-        try:
-            means_test = self.intake_session.means_test
-        except MeansTest.DoesNotExist as err:
-            raise ValueError(
-                "Means test has not been calculated yet. Call calculate() first."
-            ) from err
-
-        income_info = self.intake_session.income_info
-        details = means_test.get_calculation_details()
-
-        return {
-            "income_history": {
-                "by_source": details.get("income_by_source", {}),
-                "average_cmi": float(means_test.calculated_cmi),
-            },
-            "family_composition": {
-                "marital_status": income_info.marital_status,
-                "total_family_size": details.get("family_size", 0),
-            },
-            "means_test_threshold": {
-                "median_income": float(means_test.median_income_threshold),
-                "district": self.district.code.upper(),
-                # The median table's own date; None for a row calculated before tables were dated.
-                "effective_date": details.get("median_table", {}).get("effective_date"),
-            },
-            "results": {
-                "passes_means_test": means_test.passes_means_test,
-                "statute_citation": "11 U.S.C. § 707(b)",
-            },
+            "outcome": means_test.outcome,
+            "tables_gap": details["tables_gap"],
         }

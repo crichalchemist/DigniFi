@@ -135,24 +135,6 @@ def _collect_backend_texts() -> dict[str, str]:
         for phrase in settings.UPL_PROHIBITED_PHRASES:
             texts[f"settings.UPL_PROHIBITED_PHRASES: '{phrase}'"] = phrase
 
-    # Means test calculator messages
-    try:
-        # Check the message generation method source for hardcoded strings
-        import inspect
-
-        from apps.eligibility.services.means_test_calculator import (
-            MeansTestCalculator,
-        )
-
-        source = inspect.getsource(MeansTestCalculator._generate_upl_compliant_message)
-
-        # Extract string literals from the source
-        string_literals = re.findall(r'"([^"]{20,})"', source)
-        for i, lit in enumerate(string_literals):
-            texts[f"MeansTestCalculator message fragment {i + 1}"] = lit
-    except (ImportError, AttributeError, OSError):
-        pass
-
     # UPL disclaimer from the forms app
     try:
         from apps.forms.constants import _UPL_DISCLAIMER

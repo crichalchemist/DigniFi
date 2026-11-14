@@ -9,7 +9,7 @@ Test Coverage:
 2. UPL disclaimers present in all form previews
 3. Audit middleware correctly identifies UPL-sensitive paths
 4. Settings configuration for UPL compliance
-5. Service layer message generation compliance
+5. Service layer reply compliance (no sentence leaves the server)
 """
 
 from datetime import date
@@ -94,6 +94,26 @@ def _create_session_with_income(
     answer_household(session, marital_status=marital_status)
 
     return session
+
+
+def _every_string(value) -> list[str]:
+    """Every string in a reply, keys included, through nested dicts and lists."""
+    if isinstance(value, str):
+        return [value]
+    if isinstance(value, dict):
+        return [text for key, item in value.items() for text in [key, *_every_string(item)]]
+    if isinstance(value, list | tuple):
+        return [text for item in value for text in _every_string(item)]
+    return []
+
+
+def _reply_violations(result: dict) -> list[str]:
+    """Prohibited phrases in any string of a calculate reply."""
+    return [
+        violation
+        for text in _every_string(result)
+        for violation in _check_for_prohibited_phrases(text)
+    ]
 
 
 def _check_for_prohibited_phrases(text: str) -> list[str]:
@@ -189,123 +209,62 @@ class TestFormsViewUPLCompliance:
 
 @pytest.mark.django_db
 class TestMeansTestCalculatorUPLCompliance:
-    """Verify means test calculator generates UPL-compliant messages."""
+    """The reply carries codes and figures, never a sentence: the outcome's words are the
+    browser's, scanned by upl-means-test-copy.test.ts (R12)."""
 
-    def test_passing_means_test_message_no_prohibited_phrases(self):
-        """Passing means test message must not contain advice."""
-        user = User.objects.create_user(username="test_pass", password="test")
+    def _reply(self, username, income):
+        user = User.objects.create_user(username=username, password="test")
         district = _create_ilnd_district()
         _create_median_income(district)
+        session = _create_session_with_income(user, district, monthly_income=income)
+        return MeansTestCalculator(session).calculate()
 
-        # Below-median income (passes means test)
-        session = _create_session_with_income(user, district, monthly_income=Decimal("4000.00"))
+    def test_passing_means_test_reply_no_prohibited_phrases(self):
+        result = self._reply("test_pass", Decimal("4000.00"))
 
-        calculator = MeansTestCalculator(session)
-        result = calculator.calculate()
+        assert "message" not in result
+        assert _reply_violations(result) == []
 
-        violations = _check_for_prohibited_phrases(result["message"])
-        assert violations == [], (
-            f"Passing means test message contains prohibited phrases: {violations}\n"
-            f"Message: {result['message']}"
-        )
+    def test_passing_means_test_gives_the_outcome_code_and_no_eligibility_wording(self):
+        result = self._reply("test_may", Decimal("4000.00"))
 
-    def test_passing_means_test_uses_may_be_eligible(self):
-        """Passing means test should use permissive language like 'may be eligible'."""
-        user = User.objects.create_user(username="test_may", password="test")
-        district = _create_ilnd_district()
-        _create_median_income(district)
+        assert result["outcome"] == "at_or_below_median"
+        for text in _every_string(result):
+            for word in ("eligible", "qualif", "chapter 13", "should choose"):
+                assert word not in text.lower()
 
-        session = _create_session_with_income(user, district, monthly_income=Decimal("4000.00"))
+    def test_failing_means_test_reply_no_prohibited_phrases(self):
+        result = self._reply("test_fail", Decimal("10000.00"))
 
-        calculator = MeansTestCalculator(session)
-        result = calculator.calculate()
+        assert "message" not in result
+        assert _reply_violations(result) == []
 
-        message_lower = result["message"].lower()
-        assert (
-            "may be eligible" in message_lower or "may qualify" in message_lower
-        ), "Passing means test message should use conditional language"
+    def test_failing_means_test_provides_the_outcome_not_advice(self):
+        # CMI must exceed the annual median threshold ($71,304) to be above it
+        result = self._reply("test_info", Decimal("80000.00"))
 
-    def test_failing_means_test_message_no_prohibited_phrases(self):
-        """Failing means test message must not contain advice."""
-        user = User.objects.create_user(username="test_fail", password="test")
-        district = _create_ilnd_district()
-        _create_median_income(district)
+        assert result["outcome"] == "cannot_work_out"
+        for text in _every_string(result):
+            for word in ("eligible", "qualif", "chapter 13", "should choose", "should file"):
+                assert word not in text.lower()
 
-        # Above-median income (fails means test)
-        session = _create_session_with_income(user, district, monthly_income=Decimal("10000.00"))
-
-        calculator = MeansTestCalculator(session)
-        result = calculator.calculate()
-
-        violations = _check_for_prohibited_phrases(result["message"])
-        assert violations == [], (
-            f"Failing means test message contains prohibited phrases: {violations}\n"
-            f"Message: {result['message']}"
-        )
-
-    def test_failing_means_test_provides_information_not_advice(self):
-        """Failing means test should explain options without recommending."""
-        user = User.objects.create_user(username="test_info", password="test")
-        district = _create_ilnd_district()
-        _create_median_income(district)
-
-        # CMI must exceed the annual median threshold ($71,304) to FAIL
-        session = _create_session_with_income(user, district, monthly_income=Decimal("80000.00"))
-
-        calculator = MeansTestCalculator(session)
-        result = calculator.calculate()
-
-        message_lower = result["message"].lower()
-
-        # Should mention options (informational)
-        assert (
-            "chapter 13" in message_lower or "additional calculations" in message_lower
-        ), "Failing means test should provide information about alternatives"
-
-        # Should NOT say "you should choose Chapter 13"
-        assert "should choose" not in message_lower
-        assert "should file" not in message_lower
-
-    def test_a_very_low_income_message_gives_no_fee_waiver_verdict(self):
+    def test_a_very_low_income_reply_gives_no_fee_waiver_verdict(self):
         """A filer far below the median hears nothing about a fee waiver from the means test: the court decides it (28 U.S.C. § 1930(f)), and the filing-fee page shows its figures as information."""
-        user = User.objects.create_user(username="test_waiver", password="test")
-        district = _create_ilnd_district()
-        _create_median_income(district)
+        result = self._reply("test_waiver", Decimal("1500.00"))
 
-        # Very low income: under 60% of the median, where the old flag spoke of a fee waiver
-        session = _create_session_with_income(user, district, monthly_income=Decimal("1500.00"))
+        assert "message" not in result
+        assert _reply_violations(result) == []
+        for text in _every_string(result):
+            assert "fee waiver" not in text.lower()
+            assert "1930" not in text
 
-        calculator = MeansTestCalculator(session)
-        result = calculator.calculate()
+    def test_the_reply_states_nothing_absolute(self):
+        result = self._reply("test_typ", Decimal("4000.00"))
 
-        violations = _check_for_prohibited_phrases(result["message"])
-        assert violations == [], (
-            f"Very low income message contains prohibited phrases: {violations}\n"
-            f"Message: {result['message']}"
-        )
-        assert "fee waiver" not in result["message"].lower()
-        assert "1930" not in result["message"]
-
-    def test_message_uses_typically_not_always(self):
-        """Messages should use 'typically' not absolute statements."""
-        user = User.objects.create_user(username="test_typ", password="test")
-        district = _create_ilnd_district()
-        _create_median_income(district)
-
-        session = _create_session_with_income(user, district, monthly_income=Decimal("4000.00"))
-
-        calculator = MeansTestCalculator(session)
-        result = calculator.calculate()
-
-        message_lower = result["message"].lower()
-
-        # Should use conditional/general language
-        conditional_terms = ["typically", "generally", "may", "often", "usually"]
-        has_conditional = any(term in message_lower for term in conditional_terms)
-
-        assert (
-            has_conditional
-        ), "Means test message should use conditional language (typically, may, etc.)"
+        assert result["outcome"] == "at_or_below_median"
+        for text in _every_string(result):
+            for word in ("eligible", "qualif", "guarantee", "will be approved"):
+                assert word not in text.lower()
 
     def test_all_calculation_paths_upl_compliant(self):
         """Test multiple income scenarios to ensure all paths are compliant."""
@@ -321,21 +280,17 @@ class TestMeansTestCalculatorUPLCompliance:
             Decimal("15000.00"),  # High income
         ]
 
-        all_messages = []
-
         for income in test_incomes:
             user = User.objects.create_user(username=f"test_{income}", password="test")
             session = _create_session_with_income(user, district, monthly_income=income)
 
-            calculator = MeansTestCalculator(session)
-            result = calculator.calculate()
-            all_messages.append((income, result["message"]))
+            result = MeansTestCalculator(session).calculate()
 
-            violations = _check_for_prohibited_phrases(result["message"])
-            assert violations == [], (
-                f"Message for income ${income} contains prohibited phrases: {violations}\n"
-                f"Message: {result['message']}"
-            )
+            assert "message" not in result
+            violations = _reply_violations(result)
+            assert (
+                violations == []
+            ), f"Reply for income ${income} contains prohibited phrases: {violations}"
 
 
 # ============================================================================
@@ -442,11 +397,10 @@ class TestServiceLayerStringCompliance:
     """Scan all service layer string constants for prohibited phrases."""
 
     def test_means_test_calculator_all_strings_compliant(self):
-        """Scan all possible MeansTestCalculator outputs for violations."""
+        """Scan every string of the MeansTestCalculator's replies for violations."""
         district = _create_ilnd_district()
         _create_median_income(district)
 
-        # Generate messages for different scenarios
         scenarios = [
             ("passing", Decimal("3000.00")),
             ("failing", Decimal("10000.00")),
@@ -457,36 +411,24 @@ class TestServiceLayerStringCompliance:
             user = User.objects.create_user(username=f"test_{scenario_name}", password="test")
             session = _create_session_with_income(user, district, monthly_income=income)
 
-            calculator = MeansTestCalculator(session)
-            result = calculator.calculate()
+            result = MeansTestCalculator(session).calculate()
 
-            # Check main message
-            violations = _check_for_prohibited_phrases(result["message"])
-            assert violations == [], (
-                f"Scenario '{scenario_name}' has violations: {violations}\n"
-                f"Message: {result['message']}"
-            )
+            assert "message" not in result
+            violations = _reply_violations(result)
+            assert violations == [], f"Scenario '{scenario_name}' has violations: {violations}"
 
-    def test_detailed_breakdown_no_advice(self):
-        """Detailed breakdown should provide data, not recommendations."""
+    def test_reply_details_no_advice(self):
+        """The reply's details provide data, not recommendations."""
         user = User.objects.create_user(username="test_detail", password="test")
         district = _create_ilnd_district()
         _create_median_income(district)
 
         session = _create_session_with_income(user, district, monthly_income=Decimal("5000.00"))
 
-        calculator = MeansTestCalculator(session)
-        calculator.calculate()  # Must calculate first
+        result = MeansTestCalculator(session).calculate()
 
-        breakdown = calculator.get_detailed_breakdown()
-
-        # Convert breakdown to string for scanning (JSON values)
-        import json
-
-        breakdown_str = json.dumps(breakdown)
-
-        violations = _check_for_prohibited_phrases(breakdown_str)
-        assert violations == [], f"Detailed breakdown contains prohibited phrases: {violations}"
+        violations = _reply_violations(result["details"])
+        assert violations == [], f"Reply details contain prohibited phrases: {violations}"
 
 
 # ============================================================================
@@ -515,23 +457,13 @@ class TestEndToEndUPLCompliance:
         calculator = MeansTestCalculator(session)
         means_test_result = calculator.calculate()
 
-        # Verify means test message is compliant
-        violations = _check_for_prohibited_phrases(means_test_result["message"])
+        # Verify the means test reply is compliant: no message, and no sentence in any string
+        assert "message" not in means_test_result
+        violations = _reply_violations(means_test_result)
         assert violations == [], f"Means test result contains prohibited phrases: {violations}"
 
-        # Get detailed breakdown (UPL-sensitive operation)
-        breakdown = calculator.get_detailed_breakdown()
-
-        # Breakdown should contain statute citation (informational)
-        assert "statute_citation" in breakdown["results"]
-        assert "11 U.S.C." in breakdown["results"]["statute_citation"]
-
-        # Breakdown should NOT contain advice
-        import json
-
-        breakdown_str = json.dumps(breakdown)
-        violations = _check_for_prohibited_phrases(breakdown_str)
-        assert violations == [], f"Detailed breakdown contains prohibited phrases: {violations}"
+        # The reply's details carry the statute citation (informational)
+        assert "11 U.S.C." in means_test_result["details"]["statute_citation"]
 
     def test_all_output_channels_scanned(self):
         """
@@ -542,14 +474,13 @@ class TestEndToEndUPLCompliance:
         tested_components = [
             "settings.UPL_PROHIBITED_PHRASES",
             "forms.views._UPL_DISCLAIMER",
-            "MeansTestCalculator._generate_upl_compliant_message",
             "AuditLoggingMiddleware._is_upl_sensitive",
         ]
 
         # This test documents what we're testing
         # If new UPL-sensitive components are added, update this list
         assert (
-            len(tested_components) == 4
+            len(tested_components) == 3
         ), "Update this test when adding new UPL-sensitive components"
 
 
