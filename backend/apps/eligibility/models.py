@@ -5,9 +5,14 @@ from decimal import Decimal
 
 from django.db import models
 from django.utils import timezone
-from encrypted_model_fields.fields import EncryptedTextField
+from encrypted_model_fields.fields import (
+    EncryptedBooleanField,
+    EncryptedCharField,
+    EncryptedTextField,
+)
 
 from apps.districts.dated_tables import fill_date, in_force
+from apps.intake.fields import EncryptedDecimalField
 from apps.intake.household import count_family_size
 from apps.intake.income import floored_net
 
@@ -33,40 +38,56 @@ class MeansTest(models.Model):
     district = models.ForeignKey("districts.District", on_delete=models.PROTECT)
 
     # Inputs
-    median_income_threshold = models.DecimalField(
+    median_income_threshold = EncryptedDecimalField(
         max_digits=12, decimal_places=2, help_text="Median income for family size"
     )
-    calculated_cmi = models.DecimalField(
+    calculated_cmi = EncryptedDecimalField(
         max_digits=12, decimal_places=2, help_text="Current Monthly Income"
     )
 
     # Results
-    passes_means_test = models.BooleanField(help_text="True if CMI < median income", db_index=True)
+    passes_means_test = models.BooleanField(
+        null=True,
+        help_text=(
+            "Kept one release; nothing reads it for a decision. True at or below the median "
+            "or with no presumption, False under a presumption, empty while the result "
+            "can't be worked out (DIG-226)."
+        ),
+    )
+    outcome = EncryptedCharField(
+        max_length=20,
+        null=True,
+        blank=True,
+        help_text=(
+            "at_or_below_median, cannot_work_out, no_presumption or presumption; "
+            "empty until worked out after 3h1."
+        ),
+    )
 
-    # Above-median calculation fields
-    total_allowable_expenses = models.DecimalField(
+    # Unused since 3h1; the housekeeping PR drops them.
+    total_allowable_expenses = EncryptedDecimalField(
         max_digits=12,
         decimal_places=2,
         default=Decimal("0"),
-        help_text="Monthly allowable expenses (IRS standards + actual)",
+        help_text="Unused since 3h1; the housekeeping PR drops it.",
     )
-    disposable_income = models.DecimalField(
+    disposable_income = EncryptedDecimalField(
         max_digits=12,
         decimal_places=2,
         default=Decimal("0"),
-        help_text="Monthly disposable income after deductions",
+        help_text="Unused since 3h1; the housekeeping PR drops it.",
     )
-    priority_debts_monthly = models.DecimalField(
+    priority_debts_monthly = EncryptedDecimalField(
         max_digits=12,
         decimal_places=2,
         default=Decimal("0"),
-        help_text="Monthly priority debt payments",
+        help_text="Unused since 3h1; the housekeeping PR drops it.",
     )
-    passes_above_median = models.BooleanField(
-        default=False, help_text="True if disposable income < $756.25/mo"
+    passes_above_median = EncryptedBooleanField(
+        default=False, help_text="Unused since 3h1; the housekeeping PR drops it."
     )
-    above_median_calculated = models.BooleanField(
-        default=False, help_text="Whether above-median calculation was performed"
+    above_median_calculated = EncryptedBooleanField(
+        default=False, help_text="Unused since 3h1; the housekeeping PR drops it."
     )
 
     # Encrypted calculation details to protect potential PII
