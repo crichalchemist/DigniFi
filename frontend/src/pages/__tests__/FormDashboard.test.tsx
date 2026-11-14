@@ -1513,6 +1513,70 @@ describe('FormDashboard', () => {
       expect(region.textContent).not.toMatch(/household of 4/);
     });
 
+    /** The packet reply: the first read says one thing, every later read another */
+    function packetThen(first: Record<string, unknown>, later: () => Response) {
+      let reads = 0;
+      server.use(
+        http.get('http://localhost:8000/api/forms/packet/', () => {
+          reads += 1;
+          if (reads === 1) {
+            return HttpResponse.json({ session: 1, form_types: PAIR, tables: [], ...first });
+          }
+          return later();
+        }),
+        http.post('http://localhost:8000/api/forms/generate_all/', () =>
+          HttpResponse.json({ generated: [], errors: [], total_generated: 0, total_errors: 0 })
+        )
+      );
+    }
+
+    it('replaces the result with the one Generate All’s reload reports', async () => {
+      packetThen({ outcome: 'presumption', family_size: 4, tables_gap: null }, () =>
+        HttpResponse.json({
+          session: 1,
+          form_types: PAIR,
+          tables: [],
+          outcome: 'cannot_work_out',
+          family_size: 3,
+          tables_gap: null,
+        })
+      );
+      renderFormDashboard();
+      const region = await screen.findByRole('status', { name: RESULT });
+      expect(within(region).getByText(MEANS_OUTCOME_PRESUMPTION)).toBeInTheDocument();
+
+      await generateAll();
+
+      await waitFor(() => {
+        expect(
+          within(screen.getByRole('status', { name: RESULT })).getByText(
+            'Your income is above the median for a household of 3, so Form 122A-2 applies.'
+          )
+        ).toBeInTheDocument();
+      });
+      const after = screen.getByRole('status', { name: RESULT });
+      expect(within(after).queryByText(MEANS_OUTCOME_PRESUMPTION)).not.toBeInTheDocument();
+      expect(within(after).getAllByText(CLOSING)).toHaveLength(1);
+    });
+
+    it('drops the result, and its closing sentence, when Generate All’s reload fails', async () => {
+      packetThen({ outcome: 'presumption', family_size: 4, tables_gap: null }, () =>
+        HttpResponse.json({ detail: 'no' }, { status: 400 })
+      );
+      renderFormDashboard();
+      const region = await screen.findByRole('status', { name: RESULT });
+      expect(within(region).getByText(MEANS_OUTCOME_PRESUMPTION)).toBeInTheDocument();
+
+      await generateAll();
+
+      await waitFor(() => {
+        expect(screen.queryByText(MEANS_OUTCOME_PRESUMPTION)).not.toBeInTheDocument();
+      });
+      expect(screen.queryByText(CLOSING)).not.toBeInTheDocument();
+      expect(screen.queryByText(PRESUMPTION_INSTRUCTIONS)).not.toBeInTheDocument();
+      expect(screen.getByText(MEANS_PAIR_NOTICE)).toBeInTheDocument();
+    });
+
     it('shows neither the result nor the pair notice without Form 122A-2', async () => {
       packetWith({ outcome: 'at_or_below_median', family_size: 1 }, ['form_101', 'form_121']);
       renderFormDashboard();
