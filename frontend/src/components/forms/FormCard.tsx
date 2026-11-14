@@ -44,6 +44,7 @@ export function FormCard({
   onMarkFiled,
 }: FormCardProps) {
   const [isLoading, setIsLoading] = useState(false);
+  const [isMarkingFiled, setIsMarkingFiled] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
   const navigate = useNavigate();
   const metadata = FORM_TYPE_METADATA[formType];
@@ -58,6 +59,13 @@ export function FormCard({
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Only Mark as Filed itself says it is marking the form filed, never a download
+  const handleMarkFiled = async (formId: number) => {
+    setIsMarkingFiled(true);
+    await handleAction(() => onMarkFiled(formId));
+    setIsMarkingFiled(false);
   };
 
   return (
@@ -114,8 +122,8 @@ export function FormCard({
           <Button
             size="sm"
             variant="outline"
-            onClick={() => handleAction(() => onMarkFiled(generatedForm.id))}
-            isLoading={isLoading}
+            onClick={() => handleMarkFiled(generatedForm.id)}
+            isLoading={isMarkingFiled}
             loadingText="Marking as filed..."
           >
             Mark as Filed

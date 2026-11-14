@@ -148,6 +148,31 @@ describe('FormCard', () => {
     expect(screen.queryByRole('button', { name: /Marking as filed/ })).not.toBeInTheDocument();
   });
 
+  // A download is not a filing: while one runs, Mark as Filed never says it is marking the form filed
+  it('never reads as marking the form filed while a download runs', async () => {
+    const user = userEvent.setup();
+    let answer: () => void = () => {};
+    const onDownload = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          answer = resolve;
+        })
+    );
+    render(
+      <MemoryRouter>
+        <FormCard {...defaultProps} generatedForm={mockForm} onDownload={onDownload} />
+      </MemoryRouter>
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Download' }));
+
+    expect(screen.getByRole('button', { name: /Preparing/ })).toBeInTheDocument();
+    expect(screen.queryAllByText(/Marking as filed/)).toHaveLength(0);
+    expect(screen.getByRole('button', { name: 'Mark as Filed' })).toBeInTheDocument();
+
+    await act(async () => answer());
+  });
+
   it('shows UPL disclaimer from generated form', () => {
     render(
       <MemoryRouter>
