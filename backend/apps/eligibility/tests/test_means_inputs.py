@@ -217,6 +217,34 @@ def test_vehicles_are_line_3_rows_and_line_4_rows_not_lived_in_with_their_loans_
     )
 
 
+def test_a_vehicle_is_financed_or_leased_only_by_a_counted_loan_or_a_vehicle_lease(session):
+    stale_lease = linked_row(session, "3", None, "Demo Stale Lease Car")
+    linked_lease(session, stale_lease, "200", lease_kind="residential")
+    other_contract = linked_row(session, "3", None, "Demo Contract Car")
+    linked_lease(session, other_contract, "200", contract_type="contract")
+    not_counted = linked_row(session, "3", None, "Demo Uncounted Loan Car")
+    complete_debt(session, creditor_name="Not Secured", secured_by=not_counted)
+    linked_loan(session, not_counted, "50", creditor_name="Draft", is_draft=True)
+    got = {v.asset_id: (v.financed, v.leased) for v in read_inputs(session).vehicles}
+    assert got == {
+        stale_lease.pk: (False, False),
+        other_contract.pk: (False, False),
+        not_counted.pk: (False, False),
+    }
+
+
+def test_a_loan_on_a_motor_home_the_filer_lives_in_is_on_the_home(session):
+    motor_home = linked_row(session, "4", "yes", "Demo Motor Home")
+    loan = linked_loan(session, motor_home, "400", creditor_name="G Motor Bank")
+    (debt,) = read_inputs(session).secured_debts
+    assert (debt.debt_id, debt.asset_id, debt.on_home, debt.property) == (
+        loan.pk,
+        motor_home.pk,
+        True,
+        "Demo Motor Home",
+    )
+
+
 def test_read_tables_gives_the_calculator_the_figures_in_force(
     means_standards_2026, section_104_2025
 ):
