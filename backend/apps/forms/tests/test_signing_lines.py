@@ -12,6 +12,7 @@ from functools import cache
 import pytest
 from django.core.management import call_command
 
+from apps.districts.models import District
 from apps.forms.registry import FORM_122A2_NOT_ASKED, PreconditionMissing, build_field_values
 from apps.forms.schema import load_schema
 from apps.forms.services.fill_resolver import resolve
@@ -81,8 +82,11 @@ def _printed():
 
 @pytest.mark.django_db
 def test_the_hold_refuses_priyas_two_held_forms_in_its_own_words():
-    _printed()
-    session = IntakeSession.objects.get(user__username="demo_priya")
+    # Seeds Priya itself: _printed() is cached, so it may return without seeding.
+    if not District.objects.filter(code="ilnd").exists():
+        call_command("loaddata", "ilnd_2025_data", verbosity=0)
+    call_command("seed_demo_data", "--reset", persona="priya", verbosity=0)
+    session = IntakeSession.objects.filter(user__username="demo_priya").latest("id")
     for form_type in HELD:
         with pytest.raises(PreconditionMissing) as refused:
             build_field_values(form_type, session)
