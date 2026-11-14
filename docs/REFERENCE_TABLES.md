@@ -1,7 +1,7 @@
 # Reference Tables
 
 - **Operator:** the project owner
-- **Last updated:** November 12, 2026
+- **Last updated:** November 14, 2026
 
 DigniFi reads public tables that change on a schedule. Each row of such a table is stored with the first day it applies (`effective_date`), the last day before its next scheduled change (`valid_through`) and the page it comes from (`source_url`). DigniFi uses the newest row that has started by the day the forms are filled, in Chicago time, which stands in for the filing date. If that row's `valid_through` has passed, or no row has started yet, DigniFi refuses to prepare forms. It never falls back to an older row.
 
@@ -143,3 +143,72 @@ The exemptions page (`/exemptions`, after the filing-fee page) lists the Illinoi
 
 - The old figures stay shown. Nothing refuses, which is why the owner watches for Acts.
 - Before the first version is loaded, the exemptions page shows `EXEMPTIONS_NO_TABLE`: "DigniFi doesn't have the exemption laws for today's date yet, so it can't prepare Schedule C." Schedule C is refused in the same words (`NO_EXEMPTION_CATALOG`), but only for a filer whose claims name a law from the list: a filer who claims nothing, or only types their own law, is not refused.
+
+---
+
+## U.S. Trustee means test standards
+
+Form 122A-2 uses the IRS national and local expense standards, the out-of-pocket health care amounts, the transportation figures and the district's multiplier that the U.S. Trustee Program posts. DigniFi stores one set for the Northern District of Illinois: the national standards for 1 to 4 people and the extra for each person after 4, the five percent figures for line 30, health care per person under 65 and 65 or older, housing and utilities for each of the 18 ILND counties for 1 to 5 or more people (insurance and operating, and mortgage or rent), the Chicago and Midwest Region transportation figures, and which of the two each county uses, and the multiplier (6.9 percent). Each set is a `MeansStandards` row with its `MeansFigure` and `MeansArea` rows.
+
+### Where it is posted
+
+- The U.S. Trustee Program's means-testing page: https://www.justice.gov/ust/means-testing
+- Each period has one page, `https://www.justice.gov/ust/means-testing/<YYYYMMDD>`, named by the first day it applies. It bundles every IRS table and the multipliers. DigniFi stores that page as the row's `source_url`.
+- The Trustee spells LaSalle "La Salle" and this district "ILN". DigniFi's rows use "LaSalle" and the code "ilnd".
+
+### When it changes
+
+- There is no fixed change date. The Trustee posts a new period when the IRS changes its standards, and some periods change only these figures. This page is the only guard: the owner, the named operator, watches the means-testing page. Nothing in DigniFi watches it.
+- The row's `valid_through` stays empty, so DigniFi never stops using a set on a date.
+
+### The rows DigniFi loads
+
+| Effective  | `valid_through` | Figures | Areas | Source                                             |
+| ---------- | --------------- | ------- | ----- | -------------------------------------------------- |
+| 2026-07-15 | empty           | 200     | 18    | https://www.justice.gov/ust/means-testing/20260715 |
+
+### How to add a version
+
+1. Run `python manage.py makemigrations districts --empty -n means_standards_<yyyymmdd>`. Write it as `0010_means_standards_2026.py` is written: a `RunPython` that creates one `MeansStandards` row and its `MeansFigure` and `MeansArea` rows, with the values written into the migration, and a reverse that deletes that row by its `effective_date`.
+2. Copy every figure from the new period's page. Check the Chicago county list against the IRS conversion chart.
+3. Leave the earlier rows as they are.
+4. Update `EXPECTED_FIGURES` and `EXPECTED_AREAS` in `backend/apps/districts/tests/test_means_standards.py`, and the `means_standards_2026` fixture in `backend/conftest.py` if the new set should be the one tests load.
+5. Open a pull request to `develop`. Nothing to run after the deploy: the Heroku release runs `migrate`.
+
+### What a missed change looks like
+
+- Nothing shows. The old figures stay in use, since the row never lapses, which is why the owner watches the page.
+- Before the first row's date, the refusal line is `No IRS expense standards table in force on 2026-07-14 for district -`, and above-median filers see the missing-table sentence in place of Form 122A-2.
+
+---
+
+## Bankruptcy Code dollar amounts
+
+Form 122A-2 and the means test use three amounts that 11 U.S.C. § 104 adjusts every three years: the two presumption thresholds ($10,275 and $17,150 over five years), the Chapter 13 debt limits and the education amount per child. DigniFi stores them as one `Section104Amounts` row.
+
+### Where it is posted
+
+- The Judicial Conference's notice in the Federal Register: 90 FR 8941, https://www.federalregister.gov/documents/2025/02/04/2025-02207/adjustment-of-certain-dollar-amounts-applicable-to-bankruptcy-cases. DigniFi stores that page as the row's `source_url`.
+
+### When it changes
+
+- On **April 1, 2028**, and every three years after. The 122A-2 template prints the old figures itself, so the form and the row change together.
+- The row's `valid_through` is the day before: 2028-03-31.
+
+### The rows DigniFi loads
+
+| Effective  | `valid_through` | Presumption thresholds | Chapter 13 limits (unsecured / secured) | Education per child a month |
+| ---------- | --------------- | ---------------------- | --------------------------------------- | --------------------------- |
+| 2025-04-01 | 2028-03-31      | $10,275 / $17,150      | $526,700 / $1,580,125                   | $214.58                     |
+
+### How to add a version
+
+1. Run `python manage.py makemigrations districts --empty -n section_104_<year>`. Write it as `0011_section_104_2025.py` is written: a `RunPython` that creates one `Section104Amounts` row, and a reverse that deletes it by its `effective_date`.
+2. Copy the figures from the new Federal Register notice, and the education amount from the new Form 122A-2.
+3. Leave the earlier rows as they are.
+4. Update the figures pinned in `backend/apps/districts/tests/test_means_standards.py`, then open a pull request to `develop`.
+
+### What a missed change looks like
+
+- From April 1, 2028 until the new row is loaded, the refusal line is `No Bankruptcy Code dollar amounts table in force on 2028-04-01 for district -`.
+- Every above-median filer sees the missing-table sentence in place of Form 122A-2: "DigniFi doesn't have the means test figures for today's date yet, so it can't work out Form 122A-2."
