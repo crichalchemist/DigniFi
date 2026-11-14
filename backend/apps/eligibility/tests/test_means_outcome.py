@@ -15,7 +15,7 @@ from apps.districts.means_standards import NoMeansTestTable
 from apps.districts.models import District
 from apps.eligibility.cmi import IncomeStepGap
 from apps.eligibility.means_inputs import read_inputs, read_tables
-from apps.eligibility.means_lines import work_out
+from apps.eligibility.means_lines import SKIPPED, work_out
 from apps.eligibility.models import MeansTest
 from apps.eligibility.services.means_test_calculator import MeansTestCalculator
 from apps.eligibility.tests.test_means_inputs import PRIYAS_ANSWERS
@@ -100,14 +100,14 @@ def test_an_above_median_session_with_no_debtor_info_still_gets_an_outcome(sessi
 
 
 @pytest.mark.parametrize(
-    "line_16, line_24, outcome, passes",
+    "line_16, line_24, line_39d, outcome, passes",
     [
-        (D("2300.00"), D("7096.00"), "presumption", False),
-        (D("3200.00"), D("7996.00"), "no_presumption", True),
+        (D("2300.00"), D("7096.00"), D("57444.00"), "presumption", False),
+        (D("3200.00"), D("7996.00"), D("3444.00"), "no_presumption", True),
     ],
 )
 def test_a_worked_out_result_is_the_comparisons_and_passes_follows_it(
-    session_at_9000, monkeypatch, line_16, line_24, outcome, passes
+    session_at_9000, monkeypatch, line_16, line_24, line_39d, outcome, passes
 ):
     # The session boundary only: the real reader, with the page's answers merged in (what 3h2
     # will store).
@@ -121,6 +121,8 @@ def test_a_worked_out_result_is_the_comparisons_and_passes_follows_it(
     assert lines.lines["24"] == line_24
     assert lines.lines["32"] == D("850.00")
     assert lines.lines["36"] == D("96.60")
+    assert lines.lines["35"] is SKIPPED
+    assert lines.lines["39d"] == line_39d
     assert lines.outcome == outcome
 
     result = MeansTestCalculator(session_at_9000).calculate()
