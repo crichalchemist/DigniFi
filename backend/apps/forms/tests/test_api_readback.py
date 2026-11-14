@@ -15,7 +15,6 @@ expects.
 """
 
 import json
-from decimal import Decimal, InvalidOperation
 
 import pytest
 from django.contrib.auth import get_user_model
@@ -25,7 +24,7 @@ from rest_framework.test import APIClient
 
 from apps.districts.models import District
 from apps.forms.models import GeneratedForm
-from apps.forms.registry import build_parts, packet
+from apps.forms.registry import FORM_122A2_NOT_ASKED, build_parts, packet
 from apps.forms.schema import load_schema
 from apps.intake.management.commands.seed_demo_data import (
     PERSONAS,
@@ -38,6 +37,10 @@ User = get_user_model()
 
 # These ask for the fee waiver on Form 101 line 8 (3f spec §10), so 103B is in their packets.
 APPLIES = {"maria", "sarah"}
+
+# Priya is above the median, so these two refuse together until 122A-2 can print every line
+# (3h1). The five personas below the median print 122A-1 as before.
+HELD = ("form_122a1", "form_122a2")
 
 
 def _step_bodies(data):
@@ -219,8 +222,11 @@ def _send_through_the_api(persona):
 
     generated = client.post("/api/forms/generate_all/", {"session_id": session_id}, format="json")
     assert generated.status_code == 200, generated.data
-    assert generated.data["errors"] == []
-    return session_id, [form["form_type"] for form in generated.data["generated"]]
+    return (
+        session_id,
+        [form["form_type"] for form in generated.data["generated"]],
+        generated.data["errors"],
+    )
 
 
 def _comparable(form_type, values):
@@ -260,13 +266,6 @@ def _comparable_document(form_type, document):
     }
 
 
-def _amount(text):
-    try:
-        return Decimal(text)
-    except InvalidOperation:
-        return None
-
-
 @pytest.mark.slow
 @pytest.mark.django_db
 @pytest.mark.parametrize("persona", list(PERSONAS))
@@ -275,9 +274,13 @@ def test_forms_built_through_the_api_print_what_the_seeded_forms_print(persona):
     call_command("seed_demo_data", persona=persona, verbosity=0)
     seeded = IntakeSession.objects.get(user__username=f"demo_{persona}")
 
-    session_id, form_types = _send_through_the_api(persona)
+    session_id, form_types, errors = _send_through_the_api(persona)
 
-    assert form_types == packet(seeded)
+    held = set(HELD) if persona == "priya" else set()
+    assert errors == [
+        {"form_type": t, "error": FORM_122A2_NOT_ASKED} for t in packet(seeded) if t in held
+    ]
+    assert form_types == [t for t in packet(seeded) if t not in held]
     assert ("form_103b" in form_types) is (persona in APPLIES)
     stored = {
         form.form_type: json.loads(form.field_values)
@@ -289,16 +292,9 @@ def test_forms_built_through_the_api_print_what_the_seeded_forms_print(persona):
     } == {
         form_type: _comparable_document(form_type, build_parts(form_type, seeded))
         for form_type in packet(seeded)
+        if form_type not in held
     }
     built = IntakeSession.objects.get(pk=session_id)
     # No form reads these yet, so compare the stored answers directly: a member the API
     # dropped would otherwise pass.
     assert _household_answers(built) == _household_answers(seeded)
-    # Only Priya's income is above the median, so only her packet holds 122A-2, and it
-    # prints her own figures: her household's monthly income, hers and her husband's, on line 1
-    # and her childcare on line 21.
-    assert ("form_122a2" in stored) == (persona == "priya")
-    if persona == "priya":
-        (part,) = stored["form_122a2"]["parts"]
-        amounts = [_amount(value) for value in part["values"].values()]
-        assert any(amount is not None and amount > 0 for amount in amounts)

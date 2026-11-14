@@ -180,14 +180,22 @@ def _recalculate_means_test(session: IntakeSession) -> None:
     MeansTestCalculator(session).calculate()
 
 
-def _tables_used(session: IntakeSession) -> list[dict]:
-    """The dated tables the session's means test used (forms step 3a1 spec §3.6).
+def _means_reply(session: IntakeSession) -> dict:
+    """What the packet list says of the stored means test, from one read (3h1 R14).
 
-    Empty when there is no means test, or a stored one that predates the record.
+    `tables` is the median table the means test recorded, then every table it read for Form
+    122A-2; `outcome`, `family_size` and `tables_gap` are None when there is no means test or
+    one stored before 3h1 recorded them.
     """
     means_test = MeansTest.objects.filter(session=session).first()
-    table = means_test.get_calculation_details().get("median_table") if means_test else None
-    return [table] if table else []
+    details = means_test.get_calculation_details() if means_test else {}
+    median = details.get("median_table")
+    return {
+        "tables": ([median] if median else []) + list(details.get("tables") or []),
+        "outcome": means_test.outcome if means_test else None,
+        "family_size": details.get("family_size"),
+        "tables_gap": details.get("tables_gap"),
+    }
 
 
 def _income_period(session: IntakeSession) -> dict:
@@ -312,6 +320,8 @@ class GeneratedFormViewSet(viewsets.ReadOnlyModelViewSet):
         test recorded, and is `[]` when there is no means test or it recorded none. `income_period` says which six
         months the filer last confirmed on the Income step and which are in force now.
         `payment_choice` is the Form 101 line 8 answer, or null before the filer chooses.
+        `outcome`, `family_size` and `tables_gap` are the stored means test's result (3h1 R14);
+        `tables` also lists the tables Form 122A-2's figures were read from.
         """
         session, err = _session_or_error(request, request.query_params.get("session"), "session")
         if err:
@@ -326,9 +336,9 @@ class GeneratedFormViewSet(viewsets.ReadOnlyModelViewSet):
             {
                 "session": session.id,
                 "form_types": packet(session),
-                "tables": _tables_used(session),
                 "income_period": _income_period(session),
                 "payment_choice": payment_choice(session),
+                **_means_reply(session),
             }
         )
 

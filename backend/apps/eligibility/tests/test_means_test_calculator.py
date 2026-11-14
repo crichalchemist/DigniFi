@@ -27,7 +27,12 @@ from apps.districts.models import District, MedianIncome
 from apps.eligibility.cmi import IncomeNotSplit
 from apps.eligibility.models import MeansTest
 from apps.eligibility.services.means_test_calculator import MeansTestCalculator
-from apps.forms.registry import build_field_values, packet
+from apps.forms.registry import (
+    FORM_122A2_NOT_ASKED,
+    PreconditionMissing,
+    build_field_values,
+    packet,
+)
 from apps.forms.services.derivations import DERIVATIONS
 from apps.intake.models import (
     DebtorInfo,
@@ -724,7 +729,7 @@ class TestRecalculatingAcrossTheMedian:
 @pytest.mark.django_db
 class TestAboveMedianEndToEnd:
     def test_above_median_full_flow(self):
-        """Above-median filer: CMI → deductions → disposable → 122A-2 generates."""
+        """Above-median filer: CMI → deductions → disposable → 122A-2 refuses (the hold)."""
         user = User.objects.create_user(username="e2e_above", password="pass")
         district = District.objects.create(
             code="ILND",
@@ -779,8 +784,8 @@ class TestAboveMedianEndToEnd:
         assert result["outcome"] == "cannot_work_out"
         assert result["passes_means_test"] is None
 
-        values = build_field_values("form_122a2", session)
-        assert "Bankruptcy District Information" in values
+        with pytest.raises(PreconditionMissing, match=re.escape(FORM_122A2_NOT_ASKED)):
+            build_field_values("form_122a2", session)
 
 
 @pytest.mark.django_db
