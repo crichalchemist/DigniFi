@@ -117,4 +117,8 @@ def test_a_filed_row_whose_values_are_not_json_stops_the_migration_without_quoti
 
     assert str(row.pk) in str(raised.value)
     assert "Jane" not in str(raised.value) and "900-12" not in str(raised.value)
+    # An unreadable value is most often a key that didn't save it: the library hands it on as is
+    assert "FIELD_ENCRYPTION_KEY" in str(raised.value)
+    # Sentry follows a chained cause, and the decoder's error keeps the text in its `doc`
     assert raised.value.__suppress_context__ is True
+    assert raised.value.__cause__ is None

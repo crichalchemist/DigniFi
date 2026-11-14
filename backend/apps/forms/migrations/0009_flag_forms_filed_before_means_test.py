@@ -34,9 +34,11 @@ def flag(apps, schema_editor):
         try:
             document = json.loads(row.field_values)
         except ValueError:
-            # The decoder's message quotes the text, which holds filer data.
+            # The decoder's message holds only a position, but the error keeps the text, which
+            # holds filer data, in its `doc`: `from None` keeps the error off the chain.
             raise RuntimeError(
-                f"generated_forms row {row.pk} holds field_values that isn't JSON"
+                f"generated_forms row {row.pk} holds field_values that can't be read as JSON, "
+                "which can mean this FIELD_ENCRYPTION_KEY isn't the one that saved them."
             ) from None
         if row.form_type == "form_122a2" or stored_box_2(document):
             row.filed_before_means_test = True
