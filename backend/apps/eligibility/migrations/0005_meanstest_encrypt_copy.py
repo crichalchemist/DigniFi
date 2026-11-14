@@ -61,9 +61,20 @@ def copy_forward(apps, schema_editor):
             row.save(update_fields=ENCRYPTED)
 
 
+def _no_result(pk):
+    return RuntimeError(
+        f"{TABLE} row {pk}'s result could not be worked out, and the column before 3h1 "
+        "has no empty value. Delete that row before 0004 is undone "
+        "(the means test works it out again)."
+    )
+
+
 def copy_back(apps, schema_editor):
     MeansTest = apps.get_model("eligibility", "MeansTest")
     pks = _pks(MeansTest)
+    for pk in pks:
+        if _raw(schema_editor, pk, "passes_means_test") is None:
+            raise _no_result(pk)
     for start in range(0, len(pks), BATCH):
         for pk in pks[start : start + BATCH]:
             for column in ENCRYPTED:
