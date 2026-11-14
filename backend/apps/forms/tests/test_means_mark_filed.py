@@ -6,6 +6,7 @@ before the hold can't leave DigniFi around it.
 import json
 from datetime import date
 from decimal import Decimal
+from pathlib import Path
 from unittest.mock import patch
 
 import pytest
@@ -102,6 +103,21 @@ def _listed(api_client, session):
     return {r["form_type"]: r for r in resp.data["results"]}
 
 
+def _box_1_state():
+    """Box 1's export state, read from the schema's CheckBox1 choices."""
+    schema = json.loads(
+        (Path(__file__).resolve().parents[4] / "data/forms/schemas/form_122a1.json").read_text()
+    )
+    (field,) = [f for f in schema["fields"] if f["pdf_field"] == "CheckBox1"]
+    return field["choices"]["below"]
+
+
+def _stored_check_box_1(row):
+    row.refresh_from_db()
+    part = json.loads(row.field_values)["parts"][0]
+    return part["values"]["CheckBox1"]
+
+
 @pytest.mark.django_db
 def test_a_stale_122a1_row_cant_be_filed_around_the_hold(api_client, session_with_debtor):
     session = session_with_debtor
@@ -185,6 +201,7 @@ def test_a_122a1_filed_with_box_1_still_downloads_as_stored_above_the_median(
     assert _mark_filed(api_client, row).status_code == 200
     row.refresh_from_db()
     document = json.loads(row.field_values)
+    assert _stored_check_box_1(row) == _box_1_state()
     _set_wages(session, "9000.00")
 
     download = api_client.get(f"/api/forms/{row.pk}/download/")
@@ -322,6 +339,12 @@ def test_a_letter_the_form_cannot_print_keeps_a_122a1_from_being_filed(
     resp = _mark_filed(api_client, row)
 
     assert resp.status_code == 422, resp.data
+    assert resp.data == {
+        "form_type": "form_122a1",
+        "error": "The court form can't print the letter “ą” in “Debtor name”. "
+        "Change it to a letter without the mark.",
+        "step": "debtor_info",
+    }
     row.refresh_from_db()
     assert (row.status, row.field_values) == ("generated", stored)
 
@@ -350,3 +373,29 @@ def test_a_form_filed_while_marking_keeps_the_document_it_was_filed_with(
     assert resp.data["status"] == "filed"
     row.refresh_from_db()
     assert (row.status, row.field_values) == ("filed", intervening)
+
+
+@pytest.mark.django_db
+def test_a_form_downloaded_while_marking_is_not_reported_filed(api_client, session_with_debtor):
+    # The conditional update loses to the other write, and the reply says what the row now is.
+    session = session_with_debtor
+    row = _generate(api_client, session)
+    intervening = json.dumps(
+        {"version": 2, "parts": [{"kind": "form", "values": {"Quest11": "1234.00"}}]}
+    )
+    check = PDFFormFiller.check
+
+    def check_then_download_elsewhere(filler, form_type, values):
+        result = check(filler, form_type, values)
+        GeneratedForm.objects.filter(pk=row.pk).update(
+            status="downloaded", field_values=intervening
+        )
+        return result
+
+    with patch.object(PDFFormFiller, "check", check_then_download_elsewhere):
+        resp = _mark_filed(api_client, row)
+
+    assert resp.status_code == 200, resp.data
+    assert resp.data["status"] == "downloaded"
+    row.refresh_from_db()
+    assert (row.status, row.field_values) == ("downloaded", intervening)

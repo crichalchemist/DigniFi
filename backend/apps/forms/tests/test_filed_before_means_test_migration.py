@@ -117,4 +117,4 @@ def test_a_filed_row_whose_values_are_not_json_stops_the_migration_without_quoti
 
     assert str(row.pk) in str(raised.value)
     assert "Jane" not in str(raised.value) and "900-12" not in str(raised.value)
-    assert raised.value.__cause__ is None
+    assert raised.value.__suppress_context__ is True
