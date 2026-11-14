@@ -5,7 +5,7 @@ import { http, HttpResponse } from 'msw';
 import { server } from '../../test/mocks/server';
 import { IntakeProvider } from '../../context/IntakeContext';
 import { FormDashboard } from '../FormDashboard';
-import { FORM_103A_LINK } from '../../constants/copy';
+import { DASHBOARD_ERROR, FORM_103A_LINK } from '../../constants/copy';
 import { FORM_103A_URL } from '../../constants/copy';
 import {
   MEANS_FILED_BEFORE_122A1,
@@ -1639,6 +1639,8 @@ describe('FormDashboard', () => {
       });
       expect(screen.queryByText(CLOSING)).not.toBeInTheDocument();
       expect(screen.queryByText(PRESUMPTION_INSTRUCTIONS)).not.toBeInTheDocument();
+      expect(screen.getByText(DASHBOARD_ERROR)).toBeInTheDocument();
+      expect(screen.getByText(MEANS_PAIR_NOTICE)).toBeInTheDocument();
     });
 
     it('shows neither the result nor the pair notice without Form 122A-2', async () => {

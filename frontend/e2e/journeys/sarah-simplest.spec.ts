@@ -50,8 +50,8 @@ test.describe('Sarah Chen — Simplest Case', () => {
     await wizard.fillExpenses(SARAH);
     await wizard.nextStep();
 
-    // Means test preview — should indicate eligibility
-    // (the estimate needs both income and expense data)
+    // Means test preview — should show the result "at or below the median"
+    // (the result needs both income and expense data)
     await wizard.waitForMeansTestEstimate();
     const preview = await wizard.getMeansTestPreview();
     const previewLower = preview.toLowerCase();
