@@ -6,6 +6,7 @@ before the hold can't leave DigniFi around it.
 import json
 from datetime import date
 from decimal import Decimal
+from unittest.mock import patch
 
 import pytest
 from django.contrib.auth import get_user_model
@@ -284,3 +285,68 @@ def test_a_filed_122a2_with_nothing_stored_is_refused_by_the_hold(api_client, se
     resp = api_client.get(f"/api/forms/{row.pk}/download/")
 
     assert (resp.status_code, resp.data["error"]) == (422, FORM_122A2_NOT_ASKED)
+
+
+@pytest.mark.django_db
+def test_a_stale_122a2_row_cant_be_filed_around_the_hold(api_client, session_with_debtor):
+    # A 122A-2 generated before 3h holds only five boxes; Mark as Filed must not file it.
+    session = session_with_debtor
+    _set_wages(session, "9000.00")
+    stale = json.dumps({"version": 2, "parts": [{"kind": "form", "values": {"Quest11": "1.00"}}]})
+    row = GeneratedForm.objects.create(
+        session=session, form_type="form_122a2", status="generated", field_values=stale
+    )
+
+    resp = _mark_filed(api_client, row)
+
+    assert (resp.status_code, resp.data) == (
+        422,
+        {"form_type": "form_122a2", "error": FORM_122A2_NOT_ASKED},
+    )
+    row.refresh_from_db()
+    assert (row.status, row.field_values) == ("generated", stale)
+
+
+@pytest.mark.django_db
+def test_a_letter_the_form_cannot_print_keeps_a_122a1_from_being_filed(
+    api_client, session_with_debtor
+):
+    # Filed, its download would refuse forever with nothing to fix, so check() runs first.
+    session = session_with_debtor
+    row = _generate(api_client, session)
+    stored = row.field_values
+    debtor = session.debtor_info
+    debtor.first_name = "Wąsowicz"  # ą is outside the court form's font
+    debtor.save()
+
+    resp = _mark_filed(api_client, row)
+
+    assert resp.status_code == 422, resp.data
+    row.refresh_from_db()
+    assert (row.status, row.field_values) == ("generated", stored)
+
+
+@pytest.mark.django_db
+def test_a_form_filed_while_marking_keeps_the_document_it_was_filed_with(
+    api_client, session_with_debtor
+):
+    # Two presses (two tabs) can overlap: the later one must not overwrite the filed document.
+    session = session_with_debtor
+    row = _generate(api_client, session)
+    intervening = json.dumps(
+        {"version": 2, "parts": [{"kind": "form", "values": {"Quest11": "1234.00"}}]}
+    )
+    check = PDFFormFiller.check
+
+    def check_then_file_elsewhere(filler, form_type, values):
+        result = check(filler, form_type, values)
+        GeneratedForm.objects.filter(pk=row.pk).update(status="filed", field_values=intervening)
+        return result
+
+    with patch.object(PDFFormFiller, "check", check_then_file_elsewhere):
+        resp = _mark_filed(api_client, row)
+
+    assert resp.status_code == 200, resp.data
+    assert resp.data["status"] == "filed"
+    row.refresh_from_db()
+    assert (row.status, row.field_values) == ("filed", intervening)
