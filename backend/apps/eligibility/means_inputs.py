@@ -23,8 +23,8 @@ from apps.intake.claim_rows import claim_rows
 from apps.intake.claims import ordered_debts
 
 VEHICLE_LINE = "3"
-VEHICLE_LINE_NO_MILEAGE = "4"
-_HOME_LINES = ("1", VEHICLE_LINE_NO_MILEAGE)
+OTHER_VEHICLE_LINE = "4"
+_HOME_LINES = ("1", OTHER_VEHICLE_LINE)
 
 
 def _age_on(born: date, day: date) -> int:
@@ -48,7 +48,7 @@ def _ages(session) -> tuple[int | None, ...]:
 def _is_vehicle(row) -> bool:
     if row.ab_line == VEHICLE_LINE:
         return True
-    return row.ab_line == VEHICLE_LINE_NO_MILEAGE and row.get_details().get("lives_here") != "yes"
+    return row.ab_line == OTHER_VEHICLE_LINE and row.get_details().get("lives_here") != "yes"
 
 
 def _lives_in(row) -> bool:

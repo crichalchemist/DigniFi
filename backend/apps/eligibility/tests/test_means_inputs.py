@@ -157,14 +157,15 @@ def test_secured_debts_carry_their_property_and_whether_it_is_the_home(session):
     home = linked_row(session, "1", "yes", "Demo Home")
     car = linked_row(session, "3", None, "Demo Car")
     elsewhere = linked_row(session, "1", "no", "Demo Rental")
-    home_loan = linked_loan(session, home, "800", creditor_name="A Home Bank")
-    car_loan = linked_loan(session, car, "300", creditor_name="B Car Bank")
-    rental_loan = linked_loan(session, elsewhere, "200", creditor_name="C Rental Bank")
-    complete_debt(session, creditor_name="D Not Secured", secured_by=car)
-    linked_loan(session, car, "50", creditor_name="E Draft", is_draft=True)
+    # Created in the reverse of the order they must read in, so queryset order fails.
     other = IntakeSession.objects.create(user=session.user, district=session.district)
     foreign = linked_row(other, "3", None, "Foreign Car")
     stray_loan = linked_loan(session, foreign, "75", creditor_name="F Stray Bank")
+    linked_loan(session, car, "50", creditor_name="E Draft", is_draft=True)
+    complete_debt(session, creditor_name="D Not Secured", secured_by=car)
+    rental_loan = linked_loan(session, elsewhere, "200", creditor_name="C Rental Bank")
+    car_loan = linked_loan(session, car, "300", creditor_name="B Car Bank")
+    home_loan = linked_loan(session, home, "800", creditor_name="A Home Bank")
     got = {d.debt_id: d for d in read_inputs(session).secured_debts}
     assert [d.creditor for d in read_inputs(session).secured_debts] == [
         "A Home Bank",
@@ -194,14 +195,15 @@ def test_secured_debts_carry_their_property_and_whether_it_is_the_home(session):
 def test_vehicles_are_line_3_rows_and_line_4_rows_not_lived_in_with_their_loans_and_leases(
     session,
 ):
+    # The line 4 rows are created before the line 3 car, so queryset order fails.
+    trailer = linked_row(session, "4", "no", "Demo Trailer")
+    linked_lease(session, trailer, "200")
+    linked_row(session, "4", "yes", "Demo Home On Wheels")
     car = linked_row(session, "3", None, "")
     car.description = ""
     car.set_details({"make": "Demo", "model": "Hatch", "year": "2019", "lives_here": None})
     car.save()
     linked_loan(session, car, "300")
-    trailer = linked_row(session, "4", "no", "Demo Trailer")
-    linked_lease(session, trailer, "200")
-    linked_row(session, "4", "yes", "Demo Home On Wheels")
     first, second = read_inputs(session).vehicles
     assert (first.asset_id, first.name, first.financed, first.leased) == (
         car.pk,
@@ -255,7 +257,35 @@ def test_read_tables_gives_the_calculator_the_figures_in_force(
         (Decimal("334.00"), Decimal("668.00")),
         Decimal("703.00"),
     )
-    assert [t["name"] for t in used] == ["IRS expense standards", "Bankruptcy Code dollar amounts"]
+    assert (
+        tables.public_transport,
+        tables.national_extra,
+        tables.health_65_or_older,
+        tables.presumption_low,
+        tables.presumption_high,
+    ) == (
+        Decimal("220.00"),
+        Decimal("397.00"),
+        Decimal("163.00"),
+        Decimal("10275.00"),
+        Decimal("17150.00"),
+    )
+    assert used[0] == {
+        "name": "IRS expense standards",
+        "effective_date": "2026-07-15",
+        "valid_through": None,
+        "source_url": "https://www.justice.gov/ust/means-testing/20260715",
+    }
+    assert used[1] == {
+        "name": "Bankruptcy Code dollar amounts",
+        "effective_date": "2025-04-01",
+        "valid_through": "2028-03-31",
+        "source_url": (
+            "https://www.federalregister.gov/documents/2025/02/04/2025-02207/"
+            "adjustment-of-certain-dollar-amounts-applicable-to-bankruptcy-cases"
+        ),
+    }
+    assert len(used) == 2
 
 
 def test_read_tables_refuses_before_july_15_2026(means_standards_2026, section_104_2025):
