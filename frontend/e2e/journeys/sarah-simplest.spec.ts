@@ -51,8 +51,8 @@ test.describe('Sarah Chen — Simplest Case', () => {
     await wizard.nextStep();
 
     // Means test preview — should show the result "at or below the median"
-    // (the result needs both income and expense data)
-    await wizard.waitForMeansTestEstimate();
+    // (the result reads income alone, so it shows once income is saved)
+    await wizard.waitForMeansTestResult();
     const preview = await wizard.getMeansTestPreview();
     const previewLower = preview.toLowerCase();
     expect(previewLower).toContain('at or below the median');

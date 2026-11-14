@@ -528,7 +528,7 @@ def _james_washington() -> dict:
 
 
 def _priya_sharma() -> dict:
-    """Above-median — fails means test. Tests ineligibility path."""
+    """Above the median: Form 122A-2 applies, and its result can't be worked out yet (3h1)."""
     return {
         "username": "demo_priya",
         "email": "priya.sharma@demo.dignifi.org",

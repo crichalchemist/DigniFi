@@ -55,8 +55,8 @@ test.describe('Maria Torres — Happy Path', () => {
     await wizard.nextStep();
 
     // Means test sidebar should say her income is at or below the median
-    // (the result needs both income and expense data)
-    await wizard.waitForMeansTestEstimate();
+    // (the result reads income alone, so it shows once income is saved)
+    await wizard.waitForMeansTestResult();
     const preview = await wizard.getMeansTestPreview();
     expect(preview.toLowerCase()).toContain('at or below the median');
 

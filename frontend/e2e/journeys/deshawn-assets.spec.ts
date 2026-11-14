@@ -51,8 +51,8 @@ test.describe('DeShawn Mitchell — Assets', () => {
     await wizard.nextStep();
 
     // Should pass means test (below median for HH of 2)
-    // (the estimate needs both income and expense data)
-    await wizard.waitForMeansTestEstimate();
+    // (the result reads income alone, so it shows once income is saved)
+    await wizard.waitForMeansTestResult();
     const preview = await wizard.getMeansTestPreview();
     expect(preview.toLowerCase()).toContain('at or below the median');
 

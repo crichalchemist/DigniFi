@@ -125,6 +125,8 @@ PROHIBITED_PHRASES = [
 | "You will qualify"          | "Qualification depends on..."                               |
 | "This is your best option"  | "Chapter 7 and Chapter 13 each have different requirements" |
 
+> **Note:** the means test no longer says "You may be eligible": the owner's ruling O4 retired that wording (forms step 3h spec, §2 O4). Its result is the form's arithmetic, never a verdict, in the words `copy.ts` marks `DRAFT: counsel C-24`. This example stays as written until counsel reviews it.
+
 ### 4.4 No Legal Judgment
 
 **DigniFi never evaluates:**
@@ -269,6 +271,7 @@ class AuditLog(models.Model):
 - [ ] Disclaimers present on all new screens
 - [ ] No language implies legal judgment ("you should", "you will")
 - [ ] Conditional language used ("may be eligible", "typically requires")
+  - Note: the means test's result no longer says "may be eligible": the owner's ruling O4 retired that wording (forms step 3h spec, §2 O4). This example stays as written until counsel reviews it (C-24).
 - [ ] Audit logging captures all UPL-sensitive actions
 - [ ] No PII logged in error messages
 - [ ] Forms populate but don't evaluate user's case
@@ -373,7 +376,8 @@ class AuditLog(models.Model):
 ## XI. Questions & Answers
 
 **Q: Can we tell users "You qualify for Chapter 7"?**  
-A: ❌ No. Use "You may be eligible for Chapter 7 based on the information provided."
+A: ❌ No. Use "You may be eligible for Chapter 7 based on the information provided."  
+Note: the means test no longer says "You may be eligible for Chapter 7": the owner's ruling O4 retired that wording (forms step 3h spec, §2 O4). This answer stays as written until counsel reviews it (C-24).
 
 **Q: Can we calculate the means test and display the result?**  
 A: ✅ Yes. Performing calculations is permitted. Just don't interpret the result as legal advice.

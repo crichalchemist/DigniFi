@@ -1,10 +1,10 @@
 /**
- * Priya Sharma — Ineligible (Above Median)
+ * Priya Sharma — Above the Median
  *
  * $12,000 a month plus her spouse's $1,800 is $13,800 a month, $165,600 a
- * year, with a 4-person household — above the $137,902 HH4 median, so the
- * means test fails.
- * Tests the dignity-preserving ineligibility path.
+ * year, with a 4-person household — above the $137,902 HH4 median, so
+ * Form 122A-2 applies, and in 3h1 its result can't be worked out yet.
+ * Tests that the above-median result is shown with dignity and no verdict.
  */
 
 import { test, expect } from '@playwright/test';
@@ -15,8 +15,8 @@ import { WizardPage } from '../pages/wizard.page';
 import { DocumentsPage } from '../pages/documents.page';
 import { FilingFeePage } from '../pages/filing-fee.page';
 
-test.describe('Priya Sharma — Ineligible', () => {
-  test('sees dignity-preserving ineligibility message', async ({ page }) => {
+test.describe('Priya Sharma — Above the Median', () => {
+  test('sees that Form 122A-2 applies, in words with no verdict', async ({ page }) => {
     const landing = new LandingPage(page);
     const register = new RegisterPage(page);
     const wizard = new WizardPage(page);
@@ -47,8 +47,8 @@ test.describe('Priya Sharma — Ineligible', () => {
     await wizard.nextStep();
 
     // Means test preview should show above-median messaging
-    // (the estimate needs both income and expense data)
-    await wizard.waitForMeansTestEstimate();
+    // (the result reads income alone, so it shows once income is saved)
+    await wizard.waitForMeansTestResult();
     const preview = await wizard.getMeansTestPreview();
     const previewLower = preview.toLowerCase();
 

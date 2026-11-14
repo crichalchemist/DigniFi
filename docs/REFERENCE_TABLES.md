@@ -3,7 +3,7 @@
 - **Operator:** the project owner
 - **Last updated:** November 14, 2026
 
-DigniFi reads public tables that change on a schedule. Each row of such a table is stored with the first day it applies (`effective_date`), the last day before its next scheduled change (`valid_through`) and the page it comes from (`source_url`). DigniFi uses the newest row that has started by the day the forms are filled, in Chicago time, which stands in for the filing date. If that row's `valid_through` has passed, or no row has started yet, DigniFi refuses to prepare forms. It never falls back to an older row.
+DigniFi reads public tables that change on a schedule. Each row of such a table is stored with the first day it applies (`effective_date`), the last day before its next scheduled change (`valid_through`) and the page it comes from (`source_url`). DigniFi uses the newest row that has started by the day the forms are filled, in Chicago time, which stands in for the filing date. If that row's `valid_through` has passed, or no row has started yet, DigniFi refuses to prepare forms. It never falls back to an older row. For the two means test sets, the U.S. Trustee means test standards and the Bankruptcy Code dollar amounts, only an above-median filer's Form 122A-2 and Form 122A-1 refuse: a filer at or below the median never reads them (see their sections below).
 
 The code lives in `backend/apps/districts/dated_tables.py`. Each table below has its own section. A pull request that loads a new kind of table adds its section here.
 
