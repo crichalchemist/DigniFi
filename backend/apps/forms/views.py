@@ -499,8 +499,9 @@ class GeneratedFormViewSet(viewsets.ReadOnlyModelViewSet):
 
         A 122A-1 or 122A-2 not yet filed is worked out again first, as its unfiled download is,
         so the hold can't be gone around with a copy made before it (3h1 R7). The document it
-        was checked with is the one filed, and the one conditional update is the only write.
-        Any other row, or one already filed, is marked as before.
+        was checked with is the one filed, and the one conditional update is the only write to
+        the GeneratedForm row. `_prepare` also saves the means test it works out again, even when
+        the filing is then refused. Any other row, or one already filed, is marked as before.
         """
         generated_form = self.get_object()
 

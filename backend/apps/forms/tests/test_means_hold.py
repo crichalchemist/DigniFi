@@ -3,11 +3,9 @@ An above-median filer's Form 122A-1 and Form 122A-2 never leave DigniFi incomple
 122A-2 can print every line, both refuse, together.
 """
 
-import json
 import logging
 from datetime import date
 from decimal import Decimal
-from pathlib import Path
 
 import pytest
 from django.contrib.auth import get_user_model
@@ -30,6 +28,7 @@ from apps.forms.registry import (
     packet,
 )
 from apps.forms.services.pdf_filler import PDFFormFiller
+from apps.forms.tests.means_pair import box_1_state, stored_check_box_1
 from apps.intake.models import DebtorInfo, IncomeInfo, IntakeSession
 from apps.intake.tests.builders import answer_household
 
@@ -341,21 +340,6 @@ def test_a_below_median_filer_is_never_refused_for_a_missing_122a2_table(
     assert not [r for r in caplog.records if r.levelno >= logging.ERROR]
 
 
-def _box_1_state():
-    """Box 1's export state, read from the schema's CheckBox1 choices."""
-    schema = json.loads(
-        (Path(__file__).resolve().parents[4] / "data/forms/schemas/form_122a1.json").read_text()
-    )
-    (field,) = [f for f in schema["fields"] if f["pdf_field"] == "CheckBox1"]
-    return field["choices"]["below"]
-
-
-def _stored_check_box_1(row):
-    row.refresh_from_db()
-    part = json.loads(row.field_values)["parts"][0]
-    return part["values"]["CheckBox1"]
-
-
 @pytest.mark.django_db
 def test_marking_a_stale_122a1_filed_above_the_median_is_refused_and_leaves_it_unfiled(
     api_client, session_with_debtor
@@ -390,7 +374,7 @@ def test_a_122a1_filed_with_box_1_below_the_median_downloads_as_stored_above_it(
     assert api_client.post(f"/api/forms/{row.pk}/mark_filed/").status_code == 200
     row.refresh_from_db()
     stored = row.field_values
-    assert _stored_check_box_1(row) == _box_1_state()
+    assert stored_check_box_1(row) == box_1_state()
     _set_wages(session, "9000.00")
 
     download = api_client.get(f"/api/forms/{row.pk}/download/")

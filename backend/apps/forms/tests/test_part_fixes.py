@@ -82,7 +82,7 @@ def test_only_the_list_of_creditors_stores_fixes():
             try:
                 parts = build_parts(form_type, session)["parts"]
             except PreconditionMissing as exc:
-                if form_type not in HELD and form_type in {"form_103b"}:
+                if form_type in {"form_103b"}:
                     continue  # 103B for a persona who pays the fee
                 if form_type not in HELD or str(exc) != FORM_122A2_NOT_ASKED:
                     raise

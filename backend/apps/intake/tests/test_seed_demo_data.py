@@ -602,7 +602,7 @@ def test_every_seeded_persona_passes_schedule_cs_gate(persona):
 
 
 @pytest.mark.django_db
-@pytest.mark.parametrize("persona", ["maria", "james", "sarah", "deshawn", "priya", "andres"])
+@pytest.mark.parametrize("persona", list(PERSONAS))
 def test_the_seed_reports_only_priyas_122a1_and_122a2_as_skipped_because_the_hold_refuses_them(
     persona,
 ):
