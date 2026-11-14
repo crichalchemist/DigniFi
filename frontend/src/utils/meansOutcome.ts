@@ -1,5 +1,5 @@
 /**
- * The words for the means test's result (forms step 3h1 spec §7.2).
+ * The words for the means test's result (forms step 3h1 spec §7.4 and §7.9).
  *
  * The server stores one of four outcomes and never a sentence: the browser composes the words
  * from `copy.ts`, so the sidebar and the dashboard say the same thing. The result is the form's

@@ -63,6 +63,10 @@ export function useDebouncedMeansTest({
     } catch (err) {
       if (abortRef.current?.signal.aborted) return;
 
+      // An earlier result no longer stands: never show its outcome, or the closing sentence,
+      // beside the reason this one couldn't be shown (§7.4)
+      setResult(null);
+
       // Gracefully handle incomplete data errors. A 400's `error` is a sentence for the filer
       // (no median table in force, income not entered by source), which says what stands in
       // the way better than asking for income they may already have given.

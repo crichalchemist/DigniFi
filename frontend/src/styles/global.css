@@ -1574,6 +1574,12 @@ a {
   margin-bottom: var(--space-4);
 }
 
+/* The pair's live region is on the page from the start. Empty, it takes no room, but it stays
+   displayed, so a screen reader still hears what is added to it. */
+.form-dashboard-pair:empty {
+  margin-bottom: 0;
+}
+
 .form-dashboard-progress {
   margin-bottom: var(--space-5);
 }

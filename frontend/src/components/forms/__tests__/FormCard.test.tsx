@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { FormCard } from '../FormCard';
@@ -117,6 +117,35 @@ describe('FormCard', () => {
     );
     expect(screen.getByRole('button', { name: /download/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /mark as filed/i })).toBeInTheDocument();
+  });
+
+  // On Form 122A-1 and 122A-2, Mark as Filed works the pair out again on the server, which takes
+  // as long as a download, so the button shows it is working rather than looking dead
+  it('shows Mark as Filed working until it answers', async () => {
+    const user = userEvent.setup();
+    let answer: () => void = () => {};
+    const onMarkFiled = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          answer = resolve;
+        })
+    );
+    render(
+      <MemoryRouter>
+        <FormCard {...defaultProps} generatedForm={mockForm} onMarkFiled={onMarkFiled} />
+      </MemoryRouter>
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Mark as Filed' }));
+
+    const working = screen.getByRole('button', { name: /Marking as filed/ });
+    expect(working).toBeDisabled();
+    expect(working).toHaveAttribute('aria-busy', 'true');
+
+    await act(async () => answer());
+
+    expect(screen.getByRole('button', { name: 'Mark as Filed' })).toBeEnabled();
+    expect(screen.queryByRole('button', { name: /Marking as filed/ })).not.toBeInTheDocument();
   });
 
   it('shows UPL disclaimer from generated form', () => {

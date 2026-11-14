@@ -99,6 +99,57 @@ describe('MeansTestPreview when the means test refuses', () => {
     expect(await screen.findByText(MEANS_TEST_UNAVAILABLE)).toBeInTheDocument();
     expect(screen.queryByText(CLOSING)).not.toBeInTheDocument();
   });
+
+  // An old "Form 122A-2 doesn't apply to you" beside a failure is the owner's harm direction, and
+  // the closing sentence never shows without the current outcome (§7.4)
+  it.each<[string, number, Record<string, string>, string]>([
+    [
+      'a 400',
+      400,
+      { error: 'Enter your income by source on the Income step.', message: GENERIC },
+      'Enter your income by source on the Income step.',
+    ],
+    ['a 500', 500, { detail: 'boom' }, MEANS_TEST_UNAVAILABLE],
+  ])(
+    'drops an earlier result and its closing sentence when a later call answers with %s',
+    async (_, status, body, sentence) => {
+      let calls = 0;
+      server.use(
+        http.post(CALCULATE, () => {
+          calls += 1;
+          if (calls === 1) {
+            return HttpResponse.json({
+              means_test_result: {
+                passes_means_test: true,
+                cmi: 3500,
+                median_income_threshold: 71304,
+                family_size: 1,
+                outcome: 'at_or_below_median',
+                tables_gap: null,
+              },
+              session_id: 1,
+            });
+          }
+          // Every later call fails, so a 500's retries can't bring a result back
+          return HttpResponse.json(body, { status });
+        })
+      );
+      const { container, rerender } = render(<MeansTestPreview sessionId={1} currentStep={3} />);
+      await userEvent.click(screen.getByRole('button', { name: /income test/i }));
+      expect(await screen.findByText(CLOSING)).toBeInTheDocument();
+      expect(container.textContent).toContain('at or below the median');
+
+      // A later step asks for the result again
+      rerender(<MeansTestPreview sessionId={1} currentStep={4} />);
+
+      expect(await screen.findByText(sentence, {}, { timeout: 10000 })).toBeInTheDocument();
+      expect(calls).toBeGreaterThan(1);
+      expect(screen.queryByText(CLOSING)).not.toBeInTheDocument();
+      expect(container.textContent).not.toContain('at or below the median');
+      expect(screen.queryByText('Monthly income for the means test')).not.toBeInTheDocument();
+    },
+    20000
+  );
 });
 
 describe('MeansTestPreview with a result', () => {

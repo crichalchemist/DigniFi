@@ -115,6 +115,8 @@ export function FormCard({
             size="sm"
             variant="outline"
             onClick={() => handleAction(() => onMarkFiled(generatedForm.id))}
+            isLoading={isLoading}
+            loadingText="Marking as filed..."
           >
             Mark as Filed
           </Button>

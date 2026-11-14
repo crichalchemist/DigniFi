@@ -1706,13 +1706,66 @@ describe('FormDashboard', () => {
       expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     });
 
+    // A polite region inserted already holding its text isn't reliably read out, so the pair's
+    // region is on the page, empty, from the start, as a card's refusal region is
+    it('holds the pair’s status region on the page before Generate All runs', async () => {
+      packetWith({ outcome: 'cannot_work_out', family_size: 4 });
+      server.use(
+        http.post('http://localhost:8000/api/forms/generate_all/', () =>
+          HttpResponse.json({
+            generated: [],
+            errors: [{ form_type: 'form_122a2', error: MEANS_HOLD_REFUSAL }],
+            total_generated: 0,
+            total_errors: 1,
+          })
+        )
+      );
+      const { container } = renderFormDashboard();
+      await screen.findByText('Form 121 - SSN Statement');
+
+      const region = container.querySelector('.form-dashboard-pair');
+      expect(region).not.toBeNull();
+      expect(region).toHaveAttribute('role', 'status');
+      expect(region).toBeEmptyDOMElement();
+
+      await generateAll();
+
+      const refusal = await screen.findByText(MEANS_HOLD_REFUSAL, { exact: false });
+      // The same element, not a new one put in with the words already inside
+      expect(refusal.closest('[role="status"]')).toBe(region);
+    });
+
+    // The hold names no step or page: nothing the filer can do on any page lifts it (H32)
     it('a refused Mark as Filed shows on its card', async () => {
       packetWith({ outcome: 'cannot_work_out', family_size: 4 });
       formsWith(storedForm('form_122a1', 7));
       server.use(
         http.post('http://localhost:8000/api/forms/:id/mark_filed/', () =>
+          HttpResponse.json({ form_type: 'form_122a1', error: MEANS_HOLD_REFUSAL }, { status: 422 })
+        )
+      );
+      renderFormDashboard();
+
+      const card = await screen.findByRole('article', { name: 'Form 122A-1 - Means Test' });
+      await userEvent.click(within(card).getByRole('button', { name: 'Mark as Filed' }));
+
+      expect(await within(card).findByText(MEANS_HOLD_REFUSAL)).toBeInTheDocument();
+      expect(within(card).queryByRole('link')).not.toBeInTheDocument();
+      // Still unfiled
+      expect(within(card).getByRole('button', { name: 'Mark as Filed' })).toBeInTheDocument();
+      expect(within(card).queryByLabelText('Filed with court')).not.toBeInTheDocument();
+    });
+
+    // Mark as Filed on 122A-1 works the means test out again first, so the Income step's own
+    // refusal can stop it, and that one names its fix
+    it('a Mark as Filed refused with a fix links to it on the card', async () => {
+      const NOT_SPLIT = 'Enter your income by source on the Income step.';
+      packetWith({ outcome: 'cannot_work_out', family_size: 4 });
+      formsWith(storedForm('form_122a1', 7));
+      server.use(
+        http.post('http://localhost:8000/api/forms/:id/mark_filed/', () =>
           HttpResponse.json(
-            { form_type: 'form_122a1', error: MEANS_HOLD_REFUSAL, page: '/exemptions' },
+            { form_type: 'form_122a1', error: NOT_SPLIT, step: 'income_info' },
             { status: 422 }
           )
         )
@@ -1722,13 +1775,12 @@ describe('FormDashboard', () => {
       const card = await screen.findByRole('article', { name: 'Form 122A-1 - Means Test' });
       await userEvent.click(within(card).getByRole('button', { name: 'Mark as Filed' }));
 
-      expect(await within(card).findByText(MEANS_HOLD_REFUSAL)).toBeInTheDocument();
-      expect(
-        within(card).getByRole('link', { name: 'Go to The property you claim as exempt' })
-      ).toHaveAttribute('href', '/exemptions');
-      // Still unfiled
+      expect(await within(card).findByText(NOT_SPLIT)).toBeInTheDocument();
+      expect(within(card).getByRole('link', { name: 'Go to Income' })).toHaveAttribute(
+        'href',
+        '/intake?step=income_info'
+      );
       expect(within(card).getByRole('button', { name: 'Mark as Filed' })).toBeInTheDocument();
-      expect(within(card).queryByLabelText('Filed with court')).not.toBeInTheDocument();
     });
 
     it.each([

@@ -133,7 +133,7 @@ const TABLE_NOTICES: Record<string, string> = {
 };
 
 /**
- * What the forms say about the dated table they were filled from (step 3a1 spec §3.6, 3h1 §7.8).
+ * What the forms say about the dated table they were filled from (step 3a1 spec §3.6, 3h1 §7.4).
  * None for a table this page has no words for.
  */
 function tableNotice(table: DatedTableUsed): string | null {
@@ -462,12 +462,12 @@ export function FormDashboard() {
         </div>
       )}
 
-      {/* Form 122A-1 and 122A-2 wait for each other: say so as information, not as an error */}
-      {pairErrors.length > 0 && (
-        <div className="form-dashboard-notice" role="status">
-          {errorList(pairErrors, pairErrorLinks)}
-        </div>
-      )}
+      {/* Form 122A-1 and 122A-2 wait for each other: say so as information, not as an error. A
+          polite region from the start, empty until then, so a screen reader reads out the
+          refusals Generate All adds to it, as a card's refusal region is */}
+      <div className="form-dashboard-notice form-dashboard-pair" role="status">
+        {pairErrors.length > 0 && errorList(pairErrors, pairErrorLinks)}
+      </div>
 
       {/* Nothing to count until the packet has loaded */}
       {totalCount > 0 && (
