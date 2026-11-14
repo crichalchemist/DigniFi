@@ -359,6 +359,7 @@ def _vehicle_slots(inputs: MeansInputs):
     """Vehicle 1 and Vehicle 2, each a Vehicle or None for an empty slot, or MISSING."""
     if any(vehicle.claimed is None for vehicle in inputs.vehicles):
         return MISSING
+    # DRAFT: counsel C-28 (a leased vehicle takes a slot; 13a prints whole, nothing on 13b)
     candidates = [v for v in inputs.vehicles if v.claimed and (v.financed or v.leased)]
     if len(candidates) <= 2:
         return tuple((candidates + [None, None])[:2])
@@ -537,6 +538,7 @@ def _lines_35_and_36(inputs: MeansInputs, tables: MeansTables) -> dict[str, Valu
     return {**thirty_five, **thirty_six}
 
 
+# DRAFT: counsel C-5 (a 39d of exactly the upper figure is in the band, as the form reads)
 def _in_band(line_39d: Decimal, low: Decimal, high: Decimal) -> bool:
     """Whether line 39d sits in the middle band; both edges are in it."""
     return low <= line_39d <= high

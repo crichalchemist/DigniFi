@@ -12,6 +12,7 @@ from .models import MeansStandards, Section104Amounts
 
 MEANS_STANDARDS_TABLE = "IRS expense standards"
 SECTION_104_TABLE = "Bankruptcy Code dollar amounts"
+# DRAFT: counsel C-24
 NO_MEANS_TEST_TABLE = (
     "DigniFi doesn't have the means test figures for today's date yet, "
     "so it can't work out Form 122A-2."

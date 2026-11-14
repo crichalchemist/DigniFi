@@ -43,6 +43,7 @@ def _ages(session) -> tuple[int | None, ...]:
     """The filer, then each household row claimed or supported, in list order."""
     debtor = getattr(session, "debtor_info", None)
     filer = None if debtor is None else _age_on(debtor.date_of_birth, fill_date())
+    # DRAFT: counsel C-22 (line 5 counts the rows claimed or supported, as count_exemptions does)
     counted = (
         member.get("age")
         for member in household_members(session)
@@ -63,6 +64,7 @@ def _lives_in(row) -> bool:
 
 def _vehicles(session, rows, debts) -> tuple[Vehicle, ...]:
     financed = {debt.secured_by_id for debt in debts}
+    # DRAFT: counsel C-28 (a vehicle lease takes a slot, and its payment is on no line)
     leased = {
         contract.vehicle_asset_id
         for contract in session.executory_contracts.all()
@@ -128,6 +130,7 @@ def read_inputs(session) -> MeansInputs:
         vehicles=_vehicles(session, rows, debts),
         secured_debts=_secured_debts(rows, debts),
         line_35_past_due=_line_35(claims.priority),
+        # DRAFT: counsel C-23 (line 41a is Schedule E/F Part 2 alone, 106Sum line 3b)
         line_41a=sum((row.debt.amount_owed for row in claims.unsecured), Decimal("0.00")),
     )
 
