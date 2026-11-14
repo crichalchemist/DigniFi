@@ -263,7 +263,7 @@ class TestMeansTestCalculatorUPLCompliance:
 
         assert result["outcome"] == "at_or_below_median"
         for text in _every_string(result):
-            for word in ("eligible", "qualif", "guarantee", "will be approved"):
+            for word in ("eligible", "qualif", "chapter 13", "should choose"):
                 assert word not in text.lower()
 
     def test_all_calculation_paths_upl_compliant(self):
@@ -427,8 +427,9 @@ class TestServiceLayerStringCompliance:
 
         result = MeansTestCalculator(session).calculate()
 
-        violations = _reply_violations(result["details"])
-        assert violations == [], f"Reply details contain prohibited phrases: {violations}"
+        assert "message" not in result
+        violations = _reply_violations(result)
+        assert violations == [], f"Reply contains prohibited phrases: {violations}"
 
 
 # ============================================================================

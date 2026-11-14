@@ -152,6 +152,7 @@ class MeansTest(models.Model):
                 count is read, so no household is sized until the filer has answered it
             ValueError: If required intake data is missing
             NoTableInForce: If no median income table is in force on the fill date
+            MeansTableKeyMissing: If a means-test table lacks a key the form's lines need
         """
         gaps = income_step_gaps(self.session)
         if gaps:

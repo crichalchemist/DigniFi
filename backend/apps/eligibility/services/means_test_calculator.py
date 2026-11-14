@@ -53,7 +53,7 @@ class MeansTestCalculator:
         Returns:
             dict: Calculation results with structure:
                 {
-                    "passes_means_test": bool,
+                    "passes_means_test": bool | None,
                     "cmi": Decimal,
                     "median_income_threshold": Decimal,
                     "family_size": int,
@@ -100,7 +100,7 @@ class MeansTestCalculator:
             "passes_means_test": means_test.passes_means_test,
             "cmi": means_test.calculated_cmi,
             "median_income_threshold": means_test.median_income_threshold,
-            "family_size": details.get("family_size", 0),
+            "family_size": details["family_size"],
             "details": details,
             "means_test_id": means_test.id,
             "outcome": means_test.outcome,

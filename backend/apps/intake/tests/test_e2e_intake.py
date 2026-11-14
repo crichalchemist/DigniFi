@@ -572,9 +572,9 @@ class TestMeansTestCalculation:
         assert "message" not in result
 
     def test_calculate_means_test_above_median(self, api_client, complete_session):
-        """Test means test with income above median (should fail)."""
+        """Income above the median meets cannot_work_out, never a passes/fails verdict."""
         # Note: calculator compares monthly CMI to annual threshold directly.
-        # Median is $71,304 annual, so CMI must exceed that to fail.
+        # Median is $71,304 annual, so CMI must exceed that to be above the median.
         complete_session.income_info.monthly_gross_wages = Decimal("80000.00")
         complete_session.income_info.save()
 

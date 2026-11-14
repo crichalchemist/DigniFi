@@ -3,7 +3,7 @@ Comprehensive tests for MeansTestCalculator service.
 
 Tests cover:
 - Below-median income (passes means test)
-- Above-median income (fails means test)
+- Above-median income (outcome cannot_work_out until the 122A-2 answers exist)
 - At-median income (edge case: counts as below the median, DIG-136), and CMI rounded to the cent
 - All household sizes (1-8), counted from the household list
 - No fee-waiver verdict at any income: the result and its details carry none (3f spec §9)
@@ -224,11 +224,13 @@ class TestBelowMedianIncomePassesMeansTest:
 
 
 @pytest.mark.django_db
-class TestAboveMedianIncomeFailsMeansTest:
-    """Tests for above-median income scenarios (fails means test)."""
+class TestAboveMedianIncomeCannotBeWorkedOutYet:
+    """An above-median filer's result is cannot_work_out until the 122A-2 answers exist."""
 
-    def test_above_median_single_no_dependents(self, session, median_income):
-        """Test single filer, no dependents, above median fails means test."""
+    def test_above_median_single_filer_is_cannot_work_out_until_the_122a2_answers_exist(
+        self, session, median_income
+    ):
+        """A single filer above the median meets cannot_work_out and no passes/fails verdict."""
         # Median for family size 1: $71,304/year
         # Above median: $80,000/month average
         _income(
@@ -522,7 +524,7 @@ class TestRecalculationIdempotency:
         # Recalculate with new data
         result2 = calculator.calculate()
 
-        # Should now fail means test
+        # Still above the median: cannot_work_out, no passes/fails verdict
         assert result2["outcome"] == "cannot_work_out"
         assert result2["passes_means_test"] is None
         assert result2["cmi"] == Decimal("80000.00")
@@ -615,7 +617,7 @@ class TestAnnualizedComparison:
     median.
     """
 
-    def test_high_monthly_income_fails_after_annualization(self, session, median_income):
+    def test_high_monthly_income_is_above_median_after_annualization(self, session, median_income):
         # $10,000/month = $120,000/year > $71,304 median for family of 1
         _income(
             session=session,
@@ -669,7 +671,7 @@ class TestTheOldHouseholdSizeBox:
 
 @pytest.fixture
 def session_with_above_median_income(user, district, median_income):
-    """Create session with above-median income that triggers expense deduction."""
+    """Create a session with above-median income, whose result is cannot_work_out."""
     s = IntakeSession.objects.create(
         user=user,
         district=district,
@@ -701,7 +703,7 @@ def session_with_above_median_income(user, district, median_income):
 
 @pytest.mark.django_db
 class TestRecalculatingAcrossTheMedian:
-    """DIG-128: a recalculation at or below the median leaves no above-median result behind."""
+    """DIG-128: a recalculation at or below the median replaces an earlier cannot_work_out result."""
 
     def test_recalculating_below_the_median_gives_at_or_below_median(
         self, session_with_above_median_income
