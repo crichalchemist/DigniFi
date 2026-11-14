@@ -3,7 +3,7 @@ official tables, and the result says only what that arithmetic gives."""
 
 import pickle
 from dataclasses import replace
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation, localcontext
 
 import pytest
 
@@ -227,6 +227,15 @@ def test_the_comparison_in_the_band_needs_line_41b():
         compare(D("12000.00"), None, LOW, HIGH)
 
 
+def test_a_39d_in_none_of_the_bands_raises_instead_of_reading_as_a_presumption():
+    # NaN sits below, inside and above no band once InvalidOperation no longer raises
+    with localcontext() as context:
+        context.traps[InvalidOperation] = False
+        with pytest.raises(ValueError) as refused:
+            compare(D("NaN"), None, LOW, HIGH)
+    assert "NaN" not in str(refused.value)
+
+
 @pytest.mark.parametrize(
     "line_39d, line_40, outcome",
     [
@@ -311,6 +320,11 @@ def test_each_line_rounds_half_even_and_later_lines_add_the_printed_figures():
         ),
         ({"line_35_past_due": None}, {"35_answer", "35_total", "35", "37"}),
         ({"line_3_answer": None}, {"3_answer", "3", "4", "39a", "39c", "39d"}),
+        (
+            {"line_36_answer": None},
+            {"36_answer", "36_payment", "36_multiplier", "36", "37", "38", "39d"},
+        ),
+        ({"line_36_payment": None}, {"36_payment", "36", "37", "39d"}),
     ],
 )
 def test_a_missing_input_leaves_its_line_and_the_result_blank(change, missing):
@@ -359,6 +373,8 @@ def test_a_renter_has_no_9b_rows_and_9c_is_the_standard():
 def test_with_no_vehicle_line_14_takes_public_transportation_and_12_to_13f_are_skipped():
     lines = figures(replace(PRIYA, vehicles=(), secured_debts=()))
     assert lines["11"] == 0 and lines["14"] == D("220.00") and lines["15"] is SKIPPED
+    # TABLES holds 220 with no cents, so only line 14's own rounding prints it to the cent
+    assert lines["14"].as_tuple().exponent == -2
     skipped = ("12", "13_vehicle_1", "13_vehicle_2", "13a", "13b", "13c", "13d", "13e", "13f")
     assert all(lines[key] is SKIPPED for key in skipped)
     assert lines["24"] == D("9548.00")
@@ -415,6 +431,30 @@ def test_three_financed_vehicles_with_no_choice_leave_the_slots_missing():
     assert all(lines.lines[key] is MISSING for key in slots)
     assert lines.rows["13b"] == () and lines.rows["33d"] == ()
     assert lines.outcome == CANNOT_WORK_OUT
+
+
+@pytest.mark.parametrize("choice", [(1, 1), (1, 99)], ids=["one_car_twice", "not_a_candidate"])
+def test_a_vehicle_choice_of_one_car_twice_or_a_car_not_listed_leaves_the_slots_missing(choice):
+    # One car in both slots would take the ownership standard twice and lower 39d
+    lines = work_out(three_vehicles(vehicle_choice=choice), TABLES)
+    slots = ("13_vehicle_1", "13_vehicle_2", "13a", "13b", "13c", "13d", "13e", "13f", "33d")
+    assert all(lines.lines[key] is MISSING for key in slots)
+    assert lines.outcome == CANNOT_WORK_OUT
+
+
+def test_a_vehicle_loan_above_the_ownership_standard_floors_13c_and_13f_at_zero():
+    # Unfloored, 13c or 13f would go below zero and line 24 would drop, raising 39d
+    big = replace(KESTREL, monthly_payment=D("800.00"), payments_left=60)
+    first = figures(replace(PRIYA, secured_debts=(big,)))
+    assert (first["13a"], first["13b"], first["13c"]) == (D("703.00"), D("800.00"), D("0.00"))
+    assert first["24"] == D("9662.00")
+
+    three = three_vehicles(vehicle_choice=(1, 2))
+    one, two, other = three.secured_debts
+    second_big = replace(two, monthly_payment=D("800.00"), payments_left=60)
+    second = figures(replace(three, secured_debts=(one, second_big, other)))
+    assert (second["13d"], second["13e"], second["13f"]) == (D("703.00"), D("800.00"), D("0.00"))
+    assert second["24"] == D("10421.50")
 
 
 def test_a_household_of_six_adds_two_people_and_takes_the_five_or_more_housing_column():
@@ -516,6 +556,23 @@ def test_line_25_declined_is_skipped_and_actual_spending_is_asked_only_under_no(
     assert lines["25"] == D("800.00")
 
 
+LINE_25_KEYS = ("25_answer", "25_health", "25_disability", "25_hsa", "25", "25_spends", "25_actual")
+
+
+@pytest.mark.parametrize(
+    "change, keys",
+    [
+        *(({f"line_{n}": OptIn(None)}, (str(n),)) for n in (15, 22, 26, 27, 28, 29, 30, 31)),
+        ({"line_25": HealthInsurance(None)}, LINE_25_KEYS),
+    ],
+)
+def test_an_opt_in_with_no_answer_leaves_its_line_and_the_result_blank_not_declined(change, keys):
+    # Read as declined, the deduction would add zero and raise 39d toward a presumption
+    lines = work_out(replace(PRIYA, **change), TABLES)
+    assert all(lines.lines[key] is MISSING for key in keys)
+    assert lines.outcome == CANNOT_WORK_OUT
+
+
 def test_line_34_lists_only_debts_necessary_for_support_with_a_cure():
     needed = replace(KESTREL, necessary_for_support="yes", cure=D("600.00"))
     lines = work_out(replace(PRIYA, line_34_answer="yes", secured_debts=(needed,)), TABLES)
@@ -548,12 +605,22 @@ def test_line_34_takes_a_home_loan_from_line_33a():
         cure=D("1200.00"),
     )
     other = replace(KESTREL, asset_id=None, necessary_for_support="yes", cure=D("60.00"), debt_id=3)
-    lines = work_out(replace(PRIYA, line_34_answer="yes", secured_debts=(other, home)), TABLES)
+    car = replace(
+        KESTREL,
+        creditor="Demo Car Lender",
+        necessary_for_support="yes",
+        cure=D("120.00"),
+        debt_id=4,
+    )
+    # Given in neither line 33's order (9b, 13b, then 33d) nor its reverse
+    debts = (other, home, car)
+    lines = work_out(replace(PRIYA, line_34_answer="yes", secured_debts=debts), TABLES)
     assert [(row.label, row.amount) for row in lines.rows["34"]] == [
         ("Demo Mortgage Co", D("20.00")),
+        ("Demo Car Lender", D("2.00")),
         ("Kestrel Auto Finance", D("1.00")),
     ]
-    assert lines.lines["34"] == D("21.00")
+    assert lines.lines["34"] == D("23.00")
 
 
 def test_line_34_is_missing_while_a_debt_is_unanswered_or_waits_on_the_vehicle_slots():
@@ -659,6 +726,11 @@ def _with_debt(answer):
         (lambda a: replace(PRIYA, line_34_answer=a), "line 34's answer"),
         (lambda a: replace(PRIYA, line_36_answer=a), "line 36's answer"),
         (_with_debt, "necessary_for_support"),
+        (
+            lambda a: replace(PRIYA, secured_debts=(replace(KESTREL, payment_changes=a),)),
+            "payment_changes",
+        ),
+        (lambda a: replace(PRIYA, line_43_answer=a), "line 43's answer"),
     ],
 )
 @pytest.mark.parametrize("answer", ["Yes", ""])
@@ -690,3 +762,24 @@ def test_each_of_lines_17_19_20_and_23_adds_its_own_amount_to_line_24(field, lin
     lines = figures(replace(PRIYA, **{field: amount}))
     assert lines[line] == amount
     assert lines["24"] == base + amount
+
+
+def test_no_record_shows_a_creditor_property_county_or_amount_in_a_log_line():
+    car = replace(CRV, name="Demo Property Car")
+    debt = replace(
+        KESTREL,
+        creditor="Demo Creditor",
+        property="Demo Property Car",
+        monthly_payment=D("123456.78"),
+    )
+    opt_in = OptIn("yes", D("123456.78"))
+    health = HealthInsurance("yes", D("123456.78"), D("0.00"), D("0.00"), "yes")
+    inputs = replace(PRIYA, vehicles=(car,), secured_debts=(debt,), line_31=opt_in, line_25=health)
+    lines = work_out(inputs, TABLES)
+    (row,) = lines.rows["13b"]
+    assert row.label == "Demo Creditor"
+
+    for record in (car, debt, opt_in, health, inputs, row, lines):
+        for text in (repr(record), str(record)):
+            for secret in ("Demo Creditor", "Demo Property Car", "Cook", "123456.78"):
+                assert secret not in text, type(record).__name__

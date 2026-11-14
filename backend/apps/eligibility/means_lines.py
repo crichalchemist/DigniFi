@@ -65,13 +65,20 @@ class MeansTableKeyMissing(LookupError):
         super().__init__(f"The means test tables have no {part} figure for this session.")
 
 
-@dataclass(frozen=True)
+# The records that hold filer data print a fixed repr (and so a fixed str): a log line, an
+# exception message or an f-string that names one never carries a filer's figures or words.
+
+
+@dataclass(frozen=True, repr=False)
 class OptIn:
     answer: str
     amount: Decimal | None = None
 
+    def __repr__(self) -> str:
+        return "OptIn(...)"
 
-@dataclass(frozen=True)
+
+@dataclass(frozen=True, repr=False)
 class HealthInsurance:
     answer: str
     health: Decimal | None = None
@@ -80,8 +87,11 @@ class HealthInsurance:
     actually_spends: str | None = None
     actual: Decimal | None = None
 
+    def __repr__(self) -> str:
+        return "HealthInsurance(...)"
 
-@dataclass(frozen=True)
+
+@dataclass(frozen=True, repr=False)
 class Vehicle:
     asset_id: int
     name: str
@@ -89,8 +99,11 @@ class Vehicle:
     leased: bool
     claimed: bool | None = None
 
+    def __repr__(self) -> str:
+        return "Vehicle(asset_id=...)"
 
-@dataclass(frozen=True)
+
+@dataclass(frozen=True, repr=False)
 class SecuredDebt:
     debt_id: int
     creditor: str
@@ -105,8 +118,11 @@ class SecuredDebt:
     necessary_for_support: str | None = None
     cure: Decimal | None = None
 
+    def __repr__(self) -> str:
+        return "SecuredDebt(debt_id=...)"
 
-@dataclass(frozen=True)
+
+@dataclass(frozen=True, repr=False)
 class MeansInputs:
     line_1: Decimal | None
     marital_status: str | None
@@ -141,6 +157,9 @@ class MeansInputs:
     line_36_payment: Decimal | None = None
     line_43_answer: str | None = None
 
+    def __repr__(self) -> str:
+        return "MeansInputs(...)"
+
 
 @dataclass(frozen=True)
 class MeansTables:
@@ -158,13 +177,16 @@ class MeansTables:
     presumption_high: Decimal
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, repr=False)
 class MeansRow:
     label: str
     amount: Decimal | _Sentinel
     property: str = ""
     flag: str | None = None
     cure: Decimal | None = None
+
+    def __repr__(self) -> str:
+        return "MeansRow(...)"
 
 
 @dataclass(frozen=True)
@@ -174,11 +196,14 @@ class Comparison:
     outcome: str
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, repr=False)
 class MeansLines:
     lines: Mapping[str, Value]
     rows: Mapping[str, tuple[MeansRow, ...]]
     outcome: str
+
+    def __repr__(self) -> str:
+        return "MeansLines(outcome=...)"
 
 
 def _money(amount: Decimal) -> Decimal:
@@ -215,22 +240,23 @@ def _yes_no(answer: str | None, field: str) -> str | None:
 
 
 def _opt_in(opt_in: OptIn | None, field: str) -> Decimal | _Sentinel:
+    """The line's amount under yes, SKIPPED under no, and MISSING while it is unanswered."""
     if opt_in is None:
         return MISSING
-    if _yes_no(opt_in.answer, f"{field}'s answer") == "yes":
+    answer = _yes_no(opt_in.answer, f"{field}'s answer")
+    if answer is None:
+        return MISSING
+    if answer == "yes":
         return _given(opt_in.amount)
     return SKIPPED
 
 
 def _average(debt: SecuredDebt) -> Decimal | _Sentinel:
     """The debt's 60-month average, rounded to the cent; MISSING while its inputs are."""
-    if debt.payment_changes == "yes" and debt.total_60_months is not None:
+    changes = _yes_no(debt.payment_changes, "payment_changes")
+    if changes == "yes" and debt.total_60_months is not None:
         return _money(debt.total_60_months / MONTHS)
-    if (
-        debt.payment_changes == "no"
-        and debt.payments_left is not None
-        and debt.monthly_payment is not None
-    ):
+    if changes == "no" and debt.payments_left is not None and debt.monthly_payment is not None:
         return _money(min(debt.payments_left, 60) * debt.monthly_payment / MONTHS)
     return MISSING
 
@@ -422,7 +448,10 @@ def _line_25(health: HealthInsurance | None) -> dict[str, Value]:
     keys = ("25_answer", "25_health", "25_disability", "25_hsa", "25", "25_spends", "25_actual")
     if health is None:
         return dict.fromkeys(keys, MISSING)
-    if _yes_no(health.answer, "line 25's answer") != "yes":
+    answer = _yes_no(health.answer, "line 25's answer")
+    if answer is None:
+        return dict.fromkeys(keys, MISSING)
+    if answer == "no":
         return dict.fromkeys(keys, SKIPPED)
     amounts = (_given(health.health), _given(health.disability), _given(health.hsa))
     spends_answer = _yes_no(health.actually_spends, "line 25's actually-spends answer")
@@ -514,16 +543,21 @@ def _in_band(line_39d: Decimal, low: Decimal, high: Decimal) -> bool:
 
 
 def compare(line_39d: Decimal, line_41b: Decimal | None, low: Decimal, high: Decimal) -> Comparison:
-    """Line 40's three boxes and, in the middle band, line 42; both edges are in the band."""
-    if not _in_band(line_39d, low, high):
-        if line_39d < low:
-            return Comparison("1", None, NO_PRESUMPTION)
+    """Line 40's three boxes and, in the middle band, line 42; both edges are in the band.
+
+    A 39d in none of the three bands raises rather than reading as any box.
+    """
+    if line_39d < low:
+        return Comparison("1", None, NO_PRESUMPTION)
+    if _in_band(line_39d, low, high):
+        if line_41b is None:
+            raise ValueError("Line 41b is needed to compare line 39d in the middle band.")
+        if line_39d >= line_41b:
+            return Comparison("On", "yes", PRESUMPTION)
+        return Comparison("On", "no", NO_PRESUMPTION)
+    if line_39d > high:
         return Comparison("2", None, PRESUMPTION)
-    if line_41b is None:
-        raise ValueError("Line 41b is needed to compare line 39d in the middle band.")
-    if line_39d >= line_41b:
-        return Comparison("On", "yes", PRESUMPTION)
-    return Comparison("On", "no", NO_PRESUMPTION)
+    raise ValueError("Line 39d falls in none of line 40's bands.")
 
 
 def work_out(inputs: MeansInputs, tables: MeansTables) -> MeansLines:
@@ -594,7 +628,8 @@ def work_out(inputs: MeansInputs, tables: MeansTables) -> MeansLines:
     if reaches_43 is None:
         values["43"] = MISSING
     elif reaches_43:
-        values["43"] = MISSING if inputs.line_43_answer is None else inputs.line_43_answer
+        answer_43 = _yes_no(inputs.line_43_answer, "line 43's answer")
+        values["43"] = MISSING if answer_43 is None else answer_43
     else:
         values["43"] = SKIPPED
 

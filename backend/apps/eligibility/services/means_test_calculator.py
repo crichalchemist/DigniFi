@@ -65,6 +65,7 @@ class MeansTestCalculator:
 
         Raises:
             ValueError: If required data is missing or invalid
+            MeansTableKeyMissing: If a means-test table lacks a figure the form's lines need
         """
         # Get or create MeansTest record
         means_test, created = MeansTest.objects.get_or_create(

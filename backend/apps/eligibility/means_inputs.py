@@ -17,7 +17,13 @@ from apps.districts.means_standards import (
     section_104_in_force,
 )
 from apps.eligibility.cmi import household_cmi, household_members
-from apps.eligibility.means_lines import MeansInputs, MeansTables, SecuredDebt, Vehicle
+from apps.eligibility.means_lines import (
+    MeansInputs,
+    MeansTableKeyMissing,
+    MeansTables,
+    SecuredDebt,
+    Vehicle,
+)
 from apps.intake.asset_lines import exemption_item_name, ordered_assets
 from apps.intake.claim_rows import claim_rows
 from apps.intake.claims import ordered_debts
@@ -130,8 +136,15 @@ def _by_size(figures, kind: str, key: str | None = None) -> dict:
     return {f.size: f.amount for f in figures if f.kind == kind and (key is None or f.key == key)}
 
 
-def _one(figures, kind: str, key: str = "", size: int = 0) -> Decimal:
-    return _by_size(figures, kind, key)[size]
+def _at(sizes: dict, size: int, part: str) -> Decimal:
+    """The figure for `size`; a set that lacks it raises, naming the table part and nothing else."""
+    if size not in sizes:
+        raise MeansTableKeyMissing(part)
+    return sizes[size]
+
+
+def _one(figures, kind: str, part: str, key: str = "", size: int = 0) -> Decimal:
+    return _at(_by_size(figures, kind, key), size, part)
 
 
 def _used(name: str, table) -> dict:
@@ -148,6 +161,7 @@ def read_tables(on: date | None = None) -> tuple[MeansTables, list[dict]]:
 
     Raises:
         NoMeansTestTable: either set isn't in force.
+        MeansTableKeyMissing: the set in force lacks a figure the calculator reads.
     """
     standards = means_standards_in_force(on)
     section_104 = section_104_in_force(on)
@@ -157,24 +171,27 @@ def read_tables(on: date | None = None) -> tuple[MeansTables, list[dict]]:
     for county in sorted(counties):
         operating = _by_size(figures, "housing_operating", county)
         mortgage = _by_size(figures, "housing_mortgage", county)
-        housing[county] = tuple((operating[n], mortgage[n]) for n in range(1, 6))
+        housing[county] = tuple(
+            (_at(operating, n, "housing"), _at(mortgage, n, "housing")) for n in range(1, 6)
+        )
     operating_cars = {f.key for f in figures if f.kind == "operating"}
+    national = _by_size(figures, "national")
     tables = MeansTables(
-        national=tuple(_by_size(figures, "national")[n] for n in range(1, 5)),
-        national_extra=_one(figures, "national_extra"),
-        health_under_65=_one(figures, "health", "under_65"),
-        health_65_or_older=_one(figures, "health", "65_or_older"),
+        national=tuple(_at(national, n, "national") for n in range(1, 5)),
+        national_extra=_one(figures, "national_extra", "national"),
+        health_under_65=_one(figures, "health", "health", key="under_65"),
+        health_65_or_older=_one(figures, "health", "health", key="65_or_older"),
         housing=housing,
         areas={area.county: area.area for area in standards.areas.all()},
         operating={
             area: (
-                _one(figures, "operating", area, 1),
-                _one(figures, "operating", area, 2),
+                _one(figures, "operating", "transport", key=area, size=1),
+                _one(figures, "operating", "transport", key=area, size=2),
             )
             for area in sorted(operating_cars)
         },
-        ownership_one_car=_one(figures, "ownership", size=1),
-        public_transport=_one(figures, "public_transport"),
+        ownership_one_car=_one(figures, "ownership", "transport", size=1),
+        public_transport=_one(figures, "public_transport", "public_transport"),
         multipliers={f.key: f.amount for f in figures if f.kind == "multiplier"},
         presumption_low=section_104.presumption_low,
         presumption_high=section_104.presumption_high,

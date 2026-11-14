@@ -13,7 +13,7 @@ from rest_framework.test import APIClient
 from apps.districts.dated_tables import NoTableInForce
 from apps.districts.means_standards import NoMeansTestTable
 from apps.districts.models import District
-from apps.eligibility.cmi import IncomeStepGap, income_step_gaps
+from apps.eligibility.cmi import MEMBER_UNANSWERED, IncomeStepGap, income_step_gaps
 from apps.eligibility.means_inputs import read_inputs, read_tables
 from apps.eligibility.means_lines import SKIPPED, work_out
 from apps.eligibility.models import MeansTest
@@ -219,3 +219,5 @@ def test_a_household_row_left_unanswered_is_refused_in_the_income_steps_words_be
     assert response.status_code == 400
     sentence = str(income_step_gaps(IntakeSession.objects.get(pk=session_at_9000.pk))[0])
     assert response.data["error"] == sentence
+    # The first gap is the row's own, not some other gap that happened to come first
+    assert sentence == MEMBER_UNANSWERED

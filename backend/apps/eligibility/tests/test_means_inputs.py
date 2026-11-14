@@ -11,7 +11,7 @@ from django.core.management import call_command
 from apps.districts.means_standards import NoMeansTestTable
 from apps.districts.models import District
 from apps.eligibility.means_inputs import read_inputs, read_tables
-from apps.eligibility.means_lines import PRESUMPTION, work_out
+from apps.eligibility.means_lines import PRESUMPTION, MeansTableKeyMissing, work_out
 from apps.eligibility.tests.test_means_lines import PRIYA
 from apps.intake.models import DebtorInfo, IncomeInfo, IntakeSession
 from apps.intake.tests.builders import (
@@ -157,19 +157,20 @@ def test_secured_debts_carry_their_property_and_whether_it_is_the_home(session):
     home = linked_row(session, "1", "yes", "Demo Home")
     car = linked_row(session, "3", None, "Demo Car")
     elsewhere = linked_row(session, "1", "no", "Demo Rental")
-    # Created in the reverse of the order they must read in, so queryset order fails.
+    # Created in neither the order they must read in nor its reverse, and named with a lower
+    # case and an accented first letter, so only the case- and accent-folded name order passes.
     other = IntakeSession.objects.create(user=session.user, district=session.district)
     foreign = linked_row(other, "3", None, "Foreign Car")
-    stray_loan = linked_loan(session, foreign, "75", creditor_name="F Stray Bank")
-    linked_loan(session, car, "50", creditor_name="E Draft", is_draft=True)
-    complete_debt(session, creditor_name="D Not Secured", secured_by=car)
     rental_loan = linked_loan(session, elsewhere, "200", creditor_name="C Rental Bank")
-    car_loan = linked_loan(session, car, "300", creditor_name="B Car Bank")
-    home_loan = linked_loan(session, home, "800", creditor_name="A Home Bank")
+    linked_loan(session, car, "50", creditor_name="E Draft", is_draft=True)
+    home_loan = linked_loan(session, home, "800", creditor_name="Á Home Bank")
+    stray_loan = linked_loan(session, foreign, "75", creditor_name="F Stray Bank")
+    complete_debt(session, creditor_name="D Not Secured", secured_by=car)
+    car_loan = linked_loan(session, car, "300", creditor_name="b Car Bank")
     got = {d.debt_id: d for d in read_inputs(session).secured_debts}
     assert [d.creditor for d in read_inputs(session).secured_debts] == [
-        "A Home Bank",
-        "B Car Bank",
+        "Á Home Bank",
+        "b Car Bank",
         "C Rental Bank",
         "F Stray Bank",
     ]
@@ -195,16 +196,20 @@ def test_secured_debts_carry_their_property_and_whether_it_is_the_home(session):
 def test_vehicles_are_line_3_rows_and_line_4_rows_not_lived_in_with_their_loans_and_leases(
     session,
 ):
-    # The line 4 rows are created before the line 3 car, so queryset order fails.
+    # A line 4 row comes first and another last, around the line 3 car, so neither queryset
+    # order nor its reverse reads the rows in A/B order.
     trailer = linked_row(session, "4", "no", "Demo Trailer")
     linked_lease(session, trailer, "200")
-    linked_row(session, "4", "yes", "Demo Home On Wheels")
     car = linked_row(session, "3", None, "")
     car.description = ""
     car.set_details({"make": "Demo", "model": "Hatch", "year": "2019", "lives_here": None})
     car.save()
     linked_loan(session, car, "300")
-    first, second = read_inputs(session).vehicles
+    # "Do you live here?" unanswered and nothing linked, so no Assets gap: Schedule J's line 17
+    # set counts it, and so does line 11 (spec H24)
+    camper = linked_row(session, "4", None, "Demo Camper")
+    linked_row(session, "4", "yes", "Demo Home On Wheels")
+    first, second, third = read_inputs(session).vehicles
     assert (first.asset_id, first.name, first.financed, first.leased) == (
         car.pk,
         "Demo Hatch 2019",
@@ -216,6 +221,12 @@ def test_vehicles_are_line_3_rows_and_line_4_rows_not_lived_in_with_their_loans_
         "Demo Trailer",
         False,
         True,
+    )
+    assert (third.asset_id, third.name, third.financed, third.leased) == (
+        camper.pk,
+        "Demo Camper",
+        False,
+        False,
     )
 
 
@@ -270,6 +281,18 @@ def test_read_tables_gives_the_calculator_the_figures_in_force(
         Decimal("10275.00"),
         Decimal("17150.00"),
     )
+    # By value, Decimal("220") equals Decimal("220.00"); the form prints cents
+    compared = (
+        *tables.housing["Cook"][3],
+        *tables.operating["chicago"],
+        tables.ownership_one_car,
+        tables.public_transport,
+        tables.national_extra,
+        tables.health_65_or_older,
+        tables.presumption_low,
+        tables.presumption_high,
+    )
+    assert all(figure.as_tuple().exponent == -2 for figure in compared)
     assert used[0] == {
         "name": "IRS expense standards",
         "effective_date": "2026-07-15",
@@ -291,6 +314,27 @@ def test_read_tables_gives_the_calculator_the_figures_in_force(
 def test_read_tables_refuses_before_july_15_2026(means_standards_2026, section_104_2025):
     with pytest.raises(NoMeansTestTable):
         read_tables(date(2026, 7, 14))
+
+
+@pytest.mark.parametrize(
+    "lookup, part",
+    [
+        ({"kind": "national", "size": 4}, "national"),
+        ({"kind": "national_extra"}, "national"),
+        ({"kind": "health", "key": "under_65"}, "health"),
+        ({"kind": "housing_mortgage", "key": "Cook", "size": 5}, "housing"),
+        ({"kind": "operating", "key": "chicago", "size": 2}, "transport"),
+        ({"kind": "ownership"}, "transport"),
+        ({"kind": "public_transport"}, "public_transport"),
+    ],
+)
+def test_a_figure_the_set_lacks_raises_naming_only_its_table_part(
+    means_standards_2026, section_104_2025, lookup, part
+):
+    assert means_standards_2026.figures.filter(**lookup).delete()[0] >= 1
+    with pytest.raises(MeansTableKeyMissing) as refused:
+        read_tables()
+    assert str(refused.value) == f"The means test tables have no {part} figure for this session."
 
 
 @pytest.mark.django_db
