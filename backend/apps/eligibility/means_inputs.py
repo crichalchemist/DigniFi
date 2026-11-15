@@ -25,6 +25,7 @@ from apps.eligibility.means_lines import (
     OptIn,
     SecuredDebt,
     Vehicle,
+    is_spouse_ref,
 )
 from apps.intake.asset_lines import exemption_item_name, ordered_assets
 from apps.intake.claim_rows import claim_rows
@@ -90,11 +91,18 @@ def page_answers(session) -> dict:
     """The stored page answers, a reference to a row that has gone read as unanswered."""
     record = getattr(session, "means_test_answers", None)
     stored = {} if record is None else record.get_answers()
-    return normalized_answers(
+    out = normalized_answers(
         stored,
         {f"asset-{row.pk}" for row in vehicle_rows(session)},
         {debt.pk for debt in open_debts(session)},
     )
+    income = getattr(session, "income_info", None)
+    if getattr(income, "marital_status", None) != "married_together":
+        # the spouse's rows are not read outside married_together, so no slot may hold one
+        out["vehicle_choice"] = [
+            None if ref is not None and is_spouse_ref(ref) else ref for ref in out["vehicle_choice"]
+        ]
+    return out
 
 
 def _decimal(amount) -> Decimal | None:

@@ -515,6 +515,41 @@ def test_the_spouses_rows_are_read_only_under_their_own_yes(session):
     assert page_answers(session)["spouse_loans"][0]["ref"] == "spouse-1"
 
 
+def test_a_spouse_vehicle_never_holds_a_slot_once_the_filer_is_not_married_together(session):
+    cars = [linked_row(session, "3", None, f"Demo Car {n}") for n in range(3)]
+    stored = {
+        "spouse_vehicles_answer": "yes",
+        "spouse_vehicles": [SPOUSE_CAR],
+        "vehicle_choice": [f"asset-{cars[0].pk}", "spouse-1"],
+    }
+    session = _store(session, stored)
+    assert page_answers(session)["vehicle_choice"] == [f"asset-{cars[0].pk}", None]
+    assert read_inputs(session).vehicle_choice is None
+    session = _married(session)
+    assert page_answers(session)["vehicle_choice"] == [f"asset-{cars[0].pk}", "spouse-1"]
+    assert read_inputs(session).vehicle_choice == (f"asset-{cars[0].pk}", "spouse-1")
+
+
+def test_a_spouse_loan_secured_by_other_property_is_not_on_the_home(session):
+    stored = {
+        "spouse_loans_answer": "yes",
+        "spouse_loans": [_spouse_loan(secured_by="other", property="Demo Boat")],
+    }
+    got = read_inputs(_married(_store(session, stored)))
+    (loan,) = got.secured_debts
+    assert (loan.on_home, loan.secured_by, loan.property) == (False, None, "Demo Boat")
+    assert debt_lines(got)[loan.ref] == "33d"
+
+
+def test_a_spouse_vehicle_with_its_lease_unanswered_reads_leased_none(session):
+    stored = {
+        "spouse_vehicles_answer": "yes",
+        "spouse_vehicles": [{**SPOUSE_CAR, "leased": None}],
+    }
+    got = read_inputs(_married(_store(session, stored)))
+    assert got.vehicles[0].leased is None
+
+
 def test_payments_left_reads_60_or_more_as_60_and_a_count_as_its_number(session):
     home = linked_row(session, "1", "yes", "Demo Home")
     more = linked_loan(session, home, "100", creditor_name="A Bank")
