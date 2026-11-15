@@ -420,7 +420,10 @@ def _lines_5_to_9a(inputs: MeansInputs, tables: MeansTables) -> dict[str, Value]
 def _spouse_unknown(
     inputs: MeansInputs, answer: str | None, refs: Iterable[str], field: str
 ) -> bool:
-    """Under married_together, whether the spouse's rows are unknown (R4): no answer, or Yes with none."""
+    """Under married_together, whether the spouse's rows are unknown (R4).
+
+    That is no answer, or Yes with no spouse row.
+    """
     if inputs.marital_status != "married_together":
         return False
     given = _yes_no(answer, field)

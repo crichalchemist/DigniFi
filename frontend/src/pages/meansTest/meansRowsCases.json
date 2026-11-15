@@ -609,5 +609,241 @@
       "candidates": ["spouse-1"],
       "lines": {}
     }
+  },
+  {
+    "name": "a vehicle the filer doesn't claim takes no slot and its loan goes on 33d",
+    "marital_status": "married_together",
+    "spouse_vehicles_answer": "no",
+    "spouse_loans_answer": "no",
+    "vehicles": [
+      {
+        "ref": "asset-1",
+        "leased": false,
+        "claimed": false
+      }
+    ],
+    "debts": [
+      {
+        "ref": "debt-1",
+        "secured_by": "asset-1",
+        "on_home": false,
+        "placed": true,
+        "monthly_payment": "450.00",
+        "payments_left": 37,
+        "payment_changes": "no",
+        "total_60_months": null
+      }
+    ],
+    "vehicle_choice": null,
+    "expect": {
+      "candidates": [],
+      "lines": {
+        "debt-1": "33d"
+      }
+    }
+  },
+  {
+    "name": "a vehicle whose claimed answer is blank holds the slots and its loan",
+    "marital_status": "married_together",
+    "spouse_vehicles_answer": "no",
+    "spouse_loans_answer": "no",
+    "vehicles": [
+      {
+        "ref": "asset-1",
+        "leased": false,
+        "claimed": null
+      }
+    ],
+    "debts": [
+      {
+        "ref": "debt-1",
+        "secured_by": "asset-1",
+        "on_home": false,
+        "placed": true,
+        "monthly_payment": "450.00",
+        "payments_left": 37,
+        "payment_changes": "no",
+        "total_60_months": null
+      }
+    ],
+    "vehicle_choice": null,
+    "expect": {
+      "candidates": null,
+      "lines": {
+        "debt-1": null
+      }
+    }
+  },
+  {
+    "name": "the spouse's vehicles answered Yes with no spouse vehicle holds the slots",
+    "marital_status": "married_together",
+    "spouse_vehicles_answer": "yes",
+    "spouse_loans_answer": "no",
+    "vehicles": [
+      {
+        "ref": "asset-1",
+        "leased": false,
+        "claimed": true
+      }
+    ],
+    "debts": [
+      {
+        "ref": "debt-1",
+        "secured_by": "asset-1",
+        "on_home": false,
+        "placed": true,
+        "monthly_payment": "450.00",
+        "payments_left": 37,
+        "payment_changes": "no",
+        "total_60_months": null
+      }
+    ],
+    "vehicle_choice": null,
+    "expect": {
+      "candidates": null,
+      "lines": {
+        "debt-1": null
+      }
+    }
+  },
+  {
+    "name": "the spouse's loans left blank hold the slots and the car loan, not a home or other loan",
+    "marital_status": "married_together",
+    "spouse_vehicles_answer": "no",
+    "spouse_loans_answer": null,
+    "vehicles": [
+      {
+        "ref": "asset-1",
+        "leased": false,
+        "claimed": true
+      }
+    ],
+    "debts": [
+      {
+        "ref": "debt-1",
+        "secured_by": "asset-1",
+        "on_home": false,
+        "placed": true,
+        "monthly_payment": "450.00",
+        "payments_left": 37,
+        "payment_changes": "no",
+        "total_60_months": null
+      },
+      {
+        "ref": "debt-2",
+        "secured_by": "asset-9",
+        "on_home": true,
+        "placed": true,
+        "monthly_payment": "450.00",
+        "payments_left": 37,
+        "payment_changes": "no",
+        "total_60_months": null
+      },
+      {
+        "ref": "debt-3",
+        "secured_by": "asset-8",
+        "on_home": false,
+        "placed": true,
+        "monthly_payment": "450.00",
+        "payments_left": 37,
+        "payment_changes": "no",
+        "total_60_months": null
+      }
+    ],
+    "vehicle_choice": null,
+    "expect": {
+      "candidates": null,
+      "lines": {
+        "debt-1": null,
+        "debt-2": "9b",
+        "debt-3": "33d"
+      }
+    }
+  },
+  {
+    "name": "the spouse's loans answered Yes with no spouse loan hold the slots and the car loan",
+    "marital_status": "married_together",
+    "spouse_vehicles_answer": "no",
+    "spouse_loans_answer": "yes",
+    "vehicles": [
+      {
+        "ref": "asset-1",
+        "leased": false,
+        "claimed": true
+      }
+    ],
+    "debts": [
+      {
+        "ref": "debt-1",
+        "secured_by": "asset-1",
+        "on_home": false,
+        "placed": true,
+        "monthly_payment": "450.00",
+        "payments_left": 37,
+        "payment_changes": "no",
+        "total_60_months": null
+      },
+      {
+        "ref": "debt-2",
+        "secured_by": "asset-9",
+        "on_home": true,
+        "placed": true,
+        "monthly_payment": "450.00",
+        "payments_left": 37,
+        "payment_changes": "no",
+        "total_60_months": null
+      },
+      {
+        "ref": "debt-3",
+        "secured_by": "asset-8",
+        "on_home": false,
+        "placed": true,
+        "monthly_payment": "450.00",
+        "payments_left": 37,
+        "payment_changes": "no",
+        "total_60_months": null
+      }
+    ],
+    "vehicle_choice": null,
+    "expect": {
+      "candidates": null,
+      "lines": {
+        "debt-1": null,
+        "debt-2": "9b",
+        "debt-3": "33d"
+      }
+    }
+  },
+  {
+    "name": "a filer not married needs no spouse answers",
+    "marital_status": "not_married",
+    "spouse_vehicles_answer": null,
+    "spouse_loans_answer": null,
+    "vehicles": [
+      {
+        "ref": "asset-1",
+        "leased": false,
+        "claimed": true
+      }
+    ],
+    "debts": [
+      {
+        "ref": "debt-1",
+        "secured_by": "asset-1",
+        "on_home": false,
+        "placed": true,
+        "monthly_payment": "450.00",
+        "payments_left": 37,
+        "payment_changes": "no",
+        "total_60_months": null
+      }
+    ],
+    "vehicle_choice": null,
+    "expect": {
+      "candidates": ["asset-1"],
+      "lines": {
+        "debt-1": "13b"
+      }
+    }
   }
 ]

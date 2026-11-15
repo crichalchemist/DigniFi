@@ -805,8 +805,8 @@ def test_no_record_shows_a_creditor_property_county_or_amount_in_a_log_line():
 
 @pytest.mark.parametrize(
     "rows",
-    [(), (("", D("250.00")),), (("Demo purpose", None),)],
-    ids=["no_row", "no_purpose", "no_amount"],
+    [(), (("", D("250.00")),), (("   ", D("250.00")),), (("Demo purpose", None),)],
+    ids=["no_row", "no_purpose", "spaces_only_purpose", "no_amount"],
 )
 def test_a_line_3_yes_with_no_row_or_an_unfinished_row_leaves_line_3_missing(rows):
     lines = work_out(replace(PRIYA, line_3_rows=rows), TABLES)
@@ -970,6 +970,17 @@ def test_an_unanswered_spouse_question_leaves_what_it_feeds_missing():
         assert alone.outcome == CANNOT_WORK_OUT
     answered_no = work_out(replace(asked, vehicles=(), secured_debts=(other_loan,)), TABLES)
     assert answered_no.lines["33d"] == D("277.50") and answered_no.lines["34"] == D("0.00")
+
+
+def test_line_34_answered_no_is_skipped_while_the_loans_are_unknown():
+    # No means no rows to ask about, so a loan that waits on the spouse's answers holds nothing
+    unplaced = _spouse_loan(on_home=True, placed=False)
+    for changes in (
+        {"spouse_loans_answer": None},
+        {"spouse_loans_answer": "yes", "secured_debts": (KESTREL, unplaced)},
+    ):
+        lines = work_out(replace(PRIYA, line_34_answer="no", **changes), TABLES)
+        assert (lines.lines["34_answer"], lines.lines["34"]) == ("no", SKIPPED), changes
 
 
 def test_a_loan_the_reader_cant_place_leaves_9b_13b_13e_33d_and_34_missing():
