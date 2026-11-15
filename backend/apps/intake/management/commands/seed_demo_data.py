@@ -36,6 +36,8 @@ from apps.intake.models import (
     Household,
     IncomeInfo,
     IntakeSession,
+    MeansTestAnswers,
+    SecuredDebtAnswers,
     SOFACreditorPayment,
     SOFAPriorIncome,
     SOFAReport,
@@ -528,7 +530,7 @@ def _james_washington() -> dict:
 
 
 def _priya_sharma() -> dict:
-    """Above the median: Form 122A-2 applies, and its result can't be worked out yet (3h1)."""
+    """Above the median: Form 122A-2 applies, and her answers work it out to a presumption (3h2)."""
     return {
         "username": "demo_priya",
         "email": "priya.sharma@demo.dignifi.org",
@@ -741,6 +743,41 @@ def _priya_sharma() -> dict:
         },
         # Form 101 line 8, and for the waiver 103B lines 4, 5, 7 and 9 (3f spec §10)
         "filing_fee": {"payment_choice": "pay_in_full"},
+        # Form 122A-2's page, asked after the exemptions page (3h2). The vehicle claim is keyed by
+        # A/B position; the seed resolves it to the row's reference.
+        "means_test": {
+            "answers": {
+                "line_3_answer": "yes",
+                "line_3_rows": [
+                    {"purpose": "His payroll taxes withheld from his pay", "amount": "250.00"}
+                ],
+                "spouse_vehicles_answer": "no",
+                "spouse_loans_answer": "no",
+                "vehicle_claims": {"3.1": "yes"},
+                "line_15_answer": "no",
+                "line_16": "2300.00",
+                "line_17": "0.00",
+                "line_18": "120.00",
+                "line_19": "0.00",
+                "line_20": "0.00",
+                "line_21": "1200.00",
+                "line_22_answer": "no",
+                "line_23": "0.00",
+                "line_25_answer": "yes",
+                "line_25_health": "620.00",
+                "line_25_disability": "180.00",
+                "line_25_hsa": "0.00",
+                "line_25_spends": "yes",
+                **{f"line_{n}_answer": "no" for n in range(26, 31)},
+                "line_31_answer": "yes",
+                "line_31_amount": "50.00",
+                "line_34_answer": "no",
+                "line_36_answer": "yes",
+                "line_36_payment": "1400.00",
+                "line_43_answer": "no",
+            },
+            "debts": {"Kestrel Auto Finance": {"payments_left": "37", "payment_changes": "no"}},
+        },
     }
 
 
@@ -1560,6 +1597,24 @@ class Command(BaseCommand):
                 amount=None if amount is None else Decimal(str(amount)),
                 short_description=claim["short"],
             )
+
+        # Form 122A-2's answers. They come after the assets and debts they name and before the
+        # means test, which reads them (3h2).
+        means_test = data.get("means_test")
+        if means_test:
+            answers = dict(means_test["answers"])
+            answers["vehicle_claims"] = {
+                f"asset-{asset_at(session, position).pk}": answer
+                for position, answer in answers["vehicle_claims"].items()
+            }
+            MeansTestAnswers.objects.create(
+                session=session,
+                answers=json.dumps(answers),
+                debts_answered_on=fill_date().isoformat(),
+            )
+            for name, debt_answers in means_test["debts"].items():
+                (link,) = claim_links(session, [("debt", name)])
+                SecuredDebtAnswers.objects.create(debt_id=link["id"], **debt_answers)
 
         # Run means test calculation
         MeansTestCalculator(session).calculate()

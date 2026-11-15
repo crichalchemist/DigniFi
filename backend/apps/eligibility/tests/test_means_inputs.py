@@ -2,7 +2,7 @@
 unanswered until the filer answers it."""
 
 import json
-from dataclasses import fields, replace
+from dataclasses import fields
 from datetime import date
 from decimal import Decimal
 
@@ -37,6 +37,7 @@ from apps.intake.tests.builders import (
 )
 from apps.users.models import User
 
+# test_means_outcome.py reads this constant
 PRIYAS_ANSWERS = {
     f.name: getattr(PRIYA, f.name)
     for f in fields(PRIYA)
@@ -738,13 +739,7 @@ def test_priyas_122a2_matches_the_hand_worked_figures():
         car.ref,
         Decimal("450.00"),
     )
-    answered = replace(
-        inputs,
-        vehicles=(replace(car, claimed=True),),
-        secured_debts=(replace(kestrel, payments_left=37, payment_changes="no"),),
-        **PRIYAS_ANSWERS,
-    )
-    lines = work_out(answered, read_tables()[0])
+    lines = work_out(inputs, read_tables()[0])
     assert {k: lines.lines[k] for k in ("24", "32", "37", "38", "39c", "39d", "40")} == {
         "24": Decimal("10087.50"),
         "32": Decimal("850.00"),
