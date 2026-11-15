@@ -196,7 +196,7 @@ describe('MeansTestPreview with a result', () => {
       null,
       [
         'Your income is above the median for a household of 4, so Form 122A-2 applies.',
-        "Its result can't be worked out yet.",
+        "Its result can't be worked out until you answer the questions on the Form 122A-2 page, once you finish your intake.",
         "Being above the median doesn't mean a presumption of abuse applies.",
       ],
     ],
@@ -265,7 +265,7 @@ describe('MeansTestPreview with a result', () => {
 
     const text = container.querySelector('.means-test-preview-indicator-text')!.textContent!;
     expect(text).toContain(MEANS_TABLE_MISSING);
-    expect(text).not.toContain("Its result can't be worked out yet.");
+    expect(text).not.toContain("Its result can't be worked out until you answer");
     expect(text).toContain("doesn't mean a presumption of abuse applies");
   });
 

@@ -27,6 +27,8 @@ interface FormCardProps {
   leftPacket?: boolean;
   /** Information about this form, shown before any refusal (never a refusal itself) */
   notice?: string;
+  /** Where a pending card's Answer Questions goes; `/ask/<form type>` without one */
+  answerPath?: string;
   refusal?: FormRefusal;
   onGenerate: (formType: FormType) => Promise<void>;
   onDownload: (formId: number) => Promise<void>;
@@ -38,6 +40,7 @@ export function FormCard({
   generatedForm,
   leftPacket = false,
   notice,
+  answerPath,
   refusal,
   onGenerate,
   onDownload,
@@ -99,7 +102,11 @@ export function FormCard({
             >
               Generate
             </Button>
-            <Button size="sm" variant="outline" onClick={() => navigate(`/ask/${formType}`)}>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => navigate(answerPath ?? `/ask/${formType}`)}
+            >
               Answer Questions
             </Button>
           </>

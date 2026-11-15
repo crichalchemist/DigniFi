@@ -691,3 +691,113 @@ export const EXEMPTIONS_LINE_3_1_QUESTION =
 // Form 122A-2's instructions (PDF p. 35), as printed: shown with a presumption of abuse
 export const PRESUMPTION_INSTRUCTIONS =
   'A presumption of abuse does not mean you are actually trying to abuse the bankruptcy system. Rather, the presumption simply means that you are presumed to have enough income that you should not be granted relief under chapter 7. You may overcome the presumption by showing special circumstances that reduce your income or increase your expenses.';
+
+// Form 122A-2's title, page 1
+export const FORM_122A2_TITLE = 'Form 122A-2: Chapter 7 Means Test Calculation';
+// Part 2's note on whom "you" means, page 3
+export const FORM_122A2_PART_2_YOU =
+  'Whenever this part of the form refers to you, it means both you and your spouse if Column B of Form 122A-1 is filled in.';
+// Part 2's note on line 3 and lines 5 and 6 of Form 122A-1, page 3
+export const FORM_122A2_PART_2_LINE_3 =
+  "Do not deduct any amounts that you subtracted from your spouse's income in line 3 and do not deduct any operating expenses that you subtracted from income in lines 5 and 6 of Form 122A-1.";
+// Part 2's note on expenses that differ from month to month, page 3
+export const FORM_122A2_PART_2_AVERAGE =
+  'If your expenses differ from month to month, enter the average expense.';
+// Line 3, the question as printed
+export const FORM_122A2_LINE_3_QUESTION =
+  'On line 11, Column B of Form 122A-1, was any amount of the income you reported for your spouse NOT regularly used for the household expenses of you or your dependents?';
+// Line 3, the label of the purpose column
+export const FORM_122A2_LINE_3_PURPOSE = 'State each purpose for which the income was used';
+// Line 3, the label of the amount column
+export const FORM_122A2_LINE_3_AMOUNT =
+  "Fill in the amount you are subtracting from your spouse's income";
+// Line 3's example, as printed
+export const FORM_122A2_LINE_3_EXAMPLE =
+  "For example, the income is used to pay your spouse's tax debt or to support people other than you or your dependents";
+// Line 11's instruction, as printed
+export const FORM_122A2_LINE_11 =
+  'Check the number of vehicles for which you claim an ownership or operating expense.';
+// Line 11, the question asked of each vehicle (its name in place of {name})
+export const FORM_122A2_VEHICLE_CLAIM =
+  'Do you claim an ownership or operating expense for {name}?';
+// Line 11's limit of two vehicles
+export const FORM_122A2_VEHICLE_LIMIT =
+  'In addition, you may not claim the expense for more than two vehicles.';
+// Line 11, the label of Vehicle 1
+export const FORM_122A2_VEHICLE_1 = 'Vehicle 1';
+// Line 11, the label of Vehicle 2
+export const FORM_122A2_VEHICLE_2 = 'Vehicle 2';
+// The lines Form 122A-2's page asks past line 14, as keys (line 24 is a total, so it has none)
+export type MeansAskedLine =
+  | '15'
+  | '16'
+  | '17'
+  | '18'
+  | '19'
+  | '20'
+  | '21'
+  | '22'
+  | '23'
+  | '25'
+  | '26'
+  | '27'
+  | '28'
+  | '29'
+  | '30'
+  | '31';
+// Each of those lines' words as the template prints them, after the line's number: its title
+// and the sentences up to its amount box, joined
+export const FORM_122A2_LINE_WORDS: Record<MeansAskedLine, string> = {
+  '15': 'Additional public transportation expense: If you claimed 1 or more vehicles in line 11 and if you claim that you may also deduct a public transportation expense, you may fill in what you believe is the appropriate expense, but you may not claim more than the IRS Local Standard for Public Transportation.',
+  '16': 'Taxes: The total monthly amount that you will actually owe for federal, state and local taxes, such as income taxes, self-employment taxes, Social Security taxes, and Medicare taxes. You may include the monthly amount withheld from your pay for these taxes. However, if you expect to receive a tax refund, you must divide the expected refund by 12 and subtract that number from the total monthly amount that is withheld to pay for taxes. Do not include real estate, sales, or use taxes.',
+  '17': 'Involuntary deductions: The total monthly payroll deductions that your job requires, such as retirement contributions, union dues, and uniform costs. Do not include amounts that are not required by your job, such as voluntary 401(k) contributions or payroll savings.',
+  '18': "Life insurance: The total monthly premiums that you pay for your own term life insurance. If two married people are filing together, include payments that you make for your spouse's term life insurance. Do not include premiums for life insurance on your dependents, for a non-filing spouse's life insurance, or for any form of life insurance other than term.",
+  '19': 'Court-ordered payments: The total monthly amount that you pay as required by the order of a court or administrative agency, such as spousal or child support payments. Do not include payments on past due obligations for spousal or child support. You will list these obligations in line 35.',
+  '20': 'Education: The total monthly amount that you pay for education that is either required: as a condition for your job, or for your physically or mentally challenged dependent child if no public education is available for similar services.',
+  '21': 'Childcare: The total monthly amount that you pay for childcare, such as babysitting, daycare, nursery, and preschool. Do not include payments for any elementary or secondary school education.',
+  '22': 'Additional health care expenses, excluding insurance costs: The monthly amount that you pay for health care that is required for the health and welfare of you or your dependents and that is not reimbursed by insurance or paid by a health savings account. Include only the amount that is more than the total entered in line 7. Payments for health insurance or health savings accounts should be listed only in line 25.',
+  '23': 'Optional telephones and telephone services: The total monthly amount that you pay for telecommunication services for you and your dependents, such as pagers, call waiting, caller identification, special long distance, or business cell phone service, to the extent necessary for your health and welfare or that of your dependents or for the production of income, if it is not reimbursed by your employer. Do not include payments for basic home telephone, internet and cell phone service. Do not include self-employment expenses, such as those reported on line 5 of Official Form 122A-1, or any amount you previously deducted.',
+  '25': 'Health insurance, disability insurance, and health savings account expenses. The monthly expenses for health insurance, disability insurance, and health savings accounts that are reasonably necessary for yourself, your spouse, or your dependents.',
+  '26': 'Continuing contributions to the care of household or family members. The actual monthly expenses that you will continue to pay for the reasonable and necessary care and support of an elderly, chronically ill, or disabled member of your household or member of your immediate family who is unable to pay for such expenses. These expenses may include contributions to an account of a qualified ABLE program. 26 U.S.C. § 529A(b).',
+  '27': 'Protection against family violence. The reasonably necessary monthly expenses that you incur to maintain the safety of you and your family under the Family Violence Prevention and Services Act or other federal laws that apply. By law, the court must keep the nature of these expenses confidential.',
+  '28': 'Additional home energy costs. Your home energy costs are included in your insurance and operating expenses on line 8. If you believe that you have home energy costs that are more than the home energy costs included in expenses on line 8, then fill in the excess amount of home energy costs. You must give your case trustee documentation of your actual expenses, and you must show that the additional amount claimed is reasonable and necessary.',
+  '29': 'Education expenses for dependent children who are younger than 18. The monthly expenses (not more than $214.58* per child) that you pay for your dependent children who are younger than 18 years old to attend a private or public elementary or secondary school. You must give your case trustee documentation of your actual expenses, and you must explain why the amount claimed is reasonable and necessary and not already accounted for in lines 6-23. * Subject to adjustment on 4/01/28, and every 3 years after that for cases begun on or after the date of adjustment.',
+  '30': "Additional food and clothing expense. The monthly amount by which your actual food and clothing expenses are higher than the combined food and clothing allowances in the IRS National Standards. That amount cannot be more than 5% of the food and clothing allowances in the IRS National Standards. To find a chart showing the maximum additional allowance, go online using the link specified in the separate instructions for this form. This chart may also be available at the bankruptcy clerk's office. You must show that the additional amount claimed is reasonable and necessary.",
+  '31': 'Continuing charitable contributions. The amount that you will continue to contribute in the form of cash or financial instruments to a religious or charitable organization. 26 U.S.C. § 170(c)(1)-(2).',
+};
+// Line 25, the health insurance amount label
+export const FORM_122A2_LINE_25_HEALTH = 'Health insurance';
+// Line 25, the disability insurance amount label
+export const FORM_122A2_LINE_25_DISABILITY = 'Disability insurance';
+// Line 25, the health savings account amount label
+export const FORM_122A2_LINE_25_HSA = 'Health savings account';
+// Line 25, the question under its total
+export const FORM_122A2_LINE_25_SPENDS = 'Do you actually spend this total amount?';
+// Line 25, the label of the amount actually spent
+export const FORM_122A2_LINE_25_ACTUAL = 'How much do you actually spend?';
+// Line 33d, the question asked of each debt
+export const FORM_122A2_LINE_33D_TAXES = 'Does payment include taxes or insurance?';
+// Line 34, the question as printed
+export const FORM_122A2_LINE_34 =
+  'Are any debts that you listed in line 33 secured by your primary residence, a vehicle, or other property necessary for your support or the support of your dependents?';
+// Line 34, the question asked of each debt (its name in place of {name})
+export const FORM_122A2_LINE_34_DEBT =
+  'Is your debt to {name} secured by your primary residence, a vehicle, or other property necessary for your support or the support of your dependents?';
+// Line 34, the label of the total cure amount
+export const FORM_122A2_LINE_34_CURE = 'Total cure amount';
+// Line 36, the question as printed
+export const FORM_122A2_LINE_36 = 'Are you eligible to file a case under Chapter 13?';
+// Line 36, the label of the projected plan payment
+export const FORM_122A2_LINE_36_PAYMENT =
+  'Projected monthly plan payment if you were filing under Chapter 13';
+// Line 43, the question as printed
+export const FORM_122A2_LINE_43 =
+  'Do you have any special circumstances that justify additional expenses or adjustments of current monthly income for which there is no reasonable alternative? 11 U.S.C. § 707(b)(2)(B).';
+// Line 43's instructions, as printed
+export const FORM_122A2_LINE_43_INSTRUCTIONS =
+  'Fill in the following information. All figures should reflect your average monthly expense or income adjustment for each item. You may include expenses you listed in line 25. You must give a detailed explanation of the special circumstances that make the expenses or income adjustments necessary and reasonable. You must also give your case trustee documentation of your actual expenses or income adjustments.';
+// Line 43, the label of the explanation box
+export const FORM_122A2_LINE_43_EXPLANATION =
+  'Give a detailed explanation of the special circumstances';
+// Line 43, the label of the amount column
+export const FORM_122A2_LINE_43_AMOUNT = 'Average monthly expense or income adjustment';

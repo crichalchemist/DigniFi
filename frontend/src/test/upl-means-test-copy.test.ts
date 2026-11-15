@@ -10,6 +10,7 @@
 
 import { describe, expect, it } from 'vitest';
 import * as copy from '../constants/copy';
+import copySource from '../constants/copy.ts?raw';
 import { PRESUMPTION_INSTRUCTIONS } from '../constants/formText';
 import { UPL_MEANS_TEST_DISCLAIMER } from '../constants/upl';
 
@@ -91,9 +92,93 @@ const NAMES = [
   'MEANS_GAP_LINE_43_NONE',
   'MEANS_GAP_LINE_43_EXPLANATION',
   'MEANS_GAP_LINE_43_AMOUNT',
+  'MEANS_OUTCOME_ANSWER_SIDEBAR',
+  'MEANS_OUTCOME_ANSWER_PAGE',
+  'MEANS_PAGE_PHRASE',
+  'MEANS_LINE_43_LINK',
+  'MEANS_STALE_ANSWERS',
+  'MEANS_RESULT_CHANGED',
+  'MEANS_PAGE_INTRO',
+  'MEANS_PAGE_AGES',
+  'MEANS_PAGE_LOADING',
+  'MEANS_PAGE_READ_FAILED',
+  'MEANS_PAGE_SAVE_FAILED',
+  'MEANS_BESIDE_YOU',
+  'MEANS_BESIDE_SPOUSE',
+  'MEANS_LINE_7G',
+  'MEANS_LINE_8',
+  'MEANS_LINE_15_CAP',
+  'MEANS_LINE_27_NOTE',
+  'MEANS_LINE_29_NOTE',
+  'MEANS_LINE_30_CAP',
+  'MEANS_LINE_30_CAP_ONE',
+  'MEANS_LINE_35',
+  'MEANS_ADD_ROW',
+  'MEANS_REMOVE_ROW',
+  'MEANS_ROW_LEGEND',
+  'MEANS_DEBT_PROPERTY',
+  'MEANS_DEBT_GOES_ON',
+  'MEANS_DEBT_WAITS',
+  'MEANS_DEBT_PAYMENT',
+  'MEANS_PAYMENTS_LEFT',
+  'MEANS_SIXTY_OR_MORE',
+  'MEANS_PAYMENT_CHANGES',
+  'MEANS_SIXTY_MONTH_TOTAL',
+  'MEANS_LINE_36_LINK',
+  'MEANS_LINE_36_LIMITS',
+  'MEANS_LINE_36_TOTALS',
+  'MEANS_LINE_36_OTHER_RULES',
+  'MEANS_LINE_36_MULTIPLIER',
+  'MEANS_LINE_36_PRODUCT',
+  'MEANS_SPOUSE_TITLE',
+  'MEANS_SPOUSE_INTRO',
+  'MEANS_SPOUSE_VEHICLES_QUESTION',
+  'MEANS_SPOUSE_VEHICLE_DESCRIBE',
+  'MEANS_SPOUSE_VEHICLE_LEASED',
+  'MEANS_SPOUSE_VEHICLE_LEGEND',
+  'MEANS_SPOUSE_ADD_VEHICLE',
+  'MEANS_SPOUSE_REMOVE_VEHICLE',
+  'MEANS_SPOUSE_LOANS_QUESTION',
+  'MEANS_SPOUSE_LOANS_HINT',
+  'MEANS_SPOUSE_LOAN_LEGEND',
+  'MEANS_SPOUSE_ADD_LOAN',
+  'MEANS_SPOUSE_REMOVE_LOAN',
+  'MEANS_SPOUSE_LOAN_ON_AMOUNTS_OWED',
+  'MEANS_SPOUSE_LOAN_WHICH',
+  'MEANS_SPOUSE_LOAN_WHICH_NOTE',
+  'MEANS_SPOUSE_LOAN_CREDITOR',
+  'MEANS_SPOUSE_LOAN_SECURED_BY',
+  'MEANS_SPOUSE_LOAN_HOME',
+  'MEANS_SPOUSE_LOAN_OTHER',
+  'MEANS_SPOUSE_LOAN_PROPERTY',
+  'MEANS_SPOUSE_LOAN_PAYMENT',
+  'MEANS_SPOUSE_LOAN_FROM',
+  'MEANS_LINE_43_EXAMPLES',
+  'MEANS_LINE_43_OWN_WORDS',
+  'MEANS_LINE_43_NO_SUGGESTION',
+  'MEANS_LINE_43_LAWYER',
+  'MEANS_LINE_43_LEGEND',
+  'MEANS_LINE_43_ADD',
+  'MEANS_LINE_43_REMOVE',
+  'MEANS_LINE_43_HAPPENED',
+  'MEANS_LINE_43_HAPPENED_HINT',
+  'MEANS_LINE_43_CHANGE',
+  'MEANS_LINE_43_CHOICES',
+  'MEANS_LINE_43_PAPERS',
+  'MEANS_LINE_43_BOX_NOTE',
+  'MEANS_LINE_43_ASSEMBLE',
+  'MEANS_LINE_43_ASSEMBLE_NOTE',
+  'MEANS_LINE_43_LABEL_HAPPENED',
+  'MEANS_LINE_43_LABEL_CHANGE',
+  'MEANS_LINE_43_LABEL_CHOICES',
+  'MEANS_LINE_43_LABEL_PAPERS',
+  'MEANS_LINE_43_SKIPPED',
+  'MEANS_REBUTTAL_NOW',
+  'MEANS_REBUTTAL_IF',
+  'MEANS_REBUTTAL_IF_BELOW',
+  'MEANS_REBUTTAL_COURT',
   'MEANS_OUTCOME_ABOVE',
   'MEANS_OUTCOME_BELOW',
-  'MEANS_OUTCOME_NOT_YET',
   'MEANS_OUTCOME_NO_PRESUMPTION',
   'MEANS_OUTCOME_PRESUMPTION',
   'MEANS_OUTCOME_REASSURANCE',
@@ -117,7 +202,16 @@ const SAYS_PRESUMPTION = [
   'MEANS_OUTCOME_REASSURANCE',
 ];
 
+// Line 36 is the only place DigniFi names Chapter 13 (C-6)
+const SAYS_CHAPTER_13 = ['MEANS_LINE_36_LIMITS', 'MEANS_LINE_36_OTHER_RULES'];
+
 const held = copy as Record<string, unknown>;
+
+// Every sentence of line 43's writing aid, its gaps, its figure and its explanation's limits:
+// none says rebut, overcome or abuse (3h2 spec section 8.9)
+const LINE_43_COPY = NAMES.filter((name) =>
+  /^(MEANS_LINE_43_|MEANS_REBUTTAL_|MEANS_GAP_LINE_43|MEANS_EXPLANATION_)/.test(name)
+);
 const STRINGS = NAMES.filter((name) => typeof held[name] === 'string').map(
   (name) => [name, held[name] as string] as const
 );
@@ -136,8 +230,19 @@ describe('the means test gives information, never advice', () => {
     expect(adviceIn(sentence)).toEqual([]);
   });
 
-  it.each(STRINGS)('%s never says eligible, qualify, estimate or Chapter 13', (_name, sentence) => {
-    expect(sentence).not.toMatch(/eligib|qualif|estimate|chapter 13|overcome|rebut/i);
+  it.each(STRINGS)('%s never says eligible, qualify, estimate or Chapter 13', (name, sentence) => {
+    const words = SAYS_CHAPTER_13.includes(name)
+      ? /eligib|qualif|estimate|overcome|rebut/i
+      : /eligib|qualif|estimate|chapter 13|overcome|rebut/i;
+    expect(sentence).not.toMatch(words);
+  });
+
+  it.each(SAYS_CHAPTER_13)('%s is where line 36 says Chapter 13', (name) => {
+    expect(held[name]).toMatch(/chapter 13/i);
+  });
+
+  it.each(LINE_43_COPY)('%s says neither rebut, overcome nor abuse', (name) => {
+    expect(held[name]).not.toMatch(/rebut|overcome|abuse/i);
   });
 
   it.each(STRINGS)('%s says "presumption" only where the owner ruled it may', (name, sentence) => {
@@ -207,7 +312,6 @@ const EXACT_WORDS: [string, string][] = [
     'MEANS_OUTCOME_ABOVE',
     'Your income is above the median for a household of {n}, so Form 122A-2 applies.',
   ],
-  ['MEANS_OUTCOME_NOT_YET', "Its result can't be worked out yet."],
   [
     'MEANS_OUTCOME_REASSURANCE',
     "Being above the median doesn't mean a presumption of abuse applies.",
@@ -344,6 +448,179 @@ const EXACT_WORDS: [string, string][] = [
     'MEANS_GAP_LINE_43_AMOUNT',
     'Enter the average monthly amount for circumstance {n} on line 43. Enter 0 if there is none.',
   ],
+  // The page's own words (3h2)
+  [
+    'MEANS_OUTCOME_ANSWER_SIDEBAR',
+    "Its result can't be worked out until you answer the questions on the Form 122A-2 page, once you finish your intake.",
+  ],
+  [
+    'MEANS_OUTCOME_ANSWER_PAGE',
+    "Its result can't be worked out until you answer the questions on the Form 122A-2 page.",
+  ],
+  ['MEANS_PAGE_PHRASE', 'the Form 122A-2 page'],
+  ['MEANS_LINE_43_LINK', 'Go to line 43, special circumstances'],
+  [
+    'MEANS_STALE_ANSWERS',
+    "You answered the questions about your secured debts in {month}. If you've made payments since, check your answers on the Form 122A-2 page.",
+  ],
+  [
+    'MEANS_RESULT_CHANGED',
+    'Your result has changed. It is at the top of the page. Press Continue again when you are ready.',
+  ],
+  [
+    'MEANS_PAGE_INTRO',
+    "Form 122A-2 is the Chapter 7 means test calculation. Its questions use the form's own words, which can differ from the words on Schedules I and J. Beside some questions, DigniFi shows what you entered on those schedules, for you to compare. No answer is filled in for you.",
+  ],
+  [
+    'MEANS_PAGE_AGES',
+    'Line 7 counts people under 65 and people 65 or older. DigniFi uses your date of birth and the ages on your household list, as you entered them.',
+  ],
+  ['MEANS_PAGE_LOADING', 'Loading your answers...'],
+  [
+    'MEANS_PAGE_READ_FAILED',
+    "We couldn't get your answers just now. Please try again in a moment.",
+  ],
+  ['MEANS_PAGE_SAVE_FAILED', "We couldn't save your answers just now. Please try again."],
+  ['MEANS_BESIDE_YOU', 'You entered {amount} on Schedule {form} line {line}.'],
+  ['MEANS_BESIDE_SPOUSE', 'You entered {amount} for your spouse on Schedule {form} line {line}.'],
+  ['MEANS_LINE_7G', 'Your line 7 total is {amount}.'],
+  ['MEANS_LINE_8', 'Your line 8 amount is {amount}.'],
+  [
+    'MEANS_LINE_15_CAP',
+    "The IRS amount for public transportation is {amount}. Line 15 can't be more than that.",
+  ],
+  [
+    'MEANS_LINE_27_NOTE',
+    'The form says the court must keep the nature of these expenses confidential. DigniFi asks only for the amount.',
+  ],
+  ['MEANS_LINE_29_NOTE', 'The form allows up to {amount} a month for each child.'],
+  [
+    'MEANS_LINE_30_CAP',
+    "For {n} people, 5% of the IRS food and clothing amounts is {amount}. Line 30 can't be more than that.",
+  ],
+  [
+    'MEANS_LINE_30_CAP_ONE',
+    "For 1 person, 5% of the IRS food and clothing amounts is {amount}. Line 30 can't be more than that.",
+  ],
+  [
+    'MEANS_LINE_35',
+    'Line 35 comes from what you entered as past due for priority debts on the Amounts Owed step: {amount}.',
+  ],
+  ['MEANS_ADD_ROW', 'Add a row'],
+  ['MEANS_REMOVE_ROW', 'Remove row {n}'],
+  ['MEANS_ROW_LEGEND', 'Row {n}'],
+  ['MEANS_DEBT_PROPERTY', 'Secured by {property}'],
+  ['MEANS_DEBT_GOES_ON', 'On Form 122A-2, this debt goes on line {line}.'],
+  ['MEANS_DEBT_WAITS', 'Its line depends on your answers about your vehicles above.'],
+  ['MEANS_DEBT_PAYMENT', 'You entered a monthly payment of {amount} on the Amounts Owed step.'],
+  ['MEANS_PAYMENTS_LEFT', 'How many payments are left?'],
+  ['MEANS_SIXTY_OR_MORE', '60 or more'],
+  ['MEANS_PAYMENT_CHANGES', 'Will the payment change, or end with a larger payment?'],
+  ['MEANS_SIXTY_MONTH_TOTAL', 'The total due in the 60 months after you file'],
+  ['MEANS_LINE_36_LINK', 'Bankruptcy Basics, from the U.S. Courts'],
+  [
+    'MEANS_LINE_36_LIMITS',
+    'Chapter 13 has debt limits (11 U.S.C. section 109(e)). For cases filed on or after {date}, the limits are {unsecured} in unsecured debts and {secured} in secured debts.',
+  ],
+  [
+    'MEANS_LINE_36_TOTALS',
+    'You listed {ef} in unsecured debts on Schedule E/F. You listed {d} in secured debts on Schedule D.',
+  ],
+  [
+    'MEANS_LINE_36_OTHER_RULES',
+    "Other rules also apply. DigniFi can't tell you whether you can file under chapter 13.",
+  ],
+  [
+    'MEANS_LINE_36_MULTIPLIER',
+    "The U.S. Trustee's multiplier for the Northern District of Illinois is {m}%.",
+  ],
+  [
+    'MEANS_LINE_36_PRODUCT',
+    'The average monthly administrative expense is {m}% of {payment}. That is {product}.',
+  ],
+  ['MEANS_SPOUSE_TITLE', "Your spouse's vehicles and loans"],
+  [
+    'MEANS_SPOUSE_INTRO',
+    "These questions are about your spouse's vehicles and loans. Leave out a vehicle on your property list and a loan your Amounts Owed step lists as secured.",
+  ],
+  [
+    'MEANS_SPOUSE_VEHICLES_QUESTION',
+    "Does your spouse have a vehicle that isn't on your property list?",
+  ],
+  ['MEANS_SPOUSE_VEHICLE_DESCRIBE', 'Describe the vehicle, such as its year, make and model.'],
+  ['MEANS_SPOUSE_VEHICLE_LEASED', 'Is this vehicle leased?'],
+  ['MEANS_SPOUSE_VEHICLE_LEGEND', "Your spouse's vehicle {n}"],
+  ['MEANS_SPOUSE_ADD_VEHICLE', 'Add a vehicle'],
+  ['MEANS_SPOUSE_REMOVE_VEHICLE', "Remove your spouse's vehicle {n}"],
+  [
+    'MEANS_SPOUSE_LOANS_QUESTION',
+    'Does your spouse owe a loan on your home, a vehicle or other property?',
+  ],
+  [
+    'MEANS_SPOUSE_LOANS_HINT',
+    'Leave out a loan your Amounts Owed step lists as secured. Count a loan you both owe on property only your spouse owns.',
+  ],
+  ['MEANS_SPOUSE_LOAN_LEGEND', "Your spouse's loan {n}"],
+  ['MEANS_SPOUSE_ADD_LOAN', 'Add a loan'],
+  ['MEANS_SPOUSE_REMOVE_LOAN', "Remove your spouse's loan {n}"],
+  ['MEANS_SPOUSE_LOAN_ON_AMOUNTS_OWED', 'Is this loan on your Amounts Owed step?'],
+  ['MEANS_SPOUSE_LOAN_WHICH', 'Which loan is it?'],
+  [
+    'MEANS_SPOUSE_LOAN_WHICH_NOTE',
+    "This list shows the loans on your Amounts Owed step that aren't listed as secured.",
+  ],
+  ['MEANS_SPOUSE_LOAN_CREDITOR', 'Who does your spouse owe?'],
+  ['MEANS_SPOUSE_LOAN_SECURED_BY', 'What secures the loan?'],
+  ['MEANS_SPOUSE_LOAN_HOME', 'Your home'],
+  ['MEANS_SPOUSE_LOAN_OTHER', 'Other property'],
+  ['MEANS_SPOUSE_LOAN_PROPERTY', 'Describe the property.'],
+  ['MEANS_SPOUSE_LOAN_PAYMENT', 'The monthly payment'],
+  ['MEANS_SPOUSE_LOAN_FROM', "Your spouse's loan from {name}"],
+  [
+    'MEANS_LINE_43_EXAMPLES',
+    'The law gives two examples of special circumstances. One is a serious medical condition. The other is a call or order to active duty in the Armed Forces.',
+  ],
+  [
+    'MEANS_LINE_43_OWN_WORDS',
+    'Line 43 is about your monthly expenses and income now. You can explain your situation in your own words.',
+  ],
+  [
+    'MEANS_LINE_43_NO_SUGGESTION',
+    "DigniFi doesn't say which circumstances apply to you, or whether a court will allow them.",
+  ],
+  ['MEANS_LINE_43_LAWYER', 'A lawyer can tell you how the law applies to your facts.'],
+  ['MEANS_LINE_43_LEGEND', 'Circumstance {n}'],
+  ['MEANS_LINE_43_ADD', 'Add a circumstance'],
+  ['MEANS_LINE_43_REMOVE', 'Remove circumstance {n}'],
+  ['MEANS_LINE_43_HAPPENED', 'What happened, and when?'],
+  ['MEANS_LINE_43_HAPPENED_HINT', 'Use your own words.'],
+  ['MEANS_LINE_43_CHANGE', 'How does it change your monthly expenses or income?'],
+  ['MEANS_LINE_43_CHOICES', 'What other choices did you look at, and why did they not work?'],
+  ['MEANS_LINE_43_PAPERS', 'What papers will you give your case trustee to show this?'],
+  [
+    'MEANS_LINE_43_BOX_NOTE',
+    'Write only what you want the court to read. This box prints with line 43 on Form 122A-2. Edit it until it says what you mean.',
+  ],
+  ['MEANS_LINE_43_ASSEMBLE', 'Put my answers together'],
+  [
+    'MEANS_LINE_43_ASSEMBLE_NOTE',
+    'This puts your answers in the box below, under short headings. Nothing else is added.',
+  ],
+  ['MEANS_LINE_43_LABEL_HAPPENED', 'What happened:'],
+  ['MEANS_LINE_43_LABEL_CHANGE', 'How it changes my monthly expenses or income:'],
+  ['MEANS_LINE_43_LABEL_CHOICES', 'Other choices I looked at:'],
+  ['MEANS_LINE_43_LABEL_PAPERS', 'Papers I will give my case trustee:'],
+  [
+    'MEANS_LINE_43_SKIPPED',
+    "With your current answers, the form skips line 43, so this answer won't print.",
+  ],
+  ['MEANS_REBUTTAL_NOW', 'Your line 39d is now {amount}.'],
+  ['MEANS_REBUTTAL_IF', 'If the court allowed the amounts on line 43, line 39d would be {amount}.'],
+  [
+    'MEANS_REBUTTAL_IF_BELOW',
+    'If the court allowed the amounts on line 43, line 39d would be {amount} less than $0.',
+  ],
+  ['MEANS_REBUTTAL_COURT', 'The court decides whether to allow them.'],
   // Not a means test sentence, but 3h1 made its old words false (final review F11)
   [
     'REVIEW_INTRO',
@@ -374,5 +651,30 @@ describe('the means test sentences keep their words exactly', () => {
   it('the Review step’s opening words give no advice and never say eligible', () => {
     expect(adviceIn(copy.REVIEW_INTRO)).toEqual([]);
     expect(copy.REVIEW_INTRO).not.toMatch(/eligib|qualif|estimate|chapter 13|overcome|rebut/i);
+  });
+});
+
+// The counsel draft each sentence waits on (the plan's Global Constraints), read from the source
+function counselMark(name: string): string {
+  if (name === 'MEANS_LINE_43_LINK') return 'C-24';
+  if (name === 'MEANS_LINE_43_OWN_WORDS') return 'C-30';
+  if (/^(MEANS_LINE_43_|MEANS_EXPLANATION_)/.test(name)) return 'C-31';
+  if (name.startsWith('MEANS_LINE_36_')) return 'C-6';
+  if (name === 'MEANS_LINE_27_NOTE') return 'C-27';
+  if (/^(MEANS_SPOUSE_|MEANS_GAP_SPOUSE_)/.test(name)) return 'C-34';
+  if (name.startsWith('MEANS_REBUTTAL_')) return 'C-32';
+  return 'C-24';
+}
+
+describe('every means test sentence carries its counsel mark', () => {
+  const marked = NAMES.filter(
+    (name) => name !== 'MEANS_TEST_CALCULATING' && name !== 'MEANS_TEST_INCOME_LABEL'
+  );
+
+  it.each(marked)('%s has its mark on the line above', (name) => {
+    const found = copySource.match(
+      new RegExp(`// DRAFT: counsel (C-\\d+)\\nexport const ${name}\\b`)
+    );
+    expect(found?.[1]).toBe(counselMark(name));
   });
 });

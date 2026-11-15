@@ -662,6 +662,176 @@ export interface MeansTestResult {
 }
 
 // ============================================================================
+// The Form 122A-2 page (3h2): GET and PUT .../means-test/
+// Amounts are two-place decimal strings or null; null is unanswered.
+// ============================================================================
+
+/** How many payments are left on a secured debt: a whole number, or "60_or_more" */
+export type PaymentsLeft = number | '60_or_more';
+
+/** One use of the spouse's income on line 3 */
+export interface MeansLine3Row {
+  purpose: string;
+  amount: string | null;
+}
+
+/** A vehicle of the spouse's that isn't on the filer's property list; `ref` is `spouse-<id>` */
+export interface MeansSpouseVehicle {
+  ref: string;
+  description: string;
+  leased: YesNo | null;
+  claimed: YesNo | null;
+}
+
+/** The questions each secured debt asks (lines 33 and 34) */
+export interface MeansDebtAnswers {
+  payments_left: PaymentsLeft | null;
+  payment_changes: YesNo | null;
+  total_60_months: string | null;
+  taxes_or_insurance: YesNo | null;
+  necessary_for_support: YesNo | null;
+  cure: string | null;
+}
+
+/** A loan of the spouse's; `debt` is the id of the Amounts Owed debt it names, if any */
+export interface MeansSpouseLoan extends MeansDebtAnswers {
+  ref: string;
+  on_amounts_owed: YesNo | null;
+  debt: number | null;
+  creditor: string;
+  secured_by: string | null;
+  property: string;
+  payment: string | null;
+}
+
+/** One special circumstance on line 43 */
+export interface MeansCircumstance {
+  happened: string;
+  change: string;
+  choices: string;
+  papers: string;
+  amount: string | null;
+  explanation: string | null;
+}
+
+/** Every answer the page saves but the filer's per-debt ones (`MeansDebt` holds those) */
+export interface MeansAnswers {
+  line_3_answer: YesNo | null;
+  line_3_rows: MeansLine3Row[];
+  spouse_vehicles_answer: YesNo | null;
+  spouse_vehicles: MeansSpouseVehicle[];
+  spouse_loans_answer: YesNo | null;
+  spouse_loans: MeansSpouseLoan[];
+  vehicle_claims: Record<string, YesNo | null>;
+  vehicle_choice: [string | null, string | null];
+  line_15_answer: YesNo | null;
+  line_15_amount: string | null;
+  line_16: string | null;
+  line_17: string | null;
+  line_18: string | null;
+  line_19: string | null;
+  line_20: string | null;
+  line_21: string | null;
+  line_22_answer: YesNo | null;
+  line_22_amount: string | null;
+  line_23: string | null;
+  line_25_answer: YesNo | null;
+  line_25_health: string | null;
+  line_25_disability: string | null;
+  line_25_hsa: string | null;
+  line_25_spends: YesNo | null;
+  line_25_actual: string | null;
+  line_26_answer: YesNo | null;
+  line_26_amount: string | null;
+  line_27_answer: YesNo | null;
+  line_27_amount: string | null;
+  line_28_answer: YesNo | null;
+  line_28_amount: string | null;
+  line_29_answer: YesNo | null;
+  line_29_amount: string | null;
+  line_30_answer: YesNo | null;
+  line_30_amount: string | null;
+  line_31_answer: YesNo | null;
+  line_31_amount: string | null;
+  line_34_answer: YesNo | null;
+  line_36_answer: YesNo | null;
+  line_36_payment: string | null;
+  line_43_answer: YesNo | null;
+  line_43_circumstances: MeansCircumstance[];
+}
+
+/** A secured debt from the Amounts Owed step, with the page's answers about it */
+export interface MeansDebt extends MeansDebtAnswers {
+  id: number;
+  ref: string;
+  creditor: string;
+  property: string;
+  monthly_payment: string | null;
+  secured_by: string | null;
+  on_home: boolean;
+}
+
+/** A Schedule A/B vehicle the filer may claim an expense for */
+export interface MeansVehicle {
+  ref: string;
+  name: string;
+  leased: boolean;
+}
+
+/** Figures read from what the filer entered, shown beside lines (information only) */
+export interface MeansInformation {
+  schedule_i: { you: Record<string, string>; spouse: Record<string, string> | null };
+  schedule_j: Record<string, string>;
+  line_7g: string | null;
+  line_8: string | null;
+  line_35: string | null;
+  line_39c: string | null;
+  line_15_cap: string;
+  line_29_per_child: string;
+  line_30_people: number | null;
+  line_30_cap: string | null;
+  limits: { effective_date: string; unsecured: string; secured: string };
+  totals: { unsecured: string; secured: string };
+  multiplier: string;
+  line_36_product: string | null;
+}
+
+/** The page's GET body, and a PUT's reply */
+export interface MeansPage {
+  /** Null when the server can't say whether Form 122A-2 applies (`applies_gap` says why) */
+  applies: boolean | null;
+  applies_gap: string | null;
+  married_together: boolean;
+  answers: MeansAnswers;
+  debts: MeansDebt[];
+  vehicles: MeansVehicle[];
+  amounts_owed_loans: { id: number; creditor: string }[];
+  /** Each secured debt's line by ref (9b, 13b, 13e or 33d), null while it waits */
+  debt_lines: Record<string, string | null> | null;
+  debts_answered_on: string | null;
+  fill_date: string;
+  information: MeansInformation | null;
+  /** "no_table" when the means test figures are missing, else null */
+  information_gap: string | null;
+  outcome: MeansOutcome | null;
+  family_size: number | null;
+  tables_gap: string | null;
+  /** The server's first gap, null when none */
+  gap: string | null;
+}
+
+/** A PUT sets only the answer keys sent; each `debts` row only the keys it sends */
+export type MeansTestUpdate = Partial<MeansAnswers> & {
+  debts?: ({ id: number } & Partial<MeansDebtAnswers>)[];
+};
+
+/** When the filer last changed their secured-debt answers, and the day the packet was read */
+export interface MeansDebtsAnswered {
+  answered_on: string;
+  now: string;
+}
+
+// ============================================================================
 // Filing fee
 // ============================================================================
 
@@ -992,6 +1162,8 @@ export interface FormPacketResponse {
   outcome?: MeansOutcome | null;
   family_size?: number | null;
   tables_gap?: string | null;
+  /** When the secured-debt answers were last changed, and today; null before they were */
+  means_debts_answered?: MeansDebtsAnswered | null;
 }
 
 /** What `api.forms.packet` returns */
@@ -1003,6 +1175,7 @@ export interface Packet {
   outcome: MeansOutcome | null;
   family_size: number | null;
   tables_gap: string | null;
+  means_debts_answered: MeansDebtsAnswered | null;
 }
 
 export interface SessionSummaryResponse {

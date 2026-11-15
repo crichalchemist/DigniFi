@@ -44,6 +44,8 @@ import type {
   FilingFee,
   Exemptions,
   ExemptionsUpdate,
+  MeansPage,
+  MeansTestUpdate,
 } from '../types/api';
 
 // ============================================================================
@@ -515,6 +517,19 @@ export const intakeAPI = {
         body: JSON.stringify(body),
       }),
   },
+
+  /**
+   * GET and PUT /api/intake/sessions/{id}/means-test/ (a PUT sets only the keys sent)
+   */
+  meansTest: {
+    get: async (sessionId: number): Promise<MeansPage> =>
+      apiFetch<MeansPage>(`/intake/sessions/${sessionId}/means-test/`),
+    put: async (sessionId: number, body: MeansTestUpdate): Promise<MeansPage> =>
+      apiFetch<MeansPage>(`/intake/sessions/${sessionId}/means-test/`, {
+        method: 'PUT',
+        body: JSON.stringify(body),
+      }),
+  },
 };
 
 // ============================================================================
@@ -612,6 +627,7 @@ export const formsAPI = {
       outcome: response.outcome ?? null,
       family_size: response.family_size ?? null,
       tables_gap: response.tables_gap ?? null,
+      means_debts_answered: response.means_debts_answered ?? null,
     };
   },
 
