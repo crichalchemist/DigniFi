@@ -303,6 +303,14 @@ describe('the Form 122A-2 page gaps', () => {
     ]);
   });
 
+  it('a creditor typed with replacement patterns reads as typed in its gap sentence', () => {
+    const creditor = "Demo $& $' Credit";
+    const gaps = gapsOf({
+      debts: [{ ...KESTREL, creditor, answers: { ...KESTREL.answers, payments_left: null } }],
+    });
+    expect(gaps).toEqual([`Enter how many payments you have left to ${creditor}.`]);
+  });
+
   it('the taxes question is asked only of a line 33d debt', () => {
     const unlinked = {
       ref: 'debt-2',

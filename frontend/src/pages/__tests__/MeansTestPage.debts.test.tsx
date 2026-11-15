@@ -27,6 +27,7 @@ import {
   MEANS_SPOUSE_LOAN_FROM,
   MEANS_SPOUSE_REMOVE_VEHICLE,
   MEANS_SPOUSE_TITLE,
+  MEANS_SPOUSE_VEHICLE_LEGEND,
   MEANS_TOO_LONG,
 } from '../../constants/copy';
 import { gapStateOf, fromReply } from '../meansTest/pageState';
@@ -410,6 +411,64 @@ function threeCars(): MeansPage {
   page.debt_lines = { 'debt-11': null, 'debt-12': null, 'debt-13': null };
   return page;
 }
+
+describe('a spouse loan that changes its answer', () => {
+  it('a loan switched from Yes to No lets the next loan name the debt and the save goes through', async () => {
+    const page = spousePage(
+      [],
+      [
+        loanRow({ ref: 'spouse-1', on_amounts_owed: null, creditor: '' }),
+        loanRow({ ref: 'spouse-2', on_amounts_owed: null, creditor: '' }),
+      ],
+      { spouse_vehicles_answer: 'no' }
+    );
+    page.amounts_owed_loans = [{ id: 21, creditor: 'Demo Lender A' }];
+    const sent = serve(page);
+    renderPage();
+    await ready();
+    await userEvent.click(radio('means_spouse_loan_0_on_amounts_owed', 'yes'));
+    await userEvent.selectOptions(selectNamed('means_spouse_loan_0_debt'), '21');
+    await userEvent.click(radio('means_spouse_loan_0_on_amounts_owed', 'no'));
+    await userEvent.click(radio('means_spouse_loan_1_on_amounts_owed', 'yes'));
+    await userEvent.selectOptions(selectNamed('means_spouse_loan_1_debt'), '21');
+    await pressContinue();
+    await ready();
+    const body = sent[0] as unknown as { spouse_loans: { debt: number | null }[] };
+    expect(body.spouse_loans.map((row) => row.debt)).toEqual([null, 21]);
+    expect(screen.queryByText(MEANS_PAGE_SAVE_FAILED)).toBeNull();
+  });
+});
+
+describe('a spouse vehicle with no description in a slot choice', () => {
+  it('is named by its legend, never by its ref', async () => {
+    const page = meansPage();
+    page.vehicles = [
+      { ref: 'asset-7', name: 'Honda CR-V EX 2021', leased: true },
+      { ref: 'asset-8', name: 'Demo sedan', leased: true },
+    ];
+    page.debts = [];
+    page.debt_lines = {};
+    page.answers = {
+      ...page.answers,
+      vehicle_claims: { 'asset-7': 'yes', 'asset-8': 'yes' },
+      spouse_vehicles_answer: 'yes',
+      spouse_vehicles: [vehicleRow({ description: '', leased: 'yes', claimed: 'yes' })],
+      spouse_loans_answer: 'no',
+      spouse_loans: [],
+    };
+    serve(page);
+    renderPage();
+    await ready();
+    const first = selectNamed('means_vehicle_1');
+    expect(names(first)).toEqual([
+      '',
+      'Honda CR-V EX 2021',
+      'Demo sedan',
+      fill(MEANS_SPOUSE_VEHICLE_LEGEND, { n: '1' }),
+    ]);
+    expect(names(first).join('|')).not.toContain('spouse-1');
+  });
+});
 
 describe("each secured debt's questions", () => {
   it('the taxes question is asked only of a line 33d debt, and moves with Vehicle 1', async () => {

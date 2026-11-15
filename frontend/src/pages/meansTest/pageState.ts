@@ -154,6 +154,7 @@ export function withLiveRefs(page: MeansPage, state: PageState): PageState {
   const live = liveVehicleRefs(page, answers);
   const open = new Set(page.amounts_owed_loans.map((debt) => debt.id));
   const liveOrNull = (ref: string | null) => (ref !== null && live.has(ref) ? ref : null);
+  const taken = new Set<number>();
   return {
     ...state,
     answers: {
@@ -169,7 +170,17 @@ export function withLiveRefs(page: MeansPage, state: PageState): PageState {
         else if (securedBy !== null && live.has(securedBy)) {
           kept = loan.on_amounts_owed === 'yes' && !isSpouseRef(securedBy) ? null : securedBy;
         }
-        const debt = loan.debt !== null && open.has(loan.debt) ? loan.debt : null;
+        // a debt is kept only on a Yes row, only while open, and only for the first row naming it
+        let debt: number | null = null;
+        if (
+          loan.on_amounts_owed === 'yes' &&
+          loan.debt !== null &&
+          open.has(loan.debt) &&
+          !taken.has(loan.debt)
+        ) {
+          debt = loan.debt;
+          taken.add(debt);
+        }
         return { ...loan, secured_by: kept, debt };
       }),
     },

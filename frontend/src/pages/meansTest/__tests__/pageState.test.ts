@@ -315,4 +315,15 @@ describe('a spouse row and its references', () => {
     ]);
     expect(body.vehicle_choice).toEqual(['asset-7', null]);
   });
+
+  it('a loan switched to No sends no debt, so the next loan can name it without a refusal', () => {
+    const page = withLoans([
+      loan(1, { on_amounts_owed: 'no', debt: 21 }),
+      loan(2, { on_amounts_owed: 'yes', creditor: '', debt: 21 }),
+      loan(3, { on_amounts_owed: 'yes', creditor: '', debt: 21 }),
+    ]);
+    const body = toPutBody(withLiveRefs(page, fromReply(page)));
+    // A No row names no debt; the first Yes row keeps it; a later row naming it reads as none
+    expect(body.spouse_loans.map((row) => row.debt)).toEqual([null, 21, null]);
+  });
 });

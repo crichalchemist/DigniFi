@@ -74,7 +74,7 @@ const blank = (text: string | null | undefined): boolean => text == null || text
 
 function fill(sentence: string, values: Record<string, string | number>): string {
   return Object.entries(values).reduce(
-    (text, [key, value]) => text.replace(`{${key}}`, String(value)),
+    (text, [key, value]) => text.split(`{${key}}`).join(String(value)),
     sentence
   );
 }
