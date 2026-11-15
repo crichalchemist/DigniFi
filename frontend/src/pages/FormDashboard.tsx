@@ -81,6 +81,7 @@ const PAGE_LINK_LABELS: Record<string, string> = {
   '/sofa': 'Go to Statement of Financial Affairs',
   '/documents': 'Go to Upload your documents',
   '/exemptions': 'Go to The property you claim as exempt',
+  '/means-test': 'Go to Form 122A-2: Chapter 7 Means Test Calculation',
 };
 
 /**

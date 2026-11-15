@@ -15,7 +15,6 @@ from rest_framework.test import APIClient
 
 from apps.districts.models import District
 from apps.forms.models import GeneratedForm
-from apps.forms.registry import FORM_122A2_NOT_ASKED
 from apps.forms.services.pdf_filler import PDFFormFiller
 from apps.forms.tests.means_pair import box_1_state, stored_check_box_1
 from apps.forms.tests.pdf_readback import read_drawn
@@ -23,6 +22,7 @@ from apps.intake.models import DebtorInfo, IncomeInfo, IntakeSession
 from apps.intake.tests.builders import answer_household
 
 User = get_user_model()
+LINE_16 = "Enter the amount for line 16. Enter 0 if you have none."
 
 BOX_2 = "/Presumption of abuse applies"
 BOX_1 = "/No Abuse"
@@ -114,12 +114,12 @@ def test_a_stale_122a1_row_cant_be_filed_around_the_hold(api_client, session_wit
 
     assert (resp.status_code, resp.data) == (
         422,
-        {"form_type": "form_122a1", "error": FORM_122A2_NOT_ASKED},
+        {"form_type": "form_122a1", "error": LINE_16, "page": "/means-test"},
     )
     row.refresh_from_db()
     assert (row.status, row.field_values) == ("generated", stored)
     download = api_client.get(f"/api/forms/{row.pk}/download/")
-    assert (download.status_code, download.data["error"]) == (422, FORM_122A2_NOT_ASKED)
+    assert (download.status_code, download.data["error"]) == (422, LINE_16)
 
 
 @pytest.mark.django_db
@@ -286,7 +286,7 @@ def test_a_filed_122a2_with_nothing_stored_is_refused_by_the_hold(api_client, se
 
     resp = api_client.get(f"/api/forms/{row.pk}/download/")
 
-    assert (resp.status_code, resp.data["error"]) == (422, FORM_122A2_NOT_ASKED)
+    assert (resp.status_code, resp.data["error"]) == (422, LINE_16)
 
 
 @pytest.mark.django_db
@@ -303,7 +303,7 @@ def test_a_stale_122a2_row_cant_be_filed_around_the_hold(api_client, session_wit
 
     assert (resp.status_code, resp.data) == (
         422,
-        {"form_type": "form_122a2", "error": FORM_122A2_NOT_ASKED},
+        {"form_type": "form_122a2", "error": LINE_16, "page": "/means-test"},
     )
     row.refresh_from_db()
     assert (row.status, row.field_values) == ("generated", stale)

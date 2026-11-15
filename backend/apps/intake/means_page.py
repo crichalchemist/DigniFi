@@ -35,7 +35,7 @@ from apps.forms.registry import _above_median
 from apps.intake.asset_lines import exemption_item_name, ordered_assets
 from apps.intake.claim_rows import claim_rows
 from apps.intake.locking import lock_session
-from apps.intake.means_test import PER_DEBT_KEYS, PROPERTY_CHOICES
+from apps.intake.means_test import PER_DEBT_KEYS, PROPERTY_CHOICES, means_test_gaps
 from apps.intake.models import IntakeSession, MeansTestAnswers, SecuredDebtAnswers
 
 # Fixed sentences for a 400; the page shows MEANS_PAGE_SAVE_FAILED for each, so none has a
@@ -237,9 +237,14 @@ def means_page(session) -> dict:
     answers = _answers_for_page(session)
     information, information_gap = None, None
     lines = None
+    gap = None
     if applies:
         information, information_gap = _information(session, answers)
-        lines = debt_lines(read_inputs(session))
+        inputs = read_inputs(session)
+        lines = debt_lines(inputs)
+        if information_gap is None:
+            tables, _ = read_tables(fill_date())
+            gap = next(iter(means_test_gaps(inputs, tables, page_answers(session))), None)
     saved = MeansTest.objects.filter(session=session).first()
     details = saved.get_calculation_details() if saved else {}
     record = getattr(session, "means_test_answers", None)
@@ -265,7 +270,7 @@ def means_page(session) -> dict:
         "outcome": saved.outcome if saved else None,
         "family_size": details.get("family_size"),
         "tables_gap": details.get("tables_gap"),
-        "gap": None,
+        "gap": gap,
     }
 
 
@@ -315,7 +320,6 @@ def save_means_answers(session, data: Mapping) -> None:
     Never reopens a completed intake.
     """
     with transaction.atomic():
-        # the view's session carries prefetched assets and debts read before the lock
         # the view's session carries prefetched assets and debts read before the lock
         session = lock_session(session.pk)
         record = MeansTestAnswers.objects.filter(session=session).first()

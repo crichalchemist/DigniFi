@@ -243,7 +243,7 @@ def test_an_above_median_filer_reads_their_vehicles_debts_and_every_answer_unans
     assert page["debts_answered_on"] is None
     assert page["information"]["multiplier"] == "6.9"
     assert page["amounts_owed_loans"] == []
-    assert page["gap"] is None
+    assert page["gap"] == "Answer whether you claim an expense for Demo car."
 
 
 @pytest.mark.django_db
@@ -636,9 +636,6 @@ def test_changing_a_debt_answer_stamps_the_day(filer):
     _set_answered_on(filer.session, STALE)
     answer_means_test(filer.session, spouse_loans_answer="yes", spouse_loans=[_stored_loan()])
     _set_answered_on(filer.session, STALE)
-    record = MeansTestAnswers.objects.get(session=filer.session)
-    record.next_spouse_loan_id = 2
-    record.save()
     changed = _sent_loan(total_60_months="3700.00")
     assert _put(filer, {"spouse_loans": [changed]}).status_code == 200
     assert _answered_on(filer.session) == STAMP
@@ -685,7 +682,7 @@ def test_the_result_turns_once_the_last_input_under_39d_is_answered(filer):
 
     reply = _put(filer, {"line_16": "0.00"}).json()
 
-    assert reply["outcome"] in ("no_presumption", "presumption")
+    assert reply["outcome"] == "presumption"
     packet = filer.client.get(f"/api/forms/packet/?session={filer.session.pk}").json()
     assert packet["outcome"] == reply["outcome"]
 
@@ -782,3 +779,48 @@ def test_a_save_after_the_intake_changed_sends_back_what_the_get_gave_and_succee
     reply = _put(filer, _put_body(page))
 
     assert reply.status_code == 200, reply.content
+
+
+@pytest.mark.django_db
+def test_the_reply_names_the_servers_first_gap_and_none_once_every_answer_is_given(filer):
+    reply = _put(filer, {"vehicle_claims": {f"asset-{filer.car.pk}": "yes"}})
+
+    assert reply.status_code == 200
+    assert reply.json()["gap"] == "Answer the question on line 15."
+
+    answer_means_test(filer.session)
+    assert _get(filer).json()["gap"] is None
+
+
+@pytest.mark.django_db
+def test_a_day_with_no_median_table_answers_200_with_the_tables_sentence(filer, monkeypatch):
+    # the median table runs to March 31, 2027, and nothing starts after it
+    monkeypatch.setattr("apps.districts.dated_tables._today", lambda: date(2027, 4, 1))
+
+    reply = _get(filer)
+
+    assert reply.status_code == 200
+    page = reply.json()
+    assert page["applies"] is None
+    assert page["applies_gap"] == (
+        "DigniFi doesn't have the income figures for today's date yet, so it can't "
+        "prepare your forms. Please try again later."
+    )
+    assert page["gap"] is None
+
+
+@pytest.mark.django_db
+def test_the_builder_moves_the_spouse_id_counters_past_every_ref_it_stores(filer):
+    answer_means_test(
+        filer.session,
+        spouse_vehicles_answer="yes",
+        spouse_vehicles=[
+            {"ref": "spouse-3", "description": "Demo truck", "leased": "no", "claimed": "no"}
+        ],
+        spouse_loans_answer="yes",
+        spouse_loans=[_stored_loan(ref="spouse-7")],
+    )
+
+    record = MeansTestAnswers.objects.get(session=filer.session)
+
+    assert (record.next_spouse_vehicle_id, record.next_spouse_loan_id) == (4, 8)

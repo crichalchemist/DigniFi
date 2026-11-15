@@ -21,7 +21,7 @@ from django.core.management import call_command
 
 from apps.districts.models import District
 from apps.forms.registry import (
-    FORM_122A2_NOT_ASKED,
+    FORM_122A2_CANT_PRINT_YET,
     PreconditionMissing,
     build_field_values,
     build_parts,
@@ -1311,7 +1311,7 @@ def _printed(persona):
         try:
             values = build_field_values(form_type, session)
         except PreconditionMissing as exc:
-            if form_type not in HELD or str(exc) != FORM_122A2_NOT_ASKED:
+            if form_type not in HELD or str(exc) != FORM_122A2_CANT_PRINT_YET:
                 raise
             # The hold refuses 122A-2, and Priya's 122A-1 (R6): this tier judges printing, so
             # the form resolves below the gate.
@@ -1337,7 +1337,7 @@ def test_priyas_122a1_and_122a2_are_held_until_122a2_can_print():
     call_command("seed_demo_data", "--reset", persona="priya", verbosity=0)
     session = IntakeSession.objects.filter(user__username="demo_priya").latest("id")
     for form_type in HELD:
-        with pytest.raises(PreconditionMissing, match=re.escape(FORM_122A2_NOT_ASKED)):
+        with pytest.raises(PreconditionMissing, match=re.escape(FORM_122A2_CANT_PRINT_YET)):
             build_field_values(form_type, session)
 
 

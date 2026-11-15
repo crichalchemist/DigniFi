@@ -11,7 +11,7 @@ import {
   MEANS_FILED_BEFORE_122A1,
   MEANS_FILED_BEFORE_122A2,
   MEANS_FILED_MISMATCH,
-  MEANS_HOLD_REFUSAL,
+  MEANS_CANT_PRINT_YET,
   MEANS_OUTCOME_NOT_YET,
   MEANS_OUTCOME_PRESUMPTION,
   MEANS_PAIR_NOTICE,
@@ -1661,9 +1661,9 @@ describe('FormDashboard', () => {
           HttpResponse.json({
             generated: [],
             errors: [
-              { form_type: 'form_122a1', error: MEANS_HOLD_REFUSAL },
+              { form_type: 'form_122a1', error: MEANS_CANT_PRINT_YET },
               { form_type: 'form_121', error: LETTER, step: 'debtor_info' },
-              { form_type: 'form_122a2', error: MEANS_HOLD_REFUSAL },
+              { form_type: 'form_122a2', error: MEANS_CANT_PRINT_YET },
             ],
             total_generated: 0,
             total_errors: 3,
@@ -1678,7 +1678,7 @@ describe('FormDashboard', () => {
       expect(alert).toHaveTextContent(LETTER);
       expect(alert).not.toHaveTextContent(/Form 122A/);
 
-      const pair = screen.getAllByText(MEANS_HOLD_REFUSAL, { exact: false });
+      const pair = screen.getAllByText(MEANS_CANT_PRINT_YET, { exact: false });
       expect(pair).toHaveLength(2);
       const block = pair[0].closest('[role="status"]')!;
       expect(block).toBe(pair[1].closest('[role="status"]'));
@@ -1693,7 +1693,7 @@ describe('FormDashboard', () => {
         http.post('http://localhost:8000/api/forms/generate_all/', () =>
           HttpResponse.json({
             generated: [],
-            errors: [{ form_type: 'form_122a2', error: MEANS_HOLD_REFUSAL }],
+            errors: [{ form_type: 'form_122a2', error: MEANS_CANT_PRINT_YET }],
             total_generated: 0,
             total_errors: 1,
           })
@@ -1702,7 +1702,7 @@ describe('FormDashboard', () => {
       renderFormDashboard();
       await generateAll();
 
-      await screen.findByText(MEANS_HOLD_REFUSAL, { exact: false });
+      await screen.findByText(MEANS_CANT_PRINT_YET, { exact: false });
       expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     });
 
@@ -1714,7 +1714,7 @@ describe('FormDashboard', () => {
         http.post('http://localhost:8000/api/forms/generate_all/', () =>
           HttpResponse.json({
             generated: [],
-            errors: [{ form_type: 'form_122a2', error: MEANS_HOLD_REFUSAL }],
+            errors: [{ form_type: 'form_122a2', error: MEANS_CANT_PRINT_YET }],
             total_generated: 0,
             total_errors: 1,
           })
@@ -1730,7 +1730,7 @@ describe('FormDashboard', () => {
 
       await generateAll();
 
-      const refusal = await screen.findByText(MEANS_HOLD_REFUSAL, { exact: false });
+      const refusal = await screen.findByText(MEANS_CANT_PRINT_YET, { exact: false });
       // The same element, not a new one put in with the words already inside
       expect(refusal.closest('[role="status"]')).toBe(region);
     });
@@ -1741,7 +1741,10 @@ describe('FormDashboard', () => {
       formsWith(storedForm('form_122a1', 7));
       server.use(
         http.post('http://localhost:8000/api/forms/:id/mark_filed/', () =>
-          HttpResponse.json({ form_type: 'form_122a1', error: MEANS_HOLD_REFUSAL }, { status: 422 })
+          HttpResponse.json(
+            { form_type: 'form_122a1', error: MEANS_CANT_PRINT_YET },
+            { status: 422 }
+          )
         )
       );
       renderFormDashboard();
@@ -1749,7 +1752,7 @@ describe('FormDashboard', () => {
       const card = await screen.findByRole('article', { name: 'Form 122A-1 - Means Test' });
       await userEvent.click(within(card).getByRole('button', { name: 'Mark as Filed' }));
 
-      expect(await within(card).findByText(MEANS_HOLD_REFUSAL)).toBeInTheDocument();
+      expect(await within(card).findByText(MEANS_CANT_PRINT_YET)).toBeInTheDocument();
       expect(within(card).queryByRole('link')).not.toBeInTheDocument();
       // Still unfiled
       expect(within(card).getByRole('button', { name: 'Mark as Filed' })).toBeInTheDocument();
@@ -1853,6 +1856,38 @@ describe('FormDashboard', () => {
         expect(within(card).getByText(MEANS_FILED_BEFORE_122A1)).toBeInTheDocument();
         expect(within(card).queryByText(MEANS_FILED_MISMATCH)).not.toBeInTheDocument();
       });
+    });
+
+    it('links a pair refusal that names the Form 122A-2 page to it', async () => {
+      packetWith({ outcome: 'cannot_work_out', family_size: 4 });
+      server.use(
+        http.post('http://localhost:8000/api/forms/generate_all/', () =>
+          HttpResponse.json({
+            generated: [],
+            errors: [
+              {
+                form_type: 'form_122a2',
+                error: 'Enter the amount for line 16. Enter 0 if you have none.',
+                page: '/means-test',
+              },
+            ],
+            total_generated: 0,
+            total_errors: 1,
+          })
+        )
+      );
+      renderFormDashboard();
+      await generateAll();
+
+      const refusal = await screen.findByText(
+        'Enter the amount for line 16. Enter 0 if you have none.',
+        { exact: false }
+      );
+      const block = refusal.closest('[role="status"]') as HTMLElement;
+      const link = within(block).getByRole('link', {
+        name: 'Go to Form 122A-2: Chapter 7 Means Test Calculation',
+      });
+      expect(link).toHaveAttribute('href', '/means-test');
     });
   });
 });

@@ -219,6 +219,20 @@ def _income_period(session: IntakeSession) -> dict:
     }
 
 
+def _means_debts_answered(session: IntakeSession, form_types: list[str]) -> dict | None:
+    """When the filer last answered the secured-debt questions, and today (the fill date).
+
+    None unless Form 122A-2 is in the packet and the answers carry a date.
+    """
+    if "form_122a2" not in form_types:
+        return None
+    record = getattr(session, "means_test_answers", None)
+    answered_on = None if record is None else record.answered_on()
+    if answered_on is None:
+        return None
+    return {"answered_on": answered_on.isoformat(), "now": fill_date().isoformat()}
+
+
 def _prepare(session: IntakeSession) -> None:
     """Refuse an unfinished intake, an unfinished Assets step and an unfinished claims step,
     then work its means test out again. Once per call.
@@ -336,11 +350,13 @@ class GeneratedFormViewSet(viewsets.ReadOnlyModelViewSet):
             except Exception as exc:
                 body, code = _failure(None, exc)
                 return Response(body, status=code)
+        form_types = packet(session)
         return Response(
             {
                 "session": session.id,
-                "form_types": packet(session),
+                "form_types": form_types,
                 "income_period": _income_period(session),
+                "means_debts_answered": _means_debts_answered(session, form_types),
                 "payment_choice": payment_choice(session),
                 **_means_reply(session),
             }
