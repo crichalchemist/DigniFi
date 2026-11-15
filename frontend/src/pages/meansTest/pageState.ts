@@ -146,7 +146,9 @@ function liveVehicleRefs(page: MeansPage, answers: PageAnswers): Set<string> {
  * The browser's copy of `normalized_answers`' reference rules (F3, F4, F5): every `secured_by` and
  * `vehicle_choice` entry that names no live vehicle is `null`, a loan on the Amounts Owed step keeps
  * only a spouse vehicle (a filer's own `asset-` ref goes as `null`), and a spouse loan's `debt`
- * naming no open Amounts Owed debt is `null`. A typed loan (`debt` null) is never touched. Continue
+ * is kept only on a row answered Yes, only while that debt is still open, and only for the first
+ * row naming it: a debt on any other row, a debt no longer open and a debt an earlier row names
+ * all go as `null`. A typed loan (`debt` null) is never touched. Continue
  * sends this, so the server's 400 for a reference to a removed row never reaches the filer.
  */
 export function withLiveRefs(page: MeansPage, state: PageState): PageState {

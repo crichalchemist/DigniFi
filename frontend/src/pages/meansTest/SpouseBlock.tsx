@@ -86,38 +86,47 @@ export function SpouseBlock({
       },
     }));
 
+  // Built inside the updater, from the latest state, so two queued adds never drop a row
   const addVehicle = () => {
     const key = nextKey();
-    setAnswers({
-      spouse_vehicles: [
-        ...answers.spouse_vehicles,
-        { _key: key, ref: key, description: '', leased: null, claimed: null },
-      ],
-    });
+    edit((current) => ({
+      ...current,
+      answers: {
+        ...current.answers,
+        spouse_vehicles: [
+          ...current.answers.spouse_vehicles,
+          { _key: key, ref: key, description: '', leased: null, claimed: null },
+        ],
+      },
+    }));
   };
   const addLoan = () => {
     const key = nextKey();
-    setAnswers({
-      spouse_loans: [
-        ...answers.spouse_loans,
-        {
-          _key: key,
-          ref: key,
-          on_amounts_owed: null,
-          debt: null,
-          creditor: '',
-          secured_by: null,
-          property: '',
-          payment: null,
-          payments_left: null,
-          payment_changes: null,
-          total_60_months: null,
-          taxes_or_insurance: null,
-          necessary_for_support: null,
-          cure: null,
-        },
-      ],
-    });
+    edit((current) => ({
+      ...current,
+      answers: {
+        ...current.answers,
+        spouse_loans: [
+          ...current.answers.spouse_loans,
+          {
+            _key: key,
+            ref: key,
+            on_amounts_owed: null,
+            debt: null,
+            creditor: '',
+            secured_by: null,
+            property: '',
+            payment: null,
+            payments_left: null,
+            payment_changes: null,
+            total_60_months: null,
+            taxes_or_insurance: null,
+            necessary_for_support: null,
+            cure: null,
+          },
+        ],
+      },
+    }));
   };
 
   // What the loans read as once their references are live; the views run in the rows' order

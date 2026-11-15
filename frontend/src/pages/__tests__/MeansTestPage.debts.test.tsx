@@ -5,7 +5,7 @@
  * answers give it; a save never names a row that has gone, and a row the server names keeps what
  * the filer typed beside it.
  */
-import { fireEvent, screen, within } from '@testing-library/react';
+import { act, fireEvent, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { server } from '../../test/mocks/server';
@@ -25,13 +25,12 @@ import {
   MEANS_SPOUSE_ADD_LOAN,
   MEANS_SPOUSE_ADD_VEHICLE,
   MEANS_SPOUSE_LOAN_FROM,
+  MEANS_SPOUSE_REMOVE_LOAN,
   MEANS_SPOUSE_REMOVE_VEHICLE,
   MEANS_SPOUSE_TITLE,
   MEANS_SPOUSE_VEHICLE_LEGEND,
   MEANS_TOO_LONG,
 } from '../../constants/copy';
-import { gapStateOf, fromReply } from '../meansTest/pageState';
-import { meansTestGaps } from '../meansTest/meansTestGaps';
 import type { MeansAnswers, MeansPage, MeansSpouseLoan, MeansSpouseVehicle } from '../../types/api';
 import {
   URL,
@@ -320,7 +319,8 @@ describe("the spouse's vehicles and loans", () => {
     expect(sent[1].spouse_loans[0]).toMatchObject({ ref: 'spouse-1', secured_by: 'spouse-1' });
   });
 
-  it('a removed spouse vehicle is named by no loan and no Vehicle choice in the next save', async () => {
+  /** A loan secured by the spouse's first van and Vehicle 2 set to it; the filer then removes the van */
+  async function removeTheVanThatTheLoanNames() {
     const page = spousePage(
       [
         vehicleRow({ claimed: 'yes', leased: 'yes' }),
@@ -347,21 +347,51 @@ describe("the spouse's vehicles and loans", () => {
     await userEvent.click(
       screen.getByRole('button', { name: fill(MEANS_SPOUSE_REMOVE_VEHICLE, { n: '1' }) })
     );
+    // Line 3 is the page's first question; answering it lets the gap region reach the rest
+    await userEvent.click(radio('means_line_3', 'no'));
+    return sent;
+  }
+
+  it('a removed spouse vehicle is named by no loan and no Vehicle choice in the next save', async () => {
+    const sent = await removeTheVanThatTheLoanNames();
+    // The page's own gap region asks the loan's question again
+    expect(gapRegion()).toHaveTextContent(
+      fill(MEANS_GAP_SPOUSE_LOAN_SECURED_BY, { name: 'Demo Credit Union' })
+    );
     await pressContinue();
     await ready();
     const body = sent[0] as unknown as SentBody;
     expect(body.spouse_loans[0].secured_by).toBeNull();
     expect(body.vehicle_choice).toEqual(['asset-7', null]);
+  });
 
-    // What the page then asks again is both questions: the loan's, and once it is answered
-    // (the slots wait while a loan is unplaced) the Vehicle 1 and 2 choice
-    const state = fromReply(page);
-    state.answers.spouse_vehicles = state.answers.spouse_vehicles.slice(1);
-    expect(meansTestGaps(gapStateOf(page, state))).toContain(
-      fill(MEANS_GAP_SPOUSE_LOAN_SECURED_BY, { name: 'Demo Credit Union' })
-    );
-    state.answers.spouse_loans[0].secured_by = 'home';
-    expect(meansTestGaps(gapStateOf(page, state))).toContain(MEANS_GAP_VEHICLE_CHOICE);
+  it('once the loan of a removed vehicle is answered, the page asks for Vehicle 1 and 2 again', async () => {
+    await removeTheVanThatTheLoanNames();
+    // The slots wait while a loan is unplaced, so the choice is asked only after the loan is
+    await userEvent.click(radio('means_spouse_loan_0_secured_by', 'home'));
+    await userEvent.type(field('means_spouse_loan_0_property'), 'Demo house');
+    expect(gapRegion()).toHaveTextContent(MEANS_GAP_VEHICLE_CHOICE);
+  });
+
+  it("two rows added in one press of the keys both stay in the spouse's lists", async () => {
+    serve(spousePage([], []));
+    renderPage();
+    await ready();
+    const addVehicle = screen.getByRole('button', { name: MEANS_SPOUSE_ADD_VEHICLE });
+    const addLoan = screen.getByRole('button', { name: MEANS_SPOUSE_ADD_LOAN });
+    act(() => {
+      addVehicle.click();
+      addVehicle.click();
+      addLoan.click();
+      addLoan.click();
+    });
+    expect(field('means_spouse_vehicle_0_name')).not.toBeNull();
+    expect(field('means_spouse_vehicle_1_name')).not.toBeNull();
+    for (const n of ['1', '2']) {
+      expect(
+        screen.getByRole('button', { name: fill(MEANS_SPOUSE_REMOVE_LOAN, { n }) })
+      ).toBeInTheDocument();
+    }
   });
 
   it("a filer's own vehicle chosen before the loan was marked as on the Amounts Owed step goes as unanswered", async () => {
