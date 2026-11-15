@@ -8,6 +8,7 @@ import pytest
 from django.db import IntegrityError, connection, transaction
 
 from apps.districts.models import District
+from apps.intake.means_test import ANSWER_KEYS
 from apps.intake.models import IntakeSession, MeansTestAnswers, SecuredDebtAnswers
 from apps.intake.tests.builders import complete_debt
 from apps.users.models import User
@@ -134,3 +135,56 @@ def test_answered_on_reads_the_stored_day(session):
     record.save()
     record = MeansTestAnswers.objects.get(pk=record.pk)
     assert record.answered_on() == date(2026, 10, 16)
+
+
+def test_the_page_asks_these_answers_in_this_order():
+    assert ANSWER_KEYS == (
+        "line_3_answer",
+        "line_3_rows",
+        "spouse_vehicles_answer",
+        "spouse_vehicles",
+        "spouse_loans_answer",
+        "spouse_loans",
+        "vehicle_claims",
+        "vehicle_choice",
+        "line_15_answer",
+        "line_15_amount",
+        "line_16",
+        "line_17",
+        "line_18",
+        "line_19",
+        "line_20",
+        "line_21",
+        "line_22_answer",
+        "line_22_amount",
+        "line_23",
+        "line_25_answer",
+        "line_25_health",
+        "line_25_disability",
+        "line_25_hsa",
+        "line_25_spends",
+        "line_25_actual",
+        "line_26_answer",
+        "line_26_amount",
+        "line_27_answer",
+        "line_27_amount",
+        "line_28_answer",
+        "line_28_amount",
+        "line_29_answer",
+        "line_29_amount",
+        "line_30_answer",
+        "line_30_amount",
+        "line_31_answer",
+        "line_31_amount",
+        "line_34_answer",
+        "line_36_answer",
+        "line_36_payment",
+        "line_43_answer",
+        "line_43_circumstances",
+    )
+
+
+def test_deleting_the_session_deletes_its_answers(session):
+    MeansTestAnswers.objects.create(session=session)
+    session.delete()
+    assert MeansTestAnswers.objects.count() == 0
