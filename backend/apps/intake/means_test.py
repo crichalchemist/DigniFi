@@ -258,7 +258,7 @@ def _spouse_loan_gaps(inputs: MeansInputs, answers: Mapping) -> list[str]:
     for row in rows:
         if not _loan_identity_given(row):
             continue
-        name = names.get(row.get("ref"), row.get("creditor") or "")
+        name = names.get(row.get("ref"), row.get("creditor") or "").strip()
         secured_by = row.get("secured_by")
         if secured_by is None:
             gaps.append(MEANS_GAP_SPOUSE_LOAN_SECURED_BY.format(name=name))

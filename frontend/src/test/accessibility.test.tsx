@@ -17,6 +17,8 @@ import { RegisterPage } from '../pages/RegisterPage';
 import { LandingPage } from '../pages/LandingPage';
 import { FormDashboard } from '../pages/FormDashboard';
 import { ExemptionsPage } from '../pages/ExemptionsPage';
+import { MeansTestPage } from '../pages/MeansTestPage';
+import { priyaPage } from './fixtures/meansPage';
 import { FormCard } from '../components/forms/FormCard';
 import { FormStatusBadge } from '../components/forms/FormStatusBadge';
 import { UPLDisclaimer } from '../components/compliance/UPLDisclaimer';
@@ -309,6 +311,23 @@ describe('Accessibility: Pages', () => {
     // Wait for the second claim's law select
     await waitFor(() => {
       expect(container.querySelector('select[name="claim_1_law"]')).not.toBeNull();
+    });
+
+    const results = await axe(container, axeOptions);
+    expect(results).toHaveNoViolations();
+  });
+
+  it("MeansTestPage with Priya's answers has no violations", async () => {
+    server.use(
+      http.get('http://localhost:8000/api/intake/sessions/:id/means-test/', () =>
+        HttpResponse.json(priyaPage())
+      )
+    );
+    const { container } = withIntakeProvider(<MeansTestPage />);
+
+    // Nothing is drawn until the read returns
+    await waitFor(() => {
+      expect(container.querySelector('input[name="means_line_43"]')).not.toBeNull();
     });
 
     const results = await axe(container, axeOptions);

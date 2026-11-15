@@ -82,10 +82,13 @@ function fill(sentence: string, values: Record<string, string | number>): string
 // `normalized_answers`' reading of the spouse loans (F3, F4): `secured_by` stays "home" or "other",
 // a vehicle ref stays only while it names a vehicle of `vehicles` and, on a row that is on the
 // Amounts Owed step, only a live spouse vehicle; a debt an earlier row already names reads null.
-function normalizedLoans(state: GapState): MeansSpouseLoan[] {
-  const live = new Set(state.vehicles.map((vehicle) => vehicle.ref));
+export function readSpouseLoans(
+  loans: MeansSpouseLoan[],
+  vehicleRefs: string[]
+): MeansSpouseLoan[] {
+  const live = new Set(vehicleRefs);
   const taken = new Set<number>();
-  return state.answers.spouse_loans.map((row) => {
+  return loans.map((row) => {
     const loan = { ...row };
     const onList = loan.on_amounts_owed === 'yes';
     if (onList && loan.debt !== null && !taken.has(loan.debt)) taken.add(loan.debt);
@@ -104,6 +107,22 @@ function identityGiven(loan: MeansSpouseLoan): boolean {
   if (loan.on_amounts_owed === 'yes') return loan.debt !== null;
   if (loan.on_amounts_owed === 'no') return !blank(loan.creditor);
   return false;
+}
+
+function normalizedLoans(state: GapState): MeansSpouseLoan[] {
+  return readSpouseLoans(
+    state.answers.spouse_loans,
+    state.vehicles.map((vehicle) => vehicle.ref)
+  );
+}
+
+/**
+ * Whether each spouse loan's identity is still unsaid once read as `normalized_answers` reads it
+ * (a Yes naming a debt no earlier row took, a No with a creditor given). `meansTestGaps` names the
+ * loan's later gaps by this same reading, so the page's grouping and the gaps agree (C10.1).
+ */
+export function spouseIdentityGaps(loans: MeansSpouseLoan[], vehicleRefs: string[]): boolean[] {
+  return readSpouseLoans(loans, vehicleRefs).map((loan) => !identityGiven(loan));
 }
 
 function optInGaps(answers: MeansAnswers, line: number): string[] {

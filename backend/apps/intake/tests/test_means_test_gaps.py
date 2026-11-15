@@ -285,6 +285,14 @@ def test_a_spouse_loan_with_no_creditor_names_no_later_gap():
     ]
 
 
+def test_a_creditor_with_outer_spaces_is_named_without_them_in_the_identity_sentence():
+    row = _loan(1, creditor="  Demo Lender 1  ", secured_by=None)
+    debt = _loan_debt(1, "  Demo Lender 1  ", secured_by=None, on_home=False, placed=False)
+    inputs = replace(PRIYA, secured_debts=(KESTREL, debt))
+    gaps = _gaps(inputs, spouse_loans_answer="yes", spouse_loans=[row])
+    assert gaps == ["Say what secures your spouse's loan from Demo Lender 1."]
+
+
 @pytest.mark.parametrize(
     ("loan_over", "vehicles"),
     [

@@ -3,7 +3,7 @@
  * married and filing together, with her car and its loan, every answer unanswered.
  */
 
-import type { MeansAnswers, MeansPage } from '../../types/api';
+import type { MeansAnswers, MeansDebt, MeansPage } from '../../types/api';
 
 /** Every answer unanswered, as the server reads a filer who hasn't begun */
 export const UNANSWERED: MeansAnswers = {
@@ -50,6 +50,71 @@ export const UNANSWERED: MeansAnswers = {
   line_43_answer: null,
   line_43_circumstances: [],
 };
+
+/** Priya's answers on the page (spec Appendix A: her answers, and the ones drafted for her) */
+export const PRIYA_ANSWERS: MeansAnswers = {
+  ...UNANSWERED,
+  line_3_answer: 'yes',
+  line_3_rows: [{ purpose: 'His payroll taxes withheld from his pay', amount: '250.00' }],
+  spouse_vehicles_answer: 'no',
+  spouse_loans_answer: 'no',
+  vehicle_claims: { 'asset-7': 'yes' },
+  line_15_answer: 'no',
+  line_16: '2300.00',
+  line_17: '0.00',
+  line_18: '120.00',
+  line_19: '0.00',
+  line_20: '0.00',
+  line_21: '1200.00',
+  line_22_answer: 'no',
+  line_23: '0.00',
+  line_25_answer: 'yes',
+  line_25_health: '620.00',
+  line_25_disability: '180.00',
+  line_25_hsa: '0.00',
+  line_25_spends: 'yes',
+  line_26_answer: 'no',
+  line_27_answer: 'no',
+  line_28_answer: 'no',
+  line_29_answer: 'no',
+  line_30_answer: 'no',
+  line_31_answer: 'yes',
+  line_31_amount: '50.00',
+  line_34_answer: 'no',
+  line_36_answer: 'yes',
+  line_36_payment: '1400.00',
+  line_43_answer: 'no',
+};
+
+/** The Kestrel loan on her car: 37 payments left, and the payment won't change */
+export const KESTREL: MeansDebt = {
+  id: 11,
+  ref: 'debt-11',
+  creditor: 'Kestrel Auto Finance',
+  property: 'Honda CR-V EX 2021',
+  monthly_payment: '450.00',
+  secured_by: 'asset-7',
+  on_home: false,
+  payments_left: 37,
+  payment_changes: 'no',
+  total_60_months: null,
+  taxes_or_insurance: null,
+  necessary_for_support: null,
+  cure: null,
+};
+
+/** Priya's page with every answer given and the outcome a presumption; a fresh copy each call */
+export function priyaPage(overrides: Partial<MeansPage> = {}): MeansPage {
+  return {
+    ...meansPage(),
+    answers: structuredClone(PRIYA_ANSWERS),
+    debts: [structuredClone(KESTREL)],
+    debt_lines: { 'debt-11': '13b' },
+    debts_answered_on: '2026-10-16',
+    outcome: 'presumption',
+    ...overrides,
+  };
+}
 
 /** A fresh copy each call, so a test may change it */
 export function meansPage(): MeansPage {

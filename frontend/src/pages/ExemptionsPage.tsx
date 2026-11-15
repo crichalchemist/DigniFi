@@ -175,7 +175,7 @@ function LawList({ title, laws }: { title: string; laws: ExemptionLaw[] }) {
 
 /**
  * Schedule C's line 1, "not claiming" and line 3 (3g1 spec §5.4). The filer answers every
- * question; nothing is chosen for them. Saves on Continue, then goes to the SOFA step.
+ * question; nothing is chosen for them. Saves on Continue, then goes to the Form 122A-2 page.
  */
 export function ExemptionsPage() {
   const navigate = useNavigate();
@@ -264,7 +264,7 @@ export function ExemptionsPage() {
         no_claims: answers.no_claims,
         claims: sent.map((row) => claimRequestOf(row, saved?.items ?? [])),
       });
-      navigate('/sofa');
+      navigate('/means-test');
     } catch (caught) {
       const { fit, other } = readRefusal(caught, sent, saved?.items ?? []);
       setFitErrors(fit);
