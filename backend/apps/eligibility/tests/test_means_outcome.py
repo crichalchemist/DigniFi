@@ -149,6 +149,24 @@ def test_a_missing_122a2_table_is_cannot_work_out_with_the_table_named(
     assert (result["outcome"], result["tables_gap"]) == ("cannot_work_out", "IRS expense standards")
 
 
+def test_a_table_missing_a_figure_is_dignifis_gap_logged_by_type_and_never_quoted(
+    session_at_9000, api_client, means_standards_2026, caplog
+):
+    # The filer can't fix a set that lacks a figure the calculator reads, so the reply asks them
+    # to try later instead of naming a table part, and the log names the error's type only
+    # (DIG-105), as the forms views log an unexpected failure.
+    assert means_standards_2026.figures.filter(kind="public_transport").delete()[0] >= 1
+    with caplog.at_level(logging.ERROR):
+        response = api_client.post(
+            f"/api/intake/sessions/{session_at_9000.pk}/calculate_means_test/"
+        )
+    assert response.status_code == 500
+    assert response.data == {"message": "Unable to calculate means test. Please try again later."}
+    assert [r.getMessage() for r in caplog.records if r.name == "apps.intake.views"] == [
+        "Calculating the means test failed: MeansTableKeyMissing"
+    ]
+
+
 def test_a_below_median_filer_never_reads_the_122a2_tables(session_at_3000, monkeypatch, caplog):
     monkeypatch.setattr("apps.districts.dated_tables._today", lambda: date(2026, 7, 14))
     with caplog.at_level(logging.ERROR):
