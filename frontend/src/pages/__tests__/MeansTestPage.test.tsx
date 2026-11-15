@@ -16,8 +16,11 @@ import { FORM_122A2_TITLE } from '../../constants/formText';
 import {
   AMOUNT_NEGATIVE,
   AMOUNT_NOT_A_NUMBER,
+  MEANS_ADD_ROW,
   MEANS_GAP_LINE_3,
   MEANS_GAP_SPOUSE_VEHICLES,
+  MEANS_LINE_36_LINK,
+  MEANS_LINE_36_OTHER_RULES,
   MEANS_LINE_36_PRODUCT,
   MEANS_LINE_43_LINK,
   MEANS_OUTCOME_ANSWER_PAGE,
@@ -536,6 +539,29 @@ describe('MeansTestPage', () => {
     expect(within(result()).queryByText(UPL_MEANS_TEST_DISCLAIMER)).not.toBeInTheDocument();
   });
 
+  it('offers no eleventh row of line 3, which the server would refuse and the filer could not mend', async () => {
+    serve(priyaPage());
+    renderPage();
+    await ready();
+    const add = () => screen.queryByRole('button', { name: MEANS_ADD_ROW });
+    for (let row = 1; row < 10; row += 1) {
+      await userEvent.click(add()!);
+    }
+    expect(box('means_line_3_9_purpose')).toBeInTheDocument();
+    expect(add()).toBeNull();
+  });
+
+  it('puts the stale-answers notice first and the court sentence last when both show', async () => {
+    serve(priyaPage({ debts_answered_on: '2026-09-20' }));
+    renderPage();
+    await ready();
+    const block = result();
+    expect(block.firstElementChild).toHaveTextContent(
+      MEANS_STALE_ANSWERS.replace('{month}', 'September 2026')
+    );
+    expect(block.lastElementChild).toHaveTextContent(UPL_MEANS_TEST_DISCLAIMER);
+  });
+
   it('with no means test figures, the page asks every question and shows no figure beside a line', async () => {
     const page = priyaPage({
       information: null,
@@ -566,6 +592,8 @@ describe('MeansTestPage', () => {
     }
     // every question is still asked, and the two cap gaps are left out
     expect(choice('means_line_36', 'yes')).toBeInTheDocument();
+    expect(text).toContain(MEANS_LINE_36_OTHER_RULES);
+    expect(screen.getByRole('link', { name: MEANS_LINE_36_LINK })).toBeInTheDocument();
     expect(gapRegion().textContent).toBe('');
   });
 

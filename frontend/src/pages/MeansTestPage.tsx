@@ -71,6 +71,9 @@ import {
 import { YesNoQuestion } from './meansTest/YesNoQuestion';
 import type { MeansPage, YesNo } from '../types/api';
 
+/** The server refuses a list of more than 10 rows (MAX_ROWS in apps/intake/means_test.py) */
+const MAX_LIST_ROWS = 10;
+
 type AmountKey = {
   [K in keyof PageAnswers]: PageAnswers[K] extends string | null ? K : never;
 }[keyof PageAnswers];
@@ -539,9 +542,11 @@ export function MeansTestPage() {
                     </Button>
                   </fieldset>
                 ))}
-                <Button type="button" variant="outline" onClick={addRow}>
-                  {MEANS_ADD_ROW}
-                </Button>
+                {answers.line_3_rows.length < MAX_LIST_ROWS && (
+                  <Button type="button" variant="outline" onClick={addRow}>
+                    {MEANS_ADD_ROW}
+                  </Button>
+                )}
               </>
             )}
           </div>
@@ -657,17 +662,17 @@ export function MeansTestPage() {
             value={answers.line_36_answer}
             onChange={(next) => setAnswer('line_36_answer', next)}
           />
+          <p className="form-help-text">
+            <a
+              href="https://www.uscourts.gov/court-programs/bankruptcy/bankruptcy-basics"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              {MEANS_LINE_36_LINK}
+            </a>
+          </p>
           {information && (
             <>
-              <p className="form-help-text">
-                <a
-                  href="https://www.uscourts.gov/court-programs/bankruptcy/bankruptcy-basics"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  {MEANS_LINE_36_LINK}
-                </a>
-              </p>
               <p className="form-help-text">
                 {fill(MEANS_LINE_36_LIMITS, {
                   date: formatIsoDate(information.limits.effective_date),
@@ -681,9 +686,9 @@ export function MeansTestPage() {
                   d: dollars(information.totals.secured),
                 })}
               </p>
-              <p className="form-help-text">{MEANS_LINE_36_OTHER_RULES}</p>
             </>
           )}
+          <p className="form-help-text">{MEANS_LINE_36_OTHER_RULES}</p>
           {answers.line_36_answer === 'yes' && (
             <>
               <AmountBox
