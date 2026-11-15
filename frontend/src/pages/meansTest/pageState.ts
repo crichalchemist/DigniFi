@@ -94,6 +94,22 @@ export function toPutBody(state: PageState): MeansTestUpdate {
   };
 }
 
+/** The key a refused explanation is shown under */
+export const explanationKey = (key: string) => `circumstance:${key}:explanation`;
+
+/**
+ * Everything the body carries above line 43, as JSON: the page compares this copy of what it last
+ * read or saved with the one it holds now, to know whether line 43's arithmetic is still true of
+ * what is saved. It leaves out the line 43 answer and its circumstances, so typing there changes
+ * nothing here.
+ */
+export function aboveLine43(state: PageState): string {
+  const { line_43_answer, line_43_circumstances, ...above } = toPutBody(state);
+  void line_43_answer;
+  void line_43_circumstances;
+  return JSON.stringify(above);
+}
+
 /**
  * The reply's spouse row refs, written by position into the rows sent (the reply lists each list's
  * rows in the order sent), and every `new-<n>` a loan's `secured_by` or the Vehicle 1 and 2 choice

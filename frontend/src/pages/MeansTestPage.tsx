@@ -21,7 +21,6 @@ import {
   FORM_122A2_LINE_34_DEBT,
   FORM_122A2_LINE_36,
   FORM_122A2_LINE_36_PAYMENT,
-  FORM_122A2_LINE_43,
   FORM_122A2_LINE_WORDS,
   FORM_122A2_PART_2_AVERAGE,
   FORM_122A2_PART_2_LINE_3,
@@ -35,6 +34,8 @@ import {
 } from '../constants/formText';
 import {
   MEANS_ADD_ROW,
+  MEANS_EXPLANATION_LETTER,
+  MEANS_EXPLANATION_TOO_LONG,
   MEANS_LINE_27_NOTE,
   MEANS_LINE_35,
   MEANS_LINE_36_LIMITS,
@@ -57,6 +58,7 @@ import {
 import { formatIsoDate } from '../utils/formatIsoDate';
 import { AmountBox } from './meansTest/AmountBox';
 import { besideLine } from './meansTest/beside';
+import { Line43 } from './meansTest/Line43';
 import { DebtQuestions, type DebtItem } from './meansTest/DebtQuestions';
 import { MeansResult } from './meansTest/MeansResult';
 import { debtLines, slotCandidates } from './meansTest/meansRows';
@@ -64,8 +66,10 @@ import { firstMeansGap } from './meansTest/meansTestGaps';
 import { dollars } from './meansTest/money';
 import { planProduct } from './meansTest/meansProduct';
 import {
+  aboveLine43,
   adoptRefs,
   debtPrefix,
+  explanationKey,
   fromReply,
   gapStateOf,
   line11Vehicles,
@@ -152,6 +156,9 @@ const FIT_BOXES: Record<
   },
 };
 
+/** The two sentences the server gives for an explanation it refuses (F10) */
+const EXPLANATION_REFUSALS: unknown[] = [MEANS_EXPLANATION_TOO_LONG, MEANS_EXPLANATION_LETTER];
+
 /**
  * What a failed save says about the boxes sent. `fields` holds the boxes a 400 refuses for not
  * fitting, keyed by `FIT_BOXES` (`line_3:<_key>`, `spouse_vehicle:<_key>:description`, ...).
@@ -168,6 +175,24 @@ function readRefusal(
   const fields: Record<string, string> = {};
   let other = false;
   for (const [name, value] of Object.entries(caught.body)) {
+    if (name === 'line_43_circumstances' && isRecord(value)) {
+      for (const [index, errors] of Object.entries(value)) {
+        const row = sent.answers.line_43_circumstances[Number(index)];
+        if (row === undefined || !isRecord(errors)) {
+          other = true;
+          continue;
+        }
+        for (const [field, messages] of Object.entries(errors)) {
+          const first = Array.isArray(messages) ? messages[0] : undefined;
+          if (field === 'explanation' && EXPLANATION_REFUSALS.includes(first)) {
+            fields[explanationKey(row._key)] = String(first);
+          } else {
+            other = true;
+          }
+        }
+      }
+      continue;
+    }
     const list = FIT_BOXES[name];
     if (list === undefined || !isRecord(value)) {
       other = true;
@@ -210,6 +235,8 @@ export function MeansTestPage() {
   const [pressed, setPressed] = useState(false);
   const [changed, setChanged] = useState(false);
   const [replyGap, setReplyGap] = useState<string | null>(null);
+  // What sits above line 43 as the server last read it, or as the last save's reply was taken
+  const [savedAboveCopy, setSavedAboveCopy] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   // One counter for every list a row is added to, so a `new-<n>` is never used twice
   const newRows = useRef(0);
@@ -226,7 +253,9 @@ export function MeansTestPage() {
       .then((loaded) => {
         if (cancelled) return;
         setPage(loaded);
-        setState(fromReply(loaded));
+        const fresh = fromReply(loaded);
+        setState(fresh);
+        setSavedAboveCopy(aboveLine43(fresh));
         setRead('done');
       })
       .catch(() => {
@@ -332,6 +361,7 @@ export function MeansTestPage() {
         debts_answered_on: reply.debts_answered_on,
       };
       setState(next);
+      setSavedAboveCopy(aboveLine43(next));
       setPage(nextPage);
       if (reply.applies !== true) return;
       const ours = firstMeansGap(gapStateOf(nextPage, next));
@@ -859,15 +889,19 @@ export function MeansTestPage() {
         </div>
 
         <div className="means-line">
-          <YesNoQuestion
-            id="line-43"
+          <Line43
+            answers={answers}
+            onChange={(change) =>
+              edit((current) => ({ ...current, answers: change(current.answers) }))
+            }
+            outcome={page.outcome}
+            line39c={information?.line_39c ?? null}
+            savedAbove={aboveLine43(state) === savedAboveCopy}
+            refusals={fieldErrors}
+            clearRefusal={clearFieldError}
+            nextKey={nextKey}
             legendRef={line43Ref}
-            question={FORM_122A2_LINE_43}
-            name="means_line_43"
-            value={answers.line_43_answer}
-            onChange={(next) => setAnswer('line_43_answer', next)}
           />
-          {/* Line 43's writing aid: Task 12 */}
         </div>
       </fieldset>
 

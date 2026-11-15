@@ -1,4 +1,4 @@
-import type { Ref } from 'react';
+import type { ReactNode, Ref } from 'react';
 import { REQUIRED_MARK } from '../../components/wizard/steps/assets/AssetRowFields';
 import type { YesNo } from '../../types/api';
 
@@ -15,6 +15,8 @@ interface YesNoQuestionProps {
   id?: string;
   /** With a ref, the legend takes focus (tabIndex -1) so the page can move it there */
   legendRef?: Ref<HTMLLegendElement>;
+  /** Drawn inside the fieldset, after the answer */
+  children?: ReactNode;
 }
 
 /** A required Yes/No question, No then Yes, as the exemptions page asks its own */
@@ -26,6 +28,7 @@ export function YesNoQuestion({
   note,
   id,
   legendRef,
+  children,
 }: YesNoQuestionProps) {
   return (
     <fieldset id={id} className="form-field fee-waiver-question">
@@ -53,6 +56,7 @@ export function YesNoQuestion({
           </label>
         ))}
       </div>
+      {children}
     </fieldset>
   );
 }

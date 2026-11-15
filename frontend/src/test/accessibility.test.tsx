@@ -385,4 +385,45 @@ describe('Accessibility: Pages', () => {
     const results = await axe(container, axeOptions);
     expect(results).toHaveNoViolations();
   });
+
+  it('MeansTestPage with two line 43 circumstances under Yes has no violations', async () => {
+    const page = priyaPage();
+    page.answers.line_43_answer = 'yes';
+    page.answers.line_43_circumstances = [
+      {
+        happened: 'Demo layoff in May',
+        change: 'Income fell',
+        choices: 'Asked for hours',
+        papers: 'A letter',
+        amount: '400.00',
+        explanation: 'What happened: Demo layoff in May',
+      },
+      {
+        happened: '',
+        change: '',
+        choices: '',
+        papers: '',
+        amount: '250.00',
+        explanation: null,
+      },
+    ];
+    page.information!.line_39c = '2188.40';
+    server.use(
+      http.get('http://localhost:8000/api/intake/sessions/:id/means-test/', () =>
+        HttpResponse.json(page)
+      )
+    );
+    const { container } = withIntakeProvider(<MeansTestPage />);
+
+    await waitFor(() => {
+      expect(
+        container.querySelector('textarea[name="means_line_43_1_explanation"]')
+      ).not.toBeNull();
+    });
+    // The rebuttal figure shows with line 39c and a presumption
+    expect(container.textContent).toContain('Your line 39d is now');
+
+    const results = await axe(container, axeOptions);
+    expect(results).toHaveNoViolations();
+  });
 });
