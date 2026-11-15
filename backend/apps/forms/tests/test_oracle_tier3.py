@@ -1331,7 +1331,7 @@ def _printed(persona):
 
 @pytest.mark.django_db
 def test_priyas_122a1_and_122a2_are_held_until_122a2_can_print():
-    # Priya is above the median. The pair refuses together until 3h2 asks every question.
+    # Priya is above the median. The pair refuses together until 3h3 prints 122A-2.
     if not District.objects.filter(code="ilnd").exists():
         call_command("loaddata", "ilnd_2025_data", verbosity=0)
     call_command("seed_demo_data", "--reset", persona="priya", verbosity=0)

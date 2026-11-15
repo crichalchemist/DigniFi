@@ -20,7 +20,8 @@ from apps.eligibility.means_lines import (
     debt_lines,
     work_out,
 )
-from apps.eligibility.tests.test_means_lines import PRIYA
+from apps.eligibility.tests.test_means_lines import PRIYA, TABLES
+from apps.intake.means_test import means_test_gaps
 from apps.intake.models import (
     DebtorInfo,
     IncomeInfo,
@@ -750,3 +751,24 @@ def test_priyas_122a2_matches_the_hand_worked_figures():
         "40": "2",
     }
     assert lines.outcome == PRESUMPTION
+
+
+def test_a_spouse_loan_naming_a_spouse_vehicle_under_no_is_named_by_a_gap(session):
+    """A spouse vehicle ref is live only while its question is Yes, so the loan that names it
+    loses its property (read_inputs, end to end) and the page asks what secures it."""
+    sentence = "Say what secures your spouse's loan from Demo Spouse Bank."
+
+    def gaps_with(vehicles_answer):
+        stored = {
+            "spouse_vehicles_answer": vehicles_answer,
+            "spouse_vehicles": [SPOUSE_CAR],
+            "spouse_loans_answer": "yes",
+            "spouse_loans": [_spouse_loan(secured_by="spouse-1")],
+        }
+        married = _married(_store(session, stored))
+        inputs = read_inputs(married)
+        return means_test_gaps(inputs, TABLES, page_answers(married))
+
+    assert sentence in gaps_with("no")
+    MeansTestAnswers.objects.filter(session=session).delete()
+    assert sentence not in gaps_with("yes")

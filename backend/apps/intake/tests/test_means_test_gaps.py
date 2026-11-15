@@ -286,17 +286,15 @@ def test_a_spouse_loan_with_no_creditor_names_no_later_gap():
 
 
 @pytest.mark.parametrize(
-    ("loan_over", "vehicles", "stored"),
+    ("loan_over", "vehicles"),
     [
         # the vehicle it names has gone from the Assets step
-        ({"secured_by": "asset-9"}, ("asset-1",), {}),
-        # it names a spouse vehicle while the spouse has none
-        ({"secured_by": "spouse-1"}, ("asset-1",), {}),
+        ({"secured_by": "asset-9"}, ("asset-1",)),
         # an Amounts Owed loan can't name a filer vehicle
-        ({"on_amounts_owed": "yes", "debt": 1, "secured_by": "asset-1"}, ("asset-1",), {}),
+        ({"on_amounts_owed": "yes", "debt": 1, "secured_by": "asset-1"}, ("asset-1",)),
     ],
 )
-def test_a_spouse_loan_the_reader_cant_place_is_named_by_a_gap(loan_over, vehicles, stored):
+def test_a_spouse_loan_the_reader_cant_place_is_named_by_a_gap(loan_over, vehicles):
     row = _loan(1, **loan_over)
     debt = _loan_debt(1, "Demo Lender 1", secured_by=None, on_home=False, placed=False)
     inputs = replace(PRIYA, secured_debts=(KESTREL, debt))

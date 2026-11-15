@@ -43,3 +43,17 @@ def test_every_gap_carries_its_counsel_mark_on_the_line_above():
         spouse = match.group(1).startswith("MEANS_GAP_SPOUSE_")
         expected = "// DRAFT: counsel C-34" if spouse else "// DRAFT: counsel C-24"
         assert lines[number - 1] == expected, match.group(1)
+
+
+@pytest.mark.parametrize(
+    ("name", "mark"),
+    [
+        ("MEANS_TOO_LONG", "// DRAFT: counsel C-24"),
+        ("MEANS_EXPLANATION_TOO_LONG", "// DRAFT: counsel C-31"),
+        ("MEANS_EXPLANATION_LETTER", "// DRAFT: counsel C-31"),
+    ],
+)
+def test_the_other_server_sentences_carry_their_counsel_mark_on_the_line_above(name, mark):
+    lines = COPY_TS.read_text().split("\n")
+    at = next(n for n, line in enumerate(lines) if line.startswith(f"export const {name} ="))
+    assert lines[at - 1] == mark

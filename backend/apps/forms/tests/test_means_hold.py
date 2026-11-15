@@ -228,6 +228,27 @@ def test_the_last_refusal_carries_no_step_and_no_page(api_client, above):
 
 
 @pytest.mark.django_db
+@pytest.mark.parametrize("form_type", PAIR)
+def test_every_answer_given_regenerate_download_and_mark_filed_say_it_cant_print_yet(
+    api_client, above, form_type
+):
+    answer_means_test(above)
+    row = GeneratedForm.objects.create(session=above, form_type=form_type, status="generated")
+
+    for resp in (
+        api_client.post(f"/api/forms/{row.pk}/regenerate/"),
+        api_client.get(f"/api/forms/{row.pk}/download/"),
+        api_client.post(f"/api/forms/{row.pk}/mark_filed/"),
+    ):
+        assert (resp.status_code, resp.data) == (
+            422,
+            {"form_type": form_type, "error": FORM_122A2_CANT_PRINT_YET},
+        )
+    row.refresh_from_db()
+    assert row.status == "generated"
+
+
+@pytest.mark.django_db
 def test_a_below_median_filers_122a1_prints_as_before(api_client, session_with_debtor):
     resp = api_client.post(
         "/api/forms/generate/",
@@ -499,7 +520,7 @@ def test_a_figure_above_its_cap_holds_both_forms_and_at_it_does_not(api_client, 
 def test_an_unanswered_line_43_leaves_a_worked_out_result_as_it_is(api_client, above):
     answer_means_test(above)
     answered = MeansTestCalculator(_fresh(above)).calculate()["outcome"]
-    assert answered in ("no_presumption", "presumption")
+    assert answered == "presumption"
 
     answer_means_test(above, line_43_answer=None)
     unanswered = MeansTestCalculator(_fresh(above)).calculate()["outcome"]
@@ -566,7 +587,7 @@ def _spouse_rows():
         "secured_by": "spouse-1",
         "property": "",
         "payment": "300.00",
-        "payments_left": "20",
+        "payments_left": 20,
         "payment_changes": "no",
         "taxes_or_insurance": None,
         "necessary_for_support": None,
@@ -605,6 +626,21 @@ def test_the_spouses_rows_reach_no_other_form(api_client, above):
         spouse_loans_answer="yes",
         spouse_loans=[loan],
     )
+    # the same rows go through the page's own PUT (which accepts only stored or new- refs);
+    # the status is read before Complete can set it
+    assert _fresh(above).status == "completed"
+    put = api_client.put(
+        f"/api/intake/sessions/{above.pk}/means-test/",
+        {
+            "spouse_vehicles_answer": "yes",
+            "spouse_vehicles": [vehicle],
+            "spouse_loans_answer": "yes",
+            "spouse_loans": [loan],
+        },
+        format="json",
+    )
+    assert put.status_code == 200, put.data
+    assert _fresh(above).status == "completed"
     with_rows = snapshot()
 
     assert with_rows == without

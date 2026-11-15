@@ -73,26 +73,26 @@ MEANS_ROW_LISTED_TWICE = "Each row can be sent only once in a save."
 # The page's gaps, in page order (each pinned to copy.ts).
 MEANS_GAP_LINE_3 = "Answer line 3, about your spouse's income."
 MEANS_GAP_LINE_3_NO_ROW = (
-    "Add each use of your spouse's income on line 3, or change the answer " "to No."
+    "Add each use of your spouse's income on line 3, or change the answer to No."
 )
 MEANS_GAP_LINE_3_ROW = (
-    "Enter what your spouse's income was used for, and the amount, on each " "row of line 3."
+    "Enter what your spouse's income was used for, and the amount, on each row of line 3."
 )
 MEANS_GAP_SPOUSE_VEHICLES = (
-    "Answer whether your spouse has a vehicle that isn't on your property " "list."
+    "Answer whether your spouse has a vehicle that isn't on your property list."
 )
 MEANS_GAP_SPOUSE_VEHICLES_NO_ROW = "Add each of your spouse's vehicles, or change the answer to No."
 MEANS_GAP_SPOUSE_VEHICLE_DESCRIBE = "Describe each of your spouse's vehicles."
 MEANS_GAP_SPOUSE_VEHICLE_LEASED = "Answer whether {name} is leased."
 MEANS_GAP_SPOUSE_LOANS = (
-    "Answer whether your spouse owes a loan on your home, a vehicle or " "other property."
+    "Answer whether your spouse owes a loan on your home, a vehicle or other property."
 )
 MEANS_GAP_SPOUSE_LOANS_NO_ROW = "Add each of your spouse's loans, or change the answer to No."
 MEANS_GAP_SPOUSE_LOAN_ON_AMOUNTS_OWED = (
-    "Answer whether each of your spouse's loans is on your Amounts Owed " "step."
+    "Answer whether each of your spouse's loans is on your Amounts Owed step."
 )
 MEANS_GAP_SPOUSE_LOAN_WHICH = (
-    "For each of your spouse's loans that is on your Amounts Owed step, " "choose which one it is."
+    "For each of your spouse's loans that is on your Amounts Owed step, choose which one it is."
 )
 MEANS_GAP_SPOUSE_LOAN_CREDITOR = "Enter who your spouse owes on each of their loans."
 MEANS_GAP_SPOUSE_LOAN_SECURED_BY = "Say what secures your spouse's loan from {name}."
@@ -105,7 +105,7 @@ MEANS_GAP_VEHICLE_CHOICE = "Choose your Vehicle 1 and your Vehicle 2."
 MEANS_GAP_LINE_15 = "Answer the question on line 15."
 MEANS_GAP_LINE_15_AMOUNT = "Enter the amount for line 15."
 MEANS_GAP_LINE_15_CAP = (
-    "Line 15 can't be more than {amount}, the IRS amount for public " "transportation."
+    "Line 15 can't be more than {amount}, the IRS amount for public transportation."
 )
 MEANS_GAP_AMOUNT = "Enter the amount for line {n}. Enter 0 if you have none."
 MEANS_GAP_OPT_IN = "Answer line {n}."
@@ -134,7 +134,7 @@ MEANS_GAP_LINE_43 = "Answer the question on line 43."
 MEANS_GAP_LINE_43_NONE = "Add each special circumstance on line 43, or change the answer to No."
 MEANS_GAP_LINE_43_EXPLANATION = "Give the explanation for circumstance {n} on line 43."
 MEANS_GAP_LINE_43_AMOUNT = (
-    "Enter the average monthly amount for circumstance {n} on line 43. " "Enter 0 if there is none."
+    "Enter the average monthly amount for circumstance {n} on line 43. Enter 0 if there is none."
 )
 
 

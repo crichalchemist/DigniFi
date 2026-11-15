@@ -185,10 +185,11 @@ def answer_means_test(
     questions are answered only under married_together, and Vehicle 1 and 2 are left unset.
     Each call writes every default again, and each counted secured debt's, before `over` (a
     page key, replacing its answer whole; None stores null) and `debts` ({debt pk: per-debt
-    answers}, merged over that debt's defaults), so pass the whole of both each time. The two spouse id counters move past every `spouse-N`
-    ref stored. An
-    unknown page key raises KeyError, and so does a `debts` key naming no counted debt or a
-    per-debt key not in PER_DEBT_KEYS, before anything is written.
+    answers}, merged over that debt's defaults), so pass the whole of both each time.
+
+    The two spouse id counters move past every `spouse-N` ref stored. An unknown page key
+    raises KeyError, and so does a `debts` key naming no counted debt or a per-debt key not
+    in PER_DEBT_KEYS, before anything is written.
     """
     rows = vehicle_rows(session)
     counted = counted_debts(session)
