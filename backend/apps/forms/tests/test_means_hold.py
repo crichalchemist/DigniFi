@@ -526,6 +526,11 @@ def test_line_43_never_changes_a_box_or_the_result(above, band):
     answer_means_test(above, **over)
     before, before_outcome = _worked_out(above)
     assert before.lines["43"] == "no"
+    tables, _ = read_tables(fill_date())
+    if band == "presumption":
+        assert before_outcome == "presumption"
+    else:
+        assert tables.presumption_low <= before.lines["39d"] <= tables.presumption_high
 
     answer_means_test(
         above,

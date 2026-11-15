@@ -354,29 +354,6 @@ def test_line_43_is_a_gap_for_every_filer_the_form_applies_to():
         assert _gaps(inputs, line_43_answer=None) == ["Answer the question on line 43."]
 
 
-# The sentences for an unanswered 122A-2, line 16 to line 31 and line 34 to line 43, written out.
-_LINES_16_TO_31 = [
-    "Enter the amount for line 16. Enter 0 if you have none.",
-    "Enter the amount for line 17. Enter 0 if you have none.",
-    "Enter the amount for line 18. Enter 0 if you have none.",
-    "Enter the amount for line 19. Enter 0 if you have none.",
-    "Enter the amount for line 20. Enter 0 if you have none.",
-    "Enter the amount for line 21. Enter 0 if you have none.",
-    "Answer line 22.",
-    "Enter the amount for line 23. Enter 0 if you have none.",
-    "Answer line 25.",
-]
-_LINES_34_TO_43 = [
-    "Answer line 34, about debts secured by property you need for support.",
-    "Answer line 36.",
-    "Answer the question on line 43.",
-]
-_KESTREL_UNANSWERED = [
-    "Enter how many payments you have left to Kestrel Auto Finance.",
-    "Answer whether your payment to Kestrel Auto Finance will change.",
-]
-
-
 def _unanswered_inputs():
     return replace(
         PRIYA,
@@ -444,15 +421,26 @@ def test_the_gaps_come_in_the_pages_order():
         "Answer whether your spouse owes a loan on your home, a vehicle or other property.",
         "Answer whether you claim an expense for Honda CR-V EX 2021.",
         "Answer whether you claim an expense for Demo Sedan.",
-        *_LINES_16_TO_31,
+        "Enter the amount for line 16. Enter 0 if you have none.",
+        "Enter the amount for line 17. Enter 0 if you have none.",
+        "Enter the amount for line 18. Enter 0 if you have none.",
+        "Enter the amount for line 19. Enter 0 if you have none.",
+        "Enter the amount for line 20. Enter 0 if you have none.",
+        "Enter the amount for line 21. Enter 0 if you have none.",
+        "Answer line 22.",
+        "Enter the amount for line 23. Enter 0 if you have none.",
+        "Answer line 25.",
         "Answer line 26.",
         "Answer line 27.",
         "Answer line 28.",
         "Answer line 29.",
         "Answer line 30.",
         "Answer line 31.",
-        *_KESTREL_UNANSWERED,
-        *_LINES_34_TO_43,
+        "Enter how many payments you have left to Kestrel Auto Finance.",
+        "Answer whether your payment to Kestrel Auto Finance will change.",
+        "Answer line 34, about debts secured by property you need for support.",
+        "Answer line 36.",
+        "Answer the question on line 43.",
     ]
 
     # line 30's cap comes right after line 30, before line 31 (F9)
@@ -464,17 +452,27 @@ def test_the_gaps_come_in_the_pages_order():
         "Answer whether your spouse has a vehicle that isn't on your property list.",
         "Answer whether your spouse owes a loan on your home, a vehicle or other property.",
         "Answer whether you claim an expense for Honda CR-V EX 2021.",
-        *_LINES_16_TO_31,
+        "Enter the amount for line 16. Enter 0 if you have none.",
+        "Enter the amount for line 17. Enter 0 if you have none.",
+        "Enter the amount for line 18. Enter 0 if you have none.",
+        "Enter the amount for line 19. Enter 0 if you have none.",
+        "Enter the amount for line 20. Enter 0 if you have none.",
+        "Enter the amount for line 21. Enter 0 if you have none.",
+        "Answer line 22.",
+        "Enter the amount for line 23. Enter 0 if you have none.",
+        "Answer line 25.",
         "Answer line 26.",
         "Answer line 29.",
         "Line 30 can't be more than $76.00, which is 5% of the IRS food and clothing amounts for 4 people.",
         "Answer line 31.",
-        *_KESTREL_UNANSWERED,
-        *_LINES_34_TO_43,
+        "Enter how many payments you have left to Kestrel Auto Finance.",
+        "Answer whether your payment to Kestrel Auto Finance will change.",
+        "Answer line 34, about debts secured by property you need for support.",
+        "Answer line 36.",
+        "Answer the question on line 43.",
     ]
 
-
-def test_the_spouse_loans_identity_sentences_come_once_each_before_the_rows_own_gaps():
+    # case 4: six spouse loans, each identity sentence once, before the rows' own gaps
     rows = [
         _loan(1, creditor="", on_amounts_owed="no"),
         _loan(2, on_amounts_owed=None),
