@@ -1,6 +1,7 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { http, HttpResponse } from 'msw';
 import { server } from '../../test/mocks/server';
+import { api } from '../../api/client';
 import { useDebouncedMeansTest } from '../useDebouncedMeansTest';
 import { MEANS_TEST_WAITING } from '../../constants/copy';
 
@@ -18,6 +19,10 @@ const RESULT = {
 };
 
 describe('useDebouncedMeansTest', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it('a step back to the first step drops the result it held and says it is waiting', async () => {
     const { result, rerender } = renderHook(
       ({ step }) => useDebouncedMeansTest({ sessionId: 1, currentStep: step, debounceMs: 0 }),
@@ -45,6 +50,15 @@ describe('useDebouncedMeansTest', () => {
         return HttpResponse.json({ means_test_result: RESULT, session_id: 1 });
       })
     );
+    // The sentinel: the call the hook awaits. The hook's continuation is registered on it before
+    // the test's, so once the test's await returns the hook has handled the reply.
+    const original = api.intake.calculateMeansTest.bind(api.intake);
+    let calls: Promise<unknown>[] = [];
+    vi.spyOn(api.intake, 'calculateMeansTest').mockImplementation((id) => {
+      const call = original(id);
+      calls = [...calls, call];
+      return call;
+    });
     const { result, rerender } = renderHook(
       ({ step }) => useDebouncedMeansTest({ sessionId: 1, currentStep: step, debounceMs: 0 }),
       { initialProps: { step: 3 } }
@@ -57,8 +71,9 @@ describe('useDebouncedMeansTest', () => {
 
     await act(async () => {
       release();
-      await new Promise((resolve) => setTimeout(resolve, 50));
+      await calls[0].catch(() => undefined);
     });
+    expect(calls).toHaveLength(1);
     expect(result.current.result).toBeNull();
     expect(result.current.isCalculating).toBe(false);
   });

@@ -1581,6 +1581,39 @@ describe('FormDashboard', () => {
           expect(screen.queryByText(/You answered the questions about your secured/)).toBeNull();
         });
       });
+
+      it('drops the stale notice when a reload after Mark as Filed fails', async () => {
+        let reads = 0;
+        formsWith(storedForm('form_101', 7));
+        server.use(
+          http.get('http://localhost:8000/api/forms/packet/', () => {
+            reads += 1;
+            if (reads === 1) {
+              return HttpResponse.json({
+                session: 1,
+                form_types: PAIR,
+                tables: [],
+                means_debts_answered: { answered_on: '2026-09-30', now: '2026-10-16' },
+              });
+            }
+            return HttpResponse.json({ detail: 'no' }, { status: 400 });
+          }),
+          http.post('http://localhost:8000/api/forms/:id/mark_filed/', () =>
+            HttpResponse.json({ message: 'Marked as filed' })
+          )
+        );
+        renderFormDashboard();
+        await screen.findByText(/You answered the questions about your secured/);
+        const card = await screen.findByRole('article', { name: /Form 101/ });
+
+        await userEvent.click(within(card).getByRole('button', { name: 'Mark as Filed' }));
+
+        await waitFor(() => {
+          expect(reads).toBeGreaterThan(1);
+          expect(screen.queryByText(/You answered the questions about your secured/)).toBeNull();
+        });
+        expect(screen.getByText(DASHBOARD_ERROR)).toBeInTheDocument();
+      });
     });
 
     describe('where a pending card’s Answer Questions goes', () => {
