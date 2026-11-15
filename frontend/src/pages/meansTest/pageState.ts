@@ -89,7 +89,11 @@ export function toPutBody(state: PageState): MeansTestUpdate {
       state.answers.line_3_answer === 'no' ? [] : state.answers.line_3_rows.map(withoutKey),
     spouse_vehicles: state.answers.spouse_vehicles.map(withoutKey),
     spouse_loans: state.answers.spouse_loans.map(withoutKey),
-    line_43_circumstances: state.answers.line_43_circumstances.map(withoutKey),
+    // Circumstances typed before a No (or before any answer) stay in the page; the server gets none
+    line_43_circumstances:
+      state.answers.line_43_answer === 'yes'
+        ? state.answers.line_43_circumstances.map(withoutKey)
+        : [],
     debts: state.debts.map((debt) => ({ id: debt.id, ...debtAnswersOf(debt) })),
   };
 }
