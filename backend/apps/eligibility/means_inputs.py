@@ -62,8 +62,7 @@ def _lives_in(row) -> bool:
     return row.ab_line in _HOME_LINES and row.get_details().get("lives_here") == "yes"
 
 
-def _vehicles(session, rows, debts) -> tuple[Vehicle, ...]:
-    financed = {debt.secured_by_id for debt in debts}
+def _vehicles(session, rows) -> tuple[Vehicle, ...]:
     # DRAFT: counsel C-28 (a vehicle lease takes a slot, and its payment is on no line)
     leased = {
         contract.vehicle_asset_id
@@ -72,9 +71,8 @@ def _vehicles(session, rows, debts) -> tuple[Vehicle, ...]:
     }
     return tuple(
         Vehicle(
-            asset_id=row.pk,
+            ref=f"asset-{row.pk}",
             name=exemption_item_name(row),
-            financed=row.pk in financed,
             leased=row.pk in leased,
         )
         for row in rows
@@ -89,9 +87,9 @@ def _secured_debts(rows, debts) -> tuple[SecuredDebt, ...]:
         linked = by_id.get(debt.secured_by_id)
         out.append(
             SecuredDebt(
-                debt_id=debt.pk,
+                ref=f"debt-{debt.pk}",
                 creditor=debt.creditor_name,
-                asset_id=None if linked is None else linked.pk,
+                secured_by=None if linked is None else f"asset-{linked.pk}",
                 on_home=linked is not None and _lives_in(linked),
                 property="" if linked is None else exemption_item_name(linked),
                 monthly_payment=debt.monthly_payment,
@@ -127,7 +125,7 @@ def read_inputs(session) -> MeansInputs:
         ages=_ages(session),
         county=None if household is None else household.county,
         district=session.district.code.lower(),
-        vehicles=_vehicles(session, rows, debts),
+        vehicles=_vehicles(session, rows),
         secured_debts=_secured_debts(rows, debts),
         line_35_past_due=_line_35(claims.priority),
         # DRAFT: counsel C-23 (line 41a is Schedule E/F Part 2 alone, 106Sum line 3b)
@@ -179,6 +177,7 @@ def read_tables(on: date | None = None) -> tuple[MeansTables, list[dict]]:
         )
     operating_cars = {f.key for f in figures if f.kind == "operating"}
     national = _by_size(figures, "national")
+    five_percent = _by_size(figures, "five_percent")
     tables = MeansTables(
         national=tuple(_at(national, n, "national") for n in range(1, 5)),
         national_extra=_one(figures, "national_extra", "national"),
@@ -195,6 +194,11 @@ def read_tables(on: date | None = None) -> tuple[MeansTables, list[dict]]:
         },
         ownership_one_car=_one(figures, "ownership", "transport", size=1),
         public_transport=_one(figures, "public_transport", "public_transport"),
+        five_percent=tuple(_at(five_percent, n, "five_percent") for n in range(1, 5)),
+        five_percent_extra=_one(figures, "five_percent_extra", "five_percent"),
+        education_per_child=section_104.education_per_child_monthly,
+        chapter_13_unsecured_limit=section_104.chapter_13_unsecured_limit,
+        chapter_13_secured_limit=section_104.chapter_13_secured_limit,
         multipliers={f.key: f.amount for f in figures if f.kind == "multiplier"},
         presumption_low=section_104.presumption_low,
         presumption_high=section_104.presumption_high,

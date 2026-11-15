@@ -26,6 +26,11 @@ from apps.eligibility.means_lines import (
     SecuredDebt,
     Vehicle,
     compare,
+    debt_lines,
+    is_spouse_ref,
+    line_30_cap,
+    plan_product,
+    rebuttal_figure,
     work_out,
 )
 
@@ -57,16 +62,21 @@ TABLES = MeansTables(
     operating={"chicago": (D("334"), D("668")), "midwest": (D("263"), D("526"))},
     ownership_one_car=D("703"),
     public_transport=D("220"),
+    five_percent=(D("30"), D("53"), D("64"), D("76")),
+    five_percent_extra=D("14"),
+    education_per_child=D("214.58"),
+    chapter_13_unsecured_limit=D("526700"),
+    chapter_13_secured_limit=D("1580125"),
     multipliers={"ilnd": D("6.9")},
     presumption_low=LOW,
     presumption_high=HIGH,
 )
 
-CRV = Vehicle(asset_id=1, name="Honda CR-V EX 2021", financed=True, leased=False, claimed=True)
+CRV = Vehicle(ref="asset-1", name="Honda CR-V EX 2021", leased=False, claimed=True)
 KESTREL = SecuredDebt(
-    debt_id=1,
+    ref="debt-1",
     creditor="Kestrel Auto Finance",
-    asset_id=1,
+    secured_by="asset-1",
     on_home=False,
     property="Honda CR-V EX 2021",
     monthly_payment=D("450.00"),
@@ -84,6 +94,8 @@ PRIYA = MeansInputs(
     secured_debts=(KESTREL,),
     line_35_past_due=D("3000.00"),
     line_41a=D("57000.00"),
+    spouse_vehicles_answer="no",
+    spouse_loans_answer="no",
     line_3_answer="yes",
     line_3_rows=(("His payroll taxes withheld from his pay", D("250.00")),),
     line_15=NO,
@@ -289,7 +301,7 @@ def test_each_line_rounds_half_even_and_later_lines_add_the_printed_figures():
     two_debts = tuple(
         replace(
             KESTREL,
-            debt_id=number,
+            ref=f"debt-{number}",
             payment_changes="yes",
             total_60_months=D("1.50"),
         )
@@ -348,9 +360,9 @@ def test_a_household_with_no_people_in_it_is_not_worked_out_from_a_table_column(
 
 def test_a_mortgage_above_the_housing_standard_floors_9c_at_zero():
     mortgage = SecuredDebt(
-        debt_id=2,
+        ref="debt-2",
         creditor="Demo Mortgage Co",
-        asset_id=None,
+        secured_by=None,
         on_home=True,
         property="Demo house",
         monthly_payment=D("3000.00"),
@@ -381,14 +393,13 @@ def test_with_no_vehicle_line_14_takes_public_transportation_and_12_to_13f_are_s
 
 
 def test_a_vehicle_owned_outright_and_claimed_takes_line_12_and_no_slot():
-    outright = replace(CRV, financed=False, leased=False)
-    lines = figures(replace(PRIYA, vehicles=(outright,), secured_debts=()))
+    lines = figures(replace(PRIYA, vehicles=(CRV,), secured_debts=()))
     assert lines["11"] == 1 and lines["12"] == D("334.00") and lines["14"] is SKIPPED
     assert lines["13a"] is SKIPPED and lines["13_vehicle_1"] is SKIPPED
 
 
 def test_a_leased_vehicle_takes_13a_whole_and_its_lease_is_deducted_nowhere():
-    leased = replace(CRV, financed=False, leased=True)
+    leased = replace(CRV, leased=True)
     lines = figures(replace(PRIYA, vehicles=(leased,), secured_debts=()))
     assert lines["13a"] == D("703.00") and lines["13b"] == D("0.00")
     assert lines["13c"] == D("703.00")
@@ -396,14 +407,14 @@ def test_a_leased_vehicle_takes_13a_whole_and_its_lease_is_deducted_nowhere():
 
 def three_vehicles(**changes):
     vehicles = tuple(
-        replace(CRV, asset_id=number, name=f"Demo vehicle {number}") for number in (1, 2, 3)
+        replace(CRV, ref=f"asset-{number}", name=f"Demo vehicle {number}") for number in (1, 2, 3)
     )
     debts = tuple(
         replace(
             KESTREL,
-            debt_id=number,
+            ref=f"debt-{number}",
             creditor=f"Demo lender {number}",
-            asset_id=number,
+            secured_by=f"asset-{number}",
             property=f"Demo vehicle {number}",
         )
         for number in (1, 2, 3)
@@ -412,7 +423,7 @@ def three_vehicles(**changes):
 
 
 def test_a_third_claimed_vehicle_with_a_loan_goes_to_33d_and_line_12_takes_two_cars():
-    lines = work_out(three_vehicles(vehicle_choice=(1, 2)), TABLES)
+    lines = work_out(three_vehicles(vehicle_choice=("asset-1", "asset-2")), TABLES)
     assert lines.lines["11"] == 3 and lines.lines["12"] == D("668.00")
     assert lines.lines["13_vehicle_1"] == "Demo vehicle 1"
     assert lines.lines["13_vehicle_2"] == "Demo vehicle 2"
@@ -433,7 +444,11 @@ def test_three_financed_vehicles_with_no_choice_leave_the_slots_missing():
     assert lines.outcome == CANNOT_WORK_OUT
 
 
-@pytest.mark.parametrize("choice", [(1, 1), (1, 99)], ids=["one_car_twice", "not_a_candidate"])
+@pytest.mark.parametrize(
+    "choice",
+    [("asset-1", "asset-1"), ("asset-1", "asset-99")],
+    ids=["one_car_twice", "not_a_candidate"],
+)
 def test_a_vehicle_choice_of_one_car_twice_or_a_car_not_listed_leaves_the_slots_missing(choice):
     # One car in both slots would take the ownership standard twice and lower 39d
     lines = work_out(three_vehicles(vehicle_choice=choice), TABLES)
@@ -449,7 +464,7 @@ def test_a_vehicle_loan_above_the_ownership_standard_floors_13c_and_13f_at_zero(
     assert (first["13a"], first["13b"], first["13c"]) == (D("703.00"), D("800.00"), D("0.00"))
     assert first["24"] == D("9662.00")
 
-    three = three_vehicles(vehicle_choice=(1, 2))
+    three = three_vehicles(vehicle_choice=("asset-1", "asset-2"))
     one, two, other = three.secured_debts
     second_big = replace(two, monthly_payment=D("800.00"), payments_left=60)
     second = figures(replace(three, secured_debts=(one, second_big, other)))
@@ -593,9 +608,9 @@ def test_line_34_lists_only_debts_necessary_for_support_with_a_cure():
 
 def test_line_34_takes_a_home_loan_from_line_33a():
     home = SecuredDebt(
-        debt_id=2,
+        ref="debt-2",
         creditor="Demo Mortgage Co",
-        asset_id=None,
+        secured_by=None,
         on_home=True,
         property="Demo house",
         monthly_payment=D("900.00"),
@@ -604,13 +619,15 @@ def test_line_34_takes_a_home_loan_from_line_33a():
         necessary_for_support="yes",
         cure=D("1200.00"),
     )
-    other = replace(KESTREL, asset_id=None, necessary_for_support="yes", cure=D("60.00"), debt_id=3)
+    other = replace(
+        KESTREL, secured_by=None, necessary_for_support="yes", cure=D("60.00"), ref="debt-3"
+    )
     car = replace(
         KESTREL,
         creditor="Demo Car Lender",
         necessary_for_support="yes",
         cure=D("120.00"),
-        debt_id=4,
+        ref="debt-4",
     )
     # Given in neither line 33's order (9b, 13b, then 33d) nor its reverse
     debts = (other, home, car)
@@ -643,8 +660,8 @@ def test_a_row_with_a_payment_beyond_sixty_months_counts_sixty():
 
 
 def test_a_33d_row_keeps_the_filers_taxes_or_insurance_answer_and_no_answer_stays_blank():
-    other = replace(KESTREL, asset_id=None, taxes_or_insurance="yes")
-    unanswered = replace(KESTREL, debt_id=2, asset_id=None)
+    other = replace(KESTREL, secured_by=None, taxes_or_insurance="yes")
+    unanswered = replace(KESTREL, ref="debt-2", secured_by=None)
     lines = work_out(replace(PRIYA, secured_debts=(other, unanswered)), TABLES)
     assert [row.flag for row in lines.rows["33d"]] == ["yes", None]
     assert lines.lines["33d"] == D("555.00") and lines.lines["33e"] == D("555.00")
@@ -783,3 +800,255 @@ def test_no_record_shows_a_creditor_property_county_or_amount_in_a_log_line():
         for text in (repr(record), str(record)):
             for secret in ("Demo Creditor", "Demo Property Car", "Cook", "123456.78"):
                 assert secret not in text, type(record).__name__
+    assert repr(car) == "Vehicle(ref=asset-1)" and repr(debt) == "SecuredDebt(ref=debt-1)"
+
+
+@pytest.mark.parametrize(
+    "rows",
+    [(), (("", D("250.00")),), (("Demo purpose", None),)],
+    ids=["no_row", "no_purpose", "no_amount"],
+)
+def test_a_line_3_yes_with_no_row_or_an_unfinished_row_leaves_line_3_missing(rows):
+    lines = work_out(replace(PRIYA, line_3_rows=rows), TABLES)
+    assert (lines.lines["3"], lines.outcome) == (MISSING, CANNOT_WORK_OUT)
+
+
+def test_line_15_above_the_public_transportation_amount_is_held_back_and_at_it_counts():
+    assert (
+        work_out(replace(PRIYA, line_15=OptIn("yes", D("220.01"))), TABLES).lines["15"] is MISSING
+    )
+    assert work_out(replace(PRIYA, line_15=OptIn("yes", D("220.00"))), TABLES).lines["15"] == D(
+        "220.00"
+    )
+
+
+def test_line_30_above_its_cap_is_held_back_and_at_it_counts():
+    # Priya's household of 4: 5% of food and clothing is 76.00
+    assert work_out(replace(PRIYA, line_30=OptIn("yes", D("76.01"))), TABLES).lines["30"] is MISSING
+    assert work_out(replace(PRIYA, line_30=OptIn("yes", D("76.00"))), TABLES).lines["30"] == D(
+        "76.00"
+    )
+
+
+def test_line_30_waits_for_line_5():
+    ten = OptIn("yes", D("10.00"))
+    assert work_out(replace(PRIYA, ages=None, line_30=ten), TABLES).lines["30"] is MISSING
+    # line_30_cap(TABLES, 0) would index five_percent[-1], the four-person figure
+    assert work_out(replace(PRIYA, ages=(), line_30=ten), TABLES).lines["30"] is MISSING
+
+
+def test_line_30s_cap_adds_the_extra_figure_past_four_people():
+    assert [line_30_cap(TABLES, n) for n in range(1, 7)] == [
+        D("30.00"),
+        D("53.00"),
+        D("64.00"),
+        D("76.00"),
+        D("90.00"),
+        D("104.00"),
+    ]
+
+
+def test_a_spouses_car_counts_like_the_filers():
+    spouses_car = replace(CRV, ref="spouse-1")
+    spouses_loan = replace(KESTREL, ref="spouse-1", secured_by="spouse-1")
+    as_spouses = work_out(
+        replace(
+            PRIYA,
+            vehicles=(spouses_car,),
+            secured_debts=(spouses_loan,),
+            spouse_vehicles_answer="yes",
+            spouse_loans_answer="yes",
+        ),
+        TABLES,
+    )
+    for key in ("11", "12", "13_vehicle_1", "13a", "13b", "13c", "33b", "39d"):
+        assert as_spouses.lines[key] == PRIYA_LINES[key], key
+    # answered No, with no car of her own, the lines read as a household with no vehicle
+    none = work_out(replace(PRIYA, vehicles=(), secured_debts=()), TABLES)
+    assert (none.lines["11"], none.lines["14"]) == (0, D("220.00"))
+
+
+def _spouse_loan(**changes):
+    loan = SecuredDebt(
+        ref="spouse-1",
+        creditor="Demo Spouse Lender",
+        secured_by=None,
+        on_home=False,
+        property="",
+        monthly_payment=D("100.00"),
+        payments_left=12,
+        payment_changes="no",
+    )
+    return replace(loan, **changes)
+
+
+def _spouse_has_a_loan(*loans, **changes):
+    return replace(
+        PRIYA,
+        vehicles=(),
+        secured_debts=loans,
+        spouse_vehicles_answer="no",
+        spouse_loans_answer="yes",
+        **changes,
+    )
+
+
+def test_a_spouses_home_loan_goes_on_9b():
+    home = _spouse_loan(
+        on_home=True, property="Demo house", monthly_payment=D("900.00"), payments_left=60
+    )
+    lines = work_out(_spouse_has_a_loan(home), TABLES)
+    assert lines.rows["9b"] == (MeansRow("Demo Spouse Lender", D("900.00"), property="Demo house"),)
+    assert lines.lines["9b"] == D("900.00") and lines.lines["33a"] == D("900.00")
+    assert lines.rows["33d"] == ()
+
+
+def test_a_spouses_other_loan_goes_on_33d():
+    other = _spouse_loan(taxes_or_insurance="yes")
+    lines = work_out(_spouse_has_a_loan(other), TABLES)
+    assert lines.rows["33d"] == (
+        MeansRow("Demo Spouse Lender", D("20.00"), property="", flag="yes"),
+    )
+    assert lines.lines["33d"] == D("20.00")
+    needed = replace(other, necessary_for_support="yes", cure=D("600.00"))
+    lines = work_out(_spouse_has_a_loan(needed, line_34_answer="yes"), TABLES)
+    assert [(row.label, row.amount) for row in lines.rows["34"]] == [
+        ("Demo Spouse Lender", D("10.00"))
+    ]
+
+
+def test_a_loan_on_a_third_claimed_vehicle_goes_on_33d_and_a_leased_spouse_vehicle_in_a_slot_takes_13a_whole():
+    spouses_car = Vehicle(ref="spouse-1", name="Demo spouse car", leased=True, claimed=True)
+    third = replace(CRV, ref="asset-3", name="Demo vehicle 3")
+    third_loan = replace(
+        KESTREL, ref="debt-3", creditor="Demo lender 3", secured_by="asset-3", property=third.name
+    )
+    inputs = replace(
+        PRIYA,
+        vehicles=(CRV, spouses_car, third),
+        secured_debts=(KESTREL, third_loan),
+        vehicle_choice=("asset-1", "spouse-1"),
+        spouse_vehicles_answer="yes",
+    )
+    lines = work_out(inputs, TABLES)
+    assert lines.lines["11"] == 3 and lines.lines["12"] == D("668.00")
+    assert lines.lines["13_vehicle_2"] == "Demo spouse car"
+    assert (lines.lines["13d"], lines.lines["13e"], lines.lines["13f"]) == (
+        D("703.00"),
+        D("0.00"),
+        D("703.00"),
+    )
+    assert [row.label for row in lines.rows["33d"]] == ["Demo lender 3"]
+    assert lines.rows["13e"] == ()
+
+
+def test_the_spouses_answers_count_only_under_married_together():
+    single = replace(PRIYA, marital_status="not_married")
+    unanswered = replace(single, spouse_vehicles_answer=None, spouse_loans_answer=None)
+    assert dict(work_out(unanswered, TABLES).lines) == dict(work_out(single, TABLES).lines)
+    lines = work_out(unanswered, TABLES)
+    assert lines.lines["11"] == 1 and lines.lines["13b"] == D("277.50")
+    assert lines.outcome == PRESUMPTION
+
+
+def test_an_unanswered_spouse_question_leaves_what_it_feeds_missing():
+    vehicles = work_out(replace(PRIYA, spouse_vehicles_answer=None), TABLES)
+    assert all(vehicles.lines[key] is MISSING for key in ("11", "12", "13a", "14", "15"))
+    assert vehicles.outcome == CANNOT_WORK_OUT
+    asked = replace(PRIYA, line_34_answer="yes")
+    other_loan = replace(KESTREL, secured_by=None, necessary_for_support="no")
+    for unknown in ({"spouse_loans_answer": None}, {"spouse_loans_answer": "yes"}):
+        lines = work_out(replace(asked, **unknown), TABLES)
+        assert all(lines.lines[key] is MISSING for key in ("9b", "13b", "33d", "34")), unknown
+        assert lines.outcome == CANNOT_WORK_OUT
+        # with Priya's car loan alone, that loan waits on the missing slots and holds 33d and 34
+        # by itself; a loan on other property waits on nothing but the loans question
+        alone = work_out(
+            replace(asked, vehicles=(), secured_debts=(other_loan,), **unknown), TABLES
+        )
+        assert alone.lines["33d"] is MISSING and alone.lines["34"] is MISSING, unknown
+        assert alone.outcome == CANNOT_WORK_OUT
+    answered_no = work_out(replace(asked, vehicles=(), secured_debts=(other_loan,)), TABLES)
+    assert answered_no.lines["33d"] == D("277.50") and answered_no.lines["34"] == D("0.00")
+
+
+def test_a_loan_the_reader_cant_place_leaves_9b_13b_13e_33d_and_34_missing():
+    unplaced = _spouse_loan(on_home=True, placed=False)
+    inputs = replace(
+        PRIYA, secured_debts=(KESTREL, unplaced), spouse_loans_answer="yes", line_34_answer="yes"
+    )
+    lines = work_out(inputs, TABLES)
+    assert all(lines.lines[key] is MISSING for key in ("9b", "13b", "13e", "33d", "34"))
+    assert lines.rows["9b"] == () and lines.outcome == CANNOT_WORK_OUT
+
+
+def _one_car(ref, **debt_changes):
+    spouse = is_spouse_ref(ref)
+    answer = "yes" if spouse else "no"
+    return replace(
+        PRIYA,
+        vehicles=(replace(CRV, ref=ref),),
+        secured_debts=(
+            replace(KESTREL, ref=ref if spouse else "debt-1", secured_by=ref, **debt_changes),
+        ),
+        spouse_vehicles_answer=answer,
+        spouse_loans_answer=answer,
+    )
+
+
+@pytest.mark.parametrize("ref", ["asset-1", "spouse-1"])
+def test_a_loan_with_nothing_due_takes_no_slot(ref):
+    # H57: a car with 0 payments left and no larger final payment has nothing to deduct, so its
+    # slot goes to another car and its loan is a 33d row at 0.00
+    nothing_due = work_out(_one_car(ref, payments_left=0, payment_changes="no"), TABLES)
+    assert nothing_due.lines["13_vehicle_1"] is SKIPPED and nothing_due.lines["13a"] is SKIPPED
+    assert [(row.label, row.amount) for row in nothing_due.rows["33d"]] == [
+        ("Kestrel Auto Finance", D("0.00"))
+    ]
+    assert nothing_due.lines["11"] == 1 and nothing_due.lines["12"] == D("334.00")
+    larger_last = _one_car(ref, payments_left=0, payment_changes="yes", total_60_months=D("900.00"))
+    assert work_out(larger_last, TABLES).lines["13b"] == D("15.00")
+    unanswered = work_out(_one_car(ref, payments_left=None, payment_changes="no"), TABLES)
+    assert unanswered.lines["13a"] == D("703.00") and unanswered.lines["13b"] is MISSING
+
+
+def test_debt_lines_names_each_debts_line_and_none_while_it_waits():
+    assert debt_lines(PRIYA) == {"debt-1": "13b"}
+    home = replace(KESTREL, ref="debt-2", secured_by=None, on_home=True)
+    other = replace(KESTREL, ref="debt-3", secured_by=None)
+    unplaced = _spouse_loan(placed=False)
+    inputs = replace(PRIYA, secured_debts=(KESTREL, home, other), spouse_loans_answer="yes")
+    assert debt_lines(replace(inputs, secured_debts=(*inputs.secured_debts, unplaced))) == {
+        "debt-1": None,
+        "debt-2": "9b",
+        "debt-3": "33d",
+        "spouse-1": None,
+    }
+    # the loans question isn't answered by a spouse loan the filer hasn't added, so the car loan
+    # still waits, and the home loan and the other loan keep their lines
+    assert debt_lines(inputs) == {"debt-1": None, "debt-2": "9b", "debt-3": "33d"}
+    waiting = three_vehicles()
+    assert debt_lines(waiting) == {"debt-1": None, "debt-2": None, "debt-3": None}
+    chosen = replace(waiting, vehicle_choice=("asset-1", "asset-2"))
+    assert debt_lines(chosen) == {"debt-1": "13b", "debt-2": "13e", "debt-3": "33d"}
+    assert is_spouse_ref("spouse-1") and not is_spouse_ref("asset-1")
+
+
+def test_the_plan_payments_product_rounds_half_even():
+    assert plan_product(D("25.00"), D("6.9")) == D("1.72")
+    assert plan_product(D("35.00"), D("6.9")) == D("2.42")
+    assert plan_product(D("1400.00"), D("6.9")) == D("96.60")
+
+
+@pytest.mark.parametrize(
+    "line_39c, amounts, figure",
+    [
+        (D("2188.40"), [D("400.00")], D("107304.00")),
+        (D("2188.40"), [D("400.00"), D("250.00")], D("92304.00")),
+        (D("2188.40"), [D("0.00"), D("400.00")], D("107304.00")),
+        (D("2188.40"), [D("3000.00")], D("-48696.00")),
+        (D("-100.00"), [D("50.00")], D("-9000.00")),
+    ],
+)
+def test_the_rebuttal_figure_is_the_arithmetic_with_line_43s_amounts(line_39c, amounts, figure):
+    assert rebuttal_figure(line_39c, amounts) == figure

@@ -26,7 +26,8 @@ from apps.users.models import User
 PRIYAS_ANSWERS = {
     f.name: getattr(PRIYA, f.name)
     for f in fields(PRIYA)
-    if f.name.startswith("line_") and f.name not in ("line_1", "line_35_past_due", "line_41a")
+    if f.name.startswith(("line_", "spouse_"))
+    and f.name not in ("line_1", "line_35_past_due", "line_41a")
 }
 
 ROOMMATE = {
@@ -113,7 +114,9 @@ def test_every_answer_the_page_will_ask_is_unanswered(session):
         inputs.line_36_payment,
         inputs.line_43_answer,
         inputs.vehicle_choice,
-    ) == (None, (), None, None, None, None, None)
+        inputs.spouse_vehicles_answer,
+        inputs.spouse_loans_answer,
+    ) == (None, (), None, None, None, None, None, None, None)
 
 
 def test_line_35_counts_only_confirmed_unsecured_debts_answered_with_a_priority_kind(session):
@@ -167,30 +170,25 @@ def test_secured_debts_carry_their_property_and_whether_it_is_the_home(session):
     stray_loan = linked_loan(session, foreign, "75", creditor_name="F Stray Bank")
     complete_debt(session, creditor_name="D Not Secured", secured_by=car)
     car_loan = linked_loan(session, car, "300", creditor_name="b Car Bank")
-    got = {d.debt_id: d for d in read_inputs(session).secured_debts}
+    got = {d.ref: d for d in read_inputs(session).secured_debts}
     assert [d.creditor for d in read_inputs(session).secured_debts] == [
         "Á Home Bank",
         "b Car Bank",
         "C Rental Bank",
         "F Stray Bank",
     ]
-    assert (got[home_loan.pk].asset_id, got[home_loan.pk].on_home, got[home_loan.pk].property) == (
-        home.pk,
+    home_debt = got[f"debt-{home_loan.pk}"]
+    assert (home_debt.secured_by, home_debt.on_home, home_debt.property) == (
+        f"asset-{home.pk}",
         True,
         "Demo Home",
     )
-    assert (got[car_loan.pk].asset_id, got[car_loan.pk].on_home) == (car.pk, False)
-    assert got[rental_loan.pk].on_home is False
-    assert got[car_loan.pk].monthly_payment == Decimal("300.00")
-    assert (
-        got[stray_loan.pk].asset_id,
-        got[stray_loan.pk].on_home,
-        got[stray_loan.pk].property,
-    ) == (
-        None,
-        False,
-        "",
-    )
+    car_debt = got[f"debt-{car_loan.pk}"]
+    assert (car_debt.secured_by, car_debt.on_home) == (f"asset-{car.pk}", False)
+    assert got[f"debt-{rental_loan.pk}"].on_home is False
+    assert car_debt.monthly_payment == Decimal("300.00")
+    stray_debt = got[f"debt-{stray_loan.pk}"]
+    assert (stray_debt.secured_by, stray_debt.on_home, stray_debt.property) == (None, False, "")
 
 
 def test_vehicles_are_line_3_rows_and_line_4_rows_not_lived_in_with_their_loans_and_leases(
@@ -209,21 +207,23 @@ def test_vehicles_are_line_3_rows_and_line_4_rows_not_lived_in_with_their_loans_
     # set counts it, and so does line 11 (spec H24)
     camper = linked_row(session, "4", None, "Demo Camper")
     linked_row(session, "4", "yes", "Demo Home On Wheels")
-    first, second, third = read_inputs(session).vehicles
-    assert (first.asset_id, first.name, first.financed, first.leased) == (
-        car.pk,
+    inputs = read_inputs(session)
+    first, second, third = inputs.vehicles
+    named = {debt.secured_by for debt in inputs.secured_debts}
+    assert (first.ref, first.name, first.ref in named, first.leased) == (
+        f"asset-{car.pk}",
         "Demo Hatch 2019",
         True,
         False,
     )
-    assert (second.asset_id, second.name, second.financed, second.leased) == (
-        trailer.pk,
+    assert (second.ref, second.name, second.ref in named, second.leased) == (
+        f"asset-{trailer.pk}",
         "Demo Trailer",
         False,
         True,
     )
-    assert (third.asset_id, third.name, third.financed, third.leased) == (
-        camper.pk,
+    assert (third.ref, third.name, third.ref in named, third.leased) == (
+        f"asset-{camper.pk}",
         "Demo Camper",
         False,
         False,
@@ -238,11 +238,13 @@ def test_a_vehicle_is_financed_or_leased_only_by_a_counted_loan_or_a_vehicle_lea
     not_counted = linked_row(session, "3", None, "Demo Uncounted Loan Car")
     complete_debt(session, creditor_name="Not Secured", secured_by=not_counted)
     linked_loan(session, not_counted, "50", creditor_name="Draft", is_draft=True)
-    got = {v.asset_id: (v.financed, v.leased) for v in read_inputs(session).vehicles}
+    inputs = read_inputs(session)
+    named = {debt.secured_by for debt in inputs.secured_debts}
+    got = {v.ref: (v.ref in named, v.leased) for v in inputs.vehicles}
     assert got == {
-        stale_lease.pk: (False, False),
-        other_contract.pk: (False, False),
-        not_counted.pk: (False, False),
+        f"asset-{stale_lease.pk}": (False, False),
+        f"asset-{other_contract.pk}": (False, False),
+        f"asset-{not_counted.pk}": (False, False),
     }
 
 
@@ -250,9 +252,9 @@ def test_a_loan_on_a_motor_home_the_filer_lives_in_is_on_the_home(session):
     motor_home = linked_row(session, "4", "yes", "Demo Motor Home")
     loan = linked_loan(session, motor_home, "400", creditor_name="G Motor Bank")
     (debt,) = read_inputs(session).secured_debts
-    assert (debt.debt_id, debt.asset_id, debt.on_home, debt.property) == (
-        loan.pk,
-        motor_home.pk,
+    assert (debt.ref, debt.secured_by, debt.on_home, debt.property) == (
+        f"debt-{loan.pk}",
+        f"asset-{motor_home.pk}",
         True,
         "Demo Motor Home",
     )
@@ -293,6 +295,18 @@ def test_read_tables_gives_the_calculator_the_figures_in_force(
         tables.presumption_high,
     )
     assert all(figure.as_tuple().exponent == -2 for figure in compared)
+    assert tables.five_percent == (
+        Decimal("30.00"),
+        Decimal("53.00"),
+        Decimal("64.00"),
+        Decimal("76.00"),
+    )
+    assert (
+        tables.five_percent_extra,
+        tables.education_per_child,
+        tables.chapter_13_unsecured_limit,
+        tables.chapter_13_secured_limit,
+    ) == (Decimal("14.00"), Decimal("214.58"), Decimal("526700.00"), Decimal("1580125.00"))
     assert used[0] == {
         "name": "IRS expense standards",
         "effective_date": "2026-07-15",
@@ -337,6 +351,17 @@ def test_a_figure_the_set_lacks_raises_naming_only_its_table_part(
     assert str(refused.value) == f"The means test tables have no {part} figure for this session."
 
 
+def test_a_set_without_the_five_percent_chart_raises_naming_only_that_part(
+    means_standards_2026, section_104_2025
+):
+    assert means_standards_2026.figures.filter(kind="five_percent").delete()[0] >= 1
+    with pytest.raises(MeansTableKeyMissing) as refused:
+        read_tables()
+    assert (
+        str(refused.value) == "The means test tables have no five_percent figure for this session."
+    )
+
+
 @pytest.mark.django_db
 def test_priyas_122a2_matches_the_hand_worked_figures():
     call_command("loaddata", "ilnd_2025_data", verbosity=0)
@@ -360,15 +385,15 @@ def test_priyas_122a2_matches_the_hand_worked_figures():
     (kestrel,) = inputs.secured_debts
     assert (
         car.name,
-        car.financed,
+        car.ref == kestrel.secured_by,
         kestrel.creditor,
-        kestrel.asset_id,
+        kestrel.secured_by,
         kestrel.monthly_payment,
     ) == (
         "Honda CR-V EX 2021",
         True,
         "Kestrel Auto Finance",
-        car.asset_id,
+        car.ref,
         Decimal("450.00"),
     )
     answered = replace(

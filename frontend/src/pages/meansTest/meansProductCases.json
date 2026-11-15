@@ -1,0 +1,32 @@
+[
+  {
+    "name": "Priya's plan payment",
+    "payment": "1400.00",
+    "multiplier": "6.9",
+    "product": "96.60"
+  },
+  {
+    "name": "a half cent rounds down to the even cent",
+    "payment": "25.00",
+    "multiplier": "6.9",
+    "product": "1.72"
+  },
+  {
+    "name": "a half cent rounds up to the even cent",
+    "payment": "35.00",
+    "multiplier": "6.9",
+    "product": "2.42"
+  },
+  {
+    "name": "no payment",
+    "payment": "0.00",
+    "multiplier": "6.9",
+    "product": "0.00"
+  },
+  {
+    "name": "a multiplier with a cent in it",
+    "payment": "100.00",
+    "multiplier": "7.25",
+    "product": "7.25"
+  }
+]
