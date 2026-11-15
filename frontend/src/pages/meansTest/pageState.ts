@@ -66,7 +66,9 @@ const debtAnswersOf = (source: MeansDebtAnswers): MeansDebtAnswers => ({
 export function toPutBody(state: PageState): MeansTestUpdate {
   return {
     ...state.answers,
-    line_3_rows: state.answers.line_3_rows.map(withoutKey),
+    // Rows typed before a No stay in the page, so a mistaken No loses nothing; the server gets none
+    line_3_rows:
+      state.answers.line_3_answer === 'no' ? [] : state.answers.line_3_rows.map(withoutKey),
     line_43_circumstances: state.answers.line_43_circumstances.map(withoutKey),
     debts: state.debts.map((debt) => ({ id: debt.id, ...debtAnswersOf(debt) })),
   };

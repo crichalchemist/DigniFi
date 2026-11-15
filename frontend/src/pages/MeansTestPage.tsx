@@ -477,7 +477,6 @@ export function MeansTestPage() {
                   answers: {
                     ...current.answers,
                     line_3_answer: next,
-                    line_3_rows: next === 'no' ? [] : current.answers.line_3_rows,
                   },
                 }))
               }
@@ -560,7 +559,7 @@ export function MeansTestPage() {
             {page.vehicles.map((vehicle) => (
               <YesNoQuestion
                 key={vehicle.ref}
-                question={FORM_122A2_VEHICLE_CLAIM.replace('{name}', vehicle.name)}
+                question={fill(FORM_122A2_VEHICLE_CLAIM, { name: vehicle.name })}
                 name={`means_vehicle_${vehicle.ref.replace('asset-', '')}_claimed`}
                 value={answers.vehicle_claims[vehicle.ref] ?? null}
                 onChange={(next) =>

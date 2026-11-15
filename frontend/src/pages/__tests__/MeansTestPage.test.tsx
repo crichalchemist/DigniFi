@@ -357,6 +357,114 @@ describe('MeansTestPage', () => {
     expect(screen.getByRole('button', { name: 'Continue' })).toBeEnabled();
   });
 
+  it('a refused save keeps a changed answer, and the next Continue sends what was typed', async () => {
+    const sent: Body[] = [];
+    let calls = 0;
+    server.use(
+      http.get(URL, () => HttpResponse.json(priyaPage())),
+      http.put(URL, async ({ request }) => {
+        sent.push((await request.json()) as Body);
+        calls += 1;
+        return calls === 1
+          ? HttpResponse.json({ detail: 'Bad request' }, { status: 400 })
+          : HttpResponse.json(priyaPage());
+      })
+    );
+    renderPage();
+    await ready();
+    expect(choice('means_line_34', 'no')).toBeChecked();
+    await userEvent.click(choice('means_line_34', 'yes'));
+    typeAmount('means_line_17', '5');
+    await pressContinue();
+    expect(await screen.findByRole('alert')).toHaveTextContent(MEANS_PAGE_SAVE_FAILED);
+    // The radio stays where the filer put it, not where the page was loaded
+    expect(choice('means_line_34', 'yes')).toBeChecked();
+    expect(choice('means_line_34', 'no')).not.toBeChecked();
+    await pressContinue();
+    await waitFor(() => expect(sent).toHaveLength(2));
+    expect(sent[1].line_34_answer).toBe('yes');
+    expect(String(sent[1].line_17)).toMatch(/^5(\.00)?$/);
+  });
+
+  it('a server error keeps every typed answer and says the save failed', async () => {
+    serve(priyaPage(), { status: 500 });
+    renderPage();
+    await ready();
+    typeAmount('means_line_17', '5');
+    await userEvent.click(choice('means_line_34', 'yes'));
+    await pressContinue();
+    // withRetry tries four times with 0.5 s, 1 s and 2 s between them
+    expect(await screen.findByRole('alert', {}, { timeout: 10000 })).toHaveTextContent(
+      MEANS_PAGE_SAVE_FAILED
+    );
+    expect(screen.queryByText(SOFA)).not.toBeInTheDocument();
+    expect(box('means_line_17').value).toBe('5');
+    expect(choice('means_line_34', 'yes')).toBeChecked();
+    expect(screen.getByRole('button', { name: 'Continue' })).toBeEnabled();
+  }, 20000);
+
+  it('a reply that says the form no longer applies moves to /sofa without showing a heading', async () => {
+    serve(priyaPage(), { reply: { ...priyaPage(), applies: false } });
+    renderPage();
+    await ready();
+    const headings: string[] = [];
+    const observer = new MutationObserver((records) => {
+      for (const record of records) {
+        record.addedNodes.forEach((node) => {
+          if (!(node instanceof HTMLElement)) return;
+          if (node.matches('h1, h2, h3, [role="heading"]') || node.querySelector('h1, h2, h3')) {
+            headings.push(node.textContent ?? '');
+          }
+        });
+      }
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+    await pressContinue();
+    await screen.findByText(SOFA);
+    observer.disconnect();
+    expect(headings).toEqual([]);
+  });
+
+  it("a reply that can't say whether the form applies shows why, and Continue goes to /sofa", async () => {
+    const why = 'Enter your income by source on the Income step.';
+    const sent = serve(priyaPage(), {
+      reply: { ...priyaPage(), applies: null, applies_gap: why },
+    });
+    renderPage();
+    await ready();
+    await pressContinue();
+    await waitFor(() => expect(within(gapRegion()).getByText(why)).toBeInTheDocument());
+    expect(screen.queryByText(SOFA)).not.toBeInTheDocument();
+    await pressContinue();
+    await screen.findByText(SOFA);
+    expect(sent).toHaveLength(1);
+  });
+
+  it('a mistaken No on line 3 sends no rows, and Yes brings the typed rows back', async () => {
+    const sent = serve(priyaPage(), { status: 400 });
+    renderPage();
+    await ready();
+    await userEvent.click(choice('means_line_3', 'no'));
+    expect(box('means_line_3_0_purpose')).toBeNull();
+    await pressContinue();
+    await screen.findByRole('alert');
+    expect(sent[0].line_3_answer).toBe('no');
+    expect(sent[0].line_3_rows).toEqual([]);
+    await userEvent.click(choice('means_line_3', 'yes'));
+    expect(box('means_line_3_0_purpose').value).toBe('His payroll taxes withheld from his pay');
+    expect(box('means_line_3_0_amount').value).toBe('250.00');
+  });
+
+  it("a vehicle's name is shown exactly, even when it holds a replace pattern", async () => {
+    const page = meansPage();
+    page.vehicles = [{ ref: 'asset-7', name: 'Demo $& car', leased: false }];
+    serve(page);
+    renderPage();
+    await ready();
+    expect(lineOf('means_vehicle_7_claimed')).toHaveTextContent('Demo $& car');
+    expect(document.body).not.toHaveTextContent('{name}');
+  });
+
   it('shows a box that is too long for the form beside that box', async () => {
     serve(priyaPage(), {
       status: 400,

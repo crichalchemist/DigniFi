@@ -57,3 +57,10 @@ def test_the_other_server_sentences_carry_their_counsel_mark_on_the_line_above(n
     lines = COPY_TS.read_text().split("\n")
     at = next(n for n, line in enumerate(lines) if line.startswith(f"export const {name} ="))
     assert lines[at - 1] == mark
+
+
+def test_the_page_stops_offering_rows_where_the_server_stops_taking_them():
+    page = FRONTEND / "pages" / "MeansTestPage.tsx"
+    found = re.search(r"^const MAX_LIST_ROWS = (\d+);", page.read_text(), re.M)
+    assert found is not None
+    assert int(found.group(1)) == means_test.MAX_ROWS
