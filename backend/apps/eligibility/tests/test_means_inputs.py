@@ -552,6 +552,90 @@ def test_a_joint_loan_on_the_spouses_car_counts(session):
     assert [d.placed for d in again.secured_debts if d.ref == "spouse-1"] == [False]
 
 
+def test_every_stored_answer_reaches_its_own_line_so_no_key_is_swapped_or_dropped(session):
+    # A line read from another line's key, or left unread, moves line 39d without a gap to clear.
+    car = linked_row(session, "3", None, "Demo Car")
+    filer_loan = linked_loan(session, car, "300", creditor_name="Demo Car Bank")
+    SecuredDebtAnswers.objects.create(
+        debt=filer_loan,
+        payments_left="7",
+        payment_changes="pc-filer",
+        total_60_months=Decimal("11.11"),
+        taxes_or_insurance="tx-filer",
+        necessary_for_support="nf-filer",
+        cure=Decimal("12.12"),
+    )
+    stored = {
+        "line_3_answer": "a3",
+        "spouse_vehicles_answer": "yes",
+        "spouse_vehicles": [SPOUSE_CAR],
+        "spouse_loans_answer": "yes",
+        "spouse_loans": [
+            _spouse_loan(
+                payments_left="9",
+                payment_changes="pc-spouse",
+                total_60_months="21.21",
+                taxes_or_insurance="tx-spouse",
+                necessary_for_support="nf-spouse",
+                cure="22.22",
+            )
+        ],
+        "line_34_answer": "a34",
+        "line_36_answer": "a36",
+        "line_36_payment": "36.36",
+        "line_43_answer": "a43",
+        "line_16": "16.16",
+        "line_17": "17.17",
+        "line_18": "18.18",
+        "line_19": "19.19",
+        "line_20": "20.20",
+        "line_21": "21.21",
+        "line_23": "23.23",
+        "line_25_answer": "a25",
+        "line_25_health": "25.01",
+        "line_25_disability": "25.02",
+        "line_25_hsa": "25.03",
+        "line_25_spends": "s25",
+        "line_25_actual": "25.05",
+    }
+    for n in (15, 22, 26, 27, 28, 29, 30, 31):
+        stored[f"line_{n}_answer"] = f"a{n}"
+        stored[f"line_{n}_amount"] = f"{n}.{n}"
+    got = read_inputs(_married(_store(session, stored)))
+    assert got.line_3_answer == "a3"
+    assert (got.line_34_answer, got.line_36_answer, got.line_43_answer) == ("a34", "a36", "a43")
+    assert got.line_36_payment == Decimal("36.36")
+    for n in (16, 17, 18, 19, 20, 21, 23):
+        assert getattr(got, f"line_{n}") == Decimal(f"{n}.{n}")
+    assert got.line_25 == HealthInsurance(
+        "a25",
+        health=Decimal("25.01"),
+        disability=Decimal("25.02"),
+        hsa=Decimal("25.03"),
+        actually_spends="s25",
+        actual=Decimal("25.05"),
+    )
+    for n in (15, 22, 26, 27, 28, 29, 30, 31):
+        assert getattr(got, f"line_{n}") == OptIn(f"a{n}", Decimal(f"{n}.{n}"))
+    filer, spouse = got.secured_debts
+    assert (
+        filer.payments_left,
+        filer.payment_changes,
+        filer.total_60_months,
+        filer.taxes_or_insurance,
+        filer.necessary_for_support,
+        filer.cure,
+    ) == (7, "pc-filer", Decimal("11.11"), "tx-filer", "nf-filer", Decimal("12.12"))
+    assert (
+        spouse.payments_left,
+        spouse.payment_changes,
+        spouse.total_60_months,
+        spouse.taxes_or_insurance,
+        spouse.necessary_for_support,
+        spouse.cure,
+    ) == (9, "pc-spouse", Decimal("21.21"), "tx-spouse", "nf-spouse", Decimal("22.22"))
+
+
 def test_a_reference_to_a_row_that_has_gone_reads_as_unanswered(session):
     car = linked_row(session, "3", None, "Demo Car")
     other = linked_row(session, "3", None, "Demo Other Car")
