@@ -315,7 +315,9 @@ def save_means_answers(session, data: Mapping) -> None:
     Never reopens a completed intake.
     """
     with transaction.atomic():
-        lock_session(session.pk)
+        # the view's session carries prefetched assets and debts read before the lock
+        # the view's session carries prefetched assets and debts read before the lock
+        session = lock_session(session.pk)
         record = MeansTestAnswers.objects.filter(session=session).first()
         if record is None:
             record = MeansTestAnswers(session=session)

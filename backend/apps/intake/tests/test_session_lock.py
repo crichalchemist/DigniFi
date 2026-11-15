@@ -49,6 +49,7 @@ from apps.intake.models import (
     ExpenseInfo,
     IncomeInfo,
     IntakeSession,
+    MeansTestAnswers,
     SecuredDebtAnswers,
 )
 from apps.intake.tests.builders import (
@@ -768,3 +769,25 @@ def test_the_means_test_save_checks_its_rows_while_it_holds_the_lock(ready):
     assert waited, "the means test save wrote without waiting for the save in progress"
     assert response.status_code == 400, response.content
     assert not SecuredDebtAnswers.objects.filter(debt_id=loan.pk).exists()
+
+
+def test_the_means_test_save_reads_the_cars_after_it_holds_the_lock(ready):
+    # The view's session prefetches its assets before the lock: a car deleted while the save
+    # waited must be a 400, not a stored claim on a dead reference.
+    user, session = ready
+    car = linked_row(session, "3", description="Demo car")
+    body = {"vehicle_claims": {f"asset-{car.pk}": "yes"}}
+
+    def send():
+        return _client(user).put(_session_url(session, "means-test/"), body, format="json")
+
+    with transaction.atomic():
+        lock_session(session.pk)  # a save in progress
+        sending, outcome = _on_its_own_thread(send)
+        waited = _waits_on_a_lock(sending)
+        car.delete()
+    response = _finished(sending, outcome)
+
+    assert waited, "the means test save wrote without waiting for the save in progress"
+    assert response.status_code == 400, response.content
+    assert not MeansTestAnswers.objects.filter(session=session).exists()

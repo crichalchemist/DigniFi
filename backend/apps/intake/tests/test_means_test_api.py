@@ -43,6 +43,9 @@ User = get_user_model()
 
 STAMP = "2026-10-16"
 STALE = "2026-09-30"
+# the calculator's lines for the `filer` fixture with every page answer "No" (line 35 is skipped
+# under No, so it reads null)
+EXPECTED_LINES = {"line_7g": "90.00", "line_8": "691.00", "line_35": None, "line_39c": "5074.00"}
 
 
 @dataclass
@@ -313,6 +316,103 @@ def test_the_figures_beside_lines_follow_the_map(filer, monkeypatch):
     assert page["information"] is None
     assert page["information_gap"] == "no_table"
     assert page["applies"] is True
+
+
+@pytest.mark.django_db
+def test_every_information_figure_comes_from_the_column_the_sentence_names(filer):
+    # One distinct value in every mapped column, so a swapped key or column changes the dict.
+    from apps.districts.dated_tables import fill_date
+    from apps.districts.means_standards import section_104_in_force
+    from apps.eligibility.means_inputs import read_tables
+
+    _married(filer.session)
+    income = _fresh(filer.session).income_info
+    for n, column in enumerate(
+        (
+            "payroll_tax",
+            "payroll_mandatory_retirement",
+            "payroll_retirement_loan",
+            "payroll_insurance",
+            "payroll_support",
+            "payroll_union_dues",
+        ),
+        start=1,
+    ):
+        setattr(income, column, Decimal(f"{n}.11"))
+    income.save()
+    spouse = _fresh(filer.session).spouse_income
+    for n, column in enumerate(
+        (
+            "payroll_tax",
+            "payroll_mandatory_retirement",
+            "payroll_retirement_loan",
+            "payroll_insurance",
+            "payroll_support",
+            "payroll_union_dues",
+        ),
+        start=1,
+    ):
+        setattr(spouse, column, Decimal(f"{n + 10}.22"))
+    spouse.save()
+    ExpenseInfo.objects.create(
+        session=filer.session,
+        food_and_groceries=Decimal("101.01"),
+        childcare=Decimal("102.01"),
+        clothing=Decimal("103.01"),
+        medical_expenses=Decimal("104.01"),
+        charitable_contributions=Decimal("105.01"),
+        vehicle_insurance=Decimal("106.01"),
+        insurance_not_deducted=Decimal("107.01"),
+        taxes_not_deducted=Decimal("108.01"),
+        child_support_paid=Decimal("109.01"),
+        expenses_include_others="no",
+    )
+
+    answer_means_test(filer.session)
+    info = _get(filer).json()["information"]
+    tables, _ = read_tables(fill_date())
+    limits = section_104_in_force(fill_date())
+
+    assert info["schedule_i"] == {
+        "you": {
+            "5a": "1.11",
+            "5b": "2.11",
+            "5d": "3.11",
+            "5e": "4.11",
+            "5f": "5.11",
+            "5g": "6.11",
+        },
+        "spouse": {
+            "5a": "11.22",
+            "5b": "12.22",
+            "5d": "13.22",
+            "5e": "14.22",
+            "5f": "15.22",
+            "5g": "16.22",
+        },
+    }
+    assert info["schedule_j"] == {
+        "7": "101.01",
+        "8": "102.01",
+        "9": "103.01",
+        "11": "104.01",
+        "14": "105.01",
+        "15c": "106.01",
+        "15d": "107.01",
+        "16": "108.01",
+        "18": "109.01",
+    }
+    assert info["limits"]["unsecured"] == str(
+        limits.chapter_13_unsecured_limit.quantize(Decimal("0.01"))
+    )
+    assert info["limits"]["secured"] == str(
+        limits.chapter_13_secured_limit.quantize(Decimal("0.01"))
+    )
+    assert info["limits"]["unsecured"] != info["limits"]["secured"]
+    assert info["line_15_cap"] == str(tables.public_transport.quantize(Decimal("0.01")))
+    assert info["line_29_per_child"] == str(tables.education_per_child.quantize(Decimal("0.01")))
+    # the calculator's own lines, pinned whole (values read off the worked-out page)
+    assert {k: info[k] for k in ("line_7g", "line_8", "line_35", "line_39c")} == EXPECTED_LINES
 
 
 @pytest.mark.django_db
