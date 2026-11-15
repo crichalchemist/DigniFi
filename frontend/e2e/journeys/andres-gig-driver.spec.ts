@@ -71,8 +71,15 @@ test.describe('Andrés Kettleby — Gig Driver', () => {
 
     // He pays in installments; the page says where to get Form 103A, then continues to the exemptions page
     await filingFee.answer(ANDRES.filing_fee.payment_choice);
+    // A smoke check only: Task 10's no-heading vitest is the real pin that a filer the form
+    // doesn't apply to never sees the page. Every main-frame URL is recorded from here on.
+    const visited: string[] = [];
+    page.on('framenavigated', (frame) => {
+      if (frame === page.mainFrame()) visited.push(frame.url());
+    });
     await exemptions.answer(ANDRES.exemptions);
     await sofa.waitForLoad();
+    expect(visited.filter((url) => /means-test/.test(url))).toEqual([]);
     await sofa.skipForNow();
 
     // He pays in installments, so no Form 103B; below median, so no Form 122A-2

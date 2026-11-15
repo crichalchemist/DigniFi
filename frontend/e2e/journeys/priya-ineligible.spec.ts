@@ -3,7 +3,8 @@
  *
  * $12,000 a month plus her spouse's $1,800 is $13,800 a month, $165,600 a
  * year, with a 4-person household — above the $137,902 HH4 median, so
- * Form 122A-2 applies, and in 3h1 its result can't be worked out yet.
+ * Form 122A-2 applies. She answers its page and reads the form's arithmetic with no verdict;
+ * the journey stops at /sofa until 3h3 prints the form.
  * Tests that the above-median result is shown with dignity and no verdict.
  */
 
@@ -14,6 +15,9 @@ import { RegisterPage } from '../pages/register.page';
 import { WizardPage } from '../pages/wizard.page';
 import { DocumentsPage } from '../pages/documents.page';
 import { FilingFeePage } from '../pages/filing-fee.page';
+import { ExemptionsPage } from '../pages/exemptions.page';
+import { MeansTestPage } from '../pages/means-test.page';
+import { SOFAPage } from '../pages/sofa.page';
 
 test.describe('Priya Sharma — Above the Median', () => {
   test('sees that Form 122A-2 applies, in words with no verdict', async ({ page }) => {
@@ -22,6 +26,9 @@ test.describe('Priya Sharma — Above the Median', () => {
     const wizard = new WizardPage(page);
     const documents = new DocumentsPage(page);
     const filingFee = new FilingFeePage(page);
+    const exemptions = new ExemptionsPage(page);
+    const meansTest = new MeansTestPage(page);
+    const sofa = new SOFAPage(page);
 
     await landing.goto();
     await landing.clickGetStarted();
@@ -58,9 +65,8 @@ test.describe('Priya Sharma — Above the Median', () => {
     expect(previewLower).not.toContain('rejected');
 
     // Should contain dignity-preserving alternative language —
-    // Above the median, 3h1 can't work Form 122A-2 out yet: MeansTestPreview says so, and
-    // that being above the median doesn't mean a presumption of abuse applies
-    expect(previewLower).toContain("can't be worked out yet");
+    // Above the median, the sidebar can't work Form 122A-2 out until she answers its page
+    expect(previewLower).toContain("can't be worked out until you answer");
 
     await wizard.walkAssets(PRIYA);
 
@@ -75,10 +81,34 @@ test.describe('Priya Sharma — Above the Median', () => {
     await wizard.fillReview();
     await wizard.completeIntake();
 
-    // Every filer reaches the filing-fee page; Priya reads the court's limit and stops here
+    // Every filer reaches the filing-fee page; Priya reads the court's limit first
     await filingFee.waitForLoad();
     await expect(filingFee.limitSentence(4, '$4,125.00')).toBeVisible();
     const pageText = await page.textContent('body');
     expect(pageText?.toLowerCase()).not.toContain('error');
+    await filingFee.answer(PRIYA.filing_fee.payment_choice);
+
+    // Above the median, the exemptions page continues to Form 122A-2's page
+    await exemptions.answer(PRIYA.exemptions, '**/means-test');
+    await meansTest.waitForLoad();
+    await meansTest.answer(PRIYA.means_test!);
+    // With her answers in, the rows, line 25's boxes and line 36's payment are on the page
+    await meansTest.checkPhoneWidth();
+    await meansTest.continue();
+
+    // Her answers give a presumption, said in the form's words and never as a verdict. The
+    // first Continue stays here so she reads the changed result at the top.
+    await expect(page).toHaveURL(/means-test/);
+    const result = await meansTest.result();
+    expect(result).toContain("The form's arithmetic gives: There is a presumption of abuse.");
+    expect(result.trim().endsWith('A court makes the final decision.')).toBe(true);
+    await expect(meansTest.line43Link()).toBeVisible();
+    await expect(meansTest.status()).toHaveText(
+      'Your result has changed. It is at the top of the page. Press Continue again when you are ready.'
+    );
+
+    await meansTest.continue();
+    await sofa.waitForLoad();
+    await sofa.skipForNow();
   });
 });
