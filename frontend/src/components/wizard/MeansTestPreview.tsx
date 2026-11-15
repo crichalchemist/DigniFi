@@ -1,16 +1,23 @@
 /**
- * MeansTestPreview - Collapsible sidebar panel showing live eligibility estimate
+ * MeansTestPreview - Collapsible sidebar panel showing the income test's result
  *
  * Provides real-time feedback during intake to reduce user anxiety.
  * Uses debounced API calls to avoid flooding the backend.
- * Always includes UPL disclaimer — this is an estimate, not legal advice.
+ * The result is the form's arithmetic, never a verdict: its words come from the outcome
+ * (utils/meansOutcome.ts), and every result ends with the court's decision (UPL).
  */
 
 import { useState } from 'react';
 import { useDebouncedMeansTest } from '../../hooks/useDebouncedMeansTest';
 import { UPLDisclaimer } from '../compliance';
 import { UPL_MEANS_TEST_DISCLAIMER } from '../../constants/upl';
-import { MEANS_TEST_INCOME_LABEL, MEDIAN_FOR_HOUSEHOLD_OF } from '../../constants/copy';
+import {
+  MEANS_TEST_INCOME_LABEL,
+  MEANS_TEST_PREVIEW_TITLE,
+  MEANS_TEST_UPDATING,
+  MEDIAN_FOR_HOUSEHOLD_OF,
+} from '../../constants/copy';
+import { meansOutcomeSentences } from '../../utils/meansOutcome';
 
 interface MeansTestPreviewProps {
   sessionId: number | null;
@@ -18,7 +25,7 @@ interface MeansTestPreviewProps {
 }
 
 export function MeansTestPreview({ sessionId, currentStep }: MeansTestPreviewProps) {
-  // Collapsed by default so the estimate stays unobtrusive; the styled header
+  // Collapsed by default so the result stays unobtrusive; the styled header
   // invites the filer to open it when they want reassurance.
   const [isExpanded, setIsExpanded] = useState(false);
   const { result, isCalculating, statusMessage } = useDebouncedMeansTest({
@@ -32,8 +39,17 @@ export function MeansTestPreview({ sessionId, currentStep }: MeansTestPreviewPro
   const formatCurrency = (amount: number) =>
     new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
 
+  // An older reply, or a test's body, may omit these keys
+  const sentences = result
+    ? meansOutcomeSentences(
+        result.outcome ?? null,
+        result.family_size ?? null,
+        result.tables_gap ?? null
+      )
+    : [];
+
   return (
-    <aside className="means-test-preview" aria-label="Eligibility estimate">
+    <aside className="means-test-preview" aria-label={MEANS_TEST_PREVIEW_TITLE}>
       <button
         type="button"
         className="means-test-preview-toggle"
@@ -41,7 +57,7 @@ export function MeansTestPreview({ sessionId, currentStep }: MeansTestPreviewPro
         aria-expanded={isExpanded}
         aria-controls="means-test-preview-content"
       >
-        <span className="means-test-preview-toggle-text">Eligibility Estimate</span>
+        <span className="means-test-preview-toggle-text">{MEANS_TEST_PREVIEW_TITLE}</span>
         <svg
           className={`means-test-preview-chevron ${isExpanded ? 'expanded' : ''}`}
           viewBox="0 0 20 20"
@@ -61,7 +77,7 @@ export function MeansTestPreview({ sessionId, currentStep }: MeansTestPreviewPro
           {isCalculating && (
             <div className="means-test-preview-loading" aria-live="polite">
               <div className="means-test-preview-spinner" aria-hidden="true" />
-              <span>Updating estimate...</span>
+              <span>{MEANS_TEST_UPDATING}</span>
             </div>
           )}
 
@@ -73,37 +89,13 @@ export function MeansTestPreview({ sessionId, currentStep }: MeansTestPreviewPro
 
           {!isCalculating && result && (
             <div className="means-test-preview-result" aria-live="polite">
-              {/* Eligibility indicator */}
-              <div
-                className={`means-test-preview-indicator ${
-                  result.passes_means_test ? 'eligible' : 'review-needed'
-                }`}
-              >
-                <div className="means-test-preview-indicator-icon" aria-hidden="true">
-                  {result.passes_means_test ? (
-                    <svg viewBox="0 0 20 20" fill="currentColor">
-                      <path
-                        fillRule="evenodd"
-                        d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                  ) : (
-                    <svg viewBox="0 0 20 20" fill="currentColor">
-                      <path
-                        fillRule="evenodd"
-                        d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                  )}
+              {/* The outcome's words, then the court's decision. With no outcome neither shows. */}
+              {sentences.length > 0 && (
+                <div className="means-test-preview-indicator">
+                  <p className="means-test-preview-indicator-text">{sentences.join(' ')}</p>
+                  <UPLDisclaimer text={UPL_MEANS_TEST_DISCLAIMER} variant="inline" />
                 </div>
-                <p className="means-test-preview-indicator-text">
-                  {result.passes_means_test
-                    ? 'Based on your information, you may be eligible for Chapter 7.'
-                    : 'Based on your information, Chapter 7 eligibility may need further review.'}
-                </p>
-              </div>
+              )}
 
               {/* Key numbers */}
               <dl className="means-test-preview-details">
@@ -120,8 +112,6 @@ export function MeansTestPreview({ sessionId, currentStep }: MeansTestPreviewPro
               </dl>
             </div>
           )}
-
-          <UPLDisclaimer text={UPL_MEANS_TEST_DISCLAIMER} variant="inline" />
         </div>
       )}
     </aside>

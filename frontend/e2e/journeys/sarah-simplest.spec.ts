@@ -50,12 +50,12 @@ test.describe('Sarah Chen — Simplest Case', () => {
     await wizard.fillExpenses(SARAH);
     await wizard.nextStep();
 
-    // Means test preview — should indicate eligibility
-    // (the estimate needs both income and expense data)
-    await wizard.waitForMeansTestEstimate();
+    // Means test preview — should show the result "at or below the median"
+    // (the result reads income alone, so it shows once income is saved)
+    await wizard.waitForMeansTestResult();
     const preview = await wizard.getMeansTestPreview();
     const previewLower = preview.toLowerCase();
-    expect(previewLower).toContain('eligible');
+    expect(previewLower).toContain('at or below the median');
 
     // Step 5: Assets — none to add: No on every line, Part by Part
     await wizard.walkAssets(SARAH);

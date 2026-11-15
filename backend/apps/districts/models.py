@@ -1,6 +1,7 @@
 """
 Models for the Bankruptcy Districts app.
-Defines District, MedianIncome, PovertyGuideline, ExemptionCatalog, ExemptionLaw, and LocalRule.
+Defines District, MedianIncome, PovertyGuideline, ExemptionCatalog, ExemptionLaw,
+MeansStandards, MeansFigure, MeansArea, Section104Amounts, and LocalRule.
 """
 
 from decimal import Decimal
@@ -231,6 +232,114 @@ class ExemptionLaw(models.Model):
 
     def __str__(self):
         return self.citation
+
+
+KINDS = (
+    "national",
+    "national_extra",
+    "five_percent",
+    "five_percent_extra",
+    "health",
+    "housing_operating",
+    "housing_mortgage",
+    "operating",
+    "ownership",
+    "public_transport",
+    "multiplier",
+)
+
+
+class MeansStandards(DatedTable):
+    """
+    One dated set of the U.S. Trustee's means test standards (the IRS expense tables and the
+    district multipliers), posted as one period page.
+
+    National public data, not encrypted, loaded by data migrations (docs/REFERENCE_TABLES.md).
+    """
+
+    class Meta:
+        verbose_name = "Means Test Standards"
+        verbose_name_plural = "Means Test Standards"
+        ordering = ["-effective_date"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["effective_date"], name="means_standards_unique_effective_date"
+            )
+        ]
+
+    def __str__(self):
+        return f"IRS expense standards ({self.effective_date})"
+
+
+class MeansFigure(models.Model):
+    """
+    One figure of a means test standards set.
+
+    Fields:
+        standards (MeansStandards): The set this figure belongs to.
+        kind (str): Which table it comes from, one of `KINDS`.
+        key (str): national and five_percent: empty; health: "under_65" or "65_or_older";
+            housing_*: a county from ILND_COUNTIES; operating: "chicago" or "midwest";
+            multiplier: a lower-case district code.
+        size (int): People (national, five_percent and housing_* 1 to 5, where 5 is "5 or
+            more"), or cars (operating and ownership, 1 or 2); 0 means "not by size".
+        amount (Decimal): Dollars a month, or for a multiplier the percent.
+    """
+
+    standards = models.ForeignKey(MeansStandards, on_delete=models.CASCADE, related_name="figures")
+    kind = models.CharField(max_length=20, choices=[(k, k) for k in KINDS])
+    key = models.CharField(max_length=20, blank=True, default="")
+    size = models.PositiveSmallIntegerField(default=0)
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["standards", "kind", "key", "size"], name="means_figure_unique"
+            )
+        ]
+
+
+class MeansArea(models.Model):
+    """
+    Which IRS area (Chicago or Midwest Region) a county's transportation figures come from.
+    """
+
+    standards = models.ForeignKey(MeansStandards, on_delete=models.CASCADE, related_name="areas")
+    county = models.CharField(max_length=20)
+    area = models.CharField(max_length=10, choices=[("chicago", "chicago"), ("midwest", "midwest")])
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["standards", "county"], name="means_area_unique_county")
+        ]
+
+
+class Section104Amounts(DatedTable):
+    """
+    The Bankruptcy Code dollar amounts the Judicial Conference adjusts every three years.
+
+    National public data, not encrypted, loaded by data migrations (docs/REFERENCE_TABLES.md).
+    """
+
+    presumption_low = models.DecimalField(max_digits=12, decimal_places=2)
+    presumption_high = models.DecimalField(max_digits=12, decimal_places=2)
+    chapter_13_unsecured_limit = models.DecimalField(max_digits=12, decimal_places=2)
+    chapter_13_secured_limit = models.DecimalField(max_digits=12, decimal_places=2)
+    education_per_child_monthly = models.DecimalField(max_digits=10, decimal_places=2)
+
+    class Meta:
+        verbose_name = "Section 104 Amounts"
+        verbose_name_plural = "Section 104 Amounts"
+        ordering = ["-effective_date"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["effective_date"], name="section_104_unique_effective_date"
+            )
+        ]
+
+    def __str__(self):
+        return f"Bankruptcy Code dollar amounts ({self.effective_date})"
 
 
 class LocalRule(models.Model):

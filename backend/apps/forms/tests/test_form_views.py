@@ -33,7 +33,7 @@ from apps.districts.models import District, MedianIncome
 from apps.eligibility.cmi import HOUSEHOLD_UNANSWERED, NOW_DIFFERENT_UNANSWERED
 from apps.eligibility.models import MeansTest
 from apps.forms.models import GeneratedForm
-from apps.forms.registry import build_parts, packet
+from apps.forms.registry import FORM_122A2_NOT_ASKED, build_parts, packet
 from apps.forms.services.fill_resolver import UnmappedChoice
 from apps.forms.services.pdf_filler import (
     InvalidFieldValue,
@@ -56,6 +56,9 @@ from apps.intake.tests.builders import answer_asset_lines, answer_household, com
 User = get_user_model()
 
 FILED = "This form is marked as filed, so it keeps the answers it was filed with."
+
+# Above the median these two refuse together until 122A-2 can print every line (3h1).
+HELD = ("form_122a1", "form_122a2")
 
 WAIVER = {
     "payment_choice": "waiver",
@@ -832,6 +835,9 @@ class TestPacketEndpoint:
             "tables",
             "income_period",
             "payment_choice",
+            "outcome",
+            "family_size",
+            "tables_gap",
         }
         assert resp.data["form_types"][:3] == ["form_101", "form_106dec", "form_106sum"]
         assert "form_103b" not in resp.data["form_types"]
@@ -1115,13 +1121,14 @@ class TestMeansTestWorkedOutAgain:
         )
 
         assert ("form_122a2" in listed.data["form_types"]) is above_median
-        assert generated.data["errors"] == []
-        assert ("form_122a2" in [f["form_type"] for f in generated.data["generated"]]) is (
-            above_median
+        # Above the median the pair is held (3h1): both forms refuse together.
+        assert generated.data["errors"] == (
+            [{"form_type": t, "error": FORM_122A2_NOT_ASKED} for t in HELD] if above_median else []
         )
-        assert single.status_code == (
-            status.HTTP_200_OK if above_median else status.HTTP_422_UNPROCESSABLE_ENTITY
-        )
+        assert single.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        if above_median:
+            assert not {f["form_type"] for f in generated.data["generated"]} & set(HELD)
+            assert single.data == {"form_type": "form_122a2", "error": FORM_122A2_NOT_ASKED}
         # The stored result is the one worked out from the filer's current income.
         assert MeansTest.objects.get(session=session).calculated_cmi == Decimal(wages)
 
@@ -1244,46 +1251,45 @@ def test_filed_form_survives_leaving_the_packet(api_client, session_with_debtor)
     ExpenseInfo.objects.create(
         session=session, expenses_include_others="no"
     )  # Complete requires it
-    _set_wages(session, "9000.00")  # above the median: 122A-2 is in the packet
+    # 103B is in the packet while line 8 says waiver, and leaves it when the answer changes.
+    _filing_fee(api_client, session, WAIVER)
     api_client.post("/api/forms/generate_all/", {"session_id": session.id}, format="json")
-    form = GeneratedForm.objects.get(session=session, form_type="form_122a2")
+    form = GeneratedForm.objects.get(session=session, form_type="form_103b")
     assert api_client.post(f"/api/forms/{form.id}/mark_filed/").status_code == 200
     form.refresh_from_db()
     filed_values = json.loads(form.field_values)
 
-    # The filer's income falls below the median, they correct their first name, and they
-    # complete the intake again.
+    # The filer corrects their first name and completes the intake again, then chooses to pay
+    # in full (the filing-fee PUT never reopens).
     session_url = f"/api/intake/sessions/{session.id}/"
-    lowered = api_client.patch(
-        session_url,
-        {
-            "income_info": {"monthly_gross_wages": "3000.00"},
-            "debtor_info": {"first_name": "Janet"},
-        },
-        format="json",
-    )
-    assert lowered.status_code == 200
+    renamed = api_client.patch(session_url, {"debtor_info": {"first_name": "Janet"}}, format="json")
+    assert renamed.status_code == 200
     assert api_client.post(f"{session_url}complete/").status_code == 200
+    _filing_fee(api_client, session, {"payment_choice": "pay_in_full"})
     regenerated = api_client.post(
         "/api/forms/generate_all/", {"session_id": session.id}, format="json"
     )
     listed = api_client.get("/api/forms/packet/", {"session": session.id})
     download = api_client.get(f"/api/forms/{form.id}/download/")
 
-    assert "form_122a2" not in listed.data["form_types"]
-    # Generate All keeps it as filed, and returns it, so the dashboard still shows it.
-    assert [
-        (f["id"], f["status"])
-        for f in regenerated.data["generated"]
-        if f["form_type"] == "form_122a2"
-    ] == [(form.id, "filed")]
+    assert "form_103b" not in listed.data["form_types"]
+    # Generate All keeps it as filed, and returns it after the packet's forms, so the
+    # dashboard still shows it.
+    generated = regenerated.data["generated"]
+    assert regenerated.data["errors"] == []
+    assert (generated[-1]["form_type"], generated[-1]["id"], generated[-1]["status"]) == (
+        "form_103b",
+        form.id,
+        "filed",
+    )
+    assert [f["form_type"] for f in generated[:-1]] == packet(session)
     form.refresh_from_db()
     assert json.loads(form.field_values) == filed_values
     # It downloads, and prints what was filed, the old name included, in every widget of
     # each name.
     assert download.status_code == status.HTTP_200_OK
     printed = {}
-    for w in read_drawn("form_122a2", download.content):
+    for w in read_drawn("form_103b", download.content):
         printed.setdefault(w.full_name, set()).add(w.value)
     (part,) = filed_values["parts"]
     typed = {

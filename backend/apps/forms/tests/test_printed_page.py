@@ -10,6 +10,7 @@ with), not from text.
 """
 
 import json
+import re
 import unicodedata
 from collections import Counter
 from contextlib import contextmanager
@@ -31,13 +32,14 @@ from pypdf.generic._appearance_stream import TextStreamAppearance
 from apps.districts.models import District
 from apps.forms.field_index import export_state
 from apps.forms.registry import (
+    FORM_122A2_NOT_ASKED,
     PreconditionMissing,
     build_field_values,
     get_all_form_types,
     packet,
 )
 from apps.forms.schema import SheetColumn, SheetSpec, load_schema
-from apps.forms.services.fill_resolver import resolve_parts
+from apps.forms.services.fill_resolver import resolve, resolve_parts
 from apps.forms.services.pdf_filler import PDFFormFiller, UnprintableLetter, ValueTooLong
 from apps.forms.services.sheets import draw_sheet, fits_line_column, plan_sheet, sheet_spec
 from apps.forms.services.text_fit import font_for, printable
@@ -56,6 +58,7 @@ _HELV = pymupdf.Font("helv")
 _OUTLINES = {"Helvetica": _HELV, "Times-Roman": pymupdf.Font("tiro")}
 _TALLEST, _DEEPEST = "Å", "µ"
 _BOXES = ("CheckBox", "RadioButton")
+HELD = ("form_122a1", "form_122a2")  # refused above the median until 122A-2 can print (3h1)
 
 
 def _template(form_type):
@@ -123,12 +126,30 @@ def _seeded():
         for form_type in get_all_form_types():
             try:
                 values[form_type] = build_field_values(form_type, session)
-            except PreconditionMissing:
-                if form_type in forms:
+            except PreconditionMissing as exc:
+                if form_type in HELD:
+                    if str(exc) != FORM_122A2_NOT_ASKED:
+                        raise
+                    # The hold refuses 122A-2 for everyone, and 122A-1 above the median (R6):
+                    # these tests judge printing, so the form resolves below the gate.
+                    values[form_type] = resolve(load_schema(form_type), session)
+                elif form_type in forms:
                     raise
                 # 103B outside the packet: its own questions are asked only of a waiver filer
         seeded[persona] = (forms, values)
     return seeded
+
+
+@pytest.mark.django_db
+def test_priyas_122a1_and_122a2_are_held_until_122a2_can_print():
+    # Priya is above the median. The pair refuses together until 3h2 asks every question.
+    if not District.objects.filter(code="ilnd").exists():
+        call_command("loaddata", "ilnd_2025_data", verbosity=0)
+    call_command("seed_demo_data", "--reset", persona="priya", verbosity=0)
+    session = IntakeSession.objects.filter(user__username="demo_priya").latest("id")
+    for form_type in HELD:
+        with pytest.raises(PreconditionMissing, match=re.escape(FORM_122A2_NOT_ASKED)):
+            build_field_values(form_type, session)
 
 
 def _values(form_type):

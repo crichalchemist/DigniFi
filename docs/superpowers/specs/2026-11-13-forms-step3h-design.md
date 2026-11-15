@@ -1,0 +1,1123 @@
+# Forms step 3h: Form 122A-2 and the means test
+
+<!-- prettier-ignore-start -->
+
+- **Status:** drafted 2026-11-13. The owner made eleven decisions (O1–O11) on 2026-11-13 and approved the controller's playback of the rest (P1–P7: "nothing's missing"). O9 brings line 43 (special circumstances) into 3h and adds a fourth PR, the AI polish; O10 approves the line 43 design and both of its proposals; O11 keeps forms filed before 3h as filed, with a notice. Awaiting the owner's approval of this document. Nothing is left open for the owner (§16). Rounds 1 and 2 of the spec checks, and the controller's rulings on the final check, are applied.
+- **Branch:** `feat/forms-step3h1` from `develop` at 30797cc (3g2 merged, PR #52). 3h2, 3h3 and 3h4 each branch from `develop` after the PR before them merges. 3h4 gets a short design spec of its own before its plan (§9A).
+- **Production:** nothing in 3h deploys. Production waits for steps 3, 4 and 5 and for DIG-146 (U:9). 3h1 fixes DIG-146.
+- **Drawn from:** the step 3 umbrella spec, `docs/superpowers/specs/2026-10-16-forms-step3-design.md` (cited `U:<line>`): §5.12 (U:518-552), §4.5 (U:131-140), §6.2 (U:565-572), the counsel list (U:631-646) and Appendix A. Persona targets come from `docs/superpowers/specs/2026-10-16-forms-step3-personas.md` (cited `PS:<line>`), corrected in §4. The form's words come from the blank template `data/forms/pdfs/b_122a-2_0425-form.pdf` (Official Form 122A-2, rev. 04/25; the file uscourts.gov posts today), the 2025-04 instructions and the committee note.
+- **Checked on 2026-11-13:** the national standards, the 5% chart and the out-of-pocket health care figures against the U.S. Trustee Program's pages for cases filed on or after July 15, 2026, and the § 104 figures against 90 FR 8941. The housing, transportation and multiplier figures (the Illinois housing chart, the Midwest transportation page, the Chapter 13 multipliers) were read from the U.S. Trustee's pages during this spec's survey; the fact check's re-fetch of those pages got HTTP 403, so they are marked apart in Appendix A, and the builder re-reads the U.S. Trustee's XLSX files when writing the data migration. Line 43's words were read from page 9 of the template and page 1's box sentence from page 1 (PyMuPDF), and § 707(b)(2)(B)(i)–(iv) from Cornell's Legal Information Institute copy of 11 U.S.C. § 707. Code citations come from the tree at 30797cc. No test suite ran for this spec.
+- **Not read:** the 90 FR 10643 correction (a survey summary says it touches only 28 U.S.C. § 1409(b) rows); the *Ransom* opinion; 26 U.S.C. § 151(d)(5); the U.S. Trustee's XLSX files; the IRS's own PDFs.
+- **Tags** such as `[Q18]` trace to the umbrella's Appendix A. `[UPL]` is the rule that DigniFi gives information, never advice. Counsel items are written `C-n`.
+
+Inline "**(designer's call Hn)**" marks a choice this spec makes where the umbrella, the code and the owner leave one open, each with its reason. §15 lists them all, so the owner can check them.
+
+## 1. Why
+
+**The owner's goal.** The owner, 2026-11-13: "one of the main goals of the app is to ensure filers don't assume a presumption of abuse." The owner's own earlier filings were harmed when Form 122A-2 was missed. In step 2 the owner also said: "122a1 is relevant for every filing. without it, the presumption of abuse is automatic."
+
+Form 122A-2 is the Chapter 7 means test calculation. A filer whose income is above the median fills it out. It subtracts the expenses the law allows from their income, multiplies what is left by 60, and compares the result with two figures in the Bankruptcy Code. Its page 1 then says either "There is no presumption of abuse" or "There is a presumption of abuse".
+
+**What DigniFi does today:**
+
+- **The in-app result is wrong.** It compares monthly disposable income with `Decimal("756.25")` (`backend/apps/eligibility/models.py:164-166`). That is the pre-2025 $9,075 divided by 12. The form divides by 60, and the figures in force since April 1, 2025 are $10,275 and $17,150 ($171.25 and $285.83 a month). The code skips lines 41 and 42 (the 25% test) altogether. Every IRS figure in `apps/eligibility/services/irs_standards.py` is a 2024 stand-in, and the calculator caps each standard at actual spending, which the form forbids for lines 6–15. This is DIG-146.
+- **An above-median packet prints a nearly empty 122A-2, and nothing refuses it.** 122A-2 is `PacketForm(_above_median, _nothing)` (`backend/apps/forms/registry.py:199`). It binds five boxes: the name, the district, line 1, line 19 and line 21 (`data/forms/schemas/form_122a2.json`). That is the owner's harm case.
+- **Lines 19 and 21 print the wrong figures.** They print Schedule J lines 18 and 8 (rules `schedule_j_support_paid` and `schedule_j_childcare`, `derivations.py:1071` and `:1056`). Schedule J 18 leaves out support taken from pay; Schedule J 8 includes school costs that 122A-2 line 21 excludes.
+- **122A-1 already points to 122A-2.** For an above-median filer, 122A-1's page 1 ticks box 2: "The calculation to determine if a presumption of abuse applies will be made under Chapter 7 Means Test Calculation (Official Form 122A–2)." (Only the box's export name says "applies".)
+
+**After 3h:**
+
+1. **One calculator** works out every 122A-2 line from the filer's answers and the official tables in force on the fill date. The same calculation gives the in-app result.
+2. **The in-app result has four outcomes**, in the owner's words (O4): at or below the median; above the median with answers missing; no presumption; presumption. Every one ends "A court makes the final decision."
+3. **A page after Complete, shown only to above-median filers,** asks what the form needs that DigniFi doesn't store, in the form's words.
+4. **122A-2 prints every box it should**, with extra rows on an attached sheet, and its result boxes come from the same comparison as the in-app result.
+5. **An above-median filer's 122A-1 and 122A-2 never leave the app incomplete.** Until 122A-2 can print complete, both refuse (O5).
+6. **Line 43, special circumstances,** is asked on the page in the form's words, with a guided writing aid that puts the filer's own answers into a draft they edit (O9). Beside it, the page shows what line 39d would be if the court allowed the line 43 amounts, and a presumption links to line 43 (O10).
+7. **An AI polish** (3h4) can rewrite the filer's own draft more clearly. The filer reviews, edits and approves it, and nothing prints without that approval (O9).
+
+**Line 43 never changes a box.** The page-1 box follows lines 40 and 42, whatever line 43 says. The form says so: "Check the appropriate box as directed in lines 40 or 42" (page 1). The clerk reads that box to send the § 342(d) notice of a presumption (committee note p. 16). And the filer signs the form "under penalty of perjury" (Part 5), so a box left blank, or ticked against the arithmetic, would put a false statement on a sworn form. Line 43 is the form's place to rebut; the in-app result follows the same rule (§7.3, §9.3).
+
+**The failure this must not have.** A filer leaves with a missing or half-filled 122A-2; a figure on 122A-2 that the filer never gave in the form's terms; a result box ticked from figures DigniFi doesn't have; words that suggest a presumption the arithmetic hasn't produced; or a stale or wrong table figure. Each of those puts something false on a sworn form, or in front of the filer as fact.
+
+### Goals
+
+- Every 122A-2 figure is the filer's own answer in the form's terms, an official table figure for the filer's county and household, or arithmetic the form spells out.
+- The in-app result and the printed boxes come from one comparison, and both say only what the form's arithmetic gives.
+- A below-median filer gets the right result from the first PR.
+- Every table figure carries its effective date and source, and a lapsed table refuses rather than prints old figures.
+- A filer whose arithmetic gives a presumption can explain special circumstances on line 43, in their own words, with a guided aid.
+
+### Non-goals
+
+- 122A-1Supp's military box 3 and Form 108's intentions: step 4 (U:57). Line 43 left this list with O9.
+- The consumer-debt test. The presumption under § 707(b) applies only when the filer's debts are primarily consumer debts; a filer whose debts are mainly business debts says so on 122A-1Supp and doesn't fill out 122A-2. The umbrella leaves that question to step 4 (U:58). In 3h, `applies` stays one predicate (`is_above_median`), so step 4 can add the test there (§9.6).
+- Dropping `is_priority`, `priority_classification`, the retired expense columns and the old means-test columns: a housekeeping PR.
+- Debtor 2's boxes, joint filing, the amended-filing box and the case number. They stay blank, as on every other form.
+- Line 10 (a legal argument; it stays blank, U:531).
+
+### Anti-goals
+
+- Anything that lets an above-median filer leave with a missing or half-filled 122A-2. (A form already marked filed keeps what it stored, with a notice, as the owner chose in O11; §6 says how far the rule reaches.)
+- Any text implying a presumption the arithmetic hasn't produced.
+- Any pre-selected answer, pre-filled figure or derived answer to a question the form asks the filer. Line 43's assembled draft is not one: it holds only the filer's own answers under fixed labels, and it enters the explanation box only when the filer presses for it (H45). 3h4's rewrite enters only when the filer approves it (§9A).
+- Any sentence that tells a filer their circumstances, or the way their debts arose, overcome a presumption. **The carve-out:** the idea appears in only two places, both approved by the owner. One is the court's own sentence after a presumption ("You may overcome the presumption by showing special circumstances…", O4), quoted in `formText.ts`. The other is the link to line 43 and the rebuttal figure beside line 43 (O10, H46, H48). No DigniFi string, label or aria text says "overcome", "rebut" or "rebuttal"; internal names such as `rebuttal_figure` and `meansRebuttalCases.json` stay. `upl-means-test-copy.test.ts` checks it (§7.9, §8.9).
+- Any suggestion of Chapter 13 in a result, the wizard's sidebar, the dashboard or a refusal, and any "you qualify" or "you are eligible" anywhere. Line 36's information on the 122A-2 page (the Bankruptcy Basics link, the § 109(e) limits and the filer's own debt totals) is the umbrella's (U:541) and stays, under counsel C-6, beside a neutral sentence that DigniFi can't say whether the filer can file under chapter 13 (H39, §8.2).
+
+## 2. What the owner decided
+
+All on 2026-11-13.
+
+- **O1 ("b"): the expense lines are asked in the form's words.** The 122A-2 lines whose stored Schedule I or J figures use other definitions (16, 17, 18, 19, 21, and the opt-ins 22, 25, 30, 31) are asked on the 122A-2 page in the form's own words. Beside each, the filer's related Schedule I or J figure shows as information only. Nothing is derived and nothing is pre-filled. Lines 19 and 21 stop printing Schedule J 18 and J 8. This amends two umbrella lines:
+  - the 3e2 section's expense design (U:331): "One expense model serves Schedule J and 122A-2, so each amount is asked once."
+  - its payroll deductions (U:361): "**Asked once.** The same amounts feed 122A-2 lines 16–19 in 3h."
+  - **New reading:** the Schedule I and J amounts are *shown beside* 122A-2's lines as information. 122A-2's lines are asked once each, on the 122A-2 page. "Feed" in the second line now reads "shown beside".
+- **O2 ("b"): each secured debt asks payments left, then whether the payment changes.** For every confirmed secured debt that lines 9b, 13b, 13e or 33d list: "How many payments are left?" ("60 or more" is a choice), then "Will the payment change, or end with a larger payment?" On Yes, the filer types the total due over the next 60 months. Otherwise the calculator works out min(payments left, 60) × the monthly payment ÷ 60 (for example 37 × $450 = $16,650; ÷ 60 = $277.50). Asked either way, because the form asks them: 33d's "Does payment include taxes or insurance?" (each 33d row), and line 34's Yes/No in the form's words, with the cure amount for each debt on Yes.
+- **O3 ("b"): the filer chooses vehicles.** The page lists the filer's vehicles and asks, in the form's words, which ones they "claim an ownership or operating expense" for. When more than two claimed vehicles have a loan or lease, it also asks which two are Vehicle 1 and Vehicle 2. Line 11's count is the number of vehicles claimed.
+- **O4 ("a"): the four results, worded as drafted.**
+  - At or below the median: "Your income is at or below the median for a household of {n} in Illinois. Form 122A-2 doesn't apply to you."
+  - Above the median, answers missing: "Your income is above the median for a household of {n}, so Form 122A-2 applies. Its result can't be worked out until you answer the questions on <the 122A-2 page>."
+  - Worked out, no presumption: "The form's arithmetic gives: There is no presumption of abuse."
+  - Worked out, presumption: "The form's arithmetic gives: There is a presumption of abuse." followed by the instructions' sentence verbatim (instructions PDF p. 35): "A presumption of abuse does not mean you are actually trying to abuse the bankruptcy system. Rather, the presumption simply means that you are presumed to have enough income that you should not be granted relief under chapter 7. You may overcome the presumption by showing special circumstances that reduce your income or increase your expenses."
+  - Every outcome ends "A court makes the final decision." Chapter 13 is never suggested. The below-median wording stops saying "you may be eligible for Chapter 7". Counsel reviews all four (C-24).
+  - **Where this spec fills or varies O4's words** (each goes to counsel under C-24; nothing else in O4 changes):
+    - *The placeholder.* Inside the wizard (the sidebar), "<the 122A-2 page>" reads "the Form 122A-2 page, after you finish your intake". After Complete (the dashboard and the page), it reads "the Form 122A-2 page", and on the dashboard the words carry a link to the page (§7.4, §8.6).
+    - *3h1's interim words* (H5): "…so Form 122A-2 applies. Its result can't be worked out yet." until the page exists.
+    - *A missing table* (H23): O4's first above-median sentence, then the missing-table sentence in place of the second.
+    - *The closing sentence* is "A court makes the final decision." alone, with no other sentence before it (H21).
+- **O5 ("b"): 122A-1 waits for 122A-2.** While 122A-2 can't print complete (its `requires()` refuses), 122A-1 refuses too, with the same link, so the pair only leaves the app together. A dashboard notice also shows: "Form 122A-1 says your result is worked out on Form 122A-2. File them together."
+- **O6 ("1"): three PRs.** *(Amended by O9: 3h is now four PRs, with 3h4 the AI polish.)*
+  - **3h1, the calculation:** the dated tables; the one calculator for every line, tested against Priya's figures worked by hand; the four-outcome result in the app; the hold (above-median 122A-1 and 122A-2 refuse). Today's wrong limit and 2024 figures go. Below-median filers get the right result at once.
+  - **3h2, the questions:** the 122A-2 page (expense lines, opt-ins, line 3, line 36, vehicles, each secured debt's questions). Once answered, the in-app result is complete.
+  - **3h3, the printed form:** all 198 widgets, the attached sheet for extra rows, the result ticks, Priya's full 122A-2 checked by hand, her journey to the dashboard. The hold lifts once the form prints complete.
+- **O7 ("b", answering Q-A): Mark as Filed ties the pair once both print.** Pressing Mark as Filed on either form explains that the two go together, asks once, then marks both. Downloads stay separate, and O5's notice still shows (§9.1, H43).
+- **O8 ("a", answering Q-B): a reassurance under "answers missing".** The owner answered: "a) i also don't want the form to apply the assumption automatically". He was then asked what he meant by not wanting the form to apply the assumption automatically, and that clarification became O9. Under the "can't be worked out yet" outcome only (3h1's interim words included), a separate DigniFi sentence follows O4's words, which stay unchanged: "Being above the median doesn't mean a presumption of abuse applies." (grade 6.8). It sits in `copy.ts` with `// DRAFT: counsel C-24`, and shows wherever that outcome shows (the sidebar, the dashboard, the page), before "A court makes the final decision."
+- **O9 ("b"): line 43 joins 3h, with a guided aid and an AI polish in a fourth PR.** Asked what "don't want the form to apply the assumption automatically" meant, the owner answered: "2) i want to aid filers in cogently explaining away the presumption- even if the arithmetic gives it." He was then offered (a) line 43 in 3h with a guided writing aid and no AI, (b) the same plus an AI polish in a fourth 3h PR, or (c) step 4 as planned. He answered: "often the debt isn't abuse, but survival debt like medical bills, credit cards that were use for groceries etc. b". This amends O6: 3h is now **four PRs**:
+  - **3h1, the calculation**, as O6 says.
+  - **3h2, the questions**, as O6 says, plus line 43 in the form's words and the guided writing aid (no AI).
+  - **3h3, the printed form**, as O6 says, plus line 43's box, its four rows and its attached sheet.
+  - **3h4, the AI polish:** an AI service rewrites the filer's own edited draft more clearly; the filer reviews, edits and approves it; nothing prints without that approval (§9A).
+
+  It also amends the umbrella's "Line 43 is step 4" (§4.10).
+- **O10: the line 43 design, approved, with both proposals.** The line 43 design was played back to the owner: the page-1 box still follows lines 40 and 42; line 43 asked in the form's words; the guided aid; survival debt as a counsel item; storage and gaps; printing with the attached sheet; the AI polish. Two proposals came with it: **Proposal 1**, the rebuttal arithmetic as information beside line 43 (H46), and **Proposal 2**, a link from the presumption result to line 43 (H48). The owner answered: "nothing's missing, keep both proposals." He also said he had added an AI polish key to `.env`, under the names `AI_POLISH_PROVIDER` and `AI_POLISH_API_KEY` (§9A). He added an OCR fallback too (`OCR_PROVIDER_2`, `OCR_API_KEY_2`); that is Plane DIG-488, not 3h.
+- **O11 ("a", answering Q-C): forms filed before 3h keep what they stored, with a notice.** A 122A-2, or a 122A-1 with box 2, marked filed before 3h1 keeps DIG-155's rule: it downloads exactly as filed. Its dashboard card shows a neutral notice saying it was prepared before DigniFi could fill in Form 122A-2 (§7.6, H50).
+
+**The playback, approved ("nothing's missing"):**
+
+- **P1.** The 122A-2 page sits after `/exemptions` and before `/sofa`, and shows only to above-median filers. Saving there never reopens the intake, like the filing-fee and exemptions pages.
+- **P2.** What prints: an opt-in the filer declined prints blank; a line answered $0 prints 0.00; a line the form skips by its own "Go to" prints blank; totals always print. The blank-unless-typed rule (U §4.5) stays, even though the instructions say "write $0" for 122A-2 too (instructions PDF p. 36). The owner was told and kept it.
+- **P3.** A figure above a hard table cap is held back as a gap, with the cap shown: line 15 (the public transportation standard) and line 30 (5% of food and clothing for the line 5 household size). Line 29's per-child cap ($214.58 a month per child) shows as information only.
+- **P4.** Two dated table sets: the U.S. Trustee Program set for cases filed on or after 2026-07-15 (open-ended), and the § 104 amounts (effective 2025-04-01, valid through 2028-03-31). From 2028-04-01 122A-2 refuses, because the 04/25 template prints the old figures itself. The dashboard's tables notice names both sets, as it names the median.
+- **P5.** Each line rounds to the cent, and later lines compute from the printed figures.
+- **P6.** Priya's full 122A-2, worked by hand from the official tables, is the final gate, and her journey reaches the dashboard.
+- **P7.** About nine new counsel items (§11).
+
+## 3. Already decided in the umbrella
+
+These stand; each PR section below carries them out.
+
+- **One calculator** makes the in-app result and every 122A-2 line, from the tables in force on the fill date. A missing input leaves its line blank, and every result that depends on it too. The dead `_means_test_disposable_income` goes. `[DIG-152]` `[DIG-146]` (U:520)
+- **IRS standards as dated data**, the local ones read through the stored county. `[OQ9.standards]` (U:522; line 12 reads a Census region or metropolitan area, which the county maps to, §4)
+- **Lines 9b, 11, 13, 33 and 34 from 3c's links and leases**, plus the per-debt answers O2 adds. `[Q13.122a2]` (U:524)
+- **The deductions only on 122A-2 are asked on a details step only above-median filers see,** and 122A-2's `requires()` refuses until it is done. `[Q4.122a2only]` (U:526)
+- **Opt-ins 15, 22, 25 and 26–31 in the form's words;** computed figures and caps as information; line 10 blank; line 43 in step 4 (moved into 3h by O9, §4.10); counsel C-4 on the help text. `[Q18]` (U:528-532)
+- **The result boxes** (`CheckBox14`, `CheckBox15`, page 1's `CheckBox1`) come from one comparison that also serves the in-app result. At exactly $17,150, follow the form ("more than"), pending counsel C-5. The boxes print only when every input under them was given; otherwise the app says the result can't be worked out yet. `[Q19]` (U:534-537)
+- **Line 36:** Yes or No in the form's words; the Bankruptcy Basics link, the § 109(e) limits (dated) and the filer's own debt totals as information; on Yes a projected plan payment, the district multiplier (dated) and the product. The app never decides Chapter 13 eligibility. Counsel C-6. `[Q20]` (U:539-544)
+- **DIG-275** (line 35 ÷ 60), **DIG-276** (the under-65 split from the household's ages) and **line 3's marital adjustment** in the form's words, only with spouse figures. (U:546-550)
+- **Rows past the form's capacity go on 3a2's attached sheet.** (U:552)
+- **Tests:** every line from its inputs; the bands at $10,274.99, $10,275.00, $17,150.00 and $17,150.01 and the line 42 equality; a missing input leaves its line and the result blank (U:570). "No answer is pre-selected except the approved one, and no information text says 'you qualify'." (U:571). The approved one is the claims steps' "secured or not", which starts from the debt type (U:77); 3h has no such exception, and nothing on its page is pre-selected.
+
+## 4. Corrections to the umbrella and the companion
+
+1. **"Asked once" and "feed 122A-2 lines 16–19" are amended by O1** (U:331, U:361; §2): the Schedule I and J amounts are shown beside 122A-2's lines, never fed into them.
+2. **"From the links" (U:524) promises more than the links hold.** A link gives a debt's creditor, its property and its monthly payment. It doesn't give the payments left, a changing payment, the cure amount or whether the payment includes taxes or insurance. The 3c spec already said "Payments left is 3h's question" (3c spec line 37). O2 adds the questions.
+3. **Line 12 isn't read by county.** It reads the operating cost for a Census region or a metropolitan statistical area (the U.S. Trustee's Midwest transportation page). Of ILND's 18 counties, 9 are in the Chicago area (Cook, DeKalb, DuPage, Grundy, Kane, Kendall, Lake, McHenry, Will) and 9 use the Midwest Region figure (Boone, Carroll, Jo Daviess, LaSalle, Lee, Ogle, Stephenson, Whiteside, Winnebago). The county-to-area map is part of the dated table (H12), since the area lists can change.
+4. **The companion's line 3 note** (PS:676) calls "payment of the spouse's tax liability" "the form's own example". The form's example is: "the income is used to pay your spouse's tax debt or to support people other than you or your dependents." Priya's answer stays hers; counsel sees the reading (C-25).
+5. **Priya's packet holds 16 forms, not 15** (PS:698): 15 forms are always in it (`registry.py:189-208`), plus 122A-2.
+6. **Three of the umbrella's four band points can't be reached through the form's own path.** Once each line rounds to the cent (P5), line 39d moves in $0.60 steps: $17,150 ÷ 60 is $285.8333…, so 39d is never exactly $17,150.00, and $10,274.99 and $17,150.01 are unreachable too. $10,275.00 is reachable (39c = $171.25). The four test points (U:570) are tested by calling the comparison directly (H3), and each edge is also crossed end to end (§7.11). C-5's case can't arise through the form's arithmetic; the comparison still follows the form.
+7. **The "write $0" instruction covers 122A-2 too** (instructions PDF p. 36), which U §4.5 didn't know. The owner kept blank-unless-typed (P2).
+8. **A vehicle lease doesn't feed 122A-2 as the umbrella says.** The umbrella: "A vehicle lease is a Schedule G contract that gains a monthly payment and a 'vehicle' kind. It feeds Schedule J 17 and 122A-2" (U:432). On the form's own text, a leased vehicle takes line 13a (or 13d) in full, and line 13b says "Do not include costs for leased vehicles". So the lease payment feeds Schedule J only, and on 122A-2 the lease only puts the vehicle in a slot (H2, H24). This reading waits for counsel (C-28).
+9. **The details step asks more than the umbrella names.** The umbrella: "The deductions that appear only on 122A-2 (lines 25–31 and the opt-ins below) are asked in a details step that only above-median filers see." (U:526). After O1, O2 and O3, the 122A-2 page asks lines 3, 11 and 15–36 (lines 16–21 and 23 among them, which O1 moved there) and each secured debt's questions; after O9, line 43 too.
+10. **Line 43 is no longer step 4.** The umbrella lists "122A-2 line 43 (special circumstances)" under step 4 (U:57) and says "Line 43 is step 4." (U:531); the companion says "line 43 is step 4" (PS:692). O9 moves it into 3h: asked in 3h2, printed in 3h3, with the AI polish in 3h4. The companion gives Priya no line 43 answer, so this spec drafts "No" for her (H38).
+
+## 5. Four PRs
+
+The owner chose three PRs by layer (O6 "1"), then added a fourth, the AI polish, when line 43 joined 3h (O9 "b"). Line 43 follows the layers: its questions and the guided aid in 3h2, its printing in 3h3. The polish comes last, as 3h4, because it sends the filer's words to a hosted AI service: it needs its own design spec, the filer's consent and counsel, and the guided draft works without it.
+
+| Line 43 option offered (O9) | What it gives | What it costs |
+| --- | --- | --- |
+| a. Line 43 in 3h, with a guided writing aid and no AI | A filer who meets a presumption can explain it before leaving the app. | The draft is the filer's own words under fixed labels, so it reads as a list, not as prose. |
+| **b. The same, plus an AI polish in a fourth PR (chosen)** | As (a), and a clearer rewrite the filer can take or leave. | A fourth review cycle, a hosted service, its own design spec and counsel items. |
+| c. Line 43 in step 4, as the umbrella planned | 3h stays three PRs. | An above-median filer leaves 3h with a presumption and no place to explain it. |
+
+The three-PR splits weighed for O6:
+
+| Split | What it gives | What it costs |
+| --- | --- | --- |
+| **1. Calculation, questions, printed form (chosen)** | Below-median filers get the right result after the first merge. The hand-worked Priya figures test the calculator in the first PR, before any page or schema exists. Each PR is one kind of work: tables and arithmetic, a page and its records, a schema and its oracle. | Three review cycles. Above-median filers' 122A-1 and 122A-2 refuse through two merges (no filer meets that, since nothing deploys). Priya's pins move in each PR. |
+| 2. Engine, then questions and printing | One review cycle fewer. | The second PR carries the page, about 25 new answers, 198 widgets and the sheets: the largest diff of step 3. |
+| 3. One PR (the umbrella allows a split, U:176) | One cycle. | Larger still; 3c and 3g split for less. |
+| Engine; then the secured-debt lines and the sheet engine; then the rest of the page | Each PR reviewable. | The page's questions split across two PRs, and the result stays unworked through two merges anyway. |
+
+A stopgap that only fixed the limit and added the bands to today's calculation was dismissed: today's figure covers four categories on 2024 numbers, so the result would still be wrong, in a new way.
+
+## 6. The invariant
+
+**Rule (every PR's tests prove it):** after every merge, an above-median filer's 122A-1 and 122A-2 refuse rather than print incomplete. The rule covers every row not already filed: Generate, Generate All, Regenerate, an unfiled download and Mark as Filed (H42). A row already filed keeps what it stored (DIG-155, O11) and shows its notice when it no longer matches (H50, H52), since nothing un-files a row. A form marked filed alone beside a filed partner still passes its own whole path first (H43).
+
+| After | In-app result for an above-median filer | 122A-1 and 122A-2 |
+| --- | --- | --- |
+| 3h1 | "can't be worked out yet" | refuse |
+| 3h2 | worked out, in the form's words | refuse |
+| 3h3 | worked out | print complete |
+| 3h4 | worked out | print complete |
+
+**Line 43 joins the rule in two steps.** Its gaps count from 3h2: unanswered, or Yes with a circumstance missing its explanation (blank once trimmed) or its amount, line 43 is a page gap, and both forms refuse with it (§8.5). Its printed boxes, and its place in the missing-line step, come with 3h3: line 43 prints wherever the form reaches it (H44), so from 3h3 a complete 122A-2 has line 43's box and, under its Yes, every circumstance's explanation and amount. 3h4 changes nothing here: an unapproved rewrite never prints, and the filer's own explanation stays what prints (§9A).
+
+Each PR carries one end-to-end test of the rule, named `an_above_median_filers_122a1_and_122a2_never_print_incomplete`, through the forms API for a synthetic above-median session. In every case Generate, Generate All, Regenerate and an unfiled download agree.
+
+- **From 3h1:** Generate All returns both forms in `errors`. Three more cases run in every PR: a stale unfiled row (a 122A-1 generated while the filer was below the median, whose income then rose above it) can't be marked filed, so a download never serves it (H42); the below-to-above-median flip refuses both forms even though the old 122A-1 row is still stored; and a 122A-1 marked filed with box 1 while the filer was below the median still downloads as stored once they are above it, and its card shows H52's notice.
+- **From 3h2:** the same, with the page's first gap (line 43's among them), then the "can't print yet" sentence.
+- **In 3h3**, with every answer given, both forms are in `generated` with every line printed. The same test then takes away one thing at a time and expects both forms refused, each with its link or its fixed sentence: a page gap (line 43's among them: line 43 unanswered, and line 43 Yes with a circumstance missing its explanation or its amount); a secured debt added after the page was answered; a missing table; a `check()` refusal of 122A-2 (a stored creditor name too long for its box, §7.6); and a line the calculator reports missing while the gap list is empty (below). It also marks a stale row filed and downloads it (H42).
+- **In 3h4**, the same test runs unchanged, plus one case: a rewrite the filer hasn't approved never prints, and both forms still print complete with the filer's own explanation.
+
+**No missing line (part of the rule, 3h3).** The last step of 122A-2's `requires()` asks the one calculator whether its line record has a missing line the form reaches (and, in the middle band, whether line 41b is present). This covers line 43: where the form reaches it, its answer, and under Yes each circumstance's explanation and amount, count as lines the form reaches, and an explanation counts as given only when it is not blank once trimmed (§8.5). If it has, 122A-2 refuses, and 122A-1 with it, in a fixed sentence with no link: "DigniFi can't work out every line of Form 122A-2, so it can't print that form. Form 122A-1 waits for it. File the two forms together." (grade 2.8). *Reason: the gap list and the calculator are two pieces of code (with the browser's copy, three); if they drift, this step refuses instead of printing a half-filled form.* Its own synthetic test, `a_line_the_calculator_cant_work_out_holds_both_forms`, patches the gap function to return nothing for a session with an unanswered page question, so the calculator still finds the input missing. Until 3h3, 3h2's "can't print yet" step stands in for it (§8.5).
+
+**After the hold lifts (3h3).** Both forms print, and O5's notice tells the filer to file them together (H31). Mark as Filed ties them (O7): pressing it on either form says the two go together, asks once, and marks both through one pair action; downloads stay separate (§9.1, H43). The server holds the tie too: the per-row Mark as Filed refuses one form of the pair while the other is unfiled or has no row. The invariant test gains these cases: the per-row Mark as Filed on 122A-1 alone is refused and marks neither; the pair action then marks both; a refusal of either form by the pair action leaves both rows as they were; with an O11-flagged 122A-2 already filed, 122A-1 is marked alone; and with a box-1 122A-1 already filed (H52), 122A-2 is marked alone.
+
+Below-median filers are unaffected: 122A-2 is not in their packet, and their 122A-1 prints as today.
+
+## 7. 3h1: the calculation
+
+### 7.1 What it delivers
+
+1. Two dated table sets, loaded by data migration (§7.2).
+2. One calculator that works out every 122A-2 line from a record of its inputs, and one comparison for the result (§7.3).
+3. A four-outcome result on `MeansTest`, in the API and in the wizard's sidebar (§7.4).
+4. The hold: an above-median filer's 122A-1 and 122A-2 refuse, and Mark as Filed can't get around it; a refused Mark as Filed shows on its card; forms filed before 3h keep what they stored, with a notice (§7.6).
+5. Today's limit, 2024 figures, caps and catch-alls deleted (§7.7).
+
+After 3h1, a below-median filer sees the right result, and an above-median filer sees "can't be worked out yet". 122A-2 prints nothing new.
+
+### 7.2 The dated tables
+
+**Two sets (designer's call H12: one dated row per published set, with child rows, because the U.S. Trustee bundles every IRS table and the multipliers into one period page, as `ExemptionCatalog` bundles its laws):**
+
+- **The U.S. Trustee set**, for example `MeansStandards(DatedTable)` in `apps/districts`: one row per period, `effective_date` 2026-07-15, `valid_through` empty (the U.S. Trustee names no end date; a new period closes it), `source_url` `https://www.justice.gov/ust/means-testing/20260715`. Its child rows hold:
+  - the national standards for food, clothing and other items, 1 to 4 people, and the amount for each person past 4 ($867 / $1,558 / $1,857 / $2,176; $397);
+  - 5% of food and clothing, the same way ($30 / $53 / $64 / $76; $14);
+  - out-of-pocket health care per person ($90 under 65; $163 for 65 or older);
+  - housing and utilities for each of the 18 ILND counties and 1, 2, 3, 4 and "5 or more" people, in two columns: insurance and operating ("Non-Mortgage") and mortgage or rent;
+  - each county's transportation area (the Chicago area or the Midwest Region);
+  - operating costs by area for one car and two cars (Chicago $334 / $668; Midwest Region $263 / $526);
+  - ownership costs ($703 one car, $1,406 two) and public transportation ($220);
+  - the Chapter 13 administrative expense multiplier by district (ILND 6.9%).
+
+  The housing, transportation and multiplier figures were read from the U.S. Trustee's pages during this spec's survey and not re-fetched (HTTP 403); the builder re-reads the U.S. Trustee's XLSX files for this period when writing the data migration, and the loader test pins what they hold.
+- **The § 104 set**, for example `Section104Amounts(DatedTable)`: `effective_date` 2025-04-01, `valid_through` 2028-03-31 (the next adjustment applies to cases filed on or after April 1, 2028, § 104(a)–(c)), `source_url` the Federal Register notice (90 FR 8941). It holds $10,275 and $17,150 (line 40), $214.58 a month per child (line 29, the form's own figure for $2,575 a year), and the § 109(e) limits, $526,700 unsecured and $1,580,125 secured (line 36's information).
+
+**Loading.** Data migrations in `apps/districts` (the next free numbers after `0008_delete_exemptionschedule`), on the pattern of `0005_poverty_guideline_2026.py` and `0007_exemption_catalog_2026.py`: a module-level copy of the rows, never imported from app code, and a reverse that deletes the version. So every database, CI and the Heroku release have them without `loaddata`. Root `backend/conftest.py` fixtures (for example `means_standards_2026` and `section_104_2025`) put the rows back after a transactional test's teardown, as `poverty_2026` does. Only the 2026-07-15 set loads: it is in force on the pinned test day (2026-10-16) and today. Tests that need two versions build a synthetic second row and move `_today` (the 3g2 lesson: every dated-table reader needs a two-version world).
+
+**Keys.** Rows use DigniFi's spellings: county names from `ILND_COUNTIES` (`apps/districts/counties.py`) and the district code `ILND`. The migration notes the U.S. Trustee's spellings beside them ("La Salle" for `LaSalle`, "ILN" for `ILND`). A loader test proves all 18 counties resolve for housing and area, and the district for the multiplier. A key the table doesn't hold raises; it never reads as $0 (H9).
+
+**Lookup.** `in_force(rows, fill_date(), <table name>)` (`apps/districts/dated_tables.py:63`), national, so the log line says `for district -`. **Designer's call H23:** the calculator reads these tables only for an above-median filer, and a missing table refuses only 122A-2 (and 122A-1, by the hold), in its own sentence: "DigniFi doesn't have the means test figures for today's date yet, so it can't work out Form 122A-2." (grade 7.2; no "try again later", as 3g's B3). The lookup re-raises `NoTableInForce` as its own subclass carrying that sentence (for example `NoMeansTestTable`), as `exemption_catalog_in_force` raises `NoExemptionCatalog`. `MeansTest.calculate()` catches only that class: it still saves the income, the median and `outcome = cannot_work_out`, and records the missing table's name in `calculation_details` (`tables_gap`). This is no catch-all (H9): one class, no figure stored, the gap named. So `_recalculate_means_test` (`forms/views.py:169`, which runs before Generate All's packet is decided) and Complete's call to the means test never turn a missing 122A-2 table into a refusal of the whole call or a hold on Review. The calculate reply carries `tables_gap`, and the sidebar then shows O4's first sentence, "Your income is above the median for a household of {n}, so Form 122A-2 applies.", followed by the missing-table sentence in place of the second (a variant of O4's words, listed in §2 and under C-24), then "A court makes the final decision." 122A-2's `requires()` looks the tables up again and raises the same class first (§7.6), so Generate, each Generate All entry and the downloads refuse 122A-2 and 122A-1 with it and no link, and every other form still generates (`generate_all` turns a raise inside one form into an `errors` entry, `forms/views.py:411-416`). *Reason: P4 says 122A-2 refuses; a missing IRS table says nothing about Schedule A/B, and a below-median filer never needs these tables.* From 2028-04-01 the § 104 row has lapsed, so this refusal fires for every above-median filer until a new set and a new template are loaded (P4).
+
+**Runbook.** `docs/REFERENCE_TABLES.md` gains both sets: where each is posted (the U.S. Trustee's means-testing page; the Federal Register), that the U.S. Trustee set has no fixed change date (the runbook is its only guard, U:107), that the § 104 set changes on April 1, 2028 together with the 122A-2 template, how to add a version, and the owner as operator.
+
+### 7.3 The calculator
+
+**A pure record in, every line out (designer's call H18).** One pure function takes a record of every input, with `None` for anything missing, and returns every 122A-2 line. *Reason: 3h2 then only wires stored answers into the record, and 3h1 can test the whole form with Priya's 3h2 answers supplied as inputs.* For example:
+
+- `apps/eligibility/means_lines.py` (pure, no models): the input record, the line record, `work_out(inputs, tables)` and the one comparison;
+- `apps/eligibility/means_inputs.py`: reads a session into the record. In 3h1 every answer the page will ask is `None`.
+
+**The inputs:**
+
+- line 1: the household's current monthly income (`household_cmi`, `apps/eligibility/cmi.py:200`);
+- the marital answer, 122A-1 line 1's (for line 2);
+- line 3's answer and rows (3h2);
+- line 5's people: the filer, and each household row answered Yes to "claimed or supported" (`count_exemptions`, `apps/intake/household.py:38`), each with an age (H8);
+- the county (`Household.county`) and the district;
+- the vehicles (H24), which ones the filer claims and which two are Vehicle 1 and Vehicle 2 (3h2);
+- each confirmed secured debt: its creditor, the row it is linked to, its monthly payment, and its O2 answers (3h2);
+- the asked lines 15–31 and the opt-in answers (3h2), line 34's answer and cure amounts (3h2), line 36's answer and plan payment (3h2);
+- line 43's answer and circumstances (3h2), which the line record carries through to print and which no line and no box computes from (§1, "Line 43 never changes a box"); only the rebuttal figure reads their amounts (H46);
+- line 35's past-due total (H11);
+- line 41a's figure: 106Sum line 3b (rule `total_nonpriority_unsecured`), the nonpriority total of E/F Part 2;
+- the two table sets.
+
+**The lines.** §10 gives every line's rule. Each line holds a figure, or is *missing* (an input under it is missing), or *skipped* (the form's own "Go to" skips it). A missing line makes every line computed from it missing. A skipped line prints blank and counts as zero in a total (designer's call H16, below). An unanswered county is a missing input; a county the table doesn't hold is a defect, and the calculator raises.
+
+**Lines 6–15 take the standards whole.** The form: "Deduct the expense amounts set out in lines 6-15 regardless of your actual expense." The only netting is the form's own: 9c = 9a − 9b, 13c = 13a − 13b and 13f = 13d − 13e, each floored at $0.00. Nothing of today's `min(actual, standard)` is ported (H10).
+
+**Married filers living together (designer's call H15).** The form's Part 2 says "Whenever this part of the form refers to you, it means both you and your spouse if Column B of Form 122A–1 is filled in." For `married_together`, each of lines 16–25 asks one household figure, less anything already on line 3, and line 18 keeps its own exception for a non-filing spouse's life insurance. *Reason: the form says so.*
+
+**Branch-skipped lines (designer's call H16).** A line the form skips by its own "Go to" prints blank: lines 12–13f when line 11 is 0; line 14 when line 11 is 1 or more; line 15 when line 11 is 0; line 34's rows and total under No; line 35's figures under No; line 36's figures under No; lines 41a–42 when line 40 decides; line 43 when line 40 is `1` or line 42 is `No` (both say "Go to Part 5"); line 43's rows under its own No. Totals 24, 32, 37 and 38 always print once their inputs exist. The form's own "$0" orders are arithmetic, not skips (U:140): line 3's total prints 0.00 under line 2's No and under line 3's No, and the floors print 0.00. *Reason: P2, and a skipped line has nothing to report.*
+
+**Rounding (designer's call H3).** Every money line rounds to the cent, half-even, as `_fmt` (`derivations.py:93`) and current monthly income do; each later line computes from the rounded figures (P5). A ÷ 60 row (9b, 13b, 13e, 33d, 34) rounds per row, and its line's total adds the rounded rows. So 39c is whole cents and 39d moves in $0.60 steps. *Reason: one rule, the same as every other form's printed figures; `poverty_limit_monthly`'s half-up stays the fee-waiver page's own.*
+
+**Ages (designer's call H8).** The filer's age is worked out from `DebtorInfo.date_of_birth` on `fill_date()`, by calendar (a birthday reached or not), never `date.today()`. Each household row uses its typed age; ages are stored as given (3e1 spec line 391). 7b counts line 5's people under 65 and 7e those 65 or older, so 7b + 7e is always line 5. Help text on the 122A-2 page says the ages are as entered (§8.2). *Reason: the form gives no as-of date; the fill date stands in for the filing date everywhere else.*
+
+**No catch-alls (designer's call H9).** Nothing returns 0 or a family size of 1 on an error. A table row that should exist and doesn't raises, and so does a county, district or household size the table doesn't hold; the forms views' 500 path logs the exception type only, as today. `count_exemptions`' fallback to 1 goes with `ExpenseDeductionCalculator`. *Reason: DIG-152; today's catch-alls zero every figure and log nothing.*
+
+**The secured-debt rows (designer's call H2).** The secured-debt rows are grouped for 122A-2, not through `linked_payments` (which is shaped for Schedule J). A debt counts only when it is confirmed (`debts.confirmed()`), secured, and not answered No to "Can the lender take back property…":
+
+- **9b:** each debt linked to a home row (a line 1 or line 4 row answered "I live here").
+- **13b / 13e:** each debt linked to Vehicle 1 / Vehicle 2.
+- **33d:** every other counted secured debt: other real estate, a vehicle the filer doesn't claim or that is not Vehicle 1 or 2, a line 4 row not lived in, personal property, or a debt with no live link (`link_is_live`). A debt with no live link reaches only the in-app result of an unfinished intake: the claims gaps refuse a confirmed secured debt with no live link or no description (`DEBT_GAP_PROPERTY`, `DEBT_GAP_DESCRIBE`, `_debt_secured_gaps`, `apps/intake/claims.py:273-294`), and `_prepare` raises them before any form resolves, so no printed 33d row lacks a linked A/B row.
+- **A leased vehicle** takes 13a or 13d in full; its lease payment is deducted on no line (13b: "Do not include costs for leased vehicles"). This is a reading for counsel (C-28), not a fact.
+
+*Reason: `linked_payments` spills vehicles into Schedule J's 17c/17d and adds lease payments; 122A-2 sends a third vehicle's loan to 33d and leaves leases out.*
+
+**Line 35 (designer's call H11, from 3d's hand-off).** The sum of `past_due_amount` over confirmed, unsecured debts answered with one of `PRIORITY_TYPES` (`apps/intake/claims.py:22`), divided by 60. Not "No", not "Not sure", not secured, not a draft. `CheckBox12` ticks Yes when that sum is above $0.00 and No otherwise; the total and its ÷ 60 print only under Yes.
+
+**The one comparison.** One function takes line 39d and line 41b and gives line 40's box, line 42's box, page 1's box and the outcome:
+
+- 39d below $10,275.00: line 40 box `1`, no presumption. A negative 39d is below.
+- 39d above $17,150.00: line 40 box `2`, presumption.
+- Otherwise (from $10,275.00 to $17,150.00, both included): line 40 box `On`, then line 42: 39d at or above 41b ticks `Yes` (presumption), below it ticks `No` (no presumption). $17,150.00 exactly goes on to line 41, as the form says (C-5).
+
+The thresholds come from the § 104 row in force, never from code. Line 43 is never an input of the comparison: its answers change no box and no outcome (§1).
+
+**The outcome.** At or below the median (by `is_above_median`, `cmi.py:349`, the comparison that already decides the packet): "at or below the median". Above the median: "can't be worked out yet" while any input under 39d is missing (and, in the middle band, under 41b); otherwise the comparison's result.
+
+### 7.4 The result in the app
+
+**The result's shape (designer's call H4).** `MeansTest` gains an `outcome`: one of `at_or_below_median`, `cannot_work_out`, `no_presumption`, `presumption`, set by `MeansTest.calculate()` through the one comparison. *Reason: four outcomes don't fit one boolean.*
+
+- `passes_means_test` stays one release, derived: True for `at_or_below_median` and `no_presumption`, False for `presumption`, null for `cannot_work_out` (the column becomes nullable). Nothing reads it for a decision. `seed_demo_data`'s packet check runs today only `if result["passes_means_test"]` (`seed_demo_data.py:1569-1574`); from 3h1 it checks every form in each persona's packet and reports a refused form as skipped. Its help text is corrected (DIG-226).
+- **Rows saved before 3h1** get `outcome` null, read as "not worked out yet", until the next calculation saves one (H20). The sidebar never shows it: it calls the calculation on every visit (`useDebouncedMeansTest.ts:58`), which saves a fresh outcome. The session summary's `means_test.outcome` is null and its `passes` keeps the stored value until then. An unfinished intake's packet list reads the stored row, since only a completed intake's is worked out again (`forms/views.py:319-329`): a null outcome shows no result notice on the dashboard (never the "can't be worked out" words), and `tables` lists only the median, since an old row records no other table. A completed intake's packet list works the means test out again, so its outcome is never null.
+- The calculate reply (`POST /api/intake/sessions/{id}/calculate_means_test/`) keeps `passes_means_test`, `cmi`, `median_income_threshold`, `family_size`, `details` and `means_test_id`, and gains `outcome` and `tables_gap` (H23). It drops `message`, `disposable_income`, `total_allowable_expenses`, `priority_debts_monthly`, `passes_above_median` and `above_median_calculated`: no browser reads them (`MeansTestPreview.tsx` reads only `passes_means_test`, `cmi`, `family_size` and `median_income_threshold`).
+- The session summary's `means_test.passes` stays one release and gains `outcome`.
+- `calculation_details` keeps today's keys (the packet list reads its `median_table`), drops `above_median`, and gains `tables`: the U.S. Trustee and § 104 sets used, in the `median_table` shape, for the dashboard's notice (P4). `_tables_used` (`forms/views.py:183-190`), which today returns only `median_table`, returns the median table followed by every table in `tables`, so the packet reply's `tables` names all three for an above-median filer.
+- The packet reply (`GET /api/forms/packet/`) gains `outcome`, `family_size` and `tables_gap`, read from the same means test as its `tables`, for the dashboard's result notice (H37), and, from 3h2, `means_debts_answered` (H34). A refusal that replaces the reply carries none of them, as with `income_period`.
+- `MeansTestResult` in `frontend/src/types/api.ts:638` gains `outcome` and `tables_gap`, the MSW handlers and fixtures follow, and `passes_means_test` becomes `boolean | null`.
+
+**The sentences live in the browser (designer's call H21).** The server sends the outcome and the household size (`family_size`, 122A-1 line 13's count, which is the "{n}" of O4); the browser composes the words from `copy.ts`. `_generate_upl_compliant_message` and its four sentences go, with the two Chapter 13 sentences in them. `check_reading_level.py` reads string literals out of that method's source (`check_reading_level.py:143-150`), so its means-test section goes too: the frontend's reading-level test now scores the sentences where they live. *Reason: one place for DigniFi's words, scored and checked; the server holds no copy to drift.*
+
+**The closing sentence (also H21).** Every outcome ends with exactly "A court makes the final decision." (O4), wherever it shows (the sidebar, the dashboard, the page). The order is the outcome's words, then, for a presumption only, the instructions' sentence from `formText.ts`, then, from 3h2 and for a presumption only, on the dashboard and at the top of the page (never in the sidebar), the link "Go to line 43, special circumstances" (Proposal 2, H48), then "A court makes the final decision." Nothing else comes between them: no outcome says "This is only an estimate based on what you entered." Today the sidebar shows `UPL_MEANS_TEST_DISCLAIMER` ("This is only an estimate based on what you entered. A court makes the final decision.", `constants/upl.ts:25-26`) at the foot of the panel, after the income details and even with no result (`MeansTestPreview.tsx:124`). 3h1 rewords the constant to the closing sentence alone and renders it once, as the last sentence of the outcome block, so it never shows twice and never shows without an outcome. Any test that pins the old wording moves.
+
+**The words in 3h1 (designer's call H5).** The page doesn't exist yet, so the "answers missing" outcome reads, until 3h2: "Your income is above the median for a household of {n}, so Form 122A-2 applies. Its result can't be worked out yet." (grade 4.8). 3h2 adds O4's clause, with the placeholder filled as §2 says: in the sidebar, "…until you answer the questions on the Form 122A-2 page, after you finish your intake." (7.9 as a template); on the dashboard and the page, "…until you answer the questions on the Form 122A-2 page." (6.5), with a link to the page on the dashboard. The other three outcomes use O4's words from 3h1 on. *Reason: a sentence must never send the filer to a page that doesn't exist, or that they can't reach yet.*
+
+**The reassurance (O8).** Under the "can't be worked out yet" outcome, in 3h1's words and in O4's full words alike, the next sentence is "Being above the median doesn't mean a presumption of abuse applies." (6.8), then "A court makes the final decision." It shows under no other outcome.
+
+**The sidebar (designer's call H22).** `MeansTestPreview.tsx` shows the outcome's words in place of today's two fixed sentences ("you may be eligible for Chapter 7" / "may need further review", `MeansTestPreview.tsx:101-104`). All four outcomes use one neutral style: no green check, no warning icon, no colour that differs by outcome. The `eligible` / `review-needed` indicator classes go. The income and median details stay. Every filer-facing string in the panel and its hook that says "eligibility" or "estimate" changes, and the panel reads each from `copy.ts`:
+
+- the title "Eligibility Estimate" (hard-coded at `MeansTestPreview.tsx:44`; `copy.ts:89`'s unused `MEANS_TEST_PREVIEW_TITLE` holds the same words) becomes "Income test" (H41), and the panel's aria-label "Eligibility estimate" (`:36`) becomes "Income test" too;
+- the loading text "Updating estimate..." (`:64`) becomes "Updating your result..." (under five words, so the reading-level test doesn't score it);
+- the waiting sentence "We'll estimate your eligibility once you provide income and expense information." (`hooks/useDebouncedMeansTest.ts:31-32`) becomes "We'll show your result once you enter your income." (3.7);
+- the hook's failure sentence "Unable to estimate eligibility right now. This is not an error with your information." (`useDebouncedMeansTest.ts:74`) becomes "DigniFi can't show your result right now. This is not an error with your information." (4.5);
+- `copy.ts`'s unused `MEANS_TEST_INCOMPLETE` ("We need your income details first. Then we can show an estimate.", `copy.ts:91-92`) goes.
+
+*Reason: O4 stops the panel saying "eligible"; a title, a label, an icon or a colour that still says it would undo that, and the result is the form's arithmetic, not a verdict (U §4.1).*
+
+**The sidebar's title (designer's call H41).** "Income test", not "Means Test". *Reason: the plain-language guide puts "Income test" in place of "Means test" (`docs/PLAIN_LANGUAGE_GUIDE.md:44`). The forms keep their own names wherever they are named: the page's h1 is the form's title, and the refusals name Form 122A-2.*
+
+**The packet's tables notice (part of designer's call H31).** Today `tableNotice` (`FormDashboard.tsx:117-122`) builds one fixed sentence, "These forms use the median income figures the U.S. Trustee applies to cases filed on or after {date}.", for any table it is given. 3h1 makes it pick its first sentence by the table's name (the median's, the U.S. Trustee set's, the § 104 set's), and `_tables_used` hands it every table the means test stored (above). So the dashboard names both new sets, as it names the median (P4):
+
+- "These forms use the IRS expense standards the U.S. Trustee applies to cases filed on or after July 15, 2026." (8.6, scored as one sentence; the repo's formula gives 3.6 because "U.S." splits it)
+- "These forms use the Bankruptcy Code's dollar amounts for cases filed on or after April 1, 2025." (8.4), followed by today's "New figures are expected after March 31, 2028. If you file after that date, download your forms again."
+
+The new sets show only for an above-median filer, whose means test used them. Tests: `tableNotice` gives each table its own sentence, and an unknown name never falls back to the median's words; `_tables_used` returns the median then the stored sets, and only the median for a row stored before 3h1.
+
+**The dashboard's result notice (designer's call H37).** The worked-out result shows in three places, all in the neutral style below: the wizard's sidebar (as now), the dashboard, and the top of the 122A-2 page (3h2, §8.6). On the dashboard it sits beside O5's notice, so it shows when the packet holds 122A-2, from the packet reply's `outcome`, `family_size` and `tables_gap`: O4's words for the outcome, the closing sentence, and, for "answers missing", a link to the page (3h2); from 3h2, a presumption also links to line 43 on the page, before the closing sentence (H48). A null outcome shows nothing. *Reason: an above-median filer's result can only be worked out after Complete, and the sidebar lives in the wizard, which they have left by then; the dashboard is where every filer goes, and where O5's notice already sits.*
+
+**The neutral style (also H22).** The pair's refusals (the hold, "can't print yet", the missing table, the missing line, and the page's gaps), O5's notice, the stale-answers notice (H34) and the result notice use one neutral style on the dashboard and the page: `role="status"`, never `role="alert"`; no red; no icon that differs by outcome. Today Generate All's per-form refusals render in a `form-dashboard-error` block with `role="alert"` (`FormDashboard.tsx:357`), as do the packet list's refusal (`:326`) and Generate All's whole-call refusal (`:346`); `.form-dashboard-error` shares a margin-only rule with `.form-dashboard-notice` (`styles/global.css:1591-1594`), so the change is the role and the block, not a colour. 3h1 changes `FormDashboard.tsx` so that Generate All's `errors` entries for `form_122a1` and `form_122a2` render in their own `form-dashboard-notice` block with `role="status"`, apart from the others, whose `role="alert"` block then counts only the other forms ("N forms could not be generated"). A card's own refusal already renders in a polite live region (`form-card-refusal`, `aria-live="polite"`, `FormCard.tsx:136`), and neither the packet list nor Generate All's whole-call refusal carries the pair's refusals (H23). *Reason: these sentences describe the form's state, not an error, and the trauma-informed guide keeps alarm colours and framing away from a result ("avoid red = alarm", `docs/TRAUMA_INFORMED_DESIGN.md:88`).*
+
+### 7.5 Encrypting the means test's table
+
+3h1 migrates `means_tests` (the eligibility app's next migration after `0003`), so the umbrella's rule applies: "Each PR encrypts the plaintext filer columns of the tables it migrates, with the data migration in the same PR" (U:85). **Designer's call H20, how:** `calculated_cmi` and `median_income_threshold` become encrypted decimals, with a data migration that encrypts existing rows; the new `outcome` is encrypted from the start; `passes_means_test` becomes nullable and loses its index; the five old above-median columns (`total_allowable_expenses`, `disposable_income`, `priority_debts_monthly`, `passes_above_median`, `above_median_calculated`) are encrypted in place by the same data migration, keeping their stored values: 3h1 stops writing them and nothing reads them (the calculate reply and `calculation_details` drop them, §7.4), and the housekeeping PR drops them, as `form_data` and the retired expense columns go one release later. Existing rows get `outcome` null, read as "not worked out yet" until the next calculation (§7.4). *Reason: the umbrella requires the encryption for every plaintext filer column of a table a PR migrates (U:85), these five included; the old figures were made under the wrong limit, so nothing may read them, but wiping them is a destructive step, and dropping columns is the housekeeping PR's job (§1); nothing filters or orders on these columns in SQL (the only query is `MeansTest.objects.filter(session=session)`, `forms/views.py:188`).*
+
+### 7.6 The hold
+
+**122A-2's `requires()`** (replacing `_nothing`, `registry.py:199`) refuses, in order:
+
+1. a missing table (H23), in its own sentence, with no link;
+2. in 3h1, always: "DigniFi can't prepare Form 122A-2 yet, because it doesn't ask all of that form's questions yet. Form 122A-1 waits for it. File the two forms together." (grade 3.2), with no link (designer's call H5). The sentence names no presumption and no result.
+
+**122A-1's `requires()`** keeps `_needs_means_test` (`registry.py:180-185`) and then, when `_above_median(session)` is true, runs 122A-2's whole path: `build_parts('form_122a2', session)` (which runs 122A-2's `requires()`) and then `PDFFormFiller().check('form_122a2', <those parts>)`, and re-raises whatever refuses, with its sentence and its link (O5). *Reason: in 3h3, 122A-2 can still be refused after `requires()`, at `check()` (a stored name too long for its box, a letter the font can't print, an unmapped choice); a 122A-1 that copied only `requires()` would print box 2 beside a 122A-2 that doesn't exist, and `FORM_REGISTRY` puts 122A-1 first, so Generate All would already have stored it.* In 3h1 and 3h2, `build_parts` always refuses, so this is the same refusal. 3h3's test: a stored creditor name too long for a 122A-2 box refuses both forms, each with the Amounts Owed link. The packet list is unchanged: 122A-2 is listed for an above-median filer, and Generate All returns 122A-1 and 122A-2 in `errors`.
+
+**Mark as Filed for the pair (designer's call H42; a change to filed-form behavior).** Today `mark_filed` sets `status="filed"` and checks nothing (`forms/views.py:483-496`), and a filed row's download draws its stored values with no check. A refusal never clears a row: Generate All deletes only unfiled rows whose form left the packet. So a stale row could be filed around the hold. For example, a below-median filer generates 122A-1 (box 1, "There is no presumption of abuse"), their income rises above the median, the hold refuses both forms, and the old 122A-1 row is still stored, with Mark as Filed on its card. From 3h1, for 122A-1 and 122A-2 only, Mark as Filed on an unfiled row first runs the unfiled-download path (`_prepare`, which works the means test out again; `_resolve`, which runs `applies()` and `requires()`; then `check()`) and stores that fresh document before it sets `filed`. Any refusal is the same 422 body the download would give, and the row stays unfiled. Other forms keep today's behavior; the stale-row question for every other form is DIG-487 (§13). This narrows DIG-155's rule ("a form marked filed keeps its stored answers") for these two forms: the document a filed 122A-1 or 122A-2 keeps is the one worked out when it was marked filed, which can differ from a PDF downloaded earlier. *Reason: the owner's harm case is a 122A-1 leaving the app without its 122A-2, and a stale row marked filed is a way out that never meets `requires()`.*
+
+**A refused Mark as Filed shows on its card (part of H42).** Today `handleMarkFiled` (`FormDashboard.tsx:249-255`) awaits `api.forms.markFiled` with no catch, `FormCard`'s `handleAction` drops the error ("Error handled by parent", `FormCard.tsx:49-58`), and `withRetry` doesn't retry a 422 (`utils/retry.ts:19-24`). Mark as Filed never fails today, so this never showed; under H42 a refused Mark as Filed would change nothing on screen. From 3h1, `handleMarkFiled` catches the error and calls `setFormRefusal(form.form_type, refusalOf(err, ERROR_GENERIC))`, as `handleDownload` does (`FormDashboard.tsx:236-247`, its catch at `:241-244`), so the card's refusal region (`form-card-refusal`, `aria-live="polite"`, `FormCard.tsx:136`) shows the sentence and its link. The pair's refusals use the neutral style (§7.4). 3h3's pair action reports its refusals the same way (§9.1). *Reason: a refusal the filer can't see leaves them pressing a button that does nothing.*
+
+**Rows filed before 3h (O11; designer's call H50).** A 122A-2 marked filed before 3h1 holds only five boxes, and a 122A-1 filed with box 2 may have no 122A-2. Both keep DIG-155's rule: the download is exactly what was stored (H19). 3h1 adds a boolean to `GeneratedForm`, for example `filed_before_means_test` (default false), and a data migration in the same PR sets it on every row that is filed when it runs, has stored values (`field_values` not empty), and is either `form_122a2`, or `form_122a1` whose stored page 1 `CheckBox1` value (the untagged key `CheckBox1` of `form_122a1.json`) is `/Presumption of abuse applies` (box 2). The migration reads both stored shapes: the version 2 parts document (its form part's values) and the flat `{full name: value}` dict of a form filed before 3a2 (`forms/models.py:66-71`, read today by `parts_of`, `pdf_filler.py:153-160`). It does so with its own module-level copy of that logic, since migrations never import app code (§7.2). A filed row with nothing stored gets no flag: its download already takes the unfiled path (`forms/views.py:515`), so the hold refuses it in 3h1 and 3h2, and from 3h3 it prints fresh and complete and is stored as its filed copy, so "It shows what was stored then" would be false for it. A 122A-1 with stored values but no `CheckBox1` (filed before forms step 2b, when `form_122a1.json` first bound it) printed neither box; the migration leaves it unflagged, and H52's live notice covers it. Under H42 no 122A-2, and no 122A-1 with box 2, can be marked filed from 3h1 until 3h3 prints the pair, so the migration finds every such row, and no later row ever gets the flag. The forms list reply carries the flag, and the card shows, in the neutral style (`role="status"`, §7.4), for 122A-2: "This copy was marked filed before DigniFi could fill in all of Form 122A-2. It shows what was stored then." (4.2), and for 122A-1: "This copy was marked filed before DigniFi could fill in Form 122A-2, which this form points to. It shows what was stored then." (4.3), each with `// DRAFT: counsel C-24`. Nothing else changes for such a row. Tests: the migration flags a filed 122A-2 and a filed 122A-1 with box 2, each in both stored shapes, and leaves alone a filed 122A-1 with box 1, a filed 122A-1 with no `CheckBox1`, a filed row with nothing stored, an unfiled row and every other form; a flagged row's download is byte-for-byte its stored document (every flagged row has one); a filed row with nothing stored downloads through the unfiled path, so the hold refuses it in 3h1; the card shows the notice only for a flagged row. *Reason: the owner chose to keep the record of what was filed and say what is missing (O11); a flag set once, by migration, needs no schema-version marker.*
+
+**A filed 122A-1 that no longer matches (designer's call H52).** H42 lets a below-median filer mark a box-1 122A-1 filed ("There is no presumption of abuse"). The six-month income window moves every month, so that filer can later be above the median with no mistake on anyone's part. Their filed copy still downloads as stored, and nothing un-files a row. 3h keeps O11's pattern: keep what was filed, and say what is missing. It adds no way to un-file a row, since that would reopen O11. From 3h1, a live notice shows on any filed 122A-1 with stored values whose stored page 1 `CheckBox1` is not `/Presumption of abuse applies` (box 1, or no value, as on a 122A-1 filed before forms step 2b), while the packet holds 122A-2: "This copy doesn't say its result is worked out on Form 122A-2. Form 122A-2 now applies to you." (2.4; it echoes O5's notice), in the neutral style, with `// DRAFT: counsel C-24`. It is worked out on each read and never stored. The forms list reply gains, for a filed 122A-1, a read-only boolean worked out from its stored values on each read (for example `stored_box_2`), read through `parts_of` in both shapes, and null when nothing is stored; the dashboard shows the notice when it is false and the packet reply's `form_types` holds `form_122a2`. A filed row with nothing stored shows no notice: its download resolves fresh (above). *Reason: the notice says what the copy shows, not what the filer's income was, because a copy with no `CheckBox1` says nothing about that; and a notice stays inside O11's decision, where an un-file action would not.* 3h3 shows the same notice inside the card's confirm before marking 122A-2 alone (§9.1, H43). Tests (3h1): the notice shows for a filed box-1 122A-1 and for one with no `CheckBox1` while the packet holds 122A-2; it doesn't show for a box-2 copy, a row with nothing stored, or a packet without 122A-2; the list reply's boolean reads both stored shapes.
+
+**A refusal with no link (designer's call H32)** is a 422 whose body carries no `step` or `page` key, as "already filed" and `NoTableInForce` are today. The hold raises `PreconditionMissing` with neither field, and its docstring ("Exactly one of step and page is set", `registry.py:30-36`) becomes "at most one". *Reason: the code already allows it, so no new exception is needed: `_failure` adds a `step` or `page` only when the exception sets one (`forms/views.py:117-119`), and `test_rule_fixes.py` records nothing for a raise that names neither (`:73-80`); the hold lasts only until 3h3.*
+
+**The notice (designer's call H31).** O5's notice, "Form 122A-1 says your result is worked out on Form 122A-2. File them together." (3.2), shows on the dashboard whenever the packet holds 122A-2, from 3h1 on. *Reason: the instruction holds for every filing of the pair, not only while one is refused.*
+
+### 7.7 What goes (designer's call H10)
+
+- `apps/eligibility/services/irs_standards.py` and `test_irs_standards.py`.
+- `ExpenseDeductionCalculator` (`expense_deduction_calculator.py`) and `test_expense_deduction_calculator.py`, with its `_is_under_65` (365-day years, the filer only, `date.today()`), its `min(actual, standard)` caps and its catch-alls.
+- `_means_test_disposable_income` (`derivations.py:900`) and its `DERIVATIONS` entry (`:1103`).
+- `MeansTestCalculator._generate_upl_compliant_message` and `get_detailed_breakdown` (no caller outside tests).
+- `threshold = Decimal("756.25")` and its comment. (The 2026-06-17 design's "$756.25/month ($9,075/60 months)" stays as history, unedited.)
+
+*Reason: the form says lines 6–15 apply "regardless of your actual expense", so the caps are wrong, not merely old; nothing of them is ported.*
+
+### 7.8 Hand-offs carried (designer's call H11)
+
+- **From 3d1 (DIG-275's comment):** line 35 counts only confirmed, unsecured debts answered with a priority kind; pins store figures under "No", under "Not sure", on a secured debt and on a draft, and none is counted. The draft pin that an unconfirmed scanned debt never lowers the result comes back (DIG-163). The two passing-message tests that set the stored row by hand (`test_means_test_calculator.py:492-511`, `:918-934`) become end-to-end again, from the calculator's own result.
+- **From 3c4 (DIG-152's comment):** the catch-all that hid a raise in `linked_payments` goes with H9 and H10.
+- **From 3d2 (3d spec §8):** line 41a reads 106Sum 3b, E/F Part 2 only. Counsel sees the reading (C-23).
+- **From 3e1:** line 5 is worked out in 3h1 and printed in 3h3; the fallback to 1 goes.
+
+*Reason: each earlier PR named 3h as the place these land.*
+
+### 7.9 Copy (3h1)
+
+DigniFi's sentences go in `frontend/src/constants/copy.ts`, each with `// DRAFT: counsel C-24` (the result and the refusals) and a reading grade by the repo's formula; the instructions' sentence goes in `formText.ts`, unscored (designer's call H17: *the court's words are quoted, not written by DigniFi*).
+
+| Sentence | Grade |
+| --- | --- |
+| "Your income is at or below the median for a household of {n} in Illinois. Form 122A-2 doesn't apply to you." (O4) | 4.8 |
+| "Your income is above the median for a household of {n}, so Form 122A-2 applies. Its result can't be worked out yet." (3h1 only, H5) | 4.8 |
+| "The form's arithmetic gives: There is no presumption of abuse." (O4) | 8.0 |
+| "The form's arithmetic gives: There is a presumption of abuse." (O4), then the instructions' sentence from `formText.ts` | 8.0 |
+| "A court makes the final decision." (O4; the reworded `UPL_MEANS_TEST_DISCLAIMER`, H21) | 6.4 |
+| "Being above the median doesn't mean a presumption of abuse applies." (O8, under "can't be worked out yet" only) | 6.8 |
+| The hold (3h1) | 3.2 |
+| The missing-table sentence | 7.2 |
+| O5's notice | 3.2 |
+| O11's notices (H50): the 122A-2 one; the 122A-1 one | 4.2; 4.3 |
+| "This copy doesn't say its result is worked out on Form 122A-2. Form 122A-2 now applies to you." (H52) | 2.4 |
+| The two tables-notice sentences | 8.6 (as one sentence; the repo's formula gives 3.6), 8.4 |
+| "Income test" (title and aria-label); "Updating your result..." | —, — (under five words) |
+| "We'll show your result once you enter your income." | 3.7 |
+| "DigniFi can't show your result right now. This is not an error with your information." | 4.5 |
+
+Grades are the repo's formula (`check_reading_level.py:57-104`, which `reading-level.test.ts` mirrors). Where "U.S." or "U.S.C." or a dollar amount's decimal point splits one sentence into several, this spec records the grade with the true sentence count, and the repo's lower figure beside it.
+
+A new `upl-means-test-copy.test.ts` lists every new sentence by name against the `ADVICE` patterns, and adds four checks: no new sentence says "eligible", "qualify", "eligibility", "estimate" or "Chapter 13" (line 36's information in 3h2 is the one place "chapter 13" may appear, because the form asks about it); "presumption" appears only in the two worked-out outcomes and in O8's sentence ("Being above the median doesn't mean a presumption of abuse applies."); the hold, the "can't print yet" sentence (3h2), the missing-table sentence, the missing-line sentence (3h3) and the pair refusal (3h3, §9.1) say neither "presumption" nor "abuse"; every outcome's closing sentence is exactly "A court makes the final decision."; and no `copy.ts` string says "overcome", "rebut" or "rebuttal" (§1's carve-out: only `formText.ts`'s quotation of the court's sentence may). The page's vitest (3h2) checks the same three words against its labels and aria text.
+
+### 7.10 Personas (3h1)
+
+Median in force on the pinned day: effective 2026-04-01 (Illinois $73,180 / $93,934 / $113,625 / $137,902 for 1–4 people).
+
+| Persona | Household (line 13) | Annual income | Sidebar after 3h1 | 122A-1 / 122A-2 |
+| --- | --- | --- | --- | --- |
+| Maria | 3 | $38,400 | at or below the median, household of 3 | 122A-1 prints; no 122A-2 |
+| James | 1 | $69,996 | at or below, household of 1 | the same |
+| DeShawn | 2 | $54,000 | at or below, household of 2 | the same |
+| Sarah | 2 | $24,000 | at or below, household of 2 | the same |
+| Andrés | 2 | $40,440 | at or below, household of 2 | the same |
+| Priya | 4 | $165,600 | above, household of 4, "can't be worked out yet" | both refuse with the hold sentence |
+
+Priya's dashboard shows her result's words beside O5's notice (H37). The other five see no result notice there, since their packet holds no 122A-2.
+
+### 7.11 Tests (3h1)
+
+**The calculator:**
+
+- `every_line_follows_the_form_from_its_inputs`: each line of §10 from its own inputs, one case per rule.
+- `priyas_122a2_matches_the_hand_worked_figures`: Appendix A's chain, from her seeded data plus her drafted 3h2 answers supplied in the record (H18), line by line, ending in `presumption`.
+- Synthetic cases, each a test named for what it protects: a home with a mortgage above 9a (9c floors at 0.00); a renter (9b 0.00, 9c = 9a); no vehicle (11 = 0, 14 prints, 12–13f blank); one vehicle owned outright and claimed (12 prints, no slot); a leased vehicle (13a whole, 13b 0.00, the lease deducted nowhere); three claimed vehicles with loans (the third's loan on 33d, line 12 the two-car figure); a household of 6 (national standard plus two extra persons; housing's "5 or more" column); a person turning 65 (moves one person from 7b to 7e); a Midwest Region county spelled `LaSalle`; a married filer living together (line 3 asked; line 2 Yes and No); a negative 39c (prints with a minus sign; line 40 box `1`); a middle-band case on each side of line 42's equality.
+- **The bands, directly:** `the_comparison_follows_the_form_at_each_edge` at 39d = $10,274.99, $10,275.00, $17,150.00 and $17,150.01, and line 42 at 39d = 41b and one cent either side.
+- **The bands, end to end:** `each_band_edge_is_crossed_through_the_forms_arithmetic`, with inputs that give 39c = $171.24 and $171.25 (39d $10,274.40, box `1`; $10,275.00, box `On`) and 39c = $285.83 and $285.84 (39d $17,149.80, box `On`; $17,150.40, box `2`).
+- **Line 5's people:** `seven_b_and_seven_e_count_line_fives_people`: a row that lives with the filer but isn't claimed or supported is left out, a claimed row that lives elsewhere is counted, and 7b + 7e equals line 5.
+- **Missing inputs:** `a_missing_input_leaves_its_line_and_the_result_blank`, for each kind of input (an answer, a county, a table row).
+- **Rounding:** `each_line_rounds_half_even_and_later_lines_add_the_printed_figures`.
+- **No catch-alls:** a county the table doesn't hold raises; a household with no `ExpenseInfo` row still works out every line the form asks (122A-2 reads no Schedule J figure).
+- **Line 35:** the 3d1 pins above, including the draft.
+
+**The tables:** every figure pinned against Appendix A's sources; all 18 counties and `ILND` resolve; the U.S. Trustee set refuses on 2026-07-14 and applies on 2026-07-15, and a synthetic second version takes over on its own effective date; the § 104 set applies on 2028-03-31 and refuses on 2028-04-01, with the missing-table sentence and a log line; a below-median filer is never refused for a missing 122A-2 table; with a 122A-2 table missing, the calculate reply is a 200 with `cannot_work_out` and `tables_gap`, and Generate All generates every other form and lists 122A-2 and 122A-1 in `errors`.
+
+**The result:** each outcome from the calculator's own result, end to end (no stored row set by hand); `passes_means_test` follows the outcome; the reply's keys, and the packet reply's `outcome`, `family_size` and `tables_gap`; each encrypted column holds ciphertext in a raw SQL read, and the migration encrypts an existing row, leaves the five old columns' values as they were and gives the row a null `outcome`; an unfinished intake's packet list with such a row shows no result.
+
+**The hold:** `an_above_median_filers_122a1_and_122a2_never_print_incomplete` (§6), with its stale-row and median-flip cases; the refusal carries no `step` or `page`; a below-median filer's 122A-1 prints as today; the notice shows with 122A-2 in the packet and not without it; 122A-1's gate runs `build_parts` and `check()` for 122A-2.
+
+**Mark as Filed (H42):** `a_stale_122a1_row_cant_be_filed_around_the_hold` (the below-to-above flip: a 422 with the hold's sentence, the row still unfiled, and its download still refused); `marking_the_pair_filed_keeps_the_document_worked_out_then` (a below-median 122A-1 marked filed stores a fresh document, and its filed download draws it); another form's Mark as Filed is unchanged. **Rows filed before 3h** (H50) and **a filed 122A-1 that no longer matches** (H52): the tests in §7.6.
+
+**Frontend:** the sidebar renders each outcome's words with the same markup for all four, then the closing sentence once (after the instructions' sentence for a presumption), and the missing-table sentence under `tables_gap`; no sidebar string says "eligibility" or "estimate"; the title reads "Income test"; `tableNotice` names each set by its own sentence; the dashboard's result notice shows beside O5's notice and not for a null outcome; the pair's Generate All refusals render in a `role="status"` block and the others in the `role="alert"` block; `a_refused_mark_as_filed_shows_on_its_card` (a 422 from Mark as Filed shows its sentence and its link in the card's refusal region, and the card stays unfiled); the card shows O11's notice for a flagged row and H52's notice as §7.6 says; the copy tests above; the reading-level test scores the new sentences.
+
+**Pins that move, by name:**
+
+- `test_seed_demo_data.py:221-225`: Priya's `passes_above_median`, $3,464.00 allowed and $10,336.00 disposable go; her outcome is `cannot_work_out` and `passes_means_test` null. The seed's packet check no longer reads `passes_means_test` (§7.4), so it checks Priya's packet too and reports her 122A-1 and 122A-2 refusals as skipped.
+- `time_packet` (DIG-137) raises `CommandError` on any refused form (`time_packet.py:74-76`), so it can't time an above-median packet in 3h1 or 3h2; it times Priya again from 3h3.
+- `test_api_readback.py:286-304`: Priya's Generate All returns 122A-1 and 122A-2 in `errors` with the hold sentence; the stored-versus-built comparison covers the forms that generated.
+- `test_oracle_tier3.py`: its loop calls `build_field_values` (`:1304`), which runs `requires()`. Priya's 122A-1 values are checked by resolving below the gate, beside a test that `build_field_values` refuses; her 122A-2 entry (`:611`) waits for 3h3.
+- `test_signing_lines.py:63` draws Priya's 122A-1 and 122A-2 through `build_field_values`: both resolve below the gate until 3h3, so the wet-ink boxes stay checked.
+- Any other test that builds an above-median session's 122A-1 or 122A-2 through `build_field_values` or `build_parts` moves the same way; the builder runs the suite to find them.
+- `test_form_views.py:1094-1126` (`test_stale_means_test_no_longer_decides_the_packet`): the above-median case expects both forms in `errors` and a 422 for Generate; it still proves the packet follows the filer's current income.
+- `test_means_test_calculator.py`: the above-median classes (`:796-958`), the UPL message scans (`:432-530`) and `TestDetailedBreakdown` (`:665-735`) are rewritten against the outcome or go with what they tested; `apps/audit/tests/test_upl_compliance.py:545` drops the method.
+- `test_cmi.py:77,99,134`, `test_household_means_test.py:400-436` and `test_payment_move.py:75-134` tested the old calculator; each is rewritten against the new one (line 1, line 5 and the grouping) or goes.
+- **E2E, five journeys:** `maria-happy-path.spec.ts:61` (`'may be eligible'`), `james-borderline.spec.ts:56`, `deshawn-assets.spec.ts:57` and `sarah-simplest.spec.ts:58` (`'eligible'`) expect "at or below the median"; `priya-ineligible.spec.ts:62` (`'further review'`) expects "can't be worked out yet". `wizard.page.ts:78-83` waits on `.means-test-preview-indicator-text`, so that class stays on the outcome's words (only `eligible` and `review-needed` go). `MeansTestPreview.test.tsx` opens the panel by its button name "Eligibility Estimate" and pins the waiting sentence, "Updating estimate..." and the "may need further review" sentence; each pin moves with its string.
+
+### 7.12 CLAUDE.md and docs (3h1)
+
+- "Means test units" is rewritten: the one calculator, the four outcomes, no priority deduction but line 35, the tables, the encrypted columns.
+- "Dated tables and the fill date" gains the two sets, their fixtures and the missing-table sentence.
+- "The packet decides which forms" and "Forms need a completed intake" gain the hold, 122A-1 running 122A-2's whole path, and Mark as Filed for the pair (H42, its refusal on the card); "`field_values`, not `form_data`" says a filed 122A-1 or 122A-2 keeps the document worked out when it was marked filed, and names O11's flag (H50) and H52's live notice.
+- A new gotcha, "The means test is the form's arithmetic", says the result is never a verdict, the sentences live in `copy.ts`, and no code caps a standard at actual spending.
+- `docs/REFERENCE_TABLES.md` gains both sets (§7.2).
+
+### 7.13 Hand-off to 3h2
+
+- The record's answer fields wait for the page's answers, line 43's among them.
+- The interim sentence (H5) gains O4's clause.
+- The hold's fixed sentence becomes the page's first gap (§8.5).
+- A presumption's words gain the link to line 43 on the dashboard and the page (H48).
+
+## 8. 3h2: the questions
+
+### 8.1 What it delivers
+
+1. The 122A-2 page, after `/exemptions` and before `/sofa`, for above-median filers only (P1).
+2. Its records and endpoint; nothing on it reopens the intake.
+3. Its gaps, with 122A-2's `requires()` (and 122A-1's, by the hold) refusing the first one with a link to the page.
+4. The worked-out result for an above-median filer, in O4's words, in the sidebar, on the dashboard and at the top of the page (H37).
+5. A notice when the secured-debt answers were saved in an earlier month (H34).
+6. Priya's answers in the seed.
+7. Line 43 in the form's words, with the guided writing aid and no AI (H44, H45); beside it, what line 39d would be if the court allowed the line 43 amounts (Proposal 1, H46); and a link to line 43 from a presumption on the dashboard and at the top of the page (Proposal 2, H48).
+
+After 3h2, every input of every line exists. 122A-2 still prints nothing new: until 3h3, the pair refuses with a fixed sentence once the page is answered.
+
+### 8.2 The page
+
+**Route and flow (designer's call H6).** `/means-test`, `MeansTestPage.tsx`, its `<h1>` "Form 122A-2: Chapter 7 Means Test Calculation" (the form's own title). The exemptions page's Continue goes to `/means-test` instead of `/sofa` (`ExemptionsPage.tsx:267`). The page reads first; when its GET says the form doesn't apply, it replaces itself with `/sofa` (in an effect, never in render), so a below-median filer never sees it. Like the exemptions page, it renders nothing editable until the read returns, offers "Try again" on a failed read, holds its answers in its own state, has no autosave, and wraps every answer control in one `<fieldset disabled>` while a save is on its way. Continue saves (H35, below). Like the filing-fee page (`FilingFeePage.tsx:196`), it renders the standard disclaimer, `<UPLDisclaimer text={UPL_WIZARD_DISCLAIMER} variant="inline" />` (`components/compliance/UPLDisclaimer.tsx`, a `role="note"`), outside the result's block, since `docs/UPL_COMPLIANCE.md`'s checklist asks for "Disclaimers present on all new screens" (§VII). The forms dashboard links to it from every 122A-2 and 122A-1 refusal that names it (`PAGE_LINK_LABELS['/means-test'] = 'Go to Form 122A-2: Chapter 7 Means Test Calculation'`, `FormDashboard.tsx:67-73`). From 3h2, the "Answer Questions" button on a pending 122A-2 card, and on a pending 122A-1 card while the hold refuses it, goes to `/means-test`, not to `/ask/form_122a2` (`FormCard.tsx:91` sends every pending card to `/ask/<form type>`; 122A-2's schema has no asked fields there, so that page would be empty). On the dashboard and on the page, O4's "answers missing" outcome reads "…until you answer the questions on the Form 122A-2 page." (§2). *Reason: the filing-fee and exemptions pages' pattern; the page's own GET says whether the form applies, so the browser never copies the comparison.*
+
+**Continue always saves (designer's call H35).** Every press of Continue saves whatever is answered, gaps or not (the PUT sets only the keys sent, and null means unanswered, §8.4). With a gap left, the page stays where it is and shows the first gap; with none, it goes to `/sofa`, unless the result has just changed (H47). Continue is held only while a save is on its way. *Reason: the page is long and several answers need papers (a loan statement for payments left, a 60-month total or a cure amount; pay stubs or a tax return for line 16); a filer who leaves to find one must not lose what they typed. The gate (`requires()`) still refuses until every gap is closed, so saving early never lets an incomplete form out.*
+
+**Order (designer's call H26).** The page follows the form's order, with one change: the questions for each secured debt sit together beside line 33. *Reason: line 33 copies 9b, 13b and 13e, and the vehicle choice above decides which line each debt goes on, so asking them at 9b would ask before the filer has chosen.*
+
+1. **At the top, then the introduction:** the result as it stands (§8.6, H37) and, when it applies, the stale-answers notice (H34), both in the neutral style (`role="status"`) and neither linking to the page as a whole; under a presumption only, the result carries an in-page link to line 43 (H48). Then: "Form 122A-2 is the Chapter 7 means test calculation. Its questions use the form's own words, which can differ from the words on Schedules I and J. Beside some questions, DigniFi shows what you entered on those schedules, for you to compare. No answer is filled in for you." (5.6) Then a note on ages: "Line 7 counts people under 65 and people 65 or older. DigniFi uses your date of birth and the ages on your household list, as you entered them." (6.7)
+2. **Line 3** (married and living together only): the form's question, No and Yes; under Yes, rows of purpose and amount ("Add a row"), each purpose measured against the form's box (H28).
+3. **Line 11, the vehicles** (H24): the form's sentence "Check the number of vehicles for which you claim an ownership or operating expense.", then each vehicle by name with "Do you claim an ownership or operating expense for {name}?" No and Yes. When more than two claimed vehicles have a loan or lease: the form's "you may not claim the expense for more than two vehicles", and a choice of Vehicle 1 and Vehicle 2 among them, none chosen.
+4. **Line 15** (only when a vehicle is claimed): the form's words, No and Yes; under Yes the amount, with "The IRS amount for public transportation is ${cap}. Line 15 can't be more than that." (2.2).
+5. **Lines 16–21 and 23:** first the form's own Part 2 words, in `formText.ts`: "If your expenses differ from month to month, enter the average expense." and "Do not deduct any amounts that you subtracted from your spouse's income in line 3 and do not deduct any operating expenses that you subtracted from income in lines 5 and 6 of Form 122A–1.", and, for a married filer living together, "Whenever this part of the form refers to you, it means both you and your spouse if Column B of Form 122A–1 is filled in." Then each line in the form's words, an amount box ($0 allowed), and beside it, where O1 names one, the filer's related figure as information (H27). Lines 20 and 23 are plain lines in the form's words (designer's call H14: *they carry conditions like the opt-ins', so counsel's C-4 widens to cover them; a plain line with $0 allowed asks without presuming*).
+6. **Line 22:** the form's words, No and Yes; under Yes, "the amount that is more than the total entered in line 7", with "Your line 7 total is ${7g}." beside it (H27).
+7. **Line 25** (designer's call H13): the form's words, No and Yes; under Yes the three amounts (health insurance, disability insurance, health savings account), then "Do you actually spend this total amount?" No and Yes; under No, "How much do you actually spend?" Under line 25's Yes, both `2_2` boxes print the total; the "actually spend" figure prints beside No. *Reason: the words printed beside the second box are "Copy total here", so the total prints there. The engine could print a different value in each of `2_2`'s two widgets (a tagged binding fills one widget, as Schedule D's two account-number boxes do, and tier 1's `test_each_widget_of_a_shared_name_prints_its_own_value` already checks it for this template), so this follows the form's words, not an engine limit. One untagged `2_2` binding fills both widgets; separate `2_2@6:T6` and `2_2@6:T7` bindings are needed only if counsel's answer to C-26 splits them.* Whether the statute allows the full total when the filer spends less stays a counsel item (C-26).
+8. **Lines 26–31:** each in the form's words, No and Yes, the amount under Yes. Line 27 asks only an amount, with "The form says the court must keep the nature of these expenses confidential. DigniFi asks only for the amount." (6.1). Line 28 shows "Your line 8 amount is ${8}." Line 29 shows "The form allows up to $214.58 a month for each child." (P3). Line 30 shows "For {n} people, 5% of the IRS food and clothing amounts is ${cap}. Line 30 can't be more than that." (0.5) and the related Schedule J figures.
+9. **Payments on secured debts:** each counted secured debt by creditor, with its property and the line it goes on ("line 9b", "line 13b", "line 13e" or "line 33d"), its monthly payment as entered on Amounts Owed, and O2's questions: "How many payments are left?" (a whole number from 0 to 59, or "60 or more"; designer's call H40); "Will the payment change, or end with a larger payment?" No and Yes; under Yes, "The total due in the 60 months after you file". A debt on line 33d also asks "Does payment include taxes or insurance?" No and Yes.
+10. **Line 34** (designer's call H33): the form's question, "Are any debts that you listed in line 33 secured by your primary residence, a vehicle, or other property necessary for your support or the support of your dependents?", No and Yes. Under Yes, for each debt on line 33: "Is your debt to {name} secured by your primary residence, a vehicle, or other property necessary for your support or the support of your dependents?" No and Yes (the form's words with the creditor's name, in `formText.ts`); under that Yes only, "the cure amount" ($0 allowed), in the form's words. Only debts answered Yes print on line 34.
+11. **Line 35**, as information: "Line 35 comes from the past-due priority claims you entered on the Amounts Owed step: ${total}." (8.4 as a template; 7.6 with "$3,000.00", scored as one sentence); its fix is the Amounts Owed step.
+12. **Line 36:** the form's question "Are you eligible to file a case under Chapter 13?", No and Yes, with the information the umbrella names (U:541), beside it and never a conclusion: the Bankruptcy Basics link (`https://www.uscourts.gov/court-programs/bankruptcy/bankruptcy-basics`); "Chapter 13 has debt limits (11 U.S.C. section 109(e)). For cases filed on or after April 1, 2025, the limits are $526,700 in unsecured debts and $1,580,125 in secured debts." (7.2 as two sentences; the repo's formula gives 4.1; figures from the § 104 row); "The debts you listed: ${E/F total} unsecured, on Schedule E/F, and ${D total} secured, on Schedule D." (6.5; 106Sum lines 3c and 2); and "Other rules also apply. DigniFi can't tell you whether you can file under chapter 13." (7.0; designer's call H39). Under Yes, the projected monthly plan payment, then "The U.S. Trustee's multiplier for the Northern District of Illinois is {m}%." (7.6 as one sentence) and, once a payment is typed, "The average monthly administrative expense is {m}% of ${payment}. That is ${product}." (8.4 as a template; 8.5 with "6.9", "$1,400.00" and "$96.60", as two sentences). The multiplier comes from the U.S. Trustee row; the browser works out the product (designer's call H36).
+13. **Line 43** (designer's calls H44–H46), in a fieldset with the id `line-43`: the form's question in `formText.ts`, "Do you have any special circumstances that justify additional expenses or adjustments of current monthly income for which there is no reasonable alternative? 11 U.S.C. § 707(b)(2)(B).", No and Yes. Under Yes, the form's instructions verbatim, also in `formText.ts`: "Fill in the following information. All figures should reflect your average monthly expense or income adjustment for each item. You may include expenses you listed in line 25. You must give a detailed explanation of the special circumstances that make the expenses or income adjustments necessary and reasonable. You must also give your case trustee documentation of your actual expenses or income adjustments." Then four information sentences (H45), the circumstances ("Add a circumstance"), each with the guided aid, and the rebuttal figure (H46). When the latest result is "no presumption", line 43 shows "With your current answers, the form skips line 43, so this answer won't print." (H44).
+14. **The first gap**, in a `role="status"` region beside Continue that stays mounted, once anything on the page is answered or Continue has been pressed. A gap never holds Continue (H35). The same region says why Continue stayed when the result has just changed (H47).
+
+Nothing is selected on load: no radio, no vehicle, no Vehicle 1 or 2, no "60 or more", no line 43 answer, and no circumstance.
+
+**Line 34, debt by debt (designer's call H33).** Line 34's own Yes or No stays in the form's words. Under its Yes, each line 33 debt gets the per-debt question above, and the cure amount is asked only under that per-debt Yes. Only those debts can print on line 34 (with a cure above $0, H25). *Reason: the form's rows hold only debts on "your primary residence, a vehicle, or other property necessary for your support or the support of your dependents", and § 707(b)(2)(A)(iii)(II) limits the deduction the same way; one Yes for the whole line, then a cure box per debt, would put a boat loan's arrears on line 34 for a filer who answered Yes because of their car. This reads O2's "the cure amount for each debt on Yes" as each debt the form's question covers.* What counts as property "necessary for your support" goes to counsel (C-29).
+
+**Payments left (designer's call H40).** "How many payments are left?" takes a whole number from 0 to 59, or "60 or more"; anything else is a 400. *Reason: payments are counted whole; the form averages over 60 months, so every count from 60 up gives the same figure (min(left, 60), O2), and one choice keeps the filer from counting further than the form needs; 0 means none are left, and the row averages to 0.00.*
+
+**Line 36's product (designer's call H36).** The browser works out {m}% × the payment, half-even to the cent as H3 rounds, while the filer types, and a case file both sides run (`meansProductCases.json`, beside `meansRows.ts`, on the `linkedPaymentCases.json` pattern, `frontend/src/components/wizard/steps/claims/linkedPaymentCases.json`) pins it to the server's figure. *Reason: Continue leaves the page once nothing is missing, so no server reply arrives while the filer is typing; a pinned copy shows the same cents the form prints.*
+
+**Beside line 36's information (designer's call H39).** "Other rules also apply. DigniFi can't tell you whether you can file under chapter 13." sits with the limits and the debt totals. *Reason: the umbrella keeps the limits and the filer's totals (U:541), but side by side they invite a comparison the statute doesn't make (contingent and unliquidated debts, the unsecured part of a partly secured claim); one neutral sentence says the app draws no conclusion. Counsel sees the layout under C-6.*
+
+**Line 43 is asked of every filer the form applies to (designer's call H44).** The page asks line 43 whatever the result, and an unanswered line 43 is a gap for every filer 122A-2 applies to, as are its circumstance gaps under Yes (§8.5); a filer who doesn't want to finish a circumstance can answer No. It prints only where the form reaches it: under line 40's box 2 or line 42's Yes, where the form says "You may fill out Part 4 if you claim special circumstances." Under line 40's box 1 or line 42's No, the form says "Go to Part 5", so line 43 prints blank, as every skipped line does (P2, H16), and the page says so beside it: "With your current answers, the form skips line 43, so this answer won't print." (4.2). The stored answers stay, in case a later edit moves the result. When the arithmetic gives a presumption, the page points to line 43 first: the result at the top links to it (H48), and Continue stays on the page when the result has just changed (H47). *Reason: any answer on the page can move the result, so line 43's answer must already be there whichever way the arithmetic comes out; and the gap list stays a function of the answers alone, with no outcome in it or in its browser copy.* Counsel sees this reading (C-31).
+
+**The guided writing aid (designer's call H45).** Under line 43's Yes, the page lists the circumstances, at most 10, each in a fieldset with the legend "Circumstance {n}" and a "Remove circumstance {n}" button; "Add a circumstance" adds one. Nothing is listed until the filer adds one. Above the circumstances, four information sentences:
+
+- "The law gives two examples of special circumstances. One is a serious medical condition. The other is a call or order to active duty in the Armed Forces." (7.4, as one `copy.ts` string). The two examples are § 707(b)(2)(B)(i)'s own words: "such as a serious medical condition or a call or order to active duty in the Armed Forces". The three sentences are one string on purpose: the first alone scores 9.7, above the limit, and `reading-level.test.ts` scores each string whole.
+- "Line 43 is about your monthly expenses and income now. You can explain your situation in your own words." (5.0; C-30). The second sentence lets a filer tell how their bills built up without suggesting that doing so helps.
+- "DigniFi doesn't say which circumstances apply to you, or whether a court will allow them." (8.4).
+- "A lawyer can tell you how the law applies to your facts." (2.9; C-31). `docs/UPL_COMPLIANCE.md` §III permits it ("Resource direction": "Consult an attorney for personalized advice"), and a filer with a presumption otherwise has no neutral pointer to a lawyer.
+
+Each circumstance asks for the filer's own facts, in four text boxes of at most 450 characters each (four full answers and the labels below make 1,940 characters, so a full draft stays under the explanation's 2,000):
+
+1. "What happened, and when?" (under five words), with "Use your own words." (under five words);
+2. "How does it change your monthly expenses or income?" (5.0), and beside it the amount, labelled with the form's column words "Average monthly expense or income adjustment" (`formText.ts`; $0 allowed);
+3. "What other choices did you look at, and why did they not work?" (3.1). It asks without presuming the answer; the form's "for which there is no reasonable alternative" stays only in line 43's own question;
+4. "What papers will you give your case trustee to show this?" (2.6), since the form says "You must also give your case trustee documentation".
+
+Then the explanation box (at most 2,000 characters, H49), labelled with the form's column words "Give a detailed explanation of the special circumstances" (`formText.ts`), with "Write only what you want the court to read. This box prints with line 43 on Form 122A-2. Edit it until it says what you mean." (0.9). "Prints with line 43" stays true when the skip note shows (H44), since then line 43 doesn't print either. The prompts above never print, so this note sits under the box, not under them. The box starts empty. A button, "Put my answers together" (under five words), with "This puts your answers in the box below, under short headings. Nothing else is added." (3.9), fills it from a fixed template that puts each of the filer's four answers on its own line after its label (a line break inside an answer becomes a space), and leaves out a label whose answer is blank:
+
+```
+What happened: <answer 1>
+How it changes my monthly expenses or income: <answer 2>
+Other choices I looked at: <answer 3>
+Papers I will give my case trustee: <answer 4>
+```
+
+Each label is its own `copy.ts` string, scored alone: "What happened:" is under five words, "How it changes my monthly expenses or income:" scores 6.7, "Other choices I looked at:" 5.2 and "Papers I will give my case trustee:" 2.3. Run together, with no full stop between them, they would score 11.2, so they are never stored as one string. Each label echoes its prompt, and the fourth says "will" as prompt 4 does. The button works only while the box is empty, so it never overwrites the filer's edits; to rebuild the draft, the filer clears the box. No AI runs in 3h2. The explanation that prints is whatever the box holds when the filer saves; the four answers are kept so the filer can come back to them, and nothing prints them. The amount prints beside the explanation, never inside it. No example circumstance appears anywhere but the law's own two, and nothing is pre-selected. Every sentence and label is a draft, in `copy.ts` with `// DRAFT: counsel C-31` (the second information sentence with `// DRAFT: counsel C-30`). *Reason: the form asks for "a detailed explanation" and "documentation", and so does § 707(b)(2)(B)(ii); the aid asks for exactly those, in the filer's own words. Labels add no claim the filer didn't make, and a box that fills only on a press keeps the explanation the filer's own answer (§1, anti-goals).*
+
+**Survival debt (counsel C-30).** Line 43 weighs current monthly expenses and income adjustments, not how past debts arose. The aid's prompts ask about the monthly effect, and the filer may tell how bills built up (medical bills, groceries on a card) in their own words. DigniFi never tells a filer that their circumstances, or the nature of their debts, overcome the presumption. Counsel rules on how the aid may frame this; until then, the page doesn't mention how debts arose at all. Its second information sentence, "You can explain your situation in your own words.", leaves room for that story without suggesting that it helps.
+
+**The rebuttal figure (designer's call H46; Proposal 1).** Beside line 43's circumstances: "Your line 39d is now ${y}." (by the repo's formula, −1.4 as a template and −2.8 with "$131,304.00"; y is never below $10,275.00 while the figure shows, since only a presumption shows it), then "If the court allowed the amounts on line 43, line 39d would be ${x}." (by the repo's formula, 4.0 as a template and 1.5 with "$45,304.00", whose decimal point splits it in two; 3.8 when that figure is counted as one sentence), then "The court decides whether to allow them." (5.7). The first sentence lets the change read as arithmetic. When x is below zero, the second sentence reads "If the court allowed the amounts on line 43, line 39d would be ${|x|} less than $0." (4.4 as a template; 1.5 with "$1,200.00"), never with a minus sign. This is the statute's own test: "The presumption of abuse may only be rebutted if the additional expenses or adjustments to income referred to in clause (i) cause the product of the debtor's current monthly income reduced by the amounts determined under clauses (ii), (iii), and (iv) of subparagraph (A) when multiplied by 60 to be less than the lesser of—" (§ 707(b)(2)(B)(iv)): (I) 25 percent of the nonpriority unsecured claims, or $10,275 (as adjusted), whichever is greater; or (II) $17,150 (as adjusted). So the statute compares x with min(max(25 percent of the nonpriority unsecured claims, $10,275), $17,150), for every filer under a presumption, whichever line 40 box applies. That is not the presumption test's own path. The form leaves lines 41a and 41b blank when 39d is above $17,150 (line 40's box 2), so for that filer the statute's 25 percent figure is on no line of the form. In the middle band, line 41b is 25 percent of line 41a, which reads 106Sum 3b and may leave claims out (C-23). DigniFi names none of these thresholds and runs no comparison on x (C-32).
+
+- **How it is worked out.** An added expense adds to line 39b, and an income adjustment comes off line 39a, so either one lowers line 39c by its amount: x = (line 39c − the sum of the line 43 amounts) × 60. Every amount is in whole cents, so x is exact and needs no rounding. The kind of an amount doesn't change the figure, so no kind is stored (§8.3). A figure below zero reads in words ("… less than $0"), as above, not with a minus sign.
+- **When it shows.** Only when the latest result is a presumption (so the form reaches line 43), line 43 is Yes, at least one circumstance has an amount above $0 (a $0 alone would only repeat line 39d), line 39c is worked out, and the page holds no unsaved edit to an answer above line 43. Otherwise nothing shows, and never when line 39d can't be worked out. The figure is worked out from the last saved line 39c, so while an answer above line 43 has changed and not been saved, the three sentences hide and nothing takes their place. They show again after the next save, which is a press of Continue that keeps the filer on the page (a gap, or a changed result, H35, H47). Typing line 43's own amounts never hides them: the figure follows those amounts as they are typed.
+- **What it never says.** It names no threshold and draws no conclusion. DigniFi works out none of the statute's thresholds above, runs no comparison on x and never says the presumption is overcome or rebutted.
+- **Where it is computed.** The server's pure `rebuttal_figure(line_39c, amounts)` in `means_lines.py` is the one definition. The browser works the figure out while the filer types, from the `line_39c` that the last read or save gave (§8.4), pinned to the server by a case file both sides run (`meansRebuttalCases.json`, beside `meansProductCases.json`, H36). The y of "Your line 39d is now" is that `line_39c` × 60, line 39d as the form prints it.
+- **Line 25.** The form says "You may include expenses you listed in line 25", so a line 43 amount can repeat a line 25 expense. The figure counts every line 43 amount as typed; whether a repeated amount counts again goes to counsel (C-32, R26).
+
+*Reason: Continue can leave the page, so the figure must show while the amounts are typed; and its whole worth is that it is the statute's arithmetic, not a verdict.*
+
+**Continue stays on a new result (designer's call H47, refining H35).** When the PUT's reply carries an outcome different from the one the page showed before the save, Continue stays on the page even with no gap. The page shows the new result at the top and moves focus to it; under a presumption, that includes its link to line 43, and line 43's rebuttal figure. When the page stays for this reason alone, the status region beside Continue (item 14) says why, in the neutral style: "Your result has changed. It is at the top of the page. Press Continue again when you are ready." (2.4; `// DRAFT: counsel C-24`). With a gap left, the region shows the gap instead. The next Continue with no gap and the same outcome goes to `/sofa`. *Reason: line 43 comes last, and the result only arrives in a PUT reply. Without this, a filer who answered everything would never see a presumption on the page: the page would leave for `/sofa` on the same press that first worked it out.*
+
+**The link to line 43 (designer's call H48; Proposal 2).** Under a presumption, on the dashboard and at the top of the page, the outcome's words and the instructions' sentence are followed by the link "Go to line 43, special circumstances" (7.6); "A court makes the final decision." stays last (H21). On the dashboard the link goes to `/means-test#line-43`; on the page it is an in-page link to the same fieldset. When the page opens with `#line-43`, it scrolls line 43's fieldset into view and moves focus to its legend once its read returns. The sidebar shows no link, because inside the wizard the page isn't open to the filer yet, and no other outcome links to line 43. *Reason: the owner's goal is that a filer with a presumption sees where to explain it; the link sits where the result does, and never where it would lead nowhere.*
+
+**Inputs are named for the journeys:** `means_line_3`, `means_line_3_<i>_purpose`, `means_line_3_<i>_amount`, `means_vehicle_<asset id>_claimed`, `means_vehicle_1`, `means_vehicle_2`, `means_line_<n>` (Yes/No of an opt-in, and the amount box of an asked line), `means_line_<n>_amount` (an opt-in's amount), `means_line_25_health`, `means_line_25_disability`, `means_line_25_hsa`, `means_line_25_spends`, `means_line_25_actual`, `means_debt_<debt id>_payments_left`, `means_debt_<debt id>_changes`, `means_debt_<debt id>_total`, `means_debt_<debt id>_taxes`, `means_debt_<debt id>_support` (line 34's per-debt question), `means_debt_<debt id>_cure`, `means_line_34`, `means_line_36`, `means_line_36_payment`, `means_line_43`, and for each circumstance `means_line_43_<i>_happened`, `means_line_43_<i>_change`, `means_line_43_<i>_amount`, `means_line_43_<i>_choice`, `means_line_43_<i>_papers` and `means_line_43_<i>_explanation`, with the buttons "Add a circumstance" and "Put my answers together". Radio groups are fieldsets with legends carrying the required mark; controls are at least 44 px tall; the page is one column at phone width, and it joins the vitest-axe test.
+
+**What the filer sees beside lines (designer's call H27).** O1's information is fixed per line, read from what the filer entered, labelled with where it came from, and never compared or suggested:
+
+| Line | Shown beside it |
+| --- | --- |
+| 16 | Schedule I line 5a (each person); Schedule J line 16 |
+| 17 | Schedule I lines 5b, 5d and 5g (each person) |
+| 18 | Schedule I line 5e (each person); Schedule J line 15 |
+| 19 | Schedule I line 5f (each person); Schedule J line 18 |
+| 21 | Schedule J line 8 |
+| 22 | Schedule J line 11; line 7g |
+| 25 | Schedule I line 5e (each person); Schedule J line 15 |
+| 30 | Schedule J lines 7 and 9; the 5% cap |
+| 31 | Schedule J line 14 |
+
+Each reads like "You entered $1,200.00 on Schedule J line 8." (5.2), naming Schedule I's person ("you" or "your spouse") where both columns apply. *Reason: O1 names these lines; the map follows the forms' own line words, and a fixed map can be pinned by a test.*
+
+**Caps (also H27).** Line 15's cap (the public transportation standard) and line 30's (5% of food and clothing for line 5's count) are worked out on every read from the tables in force, never stored, and a figure above either is a gap, not a 400 (P3). *Reason: a table can change after an answer is saved, as 3g's description fit can.*
+
+**Text that must fit (designer's call H28).** The page takes text in two places: line 3's purposes, here, and line 43's four aid answers and explanation, which H49 measures (§8.4, §9.2). The PUT refuses a purpose that doesn't fit the form's purpose box at 6 pt, measured with `text_fit.fit` as `PDFFormFiller._plan` composes it ("This is too long for the box on Form 122A-2. Shorten it."). Boxes that print stored text link to where that text is entered: a creditor name to the Amounts Owed step, a property name and line 13's vehicle name to the Assets step. *Reason: DIG-480's lesson, a saved answer must never fail at Generate; a name too long for 122A-2's box is fixed where it was typed.*
+
+### 8.3 The records (designer's call H7)
+
+Both are encrypted from the start (U §4.2) and are not intake data: saving them never reopens a completed intake (P1).
+
+- **`MeansTestAnswers`**, one-to-one with the session (`related_name="means_test_answers"`), one encrypted JSON column, as `ClaimAnswers` is: line 3's answer and rows (at most 10); the vehicles claimed (A/B row ids) and Vehicle 1 and Vehicle 2 (row ids); line 15, line 22, lines 25–31 (each `yes`/`no`, and its amount or amounts); lines 16–21 and 23 (amounts); line 25's "actually spend" answer and figure; line 34's answer; line 36's answer and plan payment; line 43's answer (`yes`/`no`) and its circumstances (at most 10, replaced whole by a PUT that carries them, as line 3's rows are), each with the four aid answers, the explanation and the amount; and `debts_answered_on`, the day a per-debt answer last changed (H34). Null means unanswered. No circumstance stores whether it is an expense or an income adjustment: the arithmetic doesn't need it (H46), and the filer says which in their own words.
+- **`SecuredDebtAnswers`**, one-to-one with a `DebtInfo` (`on_delete=CASCADE`, so a deleted debt takes its answers): payments left (0–59 or `60_or_more`, H40), "will the payment change" (`yes`/`no`), the 60-month total, "does payment include taxes or insurance" (`yes`/`no`), line 34's per-debt answer (`yes`/`no`, H33) and the cure amount, every column encrypted.
+
+A secured debt added later has no answers, so `requires()` refuses and links to the page. A vehicle id that no longer names a row of the session reads as no answer.
+
+**Answers that age (designer's call H34).** Payments left, a typed 60-month total and a cure amount are true on the day the filer gives them, and the forms work the lines out again on every fill date (H19). So a PUT stamps `debts_answered_on` with `fill_date()` (the day in America/Chicago, never `date.today()`) only when it changes the value of at least one per-debt answer, compared under the lock with what is stored, much as Continue on the Income step stamps `income_period_end`. A per-debt answer sent with the value already stored changes nothing, so a Continue that sends every answer again (H35), for example after following the link to line 43 (H48), never clears the notice below unseen. When that day's month differs from the fill date's month, the dashboard (from the packet reply's `means_debts_answered`: `{answered_on, now}`, or null when 122A-2 isn't in the packet or no per-debt answer is stored) and the top of the page show a neutral notice (the dashboard's with a link to the page; the page's with none, since the filer is already there): "You answered the questions about your secured debts in {Month Year}. If you've made payments since, check your answers on the Form 122A-2 page." (5.8 with "October 2026"; 4.9 as a template). The calculator keeps using the stored answers. *Reason: O2's "How many payments are left?" stays as the owner approved it; for Priya, 37 against 35 payments left moves line 13b by $15 a month and 39d by $900, so a month's drift can matter near a band edge, and the Income step already handles drift this way.* Amounts are `DecimalField(12, 2)` on the serializer, at or above 0. *Reason: not new `DebtInfo` columns, because these answers are not intake data and must not reopen a completed intake; a one-to-one with cascade gives each debt exactly one set of answers and drops them with it.*
+
+### 8.4 The endpoint
+
+`GET` and `PUT /api/intake/sessions/{id}/means-test/`, an `@action` on the session viewset like `filing-fee` and `exemptions` (`apps/intake/views.py:580`, `:604`), for a session in any status:
+
+- **GET** returns:
+  - `applies`: whether 122A-2 applies, from `is_above_median` on the means test worked out again (as the packet list does for a completed intake), or null with `applies_gap` (the Income step gap's sentence, or the median's missing-table sentence). Working it out again saves `MeansTest` outside the session lock, as the packet GET already does;
+  - the answers, `debts_answered_on` and the fill date (H34), and each counted secured debt by id with its creditor, its property's name, its monthly payment, its line (`9b`, `13b`, `13e`, `33d`, worked out from the saved vehicle answers) and its answers;
+  - the vehicles by A/B row id and name, each with whether it has a loan or a lease;
+  - `information`: the Schedule I and J figures of H27, line 7g, line 8, the two caps, line 29's per-child figure, the § 109(e) limits, the debt totals, the multiplier, under a stored plan payment the product, and `line_39c` (null when it can't be worked out), from which the browser works out line 43's rebuttal figure (H46); or null with `information_gap` when a table is missing;
+  - `outcome`, `family_size` and `tables_gap`, which the page shows at the top (§8.6).
+- **PUT** takes the answers and the per-debt answers and sets only the keys sent, in this order: `get_object()` first (another user's session is a 404); then the shape checks that read nothing stored (keys, choices, amounts, the payments-left range, a line 3 purpose's fit, at most 10 line 3 rows, and line 43: at most 10 circumstances, each aid answer at most 450 characters, each explanation at most 2,000 characters and printable whole within line 43's sheet budget, H49; an explanation that is blank once trimmed is stored as null); then `lock_session` inside `transaction.atomic()`; then, under the lock, the checks that read stored rows (each debt id is one of this session's counted secured debts, each vehicle id one of its vehicles, Vehicle 1 isn't Vehicle 2 once merged with the stored choice); then the write, which stamps `debts_answered_on` only when a per-debt answer's value changes (H34). *Reason: CLAUDE.md's rule, lock before reading anything the write depends on; a debts PATCH between a check and the write could delete a debt (and its answers, by cascade).* It never calls `reopen()`, and replies with the GET body, so a Continue that stays on the page shows the new result and gap (H35). Line 3's rows and line 43's circumstances carry a browser-only `_key` (`new-<n>` from a counter in the page, never `crypto.randomUUID()`), which stays out of the request.
+- **A 400** for an unknown key; an answer outside its choices; a negative amount or one too wide for `DecimalField(12, 2)`; payments left outside 0–59 and `60_or_more`; a debt id that isn't one of this session's counted secured debts; a vehicle id that isn't one of its vehicles; Vehicle 1 equal to Vehicle 2; a line 3 purpose that doesn't fit (H28); more than 10 line 3 rows; more than 10 line 43 circumstances; a line 43 aid answer over 450 characters; a line 43 explanation over 2,000 characters, or one that doesn't print whole within the sheet's budget (H49).
+- The lock test's `WRITES` (`test_session_lock.py:547`, marker `postgres`) gains the PUT.
+
+**The browser's copy of the grouping (also H26).** Which line a debt goes on depends on the vehicle answers the filer is still changing. A small `meansRows.ts` copies the server's grouping, pinned by a case file both sides run (the `linkedPaymentCases.json` pattern), so the taxes-or-insurance question shows for exactly the line 33d debts. It copies the grouping only, never the comparison. The product of line 36 has its own pinned copy (H36).
+
+### 8.5 The gaps and the gate
+
+`means_test_gaps(session, …)` in a new pure module (for example `apps/intake/means_test.py`; no model imported; it reads the session's relations by attribute, as `exemption_gaps` does) returns every gap in page order. `frontend/src/pages/meansTest/meansTestGaps.ts` copies it, and a backend test pins its sentences to the server's (the `test_exemption_copy.py` pattern). Each sentence is in `copy.ts` with `// DRAFT: counsel C-24`:
+
+| Gap | Sentence | Grade |
+| --- | --- | --- |
+| Line 3 unanswered (married, living together) | "Answer line 3, about your spouse's income." | 4.0 |
+| Line 3 Yes with no row | "Add each use of your spouse's income on line 3, or change the answer to No." | 3.9 |
+| A line 3 row missing a purpose or an amount | "Enter what your spouse's income was used for, and the amount, on each row of line 3." | 5.6 |
+| A vehicle unanswered | "Answer whether you claim an expense for {name}." | 4.8 |
+| Vehicle 1 or 2 not chosen | "Choose your Vehicle 1 and your Vehicle 2." | 6.4 |
+| Line 15 unanswered / Yes with no amount / above its cap | "Answer the question on line 15." / "Enter the amount for line 15." / "Line 15 can't be more than ${cap}, the IRS amount for public transportation." | 2.9 / 2.9 / 3.5 |
+| Lines 16–21, 23 unanswered | "Enter the amount for line {n}. Enter 0 if you have none." | 1.7 |
+| An opt-in unanswered / Yes with no amount | "Answer line {n}." / "Enter the amount for line {n}." | 2.9 / 2.9 |
+| Line 25's amounts / "actually spend" / its figure | "Enter the three amounts on line 25." / "Answer whether you actually spend the line 25 total." / "Enter how much you actually spend, on line 25." | 2.5 / 6.7 / 3.8 |
+| Line 30 above its cap | "Line 30 can't be more than ${cap}, which is 5% of the IRS food and clothing amounts for {n} people." | 1.6 |
+| A debt's payments left / change / 60-month total | "Enter how many payments you have left to {name}." / "Answer whether your payment to {name} will change." / "Enter the total you will owe {name} in the 60 months after you file." | 6.9 / 7.2 / 7.6 |
+| A line 33d debt's taxes or insurance | "Say if the payment to {name} pays for taxes or insurance too." | 7.6 |
+| Line 34 unanswered / a debt's per-debt question under Yes (H33) / a cure amount under that debt's Yes | "Answer line 34, about debts secured by property you need for support." / "Say if your debt to {name} is secured by property you need for support." / "Enter the cure amount for {name}. Enter 0 if there is none." | 8.0 / 8.4 (5.9 as a template) / 4.2 |
+| Line 36 unanswered / Yes with no payment | "Answer line 36." / "Enter the projected monthly plan payment on line 36." | 2.9 / 6.7 |
+| Line 43 unanswered (every filer 122A-2 applies to, H44) | "Answer the question on line 43." | 2.9 |
+| Line 43 Yes with no circumstance | "Add each special circumstance on line 43, or change the answer to No." | 4.8 |
+| A circumstance with no explanation (none, or one blank once trimmed) / no amount | "Give the explanation for circumstance {n} on line 43." / "Enter the average monthly amount for circumstance {n} on line 43. Enter 0 if there is none." | 6.7 (7.4 with "2") / 5.4 (5.7 with "2") |
+
+Grades are scored with "Honda CR-V EX 2021" or "Kestrel Auto Finance" for `{name}`; the builder scores each as a template. A circumstance's four aid answers are never gaps: only its explanation and its amount are, since only those print. An explanation counts as given only when it is not blank once trimmed, as 103B's line 5 is (`blank`, `registry.py:129-130`): in this gap list, in its browser copy and in the calculator's missing-line test (§6), so a row of spaces never prints as a blank sheet row beside its pointer. `{name}` is the vehicle's name (the 3g item-name function, `exemption_item_name`) or the debt's creditor.
+
+**The gate.** 122A-2's `requires()` refuses, in order: a missing table (H23); then the first gap, as `PreconditionMissing(<sentence>, page="/means-test")` (a literal, as `test_rule_fixes.py` reads it); then, once no gap stands and until 3h3: "You've answered the questions for Form 122A-2, but DigniFi can't print that form yet. Form 122A-1 waits for it. File the two forms together." (3.2), with no link (H5). This last step also stands in for 3h3's missing-line step (§6), since it refuses whatever the calculator holds. Line 43's gaps are part of the page's gaps, so 122A-2's `requires()` refuses them like every other page question: the form asks it. 122A-1 runs the same path and raises the same (O5, §7.6). Complete is unchanged: the page's answers are not intake data (U:121-123).
+
+### 8.6 The result after 3h2
+
+The calculator now reads the page's answers. While an input under line 39d is missing (or, in the middle band, an input under line 41b), the outcome is "can't be worked out yet", in O4's full words with the placeholder filled (§2): in the sidebar "…on the Form 122A-2 page, after you finish your intake."; on the dashboard "…on the Form 122A-2 page." with a link to it; at the top of the page "…on the Form 122A-2 page." with no link, since the filer is already there. Once those inputs are answered, the outcome is the form's arithmetic. Line 43 never drives the outcome: unanswered, or with a circumstance gap, it is a page gap that holds both forms (§8.5), but it leaves a worked-out outcome as it is, so H47's premise holds (the result arrives with the PUT that answers the last input under 39d). It shows in the three places H37 names: the sidebar, the dashboard beside O5's notice, and the top of the page, from the GET and from each PUT's reply, so a Continue that stays on the page shows the result as it now stands (and a Continue that changes the result stays on the page, H47). Under a presumption, the dashboard and the top of the page add the link to line 43 before the closing sentence; the sidebar doesn't (H48). Every one ends "A court makes the final decision." and uses the neutral style (§7.4). Line 43's answers never change the result (§1).
+
+### 8.7 Seed, builders, briefs and journeys
+
+- `seed_demo_data` writes Priya's `MeansTestAnswers` and her Kestrel loan's `SecuredDebtAnswers` (Appendix A; the answers drafted here are marked there, H38), with `debts_answered_on` stamped from `fill_date()`, so a fresh seed shows no stale-answers notice. The other personas get none: 122A-2 doesn't apply to them. Personas seeded before 3h2 have no answers, so Priya's 122A-2 and 122A-1 refuse with the page's first gap: re-create her with `seed_demo_data --reset`.
+- `apps/intake/tests/builders.py` gains `answer_means_test` (every asked line $0, every opt-in No, no vehicle claimed, each secured debt "60 or more" with no change and taxes No, line 34 No, line 36 No, line 43 No), so tests of an above-median session can reach the gate's last step. These are test answers, not defaults the app ever offers.
+- Priya's brief (`docs/testing/persona-briefs/priya-sharma.md`) gains her 122A-2 answers, line 43's No among them, so no brief runs ahead of its seed.
+- A new page object, `e2e/pages/means-test.page.ts`, waits for the h1 and answers from the persona's fixture. `exemptions.page.ts`'s final `waitForURL('**/sofa')` still holds for a below-median filer, since the page replaces itself. Priya's journey walks on from `/filing-fee` through `/exemptions` and the page to `/sofa`: her first Continue with every answer given changes the result, so the page stays and shows her presumption with its link to line 43, and the status sentence beside Continue (H47, H48); the page object checks all three, then presses Continue again. Andrés's journey asserts that the page never shows (PS:1407).
+
+### 8.8 Personas (3h2)
+
+Only Priya changes: her result is worked out as "The form's arithmetic gives: There is a presumption of abuse.", then the instructions' sentence, then "A court makes the final decision.", in the sidebar, on her dashboard beside O5's notice and at the top of the page; on the dashboard and the page, the link "Go to line 43, special circumstances" sits before the closing sentence (H48). She answers line 43 No (H38), so no rebuttal figure shows: beyond her result and its link, the page shows only the status sentence after her first Continue (H47). Her 122A-1 and 122A-2 refuse with the "can't print yet" sentence. The others' sidebar, page (never shown) and packet stay as in 3h1.
+
+### 8.9 Tests (3h2)
+
+- **Records and endpoint:** each column is ciphertext in a raw SQL read; every 400 above; only the keys sent change; a debt's answers go with the debt; a foreign debt or vehicle id is a 400; the id and merged checks run under the lock (a debt deleted by a PATCH that holds the lock first is a 400, never a 500); the PUT locks (postgres test), never reopens a completed intake, and is a 404 on another user's session; a PUT that changes a per-debt answer stamps `debts_answered_on` from `fill_date()`, and `a_continue_that_changes_no_debt_answer_keeps_the_stale_notice`: a PUT that sends every per-debt answer with its stored value, or none, leaves it; an explanation blank once trimmed is stored as null.
+- **Gaps and gate:** each gap and its order; the `page="/means-test"` refusal for 122A-2 and the same for 122A-1; the "can't print yet" refusal once answered; a secured debt added after the page was answered raises its gap; line 15 and line 30 above their caps hold the page and pass at the cap; under line 34's Yes, a debt answered No to the per-debt question asks no cure and prints no row, and an unanswered one is a gap; the dashboard links "Go to Form 122A-2: Chapter 7 Means Test Calculation", and the pending 122A-2 card's "Answer Questions" (and 122A-1's, while held) goes to `/means-test`.
+- **The browser's copies:** the grouping case file passes on both sides, including a debt that moves from 13b to 33d when Vehicle 1 changes; the product case file passes on both sides, including a half-cent case.
+- **The invariant:** `an_above_median_filers_122a1_and_122a2_never_print_incomplete` (§6), with 3h2's cases: both forms refuse with the page's first gap, line 43's gaps among them (line 43 unanswered; line 43 Yes with a circumstance missing its explanation or its amount), and, once no gap stands, with the "can't print yet" sentence; the stale-row, median-flip and H52 cases carry on from 3h1.
+- **The result:** `priyas_seeded_answers_work_out_a_presumption`, end to end from the seed; the outcome turns from `cannot_work_out` to the comparison's result as the last input under line 39d is answered; `an_unanswered_line_43_leaves_a_worked_out_result_as_it_is` (with every input under 39d given and line 43 unanswered, the outcome is the comparison's result, and both forms still refuse with line 43's gap); the packet reply and the page's GET and PUT carry it; the dashboard and the page show it in the neutral style, ending with the closing sentence.
+- **Stale answers:** `answers_saved_in_an_earlier_month_show_a_notice`: with `debts_answered_on` in October and the fill date in November, the packet reply's `means_debts_answered` differs by month and the dashboard shows the notice with its link and the page shows it without one; in the same month they show nothing; the calculator's figures don't change either way.
+- **Page (vitest):** nothing selected on load; the page replaces itself with `/sofa` when the form doesn't apply; line 3 shows only for a married filer living together; line 15 only with a vehicle claimed; the Vehicle 1/2 choice only with more than two claimed vehicles with a loan or lease; the 33d question only on line 33d debts; line 34's per-debt question only under line 34's Yes, and its cure only under the per-debt Yes; the information beside each line names its source; `continue_saves_what_is_answered_and_stays_on_a_gap` (with a gap, Continue sends the PUT, stays and shows the first gap; with none, it goes to `/sofa`); a gap never disables Continue; the product shows as the payment is typed; the exemptions page continues to `/means-test`; the page renders `UPL_WIZARD_DISCLAIMER` in its `role="note"`, as `FilingFeePage.test.tsx:121` checks the filing-fee page; no label or aria text on the page says "overcome", "rebut" or "rebuttal" (§1).
+- **Copy:** the gap sentences and the page's sentences join `upl-means-test-copy.test.ts` and the reading-level test; "chapter 13" appears only in line 36's information.
+- **Line 43** (item by item, each named for what it protects):
+  - `line_43_never_changes_a_box_or_the_result`: for a presumption case and a middle-band case, answering line 43 Yes with amounts large enough to bring the rebuttal figure below $10,275 leaves the outcome and the line record's line 40, line 42 and page 1 boxes exactly as they were (3h3 repeats it on the printed page, §9.4).
+  - `the_rebuttal_figure_is_the_arithmetic_with_line_43s_amounts`: on the server and through the shared case file in the browser, x equals (line 39c − the sum of the amounts) × 60 to the cent, for one amount, several, a $0 amount beside others and a sum larger than 39c, which reads "… less than $0" with no minus sign; "Your line 39d is now" shows line 39c × 60 beside it.
+  - `the_rebuttal_figure_never_shows_without_line_39d`: nothing shows when line 39c can't be worked out, under line 43's No, with no amount above $0 (a $0 amount alone shows nothing), or when the result isn't a presumption.
+  - `the_rebuttal_figure_hides_while_answers_above_line_43_are_unsaved` (vitest): after an edit to line 16, say, the three sentences hide; typing a line 43 amount doesn't hide them; they show again once a Continue that stays on the page has saved.
+  - `no_line_43_copy_says_rebut_overcome_or_abuse`: no DigniFi sentence on line 43 (the information, the prompts, the labels, the gaps, the rebuttal sentences, the skip note, the link) contains "rebut" (so "rebuttal" too), "overcome" or "abuse"; only `formText.ts`'s quotations of the form and the instructions may. The same list keeps §7.9's rule that "presumption" appears only in the worked-out outcomes and O8's sentence.
+  - `nothing_on_line_43_is_preselected`: on load, neither of line 43's radios is checked and no circumstance is listed; the explanation box is empty until "Put my answers together" is pressed.
+  - `the_assembled_draft_holds_only_the_filers_words_and_the_labels`: the draft, with the filer's four answers taken out, leaves exactly the template's labels and line breaks, in order; a blank answer leaves out its label; the button does nothing while the box holds text.
+  - `line_43_is_a_gap_for_every_filer_the_form_applies_to`: unanswered, it holds 122A-2 for a presumption case and a no-presumption case alike; under the no-presumption result the page shows the skip note; an explanation of spaces and line breaks is a gap, on the server and in the browser's copy.
+  - `a_new_result_keeps_the_filer_on_the_page` (vitest, H47): with no gap, a Continue whose reply changes the outcome stays on the page, shows the new result (with its link to line 43 under a presumption) and shows "Your result has changed. It is at the top of the page. Press Continue again when you are ready." beside Continue; the next Continue goes to `/sofa`. So a filer with a presumption can't leave the page without seeing the result and the link.
+  - `the_link_to_line_43_shows_only_with_a_presumption`: on the dashboard and the page, before the closing sentence, and never in the sidebar; `/means-test#line-43` focuses line 43's legend.
+  - The PUT's line 43 400s (§8.4), including an explanation that would run past the sheet's 36-line budget; and `the_longest_aid_draft_saves`: four 450-character answers of ordinary prose, put together, save.
+- **Journeys:** all eight pass; Priya's walks the page and answers line 43 No.
+
+### 8.10 CLAUDE.md and docs (3h2)
+
+A new gotcha, "The 122A-2 page": the route, its records (not intake data, never reopens), the endpoint and its lock order, the gate, Continue always saving (and staying on a new result, with the status sentence), the stale-answers stamp (only when a per-debt answer changes), the grouping, product and rebuttal copies, line 43 (asked of every filer the form applies to, never changing a box, the aid's draft only on a press, no AI in 3h2), the input names E2E depends on, and the rule that no answer is pre-selected. "Seed order" says to re-create Priya after 3h2.
+
+### 8.11 Hand-off to 3h3 and 3h4
+
+The "can't print yet" step of the gate waits for the schema. Priya's journey stops at `/sofa`. Line 43's answers wait for the schema to print them (H49). The explanation box and its four aid answers wait for 3h4's polish, which reads the box and never the answers on their own (§9A, H51).
+
+## 9. 3h3: the printed form
+
+### 9.1 What it delivers
+
+1. Every one of 122A-2's 198 widgets accounted for: bound to its line, or blank on purpose with its reason (§10). Line 43's ten widgets (`CheckBox16`'s two and its four rows' eight boxes) are bound now, not kept blank.
+2. Rows past the form's boxes on an attached sheet, and every line 43 explanation on line 43's own sheet (H49).
+3. The result ticks from the one comparison.
+4. Priya's full 122A-2, checked by hand, as the oracle's tier 3 case.
+5. Priya's journey to the dashboard, where Generate All makes 16 forms.
+6. The hold lifts: 122A-2's `requires()` is a missing table, then the page's gaps, then the missing-line step (§6); 122A-1 runs 122A-2's whole path, `check()` included, and follows it (§7.6).
+7. **Mark as Filed ties the pair (O7; designer's call H43).** For an above-median filer, pressing Mark as Filed on 122A-1 or 122A-2 while the other form is unfiled or has no row shows, inside the card (never a browser dialog), "These two forms go together. Mark both as filed?" (1.9; `// DRAFT: counsel C-24`) with "Mark both as filed" and "Cancel". "Cancel" marks neither. The confirm sends one pair action, and the server holds the tie:
+   - **The pair action**, for example `POST /api/forms/mark_pair_filed/` with `{session_id}` (`detail=False`, as `generate_all` is). Ownership is checked as `generate` and `generate_all` check it (`_session_or_error`, `forms/views.py:123`: no session id is a 400, another user's session a 404). Then, in one `transaction.atomic()`: `lock_session` first; `_prepare` once; then each form of the pair not yet filed is resolved and checked on H42's path (`_resolve`, then `check()`), both before any write; then the writes, each an update conditional on the row's status (not filed) that must change exactly one row, storing the form's fresh checked document with `filed`. A partner with no row gets one (`get_or_create`) holding its fresh checked document. A form already filed is left as it is. If anything refuses, nothing is written and neither row changes, so the pair is never half filed. A refusal of `_prepare` is whole-call (`{error}` with its `step` or `page`, and no `form_type`); a form's own refusal names that form (`form_type`, with its `step` or `page`). The dashboard shows it through `handleMarkFiled`'s catch (§7.6): on the card of the form it names, or, for a whole-call refusal, on the card pressed.
+   - **The per-row Mark as Filed holds the tie.** From 3h3, on H42's path for 122A-1 or 122A-2, after `_prepare` (whose refusal comes first) and before `_resolve`, it refuses one form of the pair for an above-median filer (122A-2 in the packet) while the other form is unfiled or has no row: "File Form 122A-1 and Form 122A-2 together." (4.0; `// DRAFT: counsel C-24`), with no link (H32). The card uses the pair action; this refusal catches a card whose copy of the packet is stale, for example after the filer crossed the median in another tab.
+   - **A partner already filed.** When the other form is already filed, the per-row path marks this one alone, H42's checks included. If the filed partner disagrees, the card's confirm first shows the partner's notice under the partner form's name, so the filer sees the mismatch before marking: H52's notice for a filed 122A-1 that doesn't point to Form 122A-2, or O11's 122A-2 notice for a flagged 122A-2 (H50). It then offers "Mark as filed" and "Cancel". Otherwise it marks alone with no confirm. Nothing un-files a row (O11).
+   - **Generate can't un-file a row.** `_generate_and_persist` checks for a filed row (`forms/views.py:246`), then saves `status="generated"` unconditionally (`:250-256`), so a Generate All already running could un-file a form just marked filed and leave the pair half filed. 3h3 makes that save conditional on the row not being filed: an update that changes no row raises `FormIsFiled`, as if the filed row had been seen first. Every form shares the function, so every form gains this; it only enforces DIG-155's rule that a filed form keeps what it stored.
+
+   Downloads stay separate, and O5's notice still shows. The pair action joins `test_session_lock.py`'s `WRITES` (marker `postgres`). *Reason for H43: the owner chose (b) as described to him ("explains that the two go together, asks once, then marks both"); an in-card confirm follows the app's rule against browser dialogs; one action in one transaction keeps the two marks together; and only a server rule holds the tie when the card's copy of the packet is stale.* Tests: `marking_one_of_the_pair_filed_marks_both_or_neither`; `the_per_row_mark_refuses_one_form_of_the_pair` (and marks a form alone once its partner is filed); `the_pair_action_creates_a_missing_partner_row` (after a single Generate of 122A-1 left 122A-2 with no row); `a_refusal_of_either_form_leaves_both_rows_unchanged` (122A-1's refusal, then 122A-2's); `a_running_generate_never_unfiles_a_row` (the conditional save); and the two partner-already-filed cases with their notices (§6, H52).
+
+### 9.2 The schema
+
+**A tool writes it (designer's call H29).** `data/forms/field_index/tools/build_form_122a2.py` writes `form_122a2.json` and its rows in `step2_verification.json` ("change the tool, not the JSON"), as the claims, A/B, List of Creditors and Schedule C tools do; a byte test compares its output with the files. Each binding of a filer's answer is `source: asked` with `legal_review: true`, so the resolver's UPL guard keeps an unanswered box blank. *Reason: about 190 bindings and their audit rows are too many to keep in step by hand.*
+
+**A namespace for the means test (designer's call H1).** `means.` joins `_BINDING_NAMESPACES` (`apps/forms/schema.py:277`), the sheet-column pattern `_LIST_BINDING` (`schema.py:775-777`) and `binding_fix` (`fill_resolver.py:580-605`). Scalars bind `means.line_<n>`; the row lists bind `means.line_3[]`, `means.line_9b[]`, `means.line_13b[]`, `means.line_13e[]`, `means.line_33d[]` and `means.line_34[]`, each with its cells, and line 43's sheet binds `means.line_43[]` (H49). The engine work this needs, by name:
+
+- `resolve_binding` (`fill_resolver.py:439`) gains a `means.` branch, `means.line_43[].<attr>` included; today an unknown namespace raises `ValueError`, which is a 500.
+- A statement group's columns may bind only `income.statement[].<attr>` today (`_STATEMENT_BINDING`, `schema.py:774`, checked at `:658-667`); E007 widens to accept `means.line_43[].explanation` and `means.line_43[].amount` too, and `_LIST_BINDING` (`schema.py:775-777`) gains the `means.` lists.
+- `resolve_parts`' one-read stack (`with one_read_of_assets(), one_read_of_claims(), one_read_of_exemptions():`, `fill_resolver.py:911`) gains `one_read_of_means()`, so the calculator's result is read once per resolve and never stored on the session (H19).
+- `binding_fix` gives a `means.` binding its fix by attribute, as it already branches inside `claims.`: a row's creditor cell → the `debts` step; a row's property cell and line 13's vehicle-name box → the `assets` step; every other `means.` binding → `{"page": "/means-test"}` (H28).
+- Tier 1 gains `test_every_means_binding_reads_what_it_names`, as `assets.`, `claims.` and `exemptions.` have (`test_oracle_tier1.py:363`, `:458`, `:524`), because E007 checks only a binding's namespace, so a misspelled `means.` attribute would pass startup and fail at Generate. Line 1 keeps its `cmi` rule. The engine refuses `totals` on a sheet group, so every total that includes sheet rows (3, 9b, 13b, 13e, 33e, 34) is a scalar the calculator works out over every row. Copies of an extra page don't fit: pages 1, 3, 4 and 7 carry unrelated lines that a copy would reprint, so rows go only on a sheet. *Reason: the engine's existing pattern for a new kind of row.*
+
+**The sheets (designer's call H30).** Each row group has a `sheet` and a `number` that names the form's line, as the form's page 1 asks ("Include the line number to which the additional information applies"): "3.{n}", "9b.{n}", "13b.{n}", "13e.{n}", "33d.{n}" and "34.{n}", the numbering going on from the last box's row (so line 9b's fourth row prints as "9b.4"). The sheet's columns are each group's cells (33d's taxes-or-insurance cell prints the form's "No" or "Yes"). The form's own capacities: line 3, 3 rows; 9b, 3; 13b, 2; 13e, 2; 33d, 3; 34, 3. The 9b, 13b, 13e, 33d and 34 sheets set `line_width` to at least 46 pt (`SheetSpec.line_width`, `schema.py:101`, stored on the part), with that column and every other column within 504 pt: E007 measures row 9999's label in the line column, and at the default 36 pt (32 pt inside its padding) "9b.9999" and "34.9999" are 36.14 pt and "13b.9999", "13e.9999" and "33d.9999" are 41.70 pt wide in Helvetica at 10 pt; line 3's "3.9999" (30.58 pt) fits the default. With line 43's sheet (H49), 122A-2 has seven sheet groups; its "43.9999" is 36.14 pt, as "34.9999" is, so it too sets `line_width` to at least 46 pt. *Reason: the sheet header already gives the filer's name and a blank case number, as the form asks; the widths are measured, so they are not left to the builder.*
+
+**Line 43 prints on one sheet (designer's call H49).** Each of line 43's four explanation boxes (`undefined_113`, `undefined_115`, `undefined_117`, `undefined_119`) is one line, 307.5 × 13.8 pt, with no multiline flag. At 10 pt it holds about 67 characters of prose, and at 6 pt, the smallest `fit` goes, about 112 (measured in Helvetica with PyMuPDF on a sample explanation); a detailed explanation almost never fits, and the engine can't move a value too long for a box onto a sheet (`check()` raises `ValueTooLong`). So:
+
+- **Every explanation prints in full on one sheet,** a statement group `means_line_43` (a `sheet` and no slots, as Schedule I's `i_line_8a` is), whose columns bind `means.line_43[].explanation` and `means.line_43[].amount`, labelled with the form's own column words, "Give a detailed explanation of the special circumstances" and "Average monthly expense or income adjustment". Its title is "Official Form 122A-2, Chapter 7 Means Test Calculation, line 43" (the sheets' "Official Form …, line …" pattern), its rows are numbered "43.{n}" in the filer's order, and `line_width` is at least 46 pt. Every circumstance is on it, the first four included, so the explanations are in one place.
+- **The four rows on the form** bind scalars: for circumstance *n* (1 to 4), the explanation box prints "See line 43.{n} on the attached sheet." (scored as "See line 43.1 on the attached sheet.": 1.3 by the repo's formula, which reads the point in "43.1" as a sentence break; 0.9 as the template with "{n}") and the amount box prints the amount. The pointer is a fixed string in the resolver, beside the sheet header's own words; it fits the box at 10 pt (160 pt). Circumstances past the fourth are on the sheet only, with their amounts. Line 43 has no total.
+- **The PUT closes both refusals the sheet could raise** (DIG-480's lesson, a saved answer must never fail at Generate): it refuses an explanation with a letter the form's font can't print ("Form 122A-2 can't print a letter or mark in this explanation. Change or remove it.", 3.0), a word wider than the explanation column, or a row taller than one sheet page, since a sheet row never splits across pages (`sheets.plan_sheet`): "This explanation is too long for one page of the attached sheet. Shorten it." (4.0). It measures with the sheet's own line breaking (`sheets._lines`, `prints_whole`) at the explanation column's inner width. That width is a constant 3h2 defines, and 3h3's tool writes the same figure into the schema, with a test that they agree. With an explanation column of about 362 pt (a 96 pt amount column and a 46 pt line column make 504 pt), a page has room for about 42 lines under a one-line name, and about 40 when the filer's name wraps to three lines, since the header's height depends on the name. So the PUT measures against a fixed budget of **36 lines**, below the smallest room any page leaves, and a later change to the filer's name never makes a saved explanation fail at Generate. 36 lines hold about 2,800 characters of prose; the 2,000-character cap leaves room for line breaks, and the measurement refuses the rest. The longest draft the aid builds from four 450-character answers of ordinary prose saves (a test); a draft of unusually wide letters can still be refused, and the page then shows the fit sentence beside the box.
+- **Under line 43's No**, and wherever the form skips line 43 (H44), circumstances may still be stored (H44 keeps them), so the resolver gives `means.line_43[]` as `[]` and the four rows' scalars as blank unless line 43 is Yes and the form reaches it. The pointer and amount scalars and `means.line_43[]` read that test from one shared helper (for example `line_43_prints(lines)` in `means_lines.py`), since the sheet prints only while its list is not empty (`fill_resolver.py:1035-1037`): two separate tests could drift and print pointers with no sheet. The statement group then has no rows, and no line 43 sheet prints.
+
+*Reason: the form demands "a detailed explanation" and gives one line for it, and its page 1 says "If more space is needed, attach a separate sheet to this form. Include the line number to which the additional information applies." One sheet, numbered by the form's line, keeps every explanation whole and in one place, and the engine already prints statement sheets.*
+
+**The forms recompute (designer's call H19).** No form reads a stored line value: Generate, Generate All, Regenerate and every unfiled download work the lines out again, as the median is today. A form marked filed keeps what it stored; for 122A-1 and 122A-2, that is the document worked out when it was marked filed (H42). *Reason: a stale stored figure must never print.* A 122A-2, or a 122A-1 with box 2, marked filed before 3h keeps printing what it stored, with its card's notice (O11, H50, §7.6).
+
+**The old bindings.** Lines 19 and 21's Schedule J bindings (`undefined_51` ← `schedule_j_support_paid`, `undefined_53` ← `schedule_j_childcare`) go, with their tier 2 rows; the asked lines take the boxes (O1). `test_form_122a2_schema.py`'s `test_lines_left_for_step_3_print_nothing` (`:117`) is replaced on purpose.
+
+### 9.3 What prints
+
+§10 gives every unit's print rule. In short: a declined opt-in prints blank; an answered $0 prints 0.00; a skipped line prints blank; totals print (P2). Checkbox states follow the template's own names, including the odd ones (`CheckBox6`'s "2 or more" is `On`; `CheckBox14`'s middle band is `On`; `CheckBox5`, `CheckBox7` and `CheckBox10`'s Yes is `On`), and page 1's `CheckBox1` uses 122A-1's spelling of the same states, `/No Abuse` and `/Presumption of abuse applies`. Line 43's `CheckBox16` has `No` (p9 T8) and `Yes` (p9 T9), checked in the field index and on the template. The startup checks (forms.E004, E005) refuse a wrong map. Page 1's box, line 40's and line 42's follow the arithmetic alone; line 43 never changes them (§1).
+
+### 9.4 Tests (3h3)
+
+- **Schema:** the tool's byte test; `manage.py check` passes; every widget is bound or on the blank-on-purpose list, and a test proves the two lists cover all 198.
+- **Tier 1** draws and reads every new binding in its own widget, including both checkbox states of each box; `test_every_means_binding_reads_what_it_names` resolves every `means.` binding against a session that fills it.
+- **Fixes:** a creditor cell's refusal links to `debts`; a property cell's and line 13's vehicle name's to `assets`; every other `means.` box's to `/means-test`.
+- **Tier 2** gains a row per binding; `ASSERTED_CASES` (`test_oracle_tier2.py`) moves to what the run shows, explained in its comment.
+- **Tier 3:** Priya's 122A-2 as Appendix A gives it, every printed box and every blank one; her 122A-1 back on the full path (`build_field_values`), with box 2 ticked.
+- **Rows:** each row box by a test with distinct values per row, so a swapped box fails (3d2's lesson); for each group, one row past capacity prints on the sheet with its line number, and the line's total includes it (U:567).
+- **Print rules:** a declined opt-in prints blank; an asked line at $0 prints 0.00; each branch skip of H16 prints blank; line 34 prints a row only for a debt answered Yes to its per-debt question with a cure above $0; line 3's total prints 0.00 under line 2's No; a negative 39c prints with a minus sign and ticks line 40's box `1`; lines 41a–42 print only in the middle band; line 25's total prints in both of its boxes; the multiplier prints as the list gives it.
+- **The comparison:** the printed boxes agree with the in-app outcome for every case of §7.11. A synthetic middle-band case on each side of 41b reads page 1's box and line 42's box from the baked page by position (upper or lower widget), so an inverted state map fails: tier 1 proves only that a bound state draws, and Priya's line 40 is `2`, so tier 3 never reaches lines 41–42.
+- **Line 43:** `CheckBox16` prints the answer only where the form reaches line 43 (line 40 `2`, or line 42 `Yes`) and is blank under line 40 `1` and line 42 `No`, whatever is stored; under Yes, each of the first four circumstances prints its pointer and its amount, and `the_pointer_names_its_sheet_row` proves each box's "43.{n}" equals the sheet row that holds that circumstance; a fifth circumstance prints on the sheet only; a long explanation prints whole on the sheet, wrapped at its spaces; with circumstances stored and line 43 then answered No, or with the result moved to "no presumption", the rows are blank and no line 43 sheet prints (`stored_circumstances_never_print_where_line_43_doesnt`); an explanation saved at the 36-line budget still prints after the filer's name is lengthened to three lines. `line_43_never_changes_a_printed_box` repeats 3h2's test on the baked page: page 1's box, line 40's and line 42's read the same with and without line 43's circumstances.
+- **UPL:** no asked box prints without an answer.
+- **The invariant** (§6) flips: `an_above_median_filers_122a1_and_122a2_never_print_incomplete`, with every answer given, gets both forms printed. The same test then runs each kind of gap (a page gap, line 43's two among them: line 43 unanswered, and line 43 Yes with a circumstance missing its explanation or its amount; a secured debt added after the page was answered; a missing table; a `check()` refusal of 122A-2; a line the calculator reports missing) and expects both forms refused with their link or fixed sentence, with Generate, Generate All, Regenerate and an unfiled download agreeing; it also marks a stale row filed and downloads it (H42), crosses from below to above the median, and runs §6's Mark as Filed cases (the per-row refusal, the pair action, a refusal of either form, and the two partners already filed).
+- **Mark as Filed for the pair (H43):** the tests in §9.1 item 7; the pair action in `test_session_lock.py`'s `WRITES`; vitest: the card's pair confirm, its single-form confirm with the partner's notice, and the pair action's refusal on the card of the form it names.
+- **122A-1 runs 122A-2's whole path:** `a_name_too_long_for_122a2_holds_122a1_too`: a stored creditor name too long for a 122A-2 box refuses both forms with the Amounts Owed link, and Generate All lists both in `errors`.
+- **No missing line:** `a_line_the_calculator_cant_work_out_holds_both_forms` (§6).
+- **Journeys:** all eight pass; Priya's reaches the dashboard and Generate All makes 16 forms (DIG-291).
+
+### 9.5 Personas and copy (3h3)
+
+Only Priya's packet changes: her 122A-2 prints in full (Appendix A), line 43's `CheckBox16` ticked No, and her 122A-1 prints again, with box 2 ticked; Generate All makes 16 forms. The other five personas' packets hold no 122A-2 and their 122A-1 prints as before. 3h3 adds three DigniFi sentences with `// DRAFT: counsel C-24`: the missing-line refusal (§6, 2.8), O7's confirm ("These two forms go together. Mark both as filed?", 1.9, H43) and the pair refusal ("File Form 122A-1 and Form 122A-2 together.", 4.0, H43). It also adds line 43's pointer, which prints on the form ("See line 43.{n} on the attached sheet.": 0.9 as the template, 1.3 with "43.1", H49) and goes to counsel with the aid (C-31); the "can't print yet" refusal goes, and the sheets' header is the engine's own (the filer's name, the form's title with "(attached sheet)", a blank case number).
+
+### 9.6 After 3h
+
+- **3h4:** the AI polish (§9A), after its own design spec.
+- **Step 4:** Form 108's intentions, which C-21 may change for surrendered collateral; the consumer-debt test. (Line 43 left step 4 with O9.) § 707(b)'s presumption applies only when the filer's debts are primarily consumer debts (a filer with mainly business debts says so on 122A-1Supp), so step 4 extends `applies` (one predicate in 3h, `is_above_median`) and the outcome with that test, and the hold and O5's notice follow it.
+- **The housekeeping PR:** drops the five old above-median columns (still holding their pre-3h1 values, H20) and `passes_means_test`, with `is_priority` and `priority_classification`.
+- **The runbook:** the next U.S. Trustee period and, by March 1, 2028, the next § 104 figures and the 122A-2 template that prints them.
+
+### 9.7 CLAUDE.md and docs (3h3)
+
+"The 122A-2 page" extends with the printing (the namespace, the sheets, the tool, line 43's sheet and pointers). "Blank, not 0.00" gains 122A-2's rules, line 43's among them. The repeat-group list gains 122A-2's six groups, and the statement-group sentence gains line 43's `means_line_43` beside Schedule I's `i_line_8a`. "The packet decides which forms" says the hold has lifted. "Forms need a completed intake" gains the pair action, the per-row refusal and the conditional save in `_generate_and_persist` (H43).
+
+## 9A. 3h4: the AI polish
+
+This section is short on purpose: 3h4 gets a design spec of its own before its plan (9A.3; designer's call H51). It sits between §9 and §10 so the sections after it keep their numbers.
+
+### 9A.1 What it delivers
+
+Starting from the filer's own edited explanation of a line 43 circumstance, an AI service rewrites it more clearly. The page shows the rewrite beside the filer's text. The filer reviews it, edits it and approves it, or leaves it and keeps their own words. Nothing the service wrote goes on without the filer's approval: an unapproved rewrite never enters the explanation box, and the box is what prints (H49). That is how this spec reads `docs/UPL_COMPLIANCE.md` §5.1's "User cannot proceed without approval confirmation": a filer who leaves the rewrite goes on with no AI text at all (C-33). The guided draft (3h2) stays usable whether or not the service answers. The polish reads only the explanation box, never the four aid answers on their own (designer's call H51).
+
+### 9A.2 Configuration
+
+3h4 reads `AI_POLISH_PROVIDER` and `AI_POLISH_API_KEY`, the names the owner added to `.env` (this spec records the names only). So the owner has already chosen a service: `AI_POLISH_PROVIDER` holds his choice. Agents read only the names in `.env`, never the values, so 3h4's design spec starts by asking the owner to confirm the service and its model. Settings don't read them yet; 3h4 adds them to `config/settings/base.py`, with empty defaults. It is config-driven as the OCR service is: `OCR_PROVIDER` (`base.py:250`) picks the provider, and `_get_processor()` (`apps/documents/views.py:37-55`) branches on its name and imports the provider lazily, so a missing SDK or key surfaces when the service is used, not at app boot, and an unknown name raises `ImproperlyConfigured` at use. If the polish uses the `openai` SDK, it passes its own base URL: the SDK reads `OPENAI_BASE_URL` from the environment itself, and the scanned-bill journey points that variable at its fake OCR server, so a polish that inherited it would send the filer's draft there. The owner's other new names, `OCR_PROVIDER_2` and `OCR_API_KEY_2`, are the OCR fallback (DIG-488) and not 3h's.
+
+### 9A.3 Its own design spec
+
+Before its plan, 3h4's design spec settles:
+
+- **The service** and its model, starting from the owner's confirmation of the one `AI_POLISH_PROVIDER` names (9A.2).
+- **The filer's consent:** the words shown before the first request, what is sent and to whom, and that the filer can decline and keep their own draft.
+- **What is sent:** the explanation's text only, and nothing else from the session. The filer's own identifiers (their name, SSN, account numbers and street address) are stripped, or the send is refused. Third parties named as part of the facts (a hospital, an employer) may stay, since they are the filer's facts; 3h4's spec confirms that choice with counsel (C-33).
+- **Retention and logging:** the service's retention terms, and DigniFi's own logs, which carry only the exception's type, never the text sent or the reply (DIG-105, as the documents pipeline logs). `docs/UPL_COMPLIANCE.md` §6.1 lists "Special circumstances refinement" among the actions to log; 3h4's spec says how, with no text in the log.
+- **Refusals and failures:** an empty reply, a refusal, a timeout or a missing key each leave the filer's draft as it is, with a plain sentence, so the guided draft stays usable.
+- **UPL**, as `docs/UPL_COMPLIANCE.md` §5.1 requires:
+  - *The prompt* forbids judging whether the circumstances qualify, and asks only for clearer wording of the filer's facts (§5.1 item 1).
+  - *Approval:* nothing proceeds without the filer's approval; the filer can edit the rewrite before approving it, and an unapproved rewrite never enters the box or prints (§5.1 item 2; 9A.1).
+  - *The original:* the filer's own text is stored beside the rewrite they approve, and shown beside the rewrite while they review it, so the record shows who wrote what (§5.1 item 3).
+  - *The disclosure:* beside the rewrite, a DigniFi sentence says an AI service changed it (§5.1 item 4). Draft: "An AI service rewrote your explanation to make it clearer. Check that it holds only your own facts before you approve it." (5.3; `// DRAFT: counsel C-33`). It asks the filer to check, rather than saying the facts are theirs as §5.1's sample does ("The facts and circumstances are yours."), because the check below is partial.
+  - *The output checks:* the rewrite passes the prohibited-phrase check before the filer sees it (§5.1 item 5). The rewrite keeps the filer's facts and adds none: a check, named and tested in that spec, refuses a rewrite that adds a fact, a figure, a date, a name or a legal conclusion the filer's text doesn't hold. It may be scoped to deterministic differences (figures, dates and names) and an `ADVICE`-style phrase list, with the filer's own review as the last check, since a fully general check can't be deterministic and a model-based one would send the filer's text a second time.
+  - *The fallback:* §5.1 item 5 rolls back to "template mode" when errors pass 5%, and §5.2's template mode offers pre-written example narratives. That conflicts with this spec's rule that no example circumstance appears but the law's two (§8.2). 3h4's fallback is 3h2's guided draft, and the conflict goes to counsel as an amendment of §5.1 (C-33).
+- **Counsel sign-off** on the consent words, the disclosure, what is sent and the checks (C-33).
+- **Synthetic data only:** in development and tests, only synthetic text reaches a hosted model. Tests use a stand-in at the provider boundary, and a live call in development uses the personas' synthetic words.
+
+It supersedes `docs/superpowers/specs/2026-06-17-special-circumstances-llm-design.md`, which is stale: it targets a local model (Llama.cpp and Gemma 3 4B in an `llm` Docker service that `docker-compose.yml` no longer has, through a `llama_cpp.py` provider that no longer exists), names the form's "Lines 44-47" (the form ends at line 43), and adds a wizard step and its own `SpecialCircumstances` model. It also supersedes the January 2026 `docs/AI_SPECIAL_CIRCUMSTANCES_DESIGN.md`, which the June file had already replaced. Both files stay, unedited, as history; 3h4's spec says at its top that it replaces them (designer's call H51).
+
+### 9A.4 The invariant, storage and tests
+
+- **The invariant** holds as after 3h3 (§6): `an_above_median_filers_122a1_and_122a2_never_print_incomplete` runs unchanged, plus one case: a rewrite the filer hasn't approved never prints, and both forms still print complete with the filer's own explanation.
+- **Storage:** the approved text becomes the explanation in `MeansTestAnswers` (§8.3; designer's call H51), so 3h3's print path doesn't change, and the filer's original is stored beside it (9A.3). Approval saves through the same means-test PUT, or runs identical checks: the 2,000-character cap, the letter check against 122A-2's font, the word width and H49's 36-line budget. A rewrite that can't print whole is refused with the fit sentence, and the explanation stays as it was, so an approved answer never fails at Generate (DIG-480's lesson). Whether a rewrite the filer hasn't approved is stored at all is left to 3h4's spec.
+- **Tests,** at least: a stand-in provider; a missing key raises at use, and `manage.py check` still passes without one; nothing prints without approval; the request carries only the explanation, with the filer's own identifiers stripped; a rewrite that adds a figure, date or name is refused by the check; a rewrite with a prohibited phrase never reaches the filer; the disclosure shows beside every rewrite; the original is stored beside an approved rewrite; `an_approved_rewrite_that_cant_print_whole_is_refused` (one past the 36-line budget, and one with a letter the form can't print, each refused with the fit sentence, leaving the stored explanation as it was); logs carry the exception's type only; the guided draft still saves and prints when the service fails.
+- **Copy:** its sentences go in `copy.ts`, scored and checked as §11 says, with `// DRAFT: counsel C-33`.
+
+## 10. Every line of 122A-2
+
+One unit is each numbered line or lettered sub-line as the form prints it, plus page 1's result box: 66 units. A line with several rows counts once, and so do line 13's two vehicle descriptions. Widget names are the field index's (`data/forms/field_index/b_122a-2_0425-form.index.json`); "(2)" or "(3)" means that many widgets share the full name and print one value.
+
+**Source:** *stored* (DigniFi already holds it), *asked* (on the 122A-2 page, 3h2), *table* (a dated table, 3h1), *arithmetic* (the form spells it out), *kept blank* (a judgment the app doesn't make). **Worked out:** the calculator computes every line from 3h1; an asked input is `None` until 3h2 stores it. Line 43 has no arithmetic on the form: 3h2 asks it and the line record carries it to print. **Printed:** 122A-2 refuses for everyone it applies to from 3h1 until 3h3 (§6), so every unit prints from 3h3. Line 1's binding exists today and stays.
+
+**Print details the form leaves open (designer's call H25):** a row list's total prints 0.00 when the line is reached and has no rows (as E/F's totals do); line 34's rows list only debts answered Yes to line 34's per-debt question (H33) with a cure above $0; line 13's description is the vehicle's name (the 3g item-name function) in the first of its slot's two boxes, the second left blank, and its fix is the Assets step; 33d's and 34's property cell is the linked A/B row's name (the 3g item-name function), whose fix is the Assets step. There is no fallback to the debt's own collateral description: a printed row always has a linked A/B row, because the claims gaps refuse a confirmed secured debt with no live link before any form resolves (§7.3); the multiplier prints as the U.S. Trustee lists it ("6.9%"); a negative 39c or 39d prints with a minus sign, as `_fmt` writes it. *Reason: each is the plainest reading of the form, and each keeps a printed total equal to the figures above it.*
+
+**The vehicles (designer's call H24).** The filer's vehicles are the Schedule A/B line 3 rows and the line 4 rows not answered "I live here" (the set Schedule J's line 17 uses). Line 11 counts the ones the filer claims. Vehicle 1 and Vehicle 2 are the claimed vehicles with a loan or a vehicle lease: in Schedule A/B order when there are one or two, the filer's choice when there are more (O3). A claimed vehicle with neither a loan nor a lease counts on lines 11 and 12 but takes no slot, because the form says "You may not claim the expense if you do not make any loan or lease payments on the vehicle." *Reason: the form's own bar, and Schedule A/B order is the order the filer listed them.*
+
+| Line | The form asks | Widget(s) | Source | Worked out | Printed | Prints |
+| --- | --- | --- | --- | --- | --- | --- |
+| Page 1 box | "1. There is no presumption of abuse." / "2. There is a presumption of abuse." | `CheckBox1` (p1 T3 `No#20Abuse`, T5 `Presumption#20of#20abuse#20applies`) | arithmetic | 3h1 | 3h3 | `/No Abuse` when line 40 is `1` or line 42 is `No`; `/Presumption of abuse applies` when line 40 is `2` or line 42 is `Yes` |
+| 1 | Copy 122A-1 line 11 | `Quest1` | stored (rule `cmi`) | today | 3h3 | always |
+| 2 | Did you fill out Column B? Is your spouse filing with you? | `CheckBox3` (`No`, `Yes`); `CheckBox4` (`No`, `Yes`) | stored (122A-1 line 1 answer) | 3h1 | 3h3 | `not_married`, `married_separately`: `CheckBox3` No, `CheckBox4` blank; `married_together`: Yes, then No (`married_spouse_filing` is an Income step gap and never reaches a form) |
+| 3 | Spouse's income not used for the household: purposes, amounts, total | `CheckBox5` (`No`, `On`); rows `Quest3A`/`Quest3A1`, `Quest3B`/`Quest3B1`, `Quest3C`/`Quest3C1`; total `Quest3` (2) | asked (`married_together` only) | 3h1; asked 3h2 | 3h3 | `married_together`: the tick, each row (4th on, sheet "3.{n}"), the total (0.00 under No). Otherwise: tick and rows blank, total 0.00 (line 2's "Fill in $0") |
+| 4 | Line 1 − line 3 | `Quest4` (p1; the same name prints 39a) | arithmetic | 3h1 | 3h3 | always |
+| 5 | People who could be claimed as exemptions, plus dependents you support | `Quest5` | stored (`count_exemptions`) | 3h1 | 3h3 | the count |
+| 6 | Food, clothing and other items | `Quest6` | table (line 5's count) | 3h1 | 3h3 | always |
+| 7a | Health care per person under 65 | `Quest7A` | table | 3h1 | 3h3 | always |
+| 7b | Number under 65 | `Quest7B` | stored (ages, H8) | 3h1 | 3h3 | the count; "0" when none |
+| 7c | 7a × 7b | `Quest7C` (2) | arithmetic | 3h1 | 3h3 | always; 0.00 when 7b is 0 |
+| 7d | Health care per person 65 or older | `Quest7D` | table | 3h1 | 3h3 | always |
+| 7e | Number 65 or older | `Quest7E` | stored (ages) | 3h1 | 3h3 | the count; "0" when none |
+| 7f | 7d × 7e | `Quest7F` (2) | arithmetic | 3h1 | 3h3 | always; 0.00 when 7e is 0 |
+| 7g | 7c + 7f | `Quest7G` (2) | arithmetic | 3h1 | 3h3 | always |
+| 8 | Housing: insurance and operating, for your county | `Quest8` | table (county, line 5; "5 or more" from 5) | 3h1 | 3h3 | always |
+| 9a | Housing: mortgage or rent, for your county | `Quest9` | table | 3h1 | 3h3 | always |
+| 9b | Debts secured by your home: creditor, 60-month average; total (copied to 33a) | `Quest9B creditor name1`/`Quest9B creditor amount1`, `Quest9B creditor name2`/`Quest9B creditor amount2`, `Quest9B creditor name3`/`Quest9B creditor amount3`; total `Quest9B total amount` (3, one on p7) | stored creditor; asked (O2) | 3h1; asked 3h2 | 3h3 | each home-secured debt (4th on, sheet "9b.{n}"); the total, 0.00 with none |
+| 9c | 9a − 9b, not below $0 | `Quest9C` (2) | arithmetic | 3h1 | 3h3 | always |
+| 10 | A housing adjustment you claim; explain why | `Quest10`, `Explain 1`, `Explain 2` | kept blank | — | never | blank (a legal argument, U:531) |
+| 11 | Vehicles you claim: 0, 1, 2 or more | `CheckBox6` (`0` = "0", p3 T18; `1` = "1", T19; `On` = "2 or more", T20) | asked (O3) | 3h1; asked 3h2 | 3h3 | the count of claimed vehicles; "2 or more" is `On` |
+| 12 | Operating costs for your region or area | `Quest12` | table (county → area; one or two cars) | 3h1 | 3h3 | blank when line 11 is 0 |
+| 13 | Describe Vehicle 1 and Vehicle 2 | `Describe Vehicle 1 1`, `Describe Vehicle 1 2`, `Describe Vehicle 2 1`, `Describe Vehicle 2 2` | stored (A/B row; slot by H24) | 3h1; asked 3h2 | 3h3 | each slot's vehicle name in its first box (H25; fix: the Assets step); an empty slot blank |
+| 13a | Vehicle 1: ownership or lease standard | `Quest13A` | table | 3h1 | 3h3 | the one-car figure for a filled slot; blank otherwise |
+| 13b | Debts secured by Vehicle 1, not leases; total (copied to 33b) | `Quest13B Creditor for vehicle 1-1`/`Quest13B amount for vehicle 1-1`, `Quest13B Creditor for vehicle 1-2`/`Quest13B amount for vehicle 1-2`; total `Quest13B Total amount for vehicle 1` (3, one on p7) | stored creditor; asked (O2) | 3h1; asked 3h2 | 3h3 | each debt (3rd on, sheet "13b.{n}"); the total, 0.00 for a filled slot with no debt (a lease); blank for an empty slot |
+| 13c | 13a − 13b, not below $0 | `Quest13C` (2) | arithmetic | 3h1 | 3h3 | a filled slot only |
+| 13d | Vehicle 2: ownership or lease standard | `Quest13D` | table | 3h1 | 3h3 | as 13a |
+| 13e | Debts secured by Vehicle 2; total (copied to 33c) | `Quest13E.Creditor1`/`Quest13E.Monthly1`, `Quest13E.Creditor2`/`Quest13E.Monthly2`; total `Quest13E.TotalMonthly` (3, one on p7) | stored; asked | 3h1; asked 3h2 | 3h3 | as 13b, sheet "13e.{n}" |
+| 13f | 13d − 13e, not below $0 | `Quest13F` (2) | arithmetic | 3h1 | 3h3 | as 13c |
+| 14 | Public transportation, with 0 vehicles | `Quest14` | table | 3h1 | 3h3 | the standard when line 11 is 0 (automatic, H14); blank otherwise |
+| 15 | Additional public transportation | `Quest15` | asked opt-in; cap holds (P3) | 3h1; asked 3h2 | 3h3 | the amount under Yes; blank when declined or line 11 is 0 |
+| 16 | Taxes | `undefined_48` | asked (O1) | 3h1; asked 3h2 | 3h3 | the amount; 0.00 for $0 |
+| 17 | Involuntary deductions | `undefined_49` | asked (O1) | 3h1; asked 3h2 | 3h3 | the amount; 0.00 for $0 |
+| 18 | Life insurance | `undefined_50` | asked (O1) | 3h1; asked 3h2 | 3h3 | the amount; 0.00 for $0 |
+| 19 | Court-ordered payments | `undefined_51` | asked (O1; no longer Schedule J 18) | 3h1; asked 3h2 | 3h3 | the amount; 0.00 for $0 |
+| 20 | Education required for a job or a challenged child | `undefined_52` | asked (plain line, H14) | 3h1; asked 3h2 | 3h3 | the amount; 0.00 for $0 |
+| 21 | Childcare | `undefined_53` | asked (O1; no longer Schedule J 8) | 3h1; asked 3h2 | 3h3 | the amount; 0.00 for $0 |
+| 22 | Additional health care, above line 7 | `undefined_54` | asked opt-in (O1) | 3h1; asked 3h2 | 3h3 | the amount under Yes; blank when declined |
+| 23 | Optional telephones | `undefined_55` | asked (plain line, H14) | 3h1; asked 3h2 | 3h3 | the amount; 0.00 for $0 |
+| 24 | Add lines 6 through 23 | `undefined_56` | arithmetic | 3h1 | 3h3 | always; a blank adds zero |
+| 25 | Health insurance, disability insurance, health savings account; total; do you actually spend it? | `undefined_57`, `undefined_58`, `1_2`; total `2_2` (2); `CheckBox7` (`No`, `On`); `undefined_59` | asked opt-in (O1, H13) | 3h1; asked 3h2 | 3h3 | under Yes: the three amounts (0.00 for $0), the total in both `2_2` boxes, the tick, and `undefined_59` only under No; declined: all blank |
+| 26 | Care of household or family members | `undefined_61` | asked opt-in | 3h1; asked 3h2 | 3h3 | the amount under Yes; blank when declined |
+| 27 | Protection against family violence | `undefined_62` | asked opt-in, amount only | 3h1; asked 3h2 | 3h3 | the amount under Yes; blank when declined |
+| 28 | Additional home energy costs | `undefined_63` | asked opt-in | 3h1; asked 3h2 | 3h3 | the amount under Yes; blank when declined |
+| 29 | Education for children under 18 | `undefined_64` | asked opt-in; per-child figure shown (P3) | 3h1; asked 3h2 | 3h3 | the amount under Yes; blank when declined |
+| 30 | Additional food and clothing | `undefined_65` | asked opt-in (O1); cap holds (P3) | 3h1; asked 3h2 | 3h3 | the amount under Yes; blank when declined |
+| 31 | Continuing charitable contributions | `undefined_66` | asked opt-in (O1) | 3h1; asked 3h2 | 3h3 | the amount under Yes; blank when declined |
+| 32 | Add lines 25 through 31 | `undefined_67` | arithmetic | 3h1 | 3h3 | always |
+| 33a | Copy line 9b | `Quest9B total amount` (p7) | arithmetic (shared name) | 3h1 | 3h3 | as 9b's total |
+| 33b | Copy line 13b | `Quest13B Total amount for vehicle 1` (p7) | arithmetic (shared name) | 3h1 | 3h3 | as 13b's total |
+| 33c | Copy line 13e | `Quest13E.TotalMonthly` (p7) | arithmetic (shared name) | 3h1 | 3h3 | as 13e's total |
+| 33d | Other secured debts: creditor, property, taxes or insurance?, average | `undefined_71`/`undefined_72`/`CheckBox8`/`undefined_73`; `undefined_74`/`undefined_75`/`CheckBox9`/`undefined_76`; `undefined_77`/`undefined_78`/`CheckBox10`/`undefined_79` | stored creditor and property; asked (O2) | 3h1; asked 3h2 | 3h3 | each 33d debt (4th on, sheet "33d.{n}"); the tick No or Yes (row 3's Yes is `On`) |
+| 33e | Add lines 33a through 33d | `undefined_80` (2) | arithmetic | 3h1 | 3h3 | always |
+| 34 | Debts on property necessary for support: cure amounts | `CheckBox11` (`No`, `Yes`); `undefined_81`/`secures the debt`/`undefined_82`/`undefined_83`; `undefined_84`/`undefined_85`/`undefined_86`/`undefined_87`; `undefined_88`/`undefined_89`/`undefined_90`/`undefined_91`; total `undefined_92` (2) | asked (O2; per debt, H33) | 3h1; asked 3h2 | 3h3 | the tick; under Yes, a row per line 33 debt answered Yes to the per-debt question with a cure above $0 (4th on, sheet "34.{n}"): creditor, property, total cure, ÷ 60; the total (0.00 with no such row); under No, rows and total blank |
+| 35 | Past-due priority claims | `CheckBox12` (`No`, `Yes`); `undefined_93`, `undefined_93-1` | stored (3d's past-due amounts, H11) | 3h1 | 3h3 | Yes with the total and ÷ 60 when the counted sum is above $0; No otherwise, figures blank |
+| 36 | Eligible for Chapter 13? Plan payment, multiplier, product | `CheckBox13` (`No`, `Yes`); `undefined_97`; `x`; `undefined_98` (2) | asked; table; arithmetic | 3h1; asked 3h2 | 3h3 | the tick; under Yes the payment, the multiplier (H25) and the product; under No, blank |
+| 37 | Add lines 33e through 36 | `undefined_100` | arithmetic | 3h1 | 3h3 | always |
+| 38 | Copy lines 24, 32, 37; total (copied to 39b) | `undefined_101`, `undefined_102`, `undefined_103`; `undefined_104` (3) | arithmetic | 3h1 | 3h3 | always |
+| 39a | Copy line 4 | `Quest4` (p8) | arithmetic (shared name) | 3h1 | 3h3 | always |
+| 39b | Copy line 38 | `undefined_104` (p8 T16) | arithmetic (shared name) | 3h1 | 3h3 | always |
+| 39c | 39a − 39b | `undefined_107` (2) | arithmetic | 3h1 | 3h3 | always; may be negative (H25) |
+| 39d | 39c × 60 | `undefined_108` (2) | arithmetic | 3h1 | 3h3 | always |
+| 40 | Less than $10,275; more than $17,150; or between | `CheckBox14` (`1` = "less than $10,275", p8 T21; `2` = "more than $17,150", p8 T22; `On` = "at least $10,275, but not more than $17,150", p8 T23) | arithmetic (§ 104 row) | 3h1 | 3h3 | always |
+| 41a | Total nonpriority unsecured debt | `undefined_110` | stored (106Sum 3b) | 3h1 | 3h3 | only when line 40 is `On`; blank otherwise |
+| 41b | 41a × 0.25 | `undefined_111` (2) | arithmetic | 3h1 | 3h3 | only when line 40 is `On` |
+| 42 | 39d against 41b | `CheckBox15` (`No` = "Line 39d is less than line 41b", p9 T6, page 1's box 1; `Yes` = "equal to or more than line 41b", p9 T7, page 1's box 2) | arithmetic | 3h1 | 3h3 | only when line 40 is `On` |
+| 43 | Special circumstances: a detailed explanation and the average monthly expense or income adjustment, each item | `CheckBox16` (`No` p9 T8, `Yes` p9 T9); rows `undefined_113`/`undefined_114`, `undefined_115`/`undefined_116`, `undefined_117`/`undefined_118`, `undefined_119`/`undefined_120`; sheet `means_line_43` | asked (O9; guided aid, H45) | asked 3h2 | 3h3 | only where the form reaches line 43 (line 40 `2`, or line 42 `Yes`), the tick; under Yes, for each of the first four circumstances "See line 43.{n} on the attached sheet." and its amount, and every circumstance's explanation and amount on the sheet "43.{n}" (H49); under No, rows blank and no sheet. Where the form skips line 43 (line 40 `1`, line 42 `No`), all blank whatever is stored (H44). Never changes a box (§1) |
+
+**Tally:** stored 8 (1, 2, 5, 7b, 7e, 13, 35, 41a); asked 25 (3, 9b, 11, 13b, 13e, 15–23, 25–31, 33d, 34, 36, 43); table 9 (6, 7a, 7d, 8, 9a, 12, 13a, 13d, 14); arithmetic 23; kept blank 1 (10). O1 moved the nine lines whose stored figures used other definitions (16–19, 21, 22, 25, 30, 31) to *asked*; O3 moved line 11; O9 moved line 43.
+
+**Outside the 66:**
+
+| Widget(s) | Prints |
+| --- | --- |
+| `Debtor1.Name` (every page) | the filer's name (rule `full_name`, bound today) |
+| `Bankruptcy District Information` | the district (rule `district_name`, bound today) |
+| `Debtor2.Name`, `Case number1` (every page), `CheckBox2` | blank, as on every form |
+| `Debtor1.sig`, `Debtor2.sig`, `Debtor1.Date signed`, `Debtor2.Date signed` | blank, for wet ink (`test_signing_lines.py`) |
+| `Button.Print1`, `Button.SaveAs`, `attach`, `Button.Reset` | removed before the bake; not among the 198 |
+
+## 11. Copy and counsel
+
+Every DigniFi sentence in 3h is in `copy.ts`, scored by the reading-level test (grade 9 or below) and checked against the `ADVICE` patterns, with a `// DRAFT: counsel C-n` mark (line 43's pointer prints on the form, so it lives beside the resolver, scored all the same, H49); the form's and the instructions' words are in `formText.ts`, unscored (H17). Backend code that carries a reading counsel must confirm gets `# DRAFT: counsel C-n`. Counsel items never block a merge; each ships marked as draft until counsel signs off, before production (U:633).
+
+**Existing items, as they stand:**
+
+- **C-4** (the opt-ins' help text) widens to lines 20 and 23, whose conditions ("required as a condition for your job"; "necessary for your health and welfare") are like the opt-ins' (H14).
+- **C-5** (line 40 at exactly $17,150): the default follows the form. Under P5's rounding, 39d can't equal $17,150.00 through the form's own arithmetic (§4.6); the comparison still follows the form.
+- **C-6** (line 36's help text, and whether the app may say anything about estimating a plan payment): the page shows the form's question, the link, the limits, the filer's debt totals, the neutral sentence that DigniFi can't tell the filer whether they can file under chapter 13 (H39), the multiplier and the product, and nothing about how to estimate a payment. Counsel also sees the layout: the limits beside the filer's own totals.
+
+**New items (C-20 to C-29; C-19 is the highest number used so far).** P7's "about nine new counsel items" became these ten; C-30 to C-33 came later, from O9 and O10.
+
+| Item | PR | What counsel decides | Default until then |
+| --- | --- | --- | --- |
+| C-20 | 3h1 | Line 9a for a filer with no rent or mortgage payment (the committee note "takes no position") | The form's words: the county's mortgage or rent standard prints |
+| C-21 | 3h1 | Lines 9b, 13b, 13e and 33d for collateral the filer will surrender (Form 108 is step 4) | The debt is listed with what is contractually due |
+| C-22 | 3h1 | Line 5's "could be claimed as exemptions … plus … dependents whom you support" against DigniFi's "claimed or supported" | The 3e1 count (`count_exemptions`) |
+| C-23 | 3h1 | Line 41a's scope: 106Sum 3b leaves out E/F Part 1's nonpriority parts and Schedule D's unsecured parts, so a smaller 41a can give a presumption in the middle band | 106Sum 3b, as the form says the filer "may refer to" |
+| C-24 | 3h1, 3h2, 3h3 | The four results' wording (O4) and the variants this spec makes of it (§2: the filled placeholder, 3h1's interim words, the missing-table sentence in place of O4's second above-median sentence, the closing sentence alone), the link to line 43 under a presumption (H48), the refusals' wording (the hold, "can't print yet", the missing table, the missing line, and the pair refusal "File Form 122A-1 and Form 122A-2 together.", H43), O5's notice, O7's confirm ("These two forms go together. Mark both as filed?", H43), O11's two notices and the words "marked filed" in them (H50), H52's notice ("This copy doesn't say its result is worked out on Form 122A-2. Form 122A-2 now applies to you."), the stale-answers notice (H34), the status sentence when Continue stays on a new result (H47), and the page's own sentences (introduction, information, gaps, line 43's gaps among them) | As drafted here |
+| C-25 | 3h2 | Line 17 and Schedule I 5d (retirement-loan repayments), and line 3's use of a non-filing spouse's withheld payroll tax | The filer answers each line in the form's words; nothing is derived |
+| C-26 | 3h2 | Line 25 when the claimed total is more than what is actually spent | The total prints; the actual figure prints beside No (H13) |
+| C-27 | 3h2 | Line 27's confidentiality | Only an amount is asked, never the nature; it is encrypted |
+| C-28 | 3h1 | A leased vehicle's payment is deducted on no line (H2), against the umbrella's "feeds Schedule J 17 and 122A-2" (§4.8) | The form's words: 13a in full, nothing on 13b |
+| C-29 | 3h2 | Line 34's "other property necessary for your support or the support of your dependents": which property counts, and whether the per-debt question (H33) reads the form rightly | The filer answers for each line 33 debt in the form's words; only a Yes asks a cure; nothing is derived |
+
+**Round 2 items (C-30 to C-33), from O9 and O10:**
+
+| Item | PR | What counsel decides | Default until then |
+| --- | --- | --- | --- |
+| C-30 | 3h2 | Survival debt: line 43 weighs current monthly expenses and income adjustments, not how past debts arose. How the aid may let a filer tell how bills built up (medical bills, groceries on a card), and that DigniFi never says their circumstances, or the nature of their debts, overcome a presumption | The prompts ask about the monthly effect; the page doesn't mention how debts arose, and one neutral information sentence, "You can explain your situation in your own words.", leaves room for it (H45) |
+| C-31 | 3h2, 3h3 | The guided aid: its prompts (among them "What other choices did you look at, and why did they not work?" and "What papers will you give your case trustee to show this?") and information sentences, the law's two examples ("The law gives two examples of special circumstances." with the two), the lawyer sentence ("A lawyer can tell you how the law applies to your facts."), the note under the explanation box, the draft's labels ("What happened:", "How it changes my monthly expenses or income:", "Other choices I looked at:", "Papers I will give my case trustee:"), the "Put my answers together" button, line 43 asked of every filer the form applies to with the skip note (H44), and the pointer printed on the form (H49); and whether putting the filer's own answers under fixed labels stays document preparation, not advice | As drafted (H44, H45, H49); no AI; the box fills only on the filer's press |
+| C-32 | 3h2 | The rebuttal figure's three sentences (H46: "Your line 39d is now ${y}.", the "If the court allowed" sentence with its "less than $0" form, and "The court decides whether to allow them."), and its arithmetic: both kinds of amount lower line 39c, and a line 43 amount that repeats a line 25 expense ("You may include expenses you listed in line 25") counts again. Also the statute's threshold for x: § 707(b)(2)(B)(iv) compares x with min(max(25 percent of the nonpriority unsecured claims, $10,275), $17,150) for every filer under a presumption, while the form prints a 25 percent figure (41b) only in the middle band, from 41a's reading (C-23) | Every line 43 amount as typed lowers 39c; the figure shows only as information, after "If the court allowed", with "The court decides whether to allow them."; DigniFi names no threshold and runs no comparison on x |
+| C-33 | 3h4 | The AI polish: whether a rewrite by a hosted service, which the filer reviews, edits and approves, stays within information; the consent words; the disclosure that an AI service rewrote the text; what may be sent (the filer's own identifiers stripped, third parties in the facts kept); the checks (prohibited phrases, and no added fact, figure, date, name or legal conclusion); the filer's original stored and shown beside the rewrite; and an amendment of `docs/UPL_COMPLIANCE.md` §5.1, whose fallback to §5.2's example narratives this spec rules out | Nothing proceeds or prints without the filer's approval; only the explanation's text is sent; the fallback is the guided draft; 3h4's own design spec names the rest (§9A.3) |
+
+C-24 also covers line 43's gap sentences (§8.5) and the link to line 43 (H48), since both sit with the results and the page's gaps.
+
+The review files each new item as a Plane ticket, as DIG-476 (C-2) and DIG-483 (C-8) were (both are Plane tickets, not files in the repo).
+
+## 12. Risks
+
+The survey's risks (R1–R18), as they stand after the owner's decisions:
+
+| # | Risk | Now |
+| --- | --- | --- |
+| R1 | Lines 19 and 21 print Schedule J figures under other definitions | **Closed by O1**: both are asked in the form's words; the Schedule J bindings go in 3h3 |
+| R2 | The U.S. Trustee set is open-ended; a new period posted mid-case keeps the old figures with no refusal | **Open**, guarded by the runbook (U:107) and the dashboard notice naming the set (P4) |
+| R3 | The fill date stands in for the filing date, so a form filled on July 14 and filed on July 15 uses the old set | **Open**, as for the median; the notice names each set and the § 104 set's end date |
+| R4 | From 2028-04-01 the 04/25 template prints the old § 104 figures itself | **Closed**: the § 104 row's `valid_through` makes 122A-2 refuse (P4, H23), tested on 2028-03-31 and 2028-04-01 |
+| R5 | Rounding makes printed lines that don't add up | **Closed** by H3 |
+| R6 | 39c isn't floored, so it can be negative | **Closed**: it prints with a minus sign and reads as below $10,275 (§7.3), tested end to end |
+| R7 | Line 41a = 106Sum 3b understates nonpriority debt in the middle band | **Open**, counsel C-23 |
+| R8 | Printing lines the form skips | **Closed** by P2 and H16 |
+| R9 | Reusing `linked_payments` (leases deducted; a third vehicle in 17c/17d) | **Closed** by H2, with tests for a lease, a third vehicle and a vehicle owned outright |
+| R10 | Porting today's caps at actual spending | **Closed** by H10 |
+| R11 | Silent zeros from catch-alls | **Closed** by H9 |
+| R12 | Key spellings ("La Salle", "ILN") pick nothing | **Closed** by H12's loader test |
+| R13 | Words that read as advice: Chapter 13 suggestions, "you may be eligible", a debt total beside a limit | **Reduced**: O4's words, H21, H22, H41, the copy tests; line 36's information stays (U:541) under C-6, beside H39's neutral sentence; no DigniFi string says "overcome", "rebut" or "rebuttal", and line 43's copy says no "abuse" of its own (§1's carve-out, §7.9, §8.9, R23, R25); a lawyer sentence and the standard disclaimer sit on the page (§8.2) |
+| R14 | Line 27's confidentiality | **Reduced**: amount only, encrypted, C-27 |
+| R15 | A person turning 65 moves 7b/7e by $73 a month; household ages are as typed | **Reduced**: the filer's age on the fill date; the page says ages are as entered |
+| R16 | Priya's outline was unverified | **Reduced**: the national, 5% and health care figures and the § 104 figures checked on 2026-11-13; the housing, transportation and multiplier figures rest on the survey's reading until the builder re-reads the XLSX files (Appendix A); her drafted answers are a designer's call (H38) |
+| R17 | Odd export states (`On` for some Yes and "2 or more") | **Low**: the startup checks refuse a wrong map; §9.3 lists them |
+| R18 | Seed and test pins move | **Named** per PR (§7.11, §8.9, §9.4) |
+
+**New:**
+
+- **R19. The hold blocks every above-median filer's 122A-1 through two merges.** Nothing deploys, so no filer meets it; the owner's own session is the one to watch after the eventual deploy (U §8.2 risk 4).
+- **R20. Page answers can go stale after an intake edit, or with time.** A new secured debt raises a gap, and a changed payment re-computes the average; a changed vehicle list drops a vanished vehicle's answer and raises the Vehicle 1/2 gap when needed. An edited figure on the Expenses or Take-home pay step never changes a 122A-2 answer: they are separate questions (O1), and the information beside each line shows the new figure on the next visit. Payments left, a 60-month total and a cure amount age as months pass; H34's notice asks the filer to check them once the month has changed, and the calculator keeps the stored answers. **Reduced.**
+- **R21. A stale row can be marked filed.** Mark as Filed checks nothing today, so a 122A-1 or 122A-2 row stored before a refusal could be filed and downloaded around the hold. **Closed for the pair** by H42 from 3h1, and tested in the invariant test. Other forms keep today's behavior (a Plane ticket, §13). Rows already filed before 3h keep what they stored, with a notice (O11, H50); a filed 122A-1 that no longer matches shows a live notice (H52); from 3h3 the server ties the pair (H43).
+- **R22. 122A-2 refused after `requires()`.** In 3h3 a `check()` refusal of 122A-2 would have let 122A-1 print alone. **Closed** by 122A-1 running 122A-2's whole path (§7.6), with its own 3h3 test.
+- **R23. The assembled draft read as legal advice.** A draft that DigniFi puts together could look like DigniFi's own argument. **Reduced:** the draft holds only the filer's words under fixed labels, fills the box only on the filer's press, and the filer edits it (H45); no example circumstance but the law's two; the page says DigniFi doesn't say which circumstances apply; counsel C-30 and C-31; the copy tests (§8.9).
+- **R24. An amount typed with no documents.** The form says "You must also give your case trustee documentation", and a filer may type an amount they can't back up. **Reduced:** the form's own words show under Yes, and the aid asks "What papers will you give your case trustee to show this?"; DigniFi doesn't refuse an amount for want of papers, since it never sees them, and line 43 is sworn like the rest of the form.
+- **R25. The rebuttal figure read as a promise.** A figure below $10,275 could read as "the presumption is gone". **Reduced:** it follows "Your line 39d is now", starts "If the court allowed", is followed by "The court decides whether to allow them.", shows only with an amount above $0 and a saved line 39c, names no threshold and runs no comparison (H46); the box never changes (§1); counsel C-32.
+- **R26. A line 43 amount that repeats a line 25 expense.** The form allows it ("You may include expenses you listed in line 25"), so the rebuttal figure could count one expense twice. **Open**, counsel C-32; the figure counts every amount as typed.
+- **R27. The AI polish adds facts, or sends personal data to a hosted service (3h4).** **Open until 3h4's spec:** only the explanation is sent, the filer's own identifiers are stripped or the send refused, checks refuse a rewrite with a prohibited phrase or new facts, figures, dates, names or legal conclusions, the filer's original is kept beside it, a disclosure says an AI service rewrote it, nothing proceeds or prints without approval, an approved rewrite saves only through H49's checks, and only synthetic data reaches a hosted model in development and tests (§9A.3, §9A.4, C-33).
+
+## 13. Tickets
+
+- **3h1:** DIG-146 (the limit and the bands), DIG-152 (one calculator, no catch-alls), DIG-275 (line 35 ÷ 60), DIG-276 (the age split), DIG-226 (`passes_means_test`'s help text). DIG-62's open question (cap at actual spending or not) is answered by the form's words and closed by H10.
+- **3h3:** DIG-72 (the result boxes), DIG-60 (lines 1, 5 and 10), DIG-66 (lines 6, 8, 9a, 12 from the standards), DIG-50 (lines 13d, 14, 15), DIG-140 (a whole persona packet filled by a test, for 122A-2), DIG-291 (Priya's journey to the dashboard).
+- DIG-128, DIG-136 and DIG-160 are fixed in code already; their Plane states lag.
+- **Filed by the controller:** DIG-487, stale rows of every other form (Mark as Filed checks nothing, and a refusal never clears a row), which H42 fixes only for 122A-1 and 122A-2.
+- **3h2–3h4, line 43:** no Plane ticket exists for line 43 or the AI polish (the survey searched "special circumstances" and "line 43" and found none); the review files them with the round 2 counsel items.
+- **Not 3h:** DIG-488, the OCR fallback, is the owner's other `.env` addition (`OCR_PROVIDER_2`, `OCR_API_KEY_2`); 3h doesn't touch it.
+- Ticket states change only on the owner's yes.
+
+## 14. Left to the builder
+
+- Migration numbers and file names; model, field and module names beyond those named; the outcome codes' exact spelling.
+- The page's component split and CSS, within the filing-fee and exemptions pages' patterns, and the non-legal labels ("Add a row").
+- The shared case files' format for the grouping copy (H26) and the product copy (H36), and how the gap list and its frontend copy are kept in step.
+- The sheets' column widths, within the engine's checks and H30's line column of at least 46 pt; line 43's explanation column width is one constant that 3h2's PUT check and 3h3's schema share (H49).
+- The line 43 page's layout within H45 (where the rebuttal figure sits, how a removed circumstance renumbers), and the non-legal labels ("Add a circumstance", "Remove circumstance {n}").
+- 3h4's own design spec (§9A.3), and its plan.
+- The pair action's route name (H43) and the name of the list reply's field behind H52's notice.
+- Re-reading the U.S. Trustee's XLSX files for the 2026-07-15 period when writing the data migration, and noting in the PR any figure that differs from Appendix A.
+- Scoring each template sentence with sample values, and drafting any sentence this spec doesn't, under §11's rules.
+- The order of the calculator's internal steps, so long as each line's rule in §10 holds.
+
+## 15. Designer's calls
+
+| Call | Section | Choice |
+| --- | --- | --- |
+| H1 | §9.2 | A `means.` namespace (in `_BINDING_NAMESPACES`, `_LIST_BINDING`, a `resolve_binding` branch, `one_read_of_means` in `resolve_parts`, and `binding_fix` by attribute: creditor → Amounts Owed, property and line 13's vehicle name → Assets, the rest → the page) with row lists for lines 3, 9b, 13b, 13e, 33d and 34; a tier 1 test that every `means.` binding reads what it names; totals that include sheet rows are scalars the calculator works out; rows overflow only to a sheet |
+| H2 | §7.3 | The secured-debt rows are grouped for 122A-2, not through `linked_payments`: 9b home rows, 13b/13e Vehicle 1/2, 33d everything else; confirmed, linked, not answered No; a lease takes 13a whole and its payment is deducted nowhere (C-28, against U:432); a no-live-link 33d row reaches only an unfinished intake's in-app result |
+| H3 | §7.3 | Half-even to the cent on every line, rows rounded per row, later lines from the printed figures; the band tests call the comparison directly, and four end-to-end cases cross each edge |
+| H4 | §7.4 | `MeansTest.outcome` with four values; `passes_means_test` kept one release, derived, null for "can't be worked out"; new `MeansTestResult` field, MSW handlers and E2E strings |
+| H5 | §7.4, §7.6, §8.5 | 3h1's interim outcome sentence; the 3h1 hold sentence and 3h2's "can't print yet" sentence, both with no link and no word of a presumption; in 3h2 the refusal names the page's first gap |
+| H6 | §8.2 | The page at `/means-test` with its own GET/PUT; the exemptions page always continues to it and it replaces itself with `/sofa` when the form doesn't apply; reads first, no autosave (Continue's save is H35), fieldset disabled while saving; from 3h2 the pair's "Answer Questions" goes to it |
+| H7 | §8.3 | `MeansTestAnswers` (one encrypted JSON column) and `SecuredDebtAnswers` (one-to-one with the debt, cascade), not new `DebtInfo` columns |
+| H8 | §7.3 | The filer's age from the date of birth on the fill date, by calendar; household rows by typed age; the page says ages are as entered |
+| H9 | §7.3 | No catch-alls: a missing row or table key raises; no fallback to 1; no `or Decimal("0")` |
+| H10 | §7.7 | Delete `irs_standards.py`, `ExpenseDeductionCalculator`, `_means_test_disposable_income`, the message method and `get_detailed_breakdown`; port no cap at actual spending |
+| H11 | §7.3, §7.8 | Carry 3d1's line 35 rule and pins (draft pin back), the end-to-end passing tests, 3c4's catch-all, 3d2's 41a reading and 3e1's line 5 |
+| H12 | §7.2 | One dated row per published set (the U.S. Trustee period; the § 104 amounts) with child rows, loaded by data migration, DigniFi's key spellings with a loader test, conftest fixtures, two-version tests |
+| H13 | §8.2 | Line 25: the three amounts and "Do you actually spend this total amount?"; the total prints in both of its boxes, because the form prints "Copy total here" beside the second (the form's words, not an engine limit); the actual figure beside No; the statute question stays C-26 |
+| H14 | §8.2, §10 | Lines 20 and 23 are plain lines in the form's words ($0 allowed), and C-4 widens; line 14 is automatic |
+| H15 | §7.3 | For a married filer living together, lines 16–25 ask one household figure, less line 3; line 18 keeps its own exception |
+| H16 | §7.3 | A line the form skips prints blank and adds zero (line 43 where line 40 is `1` or line 42 is `No`); the form's own "$0" orders print 0.00; totals 24, 32, 37 and 38 always print |
+| H17 | §7.9, §11 | The instructions' and the form's words in `formText.ts`; DigniFi's in `copy.ts`, scored and checked |
+| H18 | §7.3 | A pure input record (`None` for missing), so 3h1 tests Priya's whole form and 3h2 only wires answers in |
+| H19 | §9.2 | The forms never read stored line values; they recompute every time; a filed form keeps what it stored |
+| H20 | §7.5 | Encrypt `calculated_cmi`, `median_income_threshold` and the outcome; encrypt the five old above-median columns in place, keeping their values, and stop writing and reading them (dropped by the housekeeping PR); existing rows' outcome null, read as "not worked out yet"; `passes_means_test` nullable |
+| H21 | §7.4 | The server sends the outcome and household size; the browser composes the words; every outcome ends with exactly "A court makes the final decision.", rendered once; for a presumption the order is the outcome's words, the instructions' sentence, then (from 3h2, on the dashboard and the page only, H48) the link to line 43, then the closing sentence; `UPL_MEANS_TEST_DISCLAIMER` is reworded to that sentence alone |
+| H22 | §7.4 | One neutral style for all four outcomes in the sidebar, and for the pair's refusals and notices on the dashboard and the page (`role="status"`, no red, no icon by outcome; the pair's Generate All refusals get their own block); no sidebar string says "eligibility" or "estimate", and the panel reads its strings from `copy.ts` |
+| H23 | §7.2 | The 122A-2 tables are read only above the median; a missing one refuses only 122A-2 and 122A-1, in its own sentence; the means test still saves, as `cannot_work_out` with the table named, so neither Generate All nor Review is held |
+| H24 | §10 | The vehicles are A/B line 3 rows and line 4 rows not lived in; Vehicle 1 and 2 are the claimed vehicles with a loan or lease, in A/B order unless the filer chooses; a claimed vehicle with neither takes no slot |
+| H25 | §10 | Print details: empty row lists total 0.00; line 34 rows only for a per-debt Yes with a cure above $0; line 13's name in the first box (fix: Assets); the property cell is the A/B row's name, no fallback (fix: Assets); the multiplier as listed; a minus sign for a negative |
+| H26 | §8.2, §8.4 | The page follows the form's order with each debt's questions gathered at line 33; the browser copies the grouping (never the comparison), pinned by a shared case file |
+| H27 | §8.2 | The fixed map of Schedule I and J figures shown beside lines 16–19, 21, 22, 25, 30 and 31; line 22 asks the amount above 7g; caps worked out live and held as gaps |
+| H28 | §8.2 | Line 3's purposes must fit the form's box at 6 pt to save; line 43's aid answers and explanation are the page's other text, measured by H49; a stored creditor, property or vehicle name too long for its box links to the Amounts Owed or Assets step |
+| H29 | §9.2 | A tool writes 122A-2's schema and audit rows; answers bind as `source: asked`, `legal_review: true` |
+| H30 | §9.2 | Each row group's sheet numbers its rows by the form's line ("9b.4"); the 9b, 13b, 13e, 33d and 34 sheets, and line 43's (H49), set `line_width` ≥ 46 pt, every column within 504 pt; seven sheet groups in all |
+| H31 | §7.4, §7.6 | O5's notice shows whenever the packet holds 122A-2; `tableNotice` picks its sentence by the table's name and `_tables_used` reads every stored table, so the notice names each set in its own words |
+| H32 | §7.6 | A refusal with no link is a `PreconditionMissing` with neither `step` nor `page`; its docstring becomes "at most one" |
+| H33 | §8.2, §8.3, §8.5, §10 | Line 34: under its Yes, each line 33 debt asks in the form's words whether it is secured by property necessary for support; the cure is asked, and the debt prints, only under that Yes (C-29) |
+| H34 | §8.3, §7.4 | The day a per-debt answer last changed is stamped from `fill_date()`, only when a PUT changes a per-debt answer's value (a Continue that sends the same values never clears the notice); when its month differs from the fill date's, the dashboard (with a link) and the page show a neutral notice; the calculator keeps the stored answers |
+| H35 | §8.2 | Continue always saves what is answered; with a gap it stays and shows the first gap, with none it goes to `/sofa` unless the result has just changed (H47); no autosave; the gate still refuses until every gap is closed |
+| H36 | §8.2 | The browser works out line 36's product (half-even to the cent), pinned to the server by a shared case file |
+| H37 | §7.4, §8.6 | The worked-out result shows in the sidebar, on the dashboard beside O5's notice (when the packet holds 122A-2) and at the top of the page, in the neutral style; a null outcome shows nothing; from 3h2 a presumption links to line 43 on the dashboard and the page (H48) |
+| H38 | Appendix A | Priya's drafted answers stand as drafted (line 21 $1,200.00; the CR-V claimed; Kestrel's payment won't change; line 3's purpose words; line 43 No, since the companion gives none); her line 39d stays $131,304.00 |
+| H39 | §8.2 | Beside line 36's information: "Other rules also apply. DigniFi can't tell you whether you can file under chapter 13." (C-6) |
+| H40 | §8.2, §8.3 | Payments left is a whole number from 0 to 59 or "60 or more"; anything else is a 400 |
+| H41 | §7.4 | The sidebar's title is "Income test" (the plain-language guide's word); the forms keep their own names |
+| H42 | §7.6 | From 3h1, Mark as Filed on an unfiled 122A-1 or 122A-2 row runs the unfiled-download path and stores that fresh document, or refuses with the same 422 and leaves the row unfiled, and `handleMarkFiled` shows that refusal on the card as `handleDownload` does; this narrows DIG-155's rule for these two forms; other forms unchanged |
+| H43 | §9.1, §6 | O7's confirm sits inside the card (no browser dialog): "These two forms go together. Mark both as filed?"; a pair action (`_session_or_error`; in one transaction: `lock_session`, `_prepare` once, both forms resolved and checked on H42's path, then status-conditional updates that each change one row; a missing partner row created with its checked document) marks both or neither, and its refusal names the form; from 3h3 the per-row Mark as Filed refuses one form of the pair while the other is unfiled or has no row ("File Form 122A-1 and Form 122A-2 together.", no link); a form whose partner is already filed is marked alone, after the partner's notice when the partner disagrees (H50, H52); `_generate_and_persist`'s save is conditional on the row not being filed |
+| H44 | §8.2, §8.5, §10 | Line 43 is asked of every filer the form applies to, and unanswered it is a gap for each of them; it prints only where the form reaches it (line 40 `2` or line 42 `Yes`), and under a "no presumption" result the page says the answer won't print; a presumption points to line 43 first (H47, H48) |
+| H45 | §8.2, §8.3 | The guided aid: at most 10 circumstances, each with four prompts of at most 450 characters (what happened and when; how it changes monthly expenses or income, with the amount; what other choices the filer looked at, asked neutrally; what papers they will give the trustee), four information sentences (the law's two examples in its own words, as one string; "You can explain your situation in your own words."; DigniFi suggests nothing; a lawyer can say how the law applies), and an explanation box under the note "Write only what you want the court to read. …", which "Put my answers together" fills from fixed labels (each its own string) only while it is empty; the box is what prints; no AI; the page renders the standard disclaimer |
+| H46 | §8.2, §8.4 | Proposal 1: "Your line 39d is now ${y}.", then "If the court allowed the amounts on line 43, line 39d would be ${x}." (a figure below zero reads "… less than $0"), then "The court decides whether to allow them."; x = (39c − the line 43 amounts) × 60, no kind stored; shows only under a presumption, line 43 Yes, an amount above $0, a worked-out 39c and no unsaved edit above line 43; no threshold, no comparison (the statute's own, min(max(25% of the nonpriority unsecured claims, $10,275), $17,150), goes to counsel under C-32); the browser works it out live, pinned to the server by a case file |
+| H47 | §8.2 | Continue stays on the page when the PUT's reply changes the outcome, so a filer sees a new result (and, under a presumption, the link to line 43) before leaving; a neutral status sentence beside Continue says why |
+| H48 | §8.2, §7.4, §8.6 | Proposal 2: under a presumption, the dashboard and the top of the page link "Go to line 43, special circumstances" (to `/means-test#line-43`) before the closing sentence; no link in the sidebar |
+| H49 | §9.2, §8.4, §10 | Line 43 prints on one statement sheet `means_line_43` ("43.{n}", the form's column words, `line_width` ≥ 46 pt): every explanation and amount; the four rows print "See line 43.{n} on the attached sheet." and the amount; the PUT refuses an explanation the sheet can't print whole within a fixed 36-line budget (letters, a too-wide word, too many lines), at a column width shared with the schema; an explanation counts only when not blank once trimmed; stored circumstances print nothing unless line 43 is Yes and the form reaches it, a test the pointers and the sheet read from one shared helper |
+| H50 | §7.6 | O11's notice: a `GeneratedForm` flag set once by 3h1's migration on filed rows with stored values that are 122A-2 rows or 122A-1 rows with box 2, read in both stored shapes by the migration's own copy of the logic; a filed row with nothing stored gets no flag (it already goes through the hold); the card shows the neutral notice; the download stays the stored document |
+| H51 | §9A | 3h4's four settled choices: the polish reads only the explanation box; the approved text is stored as the explanation; 3h4 gets its own design spec before its plan; §9A supersedes the June 2026 and January 2026 AI designs |
+| H52 | §7.6, §9.1 | A filed 122A-1 with stored values whose `CheckBox1` isn't box 2 (box 1, or none) shows a live notice, worked out on each read and never stored, while the packet holds 122A-2: "This copy doesn't say its result is worked out on Form 122A-2. Form 122A-2 now applies to you."; no un-file action; from 3h3 the card's confirm shows it (or O11's 122A-2 notice) before marking the other form alone |
+
+## 16. Open for the owner
+
+Nothing is open. The owner answered Q-A (O7), Q-B (O8) and Q-C (O11) on 2026-11-13.
+
+## Appendix A. Priya Sharma's Form 122A-2, worked by hand
+
+The 3h1 calculator test and 3h3's tier 3 case use this chain. Fill date: 2026-10-16 (the pinned test day). Tables: the U.S. Trustee set for cases filed on or after 2026-07-15 and the § 104 set effective 2025-04-01. The 4/1/2026 U.S. Trustee set is not loaded.
+
+**Marks:** ✓ = confirmed on 2026-11-13 from the primary page (the U.S. Trustee's 2026-07-15 national standards and health care pages; 90 FR 8941) or from the seed (`seed_demo_data.py`, Priya's block). **S** = read from the U.S. Trustee's 2026-07-15 housing, transportation or multiplier page during this spec's survey; the fact check's re-fetch got HTTP 403, so the builder re-reads the XLSX files (§7.2). **C** = the companion's answer (PS:671-690). **D** = drafted here to match the companion's outline (designer's call H38).
+
+**Her drafted answers (designer's call H38).** The companion gives most of her answers; these fill its outline and stand as drafted: line 21 is $1,200.00, asked in the form's words (none of her childcare is school tuition); she claims the Honda CR-V EX 2021 on line 11; Kestrel's payment won't change ("No"); line 3's purpose reads "His payroll taxes withheld from his pay"; line 43 is No (the companion gives no special-circumstances answer: it says "line 43 is step 4", PS:692). *Reason: each matches her story and the companion's outline, and her line 39d stays $131,304.00; line 43 changes no line and no box, so her chain stands either way.* They go in the seed, her brief and her E2E fixture.
+
+**What DigniFi holds for her (✓, seed):** income $12,000.00 a month (wages), her husband's $1,800.00 (`married_together`); born 1982-11-08, so 43 on the fill date; household: husband 45, daughter 10, son 7, each living with her and claimed or supported; county Cook; the Honda CR-V EX 2021 on A/B line 3, securing Kestrel Auto Finance's loan ($14,900.00, $450.00 a month, secured, linked); the IRS row answered Taxes with $3,000.00 past due; Silverpine Card Services ($22,000.00) and Westhaven University Medical Center ($35,000.00), both nonpriority, so 106Sum 3b is $57,000.00. She rents (no home row).
+
+**Her answers on the page:** line 3 Yes, one row "His payroll taxes withheld from his pay", $250.00 (C; words D); CR-V claimed (D); Kestrel: 37 payments left (C), payment won't change (D); line 15 No (C); 16 $2,300.00 (C: $2,450.00 withheld less her expected $1,800.00 refund ÷ 12); 17 $0.00 (C); 18 $120.00 (C); 19, 20 and 23 $0.00 (C); 21 $1,200.00 (D); 22 No (C); 25 Yes: health $620.00, disability $180.00, health savings account $0.00, actually spends: Yes (C); 26–30 No (C); 31 Yes, $50.00 (C); 34 No (C); 36 Yes, plan payment $1,400.00 (C); 43 No (D). Under line 43's No, the page shows no rebuttal figure, so beyond her result, its link to line 43 and, after her first Continue, the status sentence (H47), it shows nothing for line 43.
+
+| Line | Prints | How |
+| --- | --- | --- |
+| Page 1 | box 2, "There is a presumption of abuse." | line 40 is `2` |
+| 1 | 13,800.00 | 12,000.00 + 1,800.00 ✓ |
+| 2 | Yes; then No | `married_together` ✓ |
+| 3 | Yes; "His payroll taxes withheld from his pay", 250.00; total 250.00 | her answer (C, D) |
+| 4 | 13,550.00 | 13,800.00 − 250.00 |
+| 5 | 4 | herself and three claimed rows ✓ |
+| 6 | 2,176.00 | national standard, 4 people ✓ |
+| 7a / 7b / 7c | 90.00 / 4 / 360.00 | under 65 ✓; ages 43, 45, 10, 7 ✓ |
+| 7d / 7e / 7f | 163.00 / 0 / 0.00 | 65 or older ✓ |
+| 7g | 360.00 | 360.00 + 0.00 |
+| 8 | 953.00 | Cook, 4 people, insurance and operating S |
+| 9a | 2,219.00 | Cook, 4 people, mortgage or rent S |
+| 9b | no rows; total 0.00 | no home row (H25) |
+| 9c | 2,219.00 | 2,219.00 − 0.00 |
+| 10 | blank | kept blank |
+| 11 | `1` | one vehicle claimed (D) |
+| 12 | 334.00 | Cook is in the Chicago area; one car S |
+| 13 | "Honda CR-V EX 2021"; Vehicle 2 blank | ✓ seed's make, model, year |
+| 13a | 703.00 | ownership, one car S |
+| 13b | Kestrel Auto Finance, 277.50; total 277.50 | 37 × 450.00 = 16,650.00; ÷ 60 = 277.50 (C, D) |
+| 13c | 425.50 | 703.00 − 277.50 |
+| 13d–13f | blank | no Vehicle 2 |
+| 14 | blank | line 11 is 1 |
+| 15 | blank | declined (C) |
+| 16 | 2,300.00 | C |
+| 17 | 0.00 | C |
+| 18 | 120.00 | C |
+| 19 | 0.00 | C |
+| 20 | 0.00 | C |
+| 21 | 1,200.00 | D |
+| 22 | blank | declined (C) |
+| 23 | 0.00 | C |
+| 24 | 10,087.50 | 2,176.00 + 360.00 + 953.00 + 2,219.00 + 334.00 + 425.50 + 2,300.00 + 0.00 + 120.00 + 0.00 + 0.00 + 1,200.00 + 0.00 |
+| 25 | 620.00, 180.00, 0.00; total 800.00 in both boxes; Yes; actual blank | C |
+| 26–30 | blank | declined (C) |
+| 31 | 50.00 | C |
+| 32 | 850.00 | 800.00 + 50.00 |
+| 33a | 0.00 | line 9b's total |
+| 33b | 277.50 | line 13b's total |
+| 33c | blank | no Vehicle 2 |
+| 33d | no rows | no other secured debt |
+| 33e | 277.50 | 0.00 + 277.50 + 0.00 + 0.00 |
+| 34 | No; rows and total blank | C |
+| 35 | Yes; 3,000.00; 50.00 | the IRS row ✓; 3,000.00 ÷ 60 |
+| 36 | Yes; 1,400.00; 6.9%; 96.60 | C; ILND multiplier S; 1,400.00 × 6.9% |
+| 37 | 424.10 | 277.50 + 0.00 + 50.00 + 96.60 |
+| 38 | 10,087.50; 850.00; 424.10; total 11,361.60 | |
+| 39a | 13,550.00 | line 4 |
+| 39b | 11,361.60 | line 38 |
+| 39c | 2,188.40 | 13,550.00 − 11,361.60 |
+| 39d | 131,304.00 | 2,188.40 × 60 |
+| 40 | `2` | 131,304.00 is more than $17,150 ✓ |
+| 41a–42 | blank | line 40 decides (P2) |
+| 43 | `CheckBox16` No; rows blank; no line 43 sheet | line 40 is `2`, so the form reaches line 43; her answer (D, H38) |
+
+**How firm it is.** 39c is $1,902.57 a month above the $285.83 edge ($17,150 ÷ 60). Moving the husband's $250.00 from line 3 to line 16 leaves 39c at $2,188.40; striking the IRS row raises it by $50.00 (PS:731). Her packet holds 16 forms (§4.5).
+
+**Verified and not:** the national standards, the health care figures and the § 104 figures (✓) were confirmed from their primary pages on 2026-11-13, and every seed fact from the seed. The housing, transportation and multiplier figures (S) rest on the survey's reading of the U.S. Trustee's pages; the re-fetch got HTTP 403, so the builder re-reads the XLSX files, and any difference changes this chain before the 3h1 test is written. Her drafted answers (D) are a designer's call (H38), line 43's No among them. No hand-worked figure has yet been compared with a run of the calculator: that comparison is 3h1's test.
+
+<!-- prettier-ignore-end -->

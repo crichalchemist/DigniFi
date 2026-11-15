@@ -14,7 +14,7 @@ import { FormCard, GenerateAllButton, DebtExplanationsPanel } from '../component
 import type { DebtClassification } from '../components/forms/DebtExplanationsPanel';
 import type { FormRefusal } from '../components/forms/FormCard';
 import { UPLDisclaimer } from '../components/compliance';
-import { UPL_FORM_DISCLAIMER } from '../constants/upl';
+import { UPL_FORM_DISCLAIMER, UPL_MEANS_TEST_DISCLAIMER } from '../constants/upl';
 import {
   DASHBOARD_ERROR,
   ERROR_GENERIC,
@@ -23,6 +23,15 @@ import {
   FORM_103A_LINK,
   FORM_103A_URL,
   INSTALLMENTS_NOTICE,
+  MEANS_FILED_BEFORE_122A1,
+  MEANS_FILED_BEFORE_122A2,
+  MEANS_FILED_MISMATCH,
+  MEANS_PAIR_NOTICE,
+  MEANS_TEST_PREVIEW_TITLE,
+  TABLE_NOTICE_MEDIAN,
+  TABLE_NOTICE_NEW_FIGURES,
+  TABLE_NOTICE_SECTION_104,
+  TABLE_NOTICE_STANDARDS,
 } from '../constants/copy';
 import { LINE_8_LABEL, PAYMENT_CHOICE_WORDS } from '../constants/formText';
 import { WIZARD_STEPS } from '../constants/wizardSteps';
@@ -33,12 +42,14 @@ import type {
   FormType,
   GenerateAllFormsResponse,
   DatedTableUsed,
+  MeansOutcome,
   Packet,
   PaymentChoice,
 } from '../types/api';
 import { FORM_TYPE_METADATA } from '../types/api';
 import { trackEvent } from '../utils/analytics';
 import { formatIsoDate } from '../utils/formatIsoDate';
+import { meansOutcomeSentences } from '../utils/meansOutcome';
 import { windowNotice } from '../utils/windowNotice';
 
 type GenerateAllError = GenerateAllFormsResponse['errors'][number];
@@ -114,12 +125,26 @@ function linksInPageOrder(intakeLinked: boolean) {
   };
 }
 
-/** What the forms say about the dated table they were filled from (step 3a1 spec §3.6) */
-function tableNotice(table: DatedTableUsed): string {
-  const first = `These forms use the median income figures the U.S. Trustee applies to cases filed on or after ${formatIsoDate(table.effective_date)}.`;
+/** The sentence that names each table set, by the name the server gives it (plan R9) */
+const TABLE_NOTICES: Record<string, string> = {
+  'Census median income': TABLE_NOTICE_MEDIAN,
+  'IRS expense standards': TABLE_NOTICE_STANDARDS,
+  'Bankruptcy Code dollar amounts': TABLE_NOTICE_SECTION_104,
+};
+
+/**
+ * What the forms say about the dated table they were filled from (step 3a1 spec §3.6, 3h1 §7.4).
+ * None for a table this page has no words for.
+ */
+function tableNotice(table: DatedTableUsed): string | null {
+  if (!Object.hasOwn(TABLE_NOTICES, table.name)) return null;
+  const first = TABLE_NOTICES[table.name].replace('{date}', formatIsoDate(table.effective_date));
   if (!table.valid_through) return first;
-  return `${first} New figures are expected after ${formatIsoDate(table.valid_through)}. If you file after that date, download your forms again.`;
+  return `${first} ${TABLE_NOTICE_NEW_FIGURES.replace('{date}', formatIsoDate(table.valid_through))}`;
 }
+
+/** Form 122A-1 and Form 122A-2 are prepared and filed together (3h1): they refuse together */
+const MEANS_PAIR: FormType[] = ['form_122a1', 'form_122a2'];
 
 export function FormDashboard() {
   const { session, isLoading: sessionLoading } = useIntake();
@@ -130,6 +155,11 @@ export function FormDashboard() {
   const [incomePeriod, setIncomePeriod] = useState<Packet['income_period']>(null);
   // Form 101 line 8, as the packet reply holds it; undefined while no reply has come (a refusal carries none)
   const [paymentChoice, setPaymentChoice] = useState<PaymentChoice | null | undefined>(undefined);
+  // The means test's result, as the packet reply holds it (null before it is worked out, or for
+  // a row saved before 3h1; a refusal carries none)
+  const [outcome, setOutcome] = useState<MeansOutcome | null>(null);
+  const [familySize, setFamilySize] = useState<number | null>(null);
+  const [tablesGap, setTablesGap] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Refusal | null>(null);
   const [showSurvey, setShowSurvey] = useState(false);
@@ -157,10 +187,16 @@ export function FormDashboard() {
       setTables(loadedPacket.tables);
       setIncomePeriod(loadedPacket.income_period);
       setPaymentChoice(loadedPacket.payment_choice);
+      setOutcome(loadedPacket.outcome);
+      setFamilySize(loadedPacket.family_size);
+      setTablesGap(loadedPacket.tables_gap);
       setError(null);
     } catch (err) {
       setIncomePeriod(null);
       setPaymentChoice(undefined);
+      setOutcome(null);
+      setFamilySize(null);
+      setTablesGap(null);
       setError(refusalOf(err, DASHBOARD_ERROR));
     } finally {
       setIsLoading(false);
@@ -225,10 +261,16 @@ export function FormDashboard() {
       setTables(reloaded.tables);
       setIncomePeriod(reloaded.income_period);
       setPaymentChoice(reloaded.payment_choice);
+      setOutcome(reloaded.outcome);
+      setFamilySize(reloaded.family_size);
+      setTablesGap(reloaded.tables_gap);
       setError(null);
     } catch (err) {
       setIncomePeriod(null);
       setPaymentChoice(undefined);
+      setOutcome(null);
+      setFamilySize(null);
+      setTablesGap(null);
       setError(refusalOf(err, DASHBOARD_ERROR));
     }
   };
@@ -248,7 +290,14 @@ export function FormDashboard() {
 
   const handleMarkFiled = async (formId: number) => {
     const form = forms.find((f) => f.id === formId);
-    await api.forms.markFiled(formId);
+    try {
+      await api.forms.markFiled(formId);
+    } catch (err) {
+      // Form 122A-1 and 122A-2 are worked out before they are marked filed, so a refusal shows on
+      // the card, which stays unfiled
+      if (form) setFormRefusal(form.form_type, refusalOf(err, ERROR_GENERIC));
+      return;
+    }
     // A filed form prints what was filed, which no step changes (ruling R46)
     if (form) setFormRefusal(form.form_type, undefined);
     await loadForms();
@@ -290,7 +339,55 @@ export function FormDashboard() {
   const linkTo = linksInPageOrder(noticeLinksIntake);
   const errorLink = error ? linkTo(error) : undefined;
   const refusalLink = generateAllRefusal ? linkTo(generateAllRefusal) : undefined;
-  const generationErrorLinks = generationErrors.map((e) => linkTo(e));
+  // The pair's refusals are information (the hold), so they show apart from the others, which
+  // are errors; the others' links come first, as they sit first on the page
+  const isPair = (e: GenerateAllError) => MEANS_PAIR.includes(e.form_type as FormType);
+  const otherErrors = generationErrors.filter((e) => !isPair(e));
+  const pairErrors = generationErrors.filter(isPair);
+  const otherErrorLinks = otherErrors.map((e) => linkTo(e));
+  const pairErrorLinks = pairErrors.map((e) => linkTo(e));
+  const outcomeSentences = meansOutcomeSentences(outcome, familySize, tablesGap);
+  const hasMeansPair = packet.includes('form_122a2');
+  // A card's notice is information about the form, never a refusal: a form filed before 3h
+  // first, then a filed Form 122A-1 that doesn't say its result is worked out on Form 122A-2
+  // (its box 1 stored) while Form 122A-2 now applies
+  const noticeOf = (form?: GeneratedForm): string | undefined => {
+    if (!form) return undefined;
+    if (form.filed_before_means_test) {
+      if (form.form_type === 'form_122a2') return MEANS_FILED_BEFORE_122A2;
+      if (form.form_type === 'form_122a1') return MEANS_FILED_BEFORE_122A1;
+      return undefined;
+    }
+    if (
+      form.form_type === 'form_122a1' &&
+      form.status === 'filed' &&
+      form.stored_box_2 === false &&
+      hasMeansPair
+    ) {
+      return MEANS_FILED_MISMATCH;
+    }
+    return undefined;
+  };
+  const errorList = (errors: GenerateAllError[], links: FormRefusal['link'][]) => (
+    <ul>
+      {errors.map((e, index) => {
+        const link = links[index];
+        return (
+          <li key={e.form_type}>
+            {FORM_TYPE_METADATA[e.form_type as FormType]?.label ?? e.form_type}: {e.error}
+            {link && (
+              <>
+                {' '}
+                <Link to={link.to} className="button button--primary">
+                  {link.label}
+                </Link>
+              </>
+            )}
+          </li>
+        );
+      })}
+    </ul>
+  );
   const cardRefusals = new Map<FormType, FormRefusal>();
   for (const formType of [...packet, ...filedOutsidePacket.map((form) => form.form_type)]) {
     const refusal = formRefusals[formType];
@@ -353,35 +450,24 @@ export function FormDashboard() {
         </div>
       )}
 
-      {generationErrors.length > 0 && (
+      {otherErrors.length > 0 && (
         <div className="form-dashboard-error" role="alert">
           <p>
-            {generationErrors.length} form{generationErrors.length > 1 ? 's' : ''} could not be
-            generated.
+            {otherErrors.length} form{otherErrors.length > 1 ? 's' : ''} could not be generated.
             {/* Trying again is all the filer can do about a form whose refusal names no fix */}
-            {generationErrors.some((e) => !fixLink(e)) &&
+            {otherErrors.some((e) => !fixLink(e)) &&
               ' You can try generating them individually below.'}
           </p>
-          <ul>
-            {generationErrors.map((e, index) => {
-              const link = generationErrorLinks[index];
-              return (
-                <li key={e.form_type}>
-                  {FORM_TYPE_METADATA[e.form_type as FormType]?.label ?? e.form_type}: {e.error}
-                  {link && (
-                    <>
-                      {' '}
-                      <Link to={link.to} className="button button--primary">
-                        {link.label}
-                      </Link>
-                    </>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
+          {errorList(otherErrors, otherErrorLinks)}
         </div>
       )}
+
+      {/* Form 122A-1 and 122A-2 wait for each other: say so as information, not as an error. A
+          polite region from the start, empty until then, so a screen reader reads out the
+          refusals Generate All adds to it, as a card's refusal region is */}
+      <div className="form-dashboard-notice form-dashboard-pair" role="status">
+        {pairErrors.length > 0 && errorList(pairErrors, pairErrorLinks)}
+      </div>
 
       {/* Nothing to count until the packet has loaded */}
       {totalCount > 0 && (
@@ -417,11 +503,32 @@ export function FormDashboard() {
         </>
       )}
 
-      {tables.map((table) => (
-        <p key={table.name} className="form-dashboard-notice">
-          {tableNotice(table)}
-        </p>
-      ))}
+      {tables.map((table) => {
+        const notice = tableNotice(table);
+        return (
+          notice && (
+            <p key={table.name} className="form-dashboard-notice">
+              {notice}
+            </p>
+          )
+        );
+      })}
+
+      {/* The result is shown only from the outcome (a row saved before 3h1 has none); the pair
+          notice shows whenever Form 122A-2 is in the packet */}
+      {hasMeansPair && (
+        <section
+          className="form-dashboard-notice"
+          role="status"
+          aria-label={MEANS_TEST_PREVIEW_TITLE}
+        >
+          {outcomeSentences.map((sentence) => (
+            <p key={sentence}>{sentence}</p>
+          ))}
+          {outcomeSentences.length > 0 && <p>{UPL_MEANS_TEST_DISCLAIMER}</p>}
+          <p>{MEANS_PAIR_NOTICE}</p>
+        </section>
+      )}
 
       {incomeWindowNotice && incomeLink && (
         <div className="form-dashboard-notice">
@@ -465,6 +572,7 @@ export function FormDashboard() {
               key={formType}
               formType={formType}
               generatedForm={formsByType.get(formType)}
+              notice={noticeOf(formsByType.get(formType))}
               refusal={cardRefusals.get(formType)}
               onGenerate={handleGenerate}
               onDownload={handleDownload}
@@ -477,6 +585,7 @@ export function FormDashboard() {
               formType={form.form_type}
               generatedForm={form}
               leftPacket
+              notice={noticeOf(form)}
               refusal={cardRefusals.get(form.form_type)}
               onGenerate={handleGenerate}
               onDownload={handleDownload}

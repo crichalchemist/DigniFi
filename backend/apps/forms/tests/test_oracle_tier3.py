@@ -20,8 +20,14 @@ import pytest
 from django.core.management import call_command
 
 from apps.districts.models import District
-from apps.forms.registry import build_field_values, build_parts
+from apps.forms.registry import (
+    FORM_122A2_NOT_ASKED,
+    PreconditionMissing,
+    build_field_values,
+    build_parts,
+)
 from apps.forms.schema import load_schema
+from apps.forms.services.fill_resolver import resolve
 from apps.forms.services.pdf_filler import PDFFormFiller
 from apps.forms.services.sheets import sheet_spec
 from apps.forms.services.widgets import template_widgets
@@ -31,6 +37,7 @@ from apps.forms.tests.test_form_122a1_schema import LINE_10_SOURCE
 from apps.intake.models import IntakeSession
 
 TIER = "3"
+HELD = ("form_122a1", "form_122a2")  # refused above the median until 122A-2 can print (3h1)
 BELOW_MEDIAN = "/12b less or equal to 13"
 ABOVE_MEDIAN = "/12b more than 13"
 
@@ -1301,7 +1308,14 @@ def _printed(persona):
     session = IntakeSession.objects.filter(user__username=f"demo_{persona}").latest("id")
     printed = {}
     for form_type in EXPECTED[persona]:
-        values = build_field_values(form_type, session)
+        try:
+            values = build_field_values(form_type, session)
+        except PreconditionMissing as exc:
+            if form_type not in HELD or str(exc) != FORM_122A2_NOT_ASKED:
+                raise
+            # The hold refuses 122A-2, and Priya's 122A-1 (R6): this tier judges printing, so
+            # the form resolves below the gate.
+            values = resolve(load_schema(form_type), session)
         template = load_schema(form_type).template_filename
         drawn = {(w.page, w.tag) for w in template_widgets(template) if w.drawn}
         for w in read_drawn(form_type, PDFFormFiller().fill(form_type, values)):
@@ -1313,6 +1327,18 @@ def _printed(persona):
             elif w.state != "/Off":
                 shows.add(w.state)
     return printed
+
+
+@pytest.mark.django_db
+def test_priyas_122a1_and_122a2_are_held_until_122a2_can_print():
+    # Priya is above the median. The pair refuses together until 3h2 asks every question.
+    if not District.objects.filter(code="ilnd").exists():
+        call_command("loaddata", "ilnd_2025_data", verbosity=0)
+    call_command("seed_demo_data", "--reset", persona="priya", verbosity=0)
+    session = IntakeSession.objects.filter(user__username="demo_priya").latest("id")
+    for form_type in HELD:
+        with pytest.raises(PreconditionMissing, match=re.escape(FORM_122A2_NOT_ASKED)):
+            build_field_values(form_type, session)
 
 
 def _amount(text):

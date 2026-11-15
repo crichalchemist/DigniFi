@@ -68,3 +68,37 @@ def exemption_catalog_2026(db):
         migration = importlib.import_module("apps.districts.migrations.0007_exemption_catalog_2026")
         migration.load_2026(apps, None)
     return ExemptionCatalog.objects.get(effective_date=date(2026, 1, 1))
+
+
+@pytest.fixture
+def means_standards_2026(db):
+    # The U.S. Trustee's July 15, 2026 standards, which 0010_means_standards_2026 loads. A
+    # transactional test's teardown empties every table, the migrated rows included, so a test
+    # that needs the set after one asks for this fixture. Imported here: this module loads
+    # before django.setup().
+    import importlib
+
+    from django.apps import apps
+
+    from apps.districts.models import MeansStandards
+
+    if not MeansStandards.objects.filter(effective_date=date(2026, 7, 15)).exists():
+        migration = importlib.import_module("apps.districts.migrations.0010_means_standards_2026")
+        migration.load_2026(apps, None)
+    return MeansStandards.objects.get(effective_date=date(2026, 7, 15))
+
+
+@pytest.fixture
+def section_104_2025(db):
+    # The Bankruptcy Code dollar amounts of April 1, 2025, which 0011_section_104_2025 loads;
+    # put back after a transactional test's teardown as means_standards_2026 is.
+    import importlib
+
+    from django.apps import apps
+
+    from apps.districts.models import Section104Amounts
+
+    if not Section104Amounts.objects.filter(effective_date=date(2025, 4, 1)).exists():
+        migration = importlib.import_module("apps.districts.migrations.0011_section_104_2025")
+        migration.load_2025(apps, None)
+    return Section104Amounts.objects.get(effective_date=date(2025, 4, 1))

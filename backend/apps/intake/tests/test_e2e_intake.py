@@ -568,12 +568,13 @@ class TestMeansTestCalculation:
         assert result["passes_means_test"] is True
         assert Decimal(result["cmi"]) == Decimal("4000.00")
         assert "median_income_threshold" in result
-        assert "message" in result
+        assert "outcome" in result
+        assert "message" not in result
 
     def test_calculate_means_test_above_median(self, api_client, complete_session):
-        """Test means test with income above median (should fail)."""
+        """Income above the median meets cannot_work_out, never a passes/fails verdict."""
         # Note: calculator compares monthly CMI to annual threshold directly.
-        # Median is $71,304 annual, so CMI must exceed that to fail.
+        # Median is $71,304 annual, so CMI must exceed that to be above the median.
         complete_session.income_info.monthly_gross_wages = Decimal("80000.00")
         complete_session.income_info.save()
 
@@ -582,7 +583,7 @@ class TestMeansTestCalculation:
 
         assert response.status_code == status.HTTP_200_OK
         result = response.data["means_test_result"]
-        assert result["passes_means_test"] is False
+        assert result["outcome"] == "cannot_work_out"
         assert Decimal(result["cmi"]) == Decimal("80000.00")
 
     def test_calculate_means_test_without_income_info(self, api_client, district):
@@ -618,9 +619,9 @@ class TestMeansTestCalculation:
         summary = api_client.get(reverse("intake-session-summary", args=[complete_session.id]))
 
         assert "qualifies_for_fee_waiver" not in result
-        assert "fee waiver" not in result["message"].lower()
+        assert "message" not in result
         assert summary.status_code == status.HTTP_200_OK
-        assert summary.data["means_test"] == {"passes": True}
+        assert summary.data["means_test"] == {"passes": True, "outcome": "at_or_below_median"}
 
 
 @pytest.mark.django_db

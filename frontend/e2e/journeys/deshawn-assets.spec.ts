@@ -51,10 +51,10 @@ test.describe('DeShawn Mitchell — Assets', () => {
     await wizard.nextStep();
 
     // Should pass means test (below median for HH of 2)
-    // (the estimate needs both income and expense data)
-    await wizard.waitForMeansTestEstimate();
+    // (the result reads income alone, so it shows once income is saved)
+    await wizard.waitForMeansTestResult();
     const preview = await wizard.getMeansTestPreview();
-    expect(preview.toLowerCase()).toContain('eligible');
+    expect(preview.toLowerCase()).toContain('at or below the median');
 
     // Step 5: Assets — his home (line 1), the truck (line 3) and his 401(k) (line 21),
     // with the household goods and accounts, Part by Part. The walk fails if a row

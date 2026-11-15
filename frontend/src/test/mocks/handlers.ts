@@ -51,6 +51,8 @@ const mockGeneratedForm = {
   generated_by: 1,
   generated_at: '2026-01-20T10:00:00Z',
   updated_at: '2026-01-20T10:00:00Z',
+  filed_before_means_test: false,
+  stored_box_2: null,
 };
 
 /** A below-median filer who pays the fee in full: the 15 forms every packet holds */
@@ -77,8 +79,8 @@ const mockMeansTestResult = {
   cmi: 3500,
   median_income_threshold: 71304,
   family_size: 1,
-  message:
-    'Based on the information you provided, your income is at or below the median income threshold for your household size in your district.',
+  outcome: 'at_or_below_median',
+  tables_gap: null,
   details: {
     cmi: 3500,
     annualized_cmi: 42000,
@@ -291,6 +293,9 @@ export const handlers = [
       form_types: mockPacket,
       tables: [],
       payment_choice: 'pay_in_full',
+      outcome: null,
+      family_size: null,
+      tables_gap: null,
     })
   ),
 

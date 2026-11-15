@@ -218,12 +218,9 @@ def test_the_seed_gives_each_persona_their_stored_answers(
     assert is_above_median(means_test.calculated_cmi, means_test.median_income_threshold) is (
         persona == "priya"
     )
-    # the move of the car and property payments to their links changes no verdict (3c4 R5)
-    assert means_test.passes_means_test is (persona != "priya")
-    if persona == "priya":
-        assert means_test.passes_above_median is False
-        assert means_test.total_allowable_expenses == Decimal("3464.00")
-        assert means_test.disposable_income == Decimal("10336.00")
+    # Priya is above the median and her 122A-2 can't be worked out yet (3h1)
+    assert means_test.outcome == ("cannot_work_out" if persona == "priya" else "at_or_below_median")
+    assert means_test.passes_means_test is (None if persona == "priya" else True)
     forms = packet(session)
     assert ("form_122a2" in forms) is (persona == "priya")
     assert ("form_103b" in forms) is (persona in {"maria", "sarah"})
@@ -602,3 +599,20 @@ def test_every_seeded_persona_passes_schedule_cs_gate(persona):
 
     session = _seed(persona)
     FORM_REGISTRY["schedule_c"].requires(session)
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("persona", list(PERSONAS))
+def test_the_seed_reports_only_priyas_122a1_and_122a2_as_skipped_because_the_hold_refuses_them(
+    persona,
+):
+    call_command("loaddata", "ilnd_2025_data", verbosity=0)
+    err = StringIO()
+    call_command("seed_demo_data", persona=persona, stdout=StringIO(), stderr=err)
+
+    skipped = sorted(
+        line.split("Skipped ")[1].split(":")[0]
+        for line in err.getvalue().splitlines()
+        if "Skipped" in line
+    )
+    assert skipped == (["form_122a1", "form_122a2"] if persona == "priya" else [])
