@@ -17,6 +17,8 @@ import {
   FORM_122A2_LINE_3_PURPOSE,
   FORM_122A2_LINE_3_QUESTION,
   FORM_122A2_LINE_34,
+  FORM_122A2_LINE_34_CURE,
+  FORM_122A2_LINE_34_DEBT,
   FORM_122A2_LINE_36,
   FORM_122A2_LINE_36_PAYMENT,
   FORM_122A2_LINE_43,
@@ -49,27 +51,35 @@ import {
   MEANS_REMOVE_ROW,
   MEANS_RESULT_CHANGED,
   MEANS_ROW_LEGEND,
+  MEANS_SPOUSE_VEHICLE_LEGEND,
   MEANS_TOO_LONG,
 } from '../constants/copy';
 import { formatIsoDate } from '../utils/formatIsoDate';
 import { AmountBox } from './meansTest/AmountBox';
 import { besideLine } from './meansTest/beside';
+import { DebtQuestions, type DebtItem } from './meansTest/DebtQuestions';
 import { MeansResult } from './meansTest/MeansResult';
-import { slotCandidates } from './meansTest/meansRows';
+import { debtLines, slotCandidates } from './meansTest/meansRows';
 import { firstMeansGap } from './meansTest/meansTestGaps';
 import { dollars } from './meansTest/money';
 import { planProduct } from './meansTest/meansProduct';
 import {
   adoptRefs,
+  debtPrefix,
   fromReply,
   gapStateOf,
+  line11Vehicles,
   rowsInputOf,
+  spouseLoanHeading,
+  spouseLoanViews,
   toPutBody,
+  withLiveRefs,
   type PageAnswers,
   type PageState,
 } from './meansTest/pageState';
+import { SpouseBlock } from './meansTest/SpouseBlock';
 import { YesNoQuestion } from './meansTest/YesNoQuestion';
-import type { MeansPage, YesNo } from '../types/api';
+import type { MeansDebtAnswers, MeansPage, YesNo } from '../types/api';
 
 /** The server refuses a list of more than 10 rows (MAX_ROWS in apps/intake/means_test.py) */
 const MAX_LIST_ROWS = 10;
@@ -117,10 +127,36 @@ function anythingAnswered(state: PageState): boolean {
   );
 }
 
+// The lists whose text boxes the server measures, each box's sentence key by the row's `_key`
+const FIT_BOXES: Record<
+  string,
+  {
+    rows: (sent: PageState) => { _key: string }[];
+    boxes: Record<string, (key: string) => string>;
+  }
+> = {
+  line_3_rows: {
+    rows: (sent) => sent.answers.line_3_rows,
+    boxes: { purpose: (key) => `line_3:${key}` },
+  },
+  spouse_vehicles: {
+    rows: (sent) => sent.answers.spouse_vehicles,
+    boxes: { description: (key) => `spouse_vehicle:${key}:description` },
+  },
+  spouse_loans: {
+    rows: (sent) => sent.answers.spouse_loans,
+    boxes: {
+      creditor: (key) => `spouse_loan:${key}:creditor`,
+      property: (key) => `spouse_loan:${key}:property`,
+    },
+  },
+};
+
 /**
  * What a failed save says about the boxes sent. `fields` holds the boxes a 400 refuses for not
- * fitting, keyed `<list>:<row key>` (`line_3:<_key>`; the later lists follow that pattern). `other`
- * is true for any other failure, or a box the page doesn't show: only the save sentence says it.
+ * fitting, keyed by `FIT_BOXES` (`line_3:<_key>`, `spouse_vehicle:<_key>:description`, ...).
+ * `other` is true for any other failure, or a box the page doesn't show: only the save sentence
+ * says it.
  */
 function readRefusal(
   caught: unknown,
@@ -132,19 +168,21 @@ function readRefusal(
   const fields: Record<string, string> = {};
   let other = false;
   for (const [name, value] of Object.entries(caught.body)) {
-    if (name !== 'line_3_rows' || !isRecord(value)) {
+    const list = FIT_BOXES[name];
+    if (list === undefined || !isRecord(value)) {
       other = true;
       continue;
     }
     for (const [index, errors] of Object.entries(value)) {
-      const row = sent.answers.line_3_rows[Number(index)];
+      const row = list.rows(sent)[Number(index)];
       if (row === undefined || !isRecord(errors)) {
         other = true;
         continue;
       }
       for (const field of Object.keys(errors)) {
-        if (field === 'purpose') fields[`line_3:${row._key}`] = MEANS_TOO_LONG;
-        else other = true;
+        const box = list.boxes[field];
+        if (box === undefined) other = true;
+        else fields[box(row._key)] = MEANS_TOO_LONG;
       }
     }
   }
@@ -246,9 +284,12 @@ export function MeansTestPage() {
   const setAmount = (key: AmountKey, value: string | null) =>
     setAnswer(key, value as PageAnswers[typeof key]);
 
-  const addRow = () => {
+  const nextKey = () => {
     newRows.current += 1;
-    const key = `new-${newRows.current}`;
+    return `new-${newRows.current}`;
+  };
+  const addRow = () => {
+    const key = nextKey();
     edit((current) => ({
       ...current,
       answers: {
@@ -276,7 +317,7 @@ export function MeansTestPage() {
     const sent = state;
     const shown = page.outcome;
     try {
-      const reply = await api.intake.meansTest.put(sessionId, toPutBody(sent));
+      const reply = await api.intake.meansTest.put(sessionId, toPutBody(withLiveRefs(page, sent)));
       const next = adoptRefs(sent, sent, reply);
       const nextPage: MeansPage = {
         ...page,
@@ -417,14 +458,22 @@ export function MeansTestPage() {
     );
   };
 
-  const vehicleNames = new Map(
-    rows.vehicles.map((vehicle) => [
-      vehicle.ref,
-      page.vehicles.find((own) => own.ref === vehicle.ref)?.name ??
-        answers.spouse_vehicles.find((row) => row.ref === vehicle.ref)?.description ??
-        '',
-    ])
-  );
+  // What the page shows is read as the server will read it: a reference to a removed row is none
+  const live = withLiveRefs(page, state).answers;
+  const listedVehicles = line11Vehicles(page, answers);
+  // A candidate spouse row with no description reads as its legend, never its ref
+  const vehicleNames = new Map([
+    ...page.vehicles.map((vehicle) => [vehicle.ref, vehicle.name] as const),
+    ...answers.spouse_vehicles.map(
+      (row, index) =>
+        [
+          row.ref,
+          row.description.trim() === ''
+            ? fill(MEANS_SPOUSE_VEHICLE_LEGEND, { n: index + 1 })
+            : row.description,
+        ] as const
+    ),
+  ]);
   const candidates = slotCandidates(rows);
   const chooseSlot = (index: 0 | 1, ref: string) =>
     edit((current) => {
@@ -433,14 +482,14 @@ export function MeansTestPage() {
       return { ...current, answers: { ...current.answers, vehicle_choice: choice } };
     });
   const slotSelect = (index: 0 | 1) => {
-    const other = answers.vehicle_choice[index === 0 ? 1 : 0];
+    const other = live.vehicle_choice[index === 0 ? 1 : 0];
     return (
       <FormSelect
         label={index === 0 ? FORM_122A2_VEHICLE_1 : FORM_122A2_VEHICLE_2}
         name={`means_vehicle_${index + 1}`}
         placeholder=""
         required
-        value={answers.vehicle_choice[index] ?? ''}
+        value={live.vehicle_choice[index] ?? ''}
         options={(candidates ?? [])
           .filter((ref) => ref !== other)
           .map((ref) => ({ value: ref, label: vehicleNames.get(ref) ?? '' }))}
@@ -450,6 +499,45 @@ export function MeansTestPage() {
   };
 
   const claimedVehicle = rows.vehicles.some((vehicle) => vehicle.claimed);
+
+  // Each secured debt, as the page asks about it: the filer's, then the spouse's loans whose
+  // identity is given (a loan with none has no line to ask about)
+  const lines = debtLines(rows);
+  const debtItems: (DebtItem & { creditor: string })[] = [
+    ...state.debts.map((debt) => ({
+      key: debt.ref,
+      ref: debt.ref,
+      prefix: debtPrefix(debt.ref),
+      heading: debt.creditor,
+      creditor: debt.creditor,
+      property: debt.property,
+      monthlyPayment: debt.monthly_payment,
+      answers: debt as MeansDebtAnswers,
+    })),
+    ...spouseLoanViews(page, state)
+      .filter((view) => view.identityGiven)
+      .map((view) => ({
+        key: view.loan._key,
+        ref: view.loan.ref,
+        prefix: debtPrefix(view.loan.ref),
+        heading: spouseLoanHeading(view.creditor),
+        creditor: view.creditor,
+        property: view.property,
+        monthlyPayment: null,
+        answers: view.loan as MeansDebtAnswers,
+      })),
+  ];
+  const changeDebt = (key: string, change: Partial<MeansDebtAnswers>) =>
+    edit((current) => ({
+      ...current,
+      debts: current.debts.map((debt) => (debt.ref === key ? { ...debt, ...change } : debt)),
+      answers: {
+        ...current.answers,
+        spouse_loans: current.answers.spouse_loans.map((loan) =>
+          loan._key === key ? { ...loan, ...change } : loan
+        ),
+      },
+    }));
   const shownGap = pressed || anythingAnswered(state) ? (browserGap ?? replyGap) : null;
   const gapText = changed ? MEANS_RESULT_CHANGED : shownGap;
 
@@ -551,30 +639,61 @@ export function MeansTestPage() {
           </div>
         )}
 
-        {/* The spouse's vehicles and loans: Task 11 */}
+        {together && (
+          <SpouseBlock
+            page={page}
+            answers={answers}
+            edit={edit}
+            nextKey={nextKey}
+            boxErrors={fieldErrors}
+            clearBoxError={clearFieldError}
+          />
+        )}
 
-        {rows.vehicles.length > 0 && (
+        {listedVehicles.length > 0 && (
           <div className="means-line">
             <p className="form-label">{FORM_122A2_LINE_11}</p>
-            {page.vehicles.map((vehicle) => (
-              <YesNoQuestion
-                key={vehicle.ref}
-                question={fill(FORM_122A2_VEHICLE_CLAIM, { name: vehicle.name })}
-                name={`means_vehicle_${vehicle.ref.replace('asset-', '')}_claimed`}
-                value={answers.vehicle_claims[vehicle.ref] ?? null}
-                onChange={(next) =>
-                  edit((current) => ({
-                    ...current,
-                    // The server replaces the claims whole: every other claim goes with this one
-                    answers: {
-                      ...current.answers,
-                      vehicle_claims: { ...current.answers.vehicle_claims, [vehicle.ref]: next },
-                    },
-                  }))
-                }
-              />
-            ))}
-            {/* The spouse's vehicle rows are added here by Task 11 */}
+            {listedVehicles.map((vehicle) => {
+              // A spouse's claim is on its row, so a new row's claim travels with it
+              const spouseRow = vehicle.spouse
+                ? answers.spouse_vehicles.find((row) => row.ref === vehicle.ref)
+                : undefined;
+              return (
+                <YesNoQuestion
+                  key={spouseRow?._key ?? vehicle.ref}
+                  question={fill(FORM_122A2_VEHICLE_CLAIM, { name: vehicle.name })}
+                  name={`means_vehicle_${vehicle.ref.replace('asset-', '').replace('-', '_')}_claimed`}
+                  value={
+                    spouseRow ? spouseRow.claimed : (answers.vehicle_claims[vehicle.ref] ?? null)
+                  }
+                  onChange={(next) =>
+                    edit((current) =>
+                      spouseRow
+                        ? {
+                            ...current,
+                            answers: {
+                              ...current.answers,
+                              spouse_vehicles: current.answers.spouse_vehicles.map((row) =>
+                                row._key === spouseRow._key ? { ...row, claimed: next } : row
+                              ),
+                            },
+                          }
+                        : {
+                            ...current,
+                            // The server replaces the claims whole: every other claim goes with this one
+                            answers: {
+                              ...current.answers,
+                              vehicle_claims: {
+                                ...current.answers.vehicle_claims,
+                                [vehicle.ref]: next,
+                              },
+                            },
+                          }
+                    )
+                  }
+                />
+              );
+            })}
             {candidates !== null && candidates.length > 2 && (
               <>
                 <p className="form-help-text">{FORM_122A2_VEHICLE_LIMIT}</p>
@@ -637,7 +756,7 @@ export function MeansTestPage() {
           optInLine(line, undefined, line === '27' ? MEANS_LINE_27_NOTE : undefined)
         )}
 
-        {/* The debts block: Task 11 */}
+        <DebtQuestions items={debtItems} lines={lines} onChange={changeDebt} />
 
         <div className="means-line">
           <YesNoQuestion
@@ -646,6 +765,27 @@ export function MeansTestPage() {
             value={answers.line_34_answer}
             onChange={(next) => setAnswer('line_34_answer', next)}
           />
+          {answers.line_34_answer === 'yes' &&
+            debtItems
+              .filter((item) => (lines[item.ref] ?? null) !== null)
+              .map((item) => (
+                <div key={item.key}>
+                  <YesNoQuestion
+                    question={fill(FORM_122A2_LINE_34_DEBT, { name: item.creditor })}
+                    name={`${item.prefix}_support`}
+                    value={item.answers.necessary_for_support}
+                    onChange={(next) => changeDebt(item.key, { necessary_for_support: next })}
+                  />
+                  {item.answers.necessary_for_support === 'yes' && (
+                    <AmountBox
+                      name={`${item.prefix}_cure`}
+                      label={FORM_122A2_LINE_34_CURE}
+                      value={item.answers.cure}
+                      onChange={(value) => changeDebt(item.key, { cure: value })}
+                    />
+                  )}
+                </div>
+              ))}
         </div>
 
         {information !== null && information.line_35 !== null && (

@@ -4,7 +4,14 @@
  * keys, a spouse row the server named keeps the answers typed beside it, and the browser reads the
  * spouse's loans as the server does, so the page's gaps and the result agree.
  */
-import { adoptRefs, fromReply, gapStateOf, rowsInputOf, toPutBody } from '../pageState';
+import {
+  adoptRefs,
+  fromReply,
+  gapStateOf,
+  rowsInputOf,
+  toPutBody,
+  withLiveRefs,
+} from '../pageState';
 import { KESTREL, meansPage, priyaPage } from '../../../test/fixtures/meansPage';
 import type { MeansPage, MeansSpouseLoan } from '../../../types/api';
 
@@ -197,7 +204,8 @@ describe('rowsInputOf', () => {
   });
 
   it('holds the Vehicle 1 and 2 choice only once both are chosen', () => {
-    const page = meansPage();
+    // 'spouse-1' names a vehicle only while the spouse's row is on the page
+    const page = withLoans([]);
     const state = fromReply(page);
     state.answers.vehicle_choice = ['asset-7', null];
     expect(rowsInputOf(page, state).vehicle_choice).toBeNull();
@@ -257,5 +265,54 @@ describe('gapStateOf', () => {
     state.debts[0].payments_left = 37;
     state.debts[0].payment_changes = 'no';
     expect(gapStateOf(page, state).lines['debt-11']).toBe('13b');
+  });
+});
+
+describe('a spouse row and its references', () => {
+  it('a spouse row carries a browser key that the save leaves out', () => {
+    const page = withLoans([loan(1)]);
+    const state = fromReply(page);
+    expect(state.answers.spouse_vehicles.map((row) => row._key)).toEqual(['loaded-0']);
+    expect(state.answers.spouse_loans.map((row) => row._key)).toEqual(['loaded-0']);
+    expect(JSON.stringify(toPutBody(state))).not.toContain('_key');
+
+    // The server gives a new row its id: the ref follows, the key stays, so the row isn't remounted
+    state.answers.spouse_vehicles[0].ref = 'new-4';
+    const reply = withLoans([loan(1)]);
+    reply.answers.spouse_vehicles[0].ref = 'spouse-9';
+    const next = adoptRefs(state, state, reply);
+    expect(next.answers.spouse_vehicles[0]).toMatchObject({ ref: 'spouse-9', _key: 'loaded-0' });
+    expect(next.answers.spouse_loans[0]._key).toBe('loaded-0');
+  });
+
+  it('a save reads every reference as the next read would give it back', () => {
+    const page = withLoans([
+      loan(1, { secured_by: 'home' }),
+      loan(2, { secured_by: 'other' }),
+      loan(3, { secured_by: 'spouse-1' }),
+      loan(4, { secured_by: 'spouse-9' }),
+      loan(5, { on_amounts_owed: 'yes', creditor: '', secured_by: 'asset-7' }),
+      loan(6, { on_amounts_owed: 'yes', creditor: '', debt: 21, secured_by: 'spouse-1' }),
+      loan(7, { on_amounts_owed: 'yes', creditor: '', debt: 99, secured_by: 'spouse-1' }),
+      loan(8, { secured_by: 'asset-7' }),
+    ]);
+    page.answers.vehicle_choice = ['asset-7', 'spouse-9'];
+    const body = toPutBody(withLiveRefs(page, fromReply(page)));
+    expect(body.spouse_loans.map((row) => [row.secured_by, row.debt])).toEqual([
+      ['home', null],
+      ['other', null],
+      ['spouse-1', null],
+      // a vehicle that has gone
+      [null, null],
+      // a filer's own vehicle on an Amounts Owed row
+      [null, null],
+      // a debt that is open stays named
+      ['spouse-1', 21],
+      // a debt that is gone reads as none
+      ['spouse-1', null],
+      // a typed loan may name the filer's own vehicle
+      ['asset-7', null],
+    ]);
+    expect(body.vehicle_choice).toEqual(['asset-7', null]);
   });
 });

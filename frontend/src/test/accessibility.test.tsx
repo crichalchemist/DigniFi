@@ -333,4 +333,56 @@ describe('Accessibility: Pages', () => {
     const results = await axe(container, axeOptions);
     expect(results).toHaveNoViolations();
   });
+
+  it("MeansTestPage with a spouse vehicle, a spouse loan and Kestrel's questions has no violations", async () => {
+    // Three cars with a loan or lease, so the Vehicle 1 and 2 selects show; the spouse's loan is on 33d
+    const page = priyaPage();
+    page.vehicles = [
+      { ref: 'asset-7', name: 'Honda CR-V EX 2021', leased: false },
+      { ref: 'asset-8', name: 'Demo leased car', leased: true },
+    ];
+    page.answers.vehicle_claims = { 'asset-7': 'yes', 'asset-8': 'yes' };
+    page.answers.vehicle_choice = ['asset-7', 'asset-8'];
+    page.answers.line_34_answer = 'yes';
+    page.answers.spouse_vehicles_answer = 'yes';
+    page.answers.spouse_vehicles = [
+      { ref: 'spouse-1', description: 'Demo van', leased: 'no', claimed: 'yes' },
+    ];
+    page.answers.spouse_loans_answer = 'yes';
+    page.answers.spouse_loans = [
+      {
+        ref: 'spouse-1',
+        on_amounts_owed: 'no',
+        debt: null,
+        creditor: 'Demo Credit Union',
+        secured_by: 'spouse-1',
+        property: '',
+        payment: '100.00',
+        payments_left: 10,
+        payment_changes: 'no',
+        total_60_months: null,
+        taxes_or_insurance: null,
+        necessary_for_support: 'yes',
+        cure: null,
+      },
+    ];
+    server.use(
+      http.get('http://localhost:8000/api/intake/sessions/:id/means-test/', () =>
+        HttpResponse.json(page)
+      )
+    );
+    const { container } = withIntakeProvider(<MeansTestPage />);
+
+    await waitFor(() => {
+      expect(container.querySelector('select[name="means_vehicle_1"]')).not.toBeNull();
+    });
+    expect(container.querySelector('input[name="means_spouse_loan_0_secured_by"]')).not.toBeNull();
+    expect(
+      container.querySelector('select[name="means_spouse_debt_1_payments_left"]')
+    ).not.toBeNull();
+    expect(container.querySelector('input[name="means_debt_11_support"]')).not.toBeNull();
+
+    const results = await axe(container, axeOptions);
+    expect(results).toHaveNoViolations();
+  });
 });

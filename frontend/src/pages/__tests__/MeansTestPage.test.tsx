@@ -4,13 +4,10 @@
  * arithmetic and never a verdict, Continue never leaves on a missing answer or a result that
  * changed under the filer, and a save that fails never loses what they typed.
  */
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { http, HttpResponse } from 'msw';
 import { server } from '../../test/mocks/server';
-import { IntakeProvider } from '../../context/IntakeContext';
-import { MeansTestPage } from '../MeansTestPage';
 import { KESTREL, meansPage, priyaPage } from '../../test/fixtures/meansPage';
 import { FORM_122A2_TITLE } from '../../constants/formText';
 import {
@@ -31,37 +28,23 @@ import {
   MEANS_RESULT_CHANGED,
   MEANS_STALE_ANSWERS,
   MEANS_TABLE_MISSING,
-  MEANS_TEST_PREVIEW_TITLE,
   MEANS_TOO_LONG,
 } from '../../constants/copy';
 import { UPL_MEANS_TEST_DISCLAIMER, UPL_WIZARD_DISCLAIMER } from '../../constants/upl';
 import type { MeansPage } from '../../types/api';
-
-const URL = 'http://localhost:8000/api/intake/sessions/:id/means-test/';
-const SOFA = 'Statement of Financial Affairs';
-
-type Body = Record<string, unknown>;
-
-/** Serve `saved`; each PUT is recorded and answered with `reply` (the saved page by default) */
-function serve(
-  saved: MeansPage,
-  options: { status?: number; reply?: MeansPage; body?: Body } = {}
-) {
-  const sent: Body[] = [];
-  server.use(
-    http.get(URL, () => HttpResponse.json(saved)),
-    http.put(URL, async ({ request }) => {
-      sent.push((await request.json()) as Body);
-      if (options.status !== undefined && options.status !== 200) {
-        return HttpResponse.json(options.body ?? { detail: 'Bad request' }, {
-          status: options.status,
-        });
-      }
-      return HttpResponse.json(options.reply ?? saved);
-    })
-  );
-  return sent;
-}
+import {
+  SOFA,
+  URL,
+  field,
+  gapRegion,
+  pressContinue,
+  radio,
+  ready,
+  renderPage,
+  result,
+  serve,
+  type Body,
+} from './meansTestPageHelpers';
 
 /** Hold the GET until the returned function is called */
 function serveHeldRead(saved: MeansPage) {
@@ -96,31 +79,28 @@ function serveHeldSave(saved: MeansPage) {
   return { sent, release: () => release() };
 }
 
-function renderPage(entry = '/means-test') {
-  localStorage.setItem('current_session_id', '1');
-  return render(
-    <MemoryRouter initialEntries={[entry]}>
-      <IntakeProvider>
-        <Routes>
-          <Route path="/means-test" element={<MeansTestPage />} />
-          <Route path="/sofa" element={<div>{SOFA}</div>} />
-          <Route path="/exemptions" element={<div>Exemptions</div>} />
-        </Routes>
-      </IntakeProvider>
-    </MemoryRouter>
-  );
-}
-
-const ready = () => screen.findByRole('heading', { level: 1, name: FORM_122A2_TITLE });
-const box = (name: string) => document.querySelector(`input[name="${name}"]`) as HTMLInputElement;
-const choice = (name: string, value: string) =>
-  document.querySelector(`input[name="${name}"][value="${value}"]`) as HTMLInputElement;
-const lineOf = (name: string) => (box(name) ?? choice(name, 'yes')).closest('.means-line');
-const gapRegion = () => document.querySelector('main > div[role="status"]') as HTMLElement;
-const result = () => screen.getByRole('status', { name: MEANS_TEST_PREVIEW_TITLE });
-const pressContinue = () => userEvent.click(screen.getByRole('button', { name: 'Continue' }));
+const lineOf = (name: string) => (field(name) ?? radio(name, 'yes')).closest('.means-line');
 const typeAmount = (name: string, value: string) =>
-  fireEvent.change(box(name), { target: { value } });
+  fireEvent.change(field(name), { target: { value } });
+
+// A test may hold every navigation, to see the page as it stands before the page moves on
+const navigation = vi.hoisted(() => ({ held: false }));
+vi.mock('react-router-dom', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('react-router-dom')>();
+  const { useCallback } = await import('react');
+  return {
+    ...actual,
+    useNavigate: () => {
+      const go = actual.useNavigate();
+      return useCallback(
+        ((...args: Parameters<typeof go>) => {
+          if (!navigation.held) return go(...args);
+        }) as typeof go,
+        [go]
+      );
+    },
+  };
+});
 
 describe('MeansTestPage', () => {
   it('nothing is selected on load', async () => {
@@ -138,24 +118,24 @@ describe('MeansTestPage', () => {
     serve(meansPage());
     const { unmount } = renderPage();
     await ready();
-    expect(choice('means_line_3', 'yes')).toBeInTheDocument();
+    expect(radio('means_line_3', 'yes')).toBeInTheDocument();
     unmount();
 
     serve({ ...meansPage(), married_together: false });
     renderPage();
     await ready();
-    expect(choice('means_line_3', 'yes')).toBeNull();
+    expect(radio('means_line_3', 'yes')).toBeNull();
   });
 
   it('line 15 shows only while a vehicle is claimed', async () => {
     serve(meansPage());
     renderPage();
     await ready();
-    expect(choice('means_line_15', 'yes')).toBeNull();
-    await userEvent.click(choice('means_vehicle_7_claimed', 'yes'));
-    expect(choice('means_line_15', 'yes')).toBeInTheDocument();
-    await userEvent.click(choice('means_vehicle_7_claimed', 'no'));
-    expect(choice('means_line_15', 'yes')).toBeNull();
+    expect(radio('means_line_15', 'yes')).toBeNull();
+    await userEvent.click(radio('means_vehicle_7_claimed', 'yes'));
+    expect(radio('means_line_15', 'yes')).toBeInTheDocument();
+    await userEvent.click(radio('means_vehicle_7_claimed', 'no'));
+    expect(radio('means_line_15', 'yes')).toBeNull();
   });
 
   it('the Vehicle 1 and 2 choice shows only with more than two claimed vehicles with a loan or lease', async () => {
@@ -176,13 +156,13 @@ describe('MeansTestPage', () => {
     renderPage();
     await ready();
     // two claimed, one declined: no choice to make
-    await userEvent.click(choice('means_vehicle_7_claimed', 'yes'));
-    await userEvent.click(choice('means_vehicle_8_claimed', 'yes'));
-    await userEvent.click(choice('means_vehicle_9_claimed', 'no'));
-    expect(box('means_vehicle_1')).toBeNull();
+    await userEvent.click(radio('means_vehicle_7_claimed', 'yes'));
+    await userEvent.click(radio('means_vehicle_8_claimed', 'yes'));
+    await userEvent.click(radio('means_vehicle_9_claimed', 'no'));
+    expect(field('means_vehicle_1')).toBeNull();
     expect(document.querySelector('select[name="means_vehicle_1"]')).toBeNull();
 
-    await userEvent.click(choice('means_vehicle_9_claimed', 'yes'));
+    await userEvent.click(radio('means_vehicle_9_claimed', 'yes'));
     const first = document.querySelector('select[name="means_vehicle_1"]') as HTMLSelectElement;
     const second = document.querySelector('select[name="means_vehicle_2"]') as HTMLSelectElement;
     const names = (select: HTMLSelectElement) =>
@@ -286,7 +266,7 @@ describe('MeansTestPage', () => {
     expect(sent[0].line_17).toBeNull();
     expect(screen.queryByText(SOFA)).not.toBeInTheDocument();
     expect(within(gapRegion()).getByText(MEANS_GAP_LINE_3)).toBeInTheDocument();
-    expect(box('means_line_16').value).toBe('100');
+    expect(field('means_line_16').value).toBe('100');
   });
 
   it('a gap never disables Continue', async () => {
@@ -294,7 +274,7 @@ describe('MeansTestPage', () => {
     renderPage();
     await ready();
     expect(screen.getByRole('button', { name: 'Continue' })).toBeEnabled();
-    await userEvent.click(choice('means_line_3', 'no'));
+    await userEvent.click(radio('means_line_3', 'no'));
     expect(screen.getByRole('button', { name: 'Continue' })).toBeEnabled();
   });
 
@@ -323,7 +303,7 @@ describe('MeansTestPage', () => {
     renderPage();
     await ready();
     expect(gapRegion().textContent).toBe('');
-    await userEvent.click(choice('means_line_3', 'no'));
+    await userEvent.click(radio('means_line_3', 'no'));
     expect(gapRegion()).toHaveTextContent(MEANS_GAP_SPOUSE_VEHICLES);
   });
 
@@ -351,9 +331,9 @@ describe('MeansTestPage', () => {
     await pressContinue();
     expect(await screen.findByRole('alert')).toHaveTextContent(MEANS_PAGE_SAVE_FAILED);
     expect(screen.queryByText(SOFA)).not.toBeInTheDocument();
-    expect(box('means_line_16').value).toBe('2300.00');
-    expect(box('means_line_17').value).toBe('5');
-    expect(choice('means_line_43', 'no')).toBeChecked();
+    expect(field('means_line_16').value).toBe('2300.00');
+    expect(field('means_line_17').value).toBe('5');
+    expect(radio('means_line_43', 'no')).toBeChecked();
     expect(screen.getByRole('button', { name: 'Continue' })).toBeEnabled();
   });
 
@@ -372,14 +352,14 @@ describe('MeansTestPage', () => {
     );
     renderPage();
     await ready();
-    expect(choice('means_line_34', 'no')).toBeChecked();
-    await userEvent.click(choice('means_line_34', 'yes'));
+    expect(radio('means_line_34', 'no')).toBeChecked();
+    await userEvent.click(radio('means_line_34', 'yes'));
     typeAmount('means_line_17', '5');
     await pressContinue();
     expect(await screen.findByRole('alert')).toHaveTextContent(MEANS_PAGE_SAVE_FAILED);
     // The radio stays where the filer put it, not where the page was loaded
-    expect(choice('means_line_34', 'yes')).toBeChecked();
-    expect(choice('means_line_34', 'no')).not.toBeChecked();
+    expect(radio('means_line_34', 'yes')).toBeChecked();
+    expect(radio('means_line_34', 'no')).not.toBeChecked();
     await pressContinue();
     await waitFor(() => expect(sent).toHaveLength(2));
     expect(sent[1].line_34_answer).toBe('yes');
@@ -391,15 +371,15 @@ describe('MeansTestPage', () => {
     renderPage();
     await ready();
     typeAmount('means_line_17', '5');
-    await userEvent.click(choice('means_line_34', 'yes'));
+    await userEvent.click(radio('means_line_34', 'yes'));
     await pressContinue();
     // withRetry tries four times with 0.5 s, 1 s and 2 s between them
     expect(await screen.findByRole('alert', {}, { timeout: 10000 })).toHaveTextContent(
       MEANS_PAGE_SAVE_FAILED
     );
     expect(screen.queryByText(SOFA)).not.toBeInTheDocument();
-    expect(box('means_line_17').value).toBe('5');
-    expect(choice('means_line_34', 'yes')).toBeChecked();
+    expect(field('means_line_17').value).toBe('5');
+    expect(radio('means_line_34', 'yes')).toBeChecked();
     expect(screen.getByRole('button', { name: 'Continue' })).toBeEnabled();
   }, 20000);
 
@@ -425,6 +405,21 @@ describe('MeansTestPage', () => {
     expect(headings).toEqual([]);
   });
 
+  it('a reply that says the form no longer applies leaves no heading on the page before it moves on', async () => {
+    serve(priyaPage(), { reply: { ...priyaPage(), applies: false } });
+    renderPage();
+    await ready();
+    navigation.held = true;
+    try {
+      await pressContinue();
+      // The page has the reply and has not left: it draws nothing, not even its title
+      await waitFor(() => expect(screen.queryAllByRole('heading')).toEqual([]));
+      expect(screen.queryByText(SOFA)).toBeNull();
+    } finally {
+      navigation.held = false;
+    }
+  });
+
   it("a reply that can't say whether the form applies shows why, and Continue goes to /sofa", async () => {
     const why = 'Enter your income by source on the Income step.';
     const sent = serve(priyaPage(), {
@@ -444,15 +439,15 @@ describe('MeansTestPage', () => {
     const sent = serve(priyaPage(), { status: 400 });
     renderPage();
     await ready();
-    await userEvent.click(choice('means_line_3', 'no'));
-    expect(box('means_line_3_0_purpose')).toBeNull();
+    await userEvent.click(radio('means_line_3', 'no'));
+    expect(field('means_line_3_0_purpose')).toBeNull();
     await pressContinue();
     await screen.findByRole('alert');
     expect(sent[0].line_3_answer).toBe('no');
     expect(sent[0].line_3_rows).toEqual([]);
-    await userEvent.click(choice('means_line_3', 'yes'));
-    expect(box('means_line_3_0_purpose').value).toBe('His payroll taxes withheld from his pay');
-    expect(box('means_line_3_0_amount').value).toBe('250.00');
+    await userEvent.click(radio('means_line_3', 'yes'));
+    expect(field('means_line_3_0_purpose').value).toBe('His payroll taxes withheld from his pay');
+    expect(field('means_line_3_0_amount').value).toBe('250.00');
   });
 
   it("a vehicle's name is shown exactly, even when it holds a replace pattern", async () => {
@@ -474,7 +469,7 @@ describe('MeansTestPage', () => {
     await ready();
     await pressContinue();
     const purpose = await waitFor(() => {
-      const input = box('means_line_3_0_purpose');
+      const input = field('means_line_3_0_purpose');
       expect(input).toHaveAccessibleDescription(MEANS_TOO_LONG);
       return input;
     });
@@ -490,7 +485,7 @@ describe('MeansTestPage', () => {
     const sent = serve(priyaPage(), { reply: priyaPage() });
     renderPage();
     await ready();
-    const line16 = box('means_line_16');
+    const line16 = field('means_line_16');
     // jsdom never sets badInput, so the box reports it the way a browser does for a lone '-'
     Object.defineProperty(line16, 'validity', { value: { badInput: true }, configurable: true });
     fireEvent.input(line16);
@@ -509,9 +504,9 @@ describe('MeansTestPage', () => {
     renderPage();
     await ready();
     typeAmount('means_line_16', '-5');
-    expect(box('means_line_16').value).toBe('-5');
+    expect(field('means_line_16').value).toBe('-5');
     expect(
-      within(box('means_line_16').closest('.form-field')!).getByText(AMOUNT_NEGATIVE)
+      within(field('means_line_16').closest('.form-field')!).getByText(AMOUNT_NEGATIVE)
     ).toBeVisible();
     await pressContinue();
     await waitFor(() => expect(sent).toHaveLength(1));
@@ -655,7 +650,7 @@ describe('MeansTestPage', () => {
     for (let row = 1; row < 10; row += 1) {
       await userEvent.click(add()!);
     }
-    expect(box('means_line_3_9_purpose')).toBeInTheDocument();
+    expect(field('means_line_3_9_purpose')).toBeInTheDocument();
     expect(add()).toBeNull();
   });
 
@@ -699,7 +694,7 @@ describe('MeansTestPage', () => {
       expect(text).not.toContain(absent);
     }
     // every question is still asked, and the two cap gaps are left out
-    expect(choice('means_line_36', 'yes')).toBeInTheDocument();
+    expect(radio('means_line_36', 'yes')).toBeInTheDocument();
     expect(text).toContain(MEANS_LINE_36_OTHER_RULES);
     expect(screen.getByRole('link', { name: MEANS_LINE_36_LINK })).toBeInTheDocument();
     expect(gapRegion().textContent).toBe('');

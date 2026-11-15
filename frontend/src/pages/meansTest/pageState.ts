@@ -1,7 +1,8 @@
 // What the Form 122A-2 page holds while the filer answers, and how it reads and writes the server's
-// body. A line 3 row and a circumstance carry a browser-only `_key` (a loaded row `loaded-<i>`, a
-// new one `new-<n>` from the page's one counter), which `toPutBody` leaves out (F7). The spouse's
-// rows are named by their `ref`, which the server gives a new row (`new-<n>` until it does).
+// body. A line 3 row, a spouse vehicle, a spouse loan and a circumstance carry a browser-only `_key`
+// (a loaded row `loaded-<i>`, a new one `new-<n>` from the page's one counter, which is also a new
+// spouse row's first `ref`), which `toPutBody` leaves out (F7). The spouse's rows are named by their
+// `ref`, which the server gives a new row (`new-<n>` until it does); the `_key` never changes.
 import type {
   MeansAnswers,
   MeansCircumstance,
@@ -10,20 +11,29 @@ import type {
   MeansLine3Row,
   MeansPage,
   MeansSpouseLoan,
+  MeansSpouseVehicle,
   MeansTestUpdate,
   PaymentsLeft,
   YesNo,
 } from '../../types/api';
-import { debtLines, slotCandidates } from './meansRows';
+import { MEANS_SPOUSE_LOAN_FROM } from '../../constants/copy';
+import { debtLines, isSpouseRef, slotCandidates } from './meansRows';
 import type { RowsDebt, RowsInput, RowsVehicle } from './meansRows';
 import { readSpouseLoans, spouseIdentityGaps, type GapState } from './meansTestGaps';
 
 export type KeyedLine3Row = MeansLine3Row & { _key: string };
 export type KeyedCircumstance = MeansCircumstance & { _key: string };
+export type KeyedSpouseVehicle = MeansSpouseVehicle & { _key: string };
+export type KeyedSpouseLoan = MeansSpouseLoan & { _key: string };
 
-export type PageAnswers = Omit<MeansAnswers, 'line_3_rows' | 'line_43_circumstances'> & {
+export type PageAnswers = Omit<
+  MeansAnswers,
+  'line_3_rows' | 'line_43_circumstances' | 'spouse_vehicles' | 'spouse_loans'
+> & {
   line_3_rows: KeyedLine3Row[];
   line_43_circumstances: KeyedCircumstance[];
+  spouse_vehicles: KeyedSpouseVehicle[];
+  spouse_loans: KeyedSpouseLoan[];
 };
 
 export type PageState = { answers: PageAnswers; debts: MeansDebt[] };
@@ -36,6 +46,14 @@ export function fromReply(page: MeansPage): PageState {
     answers: {
       ...answers,
       line_3_rows: answers.line_3_rows.map((row, index) => ({ ...row, _key: `loaded-${index}` })),
+      spouse_vehicles: answers.spouse_vehicles.map((row, index) => ({
+        ...row,
+        _key: `loaded-${index}`,
+      })),
+      spouse_loans: answers.spouse_loans.map((row, index) => ({
+        ...row,
+        _key: `loaded-${index}`,
+      })),
       line_43_circumstances: answers.line_43_circumstances.map((row, index) => ({
         ...row,
         _key: `loaded-${index}`,
@@ -69,6 +87,8 @@ export function toPutBody(state: PageState): MeansTestUpdate {
     // Rows typed before a No stay in the page, so a mistaken No loses nothing; the server gets none
     line_3_rows:
       state.answers.line_3_answer === 'no' ? [] : state.answers.line_3_rows.map(withoutKey),
+    spouse_vehicles: state.answers.spouse_vehicles.map(withoutKey),
+    spouse_loans: state.answers.spouse_loans.map(withoutKey),
     line_43_circumstances: state.answers.line_43_circumstances.map(withoutKey),
     debts: state.debts.map((debt) => ({ id: debt.id, ...debtAnswersOf(debt) })),
   };
@@ -107,6 +127,51 @@ export function adoptRefs(state: PageState, sent: PageState, reply: MeansPage): 
         renameOrNull(answers.vehicle_choice[0]),
         renameOrNull(answers.vehicle_choice[1]),
       ],
+    },
+  };
+}
+
+const blankText = (text: string) => text.trim() === '';
+
+/** The refs of the vehicles a reference may name: the filer's, and the spouse's while they count */
+function liveVehicleRefs(page: MeansPage, answers: PageAnswers): Set<string> {
+  const live = new Set(page.vehicles.map((vehicle) => vehicle.ref));
+  if (page.married_together && answers.spouse_vehicles_answer === 'yes') {
+    for (const row of answers.spouse_vehicles) live.add(row.ref);
+  }
+  return live;
+}
+
+/**
+ * The browser's copy of `normalized_answers`' reference rules (F3, F4, F5): every `secured_by` and
+ * `vehicle_choice` entry that names no live vehicle is `null`, a loan on the Amounts Owed step keeps
+ * only a spouse vehicle (a filer's own `asset-` ref goes as `null`), and a spouse loan's `debt`
+ * naming no open Amounts Owed debt is `null`. A typed loan (`debt` null) is never touched. Continue
+ * sends this, so the server's 400 for a reference to a removed row never reaches the filer.
+ */
+export function withLiveRefs(page: MeansPage, state: PageState): PageState {
+  const { answers } = state;
+  const live = liveVehicleRefs(page, answers);
+  const open = new Set(page.amounts_owed_loans.map((debt) => debt.id));
+  const liveOrNull = (ref: string | null) => (ref !== null && live.has(ref) ? ref : null);
+  return {
+    ...state,
+    answers: {
+      ...answers,
+      vehicle_choice: [
+        liveOrNull(answers.vehicle_choice[0]),
+        liveOrNull(answers.vehicle_choice[1]),
+      ],
+      spouse_loans: answers.spouse_loans.map((loan) => {
+        const securedBy = loan.secured_by;
+        let kept: string | null = null;
+        if (securedBy === 'home' || securedBy === 'other') kept = securedBy;
+        else if (securedBy !== null && live.has(securedBy)) {
+          kept = loan.on_amounts_owed === 'yes' && !isSpouseRef(securedBy) ? null : securedBy;
+        }
+        const debt = loan.debt !== null && open.has(loan.debt) ? loan.debt : null;
+        return { ...loan, secured_by: kept, debt };
+      }),
     },
   };
 }
@@ -158,7 +223,8 @@ function vehicleRowsOf(page: MeansPage, state: PageState) {
 }
 
 /** The browser's copy of Task 3's reader: the input the grouping (`debtLines`) reads */
-export function rowsInputOf(page: MeansPage, state: PageState): RowsInput {
+export function rowsInputOf(page: MeansPage, shown: PageState): RowsInput {
+  const state = withLiveRefs(page, shown);
   const vehicles = vehicleRowsOf(page, state);
   const loans = readLoans(
     page,
@@ -207,14 +273,15 @@ export function rowsInputOf(page: MeansPage, state: PageState): RowsInput {
 }
 
 /** The browser's copy of Task 3's reader for the gaps (`meansTestGaps`) */
-export function gapStateOf(page: MeansPage, state: PageState): GapState {
+export function gapStateOf(page: MeansPage, shown: PageState): GapState {
+  const state = withLiveRefs(page, shown);
   const vehicles = vehicleRowsOf(page, state);
   const vehicleRefs = vehicles.map((vehicle) => vehicle.ref);
   const loans = readLoans(page, state, vehicleRefs);
   // The helper `meansTestGaps` reads each loan's identity with, so the two can't disagree
   const identityGaps = spouseIdentityGaps(loans, vehicleRefs);
   const named = new Map(page.amounts_owed_loans.map((debt) => [debt.id, debt.creditor]));
-  const rows = rowsInputOf(page, state);
+  const rows = rowsInputOf(page, shown);
   const info = page.information;
   return {
     marriedTogether: page.married_together,
@@ -247,4 +314,69 @@ export function gapStateOf(page: MeansPage, state: PageState): GapState {
     line15Cap: info?.line_15_cap ?? null,
     line30Cap: info?.line_30_cap ?? null,
   };
+}
+
+/** What line 11 lists: the filer's vehicles, then the spouse's described rows while they count */
+export function line11Vehicles(
+  page: MeansPage,
+  answers: PageAnswers
+): { ref: string; name: string; spouse: boolean }[] {
+  const filer = page.vehicles.map((vehicle) => ({
+    ref: vehicle.ref,
+    name: vehicle.name,
+    spouse: false,
+  }));
+  if (!page.married_together || answers.spouse_vehicles_answer !== 'yes') return filer;
+  const spouse = answers.spouse_vehicles
+    .filter((row) => !blankText(row.description))
+    .map((row) => ({ ref: row.ref, name: row.description, spouse: true }));
+  return [...filer, ...spouse];
+}
+
+/**
+ * Each of the spouse's loans as the server reads it (its references live), the creditor it shows
+ * (the named debt's for an Amounts Owed row), what secures it in words, and whether its identity is
+ * given: only such a loan gets its own questions.
+ */
+export function spouseLoanViews(
+  page: MeansPage,
+  state: PageState
+): { loan: KeyedSpouseLoan; creditor: string; property: string; identityGiven: boolean }[] {
+  const { answers } = withLiveRefs(page, state);
+  const together = page.married_together && answers.spouse_loans_answer === 'yes';
+  if (!together) return [];
+  const vehicleRefs = [...liveVehicleRefs(page, answers)];
+  const read = readSpouseLoans(answers.spouse_loans, vehicleRefs);
+  const identity = spouseIdentityGaps(read, vehicleRefs);
+  const debtNames = new Map(page.amounts_owed_loans.map((debt) => [debt.id, debt.creditor]));
+  const vehicleNames = new Map(line11Vehicles(page, answers).map((v) => [v.ref, v.name]));
+  return read.map((row, index) => {
+    const loan: KeyedSpouseLoan = { ...row, _key: answers.spouse_loans[index]._key };
+    const named = loan.secured_by !== null ? vehicleNames.get(loan.secured_by) : undefined;
+    const creditor =
+      loan.on_amounts_owed === 'yes' && loan.debt !== null
+        ? (debtNames.get(loan.debt) ?? '')
+        : loan.creditor;
+    return {
+      loan,
+      creditor,
+      property:
+        named ??
+        (loan.secured_by !== null && PROPERTY_CHOICES.includes(loan.secured_by)
+          ? loan.property
+          : ''),
+      identityGiven: !identity[index],
+    };
+  });
+}
+
+/** The name every question of a debt takes: `means_debt_<pk>` or a spouse loan's own */
+export function debtPrefix(ref: string): string {
+  if (ref.startsWith('debt-')) return `means_debt_${ref.replace('debt-', '')}`;
+  if (ref.startsWith('new-')) return `means_spouse_debt_new_${ref.replace('new-', '')}`;
+  return `means_spouse_debt_${ref.replace('spouse-', '')}`;
+}
+
+export function spouseLoanHeading(creditor: string): string {
+  return MEANS_SPOUSE_LOAN_FROM.split('{name}').join(creditor);
 }
