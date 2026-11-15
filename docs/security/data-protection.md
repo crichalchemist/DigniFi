@@ -49,10 +49,11 @@
 - `FilingFee` - every answer: how the filer will pay the fee (Form 101 line 8), and Form 103B lines 4, 5, 7 and 9
 - `SOFAPriorIncome.gross_amount`, `SOFACreditorPayment.total_paid` - Financial affairs amounts
 - `MeansTest.calculation_details` - Means test working
+- `MeansTest.calculated_cmi`, `median_income_threshold`, the five old above-median columns (`total_allowable_expenses`, `disposable_income`, `priority_debts_monthly`, `passes_above_median`, `above_median_calculated`) and `outcome` - from 3h1; `passes_means_test` stays a plain boolean for one release
 - `GeneratedForm.field_values` - Resolved form values
 - `OCRResult.extracted_data` - Fields read from uploaded documents
 
-**Not encrypted (among others):** `MeansTest` amounts (`calculated_cmi`, `disposable_income` and the rest), `IngestedAggregate.value` (pay-stub gross pay), `SOFACreditorPayment.creditor_name`, `AdversaryProceeding.lender_name` and `loan_amount` (a plaintext copy of a student-loan debt's creditor name and balance, until step 5), `SOFAPriorIncome.source`
+**Not encrypted (among others):** `IngestedAggregate.value` (pay-stub gross pay), `SOFACreditorPayment.creditor_name`, `AdversaryProceeding.lender_name` and `loan_amount` (a plaintext copy of a student-loan debt's creditor name and balance, until step 5), `SOFAPriorIncome.source`
 
 ### Database Security
 

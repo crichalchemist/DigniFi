@@ -162,9 +162,13 @@ describe('IntakeWizard handleComplete routing', { timeout: 30_000 }, () => {
     );
   });
 
-  it.each([true, false])(
+  it.each([
+    [true, 'at_or_below_median'],
+    [false, 'presumption'],
+    [null, 'cannot_work_out'],
+  ])(
     'opens the filing-fee page after Complete whatever the means test returns (passes %s)',
-    async (passes) => {
+    async (passes, outcome) => {
       renderWizard();
       const completeBtn = await screen.findByRole('button', { name: /complete intake/i });
       // Registered after the session GET resolves, as the test it replaces did (load race)
@@ -175,6 +179,8 @@ describe('IntakeWizard handleComplete routing', { timeout: 30_000 }, () => {
               passes_means_test: passes,
               cmi: passes ? 1000 : 9000,
               median_income_threshold: 5000,
+              outcome,
+              tables_gap: null,
             },
             session_id: 1,
           })

@@ -17,8 +17,9 @@ from rest_framework.test import APIClient
 
 from apps.districts.models import District
 from apps.eligibility.cmi import IncomeStepGap
+from apps.eligibility.means_inputs import read_inputs, read_tables
+from apps.eligibility.means_lines import work_out
 from apps.eligibility.models import MeansTest
-from apps.eligibility.services.expense_deduction_calculator import ExpenseDeductionCalculator
 from apps.eligibility.services.means_test_calculator import MeansTestCalculator
 from apps.forms.models import GeneratedForm
 from apps.intake.models import (
@@ -159,7 +160,7 @@ def test_a_filer_living_with_their_spouse_is_compared_to_the_median_on_both_inco
     assert result["cmi"] == Decimal("13800.00")
     assert result["details"]["annualized_cmi"] == 165600.0
     assert result["median_income_threshold"] == Decimal("137902.00")
-    assert (result["passes_means_test"], result["above_median_calculated"]) == (False, True)
+    assert (result["passes_means_test"], result["outcome"]) == (None, "cannot_work_out")
 
 
 def test_sarahs_roommate_counts_in_her_household_and_her_median_follows(filer):
@@ -389,37 +390,35 @@ def test_a_patch_that_answers_the_income_step_returns_its_counts_in_the_reply(fi
 
 # ── The expense allowances (122A-2 line 5) and the stored details ───────
 #
-# The line 5 cases also store DebtorInfo.household_size=3 and $1,200 of food. Food is the
-# lesser of 1,200 and the IRS food figure for the size: 713, 904, 1,088 and 1,289 for 1 to 4
-# people, so a size read from line 13 or from the debtor box gives a different food figure.
+# Line 6 is the national food and clothing figure for line 5's count: 867, 1,558, 1,857 and
+# 2,176 for 1 to 4 people. The cases also store DebtorInfo.household_size=3, the old box, which
+# no count reads.
 
 
 @pytest.mark.parametrize(
-    "household,size,food",
+    "household,size,line_6",
     [
-        (PRIYA, 4, "1200"),
-        (SARAH, 1, "713"),  # line 13 is 2
-        (("not_married", [SON_19_ELSEWHERE_SUPPORTED], "2000.00", None), 2, "904"),  # line 13 is 1
+        (PRIYA, 4, "2176.00"),
+        (SARAH, 1, "867.00"),  # line 13 is 2
+        (("not_married", [SON_19_ELSEWHERE_SUPPORTED], "2000.00", None), 2, "1558.00"),
     ],
     ids=["priya", "a_roommate_lives_there_but_isnt_claimed", "a_child_supported_elsewhere"],
 )
-def test_the_expense_allowances_use_line_5s_count(filer, household, size, food):
+def test_the_expense_allowances_use_line_5s_count(filer, household, size, line_6):
     client, session = filer
     _answer(session, *household)
     _debtor(session, household_size=3)  # the old box, which no count reads
-    ExpenseInfo.objects.create(session=session, food_and_groceries=Decimal("1200"))
-    result = ExpenseDeductionCalculator(session).calculate()
-    assert (result.family_size, result.national_food_allowance) == (size, Decimal(food))
+    inputs = read_inputs(session)
+    # Every answer the page will ask is None, and line 6 is still worked out
+    lines = work_out(inputs, read_tables()[0])
+    assert (len(inputs.ages), lines.lines["6"]) == (size, Decimal(line_6))
 
 
-def test_the_expense_calculator_counts_the_spouses_income(filer):
-    # Disposable income is the CMI less the allowances and priority debts. The allowances read
-    # the household's size, the debtor's age and the district, never the CMI, and there are
-    # no priority debts here: so only the CMI can move it, by exactly the spouse's 1,800.00.
+def test_line_1_counts_the_spouses_income(filer):
+    # The reader's line 1 is the household's CMI: only the spouse's 1,800.00 moves it.
     client, session = filer
     _answer(session, *PRIYA)  # spouse wages 1800.00, the other nine typed $0
-    ExpenseInfo.objects.create(session=session, food_and_groceries=Decimal("1200"))
-    with_spouse = ExpenseDeductionCalculator(session).calculate()
+    with_spouse = read_inputs(session).line_1
     # The same household, the spouse's ten all typed $0 (all None would be the spouse-income gap).
     answer_household(
         session,
@@ -427,12 +426,8 @@ def test_the_expense_calculator_counts_the_spouses_income(filer):
         members=PRIYA[1],
         spouse_income=dict.fromkeys(IncomeInfo.SOURCE_FIELDS, Decimal("0.00")),
     )
-    without = ExpenseDeductionCalculator(session).calculate()
-    assert (with_spouse.family_size, with_spouse.allowable_expenses) == (
-        without.family_size,
-        without.allowable_expenses,
-    )
-    assert with_spouse.disposable_income - without.disposable_income == Decimal("1800.00")
+    without = read_inputs(IntakeSession.objects.get(pk=session.pk)).line_1
+    assert with_spouse - without == Decimal("1800.00")
 
 
 @pytest.mark.parametrize(

@@ -5,6 +5,7 @@ Provides REST API endpoints for multi-step bankruptcy intake process,
 including session management and means test calculation.
 """
 
+import logging
 from dataclasses import asdict
 from decimal import Decimal
 
@@ -22,6 +23,7 @@ from apps.eligibility.cmi import (
     income_step_gaps,
     income_window,
 )
+from apps.eligibility.means_lines import MeansTableKeyMissing
 from apps.eligibility.services import MeansTestCalculator
 from apps.forms.registry import PreconditionMissing, _needs_county, _needs_ssn
 from apps.forms.services.exemption_items import exemption_items
@@ -61,6 +63,8 @@ from .serializers import (
     SOFAReportSerializer,
     _save_rows_by_id,
 )
+
+logger = logging.getLogger(__name__)
 
 
 def _save_list(session, model, row_serializer, rows, scoped=None):
@@ -350,11 +354,15 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
 
         Returns:
             {
-                "passes_means_test": bool,
+                "passes_means_test": bool or None,
                 "cmi": Decimal,
                 "median_income_threshold": Decimal,
-                "message": str (UPL-compliant),
-                "details": {...}
+                "family_size": int,
+                "details": {...},
+                "means_test_id": int,
+                "outcome": "at_or_below_median" | "cannot_work_out" | "no_presumption"
+                    | "presumption",
+                "tables_gap": str or None (the 122A-2 table that isn't in force)
             }
         """
         session = self.get_object()
@@ -380,6 +388,14 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
                     "message": "Unable to calculate means test. Please ensure all income information is provided.",
                 },
                 status=status.HTTP_400_BAD_REQUEST,
+            )
+        except MeansTableKeyMissing as e:
+            # DigniFi's own table gap, which the filer can't fix. The type only, as the forms
+            # views log an unexpected failure: logs reach Sentry (DIG-105).
+            logger.error("Calculating the means test failed: %s", type(e).__name__)
+            return Response(
+                {"message": "Unable to calculate means test. Please try again later."},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
         except ValueError:
             return Response(
@@ -419,6 +435,7 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
         if hasattr(session, "means_test"):
             summary_data["means_test"] = {
                 "passes": session.means_test.passes_means_test,
+                "outcome": session.means_test.outcome,
             }
 
         # Add form generation status

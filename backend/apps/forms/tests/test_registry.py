@@ -179,12 +179,12 @@ def test_ssn_statement_accepts_either_ssn_format(session, ssn):
     assert build_field_values("form_121", session)
 
 
-def test_means_test_form_needs_the_eligibility_check(session):
+def test_means_test_form_needs_the_income_test_worked_out(session):
     _debtor(session)
     with pytest.raises(PreconditionMissing) as refused:
         build_field_values("form_122a1", session)
     assert (str(refused.value), refused.value.step) == (
-        "Press Complete on the Review & Results step to run the eligibility check.",
+        "Press Complete on the Review & Results step to work out your income test.",
         "review",
     )
 

@@ -70,7 +70,7 @@ test.describe('SOFA — Form 107 Financial History', () => {
     await wizard.nextStep();
 
     // Means test check
-    await wizard.waitForMeansTestEstimate();
+    await wizard.waitForMeansTestResult();
 
     // Step 5: Assets
     await wizard.walkAssets(JAMES);

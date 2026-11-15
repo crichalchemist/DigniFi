@@ -23,6 +23,7 @@ import {
   REVIEW_DEDUCTIONS,
   REVIEW_ENTRIES,
   REVIEW_HOUSEHOLD_COUNT,
+  REVIEW_INTRO,
   REVIEW_LINE_3,
   REVIEW_LINKED_PAYMENTS,
   REVIEW_MONTHLY_TOTAL,
@@ -232,10 +233,7 @@ export function ReviewStep({
 
       <div className="info-box">
         <h3 className="info-title">Review Your Information</h3>
-        <p className="info-message">
-          Please review the information below carefully. This information will be used to calculate
-          your eligibility.
-        </p>
+        <p className="info-message">{REVIEW_INTRO}</p>
       </div>
 
       {/* Debtor Info Summary */}

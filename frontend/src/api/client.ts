@@ -609,6 +609,9 @@ export const formsAPI = {
       tables: response.tables ?? [],
       income_period: response.income_period ?? null,
       payment_choice: response.payment_choice ?? null,
+      outcome: response.outcome ?? null,
+      family_size: response.family_size ?? null,
+      tables_gap: response.tables_gap ?? null,
     };
   },
 

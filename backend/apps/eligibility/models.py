@@ -5,9 +5,15 @@ from decimal import Decimal
 
 from django.db import models
 from django.utils import timezone
-from encrypted_model_fields.fields import EncryptedTextField
+from encrypted_model_fields.fields import (
+    EncryptedBooleanField,
+    EncryptedCharField,
+    EncryptedTextField,
+)
 
 from apps.districts.dated_tables import fill_date, in_force
+from apps.districts.means_standards import NoMeansTestTable
+from apps.intake.fields import EncryptedDecimalField
 from apps.intake.household import count_family_size
 from apps.intake.income import floored_net
 
@@ -19,9 +25,25 @@ from .cmi import (
     is_above_median,
     spouse_monthly_income,
 )
+from .means_inputs import read_inputs, read_tables
+from .means_lines import (
+    AT_OR_BELOW_MEDIAN,
+    CANNOT_WORK_OUT,
+    NO_PRESUMPTION,
+    PRESUMPTION,
+    work_out,
+)
 
 # The means test's dated table, by the name its refusals log and calculation_details records.
 MEDIAN_TABLE = "Census median income"
+
+# passes_means_test by outcome, kept one release; empty while the result can't be worked out.
+PASSES = {
+    AT_OR_BELOW_MEDIAN: True,
+    NO_PRESUMPTION: True,
+    PRESUMPTION: False,
+    CANNOT_WORK_OUT: None,
+}
 
 
 class MeansTest(models.Model):
@@ -33,40 +55,56 @@ class MeansTest(models.Model):
     district = models.ForeignKey("districts.District", on_delete=models.PROTECT)
 
     # Inputs
-    median_income_threshold = models.DecimalField(
+    median_income_threshold = EncryptedDecimalField(
         max_digits=12, decimal_places=2, help_text="Median income for family size"
     )
-    calculated_cmi = models.DecimalField(
+    calculated_cmi = EncryptedDecimalField(
         max_digits=12, decimal_places=2, help_text="Current Monthly Income"
     )
 
     # Results
-    passes_means_test = models.BooleanField(help_text="True if CMI < median income", db_index=True)
+    passes_means_test = models.BooleanField(
+        null=True,
+        help_text=(
+            "Kept one release; nothing reads it for a decision. True at or below the median "
+            "or with no presumption, False under a presumption, empty while the result "
+            "can't be worked out (DIG-226)."
+        ),
+    )
+    outcome = EncryptedCharField(
+        max_length=20,
+        null=True,
+        blank=True,
+        help_text=(
+            "at_or_below_median, cannot_work_out, no_presumption or presumption; "
+            "empty until worked out after 3h1."
+        ),
+    )
 
-    # Above-median calculation fields
-    total_allowable_expenses = models.DecimalField(
+    # Unused since 3h1; the housekeeping PR drops them.
+    total_allowable_expenses = EncryptedDecimalField(
         max_digits=12,
         decimal_places=2,
         default=Decimal("0"),
-        help_text="Monthly allowable expenses (IRS standards + actual)",
+        help_text="Unused since 3h1; the housekeeping PR drops it.",
     )
-    disposable_income = models.DecimalField(
+    disposable_income = EncryptedDecimalField(
         max_digits=12,
         decimal_places=2,
         default=Decimal("0"),
-        help_text="Monthly disposable income after deductions",
+        help_text="Unused since 3h1; the housekeeping PR drops it.",
     )
-    priority_debts_monthly = models.DecimalField(
+    priority_debts_monthly = EncryptedDecimalField(
         max_digits=12,
         decimal_places=2,
         default=Decimal("0"),
-        help_text="Monthly priority debt payments",
+        help_text="Unused since 3h1; the housekeeping PR drops it.",
     )
-    passes_above_median = models.BooleanField(
-        default=False, help_text="True if disposable income < $756.25/mo"
+    passes_above_median = EncryptedBooleanField(
+        default=False, help_text="Unused since 3h1; the housekeeping PR drops it."
     )
-    above_median_calculated = models.BooleanField(
-        default=False, help_text="Whether above-median calculation was performed"
+    above_median_calculated = EncryptedBooleanField(
+        default=False, help_text="Unused since 3h1; the housekeeping PR drops it."
     )
 
     # Encrypted calculation details to protect potential PII
@@ -99,21 +137,22 @@ class MeansTest(models.Model):
         db_table = "means_tests"
 
     def __str__(self) -> str:
-        return f"Means Test {self.id} - {'Passes' if self.passes_means_test else 'Fails'}"
+        return f"Means Test {self.id} - {self.outcome or 'not worked out yet'}"
 
-    def calculate(self) -> bool:
+    def calculate(self) -> str:
         """
         Calculate means test using 11 U.S.C. § 707(b) methodology.
 
         Returns:
-            bool: True if debtor passes means test (CMI × 12 at or below the median income, or
-            above it with disposable income under the threshold)
+            str: the outcome, one of at_or_below_median, cannot_work_out, no_presumption or
+            presumption. It is Form 122A-2's arithmetic, never a verdict.
 
         Raises:
             IncomeStepGap: The first gap the Income step leaves (3e1 spec §9.1), before any
                 count is read, so no household is sized until the filer has answered it
             ValueError: If required intake data is missing
             NoTableInForce: If no median income table is in force on the fill date
+            MeansTableKeyMissing: If a means-test table lacks a key the form's lines need
         """
         gaps = income_step_gaps(self.session)
         if gaps:
@@ -139,46 +178,27 @@ class MeansTest(models.Model):
 
         median_income_threshold = median_table.get_median_income(family_size)
 
-        # Determine if passes means test. CMI is monthly; the Census median
-        # is annual, so annualize per 11 U.S.C. § 707(b)(7).
+        # CMI is monthly; the Census median is annual, so annualize per 11 U.S.C. § 707(b)(7).
         annualized_cmi = cmi * Decimal("12")
-        passes_test = not is_above_median(cmi, median_income_threshold)
 
-        # Initialize calculation details (used by above-median pathway below)
+        # The median comes first. Only above it are the 122A-2 tables read, so a filer at or
+        # below the median is never refused for a lapsed 122A-2 table. Every caller has raised
+        # the Income step's gaps above, before read_inputs counts the household (C-ORDER).
         details: dict = {}
-
-        # Above-median pathway: calculate allowable expenses
-        if not passes_test:
-            from apps.eligibility.services.expense_deduction_calculator import (
-                ExpenseDeductionCalculator,
-            )
-
-            ded_calc = ExpenseDeductionCalculator(self.session)
-            ded_result = ded_calc.calculate()
-
-            self.total_allowable_expenses = ded_result.allowable_expenses
-            self.disposable_income = ded_result.disposable_income
-            self.priority_debts_monthly = ded_result.priority_debts_monthly
-            self.above_median_calculated = True
-
-            # $756.25/mo = $9,075 over 60 months (2024 threshold)
-            threshold = Decimal("756.25")
-            self.passes_above_median = ded_result.disposable_income < threshold
-            passes_test = self.passes_above_median
-
-            details["above_median"] = {
-                "allowable_expenses": float(ded_result.allowable_expenses),
-                "disposable_income": float(ded_result.disposable_income),
-                "priority_debts": float(ded_result.priority_debts_monthly),
-                "passes_above_median": self.passes_above_median,
-            }
+        if not is_above_median(cmi, median_income_threshold):
+            outcome = AT_OR_BELOW_MEDIAN
         else:
-            # At or below the median: an earlier above-median result no longer holds (DIG-128).
-            self.total_allowable_expenses = Decimal("0")
-            self.disposable_income = Decimal("0")
-            self.priority_debts_monthly = Decimal("0")
-            self.passes_above_median = False
-            self.above_median_calculated = False
+            try:
+                tables, used = read_tables()
+            except NoMeansTestTable as exc:
+                outcome = CANNOT_WORK_OUT
+                details["tables_gap"] = exc.table
+            else:
+                outcome = work_out(read_inputs(self.session), tables).outcome
+                details["tables"] = used
+        details.setdefault("tables", [])
+        details.setdefault("tables_gap", None)
+        passes_test = PASSES[outcome]
 
         # Store calculation details (encrypted). JSON has no Decimal, and an empty box stays empty.
         income_by_source = {}
@@ -224,7 +244,8 @@ class MeansTest(models.Model):
         # Update model fields
         self.calculated_cmi = cmi
         self.median_income_threshold = median_income_threshold
+        self.outcome = outcome
         self.passes_means_test = passes_test
         self.set_calculation_details(details)
 
-        return passes_test
+        return outcome

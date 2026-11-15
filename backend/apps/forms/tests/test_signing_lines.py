@@ -12,12 +12,16 @@ from functools import cache
 import pytest
 from django.core.management import call_command
 
-from apps.forms.registry import build_field_values
+from apps.districts.models import District
+from apps.forms.registry import FORM_122A2_NOT_ASKED, PreconditionMissing, build_field_values
 from apps.forms.schema import load_schema
+from apps.forms.services.fill_resolver import resolve
 from apps.forms.services.pdf_filler import PDFFormFiller
 from apps.forms.services.widgets import template_widgets
 from apps.forms.tests.pdf_readback import read_drawn
 from apps.intake.models import FormAnswer, IntakeSession
+
+HELD = ("form_122a1", "form_122a2")  # refused above the median until 122A-2 can print (3h1)
 
 # Each form's Debtor 1 signature line and signing date that held a binding before Q6.
 # Priya's packet holds all five forms, 122A-2 included.
@@ -60,13 +64,33 @@ def _printed():
         FormAnswer.objects.create(session=session, form_type=form_type, field_key=key, value=value)
     printed = {}
     for form_type in SIGNING_LINES:
-        values = build_field_values(form_type, session)
+        try:
+            values = build_field_values(form_type, session)
+        except PreconditionMissing as exc:
+            if form_type not in HELD or str(exc) != FORM_122A2_NOT_ASKED:
+                raise
+            # The hold refuses both forms for Priya (R6): this test judges the printed page,
+            # so they resolve below the gate.
+            values = resolve(load_schema(form_type), session)
         template = load_schema(form_type).template_filename
         drawn = {(w.page, w.tag) for w in template_widgets(template) if w.drawn}
         for widget in read_drawn(form_type, PDFFormFiller().fill(form_type, values)):
             if (widget.page, widget.tag) in drawn:
                 printed.setdefault((form_type, widget.full_name), set()).add(widget.value)
     return printed
+
+
+@pytest.mark.django_db
+def test_the_hold_refuses_priyas_two_held_forms_in_its_own_words():
+    # Seeds Priya itself: _printed() is cached, so it may return without seeding.
+    if not District.objects.filter(code="ilnd").exists():
+        call_command("loaddata", "ilnd_2025_data", verbosity=0)
+    call_command("seed_demo_data", "--reset", persona="priya", verbosity=0)
+    session = IntakeSession.objects.filter(user__username="demo_priya").latest("id")
+    for form_type in HELD:
+        with pytest.raises(PreconditionMissing) as refused:
+            build_field_values(form_type, session)
+        assert str(refused.value) == FORM_122A2_NOT_ASKED, form_type
 
 
 @pytest.mark.slow

@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { FormCard } from '../FormCard';
@@ -16,6 +16,8 @@ const mockForm: GeneratedForm = {
   generated_by: 1,
   generated_at: '2026-01-20T10:00:00Z',
   updated_at: '2026-01-20T10:00:00Z',
+  filed_before_means_test: false,
+  stored_box_2: null,
 };
 
 describe('FormCard', () => {
@@ -117,6 +119,60 @@ describe('FormCard', () => {
     expect(screen.getByRole('button', { name: /mark as filed/i })).toBeInTheDocument();
   });
 
+  // On Form 122A-1 and 122A-2, Mark as Filed works the pair out again on the server, which takes
+  // as long as a download, so the button shows it is working rather than looking dead
+  it('shows Mark as Filed working until it answers', async () => {
+    const user = userEvent.setup();
+    let answer: () => void = () => {};
+    const onMarkFiled = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          answer = resolve;
+        })
+    );
+    render(
+      <MemoryRouter>
+        <FormCard {...defaultProps} generatedForm={mockForm} onMarkFiled={onMarkFiled} />
+      </MemoryRouter>
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Mark as Filed' }));
+
+    const working = screen.getByRole('button', { name: /Marking as filed/ });
+    expect(working).toBeDisabled();
+    expect(working).toHaveAttribute('aria-busy', 'true');
+
+    await act(async () => answer());
+
+    expect(screen.getByRole('button', { name: 'Mark as Filed' })).toBeEnabled();
+    expect(screen.queryByRole('button', { name: /Marking as filed/ })).not.toBeInTheDocument();
+  });
+
+  // A download is not a filing: while one runs, Mark as Filed never says it is marking the form filed
+  it('never reads as marking the form filed while a download runs', async () => {
+    const user = userEvent.setup();
+    let answer: () => void = () => {};
+    const onDownload = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          answer = resolve;
+        })
+    );
+    render(
+      <MemoryRouter>
+        <FormCard {...defaultProps} generatedForm={mockForm} onDownload={onDownload} />
+      </MemoryRouter>
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Download' }));
+
+    expect(screen.getByRole('button', { name: /Preparing/ })).toBeInTheDocument();
+    expect(screen.queryAllByText(/Marking as filed/)).toHaveLength(0);
+    expect(screen.getByRole('button', { name: 'Mark as Filed' })).toBeInTheDocument();
+
+    await act(async () => answer());
+  });
+
   it('shows UPL disclaimer from generated form', () => {
     render(
       <MemoryRouter>
@@ -188,6 +244,40 @@ describe('FormCard', () => {
     await user.click(screen.getByRole('button', { name: /download/i }));
 
     expect(onDownload).toHaveBeenCalledWith(1);
+  });
+
+  // ---------------------------------------------------------------------------
+  // Notice
+  // ---------------------------------------------------------------------------
+
+  it('shows a notice as information when given one', () => {
+    const { container } = render(
+      <MemoryRouter>
+        <FormCard
+          {...defaultProps}
+          generatedForm={{ ...mockForm, status: 'filed' as const }}
+          notice="This copy shows what was stored then."
+          refusal={{ message: 'A refusal.' }}
+        />
+      </MemoryRouter>
+    );
+
+    const notice = screen.getByText('This copy shows what was stored then.');
+    expect(notice).toHaveAttribute('role', 'status');
+    expect(notice).toHaveClass('form-card-notice');
+    // It comes before the refusal region
+    const refusal = container.querySelector('.form-card-refusal')!;
+    expect(notice.compareDocumentPosition(refusal) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('shows no notice without one', () => {
+    const { container } = render(
+      <MemoryRouter>
+        <FormCard {...defaultProps} generatedForm={mockForm} />
+      </MemoryRouter>
+    );
+
+    expect(container.querySelector('.form-card-notice')).toBeNull();
   });
 
   // ---------------------------------------------------------------------------

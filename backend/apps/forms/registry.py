@@ -17,10 +17,12 @@ from collections.abc import Callable
 from dataclasses import dataclass
 
 from apps.districts.exemptions import exemption_catalog_in_force
+from apps.districts.means_standards import means_standards_in_force, section_104_in_force
 from apps.eligibility.cmi import is_above_median
 from apps.forms.schema import load_schema
 from apps.forms.services.exemption_items import exemption_items
 from apps.forms.services.fill_resolver import resolve, resolve_parts
+from apps.forms.services.pdf_filler import PDFFormFiller
 from apps.intake.exemptions import exemption_gaps
 from apps.intake.models import IntakeSession
 
@@ -32,7 +34,7 @@ class PreconditionMissing(Exception):
 
     step is the wizard step (a WIZARD_STEPS key) where the filer fixes it, or None.
     page is the route (such as /filing-fee) where the filer fixes it, or None.
-    Exactly one of step and page is set.
+    At most one of step and page is set; a refusal with neither links nowhere.
     """
 
     def __init__(self, message: str, step: str | None = None, page: str | None = None) -> None:
@@ -180,9 +182,35 @@ def _needs_exemption_answers(session: IntakeSession) -> None:
 def _needs_means_test(session: IntakeSession) -> None:
     if not hasattr(session, "means_test"):
         raise PreconditionMissing(
-            "Press Complete on the Review & Results step to run the eligibility check.",
+            # DRAFT: counsel C-24
+            "Press Complete on the Review & Results step to work out your income test.",
             step="review",
         )
+
+
+# DRAFT: counsel C-24
+FORM_122A2_NOT_ASKED = (
+    "DigniFi can't prepare Form 122A-2 yet, because it doesn't ask all of that form's "
+    "questions yet. Form 122A-1 waits for it. File the two forms together."
+)
+
+
+def _needs_the_122a2_questions(session: IntakeSession) -> None:
+    """The hold (3h1): until 3h2 asks every question 122A-2 has, it refuses for every filer.
+
+    A missing table is refused first, in its own sentence. The refusal links nowhere: nothing
+    the filer can do on any page lifts it.
+    """
+    means_standards_in_force()
+    section_104_in_force()
+    raise PreconditionMissing(FORM_122A2_NOT_ASKED)
+
+
+def _needs_means_test_and_form_122a2(session: IntakeSession) -> None:
+    """122A-1 says its result is worked out on 122A-2, so above the median it waits for it."""
+    _needs_means_test(session)
+    if _above_median(session):
+        PDFFormFiller().check("form_122a2", build_parts("form_122a2", session))
 
 
 # form_type → PacketForm. Every key must match a GeneratedForm.FORM_TYPE_CHOICES value.
@@ -194,9 +222,9 @@ FORM_REGISTRY: dict[str, PacketForm] = {
     "form_107": PacketForm(_always, _nothing),
     "form_121": PacketForm(_always, _needs_ssn),
     "list_of_creditors": PacketForm(_always, _nothing),
-    "form_122a1": PacketForm(_always, _needs_means_test),
+    "form_122a1": PacketForm(_always, _needs_means_test_and_form_122a2),
     "form_122a1_supp": PacketForm(_never, _nothing),
-    "form_122a2": PacketForm(_above_median, _nothing),
+    "form_122a2": PacketForm(_above_median, _needs_the_122a2_questions),
     "schedule_a_b": PacketForm(_always, _nothing),
     "schedule_c": PacketForm(_always, _needs_exemption_answers),
     "schedule_d": PacketForm(_always, _nothing),

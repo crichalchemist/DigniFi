@@ -5,7 +5,6 @@ This module provides service classes that encapsulate complex business logic
 separate from Django models, following the service layer architectural pattern.
 """
 
-from .expense_deduction_calculator import ExpenseDeductionCalculator
 from .means_test_calculator import MeansTestCalculator
 
-__all__ = ["ExpenseDeductionCalculator", "MeansTestCalculator"]
+__all__ = ["MeansTestCalculator"]

@@ -635,12 +635,22 @@ export type CodebtorRow = Codebtor & { _key: string };
 
 // Mirrors MeansTestCalculator.calculate() — cmi is monthly, the median is
 // annual, annualized_cmi (details) is what the § 707(b) comparison uses
+export type MeansOutcome =
+  | 'at_or_below_median'
+  | 'cannot_work_out'
+  | 'no_presumption'
+  | 'presumption';
+
+// `passes_means_test` is null while the result can't be worked out, and the words come from
+// `outcome` (see utils/meansOutcome.ts), never from it
 export interface MeansTestResult {
-  passes_means_test: boolean;
+  passes_means_test: boolean | null;
   cmi: number;
   median_income_threshold: number;
   family_size: number;
-  message: string; // UPL-compliant message
+  outcome: MeansOutcome | null;
+  /** The name of the table the means test needs and DigniFi doesn't have, else null */
+  tables_gap: string | null;
   details: {
     cmi: number;
     annualized_cmi: number;
@@ -776,6 +786,10 @@ export interface GeneratedForm {
   generated_by: number;
   generated_at: string;
   updated_at: string;
+  /** A Form 122A-1 or 122A-2 marked filed before DigniFi filled in all of Form 122A-2 */
+  filed_before_means_test: boolean;
+  /** A filed Form 122A-1's box 2 as stored; null for any other form, or nothing stored */
+  stored_box_2: boolean | null;
 }
 
 /** Display metadata for each form type (frontend-only, for the dashboard) */
@@ -974,6 +988,10 @@ export interface FormPacketResponse {
   income_period?: IncomePeriodNotice;
   /** Form 101 line 8: the filer's answer, null until they choose (forms step 3f §7) */
   payment_choice?: PaymentChoice | null;
+  /** The means test's result; null for a row saved before 3h1 (`family_size` may still be set) */
+  outcome?: MeansOutcome | null;
+  family_size?: number | null;
+  tables_gap?: string | null;
 }
 
 /** What `api.forms.packet` returns */
@@ -982,6 +1000,9 @@ export interface Packet {
   tables: DatedTableUsed[];
   income_period: IncomePeriodNotice | null;
   payment_choice: PaymentChoice | null;
+  outcome: MeansOutcome | null;
+  family_size: number | null;
+  tables_gap: string | null;
 }
 
 export interface SessionSummaryResponse {
@@ -992,7 +1013,8 @@ export interface SessionSummaryResponse {
     completion_percentage: number;
   };
   means_test?: {
-    passes: boolean;
+    passes: boolean | null;
+    outcome: MeansOutcome | null;
   };
   forms: {
     generated_count: number;
