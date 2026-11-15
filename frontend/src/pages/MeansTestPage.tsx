@@ -184,7 +184,12 @@ function readRefusal(
         }
         for (const [field, messages] of Object.entries(errors)) {
           const first = Array.isArray(messages) ? messages[0] : undefined;
-          if (field === 'explanation' && EXPLANATION_REFUSALS.includes(first)) {
+          // The circumstances are drawn only under a Yes; under No the sentence has no box
+          if (
+            field === 'explanation' &&
+            EXPLANATION_REFUSALS.includes(first) &&
+            sent.answers.line_43_answer === 'yes'
+          ) {
             fields[explanationKey(row._key)] = String(first);
           } else {
             other = true;

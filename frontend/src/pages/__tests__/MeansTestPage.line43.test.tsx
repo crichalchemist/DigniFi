@@ -269,6 +269,20 @@ describe('line 43', () => {
     expect(area('means_line_43_0_explanation')).toHaveValue('Demo words');
   });
 
+  it('a refused explanation under line 43 No is told by the save sentence, since no box is drawn', async () => {
+    serve(line43Page([circumstance({ explanation: 'Demo words' })]), {
+      status: 400,
+      body: { line_43_circumstances: { '0': { explanation: [MEANS_EXPLANATION_LETTER] } } },
+    });
+    renderPage();
+    await ready();
+    await userEvent.click(radio('means_line_43', 'no'));
+    expect(area('means_line_43_0_explanation')).toBeNull();
+    await pressContinue();
+    expect(await screen.findByText(MEANS_PAGE_SAVE_FAILED)).toBeInTheDocument();
+    expect(screen.queryByText(MEANS_EXPLANATION_LETTER)).toBeNull();
+  });
+
   it("a circumstance's inputs carry the names the journeys use", async () => {
     serve(line43Page([circumstance({ explanation: 'Demo words' })]));
     renderPage();
