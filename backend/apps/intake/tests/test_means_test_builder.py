@@ -93,3 +93,13 @@ def test_over_refuses_a_key_the_page_doesnt_ask(above):
         answer_means_test(above, not_a_question="yes")
     with pytest.raises(KeyError):
         answer_means_test(above, debts={999999: {"payments_left": "37"}})
+
+
+@pytest.mark.django_db
+def test_a_misspelled_per_debt_answer_is_refused_not_silently_dropped(above):
+    _car, loan = _car_and_loan(above)
+
+    with pytest.raises(KeyError):
+        answer_means_test(above, debts={loan.pk: {"payments_lft": "37"}})
+
+    assert getattr(above, "means_test_answers", None) is None

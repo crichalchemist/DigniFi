@@ -186,13 +186,15 @@ def answer_means_test(
     Each call writes every default again, and each counted secured debt's, before `over` (a
     page key, replacing its answer whole; None stores null) and `debts` ({debt pk: per-debt
     answers}, merged over that debt's defaults), so pass the whole of both each time. An
-    unknown page key raises KeyError, and so does a `debts` key naming no counted debt, before
-    anything is written.
+    unknown page key raises KeyError, and so does a `debts` key naming no counted debt or a
+    per-debt key not in PER_DEBT_KEYS, before anything is written.
     """
     rows = vehicle_rows(session)
     counted = counted_debts(session)
     if any(pk not in {debt.pk for debt in counted} for pk in debts):
         raise KeyError("debts names a debt the page doesn't ask about.")
+    if any(key not in PER_DEBT_KEYS for answers in debts.values() for key in answers):
+        raise KeyError("debts names a per-debt answer the page doesn't ask.")
     income = getattr(session, "income_info", None)
     together = getattr(income, "marital_status", None) == "married_together"
     answers = {
