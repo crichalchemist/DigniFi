@@ -59,6 +59,7 @@ MEANS_TOO_LONG = "This is too long for the box on Form 122A-2. Shorten it."
 MEANS_EXPLANATION_TOO_LONG = "This explanation is too long to print with line 43. Shorten it."
 MEANS_EXPLANATION_LETTER = "This explanation has a letter Form 122A-2 can't print. Change it."
 NOT_A_MEANS_ANSWER = "This is not one of the means test answers."
+MEANS_ROW_LISTED_TWICE = "Each row can be sent only once in a save."
 
 
 def _unanswered(key: str):

@@ -10,6 +10,7 @@ from apps.intake.means_test import (
     LIST_KEYS,
     MEANS_EXPLANATION_LETTER,
     MEANS_EXPLANATION_TOO_LONG,
+    MEANS_ROW_LISTED_TWICE,
     MEANS_TOO_LONG,
     NOT_A_MEANS_ANSWER,
 )
@@ -246,35 +247,77 @@ def test_null_clears_every_nullable_answer():
     assert stored_of(data)
 
 
-def test_every_refusal_is_a_fixed_sentence():
-    sent = {
-        "line_3_answer": "maybe",
-        "line_16": "sixty",
-        "line_3_rows": [{"purpose": "Demo " * 30, "amount": "x"}],
-        "debts": [{"id": 1, "payments_left": "sixty"}, {"id": 1}],
-        "vehicle_claims": {"boat-sixty": "maybe"},
-        "vehicle_choice": ["asset-1", "asset-1"],
-        "spouse_loans": [{"ref": "sixty", "secured_by": "sixty"}],
-        "spouse_vehicles": [{"ref": "sixty"}],
-        "line_43_circumstances": [{"explanation": "Demo □ sixty"}],
-        "line_99": 1,
-    }
-    errors = errors_of(sent)
-    sentences = {
-        NOT_A_MEANS_CHOICE,
-        NOT_A_PAYMENTS_LEFT,
-        NOT_A_VEHICLE,
-        means_serializers.NOT_A_ROW,
-        OWN_VEHICLE_ON_AMOUNTS_OWED,
-        DEBT_SENT_TWICE,
-        ROW_NEEDS_ITS_ID,
-        DIFFERENT_VEHICLES,
-        NOT_IN_THIS_SAVE,
-        MEANS_TOO_LONG,
-        MEANS_EXPLANATION_TOO_LONG,
-        MEANS_EXPLANATION_LETTER,
-        NOT_A_MEANS_ANSWER,
-    }
+@pytest.mark.parametrize(
+    "key, rows",
+    [
+        ("spouse_vehicles", [{"ref": "new-1"}, {"ref": "new-1"}]),
+        ("spouse_vehicles", [{"ref": "spouse-1"}, {"ref": "spouse-1"}]),
+        ("spouse_loans", [{"ref": "new-1"}, {"ref": "new-1"}]),
+        ("spouse_loans", [{"ref": "spouse-4"}, {"ref": "spouse-4"}]),
+    ],
+)
+def test_a_row_is_listed_once_so_a_reference_never_names_two_rows(key, rows):
+    errors = errors_of({key: rows})
+    assert [str(m) for m in errors[key]] == [MEANS_ROW_LISTED_TWICE]
+    distinct = [{"ref": "new-1"}, {"ref": "new-2"}]
+    assert stored_of({key: distinct})
+
+
+def test_a_debt_listed_twice_is_still_refused():
+    twice = errors_of({"debts": [{"id": 7}, {"id": 7}]})
+    assert [str(m) for m in twice["debts"][1]["id"]] == [DEBT_SENT_TWICE]
+
+
+def test_an_id_or_reference_past_the_database_integer_is_refused():
+    big = 2147483648
+    debt = errors_of({"debts": [{"id": big}]})
+    assert [str(m) for m in debt["debts"][0]["id"]] == [
+        "Ensure this value is less than or equal to 2147483647."
+    ]
+    loan_debt = errors_of({"spouse_loans": [{"debt": big}]})
+    assert "debt" in loan_debt["spouse_loans"][0]
+    row = errors_of({"spouse_vehicles": [{"ref": f"new-{big}"}]})
+    assert [str(m) for m in row["spouse_vehicles"][0]["ref"]] == [means_serializers.NOT_A_ROW]
+    secured = errors_of({"spouse_loans": [{"secured_by": f"asset-{big}"}]})
+    assert [str(m) for m in secured["spouse_loans"][0]["secured_by"]] == [NOT_A_VEHICLE]
+    choice = errors_of({"vehicle_choice": [f"asset-{big}", None]})
+    assert [str(m) for m in choice["vehicle_choice"][0]] == [NOT_A_VEHICLE]
+    claim = errors_of({"vehicle_claims": {f"asset-{big}": "yes"}})
+    assert [str(m) for m in claim["vehicle_claims"][f"asset-{big}"]] == [NOT_A_VEHICLE]
+    long_digits = errors_of({"spouse_vehicles": [{"ref": "new-" + "9" * 40}]})
+    assert [str(m) for m in long_digits["spouse_vehicles"][0]["ref"]] == [
+        means_serializers.NOT_A_ROW
+    ]
+    top = 2147483647
+    assert stored_of({"debts": [{"id": top}], "spouse_vehicles": [{"ref": f"new-{top}"}]})
+
+
+SENTENCES = {
+    NOT_A_MEANS_CHOICE,
+    NOT_A_PAYMENTS_LEFT,
+    NOT_A_VEHICLE,
+    means_serializers.NOT_A_ROW,
+    OWN_VEHICLE_ON_AMOUNTS_OWED,
+    DEBT_SENT_TWICE,
+    ROW_NEEDS_ITS_ID,
+    DIFFERENT_VEHICLES,
+    NOT_IN_THIS_SAVE,
+    MEANS_ROW_LISTED_TWICE,
+    MEANS_TOO_LONG,
+    MEANS_EXPLANATION_TOO_LONG,
+    MEANS_EXPLANATION_LETTER,
+    NOT_A_MEANS_ANSWER,
+    # DRF's own structural messages, which name no submitted value.
+    'Expected a list of items but got type "str".',
+    "Invalid data. Expected a dictionary, but got str.",
+    'Expected a dictionary of items but got type "str".',
+    "This field may not be null.",
+    "This field may not be blank.",
+    "A valid number is required.",
+}
+
+
+def messages_of(errors):
     messages = []
 
     def walk(node):
@@ -288,8 +331,67 @@ def test_every_refusal_is_a_fixed_sentence():
             messages.append(str(node))
 
     walk(errors)
+    return messages
+
+
+def assert_only_fixed_sentences(errors):
+    messages = messages_of(errors)
     assert messages
     for message in messages:
-        assert message in sentences or message.startswith(("Ensure", "A valid number")), message
+        ok = message in SENTENCES or (
+            message.startswith("Ensure this value is") and message.endswith(".")
+        )
+        assert ok, message
         for value in ("maybe", "sixty", "Demo"):
             assert value not in message
+    return set(messages)
+
+
+def test_every_field_level_refusal_is_a_fixed_sentence():
+    sent = {
+        "line_3_answer": "maybe",
+        "line_16": "sixty",
+        "line_3_rows": [{"purpose": "Demo " * 30, "amount": "x"}],
+        "debts": [{"id": 1, "payments_left": "sixty"}, {"id": 1}],
+        "vehicle_claims": {"boat-sixty": "maybe"},
+        "vehicle_choice": ["asset-1", "asset-1"],
+        "spouse_loans": [{"ref": "sixty", "secured_by": "sixty"}],
+        "spouse_vehicles": [{"ref": "sixty"}],
+        "line_43_circumstances": [{"explanation": "Demo \u25a1 sixty"}],
+        "line_99": 1,
+    }
+    assert_only_fixed_sentences(errors_of(sent))
+
+
+def test_every_validate_level_refusal_is_a_fixed_sentence():
+    # Every field passes, so validate() runs and meets its own refusals.
+    sent = {
+        "spouse_vehicles": [{"ref": "new-1"}],
+        "spouse_loans": [{"ref": "new-1", "secured_by": "new-9"}],
+        "vehicle_choice": ["new-8", None],
+    }
+    errors = errors_of(sent)
+    assert set(errors) == {"spouse_loans", "vehicle_choice"}
+    assert assert_only_fixed_sentences(errors) == {NOT_IN_THIS_SAVE}
+    own = {"spouse_loans": [{"ref": "spouse-1", "on_amounts_owed": "yes", "secured_by": "asset-3"}]}
+    assert assert_only_fixed_sentences(errors_of(own)) == {OWN_VEHICLE_ON_AMOUNTS_OWED}
+    unknown = assert_only_fixed_sentences(errors_of({"line_99": "Demo"}))
+    assert unknown == {NOT_A_MEANS_ANSWER}
+    claims = assert_only_fixed_sentences(errors_of({"vehicle_claims": {"spouse-1": "yes"}}))
+    assert claims == {NOT_A_VEHICLE}
+
+
+@pytest.mark.parametrize(
+    "data",
+    [
+        {"line_3_rows": "Demo"},
+        {"line_3_rows": ["Demo"]},
+        {"line_3_rows": [{"purpose": None}, {"amount": "sixty"}]},
+        {"vehicle_choice": "Demo"},
+        {"vehicle_claims": "Demo"},
+        {"line_16": "Demo"},
+        {"debts": [{"id": None}]},
+    ],
+)
+def test_a_structural_refusal_is_a_fixed_sentence_naming_no_value(data):
+    assert_only_fixed_sentences(errors_of(data))

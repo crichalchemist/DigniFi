@@ -36,7 +36,13 @@ from .household import (
     count_fee_waiver_household,
 )
 from .income import ENTRY_KINDS, MAX_ENTRIES
-from .means_test import MAX_ROWS, MEANS_TOO_LONG, NOT_A_MEANS_ANSWER, PROPERTY_CHOICES
+from .means_test import (
+    MAX_ROWS,
+    MEANS_ROW_LISTED_TWICE,
+    MEANS_TOO_LONG,
+    NOT_A_MEANS_ANSWER,
+    PROPERTY_CHOICES,
+)
 from .models import (
     HOME_PAYMENT_LINES,
     YES_NO,
@@ -1412,8 +1418,14 @@ DIFFERENT_VEHICLES = "Vehicle 1 and Vehicle 2 must be different vehicles."
 NOT_IN_THIS_SAVE = "This names a vehicle that isn't in this save."
 
 SIXTY_OR_MORE = "60_or_more"
-_ROW_REF = r"^(spouse|new)-[1-9][0-9]*$"
-_VEHICLE_REF = r"^(asset|spouse|new)-[1-9][0-9]*$"
+_ROW_REF = r"^(spouse|new)-[1-9][0-9]{0,9}$"
+_VEHICLE_REF = r"^(asset|spouse|new)-[1-9][0-9]{0,9}$"
+_FILER_VEHICLE_REF = r"asset-[1-9][0-9]{0,9}"
+MAX_ID = 2147483647  # the largest id a database integer column holds
+
+
+def _within_max_id(ref):
+    return int(ref.rsplit("-", 1)[1]) <= MAX_ID
 
 
 class _MeansAmount(serializers.DecimalField):
@@ -1446,7 +1458,11 @@ class VehicleClaimsField(serializers.DictField):
 
     def to_internal_value(self, data):
         value = super().to_internal_value(data)
-        bad = {key: [NOT_A_VEHICLE] for key in value if not re.fullmatch(r"asset-[1-9][0-9]*", key)}
+        bad = {
+            key: [NOT_A_VEHICLE]
+            for key in value
+            if not (re.fullmatch(_FILER_VEHICLE_REF, key) and _within_max_id(key))
+        }
         if bad:
             raise serializers.ValidationError(bad)
         return value
@@ -1478,8 +1494,16 @@ def _means_words(max_length):
 
 
 def _means_ref(pattern, message):
+    def in_range(value):
+        if re.fullmatch(pattern, value) and not _within_max_id(value):
+            raise serializers.ValidationError(message)
+
     return serializers.RegexField(
-        pattern, required=False, allow_null=True, error_messages={"invalid": message}
+        pattern,
+        required=False,
+        allow_null=True,
+        error_messages={"invalid": message},
+        validators=[in_range],
     )
 
 
@@ -1517,6 +1541,12 @@ class SpouseVehicleSerializer(_MeansRow):
         return value
 
 
+def _refuse_repeated_refs(rows):
+    refs = [row["ref"] for row in rows or [] if row.get("ref")]
+    if len(refs) != len(set(refs)):
+        raise serializers.ValidationError([MEANS_ROW_LISTED_TWICE])
+
+
 class _PerDebtAnswersSerializer(_MeansRow):
     payments_left = PaymentsLeftField(required=False, allow_null=True)
     payment_changes = _means_choice()
@@ -1529,7 +1559,7 @@ class _PerDebtAnswersSerializer(_MeansRow):
 class SpouseLoanSerializer(_PerDebtAnswersSerializer):
     ref = _means_ref(_ROW_REF, NOT_A_ROW)
     on_amounts_owed = _means_choice()
-    debt = serializers.IntegerField(min_value=1, required=False, allow_null=True)
+    debt = serializers.IntegerField(min_value=1, max_value=MAX_ID, required=False, allow_null=True)
     creditor = _means_words(200)
     secured_by = serializers.CharField(required=False, allow_null=True)
     property = _means_words(200)
@@ -1548,7 +1578,7 @@ class SpouseLoanSerializer(_PerDebtAnswersSerializer):
     def validate_secured_by(self, value):
         if value is None or value in PROPERTY_CHOICES:
             return value
-        if not re.fullmatch(_VEHICLE_REF, value):
+        if not (re.fullmatch(_VEHICLE_REF, value) and _within_max_id(value)):
             raise serializers.ValidationError(NOT_A_VEHICLE)
         return value
 
@@ -1560,7 +1590,7 @@ class SpouseLoanSerializer(_PerDebtAnswersSerializer):
 
 
 class DebtAnswersSerializer(_PerDebtAnswersSerializer):
-    id = serializers.IntegerField(min_value=1, required=False, allow_null=True)
+    id = serializers.IntegerField(min_value=1, max_value=MAX_ID, required=False, allow_null=True)
 
     def to_internal_value(self, data):
         result = super().to_internal_value(data)
@@ -1658,6 +1688,14 @@ class MeansTestSerializer(serializers.Serializer):
     )
     # One row per counted secured debt, which can be more than MAX_ROWS: no max_length.
     debts = serializers.ListField(child=DebtAnswersSerializer(), required=False, allow_null=True)
+
+    def validate_spouse_vehicles(self, value):
+        _refuse_repeated_refs(value)
+        return value
+
+    def validate_spouse_loans(self, value):
+        _refuse_repeated_refs(value)
+        return value
 
     def validate_vehicle_choice(self, value):
         if value and value[0] is not None and value[0] == value[1]:
