@@ -12,6 +12,7 @@ SERVER_GAPS = sorted(name for name in dir(means_test) if name.startswith("MEANS_
 SERVER_SENTENCES = [
     *SERVER_GAPS,
     "MEANS_TOO_LONG",
+    "MEANS_LETTER",
     "MEANS_EXPLANATION_TOO_LONG",
     "MEANS_EXPLANATION_LETTER",
 ]
@@ -49,6 +50,7 @@ def test_every_gap_carries_its_counsel_mark_on_the_line_above():
     ("name", "mark"),
     [
         ("MEANS_TOO_LONG", "// DRAFT: counsel C-24"),
+        ("MEANS_LETTER", "// DRAFT: counsel C-24"),
         ("MEANS_EXPLANATION_TOO_LONG", "// DRAFT: counsel C-31"),
         ("MEANS_EXPLANATION_LETTER", "// DRAFT: counsel C-31"),
     ],

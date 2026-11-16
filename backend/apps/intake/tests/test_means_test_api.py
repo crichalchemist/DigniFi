@@ -24,7 +24,7 @@ from apps.intake.means_page import (
     NOT_A_LINE_11_VEHICLE,
     NOT_AN_OPEN_DEBT,
 )
-from apps.intake.means_test import ANSWER_KEYS
+from apps.intake.means_test import ANSWER_KEYS, MEANS_EXPLANATION_LETTER, MEANS_TOO_LONG
 from apps.intake.models import (
     ExpenseInfo,
     IntakeSession,
@@ -38,13 +38,19 @@ from apps.intake.tests.builders import (
     linked_loan,
     linked_row,
 )
+from apps.intake.tests.test_means_test_serializer import (
+    _HIDDEN_BOXES,
+    _UNFIT_CREDITOR,
+    _UNFIT_DESCRIPTION,
+)
 
 User = get_user_model()
 
 STAMP = "2026-10-16"
 STALE = "2026-09-30"
-# the calculator's lines for the `filer` fixture with every page answer "No" (line 35 is skipped
-# under No, so it reads null)
+# the calculator's lines for the `filer` fixture with every page answer "No" (line 35 is skipped:
+# the fixture has no priority debt past due, so it reads null; see
+# test_line_35s_figure_is_the_past_due_total_the_filer_entered for a figure)
 EXPECTED_LINES = {"line_7g": "90.00", "line_8": "691.00", "line_35": None, "line_39c": "5074.00"}
 
 
@@ -824,3 +830,148 @@ def test_the_builder_moves_the_spouse_id_counters_past_every_ref_it_stores(filer
     record = MeansTestAnswers.objects.get(session=filer.session)
 
     assert (record.next_spouse_vehicle_id, record.next_spouse_loan_id) == (4, 8)
+
+
+# F1: the server measures only the boxes a row's own answers show; a refusal names its box.
+@pytest.mark.django_db
+@pytest.mark.parametrize("body", _HIDDEN_BOXES.values(), ids=_HIDDEN_BOXES.keys())
+def test_a_box_the_page_hides_saves_whatever_its_words(filer, body):
+    reply = _put(filer, body)
+
+    assert reply.status_code == 200, reply.content
+
+
+@pytest.mark.django_db
+def test_rows_sent_without_their_answer_are_measured_under_the_stored_answer(filer):
+    vehicle = {"spouse_vehicles": [{"ref": "new-1", "description": _UNFIT_DESCRIPTION}]}
+    explanation = {"line_43_circumstances": [{"explanation": "Demo □"}]}
+    answer_means_test(filer.session, spouse_vehicles_answer="yes", line_43_answer="yes")
+    before = _stored(filer.session)
+
+    refused = _put(filer, vehicle)
+    assert refused.status_code == 400
+    assert refused.json() == {"spouse_vehicles": {"0": {"description": [MEANS_TOO_LONG]}}}
+    refused = _put(filer, explanation)
+    assert refused.status_code == 400
+    assert refused.json() == {
+        "line_43_circumstances": {"0": {"explanation": [MEANS_EXPLANATION_LETTER]}}
+    }
+    assert _stored(filer.session) == before
+
+    answer_means_test(filer.session, spouse_vehicles_answer="no", line_43_answer="no")
+    assert _put(filer, vehicle).status_code == 200
+    assert _put(filer, explanation).status_code == 200
+
+
+@pytest.mark.django_db
+def test_a_yes_sent_without_its_rows_measures_the_rows_stored_under_no(filer):
+    loan = {"ref": "new-1", "on_amounts_owed": "no", "creditor": _UNFIT_CREDITOR}
+    assert _put(filer, {"spouse_loans_answer": "no", "spouse_loans": [loan]}).status_code == 200
+    before = _stored(filer.session)
+
+    refused = _put(filer, {"spouse_loans_answer": "yes"})
+
+    assert refused.status_code == 400
+    assert refused.json() == {"spouse_loans": {"0": {"creditor": [MEANS_TOO_LONG]}}}
+    assert _stored(filer.session) == before
+
+
+# F2: rows typed before a No are kept, and change no line and raise no gap.
+@pytest.mark.django_db
+def test_circumstances_and_line_3_rows_saved_under_no_come_back(filer):
+    circumstance = {
+        "happened": "Demo happened",
+        "change": "Demo change",
+        "choices": "Demo choices",
+        "papers": "Demo papers",
+        "amount": "250.00",
+        "explanation": "Demo explanation",
+    }
+    row = {"purpose": "Demo tax debt", "amount": "40.00"}
+
+    reply = _put(
+        filer,
+        {
+            "line_3_answer": "no",
+            "line_3_rows": [row],
+            "line_43_answer": "no",
+            "line_43_circumstances": [circumstance],
+        },
+    )
+
+    assert reply.status_code == 200, reply.content
+    answers = _get(filer).json()["answers"]
+    assert answers["line_3_rows"] == [row]
+    assert answers["line_43_circumstances"] == [circumstance]
+
+
+@pytest.mark.django_db
+def test_rows_stored_under_no_change_no_line_and_raise_no_gap(filer):
+    _married(filer.session)
+    answer_means_test(filer.session)
+    keys = ("outcome", "gap", "debt_lines", "information", "vehicles", "family_size")
+    before = {key: value for key, value in _get(filer).json().items() if key in keys}
+
+    reply = _put(
+        filer,
+        {
+            "line_3_answer": "no",
+            "line_3_rows": [{"purpose": "Demo tax debt", "amount": "900.00"}],
+            "spouse_vehicles_answer": "no",
+            "spouse_vehicles": [
+                {"ref": "new-1", "description": "Demo truck", "leased": "no", "claimed": "yes"}
+            ],
+            "spouse_loans_answer": "no",
+            "spouse_loans": [_sent_loan(ref="new-2", secured_by="new-1")],
+            "vehicle_choice": [f"asset-{filer.car.pk}", "new-1"],
+            "line_43_answer": "no",
+            "line_43_circumstances": [{"explanation": "Demo", "amount": "500.00"}],
+        },
+    )
+
+    assert reply.status_code == 200, reply.content
+    after = {key: value for key, value in _get(filer).json().items() if key in keys}
+    assert after == before
+    assert before["gap"] is None
+
+
+# F6: line 35's sentence names what the filer entered, the past due total.
+@pytest.mark.django_db
+def test_line_35s_figure_is_the_past_due_total_the_filer_entered(filer):
+    complete_debt(
+        filer.session,
+        creditor_name="Demo Tax Office",
+        debt_type="taxes",
+        amount_owed=Decimal("3000.00"),
+        priority_answer="taxes",
+        priority_amount=Decimal("3000.00"),
+        nonpriority_amount=Decimal("0.00"),
+        past_due_amount=Decimal("3000.00"),
+    )
+
+    assert _get(filer).json()["information"]["line_35"] == "3000.00"
+
+
+# F12: the reply carries the outcome of the answers it saved, not a row another read rewrote.
+@pytest.mark.django_db
+def test_the_reply_carries_the_outcome_its_own_calculation_gave(filer, monkeypatch):
+    from apps.eligibility.models import MeansTest
+    from apps.eligibility.services import MeansTestCalculator
+
+    answer_means_test(filer.session)
+    real = MeansTestCalculator.calculate
+
+    def then_a_stale_read_saves(self):
+        result = real(self)
+        # a GET in another tab, read before this save, saves its older result now
+        row = MeansTest.objects.get(session=self.intake_session)
+        row.outcome = "cannot_work_out"
+        row.save()
+        return result
+
+    monkeypatch.setattr(MeansTestCalculator, "calculate", then_a_stale_read_saves)
+
+    reply = _put(filer, {"line_16": "0.00"})
+
+    assert reply.status_code == 200
+    assert reply.json()["outcome"] == "presumption"

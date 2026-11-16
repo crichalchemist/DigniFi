@@ -10,7 +10,7 @@ from rest_framework import serializers
 
 from apps.districts.dated_tables import NoTableInForce, fill_date
 from apps.districts.means_standards import NoMeansTestTable, section_104_in_force
-from apps.eligibility.cmi import counted_spouse_income, income_step_gaps
+from apps.eligibility.cmi import counted_spouse_income, income_step_gaps, is_above_median
 from apps.eligibility.means_inputs import (
     _lives_in,
     _payments_left,
@@ -31,7 +31,7 @@ from apps.eligibility.means_lines import (
 )
 from apps.eligibility.models import MeansTest
 from apps.eligibility.services import MeansTestCalculator
-from apps.forms.registry import _above_median
+from apps.forms.services.means_fit import LIST_ANSWERS, merge_row_errors, shown_box_refusals
 from apps.intake.asset_lines import exemption_item_name, ordered_assets
 from apps.intake.claim_rows import claim_rows
 from apps.intake.locking import lock_session
@@ -190,7 +190,8 @@ def _information(session, answers) -> tuple[dict | None, str | None]:
         ),
         "line_7g": _figure(lines["7g"]),
         "line_8": _figure(lines["8"]),
-        "line_35": _figure(lines["35"]),
+        # what the filer entered as past due (the total), not the ÷ 60 figure line 35 prints
+        "line_35": _figure(lines["35_total"]),
         "line_39c": _figure(lines["39c"]),
         "line_15_cap": _two(tables.public_transport),
         "line_29_per_child": _two(tables.education_per_child),
@@ -221,17 +222,17 @@ def means_page(session) -> dict:
     gaps = income_step_gaps(session)
     applies = None
     applies_gap = None
+    result = None
     if gaps:
         applies_gap = str(gaps[0])
     else:
         try:
-            MeansTestCalculator(session).calculate()
+            result = MeansTestCalculator(session).calculate()
         except NoTableInForce as refusal:
             applies_gap = str(refusal)
         else:
-            # the calculation may have created the means test row: read the session fresh
-            session = IntakeSession.objects.get(pk=session.pk)
-            applies = _above_median(session)
+            # F12: from this calculation, never a re-read another request may have rewritten
+            applies = is_above_median(result["cmi"], result["median_income_threshold"])
     session = IntakeSession.objects.get(pk=session.pk)
     income = getattr(session, "income_info", None)
     answers = _answers_for_page(session)
@@ -245,8 +246,13 @@ def means_page(session) -> dict:
         if information_gap is None:
             tables, _ = read_tables(fill_date())
             gap = next(iter(means_test_gaps(inputs, tables, page_answers(session))), None)
-    saved = MeansTest.objects.filter(session=session).first()
-    details = saved.get_calculation_details() if saved else {}
+    if result is not None:
+        outcome, details = result["outcome"], result["details"]
+    else:
+        # nothing worked out (an Income step gap or no median table): what is stored, if any
+        saved = MeansTest.objects.filter(session=session).first()
+        outcome = saved.outcome if saved else None
+        details = saved.get_calculation_details() if saved else {}
     record = getattr(session, "means_test_answers", None)
     answered_on = None if record is None else record.answered_on()
     return {
@@ -267,7 +273,7 @@ def means_page(session) -> dict:
         "fill_date": fill_date().isoformat(),
         "information": information,
         "information_gap": information_gap,
-        "outcome": saved.outcome if saved else None,
+        "outcome": outcome,
         "family_size": details.get("family_size"),
         "tables_gap": details.get("tables_gap"),
         "gap": gap,
@@ -381,6 +387,11 @@ def save_means_answers(session, data: Mapping) -> None:
         choice = data.get("vehicle_choice") or []
         if any(ref is not None and ref not in nameable for ref in choice):
             errors["vehicle_choice"] = [NOT_A_LINE_11_VEHICLE]
+        # F1: a list whose rows or answer this save left to the stored record is measured here,
+        # under the answer it will be saved with (the serializer measured the rest).
+        waiting = [key for key, answer in LIST_ANSWERS.items() if (key in data) != (answer in data)]
+        merged = {**stored, **{key: value for key, value in data.items() if key != "debts"}}
+        merge_row_errors(errors, shown_box_refusals(merged, waiting))
         if errors:
             raise serializers.ValidationError(errors)
 

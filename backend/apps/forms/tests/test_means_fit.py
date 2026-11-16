@@ -7,11 +7,17 @@ from apps.forms.services.means_fit import (
     LOAN_PROPERTY,
     TEMPLATE,
     VEHICLE_DESCRIPTION,
+    box_refusal,
     explanation_refusal,
     fits_every,
 )
 from apps.forms.services.widgets import template_widgets
-from apps.intake.means_test import MEANS_EXPLANATION_LETTER, MEANS_EXPLANATION_TOO_LONG
+from apps.intake.means_test import (
+    MEANS_EXPLANATION_LETTER,
+    MEANS_EXPLANATION_TOO_LONG,
+    MEANS_LETTER,
+    MEANS_TOO_LONG,
+)
 
 # Measured with text_fit at 6 pt: 95.0 pt wide, so wider than line 34's creditor boxes
 # (89.5 pt, less padding) and narrower than 33d's (about 120.6 pt).
@@ -39,6 +45,12 @@ def test_every_named_box_is_a_drawn_widget_of_the_template():
 
 def test_a_letter_the_form_cant_print_never_fits():
     assert not fits_every("□", LINE_3_PURPOSE)
+
+
+def test_a_refusal_says_whether_a_letter_or_the_length_is_the_trouble():
+    assert box_refusal("Demo Lễ Bank", LOAN_CREDITOR) == MEANS_LETTER
+    assert box_refusal(CREDITOR_BETWEEN, LOAN_CREDITOR) == MEANS_TOO_LONG
+    assert box_refusal("Demo Bank", LOAN_CREDITOR) is None
 
 
 def test_the_longest_aid_draft_saves():

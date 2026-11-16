@@ -17,14 +17,7 @@ from apps.districts.counties import ILND_COUNTIES
 from apps.districts.dated_tables import fill_date
 from apps.eligibility.cmi import answered_window, income_step_gaps, income_window
 from apps.forms.services.exemption_items import fits_description, fits_law
-from apps.forms.services.means_fit import (
-    LINE_3_PURPOSE,
-    LOAN_CREDITOR,
-    LOAN_PROPERTY,
-    VEHICLE_DESCRIPTION,
-    explanation_refusal,
-    fits_every,
-)
+from apps.forms.services.means_fit import LIST_ANSWERS, merge_row_errors, shown_box_refusals
 
 from .asset_lines import LINE_BY_KEY, PROPERTY_KINDS, WHO
 from .claims import PRIORITY_ANSWERS, account_last_4, legacy_payments, ordered_debts
@@ -39,7 +32,6 @@ from .income import ENTRY_KINDS, MAX_ENTRIES
 from .means_test import (
     MAX_ROWS,
     MEANS_ROW_LISTED_TWICE,
-    MEANS_TOO_LONG,
     NOT_A_MEANS_ANSWER,
     PROPERTY_CHOICES,
 )
@@ -1519,14 +1511,11 @@ class _MeansRow(serializers.Serializer):
         return super().to_internal_value(data)
 
 
+# A row's words are measured against the form's boxes in MeansTestSerializer.validate (or under
+# the lock), and only while the answers show the box (F1); the rows check only their caps.
 class Line3RowSerializer(_MeansRow):
     purpose = _means_words(200)
     amount = _means_amount()
-
-    def validate_purpose(self, value):
-        if value and value.strip() and not fits_every(value, LINE_3_PURPOSE):
-            raise serializers.ValidationError(MEANS_TOO_LONG)
-        return value
 
 
 class SpouseVehicleSerializer(_MeansRow):
@@ -1534,11 +1523,6 @@ class SpouseVehicleSerializer(_MeansRow):
     description = _means_words(200)
     leased = _means_choice()
     claimed = _means_choice()
-
-    def validate_description(self, value):
-        if value and value.strip() and not fits_every(value, VEHICLE_DESCRIPTION):
-            raise serializers.ValidationError(MEANS_TOO_LONG)
-        return value
 
 
 def _refuse_repeated_refs(rows):
@@ -1564,16 +1548,6 @@ class SpouseLoanSerializer(_PerDebtAnswersSerializer):
     secured_by = serializers.CharField(required=False, allow_null=True)
     property = _means_words(200)
     payment = _means_amount()
-
-    def validate_creditor(self, value):
-        if value and value.strip() and not fits_every(value, LOAN_CREDITOR):
-            raise serializers.ValidationError(MEANS_TOO_LONG)
-        return value
-
-    def validate_property(self, value):
-        if value and value.strip() and not fits_every(value, LOAN_PROPERTY):
-            raise serializers.ValidationError(MEANS_TOO_LONG)
-        return value
 
     def validate_secured_by(self, value):
         if value is None or value in PROPERTY_CHOICES:
@@ -1613,9 +1587,6 @@ class CircumstanceSerializer(_MeansRow):
     def validate_explanation(self, value):
         if value is None or not value.strip():
             return None
-        refusal = explanation_refusal(value)
-        if refusal is not None:
-            raise serializers.ValidationError(refusal)
         return value
 
 
@@ -1730,6 +1701,10 @@ class MeansTestSerializer(serializers.Serializer):
         choice = attrs.get("vehicle_choice") or []
         if any(ref and ref.startswith("new-") and ref not in sent for ref in choice):
             errors["vehicle_choice"] = [NOT_IN_THIS_SAVE]
+        # F1: a list sent with its answer is measured here; one sent without it (or an answer
+        # sent without its rows) waits for save_means_answers, which reads the stored half.
+        measured = [key for key, answer in LIST_ANSWERS.items() if key in attrs and answer in attrs]
+        merge_row_errors(errors, shown_box_refusals(attrs, measured))
         if errors:
             raise serializers.ValidationError(errors)
         return attrs

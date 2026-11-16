@@ -65,6 +65,7 @@ PROPERTY_CHOICES = ("home", "other")
 
 # Server sentences the page also shows (each pinned to copy.ts).
 MEANS_TOO_LONG = "This is too long for the box on Form 122A-2. Shorten it."
+MEANS_LETTER = "This has a letter Form 122A-2 can't print. Change it."
 MEANS_EXPLANATION_TOO_LONG = "This explanation is too long to print with line 43. Shorten it."
 MEANS_EXPLANATION_LETTER = "This explanation has a letter Form 122A-2 can't print. Change it."
 NOT_A_MEANS_ANSWER = "This is not one of the means test answers."

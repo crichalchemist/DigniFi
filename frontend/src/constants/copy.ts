@@ -440,6 +440,8 @@ export const MEANS_REBUTTAL_COURT = 'The court decides whether to allow them.';
 
 // DRAFT: counsel C-24
 export const MEANS_TOO_LONG = 'This is too long for the box on Form 122A-2. Shorten it.';
+// DRAFT: counsel C-24
+export const MEANS_LETTER = "This has a letter Form 122A-2 can't print. Change it.";
 
 // DRAFT: counsel C-31
 export const MEANS_EXPLANATION_TOO_LONG =

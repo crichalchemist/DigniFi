@@ -784,6 +784,7 @@ export interface MeansInformation {
   schedule_j: Record<string, string>;
   line_7g: string | null;
   line_8: string | null;
+  /** The past due total of the confirmed priority debts (line 35 before its ÷ 60), or null */
   line_35: string | null;
   line_39c: string | null;
   line_15_cap: string;

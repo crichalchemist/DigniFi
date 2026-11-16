@@ -1,13 +1,19 @@
 """Whether a 122A-2 page answer prints whole in every box it could print in, at 6 pt as `PDFFormFiller._plan` composes it, so a saved answer never fails at Generate (H28, H49, H56)."""
 
-from collections.abc import Sequence
+from collections.abc import Iterable, Mapping, Sequence
 from functools import partial
 
 from apps.forms.services.pdf_filler import _as_printed, _refused_letter
 from apps.forms.services.sheets import _lines, inner_width
 from apps.forms.services.text_fit import fit, font_for, printable
 from apps.forms.services.widgets import template_widgets
-from apps.intake.means_test import MEANS_EXPLANATION_LETTER, MEANS_EXPLANATION_TOO_LONG
+from apps.intake.means_test import (
+    MEANS_EXPLANATION_LETTER,
+    MEANS_EXPLANATION_TOO_LONG,
+    MEANS_LETTER,
+    MEANS_TOO_LONG,
+    PROPERTY_CHOICES,
+)
 
 TEMPLATE = "b_122a-2_0425-form.pdf"
 
@@ -53,6 +59,14 @@ LOAN_PROPERTY = (
     "undefined_89",
 )
 
+# Each list the page draws only under its question's Yes, by that question's key.
+LIST_ANSWERS = {
+    "line_3_rows": "line_3_answer",
+    "spouse_vehicles": "spouse_vehicles_answer",
+    "spouse_loans": "spouse_loans_answer",
+    "line_43_circumstances": "line_43_answer",
+}
+
 # 504 pt less a 46 pt line column and a 96 pt amount column (H30); 3h3's schema shares them.
 LINE_43_EXPLANATION_WIDTH = 362.0
 LINE_43_EXPLANATION_LINES = 36
@@ -65,18 +79,83 @@ def _widget(name: str):
     return found[0]
 
 
-def _fits(name: str, text: str) -> bool:
+def _letters_print(name: str, text: str) -> bool:
     widget = _widget(name)
-    printed = _as_printed(text)
     prints = partial(printable, font_for(TEMPLATE, widget.font))
-    if _refused_letter(printed, prints, widget.comb) is not None:
+    return _refused_letter(_as_printed(text), prints, widget.comb) is None
+
+
+def _fits(name: str, text: str) -> bool:
+    if not _letters_print(name, text):
         return False
-    return fit(widget, TEMPLATE, printed) is not None
+    return fit(_widget(name), TEMPLATE, _as_printed(text)) is not None
 
 
 def fits_every(text: str, names: Sequence[str]) -> bool:
     """The text prints, letters and size alike, in each named box of Form 122A-2."""
     return all(_fits(name, text) for name in names)
+
+
+def box_refusal(text: str, names: Sequence[str]) -> str | None:
+    """The sentence refusing words that can't print in every named box, else None (F10): a letter
+    no box's font has first, then a box too small for the words."""
+    if not all(_letters_print(name, text) for name in names):
+        return MEANS_LETTER
+    if not fits_every(text, names):
+        return MEANS_TOO_LONG
+    return None
+
+
+def _row_refusals(list_key: str, row: Mapping) -> dict[str, list[str]]:
+    words = []
+    if list_key == "line_3_rows":
+        words.append(("purpose", LINE_3_PURPOSE))
+    elif list_key == "spouse_vehicles":
+        words.append(("description", VEHICLE_DESCRIPTION))
+    elif list_key == "spouse_loans":
+        if row.get("on_amounts_owed") == "no":
+            words.append(("creditor", LOAN_CREDITOR))
+        if row.get("secured_by") in PROPERTY_CHOICES:
+            words.append(("property", LOAN_PROPERTY))
+    out = {}
+    for field, names in words:
+        text = row.get(field)
+        refusal = box_refusal(text, names) if text and text.strip() else None
+        if refusal is not None:
+            out[field] = [refusal]
+    if list_key == "line_43_circumstances":
+        text = row.get("explanation")
+        refusal = explanation_refusal(text) if text and text.strip() else None
+        if refusal is not None:
+            out["explanation"] = [refusal]
+    return out
+
+
+def shown_box_refusals(answers: Mapping, lists: Iterable[str]) -> dict:
+    """The refusals of the boxes the page answers show in the named lists, as a 400 keys a row's
+    errors: {list: {index: {field: [sentence]}}} (F1). A list counts only under its question's
+    Yes, a spouse loan's creditor only under "on your Amounts Owed step" No and its property only
+    under home or other: only those boxes are drawn and can print. A hidden box saves as typed."""
+    errors = {}
+    for list_key in lists:
+        if answers.get(LIST_ANSWERS[list_key]) != "yes":
+            continue
+        rows = {}
+        for index, row in enumerate(answers.get(list_key) or []):
+            refusals = _row_refusals(list_key, row)
+            if refusals:
+                rows[index] = refusals
+        if rows:
+            errors[list_key] = rows
+    return errors
+
+
+def merge_row_errors(errors: dict, more: Mapping) -> None:
+    """Add `shown_box_refusals`' row errors to a 400's errors, beside any a row already has."""
+    for list_key, rows in more.items():
+        held = errors.setdefault(list_key, {})
+        for index, fields in rows.items():
+            held.setdefault(index, {}).update(fields)
 
 
 def explanation_refusal(text: str) -> str | None:
