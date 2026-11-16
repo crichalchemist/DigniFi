@@ -1,0 +1,32 @@
+[
+  {
+    "name": "one amount",
+    "line_39c": "2188.40",
+    "amounts": ["400.00"],
+    "figure": "107304.00"
+  },
+  {
+    "name": "several amounts",
+    "line_39c": "2188.40",
+    "amounts": ["400.00", "250.00"],
+    "figure": "92304.00"
+  },
+  {
+    "name": "a $0 beside another",
+    "line_39c": "2188.40",
+    "amounts": ["0.00", "400.00"],
+    "figure": "107304.00"
+  },
+  {
+    "name": "a sum larger than 39c",
+    "line_39c": "2188.40",
+    "amounts": ["3000.00"],
+    "figure": "-48696.00"
+  },
+  {
+    "name": "a negative 39c",
+    "line_39c": "-100.00",
+    "amounts": ["50.00"],
+    "figure": "-9000.00"
+  }
+]

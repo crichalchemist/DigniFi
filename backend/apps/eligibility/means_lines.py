@@ -11,7 +11,7 @@ Nothing here carries a county, a district or an answer into an error message.
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from decimal import ROUND_HALF_EVEN, Decimal
 
@@ -93,21 +93,32 @@ class HealthInsurance:
 
 @dataclass(frozen=True, repr=False)
 class Vehicle:
-    asset_id: int
+    """A vehicle named by its ref: `asset-<pk>` (Schedule A/B row) or `spouse-<id>` (spouse row).
+
+    `leased` is None only for a spouse row whose lease is unanswered.
+    """
+
+    ref: str
     name: str
-    financed: bool
-    leased: bool
+    leased: bool | None
     claimed: bool | None = None
 
     def __repr__(self) -> str:
-        return "Vehicle(asset_id=...)"
+        return f"Vehicle(ref={self.ref})"
 
 
 @dataclass(frozen=True, repr=False)
 class SecuredDebt:
-    debt_id: int
+    """A secured debt named by its ref: `debt-<pk>` (Amounts Owed) or `spouse-<id>` (spouse loan).
+
+    `secured_by` is the ref of the vehicle or property row the debt names, None for a spouse loan
+    on the home or other property and for a debt with no live link. `payments_left` holds 60 for
+    "60 or more". `placed` is False for a spouse loan the reader can't place.
+    """
+
+    ref: str
     creditor: str
-    asset_id: int | None
+    secured_by: str | None
     on_home: bool
     property: str
     monthly_payment: Decimal | None
@@ -117,9 +128,10 @@ class SecuredDebt:
     taxes_or_insurance: str | None = None
     necessary_for_support: str | None = None
     cure: Decimal | None = None
+    placed: bool = True
 
     def __repr__(self) -> str:
-        return "SecuredDebt(debt_id=...)"
+        return f"SecuredDebt(ref={self.ref})"
 
 
 @dataclass(frozen=True, repr=False)
@@ -133,9 +145,11 @@ class MeansInputs:
     secured_debts: tuple[SecuredDebt, ...]
     line_35_past_due: Decimal | None
     line_41a: Decimal
-    vehicle_choice: tuple[int, int] | None = None
+    vehicle_choice: tuple[str, str] | None = None
+    spouse_vehicles_answer: str | None = None
+    spouse_loans_answer: str | None = None
     line_3_answer: str | None = None
-    line_3_rows: tuple[tuple[str, Decimal], ...] = ()
+    line_3_rows: tuple[tuple[str, Decimal | None], ...] = ()
     line_15: OptIn | None = None
     line_16: Decimal | None = None
     line_17: Decimal | None = None
@@ -172,6 +186,11 @@ class MeansTables:
     operating: Mapping[str, tuple[Decimal, Decimal]]
     ownership_one_car: Decimal
     public_transport: Decimal
+    five_percent: tuple[Decimal, Decimal, Decimal, Decimal]
+    five_percent_extra: Decimal
+    education_per_child: Decimal
+    chapter_13_unsecured_limit: Decimal
+    chapter_13_secured_limit: Decimal
     multipliers: Mapping[str, Decimal]
     presumption_low: Decimal
     presumption_high: Decimal
@@ -251,14 +270,48 @@ def _opt_in(opt_in: OptIn | None, field: str) -> Decimal | _Sentinel:
     return SKIPPED
 
 
-def _average(debt: SecuredDebt) -> Decimal | _Sentinel:
-    """The debt's 60-month average, rounded to the cent; MISSING while its inputs are."""
+def is_spouse_ref(ref: str) -> bool:
+    """Whether a vehicle or debt ref names one of the spouse's own rows."""
+    return ref.startswith("spouse-")
+
+
+def sixty_month_total(debt: SecuredDebt) -> Decimal | _Sentinel:
+    """What the debt takes in the 60 months after filing; MISSING while its inputs are.
+
+    Under a payment that changes it is the typed total; otherwise the payments left (60 at most)
+    times the monthly payment.
+    """
     changes = _yes_no(debt.payment_changes, "payment_changes")
     if changes == "yes" and debt.total_60_months is not None:
-        return _money(debt.total_60_months / MONTHS)
+        return debt.total_60_months
     if changes == "no" and debt.payments_left is not None and debt.monthly_payment is not None:
-        return _money(min(debt.payments_left, 60) * debt.monthly_payment / MONTHS)
+        return min(debt.payments_left, 60) * debt.monthly_payment
     return MISSING
+
+
+def _average(debt: SecuredDebt) -> Decimal | _Sentinel:
+    """The debt's 60-month average, rounded to the cent; MISSING while its inputs are."""
+    total = sixty_month_total(debt)
+    return total if total is MISSING else _money(total / MONTHS)
+
+
+def line_30_cap(tables: MeansTables, people: int) -> Decimal:
+    """5% of the IRS food and clothing amounts for `people` (1 or more): line 30's ceiling."""
+    if people < 1:
+        raise ValueError("A household of at least one person has a line 30 cap.")
+    if people <= 4:
+        return _money(tables.five_percent[people - 1])
+    return _money(tables.five_percent[3] + (people - 4) * tables.five_percent_extra)
+
+
+def plan_product(payment: Decimal, multiplier: Decimal) -> Decimal:
+    """Line 36: the projected plan payment times the U.S. Trustee's percentage."""
+    return _money(payment * multiplier / 100)
+
+
+def rebuttal_figure(line_39c: Decimal, amounts: Iterable[Decimal]) -> Decimal:
+    """Line 39d as it would read with line 43's amounts taken off line 39c (H46)."""
+    return _money((line_39c - sum(amounts, ZERO)) * MONTHS)
 
 
 def _row(debt: SecuredDebt, with_flag: bool = False) -> MeansRow:
@@ -290,11 +343,20 @@ def _lines_1_to_4(inputs: MeansInputs) -> tuple[dict[str, Value], tuple[MeansRow
     elif marital == "married_together":
         two, two_filing = "yes", "no"
         three_answer = _yes_no(inputs.line_3_answer, "line 3's answer") or MISSING
+        unfinished = False
         if three_answer == "yes":
             rows = tuple(
-                MeansRow(purpose, _money(amount)) for purpose, amount in inputs.line_3_rows
+                MeansRow(purpose, _given(amount)) for purpose, amount in inputs.line_3_rows
             )
-        three = MISSING if three_answer is MISSING else _add(*(row.amount for row in rows))
+            # R3: a Yes with no row, or a row with no purpose or no amount, can't be worked out
+            unfinished = not rows or any(
+                not purpose.strip() or amount is None for purpose, amount in inputs.line_3_rows
+            )
+        three = (
+            MISSING
+            if three_answer is MISSING or unfinished
+            else _add(*(row.amount for row in rows))
+        )
     else:
         two, two_filing, three_answer, three = "no", SKIPPED, SKIPPED, ZERO
     line_1 = _given(inputs.line_1)
@@ -355,58 +417,136 @@ def _lines_5_to_9a(inputs: MeansInputs, tables: MeansTables) -> dict[str, Value]
     }
 
 
-def _vehicle_slots(inputs: MeansInputs):
-    """Vehicle 1 and Vehicle 2, each a Vehicle or None for an empty slot, or MISSING."""
+def _spouse_unknown(
+    inputs: MeansInputs, answer: str | None, refs: Iterable[str], field: str
+) -> bool:
+    """Under married_together, whether the spouse's rows are unknown (R4).
+
+    That is no answer, or Yes with no spouse row.
+    """
+    if inputs.marital_status != "married_together":
+        return False
+    given = _yes_no(answer, field)
+    return given is None or (given == "yes" and not any(is_spouse_ref(ref) for ref in refs))
+
+
+def _spouse_vehicles_unknown(inputs: MeansInputs) -> bool:
+    return _spouse_unknown(
+        inputs,
+        inputs.spouse_vehicles_answer,
+        (vehicle.ref for vehicle in inputs.vehicles),
+        "the spouse's vehicles answer",
+    )
+
+
+def _loans_unknown(inputs: MeansInputs) -> bool:
+    """The spouse's loans are unknown, or a loan can't be placed (R4)."""
+    return _spouse_unknown(
+        inputs,
+        inputs.spouse_loans_answer,
+        (debt.ref for debt in inputs.secured_debts),
+        "the spouse's loans answer",
+    ) or any(not debt.placed for debt in inputs.secured_debts)
+
+
+def slot_candidates(inputs: MeansInputs) -> tuple[Vehicle, ...] | _Sentinel:
+    """The claimed vehicles that can take Vehicle 1 or 2, in `inputs.vehicles` order, or MISSING.
+
+    A vehicle is a candidate when it is leased, or a debt names it and that debt still takes
+    something in the 60 months after filing (H57): a loan with 0 payments left and no larger
+    final payment takes no slot. The slots wait while any answer the rule reads is missing.
+    """
+    if _spouse_vehicles_unknown(inputs) or _loans_unknown(inputs):
+        return MISSING
     if any(vehicle.claimed is None for vehicle in inputs.vehicles):
         return MISSING
-    # DRAFT: counsel C-28 (a leased vehicle takes a slot; 13a prints whole, nothing on 13b)
-    candidates = [v for v in inputs.vehicles if v.claimed and (v.financed or v.leased)]
+    claimed = [vehicle for vehicle in inputs.vehicles if vehicle.claimed]
+    if any(vehicle.leased is None for vehicle in claimed):
+        return MISSING
+    candidates = []
+    for vehicle in claimed:
+        # DRAFT: counsel C-28 (a leased vehicle takes a slot; 13a prints whole, nothing on 13b)
+        has_something_due = any(
+            total is MISSING or total > ZERO
+            for total in (
+                sixty_month_total(debt)
+                for debt in inputs.secured_debts
+                if debt.secured_by == vehicle.ref
+            )
+        )
+        if vehicle.leased or has_something_due:
+            candidates.append(vehicle)
+    return tuple(candidates)
+
+
+def _vehicle_slots(inputs: MeansInputs):
+    """Vehicle 1 and Vehicle 2, each a Vehicle or None for an empty slot, or MISSING."""
+    candidates = slot_candidates(inputs)
+    if candidates is MISSING:
+        return MISSING
     if len(candidates) <= 2:
-        return tuple((candidates + [None, None])[:2])
+        return tuple((list(candidates) + [None, None])[:2])
     if inputs.vehicle_choice is None:
         return MISSING
-    by_asset = {vehicle.asset_id: vehicle for vehicle in candidates}
-    first, second = (by_asset.get(asset_id) for asset_id in inputs.vehicle_choice)
+    by_ref = {vehicle.ref: vehicle for vehicle in candidates}
+    first, second = (by_ref.get(ref) for ref in inputs.vehicle_choice)
     if first is None or second is None or first is second:
         return MISSING
     return first, second
 
 
+def _slot_ref(vehicle: Vehicle | None) -> str | None:
+    return None if vehicle is None else vehicle.ref
+
+
+def _debt_lines(inputs: MeansInputs, slots) -> dict[str, str | None]:
+    vehicle_refs = {vehicle.ref for vehicle in inputs.vehicles}
+    lines: dict[str, str | None] = {}
+    for debt in inputs.secured_debts:
+        named = debt.secured_by
+        if not debt.placed:
+            lines[debt.ref] = None
+        elif debt.on_home:
+            lines[debt.ref] = "9b"
+        elif slots is MISSING and named in vehicle_refs:
+            lines[debt.ref] = None
+        elif slots is not MISSING and named is not None and named == _slot_ref(slots[0]):
+            lines[debt.ref] = "13b"
+        elif slots is not MISSING and named is not None and named == _slot_ref(slots[1]):
+            lines[debt.ref] = "13e"
+        else:
+            lines[debt.ref] = "33d"
+    return lines
+
+
+def debt_lines(inputs: MeansInputs) -> dict[str, str | None]:
+    """Each secured debt's line by ref: 9b, 13b, 13e or 33d, or None while it waits.
+
+    A debt waits while it isn't placed, or names a vehicle while Vehicle 1 and 2 are unknown.
+    """
+    return _debt_lines(inputs, _vehicle_slots(inputs))
+
+
 def _group_debts(inputs: MeansInputs, slots) -> tuple[dict[str, list[SecuredDebt]], bool]:
-    """Each counted debt to its group (9b, 13b, 13e or 33d), and whether any waits on the slots."""
+    """Each counted debt to its group (9b, 13b, 13e or 33d), and whether any waits."""
     groups: dict[str, list[SecuredDebt]] = {"9b": [], "13b": [], "13e": [], "33d": []}
-    vehicle_assets = {vehicle.asset_id for vehicle in inputs.vehicles}
+    lines = _debt_lines(inputs, slots)
     waiting = False
     for debt in inputs.secured_debts:
-        if debt.on_home:
-            groups["9b"].append(debt)
-        elif slots is MISSING and debt.asset_id in vehicle_assets:
+        line = lines[debt.ref]
+        if line is None:
             waiting = True
-        elif (
-            slots is not MISSING
-            and debt.asset_id is not None
-            and debt.asset_id == _slot_asset(slots[0])
-        ):
-            groups["13b"].append(debt)
-        elif (
-            slots is not MISSING
-            and debt.asset_id is not None
-            and debt.asset_id == _slot_asset(slots[1])
-        ):
-            groups["13e"].append(debt)
         else:
-            groups["33d"].append(debt)
+            groups[line].append(debt)
     return groups, waiting
-
-
-def _slot_asset(vehicle: Vehicle | None) -> int | None:
-    return None if vehicle is None else vehicle.asset_id
 
 
 def _vehicle_lines(
     inputs: MeansInputs, tables: MeansTables, slots, rows: dict[str, tuple[MeansRow, ...]]
 ) -> dict[str, Value]:
-    if any(vehicle.claimed is None for vehicle in inputs.vehicles):
+    if _spouse_vehicles_unknown(inputs) or any(
+        vehicle.claimed is None for vehicle in inputs.vehicles
+    ):
         count = MISSING
     else:
         count = sum(1 for vehicle in inputs.vehicles if vehicle.claimed)
@@ -427,6 +567,9 @@ def _vehicle_lines(
         line_15 = SKIPPED
     else:
         line_15 = _opt_in(inputs.line_15, "line 15")
+        # R2: a figure above the IRS public transportation amount is held back, not worked out
+        if isinstance(line_15, Decimal) and line_15 > _money(tables.public_transport):
+            line_15 = MISSING
     values: dict[str, Value] = {"11": count, "12": line_12, "14": line_14, "15": line_15}
     for number, (name_key, standard_key, debts_key, net_key) in enumerate(
         (("13_vehicle_1", "13a", "13b", "13c"), ("13_vehicle_2", "13d", "13e", "13f"))
@@ -526,7 +669,7 @@ def _lines_35_and_36(inputs: MeansInputs, tables: MeansTables) -> dict[str, Valu
             "36_answer": "yes",
             "36_payment": payment,
             "36_multiplier": multiplier,
-            "36": MISSING if payment is MISSING else _money(payment * multiplier / 100),
+            "36": MISSING if payment is MISSING else plan_product(payment, multiplier),
         }
     else:
         thirty_six = {
@@ -572,7 +715,8 @@ def work_out(inputs: MeansInputs, tables: MeansTables) -> MeansLines:
     slots = _vehicle_slots(inputs)
     groups, waiting = _group_debts(inputs, slots)
     rows = {key: tuple(_row(debt, key == "33d") for debt in groups[key]) for key in groups}
-    values["9b"] = _add(*(row.amount for row in rows["9b"]))
+    loans_unknown = _loans_unknown(inputs)
+    values["9b"] = MISSING if loans_unknown else _add(*(row.amount for row in rows["9b"]))
     values["9c"] = _minus_floored(values["9a"], values["9b"])
     values.update(_vehicle_lines(inputs, tables, slots, rows))
 
@@ -587,6 +731,11 @@ def work_out(inputs: MeansInputs, tables: MeansTables) -> MeansLines:
     values.update(_line_25(inputs.line_25))
     for key in ("26", "27", "28", "29", "30", "31"):
         values[key] = _opt_in(getattr(inputs, f"line_{key}"), f"line {key}")
+    # R2: line 30 above 5% of the food and clothing amounts is held back; line 29 has no cap (P3)
+    if isinstance(values["30"], Decimal):
+        people = values["5"]
+        if people is MISSING or people < 1 or values["30"] > line_30_cap(tables, people):
+            values["30"] = MISSING
     values["32"] = _add(
         values["25"], *(values[key] for key in ("26", "27", "28", "29", "30", "31"))
     )
@@ -594,6 +743,7 @@ def work_out(inputs: MeansInputs, tables: MeansTables) -> MeansLines:
     values["33a"] = values["9b"]
     values["33b"] = values["13b"]
     values["33c"] = values["13e"]
+    waiting = waiting or loans_unknown
     values["33d"] = MISSING if waiting else _add(*(row.amount for row in rows["33d"]))
     values["33e"] = _add(values["33a"], values["33b"], values["33c"], values["33d"])
     line_34, rows_34 = _line_34(inputs, groups, waiting)

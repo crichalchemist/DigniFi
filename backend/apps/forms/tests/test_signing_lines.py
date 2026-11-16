@@ -13,7 +13,7 @@ import pytest
 from django.core.management import call_command
 
 from apps.districts.models import District
-from apps.forms.registry import FORM_122A2_NOT_ASKED, PreconditionMissing, build_field_values
+from apps.forms.registry import FORM_122A2_CANT_PRINT_YET, PreconditionMissing, build_field_values
 from apps.forms.schema import load_schema
 from apps.forms.services.fill_resolver import resolve
 from apps.forms.services.pdf_filler import PDFFormFiller
@@ -67,7 +67,7 @@ def _printed():
         try:
             values = build_field_values(form_type, session)
         except PreconditionMissing as exc:
-            if form_type not in HELD or str(exc) != FORM_122A2_NOT_ASKED:
+            if form_type not in HELD or str(exc) != FORM_122A2_CANT_PRINT_YET:
                 raise
             # The hold refuses both forms for Priya (R6): this test judges the printed page,
             # so they resolve below the gate.
@@ -81,7 +81,7 @@ def _printed():
 
 
 @pytest.mark.django_db
-def test_the_hold_refuses_priyas_two_held_forms_in_its_own_words():
+def test_priyas_two_held_forms_are_refused_in_their_own_words_until_122a2_can_print():
     # Seeds Priya itself: _printed() is cached, so it may return without seeding.
     if not District.objects.filter(code="ilnd").exists():
         call_command("loaddata", "ilnd_2025_data", verbosity=0)
@@ -90,7 +90,7 @@ def test_the_hold_refuses_priyas_two_held_forms_in_its_own_words():
     for form_type in HELD:
         with pytest.raises(PreconditionMissing) as refused:
             build_field_values(form_type, session)
-        assert str(refused.value) == FORM_122A2_NOT_ASKED, form_type
+        assert str(refused.value) == FORM_122A2_CANT_PRINT_YET, form_type
 
 
 @pytest.mark.slow

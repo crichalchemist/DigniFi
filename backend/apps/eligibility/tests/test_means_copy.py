@@ -1,6 +1,6 @@
 """
 The server's two refusal sentences for the means test are also the browser's: the filer reads
-`FORM_122A2_NOT_ASKED` and `NO_MEANS_TEST_TABLE` on the dashboard in `copy.ts`'s words, and
+`FORM_122A2_CANT_PRINT_YET` and `NO_MEANS_TEST_TABLE` on the dashboard in `copy.ts`'s words, and
 `upl-means-test-copy.test.ts` scores the words the filer sees. A sentence reworded on one side
 only would put two different sentences in front of the filer for one refusal (3h1 plan R8).
 """
@@ -11,7 +11,7 @@ import pytest
 from django.conf import settings
 
 from apps.districts.means_standards import NO_MEANS_TEST_TABLE
-from apps.forms.registry import FORM_122A2_NOT_ASKED
+from apps.forms.registry import FORM_122A2_CANT_PRINT_YET
 
 FRONTEND = settings.BASE_DIR.parent / "frontend" / "src"
 
@@ -26,7 +26,7 @@ def _copy_sentence(name: str) -> str:
 @pytest.mark.parametrize(
     ("name", "server_sentence"),
     [
-        ("MEANS_HOLD_REFUSAL", FORM_122A2_NOT_ASKED),
+        ("MEANS_CANT_PRINT_YET", FORM_122A2_CANT_PRINT_YET),
         ("MEANS_TABLE_MISSING", NO_MEANS_TEST_TABLE),
     ],
 )

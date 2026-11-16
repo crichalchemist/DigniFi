@@ -33,7 +33,7 @@ from apps.districts.models import District, MedianIncome
 from apps.eligibility.cmi import HOUSEHOLD_UNANSWERED, NOW_DIFFERENT_UNANSWERED
 from apps.eligibility.models import MeansTest
 from apps.forms.models import GeneratedForm
-from apps.forms.registry import FORM_122A2_NOT_ASKED, build_parts, packet
+from apps.forms.registry import build_parts, packet
 from apps.forms.services.fill_resolver import UnmappedChoice
 from apps.forms.services.pdf_filler import (
     InvalidFieldValue,
@@ -51,7 +51,12 @@ from apps.intake.models import (
     IncomeInfo,
     IntakeSession,
 )
-from apps.intake.tests.builders import answer_asset_lines, answer_household, complete_debt
+from apps.intake.tests.builders import (
+    answer_asset_lines,
+    answer_household,
+    answer_means_test,
+    complete_debt,
+)
 
 User = get_user_model()
 
@@ -818,6 +823,7 @@ def test_generated_form_template_version_round_trip(db, template_version_form):
 
 # The root conftest pins today to 2026-10-16, so the six months in force are April to September
 INCOME_NOW = {"start": "2026-04-01", "end": "2026-09-30"}
+LINE_16 = "Enter the amount for line 16. Enter 0 if you have none."
 
 
 @pytest.mark.django_db
@@ -838,10 +844,32 @@ class TestPacketEndpoint:
             "outcome",
             "family_size",
             "tables_gap",
+            "means_debts_answered",
         }
         assert resp.data["form_types"][:3] == ["form_101", "form_106dec", "form_106sum"]
         assert "form_103b" not in resp.data["form_types"]
         assert len(resp.data["form_types"]) == 15
+
+    def test_answers_saved_in_an_earlier_month_show_a_notice(self, api_client, session_with_debtor):
+        session = session_with_debtor
+        _set_wages(session, "9000.00")
+        record = answer_means_test(session)
+        record.debts_answered_on = "2026-09-30"
+        record.save()
+
+        above = api_client.get(self.URL, {"session": session.id}).data
+        assert above["means_debts_answered"] == {"answered_on": "2026-09-30", "now": "2026-10-16"}
+
+        record.debts_answered_on = None
+        record.save()
+        unstamped = api_client.get(self.URL, {"session": session.id}).data
+        assert unstamped["means_debts_answered"] is None
+
+        record.debts_answered_on = "2026-09-30"
+        record.save()
+        _set_wages(session, "3000.00")
+        below = api_client.get(self.URL, {"session": session.id}).data
+        assert below["means_debts_answered"] is None
 
     @pytest.mark.parametrize("answer", ["pay_in_full", "installments", "waiver", None])
     def test_the_packet_carries_the_filers_line_8_answer(
@@ -1123,12 +1151,18 @@ class TestMeansTestWorkedOutAgain:
         assert ("form_122a2" in listed.data["form_types"]) is above_median
         # Above the median the pair is held (3h1): both forms refuse together.
         assert generated.data["errors"] == (
-            [{"form_type": t, "error": FORM_122A2_NOT_ASKED} for t in HELD] if above_median else []
+            [{"form_type": t, "error": LINE_16, "page": "/means-test"} for t in HELD]
+            if above_median
+            else []
         )
         assert single.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
         if above_median:
             assert not {f["form_type"] for f in generated.data["generated"]} & set(HELD)
-            assert single.data == {"form_type": "form_122a2", "error": FORM_122A2_NOT_ASKED}
+            assert single.data == {
+                "form_type": "form_122a2",
+                "error": LINE_16,
+                "page": "/means-test",
+            }
         # The stored result is the one worked out from the filer's current income.
         assert MeansTest.objects.get(session=session).calculated_cmi == Decimal(wages)
 

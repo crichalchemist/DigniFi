@@ -17,6 +17,8 @@ import { RegisterPage } from '../pages/RegisterPage';
 import { LandingPage } from '../pages/LandingPage';
 import { FormDashboard } from '../pages/FormDashboard';
 import { ExemptionsPage } from '../pages/ExemptionsPage';
+import { MeansTestPage } from '../pages/MeansTestPage';
+import { priyaPage } from './fixtures/meansPage';
 import { FormCard } from '../components/forms/FormCard';
 import { FormStatusBadge } from '../components/forms/FormStatusBadge';
 import { UPLDisclaimer } from '../components/compliance/UPLDisclaimer';
@@ -310,6 +312,116 @@ describe('Accessibility: Pages', () => {
     await waitFor(() => {
       expect(container.querySelector('select[name="claim_1_law"]')).not.toBeNull();
     });
+
+    const results = await axe(container, axeOptions);
+    expect(results).toHaveNoViolations();
+  });
+
+  it("MeansTestPage with Priya's answers has no violations", async () => {
+    server.use(
+      http.get('http://localhost:8000/api/intake/sessions/:id/means-test/', () =>
+        HttpResponse.json(priyaPage())
+      )
+    );
+    const { container } = withIntakeProvider(<MeansTestPage />);
+
+    // Nothing is drawn until the read returns
+    await waitFor(() => {
+      expect(container.querySelector('input[name="means_line_43"]')).not.toBeNull();
+    });
+
+    const results = await axe(container, axeOptions);
+    expect(results).toHaveNoViolations();
+  });
+
+  it("MeansTestPage with a spouse vehicle, a spouse loan and Kestrel's questions has no violations", async () => {
+    // Three cars with a loan or lease, so the Vehicle 1 and 2 selects show; the spouse's loan is on 33d
+    const page = priyaPage();
+    page.vehicles = [
+      { ref: 'asset-7', name: 'Honda CR-V EX 2021', leased: false },
+      { ref: 'asset-8', name: 'Demo leased car', leased: true },
+    ];
+    page.answers.vehicle_claims = { 'asset-7': 'yes', 'asset-8': 'yes' };
+    page.answers.vehicle_choice = ['asset-7', 'asset-8'];
+    page.answers.line_34_answer = 'yes';
+    page.answers.spouse_vehicles_answer = 'yes';
+    page.answers.spouse_vehicles = [
+      { ref: 'spouse-1', description: 'Demo van', leased: 'no', claimed: 'yes' },
+    ];
+    page.answers.spouse_loans_answer = 'yes';
+    page.answers.spouse_loans = [
+      {
+        ref: 'spouse-1',
+        on_amounts_owed: 'no',
+        debt: null,
+        creditor: 'Demo Credit Union',
+        secured_by: 'spouse-1',
+        property: '',
+        payment: '100.00',
+        payments_left: 10,
+        payment_changes: 'no',
+        total_60_months: null,
+        taxes_or_insurance: null,
+        necessary_for_support: 'yes',
+        cure: null,
+      },
+    ];
+    server.use(
+      http.get('http://localhost:8000/api/intake/sessions/:id/means-test/', () =>
+        HttpResponse.json(page)
+      )
+    );
+    const { container } = withIntakeProvider(<MeansTestPage />);
+
+    await waitFor(() => {
+      expect(container.querySelector('select[name="means_vehicle_1"]')).not.toBeNull();
+    });
+    expect(container.querySelector('input[name="means_spouse_loan_0_secured_by"]')).not.toBeNull();
+    expect(
+      container.querySelector('select[name="means_spouse_debt_1_payments_left"]')
+    ).not.toBeNull();
+    expect(container.querySelector('input[name="means_debt_11_support"]')).not.toBeNull();
+
+    const results = await axe(container, axeOptions);
+    expect(results).toHaveNoViolations();
+  });
+
+  it('MeansTestPage with two line 43 circumstances under Yes has no violations', async () => {
+    const page = priyaPage();
+    page.answers.line_43_answer = 'yes';
+    page.answers.line_43_circumstances = [
+      {
+        happened: 'Demo layoff in May',
+        change: 'Income fell',
+        choices: 'Asked for hours',
+        papers: 'A letter',
+        amount: '400.00',
+        explanation: 'What happened: Demo layoff in May',
+      },
+      {
+        happened: '',
+        change: '',
+        choices: '',
+        papers: '',
+        amount: '250.00',
+        explanation: null,
+      },
+    ];
+    page.information!.line_39c = '2188.40';
+    server.use(
+      http.get('http://localhost:8000/api/intake/sessions/:id/means-test/', () =>
+        HttpResponse.json(page)
+      )
+    );
+    const { container } = withIntakeProvider(<MeansTestPage />);
+
+    await waitFor(() => {
+      expect(
+        container.querySelector('textarea[name="means_line_43_1_explanation"]')
+      ).not.toBeNull();
+    });
+    // The rebuttal figure shows with line 39c and a presumption
+    expect(container.textContent).toContain('Your line 39d is now');
 
     const results = await axe(container, axeOptions);
     expect(results).toHaveNoViolations();

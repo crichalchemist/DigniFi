@@ -14,7 +14,10 @@ from collections.abc import Iterable, Mapping, Sequence
 from decimal import Decimal
 from types import MappingProxyType
 
+from apps.districts.dated_tables import fill_date
+from apps.eligibility.means_inputs import counted_debts, vehicle_rows
 from apps.intake.asset_lines import shown_lines
+from apps.intake.means_test import PER_DEBT_KEYS
 from apps.intake.models import (
     AssetInfo,
     AssetLineAnswers,
@@ -25,6 +28,8 @@ from apps.intake.models import (
     ExemptionAnswers,
     FilingFee,
     Household,
+    MeansTestAnswers,
+    SecuredDebtAnswers,
     SpouseIncome,
 )
 
@@ -163,6 +168,77 @@ def answer_exemptions(
     row.no_claims = no_claims
     row.save()
     return row
+
+
+MEANS_DEBT_ANSWERS = MappingProxyType(
+    {"payments_left": "60_or_more", "payment_changes": "no", "taxes_or_insurance": "no"}
+)
+
+
+def answer_means_test(
+    session, *, debts: Mapping = MappingProxyType({}), **over
+) -> MeansTestAnswers:
+    """Store every Form 122A-2 page answer (3h2), through the session's own relation. These are
+    test answers, not defaults the app ever offers.
+
+    The defaults answer No (or "0.00") to every question; line 3 and the spouse's two
+    questions are answered only under married_together, and Vehicle 1 and 2 are left unset.
+    Each call writes every default again, and each counted secured debt's, before `over` (a
+    page key, replacing its answer whole; None stores null) and `debts` ({debt pk: per-debt
+    answers}, merged over that debt's defaults), so pass the whole of both each time.
+
+    The two spouse id counters move past every `spouse-N` ref stored. An unknown page key
+    raises KeyError, and so does a `debts` key naming no counted debt or a per-debt key not
+    in PER_DEBT_KEYS, before anything is written.
+    """
+    rows = vehicle_rows(session)
+    counted = counted_debts(session)
+    if any(pk not in {debt.pk for debt in counted} for pk in debts):
+        raise KeyError("debts names a debt the page doesn't ask about.")
+    if any(key not in PER_DEBT_KEYS for answers in debts.values() for key in answers):
+        raise KeyError("debts names a per-debt answer the page doesn't ask.")
+    income = getattr(session, "income_info", None)
+    together = getattr(income, "marital_status", None) == "married_together"
+    answers = {
+        "line_3_answer": "no" if together else None,
+        "spouse_vehicles_answer": "no" if together else None,
+        "spouse_loans_answer": "no" if together else None,
+        "vehicle_claims": {f"asset-{row.pk}": "no" for row in rows},
+        "line_15_answer": "no",
+        "line_22_answer": "no",
+        "line_25_answer": "no",
+        **{f"line_{n}_answer": "no" for n in range(26, 32)},
+        **{f"line_{n}": "0.00" for n in (16, 17, 18, 19, 20, 21, 23)},
+        "line_34_answer": "no",
+        "line_36_answer": "no",
+        "line_43_answer": "no",
+    }
+    record = getattr(session, "means_test_answers", None) or MeansTestAnswers(session=session)
+    record.merge(answers | over)
+    # a stored spouse row keeps its ref, so the next one a test sends starts past every stored ref
+    stored = record.get_answers()
+    for list_key, counter in (
+        ("spouse_vehicles", "next_spouse_vehicle_id"),
+        ("spouse_loans", "next_spouse_loan_id"),
+    ):
+        numbers = [
+            int(row["ref"].removeprefix("spouse-"))
+            for row in stored.get(list_key) or []
+            if str(row.get("ref", "")).startswith("spouse-")
+        ]
+        setattr(record, counter, max([getattr(record, counter), *(n + 1 for n in numbers)]))
+    record.debts_answered_on = fill_date().isoformat()
+    record.save()
+    for debt in counted:
+        per_debt = {key: MEANS_DEBT_ANSWERS.get(key) for key in PER_DEBT_KEYS}
+        per_debt |= debts.get(debt.pk, {})
+        row = getattr(debt, "means_answers", None) or SecuredDebtAnswers(debt=debt)
+        for key, value in per_debt.items():
+            if key in ("total_60_months", "cure") and value is not None:
+                value = Decimal(str(value))
+            setattr(row, key, value)
+        row.save()
+    return record
 
 
 DEMO_ADDRESS = {

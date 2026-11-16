@@ -274,6 +274,8 @@ export interface PersonaData {
   claim_answers: PersonaClaimAnswers;
   filing_fee: PersonaFilingFee;
   exemptions: PersonaExemptions;
+  /** Form 122A-2's answers, given only by a persona above the median */
+  means_test?: PersonaMeansTest;
   expected: { passes_means_test: boolean };
 }
 
@@ -310,6 +312,43 @@ export interface PersonaExemptions {
   line_1: 'state_and_federal';
   line_3: 'no';
   claims: PersonaExemptionClaim[];
+}
+
+/** The lines of Form 122A-2 the page asks by amount or opt-in (line 24 is not asked) */
+export type MeansAskedLine =
+  | '15'
+  | '16'
+  | '17'
+  | '18'
+  | '19'
+  | '20'
+  | '21'
+  | '22'
+  | '23'
+  | '25'
+  | '26'
+  | '27'
+  | '28'
+  | '29'
+  | '30'
+  | '31';
+
+/** What a persona answers on the Form 122A-2 page (3h2 spec §8) */
+export interface PersonaMeansTest {
+  // The next four are asked only of a filer married and living together
+  line_3?: 'yes' | 'no';
+  line_3_rows?: { purpose: string; amount: string }[];
+  spouse_vehicles?: 'yes' | 'no';
+  spouse_loans?: 'yes' | 'no';
+  vehicles: { name: string; claimed: 'yes' | 'no' }[];
+  debts: { creditor: string; payments_left: string; changes: 'yes' | 'no' }[];
+  /** Line 15's answer is opt_ins['15'], answered only while a vehicle is claimed */
+  opt_ins: Partial<Record<MeansAskedLine, { answer: 'yes' | 'no'; amount?: string }>>;
+  amounts: Partial<Record<MeansAskedLine, string>>;
+  line_25: { answer: 'yes'; health: string; disability: string; hsa: string; spends: 'yes' | 'no' };
+  line_34: 'yes' | 'no';
+  line_36: { answer: 'yes' | 'no'; payment?: string };
+  line_43: 'yes' | 'no';
 }
 
 export const MARIA: PersonaData = {
@@ -839,6 +878,38 @@ export const PRIYA: PersonaData = {
       { property: 'JPMorgan Chase (line 17.3)', law: '735 ILCS 5/12-1001(b)', amount: 2100 },
       { property: 'Vanguard (line 21)', law: '735 ILCS 5/12-1006', amount: 'fair_market_value' },
     ],
+  },
+  // The same answers the seed writes for her
+  means_test: {
+    line_3: 'yes',
+    line_3_rows: [{ purpose: 'His payroll taxes withheld from his pay', amount: '250.00' }],
+    spouse_vehicles: 'no',
+    spouse_loans: 'no',
+    vehicles: [{ name: 'Honda CR-V EX 2021', claimed: 'yes' }],
+    debts: [{ creditor: 'Kestrel Auto Finance', payments_left: '37', changes: 'no' }],
+    opt_ins: {
+      '15': { answer: 'no' },
+      '22': { answer: 'no' },
+      '26': { answer: 'no' },
+      '27': { answer: 'no' },
+      '28': { answer: 'no' },
+      '29': { answer: 'no' },
+      '30': { answer: 'no' },
+      '31': { answer: 'yes', amount: '50.00' },
+    },
+    amounts: {
+      '16': '2300.00',
+      '17': '0.00',
+      '18': '120.00',
+      '19': '0.00',
+      '20': '0.00',
+      '21': '1200.00',
+      '23': '0.00',
+    },
+    line_25: { answer: 'yes', health: '620.00', disability: '180.00', hsa: '0.00', spends: 'yes' },
+    line_34: 'no',
+    line_36: { answer: 'yes', payment: '1400.00' },
+    line_43: 'no',
   },
   expected: { passes_means_test: false },
 };

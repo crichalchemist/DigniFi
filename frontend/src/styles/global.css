@@ -489,6 +489,11 @@ a {
   min-height: 44px;
 }
 
+/* The Form 122A-2 page's boxes are 44 px hit targets on a phone, as the Assets step's are */
+.means-test-page .form-input {
+  min-height: 44px;
+}
+
 .ab-value {
   margin-bottom: var(--space-4);
 }
@@ -771,6 +776,7 @@ a {
   color: var(--color-cream);
   letter-spacing: 0.01em;
   text-decoration: none;
+  flex-shrink: 0;
 }
 
 .app-header-wordmark:hover {
@@ -781,12 +787,19 @@ a {
   display: flex;
   align-items: center;
   gap: var(--space-4);
+  min-width: 0;
+  margin-left: var(--space-4);
 }
 
+/* A long email address shortens with an ellipsis, so the header never scrolls sideways on a phone */
 .app-header-user {
   font-family: var(--font-body);
   font-size: var(--text-caption);
   color: var(--color-cream);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .app-header-signout {
@@ -799,6 +812,8 @@ a {
   padding: var(--space-1) 0;
   cursor: pointer;
   transition: color var(--transition-fast);
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .app-header-signout:hover {

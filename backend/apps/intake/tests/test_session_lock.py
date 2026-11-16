@@ -49,6 +49,8 @@ from apps.intake.models import (
     ExpenseInfo,
     IncomeInfo,
     IntakeSession,
+    MeansTestAnswers,
+    SecuredDebtAnswers,
 )
 from apps.intake.tests.builders import (
     answer_asset_lines,
@@ -56,6 +58,8 @@ from apps.intake.tests.builders import (
     complete_codebtor,
     complete_contract,
     complete_debt,
+    linked_loan,
+    linked_row,
 )
 from apps.users.models import User
 
@@ -573,6 +577,12 @@ WRITES = {
     "session PUT": lambda s, r: ("put", _session_url(s), {"district": s.district_id}, 200),
     "Continue": lambda s, r: ("post", _session_url(s, "update_step/"), {"current_step": 3}, 200),
     "Complete": lambda s, r: ("post", _session_url(s, "complete/"), {}, 200),
+    "means-test PUT": lambda s, r: (
+        "put",
+        _session_url(s, "means-test/"),
+        {"line_16": "0.00"},
+        200,
+    ),
     "claim_answers PATCH": lambda s, r: (
         "patch",
         _session_url(s),
@@ -736,3 +746,48 @@ def test_a_list_save_checks_its_rows_while_it_holds_the_lock(ready, write, row_s
     assert waited, f"{write} wrote without waiting for the save in progress"
     assert not checked_while_locked, "the save checked its rows before it held the lock"
     assert checked.is_set()
+
+
+def test_the_means_test_save_checks_its_rows_while_it_holds_the_lock(ready):
+    # A debt deleted while the save waited must be a 400, not a foreign key error: the checks
+    # read the stored rows only after the lock is held.
+    user, session = ready
+    car = linked_row(session, "3", description="Demo car")
+    loan = linked_loan(session, car, Decimal("450.00"))
+    body = {"debts": [{"id": loan.pk, "payments_left": 5}]}
+
+    def send():
+        return _client(user).put(_session_url(session, "means-test/"), body, format="json")
+
+    with transaction.atomic():
+        lock_session(session.pk)  # a save in progress
+        sending, outcome = _on_its_own_thread(send)
+        waited = _waits_on_a_lock(sending)
+        loan.delete()
+    response = _finished(sending, outcome)
+
+    assert waited, "the means test save wrote without waiting for the save in progress"
+    assert response.status_code == 400, response.content
+    assert not SecuredDebtAnswers.objects.filter(debt_id=loan.pk).exists()
+
+
+def test_the_means_test_save_reads_the_cars_after_it_holds_the_lock(ready):
+    # The view's session prefetches its assets before the lock: a car deleted while the save
+    # waited must be a 400, not a stored claim on a dead reference.
+    user, session = ready
+    car = linked_row(session, "3", description="Demo car")
+    body = {"vehicle_claims": {f"asset-{car.pk}": "yes"}}
+
+    def send():
+        return _client(user).put(_session_url(session, "means-test/"), body, format="json")
+
+    with transaction.atomic():
+        lock_session(session.pk)  # a save in progress
+        sending, outcome = _on_its_own_thread(send)
+        waited = _waits_on_a_lock(sending)
+        car.delete()
+    response = _finished(sending, outcome)
+
+    assert waited, "the means test save wrote without waiting for the save in progress"
+    assert response.status_code == 400, response.content
+    assert not MeansTestAnswers.objects.filter(session=session).exists()

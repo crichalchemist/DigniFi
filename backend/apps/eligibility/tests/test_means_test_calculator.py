@@ -28,7 +28,6 @@ from apps.eligibility.cmi import IncomeNotSplit
 from apps.eligibility.models import MeansTest
 from apps.eligibility.services.means_test_calculator import MeansTestCalculator
 from apps.forms.registry import (
-    FORM_122A2_NOT_ASKED,
     PreconditionMissing,
     build_field_values,
     packet,
@@ -784,7 +783,10 @@ class TestAboveMedianEndToEnd:
         assert result["outcome"] == "cannot_work_out"
         assert result["passes_means_test"] is None
 
-        with pytest.raises(PreconditionMissing, match=re.escape(FORM_122A2_NOT_ASKED)):
+        with pytest.raises(
+            PreconditionMissing,
+            match=re.escape("Enter the amount for line 16. Enter 0 if you have none."),
+        ):
             build_field_values("form_122a2", session)
 
 

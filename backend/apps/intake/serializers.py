@@ -17,6 +17,7 @@ from apps.districts.counties import ILND_COUNTIES
 from apps.districts.dated_tables import fill_date
 from apps.eligibility.cmi import answered_window, income_step_gaps, income_window
 from apps.forms.services.exemption_items import fits_description, fits_law
+from apps.forms.services.means_fit import LIST_ANSWERS, merge_row_errors, shown_box_refusals
 
 from .asset_lines import LINE_BY_KEY, PROPERTY_KINDS, WHO
 from .claims import PRIORITY_ANSWERS, account_last_4, legacy_payments, ordered_debts
@@ -28,6 +29,12 @@ from .household import (
     count_fee_waiver_household,
 )
 from .income import ENTRY_KINDS, MAX_ENTRIES
+from .means_test import (
+    MAX_ROWS,
+    MEANS_ROW_LISTED_TWICE,
+    NOT_A_MEANS_ANSWER,
+    PROPERTY_CHOICES,
+)
 from .models import (
     HOME_PAYMENT_LINES,
     YES_NO,
@@ -1387,6 +1394,319 @@ class ExemptionsSerializer(serializers.Serializer):
             )
         if attrs.get("no_claims") and attrs.get("claims"):
             raise serializers.ValidationError({"no_claims": [NO_CLAIMS_AND_CLAIMS_REFUSAL]})
+        return attrs
+
+
+NOT_A_MEANS_CHOICE = "This is not one of the answers to this question."
+NOT_A_PAYMENTS_LEFT = "Payments left is a whole number from 0 to 59, or 60 or more."
+NOT_A_VEHICLE = "This doesn't name a vehicle."
+NOT_A_ROW = "This doesn't name a row of this list."
+OWN_VEHICLE_ON_AMOUNTS_OWED = (
+    "A loan on your Amounts Owed step can't be secured by your own vehicle."
+)
+DEBT_SENT_TWICE = "Each debt can be sent only once in a save."
+ROW_NEEDS_ITS_ID = "Each debt's answers need the debt's id."
+DIFFERENT_VEHICLES = "Vehicle 1 and Vehicle 2 must be different vehicles."
+NOT_IN_THIS_SAVE = "This names a vehicle that isn't in this save."
+
+SIXTY_OR_MORE = "60_or_more"
+_ROW_REF = r"^(spouse|new)-[1-9][0-9]{0,9}$"
+_VEHICLE_REF = r"^(asset|spouse|new)-[1-9][0-9]{0,9}$"
+_FILER_VEHICLE_REF = r"asset-[1-9][0-9]{0,9}"
+MAX_ID = 2147483647  # the largest id a database integer column holds
+
+
+def _within_max_id(ref):
+    return int(ref.rsplit("-", 1)[1]) <= MAX_ID
+
+
+class _MeansAmount(serializers.DecimalField):
+    def to_internal_value(self, data):
+        value = super().to_internal_value(data)
+        # "-0" passes min_value=0: store the zero without its sign, so no form prints -0.00.
+        return Decimal("0.00") if value == 0 else value
+
+
+class PaymentsLeftField(serializers.Field):
+    """A whole number 0-59, or "60_or_more"; stored as that text, read back as an int or the text."""
+
+    default_error_messages = {"invalid": NOT_A_PAYMENTS_LEFT}
+
+    def to_internal_value(self, data):
+        if isinstance(data, bool):
+            self.fail("invalid")
+        if isinstance(data, int) and 0 <= data <= 59:
+            return str(data)
+        if data == SIXTY_OR_MORE:
+            return SIXTY_OR_MORE
+        self.fail("invalid")
+
+    def to_representation(self, value):
+        return value if value == SIXTY_OR_MORE else int(value)
+
+
+class VehicleClaimsField(serializers.DictField):
+    """The filer's vehicle claims by Schedule A/B reference, each yes, no or null."""
+
+    def to_internal_value(self, data):
+        value = super().to_internal_value(data)
+        bad = {
+            key: [NOT_A_VEHICLE]
+            for key in value
+            if not (re.fullmatch(_FILER_VEHICLE_REF, key) and _within_max_id(key))
+        }
+        if bad:
+            raise serializers.ValidationError(bad)
+        return value
+
+
+def _means_choice():
+    return serializers.ChoiceField(
+        choices=YES_NO,
+        required=False,
+        allow_null=True,
+        error_messages={"invalid_choice": NOT_A_MEANS_CHOICE},
+    )
+
+
+def _means_amount():
+    return _MeansAmount(
+        max_digits=12,
+        decimal_places=2,
+        min_value=Decimal("0"),
+        required=False,
+        allow_null=True,
+    )
+
+
+def _means_words(max_length):
+    return serializers.CharField(
+        max_length=max_length, required=False, allow_null=True, allow_blank=True
+    )
+
+
+def _means_ref(pattern, message):
+    def in_range(value):
+        if re.fullmatch(pattern, value) and not _within_max_id(value):
+            raise serializers.ValidationError(message)
+
+    return serializers.RegexField(
+        pattern,
+        required=False,
+        allow_null=True,
+        error_messages={"invalid": message},
+        validators=[in_range],
+    )
+
+
+class _MeansRow(serializers.Serializer):
+    """A row of one of the page's lists; an unknown key is refused by name."""
+
+    def to_internal_value(self, data):
+        # A ListField child has no initial_data, so validate() can't see an unknown key.
+        if isinstance(data, dict):
+            unknown = sorted(set(data) - set(self.fields))
+            if unknown:
+                raise serializers.ValidationError({name: [NOT_A_MEANS_ANSWER] for name in unknown})
+        return super().to_internal_value(data)
+
+
+# A row's words are measured against the form's boxes in MeansTestSerializer.validate (or under
+# the lock), and only while the answers show the box (F1); the rows check only their caps.
+class Line3RowSerializer(_MeansRow):
+    purpose = _means_words(200)
+    amount = _means_amount()
+
+
+class SpouseVehicleSerializer(_MeansRow):
+    ref = _means_ref(_ROW_REF, NOT_A_ROW)
+    description = _means_words(200)
+    leased = _means_choice()
+    claimed = _means_choice()
+
+
+def _refuse_repeated_refs(rows):
+    refs = [row["ref"] for row in rows or [] if row.get("ref")]
+    if len(refs) != len(set(refs)):
+        raise serializers.ValidationError([MEANS_ROW_LISTED_TWICE])
+
+
+class _PerDebtAnswersSerializer(_MeansRow):
+    payments_left = PaymentsLeftField(required=False, allow_null=True)
+    payment_changes = _means_choice()
+    total_60_months = _means_amount()
+    taxes_or_insurance = _means_choice()
+    necessary_for_support = _means_choice()
+    cure = _means_amount()
+
+
+class SpouseLoanSerializer(_PerDebtAnswersSerializer):
+    ref = _means_ref(_ROW_REF, NOT_A_ROW)
+    on_amounts_owed = _means_choice()
+    debt = serializers.IntegerField(min_value=1, max_value=MAX_ID, required=False, allow_null=True)
+    creditor = _means_words(200)
+    secured_by = serializers.CharField(required=False, allow_null=True)
+    property = _means_words(200)
+    payment = _means_amount()
+
+    def validate_secured_by(self, value):
+        if value is None or value in PROPERTY_CHOICES:
+            return value
+        if not (re.fullmatch(_VEHICLE_REF, value) and _within_max_id(value)):
+            raise serializers.ValidationError(NOT_A_VEHICLE)
+        return value
+
+    def validate(self, attrs):
+        secured = attrs.get("secured_by")
+        if attrs.get("on_amounts_owed") == "yes" and secured and secured.startswith("asset-"):
+            raise serializers.ValidationError({"secured_by": [OWN_VEHICLE_ON_AMOUNTS_OWED]})
+        return attrs
+
+
+class DebtAnswersSerializer(_PerDebtAnswersSerializer):
+    id = serializers.IntegerField(min_value=1, max_value=MAX_ID, required=False, allow_null=True)
+
+    def to_internal_value(self, data):
+        result = super().to_internal_value(data)
+        # partial=True reaches a ListField's rows, so `required` can't enforce the id.
+        if result.get("id") is None:
+            raise serializers.ValidationError({"id": [ROW_NEEDS_ITS_ID]})
+        return result
+
+
+class CircumstanceSerializer(_MeansRow):
+    happened = _means_words(450)
+    change = _means_words(450)
+    choices = _means_words(450)
+    papers = _means_words(450)
+    amount = _means_amount()
+    explanation = serializers.CharField(
+        max_length=2000, required=False, allow_null=True, allow_blank=True
+    )
+
+    def validate_explanation(self, value):
+        if value is None or not value.strip():
+            return None
+        return value
+
+
+class MeansTestSerializer(serializers.Serializer):
+    """The Form 122A-2 page's answers (3h2 spec §8.4), used with partial=True. Every shape and
+    fit check that reads nothing stored; null clears an answer. DRF drops an unknown key
+    silently, so validate() refuses it by name."""
+
+    line_3_answer = _means_choice()
+    line_3_rows = serializers.ListField(
+        child=Line3RowSerializer(), required=False, allow_null=True, max_length=MAX_ROWS
+    )
+    spouse_vehicles_answer = _means_choice()
+    spouse_vehicles = serializers.ListField(
+        child=SpouseVehicleSerializer(), required=False, allow_null=True, max_length=MAX_ROWS
+    )
+    spouse_loans_answer = _means_choice()
+    spouse_loans = serializers.ListField(
+        child=SpouseLoanSerializer(), required=False, allow_null=True, max_length=MAX_ROWS
+    )
+    vehicle_claims = VehicleClaimsField(
+        child=serializers.ChoiceField(
+            choices=YES_NO, allow_null=True, error_messages={"invalid_choice": NOT_A_MEANS_CHOICE}
+        ),
+        required=False,
+        allow_null=True,
+    )
+    vehicle_choice = serializers.ListField(
+        child=_means_ref(_VEHICLE_REF, NOT_A_VEHICLE),
+        required=False,
+        allow_null=True,
+        min_length=2,
+        max_length=2,
+    )
+    line_15_answer = _means_choice()
+    line_15_amount = _means_amount()
+    line_16 = _means_amount()
+    line_17 = _means_amount()
+    line_18 = _means_amount()
+    line_19 = _means_amount()
+    line_20 = _means_amount()
+    line_21 = _means_amount()
+    line_22_answer = _means_choice()
+    line_22_amount = _means_amount()
+    line_23 = _means_amount()
+    line_25_answer = _means_choice()
+    line_25_health = _means_amount()
+    line_25_disability = _means_amount()
+    line_25_hsa = _means_amount()
+    line_25_spends = _means_choice()
+    line_25_actual = _means_amount()
+    line_26_answer = _means_choice()
+    line_26_amount = _means_amount()
+    line_27_answer = _means_choice()
+    line_27_amount = _means_amount()
+    line_28_answer = _means_choice()
+    line_28_amount = _means_amount()
+    line_29_answer = _means_choice()
+    line_29_amount = _means_amount()
+    line_30_answer = _means_choice()
+    line_30_amount = _means_amount()
+    line_31_answer = _means_choice()
+    line_31_amount = _means_amount()
+    line_34_answer = _means_choice()
+    line_36_answer = _means_choice()
+    line_36_payment = _means_amount()
+    line_43_answer = _means_choice()
+    line_43_circumstances = serializers.ListField(
+        child=CircumstanceSerializer(), required=False, allow_null=True, max_length=MAX_ROWS
+    )
+    # One row per counted secured debt, which can be more than MAX_ROWS: no max_length.
+    debts = serializers.ListField(child=DebtAnswersSerializer(), required=False, allow_null=True)
+
+    def validate_spouse_vehicles(self, value):
+        _refuse_repeated_refs(value)
+        return value
+
+    def validate_spouse_loans(self, value):
+        _refuse_repeated_refs(value)
+        return value
+
+    def validate_vehicle_choice(self, value):
+        if value and value[0] is not None and value[0] == value[1]:
+            raise serializers.ValidationError(DIFFERENT_VEHICLES)
+        return value
+
+    def validate_debts(self, value):
+        seen = set()
+        errors = {}
+        for index, row in enumerate(value or []):
+            if row["id"] in seen:
+                errors[index] = {"id": [DEBT_SENT_TWICE]}
+            seen.add(row["id"])
+        if errors:
+            raise serializers.ValidationError(errors)
+        return value
+
+    def validate(self, attrs):
+        unknown = sorted(set(self.initial_data) - set(self.fields))
+        if unknown:
+            raise serializers.ValidationError({name: [NOT_A_MEANS_ANSWER] for name in unknown})
+        # R14: a new-<n> reference must name a spouse vehicle sent in this same request.
+        sent = {row.get("ref") for row in attrs.get("spouse_vehicles") or []}
+        errors = {}
+        loan_errors = {
+            index: {"secured_by": [NOT_IN_THIS_SAVE]}
+            for index, loan in enumerate(attrs.get("spouse_loans") or [])
+            if (loan.get("secured_by") or "").startswith("new-") and loan["secured_by"] not in sent
+        }
+        if loan_errors:
+            errors["spouse_loans"] = loan_errors
+        choice = attrs.get("vehicle_choice") or []
+        if any(ref and ref.startswith("new-") and ref not in sent for ref in choice):
+            errors["vehicle_choice"] = [NOT_IN_THIS_SAVE]
+        # F1: a list sent with its answer is measured here; one sent without it (or an answer
+        # sent without its rows) waits for save_means_answers, which reads the stored half.
+        measured = [key for key, answer in LIST_ANSWERS.items() if key in attrs and answer in attrs]
+        merge_row_errors(errors, shown_box_refusals(attrs, measured))
+        if errors:
+            raise serializers.ValidationError(errors)
         return attrs
 
 

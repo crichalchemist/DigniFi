@@ -5,7 +5,8 @@
  */
 
 import { http, HttpResponse } from 'msw';
-import type { Exemptions, FilingFee } from '../../types/api';
+import type { Exemptions, FilingFee, MeansTestUpdate } from '../../types/api';
+import { meansPage } from '../fixtures/meansPage';
 
 const API = 'http://localhost:8000/api';
 
@@ -91,6 +92,8 @@ const mockMeansTestResult = {
 };
 
 // Nothing answered, no property and two laws in force
+const mockMeansPage = meansPage();
+
 const mockExemptions: Exemptions = {
   line_1: null,
   line_3: null,
@@ -216,6 +219,22 @@ export const handlers = [
     return HttpResponse.json({ ...mockExemptions, ...body });
   }),
 
+  // -- Form 122A-2 page -----------------------------------------------------
+  http.get(`${API}/intake/sessions/:id/means-test/`, () => HttpResponse.json(mockMeansPage)),
+
+  // The reply merges the answer keys sent into `answers`, and each `debts` row into its debt
+  http.put(`${API}/intake/sessions/:id/means-test/`, async ({ request }) => {
+    const { debts, ...answers } = (await request.json()) as MeansTestUpdate;
+    return HttpResponse.json({
+      ...mockMeansPage,
+      answers: { ...mockMeansPage.answers, ...answers },
+      debts: mockMeansPage.debts.map((debt) => {
+        const sent = (debts ?? []).find((row) => row.id === debt.id);
+        return sent ? { ...debt, ...sent } : debt;
+      }),
+    });
+  }),
+
   // -- Assets / Debts ------------------------------------------------------
 
   http.post(`${API}/intake/assets/`, () =>
@@ -296,6 +315,7 @@ export const handlers = [
       outcome: null,
       family_size: null,
       tables_gap: null,
+      means_debts_answered: null,
     })
   ),
 

@@ -24,7 +24,7 @@ from rest_framework.test import APIClient
 
 from apps.districts.models import District
 from apps.forms.models import GeneratedForm
-from apps.forms.registry import FORM_122A2_NOT_ASKED, build_parts, packet
+from apps.forms.registry import FORM_122A2_CANT_PRINT_YET, build_parts, packet
 from apps.forms.schema import load_schema
 from apps.intake.management.commands.seed_demo_data import (
     PERSONAS,
@@ -214,6 +214,31 @@ def _send_through_the_api(persona):
         format="json",
     )
     assert response.status_code == 200, response.data
+    # Form 122A-2's page, after the exemptions page: the persona's answers, each vehicle claim
+    # keyed by its Schedule A/B row and each debt's answers sent under its id. It never reopens
+    # the intake.
+    if "means_test" in data:
+        answers = data["means_test"]["answers"]
+        body = {
+            **answers,
+            "vehicle_claims": {
+                f"asset-{asset_at(session, position).pk}": answer
+                for position, answer in answers["vehicle_claims"].items()
+            },
+            "debts": [
+                {
+                    "id": claim_links(session, [("debt", name)])[0]["id"],
+                    # the seed stores the count as text; the page sends a whole number or "60_or_more"
+                    **{
+                        key: (int(value) if key == "payments_left" and value.isdigit() else value)
+                        for key, value in debt_answers.items()
+                    },
+                }
+                for name, debt_answers in data["means_test"]["debts"].items()
+            ],
+        }
+        response = client.put(f"{session_url}means-test/", body, format="json")
+        assert response.status_code == 200, response.data
     if "sofa" in data:
         response = client.patch(
             f"/api/intake/sofa-report/{session_id}/", _sent(data["sofa"]), format="json"
@@ -278,7 +303,7 @@ def test_forms_built_through_the_api_print_what_the_seeded_forms_print(persona):
 
     held = set(HELD) if persona == "priya" else set()
     assert errors == [
-        {"form_type": t, "error": FORM_122A2_NOT_ASKED} for t in packet(seeded) if t in held
+        {"form_type": t, "error": FORM_122A2_CANT_PRINT_YET} for t in packet(seeded) if t in held
     ]
     assert form_types == [t for t in packet(seeded) if t not in held]
     assert ("form_103b" in form_types) is (persona in APPLIES)

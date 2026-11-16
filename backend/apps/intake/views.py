@@ -34,6 +34,7 @@ from .exemptions import ordered_claims
 from .filing_fee import filing_fee_information
 from .income import deductions_blank, schedule_i_line4
 from .locking import lock_session
+from .means_page import means_page, save_means_answers
 from .models import (
     AssetInfo,
     Codebtor,
@@ -60,6 +61,7 @@ from .serializers import (
     ExemptionsSerializer,
     FilingFeeSerializer,
     IntakeSessionSerializer,
+    MeansTestSerializer,
     SOFAReportSerializer,
     _save_rows_by_id,
 )
@@ -755,6 +757,21 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
                 "catalog_gap": None if catalog is not None else "no_table",
             }
         )
+
+    @action(detail=True, methods=["get", "put"], url_path="means-test", url_name="means-test")
+    def means_test(self, request, pk=None):
+        """GET or PUT /api/intake/sessions/{id}/means-test/ (3h2 spec §8.4).
+
+        In any status. A PUT checks the shapes outside the lock, then `save_means_answers`
+        checks every reference under it and writes; it never reopens a completed intake. Both
+        reply with the page's body, worked out after the write, outside the lock.
+        """
+        session = self.get_object()  # another user's session is a 404
+        if request.method == "PUT":
+            serializer = MeansTestSerializer(data=request.data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            save_means_answers(session, serializer.validated_data)
+        return Response(means_page(IntakeSession.objects.get(pk=session.pk)))
 
     @action(detail=True, methods=["post"], url_path="dischargeability", url_name="dischargeability")
     def dischargeability(self, request, pk=None):

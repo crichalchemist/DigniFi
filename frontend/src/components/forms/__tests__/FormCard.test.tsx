@@ -1,6 +1,6 @@
 import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, useLocation } from 'react-router-dom';
 import { FormCard } from '../FormCard';
 import type { GeneratedForm } from '../../../types/api';
 
@@ -103,6 +103,31 @@ describe('FormCard', () => {
 
     expect(onGenerate).not.toHaveBeenCalled();
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  it("a pending card's Answer Questions goes to its answerPath, and to /ask/<form type> without one", async () => {
+    const user = userEvent.setup();
+    function Where() {
+      return <p data-testid="where">{useLocation().pathname}</p>;
+    }
+    const { unmount } = render(
+      <MemoryRouter>
+        <FormCard {...defaultProps} formType="form_122a2" answerPath="/means-test" />
+        <Where />
+      </MemoryRouter>
+    );
+    await user.click(screen.getByRole('button', { name: 'Answer Questions' }));
+    expect(screen.getByTestId('where')).toHaveTextContent('/means-test');
+    unmount();
+
+    render(
+      <MemoryRouter>
+        <FormCard {...defaultProps} formType="form_103b" />
+        <Where />
+      </MemoryRouter>
+    );
+    await user.click(screen.getByRole('button', { name: 'Answer Questions' }));
+    expect(screen.getByTestId('where')).toHaveTextContent('/ask/form_103b');
   });
 
   // ---------------------------------------------------------------------------

@@ -12,7 +12,7 @@ import pytest
 from django.core.management import call_command
 
 from apps.forms.registry import (
-    FORM_122A2_NOT_ASKED,
+    FORM_122A2_CANT_PRINT_YET,
     PreconditionMissing,
     build_field_values,
     build_parts,
@@ -28,6 +28,16 @@ from apps.intake.models import IntakeSession
 from apps.intake.tests.builders import complete_contract
 
 HELD = ("form_122a1", "form_122a2")  # refused above the median until 122A-2 can print (3h1)
+
+# The page's first gap for each below-median persona, who never sees the page: 122A-2 is in no
+# packet of theirs, and a direct build of it refuses with that gap (PF-T7a).
+FIRST_GAP = {
+    "maria": "Answer whether you claim an expense for Honda Civic 2015.",
+    "james": "Answer whether you claim an expense for Toyota Camry 2019.",
+    "deshawn": "Answer line 3, about your spouse's income.",
+    "sarah": "Enter the amount for line 16. Enter 0 if you have none.",
+    "andres": "Answer whether you claim an expense for Toyota Corolla Hybrid 2024.",
+}
 G_NUMBER_BOXES = sorted(load_schema("schedule_g").groups["g"].number_boxes.values())
 BOX = "Company Name 2.6"  # row 6, page 2
 
@@ -84,7 +94,14 @@ def test_only_the_list_of_creditors_stores_fixes():
             except PreconditionMissing as exc:
                 if form_type in {"form_103b"}:
                     continue  # 103B for a persona who pays the fee
-                if form_type not in HELD or str(exc) != FORM_122A2_NOT_ASKED:
+                if form_type not in HELD:
+                    raise
+                if form_type in packet(session):
+                    expected = FORM_122A2_CANT_PRINT_YET
+                else:
+                    expected = FIRST_GAP[persona]
+                    assert exc.page == "/means-test", persona
+                if str(exc) != expected:
                     raise
                 # The hold refuses 122A-2, and Priya's 122A-1 (R6): resolve it below the gate.
                 parts = resolve_parts(load_schema(form_type), session)["parts"]
@@ -96,14 +113,14 @@ def test_only_the_list_of_creditors_stores_fixes():
 
 
 @pytest.mark.django_db
-def test_the_hold_refuses_both_held_forms_for_an_above_median_persona():
+def test_both_held_forms_are_refused_for_an_above_median_persona_until_122a2_can_print():
     call_command("loaddata", "ilnd_2025_data", verbosity=0)
     call_command("seed_demo_data", stdout=StringIO())
     session = IntakeSession.objects.get(user__username="demo_priya")
     for form_type in HELD:
         with pytest.raises(PreconditionMissing) as refused:
             build_field_values(form_type, session)
-        assert str(refused.value) == FORM_122A2_NOT_ASKED, form_type
+        assert str(refused.value) == FORM_122A2_CANT_PRINT_YET, form_type
 
 
 @pytest.mark.django_db

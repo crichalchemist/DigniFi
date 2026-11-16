@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, useLocation } from 'react-router-dom';
 import { http, HttpResponse } from 'msw';
 import { server } from '../../test/mocks/server';
 import { IntakeProvider } from '../../context/IntakeContext';
@@ -11,10 +11,13 @@ import {
   MEANS_FILED_BEFORE_122A1,
   MEANS_FILED_BEFORE_122A2,
   MEANS_FILED_MISMATCH,
-  MEANS_HOLD_REFUSAL,
-  MEANS_OUTCOME_NOT_YET,
+  MEANS_CANT_PRINT_YET,
+  MEANS_LINE_43_LINK,
+  MEANS_OUTCOME_ANSWER_PAGE,
   MEANS_OUTCOME_PRESUMPTION,
+  MEANS_PAGE_PHRASE,
   MEANS_PAIR_NOTICE,
+  MEANS_STALE_ANSWERS,
   MEANS_TABLE_MISSING,
 } from '../../constants/copy';
 import { PRESUMPTION_INSTRUCTIONS } from '../../constants/formText';
@@ -1476,10 +1479,13 @@ describe('FormDashboard', () => {
       expect(within(region).getByText(PRESUMPTION_INSTRUCTIONS)).toBeInTheDocument();
       expect(within(region).getAllByText(CLOSING)).toHaveLength(1);
       expect(within(region).getByText(MEANS_PAIR_NOTICE)).toBeInTheDocument();
-      // The closing sentence follows the result's sentences and comes before the pair notice
+      // The pair notice opens the block and the closing sentence ends it (H21): nothing follows it
+      const paragraphs = [...region.querySelectorAll('p')].map((p) => p.textContent);
+      expect(paragraphs[0]).toBe(MEANS_PAIR_NOTICE);
+      expect(paragraphs[1]).toBe(MEANS_OUTCOME_PRESUMPTION);
+      expect(paragraphs.at(-1)).toBe(CLOSING);
       const text = region.textContent!;
       expect(text.indexOf(CLOSING)).toBeGreaterThan(text.indexOf(PRESUMPTION_INSTRUCTIONS));
-      expect(text.indexOf(MEANS_PAIR_NOTICE)).toBeGreaterThan(text.indexOf(CLOSING));
     });
 
     it('says the household size in the result for a result that can’t be worked out yet', async () => {
@@ -1492,7 +1498,178 @@ describe('FormDashboard', () => {
           'Your income is above the median for a household of 3, so Form 122A-2 applies.'
         )
       ).toBeInTheDocument();
-      expect(within(region).getByText("Its result can't be worked out yet.")).toBeInTheDocument();
+      expect(region).toHaveTextContent(
+        "Its result can't be worked out until you answer the questions on the Form 122A-2 page."
+      );
+    });
+
+    it("links the Form 122A-2 page inside the sentence when the result can't be worked out yet", async () => {
+      packetWith({ outcome: 'cannot_work_out', family_size: 3, tables_gap: null });
+      renderFormDashboard();
+
+      const region = await screen.findByRole('status', { name: RESULT });
+      const link = within(region).getByRole('link', { name: MEANS_PAGE_PHRASE });
+      expect(link).toHaveAttribute('href', '/means-test');
+      // The link is a part of the sentence, which reads whole
+      expect(link.parentElement).toHaveTextContent(MEANS_OUTCOME_ANSWER_PAGE);
+      expect(link.parentElement!.textContent).toBe(MEANS_OUTCOME_ANSWER_PAGE);
+      // The pair notice comes before the outcome's sentences, and the closing sentence ends the block
+      const paragraphs = [...region.querySelectorAll('p')].map((p) => p.textContent);
+      expect(paragraphs[0]).toBe(MEANS_PAIR_NOTICE);
+      expect(paragraphs.at(-1)).toBe(CLOSING);
+      const text = region.textContent!;
+      expect(text.indexOf(CLOSING)).toBeGreaterThan(text.indexOf(MEANS_OUTCOME_ANSWER_PAGE));
+    });
+
+    it('under a presumption, links to line 43 before the closing sentence', async () => {
+      packetWith({ outcome: 'presumption', family_size: 4, tables_gap: null });
+      renderFormDashboard();
+
+      const region = await screen.findByRole('status', { name: RESULT });
+      const link = within(region).getByRole('link', { name: MEANS_LINE_43_LINK });
+      expect(link).toHaveAttribute('href', '/means-test#line-43');
+      const text = region.textContent!;
+      expect(text.indexOf(MEANS_LINE_43_LINK)).toBeGreaterThan(
+        text.indexOf(PRESUMPTION_INSTRUCTIONS)
+      );
+      expect(text.indexOf(CLOSING)).toBeGreaterThan(text.indexOf(MEANS_LINE_43_LINK));
+    });
+
+    it.each(['cannot_work_out', 'no_presumption', 'at_or_below_median'])(
+      'shows no line 43 link for any other result (%s)',
+      async (outcome) => {
+        packetWith({ outcome, family_size: 4, tables_gap: null });
+        renderFormDashboard();
+
+        const region = await screen.findByRole('status', { name: RESULT });
+        expect(within(region).queryByRole('link', { name: MEANS_LINE_43_LINK })).toBeNull();
+      }
+    );
+
+    describe('the stale-answers notice', () => {
+      const LINK = 'Go to Form 122A-2: Chapter 7 Means Test Calculation';
+
+      it('shows the stale-answers notice with a link when the answers are from an earlier month', async () => {
+        packetWith({ means_debts_answered: { answered_on: '2026-09-30', now: '2026-10-16' } });
+        renderFormDashboard();
+
+        const notice = (await screen.findByText(/You answered the questions about your secured/))
+          .parentElement!;
+        expect(notice).toHaveTextContent(MEANS_STALE_ANSWERS.replace('{month}', 'September 2026'));
+        expect(within(notice).getByRole('link', { name: LINK })).toHaveAttribute(
+          'href',
+          '/means-test'
+        );
+      });
+
+      it.each([
+        ['in the same month', { answered_on: '2026-10-01', now: '2026-10-16' }],
+        ['with none', null],
+      ])('shows no stale notice %s', async (_label, answered) => {
+        packetWith({ means_debts_answered: answered });
+        renderFormDashboard();
+
+        await screen.findByText('Form 121 - SSN Statement');
+        expect(screen.queryByText(/You answered the questions about your secured/)).toBeNull();
+      });
+
+      it('drops the stale notice when Generate All’s reload fails', async () => {
+        packetThen({ means_debts_answered: { answered_on: '2026-09-30', now: '2026-10-16' } }, () =>
+          HttpResponse.json({ detail: 'no' }, { status: 400 })
+        );
+        renderFormDashboard();
+        await screen.findByText(/You answered the questions about your secured/);
+
+        await generateAll();
+
+        await waitFor(() => {
+          expect(screen.queryByText(/You answered the questions about your secured/)).toBeNull();
+        });
+      });
+
+      it('drops the stale notice when a reload after Mark as Filed fails', async () => {
+        let reads = 0;
+        formsWith(storedForm('form_101', 7));
+        server.use(
+          http.get('http://localhost:8000/api/forms/packet/', () => {
+            reads += 1;
+            if (reads === 1) {
+              return HttpResponse.json({
+                session: 1,
+                form_types: PAIR,
+                tables: [],
+                means_debts_answered: { answered_on: '2026-09-30', now: '2026-10-16' },
+              });
+            }
+            return HttpResponse.json({ detail: 'no' }, { status: 400 });
+          }),
+          http.post('http://localhost:8000/api/forms/:id/mark_filed/', () =>
+            HttpResponse.json({ message: 'Marked as filed' })
+          )
+        );
+        renderFormDashboard();
+        await screen.findByText(/You answered the questions about your secured/);
+        const card = await screen.findByRole('article', { name: /Form 101/ });
+
+        await userEvent.click(within(card).getByRole('button', { name: 'Mark as Filed' }));
+
+        await waitFor(() => {
+          expect(reads).toBeGreaterThan(1);
+          expect(screen.queryByText(/You answered the questions about your secured/)).toBeNull();
+        });
+        expect(screen.getByText(DASHBOARD_ERROR)).toBeInTheDocument();
+      });
+    });
+
+    describe('where a pending card’s Answer Questions goes', () => {
+      function Where() {
+        return <p data-testid="where">{useLocation().pathname}</p>;
+      }
+
+      async function answerQuestionsOf(label: string, formTypes: string[]) {
+        packetWith({ outcome: 'cannot_work_out', family_size: 4 }, formTypes);
+        formsWith();
+        localStorage.setItem('current_session_id', '1');
+        render(
+          <MemoryRouter>
+            <IntakeProvider>
+              <FormDashboard />
+              <Where />
+            </IntakeProvider>
+          </MemoryRouter>
+        );
+        const card = await screen.findByRole('article', { name: label });
+        await userEvent.click(within(card).getByRole('button', { name: 'Answer Questions' }));
+        return screen.getByTestId('where');
+      }
+
+      it("the pending 122A-2 card's Answer Questions goes to the Form 122A-2 page", async () => {
+        expect(
+          await answerQuestionsOf('Form 122A-2 - Means Test Expenses', PAIR)
+        ).toHaveTextContent('/means-test');
+      });
+
+      it('the pending 122A-1 card goes to the Form 122A-2 page while 122A-2 is in the packet', async () => {
+        expect(await answerQuestionsOf('Form 122A-1 - Means Test', PAIR)).toHaveTextContent(
+          '/means-test'
+        );
+      });
+
+      it('below the median, the 122A-1 card still goes to its own questions', async () => {
+        expect(
+          await answerQuestionsOf('Form 122A-1 - Means Test', [
+            'form_101',
+            'form_121',
+            'form_122a1',
+          ])
+        ).toHaveTextContent('/ask/form_122a1');
+      });
+
+      it('a 103B card still goes to its own questions', async () => {
+        expect(
+          await answerQuestionsOf('Form 103B - Fee Waiver Application', [...PAIR, 'form_103b'])
+        ).toHaveTextContent('/ask/form_103b');
+      });
     });
 
     it('shows no result for a null outcome, and still shows the pair notice', async () => {
@@ -1592,7 +1769,7 @@ describe('FormDashboard', () => {
       );
       renderFormDashboard();
       const region = await screen.findByRole('status', { name: RESULT });
-      expect(within(region).getByText(MEANS_OUTCOME_NOT_YET)).toBeInTheDocument();
+      expect(region).toHaveTextContent(MEANS_OUTCOME_ANSWER_PAGE);
 
       await generateAll();
 
@@ -1601,7 +1778,9 @@ describe('FormDashboard', () => {
           within(screen.getByRole('status', { name: RESULT })).getByText(MEANS_TABLE_MISSING)
         ).toBeInTheDocument();
       });
-      expect(screen.queryByText(MEANS_OUTCOME_NOT_YET)).not.toBeInTheDocument();
+      expect(screen.getByRole('status', { name: RESULT })).not.toHaveTextContent(
+        MEANS_OUTCOME_ANSWER_PAGE
+      );
     });
 
     it('drops the result, and its closing sentence, when a reload after Mark as Filed fails', async () => {
@@ -1661,9 +1840,9 @@ describe('FormDashboard', () => {
           HttpResponse.json({
             generated: [],
             errors: [
-              { form_type: 'form_122a1', error: MEANS_HOLD_REFUSAL },
+              { form_type: 'form_122a1', error: MEANS_CANT_PRINT_YET },
               { form_type: 'form_121', error: LETTER, step: 'debtor_info' },
-              { form_type: 'form_122a2', error: MEANS_HOLD_REFUSAL },
+              { form_type: 'form_122a2', error: MEANS_CANT_PRINT_YET },
             ],
             total_generated: 0,
             total_errors: 3,
@@ -1678,7 +1857,7 @@ describe('FormDashboard', () => {
       expect(alert).toHaveTextContent(LETTER);
       expect(alert).not.toHaveTextContent(/Form 122A/);
 
-      const pair = screen.getAllByText(MEANS_HOLD_REFUSAL, { exact: false });
+      const pair = screen.getAllByText(MEANS_CANT_PRINT_YET, { exact: false });
       expect(pair).toHaveLength(2);
       const block = pair[0].closest('[role="status"]')!;
       expect(block).toBe(pair[1].closest('[role="status"]'));
@@ -1693,7 +1872,7 @@ describe('FormDashboard', () => {
         http.post('http://localhost:8000/api/forms/generate_all/', () =>
           HttpResponse.json({
             generated: [],
-            errors: [{ form_type: 'form_122a2', error: MEANS_HOLD_REFUSAL }],
+            errors: [{ form_type: 'form_122a2', error: MEANS_CANT_PRINT_YET }],
             total_generated: 0,
             total_errors: 1,
           })
@@ -1702,7 +1881,7 @@ describe('FormDashboard', () => {
       renderFormDashboard();
       await generateAll();
 
-      await screen.findByText(MEANS_HOLD_REFUSAL, { exact: false });
+      await screen.findByText(MEANS_CANT_PRINT_YET, { exact: false });
       expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     });
 
@@ -1714,7 +1893,7 @@ describe('FormDashboard', () => {
         http.post('http://localhost:8000/api/forms/generate_all/', () =>
           HttpResponse.json({
             generated: [],
-            errors: [{ form_type: 'form_122a2', error: MEANS_HOLD_REFUSAL }],
+            errors: [{ form_type: 'form_122a2', error: MEANS_CANT_PRINT_YET }],
             total_generated: 0,
             total_errors: 1,
           })
@@ -1730,7 +1909,7 @@ describe('FormDashboard', () => {
 
       await generateAll();
 
-      const refusal = await screen.findByText(MEANS_HOLD_REFUSAL, { exact: false });
+      const refusal = await screen.findByText(MEANS_CANT_PRINT_YET, { exact: false });
       // The same element, not a new one put in with the words already inside
       expect(refusal.closest('[role="status"]')).toBe(region);
     });
@@ -1741,7 +1920,10 @@ describe('FormDashboard', () => {
       formsWith(storedForm('form_122a1', 7));
       server.use(
         http.post('http://localhost:8000/api/forms/:id/mark_filed/', () =>
-          HttpResponse.json({ form_type: 'form_122a1', error: MEANS_HOLD_REFUSAL }, { status: 422 })
+          HttpResponse.json(
+            { form_type: 'form_122a1', error: MEANS_CANT_PRINT_YET },
+            { status: 422 }
+          )
         )
       );
       renderFormDashboard();
@@ -1749,7 +1931,7 @@ describe('FormDashboard', () => {
       const card = await screen.findByRole('article', { name: 'Form 122A-1 - Means Test' });
       await userEvent.click(within(card).getByRole('button', { name: 'Mark as Filed' }));
 
-      expect(await within(card).findByText(MEANS_HOLD_REFUSAL)).toBeInTheDocument();
+      expect(await within(card).findByText(MEANS_CANT_PRINT_YET)).toBeInTheDocument();
       expect(within(card).queryByRole('link')).not.toBeInTheDocument();
       // Still unfiled
       expect(within(card).getByRole('button', { name: 'Mark as Filed' })).toBeInTheDocument();
@@ -1853,6 +2035,38 @@ describe('FormDashboard', () => {
         expect(within(card).getByText(MEANS_FILED_BEFORE_122A1)).toBeInTheDocument();
         expect(within(card).queryByText(MEANS_FILED_MISMATCH)).not.toBeInTheDocument();
       });
+    });
+
+    it('links a pair refusal that names the Form 122A-2 page to it', async () => {
+      packetWith({ outcome: 'cannot_work_out', family_size: 4 });
+      server.use(
+        http.post('http://localhost:8000/api/forms/generate_all/', () =>
+          HttpResponse.json({
+            generated: [],
+            errors: [
+              {
+                form_type: 'form_122a2',
+                error: 'Enter the amount for line 16. Enter 0 if you have none.',
+                page: '/means-test',
+              },
+            ],
+            total_generated: 0,
+            total_errors: 1,
+          })
+        )
+      );
+      renderFormDashboard();
+      await generateAll();
+
+      const refusal = await screen.findByText(
+        'Enter the amount for line 16. Enter 0 if you have none.',
+        { exact: false }
+      );
+      const block = refusal.closest('[role="status"]') as HTMLElement;
+      const link = within(block).getByRole('link', {
+        name: 'Go to Form 122A-2: Chapter 7 Means Test Calculation',
+      });
+      expect(link).toHaveAttribute('href', '/means-test');
     });
   });
 });

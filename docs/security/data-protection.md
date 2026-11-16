@@ -50,6 +50,8 @@
 - `SOFAPriorIncome.gross_amount`, `SOFACreditorPayment.total_paid` - Financial affairs amounts
 - `MeansTest.calculation_details` - Means test working
 - `MeansTest.calculated_cmi`, `median_income_threshold`, the five old above-median columns (`total_allowable_expenses`, `disposable_income`, `priority_debts_monthly`, `passes_above_median`, `above_median_calculated`) and `outcome` - from 3h1; `passes_means_test` stays a plain boolean for one release
+- `MeansTestAnswers.answers` and `debts_answered_on` - the Form 122A-2 page's answers
+- `SecuredDebtAnswers` (every answer column) - each secured debt's Form 122A-2 answers
 - `GeneratedForm.field_values` - Resolved form values
 - `OCRResult.extracted_data` - Fields read from uploaded documents
 
