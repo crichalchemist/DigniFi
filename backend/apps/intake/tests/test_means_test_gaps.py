@@ -172,6 +172,15 @@ def test_a_household_of_one_reads_1_person_in_the_line_30_cap_gap():
     assert not any("1 people" in gap for gap in gaps)
 
 
+def test_a_household_of_two_reads_2_people_and_its_own_cap_in_the_line_30_cap_gap():
+    pair = replace(PRIYA, ages=(40, 38))
+    one_cent_over = line_30_cap(TABLES, 2) + Decimal("0.01")
+    gaps = _gaps(pair, line_30_answer="yes", line_30_amount=str(one_cent_over))
+    assert gaps == [
+        "Line 30 can't be more than $53.00, which is 5% of the IRS food and clothing amounts for 2 people."
+    ]
+
+
 def test_line_30_waits_for_the_household_before_it_has_a_cap():
     unknown = replace(PRIYA, ages=None)
     assert _gaps(unknown, line_30_answer="yes", line_30_amount="9999.00") == []

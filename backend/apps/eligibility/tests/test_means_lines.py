@@ -830,6 +830,15 @@ def test_line_30_above_its_cap_is_held_back_and_at_it_counts():
     )
 
 
+def test_a_household_past_four_people_has_line_30s_cap_for_its_own_count():
+    six = replace(PRIYA, ages=(43, 45, 10, 7, 5, 3))
+    cap = line_30_cap(TABLES, 6)
+    assert cap == D("104.00")
+    assert work_out(replace(six, line_30=OptIn("yes", cap)), TABLES).lines["30"] == cap
+    over = cap + D("0.01")
+    assert work_out(replace(six, line_30=OptIn("yes", over)), TABLES).lines["30"] is MISSING
+
+
 def test_line_30_waits_for_line_5():
     ten = OptIn("yes", D("10.00"))
     assert work_out(replace(PRIYA, ages=None, line_30=ten), TABLES).lines["30"] is MISSING
