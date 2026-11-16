@@ -11,7 +11,7 @@ import {
   MEANS_LINE_8,
 } from '../../constants/copy';
 import type { MeansAskedLine } from '../../constants/formText';
-import type { MeansInformation } from '../../types/api';
+import type { MeansInformation, YesNo } from '../../types/api';
 import { dollars } from './money';
 
 // Each line's Schedule I and Schedule J line labels, in the order the sentences are shown
@@ -41,10 +41,15 @@ const fill = (sentence: string, values: Record<string, string | number>) =>
     sentence
   );
 
+/**
+ * The sentences beside `line`. Line 15's IRS amount and line 22's line 7 total go with the amount
+ * the form asks under Yes (spec 8.2 items 4 and 6), so they show only while `answer` is Yes.
+ */
 export function besideLine(
   line: MeansAskedLine,
   information: MeansInformation | null,
-  marriedTogether: boolean
+  marriedTogether: boolean,
+  answer: YesNo | null = null
 ): string[] {
   if (information === null) return [];
   const sentences: string[] = [];
@@ -67,10 +72,10 @@ export function besideLine(
       sentences.push(fill(MEANS_BESIDE_YOU, { amount: dollars(amount), form: 'J', line: label }));
     }
   }
-  if (line === '22' && information.line_7g !== null) {
+  if (line === '22' && answer === 'yes' && information.line_7g !== null) {
     sentences.push(fill(MEANS_LINE_7G, { amount: dollars(information.line_7g) }));
   }
-  if (line === '15') {
+  if (line === '15' && answer === 'yes') {
     sentences.push(fill(MEANS_LINE_15_CAP, { amount: dollars(information.line_15_cap) }));
   }
   if (line === '28' && information.line_8 !== null) {

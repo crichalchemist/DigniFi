@@ -14,18 +14,22 @@ import {
   FORM_122A2_LINE_34_CURE,
   FORM_122A2_LINE_34_DEBT,
   FORM_122A2_LINE_33D_TAXES,
+  FORM_122A2_PART_2_LINE_3,
+  FORM_122A2_PART_2_YOU,
 } from '../../constants/formText';
 import {
   MEANS_DEBT_GOES_ON,
   MEANS_DEBT_WAITS,
   MEANS_GAP_SPOUSE_LOAN_SECURED_BY,
   MEANS_GAP_VEHICLE_CHOICE,
+  MEANS_LETTER,
   MEANS_PAGE_SAVE_FAILED,
   MEANS_SIXTY_OR_MORE,
   MEANS_SPOUSE_ADD_LOAN,
   MEANS_SPOUSE_ADD_VEHICLE,
   MEANS_SPOUSE_LOAN_FROM,
   MEANS_SPOUSE_REMOVE_LOAN,
+  MEANS_SPOUSE_INTRO,
   MEANS_SPOUSE_REMOVE_VEHICLE,
   MEANS_SPOUSE_TITLE,
   MEANS_SPOUSE_VEHICLE_LEGEND,
@@ -420,6 +424,97 @@ describe("the spouse's vehicles and loans", () => {
     const boxRow = field('means_spouse_vehicle_0_name').closest('.form-field') as HTMLElement;
     expect(await within(boxRow).findByText(MEANS_TOO_LONG)).toBeInTheDocument();
     expect(screen.queryByText(MEANS_PAGE_SAVE_FAILED)).toBeNull();
+  });
+
+  it('a letter the form cannot print, and words too long, are each said beside the box', async () => {
+    for (const sentence of [MEANS_LETTER, MEANS_TOO_LONG]) {
+      serve(spousePage([], [loanRow({ secured_by: 'home' })]), {
+        status: 400,
+        body: { spouse_loans: { '0': { creditor: [sentence] } } },
+      });
+      const { unmount } = renderPage();
+      await ready();
+      await pressContinue();
+      const boxRow = field('means_spouse_loan_0_creditor').closest('.form-field') as HTMLElement;
+      expect(await within(boxRow).findByText(sentence)).toBeInTheDocument();
+      expect(screen.queryByText(MEANS_PAGE_SAVE_FAILED)).toBeNull();
+      unmount();
+    }
+  });
+
+  it('a refusal of a box the page is not drawing says the save failed', async () => {
+    const hidden: [MeansPage, Record<string, unknown>][] = [
+      [
+        spousePage([vehicleRow()], [], { spouse_vehicles_answer: 'no' }),
+        { spouse_vehicles: { '0': { description: [MEANS_TOO_LONG] } } },
+      ],
+      [
+        spousePage([], [loanRow({ on_amounts_owed: 'yes', secured_by: 'home' })]),
+        { spouse_loans: { '0': { creditor: [MEANS_TOO_LONG] } } },
+      ],
+      [
+        spousePage([vehicleRow()], [loanRow({ secured_by: 'spouse-1', property: 'Demo' })]),
+        { spouse_loans: { '0': { property: [MEANS_LETTER] } } },
+      ],
+    ];
+    for (const [page, body] of hidden) {
+      serve(page, { status: 400, body });
+      const { unmount } = renderPage();
+      await ready();
+      await pressContinue();
+      expect(await screen.findByRole('alert')).toHaveTextContent(MEANS_PAGE_SAVE_FAILED);
+      unmount();
+    }
+  });
+
+  it('a mistaken No on the spouse vehicles keeps the loan and Vehicle 1 and 2 naming the row in the save', async () => {
+    const page = spousePage(
+      [vehicleRow({ leased: 'yes', claimed: 'yes' })],
+      [loanRow({ secured_by: 'spouse-1' })],
+      {
+        vehicle_claims: { 'asset-7': 'yes', 'asset-8': 'yes' },
+        vehicle_choice: ['asset-8', 'spouse-1'],
+      }
+    );
+    page.vehicles = [
+      { ref: 'asset-7', name: 'Honda CR-V EX 2021', leased: false },
+      { ref: 'asset-8', name: 'Demo sedan', leased: true },
+    ];
+    const sent = serve(page);
+    renderPage();
+    await ready();
+    await userEvent.click(radio('means_spouse_vehicles', 'no'));
+    await pressContinue();
+    await ready();
+    const body = sent[0] as unknown as SentBody;
+    expect(body.spouse_vehicles.map((row) => row.ref)).toEqual(['spouse-1']);
+    expect(body.spouse_loans[0].secured_by).toBe('spouse-1');
+    expect(body.vehicle_choice).toEqual(['asset-8', 'spouse-1']);
+  });
+
+  it("the spouse's block opens with the form's Part 2 sentences, which show twice only with the block", async () => {
+    serve(spousePage([], []));
+    const { unmount } = renderPage();
+    await ready();
+    const block = screen.getByRole('heading', { name: MEANS_SPOUSE_TITLE })
+      .parentElement as HTMLElement;
+    const paragraphs = [...block.querySelectorAll(':scope > p')].map((p) => p.textContent);
+    expect(paragraphs.slice(0, 3)).toEqual([
+      FORM_122A2_PART_2_YOU,
+      FORM_122A2_PART_2_LINE_3,
+      MEANS_SPOUSE_INTRO,
+    ]);
+    expect(screen.getAllByText(FORM_122A2_PART_2_YOU)).toHaveLength(2);
+    expect(screen.getAllByText(FORM_122A2_PART_2_LINE_3)).toHaveLength(2);
+    unmount();
+
+    const alone = meansPage();
+    alone.married_together = false;
+    serve(alone);
+    renderPage();
+    await ready();
+    expect(screen.queryByText(FORM_122A2_PART_2_YOU)).toBeNull();
+    expect(screen.getAllByText(FORM_122A2_PART_2_LINE_3)).toHaveLength(1);
   });
 });
 

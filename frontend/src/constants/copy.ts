@@ -190,6 +190,10 @@ export const MEANS_PAGE_READ_FAILED =
 export const MEANS_PAGE_SAVE_FAILED = "We couldn't save your answers just now. Please try again.";
 
 // DRAFT: counsel C-24
+export const MEANS_PAGE_UPDATED =
+  'Your intake changed after this page opened. The page now shows your latest answers. Check them, then press Continue again.';
+
+// DRAFT: counsel C-24
 export const MEANS_BESIDE_YOU = 'You entered {amount} on Schedule {form} line {line}.';
 
 // DRAFT: counsel C-24

@@ -4,12 +4,12 @@
  * arithmetic and never a verdict, Continue never leaves on a missing answer or a result that
  * changed under the filer, and a save that fails never loses what they typed.
  */
-import { fireEvent, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { server } from '../../test/mocks/server';
 import { KESTREL, meansPage, priyaPage } from '../../test/fixtures/meansPage';
-import { FORM_122A2_TITLE } from '../../constants/formText';
+import { FORM_122A2_LINE_34_DEBT, FORM_122A2_TITLE } from '../../constants/formText';
 import {
   AMOUNT_NEGATIVE,
   AMOUNT_NOT_A_NUMBER,
@@ -21,14 +21,17 @@ import {
   MEANS_LINE_36_PRODUCT,
   MEANS_LINE_43_LINK,
   MEANS_OUTCOME_ANSWER_PAGE,
+  MEANS_OUTCOME_NO_PRESUMPTION,
   MEANS_OUTCOME_PRESUMPTION,
   MEANS_PAGE_LOADING,
   MEANS_PAGE_READ_FAILED,
   MEANS_PAGE_SAVE_FAILED,
+  MEANS_PAGE_UPDATED,
   MEANS_RESULT_CHANGED,
   MEANS_STALE_ANSWERS,
   MEANS_TABLE_MISSING,
   MEANS_TOO_LONG,
+  NAMELESS_DEBT,
 } from '../../constants/copy';
 import { UPL_MEANS_TEST_DISCLAIMER, UPL_WIZARD_DISCLAIMER } from '../../constants/upl';
 import type { MeansPage } from '../../types/api';
@@ -435,7 +438,7 @@ describe('MeansTestPage', () => {
     expect(sent).toHaveLength(1);
   });
 
-  it('a mistaken No on line 3 sends no rows, and Yes brings the typed rows back', async () => {
+  it('a mistaken No on line 3 still sends the typed rows, so they stay stored, and Yes brings them back', async () => {
     const sent = serve(priyaPage(), { status: 400 });
     renderPage();
     await ready();
@@ -444,7 +447,9 @@ describe('MeansTestPage', () => {
     await pressContinue();
     await screen.findByRole('alert');
     expect(sent[0].line_3_answer).toBe('no');
-    expect(sent[0].line_3_rows).toEqual([]);
+    expect(sent[0].line_3_rows).toEqual([
+      { purpose: 'His payroll taxes withheld from his pay', amount: '250.00' },
+    ]);
     await userEvent.click(radio('means_line_3', 'yes'));
     expect(field('means_line_3_0_purpose').value).toBe('His payroll taxes withheld from his pay');
     expect(field('means_line_3_0_amount').value).toBe('250.00');
@@ -726,5 +731,229 @@ describe('MeansTestPage', () => {
     ];
     expect(named.length).toBeGreaterThan(10);
     for (const text of named) expect(text).not.toMatch(words);
+  });
+});
+
+const selectNamed = (name: string) =>
+  document.querySelector(`select[name="${name}"]`) as HTMLSelectElement;
+const debtRow = (id: number, creditor: string) => ({
+  ...KESTREL,
+  id,
+  ref: `debt-${id}`,
+  creditor,
+  payments_left: null,
+  payment_changes: null,
+});
+
+describe('after the intake changes elsewhere (F7)', () => {
+  it('a save refused for a debt that has gone reads the page again, keeps what was typed and says so', async () => {
+    const first = priyaPage();
+    first.debts = [structuredClone(KESTREL), debtRow(13, 'Demo Sedan Loan')];
+    first.debt_lines = { 'debt-11': '13b', 'debt-13': null };
+    // The car loan was removed in another tab, and a truck loan added
+    const latest = priyaPage();
+    latest.debts = [debtRow(13, 'Demo Sedan Loan'), debtRow(12, 'Demo Truck Loan')];
+    latest.debt_lines = { 'debt-13': null, 'debt-12': null };
+    const sent: Body[] = [];
+    let reads = 0;
+    server.use(
+      http.get(URL, () => {
+        reads += 1;
+        return HttpResponse.json(reads === 1 ? first : latest);
+      }),
+      http.put(URL, async ({ request }) => {
+        sent.push((await request.json()) as Body);
+        return sent.length === 1
+          ? HttpResponse.json(
+              { debts: { '0': { id: ["This isn't one of your secured debts."] } } },
+              { status: 400 }
+            )
+          : HttpResponse.json(latest);
+      })
+    );
+    renderPage();
+    await ready();
+    typeAmount('means_line_17', '5');
+    await userEvent.selectOptions(selectNamed('means_debt_13_payments_left'), '20');
+    await pressContinue();
+
+    expect(await within(gapRegion()).findByText(MEANS_PAGE_UPDATED)).toBeInTheDocument();
+    expect(screen.queryByText(MEANS_PAGE_SAVE_FAILED)).toBeNull();
+    expect(reads).toBe(2);
+    expect(field('means_line_17').value).toBe('5');
+    expect(selectNamed('means_debt_13_payments_left').value).toBe('20');
+    expect(screen.queryByRole('region', { name: 'Kestrel Auto Finance' })).toBeNull();
+    expect(screen.getByRole('region', { name: 'Demo Truck Loan' })).toBeInTheDocument();
+
+    await pressContinue();
+    await waitFor(() => expect(sent).toHaveLength(2));
+    const debts = sent[1].debts as { id: number; payments_left: unknown }[];
+    expect(debts.map((debt) => debt.id)).toEqual([13, 12]);
+    expect(debts[0].payments_left).toBe(20);
+    expect(String(sent[1].line_17)).toMatch(/^5(\.00)?$/);
+  });
+
+  it('a save refused for a vehicle that has gone sends no claim for it after the page reads again', async () => {
+    const first = priyaPage();
+    first.vehicles = [
+      { ref: 'asset-7', name: 'Honda CR-V EX 2021', leased: false },
+      { ref: 'asset-8', name: 'Demo sedan', leased: false },
+    ];
+    first.answers.vehicle_claims = { 'asset-7': 'yes', 'asset-8': null };
+    const latest = priyaPage();
+    const sent: Body[] = [];
+    let reads = 0;
+    server.use(
+      http.get(URL, () => {
+        reads += 1;
+        return HttpResponse.json(reads === 1 ? first : latest);
+      }),
+      http.put(URL, async ({ request }) => {
+        sent.push((await request.json()) as Body);
+        return sent.length === 1
+          ? HttpResponse.json(
+              { vehicle_claims: { 'asset-8': ["This isn't one of the vehicles on line 11."] } },
+              { status: 400 }
+            )
+          : HttpResponse.json(latest);
+      })
+    );
+    renderPage();
+    await ready();
+    await userEvent.click(radio('means_vehicle_8_claimed', 'no'));
+    await pressContinue();
+    expect(await within(gapRegion()).findByText(MEANS_PAGE_UPDATED)).toBeInTheDocument();
+    await pressContinue();
+    await waitFor(() => expect(sent).toHaveLength(2));
+    expect(sent[1].vehicle_claims).toEqual({ 'asset-7': 'yes' });
+  });
+
+  it('a reply that lists a new secured debt asks its questions', async () => {
+    const reply = priyaPage();
+    reply.debts = [structuredClone(KESTREL), debtRow(12, 'Demo Truck Loan')];
+    reply.debt_lines = { 'debt-11': '13b', 'debt-12': null };
+    serve(priyaPage(), { reply });
+    renderPage();
+    await ready();
+    expect(screen.queryByRole('region', { name: 'Demo Truck Loan' })).toBeNull();
+    await pressContinue();
+    expect(await screen.findByRole('region', { name: 'Demo Truck Loan' })).toBeInTheDocument();
+    expect(selectNamed('means_debt_12_payments_left')).not.toBeNull();
+    expect(screen.queryByText(SOFA)).toBeNull();
+  });
+});
+
+describe('a changed result is always stopped on (F9, F14)', () => {
+  it('a result that changes on a save that leaves a gap still stops the next gap-free Continue', async () => {
+    const replies = [
+      priyaPage({ outcome: 'presumption', gap: 'Answer the question on line 43.' }),
+      priyaPage({ outcome: 'presumption' }),
+      priyaPage({ outcome: 'presumption' }),
+    ];
+    const sent: Body[] = [];
+    server.use(
+      http.get(URL, () => HttpResponse.json(priyaPage({ outcome: 'cannot_work_out' }))),
+      http.put(URL, async ({ request }) => {
+        sent.push((await request.json()) as Body);
+        return HttpResponse.json(replies[sent.length - 1]);
+      })
+    );
+    renderPage();
+    await ready();
+    await pressContinue();
+    expect(
+      await within(gapRegion()).findByText('Answer the question on line 43.')
+    ).toBeInTheDocument();
+    // the new result is brought to the filer even while a gap stands
+    expect(result()).toHaveFocus();
+    expect(within(result()).getByText(MEANS_OUTCOME_PRESUMPTION)).toBeInTheDocument();
+
+    await pressContinue();
+    expect(await within(gapRegion()).findByText(MEANS_RESULT_CHANGED)).toBeInTheDocument();
+    expect(screen.queryByText(SOFA)).toBeNull();
+    expect(result()).toHaveFocus();
+
+    await pressContinue();
+    await screen.findByText(SOFA);
+    expect(sent).toHaveLength(3);
+  });
+
+  it('a result that turns away from a presumption keeps the filer on the page too', async () => {
+    serve(priyaPage({ outcome: 'presumption' }), {
+      reply: priyaPage({ outcome: 'no_presumption' }),
+    });
+    renderPage();
+    await ready();
+    await pressContinue();
+    expect(await within(gapRegion()).findByText(MEANS_RESULT_CHANGED)).toBeInTheDocument();
+    expect(screen.queryByText(SOFA)).toBeNull();
+    expect(within(result()).getByText(MEANS_OUTCOME_NO_PRESUMPTION)).toBeInTheDocument();
+  });
+
+  it('two presses of Continue in the same moment send one save', async () => {
+    const { sent, release } = serveHeldSave(priyaPage());
+    renderPage();
+    await ready();
+    const button = screen.getByRole('button', { name: 'Continue' });
+    // Both clicks land before React draws the disabled button, so only the page's own guard holds
+    act(() => {
+      button.click();
+      button.click();
+    });
+    await waitFor(() => expect(sent).toHaveLength(1));
+    release();
+    await screen.findByText(SOFA);
+    expect(sent).toHaveLength(1);
+  });
+});
+
+describe('what shows beside a line (F6, F15)', () => {
+  it("line 35's sentence names the past due total the filer entered", async () => {
+    const page = priyaPage();
+    page.information!.line_35 = '3000.00';
+    serve(page);
+    renderPage();
+    await ready();
+    expect(
+      screen.getByText(
+        'Line 35 comes from what you entered as past due for priority debts on the Amounts Owed step: $3,000.00.'
+      )
+    ).toBeInTheDocument();
+  });
+
+  it("line 15's IRS amount and line 22's line 7 total show only under that line's Yes", async () => {
+    const page = priyaPage();
+    page.information!.line_7g = '90.00';
+    page.answers.line_15_answer = null;
+    serve(page);
+    renderPage();
+    await ready();
+    const cap =
+      "The IRS amount for public transportation is $250.00. Line 15 can't be more than that.";
+    const total = 'Your line 7 total is $90.00.';
+    expect(screen.queryByText(cap)).toBeNull();
+    expect(screen.queryByText(total)).toBeNull();
+    await userEvent.click(radio('means_line_15', 'no'));
+    await userEvent.click(radio('means_line_22', 'no'));
+    expect(screen.queryByText(cap)).toBeNull();
+    expect(screen.queryByText(total)).toBeNull();
+    await userEvent.click(radio('means_line_15', 'yes'));
+    await userEvent.click(radio('means_line_22', 'yes'));
+    expect(screen.getByText(cap)).toBeInTheDocument();
+    expect(screen.getByText(total)).toBeInTheDocument();
+  });
+
+  it('a debt with no creditor name is called "one amount owed", never an empty heading', async () => {
+    const page = priyaPage();
+    page.debts[0].creditor = '';
+    page.answers.line_34_answer = 'yes';
+    serve(page);
+    renderPage();
+    await ready();
+    expect(screen.getByRole('region', { name: NAMELESS_DEBT })).toBeInTheDocument();
+    expect(lineOf('means_line_34')).toHaveTextContent(
+      FORM_122A2_LINE_34_DEBT.split('{name}').join(NAMELESS_DEBT)
+    );
+    expect(document.body.textContent).not.toContain('debt to  secured');
   });
 });

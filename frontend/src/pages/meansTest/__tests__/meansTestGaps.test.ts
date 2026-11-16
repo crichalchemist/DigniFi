@@ -268,6 +268,16 @@ describe('the Form 122A-2 page gaps', () => {
     expect(gaps.join(' ')).not.toContain('1 people');
   });
 
+  it('a household of two reads 2 people and its own cap in the line 30 cap gap', () => {
+    const gaps = gapsOf(
+      { lineFive: 2, line30Cap: '53.00' },
+      { line_30_answer: 'yes', line_30_amount: '53.01' }
+    );
+    expect(gaps).toEqual([
+      "Line 30 can't be more than $53.00, which is 5% of the IRS food and clothing amounts for 2 people.",
+    ]);
+  });
+
   it('line 30 waits for the household before it has a cap', () => {
     const unknown = { lineFive: null, line30Cap: null };
     expect(gapsOf(unknown, { line_30_answer: 'yes', line_30_amount: '9999.00' })).toEqual([]);

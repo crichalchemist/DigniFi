@@ -269,43 +269,32 @@ describe('line 43', () => {
     expect(area('means_line_43_0_explanation')).toHaveValue('Demo words');
   });
 
-  it('under line 43 No a refused stored explanation sends nothing and blocks no save, and Yes sends it back', async () => {
-    const saved = line43Page([circumstance({ explanation: 'Demo words' })]);
-    const sent: Record<string, unknown>[] = [];
-    server.use(
-      http.get(URL, () => HttpResponse.json(saved)),
-      http.put(URL, async ({ request }) => {
-        const body = (await request.json()) as Record<string, unknown>;
-        sent.push(body);
-        const rows = body.line_43_circumstances as unknown[];
-        if (rows.length > 0) {
-          return HttpResponse.json(
-            { line_43_circumstances: { '0': { explanation: [MEANS_EXPLANATION_LETTER] } } },
-            { status: 400 }
-          );
-        }
-        // a changed result keeps the filer on the page, so the Yes press below can be made
-        return HttpResponse.json({ ...saved, outcome: 'no_presumption' });
-      })
-    );
+  it('under line 43 No the written circumstances still go with the save, so they stay stored', async () => {
+    const written = circumstance({ happened: 'Demo happened', explanation: 'Demo words' });
+    const sent = serve(line43Page([written]));
     renderPage();
     await ready();
     await userEvent.click(radio('means_line_43', 'no'));
     expect(area('means_line_43_0_explanation')).toBeNull();
     await pressContinue();
-    await waitFor(() => expect(sent.length).toBeGreaterThan(0));
-    expect(screen.queryByText(MEANS_PAGE_SAVE_FAILED)).toBeNull();
-    expect(sent.length).toBeGreaterThan(0);
-    for (const body of sent) expect(body.line_43_circumstances).toEqual([]);
+    await waitFor(() => expect(sent).toHaveLength(1));
+    expect(sent[0].line_43_answer).toBe('no');
+    expect(sent[0].line_43_circumstances).toEqual([written]);
+  });
+
+  it('a refused explanation the page is not drawing, under line 43 No, says the save failed', async () => {
+    serve(line43Page([circumstance({ explanation: 'Demo words' })]), {
+      status: 400,
+      body: { line_43_circumstances: { '0': { explanation: [MEANS_EXPLANATION_LETTER] } } },
+    });
+    renderPage();
+    await ready();
+    await userEvent.click(radio('means_line_43', 'no'));
+    await pressContinue();
+    expect(await screen.findByText(MEANS_PAGE_SAVE_FAILED)).toBeInTheDocument();
     await userEvent.click(radio('means_line_43', 'yes'));
     expect(area('means_line_43_0_explanation')).toHaveValue('Demo words');
-    const before = sent.length;
-    await pressContinue();
-    expect(await screen.findByText(MEANS_EXPLANATION_LETTER)).toBeInTheDocument();
-    const rows = sent[before].line_43_circumstances as { explanation: string }[];
-    expect(rows).toHaveLength(1);
-    expect(rows[0].explanation).toBe('Demo words');
-  }, 20000);
+  });
 
   it("a circumstance's inputs carry the names the journeys use", async () => {
     serve(line43Page([circumstance({ explanation: 'Demo words' })]));

@@ -87,20 +87,27 @@ describe('besideLine', () => {
     ]);
   });
 
-  it('adds the line 7 total beside line 22 only when there is one', () => {
-    expect(besideLine('22', information({ line_7g: '310.00' }), true)).toEqual([
+  it('adds the line 7 total beside line 22 only when there is one, and only under Yes', () => {
+    expect(besideLine('22', information({ line_7g: '310.00' }), true, 'yes')).toEqual([
       'You entered $25.00 on Schedule J line 11.',
       'Your line 7 total is $310.00.',
     ]);
-    expect(besideLine('22', information({ line_7g: null }), true)).toEqual([
+    expect(besideLine('22', information({ line_7g: null }), true, 'yes')).toEqual([
       'You entered $25.00 on Schedule J line 11.',
     ]);
+    for (const answer of ['no', null] as const) {
+      expect(besideLine('22', information({ line_7g: '310.00' }), true, answer)).toEqual([
+        'You entered $25.00 on Schedule J line 11.',
+      ]);
+    }
   });
 
-  it('shows the public transportation cap beside line 15', () => {
-    expect(besideLine('15', information(), true)).toEqual([
+  it('shows the public transportation cap beside line 15 only under Yes', () => {
+    expect(besideLine('15', information(), true, 'yes')).toEqual([
       "The IRS amount for public transportation is $250.00. Line 15 can't be more than that.",
     ]);
+    expect(besideLine('15', information(), true, 'no')).toEqual([]);
+    expect(besideLine('15', information(), true)).toEqual([]);
   });
 
   it('shows the line 8 amount beside line 28 and the per-child amount beside line 29', () => {
@@ -128,6 +135,14 @@ describe('besideLine', () => {
       "For 1 person, 5% of the IRS food and clothing amounts is $30.00. Line 30 can't be more than that."
     );
     expect(one).not.toContain('1 people');
+  });
+
+  it('reads 2 people and the two-person cap for a household of two', () => {
+    expect(
+      besideLine('30', information({ line_30_people: 2, line_30_cap: '53.00' }), true)
+    ).toContain(
+      "For 2 people, 5% of the IRS food and clothing amounts is $53.00. Line 30 can't be more than that."
+    );
   });
 
   it('shows nothing when the means test figures are missing', () => {

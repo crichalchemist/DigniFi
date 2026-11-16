@@ -36,6 +36,7 @@ import {
   MEANS_ADD_ROW,
   MEANS_EXPLANATION_LETTER,
   MEANS_EXPLANATION_TOO_LONG,
+  MEANS_LETTER,
   MEANS_LINE_27_NOTE,
   MEANS_LINE_35,
   MEANS_LINE_36_LIMITS,
@@ -49,6 +50,7 @@ import {
   MEANS_PAGE_LOADING,
   MEANS_PAGE_READ_FAILED,
   MEANS_PAGE_SAVE_FAILED,
+  MEANS_PAGE_UPDATED,
   MEANS_REMOVE_ROW,
   MEANS_RESULT_CHANGED,
   MEANS_ROW_LEGEND,
@@ -68,6 +70,7 @@ import { planProduct } from './meansTest/meansProduct';
 import {
   aboveLine43,
   adoptRefs,
+  debtName,
   debtPrefix,
   explanationKey,
   fromReply,
@@ -77,7 +80,9 @@ import {
   spouseLoanHeading,
   spouseLoanViews,
   toPutBody,
+  withLatestIntake,
   withLiveRefs,
+  withSentRefs,
   type PageAnswers,
   type PageState,
 } from './meansTest/pageState';
@@ -131,21 +136,30 @@ function anythingAnswered(state: PageState): boolean {
   );
 }
 
-// The lists whose text boxes the server measures, each box's sentence key by the row's `_key`
+/** The sentences the server gives a box it refuses: a letter it can't print, or the length (F10) */
+const BOX_REFUSALS: unknown[] = [MEANS_TOO_LONG, MEANS_LETTER];
+/** The two sentences the server gives for an explanation it refuses */
+const EXPLANATION_REFUSALS: unknown[] = [MEANS_EXPLANATION_TOO_LONG, MEANS_EXPLANATION_LETTER];
+
+// The lists whose text boxes the server measures: each box's sentence key by the row's `_key`, and
+// the sentences that box can be refused with
 const FIT_BOXES: Record<
   string,
   {
     rows: (sent: PageState) => { _key: string }[];
     boxes: Record<string, (key: string) => string>;
+    sentences: unknown[];
   }
 > = {
   line_3_rows: {
     rows: (sent) => sent.answers.line_3_rows,
     boxes: { purpose: (key) => `line_3:${key}` },
+    sentences: BOX_REFUSALS,
   },
   spouse_vehicles: {
     rows: (sent) => sent.answers.spouse_vehicles,
     boxes: { description: (key) => `spouse_vehicle:${key}:description` },
+    sentences: BOX_REFUSALS,
   },
   spouse_loans: {
     rows: (sent) => sent.answers.spouse_loans,
@@ -153,21 +167,44 @@ const FIT_BOXES: Record<
       creditor: (key) => `spouse_loan:${key}:creditor`,
       property: (key) => `spouse_loan:${key}:property`,
     },
+    sentences: BOX_REFUSALS,
+  },
+  line_43_circumstances: {
+    rows: (sent) => sent.answers.line_43_circumstances,
+    boxes: { explanation: explanationKey },
+    sentences: EXPLANATION_REFUSALS,
   },
 };
 
-/** The two sentences the server gives for an explanation it refuses (F10) */
-const EXPLANATION_REFUSALS: unknown[] = [MEANS_EXPLANATION_TOO_LONG, MEANS_EXPLANATION_LETTER];
+/** Whether the page draws that box of that row, under the answers sent, as its JSX does (F1) */
+function boxIsDrawn(
+  list: string,
+  field: string,
+  index: number,
+  page: MeansPage,
+  sent: PageState
+): boolean {
+  const { answers } = sent;
+  const together = page.married_together;
+  if (list === 'line_3_rows') return together && answers.line_3_answer === 'yes';
+  if (list === 'spouse_vehicles') return together && answers.spouse_vehicles_answer === 'yes';
+  if (list === 'line_43_circumstances') return answers.line_43_answer === 'yes';
+  if (list !== 'spouse_loans' || !together || answers.spouse_loans_answer !== 'yes') return false;
+  const loan = answers.spouse_loans[index];
+  if (field === 'creditor') return loan.on_amounts_owed === 'no';
+  return loan.secured_by === 'home' || loan.secured_by === 'other';
+}
 
 /**
  * What a failed save says about the boxes sent. `fields` holds the boxes a 400 refuses for not
- * fitting, keyed by `FIT_BOXES` (`line_3:<_key>`, `spouse_vehicle:<_key>:description`, ...).
- * `other` is true for any other failure, or a box the page doesn't show: only the save sentence
+ * printing, keyed by `FIT_BOXES` (`line_3:<_key>`, `spouse_vehicle:<_key>:description`, ...).
+ * `other` is true for any other failure, or a box the page doesn't draw: only the save sentence
  * says it.
  */
 function readRefusal(
   caught: unknown,
-  sent: PageState
+  sent: PageState,
+  page: MeansPage
 ): { fields: Record<string, string>; other: boolean } {
   if (!(caught instanceof APIClientError) || caught.statusCode !== 400 || !caught.body) {
     return { fields: {}, other: true };
@@ -175,29 +212,6 @@ function readRefusal(
   const fields: Record<string, string> = {};
   let other = false;
   for (const [name, value] of Object.entries(caught.body)) {
-    if (name === 'line_43_circumstances' && isRecord(value)) {
-      for (const [index, errors] of Object.entries(value)) {
-        const row = sent.answers.line_43_circumstances[Number(index)];
-        if (row === undefined || !isRecord(errors)) {
-          other = true;
-          continue;
-        }
-        for (const [field, messages] of Object.entries(errors)) {
-          const first = Array.isArray(messages) ? messages[0] : undefined;
-          // The circumstances are drawn only under a Yes; under No the sentence has no box
-          if (
-            field === 'explanation' &&
-            EXPLANATION_REFUSALS.includes(first) &&
-            sent.answers.line_43_answer === 'yes'
-          ) {
-            fields[explanationKey(row._key)] = String(first);
-          } else {
-            other = true;
-          }
-        }
-      }
-      continue;
-    }
     const list = FIT_BOXES[name];
     if (list === undefined || !isRecord(value)) {
       other = true;
@@ -209,14 +223,38 @@ function readRefusal(
         other = true;
         continue;
       }
-      for (const field of Object.keys(errors)) {
+      for (const [field, messages] of Object.entries(errors)) {
         const box = list.boxes[field];
-        if (box === undefined) other = true;
-        else fields[box(row._key)] = MEANS_TOO_LONG;
+        const first = Array.isArray(messages) ? messages[0] : undefined;
+        if (
+          box !== undefined &&
+          list.sentences.includes(first) &&
+          boxIsDrawn(name, field, Number(index), page, sent)
+        ) {
+          fields[box(row._key)] = String(first);
+        } else {
+          other = true;
+        }
       }
     }
   }
   return { fields, other };
+}
+
+/**
+ * Whether a 400 names a row the intake no longer has (a debt, a vehicle, or a debt or vehicle a
+ * spouse loan names), as after an edit in another tab: the page then reads the intake again (F7)
+ */
+function namesARowThatHasGone(caught: unknown): boolean {
+  if (!(caught instanceof APIClientError) || caught.statusCode !== 400) return false;
+  const body: unknown = caught.body;
+  if (!isRecord(body)) return false;
+  if ('debts' in body || 'vehicle_claims' in body || 'vehicle_choice' in body) return true;
+  const loans = body.spouse_loans;
+  return (
+    isRecord(loans) &&
+    Object.values(loans).some((row) => isRecord(row) && ('debt' in row || 'secured_by' in row))
+  );
 }
 
 /**
@@ -239,6 +277,12 @@ export function MeansTestPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [pressed, setPressed] = useState(false);
   const [changed, setChanged] = useState(false);
+  // The intake changed under the page, which read it again (F7)
+  const [updated, setUpdated] = useState(false);
+  // Each new result, and each stop on one, brings the result to the filer
+  const [resultMoved, setResultMoved] = useState(0);
+  // A result that changed under the filer and hasn't yet been stopped on (H47, F9)
+  const changePending = useRef(false);
   const [replyGap, setReplyGap] = useState<string | null>(null);
   // What sits above line 43 as the server last read it, or as the last save's reply was taken
   const [savedAboveCopy, setSavedAboveCopy] = useState<string | null>(null);
@@ -287,8 +331,8 @@ export function MeansTestPage() {
   }, [applies, hash]);
 
   useEffect(() => {
-    if (changed) resultRef.current?.focus();
-  }, [changed]);
+    if (resultMoved > 0) resultRef.current?.focus();
+  }, [resultMoved]);
 
   const rows = useMemo(() => (page && state ? rowsInputOf(page, state) : null), [page, state]);
   const browserGap = useMemo(
@@ -305,6 +349,7 @@ export function MeansTestPage() {
     setState((current) => (current ? change(current) : current));
     setReplyGap(null);
     setChanged(false);
+    setUpdated(false);
   };
   // A sentence about a box goes once that box changes
   const clearFieldError = (key: string) =>
@@ -346,17 +391,30 @@ export function MeansTestPage() {
     setError(null);
     setFieldErrors({});
     setChanged(false);
+    setUpdated(false);
     setReplyGap(null);
     // The controls hold still while the save is on its way, so this is what is on screen
     const sent = state;
     const shown = page.outcome;
+    // H47 (F9): a new result is brought to the filer at once, gap or no gap, and stays pending
+    // until a save with no gap stops on it
+    const noteResult = (outcome: MeansPage['outcome']) => {
+      if (outcome === shown) return;
+      changePending.current = true;
+      setResultMoved((count) => count + 1);
+    };
     try {
-      const reply = await api.intake.meansTest.put(sessionId, toPutBody(withLiveRefs(page, sent)));
-      const next = adoptRefs(sent, sent, reply);
+      const reply = await api.intake.meansTest.put(sessionId, toPutBody(withSentRefs(page, sent)));
+      // The reply is the GET body: the intake as it stands now, so a debt added elsewhere is asked
+      const next = withLatestIntake(adoptRefs(sent, sent, reply), reply);
       const nextPage: MeansPage = {
         ...page,
         applies: reply.applies,
         applies_gap: reply.applies_gap,
+        married_together: reply.married_together,
+        debts: reply.debts,
+        vehicles: reply.vehicles,
+        amounts_owed_loans: reply.amounts_owed_loans,
         debt_lines: reply.debt_lines,
         information: reply.information,
         outcome: reply.outcome,
@@ -369,16 +427,34 @@ export function MeansTestPage() {
       setSavedAboveCopy(aboveLine43(next));
       setPage(nextPage);
       if (reply.applies !== true) return;
+      noteResult(reply.outcome);
       const ours = firstMeansGap(gapStateOf(nextPage, next));
       if (ours !== null || reply.gap !== null) {
         setReplyGap(reply.gap);
-      } else if (reply.outcome !== shown) {
+      } else if (changePending.current) {
+        changePending.current = false;
         setChanged(true);
+        setResultMoved((count) => count + 1);
       } else {
         navigate('/sofa');
       }
     } catch (caught) {
-      const { fields, other } = readRefusal(caught, sent);
+      if (namesARowThatHasGone(caught)) {
+        // Another tab changed the intake: read it again, keep what still applies, and say so
+        try {
+          const latest = await api.intake.meansTest.get(sessionId);
+          const kept = withLatestIntake(sent, latest);
+          setPage(latest);
+          setState(kept);
+          setSavedAboveCopy(aboveLine43(fromReply(latest)));
+          setUpdated(true);
+          if (latest.applies === true) noteResult(latest.outcome);
+        } catch {
+          setError(MEANS_PAGE_SAVE_FAILED);
+        }
+        return;
+      }
+      const { fields, other } = readRefusal(caught, sent, page);
       setFieldErrors(fields);
       if (other || Object.keys(fields).length === 0) setError(MEANS_PAGE_SAVE_FAILED);
     } finally {
@@ -440,8 +516,8 @@ export function MeansTestPage() {
   const { answers } = state;
   const { information } = page;
   const together = page.married_together;
-  const besides = (line: MeansAskedLine) =>
-    besideLine(line, information, together).map((sentence) => (
+  const besides = (line: MeansAskedLine, answer?: YesNo | null) =>
+    besideLine(line, information, together, answer).map((sentence) => (
       <p key={sentence} className="form-help-text">
         {sentence}
       </p>
@@ -488,7 +564,7 @@ export function MeansTestPage() {
               onChange={(value) => setAmount(amountKey, value)}
             />
           ))}
-        {besides(line)}
+        {besides(line, answer)}
       </div>
     );
   };
@@ -543,8 +619,8 @@ export function MeansTestPage() {
       key: debt.ref,
       ref: debt.ref,
       prefix: debtPrefix(debt.ref),
-      heading: debt.creditor,
-      creditor: debt.creditor,
+      heading: debtName(debt.creditor),
+      creditor: debtName(debt.creditor),
       property: debt.property,
       monthlyPayment: debt.monthly_payment,
       answers: debt as MeansDebtAnswers,
@@ -555,8 +631,8 @@ export function MeansTestPage() {
         key: view.loan._key,
         ref: view.loan.ref,
         prefix: debtPrefix(view.loan.ref),
-        heading: spouseLoanHeading(view.creditor),
-        creditor: view.creditor,
+        heading: spouseLoanHeading(debtName(view.creditor)),
+        creditor: debtName(view.creditor),
         property: view.property,
         monthlyPayment: null,
         answers: view.loan as MeansDebtAnswers,
@@ -574,7 +650,7 @@ export function MeansTestPage() {
       },
     }));
   const shownGap = pressed || anythingAnswered(state) ? (browserGap ?? replyGap) : null;
-  const gapText = changed ? MEANS_RESULT_CHANGED : shownGap;
+  const gapText = changed ? MEANS_RESULT_CHANGED : updated ? MEANS_PAGE_UPDATED : shownGap;
 
   return (
     <main className="filing-fee-page">

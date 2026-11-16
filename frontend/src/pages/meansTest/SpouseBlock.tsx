@@ -1,5 +1,6 @@
 import { Button, FormField, FormSelect } from '../../components/common';
 import { REQUIRED_MARK } from '../../components/wizard/steps/assets/AssetRowFields';
+import { FORM_122A2_PART_2_LINE_3, FORM_122A2_PART_2_YOU } from '../../constants/formText';
 import {
   MEANS_SPOUSE_ADD_LOAN,
   MEANS_SPOUSE_ADD_VEHICLE,
@@ -144,6 +145,9 @@ export function SpouseBlock({
   return (
     <div className="means-line">
       <h2>{MEANS_SPOUSE_TITLE}</h2>
+      {/* The form's own reason for asking (spec 8.12); they show again before lines 16 to 21 */}
+      <p className="form-help-text">{FORM_122A2_PART_2_YOU}</p>
+      <p className="form-help-text">{FORM_122A2_PART_2_LINE_3}</p>
       <p className="form-help-text">{MEANS_SPOUSE_INTRO}</p>
 
       <YesNoQuestion

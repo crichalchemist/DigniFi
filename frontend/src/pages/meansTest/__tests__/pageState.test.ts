@@ -145,6 +145,38 @@ describe('adoptRefs', () => {
       ['spouse-2', 'other'],
     ]);
   });
+
+  it('renames a vehicle without touching a loan that shares its ref, since each list counts its own ids', () => {
+    // spouse-2 names both a vehicle and a loan; the server gave the vehicle a new id (another tab
+    // had removed it), and kept the loan's
+    const page = withLoans([loan(2, { secured_by: 'spouse-2' })]);
+    page.answers.spouse_vehicles = [
+      { ref: 'spouse-2', description: 'Demo van', leased: 'no', claimed: 'yes' },
+    ];
+    page.answers.vehicle_choice = ['spouse-2', null];
+    const sent = fromReply(page);
+    const reply = withLoans([loan(2, { secured_by: 'spouse-5' })]);
+    reply.answers.spouse_vehicles = [
+      { ref: 'spouse-5', description: 'Demo van', leased: 'no', claimed: 'yes' },
+    ];
+
+    const next = adoptRefs(sent, sent, reply);
+    expect(next.answers.spouse_vehicles[0].ref).toBe('spouse-5');
+    expect(next.answers.spouse_loans[0].ref).toBe('spouse-2');
+    expect(next.answers.spouse_loans[0].secured_by).toBe('spouse-5');
+    expect(next.answers.vehicle_choice).toEqual(['spouse-5', null]);
+  });
+
+  it('renames a loan without touching a vehicle that shares its ref', () => {
+    const page = withLoans([loan(1, { secured_by: 'spouse-1' })]);
+    const sent = fromReply(page);
+    const reply = withLoans([loan(6, { secured_by: 'spouse-1' })]);
+
+    const next = adoptRefs(sent, sent, reply);
+    expect(next.answers.spouse_loans[0].ref).toBe('spouse-6');
+    expect(next.answers.spouse_vehicles[0].ref).toBe('spouse-1');
+    expect(next.answers.spouse_loans[0].secured_by).toBe('spouse-1');
+  });
 });
 
 describe('rowsInputOf', () => {

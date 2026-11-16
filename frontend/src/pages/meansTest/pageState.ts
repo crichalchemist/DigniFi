@@ -16,7 +16,8 @@ import type {
   PaymentsLeft,
   YesNo,
 } from '../../types/api';
-import { MEANS_SPOUSE_LOAN_FROM } from '../../constants/copy';
+import { MEANS_SPOUSE_LOAN_FROM, NAMELESS_DEBT } from '../../constants/copy';
+import { claimRowName } from '../../components/wizard/steps/claims/claimNames';
 import { debtLines, isSpouseRef, slotCandidates } from './meansRows';
 import type { RowsDebt, RowsInput, RowsVehicle } from './meansRows';
 import { readSpouseLoans, spouseIdentityGaps, type GapState } from './meansTestGaps';
@@ -79,21 +80,17 @@ const debtAnswersOf = (source: MeansDebtAnswers): MeansDebtAnswers => ({
 
 /**
  * Every answer key (the server replaces `vehicle_claims` whole, so every claim goes, never only the
- * one just changed) and each filer debt's six answers under its id. No `_key`.
+ * one just changed) and each filer debt's six answers under its id. No `_key`. Every row goes
+ * whatever its question's answer (F2): the server keeps them, measures only the boxes the answers
+ * show, and reads none under No, so a mistaken No loses nothing typed, even after a reload.
  */
 export function toPutBody(state: PageState): MeansTestUpdate {
   return {
     ...state.answers,
-    // Rows typed before a No stay in the page, so a mistaken No loses nothing; the server gets none
-    line_3_rows:
-      state.answers.line_3_answer === 'no' ? [] : state.answers.line_3_rows.map(withoutKey),
+    line_3_rows: state.answers.line_3_rows.map(withoutKey),
     spouse_vehicles: state.answers.spouse_vehicles.map(withoutKey),
     spouse_loans: state.answers.spouse_loans.map(withoutKey),
-    // Circumstances typed before a No (or before any answer) stay in the page; the server gets none
-    line_43_circumstances:
-      state.answers.line_43_answer === 'yes'
-        ? state.answers.line_43_circumstances.map(withoutKey)
-        : [],
+    line_43_circumstances: state.answers.line_43_circumstances.map(withoutKey),
     debts: state.debts.map((debt) => ({ id: debt.id, ...debtAnswersOf(debt) })),
   };
 }
@@ -121,33 +118,62 @@ export function aboveLine43(state: PageState): string {
  * so typed amounts stay as typed.
  */
 export function adoptRefs(state: PageState, sent: PageState, reply: MeansPage): PageState {
-  const renamed = new Map<string, string>();
-  const pair = (sentRows: { ref: string }[], replyRows: { ref: string }[]) => {
+  // One map a list (F13): the two lists count their `spouse-<n>` ids apart, so a ref can name a
+  // vehicle and a loan at once
+  const renames = (sentRows: { ref: string }[], replyRows: { ref: string }[]) => {
+    const renamed = new Map<string, string>();
     sentRows.forEach((row, index) => {
       const given = replyRows[index]?.ref;
       if (given !== undefined && given !== row.ref) renamed.set(row.ref, given);
     });
+    return renamed;
   };
-  pair(sent.answers.spouse_vehicles, reply.answers.spouse_vehicles);
-  pair(sent.answers.spouse_loans, reply.answers.spouse_loans);
-  const rename = (ref: string) => renamed.get(ref) ?? ref;
-  const renameOrNull = (ref: string | null) => (ref === null ? null : rename(ref));
+  const vehicles = renames(sent.answers.spouse_vehicles, reply.answers.spouse_vehicles);
+  const loans = renames(sent.answers.spouse_loans, reply.answers.spouse_loans);
+  const vehicleRef = (ref: string | null) => (ref === null ? null : (vehicles.get(ref) ?? ref));
   const { answers } = state;
   return {
     ...state,
     answers: {
       ...answers,
-      spouse_vehicles: answers.spouse_vehicles.map((row) => ({ ...row, ref: rename(row.ref) })),
+      spouse_vehicles: answers.spouse_vehicles.map((row) => ({
+        ...row,
+        ref: vehicles.get(row.ref) ?? row.ref,
+      })),
       spouse_loans: answers.spouse_loans.map((row) => ({
         ...row,
-        ref: rename(row.ref),
-        secured_by: renameOrNull(row.secured_by),
+        ref: loans.get(row.ref) ?? row.ref,
+        secured_by: vehicleRef(row.secured_by),
       })),
       vehicle_choice: [
-        renameOrNull(answers.vehicle_choice[0]),
-        renameOrNull(answers.vehicle_choice[1]),
+        vehicleRef(answers.vehicle_choice[0]),
+        vehicleRef(answers.vehicle_choice[1]),
       ],
     },
+  };
+}
+
+/**
+ * The typed answers over the server's latest read of the intake (F7): every answer the filer gave
+ * stays, but a vehicle claim only for a vehicle line 11 still lists, and the debts are the reply's
+ * list, each keeping the answers typed for it while it is still listed. Spouse rows stay by `_key`;
+ * a reference to a row that has gone goes as unanswered when the page next sends (`withSentRefs`).
+ */
+export function withLatestIntake(state: PageState, latest: MeansPage): PageState {
+  const listed = new Set(latest.vehicles.map((vehicle) => vehicle.ref));
+  const typed = new Map(state.debts.map((debt) => [debt.id, debt]));
+  const claims = Object.fromEntries(
+    Object.entries(state.answers.vehicle_claims).filter(([ref]) => listed.has(ref))
+  );
+  return {
+    answers: {
+      ...state.answers,
+      vehicle_claims: { ...latest.answers.vehicle_claims, ...claims },
+    },
+    debts: latest.debts.map((debt) => {
+      const own = typed.get(debt.id);
+      return own === undefined ? structuredClone(debt) : { ...debt, ...debtAnswersOf(own) };
+    }),
   };
 }
 
@@ -168,12 +194,27 @@ function liveVehicleRefs(page: MeansPage, answers: PageAnswers): Set<string> {
  * only a spouse vehicle (a filer's own `asset-` ref goes as `null`), and a spouse loan's `debt`
  * is kept only on a row answered Yes, only while that debt is still open, and only for the first
  * row naming it: a debt on any other row, a debt no longer open and a debt an earlier row names
- * all go as `null`. A typed loan (`debt` null) is never touched. Continue
- * sends this, so the server's 400 for a reference to a removed row never reaches the filer.
+ * all go as `null`. A typed loan (`debt` null) is never touched. The page reads its answers
+ * through this; Continue sends `withSentRefs`, so the server's 400 for a reference to a removed
+ * row never reaches the filer.
  */
 export function withLiveRefs(page: MeansPage, state: PageState): PageState {
+  return keepingRefsTo(page, state, liveVehicleRefs(page, state.answers));
+}
+
+/**
+ * What Continue sends (F2): `withLiveRefs`, except that a reference to any spouse vehicle still in
+ * the list is kept whatever the spouse vehicles answer, as the server's save accepts it (R15), so
+ * a mistaken No leaves a loan's "what secures it" and Vehicle 1 and 2 stored.
+ */
+export function withSentRefs(page: MeansPage, state: PageState): PageState {
+  const nameable = new Set(page.vehicles.map((vehicle) => vehicle.ref));
+  for (const row of state.answers.spouse_vehicles) nameable.add(row.ref);
+  return keepingRefsTo(page, state, nameable);
+}
+
+function keepingRefsTo(page: MeansPage, state: PageState, live: Set<string>): PageState {
   const { answers } = state;
-  const live = liveVehicleRefs(page, answers);
   const open = new Set(page.amounts_owed_loans.map((debt) => debt.id));
   const liveOrNull = (ref: string | null) => (ref !== null && live.has(ref) ? ref : null);
   const taken = new Set<number>();
@@ -413,3 +454,6 @@ export function debtPrefix(ref: string): string {
 export function spouseLoanHeading(creditor: string): string {
   return MEANS_SPOUSE_LOAN_FROM.split('{name}').join(creditor);
 }
+
+/** A debt as its questions name it: its creditor, or the claims steps' "one amount owed" (F15) */
+export const debtName = (creditor: string) => claimRowName(creditor, NAMELESS_DEBT);
