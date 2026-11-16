@@ -5,7 +5,7 @@
  * answers give it; a save never names a row that has gone, and a row the server names keeps what
  * the filer typed beside it.
  */
-import { act, fireEvent, screen, within } from '@testing-library/react';
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { server } from '../../test/mocks/server';
@@ -24,6 +24,7 @@ import {
   MEANS_GAP_VEHICLE_CHOICE,
   MEANS_LETTER,
   MEANS_PAGE_SAVE_FAILED,
+  MEANS_PAGE_UPDATED,
   MEANS_SIXTY_OR_MORE,
   MEANS_SPOUSE_ADD_LOAN,
   MEANS_SPOUSE_ADD_VEHICLE,
@@ -490,6 +491,48 @@ describe("the spouse's vehicles and loans", () => {
     expect(body.spouse_vehicles.map((row) => row.ref)).toEqual(['spouse-1']);
     expect(body.spouse_loans[0].secured_by).toBe('spouse-1');
     expect(body.vehicle_choice).toEqual(['asset-8', 'spouse-1']);
+  });
+
+  it('a save refused for a spouse vehicle another tab removed sends it as new, so the next save names no gone row', async () => {
+    const first = spousePage(
+      [vehicleRow({ ref: 'spouse-2', leased: 'yes', claimed: 'yes' })],
+      [loanRow({ secured_by: 'spouse-2' })],
+      { vehicle_choice: ['asset-7', 'spouse-2'] }
+    );
+    // Another tab removed the spouse's van, so the server stores no spouse-2
+    const latest = spousePage([], [loanRow({ secured_by: null })]);
+    const sent: SentBody[] = [];
+    let reads = 0;
+    server.use(
+      http.get(URL, () => {
+        reads += 1;
+        return HttpResponse.json(reads === 1 ? first : latest);
+      }),
+      http.put(URL, async ({ request }) => {
+        sent.push((await request.json()) as SentBody);
+        return sent.length === 1
+          ? HttpResponse.json(
+              {
+                spouse_loans: {
+                  '0': { secured_by: ["This isn't one of the vehicles on line 11."] },
+                },
+              },
+              { status: 400 }
+            )
+          : HttpResponse.json(latest);
+      })
+    );
+    renderPage();
+    await ready();
+    await pressContinue();
+    expect(await within(gapRegion()).findByText(MEANS_PAGE_UPDATED)).toBeInTheDocument();
+    await pressContinue();
+    await waitFor(() => expect(sent).toHaveLength(2));
+    const body = sent[1];
+    const vanRef = body.spouse_vehicles[0].ref;
+    expect(vanRef).toMatch(/^new-/);
+    expect(body.spouse_loans[0].secured_by).toBe(vanRef);
+    expect(body.vehicle_choice).toEqual(['asset-7', vanRef]);
   });
 
   it("the spouse's block opens with the form's Part 2 sentences, which show twice only with the block", async () => {

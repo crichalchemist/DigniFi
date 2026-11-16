@@ -177,6 +177,39 @@ export function withLatestIntake(state: PageState, latest: MeansPage): PageState
   };
 }
 
+/**
+ * After the page reads the intake again (F7): a spouse vehicle the server no longer stores (another
+ * tab removed it) goes as a new row, `new-<n>` from `nextRef`, and every loan's `secured_by` and
+ * Vehicle 1 or 2 that named it follows, so the next save names no gone row and the server gives the
+ * row its id with them (R14). A spouse loan needs none: the server gives an unknown loan ref an id.
+ */
+export function withGoneSpouseVehiclesAsNew(
+  state: PageState,
+  latest: MeansPage,
+  nextRef: () => string
+): PageState {
+  const stored = new Set(latest.answers.spouse_vehicles.map((row) => row.ref));
+  const renamed = new Map<string, string>();
+  for (const row of state.answers.spouse_vehicles) {
+    if (!row.ref.startsWith('new-') && !stored.has(row.ref)) renamed.set(row.ref, nextRef());
+  }
+  if (renamed.size === 0) return state;
+  const rename = (ref: string | null) => (ref === null ? null : (renamed.get(ref) ?? ref));
+  const { answers } = state;
+  return {
+    ...state,
+    answers: {
+      ...answers,
+      spouse_vehicles: answers.spouse_vehicles.map((row) => ({ ...row, ref: rename(row.ref)! })),
+      spouse_loans: answers.spouse_loans.map((row) => ({
+        ...row,
+        secured_by: rename(row.secured_by),
+      })),
+      vehicle_choice: [rename(answers.vehicle_choice[0]), rename(answers.vehicle_choice[1])],
+    },
+  };
+}
+
 const blankText = (text: string) => text.trim() === '';
 
 /** The refs of the vehicles a reference may name: the filer's, and the spouse's while they count */

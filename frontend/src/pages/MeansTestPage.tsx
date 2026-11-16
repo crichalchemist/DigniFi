@@ -80,6 +80,7 @@ import {
   spouseLoanHeading,
   spouseLoanViews,
   toPutBody,
+  withGoneSpouseVehiclesAsNew,
   withLatestIntake,
   withLiveRefs,
   withSentRefs,
@@ -443,7 +444,7 @@ export function MeansTestPage() {
         // Another tab changed the intake: read it again, keep what still applies, and say so
         try {
           const latest = await api.intake.meansTest.get(sessionId);
-          const kept = withLatestIntake(sent, latest);
+          const kept = withGoneSpouseVehiclesAsNew(withLatestIntake(sent, latest), latest, nextKey);
           setPage(latest);
           setState(kept);
           setSavedAboveCopy(aboveLine43(fromReply(latest)));
