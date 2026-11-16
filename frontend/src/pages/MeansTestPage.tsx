@@ -472,14 +472,14 @@ export function MeansTestPage() {
 
   if (read === 'pending') {
     return (
-      <main className="filing-fee-page">
+      <main className="filing-fee-page means-test-page">
         <p>{MEANS_PAGE_LOADING}</p>
       </main>
     );
   }
   if (read === 'failed' || !page || !state || !rows) {
     return (
-      <main className="filing-fee-page">
+      <main className="filing-fee-page means-test-page">
         <div className="filing-fee-error">
           <p role="alert">{MEANS_PAGE_READ_FAILED}</p>
           <Button type="button" onClick={handleRetry}>
@@ -503,7 +503,7 @@ export function MeansTestPage() {
 
   if (page.applies === null) {
     return (
-      <main className="filing-fee-page">
+      <main className="filing-fee-page means-test-page">
         <h1>{FORM_122A2_TITLE}</h1>
         <UPLDisclaimer text={UPL_WIZARD_DISCLAIMER} variant="inline" />
         {gapRegion(page.applies_gap)}
@@ -654,7 +654,7 @@ export function MeansTestPage() {
   const gapText = changed ? MEANS_RESULT_CHANGED : updated ? MEANS_PAGE_UPDATED : shownGap;
 
   return (
-    <main className="filing-fee-page">
+    <main className="filing-fee-page means-test-page">
       <h1>{FORM_122A2_TITLE}</h1>
       <MeansResult page={page} linkToLine43={linkToLine43} ref={resultRef} />
       <p>{MEANS_PAGE_INTRO}</p>

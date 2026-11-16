@@ -99,8 +99,11 @@ test.describe('Priya Sharma — Above the Median', () => {
     // Her answers give a presumption, said in the form's words and never as a verdict. The
     // first Continue stays here so she reads the changed result at the top.
     await expect(page).toHaveURL(/means-test/);
+    // The save's reply brings the new result, so wait for it before reading the block
+    await expect(page.getByRole('status', { name: 'Income test' })).toContainText(
+      "The form's arithmetic gives: There is a presumption of abuse."
+    );
     const result = await meansTest.result();
-    expect(result).toContain("The form's arithmetic gives: There is a presumption of abuse.");
     expect(result.trim().endsWith('A court makes the final decision.')).toBe(true);
     await expect(meansTest.line43Link()).toBeVisible();
     await expect(meansTest.status()).toHaveText(
