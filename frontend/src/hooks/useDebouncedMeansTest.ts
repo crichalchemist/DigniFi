@@ -43,6 +43,10 @@ export function useDebouncedMeansTest({
 
   const calculate = useCallback(async () => {
     if (!sessionId || currentStep < 2) {
+      // A step back drops the result it held, and the call on its way, so neither shows later
+      abortRef.current?.abort();
+      setResult(null);
+      setIsCalculating(false);
       setStatusMessage(MEANS_TEST_WAITING);
       return;
     }

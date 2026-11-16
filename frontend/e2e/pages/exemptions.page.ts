@@ -1,6 +1,6 @@
 /**
  * Exemptions Page Object — Schedule C's line 1, the filer's claims and line 3, asked on the
- * page after the filing-fee page. Continues to /sofa.
+ * page after the filing-fee page. Continues to /sofa, or to /means-test when the form applies.
  */
 
 import { expect, type Page } from '@playwright/test';
@@ -17,7 +17,7 @@ export class ExemptionsPage {
   }
 
   /** Answer line 1, press "not claiming" or add each claim, answer line 3 and continue */
-  async answer(exemptions: PersonaExemptions) {
+  async answer(exemptions: PersonaExemptions, next = '**/sofa') {
     await this.waitForLoad();
     await this.page
       .locator(`input[name="exemptions_line_1"][value="${exemptions.line_1}"]`)
@@ -50,6 +50,6 @@ export class ExemptionsPage {
       .locator(`input[name="exemptions_line_3"][value="${exemptions.line_3}"]`)
       .check();
     await this.page.getByRole('button', { name: 'Continue', exact: true }).click();
-    await this.page.waitForURL('**/sofa');
+    await this.page.waitForURL(next);
   }
 }

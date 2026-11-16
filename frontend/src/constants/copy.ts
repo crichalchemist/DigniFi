@@ -112,9 +112,6 @@ export const MEANS_OUTCOME_ABOVE =
   'Your income is above the median for a household of {n}, so Form 122A-2 applies.';
 
 // DRAFT: counsel C-24
-export const MEANS_OUTCOME_NOT_YET = "Its result can't be worked out yet.";
-
-// DRAFT: counsel C-24
 export const MEANS_OUTCOME_REASSURANCE =
   "Being above the median doesn't mean a presumption of abuse applies.";
 
@@ -131,8 +128,8 @@ export const MEANS_TABLE_MISSING =
   "DigniFi doesn't have the means test figures for today's date yet, so it can't work out Form 122A-2.";
 
 // DRAFT: counsel C-24
-export const MEANS_HOLD_REFUSAL =
-  "DigniFi can't prepare Form 122A-2 yet, because it doesn't ask all of that form's questions yet. Form 122A-1 waits for it. File the two forms together.";
+export const MEANS_CANT_PRINT_YET =
+  "You've answered the questions for Form 122A-2, but DigniFi can't print that form yet. Form 122A-1 waits for it. File the two forms together.";
 
 // DRAFT: counsel C-24
 export const MEANS_PAIR_NOTICE =
@@ -149,6 +146,456 @@ export const MEANS_FILED_BEFORE_122A1 =
 // DRAFT: counsel C-24
 export const MEANS_FILED_MISMATCH =
   "This copy doesn't say its result is worked out on Form 122A-2. Form 122A-2 now applies to you.";
+
+// The Form 122A-2 page (3h2)
+
+// DRAFT: counsel C-24
+export const MEANS_OUTCOME_ANSWER_SIDEBAR =
+  "Its result can't be worked out until you answer the questions on the Form 122A-2 page, once you finish your intake.";
+
+// DRAFT: counsel C-24
+export const MEANS_OUTCOME_ANSWER_PAGE =
+  "Its result can't be worked out until you answer the questions on the Form 122A-2 page.";
+
+// DRAFT: counsel C-24
+export const MEANS_PAGE_PHRASE = 'the Form 122A-2 page';
+
+// DRAFT: counsel C-24
+export const MEANS_LINE_43_LINK = 'Go to line 43, special circumstances';
+
+// DRAFT: counsel C-24
+export const MEANS_STALE_ANSWERS =
+  "You answered the questions about your secured debts in {month}. If you've made payments since, check your answers on the Form 122A-2 page.";
+
+// DRAFT: counsel C-24
+export const MEANS_RESULT_CHANGED =
+  'Your result has changed. It is at the top of the page. Press Continue again when you are ready.';
+
+// DRAFT: counsel C-24
+export const MEANS_PAGE_INTRO =
+  "Form 122A-2 is the Chapter 7 means test calculation. Its questions use the form's own words, which can differ from the words on Schedules I and J. Beside some questions, DigniFi shows what you entered on those schedules, for you to compare. No answer is filled in for you.";
+
+// DRAFT: counsel C-24
+export const MEANS_PAGE_AGES =
+  'Line 7 counts people under 65 and people 65 or older. DigniFi uses your date of birth and the ages on your household list, as you entered them.';
+
+// DRAFT: counsel C-24
+export const MEANS_PAGE_LOADING = 'Loading your answers...';
+
+// DRAFT: counsel C-24
+export const MEANS_PAGE_READ_FAILED =
+  "We couldn't get your answers just now. Please try again in a moment.";
+
+// DRAFT: counsel C-24
+export const MEANS_PAGE_SAVE_FAILED = "We couldn't save your answers just now. Please try again.";
+
+// DRAFT: counsel C-24
+export const MEANS_PAGE_UPDATED =
+  'Your intake changed after this page opened. The page now shows your latest answers. Check them, then press Continue again.';
+
+// DRAFT: counsel C-24
+export const MEANS_BESIDE_YOU = 'You entered {amount} on Schedule {form} line {line}.';
+
+// DRAFT: counsel C-24
+export const MEANS_BESIDE_SPOUSE =
+  'You entered {amount} for your spouse on Schedule {form} line {line}.';
+
+// DRAFT: counsel C-24
+export const MEANS_LINE_7G = 'Your line 7 total is {amount}.';
+
+// DRAFT: counsel C-24
+export const MEANS_LINE_8 = 'Your line 8 amount is {amount}.';
+
+// DRAFT: counsel C-24
+export const MEANS_LINE_15_CAP =
+  "The IRS amount for public transportation is {amount}. Line 15 can't be more than that.";
+
+// DRAFT: counsel C-27
+export const MEANS_LINE_27_NOTE =
+  'The form says the court must keep the nature of these expenses confidential. DigniFi asks only for the amount.';
+
+// DRAFT: counsel C-24
+export const MEANS_LINE_29_NOTE = 'The form allows up to {amount} a month for each child.';
+
+// DRAFT: counsel C-24
+export const MEANS_LINE_30_CAP =
+  "For {n} people, 5% of the IRS food and clothing amounts is {amount}. Line 30 can't be more than that.";
+
+// DRAFT: counsel C-24
+export const MEANS_LINE_30_CAP_ONE =
+  "For 1 person, 5% of the IRS food and clothing amounts is {amount}. Line 30 can't be more than that.";
+
+// DRAFT: counsel C-24
+export const MEANS_LINE_35 =
+  'Line 35 comes from what you entered as past due for priority debts on the Amounts Owed step: {amount}.';
+
+// DRAFT: counsel C-24
+export const MEANS_ADD_ROW = 'Add a row';
+
+// DRAFT: counsel C-24
+export const MEANS_REMOVE_ROW = 'Remove row {n}';
+
+// DRAFT: counsel C-24
+export const MEANS_ROW_LEGEND = 'Row {n}';
+
+// DRAFT: counsel C-24
+export const MEANS_DEBT_PROPERTY = 'Secured by {property}';
+
+// DRAFT: counsel C-24
+export const MEANS_DEBT_GOES_ON = 'On Form 122A-2, this debt goes on line {line}.';
+
+// DRAFT: counsel C-24
+export const MEANS_DEBT_WAITS = 'Its line depends on your answers about your vehicles above.';
+
+// DRAFT: counsel C-24
+export const MEANS_DEBT_PAYMENT =
+  'You entered a monthly payment of {amount} on the Amounts Owed step.';
+
+// DRAFT: counsel C-24
+export const MEANS_PAYMENTS_LEFT = 'How many payments are left?';
+
+// DRAFT: counsel C-24
+export const MEANS_SIXTY_OR_MORE = '60 or more';
+
+// DRAFT: counsel C-24
+export const MEANS_PAYMENT_CHANGES = 'Will the payment change, or end with a larger payment?';
+
+// DRAFT: counsel C-24
+export const MEANS_SIXTY_MONTH_TOTAL = 'The total due in the 60 months after you file';
+
+// DRAFT: counsel C-6
+export const MEANS_LINE_36_LINK = 'Bankruptcy Basics, from the U.S. Courts';
+
+// DRAFT: counsel C-6
+export const MEANS_LINE_36_LIMITS =
+  'Chapter 13 has debt limits (11 U.S.C. section 109(e)). For cases filed on or after {date}, the limits are {unsecured} in unsecured debts and {secured} in secured debts.';
+
+// DRAFT: counsel C-6
+export const MEANS_LINE_36_TOTALS =
+  'You listed {ef} in unsecured debts on Schedule E/F. You listed {d} in secured debts on Schedule D.';
+
+// DRAFT: counsel C-6
+export const MEANS_LINE_36_OTHER_RULES =
+  "Other rules also apply. DigniFi can't tell you whether you can file under chapter 13.";
+
+// DRAFT: counsel C-6
+export const MEANS_LINE_36_MULTIPLIER =
+  "The U.S. Trustee's multiplier for the Northern District of Illinois is {m}%.";
+
+// DRAFT: counsel C-6
+export const MEANS_LINE_36_PRODUCT =
+  'The average monthly administrative expense is {m}% of {payment}. That is {product}.';
+
+// DRAFT: counsel C-34
+export const MEANS_SPOUSE_TITLE = "Your spouse's vehicles and loans";
+
+// DRAFT: counsel C-34
+export const MEANS_SPOUSE_INTRO =
+  "These questions are about your spouse's vehicles and loans. Leave out a vehicle on your property list and a loan your Amounts Owed step lists as secured.";
+
+// DRAFT: counsel C-34
+export const MEANS_SPOUSE_VEHICLES_QUESTION =
+  "Does your spouse have a vehicle that isn't on your property list?";
+
+// DRAFT: counsel C-34
+export const MEANS_SPOUSE_VEHICLE_DESCRIBE =
+  'Describe the vehicle, such as its year, make and model.';
+
+// DRAFT: counsel C-34
+export const MEANS_SPOUSE_VEHICLE_LEASED = 'Is this vehicle leased?';
+
+// DRAFT: counsel C-34
+export const MEANS_SPOUSE_VEHICLE_LEGEND = "Your spouse's vehicle {n}";
+
+// DRAFT: counsel C-34
+export const MEANS_SPOUSE_ADD_VEHICLE = 'Add a vehicle';
+
+// DRAFT: counsel C-34
+export const MEANS_SPOUSE_REMOVE_VEHICLE = "Remove your spouse's vehicle {n}";
+
+// DRAFT: counsel C-34
+export const MEANS_SPOUSE_LOANS_QUESTION =
+  'Does your spouse owe a loan on your home, a vehicle or other property?';
+
+// DRAFT: counsel C-34
+export const MEANS_SPOUSE_LOANS_HINT =
+  'Leave out a loan your Amounts Owed step lists as secured. Count a loan you both owe on property only your spouse owns.';
+
+// DRAFT: counsel C-34
+export const MEANS_SPOUSE_LOAN_LEGEND = "Your spouse's loan {n}";
+
+// DRAFT: counsel C-34
+export const MEANS_SPOUSE_ADD_LOAN = 'Add a loan';
+
+// DRAFT: counsel C-34
+export const MEANS_SPOUSE_REMOVE_LOAN = "Remove your spouse's loan {n}";
+
+// DRAFT: counsel C-34
+export const MEANS_SPOUSE_LOAN_ON_AMOUNTS_OWED = 'Is this loan on your Amounts Owed step?';
+
+// DRAFT: counsel C-34
+export const MEANS_SPOUSE_LOAN_WHICH = 'Which loan is it?';
+
+// DRAFT: counsel C-34
+export const MEANS_SPOUSE_LOAN_WHICH_NOTE =
+  "This list shows the loans on your Amounts Owed step that aren't listed as secured.";
+
+// DRAFT: counsel C-34
+export const MEANS_SPOUSE_LOAN_CREDITOR = 'Who does your spouse owe?';
+
+// DRAFT: counsel C-34
+export const MEANS_SPOUSE_LOAN_SECURED_BY = 'What secures the loan?';
+
+// DRAFT: counsel C-34
+export const MEANS_SPOUSE_LOAN_HOME = 'Your home';
+
+// DRAFT: counsel C-34
+export const MEANS_SPOUSE_LOAN_OTHER = 'Other property';
+
+// DRAFT: counsel C-34
+export const MEANS_SPOUSE_LOAN_PROPERTY = 'Describe the property.';
+
+// DRAFT: counsel C-34
+export const MEANS_SPOUSE_LOAN_PAYMENT = 'The monthly payment';
+
+// DRAFT: counsel C-34
+export const MEANS_SPOUSE_LOAN_FROM = "Your spouse's loan from {name}";
+
+// DRAFT: counsel C-31
+export const MEANS_LINE_43_EXAMPLES =
+  'The law gives two examples of special circumstances. One is a serious medical condition. The other is a call or order to active duty in the Armed Forces.';
+
+// DRAFT: counsel C-30
+export const MEANS_LINE_43_OWN_WORDS =
+  'Line 43 is about your monthly expenses and income now. You can explain your situation in your own words.';
+
+// DRAFT: counsel C-31
+export const MEANS_LINE_43_NO_SUGGESTION =
+  "DigniFi doesn't say which circumstances apply to you, or whether a court will allow them.";
+
+// DRAFT: counsel C-31
+export const MEANS_LINE_43_LAWYER = 'A lawyer can tell you how the law applies to your facts.';
+
+// DRAFT: counsel C-31
+export const MEANS_LINE_43_LEGEND = 'Circumstance {n}';
+
+// DRAFT: counsel C-31
+export const MEANS_LINE_43_ADD = 'Add a circumstance';
+
+// DRAFT: counsel C-31
+export const MEANS_LINE_43_REMOVE = 'Remove circumstance {n}';
+
+// DRAFT: counsel C-31
+export const MEANS_LINE_43_HAPPENED = 'What happened, and when?';
+
+// DRAFT: counsel C-31
+export const MEANS_LINE_43_HAPPENED_HINT = 'Use your own words.';
+
+// DRAFT: counsel C-31
+export const MEANS_LINE_43_CHANGE = 'How does it change your monthly expenses or income?';
+
+// DRAFT: counsel C-31
+export const MEANS_LINE_43_CHOICES =
+  'What other choices did you look at, and why did they not work?';
+
+// DRAFT: counsel C-31
+export const MEANS_LINE_43_PAPERS = 'What papers will you give your case trustee to show this?';
+
+// DRAFT: counsel C-31
+export const MEANS_LINE_43_BOX_NOTE =
+  'Write only what you want the court to read. This box prints with line 43 on Form 122A-2. Edit it until it says what you mean.';
+
+// DRAFT: counsel C-31
+export const MEANS_LINE_43_ASSEMBLE = 'Put my answers together';
+
+// DRAFT: counsel C-31
+export const MEANS_LINE_43_ASSEMBLE_NOTE =
+  'This puts your answers in the box below, under short headings. Nothing else is added.';
+
+// DRAFT: counsel C-31
+export const MEANS_LINE_43_LABEL_HAPPENED = 'What happened:';
+
+// DRAFT: counsel C-31
+export const MEANS_LINE_43_LABEL_CHANGE = 'How it changes my monthly expenses or income:';
+
+// DRAFT: counsel C-31
+export const MEANS_LINE_43_LABEL_CHOICES = 'Other choices I looked at:';
+
+// DRAFT: counsel C-31
+export const MEANS_LINE_43_LABEL_PAPERS = 'Papers I will give my case trustee:';
+
+// DRAFT: counsel C-31
+export const MEANS_LINE_43_SKIPPED =
+  "With your current answers, the form skips line 43, so this answer won't print.";
+
+// DRAFT: counsel C-32
+export const MEANS_REBUTTAL_NOW = 'Your line 39d is now {amount}.';
+
+// DRAFT: counsel C-32
+export const MEANS_REBUTTAL_IF =
+  'If the court allowed the amounts on line 43, line 39d would be {amount}.';
+
+// DRAFT: counsel C-32
+export const MEANS_REBUTTAL_IF_BELOW =
+  'If the court allowed the amounts on line 43, line 39d would be {amount} less than $0.';
+
+// DRAFT: counsel C-32
+export const MEANS_REBUTTAL_COURT = 'The court decides whether to allow them.';
+
+// DRAFT: counsel C-24
+export const MEANS_TOO_LONG = 'This is too long for the box on Form 122A-2. Shorten it.';
+// DRAFT: counsel C-24
+export const MEANS_LETTER = "This has a letter Form 122A-2 can't print. Change it.";
+
+// DRAFT: counsel C-31
+export const MEANS_EXPLANATION_TOO_LONG =
+  'This explanation is too long to print with line 43. Shorten it.';
+
+// DRAFT: counsel C-31
+export const MEANS_EXPLANATION_LETTER =
+  "This explanation has a letter Form 122A-2 can't print. Change it.";
+
+// DRAFT: counsel C-24
+export const MEANS_GAP_LINE_3 = "Answer line 3, about your spouse's income.";
+
+// DRAFT: counsel C-24
+export const MEANS_GAP_LINE_3_NO_ROW =
+  "Add each use of your spouse's income on line 3, or change the answer to No.";
+
+// DRAFT: counsel C-24
+export const MEANS_GAP_LINE_3_ROW =
+  "Enter what your spouse's income was used for, and the amount, on each row of line 3.";
+
+// DRAFT: counsel C-34
+export const MEANS_GAP_SPOUSE_VEHICLES =
+  "Answer whether your spouse has a vehicle that isn't on your property list.";
+
+// DRAFT: counsel C-34
+export const MEANS_GAP_SPOUSE_VEHICLES_NO_ROW =
+  "Add each of your spouse's vehicles, or change the answer to No.";
+
+// DRAFT: counsel C-34
+export const MEANS_GAP_SPOUSE_VEHICLE_DESCRIBE = "Describe each of your spouse's vehicles.";
+
+// DRAFT: counsel C-34
+export const MEANS_GAP_SPOUSE_VEHICLE_LEASED = 'Answer whether {name} is leased.';
+
+// DRAFT: counsel C-34
+export const MEANS_GAP_SPOUSE_LOANS =
+  'Answer whether your spouse owes a loan on your home, a vehicle or other property.';
+
+// DRAFT: counsel C-34
+export const MEANS_GAP_SPOUSE_LOANS_NO_ROW =
+  "Add each of your spouse's loans, or change the answer to No.";
+
+// DRAFT: counsel C-34
+export const MEANS_GAP_SPOUSE_LOAN_ON_AMOUNTS_OWED =
+  "Answer whether each of your spouse's loans is on your Amounts Owed step.";
+
+// DRAFT: counsel C-34
+export const MEANS_GAP_SPOUSE_LOAN_WHICH =
+  "For each of your spouse's loans that is on your Amounts Owed step, choose which one it is.";
+
+// DRAFT: counsel C-34
+export const MEANS_GAP_SPOUSE_LOAN_CREDITOR = 'Enter who your spouse owes on each of their loans.';
+
+// DRAFT: counsel C-34
+export const MEANS_GAP_SPOUSE_LOAN_SECURED_BY = "Say what secures your spouse's loan from {name}.";
+
+// DRAFT: counsel C-34
+export const MEANS_GAP_SPOUSE_LOAN_PROPERTY =
+  "Describe the property that secures your spouse's loan from {name}.";
+
+// DRAFT: counsel C-34
+export const MEANS_GAP_SPOUSE_LOAN_PAYMENT =
+  "Enter the monthly payment on your spouse's loan from {name}.";
+
+// DRAFT: counsel C-24
+export const MEANS_GAP_VEHICLE = 'Answer whether you claim an expense for {name}.';
+
+// DRAFT: counsel C-24
+export const MEANS_GAP_VEHICLE_CHOICE = 'Choose your Vehicle 1 and your Vehicle 2.';
+
+// DRAFT: counsel C-24
+export const MEANS_GAP_LINE_15 = 'Answer the question on line 15.';
+
+// DRAFT: counsel C-24
+export const MEANS_GAP_LINE_15_AMOUNT = 'Enter the amount for line 15.';
+
+// DRAFT: counsel C-24
+export const MEANS_GAP_LINE_15_CAP =
+  "Line 15 can't be more than {amount}, the IRS amount for public transportation.";
+
+// DRAFT: counsel C-24
+export const MEANS_GAP_AMOUNT = 'Enter the amount for line {n}. Enter 0 if you have none.';
+
+// DRAFT: counsel C-24
+export const MEANS_GAP_OPT_IN = 'Answer line {n}.';
+
+// DRAFT: counsel C-24
+export const MEANS_GAP_OPT_IN_AMOUNT = 'Enter the amount for line {n}.';
+
+// DRAFT: counsel C-24
+export const MEANS_GAP_LINE_25_AMOUNTS = 'Enter the three amounts on line 25.';
+
+// DRAFT: counsel C-24
+export const MEANS_GAP_LINE_25_SPENDS = 'Answer whether you actually spend the line 25 total.';
+
+// DRAFT: counsel C-24
+export const MEANS_GAP_LINE_25_ACTUAL = 'Enter how much you actually spend, on line 25.';
+
+// DRAFT: counsel C-24
+export const MEANS_GAP_LINE_30_CAP =
+  "Line 30 can't be more than {amount}, which is 5% of the IRS food and clothing amounts for {n} people.";
+
+// DRAFT: counsel C-24
+export const MEANS_GAP_LINE_30_CAP_ONE =
+  "Line 30 can't be more than {amount}, which is 5% of the IRS food and clothing amounts for 1 person.";
+
+// DRAFT: counsel C-24
+export const MEANS_GAP_PAYMENTS_LEFT = 'Enter how many payments you have left to {name}.';
+
+// DRAFT: counsel C-24
+export const MEANS_GAP_PAYMENT_CHANGES = 'Answer whether your payment to {name} will change.';
+
+// DRAFT: counsel C-24
+export const MEANS_GAP_SIXTY_MONTH_TOTAL =
+  'Enter the total you will owe {name} in the 60 months after you file.';
+
+// DRAFT: counsel C-24
+export const MEANS_GAP_TAXES = 'Say if the payment to {name} pays for taxes or insurance too.';
+
+// DRAFT: counsel C-24
+export const MEANS_GAP_LINE_34 =
+  'Answer line 34, about debts secured by property you need for support.';
+
+// DRAFT: counsel C-24
+export const MEANS_GAP_SUPPORT =
+  'Say if your debt to {name} is secured by property you need for support.';
+
+// DRAFT: counsel C-24
+export const MEANS_GAP_CURE = 'Enter the cure amount for {name}. Enter 0 if there is none.';
+
+// DRAFT: counsel C-24
+export const MEANS_GAP_LINE_36 = 'Answer line 36.';
+
+// DRAFT: counsel C-24
+export const MEANS_GAP_LINE_36_PAYMENT = 'Enter the projected monthly plan payment on line 36.';
+
+// DRAFT: counsel C-24
+export const MEANS_GAP_LINE_43 = 'Answer the question on line 43.';
+
+// DRAFT: counsel C-24
+export const MEANS_GAP_LINE_43_NONE =
+  'Add each special circumstance on line 43, or change the answer to No.';
+
+// DRAFT: counsel C-24
+export const MEANS_GAP_LINE_43_EXPLANATION =
+  'Give the explanation for circumstance {n} on line 43.';
+
+// DRAFT: counsel C-24
+export const MEANS_GAP_LINE_43_AMOUNT =
+  'Enter the average monthly amount for circumstance {n} on line 43. Enter 0 if there is none.';
 
 // DRAFT: counsel C-24
 export const TABLE_NOTICE_MEDIAN =

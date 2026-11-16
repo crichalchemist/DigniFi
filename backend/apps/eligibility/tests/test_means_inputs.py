@@ -1,7 +1,8 @@
-"""Form 122A-2 reads only what the filer gave DigniFi; whatever the page will ask stays
+"""Form 122A-2 reads only what the filer gave DigniFi; whatever the page asks stays
 unanswered until the filer answers it."""
 
-from dataclasses import fields, replace
+import json
+from dataclasses import fields
 from datetime import date
 from decimal import Decimal
 
@@ -10,10 +11,24 @@ from django.core.management import call_command
 
 from apps.districts.means_standards import NoMeansTestTable
 from apps.districts.models import District
-from apps.eligibility.means_inputs import read_inputs, read_tables
-from apps.eligibility.means_lines import PRESUMPTION, MeansTableKeyMissing, work_out
-from apps.eligibility.tests.test_means_lines import PRIYA
-from apps.intake.models import DebtorInfo, IncomeInfo, IntakeSession
+from apps.eligibility.means_inputs import page_answers, read_inputs, read_tables
+from apps.eligibility.means_lines import (
+    PRESUMPTION,
+    HealthInsurance,
+    MeansTableKeyMissing,
+    OptIn,
+    debt_lines,
+    work_out,
+)
+from apps.eligibility.tests.test_means_lines import PRIYA, TABLES
+from apps.intake.means_test import means_test_gaps
+from apps.intake.models import (
+    DebtorInfo,
+    IncomeInfo,
+    IntakeSession,
+    MeansTestAnswers,
+    SecuredDebtAnswers,
+)
 from apps.intake.tests.builders import (
     answer_household,
     complete_debt,
@@ -23,10 +38,12 @@ from apps.intake.tests.builders import (
 )
 from apps.users.models import User
 
+# test_means_outcome.py reads this constant
 PRIYAS_ANSWERS = {
     f.name: getattr(PRIYA, f.name)
     for f in fields(PRIYA)
-    if f.name.startswith("line_") and f.name not in ("line_1", "line_35_past_due", "line_41a")
+    if f.name.startswith(("line_", "spouse_"))
+    and f.name not in ("line_1", "line_35_past_due", "line_41a")
 }
 
 ROOMMATE = {
@@ -101,7 +118,7 @@ def test_the_district_code_is_read_in_lower_case(session):
     assert read_inputs(session).district == "ilnd"
 
 
-def test_every_answer_the_page_will_ask_is_unanswered(session):
+def test_a_session_that_never_saw_the_page_has_every_answer_unanswered(session):
     inputs = read_inputs(session)
     asked = (15, 16, 17, 18, 19, 20, 21, 22, 23, 25, 26, 27, 28, 29, 30, 31)
     assert all(getattr(inputs, f"line_{n}") is None for n in asked)
@@ -113,7 +130,23 @@ def test_every_answer_the_page_will_ask_is_unanswered(session):
         inputs.line_36_payment,
         inputs.line_43_answer,
         inputs.vehicle_choice,
-    ) == (None, (), None, None, None, None, None)
+        inputs.spouse_vehicles_answer,
+        inputs.spouse_loans_answer,
+    ) == (None, (), None, None, None, None, None, None, None)
+    car = linked_row(session, "3", None, "Demo Car")
+    linked_loan(session, car, "300")
+    inputs = read_inputs(session)
+    (vehicle,) = inputs.vehicles
+    (debt,) = inputs.secured_debts
+    assert vehicle.claimed is None
+    assert (
+        debt.payments_left,
+        debt.payment_changes,
+        debt.total_60_months,
+        debt.taxes_or_insurance,
+        debt.necessary_for_support,
+        debt.cure,
+    ) == (None,) * 6
 
 
 def test_line_35_counts_only_confirmed_unsecured_debts_answered_with_a_priority_kind(session):
@@ -167,30 +200,25 @@ def test_secured_debts_carry_their_property_and_whether_it_is_the_home(session):
     stray_loan = linked_loan(session, foreign, "75", creditor_name="F Stray Bank")
     complete_debt(session, creditor_name="D Not Secured", secured_by=car)
     car_loan = linked_loan(session, car, "300", creditor_name="b Car Bank")
-    got = {d.debt_id: d for d in read_inputs(session).secured_debts}
+    got = {d.ref: d for d in read_inputs(session).secured_debts}
     assert [d.creditor for d in read_inputs(session).secured_debts] == [
         "Á Home Bank",
         "b Car Bank",
         "C Rental Bank",
         "F Stray Bank",
     ]
-    assert (got[home_loan.pk].asset_id, got[home_loan.pk].on_home, got[home_loan.pk].property) == (
-        home.pk,
+    home_debt = got[f"debt-{home_loan.pk}"]
+    assert (home_debt.secured_by, home_debt.on_home, home_debt.property) == (
+        f"asset-{home.pk}",
         True,
         "Demo Home",
     )
-    assert (got[car_loan.pk].asset_id, got[car_loan.pk].on_home) == (car.pk, False)
-    assert got[rental_loan.pk].on_home is False
-    assert got[car_loan.pk].monthly_payment == Decimal("300.00")
-    assert (
-        got[stray_loan.pk].asset_id,
-        got[stray_loan.pk].on_home,
-        got[stray_loan.pk].property,
-    ) == (
-        None,
-        False,
-        "",
-    )
+    car_debt = got[f"debt-{car_loan.pk}"]
+    assert (car_debt.secured_by, car_debt.on_home) == (f"asset-{car.pk}", False)
+    assert got[f"debt-{rental_loan.pk}"].on_home is False
+    assert car_debt.monthly_payment == Decimal("300.00")
+    stray_debt = got[f"debt-{stray_loan.pk}"]
+    assert (stray_debt.secured_by, stray_debt.on_home, stray_debt.property) == (None, False, "")
 
 
 def test_vehicles_are_line_3_rows_and_line_4_rows_not_lived_in_with_their_loans_and_leases(
@@ -209,21 +237,23 @@ def test_vehicles_are_line_3_rows_and_line_4_rows_not_lived_in_with_their_loans_
     # set counts it, and so does line 11 (spec H24)
     camper = linked_row(session, "4", None, "Demo Camper")
     linked_row(session, "4", "yes", "Demo Home On Wheels")
-    first, second, third = read_inputs(session).vehicles
-    assert (first.asset_id, first.name, first.financed, first.leased) == (
-        car.pk,
+    inputs = read_inputs(session)
+    first, second, third = inputs.vehicles
+    named = {debt.secured_by for debt in inputs.secured_debts}
+    assert (first.ref, first.name, first.ref in named, first.leased) == (
+        f"asset-{car.pk}",
         "Demo Hatch 2019",
         True,
         False,
     )
-    assert (second.asset_id, second.name, second.financed, second.leased) == (
-        trailer.pk,
+    assert (second.ref, second.name, second.ref in named, second.leased) == (
+        f"asset-{trailer.pk}",
         "Demo Trailer",
         False,
         True,
     )
-    assert (third.asset_id, third.name, third.financed, third.leased) == (
-        camper.pk,
+    assert (third.ref, third.name, third.ref in named, third.leased) == (
+        f"asset-{camper.pk}",
         "Demo Camper",
         False,
         False,
@@ -238,11 +268,13 @@ def test_a_vehicle_is_financed_or_leased_only_by_a_counted_loan_or_a_vehicle_lea
     not_counted = linked_row(session, "3", None, "Demo Uncounted Loan Car")
     complete_debt(session, creditor_name="Not Secured", secured_by=not_counted)
     linked_loan(session, not_counted, "50", creditor_name="Draft", is_draft=True)
-    got = {v.asset_id: (v.financed, v.leased) for v in read_inputs(session).vehicles}
+    inputs = read_inputs(session)
+    named = {debt.secured_by for debt in inputs.secured_debts}
+    got = {v.ref: (v.ref in named, v.leased) for v in inputs.vehicles}
     assert got == {
-        stale_lease.pk: (False, False),
-        other_contract.pk: (False, False),
-        not_counted.pk: (False, False),
+        f"asset-{stale_lease.pk}": (False, False),
+        f"asset-{other_contract.pk}": (False, False),
+        f"asset-{not_counted.pk}": (False, False),
     }
 
 
@@ -250,9 +282,9 @@ def test_a_loan_on_a_motor_home_the_filer_lives_in_is_on_the_home(session):
     motor_home = linked_row(session, "4", "yes", "Demo Motor Home")
     loan = linked_loan(session, motor_home, "400", creditor_name="G Motor Bank")
     (debt,) = read_inputs(session).secured_debts
-    assert (debt.debt_id, debt.asset_id, debt.on_home, debt.property) == (
-        loan.pk,
-        motor_home.pk,
+    assert (debt.ref, debt.secured_by, debt.on_home, debt.property) == (
+        f"debt-{loan.pk}",
+        f"asset-{motor_home.pk}",
         True,
         "Demo Motor Home",
     )
@@ -293,6 +325,18 @@ def test_read_tables_gives_the_calculator_the_figures_in_force(
         tables.presumption_high,
     )
     assert all(figure.as_tuple().exponent == -2 for figure in compared)
+    assert tables.five_percent == (
+        Decimal("30.00"),
+        Decimal("53.00"),
+        Decimal("64.00"),
+        Decimal("76.00"),
+    )
+    assert (
+        tables.five_percent_extra,
+        tables.education_per_child,
+        tables.chapter_13_unsecured_limit,
+        tables.chapter_13_secured_limit,
+    ) == (Decimal("14.00"), Decimal("214.58"), Decimal("526700.00"), Decimal("1580125.00"))
     assert used[0] == {
         "name": "IRS expense standards",
         "effective_date": "2026-07-15",
@@ -337,6 +381,331 @@ def test_a_figure_the_set_lacks_raises_naming_only_its_table_part(
     assert str(refused.value) == f"The means test tables have no {part} figure for this session."
 
 
+def test_a_set_without_the_five_percent_chart_raises_naming_only_that_part(
+    means_standards_2026, section_104_2025
+):
+    assert means_standards_2026.figures.filter(kind="five_percent").delete()[0] >= 1
+    with pytest.raises(MeansTableKeyMissing) as refused:
+        read_tables()
+    assert (
+        str(refused.value) == "The means test tables have no five_percent figure for this session."
+    )
+
+
+def _store(session, answers):
+    MeansTestAnswers.objects.create(session=session, answers=json.dumps(answers))
+    return IntakeSession.objects.get(pk=session.pk)
+
+
+def _married(session):
+    answer_household(
+        session,
+        marital_status="married_together",
+        members=[ROOMMATE],
+        spouse_income={"monthly_gross_wages": Decimal("1000.00")},
+    )
+    return IntakeSession.objects.get(pk=session.pk)
+
+
+SPOUSE_CAR = {"ref": "spouse-1", "description": "Demo Spouse Car", "leased": "no", "claimed": "yes"}
+
+
+def _spouse_loan(**over):
+    return {
+        "ref": "spouse-1",
+        "on_amounts_owed": "no",
+        "debt": None,
+        "creditor": "Demo Spouse Bank",
+        "secured_by": "home",
+        "property": "",
+        "payment": "250.00",
+        "payments_left": "12",
+        "payment_changes": "no",
+        "total_60_months": None,
+        "taxes_or_insurance": "no",
+        "necessary_for_support": "no",
+        "cure": "0.00",
+    } | over
+
+
+def test_the_stored_answers_reach_the_calculator(session):
+    car = linked_row(session, "3", None, "Demo Car")
+    loan = linked_loan(session, car, "300")
+    SecuredDebtAnswers.objects.create(debt=loan, payments_left="60_or_more", payment_changes="no")
+    session = _store(
+        session,
+        {
+            "line_16": "2300.00",
+            "line_25_answer": "yes",
+            "line_25_health": "10.00",
+            "line_25_disability": "20.00",
+            "line_25_hsa": "30.00",
+            "line_25_spends": "no",
+            "line_31_answer": "yes",
+            "line_31_amount": "50.00",
+            "line_3_rows": [{"amount": "0.00"}],
+            "vehicle_claims": {f"asset-{car.pk}": "yes"},
+        },
+    )
+    inputs = read_inputs(session)
+    assert inputs.line_16 == Decimal("2300.00")
+    assert inputs.line_25 == HealthInsurance(
+        "yes",
+        health=Decimal("10.00"),
+        disability=Decimal("20.00"),
+        hsa=Decimal("30.00"),
+        actually_spends="no",
+        actual=None,
+    )
+    assert inputs.line_31 == OptIn("yes", Decimal("50.00"))
+    assert inputs.line_3_rows == (("", Decimal("0.00")),)
+    assert inputs.vehicles[0].claimed is True
+    assert inputs.secured_debts[0].payments_left == 60
+    assert inputs.secured_debts[0].payment_changes == "no"
+
+
+def test_the_spouses_rows_join_the_vehicles_and_debts_only_under_married_together(session):
+    car = linked_row(session, "3", None, "Demo Car")
+    linked_loan(session, car, "300", creditor_name="Demo Car Bank")
+    stored = {
+        "spouse_vehicles_answer": "yes",
+        "spouse_vehicles": [SPOUSE_CAR],
+        "spouse_loans_answer": "yes",
+        "spouse_loans": [_spouse_loan()],
+    }
+    session = _store(session, stored)
+    alone = read_inputs(session)
+    assert (alone.spouse_vehicles_answer, alone.spouse_loans_answer) == (None, None)
+    assert len(alone.vehicles) == 1 and len(alone.secured_debts) == 1
+    session = _married(session)
+    got = read_inputs(session)
+    assert (got.spouse_vehicles_answer, got.spouse_loans_answer) == ("yes", "yes")
+    assert [v.ref for v in got.vehicles] == [f"asset-{car.pk}", "spouse-1"]
+    spouse_vehicle = got.vehicles[1]
+    assert (spouse_vehicle.name, spouse_vehicle.leased, spouse_vehicle.claimed) == (
+        "Demo Spouse Car",
+        False,
+        True,
+    )
+    loan = got.secured_debts[1]
+    assert (loan.ref, loan.creditor, loan.secured_by, loan.on_home, loan.placed) == (
+        "spouse-1",
+        "Demo Spouse Bank",
+        None,
+        True,
+        True,
+    )
+    assert (loan.monthly_payment, loan.payments_left, loan.cure) == (
+        Decimal("250.00"),
+        12,
+        Decimal("0.00"),
+    )
+    assert debt_lines(got)[loan.ref] == "9b"
+
+
+def test_the_spouses_rows_are_read_only_under_their_own_yes(session):
+    stored = {
+        "spouse_vehicles_answer": "no",
+        "spouse_vehicles": [SPOUSE_CAR],
+        "spouse_loans_answer": "no",
+        "spouse_loans": [_spouse_loan()],
+    }
+    session = _married(_store(session, stored))
+    got = read_inputs(session)
+    assert (got.spouse_vehicles_answer, got.spouse_loans_answer) == ("no", "no")
+    assert (got.vehicles, got.secured_debts) == ((), ())
+    assert page_answers(session)["spouse_loans"][0]["ref"] == "spouse-1"
+
+
+def test_a_spouse_vehicle_never_holds_a_slot_once_the_filer_is_not_married_together(session):
+    cars = [linked_row(session, "3", None, f"Demo Car {n}") for n in range(3)]
+    stored = {
+        "spouse_vehicles_answer": "yes",
+        "spouse_vehicles": [SPOUSE_CAR],
+        "vehicle_choice": [f"asset-{cars[0].pk}", "spouse-1"],
+    }
+    session = _store(session, stored)
+    assert page_answers(session)["vehicle_choice"] == [f"asset-{cars[0].pk}", None]
+    assert read_inputs(session).vehicle_choice is None
+    session = _married(session)
+    assert page_answers(session)["vehicle_choice"] == [f"asset-{cars[0].pk}", "spouse-1"]
+    assert read_inputs(session).vehicle_choice == (f"asset-{cars[0].pk}", "spouse-1")
+
+
+def test_a_spouse_loan_secured_by_other_property_is_not_on_the_home(session):
+    stored = {
+        "spouse_loans_answer": "yes",
+        "spouse_loans": [_spouse_loan(secured_by="other", property="Demo Boat")],
+    }
+    got = read_inputs(_married(_store(session, stored)))
+    (loan,) = got.secured_debts
+    assert (loan.on_home, loan.secured_by, loan.property) == (False, None, "Demo Boat")
+    assert debt_lines(got)[loan.ref] == "33d"
+
+
+def test_a_spouse_vehicle_with_its_lease_unanswered_reads_leased_none(session):
+    stored = {
+        "spouse_vehicles_answer": "yes",
+        "spouse_vehicles": [{**SPOUSE_CAR, "leased": None}],
+    }
+    got = read_inputs(_married(_store(session, stored)))
+    assert got.vehicles[0].leased is None
+
+
+def test_payments_left_reads_60_or_more_as_60_and_a_count_as_its_number(session):
+    home = linked_row(session, "1", "yes", "Demo Home")
+    more = linked_loan(session, home, "100", creditor_name="A Bank")
+    few = linked_loan(session, home, "100", creditor_name="B Bank")
+    none = linked_loan(session, home, "100", creditor_name="C Bank")
+    SecuredDebtAnswers.objects.create(debt=more, payments_left="60_or_more")
+    SecuredDebtAnswers.objects.create(debt=few, payments_left="0")
+    session = IntakeSession.objects.get(pk=session.pk)
+    got = {d.ref: d.payments_left for d in read_inputs(session).secured_debts}
+    assert got == {f"debt-{more.pk}": 60, f"debt-{few.pk}": 0, f"debt-{none.pk}": None}
+
+
+def test_a_joint_loan_on_the_spouses_car_counts(session):
+    joint = complete_debt(session, creditor_name="Demo Joint Bank", amount_owed=Decimal("5000.00"))
+    stored = {
+        "spouse_vehicles_answer": "yes",
+        "spouse_vehicles": [SPOUSE_CAR],
+        "spouse_loans_answer": "yes",
+        "spouse_loans": [_spouse_loan(on_amounts_owed="yes", debt=joint.pk, secured_by="spouse-1")],
+    }
+    session = _married(_store(session, stored))
+    got = read_inputs(session)
+    (loan,) = got.secured_debts
+    assert (loan.creditor, loan.secured_by, loan.property, loan.placed) == (
+        "Demo Joint Bank",
+        "spouse-1",
+        "Demo Spouse Car",
+        True,
+    )
+    assert debt_lines(got)[loan.ref] == "13b"
+    assert got.line_41a == Decimal("5000.00")
+    joint.is_secured = True
+    joint.save()
+    again = read_inputs(IntakeSession.objects.get(pk=session.pk))
+    assert [d.placed for d in again.secured_debts if d.ref == "spouse-1"] == [False]
+
+
+def test_every_stored_answer_reaches_its_own_line_so_no_key_is_swapped_or_dropped(session):
+    # A line read from another line's key, or left unread, moves line 39d without a gap to clear.
+    car = linked_row(session, "3", None, "Demo Car")
+    filer_loan = linked_loan(session, car, "300", creditor_name="Demo Car Bank")
+    SecuredDebtAnswers.objects.create(
+        debt=filer_loan,
+        payments_left="7",
+        payment_changes="pc-filer",
+        total_60_months=Decimal("11.11"),
+        taxes_or_insurance="tx-filer",
+        necessary_for_support="nf-filer",
+        cure=Decimal("12.12"),
+    )
+    stored = {
+        "line_3_answer": "a3",
+        "spouse_vehicles_answer": "yes",
+        "spouse_vehicles": [SPOUSE_CAR],
+        "spouse_loans_answer": "yes",
+        "spouse_loans": [
+            _spouse_loan(
+                payments_left="9",
+                payment_changes="pc-spouse",
+                total_60_months="21.21",
+                taxes_or_insurance="tx-spouse",
+                necessary_for_support="nf-spouse",
+                cure="22.22",
+            )
+        ],
+        "line_34_answer": "a34",
+        "line_36_answer": "a36",
+        "line_36_payment": "36.36",
+        "line_43_answer": "a43",
+        "line_16": "16.16",
+        "line_17": "17.17",
+        "line_18": "18.18",
+        "line_19": "19.19",
+        "line_20": "20.20",
+        "line_21": "21.21",
+        "line_23": "23.23",
+        "line_25_answer": "a25",
+        "line_25_health": "25.01",
+        "line_25_disability": "25.02",
+        "line_25_hsa": "25.03",
+        "line_25_spends": "s25",
+        "line_25_actual": "25.05",
+    }
+    for n in (15, 22, 26, 27, 28, 29, 30, 31):
+        stored[f"line_{n}_answer"] = f"a{n}"
+        stored[f"line_{n}_amount"] = f"{n}.{n}"
+    got = read_inputs(_married(_store(session, stored)))
+    assert got.line_3_answer == "a3"
+    assert (got.line_34_answer, got.line_36_answer, got.line_43_answer) == ("a34", "a36", "a43")
+    assert got.line_36_payment == Decimal("36.36")
+    for n in (16, 17, 18, 19, 20, 21, 23):
+        assert getattr(got, f"line_{n}") == Decimal(f"{n}.{n}")
+    assert got.line_25 == HealthInsurance(
+        "a25",
+        health=Decimal("25.01"),
+        disability=Decimal("25.02"),
+        hsa=Decimal("25.03"),
+        actually_spends="s25",
+        actual=Decimal("25.05"),
+    )
+    for n in (15, 22, 26, 27, 28, 29, 30, 31):
+        assert getattr(got, f"line_{n}") == OptIn(f"a{n}", Decimal(f"{n}.{n}"))
+    filer, spouse = got.secured_debts
+    assert (
+        filer.payments_left,
+        filer.payment_changes,
+        filer.total_60_months,
+        filer.taxes_or_insurance,
+        filer.necessary_for_support,
+        filer.cure,
+    ) == (7, "pc-filer", Decimal("11.11"), "tx-filer", "nf-filer", Decimal("12.12"))
+    assert (
+        spouse.payments_left,
+        spouse.payment_changes,
+        spouse.total_60_months,
+        spouse.taxes_or_insurance,
+        spouse.necessary_for_support,
+        spouse.cure,
+    ) == (9, "pc-spouse", Decimal("21.21"), "tx-spouse", "nf-spouse", Decimal("22.22"))
+
+
+def test_a_reference_to_a_row_that_has_gone_reads_as_unanswered(session):
+    car = linked_row(session, "3", None, "Demo Car")
+    other = linked_row(session, "3", None, "Demo Other Car")
+    joint = complete_debt(session, creditor_name="Demo Joint Bank")
+    stored = {
+        "spouse_vehicles_answer": "yes",
+        "spouse_vehicles": [SPOUSE_CAR],
+        "spouse_loans_answer": "yes",
+        "spouse_loans": [
+            _spouse_loan(on_amounts_owed="yes", debt=joint.pk, secured_by="spouse-1"),
+            _spouse_loan(ref="spouse-2", secured_by=f"asset-{car.pk}"),
+        ],
+        "vehicle_claims": {f"asset-{car.pk}": "yes", f"asset-{other.pk}": "yes"},
+        "vehicle_choice": [f"asset-{car.pk}", f"asset-{other.pk}"],
+    }
+    session = _married(_store(session, stored))
+    before = read_inputs(session)
+    assert before.vehicle_choice == (f"asset-{car.pk}", f"asset-{other.pk}")
+    assert [d.placed for d in before.secured_debts] == [True, True]
+    car.delete()
+    after = read_inputs(IntakeSession.objects.get(pk=session.pk))
+    assert after.vehicle_choice is None
+    assert [v.ref for v in after.vehicles] == [f"asset-{other.pk}", "spouse-1"]
+    assert [d.placed for d in after.secured_debts] == [True, False]
+    joint.is_secured = True
+    joint.save()
+    last_session = IntakeSession.objects.get(pk=session.pk)
+    last = read_inputs(last_session)
+    assert [d.placed for d in last.secured_debts if d.ref == "spouse-1"] == [False]
+    # what the page is given reads the debt as unanswered too, so a save sends back a null
+    assert page_answers(last_session)["spouse_loans"][0]["debt"] is None
+
+
 @pytest.mark.django_db
 def test_priyas_122a2_matches_the_hand_worked_figures():
     call_command("loaddata", "ilnd_2025_data", verbosity=0)
@@ -360,24 +729,18 @@ def test_priyas_122a2_matches_the_hand_worked_figures():
     (kestrel,) = inputs.secured_debts
     assert (
         car.name,
-        car.financed,
+        car.ref == kestrel.secured_by,
         kestrel.creditor,
-        kestrel.asset_id,
+        kestrel.secured_by,
         kestrel.monthly_payment,
     ) == (
         "Honda CR-V EX 2021",
         True,
         "Kestrel Auto Finance",
-        car.asset_id,
+        car.ref,
         Decimal("450.00"),
     )
-    answered = replace(
-        inputs,
-        vehicles=(replace(car, claimed=True),),
-        secured_debts=(replace(kestrel, payments_left=37, payment_changes="no"),),
-        **PRIYAS_ANSWERS,
-    )
-    lines = work_out(answered, read_tables()[0])
+    lines = work_out(inputs, read_tables()[0])
     assert {k: lines.lines[k] for k in ("24", "32", "37", "38", "39c", "39d", "40")} == {
         "24": Decimal("10087.50"),
         "32": Decimal("850.00"),
@@ -388,3 +751,24 @@ def test_priyas_122a2_matches_the_hand_worked_figures():
         "40": "2",
     }
     assert lines.outcome == PRESUMPTION
+
+
+def test_a_spouse_loan_naming_a_spouse_vehicle_under_no_is_named_by_a_gap(session):
+    """A spouse vehicle ref is live only while its question is Yes, so the loan that names it
+    loses its property (read_inputs, end to end) and the page asks what secures it."""
+    sentence = "Say what secures your spouse's loan from Demo Spouse Bank."
+
+    def gaps_with(vehicles_answer):
+        stored = {
+            "spouse_vehicles_answer": vehicles_answer,
+            "spouse_vehicles": [SPOUSE_CAR],
+            "spouse_loans_answer": "yes",
+            "spouse_loans": [_spouse_loan(secured_by="spouse-1")],
+        }
+        married = _married(_store(session, stored))
+        inputs = read_inputs(married)
+        return means_test_gaps(inputs, TABLES, page_answers(married))
+
+    assert sentence in gaps_with("no")
+    MeansTestAnswers.objects.filter(session=session).delete()
+    assert sentence not in gaps_with("yes")

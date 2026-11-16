@@ -120,6 +120,10 @@ function renderPage() {
       <IntakeProvider>
         <Routes>
           <Route path="/exemptions" element={<ExemptionsPage />} />
+          <Route
+            path="/means-test"
+            element={<div>Form 122A-2: Chapter 7 Means Test Calculation</div>}
+          />
           <Route path="/sofa" element={<div>Statement of Financial Affairs</div>} />
         </Routes>
       </IntakeProvider>
@@ -207,7 +211,7 @@ describe('ExemptionsPage', () => {
       screen.queryByRole('group', { name: (n) => n.startsWith(EXEMPTIONS_LINE_3_1_QUESTION) })
     ).not.toBeInTheDocument();
     await pressContinue();
-    await screen.findByText('Statement of Financial Affairs');
+    await screen.findByText('Form 122A-2: Chapter 7 Means Test Calculation');
     expect(sent[0].line_3_1).toBeNull();
   });
 
@@ -243,7 +247,7 @@ describe('ExemptionsPage', () => {
     expect(screen.getByRole('status')).toHaveTextContent(EXEMPTION_GAP_LINE_1);
   });
 
-  it('saves the answers and goes to the SOFA step', async () => {
+  it('saves the answers and continues to the Form 122A-2 page', async () => {
     const sent = serve(record());
     renderPage();
     await ready();
@@ -253,7 +257,7 @@ describe('ExemptionsPage', () => {
     await userEvent.click(screen.getByRole('button', { name: EXEMPTIONS_NOT_CLAIMING_BUTTON }));
     await userEvent.click(radio(EXEMPTIONS_LINE_3_QUESTION, 'No'));
     await pressContinue();
-    await screen.findByText('Statement of Financial Affairs');
+    await screen.findByText('Form 122A-2: Chapter 7 Means Test Calculation');
     expect(sent).toEqual([
       { line_1: 'state_and_federal', line_3: 'no', line_3_1: null, no_claims: true, claims: [] },
     ]);
@@ -268,6 +272,9 @@ describe('ExemptionsPage', () => {
     await userEvent.click(radio(EXEMPTIONS_LINE_3_QUESTION, 'No'));
     await pressContinue();
     expect(await screen.findByRole('alert')).toHaveTextContent(EXEMPTIONS_SAVE_FAILED);
+    expect(
+      screen.queryByText('Form 122A-2: Chapter 7 Means Test Calculation')
+    ).not.toBeInTheDocument();
     expect(screen.queryByText('Statement of Financial Affairs')).not.toBeInTheDocument();
   });
 
@@ -290,7 +297,7 @@ describe('ExemptionsPage', () => {
       expect(control).toBeDisabled();
     }
     release();
-    await screen.findByText('Statement of Financial Affairs');
+    await screen.findByText('Form 122A-2: Chapter 7 Means Test Calculation');
   });
 
   it('says so in place of the laws when no list of laws is in force', async () => {
@@ -511,7 +518,7 @@ describe('ExemptionsPage claims', () => {
     ).not.toBeInTheDocument();
     expect(screen.getByLabelText(EXEMPTIONS_PROPERTY_LABEL)).toHaveValue('11');
     await pressContinue();
-    await screen.findByText('Statement of Financial Affairs');
+    await screen.findByText('Form 122A-2: Chapter 7 Means Test Calculation');
     expect((sent[0].claims as ExemptionClaim[]).map((claim) => claim.id)).toEqual([1]);
   });
 
@@ -595,7 +602,7 @@ describe('ExemptionsPage claims', () => {
     await ready();
     await answerLines();
     await pressContinue();
-    await screen.findByText('Statement of Financial Affairs');
+    await screen.findByText('Form 122A-2: Chapter 7 Means Test Calculation');
     expect(sent[0].claims).toEqual([
       {
         id: 7,
@@ -629,7 +636,7 @@ describe('ExemptionsPage claims', () => {
     expect(screen.getByRole('heading', { name: EXEMPTIONS_CLAIMS_HEADING })).toBeInTheDocument();
     await answerLines();
     await pressContinue();
-    await screen.findByText('Statement of Financial Affairs');
+    await screen.findByText('Form 122A-2: Chapter 7 Means Test Calculation');
     expect(sent[0].claims).toEqual([
       {
         id: 9,
@@ -656,7 +663,7 @@ describe('ExemptionsPage claims', () => {
     expect(totals.getByText('Amounts entered under this law: $0.00')).toBeInTheDocument();
     expect(totals.getByText(EXEMPTION_TOTAL_FAIR_MARKET.replace('{n}', '1'))).toBeInTheDocument();
     await pressContinue();
-    await screen.findByText('Statement of Financial Affairs');
+    await screen.findByText('Form 122A-2: Chapter 7 Means Test Calculation');
     expect((sent[0].claims as ExemptionClaim[])[0]).toMatchObject({
       amount_kind: 'fair_market_value',
       amount: null,
@@ -703,7 +710,7 @@ describe('ExemptionsPage claims', () => {
       expect(control).toBeDisabled();
     }
     release();
-    await screen.findByText('Statement of Financial Affairs');
+    await screen.findByText('Form 122A-2: Chapter 7 Means Test Calculation');
   });
 });
 
@@ -722,7 +729,7 @@ describe('ExemptionsPage new claims, from the controls to the request', () => {
     await userEvent.click(screen.getByRole('radio', { name: EXEMPTIONS_DOLLAR_AMOUNT }));
     await userEvent.type(claimBox('claim_0_amount'), '2500.5');
     await pressContinue();
-    await screen.findByText('Statement of Financial Affairs');
+    await screen.findByText('Form 122A-2: Chapter 7 Means Test Calculation');
     expect(sent[0].claims).toEqual([
       {
         id: null,
@@ -761,7 +768,7 @@ describe('ExemptionsPage new claims, from the controls to the request', () => {
     await userEvent.type(claimBox('claim_0_other_law'), '  Demo Law 5 ');
     await userEvent.click(screen.getByRole('radio', { name: EXEMPTIONS_FAIR_MARKET_WORDS }));
     await pressContinue();
-    await screen.findByText('Statement of Financial Affairs');
+    await screen.findByText('Form 122A-2: Chapter 7 Means Test Calculation');
     expect(sent[0].claims).toEqual([
       {
         id: null,
@@ -794,7 +801,7 @@ describe('ExemptionsPage new claims, from the controls to the request', () => {
     // jsdom keeps both as typed, as a browser's number box does
     expect([first.value, second.value]).toEqual(['100.000', '-0']);
     await pressContinue();
-    await screen.findByText('Statement of Financial Affairs');
+    await screen.findByText('Form 122A-2: Chapter 7 Means Test Calculation');
     const amounts = (sent[0].claims as ExemptionClaim[]).map((claim) => claim.amount);
     expect(amounts).toEqual(['100.00', '0.00']);
   });
@@ -812,7 +819,7 @@ describe('ExemptionsPage new claims, from the controls to the request', () => {
     await answerLines();
     await userEvent.selectOptions(claimBox('claim_0_asset'), '11');
     await pressContinue();
-    await screen.findByText('Statement of Financial Affairs');
+    await screen.findByText('Form 122A-2: Chapter 7 Means Test Calculation');
     expect((sent[0].claims as ExemptionClaim[])[0]).toMatchObject({
       asset: 11,
       short_description: null,
@@ -831,7 +838,7 @@ describe('ExemptionsPage new claims, from the controls to the request', () => {
     await userEvent.selectOptions(claimBox('claim_0_law'), C);
     await userEvent.click(screen.getByRole('radio', { name: EXEMPTIONS_FAIR_MARKET_WORDS }));
     await pressContinue();
-    await screen.findByText('Statement of Financial Affairs');
+    await screen.findByText('Form 122A-2: Chapter 7 Means Test Calculation');
     expect((sent[0].claims as ExemptionClaim[])[0]).toMatchObject({ law: C, other_law: '' });
   });
 });
@@ -868,6 +875,9 @@ describe('ExemptionsPage refusals of a text Schedule C cannot hold', () => {
     expect(await screen.findByText(EXEMPTIONS_DESCRIPTION_DOESNT_FIT)).toBeInTheDocument();
     expect(box).toHaveAccessibleDescription(EXEMPTIONS_DESCRIPTION_DOESNT_FIT);
     expect(screen.queryByText(EXEMPTIONS_SAVE_FAILED)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('Form 122A-2: Chapter 7 Means Test Calculation')
+    ).not.toBeInTheDocument();
     expect(screen.queryByText('Statement of Financial Affairs')).not.toBeInTheDocument();
 
     // Changing that box takes the sentence away

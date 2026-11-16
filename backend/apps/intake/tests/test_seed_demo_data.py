@@ -18,8 +18,11 @@ import pytest
 from django.conf import settings
 from django.core.management import call_command
 
+from apps.districts.dated_tables import fill_date
 from apps.districts.models import MedianIncome
 from apps.eligibility.cmi import is_above_median
+from apps.eligibility.means_inputs import read_inputs, read_tables
+from apps.eligibility.means_lines import work_out
 from apps.eligibility.models import MeansTest
 from apps.forms.registry import packet
 from apps.forms.services.exemption_items import exemption_items
@@ -218,9 +221,9 @@ def test_the_seed_gives_each_persona_their_stored_answers(
     assert is_above_median(means_test.calculated_cmi, means_test.median_income_threshold) is (
         persona == "priya"
     )
-    # Priya is above the median and her 122A-2 can't be worked out yet (3h1)
-    assert means_test.outcome == ("cannot_work_out" if persona == "priya" else "at_or_below_median")
-    assert means_test.passes_means_test is (None if persona == "priya" else True)
+    # Priya is above the median and her answers work the form out to a presumption (3h2)
+    assert means_test.outcome == ("presumption" if persona == "priya" else "at_or_below_median")
+    assert means_test.passes_means_test is (False if persona == "priya" else True)
     forms = packet(session)
     assert ("form_122a2" in forms) is (persona == "priya")
     assert ("form_103b" in forms) is (persona in {"maria", "sarah"})
@@ -385,6 +388,28 @@ def _seed(persona):
 
 def _debt(session, name):
     return next(d for d in session.debts.all() if d.creditor_name == name)
+
+
+@pytest.mark.django_db
+def test_priyas_seeded_answers_work_out_a_presumption():
+    session = _seed("priya")
+    assert IntakeSession.objects.get(pk=session.pk).means_test.outcome == "presumption"
+    tables, _ = read_tables(fill_date())
+    lines = work_out(read_inputs(session), tables)
+    assert (lines.lines["39c"], lines.lines["39d"], lines.outcome) == (
+        Decimal("2188.40"),
+        Decimal("131304.00"),
+        "presumption",
+    )
+    kestrel = _debt(session, "Kestrel Auto Finance")
+    assert (kestrel.means_answers.payments_left, kestrel.means_answers.payment_changes) == (
+        "37",
+        "no",
+    )
+    record = IntakeSession.objects.get(pk=session.pk).means_test_answers
+    assert record.answered_on() == fill_date()
+    answers = record.get_answers()
+    assert (answers["spouse_vehicles_answer"], answers["spouse_loans_answer"]) == ("no", "no")
 
 
 @pytest.mark.django_db
@@ -603,7 +628,7 @@ def test_every_seeded_persona_passes_schedule_cs_gate(persona):
 
 @pytest.mark.django_db
 @pytest.mark.parametrize("persona", list(PERSONAS))
-def test_the_seed_reports_only_priyas_122a1_and_122a2_as_skipped_because_the_hold_refuses_them(
+def test_the_seed_reports_only_priyas_122a1_and_122a2_as_skipped_because_the_gate_refuses_them(
     persona,
 ):
     call_command("loaddata", "ilnd_2025_data", verbosity=0)

@@ -16,14 +16,16 @@ import re
 from collections.abc import Callable
 from dataclasses import dataclass
 
+from apps.districts.dated_tables import fill_date
 from apps.districts.exemptions import exemption_catalog_in_force
-from apps.districts.means_standards import means_standards_in_force, section_104_in_force
 from apps.eligibility.cmi import is_above_median
+from apps.eligibility.means_inputs import page_answers, read_inputs, read_tables
 from apps.forms.schema import load_schema
 from apps.forms.services.exemption_items import exemption_items
 from apps.forms.services.fill_resolver import resolve, resolve_parts
 from apps.forms.services.pdf_filler import PDFFormFiller
 from apps.intake.exemptions import exemption_gaps
+from apps.intake.means_test import means_test_gaps
 from apps.intake.models import IntakeSession
 
 _SSN = re.compile(r"\d{3}-\d{2}-\d{4}|\d{9}")
@@ -189,21 +191,23 @@ def _needs_means_test(session: IntakeSession) -> None:
 
 
 # DRAFT: counsel C-24
-FORM_122A2_NOT_ASKED = (
-    "DigniFi can't prepare Form 122A-2 yet, because it doesn't ask all of that form's "
-    "questions yet. Form 122A-1 waits for it. File the two forms together."
+FORM_122A2_CANT_PRINT_YET = (
+    "You've answered the questions for Form 122A-2, but DigniFi can't print that form yet. "
+    "Form 122A-1 waits for it. File the two forms together."
 )
 
 
 def _needs_the_122a2_questions(session: IntakeSession) -> None:
-    """The hold (3h1): until 3h2 asks every question 122A-2 has, it refuses for every filer.
+    """Form 122A-2's questions: a missing table first, then the page's first gap.
 
-    A missing table is refused first, in its own sentence. The refusal links nowhere: nothing
-    the filer can do on any page lifts it.
+    With no gap left, the last step stands in for 3h3's missing-line step: DigniFi can't print
+    the form yet, so it refuses for every filer. That refusal links nowhere.
     """
-    means_standards_in_force()
-    section_104_in_force()
-    raise PreconditionMissing(FORM_122A2_NOT_ASKED)
+    tables, _ = read_tables(fill_date())
+    gaps = means_test_gaps(read_inputs(session), tables, page_answers(session))
+    if gaps:
+        raise PreconditionMissing(gaps[0], page="/means-test")
+    raise PreconditionMissing(FORM_122A2_CANT_PRINT_YET)
 
 
 def _needs_means_test_and_form_122a2(session: IntakeSession) -> None:

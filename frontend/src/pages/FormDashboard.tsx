@@ -26,7 +26,11 @@ import {
   MEANS_FILED_BEFORE_122A1,
   MEANS_FILED_BEFORE_122A2,
   MEANS_FILED_MISMATCH,
+  MEANS_LINE_43_LINK,
+  MEANS_OUTCOME_ANSWER_PAGE,
+  MEANS_PAGE_PHRASE,
   MEANS_PAIR_NOTICE,
+  MEANS_STALE_ANSWERS,
   MEANS_TEST_PREVIEW_TITLE,
   TABLE_NOTICE_MEDIAN,
   TABLE_NOTICE_NEW_FIGURES,
@@ -49,6 +53,7 @@ import type {
 import { FORM_TYPE_METADATA } from '../types/api';
 import { trackEvent } from '../utils/analytics';
 import { formatIsoDate } from '../utils/formatIsoDate';
+import { formatMonthYear } from '../utils/formatMonthYear';
 import { meansOutcomeSentences } from '../utils/meansOutcome';
 import { windowNotice } from '../utils/windowNotice';
 
@@ -81,6 +86,7 @@ const PAGE_LINK_LABELS: Record<string, string> = {
   '/sofa': 'Go to Statement of Financial Affairs',
   '/documents': 'Go to Upload your documents',
   '/exemptions': 'Go to The property you claim as exempt',
+  '/means-test': 'Go to Form 122A-2: Chapter 7 Means Test Calculation',
 };
 
 /**
@@ -153,6 +159,9 @@ export function FormDashboard() {
   const [packet, setPacket] = useState<FormType[]>([]);
   const [tables, setTables] = useState<DatedTableUsed[]>([]);
   const [incomePeriod, setIncomePeriod] = useState<Packet['income_period']>(null);
+  // When the secured-debt answers were last changed, as the packet reply holds it
+  const [meansDebtsAnswered, setMeansDebtsAnswered] =
+    useState<Packet['means_debts_answered']>(null);
   // Form 101 line 8, as the packet reply holds it; undefined while no reply has come (a refusal carries none)
   const [paymentChoice, setPaymentChoice] = useState<PaymentChoice | null | undefined>(undefined);
   // The means test's result, as the packet reply holds it (null before it is worked out, or for
@@ -186,6 +195,7 @@ export function FormDashboard() {
       setPacket(loadedPacket.form_types);
       setTables(loadedPacket.tables);
       setIncomePeriod(loadedPacket.income_period);
+      setMeansDebtsAnswered(loadedPacket.means_debts_answered);
       setPaymentChoice(loadedPacket.payment_choice);
       setOutcome(loadedPacket.outcome);
       setFamilySize(loadedPacket.family_size);
@@ -193,6 +203,7 @@ export function FormDashboard() {
       setError(null);
     } catch (err) {
       setIncomePeriod(null);
+      setMeansDebtsAnswered(null);
       setPaymentChoice(undefined);
       setOutcome(null);
       setFamilySize(null);
@@ -260,6 +271,7 @@ export function FormDashboard() {
       setPacket(reloaded.form_types);
       setTables(reloaded.tables);
       setIncomePeriod(reloaded.income_period);
+      setMeansDebtsAnswered(reloaded.means_debts_answered);
       setPaymentChoice(reloaded.payment_choice);
       setOutcome(reloaded.outcome);
       setFamilySize(reloaded.family_size);
@@ -267,6 +279,7 @@ export function FormDashboard() {
       setError(null);
     } catch (err) {
       setIncomePeriod(null);
+      setMeansDebtsAnswered(null);
       setPaymentChoice(undefined);
       setOutcome(null);
       setFamilySize(null);
@@ -346,8 +359,20 @@ export function FormDashboard() {
   const pairErrors = generationErrors.filter(isPair);
   const otherErrorLinks = otherErrors.map((e) => linkTo(e));
   const pairErrorLinks = pairErrors.map((e) => linkTo(e));
-  const outcomeSentences = meansOutcomeSentences(outcome, familySize, tablesGap);
+  const outcomeSentences = meansOutcomeSentences(outcome, familySize, tablesGap, 'dashboard');
   const hasMeansPair = packet.includes('form_122a2');
+  // The answers about the filer's secured debts are from an earlier month than today
+  const staleAnswers =
+    meansDebtsAnswered !== null &&
+    meansDebtsAnswered.answered_on.slice(0, 7) !== meansDebtsAnswered.now.slice(0, 7);
+  const meansLink = fixLink({ page: '/means-test' });
+  // Form 122A-2's questions are on the page; Form 122A-1's only while that form is in the packet
+  const answerPathOf = (formType: FormType): string | undefined =>
+    formType === 'form_122a2' || (formType === 'form_122a1' && hasMeansPair)
+      ? '/means-test'
+      : undefined;
+  // The sentence that points to the page, with the page's name as the link
+  const [answerBefore, answerAfter] = MEANS_OUTCOME_ANSWER_PAGE.split(MEANS_PAGE_PHRASE);
   // A card's notice is information about the form, never a refusal: a form filed before 3h
   // first, then a filed Form 122A-1 that doesn't say its result is worked out on Form 122A-2
   // (its box 1 stored) while Form 122A-2 now applies
@@ -515,18 +540,32 @@ export function FormDashboard() {
       })}
 
       {/* The result is shown only from the outcome (a row saved before 3h1 has none); the pair
-          notice shows whenever Form 122A-2 is in the packet */}
+          notice shows whenever Form 122A-2 is in the packet, first, so the closing sentence is
+          the block's last (H21) */}
       {hasMeansPair && (
         <section
           className="form-dashboard-notice"
           role="status"
           aria-label={MEANS_TEST_PREVIEW_TITLE}
         >
-          {outcomeSentences.map((sentence) => (
-            <p key={sentence}>{sentence}</p>
-          ))}
-          {outcomeSentences.length > 0 && <p>{UPL_MEANS_TEST_DISCLAIMER}</p>}
           <p>{MEANS_PAIR_NOTICE}</p>
+          {outcomeSentences.map((sentence) =>
+            sentence === MEANS_OUTCOME_ANSWER_PAGE ? (
+              <p key={sentence}>
+                {answerBefore}
+                <Link to="/means-test">{MEANS_PAGE_PHRASE}</Link>
+                {answerAfter}
+              </p>
+            ) : (
+              <p key={sentence}>{sentence}</p>
+            )
+          )}
+          {outcome === 'presumption' && outcomeSentences.length > 0 && (
+            <p>
+              <Link to="/means-test#line-43">{MEANS_LINE_43_LINK}</Link>
+            </p>
+          )}
+          {outcomeSentences.length > 0 && <p>{UPL_MEANS_TEST_DISCLAIMER}</p>}
         </section>
       )}
 
@@ -535,6 +574,20 @@ export function FormDashboard() {
           <p>{incomeWindowNotice}</p>
           <Link to={incomeLink.to} className="button button--primary">
             {incomeLink.label}
+          </Link>
+        </div>
+      )}
+
+      {staleAnswers && meansDebtsAnswered && meansLink && (
+        <div className="form-dashboard-notice">
+          <p>
+            {MEANS_STALE_ANSWERS.replace(
+              '{month}',
+              formatMonthYear(meansDebtsAnswered.answered_on)
+            )}
+          </p>
+          <Link to={meansLink.to} className="button button--primary">
+            {meansLink.label}
           </Link>
         </div>
       )}
@@ -573,6 +626,7 @@ export function FormDashboard() {
               formType={formType}
               generatedForm={formsByType.get(formType)}
               notice={noticeOf(formsByType.get(formType))}
+              answerPath={answerPathOf(formType)}
               refusal={cardRefusals.get(formType)}
               onGenerate={handleGenerate}
               onDownload={handleDownload}

@@ -1,8 +1,10 @@
 """Intake models for collecting bankruptcy petition data."""
 
 import json
+from collections.abc import Mapping
+from datetime import date
 from decimal import Decimal
-from typing import ClassVar
+from typing import Any, ClassVar
 
 from django.conf import settings
 from django.db import models
@@ -17,6 +19,8 @@ from .claims import PRIORITY_ANSWERS
 from .fields import EncryptedDecimalField
 from .household import ANSWER_KEYS, SPOUSE_KEY
 from .income import ENTRY_AMOUNT_KEYS, ENTRY_KEYS, floored_net, has_entry_figures
+from .means_test import ANSWER_KEYS as MEANS_ANSWER_KEYS
+from .means_test import PER_DEBT_KEYS
 
 YES_NO = ("yes", "no")
 HOME_PAYMENT_LINES = ("first", "additional")
@@ -1165,6 +1169,88 @@ class ExemptionClaim(models.Model):
 
     def __str__(self) -> str:
         return f"Exemption claim {self.pk} (Session: {self.session_id})"
+
+
+class MeansTestAnswers(models.Model):
+    """
+    The filer's answers to the Form 122A-2 page, kept as one encrypted JSON document a
+    session (a key from `means_test.ANSWER_KEYS` to its answer). Not intake data: a save
+    never reopens a completed intake. A key absent or null reads as unanswered. The two
+    counters give each spouse row an id that is never reused.
+    """
+
+    session = models.OneToOneField(
+        IntakeSession, on_delete=models.CASCADE, related_name="means_test_answers"
+    )
+    answers = EncryptedTextField(default="{}")
+    debts_answered_on = EncryptedCharField(max_length=10, null=True, blank=True)
+    next_spouse_vehicle_id = models.PositiveIntegerField(default=1)
+    next_spouse_loan_id = models.PositiveIntegerField(default=1)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "means_test_answers"
+
+    def __str__(self) -> str:
+        return f"Means test answers (Session: {self.session_id})"
+
+    def get_answers(self) -> dict:
+        return json.loads(self.answers)
+
+    def merge(self, sent: Mapping[str, Any]) -> None:
+        """Each key sent replaces its stored value whole. Doesn't save.
+
+        Every key is checked before any is changed; a key the page doesn't ask raises
+        KeyError without naming it.
+        """
+        if any(key not in MEANS_ANSWER_KEYS for key in sent):
+            raise KeyError("The Form 122A-2 page doesn't ask that.")
+        stored = self.get_answers()
+        stored.update(sent)
+        self.answers = json.dumps(stored)
+
+    def new_spouse_ref(self, list_key: str) -> str:
+        """Return the next spouse row id for a list and advance its counter. Doesn't save."""
+        if list_key == "spouse_vehicles":
+            number = self.next_spouse_vehicle_id
+            self.next_spouse_vehicle_id += 1
+        elif list_key == "spouse_loans":
+            number = self.next_spouse_loan_id
+            self.next_spouse_loan_id += 1
+        else:
+            raise KeyError("The Form 122A-2 page doesn't ask that.")
+        return f"spouse-{number}"
+
+    def answered_on(self) -> date | None:
+        if not self.debts_answered_on:
+            return None
+        return date.fromisoformat(self.debts_answered_on)
+
+
+class SecuredDebtAnswers(models.Model):
+    """
+    One secured debt's Form 122A-2 answers (lines 33 and 34). Every answer is encrypted;
+    null means unanswered. The answers go with the debt.
+    """
+
+    debt = models.OneToOneField(DebtInfo, on_delete=models.CASCADE, related_name="means_answers")
+    payments_left = EncryptedCharField(max_length=10, null=True, blank=True)
+    payment_changes = EncryptedCharField(max_length=3, null=True, blank=True)
+    total_60_months = EncryptedDecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    taxes_or_insurance = EncryptedCharField(max_length=3, null=True, blank=True)
+    necessary_for_support = EncryptedCharField(max_length=3, null=True, blank=True)
+    cure = EncryptedDecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    ANSWER_FIELDS: ClassVar[tuple[str, ...]] = PER_DEBT_KEYS
+
+    class Meta:
+        db_table = "secured_debt_answers"
+
+    def __str__(self) -> str:
+        return f"Secured debt answers (Debt: {self.debt_id})"
 
 
 class SOFAReport(models.Model):
