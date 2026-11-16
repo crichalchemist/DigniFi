@@ -540,13 +540,15 @@ export function FormDashboard() {
       })}
 
       {/* The result is shown only from the outcome (a row saved before 3h1 has none); the pair
-          notice shows whenever Form 122A-2 is in the packet */}
+          notice shows whenever Form 122A-2 is in the packet, first, so the closing sentence is
+          the block's last (H21) */}
       {hasMeansPair && (
         <section
           className="form-dashboard-notice"
           role="status"
           aria-label={MEANS_TEST_PREVIEW_TITLE}
         >
+          <p>{MEANS_PAIR_NOTICE}</p>
           {outcomeSentences.map((sentence) =>
             sentence === MEANS_OUTCOME_ANSWER_PAGE ? (
               <p key={sentence}>
@@ -564,7 +566,6 @@ export function FormDashboard() {
             </p>
           )}
           {outcomeSentences.length > 0 && <p>{UPL_MEANS_TEST_DISCLAIMER}</p>}
-          <p>{MEANS_PAIR_NOTICE}</p>
         </section>
       )}
 

@@ -1479,10 +1479,13 @@ describe('FormDashboard', () => {
       expect(within(region).getByText(PRESUMPTION_INSTRUCTIONS)).toBeInTheDocument();
       expect(within(region).getAllByText(CLOSING)).toHaveLength(1);
       expect(within(region).getByText(MEANS_PAIR_NOTICE)).toBeInTheDocument();
-      // The closing sentence follows the result's sentences and comes before the pair notice
+      // The pair notice opens the block and the closing sentence ends it (H21): nothing follows it
+      const paragraphs = [...region.querySelectorAll('p')].map((p) => p.textContent);
+      expect(paragraphs[0]).toBe(MEANS_PAIR_NOTICE);
+      expect(paragraphs[1]).toBe(MEANS_OUTCOME_PRESUMPTION);
+      expect(paragraphs.at(-1)).toBe(CLOSING);
       const text = region.textContent!;
       expect(text.indexOf(CLOSING)).toBeGreaterThan(text.indexOf(PRESUMPTION_INSTRUCTIONS));
-      expect(text.indexOf(MEANS_PAIR_NOTICE)).toBeGreaterThan(text.indexOf(CLOSING));
     });
 
     it('says the household size in the result for a result that can’t be worked out yet', async () => {
@@ -1510,10 +1513,12 @@ describe('FormDashboard', () => {
       // The link is a part of the sentence, which reads whole
       expect(link.parentElement).toHaveTextContent(MEANS_OUTCOME_ANSWER_PAGE);
       expect(link.parentElement!.textContent).toBe(MEANS_OUTCOME_ANSWER_PAGE);
-      // The closing sentence follows the outcome's sentences; the pair notice comes after it
+      // The pair notice comes before the outcome's sentences, and the closing sentence ends the block
+      const paragraphs = [...region.querySelectorAll('p')].map((p) => p.textContent);
+      expect(paragraphs[0]).toBe(MEANS_PAIR_NOTICE);
+      expect(paragraphs.at(-1)).toBe(CLOSING);
       const text = region.textContent!;
       expect(text.indexOf(CLOSING)).toBeGreaterThan(text.indexOf(MEANS_OUTCOME_ANSWER_PAGE));
-      expect(text.indexOf(MEANS_PAIR_NOTICE)).toBeGreaterThan(text.indexOf(CLOSING));
     });
 
     it('under a presumption, links to line 43 before the closing sentence', async () => {
