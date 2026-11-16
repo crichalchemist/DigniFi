@@ -111,7 +111,7 @@ Each item goes on the Schedule A/B line shown. You are the only one with an inte
 
 ## What to Watch For
 
-- On the Form 122A-2 page, the result reads "There is a presumption of abuse." with the link to line 43, and your first Continue stays on the page with "Your result has changed."
+- On the Form 122A-2 page, the result reads "The form's arithmetic gives: There is a presumption of abuse." with the link to line 43, and your first Continue stays on the page with "Your result has changed. It is at the top of the page. Press Continue again when you are ready."
 
 - When the app says you're NOT eligible for Chapter 7, is the message respectful?
 - Does it explain WHY (above-median income) without making you feel judged?
