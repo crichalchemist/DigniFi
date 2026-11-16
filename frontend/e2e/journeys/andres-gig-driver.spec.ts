@@ -18,6 +18,12 @@ import { ExemptionsPage } from '../pages/exemptions.page';
 import { DashboardPage } from '../pages/dashboard.page';
 import { SOFAPage } from '../pages/sofa.page';
 
+// FORM_122A2_TITLE in src/constants/formText.ts, as the means test page object reads it
+const MEANS_TEST_TITLE = 'Form 122A-2: Chapter 7 Means Test Calculation';
+
+/** The flag the page's own watcher sets once the Form 122A-2 heading is drawn */
+type WatchedWindow = Window & { meansTitleSeen: boolean };
+
 test.describe('Andrés Kettleby — Gig Driver', () => {
   test('reaches his forms after choosing to pay in installments', async ({ page }) => {
     const landing = new LandingPage(page);
@@ -71,15 +77,29 @@ test.describe('Andrés Kettleby — Gig Driver', () => {
 
     // He pays in installments; the page says where to get Form 103A, then continues to the exemptions page
     await filingFee.answer(ANDRES.filing_fee.payment_choice);
-    // A smoke check only: Task 10's no-heading vitest is the real pin that a filer the form
-    // doesn't apply to never sees the page. Every main-frame URL is recorded from here on.
-    const visited: string[] = [];
-    page.on('framenavigated', (frame) => {
-      if (frame === page.mainFrame()) visited.push(frame.url());
-    });
+    // Below the median, he never sees the Form 122A-2 page. The page replaces itself with /sofa
+    // in the same document, which Playwright still reports as a navigation, so this watches what
+    // he would see: whether the page's heading is ever drawn between Continue and /sofa.
+    await exemptions.waitForLoad();
+    await page.evaluate((title) => {
+      const watched = window as unknown as WatchedWindow;
+      watched.meansTitleSeen = false;
+      const look = () => {
+        for (const heading of document.querySelectorAll('h1')) {
+          if (heading.textContent === title) watched.meansTitleSeen = true;
+        }
+      };
+      look();
+      new MutationObserver(look).observe(document.body, {
+        childList: true,
+        subtree: true,
+        characterData: true,
+      });
+    }, MEANS_TEST_TITLE);
     await exemptions.answer(ANDRES.exemptions);
     await sofa.waitForLoad();
-    expect(visited.filter((url) => /means-test/.test(url))).toEqual([]);
+    const seen = await page.evaluate(() => (window as unknown as WatchedWindow).meansTitleSeen);
+    expect(seen).toBe(false);
     await sofa.skipForNow();
 
     // He pays in installments, so no Form 103B; below median, so no Form 122A-2
