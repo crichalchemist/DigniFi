@@ -30,10 +30,12 @@ from apps.forms.field_index import export_state, index_path
 from apps.forms.registry import get_all_form_types
 from apps.forms.schema import load_schema
 from apps.forms.services.fill_resolver import _key, resolve_binding, row_fixes
+from apps.forms.services.means_cells import means_value
 from apps.forms.services.pdf_filler import PDFFormFiller, ValueTooLong
 from apps.forms.services.widgets import template_widgets
 from apps.forms.tests.oracle import case_param
 from apps.forms.tests.pdf_readback import read_drawn
+from apps.forms.tests.test_means_cells import FULL_LINES
 from apps.intake.asset_lines import PROPERTY_KINDS
 from apps.intake.models import AssetInfo, ExemptionClaim, IntakeSession
 from apps.intake.tests.builders import (
@@ -532,6 +534,29 @@ def test_every_exemptions_binding_reads_the_row_it_names(binding, exemptions_ses
     else:
         assert isinstance(result, str)
         assert result
+
+
+def _means_bindings():
+    schema = load_schema("form_122a2")
+    columns = (column.binding for group in schema.groups.values() for column in group.sheet.columns)
+    fields = (f.binding for f in schema.fields if (f.binding or "").startswith("means."))
+    return sorted({*fields, *columns})
+
+
+@pytest.mark.parametrize("binding", _means_bindings())
+def test_every_means_binding_reads_what_it_names(binding):
+    # A binding spelled wrong passes the startup check, which reads only its namespace, and
+    # would first fail at Generate (3h3 plan R17). Against a record with a value in every line
+    # and a row in every list, a scalar prints a non-empty string and a list cell one non-empty
+    # cell per row; the reader raises on any other spelling.
+    printed = means_value(binding, FULL_LINES)
+    if "[]" in binding:
+        group = binding.removeprefix("means.line_").partition("[]")[0]
+        assert len(printed) == len(FULL_LINES.rows[group])
+        assert all(cell for cell in printed)
+    else:
+        assert isinstance(printed, str)
+        assert printed
 
 
 def test_every_schedule_a_b_slot_binds_the_line_and_row_its_box_is_on():

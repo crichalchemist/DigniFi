@@ -45,6 +45,9 @@ import {
   MEANS_LINE_36_OTHER_RULES,
   MEANS_LINE_36_PRODUCT,
   MEANS_LINE_36_TOTALS,
+  MEANS_NOT_A_COUNTED_DEBT,
+  MEANS_NOT_A_LINE_11_VEHICLE,
+  MEANS_NOT_AN_OPEN_DEBT,
   MEANS_PAGE_AGES,
   MEANS_PAGE_INTRO,
   MEANS_PAGE_LOADING,
@@ -242,20 +245,30 @@ function readRefusal(
   return { fields, other };
 }
 
+// The server's three sentences for a reference to a row the intake no longer has (apps/intake/
+// means_page.py; test_means_test_copy.py pins each). DEBT_NAMED_TWICE and NOT_IN_THIS_SAVE are not
+// among them: the page reads nothing again for those.
+const GONE_ROW_SENTENCES = [
+  MEANS_NOT_A_COUNTED_DEBT,
+  MEANS_NOT_A_LINE_11_VEHICLE,
+  MEANS_NOT_AN_OPEN_DEBT,
+];
+
+function holdsAGoneRowSentence(value: unknown): boolean {
+  if (typeof value === 'string') return GONE_ROW_SENTENCES.includes(value);
+  if (Array.isArray(value)) return value.some(holdsAGoneRowSentence);
+  if (isRecord(value)) return Object.values(value).some(holdsAGoneRowSentence);
+  return false;
+}
+
 /**
  * Whether a 400 names a row the intake no longer has (a debt, a vehicle, or a debt or vehicle a
- * spouse loan names), as after an edit in another tab: the page then reads the intake again (F7)
+ * spouse loan names), as after an edit in another tab: the page then reads the intake again (F7).
+ * The body is read for the server's sentences wherever they sit, never for the shape of its keys.
  */
 function namesARowThatHasGone(caught: unknown): boolean {
   if (!(caught instanceof APIClientError) || caught.statusCode !== 400) return false;
-  const body: unknown = caught.body;
-  if (!isRecord(body)) return false;
-  if ('debts' in body || 'vehicle_claims' in body || 'vehicle_choice' in body) return true;
-  const loans = body.spouse_loans;
-  return (
-    isRecord(loans) &&
-    Object.values(loans).some((row) => isRecord(row) && ('debt' in row || 'secured_by' in row))
-  );
+  return holdsAGoneRowSentence(caught.body);
 }
 
 /**
@@ -440,6 +453,9 @@ export function MeansTestPage() {
         navigate('/sofa');
       }
     } catch (caught) {
+      // A box the 400 refuses keeps its sentence whether or not the page reads itself again too
+      const { fields, other } = readRefusal(caught, sent, page);
+      setFieldErrors(fields);
       if (namesARowThatHasGone(caught)) {
         // Another tab changed the intake: read it again, keep what still applies, and say so
         try {
@@ -455,8 +471,6 @@ export function MeansTestPage() {
         }
         return;
       }
-      const { fields, other } = readRefusal(caught, sent, page);
-      setFieldErrors(fields);
       if (other || Object.keys(fields).length === 0) setError(MEANS_PAGE_SAVE_FAILED);
     } finally {
       saving.current = false;
@@ -692,6 +706,7 @@ export function MeansTestPage() {
                       label={FORM_122A2_LINE_3_PURPOSE}
                       name={`means_line_3_${index}_purpose`}
                       value={row.purpose}
+                      maxLength={200}
                       error={fieldErrors[`line_3:${row._key}`]}
                       onChange={(event) => {
                         clearFieldError(`line_3:${row._key}`);

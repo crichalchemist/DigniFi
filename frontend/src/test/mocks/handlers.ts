@@ -327,6 +327,16 @@ export const handlers = [
     HttpResponse.json({ message: 'Marked as filed.' })
   ),
 
+  http.post(`${API}/forms/mark_pair_filed/`, () =>
+    HttpResponse.json({
+      forms: [
+        { ...mockGeneratedForm, form_type: 'form_122a1', status: 'filed' },
+        { ...mockGeneratedForm, form_type: 'form_122a2', status: 'filed' },
+      ],
+      message: 'Form 122A-1 and Form 122A-2 marked as filed with court',
+    })
+  ),
+
   // -- SOFA Report ---------------------------------------------------------
 
   http.get(`${API}/intake/sofa-report/:sessionId/`, () =>

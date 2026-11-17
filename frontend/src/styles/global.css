@@ -1689,6 +1689,29 @@ a {
   flex-wrap: wrap;
 }
 
+/* The in-card question before Form 122A-1 and Form 122A-2 are marked filed. `.button--sm` has no
+   minimum height, so its buttons get the 44px touch target here, as `.ab-choice` does. */
+.form-card-confirm {
+  display: flex;
+  flex: 1 1 100%;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.form-card-confirm p {
+  margin: 0;
+}
+
+.form-card-confirm-buttons {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.form-card-confirm .button {
+  min-height: 44px;
+}
+
 /* The live region for a refused Generate or Download is on the card from the start. Empty, it
    gives back the gap before it, so the card looks as it did. */
 .form-card-refusal:empty {

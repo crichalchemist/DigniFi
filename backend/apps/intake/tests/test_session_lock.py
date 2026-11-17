@@ -687,6 +687,14 @@ WRITES = {
         {"fields": {"creditor_name": "Lakeshore Medical Billing"}},
         200,
     ),
+    # Proves the lock, not the write: `ready` is in progress and below the median, so once the
+    # lock is held _prepare refuses with IntakeNotFinished; `waited` is what the entry is for.
+    "mark_pair_filed POST": lambda s, r: (
+        "post",
+        "/api/forms/mark_pair_filed/",
+        {"session_id": s.pk},
+        422,
+    ),
 }
 
 

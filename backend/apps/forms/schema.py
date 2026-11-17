@@ -274,7 +274,15 @@ _WIDGET_TYPES = {
     "checkbox": {"CheckBox", "RadioButton"},
     "radio": {"CheckBox", "RadioButton"},
 }
-_BINDING_NAMESPACES = ("answer:", "sofa.", "household.", "assets.", "claims.", "exemptions.")
+_BINDING_NAMESPACES = (
+    "answer:",
+    "sofa.",
+    "household.",
+    "assets.",
+    "claims.",
+    "exemptions.",
+    "means.",
+)
 
 
 def validate_schema(
@@ -662,7 +670,8 @@ def validate_schema(
                         (
                             "E007",
                             f"group {name!r}: statement column {column.label!r} binds "
-                            f"{column.binding!r}, not an income.statement[].<attr> list",
+                            f"{column.binding!r}, not an income.statement[].<attr> or "
+                            "means.line_43[].<attr> list",
                         )
                     )
         # A sheet labels each row with the line it continues, its number.
@@ -771,9 +780,13 @@ def _isnt_text_box(key: str, drawn) -> bool:
     return any(w.kind != "Text" for w in drawn.get(box_name, ()))
 
 
-_STATEMENT_BINDING = re.compile(r"income\.statement\[\]\.(?:owner|description|gross|expenses|net)")
+_STATEMENT_BINDING = re.compile(
+    r"income\.statement\[\]\.(?:owner|description|gross|expenses|net)"
+    r"|means\.line_43\[\]\.(?:explanation|amount)"
+)
 _LIST_BINDING = re.compile(
-    r"(?:sofa\.\w+|household\.dependents|income\.statement|assets\.line_\w+)\[\]\.\w+"
+    r"(?:sofa\.\w+|household\.dependents|income\.statement|assets\.line_\w+|means\.line_\w+)"
+    r"\[\]\.\w+"
 )
 
 
@@ -860,7 +873,8 @@ def _sheet_errors(name: str, group: GroupSpec, template: str) -> list[tuple[str,
                     "E007",
                     f"group {name!r}: sheet column {column.label!r} binds {column.binding!r}, "
                     "not a sofa.<collection>[].<attr>, household.dependents[].<attr>, "
-                    "income.statement[].<attr> or assets.line_<key>[].<attr> list",
+                    "income.statement[].<attr>, assets.line_<key>[].<attr> or "
+                    "means.line_<key>[].<attr> list",
                 )
             )
         width = inner_width(column.width)

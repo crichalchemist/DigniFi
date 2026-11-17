@@ -11,11 +11,14 @@ import {
   MEANS_FILED_BEFORE_122A1,
   MEANS_FILED_BEFORE_122A2,
   MEANS_FILED_MISMATCH,
-  MEANS_CANT_PRINT_YET,
+  MEANS_GAP_LINE_43,
+  MEANS_LINE_MISSING,
   MEANS_LINE_43_LINK,
   MEANS_OUTCOME_ANSWER_PAGE,
   MEANS_OUTCOME_PRESUMPTION,
   MEANS_PAGE_PHRASE,
+  MEANS_PAIR_MARK_ALONE,
+  MEANS_PAIR_MARK_BOTH,
   MEANS_PAIR_NOTICE,
   MEANS_STALE_ANSWERS,
   MEANS_TABLE_MISSING,
@@ -1840,9 +1843,9 @@ describe('FormDashboard', () => {
           HttpResponse.json({
             generated: [],
             errors: [
-              { form_type: 'form_122a1', error: MEANS_CANT_PRINT_YET },
+              { form_type: 'form_122a1', error: MEANS_LINE_MISSING },
               { form_type: 'form_121', error: LETTER, step: 'debtor_info' },
-              { form_type: 'form_122a2', error: MEANS_CANT_PRINT_YET },
+              { form_type: 'form_122a2', error: MEANS_LINE_MISSING },
             ],
             total_generated: 0,
             total_errors: 3,
@@ -1857,7 +1860,7 @@ describe('FormDashboard', () => {
       expect(alert).toHaveTextContent(LETTER);
       expect(alert).not.toHaveTextContent(/Form 122A/);
 
-      const pair = screen.getAllByText(MEANS_CANT_PRINT_YET, { exact: false });
+      const pair = screen.getAllByText(MEANS_LINE_MISSING, { exact: false });
       expect(pair).toHaveLength(2);
       const block = pair[0].closest('[role="status"]')!;
       expect(block).toBe(pair[1].closest('[role="status"]'));
@@ -1872,7 +1875,7 @@ describe('FormDashboard', () => {
         http.post('http://localhost:8000/api/forms/generate_all/', () =>
           HttpResponse.json({
             generated: [],
-            errors: [{ form_type: 'form_122a2', error: MEANS_CANT_PRINT_YET }],
+            errors: [{ form_type: 'form_122a2', error: MEANS_LINE_MISSING }],
             total_generated: 0,
             total_errors: 1,
           })
@@ -1881,7 +1884,7 @@ describe('FormDashboard', () => {
       renderFormDashboard();
       await generateAll();
 
-      await screen.findByText(MEANS_CANT_PRINT_YET, { exact: false });
+      await screen.findByText(MEANS_LINE_MISSING, { exact: false });
       expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     });
 
@@ -1893,7 +1896,7 @@ describe('FormDashboard', () => {
         http.post('http://localhost:8000/api/forms/generate_all/', () =>
           HttpResponse.json({
             generated: [],
-            errors: [{ form_type: 'form_122a2', error: MEANS_CANT_PRINT_YET }],
+            errors: [{ form_type: 'form_122a2', error: MEANS_LINE_MISSING }],
             total_generated: 0,
             total_errors: 1,
           })
@@ -1909,21 +1912,228 @@ describe('FormDashboard', () => {
 
       await generateAll();
 
-      const refusal = await screen.findByText(MEANS_CANT_PRINT_YET, { exact: false });
+      const refusal = await screen.findByText(MEANS_LINE_MISSING, { exact: false });
       // The same element, not a new one put in with the words already inside
       expect(refusal.closest('[role="status"]')).toBe(region);
+    });
+
+    describe('marking the pair filed together', () => {
+      const CARD_1 = 'Form 122A-1 - Means Test';
+      const CARD_2 = 'Form 122A-2 - Means Test Expenses';
+      const PAGE_LINK = 'Go to Form 122A-2: Chapter 7 Means Test Calculation';
+
+      async function pressAndConfirmBoth(pressedCard: string) {
+        const card = await screen.findByRole('article', { name: pressedCard });
+        await userEvent.click(within(card).getByRole('button', { name: 'Mark as Filed' }));
+        await userEvent.click(within(card).getByRole('button', { name: MEANS_PAIR_MARK_BOTH }));
+      }
+
+      // The body names the form whose own page or document is the gap (R10), which may be the
+      // partner of the one pressed; the sentence and its link belong on that card
+      it.each([
+        ['form_122a2', 'form_122a1', CARD_2, CARD_1],
+        ['form_122a1', 'form_122a2', CARD_1, CARD_2],
+      ])(
+        "the pair action's refusal shows on the card of the form it names (%s pressed, %s named)",
+        async (_pressed, named, pressedCard, namedCard) => {
+          packetWith({ outcome: 'cannot_work_out', family_size: 4 });
+          formsWith(storedForm('form_122a1', 7), storedForm('form_122a2', 8));
+          server.use(
+            http.post('http://localhost:8000/api/forms/mark_pair_filed/', () =>
+              HttpResponse.json(
+                { form_type: named, error: MEANS_GAP_LINE_43, page: '/means-test' },
+                { status: 422 }
+              )
+            )
+          );
+          renderFormDashboard();
+
+          await pressAndConfirmBoth(pressedCard);
+
+          const namedEl = screen.getByRole('article', { name: namedCard });
+          expect(await within(namedEl).findByText(MEANS_GAP_LINE_43)).toBeInTheDocument();
+          expect(within(namedEl).getByRole('link', { name: PAGE_LINK })).toHaveAttribute(
+            'href',
+            '/means-test'
+          );
+          const pressed = screen.getByRole('article', { name: pressedCard });
+          expect(within(pressed).queryByText(MEANS_GAP_LINE_43)).not.toBeInTheDocument();
+          expect(within(pressed).queryByRole('link')).not.toBeInTheDocument();
+        }
+      );
+
+      it("a whole-call refusal shows on the card pressed, not the partner's", async () => {
+        const UNFINISHED = 'Finish your intake before preparing your forms.';
+        packetWith({ outcome: 'cannot_work_out', family_size: 4 });
+        formsWith(storedForm('form_122a1', 7), storedForm('form_122a2', 8));
+        server.use(
+          http.post('http://localhost:8000/api/forms/mark_pair_filed/', () =>
+            HttpResponse.json({ error: UNFINISHED }, { status: 422 })
+          )
+        );
+        renderFormDashboard();
+
+        await pressAndConfirmBoth(CARD_2);
+
+        const pressed = screen.getByRole('article', { name: CARD_2 });
+        expect(await within(pressed).findByText(UNFINISHED)).toBeInTheDocument();
+        const partner = screen.getByRole('article', { name: CARD_1 });
+        expect(within(partner).queryByText(UNFINISHED)).not.toBeInTheDocument();
+      });
+
+      // The second press succeeds, so both forms are filed; neither may keep the first press's
+      // refusal or its link
+      it('a pair press that succeeds clears the refusal an earlier press left on either card', async () => {
+        let presses = 0;
+        packetWith({ outcome: 'cannot_work_out', family_size: 4 });
+        server.use(
+          http.get('http://localhost:8000/api/forms/', () =>
+            HttpResponse.json(
+              presses >= 2
+                ? [
+                    storedForm('form_122a1', 7, { status: 'filed' }),
+                    storedForm('form_122a2', 8, { status: 'filed' }),
+                  ]
+                : [storedForm('form_122a1', 7), storedForm('form_122a2', 8)]
+            )
+          ),
+          http.post('http://localhost:8000/api/forms/mark_pair_filed/', () => {
+            presses += 1;
+            return presses === 1
+              ? HttpResponse.json(
+                  { form_type: 'form_122a2', error: MEANS_GAP_LINE_43, page: '/means-test' },
+                  { status: 422 }
+                )
+              : HttpResponse.json({ forms: [], message: 'marked' });
+          })
+        );
+        renderFormDashboard();
+
+        await pressAndConfirmBoth(CARD_1);
+        const named = screen.getByRole('article', { name: CARD_2 });
+        expect(await within(named).findByText(MEANS_GAP_LINE_43)).toBeInTheDocument();
+
+        await pressAndConfirmBoth(CARD_1);
+
+        await waitFor(() => {
+          for (const name of [CARD_1, CARD_2]) {
+            const card = screen.getByRole('article', { name });
+            expect(within(card).getByLabelText('Filed with court')).toBeInTheDocument();
+            expect(within(card).queryByText(MEANS_GAP_LINE_43)).not.toBeInTheDocument();
+            expect(within(card).queryByRole('link')).not.toBeInTheDocument();
+          }
+        });
+      });
+
+      it('a pair press refused again shows only the new refusal, not the earlier one on the partner', async () => {
+        let presses = 0;
+        packetWith({ outcome: 'cannot_work_out', family_size: 4 });
+        formsWith(storedForm('form_122a1', 7), storedForm('form_122a2', 8));
+        server.use(
+          http.post('http://localhost:8000/api/forms/mark_pair_filed/', () => {
+            presses += 1;
+            return HttpResponse.json(
+              {
+                form_type: presses === 1 ? 'form_122a1' : 'form_122a2',
+                error: presses === 1 ? MEANS_GAP_LINE_43 : MEANS_LINE_MISSING,
+              },
+              { status: 422 }
+            );
+          })
+        );
+        renderFormDashboard();
+
+        await pressAndConfirmBoth(CARD_1);
+        const first = screen.getByRole('article', { name: CARD_1 });
+        expect(await within(first).findByText(MEANS_GAP_LINE_43)).toBeInTheDocument();
+
+        await pressAndConfirmBoth(CARD_1);
+
+        const second = screen.getByRole('article', { name: CARD_2 });
+        expect(await within(second).findByText(MEANS_LINE_MISSING)).toBeInTheDocument();
+        expect(within(first).queryByText(MEANS_GAP_LINE_43)).not.toBeInTheDocument();
+      });
+
+      it('marking both reloads the forms and shows both filed', async () => {
+        let filed = false;
+        packetWith({ outcome: 'cannot_work_out', family_size: 4 });
+        server.use(
+          http.get('http://localhost:8000/api/forms/', () =>
+            HttpResponse.json(
+              filed
+                ? [
+                    storedForm('form_122a1', 7, { status: 'filed' }),
+                    storedForm('form_122a2', 8, { status: 'filed' }),
+                  ]
+                : [storedForm('form_122a1', 7), storedForm('form_122a2', 8)]
+            )
+          ),
+          http.post('http://localhost:8000/api/forms/mark_pair_filed/', () => {
+            filed = true;
+            return HttpResponse.json({ forms: [], message: 'marked' });
+          })
+        );
+        renderFormDashboard();
+
+        await pressAndConfirmBoth(CARD_1);
+
+        await waitFor(() => {
+          for (const name of [CARD_1, CARD_2]) {
+            const card = screen.getByRole('article', { name });
+            expect(within(card).getByLabelText('Filed with court')).toBeInTheDocument();
+          }
+        });
+      });
+
+      // The one test that sees a wrong pairOf: the card's own test takes `pair` as a prop
+      it('a filed partner that disagrees shows its notice before the card marks alone', async () => {
+        let markFiledCalls = 0;
+        let pairCalls = 0;
+        packetWith({ outcome: 'cannot_work_out', family_size: 4 });
+        formsWith(
+          storedForm('form_122a1', 7),
+          storedForm('form_122a2', 8, {
+            status: 'filed',
+            filed_before_means_test: true,
+            form_type_display: 'Form 122A-2 - Chapter 7 Means Test Calculation',
+          })
+        );
+        server.use(
+          http.post('http://localhost:8000/api/forms/:id/mark_filed/', () => {
+            markFiledCalls += 1;
+            return HttpResponse.json({ message: 'Marked as filed.' });
+          }),
+          http.post('http://localhost:8000/api/forms/mark_pair_filed/', () => {
+            pairCalls += 1;
+            return HttpResponse.json({ forms: [], message: 'marked' });
+          })
+        );
+        renderFormDashboard();
+
+        const card = await screen.findByRole('article', { name: CARD_1 });
+        await userEvent.click(within(card).getByRole('button', { name: 'Mark as Filed' }));
+
+        // One name per form on the page: the partner is named as its own card is
+        const group = within(card).getByRole('group', {
+          name: `${CARD_2} ${MEANS_FILED_BEFORE_122A2}`,
+        });
+        expect(within(group).getByText(MEANS_FILED_BEFORE_122A2)).toBeInTheDocument();
+
+        await userEvent.click(within(group).getByRole('button', { name: MEANS_PAIR_MARK_ALONE }));
+
+        await waitFor(() => expect(markFiledCalls).toBe(1));
+        expect(pairCalls).toBe(0);
+      });
     });
 
     // The hold names no step or page: nothing the filer can do on any page lifts it (H32)
     it('a refused Mark as Filed shows on its card', async () => {
       packetWith({ outcome: 'cannot_work_out', family_size: 4 });
-      formsWith(storedForm('form_122a1', 7));
+      // The partner is filed with no notice, so the card marks 122A-1 alone, with no confirm
+      formsWith(storedForm('form_122a1', 7), storedForm('form_122a2', 8, { status: 'filed' }));
       server.use(
         http.post('http://localhost:8000/api/forms/:id/mark_filed/', () =>
-          HttpResponse.json(
-            { form_type: 'form_122a1', error: MEANS_CANT_PRINT_YET },
-            { status: 422 }
-          )
+          HttpResponse.json({ form_type: 'form_122a1', error: MEANS_LINE_MISSING }, { status: 422 })
         )
       );
       renderFormDashboard();
@@ -1931,7 +2141,7 @@ describe('FormDashboard', () => {
       const card = await screen.findByRole('article', { name: 'Form 122A-1 - Means Test' });
       await userEvent.click(within(card).getByRole('button', { name: 'Mark as Filed' }));
 
-      expect(await within(card).findByText(MEANS_CANT_PRINT_YET)).toBeInTheDocument();
+      expect(await within(card).findByText(MEANS_LINE_MISSING)).toBeInTheDocument();
       expect(within(card).queryByRole('link')).not.toBeInTheDocument();
       // Still unfiled
       expect(within(card).getByRole('button', { name: 'Mark as Filed' })).toBeInTheDocument();
@@ -1943,7 +2153,7 @@ describe('FormDashboard', () => {
     it('a Mark as Filed refused with a fix links to it on the card', async () => {
       const NOT_SPLIT = 'Enter your income by source on the Income step.';
       packetWith({ outcome: 'cannot_work_out', family_size: 4 });
-      formsWith(storedForm('form_122a1', 7));
+      formsWith(storedForm('form_122a1', 7), storedForm('form_122a2', 8, { status: 'filed' }));
       server.use(
         http.post('http://localhost:8000/api/forms/:id/mark_filed/', () =>
           HttpResponse.json(

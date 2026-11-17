@@ -27,6 +27,7 @@ from apps.eligibility.models import MeansTest
 from apps.eligibility.services import MeansTestCalculator
 from apps.intake.asset_lines import AssetStepGap, asset_step_gaps
 from apps.intake.claims import ClaimStepGap, claim_step_gaps
+from apps.intake.locking import lock_session
 from apps.intake.models import IntakeSession
 
 from .models import GeneratedForm
@@ -62,10 +63,31 @@ class FormIsFiled(Exception):
     """The form is marked filed, so it keeps the values it was filed with (spec §5.5)."""
 
 
+class MeansPairTie(Exception):
+    """One form of the means pair can't be marked filed while the other is unfiled (H43)."""
+
+
 class IntakeNotFinished(Exception):
     """The filer hasn't completed the intake, so an empty list can't yet mean "none"."""
 
     page = "/intake"  # where the filer finishes it
+
+
+# DRAFT: counsel C-24
+MEANS_PAIR_REFUSAL = "File Form 122A-1 and Form 122A-2 together."
+
+
+class _PairRefused(Exception):
+    """A refusal carried out of the pair action's transaction, so the rollback comes first.
+
+    form_type is the form refused, or None when _prepare refused the whole call; exc is what
+    _failure turns into the body. The message is the exception's type only, never filer data.
+    """
+
+    def __init__(self, form_type: str | None, exc: Exception):
+        super().__init__(type(exc).__name__)
+        self.form_type = form_type
+        self.exc = exc
 
 
 # Failures a filer can act on: 422 in plain words (spec §5.7). Anything else is a 500.
@@ -80,6 +102,7 @@ _FAILURE_SENTENCES = {
     IntakeNotFinished: "Finish your intake before preparing your forms.",
     NotInPacket: "This form isn't part of your packet, based on the answers you've given.",
     FormIsFiled: "This form is marked as filed, so it keeps the answers it was filed with.",
+    MeansPairTie: MEANS_PAIR_REFUSAL,
     UnmappedChoice: (
         "One of your answers doesn't match a choice printed on this form, "
         "so it can't be filled in yet."
@@ -267,7 +290,8 @@ def _store(generated_form: GeneratedForm, document: dict) -> None:
 def _generate_and_persist(session: IntakeSession, form_type: str, user) -> GeneratedForm:
     """Check that the form prints its values, without drawing it, and keep them (3a2 spec §7).
 
-    _prepare() runs first.
+    _prepare() runs first. The save is conditional on the row not being filed: a row marked
+    filed while this ran keeps its filed document, and the generate answers FormIsFiled (H43).
     """
     if GeneratedForm.objects.filter(session=session, form_type=form_type, status="filed").exists():
         raise FormIsFiled()
@@ -277,9 +301,20 @@ def _generate_and_persist(session: IntakeSession, form_type: str, user) -> Gener
         session=session, form_type=form_type, defaults={"generated_by": user}
     )
     _store(generated_form, document)
-    generated_form.status = "generated"
-    generated_form.generated_by = user
-    generated_form.save()
+    changed = (
+        GeneratedForm.objects.filter(pk=generated_form.pk)
+        .exclude(status="filed")
+        .update(
+            field_values=generated_form.field_values,
+            template_version=generated_form.template_version,
+            status="generated",
+            generated_by=user,
+            updated_at=timezone.now(),
+        )
+    )
+    if changed != 1:
+        raise FormIsFiled()
+    generated_form.refresh_from_db()
     return generated_form
 
 
@@ -305,6 +340,7 @@ class GeneratedFormViewSet(viewsets.ReadOnlyModelViewSet):
       GET  /api/forms/packet/?session=<id>  The packet's form types and its median table
       POST /api/forms/generate/              Generate a single form
       POST /api/forms/generate_all/          Generate every form in the packet
+      POST /api/forms/mark_pair_filed/       Mark Form 122A-1 and Form 122A-2 filed together
       POST /api/forms/{id}/regenerate/       Regenerate an existing form
       GET  /api/forms/{id}/download/         Draw and stream the PDF
       POST /api/forms/{id}/mark_downloaded/
@@ -462,6 +498,85 @@ class GeneratedFormViewSet(viewsets.ReadOnlyModelViewSet):
         )
 
     # ------------------------------------------------------------------
+    # Mark the means pair filed together
+    # ------------------------------------------------------------------
+
+    @action(detail=False, methods=["post"], url_path="mark_pair_filed")
+    def mark_pair_filed(self, request):
+        """
+        Mark Form 122A-1 and Form 122A-2 filed together, or neither (H43).
+
+        POST /api/forms/mark_pair_filed/
+        { "session_id": 1 }
+
+        In one locked transaction: the intake's checks and the means test once, then each form
+        not already filed is resolved and checked, 122A-2 first so a page gap names it, and only
+        then written, each by one update conditional on the row not being filed. A partner with
+        no row gets one; a form already filed is left as it is. A refusal rolls every write back,
+        the means test worked out again included, and names the form it is about, or no form
+        when the whole call is refused.
+        """
+        session, err = _session_or_error(request, request.data.get("session_id"))
+        if err:
+            return err
+        try:
+            with transaction.atomic():
+                locked = lock_session(session.pk)
+                try:
+                    _prepare(locked)
+                except Exception as exc:
+                    raise _PairRefused(None, exc) from exc
+                rows = {
+                    ft: GeneratedForm.objects.filter(session=locked, form_type=ft).first()
+                    for ft in MEANS_PAIR
+                }
+                documents = {}
+                for ft in reversed(MEANS_PAIR):  # 122A-2 first: its gap names form_122a2
+                    if rows[ft] is not None and rows[ft].status == "filed":
+                        continue
+                    try:
+                        document = _resolve(ft, locked)
+                        PDFFormFiller().check(ft, document)
+                    except Exception as exc:
+                        raise _PairRefused(ft, exc) from exc
+                    documents[ft] = document
+                # writes only after every check
+                for ft in (ft for ft in MEANS_PAIR if ft in documents):
+                    document = documents[ft]
+                    # get_or_create: a Generate takes no lock, so its row can land between the
+                    # read above and this write; that row is then filed, not made again
+                    row = (
+                        rows[ft]
+                        or GeneratedForm.objects.get_or_create(
+                            session=locked, form_type=ft, defaults={"generated_by": request.user}
+                        )[0]
+                    )
+                    _store(row, document)
+                    changed = (
+                        GeneratedForm.objects.filter(pk=row.pk)
+                        .exclude(status="filed")
+                        .update(
+                            field_values=row.field_values,
+                            template_version=row.template_version,
+                            status="filed",
+                            updated_at=timezone.now(),
+                        )
+                    )
+                    if changed != 1:
+                        raise _PairRefused(ft, FormIsFiled())
+                    row.refresh_from_db()
+                    rows[ft] = row
+        except _PairRefused as refused:
+            body, code = _failure(refused.form_type, refused.exc)
+            return Response(body, status=code)
+        return Response(
+            {
+                "forms": [GeneratedFormSerializer(rows[ft]).data for ft in MEANS_PAIR],
+                "message": "Form 122A-1 and Form 122A-2 marked as filed with court",
+            }
+        )
+
+    # ------------------------------------------------------------------
     # Regenerate existing form
     # ------------------------------------------------------------------
 
@@ -514,17 +629,27 @@ class GeneratedFormViewSet(viewsets.ReadOnlyModelViewSet):
         """Mark form as filed with the court.
 
         A 122A-1 or 122A-2 not yet filed is worked out again first, as its unfiled download is,
-        so the hold can't be gone around with a copy made before it (3h1 R7). The document it
-        was checked with is the one filed, and the one conditional update is the only write to
-        the GeneratedForm row. `_prepare` also saves the means test it works out again, even when
-        the filing is then refused. Any other row, or one already filed, is marked as before.
+        so the hold can't be gone around with a copy made before it (3h1 R7). Above the median
+        it is refused while its partner is unfiled or has no row: the two are marked together
+        through mark_pair_filed (H43). The document it was checked with is the one filed, and
+        the one conditional update is the only write to the GeneratedForm row. `_prepare` also
+        saves the means test it works out again, even when the filing is then refused. Any other
+        row, or one already filed, is marked as before.
         """
         generated_form = self.get_object()
 
         if generated_form.form_type in MEANS_PAIR and generated_form.status != "filed":
             status_read = generated_form.status
+            partner = MEANS_PAIR[1] if generated_form.form_type == MEANS_PAIR[0] else MEANS_PAIR[0]
             try:
                 _prepare(generated_form.session)
+                if (
+                    "form_122a2" in packet(generated_form.session)
+                    and not GeneratedForm.objects.filter(
+                        session=generated_form.session, form_type=partner, status="filed"
+                    ).exists()
+                ):
+                    raise MeansPairTie()
                 document = _resolve(generated_form.form_type, generated_form.session)
                 PDFFormFiller().check(generated_form.form_type, document)
                 _store(generated_form, document)

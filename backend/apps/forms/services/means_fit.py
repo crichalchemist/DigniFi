@@ -67,6 +67,8 @@ LIST_ANSWERS = {
     "line_43_circumstances": "line_43_answer",
 }
 
+_MARRIED_LISTS = ("line_3_rows", "spouse_vehicles", "spouse_loans")
+
 # 504 pt less a 46 pt line column and a 96 pt amount column (H30); 3h3's schema shares them.
 LINE_43_EXPLANATION_WIDTH = 362.0
 LINE_43_EXPLANATION_LINES = 36
@@ -131,13 +133,17 @@ def _row_refusals(list_key: str, row: Mapping) -> dict[str, list[str]]:
     return out
 
 
-def shown_box_refusals(answers: Mapping, lists: Iterable[str]) -> dict:
+def shown_box_refusals(answers: Mapping, lists: Iterable[str], together: bool) -> dict:
     """The refusals of the boxes the page answers show in the named lists, as a 400 keys a row's
     errors: {list: {index: {field: [sentence]}}} (F1). A list counts only under its question's
     Yes, a spouse loan's creditor only under "on your Amounts Owed step" No and its property only
-    under home or other: only those boxes are drawn and can print. A hidden box saves as typed."""
+    under home or other: only those boxes are drawn and can print. A hidden box saves as typed.
+    Line 3 and the spouse's two lists are drawn only for a filer married together, so with
+    `together` False they are never measured, whatever `lists` names (DIG-513)."""
     errors = {}
     for list_key in lists:
+        if not together and list_key in _MARRIED_LISTS:
+            continue
         if answers.get(LIST_ANSWERS[list_key]) != "yes":
             continue
         rows = {}

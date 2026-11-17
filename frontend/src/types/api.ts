@@ -791,6 +791,8 @@ export interface MeansInformation {
   line_29_per_child: string;
   line_30_people: number | null;
   line_30_cap: string | null;
+  /** The spouse's income on Form 122A-1, Column B (the cap on line 3), or null */
+  spouse_cmi: string | null;
   limits: { effective_date: string; unsecured: string; secured: string };
   totals: { unsecured: string; secured: string };
   multiplier: string;
@@ -1119,6 +1121,12 @@ export interface GenerateFormRequest {
 
 export interface GenerateFormResponse {
   form: GeneratedForm;
+  message: string;
+}
+
+/** Form 122A-1 and Form 122A-2 marked filed together; both rows, 122A-1 first */
+export interface MarkPairFiledResponse {
+  forms: GeneratedForm[];
   message: string;
 }
 

@@ -3,6 +3,13 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter, useLocation } from 'react-router-dom';
 import { FormCard } from '../FormCard';
 import type { GeneratedForm } from '../../../types/api';
+import {
+  MEANS_FILED_BEFORE_122A2,
+  MEANS_PAIR_CANCEL,
+  MEANS_PAIR_CONFIRM,
+  MEANS_PAIR_MARK_ALONE,
+  MEANS_PAIR_MARK_BOTH,
+} from '../../../constants/copy';
 
 const mockForm: GeneratedForm = {
   id: 1,
@@ -303,6 +310,208 @@ describe('FormCard', () => {
     );
 
     expect(container.querySelector('.form-card-notice')).toBeNull();
+  });
+
+  // ---------------------------------------------------------------------------
+  // Form 122A-1 and Form 122A-2 are marked filed together (forms step 3h3, R13)
+  // ---------------------------------------------------------------------------
+
+  describe('the pair', () => {
+    const pairProps = { ...defaultProps, formType: 'form_122a1' as const };
+    const pairForm: GeneratedForm = { ...mockForm, form_type: 'form_122a1' };
+
+    it('the card asks once before marking both', async () => {
+      const user = userEvent.setup();
+      const onMarkFiled = vi.fn().mockResolvedValue(undefined);
+      const onMarkPairFiled = vi.fn().mockResolvedValue(undefined);
+      render(
+        <MemoryRouter>
+          <FormCard
+            {...pairProps}
+            generatedForm={pairForm}
+            pair={{ kind: 'both' }}
+            onMarkFiled={onMarkFiled}
+            onMarkPairFiled={onMarkPairFiled}
+          />
+        </MemoryRouter>
+      );
+
+      await user.click(screen.getByRole('button', { name: 'Mark as Filed' }));
+
+      const confirm = screen.getByRole('group', { name: MEANS_PAIR_CONFIRM });
+      expect(confirm).toBeInTheDocument();
+      expect(onMarkPairFiled).not.toHaveBeenCalled();
+      // The trigger gives way to the confirm's own buttons
+      expect(screen.queryByRole('button', { name: 'Mark as Filed' })).not.toBeInTheDocument();
+
+      await user.click(within(confirm).getByRole('button', { name: MEANS_PAIR_MARK_BOTH }));
+
+      expect(onMarkPairFiled).toHaveBeenCalledTimes(1);
+      expect(onMarkFiled).not.toHaveBeenCalled();
+    });
+
+    it('cancel marks neither', async () => {
+      const user = userEvent.setup();
+      const onMarkFiled = vi.fn().mockResolvedValue(undefined);
+      const onMarkPairFiled = vi.fn().mockResolvedValue(undefined);
+      render(
+        <MemoryRouter>
+          <FormCard
+            {...pairProps}
+            generatedForm={pairForm}
+            pair={{ kind: 'both' }}
+            onMarkFiled={onMarkFiled}
+            onMarkPairFiled={onMarkPairFiled}
+          />
+        </MemoryRouter>
+      );
+
+      await user.click(screen.getByRole('button', { name: 'Mark as Filed' }));
+      await user.click(screen.getByRole('button', { name: MEANS_PAIR_CANCEL }));
+
+      expect(screen.queryByRole('group', { name: MEANS_PAIR_CONFIRM })).not.toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Mark as Filed' })).toBeInTheDocument();
+      expect(onMarkFiled).not.toHaveBeenCalled();
+      expect(onMarkPairFiled).not.toHaveBeenCalled();
+    });
+
+    it('a filed partner that disagrees shows its notice before marking alone', async () => {
+      const user = userEvent.setup();
+      const onMarkFiled = vi.fn().mockResolvedValue(undefined);
+      const onMarkPairFiled = vi.fn().mockResolvedValue(undefined);
+      render(
+        <MemoryRouter>
+          <FormCard
+            {...pairProps}
+            generatedForm={pairForm}
+            pair={{
+              kind: 'alone',
+              partnerLabel: 'Form 122A-2 - Chapter 7 Means Test Calculation',
+              partnerNotice: MEANS_FILED_BEFORE_122A2,
+            }}
+            onMarkFiled={onMarkFiled}
+            onMarkPairFiled={onMarkPairFiled}
+          />
+        </MemoryRouter>
+      );
+
+      await user.click(screen.getByRole('button', { name: 'Mark as Filed' }));
+
+      const confirm = screen.getByRole('group', {
+        name: `Form 122A-2 - Chapter 7 Means Test Calculation ${MEANS_FILED_BEFORE_122A2}`,
+      });
+      expect(within(confirm).getByText(MEANS_FILED_BEFORE_122A2)).toBeInTheDocument();
+      expect(onMarkFiled).not.toHaveBeenCalled();
+
+      await user.click(within(confirm).getByRole('button', { name: MEANS_PAIR_MARK_ALONE }));
+
+      expect(onMarkFiled).toHaveBeenCalledTimes(1);
+      expect(onMarkFiled).toHaveBeenCalledWith(pairForm.id);
+      expect(onMarkPairFiled).not.toHaveBeenCalled();
+    });
+
+    // A keyboard or screen-reader filer must land in the confirm and come back to the trigger
+    it('moves focus to the confirm when it opens, and back to Mark as Filed on cancel', async () => {
+      const user = userEvent.setup();
+      render(
+        <MemoryRouter>
+          <FormCard
+            {...pairProps}
+            generatedForm={pairForm}
+            pair={{ kind: 'both' }}
+            onMarkPairFiled={vi.fn().mockResolvedValue(undefined)}
+          />
+        </MemoryRouter>
+      );
+
+      await user.click(screen.getByRole('button', { name: 'Mark as Filed' }));
+      expect(screen.getByRole('button', { name: MEANS_PAIR_MARK_BOTH })).toHaveFocus();
+
+      await user.click(screen.getByRole('button', { name: MEANS_PAIR_CANCEL }));
+      expect(screen.getByRole('button', { name: 'Mark as Filed' })).toHaveFocus();
+    });
+
+    it('moves focus to the alone confirm, and back to Mark as Filed after it resolves unfiled', async () => {
+      const user = userEvent.setup();
+      render(
+        <MemoryRouter>
+          <FormCard
+            {...pairProps}
+            generatedForm={pairForm}
+            pair={{
+              kind: 'alone',
+              partnerLabel: 'Form 122A-2 - Chapter 7 Means Test Calculation',
+              partnerNotice: MEANS_FILED_BEFORE_122A2,
+            }}
+          />
+        </MemoryRouter>
+      );
+
+      await user.click(screen.getByRole('button', { name: 'Mark as Filed' }));
+      expect(screen.getByRole('button', { name: MEANS_PAIR_MARK_ALONE })).toHaveFocus();
+
+      await user.click(screen.getByRole('button', { name: MEANS_PAIR_MARK_ALONE }));
+      // The parent refused and left the card unfiled, so the trigger is back and has focus
+      expect(await screen.findByRole('button', { name: 'Mark as Filed' })).toHaveFocus();
+    });
+
+    it('moves focus back to Mark as Filed after both are marked and the card stays unfiled', async () => {
+      const user = userEvent.setup();
+      render(
+        <MemoryRouter>
+          <FormCard
+            {...pairProps}
+            generatedForm={pairForm}
+            pair={{ kind: 'both' }}
+            onMarkPairFiled={vi.fn().mockResolvedValue(undefined)}
+          />
+        </MemoryRouter>
+      );
+
+      await user.click(screen.getByRole('button', { name: 'Mark as Filed' }));
+      await user.click(screen.getByRole('button', { name: MEANS_PAIR_MARK_BOTH }));
+
+      expect(await screen.findByRole('button', { name: 'Mark as Filed' })).toHaveFocus();
+    });
+
+    it('shows no confirm once the card is no longer unfiled', async () => {
+      const user = userEvent.setup();
+      const props = {
+        ...pairProps,
+        pair: { kind: 'both' } as const,
+        onMarkPairFiled: vi.fn().mockResolvedValue(undefined),
+      };
+      const { rerender } = render(
+        <MemoryRouter>
+          <FormCard {...props} generatedForm={pairForm} />
+        </MemoryRouter>
+      );
+      await user.click(screen.getByRole('button', { name: 'Mark as Filed' }));
+      expect(screen.getByRole('group')).toBeInTheDocument();
+
+      rerender(
+        <MemoryRouter>
+          <FormCard {...props} generatedForm={{ ...pairForm, status: 'filed' }} />
+        </MemoryRouter>
+      );
+
+      expect(screen.queryByRole('group')).not.toBeInTheDocument();
+    });
+
+    it('a filed partner that agrees marks alone with no confirm', async () => {
+      const user = userEvent.setup();
+      const onMarkFiled = vi.fn().mockResolvedValue(undefined);
+      render(
+        <MemoryRouter>
+          <FormCard {...pairProps} generatedForm={pairForm} onMarkFiled={onMarkFiled} />
+        </MemoryRouter>
+      );
+
+      await user.click(screen.getByRole('button', { name: 'Mark as Filed' }));
+
+      expect(onMarkFiled).toHaveBeenCalledTimes(1);
+      expect(screen.queryByRole('group')).not.toBeInTheDocument();
+    });
   });
 
   // ---------------------------------------------------------------------------

@@ -4,7 +4,7 @@
  * $12,000 a month plus her spouse's $1,800 is $13,800 a month, $165,600 a
  * year, with a 4-person household — above the $137,902 HH4 median, so
  * Form 122A-2 applies. She answers its page and reads the form's arithmetic with no verdict;
- * the journey stops at /sofa until 3h3 prints the form.
+ * she reaches the dashboard, where Generate All makes 16 forms.
  * Tests that the above-median result is shown with dignity and no verdict.
  */
 
@@ -18,6 +18,7 @@ import { FilingFeePage } from '../pages/filing-fee.page';
 import { ExemptionsPage } from '../pages/exemptions.page';
 import { MeansTestPage } from '../pages/means-test.page';
 import { SOFAPage } from '../pages/sofa.page';
+import { DashboardPage } from '../pages/dashboard.page';
 
 test.describe('Priya Sharma — Above the Median', () => {
   test('sees that Form 122A-2 applies, in words with no verdict', async ({ page }) => {
@@ -29,6 +30,7 @@ test.describe('Priya Sharma — Above the Median', () => {
     const exemptions = new ExemptionsPage(page);
     const meansTest = new MeansTestPage(page);
     const sofa = new SOFAPage(page);
+    const dashboard = new DashboardPage(page);
 
     await landing.goto();
     await landing.clickGetStarted();
@@ -113,5 +115,12 @@ test.describe('Priya Sharma — Above the Median', () => {
     await meansTest.continue();
     await sofa.waitForLoad();
     await sofa.skipForNow();
+
+    // Above the median, her packet holds Form 122A-2: 15 forms plus that one
+    await dashboard.generateAllForms(16);
+    expect(await dashboard.getGeneratedCount()).toBe(16);
+    await expect(
+      page.getByRole('article', { name: /122A-2/ }).getByRole('button', { name: 'Download' })
+    ).toBeVisible();
   });
 });

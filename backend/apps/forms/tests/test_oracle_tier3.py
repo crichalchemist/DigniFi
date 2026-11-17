@@ -20,14 +20,8 @@ import pytest
 from django.core.management import call_command
 
 from apps.districts.models import District
-from apps.forms.registry import (
-    FORM_122A2_CANT_PRINT_YET,
-    PreconditionMissing,
-    build_field_values,
-    build_parts,
-)
+from apps.forms.registry import build_field_values, build_parts
 from apps.forms.schema import load_schema
-from apps.forms.services.fill_resolver import resolve
 from apps.forms.services.pdf_filler import PDFFormFiller
 from apps.forms.services.sheets import sheet_spec
 from apps.forms.services.widgets import template_widgets
@@ -37,7 +31,6 @@ from apps.forms.tests.test_form_122a1_schema import LINE_10_SOURCE
 from apps.intake.models import IntakeSession
 
 TIER = "3"
-HELD = ("form_122a1", "form_122a2")  # refused above the median until 122A-2 can print (3h1)
 BELOW_MEDIAN = "/12b less or equal to 13"
 ABOVE_MEDIAN = "/12b more than 13"
 
@@ -614,8 +607,163 @@ EXPECTED = {
             "13B": "4",
             "13C": "137902.00",
             "14a": ABOVE_MEDIAN,
+            "CheckBox1": "/Presumption of abuse applies",
         },
-        "form_122a2": {"Quest1": "13800.00"},
+        # Every non-button name of the template, from Appendix A's chain (spec §9.5, R20): a
+        # shared name once, blank-on-purpose names and the lines the form skips as "".
+        "form_122a2": {
+            # page 1
+            "Debtor1.Name": "Priya Sharma",
+            "Debtor2.Name": "",
+            "CheckBox1": "/Presumption of abuse applies",
+            "Bankruptcy District Information": "Northern District of Illinois",
+            "Case number1": "",
+            "CheckBox2": "",
+            "Quest1": "13800.00",
+            "CheckBox3": "/Yes",
+            "CheckBox4": "/No",
+            "CheckBox5": "/On",
+            "Quest3A": "His payroll taxes withheld from his pay",
+            "Quest3A1": "250.00",
+            "Quest3B": "",
+            "Quest3B1": "",
+            "Quest3C": "",
+            "Quest3C1": "",
+            "Quest3": "250.00",
+            "Quest4": "13550.00",  # and line 39a
+            # page 2
+            "Quest5": "4",
+            "Quest6": "2176.00",
+            "Quest7A": "90.00",
+            "Quest7B": "4",
+            "Quest7C": "360.00",
+            "Quest7D": "163.00",
+            "Quest7E": "0",
+            "Quest7F": "0.00",
+            "Quest7G": "360.00",
+            # page 3
+            "Quest8": "953.00",
+            "Quest9": "2219.00",
+            "Quest9B creditor name1": "",
+            "Quest9B creditor amount1": "",
+            "Quest9B creditor name2": "",
+            "Quest9B creditor amount2": "",
+            "Quest9B creditor name3": "",
+            "Quest9B creditor amount3": "",
+            "Quest9B total amount": "0.00",  # and line 33a
+            "Quest9C": "2219.00",
+            "Quest10": "",
+            "Explain 1": "",
+            "Explain 2": "",
+            "CheckBox6": "/1",
+            "Quest12": "334.00",
+            # page 4
+            "Describe Vehicle 1 1": "Honda CR-V EX 2021",
+            "Describe Vehicle 1 2": "",
+            "Quest13A": "703.00",
+            "Quest13B Creditor for vehicle 1-1": "Kestrel Auto Finance",
+            "Quest13B amount for vehicle 1-1": "277.50",
+            "Quest13B Creditor for vehicle 1-2": "",
+            "Quest13B amount for vehicle 1-2": "",
+            "Quest13B Total amount for vehicle 1": "277.50",  # and line 33b
+            "Quest13C": "425.50",
+            "Describe Vehicle 2 1": "",
+            "Describe Vehicle 2 2": "",
+            "Quest13D": "",
+            "Quest13E.Creditor1": "",
+            "Quest13E.Monthly1": "",
+            "Quest13E.Creditor2": "",
+            "Quest13E.Monthly2": "",
+            "Quest13E.TotalMonthly": "",  # and line 33c
+            "Quest13F": "",
+            "Quest14": "",
+            "Quest15": "",
+            # page 5
+            "undefined_48": "2300.00",
+            "undefined_49": "0.00",
+            "undefined_50": "120.00",
+            "undefined_51": "0.00",
+            "undefined_52": "0.00",
+            "undefined_53": "1200.00",
+            "undefined_54": "",
+            "undefined_55": "0.00",
+            "undefined_56": "10087.50",
+            # page 6
+            "undefined_57": "620.00",
+            "undefined_58": "180.00",
+            "1_2": "0.00",
+            "2_2": "800.00",
+            "CheckBox7": "/On",
+            "undefined_59": "",
+            "undefined_61": "",
+            "undefined_62": "",
+            "undefined_63": "",
+            "undefined_64": "",
+            "undefined_65": "",
+            "undefined_66": "50.00",
+            "undefined_67": "850.00",
+            # page 7
+            "CheckBox8": "",
+            "undefined_71": "",
+            "undefined_72": "",
+            "undefined_73": "",
+            "CheckBox9": "",
+            "undefined_74": "",
+            "undefined_75": "",
+            "undefined_76": "",
+            "CheckBox10": "",
+            "undefined_77": "",
+            "undefined_78": "",
+            "undefined_79": "",
+            "undefined_80": "277.50",
+            "CheckBox11": "/No",
+            "undefined_81": "",
+            "secures the debt": "",
+            "undefined_82": "",
+            "undefined_83": "",
+            "undefined_84": "",
+            "undefined_85": "",
+            "undefined_86": "",
+            "undefined_87": "",
+            "undefined_88": "",
+            "undefined_89": "",
+            "undefined_90": "",
+            "undefined_91": "",
+            "undefined_92": "",
+            "CheckBox12": "/Yes",
+            "undefined_93": "3000.00",
+            "undefined_93-1": "50.00",
+            # page 8
+            "CheckBox13": "/Yes",
+            "undefined_97": "1400.00",
+            "x": "6.9%",
+            "undefined_98": "96.60",
+            "undefined_100": "424.10",
+            "undefined_101": "10087.50",
+            "undefined_102": "850.00",
+            "undefined_103": "424.10",
+            "undefined_104": "11361.60",  # and line 39b
+            "undefined_107": "2188.40",
+            "undefined_108": "131304.00",
+            "CheckBox14": "/2",
+            # page 9
+            "undefined_110": "",
+            "undefined_111": "",
+            "CheckBox15": "",
+            "CheckBox16": "/No",
+            "undefined_113": "",
+            "undefined_114": "",
+            "undefined_115": "",
+            "undefined_116": "",
+            "undefined_117": "",
+            "undefined_118": "",
+            "undefined_119": "",
+            "undefined_120": "",
+            "Debtor1.sig": "",
+            "Debtor2.sig": "",
+            "Debtor1.Date signed": "",
+            "Debtor2.Date signed": "",
+        },
         "schedule_i": {
             **_deductions(a="2450.00", c="600.00", e="620.00", total="3670.00", pay="8330.00"),
             "Amount 8b Debtor 1": "0.00",
@@ -1308,14 +1456,7 @@ def _printed(persona):
     session = IntakeSession.objects.filter(user__username=f"demo_{persona}").latest("id")
     printed = {}
     for form_type in EXPECTED[persona]:
-        try:
-            values = build_field_values(form_type, session)
-        except PreconditionMissing as exc:
-            if form_type not in HELD or str(exc) != FORM_122A2_CANT_PRINT_YET:
-                raise
-            # The hold refuses 122A-2, and Priya's 122A-1 (R6): this tier judges printing, so
-            # the form resolves below the gate.
-            values = resolve(load_schema(form_type), session)
+        values = build_field_values(form_type, session)
         template = load_schema(form_type).template_filename
         drawn = {(w.page, w.tag) for w in template_widgets(template) if w.drawn}
         for w in read_drawn(form_type, PDFFormFiller().fill(form_type, values)):
@@ -1330,15 +1471,19 @@ def _printed(persona):
 
 
 @pytest.mark.django_db
-def test_priyas_122a1_and_122a2_are_held_until_122a2_can_print():
-    # Priya is above the median. The pair refuses together until 3h3 prints 122A-2.
+def test_priyas_122a2_prints_no_sheet():
+    # Priya's rows fit the form's boxes and her line 43 is No (Appendix A), so her 122A-2 prints
+    # on the form's own pages alone, through the full path.
     if not District.objects.filter(code="ilnd").exists():
         call_command("loaddata", "ilnd_2025_data", verbosity=0)
     call_command("seed_demo_data", "--reset", persona="priya", verbosity=0)
     session = IntakeSession.objects.filter(user__username="demo_priya").latest("id")
-    for form_type in HELD:
-        with pytest.raises(PreconditionMissing, match=re.escape(FORM_122A2_CANT_PRINT_YET)):
-            build_field_values(form_type, session)
+
+    document = build_parts("form_122a2", session)
+
+    assert [part["kind"] for part in document["parts"] if part["kind"] == "sheet"] == []
+    pdf = PDFFormFiller().fill("form_122a2", document)
+    read_drawn("form_122a2", pdf, document["parts"])
 
 
 def _amount(text):

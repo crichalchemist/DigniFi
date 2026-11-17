@@ -128,8 +128,23 @@ export const MEANS_TABLE_MISSING =
   "DigniFi doesn't have the means test figures for today's date yet, so it can't work out Form 122A-2.";
 
 // DRAFT: counsel C-24
-export const MEANS_CANT_PRINT_YET =
-  "You've answered the questions for Form 122A-2, but DigniFi can't print that form yet. Form 122A-1 waits for it. File the two forms together.";
+export const MEANS_LINE_MISSING =
+  "DigniFi can't work out every line of Form 122A-2, so it can't print that form. Form 122A-1 waits for it. File the two forms together.";
+
+// DRAFT: counsel C-24
+export const MEANS_PAIR_REFUSAL = 'File Form 122A-1 and Form 122A-2 together.';
+
+// DRAFT: counsel C-24
+export const MEANS_PAIR_CONFIRM = 'These two forms go together. Mark both as filed?';
+
+// DRAFT: counsel C-24
+export const MEANS_PAIR_MARK_BOTH = 'Mark both as filed';
+
+// DRAFT: counsel C-24
+export const MEANS_PAIR_MARK_ALONE = 'Mark as filed';
+
+// DRAFT: counsel C-24
+export const MEANS_PAIR_CANCEL = 'Cancel';
 
 // DRAFT: counsel C-24
 export const MEANS_PAIR_NOTICE =
@@ -428,6 +443,9 @@ export const MEANS_LINE_43_LABEL_PAPERS = 'Papers I will give my case trustee:';
 export const MEANS_LINE_43_SKIPPED =
   "With your current answers, the form skips line 43, so this answer won't print.";
 
+// DRAFT: counsel C-31
+export const MEANS_LINE_43_POINTER = 'See line 43.{n} on the attached sheet.';
+
 // DRAFT: counsel C-32
 export const MEANS_REBUTTAL_NOW = 'Your line 39d is now {amount}.';
 
@@ -465,6 +483,10 @@ export const MEANS_GAP_LINE_3_NO_ROW =
 // DRAFT: counsel C-24
 export const MEANS_GAP_LINE_3_ROW =
   "Enter what your spouse's income was used for, and the amount, on each row of line 3.";
+
+// DRAFT: counsel C-24
+export const MEANS_GAP_LINE_3_CAP =
+  "Line 3 can't be more than {amount}, your spouse's income on Form 122A-1, Column B.";
 
 // DRAFT: counsel C-34
 export const MEANS_GAP_SPOUSE_VEHICLES =
@@ -596,6 +618,16 @@ export const MEANS_GAP_LINE_43_EXPLANATION =
 // DRAFT: counsel C-24
 export const MEANS_GAP_LINE_43_AMOUNT =
   'Enter the average monthly amount for circumstance {n} on line 43. Enter 0 if there is none.';
+
+// DRAFT: counsel C-24
+export const MEANS_NOT_A_COUNTED_DEBT = "This isn't one of your secured debts.";
+
+// DRAFT: counsel C-24
+export const MEANS_NOT_A_LINE_11_VEHICLE = "This isn't one of the vehicles on line 11.";
+
+// DRAFT: counsel C-24
+export const MEANS_NOT_AN_OPEN_DEBT =
+  "This isn't one of the debts on your Amounts Owed step not listed as secured.";
 
 // DRAFT: counsel C-24
 export const TABLE_NOTICE_MEDIAN =

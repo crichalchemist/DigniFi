@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { firstMeansGap, meansTestGaps, type GapState } from '../meansTestGaps';
+import { debtName, firstMeansGap, meansTestGaps, type GapState } from '../meansTestGaps';
 import type { MeansAnswers, MeansDebtAnswers, MeansSpouseLoan } from '../../../types/api';
 
 // The browser's copy of apps/intake/tests/test_means_test_gaps.py, case for case.
@@ -115,6 +115,7 @@ const PRIYA_STATE: GapState = {
   lineFive: 4,
   line15Cap: '220.00',
   line30Cap: '76.00',
+  spouseCmi: '1800.00',
 };
 
 function gapsOf(state: Partial<GapState> = {}, over: Partial<MeansAnswers> = {}): string[] {
@@ -231,6 +232,32 @@ describe('the Form 122A-2 page gaps', () => {
     ]);
   });
 
+  it("a line 3 total above the spouse's income is a gap after line 3's own gaps and at it is not", () => {
+    const cap =
+      "Line 3 can't be more than $1,800.00, your spouse's income on Form 122A-1, Column B.";
+    const rowGap =
+      "Enter what your spouse's income was used for, and the amount, on each row of line 3.";
+    expect(gapsOf({}, { line_3_rows: [{ purpose: 'Demo', amount: '1800.01' }] })).toEqual([cap]);
+    // the total, not each row, is compared
+    const two = [
+      { purpose: 'Demo', amount: '900.00' },
+      { purpose: 'Demo', amount: '900.01' },
+    ];
+    expect(gapsOf({}, { line_3_rows: two })).toEqual([cap]);
+    expect(gapsOf({}, { line_3_rows: [{ purpose: 'Demo', amount: '1800.00' }] })).toEqual([]);
+    // a row missing its amount gives the row gap and never the cap gap
+    const missing = [
+      { purpose: 'Demo', amount: '1800.01' },
+      { purpose: 'Demo', amount: null },
+    ];
+    expect(gapsOf({}, { line_3_rows: missing })).toEqual([rowGap]);
+    // a blank purpose beside a total above the cap gives the row gap only
+    expect(gapsOf({}, { line_3_rows: [{ purpose: ' ', amount: '1800.01' }] })).toEqual([rowGap]);
+    // no figure for the spouse, no cap
+    const rows = [{ purpose: 'Demo', amount: '1800.01' }];
+    expect(gapsOf({ spouseCmi: null }, { line_3_rows: rows })).toEqual([]);
+  });
+
   it('line 15 above its cap is a gap and at it is not', () => {
     expect(gapsOf({}, { line_15_answer: 'yes', line_15_amount: '220.01' })).toEqual([
       "Line 15 can't be more than $220.00, the IRS amount for public transportation.",
@@ -311,6 +338,15 @@ describe('the Form 122A-2 page gaps', () => {
     expect(debtGaps({ payment_changes: 'yes', total_60_months: null })).toEqual([
       'Enter the total you will owe Kestrel Auto Finance in the 60 months after you file.',
     ]);
+  });
+
+  it('a gap names a debt with no creditor as one amount owed', () => {
+    const gaps = gapsOf({
+      debts: [{ ...KESTREL, creditor: '', answers: { ...KESTREL.answers, payments_left: null } }],
+    });
+    // the same words the server's claim_row_name gives (an empty name is never a sentence's)
+    expect(gaps).toEqual([`Enter how many payments you have left to ${debtName('')}.`]);
+    expect(gaps[0]).toBe('Enter how many payments you have left to one amount owed.');
   });
 
   it('a creditor typed with replacement patterns reads as typed in its gap sentence', () => {

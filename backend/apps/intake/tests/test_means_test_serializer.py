@@ -10,7 +10,6 @@ from apps.intake.means_test import (
     LIST_KEYS,
     MEANS_EXPLANATION_LETTER,
     MEANS_EXPLANATION_TOO_LONG,
-    MEANS_LETTER,
     MEANS_ROW_LISTED_TWICE,
     MEANS_TOO_LONG,
     NOT_A_MEANS_ANSWER,
@@ -153,11 +152,6 @@ def test_an_explanation_that_cant_print_is_refused_in_its_own_sentence():
     ]
 
 
-def test_a_line_3_purpose_too_long_for_its_box_is_refused():
-    errors = errors_of({"line_3_answer": "yes", "line_3_rows": [{"purpose": "Demo " * 30}]})
-    assert [str(m) for m in errors["line_3_rows"][0]["purpose"]] == [MEANS_TOO_LONG]
-
-
 # F1: each box the page draws only under an answer, with that answer sent beside it
 _UNFIT_DESCRIPTION = "2019 Toyota Sienna LE minivan"
 _UNFIT_CREDITOR = "Demo Prairie Credit Union of Illinois"
@@ -207,27 +201,33 @@ def test_a_box_its_own_answers_hide_is_not_measured(data):
     stored_of(data)
 
 
-def test_a_box_its_answers_show_is_measured_beside_it():
-    errors = errors_of(
+def test_the_serializer_alone_measures_only_line_43s_boxes():
+    # it runs before the session is locked, so it can't know the filer is married together:
+    # line 3's and the spouse's boxes wait for save_means_answers (DIG-513)
+    stored_of({"line_3_answer": "yes", "line_3_rows": [{"purpose": "Demo " * 30}]})
+    stored_of(
         {
             "spouse_vehicles_answer": "yes",
             "spouse_vehicles": [{"ref": "new-1", "description": _UNFIT_DESCRIPTION}],
+        }
+    )
+    stored_of(
+        {
             "spouse_loans_answer": "yes",
             "spouse_loans": [
-                {
-                    "ref": "new-2",
-                    "on_amounts_owed": "no",
-                    "creditor": _UNFIT_CREDITOR,
-                    "secured_by": "home",
-                    "property": _UNFIT_DESCRIPTION,
-                }
+                {"ref": "new-1", "on_amounts_owed": "no", "creditor": _UNFIT_CREDITOR}
             ],
         }
     )
-    assert [str(m) for m in errors["spouse_vehicles"][0]["description"]] == [MEANS_TOO_LONG]
-    loan = errors["spouse_loans"][0]
-    assert [str(m) for m in loan["creditor"]] == [MEANS_TOO_LONG]
-    assert [str(m) for m in loan["property"]] == [MEANS_TOO_LONG]
+    errors = errors_of(
+        {
+            "line_43_answer": "yes",
+            "line_43_circumstances": [{"explanation": "\n".join(["Demo"] * 40)}],
+        }
+    )
+    assert [str(m) for m in errors["line_43_circumstances"][0]["explanation"]] == [
+        MEANS_EXPLANATION_TOO_LONG
+    ]
 
 
 def test_rows_sent_without_their_lists_answer_are_measured_under_the_lock_not_here():
@@ -236,56 +236,9 @@ def test_rows_sent_without_their_lists_answer_are_measured_under_the_lock_not_he
     stored_of({"line_43_circumstances": [{"explanation": "Demo □"}]})
 
 
-def test_a_letter_the_form_cant_print_is_told_apart_from_a_box_too_small():
-    def sentence(creditor):
-        errors = errors_of(
-            {
-                "spouse_loans_answer": "yes",
-                "spouse_loans": [{"ref": "new-1", "on_amounts_owed": "no", "creditor": creditor}],
-            }
-        )
-        return [str(m) for m in errors["spouse_loans"][0]["creditor"]]
-
-    assert sentence("Demo Lễ Bank") == [MEANS_LETTER]
-    assert sentence(_UNFIT_CREDITOR) == [MEANS_TOO_LONG]
-    # a letter is named first, even in words that are also too long
-    assert sentence(_UNFIT_CREDITOR + " ễ") == [MEANS_LETTER]
-    purpose = errors_of({"line_3_answer": "yes", "line_3_rows": [{"purpose": "Demo □ tax"}]})
-    assert [str(m) for m in purpose["line_3_rows"][0]["purpose"]] == [MEANS_LETTER]
-
-
 def test_a_stored_line_3_row_has_exactly_purpose_and_amount():
     row = stored_of({"line_3_rows": [{"purpose": "Demo tax debt", "amount": "10"}]})
     assert set(row["line_3_rows"][0]) == {"purpose", "amount"}
-
-
-def test_words_that_do_not_fit_a_box_the_loan_could_print_in_are_refused():
-    vehicle = errors_of(
-        {
-            "spouse_vehicles_answer": "yes",
-            "spouse_vehicles": [
-                {"ref": "new-1", "description": "2019 Toyota Sienna LE minivan"},
-            ],
-        }
-    )
-    assert [str(m) for m in vehicle["spouse_vehicles"][0]["description"]] == [MEANS_TOO_LONG]
-    loan = errors_of(
-        {
-            "spouse_loans_answer": "yes",
-            "spouse_loans": [
-                {
-                    "ref": "new-1",
-                    "on_amounts_owed": "no",
-                    "secured_by": "other",
-                    "creditor": "Demo Prairie Credit Union of Illinois",
-                    "property": "2019 Toyota Sienna LE minivan",
-                }
-            ],
-        }
-    )
-    row = loan["spouse_loans"][0]
-    assert [str(m) for m in row["creditor"]] == [MEANS_TOO_LONG]
-    assert [str(m) for m in row["property"]] == [MEANS_TOO_LONG]
 
 
 def test_a_stored_loan_debt_is_an_int():

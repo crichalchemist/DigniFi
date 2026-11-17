@@ -1119,7 +1119,8 @@ _AB = "schedule_a_b: group 'ab_line_3'"
                 "forms.E007",
                 f"{_AB}: sheet column 'Make' binds 'answer:schedule_a_b.make', "
                 "not a sofa.<collection>[].<attr>, household.dependents[].<attr>, "
-                "income.statement[].<attr> or assets.line_<key>[].<attr> list",
+                "income.statement[].<attr>, assets.line_<key>[].<attr> or "
+                "means.line_<key>[].<attr> list",
             ),
         ),
         (
@@ -1349,8 +1350,72 @@ def test_a_statement_column_binding_another_list_is_reported(schema_copy):
     assert (
         "forms.E007",
         "schedule_i: group 'i_line_8a': statement column 'Income of' binds "
-        "'household.dependents[].age', not an income.statement[].<attr> list",
+        "'household.dependents[].age', not an income.statement[].<attr> or "
+        "means.line_43[].<attr> list",
     ) in _errors("schedule_i")
+
+
+def _means_slots(d):
+    """The synthetic A/B group's name slots and its first column on line 9b's creditors."""
+    for f in d["fields"]:
+        if f["repeat"] == "ab_line_3":
+            f["binding"] = f["binding"].replace(
+                "sofa.creditor_payments[].creditor_name", "means.line_9b[].creditor"
+            )
+    d["groups"]["ab_line_3"]["sheet"]["columns"][0]["binding"] = "means.line_9b[].creditor"
+
+
+def _means_slots_with_totals(d):
+    _means_slots(d)
+    d["groups"]["ab_line_3"]["totals"] = {"column": "means.line_9b[].creditor"}
+
+
+def _a_means_statement_column(d):
+    d["groups"]["i_line_8a"]["sheet"]["columns"][0]["binding"] = "means.line_43[].happened"
+
+
+def _an_asked_means_box(d):
+    # Quest10 is blank on purpose and no 122A-2 binding takes it (R15).
+    d["fields"].append(
+        {**_text("Quest10", 3, None), "source": "asked", "value": None, "binding": "means.line_24"}
+    )
+
+
+@pytest.mark.parametrize(
+    ("form_type", "change", "refused"),
+    [
+        ("form_122a2", _an_asked_means_box, None),
+        (
+            "schedule_i",
+            _a_means_statement_column,
+            (
+                "forms.E007",
+                "schedule_i: group 'i_line_8a': statement column 'Income of' binds "
+                "'means.line_43[].happened', not an income.statement[].<attr> or "
+                "means.line_43[].<attr> list",
+            ),
+        ),
+        ("schedule_a_b", _means_slots, None),
+        (
+            "schedule_a_b",
+            _means_slots_with_totals,
+            (
+                "forms.E007",
+                "schedule_a_b: group 'ab_line_3': only a group continued on copies has total boxes",
+            ),
+        ),
+    ],
+    ids=["asked box", "unknown statement column", "slots and column", "totals on a sheet"],
+)
+def test_e007_accepts_a_means_binding_and_refuses_a_means_statement_column_it_doesnt_know(
+    schedule_a_b_with_sheet, form_type, change, refused
+):
+    _edit(schedule_a_b_with_sheet, form_type, change)
+    errors = _errors(form_type)
+    if refused is None:
+        assert errors == []
+    else:
+        assert refused in errors
 
 
 def test_a_statement_line_too_wide_for_row_9999_is_reported(schema_copy):

@@ -1,52 +1,135 @@
-"""Form 122A-2: line 1 copies 122A-1's monthly income, and lines 19 and 21 print above $0."""
+"""Form 122A-2's schema: line 1 copies 122A-1's monthly income, every one of the form's 198
+widgets is bound to its calculator line or blank on purpose, and only the filer's own answers
+carry legal review (3h3 plan R1, R2, R15, R21)."""
 
+import json
 from decimal import Decimal
 
 import pytest
+from django.conf import settings
 from django.contrib.auth import get_user_model
 
 from apps.districts.models import District
 from apps.eligibility.cmi import IncomeNotSplit
+from apps.eligibility.means_lines import LINE_KEYS
+from apps.forms.field_index import export_state
 from apps.forms.schema import load_schema
 from apps.forms.services.fill_resolver import resolve
 from apps.forms.tests.test_derivations import TEN_SOURCES
-from apps.intake.models import ExpenseInfo, IncomeInfo, IntakeSession
+from apps.intake.models import IncomeInfo, IntakeSession
 from apps.intake.tests.builders import answer_household
 
 User = get_user_model()
 
-# Every Expenses step amount above $0, so a line still bound to an expense would print.
-EXPENSES = {
-    "rent_or_mortgage": Decimal("1.00"),
-    "utilities": Decimal("2.00"),
-    "home_maintenance": Decimal("4.00"),
-    "vehicle_insurance": Decimal("16.00"),
-    "vehicle_maintenance": Decimal("32.00"),
-    "food_and_groceries": Decimal("64.00"),
-    "clothing": Decimal("128.00"),
-    "medical_expenses": Decimal("256.00"),
-    "childcare": Decimal("512.00"),
-    "child_support_paid": Decimal("1024.00"),
-    "insurance_not_deducted": Decimal("2048.00"),
-    "other_expenses": Decimal("4096.00"),
-}
-# The IRS and U.S. Trustee standards, the deduction lines and the result: step 3 asks
-# for what they need (step 2 spec §6.4, B1), so until then they print nothing.
-LEFT_FOR_STEP_3 = {
-    "Quest4",  # lines 4 and 39a
-    "Quest5",
-    "Quest6",
-    "Quest8",
-    "Quest9",
+# R15: the 12 names (20 widgets) no binding fills, a judgment the app doesn't make or a line
+# for wet ink: Debtor 2, the case number on every page, the amended-filing box, the signatures
+# and dates, line 10's housing adjustment, and each vehicle description's second box (H25).
+BLANK_ON_PURPOSE = {
+    "Debtor2.Name",
+    "Case number1",
+    "CheckBox2",
+    "Debtor1.sig",
+    "Debtor2.sig",
+    "Debtor1.Date signed",
+    "Debtor2.Date signed",
     "Quest10",
-    "Quest12",
-    "Quest13D",
-    "Quest14",
-    "Quest15",
-    "undefined_104",  # lines 38 and 39b
-    "undefined_110",  # line 41a
-    "undefined_111",  # line 41b
+    "Explain 1",
+    "Explain 2",
+    "Describe Vehicle 1 2",
+    "Describe Vehicle 2 2",
 }
+# R21: the LINE_KEYS entries with no widget of their own.
+UNPRINTED_LINE_KEYS = {"33d", "25_answer"}
+# R21, R25: a line printed by a name shared with another line, which binds once on its first page.
+COPIED_BY_SHARED_NAME = {"39a": "4", "33a": "9b", "33b": "13b", "33c": "13e", "39b": "38"}
+# R1: the filer's own answers, every widget of §10's asked units (3, 9b, 11, 13b, 13e, 15–23,
+# 25–31, 33d, 34, 36, 43) with their totals and line 36's figures, except the creditor, property
+# and vehicle-description cells, which Amounts Owed and the Assets step hold.
+LEGAL_REVIEW = {
+    "CheckBox5",
+    "Quest3A",
+    "Quest3A1",
+    "Quest3B",
+    "Quest3B1",
+    "Quest3C",
+    "Quest3C1",
+    "Quest3",
+    "Quest9B creditor amount1",
+    "Quest9B creditor amount2",
+    "Quest9B creditor amount3",
+    "Quest9B total amount",
+    "CheckBox6",
+    "Quest13B amount for vehicle 1-1",
+    "Quest13B amount for vehicle 1-2",
+    "Quest13B Total amount for vehicle 1",
+    "Quest13E.Monthly1",
+    "Quest13E.Monthly2",
+    "Quest13E.TotalMonthly",
+    "Quest15",
+    "undefined_48",
+    "undefined_49",
+    "undefined_50",
+    "undefined_51",
+    "undefined_52",
+    "undefined_53",
+    "undefined_54",
+    "undefined_55",
+    "undefined_57",
+    "undefined_58",
+    "1_2",
+    "2_2",
+    "CheckBox7",
+    "undefined_59",
+    "undefined_61",
+    "undefined_62",
+    "undefined_63",
+    "undefined_64",
+    "undefined_65",
+    "undefined_66",
+    "CheckBox8",
+    "undefined_73",
+    "CheckBox9",
+    "undefined_76",
+    "CheckBox10",
+    "undefined_79",
+    "CheckBox11",
+    "undefined_82",
+    "undefined_83",
+    "undefined_86",
+    "undefined_87",
+    "undefined_90",
+    "undefined_91",
+    "undefined_92",
+    "CheckBox13",
+    "undefined_97",
+    "x",
+    "undefined_98",
+    "CheckBox16",
+    "undefined_113",
+    "undefined_114",
+    "undefined_115",
+    "undefined_116",
+    "undefined_117",
+    "undefined_118",
+    "undefined_119",
+    "undefined_120",
+}
+# R2: the keys each box's reader can return, mapped by the schema to the index's states.
+READER_KEYS = {
+    "CheckBox1": {"no_presumption", "presumption"},
+    "CheckBox6": {"0", "1", "2_or_more"},
+    "CheckBox14": {"1", "2", "between"},
+}
+YES_NO = {"yes", "no"}
+
+
+def _index():
+    path = settings.FORM_INDEX_DIRECTORY / "b_122a-2_0425-form.index.json"
+    return json.loads(path.read_text())
+
+
+def _fields():
+    return load_schema("form_122a2").fields
 
 
 @pytest.fixture
@@ -84,42 +167,83 @@ def test_empty_session_is_asked_for_income_by_source(session, form_type):
         resolve(load_schema(form_type), session)
 
 
-@pytest.mark.parametrize(
-    "support_paid,childcare,printed",
-    [
-        (
-            Decimal("450.00"),
-            Decimal("1200.00"),
-            {"undefined_51": "450.00", "undefined_53": "1200.00"},
-        ),
-        (Decimal("0.01"), Decimal("0.02"), {"undefined_51": "0.01", "undefined_53": "0.02"}),
-        (Decimal("0"), Decimal("0"), {}),
-        (None, None, {}),  # the Expenses step was never saved
-    ],
-)
-def test_support_paid_and_childcare_print_on_lines_19_and_21_only_above_zero(
-    session, support_paid, childcare, printed
-):
-    # An expense left empty is stored as $0, so $0 can't be told from "left blank": these
-    # lines print only above $0, as Schedule J's do (step 2 spec §6.1, 6c option A).
-    IncomeInfo.objects.create(session=session, monthly_gross_wages=Decimal("9000.00"))
-    if support_paid is not None:
-        ExpenseInfo.objects.create(
-            session=session, child_support_paid=support_paid, childcare=childcare
-        )
+def test_every_122a2_widget_is_bound_or_blank_on_purpose():
+    # 198 = 178 bound + 20 blank on purpose, proven by widget (R15): a tool that leaves line
+    # 38's three copy boxes out binds 175 and fails here, and so does one that binds a
+    # blank-on-purpose box.
+    widgets = [w for w in _index() if w["type"] != "Button"]
+    assert len(widgets) == 198
+    bound = {f.pdf_field for f in _fields()}
 
-    resolved = resolve(load_schema("form_122a2"), session)
-
-    lines = ("undefined_51", "undefined_53")
-    assert {box: resolved[box] for box in lines if box in resolved} == printed
+    assert bound & BLANK_ON_PURPOSE == set()
+    assert {w["full_name"] for w in widgets} == bound | BLANK_ON_PURPOSE
+    assert sum(w["full_name"] in bound for w in widgets) == 178
+    assert sum(w["full_name"] in BLANK_ON_PURPOSE for w in widgets) == 20
 
 
-def test_lines_left_for_step_3_print_nothing(session):
-    # Every expense is above $0, so a line still reading one, or a means-test figure
-    # step 2 never works out, would print.
-    IncomeInfo.objects.create(session=session, monthly_gross_wages=Decimal("9000.00"))
-    ExpenseInfo.objects.create(session=session, **EXPENSES)
+def test_every_calculator_line_prints_or_is_listed():
+    # Every line the calculator works out reaches the page (R21): in a box of its own, through a
+    # name another line shares, through Quest1's cmi rule, or on the list of keys with no widget.
+    # Only the scalar bindings count: a list cell never stands in for a dropped total, and line
+    # 43's eight form rows are the form's own, with no calculator line behind them.
+    scalars = [
+        f
+        for f in _fields()
+        if f.binding and f.repeat is None and not f.binding.startswith("means.line_43_")
+    ]
+    bound = {f.binding.removeprefix("means.").removeprefix("line_"): f.pdf_field for f in scalars}
+    lines = {}
+    for w in _index():
+        lines.setdefault(w["full_name"], set()).add(w["line"])
 
-    printed = resolve(load_schema("form_122a2"), session)
+    for key in LINE_KEYS:
+        if key in bound or key in UNPRINTED_LINE_KEYS or key == "1":
+            continue
+        other = COPIED_BY_SHARED_NAME[key]
+        # the other line's box is drawn again on a widget the index puts on this line
+        assert key in lines[bound[other]], key
+    assert set(bound) <= set(LINE_KEYS)
+    assert "1" not in bound  # Quest1 keeps its cmi rule
 
-    assert sorted(LEFT_FOR_STEP_3 & printed.keys()) == []
+
+def test_the_filers_answers_carry_legal_review_and_nothing_else_does():
+    # Every means. field is asked (R1): the UPL guard would keep a derived legal_review box
+    # blank for everyone. legal_review marks the filer's own answers, field by field.
+    fields = _fields()
+    for f in fields:
+        if f.binding:
+            assert f.binding.startswith("means."), f.pdf_field
+            assert (f.source, f.rule) == ("asked", None), f.pdf_field
+        else:
+            assert f.source == "derived", f.pdf_field
+            assert f.rule in ("full_name", "district_name", "cmi"), f.pdf_field
+        assert f.legal_review is (f.pdf_field in LEGAL_REVIEW), f.pdf_field
+    assert LEGAL_REVIEW <= {f.pdf_field for f in fields}
+
+
+def test_every_checkbox_maps_the_readers_keys_to_the_indexs_states():
+    # A box's choices keys are exactly what means_value can return for it (R2), and its values
+    # the index's export states (E005 checks the values; a missing key would print nothing).
+    states = {}
+    for w in _index():
+        if w["on_state"]:
+            states.setdefault(w["full_name"], set()).add(export_state(w["on_state"]))
+    boxes = [f for f in _fields() if f.type == "checkbox"]
+
+    assert len(boxes) == 15
+    for f in boxes:
+        assert set(f.choices) == READER_KEYS.get(f.pdf_field, YES_NO), f.pdf_field
+        assert set(f.choices.values()) == states[f.pdf_field], f.pdf_field
+
+
+def test_each_33d_slot_keeps_its_own_choices_map():
+    # Row 3's Yes is /On where rows 1 and 2 tick /Yes, so each slot carries its own map and the
+    # sheet reads row 1's through option_text (R14).
+    boxes = {f.pdf_field: f for f in _fields() if f.repeat == "means_line_33d" and f.choices}
+
+    assert {name: f.choices for name, f in boxes.items()} == {
+        "CheckBox8": {"no": "/No", "yes": "/Yes"},
+        "CheckBox9": {"no": "/No", "yes": "/Yes"},
+        "CheckBox10": {"no": "/No", "yes": "/On"},
+    }
+    assert [boxes[name].row for name in ("CheckBox8", "CheckBox9", "CheckBox10")] == [1, 2, 3]

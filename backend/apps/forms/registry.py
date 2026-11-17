@@ -18,8 +18,9 @@ from dataclasses import dataclass
 
 from apps.districts.dated_tables import fill_date
 from apps.districts.exemptions import exemption_catalog_in_force
-from apps.eligibility.cmi import is_above_median
+from apps.eligibility.cmi import MARRIAGE_UNANSWERED, is_above_median
 from apps.eligibility.means_inputs import page_answers, read_inputs, read_tables
+from apps.eligibility.means_lines import missing_line, work_out
 from apps.forms.schema import load_schema
 from apps.forms.services.exemption_items import exemption_items
 from apps.forms.services.fill_resolver import resolve, resolve_parts
@@ -191,23 +192,27 @@ def _needs_means_test(session: IntakeSession) -> None:
 
 
 # DRAFT: counsel C-24
-FORM_122A2_CANT_PRINT_YET = (
-    "You've answered the questions for Form 122A-2, but DigniFi can't print that form yet. "
+FORM_122A2_LINE_MISSING = (
+    "DigniFi can't work out every line of Form 122A-2, so it can't print that form. "
     "Form 122A-1 waits for it. File the two forms together."
 )
 
 
 def _needs_the_122a2_questions(session: IntakeSession) -> None:
-    """Form 122A-2's questions: a missing table first, then the page's first gap.
-
-    With no gap left, the last step stands in for 3h3's missing-line step: DigniFi can't print
-    the form yet, so it refuses for every filer. That refusal links nowhere.
-    """
+    """Form 122A-2's questions: a missing table, the Income step, the page's first gap, then a
+    line the calculator can't work out (§6). The last refusal links nowhere."""
     tables, _ = read_tables(fill_date())
-    gaps = means_test_gaps(read_inputs(session), tables, page_answers(session))
+    inputs = read_inputs(session)
+    if inputs.marital_status is None:
+        # 122A-1 line 1 unanswered: the calculator holds lines 2, 3 and 40 MISSING, a refusal with
+        # no link, so the Income step's own sentence comes first (the views' _prepare says the
+        # same through income_step_gaps; this keeps the gate whole for a caller without it).
+        raise PreconditionMissing(MARRIAGE_UNANSWERED, step="income_info")
+    gaps = means_test_gaps(inputs, tables, page_answers(session))
     if gaps:
         raise PreconditionMissing(gaps[0], page="/means-test")
-    raise PreconditionMissing(FORM_122A2_CANT_PRINT_YET)
+    if missing_line(work_out(inputs, tables)):
+        raise PreconditionMissing(FORM_122A2_LINE_MISSING)
 
 
 def _needs_means_test_and_form_122a2(session: IntakeSession) -> None:

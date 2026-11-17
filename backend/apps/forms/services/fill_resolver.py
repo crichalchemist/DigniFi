@@ -20,6 +20,7 @@ from decimal import Decimal
 from typing import TYPE_CHECKING, Any
 
 from apps.eligibility.cmi import counted_spouse_income, household_members
+from apps.eligibility.means_inputs import means_lines_for, one_read_of_means
 from apps.forms.field_index import option_text
 from apps.forms.schema import (
     FieldSpec,
@@ -36,6 +37,7 @@ from apps.forms.services.derivations import (
     RULE_FIXES,
     money_or_blank,
 )
+from apps.forms.services.means_cells import means_value
 from apps.forms.services.widgets import TemplateWidget, page_count, parse_key, template_widgets
 from apps.intake.asset_lines import (
     LINE_BY_KEY,
@@ -454,6 +456,8 @@ def resolve_binding(binding: str, session: IntakeSession) -> str | list[str]:
         from EXEMPTION_CELLS
       - "exemptions.line_1" | "exemptions.line_3" | "exemptions.line_3_1" → the filer's answer
         as a str, "" when unanswered
+      - "means.…" reads the calculator's record, held once a resolve: each cell as
+        means_cells.means_value gives it, a scalar str or a list of str
     """
     binding = binding.strip()
 
@@ -525,6 +529,9 @@ def resolve_binding(binding: str, session: IntakeSession) -> str | list[str]:
         if answer_match:
             return exemption_answer(session, answer_match[1])
         raise ValueError(f"unrecognized binding: {binding!r}")
+
+    if binding.startswith("means."):
+        return means_value(binding, means_lines_for(session))
 
     raise ValueError(f"unrecognized binding: {binding!r}")
 
@@ -601,6 +608,15 @@ def binding_fix(binding: str) -> dict[str, str]:
         return {"step": "debts"}
     if binding.startswith("exemptions."):
         return {"page": "/exemptions"}
+    if binding.startswith("means."):
+        # By attribute (3h3 plan R6): a creditor's name is the Amounts Owed step's, a property
+        # or a vehicle the Assets step's, every other cell the 122A-2 page's.
+        attr = binding.rpartition(".")[2] if "[]." in binding else binding[len("means.") :]
+        if attr == "creditor":
+            return {"step": "debts"}
+        if attr in ("property", "line_13_vehicle_1", "line_13_vehicle_2"):
+            return {"step": "assets"}
+        return {"page": "/means-test"}
     # A constant or a signature: a refusal there is DigniFi's defect, not the filer's.
     return {}
 
@@ -908,7 +924,12 @@ def resolve_parts(schema: FormSchema, session: IntakeSession) -> dict:
     # prints what the save stored. Schedule C's claim rows are a third read, for all 90 slots.
     from apps.forms.services.exemption_items import one_read_of_exemptions  # cycle, as above (R2)
 
-    with one_read_of_assets(), one_read_of_claims(), one_read_of_exemptions():
+    with (
+        one_read_of_assets(),
+        one_read_of_claims(),
+        one_read_of_exemptions(),
+        one_read_of_means(),
+    ):
         return _resolve_parts(schema, session)
 
 

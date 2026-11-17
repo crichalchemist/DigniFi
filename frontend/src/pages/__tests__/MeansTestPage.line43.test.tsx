@@ -19,6 +19,7 @@ import {
   MEANS_LINE_43_LABEL_CHOICES,
   MEANS_LINE_43_LABEL_HAPPENED,
   MEANS_LINE_43_LABEL_PAPERS,
+  MEANS_LINE_43_LEGEND,
   MEANS_LINE_43_REMOVE,
   MEANS_LINE_43_SKIPPED,
   MEANS_PAGE_SAVE_FAILED,
@@ -32,6 +33,11 @@ const fill = (sentence: string, values: Record<string, string>) =>
     (text, [key, value]) => text.split(`{${key}}`).join(value),
     sentence
   );
+
+// The button's name is its own words then its circumstance's legend (aria-labelledby), so two
+// circumstances' buttons are told apart (DIG-515)
+const assembleName = (n: string) =>
+  `${MEANS_LINE_43_ASSEMBLE} ${fill(MEANS_LINE_43_LEGEND, { n })}`;
 
 const circumstance = (over: Partial<MeansCircumstance> = {}): MeansCircumstance => ({
   happened: '',
@@ -93,7 +99,7 @@ describe('line 43', () => {
     await typeIn('means_line_43_0_papers', 'Letter');
     expect(area('means_line_43_0_explanation')).toHaveValue('');
 
-    await userEvent.click(screen.getByRole('button', { name: MEANS_LINE_43_ASSEMBLE }));
+    await userEvent.click(screen.getByRole('button', { name: assembleName('1') }));
     const draft = [
       `${MEANS_LINE_43_LABEL_HAPPENED} Demo layoff in May`,
       `${MEANS_LINE_43_LABEL_CHANGE} Income fell`,
@@ -104,7 +110,7 @@ describe('line 43', () => {
 
     await typeIn('means_line_43_0_explanation', ' My own edit');
     await typeIn('means_line_43_0_papers', ' and a bill');
-    await userEvent.click(screen.getByRole('button', { name: MEANS_LINE_43_ASSEMBLE }));
+    await userEvent.click(screen.getByRole('button', { name: assembleName('1') }));
     expect(area('means_line_43_0_explanation')).toHaveValue(`${draft} My own edit`);
   });
 
@@ -308,7 +314,18 @@ describe('line 43', () => {
       screen.getByRole('button', { name: fill(MEANS_LINE_43_REMOVE, { n: '1' }) })
     ).toBeInTheDocument();
     expect(screen.getByRole('button', { name: MEANS_LINE_43_ADD })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: MEANS_LINE_43_ASSEMBLE })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: assembleName('1') })).toBeInTheDocument();
+  });
+
+  it('each assemble button names its circumstance', async () => {
+    serve(line43Page([circumstance(), circumstance({ amount: '250.00' })]));
+    renderPage();
+    await ready();
+
+    expect(screen.getByRole('button', { name: assembleName('1') })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: assembleName('2') })).toBeInTheDocument();
+    // a name that is only the button's own words would be the same twice
+    expect(screen.queryAllByRole('button', { name: MEANS_LINE_43_ASSEMBLE })).toHaveLength(0);
   });
 
   it('nothing on line 43 says overcome, rebut, rebuttal or abuse', async () => {
