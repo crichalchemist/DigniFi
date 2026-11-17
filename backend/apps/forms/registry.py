@@ -18,7 +18,7 @@ from dataclasses import dataclass
 
 from apps.districts.dated_tables import fill_date
 from apps.districts.exemptions import exemption_catalog_in_force
-from apps.eligibility.cmi import is_above_median
+from apps.eligibility.cmi import MARRIAGE_UNANSWERED, is_above_median
 from apps.eligibility.means_inputs import page_answers, read_inputs, read_tables
 from apps.eligibility.means_lines import missing_line, work_out
 from apps.forms.schema import load_schema
@@ -203,6 +203,11 @@ def _needs_the_122a2_questions(session: IntakeSession) -> None:
     line the calculator can't work out (§6). The last refusal links nowhere."""
     tables, _ = read_tables(fill_date())
     inputs = read_inputs(session)
+    if inputs.marital_status is None:
+        # 122A-1 line 1 unanswered: the calculator holds lines 2, 3 and 40 MISSING, a refusal with
+        # no link, so the Income step's own sentence comes first (the views' _prepare says the
+        # same through income_step_gaps; this keeps the gate whole for a caller without it).
+        raise PreconditionMissing(MARRIAGE_UNANSWERED, step="income_info")
     gaps = means_test_gaps(inputs, tables, page_answers(session))
     if gaps:
         raise PreconditionMissing(gaps[0], page="/means-test")

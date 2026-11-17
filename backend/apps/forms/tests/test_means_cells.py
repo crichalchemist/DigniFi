@@ -96,7 +96,7 @@ def test_every_means_scalar_resolves_to_text_or_blank(binding, printed):
 
 
 @pytest.mark.parametrize("sentinel", [MISSING, SKIPPED], ids=repr)
-@pytest.mark.parametrize("key", ["16", "5", "2", "43"])
+@pytest.mark.parametrize("key", ["16", "5", "2", "43", "11", "40", "36_multiplier"])
 def test_a_missing_or_skipped_line_prints_blank_never_zero(sentinel, key):
     lines = _with_lines(FULL_LINES, **{key: sentinel})
     assert means_value(f"means.line_{key}", lines) == ""

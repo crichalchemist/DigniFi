@@ -543,8 +543,13 @@ class GeneratedFormViewSet(viewsets.ReadOnlyModelViewSet):
                 # writes only after every check
                 for ft in (ft for ft in MEANS_PAIR if ft in documents):
                     document = documents[ft]
-                    row = rows[ft] or GeneratedForm.objects.create(
-                        session=locked, form_type=ft, generated_by=request.user
+                    # get_or_create: a Generate takes no lock, so its row can land between the
+                    # read above and this write; that row is then filed, not made again
+                    row = (
+                        rows[ft]
+                        or GeneratedForm.objects.get_or_create(
+                            session=locked, form_type=ft, defaults={"generated_by": request.user}
+                        )[0]
                     )
                     _store(row, document)
                     changed = (

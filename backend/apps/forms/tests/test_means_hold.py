@@ -17,7 +17,7 @@ from rest_framework.test import APIClient
 from apps.districts.dated_tables import fill_date
 from apps.districts.means_standards import NO_MEANS_TEST_TABLE
 from apps.districts.models import District, Section104Amounts
-from apps.eligibility.cmi import MEMBER_UNANSWERED
+from apps.eligibility.cmi import MARRIAGE_UNANSWERED, MEMBER_UNANSWERED
 from apps.eligibility.means_inputs import read_inputs, read_tables
 from apps.eligibility.means_lines import MeansRow, line_30_cap, work_out
 from apps.eligibility.models import MeansTest
@@ -392,7 +392,7 @@ def test_an_above_median_filers_unfiled_122a2_row_refuses_on_regenerate_and_down
         )
 
 
-def test_the_hold_names_no_presumption_and_links_nowhere():
+def test_the_pairs_fixed_sentences_say_neither_presumption_nor_abuse():
     for sentence in (FORM_122A2_LINE_MISSING, MEANS_PAIR_REFUSAL):
         assert "presumption" not in sentence.lower()
         assert "abuse" not in sentence.lower()
@@ -621,6 +621,37 @@ def test_an_unanswered_household_row_is_refused_in_the_income_steps_words_before
     assert (generated.status_code, generated.data["error"]) == (422, MEMBER_UNANSWERED)
     assert reached == []
     assert not MeansTest.objects.filter(session=above).exists()
+
+
+@pytest.mark.django_db
+def test_an_unanswered_marriage_question_is_refused_in_the_income_steps_words_not_the_missing_line(
+    api_client, above
+):
+    # marital_status is null until answered (122A-1 line 1). The calculator then holds lines 2, 3
+    # and 40 MISSING, so the gate alone would meet FORM_122A2_LINE_MISSING, which links nowhere;
+    # the Income step's own sentence names where the filer fixes it. The stored result is worked
+    # out before the answer goes, since 122A-1's gate reads it.
+    answer_means_test(above)
+    MeansTestCalculator(above).calculate()
+    IncomeInfo.objects.filter(session=above).update(marital_status=None)
+    session = _fresh(above)
+
+    for form_type in PAIR:
+        with pytest.raises(PreconditionMissing) as refused:
+            build_parts(form_type, session)
+        assert (str(refused.value), refused.value.step, refused.value.page) == (
+            MARRIAGE_UNANSWERED,
+            "income_info",
+            None,
+        )
+        # through the views, _prepare's income_step_gaps says the same, before the gate
+        generated = _generate(api_client, session, form_type)
+        assert (generated.status_code, generated.data) == (
+            422,
+            {"form_type": form_type, "error": MARRIAGE_UNANSWERED, "step": "income_info"},
+        )
+    page = api_client.get(f"/api/intake/sessions/{session.pk}/means-test/")
+    assert (page.data["applies"], page.data["applies_gap"]) == (None, MARRIAGE_UNANSWERED)
 
 
 @pytest.mark.django_db
@@ -1068,6 +1099,72 @@ def test_the_pair_action_creates_a_missing_partner_row(api_client, above):
     assert partner.status == "filed"
     assert json.loads(partner.field_values) == build_parts("form_122a2", _fresh(above))
     assert partner.generated_by == above.user
+
+
+@pytest.mark.django_db
+def test_the_pair_action_files_the_document_it_checked_not_the_one_stored_at_generate(
+    api_client, above
+):
+    # Generate, then the Income step and the page edited, then "Mark both as filed": the filed
+    # 122A-1 carries the CMI the server just checked (line 11), never the one its Generate stored.
+    answer_means_test(above)
+    row = _generated(api_client, above, "form_122a1")
+    assert _form_values(row)["Quest11"] == "9000.00"
+    _set_wages(above, "9500.00")
+    answer_means_test(above, line_16="2300.00")
+
+    marked = _mark_pair_filed(api_client, above)
+
+    assert marked.status_code == 200, marked.data
+    assert _form_values(row)["Quest11"] == "9500.00"
+    assert row.status == "filed"
+    assert json.loads(row.field_values) == build_parts("form_122a1", _fresh(above))
+
+
+@pytest.mark.django_db
+def test_a_partner_row_a_generate_made_mid_check_is_filed_by_the_pair_action_not_a_500(
+    api_client, above, monkeypatch
+):
+    # Generate takes no lock (R3), so its get_or_create can commit the missing partner's row between
+    # the pair action's read of the rows and its write: that row is then filed, not made again.
+    answer_means_test(above)
+    _generated(api_client, above, "form_122a1")
+    check = PDFFormFiller.check
+
+    def check_then_generate_elsewhere(filler, form_type, values):
+        result = check(filler, form_type, values)
+        if form_type == "form_122a2":
+            GeneratedForm.objects.get_or_create(
+                session=above, form_type="form_122a2", defaults={"generated_by": above.user}
+            )
+        return result
+
+    monkeypatch.setattr(PDFFormFiller, "check", check_then_generate_elsewhere)
+    marked = _mark_pair_filed(api_client, above)
+
+    assert marked.status_code == 200, marked.data
+    assert {t: s for t, (s, _, _) in _as_stored(above).items()} == {t: "filed" for t in PAIR}
+    assert GeneratedForm.objects.filter(session=above, form_type="form_122a2").count() == 1
+
+
+@pytest.mark.django_db
+def test_a_whole_call_refusal_of_the_pair_action_names_no_form_and_writes_nothing(
+    api_client, above
+):
+    # _prepare refuses the whole call, so the body names no form and the dashboard shows it on the
+    # card that was pressed (R10, H32)
+    answer_means_test(above)
+    _generated(api_client, above, "form_122a1")
+    before = _as_stored(above)
+    IntakeSession.objects.filter(pk=above.pk).update(status="in_progress")
+
+    refused = _mark_pair_filed(api_client, above)
+
+    assert (refused.status_code, refused.data) == (
+        422,
+        {"error": "Finish your intake before preparing your forms.", "page": "/intake"},
+    )
+    assert _as_stored(above) == before
 
 
 @pytest.mark.django_db

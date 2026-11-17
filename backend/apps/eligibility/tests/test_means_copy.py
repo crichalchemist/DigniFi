@@ -1,8 +1,10 @@
 """
-The server's two refusal sentences for the means test are also the browser's: the filer reads
-`FORM_122A2_LINE_MISSING` and `NO_MEANS_TEST_TABLE` on the dashboard in `copy.ts`'s words, and
-`upl-means-test-copy.test.ts` scores the words the filer sees. A sentence reworded on one side
-only would put two different sentences in front of the filer for one refusal (3h1 plan R8).
+The means pair's server sentences are also the browser's: `FORM_122A2_LINE_MISSING`,
+`NO_MEANS_TEST_TABLE` and `MEANS_PAIR_REFUSAL` are read on the dashboard in `copy.ts`'s words,
+`LINE_43_POINTER` is printed on the form and scored there, and `upl-means-test-copy.test.ts`
+scores the words the filer sees. A sentence reworded on one side only would put two different
+sentences in front of the filer for one refusal (3h1 plan R8). The Income step's gaps
+(`apps/eligibility/cmi.py`) are the server's alone and are not pinned here.
 """
 
 import re

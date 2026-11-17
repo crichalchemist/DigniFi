@@ -834,9 +834,11 @@ The plan found these in the spec as written; the spec's letter stands everywhere
 Departures from §9.1, each equal in effect to the spec's words:
 
 - The pair's per-row refusal is a views-level `MeansPairTie`, not H32's `PreconditionMissing`; its wire body is the same, a sentence with no link.
-- The pair action makes a missing partner with `create()` after a `.first()` miss, equal to `get_or_create` under the lock.
-- The pair action checks Form 122A-2 first, so a page gap or a 122A-2 refusal names `form_122a2` and shows on that card (owner, 2026-11-16).
 - §9.4's tier 1 "against a session that fills it" is met by a hand-built calculator record that fills every line, plus tier 3's Priya and the row tests.
+
+The pair action makes a missing partner with `get_or_create` after a `.first()` miss, as §9.1 writes it: a Generate takes no lock, so its row can land between the read and the write, and that row is then filed, not made again.
+
+Ruling (owner, 2026-11-16): the pair action checks Form 122A-2 first, so a page gap or a 122A-2 `check()` refusal names `form_122a2` and shows on that card; only a refusal of 122A-1's own document names `form_122a1`.
 
 ## 9A. 3h4: the AI polish
 
