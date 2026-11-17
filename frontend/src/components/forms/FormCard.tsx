@@ -6,19 +6,34 @@
  * Generate asks for the UPL acknowledgment first, as Generate All does.
  */
 
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '../common';
 import { UPLConfirmationModal } from '../compliance';
 import { FormStatusBadge } from './FormStatusBadge';
 import type { GeneratedForm, FormType } from '../../types/api';
 import { FORM_TYPE_METADATA } from '../../types/api';
+import {
+  MEANS_PAIR_CANCEL,
+  MEANS_PAIR_CONFIRM,
+  MEANS_PAIR_MARK_ALONE,
+  MEANS_PAIR_MARK_BOTH,
+} from '../../constants/copy';
 
 /** Why this form's last Generate or Download was refused, and the link to its fix, if any */
 export interface FormRefusal {
   message: string;
   link?: { to: string; label: string };
 }
+
+/**
+ * What Mark as Filed asks first on Form 122A-1 and Form 122A-2, which are filed together: `both`
+ * marks the pair; `alone` shows the filed partner's notice, then marks this form only. No `pair`
+ * is today's button.
+ */
+export type FormCardPair =
+  | { kind: 'both' }
+  | { kind: 'alone'; partnerLabel: string; partnerNotice: string };
 
 interface FormCardProps {
   formType: FormType;
@@ -33,6 +48,8 @@ interface FormCardProps {
   onGenerate: (formType: FormType) => Promise<void>;
   onDownload: (formId: number) => Promise<void>;
   onMarkFiled: (formId: number) => Promise<void>;
+  pair?: FormCardPair;
+  onMarkPairFiled?: () => Promise<void>;
 }
 
 export function FormCard({
@@ -45,10 +62,14 @@ export function FormCard({
   onGenerate,
   onDownload,
   onMarkFiled,
+  pair,
+  onMarkPairFiled,
 }: FormCardProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [isMarkingFiled, setIsMarkingFiled] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
+  const [confirmingPair, setConfirmingPair] = useState(false);
+  const confirmId = useId();
   const navigate = useNavigate();
   const metadata = FORM_TYPE_METADATA[formType];
   const status = generatedForm?.status ?? 'pending';
@@ -68,6 +89,15 @@ export function FormCard({
   const handleMarkFiled = async (formId: number) => {
     setIsMarkingFiled(true);
     await handleAction(() => onMarkFiled(formId));
+    setIsMarkingFiled(false);
+  };
+
+  const handleMarkPairFiled = async () => {
+    setConfirmingPair(false);
+    setIsMarkingFiled(true);
+    await handleAction(async () => {
+      await onMarkPairFiled?.();
+    });
     setIsMarkingFiled(false);
   };
 
@@ -125,16 +155,49 @@ export function FormCard({
           </Button>
         )}
 
-        {(status === 'generated' || status === 'downloaded') && generatedForm && (
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => handleMarkFiled(generatedForm.id)}
-            isLoading={isMarkingFiled}
-            loadingText="Marking as filed..."
-          >
-            Mark as Filed
-          </Button>
+        {(status === 'generated' || status === 'downloaded') &&
+          generatedForm &&
+          !confirmingPair && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => (pair ? setConfirmingPair(true) : handleMarkFiled(generatedForm.id))}
+              isLoading={isMarkingFiled}
+              loadingText="Marking as filed..."
+            >
+              Mark as Filed
+            </Button>
+          )}
+
+        {confirmingPair && pair && generatedForm && (
+          <div className="form-card-confirm" role="group" aria-labelledby={confirmId}>
+            {pair.kind === 'both' ? (
+              <p id={confirmId}>{MEANS_PAIR_CONFIRM}</p>
+            ) : (
+              <>
+                <p id={confirmId}>
+                  <strong>{pair.partnerLabel}</strong>
+                </p>
+                <p>{pair.partnerNotice}</p>
+              </>
+            )}
+            <div className="form-card-confirm-buttons">
+              <Button
+                size="sm"
+                variant="primary"
+                onClick={() => {
+                  if (pair.kind === 'both') return handleMarkPairFiled();
+                  setConfirmingPair(false);
+                  return handleMarkFiled(generatedForm.id);
+                }}
+              >
+                {pair.kind === 'both' ? MEANS_PAIR_MARK_BOTH : MEANS_PAIR_MARK_ALONE}
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => setConfirmingPair(false)}>
+                {MEANS_PAIR_CANCEL}
+              </Button>
+            </div>
+          </div>
         )}
 
         {status === 'filed' && (

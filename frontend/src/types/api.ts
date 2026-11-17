@@ -1124,6 +1124,12 @@ export interface GenerateFormResponse {
   message: string;
 }
 
+/** Form 122A-1 and Form 122A-2 marked filed together; both rows, 122A-1 first */
+export interface MarkPairFiledResponse {
+  forms: GeneratedForm[];
+  message: string;
+}
+
 /** @deprecated Use GenerateFormRequest */
 export type GenerateForm101Request = GenerateFormRequest;
 /** @deprecated Use GenerateFormResponse */

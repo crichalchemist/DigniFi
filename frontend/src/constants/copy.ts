@@ -135,6 +135,18 @@ export const MEANS_LINE_MISSING =
 export const MEANS_PAIR_REFUSAL = 'File Form 122A-1 and Form 122A-2 together.';
 
 // DRAFT: counsel C-24
+export const MEANS_PAIR_CONFIRM = 'These two forms go together. Mark both as filed?';
+
+// DRAFT: counsel C-24
+export const MEANS_PAIR_MARK_BOTH = 'Mark both as filed';
+
+// DRAFT: counsel C-24
+export const MEANS_PAIR_MARK_ALONE = 'Mark as filed';
+
+// DRAFT: counsel C-24
+export const MEANS_PAIR_CANCEL = 'Cancel';
+
+// DRAFT: counsel C-24
 export const MEANS_PAIR_NOTICE =
   'Form 122A-1 says your result is worked out on Form 122A-2. File them together.';
 
