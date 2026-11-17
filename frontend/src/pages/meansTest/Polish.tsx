@@ -146,6 +146,7 @@ export function Polish({
             id={buttonId}
             aria-labelledby={`${buttonId} ${legendId}`}
             disabled={blank || busy || pending !== undefined}
+            aria-busy={busy}
             onClick={onRequest}
           >
             {MEANS_POLISH_BUTTON}
@@ -168,7 +169,13 @@ export function Polish({
           </Button>
         </div>
       )}
-      <p role="status" className="form-help-text">
+      {/* Focus rests here once a request is sent and stays through a failure (`Line43.request`) */}
+      <p
+        role="status"
+        id={`means-line-43-${index}-status`}
+        tabIndex={-1}
+        className="form-help-text"
+      >
         {said}
       </p>
       {failure && (
@@ -180,11 +187,12 @@ export function Polish({
       {row.original_explanation != null && (
         <>
           <p className="form-help-text">{MEANS_POLISH_HOLDS_REWRITE}</p>
-          {/* Held while a review is open: an approval then would record AI text as the filer's own */}
+          {/* Held while a request is out or a review is open: an approval then would record AI text
+              as the filer's own */}
           <Button
             type="button"
             variant="outline"
-            disabled={pending !== undefined}
+            disabled={pending !== undefined || busy}
             onClick={onRestore}
           >
             {MEANS_POLISH_RESTORE}

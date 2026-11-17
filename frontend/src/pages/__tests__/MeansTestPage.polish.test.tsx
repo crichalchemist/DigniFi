@@ -77,6 +77,15 @@ const drain = (release: () => void) =>
     await new Promise((resolve) => setTimeout(resolve, 20));
   });
 
+/** A reply the stand-in server keeps back until `release` is called */
+const heldReply = () => {
+  let release!: () => void;
+  const hold = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  return { hold, release };
+};
+
 const pageWith = (...rows: Parameters<typeof circumstance>[0][]) =>
   line43Page(rows.map((row) => circumstance(row)));
 
@@ -322,6 +331,8 @@ describe('line 43 AI polish', () => {
 
     await userEvent.clear(box());
     expect(screen.queryByText(MEANS_POLISH_HOLDS_REWRITE)).toBeNull();
+    // the sentence that promised a way back goes with the way back
+    expect(screen.queryByText(MEANS_POLISH_APPROVED)).toBeNull();
     await pressContinue();
     await waitFor(() => expect(saved).toHaveLength(1));
     const rows = saved[0].line_43_circumstances as Record<string, unknown>[];
@@ -599,5 +610,131 @@ describe('line 43 AI polish', () => {
     await userEvent.clear(box());
     await press(assembleName(1));
     expect(box().value).toContain('Demo layoff in May');
+  });
+
+  it('the box stays as it was while the request is out and until the rewrite is answered, so no edit is lost', async () => {
+    const { hold, release } = heldReply();
+    servePolish({ hold });
+    serve(pageWith({ explanation: 'Demo words' }));
+    renderPage();
+    await ready();
+    expect(box()).toBeEnabled();
+
+    await userEvent.click(polishButton());
+    await press(MEANS_POLISH_SEND);
+    expect(screen.getByText(MEANS_POLISH_WORKING)).toBeInTheDocument();
+    expect(box()).toBeDisabled();
+
+    await drain(release);
+    await screen.findByRole('textbox', { name: MEANS_POLISH_REWRITE_LABEL });
+    expect(box()).toBeDisabled();
+
+    await press(MEANS_POLISH_KEEP);
+    expect(box()).toBeEnabled();
+  });
+
+  it('the polish button says it is busy while the request is out, and stays unavailable until the rewrite is answered', async () => {
+    const { hold, release } = heldReply();
+    servePolish({ hold });
+    serve(pageWith({ explanation: 'Demo words' }));
+    renderPage();
+    await ready();
+    expect(polishButton()).toHaveAttribute('aria-busy', 'false');
+
+    await userEvent.click(polishButton());
+    await press(MEANS_POLISH_SEND);
+    expect(polishButton()).toBeDisabled();
+    expect(polishButton()).toHaveAttribute('aria-busy', 'true');
+
+    await drain(release);
+    await screen.findByRole('textbox', { name: MEANS_POLISH_REWRITE_LABEL });
+    expect(polishButton()).toBeDisabled();
+    expect(polishButton()).toHaveAttribute('aria-busy', 'false');
+
+    await press(MEANS_POLISH_KEEP);
+    expect(polishButton()).toBeEnabled();
+  });
+
+  it('the polish button is unavailable while the box is blank', async () => {
+    servePolish();
+    serve(pageWith({ explanation: null }));
+    renderPage();
+    await ready();
+    expect(polishButton()).toBeDisabled();
+
+    await userEvent.type(box(), 'Demo words');
+    expect(polishButton()).toBeEnabled();
+    await userEvent.clear(box());
+    expect(polishButton()).toBeDisabled();
+  });
+
+  it("my own words can't be put back while a second request is out, so the next approval never records AI text as mine", async () => {
+    servePolish();
+    const saved = serve(pageWith({ explanation: 'Demo words' }));
+    renderPage();
+    await ready();
+    await polishFirstRow();
+    await press(MEANS_POLISH_APPROVE);
+
+    const { hold, release } = heldReply();
+    servePolish({ hold, body: { rewrite: 'Demo second rewrite' } });
+    await userEvent.click(polishButton());
+    expect(screen.getByText(MEANS_POLISH_WORKING)).toBeInTheDocument();
+    const restore = screen.getByRole('button', { name: MEANS_POLISH_RESTORE });
+    expect(restore).toBeDisabled();
+    await userEvent.click(restore);
+    expect(box()).toHaveValue('Demo rewrite words');
+
+    await drain(release);
+    await screen.findByRole('textbox', { name: MEANS_POLISH_REWRITE_LABEL });
+    await press(MEANS_POLISH_APPROVE);
+    await pressContinue();
+    await waitFor(() => expect(saved).toHaveLength(1));
+    const rows = saved[0].line_43_circumstances as Record<string, unknown>[];
+    expect(rows[0]).toMatchObject({
+      explanation: 'Demo second rewrite',
+      original_explanation: 'Demo words',
+    });
+  });
+
+  it('focus rests on the status sentence once a request is sent, so the filer is not dropped to the top of the page', async () => {
+    const { hold, release } = heldReply();
+    servePolish({ hold });
+    serve(pageWith({ explanation: 'Demo words' }, { explanation: 'Demo second' }));
+    renderPage();
+    await ready();
+
+    // the first press asks for consent: Send closes the panel that held focus
+    await userEvent.click(polishButton(1));
+    await press(MEANS_POLISH_SEND);
+    const working = screen.getByText(MEANS_POLISH_WORKING);
+    expect(working).toHaveFocus();
+    await drain(release);
+    await screen.findByRole('textbox', { name: MEANS_POLISH_REWRITE_LABEL });
+    await press(MEANS_POLISH_KEEP);
+
+    // later presses send at once: the button disables under the filer's hand
+    const second = heldReply();
+    servePolish({ hold: second.hold });
+    await userEvent.click(polishButton(2));
+    const status = document.getElementById('means-line-43-1-status') as HTMLElement;
+    expect(status).toHaveTextContent(MEANS_POLISH_WORKING);
+    expect(status).toHaveFocus();
+    await drain(second.release);
+  });
+
+  it('after a failed request focus stays on the status sentence, with the failure sentence beside it', async () => {
+    servePolish({ status: 503, body: { error: MEANS_POLISH_UNAVAILABLE } });
+    serve(pageWith({ explanation: 'Demo words' }));
+    renderPage();
+    await ready();
+    await userEvent.click(polishButton());
+    await press(MEANS_POLISH_SEND);
+
+    const failure = await screen.findByRole('alert');
+    expect(failure).toHaveTextContent(MEANS_POLISH_UNAVAILABLE);
+    const status = failure.previousElementSibling as HTMLElement;
+    expect(status).toHaveAttribute('role', 'status');
+    expect(status).toHaveFocus();
   });
 });

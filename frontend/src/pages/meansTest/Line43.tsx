@@ -125,6 +125,8 @@ export function Line43({
     `field-means_line_43_${rows.findIndex((row) => row._key === key)}_explanation`;
   const buttonId = (key: string) =>
     `means-line-43-${rows.findIndex((row) => row._key === key)}-polish`;
+  const statusId = (key: string) =>
+    `means-line-43-${rows.findIndex((row) => row._key === key)}-status`;
 
   // Line43 never unmounts, only its controls do: leaving Yes calls every request off and forgets
   // the consent, the rewrites and the sentences about them
@@ -179,6 +181,7 @@ export function Line43({
     setBusy((current) => without(current, key));
     setFailure((current) => without(current, key));
     setStatus((current) => without(current, key));
+    setAsking((current) => (current === key ? null : current));
     onChange((current) => ({
       ...current,
       line_43_circumstances: current.line_43_circumstances.filter((row) => row._key !== key),
@@ -203,6 +206,9 @@ export function Line43({
     setBusy((current) => ({ ...current, [key]: true }));
     setFailure((current) => ({ ...current, [key]: null }));
     setStatus((current) => ({ ...current, [key]: null }));
+    // The press disabled the button (or closed the panel that held focus): focus rests on the
+    // status sentence, and stays there if the request fails
+    focusAfter.current = statusId(key);
     try {
       const reply = await api.intake.meansTest.polish(sessionId, sent, controller.signal);
       // A request called off (Remove, leaving Yes) has been forgotten already
@@ -342,12 +348,21 @@ export function Line43({
                   maxLength={2000}
                   rows={8}
                   error={refusals[boxKey]}
-                  // An approval would overwrite an edit made meanwhile, unseen (R22)
-                  disabled={pending[row._key] !== undefined}
+                  // An approval would overwrite an edit made meanwhile, unseen (R22): the box is held
+                  // from the press until the rewrite is answered
+                  disabled={busy[row._key] === true || pending[row._key] !== undefined}
                   onChange={(event) => {
                     const value = event.target.value;
                     clearRefusal(boxKey);
-                    // A box emptied by hand holds no rewrite, so no original is kept (R13)
+                    // A box emptied by hand holds no rewrite, so no original is kept (R13), and no
+                    // sentence says it does
+                    if (value.trim() === '') {
+                      setStatus((current) =>
+                        current[row._key] === 'approved'
+                          ? { ...current, [row._key]: null }
+                          : current
+                      );
+                    }
                     change(
                       row._key,
                       value.trim() === ''
