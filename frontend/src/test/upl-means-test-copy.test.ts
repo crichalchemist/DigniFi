@@ -53,6 +53,7 @@ const NAMES = [
   'MEANS_EXPLANATION_TOO_LONG',
   'MEANS_EXPLANATION_LETTER',
   'MEANS_GAP_LINE_3',
+  'MEANS_GAP_LINE_3_CAP',
   'MEANS_GAP_LINE_3_NO_ROW',
   'MEANS_GAP_LINE_3_ROW',
   'MEANS_GAP_SPOUSE_VEHICLES',
@@ -372,6 +373,10 @@ const EXACT_WORDS: [string, string][] = [
   ['MEANS_EXPLANATION_TOO_LONG', 'This explanation is too long to print with line 43. Shorten it.'],
   ['MEANS_EXPLANATION_LETTER', "This explanation has a letter Form 122A-2 can't print. Change it."],
   ['MEANS_GAP_LINE_3', "Answer line 3, about your spouse's income."],
+  [
+    'MEANS_GAP_LINE_3_CAP',
+    "Line 3 can't be more than {amount}, your spouse's income on Form 122A-1, Column B.",
+  ],
   [
     'MEANS_GAP_LINE_3_NO_ROW',
     "Add each use of your spouse's income on line 3, or change the answer to No.",

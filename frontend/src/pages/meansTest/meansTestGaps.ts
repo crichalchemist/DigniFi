@@ -14,6 +14,7 @@ import {
   MEANS_GAP_LINE_3,
   MEANS_GAP_LINE_30_CAP,
   MEANS_GAP_LINE_30_CAP_ONE,
+  MEANS_GAP_LINE_3_CAP,
   MEANS_GAP_LINE_3_NO_ROW,
   MEANS_GAP_LINE_3_ROW,
   MEANS_GAP_LINE_34,
@@ -68,6 +69,7 @@ export type GapState = {
   lineFive: number | null;
   line15Cap: string | null;
   line30Cap: string | null;
+  spouseCmi: string | null;
 };
 
 const PROPERTY_CHOICES = ['home', 'other'];
@@ -313,6 +315,12 @@ export function meansTestGaps(state: GapState): string[] {
       if (rows.length === 0) gaps.push(MEANS_GAP_LINE_3_NO_ROW);
       else if (rows.some((row) => blank(row.purpose) || row.amount === null)) {
         gaps.push(MEANS_GAP_LINE_3_ROW);
+      } else if (
+        state.spouseCmi !== null &&
+        rows.reduce((total, row) => total + cents(row.amount as string), 0n) >
+          cents(state.spouseCmi)
+      ) {
+        gaps.push(fill(MEANS_GAP_LINE_3_CAP, { amount: dollars(state.spouseCmi) }));
       }
     }
     gaps.push(...spouseVehicleGaps(answers));

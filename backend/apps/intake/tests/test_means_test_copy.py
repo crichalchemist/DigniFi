@@ -52,7 +52,7 @@ def test_every_reference_sentence_carries_its_counsel_mark_on_the_line_above(nam
 def test_copy_ts_has_exactly_the_servers_gaps_and_no_other_gap():
     names = re.findall(r"^export const (MEANS_GAP_[A-Z0-9_]+) =", COPY_TS.read_text(), re.M)
     assert sorted(names) == SERVER_GAPS
-    assert len(names) == 41
+    assert len(names) == 42
 
 
 def test_every_gap_carries_its_counsel_mark_on_the_line_above():

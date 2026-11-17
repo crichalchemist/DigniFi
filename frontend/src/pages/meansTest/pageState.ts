@@ -420,6 +420,7 @@ export function gapStateOf(page: MeansPage, shown: PageState): GapState {
     lineFive: info?.line_30_people ?? null,
     line15Cap: info?.line_15_cap ?? null,
     line30Cap: info?.line_30_cap ?? null,
+    spouseCmi: info?.spouse_cmi ?? null,
   };
 }
 

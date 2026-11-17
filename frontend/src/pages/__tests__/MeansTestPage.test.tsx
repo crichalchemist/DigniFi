@@ -717,6 +717,27 @@ describe('MeansTestPage', () => {
     expect(gapRegion().textContent).toBe('');
   });
 
+  it("a line 3 total above the spouse's income is the first gap shown", async () => {
+    const page = priyaPage();
+    page.answers.line_3_answer = 'yes';
+    page.answers.line_3_rows = [{ purpose: 'Demo', amount: '1800.01' }];
+    serve(page);
+    const { unmount } = renderPage();
+    await ready();
+    expect(gapRegion()).toHaveTextContent(
+      "Line 3 can't be more than $1,800.00, your spouse's income on Form 122A-1, Column B."
+    );
+    unmount();
+
+    const equal = priyaPage();
+    equal.answers.line_3_answer = 'yes';
+    equal.answers.line_3_rows = [{ purpose: 'Demo', amount: '1800.00' }];
+    serve(equal);
+    renderPage();
+    await ready();
+    expect(gapRegion().textContent).toBe('');
+  });
+
   it('renders the information-not-advice disclaimer', async () => {
     serve(meansPage());
     const { unmount } = renderPage();

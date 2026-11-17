@@ -165,7 +165,8 @@ def _information(session, answers) -> tuple[dict | None, str | None]:
         tables, _ = read_tables(fill_date())
     except NoMeansTestTable:
         return None, "no_table"
-    lines = work_out(read_inputs(session), tables).lines
+    inputs = read_inputs(session)
+    lines = work_out(inputs, tables).lines
     people = lines["5"] if isinstance(lines["5"], int) else None
     spouse = counted_spouse_income(session)
     expenses = getattr(session, "expense_info", None)
@@ -199,6 +200,7 @@ def _information(session, answers) -> tuple[dict | None, str | None]:
         "line_29_per_child": _two(tables.education_per_child),
         "line_30_people": people,
         "line_30_cap": None if people is None else _two(line_30_cap(tables, people)),
+        "spouse_cmi": _two_or_none(inputs.spouse_cmi),
         "limits": {
             "effective_date": section_104.effective_date.isoformat(),
             "unsecured": _two(section_104.chapter_13_unsecured_limit),

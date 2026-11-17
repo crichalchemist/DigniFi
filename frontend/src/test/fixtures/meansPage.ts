@@ -156,6 +156,7 @@ export function meansPage(): MeansPage {
       line_29_per_child: '1000.00',
       line_30_people: 4,
       line_30_cap: '76.00',
+      spouse_cmi: '1800.00',
       limits: { effective_date: '2025-04-01', unsecured: '526700.00', secured: '1580125.00' },
       totals: { unsecured: '0.00', secured: '0.00' },
       multiplier: '5',

@@ -198,7 +198,7 @@ def _other_filers_rows(district):
     return other, session, car, loan, card
 
 
-def _married(session):
+def _married(session, spouse_wages="0.00"):
     answer_household(
         session,
         marital_status="married_together",
@@ -211,7 +211,7 @@ def _married(session):
                 "spouse_is_dependent": False,
             }
         ],
-        spouse_income={"monthly_gross_wages": Decimal("0.00")},
+        spouse_income={"monthly_gross_wages": Decimal(spouse_wages)},
     )
 
 
@@ -804,6 +804,60 @@ def test_the_reply_names_the_servers_first_gap_and_none_once_every_answer_is_giv
 
     answer_means_test(filer.session)
     assert _get(filer).json()["gap"] is None
+
+
+@pytest.mark.django_db
+def test_the_reply_names_the_line_3_cap_gap(filer):
+    _married(filer.session, spouse_wages="1800.00")
+
+    reply = _put(
+        filer,
+        {"line_3_answer": "yes", "line_3_rows": [{"purpose": "Demo", "amount": "1800.01"}]},
+    )
+
+    assert reply.status_code == 200
+    page = reply.json()
+    assert page["gap"] == (
+        "Line 3 can't be more than $1,800.00, your spouse's income on Form 122A-1, Column B."
+    )
+    assert page["information"]["spouse_cmi"] == "1800.00"
+
+
+@pytest.mark.django_db
+def test_a_filer_whose_spouse_income_isnt_entered_is_sent_to_the_income_step_not_line_3s_cap(
+    user, above
+):
+    client = APIClient()
+    client.force_authenticate(user=user)
+    spouse = {
+        "relationship": "spouse",
+        "age": 40,
+        "lives_with_you": True,
+        "claimed_or_supported": False,
+        "spouse_is_dependent": False,
+    }
+    answer_household(above, marital_status="married_together", members=[spouse], spouse_income={})
+    answer_means_test(
+        above,
+        line_3_answer="yes",
+        line_3_rows=[{"purpose": "Demo", "amount": "5000.00"}],
+    )
+    sentence = str(income_step_gaps(_fresh(above))[0])
+
+    reply = client.post(
+        "/api/forms/generate/",
+        {"session_id": above.pk, "form_type": "form_122a2"},
+        format="json",
+    )
+    page = client.get(_url(above))
+
+    assert sentence
+    assert reply.status_code == 422
+    assert reply.data["error"] == sentence
+    assert reply.data["step"] == "income_info"
+    assert page.status_code == 200
+    assert page.json()["applies"] is None
+    assert page.json()["applies_gap"] == sentence
 
 
 @pytest.mark.django_db

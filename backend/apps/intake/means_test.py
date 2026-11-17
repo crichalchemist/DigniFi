@@ -80,6 +80,9 @@ MEANS_GAP_LINE_3_NO_ROW = (
 MEANS_GAP_LINE_3_ROW = (
     "Enter what your spouse's income was used for, and the amount, on each row of line 3."
 )
+MEANS_GAP_LINE_3_CAP = (
+    "Line 3 can't be more than {amount}, your spouse's income on Form 122A-1, Column B."
+)
 MEANS_GAP_SPOUSE_VEHICLES = (
     "Answer whether your spouse has a vehicle that isn't on your property list."
 )
@@ -400,6 +403,11 @@ def means_test_gaps(inputs: MeansInputs, tables: MeansTables, answers: Mapping) 
                 gaps.append(MEANS_GAP_LINE_3_NO_ROW)
             elif any(_blank(row.get("purpose")) or row.get("amount") is None for row in rows):
                 gaps.append(MEANS_GAP_LINE_3_ROW)
+            elif (
+                inputs.spouse_cmi is not None
+                and sum(Decimal(row["amount"]) for row in rows) > inputs.spouse_cmi
+            ):
+                gaps.append(MEANS_GAP_LINE_3_CAP.format(amount=_money(inputs.spouse_cmi)))
         gaps += _spouse_vehicle_gaps(answers)
         gaps += _spouse_loan_gaps(inputs, answers)
     gaps += _vehicle_gaps(inputs, tables, answers)

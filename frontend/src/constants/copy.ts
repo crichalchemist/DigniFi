@@ -466,6 +466,10 @@ export const MEANS_GAP_LINE_3_NO_ROW =
 export const MEANS_GAP_LINE_3_ROW =
   "Enter what your spouse's income was used for, and the amount, on each row of line 3.";
 
+// DRAFT: counsel C-24
+export const MEANS_GAP_LINE_3_CAP =
+  "Line 3 can't be more than {amount}, your spouse's income on Form 122A-1, Column B.";
+
 // DRAFT: counsel C-34
 export const MEANS_GAP_SPOUSE_VEHICLES =
   "Answer whether your spouse has a vehicle that isn't on your property list.";
