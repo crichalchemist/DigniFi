@@ -147,6 +147,16 @@ def test_the_last_name_as_a_word_or_first_and_last_together_is_refused(session_w
 
 
 @db_test
+def test_a_last_name_inside_a_longer_word_is_not_a_refusal(session_with_debtor):
+    session = session_with_debtor()
+    lee = session_with_debtor(username="demolee", last_name="Lee")
+
+    assert identifier_in("The profilers were wrong about me.", session) is False
+    assert identifier_in("I fell asleep at work and the fleet left.", lee) is False
+    assert identifier_in("Lee lost the job.", lee) is True
+
+
+@db_test
 def test_the_login_name_on_the_account_counts_as_a_last_name_too(session_with_debtor):
     session = session_with_debtor(user_last_name="Tester")
 
