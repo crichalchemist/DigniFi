@@ -179,6 +179,7 @@ const NAMES = [
   'MEANS_LINE_43_LABEL_CHOICES',
   'MEANS_LINE_43_LABEL_PAPERS',
   'MEANS_LINE_43_SKIPPED',
+  'MEANS_LINE_43_POINTER',
   'MEANS_REBUTTAL_NOW',
   'MEANS_REBUTTAL_IF',
   'MEANS_REBUTTAL_IF_BELOW',
@@ -636,6 +637,7 @@ const EXACT_WORDS: [string, string][] = [
     'MEANS_LINE_43_SKIPPED',
     "With your current answers, the form skips line 43, so this answer won't print.",
   ],
+  ['MEANS_LINE_43_POINTER', 'See line 43.{n} on the attached sheet.'],
   ['MEANS_REBUTTAL_NOW', 'Your line 39d is now {amount}.'],
   ['MEANS_REBUTTAL_IF', 'If the court allowed the amounts on line 43, line 39d would be {amount}.'],
   [

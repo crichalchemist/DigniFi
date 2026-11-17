@@ -428,6 +428,9 @@ export const MEANS_LINE_43_LABEL_PAPERS = 'Papers I will give my case trustee:';
 export const MEANS_LINE_43_SKIPPED =
   "With your current answers, the form skips line 43, so this answer won't print.";
 
+// DRAFT: counsel C-31
+export const MEANS_LINE_43_POINTER = 'See line 43.{n} on the attached sheet.';
+
 // DRAFT: counsel C-32
 export const MEANS_REBUTTAL_NOW = 'Your line 39d is now {amount}.';
 

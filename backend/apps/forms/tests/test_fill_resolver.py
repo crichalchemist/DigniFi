@@ -492,6 +492,10 @@ def test_resolve_ingested_source(session):
         ("assets.line_3[].make", {"step": "assets"}),
         ("exemptions.claims[].law", {"page": "/exemptions"}),
         ("exemptions.line_1", {"page": "/exemptions"}),
+        ("means.line_9b[].creditor", {"step": "debts"}),
+        ("means.line_33d[].property", {"step": "assets"}),
+        ("means.line_13_vehicle_1", {"step": "assets"}),
+        ("means.line_24", {"page": "/means-test"}),
         ("", {}),
     ],
 )

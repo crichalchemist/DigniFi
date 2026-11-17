@@ -18,7 +18,7 @@ from apps.forms.schema import load_schema
 from apps.forms.services.fill_resolver import resolve, resolve_parts
 from apps.forms.services.pdf_filler import PDFFormFiller, UnprintableLetter
 from apps.forms.services.sheets import sheet_spec
-from apps.forms.tests.pdf_readback import read_sheets
+from apps.forms.tests.pdf_readback import read_sheet_part, read_sheets
 from apps.forms.tests.test_derivations import SPOUSE_AT_HOME
 from apps.intake.models import IntakeSession
 from apps.intake.tests.builders import answer_household
@@ -66,6 +66,49 @@ def _answer(session, filer, spouse=None, marital_status="not_married", **detail)
         row.store_entries([dict(e) for e in spouse])
         row.save()
     return IntakeSession.objects.get(pk=session.pk)
+
+
+def _demo_sheet(title, columns, line, cells):
+    """A synthetic sheet part of one row, its columns 100 and 358 pt either way round."""
+    return {
+        "kind": "sheet",
+        "group": "i_line_8a",
+        "title": title,
+        "columns": columns,
+        "name": "Demo Filer",
+        "rows": [{"line": line, "cells": cells}],
+        "line_width": 46,
+    }
+
+
+def test_read_sheet_part_reads_only_its_groups_pages():
+    # Each wide cell runs past the other part's column edge, so a page read under the other
+    # part's columns would cross them.
+    wide = "Demo words that run on and on across the wide column of this sheet"
+    part_a = _demo_sheet(
+        "Demo Form, line 3",
+        [{"label": "Purpose", "width": 100}, {"label": "Amount", "width": 358}],
+        "3.1",
+        ["Demo A", wide],
+    )
+    part_b = _demo_sheet(
+        "Demo Form, line 33d",
+        [{"label": "Creditor", "width": 358}, {"label": "Amount", "width": 100}],
+        "33d.1",
+        [wide, "2.00"],
+    )
+    parts = {"version": 2, "parts": [{"kind": "form", "values": {}}, part_a, part_b]}
+    pdf = PDFFormFiller().fill("schedule_i", parts)
+
+    (page_a,) = read_sheet_part(pdf, part_a)
+    (page_b,) = read_sheet_part(pdf, part_b)
+    assert page_a.labels == ("", "Purpose", "Amount")
+    assert page_a.rows == (("3.1", "Demo A", wide),)
+    assert page_a.crossing == ()
+    assert page_b.labels == ("", "Creditor", "Amount")
+    assert page_b.rows == (("33d.1", wide, "2.00"),)
+    assert page_b.crossing == ()
+    assert len(read_sheets(pdf, sheet_spec(part_a))) == 2
 
 
 def _statement(session):
