@@ -65,6 +65,18 @@ OTHER_DEBTS = (
     ("Demo Lender 14", "Demo camper", "104.00", "no", "6180.00"),
 )
 CIRCUMSTANCES = tuple((f"Demo circumstance {n}", f"{n}0.00") for n in range(1, 6))
+# The filer's own explanation the polish tests rewrite: six facts as polish_checks reads them
+# (figures 1400 and 2025, dated month mar, names demo, clinic and march), no identifier and no
+# listed phrase. 3h4's backend tests import it.
+POLISH_DEMO_EXPLANATION = (
+    "I have been sick since the start of last year, and the illness has changed how I live. "
+    "Since March 2025 I pay 1,400 each month to Demo Clinic for my treatment and my medicine. "
+    "I used to work full weeks, but now I can only work a few hours at a time, so my pay is "
+    "lower than it was. My doctor wants to see me often, and I have to travel a long way to "
+    "each visit. I have cut every cost I can. I stopped eating out, I canceled my streaming "
+    "services, and I share rides with a neighbor. These payments are the part of my budget "
+    "I cannot cut, because without the treatment I could not work at all."
+)
 
 # The page's answers, as the builder gives them; vehicle_claims is added from the session's rows.
 ANSWERS = {
