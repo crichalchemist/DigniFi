@@ -59,19 +59,22 @@ def test_a_reformatted_or_moved_schedule_c_file_is_caught_by_its_bytes():
 
 
 def test_each_addendum_writer_leaves_the_others_rows_where_they_are():
-    # The claims tool puts its rows after each schedule's last row and the List of Creditors'
-    # tool rewrites its own at the end of the file: Schedule C's rows sit before them (R9), so
-    # no tool's run moves another's.
+    # The claims tool puts its rows after each schedule's last row, Form 122A-2's tool replaces
+    # its rows in place (3h3 plan R14) and the List of Creditors' tool rewrites its own at the
+    # end of the file: Schedule C's rows sit before them (R9), so no tool's run moves another's.
     schedule_c = _tool()
     claims = _load("build_claims_schedules.py")
+    form_122a2 = _load("build_form_122a2.py")
     text = ADDENDUM.read_text()
     committed = json.loads(text)
     _, schedule_c_rows = schedule_c.build()
     _, claims_rows = claims.build()
+    _, form_122a2_rows = form_122a2.build()
 
     list_rows = [r for r in committed if r["schema"] == "list_of_creditors"]
     others = [r for r in committed if r["schema"] != "list_of_creditors"]
 
     assert claims.merged_text(text, claims_rows) == text
     assert schedule_c.merged_text(text, schedule_c_rows) == text
+    assert form_122a2.merged_text(text, form_122a2_rows) == text
     assert schedule_c.dumps([*others, *list_rows]) == text
