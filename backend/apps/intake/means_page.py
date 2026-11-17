@@ -32,6 +32,7 @@ from apps.eligibility.means_lines import (
 from apps.eligibility.models import MeansTest
 from apps.eligibility.services import MeansTestCalculator
 from apps.forms.services.means_fit import LIST_ANSWERS, merge_row_errors, shown_box_refusals
+from apps.intake import polish
 from apps.intake.asset_lines import exemption_item_name, ordered_assets
 from apps.intake.claim_rows import claim_rows
 from apps.intake.locking import lock_session
@@ -281,6 +282,7 @@ def means_page(session) -> dict:
         "family_size": details.get("family_size"),
         "tables_gap": details.get("tables_gap"),
         "gap": gap,
+        "polish_available": polish.configured(),
     }
 
 

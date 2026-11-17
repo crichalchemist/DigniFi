@@ -31,6 +31,8 @@ from .household import (
 from .income import ENTRY_KINDS, MAX_ENTRIES
 from .means_test import (
     MAX_ROWS,
+    MEANS_EXPLANATION_TOO_LONG,
+    MEANS_POLISH_BLANK,
     MEANS_ROW_LISTED_TWICE,
     NOT_A_MEANS_ANSWER,
     PROPERTY_CHOICES,
@@ -1708,6 +1710,30 @@ class MeansTestSerializer(serializers.Serializer):
         if errors:
             raise serializers.ValidationError(errors)
         return attrs
+
+
+class PolishRequestSerializer(serializers.Serializer):
+    """The line 43 polish's body (3h4 R4): the box's words and nothing else. An unknown key is
+    refused by name, as a row of the page is."""
+
+    explanation = serializers.CharField(
+        max_length=2000,
+        required=True,
+        allow_null=False,
+        error_messages={
+            "required": MEANS_POLISH_BLANK,
+            "null": MEANS_POLISH_BLANK,
+            "blank": MEANS_POLISH_BLANK,
+            "max_length": MEANS_EXPLANATION_TOO_LONG,
+        },
+    )
+
+    def to_internal_value(self, data):
+        if isinstance(data, dict):
+            unknown = sorted(set(data) - set(self.fields))
+            if unknown:
+                raise serializers.ValidationError({name: [NOT_A_MEANS_ANSWER] for name in unknown})
+        return super().to_internal_value(data)
 
 
 class SOFAPriorIncomeSerializer(serializers.ModelSerializer):
