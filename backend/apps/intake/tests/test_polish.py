@@ -92,8 +92,10 @@ def test_the_test_settings_pin_the_polish_off_and_both_rate_tables_carry_its_sco
 
     assert settings.REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"]["polish"] == "10/minute"
 
-    # production.py is read as text: base is already imported under test, and importing
-    # production would replace its settings. A comment must not satisfy the check.
+    # production.py is read as text: importing it would run it here, writing CONN_MAX_AGE into
+    # the DATABASES dict the live settings share and starting Sentry when a DSN is set, and
+    # would prove nothing about django.conf.settings, built from the test module. A comment
+    # must not satisfy the check.
     production = Path(base_settings.__file__).with_name("production.py")
     code_lines = [
         line for line in production.read_text().splitlines() if not line.lstrip().startswith("#")
@@ -215,6 +217,8 @@ def test_the_request_carries_only_the_explanation(filer, polish_sdk):
         "123 Main",
         "900-12-3456",
         "312-555-0100",
+        "+13125550100",
+        "3125550100",
     ):
         assert stored not in everything
 
@@ -299,7 +303,6 @@ def test_a_missing_key_raises_at_use_and_check_passes_without_one(filer, caplog)
     assert reply.status_code == 503
     assert reply.json() == UNAVAILABLE
     assert "AI_POLISH_API_KEY" in caplog.text
-    assert "test-key" not in caplog.text
 
     # The test settings' empty provider is refused first, so the log names the provider.
     caplog.clear()
@@ -311,9 +314,9 @@ def test_a_missing_key_raises_at_use_and_check_passes_without_one(filer, caplog)
 
 
 def test_an_unknown_polish_provider_fails_the_request_not_the_boot(filer, caplog):
-    """A misspelt provider must not take the site down, and a key pasted into the provider
-    variable by mistake must not reach a log."""
-    with override_settings(AI_POLISH_PROVIDER="gemini", AI_POLISH_API_KEY="k"):
+    """A misspelt provider must not take the site down, and neither the provider's value nor
+    the key set beside it must reach a log."""
+    with override_settings(AI_POLISH_PROVIDER="gemini", AI_POLISH_API_KEY="demo-key-never-logged"):
         reply = _post(filer)
         assert polish.configured() is False
 
@@ -321,6 +324,7 @@ def test_an_unknown_polish_provider_fails_the_request_not_the_boot(filer, caplog
     assert reply.json() == UNAVAILABLE
     assert "AI_POLISH_PROVIDER" in caplog.text
     assert "'gemini'" not in caplog.text
+    assert "demo-key-never-logged" not in caplog.text
 
 
 def test_the_page_hides_the_button_with_no_provider(filer, polish_sdk):
@@ -383,6 +387,8 @@ def test_a_rewrite_with_a_prohibited_phrase_never_reaches_the_filer(
     assert reply.status_code == 422
     assert phrase.casefold() not in caplog.text.casefold()
     assert phrase.casefold() not in reply.content.decode().casefold()
+    # The filer's own words stay out of the 422 log as well as the model's.
+    assert "Demo explanation" not in caplog.text
 
 
 def test_a_filers_own_prohibited_phrase_is_refused_before_any_send(filer, polish_sdk):
@@ -397,7 +403,13 @@ def test_a_filers_own_prohibited_phrase_is_refused_before_any_send(filer, polish
 
 ADDED = [
     pytest.param(SENT, f"{REWRITE} It cost 2,000 more.", id="figure"),
-    pytest.param(SENT, f"{REWRITE} On May 3 it changed.", id="dated_month"),
+    # 2025 stands twice in both and "may" is one of the filer's words, so only the dated month
+    # is new.
+    pytest.param(
+        f"{SENT} In 2025 I may lose the house.",
+        f"{REWRITE} In May 2025 I may lose the house.",
+        id="dated_month",
+    ),
     pytest.param(
         NO_CLINIC,
         "My hours were cut in March 2025 and Demo Clinic billed 1,400 for the stay.",
@@ -431,7 +443,9 @@ def test_a_rewrite_that_adds_a_figure_date_or_name_is_refused(
     "rewrite",
     [
         "Demo explanation: my hours were cut in March 2025 and Demo Clinic billed me for the stay.",
-        "Demo explanation: my hours were cut and Demo Clinic billed 1,400 for the stay.",
+        # 2025 and the word "march" survive, so only the dated month is gone.
+        "Demo explanation: my hours were cut in 2025 and Demo Clinic billed 1,400 for the stay. "
+        "I march on anyway.",
         "My explanation: my hours were cut in March 2025 and the clinic billed 1,400 for the stay.",
     ],
     ids=["figure", "month_and_year", "name"],
@@ -515,6 +529,8 @@ def test_refused_items_reach_no_log_and_no_reply(filer, polish_sdk, caplog):
     for record in caplog.records:
         assert "Demo Clinic" not in record.getMessage()
         assert "7,777" not in record.getMessage()
+        # The filer's words (NO_CLINIC's) stay out of the 422 log too.
+        assert "the lab billed" not in record.getMessage()
     assert "Demo Clinic" not in caplog.text
     assert "Demo Clinic" not in reply.content.decode()
     assert "7,777" not in reply.content.decode()

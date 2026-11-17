@@ -251,8 +251,9 @@ OPENAI_API_KEY = env("OPENAI_API_KEY", default="")
 OCR_PROVIDER = env("OCR_PROVIDER", default="openai")
 OCR_MODEL = env("OCR_MODEL", default="")
 
-# The line 43 polish (3h4 spec §5). Empty by default: with no key the page shows no polish
-# button, and a request raises ImproperlyConfigured at use, never at boot.
+# The line 43 polish (3h4 spec §5). Empty by default: the button needs AI_POLISH_PROVIDER=anthropic
+# and a key. With no provider or no key the page shows no polish button, and a request raises
+# ImproperlyConfigured at use, never at boot.
 AI_POLISH_PROVIDER = env("AI_POLISH_PROVIDER", default="")
 AI_POLISH_API_KEY = env("AI_POLISH_API_KEY", default="")
 AI_POLISH_MODEL = env("AI_POLISH_MODEL", default="")

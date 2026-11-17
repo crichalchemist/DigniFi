@@ -8,6 +8,7 @@ no log, no audit row and no response.
 """
 
 import re
+from collections import Counter
 from decimal import Decimal
 
 from django.conf import settings
@@ -28,8 +29,12 @@ _UPL_DOC_PHRASES = (
 POLISH_PHRASES = tuple(
     phrase.casefold() for phrase in (*settings.UPL_PROHIBITED_PHRASES, *_UPL_DOC_PHRASES)
 )
+# A phrase's words, any whitespace between them: a line break or a double space is still the phrase.
 _PHRASE_PATTERNS = tuple(
-    re.compile(rf"\b{re.escape(phrase)}\b", re.IGNORECASE) for phrase in POLISH_PHRASES
+    re.compile(
+        r"\b" + r"\s+".join(re.escape(word) for word in phrase.split()) + r"\b", re.IGNORECASE
+    )
+    for phrase in POLISH_PHRASES
 )
 
 
@@ -79,15 +84,20 @@ _MONTH = (
     r"(?:january|february|march|april|may|june|july|august|september|october|november|december"
     r"|jan|feb|mar|apr|jun|jul|aug|sept|sep|oct|nov|dec)"
 )
-# A month word with a number beside it. A month word alone ("may", "march") is an ordinary word.
-_MONTH_THEN_NUMBER = re.compile(rf"\b({_MONTH})\b\.?\s*\d", re.IGNORECASE)
+# A month word with a number beside it ("May 3", "Mar. 2025", "May, 2025"). A month word alone
+# ("may", "march") is an ordinary word.
+_MONTH_THEN_NUMBER = re.compile(rf"\b({_MONTH})\b\.?,?\s*\d", re.IGNORECASE)
 _NUMBER_THEN_MONTH = re.compile(rf"\d\s*\b({_MONTH})\b", re.IGNORECASE)
 _WORD = re.compile(r"[^\W\d_]+")
+# A title or place abbreviation before a period. Only these: "in May." and "in the ICU." end a
+# sentence.
+_ABBREVIATION = re.compile(r"(?<![^\W\d_])(Dr|Mr|Mrs|Ms|St|Jr|Sr|Mt|Ft)\.$")
 
 
-def _figures(text: str) -> set[Decimal]:
-    """Every figure in the text, commas removed, so 1,400 and 1400.00 are one figure."""
-    return {Decimal(found.replace(",", "")) for found in _FIGURE.findall(text)}
+def _figures(text: str) -> Counter[Decimal]:
+    """Every figure in the text and how often, commas removed, so 1,400 and 1400.00 are one
+    figure and "3 children" and "3 jobs" are two."""
+    return Counter(Decimal(found.replace(",", "")) for found in _FIGURE.findall(text))
 
 
 def _dated_months(text: str) -> set[str]:
@@ -101,21 +111,32 @@ def _words(text: str) -> list[str]:
     return _WORD.findall(text)
 
 
+def _after_an_abbreviation(before: str) -> bool:
+    """The text so far ends with a title or place abbreviation ("Dr.", "St."), whose period ends
+    no sentence."""
+    return _ABBREVIATION.search(before) is not None
+
+
 def _names(text: str) -> set[str]:
     """Casefolded words of two letters or more that start with a capital and are not the first
-    word of a sentence (after the text's start, a line break, a period, "!" or "?")."""
+    word of a sentence (after the text's start, a line break, a period, "!" or "?"; a period after
+    an abbreviation such as "Dr." or "St." ends no sentence)."""
     names = set()
     for word in _WORD.finditer(text):
         before = text[: word.start()].rstrip(" \t")
-        at_sentence_start = before == "" or before[-1] in "\r\n.!?"
+        at_sentence_start = before == "" or (
+            before[-1] in "\r\n.!?" and not _after_an_abbreviation(before)
+        )
         if len(word.group()) >= 2 and word.group()[0].isupper() and not at_sentence_start:
             names.add(word.group().casefold())
     return names
 
 
 def _figure_items(of: str, absent_from: str) -> list[str]:
+    """Each figure of one text the other lacks, as often as it is lacking: a figure that stands
+    twice and comes back once is dropped once."""
     absent = _figures(of) - _figures(absent_from)
-    return [str(figure) for figure in sorted(absent)]
+    return [str(figure) for figure in sorted(absent.elements())]
 
 
 def _name_items(of: str, absent_from: str) -> list[str]:
@@ -160,8 +181,13 @@ _SSN_SHAPE = re.compile(r"(?<!\d)\d{3}[-. ]\d{2}[-. ]\d{4}(?!\d)")
 # Groups of 1 to 3 digits and a last group of 1 to 4, single separators; a 4-digit group
 # anywhere but last ends the run, so two dates stay and 4417-1234-5678 is no shape.
 _GROUPED_RUN = re.compile(r"(?<!\d)(?:\d{1,3}[-. ])*\d{1,4}(?!\d)")
-# One or two non-word characters between two digits: ") ", ", " and "/" join a number's groups.
-_BETWEEN_DIGITS = re.compile(r"(?<=\d)[^\w]{1,2}(?=\d)")
+# One to three non-word characters between two digits: ") ", ", ", "/" and " - " join a number's
+# groups. Only the stored-digit rows read the joined text; the shape rule reads the text as written.
+_BETWEEN_DIGITS = re.compile(r"(?<=\d)[^\w]{1,3}(?=\d)")
+# The stored address's first line ends at a comma, a "#" or a unit word.
+_ADDRESS_UNIT = re.compile(r",|#|\s(?:apt|unit|suite|ste)\b")
+# A house number, a one-letter direction if any, and the first street word ("2145 w division").
+_HOUSE_AND_STREET = re.compile(r"(\d+)\s+(?:[nsew]\s+)?([^\W\d_]{2,})")
 
 
 def _digits(value) -> str:
@@ -179,8 +205,12 @@ def _has_number_shape(text: str) -> bool:
 
 
 def _phone_in(text_digits: str, value) -> bool:
+    """The stored digits, their last ten past a country code, or their last seven (the local
+    number a filer types on a form that already holds the area code), each when 7 or more."""
     digits = _digits(value)
-    candidates = {digits, digits[-10:]} if len(digits) > 10 else {digits}
+    candidates = {digits}
+    if len(digits) >= 10:
+        candidates |= {digits[-10:], digits[-7:]}
     return any(len(candidate) >= 7 and candidate in text_digits for candidate in candidates)
 
 
@@ -196,8 +226,9 @@ def _whole_word_in(casefolded_text: str, literal: str) -> bool:
 
 def identifier_in(text: str, session) -> bool:
     """True when the text holds one of the filer's own identifiers (spec 6.2), in order: a number
-    shape, a stored account number, a stored phone, a last name, an email or username, the street
-    address. Third parties, the ZIP, the date of birth and the spouse's name are kept."""
+    shape, a stored account number, the stored SSN, a stored phone, a last name, an email or
+    username, the street address. Third parties, the ZIP, the date of birth and the spouse's name
+    are kept."""
     if _has_number_shape(text):
         return True
 
@@ -209,6 +240,12 @@ def identifier_in(text: str, session) -> bool:
     for account in accounts:
         digits = _digits(account)
         if len(digits) >= 5 and digits in joined:
+            return True
+
+    # The nine digits grouped any way the shape rule doesn't name: 3-3-3, slashes, an en dash.
+    if debtor:
+        ssn = _digits(debtor.ssn)
+        if len(ssn) >= 9 and ssn in joined:
             return True
 
     phones = [user.phone] + ([debtor.phone] if debtor else [])
@@ -229,6 +266,20 @@ def identifier_in(text: str, session) -> bool:
             return True
 
     if debtor and debtor.street_address.strip():
+        collapsed = " ".join(folded.split())
         address = " ".join(_letters(debtor.street_address).split())
-        return address in " ".join(folded.split())
+        # The whole stored address, its first line (before a unit), or the house number with the
+        # first street word, each as whole words: "123 Main St Apt 4" is typed as "123 Main St"
+        # or "123 Main", and "2145 W Division St" as "2145 Division" too.
+        first_line = _ADDRESS_UNIT.split(address, maxsplit=1)[0].strip()
+        if _whole_word_in(collapsed, address) or (
+            first_line and _whole_word_in(collapsed, first_line)
+        ):
+            return True
+        house = _HOUSE_AND_STREET.match(address)
+        if house is None:
+            return False
+        number, street = house.groups()
+        pattern = rf"(?<!\w){number}\s+(?:[nsew]\s+)?{re.escape(street)}(?!\w)"
+        return re.search(pattern, collapsed) is not None
     return False

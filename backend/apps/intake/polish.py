@@ -34,7 +34,7 @@ SYSTEM_PROMPT = (
     "7. Reply with the rewritten text only."
 )
 
-# Why a reply is refused, in the order the checks run.
+# Why a reply is refused: the spec's list. The first three run as refusal, max_tokens, empty.
 REASONS = (
     "empty",
     "refusal",

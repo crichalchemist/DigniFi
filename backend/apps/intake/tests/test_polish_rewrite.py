@@ -69,14 +69,17 @@ def test_the_client_is_built_with_every_argument_explicit(polish_sdk):
     assert not polish_sdk.call_args.args
 
 
-def test_the_shells_base_url_is_ignored(polish_sdk, monkeypatch):
-    """A shell that points the SDK at another host must not redirect a filer's words."""
+def test_the_shells_key_and_base_url_are_ignored(polish_sdk, monkeypatch):
+    """A shell that points the SDK at another host must not redirect a filer's words, and a
+    developer's own credential in the shell must not bill or route the call."""
     monkeypatch.setenv("ANTHROPIC_BASE_URL", "http://127.0.0.1:4011")
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "shell-key")
     _create(polish_sdk, message("Demo rewrite."))
 
     polish.rewrite("My job ended.")
 
     assert polish_sdk.call_args.kwargs["base_url"] == BASE_URL == "https://api.anthropic.com"
+    assert polish_sdk.call_args.kwargs["api_key"] == "test-key"
 
 
 def test_the_request_carries_exactly_five_arguments_and_the_text_alone(polish_sdk):

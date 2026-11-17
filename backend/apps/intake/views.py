@@ -808,21 +808,29 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
         text = serializer.validated_data["explanation"]
         # Both checks come before any send: the filer's own words are refused, never stripped.
         if identifier_in(text, session):
-            return Response({"explanation": [MEANS_POLISH_IDENTIFIER]}, status=400)
+            return Response(
+                {"explanation": [MEANS_POLISH_IDENTIFIER]}, status=status.HTTP_400_BAD_REQUEST
+            )
         if prohibited_phrase(text) is not None:
-            return Response({"explanation": [MEANS_POLISH_PHRASE]}, status=400)
+            return Response(
+                {"explanation": [MEANS_POLISH_PHRASE]}, status=status.HTTP_400_BAD_REQUEST
+            )
         try:
             return Response({"rewrite": polish_rewrite(text)})
         except NoRewrite as exc:
             logger.warning("Polish refused the reply: %s", str(exc))
-            return Response({"error": MEANS_POLISH_NO_REWRITE}, status=422)
+            return Response(
+                {"error": MEANS_POLISH_NO_REWRITE}, status=status.HTTP_422_UNPROCESSABLE_ENTITY
+            )
         except (ImproperlyConfigured, PolishUnavailable) as exc:
             # Their text is a variable's name or an SDK class name, never a value or a word of
             # anyone's text.
             logger.error("Polish failed: %s", str(exc))
         except Exception as exc:
             logger.error("Polish failed: %s", type(exc).__name__)
-        return Response({"error": MEANS_POLISH_UNAVAILABLE}, status=503)
+        return Response(
+            {"error": MEANS_POLISH_UNAVAILABLE}, status=status.HTTP_503_SERVICE_UNAVAILABLE
+        )
 
     @action(detail=True, methods=["post"], url_path="dischargeability", url_name="dischargeability")
     def dischargeability(self, request, pk=None):

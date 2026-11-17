@@ -73,6 +73,21 @@ def test_a_social_security_number_dashed_or_bare_is_refused(session_with_debtor,
 
 
 @db_test
+@pytest.mark.parametrize(
+    "number", ["900-123-456", "900 123 456", "900/12/3456", "900–12–3456", "900 12 34 56"]
+)
+def test_the_stored_social_security_number_is_refused_however_it_is_grouped(
+    session_with_debtor, number
+):
+    """A 3-3-3 grouping, a slash, an en dash or pairs are no number shape, but the digits are
+    the filer's own stored number and never leave the server."""
+    session = session_with_debtor()
+
+    assert identifier_in(f"My number is {number} and I am sick.", session) is True
+    assert identifier_in("My number is 900-123-457 and I am sick.", session) is False
+
+
+@db_test
 @pytest.mark.parametrize("number", ["312-555-0100", "312.555.0100", "312 555 0100", "3125550100"])
 def test_a_phone_in_a_shape_the_table_names_is_refused(session_with_debtor, number):
     session = session_with_debtor()
@@ -93,6 +108,18 @@ def test_a_parenthesised_phone_is_a_gap_unless_it_is_the_stored_number(session_w
 def test_the_stored_phone_is_matched_through_the_phonenumber_object(session_with_debtor):
     text = "Call me at 312/555/0100 please."
 
+    assert identifier_in(text, session_with_debtor(username="nophone")) is False
+    stored = session_with_debtor(username="hasphone", phone="+13125550100")
+    assert identifier_in(text, stored) is True
+
+
+@db_test
+@pytest.mark.parametrize("text", ["Call 555-0100 please.", "Call 312 - 555 - 0100 please."])
+def test_the_stored_phones_last_seven_digits_or_wide_separators_are_refused(
+    session_with_debtor, text
+):
+    """A filer gives the local seven digits on a form that already holds the area code, or
+    spaces the dashes out; neither is a number shape, and both are the stored phone."""
     assert identifier_in(text, session_with_debtor(username="nophone")) is False
     stored = session_with_debtor(username="hasphone", phone="+13125550100")
     assert identifier_in(text, stored) is True
@@ -188,7 +215,6 @@ def test_the_email_and_the_username_as_whole_words_are_refused(session_with_debt
     assert identifier_in("My login is demo_logins here.", session) is False
     assert identifier_in("Nothing about demo@example.testing", session) is False
     assert identifier_in("The id 900123456 is mine.", digits) is True
-    assert identifier_in("The id 900-123-456 is not.", digits) is False
 
 
 @db_test
@@ -197,6 +223,40 @@ def test_the_street_address_is_matched_folded_and_collapsed(session_with_debtor)
 
     assert identifier_in("I live at 12 demo st now.", session) is True
     assert identifier_in("I live at 13 demo st now.", session) is False
+
+
+@db_test
+@pytest.mark.parametrize("stored", ["123 Main St Apt 4", "123 Main St, Unit 4", "123 Main St #4"])
+def test_the_street_address_typed_without_its_unit_is_refused(session_with_debtor, stored):
+    """A renter's stored address carries a unit; the address as they write it in prose is
+    still their own."""
+    session = session_with_debtor(street_address=stored)
+
+    assert identifier_in("I live at 123 Main St and I am behind.", session) is True
+
+
+@db_test
+def test_the_house_number_with_the_street_word_is_refused_and_the_street_alone_is_not(
+    session_with_debtor,
+):
+    session = session_with_debtor(street_address="123 Main St")
+
+    assert identifier_in("I live at 123 Main and I am behind.", session) is True
+    assert identifier_in("I live on Main Street and I am behind.", session) is False
+
+
+@db_test
+def test_an_address_with_a_direction_is_refused_with_or_without_it_and_a_longer_number_is_not(
+    session_with_debtor,
+):
+    """The house number pairs with the street word, not a one-letter direction, so "2145 w/ my
+    card" is no address; and a match is whole words, so another house on the street is kept."""
+    session = session_with_debtor(street_address="2145 W Division St Apt 3")
+
+    assert identifier_in("I live at 2145 W Division St now.", session) is True
+    assert identifier_in("I live at 2145 Division now.", session) is True
+    assert identifier_in("I paid 2145 w/ my card.", session) is False
+    assert identifier_in("My mother lives at 12145 W Division St.", session) is False
 
 
 @db_test
@@ -275,6 +335,7 @@ def test_a_figure_keeps_the_way_it_was_written_when_it_is_reported():
         ("It began May 3.", {"may"}),
         ("It began 3 May.", {"may"}),
         ("It began May 2025.", {"may"}),
+        ("It began May, 2025.", {"may"}),
         ("It began Mar. 2025.", {"mar"}),
         ("It began Sept. 2025.", {"sep"}),
         ("It began in January 5 and again in December 9.", {"jan", "dec"}),
@@ -304,6 +365,41 @@ def test_a_name_in_both_texts_is_kept_even_when_one_has_it_at_a_sentence_start()
 
 def test_a_contraction_is_not_a_name():
     assert _names("Yes, I'm here and I don't mind.") == set()
+
+
+def test_a_name_after_an_abbreviation_is_a_name_not_a_sentence_start():
+    """A rewrite from "Dr. Smith" to "Dr. Jones" changes who the filer saw, on a statement signed
+    under oath: the period after Dr, Mr, Mrs, Ms, St or Jr ends no sentence."""
+    doctor = ("I saw Dr. Smith about my back.", "I saw Dr. Jones about my back.")
+    hospital = ("I went to St. Mary Hospital.", "I went to St. Joseph Hospital.")
+
+    assert added_facts(*doctor) == ["jones"]
+    assert dropped_facts(*doctor) == ["smith"]
+    assert added_facts(*hospital) == ["joseph"]
+    assert dropped_facts(*hospital) == ["mary"]
+
+
+def test_a_sentence_ending_in_a_short_word_still_ends_so_a_reworded_next_sentence_is_kept():
+    """ "in May." and "in the ICU." end a sentence: a rewrite that starts the next sentence with a
+    different word changes no name, and refusing it would cost the filer a plain rewording."""
+    month = (
+        "I lost my job in May. Then my rent went up.",
+        "I lost my job in May. Next my rent went up.",
+    )
+    ward = ("I was in the ICU. Then I went home.", "I was in the ICU. After that I went home.")
+
+    assert added_facts(*month) == [] and dropped_facts(*month) == []
+    assert added_facts(*ward) == [] and dropped_facts(*ward) == []
+
+
+def test_a_repeated_figure_dropped_once_is_dropped_and_added_once_is_added():
+    """The 3 of "3 children" and the 3 of "3 jobs" are two facts: a sentence cut while its figure
+    survives elsewhere is a changed statement."""
+    original = "I have 3 children. I lost 3 jobs in a row this year and I am behind on rent."
+    rewrite = "I have 3 children and I am behind on rent this year."
+
+    assert dropped_facts(original, rewrite) == ["3"]
+    assert added_facts(rewrite, original) == ["3"]
 
 
 def test_an_acronym_the_model_adds_is_a_name():
@@ -341,7 +437,8 @@ def test_a_rewrite_under_half_the_words_is_too_short_and_a_longer_one_is_not():
     assert too_short(POLISH_DEMO_EXPLANATION, POLISH_DEMO_EXPLANATION) is False
 
 
-def test_the_known_gaps_are_gaps():
+@db_test
+def test_the_known_gaps_are_gaps(session_with_debtor):
     # a number in words
     assert added_facts("I paid for two months.", "I paid for three months.") == []
     assert dropped_facts("I paid for two months.", "I paid for three months.") == []
@@ -368,6 +465,24 @@ def test_the_known_gaps_are_gaps():
     # two substring false positives: "i ask" in "asked", "declare" in "declared"
     assert added_facts("I called my landlord.", "I asked my landlord.") == ["i ask"]
     assert added_facts("She said it.", "She declared it.") == ["declare"]
+    # two figures swapped: the same multiset, the same words
+    swapped = (
+        "I earn 3,000 a month and my rent is 1,200.",
+        "I earn 1,200 a month and my rent is 3,000.",
+    )
+    assert added_facts(*swapped) == []
+    assert dropped_facts(*swapped) == []
+    # a month abbreviation written out: "march" is an added name and "mar" a dropped one
+    assert added_facts("Since Mar. 2025 I pay 400.", "Since March 2025 I pay 400.") == ["march"]
+    assert dropped_facts("Since Mar. 2025 I pay 400.", "Since March 2025 I pay 400.") == ["mar"]
+    # the first word of a quoted sentence counts as a name
+    assert _names('I said no. "Demo was there," she said.') == {"demo"}
+    # hours and two amounts side by side are a ten-digit grouped run, refused as a number shape
+    session = session_with_debtor()
+    assert identifier_in("I worked 10 12 14 16 18 hours.", session) is True
+    assert identifier_in("I paid 900.00 400.00 in all.", session) is True
+    # a run-together full name is not the last name as a word, so it is sent
+    assert identifier_in("DemoFiler was billed.", session_with_debtor(username="gapfiler")) is False
 
 
 def test_added_and_dropped_return_their_items_for_the_tests():
@@ -391,6 +506,12 @@ def test_each_prohibited_phrase_is_found_as_whole_words(phrase):
 @pytest.mark.parametrize("text", ["I advised my landlord.", "I recommended a doctor."])
 def test_a_filers_past_tense_facts_are_not_phrases(text):
     assert prohibited_phrase(text) is None
+
+
+@pytest.mark.parametrize("text", ["I\nrecommend rest.", "I  recommend rest."])
+def test_a_phrase_broken_by_a_line_break_or_a_double_space_is_still_found(text):
+    """The one absolute check on a reply reads words, not the spacing between them."""
+    assert prohibited_phrase(text) == "i recommend"
 
 
 def test_the_runtime_list_is_the_setting_plus_the_doc_s_missing_phrases():
