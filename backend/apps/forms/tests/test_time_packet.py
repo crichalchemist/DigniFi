@@ -255,3 +255,21 @@ def test_time_packet_names_the_budget_it_missed(session):
     assert "Generate All took " in str(missed.value)
     assert "the download of form_101 took " in str(missed.value)
     assert (GeneratedForm.objects.count(), MeansTest.objects.count()) == (0, 0)
+
+
+@pytest.mark.slow
+def test_time_packet_times_priyas_above_median_packet(db, means_standards_2026, section_104_2025):
+    # Priya is above the median, so her packet holds Form 122A-1 and Form 122A-2: both are
+    # timed, and the timing run leaves what seeding left (no forms, the one means test).
+    call_command("loaddata", "ilnd_2025_data", verbosity=0)
+    call_command("seed_demo_data", persona="priya", reset=True)
+    priya = IntakeSession.objects.get(user__username="demo_priya")
+    out = StringIO()
+
+    call_command(
+        "time_packet", session=priya.pk, budget_generate=600, budget_download=600, stdout=out
+    )
+
+    timed = _timed(priya, out)
+    assert {"form_122a1", "form_122a2"} <= set(timed)
+    assert (GeneratedForm.objects.count(), MeansTest.objects.count()) == (0, 1)
