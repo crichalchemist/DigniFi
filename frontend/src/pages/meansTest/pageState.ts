@@ -16,11 +16,10 @@ import type {
   PaymentsLeft,
   YesNo,
 } from '../../types/api';
-import { MEANS_SPOUSE_LOAN_FROM, NAMELESS_DEBT } from '../../constants/copy';
-import { claimRowName } from '../../components/wizard/steps/claims/claimNames';
+import { MEANS_SPOUSE_LOAN_FROM } from '../../constants/copy';
 import { debtLines, isSpouseRef, slotCandidates } from './meansRows';
 import type { RowsDebt, RowsInput, RowsVehicle } from './meansRows';
-import { readSpouseLoans, spouseIdentityGaps, type GapState } from './meansTestGaps';
+import { debtName, readSpouseLoans, spouseIdentityGaps, type GapState } from './meansTestGaps';
 
 export type KeyedLine3Row = MeansLine3Row & { _key: string };
 export type KeyedCircumstance = MeansCircumstance & { _key: string };
@@ -401,16 +400,17 @@ export function gapStateOf(page: MeansPage, shown: PageState): GapState {
     debts: [
       ...state.debts.map((debt) => ({
         ref: debt.ref,
-        creditor: debt.creditor,
+        creditor: debtName(debt.creditor),
         answers: debtAnswersOf(debt),
         spouseIdentityGap: false,
       })),
       ...loans.map((loan, index) => ({
         ref: loan.ref,
-        creditor:
+        creditor: debtName(
           loan.on_amounts_owed === 'yes' && loan.debt !== null
             ? (named.get(loan.debt) ?? '')
-            : loan.creditor,
+            : loan.creditor
+        ),
         answers: debtAnswersOf(loan),
         spouseIdentityGap: identityGaps[index],
       })),
@@ -488,5 +488,5 @@ export function spouseLoanHeading(creditor: string): string {
   return MEANS_SPOUSE_LOAN_FROM.split('{name}').join(creditor);
 }
 
-/** A debt as its questions name it: its creditor, or the claims steps' "one amount owed" (F15) */
-export const debtName = (creditor: string) => claimRowName(creditor, NAMELESS_DEBT);
+// `debtName` is defined in meansTestGaps.ts (this file imports it, so the reverse would cycle)
+export { debtName };

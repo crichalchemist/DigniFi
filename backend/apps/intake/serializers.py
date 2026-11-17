@@ -1704,7 +1704,7 @@ class MeansTestSerializer(serializers.Serializer):
         # F1: a list sent with its answer is measured here; one sent without it (or an answer
         # sent without its rows) waits for save_means_answers, which reads the stored half.
         measured = [key for key, answer in LIST_ANSWERS.items() if key in attrs and answer in attrs]
-        merge_row_errors(errors, shown_box_refusals(attrs, measured))
+        merge_row_errors(errors, shown_box_refusals(attrs, measured, together=False))
         if errors:
             raise serializers.ValidationError(errors)
         return attrs

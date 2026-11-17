@@ -38,8 +38,10 @@ from apps.intake.locking import lock_session
 from apps.intake.means_test import PER_DEBT_KEYS, PROPERTY_CHOICES, means_test_gaps
 from apps.intake.models import IntakeSession, MeansTestAnswers, SecuredDebtAnswers
 
-# Fixed sentences for a 400; the page shows MEANS_PAGE_SAVE_FAILED for each, so none has a
-# copy.ts twin.
+# Fixed sentences for a 400. The first three name a row that has gone: the page finds them in a
+# body by their words and reads itself again, so copy.ts holds each (MEANS_NOT_*, pinned by
+# test_means_test_copy.py). The last, and the serializer's NOT_IN_THIS_SAVE, are a plain save
+# failure and have no twin.
 NOT_A_COUNTED_DEBT = "This isn't one of your secured debts."
 NOT_A_LINE_11_VEHICLE = "This isn't one of the vehicles on line 11."
 NOT_AN_OPEN_DEBT = "This isn't one of the debts on your Amounts Owed step not listed as secured."
@@ -97,7 +99,7 @@ def _left(text):
 
 
 def _answers_for_page(session) -> dict:
-    out = page_answers(session)
+    out = page_answers(session, keep_hidden=True)
     for key in _AMOUNT_KEYS:
         out[key] = _two_or_none(out[key])
     for row in out["line_3_rows"]:
@@ -387,11 +389,15 @@ def save_means_answers(session, data: Mapping) -> None:
         choice = data.get("vehicle_choice") or []
         if any(ref is not None and ref not in nameable for ref in choice):
             errors["vehicle_choice"] = [NOT_A_LINE_11_VEHICLE]
-        # F1: a list whose rows or answer this save left to the stored record is measured here,
-        # under the answer it will be saved with (the serializer measured the rest).
-        waiting = [key for key, answer in LIST_ANSWERS.items() if (key in data) != (answer in data)]
+        # F1: every list this save sends, whole or in half, is measured here, under the answer it
+        # will be saved with. The serializer measures line 43's alone: it runs before the lock,
+        # so it can't know whether the filer is married together, and line 3 and the spouse's
+        # boxes are drawn only then.
+        waiting = [key for key, answer in LIST_ANSWERS.items() if key in data or answer in data]
         merged = {**stored, **{key: value for key, value in data.items() if key != "debts"}}
-        merge_row_errors(errors, shown_box_refusals(merged, waiting))
+        income = getattr(session, "income_info", None)
+        together = getattr(income, "marital_status", None) == "married_together"
+        merge_row_errors(errors, shown_box_refusals(merged, waiting, together))
         if errors:
             raise serializers.ValidationError(errors)
 

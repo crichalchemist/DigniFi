@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { firstMeansGap, meansTestGaps, type GapState } from '../meansTestGaps';
+import { debtName, firstMeansGap, meansTestGaps, type GapState } from '../meansTestGaps';
 import type { MeansAnswers, MeansDebtAnswers, MeansSpouseLoan } from '../../../types/api';
 
 // The browser's copy of apps/intake/tests/test_means_test_gaps.py, case for case.
@@ -311,6 +311,15 @@ describe('the Form 122A-2 page gaps', () => {
     expect(debtGaps({ payment_changes: 'yes', total_60_months: null })).toEqual([
       'Enter the total you will owe Kestrel Auto Finance in the 60 months after you file.',
     ]);
+  });
+
+  it('a gap names a debt with no creditor as one amount owed', () => {
+    const gaps = gapsOf({
+      debts: [{ ...KESTREL, creditor: '', answers: { ...KESTREL.answers, payments_left: null } }],
+    });
+    // the same words the server's claim_row_name gives (an empty name is never a sentence's)
+    expect(gaps).toEqual([`Enter how many payments you have left to ${debtName('')}.`]);
+    expect(gaps[0]).toBe('Enter how many payments you have left to one amount owed.');
   });
 
   it('a creditor typed with replacement patterns reads as typed in its gap sentence', () => {

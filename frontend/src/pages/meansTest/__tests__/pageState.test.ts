@@ -6,6 +6,7 @@
  */
 import {
   adoptRefs,
+  debtName,
   fromReply,
   gapStateOf,
   rowsInputOf,
@@ -269,6 +270,14 @@ describe('gapStateOf', () => {
     // an Amounts Owed loan is named by the debt's creditor
     expect(spouse[2].creditor).toBe('Demo Lender A');
     expect(gapState.debts.find((debt) => debt.ref === 'debt-11')?.spouseIdentityGap).toBe(false);
+  });
+
+  it('gapStateOf names a nameless debt through debtName', () => {
+    const page = meansPage();
+    page.debts[0].creditor = '   ';
+    const named = gapStateOf(page, fromReply(page)).debts.find((debt) => debt.ref === 'debt-11');
+    expect(named?.creditor).toBe(debtName('   '));
+    expect(named?.creditor).toBe('one amount owed');
   });
 
   it('reads the line 15 and line 30 caps from the information, and none without it', () => {

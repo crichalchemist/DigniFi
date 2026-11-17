@@ -87,14 +87,16 @@ def open_debts(session) -> list:
     ]
 
 
-def page_answers(session) -> dict:
-    """The stored page answers, a reference to a row that has gone read as unanswered."""
+def page_answers(session, keep_hidden: bool = False) -> dict:
+    """The stored page answers, a reference to a row that has gone read as unanswered.
+    `keep_hidden` is `normalized_answers`': the page alone passes it."""
     record = getattr(session, "means_test_answers", None)
     stored = {} if record is None else record.get_answers()
     out = normalized_answers(
         stored,
         {f"asset-{row.pk}" for row in vehicle_rows(session)},
         {debt.pk for debt in open_debts(session)},
+        keep_hidden,
     )
     income = getattr(session, "income_info", None)
     if getattr(income, "marital_status", None) != "married_together":

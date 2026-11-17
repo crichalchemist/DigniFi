@@ -44,7 +44,9 @@ import {
   MEANS_GAP_TAXES,
   MEANS_GAP_VEHICLE,
   MEANS_GAP_VEHICLE_CHOICE,
+  NAMELESS_DEBT,
 } from '../../constants/copy';
+import { claimRowName } from '../../components/wizard/steps/claims/claimNames';
 import type { MeansAnswers, MeansDebtAnswers, MeansSpouseLoan, YesNo } from '../../types/api';
 import { isSpouseRef } from './meansRows';
 import { cents, dollars } from './money';
@@ -69,6 +71,11 @@ export type GapState = {
 };
 
 const PROPERTY_CHOICES = ['home', 'other'];
+
+/** A debt as its questions name it: its creditor, or the claims steps' "one amount owed"
+ * (F15). `claim_row_name(creditor, NAMELESS_DEBT)` on the server (DIG-513) */
+export const debtName = (creditor: string | null | undefined): string =>
+  claimRowName(creditor, NAMELESS_DEBT);
 
 const blank = (text: string | null | undefined): boolean => text == null || text.trim() === '';
 
@@ -167,7 +174,7 @@ function spouseLoanGaps(state: GapState, loans: MeansSpouseLoan[]): string[] {
   for (const row of loans) {
     if (!identityGiven(row)) continue;
     const entry = state.debts.find((debt) => debt.ref === row.ref);
-    const name = (entry?.creditor ?? row.creditor ?? '').trim();
+    const name = debtName(entry?.creditor ?? row.creditor);
     if (row.secured_by === null) {
       gaps.push(fill(MEANS_GAP_SPOUSE_LOAN_SECURED_BY, { name }));
     } else if (PROPERTY_CHOICES.includes(row.secured_by) && blank(row.property)) {
@@ -250,7 +257,7 @@ function debtGaps(state: GapState): string[] {
   const named = state.debts.filter((debt) => !debt.spouseIdentityGap);
   const gaps: string[] = [];
   for (const debt of named) {
-    const name = debt.creditor;
+    const name = debtName(debt.creditor);
     const given = debt.answers;
     if (given.payments_left === null) gaps.push(fill(MEANS_GAP_PAYMENTS_LEFT, { name }));
     if (given.payment_changes === null) {
@@ -267,7 +274,7 @@ function debtGaps(state: GapState): string[] {
   } else if (answers.line_34_answer === 'yes') {
     for (const debt of named) {
       if ((state.lines[debt.ref] ?? null) === null) continue;
-      const name = debt.creditor;
+      const name = debtName(debt.creditor);
       if (debt.answers.necessary_for_support === null) {
         gaps.push(fill(MEANS_GAP_SUPPORT, { name }));
       } else if (debt.answers.necessary_for_support === 'yes' && debt.answers.cure === null) {

@@ -5,7 +5,7 @@ import re
 import pytest
 
 from apps.eligibility.tests.test_means_copy import FRONTEND, _copy_sentence
-from apps.intake import means_test
+from apps.intake import means_page, means_test
 
 COPY_TS = FRONTEND / "constants" / "copy.ts"
 SERVER_GAPS = sorted(name for name in dir(means_test) if name.startswith("MEANS_GAP_"))
@@ -15,6 +15,14 @@ SERVER_SENTENCES = [
     "MEANS_LETTER",
     "MEANS_EXPLANATION_TOO_LONG",
     "MEANS_EXPLANATION_LETTER",
+]
+
+# the page's reference sentences: the server sends them in a 400's body and the page reads them
+# by their words (DIG-513), so they are pinned apart from the gaps
+PAGE_SENTENCES = [
+    ("MEANS_NOT_A_COUNTED_DEBT", means_page.NOT_A_COUNTED_DEBT),
+    ("MEANS_NOT_A_LINE_11_VEHICLE", means_page.NOT_A_LINE_11_VEHICLE),
+    ("MEANS_NOT_AN_OPEN_DEBT", means_page.NOT_AN_OPEN_DEBT),
 ]
 
 
@@ -27,6 +35,18 @@ def _frontend_is_here():
 @pytest.mark.parametrize("name", SERVER_SENTENCES)
 def test_the_page_shows_the_sentence_the_server_sends(name):
     assert _copy_sentence(name) == getattr(means_test, name)
+
+
+@pytest.mark.parametrize(("name", "sentence"), PAGE_SENTENCES)
+def test_the_page_shows_the_reference_sentence_the_server_sends(name, sentence):
+    assert _copy_sentence(name) == sentence
+
+
+@pytest.mark.parametrize("name", [name for name, _ in PAGE_SENTENCES])
+def test_every_reference_sentence_carries_its_counsel_mark_on_the_line_above(name):
+    lines = COPY_TS.read_text().split("\n")
+    at = next(n for n, line in enumerate(lines) if line.startswith(f"export const {name} ="))
+    assert lines[at - 1] == "// DRAFT: counsel C-24"
 
 
 def test_copy_ts_has_exactly_the_servers_gaps_and_no_other_gap():

@@ -93,6 +93,9 @@ const NAMES = [
   'MEANS_GAP_LINE_43_NONE',
   'MEANS_GAP_LINE_43_EXPLANATION',
   'MEANS_GAP_LINE_43_AMOUNT',
+  'MEANS_NOT_A_COUNTED_DEBT',
+  'MEANS_NOT_A_LINE_11_VEHICLE',
+  'MEANS_NOT_AN_OPEN_DEBT',
   'MEANS_OUTCOME_ANSWER_SIDEBAR',
   'MEANS_OUTCOME_ANSWER_PAGE',
   'MEANS_PAGE_PHRASE',
@@ -450,6 +453,13 @@ const EXACT_WORDS: [string, string][] = [
   [
     'MEANS_GAP_LINE_43_AMOUNT',
     'Enter the average monthly amount for circumstance {n} on line 43. Enter 0 if there is none.',
+  ],
+  // The server's sentences for a row that has gone; the page reads a 400 by these words (DIG-513)
+  ['MEANS_NOT_A_COUNTED_DEBT', "This isn't one of your secured debts."],
+  ['MEANS_NOT_A_LINE_11_VEHICLE', "This isn't one of the vehicles on line 11."],
+  [
+    'MEANS_NOT_AN_OPEN_DEBT',
+    "This isn't one of the debts on your Amounts Owed step not listed as secured.",
   ],
   // The page's own words (3h2)
   [

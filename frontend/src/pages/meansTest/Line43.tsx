@@ -158,7 +158,9 @@ export function Line43({
             return (
               // Keyed by the row, so a removed circumstance's typed amount never shows in the next
               <fieldset key={row._key} className="form-field fee-waiver-question">
-                <legend className="form-label">{number(MEANS_LINE_43_LEGEND, index + 1)}</legend>
+                <legend id={`means-line-43-${index}-legend`} className="form-label">
+                  {number(MEANS_LINE_43_LEGEND, index + 1)}
+                </legend>
                 {text('happened', row, index, MEANS_LINE_43_HAPPENED, MEANS_LINE_43_HAPPENED_HINT)}
                 {text('change', row, index, MEANS_LINE_43_CHANGE)}
                 <AmountBox
@@ -170,7 +172,13 @@ export function Line43({
                 {text('choices', row, index, MEANS_LINE_43_CHOICES)}
                 {text('papers', row, index, MEANS_LINE_43_PAPERS)}
                 <p className="form-help-text">{MEANS_LINE_43_ASSEMBLE_NOTE}</p>
-                <Button type="button" variant="outline" onClick={() => assemble(row._key)}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  id={`means-line-43-${index}-assemble`}
+                  aria-labelledby={`means-line-43-${index}-assemble means-line-43-${index}-legend`}
+                  onClick={() => assemble(row._key)}
+                >
                   {MEANS_LINE_43_ASSEMBLE}
                 </Button>
                 <FormTextarea

@@ -598,6 +598,16 @@ export const MEANS_GAP_LINE_43_AMOUNT =
   'Enter the average monthly amount for circumstance {n} on line 43. Enter 0 if there is none.';
 
 // DRAFT: counsel C-24
+export const MEANS_NOT_A_COUNTED_DEBT = "This isn't one of your secured debts.";
+
+// DRAFT: counsel C-24
+export const MEANS_NOT_A_LINE_11_VEHICLE = "This isn't one of the vehicles on line 11.";
+
+// DRAFT: counsel C-24
+export const MEANS_NOT_AN_OPEN_DEBT =
+  "This isn't one of the debts on your Amounts Owed step not listed as secured.";
+
+// DRAFT: counsel C-24
 export const TABLE_NOTICE_MEDIAN =
   'These forms use the median income figures the U.S. Trustee applies to cases filed on or after {date}.';
 
