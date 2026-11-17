@@ -13,6 +13,7 @@ from django.conf import settings
 from apps.districts.means_standards import NO_MEANS_TEST_TABLE
 from apps.forms.registry import FORM_122A2_LINE_MISSING
 from apps.forms.services.means_cells import LINE_43_POINTER
+from apps.forms.views import MEANS_PAIR_REFUSAL
 
 FRONTEND = settings.BASE_DIR.parent / "frontend" / "src"
 
@@ -30,6 +31,7 @@ def _copy_sentence(name: str) -> str:
         ("MEANS_LINE_MISSING", FORM_122A2_LINE_MISSING),
         ("MEANS_TABLE_MISSING", NO_MEANS_TEST_TABLE),
         ("MEANS_LINE_43_POINTER", LINE_43_POINTER),
+        ("MEANS_PAIR_REFUSAL", MEANS_PAIR_REFUSAL),
     ],
 )
 def test_the_dashboard_reads_the_refusal_the_server_sends(name, server_sentence):

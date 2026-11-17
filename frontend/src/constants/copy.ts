@@ -132,6 +132,9 @@ export const MEANS_LINE_MISSING =
   "DigniFi can't work out every line of Form 122A-2, so it can't print that form. Form 122A-1 waits for it. File the two forms together.";
 
 // DRAFT: counsel C-24
+export const MEANS_PAIR_REFUSAL = 'File Form 122A-1 and Form 122A-2 together.';
+
+// DRAFT: counsel C-24
 export const MEANS_PAIR_NOTICE =
   'Form 122A-1 says your result is worked out on Form 122A-2. File them together.';
 

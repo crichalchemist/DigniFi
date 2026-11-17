@@ -34,9 +34,10 @@ from apps.forms.registry import (
     packet,
 )
 from apps.forms.schema import load_schema
-from apps.forms.services.pdf_filler import PDFFormFiller
+from apps.forms.services.pdf_filler import PDFFormFiller, ValueTooLong
 from apps.forms.tests.means_pair import box_1_state, stored_check_box_1
 from apps.forms.tests.pdf_readback import read_drawn
+from apps.forms.views import _FAILURE_SENTENCES, MEANS_PAIR_REFUSAL, FormIsFiled, NotInPacket
 from apps.intake.asset_lines import asset_step_gaps
 from apps.intake.claims import claim_step_gaps
 from apps.intake.means_test import (
@@ -392,8 +393,9 @@ def test_an_above_median_filers_unfiled_122a2_row_refuses_on_regenerate_and_down
 
 
 def test_the_hold_names_no_presumption_and_links_nowhere():
-    assert "presumption" not in FORM_122A2_LINE_MISSING.lower()
-    assert "abuse" not in FORM_122A2_LINE_MISSING.lower()
+    for sentence in (FORM_122A2_LINE_MISSING, MEANS_PAIR_REFUSAL):
+        assert "presumption" not in sentence.lower()
+        assert "abuse" not in sentence.lower()
 
 
 def _rows(session):
@@ -662,6 +664,30 @@ def test_marking_a_stale_122a1_filed_above_the_median_is_refused_and_leaves_it_u
 
     resp = api_client.post(f"/api/forms/{row.pk}/mark_filed/")
 
+    # the tie (H43) comes before the page's gap: above the median, 122A-2 has no row
+    assert (resp.status_code, resp.data) == (
+        422,
+        {"form_type": "form_122a1", "error": MEANS_PAIR_REFUSAL},
+    )
+    row.refresh_from_db()
+    assert row.status == "generated"
+
+
+@pytest.mark.django_db
+def test_marking_a_stale_122a1_filed_above_the_median_with_its_partner_filed_is_refused_by_its_gap(
+    api_client, session_with_debtor
+):
+    session = session_with_debtor
+    old = api_client.post(
+        "/api/forms/generate/", {"session_id": session.pk, "form_type": "form_122a1"}, format="json"
+    )
+    assert old.status_code == 200, old.data
+    row = GeneratedForm.objects.get(session=session, form_type="form_122a1")
+    _set_wages(session, "9000.00")
+    GeneratedForm.objects.create(session=session, form_type="form_122a2", status="filed")
+
+    resp = api_client.post(f"/api/forms/{row.pk}/mark_filed/")
+
     assert (resp.status_code, resp.data) == (
         422,
         {"form_type": "form_122a1", "error": LINE_16, "page": "/means-test"},
@@ -881,3 +907,323 @@ def test_the_spouses_rows_reach_no_other_form(api_client, above):
     with_rows = snapshot()
 
     assert with_rows == without
+
+
+# Mark as Filed ties the pair (H43): one pair action marks both or neither, the per-row path
+# refuses one form while its partner is unfiled, and a filed partner lets the other mark alone.
+
+
+def _mark_filed(api_client, row):
+    return api_client.post(f"/api/forms/{row.pk}/mark_filed/")
+
+
+def _mark_pair_filed(api_client, session):
+    return api_client.post("/api/forms/mark_pair_filed/", {"session_id": session.pk}, format="json")
+
+
+def _row(session, form_type):
+    return GeneratedForm.objects.get(session=session, form_type=form_type)
+
+
+def _as_stored(session):
+    """Each pair row as the database holds it, so a refusal is shown to have written nothing."""
+    return {
+        r.form_type: (r.status, r.field_values, r.updated_at)
+        for r in GeneratedForm.objects.filter(session=session, form_type__in=PAIR)
+    }
+
+
+def _form_values(row):
+    row.refresh_from_db()
+    return json.loads(row.field_values)["parts"][0]["values"]
+
+
+def _means_stamp(session):
+    """When the stored means test was last worked out (MeansTest.calculated_at never moves)."""
+    return MeansTest.objects.get(session=session).get_calculation_details()["calculated_at"]
+
+
+def _generated(api_client, session, form_type):
+    assert _generate(api_client, session, form_type).status_code == 200
+    return _row(session, form_type)
+
+
+@pytest.mark.django_db
+def test_marking_one_of_the_pair_filed_marks_both_or_neither(api_client, above):
+    answer_means_test(above)
+    row = _generated(api_client, above, "form_122a1")
+    _generated(api_client, above, "form_122a2")
+    before = _as_stored(above)
+
+    refused = _mark_filed(api_client, row)
+
+    assert (refused.status_code, refused.data) == (
+        422,
+        {"form_type": "form_122a1", "error": MEANS_PAIR_REFUSAL},
+    )
+    assert _as_stored(above) == before
+
+    marked = _mark_pair_filed(api_client, above)
+
+    assert marked.status_code == 200, marked.data
+    assert marked.data["message"] == "Form 122A-1 and Form 122A-2 marked as filed with court"
+    forms = marked.data["forms"]
+    assert [f["form_type"] for f in forms] == list(PAIR)
+    assert [f["status"] for f in forms] == ["filed", "filed"]
+    assert [f["status_display"] for f in forms] == ["Filed with Court", "Filed with Court"]
+    assert forms[0]["stored_box_2"] is True
+    assert {t: s for t, (s, _, _) in _as_stored(above).items()} == {t: "filed" for t in PAIR}
+
+
+@pytest.mark.django_db
+def test_the_per_row_mark_refuses_one_form_of_the_pair(api_client, session_with_debtor):
+    # A 122A-1 generated below the median has no partner row. Above the median the tie refuses the
+    # per-row mark before the page's gap, which Generate still gets (Review Focus 4).
+    session = session_with_debtor
+    row = _generated(api_client, session, "form_122a1")
+    _set_wages(session, "9000.00")
+
+    marked = _mark_filed(api_client, row)
+    generated = _generate(api_client, session, "form_122a1")
+
+    assert (marked.status_code, marked.data) == (
+        422,
+        {"form_type": "form_122a1", "error": MEANS_PAIR_REFUSAL},
+    )
+    assert (generated.status_code, generated.data) == (
+        422,
+        {"form_type": "form_122a1", "error": LINE_16, "page": "/means-test"},
+    )
+    row.refresh_from_db()
+    assert row.status == "generated"
+    assert not GeneratedForm.objects.filter(session=session, form_type="form_122a2").exists()
+
+
+@pytest.mark.django_db
+def test_a_form_whose_partner_is_filed_is_marked_alone(api_client, above):
+    answer_means_test(above)
+    GeneratedForm.objects.create(session=above, form_type="form_122a2", status="filed")
+    row = _generated(api_client, above, "form_122a1")
+
+    marked = _mark_filed(api_client, row)
+
+    assert (marked.status_code, marked.data["status"]) == (200, "filed")
+    row.refresh_from_db()
+    assert row.status == "filed"
+
+
+@pytest.mark.django_db
+def test_a_form_whose_partner_is_filed_is_still_held_by_its_gap(api_client, above):
+    # with line 16 unanswered Generate refuses, so the row is made by hand
+    answer_means_test(above, line_16=None)
+    GeneratedForm.objects.create(session=above, form_type="form_122a2", status="filed")
+    row = GeneratedForm.objects.create(session=above, form_type="form_122a1", status="generated")
+
+    marked = _mark_filed(api_client, row)
+
+    assert (marked.status_code, marked.data) == (
+        422,
+        {"form_type": "form_122a1", "error": LINE_16, "page": "/means-test"},
+    )
+    row.refresh_from_db()
+    assert row.status == "generated"
+
+
+@pytest.mark.django_db
+def test_marking_the_second_form_alone_stores_its_fresh_document_and_leaves_the_filed_partner(
+    api_client, above
+):
+    # One form filed, the page edited, the other marked (Review Focus 2): the two filed copies
+    # disagree on the CMI both print, and the server refuses nothing and un-files nothing (O11).
+    answer_means_test(above)
+    row = _generated(api_client, above, "form_122a1")
+    partner = _generated(api_client, above, "form_122a2")
+    GeneratedForm.objects.filter(pk=partner.pk).update(status="filed")
+    filed_with = _form_values(partner)
+    assert (filed_with["Quest1"], filed_with["undefined_48"]) == ("9000.00", "0.00")
+    # the CMI both forms print changes; a line 16 change alone reaches no 122A-1 box
+    _set_wages(above, "9500.00")
+    answer_means_test(above, line_16="2300.00")
+
+    marked = _mark_filed(api_client, row)
+
+    assert (marked.status_code, marked.data["status"]) == (200, "filed")
+    assert _form_values(row)["Quest11"] == "9500.00"
+    assert row.status == "filed"
+    kept = _form_values(partner)
+    assert partner.status == "filed"
+    assert (kept["Quest1"], kept["undefined_48"]) == ("9000.00", "0.00")
+
+
+@pytest.mark.django_db
+def test_the_pair_action_creates_a_missing_partner_row(api_client, above):
+    answer_means_test(above)
+    _generated(api_client, above, "form_122a1")
+    assert not GeneratedForm.objects.filter(session=above, form_type="form_122a2").exists()
+
+    marked = _mark_pair_filed(api_client, above)
+
+    assert marked.status_code == 200, marked.data
+    partner = _row(above, "form_122a2")
+    assert partner.status == "filed"
+    assert json.loads(partner.field_values) == build_parts("form_122a2", _fresh(above))
+    assert partner.generated_by == above.user
+
+
+@pytest.mark.django_db
+def test_a_refusal_of_either_form_leaves_both_rows_unchanged(api_client, above, monkeypatch):
+    answer_means_test(above)
+    _generated(api_client, above, "form_122a1")
+    before = _as_stored(above)
+    stamp = _means_stamp(above)
+
+    # 122A-2's refusal, its page gap: 122A-2 is resolved first, so the gap names it (R10)
+    answer_means_test(above, line_43_answer=None)
+    refused = _mark_pair_filed(api_client, above)
+
+    assert (refused.status_code, refused.data) == (
+        422,
+        {"form_type": "form_122a2", "error": MEANS_GAP_LINE_43, "page": "/means-test"},
+    )
+    assert _as_stored(above) == before
+    assert set(before) == {"form_122a1"}
+    assert _means_stamp(above) == stamp
+
+    # 122A-1's own refusal: its document doesn't fit a box
+    answer_means_test(above)
+    check = PDFFormFiller.check
+
+    def refuse_122a1(filler, form_type, values):
+        if form_type == "form_122a1":
+            raise ValueTooLong(form_type, "Demo box", {"step": "debtor_info"})
+        return check(filler, form_type, values)
+
+    monkeypatch.setattr(PDFFormFiller, "check", refuse_122a1)
+    refused = _mark_pair_filed(api_client, above)
+
+    assert refused.status_code == 422, refused.data
+    assert (refused.data["form_type"], refused.data["step"]) == ("form_122a1", "debtor_info")
+    assert _as_stored(above) == before
+    assert _means_stamp(above) == stamp
+
+
+@pytest.mark.django_db
+def test_a_lost_race_in_the_pair_action_writes_nothing_and_names_the_form(
+    api_client, above, monkeypatch
+):
+    # sqlite :memory: has no second connection to the same database, so the other tab's mark runs
+    # inside the request's transaction, from the patched check, and rolls back with the rest
+    answer_means_test(above)
+    _generated(api_client, above, "form_122a1")
+    partner = _generated(api_client, above, "form_122a2")
+    before = _as_stored(above)
+    check = PDFFormFiller.check
+
+    def check_then_file_elsewhere(filler, form_type, values):
+        result = check(filler, form_type, values)
+        if form_type == "form_122a2":
+            GeneratedForm.objects.filter(pk=partner.pk).update(status="filed")
+        return result
+
+    monkeypatch.setattr(PDFFormFiller, "check", check_then_file_elsewhere)
+    refused = _mark_pair_filed(api_client, above)
+
+    assert (refused.status_code, refused.data) == (
+        422,
+        {"form_type": "form_122a2", "error": _FAILURE_SENTENCES[FormIsFiled]},
+    )
+    assert _as_stored(above) == before
+
+
+@pytest.mark.django_db
+def test_a_running_generate_never_unfiles_a_row(api_client, above, monkeypatch):
+    # Generate All pressed while the pair is being marked (Review Focus 6): the row filed first
+    # keeps its filed document, and the generate answers FormIsFiled
+    answer_means_test(above)
+    _generated(api_client, above, "form_122a1")
+    row = _generated(api_client, above, "form_122a2")
+    filed_with = row.field_values
+    check = PDFFormFiller.check
+
+    def check_then_file_elsewhere(filler, form_type, values):
+        result = check(filler, form_type, values)
+        if form_type == "form_122a2":
+            GeneratedForm.objects.filter(pk=row.pk).update(status="filed")
+        return result
+
+    monkeypatch.setattr(PDFFormFiller, "check", check_then_file_elsewhere)
+    expected = (422, {"form_type": "form_122a2", "error": _FAILURE_SENTENCES[FormIsFiled]})
+
+    generated = _generate(api_client, above, "form_122a2")
+    assert (generated.status_code, generated.data) == expected
+    row.refresh_from_db()
+    assert (row.status, row.field_values) == ("filed", filed_with)
+
+    GeneratedForm.objects.filter(pk=row.pk).update(status="generated")
+    regenerated = api_client.post(f"/api/forms/{row.pk}/regenerate/")
+    assert (regenerated.status_code, regenerated.data) == expected
+    row.refresh_from_db()
+    assert (row.status, row.field_values) == ("filed", filed_with)
+
+
+@pytest.mark.django_db
+def test_a_below_median_pair_action_refuses_122a2_as_not_in_the_packet_and_writes_nothing(
+    api_client, session_with_debtor
+):
+    refused = _mark_pair_filed(api_client, session_with_debtor)
+
+    assert (refused.status_code, refused.data) == (
+        422,
+        {"form_type": "form_122a2", "error": _FAILURE_SENTENCES[NotInPacket]},
+    )
+    assert not GeneratedForm.objects.filter(session=session_with_debtor).exists()
+
+
+@pytest.mark.django_db
+def test_a_stale_below_median_122a2_row_gets_not_in_packet_not_the_tie(
+    api_client, session_with_debtor
+):
+    row = GeneratedForm.objects.create(
+        session=session_with_debtor, form_type="form_122a2", status="generated"
+    )
+
+    marked = _mark_filed(api_client, row)
+
+    assert (marked.status_code, marked.data) == (
+        422,
+        {"form_type": "form_122a2", "error": _FAILURE_SENTENCES[NotInPacket]},
+    )
+    row.refresh_from_db()
+    assert row.status == "generated"
+
+
+@pytest.mark.django_db
+def test_the_pair_action_needs_a_session_id_and_the_filers_own_session(api_client, above):
+    other = User.objects.create_user(
+        username="otherfiler", email="other@example.com", password="testpass123"
+    )
+    theirs = IntakeSession.objects.create(user=other, district=above.district, status="completed")
+
+    missing = api_client.post("/api/forms/mark_pair_filed/", {}, format="json")
+    not_theirs = _mark_pair_filed(api_client, theirs)
+
+    assert (missing.status_code, missing.data) == (400, {"error": "session_id is required"})
+    assert (not_theirs.status_code, not_theirs.data) == (
+        404,
+        {"error": "Session not found or you don't have permission"},
+    )
+
+
+@pytest.mark.django_db
+def test_the_pair_action_is_idempotent(api_client, above):
+    answer_means_test(above)
+    assert _mark_pair_filed(api_client, above).status_code == 200
+    filed = _as_stored(above)
+
+    again = _mark_pair_filed(api_client, above)
+
+    assert again.status_code == 200, again.data
+    assert [(f["form_type"], f["status"]) for f in again.data["forms"]] == [
+        (t, "filed") for t in PAIR
+    ]
+    assert _as_stored(above) == filed

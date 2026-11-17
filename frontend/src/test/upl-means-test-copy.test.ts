@@ -190,6 +190,7 @@ const NAMES = [
   'MEANS_OUTCOME_PRESUMPTION',
   'MEANS_OUTCOME_REASSURANCE',
   'MEANS_PAIR_NOTICE',
+  'MEANS_PAIR_REFUSAL',
   'MEANS_TABLE_MISSING',
   'MEANS_TEST_CALCULATING',
   'MEANS_TEST_INCOME_LABEL',
@@ -340,6 +341,7 @@ const EXACT_WORDS: [string, string][] = [
     'MEANS_PAIR_NOTICE',
     'Form 122A-1 says your result is worked out on Form 122A-2. File them together.',
   ],
+  ['MEANS_PAIR_REFUSAL', 'File Form 122A-1 and Form 122A-2 together.'],
   [
     'MEANS_FILED_BEFORE_122A2',
     'This copy was marked filed before DigniFi could fill in all of Form 122A-2. It shows what was stored then.',
