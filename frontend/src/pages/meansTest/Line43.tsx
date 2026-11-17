@@ -91,6 +91,7 @@ export function Line43({
           papers: '',
           amount: null,
           explanation: null,
+          original_explanation: null,
         },
       ],
     }));

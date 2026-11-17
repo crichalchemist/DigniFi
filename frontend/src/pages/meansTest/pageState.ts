@@ -56,6 +56,7 @@ export function fromReply(page: MeansPage): PageState {
       })),
       line_43_circumstances: answers.line_43_circumstances.map((row, index) => ({
         ...row,
+        original_explanation: row.original_explanation ?? null,
         _key: `loaded-${index}`,
       })),
     },
@@ -89,7 +90,10 @@ export function toPutBody(state: PageState): MeansTestUpdate {
     line_3_rows: state.answers.line_3_rows.map(withoutKey),
     spouse_vehicles: state.answers.spouse_vehicles.map(withoutKey),
     spouse_loans: state.answers.spouse_loans.map(withoutKey),
-    line_43_circumstances: state.answers.line_43_circumstances.map(withoutKey),
+    line_43_circumstances: state.answers.line_43_circumstances.map((row) => ({
+      ...withoutKey(row),
+      original_explanation: row.original_explanation ?? null,
+    })),
     debts: state.debts.map((debt) => ({ id: debt.id, ...debtAnswersOf(debt) })),
   };
 }

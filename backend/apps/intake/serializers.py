@@ -1585,8 +1585,16 @@ class CircumstanceSerializer(_MeansRow):
     explanation = serializers.CharField(
         max_length=2000, required=False, allow_null=True, allow_blank=True
     )
+    original_explanation = serializers.CharField(
+        max_length=2000, required=False, allow_null=True, allow_blank=True
+    )
 
     def validate_explanation(self, value):
+        if value is None or not value.strip():
+            return None
+        return value
+
+    def validate_original_explanation(self, value):
         if value is None or not value.strip():
             return None
         return value

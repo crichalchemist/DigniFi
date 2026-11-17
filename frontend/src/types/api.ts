@@ -712,6 +712,7 @@ export interface MeansCircumstance {
   papers: string;
   amount: string | null;
   explanation: string | null;
+  original_explanation?: string | null;
 }
 
 /** Every answer the page saves but the filer's per-debt ones (`MeansDebt` holds those) */

@@ -46,6 +46,7 @@ const circumstance = (over: Partial<MeansCircumstance> = {}): MeansCircumstance 
   papers: '',
   amount: '400.00',
   explanation: null,
+  original_explanation: null,
   ...over,
 });
 
