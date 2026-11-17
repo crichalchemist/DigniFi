@@ -47,7 +47,7 @@ const NAMES = [
   'MEANS_FILED_BEFORE_122A1',
   'MEANS_FILED_BEFORE_122A2',
   'MEANS_FILED_MISMATCH',
-  'MEANS_CANT_PRINT_YET',
+  'MEANS_LINE_MISSING',
   'MEANS_TOO_LONG',
   'MEANS_LETTER',
   'MEANS_EXPLANATION_TOO_LONG',
@@ -256,7 +256,7 @@ describe('the means test gives information, never advice', () => {
     expect(/presumption/i.test(sentence)).toBe(SAYS_PRESUMPTION.includes(name));
   });
 
-  it.each(['MEANS_CANT_PRINT_YET', 'MEANS_TABLE_MISSING'])(
+  it.each(['MEANS_LINE_MISSING', 'MEANS_TABLE_MISSING'])(
     '%s says neither presumption nor abuse',
     (name) => {
       expect(held[name]).not.toMatch(/presumption|abuse/i);
@@ -333,8 +333,8 @@ const EXACT_WORDS: [string, string][] = [
     "DigniFi doesn't have the means test figures for today's date yet, so it can't work out Form 122A-2.",
   ],
   [
-    'MEANS_CANT_PRINT_YET',
-    "You've answered the questions for Form 122A-2, but DigniFi can't print that form yet. Form 122A-1 waits for it. File the two forms together.",
+    'MEANS_LINE_MISSING',
+    "DigniFi can't work out every line of Form 122A-2, so it can't print that form. Form 122A-1 waits for it. File the two forms together.",
   ],
   [
     'MEANS_PAIR_NOTICE',

@@ -628,9 +628,7 @@ def test_every_seeded_persona_passes_schedule_cs_gate(persona):
 
 @pytest.mark.django_db
 @pytest.mark.parametrize("persona", list(PERSONAS))
-def test_the_seed_reports_only_priyas_122a1_and_122a2_as_skipped_because_the_gate_refuses_them(
-    persona,
-):
+def test_the_seed_skips_no_form_for_any_persona(persona):
     call_command("loaddata", "ilnd_2025_data", verbosity=0)
     err = StringIO()
     call_command("seed_demo_data", persona=persona, stdout=StringIO(), stderr=err)
@@ -640,4 +638,4 @@ def test_the_seed_reports_only_priyas_122a1_and_122a2_as_skipped_because_the_gat
         for line in err.getvalue().splitlines()
         if "Skipped" in line
     )
-    assert skipped == (["form_122a1", "form_122a2"] if persona == "priya" else [])
+    assert skipped == []

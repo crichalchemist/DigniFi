@@ -431,8 +431,8 @@ def line_43_session(db):
 
 
 def _line_43(session):
-    """(the document, line 43's sheet part), resolved below the gate: build_parts("form_122a2")
-    raises FORM_122A2_CANT_PRINT_YET until Task 6 lifts it, and Task 7 moves this to build_parts."""
+    """(the document, line 43's sheet part), resolved below the gate; Task 7 moves this to
+    build_parts."""
     document = resolve_parts(load_schema("form_122a2"), IntakeSession.objects.get(pk=session.pk))
     (part,) = [
         p for p in document["parts"] if p["kind"] == "sheet" and p["group"] == "means_line_43"

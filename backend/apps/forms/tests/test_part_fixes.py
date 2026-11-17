@@ -12,9 +12,7 @@ import pytest
 from django.core.management import call_command
 
 from apps.forms.registry import (
-    FORM_122A2_CANT_PRINT_YET,
     PreconditionMissing,
-    build_field_values,
     build_parts,
     get_all_form_types,
     packet,
@@ -26,8 +24,6 @@ from apps.forms.services.pdf_filler import PDFFormFiller, ValueTooLong
 from apps.intake.management.commands.seed_demo_data import PERSONAS
 from apps.intake.models import IntakeSession
 from apps.intake.tests.builders import complete_contract
-
-HELD = ("form_122a1", "form_122a2")  # refused above the median until 122A-2 can print (3h1)
 
 # The page's first gap for each below-median persona, who never sees the page: 122A-2 is in no
 # packet of theirs, and a direct build of it refuses with that gap (PF-T7a).
@@ -94,33 +90,17 @@ def test_only_the_list_of_creditors_stores_fixes():
             except PreconditionMissing as exc:
                 if form_type in {"form_103b"}:
                     continue  # 103B for a persona who pays the fee
-                if form_type not in HELD:
+                if form_type != "form_122a2" or form_type in packet(session):
                     raise
-                if form_type in packet(session):
-                    expected = FORM_122A2_CANT_PRINT_YET
-                else:
-                    expected = FIRST_GAP[persona]
-                    assert exc.page == "/means-test", persona
-                if str(exc) != expected:
-                    raise
-                # The hold refuses 122A-2, and Priya's 122A-1 (R6): resolve it below the gate.
+                # 122A-2 outside a below-median persona's packet refuses with the page's first
+                # gap: resolve it below the gate.
+                assert (str(exc), exc.page) == (FIRST_GAP[persona], "/means-test"), persona
                 parts = resolve_parts(load_schema(form_type), session)["parts"]
             covered.add(form_type)
             for part in parts:
                 assert "fixes" not in part, (persona, form_type)
 
     assert covered >= set(get_all_form_types()) - {"list_of_creditors"}
-
-
-@pytest.mark.django_db
-def test_both_held_forms_are_refused_for_an_above_median_persona_until_122a2_can_print():
-    call_command("loaddata", "ilnd_2025_data", verbosity=0)
-    call_command("seed_demo_data", stdout=StringIO())
-    session = IntakeSession.objects.get(user__username="demo_priya")
-    for form_type in HELD:
-        with pytest.raises(PreconditionMissing) as refused:
-            build_field_values(form_type, session)
-        assert str(refused.value) == FORM_122A2_CANT_PRINT_YET, form_type
 
 
 @pytest.mark.django_db

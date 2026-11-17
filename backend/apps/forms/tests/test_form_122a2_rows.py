@@ -114,8 +114,7 @@ def _fresh(session):
 
 
 def _document(session):
-    # Below the gate: build_parts("form_122a2") raises FORM_122A2_CANT_PRINT_YET until Task 6
-    # lifts it, and Task 7 moves these tests to build_parts unchanged (R18).
+    # Below the gate; Task 7 moves these tests to build_parts unchanged (R18).
     return resolve_parts(load_schema("form_122a2"), _fresh(session))
 
 

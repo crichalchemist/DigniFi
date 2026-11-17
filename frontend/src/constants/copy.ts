@@ -128,8 +128,8 @@ export const MEANS_TABLE_MISSING =
   "DigniFi doesn't have the means test figures for today's date yet, so it can't work out Form 122A-2.";
 
 // DRAFT: counsel C-24
-export const MEANS_CANT_PRINT_YET =
-  "You've answered the questions for Form 122A-2, but DigniFi can't print that form yet. Form 122A-1 waits for it. File the two forms together.";
+export const MEANS_LINE_MISSING =
+  "DigniFi can't work out every line of Form 122A-2, so it can't print that form. Form 122A-1 waits for it. File the two forms together.";
 
 // DRAFT: counsel C-24
 export const MEANS_PAIR_NOTICE =

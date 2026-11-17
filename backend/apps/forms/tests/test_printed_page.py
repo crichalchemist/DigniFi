@@ -10,7 +10,6 @@ with), not from text.
 """
 
 import json
-import re
 import unicodedata
 from collections import Counter
 from contextlib import contextmanager
@@ -32,7 +31,6 @@ from pypdf.generic._appearance_stream import TextStreamAppearance
 from apps.districts.models import District
 from apps.forms.field_index import export_state
 from apps.forms.registry import (
-    FORM_122A2_CANT_PRINT_YET,
     PreconditionMissing,
     build_field_values,
     get_all_form_types,
@@ -58,7 +56,6 @@ _HELV = pymupdf.Font("helv")
 _OUTLINES = {"Helvetica": _HELV, "Times-Roman": pymupdf.Font("tiro")}
 _TALLEST, _DEEPEST = "Å", "µ"
 _BOXES = ("CheckBox", "RadioButton")
-HELD = ("form_122a1", "form_122a2")  # refused above the median until 122A-2 can print (3h1)
 
 # The page's first gap for each below-median persona, who never sees the page: 122A-2 is in no
 # packet of theirs, and a direct build of it refuses with that gap (PF-T7a).
@@ -137,34 +134,16 @@ def _seeded():
             try:
                 values[form_type] = build_field_values(form_type, session)
             except PreconditionMissing as exc:
-                if form_type in HELD:
-                    if form_type in forms:
-                        expected = FORM_122A2_CANT_PRINT_YET
-                    else:
-                        expected = FIRST_GAP[persona]
-                        assert exc.page == "/means-test", persona
-                    if str(exc) != expected:
-                        raise
-                    # The hold refuses 122A-2 for everyone, and 122A-1 above the median (R6):
-                    # these tests judge printing, so the form resolves below the gate.
+                if form_type == "form_122a2" and form_type not in forms:
+                    # 122A-2 outside a below-median persona's packet refuses with the page's
+                    # first gap: these tests judge printing, so it resolves below the gate.
+                    assert (str(exc), exc.page) == (FIRST_GAP[persona], "/means-test"), persona
                     values[form_type] = resolve(load_schema(form_type), session)
                 elif form_type in forms:
                     raise
                 # 103B outside the packet: its own questions are asked only of a waiver filer
         seeded[persona] = (forms, values)
     return seeded
-
-
-@pytest.mark.django_db
-def test_priyas_122a1_and_122a2_are_held_until_122a2_can_print():
-    # Priya is above the median and has answered the page. The pair refuses together until 3h3 prints them.
-    if not District.objects.filter(code="ilnd").exists():
-        call_command("loaddata", "ilnd_2025_data", verbosity=0)
-    call_command("seed_demo_data", "--reset", persona="priya", verbosity=0)
-    session = IntakeSession.objects.filter(user__username="demo_priya").latest("id")
-    for form_type in HELD:
-        with pytest.raises(PreconditionMissing, match=re.escape(FORM_122A2_CANT_PRINT_YET)):
-            build_field_values(form_type, session)
 
 
 def _values(form_type):

@@ -24,7 +24,7 @@ from rest_framework.test import APIClient
 
 from apps.districts.models import District
 from apps.forms.models import GeneratedForm
-from apps.forms.registry import FORM_122A2_CANT_PRINT_YET, build_parts, packet
+from apps.forms.registry import build_parts, packet
 from apps.forms.schema import load_schema
 from apps.intake.management.commands.seed_demo_data import (
     PERSONAS,
@@ -38,9 +38,8 @@ User = get_user_model()
 # These ask for the fee waiver on Form 101 line 8 (3f spec §10), so 103B is in their packets.
 APPLIES = {"maria", "sarah"}
 
-# Priya is above the median, so these two refuse together until 122A-2 can print every line
-# (3h1). The five personas below the median print 122A-1 as before.
-HELD = ("form_122a1", "form_122a2")
+# No form is held back for any persona: Priya's 122A-1 and 122A-2 print with every line worked
+# out (3h3), and the five personas below the median print 122A-1 as before.
 
 
 def _step_bodies(data):
@@ -301,11 +300,8 @@ def test_forms_built_through_the_api_print_what_the_seeded_forms_print(persona):
 
     session_id, form_types, errors = _send_through_the_api(persona)
 
-    held = set(HELD) if persona == "priya" else set()
-    assert errors == [
-        {"form_type": t, "error": FORM_122A2_CANT_PRINT_YET} for t in packet(seeded) if t in held
-    ]
-    assert form_types == [t for t in packet(seeded) if t not in held]
+    assert errors == []
+    assert form_types == packet(seeded)
     assert ("form_103b" in form_types) is (persona in APPLIES)
     stored = {
         form.form_type: json.loads(form.field_values)
@@ -317,7 +313,6 @@ def test_forms_built_through_the_api_print_what_the_seeded_forms_print(persona):
     } == {
         form_type: _comparable_document(form_type, build_parts(form_type, seeded))
         for form_type in packet(seeded)
-        if form_type not in held
     }
     built = IntakeSession.objects.get(pk=session_id)
     # No form reads these yet, so compare the stored answers directly: a member the API

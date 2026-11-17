@@ -11,7 +11,7 @@ import {
   MEANS_FILED_BEFORE_122A1,
   MEANS_FILED_BEFORE_122A2,
   MEANS_FILED_MISMATCH,
-  MEANS_CANT_PRINT_YET,
+  MEANS_LINE_MISSING,
   MEANS_LINE_43_LINK,
   MEANS_OUTCOME_ANSWER_PAGE,
   MEANS_OUTCOME_PRESUMPTION,
@@ -1840,9 +1840,9 @@ describe('FormDashboard', () => {
           HttpResponse.json({
             generated: [],
             errors: [
-              { form_type: 'form_122a1', error: MEANS_CANT_PRINT_YET },
+              { form_type: 'form_122a1', error: MEANS_LINE_MISSING },
               { form_type: 'form_121', error: LETTER, step: 'debtor_info' },
-              { form_type: 'form_122a2', error: MEANS_CANT_PRINT_YET },
+              { form_type: 'form_122a2', error: MEANS_LINE_MISSING },
             ],
             total_generated: 0,
             total_errors: 3,
@@ -1857,7 +1857,7 @@ describe('FormDashboard', () => {
       expect(alert).toHaveTextContent(LETTER);
       expect(alert).not.toHaveTextContent(/Form 122A/);
 
-      const pair = screen.getAllByText(MEANS_CANT_PRINT_YET, { exact: false });
+      const pair = screen.getAllByText(MEANS_LINE_MISSING, { exact: false });
       expect(pair).toHaveLength(2);
       const block = pair[0].closest('[role="status"]')!;
       expect(block).toBe(pair[1].closest('[role="status"]'));
@@ -1872,7 +1872,7 @@ describe('FormDashboard', () => {
         http.post('http://localhost:8000/api/forms/generate_all/', () =>
           HttpResponse.json({
             generated: [],
-            errors: [{ form_type: 'form_122a2', error: MEANS_CANT_PRINT_YET }],
+            errors: [{ form_type: 'form_122a2', error: MEANS_LINE_MISSING }],
             total_generated: 0,
             total_errors: 1,
           })
@@ -1881,7 +1881,7 @@ describe('FormDashboard', () => {
       renderFormDashboard();
       await generateAll();
 
-      await screen.findByText(MEANS_CANT_PRINT_YET, { exact: false });
+      await screen.findByText(MEANS_LINE_MISSING, { exact: false });
       expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     });
 
@@ -1893,7 +1893,7 @@ describe('FormDashboard', () => {
         http.post('http://localhost:8000/api/forms/generate_all/', () =>
           HttpResponse.json({
             generated: [],
-            errors: [{ form_type: 'form_122a2', error: MEANS_CANT_PRINT_YET }],
+            errors: [{ form_type: 'form_122a2', error: MEANS_LINE_MISSING }],
             total_generated: 0,
             total_errors: 1,
           })
@@ -1909,7 +1909,7 @@ describe('FormDashboard', () => {
 
       await generateAll();
 
-      const refusal = await screen.findByText(MEANS_CANT_PRINT_YET, { exact: false });
+      const refusal = await screen.findByText(MEANS_LINE_MISSING, { exact: false });
       // The same element, not a new one put in with the words already inside
       expect(refusal.closest('[role="status"]')).toBe(region);
     });
@@ -1920,10 +1920,7 @@ describe('FormDashboard', () => {
       formsWith(storedForm('form_122a1', 7));
       server.use(
         http.post('http://localhost:8000/api/forms/:id/mark_filed/', () =>
-          HttpResponse.json(
-            { form_type: 'form_122a1', error: MEANS_CANT_PRINT_YET },
-            { status: 422 }
-          )
+          HttpResponse.json({ form_type: 'form_122a1', error: MEANS_LINE_MISSING }, { status: 422 })
         )
       );
       renderFormDashboard();
@@ -1931,7 +1928,7 @@ describe('FormDashboard', () => {
       const card = await screen.findByRole('article', { name: 'Form 122A-1 - Means Test' });
       await userEvent.click(within(card).getByRole('button', { name: 'Mark as Filed' }));
 
-      expect(await within(card).findByText(MEANS_CANT_PRINT_YET)).toBeInTheDocument();
+      expect(await within(card).findByText(MEANS_LINE_MISSING)).toBeInTheDocument();
       expect(within(card).queryByRole('link')).not.toBeInTheDocument();
       // Still unfiled
       expect(within(card).getByRole('button', { name: 'Mark as Filed' })).toBeInTheDocument();
