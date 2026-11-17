@@ -473,6 +473,89 @@ export const MEANS_EXPLANATION_TOO_LONG =
 export const MEANS_EXPLANATION_LETTER =
   "This explanation has a letter Form 122A-2 can't print. Change it.";
 
+// DRAFT: counsel C-33
+export const MEANS_POLISH_NOTE =
+  'An AI service can rewrite this explanation so it reads more clearly. You see the rewrite first, and your own words stay until you approve it.';
+
+// DRAFT: counsel C-33
+export const MEANS_POLISH_BUTTON = 'Rewrite this with an AI service';
+
+// DRAFT: counsel C-33
+export const MEANS_POLISH_CONSENT_HEADING = 'Before your words are sent';
+
+// DRAFT: counsel C-33
+export const MEANS_POLISH_CONSENT_WHAT =
+  "DigniFi will send the words in the box you pick, with DigniFi's instructions for the rewrite, to Anthropic, an AI service. Nothing else from your answers goes with them.";
+
+// DRAFT: counsel C-33
+export const MEANS_POLISH_CONSENT_RETENTION =
+  "DigniFi read Anthropic's terms on November 17, 2026. They say Anthropic doesn't keep what DigniFi sends.";
+
+// DRAFT: counsel C-33
+export const MEANS_POLISH_CONSENT_KEEP =
+  'You can say no and keep your own words. You can also keep them after you see the rewrite.';
+
+// DRAFT: counsel C-33
+export const MEANS_POLISH_SEND = 'Send it and show me a rewrite';
+
+// DRAFT: counsel C-33
+export const MEANS_POLISH_DECLINE = 'No, keep my words';
+
+// DRAFT: counsel C-33
+export const MEANS_POLISH_WORKING = 'Getting a rewrite. This can take a few seconds.';
+
+// DRAFT: counsel C-33
+export const MEANS_POLISH_DISCLOSURE =
+  'An AI service rewrote your explanation to make it clearer. Check that it says what you said, with nothing added and nothing left out, before you approve it.';
+
+// DRAFT: counsel C-33
+export const MEANS_POLISH_SENT_LABEL = 'What you sent';
+
+// DRAFT: counsel C-33
+export const MEANS_POLISH_REWRITE_LABEL = 'The rewrite';
+
+// DRAFT: counsel C-33
+export const MEANS_POLISH_APPROVE = 'Use this rewrite';
+
+// DRAFT: counsel C-33
+export const MEANS_POLISH_KEEP = 'Keep my words';
+
+// DRAFT: counsel C-33
+export const MEANS_POLISH_APPROVED =
+  'Your explanation now holds the rewrite you approved. You can put your own words back at any time.';
+
+// DRAFT: counsel C-33
+export const MEANS_POLISH_KEPT = 'Your words are unchanged.';
+
+// DRAFT: counsel C-33
+export const MEANS_POLISH_HOLDS_REWRITE = 'This box holds a rewrite you approved.';
+
+// DRAFT: counsel C-33
+export const MEANS_POLISH_RESTORE = 'Put my own words back';
+
+// DRAFT: counsel C-33
+export const MEANS_POLISH_TOO_MANY =
+  'You asked for rewrites too quickly. Wait a minute and try again.';
+
+// DRAFT: counsel C-33
+export const MEANS_POLISH_IDENTIFIER =
+  'This explanation holds your name, Social Security number, account number, phone number, email or address. Take it out first.';
+
+// DRAFT: counsel C-33
+export const MEANS_POLISH_PHRASE =
+  "This explanation has a phrase DigniFi doesn't send to the AI service. Change it first.";
+
+// DRAFT: counsel C-33
+export const MEANS_POLISH_BLANK = 'Write your explanation first.';
+
+// DRAFT: counsel C-33
+export const MEANS_POLISH_NO_REWRITE =
+  "The AI service didn't give a rewrite DigniFi can show. Your words are unchanged.";
+
+// DRAFT: counsel C-33
+export const MEANS_POLISH_UNAVAILABLE =
+  "DigniFi couldn't reach the AI service. Your words are unchanged.";
+
 // DRAFT: counsel C-24
 export const MEANS_GAP_LINE_3 = "Answer line 3, about your spouse's income.";
 

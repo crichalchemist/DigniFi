@@ -822,6 +822,13 @@ export interface MeansPage {
   tables_gap: string | null;
   /** The server's first gap, null when none */
   gap: string | null;
+  /** True when an AI service is set up to rewrite a line 43 explanation */
+  polish_available: boolean;
+}
+
+/** The polish endpoint's reply: the rewrite, which the page never saves until the filer approves */
+export interface PolishReply {
+  rewrite: string;
 }
 
 /** A PUT sets only the answer keys sent; each `debts` row only the keys it sends */

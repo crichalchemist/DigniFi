@@ -28,7 +28,15 @@ import { Button } from '../components/common/Button';
 import { FormField, FormSelect } from '../components/common/FormField';
 import { ProgressIndicator } from '../components/common/ProgressIndicator';
 import { UPL_GENERAL_DISCLAIMER } from '../constants/upl';
-import { MEANS_PAIR_CONFIRM } from '../constants/copy';
+import {
+  MEANS_PAIR_CONFIRM,
+  MEANS_POLISH_APPROVE,
+  MEANS_POLISH_BUTTON,
+  MEANS_POLISH_CONSENT_HEADING,
+  MEANS_POLISH_HOLDS_REWRITE,
+  MEANS_POLISH_REWRITE_LABEL,
+  MEANS_POLISH_SEND,
+} from '../constants/copy';
 import type { GeneratedForm } from '../types/api';
 
 // ============================================================================
@@ -378,6 +386,70 @@ describe('Accessibility: Pages', () => {
 
     const results = await axe(container, axeOptions);
     expect(results).toHaveNoViolations();
+  });
+
+  describe('MeansTestPage line 43 polish', () => {
+    // Priya's page with line 43 Yes and one circumstance holding words to rewrite
+    async function renderLine43() {
+      const page = priyaPage();
+      page.answers.line_43_answer = 'yes';
+      page.answers.line_43_circumstances = [
+        {
+          happened: '',
+          change: '',
+          choices: '',
+          papers: '',
+          amount: '400.00',
+          explanation: 'Demo words',
+          original_explanation: null,
+        },
+      ];
+      server.use(
+        http.get('http://localhost:8000/api/intake/sessions/:id/means-test/', () =>
+          HttpResponse.json(page)
+        )
+      );
+      const view = withIntakeProvider(<MeansTestPage />);
+      await waitFor(() => {
+        expect(
+          view.container.querySelector('textarea[name="means_line_43_0_explanation"]')
+        ).not.toBeNull();
+      });
+      return view;
+    }
+    const pressButton = (name: RegExp | string) =>
+      userEvent.click(screen.getByRole('button', { name }));
+
+    it('MeansTestPage with the polish consent panel open has no violations', async () => {
+      const { container } = await renderLine43();
+      await pressButton(new RegExp(`^${MEANS_POLISH_BUTTON}`));
+      expect(screen.getByRole('group', { name: MEANS_POLISH_CONSENT_HEADING })).toBeInTheDocument();
+
+      const results = await axe(container, axeOptions);
+      expect(results).toHaveNoViolations();
+    });
+
+    it('MeansTestPage with a rewrite pending has no violations', async () => {
+      const { container } = await renderLine43();
+      await pressButton(new RegExp(`^${MEANS_POLISH_BUTTON}`));
+      await pressButton(MEANS_POLISH_SEND);
+      await screen.findByRole('textbox', { name: MEANS_POLISH_REWRITE_LABEL });
+
+      const results = await axe(container, axeOptions);
+      expect(results).toHaveNoViolations();
+    });
+
+    it("MeansTestPage with an approved rewrite's sentence and button has no violations", async () => {
+      const { container } = await renderLine43();
+      await pressButton(new RegExp(`^${MEANS_POLISH_BUTTON}`));
+      await pressButton(MEANS_POLISH_SEND);
+      await screen.findByRole('textbox', { name: MEANS_POLISH_REWRITE_LABEL });
+      await pressButton(MEANS_POLISH_APPROVE);
+      expect(screen.getByText(MEANS_POLISH_HOLDS_REWRITE)).toBeInTheDocument();
+
+      const results = await axe(container, axeOptions);
+      expect(results).toHaveNoViolations();
+    });
   });
 
   it("MeansTestPage with a spouse vehicle, a spouse loan and Kestrel's questions has no violations", async () => {
