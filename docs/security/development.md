@@ -23,7 +23,7 @@ Before committing code, verify:
 - `DJANGO_SECRET_KEY` - Django secret key (also signs JWTs)
 - `FIELD_ENCRYPTION_KEY` - Fernet key for PII encryption
 - `DATABASE_URL` - PostgreSQL URL, including the password
-- `OPENAI_API_KEY`, `GEMINI_API_KEY`, `SENTRY_DSN` - third-party service keys
+- `OPENAI_API_KEY`, `GEMINI_API_KEY`, `AI_POLISH_API_KEY`, `SENTRY_DSN` - third-party service keys
 
 **Example .env file:**
 

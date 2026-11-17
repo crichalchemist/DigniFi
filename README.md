@@ -157,6 +157,7 @@ dignifi/
 - **Testing**: pytest, vitest, Playwright, vitest-axe (accessibility)
 - **CI/CD**: GitHub Actions (lint, backend tests, frontend tests, E2E)
 - **Document Scanning**: OpenAI GPT-4o by default, or Gemini 2.0 Flash (chosen by `OCR_PROVIDER`; `OCR_MODEL` overrides the model), opendataloader-pdf, pymupdf
+- **Line 43 AI polish**: an optional rewrite of a filer's own explanation, after consent. Anthropic, chosen by `AI_POLISH_PROVIDER` and keyed by `AI_POLISH_API_KEY`; `AI_POLISH_MODEL` overrides the model
 - **Infrastructure**: Docker, Docker Compose (dev); Heroku Container Stack (production)
 
 ## Core Features
