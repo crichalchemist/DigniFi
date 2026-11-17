@@ -13,6 +13,7 @@ from apps.eligibility.means_lines import (
     line_30_cap,
     slot_candidates,
 )
+from apps.intake.claims import NAMELESS_DEBT, claim_row_name
 
 ANSWER_KEYS: tuple[str, ...] = (
     "line_3_answer",
@@ -78,6 +79,9 @@ MEANS_GAP_LINE_3_NO_ROW = (
 )
 MEANS_GAP_LINE_3_ROW = (
     "Enter what your spouse's income was used for, and the amount, on each row of line 3."
+)
+MEANS_GAP_LINE_3_CAP = (
+    "Line 3 can't be more than {amount}, your spouse's income on Form 122A-1, Column B."
 )
 MEANS_GAP_SPOUSE_VEHICLES = (
     "Answer whether your spouse has a vehicle that isn't on your property list."
@@ -150,13 +154,19 @@ def _unanswered(key: str):
 
 
 def normalized_answers(
-    stored: Mapping, filer_vehicles: Collection[str], open_debts: Collection[int]
+    stored: Mapping,
+    filer_vehicles: Collection[str],
+    open_debts: Collection[int],
+    keep_hidden: bool = False,
 ) -> dict:
     """Every answer key, a reference to a row that has gone read as unanswered. Copies; never
     changes `stored`.
 
     `filer_vehicles` holds the refs of the filer's Schedule A/B vehicles, `open_debts` the ids of
-    the confirmed debts Amounts Owed doesn't list as secured.
+    the confirmed debts Amounts Owed doesn't list as secured. A spouse vehicle row is a vehicle
+    to refer to only under "spouse vehicles: Yes", so under No a loan's link to it reads as
+    unanswered; `keep_hidden` keeps it, for the page, which shows what the filer typed and sends
+    it back (DIG-513).
     """
     out = {}
     for key in ANSWER_KEYS:
@@ -167,7 +177,7 @@ def normalized_answers(
         ref: answer for ref, answer in out["vehicle_claims"].items() if ref in filer_vehicles
     }
     live = set(filer_vehicles)
-    if out["spouse_vehicles_answer"] == "yes":
+    if keep_hidden or out["spouse_vehicles_answer"] == "yes":
         live.update(row.get("ref") for row in out["spouse_vehicles"])
     pair = (list(out["vehicle_choice"]) + [None, None])[:2]
     out["vehicle_choice"] = [ref if ref in live else None for ref in pair]
@@ -259,7 +269,7 @@ def _spouse_loan_gaps(inputs: MeansInputs, answers: Mapping) -> list[str]:
     for row in rows:
         if not _loan_identity_given(row):
             continue
-        name = names.get(row.get("ref"), row.get("creditor") or "").strip()
+        name = claim_row_name(names.get(row.get("ref"), row.get("creditor")), NAMELESS_DEBT)
         secured_by = row.get("secured_by")
         if secured_by is None:
             gaps.append(MEANS_GAP_SPOUSE_LOAN_SECURED_BY.format(name=name))
@@ -334,24 +344,26 @@ def _debt_gaps(inputs: MeansInputs, answers: Mapping, lines: Mapping) -> list[st
     ]
     gaps = []
     for debt in named:
+        name = claim_row_name(debt.creditor, NAMELESS_DEBT)
         if debt.payments_left is None:
-            gaps.append(MEANS_GAP_PAYMENTS_LEFT.format(name=debt.creditor))
+            gaps.append(MEANS_GAP_PAYMENTS_LEFT.format(name=name))
         if debt.payment_changes is None:
-            gaps.append(MEANS_GAP_PAYMENT_CHANGES.format(name=debt.creditor))
+            gaps.append(MEANS_GAP_PAYMENT_CHANGES.format(name=name))
         elif debt.payment_changes == "yes" and debt.total_60_months is None:
-            gaps.append(MEANS_GAP_SIXTY_MONTH_TOTAL.format(name=debt.creditor))
+            gaps.append(MEANS_GAP_SIXTY_MONTH_TOTAL.format(name=name))
         if lines[debt.ref] == "33d" and debt.taxes_or_insurance is None:
-            gaps.append(MEANS_GAP_TAXES.format(name=debt.creditor))
+            gaps.append(MEANS_GAP_TAXES.format(name=name))
     if answers["line_34_answer"] is None:
         gaps.append(MEANS_GAP_LINE_34)
     elif answers["line_34_answer"] == "yes":
         for debt in named:
             if lines[debt.ref] is None:
                 continue
+            name = claim_row_name(debt.creditor, NAMELESS_DEBT)
             if debt.necessary_for_support is None:
-                gaps.append(MEANS_GAP_SUPPORT.format(name=debt.creditor))
+                gaps.append(MEANS_GAP_SUPPORT.format(name=name))
             elif debt.necessary_for_support == "yes" and debt.cure is None:
-                gaps.append(MEANS_GAP_CURE.format(name=debt.creditor))
+                gaps.append(MEANS_GAP_CURE.format(name=name))
     return gaps
 
 
@@ -391,6 +403,11 @@ def means_test_gaps(inputs: MeansInputs, tables: MeansTables, answers: Mapping) 
                 gaps.append(MEANS_GAP_LINE_3_NO_ROW)
             elif any(_blank(row.get("purpose")) or row.get("amount") is None for row in rows):
                 gaps.append(MEANS_GAP_LINE_3_ROW)
+            elif (
+                inputs.spouse_cmi is not None
+                and sum(Decimal(row["amount"]) for row in rows) > inputs.spouse_cmi
+            ):
+                gaps.append(MEANS_GAP_LINE_3_CAP.format(amount=_money(inputs.spouse_cmi)))
         gaps += _spouse_vehicle_gaps(answers)
         gaps += _spouse_loan_gaps(inputs, answers)
     gaps += _vehicle_gaps(inputs, tables, answers)

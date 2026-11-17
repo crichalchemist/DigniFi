@@ -18,6 +18,7 @@ from apps.forms.models import GeneratedForm
 from apps.forms.services.pdf_filler import PDFFormFiller
 from apps.forms.tests.means_pair import box_1_state, stored_check_box_1
 from apps.forms.tests.pdf_readback import read_drawn
+from apps.forms.views import MEANS_PAIR_REFUSAL
 from apps.intake.models import DebtorInfo, IncomeInfo, IntakeSession
 from apps.intake.tests.builders import answer_household
 
@@ -112,14 +113,35 @@ def test_a_stale_122a1_row_cant_be_filed_around_the_hold(api_client, session_wit
 
     resp = _mark_filed(api_client, row)
 
+    # the tie (H43) refuses before the page's gap: above the median, 122A-2 has no row
+    assert (resp.status_code, resp.data) == (
+        422,
+        {"form_type": "form_122a1", "error": MEANS_PAIR_REFUSAL},
+    )
+    row.refresh_from_db()
+    assert (row.status, row.field_values) == ("generated", stored)
+    download = api_client.get(f"/api/forms/{row.pk}/download/")
+    assert (download.status_code, download.data["error"]) == (422, LINE_16)
+
+
+@pytest.mark.django_db
+def test_a_stale_122a1_row_with_its_partner_filed_is_held_by_the_pages_gap(
+    api_client, session_with_debtor
+):
+    session = session_with_debtor
+    row = _generate(api_client, session)
+    stored = row.field_values
+    _set_wages(session, "9000.00")
+    GeneratedForm.objects.create(session=session, form_type="form_122a2", status="filed")
+
+    resp = _mark_filed(api_client, row)
+
     assert (resp.status_code, resp.data) == (
         422,
         {"form_type": "form_122a1", "error": LINE_16, "page": "/means-test"},
     )
     row.refresh_from_db()
     assert (row.status, row.field_values) == ("generated", stored)
-    download = api_client.get(f"/api/forms/{row.pk}/download/")
-    assert (download.status_code, download.data["error"]) == (422, LINE_16)
 
 
 @pytest.mark.django_db
@@ -301,9 +323,10 @@ def test_a_stale_122a2_row_cant_be_filed_around_the_hold(api_client, session_wit
 
     resp = _mark_filed(api_client, row)
 
+    # the tie (H43) refuses before the page's gap: 122A-1 has no row
     assert (resp.status_code, resp.data) == (
         422,
-        {"form_type": "form_122a2", "error": LINE_16, "page": "/means-test"},
+        {"form_type": "form_122a2", "error": MEANS_PAIR_REFUSAL},
     )
     row.refresh_from_db()
     assert (row.status, row.field_values) == ("generated", stale)

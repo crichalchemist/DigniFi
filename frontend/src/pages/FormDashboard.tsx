@@ -6,13 +6,13 @@
  * Includes UPL disclaimer on every form interaction.
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useIntake } from '../context/IntakeContext';
 import { api, APIClientError } from '../api/client';
 import { FormCard, GenerateAllButton, DebtExplanationsPanel } from '../components/forms';
 import type { DebtClassification } from '../components/forms/DebtExplanationsPanel';
-import type { FormRefusal } from '../components/forms/FormCard';
+import type { FormCardPair, FormRefusal } from '../components/forms/FormCard';
 import { UPLDisclaimer } from '../components/compliance';
 import { UPL_FORM_DISCLAIMER, UPL_MEANS_TEST_DISCLAIMER } from '../constants/upl';
 import {
@@ -152,6 +152,16 @@ function tableNotice(table: DatedTableUsed): string | null {
 /** Form 122A-1 and Form 122A-2 are prepared and filed together (3h1): they refuse together */
 const MEANS_PAIR: FormType[] = ['form_122a1', 'form_122a2'];
 
+/**
+ * The form of the pair a refusal names (its `form_type`), which may be the pair's other form
+ * from the one pressed; undefined when the body names none, or a form outside the pair
+ */
+function formTypeOf(err: unknown): FormType | undefined {
+  if (!(err instanceof APIClientError)) return undefined;
+  const named = err.body?.form_type;
+  return named === 'form_122a1' || named === 'form_122a2' ? named : undefined;
+}
+
 export function FormDashboard() {
   const { session, isLoading: sessionLoading } = useIntake();
   const [forms, setForms] = useState<GeneratedForm[]>([]);
@@ -180,6 +190,9 @@ export function FormDashboard() {
   // filed. A refusal of Generate All's whole call leaves them.
   const [formRefusals, setFormRefusals] = useState<Partial<Record<FormType, Refusal>>>({});
   const [dischargeData, setDischargeData] = useState<DebtClassification[]>([]);
+  // One pair action at a time: a second press before the first answers sends nothing. Declared
+  // before the early return below, with the other hooks.
+  const markingPair = useRef(false);
 
   // Load existing forms on mount
   const loadForms = useCallback(async () => {
@@ -308,12 +321,35 @@ export function FormDashboard() {
     } catch (err) {
       // Form 122A-1 and 122A-2 are worked out before they are marked filed, so a refusal shows on
       // the card, which stays unfiled
-      if (form) setFormRefusal(form.form_type, refusalOf(err, ERROR_GENERIC));
+      if (form) setFormRefusal(formTypeOf(err) ?? form.form_type, refusalOf(err, ERROR_GENERIC));
       return;
     }
     // A filed form prints what was filed, which no step changes (ruling R46)
     if (form) setFormRefusal(form.form_type, undefined);
     await loadForms();
+  };
+
+  // Marks Form 122A-1 and Form 122A-2 filed together. A refusal lands on the form it names, which
+  // is the partner of the card pressed when the gap is the partner's, and on the pressed card when
+  // it names none (a whole-call refusal).
+  const handleMarkPairFiled = async (pressed: FormType) => {
+    if (!session || markingPair.current) return;
+    markingPair.current = true;
+    try {
+      try {
+        await api.forms.markPairFiled(session.id);
+      } catch (err) {
+        // The answer replaces what either card showed before: only the form it names refuses now
+        for (const formType of MEANS_PAIR) setFormRefusal(formType, undefined);
+        setFormRefusal(formTypeOf(err) ?? pressed, refusalOf(err, ERROR_GENERIC));
+        return;
+      }
+      for (const formType of MEANS_PAIR) setFormRefusal(formType, undefined);
+      await loadForms();
+    } finally {
+      // Released only after the list is reloaded, so a press during the reload sends nothing
+      markingPair.current = false;
+    }
   };
 
   if (!session) {
@@ -352,7 +388,7 @@ export function FormDashboard() {
   const linkTo = linksInPageOrder(noticeLinksIntake);
   const errorLink = error ? linkTo(error) : undefined;
   const refusalLink = generateAllRefusal ? linkTo(generateAllRefusal) : undefined;
-  // The pair's refusals are information (the hold), so they show apart from the others, which
+  // The pair's refusals are information (a gap, a table or a line the calculator can't work out, §6), so they show apart from the others, which
   // are errors; the others' links come first, as they sit first on the page
   const isPair = (e: GenerateAllError) => MEANS_PAIR.includes(e.form_type as FormType);
   const otherErrors = generationErrors.filter((e) => !isPair(e));
@@ -392,6 +428,19 @@ export function FormDashboard() {
       return MEANS_FILED_MISMATCH;
     }
     return undefined;
+  };
+  // What Mark as Filed asks on each card of the pair, which are filed together: the pair, unless
+  // the partner is already filed. A filed partner with a notice (it disagrees with this form) is
+  // shown before the card marks alone; one with none marks alone at once.
+  const pairOf = (formType: FormType): FormCardPair | undefined => {
+    if (!hasMeansPair || !MEANS_PAIR.includes(formType)) return undefined;
+    const partnerType = formType === MEANS_PAIR[0] ? MEANS_PAIR[1] : MEANS_PAIR[0];
+    const partner = formsByType.get(partnerType);
+    if (!partner || partner.status !== 'filed') return { kind: 'both' };
+    const partnerNotice = noticeOf(partner);
+    return partnerNotice
+      ? { kind: 'alone', partnerLabel: FORM_TYPE_METADATA[partner.form_type].label, partnerNotice }
+      : undefined;
   };
   const errorList = (errors: GenerateAllError[], links: FormRefusal['link'][]) => (
     <ul>
@@ -631,6 +680,8 @@ export function FormDashboard() {
               onGenerate={handleGenerate}
               onDownload={handleDownload}
               onMarkFiled={handleMarkFiled}
+              pair={pairOf(formType)}
+              onMarkPairFiled={() => handleMarkPairFiled(formType)}
             />
           ))}
           {filedOutsidePacket.map((form) => (

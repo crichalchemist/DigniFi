@@ -19,6 +19,7 @@ from apps.eligibility.means_lines import (
     SKIPPED,
     HealthInsurance,
     MeansInputs,
+    MeansLines,
     MeansRow,
     MeansTableKeyMissing,
     MeansTables,
@@ -29,6 +30,8 @@ from apps.eligibility.means_lines import (
     debt_lines,
     is_spouse_ref,
     line_30_cap,
+    line_43_rows_to_print,
+    missing_line,
     plan_product,
     rebuttal_figure,
     work_out,
@@ -118,6 +121,7 @@ PRIYA = MeansInputs(
     line_36_answer="yes",
     line_36_payment=D("1400.00"),
     line_43_answer="no",
+    spouse_cmi=D("1800.00"),
 )
 
 PRIYA_LINES = {
@@ -216,7 +220,7 @@ def test_priyas_122a2_matches_the_hand_worked_figures():
     assert lines.rows["13b"] == (
         MeansRow("Kestrel Auto Finance", D("277.50"), property="Honda CR-V EX 2021"),
     )
-    assert all(lines.rows[key] == () for key in ("9b", "13e", "33d", "34"))
+    assert all(lines.rows[key] == () for key in ("9b", "13e", "33d", "34", "43"))
     assert lines.outcome == PRESUMPTION
 
 
@@ -674,6 +678,78 @@ def test_line_43_never_changes_a_box_or_the_outcome():
     }
     assert yes.outcome == no.outcome == PRESUMPTION
     assert figures(replace(PRIYA, line_43_answer=None))["43"] is MISSING
+
+
+def test_a_line_3_total_above_the_spouses_income_cant_be_worked_out_and_at_it_can():
+    # DIG-514 (R7): line 3 can't take more than the spouse's Column B; an equal total passes
+    above = work_out(replace(PRIYA, line_3_rows=(("Demo", D("1800.01")),)), TABLES)
+    assert {key for key, value in above.lines.items() if value is MISSING} == {
+        "3", "4", "39a", "39c", "39d", "40", "41a", "41b", "42", "43", "page_1",
+    }  # fmt: skip
+    assert above.lines["39b"] == D("11361.60")
+    assert above.outcome == CANNOT_WORK_OUT
+    at = work_out(replace(PRIYA, line_3_rows=(("Demo", D("1800.00")),)), TABLES)
+    assert at.lines["3"] == D("1800.00") and at.lines["39d"] == D("38304.00")
+    assert at.outcome == PRESUMPTION
+
+
+@pytest.mark.parametrize(
+    "rows",
+    [(), (("", D("1.00")),), (("  ", D("1.00")),), (("Demo", None),)],
+    ids=["no_row", "no_explanation", "spaces_only_explanation", "no_amount"],
+)
+def test_line_43_yes_with_an_unfinished_circumstance_is_missing_where_the_form_reaches_it(rows):
+    # R4: a reached Yes prints only once every circumstance has its words and its amount
+    unfinished = work_out(replace(PRIYA, line_43_answer="yes", line_43_rows=rows), TABLES)
+    assert unfinished.lines["40"] == "2" and unfinished.lines["43"] is MISSING
+    assert unfinished.outcome == PRESUMPTION
+    complete = work_out(
+        replace(PRIYA, line_43_answer="yes", line_43_rows=(("Demo", D("400.00")),)), TABLES
+    )
+    assert complete.lines["43"] == "yes"
+    assert complete.rows["43"] == (MeansRow("Demo", D("400.00")),)
+
+
+def test_line_43_yes_under_a_no_presumption_result_is_skipped_whatever_is_stored():
+    lines = work_out(
+        replace(
+            PRIYA,
+            line_16=D("4600.00"),
+            line_43_answer="yes",
+            line_43_rows=(("Demo", D("400.00")),),
+        ),
+        TABLES,
+    )
+    assert lines.lines["40"] == "1" and lines.outcome == NO_PRESUMPTION
+    assert lines.lines["43"] is SKIPPED
+    assert lines.rows["43"] == (MeansRow("Demo", D("400.00")),)
+
+
+@pytest.mark.parametrize(
+    "change, prints",
+    [
+        ({}, True),
+        ({"line_1": D("5000.00")}, False),
+        ({"line_1": D("11811.60"), "line_41a": D("48000.00")}, True),
+        ({"line_1": D("11811.60"), "line_41a": D("48000.04")}, False),
+        ({"line_16": None}, False),
+        ({"line_43_answer": "no"}, False),
+        ({"line_43_answer": None}, False),
+    ],
+    ids=["40_is_2", "40_is_1", "42_yes", "42_no", "39d_missing", "answer_no", "answer_none"],
+)
+def test_line_43_rows_print_only_under_a_reached_yes(change, prints):
+    answered = {"line_43_answer": "yes", "line_43_rows": (("Demo", D("400.00")),)}
+    lines = work_out(replace(PRIYA, **(answered | change)), TABLES)
+    assert lines.rows["43"] == (MeansRow("Demo", D("400.00")),)
+    assert line_43_rows_to_print(lines) == (lines.rows["43"] if prints else ())
+
+
+def test_missing_line_sees_every_missing_line_and_no_skipped_one():
+    assert missing_line(MeansLines(lines=PRIYA_LINES, rows={}, outcome=PRESUMPTION)) is False
+    assert missing_line(work_out(replace(PRIYA, line_16=None), TABLES)) is True
+    below = work_out(replace(PRIYA, line_1=D("5000.00")), TABLES)
+    assert below.lines["43"] is SKIPPED and missing_line(below) is False
 
 
 def test_a_county_the_tables_dont_hold_raises_without_naming_it():

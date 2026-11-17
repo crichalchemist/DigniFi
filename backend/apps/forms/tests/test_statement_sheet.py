@@ -9,16 +9,21 @@ import json
 from decimal import Decimal
 
 import pytest
+from django.contrib.auth import get_user_model
+from django.core.management import call_command
 from django.db import connection
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 
+from apps.districts.models import District
 from apps.forms.registry import build_parts
 from apps.forms.schema import load_schema
 from apps.forms.services.fill_resolver import resolve, resolve_parts
+from apps.forms.services.means_fit import LINE_43_EXPLANATION_LINES, explanation_refusal
 from apps.forms.services.pdf_filler import PDFFormFiller, UnprintableLetter
-from apps.forms.services.sheets import sheet_spec
-from apps.forms.tests.pdf_readback import read_sheets
+from apps.forms.services.sheets import WIDTH, _lines, sheet_spec
+from apps.forms.tests.means_rows import answer_page, overflowing_session
+from apps.forms.tests.pdf_readback import read_sheet_part, read_sheets
 from apps.forms.tests.test_derivations import SPOUSE_AT_HOME
 from apps.intake.models import IntakeSession
 from apps.intake.tests.builders import answer_household
@@ -66,6 +71,49 @@ def _answer(session, filer, spouse=None, marital_status="not_married", **detail)
         row.store_entries([dict(e) for e in spouse])
         row.save()
     return IntakeSession.objects.get(pk=session.pk)
+
+
+def _demo_sheet(title, columns, line, cells):
+    """A synthetic sheet part of one row, its columns 100 and 358 pt either way round."""
+    return {
+        "kind": "sheet",
+        "group": "i_line_8a",
+        "title": title,
+        "columns": columns,
+        "name": "Demo Filer",
+        "rows": [{"line": line, "cells": cells}],
+        "line_width": 46,
+    }
+
+
+def test_read_sheet_part_reads_only_its_groups_pages():
+    # Each wide cell runs past the other part's column edge, so a page read under the other
+    # part's columns would cross them.
+    wide = "Demo words that run on and on across the wide column of this sheet"
+    part_a = _demo_sheet(
+        "Demo Form, line 3",
+        [{"label": "Purpose", "width": 100}, {"label": "Amount", "width": 358}],
+        "3.1",
+        ["Demo A", wide],
+    )
+    part_b = _demo_sheet(
+        "Demo Form, line 33d",
+        [{"label": "Creditor", "width": 358}, {"label": "Amount", "width": 100}],
+        "33d.1",
+        [wide, "2.00"],
+    )
+    parts = {"version": 2, "parts": [{"kind": "form", "values": {}}, part_a, part_b]}
+    pdf = PDFFormFiller().fill("schedule_i", parts)
+
+    (page_a,) = read_sheet_part(pdf, part_a)
+    (page_b,) = read_sheet_part(pdf, part_b)
+    assert page_a.labels == ("", "Purpose", "Amount")
+    assert page_a.rows == (("3.1", "Demo A", wide),)
+    assert page_a.crossing == ()
+    assert page_b.labels == ("", "Creditor", "Amount")
+    assert page_b.rows == (("33d.1", wide, "2.00"),)
+    assert page_b.crossing == ()
+    assert len(read_sheets(pdf, sheet_spec(part_a))) == 2
 
 
 def _statement(session):
@@ -369,3 +417,83 @@ def test_a_spouses_floor_row_follows_the_spouses_own_now_different_answer(sessio
     ]
     fm = resolve(load_schema("schedule_i"), session)
     assert (fm["Amount 8a Debtor 1"], fm["Amount 8a Debtor 2"]) == ("700.00", "0.00")
+
+
+# Form 122A-2's line 43 statement (3h3 spec §9.2, H49): every circumstance's explanation prints
+# whole on the line 43 sheet, numbered "43.{n}", however long the PUT let it be.
+
+
+@pytest.fixture
+def line_43_session(db):
+    call_command("loaddata", "ilnd_2025_data", verbosity=0)
+    user = get_user_model().objects.create_user(username="statementline43", password="pw")
+    return overflowing_session(user, District.objects.get(code="ilnd"))
+
+
+def _line_43(session):
+    """(the document, line 43's sheet part)."""
+    document = build_parts("form_122a2", IntakeSession.objects.get(pk=session.pk))
+    (part,) = [
+        p for p in document["parts"] if p["kind"] == "sheet" and p["group"] == "means_line_43"
+    ]
+    return document, part
+
+
+def _circumstances(first):
+    """Five complete circumstances, the first one's explanation given."""
+    rows = [{"explanation": first, "amount": "10.00"}]
+    rows += [{"explanation": f"Demo circumstance {n}", "amount": f"{n}0.00"} for n in range(2, 6)]
+    return rows
+
+
+def _longest_accepted_explanation():
+    """The longest explanation of ordinary words `explanation_refusal` accepts: the 36-line budget."""
+    text = ("Demo words " * 200).strip()
+    assert explanation_refusal(text) is None
+    while explanation_refusal(f"{text} Demo") is None:
+        text = f"{text} Demo"
+    return text
+
+
+def test_a_long_line_43_explanation_wraps_whole_on_its_sheet(line_43_session):
+    explanation = ("Demo words " * 200)[:1900].rstrip()
+    assert explanation_refusal(explanation) is None
+    session = answer_page(
+        line_43_session, over={"line_43_circumstances": _circumstances(explanation)}
+    )
+    document, part = _line_43(session)
+
+    PDFFormFiller().check("form_122a2", document)
+    (page,) = read_sheet_part(PDFFormFiller().fill("form_122a2", document), part)
+
+    assert page.rows[0] == ("43.1", explanation, "10.00")
+    assert len(page.lines[0][1]) > 1
+    assert [row[0] for row in page.rows] == ["43.1", "43.2", "43.3", "43.4", "43.5"]
+    assert (page.crossing, page.overlapping) == ((), ())
+
+
+def test_an_explanation_at_the_36_line_budget_still_prints_after_the_name_grows_to_three_lines(
+    line_43_session,
+):
+    # The PUT's budget is below the room any page leaves, so a later change to the filer's name
+    # never makes a saved explanation fail at Generate (spec §9.2). Debtor1.Name is a single-line
+    # box, so no name check() accepts wraps to three sheet lines: the part's own name, what a
+    # filed sheet stores and sheets._header reads, is the lever.
+    explanation = _longest_accepted_explanation()
+    session = answer_page(
+        line_43_session, over={"line_43_circumstances": _circumstances(explanation)}
+    )
+    document, part = _line_43(session)
+    part["name"] = " ".join(["Demonstration"] * 20)
+
+    PDFFormFiller().check("form_122a2", document)
+    pages = read_sheet_part(PDFFormFiller().fill("form_122a2", document), part)
+
+    # the 36-line row prints whole on the first page, under the three-line name, and the later
+    # circumstances follow it onto a second page as the room runs out
+    assert len(pages) == 2
+    assert pages[0].header[:3] == tuple(_lines(part["name"], WIDTH))
+    assert len(pages[0].lines[0][1]) == LINE_43_EXPLANATION_LINES
+    assert pages[0].rows[0][:2] == ("43.1", explanation)
+    assert [row[0] for page in pages for row in page.rows] == [f"43.{n}" for n in range(1, 6)]
+    assert all((page.crossing, page.overlapping) == ((), ()) for page in pages)

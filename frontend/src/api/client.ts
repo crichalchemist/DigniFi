@@ -18,6 +18,7 @@ import type {
   CalculateMeansTestResponse,
   GenerateFormResponse,
   GenerateAllFormsResponse,
+  MarkPairFiledResponse,
   FormPacketResponse,
   Packet,
   SessionSummaryResponse,
@@ -652,6 +653,17 @@ export const formsAPI = {
   markFiled: async (formId: number): Promise<{ message: string }> => {
     return apiFetch<{ message: string }>(`/forms/${formId}/mark_filed/`, {
       method: 'POST',
+    });
+  },
+
+  /**
+   * Mark Form 122A-1 and Form 122A-2 filed together, both or neither.
+   * POST /api/forms/mark_pair_filed/
+   */
+  markPairFiled: async (sessionId: number): Promise<MarkPairFiledResponse> => {
+    return apiFetch<MarkPairFiledResponse>('/forms/mark_pair_filed/', {
+      method: 'POST',
+      body: JSON.stringify({ session_id: sessionId }),
     });
   },
 

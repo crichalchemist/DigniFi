@@ -1111,33 +1111,1303 @@
   },
   {
     "schema": "form_122a2",
+    "pdf_field": "Debtor1.Name",
+    "producer": "derived:full_name",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Debtor1.Name",
+    "evidence": "Field index: Debtor1.Name p1 T1, 'Debtor 1 name (First, Middle, Last)' (header); p2 T1, 'Debtor 1 name (page header)' (header); p3 T1, 'Debtor 1 name (page header)' (header); p4 T1, 'Debtor 1 name (page header)' (header); p5 T1, 'Debtor 1 name (page header)' (header); p6 T1, 'Debtor 1 name (page header)' (header); p7 T1, 'Debtor 1 name (page header)' (header); p8 T1, 'Debtor 1 name (page header)' (header); p9 T1, 'Debtor 1 name (page header)' (header). full_name prints the filer's name as on every form (3h3 plan R14). Read by tier 1."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "Bankruptcy District Information",
+    "producer": "derived:district_name",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Bankruptcy District Information",
+    "evidence": "Field index: Bankruptcy District Information p1 T4, 'United States Bankruptcy Court for the: ___ District of ___' (header). district_name prints the district as on every form (3h3 plan R14). Read by tier 1."
+  },
+  {
+    "schema": "form_122a2",
     "pdf_field": "Quest1",
     "producer": "derived:cmi",
     "original_verdicts": [],
     "final_verdicts": ["correct"],
     "status": "confirmed",
     "correct_target": "Quest1",
-    "evidence": "Field index: Quest1 p1 line 1, 'Copy your total current monthly income (copy line 11 from Official Form 122A-1)' (adjudicated). 122A-1 line 11 prints cmi (Debto1.Quest11, Quest11). Step 2 spec Appendix A.6, §6.1 (C1, two income totals: CMI, without Social Security, goes on 122A-2 line 1) and §6.4. The audit's verified row on this box judged the old means_test_total_deductions binding, whose total belongs on line 38 (undefined_104), and its auditor note names cmi for line 1; this row joins on (box, key), so that row's target never applies to cmi."
+    "evidence": "Field index: Quest1 p1 T8 line 1, 'Copy your total current monthly income (copy line 11 from Official Form 122A-1)' (adjudicated). cmi prints 122A-1 line 11's current monthly income, which line 1 copies (3h spec §10; step 2 spec §6.1, C1). Read by tier 1 and tier 3 (Priya)."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "CheckBox1",
+    "producer": "asked:means.page_1",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "CheckBox1",
+    "evidence": "Field index: CheckBox1 p1 T3 line top box 1, '1. There is no presumption of abuse.' (adjudicated); p1 T5 line top box 2, '2. There is a presumption of abuse.' (adjudicated). means.page_1 prints the calculator's line page_1 (3h spec §10, 3h3 plan R2). Read by tier 1 and tier 3 (Priya)."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "CheckBox3",
+    "producer": "asked:means.line_2",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "CheckBox3",
+    "evidence": "Field index: CheckBox3 p1 T9 line 2, 'No. Fill in $0 for the total on line 3.' (adjudicated); p1 T10 line 2, 'Yes. Is your spouse filing with you?' (adjudicated). means.line_2 prints the calculator's line 2 (3h spec §10, 3h3 plan R2). Read by tier 1 and tier 3 (Priya)."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "CheckBox4",
+    "producer": "asked:means.line_2_filing",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "CheckBox4",
+    "evidence": "Field index: CheckBox4 p1 T11 line 2, 'No. Go to line 3.' (adjudicated); p1 T12 line 2, 'Yes. Fill in $0 for the total on line 3.' (adjudicated). means.line_2_filing prints the calculator's line 2_filing (3h spec §10, 3h3 plan R2). Read by tier 1 and tier 3 (Priya)."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "CheckBox5",
+    "producer": "asked:means.line_3_answer",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "CheckBox5",
+    "evidence": "Field index: CheckBox5 p1 T13 line 3, 'No. Fill in 0 for the total on line 3.' (adjudicated); p1 T14 line 3, 'Yes. Fill in the information below:' (adjudicated). means.line_3_answer prints the calculator's line 3_answer (3h spec §10, 3h3 plan R2). Read by tier 1 and tier 3 (Priya)."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "Quest3",
+    "producer": "asked:means.line_3",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Quest3",
+    "evidence": "Field index: Quest3 p1 T21 line 3, \"Total of amounts subtracted from spouse's income\" (adjudicated); p1 T22 line 3, 'Line 3 total - Copy total here (subtracted from line 1)' (adjudicated). means.line_3 prints the calculator's line 3 (3h spec §10, 3h3 plan R2). Read by tier 1 and tier 3 (Priya)."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "Quest4",
+    "producer": "asked:means.line_4",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Quest4",
+    "evidence": "Field index: Quest4 p1 T23 line 4, 'Adjust your current monthly income. Subtract the total on line 3 from line 1.' (adjudicated); p8 T15 line 39a, 'Copy line 4, adjusted current monthly income' (adjudicated). means.line_4 prints the calculator's line 4 (3h spec §10, 3h3 plan R2). Read by tier 1 and tier 3 (Priya)."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "Quest5",
+    "producer": "asked:means.line_5",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Quest5",
+    "evidence": "Field index: Quest5 p2 T3 line 5, 'The number of people used in determining your deductions from income (exemptions on federal return + additional dependents you support)' (adjudicated). means.line_5 prints the calculator's line 5 (3h spec §10, 3h3 plan R2). Read by tier 1 and tier 3 (Priya)."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "Quest6",
+    "producer": "asked:means.line_6",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Quest6",
+    "evidence": "Field index: Quest6 p2 T4 line 6, 'Food, clothing, and other items - IRS National Standards amount for the number of people on line 5' (adjudicated). means.line_6 prints the calculator's line 6 (3h spec §10, 3h3 plan R2). Read by tier 1 and tier 3 (Priya)."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "Quest7A",
+    "producer": "asked:means.line_7a",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Quest7A",
+    "evidence": "Field index: Quest7A p2 T5 line 7a, 'Out-of-pocket health care allowance per person (people under 65, IRS National Standard)' (adjudicated). means.line_7a prints the calculator's line 7a (3h spec §10, 3h3 plan R2). Read by tier 1 and tier 3 (Priya)."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "Quest7B",
+    "producer": "asked:means.line_7b",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Quest7B",
+    "evidence": "Field index: Quest7B p2 T6 line 7b, 'Number of people who are under 65' (adjudicated). means.line_7b prints the calculator's line 7b (3h spec §10, 3h3 plan R2). Read by tier 1 and tier 3 (Priya)."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "Quest7C",
+    "producer": "asked:means.line_7c",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Quest7C",
+    "evidence": "Field index: Quest7C p2 T7 line 7c, 'Subtotal. Multiply line 7a by line 7b.' (adjudicated); p2 T8 line 7c, 'Subtotal (line 7c) - Copy here' (adjudicated). means.line_7c prints the calculator's line 7c (3h spec §10, 3h3 plan R2). Read by tier 1 and tier 3 (Priya)."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "Quest7D",
+    "producer": "asked:means.line_7d",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Quest7D",
+    "evidence": "Field index: Quest7D p2 T9 line 7d, 'Out-of-pocket health care allowance per person (people 65 or older, IRS National Standard)' (adjudicated). means.line_7d prints the calculator's line 7d (3h spec §10, 3h3 plan R2). Read by tier 1 and tier 3 (Priya)."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "Quest7E",
+    "producer": "asked:means.line_7e",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Quest7E",
+    "evidence": "Field index: Quest7E p2 T10 line 7e, 'Number of people who are 65 or older' (adjudicated). means.line_7e prints the calculator's line 7e (3h spec §10, 3h3 plan R2). Read by tier 1 and tier 3 (Priya)."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "Quest7F",
+    "producer": "asked:means.line_7f",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Quest7F",
+    "evidence": "Field index: Quest7F p2 T11 line 7f, 'Subtotal. Multiply line 7d by line 7e.' (adjudicated); p2 T12 line 7f, 'Subtotal (line 7f) - Copy here' (adjudicated). means.line_7f prints the calculator's line 7f (3h spec §10, 3h3 plan R2). Read by tier 1 and tier 3 (Priya)."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "Quest7G",
+    "producer": "asked:means.line_7g",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Quest7G",
+    "evidence": "Field index: Quest7G p2 T13 line 7g, 'Total. Add lines 7c and 7f.' (adjudicated); p2 T14 line 7g, 'Total (line 7g) - Copy total here' (adjudicated). means.line_7g prints the calculator's line 7g (3h spec §10, 3h3 plan R2). Read by tier 1 and tier 3 (Priya)."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "Quest8",
+    "producer": "asked:means.line_8",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Quest8",
+    "evidence": "Field index: Quest8 p3 T3 line 8, 'Housing and utilities - Insurance and operating expenses: U.S. Trustee chart amount for your county and the number of people on line 5' (adjudicated). means.line_8 prints the calculator's line 8 (3h spec §10, 3h3 plan R2). Read by tier 1 and tier 3 (Priya)."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "Quest9",
+    "producer": "asked:means.line_9a",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Quest9",
+    "evidence": "Field index: Quest9 p3 T4 line 9a, 'Housing and utilities - Mortgage or rent expenses: U.S. Trustee chart amount for your county and the number of people on line 5' (adjudicated). means.line_9a prints the calculator's line 9a (3h spec §10, 3h3 plan R2). Read by tier 1 and tier 3 (Priya)."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "Quest9B total amount",
+    "producer": "asked:means.line_9b",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Quest9B total amount",
+    "evidence": "Field index: Quest9B total amount p3 T11 line 9b, 'Total average monthly payment' (adjudicated); p3 T12 line 9b, 'Total average monthly payment - Copy here (subtracted from 9a; repeat this amount on line 33a)' (adjudicated); p7 T3 line 33a, 'Mortgages on your home: Copy line 9b here' (adjudicated). means.line_9b prints the calculator's line 9b (3h spec §10, 3h3 plan R2). Read by tier 1 and tier 3 (Priya)."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "Quest9C",
+    "producer": "asked:means.line_9c",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Quest9C",
+    "evidence": "Field index: Quest9C p3 T13 line 9c, 'Net mortgage or rent expense - Copy here' (adjudicated); p3 T14 line 9c, 'Net mortgage or rent expense. Subtract line 9b from line 9a; if less than $0, enter $0.' (adjudicated). means.line_9c prints the calculator's line 9c (3h spec §10, 3h3 plan R2). Read by tier 1 and tier 3 (Priya)."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "CheckBox6",
+    "producer": "asked:means.line_11",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "CheckBox6",
+    "evidence": "Field index: CheckBox6 p3 T18 line 11, '0. Go to line 14.' (adjudicated); p3 T19 line 11, '1. Go to line 12.' (adjudicated); p3 T20 line 11, '2 or more. Go to line 12.' (adjudicated). means.line_11 prints the calculator's line 11 (3h spec §10, 3h3 plan R2). Read by tier 1 and tier 3 (Priya)."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "Quest12",
+    "producer": "asked:means.line_12",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Quest12",
+    "evidence": "Field index: Quest12 p3 T21 line 12, 'Vehicle operation expense: IRS Local Standards Operating Costs for your Census region or metropolitan statistical area' (adjudicated). means.line_12 prints the calculator's line 12 (3h spec §10, 3h3 plan R2). Read by tier 1 and tier 3 (Priya)."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "Describe Vehicle 1 1",
+    "producer": "asked:means.line_13_vehicle_1",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Describe Vehicle 1 1",
+    "evidence": "Field index: Describe Vehicle 1 1 p4 T3 line 13, 'Describe Vehicle 1 (row 1)' (adjudicated). means.line_13_vehicle_1 prints the calculator's line 13_vehicle_1 (3h spec §10, 3h3 plan R2). Read by tier 1 and tier 3 (Priya)."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "Describe Vehicle 2 1",
+    "producer": "asked:means.line_13_vehicle_2",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Describe Vehicle 2 1",
+    "evidence": "Field index: Describe Vehicle 2 1 p4 T14 line 13, 'Describe Vehicle 2 (row 1)' (adjudicated). means.line_13_vehicle_2 prints the calculator's line 13_vehicle_2 (3h spec §10, 3h3 plan R2). Read by tier 1 and tier 3 (Priya)."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "Quest13A",
+    "producer": "asked:means.line_13a",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Quest13A",
+    "evidence": "Field index: Quest13A p4 T5 line 13a, 'Vehicle 1: Ownership or leasing costs using IRS Local Standard' (adjudicated). means.line_13a prints the calculator's line 13a (3h spec §10, 3h3 plan R2). Read by tier 1 and tier 3 (Priya)."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "Quest13B Total amount for vehicle 1",
+    "producer": "asked:means.line_13b",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Quest13B Total amount for vehicle 1",
+    "evidence": "Field index: Quest13B Total amount for vehicle 1 p4 T10 line 13b, 'Total average monthly payment (Vehicle 1)' (adjudicated); p4 T11 line 13b, 'Total average monthly payment (Vehicle 1) - Copy here (subtracted from 13a; repeat this amount on line 33b)' (adjudicated); p7 T4 line 33b, 'Loans on your first two vehicles: Copy line 13b here' (adjudicated). means.line_13b prints the calculator's line 13b (3h spec §10, 3h3 plan R2). Read by tier 1 and tier 3 (Priya)."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "Quest13C",
+    "producer": "asked:means.line_13c",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Quest13C",
+    "evidence": "Field index: Quest13C p4 T12 line 13c, 'Net Vehicle 1 ownership or lease expense. Subtract line 13b from line 13a; if less than $0, enter $0.' (adjudicated); p4 T13 line 13c, 'Copy net Vehicle 1 expense here' (adjudicated). means.line_13c prints the calculator's line 13c (3h spec §10, 3h3 plan R2). Read by tier 1 and tier 3 (Priya)."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "Quest13D",
+    "producer": "asked:means.line_13d",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Quest13D",
+    "evidence": "Field index: Quest13D p4 T16 line 13d, 'Vehicle 2: Ownership or leasing costs using IRS Local Standard' (adjudicated). means.line_13d prints the calculator's line 13d (3h spec §10, 3h3 plan R2). Read by tier 1 and tier 3 (Priya)."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "Quest13E.TotalMonthly",
+    "producer": "asked:means.line_13e",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Quest13E.TotalMonthly",
+    "evidence": "Field index: Quest13E.TotalMonthly p4 T21 line 13e, 'Total average monthly payment (Vehicle 2)' (adjudicated); p4 T22 line 13e, 'Total average monthly payment (Vehicle 2) - Copy here (subtracted from 13d; repeat this amount on line 33c)' (adjudicated); p7 T5 line 33c, 'Copy line 13e here' (adjudicated). means.line_13e prints the calculator's line 13e (3h spec §10, 3h3 plan R2). Read by tier 1 and tier 3 (Priya)."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "Quest13F",
+    "producer": "asked:means.line_13f",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Quest13F",
+    "evidence": "Field index: Quest13F p4 T23 line 13f, 'Net Vehicle 2 ownership or lease expense. Subtract line 13e from 13d; if less than $0, enter $0.' (adjudicated); p4 T24 line 13f, 'Copy net Vehicle 2 expense here' (adjudicated). means.line_13f prints the calculator's line 13f (3h spec §10, 3h3 plan R2). Read by tier 1 and tier 3 (Priya)."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "Quest14",
+    "producer": "asked:means.line_14",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Quest14",
+    "evidence": "Field index: Quest14 p4 T25 line 14, 'Public transportation expense: if you claimed 0 vehicles in line 11, the IRS Local Standards Public Transportation allowance' (adjudicated). means.line_14 prints the calculator's line 14 (3h spec §10, 3h3 plan R2). Read by tier 1 and tier 3 (Priya)."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "Quest15",
+    "producer": "asked:means.line_15",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Quest15",
+    "evidence": "Field index: Quest15 p4 T26 line 15, 'Additional public transportation expense: if you claimed 1 or more vehicles in line 11; not more than the IRS Local Standard for Public Transportation' (adjudicated). means.line_15 prints the calculator's line 15 (3h spec §10, 3h3 plan R2). Read by tier 1 and tier 3 (Priya)."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "undefined_48",
+    "producer": "asked:means.line_16",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_48",
+    "evidence": "Field index: undefined_48 p5 T3 line 16, 'Taxes: total monthly amount you will actually owe for federal, state and local taxes (income, self-employment, Social Security, Medicare)' (adjudicated). means.line_16 prints the calculator's line 16 (3h spec §10, 3h3 plan R2). Read by tier 1 and tier 3 (Priya)."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "undefined_49",
+    "producer": "asked:means.line_17",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_49",
+    "evidence": "Field index: undefined_49 p5 T4 line 17, 'Involuntary deductions: total monthly payroll deductions your job requires (retirement contributions, union dues, uniform costs)' (adjudicated). means.line_17 prints the calculator's line 17 (3h spec §10, 3h3 plan R2). Read by tier 1 and tier 3 (Priya)."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "undefined_50",
+    "producer": "asked:means.line_18",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_50",
+    "evidence": "Field index: undefined_50 p5 T5 line 18, 'Life insurance: total monthly premiums for your own term life insurance' (adjudicated). means.line_18 prints the calculator's line 18 (3h spec §10, 3h3 plan R2). Read by tier 1 and tier 3 (Priya)."
   },
   {
     "schema": "form_122a2",
     "pdf_field": "undefined_51",
-    "producer": "derived:schedule_j_support_paid",
+    "producer": "asked:means.line_19",
     "original_verdicts": [],
     "final_verdicts": ["correct"],
     "status": "confirmed",
     "correct_target": "undefined_51",
-    "evidence": "Field index: undefined_51 p5 line 19, 'Court-ordered payments: total monthly amount paid under court/agency order (e.g., spousal or child support), excluding past-due amounts' (adjudicated). ExpenseInfo.child_support_paid is court-ordered support paid, the figure Schedule J line 18 prints. Step 2 spec Appendix A.6, §6.1 (expense lines, 6c option A: 122A-2 lines 19 and 21 print only above $0), §6.2 (schedule_j_support_paid, Schedule J 18 and 122A-2 line 19) and §6.4. The audit has no row on this box."
+    "evidence": "Field index: undefined_51 p5 T6 line 19, 'Court-ordered payments: total monthly amount paid under court/agency order (e.g., spousal or child support), excluding past-due amounts' (adjudicated). means.line_19 prints the calculator's line 19 (3h spec §10, 3h3 plan R2). Read by tier 1 and tier 3 (Priya)."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "undefined_52",
+    "producer": "asked:means.line_20",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_52",
+    "evidence": "Field index: undefined_52 p5 T7 line 20, 'Education required as a condition of your job or for a physically or mentally challenged dependent child' (adjudicated). means.line_20 prints the calculator's line 20 (3h spec §10, 3h3 plan R2). Read by tier 1 and tier 3 (Priya)."
   },
   {
     "schema": "form_122a2",
     "pdf_field": "undefined_53",
-    "producer": "derived:schedule_j_childcare",
+    "producer": "asked:means.line_21",
     "original_verdicts": [],
     "final_verdicts": ["correct"],
     "status": "confirmed",
     "correct_target": "undefined_53",
-    "evidence": "Field index: undefined_53 p5 line 21, 'Childcare (babysitting, daycare, nursery, preschool)' (adjudicated). ExpenseInfo.childcare is the filer's childcare, the figure Schedule J line 8 prints. Step 2 spec Appendix A.6, §6.1 (expense lines, 6c option A: 122A-2 lines 19 and 21 print only above $0) and §6.4. The audit has no row on this box."
+    "evidence": "Field index: undefined_53 p5 T8 line 21, 'Childcare (babysitting, daycare, nursery, preschool)' (adjudicated). means.line_21 prints the calculator's line 21 (3h spec §10, 3h3 plan R2). Read by tier 1 and tier 3 (Priya)."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "undefined_54",
+    "producer": "asked:means.line_22",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_54",
+    "evidence": "Field index: undefined_54 p5 T9 line 22, 'Additional health care expenses, excluding insurance costs (only the amount above line 7)' (adjudicated). means.line_22 prints the calculator's line 22 (3h spec §10, 3h3 plan R2). Read by tier 1 and tier 3 (Priya)."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "undefined_55",
+    "producer": "asked:means.line_23",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_55",
+    "evidence": "Field index: undefined_55 p5 T10 line 23, 'Optional telephones and telephone services' (adjudicated). means.line_23 prints the calculator's line 23 (3h spec §10, 3h3 plan R2). Read by tier 1 and tier 3 (Priya)."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "undefined_56",
+    "producer": "asked:means.line_24",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_56",
+    "evidence": "Field index: undefined_56 p5 T11 line 24, 'Add all of the expenses allowed under the IRS expense allowances. Add lines 6 through 23.' (adjudicated). means.line_24 prints the calculator's line 24 (3h spec §10, 3h3 plan R2). Read by tier 1 and tier 3 (Priya)."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "undefined_57",
+    "producer": "asked:means.line_25_health",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_57",
+    "evidence": "Field index: undefined_57 p6 T3 line 25, 'Health insurance (monthly)' (adjudicated). means.line_25_health prints the calculator's line 25_health (3h spec §10, 3h3 plan R2). Read by tier 1 and tier 3 (Priya)."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "undefined_58",
+    "producer": "asked:means.line_25_disability",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_58",
+    "evidence": "Field index: undefined_58 p6 T4 line 25, 'Disability insurance (monthly)' (adjudicated). means.line_25_disability prints the calculator's line 25_disability (3h spec §10, 3h3 plan R2). Read by tier 1 and tier 3 (Priya)."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "1_2",
+    "producer": "asked:means.line_25_hsa",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "1_2",
+    "evidence": "Field index: 1_2 p6 T5 line 25, 'Health savings account (monthly)' (adjudicated). means.line_25_hsa prints the calculator's line 25_hsa (3h spec §10, 3h3 plan R2). Read by tier 1 and tier 3 (Priya)."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "2_2",
+    "producer": "asked:means.line_25",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "2_2",
+    "evidence": "Field index: 2_2 p6 T6 line 25, 'Total (health insurance + disability insurance + health savings account)' (adjudicated); p6 T7 line 25, 'Line 25 total - Copy total here' (adjudicated). means.line_25 prints the calculator's line 25 (3h spec §10, 3h3 plan R2). Read by tier 1 and tier 3 (Priya)."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "CheckBox7",
+    "producer": "asked:means.line_25_spends",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "CheckBox7",
+    "evidence": "Field index: CheckBox7 p6 T8 line 25, 'No. How much do you actually spend?' (adjudicated); p6 T10 line 25, 'Yes' (adjudicated). means.line_25_spends prints the calculator's line 25_spends (3h spec §10, 3h3 plan R2). Read by tier 1 and tier 3 (Priya)."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "undefined_59",
+    "producer": "asked:means.line_25_actual",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_59",
+    "evidence": "Field index: undefined_59 p6 T9 line 25, 'Amount you actually spend (if No)' (adjudicated). means.line_25_actual prints the calculator's line 25_actual (3h spec §10, 3h3 plan R2). Read by tier 1 and tier 3 (Priya)."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "undefined_61",
+    "producer": "asked:means.line_26",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_61",
+    "evidence": "Field index: undefined_61 p6 T11 line 26, 'Continuing contributions to the care of household or family members' (adjudicated). means.line_26 prints the calculator's line 26 (3h spec §10, 3h3 plan R2). Read by tier 1 and tier 3 (Priya)."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "undefined_62",
+    "producer": "asked:means.line_27",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_62",
+    "evidence": "Field index: undefined_62 p6 T12 line 27, 'Protection against family violence' (adjudicated). means.line_27 prints the calculator's line 27 (3h spec §10, 3h3 plan R2). Read by tier 1 and tier 3 (Priya)."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "undefined_63",
+    "producer": "asked:means.line_28",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_63",
+    "evidence": "Field index: undefined_63 p6 T13 line 28, 'Additional home energy costs (excess over the home energy costs included in line 8)' (adjudicated). means.line_28 prints the calculator's line 28 (3h spec §10, 3h3 plan R2). Read by tier 1 and tier 3 (Priya)."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "undefined_64",
+    "producer": "asked:means.line_29",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_64",
+    "evidence": "Field index: undefined_64 p6 T14 line 29, 'Education expenses for dependent children who are younger than 18 (not more than $214.58 per child)' (adjudicated). means.line_29 prints the calculator's line 29 (3h spec §10, 3h3 plan R2). Read by tier 1 and tier 3 (Priya)."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "undefined_65",
+    "producer": "asked:means.line_30",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_65",
+    "evidence": "Field index: undefined_65 p6 T15 line 30, 'Additional food and clothing expense (actual above National Standards; not more than 5%)' (adjudicated). means.line_30 prints the calculator's line 30 (3h spec §10, 3h3 plan R2). Read by tier 1 and tier 3 (Priya)."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "undefined_66",
+    "producer": "asked:means.line_31",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_66",
+    "evidence": "Field index: undefined_66 p6 T16 line 31, 'Continuing charitable contributions' (adjudicated). means.line_31 prints the calculator's line 31 (3h spec §10, 3h3 plan R2). Read by tier 1 and tier 3 (Priya)."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "undefined_67",
+    "producer": "asked:means.line_32",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_67",
+    "evidence": "Field index: undefined_67 p6 T17 line 32, 'Add all of the additional expense deductions. Add lines 25 through 31.' (adjudicated). means.line_32 prints the calculator's line 32 (3h spec §10, 3h3 plan R2). Read by tier 1 and tier 3 (Priya)."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "undefined_80",
+    "producer": "asked:means.line_33e",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_80",
+    "evidence": "Field index: undefined_80 p7 T21 line 33e, 'Total average monthly payment. Add lines 33a through 33d.' (adjudicated); p7 T22 line 33e, 'Line 33e total - Copy total here' (adjudicated). means.line_33e prints the calculator's line 33e (3h spec §10, 3h3 plan R2). Read by tier 1 and tier 3 (Priya)."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "CheckBox11",
+    "producer": "asked:means.line_34_answer",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "CheckBox11",
+    "evidence": "Field index: CheckBox11 p7 T23 line 34, 'No. Go to line 35.' (adjudicated); p7 T24 line 34, 'Yes. State any amount that you must pay to a creditor, in addition to the payments listed in line 33, to keep possession of your property (called the cure amount). Next, divide by 60 and fill in the information below.' (adjudicated). means.line_34_answer prints the calculator's line 34_answer (3h spec §10, 3h3 plan R2). Read by tier 1 and tier 3 (Priya)."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "undefined_92",
+    "producer": "asked:means.line_34",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_92",
+    "evidence": "Field index: undefined_92 p7 T37 line 34, 'Total monthly cure amount' (adjudicated); p7 T38 line 34, 'Line 34 total - Copy total here' (adjudicated). means.line_34 prints the calculator's line 34 (3h spec §10, 3h3 plan R2). Read by tier 1 and tier 3 (Priya)."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "CheckBox12",
+    "producer": "asked:means.line_35_answer",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "CheckBox12",
+    "evidence": "Field index: CheckBox12 p7 T39 line 35, 'No. Go to line 36.' (adjudicated); p7 T40 line 35, 'Yes. Fill in the total amount of all of these priority claims. Do not include current or ongoing priority claims, such as those you listed in line 19.' (adjudicated). means.line_35_answer prints the calculator's line 35_answer (3h spec §10, 3h3 plan R2). Read by tier 1 and tier 3 (Priya)."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "undefined_93",
+    "producer": "asked:means.line_35_total",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_93",
+    "evidence": "Field index: undefined_93 p7 T41 line 35, 'Total amount of all past-due priority claims' (adjudicated). means.line_35_total prints the calculator's line 35_total (3h spec §10, 3h3 plan R2). Read by tier 1 and tier 3 (Priya)."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "undefined_93-1",
+    "producer": "asked:means.line_35",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_93-1",
+    "evidence": "Field index: undefined_93-1 p7 T42 line 35, 'Total past-due priority claims divided by 60 (monthly amount)' (adjudicated). means.line_35 prints the calculator's line 35 (3h spec §10, 3h3 plan R2). Read by tier 1 and tier 3 (Priya)."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "CheckBox13",
+    "producer": "asked:means.line_36_answer",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "CheckBox13",
+    "evidence": "Field index: CheckBox13 p8 T3 line 36, 'No. Go to line 37.' (adjudicated); p8 T4 line 36, 'Yes. Fill in the following information.' (adjudicated). means.line_36_answer prints the calculator's line 36_answer (3h spec §10, 3h3 plan R2). Read by tier 1 and tier 3 (Priya)."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "undefined_97",
+    "producer": "asked:means.line_36_payment",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_97",
+    "evidence": "Field index: undefined_97 p8 T5 line 36, 'Projected monthly plan payment if you were filing under Chapter 13' (adjudicated). means.line_36_payment prints the calculator's line 36_payment (3h spec §10, 3h3 plan R2). Read by tier 1 and tier 3 (Priya)."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "x",
+    "producer": "asked:means.line_36_multiplier",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "x",
+    "evidence": "Field index: x p8 T6 line 36, 'Current multiplier for your district (AO list for Alabama/North Carolina; EOUST list for all other districts)' (adjudicated). means.line_36_multiplier prints the calculator's line 36_multiplier (3h spec §10, 3h3 plan R2). Read by tier 1 and tier 3 (Priya)."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "undefined_98",
+    "producer": "asked:means.line_36",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_98",
+    "evidence": "Field index: undefined_98 p8 T7 line 36, 'Average monthly administrative expense if you were filing under Chapter 13 (plan payment x multiplier)' (adjudicated); p8 T8 line 36, 'Line 36 administrative expense - Copy total here' (adjudicated). means.line_36 prints the calculator's line 36 (3h spec §10, 3h3 plan R2). Read by tier 1 and tier 3 (Priya)."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "undefined_100",
+    "producer": "asked:means.line_37",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_100",
+    "evidence": "Field index: undefined_100 p8 T9 line 37, 'Add all of the deductions for debt payment. Add lines 33e through 36.' (adjudicated). means.line_37 prints the calculator's line 37 (3h spec §10, 3h3 plan R2). Read by tier 1 and tier 3 (Priya)."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "undefined_104",
+    "producer": "asked:means.line_38",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_104",
+    "evidence": "Field index: undefined_104 p8 T13 line 38, 'Total deductions (add the three copied amounts)' (adjudicated); p8 T14 line 38, 'Total deductions - Copy total here' (adjudicated); p8 T16 line 39b, 'Copy line 38, Total deductions' (adjudicated). means.line_38 prints the calculator's line 38 (3h spec §10, 3h3 plan R2). Read by tier 1 and tier 3 (Priya)."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "undefined_107",
+    "producer": "asked:means.line_39c",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_107",
+    "evidence": "Field index: undefined_107 p8 T17 line 39c, 'Monthly disposable income. 11 U.S.C. 707(b)(2). Subtract line 39b from line 39a.' (adjudicated); p8 T18 line 39c, 'Monthly disposable income - Copy here (then x 60)' (adjudicated). means.line_39c prints the calculator's line 39c (3h spec §10, 3h3 plan R2). Read by tier 1 and tier 3 (Priya)."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "undefined_108",
+    "producer": "asked:means.line_39d",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_108",
+    "evidence": "Field index: undefined_108 p8 T19 line 39d, 'Total. Multiply line 39c by 60.' (adjudicated); p8 T20 line 39d, 'Line 39d total - Copy here' (adjudicated). means.line_39d prints the calculator's line 39d (3h spec §10, 3h3 plan R2). Read by tier 1 and tier 3 (Priya)."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "CheckBox14",
+    "producer": "asked:means.line_40",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "CheckBox14",
+    "evidence": "Field index: CheckBox14 p8 T21 line 40, 'The line 39d is less than $10,275*. On the top of page 1 of this form, check box 1, There is no presumption of abuse. Go to Part 5.' (adjudicated); p8 T22 line 40, 'The line 39d is more than $17,150*. On the top of page 1 of this form, check box 2, There is a presumption of abuse. You may fill out Part 4 if you claim special circumstances. Then go to Part 5.' (adjudicated); p8 T23 line 40, 'The line 39d is at least $10,275*, but not more than $17,150*. Go to line 41.' (adjudicated). means.line_40 prints the calculator's line 40 (3h spec §10, 3h3 plan R2). Read by tier 1 and tier 3 (Priya)."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "undefined_110",
+    "producer": "asked:means.line_41a",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_110",
+    "evidence": "Field index: undefined_110 p9 T3 line 41a, 'Fill in the amount of your total nonpriority unsecured debt (may refer to Official Form 106Sum line 3b)' (adjudicated). means.line_41a prints the calculator's line 41a (3h spec §10, 3h3 plan R2). Read by tier 1 and tier 3 (Priya)."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "undefined_111",
+    "producer": "asked:means.line_41b",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_111",
+    "evidence": "Field index: undefined_111 p9 T4 line 41b, '25% of your total nonpriority unsecured debt (line 41a x 0.25). 11 U.S.C. 707(b)(2)(A)(i)(I).' (adjudicated); p9 T5 line 41b, 'Line 41b - Copy here' (adjudicated). means.line_41b prints the calculator's line 41b (3h spec §10, 3h3 plan R2). Read by tier 1 and tier 3 (Priya)."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "CheckBox15",
+    "producer": "asked:means.line_42",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "CheckBox15",
+    "evidence": "Field index: CheckBox15 p9 T6 line 42, 'Line 39d is less than line 41b. On the top of page 1 of this form, check box 1, There is no presumption of abuse. Go to Part 5.' (adjudicated); p9 T7 line 42, 'Line 39d is equal to or more than line 41b. On the top of page 1 of this form, check box 2, There is a presumption of abuse. You may fill out Part 4 if you claim special circumstances. Then go to Part 5.' (adjudicated). means.line_42 prints the calculator's line 42 (3h spec §10, 3h3 plan R2). Read by tier 1 and tier 3 (Priya)."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "CheckBox16",
+    "producer": "asked:means.line_43",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "CheckBox16",
+    "evidence": "Field index: CheckBox16 p9 T8 line 43, 'No. Go to Part 5.' (adjudicated); p9 T9 line 43, 'Yes. Fill in the following information. All figures should reflect your average monthly expense or income adjustment for each item.' (adjudicated). means.line_43 prints the calculator's line 43 (3h spec §10, 3h3 plan R2). Read by tier 1 and tier 3 (Priya)."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "undefined_101",
+    "producer": "asked:means.line_24",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_101",
+    "evidence": "Field index: undefined_101 p8 T10 line 38, 'Copy line 24, All of the expenses allowed under IRS expense allowances' (adjudicated). means.line_24 prints the calculator's line 24 (3h spec §10, 3h3 plan R2). Read by tier 1 and tier 3 (Priya)."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "undefined_102",
+    "producer": "asked:means.line_32",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_102",
+    "evidence": "Field index: undefined_102 p8 T11 line 38, 'Copy line 32, All of the additional expense deductions' (adjudicated). means.line_32 prints the calculator's line 32 (3h spec §10, 3h3 plan R2). Read by tier 1 and tier 3 (Priya)."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "undefined_103",
+    "producer": "asked:means.line_37",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_103",
+    "evidence": "Field index: undefined_103 p8 T12 line 38, 'Copy line 37, All of the deductions for debt payment' (adjudicated). means.line_37 prints the calculator's line 37 (3h spec §10, 3h3 plan R2). Read by tier 1 and tier 3 (Priya)."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "undefined_113",
+    "producer": "asked:means.line_43_pointer_1",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_113",
+    "evidence": "Field index: undefined_113 p9 T10 line 43, 'Detailed explanation of special circumstances, row 1' (adjudicated). means.line_43_pointer_1 prints the pointer to its sheet row for circumstance 1 of line 43 (3h spec §9.2, H49). Read by test_form_122a2_rows.py and tier 1."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "undefined_114",
+    "producer": "asked:means.line_43_amount_1",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_114",
+    "evidence": "Field index: undefined_114 p9 T11 line 43, 'Average monthly expense or income adjustment, row 1' (adjudicated). means.line_43_amount_1 prints the amount for circumstance 1 of line 43 (3h spec §9.2, H49). Read by test_form_122a2_rows.py and tier 1."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "undefined_115",
+    "producer": "asked:means.line_43_pointer_2",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_115",
+    "evidence": "Field index: undefined_115 p9 T12 line 43, 'Detailed explanation of special circumstances, row 2' (adjudicated). means.line_43_pointer_2 prints the pointer to its sheet row for circumstance 2 of line 43 (3h spec §9.2, H49). Read by test_form_122a2_rows.py and tier 1."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "undefined_116",
+    "producer": "asked:means.line_43_amount_2",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_116",
+    "evidence": "Field index: undefined_116 p9 T13 line 43, 'Average monthly expense or income adjustment, row 2' (adjudicated). means.line_43_amount_2 prints the amount for circumstance 2 of line 43 (3h spec §9.2, H49). Read by test_form_122a2_rows.py and tier 1."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "undefined_117",
+    "producer": "asked:means.line_43_pointer_3",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_117",
+    "evidence": "Field index: undefined_117 p9 T14 line 43, 'Detailed explanation of special circumstances, row 3' (adjudicated). means.line_43_pointer_3 prints the pointer to its sheet row for circumstance 3 of line 43 (3h spec §9.2, H49). Read by test_form_122a2_rows.py and tier 1."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "undefined_118",
+    "producer": "asked:means.line_43_amount_3",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_118",
+    "evidence": "Field index: undefined_118 p9 T15 line 43, 'Average monthly expense or income adjustment, row 3' (adjudicated). means.line_43_amount_3 prints the amount for circumstance 3 of line 43 (3h spec §9.2, H49). Read by test_form_122a2_rows.py and tier 1."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "undefined_119",
+    "producer": "asked:means.line_43_pointer_4",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_119",
+    "evidence": "Field index: undefined_119 p9 T16 line 43, 'Detailed explanation of special circumstances, row 4' (adjudicated). means.line_43_pointer_4 prints the pointer to its sheet row for circumstance 4 of line 43 (3h spec §9.2, H49). Read by test_form_122a2_rows.py and tier 1."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "undefined_120",
+    "producer": "asked:means.line_43_amount_4",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_120",
+    "evidence": "Field index: undefined_120 p9 T17 line 43, 'Average monthly expense or income adjustment, row 4' (adjudicated). means.line_43_amount_4 prints the amount for circumstance 4 of line 43 (3h spec §9.2, H49). Read by test_form_122a2_rows.py and tier 1."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "Quest3A",
+    "producer": "asked:means.line_3[].purpose",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Quest3A",
+    "evidence": "Field index: Quest3A p1 T15 line 3, \"Purpose for which spouse's income was used, row 1\" (adjudicated). Row 1 of group means_line_3 prints means.line_3[].purpose here, the calculator's row (3h spec §9.2, H30). Read by test_form_122a2_rows.py and tier 1."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "Quest3A1",
+    "producer": "asked:means.line_3[].amount",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Quest3A1",
+    "evidence": "Field index: Quest3A1 p1 T16 line 3, \"Amount subtracted from spouse's income, row 1\" (adjudicated). Row 1 of group means_line_3 prints means.line_3[].amount here, the calculator's row (3h spec §9.2, H30). Read by test_form_122a2_rows.py and tier 1."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "Quest3B",
+    "producer": "asked:means.line_3[].purpose",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Quest3B",
+    "evidence": "Field index: Quest3B p1 T17 line 3, \"Purpose for which spouse's income was used, row 2\" (adjudicated). Row 2 of group means_line_3 prints means.line_3[].purpose here, the calculator's row (3h spec §9.2, H30). Read by test_form_122a2_rows.py and tier 1."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "Quest3B1",
+    "producer": "asked:means.line_3[].amount",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Quest3B1",
+    "evidence": "Field index: Quest3B1 p1 T18 line 3, \"Amount subtracted from spouse's income, row 2\" (adjudicated). Row 2 of group means_line_3 prints means.line_3[].amount here, the calculator's row (3h spec §9.2, H30). Read by test_form_122a2_rows.py and tier 1."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "Quest3C",
+    "producer": "asked:means.line_3[].purpose",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Quest3C",
+    "evidence": "Field index: Quest3C p1 T19 line 3, \"Purpose for which spouse's income was used, row 3\" (adjudicated). Row 3 of group means_line_3 prints means.line_3[].purpose here, the calculator's row (3h spec §9.2, H30). Read by test_form_122a2_rows.py and tier 1."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "Quest3C1",
+    "producer": "asked:means.line_3[].amount",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Quest3C1",
+    "evidence": "Field index: Quest3C1 p1 T20 line 3, \"Amount subtracted from spouse's income, row 3\" (adjudicated). Row 3 of group means_line_3 prints means.line_3[].amount here, the calculator's row (3h spec §9.2, H30). Read by test_form_122a2_rows.py and tier 1."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "Quest9B creditor name1",
+    "producer": "asked:means.line_9b[].creditor",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Quest9B creditor name1",
+    "evidence": "Field index: Quest9B creditor name1 p3 T5 line 9b, 'Name of the creditor (mortgages and other debts secured by your home), row 1' (adjudicated). Row 1 of group means_line_9b prints means.line_9b[].creditor here, the calculator's row (3h spec §9.2, H30). Read by test_form_122a2_rows.py and tier 1."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "Quest9B creditor amount1",
+    "producer": "asked:means.line_9b[].amount",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Quest9B creditor amount1",
+    "evidence": "Field index: Quest9B creditor amount1 p3 T6 line 9b, 'Average monthly payment (60-month contractual total / 60), row 1' (adjudicated). Row 1 of group means_line_9b prints means.line_9b[].amount here, the calculator's row (3h spec §9.2, H30). Read by test_form_122a2_rows.py and tier 1."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "Quest9B creditor name2",
+    "producer": "asked:means.line_9b[].creditor",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Quest9B creditor name2",
+    "evidence": "Field index: Quest9B creditor name2 p3 T7 line 9b, 'Name of the creditor (mortgages and other debts secured by your home), row 2' (adjudicated). Row 2 of group means_line_9b prints means.line_9b[].creditor here, the calculator's row (3h spec §9.2, H30). Read by test_form_122a2_rows.py and tier 1."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "Quest9B creditor amount2",
+    "producer": "asked:means.line_9b[].amount",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Quest9B creditor amount2",
+    "evidence": "Field index: Quest9B creditor amount2 p3 T8 line 9b, 'Average monthly payment (60-month contractual total / 60), row 2' (adjudicated). Row 2 of group means_line_9b prints means.line_9b[].amount here, the calculator's row (3h spec §9.2, H30). Read by test_form_122a2_rows.py and tier 1."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "Quest9B creditor name3",
+    "producer": "asked:means.line_9b[].creditor",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Quest9B creditor name3",
+    "evidence": "Field index: Quest9B creditor name3 p3 T9 line 9b, 'Name of the creditor (mortgages and other debts secured by your home), row 3' (adjudicated). Row 3 of group means_line_9b prints means.line_9b[].creditor here, the calculator's row (3h spec §9.2, H30). Read by test_form_122a2_rows.py and tier 1."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "Quest9B creditor amount3",
+    "producer": "asked:means.line_9b[].amount",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Quest9B creditor amount3",
+    "evidence": "Field index: Quest9B creditor amount3 p3 T10 line 9b, 'Average monthly payment (60-month contractual total / 60), row 3' (adjudicated). Row 3 of group means_line_9b prints means.line_9b[].amount here, the calculator's row (3h spec §9.2, H30). Read by test_form_122a2_rows.py and tier 1."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "Quest13B Creditor for vehicle 1-1",
+    "producer": "asked:means.line_13b[].creditor",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Quest13B Creditor for vehicle 1-1",
+    "evidence": "Field index: Quest13B Creditor for vehicle 1-1 p4 T6 line 13b, 'Name of each creditor for Vehicle 1, row 1' (adjudicated). Row 1 of group means_line_13b prints means.line_13b[].creditor here, the calculator's row (3h spec §9.2, H30). Read by test_form_122a2_rows.py and tier 1."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "Quest13B amount for vehicle 1-1",
+    "producer": "asked:means.line_13b[].amount",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Quest13B amount for vehicle 1-1",
+    "evidence": "Field index: Quest13B amount for vehicle 1-1 p4 T7 line 13b, 'Average monthly payment for debts secured by Vehicle 1, row 1' (adjudicated). Row 1 of group means_line_13b prints means.line_13b[].amount here, the calculator's row (3h spec §9.2, H30). Read by test_form_122a2_rows.py and tier 1."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "Quest13B Creditor for vehicle 1-2",
+    "producer": "asked:means.line_13b[].creditor",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Quest13B Creditor for vehicle 1-2",
+    "evidence": "Field index: Quest13B Creditor for vehicle 1-2 p4 T8 line 13b, 'Name of each creditor for Vehicle 1, row 2' (adjudicated). Row 2 of group means_line_13b prints means.line_13b[].creditor here, the calculator's row (3h spec §9.2, H30). Read by test_form_122a2_rows.py and tier 1."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "Quest13B amount for vehicle 1-2",
+    "producer": "asked:means.line_13b[].amount",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Quest13B amount for vehicle 1-2",
+    "evidence": "Field index: Quest13B amount for vehicle 1-2 p4 T9 line 13b, 'Average monthly payment for debts secured by Vehicle 1, row 2' (adjudicated). Row 2 of group means_line_13b prints means.line_13b[].amount here, the calculator's row (3h spec §9.2, H30). Read by test_form_122a2_rows.py and tier 1."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "Quest13E.Creditor1",
+    "producer": "asked:means.line_13e[].creditor",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Quest13E.Creditor1",
+    "evidence": "Field index: Quest13E.Creditor1 p4 T17 line 13e, 'Name of each creditor for Vehicle 2, row 1' (adjudicated). Row 1 of group means_line_13e prints means.line_13e[].creditor here, the calculator's row (3h spec §9.2, H30). Read by test_form_122a2_rows.py and tier 1."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "Quest13E.Monthly1",
+    "producer": "asked:means.line_13e[].amount",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Quest13E.Monthly1",
+    "evidence": "Field index: Quest13E.Monthly1 p4 T18 line 13e, 'Average monthly payment for debts secured by Vehicle 2, row 1' (adjudicated). Row 1 of group means_line_13e prints means.line_13e[].amount here, the calculator's row (3h spec §9.2, H30). Read by test_form_122a2_rows.py and tier 1."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "Quest13E.Creditor2",
+    "producer": "asked:means.line_13e[].creditor",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Quest13E.Creditor2",
+    "evidence": "Field index: Quest13E.Creditor2 p4 T19 line 13e, 'Name of each creditor for Vehicle 2, row 2' (adjudicated). Row 2 of group means_line_13e prints means.line_13e[].creditor here, the calculator's row (3h spec §9.2, H30). Read by test_form_122a2_rows.py and tier 1."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "Quest13E.Monthly2",
+    "producer": "asked:means.line_13e[].amount",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "Quest13E.Monthly2",
+    "evidence": "Field index: Quest13E.Monthly2 p4 T20 line 13e, 'Average monthly payment for debts secured by Vehicle 2, row 2' (adjudicated). Row 2 of group means_line_13e prints means.line_13e[].amount here, the calculator's row (3h spec §9.2, H30). Read by test_form_122a2_rows.py and tier 1."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "undefined_71",
+    "producer": "asked:means.line_33d[].creditor",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_71",
+    "evidence": "Field index: undefined_71 p7 T7 line 33d, 'Name of each creditor for other secured debt, row 1' (adjudicated). Row 1 of group means_line_33d prints means.line_33d[].creditor here, the calculator's row (3h spec §9.2, H30). Read by test_form_122a2_rows.py and tier 1."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "undefined_72",
+    "producer": "asked:means.line_33d[].property",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_72",
+    "evidence": "Field index: undefined_72 p7 T8 line 33d, 'Identify property that secures the debt, row 1' (adjudicated). Row 1 of group means_line_33d prints means.line_33d[].property here, the calculator's row (3h spec §9.2, H30). Read by test_form_122a2_rows.py and tier 1."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "CheckBox8",
+    "producer": "asked:means.line_33d[].taxes_or_insurance",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "CheckBox8",
+    "evidence": "Field index: CheckBox8 p7 T6 line 33d, 'No' (adjudicated); p7 T10 line 33d, 'Yes' (adjudicated). Row 1 of group means_line_33d prints means.line_33d[].taxes_or_insurance here, the calculator's row (3h spec §9.2, H30). Read by test_form_122a2_rows.py and tier 1."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "undefined_73",
+    "producer": "asked:means.line_33d[].amount",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_73",
+    "evidence": "Field index: undefined_73 p7 T9 line 33d, 'Average monthly payment, other secured debt row 1' (adjudicated). Row 1 of group means_line_33d prints means.line_33d[].amount here, the calculator's row (3h spec §9.2, H30). Read by test_form_122a2_rows.py and tier 1."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "undefined_74",
+    "producer": "asked:means.line_33d[].creditor",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_74",
+    "evidence": "Field index: undefined_74 p7 T12 line 33d, 'Name of each creditor for other secured debt, row 2' (adjudicated). Row 2 of group means_line_33d prints means.line_33d[].creditor here, the calculator's row (3h spec §9.2, H30). Read by test_form_122a2_rows.py and tier 1."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "undefined_75",
+    "producer": "asked:means.line_33d[].property",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_75",
+    "evidence": "Field index: undefined_75 p7 T13 line 33d, 'Identify property that secures the debt, row 2' (adjudicated). Row 2 of group means_line_33d prints means.line_33d[].property here, the calculator's row (3h spec §9.2, H30). Read by test_form_122a2_rows.py and tier 1."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "CheckBox9",
+    "producer": "asked:means.line_33d[].taxes_or_insurance",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "CheckBox9",
+    "evidence": "Field index: CheckBox9 p7 T11 line 33d, 'No' (adjudicated); p7 T15 line 33d, 'Yes' (adjudicated). Row 2 of group means_line_33d prints means.line_33d[].taxes_or_insurance here, the calculator's row (3h spec §9.2, H30). Read by test_form_122a2_rows.py and tier 1."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "undefined_76",
+    "producer": "asked:means.line_33d[].amount",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_76",
+    "evidence": "Field index: undefined_76 p7 T14 line 33d, 'Average monthly payment, other secured debt row 2' (adjudicated). Row 2 of group means_line_33d prints means.line_33d[].amount here, the calculator's row (3h spec §9.2, H30). Read by test_form_122a2_rows.py and tier 1."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "undefined_77",
+    "producer": "asked:means.line_33d[].creditor",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_77",
+    "evidence": "Field index: undefined_77 p7 T17 line 33d, 'Name of each creditor for other secured debt, row 3' (adjudicated). Row 3 of group means_line_33d prints means.line_33d[].creditor here, the calculator's row (3h spec §9.2, H30). Read by test_form_122a2_rows.py and tier 1."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "undefined_78",
+    "producer": "asked:means.line_33d[].property",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_78",
+    "evidence": "Field index: undefined_78 p7 T18 line 33d, 'Identify property that secures the debt, row 3' (adjudicated). Row 3 of group means_line_33d prints means.line_33d[].property here, the calculator's row (3h spec §9.2, H30). Read by test_form_122a2_rows.py and tier 1."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "CheckBox10",
+    "producer": "asked:means.line_33d[].taxes_or_insurance",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "CheckBox10",
+    "evidence": "Field index: CheckBox10 p7 T16 line 33d, 'No' (adjudicated); p7 T20 line 33d, 'Yes' (adjudicated). Row 3 of group means_line_33d prints means.line_33d[].taxes_or_insurance here, the calculator's row (3h spec §9.2, H30). Read by test_form_122a2_rows.py and tier 1."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "undefined_79",
+    "producer": "asked:means.line_33d[].amount",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_79",
+    "evidence": "Field index: undefined_79 p7 T19 line 33d, 'Average monthly payment, other secured debt row 3' (adjudicated). Row 3 of group means_line_33d prints means.line_33d[].amount here, the calculator's row (3h spec §9.2, H30). Read by test_form_122a2_rows.py and tier 1."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "undefined_81",
+    "producer": "asked:means.line_34[].creditor",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_81",
+    "evidence": "Field index: undefined_81 p7 T25 line 34, 'Name of the creditor (cure amount), row 1' (adjudicated). Row 1 of group means_line_34 prints means.line_34[].creditor here, the calculator's row (3h spec §9.2, H30). Read by test_form_122a2_rows.py and tier 1."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "secures the debt",
+    "producer": "asked:means.line_34[].property",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "secures the debt",
+    "evidence": "Field index: secures the debt p7 T26 line 34, 'Identify property that secures the debt (cure amount), row 1' (adjudicated). Row 1 of group means_line_34 prints means.line_34[].property here, the calculator's row (3h spec §9.2, H30). Read by test_form_122a2_rows.py and tier 1."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "undefined_82",
+    "producer": "asked:means.line_34[].cure",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_82",
+    "evidence": "Field index: undefined_82 p7 T27 line 34, 'Total cure amount, row 1' (adjudicated). Row 1 of group means_line_34 prints means.line_34[].cure here, the calculator's row (3h spec §9.2, H30). Read by test_form_122a2_rows.py and tier 1."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "undefined_83",
+    "producer": "asked:means.line_34[].amount",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_83",
+    "evidence": "Field index: undefined_83 p7 T28 line 34, 'Monthly cure amount (total cure / 60), row 1' (adjudicated). Row 1 of group means_line_34 prints means.line_34[].amount here, the calculator's row (3h spec §9.2, H30). Read by test_form_122a2_rows.py and tier 1."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "undefined_84",
+    "producer": "asked:means.line_34[].creditor",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_84",
+    "evidence": "Field index: undefined_84 p7 T29 line 34, 'Name of the creditor (cure amount), row 2' (adjudicated). Row 2 of group means_line_34 prints means.line_34[].creditor here, the calculator's row (3h spec §9.2, H30). Read by test_form_122a2_rows.py and tier 1."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "undefined_85",
+    "producer": "asked:means.line_34[].property",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_85",
+    "evidence": "Field index: undefined_85 p7 T30 line 34, 'Identify property that secures the debt (cure amount), row 2' (adjudicated). Row 2 of group means_line_34 prints means.line_34[].property here, the calculator's row (3h spec §9.2, H30). Read by test_form_122a2_rows.py and tier 1."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "undefined_86",
+    "producer": "asked:means.line_34[].cure",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_86",
+    "evidence": "Field index: undefined_86 p7 T31 line 34, 'Total cure amount, row 2' (adjudicated). Row 2 of group means_line_34 prints means.line_34[].cure here, the calculator's row (3h spec §9.2, H30). Read by test_form_122a2_rows.py and tier 1."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "undefined_87",
+    "producer": "asked:means.line_34[].amount",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_87",
+    "evidence": "Field index: undefined_87 p7 T32 line 34, 'Monthly cure amount (total cure / 60), row 2' (adjudicated). Row 2 of group means_line_34 prints means.line_34[].amount here, the calculator's row (3h spec §9.2, H30). Read by test_form_122a2_rows.py and tier 1."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "undefined_88",
+    "producer": "asked:means.line_34[].creditor",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_88",
+    "evidence": "Field index: undefined_88 p7 T33 line 34, 'Name of the creditor (cure amount), row 3' (adjudicated). Row 3 of group means_line_34 prints means.line_34[].creditor here, the calculator's row (3h spec §9.2, H30). Read by test_form_122a2_rows.py and tier 1."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "undefined_89",
+    "producer": "asked:means.line_34[].property",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_89",
+    "evidence": "Field index: undefined_89 p7 T34 line 34, 'Identify property that secures the debt (cure amount), row 3' (adjudicated). Row 3 of group means_line_34 prints means.line_34[].property here, the calculator's row (3h spec §9.2, H30). Read by test_form_122a2_rows.py and tier 1."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "undefined_90",
+    "producer": "asked:means.line_34[].cure",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_90",
+    "evidence": "Field index: undefined_90 p7 T35 line 34, 'Total cure amount, row 3' (adjudicated). Row 3 of group means_line_34 prints means.line_34[].cure here, the calculator's row (3h spec §9.2, H30). Read by test_form_122a2_rows.py and tier 1."
+  },
+  {
+    "schema": "form_122a2",
+    "pdf_field": "undefined_91",
+    "producer": "asked:means.line_34[].amount",
+    "original_verdicts": [],
+    "final_verdicts": ["correct"],
+    "status": "confirmed",
+    "correct_target": "undefined_91",
+    "evidence": "Field index: undefined_91 p7 T36 line 34, 'Monthly cure amount (total cure / 60), row 3' (adjudicated). Row 3 of group means_line_34 prints means.line_34[].amount here, the calculator's row (3h spec §9.2, H30). Read by test_form_122a2_rows.py and tier 1."
   },
   {
     "schema": "schedule_a_b",

@@ -493,6 +493,24 @@ describe("the spouse's vehicles and loans", () => {
     expect(body.vehicle_choice).toEqual(['asset-8', 'spouse-1']);
   });
 
+  it('a spouse vehicle link survives a No, a reload and a save', async () => {
+    // the server keeps the typed row and the loan's link under No (DIG-513): the GET hands both back
+    const page = spousePage(
+      [vehicleRow()],
+      [loanRow({ secured_by: 'spouse-1', payment: '100.00' })],
+      { spouse_vehicles_answer: 'no' }
+    );
+    const sent = serve(page);
+    renderPage();
+    await ready();
+    await pressContinue();
+    await ready();
+
+    const body = sent[0] as unknown as SentBody;
+    expect(body.spouse_loans[0]).toMatchObject({ ref: 'spouse-1', secured_by: 'spouse-1' });
+    expect(body.spouse_vehicles.map((row) => row.ref)).toEqual(['spouse-1']);
+  });
+
   it('a save refused for a spouse vehicle another tab removed sends it as new, so the next save names no gone row', async () => {
     const first = spousePage(
       [vehicleRow({ ref: 'spouse-2', leased: 'yes', claimed: 'yes' })],

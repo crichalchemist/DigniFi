@@ -47,12 +47,13 @@ const NAMES = [
   'MEANS_FILED_BEFORE_122A1',
   'MEANS_FILED_BEFORE_122A2',
   'MEANS_FILED_MISMATCH',
-  'MEANS_CANT_PRINT_YET',
+  'MEANS_LINE_MISSING',
   'MEANS_TOO_LONG',
   'MEANS_LETTER',
   'MEANS_EXPLANATION_TOO_LONG',
   'MEANS_EXPLANATION_LETTER',
   'MEANS_GAP_LINE_3',
+  'MEANS_GAP_LINE_3_CAP',
   'MEANS_GAP_LINE_3_NO_ROW',
   'MEANS_GAP_LINE_3_ROW',
   'MEANS_GAP_SPOUSE_VEHICLES',
@@ -93,6 +94,9 @@ const NAMES = [
   'MEANS_GAP_LINE_43_NONE',
   'MEANS_GAP_LINE_43_EXPLANATION',
   'MEANS_GAP_LINE_43_AMOUNT',
+  'MEANS_NOT_A_COUNTED_DEBT',
+  'MEANS_NOT_A_LINE_11_VEHICLE',
+  'MEANS_NOT_AN_OPEN_DEBT',
   'MEANS_OUTCOME_ANSWER_SIDEBAR',
   'MEANS_OUTCOME_ANSWER_PAGE',
   'MEANS_PAGE_PHRASE',
@@ -175,6 +179,7 @@ const NAMES = [
   'MEANS_LINE_43_LABEL_CHOICES',
   'MEANS_LINE_43_LABEL_PAPERS',
   'MEANS_LINE_43_SKIPPED',
+  'MEANS_LINE_43_POINTER',
   'MEANS_REBUTTAL_NOW',
   'MEANS_REBUTTAL_IF',
   'MEANS_REBUTTAL_IF_BELOW',
@@ -184,7 +189,12 @@ const NAMES = [
   'MEANS_OUTCOME_NO_PRESUMPTION',
   'MEANS_OUTCOME_PRESUMPTION',
   'MEANS_OUTCOME_REASSURANCE',
+  'MEANS_PAIR_CANCEL',
+  'MEANS_PAIR_CONFIRM',
+  'MEANS_PAIR_MARK_ALONE',
+  'MEANS_PAIR_MARK_BOTH',
   'MEANS_PAIR_NOTICE',
+  'MEANS_PAIR_REFUSAL',
   'MEANS_TABLE_MISSING',
   'MEANS_TEST_CALCULATING',
   'MEANS_TEST_INCOME_LABEL',
@@ -251,7 +261,7 @@ describe('the means test gives information, never advice', () => {
     expect(/presumption/i.test(sentence)).toBe(SAYS_PRESUMPTION.includes(name));
   });
 
-  it.each(['MEANS_CANT_PRINT_YET', 'MEANS_TABLE_MISSING'])(
+  it.each(['MEANS_LINE_MISSING', 'MEANS_TABLE_MISSING'])(
     '%s says neither presumption nor abuse',
     (name) => {
       expect(held[name]).not.toMatch(/presumption|abuse/i);
@@ -328,13 +338,18 @@ const EXACT_WORDS: [string, string][] = [
     "DigniFi doesn't have the means test figures for today's date yet, so it can't work out Form 122A-2.",
   ],
   [
-    'MEANS_CANT_PRINT_YET',
-    "You've answered the questions for Form 122A-2, but DigniFi can't print that form yet. Form 122A-1 waits for it. File the two forms together.",
+    'MEANS_LINE_MISSING',
+    "DigniFi can't work out every line of Form 122A-2, so it can't print that form. Form 122A-1 waits for it. File the two forms together.",
   ],
   [
     'MEANS_PAIR_NOTICE',
     'Form 122A-1 says your result is worked out on Form 122A-2. File them together.',
   ],
+  ['MEANS_PAIR_REFUSAL', 'File Form 122A-1 and Form 122A-2 together.'],
+  ['MEANS_PAIR_CONFIRM', 'These two forms go together. Mark both as filed?'],
+  ['MEANS_PAIR_MARK_BOTH', 'Mark both as filed'],
+  ['MEANS_PAIR_MARK_ALONE', 'Mark as filed'],
+  ['MEANS_PAIR_CANCEL', 'Cancel'],
   [
     'MEANS_FILED_BEFORE_122A2',
     'This copy was marked filed before DigniFi could fill in all of Form 122A-2. It shows what was stored then.',
@@ -369,6 +384,10 @@ const EXACT_WORDS: [string, string][] = [
   ['MEANS_EXPLANATION_TOO_LONG', 'This explanation is too long to print with line 43. Shorten it.'],
   ['MEANS_EXPLANATION_LETTER', "This explanation has a letter Form 122A-2 can't print. Change it."],
   ['MEANS_GAP_LINE_3', "Answer line 3, about your spouse's income."],
+  [
+    'MEANS_GAP_LINE_3_CAP',
+    "Line 3 can't be more than {amount}, your spouse's income on Form 122A-1, Column B.",
+  ],
   [
     'MEANS_GAP_LINE_3_NO_ROW',
     "Add each use of your spouse's income on line 3, or change the answer to No.",
@@ -450,6 +469,13 @@ const EXACT_WORDS: [string, string][] = [
   [
     'MEANS_GAP_LINE_43_AMOUNT',
     'Enter the average monthly amount for circumstance {n} on line 43. Enter 0 if there is none.',
+  ],
+  // The server's sentences for a row that has gone; the page reads a 400 by these words (DIG-513)
+  ['MEANS_NOT_A_COUNTED_DEBT', "This isn't one of your secured debts."],
+  ['MEANS_NOT_A_LINE_11_VEHICLE', "This isn't one of the vehicles on line 11."],
+  [
+    'MEANS_NOT_AN_OPEN_DEBT',
+    "This isn't one of the debts on your Amounts Owed step not listed as secured.",
   ],
   // The page's own words (3h2)
   [
@@ -621,6 +647,7 @@ const EXACT_WORDS: [string, string][] = [
     'MEANS_LINE_43_SKIPPED',
     "With your current answers, the form skips line 43, so this answer won't print.",
   ],
+  ['MEANS_LINE_43_POINTER', 'See line 43.{n} on the attached sheet.'],
   ['MEANS_REBUTTAL_NOW', 'Your line 39d is now {amount}.'],
   ['MEANS_REBUTTAL_IF', 'If the court allowed the amounts on line 43, line 39d would be {amount}.'],
   [

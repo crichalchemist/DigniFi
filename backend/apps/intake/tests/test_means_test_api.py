@@ -18,13 +18,21 @@ from apps.forms.tests.test_means_hold import (  # noqa: F401, F811
     session_with_debtor,
     user,
 )
+from apps.intake.claims import NAMELESS_DEBT
 from apps.intake.means_page import (
     DEBT_NAMED_TWICE,
     NOT_A_COUNTED_DEBT,
     NOT_A_LINE_11_VEHICLE,
     NOT_AN_OPEN_DEBT,
 )
-from apps.intake.means_test import ANSWER_KEYS, MEANS_EXPLANATION_LETTER, MEANS_TOO_LONG
+from apps.intake.means_test import (
+    ANSWER_KEYS,
+    MEANS_EXPLANATION_LETTER,
+    MEANS_GAP_PAYMENTS_LEFT,
+    MEANS_GAP_SPOUSE_LOAN_SECURED_BY,
+    MEANS_LETTER,
+    MEANS_TOO_LONG,
+)
 from apps.intake.models import (
     ExpenseInfo,
     IntakeSession,
@@ -190,7 +198,7 @@ def _other_filers_rows(district):
     return other, session, car, loan, card
 
 
-def _married(session):
+def _married(session, spouse_wages="0.00"):
     answer_household(
         session,
         marital_status="married_together",
@@ -203,7 +211,7 @@ def _married(session):
                 "spouse_is_dependent": False,
             }
         ],
-        spouse_income={"monthly_gross_wages": Decimal("0.00")},
+        spouse_income={"monthly_gross_wages": Decimal(spouse_wages)},
     )
 
 
@@ -712,7 +720,7 @@ def test_changing_the_spouse_vehicles_answer_to_no_saves_with_a_loan_still_namin
     )
 
     assert reply.status_code == 200
-    assert _get(filer).json()["answers"]["spouse_loans"][0]["secured_by"] is None
+    assert _get(filer).json()["answers"]["spouse_loans"][0]["secured_by"] == "spouse-1"
 
 
 @pytest.mark.django_db
@@ -799,6 +807,60 @@ def test_the_reply_names_the_servers_first_gap_and_none_once_every_answer_is_giv
 
 
 @pytest.mark.django_db
+def test_the_reply_names_the_line_3_cap_gap(filer):
+    _married(filer.session, spouse_wages="1800.00")
+
+    reply = _put(
+        filer,
+        {"line_3_answer": "yes", "line_3_rows": [{"purpose": "Demo", "amount": "1800.01"}]},
+    )
+
+    assert reply.status_code == 200
+    page = reply.json()
+    assert page["gap"] == (
+        "Line 3 can't be more than $1,800.00, your spouse's income on Form 122A-1, Column B."
+    )
+    assert page["information"]["spouse_cmi"] == "1800.00"
+
+
+@pytest.mark.django_db
+def test_a_filer_whose_spouse_income_isnt_entered_is_sent_to_the_income_step_not_line_3s_cap(
+    user, above
+):
+    client = APIClient()
+    client.force_authenticate(user=user)
+    spouse = {
+        "relationship": "spouse",
+        "age": 40,
+        "lives_with_you": True,
+        "claimed_or_supported": False,
+        "spouse_is_dependent": False,
+    }
+    answer_household(above, marital_status="married_together", members=[spouse], spouse_income={})
+    answer_means_test(
+        above,
+        line_3_answer="yes",
+        line_3_rows=[{"purpose": "Demo", "amount": "5000.00"}],
+    )
+    sentence = str(income_step_gaps(_fresh(above))[0])
+
+    reply = client.post(
+        "/api/forms/generate/",
+        {"session_id": above.pk, "form_type": "form_122a2"},
+        format="json",
+    )
+    page = client.get(_url(above))
+
+    assert sentence
+    assert reply.status_code == 422
+    assert reply.data["error"] == sentence
+    assert reply.data["step"] == "income_info"
+    assert page.status_code == 200
+    assert page.json()["applies"] is None
+    assert page.json()["applies_gap"] == sentence
+
+
+@pytest.mark.django_db
 def test_a_day_with_no_median_table_answers_200_with_the_tables_sentence(filer, monkeypatch):
     # the median table runs to March 31, 2027, and nothing starts after it
     monkeypatch.setattr("apps.districts.dated_tables._today", lambda: date(2027, 4, 1))
@@ -843,6 +905,7 @@ def test_a_box_the_page_hides_saves_whatever_its_words(filer, body):
 
 @pytest.mark.django_db
 def test_rows_sent_without_their_answer_are_measured_under_the_stored_answer(filer):
+    _married(filer.session)
     vehicle = {"spouse_vehicles": [{"ref": "new-1", "description": _UNFIT_DESCRIPTION}]}
     explanation = {"line_43_circumstances": [{"explanation": "Demo □"}]}
     answer_means_test(filer.session, spouse_vehicles_answer="yes", line_43_answer="yes")
@@ -865,6 +928,7 @@ def test_rows_sent_without_their_answer_are_measured_under_the_stored_answer(fil
 
 @pytest.mark.django_db
 def test_a_yes_sent_without_its_rows_measures_the_rows_stored_under_no(filer):
+    _married(filer.session)
     loan = {"ref": "new-1", "on_amounts_owed": "no", "creditor": _UNFIT_CREDITOR}
     assert _put(filer, {"spouse_loans_answer": "no", "spouse_loans": [loan]}).status_code == 200
     before = _stored(filer.session)
@@ -874,6 +938,171 @@ def test_a_yes_sent_without_its_rows_measures_the_rows_stored_under_no(filer):
     assert refused.status_code == 400
     assert refused.json() == {"spouse_loans": {"0": {"creditor": [MEANS_TOO_LONG]}}}
     assert _stored(filer.session) == before
+
+
+# F1: the four fit checks the serializer used to run, now under the lock with the stored marital
+# answer (DIG-513): a spouse's boxes and line 3's are measured only for a married together filer.
+def _refusal_of(filer, data):
+    """Marry the filer, PUT `data` and return the 400's body."""
+    _married(filer.session)
+    reply = _put(filer, data)
+    assert reply.status_code == 400, reply.content
+    return reply.json()
+
+
+@pytest.mark.django_db
+def test_a_line_3_purpose_too_long_for_its_box_is_refused(filer):
+    errors = _refusal_of(
+        filer, {"line_3_answer": "yes", "line_3_rows": [{"purpose": "Demo " * 30}]}
+    )
+
+    assert errors["line_3_rows"]["0"]["purpose"] == [MEANS_TOO_LONG]
+
+
+@pytest.mark.django_db
+def test_a_box_its_answers_show_is_measured_beside_it(filer):
+    errors = _refusal_of(
+        filer,
+        {
+            "spouse_vehicles_answer": "yes",
+            "spouse_vehicles": [{"ref": "new-1", "description": _UNFIT_DESCRIPTION}],
+            "spouse_loans_answer": "yes",
+            "spouse_loans": [
+                {
+                    "ref": "new-2",
+                    "on_amounts_owed": "no",
+                    "creditor": _UNFIT_CREDITOR,
+                    "secured_by": "home",
+                    "property": _UNFIT_DESCRIPTION,
+                }
+            ],
+        },
+    )
+
+    assert errors["spouse_vehicles"]["0"]["description"] == [MEANS_TOO_LONG]
+    loan = errors["spouse_loans"]["0"]
+    assert loan["creditor"] == [MEANS_TOO_LONG]
+    assert loan["property"] == [MEANS_TOO_LONG]
+
+
+@pytest.mark.django_db
+def test_a_letter_the_form_cant_print_is_told_apart_from_a_box_too_small(filer):
+    _married(filer.session)
+
+    def sentence(creditor):
+        reply = _put(
+            filer,
+            {
+                "spouse_loans_answer": "yes",
+                "spouse_loans": [{"ref": "new-1", "on_amounts_owed": "no", "creditor": creditor}],
+            },
+        )
+        assert reply.status_code == 400, reply.content
+        return reply.json()["spouse_loans"]["0"]["creditor"]
+
+    assert sentence("Demo Lễ Bank") == [MEANS_LETTER]
+    assert sentence(_UNFIT_CREDITOR) == [MEANS_TOO_LONG]
+    # a letter is named first, even in words that are also too long
+    assert sentence(_UNFIT_CREDITOR + " ễ") == [MEANS_LETTER]
+    purpose = _put(
+        filer, {"line_3_answer": "yes", "line_3_rows": [{"purpose": "Demo □ tax"}]}
+    ).json()
+    assert purpose["line_3_rows"]["0"]["purpose"] == [MEANS_LETTER]
+
+
+@pytest.mark.django_db
+def test_words_that_do_not_fit_a_box_the_loan_could_print_in_are_refused(filer):
+    _married(filer.session)
+    vehicle = _put(
+        filer,
+        {
+            "spouse_vehicles_answer": "yes",
+            "spouse_vehicles": [{"ref": "new-1", "description": "2019 Toyota Sienna LE minivan"}],
+        },
+    )
+    assert vehicle.status_code == 400
+    assert vehicle.json()["spouse_vehicles"]["0"]["description"] == [MEANS_TOO_LONG]
+    loan = _put(
+        filer,
+        {
+            "spouse_loans_answer": "yes",
+            "spouse_loans": [
+                {
+                    "ref": "new-1",
+                    "on_amounts_owed": "no",
+                    "secured_by": "other",
+                    "creditor": "Demo Prairie Credit Union of Illinois",
+                    "property": "2019 Toyota Sienna LE minivan",
+                }
+            ],
+        },
+    )
+    assert loan.status_code == 400
+    row = loan.json()["spouse_loans"]["0"]
+    assert row["creditor"] == [MEANS_TOO_LONG]
+    assert row["property"] == [MEANS_TOO_LONG]
+
+
+@pytest.mark.django_db
+def test_a_together_filers_over_long_line_3_purpose_is_still_refused_under_the_lock(filer):
+    errors = _refusal_of(
+        filer, {"line_3_answer": "yes", "line_3_rows": [{"purpose": "Demo " * 30}]}
+    )
+
+    assert errors == {"line_3_rows": {"0": {"purpose": [MEANS_TOO_LONG]}}}
+
+
+@pytest.mark.django_db
+def test_a_not_married_filers_stale_line_3_rows_never_stick_a_save(filer):
+    # the rows were typed while the filer was married; the Income step changed the answer since
+    stale = [{"purpose": "Demo " * 30, "amount": "10.00"}]
+    answer_means_test(filer.session, line_3_answer="yes", line_3_rows=stale)
+    assert _fresh(filer.session).income_info.marital_status != "married_together"
+
+    assert _put(filer, {"line_16": "0.00"}).status_code == 200
+    reply = _put(filer, {"line_3_answer": "yes", "line_3_rows": stale})
+
+    assert reply.status_code == 200, reply.content
+
+
+@pytest.mark.django_db
+def test_a_spouse_vehicle_link_survives_a_no_a_reload_and_a_save(filer):
+    _married(filer.session)
+    answer_means_test(
+        filer.session,
+        spouse_vehicles_answer="yes",
+        spouse_vehicles=[
+            {"ref": "spouse-1", "description": "Demo truck", "leased": "no", "claimed": "yes"}
+        ],
+        spouse_loans_answer="yes",
+        spouse_loans=[_stored_loan(on_amounts_owed="no", secured_by="spouse-1")],
+    )
+
+    reply = _put(
+        filer, {"spouse_vehicles_answer": "no", "spouse_loans": [_sent_loan(secured_by="spouse-1")]}
+    )
+
+    assert reply.status_code == 200, reply.content
+    page = _get(filer).json()
+    assert page["answers"]["spouse_loans"][0]["secured_by"] == "spouse-1"
+    # what the reader and the gaps see is unchanged: under No the vehicle is gone, so the
+    # loan's "What secures the loan?" is unanswered
+    assert page["gap"] == MEANS_GAP_SPOUSE_LOAN_SECURED_BY.format(name="Demo Lender")
+    again = _put(filer, _put_body(page))
+    assert again.status_code == 200, again.content
+    stored = MeansTestAnswers.objects.get(session=filer.session).get_answers()
+    assert stored["spouse_loans"][0]["secured_by"] == "spouse-1"
+
+
+@pytest.mark.django_db
+def test_a_gap_names_a_debt_with_no_creditor_as_one_amount_owed(filer):
+    filer.loan.creditor_name = ""
+    filer.loan.save()
+    answer_means_test(filer.session, debts={filer.loan.pk: {"payments_left": None}})
+
+    gap = _get(filer).json()["gap"]
+
+    assert gap == MEANS_GAP_PAYMENTS_LEFT.format(name=NAMELESS_DEBT)
 
 
 # F2: rows typed before a No are kept, and change no line and raise no gap.

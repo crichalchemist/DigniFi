@@ -11,8 +11,15 @@ from django.core.management import call_command
 
 from apps.districts.means_standards import NoMeansTestTable
 from apps.districts.models import District
-from apps.eligibility.means_inputs import page_answers, read_inputs, read_tables
+from apps.eligibility.means_inputs import (
+    means_lines_for,
+    one_read_of_means,
+    page_answers,
+    read_inputs,
+    read_tables,
+)
 from apps.eligibility.means_lines import (
+    MISSING,
     PRESUMPTION,
     HealthInsurance,
     MeansTableKeyMissing,
@@ -31,6 +38,7 @@ from apps.intake.models import (
 )
 from apps.intake.tests.builders import (
     answer_household,
+    answer_means_test,
     complete_debt,
     linked_lease,
     linked_loan,
@@ -132,7 +140,8 @@ def test_a_session_that_never_saw_the_page_has_every_answer_unanswered(session):
         inputs.vehicle_choice,
         inputs.spouse_vehicles_answer,
         inputs.spouse_loans_answer,
-    ) == (None, (), None, None, None, None, None, None, None)
+        inputs.line_43_rows,
+    ) == (None, (), None, None, None, None, None, None, None, ())
     car = linked_row(session, "3", None, "Demo Car")
     linked_loan(session, car, "300")
     inputs = read_inputs(session)
@@ -147,6 +156,46 @@ def test_a_session_that_never_saw_the_page_has_every_answer_unanswered(session):
         debt.necessary_for_support,
         debt.cure,
     ) == (None,) * 6
+
+
+def test_a_session_that_never_saw_the_page_has_line_43_rows_empty_and_the_spouses_income_read(
+    session,
+):
+    inputs = read_inputs(session)
+    assert (inputs.line_43_rows, inputs.spouse_cmi) == ((), None)
+    call_command("loaddata", "ilnd_2025_data", verbosity=0)
+    call_command("seed_demo_data", "--reset", persona="priya", verbosity=0)
+    priya = IntakeSession.objects.filter(user__username="demo_priya").latest("id")
+    assert read_inputs(priya).spouse_cmi == Decimal("1800.00")
+
+
+def test_the_stored_circumstances_reach_the_calculator_in_order(session):
+    stored = {
+        "line_43_answer": "yes",
+        "line_43_circumstances": [
+            {"explanation": "Demo first", "amount": "100.00"},
+            {"explanation": "Demo second", "amount": None},
+            {"explanation": "Demo third", "amount": "300.00"},
+        ],
+    }
+    assert read_inputs(_store(session, stored)).line_43_rows == (
+        ("Demo first", Decimal("100.00")),
+        ("Demo second", None),
+        ("Demo third", Decimal("300.00")),
+    )
+
+
+def test_the_calculators_result_is_read_once_a_resolve(
+    session, means_standards_2026, section_104_2025
+):
+    # H19: inside one resolve every box reads the same result, and nothing stores it
+    with one_read_of_means():
+        first = means_lines_for(session)
+        assert first.lines["16"] is MISSING
+        answer_means_test(session, line_16="0.00")
+        assert means_lines_for(IntakeSession.objects.get(pk=session.pk)) is first
+    fresh = means_lines_for(IntakeSession.objects.get(pk=session.pk))
+    assert fresh is not first and fresh.lines["16"] == Decimal("0.00")
 
 
 def test_line_35_counts_only_confirmed_unsecured_debts_answered_with_a_priority_kind(session):

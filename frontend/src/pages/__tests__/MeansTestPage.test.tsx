@@ -20,6 +20,7 @@ import {
   MEANS_LINE_36_OTHER_RULES,
   MEANS_LINE_36_PRODUCT,
   MEANS_LINE_43_LINK,
+  MEANS_NOT_A_COUNTED_DEBT,
   MEANS_OUTCOME_ANSWER_PAGE,
   MEANS_OUTCOME_NO_PRESUMPTION,
   MEANS_OUTCOME_PRESUMPTION,
@@ -48,6 +49,10 @@ import {
   serve,
   type Body,
 } from './meansTestPageHelpers';
+
+// The server's sentence for a debt two loans name (means_page.py): a plain save failure here,
+// with no copy.ts twin
+const DEBT_NAMED_TWICE = 'Each debt on your Amounts Owed step can be named by one loan only.';
 
 /** Hold the GET until the returned function is called */
 function serveHeldRead(saved: MeansPage) {
@@ -486,6 +491,13 @@ describe('MeansTestPage', () => {
     expect(screen.queryByText(MEANS_TOO_LONG)).not.toBeInTheDocument();
   });
 
+  it('the line 3 purpose box stops at 200 letters', async () => {
+    serve(priyaPage());
+    renderPage();
+    await ready();
+    expect(field('means_line_3_0_purpose').maxLength).toBe(200);
+  });
+
   it("an amount the box can't read is shown with its reason and saved as unanswered", async () => {
     const sent = serve(priyaPage(), { reply: priyaPage() });
     renderPage();
@@ -705,6 +717,27 @@ describe('MeansTestPage', () => {
     expect(gapRegion().textContent).toBe('');
   });
 
+  it("a line 3 total above the spouse's income is the first gap shown", async () => {
+    const page = priyaPage();
+    page.answers.line_3_answer = 'yes';
+    page.answers.line_3_rows = [{ purpose: 'Demo', amount: '1800.01' }];
+    serve(page);
+    const { unmount } = renderPage();
+    await ready();
+    expect(gapRegion()).toHaveTextContent(
+      "Line 3 can't be more than $1,800.00, your spouse's income on Form 122A-1, Column B."
+    );
+    unmount();
+
+    const equal = priyaPage();
+    equal.answers.line_3_answer = 'yes';
+    equal.answers.line_3_rows = [{ purpose: 'Demo', amount: '1800.00' }];
+    serve(equal);
+    renderPage();
+    await ready();
+    expect(gapRegion().textContent).toBe('');
+  });
+
   it('renders the information-not-advice disclaimer', async () => {
     serve(meansPage());
     const { unmount } = renderPage();
@@ -765,7 +798,10 @@ describe('after the intake changes elsewhere (F7)', () => {
         sent.push((await request.json()) as Body);
         return sent.length === 1
           ? HttpResponse.json(
-              { debts: { '0': { id: ["This isn't one of your secured debts."] } } },
+              {
+                debts: { '0': { id: ["This isn't one of your secured debts."] } },
+                line_3_rows: { '0': { purpose: [MEANS_TOO_LONG] } },
+              },
               { status: 400 }
             )
           : HttpResponse.json(latest);
@@ -780,6 +816,8 @@ describe('after the intake changes elsewhere (F7)', () => {
     expect(await within(gapRegion()).findByText(MEANS_PAGE_UPDATED)).toBeInTheDocument();
     expect(screen.queryByText(MEANS_PAGE_SAVE_FAILED)).toBeNull();
     expect(reads).toBe(2);
+    // the box the same 400 refused keeps its sentence through the second read
+    expect(field('means_line_3_0_purpose')).toHaveAccessibleDescription(MEANS_TOO_LONG);
     expect(field('means_line_17').value).toBe('5');
     expect(selectNamed('means_debt_13_payments_left').value).toBe('20');
     expect(screen.queryByRole('region', { name: 'Kestrel Auto Finance' })).toBeNull();
@@ -812,7 +850,10 @@ describe('after the intake changes elsewhere (F7)', () => {
         sent.push((await request.json()) as Body);
         return sent.length === 1
           ? HttpResponse.json(
-              { vehicle_claims: { 'asset-8': ["This isn't one of the vehicles on line 11."] } },
+              {
+                vehicle_claims: { 'asset-8': ["This isn't one of the vehicles on line 11."] },
+                line_3_rows: { '0': { purpose: [MEANS_TOO_LONG] } },
+              },
               { status: 400 }
             )
           : HttpResponse.json(latest);
@@ -823,9 +864,58 @@ describe('after the intake changes elsewhere (F7)', () => {
     await userEvent.click(radio('means_vehicle_8_claimed', 'no'));
     await pressContinue();
     expect(await within(gapRegion()).findByText(MEANS_PAGE_UPDATED)).toBeInTheDocument();
+    expect(field('means_line_3_0_purpose')).toHaveAccessibleDescription(MEANS_TOO_LONG);
     await pressContinue();
     await waitFor(() => expect(sent).toHaveLength(2));
     expect(sent[1].vehicle_claims).toEqual({ 'asset-7': 'yes' });
+  });
+
+  it("a 400 that names a gone row and refuses a box shows the box's sentence at once", async () => {
+    const latest = priyaPage();
+    let reads = 0;
+    server.use(
+      http.get(URL, () => {
+        reads += 1;
+        return HttpResponse.json(latest);
+      }),
+      http.put(URL, () =>
+        HttpResponse.json(
+          {
+            debts: { '0': { id: [MEANS_NOT_A_COUNTED_DEBT] } },
+            line_3_rows: { '0': { purpose: [MEANS_TOO_LONG] } },
+          },
+          { status: 400 }
+        )
+      )
+    );
+    renderPage();
+    await ready();
+    await pressContinue();
+
+    expect(await within(gapRegion()).findByText(MEANS_PAGE_UPDATED)).toBeInTheDocument();
+    expect(field('means_line_3_0_purpose')).toHaveAccessibleDescription(MEANS_TOO_LONG);
+    expect(screen.queryByText(MEANS_PAGE_SAVE_FAILED)).toBeNull();
+    expect(reads).toBe(2);
+  });
+
+  it('a shape error on a debts key is a save failure, not an intake change', async () => {
+    let reads = 0;
+    server.use(
+      http.get(URL, () => {
+        reads += 1;
+        return HttpResponse.json(priyaPage());
+      }),
+      http.put(URL, () =>
+        HttpResponse.json({ spouse_loans: { '0': { debt: [DEBT_NAMED_TWICE] } } }, { status: 400 })
+      )
+    );
+    renderPage();
+    await ready();
+    await pressContinue();
+
+    expect(await screen.findByText(MEANS_PAGE_SAVE_FAILED)).toBeInTheDocument();
+    expect(screen.queryByText(MEANS_PAGE_UPDATED)).toBeNull();
+    expect(reads).toBe(1);
   });
 
   it('a reply that lists a new secured debt asks its questions', async () => {

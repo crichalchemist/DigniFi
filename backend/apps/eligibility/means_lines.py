@@ -50,7 +50,7 @@ LINE_KEYS = (
     "35_answer", "35_total", "35", "36_answer", "36_payment", "36_multiplier", "36",
     "37", "38", "39a", "39b", "39c", "39d", "40", "41a", "41b", "42", "43", "page_1",
 )  # fmt: skip
-ROW_KEYS = ("3", "9b", "13b", "13e", "33d", "34")
+ROW_KEYS = ("3", "9b", "13b", "13e", "33d", "34", "43")
 
 CENT = Decimal("0.01")
 ZERO = Decimal("0.00")
@@ -170,6 +170,10 @@ class MeansInputs:
     line_36_answer: str | None = None
     line_36_payment: Decimal | None = None
     line_43_answer: str | None = None
+    # Form 122A-1 Column B: the spouse's CMI, None unless the filer lives with their spouse (R7)
+    spouse_cmi: Decimal | None = None
+    # line 43's circumstances as the page stores them, every row kept so numbering matches (R4)
+    line_43_rows: tuple[tuple[str, Decimal | None], ...] = ()
 
     def __repr__(self) -> str:
         return "MeansInputs(...)"
@@ -352,10 +356,17 @@ def _lines_1_to_4(inputs: MeansInputs) -> tuple[dict[str, Value], tuple[MeansRow
             unfinished = not rows or any(
                 not purpose.strip() or amount is None for purpose, amount in inputs.line_3_rows
             )
-        three = (
+        three_total = (
             MISSING
             if three_answer is MISSING or unfinished
             else _add(*(row.amount for row in rows))
+        )
+        # DIG-514 (R7): line 3 above the spouse's Column B can't be worked out; an equal total can
+        three = (
+            MISSING
+            if three_total is MISSING
+            or (inputs.spouse_cmi is not None and three_total > inputs.spouse_cmi)
+            else three_total
         )
     else:
         two, two_filing, three_answer, three = "no", SKIPPED, SKIPPED, ZERO
@@ -777,11 +788,17 @@ def work_out(inputs: MeansInputs, tables: MeansTables) -> MeansLines:
         values["page_1"] = comparison.outcome
         outcome = comparison.outcome
         reaches_43 = comparison.line_40 == "2" or comparison.line_42 == "yes"
+    rows_43 = tuple(MeansRow(text, _given(amount)) for text, amount in inputs.line_43_rows)
     if reaches_43 is None:
         values["43"] = MISSING
     elif reaches_43:
         answer_43 = _yes_no(inputs.line_43_answer, "line 43's answer")
-        values["43"] = MISSING if answer_43 is None else answer_43
+        # R4: a Yes with no circumstance, or one with no words or no amount, can't be worked out
+        unfinished_43 = answer_43 == "yes" and (
+            not rows_43
+            or any(not text.strip() or amount is None for text, amount in inputs.line_43_rows)
+        )
+        values["43"] = MISSING if answer_43 is None or unfinished_43 else answer_43
     else:
         values["43"] = SKIPPED
 
@@ -794,6 +811,20 @@ def work_out(inputs: MeansInputs, tables: MeansTables) -> MeansLines:
             "13e": rows["13e"],
             "33d": rows["33d"],
             "34": rows_34,
+            "43": rows_43,
         },
         outcome=outcome,
     )
+
+
+def line_43_rows_to_print(lines: MeansLines) -> tuple[MeansRow, ...]:
+    """Line 43's rows where the form reaches a Yes with every circumstance complete; else none.
+
+    `"yes"` is set only there (R4), so a printing row always has its words and its amount.
+    """
+    return lines.rows["43"] if lines.lines["43"] == "yes" else ()
+
+
+def missing_line(lines: MeansLines) -> bool:
+    """Whether a line the form reaches can't be worked out; a SKIPPED line never counts (R8)."""
+    return any(value is MISSING for value in lines.lines.values())

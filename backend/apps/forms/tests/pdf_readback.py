@@ -10,6 +10,7 @@ as the template page it copies, found through the form's parts. An attached shee
 widget: its pages are read line by line under its columns (read_sheets).
 """
 
+from collections.abc import Callable
 from dataclasses import dataclass, replace
 from functools import lru_cache
 from io import BytesIO
@@ -21,7 +22,7 @@ from django.conf import settings
 from pypdf.generic import ArrayObject, NameObject
 
 from apps.forms.schema import SheetSpec, load_schema
-from apps.forms.services.sheets import MARGIN
+from apps.forms.services.sheets import MARGIN, sheet_spec
 from apps.forms.services.widgets import TemplateWidget, page_count, template_widgets, widget_for
 
 _BOXES = ("CheckBox", "RadioButton")
@@ -201,9 +202,13 @@ def read_drawn(
 _SHEET_TITLE = "(attached sheet)"
 
 
+def _words(page: pymupdf.Page) -> str:
+    return " ".join(page.get_text().split())
+
+
 def _is_sheet(page: pymupdf.Page) -> bool:
     """Whether the page is an attached sheet's: its header's title says so."""
-    return _SHEET_TITLE in " ".join(page.get_text().split())
+    return _SHEET_TITLE in _words(page)
 
 
 @dataclass(frozen=True)
@@ -231,12 +236,29 @@ def read_sheets(pdf_bytes: bytes, spec: SheetSpec) -> list[SheetPage]:
     kept apart in `lines`. A character's box is MuPDF's, from its font's ascender to its
     descender.
     """
+    return _sheet_pages(pdf_bytes, spec, _is_sheet)
+
+
+def read_sheet_part(pdf_bytes: bytes, part: dict) -> list[SheetPage]:
+    """
+    One group's attached sheet pages, read as read_sheets reads them under the part's own
+    columns: the pages whose header names the part's title (3h3 plan R19), so a form with
+    several sheets is read group by group. Every title is distinct, "…, line 3" being no
+    substring of "…, line 33d (attached sheet)".
+    """
+    title = f"{part['title']} {_SHEET_TITLE}"
+    return _sheet_pages(pdf_bytes, sheet_spec(part), lambda page: title in _words(page))
+
+
+def _sheet_pages(
+    pdf_bytes: bytes, spec: SheetSpec, wanted: Callable[[pymupdf.Page], bool]
+) -> list[SheetPage]:
     edges = [MARGIN, MARGIN + spec.line_width]
     for column in spec.columns:
         edges.append(edges[-1] + column.width)
     pages = []
     for page in pymupdf.open("pdf", pdf_bytes):
-        if not _is_sheet(page):
+        if not wanted(page):
             continue
         characters = [c for c in _characters(page) if c.font == "Helvetica"]
         baselines: dict[float, list[_Character]] = {}

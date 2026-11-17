@@ -517,3 +517,37 @@ def test_the_gaps_come_in_the_pages_order():
         "Describe the property that secures your spouse's loan from Demo Lender B.",
         "Enter the monthly payment on your spouse's loan from Demo Lender B.",
     ]
+
+    # case 5: line 3's cap gap comes after line 3's own gaps and before the spouse's vehicles
+    over_the_cap = _unanswered_page(
+        line_3_answer="yes", line_3_rows=[{"purpose": "Demo", "amount": "1800.01"}]
+    )
+    assert means_test_gaps(inputs, TABLES, over_the_cap)[:3] == [
+        "Line 3 can't be more than $1,800.00, your spouse's income on Form 122A-1, Column B.",
+        "Answer whether your spouse has a vehicle that isn't on your property list.",
+        "Answer whether your spouse owes a loan on your home, a vehicle or other property.",
+    ]
+
+
+CAP_SENTENCE = "Line 3 can't be more than $1,800.00, your spouse's income on Form 122A-1, Column B."
+
+
+def test_a_line_3_total_above_the_spouses_income_is_a_gap_after_line_3s_own_gaps_and_at_it_is_not():
+    rows = [{"purpose": "Demo", "amount": "1800.01"}]
+    assert _gaps(line_3_rows=rows) == [CAP_SENTENCE]
+    # the total, not each row, is compared
+    two_rows = [{"purpose": "Demo", "amount": "900.00"}, {"purpose": "Demo", "amount": "900.01"}]
+    assert _gaps(line_3_rows=two_rows) == [CAP_SENTENCE]
+    assert _gaps(line_3_rows=[{"purpose": "Demo", "amount": "1800.00"}]) == []
+    # a row missing its amount gives the row gap and never the cap gap
+    row_gap = [
+        "Enter what your spouse's income was used for, and the amount, on each row of line 3."
+    ]
+    missing = [{"purpose": "Demo", "amount": "1800.01"}, {"purpose": "Demo", "amount": None}]
+    assert _gaps(line_3_rows=missing) == row_gap
+    # a blank purpose beside a total above the cap gives the row gap only
+    blank = [{"purpose": " ", "amount": "1800.01"}]
+    assert _gaps(line_3_rows=blank) == row_gap
+    # no figure for the spouse, no cap
+    no_figure = replace(PRIYA, spouse_cmi=None)
+    assert _gaps(no_figure, line_3_rows=rows) == []
