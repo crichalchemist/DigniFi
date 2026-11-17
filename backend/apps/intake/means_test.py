@@ -71,8 +71,8 @@ MEANS_EXPLANATION_TOO_LONG = "This explanation is too long to print with line 43
 MEANS_EXPLANATION_LETTER = "This explanation has a letter Form 122A-2 can't print. Change it."
 # DRAFT: counsel C-33
 MEANS_POLISH_IDENTIFIER = (
-    "This explanation holds your name, Social Security number, account number, phone number, "
-    "email or address. Take it out first."
+    "This explanation holds your name, login name, Social Security number, account number, "
+    "phone number, email or address. Take it out first."
 )
 # DRAFT: counsel C-33
 MEANS_POLISH_PHRASE = (

@@ -539,7 +539,7 @@ export const MEANS_POLISH_TOO_MANY =
 
 // DRAFT: counsel C-33
 export const MEANS_POLISH_IDENTIFIER =
-  'This explanation holds your name, Social Security number, account number, phone number, email or address. Take it out first.';
+  'This explanation holds your name, login name, Social Security number, account number, phone number, email or address. Take it out first.';
 
 // DRAFT: counsel C-33
 export const MEANS_POLISH_PHRASE =

@@ -719,7 +719,7 @@ const EXACT_WORDS: [string, string][] = [
   ['MEANS_POLISH_TOO_MANY', 'You asked for rewrites too quickly. Wait a minute and try again.'],
   [
     'MEANS_POLISH_IDENTIFIER',
-    'This explanation holds your name, Social Security number, account number, phone number, email or address. Take it out first.',
+    'This explanation holds your name, login name, Social Security number, account number, phone number, email or address. Take it out first.',
   ],
   [
     'MEANS_POLISH_PHRASE',
