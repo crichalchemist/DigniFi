@@ -6,7 +6,7 @@
  * Generate asks for the UPL acknowledgment first, as Generate All does.
  */
 
-import { useId, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '../common';
 import { UPLConfirmationModal } from '../compliance';
@@ -70,9 +70,27 @@ export function FormCard({
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [confirmingPair, setConfirmingPair] = useState(false);
   const confirmId = useId();
+  const noticeId = useId();
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const confirmButtonRef = useRef<HTMLButtonElement>(null);
+  // Set when the confirm closes, so focus returns to the Mark as Filed trigger once it is back
+  const returnFocus = useRef(false);
   const navigate = useNavigate();
   const metadata = FORM_TYPE_METADATA[formType];
   const status = generatedForm?.status ?? 'pending';
+
+  // The confirm takes focus when it opens; when it closes, focus goes back to the trigger if the
+  // card is still unfiled (the pattern of UPLConfirmationModal)
+  useEffect(() => {
+    if (confirmingPair) {
+      confirmButtonRef.current?.focus();
+      return;
+    }
+    if (returnFocus.current && !isMarkingFiled) {
+      returnFocus.current = false;
+      triggerRef.current?.focus();
+    }
+  }, [confirmingPair, isMarkingFiled, status]);
 
   const handleAction = async (action: () => Promise<void>) => {
     setIsLoading(true);
@@ -93,6 +111,7 @@ export function FormCard({
   };
 
   const handleMarkPairFiled = async () => {
+    returnFocus.current = true;
     setConfirmingPair(false);
     setIsMarkingFiled(true);
     await handleAction(async () => {
@@ -159,6 +178,7 @@ export function FormCard({
           generatedForm &&
           !confirmingPair && (
             <Button
+              ref={triggerRef}
               size="sm"
               variant="outline"
               onClick={() => (pair ? setConfirmingPair(true) : handleMarkFiled(generatedForm.id))}
@@ -169,36 +189,52 @@ export function FormCard({
             </Button>
           )}
 
-        {confirmingPair && pair && generatedForm && (
-          <div className="form-card-confirm" role="group" aria-labelledby={confirmId}>
-            {pair.kind === 'both' ? (
-              <p id={confirmId}>{MEANS_PAIR_CONFIRM}</p>
-            ) : (
-              <>
-                <p id={confirmId}>
-                  <strong>{pair.partnerLabel}</strong>
-                </p>
-                <p>{pair.partnerNotice}</p>
-              </>
-            )}
-            <div className="form-card-confirm-buttons">
-              <Button
-                size="sm"
-                variant="primary"
-                onClick={() => {
-                  if (pair.kind === 'both') return handleMarkPairFiled();
-                  setConfirmingPair(false);
-                  return handleMarkFiled(generatedForm.id);
-                }}
-              >
-                {pair.kind === 'both' ? MEANS_PAIR_MARK_BOTH : MEANS_PAIR_MARK_ALONE}
-              </Button>
-              <Button size="sm" variant="outline" onClick={() => setConfirmingPair(false)}>
-                {MEANS_PAIR_CANCEL}
-              </Button>
+        {confirmingPair &&
+          (status === 'generated' || status === 'downloaded') &&
+          pair &&
+          generatedForm && (
+            <div
+              className="form-card-confirm"
+              role="group"
+              aria-labelledby={pair.kind === 'both' ? confirmId : `${confirmId} ${noticeId}`}
+            >
+              {pair.kind === 'both' ? (
+                <p id={confirmId}>{MEANS_PAIR_CONFIRM}</p>
+              ) : (
+                <>
+                  <p id={confirmId}>
+                    <strong>{pair.partnerLabel}</strong>
+                  </p>
+                  <p id={noticeId}>{pair.partnerNotice}</p>
+                </>
+              )}
+              <div className="form-card-confirm-buttons">
+                <Button
+                  ref={confirmButtonRef}
+                  size="sm"
+                  variant="primary"
+                  onClick={() => {
+                    if (pair.kind === 'both') return handleMarkPairFiled();
+                    returnFocus.current = true;
+                    setConfirmingPair(false);
+                    return handleMarkFiled(generatedForm.id);
+                  }}
+                >
+                  {pair.kind === 'both' ? MEANS_PAIR_MARK_BOTH : MEANS_PAIR_MARK_ALONE}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    returnFocus.current = true;
+                    setConfirmingPair(false);
+                  }}
+                >
+                  {MEANS_PAIR_CANCEL}
+                </Button>
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
         {status === 'filed' && (
           <span className="form-card-filed-check" aria-label="Filed with court">

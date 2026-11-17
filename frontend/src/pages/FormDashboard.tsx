@@ -336,15 +336,20 @@ export function FormDashboard() {
     if (!session || markingPair.current) return;
     markingPair.current = true;
     try {
-      await api.forms.markPairFiled(session.id);
-    } catch (err) {
-      setFormRefusal(formTypeOf(err) ?? pressed, refusalOf(err, ERROR_GENERIC));
-      return;
+      try {
+        await api.forms.markPairFiled(session.id);
+      } catch (err) {
+        // The answer replaces what either card showed before: only the form it names refuses now
+        for (const formType of MEANS_PAIR) setFormRefusal(formType, undefined);
+        setFormRefusal(formTypeOf(err) ?? pressed, refusalOf(err, ERROR_GENERIC));
+        return;
+      }
+      for (const formType of MEANS_PAIR) setFormRefusal(formType, undefined);
+      await loadForms();
     } finally {
+      // Released only after the list is reloaded, so a press during the reload sends nothing
       markingPair.current = false;
     }
-    for (const formType of MEANS_PAIR) setFormRefusal(formType, undefined);
-    await loadForms();
   };
 
   if (!session) {
@@ -383,7 +388,7 @@ export function FormDashboard() {
   const linkTo = linksInPageOrder(noticeLinksIntake);
   const errorLink = error ? linkTo(error) : undefined;
   const refusalLink = generateAllRefusal ? linkTo(generateAllRefusal) : undefined;
-  // The pair's refusals are information (the hold), so they show apart from the others, which
+  // The pair's refusals are information (a gap, a table or a line the calculator can't work out, §6), so they show apart from the others, which
   // are errors; the others' links come first, as they sit first on the page
   const isPair = (e: GenerateAllError) => MEANS_PAIR.includes(e.form_type as FormType);
   const otherErrors = generationErrors.filter((e) => !isPair(e));
@@ -434,7 +439,7 @@ export function FormDashboard() {
     if (!partner || partner.status !== 'filed') return { kind: 'both' };
     const partnerNotice = noticeOf(partner);
     return partnerNotice
-      ? { kind: 'alone', partnerLabel: partner.form_type_display, partnerNotice }
+      ? { kind: 'alone', partnerLabel: FORM_TYPE_METADATA[partner.form_type].label, partnerNotice }
       : undefined;
   };
   const errorList = (errors: GenerateAllError[], links: FormRefusal['link'][]) => (

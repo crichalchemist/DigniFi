@@ -398,7 +398,7 @@ describe('FormCard', () => {
       await user.click(screen.getByRole('button', { name: 'Mark as Filed' }));
 
       const confirm = screen.getByRole('group', {
-        name: 'Form 122A-2 - Chapter 7 Means Test Calculation',
+        name: `Form 122A-2 - Chapter 7 Means Test Calculation ${MEANS_FILED_BEFORE_122A2}`,
       });
       expect(within(confirm).getByText(MEANS_FILED_BEFORE_122A2)).toBeInTheDocument();
       expect(onMarkFiled).not.toHaveBeenCalled();
@@ -408,6 +408,94 @@ describe('FormCard', () => {
       expect(onMarkFiled).toHaveBeenCalledTimes(1);
       expect(onMarkFiled).toHaveBeenCalledWith(pairForm.id);
       expect(onMarkPairFiled).not.toHaveBeenCalled();
+    });
+
+    // A keyboard or screen-reader filer must land in the confirm and come back to the trigger
+    it('moves focus to the confirm when it opens, and back to Mark as Filed on cancel', async () => {
+      const user = userEvent.setup();
+      render(
+        <MemoryRouter>
+          <FormCard
+            {...pairProps}
+            generatedForm={pairForm}
+            pair={{ kind: 'both' }}
+            onMarkPairFiled={vi.fn().mockResolvedValue(undefined)}
+          />
+        </MemoryRouter>
+      );
+
+      await user.click(screen.getByRole('button', { name: 'Mark as Filed' }));
+      expect(screen.getByRole('button', { name: MEANS_PAIR_MARK_BOTH })).toHaveFocus();
+
+      await user.click(screen.getByRole('button', { name: MEANS_PAIR_CANCEL }));
+      expect(screen.getByRole('button', { name: 'Mark as Filed' })).toHaveFocus();
+    });
+
+    it('moves focus to the alone confirm, and back to Mark as Filed after it resolves unfiled', async () => {
+      const user = userEvent.setup();
+      render(
+        <MemoryRouter>
+          <FormCard
+            {...pairProps}
+            generatedForm={pairForm}
+            pair={{
+              kind: 'alone',
+              partnerLabel: 'Form 122A-2 - Chapter 7 Means Test Calculation',
+              partnerNotice: MEANS_FILED_BEFORE_122A2,
+            }}
+          />
+        </MemoryRouter>
+      );
+
+      await user.click(screen.getByRole('button', { name: 'Mark as Filed' }));
+      expect(screen.getByRole('button', { name: MEANS_PAIR_MARK_ALONE })).toHaveFocus();
+
+      await user.click(screen.getByRole('button', { name: MEANS_PAIR_MARK_ALONE }));
+      // The parent refused and left the card unfiled, so the trigger is back and has focus
+      expect(await screen.findByRole('button', { name: 'Mark as Filed' })).toHaveFocus();
+    });
+
+    it('moves focus back to Mark as Filed after both are marked and the card stays unfiled', async () => {
+      const user = userEvent.setup();
+      render(
+        <MemoryRouter>
+          <FormCard
+            {...pairProps}
+            generatedForm={pairForm}
+            pair={{ kind: 'both' }}
+            onMarkPairFiled={vi.fn().mockResolvedValue(undefined)}
+          />
+        </MemoryRouter>
+      );
+
+      await user.click(screen.getByRole('button', { name: 'Mark as Filed' }));
+      await user.click(screen.getByRole('button', { name: MEANS_PAIR_MARK_BOTH }));
+
+      expect(await screen.findByRole('button', { name: 'Mark as Filed' })).toHaveFocus();
+    });
+
+    it('shows no confirm once the card is no longer unfiled', async () => {
+      const user = userEvent.setup();
+      const props = {
+        ...pairProps,
+        pair: { kind: 'both' } as const,
+        onMarkPairFiled: vi.fn().mockResolvedValue(undefined),
+      };
+      const { rerender } = render(
+        <MemoryRouter>
+          <FormCard {...props} generatedForm={pairForm} />
+        </MemoryRouter>
+      );
+      await user.click(screen.getByRole('button', { name: 'Mark as Filed' }));
+      expect(screen.getByRole('group')).toBeInTheDocument();
+
+      rerender(
+        <MemoryRouter>
+          <FormCard {...props} generatedForm={{ ...pairForm, status: 'filed' }} />
+        </MemoryRouter>
+      );
+
+      expect(screen.queryByRole('group')).not.toBeInTheDocument();
     });
 
     it('a filed partner that agrees marks alone with no confirm', async () => {

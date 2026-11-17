@@ -1981,6 +1981,79 @@ describe('FormDashboard', () => {
         expect(within(partner).queryByText(UNFINISHED)).not.toBeInTheDocument();
       });
 
+      // The second press succeeds, so both forms are filed; neither may keep the first press's
+      // refusal or its link
+      it('a pair press that succeeds clears the refusal an earlier press left on either card', async () => {
+        let presses = 0;
+        packetWith({ outcome: 'cannot_work_out', family_size: 4 });
+        server.use(
+          http.get('http://localhost:8000/api/forms/', () =>
+            HttpResponse.json(
+              presses >= 2
+                ? [
+                    storedForm('form_122a1', 7, { status: 'filed' }),
+                    storedForm('form_122a2', 8, { status: 'filed' }),
+                  ]
+                : [storedForm('form_122a1', 7), storedForm('form_122a2', 8)]
+            )
+          ),
+          http.post('http://localhost:8000/api/forms/mark_pair_filed/', () => {
+            presses += 1;
+            return presses === 1
+              ? HttpResponse.json(
+                  { form_type: 'form_122a2', error: MEANS_GAP_LINE_43, page: '/means-test' },
+                  { status: 422 }
+                )
+              : HttpResponse.json({ forms: [], message: 'marked' });
+          })
+        );
+        renderFormDashboard();
+
+        await pressAndConfirmBoth(CARD_1);
+        const named = screen.getByRole('article', { name: CARD_2 });
+        expect(await within(named).findByText(MEANS_GAP_LINE_43)).toBeInTheDocument();
+
+        await pressAndConfirmBoth(CARD_1);
+
+        await waitFor(() => {
+          for (const name of [CARD_1, CARD_2]) {
+            const card = screen.getByRole('article', { name });
+            expect(within(card).getByLabelText('Filed with court')).toBeInTheDocument();
+            expect(within(card).queryByText(MEANS_GAP_LINE_43)).not.toBeInTheDocument();
+            expect(within(card).queryByRole('link')).not.toBeInTheDocument();
+          }
+        });
+      });
+
+      it('a pair press refused again shows only the new refusal, not the earlier one on the partner', async () => {
+        let presses = 0;
+        packetWith({ outcome: 'cannot_work_out', family_size: 4 });
+        formsWith(storedForm('form_122a1', 7), storedForm('form_122a2', 8));
+        server.use(
+          http.post('http://localhost:8000/api/forms/mark_pair_filed/', () => {
+            presses += 1;
+            return HttpResponse.json(
+              {
+                form_type: presses === 1 ? 'form_122a1' : 'form_122a2',
+                error: presses === 1 ? MEANS_GAP_LINE_43 : MEANS_LINE_MISSING,
+              },
+              { status: 422 }
+            );
+          })
+        );
+        renderFormDashboard();
+
+        await pressAndConfirmBoth(CARD_1);
+        const first = screen.getByRole('article', { name: CARD_1 });
+        expect(await within(first).findByText(MEANS_GAP_LINE_43)).toBeInTheDocument();
+
+        await pressAndConfirmBoth(CARD_1);
+
+        const second = screen.getByRole('article', { name: CARD_2 });
+        expect(await within(second).findByText(MEANS_LINE_MISSING)).toBeInTheDocument();
+        expect(within(first).queryByText(MEANS_GAP_LINE_43)).not.toBeInTheDocument();
+      });
+
       it('marking both reloads the forms and shows both filed', async () => {
         let filed = false;
         packetWith({ outcome: 'cannot_work_out', family_size: 4 });
@@ -2040,8 +2113,9 @@ describe('FormDashboard', () => {
         const card = await screen.findByRole('article', { name: CARD_1 });
         await userEvent.click(within(card).getByRole('button', { name: 'Mark as Filed' }));
 
+        // One name per form on the page: the partner is named as its own card is
         const group = within(card).getByRole('group', {
-          name: 'Form 122A-2 - Chapter 7 Means Test Calculation',
+          name: `${CARD_2} ${MEANS_FILED_BEFORE_122A2}`,
         });
         expect(within(group).getByText(MEANS_FILED_BEFORE_122A2)).toBeInTheDocument();
 
