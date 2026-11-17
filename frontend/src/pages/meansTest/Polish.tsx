@@ -180,7 +180,13 @@ export function Polish({
       {row.original_explanation != null && (
         <>
           <p className="form-help-text">{MEANS_POLISH_HOLDS_REWRITE}</p>
-          <Button type="button" variant="outline" onClick={onRestore}>
+          {/* Held while a review is open: an approval then would record AI text as the filer's own */}
+          <Button
+            type="button"
+            variant="outline"
+            disabled={pending !== undefined}
+            onClick={onRestore}
+          >
             {MEANS_POLISH_RESTORE}
           </Button>
         </>

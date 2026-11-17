@@ -19,6 +19,9 @@ import {
   MEANS_POLISH_APPROVE,
   MEANS_POLISH_BLANK,
   MEANS_POLISH_CONSENT_HEADING,
+  MEANS_POLISH_CONSENT_KEEP,
+  MEANS_POLISH_CONSENT_RETENTION,
+  MEANS_POLISH_CONSENT_WHAT,
   MEANS_POLISH_DECLINE,
   MEANS_POLISH_DISCLOSURE,
   MEANS_POLISH_HOLDS_REWRITE,
@@ -100,6 +103,11 @@ describe('line 43 AI polish', () => {
     await userEvent.click(polishButton());
     expect(consentGroup()).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: MEANS_POLISH_CONSENT_HEADING })).toHaveFocus();
+    // The panel names the vendor, states the dated retention, and says what stays with the filer
+    const panel = within(consentGroup() as HTMLElement);
+    expect(panel.getByText(MEANS_POLISH_CONSENT_WHAT)).toBeInTheDocument();
+    expect(panel.getByText(MEANS_POLISH_CONSENT_RETENTION)).toBeInTheDocument();
+    expect(panel.getByText(MEANS_POLISH_CONSENT_KEEP)).toBeInTheDocument();
     expect(polished).toHaveLength(0);
 
     await press(MEANS_POLISH_DECLINE);
@@ -205,6 +213,7 @@ describe('line 43 AI polish', () => {
     expect(box()).toHaveValue('Demo rewrite words, edited');
     expect(box()).toBeEnabled();
     expect(rewriteBox()).toBeNull();
+    expect(screen.getByText(MEANS_POLISH_APPROVED)).toHaveAttribute('role', 'status');
     await pressContinue();
     await waitFor(() => expect(saved).toHaveLength(1));
     const rows = saved[0].line_43_circumstances as Record<string, unknown>[];
@@ -237,6 +246,31 @@ describe('line 43 AI polish', () => {
     await pressContinue();
     await waitFor(() => expect(saved).toHaveLength(1));
     const rows = saved[0].line_43_circumstances as Record<string, unknown>[];
+    expect(rows[0].original_explanation).toBe('Demo words');
+  });
+
+  it("my own words can't be put back while a second review is open, so approving never records AI text as mine", async () => {
+    servePolish();
+    const saved = serve(pageWith({ explanation: 'Demo words' }));
+    renderPage();
+    await ready();
+    await polishFirstRow();
+    await press(MEANS_POLISH_APPROVE);
+
+    servePolish({ body: { rewrite: 'Demo second rewrite' } });
+    await userEvent.click(polishButton());
+    await screen.findByRole('textbox', { name: MEANS_POLISH_REWRITE_LABEL });
+    const restore = screen.getByRole('button', { name: MEANS_POLISH_RESTORE });
+    expect(restore).toBeDisabled();
+    await userEvent.click(restore);
+    expect(screen.getByText(MEANS_POLISH_HOLDS_REWRITE)).toBeInTheDocument();
+
+    await press(MEANS_POLISH_APPROVE);
+    expect(screen.getByRole('button', { name: MEANS_POLISH_RESTORE })).toBeEnabled();
+    await pressContinue();
+    await waitFor(() => expect(saved).toHaveLength(1));
+    const rows = saved[0].line_43_circumstances as Record<string, unknown>[];
+    expect(rows[0].explanation).toBe('Demo second rewrite');
     expect(rows[0].original_explanation).toBe('Demo words');
   });
 
