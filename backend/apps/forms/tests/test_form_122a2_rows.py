@@ -18,8 +18,7 @@ from apps.districts.dated_tables import fill_date
 from apps.districts.models import District
 from apps.eligibility.means_inputs import page_answers, read_inputs, read_tables
 from apps.eligibility.means_lines import NO_PRESUMPTION, work_out
-from apps.forms.schema import load_schema
-from apps.forms.services.fill_resolver import resolve_parts
+from apps.forms.registry import build_parts
 from apps.forms.services.means_cells import LINE_43_POINTER
 from apps.forms.services.pdf_filler import PDFFormFiller
 from apps.forms.services.sheets import sheet_spec
@@ -114,8 +113,7 @@ def _fresh(session):
 
 
 def _document(session):
-    # Below the gate; Task 7 moves these tests to build_parts unchanged (R18).
-    return resolve_parts(load_schema("form_122a2"), _fresh(session))
+    return build_parts("form_122a2", _fresh(session))
 
 
 def _drawn(session):
