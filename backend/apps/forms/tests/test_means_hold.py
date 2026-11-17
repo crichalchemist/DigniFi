@@ -17,7 +17,7 @@ from apps.districts.means_standards import NO_MEANS_TEST_TABLE
 from apps.districts.models import District, Section104Amounts
 from apps.eligibility.cmi import MEMBER_UNANSWERED
 from apps.eligibility.means_inputs import read_inputs, read_tables
-from apps.eligibility.means_lines import line_30_cap, work_out
+from apps.eligibility.means_lines import MeansRow, line_30_cap, work_out
 from apps.eligibility.models import MeansTest
 from apps.eligibility.services import MeansTestCalculator
 from apps.forms.models import GeneratedForm
@@ -567,7 +567,11 @@ def test_line_43_never_changes_a_box_or_the_result(above, band):
     assert {k: v for k, v in after.lines.items() if k != "43"} == {
         k: v for k, v in before.lines.items() if k != "43"
     }
-    assert after.rows == before.rows
+    assert {k: v for k, v in after.rows.items() if k != "43"} == {
+        k: v for k, v in before.rows.items() if k != "43"
+    }
+    assert before.rows["43"] == ()
+    assert after.rows["43"] == (MeansRow("Demo reason", Decimal("100000.00")),)
     for key in ("40", "42", "page_1"):
         assert after.lines[key] == before.lines[key]
 

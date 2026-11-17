@@ -6,6 +6,9 @@ sets into the calculator's `MeansTables`. This module imports nothing from `apps
 `apps.eligibility.services`.
 """
 
+from collections.abc import Iterator
+from contextlib import contextmanager
+from contextvars import ContextVar
 from datetime import date
 from decimal import Decimal
 
@@ -16,16 +19,18 @@ from apps.districts.means_standards import (
     means_standards_in_force,
     section_104_in_force,
 )
-from apps.eligibility.cmi import household_cmi, household_members
+from apps.eligibility.cmi import household_cmi, household_members, spouse_monthly_income
 from apps.eligibility.means_lines import (
     HealthInsurance,
     MeansInputs,
+    MeansLines,
     MeansTableKeyMissing,
     MeansTables,
     OptIn,
     SecuredDebt,
     Vehicle,
     is_spouse_ref,
+    work_out,
 )
 from apps.intake.asset_lines import exemption_item_name, ordered_assets
 from apps.intake.claim_rows import claim_rows
@@ -302,7 +307,42 @@ def read_inputs(session) -> MeansInputs:
         line_36_answer=answers["line_36_answer"],
         line_36_payment=_decimal(answers["line_36_payment"]),
         line_43_answer=answers["line_43_answer"],
+        # already read inside household_cmi above, so its Income step gap is raised there first
+        spouse_cmi=spouse_monthly_income(session),
+        line_43_rows=tuple(
+            (row.get("explanation") or "", _decimal(row.get("amount")))
+            for row in answers["line_43_circumstances"]
+        ),
     )
+
+
+# Session pk -> its worked-out lines, while one_read_of_means is open (exemption_items' shape).
+_ONE_READ: ContextVar[dict | None] = ContextVar("one_read_of_means", default=None)
+
+
+@contextmanager
+def one_read_of_means() -> Iterator[None]:
+    """Within the block, means_lines_for works each session's lines out once (R3)."""
+    token = _ONE_READ.set({})
+    try:
+        yield
+    finally:
+        _ONE_READ.reset(token)
+
+
+def means_lines_for(session) -> MeansLines:
+    """The calculator's result, read once per resolve while `one_read_of_means` is open and never
+    stored on the session (H19).
+
+    Raises what `read_inputs`, `read_tables` and `work_out` raise; nothing is caught here.
+    """
+    held = _ONE_READ.get()
+    if held is not None and session.pk in held:
+        return held[session.pk]
+    lines = work_out(read_inputs(session), read_tables(fill_date())[0])
+    if held is not None:
+        held[session.pk] = lines
+    return lines
 
 
 def _by_size(figures, kind: str, key: str | None = None) -> dict:
