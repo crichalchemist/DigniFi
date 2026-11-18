@@ -95,12 +95,58 @@ describe('toPutBody', () => {
     state.answers.vehicle_claims = { ...state.answers.vehicle_claims, 'asset-8': 'no' };
     expect(toPutBody(state).vehicle_claims).toEqual({ 'asset-7': 'yes', 'asset-8': 'no' });
   });
+
+  it('sends original_explanation as null for a row without one and as stored for a row with one', () => {
+    const page = priyaPage();
+    page.answers.line_43_circumstances = [
+      {
+        happened: '',
+        change: '',
+        choices: '',
+        papers: '',
+        amount: null,
+        explanation: 'Demo words',
+      },
+      {
+        happened: '',
+        change: '',
+        choices: '',
+        papers: '',
+        amount: null,
+        explanation: 'Demo rewrite',
+        original_explanation: 'Demo original',
+      },
+    ];
+    const state = fromReply(page);
+    // A row built in the browser before the key existed: fromReply already wrote null on the
+    // loaded rows, so only a row without the key tells toPutBody's own normalising apart
+    delete state.answers.line_43_circumstances[0].original_explanation;
+    const rows = toPutBody(state).line_43_circumstances!;
+    expect(rows[0]).toHaveProperty('original_explanation', null);
+    expect(rows[1].original_explanation).toBe('Demo original');
+  });
 });
 
 describe('fromReply', () => {
   it('gives each loaded line 3 row and circumstance a key by its place', () => {
     const state = fromReply(priyaPage());
     expect(state.answers.line_3_rows.map((row) => row._key)).toEqual(['loaded-0']);
+  });
+
+  it('reads a row without the key as null', () => {
+    const page = priyaPage();
+    page.answers.line_43_circumstances = [
+      {
+        happened: '',
+        change: '',
+        choices: '',
+        papers: '',
+        amount: null,
+        explanation: 'Demo words',
+      },
+    ];
+    const row = fromReply(page).answers.line_43_circumstances[0];
+    expect(row).toHaveProperty('original_explanation', null);
   });
 });
 

@@ -151,6 +151,8 @@ PROHIBITED_PHRASES = [
 
 **The Challenge:** A planned feature (not built) would use AI to refine user narratives for legal clarity. Could this constitute legal advice?
 
+> **Note (3h4, C-33):** Built in 3h4 as the line 43 polish: `docs/superpowers/specs/2026-11-17-forms-step3h4-design.md`. The rewrite is of one circumstance's explanation, requested by the filer, shown beside their own words, editable, and approved or declined by them.
+
 **Compliance Strategy:**
 
 1. **No Legal Judgment in Prompt**
@@ -165,6 +167,8 @@ PROHIBITED_PHRASES = [
    - User can edit AI output before approval
    - User cannot proceed without approval confirmation
 
+> **Note (3h4, C-33):** 3h4 reads 'cannot proceed without approval confirmation' as: no AI text proceeds without approval. A filer who declines, or never asks, goes on with their own words. The page never blocks on the rewrite.
+
 3. **Preserve Original Narrative**
 
    - Original user text stored alongside refined version
@@ -178,10 +182,14 @@ PROHIBITED_PHRASES = [
    The facts and circumstances are yours. The AI only improved phrasing.
    ```
 
+> **Note (3h4, C-33):** The disclosure shown is 'An AI service rewrote your explanation to make it clearer. Check that it says what you said, with nothing added and nothing left out, before you approve it.' It asks the filer to check, rather than asserting the facts are theirs, because the automated check (§5.1 item 5) is partial: it catches added or dropped figures, dated months and capitalized names, listed legal phrases added, and a rewrite under half the original's length, not a changed fact in other words. While the box holds an approved rewrite, the page says so under it and offers 'Put my own words back'.
+
 5. **Validation Guards**
    - Output checked for prohibited phrases before user sees it
    - If prohibited phrase detected, refinement fails and alert sent
    - Rollback to template mode if error rate >5%
+
+> **Note (3h4, C-33):** The phrase check runs before the filer sees a rewrite. No alert is sent and no error rate is counted: a refused rewrite shows the filer one sentence and leaves their words. There is no template mode; the fallback is the guided draft (§5.2 note).
 
 **Legal Distinction:**
 
@@ -198,6 +206,8 @@ If AI refinement raises UPL concerns, DigniFi can operate in **template mode** (
 4. Platform claims: User wrote narrative; we provided examples
 
 **No legal judgment; no UPL violation.**
+
+> **Note (3h4, C-33):** Not built, and not to be: the 3h umbrella rules that no example circumstance appears but the law's own two (S:541). The fallback when the service fails is the guided draft of 3h2.
 
 ---
 
@@ -236,6 +246,8 @@ class AuditLog(models.Model):
 - Proof that no legal advice was given
 - Documentation of all disclaimers presented
 - Code proving automated checks prevented prohibited phrases
+
+> **Note (3h4, C-33):** For the polish, the trail holds the request row (path, status) and, for an approved rewrite, the approved text beside the filer's original in `MeansTestAnswers`. The trail shows requests, not approvals: approval travels in the ordinary means-test save, and the evidence that the user wrote the original and AI only clarified (§6.1) is the stored pair, not a log row. A rewrite the filer declined is not kept, because DigniFi's logs carry no filer text or model text (DIG-105). Counsel to confirm this reading of 'every message shown'.
 
 ### 6.3 Incident Response
 

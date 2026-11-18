@@ -47,6 +47,7 @@ import type {
   ExemptionsUpdate,
   MeansPage,
   MeansTestUpdate,
+  PolishReply,
 } from '../types/api';
 
 // ============================================================================
@@ -529,6 +530,17 @@ export const intakeAPI = {
       apiFetch<MeansPage>(`/intake/sessions/${sessionId}/means-test/`, {
         method: 'PUT',
         body: JSON.stringify(body),
+      }),
+    // apiFetchOnce, never apiFetch: a retry would send the filer's words to the AI service again
+    polish: async (
+      sessionId: number,
+      explanation: string,
+      signal: AbortSignal
+    ): Promise<PolishReply> =>
+      apiFetchOnce<PolishReply>(`/intake/sessions/${sessionId}/means-test/polish/`, {
+        method: 'POST',
+        body: JSON.stringify({ explanation }),
+        signal,
       }),
   },
 };

@@ -9,8 +9,10 @@ import logging
 from datetime import date
 from decimal import Decimal
 
+import pymupdf
 import pytest
 from django.contrib.auth import get_user_model
+from django.core.cache import cache
 from django.core.management import call_command
 from rest_framework.test import APIClient
 
@@ -36,7 +38,9 @@ from apps.forms.registry import (
 from apps.forms.schema import load_schema
 from apps.forms.services.pdf_filler import PDFFormFiller, ValueTooLong
 from apps.forms.tests.means_pair import box_1_state, stored_check_box_1
-from apps.forms.tests.pdf_readback import read_drawn
+from apps.forms.tests.means_rows import POLISH_DEMO_EXPLANATION
+from apps.forms.tests.pdf_readback import read_drawn, read_sheet_part
+from apps.forms.tests.test_form_122a2_rows import _sheet_part
 from apps.forms.views import _FAILURE_SENTENCES, MEANS_PAIR_REFUSAL, FormIsFiled, NotInPacket
 from apps.intake.asset_lines import asset_step_gaps
 from apps.intake.claims import claim_step_gaps
@@ -48,6 +52,7 @@ from apps.intake.means_test import (
     MEANS_GAP_PAYMENTS_LEFT,
 )
 from apps.intake.models import DebtorInfo, IncomeInfo, IntakeSession
+from apps.intake.tests import polish_builders
 from apps.intake.tests.builders import (
     answer_asset_lines,
     answer_household,
@@ -318,6 +323,71 @@ def test_an_above_median_filers_122a1_and_122a2_never_print_incomplete(
     assert row.status == "filed"
     printed = _printed_values("form_122a2", download.content, json.loads(row.field_values))
     assert printed["undefined_48"] == "2300.00"
+
+
+@pytest.fixture(autouse=True)
+def _fresh_throttle_cache():
+    """The polish throttle is keyed by user pk in the local-memory cache, which nothing clears,
+    and the rolled-back database reuses pk 1."""
+    cache.clear()
+    yield
+    cache.clear()
+
+
+@pytest.fixture
+def polish_sdk():
+    with polish_builders.polish_sdk() as client_cls:
+        yield client_cls
+
+
+@pytest.mark.django_db
+def test_a_rewrite_the_filer_hasnt_approved_never_prints(api_client, above, polish_sdk):
+    """Form 122A-2 is signed under oath: what an AI service wrote, and the words the filer kept
+    beside it, never reach a court until the filer approves, and the original never prints at all.
+
+    The unapproved half passes by construction (the endpoint writes nothing); this test's value is
+    the print-path assertion and that original_explanation never prints."""
+    answer_means_test(
+        above,
+        line_43_answer="yes",
+        line_43_circumstances=[
+            {
+                "explanation": POLISH_DEMO_EXPLANATION,
+                "original_explanation": "Demo original words",
+                "amount": "10.00",
+            }
+        ],
+    )
+    # the stand-in keeps the six facts, so the reply is the real 200 the invariant needs: a bare
+    # "Demo rewrite words" would be a 422 for dropped facts
+    polish_sdk.return_value.messages.create.return_value = polish_builders.message(
+        f"Demo rewrite words. {POLISH_DEMO_EXPLANATION}"
+    )
+    reply = api_client.post(
+        f"/api/intake/sessions/{above.pk}/means-test/polish/",
+        {"explanation": POLISH_DEMO_EXPLANATION},
+        format="json",
+    )
+    assert reply.status_code == 200, reply.json()
+    assert "Demo rewrite words" in reply.json()["rewrite"]
+
+    # the filer approves nothing: the forms print on every path
+    _both_forms_print(api_client, above)
+    document = build_parts("form_122a2", _fresh(above))
+    pdf = PDFFormFiller().fill("form_122a2", document)
+
+    # line 43's attached sheet holds the explanation the filer saved, whole in one cell (the
+    # dry run's 597 characters fit one sheet page)
+    pages = read_sheet_part(pdf, _sheet_part(document, "43"))
+    assert pages[0].rows[0][1] == POLISH_DEMO_EXPLANATION
+
+    # neither the rewrite nor the original is anywhere in the form: the baked PDF's own text,
+    # whitespace-normalised because the sheet wraps a phrase across lines
+    baked = " ".join(" ".join(page.get_text().split()) for page in pymupdf.open("pdf", pdf))
+    assert " ".join(POLISH_DEMO_EXPLANATION.split()) in baked
+    for words in ("Demo rewrite words", "Demo original words"):
+        assert words not in baked
+        assert words not in json.dumps(document)
 
 
 LINE_43_CASES = [

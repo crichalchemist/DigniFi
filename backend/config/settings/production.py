@@ -53,6 +53,7 @@ REST_FRAMEWORK = {  # noqa: F405
         "anon": "60/minute",
         "user": "120/minute",
         "auth": "5/minute",  # Login/register attempts per IP
+        "polish": "10/minute",  # Line 43 AI polish, per user
     },
 }
 

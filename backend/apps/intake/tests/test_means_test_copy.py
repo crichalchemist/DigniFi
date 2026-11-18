@@ -15,6 +15,11 @@ SERVER_SENTENCES = [
     "MEANS_LETTER",
     "MEANS_EXPLANATION_TOO_LONG",
     "MEANS_EXPLANATION_LETTER",
+    "MEANS_POLISH_IDENTIFIER",
+    "MEANS_POLISH_PHRASE",
+    "MEANS_POLISH_BLANK",
+    "MEANS_POLISH_NO_REWRITE",
+    "MEANS_POLISH_UNAVAILABLE",
 ]
 
 # the page's reference sentences: the server sends them in a 400's body and the page reads them
@@ -73,6 +78,11 @@ def test_every_gap_carries_its_counsel_mark_on_the_line_above():
         ("MEANS_LETTER", "// DRAFT: counsel C-24"),
         ("MEANS_EXPLANATION_TOO_LONG", "// DRAFT: counsel C-31"),
         ("MEANS_EXPLANATION_LETTER", "// DRAFT: counsel C-31"),
+        ("MEANS_POLISH_IDENTIFIER", "// DRAFT: counsel C-33"),
+        ("MEANS_POLISH_PHRASE", "// DRAFT: counsel C-33"),
+        ("MEANS_POLISH_BLANK", "// DRAFT: counsel C-33"),
+        ("MEANS_POLISH_NO_REWRITE", "// DRAFT: counsel C-33"),
+        ("MEANS_POLISH_UNAVAILABLE", "// DRAFT: counsel C-33"),
     ],
 )
 def test_the_other_server_sentences_carry_their_counsel_mark_on_the_line_above(name, mark):

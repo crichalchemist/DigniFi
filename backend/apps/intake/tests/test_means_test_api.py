@@ -28,6 +28,7 @@ from apps.intake.means_page import (
 from apps.intake.means_test import (
     ANSWER_KEYS,
     MEANS_EXPLANATION_LETTER,
+    MEANS_EXPLANATION_TOO_LONG,
     MEANS_GAP_PAYMENTS_LEFT,
     MEANS_GAP_SPOUSE_LOAN_SECURED_BY,
     MEANS_LETTER,
@@ -1115,6 +1116,7 @@ def test_circumstances_and_line_3_rows_saved_under_no_come_back(filer):
         "papers": "Demo papers",
         "amount": "250.00",
         "explanation": "Demo explanation",
+        "original_explanation": "Demo original",
     }
     row = {"purpose": "Demo tax debt", "amount": "40.00"}
 
@@ -1132,6 +1134,72 @@ def test_circumstances_and_line_3_rows_saved_under_no_come_back(filer):
     answers = _get(filer).json()["answers"]
     assert answers["line_3_rows"] == [row]
     assert answers["line_43_circumstances"] == [circumstance]
+
+
+@pytest.mark.django_db
+def test_a_circumstance_saved_before_3h4_comes_back_without_the_key(filer):
+    # An earlier filer's row has no original_explanation: the page reads it as it was stored, so
+    # nothing claims a rewrite touched words that never met one
+    before_3h4 = {
+        "happened": "Demo happened",
+        "change": "Demo change",
+        "choices": "Demo choices",
+        "papers": "Demo papers",
+        "amount": "250.00",
+        "explanation": "Demo explanation",
+    }
+    answer_means_test(filer.session, line_43_answer="yes", line_43_circumstances=[before_3h4])
+
+    row = _get(filer).json()["answers"]["line_43_circumstances"][0]
+
+    assert row == before_3h4
+    assert "original_explanation" not in row
+
+
+@pytest.mark.django_db
+def test_an_approved_rewrite_saves_with_the_original_beside_it_through_the_same_checks(filer):
+    # What the filer approved prints, so it meets the fit checks the filer's own words meet; the
+    # filer's own words go beside it unmeasured
+    original = "Demo original words"
+    rewrite = "Demo rewrite words"
+
+    reply = _put(
+        filer,
+        {
+            "line_43_answer": "yes",
+            "line_43_circumstances": [{"explanation": rewrite, "original_explanation": original}],
+        },
+    )
+
+    assert reply.status_code == 200, reply.content
+    stored = MeansTestAnswers.objects.get(session=filer.session).get_answers()
+    assert stored["line_43_circumstances"][0]["explanation"] == rewrite
+    assert stored["line_43_circumstances"][0]["original_explanation"] == original
+    before = _stored(filer.session)
+
+    too_long = _put(
+        filer,
+        {
+            "line_43_answer": "yes",
+            "line_43_circumstances": [
+                {"explanation": "\n".join(["Demo"] * 37), "original_explanation": original}
+            ],
+        },
+    )
+    assert too_long.status_code == 400
+    assert too_long.json()["line_43_circumstances"]["0"]["explanation"] == [
+        MEANS_EXPLANATION_TOO_LONG
+    ]
+    letter = _put(
+        filer,
+        {
+            "line_43_answer": "yes",
+            "line_43_circumstances": [{"explanation": "Demo □", "original_explanation": original}],
+        },
+    )
+    assert letter.status_code == 400
+    assert letter.json()["line_43_circumstances"]["0"]["explanation"] == [MEANS_EXPLANATION_LETTER]
+    assert _stored(filer.session) == before
 
 
 @pytest.mark.django_db

@@ -1,4 +1,5 @@
 import { http, HttpResponse } from 'msw';
+import { vi } from 'vitest';
 import { server } from '../../test/mocks/server';
 import { api, APIClientError, setAccessToken, setRefreshToken } from '../client';
 
@@ -147,5 +148,27 @@ describe('what a refusal says fixes it', () => {
     expect(err.step).toBeUndefined();
     expect(err.page).toBeUndefined();
     expect(err.errors).toBeUndefined();
+  });
+});
+
+// One press is one send (3h4 R21): a retry would send the filer's words to the AI service again
+// without another press, so the polish call goes through the single-attempt fetch.
+describe('the polish request', () => {
+  it('a polish request is never retried', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(
+      async () =>
+        new Response(JSON.stringify({ error: 'Demo refusal' }), {
+          status: 503,
+          headers: { 'Content-Type': 'application/json' },
+        })
+    );
+    try {
+      await expect(
+        api.intake.meansTest.polish(1, 'Demo', new AbortController().signal)
+      ).rejects.toBeInstanceOf(APIClientError);
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+    } finally {
+      fetchSpy.mockRestore();
+    }
   });
 });

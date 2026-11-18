@@ -166,7 +166,8 @@ jobs:
 
   e2e-test:
     name: E2E Tests (Playwright)
-    runs-on: ubuntu-latest
+    # Playwright can't install Chromium on ubuntu-latest's Ubuntu 26.04 image.
+    runs-on: ubuntu-24.04
     needs: [backend-test, frontend-test]
 
     services:

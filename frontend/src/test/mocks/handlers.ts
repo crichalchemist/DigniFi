@@ -235,6 +235,11 @@ export const handlers = [
     });
   }),
 
+  // The line 43 polish: a rewrite of the explanation sent, which the page never saves unapproved
+  http.post(`${API}/intake/sessions/:id/means-test/polish/`, () =>
+    HttpResponse.json({ rewrite: 'Demo rewrite words' })
+  ),
+
   // -- Assets / Debts ------------------------------------------------------
 
   http.post(`${API}/intake/assets/`, () =>
