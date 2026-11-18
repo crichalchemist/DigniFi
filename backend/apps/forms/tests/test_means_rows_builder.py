@@ -13,7 +13,8 @@ from apps.districts.dated_tables import fill_date
 from apps.districts.models import District
 from apps.eligibility.means_inputs import read_inputs, read_tables
 from apps.eligibility.means_lines import missing_line, work_out
-from apps.forms.tests.means_rows import overflowing_session
+from apps.forms.services.means_fit import explanation_refusal
+from apps.forms.tests.means_rows import POLISH_DEMO_EXPLANATION, overflowing_session
 
 User = get_user_model()
 
@@ -41,3 +42,7 @@ def test_the_rows_session_keeps_its_presumption_and_stays_under_the_line_3_cap(u
     assert missing_line(lines) is False
     assert sum(amount for _, amount in inputs.line_3_rows) <= inputs.spouse_cmi
     assert all(debt.necessary_for_support in ("yes", "no") for debt in inputs.secured_debts)
+
+
+def test_the_polish_demo_explanation_prints_whole():
+    assert explanation_refusal(POLISH_DEMO_EXPLANATION) is None

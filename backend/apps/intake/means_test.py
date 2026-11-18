@@ -69,6 +69,23 @@ MEANS_TOO_LONG = "This is too long for the box on Form 122A-2. Shorten it."
 MEANS_LETTER = "This has a letter Form 122A-2 can't print. Change it."
 MEANS_EXPLANATION_TOO_LONG = "This explanation is too long to print with line 43. Shorten it."
 MEANS_EXPLANATION_LETTER = "This explanation has a letter Form 122A-2 can't print. Change it."
+# DRAFT: counsel C-33
+MEANS_POLISH_IDENTIFIER = (
+    "This explanation holds your name, login name, Social Security number, account number, "
+    "phone number, email or address. Take it out first."
+)
+# DRAFT: counsel C-33
+MEANS_POLISH_PHRASE = (
+    "This explanation has a phrase DigniFi doesn't send to the AI service. Change it first."
+)
+# DRAFT: counsel C-33
+MEANS_POLISH_BLANK = "Write your explanation first."
+# DRAFT: counsel C-33
+MEANS_POLISH_NO_REWRITE = (
+    "The AI service didn't give a rewrite DigniFi can show. Your words are unchanged."
+)
+# DRAFT: counsel C-33
+MEANS_POLISH_UNAVAILABLE = "DigniFi couldn't reach the AI service. Your words are unchanged."
 NOT_A_MEANS_ANSWER = "This is not one of the means test answers."
 MEANS_ROW_LISTED_TWICE = "Each row can be sent only once in a save."
 

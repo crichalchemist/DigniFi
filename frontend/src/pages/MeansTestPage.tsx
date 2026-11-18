@@ -998,6 +998,11 @@ export function MeansTestPage() {
             clearRefusal={clearFieldError}
             nextKey={nextKey}
             legendRef={line43Ref}
+            sessionId={sessionId ?? 0}
+            polishAvailable={page.polish_available}
+            setRefusal={(key, sentence) =>
+              setFieldErrors((current) => ({ ...current, [key]: sentence }))
+            }
           />
         </div>
       </fieldset>

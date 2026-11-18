@@ -52,6 +52,30 @@ const NAMES = [
   'MEANS_LETTER',
   'MEANS_EXPLANATION_TOO_LONG',
   'MEANS_EXPLANATION_LETTER',
+  'MEANS_POLISH_NOTE',
+  'MEANS_POLISH_BUTTON',
+  'MEANS_POLISH_CONSENT_HEADING',
+  'MEANS_POLISH_CONSENT_WHAT',
+  'MEANS_POLISH_CONSENT_RETENTION',
+  'MEANS_POLISH_CONSENT_KEEP',
+  'MEANS_POLISH_SEND',
+  'MEANS_POLISH_DECLINE',
+  'MEANS_POLISH_WORKING',
+  'MEANS_POLISH_DISCLOSURE',
+  'MEANS_POLISH_SENT_LABEL',
+  'MEANS_POLISH_REWRITE_LABEL',
+  'MEANS_POLISH_APPROVE',
+  'MEANS_POLISH_KEEP',
+  'MEANS_POLISH_APPROVED',
+  'MEANS_POLISH_KEPT',
+  'MEANS_POLISH_HOLDS_REWRITE',
+  'MEANS_POLISH_RESTORE',
+  'MEANS_POLISH_TOO_MANY',
+  'MEANS_POLISH_IDENTIFIER',
+  'MEANS_POLISH_PHRASE',
+  'MEANS_POLISH_BLANK',
+  'MEANS_POLISH_NO_REWRITE',
+  'MEANS_POLISH_UNAVAILABLE',
   'MEANS_GAP_LINE_3',
   'MEANS_GAP_LINE_3_CAP',
   'MEANS_GAP_LINE_3_NO_ROW',
@@ -222,7 +246,7 @@ const held = copy as Record<string, unknown>;
 // Every sentence of line 43's writing aid, its gaps, its figure and its explanation's limits:
 // none says rebut, overcome or abuse (3h2 spec section 8.9)
 const LINE_43_COPY = NAMES.filter((name) =>
-  /^(MEANS_LINE_43_|MEANS_REBUTTAL_|MEANS_GAP_LINE_43|MEANS_EXPLANATION_)/.test(name)
+  /^(MEANS_LINE_43_|MEANS_REBUTTAL_|MEANS_GAP_LINE_43|MEANS_EXPLANATION_|MEANS_POLISH_)/.test(name)
 );
 const STRINGS = NAMES.filter((name) => typeof held[name] === 'string').map(
   (name) => [name, held[name] as string] as const
@@ -655,6 +679,58 @@ const EXACT_WORDS: [string, string][] = [
     'If the court allowed the amounts on line 43, line 39d would be {amount} less than $0.',
   ],
   ['MEANS_REBUTTAL_COURT', 'The court decides whether to allow them.'],
+  // The line 43 polish (3h4): the page's sentences, then the server's five
+  [
+    'MEANS_POLISH_NOTE',
+    'An AI service can rewrite this explanation so it reads more clearly. You see the rewrite first, and your own words stay until you approve it.',
+  ],
+  ['MEANS_POLISH_BUTTON', 'Rewrite this with an AI service'],
+  ['MEANS_POLISH_CONSENT_HEADING', 'Before your words are sent'],
+  [
+    'MEANS_POLISH_CONSENT_WHAT',
+    "DigniFi will send the words in the box you pick, with DigniFi's instructions for the rewrite, to Anthropic, an AI service. Nothing else from your answers goes with them.",
+  ],
+  [
+    'MEANS_POLISH_CONSENT_RETENTION',
+    "DigniFi read Anthropic's terms on November 17, 2026. They say Anthropic doesn't keep what DigniFi sends.",
+  ],
+  [
+    'MEANS_POLISH_CONSENT_KEEP',
+    'You can say no and keep your own words. You can also keep them after you see the rewrite.',
+  ],
+  ['MEANS_POLISH_SEND', 'Send it and show me a rewrite'],
+  ['MEANS_POLISH_DECLINE', 'No, keep my words'],
+  ['MEANS_POLISH_WORKING', 'Getting a rewrite. This can take a few seconds.'],
+  [
+    'MEANS_POLISH_DISCLOSURE',
+    'An AI service rewrote your explanation to make it clearer. Check that it says what you said, with nothing added and nothing left out, before you approve it.',
+  ],
+  ['MEANS_POLISH_SENT_LABEL', 'What you sent'],
+  ['MEANS_POLISH_REWRITE_LABEL', 'The rewrite'],
+  ['MEANS_POLISH_APPROVE', 'Use this rewrite'],
+  ['MEANS_POLISH_KEEP', 'Keep my words'],
+  [
+    'MEANS_POLISH_APPROVED',
+    'Your explanation now holds the rewrite you approved. You can put your own words back at any time.',
+  ],
+  ['MEANS_POLISH_KEPT', 'Your words are unchanged.'],
+  ['MEANS_POLISH_HOLDS_REWRITE', 'This box holds a rewrite you approved.'],
+  ['MEANS_POLISH_RESTORE', 'Put my own words back'],
+  ['MEANS_POLISH_TOO_MANY', 'You asked for rewrites too quickly. Wait a minute and try again.'],
+  [
+    'MEANS_POLISH_IDENTIFIER',
+    'This explanation holds your name, login name, Social Security number, account number, phone number, email or address. Take it out first.',
+  ],
+  [
+    'MEANS_POLISH_PHRASE',
+    "This explanation has a phrase DigniFi doesn't send to the AI service. Change it first.",
+  ],
+  ['MEANS_POLISH_BLANK', 'Write your explanation first.'],
+  [
+    'MEANS_POLISH_NO_REWRITE',
+    "The AI service didn't give a rewrite DigniFi can show. Your words are unchanged.",
+  ],
+  ['MEANS_POLISH_UNAVAILABLE', "DigniFi couldn't reach the AI service. Your words are unchanged."],
   // Not a means test sentence, but 3h1 made its old words false (final review F11)
   [
     'REVIEW_INTRO',
@@ -697,6 +773,7 @@ function counselMark(name: string): string {
   if (name === 'MEANS_LINE_27_NOTE') return 'C-27';
   if (/^(MEANS_SPOUSE_|MEANS_GAP_SPOUSE_)/.test(name)) return 'C-34';
   if (name.startsWith('MEANS_REBUTTAL_')) return 'C-32';
+  if (name.startsWith('MEANS_POLISH_')) return 'C-33';
   return 'C-24';
 }
 

@@ -9,7 +9,7 @@ import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { server } from '../../test/mocks/server';
-import { meansPage, priyaPage } from '../../test/fixtures/meansPage';
+import { meansPage } from '../../test/fixtures/meansPage';
 import {
   MEANS_EXPLANATION_LETTER,
   MEANS_EXPLANATION_TOO_LONG,
@@ -23,10 +23,25 @@ import {
   MEANS_LINE_43_REMOVE,
   MEANS_LINE_43_SKIPPED,
   MEANS_PAGE_SAVE_FAILED,
+  MEANS_POLISH_APPROVE,
+  MEANS_POLISH_REWRITE_LABEL,
+  MEANS_POLISH_SEND,
   MEANS_SPOUSE_ADD_VEHICLE,
 } from '../../constants/copy';
-import type { MeansCircumstance, MeansPage } from '../../types/api';
-import { URL, field, pressContinue, radio, ready, renderPage, serve } from './meansTestPageHelpers';
+import type { MeansPage } from '../../types/api';
+import {
+  URL,
+  circumstance,
+  field,
+  line43Page,
+  polishName,
+  pressContinue,
+  radio,
+  ready,
+  renderPage,
+  serve,
+  servePolish,
+} from './meansTestPageHelpers';
 
 const fill = (sentence: string, values: Record<string, string>) =>
   Object.entries(values).reduce(
@@ -38,25 +53,6 @@ const fill = (sentence: string, values: Record<string, string>) =>
 // circumstances' buttons are told apart (DIG-515)
 const assembleName = (n: string) =>
   `${MEANS_LINE_43_ASSEMBLE} ${fill(MEANS_LINE_43_LEGEND, { n })}`;
-
-const circumstance = (over: Partial<MeansCircumstance> = {}): MeansCircumstance => ({
-  happened: '',
-  change: '',
-  choices: '',
-  papers: '',
-  amount: '400.00',
-  explanation: null,
-  ...over,
-});
-
-/** Priya's filled page, line 43 Yes, a presumption with line 39c, and these circumstances */
-function line43Page(circumstances: MeansCircumstance[] = [circumstance()]): MeansPage {
-  const page = priyaPage();
-  page.answers.line_43_answer = 'yes';
-  page.answers.line_43_circumstances = circumstances;
-  page.information!.line_39c = '2188.40';
-  return page;
-}
 
 const NOW = /Your line 39d is now/;
 const area = (name: string) =>
@@ -347,6 +343,29 @@ describe('line 43', () => {
     renderPage();
     await ready();
     expect(within43()).toHaveTextContent(MEANS_LINE_43_SKIPPED);
+    check();
+  });
+
+  it('nothing on line 43 says overcome, rebut or abuse with a rewrite pending or approved', async () => {
+    const banned = /overcome|rebut|abuse/i;
+    const check = () => {
+      expect(line43().textContent).not.toMatch(banned);
+      for (const labelled of line43().querySelectorAll('[aria-label]')) {
+        expect(labelled.getAttribute('aria-label')).not.toMatch(banned);
+      }
+    };
+    servePolish();
+    serve(line43Page([circumstance({ explanation: 'Demo words' })]));
+    renderPage();
+    await ready();
+
+    await userEvent.click(screen.getByRole('button', { name: polishName(1) }));
+    check();
+    await userEvent.click(screen.getByRole('button', { name: MEANS_POLISH_SEND }));
+    await screen.findByRole('textbox', { name: MEANS_POLISH_REWRITE_LABEL });
+    check();
+    await userEvent.click(screen.getByRole('button', { name: MEANS_POLISH_APPROVE }));
+    expect(area('means_line_43_0_explanation')).toHaveValue('Demo rewrite words');
     check();
   });
 });

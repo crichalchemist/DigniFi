@@ -152,6 +152,33 @@ def test_an_explanation_that_cant_print_is_refused_in_its_own_sentence():
     ]
 
 
+def test_an_original_explanation_saves_beside_the_explanation_and_is_never_measured():
+    # Under Yes, where the fit check runs: the same 37 lines are refused as the printed words and
+    # saved as the record of the filer's own, which never prints
+    lines = "\n".join(["Demo"] * 37)
+    kept = stored_of(
+        {"line_43_answer": "yes", "line_43_circumstances": [{"original_explanation": lines}]}
+    )
+    assert kept["line_43_circumstances"][0]["original_explanation"] == lines
+    refused = errors_of(
+        {"line_43_answer": "yes", "line_43_circumstances": [{"explanation": lines}]}
+    )
+    assert [str(m) for m in refused["line_43_circumstances"][0]["explanation"]] == [
+        MEANS_EXPLANATION_TOO_LONG
+    ]
+
+
+def test_an_original_explanation_past_2000_characters_is_refused():
+    errors = errors_of({"line_43_circumstances": [{"original_explanation": "D" * 2001}]})
+    assert "original_explanation" in errors["line_43_circumstances"][0]
+    assert stored_of({"line_43_circumstances": [{"original_explanation": "D" * 2000}]})
+
+
+def test_a_blank_original_explanation_is_stored_as_none():
+    rows = stored_of({"line_43_circumstances": [{"original_explanation": "  \n \n "}]})
+    assert rows["line_43_circumstances"][0]["original_explanation"] is None
+
+
 # F1: each box the page draws only under an answer, with that answer sent beside it
 _UNFIT_DESCRIPTION = "2019 Toyota Sienna LE minivan"
 _UNFIT_CREDITOR = "Demo Prairie Credit Union of Illinois"

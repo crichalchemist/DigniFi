@@ -488,12 +488,13 @@ class TestEndToEndUPLCompliance:
             "settings.UPL_PROHIBITED_PHRASES",
             "forms.views._UPL_DISCLAIMER",
             "AuditLoggingMiddleware._is_upl_sensitive",
+            "intake.polish_checks.POLISH_PHRASES",
         ]
 
         # This test documents what we're testing
         # If new UPL-sensitive components are added, update this list
         assert (
-            len(tested_components) == 3
+            len(tested_components) == 4
         ), "Update this test when adding new UPL-sensitive components"
 
 

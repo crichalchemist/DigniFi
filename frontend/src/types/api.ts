@@ -712,6 +712,7 @@ export interface MeansCircumstance {
   papers: string;
   amount: string | null;
   explanation: string | null;
+  original_explanation?: string | null;
 }
 
 /** Every answer the page saves but the filer's per-debt ones (`MeansDebt` holds those) */
@@ -821,6 +822,13 @@ export interface MeansPage {
   tables_gap: string | null;
   /** The server's first gap, null when none */
   gap: string | null;
+  /** True when an AI service is set up to rewrite a line 43 explanation */
+  polish_available: boolean;
+}
+
+/** The polish endpoint's reply: the rewrite, which the page never saves until the filer approves */
+export interface PolishReply {
+  rewrite: string;
 }
 
 /** A PUT sets only the answer keys sent; each `debts` row only the keys it sends */

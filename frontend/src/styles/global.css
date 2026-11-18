@@ -1959,6 +1959,34 @@ a {
   min-width: 0;
 }
 
+/* Line 43's AI polish: what was sent beside the rewrite on a wide screen, stacked on a narrow one */
+.polish-review {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-4);
+  margin: var(--space-4) 0;
+}
+
+.polish-review-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.polish-review button {
+  min-height: 44px;
+}
+
+@media (min-width: 641px) {
+  .polish-review {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .polish-review-actions {
+    grid-column: 1 / -1;
+  }
+}
+
 /* =========================================================================
    SOFA Page (Form 107 - Statement of Financial Affairs)
    ========================================================================= */

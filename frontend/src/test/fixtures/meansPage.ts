@@ -120,6 +120,7 @@ export function priyaPage(overrides: Partial<MeansPage> = {}): MeansPage {
 export function meansPage(): MeansPage {
   return {
     applies: true,
+    polish_available: true,
     applies_gap: null,
     married_together: true,
     answers: structuredClone(UNANSWERED),

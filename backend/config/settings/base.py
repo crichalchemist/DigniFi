@@ -165,6 +165,7 @@ REST_FRAMEWORK = {
     "EXCEPTION_HANDLER": "apps.audit.exception_handler.upl_aware_exception_handler",
     "DEFAULT_THROTTLE_RATES": {
         "auth": "30/minute",  # Login/register — relaxed for dev, stricter in production
+        "polish": "10/minute",  # Line 43 AI polish: one press sends the filer's words once
     },
 }
 
@@ -250,6 +251,13 @@ OPENAI_API_KEY = env("OPENAI_API_KEY", default="")
 OCR_PROVIDER = env("OCR_PROVIDER", default="openai")
 OCR_MODEL = env("OCR_MODEL", default="")
 
+# The line 43 polish (3h4 spec §5). Empty by default: the button needs AI_POLISH_PROVIDER=anthropic
+# and a key. With no provider or no key the page shows no polish button, and a request raises
+# ImproperlyConfigured at use, never at boot.
+AI_POLISH_PROVIDER = env("AI_POLISH_PROVIDER", default="")
+AI_POLISH_API_KEY = env("AI_POLISH_API_KEY", default="")
+AI_POLISH_MODEL = env("AI_POLISH_MODEL", default="")
+
 # Document Storage
 DOCUMENT_STORAGE_BACKEND = env("DOCUMENT_STORAGE_BACKEND", default="filesystem")
 DOCUMENT_UPLOAD_MAX_SIZE = 10 * 1024 * 1024  # 10MB
@@ -328,6 +336,13 @@ LOGGING = {
             "level": "WARNING",
             "propagate": False,
         },
+        # DIG-105, 3h4 spec §9 and R20: ANTHROPIC_LOG=debug would log request bodies, which
+        # hold a filer's words. No handler and no propagation, so a record goes nowhere.
+        # The SDK sends over httpx2 on httpcore2; httpx stays for the openai SDK.
+        "anthropic": {"level": "WARNING", "propagate": False},
+        "httpx": {"level": "WARNING", "propagate": False},
+        "httpx2": {"level": "WARNING", "propagate": False},
+        "httpcore2": {"level": "WARNING", "propagate": False},
     },
 }
 

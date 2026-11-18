@@ -9,6 +9,7 @@ import logging
 from dataclasses import asdict
 from decimal import Decimal
 
+from django.core.exceptions import ImproperlyConfigured
 from django.db import transaction
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
@@ -35,6 +36,12 @@ from .filing_fee import filing_fee_information
 from .income import deductions_blank, schedule_i_line4
 from .locking import lock_session
 from .means_page import means_page, save_means_answers
+from .means_test import (
+    MEANS_POLISH_IDENTIFIER,
+    MEANS_POLISH_NO_REWRITE,
+    MEANS_POLISH_PHRASE,
+    MEANS_POLISH_UNAVAILABLE,
+)
 from .models import (
     AssetInfo,
     Codebtor,
@@ -47,6 +54,12 @@ from .models import (
     IntakeSession,
     SOFAReport,
 )
+
+# The names, never the module: the action below is a method named `polish`, which rebinds that
+# name for the rest of the class body.
+from .polish import NoRewrite, PolishThrottle, PolishUnavailable
+from .polish import rewrite as polish_rewrite
+from .polish_checks import identifier_in, prohibited_phrase
 from .serializers import (
     FAIR_MARKET_VALUE_AMOUNT_REFUSAL,
     LAW_AND_OTHER_LAW_REFUSAL,
@@ -62,6 +75,7 @@ from .serializers import (
     FilingFeeSerializer,
     IntakeSessionSerializer,
     MeansTestSerializer,
+    PolishRequestSerializer,
     SOFAReportSerializer,
     _save_rows_by_id,
 )
@@ -772,6 +786,51 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
             serializer.is_valid(raise_exception=True)
             save_means_answers(session, serializer.validated_data)
         return Response(means_page(IntakeSession.objects.get(pk=session.pk)))
+
+    @action(
+        detail=True,
+        methods=["post"],
+        url_path="means-test/polish",
+        url_name="means-test-polish",
+        throttle_classes=[PolishThrottle],
+    )
+    def polish(self, request, pk=None):
+        """POST /api/intake/sessions/{id}/means-test/polish/ (3h4 spec §6).
+
+        The filer's explanation, as typed, goes to the hosted service once and comes back as a
+        checked rewrite or one plain sentence. Nothing is stored and no intake reopens: the
+        rewrite lives in the page until the filer approves it and presses Continue. A refusal
+        is logged as one word and a failure as an exception type, never a word of anyone's text.
+        """
+        session = self.get_object()  # another user's session is a 404
+        serializer = PolishRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        text = serializer.validated_data["explanation"]
+        # Both checks come before any send: the filer's own words are refused, never stripped.
+        if identifier_in(text, session):
+            return Response(
+                {"explanation": [MEANS_POLISH_IDENTIFIER]}, status=status.HTTP_400_BAD_REQUEST
+            )
+        if prohibited_phrase(text) is not None:
+            return Response(
+                {"explanation": [MEANS_POLISH_PHRASE]}, status=status.HTTP_400_BAD_REQUEST
+            )
+        try:
+            return Response({"rewrite": polish_rewrite(text)})
+        except NoRewrite as exc:
+            logger.warning("Polish refused the reply: %s", str(exc))
+            return Response(
+                {"error": MEANS_POLISH_NO_REWRITE}, status=status.HTTP_422_UNPROCESSABLE_ENTITY
+            )
+        except (ImproperlyConfigured, PolishUnavailable) as exc:
+            # Their text is a variable's name or an SDK class name, never a value or a word of
+            # anyone's text.
+            logger.error("Polish failed: %s", str(exc))
+        except Exception as exc:
+            logger.error("Polish failed: %s", type(exc).__name__)
+        return Response(
+            {"error": MEANS_POLISH_UNAVAILABLE}, status=status.HTTP_503_SERVICE_UNAVAILABLE
+        )
 
     @action(detail=True, methods=["post"], url_path="dischargeability", url_name="dischargeability")
     def dischargeability(self, request, pk=None):
