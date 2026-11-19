@@ -43,6 +43,7 @@ from apps.forms.services.pdf_filler import (
     ValueTooLong,
 )
 from apps.forms.tests.pdf_readback import read_drawn
+from apps.intake.completion import EXPENSES_STEP_NEVER_SAVED
 from apps.intake.models import (
     AssetInfo,
     DebtorInfo,
@@ -56,6 +57,7 @@ from apps.intake.tests.builders import (
     answer_household,
     answer_means_test,
     complete_debt,
+    finish_intake,
 )
 
 User = get_user_model()
@@ -136,6 +138,7 @@ def session(user, district):
         monthly_gross_wages=Decimal("3000.00"),
     )
     answer_household(session)
+    finish_intake(session)
     return session
 
 
@@ -445,6 +448,66 @@ class TestGenerateEndpoint:
         assert json.loads(form.field_values) == {"Debtor1.First name": "Jane"}
 
 
+# ── A gate gap is refused first, in Complete's words (step 4a, 4a-R1) ──
+
+
+@pytest.mark.django_db
+def test_generate_all_refuses_a_gate_gap_naming_its_step(api_client, session_with_debtor):
+    ExpenseInfo.objects.filter(session=session_with_debtor).delete()
+
+    resp = api_client.post(
+        "/api/forms/generate_all/", {"session_id": session_with_debtor.id}, format="json"
+    )
+
+    assert resp.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+    assert resp.data == {"error": EXPENSES_STEP_NEVER_SAVED, "step": "expense_info"}
+
+
+@pytest.mark.django_db
+def test_generate_refuses_the_same_gate_gap_with_its_form_type(api_client, session_with_debtor):
+    ExpenseInfo.objects.filter(session=session_with_debtor).delete()
+
+    resp = api_client.post(
+        "/api/forms/generate/",
+        {"session_id": session_with_debtor.id, "form_type": "form_121"},
+        format="json",
+    )
+
+    assert resp.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+    assert resp.data == {
+        "form_type": "form_121",
+        "error": EXPENSES_STEP_NEVER_SAVED,
+        "step": "expense_info",
+    }
+
+
+@pytest.mark.django_db
+def test_a_refused_generate_all_deletes_no_stored_form(api_client, session_with_debtor, user):
+    # Form 103B is outside the packet (line 8 pays in full, no waiver): a Generate All that
+    # went through would delete it, so its survival shows the refusal came first.
+    stale = GeneratedForm.objects.create(
+        session=session_with_debtor, form_type="form_103b", generated_by=user
+    )
+    ExpenseInfo.objects.filter(session=session_with_debtor).delete()
+
+    resp = api_client.post(
+        "/api/forms/generate_all/", {"session_id": session_with_debtor.id}, format="json"
+    )
+
+    assert resp.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+    assert GeneratedForm.objects.filter(pk=stale.pk).exists()
+
+
+@pytest.mark.django_db
+def test_the_packet_list_never_refuses_a_gate_gap(api_client, session_with_debtor):
+    ExpenseInfo.objects.filter(session=session_with_debtor).delete()
+
+    listed = api_client.get("/api/forms/packet/", {"session": session_with_debtor.id})
+
+    assert listed.status_code == status.HTTP_200_OK
+    assert listed.data["form_types"] == packet(session_with_debtor)
+
+
 # ── Generate All Endpoint ─────────────────────────────────────────────
 
 
@@ -507,26 +570,44 @@ class TestGenerateAllEndpoint:
 
     def test_generates_every_form_in_the_packet(self, api_client, session_with_debtor):
         """One form's missing data is reported and doesn't undo the others."""
-        debtor = session_with_debtor.debtor_info
-        debtor.ssn = ""
-        debtor.save()
+        filing_fee = session_with_debtor.filing_fee
+        filing_fee.payment_choice = None
+        filing_fee.save()
         resp = api_client.post(
             self.URL,
             {"session_id": session_with_debtor.id},
             format="json",
         )
         assert resp.status_code == status.HTTP_200_OK
-        # Line 8 is pay in full: no 103B. Income below the median: no 122A-2. Form 121 needs the SSN,
-        # which the filer enters on the step the error names.
+        # Line 8 is unanswered: Form 101 alone can't print it, and it is no gap (a form's own
+        # precondition). Income below the median: no 122A-2.
         assert resp.data["errors"] == [
             {
-                "form_type": "form_121",
-                "error": "Enter your 9-digit Social Security number on the Your Information step.",
-                "step": "debtor_info",
+                "form_type": "form_101",
+                "error": "Choose how you will pay the filing fee.",
+                "page": "/filing-fee",
             }
         ]
         assert resp.data["total_generated"] == 14
         assert GeneratedForm.objects.filter(session=session_with_debtor).count() == 14
+
+    def test_a_missing_ssn_refuses_the_whole_call_not_one_form(
+        self, api_client, session_with_debtor
+    ):
+        # Complete refuses a missing SSN, so Generate All does too: before 4a it printed 13
+        # forms and left Form 121 with an error.
+        debtor = session_with_debtor.debtor_info
+        debtor.ssn = ""
+        debtor.save()
+
+        resp = api_client.post(self.URL, {"session_id": session_with_debtor.id}, format="json")
+
+        assert resp.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert resp.data == {
+            "error": "Enter your 9-digit Social Security number on the Your Information step.",
+            "step": "debtor_info",
+        }
+        assert not GeneratedForm.objects.filter(session=session_with_debtor).exists()
 
     def test_drops_forms_that_no_longer_apply(self, api_client, session_with_debtor, user):
         GeneratedForm.objects.create(
@@ -1282,9 +1363,6 @@ class TestMeansTestWorkedOutAgain:
 @pytest.mark.django_db
 def test_filed_form_survives_leaving_the_packet(api_client, session_with_debtor):
     session = session_with_debtor
-    ExpenseInfo.objects.create(
-        session=session, expenses_include_others="no"
-    )  # Complete requires it
     # 103B is in the packet while line 8 says waiver, and leaves it when the answer changes.
     _filing_fee(api_client, session, WAIVER)
     api_client.post("/api/forms/generate_all/", {"session_id": session.id}, format="json")
@@ -1409,8 +1487,23 @@ class TestAssetStepCheck:
         # Generate All refused before it dropped the form that left the packet.
         assert GeneratedForm.objects.filter(session=session, form_type="form_103b").exists()
 
-    def test_the_assets_sentence_comes_before_an_income_gap(self, api_client, session_with_debtor):
-        # Personas seeded before 3b have both gaps, and the Assets step is what they are sent to.
+    def test_the_assets_sentence_comes_before_the_means_test(self, api_client, session_with_debtor):
+        # With no median table the means test would refuse; the Assets gap is Complete's, so it
+        # is named first.
+        session = session_with_debtor
+        AssetInfo.objects.create(session=session, description="Old couch")
+        MedianIncome.objects.all().delete()
+
+        response = api_client.post(
+            "/api/forms/generate_all/", {"session_id": session.id}, format="json"
+        )
+
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert response.data == {"error": OLD_ROW, "step": "assets"}
+
+    def test_an_income_gap_comes_before_the_assets_sentence(self, api_client, session_with_debtor):
+        # Complete's order: the Income step comes before Assets (4a-R1), so a persona seeded
+        # before 3b with both gaps is sent to the Income step first.
         session = session_with_debtor
         AssetInfo.objects.create(session=session, description="Old couch")
         session.income_info.delete()
@@ -1420,7 +1513,8 @@ class TestAssetStepCheck:
         )
 
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
-        assert response.data == {"error": OLD_ROW, "step": "assets"}
+        assert response.data["step"] == "income_info"
+        assert response.data["error"] != OLD_ROW
 
     def test_the_packet_list_and_a_filed_download_are_not_refused(
         self, api_client, session_with_debtor, user
@@ -1532,7 +1626,7 @@ class TestClaimStepCheck:
     ):
         session = session_with_debtor
         _debt_without_an_address(session)
-        session.income_info.delete()
+        MedianIncome.objects.all().delete()
 
         response = api_client.post(
             "/api/forms/generate_all/", {"session_id": session.id}, format="json"

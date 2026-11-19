@@ -57,6 +57,7 @@ from apps.intake.tests.builders import (
     answer_asset_lines,
     answer_household,
     answer_means_test,
+    finish_intake,
     linked_loan,
     linked_row,
 )
@@ -98,6 +99,7 @@ def session_with_debtor(user, district):
         session=session, marital_status="not_married", monthly_gross_wages=Decimal("3000.00")
     )
     answer_household(session)
+    finish_intake(session)
     DebtorInfo.objects.create(
         session=session,
         first_name="Jane",

@@ -26,6 +26,7 @@ from apps.intake.models import (
     DebtInfo,
     ExecutoryContract,
     ExemptionAnswers,
+    ExpenseInfo,
     FilingFee,
     Household,
     MeansTestAnswers,
@@ -145,6 +146,20 @@ def answer_household(
     if exemptions is not None:
         answer_exemptions(session, **exemptions)
     return household
+
+
+def finish_intake(session, **expense_over) -> None:
+    """Give a session that answer_household finished the Expenses row Complete requires.
+
+    answer_household's $0 payroll_tax already covers take-home pay, so the row is the last
+    thing a gate in completion_gaps asks of it. expenses_include_others is the form's own
+    word, "no", never False: the column holds the string and Schedule J prints it, so a
+    boolean would print "False", a No the filer did not give. update_or_create, because
+    ExpenseInfo.session is one-to-one and a test may have made the row itself.
+    """
+    ExpenseInfo.objects.update_or_create(
+        session=session, defaults={"expenses_include_others": "no", **expense_over}
+    )
 
 
 def answer_exemptions(

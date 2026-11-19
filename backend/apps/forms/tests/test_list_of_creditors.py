@@ -29,6 +29,7 @@ from apps.intake.tests.builders import (
     complete_codebtor,
     complete_contract,
     complete_debt,
+    finish_intake,
 )
 from apps.users.models import User
 
@@ -61,6 +62,7 @@ def _session(user, district, county="Cook"):
         session=session, marital_status="not_married", monthly_gross_wages=Decimal("3000.00")
     )
     answer_household(session, county=county)
+    finish_intake(session)
     DebtorInfo.objects.create(
         session=session,
         first_name="Jane",
