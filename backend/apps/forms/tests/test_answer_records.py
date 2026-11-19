@@ -119,7 +119,7 @@ def test_each_namespace_links_to_the_step_that_asks_it(binding, step):
 
 
 def test_an_unlisted_petition_key_is_a_defect_not_a_wrong_step():
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="unrecognized binding"):
         binding_fix("petition.not_a_key")
 
 
@@ -133,9 +133,9 @@ def test_every_listed_petition_key_resolves_to_its_step():
 def test_an_affairs_key_without_a_line_is_a_defect_not_a_wrong_step():
     # §14.4 spells line 6's rows `affairs.pay6[]`; §7.4 names them `l6_rows` (4a-R8, spec
     # correction 4).
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="unrecognized binding"):
         binding_fix("affairs.pay6[].creditor")
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="unrecognized binding"):
         record_value(SimpleNamespace(), "affairs.pay6[].creditor")
 
 
@@ -144,10 +144,30 @@ def test_an_affairs_key_without_a_line_is_a_defect_not_a_wrong_step():
 )
 def test_an_affairs_line_the_form_does_not_have_is_a_defect_not_a_wrong_step(binding):
     # Form 107 has lines 1 to 28 (§7.4); `^l(\d+)_` alone would send l29 to last_few_years_2.
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="unrecognized binding"):
         binding_fix(binding)
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="unrecognized binding"):
         record_value(SimpleNamespace(), binding)
+
+
+def test_a_line_spelled_with_a_leading_zero_is_a_defect_not_line_5():
+    # §7.4 spells line 5 `l5_`; `l05_` would silently read line 5's record under a key no record
+    # holds, so it is refused, while `l5_` and `l28_` keep their lines.
+    with pytest.raises(ValueError, match="unrecognized binding"):
+        binding_fix("affairs.l05_answer")
+    with pytest.raises(ValueError, match="unrecognized binding"):
+        record_value(SimpleNamespace(), "affairs.l05_answer")
+    assert record_step("affairs.l5_answer") == "last_few_years_1"
+    assert record_step("affairs.l28_answer") == "last_few_years_2"
+
+
+def test_a_binding_outside_the_four_namespaces_is_unrecognized():
+    # The readers are reached only through the namespaces fill_resolver routes to them; a binding
+    # outside them is a defect named as one, never a StopIteration out of next().
+    with pytest.raises(ValueError, match="unrecognized binding"):
+        record_value(SimpleNamespace(), "means.line_5")
+    with pytest.raises(ValueError, match="unrecognized binding"):
+        record_step("means.line_5")
 
 
 @pytest.mark.parametrize(

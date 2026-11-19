@@ -23,7 +23,8 @@ RECORD_OF_NAMESPACE = {
 # frontend/src/constants/wizardSteps.ts.
 NEW_STEP_KEYS = ("plans", "last_few_years_1", "last_few_years_2")
 
-_AFFAIRS_LINE = re.compile(r"l(\d+)_")
+# No leading zero: `l05_` is not how §7.4 spells line 5.
+_AFFAIRS_LINE = re.compile(r"l([1-9]\d*)_")
 
 # Every key of PetitionAnswers (§7.1) with the wizard step that asks it.
 PETITION_STEP_OF_KEY = {
@@ -117,6 +118,14 @@ def _unrecognized(binding: str) -> ValueError:
     return ValueError(f"unrecognized binding: {binding!r}")
 
 
+def _namespace(binding: str) -> str:
+    """The answer namespace a binding starts with; a binding outside the four is unrecognized."""
+    for prefix in ANSWER_NAMESPACES:
+        if binding.startswith(prefix):
+            return prefix
+    raise _unrecognized(binding)
+
+
 def _affairs_line(binding: str) -> int:
     """The Form 107 line an `affairs.` key names by its `l<n>_` prefix, 1 to 28."""
     match = _AFFAIRS_LINE.match(binding[len("affairs.") :])
@@ -135,7 +144,7 @@ def record_value(session, binding: str) -> str | list[str]:
     The value of an answers record's key: "<namespace>.<key>" is a str, "<namespace>.<key>[].<attr>"
     a list of str over a row list. Blank or [] when the session has no such record.
     """
-    namespace = next(prefix for prefix in ANSWER_NAMESPACES if binding.startswith(prefix))
+    namespace = _namespace(binding)
     key, is_list, attr = binding[len(namespace) :].partition("[].")
     if namespace == "affairs.":
         line = _affairs_line(binding)
@@ -156,7 +165,7 @@ def record_value(session, binding: str) -> str | list[str]:
 
 def record_step(binding: str) -> str:
     """The wizard step that asks a binding's key (a WIZARD_STEPS key or one of NEW_STEP_KEYS)."""
-    namespace = next(prefix for prefix in ANSWER_NAMESPACES if binding.startswith(prefix))
+    namespace = _namespace(binding)
     key = binding[len(namespace) :].partition("[].")[0]
     if namespace == "petition.":
         step = PETITION_STEP_OF_KEY.get(key)

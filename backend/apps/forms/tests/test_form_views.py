@@ -43,7 +43,7 @@ from apps.forms.services.pdf_filler import (
     ValueTooLong,
 )
 from apps.forms.tests.pdf_readback import read_drawn
-from apps.intake.completion import EXPENSES_STEP_NEVER_SAVED
+from apps.intake.completion import EXPENSES_STEP_NEVER_SAVED, Gap
 from apps.intake.models import (
     AssetInfo,
     DebtorInfo,
@@ -506,6 +506,99 @@ def test_the_packet_list_never_refuses_a_gate_gap(api_client, session_with_debto
 
     assert listed.status_code == status.HTTP_200_OK
     assert listed.data["form_types"] == packet(session_with_debtor)
+
+
+@pytest.mark.django_db
+def test_regenerate_refuses_a_gate_gap_and_keeps_the_stored_form(
+    api_client, session_with_debtor, user
+):
+    # Regenerate meets the gate before it resolves anything, so a form generated before the
+    # Expenses row was lost keeps what it printed, and the filer is sent to the step.
+    form = GeneratedForm.objects.create(
+        session=session_with_debtor,
+        form_type="form_121",
+        status="generated",
+        generated_by=user,
+        field_values=json.dumps({"stored": "before"}),
+    )
+    ExpenseInfo.objects.filter(session=session_with_debtor).delete()
+
+    resp = api_client.post(f"/api/forms/{form.id}/regenerate/")
+
+    assert resp.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+    assert resp.data == {
+        "form_type": "form_121",
+        "error": EXPENSES_STEP_NEVER_SAVED,
+        "step": "expense_info",
+    }
+    form.refresh_from_db()
+    assert json.loads(form.field_values) == {"stored": "before"}
+
+
+@pytest.mark.django_db
+def test_regenerate_of_a_filed_form_meets_the_gate_before_its_filed_refusal(
+    api_client, session_with_debtor, user
+):
+    # The completion check and the gate come first (CLAUDE.md "GenerateAll vs single"); once the
+    # gate is closed, the filed row is refused for being filed, with no step.
+    form = _filed_form(session_with_debtor, user, "form_121", {"Debtor1.First name": "Jane"})
+    ExpenseInfo.objects.filter(session=session_with_debtor).delete()
+
+    gated = api_client.post(f"/api/forms/{form.id}/regenerate/")
+    finish_intake(session_with_debtor)
+    closed = api_client.post(f"/api/forms/{form.id}/regenerate/")
+
+    assert (gated.status_code, gated.data["step"]) == (422, "expense_info")
+    assert closed.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+    assert closed.data == {"form_type": "form_121", "error": FILED}
+
+
+@pytest.mark.django_db
+def test_an_unfiled_download_refuses_a_gate_gap_and_a_filed_one_still_draws(
+    api_client, session_with_debtor, user
+):
+    # An unfiled form draws the filer's current answers, so an open gate refuses the draw; a
+    # filed form draws what was filed, gate or not (DIG-155).
+    unfiled = GeneratedForm.objects.create(
+        session=session_with_debtor, form_type="form_121", status="generated", generated_by=user
+    )
+    filed = _filed_form(
+        session_with_debtor, user, "form_101", build_parts("form_101", session_with_debtor)
+    )
+    ExpenseInfo.objects.filter(session=session_with_debtor).delete()
+
+    refused = api_client.get(f"/api/forms/{unfiled.id}/download/")
+    drawn = api_client.get(f"/api/forms/{filed.id}/download/")
+
+    assert refused.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+    assert refused.data == {
+        "form_type": "form_121",
+        "error": EXPENSES_STEP_NEVER_SAVED,
+        "step": "expense_info",
+    }
+    assert (drawn.status_code, drawn["Content-Type"]) == (200, "application/pdf")
+    assert drawn.content.startswith(b"%PDF")
+
+
+@pytest.mark.django_db
+def test_a_detail_gap_never_refuses_generate_but_a_gate_after_it_does(
+    api_client, session_with_debtor
+):
+    # A detail prints blank, so the form goes through (spec §5.7); a gate anywhere in the list
+    # refuses on the gate's own step, never the detail's.
+    detail = Gap("A detail.", "contracts", Gap.DETAIL)
+    gate = Gap("A gate.", "assets", Gap.GATE)
+    payload = {"session_id": session_with_debtor.id, "form_type": "form_121"}
+
+    with patch("apps.forms.views.completion_gaps", return_value=[detail]):
+        passed = api_client.post("/api/forms/generate/", payload, format="json")
+    with patch("apps.forms.views.completion_gaps", return_value=[detail, gate]):
+        refused = api_client.post("/api/forms/generate/", payload, format="json")
+
+    assert passed.status_code == status.HTTP_200_OK, passed.data
+    assert passed.data["form"]["form_type"] == "form_121"
+    assert refused.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+    assert refused.data == {"form_type": "form_121", "error": "A gate.", "step": "assets"}
 
 
 # ── Generate All Endpoint ─────────────────────────────────────────────

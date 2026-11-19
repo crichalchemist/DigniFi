@@ -130,6 +130,30 @@ def test_a_finished_intake_has_no_gaps(filer, completed):
     assert completion_gaps(completed) == []
 
 
+def test_a_detail_gap_never_refuses_complete_but_a_gate_after_it_does(
+    filer, completed, monkeypatch
+):
+    # A detail prints blank, so Complete lets it through (spec §5.7); a gate anywhere in the list
+    # refuses, naming the gate's step and never the detail's.
+    client, _ = filer
+    completed.status = "in_progress"
+    completed.save(update_fields=["status"])
+    detail = Gap("A detail.", "contracts", Gap.DETAIL)
+    gate = Gap("A gate.", "assets", Gap.GATE)
+
+    monkeypatch.setattr("apps.intake.views.completion_gaps", lambda session: [detail, gate])
+    refused = client.post(_session_url(completed, "complete/"))
+    monkeypatch.setattr("apps.intake.views.completion_gaps", lambda session: [detail])
+    passed = client.post(_session_url(completed, "complete/"))
+
+    assert refused.status_code == 400
+    assert refused.data["errors"] == [{"step": "assets", "message": "A gate."}]
+    assert passed.status_code == 200
+    assert passed.data["session"]["status"] == "completed"
+    completed.refresh_from_db()
+    assert completed.status == "completed"
+
+
 def test_the_gaps_endpoint_returns_the_list_and_writes_nothing(filer, unfinished, completed):
     client, _ = filer
     before = (unfinished.status, unfinished.current_step, unfinished.completed_at)

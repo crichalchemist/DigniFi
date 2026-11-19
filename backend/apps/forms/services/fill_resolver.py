@@ -596,8 +596,10 @@ def _key(field: FieldSpec) -> str:
 
 def binding_fix(binding: str) -> dict[str, str]:
     """
-    Where the filer changes what a binding reads, from its namespace; {} for no namespace. The
-    four answer namespaces raise ValueError for a key they don't list (answer_records.record_step).
+    Where the filer changes what a binding reads, from its namespace; {} for no namespace. Of the
+    four answer namespaces, only `petition.` and `affairs.` raise ValueError for a key they don't
+    list (answer_records.record_step); `schedule_i.` and `intentions.` take any key until their
+    PRs add tables.
     """
     binding = binding.strip()
     if binding.startswith("answer:"):

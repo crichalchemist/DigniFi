@@ -124,6 +124,7 @@ def _failure(form_type: str | None, exc: Exception) -> tuple[dict, int]:
         PreconditionMissing
         | IncomeNotSplit
         | Gap
+        # AssetStepGap and ClaimStepGap no longer arrive from _prepare, which raises a Gap (4a).
         | AssetStepGap
         | ClaimStepGap
         | NoTableInForce
@@ -263,10 +264,10 @@ def _prepare(session: IntakeSession) -> None:
     Once per call.
 
     The gate list is Complete's own (`completion_gaps`, 4a-R1), first gate first, so a session
-    completed before a rule existed is refused in the words Complete would use, and the means
-    test never decides the packet while a gate is open. Its callers are Generate, Generate All,
-    Regenerate, an unfiled download, Mark as Filed on an unfiled means-pair form,
-    `mark_pair_filed` and the `time_packet` command.
+    completed before a rule existed is refused in the words Complete would use, and its callers
+    don't work the means test out while a gate is open; the packet list, which never calls this,
+    still does. Its callers are Generate, Generate All, Regenerate, an unfiled download, Mark as
+    Filed on an unfiled means-pair form, `mark_pair_filed` and the `time_packet` command.
     """
     _check_finished(session)
     gates = [gap for gap in completion_gaps(session) if gap.kind == Gap.GATE]
@@ -447,9 +448,9 @@ class GeneratedFormViewSet(viewsets.ReadOnlyModelViewSet):
         Each form gets its own savepoint, so one form's failure can't undo the
         others. Rows for forms that no longer apply are deleted. A filed form is
         returned as it is, in the packet or out of it: not resolved again, not
-        un-filed, not deleted (DIG-155). An unfinished intake, or a means test that
-        can't be worked out, gets one refusal for the whole packet, before anything
-        is deleted.
+        un-filed, not deleted (DIG-155). An unfinished intake, a gate gap, or a means
+        test that can't be worked out, gets one refusal for the whole packet, before
+        anything is deleted.
         """
         session, err = _session_or_error(request, request.data.get("session_id"))
         if err:
@@ -685,8 +686,8 @@ class GeneratedFormViewSet(viewsets.ReadOnlyModelViewSet):
         still the one read before drawing: a form marked filed meanwhile keeps the values
         it was filed with. A filed form draws its stored parts, or its values stored before
         3a2, so it matches what was filed, even after it has left the packet (DIG-155). A
-        filed form with no stored values is drawn as one not yet filed, through the completion,
-        Assets step, claims step and packet checks, from the current intake, and the parts it draws are kept
+        filed form with no stored values is drawn as one not yet filed, through the completion gap
+        list (`_prepare`) and the packet check, from the current intake, and the parts it draws are kept
         as its filed ones if it is still filed when the draw ends.
         """
         generated_form = self.get_object()

@@ -23,7 +23,7 @@ from apps.eligibility.models import MeansTest
 from apps.forms.models import GeneratedForm
 from apps.forms.registry import build_parts, packet
 from apps.forms.services.pdf_filler import PDFFormFiller
-from apps.intake.models import DebtorInfo, IncomeInfo, IntakeSession
+from apps.intake.models import DebtorInfo, ExpenseInfo, IncomeInfo, IntakeSession
 from apps.intake.tests.builders import answer_household, finish_intake
 
 User = get_user_model()
@@ -69,6 +69,22 @@ def test_time_packet_refuses_an_unfinished_intake_and_writes_nothing(session):
 
     assert str(refused.value) == "The session was refused: IntakeNotFinished"
     # Nothing chained: --traceback prints only the command's own error.
+    assert (refused.value.__cause__, refused.value.__suppress_context__) == (None, True)
+    assert (GeneratedForm.objects.count(), MeansTest.objects.count()) == (0, 0)
+
+
+def test_time_packet_refuses_a_gate_gap_naming_its_step_and_nothing_else(session):
+    # A session completed before a rule existed is refused as Generate All refuses it (4a-R1).
+    # The message says which step is open, so operations can tell the gap from a fault, and
+    # never the sentence, which can quote the filer's data.
+    ExpenseInfo.objects.filter(session=session).delete()
+
+    with pytest.raises(CommandError) as refused:
+        call_command("time_packet", session=session.id, stdout=StringIO())
+
+    message = str(refused.value)
+    assert message == "The session was refused: Gap (expense_info)"
+    assert "Expenses step" not in message
     assert (refused.value.__cause__, refused.value.__suppress_context__) == (None, True)
     assert (GeneratedForm.objects.count(), MeansTest.objects.count()) == (0, 0)
 
