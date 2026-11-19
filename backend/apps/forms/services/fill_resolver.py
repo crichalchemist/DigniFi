@@ -31,6 +31,7 @@ from apps.forms.schema import (
     is_statement_group,
     number_box_keys,
 )
+from apps.forms.services.answer_records import ANSWER_NAMESPACES, record_step, record_value
 from apps.forms.services.derivations import (
     DERIVATIONS,
     PREDICATES,
@@ -458,6 +459,12 @@ def resolve_binding(binding: str, session: IntakeSession) -> str | list[str]:
         as a str, "" when unanswered
       - "means.…" reads the calculator's record, held once a resolve: each cell as
         means_cells.means_value gives it, a scalar str or a list of str
+      - "petition.<key>" | "petition.<key>[].<attr>" → the PetitionAnswers key, a str, or a list
+        of str over its rows; "" or [] with no record (answer_records.record_value)
+      - "schedule_i.<key>" | "schedule_i.<key>[].<attr>" → the same over ScheduleIAnswers
+      - "intentions.<key>" | "intentions.<key>[].<attr>" → the same over IntentionAnswers
+      - "affairs.l<n>_<key>" | "affairs.l<n>_<key>[].<attr>" → the same over the financial
+        affairs record (Form 107 lines 1-12) or the property affairs record (lines 13-28)
     """
     binding = binding.strip()
 
@@ -533,6 +540,9 @@ def resolve_binding(binding: str, session: IntakeSession) -> str | list[str]:
     if binding.startswith("means."):
         return means_value(binding, means_lines_for(session))
 
+    if binding.startswith(ANSWER_NAMESPACES):
+        return record_value(session, binding)
+
     raise ValueError(f"unrecognized binding: {binding!r}")
 
 
@@ -585,7 +595,10 @@ def _key(field: FieldSpec) -> str:
 
 
 def binding_fix(binding: str) -> dict[str, str]:
-    """Where the filer changes what a binding reads, from its namespace; {} for no namespace."""
+    """
+    Where the filer changes what a binding reads, from its namespace; {} for no namespace. The
+    four answer namespaces raise ValueError for a key they don't list (answer_records.record_step).
+    """
     binding = binding.strip()
     if binding.startswith("answer:"):
         # The form the binding names, which isn't always the one printing it: Form 101's
@@ -608,6 +621,8 @@ def binding_fix(binding: str) -> dict[str, str]:
         return {"step": "debts"}
     if binding.startswith("exemptions."):
         return {"page": "/exemptions"}
+    if binding.startswith(ANSWER_NAMESPACES):
+        return {"step": record_step(binding)}
     if binding.startswith("means."):
         # By attribute (3h3 plan R6): a creditor's name is the Amounts Owed step's, a property
         # or a vehicle the Assets step's, every other cell the 122A-2 page's.
