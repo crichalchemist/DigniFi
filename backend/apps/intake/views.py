@@ -18,22 +18,16 @@ from rest_framework.response import Response
 
 from apps.districts.dated_tables import NoTableInForce, fill_date
 from apps.districts.exemptions import NoExemptionCatalog, exemption_catalog_in_force
-from apps.eligibility.cmi import (
-    IncomeNotSplit,
-    counted_spouse_income,
-    income_step_gaps,
-    income_window,
-)
+from apps.eligibility.cmi import IncomeNotSplit, income_window
 from apps.eligibility.means_lines import MeansTableKeyMissing
 from apps.eligibility.services import MeansTestCalculator
-from apps.forms.registry import PreconditionMissing, _needs_county, _needs_ssn
 from apps.forms.services.exemption_items import exemption_items
 
 from .asset_lines import asset_step_gaps
 from .claims import claim_step_gaps
+from .completion import WIZARD_STEP_COUNT, Gap, completion_gaps
 from .exemptions import ordered_claims
 from .filing_fee import filing_fee_information
-from .income import deductions_blank, schedule_i_line4
 from .locking import lock_session
 from .means_page import means_page, save_means_answers
 from .means_test import (
@@ -137,19 +131,6 @@ def _lock_for_row_update(serializer):
         raise NotFound()  # moved meanwhile: locking its session now would break id order
 
 
-TAKE_HOME_PAY_NOT_ENTERED = (
-    "Enter what is taken out of your pay on the Take-home pay step. "
-    "If nothing is, enter $0 in one box."
-)
-SPOUSE_TAKE_HOME_PAY_NOT_ENTERED = (
-    "Enter what is taken out of your spouse's pay on the Take-home pay step. "
-    "If nothing is, enter $0 in one box."
-)
-EXPENSES_INCLUDE_OTHERS_UNANSWERED = (
-    "Answer whether your expenses include anyone else's, on the Expenses step."
-)
-
-
 class IntakeSessionViewSet(viewsets.ModelViewSet):
     """
     ViewSet for intake session management.
@@ -235,15 +216,15 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
         """
         session = lock_session(self.get_object().pk)
 
-        # Only one of the wizard's 9 steps; anything else is a client fault (DIG-151).
+        # Only one of the wizard's steps; anything else is a client fault (DIG-151).
         current_step = request.data.get("current_step")
         if (
             not isinstance(current_step, int)
             or isinstance(current_step, bool)
-            or not 1 <= current_step <= 9
+            or not 1 <= current_step <= WIZARD_STEP_COUNT
         ):
             return Response(
-                {"current_step": ["Must be a whole number from 1 to 9."]},
+                {"current_step": [f"Must be a whole number from 1 to {WIZARD_STEP_COUNT}."]},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -290,53 +271,11 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
         """
         session = lock_session(self.get_object().pk)
 
-        # Validate session is complete
-        errors = []
-
-        # The forms' own identity checks, so Complete and the forms say the same thing.
-        try:
-            _needs_ssn(session)  # checks the name and address first
-        except PreconditionMissing as exc:
-            errors.append({"step": exc.step, "message": str(exc)})
-
-        try:
-            _needs_county(session)
-        except PreconditionMissing as exc:
-            errors.append({"step": exc.step, "message": str(exc)})
-
-        # Every gap the Income step leaves, in order: the same check the means test refuses
-        # with (3e1 spec §9.1).
-        errors.extend(
-            [{"step": gap.step, "message": str(gap)} for gap in income_step_gaps(session)]
-        )
-
-        # Take-home pay and Schedule J line 3 are Complete's alone: the means test and the forms
-        # don't read them (3e2 spec §8).
-        for row, message in (
-            (getattr(session, "income_info", None), TAKE_HOME_PAY_NOT_ENTERED),
-            (counted_spouse_income(session), SPOUSE_TAKE_HOME_PAY_NOT_ENTERED),
-        ):
-            if row is not None and schedule_i_line4(row) > 0 and deductions_blank(row):
-                errors.append({"step": "take_home_pay", "message": message})
-
-        if not hasattr(session, "expense_info"):
-            errors.append(
-                {
-                    "step": "expense_info",
-                    "message": "Go through the Expenses step, even if you have no expenses to enter.",
-                }
-            )
-        elif session.expense_info.expenses_include_others is None:
-            errors.append({"step": "expense_info", "message": EXPENSES_INCLUDE_OTHERS_UNANSWERED})
-
-        # Schedule A/B's walk: every gap, after Schedule J line 3 and before the scanned debts,
-        # which is wizard order (3b spec §7).
-        errors.extend([{"step": gap.step, "message": str(gap)} for gap in asset_step_gaps(session)])
-
-        # The claims steps' walk (3c3): Assets' "Do you live here?" first, then the Debts block
-        # (a scanned debt the filer hasn't confirmed first, DIG-163), Contracts and Codebtors; then,
-        # out of wizard order on purpose (3c4), the legacy gaps and the line 4 question.
-        errors.extend({"step": gap.step, "message": str(gap)} for gap in claim_step_gaps(session))
+        errors = [
+            {"step": g.step, "message": str(g)}
+            for g in completion_gaps(session)
+            if g.kind == Gap.GATE
+        ]
 
         if errors:
             return Response(
@@ -358,6 +297,21 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
             {
                 "session": IntakeSessionSerializer(session).data,
                 "message": "Intake session completed successfully",
+            }
+        )
+
+    @action(detail=True, methods=["get"])
+    def gaps(self, request, pk=None):
+        """What Complete would still refuse (kind "gate") and what prints blank (kind "detail"), in
+        Complete's order: wizard order, with the claims tail last on purpose (3c4; the comment at
+        `complete`, step 4 spec §5.7). Reads only: no lock, no write, never the packet or a form's
+        preconditions."""
+        return Response(
+            {
+                "gaps": [
+                    {"message": str(g), "step": g.step, "kind": g.kind}
+                    for g in completion_gaps(self.get_object())
+                ]
             }
         )
 
