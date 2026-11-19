@@ -803,6 +803,19 @@ export const REVIEW_GAPS_UNAVAILABLE =
   "We couldn't check what is still missing. Press Complete to try again.";
 
 // ============================================================================
+// The Frame: Section Intro, Public Record Notice, Definitions (forms step 4a)
+// ============================================================================
+
+export const SECTION_INTRO_TIME = 'This step takes about {n} minutes.';
+export const SECTION_INTRO_PAUSE = 'You can stop at any time. What you have typed is saved.';
+
+// DRAFT: counsel C-40
+export const PUBLIC_RECORD_NOTICE =
+  "What you file with the court can be seen by the public. If an address raises a safety concern for you, the court's clerk can tell you what options exist: (312) 408-5000.";
+
+export const WHAT_DOES_THIS_MEAN = 'What does this mean?';
+
+// ============================================================================
 // Your Information Step
 // ============================================================================
 
