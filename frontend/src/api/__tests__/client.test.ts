@@ -172,3 +172,23 @@ describe('the polish request', () => {
     }
   });
 });
+
+// Review reads what is missing from the server's one list (step 4a); the read changes nothing, so
+// it is a GET.
+describe('the gap list request', () => {
+  it('gaps GETs the session’s gaps', async () => {
+    const seen: { url: string; method: string }[] = [];
+    const gap = { message: 'Enter your income by source on the Income step.', step: 'income_info' };
+    server.use(
+      http.get('http://localhost:8000/api/intake/sessions/:id/gaps/', ({ request }) => {
+        seen.push({ url: new URL(request.url).pathname, method: request.method });
+        return HttpResponse.json({ gaps: [{ ...gap, kind: 'gate' }] });
+      })
+    );
+
+    const reply = await api.intake.gaps(7);
+
+    expect(seen).toEqual([{ url: '/api/intake/sessions/7/gaps/', method: 'GET' }]);
+    expect(reply).toEqual({ gaps: [{ ...gap, kind: 'gate' }] });
+  });
+});

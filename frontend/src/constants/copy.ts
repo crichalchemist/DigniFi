@@ -788,6 +788,9 @@ export const REVIEW_DEDUCTIONS = 'Taken out of your pay, a month';
 export const REVIEW_SPOUSE_DEDUCTIONS = "Taken out of your spouse's pay, a month";
 export const REVIEW_NO_ENTRIES = 'None';
 export const REVIEW_YES_NO: Record<YesNo, string> = { yes: 'Yes', no: 'No' };
+export const REVIEW_NOTHING_MISSING = 'Nothing is missing.';
+export const REVIEW_GAPS_UNAVAILABLE =
+  "We couldn't check what is still missing. Press Complete to try again.";
 
 // ============================================================================
 // Your Information Step

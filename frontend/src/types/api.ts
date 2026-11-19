@@ -1291,6 +1291,21 @@ export interface CompletionError {
   message: string;
 }
 
+/**
+ * One thing the server finds missing from an intake: the step (a `WIZARD_STEPS` key) that fixes
+ * it, and whether Complete refuses it (`gate`) or the forms only print it blank (`detail`)
+ */
+export interface CompletionGap {
+  message: string;
+  step: string;
+  kind: 'gate' | 'detail';
+}
+
+/** GET /api/intake/sessions/{id}/gaps/ */
+export interface GapsResponse {
+  gaps: CompletionGap[];
+}
+
 export interface APIError {
   error: string;
   message: string;

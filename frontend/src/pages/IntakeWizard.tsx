@@ -52,7 +52,7 @@ import type {
   ContractRow,
   CodebtorRow,
   ClaimAnswers,
-  CompletionError,
+  CompletionGap,
   DebtRow,
   HouseholdMember,
   IncomeEntry,
@@ -102,6 +102,19 @@ const CODEBTOR_ANSWER_KEYS = [
   'community_spouse_zip_code',
   'community_spouse_outside_us',
 ] as const;
+// The three step-4 steps and Review always autosave (step 4 spec §6.0, B3); Review has no body
+// until 4i, so the exclusion below stands. Typed `readonly string[]`, not `as const`:
+// `currentStepKey` is a plain string, and a literal tuple's `includes` would reject it.
+const ALWAYS_AUTOSAVE_STEPS: readonly string[] = [
+  'assets',
+  'debts',
+  'contracts',
+  'codebtors',
+  'plans',
+  'last_few_years_1',
+  'last_few_years_2',
+  'review',
+];
 
 /** A stored contract's payment as a number, null kept as null, only on a row that has the key */
 function hydrateContract(row: ExecutoryContract): ExecutoryContract {
@@ -254,8 +267,11 @@ export function IntakeWizard() {
   const noDebts = claimAnswers.no_debts === true;
   const [contractsData, setContractsData] = useState<ContractRow[]>([]);
   const [codebtorsData, setCodebtorsData] = useState<CodebtorRow[]>([]);
-  // What Complete last said is missing, listed on Review until the step changes
-  const [completionErrors, setCompletionErrors] = useState<CompletionError[]>([]);
+  // What the server says is missing, read when Review shows and again after a refused Complete.
+  // The list is the server's; the browser keeps no copy of Complete's reasons.
+  const [gaps, setGaps] = useState<CompletionGap[] | null>(null);
+  const [gapsStatus, setGapsStatus] = useState<'loading' | 'done' | 'failed'>('loading');
+  const [gapsRead, setGapsRead] = useState(0);
 
   // =========================================================================
   // Read the session on mount
@@ -412,6 +428,31 @@ export function IntakeWizard() {
   // useAutoSave compares it with the step's last saved or loaded copy, so a step that only
   // shows what the server holds (a blank row, a recomputed total) sends nothing.
   const currentStepKey = WIZARD_STEPS[currentStepNumber - 1]?.key;
+
+  // Review lists what the server says is missing. Read each time Review shows, and again after a
+  // press of Complete fails (`gapsRead`), so the list is never a copy of an old refusal.
+  useEffect(() => {
+    if (sessionRead !== 'done' || currentStepKey !== 'review' || !session) return;
+    let cancelled = false;
+    setGapsStatus('loading');
+    api.intake
+      .gaps(session.id)
+      .then((reply) => {
+        if (cancelled) return;
+        setGaps(reply.gaps);
+        setGapsStatus('done');
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        setGapsStatus('failed');
+        console.error('Error reading what is missing:', error);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // `session` itself changes on every save; the id is what the read depends on
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionRead, currentStepKey, session?.id, gapsRead]);
   const currentStepBody = useMemo((): StepBody | null => {
     switch (currentStepKey) {
       case 'debtor_info':
@@ -551,14 +592,13 @@ export function IntakeWizard() {
     // they are kept under no step's name.
     dataKey: sessionRead === 'done' ? currentStepKey : undefined,
     onSave: (body) => saveCurrentStepData(body),
-    // Only autosave a complete, valid step (see architecture rationale), but for Assets, Amounts
-    // Owed, Contracts and Codebtors, whose half-filled rows save too: a row is kept by what is on
-    // it, never by the step being valid (3b spec §4, 3c3 B4 and B47). 'review' has nothing to
-    // save; disabled until a session exists.
+    // Only autosave a complete, valid step (see architecture rationale), but for the steps in
+    // ALWAYS_AUTOSAVE_STEPS, whose half-filled rows save too: a row is kept by what is on it,
+    // never by the step being valid (3b spec §4, 3c3 B4 and B47). 'review' has nothing to save;
+    // disabled until a session exists.
     enabled:
       !!session &&
-      (canProceed ||
-        ['assets', 'debts', 'contracts', 'codebtors'].includes(currentStepKey ?? '')) &&
+      (canProceed || ALWAYS_AUTOSAVE_STEPS.includes(currentStepKey ?? '')) &&
       currentStepKey !== 'review',
   });
 
@@ -619,11 +659,10 @@ export function IntakeWizard() {
     }
   };
 
-  // Go Back, and the "Go to" button beside each reason Complete gave, move without update_step:
-  // current_step stays where Continue last put it. Leaving Review drops its reasons.
+  // Go Back, and the "Go to" button beside each gap, move without update_step: current_step
+  // stays where Continue last put it.
   const moveToStep = (stepNumber: number) => {
     showStep(stepNumber);
-    setCompletionErrors([]);
   };
 
   const handlePrevious = () => {
@@ -641,7 +680,6 @@ export function IntakeWizard() {
   const handleComplete = async () => {
     if (pressInFlightRef.current) return;
     pressInFlightRef.current = true;
-    setCompletionErrors([]);
 
     try {
       // Save the current step immediately. If it fails, do NOT complete.
@@ -660,10 +698,10 @@ export function IntakeWizard() {
         navigate('/filing-fee');
       } catch (error) {
         // The filer stays on Review, where WizardLayout shows the reason the context recorded
-        // (DIG-150), and Review lists each thing Complete found missing. If only the means
-        // test failed, the intake is already complete, and pressing Complete again retries
-        // both calls.
-        if (error instanceof APIClientError && error.errors) setCompletionErrors(error.errors);
+        // (DIG-150). Review reads the server's list again after any failure, so it lists what is
+        // missing now. If only the means test failed, the intake is already complete, and
+        // pressing Complete again retries both calls.
+        setGapsRead((n) => n + 1);
         console.error('Error completing intake:', error);
       }
     } finally {
@@ -985,10 +1023,8 @@ export function IntakeWizard() {
             householdCount={session?.household?.family_size ?? null}
             county={county}
             onValidationChange={setCanProceed}
-            completionReasons={completionErrors.map((reason) => ({
-              message: reason.message,
-              step: WIZARD_STEPS.find((step) => step.key === reason.step),
-            }))}
+            gaps={gaps}
+            gapsStatus={gapsStatus}
             onGoToStep={moveToStep}
           />
         );

@@ -5,10 +5,12 @@ import {
   REVIEW_ASSISTANCE,
   REVIEW_DEDUCTIONS,
   REVIEW_ENTRIES,
+  REVIEW_GAPS_UNAVAILABLE,
   REVIEW_HOUSEHOLD_COUNT,
   REVIEW_LINE_3,
   REVIEW_LINKED_PAYMENTS,
   REVIEW_MONTHLY_TOTAL,
+  REVIEW_NOTHING_MISSING,
   PRIORITY_NO,
   PRIORITY_NOT_SURE,
   REVIEW_NOW_DIFFERENT,
@@ -42,6 +44,8 @@ const baseProps = {
   spouseIncomeData: {},
   entries: null,
   spouseEntries: null,
+  gaps: null,
+  gapsStatus: 'loading' as const,
 };
 
 const value = (label: string) => screen.getByText(label).nextElementSibling;
@@ -213,10 +217,124 @@ describe('ReviewStep null-safe rendering', () => {
     expect(screen.getByText('No codebtors listed.')).toBeInTheDocument();
   });
 
-  it('signals the step is always valid to proceed', () => {
-    const onValidationChange = vi.fn();
-    render(<ReviewStep {...baseProps} onValidationChange={onValidationChange} />);
-    expect(onValidationChange).toHaveBeenCalledWith(true);
+  // What the server's gap list does to Review (step 4a, 4a-R3): the list is information for the
+  // filer; only a gate in a list that came back locks the button, since the server refuses a gate
+  // anyway.
+  describe('the server gap list', () => {
+    const NO_INCOME = {
+      message: 'Enter your income by source on the Income step.',
+      step: 'income_info',
+      kind: 'gate' as const,
+    };
+    const NO_ALIAS = {
+      message: 'Say whether you have used another name.',
+      step: 'debtor_info',
+      kind: 'detail' as const,
+    };
+
+    it('is valid once the server lists no gate gap, and not while one stands', () => {
+      const onValidationChange = vi.fn();
+      const { rerender } = render(
+        <ReviewStep
+          {...baseProps}
+          gaps={[]}
+          gapsStatus="done"
+          onValidationChange={onValidationChange}
+        />
+      );
+      expect(onValidationChange).toHaveBeenLastCalledWith(true);
+
+      rerender(
+        <ReviewStep
+          {...baseProps}
+          gaps={[NO_INCOME]}
+          gapsStatus="done"
+          onValidationChange={onValidationChange}
+        />
+      );
+      expect(onValidationChange).toHaveBeenLastCalledWith(false);
+    });
+
+    it('a detail gap never blocks Complete', () => {
+      const onValidationChange = vi.fn();
+      render(
+        <ReviewStep
+          {...baseProps}
+          gaps={[NO_ALIAS]}
+          gapsStatus="done"
+          onValidationChange={onValidationChange}
+        />
+      );
+      expect(onValidationChange).toHaveBeenLastCalledWith(true);
+      expect(onValidationChange).not.toHaveBeenCalledWith(false);
+    });
+
+    it('says Nothing is missing with an empty list', () => {
+      const { container } = render(
+        <ReviewStep {...baseProps} gaps={[]} gapsStatus="done" onValidationChange={vi.fn()} />
+      );
+      expect(container.querySelector('.review-reasons')).toHaveTextContent(REVIEW_NOTHING_MISSING);
+    });
+
+    it('lists each gap with a way to its step', () => {
+      const onGoToStep = vi.fn();
+      render(
+        <ReviewStep
+          {...baseProps}
+          gaps={[NO_INCOME, NO_ALIAS]}
+          gapsStatus="done"
+          onValidationChange={vi.fn()}
+          onGoToStep={onGoToStep}
+        />
+      );
+      expect(screen.getByText(NO_INCOME.message)).toBeInTheDocument();
+      expect(screen.getByText(NO_ALIAS.message)).toBeInTheDocument();
+      expect(screen.queryByText(REVIEW_NOTHING_MISSING)).not.toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Go to Income' }));
+      expect(onGoToStep).toHaveBeenCalledWith(2);
+    });
+
+    it("a gap on a step the wizard doesn't know shows its words and no button", () => {
+      render(
+        <ReviewStep
+          {...baseProps}
+          gaps={[{ message: 'Tell us about your plans.', step: 'plans', kind: 'detail' }]}
+          gapsStatus="done"
+          onValidationChange={vi.fn()}
+        />
+      );
+      expect(screen.getByText('Tell us about your plans.')).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /^Go to / })).not.toBeInTheDocument();
+    });
+
+    it('an unreachable check leaves Complete enabled and says so', () => {
+      const onValidationChange = vi.fn();
+      render(
+        <ReviewStep
+          {...baseProps}
+          gaps={null}
+          gapsStatus="failed"
+          onValidationChange={onValidationChange}
+        />
+      );
+      expect(onValidationChange).toHaveBeenLastCalledWith(true);
+      expect(screen.getByText(REVIEW_GAPS_UNAVAILABLE)).toBeInTheDocument();
+    });
+
+    it('a check that has not answered leaves Complete enabled', () => {
+      const onValidationChange = vi.fn();
+      const { container } = render(
+        <ReviewStep
+          {...baseProps}
+          gaps={null}
+          gapsStatus="loading"
+          onValidationChange={onValidationChange}
+        />
+      );
+      expect(onValidationChange).toHaveBeenLastCalledWith(true);
+      expect(container.querySelector('.review-reasons')).toBeEmptyDOMElement();
+    });
   });
 });
 
