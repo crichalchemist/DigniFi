@@ -5,7 +5,7 @@ import { http, HttpResponse } from 'msw';
 import { server } from '../../test/mocks/server';
 import { IntakeProvider } from '../../context/IntakeContext';
 import { FormDashboard } from '../FormDashboard';
-import { DASHBOARD_ERROR, FORM_103A_LINK } from '../../constants/copy';
+import { DASHBOARD_ERROR, DASHBOARD_GATES_ONE, FORM_103A_LINK } from '../../constants/copy';
 import { FORM_103A_URL } from '../../constants/copy';
 import {
   MEANS_FILED_BEFORE_122A1,
@@ -173,6 +173,67 @@ describe('FormDashboard', () => {
 
     // Retry button should be present
     expect(screen.getByRole('button', { name: /try again/i })).toBeInTheDocument();
+  });
+
+  // ---------------------------------------------------------------------------
+  // What is still missing (forms step 4a)
+  // ---------------------------------------------------------------------------
+
+  describe('the gap notice', () => {
+    function gapsAre(gaps: unknown[]) {
+      server.use(
+        http.get('http://localhost:8000/api/intake/sessions/:id/gaps/', () =>
+          HttpResponse.json({ gaps })
+        )
+      );
+    }
+
+    it('names each missing answer above Generate All', async () => {
+      gapsAre([{ message: 'Enter your income by source.', step: 'income_info', kind: 'gate' }]);
+      renderFormDashboard();
+
+      const heading = await screen.findByText(DASHBOARD_GATES_ONE);
+      expect(screen.getByText('Enter your income by source.')).toBeInTheDocument();
+      expect(screen.getByRole('link', { name: 'Go to Income' })).toHaveAttribute(
+        'href',
+        '/intake?step=income_info'
+      );
+      const generateAll = screen.getByRole('button', { name: /generate all/i });
+      expect(
+        heading.compareDocumentPosition(generateAll) & Node.DOCUMENT_POSITION_FOLLOWING
+      ).toBeTruthy();
+    });
+
+    it('shows no gap notice when nothing is missing', async () => {
+      gapsAre([]);
+      renderFormDashboard();
+
+      await screen.findByText('Form 101 - Voluntary Petition');
+      expect(screen.queryByText(/still missing/)).not.toBeInTheDocument();
+      expect(screen.queryByText(/blank on your forms/)).not.toBeInTheDocument();
+    });
+
+    it('a failed gaps check shows no notice and the forms still load', async () => {
+      const logged = vi.spyOn(console, 'error').mockImplementation(() => {});
+      try {
+        server.use(
+          http.get('http://localhost:8000/api/intake/sessions/:id/gaps/', () =>
+            HttpResponse.json({ error: 'Server error' }, { status: 500 })
+          )
+        );
+        renderFormDashboard();
+
+        await screen.findByText('Form 101 - Voluntary Petition');
+        // apiFetch retries a 5xx three times, backing off 0.5 + 1 + 2 s, before the read fails
+        await waitFor(() => expect(logged).toHaveBeenCalledTimes(1), { timeout: 6000 });
+        expect(screen.queryByText(/still missing/)).not.toBeInTheDocument();
+        expect(
+          screen.getByRole('article', { name: 'Form 121 - SSN Statement' })
+        ).toBeInTheDocument();
+      } finally {
+        logged.mockRestore();
+      }
+    }, 10000);
   });
 
   // ---------------------------------------------------------------------------
@@ -1076,7 +1137,8 @@ describe('FormDashboard', () => {
       await userEvent.click(screen.getByRole('button', { name: /continue/i }));
     }
 
-    it('links a form whose Generate was refused to the step that fixes it', async () => {
+    // A pending card's Answer Questions button is its way to the fix (4a-R10)
+    it('sends a pending form whose Generate was refused to the step that fixes it, by its button', async () => {
       server.use(
         http.post('http://localhost:8000/api/forms/generate/', () =>
           HttpResponse.json(
@@ -1091,10 +1153,9 @@ describe('FormDashboard', () => {
       await generateOne(card);
 
       expect(await within(card).findByText(LETTER)).toBeInTheDocument();
-      expect(within(card).getByRole('link', { name: 'Go to Your Information' })).toHaveAttribute(
-        'href',
-        '/intake?step=debtor_info'
-      );
+      expect(
+        within(card).getByRole('button', { name: 'Go to Your Information' })
+      ).toBeInTheDocument();
     });
 
     // An unfiled form's download works the means test out again, which needs income by source
@@ -1112,7 +1173,7 @@ describe('FormDashboard', () => {
       );
     });
 
-    it('links a form whose Generate was refused to the page that fixes it', async () => {
+    it('sends a pending form whose Generate was refused to the page that fixes it, by its button', async () => {
       // Line 7's "Identify who" is a filing-fee answer, which feeds Form 103B (Task 4)
       const WHO_TOO_LONG =
         '“Identify who” is too long to fit on the court form, even in small print. Shorten it.';
@@ -1134,8 +1195,8 @@ describe('FormDashboard', () => {
 
       expect(await within(card).findByText(WHO_TOO_LONG)).toBeInTheDocument();
       expect(
-        within(card).getByRole('link', { name: 'Go to How you will pay the filing fee' })
-      ).toHaveAttribute('href', '/filing-fee');
+        within(card).getByRole('button', { name: 'Go to How you will pay the filing fee' })
+      ).toBeInTheDocument();
     });
 
     // The context says the intake is complete, so no notice links to it; the server reopened it

@@ -10,7 +10,12 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useIntake } from '../context/IntakeContext';
 import { api, APIClientError } from '../api/client';
-import { FormCard, GenerateAllButton, DebtExplanationsPanel } from '../components/forms';
+import {
+  FormCard,
+  GenerateAllButton,
+  DebtExplanationsPanel,
+  GapsNotice,
+} from '../components/forms';
 import type { DebtClassification } from '../components/forms/DebtExplanationsPanel';
 import type { FormCardPair, FormRefusal } from '../components/forms/FormCard';
 import { UPLDisclaimer } from '../components/compliance';
@@ -42,6 +47,7 @@ import { WIZARD_STEPS } from '../constants/wizardSteps';
 import { Button } from '../components/common';
 import { PostTaskSurvey } from '../components/survey/PostTaskSurvey';
 import type {
+  CompletionGap,
   GeneratedForm,
   FormType,
   GenerateAllFormsResponse,
@@ -190,6 +196,8 @@ export function FormDashboard() {
   // filed. A refusal of Generate All's whole call leaves them.
   const [formRefusals, setFormRefusals] = useState<Partial<Record<FormType, Refusal>>>({});
   const [dischargeData, setDischargeData] = useState<DebtClassification[]>([]);
+  // What the server finds missing from the intake, read once on mount (not with each reload of the forms)
+  const [gaps, setGaps] = useState<CompletionGap[]>([]);
   // One pair action at a time: a second press before the first answers sends nothing. Declared
   // before the early return below, with the other hooks.
   const markingPair = useRef(false);
@@ -237,6 +245,18 @@ export function FormDashboard() {
       .getDischargeability(session.id)
       .then((data) => setDischargeData(data as DebtClassification[]))
       .catch(() => {});
+  }, [session]);
+
+  // The packet's own error path says when the forms can't load; a failed check shows no notice
+  useEffect(() => {
+    if (!session) return;
+    api.intake
+      .gaps(session.id)
+      .then((response) => setGaps(response.gaps))
+      .catch((err) => {
+        console.error('Failed to read the gap list', err);
+        setGaps([]);
+      });
   }, [session]);
 
   // Map form_type → GeneratedForm for quick lookup
@@ -564,6 +584,9 @@ export function FormDashboard() {
               {filedCount > 0 && ` | ${filedCount} filed`}
             </p>
           </div>
+
+          {/* What is still missing, above the button that would refuse for it */}
+          <GapsNotice gaps={gaps} />
 
           {/* Generate All button */}
           <div className="form-dashboard-generate-all">

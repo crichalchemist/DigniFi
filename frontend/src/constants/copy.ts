@@ -78,6 +78,16 @@ export const DASHBOARD_ERROR = 'Unable to load your forms. Please try again.';
 
 export const DASHBOARD_EMPTY = 'No active intake session. Please complete the intake wizard first.';
 
+export const DASHBOARD_GATES_ONE =
+  "1 answer is still missing. Your forms can't be prepared until it is given.";
+
+export const DASHBOARD_GATES_MANY =
+  "{count} answers are still missing. Your forms can't be prepared until each is given.";
+
+export const DASHBOARD_GAPS_ONE = '1 answer is blank on your forms.';
+
+export const DASHBOARD_GAPS_MANY = '{count} answers are blank on your forms.';
+
 export const FILING_FEE_CHANGE_LINK = 'Change how you will pay the fee';
 
 export const FILING_FEE_CHOOSE_LINK = 'Choose how you will pay the fee';
