@@ -150,6 +150,28 @@ def test_an_affairs_line_the_form_does_not_have_is_a_defect_not_a_wrong_step(bin
         record_value(SimpleNamespace(), binding)
 
 
+@pytest.mark.parametrize(
+    "line,record,other",
+    [
+        (1, "financial_affairs", "property_affairs"),
+        (12, "financial_affairs", "property_affairs"),
+        (13, "property_affairs", "financial_affairs"),
+        (28, "property_affairs", "financial_affairs"),
+    ],
+)
+def test_a_form_107_line_reads_the_record_that_asks_it(line, record, other):
+    # Lines 1 to 12 are asked in last_few_years_1 and stored in financial_affairs; lines 13 to
+    # 28 in last_few_years_2 and property_affairs. Reading the wrong record prints another
+    # line's answer, or blank, on the statement of financial affairs.
+    key = f"affairs.l{line}_answer"
+    asked = _stub(record, {f"l{line}_answer": "yes"})
+    assert record_value(asked, key) == "yes"
+    elsewhere = _stub(other, {f"l{line}_answer": "yes"})
+    assert record_value(elsewhere, key) == ""
+    rows = _stub(record, {f"l{line}_rows": [{"street": "1 Demo St"}]})
+    assert record_value(rows, f"affairs.l{line}_rows[].street") == ["1 Demo St"]
+
+
 def test_structure_under_a_scalar_binding_reads_blank():
     # §7.3: intentions.secured is a JSON object keyed by DebtInfo.id, not a scalar (4a-R7).
     stub = SimpleNamespace(
