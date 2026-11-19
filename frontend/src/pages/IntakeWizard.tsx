@@ -52,6 +52,7 @@ import type {
   ContractRow,
   CodebtorRow,
   ClaimAnswers,
+  CompletionError,
   CompletionGap,
   DebtRow,
   HouseholdMember,
@@ -268,10 +269,14 @@ export function IntakeWizard() {
   const [contractsData, setContractsData] = useState<ContractRow[]>([]);
   const [codebtorsData, setCodebtorsData] = useState<CodebtorRow[]>([]);
   // What the server says is missing, read when Review shows and again after a refused Complete.
-  // The list is the server's; the browser keeps no copy of Complete's reasons.
+  // The list is the server's; the browser keeps Complete's own reasons only until that read
+  // answers, to show them if it fails (`refusalReasons`).
   const [gaps, setGaps] = useState<CompletionGap[] | null>(null);
   const [gapsStatus, setGapsStatus] = useState<'loading' | 'done' | 'failed'>('loading');
   const [gapsRead, setGapsRead] = useState(0);
+  // The `errors` of the last refused Complete: shown only when the re-read after it fails, so a
+  // read that works is the one list on Review
+  const [refusalReasons, setRefusalReasons] = useState<CompletionError[] | null>(null);
 
   // =========================================================================
   // Read the session on mount
@@ -440,6 +445,7 @@ export function IntakeWizard() {
       .then((reply) => {
         if (cancelled) return;
         setGaps(reply.gaps);
+        setRefusalReasons(null);
         setGapsStatus('done');
       })
       .catch((error) => {
@@ -453,6 +459,10 @@ export function IntakeWizard() {
     // `session` itself changes on every save; the id is what the read depends on
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionRead, currentStepKey, session?.id, gapsRead]);
+  // A refusal's reasons belong to Review; they don't wait for the filer's next visit
+  useEffect(() => {
+    if (currentStepKey !== 'review') setRefusalReasons(null);
+  }, [currentStepKey]);
   const currentStepBody = useMemo((): StepBody | null => {
     switch (currentStepKey) {
       case 'debtor_info':
@@ -701,6 +711,7 @@ export function IntakeWizard() {
         // (DIG-150). Review reads the server's list again after any failure, so it lists what is
         // missing now. If only the means test failed, the intake is already complete, and
         // pressing Complete again retries both calls.
+        setRefusalReasons(error instanceof APIClientError ? (error.errors ?? null) : null);
         setGapsRead((n) => n + 1);
         console.error('Error completing intake:', error);
       }
@@ -1023,7 +1034,11 @@ export function IntakeWizard() {
             householdCount={session?.household?.family_size ?? null}
             county={county}
             onValidationChange={setCanProceed}
-            gaps={gaps}
+            gaps={
+              gapsStatus === 'failed'
+                ? (refusalReasons?.map((reason) => ({ ...reason, kind: 'gate' as const })) ?? null)
+                : gaps
+            }
             gapsStatus={gapsStatus}
             onGoToStep={moveToStep}
           />

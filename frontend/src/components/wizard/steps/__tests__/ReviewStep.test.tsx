@@ -322,6 +322,41 @@ describe('ReviewStep null-safe rendering', () => {
       expect(screen.getByText(REVIEW_GAPS_UNAVAILABLE)).toBeInTheDocument();
     });
 
+    it('a failed check never says Nothing is missing, and an empty list never says it failed', () => {
+      const { container, rerender } = render(
+        <ReviewStep {...baseProps} gaps={null} gapsStatus="failed" onValidationChange={vi.fn()} />
+      );
+      expect(container.querySelector('.review-reasons')).toHaveTextContent(REVIEW_GAPS_UNAVAILABLE);
+      expect(screen.queryByText(REVIEW_NOTHING_MISSING)).not.toBeInTheDocument();
+
+      rerender(
+        <ReviewStep {...baseProps} gaps={[]} gapsStatus="done" onValidationChange={vi.fn()} />
+      );
+      expect(container.querySelector('.review-reasons')).toHaveTextContent(REVIEW_NOTHING_MISSING);
+      expect(screen.queryByText(REVIEW_GAPS_UNAVAILABLE)).not.toBeInTheDocument();
+    });
+
+    it('a failed check lists the reasons it was given, with a way to each step, in place of the failure sentence', () => {
+      const onValidationChange = vi.fn();
+      const onGoToStep = vi.fn();
+      render(
+        <ReviewStep
+          {...baseProps}
+          gaps={[NO_INCOME]}
+          gapsStatus="failed"
+          onValidationChange={onValidationChange}
+          onGoToStep={onGoToStep}
+        />
+      );
+      expect(screen.getByText(NO_INCOME.message)).toBeInTheDocument();
+      expect(screen.queryByText(REVIEW_GAPS_UNAVAILABLE)).not.toBeInTheDocument();
+      expect(screen.queryByText(REVIEW_NOTHING_MISSING)).not.toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: 'Go to Income' }));
+      expect(onGoToStep).toHaveBeenCalledWith(2);
+      // Only a list that came back locks Complete
+      expect(onValidationChange).toHaveBeenLastCalledWith(true);
+    });
+
     it('a check that has not answered leaves Complete enabled', () => {
       const onValidationChange = vi.fn();
       const { container } = render(

@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, useLocation } from 'react-router-dom';
-import { http, HttpResponse } from 'msw';
+import { delay, http, HttpResponse } from 'msw';
 import { server } from '../../test/mocks/server';
 import { IntakeProvider } from '../../context/IntakeContext';
 import { FormDashboard } from '../FormDashboard';
@@ -202,6 +202,42 @@ describe('FormDashboard', () => {
       expect(
         heading.compareDocumentPosition(generateAll) & Node.DOCUMENT_POSITION_FOLLOWING
       ).toBeTruthy();
+    });
+
+    // The notice is the packet's: it sits with the count, under the progress bar and above the button
+    it('sits between the progress bar and Generate All', async () => {
+      gapsAre([{ message: 'Enter your income by source.', step: 'income_info', kind: 'gate' }]);
+      renderFormDashboard();
+
+      const heading = await screen.findByText(DASHBOARD_GATES_ONE);
+      const progress = screen.getByRole('progressbar');
+      const generateAll = screen.getByRole('button', { name: /generate all/i });
+      expect(
+        progress.compareDocumentPosition(heading) & Node.DOCUMENT_POSITION_FOLLOWING
+      ).toBeTruthy();
+      expect(
+        heading.compareDocumentPosition(generateAll) & Node.DOCUMENT_POSITION_FOLLOWING
+      ).toBeTruthy();
+    });
+
+    // The gap read can answer after the packet does; the region must already be on the page
+    it('keeps its status region on the page before the gaps arrive', async () => {
+      server.use(
+        http.get('http://localhost:8000/api/intake/sessions/:id/gaps/', async () => {
+          await delay(150);
+          return HttpResponse.json({
+            gaps: [{ message: 'Enter your income by source.', step: 'income_info', kind: 'gate' }],
+          });
+        })
+      );
+      const { container } = renderFormDashboard();
+
+      await screen.findByText('Form 101 - Voluntary Petition');
+      const region = container.querySelector('.form-dashboard-gaps');
+      expect(region).toBeEmptyDOMElement();
+
+      await screen.findByText('Enter your income by source.');
+      expect(container.querySelector('.form-dashboard-gaps')).toBe(region);
     });
 
     it('shows no gap notice when nothing is missing', async () => {
@@ -884,6 +920,81 @@ describe('FormDashboard', () => {
         'href',
         '/intake?step=income_info'
       );
+    });
+
+    // One way forward per gap, as on the cards: the gap notice already links to the step
+    it('adds no second link to the step when the gap notice lists it', async () => {
+      server.use(
+        http.get('http://localhost:8000/api/intake/sessions/:id/gaps/', () =>
+          HttpResponse.json({
+            gaps: [{ message: INCOME_NOT_SPLIT, step: 'income_info', kind: 'gate' }],
+          })
+        ),
+        http.post('http://localhost:8000/api/forms/generate_all/', () =>
+          HttpResponse.json(NOT_SPLIT, { status: 422 })
+        )
+      );
+
+      renderFormDashboard();
+      await screen.findByText(DASHBOARD_GATES_ONE);
+      await userEvent.click(await openGenerateAll());
+
+      const alert = await screen.findByRole('alert');
+      expect(alert).toHaveTextContent(INCOME_NOT_SPLIT);
+      expect(within(alert).queryByRole('link')).not.toBeInTheDocument();
+      expect(screen.getAllByRole('link', { name: 'Go to Income' })).toHaveLength(1);
+    });
+
+    it('keeps the link in a refusal whose step the gap notice does not list', async () => {
+      server.use(
+        http.get('http://localhost:8000/api/intake/sessions/:id/gaps/', () =>
+          HttpResponse.json({
+            gaps: [
+              { message: 'Go through the Expenses step.', step: 'expense_info', kind: 'gate' },
+            ],
+          })
+        ),
+        http.post('http://localhost:8000/api/forms/generate_all/', () =>
+          HttpResponse.json(NOT_SPLIT, { status: 422 })
+        )
+      );
+
+      renderFormDashboard();
+      await screen.findByText(DASHBOARD_GATES_ONE);
+      await userEvent.click(await openGenerateAll());
+
+      const alert = await screen.findByRole('alert');
+      expect(within(alert).getByRole('link', { name: 'Go to Income' })).toHaveAttribute(
+        'href',
+        '/intake?step=income_info'
+      );
+    });
+
+    // The packet list's refusal is the page's own `error`, not Generate All's: it keeps its link.
+    // The gap notice sits with the packet's count, so a refused packet list shows none, and the
+    // alert's link is the one way to the step even when the gap list names it
+    it('keeps the link on a refused packet list, where no gap notice shows', async () => {
+      server.use(
+        http.get('http://localhost:8000/api/intake/sessions/:id/gaps/', () =>
+          HttpResponse.json({
+            gaps: [{ message: INCOME_NOT_SPLIT, step: 'income_info', kind: 'gate' }],
+          })
+        ),
+        // The gaps answer first, so the notice would be on the page if anything showed it
+        http.get('http://localhost:8000/api/forms/packet/', async () => {
+          await delay(100);
+          return HttpResponse.json(NOT_SPLIT, { status: 422 });
+        })
+      );
+
+      const { container } = renderFormDashboard();
+
+      const alert = await screen.findByRole('alert');
+      expect(alert).toHaveTextContent(INCOME_NOT_SPLIT);
+      expect(within(alert).getByRole('link', { name: 'Go to Income' })).toBeInTheDocument();
+      expect(screen.queryByText(DASHBOARD_GATES_ONE)).not.toBeInTheDocument();
+      expect(container.querySelector('.form-dashboard-gaps')).toBeNull();
+      expect(screen.getAllByRole('link', { name: 'Go to Income' })).toHaveLength(1);
     });
 
     // The intake was reopened since this page loaded it as complete (step 3a1 spec §4.4)

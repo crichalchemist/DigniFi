@@ -100,7 +100,10 @@ interface ReviewStepProps {
   householdCount: number | null;
   county: string | null;
   onValidationChange: (isValid: boolean) => void;
-  /** What the server says is missing: null until a read has returned */
+  /**
+   * What the server says is missing: null until a read has returned. When the read failed, the
+   * reasons a refused Complete gave instead, if it gave any.
+   */
   gaps: CompletionGap[] | null;
   /** Whether that read is still out, has returned, or failed */
   gapsStatus: 'loading' | 'done' | 'failed';
@@ -221,9 +224,9 @@ export function ReviewStep({
           A polite live region from the start, so a screen reader reads out the reasons a
           refused Complete adds to it. */}
       <div className="review-reasons" aria-live="polite">
-        {gapsStatus === 'failed' && <p>{REVIEW_GAPS_UNAVAILABLE}</p>}
+        {gapsStatus === 'failed' && (gaps ?? []).length === 0 && <p>{REVIEW_GAPS_UNAVAILABLE}</p>}
         {gapsStatus === 'done' && (gaps ?? []).length === 0 && <p>{REVIEW_NOTHING_MISSING}</p>}
-        {gapsStatus === 'done' && (gaps ?? []).length > 0 && (
+        {(gapsStatus === 'done' || gapsStatus === 'failed') && (gaps ?? []).length > 0 && (
           <section className="review-section">
             <ul className="review-list">
               {(gaps ?? []).map(({ message, step: stepKey }, index) => {

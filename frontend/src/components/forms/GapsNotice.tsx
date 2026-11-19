@@ -22,8 +22,6 @@ function wizardIndex(key: string): number {
 }
 
 export function GapsNotice({ gaps }: { gaps: CompletionGap[] }) {
-  if (gaps.length === 0) return null;
-
   const gateCount = gaps.filter((gap) => gap.kind === 'gate').length;
   const detailCount = gaps.filter((gap) => gap.kind === 'detail').length;
 
@@ -32,6 +30,8 @@ export function GapsNotice({ gaps }: { gaps: CompletionGap[] }) {
     (a, b) => wizardIndex(a) - wizardIndex(b)
   );
 
+  // A polite region from the start, empty until there is something to say, so a screen reader
+  // reads out the gaps that arrive in it (the pair region on FormDashboard works the same way)
   return (
     <section className="form-dashboard-notice form-dashboard-gaps" role="status">
       {gateCount > 0 && (
@@ -48,25 +48,27 @@ export function GapsNotice({ gaps }: { gaps: CompletionGap[] }) {
             : DASHBOARD_GAPS_MANY.replace('{count}', String(detailCount))}
         </p>
       )}
-      <ul>
-        {steps.map((key) => {
-          const wizardStep = WIZARD_STEPS.find((step) => step.key === key);
-          return (
-            <li key={key}>
-              {gaps
-                .filter((gap) => gap.step === key)
-                .map((gap, index) => (
-                  <p key={index}>{gap.message}</p>
-                ))}
-              {wizardStep && (
-                <Link to={`/intake?step=${key}`} className="button button--primary">
-                  Go to {wizardStep.label}
-                </Link>
-              )}
-            </li>
-          );
-        })}
-      </ul>
+      {steps.length > 0 && (
+        <ul>
+          {steps.map((key) => {
+            const wizardStep = WIZARD_STEPS.find((step) => step.key === key);
+            return (
+              <li key={key}>
+                {gaps
+                  .filter((gap) => gap.step === key)
+                  .map((gap, index) => (
+                    <p key={index}>{gap.message}</p>
+                  ))}
+                {wizardStep && (
+                  <Link to={`/intake?step=${key}`} className="button button--primary">
+                    Go to {wizardStep.label}
+                  </Link>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
     </section>
   );
 }

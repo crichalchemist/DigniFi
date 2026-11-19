@@ -26,9 +26,25 @@ const detail = (step: string, message: string): CompletionGap => ({
 });
 
 describe('GapsNotice', () => {
-  it('renders nothing for an empty list', () => {
-    const { container } = renderNotice([]);
-    expect(container).toBeEmptyDOMElement();
+  it('shows nothing for an empty list', () => {
+    renderNotice([]);
+    // The status region is there, with nothing in it
+    expect(screen.getByRole('status')).toBeEmptyDOMElement();
+  });
+
+  // A live region announces only what is added to a region already on the page
+  it('keeps one status region from before the gaps arrive, so a screen reader reads them out', () => {
+    const { rerender } = renderNotice([]);
+    const region = screen.getByRole('status');
+
+    rerender(
+      <MemoryRouter>
+        <GapsNotice gaps={[gate('income_info', 'Enter your income.')]} />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByRole('status')).toBe(region);
+    expect(region).toHaveTextContent('Enter your income.');
   });
 
   it('a gate gap is named as missing, not as blank', () => {

@@ -407,7 +407,14 @@ export function FormDashboard() {
   const noticeLinksIntake = session.status !== 'completed';
   const linkTo = linksInPageOrder(noticeLinksIntake);
   const errorLink = error ? linkTo(error) : undefined;
-  const refusalLink = generateAllRefusal ? linkTo(generateAllRefusal) : undefined;
+  // A gate the gap notice lists already has its way forward there, so the refusal says it without
+  // a second link; one the notice doesn't list (its check failed, or it names a page) keeps its own
+  const noticeListsRefusedStep =
+    generateAllRefusal?.step !== undefined &&
+    fixLink({ step: generateAllRefusal.step }) !== undefined &&
+    gaps.some((gap) => gap.step === generateAllRefusal.step);
+  const refusalLink =
+    generateAllRefusal && !noticeListsRefusedStep ? linkTo(generateAllRefusal) : undefined;
   // The pair's refusals are information (a gap, a table or a line the calculator can't work out, §6), so they show apart from the others, which
   // are errors; the others' links come first, as they sit first on the page
   const isPair = (e: GenerateAllError) => MEANS_PAIR.includes(e.form_type as FormType);

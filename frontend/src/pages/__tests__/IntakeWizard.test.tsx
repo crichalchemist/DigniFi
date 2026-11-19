@@ -585,8 +585,79 @@ describe("IntakeWizard Complete's reasons", { timeout: 30_000 }, () => {
     renderWizard();
 
     expect(await screen.findByText(REVIEW_GAPS_UNAVAILABLE)).toBeInTheDocument();
+    // A check that failed is no answer: Review must not say nothing is missing
+    expect(screen.queryByText(REVIEW_NOTHING_MISSING)).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: /complete intake/i })).toBeEnabled();
     expect(console.error).toHaveBeenCalledWith('Error reading what is missing:', expect.anything());
+  });
+
+  // A 500 is read three times with a backoff before it rejects, so this one takes seconds
+  it('a gap check that fails with a 500 never says Nothing is missing', async () => {
+    server.use(
+      http.get('http://localhost:8000/api/intake/sessions/:id/gaps/', () =>
+        HttpResponse.json({ error: 'Server error' }, { status: 500 })
+      )
+    );
+    renderWizard();
+
+    expect(
+      await screen.findByText(REVIEW_GAPS_UNAVAILABLE, {}, { timeout: 10_000 })
+    ).toBeInTheDocument();
+    expect(screen.queryByText(REVIEW_NOTHING_MISSING)).not.toBeInTheDocument();
+  });
+
+  it('a gap check that returns an empty list says Nothing is missing, and not that it failed', async () => {
+    renderWizard();
+
+    expect(await screen.findByText(REVIEW_NOTHING_MISSING)).toBeInTheDocument();
+    expect(screen.queryByText(REVIEW_GAPS_UNAVAILABLE)).not.toBeInTheDocument();
+  });
+
+  it("keeps Complete's own reasons, each with its step link, when the re-read after a refusal fails", async () => {
+    renderWizard();
+    await screen.findByRole('button', { name: /complete intake/i });
+    server.use(
+      http.post('http://localhost:8000/api/intake/sessions/:id/complete/', () =>
+        HttpResponse.json({ message: REFUSED, errors: [NO_INCOME, NO_EXPENSES] }, { status: 400 })
+      ),
+      http.get('http://localhost:8000/api/intake/sessions/:id/gaps/', () =>
+        HttpResponse.json({ error: 'Demo refusal' }, { status: 400 })
+      )
+    );
+
+    await pressComplete();
+
+    expect(await screen.findByText(NO_INCOME.message)).toBeInTheDocument();
+    expect(screen.getByText(NO_EXPENSES.message)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Go to Income' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Go to Expenses' })).toBeInTheDocument();
+    expect(screen.queryByText(REVIEW_GAPS_UNAVAILABLE)).not.toBeInTheDocument();
+    // The re-read failed, so a press of Complete is still allowed to try again
+    expect(screen.getByRole('button', { name: /complete intake/i })).toBeEnabled();
+  });
+
+  it("shows only the re-read list, never Complete's own reasons, when the re-read succeeds", async () => {
+    renderWizard();
+    await screen.findByRole('button', { name: /complete intake/i });
+    server.use(
+      http.post('http://localhost:8000/api/intake/sessions/:id/complete/', () =>
+        HttpResponse.json({ message: REFUSED, errors: [NO_INCOME, NO_EXPENSES] }, { status: 400 })
+      ),
+      // The filer's income was fixed from another tab: the server now lists only the expenses
+      http.get('http://localhost:8000/api/intake/sessions/:id/gaps/', () =>
+        HttpResponse.json({ gaps: [{ ...NO_EXPENSES, kind: 'gate' }] })
+      )
+    );
+
+    await pressComplete();
+
+    expect(await screen.findByText(NO_EXPENSES.message)).toBeInTheDocument();
+    expect(screen.queryByText(NO_INCOME.message)).not.toBeInTheDocument();
+    expect(screen.queryByText(REVIEW_GAPS_UNAVAILABLE)).not.toBeInTheDocument();
+    // A returned list holding a gate still locks Complete
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /complete intake/i })).toBeDisabled()
+    );
   });
 });
 
