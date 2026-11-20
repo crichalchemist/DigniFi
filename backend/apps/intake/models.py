@@ -4,6 +4,7 @@ import json
 from collections.abc import Mapping
 from datetime import date
 from decimal import Decimal
+from pathlib import Path
 from typing import Any, ClassVar
 
 from django.conf import settings
@@ -13,6 +14,8 @@ from encrypted_model_fields.fields import (
     EncryptedCharField,
     EncryptedTextField,
 )
+
+from apps.districts.dated_tables import fill_date
 
 from .asset_lines import WHO
 from .claims import PRIORITY_ANSWERS
@@ -58,7 +61,8 @@ class IntakeSession(models.Model):
         """Set a completed intake back to in progress, because its intake data changed.
 
         The filer then presses Complete again, which re-runs the completion checks (spec
-        §5.3). Form answers, SOFA and the filing fee are not intake data and never call this.
+        §5.3). The filing fee, exemptions and means-test pages are not intake data and never
+        call this.
 
         The database decides, not this copy: an upload loads the session seconds before it
         reopens it, and the filer may have pressed Complete meanwhile. The copy is updated too,
@@ -819,6 +823,162 @@ class ClaimAnswers(models.Model):
             else:
                 answers[key] = value
         self.answers = json.dumps(answers)
+
+
+class PetitionAnswers(models.Model):
+    """The filer's own answers to Form 101's and Form 121's questions (step 4 spec §7.1).
+
+    A JSON object of key to answer, encrypted. A key that is absent is unanswered. Form 101's
+    and Form 121's asked answers wherever they are asked; `landlord_*` from 4b2.
+    """
+
+    YES_NO_KEYS: ClassVar[tuple[str, ...]] = (
+        "other_names_answer",
+        "itin_answer",
+        "other_ssn_answer",
+        "mailing_answer",
+        "prior_bankruptcy_answer",
+        "pending_case_answer",
+        "sole_proprietor_answer",
+        "hazard_answer",
+        "disabled_veteran",
+        "debts_on_duty",
+        "reservist",
+        "called_to_duty",
+        "rents_residence",
+        "eviction_judgment",
+        "aware_consequences",
+        "aware_fraud",
+        "paid_preparer",
+    )
+    CHOICE_KEYS: ClassVar[dict[str, tuple[str, ...]]] = {
+        "venue_choice": ("lived_here", "other"),
+        "business_kind": (
+            "health_care",
+            "single_asset",
+            "stockbroker",
+            "commodity_broker",
+            "none",
+        ),
+        "debt_nature": ("consumer", "business", "neither"),
+        "credit_counseling": (
+            "certificate",
+            "no_certificate",
+            "exigent",
+            "not_required",
+            "not_yet",
+        ),
+        "not_required_reason": ("incapacity", "disability", "active_duty"),
+        "duty_category": ("1", "2", "3", "4"),
+    }
+    LIST_KEYS: ClassVar[dict[str, tuple[str, ...]]] = {
+        "other_names": ("first", "middle", "last"),
+        "other_business_names": ("name",),
+        "prior_cases": ("district", "filed_on", "case_number"),
+        "pending_cases": ("debtor", "relationship", "district", "filed_on", "case_number"),
+    }
+    TEXT_KEYS: ClassVar[tuple[str, ...]] = (
+        "name_suffix",
+        "itin",
+        "other_ssn",
+        "ein",
+        "mailing_street",
+        "mailing_po_box",
+        "mailing_city",
+        "mailing_state",
+        "mailing_zip",
+        "venue_reason",
+        "business_name",
+        "business_street",
+        "business_city",
+        "business_state",
+        "business_zip",
+        "hazard_what",
+        "hazard_why",
+        "hazard_street",
+        "hazard_city",
+        "hazard_state",
+        "hazard_zip",
+        "debt_nature_text",
+        "duty_released_on",
+        "duty_ended_on",
+        "landlord_name",
+        "landlord_street",
+        "landlord_city",
+        "landlord_state",
+        "landlord_zip",
+        "exigent_text",
+        "preparer_name",
+    )
+    KEYS: ClassVar[tuple[str, ...]] = (
+        *TEXT_KEYS,
+        *YES_NO_KEYS,
+        *CHOICE_KEYS,
+        *LIST_KEYS,
+    )
+    # Never read back: the serializer drops them and says only whether one is stored.
+    SECRET_KEYS: ClassVar[tuple[str, ...]] = ("itin", "other_ssn")
+    # The keys a {no, yes} radio prints: a stored stranger makes `_emit` raise UnmappedChoice
+    # (a 422), so the save refuses it. prior_bankruptcy_answer also feeds 103B's check_20.
+    RADIO_KEYS: ClassVar[tuple[str, ...]] = (
+        "prior_bankruptcy_answer",
+        "pending_case_answer",
+        "rents_residence",
+        "hazard_answer",
+        "aware_consequences",
+        "aware_fraud",
+    )
+    TEXT_CEILING: ClassVar[int] = 500
+    ROW_CEILING: ClassVar[int] = 20
+    LIST_CAPS: ClassVar[dict[str, int]] = {"other_names": 2, "other_business_names": 2}
+    # Measured from Form 101's boxes at 6 pt by Task 4's tool; empty until that file exists.
+    TEXT_LIMITS: ClassVar[dict[str, int]]
+    TEXT_LABELS: ClassVar[dict[str, str]]
+
+    session = models.OneToOneField(
+        IntakeSession, on_delete=models.CASCADE, related_name="petition_answers"
+    )
+    answers = EncryptedTextField(default="{}")
+    answered_on = EncryptedCharField(max_length=10, null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "petition_answers"
+
+    def __str__(self) -> str:
+        return f"PetitionAnswers (Session: {self.session_id})"
+
+    def get_answers(self) -> dict:
+        return json.loads(self.answers)
+
+    def merge(self, sent: Mapping[str, Any]) -> None:
+        """Set each sent answer; a null removes the key, and the fill date is stamped.
+
+        Every key is checked before any is set: an unknown key raises KeyError naming it.
+        Doesn't save.
+        """
+        for key in sent:
+            if key not in self.KEYS:
+                raise KeyError(key)
+        answers = self.get_answers()
+        for key, value in sent.items():
+            if value is None:
+                answers.pop(key, None)
+            else:
+                answers[key] = value
+        self.answers = json.dumps(answers)
+        self.answered_on = fill_date().isoformat()
+
+
+def _read_text_limits() -> dict:
+    path = Path(settings.FORM_SCHEMAS_DIRECTORY) / "form_101.limits.json"
+    return json.loads(path.read_text()) if path.is_file() else {}
+
+
+_LIMITS = _read_text_limits()
+PetitionAnswers.TEXT_LIMITS = _LIMITS.get("limits", {})
+PetitionAnswers.TEXT_LABELS = _LIMITS.get("labels", {})
 
 
 class DebtInfoQuerySet(models.QuerySet):

@@ -989,28 +989,24 @@ def test_a_write_that_loaded_the_intake_before_complete_still_reopens_it(complet
 # ── What is not intake data ───────────────────────────────────────────
 
 
-def test_form_answers_sofa_and_the_filing_fee_leave_a_completed_intake_complete(filer, completed):
+def test_the_filing_fee_leaves_a_completed_intake_complete_and_a_petition_answer_reopens_it(
+    filer, completed
+):
     client, _ = filer
 
-    answers = client.post(
-        _session_url(completed, "answers/bulk/"),
-        {
-            "answers": [
-                {"form_type": "form_101", "binding": "answer:form_101.q1", "value": "Yes"},
-                {"form_type": "form_107", "binding": "sofa.has_prior_income", "value": "True"},
-            ]
-        },
-        format="json",
-    )
-    sofa = client.patch(
-        f"/api/intake/sofa-report/{completed.pk}/", {"has_business": False}, format="json"
-    )
     filing_fee = client.put(
         _session_url(completed, "filing-fee/"), {"payment_choice": "waiver"}, format="json"
     )
-
-    assert (answers.status_code, sofa.status_code, filing_fee.status_code) == (200, 200, 200)
+    assert filing_fee.status_code == 200
     assert _status(completed) == "completed"
+
+    petition = client.patch(
+        _session_url(completed),
+        {"petition_answers": {"mailing_answer": "no"}},
+        format="json",
+    )
+    assert petition.status_code == 200
+    assert _status(completed) == "in_progress"
 
 
 # ── Complete names each Schedule A/B gap, after line 3 and before scanned debts (3b spec §7) ──

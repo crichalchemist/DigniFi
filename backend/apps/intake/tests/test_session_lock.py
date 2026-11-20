@@ -590,6 +590,12 @@ WRITES = {
         {"claim_answers": {"contracts_answer": "no"}},
         200,
     ),
+    "petition_answers PATCH": lambda s, r: (
+        "patch",
+        _session_url(s),
+        {"petition_answers": {"mailing_answer": "no"}},
+        200,
+    ),
     "Continue to step 7": lambda s, r: (
         "post",
         _session_url(s, "update_step/"),

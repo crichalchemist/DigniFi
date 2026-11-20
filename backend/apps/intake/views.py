@@ -158,6 +158,7 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
                 "household",
                 "spouse_income",
                 "claim_answers",
+                "petition_answers",
             )
             .prefetch_related("assets", "debts")
         )
