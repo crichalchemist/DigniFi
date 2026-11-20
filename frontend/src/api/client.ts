@@ -29,6 +29,7 @@ import type {
   GeneratedForm,
   APIError,
   CompletionError,
+  GapsResponse,
   LoginRequest,
   LoginResponse,
   DemoLoginResponse,
@@ -398,6 +399,14 @@ export const intakeAPI = {
     return apiFetch<{ message: string }>(`/intake/sessions/${sessionId}/complete/`, {
       method: 'POST',
     });
+  },
+
+  /**
+   * What is still missing from the intake, the one list Complete refuses from
+   * GET /api/intake/sessions/{id}/gaps/
+   */
+  gaps: async (sessionId: number): Promise<GapsResponse> => {
+    return apiFetch<GapsResponse>(`/intake/sessions/${sessionId}/gaps/`);
   },
 
   /**

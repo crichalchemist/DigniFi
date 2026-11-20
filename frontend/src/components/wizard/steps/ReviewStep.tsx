@@ -22,6 +22,7 @@ import {
   REVIEW_ASSISTANCE,
   REVIEW_DEDUCTIONS,
   REVIEW_ENTRIES,
+  REVIEW_GAPS_UNAVAILABLE,
   REVIEW_HOUSEHOLD_COUNT,
   REVIEW_INTRO,
   REVIEW_LINE_3,
@@ -31,6 +32,7 @@ import {
   REVIEW_NO_CONTRACTS,
   REVIEW_NO_DEBTS,
   REVIEW_NO_ENTRIES,
+  REVIEW_NOTHING_MISSING,
   REVIEW_NOW_DIFFERENT,
   REVIEW_PAST_DUE,
   REVIEW_RENT_OR_LOT_RENT,
@@ -65,6 +67,7 @@ import {
   PRIORITY_TYPE_WORDS,
 } from '../../../constants/formText';
 import type {
+  CompletionGap,
   DebtorInfo,
   IncomeInfo,
   ExpenseInfo,
@@ -97,8 +100,13 @@ interface ReviewStepProps {
   householdCount: number | null;
   county: string | null;
   onValidationChange: (isValid: boolean) => void;
-  /** Each thing Complete found missing, with the wizard step that fixes it when there is one */
-  completionReasons?: { message: string; step?: { number: number; label: string } }[];
+  /**
+   * What the server says is missing: null until a read has returned. When the read failed, the
+   * reasons a refused Complete gave instead, if it gave any.
+   */
+  gaps: CompletionGap[] | null;
+  /** Whether that read is still out, has returned, or failed */
+  gapsStatus: 'loading' | 'done' | 'failed';
   /** Moves to a wizard step, the way Go Back does */
   onGoToStep?: (stepNumber: number) => void;
 }
@@ -118,13 +126,16 @@ export function ReviewStep({
   householdCount,
   county,
   onValidationChange,
-  completionReasons = [],
+  gaps,
+  gapsStatus,
   onGoToStep,
 }: ReviewStepProps) {
-  // Always valid to proceed from review (unless we add specific checks)
+  // Invalid only while a list that came back holds a gate. While the check is loading or has
+  // failed the server decides: it refuses a gate anyway, and a check that never answers must not
+  // leave the filer on a page whose one button is disabled (step 4a, 4a-R3).
   useEffect(() => {
-    onValidationChange(true);
-  }, [onValidationChange]);
+    onValidationChange(!(gapsStatus === 'done' && (gaps ?? []).some((gap) => gap.kind === 'gate')));
+  }, [gaps, gapsStatus, onValidationChange]);
 
   const formatCurrency = (amount?: number | null) => {
     return new Intl.NumberFormat('en-US', {
@@ -213,19 +224,25 @@ export function ReviewStep({
           A polite live region from the start, so a screen reader reads out the reasons a
           refused Complete adds to it. */}
       <div className="review-reasons" aria-live="polite">
-        {completionReasons.length > 0 && (
+        {gapsStatus === 'failed' && (gaps ?? []).length === 0 && <p>{REVIEW_GAPS_UNAVAILABLE}</p>}
+        {gapsStatus === 'done' && (gaps ?? []).length === 0 && <p>{REVIEW_NOTHING_MISSING}</p>}
+        {(gapsStatus === 'done' || gapsStatus === 'failed') && (gaps ?? []).length > 0 && (
           <section className="review-section">
             <ul className="review-list">
-              {completionReasons.map(({ message, step }, index) => (
-                <li key={index} className="review-list-item">
-                  <span>{message}</span>
-                  {step && (
-                    <Button variant="outline" size="sm" onClick={() => onGoToStep?.(step.number)}>
-                      Go to {step.label}
-                    </Button>
-                  )}
-                </li>
-              ))}
+              {(gaps ?? []).map(({ message, step: stepKey }, index) => {
+                // A step this browser doesn't know (a server ahead of it) gets its words, no button
+                const step = WIZARD_STEPS.find((wizardStep) => wizardStep.key === stepKey);
+                return (
+                  <li key={index} className="review-list-item">
+                    <span>{message}</span>
+                    {step && (
+                      <Button variant="outline" size="sm" onClick={() => onGoToStep?.(step.number)}>
+                        Go to {step.label}
+                      </Button>
+                    )}
+                  </li>
+                );
+              })}
             </ul>
           </section>
         )}

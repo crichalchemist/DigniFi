@@ -39,7 +39,7 @@ import { cents } from './money';
 import { rebuttalSentences } from './meansRebuttal';
 import { explanationKey, type KeyedCircumstance, type PageAnswers } from './pageState';
 import { Polish, type Pending } from './Polish';
-import { YesNoQuestion } from './YesNoQuestion';
+import { YesNoThenDetails } from '../../components/wizard/YesNoThenDetails';
 
 /** The server refuses a list of more than 10 circumstances (MAX_ROWS in apps/intake/means_test.py) */
 const MAX_CIRCUMSTANCES = 10;
@@ -296,7 +296,7 @@ export function Line43({
   );
 
   return (
-    <YesNoQuestion
+    <YesNoThenDetails
       id="line-43"
       legendRef={legendRef}
       question={FORM_122A2_LINE_43}
@@ -409,6 +409,6 @@ export function Line43({
             ))}
         </>
       )}
-    </YesNoQuestion>
+    </YesNoThenDetails>
   );
 }

@@ -78,6 +78,16 @@ export const DASHBOARD_ERROR = 'Unable to load your forms. Please try again.';
 
 export const DASHBOARD_EMPTY = 'No active intake session. Please complete the intake wizard first.';
 
+export const DASHBOARD_GATES_ONE =
+  "1 answer is still missing. Your forms can't be prepared until it is given.";
+
+export const DASHBOARD_GATES_MANY =
+  "{count} answers are still missing. Your forms can't be prepared until each is given.";
+
+export const DASHBOARD_GAPS_ONE = '1 answer is blank on your forms.';
+
+export const DASHBOARD_GAPS_MANY = '{count} answers are blank on your forms.';
+
 export const FILING_FEE_CHANGE_LINK = 'Change how you will pay the fee';
 
 export const FILING_FEE_CHOOSE_LINK = 'Choose how you will pay the fee';
@@ -788,6 +798,22 @@ export const REVIEW_DEDUCTIONS = 'Taken out of your pay, a month';
 export const REVIEW_SPOUSE_DEDUCTIONS = "Taken out of your spouse's pay, a month";
 export const REVIEW_NO_ENTRIES = 'None';
 export const REVIEW_YES_NO: Record<YesNo, string> = { yes: 'Yes', no: 'No' };
+export const REVIEW_NOTHING_MISSING = 'Nothing is missing.';
+export const REVIEW_GAPS_UNAVAILABLE =
+  "We couldn't check what is still missing. Press Complete to try again.";
+
+// ============================================================================
+// The Frame: Section Intro, Public Record Notice, Definitions (forms step 4a)
+// ============================================================================
+
+export const SECTION_INTRO_TIME = 'This step takes about {n} minutes.';
+export const SECTION_INTRO_PAUSE = 'You can stop at any time. What you have typed is saved.';
+
+// DRAFT: counsel C-40
+export const PUBLIC_RECORD_NOTICE =
+  "What you file with the court can be seen by the public. If an address raises a safety concern for you, the court's clerk can tell you what options exist: (312) 408-5000.";
+
+export const WHAT_DOES_THIS_MEAN = 'What does this mean?';
 
 // ============================================================================
 // Your Information Step

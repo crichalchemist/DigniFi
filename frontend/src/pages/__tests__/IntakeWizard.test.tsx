@@ -30,7 +30,9 @@ import {
   NOT_SAVED_TRY_AGAIN,
   NO_DEBTS_BUTTON,
   OLD_ROWS_NOTE,
+  REVIEW_GAPS_UNAVAILABLE,
   REVIEW_NO_DEBTS,
+  REVIEW_NOTHING_MISSING,
 } from '../../constants/copy';
 
 // DebtorInfoStep reads account email via useAuth; wizard test renders without
@@ -93,6 +95,16 @@ function renderWizard(entry = '/intake') {
       </IntakeProvider>
     </MemoryRouter>
   );
+}
+
+/**
+ * Presses Complete once it is enabled. Review is locked while a returned gap list holds a gate
+ * (step 4a), so a press that did not wait would click a disabled button and do nothing.
+ */
+async function pressComplete() {
+  const btn = await screen.findByRole('button', { name: /complete intake/i });
+  await waitFor(() => expect(btn).toBeEnabled());
+  await userEvent.click(btn);
 }
 
 // ---------------------------------------------------------------------------
@@ -170,7 +182,7 @@ describe('IntakeWizard handleComplete routing', { timeout: 30_000 }, () => {
     'opens the filing-fee page after Complete whatever the means test returns (passes %s)',
     async (passes, outcome) => {
       renderWizard();
-      const completeBtn = await screen.findByRole('button', { name: /complete intake/i });
+      await screen.findByRole('button', { name: /complete intake/i });
       // Registered after the session GET resolves, as the test it replaces did (load race)
       server.use(
         http.post('http://localhost:8000/api/intake/sessions/:id/calculate_means_test/', () =>
@@ -186,7 +198,7 @@ describe('IntakeWizard handleComplete routing', { timeout: 30_000 }, () => {
           })
         )
       );
-      await userEvent.click(completeBtn);
+      await pressComplete();
       expect(await screen.findByText('FilingFeePage')).toBeInTheDocument();
       expect(screen.queryByText('Statement of Financial Affairs')).not.toBeInTheDocument();
     }
@@ -198,7 +210,7 @@ describe('IntakeWizard handleComplete routing', { timeout: 30_000 }, () => {
     // The wizard logs the failure; silenced so it doesn't read as a broken test
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
     renderWizard();
-    const completeBtn = await screen.findByRole('button', { name: /complete intake/i });
+    await screen.findByRole('button', { name: /complete intake/i });
     server.use(
       http.post('http://localhost:8000/api/intake/sessions/:id/complete/', () =>
         HttpResponse.json(
@@ -216,7 +228,7 @@ describe('IntakeWizard handleComplete routing', { timeout: 30_000 }, () => {
       )
     );
 
-    await userEvent.click(completeBtn);
+    await pressComplete();
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'Please complete all required sections before finalizing'
@@ -236,7 +248,7 @@ describe('IntakeWizard handleComplete routing', { timeout: 30_000 }, () => {
     // The wizard logs the failure; silenced so it doesn't read as a broken test
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
     renderWizard();
-    const completeBtn = await screen.findByRole('button', { name: /complete intake/i });
+    await screen.findByRole('button', { name: /complete intake/i });
     server.use(
       http.post('http://localhost:8000/api/intake/sessions/:id/calculate_means_test/', () =>
         HttpResponse.json(
@@ -250,7 +262,7 @@ describe('IntakeWizard handleComplete routing', { timeout: 30_000 }, () => {
       )
     );
 
-    await userEvent.click(completeBtn);
+    await pressComplete();
 
     const alert = await screen.findByRole('alert');
     expect(alert).toHaveTextContent('Enter your income by source on the Income step.');
@@ -281,13 +293,31 @@ describe("IntakeWizard Complete's reasons", { timeout: 30_000 }, () => {
     message: 'Go through the Expenses step, even if you have no expenses to enter.',
   };
 
-  /** Complete refuses with these reasons; returns the update_step bodies the wizard sends. */
-  function refuseComplete(errors: Array<{ step: string; message: string }>) {
+  /**
+   * Complete refuses with these reasons; returns the update_step bodies the wizard sends. The
+   * gap list the server holds is two-phase: empty until Complete has refused once, these reasons
+   * (each a gate) after. `refused` is flipped in the Complete handler and never flipped back, so
+   * Review is valid before the press and lists the refusal after it. A list that held the gates
+   * from the start would lock Complete before the press. Each read of the list pushes whether
+   * Complete had refused by then onto `gapReads`.
+   */
+  function refuseComplete(
+    errors: Array<{ step: string; message: string }>,
+    gapReads: boolean[] = []
+  ) {
     const stepUpdates: unknown[] = [];
+    let refused = false;
     server.use(
-      http.post('http://localhost:8000/api/intake/sessions/:id/complete/', () =>
-        HttpResponse.json({ message: REFUSED, errors }, { status: 400 })
-      ),
+      http.post('http://localhost:8000/api/intake/sessions/:id/complete/', () => {
+        refused = true;
+        return HttpResponse.json({ message: REFUSED, errors }, { status: 400 });
+      }),
+      http.get('http://localhost:8000/api/intake/sessions/:id/gaps/', () => {
+        gapReads.push(refused);
+        return HttpResponse.json({
+          gaps: refused ? errors.map((error) => ({ ...error, kind: 'gate' })) : [],
+        });
+      }),
       http.post(
         'http://localhost:8000/api/intake/sessions/:id/update_step/',
         async ({ request }) => {
@@ -312,10 +342,10 @@ describe("IntakeWizard Complete's reasons", { timeout: 30_000 }, () => {
 
   it('lists each thing Complete found missing under its general message, with a way to each step', async () => {
     renderWizard();
-    const completeBtn = await screen.findByRole('button', { name: /complete intake/i });
+    await screen.findByRole('button', { name: /complete intake/i });
     const stepUpdates = refuseComplete([NO_INCOME, NO_EXPENSES]);
 
-    await userEvent.click(completeBtn);
+    await pressComplete();
 
     const alert = await screen.findByRole('alert');
     expect(alert).toHaveTextContent(REFUSED);
@@ -336,7 +366,7 @@ describe("IntakeWizard Complete's reasons", { timeout: 30_000 }, () => {
 
   it('a refused Complete naming take-home pay links to the Take-home pay step', async () => {
     renderWizard();
-    const completeBtn = await screen.findByRole('button', { name: /complete intake/i });
+    await screen.findByRole('button', { name: /complete intake/i });
     refuseComplete([
       {
         step: 'take_home_pay',
@@ -345,7 +375,7 @@ describe("IntakeWizard Complete's reasons", { timeout: 30_000 }, () => {
       },
     ]);
 
-    await userEvent.click(completeBtn);
+    await pressComplete();
     await userEvent.click(await screen.findByRole('button', { name: 'Go to Take-home pay' }));
 
     expect(
@@ -356,11 +386,11 @@ describe("IntakeWizard Complete's reasons", { timeout: 30_000 }, () => {
   // A live region announces only changes to a region already on the page
   it('reads the reasons out to a screen reader, in a polite region that was on Review before them', async () => {
     const { container } = renderWizard();
-    const completeBtn = await screen.findByRole('button', { name: /complete intake/i });
+    await screen.findByRole('button', { name: /complete intake/i });
     const politeRegionsBefore = Array.from(container.querySelectorAll('[aria-live="polite"]'));
     refuseComplete([NO_INCOME, NO_EXPENSES]);
 
-    await userEvent.click(completeBtn);
+    await pressComplete();
 
     const reason = await screen.findByText(NO_INCOME.message);
     const region = reason.closest('[aria-live="polite"]');
@@ -370,9 +400,9 @@ describe("IntakeWizard Complete's reasons", { timeout: 30_000 }, () => {
 
   it('keeps the reasons on Review after the filer dismisses the general message', async () => {
     renderWizard();
-    const completeBtn = await screen.findByRole('button', { name: /complete intake/i });
+    await screen.findByRole('button', { name: /complete intake/i });
     refuseComplete([NO_INCOME, NO_EXPENSES]);
-    await userEvent.click(completeBtn);
+    await pressComplete();
     await screen.findByRole('alert');
 
     await userEvent.click(screen.getByRole('button', { name: 'Dismiss error message' }));
@@ -383,7 +413,7 @@ describe("IntakeWizard Complete's reasons", { timeout: 30_000 }, () => {
     expect(screen.getByRole('button', { name: 'Go to Income' })).toBeInTheDocument();
   });
 
-  it('shows none of the old reasons after "Go to" a step and back to Review', async () => {
+  it('shows the server\'s current list, not the old reasons, after "Go to" a step and back to Review', async () => {
     const UNCHECKED_DEBTS = {
       step: 'debts',
       message: 'Check the debts read from your documents on the Amounts Owed step.',
@@ -404,11 +434,17 @@ describe("IntakeWizard Complete's reasons", { timeout: 30_000 }, () => {
       )
     );
     const { container } = renderWizard();
-    const completeBtn = await screen.findByRole('button', { name: /complete intake/i });
+    await screen.findByRole('button', { name: /complete intake/i });
     refuseComplete([UNCHECKED_DEBTS]);
-    await userEvent.click(completeBtn);
+    await pressComplete();
 
     await userEvent.click(await screen.findByRole('button', { name: 'Go to Amounts Owed' }));
+    // The filer fixed it while away: the server's list is empty when Review reads it again
+    server.use(
+      http.get('http://localhost:8000/api/intake/sessions/:id/gaps/', () =>
+        HttpResponse.json({ gaps: [] })
+      )
+    );
     for (const next of ['Contracts & Leases', 'Codebtors', 'Review & Results']) {
       const continueBtn = screen.getByRole('button', { name: 'Continue' });
       await waitFor(() => expect(continueBtn).toBeEnabled());
@@ -416,10 +452,11 @@ describe("IntakeWizard Complete's reasons", { timeout: 30_000 }, () => {
       await waitFor(() => expect(container.querySelector('.step-title')).toHaveTextContent(next));
     }
 
+    expect(await screen.findByText(REVIEW_NOTHING_MISSING)).toBeInTheDocument();
     expect(screen.queryByText(UNCHECKED_DEBTS.message)).not.toBeInTheDocument();
   });
 
-  it('shows none of the old reasons once the filer leaves Review and comes back', async () => {
+  it("shows the server's current list once the filer leaves Review and comes back", async () => {
     // Continue from Codebtors waits until Schedule H's two questions are answered (No to both,
     // with no one listed), and saves its claim answers with a session PATCH too
     const answered = {
@@ -433,12 +470,18 @@ describe("IntakeWizard Complete's reasons", { timeout: 30_000 }, () => {
       )
     );
     renderWizard();
-    const completeBtn = await screen.findByRole('button', { name: /complete intake/i });
+    await screen.findByRole('button', { name: /complete intake/i });
     const stepUpdates = refuseComplete([NO_EXPENSES]);
-    await userEvent.click(completeBtn);
+    await pressComplete();
     await screen.findByText(NO_EXPENSES.message);
 
     await userEvent.click(screen.getByRole('button', { name: 'Go Back' }));
+    // The filer fixed it while away: the server's list is empty when Review reads it again
+    server.use(
+      http.get('http://localhost:8000/api/intake/sessions/:id/gaps/', () =>
+        HttpResponse.json({ gaps: [] })
+      )
+    );
     // On Codebtors, the step before Review
     const continueBtn = await screen.findByRole('button', { name: 'Continue' });
     await waitFor(() => expect(continueBtn).toBeEnabled());
@@ -446,16 +489,35 @@ describe("IntakeWizard Complete's reasons", { timeout: 30_000 }, () => {
 
     await screen.findByRole('heading', { name: /review & results/i, level: 2 });
     expect(stepUpdates).toEqual([{ current_step: 9 }]);
+    expect(await screen.findByText(REVIEW_NOTHING_MISSING)).toBeInTheDocument();
     expect(screen.queryByText(NO_EXPENSES.message)).not.toBeInTheDocument();
   });
 
   it('drops the reasons once Complete accepts the intake, even if the eligibility check then fails', async () => {
-    renderWizard();
-    const completeBtn = await screen.findByRole('button', { name: /complete intake/i });
-    refuseComplete([NO_EXPENSES]);
-    await userEvent.click(completeBtn);
-    await screen.findByText(NO_EXPENSES.message);
+    // With a gate standing Review locks Complete, so the filer can't press it twice: they leave
+    // Review, fix what was missing and come back. Continue from Codebtors waits until Schedule H's
+    // two questions are answered
+    const answered = {
+      ...sessionAtStep9,
+      claim_answers: { codebtors_answer: 'no', community_lived: 'no' },
+    };
     server.use(
+      http.get('http://localhost:8000/api/intake/sessions/:id/', () => HttpResponse.json(answered)),
+      http.patch('http://localhost:8000/api/intake/sessions/:id/', () =>
+        HttpResponse.json(answered)
+      )
+    );
+    renderWizard();
+    await screen.findByRole('button', { name: /complete intake/i });
+    refuseComplete([NO_EXPENSES]);
+    await pressComplete();
+    await screen.findByText(NO_EXPENSES.message);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Go Back' }));
+    server.use(
+      http.get('http://localhost:8000/api/intake/sessions/:id/gaps/', () =>
+        HttpResponse.json({ gaps: [] })
+      ),
       http.post('http://localhost:8000/api/intake/sessions/:id/complete/', () =>
         HttpResponse.json({ message: 'Session completed.' })
       ),
@@ -470,11 +532,132 @@ describe("IntakeWizard Complete's reasons", { timeout: 30_000 }, () => {
         )
       )
     );
+    // On Codebtors, the step before Review
+    const continueBtn = await screen.findByRole('button', { name: 'Continue' });
+    await waitFor(() => expect(continueBtn).toBeEnabled());
+    await userEvent.click(continueBtn);
+    await screen.findByRole('heading', { name: /review & results/i, level: 2 });
 
-    await userEvent.click(completeBtn);
+    await pressComplete();
 
     await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent(NO_INCOME.message));
     expect(screen.queryByText(NO_EXPENSES.message)).not.toBeInTheDocument();
+  });
+
+  it('Review reads the gap list when it opens, before Complete is pressed', async () => {
+    server.use(
+      http.get('http://localhost:8000/api/intake/sessions/:id/gaps/', () =>
+        HttpResponse.json({ gaps: [{ ...NO_INCOME, kind: 'gate' }] })
+      )
+    );
+    renderWizard();
+
+    expect(await screen.findByText(NO_INCOME.message)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Go to Income' })).toBeInTheDocument();
+    // A gate standing locks the button; no press was made
+    // Review reports the lock in an effect after the list shows
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /complete intake/i })).toBeDisabled()
+    );
+  });
+
+  it('a refused Complete re-reads the list', async () => {
+    const gapReads: boolean[] = [];
+    // Installed before Review opens, so its own read is counted too
+    refuseComplete([NO_INCOME, NO_EXPENSES], gapReads);
+    renderWizard();
+    await pressComplete();
+
+    expect(await screen.findByText(NO_INCOME.message)).toBeInTheDocument();
+    expect(screen.getByText(NO_EXPENSES.message)).toBeInTheDocument();
+    // Two reads: one when Review opened (Complete not yet refused), one after the refusal
+    expect(gapReads).toEqual([false, true]);
+  });
+
+  // A 400, not a 500: apiFetch retries a 5xx or a network error three times with a backoff of
+  // 0.5 to 3.5 seconds, which would make this test take seconds
+  it('a gap check the server refuses leaves Complete enabled and says so', async () => {
+    server.use(
+      http.get('http://localhost:8000/api/intake/sessions/:id/gaps/', () =>
+        HttpResponse.json({ error: 'Demo refusal' }, { status: 400 })
+      )
+    );
+    renderWizard();
+
+    expect(await screen.findByText(REVIEW_GAPS_UNAVAILABLE)).toBeInTheDocument();
+    // A check that failed is no answer: Review must not say nothing is missing
+    expect(screen.queryByText(REVIEW_NOTHING_MISSING)).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /complete intake/i })).toBeEnabled();
+    expect(console.error).toHaveBeenCalledWith('Error reading what is missing:', expect.anything());
+  });
+
+  // A 500 is read three times with a backoff before it rejects, so this one takes seconds
+  it('a gap check that fails with a 500 never says Nothing is missing', async () => {
+    server.use(
+      http.get('http://localhost:8000/api/intake/sessions/:id/gaps/', () =>
+        HttpResponse.json({ error: 'Server error' }, { status: 500 })
+      )
+    );
+    renderWizard();
+
+    expect(
+      await screen.findByText(REVIEW_GAPS_UNAVAILABLE, {}, { timeout: 10_000 })
+    ).toBeInTheDocument();
+    expect(screen.queryByText(REVIEW_NOTHING_MISSING)).not.toBeInTheDocument();
+  });
+
+  it('a gap check that returns an empty list says Nothing is missing, and not that it failed', async () => {
+    renderWizard();
+
+    expect(await screen.findByText(REVIEW_NOTHING_MISSING)).toBeInTheDocument();
+    expect(screen.queryByText(REVIEW_GAPS_UNAVAILABLE)).not.toBeInTheDocument();
+  });
+
+  it("keeps Complete's own reasons, each with its step link, when the re-read after a refusal fails", async () => {
+    renderWizard();
+    await screen.findByRole('button', { name: /complete intake/i });
+    server.use(
+      http.post('http://localhost:8000/api/intake/sessions/:id/complete/', () =>
+        HttpResponse.json({ message: REFUSED, errors: [NO_INCOME, NO_EXPENSES] }, { status: 400 })
+      ),
+      http.get('http://localhost:8000/api/intake/sessions/:id/gaps/', () =>
+        HttpResponse.json({ error: 'Demo refusal' }, { status: 400 })
+      )
+    );
+
+    await pressComplete();
+
+    expect(await screen.findByText(NO_INCOME.message)).toBeInTheDocument();
+    expect(screen.getByText(NO_EXPENSES.message)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Go to Income' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Go to Expenses' })).toBeInTheDocument();
+    expect(screen.queryByText(REVIEW_GAPS_UNAVAILABLE)).not.toBeInTheDocument();
+    // The re-read failed, so a press of Complete is still allowed to try again
+    expect(screen.getByRole('button', { name: /complete intake/i })).toBeEnabled();
+  });
+
+  it("shows only the re-read list, never Complete's own reasons, when the re-read succeeds", async () => {
+    renderWizard();
+    await screen.findByRole('button', { name: /complete intake/i });
+    server.use(
+      http.post('http://localhost:8000/api/intake/sessions/:id/complete/', () =>
+        HttpResponse.json({ message: REFUSED, errors: [NO_INCOME, NO_EXPENSES] }, { status: 400 })
+      ),
+      // The filer's income was fixed from another tab: the server now lists only the expenses
+      http.get('http://localhost:8000/api/intake/sessions/:id/gaps/', () =>
+        HttpResponse.json({ gaps: [{ ...NO_EXPENSES, kind: 'gate' }] })
+      )
+    );
+
+    await pressComplete();
+
+    expect(await screen.findByText(NO_EXPENSES.message)).toBeInTheDocument();
+    expect(screen.queryByText(NO_INCOME.message)).not.toBeInTheDocument();
+    expect(screen.queryByText(REVIEW_GAPS_UNAVAILABLE)).not.toBeInTheDocument();
+    // A returned list holding a gate still locks Complete
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /complete intake/i })).toBeDisabled()
+    );
   });
 });
 

@@ -13,7 +13,7 @@ import {
 import type { MeansDebtAnswers, PaymentsLeft } from '../../types/api';
 import { AmountBox } from './AmountBox';
 import { dollars } from './money';
-import { YesNoQuestion } from './YesNoQuestion';
+import { YesNoThenDetails } from '../../components/wizard/YesNoThenDetails';
 
 /** One secured debt as the page asks about it: a filer's debt, or a spouse loan whose identity is given */
 export type DebtItem = {
@@ -86,7 +86,7 @@ export function DebtQuestions({ items, lines, onChange }: DebtQuestionsProps) {
               options={PAYMENT_OPTIONS}
               onChange={(value) => onChange(item.key, { payments_left: readCount(value) })}
             />
-            <YesNoQuestion
+            <YesNoThenDetails
               question={MEANS_PAYMENT_CHANGES}
               name={`${prefix}_changes`}
               value={answers.payment_changes}
@@ -101,7 +101,7 @@ export function DebtQuestions({ items, lines, onChange }: DebtQuestionsProps) {
               />
             )}
             {line === '33d' && (
-              <YesNoQuestion
+              <YesNoThenDetails
                 question={FORM_122A2_LINE_33D_TAXES}
                 name={`${prefix}_taxes`}
                 value={answers.taxes_or_insurance}

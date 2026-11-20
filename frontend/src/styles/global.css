@@ -1589,9 +1589,10 @@ a {
   margin-bottom: var(--space-4);
 }
 
-/* The pair's live region is on the page from the start. Empty, it takes no room, but it stays
-   displayed, so a screen reader still hears what is added to it. */
-.form-dashboard-pair:empty {
+/* The pair's and the gap notice's live regions are on the page from the start. Empty, they take
+   no room, but they stay displayed, so a screen reader still hears what is added to them. */
+.form-dashboard-pair:empty,
+.form-dashboard-gaps:empty {
   margin-bottom: 0;
 }
 

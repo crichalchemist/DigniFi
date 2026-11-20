@@ -19,8 +19,9 @@ from apps.forms.services.pdf_filler import PDFFormFiller
 from apps.forms.tests.means_pair import box_1_state, stored_check_box_1
 from apps.forms.tests.pdf_readback import read_drawn
 from apps.forms.views import MEANS_PAIR_REFUSAL
-from apps.intake.models import DebtorInfo, IncomeInfo, IntakeSession
-from apps.intake.tests.builders import answer_household
+from apps.intake.completion import EXPENSES_STEP_NEVER_SAVED
+from apps.intake.models import DebtorInfo, ExpenseInfo, IncomeInfo, IntakeSession
+from apps.intake.tests.builders import answer_household, answer_means_test, finish_intake
 
 User = get_user_model()
 LINE_16 = "Enter the amount for line 16. Enter 0 if you have none."
@@ -56,6 +57,7 @@ def session_with_debtor(user, district):
         session=session, marital_status="not_married", monthly_gross_wages=Decimal("3000.00")
     )
     answer_household(session)
+    finish_intake(session)
     DebtorInfo.objects.create(
         session=session,
         first_name="Jane",
@@ -122,6 +124,51 @@ def test_a_stale_122a1_row_cant_be_filed_around_the_hold(api_client, session_wit
     assert (row.status, row.field_values) == ("generated", stored)
     download = api_client.get(f"/api/forms/{row.pk}/download/")
     assert (download.status_code, download.data["error"]) == (422, LINE_16)
+
+
+def _a_generated_pair_whose_expenses_row_is_gone(api_client, session):
+    """Both pair rows generated above the median, then the Expenses row deleted (a gate gap)."""
+    _set_wages(session, "9000.00")
+    answer_means_test(session)
+    first = _generate(api_client, session, "form_122a1")
+    second = _generate(api_client, session, "form_122a2")
+    ExpenseInfo.objects.filter(session=session).delete()
+    return first, second
+
+
+@pytest.mark.django_db
+def test_a_gate_gap_comes_before_the_means_pair_tie(api_client, session_with_debtor):
+    # Before 4a the same call was refused with the tie sentence: this pins which refusal is first.
+    session = session_with_debtor
+    first, second = _a_generated_pair_whose_expenses_row_is_gone(api_client, session)
+
+    resp = _mark_filed(api_client, first)
+
+    assert (resp.status_code, resp.data) == (
+        422,
+        {"form_type": "form_122a1", "error": EXPENSES_STEP_NEVER_SAVED, "step": "expense_info"},
+    )
+    for row in (first, second):
+        row.refresh_from_db()
+    assert (first.status, second.status) == ("generated", "generated")
+
+
+@pytest.mark.django_db
+def test_a_gate_gap_refuses_the_pair_action_and_marks_neither(api_client, session_with_debtor):
+    # The per-row Mark as Filed is refused by the tie whatever _prepare says, so the pair action
+    # is the path that would mark both rows past a gate.
+    session = session_with_debtor
+    first, second = _a_generated_pair_whose_expenses_row_is_gone(api_client, session)
+
+    resp = api_client.post("/api/forms/mark_pair_filed/", {"session_id": session.pk}, format="json")
+
+    assert (resp.status_code, resp.data) == (
+        422,
+        {"error": EXPENSES_STEP_NEVER_SAVED, "step": "expense_info"},
+    )
+    for row in (first, second):
+        row.refresh_from_db()
+    assert (first.status, second.status) == ("generated", "generated")
 
 
 @pytest.mark.django_db

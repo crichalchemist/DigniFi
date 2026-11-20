@@ -29,6 +29,7 @@ from apps.forms.services.exemption_items import exemption_items
 from apps.forms.services.pdf_filler import PDFFormFiller
 from apps.intake.asset_lines import LINE_BY_KEY, ordered_assets, rows_on, shown_lines
 from apps.intake.claims import claim_step_gaps, total_monthly_expenses
+from apps.intake.completion import Gap, completion_gaps
 from apps.intake.management.commands.seed_demo_data import (
     PERSONAS,
     _andres_kettleby,
@@ -639,3 +640,21 @@ def test_the_seed_skips_no_form_for_any_persona(persona):
         if "Skipped" in line
     )
     assert skipped == []
+
+
+@pytest.mark.django_db
+def test_every_seeded_persona_has_no_gate_gap():
+    # The E2E dashboard's Generate All is refused for a gate gap on a completed session (4a-R1),
+    # so a persona seeded with one would break its journey with a 422.
+    call_command("loaddata", "ilnd_2025_data", verbosity=0)
+    call_command("seed_demo_data", stdout=StringIO())
+
+    completed = IntakeSession.objects.filter(status="completed")
+
+    assert completed.count() == len(PERSONAS)
+    assert [
+        (s.user.username, str(g))
+        for s in completed
+        for g in completion_gaps(s)
+        if g.kind == Gap.GATE
+    ] == []

@@ -91,7 +91,7 @@ import {
   type PageState,
 } from './meansTest/pageState';
 import { SpouseBlock } from './meansTest/SpouseBlock';
-import { YesNoQuestion } from './meansTest/YesNoQuestion';
+import { YesNoThenDetails } from '../components/wizard/YesNoThenDetails';
 import type { MeansDebtAnswers, MeansPage, YesNo } from '../types/api';
 
 /** The server refuses a list of more than 10 rows (MAX_ROWS in apps/intake/means_test.py) */
@@ -563,7 +563,7 @@ export function MeansTestPage() {
     const answer = answerOf(answerKey);
     return (
       <div className="means-line" key={line}>
-        <YesNoQuestion
+        <YesNoThenDetails
           question={FORM_122A2_LINE_WORDS[line]}
           name={`means_line_${line}`}
           value={answer}
@@ -680,7 +680,7 @@ export function MeansTestPage() {
       <fieldset className="fee-waiver-question" disabled={isSaving}>
         {together && (
           <div className="means-line">
-            <YesNoQuestion
+            <YesNoThenDetails
               question={FORM_122A2_LINE_3_QUESTION}
               name="means_line_3"
               value={answers.line_3_answer}
@@ -786,7 +786,7 @@ export function MeansTestPage() {
                 ? answers.spouse_vehicles.find((row) => row.ref === vehicle.ref)
                 : undefined;
               return (
-                <YesNoQuestion
+                <YesNoThenDetails
                   key={spouseRow?._key ?? vehicle.ref}
                   question={fill(FORM_122A2_VEHICLE_CLAIM, { name: vehicle.name })}
                   name={`means_vehicle_${vehicle.ref.replace('asset-', '').replace('-', '_')}_claimed`}
@@ -862,7 +862,7 @@ export function MeansTestPage() {
               value={answers.line_25_hsa}
               onChange={(value) => setAmount('line_25_hsa', value)}
             />
-            <YesNoQuestion
+            <YesNoThenDetails
               question={FORM_122A2_LINE_25_SPENDS}
               name="means_line_25_spends"
               value={answers.line_25_spends}
@@ -886,7 +886,7 @@ export function MeansTestPage() {
         <DebtQuestions items={debtItems} lines={lines} onChange={changeDebt} />
 
         <div className="means-line">
-          <YesNoQuestion
+          <YesNoThenDetails
             question={FORM_122A2_LINE_34}
             name="means_line_34"
             value={answers.line_34_answer}
@@ -897,7 +897,7 @@ export function MeansTestPage() {
               .filter((item) => (lines[item.ref] ?? null) !== null)
               .map((item) => (
                 <div key={item.key}>
-                  <YesNoQuestion
+                  <YesNoThenDetails
                     question={fill(FORM_122A2_LINE_34_DEBT, { name: item.creditor })}
                     name={`${item.prefix}_support`}
                     value={item.answers.necessary_for_support}
@@ -922,7 +922,7 @@ export function MeansTestPage() {
         )}
 
         <div className="means-line">
-          <YesNoQuestion
+          <YesNoThenDetails
             question={FORM_122A2_LINE_36}
             name="means_line_36"
             value={answers.line_36_answer}

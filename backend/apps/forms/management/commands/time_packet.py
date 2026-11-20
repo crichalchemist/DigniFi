@@ -26,6 +26,7 @@ from apps.forms.registry import packet
 from apps.forms.schema import load_schema
 from apps.forms.services.pdf_filler import PDFFormFiller
 from apps.forms.views import _generate_and_persist, _prepare, _resolve
+from apps.intake.completion import Gap
 from apps.intake.models import IntakeSession
 
 
@@ -59,7 +60,12 @@ class Command(BaseCommand):
                 _prepare(session)
                 form_types = packet(session)
             except Exception as exc:
-                raise CommandError(f"The session was refused: {type(exc).__name__}") from None
+                # The type, and for a Gap its step key: never the sentence, which names the filer's
+                # data, as "Gap (expense_info)".
+                refused = type(exc).__name__
+                if isinstance(exc, Gap):
+                    refused += f" ({exc.step})"
+                raise CommandError(f"The session was refused: {refused}") from None
             filed = {
                 form.form_type: form
                 for form in GeneratedForm.objects.filter(session=session, status="filed")

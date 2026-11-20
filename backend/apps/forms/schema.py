@@ -282,6 +282,10 @@ _BINDING_NAMESPACES = (
     "claims.",
     "exemptions.",
     "means.",
+    "petition.",
+    "schedule_i.",
+    "intentions.",
+    "affairs.",
 )
 
 
@@ -785,7 +789,8 @@ _STATEMENT_BINDING = re.compile(
     r"|means\.line_43\[\]\.(?:explanation|amount)"
 )
 _LIST_BINDING = re.compile(
-    r"(?:sofa\.\w+|household\.dependents|income\.statement|assets\.line_\w+|means\.line_\w+)"
+    r"(?:sofa\.\w+|household\.dependents|income\.statement|assets\.line_\w+|means\.line_\w+"
+    r"|(?:petition|schedule_i|intentions|affairs)\.\w+)"
     r"\[\]\.\w+"
 )
 
@@ -873,8 +878,10 @@ def _sheet_errors(name: str, group: GroupSpec, template: str) -> list[tuple[str,
                     "E007",
                     f"group {name!r}: sheet column {column.label!r} binds {column.binding!r}, "
                     "not a sofa.<collection>[].<attr>, household.dependents[].<attr>, "
-                    "income.statement[].<attr>, assets.line_<key>[].<attr> or "
-                    "means.line_<key>[].<attr> list",
+                    "income.statement[].<attr>, assets.line_<key>[].<attr>, "
+                    "means.line_<key>[].<attr>, petition.<key>[].<attr>, "
+                    "schedule_i.<key>[].<attr>, intentions.<key>[].<attr> or "
+                    "affairs.<key>[].<attr> list",
                 )
             )
         width = inner_width(column.width)

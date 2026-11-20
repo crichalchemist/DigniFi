@@ -205,10 +205,13 @@ def test_calculate_means_test_returns_the_first_income_step_gap(filer):
 
 
 def _completed_before_3e1(session):
-    """An intake completed before 3e1, by hand: no marriage answer and no Household."""
+    """An intake completed before 3e1, by hand: no marriage answer and no list answered."""
     session.status = "completed"
     session.save()
     _debtor(session, ssn="900-12-3456")
+    # A county, the list unanswered: the forms refuse in Complete's order (4a-R1), so with no
+    # Household the county's sentence would come before the Income step's.
+    Household.objects.create(session=session, county="Cook")
     IncomeInfo.objects.create(session=session, monthly_gross_wages=Decimal("3000.00"))
     ExpenseInfo.objects.create(session=session)
     answer_asset_lines(session)  # the Assets step is finished, so the Income step's gap speaks
