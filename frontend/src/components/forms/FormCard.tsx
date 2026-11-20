@@ -42,7 +42,10 @@ interface FormCardProps {
   leftPacket?: boolean;
   /** Information about this form, shown before any refusal (never a refusal itself) */
   notice?: string;
-  /** Where a pending card's Answer Questions goes; `/ask/<form type>` without one */
+  /**
+   * Where a pending card's Answer Questions goes; `/ask/<form type>` without one. A refusal's
+   * link, and its label, come first.
+   */
   answerPath?: string;
   refusal?: FormRefusal;
   onGenerate: (formType: FormType) => Promise<void>;
@@ -154,9 +157,9 @@ export function FormCard({
             <Button
               size="sm"
               variant="outline"
-              onClick={() => navigate(answerPath ?? `/ask/${formType}`)}
+              onClick={() => navigate(refusal?.link?.to ?? answerPath ?? `/ask/${formType}`)}
             >
-              Answer Questions
+              {refusal?.link?.label ?? 'Answer Questions'}
             </Button>
           </>
         )}
@@ -262,7 +265,8 @@ export function FormCard({
         {refusal && (
           <>
             <p>{refusal.message}</p>
-            {refusal.link && (
+            {/* A pending card's button already goes to the same place, so one way to the fix */}
+            {refusal.link && status !== 'pending' && (
               <Link to={refusal.link.to} className="button button--primary">
                 {refusal.link.label}
               </Link>

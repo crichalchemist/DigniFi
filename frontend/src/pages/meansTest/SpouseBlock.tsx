@@ -35,7 +35,7 @@ import {
   type PageAnswers,
   type PageState,
 } from './pageState';
-import { YesNoQuestion } from './YesNoQuestion';
+import { YesNoThenDetails } from '../../components/wizard/YesNoThenDetails';
 
 /** The server refuses a list of more than 10 rows (MAX_ROWS in apps/intake/means_test.py) */
 const MAX_ROWS = 10;
@@ -150,7 +150,7 @@ export function SpouseBlock({
       <p className="form-help-text">{FORM_122A2_PART_2_LINE_3}</p>
       <p className="form-help-text">{MEANS_SPOUSE_INTRO}</p>
 
-      <YesNoQuestion
+      <YesNoThenDetails
         question={MEANS_SPOUSE_VEHICLES_QUESTION}
         name="means_spouse_vehicles"
         value={answers.spouse_vehicles_answer}
@@ -176,7 +176,7 @@ export function SpouseBlock({
                     changeVehicle(row._key, { description: event.target.value });
                   }}
                 />
-                <YesNoQuestion
+                <YesNoThenDetails
                   question={MEANS_SPOUSE_VEHICLE_LEASED}
                   name={`means_spouse_vehicle_${index}_leased`}
                   value={row.leased}
@@ -210,7 +210,7 @@ export function SpouseBlock({
         </>
       )}
 
-      <YesNoQuestion
+      <YesNoThenDetails
         question={MEANS_SPOUSE_LOANS_QUESTION}
         name="means_spouse_loans"
         note={MEANS_SPOUSE_LOANS_HINT}
@@ -241,7 +241,7 @@ export function SpouseBlock({
                 <legend className="form-label">
                   {number(MEANS_SPOUSE_LOAN_LEGEND, index + 1)}
                 </legend>
-                <YesNoQuestion
+                <YesNoThenDetails
                   question={MEANS_SPOUSE_LOAN_ON_AMOUNTS_OWED}
                   name={`${name}_on_amounts_owed`}
                   value={row.on_amounts_owed}

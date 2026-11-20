@@ -187,6 +187,8 @@ export const handlers = [
     HttpResponse.json({ message: 'Session completed.' })
   ),
 
+  http.get(`${API}/intake/sessions/:id/gaps/`, () => HttpResponse.json({ gaps: [] })),
+
   http.post(`${API}/intake/sessions/:id/calculate_means_test/`, () =>
     HttpResponse.json({
       means_test_result: mockMeansTestResult,

@@ -137,6 +137,54 @@ describe('FormCard', () => {
     expect(screen.getByTestId('where')).toHaveTextContent('/ask/form_103b');
   });
 
+  const refusal = {
+    message: 'Enter your name on the Your Information step.',
+    link: { to: '/intake?step=debtor_info', label: 'Go to Your Information' },
+  };
+
+  it("a pending card's button goes where its refusal points and takes its label, before answerPath", async () => {
+    const user = userEvent.setup();
+    function Where() {
+      const { pathname, search } = useLocation();
+      return <p data-testid="where">{pathname + search}</p>;
+    }
+    render(
+      <MemoryRouter>
+        <FormCard {...defaultProps} answerPath="/means-test" refusal={refusal} />
+        <Where />
+      </MemoryRouter>
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Go to Your Information' }));
+
+    expect(screen.getByTestId('where')).toHaveTextContent('/intake?step=debtor_info');
+  });
+
+  it('a refused pending card offers its fix once, as the button', () => {
+    const { container } = render(
+      <MemoryRouter>
+        <FormCard {...defaultProps} refusal={refusal} />
+      </MemoryRouter>
+    );
+
+    expect(screen.queryAllByRole('link', { name: 'Go to Your Information' })).toEqual([]);
+    expect(container.querySelector('.form-card-refusal')).toHaveTextContent(refusal.message);
+    expect(screen.getByRole('button', { name: 'Go to Your Information' })).toBeInTheDocument();
+  });
+
+  it('a refused generated card keeps the region’s link', () => {
+    render(
+      <MemoryRouter>
+        <FormCard {...defaultProps} generatedForm={mockForm} refusal={refusal} />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByRole('link', { name: 'Go to Your Information' })).toHaveAttribute(
+      'href',
+      '/intake?step=debtor_info'
+    );
+  });
+
   // ---------------------------------------------------------------------------
   // Generated state
   // ---------------------------------------------------------------------------

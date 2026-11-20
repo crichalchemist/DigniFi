@@ -36,6 +36,7 @@ from apps.documents.models import (
     UploadedDocument,
 )
 from apps.documents.services.processor import ExtractionResult
+from apps.intake import completion as intake_completion
 from apps.intake import serializers as intake_serializers
 from apps.intake import views as intake_views
 from apps.intake.locking import lock_session
@@ -258,14 +259,14 @@ def _complete_pauses_in_its_checks():
     intake, then waits for `go_on`. Yields (checking, go_on)."""
     checking = threading.Event()
     go_on = threading.Event()
-    gaps = intake_views.income_step_gaps
+    gaps = intake_completion.income_step_gaps
 
     def check_gaps(session):
         checking.set()
         go_on.wait(WAIT)
         return gaps(session)
 
-    with patch.object(intake_views, "income_step_gaps", check_gaps):
+    with patch.object(intake_completion, "income_step_gaps", check_gaps):
         yield checking, go_on
 
 

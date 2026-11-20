@@ -26,7 +26,12 @@ from apps.intake.models import (
     IncomeInfo,
     IntakeSession,
 )
-from apps.intake.tests.builders import answer_asset_lines, answer_exemptions, answer_household
+from apps.intake.tests.builders import (
+    answer_asset_lines,
+    answer_exemptions,
+    answer_household,
+    finish_intake,
+)
 
 User = get_user_model()
 
@@ -52,6 +57,7 @@ def session(db):
         session=session, marital_status="not_married", monthly_gross_wages=Decimal("2000.00")
     )
     answer_household(session, payroll_tax=Decimal("250.00"), exemptions=None)
+    finish_intake(session)
     return session
 
 

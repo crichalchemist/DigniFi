@@ -25,8 +25,9 @@ from apps.districts.dated_tables import NoTableInForce, fill_date
 from apps.eligibility.cmi import IncomeNotSplit, answered_window, income_step_gaps, income_window
 from apps.eligibility.models import MeansTest
 from apps.eligibility.services import MeansTestCalculator
-from apps.intake.asset_lines import AssetStepGap, asset_step_gaps
-from apps.intake.claims import ClaimStepGap, claim_step_gaps
+from apps.intake.asset_lines import AssetStepGap
+from apps.intake.claims import ClaimStepGap
+from apps.intake.completion import Gap, completion_gaps
 from apps.intake.locking import lock_session
 from apps.intake.models import IntakeSession
 
@@ -91,8 +92,8 @@ class _PairRefused(Exception):
 
 
 # Failures a filer can act on: 422 in plain words (spec §5.7). Anything else is a 500.
-# PreconditionMissing, IncomeNotSplit, AssetStepGap, ClaimStepGap and NoTableInForce carry their
-# own plain reasons
+# PreconditionMissing, IncomeNotSplit, Gap, AssetStepGap, ClaimStepGap and NoTableInForce carry
+# their own plain reasons
 # (registry.py, eligibility/cmi.py, districts/dated_tables.py, which logs its own
 # refusal), and so do UnprintableLetter and ValueTooLong (pdf_filler.py), which name the
 # letter and the box. Every other class gets a fixed sentence, because their messages
@@ -122,6 +123,8 @@ def _failure(form_type: str | None, exc: Exception) -> tuple[dict, int]:
         exc,
         PreconditionMissing
         | IncomeNotSplit
+        | Gap
+        # AssetStepGap and ClaimStepGap no longer arrive from _prepare, which raises a Gap (4a).
         | AssetStepGap
         | ClaimStepGap
         | NoTableInForce
@@ -257,21 +260,19 @@ def _means_debts_answered(session: IntakeSession, form_types: list[str]) -> dict
 
 
 def _prepare(session: IntakeSession) -> None:
-    """Refuse an unfinished intake, an unfinished Assets step and an unfinished claims step,
-    then work its means test out again. Once per call.
+    """Refuse an unfinished intake and the first gate gap, then work the means test out again.
+    Once per call.
 
-    The A/B totals feed A/B, 106Sum and Form 101, so a session completed before 3b can't print
-    stale totals: the first Assets gap refuses the whole call (3b spec §7). The first claim gap
-    (3c3) refuses it too, so a session seeded before 3c3 prints no row with an unanswered
-    question.
+    The gate list is Complete's own (`completion_gaps`, 4a-R1), first gate first, so a session
+    completed before a rule existed is refused in the words Complete would use, and its callers
+    don't work the means test out while a gate is open; the packet list, which never calls this,
+    still does. Its callers are Generate, Generate All, Regenerate, an unfiled download, Mark as
+    Filed on an unfiled means-pair form, `mark_pair_filed` and the `time_packet` command.
     """
     _check_finished(session)
-    gaps = asset_step_gaps(session)
-    if gaps:
-        raise gaps[0]
-    claims = claim_step_gaps(session)
-    if claims:
-        raise claims[0]
+    gates = [gap for gap in completion_gaps(session) if gap.kind == Gap.GATE]
+    if gates:
+        raise gates[0]
     _recalculate_means_test(session)
 
 
@@ -447,9 +448,9 @@ class GeneratedFormViewSet(viewsets.ReadOnlyModelViewSet):
         Each form gets its own savepoint, so one form's failure can't undo the
         others. Rows for forms that no longer apply are deleted. A filed form is
         returned as it is, in the packet or out of it: not resolved again, not
-        un-filed, not deleted (DIG-155). An unfinished intake, or a means test that
-        can't be worked out, gets one refusal for the whole packet, before anything
-        is deleted.
+        un-filed, not deleted (DIG-155). An unfinished intake, a gate gap, or a means
+        test that can't be worked out, gets one refusal for the whole packet, before
+        anything is deleted.
         """
         session, err = _session_or_error(request, request.data.get("session_id"))
         if err:
@@ -685,8 +686,8 @@ class GeneratedFormViewSet(viewsets.ReadOnlyModelViewSet):
         still the one read before drawing: a form marked filed meanwhile keeps the values
         it was filed with. A filed form draws its stored parts, or its values stored before
         3a2, so it matches what was filed, even after it has left the packet (DIG-155). A
-        filed form with no stored values is drawn as one not yet filed, through the completion,
-        Assets step, claims step and packet checks, from the current intake, and the parts it draws are kept
+        filed form with no stored values is drawn as one not yet filed, through the completion gap
+        list (`_prepare`) and the packet check, from the current intake, and the parts it draws are kept
         as its filed ones if it is still filed when the draw ends.
         """
         generated_form = self.get_object()

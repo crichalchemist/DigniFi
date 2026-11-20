@@ -35,7 +35,6 @@ from apps.intake.means_test import (
     MEANS_TOO_LONG,
 )
 from apps.intake.models import (
-    ExpenseInfo,
     IntakeSession,
     MeansTestAnswers,
     SecuredDebtAnswers,
@@ -44,6 +43,7 @@ from apps.intake.tests.builders import (
     answer_household,
     answer_means_test,
     complete_debt,
+    finish_intake,
     linked_loan,
     linked_row,
 )
@@ -305,11 +305,10 @@ def test_the_figures_beside_lines_follow_the_map(filer, monkeypatch):
     income.payroll_insurance = Decimal("620.00")
     income.payroll_support = None
     income.save()
-    ExpenseInfo.objects.create(
-        session=filer.session,
+    finish_intake(
+        filer.session,
         childcare=Decimal("1200.00"),
         vehicle_insurance=Decimal("0"),
-        expenses_include_others="no",
     )
 
     info = _get(filer).json()["information"]
@@ -369,8 +368,8 @@ def test_every_information_figure_comes_from_the_column_the_sentence_names(filer
     ):
         setattr(spouse, column, Decimal(f"{n + 10}.22"))
     spouse.save()
-    ExpenseInfo.objects.create(
-        session=filer.session,
+    finish_intake(
+        filer.session,
         food_and_groceries=Decimal("101.01"),
         childcare=Decimal("102.01"),
         clothing=Decimal("103.01"),
@@ -380,7 +379,6 @@ def test_every_information_figure_comes_from_the_column_the_sentence_names(filer
         insurance_not_deducted=Decimal("107.01"),
         taxes_not_deducted=Decimal("108.01"),
         child_support_paid=Decimal("109.01"),
-        expenses_include_others="no",
     )
 
     answer_means_test(filer.session)

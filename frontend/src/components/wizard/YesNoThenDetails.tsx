@@ -1,10 +1,11 @@
 import type { ReactNode, Ref } from 'react';
-import { REQUIRED_MARK } from '../../components/wizard/steps/assets/AssetRowFields';
+import { NOT_ANSWERED_YET } from '../../constants/copy';
 import type { YesNo } from '../../types/api';
+import { REQUIRED_MARK } from './steps/assets/AssetRowFields';
 
 const YES_NO: YesNo[] = ['no', 'yes'];
 
-interface YesNoQuestionProps {
+interface YesNoThenDetailsProps {
   question: string;
   name: string;
   /** Nothing is checked while this is null */
@@ -15,12 +16,17 @@ interface YesNoQuestionProps {
   id?: string;
   /** With a ref, the legend takes focus (tabIndex -1) so the page can move it there */
   legendRef?: Ref<HTMLLegendElement>;
-  /** Drawn inside the fieldset, after the answer */
+  /** Says "Not answered yet" under the radios, for a caller that has seen the filer skip it */
+  unanswered?: boolean;
+  /** The details: drawn inside the fieldset, under the answer */
   children?: ReactNode;
 }
 
-/** A required Yes/No question, No then Yes, as the exemptions page asks its own */
-export function YesNoQuestion({
+/**
+ * A required Yes/No question, No then Yes, with its details under the answer: the filer answers
+ * the yes/no before Continue, the details may wait and print blank.
+ */
+export function YesNoThenDetails({
   question,
   name,
   value,
@@ -28,8 +34,9 @@ export function YesNoQuestion({
   note,
   id,
   legendRef,
+  unanswered,
   children,
-}: YesNoQuestionProps) {
+}: YesNoThenDetailsProps) {
   return (
     <fieldset id={id} className="form-field fee-waiver-question">
       <legend
@@ -56,6 +63,7 @@ export function YesNoQuestion({
           </label>
         ))}
       </div>
+      {unanswered && <p className="form-help-text">{NOT_ANSWERED_YET}</p>}
       {children}
     </fieldset>
   );
