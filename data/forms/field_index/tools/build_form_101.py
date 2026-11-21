@@ -114,7 +114,7 @@ PENDING = "petition_pending_case_yes"
 BUSINESS = "petition_sole_proprietor_yes"
 HAZARD = "petition_hazard_yes"
 
-# Line 18's boxes, by the lowest count of each range, as creditor_count_range returns it.
+# Line 18's boxes, by the lowest count of each range, as _creditor_count_range returns it.
 CREDITOR_RANGES = [
     ("1-49", "1"),
     ("50-99", "50"),
@@ -163,8 +163,8 @@ def _bindings():
         ("Chapter you are filing under, page 1: Chapter 7", constant_box()),
     ]
     # The running header: the name's parts on pages 2, 4 and 7, the whole name on 3, 5, 6 and 8.
-    # A part too wide for its narrow box prints blank there, never refusing the form (Ruling
-    # T4-header, provisional); line 1 and the whole-name boxes print it whole.
+    # A part too wide for its narrow box prints blank there, never refusing the form (owner
+    # ruling, 2026-11-20); line 1 and the whole-name boxes print it whole.
     for page in (2, 4, 7):
         for part in ("first", "middle", "last"):
             rows.append(

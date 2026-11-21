@@ -997,8 +997,12 @@ def _venue_reason_lines(text: str) -> list[str]:
     if not text:
         return lines
     widget = next(
-        w for w in template_widgets(_VENUE_REASON_TEMPLATE) if w.full_name == _VENUE_REASON_BOX
+        (w for w in template_widgets(_VENUE_REASON_TEMPLATE) if w.full_name == _VENUE_REASON_BOX),
+        None,
     )
+    if widget is None:
+        # A renamed box must fail loudly (a logged 500), never measure nothing.
+        raise LookupError(f"{_VENUE_REASON_TEMPLATE} has no box {_VENUE_REASON_BOX!r}")
     wrapped = wrap(
         font_for(_VENUE_REASON_TEMPLATE, widget.font),
         reverse_cmap_for(_VENUE_REASON_TEMPLATE, widget.font),
@@ -1155,7 +1159,8 @@ ANSWER_BOX_RULES = frozenset(
     }
 )
 
-# The running header's name-part boxes on pages 2, 4 and 7 (Ruling T4-header, provisional).
+# The running header's name-part boxes on pages 2, 4 and 7. Owner ruling, 2026-11-20: a part
+# that doesn't fit its box at 6 pt prints blank there; never refuse the form, never an initial.
 _HEADER_TEMPLATE = "form_b101.pdf"
 _HEADER_BOXES = {
     "first": ("First Name", "First Name_2", "First Name_3"),
@@ -1176,6 +1181,10 @@ def _header_part(session: IntakeSession, part: str) -> str:
 
     text = _safe_debtor_attr(session, f"{part}_name")
     boxes = [w for w in template_widgets(_HEADER_TEMPLATE) if w.full_name in _HEADER_BOXES[part]]
+    missing = set(_HEADER_BOXES[part]) - {w.full_name for w in boxes}
+    if missing:
+        # No box would read as "fits" and refuse a long name at check(), undoing the ruling.
+        raise LookupError(f"{_HEADER_TEMPLATE} has no box {sorted(missing)[0]!r}")
     fits = all(fit(w, _HEADER_TEMPLATE, _as_printed(text)) is not None for w in boxes)
     return text if fits else ""
 
@@ -1228,8 +1237,6 @@ DERIVATIONS: dict[str, Callable[[IntakeSession], str]] = {
     "first_name": lambda s: _safe_debtor_attr(s, "first_name"),
     "middle_name": lambda s: _safe_debtor_attr(s, "middle_name"),
     "last_name": lambda s: _safe_debtor_attr(s, "last_name"),
-    "ssn_last_4": lambda s: (_safe_debtor_attr(s, "ssn"))[-4:],
-    "street_address": lambda s: _safe_debtor_attr(s, "street_address"),
     "city": lambda s: _safe_debtor_attr(s, "city"),
     "state": lambda s: _safe_debtor_attr(s, "state"),
     "zip_code": lambda s: _safe_debtor_attr(s, "zip_code"),
@@ -1289,10 +1296,6 @@ DERIVATIONS: dict[str, Callable[[IntakeSession], str]] = {
     "total_priority_other": _total_priority("other"),
     "total_priority_unsecured": _total_priority(None),
     "total_summary_line_9": _total_summary_line_9,
-    # Form 101 lines 18-20
-    "creditor_count_range": _creditor_count_range,
-    "total_assets_range": _total_assets_range,
-    "total_debts_range": _total_debts_range,
     # Form 122A-1 means test derivations
     "line1_wages": _line1_wages,
     "line3_alimony": _line3_alimony,
@@ -1330,8 +1333,7 @@ DERIVATIONS: dict[str, Callable[[IntakeSession], str]] = {
     "fee_waiver_income_total": lambda s: _fmt(_fee_waiver_income(s).total),
     "fee_waiver_noncash_answer": lambda s: _fee_waiver_noncash(s)[0],
     "fee_waiver_noncash_kinds": lambda s: _fee_waiver_noncash(s)[1],
-    # Form 101 line 8 and 103B lines 4, 5, 7 and 9 (3f spec §8)
-    "fee_payment_choice": _fee_answer("payment_choice"),
+    # 103B lines 4, 5, 7 and 9 (3f spec §8); Form 101 line 8's boxes are the fee_choice_ rules
     "fee_waiver_income_change": _fee_answer("income_change_answer"),
     "fee_waiver_income_change_explanation": _fee_text(
         "income_change_explanation", under="income_change_answer"
@@ -1440,14 +1442,12 @@ RULE_FIXES: dict[str, dict[str, str]] = {
     "first_name": {"step": "debtor_info"},
     "middle_name": {"step": "debtor_info"},
     "last_name": {"step": "debtor_info"},
-    "street_address": {"step": "debtor_info"},
     "city": {"step": "debtor_info"},
     "state": {"step": "debtor_info"},
     "zip_code": {"step": "debtor_info"},
     "county": {"step": "debtor_info"},
     "phone": {"step": "debtor_info"},
     "email": {"step": "debtor_info"},
-    "ssn_last_4": {"step": "debtor_info"},
     "ssn_formatted": {"step": "debtor_info"},
     # Income
     "family_size": {"step": "income_info"},

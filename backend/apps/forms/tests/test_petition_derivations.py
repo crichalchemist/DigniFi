@@ -67,7 +67,7 @@ def test_the_ssn_last_four_print_one_digit_per_box_in_order():
 def test_helpers_read_only_digits():
     assert digits("9-0 0") == "900"
     assert digits(None) == ""
-    assert nine_digit_slice("123-45-6789", 0, 2) == "12"
+    assert nine_digit_slice("900-45-6789", 0, 2) == "90"
     assert nine_digit_slice("12345678", 0, 2) == ""
 
 
@@ -271,6 +271,20 @@ def test_venue_reason_wraps_into_four_lines_and_the_fourth_carries_the_rest():
     # The first three lines fit the box at 6 pt; the fourth, holding the rest, is refused.
     assert all(fit(widget, "form_b101.pdf", line) is not None for line in lines[:3])
     assert fit(widget, "form_b101.pdf", lines[3]) is None
+
+
+def test_a_renamed_venue_box_fails_loudly_rather_than_measuring_nothing(monkeypatch):
+    monkeypatch.setattr(derivations, "_VENUE_REASON_BOX", "See 28 USC 1408 renamed")
+    with pytest.raises(LookupError, match="renamed"):
+        rule("venue_reason_line_1", session({"venue_reason": "My business is based here."}))
+
+
+def test_a_renamed_header_box_fails_loudly_rather_than_counting_as_a_fit(monkeypatch):
+    # With no box found, "fits every box" would be true and a long name would refuse the form,
+    # undoing the owner's ruling (blank, never refuse) with no sign of it.
+    monkeypatch.setitem(derivations._HEADER_BOXES, "first", ("First Name", "First Name renamed"))
+    with pytest.raises(LookupError, match="First Name renamed"):
+        rule("header_first_name", session())
 
 
 def test_a_word_wider_than_the_box_goes_whole_to_the_first_line_to_be_refused():

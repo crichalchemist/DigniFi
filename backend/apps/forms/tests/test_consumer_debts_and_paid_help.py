@@ -6,9 +6,13 @@ Business intent: whether the debts are primarily consumer debts (Form 101 line 1
 106Sum line 7, 107 line 6) and whether the filer paid someone who is not a lawyer to
 help with the forms (101 Part 7, 106Dec, 107 Part 12, with that person's name) are the
 filer's own sworn answers. DigniFi never answers them. Each form prints exactly what
-the filer said, all of them say the same, and a question the filer hasn't answered
-stays blank. Form 103B lines 17-19 ask three different payment questions, and each
-prints its own answer.
+the filer said, and a question the filer hasn't answered stays blank. Form 103B lines
+17-19 ask three different payment questions, and each prints its own answer.
+
+Until 4d and 4i ask these questions once, the answers live in two stores: Form 101 reads
+`PetitionAnswers` and the other forms read `FormAnswer`. The tests plant the answer in
+each form's own store, so they show that each form prints its store's answer, not that
+the two stores agree.
 """
 
 from datetime import date

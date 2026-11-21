@@ -13,18 +13,18 @@ Ground truth for every fillable box on the 18 templates in `../pdfs/` that the a
 - `audit/step2_verification.json`: forms step 2's own placements, the bindings the audit never judged. Each row has `verification.json`'s shape plus `producer`, the whole binding key (`derived:phone`), and cites the box's label in the index. Tier 2 (`backend/apps/forms/tests/test_oracle_tier2.py`) reads these rows before the audit's, matching on box and binding key, and fails on a row that no binding matches.
 - The audit, unbound and verification files are the 2026-10-09 audit's record. Later steps don't edit them, so some boxes listed as unbound are bound now.
 - `audit/ocr_cross.json`: where the vision reading and the text-layer reading disagreed.
-- `tools/`: the scripts that built the index (`form_ocr.py`, `ocr_crosscheck.py`, `field_index.py`), the one-off conversion of the schemas to full-name bindings (`convert_schemas.py`), the recorder of failing oracle cases in `known_defects.json` (`record_known_defects.py`), `build_list_of_creditors.py`, which extracts the List of Creditors template from the bundle and writes its index, its schema and its 32 audit rows in `audit/step2_verification.json`, `build_form_101_index.py`, which writes Form 101 (11/26)'s index and renders its tagged pages, and the schema-writing tools `build_schedule_a_b.py`, `build_claims_schedules.py`, `build_schedule_c.py` and `build_form_122a2.py`, each of which writes its form's schema in `../schemas/` and its own rows in `audit/step2_verification.json`. Never hand-edit a schema a tool writes: change the tool and run it again.
+- `tools/`: the scripts that built the index (`form_ocr.py`, `ocr_crosscheck.py`, `field_index.py`), the one-off conversion of the schemas to full-name bindings (`convert_schemas.py`), the recorder of failing oracle cases in `known_defects.json` (`record_known_defects.py`), `build_list_of_creditors.py`, which extracts the List of Creditors template from the bundle and writes its index, its schema and its 32 audit rows in `audit/step2_verification.json`, `build_form_101_index.py`, which writes Form 101 (11/26)'s index and renders its tagged pages, and the schema-writing tools `build_schedule_a_b.py`, `build_claims_schedules.py`, `build_schedule_c.py`, `build_form_122a2.py` and `build_form_101.py` (which also writes `../schemas/form_101.limits.json`), each of which writes its form's schema in `../schemas/` and its own rows in `audit/step2_verification.json`. Never hand-edit a schema a tool writes: change the tool and run it again.
 
 ## How each row was established (`basis`)
 
 | basis           | meaning                                                                             | rows |
 | --------------- | ----------------------------------------------------------------------------------- | ---- |
-| `adjudicated`   | a reviewer looked at the tagged page image and decided                              | 1154 |
-| `sampled_ok`    | vision agreed with the text layer, and a reviewer spot-checked it against the image | 551  |
-| `vision_agreed` | vision agreed with the text layer; not looked at                                    | 486  |
+| `adjudicated`   | a reviewer looked at the tagged page image and decided                              | 1335 |
+| `sampled_ok`    | vision agreed with the text layer, and a reviewer spot-checked it against the image | 516  |
+| `vision_agreed` | vision agreed with the text layer; not looked at                                    | 400  |
 | `pattern`       | a table row extrapolated from one row checked in the image                          | 626  |
-| `header`        | page header (name, case number, district)                                           | 155  |
-| `form_control`  | the template's Print, Save As, Reset and Attach buttons                             | 67   |
+| `header`        | page header (name, case number, district)                                           | 132  |
+| `form_control`  | the template's Print, Save As, Reset and Attach buttons                             | 63   |
 
 - **Checked box by box:** every widget on 122A-1, 122A-1 Supp, 122A-2, Schedule I and Schedule J.
 - **Checked by pattern:** the repeating rows on Schedules C, D, E/F, G and H.

@@ -1,7 +1,7 @@
 """
 Form 101 filed on the 06/24 revision is counted once when the 11/26 revision replaces it, so
-an operator can tell how many filers will be told to generate it again (4b-R7). The count
-holds no filer value.
+an operator can tell how many filers will be told DigniFi can no longer print it (4b-R7). The
+count holds no filer value.
 """
 
 import json

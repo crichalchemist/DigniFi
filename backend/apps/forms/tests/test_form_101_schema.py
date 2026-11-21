@@ -830,7 +830,7 @@ def _name(session, **parts):
 
 
 def test_a_first_name_too_wide_for_the_header_still_prints_the_form(session):
-    # Ruling T4-header (provisional): 06/24 printed this name, so 11/26 must not refuse the
+    # Owner ruling, 2026-11-20: 06/24 printed this name, so 11/26 must not refuse the
     # form over a 46 pt header box. Line 1 and the whole-name headers print it whole; only the
     # header's first-name box is left blank, never cut or turned into an initial.
     _name(session, first="Maria Guadalupe")
@@ -1063,6 +1063,13 @@ def test_capitals_at_a_cap_are_refused_by_name_with_the_step_that_asks_them(sess
     with pytest.raises(ValueTooLong) as refused:
         PDFFormFiller().check("form_101", _petition(session))
     assert (refused.value.step, refused.value.page) == (PETITION_STEP_OF_KEY[key], None)
+    # Named by the label of the box that prints this answer.
+    boxes = [
+        f.label
+        for f in load_schema("form_101").fields
+        if f.binding == f"petition.{key}" or f.rule == key
+    ]
+    assert refused.value.label in boxes
 
 
 @pytest.mark.slow
@@ -1109,7 +1116,8 @@ def test_only_line_15s_and_16as_own_answer_boxes_pass_the_upl_guard():
 
 
 def test_the_revision_mark_on_the_template_is_11_26():
-    # 4b-R9: formText.ts's FORM_REVISIONS names the edition the PDF prints.
+    # 4b-R9: the PDF prints its edition, 11/26. 4b-ii adds formText.ts's FORM_REVISIONS, which
+    # names it to the filer.
     text = pypdf.PdfReader(BytesIO(TEMPLATE.read_bytes())).pages[0].extract_text()
     assert "11/26" in text
     assert "06/24" not in text

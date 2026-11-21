@@ -1,8 +1,10 @@
 """Forms step 4b: count the Form 101 rows filed on the retired 06/24 revision (4b-R7).
 
 A filed form keeps the values it was filed with, and those name boxes the 11/26 template lacks,
-so its download is a 422 asking the filer to generate it again. The count tells an operator how
-many filers that reaches. It holds no filer value.
+so its download is a 422 saying DigniFi can no longer print it and the filer should keep the
+copy they gave the court (only a filed Form 101 gets it; any other filed form whose stored keys
+the template lacks stays a logged 500). The count tells an operator how many filers that
+reaches. It holds no filer value.
 """
 
 from django.db import migrations

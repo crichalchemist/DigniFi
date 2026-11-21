@@ -1,8 +1,9 @@
 """
 A box the template gives a background hides what the page prints under it.
 
-Every district box but Form 101's sits on the page's own "__________ District of
-__________", and 15 of Schedule C's boxes on ruled lines. A viewer paints the box's
+The 17 district boxes of the 16 forms below (two on 103B) sit on the page's own
+"__________ District of __________", and 15 of Schedule C's boxes on ruled lines. Form 101
+(11/26) names its court in two text boxes with no background. A viewer paints the box's
 /MK /BG over them. Text read-back can't see a line showing through, so these tests judge
 pixels.
 """

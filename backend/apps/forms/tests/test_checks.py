@@ -82,9 +82,19 @@ def test_checkbox_bound_as_text_is_reported(schema_copy):
 
 
 def test_push_button_binding_is_reported(schema_copy):
-    # Form 101 (11/26) has no print button; the court's signature boxes are the widgets a
-    # binding can't fill, and a text binding on one is a type mismatch (E004). The schema has
-    # no Signature binding type, so these stay blank by construction.
+    # Form 121's print button (Button.Print1, page 1, T25) is never drawn, so its page holds
+    # no widget of the name that prints (E003), and a button takes no value (E004).
+    _edit(schema_copy, "form_121", lambda d: d["fields"].append(_text("Button.Print1", 1, None)))
+    assert _errors("form_121") == [
+        ("forms.E003", "form_121: 'Button.Print1' has no drawn widget on page 1"),
+        ("forms.E004", "form_121: 'Button.Print1' is a push button"),
+    ]
+
+
+def test_a_text_binding_on_a_signature_box_is_a_type_mismatch(schema_copy):
+    # The court's signature boxes are widgets a binding can't fill, and a text binding on one
+    # is a type mismatch (E004). The schema has no Signature binding type, so these stay blank
+    # by construction.
     _edit(
         schema_copy,
         "form_101",
@@ -217,6 +227,15 @@ def test_a_tag_on_the_second_of_a_stacked_pair_is_reported(schema_copy):
     _edit(schema_copy, "schedule_d", lambda d: _field(d, "4_3").update(tag="T13"))
     load_schema.cache_clear()
     assert _ids("schedule_d") == []
+
+
+def test_a_tag_on_a_print_button_is_reported(schema_copy):
+    # T25 is Button.Print1's own widget on page 1, but a print button never prints.
+    _edit(schema_copy, "form_121", lambda d: d["fields"].append(_text("Button.Print1", 1, "T25")))
+    assert _errors("form_121") == [
+        ("forms.E003", "form_121: 'Button.Print1' has no drawn widget 'T25' on page 1"),
+        ("forms.E004", "form_121: 'Button.Print1' is a push button"),
+    ]
 
 
 def test_a_tag_that_no_widget_of_the_name_has_is_reported(schema_copy):
