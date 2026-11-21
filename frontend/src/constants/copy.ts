@@ -809,9 +809,18 @@ export const REVIEW_GAPS_UNAVAILABLE =
 export const SECTION_INTRO_TIME = 'This step takes about {n} minutes.';
 export const SECTION_INTRO_PAUSE = 'You can stop at any time. What you have typed is saved.';
 
+// The notice before a county is chosen, with no clerk's number (4b-R6)
 // DRAFT: counsel C-40
 export const PUBLIC_RECORD_NOTICE =
-  "What you file with the court can be seen by the public. If an address raises a safety concern for you, the court's clerk can tell you what options exist: (312) 408-5000.";
+  "What you file with the court can be seen by the public. If an address raises a safety concern for you, the court's clerk can tell you what options exist.";
+// The notice once a county is chosen: PublicRecordNotice adds its division's number and a period
+// DRAFT: counsel C-40
+export const PUBLIC_RECORD_NOTICE_WITH_CLERK =
+  "What you file with the court can be seen by the public. If an address raises a safety concern for you, the court's clerk can tell you what options exist:";
+// The clerk's office by division: https://www.ilnb.uscourts.gov/online-payments ("(312) 408-5000
+// for (Chicago) or (815) 987-4350 for (Rockford)"), re-read 2026-11-21 (PF2-T8-8)
+export const CLERK_PHONE_EASTERN = '(312) 408-5000';
+export const CLERK_PHONE_WESTERN = '(815) 987-4350';
 
 export const WHAT_DOES_THIS_MEAN = 'What does this mean?';
 
@@ -1608,3 +1617,118 @@ export const EXEMPTIONS_SHORT_LABEL = 'A shorter description for Schedule C';
 export const EXEMPTIONS_CLAIM_NUMBER = 'Claim {n}';
 export const EXEMPTIONS_REMOVE_CLAIM = 'Remove claim {n}';
 export const EXEMPTIONS_TOTALS_HEADING = 'Totals by law';
+
+// ============================================================================
+// Your Information: Form 101's questions (forms step 4b)
+// ============================================================================
+
+// The gap sentences, each the server's own (apps/intake/petition.py, the name without
+// `PETITION_`); test_petition_frontend_copy.py pins them both ways. Step 1 shows the first gate.
+export const PETITION_GATE_OTHER_NAMES =
+  'Say whether you have used another name in the last 8 years.';
+// DRAFT: counsel C-44
+export const PETITION_GATE_ITIN = 'Say whether you have an ITIN.';
+// DRAFT: counsel C-44
+export const PETITION_GATE_OTHER_SSN =
+  'Say whether you have used any other Social Security number. Answer Yes or No.';
+export const PETITION_GATE_MAILING =
+  'Say whether your mailing address is different from where you live.';
+export const PETITION_GATE_PRIOR_BANKRUPTCY =
+  'Say whether you have filed for bankruptcy in the last 8 years.';
+export const PETITION_GATE_PENDING_CASE =
+  'Say whether a spouse, partner or affiliate has a bankruptcy case pending.';
+export const PETITION_GATE_SOLE_PROPRIETOR = 'Say whether you are a sole proprietor of a business.';
+export const PETITION_GATE_HAZARD =
+  'Say whether any property you own poses a hazard or needs attention right away.';
+export const PETITION_GATE_RENTS = 'Say whether you rent your residence.';
+export const PETITION_GATE_EVICTION =
+  'Say whether your landlord has an eviction judgment against you.';
+export const PETITION_DETAIL_VENUE = 'Choose why you are filing in this district.';
+// DRAFT: counsel C-40
+export const PETITION_DETAIL_VENUE_REASON = 'Explain your other reason for filing here.';
+export const PETITION_DETAIL_OTHER_NAMES =
+  'Add the other name you used, or change your answer to No.';
+// DRAFT: counsel C-44
+export const PETITION_DETAIL_ITIN = 'Type your 9-digit ITIN, or change your answer to No.';
+// DRAFT: counsel C-44
+export const PETITION_DETAIL_OTHER_SSN =
+  'Type the other 9-digit Social Security number, or change your answer to No.';
+export const PETITION_DETAIL_EIN = 'Your EIN has 9 digits. Check what you typed.';
+export const PETITION_DETAIL_MAILING = 'Add your mailing address, or change your answer to No.';
+export const PETITION_DETAIL_PRIOR_CASE =
+  'Each earlier case needs its district and the date it was filed.';
+export const PETITION_DETAIL_PRIOR_DATE =
+  'A date is written as MM/DD/YYYY. Check the date of your earlier case.';
+export const PETITION_DETAIL_PENDING_DATE =
+  'A date is written as MM/DD/YYYY. Check the date of the pending case.';
+export const PETITION_DETAIL_PENDING_CASE =
+  'Each pending case needs the name of the person who filed it.';
+export const PETITION_DETAIL_BUSINESS = "Add your business's name, or change your answer to No.";
+export const PETITION_DETAIL_HAZARD = 'Say what the hazard is, or change your answer to No.';
+// Templates the server fills in: {label} a box in plain words; {noun} and {n} a row (Q5)
+export const PETITION_DETAIL_TOO_LONG =
+  'Your answer for {label} is too long for its box on Form 101.';
+export const PETITION_DETAIL_TOO_LONG_ROW =
+  'Your answer for {label}, in {noun} {n}, is too long to fit on Form 101.';
+
+// The questions step 1 asks in its own words, where the form prints no question (spec §6.1)
+// DRAFT: counsel C-44
+export const PETITION_ASKED_AS_ITIN = 'Do you have an ITIN?';
+// DRAFT: counsel C-44
+export const PETITION_ASKED_AS_OTHER_SSN =
+  'Have you used any other Social Security number? Answer Yes or No.';
+export const PETITION_ASKED_AS_MAILING = 'Is your mailing address different from where you live?';
+
+// Why a gate that prints no box is asked (spec §5.7)
+export const WHY_OTHER_NAMES =
+  "Form 101 line 2 prints blank when you have used no other name; your No tells us that's so.";
+// DRAFT: counsel C-44
+export const WHY_ITIN =
+  "Forms 101 and 121 print an ITIN only when you have one. Your No tells us you don't.";
+// DRAFT: counsel C-44
+export const WHY_OTHER_SSN =
+  "Form 121 lists another Social Security number only when you have used one. Your No tells us you haven't.";
+export const WHY_MAILING =
+  "Form 101 line 5 prints a mailing address only when it is different from where you live. Your No tells us it isn't.";
+
+// The one requirement the wizard can't meet for the filer, in step 1's intro (spec §6.1)
+// DRAFT: counsel C-40
+export const COUNSELING_REQUIREMENT_INTRO =
+  'Before you file, the court requires a credit counseling briefing from an approved agency, taken within the 180 days before filing. The last step asks about it. The guide there says where the approved agencies are listed.';
+// Line 6's information: the division follows the county (4b-R6, F-10)
+// DRAFT: counsel C-40
+export const VENUE_DIVISION_EASTERN = 'Your county is in the Eastern Division of this district.';
+// DRAFT: counsel C-40
+export const VENUE_DIVISION_WESTERN = 'Your county is in the Western Division of this district.';
+export const LINE_12_FEEDS_107 =
+  'Form 107 line 27 asks about this business again. Your answer here will show there.';
+
+// Answers kept under a No: they print nothing, and nothing reappears unannounced (spec §5.3)
+export const HIDDEN_ROWS_ONE = '1 saved row is hidden. Show it or delete it.';
+export const HIDDEN_ROWS_MANY = '{count} saved rows are hidden. Show them or delete them.';
+export const HIDDEN_ANSWERS =
+  'Your earlier answers here are saved but hidden. Show them or delete them.';
+export const SHOW_HIDDEN = 'Show';
+export const DELETE_HIDDEN = 'Delete';
+
+// The write-only numbers: the server says only whether one is saved (F-3, owner ruling Q3)
+export const SSN_SAVED = 'Your Social Security number is saved. You can replace it.';
+// DRAFT: counsel C-44
+export const ITIN_SAVED = 'An ITIN is saved.';
+// DRAFT: counsel C-44
+export const OTHER_SSN_SAVED = 'Another Social Security number is saved. You can replace it.';
+export const REPLACE_SAVED = 'Replace it';
+
+// The row lists' controls; {n} is the row's place, counted from 1
+export const PETITION_ADD_OTHER_NAME = 'Add another name';
+export const PETITION_ADD_BUSINESS_NAME = 'Add a business name';
+export const PETITION_ADD_PRIOR_CASE = 'Add an earlier case';
+export const PETITION_ADD_PENDING_CASE = 'Add a pending case';
+export const PETITION_OTHER_NAME_ROW = 'Other name {n}';
+export const PETITION_BUSINESS_NAME_ROW = 'Business name {n}';
+export const PETITION_PRIOR_CASE_ROW = 'Earlier case {n}';
+export const PETITION_PENDING_CASE_ROW = 'Pending case {n}';
+export const PETITION_REMOVE_OTHER_NAME = 'Remove other name {n}';
+export const PETITION_REMOVE_BUSINESS_NAME = 'Remove business name {n}';
+export const PETITION_REMOVE_PRIOR_CASE = 'Remove earlier case {n}';
+export const PETITION_REMOVE_PENDING_CASE = 'Remove pending case {n}';

@@ -16,6 +16,7 @@ from rest_framework import serializers
 from apps.districts.counties import ILND_COUNTIES
 from apps.districts.dated_tables import fill_date
 from apps.eligibility.cmi import answered_window, income_step_gaps, income_window
+from apps.forms.registry import _SSN
 from apps.forms.services.answer_records import is_itin, is_nine_digits
 from apps.forms.services.exemption_items import fits_description, fits_law
 from apps.forms.services.means_fit import LIST_ANSWERS, merge_row_errors, shown_box_refusals
@@ -69,6 +70,10 @@ User = get_user_model()
 class DebtorInfoSerializer(serializers.ModelSerializer):
     """Serializer for debtor personal information (PII encrypted)."""
 
+    # The SSN never comes back: the read says only whether the stored one is what Form 101 and
+    # Complete take (`_needs_ssn`'s own pattern), so a loaded step 1 needn't ask for it again.
+    ssn_saved = serializers.SerializerMethodField()
+
     class Meta:
         model = DebtorInfo
         fields = [
@@ -83,10 +88,14 @@ class DebtorInfoSerializer(serializers.ModelSerializer):
             "city",
             "state",
             "zip_code",
+            "ssn_saved",
         ]
         extra_kwargs = {
             "ssn": {"write_only": True},  # Never return SSN in API responses
         }
+
+    def get_ssn_saved(self, instance) -> bool:
+        return bool(_SSN.fullmatch((instance.ssn or "").strip()))
 
     def validate_ssn(self, value):
         """Validate SSN format (9 digits, no hyphens for storage)."""

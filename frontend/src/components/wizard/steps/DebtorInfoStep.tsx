@@ -13,8 +13,15 @@ import { FormField, FormSelect } from '../../common';
 import { useAuth } from '../../../context/AuthContext';
 import { formatPhone } from '../../../utils/formatPhone';
 import { ILND_COUNTIES } from '../../../constants/counties';
-import { COUNTY_OUTSIDE_DISTRICT } from '../../../constants/copy';
-import type { DebtorInfo } from '../../../types/api';
+import {
+  COUNSELING_REQUIREMENT_INTRO,
+  COUNTY_OUTSIDE_DISTRICT,
+  SSN_SAVED,
+} from '../../../constants/copy';
+import type { DebtorInfo, PetitionAnswers } from '../../../types/api';
+import { PetitionQuestions } from './petition/PetitionQuestions';
+import { firstPetitionGap } from './petition/petitionGaps';
+import { zipDigits } from './petition/masks';
 
 interface DebtorInfoStepProps {
   initialData?: Partial<DebtorInfo>;
@@ -23,6 +30,12 @@ interface DebtorInfoStepProps {
   // The wizard holds the county, because it saves under `household`, not `debtor_info`
   county: string | null;
   onCountyChange: (county: string | null) => void;
+  // Form 101's questions, which the wizard holds and saves under `petition_answers` (4b)
+  petition: PetitionAnswers;
+  onPetitionChange: (next: PetitionAnswers) => void;
+  pendingSecrets: { itin?: string; other_ssn?: string };
+  onSecretChange: (key: 'itin' | 'other_ssn', value: string) => void;
+  division: 'Eastern' | 'Western' | null;
 }
 
 // US States for dropdown
@@ -39,6 +52,11 @@ export function DebtorInfoStep({
   onValidationChange,
   county,
   onCountyChange,
+  petition,
+  onPetitionChange,
+  pendingSecrets,
+  onSecretChange,
+  division,
 }: DebtorInfoStepProps) {
   const [formData, setFormData] = useState<Partial<DebtorInfo>>(initialData || {});
   const { user } = useAuth();
@@ -90,8 +108,9 @@ export function DebtorInfoStep({
       }
     }
 
+    // A saved SSN counts as given until the filer types a new one (owner ruling Q3)
     if (!formData.ssn?.trim()) {
-      newErrors.ssn = 'Please enter your Social Security Number';
+      if (!formData.ssn_saved) newErrors.ssn = 'Please enter your Social Security Number';
     } else if (!/^\d{3}-?\d{2}-?\d{4}$/.test(formData.ssn)) {
       newErrors.ssn = 'Please enter a valid Social Security Number (XXX-XX-XXXX)';
     }
@@ -110,8 +129,9 @@ export function DebtorInfoStep({
 
     if (!formData.zip_code?.trim()) {
       newErrors.zip_code = 'Please enter your ZIP code';
-    } else if (!/^\d{5}(-\d{4})?$/.test(formData.zip_code)) {
-      newErrors.zip_code = 'Please enter a valid ZIP code (XXXXX or XXXXX-XXXX)';
+    } else if (!/^\d{5}(\d{4})?$/.test(formData.zip_code)) {
+      // Digits only: Form 101 line 5 prints a ZIP+4 as nine digits (owner ruling Q1)
+      newErrors.zip_code = 'Please enter a valid ZIP code (XXXXX or XXXXXXXXX)';
     }
 
     if (!formData.email?.trim()) {
@@ -131,12 +151,15 @@ export function DebtorInfoStep({
     return newErrors;
   }, [formData, county]);
 
+  // Continue waits for every field above and every Form 101 yes/no below; a detail never holds it
+  const isValid = Object.keys(errors).length === 0 && firstPetitionGap(petition) === null;
+
   // Update parent when form data changes
   useEffect(() => {
     onDataChange(formData);
-    onValidationChange(Object.keys(errors).length === 0);
+    onValidationChange(isValid);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [formData, errors]);
+  }, [formData, isValid]);
 
   const handleChange = (field: keyof DebtorInfo, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -144,6 +167,11 @@ export function DebtorInfoStep({
 
   return (
     <div className="debtor-info-step">
+      {/* The one requirement the wizard can't meet for the filer, as information (spec §6.1) */}
+      <div className="section-intro">
+        <p className="section-description">{COUNSELING_REQUIREMENT_INTRO}</p>
+      </div>
+
       {/* Privacy assurance */}
       <div className="info-box">
         <svg className="info-icon" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
@@ -225,7 +253,11 @@ export function DebtorInfoStep({
             required
             autoComplete="off"
             placeholder="XXX-XX-XXXX"
-            helpText="🔒 Required for bankruptcy filing. Your SSN is encrypted and never shared."
+            helpText={
+              formData.ssn_saved && !formData.ssn
+                ? SSN_SAVED
+                : '🔒 Required for bankruptcy filing. Your SSN is encrypted and never shared.'
+            }
           />
         </div>
       </section>
@@ -271,8 +303,10 @@ export function DebtorInfoStep({
             label="ZIP Code"
             name="zip_code"
             type="text"
+            inputMode="numeric"
             value={formData.zip_code || ''}
-            onChange={(e) => handleChange('zip_code', e.target.value)}
+            // Digits only, at most nine, applied before any length limit (owner ruling Q1)
+            onChange={(e) => handleChange('zip_code', zipDigits(e.target.value))}
             error={errors.zip_code}
             required
             autoComplete="postal-code"
@@ -322,6 +356,14 @@ export function DebtorInfoStep({
           />
         </div>
       </section>
+
+      <PetitionQuestions
+        answers={petition}
+        onChange={onPetitionChange}
+        pendingSecrets={pendingSecrets}
+        onSecretChange={onSecretChange}
+        division={division}
+      />
     </div>
   );
 }

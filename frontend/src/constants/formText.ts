@@ -9,6 +9,7 @@
  * P2).
  */
 import type {
+  BusinessKind,
   ClaimStatus,
   DeductionField,
   EntryKind,
@@ -20,6 +21,7 @@ import type {
   PaymentChoice,
   PriorityType,
   PropertyKind,
+  VenueChoice,
 } from '../types/api';
 
 // No cut: the question as printed
@@ -801,3 +803,85 @@ export const FORM_122A2_LINE_43_EXPLANATION =
   'Give a detailed explanation of the special circumstances';
 // Line 43, the label of the amount column
 export const FORM_122A2_LINE_43_AMOUNT = 'Average monthly expense or income adjustment';
+
+// Form 101 (form_b101.pdf, the 11/26 revision) and Form 121, asked on Your Information (forms
+// step 4b). Copied from the template's text layer; each constant names its line and any cut.
+
+// The edition each template prints beside its title (4b-R9), one key per line;
+// test_petition_frontend_copy.py pins it to page 1's title line
+export const FORM_REVISIONS: Record<string, string> = {
+  form_101: '11/26',
+};
+
+// Line 1, the label under the suffix box
+export const FORM_101_SUFFIX = 'Suffix (Sr., Jr., II, III)';
+// Line 2, the question as printed, its line breaks joined
+export const FORM_101_LINE_2 = 'All other names you have used in the last 8 years';
+// Line 2, the instructions under the question, no cut
+export const FORM_101_LINE_2_INSTRUCTIONS =
+  'Include your married or maiden names and any assumed, trade names and doing business as names. Do NOT list the name of any separate legal entity such as a corporation, partnership, or LLC that is not filing this petition.';
+// Line 2, the labels under the name boxes
+export const FORM_101_LINE_2_CELLS = {
+  first: 'First name',
+  middle: 'Middle name',
+  last: 'Last name',
+  name: 'Business name (if applicable)',
+};
+// Line 3, cut: "Only the last 4 digits of your Social Security number or federal"
+// DRAFT: counsel C-44
+export const FORM_101_LINE_3_ITIN = 'Individual Taxpayer Identification number (ITIN)';
+// Form 121 line 2 (form_b121.pdf page 1), the question as printed, its line breaks joined
+// DRAFT: counsel C-44
+export const FORM_121_LINE_2_OTHER_SSN = 'All Social Security Numbers you have used';
+// Line 4, the question as printed, its line breaks joined
+export const FORM_101_LINE_4 = 'Your Employer Identification Number (EIN), if any.';
+// Line 5, the sentence above the mailing address, no cut
+export const FORM_101_LINE_5 =
+  'If your mailing address is different from the one above, fill it in here. Note that the court will send any notices to you at this mailing address.';
+// Line 5, the label under the mailing address's second box
+export const FORM_101_PO_BOX = 'P.O. Box';
+// Line 6, the question as printed, its line breaks joined
+export const FORM_101_LINE_6 = 'Why you are choosing this district to file for bankruptcy';
+// Line 6's two choices, no cut
+export const FORM_101_VENUE_CHOICES: Record<VenueChoice, string> = {
+  lived_here:
+    'Over the last 180 days before filing this petition, I have lived in this district longer than in any other district.',
+  other: 'I have another reason. Explain.',
+};
+// Line 9, the question as printed, its line breaks joined
+export const FORM_101_LINE_9 = 'Have you filed for bankruptcy within the last 8 years?';
+// Line 9, the labels beside each case's boxes
+export const FORM_101_LINE_9_CELLS = {
+  district: 'District',
+  filed_on: 'When',
+  case_number: 'Case number',
+};
+// Line 10, the question as printed, its line breaks and a double space joined
+export const FORM_101_LINE_10 =
+  'Are any bankruptcy cases pending or being filed by a spouse who is not filing this case with you, or by a business partner, or by an affiliate?';
+// Line 10, the labels beside each case's boxes
+export const FORM_101_LINE_10_CELLS = {
+  debtor: 'Debtor',
+  relationship: 'Relationship to you',
+  district: 'District',
+  filed_on: 'When',
+  case_number: 'Case number, if known',
+};
+// Lines 9 and 10, the format printed under each "When" box
+export const FORM_101_DATE_FORMAT = 'MM / DD / YYYY';
+// Line 12, the question as printed, its line breaks joined
+export const FORM_101_LINE_12 = 'Are you a sole proprietor of any full- or part-time business?';
+// Line 12, the Yes box's words, cut: "Yes."
+export const FORM_101_LINE_12_LOCATION = 'Name and location of business';
+// Line 12, the label under the business's name box
+export const FORM_101_LINE_12_NAME = 'Name of business, if any';
+// Line 12, the sentence above the five kinds, its colon kept
+export const FORM_101_LINE_12_KIND = 'Check the appropriate box to describe your business:';
+// Line 12's five kinds, the statutory words included, no cut
+export const FORM_101_BUSINESS_KINDS: Record<BusinessKind, string> = {
+  health_care: 'Health Care Business (as defined in 11 U.S.C. § 101(27A))',
+  single_asset: 'Single Asset Real Estate (as defined in 11 U.S.C. § 101(51B))',
+  stockbroker: 'Stockbroker (as defined in 11 U.S.C. § 101(53A))',
+  commodity_broker: 'Commodity Broker (as defined in 11 U.S.C. § 101(6))',
+  none: 'None of the above',
+};

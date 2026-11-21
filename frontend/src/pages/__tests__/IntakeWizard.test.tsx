@@ -25,6 +25,7 @@ import {
   CLAIM_GAP_LEGACY_VEHICLE,
   CODEBTOR_GAP_NO_NAME,
   CONTRACT_GAP_NO_NAME,
+  ITIN_SAVED,
   LEGACY_REMOVE,
   LINE_4_PAY_BOTH,
   NOT_SAVED_TRY_AGAIN,
@@ -152,7 +153,53 @@ async function fillDebtorInfoFields(county: string | null = 'Cook') {
       target: { value: county },
     });
   }
+  // Form 101's seven yes/noes hold Continue until each is answered (step 4b). fireEvent, not
+  // userEvent, since some callers run this under fake timers.
+  for (const gate of STEP_1_GATES) {
+    fireEvent.click(document.querySelector(`input[name="${gate}"][value="no"]`) as HTMLElement);
+  }
 }
+
+// Step 1's Form 101 yes/noes, each a gate (apps/intake/petition.py STEP_1_GATES)
+const STEP_1_GATES = [
+  'other_names_answer',
+  'itin_answer',
+  'other_ssn_answer',
+  'mailing_answer',
+  'prior_bankruptcy_answer',
+  'pending_case_answer',
+  'sole_proprietor_answer',
+] as const;
+
+// Every key step 1's body sends under `petition_answers`, the secrets aside
+const STEP_1_PETITION_KEYS = [
+  'name_suffix',
+  'other_names_answer',
+  'itin_answer',
+  'other_ssn_answer',
+  'ein',
+  'mailing_answer',
+  'mailing_street',
+  'mailing_po_box',
+  'mailing_city',
+  'mailing_state',
+  'mailing_zip',
+  'venue_choice',
+  'venue_reason',
+  'prior_bankruptcy_answer',
+  'pending_case_answer',
+  'sole_proprietor_answer',
+  'business_name',
+  'business_street',
+  'business_city',
+  'business_state',
+  'business_zip',
+  'business_kind',
+  'other_names',
+  'other_business_names',
+  'prior_cases',
+  'pending_cases',
+];
 
 // ===========================================================================
 // Existing tests — handleComplete routing
@@ -868,7 +915,11 @@ describe('IntakeWizard autosave', { timeout: 15_000 }, () => {
     // Autosave must have sent at least one PATCH carrying the debtor_info slice.
     await waitFor(() => expect(patchBodies.length).toBeGreaterThan(0));
     expect(patchBodies[patchBodies.length - 1]).toEqual(
-      expect.objectContaining({ debtor_info: expect.any(Object) })
+      expect.objectContaining({
+        debtor_info: expect.any(Object),
+        household: expect.any(Object),
+        petition_answers: expect.any(Object),
+      })
     );
   });
 
@@ -3199,6 +3250,7 @@ describe('IntakeWizard county', { timeout: 15_000 }, () => {
     expect(patchBodies[0]).toEqual({
       debtor_info: expect.objectContaining({ first_name: 'Jane' }),
       household: { county: 'Cook' },
+      petition_answers: expect.any(Object),
     });
   });
 
@@ -3211,7 +3263,118 @@ describe('IntakeWizard county', { timeout: 15_000 }, () => {
     expect(patchBodies.at(-1)).toEqual({
       debtor_info: expect.objectContaining({ first_name: 'Jane', zip_code: '60601' }),
       household: { county: 'Cook' },
+      petition_answers: expect.any(Object),
     });
+  });
+
+  it('the step 1 body carries the petition answers beside debtor_info and household', async () => {
+    renderWizard();
+    await screen.findByRole('heading', { name: /your information/i, level: 2 });
+    await fillDebtorInfoFields();
+    await userEvent.click(screen.getByRole('button', { name: /continue/i }));
+    await screen.findByText('DocumentUploadPage');
+    const petition = patchBodies.at(-1)!.petition_answers as Record<string, unknown>;
+    // Every step-1 key, an unanswered one as null, so the body is built the same way from a
+    // loaded record as from typing; no ITIN goes when none was typed
+    expect(Object.keys(petition)).toEqual(STEP_1_PETITION_KEYS);
+    for (const gate of STEP_1_GATES) expect(petition[gate]).toBe('no');
+    expect(petition.venue_choice).toBeNull();
+    expect(petition.other_names).toBeNull();
+    expect(petition).not.toHaveProperty('itin');
+    expect(petition).not.toHaveProperty('other_ssn');
+  });
+
+  it('showing step 1 again sends nothing', async () => {
+    // A loaded step 1 is complete now that a saved SSN counts (owner ruling Q3), so autosave is
+    // live on mount: a body built differently from loaded data would save, and reopen a completed
+    // intake, on every visit
+    server.use(
+      http.get('http://localhost:8000/api/intake/sessions/:id/', () =>
+        HttpResponse.json({
+          ...sessionAtStep1,
+          debtor_info: {
+            ...completedSession.debtor_info,
+            phone: '312-555-0100',
+            ssn_saved: true,
+          },
+          household: { county: 'Boone', members: null },
+          petition_answers: {
+            other_names_answer: 'yes',
+            other_names: [{ first: 'Demo', middle: '', last: 'Maiden' }],
+            itin_answer: 'yes',
+            itin_saved: true,
+            other_ssn_answer: 'no',
+            other_ssn_saved: false,
+            mailing_answer: 'no',
+            prior_bankruptcy_answer: 'no',
+            pending_case_answer: 'no',
+            sole_proprietor_answer: 'no',
+            venue_choice: 'lived_here',
+            answered_on: '2026-10-16',
+          },
+        })
+      )
+    );
+    renderWizard();
+    await screen.findByRole('heading', { name: /your information/i, level: 2 });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Continue' })).toBeEnabled());
+    vi.useFakeTimers();
+    try {
+      await waitSeconds(3);
+    } finally {
+      vi.useRealTimers();
+    }
+    expect(patchBodies).toHaveLength(0);
+  });
+
+  it('nine digits that are no ITIN never leave the browser', async () => {
+    // PF2-U2: saved would mean it prints, and a number not starting with 9 prints blank
+    renderWizard();
+    await screen.findByRole('heading', { name: /your information/i, level: 2 });
+    await fillDebtorInfoFields();
+    fireEvent.click(
+      document.querySelector('input[name="itin_answer"][value="yes"]') as HTMLElement
+    );
+    fireEvent.change(screen.getByRole('textbox', { name: /ITIN/ }), {
+      target: { value: '812-34-5678' },
+    });
+    await userEvent.click(screen.getByRole('button', { name: /continue/i }));
+    await screen.findByText('DocumentUploadPage');
+    expect(patchBodies.length).toBeGreaterThan(0);
+    for (const body of patchBodies) {
+      expect(body.petition_answers).not.toHaveProperty('itin');
+    }
+    expect(JSON.stringify(patchBodies)).not.toContain('812345678');
+  });
+
+  it('a typed ITIN is sent once and never echoed', async () => {
+    renderWizard();
+    await screen.findByRole('heading', { name: /your information/i, level: 2 });
+    await fillDebtorInfoFields();
+    fireEvent.click(
+      document.querySelector('input[name="itin_answer"][value="yes"]') as HTMLElement
+    );
+    fireEvent.change(screen.getByRole('textbox', { name: /ITIN/ }), {
+      target: { value: '900-70-1234' },
+    });
+    const withItin = () =>
+      patchBodies.filter((body) => 'itin' in (body.petition_answers as Record<string, unknown>));
+    await waitFor(() => expect(withItin()).toHaveLength(1), { timeout: 5000 });
+    expect((withItin()[0].petition_answers as Record<string, unknown>).itin).toBe('900701234');
+    // Saved: the step says so by the server's own rule, and the next save carries no ITIN
+    expect(await screen.findByText(ITIN_SAVED)).toBeInTheDocument();
+    const sentWithItin = patchBodies.length;
+    // Clearing the typed ITIN is no edit: past the 2 s autosave pause, nothing more goes out
+    await new Promise((resolve) => setTimeout(resolve, 2500));
+    expect(patchBodies.length).toBe(sentWithItin);
+    fireEvent.change(screen.getByRole('textbox', { name: /first name/i }), {
+      target: { value: 'Janet' },
+    });
+    await userEvent.click(screen.getByRole('button', { name: /continue/i }));
+    await screen.findByText('DocumentUploadPage');
+    expect(patchBodies.length).toBe(sentWithItin + 1);
+    expect(patchBodies.at(-1)!.petition_answers).not.toHaveProperty('itin');
+    expect(JSON.stringify(patchBodies.slice(sentWithItin))).not.toContain('900701234');
   });
 
   it('no spouse SSN leaves the browser', async () => {

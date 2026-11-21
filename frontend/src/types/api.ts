@@ -43,6 +43,8 @@ export interface IntakeSession {
   debts?: DebtInfo[];
   /** The Schedule D, E/F, G and H questions that aren't on a row (3c3 spec §7.3) */
   claim_answers?: ClaimAnswers;
+  /** Form 101's and Form 121's asked answers, wherever the wizard asks them (4b spec §7.1) */
+  petition_answers?: PetitionAnswers;
   /** The retired Expenses figures the server still holds, a two-place decimal string or null (3c4) */
   legacy_payments?: LegacyPayments;
   household?: Household | null;
@@ -63,6 +65,8 @@ export interface DebtorInfo {
   middle_name: string;
   last_name: string;
   ssn: string; // Encrypted in backend
+  /** Read-only: whether the server holds a 9-digit SSN, which is never read back (owner Q3) */
+  ssn_saved?: boolean;
   date_of_birth: string;
 
   // Contact information
@@ -623,6 +627,124 @@ export interface ClaimAnswers {
   community_spouse_outside_us?: boolean | null;
   /** The typed rent or mortgage the filer confirmed beside a linked first mortgage (3c4 R7) */
   line_4_both_confirmed?: string | null;
+}
+
+export type VenueChoice = 'lived_here' | 'other';
+export type BusinessKind =
+  | 'health_care'
+  | 'single_asset'
+  | 'stockbroker'
+  | 'commodity_broker'
+  | 'none';
+
+/** One of Form 101 line 2's other names; `_key` is the browser's, which the server drops */
+export interface OtherNameRow {
+  _key: string;
+  first?: string | null;
+  middle?: string | null;
+  last?: string | null;
+}
+
+/** One of Form 101 line 2's business or trade names */
+export interface OtherBusinessNameRow {
+  _key: string;
+  name?: string | null;
+}
+
+/** One of Form 101 line 9's earlier cases; a date is MM/DD/YYYY */
+export interface PriorCaseRow {
+  _key: string;
+  district?: string | null;
+  filed_on?: string | null;
+  case_number?: string | null;
+}
+
+/** One of Form 101 line 10's pending cases, filed by someone other than the filer */
+export interface PendingCaseRow {
+  _key: string;
+  debtor?: string | null;
+  relationship?: string | null;
+  district?: string | null;
+  filed_on?: string | null;
+  case_number?: string | null;
+}
+
+/**
+ * Form 101's and Form 121's asked answers (4b spec §7.1). An absent or null key is unanswered; a
+ * yes/no is never a boolean. `itin` and `other_ssn` are write-only: a read carries `itin_saved` and
+ * `other_ssn_saved` instead, and a body carries a secret only when the filer typed one.
+ */
+export interface PetitionAnswers {
+  name_suffix?: string | null;
+  other_names_answer?: YesNo | null;
+  itin_answer?: YesNo | null;
+  itin?: string | null;
+  other_ssn_answer?: YesNo | null;
+  other_ssn?: string | null;
+  ein?: string | null;
+  mailing_answer?: YesNo | null;
+  mailing_street?: string | null;
+  mailing_po_box?: string | null;
+  mailing_city?: string | null;
+  mailing_state?: string | null;
+  mailing_zip?: string | null;
+  venue_choice?: VenueChoice | null;
+  venue_reason?: string | null;
+  prior_bankruptcy_answer?: YesNo | null;
+  pending_case_answer?: YesNo | null;
+  sole_proprietor_answer?: YesNo | null;
+  business_name?: string | null;
+  business_street?: string | null;
+  business_city?: string | null;
+  business_state?: string | null;
+  business_zip?: string | null;
+  business_kind?: BusinessKind | null;
+  hazard_answer?: YesNo | null;
+  hazard_what?: string | null;
+  hazard_why?: string | null;
+  hazard_street?: string | null;
+  hazard_city?: string | null;
+  hazard_state?: string | null;
+  hazard_zip?: string | null;
+  debt_nature?: 'consumer' | 'business' | 'neither' | null;
+  debt_nature_text?: string | null;
+  disabled_veteran?: YesNo | null;
+  debts_on_duty?: YesNo | null;
+  reservist?: YesNo | null;
+  called_to_duty?: YesNo | null;
+  duty_category?: '1' | '2' | '3' | '4' | null;
+  duty_released_on?: string | null;
+  duty_ended_on?: string | null;
+  rents_residence?: YesNo | null;
+  eviction_judgment?: YesNo | null;
+  landlord_name?: string | null;
+  landlord_street?: string | null;
+  landlord_city?: string | null;
+  landlord_state?: string | null;
+  landlord_zip?: string | null;
+  credit_counseling?:
+    | 'certificate'
+    | 'no_certificate'
+    | 'exigent'
+    | 'not_required'
+    | 'not_yet'
+    | null;
+  exigent_text?: string | null;
+  not_required_reason?: 'incapacity' | 'disability' | 'active_duty' | null;
+  aware_consequences?: YesNo | null;
+  aware_fraud?: YesNo | null;
+  paid_preparer?: YesNo | null;
+  preparer_name?: string | null;
+  other_names?: OtherNameRow[] | null;
+  other_business_names?: OtherBusinessNameRow[] | null;
+  prior_cases?: PriorCaseRow[] | null;
+  pending_cases?: PendingCaseRow[] | null;
+  /** Read-only: whether a stored ITIN is nine digits starting with 9 (PF2-U2) */
+  itin_saved?: boolean;
+  /** Read-only: whether a stored other Social Security number is nine digits */
+  other_ssn_saved?: boolean;
+  /** Read-only: the fill date of the last change */
+  answered_on?: string | null;
 }
 
 /** A contract or codebtor the wizard holds: every field, and the browser's own key (3c2) */
@@ -1299,6 +1421,8 @@ export interface CompletionGap {
   message: string;
   step: string;
   kind: 'gate' | 'detail';
+  /** The forms whose box prints blank while a detail is open; [] for a gate (4b-R12) */
+  forms: string[];
 }
 
 /** GET /api/intake/sessions/{id}/gaps/ */

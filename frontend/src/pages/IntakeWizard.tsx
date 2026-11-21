@@ -60,6 +60,7 @@ import type {
   IncomePeriod,
   LegacyField,
   LegacyPayments,
+  PetitionAnswers,
   SpouseIncome,
   WizardRow,
 } from '../types/api';
@@ -74,6 +75,12 @@ import {
 import { WIZARD_STEPS } from '../constants/wizardSteps';
 import { AB_PARTS, ASSET_LINES } from '../constants/assetLines';
 import { firstIncompletePart } from '../components/wizard/steps/assets/assetGaps';
+import {
+  isBlankPetitionRow,
+  isItin,
+  isNineDigits,
+} from '../components/wizard/steps/petition/petitionGaps';
+import { divisionOf } from '../constants/counties';
 
 // ============================================================================
 // Wizard Configuration
@@ -103,6 +110,82 @@ const CODEBTOR_ANSWER_KEYS = [
   'community_spouse_zip_code',
   'community_spouse_outside_us',
 ] as const;
+// Step 1's Form 101 answers, in spec §7.1's order (4b). The ITIN and the other Social Security
+// number are left out: they are write-only and go only when typed (pendingSecrets).
+// test_petition_frontend_copy.py pins this list to the server's step-1 keys.
+const STEP_1_PETITION_KEYS = [
+  'name_suffix',
+  'other_names_answer',
+  'itin_answer',
+  'other_ssn_answer',
+  'ein',
+  'mailing_answer',
+  'mailing_street',
+  'mailing_po_box',
+  'mailing_city',
+  'mailing_state',
+  'mailing_zip',
+  'venue_choice',
+  'venue_reason',
+  'prior_bankruptcy_answer',
+  'pending_case_answer',
+  'sole_proprietor_answer',
+  'business_name',
+  'business_street',
+  'business_city',
+  'business_state',
+  'business_zip',
+  'business_kind',
+  'other_names',
+  'other_business_names',
+  'prior_cases',
+  'pending_cases',
+] as const;
+const PETITION_LIST_KEYS = [
+  'other_names',
+  'other_business_names',
+  'prior_cases',
+  'pending_cases',
+] as const;
+type PetitionSecret = 'itin' | 'other_ssn';
+
+/**
+ * Step 1's `petition_answers`: every step-1 key, null when unanswered, built the same way from
+ * loaded and edited answers. A list keeps its rows' `_key`s here (saveCurrentStepData leaves them
+ * out of the request) and drops a row with nothing typed in it; a list with no row left goes as
+ * null. A secret goes only as nine typed digits (PF2-5), an ITIN only when it starts with 9.
+ */
+function step1PetitionBody(
+  answers: PetitionAnswers,
+  secrets: Partial<Record<PetitionSecret, string>>
+): Record<string, unknown> {
+  const body: Record<string, unknown> = {};
+  for (const key of STEP_1_PETITION_KEYS) body[key] = answers[key] ?? null;
+  for (const key of PETITION_LIST_KEYS) {
+    const kept = (answers[key] ?? []).filter((row) => !isBlankPetitionRow(row));
+    body[key] = kept.length === 0 ? null : kept;
+  }
+  // An ITIN goes only when it is one (nine digits starting with 9, PF2-U2): any other nine digits
+  // would print blank, so they stay in the box with the server's sentence beside them
+  if (isItin(secrets.itin)) body.itin = secrets.itin;
+  if (isNineDigits(secrets.other_ssn)) body.other_ssn = secrets.other_ssn;
+  return body;
+}
+
+/** A loaded list's rows with the browser's own keys, the same keys on every read */
+function hydratePetition(answers: PetitionAnswers | undefined): PetitionAnswers {
+  const hydrated: PetitionAnswers = { ...(answers ?? {}) };
+  for (const key of PETITION_LIST_KEYS) {
+    const rows = answers?.[key];
+    if (Array.isArray(rows)) {
+      (hydrated as Record<string, unknown>)[key] = rows.map((row, index) => ({
+        ...row,
+        _key: `loaded-${index}`,
+      }));
+    }
+  }
+  return hydrated;
+}
 // The three step-4 steps and Review always autosave (step 4 spec §6.0, B3); Review has no body
 // until 4i, so the exclusion below stands. Typed `readonly string[]`, not `as const`:
 // `currentStepKey` is a plain string, and a literal tuple's `includes` would reject it.
@@ -243,6 +326,11 @@ export function IntakeWizard() {
   const [debtorData, setDebtorData] = useState<Partial<DebtorInfo>>({});
   // Saved under `household`, beside the debtor's answers
   const [county, setCounty] = useState<string | null>(null);
+  // Form 101's answers (4b): step 1's go in its body under `petition_answers`. The ITIN and the
+  // other Social Security number typed since the last save are held apart, as digits, since the
+  // server never reads them back; each is cleared once a save that carried it succeeds.
+  const [petitionAnswers, setPetitionAnswers] = useState<PetitionAnswers>({});
+  const [pendingSecrets, setPendingSecrets] = useState<Partial<Record<PetitionSecret, string>>>({});
   const [incomeData, setIncomeData] = useState<Partial<IncomeInfo>>({});
   // The Income step's household list, saved under `household` beside the income, and whether
   // the filer said no one else lives with them or depends on them
@@ -353,6 +441,7 @@ export function IntakeWizard() {
           );
         }
         if (fresh.debtor_info) setDebtorData(fresh.debtor_info);
+        setPetitionAnswers(hydratePetition(fresh.petition_answers));
         if (fresh.household) {
           setCounty(fresh.household.county);
           // A loaded row's key is its id. A list loaded as [] is the filer's "no one else".
@@ -465,8 +554,20 @@ export function IntakeWizard() {
   }, [currentStepKey]);
   const currentStepBody = useMemo((): StepBody | null => {
     switch (currentStepKey) {
-      case 'debtor_info':
-        return { debtor_info: debtorData, household: { county } } as Partial<IntakeSession>;
+      case 'debtor_info': {
+        // The SSN goes only when typed: the server keeps the stored one for a save without it, and
+        // refuses a blank one. `ssn_saved` is the read's, never sent (owner ruling Q3).
+        const debtor: Partial<DebtorInfo> = { ...debtorData };
+        delete debtor.ssn;
+        delete debtor.ssn_saved;
+        if (debtorData.ssn?.trim()) debtor.ssn = debtorData.ssn;
+        const body: Partial<Record<keyof IntakeSession, unknown>> = {
+          debtor_info: debtor,
+          household: { county },
+          petition_answers: step1PetitionBody(petitionAnswers, pendingSecrets),
+        };
+        return body as Partial<IntakeSession>;
+      }
 
       case 'income_info': {
         // The ten amounts and the marriage answer. A blank box is sent as null, so it stays
@@ -578,6 +679,8 @@ export function IntakeWizard() {
     currentStepKey,
     debtorData,
     county,
+    petitionAnswers,
+    pendingSecrets,
     incomeData,
     householdRows,
     noOneElse,
@@ -796,6 +899,16 @@ export function IntakeWizard() {
       ? spouse_income.business_and_rental
       : undefined;
     const request: Partial<Record<keyof IntakeSession, unknown>> = { ...body };
+    // Step 1's Form 101 lists carry the browser's row keys, which never reach the server
+    const petition = (body as { petition_answers?: Record<string, unknown> }).petition_answers;
+    if (petition) {
+      request.petition_answers = Object.fromEntries(
+        Object.entries(petition).map(([key, value]) => [
+          key,
+          Array.isArray(value) ? value.map(withoutKey) : value,
+        ])
+      );
+    }
     if (assets) request.assets = assets.map(withoutKey);
     if (debts) request.debts = debts.map(withoutKey);
     if (members) request.household = { members: members.map(withoutKey) };
@@ -814,6 +927,29 @@ export function IntakeWizard() {
     const entriesSave = sendsEntries ? ++listSavesRef.current.entries : 0;
     const spouseEntriesSave = sendsSpouseEntries ? ++listSavesRef.current.spouseEntries : 0;
     const saved = await api.intake.updateSession(session.id, request as Partial<IntakeSession>);
+
+    // A secret this save carried is now the server's (PF2-T8-6): the value sent is cleared, unless
+    // the filer has typed another since, the step shows it as saved by the server's own rule, and
+    // the saved copy leaves it out, as the next body will, so no second identical save goes out
+    if (petition && (petition.itin !== undefined || petition.other_ssn !== undefined)) {
+      const sent = petition as Partial<Record<PetitionSecret, string>>;
+      setPendingSecrets((current) => {
+        const next = { ...current };
+        for (const key of ['itin', 'other_ssn'] as const) {
+          if (sent[key] !== undefined && current[key] === sent[key]) delete next[key];
+        }
+        return next;
+      });
+      setPetitionAnswers((current) => ({
+        ...current,
+        ...(sent.itin !== undefined && { itin_saved: isItin(sent.itin) }),
+        ...(sent.other_ssn !== undefined && { other_ssn_saved: isNineDigits(sent.other_ssn) }),
+      }));
+      const kept = { ...petition };
+      delete kept.itin;
+      delete kept.other_ssn;
+      return { ...body, petition_answers: kept } as Partial<IntakeSession>;
+    }
 
     // A new row keeps the id its first save gave it, so the next save updates that row instead of
     // replacing it. The copy returned is what the server now holds, built by the same merge as
@@ -904,6 +1040,13 @@ export function IntakeWizard() {
             onValidationChange={setCanProceed}
             county={county}
             onCountyChange={setCounty}
+            petition={petitionAnswers}
+            onPetitionChange={setPetitionAnswers}
+            pendingSecrets={pendingSecrets}
+            onSecretChange={(key, value) =>
+              setPendingSecrets((current) => ({ ...current, [key]: value }))
+            }
+            division={divisionOf(county)}
           />
         );
 
@@ -1036,7 +1179,11 @@ export function IntakeWizard() {
             onValidationChange={setCanProceed}
             gaps={
               gapsStatus === 'failed'
-                ? (refusalReasons?.map((reason) => ({ ...reason, kind: 'gate' as const })) ?? null)
+                ? (refusalReasons?.map((reason) => ({
+                    ...reason,
+                    kind: 'gate' as const,
+                    forms: [],
+                  })) ?? null)
                 : gaps
             }
             gapsStatus={gapsStatus}
