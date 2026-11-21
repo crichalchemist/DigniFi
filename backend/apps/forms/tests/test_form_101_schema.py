@@ -1210,3 +1210,48 @@ def test_a_too_long_text_is_gated_as_the_schema_gates_its_boxes(session, key, an
     session.refresh_from_db()
     printed = all(_section_applies(f, session) for f in fields)
     assert text_shows(answers, key) == printed
+
+
+# The four lists whose row cells Review measures (PF2-10a), each printed under its line's Yes.
+ROW_LISTS = ["other_names", "other_business_names", "prior_cases", "pending_cases"]
+LIST_GATE_STATES = [
+    {},
+    {"other_names_answer": "no"},
+    {"other_names_answer": "yes"},
+    {"prior_bankruptcy_answer": "no"},
+    {"prior_bankruptcy_answer": "yes"},
+    {"pending_case_answer": "no"},
+    {"pending_case_answer": "yes"},
+]
+
+
+def _row_bindings():
+    """Every (list, attr) Form 101 prints a row cell of, in a slot box or a sheet column."""
+    schema = load_schema("form_101")
+    bindings = [f.binding for f in schema.fields if f.repeat and f.binding]
+    for group in schema.groups.values():
+        if group.sheet is not None:
+            bindings += [column.binding for column in group.sheet.columns]
+    return {tuple(b[len("petition.") :].split("[].")) for b in bindings}
+
+
+@pytest.mark.parametrize("answers", LIST_GATE_STATES)
+@pytest.mark.parametrize("key", ROW_LISTS)
+def test_a_row_cells_too_long_line_is_gated_as_the_schema_gates_its_slots(session, key, answers):
+    fields = [f for f in load_schema("form_101").fields if f.repeat == key]
+    assert fields, key
+    _petition_row(session, **answers)
+    session.refresh_from_db()
+    printed = all(_section_applies(f, session) for f in fields)
+    assert text_shows(answers, key) == printed
+
+
+def test_every_row_cell_form_101_prints_has_the_label_review_names_it_by():
+    # A cell with no label would leave Review a too-long line naming nothing (PF2-10a).
+    from apps.intake.petition import CELL_LABELS
+
+    limits = json.loads(LIMITS.read_text())
+    assert CELL_LABELS == limits["cell_labels"]
+    labelled = {(key, attr) for key, cells in CELL_LABELS.items() for attr in cells}
+    assert labelled == _row_bindings()
+    assert set(CELL_LABELS) == set(ROW_LISTS)

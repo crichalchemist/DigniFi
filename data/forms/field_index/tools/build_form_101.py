@@ -462,6 +462,28 @@ COLUMN_SPECS = {
     ),
     "other_business_names": ("2.{n}", "line 2", [("Business name", "name", 458)]),
 }
+# Each row cell in plain words for DETAIL_TOO_LONG (PF2-10a): Review measures a cell in its slot
+# box and on the sheet, with no character cap, and names it by these words.
+CELL_WORDS = {
+    "prior_cases": {
+        "district": "line 9's district",
+        "filed_on": "line 9's date filed",
+        "case_number": "line 9's case number",
+    },
+    "pending_cases": {
+        "debtor": "line 10's debtor",
+        "relationship": "line 10's relationship to you",
+        "district": "line 10's district",
+        "filed_on": "line 10's date filed",
+        "case_number": "line 10's case number",
+    },
+    "other_names": {
+        "first": "line 2's other first name",
+        "middle": "line 2's other middle name",
+        "last": "line 2's other last name",
+    },
+    "other_business_names": {"name": "line 2's other business name"},
+}
 TITLE = "Official Form 101, Voluntary Petition for Individuals Filing for Bankruptcy, {line}"
 LINE_WIDTH = 46  # "10.9999" with its padding; the columns take the other 458 of the 504 pt
 
@@ -526,7 +548,8 @@ VENUE_LINES = 4
 #   wider than every small letter but m and w and narrower than most capitals: ordinary
 #   mixed-case words at the cap fit, and words mostly of capitals or wide letters may not.
 # So an answer under its cap typed in capitals or wide letters can still be refused at Generate.
-# Hand-off to Task 7: measure the real width as a detail gap, so Review names such an answer.
+# Review names such an answer first: petition_step_gaps measures the real width as check() does
+# (apps/forms/services/petition_fit.py, Ruling PF2-1).
 ZIP_LETTERS = "0123456789-"
 STATE_LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 TEXT_LETTERS = "0123456789"
@@ -708,7 +731,19 @@ def limits(index):
         lines = VENUE_LINES // 2 if key == "venue_reason" else 1
         caps[key] = math.floor(lines * room / widest)
         labels[key] = words
-    return {"limits": caps, "labels": labels}
+    return {"limits": caps, "labels": labels, "cell_labels": cell_labels()}
+
+
+def cell_labels():
+    """Each list's row cells → their words, in COLUMN_SPECS' order; every cell needs words."""
+    out = {}
+    for name, (_, _, columns) in COLUMN_SPECS.items():
+        words = CELL_WORDS.get(name, {})
+        attrs = [attr for _, attr, _ in columns]
+        if set(words) != set(attrs):
+            sys.exit(f"CELL_WORDS[{name!r}] must name exactly {attrs}")
+        out[name] = {attr: words[attr] for attr in attrs}
+    return out
 
 
 def owned(row):

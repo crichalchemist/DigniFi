@@ -10,6 +10,7 @@ import pytest
 
 from apps.intake.models import PetitionAnswers
 from apps.intake.petition import (
+    CELL_LABELS,
     DETAIL_BUSINESS,
     DETAIL_EIN,
     DETAIL_HAZARD,
@@ -320,3 +321,81 @@ def test_an_itin_is_nine_digits_starting_with_9(filer, itin, listed):
     answers = {**NO, "venue_choice": "lived_here", "itin_answer": "yes", "itin": itin}
     texts = [t for _, _, t in _gaps(session, answers)]
     assert (DETAIL_ITIN in texts) is listed
+
+
+def _too_long(label):
+    return DETAIL_TOO_LONG.format(label=label)
+
+
+def test_capitals_under_a_cap_that_dont_fit_the_box_are_named_too_long(filer):
+    # PF2-1: the cap counts digit-wide letters, so wide capitals under it can still be refused
+    # at Generate; Review names them first, in the same sentence as an answer over its cap.
+    _, session = filer
+    cap = PetitionAnswers.TEXT_LIMITS["business_name"]
+    base = {**NO, "venue_choice": "lived_here", "sole_proprietor_answer": "yes"}
+    label = _too_long(PetitionAnswers.TEXT_LABELS["business_name"])
+    assert _gaps(session, {**base, "business_name": "W" * cap}) == [
+        ("debtor_info", "detail", label)
+    ]
+    assert _gaps(session, {**base, "business_name": "Demo Cleaning Services"}) == []
+
+
+def test_an_answer_over_its_cap_and_too_wide_is_listed_once(filer):
+    _, session = filer
+    cap = PetitionAnswers.TEXT_LIMITS["business_name"]
+    answers = {
+        **NO,
+        "venue_choice": "lived_here",
+        "sole_proprietor_answer": "yes",
+        "business_name": "W" * (cap + 1),
+    }
+    label = _too_long(PetitionAnswers.TEXT_LABELS["business_name"])
+    assert _gaps(session, answers) == [("debtor_info", "detail", label)]
+
+
+def test_a_too_wide_answer_under_a_no_is_not_listed(filer):
+    # The measured line is gated by the same predicate as the character one (PF2-3).
+    _, session = filer
+    cap = PetitionAnswers.TEXT_LIMITS["hazard_what"]
+    answers = {**NO, "venue_choice": "lived_here", "hazard_what": "W" * cap}
+    assert _gaps(session, answers) == []
+
+
+def test_too_wide_texts_and_cells_come_after_the_step_1_details_in_one_order(filer):
+    # The step's texts in their order, then its row cells by line (2, 9, 10), then step 5's.
+    _, session = filer
+    answers = {
+        **NO,
+        "venue_choice": "lived_here",
+        "mailing_answer": "yes",
+        "mailing_city": "W" * PetitionAnswers.TEXT_LIMITS["mailing_city"],
+        "prior_bankruptcy_answer": "yes",
+        "prior_cases": [{"district": "W" * 40, "filed_on": "01/02/2020"}],
+        "other_names_answer": "yes",
+        "other_names": [{"first": "W" * 60}],
+        "hazard_answer": "yes",
+        "hazard_what": "W" * PetitionAnswers.TEXT_LIMITS["hazard_what"],
+    }
+    assert _gaps(session, answers) == [
+        ("debtor_info", "detail", _too_long(PetitionAnswers.TEXT_LABELS["mailing_city"])),
+        ("debtor_info", "detail", _too_long(CELL_LABELS["other_names"]["first"])),
+        ("debtor_info", "detail", _too_long(CELL_LABELS["prior_cases"]["district"])),
+        ("assets", "detail", _too_long(PetitionAnswers.TEXT_LABELS["hazard_what"])),
+    ]
+
+
+def test_a_too_wide_row_cell_names_the_forms_of_its_list(filer):
+    _, session = filer
+    answers = {
+        **NO,
+        "venue_choice": "lived_here",
+        "pending_case_answer": "yes",
+        "pending_cases": [{"debtor": "W" * 60}],
+    }
+    PetitionAnswers.objects.create(session=session, answers=json.dumps(answers))
+    session.refresh_from_db()
+    (gap,) = petition_step_gaps(session)
+    assert (str(gap), gap.forms) == (
+        _too_long(CELL_LABELS["pending_cases"]["debtor"]),
+        ("form_101",),
+    )

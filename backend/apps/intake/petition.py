@@ -5,6 +5,7 @@ preconditions. The sentences are DigniFi's own; 4b-ii adds the browser's copy
 (`petitionGaps.ts`) and the test that pins it (`test_petition_frontend_copy.py`).
 """
 
+from apps.forms.services import petition_fit
 from apps.forms.services.answer_records import (
     PETITION_STEP_OF_KEY,
     is_itin,
@@ -13,7 +14,7 @@ from apps.forms.services.answer_records import (
 )
 
 from .completion import Gap
-from .models import PetitionAnswers
+from .models import _LIMITS, PetitionAnswers
 
 STEP_1_GATES = (
     "other_names_answer",
@@ -50,8 +51,19 @@ DETAIL_PENDING_DATE = "A date is written as MM/DD/YYYY. Check the date of the pe
 DETAIL_PENDING_CASE = "Each pending case needs the name of the person who filed it."
 DETAIL_BUSINESS = "Add your business's name, or change your answer to No."
 DETAIL_HAZARD = "Say what the hazard is, or change your answer to No."
-# The one template: {label} is the box's index label in plain words (TEXT_LABELS).
+# The one template: {label} is the box's index label in plain words (TEXT_LABELS, CELL_LABELS).
 DETAIL_TOO_LONG = "Your answer for {label} is too long for its box on Form 101."
+
+# The row lists step 1 asks, in the form's line order (2, 9, 10), each printed under its line's
+# Yes; their cells have no character cap and are measured where they print (PF2-10a).
+ROW_LIST_GATES = {
+    "other_names": "other_names_answer",
+    "other_business_names": "other_names_answer",
+    "prior_cases": "prior_bankruptcy_answer",
+    "pending_cases": "pending_case_answer",
+}
+# Each list's row cells in plain words, written by build_form_101.py into form_101.limits.json.
+CELL_LABELS: dict[str, dict[str, str]] = _LIMITS["cell_labels"]
 
 _GATE_SENTENCE = {
     "other_names_answer": GATE_OTHER_NAMES,
@@ -145,7 +157,10 @@ def _debtor_info_details(answers: dict) -> list[Gap]:
 
 
 def text_shows(answers: dict, key: str) -> bool:
-    """Whether the key's box prints: a text under a No is hidden, so its length is no gap."""
+    """Whether the key's box prints: a text under a No is hidden, so its length is no gap. A row
+    list's cells print only under its line's Yes."""
+    if key in ROW_LIST_GATES:
+        return answers.get(ROW_LIST_GATES[key]) == "yes"
     for prefix, gate in (
         ("mailing_", "mailing_answer"),
         ("business_", "sole_proprietor_answer"),
@@ -158,18 +173,32 @@ def text_shows(answers: dict, key: str) -> bool:
     return True
 
 
-def _too_long(answers: dict, step: str, keys: list[str]) -> list[Gap]:
-    """A detail for each of `keys` whose text is over its box's cap, naming the box."""
+def _too_long(answers: dict, step: str, keys: list[str], too_wide: dict) -> list[Gap]:
+    """A detail for each of `keys` whose text is over its box's cap, or under it and still too
+    wide for a box it prints in (`too_wide`, measured as check() measures it), naming the box
+    once."""
     gaps = []
     for key in keys:
         if not text_shows(answers, key):
             continue
         limit = PetitionAnswers.TEXT_LIMITS.get(key)
         value = answers.get(key)
-        if limit is not None and isinstance(value, str) and len(value) > limit:
+        over = limit is not None and isinstance(value, str) and len(value) > limit
+        if over or (key, None) in too_wide:
             label = PetitionAnswers.TEXT_LABELS.get(key, key.replace("_", " "))
             gaps.append(_detail(DETAIL_TOO_LONG.format(label=label), step, key))
     return gaps
+
+
+def _cells_too_long(answers: dict, too_wide: dict) -> list[Gap]:
+    """A detail for each row cell too wide where it prints, once a cell, by line (PF2-10a)."""
+    return [
+        _detail(DETAIL_TOO_LONG.format(label=label), "debtor_info", list_key)
+        for list_key in ROW_LIST_GATES
+        if text_shows(answers, list_key)
+        for attr, label in CELL_LABELS[list_key].items()
+        if (list_key, attr) in too_wide
+    ]
 
 
 def petition_step_gaps(session) -> list[Gap]:
@@ -184,6 +213,8 @@ def petition_step_gaps(session) -> list[Gap]:
     limited = list(PetitionAnswers.TEXT_LIMITS)
     step_1_keys = [k for k in limited if PETITION_STEP_OF_KEY.get(k) == "debtor_info"]
     hazard_keys = [k for k in limited if PETITION_STEP_OF_KEY.get(k) == "assets"]
+    measured = [*step_1_keys, *hazard_keys, *ROW_LIST_GATES]
+    too_wide = petition_fit.too_long(session, [k for k in measured if text_shows(answers, k)])
 
     gaps = [
         Gap(_GATE_SENTENCE[key], "debtor_info", Gap.GATE)
@@ -191,13 +222,14 @@ def petition_step_gaps(session) -> list[Gap]:
         if key not in answers
     ]
     gaps += _debtor_info_details(answers)
-    gaps += _too_long(answers, "debtor_info", step_1_keys)
+    gaps += _too_long(answers, "debtor_info", step_1_keys, too_wide)
+    gaps += _cells_too_long(answers, too_wide)
 
     if "hazard_answer" not in answers:
         gaps.append(Gap(GATE_HAZARD, "assets", Gap.GATE))
     elif answers["hazard_answer"] == "yes" and _blank(answers.get("hazard_what")):
         gaps.append(_detail(DETAIL_HAZARD, "assets", "hazard_what"))
-    gaps += _too_long(answers, "assets", hazard_keys)
+    gaps += _too_long(answers, "assets", hazard_keys, too_wide)
 
     if "rents_residence" not in answers:
         gaps.append(Gap(GATE_RENTS, "contracts", Gap.GATE))

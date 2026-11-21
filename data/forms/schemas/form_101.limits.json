@@ -42,5 +42,27 @@
     "hazard_zip": "line 14's property ZIP code",
     "debt_nature_text": "line 16c's type of debts",
     "preparer_name": "the paid preparer's name"
+  },
+  "cell_labels": {
+    "prior_cases": {
+      "district": "line 9's district",
+      "filed_on": "line 9's date filed",
+      "case_number": "line 9's case number"
+    },
+    "pending_cases": {
+      "debtor": "line 10's debtor",
+      "relationship": "line 10's relationship to you",
+      "district": "line 10's district",
+      "filed_on": "line 10's date filed",
+      "case_number": "line 10's case number"
+    },
+    "other_names": {
+      "first": "line 2's other first name",
+      "middle": "line 2's other middle name",
+      "last": "line 2's other last name"
+    },
+    "other_business_names": {
+      "name": "line 2's other business name"
+    }
   }
 }
