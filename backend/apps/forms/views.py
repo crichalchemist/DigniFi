@@ -54,9 +54,10 @@ from .services.pdf_filler import (
 logger = logging.getLogger(__name__)
 
 # A form filed on the retired 06/24 Form 101 holds box names the 11/26 template lacks (4b-R7).
+# DRAFT: owner (4b-i Ruling T6-sentence)
 FILED_ON_EARLIER_REVISION = (
-    "This form was prepared on an earlier revision of Form 101. "
-    "Generate it again to print it on the current form."
+    "This form was filed on an older version of Form 101. "
+    "DigniFi can no longer print it. Keep the copy you gave the court."
 )
 
 # The two forms that say the means test's result is worked out on Form 122A-2.
@@ -705,10 +706,10 @@ class GeneratedFormViewSet(viewsets.ReadOnlyModelViewSet):
                 pdf_bytes = PDFFormFiller().fill(form_type, document)
                 _store(generated_form, document)
         except Exception as exc:
-            if filed and isinstance(exc, UnknownField):
+            if filed and form_type == "form_101" and isinstance(exc, UnknownField):
                 # B62, DIG-155: the stored values name a box the current template lacks (a Form
-                # 101 filed on 06/24). They stay as filed; only the filer's next Generate
-                # replaces them. An unfiled form is resolved fresh and never meets this.
+                # 101 filed on 06/24). They stay as filed: a filed row is never regenerated
+                # (FormIsFiled). An unfiled form is resolved fresh and never meets this.
                 return Response(
                     {"form_type": form_type, "error": FILED_ON_EARLIER_REVISION},
                     status=status.HTTP_422_UNPROCESSABLE_ENTITY,
