@@ -182,9 +182,9 @@ def test_a_page_number_prints_whole_in_its_small_box(schedule_d_with_copies, pos
 
 
 def test_a_box_no_group_numbers_keeps_its_max_length():
-    # Form 101's state box holds two letters: only a group's number box skips /MaxLen.
+    # Form 122A-2's line 5 box holds two digits: only a group's number box skips /MaxLen.
     with pytest.raises(ValueTooLong) as refused:
-        PDFFormFiller().check("form_101", {"Debtor1.State": "ILL"})
+        PDFFormFiller().check("form_122a2", {"Quest5": "123"})
     assert str(refused.value).endswith("Shorten it.")
 
 

@@ -65,13 +65,15 @@ def test_every_template_widget_matches_one_index_row():
                 found.append(widget.key)
         assert sorted(found) == sorted(w.key for w in widgets)
         total += len(widgets)
-    assert total == 3039
+    # 4b retired Form 101 06/24 (246 widgets) for 11/26 (279), counted from the two templates.
+    assert total == 3039 - 246 + 279
 
 
 def test_only_the_print_buttons_are_left_unprinted():
     widgets = _all_widgets()
     unprinted = [w for w in widgets if not w.printed]
-    assert len(unprinted) == 67
+    # Form 101 06/24 had 4 print buttons; 11/26 has none.
+    assert len(unprinted) == 67 - 4 + 0
     assert unprinted == [w for w in widgets if w.kind == "Button"]
     # Flagged not to show on screen but to print: it prints, as from the fillable form.
     (hidden,) = _named(
@@ -187,7 +189,8 @@ def test_every_box_is_measured_the_way_pypdf_draws_it(monkeypatch):
                 }
                 differences |= {(widget.key, k) for k in ours if ours[k] != pypdf_reads[k]}
                 compared += 1
-    assert compared == 2053 + 18 + 36
+    # Form 101 06/24 out (142 text boxes and its district combo), 11/26 in (177 text boxes).
+    assert compared == 2053 + 18 + 36 - 143 + 177
     # Only what pypdf doesn't read from where the template puts it, and the drawing hands
     # over: MaxLen on the parent field (R4), /Q on the kid widget alone (R26).
     assert differences == {
@@ -201,15 +204,17 @@ def test_every_box_is_measured_the_way_pypdf_draws_it(monkeypatch):
 
 def test_text_boxes_start_at_the_templates_font_and_size():
     text = [w for w in _all_widgets() if w.kind == "Text"]
+    # 4b retired Form 101 06/24 (124 boxes at /Helv 10, 10 at 12, 8 auto; 8 comb) for 11/26,
+    # whose 177 text boxes are all /Helv auto size and none comb or multiline.
     assert Counter((w.font, w.size) for w in text) == {
-        ("/Helv", 10.0): 1959,
+        ("/Helv", 10.0): 1959 - 124,
         ("/Helv", 9.0): 65,
-        ("/Helv", 12.0): 23,
-        ("/Helv", 0.0): 10,  # auto size
+        ("/Helv", 12.0): 23 - 10,
+        ("/Helv", 0.0): 10 - 8 + 177,  # auto size
         ("/TiRo", 11.0): 30,  # the List of Creditors' entry boxes
         ("/TiRo", 12.0): 1,  # its read-only "Debtor 1" label box
     }
-    assert (sum(w.comb for w in text), sum(w.multiline for w in text)) == (51, 124)
+    assert (sum(w.comb for w in text), sum(w.multiline for w in text)) == (51 - 8, 124)
 
 
 def test_a_box_lists_its_on_states_and_a_combo_its_options():

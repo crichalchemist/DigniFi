@@ -213,9 +213,10 @@ def test_print_buttons_never_print(form_type):
         w.key: "".join(g.text for g in _glyphs(as_it_stands[w.page - 1]) if g.inside(w.rect))
         for w in buttons
     }
-    # The court's List of Creditors has no buttons; every other template does, so button
-    # discovery breaking would show here instead of passing with nothing to judge.
-    if form_type != "list_of_creditors":
+    # The court's List of Creditors and Form 101 (11/26) have no buttons; every other template
+    # does, so button discovery breaking would show here instead of passing with nothing to
+    # judge.
+    if form_type not in ("list_of_creditors", "form_101"):
         assert buttons
     assert all(label.strip() for label in labels.values()), labels
     drawn = _printed(_drawn_packet()[form_type])
@@ -490,30 +491,11 @@ def _overshoot(template, widget):
 
 
 # (form type, box, side) where _overshoot finds a letter past the rect: the only boxes the
-# cut-off test lets a letter cross, by that much. Å rises up to 0.228 pt above 49 boxes and
-# µ hangs up to 0.048 pt below 20 of them (g and q 0.024 pt); Ç stays inside. Whether
-# filers' forms may print this hairline is the owner's R38 question.
+# cut-off test lets a letter cross, by that much. Å rises up to 0.228 pt above 39 boxes and
+# µ hangs up to 0.048 pt below 10 of them (g and q 0.024 pt); Ç stays inside. Whether
+# filers' forms may print this hairline is the owner's R38 question. Form 101 (11/26) has no
+# row: each of its text boxes sizes its own text, so none reaches past its rect.
 _R38_HAIRLINES = [
-    ("form_101", "Attorney.Sig@8:T3", "bottom"),
-    ("form_101", "Attorney.Sig@8:T3", "top"),
-    ("form_101", "Case number1@2:T2", "bottom"),
-    ("form_101", "Case number1@2:T2", "top"),
-    ("form_101", "Debtor1.Name@2:T1", "bottom"),
-    ("form_101", "Debtor1.Name@2:T1", "top"),
-    ("form_101", "Debtor1.Name@3:T1", "bottom"),
-    ("form_101", "Debtor1.Name@3:T1", "top"),
-    ("form_101", "Debtor1.Name@4:T1", "bottom"),
-    ("form_101", "Debtor1.Name@4:T1", "top"),
-    ("form_101", "Debtor1.Name@5:T1", "bottom"),
-    ("form_101", "Debtor1.Name@5:T1", "top"),
-    ("form_101", "Debtor1.Name@6:T1", "bottom"),
-    ("form_101", "Debtor1.Name@6:T1", "top"),
-    ("form_101", "Debtor1.Name@7:T1", "bottom"),
-    ("form_101", "Debtor1.Name@7:T1", "top"),
-    ("form_101", "Debtor1.Name@8:T1", "bottom"),
-    ("form_101", "Debtor1.Name@8:T1", "top"),
-    ("form_101", "Debtor1.Name@9:T1", "bottom"),
-    ("form_101", "Debtor1.Name@9:T1", "top"),
     ("form_103b", "13 Other real estate city sate@2:T29", "top"),
     ("form_103b", "Case number@1:T4", "top"),
     ("form_103b", "Case number@2:T2", "top"),
@@ -703,8 +685,8 @@ def test_no_value_is_ever_cut_off(form_type):
     ] == []
     assert _cut_off(form_type, just) == []
     assert _cut_off(form_type, short) == []
-    # Every form but the List of Creditors has its district box, which lists every district
-    # (the list's one combo box is its chapter).
+    # Every form but the List of Creditors and Form 101 (11/26, whose court boxes are text) has
+    # its district box, which lists every district (the list's one combo box is its chapter).
     widest = {
         w.key: max(
             (o for o in w.options if o.strip()),
@@ -713,7 +695,8 @@ def test_no_value_is_ever_cut_off(form_type):
         for w in template_widgets(_template(form_type))
         if w.drawn and w.kind == "ComboBox"
     }
-    assert widest
+    if form_type != "form_101":
+        assert widest
     assert _cut_off(form_type, widest) == []
 
 

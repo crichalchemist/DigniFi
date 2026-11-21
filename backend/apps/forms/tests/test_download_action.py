@@ -13,8 +13,9 @@ from django.urls import reverse
 
 from apps.forms.checks import validate_form
 from apps.forms.schema import load_schema
-from apps.forms.services.pdf_filler import PDFFormFiller, TemplateHasNoForm
+from apps.forms.services.pdf_filler import PDFFormFiller, TemplateHasNoForm, UnknownField
 from apps.forms.tests.pdf_readback import read_drawn, read_sheets
+from apps.forms.views import FILED_ON_EARLIER_REVISION
 
 
 def _download(client, form):
@@ -66,6 +67,103 @@ def test_unfiled_form_prints_the_filers_current_answers(api_client_authed, gener
     form.refresh_from_db()
     (part,) = json.loads(form.field_values)["parts"]
     assert part["values"]["Debtor1.First name"] == "Marisol"
+
+
+_FILED_ON_06_24 = json.dumps({"Debtor1.First name": "Jane"})  # a 06/24 box, which 11/26 lacks
+
+
+def test_a_form_filed_on_the_06_24_revision_downloads_as_a_422_naming_the_revision_and_keeps_its_values(
+    api_client_authed, generated_form_factory
+):
+    # B62, DIG-155: a filed row keeps what it was filed with, and the retired template's box
+    # names are no widget of the current one, so the filer is told it can no longer be printed.
+    form = generated_form_factory(status="filed")
+    form.form_type = "form_101"
+    form.field_values = _FILED_ON_06_24
+    form.save()
+
+    response = _download(api_client_authed, form)
+
+    assert response.status_code == 422
+    assert response.data == {"form_type": "form_101", "error": FILED_ON_EARLIER_REVISION}
+    assert FILED_ON_EARLIER_REVISION == (
+        "This form was filed on an older version of Form 101. "
+        "DigniFi can no longer print it. Keep the copy you gave the court."
+    )
+    form.refresh_from_db()
+    assert form.field_values == _FILED_ON_06_24
+    assert form.status == "filed"
+
+
+def test_a_06_24_form_filed_as_parts_is_the_same_422_and_keeps_its_values(
+    api_client_authed, generated_form_factory
+):
+    parts = json.dumps(
+        {"version": 2, "parts": [{"kind": "form", "values": {"Debtor1.First name": "Jane"}}]}
+    )
+    form = generated_form_factory(status="filed")
+    form.form_type = "form_101"
+    form.field_values = parts
+    form.save()
+
+    response = _download(api_client_authed, form)
+
+    assert response.status_code == 422
+    assert response.data == {"form_type": "form_101", "error": FILED_ON_EARLIER_REVISION}
+    form.refresh_from_db()
+    assert form.field_values == parts
+
+
+def test_another_form_filed_with_a_box_its_template_lacks_stays_the_generic_500(
+    api_client_authed, generated_form_factory, caplog
+):
+    # Only Form 101 has a retired revision: any other form's unknown box is a fault.
+    form = generated_form_factory(status="filed")
+    form.form_type = "schedule_h"
+    form.field_values = _FILED_ON_06_24
+    form.save()
+
+    response = _download(api_client_authed, form)
+
+    assert response.status_code == 500
+    assert response.data == {
+        "form_type": "schedule_h",
+        "error": "This form couldn't be prepared. Please try again later.",
+    }
+    assert "UnknownField" in caplog.text
+
+
+def test_an_unfiled_form_101_whose_fill_names_an_unknown_box_is_the_generic_500(
+    api_client_authed, generated_form_factory, caplog
+):
+    # The revision refusal belongs to a filed row alone: an unfiled one is a fault.
+    form = generated_form_factory(status="downloaded")
+    form.form_type = "form_101"
+    form.save()
+
+    with patch.object(PDFFormFiller, "fill", side_effect=UnknownField("form_101", ["X"])):
+        response = _download(api_client_authed, form)
+
+    assert response.status_code == 500
+    assert response.data == {
+        "form_type": "form_101",
+        "error": "This form couldn't be prepared. Please try again later.",
+    }
+    assert "UnknownField" in caplog.text
+
+
+def test_an_unfiled_form_never_meets_the_revision_refusal(
+    api_client_authed, generated_form_factory
+):
+    # An unfiled row is resolved fresh from the intake, so stored values never decide it.
+    form = generated_form_factory(status="downloaded")
+    form.form_type = "form_101"
+    form.field_values = _FILED_ON_06_24
+    form.save()
+
+    response = _download(api_client_authed, form)
+
+    assert response.status_code == 200
 
 
 _FILED_SHEET = [

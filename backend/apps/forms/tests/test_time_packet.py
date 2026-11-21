@@ -247,7 +247,7 @@ def test_each_timed_download_draws_the_filers_intake(session, monkeypatch):
 
 def test_time_packet_keeps_the_filers_letter_out_of_a_filed_forms_refusal(session):
     # Values filed before 3a2 were never checked; their download refuses a letter.
-    _file(session, "form_101", {"Debtor1.Last name": "Wąsowicz"})
+    _file(session, "form_101", {"Last name": "Wąsowicz"})
 
     with pytest.raises(CommandError) as refused:
         call_command("time_packet", session=session.id, stdout=StringIO())

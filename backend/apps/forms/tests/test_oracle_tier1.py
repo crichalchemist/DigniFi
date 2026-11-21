@@ -29,6 +29,7 @@ from apps.districts.models import District
 from apps.forms.field_index import export_state, index_path
 from apps.forms.registry import get_all_form_types
 from apps.forms.schema import load_schema
+from apps.forms.services.answer_records import PETITION_STEP_OF_KEY
 from apps.forms.services.fill_resolver import _key, resolve_binding, row_fixes
 from apps.forms.services.means_cells import means_value
 from apps.forms.services.pdf_filler import PDFFormFiller, ValueTooLong
@@ -37,7 +38,7 @@ from apps.forms.tests.oracle import case_param
 from apps.forms.tests.pdf_readback import read_drawn
 from apps.forms.tests.test_means_cells import FULL_LINES
 from apps.intake.asset_lines import PROPERTY_KINDS
-from apps.intake.models import AssetInfo, ExemptionClaim, IntakeSession
+from apps.intake.models import AssetInfo, ExemptionClaim, IntakeSession, PetitionAnswers
 from apps.intake.tests.builders import (
     answer_asset_lines,
     answer_exemptions,
@@ -778,6 +779,38 @@ def test_every_claims_slot_binds_the_row_and_column_its_box_is_on():
                     wrong.append(("band", form_type, group, page, row))
                 bottom = max(r[3] for r in rows[row])
     assert wrong == []
+
+
+def test_every_petition_binding_names_a_key_the_record_asks():
+    # A petition. key the record doesn't list reads blank, so a misspelt binding would print
+    # nothing and fail no other test (4b; carried item 1).
+    keys = {
+        binding.removeprefix("petition.").partition("[].")[0]
+        for form_type in get_all_form_types()
+        for f in load_schema(form_type).fields
+        for binding in (f.binding or "",)
+        if binding.startswith("petition.")
+    }
+    assert keys
+    assert keys - set(PETITION_STEP_OF_KEY) == set()
+    assert keys - set(PetitionAnswers.KEYS) == set()
+    assert set(PetitionAnswers.KEYS) == set(PETITION_STEP_OF_KEY)
+
+
+def test_every_tagged_twin_fills_its_one_widget():
+    # Form 101's District is drawn twice, the court on the cover and line 9's first district: a
+    # bare key would fill both (§5.5), so each binding names one widget by its tag.
+    schema = load_schema("form_101")
+    widgets = template_widgets(schema.template_filename)
+    tagged = [f for f in schema.fields if f.pdf_field == "District"]
+    assert {(f.page, f.tag is not None) for f in tagged} == {(1, True), (3, True)}
+    for f in tagged:
+        drawn = [
+            w
+            for w in widgets
+            if w.drawn and (w.full_name, w.page, w.tag) == (f.pdf_field, f.page, f.tag)
+        ]
+        assert len(drawn) == 1
 
 
 def test_every_checkbox_binding_maps_its_answers_to_a_box():

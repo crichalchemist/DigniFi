@@ -82,26 +82,27 @@ def test_checkbox_bound_as_text_is_reported(schema_copy):
 
 
 def test_push_button_binding_is_reported(schema_copy):
-    print_button = {
-        "pdf_field": "Button.Print1",
-        "type": "text",
-        "source": "constant",
-        "page": 9,
-        "label": "",
-        "required": False,
-        "conditional_on": None,
-        "value": "x",
-        "rule": None,
-        "ingest_key": None,
-        "binding": None,
-        "repeat": None,
-        "repeat_capacity": None,
-        "row": None,
-        "legal_review": False,
-    }
-    _edit(schema_copy, "form_101", lambda d: d["fields"].append(print_button))
-    # A print button is never drawn, so its page holds no widget that prints (E003).
-    assert _ids("form_101") == ["forms.E003", "forms.E004"]
+    # Form 121's print button (Button.Print1, page 1, T25) is never drawn, so its page holds
+    # no widget of the name that prints (E003), and a button takes no value (E004).
+    _edit(schema_copy, "form_121", lambda d: d["fields"].append(_text("Button.Print1", 1, None)))
+    assert _errors("form_121") == [
+        ("forms.E003", "form_121: 'Button.Print1' has no drawn widget on page 1"),
+        ("forms.E004", "form_121: 'Button.Print1' is a push button"),
+    ]
+
+
+def test_a_text_binding_on_a_signature_box_is_a_type_mismatch(schema_copy):
+    # The court's signature boxes are widgets a binding can't fill, and a text binding on one
+    # is a type mismatch (E004). The schema has no Signature binding type, so these stay blank
+    # by construction.
+    _edit(
+        schema_copy,
+        "form_101",
+        lambda d: d["fields"].append(_text("Signature of Debtor 1", 7, "T6")),
+    )
+    assert _errors("form_101") == [
+        ("forms.E004", "form_101: 'Signature of Debtor 1' is bound as text but is ['Signature']")
+    ]
 
 
 def test_checkbox_without_choices_is_reported(schema_copy):
@@ -229,8 +230,17 @@ def test_a_tag_on_the_second_of_a_stacked_pair_is_reported(schema_copy):
 
 
 def test_a_tag_on_a_print_button_is_reported(schema_copy):
-    _edit(schema_copy, "form_101", lambda d: d["fields"].append(_text("Button.Print1", 9, "T20")))
-    assert _ids("form_101") == ["forms.E003", "forms.E004"]
+    # T25 is Button.Print1's own widget on page 1, but a print button never prints.
+    _edit(schema_copy, "form_121", lambda d: d["fields"].append(_text("Button.Print1", 1, "T25")))
+    assert _errors("form_121") == [
+        ("forms.E003", "form_121: 'Button.Print1' has no drawn widget 'T25' on page 1"),
+        ("forms.E004", "form_121: 'Button.Print1' is a push button"),
+    ]
+
+
+def test_a_tag_that_no_widget_of_the_name_has_is_reported(schema_copy):
+    _edit(schema_copy, "form_101", lambda d: d["fields"].append(_text("First name", 1, "T99")))
+    assert _ids("form_101") == ["forms.E003"]
 
 
 def _unbind_assistance(d):
@@ -967,6 +977,18 @@ def test_a_misspelt_answer_record_namespace_is_still_refused(schedule_d_with_tot
 
     _edit(schedule_d_with_totals, "schedule_d", rebind)
     assert [e for e in _errors("schedule_d") if "unknown binding namespace" in e[1]]
+
+
+def test_a_petition_key_the_record_does_not_ask_is_a_startup_error(schema_copy):
+    # A misspelt key reads blank at resolve time, so only the startup check can catch it (4b).
+    _edit(
+        schema_copy,
+        "form_101",
+        lambda d: _field(d, "Suffix Sr Jr II III").update(binding="petition.not_a_key"),
+    )
+    assert _errors("form_101") == [
+        ("forms.E007", "form_101: 'petition.not_a_key': not a key PetitionAnswers asks")
+    ]
 
 
 def test_a_total_box_another_binding_fills_is_reported(schedule_d_with_totals):

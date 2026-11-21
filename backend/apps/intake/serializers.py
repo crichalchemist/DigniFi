@@ -55,6 +55,7 @@ from .models import (
     IncomeDetail,
     IncomeInfo,
     IntakeSession,
+    PetitionAnswers,
     SOFACreditorPayment,
     SOFAPriorIncome,
     SOFAReport,
@@ -994,6 +995,7 @@ _INTAKE_DATA = {
     "assets",
     "asset_lines",
     "claim_answers",
+    "petition_answers",
     "debts",
     "household",
     "spouse_income",
@@ -1032,6 +1034,73 @@ def _save_claim_answers(session: IntakeSession, data: dict) -> None:
     session.claim_answers = record
 
 
+class PetitionAnswersField(serializers.DictField):
+    """The filer's answers to Form 101's questions, read from the session's record.
+
+    The ITIN and the other Social Security number never come back, as `DebtorInfo.ssn` never
+    does: the read says only whether each is saved, so an echoed read can't overwrite them.
+    """
+
+    def get_attribute(self, instance):
+        record = getattr(instance, "petition_answers", None)
+        answers = record.get_answers() if record else {}
+        saved = {f"{key}_saved": key in answers for key in PetitionAnswers.SECRET_KEYS}
+        return {
+            **{k: v for k, v in answers.items() if k not in PetitionAnswers.SECRET_KEYS},
+            **saved,
+        }
+
+
+def _save_petition_answers(session: IntakeSession, data: dict) -> None:
+    """Set each answer sent; a null removes it (step 4b spec §7.1)."""
+    record, _ = PetitionAnswers.objects.get_or_create(session=session)
+    record.merge(data)
+    record.save()
+    session.petition_answers = record
+
+
+def _petition_text_ok(value) -> bool:
+    if not isinstance(value, str) or len(value) > PetitionAnswers.TEXT_CEILING:
+        return False
+    # Half of a surrogate pair can't be written as UTF-8, so every later read of the session
+    # would fail to render: refuse it before anything is stored, as CharField does.
+    try:
+        value.encode("utf-8")
+    except UnicodeEncodeError:
+        return False
+    return True
+
+
+def _petition_value_ok(key: str, value) -> bool:
+    if key in PetitionAnswers.YES_NO_KEYS:
+        return isinstance(value, str) and value in ("yes", "no")
+    if key in PetitionAnswers.CHOICE_KEYS:
+        return isinstance(value, str) and value in PetitionAnswers.CHOICE_KEYS[key]
+    if key in PetitionAnswers.SECRET_KEYS and value == "saved":
+        return False
+    return _petition_text_ok(value)
+
+
+def _petition_rows_ok(key: str, rows) -> bool:
+    if not isinstance(rows, list):
+        return False
+    cap = PetitionAnswers.LIST_CAPS.get(key, PetitionAnswers.ROW_CEILING)
+    if len(rows) > cap:
+        return False
+    allowed = PetitionAnswers.LIST_KEYS[key]
+    for row in rows:
+        if not isinstance(row, dict):
+            return False
+        for cell_key, cell in row.items():
+            if cell_key == "_key":
+                continue
+            if cell_key not in allowed:
+                return False
+            if cell is not None and not _petition_text_ok(cell):
+                return False
+    return True
+
+
 _LINE_4_FIGURE = re.compile(r"[0-9]{1,9}(\.[0-9]{1,2})?")
 
 
@@ -1064,6 +1133,7 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
         child=serializers.ChoiceField(choices=["yes", "no"], allow_null=True), required=False
     )
     claim_answers = ClaimAnswersField(required=False)
+    petition_answers = PetitionAnswersField(required=False)
     debts = NestedDebtInfoSerializer(many=True, required=False)
     household = HouseholdSerializer(required=False, allow_null=True)
     spouse_income = SpouseIncomeSerializer(required=False, allow_null=True)
@@ -1087,6 +1157,7 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
             "assets",
             "asset_lines",
             "claim_answers",
+            "petition_answers",
             "debts",
             "household",
             "spouse_income",
@@ -1138,6 +1209,28 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
             answers[key] = value
         return answers
 
+    PETITION_READ_ONLY = ("answered_on", "itin_saved", "other_ssn_saved")
+
+    def validate_petition_answers(self, sent):
+        """Check each key and its shape; a message names the key, never the value."""
+        answers = {}
+        for key, value in sent.items():
+            if key in self.PETITION_READ_ONLY:
+                continue  # echoed by a read or set by the server; never written from a body
+            if key not in PetitionAnswers.KEYS:
+                raise serializers.ValidationError(f"Not a petition answer: {key}.")
+            if value is not None:
+                if key in PetitionAnswers.LIST_KEYS:
+                    ok = _petition_rows_ok(key, value)
+                    if ok:
+                        value = [{k: v for k, v in row.items() if k != "_key"} for row in value]
+                else:
+                    ok = _petition_value_ok(key, value)
+                if not ok:
+                    raise serializers.ValidationError(f"Check the answer for {key}.")
+            answers[key] = value
+        return answers
+
     def get_income_window(self, obj) -> dict:
         """The six full months before today, which the Income step's figures cover."""
         start, end = income_window(fill_date())
@@ -1163,6 +1256,7 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
         spouse_data = validated_data.pop("spouse_income", None)
         asset_lines_data = validated_data.pop("asset_lines", None)
         claim_answers_data = validated_data.pop("claim_answers", None)
+        petition_answers_data = validated_data.pop("petition_answers", None)
 
         # Create session
         session = IntakeSession.objects.create(**validated_data)
@@ -1189,6 +1283,9 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
         if claim_answers_data is not None:
             _save_claim_answers(session, claim_answers_data)
 
+        if petition_answers_data:
+            _save_petition_answers(session, petition_answers_data)
+
         # Create assets
         for asset_data in assets_data:
             AssetInfo.objects.create(session=session, **asset_data)
@@ -1209,6 +1306,9 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
         spouse rows saved, so the reply reads what this save stored rather than the copies
         select_related cached before it.
         """
+        if validated_data.get("petition_answers") == {}:
+            # Only echoed read-only keys, or nothing: no answer to save, so nothing reopens.
+            del validated_data["petition_answers"]
         if _INTAKE_DATA.intersection(validated_data):
             instance.reopen()
 
@@ -1221,6 +1321,7 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
         spouse_data = validated_data.pop("spouse_income", None)
         asset_lines_data = validated_data.pop("asset_lines", None)
         claim_answers_data = validated_data.pop("claim_answers", None)
+        petition_answers_data = validated_data.pop("petition_answers", None)
 
         # Update session fields
         for attr, value in validated_data.items():
@@ -1252,6 +1353,9 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
 
         if claim_answers_data is not None:
             _save_claim_answers(instance, claim_answers_data)
+
+        if petition_answers_data is not None:
+            _save_petition_answers(instance, petition_answers_data)
 
         # The response lists a sent list in sent order, so the wizard can pair each row it
         # sent with its id (DIG-273). Every other read sorts as to_representation says.

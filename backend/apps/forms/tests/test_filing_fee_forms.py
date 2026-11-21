@@ -124,17 +124,23 @@ def test_the_petition_names_a_missing_county_before_the_fee(session):
     )
 
 
-@pytest.mark.parametrize(
-    "choice,state",
-    [
-        ("pay_in_full", "/Pay entirely"),
-        ("installments", "/Pay in installments"),
-        ("waiver", "/Request fees waived"),
-    ],
-)
-def test_the_petition_ticks_only_the_filers_own_way_to_pay_the_fee(session, choice, state):
+LINE_8_BOXES = {
+    "pay_in_full": "I will pay the entire fee when I file my petition Please check with the "
+    "clerks office in your",
+    "installments": "I need to pay the fee in installments If you choose this option sign and "
+    "attach the",
+    "waiver": "I request that my fee be waived You may request this option only if you are "
+    "filing for Chapter 7",
+}
+
+
+@pytest.mark.parametrize("choice", sorted(LINE_8_BOXES))
+def test_the_petition_ticks_only_the_filers_own_way_to_pay_the_fee(session, choice):
     values = build_field_values("form_101", _line_8(session, choice, **WAIVER))
-    assert values["Check Box7"] == state
+    assert values[LINE_8_BOXES[choice]] == "/On"
+    # The other two ways stay unticked: no No is printed that the filer didn't give.
+    others = [box for box in LINE_8_BOXES.values() if box != LINE_8_BOXES[choice]]
+    assert [box for box in others if box in values] == []
     PDFFormFiller().check("form_101", values)  # the state is one of the box's own
 
 

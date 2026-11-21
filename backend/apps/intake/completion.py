@@ -33,17 +33,19 @@ class Gap(Exception):
     """One thing an intake still lacks, in the filer's words.
 
     `step` is the WIZARD_STEPS key that fixes it. `kind` is "gate" (Complete refuses while it
-    is open) or "detail" (the forms print it blank). str(gap) is the sentence.
+    is open) or "detail" (the forms print it blank). str(gap) is the sentence. `forms` lists the
+    form types that print a detail's box blank; a gate leaves it empty.
     """
 
     GATE = "gate"
     DETAIL = "detail"
 
-    def __init__(self, message: str, step: str, kind: str):
+    def __init__(self, message: str, step: str, kind: str, forms: tuple[str, ...] = ()):
         super().__init__(message)
         self.message = message
         self.step = step
         self.kind = kind
+        self.forms = forms
 
 
 GATE = Gap.GATE
