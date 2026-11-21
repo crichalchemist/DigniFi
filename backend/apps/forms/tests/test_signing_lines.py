@@ -23,7 +23,8 @@ from apps.forms.services.widgets import template_widgets
 from apps.forms.tests.pdf_readback import read_drawn
 from apps.intake.models import IntakeSession
 
-# Each form's Debtor 1 signature line and signing date that held a binding before Q6.
+# Each form's Debtor 1 signature line and signing date, left blank for wet ink. Form 101's
+# six are its 11/26 Part 7 date and its notice page's signature line and date.
 # Priya's packet holds all five forms, 122A-2 included.
 SIGNING_LINES = {
     "form_101": ["MM", "DD", " YYYY", "MM  DD_2", " YYYY_4", "undefined_23"],
@@ -48,8 +49,8 @@ STILL_PRINTS = {
 def _printed():
     """
     (form_type, full name) → the texts Priya's drawn forms print in each drawn widget of
-    that name; "" for a widget
-    that prints nothing, so a name that prints on only some of its widgets shows it. Every
+    that name; "" for a widget that prints nothing, so a name that prints on only some of
+    its widgets shows it. Every
     box of the template has an entry, so a box name that is no box can't pass as blank.
     """
     call_command("loaddata", "ilnd_2025_data", verbosity=0)

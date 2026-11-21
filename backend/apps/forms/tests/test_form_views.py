@@ -328,7 +328,9 @@ class TestGenerateEndpoint:
         [
             (
                 "apps.forms.views.build_parts",
-                UnmappedChoice("Check Box1"),
+                UnmappedChoice(
+                    "I need to pay the fee in installments If you choose this option sign and attach the"
+                ),
                 "One of your answers doesn't match a choice printed on this form, "
                 "so it can't be filled in yet.",
             ),

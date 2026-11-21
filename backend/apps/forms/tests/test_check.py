@@ -36,7 +36,7 @@ from apps.forms.services.text_fit import MIN_SIZE, fit
 from apps.forms.services.widgets import field_of, template_widgets, widget_for
 
 LAST_NAME = "Debtor1.Last name"  # Form 121: a 10 pt /Helv box, derived last_name
-EMAIL = "Debtor1.First name"  # Form 121: a 10 pt /Helv box a long value must shrink to fit
+FIRST_NAME = "Debtor1.First name"  # Form 121: a 10 pt /Helv box a long value must shrink to fit
 SSN = "Debtor1a.SSNum"  # Form 121: an 11-cell comb box, derived ssn_formatted
 OTHER_PROPERTY = "53 Examples Season tickets country club membership"  # A/B line 53, multi-line
 ASSISTANCE = "3 type"  # Form 103B line 3, multi-line, from the Income step's 8f
@@ -192,24 +192,24 @@ def test_a_box_whose_binding_has_no_label_is_named_by_its_index_row():
 
 
 def test_a_long_value_shrinks_before_it_is_refused():
-    (box,) = _widgets("form_121", EMAIL)
-    email = "kestrel.wanamaker.okonkwo.marchetti@example.org"
-    assert _helvetica(email, box.size) > _room(box)  # too wide at the box's own 10 pt
+    (box,) = _widgets("form_121", FIRST_NAME)
+    long_name = "kestrel.wanamaker.okonkwo.marchetti-example-org"
+    assert _helvetica(long_name, box.size) > _room(box)  # too wide at the box's own 10 pt
 
-    (planned,) = _plan("form_121", {EMAIL: email})
-    assert planned.value == email
+    (planned,) = _plan("form_121", {FIRST_NAME: long_name})
+    assert planned.value == long_name
     assert MIN_SIZE <= planned.size < box.size
     assert planned.size % 0.5 == 0
     # The first size that fits: half a point larger doesn't.
-    assert _helvetica(email, planned.size) <= _room(box)
-    assert _helvetica(email, planned.size + 0.5) > _room(box)
+    assert _helvetica(long_name, planned.size) <= _room(box)
+    assert _helvetica(long_name, planned.size + 0.5) > _room(box)
 
-    too_long = "kestrel.wanamaker.okonkwo.marchetti-oyelaran.vasquez-hart@example.org"
+    too_long = "kestrel.wanamaker.okonkwo.marchetti-oyelaran.vasquez-hart-example-org"
     # Too wide at 6 pt, the smallest size the check prints, though it would fit at 5.5.
     assert _helvetica(too_long, 6.0) > _room(box)
     assert _helvetica(too_long, 5.5) <= _room(box)
     with pytest.raises(ValueTooLong) as refused:
-        PDFFormFiller().check("form_121", {EMAIL: too_long})
+        PDFFormFiller().check("form_121", {FIRST_NAME: too_long})
     assert (refused.value.label, refused.value.step, refused.value.page) == (
         "Debtor 1 first name",
         "debtor_info",
@@ -249,7 +249,11 @@ def test_a_box_with_a_maximum_length_refuses_a_longer_value():
     assert planned.value == "12"
     with pytest.raises(ValueTooLong) as refused:
         PDFFormFiller().check("form_122a2", {"Quest5": "123"})
-    assert refused.value.label == "Line 5: The number of people used in determining your deductions"
+    assert (refused.value.label, refused.value.step, refused.value.page) == (
+        "Line 5: The number of people used in determining your deductions",
+        None,
+        "/means-test",
+    )
 
 
 def test_parentheses_take_the_room_pypdf_gives_them():
@@ -407,12 +411,13 @@ def test_a_key_that_names_no_drawn_widget_is_refused():
 
 
 def test_a_box_prints_its_state_on_the_widgets_that_have_it():
-    planned = _plan("form_121", {"Check Box1": "/On"})
-    # The box's on-state prints on the widgets that have it; the rest print empty.
-    assert sorted(p.value for p in planned) == ["/Off"] * (len(planned) - 1) + ["/On"]
+    # Schedule H's check1 is two widgets, No (/no) and Yes (/yes).
+    planned = _plan("schedule_h", {"check1": "/no"})
+    # The box's state prints on the widget that has it; the other prints empty.
+    assert sorted(p.value for p in planned) == ["/Off", "/no"]
     assert {p.size for p in planned} == {None}
     with pytest.raises(InvalidFieldValue):
-        PDFFormFiller().check("form_121", {"Check Box1": "/Chapter 9"})
+        PDFFormFiller().check("schedule_h", {"check1": "/Chapter 9"})
 
 
 def test_a_combo_prints_one_of_its_options():

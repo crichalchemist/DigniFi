@@ -149,6 +149,8 @@ EXPECTED = {
         "form_101": {
             **_common("Maria", "Torres", "2145", "W Division St Apt 3", "60622"),
             WAIVER: "/On",
+            PAY_IN_FULL: "",
+            INSTALLMENTS: "",
         },
         "form_103b": {
             "You": "/On",
@@ -346,6 +348,8 @@ EXPECTED = {
         "form_101": {
             **_common("James", "Washington", "850", "N State St Apt 1204", "60610"),
             PAY_IN_FULL: "/On",
+            INSTALLMENTS: "",
+            WAIVER: "",
         },
         # Schedule A/B totals, hand-worked: 5 = 14,000 (Camry); 15 = 500+400+300; 36 = 40 cash + 1,200 checking; 62 = 63 = 14,000+1,200+1,240
         "schedule_a_b": {
@@ -514,6 +518,8 @@ EXPECTED = {
         "form_101": {
             **_common("Priya", "Sharma", "456", "W Fullerton Pkwy", "60614"),
             PAY_IN_FULL: "/On",
+            INSTALLMENTS: "",
+            WAIVER: "",
         },
         # Schedule A/B totals, hand-worked: 5 = 20,500 (CR-V); 15 = 2,500+1,500+800+1,200; 36 = 1,900+8,500+31,000+0+0; 62 = 63 = 20,500+6,000+41,400
         "schedule_a_b": {
@@ -880,6 +886,8 @@ EXPECTED = {
         "form_101": {
             **_common("DeShawn", "Mitchell", "7823", "S Sangamon St", "60620"),
             INSTALLMENTS: "/On",
+            PAY_IN_FULL: "",
+            WAIVER: "",
         },
         # Schedule A/B totals, hand-worked: 55 = 180,000 (home); 5 = 8,000 (F-150); 15 = 1,500+400+300+600; 36 = 60+640+12,000; 62 = 8,000+2,800+12,700; 63 = 180,000+23,500
         "schedule_a_b": {
@@ -1062,6 +1070,8 @@ EXPECTED = {
         "form_101": {
             **_common("Sarah", "Chen", "1520", "N Damen Ave Apt 2F", "60622"),
             WAIVER: "/On",
+            PAY_IN_FULL: "",
+            INSTALLMENTS: "",
         },
         # Guard: passes before 3f Task 2 (her typed application equals her Income step
         # figures); Maria's entry fails first.
@@ -1188,7 +1198,7 @@ EXPECTED = {
     },
     # His driving is a business on line 5 and 8a since 3e2 (§11).
     "andres": {
-        "form_101": {"County": "Kane", INSTALLMENTS: "/On"},
+        "form_101": {"County": "Kane", INSTALLMENTS: "/On", PAY_IN_FULL: "", WAIVER: ""},
         # Schedule A/B totals, hand-worked: 5 = 0 (leased Corolla) + 4,300 (his half of the Fit); 15 = 1,200+400+300; 36 = 60+412+85; 45 = 310+150 = 460; 62 = 63 = 4,300+1,900+557+460
         "schedule_a_b": {
             "undefined_26": "4300.00",

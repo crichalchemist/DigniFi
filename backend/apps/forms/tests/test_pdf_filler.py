@@ -28,7 +28,7 @@ from apps.forms.services.text_fit import font_for, reverse_cmap_for
 from apps.forms.services.widgets import parse_key, template_widgets
 from apps.forms.tests.pdf_readback import read_drawn
 
-EMAIL = "Debtor1.First name"  # Form 121 page 1, 10 pt
+FIRST_NAME = "Debtor1.First name"  # Form 121: a 10 pt /Helv box a long value must shrink to fit
 OTHER_PROPERTY = "53 Examples Season tickets country club membership"  # A/B line 53, multi-line
 # Helvetica's FontBBox top, per 1000 em: the highest mark a capital carries (Å).
 _HELVETICA_TOP = 931
@@ -170,12 +170,14 @@ def test_nothing_the_blank_template_prints_reads_as_a_value(form_type):
 def test_a_shrunk_value_prints_at_its_planned_size():
     # The bake keeps pypdf's appearance as built; an appearance rebuilt at the box's own
     # 10 pt would cut the address off (R39).
-    email = "kestrel.wanamaker.okonkwo.marchetti@example.org"
-    box = _widget("form_121", EMAIL)
-    ((planned,),) = [part.widgets for part in PDFFormFiller().check("form_121", {EMAIL: email})]
+    long_name = "kestrel.wanamaker.okonkwo.marchetti-example-org"
+    box = _widget("form_121", FIRST_NAME)
+    ((planned,),) = [
+        part.widgets for part in PDFFormFiller().check("form_121", {FIRST_NAME: long_name})
+    ]
     assert planned.size < box.size
-    drawn = _helvetica_in(PDFFormFiller().fill("form_121", {EMAIL: email}), box)
-    assert "".join(c for c, _, _ in drawn) == email
+    drawn = _helvetica_in(PDFFormFiller().fill("form_121", {FIRST_NAME: long_name}), box)
+    assert "".join(c for c, _, _ in drawn) == long_name
     assert all(abs(size - planned.size) <= 0.05 for _, _, size in drawn)
 
 
