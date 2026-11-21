@@ -986,10 +986,12 @@ def _venue_reason_lines(text: str) -> list[str]:
     fourth carries the rest, and a word wider than a box leaves the whole text on the first, so
     check() refuses that box as ValueTooLong and names it.
     """
+    from apps.forms.services.pdf_filler import _as_printed
     from apps.forms.services.text_fit import MIN_SIZE, font_for, reverse_cmap_for, wrap
     from apps.forms.services.widgets import template_widgets
 
-    text = " ".join((text or "").split())
+    # Measured as the filler prints it: composed (NFC) and without format characters.
+    text = " ".join(_as_printed(text or "").split())
     lines = [""] * _VENUE_REASON_LINES
     if not text:
         return lines

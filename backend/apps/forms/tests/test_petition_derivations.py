@@ -328,3 +328,58 @@ def test_every_petition_rule_has_a_fix_on_the_step_that_asks_it():
             assert RULE_FIXES[name] == {"step": "debts"}, name
         if name.startswith("total_assets_is_"):
             assert RULE_FIXES[name] == {"step": "assets"}, name
+
+
+@pytest.fixture
+def db_session(db):
+    from decimal import Decimal
+
+    from apps.districts.models import District
+    from apps.intake.models import IntakeSession
+    from apps.users.models import User
+
+    district = District.objects.create(
+        code="ILND",
+        name="Illinois Northern",
+        state="IL",
+        court_name="U.S. Bankruptcy Court ILND",
+        filing_fee_chapter_7=Decimal("338.00"),
+    )
+    user = User.objects.create_user(username="filer", password="pw")
+    return IntakeSession.objects.create(user=user, district=district)
+
+
+def test_line_18_ticks_the_box_of_the_confirmed_creditor_count_and_none_without_one(db_session):
+    from apps.intake.tests.builders import complete_debt
+
+    names = [n for n in DERIVATIONS if n.startswith("creditor_count_is_")]
+
+    def ticked():
+        return [n for n in names if rule(n, db_session) == "true"]
+
+    # No confirmed debt: never a box for an answer nobody gave.
+    assert ticked() == []
+    complete_debt(db_session, is_draft=True)
+    assert ticked() == [], "a draft is not counted"
+    complete_debt(db_session)
+    assert ticked() == ["creditor_count_is_1"]
+    for n in range(2, 51):
+        complete_debt(db_session, creditor_name=f"Creditor {n}")
+    assert ticked() == ["creditor_count_is_50"]
+
+
+def test_a_reason_typed_with_combining_marks_wraps_as_it_prints():
+    import unicodedata
+
+    decomposed = unicodedata.normalize("NFD", "café ") * 48
+    composed = unicodedata.normalize("NFC", decomposed)
+    assert decomposed != composed
+    nums = (1, 2, 3, 4)
+    got = [rule(f"venue_reason_line_{n}", session({"venue_reason": decomposed})) for n in nums]
+    want = [rule(f"venue_reason_line_{n}", session({"venue_reason": composed})) for n in nums]
+    assert got == want
+    widget = next(
+        w for w in template_widgets("form_b101.pdf") if w.full_name == "See 28 USC  1408 1"
+    )
+    assert all(got)
+    assert all(fit(widget, "form_b101.pdf", line) is not None for line in got)
