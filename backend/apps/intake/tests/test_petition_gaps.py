@@ -6,6 +6,8 @@ would print blank is only a detail, and no question is ever answered for the fil
 
 import json
 
+import pytest
+
 from apps.intake.models import PetitionAnswers
 from apps.intake.petition import (
     DETAIL_BUSINESS,
@@ -16,6 +18,7 @@ from apps.intake.petition import (
     DETAIL_OTHER_NAMES,
     DETAIL_OTHER_SSN,
     DETAIL_PENDING_CASE,
+    DETAIL_PENDING_DATE,
     DETAIL_PRIOR_CASE,
     DETAIL_PRIOR_DATE,
     DETAIL_TOO_LONG,
@@ -183,12 +186,14 @@ def test_every_detail_names_the_forms_that_print_it_blank(filer, monkeypatch):
     assert DETAIL_EIN in texts and DETAIL_MAILING in texts and DETAIL_HAZARD in texts
     for gap in gaps:
         if gap.kind == "detail":
-            assert "form_101" in gap.forms
+            assert gap.forms
         else:
             assert gap.forms == ()
     by_text = {str(g): g for g in gaps}
-    assert "form_121" in by_text[DETAIL_ITIN].forms
-    assert "form_121" in by_text[DETAIL_OTHER_SSN].forms
+    assert by_text[DETAIL_ITIN].forms == ("form_101", "form_121")
+    # Form 101 has no box for the other number, so only Form 121 prints it blank.
+    assert by_text[DETAIL_OTHER_SSN].forms == ("form_121",)
+    assert by_text[DETAIL_EIN].forms == ("form_101",)
     assert [str(g) for g in gaps if g.kind == "gate"] == [GATE_EVICTION]
 
 
@@ -263,3 +268,55 @@ def test_a_too_long_answer_to_another_steps_question_is_not_listed_here(filer, m
         "landlord_name": "C" * 10,
     }
     assert _gaps(session, answers) == []
+
+
+def test_the_owner_approved_gate_and_pending_date_sentences_are_exact():
+    assert GATE_HAZARD == (
+        "Say whether any property you own poses a hazard or needs attention right away."
+    )
+    assert GATE_OTHER_SSN == (
+        "Say whether you have used any other Social Security number. Answer Yes or No."
+    )
+    assert DETAIL_PENDING_DATE == (
+        "A date is written as MM/DD/YYYY. Check the date of the pending case."
+    )
+
+
+def test_a_malformed_pending_date_is_a_detail_under_yes_and_nothing_under_no(filer):
+    _, session = filer
+    base = {**NO, "venue_choice": "lived_here"}
+    rows = [{"debtor": "Demo Partner", "filed_on": "2025-01-15"}]
+    yes = {**base, "pending_case_answer": "yes", "pending_cases": rows}
+    assert [t for _, _, t in _gaps(session, yes)] == [DETAIL_PENDING_DATE]
+    assert _gaps(session, {**base, "pending_cases": rows}) == []
+    blank = [{"debtor": "Demo Partner", "filed_on": ""}]
+    assert _gaps(session, {**yes, "pending_cases": blank}) == []
+
+
+def test_a_too_long_text_under_a_no_is_not_listed(filer, monkeypatch):
+    # A box hidden under a No prints nothing, so a line about its length would be false.
+    _, session = filer
+    monkeypatch.setattr(PetitionAnswers, "TEXT_LIMITS", {"business_name": 3, "hazard_what": 3})
+    monkeypatch.setattr(PetitionAnswers, "TEXT_LABELS", {})
+    long = {"business_name": "Demo Business", "hazard_what": "Leaking tank"}
+    base = {"venue_choice": "lived_here", **long}
+    gated = ("sole_proprietor_answer", "hazard_answer")
+    unanswered = {k: v for k, v in NO.items() if k not in gated}
+    for state in (NO, unanswered):
+        gaps = [t for _, k, t in _gaps(session, {**base, **state}) if "too long" in t]
+        assert gaps == []
+    yes = {**NO, "sole_proprietor_answer": "yes", "hazard_answer": "yes"}
+    texts = [t for _, _, t in _gaps(session, {**base, **yes})]
+    assert DETAIL_TOO_LONG.format(label="business name") in texts
+    assert DETAIL_TOO_LONG.format(label="hazard what") in texts
+
+
+@pytest.mark.parametrize(
+    "itin,listed",
+    [("812345678", True), ("912345678", False), ("9-12-34-5678", False), ("91234567", True)],
+)
+def test_an_itin_is_nine_digits_starting_with_9(filer, itin, listed):
+    _, session = filer
+    answers = {**NO, "venue_choice": "lived_here", "itin_answer": "yes", "itin": itin}
+    texts = [t for _, _, t in _gaps(session, answers)]
+    assert (DETAIL_ITIN in texts) is listed

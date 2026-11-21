@@ -5,10 +5,12 @@ preconditions. The sentences are DigniFi's own; 4b-ii adds the browser's copy
 (`petitionGaps.ts`) and the test that pins it (`test_petition_frontend_copy.py`).
 """
 
-import re
-from datetime import datetime
-
-from apps.forms.services.answer_records import PETITION_STEP_OF_KEY
+from apps.forms.services.answer_records import (
+    PETITION_STEP_OF_KEY,
+    is_itin,
+    is_mm_dd_yyyy,
+    is_nine_digits,
+)
 
 from .completion import Gap
 from .models import PetitionAnswers
@@ -25,12 +27,12 @@ STEP_1_GATES = (
 
 GATE_OTHER_NAMES = "Say whether you have used another name in the last 8 years."
 GATE_ITIN = "Say whether you have an ITIN."
-GATE_OTHER_SSN = "Say whether you have used another Social Security number."
+GATE_OTHER_SSN = "Say whether you have used any other Social Security number. Answer Yes or No."
 GATE_MAILING = "Say whether your mailing address is different from where you live."
 GATE_PRIOR_BANKRUPTCY = "Say whether you have filed for bankruptcy in the last 8 years."
 GATE_PENDING_CASE = "Say whether a spouse, partner or affiliate has a bankruptcy case pending."
 GATE_SOLE_PROPRIETOR = "Say whether you are a sole proprietor of a business."
-GATE_HAZARD = "Say whether you own property that poses a hazard or needs immediate attention."
+GATE_HAZARD = "Say whether any property you own poses a hazard or needs attention right away."
 GATE_RENTS = "Say whether you rent your residence."
 GATE_EVICTION = "Say whether your landlord has an eviction judgment against you."
 DETAIL_VENUE = "Choose why you are filing in this district."
@@ -44,6 +46,7 @@ DETAIL_EIN = "Your EIN has 9 digits. Check what you typed."
 DETAIL_MAILING = "Add your mailing address, or change your answer to No."
 DETAIL_PRIOR_CASE = "Each earlier case needs its district and the date it was filed."
 DETAIL_PRIOR_DATE = "A date is written as MM/DD/YYYY. Check the date of your earlier case."
+DETAIL_PENDING_DATE = "A date is written as MM/DD/YYYY. Check the date of the pending case."
 DETAIL_PENDING_CASE = "Each pending case needs the name of the person who filed it."
 DETAIL_BUSINESS = "Add your business's name, or change your answer to No."
 DETAIL_HAZARD = "Say what the hazard is, or change your answer to No."
@@ -61,12 +64,11 @@ _GATE_SENTENCE = {
 }
 
 # Every key a detail can name, to the forms that print its box blank while it is open (4b-R12).
-# Form 101 prints the ITIN's last four but no box of the other Social Security number; Form 121's
-# boxes for both come with 4b-ii, and the tuple names Form 121 for them ahead of that.
+# Form 101 prints the ITIN's last four but has no box for the other Social Security number, so
+# `itin` names both forms and `other_ssn` names Form 121 alone (PF2-T7-7).
 FORMS_OF_KEY: dict[str, tuple[str, ...]] = {key: ("form_101",) for key in PetitionAnswers.KEYS}
-FORMS_OF_KEY.update({key: ("form_101", "form_121") for key in PetitionAnswers.SECRET_KEYS})
-
-_HAZARD_KEYS = ("hazard_what", "hazard_why", "hazard_street", "hazard_city", "hazard_state")
+FORMS_OF_KEY["itin"] = ("form_101", "form_121")
+FORMS_OF_KEY["other_ssn"] = ("form_121",)
 _MAILING_KEYS = (
     "mailing_street",
     "mailing_po_box",
@@ -74,20 +76,6 @@ _MAILING_KEYS = (
     "mailing_state",
     "mailing_zip",
 )
-
-
-def is_nine_digits(value) -> bool:
-    return isinstance(value, str) and len(re.sub(r"\D", "", value)) == 9
-
-
-def is_mm_dd_yyyy(value) -> bool:
-    if not isinstance(value, str) or not re.fullmatch(r"\d{2}/\d{2}/\d{4}", value):
-        return False
-    try:
-        datetime.strptime(value, "%m/%d/%Y")
-    except ValueError:
-        return False
-    return True
 
 
 def _blank(value) -> bool:
@@ -123,7 +111,7 @@ def _debtor_info_details(answers: dict) -> list[Gap]:
         and not _has_a_row(answers, "other_business_names")
     ):
         gaps.append(_detail(DETAIL_OTHER_NAMES, step, "other_names"))
-    if answers.get("itin_answer") == "yes" and not is_nine_digits(answers.get("itin")):
+    if answers.get("itin_answer") == "yes" and not is_itin(answers.get("itin")):
         gaps.append(_detail(DETAIL_ITIN, step, "itin"))
     if answers.get("other_ssn_answer") == "yes" and not is_nine_digits(answers.get("other_ssn")):
         gaps.append(_detail(DETAIL_OTHER_SSN, step, "other_ssn"))
@@ -151,13 +139,31 @@ def _debtor_info_details(answers: dict) -> list[Gap]:
             _blank(row.get("debtor")) for row in rows
         ):
             gaps.append(_detail(DETAIL_PENDING_CASE, step, "pending_cases"))
+        if any(_bad_date(row) for row in rows):
+            gaps.append(_detail(DETAIL_PENDING_DATE, step, "pending_cases"))
     return gaps
+
+
+def text_shows(answers: dict, key: str) -> bool:
+    """Whether the key's box prints: a text under a No is hidden, so its length is no gap."""
+    for prefix, gate in (
+        ("mailing_", "mailing_answer"),
+        ("business_", "sole_proprietor_answer"),
+        ("hazard_", "hazard_answer"),
+    ):
+        if key.startswith(prefix):
+            return answers.get(gate) == "yes"
+    if key == "venue_reason":
+        return answers.get("venue_choice") == "other"
+    return True
 
 
 def _too_long(answers: dict, step: str, keys: list[str]) -> list[Gap]:
     """A detail for each of `keys` whose text is over its box's cap, naming the box."""
     gaps = []
     for key in keys:
+        if not text_shows(answers, key):
+            continue
         limit = PetitionAnswers.TEXT_LIMITS.get(key)
         value = answers.get(key)
         if limit is not None and isinstance(value, str) and len(value) > limit:

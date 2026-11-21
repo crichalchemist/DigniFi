@@ -8,6 +8,7 @@ never 0.00 and never a default, since blank means the filer has not answered.
 """
 
 import re
+from datetime import datetime
 
 ANSWER_NAMESPACES = ("petition.", "schedule_i.", "intentions.", "affairs.")
 
@@ -114,6 +115,29 @@ PETITION_STEP_OF_KEY = {
 }
 
 
+def is_nine_digits(value) -> bool:
+    return isinstance(value, str) and len(re.sub(r"\D", "", value)) == 9
+
+
+def is_itin(value) -> bool:
+    """An ITIN is nine digits whose first digit is 9 (PF2-U2)."""
+    return is_nine_digits(value) and re.sub(r"\D", "", value)[0] == "9"
+
+
+def is_mm_dd_yyyy(value) -> bool:
+    if not isinstance(value, str) or not re.fullmatch(r"\d{2}/\d{2}/\d{4}", value):
+        return False
+    try:
+        datetime.strptime(value, "%m/%d/%Y")
+    except ValueError:
+        return False
+    return True
+
+
+# Row lists whose `filed_on` prints only as a real MM/DD/YYYY date (PF2-2).
+_DATED_ROW_LISTS = ("prior_cases", "pending_cases")
+
+
 def _unrecognized(binding: str) -> ValueError:
     return ValueError(f"unrecognized binding: {binding!r}")
 
@@ -160,7 +184,11 @@ def record_value(session, binding: str) -> str | list[str]:
     rows = answers.get(key)
     if not isinstance(rows, list):
         return []
-    return [_text(row.get(attr)) if isinstance(row, dict) else "" for row in rows]
+    cells = [_text(row.get(attr)) if isinstance(row, dict) else "" for row in rows]
+    if key in _DATED_ROW_LISTS and attr == "filed_on":
+        # A date the form can't read prints blank; the stored value stays as typed.
+        cells = [c if not c.strip() or is_mm_dd_yyyy(c) else "" for c in cells]
+    return cells
 
 
 def record_step(binding: str) -> str:

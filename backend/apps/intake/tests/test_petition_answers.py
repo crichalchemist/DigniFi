@@ -12,7 +12,7 @@ from django.db import connection
 from django.test.utils import CaptureQueriesContext
 
 from apps.intake.models import PetitionAnswers, _read_text_limits
-from apps.intake.petition import petition_step_gaps
+from apps.intake.petition import DETAIL_ITIN, DETAIL_OTHER_SSN, petition_step_gaps
 
 
 def _url(session):
@@ -134,6 +134,16 @@ def test_a_seven_digit_itin_is_stored_and_listed_as_a_detail(filer):
     session.refresh_from_db()
     gap = next(g for g in petition_step_gaps(session) if str(g).startswith("Type your 9-digit"))
     assert (gap.step, gap.kind, gap.forms) == ("debtor_info", "detail", ("form_101", "form_121"))
+
+
+def test_a_short_other_ssn_is_listed_for_form_121_alone(filer):
+    # Form 101 has no box for the other Social Security number (PF2-T7-7).
+    client, session = filer
+    body = {"other_ssn_answer": "yes", "other_ssn": "90055"}
+    assert _patch(client, session, body).status_code == 200
+    session.refresh_from_db()
+    gap = next(g for g in petition_step_gaps(session) if str(g) == DETAIL_OTHER_SSN)
+    assert (gap.step, gap.kind, gap.forms) == ("debtor_info", "detail", ("form_121",))
 
 
 def test_the_itin_and_other_ssn_never_come_back(filer):
@@ -301,3 +311,30 @@ def test_a_missing_caps_file_fails_loudly(settings, tmp_path):
 @pytest.mark.parametrize("key", PetitionAnswers.RADIO_KEYS)
 def test_every_radio_key_is_a_yes_no_key(key):
     assert key in PetitionAnswers.YES_NO_KEYS
+
+
+@pytest.mark.parametrize(
+    "itin,saved,listed",
+    [
+        ("", False, True),
+        ("9007012", False, True),
+        ("812345678", False, True),
+        ("912345678", True, False),
+    ],
+)
+def test_itin_saved_means_it_will_print_and_no_detail_is_listed(filer, itin, saved, listed):
+    client, session = filer
+    response = _patch(client, session, {"itin_answer": "yes", "itin": itin})
+    assert response.status_code == 200
+    read = client.get(_url(session)).json()["petition_answers"]
+    assert read["itin_saved"] is saved
+    session.refresh_from_db()
+    assert (DETAIL_ITIN in [str(g) for g in petition_step_gaps(session)]) is listed
+
+
+@pytest.mark.parametrize("other,saved", [("", False), ("9007012", False), ("812345678", True)])
+def test_other_ssn_saved_only_when_it_is_nine_digits(filer, other, saved):
+    client, session = filer
+    assert _patch(client, session, {"other_ssn": other}).status_code == 200
+    read = client.get(_url(session)).json()["petition_answers"]
+    assert read["other_ssn_saved"] is saved

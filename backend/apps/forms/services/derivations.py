@@ -26,7 +26,7 @@ from apps.eligibility.cmi import (
     is_above_median,
     spouse_monthly_income,
 )
-from apps.forms.services.answer_records import PETITION_STEP_OF_KEY, record_value
+from apps.forms.services.answer_records import PETITION_STEP_OF_KEY, is_itin, record_value
 from apps.intake.asset_lines import (
     LINE_BY_KEY,
     LINES,
@@ -948,6 +948,12 @@ def _petition(session: IntakeSession, key: str) -> str:
     return record_value(session, f"petition.{key}")
 
 
+def _valid_itin(session: IntakeSession) -> str:
+    """The stored ITIN only when it is nine digits starting with 9, else blank (PF2-U2)."""
+    value = _petition(session, "itin")
+    return value if is_itin(value) else ""
+
+
 def _asked(key: str) -> Callable[[IntakeSession], str]:
     return lambda s: _petition(s, key)
 
@@ -1047,8 +1053,8 @@ def _register_digits(prefix: str, reader, start: int, count: int, fix: dict[str,
 _register_digits(
     "ssn_last4_digit", lambda s: _safe_debtor_attr(s, "ssn"), 5, 4, {"step": "debtor_info"}
 )
-_register_digits("itin_last4_digit", _asked("itin"), 5, 4, _step_of("itin"))
-_register("itin_whole", lambda s: nine_digit_slice(_petition(s, "itin"), 0, 9), _step_of("itin"))
+_register_digits("itin_last4_digit", _valid_itin, 5, 4, _step_of("itin"))
+_register("itin_whole", lambda s: nine_digit_slice(_valid_itin(s), 0, 9), _step_of("itin"))
 _register(
     "other_ssn_whole",
     lambda s: nine_digit_slice(_petition(s, "other_ssn"), 0, 9),

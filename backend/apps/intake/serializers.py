@@ -16,6 +16,7 @@ from rest_framework import serializers
 from apps.districts.counties import ILND_COUNTIES
 from apps.districts.dated_tables import fill_date
 from apps.eligibility.cmi import answered_window, income_step_gaps, income_window
+from apps.forms.services.answer_records import is_itin, is_nine_digits
 from apps.forms.services.exemption_items import fits_description, fits_law
 from apps.forms.services.means_fit import LIST_ANSWERS, merge_row_errors, shown_box_refusals
 
@@ -1044,7 +1045,11 @@ class PetitionAnswersField(serializers.DictField):
     def get_attribute(self, instance):
         record = getattr(instance, "petition_answers", None)
         answers = record.get_answers() if record else {}
-        saved = {f"{key}_saved": key in answers for key in PetitionAnswers.SECRET_KEYS}
+        # "Saved" means it will print and no detail is listed: the same predicates (PF2-5).
+        saved = {
+            "itin_saved": is_itin(answers.get("itin")),
+            "other_ssn_saved": is_nine_digits(answers.get("other_ssn")),
+        }
         return {
             **{k: v for k, v in answers.items() if k not in PetitionAnswers.SECRET_KEYS},
             **saved,

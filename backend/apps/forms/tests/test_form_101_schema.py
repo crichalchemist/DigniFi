@@ -25,7 +25,8 @@ from django.contrib.auth import get_user_model
 
 from apps.districts.models import District
 from apps.forms.schema import load_schema
-from apps.forms.services.fill_resolver import resolve, resolve_parts
+from apps.forms.services.answer_records import PETITION_STEP_OF_KEY
+from apps.forms.services.fill_resolver import _section_applies, resolve, resolve_parts
 from apps.forms.services.pdf_filler import PDFFormFiller, ValueTooLong
 from apps.forms.tests.pdf_readback import read_drawn
 from apps.intake.models import (
@@ -37,6 +38,7 @@ from apps.intake.models import (
     IntakeSession,
     PetitionAnswers,
 )
+from apps.intake.petition import text_shows
 
 User = get_user_model()
 
@@ -1127,3 +1129,84 @@ def test_no_binding_reads_the_retired_form_answers():
     # 4b-R2: every asked box reads PetitionAnswers; FormAnswer is written by nothing.
     bindings = [f.binding for f in load_schema("form_101").fields if f.binding]
     assert [b for b in bindings if not b.startswith("petition.")] == []
+
+
+def test_a_malformed_case_date_prints_blank_and_the_rest_of_its_row_prints(session):
+    # A date the court can't read is blank, never a guess; the stored text stays as typed.
+    prior = [
+        {"district": "District 1", "filed_on": "01/01/2020", "case_number": "20-1"},
+        {"district": "District 2", "filed_on": "13/45/2020", "case_number": "20-2"},
+    ]
+    pending = [
+        {
+            "debtor": "Demo Partner",
+            "relationship": "Business partner",
+            "district": "Northern Illinois",
+            "filed_on": "2025-01-15",
+            "case_number": "25-bk-1",
+        }
+    ]
+    record = _petition_row(
+        session,
+        prior_bankruptcy_answer="yes",
+        prior_cases=prior,
+        pending_case_answer="yes",
+        pending_cases=pending,
+    )
+    form = _petition(session)
+    assert not form.get("When_2")
+    assert (form["District_2"], form["Case number_2"]) == ("District 2", "20-2")
+    assert form["District@3:T11"] == "District 1"
+    debtor, _, district, when, case_number = _line_10_row(form, 1)
+    assert not when
+    assert (debtor, district, case_number) == ("Demo Partner", "Northern Illinois", "25-bk-1")
+    answers = PetitionAnswers.objects.get(pk=record.pk).get_answers()
+    assert answers["prior_cases"][1]["filed_on"] == "13/45/2020"
+    assert answers["pending_cases"][0]["filed_on"] == "2025-01-15"
+
+
+# Every key whose too-long line is gated by its box's visibility (PF2-3). The schema's
+# `conditional_on` for the key's boxes decides, so petition.text_shows can't drift from it.
+GATED_KEYS = sorted(
+    key
+    for key in PetitionAnswers.TEXT_LIMITS
+    if PETITION_STEP_OF_KEY.get(key) in ("debtor_info", "assets")
+)
+GATE_STATES = [
+    {},
+    {"mailing_answer": "no"},
+    {"mailing_answer": "yes"},
+    {"sole_proprietor_answer": "no"},
+    {"sole_proprietor_answer": "yes"},
+    {"hazard_answer": "no"},
+    {"hazard_answer": "yes"},
+    {"venue_choice": "lived_here"},
+    {"venue_choice": "other"},
+]
+
+
+def _boxes_of(key):
+    """The schema fields that print `key`: bound to it, or a rule built from it."""
+    names = {f"petition.{key}", key}
+    if key.endswith("_street"):
+        names.add(key.replace("_street", "_number"))
+    return [
+        f
+        for f in load_schema("form_101").fields
+        if f.binding in names or f.rule in names or (f.rule or "").startswith(f"{key}_line_")
+    ]
+
+
+def test_eighteen_keys_are_gated_by_their_boxes_visibility():
+    assert len(GATED_KEYS) == 18
+
+
+@pytest.mark.parametrize("answers", GATE_STATES)
+@pytest.mark.parametrize("key", GATED_KEYS)
+def test_a_too_long_text_is_gated_as_the_schema_gates_its_boxes(session, key, answers):
+    fields = _boxes_of(key)
+    assert fields, key
+    _petition_row(session, **answers)
+    session.refresh_from_db()
+    printed = all(_section_applies(f, session) for f in fields)
+    assert text_shows(answers, key) == printed
