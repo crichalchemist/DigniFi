@@ -54,7 +54,7 @@ from .services.pdf_filler import (
 logger = logging.getLogger(__name__)
 
 # A form filed on the retired 06/24 Form 101 holds box names the 11/26 template lacks (4b-R7).
-# DRAFT: owner (4b-i Ruling T6-sentence)
+# Wording approved by the owner on 2026-11-21 (4b-i Ruling T6-sentence).
 FILED_ON_EARLIER_REVISION = (
     "This form was filed on an older version of Form 101. "
     "DigniFi can no longer print it. Keep the copy you gave the court."

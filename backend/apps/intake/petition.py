@@ -34,6 +34,7 @@ GATE_HAZARD = "Say whether you own property that poses a hazard or needs immedia
 GATE_RENTS = "Say whether you rent your residence."
 GATE_EVICTION = "Say whether your landlord has an eviction judgment against you."
 DETAIL_VENUE = "Choose why you are filing in this district."
+# Wording approved by the owner on 2026-11-21; still in counsel's C-40 review.
 # DRAFT: counsel C-40
 DETAIL_VENUE_REASON = "Explain your other reason for filing here."
 DETAIL_OTHER_NAMES = "Add the other name you used, or change your answer to No."
