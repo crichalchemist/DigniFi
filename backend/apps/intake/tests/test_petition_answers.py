@@ -154,16 +154,15 @@ def test_an_echoed_read_never_changes_a_stored_itin(filer):
     client, session = filer
     _patch(client, session, {"itin_answer": "yes", "itin": "900701234"})
     echoed = client.get(_url(session)).json()["petition_answers"]
-    # The browser leaves the two read-only booleans out of a body.
-    echoed = {k: v for k, v in echoed.items() if not k.endswith("_saved")}
-    assert _patch(client, session, echoed).status_code == 200
+    assert _patch(client, session, echoed).status_code == 200  # the read PATCHed back whole
     assert _stored(session)["itin"] == "900701234"
     refused = _patch(client, session, {"itin": "saved"})
     assert refused.status_code == 400
     assert refused.json() == {"petition_answers": ["Check the answer for itin."]}
-    refused = _patch(client, session, {"itin_saved": True})
-    assert refused.status_code == 400
-    assert refused.json() == {"petition_answers": ["Not a petition answer: itin_saved."]}
+    ignored = _patch(client, session, {"itin_saved": False, "other_ssn_saved": True})
+    assert ignored.status_code == 200
+    assert _stored(session)["itin"] == "900701234"
+    assert "itin_saved" not in _stored(session) and "other_ssn_saved" not in _stored(session)
 
 
 def test_a_text_over_the_ceiling_is_refused(filer):
@@ -176,9 +175,9 @@ def test_answered_on_is_stamped_and_read_only(filer, monkeypatch):
     client, session = filer
     monkeypatch.setattr("apps.districts.dated_tables._today", lambda: datetime.date(2026, 11, 19))
     response = _patch(client, session, {"mailing_answer": "no", "answered_on": "1999-01-01"})
-    assert response.status_code == 400  # a body key that is not an answer is refused by name
-    assert _patch(client, session, {"mailing_answer": "no"}).status_code == 200
+    assert response.status_code == 200  # a body carrying it is ignored
     assert PetitionAnswers.objects.get(session=session).answered_on == "2026-11-19"
+    assert "answered_on" not in _stored(session)
     top = client.patch(
         _url(session),
         {"petition_answers": {"hazard_answer": "no"}, "answered_on": "x"},

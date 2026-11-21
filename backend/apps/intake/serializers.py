@@ -1201,10 +1201,14 @@ class IntakeSessionSerializer(serializers.ModelSerializer):
             answers[key] = value
         return answers
 
+    PETITION_READ_ONLY = ("answered_on", "itin_saved", "other_ssn_saved")
+
     def validate_petition_answers(self, sent):
         """Check each key and its shape; a message names the key, never the value."""
         answers = {}
         for key, value in sent.items():
+            if key in self.PETITION_READ_ONLY:
+                continue  # echoed by a read or set by the server; never written from a body
             if key not in PetitionAnswers.KEYS:
                 raise serializers.ValidationError(f"Not a petition answer: {key}.")
             if value is not None:
