@@ -33,6 +33,7 @@ from apps.forms.schema import (
 )
 from apps.forms.services.answer_records import ANSWER_NAMESPACES, record_step, record_value
 from apps.forms.services.derivations import (
+    ANSWER_BOX_RULES,
     DERIVATIONS,
     PREDICATES,
     RULE_FIXES,
@@ -674,6 +675,17 @@ def _unmapped(field: FieldSpec) -> bool:
     return field.type in ("checkbox", "radio") and not field.choices
 
 
+def _held_back(field: FieldSpec) -> bool:
+    """
+    The UPL guard: a legal_review field fills only from an explicit asked answer, or from a
+    derived rule on ANSWER_BOX_RULES, which ticks exactly the filer's own stored choice (Ruling
+    T4-legalreview). Every other legal_review field stays blank.
+    """
+    if not field.legal_review or field.source == "asked":
+        return False
+    return not (field.source == "derived" and field.rule in ANSWER_BOX_RULES)
+
+
 def _emit(field: FieldSpec, value: str | None) -> str | None:
     """Turn a resolved value into what the filler writes. None = leave the box alone."""
     if field.type in ("checkbox", "radio"):
@@ -975,8 +987,8 @@ def _resolve_parts(schema: FormSchema, session: IntakeSession) -> dict:
             continue
         if not _section_applies(f, session, answer_cache=_form_answers):
             continue
-        # UPL guard: legal_review fields fill only from an explicit asked answer
-        if f.legal_review and f.source != "asked":
+        # UPL guard: legal_review fields fill only from an explicit asked answer (or its box)
+        if _held_back(f):
             continue
         emitted = _emit(f, _scalar_value(f, session, ingested_cache=_ingested_cache))
         if emitted is not None:
@@ -1003,7 +1015,7 @@ def _resolve_parts(schema: FormSchema, session: IntakeSession) -> dict:
             default=0,
         )
         # UPL guard, as above
-        printed = [f for f in fields if not (f.legal_review and f.source != "asked")]
+        printed = [f for f in fields if not _held_back(f)]
         by_binding = {b: row_fixes(b, session) for b in {f.binding for f in printed if f.binding}}
         for f in printed:
             emitted = _cell(f, f.row, resolved_cols, session, _ingested_cache)
@@ -1063,7 +1075,7 @@ def _resolve_parts(schema: FormSchema, session: IntakeSession) -> dict:
             continue
         # Every slot, not `groups`' own: a section that doesn't apply still prints "0.00" (R2).
         fields = [f for f in schema.fields if f.repeat == group_name and not _unmapped(f)]
-        printed = [f for f in fields if not (f.legal_review and f.source != "asked")]
+        printed = [f for f in fields if not _held_back(f)]
         # A column the UPL guard keeps blank on any slot adds up to no total (R3).
         if all(f in printed for f in fields if f.binding == group.totals.column):
             _write_totals(group, printed, out, copies_of.get(group_name, []))

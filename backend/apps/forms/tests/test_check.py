@@ -35,8 +35,8 @@ from apps.forms.services.pdf_filler import (
 from apps.forms.services.text_fit import MIN_SIZE, fit
 from apps.forms.services.widgets import field_of, template_widgets, widget_for
 
-LAST_NAME = "Debtor1.Last name"  # Form 101 page 1: derived last_name, label "Last name"
-EMAIL = "Debtor1.Email address_2"  # Form 101 page 9: derived email, label "Email address"
+LAST_NAME = "Debtor1.Last name"  # Form 121: a 10 pt /Helv box, derived last_name
+FIRST_NAME = "Debtor1.First name"  # Form 121: a 10 pt /Helv box a long value must shrink to fit
 SSN = "Debtor1a.SSNum"  # Form 121: an 11-cell comb box, derived ssn_formatted
 OTHER_PROPERTY = "53 Examples Season tickets country club membership"  # A/B line 53, multi-line
 ASSISTANCE = "3 type"  # Form 103B line 3, multi-line, from the Income step's 8f
@@ -113,19 +113,19 @@ def test_a_letter_the_form_cannot_print_is_refused(last_name, letter, decompose)
     if decompose:
         last_name = unicodedata.normalize("NFD", last_name)
     if letter is None:
-        (planned,) = _plan("form_101", {LAST_NAME: last_name})
+        (planned,) = _plan("form_121", {LAST_NAME: last_name})
         assert (planned.value, planned.size) == (printed_as, 10.0)
         return
     with pytest.raises(UnprintableLetter) as refused:
-        PDFFormFiller().check("form_101", {LAST_NAME: last_name})
+        PDFFormFiller().check("form_121", {LAST_NAME: last_name})
     assert refused.value.letter == letter
     assert (refused.value.label, refused.value.step, refused.value.page) == (
-        "Last name",
+        "Debtor 1 last name",
         "debtor_info",
         None,
     )
     assert str(refused.value) == (
-        f"The court form can't print the letter “{letter}” in “Last name”. "
+        f"The court form can't print the letter “{letter}” in “Debtor 1 last name”. "
         "Change it to a letter without the mark."
     )
 
@@ -134,13 +134,13 @@ def test_a_mark_no_letter_takes_is_refused_at_the_mark():
     # No single letter is n with a diaeresis, so the mark stays apart and is refused itself
     # (the sentence for it is the owner's, W-1).
     with pytest.raises(UnprintableLetter) as refused:
-        PDFFormFiller().check("form_101", {LAST_NAME: "Mun\N{COMBINING DIAERESIS}oz"})
+        PDFFormFiller().check("form_121", {LAST_NAME: "Mun\N{COMBINING DIAERESIS}oz"})
     assert refused.value.letter == "\N{COMBINING DIAERESIS}"
 
 
 def test_a_control_character_is_refused():
     with pytest.raises(UnprintableLetter) as refused:
-        PDFFormFiller().check("form_101", {LAST_NAME: "Varée\x07"})
+        PDFFormFiller().check("form_121", {LAST_NAME: "Varée\x07"})
     assert refused.value.letter == "\x07"
 
 
@@ -157,19 +157,22 @@ def test_a_comb_box_refuses_a_character_that_breaks_its_cells(letter):
 
 
 def test_a_refusal_names_the_box_as_its_binding_does():
-    # Bound: the schema's label and fix. The index calls the same box "Running header: …".
+    # Bound: the schema's label and fix. The index calls the same box "Debtor 1 name (page header)".
     with pytest.raises(UnprintableLetter) as bound:
-        PDFFormFiller().check("form_101", {"Debtor1.Name": "Ana Wąsowicz"})
-    assert (bound.value.label, bound.value.step) == ("Debtor name", "debtor_info")
+        PDFFormFiller().check("form_122a2", {"Debtor1.Name": "Ana Wąsowicz"})
+    assert (bound.value.label, bound.value.step) == (
+        "Debtor's name (first, middle, last)",
+        "debtor_info",
+    )
     # A key no binding produced, such as one widget of a name bound as a whole, or an
     # unbound box, is named by its index row and links nowhere.
-    page_2 = next(w for w in _widgets("form_101", "Debtor1.Name") if w.page == 2)
+    page_2 = next(w for w in _widgets("form_122a2", "Debtor1.Name") if w.page == 2)
     for key, label in [
-        (page_2.key, "Running header: Debtor 1 (First Name Middle Name Last Name)"),
-        ("Suffix Sr Jr II III_2", "Suffix (Sr., Jr., II, III)"),
+        (page_2.key, "Debtor 1 name (page header)"),
+        ("Debtor2.Name", "Debtor 2 (Spouse, if filing) name (First, Middle, Last)"),
     ]:
         with pytest.raises(UnprintableLetter) as unbound:
-            PDFFormFiller().check("form_101", {key: "Wąsowicz"})
+            PDFFormFiller().check("form_122a2", {key: "Wąsowicz"})
         assert (unbound.value.label, unbound.value.step, unbound.value.page) == (label, None, None)
 
 
@@ -189,31 +192,32 @@ def test_a_box_whose_binding_has_no_label_is_named_by_its_index_row():
 
 
 def test_a_long_value_shrinks_before_it_is_refused():
-    (box,) = _widgets("form_101", EMAIL)
-    email = "kestrel.wanamaker.okonkwo@example.org"
-    assert _helvetica(email, box.size) > _room(box)  # too wide at the box's own 10 pt
+    (box,) = _widgets("form_121", FIRST_NAME)
+    long_name = "kestrel.wanamaker.okonkwo.marchetti-example-org"
+    assert _helvetica(long_name, box.size) > _room(box)  # too wide at the box's own 10 pt
 
-    (planned,) = _plan("form_101", {EMAIL: email})
-    assert planned.value == email
+    (planned,) = _plan("form_121", {FIRST_NAME: long_name})
+    assert planned.value == long_name
     assert MIN_SIZE <= planned.size < box.size
     assert planned.size % 0.5 == 0
     # The first size that fits: half a point larger doesn't.
-    assert _helvetica(email, planned.size) <= _room(box)
-    assert _helvetica(email, planned.size + 0.5) > _room(box)
+    assert _helvetica(long_name, planned.size) <= _room(box)
+    assert _helvetica(long_name, planned.size + 0.5) > _room(box)
 
-    too_long = "kestrel.wanamaker.okonkwo.marchetti-oyel@example.org"
+    too_long = "kestrel.wanamaker.okonkwo.marchetti-oyelaran.vasquez-hart-example-org"
     # Too wide at 6 pt, the smallest size the check prints, though it would fit at 5.5.
     assert _helvetica(too_long, 6.0) > _room(box)
     assert _helvetica(too_long, 5.5) <= _room(box)
     with pytest.raises(ValueTooLong) as refused:
-        PDFFormFiller().check("form_101", {EMAIL: too_long})
+        PDFFormFiller().check("form_121", {FIRST_NAME: too_long})
     assert (refused.value.label, refused.value.step, refused.value.page) == (
-        "Email address",
+        "Debtor 1 first name",
         "debtor_info",
         None,
     )
     assert str(refused.value) == (
-        "“Email address” is too long to fit on the court form, even in small print. Shorten it."
+        "“Debtor 1 first name” is too long to fit on the court form, even in small print. "
+        "Shorten it."
     )
 
 
@@ -240,25 +244,29 @@ def test_a_comb_value_longer_than_its_cells_is_refused_not_shrunk():
 
 
 def test_a_box_with_a_maximum_length_refuses_a_longer_value():
-    # Form 101's State box takes 2 characters (MaxLen), though 3 would fit its width.
-    (planned,) = _plan("form_101", {"Debtor1.State": "IL"})
-    assert planned.value == "IL"
+    # Form 122A-2's line 5 box takes 2 characters (MaxLen), though 3 would fit its width.
+    (planned,) = _plan("form_122a2", {"Quest5": "12"})
+    assert planned.value == "12"
     with pytest.raises(ValueTooLong) as refused:
-        PDFFormFiller().check("form_101", {"Debtor1.State": "ILL"})
-    assert (refused.value.label, refused.value.step) == ("State", "debtor_info")
+        PDFFormFiller().check("form_122a2", {"Quest5": "123"})
+    assert (refused.value.label, refused.value.step, refused.value.page) == (
+        "Line 5: The number of people used in determining your deductions",
+        None,
+        "/means-test",
+    )
 
 
 def test_parentheses_take_the_room_pypdf_gives_them():
     # pypdf measures "(" as "\(" when it places text, so a value that fits only without
     # the backslashes would start left of a right-aligned box's clip (R33).
-    (box,) = _widgets("form_101", LAST_NAME)
+    (box,) = _widgets("form_121", LAST_NAME)
     count = 1  # as many narrow letters as fit between the parentheses at the box's size
     while _helvetica(f"({'i' * (count + 1)})", box.size) <= _room(box):
         count += 1
     value = f"({'i' * count})"
     assert _helvetica(value, box.size) <= _room(box) < _helvetica(rf"\({'i' * count}\)", box.size)
 
-    (planned,) = _plan("form_101", {LAST_NAME: value})
+    (planned,) = _plan("form_121", {LAST_NAME: value})
     assert planned.value == value  # pypdf escapes /V itself
     assert planned.size < box.size
 
@@ -316,14 +324,15 @@ def test_empty_lines_after_a_multi_line_value_dont_shrink_it():
 def test_a_line_break_starts_a_new_line_only_in_a_multi_line_box(line_break):
     (multi_line,) = _plan("schedule_a_b", {OTHER_PROPERTY: f"A canoe{line_break}A bicycle"})
     assert multi_line.value == "A canoe\nA bicycle"
-    (single_line,) = _plan("form_101", {LAST_NAME: f"Varée{line_break}Peñalta"})
+    (single_line,) = _plan("form_121", {LAST_NAME: f"Varée{line_break}Peñalta"})
     assert single_line.value == "Varée Peñalta"
 
 
 @pytest.mark.parametrize(
     "form_type,name,page,value,limit",
     [
-        ("form_101", "Case number1", 1, "24-10001", "height"),
+        ("form_101", "First name", 1, "Priya", "height"),
+        ("form_101", "Case number if known", 2, "24-10001", "height"),
         ("form_107", "Email 16a", 7, "rosalind.oyelaran.synthetic@example.org", "width"),
     ],
 )
@@ -343,9 +352,9 @@ def test_an_auto_size_box_starts_where_pypdf_would_size_it(form_type, name, page
 
 def test_a_value_pypdf_would_print_below_6_pt_is_refused():
     # pypdf's auto size goes down to 4 pt; the check stops at 6.
-    box = next(w for w in _widgets("form_101", "Case number1") if w.page == 1)
+    box = next(w for w in _widgets("form_101", "First name") if w.page == 1)
     assert box.size == 0  # auto size
-    value = "24-10001 and 24-10002 and 24-10003 and 24-10004"
+    value = "24-10001 and 24-10002 and 24-10003 and 24-10004 and 24-10005 and 24-10006"
     pypdf_size = float(re.search(rb"/Helv ([0-9.]+) Tf", _pypdf_stream("form_101", box, value))[1])
     # pypdf would print it below 6 pt, where it fits, so only the floor refuses it.
     assert pypdf_size < 6.0
@@ -402,12 +411,13 @@ def test_a_key_that_names_no_drawn_widget_is_refused():
 
 
 def test_a_box_prints_its_state_on_the_widgets_that_have_it():
-    planned = _plan("form_101", {"Check Box1": "/Chapter 7"})
-    # Chapter 7 is printed on pages 1 and 3; the other options print empty.
-    assert sorted(p.value for p in planned) == ["/Chapter 7"] * 2 + ["/Off"] * (len(planned) - 2)
+    # Schedule H's check1 is two widgets, No (/no) and Yes (/yes).
+    planned = _plan("schedule_h", {"check1": "/no"})
+    # The box's state prints on the widget that has it; the other prints empty.
+    assert sorted(p.value for p in planned) == ["/Off", "/no"]
     assert {p.size for p in planned} == {None}
     with pytest.raises(InvalidFieldValue):
-        PDFFormFiller().check("form_101", {"Check Box1": "/Chapter 9"})
+        PDFFormFiller().check("schedule_h", {"check1": "/Chapter 9"})
 
 
 def test_a_combo_prints_one_of_its_options():

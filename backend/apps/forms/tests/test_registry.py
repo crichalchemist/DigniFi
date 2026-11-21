@@ -195,8 +195,9 @@ def test_field_values_name_index_widgets(session):
     FilingFee.objects.create(session=session, payment_choice="pay_in_full")
     values = build_field_values("form_101", session)
     widgets = load_index(load_schema("form_101").template_filename)
-    assert values["Debtor1.First name"] == "Sarah"
-    assert set(values) <= set(widgets)
+    assert values["First name"] == "Sarah"
+    # A tagged key reads `<full name>@<page>:<tag>`; its name is the index's.
+    assert {key.split("@")[0] for key in values} <= set(widgets)
 
 
 @pytest.mark.parametrize("ssn", ["900-55-0005", "900550005"])
@@ -206,6 +207,7 @@ def test_petition_prints_only_the_last_four_ssn_digits(session, ssn):
     Household.objects.create(session=session, county="Cook")
     FilingFee.objects.create(session=session, payment_choice="pay_in_full")
     values = build_field_values("form_101", session)
-    assert values["Debtor1.SSNum"] == "0005"
+    digits = [values["xx"], values["undefined"], values["undefined_2"], values["undefined_3"]]
+    assert digits == ["0", "0", "0", "5"]
     leaks = [name for name, value in values.items() if "900550005" in re.sub(r"\D", "", value)]
     assert leaks == []

@@ -465,6 +465,39 @@ def test_legal_review_field_not_filled_without_answer(session):
     assert "Exemption" not in resolve(schema, session)
 
 
+def test_a_derived_legal_review_box_prints_only_when_its_rule_ticks_the_filers_own_choice(
+    session,
+):
+    # Ruling T4-legalreview: a derived legal_review box prints only when its rule is on the
+    # explicit list of rules that tick exactly the filer's own stored choice (line 15's and
+    # 16a's). A rule off the list stays blank under legal_review, even one that would print
+    # unguarded (the unflagged twin shows it would).
+    from apps.intake.models import PetitionAnswers
+
+    record = PetitionAnswers(session=session)
+    record.merge({"credit_counseling": "certificate", "sole_proprietor_answer": "yes"})
+    record.save()
+
+    def box(name, rule, **kw):
+        return _field(
+            pdf_field=name,
+            type="checkbox",
+            source="derived",
+            rule=rule,
+            choices={"true": "/On"},
+            **kw,
+        )
+
+    schema = _schema(
+        [
+            box("Listed", "credit_counseling_certificate", legal_review=True),
+            box("Unlisted", "sole_proprietor_yes", legal_review=True),
+            box("Unflagged", "sole_proprietor_yes"),
+        ]
+    )
+    assert resolve(schema, session) == {"Listed": "/On", "Unflagged": "/On"}
+
+
 def test_resolve_ingested_source(session):
     schema = _schema(
         [_field(pdf_field="Income.Gross", source="ingested", ingest_key="paystub.gross")]

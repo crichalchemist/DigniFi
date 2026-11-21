@@ -10,7 +10,7 @@ from django.conf import settings
 
 from apps.forms.field_index import export_state, index_path, load_index, option_text
 
-PETITION = "form_b_101_0624_fillable_clean.pdf"
+PETITION = "form_b101.pdf"
 
 
 def test_export_states_are_decoded_the_way_pypdf_reads_them():
@@ -18,16 +18,24 @@ def test_export_states_are_decoded_the_way_pypdf_reads_them():
     assert export_state("On") == "/On"
 
 
-def test_a_checkbox_group_is_one_full_name_with_a_widget_per_option():
-    # Form 101 prints the chapter boxes twice: the page 1 header and Part 1 on page 3.
-    chapter = load_index(PETITION)["Check Box1"]
-    assert {w.type for w in chapter} == {"CheckBox"}
-    assert {w.page for w in chapter} == {1, 3}
-    assert [export_state(w.on_state) for w in chapter].count("/Chapter 7") == 2
+def test_a_radio_group_is_one_full_name_with_a_kid_per_state():
+    # Form 101 line 9's No and Yes are the two kids of one radio group.
+    radio = load_index(PETITION)["bankruptcy within the"]
+    assert {w.type for w in radio} == {"RadioButton"}
+    assert {w.page for w in radio} == {3}
+    assert sorted(export_state(w.on_state) for w in radio) == ["/No", "/Yes"]
+
+
+def test_the_chapter_box_is_two_names_on_two_pages():
+    # 11/26 prints the chapter twice under two names: the cover and line 7 on page 3.
+    index = load_index(PETITION)
+    for name, page in (("Chapter 7", 1), ("Chapter 7_2", 3)):
+        (box,) = index[name]
+        assert (box.type, box.page, export_state(box.on_state)) == ("CheckBox", page, "/On")
 
 
 def test_a_text_box_is_found_by_its_full_name():
-    (first_name,) = load_index(PETITION)["Debtor1.First name"]
+    (first_name,) = load_index(PETITION)["First name"]
     assert first_name.type == "Text"
     assert first_name.on_state is None
 
@@ -35,7 +43,7 @@ def test_a_text_box_is_found_by_its_full_name():
 def test_the_index_is_read_from_the_directory_the_image_copies_it_to():
     # Dockerfile.heroku copies data/forms/field_index/*.index.json to this directory.
     path = index_path(PETITION)
-    assert path == settings.FORM_INDEX_DIRECTORY / "form_b_101_0624_fillable_clean.index.json"
+    assert path == settings.FORM_INDEX_DIRECTORY / "form_b101.index.json"
     assert path.is_file()
 
 
