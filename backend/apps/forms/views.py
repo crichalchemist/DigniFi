@@ -46,11 +46,18 @@ from .services.fill_resolver import UnmappedChoice
 from .services.pdf_filler import (
     PDFFormFiller,
     TemplateHasNoForm,
+    UnknownField,
     UnprintableLetter,
     ValueTooLong,
 )
 
 logger = logging.getLogger(__name__)
+
+# A form filed on the retired 06/24 Form 101 holds box names the 11/26 template lacks (4b-R7).
+FILED_ON_EARLIER_REVISION = (
+    "This form was prepared on an earlier revision of Form 101. "
+    "Generate it again to print it on the current form."
+)
 
 # The two forms that say the means test's result is worked out on Form 122A-2.
 MEANS_PAIR = ("form_122a1", "form_122a2")
@@ -121,15 +128,9 @@ def _failure(form_type: str | None, exc: Exception) -> tuple[dict, int]:
     """
     if isinstance(
         exc,
-        PreconditionMissing
-        | IncomeNotSplit
-        | Gap
+        PreconditionMissing | IncomeNotSplit | Gap
         # AssetStepGap and ClaimStepGap no longer arrive from _prepare, which raises a Gap (4a).
-        | AssetStepGap
-        | ClaimStepGap
-        | NoTableInForce
-        | UnprintableLetter
-        | ValueTooLong,
+        | AssetStepGap | ClaimStepGap | NoTableInForce | UnprintableLetter | ValueTooLong,
     ):
         error = str(exc)
     else:
@@ -704,6 +705,14 @@ class GeneratedFormViewSet(viewsets.ReadOnlyModelViewSet):
                 pdf_bytes = PDFFormFiller().fill(form_type, document)
                 _store(generated_form, document)
         except Exception as exc:
+            if filed and isinstance(exc, UnknownField):
+                # B62, DIG-155: the stored values name a box the current template lacks (a Form
+                # 101 filed on 06/24). They stay as filed; only the filer's next Generate
+                # replaces them. An unfiled form is resolved fresh and never meets this.
+                return Response(
+                    {"form_type": form_type, "error": FILED_ON_EARLIER_REVISION},
+                    status=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                )
             body, code = _failure(form_type, exc)
             if filed:
                 # No step or page changes the values a form was filed with (R46).

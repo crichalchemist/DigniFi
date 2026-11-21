@@ -15,6 +15,7 @@ from apps.forms.checks import validate_form
 from apps.forms.schema import load_schema
 from apps.forms.services.pdf_filler import PDFFormFiller, TemplateHasNoForm
 from apps.forms.tests.pdf_readback import read_drawn, read_sheets
+from apps.forms.views import FILED_ON_EARLIER_REVISION
 
 
 def _download(client, form):
@@ -66,6 +67,42 @@ def test_unfiled_form_prints_the_filers_current_answers(api_client_authed, gener
     form.refresh_from_db()
     (part,) = json.loads(form.field_values)["parts"]
     assert part["values"]["Debtor1.First name"] == "Marisol"
+
+
+_FILED_ON_06_24 = json.dumps({"Debtor1.First name": "Jane"})  # a 06/24 box, which 11/26 lacks
+
+
+def test_a_form_filed_on_the_06_24_revision_downloads_as_a_422_naming_the_revision_and_keeps_its_values(
+    api_client_authed, generated_form_factory
+):
+    # B62, DIG-155: a filed row keeps what it was filed with, and the retired template's box
+    # names are no widget of the current one, so the filer is told to generate it again.
+    form = generated_form_factory(status="filed")
+    form.form_type = "form_101"
+    form.field_values = _FILED_ON_06_24
+    form.save()
+
+    response = _download(api_client_authed, form)
+
+    assert response.status_code == 422
+    assert response.data == {"form_type": "form_101", "error": FILED_ON_EARLIER_REVISION}
+    form.refresh_from_db()
+    assert form.field_values == _FILED_ON_06_24
+    assert form.status == "filed"
+
+
+def test_an_unfiled_form_never_meets_the_revision_refusal(
+    api_client_authed, generated_form_factory
+):
+    # An unfiled row is resolved fresh from the intake, so stored values never decide it.
+    form = generated_form_factory(status="downloaded")
+    form.form_type = "form_101"
+    form.field_values = _FILED_ON_06_24
+    form.save()
+
+    response = _download(api_client_authed, form)
+
+    assert response.status_code == 200
 
 
 _FILED_SHEET = [
