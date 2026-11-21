@@ -303,11 +303,13 @@ class IntakeSessionViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=["get"])
     def gaps(self, request, pk=None):
-        """What Complete would still refuse (kind "gate") and what prints blank (kind "detail"), in
-        Complete's order: wizard order, with the claims tail last on purpose (3c4; the comment at
-        `complete`, step 4 spec §5.7). Reads only: no lock, no write, never the packet or a form's
-        preconditions. Each entry's `forms` names the forms that print a detail's box blank, so
-        the dashboard can repeat it on their cards; a gate's is empty (4b-R12)."""
+        """What Complete would still refuse (kind "gate") and what it lets through (kind "detail"),
+        in Complete's order: wizard order, with the claims tail last on purpose (3c4; the comment
+        at `complete`, step 4 spec §5.7). Reads only: no lock, no write, never the packet or a
+        form's preconditions. Each entry's `forms` names the forms a detail concerns, so the
+        dashboard can repeat it on their cards: a missing answer prints its box blank there, and
+        an answer too long for its box is refused at Generate until it is shortened. A gate's is
+        empty (4b-R12)."""
         return Response(
             {
                 "gaps": [

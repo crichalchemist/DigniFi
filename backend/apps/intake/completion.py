@@ -33,8 +33,9 @@ class Gap(Exception):
     """One thing an intake still lacks, in the filer's words.
 
     `step` is the WIZARD_STEPS key that fixes it. `kind` is "gate" (Complete refuses while it
-    is open) or "detail" (the forms print it blank). str(gap) is the sentence. `forms` lists the
-    form types that print a detail's box blank; a gate leaves it empty.
+    is open) or "detail" (Complete lets it through). str(gap) is the sentence. `forms` lists the
+    form types a detail concerns: a missing answer prints its box blank there, and an answer too
+    long for its box is refused at Generate until it is shortened. A gate leaves it empty.
     """
 
     GATE = "gate"

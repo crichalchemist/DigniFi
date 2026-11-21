@@ -183,9 +183,10 @@ def answer_petition(session, **over) -> PetitionAnswers:
 
     The record is made if missing. A stored answer beats a default, so a second call keeps what
     a test stored; `over` beats both, a None in it removes the key (unanswered), and an unknown
-    key raises KeyError, as the record's own merge does.
+    key raises KeyError, as the record's own merge does. Never a fresh query, so the session a
+    test holds never reads a stale copy.
     """
-    record, _ = PetitionAnswers.objects.get_or_create(session=session)
+    record = getattr(session, "petition_answers", None) or PetitionAnswers(session=session)
     stored = record.get_answers()
     defaults = {key: value for key, value in PETITION_DEFAULTS.items() if key not in stored}
     record.merge({**defaults, **over})

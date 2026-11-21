@@ -407,3 +407,51 @@ def test_update_step_bound_follows_the_wizards_step_count(filer, completed, monk
     assert accepted.status_code == 200
     assert refused.status_code == 400
     assert refused.data == {"current_step": ["Must be a whole number from 1 to 10."]}
+
+
+@pytest.fixture
+def bare_session(filer, district):
+    """A session with no petition record yet, as a test starts one."""
+    _, user = filer
+    return IntakeSession.objects.create(user=user, district=district)
+
+
+def _stored_petition(session) -> dict:
+    return IntakeSession.objects.get(pk=session.pk).petition_answers.get_answers()
+
+
+def test_answer_petition_keeps_what_a_test_stored_and_lets_it_change_or_clear_an_answer(
+    bare_session,
+):
+    # Tasks 8-12 build sessions that answer one question differently and call finish_intake
+    # after; a builder that put its default back over that answer would test the wrong filer.
+    answer_petition(bare_session, hazard_answer="yes", venue_choice="other")
+    answer_petition(bare_session)
+    stored = _stored_petition(bare_session)
+    assert stored["hazard_answer"] == "yes"
+    assert stored["venue_choice"] == "other"
+    assert stored["rents_residence"] == "no"
+
+    answer_petition(bare_session, hazard_answer="no", rents_residence=None)
+    stored = _stored_petition(bare_session)
+    assert stored["hazard_answer"] == "no"
+    assert "rents_residence" not in stored
+
+
+def test_answer_petition_refuses_a_question_form_101_does_not_ask(bare_session):
+    with pytest.raises(KeyError):
+        answer_petition(bare_session, not_a_question="no")
+
+
+def test_the_session_a_test_holds_reads_the_second_answer_petition_without_a_reload(
+    bare_session,
+):
+    # A test calls the builder, then reads the gaps or resolves a form on the same session
+    # object: a stale cached record there would let a negative test pass on old answers.
+    answer_petition(bare_session)
+    answer_petition(bare_session, hazard_answer="yes", rents_residence=None)
+
+    held = bare_session.petition_answers.get_answers()
+    assert held["hazard_answer"] == "yes"
+    assert "rents_residence" not in held
+    assert held == _stored_petition(bare_session)
