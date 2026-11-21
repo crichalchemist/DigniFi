@@ -136,13 +136,17 @@ def _debtor_info_details(answers: dict) -> list[Gap]:
 
     if answers.get("prior_bankruptcy_answer") == "yes":
         rows = answers.get("prior_cases") or []
-        if any(_blank(row.get("district")) or _blank(row.get("filed_on")) for row in rows):
+        if not _has_a_row(answers, "prior_cases") or any(
+            _blank(row.get("district")) or _blank(row.get("filed_on")) for row in rows
+        ):
             gaps.append(_detail(DETAIL_PRIOR_CASE, step, "prior_cases"))
         if any(_bad_date(row) for row in rows):
             gaps.append(_detail(DETAIL_PRIOR_DATE, step, "prior_cases"))
     if answers.get("pending_case_answer") == "yes":
         rows = answers.get("pending_cases") or []
-        if any(_blank(row.get("debtor")) for row in rows):
+        if not _has_a_row(answers, "pending_cases") or any(
+            _blank(row.get("debtor")) for row in rows
+        ):
             gaps.append(_detail(DETAIL_PENDING_CASE, step, "pending_cases"))
     return gaps
 

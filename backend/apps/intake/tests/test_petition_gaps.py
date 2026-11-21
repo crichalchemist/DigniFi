@@ -101,6 +101,16 @@ def test_a_prior_case_row_needs_its_district_and_date(filer):
     ]
 
 
+def test_a_yes_to_an_earlier_or_pending_case_with_no_row_is_a_detail(filer):
+    _, session = filer
+    prior = {**NO, "venue_choice": "lived_here", "prior_bankruptcy_answer": "yes"}
+    pending = {**NO, "venue_choice": "lived_here", "pending_case_answer": "yes"}
+    for rows in ({"prior_cases": []}, {"prior_cases": [{}]}, {}):
+        assert [t for _, _, t in _gaps(session, {**prior, **rows})] == [DETAIL_PRIOR_CASE]
+    for rows in ({"pending_cases": []}, {"pending_cases": [{}]}, {}):
+        assert [t for _, _, t in _gaps(session, {**pending, **rows})] == [DETAIL_PENDING_CASE]
+
+
 def test_a_malformed_date_is_a_detail(filer):
     _, session = filer
     base = {**NO, "venue_choice": "lived_here", "prior_bankruptcy_answer": "yes"}
