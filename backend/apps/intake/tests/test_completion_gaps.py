@@ -222,6 +222,28 @@ def test_the_rent_gate_stays_before_the_claims_tail_when_the_claims_steps_have_n
     assert gaps[0][1] == GATE_RENTS
 
 
+def test_a_case_on_the_sheet_before_the_name_is_entered_still_lists_every_gap(filer, district):
+    # The sheet that measures a fourth earlier case is headed by the filer's name; with step 1's
+    # name not saved yet, Review must still list what is missing, never answer with an error.
+    client, user = filer
+    session = IntakeSession.objects.create(user=user, district=district, current_step=9)
+    answer_petition(
+        session,
+        prior_bankruptcy_answer="yes",
+        prior_cases=[{}, {}, {}, {"district": "W" * 40}],
+    )
+
+    gaps = completion_gaps(session)
+    listed = client.get(_session_url(session, "gaps/"))
+
+    assert str(gaps[0]) == "Enter your name and address on the Your Information step."
+    # The sheet was measured, nameless: its case is named too long.
+    too_long = "Your answer for line 9's district, in case 4, is too long to fit on Form 101."
+    assert too_long in [str(g) for g in gaps]
+    assert listed.status_code == 200
+    assert listed.data["gaps"][0]["message"] == str(gaps[0])
+
+
 def test_a_detail_is_listed_and_complete_lets_it_through(filer, completed):
     # Every gate answered and the venue left open: Review names the open line, with the form
     # that prints it blank, and Complete still goes through (spec §5.7).
